@@ -976,6 +976,16 @@ class EhpResult:
     # field-append convention.
     rune_resist_armor: float = 0.0
     rune_resist_mr: float = 0.0
+    # ENGINE 1.226.0 (RM-99 / R137, 2026-07-19): item-side PERMANENT-HP-PER-PROC
+    # stack (Heartsteel 3084 + Arena mirror 223084 = 10% of the Colossal Consumption
+    # proc damage granted as permanent bonus max health) folded into the EHP
+    # NUMERATOR when ``assume_item_health_stacks`` is True. Default 0.0 leaves every
+    # EHP field byte-identical. A genuine flat max-HP pool add and a member of the
+    # PERMANENT-HP family (sibling of passive_health_hp / rune_perm_hp), so - unlike
+    # the exact R105 / R107 stat conversions - it is a PROXY, amortized by an assumed
+    # cumulative proc count by level. Appended at END per the dataclass field-append
+    # convention.
+    item_health_stack_hp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -1038,6 +1048,7 @@ class EhpResult:
             "rune_resist_armor": self.rune_resist_armor,
             "rune_resist_mr": self.rune_resist_mr,
             "item_bonus_hp_amp_hp": self.item_bonus_hp_amp_hp,
+            "item_health_stack_hp": self.item_health_stack_hp,
             "item_general_dr_mult": self.item_general_dr_mult,
             "survival_window_mult": self.survival_window_mult,
             "effective_ehp_with_sustain": self.effective_ehp_with_sustain,
@@ -1314,6 +1325,16 @@ def compute_ehp(
     # operator-gated. Appended at END per the no-mid-signature-insert convention.
     apply_rune_health_grants: bool = False,
     apply_rune_hsp_amp: bool = False,
+    # R137 (ENGINE 1.226.0, RM-99): default-OFF opt-in for the item-side
+    # PERMANENT-HP-PER-PROC stack - Heartsteel 3084 (+ Arena mirror 223084) grants
+    # permanent bonus max health equal to 10% of its Colossal Consumption proc
+    # damage, and only the damage half is modelled today. A PROXY lane (assumed
+    # cumulative proc count by level), hence ``assume_`` rather than ``apply_``,
+    # matching its nearest sibling ``assume_passive_health_stacks``. Default False
+    # -> 0.0 -> BYTE-IDENTICAL to 1.225.0, and equipping Heartsteel alone does NOT
+    # arm it. Live default-ON flip is operator-gated. Appended at END per the
+    # no-mid-signature-insert convention.
+    assume_item_health_stacks: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1693,6 +1714,27 @@ def compute_ehp(
             resolved.item_ids, bonus_hp_from_items
         )
 
+    # ENGINE 1.226.0 (R137 / RM-99, 2026-07-19): item-side PERMANENT-HP-PER-PROC
+    # stack credit - Heartsteel 3084 (+ Arena mirror 223084) grants permanent bonus
+    # max health equal to 10% of its Colossal Consumption proc damage (70 + 6% max
+    # HP). ``_effects_data`` models the DAMAGE half only and disclaims this half
+    # in-line; no registry credits it, and the champion twin
+    # (_passive_health_overrides, R46) is champion-keyed so an item can never match.
+    # Unlike the two exact item HP lanes above (R105 mana->HP, R107 item-HP->HP)
+    # this is ``procs x hp_per_proc``, so it needs BOTH the resolved max HP and the
+    # level - and it is a PROXY (assumed cumulative proc count), hence ``assume_``.
+    # NO SELF-FEEDBACK: the proc scales with max HP and the credit IS max HP, so the
+    # formula is fed the RESOLVED ``hp`` and the credit is never added back before it
+    # runs. ``assume_item_health_stacks`` defaults False -> 0.0 -> BYTE-IDENTICAL.
+    # Folded next to passive_health_hp / rune_perm_hp (the PERMANENT-HP family) in
+    # the main per-type numerators only - deliberately NOT in the _blend_with_heal
+    # mirror, which carries the exact R105/R107 conversions but not this family. The
+    # gated lazy import keeps OFF import-free.
+    item_health_stack_hp = 0.0
+    if assume_item_health_stacks:
+        from ._item_health_stack import item_health_stack_hp as _item_health_stack_fn
+        item_health_stack_hp = _item_health_stack_fn(resolved.item_ids, hp, level)
+
     # ENGINE 1.93.0 (2026-06-02): GAP-2 effects-text passive RESIST-STAT grants.
     # The FOURTH survivability axis - champion-passive bonus armor / MR (Garen W
     # Courage, Wukong P, Shyvana P, Sejuani P, Gwen W, Pantheon E) that is NOT in
@@ -1839,9 +1881,9 @@ def compute_ehp(
     # the SAME armor/MR curve as base HP, so it adds RAW to each per-type
     # numerator exactly like its nearest sibling ``passive_health_hp``. 0.0 when
     # apply_rune_health_grants is off -> byte-identical.
-    physical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult * item_general_dr_mult)
-    magical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag * item_general_dr_mult)
-    true_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true * item_general_dr_mult)
+    physical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + item_health_stack_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult * item_general_dr_mult)
+    magical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + item_health_stack_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag * item_general_dr_mult)
+    true_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + item_health_stack_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true * item_general_dr_mult)
 
     # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life.
     # The FIFTH survivability axis and the FIRST EHP-NUMERATOR term: a
@@ -2268,6 +2310,7 @@ def compute_ehp(
         item_spell_shield_frac=item_spell_shield_frac,
         item_mana_health_hp=item_mana_health_hp,
         item_bonus_hp_amp_hp=item_bonus_hp_amp_hp,
+        item_health_stack_hp=item_health_stack_hp,
         item_general_dr_mult=item_general_dr_mult,
         item_resist_armor=item_resist_armor,
         item_resist_mr=item_resist_mr,
@@ -2650,6 +2693,9 @@ def rank_items_by_ehp(
     # tail per the same convention. Both reuse the existing ``rune_ids`` transport.
     apply_rune_health_grants: bool = False,
     apply_rune_hsp_amp: bool = False,
+    # R137 (ENGINE 1.226.0, RM-99): the item permanent-HP-stack seam, appended AFTER
+    # the R136 pair per the same convention.
+    assume_item_health_stacks: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -2812,6 +2858,7 @@ def rank_items_by_ehp(
         rune_ids=rune_ids,
         apply_rune_health_grants=apply_rune_health_grants,
         apply_rune_hsp_amp=apply_rune_hsp_amp,
+        assume_item_health_stacks=assume_item_health_stacks,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -2873,6 +2920,7 @@ def rank_items_by_ehp(
                 rune_ids=rune_ids,
                 apply_rune_health_grants=apply_rune_health_grants,
                 apply_rune_hsp_amp=apply_rune_hsp_amp,
+                assume_item_health_stacks=assume_item_health_stacks,
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,
