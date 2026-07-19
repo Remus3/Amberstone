@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import os
 import shutil
 import subprocess
 import sys
@@ -264,13 +265,67 @@ def _build_expected() -> dict[str, bytes]:
 
 def _write(expected: dict[str, bytes]) -> int:
     """Write expected content under Share/src, removing stale files. Returns
-    the number of files written."""
-    if _SRC.exists():
-        shutil.rmtree(_SRC)
-    for rel, data in expected.items():
-        dst = _SRC / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(data)
+    the number of files written.
+
+    STAGE-THEN-SWAP, deliberately - do NOT "simplify" this back to
+    ``rmtree(_SRC)`` followed by a write loop.
+
+    INCIDENT 2026-07-19 (commit 6464532e): the previous shape deleted the live
+    mirror FIRST and rebuilt it second, so Share/src spent the entire rebuild
+    (~483 files) in a deleted state. This runs on a precommit hook, so an
+    interruption or a race anywhere in that window left the tree empty and the
+    commit captured it as intent - 501 deletions, 596,900 lines, ZERO additions,
+    pushed to main.
+
+    Here the new tree is built in a sibling scratch dir and swapped in with two
+    renames, so the live mirror is only ever the old tree or the new one. The
+    unsafe window shrinks from "hundreds of file writes" to "one rename".
+
+    An EMPTY ``expected`` is refused outright: the mirror is never legitimately
+    empty, so an empty build set means the builder failed, and honouring it
+    would destroy the mirror for exactly the reason above.
+    """
+    if not expected:
+        raise ValueError(
+            "ds_share_sync: refusing to write an EMPTY Share/src - the mirror "
+            "is never legitimately empty, so this means _build_expected() "
+            "failed. The live mirror has been left untouched.")
+
+    staging = _SRC.with_name(_SRC.name + ".tmp")
+    previous = _SRC.with_name(_SRC.name + ".old")
+
+    # Clear scratch left by a prior crashed run before reusing the names.
+    for scratch in (staging, previous):
+        if scratch.exists():
+            shutil.rmtree(scratch)
+
+    try:
+        for rel, data in expected.items():
+            dst = staging / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(data)
+    except BaseException:
+        # Nothing has touched the live mirror yet - drop the partial staging
+        # tree and re-raise so the caller sees the real failure.
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+    # Swap. os.replace cannot overwrite a non-empty directory on Windows, so
+    # the live tree is moved aside first and only removed once the new tree is
+    # in place. If the second rename fails the old tree is put straight back.
+    had_previous = _SRC.exists()
+    if had_previous:
+        os.replace(_SRC, previous)
+    try:
+        os.replace(staging, _SRC)
+    except BaseException:
+        if had_previous:
+            os.replace(previous, _SRC)
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+    if had_previous:
+        shutil.rmtree(previous, ignore_errors=True)
     return len(expected)
 
 
