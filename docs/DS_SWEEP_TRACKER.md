@@ -39,10 +39,15 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   ASSERT the replacement count is 1. Both traps were caught only because the counts
   were re-verified AFTER writing rather than inferred from the write succeeding.
 - Next up (strict alphabetical): NONE - roster closed at Zyra 2026-07-18.
-  Next free GAP spec = RM-99 (RM-96 Zilean + RM-97 Zyra assigned in batch32;
+  Next free GAP spec = RM-105 (RM-96 Zilean + RM-97 Zyra assigned in batch32;
   RM-98 cast-rate TIME BASE allocated 2026-07-19 out of the RM-39/RM-43 L2
-  build). Note RM-98 is NOT a champion GAP - it adds no roster checkbox and the
-  Summary counts above are unchanged by it.
+  build; RM-99 + RM-101..RM-104 allocated 2026-07-19 to the R132 defensive-half
+  sweep - Heartsteel HP-stack, the defensive-rune remainder, the Warmog's Arena
+  mirror phantom credit, Unending Despair's self-heal, and the Kaenic Arena
+  mirror shield; see ROADMAP "DS defensive-half sweep GAP specs"). Note RM-98
+  and RM-99/RM-101..RM-104 are NOT champion GAPs - they are ITEM / RUNE axis
+  gaps, so they add no roster checkbox and the Summary counts above are
+  unchanged by them.
 - **RM-86 L1 SHIPPED 2026-07-18 (LEDGER 940, ENGINE 1.218.0)** - the sweep's first
   engine change. `agents/daemon_slayer/kit_conversion.py` + a default-OFF
   `kit_conversion_strength` lever on carry / assassin / mage / tank. Two spec
