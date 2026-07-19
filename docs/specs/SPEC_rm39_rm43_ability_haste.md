@@ -14,6 +14,47 @@ reading the file. No production code written.
 
 ---
 
+## CORRECTION OF RECORD - 2026-07-18, same day, post-adjudication
+
+**One claim in this document is WRONG and is retracted: that the RM-39/RM-43
+premise "does not reproduce".** It reproduces exactly. Every statement below of
+the form "BotRK measures #52-57, not #1" or "Trinity Force is #1" is an artifact
+of probing against the route's DEFAULT target, which is `target_armor=0.0,
+target_mr=0.0, target_max_hp=0.0, target_bonus_hp=0.0`. BotRK's on-hit damage is
+a percentage of target MAX HP, so against a 0-HP target it contributes ~nothing
+and sinks ~50 places. The original sweep probed `armor 100 / mr 60 / hp 2500 /
+bonus 1200`, which the adjudication did not carry over.
+
+Re-probed at those original targets, ENGINE 1.221.0, `/rank-bruiser`, L16, SR,
+top=200:
+
+| champion | ROADMAP claim | measured | verdict |
+|---|---|---|---|
+| Aatrox | BotRK #1, Shojin 51 | BotRK **#1**, Shojin **51** | exact match |
+| Ambessa | BotRK #1, Shojin 47 | BotRK **#1**, Shojin **47** | exact match |
+
+**The VERDICT and the answer to the blocking question are UNCHANGED, and are now
+stronger** - they rest on code structure and call-counting, not on that probe.
+Re-verified at the corrected tanky targets through the production route
+`server._route_rank_bruiser`, with `compute_ability_dps` wrapped in a counter
+(patched in BOTH `ability_dps` and `hybrid`, which imports it by name):
+
+    Aatrox   TANKY  n=140  compute_ability_dps CALLS=0   BotRK=1  Shojin=51
+    Ambessa  TANKY  n=140  compute_ability_dps CALLS=0   BotRK=1  Shojin=47
+    Veigar   /rank-mage    compute_ability_dps CALLS=142          (control)
+
+So the defect is real and exactly as RM-39 describes it, AND ability haste is
+inert for it - the ability-DPS path is never entered for these champions at the
+very target conditions where the defect appears. Sections 2-6 stand. Only the
+"premise does not reproduce" thread is retracted.
+
+Consequence for RM-39/RM-43: they should be **re-scoped, not rewritten**. The
+observed defect stays as written; only the named MECHANISM (ability haste)
+changes to the missing AD-axis ability term. New probe trap recorded in
+[[reference_ds_probe_zero_target_defaults]].
+
+---
+
 ## 1. THE BLOCKING QUESTION
 
 > Should ability haste modulate a MEASURED cast rate at all?
