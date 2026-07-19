@@ -53,9 +53,22 @@ completion event reported `exit code 0`; the captured file read `MAIN_EXIT=1`
 with 14 failures. Capture pytest by redirect and read the FILE - the
 notification's exit code is not the suite's.
 
-**NEXT:** the ~28 silent-no-op bare excepts logging at DEBUG, sized but never
-fixed. That population has now produced FIVE silent failures across three
-sessions and is the highest-value cleanup available.
+**NEXT: the silent-no-op bare excepts - and THE "~28" IS WRONG, MEASURED.** The
+standing handoff has said "~28 silent-no-op bare excepts logging at DEBUG" for
+three sessions. Re-sized by AST this session (grep is useless here - a naive
+`except .*:` grep returns 232 and a run including vendored `python-embed/`
+site-packages returns 1127). **First-party, excluding `tests/` + `Share/` +
+`python-embed/`: 781 silent-no-op handlers - 166 debug-only and 615
+pass/continue/`...`-only, of which 510 catch broad (bare / `Exception` /
+`BaseException`).** So the debug-only class alone is ~6x the filed figure and
+the total is ~28x. Do NOT scope the next session to 28.
+
+Densest first-party files (debug-only): `game_reader/snapshot_normalizer.py` 23,
+`lcu/lcu_rune_writer.py` 8, `agents/supervisor.py` 7, `coaches/arena_coach.py` 7,
+`coaches/_base_coach.py` 7, `performance_tracker.py` 5. That population has now
+produced FIVE silent failures across three sessions and is the highest-value
+cleanup available - but it is a triage-and-batch job, not a one-session sweep.
+Sizing script: scratchpad `size_silent_excepts.py` (AST, re-runnable).
 
 ---
 
@@ -200,62 +213,3 @@ competition, which selects for elaboration. **Next session should OPEN BY CUTTIN
 to the real Phase 1**, keeping only the resolutions in
 `docs/specs/SPEC_data_provenance_AUDIT_rev2.md` that survive the cut. Do not start
 by implementing 2019 lines.
-
----
-
-# 2026-07-19j (gemini-loop cycle 5 - R136 shipped RM-101's numerator half, and two blockers in our OWN ROADMAP turned out to be conventions that already shipped)
-
-**A claim written in our own ROADMAP ages exactly like an external source, and
-inherits no more trust. Verify a BLOCKER before honouring it, not just a formula
-before building on it.**
-
-Shipped (ENGINE 1.224.0 -> 1.225.0, commit `18aca9e3`): `_rune_health_grants.py`
-(Overgrowth 8451 permanent max-HP + Grasp 8437 self-side heal / permanent-HP)
-behind DEFAULT-OFF `apply_rune_health_grants`, and `_rune_hsp_amp.py`
-(Revitalize 8453's flat 5% Heal/Shield Power) behind DEFAULT-OFF
-`apply_rune_hsp_amp`. Both reuse R132's existing `rune_ids` transport, so no
-entry point gained a new ids parameter. Three agents on disjoint file sets with
-the orchestrator holding EVERY shared seam, so the slices structurally could not
-collide - both build agents returned exactly two untracked files and zero seam
-edits, verifier-confirmed.
-
-**The directive was wrong and was not followed.** It ordered all seven RM-101
-runes including Font of Life 8463. Our own spec records 8463 as DATA-BLOCKED on
-an unresolved `@BaseHeal@` DDragon template var; the directive's premise line was
-tagged `[from-digest]` and the digest had dropped the qualifier. Re-confirmed
-from raw source: `@BaseHeal@` appears verbatim in ALL FOUR vendored snapshots, is
-one of only 3 unresolved tokens in the whole rune file, and no independent
-vendored source exists (the aggregator B scrapes re-serve the same DDragon payload; no
-CommunityDragon `perks.json` is vendored). The number was not invented. Two tests
-pin 8463 + 8465 at zero credit so a later pass cannot seed a guess.
-
-**Two ROADMAP claims REFUTED, both re-grepped rather than taken on the agent's
-word.** "Second Wind needs a missing-health convention the scorer lacks" - it is
-a local variable at the exact call site (`ehp.py:355
-_MISSING_HP_SHARE_FOR_HEALS = 0.5`). "Bone Plating needs a hit-count convention
-that does not exist" - `_passive_flat_mitigation_overrides.py:92
-_ASSUMED_FLAT_DR_INSTANCES = 6.0` with discrete instance math at `:270` shipped
-in R9 a MONTH before the claim was written. Both blockers were authored by a
-careful agent that read the rune correctly and simply never checked whether the
-sibling registry it needed already existed. This is the third cycle running in
-the same family (R132's Aftershock cap, R134's audit, now this).
-
-**NEXT: Bone Plating 8473.** Its instance count of 3 is stated in the rune text,
-so it REPLACES that registry's largest assumption instead of adding one, and at
-~154 prevented HP (L13) it is the only buildable remainder big enough to reorder
-a ranking. Shape: rune-keyed `_rune_flat_mitigation.py`, `level_scaled` copied
-from the percent sibling, `_lerp_per_level(30.0, 60.0)`, folded next to
-`flat_mit_*`. The one judgement call is `conditional_probability` - "from
-**them**" scopes the block to a single attacker, so seed it conservatively.
-Then Second Wind (buildable, small at ~50 numerator HP), then Guardian self-only
-(AP-omitted, under the shipped Irelia-W / Fizz-P omission precedent).
-
-Two hazards worth carrying. (1) The rune-HSP seam is only OBSERVABLE on a build
-owning a self-shield - HSP scales the shield pool, so on a shieldless tank build
-arming the flag is correctly a no-op. This cost one red test before it was
-understood; `test_hsp_amp_needs_a_shield_to_amplify` now pins it so nobody
-"fixes" a working seam. (2) After an ENGINE bump the first RC suite run WILL show
-~15 failures that are pure regen debt - build-order engine stamps, the
-`docs/DAEMON_SLAYER.md` banner, and one live-integration test that cannot pass
-until `:8893` is bounced. The regen commands are quoted in
-`tests/test_build_order_engine_stamp_sync.py`'s own docstring.
