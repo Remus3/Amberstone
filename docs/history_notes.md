@@ -40,6 +40,87 @@
 
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 
+# 2026-07-18i (DS_SWEEP batch21-25 -> 139/173: 25 champions in one session; 23 GAP + 2 REFUTE, TWO new numbers, ONE self-retraction)
+
+Read-only research, NO engine change. LEDGER 942 + 943. Three commits:
+`97673b94` batch21/22/23 (15 champs, 114 -> 129), `25553130` the probe-depth
+correction, `f9466ea5` batch24/25 (10 champs, 129 -> 139). CI is path-filtered
+for docs-only pushes by design, so no run is expected on any of the three; the
+local ASCII-hygiene gate (13 passed) is the backstop and it is green.
+
+NEW: **RM-91** - bonus HP scored as EHP-only, so HP-to-damage kits are
+undervalued (Sejuani / Sett / Shen / Sion / Skarner / Tahm Kench). Randuin's is
+engine #1 for all six and in the real core of none. **RM-92** - non-output item
+value is unpriced, because every scorer optimizes self throughput (Soraka /
+Sona / Swain / Sylas / Taric / Smolder). Canonical: **Soraka's 90.28%-presence
+Moonstone Renewer ranks #10 of 10, dead last** - the mechanism is
+complementarity, since an objective that scores items standalone must rank a
+gap-filling item last. Tahm Kench vs Taric is the matched pair that separates
+the two shapes. Both are L2 objective-coverage, NOT L1 lowering-gate work.
+
+**DO NOT REDO / read before trusting older entries.** (1) The
+cross-axis-pool-partition shape is **RETRACTED** - it came from reading the
+recipe's `top=40` as the pool size. Real pools: carry 111, bruiser/tank 143,
+mage 144, and all 118 purchasable terminal SR legendaries are candidates
+somewhere. Probe at `top=200`. (2) Check `gold.purchasable` before filing any
+absence as an omission - transform targets (Seraph's Embrace, Fimbulwinter) and
+the guard-tested Dream Maker / Diadem of Songs are correct exclusions. (3)
+`data/meta_build/sr_champion_builds.json` can name the WRONG build as primary
+(it gave Shyvana's 5.06% path as her core) - cross-check only, never a
+substitute for the research agent. (4) RM-90 is re-measured: GROUP A is 10 and
+GROUP B is 28, and GROUP B is the generic tank template, not a support cohort.
+
+NEXT: Thresh (strict alphabetical), next GAP spec = RM-93, 34 pending. The
+cheapest actionable finding banked this session is NOT either new number - it is
+the carry pool being a fixed 111 items that categorically exclude Black Cleaver /
+Spear of Shojin / Bloodsong / Stridebreaker / Sterak's Gage. That is a
+filter-list edit, not objective work.
+
+---
+
+# 2026-07-18h (RM-86 L1 SHIPPED + L2-for-hps REFUTED + enchanter registry closed; ENGINE 1.217.0 -> 1.219.0, 3 engine commits)
+
+First ENGINE work of the RM-86 arc after four read-only research batches.
+Commits: `17ab86ea` (L1 gate, 1.218.0), `09211c10` + `c6980918` (docs), `b7d7096f`
+(enchanter registry, 1.219.0). LEDGER 940 + 941. CI green on 17ab86ea.
+
+**L1 SHIPPED** - `agents/daemon_slayer/kit_conversion.py` + default-OFF
+`kit_conversion_strength` on carry / assassin / mage / tank. Byte-identity proven
+FULL-ROSTER: both build-order tables regenerated 173 champs x 3 modes returned a
+2-line stamp-only diff. Reached: Naafiri BotRK leaves #1 both routes; Orianna
+Liandry's leaves #1 at 0.50 while Blackfire is NOT suppressed; Poppy control held.
+
+**TWO SPEC CORRECTIONS (spec section 10) - do NOT re-derive:**
+1. The vector CANNOT come from `damage_blocks` - no attack-speed / crit / on-hit /
+   DoT key exists in any of the 1709 blocks across 171 champions, and the loader
+   drops `effects_descriptions` (`abilities.py:220-263`). It is a prose-seeded
+   curated registry. Snapshot holds **171** champions, not 173.
+2. A monotone-lowering sort-key gate can only push bad items DOWN, never push a
+   good item UP past untouched neighbours. Olaf Stridebreaker (#34, tied to BotRK
+   by identical `PercentAttackSpeedMod: 0.25`) and Pantheon Black Cleaver #29 /
+   Heartsteel #3 are therefore L2 objective-coverage, NOT L1. Standing rule now in
+   the tracker.
+
+**L2-for-hps is REFUTED - do NOT build it.** Forcing `apply_ability_hsp_amp` ON
+leaves all 8 enchanters byte-identical to each other (one adjacent swap, same for
+everyone). REFUTE condition 2 satisfied -> finding (c) is RC-2 pool, not RC-1.
+Spec section 3 was ALSO factually wrong twice: `hps.py:648` DOES import
+`ability_hps`, and `hps.py:679` adds `ability_hps_total` unconditionally.
+
+**Enchanter registry closed (1.219.0).** The handed list of "10 missing items" was
+~80% wrong; re-derived by scanning the catalog. Only Dawncore 6621 (terminal, pool
+9 -> 10, climbs #9 -> #5 with depth) and Whispering Circlet 2526 (non-terminal,
+registered-but-unranked like Forbidden Idol 3114) belonged. 8 rejections each
+pinned by a guard test. Does NOT fix the invariance - a test pins that.
+
+**NEXT:** DS_SWEEP 15 champions (3 batches of 5). **Briar is an unnoticed hole** -
+`- [ ] Briar` at tracker line 289 with no verdict and no FENCED note, silently
+skipped in the B-batch. Roster markers are `[GAP RM-nn]` / `[REFUTE]` / `[ ]`, so
+`grep -c "^- \[x\]"` returns 0 and looks catastrophic - do not panic.
+Two future-proofing chips queued (Arena mirror leakage guard; patch-vintage drift
+guard). Do NOT rewrite `enchanter_items.json` `_meta.patch` 16.9.1 -> 16.14.1.
+
+---
 # 2026-07-18g (DS_SWEEP batch20 -> 114/173: Rell / Renata Glasc / Renekton / Rengar / Riven; FIVE GAPs, zero REFUTEs, one live user-facing defect, one retraction)
 
 Read-only research pass, NO engine change. LEDGER 939. Fan-out held a fifth session.
