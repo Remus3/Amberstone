@@ -243,12 +243,30 @@ class RankerSeamTests(unittest.TestCase):
 class ScopeGuardTests(unittest.TestCase):
     """The seam exists ONLY on the two bruiser entry points, END-appended."""
 
+    # The pre-R58 trailing parameter of each entry point. assume_ms_utility was
+    # END-appended after these, which is what the guard below pins.
+    _PRE_R58_TAIL = {
+        "compute_hybrid": "caster_current_hp_pct",
+        "rank_items_by_hybrid": "target_current_hp_pct",
+    }
+
     def test_seam_scope_and_end_append(self):
         for fn in (compute_hybrid, rank_items_by_hybrid):
             params = inspect.signature(fn).parameters
             names = list(params)
             self.assertIn("assume_ms_utility", names, fn.__name__)
-            self.assertEqual(names[-1], "assume_ms_utility", fn.__name__)
+            # END-APPENDED: the seam sits after every parameter that existed
+            # before it (CLAUDE.md Python Conventions - a mid-signature insert
+            # breaks positional construction). Anchored to the pre-R58 tail
+            # rather than pinned to names[-1], because names[-1] would make the
+            # signature un-extendable: RM-39's apply_ad_axis_ability_damage is
+            # itself correctly END-appended AFTER this one, and any future seam
+            # will be too.
+            anchor = self._PRE_R58_TAIL[fn.__name__]
+            self.assertIn(anchor, names, fn.__name__)
+            self.assertGreater(
+                names.index("assume_ms_utility"), names.index(anchor), fn.__name__,
+            )
             self.assertIs(params["assume_ms_utility"].default, False, fn.__name__)
         for fn in (
             rank.rank_items,
