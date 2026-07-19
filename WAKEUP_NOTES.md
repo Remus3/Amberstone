@@ -1,6 +1,6 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19, automatic via `scripts/wakeup_prune.py` (relocated AH-slice `2026-07-19a`; newest 3 = RM-39 L2 widen `2026-07-19d` + RM-39 L1 build `2026-07-19c` + RM-39 adjudication `2026-07-19b`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19, automatic via `scripts/wakeup_prune.py` (relocated RM-39 adjudication `2026-07-19b`; newest 3 = RM-98 adjudication `2026-07-19e` + RM-39 L2 widen `2026-07-19d` + RM-39 L1 build `2026-07-19c`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
 ---
 
@@ -183,40 +183,3 @@ into `feedback_engine_bump_ritual_order` as required step 4b.
 Verification: dual suite **20602 passed / 2 failed / 24 skipped / 2357 subtests
 in 22:07**, the 2 being the known `coach_poll_offload` flake, verified standalone
 at 2 passed in 0.13s. DS-only pre-bump 8625/1 skipped. New file 32 tests.
-
----
-
-# 2026-07-19b (RM-39/RM-43 ADJUDICATED "no haste term", then my own headline RETRACTED; 4 Share/tool tails; 3 commits)
-
-**Phase 1 answer, and it holds:** haste must NOT modulate the measured cast rate.
-`ult_rates.get_spell_casts_per_sec` takes no `item_ids` (derivative zero across
-candidates); cast rates divide by whole-game duration (an ENGAGEMENT statistic, so putting it
-in a per-second combat term is a category error - **do NOT read this as "and
-therefore haste-inclusive"**, see RM-98 2026-07-19: any haste-inclusiveness comes
-from the rate being MEASURED, not from the denominator, and this welded phrasing
-seeded a false blocker);
-and `hybrid._damage_axis` puts Aatrox 8/3 + Ambessa 9/0 on `ad` while every
-`_ability_damage` site gates on `ap`. `grep -c ability_haste` = 0 in `dps.py` and
-`hybrid.py`. Decisive: `compute_ability_dps` is called **0 times** for both in a
-full rank (Veigar control 142). Spec `docs/specs/SPEC_rm39_rm43_ability_haste.md`.
-
-**READ THIS BEFORE ANY DS PROBE.** I published a wrong retraction this session and
-caught it myself. Every `/rank-*` route defaults its target to ALL ZEROS, and
-BotRK's on-hit is %target-max-HP, so a zero-HP target sinks it ~50 places. At the
-sweep's tanky target (`100/60/2500/1200`) the RM-39/RM-43 filings reproduce
-**exactly** - Shojin 51 and 47. Two more traps: body key is `items` NOT `item_ids`,
-and there is no `/rank-hybrid` (bruiser = `/rank-bruiser`). All three now in the
-ROADMAP PROBE HAZARD block + `reference_ds_probe_zero_target_defaults`.
-Eleven agents and an adversarial judge panel did not catch it - they verify that
-code says what you claim, not that your probe asked the same question as the
-finding you are contradicting.
-
-**Do NOT redo:** RM-39/RM-43 are RE-SCOPED not rewritten - defect verbatim,
-mechanism now "missing AD-axis ability term" (92/173 champs, est 3-5 sessions).
-Do not re-pitch a haste term. Do not re-file the Share route-table / seam-doc /
-anchor-rule / SESSION_RE tails - all shipped in `2f35163d` with tests.
-`wakeup_prune.py` works now; the old "manual relocation" note is retired.
-
-**Next:** the AD-axis ability term is the open build. Operator-gated and NOT mine
-to flip: default-ON for `team_blended` (ds.ehp) and `apply_canonical_cast_rate_keys`
-(ult_rates).
