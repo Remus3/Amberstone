@@ -119,6 +119,56 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-19c (RM-39/RM-43 L1 BUILT - AD-axis ability term shipped DEFAULT-OFF, ENGINE 1.222.0; commit `2aaba1d2`)
+
+**Built what 2026-07-19b adjudicated. Phase 1 was NOT re-litigated.**
+`hybrid._physical_ability_damage` sums `per_spell` rows whose `damage_type`
+normalizes to PHYSICAL; all three gate sites became `if ap / elif flag / else`
+so the OFF branch is the pre-seam line VERBATIM. Flag
+`apply_ad_axis_ability_damage`, route-surfaced on `/rank-bruiser`
+(`server.py:865`, threaded `:902`) - without that surface the ON path is
+unreachable over HTTP and the mandatory golden diff cannot be measured at all.
+
+**Byte-identity at default proven TWICE:** 184/184 cohort rankings unchanged vs
+a pre-change 1.221.0 baseline, AND the 6 regenerated build-order tables differ
+only in `engine_version` + `generated_at`. The second was free and is stronger -
+it covers the live consumer. **Guard verified live:** Liandry's for Aatrox
+#16 -> **#20** squishy (falls, does not rise to #1). 79 of 92 reorder ON; the 13
+zero-credit champions are byte-identical and are EXACTLY the unchanged set.
+
+**DO NOT re-raise the Zeri double-count. It is REFUTED.** Her +217.7% lift plus
+"her Q replaces her auto" made both the measuring agent and me conclude a
+double-count, and I reported it as confirmed before reading the code. Wrong.
+`_rotation_attack_dps` (`dps.py:508-562`) reads only `duration`/`basic`/
+`basicTime`/`numberOfTargets`; `dps.py` reads q/w/e/r/p cast counts **zero times
+anywhere** (grep + AST). It is a DENOMINATOR artifact - Zeri's `weighted_dps` is
+9.04 vs Jhin 28.58, so a mid-pack ability term reads as a huge percentage.
+`AutoAttackDisjointnessTests` now locks it via AST. **A big percentage lift off
+an unknown base is not evidence of an inflated numerator.**
+
+**NEXT (RM-39 L2), both now backed by measured magnitudes:**
+1. Widen the guard? **TRUE/MIXED is the real excluded magnitude, not untyped** -
+   Olaf E Reckless Swing 17.1 DPS is the largest excluded row in the cohort,
+   bigger than all untyped undercount combined (which is ~1.0 DPS total, one
+   real case: Pantheon R). Yone W/R are MIXED and half-physical.
+2. Resolve the reset-champion overlap - 9 champions where `basic >= 1` AND a
+   reset cast share a window; `maxOverlap` bound computed per champion (worst
+   Zeri 66.9%, Renekton 8.3%). Needs the lolmath auto-reset authoring convention
+   or a replay-derived basic-vs-reset count.
+Default-ON flip stays operator-gated. Memory
+`project_ds_ad_axis_ability_term_rm39`.
+
+**Process:** the ordered bump ritual produced **zero stamp failures** this time
+(vs 20-25 wasted minutes on each of the last two bumps). Share release notes
+were stale AGAIN behind a green `--check` - second consecutive bump; now written
+into `feedback_engine_bump_ritual_order` as required step 4b.
+
+Verification: dual suite **20602 passed / 2 failed / 24 skipped / 2357 subtests
+in 22:07**, the 2 being the known `coach_poll_offload` flake, verified standalone
+at 2 passed in 0.13s. DS-only pre-bump 8625/1 skipped. New file 32 tests.
+
+---
+
 # 2026-07-19b (RM-39/RM-43 ADJUDICATED "no haste term", then my own headline RETRACTED; 4 Share/tool tails; 3 commits)
 
 **Phase 1 answer, and it holds:** haste must NOT modulate the measured cast rate.

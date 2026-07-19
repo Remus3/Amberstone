@@ -1,6 +1,53 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19, automatic via `scripts/wakeup_prune.py` (relocated RM-39 adjudication `2026-07-19b`; newest 3 = RM-98 adjudication `2026-07-19e` + RM-39 L2 widen `2026-07-19d` + RM-39 L1 build `2026-07-19c`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19, automatic via `scripts/wakeup_prune.py` (relocated RM-39 L1 build `2026-07-19c`; newest 3 = gemini-loop cycle 1 silent-failure repair `2026-07-19f` + RM-98 adjudication `2026-07-19e` + RM-39 L2 widen `2026-07-19d`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-07-19f (gemini-loop cycle 1 - two silent failures closed: the nightly critic and the nightly suite)
+
+**Both failures were invisible to the surfaces we actually watch. That is the
+transferable lesson, not the individual fixes.**
+
+**RC-GeminiAudit produced nothing for 28 nights while reading Enabled/Ready.**
+`ops/runtime/gemini_last_audit.txt` pinned a worktree-slice sha that never
+survived cherry-pick, so `git log <dangling>..HEAD` came back empty and
+`tools/gemini_audit.ps1` took its own "nothing to audit" branch and exited 0 -
+no review, no log line, `logs/gemini_audit.log` did not exist at all. The
+session-start anomaly probe only ever surfaced the unrelated `0xC000013A`.
+**Exit 0 is not success and Ready is not health.** Now self-heals to `HEAD~10`
+with a loud WARN and logs `START pid=...` unconditionally as its first write.
+
+**The 0xC000013A is a SEPARATE fault, still unproven, deliberately left open.**
+Six hypotheses refuted, including my own leading one - InteractiveToken session
+teardown died to a same-night control (5 sibling InteractiveToken tasks ran
+3:00 through 4:17, all result 0, one of them one second earlier). The task was
+NOT re-registered: changing a working ops surface on refuted evidence is churn.
+**If it recurs on a later nightly, the marker fix is not the cause - read the
+log. START then silence = killed mid-run; no START = died before line 20.**
+The task still DISPLAYS `Last Result -1073741510` until the 7/20 run clears it;
+that is historical, not live.
+
+**The nightly full-suite had been red for 12 consecutive days** (runs
+28935372989 .. 29682372934) and nobody saw it, because the push `check` job is
+green BY CONSTRUCTION - it never runs `tests/` as one process, so it cannot
+reproduce the pollution. Only the nightly can. **Two unrelated bugs, not one
+ordering bug**, which is exactly why both files passed in isolation: Playwright's
+session-scoped ProactorEventLoop leaves asyncio's per-thread running-loop marker
+set on the main thread (that marker is LIVE - clearing it in conftest makes
+snapshot_panels time out, tried and reverted), and the Jhin test depended on a
+live `:8893` CI can never spawn (`creationflags=0x08000000` raises on Linux).
+Test-side fixes only. **Main is green: 20544 passed, 82 skipped, 2357 subtests,
+0 failed** (run 29688982602, dispatched manually since only that job reproduces).
+
+**LATENT, carry forward:** `tests/snapshot_panels` still leaks the loop marker.
+Any NEW test calling bare `asyncio.run()` on the main thread and sorting after
+it fails identically - use the `_run_coro`/`_run_poll_loop` pattern. Four
+near-identical local copies now exist; consolidating them is the open follow-up.
+
+**Process note worth keeping:** both slice agents REFUTED an orchestrator
+hypothesis on evidence, and both were right to. They were briefed to verify
+premises rather than accept them. Keep briefing them that way.
 
 ---
 
@@ -133,53 +180,3 @@ both stale.
 double-count (REFUTED, AST-locked). The L1 build. The reset-overlap
 investigation - it is UNRESOLVED and further data cannot settle it; it needs the
 lolmath authoring convention or replay-derived counts.
-
----
-
-# 2026-07-19c (RM-39/RM-43 L1 BUILT - AD-axis ability term shipped DEFAULT-OFF, ENGINE 1.222.0; commit `2aaba1d2`)
-
-**Built what 2026-07-19b adjudicated. Phase 1 was NOT re-litigated.**
-`hybrid._physical_ability_damage` sums `per_spell` rows whose `damage_type`
-normalizes to PHYSICAL; all three gate sites became `if ap / elif flag / else`
-so the OFF branch is the pre-seam line VERBATIM. Flag
-`apply_ad_axis_ability_damage`, route-surfaced on `/rank-bruiser`
-(`server.py:865`, threaded `:902`) - without that surface the ON path is
-unreachable over HTTP and the mandatory golden diff cannot be measured at all.
-
-**Byte-identity at default proven TWICE:** 184/184 cohort rankings unchanged vs
-a pre-change 1.221.0 baseline, AND the 6 regenerated build-order tables differ
-only in `engine_version` + `generated_at`. The second was free and is stronger -
-it covers the live consumer. **Guard verified live:** Liandry's for Aatrox
-#16 -> **#20** squishy (falls, does not rise to #1). 79 of 92 reorder ON; the 13
-zero-credit champions are byte-identical and are EXACTLY the unchanged set.
-
-**DO NOT re-raise the Zeri double-count. It is REFUTED.** Her +217.7% lift plus
-"her Q replaces her auto" made both the measuring agent and me conclude a
-double-count, and I reported it as confirmed before reading the code. Wrong.
-`_rotation_attack_dps` (`dps.py:508-562`) reads only `duration`/`basic`/
-`basicTime`/`numberOfTargets`; `dps.py` reads q/w/e/r/p cast counts **zero times
-anywhere** (grep + AST). It is a DENOMINATOR artifact - Zeri's `weighted_dps` is
-9.04 vs Jhin 28.58, so a mid-pack ability term reads as a huge percentage.
-`AutoAttackDisjointnessTests` now locks it via AST. **A big percentage lift off
-an unknown base is not evidence of an inflated numerator.**
-
-**NEXT (RM-39 L2), both now backed by measured magnitudes:**
-1. Widen the guard? **TRUE/MIXED is the real excluded magnitude, not untyped** -
-   Olaf E Reckless Swing 17.1 DPS is the largest excluded row in the cohort,
-   bigger than all untyped undercount combined (which is ~1.0 DPS total, one
-   real case: Pantheon R). Yone W/R are MIXED and half-physical.
-2. Resolve the reset-champion overlap - 9 champions where `basic >= 1` AND a
-   reset cast share a window; `maxOverlap` bound computed per champion (worst
-   Zeri 66.9%, Renekton 8.3%). Needs the lolmath auto-reset authoring convention
-   or a replay-derived basic-vs-reset count.
-Default-ON flip stays operator-gated. Memory
-`project_ds_ad_axis_ability_term_rm39`.
-
-**Process:** the ordered bump ritual produced **zero stamp failures** this time
-(vs 20-25 wasted minutes on each of the last two bumps). Share release notes
-were stale AGAIN behind a green `--check` - second consecutive bump; now written
-into `feedback_engine_bump_ritual_order` as required step 4b.
-
-Verification: dual suite **20602 passed / 2 failed / 24 skipped / 2357 subtests
-in 22:07**, the 2 being the known `coach_poll_offload` flake, verified standalone
-at 2 passed in 0.13s. DS-only pre-bump 8625/1 skipped. New file 32 tests.
