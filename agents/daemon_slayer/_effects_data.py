@@ -3656,6 +3656,23 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Immortal Shieldbow",
         defensive_only=True,
         unique_passive_key="lifeline",
+        # RM-104 (2026-07-19): mirror carried the lifeline family key but no
+        # shield field, so it credited ZERO EHP on every Arena build. Unlike
+        # the Kaenic mirror this is always-on (default_off False, like its
+        # base) and needs no flag. Magnitude INHERITED-UNSOURCED from SR 6673:
+        # no repo feed states the mirror's curve. This is the one mirror of
+        # the four whose base stats are identical to the SR item (55 AD, and
+        # its shield is a flat level curve rather than a stat scaling), so
+        # inheritance is safe on its face here.
+        shield=ItemShield(
+            damage_type=ANY,
+            flat=400.0,
+            level_lerp_low=9,
+            level_lerp_high=18,
+            level_lerp_high_value=700.0,
+            ranged_modifier=0.80,
+            note="Immortal Shieldbow (Arena 226673) Lifeline (INHERITED-UNSOURCED from SR 6673)",
+        ),
         note="Immortal Shieldbow (Arena 226673): Lifeline shield; joins lifeline unique-passive family",
     ),
     "226675": ItemEffect(
@@ -3734,7 +3751,31 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="222504",
         name="Kaenic Rookern",
         defensive_only=True,
-        note="Kaenic Rookern (Arena 222504): Nullmagic Mantle magic-damage shield; no DPS contribution",
+        # RM-104 (2026-07-19): this mirror had NO shield field, so
+        # _collect_shields skipped it at the `eff.shield is None` continue
+        # AND the default-OFF arming line armed only iid == "2504" - a
+        # double gate, either half of which alone zeroed the credit.
+        # Magnitude is INHERITED-UNSOURCED: DDragon carries 222504 but
+        # scrubs the shield magnitude from its text, and items_meraki.json
+        # (the only feed with shield formulas) has zero Arena mirror
+        # entries, so no feed in this repo states it. Inheriting the base's
+        # 15%-max-HP coefficient is deliberate, not assumed. The mirror's
+        # smaller HP grant (350 vs the base's 400) still changes the OUTPUT,
+        # because the coefficient is applied to the champion's resolved
+        # max_hp - the retune flows through without touching this number.
+        # Sourced-but-unmodelled retune: DDragon states the mirror's
+        # Magebane window is 10s vs the base's 15s. ItemShield has no
+        # uptime field (the gate is the binary default_off seam), so this
+        # changes nothing numerically; it only makes the mirror's uptime
+        # strictly better than the base's, i.e. default-OFF is if anything
+        # MORE conservative here.
+        shield=ItemShield(
+            damage_type=MAGICAL,
+            max_hp_scaling=0.15,
+            default_off=True,
+            note="Kaenic Rookern (Arena 222504) Magebane 15% max HP (INHERITED-UNSOURCED from SR 2504)",
+        ),
+        note="Kaenic Rookern (Arena 222504): Magebane magic-damage shield (15% max HP, default-OFF seam); no DPS contribution",
     ),
     "222510": ItemEffect(
         item_id="222510",
@@ -4033,6 +4074,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Sterak's Gage",
         bonus_ad_pct_base_ad=0.45,
         unique_passive_key="lifeline",
+        # RM-104 (2026-07-19): mirror carried the Claws stat layer + the
+        # lifeline family key but no shield field, so the Lifeline half
+        # credited ZERO EHP on every Arena build. Always-on (default_off
+        # False, like its base) - no flag needed. Magnitude
+        # INHERITED-UNSOURCED from SR 3053; no repo feed states it. The
+        # mirror grants 300 bonus HP vs the base's 400, but the coefficient
+        # is applied to the champion's resolved bonus_hp, so that retune
+        # already flows through the output without changing this number.
+        shield=ItemShield(
+            damage_type=ANY,
+            bonus_hp_scaling=0.60,
+            note="Sterak's Gage (Arena 223053) Lifeline 60% bonus HP (INHERITED-UNSOURCED from SR 3053)",
+        ),
         note="Sterak's Gage (Arena 223053): same as SR 3053 - Lifeline + Primal Strength +45% base AD as bonus AD",
     ),
     "223068": ItemEffect(
@@ -4513,6 +4567,21 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Maw of Malmortius",
         defensive_only=True,
         unique_passive_key="lifeline",
+        # RM-104 (2026-07-19): mirror carried the lifeline family key but no
+        # shield field, so it credited ZERO magical EHP on every Arena build.
+        # Always-on (default_off False, like its base) - no flag needed.
+        # Magnitude INHERITED-UNSOURCED from SR 3156; no repo feed states it.
+        # The mirror grants 50 bonus AD vs the base's 60, but the scaling term
+        # is applied to the champion's resolved bonus_ad, so that retune
+        # already flows through the output. Only the flat 200 is a genuine
+        # unsourced inheritance.
+        shield=ItemShield(
+            damage_type=MAGICAL,
+            flat=200.0,
+            bonus_ad_scaling=1.50,
+            ranged_modifier=0.75,
+            note="Maw of Malmortius (Arena 223156) Lifeline magic shield (INHERITED-UNSOURCED from SR 3156)",
+        ),
         note="Maw of Malmortius (Arena 223156): Lifeline magic shield; joins lifeline unique-passive family",
     ),
     "223157": ItemEffect(
