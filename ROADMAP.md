@@ -29,6 +29,21 @@ sweep agent. Ordered best-first. The rune RESIST half shipped as R132 (`e6a84734
 three wrong mirror magnitudes shipped as R133 (`ad16ba65`); everything below is what was
 deliberately NOT built in that cycle.
 
+> **CLOSED-REFUTED 2026-07-19 (R134, `534ab3ef`) - do NOT re-pitch.** An automated audit
+> reported that `ehp.py compute_ehp` "misses item bonus_armor" when it passes
+> `total_armor=armor` to the rune lane, and prescribed
+> `total_armor=armor+bonus_armor+ext_armor+item_resist_armor`. Every added term is
+> misidentified: `armor` is the RESOLVED build armor and already contains item armor
+> (Malphite L13 measures 94.2 bare -> 219.2 with 3068+3075); `bonus_armor` (`ehp.py:1668`) is
+> the CHAMPION `resist_grants(...)` registry OUTPUT, a peer conditional-grant lane and not a
+> stat; `item_resist_armor` is the ITEM registry output, itself derived from `total_armor=armor`;
+> `ext_armor` is an ALLY-conferred resist. Applying it feeds three peer grant lanes into the
+> fourth (Aftershock would take 75 percent of OTHER grants - measured, L1 goes
+> `(14.625, 15.3)` -> `(24.0, 24.0)`) and makes the result depend on the SOURCE ORDER of four
+> peer registries. `_rune_resist_grants.py:227-230` states the real contract and `ehp.py:1663-1664`
+> carries the invariant in code ("so there is no self-feedback"). Now machine-guarded by
+> `agents/daemon_slayer/tests/test_rune_resist_signature_convention_r134.py`.
+
 - **RM-99 Heartsteel 3084 permanent-HP half is pinned at ZERO stacks, forever.** Meraki
   "Colossal Consumption" grants permanent bonus health equal to 8% of the empowered proc damage
   (30s cooldown per target). Only the damage half is modelled; `_effects_data.py` disclaims the
