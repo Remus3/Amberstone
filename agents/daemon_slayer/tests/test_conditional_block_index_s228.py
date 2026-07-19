@@ -610,7 +610,7 @@ class EngineVersionS228Tests(unittest.TestCase):
         from agents import daemon_slayer
 
         # s231 (Phase 5.9.31) bumped to 1.3.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.226.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.227.0")
 
 
 if __name__ == "__main__":

@@ -82,11 +82,20 @@ from typing import Iterable
 
 
 # item_id -> fraction of BONUS-HP-FROM-ITEMS granted as bonus MAX HEALTH by the
-# "Warmog's Vitality" passive. Both registered ids carry the same 12% (0.12); the
-# Arena mirror carries the base nominal.
+# "Warmog's Vitality" passive.
+#
+# RM-102: the Arena mirror 443083 was registered here at the "base nominal"
+# 0.12 and has been REMOVED - it does not carry the passive at all. Verified
+# against the raw 16.14.1 index BY ID (never by name - base and mirror share
+# the display name "Warmog's Armor", and auditing this family by name has
+# produced a false map-30 report in this repo before):
+#   3083   "Warmog's Vitality: Gain bonus Health equal to 12% of your Item Health"
+#   443083  Warmog's Heart regen + 4% move speed, and nothing else
+# This is not a wrong magnitude like R133 - it credited an effect the item does
+# not have (measured 132.0 EHP on a Sion L13 Arena build with the seam armed).
+# Do NOT re-add a mirror here without quoting its own passive text.
 _ITEM_BONUS_HP_AMP_PCT: dict[str, float] = {
     "3083":   0.12,  # Warmog's Armor - Warmog's Vitality (12% bonus health from items)
-    "443083": 0.12,  # Warmog's Armor (Arena mirror; base nominal)
 }
 
 

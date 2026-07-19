@@ -228,7 +228,7 @@ class GateContractTests(ConversionGateHarness):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.226.0")
+        self.assertEqual(ENGINE_VERSION, "1.227.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):
