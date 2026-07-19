@@ -431,6 +431,9 @@ def compute_hybrid(
     # tail per the same convention. Both reuse the existing ``rune_ids`` transport.
     apply_rune_health_grants: bool = False,
     apply_rune_hsp_amp: bool = False,
+    # R137 (ENGINE 1.226.0, RM-99): the item permanent-HP-stack seam, appended AFTER
+    # the R136 pair per the same convention.
+    assume_item_health_stacks: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -572,6 +575,7 @@ def compute_hybrid(
         rune_ids=rune_ids,
         apply_rune_health_grants=apply_rune_health_grants,
         apply_rune_hsp_amp=apply_rune_hsp_amp,
+        assume_item_health_stacks=assume_item_health_stacks,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -934,6 +938,9 @@ def rank_items_by_hybrid(
     # tail per the same convention. Both reuse the existing ``rune_ids`` transport.
     apply_rune_health_grants: bool = False,
     apply_rune_hsp_amp: bool = False,
+    # R137 (ENGINE 1.226.0, RM-99): the item permanent-HP-stack seam, appended AFTER
+    # the R136 pair per the same convention.
+    assume_item_health_stacks: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -1105,6 +1112,7 @@ def rank_items_by_hybrid(
         rune_ids=rune_ids,
         apply_rune_health_grants=apply_rune_health_grants,
         apply_rune_hsp_amp=apply_rune_hsp_amp,
+        assume_item_health_stacks=assume_item_health_stacks,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -1247,6 +1255,7 @@ def rank_items_by_hybrid(
                 rune_ids=rune_ids,
                 apply_rune_health_grants=apply_rune_health_grants,
                 apply_rune_hsp_amp=apply_rune_hsp_amp,
+                assume_item_health_stacks=assume_item_health_stacks,
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,
