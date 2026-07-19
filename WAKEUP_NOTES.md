@@ -4,6 +4,50 @@
 
 ---
 
+# 2026-07-19l (three lanes shipped; every filing was wrong somewhere load-bearing, and I broke Share/src and fixed it)
+
+**A ROADMAP number, a spec's prescribed fix, and a stated defect premise are all
+just claims. Three of three were wrong this session in ways that would have
+shipped defects, and all three were caught by reading files instead of prose.**
+
+Shipped: `556662a7` RM-107 + the `begin/end` HTTP 400 sibling; `b9ac8de9`
+CHANGELOG 1.224.0/1.225.0 backfill + prepend guard; `8bf21a77` Share/src
+recovery; `ba676157` atomic Share sync; `a60d32e6` Lane 1 feed index + RM-108;
+`37db1414` ENGINE 1.227.0 (RM-101/102/103/105). CI green. Ledger 965-967.
+
+**THE INCIDENT, because it will recur otherwise.** Commit `6464532e` (mine)
+emptied `Share/src` on main - 501 deletions, 596,900 lines, ZERO additions.
+`ds_share_sync._write` was `rmtree` THEN rebuild, so the mirror spent the entire
+~483-file rebuild deleted, and I committed while background agents were live.
+Recovered within minutes; root-fixed in `ba676157` as stage-then-swap. **Do NOT
+restore the rmtree shape.** Two rules earned: never commit while agents are
+live, and verify a commit's CONTENTS, not its message.
+
+**A SECOND silent trap in the same family:** `pathlib.write_text` on Windows
+translates `\n` to `\r\n`, so my patcher scripts CRLF-ified 134 working-tree
+files whose index form is LF. Only the Share byte-compare caught it. Any future
+agent patching files with `write_text` reintroduces it - **use `write_bytes`.**
+
+**Three filings corrected, do not re-inherit them.** (1) RM-107's prescribed
+"narrow the except" is mechanically impossible - `_lcu_get` swallows the error
+itself. (2) RM-101's ~154 HP is an UN-AMORTIZED upper bound, not a coefficient;
+shipped at 0.25 = 38.38, and the "reorders a ranking" conclusion was then
+MEASURED true anyway (+81.56 EHP, 9 of 138 positions, top-6 swap). (3) RM-108's
+"a naive parser reads 0.0" is false - all 56,896 tokens land in display-prose
+keys with zero runtime readers, so the detector serves registry AUTHORS.
+
+**Two guards earned their keep.** The changelog guard I wrote this session
+caught my OWN bump. The R134 signature guard rejected my OWN wiring (flags
+inserted mid-signature). Both fired correctly on their author.
+
+**NEXT: RM-104** (Kaenic mirror 222504) plus the three always-on lifeline
+mirrors `226673` / `223053` / `223156` the verifier found carrying the identical
+`shield=None` defect. Then the ~28 silent-no-op bare excepts the sweep sized but
+did not fix - that population has now produced four silent failures in two
+sessions.
+
+---
+
 # 2026-07-19k (R137 - RM-99 Heartsteel shipped, and the number the spec told us to use was wrong because the FEED was frozen)
 
 **A vendored feed sitting in a `16.14.1/` directory is not 16.14.1 data. Nothing
@@ -160,59 +204,3 @@ understood; `test_hsp_amp_needs_a_shield_to_amplify` now pins it so nobody
 `docs/DAEMON_SLAYER.md` banner, and one live-integration test that cannot pass
 until `:8893` is bounced. The regen commands are quoted in
 `tests/test_build_order_engine_stamp_sync.py`'s own docstring.
-
----
-
-# 2026-07-19i (gemini-loop cycle 4 - the sweep's thesis was refuted by measurement; the shippable bug was found on the way past it)
-
-**A missing guard is not a bug until something can reach it. Measure reachability
-before pricing the fix.**
-
-The directive ordered a League movespeed soft-cap seam (caps above 415 / 490,
-floor below 220) and pre-declared ENGINE-IMPACT BUMP. The piecewise is real and
-correctly stated, and nothing in the repo applies it - so the gap looks obvious.
-It is unreachable at every site. `core/champion_movespeed.est_ms` is uncapped but
-the roster's base MS spans only 315 (Rell) to 355 (Master Yi) across all 173
-champs, and its sole consumer `core/mia_reachability.py:165` passes NO items, so
-no breakpoint can bind. The DS path that CAN exceed 415 (`hybrid.py:272`, measured
-426.6 on Darius + Swifties + DMP + FoN) is double-gated: `assume_ms_utility` is
-DEFAULT-OFF with no production caller, AND `_MS_UTILITY_DPS_CAP = 0.15` saturates
-at 1.30x base, bounding the whole error to 0.794 percentage points inside a
-27-unit window and exactly zero above 442. A third site the directive never named,
-`ability_dps.py:293`, is default-ON but populated by exactly one block roster-wide
-(Janna W: 1.09 magic damage, only on an off-class Phantom Dancer build).
-
-Taking the BUMP at face value would have shipped a DEFAULT-OFF seam, an
-ENGINE_VERSION bump, a Share re-sync and a `:8893` bounce to correct a quantity
-that is provably zero on every live path. The `ENGINE-IMPACT` header is a
-PREDICTION, not a fact - and the precommit gate checks it for free ("no mirrored
-DS source staged - skipping Share sync").
-
-**The second lesson is sharper: the existing test passed because it sampled the
-one case outside the failing class.**
-
-The other sweep lane came back CLEAN on mirrors and magnitudes (0 missing, 0 drift
-across 99 MS-bearing items) but found a genuine wrong answer in passing.
-`_item_index()` hit `continue` on zero-MS entries BEFORE the name `setdefault`, so
-a canonical 4-digit id granting no movespeed never claimed its own display name and
-the next mode mirror answered for it: `item_ms("Warmog's Armor")` returned 4% from
-Arena `443083` while canonical `3083` grants none; Gargoyle Stoneplate 10%
-(`443193`); Rite of Ruin 4% (ARAM `123430`). All three reproduced against raw
-DDragon before any code was written.
-
-`tests/test_champion_movespeed.py` pinned exactly one name lookup - "Boots of
-Swiftness" - and Boots of Swiftness is precisely the shape that cannot exhibit the
-bug, a canonical id that HAS movespeed and therefore already claims its own name
-key. A green suite over a sampled-wrong fixture is indistinguishable from a green
-suite over correct code. When a lane reports CLEAN, check what the tests actually
-sample before believing the code is exercised. Same family as R133's
-`test_arena_mirrors_credit_same_as_base`, one rung down: R133 asserted the wrong
-thing, R135 asserted the right thing about the wrong row.
-
-Shipped `e4ab8144` (fix, no ENGINE bump - `core/`, no DS import) + `e2b186ff`
-(docs). Suite 20673 passed / 24 skipped / 0 failed. Zephyr and Gambler's Blade
-deliberately untouched: no 4-digit canonical exists for either, and `3172` is
-Gunmetal Greaves NOT Zephyr, so `"22" + base_id` is a FALSE mirror-pairing rule.
-Also worth keeping: `items_meraki.json` has NO `stats` key on any of its 320
-entries, so DDragon is the SOLE movespeed magnitude source - the habitual
-cross-check-against-Meraki silently cannot run on this axis.
