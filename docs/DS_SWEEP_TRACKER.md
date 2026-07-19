@@ -153,10 +153,35 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   minute) against the rotation's modelled `w: 1.5` casts in a 3-second window =
   **0.5/s**, a **27x** discrepancy. The effect is a systematic UNDER-pricing of
   the ability term relative to the auto term it is added to, which distorts
-  ability-item versus auto-item valuation. **SIZED, NOT ADJUDICATED** - the open
-  question is which time base the summed term should be expressed on, not
-  whether the gap exists. It bears directly on whether a default-ON flip is
-  meaningful, so the RM-39/RM-43 default-ON flip is BLOCKED on it.
+  ability-item versus auto-item valuation.
+  **ADJUDICATED 2026-07-19 - `docs/specs/SPEC_rm98_cast_rate_time_base.md`.**
+  Verdict: the whole-game basis is **neither deliberate nor accidental, it is a
+  documented-but-unadjudicated inheritance**. The one recorded deliberate choice
+  was measured vs `1/cooldown` (`docs/history_notes.md:12534`); the DENOMINATOR
+  was never in the option set, and the shape was inherited by explicit admission
+  (`scripts/build_spell_cast_rates.py:9-11`) from an s145 ad-hoc query whose own
+  consumer already fed a "DPS-time proc rate" (`ult_rates.py:5-7`).
+  **The defence in the RM-98 filing is RETRACTED:** haste-inclusiveness follows
+  from EMPIRICISM, not from the denominator, and RM-39 did not rely on the
+  whole-game basis - it condemned it and prescribed replacing it
+  (`SPEC_rm39_rm43_ability_haste.md:187-192`, `:174-176`, `:318-320`).
+  Four corrections to the filing above: (1) the defect ALREADY SHIPS DEFAULT-ON
+  in `ds.onhit` (`onhit_dps.py:143`), `ds.dps` (`dps.py:1023`) and `ds.hps`
+  (`hps.py:679`), so gating a default-OFF flag on it is incoherent; (2) the term
+  is NOT inert - 29.2% cohort mean of the AD-axis damage term, 65.9% Riven, and
+  it re-orders; (3) 27x overstates - Q 7.83x / W 27.12x / E 6.44x, and the
+  0.5/s reference comes from a `scenarios.json` field `_rotation_attack_dps`
+  never reads (`dps.py:549-566`); (4) under-scoped - it misses
+  `ability_dps.py:1252`, where 6 champions sum a `1/cooldown` combat basis and
+  the whole-game measured basis in ONE total.
+  **Both fixes RM-39 named are INFEASIBLE (sized this session):** casts-per-
+  second-alive lifts only **1.25x** against a 27x gap (`time_spent_dead` median
+  0.204), and an in-combat rate is not derivable because `timeline_frames`
+  cadence is **60s** (measured 60016-60021 ms) versus a 3-10s combat window.
+  **Recommendation: do NOT chase a denominator replacement.** Demote the
+  measured rate from a DPS multiplier to a **cast-propensity prior**
+  (`SPEC_rm39_rm43_ability_haste.md:198-202`), which needs correct relative
+  ordering, not a correct denominator.
   - **Ziggs** (mage) - REFUTE. His ranked head is byte-identical to Xerath's and
     Vex's for all ten top items (exact-prefix agreement 10, top-20 set identical),
     so it carries ZERO champion-specific signal and every divergence from his real
