@@ -21,6 +21,23 @@ function Fail($msg, $code) {
   Write-Warning $msg
   exit $code
 }
+function Log($msg) { try { "$((Get-Date).ToString('s')) $msg" | Add-Content $logAbs } catch {} }
+# Native git writes "fatal: ..." to stderr for an unresolvable sha; under
+# $ErrorActionPreference='Stop' a native stderr write can surface as a terminating
+# NativeCommandError, so probe with the preference relaxed and read $LASTEXITCODE.
+function Test-CommitResolves($sha) {
+  if (-not $sha) { return $false }
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try { & git cat-file -e "$sha^{commit}" 2>$null; return ($LASTEXITCODE -eq 0) }
+  catch { return $false }
+  finally { $ErrorActionPreference = $prev }
+}
+# Unconditional first write: every later branch is conditional, so without this a
+# run that dies before its first Add-Content is indistinguishable from one that
+# never fired at all. The 2026-07-19 03:00 run exited 0xC000013A with an EMPTY
+# logs/ directory entry, and that ambiguity cost a full root-cause pass.
+Log "START pid=$PID model=$Model repo=$RepoRoot"
 
 $key = [Environment]::GetEnvironmentVariable("GEMINI_API_KEY", "User")
 if (-not $key) { Fail "GEMINI_API_KEY missing in User scope" 2 }
@@ -30,11 +47,22 @@ $markerAbs = Join-Path $RepoRoot "ops\runtime\gemini_last_audit.txt"
 $head = (git rev-parse HEAD).Trim()
 if (-not $Since) {
   if (Test-Path $markerAbs) { $Since = (Get-Content $markerAbs -Raw).Trim() }
+  # A marker sha that no longer resolves silently no-ops the whole nightly:
+  # `git log <dangling>..HEAD` fatals to stderr, $commits comes back empty, and the
+  # run takes the "nothing to audit" exit 0 below - producing no review AND no log
+  # line. That is exactly how this audit went dark for 28 nights (last review
+  # 2026-06-21, marker pinned at edd76db3 which never survived cherry-pick).
+  # Worktree-slice shas that vanish are an EXPECTED class here (see the
+  # docs/LEDGER.md preamble), so the marker has to self-heal rather than wedge.
+  if ($Since -and -not (Test-CommitResolves $Since)) {
+    Log "WARN marker sha '$Since' no longer resolves - self-healing to HEAD~10"
+    $Since = ""
+  }
   if (-not $Since) { $Since = (git rev-parse "HEAD~10").Trim() }
 }
 $range = "$Since..$head"
 $commits = (git log --oneline $range | Out-String).Trim()
-if (-not $commits) { "no new commits in $range - nothing to audit"; exit 0 }
+if (-not $commits) { Log "SKIP code=0 no new commits in $range - nothing to audit"; "no new commits in $range - nothing to audit"; exit 0 }
 
 $diffStat = (git diff --stat $range | Out-String)
 $diff = (git diff $range | Out-String)
