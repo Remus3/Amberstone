@@ -164,16 +164,35 @@ deliberately NOT built in that cycle.
   with an explicit `_ASSUMED_TARGET_MR_FOR_PROC_HEAL = 60.0`. The passive was
   MISNAMED "Agony" in six places (both feeds say Anguish) and mis-described as
   having an ally component it has never had. Narrative in `docs/ROADMAP_HISTORY.md`.
-- **RM-104 Kaenic Rookern Arena mirror 222504 shield is double-gated out.** `_effects_data.py`
-  gives 222504 only `defensive_only=True` plus a note that misnames the passive (it calls it
-  "Nullmagic Mantle", which is the component - the passive is Magebane), and its `shield` is
-  `None`; even after injecting an `ItemShield`, `ehp.py:318` arms only `iid == "2504"`, so the
-  mirror still returns zero. Every sibling includes its mirrors (Eclipse, Seraph's, Fimbulwinter);
-  Kaenic is the sole outlier whose mirror exists in the 706-item index but is uncredited.
-  Measured 1109.0 uncredited magic EHP (+15.0% magical / +5.3% blended) on an Arena build.
-  **Latent, not live**: `assume_kaenic_shield` exists only on `compute_ehp` and is not exposed on
-  `rank_items_by_ehp` or any server route, so all five conditional-shield seams are currently
-  unreachable from the scorer - this bites only when that flip happens. S, no schema lift.
+- **RM-104 SHIPPED 2026-07-19 (ENGINE 1.228.0): four Arena mirrors credited ZERO shield EHP,
+  not one.** The filing's Kaenic half is confirmed exactly as written - 222504 had no `shield`
+  field AND `ehp.py:318` armed only `iid == "2504"`, a genuine double gate, either half of which
+  alone zeroed the credit. Both are open (`iid in ("2504", "222504")`), and the note's misnaming
+  of Magebane as "Nullmagic Mantle" (the component) is corrected. **But the filing's claim that
+  "Kaenic is the sole outlier" is FALSE and that is the larger half of the fix**: Immortal
+  Shieldbow 226673, Sterak's Gage 223053 and Maw of Malmortius 223156 carried the lifeline family
+  key with no `shield` field either. They are always-on (`default_off` False), so unlike Kaenic
+  they need NO flag and unlike Kaenic they are LIVE - measured 180.0 + 455.4 + 700.0 shield EHP
+  on an Aatrox L18 Arena build that previously did not exist, confirmed on the live `:8893`
+  `/ehp` route. The Kaenic half measures 1087.9 magical EHP on Aatrox L18 (the filing's 1109.0
+  was a different champion/level) and remains **latent**, exactly as filed: `assume_kaenic_shield`
+  reaches no route. **Population is provably exactly four** - a machine sweep resolving every
+  mirror id to its longest base-id suffix found no fifth, and that sweep is now a standing test
+  (`MirrorShieldClassGuardTests`), because this was a class (mirrors authored by copying an SR
+  entry's prose and dropping its `shield=`), not four typos. **Magnitudes are INHERITED-UNSOURCED
+  and were re-sourced, not copied on faith**: DDragon carries all four mirrors but scrubs every
+  shield magnitude, and `items_meraki.json` has zero Arena mirror entries. The obvious objection -
+  three of the four mirrors ARE stat-retuned (350 vs 400 HP, 300 vs 400 HP, 50 vs 60 AD), so
+  surely their shields are too - was tested and REFUTED: the formulas scale off the resolved
+  champion's stats, so the retune already flows through the output (Sterak's credits 0.60 * 300 =
+  180.0, not 240). One sourced retune is deliberately unmodelled: the mirror's Magebane window is
+  10s vs the base's 15s, and `ItemShield` has no uptime field. **The regen was NOT stamp-only,
+  contrary to this item's acceptance criteria** - that expectation inherited the filing's latency
+  claim, which covers only the Kaenic half. `core.build_order_precompute` +
+  `core.build_order_variants` at `--champions all` changed 68 of 173 ARENA entries, all gaining
+  223053, and left SR + ARAM untouched (the coherence check: Arena-mirror ids may only move
+  Arena). Operator-reviewed and shipped as-is. Narrative in
+  `agents/daemon_slayer/CHANGELOG.md`.
 
 - **RM-105 SHIPPED 2026-07-19 (ENGINE 1.227.0): `effective_ehp_with_sustain`
   omitted the entire PERMANENT-HP family.** `_blend_with_heal` now carries
