@@ -16,6 +16,9 @@ RAMP entries already in ``_item_resist_grants``:
     to a cap of 50%" (``items.json`` DDragon 16.13.1; Meraki-absent). A permanent
     +20% of TOTAL MR - always-on. The secondary MR-scaled non-AA damage reduction
     is a separate scaling axis with no flat magnitude and is NOT credited here.
+    R133 correction: the quoted magnitudes are the map-30 443059 row only - the
+    663059 mirror is retuned to HALF (10% MR, 25% DR cap), so the two rows carry
+    DIFFERENT ``mr_pct`` values. Molten Stone's pair genuinely matches at 20%.
 
 Both were ``defensive_only=True`` stubs in ``_effects_data`` (notes say "increases
 total armor/MR by 20%") whose 20% never reached ``compute_ehp`` - ``build_champion``
