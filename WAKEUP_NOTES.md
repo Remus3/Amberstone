@@ -4,6 +4,55 @@
 
 ---
 
+# 2026-07-19g (gemini-loop cycle 2 - DS modelled runes as offense only; defensive resist half now exists)
+
+**The transferable lesson is about how a good agent report can still be wrong.**
+
+The R132 sweep agent that found the rune hole did excellent work: every `file:line`
+it cited survived an independent grep, its REFUTEs were all correct, and the
+structural gap it identified was real. `ehp.py` grep for `rune|perk|keystone`
+returns ZERO matches, `rank.py` returns ZERO, seven live Resolve rune ids return
+0 hits across the entire package, and Aftershock 8439 is registered for damage
+only with its own formula string admitting "(resist-bonus side not modeled)".
+
+It still got the central formula wrong. It reported Aftershock as
+`45 + 75% of Bonus Resists` and dropped the trailing longDesc clause:
+"Resistance bonus from Aftershock capped at: 80-150 (based on level)". Building
+on the paraphrase would have shipped math that over-credits precisely the
+high-resist tanks the feature exists to serve - at level 18 with 150 bonus armor
+the uncapped value is 157.5 against a cap of 150. What caught it was re-reading
+the raw `runesReforged.json` longDesc instead of the agent's summary of it.
+
+**Rule to carry: when a finding hands you a FORMULA, reproduce the formula from
+source before building on it - checking the cited file:line is not the same
+check.** Same failure family as the existing DS probe-trap memories, new surface
+(paraphrase drift rather than probe-parameter drift).
+
+Second lesson, smaller but sharp: **a test suite can PROTECT the defect it ought
+to catch.** R133 found `test_arena_mirrors_credit_same_as_base` asserting
+`base == mirror` - which is exactly the "base nominal" seeding bug expressed as
+an invariant. The wrong Arena magnitudes were not merely uncaught, they were
+pinned. Before assuming a red test means a new break, check what the existing
+tests assert about the values you are correcting.
+
+**Shipped:** R132 `e6a84734` (ENGINE 1.223.0 -> 1.224.0) new
+`_rune_resist_grants.py` for Aftershock / Conditioning / Unflinching, folded into
+`eff_armor` / `eff_mr` behind DEFAULT-OFF `apply_rune_resist_grants`. R133
+`ad16ba65` (executor-opened, no bump) corrected three of four Arena / prismatic
+mirror magnitudes - 226665 is 40% not 30%, 224401 is 50 MR not 70, 663059 is 10%
+not 20% - each re-verified against the raw item index before editing.
+
+**Deliberately not built, spec'd read-only:** RM-99 Heartsteel's permanent-HP
+half is pinned at ZERO stacks forever (~43 EHP per proc; ~16.5 procs takes #1 off
+Randuin's on Sion) - RM-101 the defensive-rune remainder - RM-102 Warmog's Arena
+mirror credited a Vitality passive it does not have - RM-103 Unending Despair's
+250% SELF heal uncredited and mislabelled "ally ... utility-only" - RM-104 Kaenic
+Arena mirror double-gated out of its own shield. Font of Life is DATA-BLOCKED:
+its base heal is an unresolved `@BaseHeal@` template var in live DDragon 16.14.1.
+Do not invent a number for it.
+
+---
+
 # 2026-07-19f (gemini-loop cycle 1 - two silent failures closed: the nightly critic and the nightly suite)
 
 **Both failures were invisible to the surfaces we actually watch. That is the
