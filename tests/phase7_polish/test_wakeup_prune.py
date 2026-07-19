@@ -120,7 +120,7 @@ class TestRender(unittest.TestCase):
 class TestDatedAndPinnedFormat(unittest.TestCase):
     """Real-file shape regression (s235): recent sessions use a dated heading
     (`# 2026-05-17 (late) - ...`) not the legacy `# sNNN wrap`, and the file
-    opens with a pinned non-session block (`# ✅ RESOLVED ... `) right after the
+    opens with a pinned non-session block (`# \u2705 RESOLVED ... `) right after the
     top header. Pre-fix, SESSION_RE matched neither, so split_sessions
     tail-dumped them all into `extras` (inverting newest/oldest) and prune()
     crashed at the moved_ids line - a lucky guard against mis-archiving the
@@ -128,7 +128,7 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
     """
 
     PIN = (
-        "# ✅ RESOLVED 2026-05-17 - champ-select wrong for ARAM\n"
+        "# \u2705 RESOLVED 2026-05-17 - champ-select wrong for ARAM\n"
         "\nResolved-block body that must never be archived.\n"
     )
 
@@ -168,7 +168,7 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
     def test_session_re_does_not_match_pin(self):
         self.assertIsNone(
             WP.SESSION_RE.match(
-                "# ✅ RESOLVED 2026-05-17 - champ-select wrong"))
+                "# \u2705 RESOLVED 2026-05-17 - champ-select wrong"))
 
     # -- split ------------------------------------------------------------
     def test_leading_pin_folds_into_header_not_sessions(self):
@@ -233,6 +233,132 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
             self._dated("2026-05-14", "wrap - d"),
         ]), encoding="utf-8")
         self.assertEqual(WP.prune(keep=2, dry_run=True), 0)
+
+
+class TestSessionReSuffixedDate(unittest.TestCase):
+    """Regression: the dated alternative of SESSION_RE ended in `\\b`, so a
+    heading whose date is followed directly by a word char - the letter-suffixed
+    `# 2026-07-19a` form used when two sessions wrap on one calendar day - never
+    matched. split_sessions then found ZERO sessions, so prune() and --check
+    both reported "nothing to do" at ANY file size and WAKEUP_NOTES.md grew
+    unbounded. The comment block above SESSION_RE documents the intent as "any
+    suffix after the date", so the regex contradicted its own contract.
+
+    The pinned-block exclusion documented alongside it must survive the fix: a
+    leading `# <checkmark> RESOLVED <date> - ...` block matches NEITHER
+    alternative, because its date is not at heading-start.
+    """
+
+    # Written as a \\u escape so this source file stays 7-bit ASCII (repo rule)
+    # while the runtime string still carries the real U+2705 the live file uses.
+    PIN_CHECKMARK = "# \u2705 RESOLVED 2026-05-17 - champ-select wrong for ARAM"
+    PIN_ASCII = "# RESOLVED 2026-05-17 - champ-select wrong for ARAM"
+
+    def setUp(self):
+        import tempfile
+        self.tmp = Path(tempfile.mkdtemp(prefix="rc_wakeup_suffix_"))
+        self._orig_wakeup = WP.WAKEUP
+        self._orig_archive = WP.ARCHIVE
+        WP.WAKEUP = self.tmp / "WAKEUP_NOTES.md"
+        WP.ARCHIVE = self.tmp / "docs" / "history_notes.md"
+
+    def tearDown(self):
+        WP.WAKEUP = self._orig_wakeup
+        WP.ARCHIVE = self._orig_archive
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    @staticmethod
+    def _block(heading: str, body: str) -> str:
+        return f"{heading}\n\n## What shipped\n- {body}\n"
+
+    # -- regex contract ---------------------------------------------------
+    def test_plain_dated_heading_matches(self):
+        for h in (
+            "# 2026-07-19",
+            "# 2026-07-19 wrap - phase 2 tails",
+            "# 2026-07-19 (late) - paren suffix",
+        ):
+            self.assertIsNotNone(WP.SESSION_RE.match(h), h)
+
+    def test_letter_suffixed_dated_heading_matches(self):
+        # THE BUG: there is no word boundary between "9" and "a", so the old
+        # `\\b`-terminated pattern rejected every letter-suffixed heading.
+        for h in (
+            "# 2026-07-19a",
+            "# 2026-07-19a - second wrap of the day",
+            "# 2026-07-19b (eve) - third wrap of the day",
+            "# 2026-05-17c wrap - trailing label",
+        ):
+            self.assertIsNotNone(WP.SESSION_RE.match(h), h)
+
+    def test_legacy_snn_wrap_heading_still_matches(self):
+        for h in (
+            "# s234 wrap",
+            "# s234 wrap - 2026-05-17",
+            "# s171.8 wrap - dotted",
+            "# s209-s213 wrap - range",
+        ):
+            self.assertIsNotNone(WP.SESSION_RE.match(h), h)
+
+    def test_pinned_block_still_matches_neither_alternative(self):
+        # Must hold for the live checkmark form AND a hypothetical ASCII-swept
+        # form: the exclusion rests on the date not being at heading-start.
+        for h in (self.PIN_CHECKMARK, self.PIN_ASCII):
+            self.assertIsNone(WP.SESSION_RE.match(h), h)
+
+    def test_non_heading_lines_still_match_neither(self):
+        for h in (
+            "## 2026-07-19a - h2 is not a session heading",
+            "#2026-07-19a - no space after the hash",
+            "text 2026-07-19a - not a heading at all",
+        ):
+            self.assertIsNone(WP.SESSION_RE.match(h), h)
+
+    # -- end-to-end -------------------------------------------------------
+    def test_suffixed_sessions_split_instead_of_vanishing(self):
+        text = _doc([
+            self.PIN_CHECKMARK + "\n\nPinned body.\n",
+            self._block("# 2026-07-19b (eve)", "NEWEST"),
+            self._block("# 2026-07-19a", "MIDDLE"),
+            self._block("# 2026-07-19", "OLDEST"),
+        ])
+        header, sessions = WP.split_sessions(text)
+        self.assertEqual(len(sessions), 3)
+        self.assertIn("RESOLVED", header)
+        self.assertIn("NEWEST", sessions[0])
+        self.assertIn("MIDDLE", sessions[1])
+        self.assertIn("OLDEST", sessions[2])
+
+    def test_check_reports_overflow_for_suffixed_headings(self):
+        # Pre-fix this returned 0 ("nothing to do") at any file size, because
+        # split_sessions found zero matching headings.
+        WP.WAKEUP.write_text(_doc([
+            self._block("# 2026-07-19d", "S4"),
+            self._block("# 2026-07-19c", "S3"),
+            self._block("# 2026-07-19b", "S2"),
+            self._block("# 2026-07-19a", "S1"),
+        ]), encoding="utf-8")
+        self.assertEqual(WP.check(keep=3), 1)
+
+    def test_prune_archives_oldest_suffixed_session(self):
+        WP.WAKEUP.write_text(_doc([
+            self.PIN_CHECKMARK + "\n\nPinned body.\n",
+            self._block("# 2026-07-19d", "KEEP3"),
+            self._block("# 2026-07-19c", "KEEP2"),
+            self._block("# 2026-07-19b", "KEEP1"),
+            self._block("# 2026-07-19a", "MOVED"),
+        ]), encoding="utf-8")
+        self.assertEqual(WP.prune(keep=3, dry_run=False), 0)
+
+        wakeup_after = WP.WAKEUP.read_text(encoding="utf-8")
+        self.assertIn("RESOLVED", wakeup_after)        # pin retained
+        self.assertIn("KEEP1", wakeup_after)
+        self.assertNotIn("MOVED", wakeup_after)
+
+        archive_after = WP.ARCHIVE.read_text(encoding="utf-8")
+        self.assertIn("MOVED", archive_after)
+        self.assertNotIn("RESOLVED", archive_after)    # pin never archived
 
 
 class TestPrune(unittest.TestCase):

@@ -20,11 +20,15 @@ engine on its own technical merits:
      phrases to neutral wording. Data JSON is copied verbatim (it is data).
 
 It also keeps the authored handoff docs' MECHANICAL version/patch anchors fresh:
-the ``ENGINE_VERSION = "X"`` literal and the explicit ``data patch `X` `` /
-``"patch": "X"`` anchor phrases in ``Share/README.md`` + ``Share/docs/*.md`` are
-rewritten to the live values on a plain run and verified by ``--check`` - the
-same hard gate as the ``src`` mirror, so an engine bump that forgets the docs
-fails CI. Only those literal anchors are auto-maintained; the SEMANTIC prose
+the ``ENGINE_VERSION = "X"`` literal, the explicit ``data patch `X` `` /
+``"patch": "X"`` anchor phrases, the ``Share/README.md`` header line, the
+``current.txt`` prose mention, and the manifest path citation in
+``Share/README.md`` + ``Share/docs/*.md`` are rewritten to the live values on a
+plain run and verified by ``--check`` - the same hard gate as the ``src``
+mirror, so an engine bump that forgets the docs fails CI. See
+``_doc_anchor_rules`` for the covered/excluded split (the excluded forms are
+placeholders and frozen history, not gaps).
+Only those literal anchors are auto-maintained; the SEMANTIC prose
 (shipped-vs-staged, test counts, the dated CHANGELOG entry) is a hand step in the
 /done ritual, and a doc that describes a now-complete one-off effort is updated
 to its done-state or archived there.
@@ -348,11 +352,38 @@ def _doc_anchor_rules() -> tuple[tuple[str, "re.Pattern[str]", str], ...]:
     Each rule is ``(label, pattern, live_value)``. The pattern matches ONLY the
     version/patch token (via fixed-width look-around), so ``pattern.sub(live,
     text)`` rewrites just the token and ``pattern.finditer(text)`` yields the
-    tokens to verify. Deliberately scoped to unambiguous anchor forms so it never
-    rewrites a file path, the CommunityDragon two-segment patch pin, the
-    ``current.txt`` content description, or a changelog history entry. The
+    tokens to verify. Deliberately scoped to unambiguous anchor forms. The
     semantic prose (shipped-vs-staged, test counts) is refreshed by hand per the
     /done ritual - only these literal anchors are auto-maintained.
+
+    COVERED (each keyed on its own unambiguous prefix/suffix):
+      * the ``ENGINE_VERSION = "X"`` literal
+      * the ``data patch `X` `` / ``Active data patch: `X` `` / ``game patch
+        `X` `` phrases and the ``"patch": "X"`` health example
+      * the ``Share/README.md`` header (``**Engine version:** X`` /
+        ``**Patch:** Y``)
+      * the ``current.txt`` PROSE mention (``names the active patch (currently
+        `X`)``)
+      * the snapshot-dir segment of the manifest path citation
+        (``data/daemon_slayer/X/manifest.json``)
+
+    The last three were added by Phase-2 item (c): they track the live engine but
+    had no rule, so ``--check`` read GREEN while the README header sat 72 engine
+    minors stale (1.149.0 vs 1.221.0) and the prose + path citation sat at an old
+    patch. A guard test pins coverage of every form
+    (``tests/test_ds_share_anchor_rule_coverage.py``).
+
+    STILL EXCLUDED by design - these are placeholders or frozen history, and a
+    rule that grabbed one would corrupt it:
+      * the ``data/daemon_slayer/<patch>/`` (and ``<prev>`` / ``<new>``) path
+        placeholders - only the concrete ``/manifest.json`` citation is a real
+        anchor
+      * the CommunityDragon two-segment patch pin (``/16.11/`` vs ``/16.11.1/``)
+      * the ``current.txt`` CONTENT description in the data-file table (a
+        separate hand-maintained cell, not this prose anchor)
+      * the copy-forward authoring patches of the hand-curated files
+      * loopback addresses (``127.0.0.1`` is semver-shaped)
+      * changelog history entries, incl. the README's "Changelog (recent)" list
     """
     version = _engine_version()
     patch = _PATCH
@@ -362,6 +393,15 @@ def _doc_anchor_rules() -> tuple[tuple[str, "re.Pattern[str]", str], ...]:
         ("active data patch", re.compile(rf'(?<=Active data patch: `)(?:{_SEMVER})(?=`)'), patch),
         ("game patch", re.compile(rf'(?<=game patch `)(?:{_SEMVER})(?=`)'), patch),
         ("health-example patch", re.compile(rf'(?<="patch": ")(?:{_SEMVER})(?=")'), patch),
+        # Phase-2 item (c): the three previously-uncovered anchor forms.
+        ("readme header version",
+         re.compile(rf'(?<=\*\*Engine version:\*\* )(?:{_SEMVER})(?![\d.])'), version),
+        ("readme header patch",
+         re.compile(rf'(?<=\*\*Patch:\*\* )(?:{_SEMVER})(?![\d.])'), patch),
+        ("current.txt prose patch",
+         re.compile(rf'(?<=names the active patch \(currently\s`)(?:{_SEMVER})(?=`)'), patch),
+        ("manifest path patch",
+         re.compile(rf'(?<=data/daemon_slayer/)(?:{_SEMVER})(?=/manifest\.json)'), patch),
     )
 
 

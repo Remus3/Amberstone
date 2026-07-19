@@ -16,11 +16,13 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 
 ## Changelog
 
-Canonical per-version entries live in `agents/daemon_slayer/CHANGELOG.md` + `Share/CHANGELOG.md` +
-`docs/LEDGER.md`; the status line at the top of this doc tracks the live version. This doc's summary
-changelog block (newest entry 1.144.0, plus the 1.130.0-1.139.0 / 1.145.0-1.156.0 gap notes and the
-cc_conditional registry wave lineage) was relocated verbatim to `docs/history_notes.md` on 2026-07-17
-(mdclean C6). New ENGINE bumps log to the canonical files above - do not resume a summary changelog here.
+**RELOCATED, NOT FROZEN.** This doc carries no changelog block at all. The entire summary changelog -
+entries plus the 1.130.0-1.139.0 / 1.145.0-1.156.0 gap notes and the cc_conditional registry wave
+lineage - was moved verbatim to `docs/history_notes.md` on 2026-07-17 (mdclean C6). 1.144.0 is merely
+the newest entry that MOVED: it is NOT the current engine version, and this doc is NOT frozen or stale
+at it (the live version is the status line at the top of this doc). Canonical per-version entries live
+in `agents/daemon_slayer/CHANGELOG.md` + `Share/CHANGELOG.md` + `docs/LEDGER.md`; new ENGINE bumps log
+to those canonical files - do not resume a summary changelog here.
 
 ## Module map (`agents/daemon_slayer/`)
 
