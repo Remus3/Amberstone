@@ -1,5 +1,43 @@
 # Riot Commander - Item Ledger
 
+> **CITATION CAVEAT (measured 2026-07-18) - about half the commit hashes cited for
+> 2026-04 through 2026-06 do NOT resolve in this repo. This is a known, bounded,
+> already-self-corrected defect. Do not chase them.**
+>
+> Measured across `docs/history_notes.md` + `docs/LEDGER.md` + `docs/ROADMAP_HISTORY.md`:
+> 387 of 1148 distinct 8-hex citations (34 percent) fail `git rev-parse --verify`.
+> They are NOT scattered rot and NOT a history rewrite - a rewrite would be 100 percent
+> before a cutoff and 0 percent after. The real distribution is a steady rate that
+> stops dead:
+>
+> | month | resolvable | missing | miss rate |
+> |---|---|---|---|
+> | 2026-04 | 1 | 3 | 75% |
+> | 2026-05 | 53 | 48 | 47% |
+> | 2026-06 | 452 | 457 | 50% |
+> | 2026-07 | 537 | 0 | **0%** |
+>
+> **Cause:** the orchestrator workflow (worktree build agents, one merger) had agents
+> commit inside their own worktree, and the merger cherry-picked the result. Entries
+> then cited BOTH hashes - e.g. "merge `91b6b847` (slice `03927664`, worktree agent)".
+> The merge hash entered `main` and resolves; the slice hash never did and never will.
+> `git rev-list --all` equals `HEAD` (3645), so the slice objects are not hiding on
+> another ref or in the reflog - they are gone.
+>
+> **The work still landed.** A dead slice hash does not mean the change is missing; it
+> means that entry cited the pre-cherry-pick hash. Verify by the MERGE hash, the file,
+> or the test - never by the slice hash.
+>
+> **Already fixed going forward:** 0 of 537 citations dated 2026-07 are unresolvable, so
+> the convention corrected itself. No process change is needed.
+>
+> **Deliberately NOT repaired in place.** The correct hashes are unrecoverable, and
+> rewriting 387 historical citations would violate the append-only rule these files run
+> on. This note is additive. It exists because the defect has already cost real work:
+> a 2026-07-18 audit spent a full agent trying to resolve `541cd9d3` to disambiguate a
+> live-gated row, and that hash is simply gone.
+
+
 Append-only, newest-first per-item completion record. Relocated verbatim from the CLAUDE.md "Active priorities" section on 2026-06-02 to keep CLAUDE.md out of the per-turn auto-load budget (it was 661KB / ~165K tokens). Do not rewrite history - append each new item at the TOP of the body below (newest-first, directly under the --- rule), matching the existing entry format.
 
 Pointers: open work -> `ROADMAP.md` + `BACKLOG.md`; recent sessions -> `WAKEUP_NOTES.md`; items 1-324 + pruned wakeups -> `docs/history_notes.md`; durable do-not-re-litigate summary -> `CLAUDE.md` (### Settled).
