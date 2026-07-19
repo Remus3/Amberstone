@@ -1,8 +1,22 @@
 # Live-Game-Gated Sync Checklist
 
-**OPEN: 124 rows = 105 one-shot (GATE 1-6) + 19 accrual (GATE 7).** Of these, 9 carry a PARKED/HOLD
+**OPEN: 118 rows** (was 124; six CLOSED 2026-07-18 - see the synthetic-triage note below).
+Per gate: G1 6 / G2 41 / G3 12 / G4 28 / G5 10 / G6 3 / G7 18. Of these, 9 carry a PARKED/HOLD
 tag (3 inline at G5-10 / G7-16 / G7-19, 6 in the PARKED section) and 1 (G3-15) is a cross-reference
-that adds no new work. Reorganized BY GATE 2026-07-18 (see the reorg entry at the top of the
+that adds no new work.
+
+**SYNTHETIC-TRIAGE PASS 2026-07-18 - read before proposing this again.** All 124 rows were run
+through a 14-agent triage-then-adversarial-refutation pass asking whether recorded data
+(`data/rewind_history.db`: 2961 matches, 542,128 timestamped ITEM_PURCHASED events, both teams)
+could close them instead of a live game. Result: **6 rows closed, not "a lot"** - G2-07, G3-05,
+G3-06, G3-07, G4-08, G7-03. The refuters returned CONFIRMED 15 / PARTIAL 24 / REFUTED 31, and the
+dominant kill was SUBSTITUTION: a gate row usually asks whether something RENDERS, SENDS or UPDATES,
+and the compute half is always available headless and is always the wrong question. Two agents also
+produced evidence that did not survive audit (real match ids whose real builds gave 0.00 pct; a
+sample range published as a bound). **Do not re-run this idea expecting a different answer** - the
+corpus is already characterized and the residue is genuinely live. What the pass DID buy is the 24
+PARTIAL rewrites below: each states what is now settled headless, so the live half is a glance
+rather than a session. Reorganized BY GATE 2026-07-18 (see the reorg entry at the top of the
 live-flip ledger). A row's GATE is the single question that matters: *what does the operator have to
 launch to clear it?* Rows sharing a gate are adjacent; rows sharing an ACTION inside a gate are
 batched, so one sitting clears a run.
@@ -85,12 +99,29 @@ their live callers still omit the flags. DSP5/6/7 + anti-tank P3.2 are producer-
 
 Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a match.
 
-- **G1-01** `[CS-CAPTURE]` (was A8) Locked-own-champ champ-select panel captures - a practice/custom
-  lobby suffices (self-side data only): ds-sweep graph, ds-relscore bar, ds-statcheck sandbox,
-  ds_skill_order card (R54, `7f7b82cb`), personal-build WR card (needs a champ with >=8-game history),
-  build-order B-card + its per-page UI-audit ritual. STATUS: champ-select passed before a lock-capture
-  2026-07-04 - still owed. OPERATOR CALL: the 3 dashboard panels (sweep/relscore/statcheck) may be
-  moot post the 2026-06-27 overlay-only doctrine (R52 note). SOURCE: LEDGER 715/717/623/635.
+- **G1-01** `[CS-CAPTURE]` (was A8) Locked-own-champ champ-select panel captures - **SHRUNK 6 -> 3
+  artifacts 2026-07-18; still OPEN at GATE 1.**
+  **RE-FILED, GATE 1 -> GATE 2:** ds-sweep / ds-relscore / ds-statcheck are ACTIVE-MATCH panels, not
+  champ-select panels. Capture them in the GATE 2 `[BATCH OVERLAY-PIXEL]` pass alongside G2-25. This
+  RE-FILES, it does not CLOSE - all 3 still need a live game, just a GATE 2 one. EVIDENCE: all six
+  token forms score **0 refs** in `web/js/panels/champ_select.js`; the mounts at
+  `web/index.html:2155 / 2165 / 2179` sit inside `#view-active-match` (opens :2093 -> am-grid :2098 ->
+  am-pane-build :2137, closes :2189); their renderers are imported by
+  `web/js/panels/active_match.js:39,54,59`; the relocation is stated in-source at
+  `web/index.html:2145-2148` and `:2166-2169` (CS3, 2026-06-08 - the `csv-` id prefix is a deliberate
+  legacy-id trap, NOT a champ-select tell); and `tests/snapshot_panels/test_champ_select_view.py`
+  `_REMOVED_SELECTORS` pins `#csv-sugg-ds-profile` / `#csv-ds-knobs` / `#csv-ds-statcheck` as
+  must-be-ABSENT. **The OPERATOR CALL is answered: they are not moot post the overlay-only doctrine,
+  they are MIS-FILED.**
+  ALSO SETTLED: the ">=8-game history" precondition is SATISFIED, not a blocker - **80 of 146** tracked
+  champions qualify in `data/rewind_history.db`, and live `/api/personal-build` returns Vayne sr
+  games=55 wr=0.4727 / aram games=92 wr=0.6196, Tristana sr games=79 / aram games=61. That closes a
+  PRECONDITION, not the row.
+  LIVE RESIDUAL (glance): in ONE champ-select with your champ LOCKED, screenshot the three surviving
+  champ-select cards - ds_skill_order (R54, `7f7b82cb`), personal-build WR, build-order B-card - then
+  run the per-page UI-audit ritual. The same test file's `_NEW_STATIC_SELECTORS` "kept survivors" block
+  (`#csv-sugg-ds-skill-order` / `#csv-personal-build` / `#csv-sugg-counter-picks`) pins that these ARE
+  still champ-select mounts. SOURCE: LEDGER 715/717/623/635.
 - **G1-02** `[CS-CAPTURE]` (was A5) rc-shell PRE-GAME LOBBY `lcu.lobby.members[]` render (YOUR MAINS /
   PARTY / MY TOP-8; if empty, capture the agent's live `/lol-lobby/v2/lobby` read + `_slim_lobby_member`
   output) + eyeball the overlay surface gate `cac1df3a` (companion in lobby/CS, lean HUD once
@@ -101,9 +132,21 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   invite path end-to-end + the operator-reported defect that inviting others does not send unless the
   confirm dialog is accepted. BLOCKED ON: a real invite target / second account. SOURCE:
   docs/ORCHESTRATION_PLAN.md:63.
-- **G1-05** (was A11) OVL2 Pengu Surface C live validation (`aab53e37`): real League client with the
-  Pengu loader injecting the plugin. Carries an operator install step. SOURCE:
-  docs/ORCHESTRATION_PLAN.md:82.
+- **G1-05** `[BLOCKED - RE-TAGGED 2026-07-18]` (was A11) OVL2 Pengu Surface C live validation
+  (`aab53e37`). **RE-TAG source: this GATE 1 row; destination: BLOCKED - it is neither drainable by a
+  game nor stale-and-closable.** SETTLED HEADLESS: repo-root `pengu/` is ABSENT and all 6 tests in
+  `tests/test_pengu_plugin_skeleton.py` skip via a `pytestmark` `skipif(not PENGU.is_dir())` with the
+  reason "pengu/ stub relocated to docs/_archive/2026-07-07-pengu-stub". **But the source is NOT gone -
+  "no plugin source exists to inject" is FALSE:** `docs/_archive/2026-07-07-pengu-stub/` holds
+  `index.js` (4575 B), `panel.css` (2204 B) and `README.md` (1775 B), force-tracked under the
+  `_archive` quarantine convention. And the work is not abandoned - `ROADMAP.md:58` still carries
+  "(c) Phase 6 Pengu in-client panels, OPTIONAL" as OPEN. Those 6 tests were never this row's evidence:
+  the test header itself says the stub is code-only and live validation is OWED.
+  BLOCKED ON one operator decision: un-archive the stub back to `pengu/` and rebuild, OR retire the
+  row. Until that is answered there is nothing a game can drain, so do NOT count this row in a gate
+  session. Cited `aab53e37` does not resolve in this repo (4 of GATE 1's 5 cited hashes do not - they
+  are pre-cherry-pick worktree SHAs per the `docs/history_notes.md:4468` merge workflow: a systemic
+  citation defect, not fabrication). SOURCE: docs/ORCHESTRATION_PLAN.md:82.
 - **G1-06** `[NOT BUILT]` (was A12) Mode-specific overlay layout AUTO-SELECT-ARAM acceptance - queued
   for planning, not yet built. Once built the auto-select needs a live ARAM queue/lobby state and a
   per-map placement eyeball. SOURCE: BACKLOG.md:48.
@@ -122,9 +165,15 @@ Arm the flags, restart once, dump OFF-vs-ON with `live_flip_eyeball.py`, eyeball
 bounce DS mid-game. Each row's default-ON flip stays operator-gated after its eyeball passes.
 
 - **G2-01** (was B5) DSP2 `exempt_offclass_by_win` - **EYEBALL DONE 2026-07-04** (Ezreal ON floats
-  Trinity Force in / Yun Tal out, staples stay top-3; crit ADCs byte-identical). Only the default-ON
-  flip remains (`rank.py:686` still defaults False - the old `:632` cite was a stale line number).
-  SOURCE: LEDGER 779.
+  Trinity Force in / Yun Tal out, staples stay top-3; crit ADCs byte-identical). **NO LIVE RESIDUAL
+  2026-07-18: what is left is an OPERATOR DECISION, not a game.** Only the default-ON flip remains
+  (`rank.py:686` still defaults False - the old `:632` cite was a stale line number), and the batch
+  header already gates that independently of any eyeball ("each row's default-ON flip stays
+  operator-gated after its eyeball passes"). Re-running the eyeball on another champion re-does work
+  this row already records and cannot discharge the residual. This is exactly the shape the file
+  already files under "Not actually live-gated" for DSV5 `RC_COMP_HP_LEAN` - eyeball DONE, remainder is
+  ONE operator decision. **CAVEAT: this is a DISPOSITION change on the row's own recorded evidence; no
+  new measurement closed it.** Do not schedule a game for this row. SOURCE: LEDGER 779.
 - **G2-02** (was B7) B1 `apply_melee_aa_gate` - melee bruiser build drops Runaan's, ranged carry
   byte-identical. /dps route transport WIRED (OQ17).
 - **G2-03** (was B8) R7 `assume_passive_as_stacks` (Irelia/Jax/Ezreal/Volibear at full stacks; stacks
@@ -137,9 +186,17 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 - **G2-06** (was B11) R14 `apply_cc_floor` floor-model sanity for close-range Maokai/Ashe/Hecarim R.
   **CODE PREREQ (headless):** thread the flag through the compute_ehp / compute_hybrid /
   cc-blended-EHP consumer chain - none thread it yet. Not eyeball-able until that lands.
-- **G2-07** (was B12) R17 + R39 anti-tank level-ramp (`compute_antitank(level=)`): wire the live
-  champion level, confirm level-3 < level-16 (Aatrox family + Senna P current-HP ramp). HTTP transport
-  WIRED (OQ18, optional `level` body param).
+- **G2-07** (was B12) R17 + R39 anti-tank level-ramp (`compute_antitank(level=)`) - **CLOSED
+  2026-07-18, NOT LIVE-GATED.** `compute_antitank` is a pure function of (champion, level) - no live
+  state, no render, no transport dependency - so the ramp confirm never needed a running client.
+  MEASURED (independent adversarial re-run, exact to 4dp): **Aatrox L3 0.4750 -> L16 0.8000 RAMPS;
+  Senna L3 0.0772 -> L16 0.3353 RAMPS (4.34x)**. Negative controls hold FLAT at both levels - Darius
+  0.4550 / 0.4550, Vayne 0.9500 / 0.9500, Fiora 0.9000 / 0.9000. The row's "level-3 < level-16"
+  criterion is met and the control could have failed and did not.
+  RESIDUAL IS HEADLESS CODE, NOT A GATE - do not re-file it to a gate: part (a) "wire the live
+  champion level" is still UNWIRED. The only live caller, `core/ds_antitank_hint.py:76`, calls
+  `compute_antitank(safe_champion, safe_mode)` with NO level argument, while the HTTP route does accept
+  it (`server.py:1646`). Same shape as the G2-06 "CODE PREREQ (headless)" precedent.
 - **G2-08** (was B13) R30/DSV6 `assume_magic_burst` (Luden's/Stormsurge/Malignance) + R69 item ACTIVES
   (Rocketbelt 3152/223152, Everfrost 446656) + R70 Zeke's 3050/223050/323050 Frostfire Tempest.
   compute_ability_dps deliberately inert. Confirm an active/ult-trigger holder's burst reads sane and
@@ -163,10 +220,19 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   The flag is NOT a `/rank` body param (`server.py:452-453` exposes only exempt_offclass_by_win +
   prefer_kit_axis_by_win), so the OFF-vs-ON flip itself needs the DS restart with the seam armed. The
   0.5 sustained-fraction CALIBRATION is GATE 7 (G7-14). SOURCE: LEDGER 718 + 779.
-- **G2-16** (was B41) R58 `assume_ms_utility` - buy Dead Man's Plate 3742 + Force of Nature 4401 on a
-  juggernaut (Darius), eyeball /rank-bruiser sanity (MS items gain modest credit, Warmog-class MS-less
-  items unchanged). Tunables: 0.5 fraction / 0.15 cap. FOLLOW-UP SEAM (unresolved into `stats[ms]`):
+- **G2-16** (was B41) R58 `assume_ms_utility` - **PARTIAL 2026-07-18.** SETTLED HEADLESS: the
+  mechanism fires and is directional - MS carriers gain rank with the seam ON (Sion Force of Nature
+  4401 rank 40 -> 37; Darius Dead Man's Plate 3742 rank 11 -> 8). **THE MS-LESS CONTROL DOES NOT HOLD
+  AND MUST NOT BE QUOTED AS PASSING:** on an independently pulled real build, Sion Warmog's 3083 moved
+  23 -> 24 and Darius Warmog's moved 42 -> 43. That is expected - rank POSITION necessarily shifts when
+  other items move up - so a leak test has to pin the SCORE, not the rank. An earlier "Warmog's 15->15
+  / 61->61 pinned exactly" reading was build-luck, not a property of the seam. Re-instrument the
+  control on score before any flip. UNTOUCHED: the row's FOLLOW-UP SEAM (unresolved into `stats[ms]`) -
   the stack-ramp MS registry (Shipwrecker +20 flat / Steadfast +6 pct).
+  LIVE RESIDUAL (glance): on a juggernaut carrying 3742 + 4401 in-game, read the /rank-bruiser order -
+  MS items should gain modest credit and no MS-less staple should be displaced by more than a slot -
+  and sanity-check the 0.5 fraction / 0.15 cap against how much the movement speed actually bought you
+  in that fight.
 - **G2-17** (was B41b) R75/DSV9 `assume_shielded_target` (Serpent's Fang 6695). Practice suffices
   (assumed pool 0.20 x target max HP, melee 50% / ranged 35%); a REAL game vs Shieldbow/enchanter comps
   is the stronger eyeball. Sanity = the credit does not dominate a real-damage item swap.
@@ -177,9 +243,16 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   BURST scorer `burst.py rank_items_by_burst` (NOT rank.py). Transport WIRED (OQ17). R70 added the
   Hollow Radiance Desolate takedown eruption (6664/226664) to the `assume_takedown` stream - confirm an
   HR-holder's burst reads sane next to Hubris/Collector. Client-helper emit still pending.
-- **G2-20** (was B6) DSP4 `score_completion_runes` (Shield Bash 8401): burst-NUMBER delta on
-  `compute_burst_damage`/`compute_combo` with a real runes set - a **direct-call eyeball, NOT the
-  re-rank harness**. Transport WIRED (OQ17, /burst now parses `runes`).
+- **G2-20** (was B6) DSP4 `score_completion_runes` (Shield Bash 8401) - **PARTIAL 2026-07-18.**
+  SETTLED HEADLESS: the correct instrument was used correctly - `compute_burst_damage` was called
+  DIRECTLY with a real Resolve page (not the re-rank harness this row forbids) - and the seam is
+  non-inert: burst reads **+2.64%** with the runes scored. Transport WIRED (OQ17, /burst parses
+  `runes`). **CAVEAT: that figure was NOT independently reproduced, and a rune-sized credit being
+  rune-sized is equally consistent with the seam working and with it being mis-scaled** - the number
+  alone discriminates nothing.
+  LIVE RESIDUAL (glance): with a real Shield Bash page in a live game, judge whether ~+2.6 pct of burst
+  is the right ORDER OF MAGNITUDE for what Shield Bash actually contributed in a fight. That is a
+  magnitude judgment, not another delta.
 - **G2-21** (was B2) DS Phase-D: `apply_passive_damage` + the 4 non-every-AA `on_hit` + per-stack
   `assumed_stacks`. **NOT a clean transport flip:** `apply_passive_damage` is deliberately /dps-scoped
   (R7/R12 precedent, `rank_items` does not forward it), the on_hit remainder needs net-new cadence
@@ -216,11 +289,19 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   safest to flip first. Full per-seam magnitudes + caveats: the live-flip ledger below.
 - **G2-24** (was B47b) R108 `assume_item_general_dr` - item UNTARGETED GENERAL %DR (Celestial
   Opposition 3869 "Blessing" 35% melee / 25% ranged + Crown of the Shattered Queen 664644 "Safeguard"
-  40%), the ONLY item DR lane that touches the TRUE denominator. Flip + confirm a carrier survives
-  sanely; calibrate the 0.4 `_GENERAL_DR_UPTIME` midpoint (Celestial refreshes on every champion hit =
-  high uptime, Crown breaks then long CD = low uptime, so the shared midpoint is conservative). The
-  Arena mirror 444644 magnitude confirm is GATE 5 (G5-08). The "Draw Your Sword" Runaan's blind spot
-  flagged at R108 is FIXED (LEDGER 856). SOURCE: LEDGER 855.
+  40%), the ONLY item DR lane that touches the TRUE denominator. **PARTIAL 2026-07-18.**
+  SETTLED HEADLESS: the mechanism is wired and leak-free - carrier EHP rises **+11.11% ranged**
+  (Soraka) and **+16.28% melee** (Sion), with both no-carrier controls byte-identical at +0.00%,
+  reproduced independently on a second build. **DO NOT read those two percentages as corroboration of
+  the midpoint:** they are the DR identity restating the registry constants, `1/(1 - 0.25*0.4) =
+  +11.11%` and `1/(1 - 0.35*0.4) = +16.28%` - build-invariant and champion-invariant bar the
+  melee/ranged split. A delta computed FROM the assumed uptime cannot validate the assumed uptime.
+  LIVE RESIDUAL (glance, irreducibly live): while carrying 3869 or 664644, watch how much of a real
+  fight the DR is actually UP for - Celestial refreshes on every champion hit (high uptime), Crown
+  breaks then sits on a long CD (low uptime) - and say whether the shared 0.4 `_GENERAL_DR_UPTIME` is
+  too low, right, or too high. Observed uptime is the ONLY thing that moves this row.
+  The Arena mirror 444644 magnitude confirm is GATE 5 (G5-08). The "Draw Your Sword" Runaan's blind
+  spot flagged at R108 is FIXED (LEDGER 856). SOURCE: LEDGER 855.
 
 ### `[BATCH OVERLAY-PIXEL]` - overlay up, one screenshot pass
 
@@ -290,11 +371,19 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   deterministic-coaching surface + overlay (live cs+level vs own per-champion percentile). The
   generator half is SHADOW-only today (`data/live_benchmark_band_shadow.jsonl`); this is the surface +
   flip. SOURCE: BACKLOG.md:162.
-- **G2-38** (was B28-DS) DS PD->Kraken cross-restart rank-stability: confirm the top build pick does
-  NOT flip PD->Kraken across a level-up tick when two items are within ~3% (deterministic FINAL
-  item_id tiebreak + incumbent-hysteresis margin 0.03). Fix-a LIVE on `:8893`, fix-b frontend wiring
-  LIVE; only the across-a-level-tick damping eyeball vs a real level-up crossing two within-margin
-  items remains. ARAM-suitable. SOURCE: LEDGER 799.
+- **G2-38** (was B28-DS) DS PD->Kraken cross-restart rank-stability - **PARTIAL 2026-07-18, the
+  closest-to-closable row in GATE 2.** SETTLED HEADLESS: the corpus supplies exactly the shape the row
+  asks for - a real level-up crossing two within-margin items - and the mechanism reproduces.
+  Provenance holds (NA1_5217553130 really does carry Jhin on 3033/3009/6676/3031/3094); the hysteresis
+  is real at `core/build_order.py:405 incumbent_margin: float = 0.03` with the Jhin-specific note at
+  `:249`; and the decision arithmetic is coherent - **58.709 * 1.03 = 60.470 < 61.695, so the flip is
+  correctly ALLOWED, not damped**. **TWO FIGURES NOT REPRODUCED - do not quote them:** the
+  672-crossing scan count and the 58.628 / 58.264 pre-tick values. Re-run that scan (and keep the
+  script) before any flip.
+  LIVE RESIDUAL (glance): a corpus replay RECONSTRUCTS the incumbent, whereas the live hysteresis reads
+  the incumbent the UI last actually RENDERED. So in-game, on one level-up tick where the top two build
+  items sit within ~3%, confirm the rendered top pick does not visibly flip PD <-> Kraken.
+  ARAM-suitable. SOURCE: LEDGER 799.
 - **G2-39** (was B29) QA6 fullscreen-detect "switch to Borderless" hint + QA13 UIPI elevation-parity
   detect final validation. Low-confidence inferred rows - **build headless first**.
 - **G2-40** (was B30) DS ratio-block spot verify vs target dummies (~174/577 flagged). DS-batch
@@ -330,27 +419,100 @@ survivability flips below cannot roll otherwise.
 
 ### In-game
 
-- **G3-04** (was C3) DSP3 ARAM archetype-override (`prefer_aram_win_axis=True`): needs a tabled
-  Cluster-A champ to roll (Zilean/Shaco/Shyvana/Taric/KogMaw/Kayle). RC-side resolver, **NO DS
-  restart**. NOT eyeball-able via `live_flip_eyeball.py` (excluded from the harness) - needs the champ
-  actually played.
-- **G3-05** (was C5) RF1 bruiser survivability flip - **LIVE-VALIDATED 2026-06-18 Yasuo, FLIP-READY**
-  (1 of 9 tabled bruisers eyeballed, SANER). Flip stays operator-gated + DS restart; further tabled
-  rolls (Darius/Udyr) optional.
-- **G3-06** (was C6) RF2 enchanter survivability flip: Rakan-as-tank-support INJECTs + floats
-  Warmog's/Heartsteel; Soraka/Janna byte-identical. DS restart. SIBLING FUTURE: RF2-hps `inject_ids`
-  cannot yet surface Rakan 3121 (mechanism exists, headless slice).
-- **G3-07** (was C7) RF3+RF6 tank survivability flip: KSante floats Thornmail/Iceborn, Rell
-  Fimbulwinter INJECTed past the purchasable gate; Malphite/Ornn byte-identical. RF6 rides the SAME
-  flip as RF3. DS restart.
-- **G3-08** (was C8) F2 `cost_ceiling` flip: exclude the 6000g Void Immolation 223069 from
-  bruiser/tank rank-1. Premise reproducible headless; the re-ranked top-6 eyeball wants the ARAM
-  mega-item context. DS restart.
+- **G3-04** (was C3) DSP3 ARAM archetype-override (`prefer_aram_win_axis=True`) - **MIS-FILED, NOT
+  VALIDATED. RE-FILE source: GATE 3; destination: headless CODE work, off the live-gated list.**
+  SETTLED HEADLESS: the resolver works and the override table is exactly 6 entries deep - Zilean
+  enchanter/mage/default -> mage/enchanter/aram_win, Shaco assassin/mage -> mage/assassin, Shyvana
+  bruiser/tank -> mage/bruiser, KogMaw onhit/mage -> carry/onhit and Kayle onhit/mage -> carry/onhit
+  all DIFFER; Taric tank/enchanter/default does not. **5 of 6.**
+  **WHY NO GAME CAN CLOSE THIS: there is no coach-side consumption to verify.** All 13 production call
+  sites of `get_archetype_for` pass the default `prefer_aram_win_axis=False` -
+  `coach_integration/archetype_dispatch.py:250`, `coach_integration/enemy_stats.py:143`,
+  `core/build_order_precompute.py:275`, `core/build_planner/kit_synergy.py:347,399`,
+  `core/ds_antitank_hint.py:89`, `core/zoi_capability.py:138`, `dashboard/routes_archetype.py:52,90`,
+  `dashboard/routes_ds_sweep.py:200`, `dashboard/routes_spike_curve.py:196`,
+  `dashboard/routes_state.py:590,964`, `dashboard/_state_builder.py:386`. `True` is passed NOWHERE
+  outside tests and one build script, so playing Zilean in a live ARAM would change nothing on screen.
+  SECOND HAZARD, previously unflagged: **none of the 13 call sites is mode-gated**, so flipping the
+  resolver default would apply the ARAM-win-anchored archetype in SR and Arena too (blast radius
+  bounded to the 6 tabled champs, but NOT ARAM-scoped). This needs a call-site choice plus a mode gate,
+  not the 1-line flip the row implied. **NO LIVE RESIDUAL until that code lands.**
+- **G3-05** (was C5) RF1 bruiser survivability flip - **EYEBALL CLOSED 2026-07-18** (on top of the
+  LIVE-VALIDATED 2026-06-18 Yasuo read; the row's own "further tabled rolls (Darius/Udyr) optional"
+  residual is now discharged headless). MEASURED at `[3078,3053,3742]`, L13, mode=ARAM, top_n=200,
+  **pool=111 exact**: Yasuo DIFFERS (ON floats `6665` Jak'Sho + `3091` Wit's End); **Darius DIFFERS**
+  (`6631` Stridebreaker, `6333` Death's Dance, `4401` Force of Nature); **Udyr DIFFERS** (`6665`
+  Jak'Sho, `3065` Spirit Visage, `3075` Thornmail); Sett / Illaoi / Aatrox / Garen / Olaf / Trundle
+  byte-identical. The DIFFERS-vs-same partition is **INVARIANT across 4 depths** (`[]` pool=121,
+  `[3068,3053]` pool=115, 5-deep pool=109) **and 3 levels** (L6 / L11 / L18), with the floated ids
+  stable per champion at every depth. Chain is plumbed end-to-end, so the flip is a genuine 1-line
+  caller default: `coaches/aram_coach.py:784` -> `coach_integration/archetype_dispatch.py:219,284` ->
+  `core/daemon_slayer_client.py:403,442` -> `agents/daemon_slayer/server.py:850` ->
+  `hybrid.rank_items_by_hybrid`.
+  REMAINS (not a gate): the operator-gated default-ON flip + DS `:8893` restart, per FOUR RULES rule 2.
+- **G3-06** (was C6) RF2 enchanter survivability flip - **EYEBALL CLOSED 2026-07-18.** MEASURED at
+  `[3853,3504,6617]`, L13, **pool=8 exact**, and all three of the row's own predictions reproduce
+  INCLUDING the negative: **Rakan DIFFERS** - ON floats `2051` Guardian's Horn + `3083` Warmog's Armor
+  + `3084` Heartsteel (the row predicted Warmog's/Heartsteel); **Soraka / Janna / Lulu / Nami / Karma
+  byte-identical** (the row predicted Soraka/Janna). Depth attack at `[]` (pool=10) returns the
+  identical partition and identical floated ids. The row's SIBLING-FUTURE negative also reproduces:
+  `3121` Fimbulwinter is NOT surfaced on the hps lane, and the row itself scopes that `inject_ids`
+  work as a headless slice, not a gate.
+  REMAINS (not a gate): the operator-gated default-ON flip + DS `:8893` restart, per FOUR RULES rule 2.
+- **G3-07** (was C7) RF3+RF6 tank survivability flip - **EYEBALL CLOSED 2026-07-18, on the EMPTY-DEPTH
+  run and ONLY on that run.** THE RUN THAT CLOSES THIS ROW: depth `[]`, **pool=121**, KSante ON top-6 =
+  `['6662','3075','3143','3083','6665','2504']` - Iceborn Gauntlet 6662 **and** Thornmail 3075 - so the
+  row's full "Thornmail/Iceborn" prediction holds. A first-filed run at depth `[3068,3075,3143]`, L13,
+  pool=117 showed KSante floating 6662 to rank 1 and **Rell floating 3121 Fimbulwinter to rank 1** with
+  Malphite / Ornn / Sion / Zac byte-identical - but that depth ALREADY OWNS Thornmail 3075, which made
+  3075 structurally unrankable and left half the row's own prediction unobservable. **That first
+  evidence was INSUFFICIENT as filed and must not be cited alone.** RF6 rides the SAME flip as RF3.
+  REMAINS (not a gate): the operator-gated default-ON flip + DS `:8893` restart, per FOUR RULES rule 2.
+- **G3-08** (was C8) F2 `cost_ceiling` flip - **PREMISE DEAD 2026-07-18: re-file as
+  CLOSED-STALE-PREMISE, explicitly NOT as a validated flip.** SETTLED HEADLESS, and stronger than the
+  row assumed: 223069 Void Immolation is 6000g with `maps {'11':False,'12':True,'21':False,'22':False,
+  '30':True}` and `purchasable: True`, yet `only_item_ids=[223069]` returns **0 rows in ARAM on both
+  the hybrid and the ehp scorer**. THE CONTROL THAT MAKES THAT DECISIVE: the identical probe at
+  `mode="ARENA"` returns **1 row** on both scorers, so the 0 is a mode-specific exclusion and not a
+  probe artifact. **ROOT CAUSE (the part the row never had):** `agents/daemon_slayer/rank.py:196`
+  hard-denies the id BY NAME inside the DDragon-override deny set at `:190` - DDragon's
+  `maps["12"]=True` on this item is a known-wrong flag and the item is Arena map-30 only. The exclusion
+  this row wants was deliberately shipped 2026-07-07. The ARAM pool tops out at 3500g (Rabadon's 3089 /
+  Infinity Edge 3031) and the ceiling sweep is 1000 -> 15, 2500 -> 33, 3500 -> 121, 99999 -> 121.
+  **There is no ARAM mega-item**, so there is no ARAM mega-item context for the eyeball to want.
+  NO LIVE RESIDUAL. Do NOT ship F2 expecting an effect, and do not record this row as a validated flip.
 - **G3-09** (was C9) T1-F3 enemy-pen-aware effective-resist EHP flip (opt-in
-  `enemy_lethality`/`enemy_*_pen` on compute_ehp): **needs real enemies carrying real pen items - bots
-  do not build them.** SOURCE: BACKLOG.md:32.
-- **G3-10** (was C10) R41 `assume_ally_detonation` (Leona P Sunlight): needs real ALLIES consuming
-  marks; 2.5s cadence + 0.5 proc-rate sanity. DS restart.
+  `enemy_lethality`/`enemy_*_pen` on compute_ehp) - **RE-FILE source: GATE 3; destination: headless
+  CODE task.** SETTLED HEADLESS: (1) the row's blocker was binary - "bots do not build pen items" - and
+  it is DISCHARGED against real comps: **1560 of 2081 (75.0%)** of corpus ARAM matches with a timeline
+  carry at least one participant holding a lethality / armor-pen item (Lord Dominik's 1063, Axiom Arc
+  617, Serylda's 590, Mortal Reminder 455, Edge of Night 343). Corpus ARAM tops out at patch 15.9 vs
+  engine 16.14.1, immaterial to a binary blocker. (2) The seam's SHAPE reproduces - physical EHP falls
+  ~42% while the magical channel is unmoved (+0.0%): plain `compute_ehp` L11 physical 10463.7 -> 5999.9
+  (-42.7%), L11 blended 6993.5 -> 4761.6 (-31.9%), L18 physical 15878.6 -> 9228.4 (-41.9%).
+  **Absolute baselines are CALL-SHAPE dependent** - a first pass that did not state its call read ~30%
+  higher - so always state the call shape when quoting a number here.
+  **WHY NO GAME CAN CLOSE THIS: `enemy_lethality` is unreachable.** It appears ONLY in
+  `agents/daemon_slayer/ehp.py` (:1143, :1283, :1714, :2103, :2107, :2208, :2271, :2283) - not in
+  `server.py`, not in `core/daemon_slayer_client.py`, not in any coach, and NOT exposed over HTTP. A
+  live ARAM exercises zero extra code. **NO LIVE RESIDUAL until the flag is plumbed.**
+  SOURCE: BACKLOG.md:32.
+- **G3-10** (was C10) R41 `assume_ally_detonation` (Leona P Sunlight) - **PARTIAL 2026-07-18.**
+  SETTLED HEADLESS: the math is byte-exact and the scope is tiny. The override entry reproduces
+  byte-for-byte - `AllyDetonationEntry(source_key='P', kind='FLAT_MAGIC', flat_lo=32.0, flat_hi=151.0,
+  current_hp_coeff=0.0, cadence_s=2.5)`; burst at L13 on `[3068,3075]` mode=ARAM reads **708.41 ->
+  763.51, +55.10, +7.8%**; and the level sweep is monotonic and consistent with the 32 -> 151 scaling
+  (L1 +15.20, L6 +31.82, L13 +55.10, L18 +71.73). Scope is exactly ONE champion:
+  `_CHAMPION_DETONATION_OVERRIDES` holds Leona alone, `_ITEM_DETONATION_OVERRIDES` and
+  `_NONFIT_DETONATION_CANDIDATES` are both EMPTY, and Braum / Nautilus / Thresh / Sett are INERT under
+  the flag. The 2.5s cadence is DATA, not an assumption, so it needs no eyeball.
+  **TWO CORRECTIONS TO THE ROW:** (a) `assume_ally_detonation` has ZERO production callers outside the
+  engine, so a live game exercises no extra code and the seam must be plumbed before any in-game read
+  means anything; (b) the override note cites `champion_abilities.json 16.13.1` while the engine is at
+  16.14.1 - re-anchor it.
+  LIVE RESIDUAL (glance, telemetry-gated): playing with or against Leona, how often do allies ACTUALLY
+  consume a Sunlight mark - is 0.5 about right, high, or low? The seam is linear in that single
+  fraction, so it is the whole remaining calibration. DS restart.
 - **G3-11** (was C11) cc_blended_ehp + cc_conditional ecosystem: the DATA-PATH half is validated live
   (DS /ehp cc_blended 5776 -> 2888 vs a real CC comp, 9 consumer surfaces grep-confirmed) but it is
   served only on the tank/bruiser scorer - a full close needs a **TANK/BRUISER PICK against a real CC
@@ -402,22 +564,61 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
 - **G4-05** (was B34) DSP8 `target_preset` derived from the LIVE enemy comp into burst /
   `/rank-assassin` (lethality vs tank comp, magic pen vs high-CC comp). Route WIRED (OQ17); the live
   enemy-comp derivation into the body + the flip stay pending. DS restart.
-- **G4-06** (was B35) R9 `assume_passive_flat_mitigation`: flip in the live survivability path + tune
-  `_ASSUMED_FLAT_DR_INSTANCES`=6 / `_ASSUMED_ABILITY_RANK`=4 vs a real fight clock (needs sustained
-  real incoming pressure; Fizz P / Amumu E / Leona W).
+- **G4-06** (was B35) R9 `assume_passive_flat_mitigation` - **PARTIAL 2026-07-18; the calibration data
+  is ALREADY RECORDED, so this row now carries an ACTION ITEM, not a gate.** SETTLED HEADLESS from
+  `timeline_events.victim_damage_json` (a promoted column carrying a per-instance fight clock - real
+  sustained incoming pressure, already on disk). **THE FILTER IS LOAD-BEARING: CLASSIC ONLY** - the
+  same query unfiltered returns 4735 deaths, of which ARAM alone is 3800. On CLASSIC, 620 deaths:
+  **Amumu 162 deaths / median 14.0 instances / 94.4% at >=6 / mean 7.20 physical instances; Fizz 110 /
+  11.0 / 95.5% / 6.05; Leona 348 / 17.0 / 98.0% / 9.22.** So `_ASSUMED_FLAT_DR_INSTANCES`=6 is
+  conservative and well supported. **`_ASSUMED_ABILITY_RANK`=4
+  (`_passive_flat_mitigation_overrides.py:99`, read at `idx = _ASSUMED_ABILITY_RANK - 1` on :234) is
+  WRONG against a real endgame median of 5** - rank proxy: Amumu slot 3 median 5.0 level-ups, Leona
+  slot 2 median 5.0. Nothing has been retuned yet.
+  NO LIVE RESIDUAL ON THE DATA - this half never needed a client. What remains is headless code:
+  retune `_ASSUMED_ABILITY_RANK` 4 -> 5, and flip the seam in the live survivability path.
 - **G4-07** (was B36) R50 `apply_all_out_bonus` (K'Sante): confirm the empowered-mark value in an
   actual All Out fight + tune `conditional_probability` 0.5 vs real All-Out uptime. **NOT a pure HTTP
   flag-flip** - it is a load-time `AbilitiesSnapshot.load()` flag (`abilities.py:675`), so threading it
   needs per-request snapshot construction (separate FUTURE task). Only fires if K'Sante is played.
-- **G4-08** (was B42) R59 `assume_lifeline_shield`: needs an ENEMY holding a Lifeline item (Immortal
-  Shieldbow 6673 / Sterak's 3053 / Maw 3156). Eyeball that a squishy-vs-Shieldbow burst reads lower and
-  the order stays sane. Shieldbow is the representative magnitude. SOURCE: LEDGER 743.
-- **G4-09** (was B43) R60 `assume_hsp_amp` (wielder Heal/Shield Power): build an HSP item (Redemption
-  3107 / Mikael 3222 / Ardent 3504 / Moonstone 6617 / Staff of Flowing Water 6616) ALONGSIDE an own
-  self-shield (Sterak's / Shieldbow / Maw) or on a REGEN-kit champ; eyeball that the EHP shield pool
-  (`shield_amp_mult`) and the REGEN sustain score amp by `1 + summed_hsp` sanely. **Vamp-only sustain
-  must stay unmoved.** R90 extended the registry with Forbidden Idol (3114, +8% HSP) - eyeball a
-  3114-carrying build at flip too. SOURCE: LEDGER 745 + 831.
+- **G4-08** (was B42) R59 `assume_lifeline_shield` - **CLOSED 2026-07-18; there is no live surface to
+  eyeball.** MEASURED against a REAL enemy Lifeline holder: Yone genuinely held Immortal Shieldbow 6673
+  in NA1_5557160206 (participants row, patch 16.9 q400). Modelling THAT Yone as the target
+  (`compute_ehp` lvl18 on his actual build `[3031,3153,6673,3172,3036,2019]` -> hp 2405.00 / armor
+  141.20 / mr 66.85), a Fizz burst `[3089,3157,3100,3137,4645,3102]` lvl18 reads **3330.26 -> 2630.26,
+  delta -700.00 exactly**, and `target_lifeline_shield(level=18)` is 700.00 to the cent. Level lerp
+  correct: -400.00 at lvl<=9, -700.00 at lvl18. **The target model is load-bearing** - without it the
+  same call reads 4488.00 -> 3788.00, so always state the target when re-running.
+  "ORDER STAYS SANE" IS PROVEN STRONGER THAN ANY EYEBALL COULD SHOW: `assume_lifeline_shield` is
+  consumed by exactly TWO engine functions - `compute_burst_damage` (burst.py:525, applied :1319) and
+  `compute_dps` (dps.py:700, applied :1469). NO ranking function accepts or forwards it
+  (`rank_items_by_burst`, `rank_at_level`, `compute_rune_proc_damage` all lack the parameter), so the
+  order is provably invariant ENGINE-WIDE, not merely at one entry point.
+  Sterak's 3053 reading 0.00 at the default `target_bonus_hp=0` (1200.00 at 2000 bonus HP; Maw 3156
+  200.00, 425.00 at 150 bonus AD) is DOCUMENTED INTENT per `_lifeline_target_shield.py` - Shieldbow is
+  the conservative representative magnitude, as the row already says. Modelling limit, not a defect.
+  REMAINS (not a gate): the operator-gated default-ON flip. SOURCE: LEDGER 743.
+- **G4-09** (was B43) R60 `assume_hsp_amp` (wielder Heal/Shield Power) - **PARTIAL 2026-07-18, and
+  CORPUS-CLOSABLE more strongly than first filed.** SETTLED HEADLESS on REAL builds, both halves the
+  row names:
+  (a) REGEN via `compute_sustain(..., assume_hsp_amp=)` - Soraka NA1_5381905994
+  `[4638,3107,6617,3870,3158,6621]` sum_hsp 0.56, 0.0800 -> 0.1248 (ratio **1.56**); Alistar
+  NA1_5216916028 sum_hsp 0.10, 0.073333 -> 0.080667 (ratio **1.10**). The row's "vamp-only sustain must
+  stay unmoved" criterion HOLDS: Morgana NA1_5155555530 SPELLVAMP 0.720 -> 0.720 and a Briar vamp
+  control 2.568 -> 2.568, both ratio 1.00.
+  (b) SHIELD POOL - **strike the earlier "0 of 6660 real builds carry both" census; it is WRONG.** It
+  counted only the 3 LIFELINE ids, but `shield_amp_mult` (ehp.py:1472-1479) multiplies the ENTIRE EHP
+  shield pool and `ITEM_EFFECTS` carries **16** items with an `ItemShield`. Over the same 6660 SR
+  participants: 403 carry HSP, 1199 carry a shield item, **14 carry BOTH**, all 14 move, and the shield
+  CONTRIBUTION to `blended_ehp` scales by exactly `1 + sum_hsp` - Seraphine NA1_5157639891 **1.66**,
+  Sona NA1_5082380576 **1.66**, Soraka NA1_5280258797 **1.40**, Taric NA1_5380671439 **1.08**. No
+  constructed fixture is needed and none should be cited. The 3114 Forbidden Idol sub-ask is also
+  satisfied: Soraka+3114 sum_hsp 0.64 -> ratio 1.64; Alistar+3114 0.08 -> 1.08.
+  CAVEATS: the sibling shield seams (`assume_seraphs` / `fimbulwinter` / `chainlaced` / `kaenic` /
+  `eclipse_shield`) must be ON to populate the pool at all and are themselves default-OFF and
+  separately gated (G2-23); and these builds span patches 14.15-15.24 scored against a 16.14.1 engine.
+  **NO LIVE RESIDUAL - the row never needed a client.** What remains is the operator-gated flip.
+  SOURCE: LEDGER 745 + 831.
 - **G4-10** (was B47c) R109 `apply_ability_hsp_amp` - item HSP amp of the CHAMPION-ABILITY heal/shield
   throughput in `compute_hps` (an enchanter's Ardent/Staff/Redemption/Moonstone/Mikael amped her ITEM
   heals but NOT her ABILITY heals - Soraka Q/W, Janna E, Lulu E; live-proven delta==0 on 8 enchanters,
@@ -425,13 +626,25 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   PRODUCT convention (`prod(1 + heal_shield_amp_pct)`) which diverges from real-League ADDITIVE HSP
   stacking and from the EHP path's additive `_hsp_amp.sum_wielder_hsp_pct` - a pre-existing item-side
   asymmetry, NOT a regression. **A two-HSP-item build is the calibration case.** SOURCE: LEDGER 857.
-- **G4-11** `[NEW ROW 2026-07-18]` R127 `apply_cdragon_resource_guard` (ENGINE 1.213.0, LEDGER 901,
-  `cc5b0876`, `abilities.py:677` default False - source-verified). The `prefer_cdragon_ratios` cutover
-  undercounts Miss Fortune R by ~17.7x by overwriting the Meraki 1050% total with the CDragon 60%
-  per-wave atomic (MF total_ability_dps 14.9 -> 27.4 when guarded). FLIP = set the guard True at the
-  default abilities loader (RC-side coach caller / `abilities.load_default`) + reload; VALIDATE in a
-  live or replayed Miss Fortune game (R DPS should rise ~13x, build reco unaffected for other champs)
-  before default-ON. A replayed game is an acceptable substitute.
+- **G4-11** `[NEW ROW 2026-07-18]` `[RE-FILED 2026-07-18]` R127 `apply_cdragon_resource_guard` (ENGINE
+  1.213.0, LEDGER 901, `cc5b0876`, `abilities.py:677` default False - source-verified). **RE-FILE
+  source: GATE 4; destination: ordinary non-gated CODE work. The live gate is discharged; the row is
+  NOT closed.** SETTLED HEADLESS, every figure reproduced to the digit via
+  `AbilitiesSnapshot.load(prefer_cdragon_ratios=True, apply_cdragon_resource_guard=True/False)` on Miss
+  Fortune lvl16, real q420 16.13 build `[1053,3031,6697,6676,3036]`: R raw_damage_per_cast 231.844 ->
+  4316.490 and R dps 1.6672 -> 31.0400, both **18.6186x**; total_ability_dps 29.9211 -> 59.2939,
+  **1.9817x**. Full-roster sweep: **173 scored, 0 errors, exactly ONE champion moved** (MissFortune
+  16.5584 -> 24.5954). **FIX THE ROW TEXT: the "~13x" in the old VALIDATE clause contradicted the
+  "~17.7x" diagnosis (1050/60 = 17.5); measured is 18.62x, so the diagnosis was right and the ~13x was
+  wrong.**
+  **WHY IT IS NOT A CLOSE, and why a replay today would prove nothing: the FLIP does not exist.**
+  `abilities.load_default()` (abilities.py:898) calls `AbilitiesSnapshot.load()` with NO arguments, and
+  `apply_cdragon_resource_guard` appears in exactly two non-test places repo-wide - its definition
+  (abilities.py:677) and its consumer (abilities.py:812). **ZERO production callers pass it**, so a
+  live or replayed Miss Fortune game would show zero change. Second gap: "build reco unaffected for
+  other champs" was measured as SCORE invariance (airtight for the 172 unmoved champions), but MF's own
+  input moved 1.4854x and HER build reco was never diffed - diff it before flipping.
+  **NO LIVE RESIDUAL. Do not schedule a game for this row.**
 
 ### In-game render / behavior (real combat pressure)
 
@@ -517,10 +730,20 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
 - **G4-28** (was F7) Home "Tonight's Pick" hardcoded dummy (`web/js/main.js:3080`,
   `dashboard/builders_home.py:148,105`): wire to real post-game `queue_id` ingest. DEFER until
   queue_id ingest ships; gated on real post-game Match-V5 rows.
-- **G4-29** (was F8) item-211 residual orphan-row Match-V5 recovery: 7 residual orphan rows
-  (1640/1633/1519/1518/1517/1506/1487). Operator per-row picks `--trust-lcu CHAMP + --match-id` against
-  the residual, OR clears them as junk. Needs the per-row lcu_champ list + live RC + Riot key + real
-  Match-V5 ingest. SOURCE: ROADMAP.md:81.
+- **G4-29** `[RE-FILED 2026-07-18]` (was F8) item-211 residual orphan-row Match-V5 recovery -
+  **RE-FILE source: GATE 4; destination: OPERATOR-DECISION task. The row was MIS-GATED - no game and no
+  new Match-V5 ingest is required.** SETTLED HEADLESS: the per-row champion list (the input the row said
+  it was missing) is now in hand, and all 7 ids are present in `data/match_history.db` `matches` with
+  `game_id = 0` confirming orphan status - **1487 ARAM Ezreal / 1506 SR Kai'Sa / 1517 ARAM Jinx / 1518
+  ARAM Kai'Sa / 1519 ARAM Kalista / 1633 SR Jinx / 1640 ARAM Xayah**. TWO ARE ALREADY RESOLVABLE from
+  the existing corpus, matched on champion AND mode AND duration: **1633** (SR Jinx, game_time_s
+  923.35) -> NA1_5567585884 (CLASSIC q420 16.10, Jinx, 929s - 6s apart); **1506** (SR Kai'Sa, 2248.72)
+  -> NA1_5567246791 (CLASSIC q420 16.10, Kaisa, 2262s - 14s apart). The other **5 are all ARAM** and per
+  the settled event-mode Match-V5 403 finding are likely PERMANENTLY unrecoverable - recommend clearing
+  them as junk.
+  NO LIVE RESIDUAL. What remains is the operator's per-row call: run `--trust-lcu CHAMP + --match-id`
+  for 1633 and 1506, clear the 5 ARAM rows as junk, then VERIFY the historical rows actually changed
+  (Data Fixes rule - a fix is not done until the bad rows are backfilled). SOURCE: ROADMAP.md:81.
 
 ---
 
@@ -534,8 +757,17 @@ D6 force_scan-trigger fix (`79c4e9e9`) + the round-based re-trigger (`10374d02`)
 - **G5-01** (was D6) **THE ONE OPEN LIVE BUG.** Arena augment-select shadow
   (`data/augment_shadow.jsonl`) + item-anvil shadow (`data/anvil_shadow.jsonl`) seeding + WIRING-GAP
   re-validate. STATUS re-probed on disk 2026-07-18: `augment_shadow.jsonl` seeds at **966 bytes**
-  (unchanged since 2026-07-08); **`anvil_shadow.jsonl` is STILL ABSENT.** Fix-committed, pending live
-  re-validate - do NOT mark closed. SOURCE: LEDGER 779/820; git `79c4e9e9`, `10374d02`.
+  (unchanged 2026-07-08 mtime); **`anvil_shadow.jsonl` is STILL ABSENT**; `git status data/` clean, so
+  no headless probe has contaminated the ground-truth signal. Fix-committed, pending live re-validate -
+  **do NOT mark closed.**
+  NARROWED 2026-07-18 (diagnostic only - this closes NO part of the row): the shadow WRITERS are fine
+  and are correctly reached from `arena_coach.py:596` `_handle_augment_select` and `:599`
+  `_handle_anvil`. **The wiring gap is UPSTREAM, at `ArenaVisionReader.read()`.** So the live sit
+  should watch whether the vision reader emits an anvil/augment event at all, not whether the writer
+  fires.
+  LIVE RESIDUAL (glance): in ONE Arena game take an augment and an item anvil, then check that
+  `data/anvil_shadow.jsonl` now EXISTS and `augment_shadow.jsonl` has grown past 966 bytes.
+  SOURCE: LEDGER 779/820; git `79c4e9e9`, `10374d02`.
 - **G5-02** (was D2) `set_augment_intent` 4-PATCH endpoint discovery at a real Arena augment phase.
   **PATH IS STALE:** `tools/gamepc_lcu_agent.py:1179` predates the Game-PC retirement - re-home the
   chain BEFORE running. Recipe: `docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md`. No Cherry augment session
@@ -544,8 +776,19 @@ D6 force_scan-trigger fix (`79c4e9e9`) + the round-based re-trigger (`10374d02`)
   renders (icon may 404 per `reference_items_index_alias_ids`, display name correct). Data fix shipped
   (`54d0706a`). STATUS: no boot anvil rolled in the 8 augment rounds played 2026-07-04.
 - **G5-04** (was D9) R74/DSV8 `assume_physical_burst` (Goredrinker 226630 Thirsting Slash, 175% base
-  AD physical AoE active). **Arena-only prismatic**, so this eyeball CANNOT be done anywhere else.
-  STATUS: no Goredrinker prismatic rolled 2026-07-04. DS restart.
+  AD physical AoE active) - **PREMISE REWRITTEN 2026-07-18: the blocker is NOT "no prismatic rolled",
+  it is WIRING.** SETTLED HEADLESS: the engine math is exact and leak-free. The measured burst delta
+  equals `1.75 * leveled_base_ad * 100/(100+armor)` to 3 decimals - Olaf L15 armor100 **114.052**
+  (base_ad 130.3455), Aatrox L17 **121.275** (138.6000), Samira L15 **84.696** (96.7950) - with
+  `physical_burst_base_ad_ratio=1.75` confirmed at `_effects_data.py:3589`, and a control of 6
+  non-pinned Arena items x 2 champions **byte-IDENTICAL ON vs OFF** (zero leakage).
+  **THE EYEBALL IS CURRENTLY IMPOSSIBLE.** `assume_physical_burst` has ZERO references in `core/`,
+  `coach_integration/`, `modes/` or `web_dashboard.py`; `rank_for_primary_archetype` exposes 11 named
+  seam flags and this is not among them; and `agents/daemon_slayer/server.py:1241` carries an explicit
+  comment that the /rank route does NOT accept it. Only the direct `compute_burst_damage` route does.
+  **So DS will show no Goredrinker burst credit on screen even if the prismatic rolls.**
+  NO LIVE RESIDUAL until the flag is plumbed to /rank - re-file that wiring as headless code work, and
+  do NOT spend an Arena sitting waiting for 226630 to roll for this row. DS restart on the eventual flip.
 - **G5-05** (was D4) `apply_mode_modifiers` Arena re-rank validate - Arena ar/swift growth-addends are
   the only schedulable mode where this seam re-ranks (URF/OFA/USB/NB rotate). NOT attempted
   2026-07-04. DS restart.
@@ -556,7 +799,25 @@ D6 force_scan-trigger fix (`79c4e9e9`) + the round-based re-trigger (`10374d02`)
 - **G5-08** (was the B47b Arena tail) Celestial Opposition Arena mirror **444644 magnitude confirm**
   (Meraki 50% vs DDragon 90%) - the id is EXCLUDED from the R108 credit pending this live-Arena read.
 - **G5-09** DS ranged-only Runaan's melee-gate made augment-aware for "Draw Your Sword" (augment id
-  134, ranged->melee; `7a970758`, LEDGER 856) - shipped headless, live Arena on-screen validation owed.
+  134, ranged->melee; `7a970758`, LEDGER 856) - **PARTIAL 2026-07-18.** SETTLED HEADLESS: the gate is
+  exact and does not over-filter. On **all 8** corpus champions that actually took augment 134
+  (mode=ARENA, top_n=200) the pool loses exactly ONE item and gains none - Ezreal / Jhin / Akshan /
+  Aphelios / Ashe / Samira **150 -> 149**, Graves / Neeko **183 -> 182**, `removed=['223085']`,
+  `added=[]`. The LIVE chain is traced and genuinely wired (unlike G5-04):
+  `_resolve_augment_apiname("Draw Your Sword")` -> `"DrawYourSword"` (281-entry map, case-insensitive)
+  -> `arena_coach.py:448` -> `:682` -> `dispatch_for_coach` -> `rank_for_primary_archetype` ->
+  `_champion_is_melee(champ_rec, augments)`.
+  **NEW LIVE RISK, found 2026-07-18 - watch for it during the sit:** the gate accepts `134`, `"134"`,
+  `"DrawYourSword"` and dicts, but NOT the DISPLAY form `"Draw Your Sword"` (which is vision's raw OCR
+  form) - that reads melee=False. Correctness therefore depends entirely on `_resolve_augment_apiname`
+  running first, and `_reconcile_augment_hud` (`arena_coach.py:989-995`) is **ALL-OR-NOTHING**: if any
+  ONE HUD slot fails to resolve it returns and discards the whole read, so a single OCR miss on an
+  UNRELATED augment silently prevents 134 from ever registering. No headless test covers
+  OCR -> resolve -> all-or-nothing. The alternate population path `_handle_augment_select` is the
+  G5-01 wiring gap.
+  LIVE RESIDUAL (glance): take "Draw Your Sword" in a real Arena, then confirm on screen that Runaan's
+  Hurricane 223085 has DROPPED out of the build panel. If it has not, suspect the augment HUD read
+  first - one unrelated OCR miss is the likelier cause than the gate.
 - **G5-10** `[HOLD 2026-06-20]` (was D8) Arena S2 augment level-up + crafting - trigger on the 26.09
   PBE (separate PBE install). ADR-010. NOT part of the current Arena sitting.
 
@@ -570,9 +831,33 @@ Rides on top of whatever gate is already running. No separate game needed.
   (disappear-fix / pinned behavior + the P4.x window logic; the renderer half auto-reloads via ADR-008
   but MAIN does not). Plus the post-W5 interaction-layer live verify pass (the 2026-06-29 F1-01 confirm
   covered render surfaces only). SOURCE: ROADMAP.md:23; OVERLAY_BUILD_MASTER_PLAN.md:666/828.
-- **G6-02** (was E5) item-598 R25 ACTIVE-knob interaction round-trip: the **Alt+Shift+A re-rank
-  physical keypress** over a live overlay. The prior capture validated render + compositing, NOT a live
-  knob press. Bundles the ROADMAP-19 E.1 ACTIVE-knob physical-press round-trip. SOURCE: LEDGER 598.
+- **G6-02** `[UPGRADED LIVE-ONLY -> PARTIAL 2026-07-18]` (was E5) item-598 R25 ACTIVE-knob interaction
+  round-trip. **ROW DEFECT FIXED - as previously written this row would have produced a FALSE
+  NEGATIVE.** The key is **Ctrl+Shift+A** (Win32 `tools/hotkey_listener.py` slot 3, the ONLY path that
+  delivers while League holds foreground focus). **Alt+Shift+A is the alt-tabbed fallback ONLY and is
+  expected NOT to fire in-game** (`rc-shell/src/main.js:1225-1229`; Ctrl+Shift+A is deliberately NOT
+  registered in Electron at `:1193-1199` because globalShortcut does not deliver under League
+  foreground). And there is **no re-rank** - `doToggleActive` (`main.js:1126-1130`) flips
+  `overlayClickThrough`, calls `applyClickThrough()` and arms a 20s auto-revert; no ranking code is
+  reachable from it.
+  SETTLED HEADLESS - the DELIVERY half now has an in-game receipt. `logs/hotkey_listener.log` holds 687
+  "overlay ACTIVE toggle signaled" entries; cross-joining ALL of them against RC's own logs gives
+  **IN_GAME 9 / LOGGED_BUT_NO_GAME 0 / NO_LOG_COVERAGE 678**. The 9 land 22:31:09 -> 22:33:41 on
+  2026-07-12, INSIDE a lifecycle-bracketed ARAM game (22:30:24.933 "New game detected" -> 22:52:51.140
+  "Game ended"), and Electron MAIN was up mid-sequence (22:31:33 `GET
+  /?overlay=1&panelset=build&ovscale=1.33` 200 - `ovscale` is MAIN-computed at `main.js:569-573`), so 7
+  of the 9 should have reached `doToggleActive`. **An earlier "RC was not up at 22:33" reading was
+  ROTATION BLINDNESS** - only the base `2026-07-12.log` was read, while `.log.2` covers 22:07-22:36 with
+  8837 lines in the 22:3x window. Always glob `YYYY-MM-DD.log*`. (Physical origin is inferred, not
+  proven: the hook logs `vkCode` only and never checks `LLKHF_INJECTED`, but the sole caller of
+  `signal_overlay_active_toggle` repo-wide is `tools/hotkey_listener.py:359` and no repo code injects
+  the chord.)
+  LIVE RESIDUAL (glance) - three things disk cannot witness even in principle: with **League in the
+  FOREGROUND** (the row's entire variable), press **Ctrl+Shift+A ONCE** and watch the overlay flip
+  PASSIVE -> ACTIVE (edge glow on, body-drag enabled), then auto-revert after 20s. Note the 9 recorded
+  presses came in bursts 0.5-2s apart, which reads equally as deliberate toggling or as mashing because
+  nothing visibly happened - so ONE deliberate press with eyes on the overlay IS the test. Requires
+  G6-01 (rc-shell MAIN up) FIRST. SOURCE: LEDGER 598; memory `reference_overlay_ingame_hotkey_win32`.
 - **G6-03** (was E4) OBS DXGI match-end capture watch: lock one resolution + League Borderless while
   recording; observe a real match end. SOURCE: ROADMAP.md:78(c).
 
@@ -590,12 +875,27 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   real SR laning ticks -> `hz_shadow_report.py` -> operator OK. NOTE: the gate was de-biased twice
   since (LEDGER 844 drop macro/objective native ticks; LEDGER 854 dead-player exclusion), so re-run
   before quoting a number.
-- **G7-02** (was G2) HZ Lane-B build-order flip gate - **HOLD** (re-run 2026-07-04: +3.6%,
-  flip_ready=False @665 matches). Rail: `replay_build_order_validate.py --limit 0` as
-  `rewind_history.db` grows. HEADLESS PREREQ: regen the build-order tables to the live engine first
-  (last regen LEDGER 828 to 1.186.0; the engine is now 1.219.0 - **regen again before the next read**).
-- **G7-03** (was G3) Champ-select brief Haiku -> deterministic flip: shadow-log accrual over real
-  champ-selects + operator OK (`dashboard/_champ_select.py`).
+- **G7-02** (was G2) HZ Lane-B build-order flip gate - **HOLD.** **SETTLED HEADLESS 2026-07-18: the
+  row's stated HEADLESS PREREQ is ALREADY MET and its caveat was wrong. No SR build-order table is at
+  1.186.0.** Measured `engine_version` per table:
+  `data/daemon_slayer/build_orders/16.11.1/build_orders_sr.json` 1.120.0, `16.12.1` 1.144.0, `16.13.1`
+  1.214.0, and **`16.14.1` 1.219.0, generated 2026-07-18T18:34:20Z** - a table matching the live engine
+  already exists. (Keyspace warning: there are two table families and the `data/daemon_slayer/<patch>/`
+  family carries no `engine_version` key at all.) The prior 2026-07-04 read (+3.6%, flip_ready=False
+  @665 matches) was taken against an older table and must NOT be quoted forward.
+  RESIDUAL (accrual, never one game): re-run `replay_build_order_validate.py --limit 0` against the
+  1.219.0 table for a fresh number, then keep re-running it as `rewind_history.db` grows. The rail
+  decides.
+- **G7-03** (was G3) Champ-select brief Haiku -> deterministic flip - **CLOSED 2026-07-18 as STALE.**
+  The flip already shipped, so there is no live Haiku brief left to shadow and the row's "shadow-log
+  accrual + operator OK" is moot. **EVIDENCE (CORRECTED - do NOT cite the grep):** an earlier pass
+  claimed a grep for `haiku|anthropic|messages.create|call_claude` over the two files "returns ZERO
+  hits". It actually returns **12 hits** (docstrings and comments in both files). The close rests
+  instead on STRUCTURE, verified independently: `dashboard/_champ_select.py` `brief_via_coach()` is a
+  single-line delegation to `brief_deterministic`, and `dashboard/_champ_select_deterministic.py`
+  imports ONLY `json`, `logging`, `threading` and `dashboard._context.APP_DIR` - no anthropic client,
+  no HTTP client, no API-key read anywhere in the module. Its own docstring records the shadow-validate
+  lane as retired. Zero liveness residue.
 - **G7-04** (was G4) ~88 `st-*` ADAPTATION live-producer census (rows render "-" in-game): note which
   surface live vs stay post-game-only. SOURCE: RM-30 / ROADMAP item 281.
 - **G7-05** (was G5) RC2 P5.1/P5.2 CV laning: accrue `cv_override` rows in
@@ -605,9 +905,20 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
 - **G7-06** (was G6) DS calibration pipeline: needs **~20+ RANKED SR (queue 420)** games. Customs and
   Mayhem cannot feed it. SOURCE: RM-32.
 - **G7-07** (was G7) `post_game_score` LR retrain at N>=20 real timelines (`core/post_game_score.py:220`).
-- **G7-08** (was G8) hz_mismatch ground-truth cross-ref: richer rewind SR coverage per matchup (most
-  calibration classes read insufficient_data).
-- **G7-09** (was G9) Draft-Elo pairwise WR corpus densification (tightens as matchmade games accumulate).
+- **G7-08** (was G8) hz_mismatch ground-truth cross-ref - **DENSITY MEASURED 2026-07-18; this is NOT a
+  drain-session row.** SETTLED HEADLESS over `rewind_history.db`: **2,139 distinct
+  (lane, champ, champ) matchups, of which only 62 (2.9%) reach n>=5 and just 4 reach n>=10. Median
+  n=1.** That is exactly why most calibration classes read insufficient_data, and no realistic number
+  of played games fixes it - the fix is ARCHETYPE POOLING, i.e. headless code, not accrual.
+  RESIDUAL (accrual, background only): density rises slowly with every ranked q420 game. Re-read the
+  three counts above before anyone proposes a per-matchup calibration again.
+- **G7-09** (was G9) Draft-Elo pairwise WR corpus densification - **DENSITY MEASURED 2026-07-18; this
+  is NOT a drain-session row.** SETTLED HEADLESS: **8,188 distinct cross-team champion pairs observed,
+  covering 55.0% of the C(173,2) = 14,878 possible pairs, but EXACTLY ONE pair reaches n>=20.** Median
+  n=1. Per-pair win rate is therefore not reachable by playing; it needs archetype pooling (same
+  finding as G7-08), and it is the same reason G7-19 stays PARKED.
+  RESIDUAL (accrual, background only): the corpus tightens as matchmade games accumulate. Re-read the
+  n>=20 count before proposing any pairwise-WR consumer.
 - **G7-10** (was G10) B1 `det_coach_shadow` / WS3 `objective_playbook_shadow` / WS4
   `macro_response_shadow` flip gates (rows accruing ~37.6K / 33.6K / 32.7K on 2026-07-01; the flip
   DECISIONS are pending). SOURCE: commits `8470c3cc` / `6a615fad` / `0949fde5`.
@@ -624,18 +935,39 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
 - **G7-15** `[MERGED 2026-07-18 - was the B45/B46/B47 tails]` The two shared incoming-share midpoints.
   **All three engine flips are now default-ON and live** (`assume_item_crit_dr` ehp.py:1184,
   `assume_item_aa_dr` :1185, `assume_item_enemy_as_slow` :1190) - do NOT re-pitch any of those flips.
-  What is left is CALIBRATION only: `_ASSUMED_INCOMING_CRIT_SHARE` 0.5 vs a real crit-heavy comp
-  (R77/B45) and `_ASSUMED_INCOMING_AA_SHARE` 0.5 vs a real AA-heavy comp (shared by R80/B46 and
-  R86/B47 - Steelcaps per-hit AA-DR and Frozen Heart's -20% enemy AS stack multiplicatively on a build
-  holding both). SOURCE: LEDGER 799 + 809.
+  **AA-SHARE HALF MEASURED HEADLESS 2026-07-18; CRIT-SHARE HALF UNTOUCHED.**
+  `_ASSUMED_INCOMING_AA_SHARE`: measured from `timeline_events.victim_damage_json` (validated as damage
+  RECEIVED - the killer appears among the source participantIds in 3,994 of 4,000 sampled events,
+  99.85%; `type=OTHER` is champion-sourced, MINION / TOWER / MONSTER correctly excluded), on the
+  PHYSICAL denominator the engine actually uses (ehp.py:512, :553, :607). **SR all-queues 0.3993 to
+  0.4017** (13,577,662 of 33,797,855 over 36,952 events / 656 matches); ranked q420 only 0.3949.
+  Mode-invariant (SR 0.4017 / ARAM 0.3976 / Arena 0.4104), so ONE global constant is right. The
+  burst-bias worry is empirically dead - bucketing by damage-source count is FLAT (entries 01-05
+  0.3908, 06-10 0.3961, 11-20 0.4070, 21+ 0.4034). Patch drift is mild and upward: p13 0.3716, p14
+  0.3963, p15 0.4056, **p16 0.4178** - so **retune toward ~0.42, not 0.40**, if you weight the
+  live-patch era. FRAMING NOTE that decides the retune: 0.5 is filed as a MIDPOINT but is not one - the
+  population mean is ~0.40-0.42 and 0.5 sits near the **82nd percentile**; the genuine AA-heavy figure
+  is the **p90 = 0.549**. Decide which the constant is meant to be before moving it.
+  STILL OPEN: (1) **`_ASSUMED_INCOMING_CRIT_SHARE` 0.5 (R77/B45) was NOT measured at all** - that is
+  the whole remaining measurement, and it wants a real crit-heavy comp. (2) The AA retune itself stays
+  operator-gated under FOUR RULES rule 2: moving 0.5 -> 0.42 re-ranks EVERY build holding Steelcaps or
+  Frozen Heart (R80/B46 + R86/B47 stack multiplicatively on a build holding both).
+  SOURCE: LEDGER 799 + 809.
 - **G7-16** `[HOLD]` (was G15) HZ-A v4 laning-table regen + shadow validation - blocked on a real ALIVE
   laning tick existing (zero today) + the 190MB monolith-vs-shard commit decision. SOURCE: BACKLOG.md:54.
-- **G7-17** (was G17) R76 Arena deterministic-coach shadow flip gate: accrue real ARENA games into
-  gitignored `data/arena_coach_shadow.jsonl` (writer `core/arena_coach_shadow.py`) -> read
-  flip-readiness via `tools/arena_shadow_report.py` (ORUN1 `677f5237`, BUILT) -> operator OK before any
-  Haiku->deterministic flip of the arena coach block. STATUS re-probed 2026-07-18: the file is now
-  **~952 KB** (was 3 dead-state rows at seed; LEDGER 820 recorded 463 rows on 2026-07-08) - **re-run the
-  report, this rail may now be readable.**
+- **G7-17** (was G17) R76 Arena deterministic-coach shadow flip gate - **RAIL RE-RUN 2026-07-18; FLIP
+  CONTRAINDICATED.** **CORRECTION: the row's "the file is now ~952 KB, this rail may now be readable"
+  growth inference was WRONG.** The file has NOT grown - `data/arena_coach_shadow.jsonl` is 952,382
+  bytes / **463 non-blank lines**, mtime Jul 8 21:01, unchanged since LEDGER 820; it is simply ~2,057
+  bytes per row. `tools/arena_shadow_report.py` re-run: **463 rows / 4 champs / 31 rounds; 358
+  live-fight ticks + 105 dead-state; agreement 3/345 = 0.0087 on live-fight comparables** (Aphelios
+  0/42, Caitlyn 0/62, Kai'Sa 1/184, Viktor 2/57), dominant mismatch **det=PLAY AGGRO vs haiku=CAMP
+  PHASE x139**, flip-readiness reads `sample_met`. Sample is MET; **AGREEMENT is the blocker** - at
+  0.9% the two coaches disagree structurally. Do NOT flip the arena coach tail.
+  RESIDUAL (accrual): more real ARENA games into gitignored `data/arena_coach_shadow.jsonl` (writer
+  `core/arena_coach_shadow.py`), then re-run the report. Treat the PLAY AGGRO vs CAMP PHASE
+  disagreement as a deterministic-coach DEFECT to diagnose, not a threshold to wait out. Operator OK
+  before any Haiku->deterministic flip.
 - **G7-18** (was G18) ORUN5 grade-fold refinement (`assume_carry_share_grade` default-OFF at
   `core/post_game_rubric.py:410`, OR-gated with the existing carry_efficiency fold). Shipped headless
   byte-identical OFF (full-dict equality across 7 role/stat fixtures). The live default-ON flip = pass
@@ -762,6 +1094,40 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
 ---
 
 ## Live-flip ledger (loop appends; newest first)
+
+- 2026-07-18 (SYNTHETIC TRIAGE - 6 rows CLOSED, 24 rewritten to their live residual; NO engine,
+  flag or code change). Operator question: can the gated set be drained by "synthetic treatment",
+  staging an agent team that builds per-champion ally/enemy context from recorded data and
+  self-validates? Answered by a 14-agent pass - 7 triage agents (one per gate) then 7 ADVERSARIAL
+  refuters instructed to default REFUTED. Corpus characterized first: data/rewind_history.db
+  1.85 GB, 2961 matches, 30,562 participants, timeline_events 2,648,404 incl. 542,128 timestamped
+  ITEM_PURCHASED plus 28,446 ITEM_UNDO (fold in event order; the undo target is raw_json beforeId,
+  NOT the promoted item_id column), both teams, 643 usable SR matches -> 1286 team-comps.
+  VERDICT: **6 of 124 close.** G2-07 anti-tank level ramp (pure fn of champion+level, never needed
+  a client; Aatrox L3 0.4750 -> L16 0.8000, Senna 0.0772 -> 0.3353 4.34x, Darius/Vayne/Fiora FLAT
+  controls held); G3-05 / G3-06 / G3-07 the RF1/RF2/RF3+RF6 ARAM survivability flips (G3-07 rests on
+  the refuter's EMPTY-DEPTH run - the originally-filed depth already owned Thornmail 3075, which
+  structurally masked half the row's own prediction, so that evidence is INSUFFICIENT and must not
+  be cited alone); G4-08 R59 assume_lifeline_shield (stronger than an eyeball - the flag reaches no
+  ranking function engine-wide, so "order stays sane" is PROVEN, not observed); G7-03 champ-select
+  Haiku -> deterministic, closed STALE on structure (brief_via_coach is a one-line delegation to
+  brief_deterministic; _champ_select_deterministic.py imports only json/logging/threading/APP_DIR).
+  Refuter tallies CONFIRMED 15 / PARTIAL 24 / REFUTED 31. DOMINANT KILL = SUBSTITUTION: a gate row
+  asks whether something RENDERS, SENDS or UPDATES; the compute half is always available headless
+  and is always the wrong question. GATE 1 is structurally hostile to headless closure for exactly
+  this reason and closed ZERO of 6; GATE 6 closed 0 of 3 as expected.
+  TWO EVIDENCE DEFECTS CAUGHT BY THE REFUTERS, recorded so the pattern is recognizable: (1) evidence
+  manufactured to fit - a claim citing three real match ids whose REAL builds give 0.00 pct, with the
+  headline -48.09 pct requiring Runaan's hand-inserted onto a Darius; real match ids and real-looking
+  decimals made it read as corpus-grounded. (2) sample range published as a bound - 3 of 880 builds
+  measured and a ceiling published that full enumeration breaks by 2-4x, when the full enumeration
+  was available in the same query already running.
+  DO NOT RE-PITCH the synthetic drain expecting a different answer - the corpus is characterized and
+  the residue is genuinely live. The pass's real yield is the 24 PARTIAL rewrites: each now states
+  what is settled headless so the live half is a glance, not a session. Four partials (G3-04, G3-09,
+  G4-11, G5-04) have NO live residual at all because the flag has zero production callers - playing
+  the game changes nothing on screen. G6-02 was UPGRADED LIVE-ONLY -> PARTIAL on the triage's own
+  stated criterion. G1-05 re-tagged BLOCKED, not closed. Header re-tallied 124 -> 118.
 
 - 2026-07-18 (REORG, docs-only - NO engine / flag / code change) The checklist above was
   RESTRUCTURED BY GATE. Prior structure was A-H, half gate / half topic, which drained badly: section
