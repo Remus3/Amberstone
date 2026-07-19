@@ -1,6 +1,39 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19 (the RM-92 AH session relocated `2026-07-18j` batch26-31 to `docs/history_notes.md`; newest 3 = AH-slice `2026-07-19a` + Term A `2026-07-18l` + roster-closed `2026-07-18k`). NOTE: `scripts/wakeup_prune.py` is STILL a silent NO-OP against these headers - its `SESSION_RE` requires a word boundary after the day, so a letter-suffixed header like `# 2026-07-18h` or `# 2026-07-19a` never matches and it reports "nothing to do" at any file size. Confirmed again 2026-07-19 (`--dry-run` reported "0 session(s) <= keep=3" against a 4-session file). Relocations are manual until that is fixed (filed as its own task).
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19, the first one performed AUTOMATICALLY by `scripts/wakeup_prune.py` (relocated `2026-07-18k` roster-closed; newest 3 = RM-39 adjudication `2026-07-19b` + AH-slice `2026-07-19a` + Term A `2026-07-18l`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-07-19b (RM-39/RM-43 ADJUDICATED "no haste term", then my own headline RETRACTED; 4 Share/tool tails; 3 commits)
+
+**Phase 1 answer, and it holds:** haste must NOT modulate the measured cast rate.
+`ult_rates.get_spell_casts_per_sec` takes no `item_ids` (derivative zero across
+candidates); cast rates divide by whole-game duration (already haste-inclusive);
+and `hybrid._damage_axis` puts Aatrox 8/3 + Ambessa 9/0 on `ad` while every
+`_ability_damage` site gates on `ap`. `grep -c ability_haste` = 0 in `dps.py` and
+`hybrid.py`. Decisive: `compute_ability_dps` is called **0 times** for both in a
+full rank (Veigar control 142). Spec `docs/specs/SPEC_rm39_rm43_ability_haste.md`.
+
+**READ THIS BEFORE ANY DS PROBE.** I published a wrong retraction this session and
+caught it myself. Every `/rank-*` route defaults its target to ALL ZEROS, and
+BotRK's on-hit is %target-max-HP, so a zero-HP target sinks it ~50 places. At the
+sweep's tanky target (`100/60/2500/1200`) the RM-39/RM-43 filings reproduce
+**exactly** - Shojin 51 and 47. Two more traps: body key is `items` NOT `item_ids`,
+and there is no `/rank-hybrid` (bruiser = `/rank-bruiser`). All three now in the
+ROADMAP PROBE HAZARD block + `reference_ds_probe_zero_target_defaults`.
+Eleven agents and an adversarial judge panel did not catch it - they verify that
+code says what you claim, not that your probe asked the same question as the
+finding you are contradicting.
+
+**Do NOT redo:** RM-39/RM-43 are RE-SCOPED not rewritten - defect verbatim,
+mechanism now "missing AD-axis ability term" (92/173 champs, est 3-5 sessions).
+Do not re-pitch a haste term. Do not re-file the Share route-table / seam-doc /
+anchor-rule / SESSION_RE tails - all shipped in `2f35163d` with tests.
+`wakeup_prune.py` works now; the old "manual relocation" note is retired.
+
+**Next:** the AD-axis ability term is the open build. Operator-gated and NOT mine
+to flip: default-ON for `team_blended` (ds.ehp) and `apply_canonical_cast_rate_keys`
+(ult_rates).
 
 ---
 
@@ -78,55 +111,3 @@ load flake that passes standalone.
 champions) but only `ability_dps.py` prices AH - `dps`/`hybrid`/`ehp`/`burst`/
 `hps` carry ZERO, and carry/bruiser have no cooldown model to compress, so it is
 RM-86-sized. Size it before committing.
-
----
-
-# 2026-07-18k (ROSTER CLOSED 173/173 + 3 bugs landed + repo-wide .md prune; 6 commits)
-
-**DS_SWEEP is DONE. 173/173 - GAP 135, REFUTE 35, FENCED 3, Remaining 0.** Batch32
-closed it: Ziggs [REFUTE], Zilean [GAP RM-96 NEW], Zoe [GAP RM-40], Zyra [GAP RM-97
-NEW]. RM-96 = ds.hps prices heal/shield-CONDITIONAL passives at full value on a
-champion who cannot trigger them (Zilean pool inverted at #4/#5). RM-97 = persistent
-pet damage has no schema slot (Zyra plants 55-65 pct of her damage, scored zero;
-generalizes to Heimerdinger / Ivern / Yorick). Both SPEC-ONLY. Next free spec = RM-98.
-**Do NOT re-open the roster.**
-
-THREE BUGS LANDED, and in all three the briefed fix was WRONG - check the measurement
-before implementing anything handed down:
-- **RM-93** as briefed was a REGRESSION. Admitting Zaz'Zak's/Bloodsong ranks Bloodsong
-  #2 Vel'Koz / #3 Jinx. Real defect was the inverse: the SR deny held 2 of 5 Bounty of
-  Worlds upgrades. Landed sibling-complete (+3 ids), SR pool 144 -> 141, no ENGINE bump
-  (precedent 415c1795). Live-verified on restarted :8893.
-- **RM-81** prescribed fix would have CRASHED the tool (Aurelion Sol Q IndexError kills
-  the sweep) plus 12 bad truncations. Real tell is an INTERNAL DROP, not end-to-end
-  decrease. Mordekaiser Q 388.9 pct -> 4.81 pct, SHAPE_SUSPECT marker added.
-- **Unpaired enemy-share** silently returned NO recommendation (reproduced: Thresh 141
-  rows -> None). 50.1 pct of real comps hit it. `_resolve_enemy_shares` derives the
-  partner. Hard prerequisite for the archetype program.
-
-DOCS: BACKLOG 285 -> 141 lines (15 teardowns relocated VERBATIM to
-`docs/research/COMPETITOR_LIFT_INDEX.md` - the prune plan named that destination and
-never created it). ROADMAP 85125 -> 41690 bytes, `test_doc_size_budget` was RED at HEAD
-and is now green. 213 machine-generated reports archived. New `docs/adr/README.md` (adr/
-was cited 29x with ZERO links). ADR-001 retired. RC_WORK_TRACKER resynced.
-
-**LEDGER CITATION DEFECT (annotated, not repaired):** 387 of 1148 cited SHAs dead. NOT a
-history rewrite - I claimed that first and it was WRONG (inferred from file position, which
-maps to item number not date). Real shape: steady ~50 pct Apr-Jun, **0 of 537 in July** -
-a worktree-slice citation convention that already self-corrected. Work landed; citations
-were wrong. Preamble added to the 3 ledger docs.
-
-**GATED SYNTHETIC TRIAGE: 6 of 124 closed, not "a lot".** 14 agents (7 triage + 7
-adversarial refuters). CONFIRMED 15 / PARTIAL 24 / REFUTED 31. Dominant kill =
-SUBSTITUTION. Two agents produced evidence that failed audit (fabricated build numbers;
-3-of-880 sample published as a bound). **Do NOT re-pitch the synthetic drain** - header
-carries the note. Real yield = 24 PARTIAL rewrites (live half is now a glance). 118 open.
-
-NEXT: **Term A** archetype objective - `score_by="team_blended"` on ehp.py, DEFAULT-OFF,
-gated on the ally-facing `affects` signal; moves 13 of a 28-champion cohort that currently
-shares ONE byte-identical build order (Taric and Rammus get the same six items). Needs new
-`_item_ally_grant.py`, ENGINE 1.220.0. **Do C1 FIRST:** re-adjudicate RM-92 at build depth -
-Soraka/Yuumi "#10 of 10" are `item_ids=[]` ARTIFACTS (Moonstone is #2 at depth and the
-shipped build order already buys it); 2 of 6 re-probed rows dissolved, so the 21-champion
-figure is unaudited. Verification metric is CONTEXT LIFT (permutation test); pre-fix
-baseline measures the engine as context-BLIND (MRR +0.0018, 42 pct placebo-identical).

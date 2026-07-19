@@ -119,6 +119,58 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-18k (ROSTER CLOSED 173/173 + 3 bugs landed + repo-wide .md prune; 6 commits)
+
+**DS_SWEEP is DONE. 173/173 - GAP 135, REFUTE 35, FENCED 3, Remaining 0.** Batch32
+closed it: Ziggs [REFUTE], Zilean [GAP RM-96 NEW], Zoe [GAP RM-40], Zyra [GAP RM-97
+NEW]. RM-96 = ds.hps prices heal/shield-CONDITIONAL passives at full value on a
+champion who cannot trigger them (Zilean pool inverted at #4/#5). RM-97 = persistent
+pet damage has no schema slot (Zyra plants 55-65 pct of her damage, scored zero;
+generalizes to Heimerdinger / Ivern / Yorick). Both SPEC-ONLY. Next free spec = RM-98.
+**Do NOT re-open the roster.**
+
+THREE BUGS LANDED, and in all three the briefed fix was WRONG - check the measurement
+before implementing anything handed down:
+- **RM-93** as briefed was a REGRESSION. Admitting Zaz'Zak's/Bloodsong ranks Bloodsong
+  #2 Vel'Koz / #3 Jinx. Real defect was the inverse: the SR deny held 2 of 5 Bounty of
+  Worlds upgrades. Landed sibling-complete (+3 ids), SR pool 144 -> 141, no ENGINE bump
+  (precedent 415c1795). Live-verified on restarted :8893.
+- **RM-81** prescribed fix would have CRASHED the tool (Aurelion Sol Q IndexError kills
+  the sweep) plus 12 bad truncations. Real tell is an INTERNAL DROP, not end-to-end
+  decrease. Mordekaiser Q 388.9 pct -> 4.81 pct, SHAPE_SUSPECT marker added.
+- **Unpaired enemy-share** silently returned NO recommendation (reproduced: Thresh 141
+  rows -> None). 50.1 pct of real comps hit it. `_resolve_enemy_shares` derives the
+  partner. Hard prerequisite for the archetype program.
+
+DOCS: BACKLOG 285 -> 141 lines (15 teardowns relocated VERBATIM to
+`docs/research/COMPETITOR_LIFT_INDEX.md` - the prune plan named that destination and
+never created it). ROADMAP 85125 -> 41690 bytes, `test_doc_size_budget` was RED at HEAD
+and is now green. 213 machine-generated reports archived. New `docs/adr/README.md` (adr/
+was cited 29x with ZERO links). ADR-001 retired. RC_WORK_TRACKER resynced.
+
+**LEDGER CITATION DEFECT (annotated, not repaired):** 387 of 1148 cited SHAs dead. NOT a
+history rewrite - I claimed that first and it was WRONG (inferred from file position, which
+maps to item number not date). Real shape: steady ~50 pct Apr-Jun, **0 of 537 in July** -
+a worktree-slice citation convention that already self-corrected. Work landed; citations
+were wrong. Preamble added to the 3 ledger docs.
+
+**GATED SYNTHETIC TRIAGE: 6 of 124 closed, not "a lot".** 14 agents (7 triage + 7
+adversarial refuters). CONFIRMED 15 / PARTIAL 24 / REFUTED 31. Dominant kill =
+SUBSTITUTION. Two agents produced evidence that failed audit (fabricated build numbers;
+3-of-880 sample published as a bound). **Do NOT re-pitch the synthetic drain** - header
+carries the note. Real yield = 24 PARTIAL rewrites (live half is now a glance). 118 open.
+
+NEXT: **Term A** archetype objective - `score_by="team_blended"` on ehp.py, DEFAULT-OFF,
+gated on the ally-facing `affects` signal; moves 13 of a 28-champion cohort that currently
+shares ONE byte-identical build order (Taric and Rammus get the same six items). Needs new
+`_item_ally_grant.py`, ENGINE 1.220.0. **Do C1 FIRST:** re-adjudicate RM-92 at build depth -
+Soraka/Yuumi "#10 of 10" are `item_ids=[]` ARTIFACTS (Moonstone is #2 at depth and the
+shipped build order already buys it); 2 of 6 re-probed rows dissolved, so the 21-champion
+figure is unaudited. Verification metric is CONTEXT LIFT (permutation test); pre-fix
+baseline measures the engine as context-BLIND (MRR +0.0018, 42 pct placebo-identical).
+
+---
+
 # 2026-07-18i (DS_SWEEP batch21-25 -> 139/173: 25 champions in one session; 23 GAP + 2 REFUTE, TWO new numbers, ONE self-retraction)
 
 Read-only research, NO engine change. LEDGER 942 + 943. Three commits:
@@ -200,6 +252,9 @@ Two future-proofing chips queued (Arena mirror leakage guard; patch-vintage drif
 guard). Do NOT rewrite `enchanter_items.json` `_meta.patch` 16.9.1 -> 16.14.1.
 
 ---
+
+---
+
 # 2026-07-18g (DS_SWEEP batch20 -> 114/173: Rell / Renata Glasc / Renekton / Rengar / Riven; FIVE GAPs, zero REFUTEs, one live user-facing defect, one retraction)
 
 Read-only research pass, NO engine change. LEDGER 939. Fan-out held a fifth session.
@@ -272,183 +327,6 @@ RM-90 adds a second RC-2 workstream (the support pool) alongside Quinn's.
 
 ---
 
-## Relocated 2026-07-18 (batch21-25 sweep session; keep last 3 = 2026-07-18i + 2026-07-18h + 2026-07-18g)
-
-# 2026-07-18f (DS_SWEEP batch19 -> 109/173: Pyke / Quinn / Rakan / Rammus / Rek'Sai; 4 GAP + 1 REFUTE, TWO new numbers, and one champion that breaks the RM-86 L1 plan)
-
-Read-only research pass, NO engine change. LEDGER 938. Qiyana skipped (already
-FENCED). **Fan-out held for the fourth session running**: probes main-thread, 5 flat
-research agents with a hard no-sub-agent constraint, zero nested spawns, zero kills.
-
-**QUINN RM-89 IS THE ONE THAT MATTERS - she breaks the L1-only plan.** First champion
-measured carrying BOTH RM-86 root causes at once:
-- **RC-1**: carry/ds.dps leads BotRK #1 / Runaan's #2 / Kraken #3 / Stormrazor #4, every
-  one 0-2% real pick, because **Harrier is priced as attack-speed throughput when its
-  proc rate is cooldown-gated and attack-speed-INDEPENDENT**, and crit chance is a
-  cooldown scalar that does NOT make it crit. No reroute rescues her - all four routes
-  still lead BotRK #1.
-- **RC-2**: her carry pool holds only **111** items and **structurally excludes Profane
-  Hydra and Umbral Glaive**, both present in the 144-item assassin/onhit/bruiser pools.
-  Her #2 signature item is not in the ranked set at all.
-So **a perfect L1 gate would suppress her three bad leads and still never surface her
-real second item.** Section 5 predicted L1 makes RC-2 worse; Quinn is the instance. The
-spec's sequencing note now reads: **L1 is necessary and provably insufficient.** Also:
-her role FLIPPED to jungle ~55% / top ~32% (16.10-16.11 Harrier monster damage, 16.14
-Harrier CD cut) and she is a lethality assassin in ~85-90% of real builds, ~0% on-hit.
-
-**Rammus displaces Ornn as RM-87's canonical example.** ds.ehp is close to rank-INVERTED
-for him: his **92%-pick effectively-mandatory Thornmail is #20** while **three items under
-1.6% combined pick sit #2/#5/#9** (Warmog's 0.35%, Heartsteel 0.85%, Spirit Visage 0.33%).
-Measured mechanism: passive Spiked Shell = 15% TOTAL armor + 15% TOTAL MR as bonus AD; W
-turns armor A into 1.6A+47 at rank 5 so passive AD = 0.24A+7, **about +24 AD per 100
-armor**; **bonus HEALTH contributes ZERO to every damage source in his kit**. A self-EHP
-objective rewards health at high resist values, so it pushes toward exactly what real
-players avoid.
-
-**Pyke RM-88 - new shape: a throughput objective cannot price a discontinuous execute
-threshold plus a gold-and-reset economy.** Lethality QUADRUPLE-dips for him (damage, E
-stun duration, W move speed, R execute threshold at 1.5 per lethality, passive grey-health
-rate); the engine models only the damage dip. ds.burst leads never-built BotRK #1 /
-Trinity #4 / IE #7 over his real Umbral #12 / Youmuu's #15 / Edge of Night #19. **Route is
-CORRECT, do not re-open** - `axis_correct_archetype` catches the Support tag, live-
-confirming that Pyke was never broken. **Correction recorded so it is not re-derived:** his
-bonus-health-to-AD passive is NOT exploited (gold-neutral, zero durability, strictly
-dominated); the load-bearing coupling runs the OTHER way - grey-health cap = 80 + 800%
-bonus AD, so buying AD buys effective HP.
-
-**Rek'Sai - third corroboration that L1's vector must be CONTINUOUS, not boolean.** Her
-unburrowed Q genuinely applies on-hit AND crits and she genuinely wants attack speed, yet
-her ds.hybrid top-9 is entirely never-built and her 67.1%-pick Spear of Shojin sits
-**#48** - because Q is only 3 empowered autos per Fury cycle. With Pantheon (~1/5 cadence)
-and Olaf (free kit AS) that is three kits that HAVE the term and must still not be
-credited at face value.
-
-**Rakan REFUTE doubles as the first post-hoc validation of a Slice C route override** - the
-RM-84 enchanter -> tank move is confirmed at roughly 10:1 (durability ~167% combined
-across slots vs ~16% for the whole heal/shield shelf). Flagged honestly as the WEAKEST
-refute in the Braum/Alistar class: his two real first legendaries are #16 and #23.
-
-**The invariance measurement, redone at scale (32 champs, 4 scorers, 8 per panel, 28 pairs
-each, top-8):** `ds.ability` **8.00/8 set overlap - perfectly invariant, all eight mages
-get the same eight items**; `ds.ehp` 7.57/8; `ds.hybrid` 6.04/8; `ds.dps` 4.54/8. Replicates
-RM-86 section 2's ordering independently on a panel 4x larger, plus a refinement: **ds.dps
-does not vary continuously, it BIFURCATES** into an on-hit-led cluster (Quinn/Vayne/Sivir)
-and a lethality-crit cluster (Jinx/Caitlyn/Draven) - which is exactly how Quinn ends up
-served an on-hit list.
-
-**A data-layer bound on ANY scorer fix:** three of five champions carry their decisive
-mechanic in `effects_descriptions` prose with **EMPTY `damage_blocks`** (Rammus armor->AD,
-Pyke health->AD, Quinn Harrier) - RM-81 intersecting RM-86. For them the conversion an L1
-gate would read is not in the data at all, so L1 cannot reach them by any design. An L1
-acceptance suite should carry one as a known-unreachable control.
-
-**Filed as its own task, NOT fixed:** the legendary **Opportunity** (id 6701, 2700g) is in
-the item catalog but enters **ZERO** ranked pools across 7 champions and 2 archetypes,
-while sibling lethality items appear normally. RC-2 pool-membership defect.
-
-**Process note:** I hit both traps in my own batch18 COUNT INTEGRITY note - a naive
-`split('## Full roster')` grabbed the prose mention, and a multi-line replace across the
-now-non-contiguous Summary lines silently no-opped. Caught only because the count was
-re-verified AFTER writing. The note now documents both.
-
-Artifacts: 5 verdicts + 1 method note in `docs/DS_SWEEP_TRACKER.md`; new **section 9** in
-`docs/specs/RM-86_scorer_kit_blindness_investigation.md`; 5 `project_ds_sweep_*` memories.
-
-**NEXT:** Rell onward (batch20); next GAP spec = RM-90. **RM-86 L1 is still the highest-
-value engine work, now with acceptance anchors AND a proven insufficiency bound - the
-honest framing is L1 + RC-2 pool work, not L1 alone.**
-
-## Relocated 2026-07-18 (RM-86 L1 session; keep last 3 = 2026-07-18h + 2026-07-18g + 2026-07-18f)
-
-# 2026-07-18e (DS_SWEEP batch18 -> 104/173: Olaf / Orianna / Ornn / Pantheon / Poppy; 4 GAP + 1 REFUTE, but only ONE new number)
-
-Read-only research pass, NO engine change. LEDGER 937. **Fan-out held for the third
-session running**: every engine probe in the main thread, exactly 5 flat research
-agents each opening with a hard no-sub-agent constraint. Zero nested spawns, zero
-limit kills. DS confirmed live at ENGINE 1.217.0 / patch 16.14.1 BEFORE any probe.
-
-**The convergence from batch17 repeats, harder.** Four GAPs and only one needs a new
-spec number: Olaf + Pantheon are the Aatrox RM-39 ability-bruiser family, Orianna is
-the Ahri RM-40 burst-mage family (sixth champion). RM-87 goes to Ornn alone. The sweep
-is now mostly confirming known families rather than finding new defects - that is a
-signal about where the remaining value is (fixing RM-86 L1, not finding RM-88).
-
-**Olaf is the most extreme RM-39 instance measured.** bruiser/ds.hybrid returns a top-6
-where EVERY item is one he essentially never builds (BotRK #1 <2%, Trinity #2 <2%,
-Kraken #4 ~0%, Heartsteel #9 ~0%, Liandry's #20 on a champ with ZERO AP ratios), while
-his entire real core sits #19-#43 with signature **Stridebreaker #33**. No reroute
-rescues him. Nuance that stops it being plain on-hit blindness: his W grants 50-90% AS
-and his passive up to 70% missing-HP AS, so the kit DOES scale with attack speed - the
-AS just arrives FREE, so purchased AS has sharply diminishing real value.
-
-**Pantheon supplies the numeric anchor RM-86 L1 was missing.** Only his empowered W can
-crit or apply on-hit and the passive empowers ~1 ability per 5-cast cycle, so AS/crit/
-on-hit convert at roughly a FIFTH of face value. The meta researcher reached RC-1's
-conclusion unprompted, without seeing the spec. **This argues L1's conversion vector must
-be CONTINUOUS in [0,1], not the boolean has-an-AS-term gate section 4 sketched** - a
-boolean scores his on-hit at 0 or 1 and both are wrong.
-
-**Orianna splits a standing family belief in two.** Engine leads Liandry's #1 at a 3.3%
-real pick rate and buries her signature Luden's Echo #13 (GAP, textbook). BUT Blackfire
-Torch #2 is NOT a defect - it is genuinely 31%-pick meta that OUT-WINS Luden's, bought
-for AP/haste/mana rather than a burn her kit cannot apply. **The "Liandry's + Blackfire
-lead" is TWO findings, not one.** Every future burst-mage verdict and any L1 acceptance
-test must score them separately or the gate over-fires.
-
-**RM-87 (Ornn) is the one genuinely new shape: the first ds.ehp gap that is an intra-pool
-WEIGHTING defect, not an omitted off-axis core.** He builds zero damage items so tank/
-ds.ehp is the CORRECT axis (NOT the Amumu RM-44 / Cho'Gath RM-51 / Galio RM-55 shape -
-there is nothing off-axis to omit). But four sub-7%-pick items rank above his signature
-Sunfire Aegis #11 (Warmog's #2 at 1.9%, Heartsteel #5, Spirit Visage #8 at 1.0%, Dead
-Man's #10 at 1.7%), with Thornmail #20. Root cause MEASURED: **E Searing Charge scales
-off 40% bonus armor + 40% bonus MR** and passive Living Forge inflates that same resist
-pool +10-30%, so resists pay TWICE while a self-EHP objective counts them once.
-
-**THE BATCH HEADLINE - the Ornn / Poppy matched pair, and what it proves.** Both route
-tank/ds.ehp and return the SAME top-6 in the SAME order. That invariance is CORRECT for
-Poppy (REFUTE: her real core occupies #6/#8/#9/#10, never-built items correctly
-suppressed at BotRK #73 / Liandry's #50 / Trinity #47, and decisively **no Poppy ability
-converts her own bonus HP or resists into damage** - Q reads the TARGET's max HP) and a
-DEFECT for Ornn. **This extends the RM-86 section-2 invariance table from top-5 to top-8
-on two more scorers:** Ornn / Pantheon / Poppy rerouted to bruiser return an identical
-top-8 item SET (Ornn and Poppy 8-of-8 in ORDER) across a tank, a tank/fighter and an
-assassin/fighter - **and Olaf is the control that names the mechanism**, overlapping only
-4-of-8 because his base AD/AS differ. That is RC-1 as a POSITIVE measurement rather than
-an absence: the champion enters the objective through BASE STATS ONLY, so similar base
-stats yield literally the same build.
-
-**Standing rule now in the tracker:** adjudicate every ds.ehp and ds.hybrid verdict on
-whether the SHARED list happens to fit the champion, never on the list being
-champion-specific - it is not. (Companion to the batch16 ds.hps invariance finding.)
-
-Artifacts: 5 verdicts + 2 method notes in `docs/DS_SWEEP_TRACKER.md`; new **section 8**
-in `docs/specs/RM-86_scorer_kit_blindness_investigation.md` (batch18 corroboration + 5
-concrete per-champion L1 acceptance anchors, including Poppy/Ornn as negative controls);
-5 `project_ds_sweep_*` memories.
-
-**NEXT:** Pyke onward (batch19); next GAP spec = RM-88. **RM-86 L1 is still the
-highest-value engine work on the board and now has per-champion acceptance anchors** -
-that is the recommended next build, not batch19. Ornn RM-87, Nunu's TANK-tag route gap
-and Nasus's RC-2 pool partition are operator-gated and unstarted.
-
----
-
-## Relocated 2026-07-18 (Irelia..Jax batch9 DS-sweep - keep last 3: Kennen..Kog'Maw batch12 + Karthus..Kayn batch11 + Jayce..Karma batch10)
-
-# 2026-07-17 (DS meta-valuation sweep - Irelia..Jax batch9, 3 REFUTE + 2 GAP; read-only, NO engine change; strict-alpha A->Z)
-
-Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroute + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 54 -> 59/173 (GAP 37, REFUTE 19, FENCED 3), remaining 114. THREE REFUTE + TWO GAP (breaks the batch7/batch8 GAP-dense streak). Probe reused `probe_batch8.py` (repointed CHAMPS). Memories `project_ds_sweep_{irelia_onhit_served_refute,ivern_enchanter_refute,janna_enchanter_refute,jarvan_ability_bruiser,jax_spellblade_order_gap}`.
-
-- **Irelia REFUTE** (AD on-hit diver correctly SERVED: production bruiser/ds.hybrid LEADS her signature Blade of the Ruined King #1 + Kraken #3; Trinity #2 is a benign over-surface [Q/W proc Sheen so it ranks, but she does not build it - not a mis-LEAD since her real #1 IS led]; Wit's End/Death's Dance under-surfaced = shared hybrid AS-uptime scope limit).
-- **Ivern REFUTE + Janna REFUTE** (two more Alistar/Bard/Blitzcrank/Braum enchanter-scorer REFUTEs: enchanter/ds.hps serves an IDENTICAL heal-shield ranking [Helia #1/Ardent #2/Staff #3/Redemption #6/Moonstone #9] for BOTH, correct axis + NEVER builds AP damage [the mage reroute's Liandry's #1 is the false-positive it avoids]; signature Moonstone #9-last [Ivern] / Ardent #2-near-led [Janna] + Dawncore/Shurelya's/Dream Maker not in the 9-item hps pool = the class-level enchanter-scorer scope limit, NOT a per-champ gap).
-- **Jarvan IV GAP RM-65** (ability-bruiser Aatrox/Hecarim/Illaoi family: Q Dragon Strike 145%-bonus-AD + armor-shred + R burst, passive Martial Cadence a SINGLE front-loaded first-hit proc NOT sustained on-hit; production bruiser/ds.hybrid over-leads never-built BotRK #1 + off-item Trinity #2 and buries his signature Sundered Sky #16-19 + Black Cleaver #28-40; no reroute helps; his ability-damage/haste axis unmodeled).
-- **Jax GAP RM-66** (the MILDEST ordering GAP + a NEW mild sub-shape: his on-hit/spellblade AXIS IS correctly served [unlike Hecarim/Illaoi] but the Sheen-vs-on-hit ORDER is wrong - ds.hybrid over-leads situational BotRK #1 over his signature Trinity Force #2, Sundered Sky #11-17 buried; MILDER than Gnar RM-58 whose leading BotRK was NEVER-built vs Jax's situational-real).
-- **KEY batch9 insight:** the STANDOUT is a THREE-WAY contrast - Irelia/Jax/Jarvan all produce the SAME bruiser/ds.hybrid output (Blade of the Ruined King #1 / Trinity Force #2) but split into 3 verdicts by GROUND-TRUTH signature: Irelia REFUTE (BotRK IS her real #1), Jax GAP (Trinity/Sheen IS his real #1, engine #2 behind situational BotRK - mild ordering), Jarvan GAP (Sundered Sky IS his real #1, buried - Aatrox-family); discriminator = does the engine's #1 (BotRK) match the champ's real signature? The ability-bruiser GAP family gains Jarvan IV; the enchanter/tank-support REFUTE cluster gains Ivern + Janna.
-
-**NEXT SESSION: strict ALPHABETICAL, next-up = Jayce**, then Jinx, K'Sante, Kalista, Karma (tracker `docs/DS_SWEEP_TRACKER.md`; skip Jhin + Kai'Sa, already REFUTE). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch8.py` (item_ids=[] for the FIRST item, timeout>=30s; the row carries `item_name`; ds.hybrid rows key hybrid_delta_pct not `delta`; TRUST RANK ORDER; resolve each champ's primary via `core.archetype_picks.default_for_champion` then `rank_for_primary_archetype` + reroutes at top=40/140). Skip resolved (Aatrox..Jax + Corki/Ezreal/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: Jayce (AD hybrid melee/ranged transform, lethality/poke caster - Sheen/spellblade served, or an AD-caster mis-route like Corki/Ezreal?); Jinx (AD crit-marksman hypercarry - crit-served like Aphelios REFUTE, or a fight_length burst-blend over-lead like Caitlyn/Draven GAP?); K'Sante (AD tank-bruiser, %maxHP + R-form - ability-bruiser or tank; on-hit over-lead?); Kalista (AD on-hit marksman - on-hit-served REFUTE like Varus, contrast crit); Karma (enchanter/mage support - enchanter REFUTE like Janna, or an AP-poke mage GAP?). Next GAP spec = RM-67.
-
----
-
 # 2026-07-18 (DS meta-valuation sweep - LeBlanc..Lissandra batch13, 3 GAP + 2 REFUTE; read-only, NO engine change; strict-alpha A->Z)
 
 Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1 / 173 champs / 706 items confirmed live, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroutes at top40, plus a HIGH-conf meta-research subagent per champ, 5-10 aggregators + kit/wiki; CONVERGED). Tier-0 docs/memory only, no .py. Resolved 74 -> 79/173 (GAP 52, REFUTE 24, FENCED 3), remaining 94. Probe rebuilt as `probe_batch13.py` (dumps full top-40 to JSON per champ/route/cell). Memories `project_ds_sweep_{leblanc_burst_ludens_buried,leesin_ability_bruiser,leona_tank_support_refute,lillia_sustained_dot_refute,lissandra_burst_mage_rocketbelt}`.
@@ -462,22 +340,6 @@ Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sw
 - **METHOD GOTCHAS added this batch:** (a) research subagents may run their OWN raw-endpoint probes that BYPASS candidate filtering and return items the production client path never surfaces (this run: Void Immolation, Divine Sunderer, and the known-pollution **Golden Spatula** from the item-213 cleanup) - always re-probe via `rank_for_primary_archetype` and treat that as authoritative; (b) **a zeroed target silently deletes every %maxHP item** (Eclipse falls out of top-20 at target_max_hp=0) - always use realistic non-zero target HP; (c) `data/daemon_slayer/<patch>/items.json` nests under a **`data`** key and build-order tables nest under **`build_orders`** - a naive top-level parse silently reports 1-2 champs instead of 173; (d) several secondary sites print LeBlanc's base Q using the **Mimic: Sigil** values (overstating early Q by 7-40%); (e) **prefer SOURCED aggregator damage splits over an agent's computed ones** - the first Lee Sin pass computed ~91/9/0 and a second pass found two aggregators agreeing on ~78/14/8; **ability-vs-auto share is genuinely UNAVAILABLE** (Match-V5 exposes only physical/magic/true, not source); (f) **HALLUCINATION CAUGHT** - a WebFetch summarizer claimed "Lee Sin has 90.44% pickrate on Trinity Force", having mis-attributed **Garen's** number; a raw scrape showed Lee Sin does not appear on that item page at all. Treat WebFetch-summarized per-item pick rates as unverified until raw-scraped.
 
 **NEXT SESSION: strict ALPHABETICAL, next-up = Locke**, then Lucian (ALREADY GAP RM-37 - skip), Lulu, Lux, Malphite, Malzahar (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch13.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct NOT `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's DEFAULT route via `core.archetype_picks.default_for_champion` [Slice A `_AP_ASSASSIN_IDS` -> assassin/burst; Slice B onhit-roster -> onhit; else axis-corrected tag] then `rank_for_primary_archetype` + reroutes at top=40; dump full top-40 to JSON; **use non-zero target HP or %maxHP items silently vanish**). Skip resolved (Aatrox..Lissandra + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: **Locke** (VERIFY this is a real current champion before probing - the roster line came from the live DDragon champion list but the name is unfamiliar; if real, resolve tags + default route first); Lulu (enchanter support - expect the Janna/Ivern enchanter/ds.hps REFUTE, Support-primary tag; but CHECK the DDragon primary tag, since a Mage-primary would reproduce the Karma RM-69 default-route GAP); Lux (AP burst mage, Mage/Support dual-role - classic burst-mage-BURIED candidate: watch a Liandry's over-lead with her Luden's/Malignance/Horizon Focus signature buried, i.e. the Ahri RM-40 / Lissandra shape; also check whether her Support share triggers a Karma-style route issue); Malphite (AP-burst-vs-tank two-build champ - Tank primary routes tank/ds.ehp, but an AP Malphite rushing Rocketbelt/Nashor's would reproduce the Amumu RM-44 / Cho'Gath RM-51 / Galio RM-55 AP-tank-RUSH GAP; the discriminator is whether a SEPARATE off-axis AP core is omitted); Malzahar (AP sustained-DoT/DPS mage - Void Swarm + E Malefic Visions DoT + R channel: a strong Brand/Cassiopeia/Lillia sustained-DoT REFUTE candidate where the Liandry's lead would be CORRECT; verify the DoT classification against his actual damage profile). Next GAP spec = RM-79.
-
----
-
----
-
-# 2026-07-17 (DS meta-valuation sweep - Gwen..Illaoi batch8, 5 GAP + 0 REFUTE; read-only, NO engine change; strict-alpha A->Z)
-
-Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroute + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 49 -> 54/173 (GAP 35, REFUTE 16, FENCED 3), remaining 119. The SECOND GAP-dense batch (5/5 GAP RM-61..64; batch7 was the first). Probe reconstructed as `probe_batch8.py` (scratchpad is session-scoped). Memories `project_ds_sweep_{gwen_onhit_dot_overlead,hecarim_ability_bruiser,heimerdinger_blackfire_underled,hwei_blackfire_underled,illaoi_tentacle_ability_bruiser}`.
-
-- **Gwen GAP RM-61** (NEW onhit-scorer sub-shape: Slice-B onhit-routed, ds.onhit SERVES her on-hit axis [Dusk and Dawn #2-4, Guinsoo's #2-3, Statikk #3-4, Nashor's #5 - NOT the Azir #17 ds.onhit-FAILS case] but OVER-LEADS never-built %maxHP-DoT Liandry's #1 + Blackfire #6-7 over her signature spellblade + buries her AP-amp core Shadowflame #12/Rabadon's #13/Riftmaker #16; root cause = the onhit scorer conflates her passive %maxHP-magic-on-hit with Liandry's %maxHP-burn and over-credits a burn item she never builds, when her %maxHP rides her PASSIVE [scales AP+AS] so she wants AP/AS/on-hit-doublers; TWO defects; the REFUTE-leaning wakeup prediction OVERRIDDEN by the probe).
-- **Hecarim GAP RM-62** (PURE Aatrox twin - AD ability-DPS juggernaut, Q Rampage 90%-bonus-AD-spam + E move-speed->AD + Warpath MS->12-24% bonus-AD, signature Spear of Shojin buried #53/#48 while bruiser/ds.hybrid over-leads never-built on-hit BotRK #1 + his DEAD ~44%-WR Sheen Trinity #2, and buries Black Cleaver #31/#45 + Death's Dance #43 [whole core >30]; no reroute helps; ability-amp/haste axis unmodeled; NOT Camille-served since his Trinity is dead + signature non-Sheen).
-- **Heimerdinger + Hwei GAP RM-63 SHARED** (the MILDEST GAP class - a one-slot signature mis-order: mage/ds.ability leads Liandry's #1 over their true signature Blackfire Torch #2; RIGHT-family WRONG-item where the leader Liandry's is their REAL 2nd-core item [NOT never-built like Gnar] + the signature is surfaced #2 [NOT buried like Ahri #15]; Heimer = sustained-DoT turret [Blackfire 100% on-hit burn procs off turret ticks, 16.14 buff], Hwei = burst/control [Blackfire AH+burst-amp for his 10-spell book]; SAME engine defect + fix -> ONE RM; both burst-reroutes are RM-41 AD-polluted so the fix stays in the mage scorer; Hwei is ADJACENT to but DISTINCT from the Ahri/Annie/Aurora/Elise/Gragas burst-mage-BURIED family since his signature is #2 not buried).
-- **Illaoi GAP RM-64** (ability-bruiser whose damage is ~90% TENTACLE SLAMS [spell-classified, do NOT proc Sheen or on-hit] - bruiser/ds.hybrid leads Trinity Force #1 [Sheen, OFF her current core] + never-built BotRK #4-7 and buries her signature Black Cleaver #33/#43 [%armor-shred ability-amp, like Hecarim's Shojin]; her real Sheen item Iceborn IS surfaced #4-8 correct-as-2nd; the KEY Camille/Fiora CONTRAST - their led Sheen item IS their real 1st [served REFUTE] but Illaoi's Trinity #1 is off-meta because tentacles bypass Sheen/on-hit + her non-Sheen signature is buried [GAP]).
-- **KEY batch8 insight:** the ability-bruiser GAP family (Aatrox/Ambessa/Darius/Garen/Gangplank) gains Hecarim [pure Shojin-buried twin] + Illaoi [tentacle-ability, PLUS a Sheen-Trinity-over-lead that superficially mimics the Camille REFUTE but is off-meta]; a NEW mildest-GAP cohort - Heimer+Hwei SHARE RM-63, a one-slot Blackfire-under-led ds.ability order issue; and the onhit scorer gets its FIRST over-lead sub-shape (Gwen - serves the on-hit axis but mis-leads %maxHP-DoT, UNLIKE Azir where ds.onhit fully fails). The burst-mage-BURIED family does NOT grow (Hwei is adjacent-but-distinct).
-
-**NEXT SESSION: strict ALPHABETICAL, next-up = Irelia**, then Ivern, Janna, Jarvan IV, Jax (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch8.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct not `delta`; the row also carries `item_name` - use it; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's primary via `core.archetype_picks.default_for_champion` then `rank_for_primary_archetype` + reroutes at top=40/140). Skip resolved (Aatrox..Illaoi + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: Irelia (AD bruiser-skirmisher, Q-reset on-hit + passive stacks + W - Sheen/spellblade Trinity served like Camille, or on-hit BotRK over-lead like Aatrox?); Ivern (support/jungle - enchanter/ds.hps zero-damage REFUTE-leaning, aura scope limit like Alistar/Bard?); Janna (enchanter support - Alistar-class REFUTE?); Jarvan IV (AD bruiser - ability-bruiser family, or served?); Jax (on-hit/AS bruiser-fighter, R+E on-hit - likely on-hit-served or a hybrid over-lead; watch Blade of the Ruined King/Trinity). Next GAP spec = RM-65.
 
 ---
 
@@ -15572,6 +15434,199 @@ Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sw
 - **KEY batch12 insight:** FOUR family-extensions + ONE class-REFUTE - the burst-mage-BURIED family reaches 6 (Kennen, with a can't-value-active-engage Rocketbelt wrinkle), the crit-marksman burst-blend family gains a MILD hybrid (Kindred, whose on-hit Kraken opener makes the lead partly-right), the ds.hybrid bruiser family gains a NEW health-scaling sub-shape (Kled, the "false on-hit match" - health-scaling W-on-hit != item-on-hit), and the two-build-routing family gains a two-BUILD member (Kog'Maw, Slice-B-serves-minority-AP); PLUS the Zed/Talon/Qiyana FENCED lethality-assassin REFUTE is confirmed on a 4th champ (Kha'Zix - the lethality under-lead is a KNOWN data-refuted pattern, NOT a new GAP). Recurring discriminator: a never-built-on-hit/spellblade LEAD is a GAP unless the champ's real signature IS that item (Kalista/Varus REFUTE) OR the fix is the data-refuted lethality-weighting (Kha'Zix/Zed FENCED).
 
 **NEXT SESSION: strict ALPHABETICAL, next-up = LeBlanc**, then Lee Sin, Leona, Lillia, Lissandra (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch12.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct not `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's DEFAULT route via `core.archetype_picks.default_for_champion` [Slice A `_AP_ASSASSIN_IDS` -> assassin/burst; Slice B onhit-roster -> onhit; else axis-corrected tag] then `rank_for_primary_archetype` + reroutes at top=40; dump full top-40 to JSON). Skip resolved (Aatrox..Kog'Maw + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: LeBlanc (AP burst assassin/mage - mimic R chain-combo; check `_AP_ASSASSIN_IDS` membership [the Akali cohort note said "except Leblanc", so she may NOT leak the Trinity/ER AD-pollution - verify]; else a burst-mage Liandry's over-lead like the Gragas/Ahri family with her signature Malignance/Luden's/Shadowflame buried); Lee Sin (AD early-game skirmisher jungle - bruiser [Eclipse/Trinity/Black Cleaver/Sundered] OR lethality [Youmuu's/Profane]; watch ability-bruiser Aatrox-family GAP vs the FENCED lethality REFUTE vs served); Leona (tank support - the Alistar/Blitzcrank/Braum tank-support REFUTE, zero damage, engage; tank/ds.ehp self-durability served); Lillia (AP sustained-DoT/burn jungle - passive Dream-Laden Bough %maxHP burn + Liandry's/Blackfire/Riftmaker; watch the Brand/Cassiopeia sustained-DoT REFUTE [Liandry's lead correct] vs a burst-mage GAP); Lissandra (AP burst/control mage - Rocketbelt/Ludens/Liandry's, R self-freeze; watch the Gragas/Kennen burst-mage-BURIED family Liandry's over-lead vs served)). Next GAP spec = RM-77.
+
+---
+
+## Relocated 2026-07-18 (batch21-25 sweep session; keep last 3 = 2026-07-18i + 2026-07-18h + 2026-07-18g)
+
+# 2026-07-18f (DS_SWEEP batch19 -> 109/173: Pyke / Quinn / Rakan / Rammus / Rek'Sai; 4 GAP + 1 REFUTE, TWO new numbers, and one champion that breaks the RM-86 L1 plan)
+
+Read-only research pass, NO engine change. LEDGER 938. Qiyana skipped (already
+FENCED). **Fan-out held for the fourth session running**: probes main-thread, 5 flat
+research agents with a hard no-sub-agent constraint, zero nested spawns, zero kills.
+
+**QUINN RM-89 IS THE ONE THAT MATTERS - she breaks the L1-only plan.** First champion
+measured carrying BOTH RM-86 root causes at once:
+- **RC-1**: carry/ds.dps leads BotRK #1 / Runaan's #2 / Kraken #3 / Stormrazor #4, every
+  one 0-2% real pick, because **Harrier is priced as attack-speed throughput when its
+  proc rate is cooldown-gated and attack-speed-INDEPENDENT**, and crit chance is a
+  cooldown scalar that does NOT make it crit. No reroute rescues her - all four routes
+  still lead BotRK #1.
+- **RC-2**: her carry pool holds only **111** items and **structurally excludes Profane
+  Hydra and Umbral Glaive**, both present in the 144-item assassin/onhit/bruiser pools.
+  Her #2 signature item is not in the ranked set at all.
+So **a perfect L1 gate would suppress her three bad leads and still never surface her
+real second item.** Section 5 predicted L1 makes RC-2 worse; Quinn is the instance. The
+spec's sequencing note now reads: **L1 is necessary and provably insufficient.** Also:
+her role FLIPPED to jungle ~55% / top ~32% (16.10-16.11 Harrier monster damage, 16.14
+Harrier CD cut) and she is a lethality assassin in ~85-90% of real builds, ~0% on-hit.
+
+**Rammus displaces Ornn as RM-87's canonical example.** ds.ehp is close to rank-INVERTED
+for him: his **92%-pick effectively-mandatory Thornmail is #20** while **three items under
+1.6% combined pick sit #2/#5/#9** (Warmog's 0.35%, Heartsteel 0.85%, Spirit Visage 0.33%).
+Measured mechanism: passive Spiked Shell = 15% TOTAL armor + 15% TOTAL MR as bonus AD; W
+turns armor A into 1.6A+47 at rank 5 so passive AD = 0.24A+7, **about +24 AD per 100
+armor**; **bonus HEALTH contributes ZERO to every damage source in his kit**. A self-EHP
+objective rewards health at high resist values, so it pushes toward exactly what real
+players avoid.
+
+**Pyke RM-88 - new shape: a throughput objective cannot price a discontinuous execute
+threshold plus a gold-and-reset economy.** Lethality QUADRUPLE-dips for him (damage, E
+stun duration, W move speed, R execute threshold at 1.5 per lethality, passive grey-health
+rate); the engine models only the damage dip. ds.burst leads never-built BotRK #1 /
+Trinity #4 / IE #7 over his real Umbral #12 / Youmuu's #15 / Edge of Night #19. **Route is
+CORRECT, do not re-open** - `axis_correct_archetype` catches the Support tag, live-
+confirming that Pyke was never broken. **Correction recorded so it is not re-derived:** his
+bonus-health-to-AD passive is NOT exploited (gold-neutral, zero durability, strictly
+dominated); the load-bearing coupling runs the OTHER way - grey-health cap = 80 + 800%
+bonus AD, so buying AD buys effective HP.
+
+**Rek'Sai - third corroboration that L1's vector must be CONTINUOUS, not boolean.** Her
+unburrowed Q genuinely applies on-hit AND crits and she genuinely wants attack speed, yet
+her ds.hybrid top-9 is entirely never-built and her 67.1%-pick Spear of Shojin sits
+**#48** - because Q is only 3 empowered autos per Fury cycle. With Pantheon (~1/5 cadence)
+and Olaf (free kit AS) that is three kits that HAVE the term and must still not be
+credited at face value.
+
+**Rakan REFUTE doubles as the first post-hoc validation of a Slice C route override** - the
+RM-84 enchanter -> tank move is confirmed at roughly 10:1 (durability ~167% combined
+across slots vs ~16% for the whole heal/shield shelf). Flagged honestly as the WEAKEST
+refute in the Braum/Alistar class: his two real first legendaries are #16 and #23.
+
+**The invariance measurement, redone at scale (32 champs, 4 scorers, 8 per panel, 28 pairs
+each, top-8):** `ds.ability` **8.00/8 set overlap - perfectly invariant, all eight mages
+get the same eight items**; `ds.ehp` 7.57/8; `ds.hybrid` 6.04/8; `ds.dps` 4.54/8. Replicates
+RM-86 section 2's ordering independently on a panel 4x larger, plus a refinement: **ds.dps
+does not vary continuously, it BIFURCATES** into an on-hit-led cluster (Quinn/Vayne/Sivir)
+and a lethality-crit cluster (Jinx/Caitlyn/Draven) - which is exactly how Quinn ends up
+served an on-hit list.
+
+**A data-layer bound on ANY scorer fix:** three of five champions carry their decisive
+mechanic in `effects_descriptions` prose with **EMPTY `damage_blocks`** (Rammus armor->AD,
+Pyke health->AD, Quinn Harrier) - RM-81 intersecting RM-86. For them the conversion an L1
+gate would read is not in the data at all, so L1 cannot reach them by any design. An L1
+acceptance suite should carry one as a known-unreachable control.
+
+**Filed as its own task, NOT fixed:** the legendary **Opportunity** (id 6701, 2700g) is in
+the item catalog but enters **ZERO** ranked pools across 7 champions and 2 archetypes,
+while sibling lethality items appear normally. RC-2 pool-membership defect.
+
+**Process note:** I hit both traps in my own batch18 COUNT INTEGRITY note - a naive
+`split('## Full roster')` grabbed the prose mention, and a multi-line replace across the
+now-non-contiguous Summary lines silently no-opped. Caught only because the count was
+re-verified AFTER writing. The note now documents both.
+
+Artifacts: 5 verdicts + 1 method note in `docs/DS_SWEEP_TRACKER.md`; new **section 9** in
+`docs/specs/RM-86_scorer_kit_blindness_investigation.md`; 5 `project_ds_sweep_*` memories.
+
+**NEXT:** Rell onward (batch20); next GAP spec = RM-90. **RM-86 L1 is still the highest-
+value engine work, now with acceptance anchors AND a proven insufficiency bound - the
+honest framing is L1 + RC-2 pool work, not L1 alone.**
+
+## Relocated 2026-07-18 (RM-86 L1 session; keep last 3 = 2026-07-18h + 2026-07-18g + 2026-07-18f)
+
+# 2026-07-18e (DS_SWEEP batch18 -> 104/173: Olaf / Orianna / Ornn / Pantheon / Poppy; 4 GAP + 1 REFUTE, but only ONE new number)
+
+Read-only research pass, NO engine change. LEDGER 937. **Fan-out held for the third
+session running**: every engine probe in the main thread, exactly 5 flat research
+agents each opening with a hard no-sub-agent constraint. Zero nested spawns, zero
+limit kills. DS confirmed live at ENGINE 1.217.0 / patch 16.14.1 BEFORE any probe.
+
+**The convergence from batch17 repeats, harder.** Four GAPs and only one needs a new
+spec number: Olaf + Pantheon are the Aatrox RM-39 ability-bruiser family, Orianna is
+the Ahri RM-40 burst-mage family (sixth champion). RM-87 goes to Ornn alone. The sweep
+is now mostly confirming known families rather than finding new defects - that is a
+signal about where the remaining value is (fixing RM-86 L1, not finding RM-88).
+
+**Olaf is the most extreme RM-39 instance measured.** bruiser/ds.hybrid returns a top-6
+where EVERY item is one he essentially never builds (BotRK #1 <2%, Trinity #2 <2%,
+Kraken #4 ~0%, Heartsteel #9 ~0%, Liandry's #20 on a champ with ZERO AP ratios), while
+his entire real core sits #19-#43 with signature **Stridebreaker #33**. No reroute
+rescues him. Nuance that stops it being plain on-hit blindness: his W grants 50-90% AS
+and his passive up to 70% missing-HP AS, so the kit DOES scale with attack speed - the
+AS just arrives FREE, so purchased AS has sharply diminishing real value.
+
+**Pantheon supplies the numeric anchor RM-86 L1 was missing.** Only his empowered W can
+crit or apply on-hit and the passive empowers ~1 ability per 5-cast cycle, so AS/crit/
+on-hit convert at roughly a FIFTH of face value. The meta researcher reached RC-1's
+conclusion unprompted, without seeing the spec. **This argues L1's conversion vector must
+be CONTINUOUS in [0,1], not the boolean has-an-AS-term gate section 4 sketched** - a
+boolean scores his on-hit at 0 or 1 and both are wrong.
+
+**Orianna splits a standing family belief in two.** Engine leads Liandry's #1 at a 3.3%
+real pick rate and buries her signature Luden's Echo #13 (GAP, textbook). BUT Blackfire
+Torch #2 is NOT a defect - it is genuinely 31%-pick meta that OUT-WINS Luden's, bought
+for AP/haste/mana rather than a burn her kit cannot apply. **The "Liandry's + Blackfire
+lead" is TWO findings, not one.** Every future burst-mage verdict and any L1 acceptance
+test must score them separately or the gate over-fires.
+
+**RM-87 (Ornn) is the one genuinely new shape: the first ds.ehp gap that is an intra-pool
+WEIGHTING defect, not an omitted off-axis core.** He builds zero damage items so tank/
+ds.ehp is the CORRECT axis (NOT the Amumu RM-44 / Cho'Gath RM-51 / Galio RM-55 shape -
+there is nothing off-axis to omit). But four sub-7%-pick items rank above his signature
+Sunfire Aegis #11 (Warmog's #2 at 1.9%, Heartsteel #5, Spirit Visage #8 at 1.0%, Dead
+Man's #10 at 1.7%), with Thornmail #20. Root cause MEASURED: **E Searing Charge scales
+off 40% bonus armor + 40% bonus MR** and passive Living Forge inflates that same resist
+pool +10-30%, so resists pay TWICE while a self-EHP objective counts them once.
+
+**THE BATCH HEADLINE - the Ornn / Poppy matched pair, and what it proves.** Both route
+tank/ds.ehp and return the SAME top-6 in the SAME order. That invariance is CORRECT for
+Poppy (REFUTE: her real core occupies #6/#8/#9/#10, never-built items correctly
+suppressed at BotRK #73 / Liandry's #50 / Trinity #47, and decisively **no Poppy ability
+converts her own bonus HP or resists into damage** - Q reads the TARGET's max HP) and a
+DEFECT for Ornn. **This extends the RM-86 section-2 invariance table from top-5 to top-8
+on two more scorers:** Ornn / Pantheon / Poppy rerouted to bruiser return an identical
+top-8 item SET (Ornn and Poppy 8-of-8 in ORDER) across a tank, a tank/fighter and an
+assassin/fighter - **and Olaf is the control that names the mechanism**, overlapping only
+4-of-8 because his base AD/AS differ. That is RC-1 as a POSITIVE measurement rather than
+an absence: the champion enters the objective through BASE STATS ONLY, so similar base
+stats yield literally the same build.
+
+**Standing rule now in the tracker:** adjudicate every ds.ehp and ds.hybrid verdict on
+whether the SHARED list happens to fit the champion, never on the list being
+champion-specific - it is not. (Companion to the batch16 ds.hps invariance finding.)
+
+Artifacts: 5 verdicts + 2 method notes in `docs/DS_SWEEP_TRACKER.md`; new **section 8**
+in `docs/specs/RM-86_scorer_kit_blindness_investigation.md` (batch18 corroboration + 5
+concrete per-champion L1 acceptance anchors, including Poppy/Ornn as negative controls);
+5 `project_ds_sweep_*` memories.
+
+**NEXT:** Pyke onward (batch19); next GAP spec = RM-88. **RM-86 L1 is still the
+highest-value engine work on the board and now has per-champion acceptance anchors** -
+that is the recommended next build, not batch19. Ornn RM-87, Nunu's TANK-tag route gap
+and Nasus's RC-2 pool partition are operator-gated and unstarted.
+
+---
+
+## Relocated 2026-07-18 (Irelia..Jax batch9 DS-sweep - keep last 3: Kennen..Kog'Maw batch12 + Karthus..Kayn batch11 + Jayce..Karma batch10)
+
+# 2026-07-17 (DS meta-valuation sweep - Irelia..Jax batch9, 3 REFUTE + 2 GAP; read-only, NO engine change; strict-alpha A->Z)
+
+Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroute + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 54 -> 59/173 (GAP 37, REFUTE 19, FENCED 3), remaining 114. THREE REFUTE + TWO GAP (breaks the batch7/batch8 GAP-dense streak). Probe reused `probe_batch8.py` (repointed CHAMPS). Memories `project_ds_sweep_{irelia_onhit_served_refute,ivern_enchanter_refute,janna_enchanter_refute,jarvan_ability_bruiser,jax_spellblade_order_gap}`.
+
+- **Irelia REFUTE** (AD on-hit diver correctly SERVED: production bruiser/ds.hybrid LEADS her signature Blade of the Ruined King #1 + Kraken #3; Trinity #2 is a benign over-surface [Q/W proc Sheen so it ranks, but she does not build it - not a mis-LEAD since her real #1 IS led]; Wit's End/Death's Dance under-surfaced = shared hybrid AS-uptime scope limit).
+- **Ivern REFUTE + Janna REFUTE** (two more Alistar/Bard/Blitzcrank/Braum enchanter-scorer REFUTEs: enchanter/ds.hps serves an IDENTICAL heal-shield ranking [Helia #1/Ardent #2/Staff #3/Redemption #6/Moonstone #9] for BOTH, correct axis + NEVER builds AP damage [the mage reroute's Liandry's #1 is the false-positive it avoids]; signature Moonstone #9-last [Ivern] / Ardent #2-near-led [Janna] + Dawncore/Shurelya's/Dream Maker not in the 9-item hps pool = the class-level enchanter-scorer scope limit, NOT a per-champ gap).
+- **Jarvan IV GAP RM-65** (ability-bruiser Aatrox/Hecarim/Illaoi family: Q Dragon Strike 145%-bonus-AD + armor-shred + R burst, passive Martial Cadence a SINGLE front-loaded first-hit proc NOT sustained on-hit; production bruiser/ds.hybrid over-leads never-built BotRK #1 + off-item Trinity #2 and buries his signature Sundered Sky #16-19 + Black Cleaver #28-40; no reroute helps; his ability-damage/haste axis unmodeled).
+- **Jax GAP RM-66** (the MILDEST ordering GAP + a NEW mild sub-shape: his on-hit/spellblade AXIS IS correctly served [unlike Hecarim/Illaoi] but the Sheen-vs-on-hit ORDER is wrong - ds.hybrid over-leads situational BotRK #1 over his signature Trinity Force #2, Sundered Sky #11-17 buried; MILDER than Gnar RM-58 whose leading BotRK was NEVER-built vs Jax's situational-real).
+- **KEY batch9 insight:** the STANDOUT is a THREE-WAY contrast - Irelia/Jax/Jarvan all produce the SAME bruiser/ds.hybrid output (Blade of the Ruined King #1 / Trinity Force #2) but split into 3 verdicts by GROUND-TRUTH signature: Irelia REFUTE (BotRK IS her real #1), Jax GAP (Trinity/Sheen IS his real #1, engine #2 behind situational BotRK - mild ordering), Jarvan GAP (Sundered Sky IS his real #1, buried - Aatrox-family); discriminator = does the engine's #1 (BotRK) match the champ's real signature? The ability-bruiser GAP family gains Jarvan IV; the enchanter/tank-support REFUTE cluster gains Ivern + Janna.
+
+**NEXT SESSION: strict ALPHABETICAL, next-up = Jayce**, then Jinx, K'Sante, Kalista, Karma (tracker `docs/DS_SWEEP_TRACKER.md`; skip Jhin + Kai'Sa, already REFUTE). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch8.py` (item_ids=[] for the FIRST item, timeout>=30s; the row carries `item_name`; ds.hybrid rows key hybrid_delta_pct not `delta`; TRUST RANK ORDER; resolve each champ's primary via `core.archetype_picks.default_for_champion` then `rank_for_primary_archetype` + reroutes at top=40/140). Skip resolved (Aatrox..Jax + Corki/Ezreal/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: Jayce (AD hybrid melee/ranged transform, lethality/poke caster - Sheen/spellblade served, or an AD-caster mis-route like Corki/Ezreal?); Jinx (AD crit-marksman hypercarry - crit-served like Aphelios REFUTE, or a fight_length burst-blend over-lead like Caitlyn/Draven GAP?); K'Sante (AD tank-bruiser, %maxHP + R-form - ability-bruiser or tank; on-hit over-lead?); Kalista (AD on-hit marksman - on-hit-served REFUTE like Varus, contrast crit); Karma (enchanter/mage support - enchanter REFUTE like Janna, or an AP-poke mage GAP?). Next GAP spec = RM-67.
+
+---
+
+---
+
+# 2026-07-17 (DS meta-valuation sweep - Gwen..Illaoi batch8, 5 GAP + 0 REFUTE; read-only, NO engine change; strict-alpha A->Z)
+
+Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroute + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 49 -> 54/173 (GAP 35, REFUTE 16, FENCED 3), remaining 119. The SECOND GAP-dense batch (5/5 GAP RM-61..64; batch7 was the first). Probe reconstructed as `probe_batch8.py` (scratchpad is session-scoped). Memories `project_ds_sweep_{gwen_onhit_dot_overlead,hecarim_ability_bruiser,heimerdinger_blackfire_underled,hwei_blackfire_underled,illaoi_tentacle_ability_bruiser}`.
+
+- **Gwen GAP RM-61** (NEW onhit-scorer sub-shape: Slice-B onhit-routed, ds.onhit SERVES her on-hit axis [Dusk and Dawn #2-4, Guinsoo's #2-3, Statikk #3-4, Nashor's #5 - NOT the Azir #17 ds.onhit-FAILS case] but OVER-LEADS never-built %maxHP-DoT Liandry's #1 + Blackfire #6-7 over her signature spellblade + buries her AP-amp core Shadowflame #12/Rabadon's #13/Riftmaker #16; root cause = the onhit scorer conflates her passive %maxHP-magic-on-hit with Liandry's %maxHP-burn and over-credits a burn item she never builds, when her %maxHP rides her PASSIVE [scales AP+AS] so she wants AP/AS/on-hit-doublers; TWO defects; the REFUTE-leaning wakeup prediction OVERRIDDEN by the probe).
+- **Hecarim GAP RM-62** (PURE Aatrox twin - AD ability-DPS juggernaut, Q Rampage 90%-bonus-AD-spam + E move-speed->AD + Warpath MS->12-24% bonus-AD, signature Spear of Shojin buried #53/#48 while bruiser/ds.hybrid over-leads never-built on-hit BotRK #1 + his DEAD ~44%-WR Sheen Trinity #2, and buries Black Cleaver #31/#45 + Death's Dance #43 [whole core >30]; no reroute helps; ability-amp/haste axis unmodeled; NOT Camille-served since his Trinity is dead + signature non-Sheen).
+- **Heimerdinger + Hwei GAP RM-63 SHARED** (the MILDEST GAP class - a one-slot signature mis-order: mage/ds.ability leads Liandry's #1 over their true signature Blackfire Torch #2; RIGHT-family WRONG-item where the leader Liandry's is their REAL 2nd-core item [NOT never-built like Gnar] + the signature is surfaced #2 [NOT buried like Ahri #15]; Heimer = sustained-DoT turret [Blackfire 100% on-hit burn procs off turret ticks, 16.14 buff], Hwei = burst/control [Blackfire AH+burst-amp for his 10-spell book]; SAME engine defect + fix -> ONE RM; both burst-reroutes are RM-41 AD-polluted so the fix stays in the mage scorer; Hwei is ADJACENT to but DISTINCT from the Ahri/Annie/Aurora/Elise/Gragas burst-mage-BURIED family since his signature is #2 not buried).
+- **Illaoi GAP RM-64** (ability-bruiser whose damage is ~90% TENTACLE SLAMS [spell-classified, do NOT proc Sheen or on-hit] - bruiser/ds.hybrid leads Trinity Force #1 [Sheen, OFF her current core] + never-built BotRK #4-7 and buries her signature Black Cleaver #33/#43 [%armor-shred ability-amp, like Hecarim's Shojin]; her real Sheen item Iceborn IS surfaced #4-8 correct-as-2nd; the KEY Camille/Fiora CONTRAST - their led Sheen item IS their real 1st [served REFUTE] but Illaoi's Trinity #1 is off-meta because tentacles bypass Sheen/on-hit + her non-Sheen signature is buried [GAP]).
+- **KEY batch8 insight:** the ability-bruiser GAP family (Aatrox/Ambessa/Darius/Garen/Gangplank) gains Hecarim [pure Shojin-buried twin] + Illaoi [tentacle-ability, PLUS a Sheen-Trinity-over-lead that superficially mimics the Camille REFUTE but is off-meta]; a NEW mildest-GAP cohort - Heimer+Hwei SHARE RM-63, a one-slot Blackfire-under-led ds.ability order issue; and the onhit scorer gets its FIRST over-lead sub-shape (Gwen - serves the on-hit axis but mis-leads %maxHP-DoT, UNLIKE Azir where ds.onhit fully fails). The burst-mage-BURIED family does NOT grow (Hwei is adjacent-but-distinct).
+
+**NEXT SESSION: strict ALPHABETICAL, next-up = Irelia**, then Ivern, Janna, Jarvan IV, Jax (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch8.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct not `delta`; the row also carries `item_name` - use it; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's primary via `core.archetype_picks.default_for_champion` then `rank_for_primary_archetype` + reroutes at top=40/140). Skip resolved (Aatrox..Illaoi + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: Irelia (AD bruiser-skirmisher, Q-reset on-hit + passive stacks + W - Sheen/spellblade Trinity served like Camille, or on-hit BotRK over-lead like Aatrox?); Ivern (support/jungle - enchanter/ds.hps zero-damage REFUTE-leaning, aura scope limit like Alistar/Bard?); Janna (enchanter support - Alistar-class REFUTE?); Jarvan IV (AD bruiser - ability-bruiser family, or served?); Jax (on-hit/AS bruiser-fighter, R+E on-hit - likely on-hit-served or a hybrid over-lead; watch Blade of the Ruined King/Trinity). Next GAP spec = RM-65.
 
 ---
 
