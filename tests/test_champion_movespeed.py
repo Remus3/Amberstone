@@ -137,6 +137,41 @@ class TestItemMs:
         assert cms.item_ms(["1001"]) == {"flat": 0.0, "pct": 0.0}
 
 
+class TestCanonicalNameKeyNotStolenByMirror:
+    """R135: a canonical 4-digit item must own its own display-name key even
+    when it grants ZERO movement speed.
+
+    The mode mirrors (22xxxx Arena, 12xxxx ARAM, 44xxxx) share a display name
+    with their 4-digit base but carry different stats (memory
+    reference_item_name_is_not_the_id). _item_index() skipped zero-MS entries
+    before they could claim the name key, so a bare-name lookup silently
+    returned the MIRROR's movement speed for an item that has none on SR.
+
+    Verified against data/meta/ddragon_items.json this run:
+      3083  Warmog's Armor      pct 0     vs 443083 pct 0.04
+      3193  Gargoyle Stoneplate pct 0     vs 443193 pct 0.10
+      3430  Rite Of Ruin        pct 0     vs 123430 pct 0.04
+    """
+
+    @pytest.mark.parametrize("name", [
+        "Warmog's Armor",
+        "Gargoyle Stoneplate",
+        "Rite of Ruin",
+    ])
+    def test_zero_ms_canonical_name_returns_zero(self, name):
+        assert cms.item_ms(name) == {"flat": 0.0, "pct": 0.0}
+
+    @pytest.mark.parametrize("iid,pct", [(443083, 0.04), (443193, 0.10), (123430, 0.04)])
+    def test_mirror_still_resolves_by_explicit_id(self, iid, pct):
+        # By-id stays authoritative: asking for the mirror by id still pays out.
+        assert cms.item_ms(iid)["pct"] == pytest.approx(pct)
+
+    def test_canonical_with_real_ms_is_unchanged(self):
+        # 3009 Boots of Swiftness HAS movement speed, so it already claimed its
+        # own name key. Guard that the fix does not regress the working path.
+        assert cms.item_ms("Boots of Swiftness")["flat"] == 55.0
+
+
 # -- est_ms -------------------------------------------------------------------
 
 class TestEstMs:
