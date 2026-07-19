@@ -119,6 +119,42 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-19a (RM-92 ability-haste slice SIZED -> DEFER, then its 4 tails SHIPPED 1.221.0; 2 commits, CI green)
+
+**Verdict first, no code:** `docs/specs/SCOPE_rm92_ability_haste.md`. All 5 AH
+champions route AWAY from the only scorer that prices ability haste (Twitch /
+Xayah / Yunara -> `dps.py`, Udyr / Yorick -> `hybrid.py` AD branch). `dps.py` has
+no ability model AT ALL - not merely no AH term. **The finding that settled it:
+AH is ~1% live even where it IS wired** - the haste-shortened cooldown only feeds
+the `measured <= 0` fallback (`ability_dps.py:1231`), and on the live 680-pair SR
+table just 8 pairs reach it, 6 effectively. This is MODEL work already spec'd as
+**RM-39 + RM-43 - do NOT open a third id.**
+
+**Then the 4 tails, all shipped** (`5f2371ce`, ENGINE 1.221.0): `aram_ability_haste`
+was assigned total AH and printed an ARAM note during SR runs (fixed, zero
+production consumers); **NEW DEFAULT-OFF seam `apply_canonical_cast_rate_keys`** -
+cast-rate lookups keyed the DISPLAY name against ID-keyed data so 21 champions
+silently took `global_fallback` while still reporting "measured", across **4 call
+sites** not 1, fixed at the `ult_rates.py` chokepoint; plus 3 stale comments and a
+registry docstring citing a regen tool that has never existed. 8 ward PNGs
+restored (zero code refs - removal stays a deliberate call).
+
+**Two process errors, both self-caught.** (1) Skipped the regen step **with a
+memory telling me not to** - `feedback_engine_bump_ritual_order` documents this
+exact failure from the previous session. The stamp is independent of the content;
+byte-identical output still needs the regen. Cost a 20-min suite. (2) Nearly
+reported a stale subagent `repo_suite.txt` as my own run; caught on mtimes.
+
+**Do NOT redo:** the RM-92 population audit (CLOSED), the AH sizing (DEFER is
+final), the 4 tails (shipped + live-probed). **Open:** operator-gated default-ON
+flips for BOTH seams (`team_blended`, `apply_canonical_cast_rate_keys`); three
+Share gaps flagged not fixed (route tables claim "4 GET + 15 POST" vs a live 31;
+`team_blended` + `kit_conversion_strength` undocumented in the authored half;
+three version anchors uncovered by `_doc_anchor_rules()` - which is why README sat
+72 minors stale while `--check` read green).
+
+---
+
 # 2026-07-18l (C1 audit resized Term A + Term A SHIPPED 1.220.0 + a self-inflicted false bug retracted; 2 commits)
 
 **C1 first, and it changed the work.** Re-adjudicated all 21 RM-92 rows at BUILD
