@@ -5,8 +5,9 @@
 
 ## Division of labor
 
-- **Gemini CLI** = read-only advisor / critic / researcher. Reads the repo,
-  writes findings to a review file. NEVER edits source, never commits.
+- **Gemini CLI** = read-only advisor / critic / researcher. Reads the repo and
+  emits findings to stdout only; `tools/gemini_audit.ps1` is the sole writer of
+  the review file. NEVER edits source, never writes files, never commits.
 - **Claude (me)** = sole implementer / writer. I parse Gemini's review file,
   verify every claim against ground truth, and am the only agent that touches
   source or version control. Gemini proposes; I dispose.
@@ -52,9 +53,10 @@
       User scope); read-only enforced by `--approval-mode plan`, workspace via `--skip-trust`;
       tools/gemini_audit.ps1 (stdin-pipe + retry + atomic write) + tools/gemini_audit_prompt.md;
       .geminiignore; docs/GEMINI_REVIEW_CONSUMPTION.md; RC-GeminiAudit nightly 03:00 registered +
-      Enabled but NOT currently producing reviews - the 2026-07-19 03:00 run exited 0xC000013A and
-      the newest review on disk is 2026-06-21 ("Ready" is the scheduler idle state, not evidence of
-      a healthy run); tools/gemini_audit.ps1 repaired 2026-07-19, next nightly re-verifies.
+      Enabled, but NOT confirmed healthy: the 2026-07-19 03:00 run exited 0xC000013A, and as of
+      2026-07-19 the newest review on disk was dated 2026-06-21 ("Ready" is the scheduler idle
+      state, not evidence of a successful run). A tools/gemini_audit.ps1 repair landed 2026-07-19;
+      treat the nightly as UNVERIFIED until a review newer than 2026-06-21 actually appears.
       First real review docs/_archive/EXTERNAL_REVIEW_2026-06-04.md (gitignored) verified genuine.
 - [x] STEP D - DONE. Tone/style/memory artifacts: GEMINI.md repo-root context (ASCII-only +
       ultra-terse style, verify-before-assert, frozen-file flag-only) 2026-06-04; stateless-per-call
