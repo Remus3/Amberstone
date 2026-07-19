@@ -4,6 +4,61 @@
 
 ---
 
+# 2026-07-19m (RM-104: the filing named one bug and the sweep found four; the three nobody filed were the live ones)
+
+**The reported defect was real and exactly as described. It was also the least
+important of the four, and the only one that could not reach production. The
+sweep that found the other three took one script.**
+
+Shipped: `1f13188b` ENGINE 1.228.0. DS 8866 passed / 1 skipped / 2518 subtests;
+`tests/` 11993 passed / 23 skipped; `:8893` live at 1.228.0. Ledger 968.
+
+**ALWAYS RUN THE SIBLING SWEEP BEFORE BELIEVING A FILING'S SCOPE.** RM-104 said
+"Kaenic is the sole outlier whose mirror exists in the index but is uncredited."
+False. Shieldbow `226673`, Sterak's `223053` and Maw `223156` had the identical
+`shield=None` defect, are ALWAYS-ON, and had been crediting zero on every Arena
+build. The filed one is default-OFF and reaches no route. A ~30-line script
+resolving each mirror id to its longest base-id suffix proved the population is
+exactly four, and that script is now a standing test - the defect was a CLASS
+(mirror entries copied from an SR entry's prose with `shield=` dropped), so a
+per-instance fix would have left the next one to rot silently.
+
+**A SUBAGENT GAVE ME CORRECT EVIDENCE AND THE WRONG CONCLUSION.** The sourcing
+agent found - accurately - that three of four mirrors are stat-retuned (350 vs
+400 HP, 300 vs 400, 50 vs 60 AD) and concluded inheriting their shields is
+"likely wrong, not merely unsourced." It conflated COEFFICIENT with OUTPUT. The
+formulas scale off the champion's resolved `bonus_hp`/`bonus_ad`/`max_hp`, so
+the retune already flows through: Sterak's credits 0.60 * 300 = 180.0, not 240.
+Measured, not reasoned. Acting on that conclusion would have invented four
+unsourced magnitudes to fix a non-problem. **Verify a subagent's INFERENCE
+separately from its EVIDENCE - they fail independently.**
+
+**I REGENERATED THE WRONG TABLE AND BRIEFLY REPORTED A FALSE RESULT.**
+`tools/daemon_slayer_build_orders_generate.py` is NOT the artifact the stamp /
+freshness tests read - those come from `core.build_order_precompute` and
+`core.build_order_variants` at `--champions all`. The wrong tool returned
+stamp-only, so I told the operator no recommendation had changed. The right
+tools changed **68 of 173 ARENA** entries, all gaining `223053`, SR + ARAM
+untouched. The acceptance criteria's "stamp-only" prediction was itself
+inherited from the filing's latency claim and was wrong for the same reason.
+Operator reviewed and shipped as-is.
+
+**ORDERING: sync Share LAST.** I ran `ds_share_sync`, then edited 120 version-pin
+test files, leaving the mirror stale behind me - one of 14 `tests/` failures,
+none of which came from the fix. The bump ritual's regen/sync-THEN-suite order
+exists for precisely this.
+
+**THE NOTIFICATION LIED AND THE REDIRECT DID NOT.** The background-task
+completion event reported `exit code 0`; the captured file read `MAIN_EXIT=1`
+with 14 failures. Capture pytest by redirect and read the FILE - the
+notification's exit code is not the suite's.
+
+**NEXT:** the ~28 silent-no-op bare excepts logging at DEBUG, sized but never
+fixed. That population has now produced FIVE silent failures across three
+sessions and is the highest-value cleanup available.
+
+---
+
 # 2026-07-19l (three lanes shipped; every filing was wrong somewhere load-bearing, and I broke Share/src and fixed it)
 
 **A ROADMAP number, a spec's prescribed fix, and a stated defect premise are all
