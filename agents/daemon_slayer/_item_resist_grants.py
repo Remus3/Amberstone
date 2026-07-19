@@ -38,9 +38,30 @@ through build_champion already ... EHP picks them up automatically":
     up to 8 times ... At maximum stacks, gain 70 bonus magic resistance and 6%
     bonus movement speed." -> a FLAT +70 magic-resistance add (the item-264 mode).
     MAGIC RESIST ONLY (no armor); the move-speed half is not a survivability
-    resist. The "Dissipate" magic damage reduction was removed in patch V14.1, so
-    there is NO percent magic DR to credit (that would be the separate
+    resist. On this SR base row the old "Dissipate" PERCENT magic damage
+    reduction was removed in patch V14.1. The Arena mirror 224401 still names a
+    "Dissipate" component in its live 16.14.1 text, but that one grants FLAT
+    magic resist + move speed, not a percent DR - so NEITHER row has a percent
+    magic DR to credit here (that would be the separate
     ``_passive_mitigation_overrides`` axis anyway).
+
+MIRROR MAGNITUDES ARE READ, NEVER INHERITED (R133). A mode mirror is a RETUNED
+item, not a re-skin of its base, so every 22xxxx / 66xxxx row carries the value
+parsed from ITS OWN ``description`` in ``data/daemon_slayer/<patch>/items.json``
+(DDragon; Meraki carries no mirror rows, so DDragon is the only source). The four
+mirror rows below were originally seeded "base nominal" - presence in the item
+index was verified, magnitude was not - and THREE of the four were wrong:
+226665 is 40% not 30% (under-credited), 224401 is 50 flat MR not 70
+(over-credited), and 663059 is 10% not 20% (over-credited). Only 663058 happened
+to match its base. Values verified identical in 16.13.1 and 16.14.1, so this was
+never patch drift. ``tests/test_item_resist_mirror_magnitudes_r133.py`` pins every
+row to its own tooltip so a future "base nominal" copy cannot land silently.
+
+Only the resist MAGNITUDE is modelled per row. The Arena Force of Nature mirror
+is a DIFFERENT passive shape (Absorb / Dissipate: max 10 stacks, 7s duration,
+enemy immobilizing effects grant 2 extra, one spell adds a stack per second)
+rather than the base's 8-stack Steadfast; those stack economics are deliberately
+NOT modelled and both rows keep the shared at-max-stacks midpoint.
 
 Only base + Arena (22xxxx) mirrors resolve in the DS item index
 (``data/daemon_slayer/16.13.1/items.json``, 706 items) - no ARAM (32xxxx) mirror
@@ -132,18 +153,27 @@ _ITEM_RESIST_GRANTS: dict[str, ItemResistEntry] = {
         armor_pct=30.0, mr_pct=30.0, pct_base="bonus", family="jaksho",
         note="Voidborn Resilience: +30% bonus armor + bonus MR at max (5) stacks",
     ),
+    # Arena mirror is RETUNED: lower flat statics (35/35 vs 45/45) bought with a
+    # BIGGER percent - 40%, not the base's 30% (R133; was "base nominal" 30.0).
     "226665": ItemResistEntry(
-        armor_pct=30.0, mr_pct=30.0, pct_base="bonus", family="jaksho",
-        note="Jak'Sho (Arena mirror; base nominal)",
+        armor_pct=40.0, mr_pct=40.0, pct_base="bonus", family="jaksho",
+        note="Jak'Sho Arena mirror: +40% bonus armor + bonus MR at max (5) stacks"
+             " (items.json DDragon 16.14.1, verbatim 'by 40% until end of combat')",
     ),
     # Force of Nature - Steadfast: +70 flat bonus MR at 8 stacks (MR only).
     "4401": ItemResistEntry(
         mr=70.0, family="fon",
         note="Steadfast: +70 flat bonus MR at max (8) stacks; MR only",
     ),
+    # Arena mirror is a DIFFERENT passive (Absorb / Dissipate) granting 50 flat
+    # MR at 10 stacks, not the base's 70 at 8 (R133; was "base nominal" 70.0).
+    # Only the magnitude is modelled - the differing stack economics (max 10, 7s
+    # duration, +2 stacks from enemy immobilizing effects, one stack per spell
+    # per second) are NOT, and the shared midpoint is kept.
     "224401": ItemResistEntry(
-        mr=70.0, family="fon",
-        note="Force of Nature (Arena mirror; base nominal)",
+        mr=50.0, family="fon",
+        note="Force of Nature Arena mirror Dissipate: +50 flat bonus MR at max"
+             " (10) stacks; MR only (items.json DDragon 16.14.1)",
     ),
     # R124 (ENGINE 1.212.0): prismatic ALWAYS-ON percent-of-TOTAL resist self-amps.
     # Unlike Jak'Sho / FoN (which RAMP to max stacks -> prob 0.5 midpoint), these
@@ -156,10 +186,15 @@ _ITEM_RESIST_GRANTS: dict[str, ItemResistEntry] = {
         family="molten_stone",
         note="Immovable as the Earth: +20% total armor (always-on); Block Chance secondary uncredited",
     ),
+    # Mode mirror (maps.11) is retuned in its FLAT statics (250 HP / 80 armor vs
+    # 300 / 100) but its percent is genuinely 20%, matching the base - the one
+    # R133 "base nominal" seed that landed on the right value. Verified, not
+    # inherited.
     "663058": ItemResistEntry(
         armor_pct=20.0, pct_base="total", conditional_probability=1.0,
         family="molten_stone",
-        note="Shield of Molten Stone (mode mirror; base nominal)",
+        note="Shield of Molten Stone mode mirror: +20% total armor (always-on),"
+             " same percent as base 443058 (items.json DDragon 16.14.1)",
     ),
     # Cloak of Starry Night "Limitless as the Stars": +20% of TOTAL MR (items.json
     # DDragon 16.13.1; Meraki-absent). The secondary MR-scaled non-AA damage
@@ -170,10 +205,15 @@ _ITEM_RESIST_GRANTS: dict[str, ItemResistEntry] = {
         family="starry_night",
         note="Limitless as the Stars: +20% total MR (always-on); MR-scaled non-AA DR secondary uncredited",
     ),
+    # Mode mirror (maps.11) is RETUNED to HALF the base percent - 10%, not 20%
+    # (R133; was "base nominal" 20.0). Its secondary non-AA DR cap is likewise
+    # halved (25% vs 50%) but that axis is uncredited on both rows.
     "663059": ItemResistEntry(
-        mr_pct=20.0, pct_base="total", conditional_probability=1.0,
+        mr_pct=10.0, pct_base="total", conditional_probability=1.0,
         family="starry_night",
-        note="Cloak of Starry Night (mode mirror; base nominal)",
+        note="Cloak of Starry Night mode mirror: +10% total MR (always-on),"
+             " HALF the base 443059 percent (items.json DDragon 16.14.1);"
+             " MR-scaled non-AA DR secondary uncredited",
     ),
 }
 

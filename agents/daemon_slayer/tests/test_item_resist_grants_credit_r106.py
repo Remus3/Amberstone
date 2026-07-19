@@ -12,6 +12,12 @@ RAMP to max stacks in combat earn ZERO EHP for their stacked bonus resists:
     champions stacks (max 8); at max, gain 70 FLAT bonus magic resistance (MR only,
     no armor). A flat add (the item-264 champion mode).
 
+The magnitudes quoted above are the SR BASE rows. R133 correction: the Arena
+mirrors are RETUNED, not re-skins - 226665 grants 40% of bonus resist and 224401
+grants 50 flat MR (via a differently shaped 10-stack Absorb / Dissipate passive).
+Each row is pinned to its own DDragon tooltip in
+``test_item_resist_mirror_magnitudes_r133.py``.
+
 ``build_champion`` folds only the items' FLAT static resists (Jak'Sho +45/+45, FoN
 +55 MR), NOT the stacked ramp (live-probe R105 / LEDGER 850). The champion resist
 registry ``_passive_resist_overrides.resist_grants`` is champion-keyed, so an ITEM
@@ -148,16 +154,27 @@ class ItemResistRegistryTests(unittest.TestCase):
             )
             self.assertEqual((a, m), (0.0, 0.0), msg=str(ids))
 
-    def test_arena_mirrors_credit_same_as_base(self) -> None:
-        base_fon = item_resist_grants(
-            ["4401"], total_armor=100.0, total_mr=80.0,
-            base_armor=30.0, base_mr=32.0,
-        )
-        mirror_fon = item_resist_grants(
-            ["224401"], total_armor=100.0, total_mr=80.0,
-            base_armor=30.0, base_mr=32.0,
-        )
-        self.assertEqual(base_fon, mirror_fon)
+    def test_arena_mirrors_are_retuned_not_base_nominal_copies(self) -> None:
+        # R133 correction. This assertion used to read `base == mirror`, which
+        # baked the "base nominal" seeding defect into the suite: an Arena
+        # mirror is a RETUNED item, not a re-skin of its base. Force of Nature
+        # 224401 grants 50 flat MR at 10 stacks (base 4401: 70 at 8), and
+        # Jak'Sho 226665 grants 40% of bonus resist (base 6665: 30%) in exchange
+        # for lower flat statics. Exact magnitudes are pinned against each row's
+        # OWN DDragon tooltip in test_item_resist_mirror_magnitudes_r133.py.
+        resists = {
+            "total_armor": 100.0, "total_mr": 80.0,
+            "base_armor": 30.0, "base_mr": 32.0,
+        }
+        base_fon = item_resist_grants(["4401"], **resists)
+        mirror_fon = item_resist_grants(["224401"], **resists)
+        self.assertEqual(base_fon[0], mirror_fon[0])  # neither grants armor
+        self.assertLess(mirror_fon[1], base_fon[1])  # 50 flat MR vs base 70
+
+        base_jaksho = item_resist_grants(["6665"], **resists)
+        mirror_jaksho = item_resist_grants(["226665"], **resists)
+        self.assertGreater(mirror_jaksho[0], base_jaksho[0])  # 40% vs base 30%
+        self.assertGreater(mirror_jaksho[1], base_jaksho[1])
 
 
 # ---------------- OFF byte-identical ----------------
