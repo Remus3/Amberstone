@@ -119,6 +119,54 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-19h (gemini-loop cycle 3 - the REGRESS audit was 2/3 right, and the wrong third was the dangerous one)
+
+**An audit verdict is not privileged evidence. Premise-check it like any other claim.**
+
+The directive arrived as a REGRESS fix-first: three named regressions in R132, an
+ENGINE bump, two worktree slices. One of the three was wrong, and it was the only
+one that touched math. It read the call `_rune_resist_fn(..., total_armor=armor)`
+in `ehp.py`, saw a nearby local named `bonus_armor`, and concluded item armor was
+missing - prescribing `total_armor=armor+bonus_armor+ext_armor+item_resist_armor`.
+
+Every added term is misidentified. `armor` is `stats["armor"]`, the RESOLVED build
+armor, and already contains item armor - measured, Malphite L13 reads 94.2 bare and
+219.2 with 3068+3075. `bonus_armor` at `ehp.py:1668` is the return value of the
+CHAMPION `resist_grants(...)` registry - a peer conditional-grant lane, not a stat.
+`item_resist_armor` is the ITEM registry output, itself derived from
+`total_armor=armor` one call above. `ext_armor` is an ALLY-conferred resist.
+
+Applying it feeds three peer grant lanes into the fourth, so Aftershock takes 75
+percent of OTHER grants, and the value starts depending on the SOURCE ORDER of four
+peer registries. Measured: Aftershock L1 goes (14.625, 15.3) -> (24.0, 24.0). The
+ground truth was already written down twice - the callee's docstring at
+`_rune_resist_grants.py:227-230` states the contract verbatim, and `ehp.py:1663-1664`
+carries the invariant in code: "total_* exclude the passive grants (not in
+base/items) so there is no self-feedback".
+
+**This is the exact inverse of cycle 2's lesson, same failure family.** Cycle 2's
+agent paraphrased a formula it had cited correctly. Cycle 3's auditor inferred a
+callee's semantics from an argument NAME at the call site without opening the
+callee. Both are "cited the right line, got the claim wrong".
+
+Second lesson: **reclassify before you remediate.** Findings 2 and 3 (mid-signature
+kwarg inserts) were real but were latent convention drift, not breakage - an AST
+scan found a maximum of 4 positional args against functions taking 36-50, so no
+caller could break. That collapsed a directed 2-worktree ENGINE-bump slice into a
+6-line reorder with no bump.
+
+Third, the durable part: `compute_ehp` carried the convention as an inline COMMENT
+and three siblings violated it anyway. A convention that lives only in a comment is
+not a convention. `test_rune_resist_signature_convention_r134.py` now enforces both
+the trailing-kwarg rule and the `total_armor` same-values contract, so the refuted
+change turns a test RED rather than silently over-crediting tanks.
+
+Commit `534ab3ef`, ENGINE stays 1.224.0. DS 8686 / RC 11979 green, verifier CONFIRM
+on all four claims. Refutation escalated to the director via `gemini_ask.txt` so
+cycle 4 does not re-issue it or read the absent bump as unfinished work.
+
+---
+
 # 2026-07-19g (gemini-loop cycle 2 - DS modelled runes as offense only; defensive resist half now exists)
 
 **The transferable lesson is about how a good agent report can still be wrong.**

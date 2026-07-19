@@ -19,6 +19,63 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
 
 - **RM-100 ops: the nightly critic + the nightly suite were both silently dead; repaired 2026-07-19 (gemini-loop cycle 1, R130/R131; `aa90e9b4` / `fb88c7d8` / `cf71753f`).** Two independent silent-failure classes, both invisible to the surfaces we actually watch. (a) **RC-GeminiAudit produced nothing for 28 nights while reading Enabled/Ready.** `ops/runtime/gemini_last_audit.txt` pinned a worktree-slice sha that never survived cherry-pick, so `git log <dangling>..HEAD` came back empty and `tools/gemini_audit.ps1` took its own "nothing to audit" branch and exited 0 without writing a review OR a log line - `logs/gemini_audit.log` did not exist at all. Now self-heals to `HEAD~10` with a loud WARN and logs `START` unconditionally as its first write. The separate `0xC000013A` last-run result is **UNPROVEN and still open** - six hypotheses refuted with evidence (TTY/stdin, InteractiveToken teardown, the marker itself, oversized stdin, missing `-NoProfile`, logoff kill), so the task was deliberately NOT re-registered; the new START line makes the next occurrence attributable (START then silence = killed mid-run; no START = died before line 20). **If 0xC000013A recurs on a later nightly, the marker fix is not the cause - read the log.** (b) **The nightly full-suite had been red for 12 consecutive days** (runs 28935372989 .. 29682372934) and nobody saw it, because the push `check` job is green BY CONSTRUCTION - it never runs `tests/` as one process, so it cannot reproduce the pollution. Fixed test-side only: Playwright's session-scoped ProactorEventLoop leaves asyncio's per-thread running-loop marker set on the main thread, breaking any later bare `asyncio.run()`; and the Jhin build-order test depended on a live `:8893` that CI can never spawn (`creationflags=0x08000000` raises on Linux). **Latent, unfixed:** `tests/snapshot_panels` still leaks that marker, so any NEW test calling bare `asyncio.run()` on the main thread and sorting after it will fail identically - use the `_run_coro` / `_run_poll_loop` pattern (now 4 near-identical local copies; consolidating them is the open follow-up). _Id note: this took RM-100, not RM-99 - `docs/DS_SWEEP_TRACKER.md` has RM-99 explicitly reserved as the next free DS GAP id, and an explicit reservation outranks closing the numbering hole._
 
+- **RM-106 SGP serves the event-mode match history Match-V5 refuses - MEASURED LIVE 2026-07-19, operator-authorized, NOT yet built.** SGP (Service Gateway Proxy, the League client's OWN match-history backend) returns ARAM Mayhem matches that Match-V5 403s on. Probed read-only against the operator's own PUUID on the NA host `https://usw2-red.pp.sgp.pvp.net`, authenticated with the LCU session JWT from `/lol-league-session/v1/league-session-token` (3 segments, ~1.1 KB; region confirmed NA via `/riotclient/region-locale`). `GET /match-history-query/v1/products/lol/player/{puuid}/SUMMARY?startIndex=0&count=20` returned **HTTP 200, 2.0 MB, 20 games - 14 of them `gameMode=KIWI` / `queueId=2400`**, plus 6 PRACTICETOOL / 3140. **The payload is MATCH-V5 SHAPED**, which is what makes this cheap: each game is a `{json, metadata}` wrapper whose `json` carries the exact InfoDto key set (`gameCreation`, `gameDuration`, `gameId`, `gameMode`, `gameVersion`, `mapId`, `participants`, `platformId`, `queueId`, `teams`, `seasonId`, `tournamentCode`, `endOfGameResult`), with 10 participants at **153 fields each** including `perks` AND `playerAugment1/2`. So RC's existing Match-V5 ingest should consume it with adapter-level work, not a new parser. **THIS DOES NOT RE-LITIGATE THE SETTLED MATCH-V5 LINE** - that line is about Match-V5 and the Personal key and it still stands exactly as written. What is falsified is its downstream CONSEQUENCE: event-mode match data is NOT unobtainable, so the Mayhem hole in `rewind_history.db` and the event-mode timeline placeholders are fixable. **Nor does it re-open the augment fence:** the CLOSED finding is that there is no capture-free MID-GAME augment API, and OCR remains the proven in-game path; SGP augments are POST-game and a different question entirely. **NOT YET MEASURED (do not assume):** how far back the history goes, whether a timeline endpoint exists at all (the SUMMARY route carries none), the real rate limits, and behaviour when the client is closed (the LCU must be up to mint the token, which makes any backfill client-gated). **BUILD ORDER:** (1) size history depth with a couple of paged reads; (2) an adapter mapping the SGP `json` block onto the existing Match-V5 ingest path; (3) a backfill that fills ONLY the rows Match-V5 could not, keyed on gameId so it cannot double-insert; (4) decide whether the live post-game writer prefers SGP or Match-V5 per mode. **CONSTRAINTS (operator-set):** ToS risk accepted by the operator 2026-07-19; NA endpoints only; read-only, human-rate, no polling loop and no bulk crawl; do NOT vendor third-party code for the token exchange or commit a region table - derive the single host pair needed (`project_pre_release_name_scrub` applies).
+  - **RM-106a TIMELINE QUESTION ANSWERED - YES, MEASURED 2026-07-19, and it needs no SGP at all.**
+    `GET /lol-match-history/v1/game-timelines/{gameId}` on the LOCAL LCU (lockfile auth, the client
+    RC already talks to) returned **HTTP 200 / 66.5 KB / 21 frames** for a KIWI queue-2400 match
+    (gameDuration 1169s), carrying **10 `participantFrames` per frame** and 95 events. So event-mode
+    timelines are NOT unobtainable, and the answer arrives over a surface RC already authenticates
+    against - no SGP token, no new dependency, no ToS exposure beyond existing LCU use. **BUT THE
+    EVENT SET IS REDUCED - price this before building on it.** Only TWO event types were observed:
+    `CHAMPION_KILL` (88) and `BUILDING_KILL` (7). NO `ITEM_PURCHASED` and NO `SKILL_LEVEL_UP`, which
+    are exactly what RC's `/api/replay/events?include=items,skills` consumes. So this unlocks the
+    per-minute gold / xp / level curves (the s220 PGR gold-diff work) and the kill map, and does NOT
+    restore item or skill order. Frame cadence is ~1/minute, matching Match-V5 timeline granularity.
+    **STILL UNMEASURED:** whether the reduced event set is a KIWI property or an LCU-timeline
+    property (probe an SR match to separate those), and how far back the LCU match-history window
+    reaches - an independent note puts it near 20 entries, which would make this recent-matches-only
+    and NOT a backfill route. **PRIOR ART, do not re-discover:** `docs/LEDGER.md:1904` already
+    records this endpoint as an unconsumed lift, but framed for PGR gold-diff curves and skill-order
+    WPA; nobody had connected it to the event-mode timeline question.
+  - **RM-107 (DEFECT, live) RC's post-game timeline collector calls a 404 path and swallows it.**
+    `lcu/lcu_postgame_collector.py:792` requests
+    `/lol-match-history/v1/products/lol/{puuid}/matches/{game_id}/timeline`, which **measured HTTP
+    404** against the live client today, inside a bare `except Exception` that logs at DEBUG and
+    discards the result - so the failure has been invisible for its whole life, the same
+    silent-no-op shape as the RM-100 nightly-critic defect. The working route is the canonical
+    `/lol-match-history/v1/game-timelines/{gameId}` (RM-106a). Fix is a path correction plus a
+    narrowed except that logs a real WARN on a non-200, and a test pinning the canonical path so it
+    cannot silently rot again. S, no schema lift. Note the two routes take DIFFERENT identifiers
+    (puuid+game_id versus gameId alone), so this is not a pure string swap.
+  - **RM-106b the REPLAY API is a second, fully-sanctioned candidate for the timeline half - and it
+    does NOT fall under the `.rofl` fence. DEPRIORITIZED by RM-106a, but not closed, and the REASON
+    changed:** RM-106a already answers "does an event-mode timeline exist" (yes) far more cheaply,
+    so RM-106b is no longer about EXISTENCE. What it would still uniquely buy is RESOLUTION and
+    EVENT COVERAGE - RM-106a returns ~1 frame per minute with only CHAMPION_KILL / BUILDING_KILL,
+    whereas replay playback would expose full live state at ARBITRARY timestamps, including the
+    item and skill progression RM-106a does not carry. Chase it only if sub-minute granularity or
+    item/skill order turns out to be load-bearing; otherwise RM-106a is sufficient and cheaper. Riot publishes a first-party reference implementation
+    for its own in-client Replay API, **Apache 2.0 licensed**, which makes it the only source in
+    this research batch that is genuinely liftable rather than reference-only. Enabling it is
+    `EnableReplayApi=1` under `[General]` in `game.cfg` - **a CONFIG FLAG, not a binary patch**, so
+    the do-not-modify-client-files rule (Vanguard) is not engaged; RC already reads `game.cfg` for
+    minimap geometry. **WHY THE .rofl FENCE DOES NOT APPLY:** that fence closed `.rofl` because
+    per-patch Layer-2 obfuscation makes PARSING uneconomic. Playback-based extraction parses
+    nothing - the client decodes the file itself and serves state over a documented local API. The
+    closure REASON does not transfer, so do not kill this by pattern-matching it to "rofl =
+    CLOSED". **THE ONE EXPERIMENT (unverified, do not assume the answer):** does
+    `:2999/liveclientdata/*` serve during replay PLAYBACK? If it does, seeking a replay and
+    sampling the existing readers reconstructs a full timeline at arbitrary timestamps for any
+    mode - including KIWI, where Match-V5 has only placeholders - reusing RC's existing
+    `core/liveclient_cache` + `:2999` reader stack rather than new parsing code. If it does not,
+    close RM-106b and the timeline gap stands. **HARD BOUNDS, measured 2026-07-19:** exactly ONE
+    `.rofl` exists on disk locally, and replays are generally patch-locked, so this is a
+    FORWARD-CAPTURE route and CANNOT backfill the ~2952-match history. It also needs the game
+    client running with a replay actively playing, so it is an interactive capture, never a
+    background job. **NAME COLLISION - do not conflate:** RC's existing `/api/replay/*` routes
+    (`dashboard/routes_replay_events.py`, ADR-009 replay-events-cleanroom) are RC's OWN
+    match-data feature and have nothing to do with Riot's Replay API.
+
 ## NEXT - live-game-gated / operator-gated
 
 ### DS defensive-half sweep GAP specs (R132, 2026-07-19 - spec'd read-only, all UNBUILT)
