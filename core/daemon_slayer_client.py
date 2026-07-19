@@ -239,6 +239,12 @@ class TankRankedItem:
     # Phase 4(d): mirrors server unique_passive_key - the positive
     # locked-family signal (collision-independent).
     unique_passive_key: str = ""
+    # Term A (2026-07-18): the ally-granted EHP delta. Equals ``delta_ehp``
+    # unless the caller asked for score_by="team_blended" AND the champion
+    # reaches allies. Parsed explicitly so a team_blended re-rank is OBSERVABLE
+    # client-side - dropping the active field is how a live re-rank silently
+    # reads as inert.
+    delta_team_blended_ehp: float = 0.0
 
     @classmethod
     def from_dict(cls, d: dict) -> "TankRankedItem":
@@ -250,6 +256,9 @@ class TankRankedItem:
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
             dead_unique_key=str(d.get("dead_unique_key", "")),
             unique_passive_key=str(d.get("unique_passive_key", "")),
+            delta_team_blended_ehp=float(
+                d.get("delta_team_blended_ehp", d.get("delta_ehp", 0.0))
+            ),
         )
 
 
@@ -270,6 +279,7 @@ def rank_tank_for(
     # Seam flags (Tier-2, behavior-preserving; emitted only when set).
     prefer_survivability_by_win: bool = False,  # RF3
     cost_ceiling: Optional[int] = None,         # F2
+    score_by: str = "blended",                  # Term A: + team_blended
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -305,6 +315,9 @@ def rank_tank_for(
         body["prefer_survivability_by_win"] = True
     if cost_ceiling is not None:
         body["cost_ceiling"] = int(cost_ceiling)
+    # Term A: emit only when non-default so a flagless call is byte-identical.
+    if score_by != "blended":
+        body["score_by"] = score_by
     data = _post_json("/rank-tank", body, timeout=timeout)
     if data is None:
         return None
@@ -1377,6 +1390,7 @@ def rank_for_primary_archetype(
     prefer_kit_axis_by_win: bool = False,        # carry (DSP11) + assassin (DSP11)
     cost_ceiling: Optional[int] = None,          # carry (F2) + tank + bruiser
     prefer_survivability_by_win: bool = False,   # bruiser (RF1) + tank (RF3) + enchanter (RF2)
+    score_by: str = "blended",                   # tank only (Term A): + team_blended
     assume_magic_burst: bool = False,            # assassin (R30)
     assume_passive_as_stacks: bool = False,      # carry (R7)
     apply_target_vuln: bool = False,             # carry (R12)
@@ -1452,6 +1466,7 @@ def rank_for_primary_archetype(
             timeout=timeout,
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
+            score_by=score_by,
         )
         if rows is None:
             return None
@@ -1468,6 +1483,8 @@ def rank_for_primary_archetype(
                     "shares_dead_unique": r.shares_dead_unique,
                     "dead_unique_key":    r.dead_unique_key,
                     "unique_passive_key": r.unique_passive_key,
+                    # Term A: equals "delta" unless score_by="team_blended".
+                    "delta_team_blended": r.delta_team_blended_ehp,
                 }
                 for r in rows
             ],
