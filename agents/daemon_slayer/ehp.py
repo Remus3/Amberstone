@@ -139,6 +139,9 @@ from .stats import clamp_level
 from .survivability_credit import survivability_item_ids_tank
 from .kit_conversion import conversion_factor, kit_conversion
 from ._hsp_amp import sum_wielder_hsp_pct
+from ._item_ally_grant import ally_grant_hp, total_item_ally_grant_hp
+from ._champion_ally_reach import champion_ally_reach
+from ._passive_ally_grant_overrides import _ALLY_SHIELD_HEAL_PROB
 
 
 def _armor_factor(resist: float) -> float:
@@ -2374,6 +2377,19 @@ class EhpRankedItem:
     # the tabled rows float to the front BY MEMBERSHIP (no injection - RF1's shape,
     # not RF2's). Default 0.0 leaves the row + sort byte-identical.
     survivability_score: float = 0.0
+    # Term A (2026-07-18, ENGINE 1.220.0): ally-granted EHP surface.
+    # ``team_blended_ehp`` is the new build's blended EHP plus the flat HP the
+    # build's items confer on TEAMMATES (``_item_ally_grant``), amortized by the
+    # shipped ``_ALLY_SHIELD_HEAL_PROB`` uptime midpoint and gated on the
+    # champion's ally-reach signal. ``delta_team_blended_ehp`` is that value's
+    # gain over the baseline build; because the CURRENT build's ally grant is
+    # identical on both sides it cancels, so the delta reduces exactly to
+    # ``delta_ehp + candidate_ally_grant * prob``. When the ranker runs
+    # ``score_by="team_blended"`` the sort + efficiency key uses
+    # ``delta_team_blended_ehp``; every other score_by leaves both at their
+    # no-grant identity (team == blended) so the row stays byte-identical.
+    team_blended_ehp: float = 0.0
+    delta_team_blended_ehp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -2391,6 +2407,8 @@ class EhpRankedItem:
             "cc_blended_ehp": self.cc_blended_ehp,
             "delta_cc_blended_ehp": self.delta_cc_blended_ehp,
             "survivability_score": self.survivability_score,
+            "team_blended_ehp": self.team_blended_ehp,
+            "delta_team_blended_ehp": self.delta_team_blended_ehp,
         }
 
 
@@ -2572,9 +2590,10 @@ def rank_items_by_ehp(
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
-    if score_by not in ("blended", "cc_blended"):
+    if score_by not in ("blended", "cc_blended", "team_blended"):
         raise ValueError(
-            f"score_by must be 'blended' or 'cc_blended', got {score_by!r}"
+            "score_by must be 'blended', 'cc_blended' or 'team_blended', "
+            f"got {score_by!r}"
         )
     enemy_champions = tuple(str(e) for e in (enemy_champions or ()))
     # Item 236: tenacity-credit defaults ON for cc_blended ranking (an
@@ -2621,6 +2640,35 @@ def rank_items_by_ehp(
         if prefer_survivability_by_win else frozenset()
     )
     surv_active = bool(surv_ids)
+
+    # Term A (2026-07-18, ENGINE 1.220.0, DEFAULT-OFF): resolve the ally-grant
+    # amortizer ONCE. Non-zero only when score_by == "team_blended" AND the
+    # champion's kit actually reaches allies, so on every other path the
+    # multiplier is 0.0, the new row fields collapse to their blended identity
+    # (team_blended_ehp == blended_ehp, delta_team_blended_ehp == delta_ehp) and
+    # neither active_delta nor the sort key ever reads them - byte-identical.
+    #
+    # The coefficient is the SHIPPED _ALLY_SHIELD_HEAL_PROB (0.5) - "the
+    # expected fraction of the modeled fight in which the granted shield / heal
+    # HP is PRESENT on the protected ally". Term A introduces ZERO new
+    # constants; it reuses the amortizer the champion-side ally registry
+    # already uses for exactly this quantity.
+    #
+    # Both sides of the sum are EHP: a flat shield / heal sits at the TOP of the
+    # protected ally's damage stack exactly like base HP, so it rides the same
+    # armor/MR curve and adds RAW to the numerator - the contract this module
+    # already documents for the self-shield pool. No cross-unit conversion is
+    # introduced (deliberately unlike hybrid.py, which needed a whole
+    # normalization layer to paper over one mixed-unit addition).
+    _ally_grant_mult = (
+        _ALLY_SHIELD_HEAL_PROB
+        if (score_by == "team_blended" and champion_ally_reach(champion_id))
+        else 0.0
+    )
+    _baseline_ally_ehp = (
+        total_item_ally_grant_hp(current_ids, level) * _ally_grant_mult
+        if _ally_grant_mult else 0.0
+    )
 
     baseline = compute_ehp(
         snapshot,
@@ -2715,7 +2763,22 @@ def rank_items_by_ehp(
         # == delta when no enemy_champions); "cc_blended" ranks on the
         # enemy-CC-lockdown-adjusted delta. Negative / zero deltas zero-out the
         # per-1k column - regressions, not efficiency.
-        active_delta = cc_delta if score_by == "cc_blended" else delta
+        # Term A: the candidate's own ally grant, amortized. The CURRENT build's
+        # grant is identical on both sides of the subtraction and cancels, so
+        # the team delta is exactly ``delta + candidate_grant * prob``. The
+        # multiplier is 0.0 unless score_by == "team_blended" AND the champion
+        # reaches allies, so this is byte-identical on every other path.
+        cand_ally_grant = (
+            ally_grant_hp(item_id, level) * _ally_grant_mult
+            if _ally_grant_mult else 0.0
+        )
+        team_delta = delta + cand_ally_grant
+        team_ehp = scored.blended_ehp + _baseline_ally_ehp + cand_ally_grant
+        active_delta = (
+            cc_delta if score_by == "cc_blended"
+            else team_delta if score_by == "team_blended"
+            else delta
+        )
         eff = (active_delta / (gold / 1000.0)) if (gold > 0 and active_delta > 0) else 0.0
         # RF3 survivability credit marker: 1.0 on a WIN-anchored survivability item
         # when the seam is engaged, else 0.0. Floated BY MEMBERSHIP - these items
@@ -2736,13 +2799,18 @@ def rank_items_by_ehp(
             cc_blended_ehp=scored.cc_blended_ehp,
             delta_cc_blended_ehp=cc_delta,
             survivability_score=survivability_score,
+            team_blended_ehp=team_ehp,
+            delta_team_blended_ehp=team_delta,
         ))
 
     # Item 236: the sort key tracks score_by. Default "blended" sorts on
     # delta_ehp (byte-identical); "cc_blended" sorts on delta_cc_blended_ehp.
+    # Term A: "team_blended" sorts on delta_team_blended_ehp.
     _active = (
         (lambda r: r.delta_cc_blended_ehp)
         if score_by == "cc_blended"
+        else (lambda r: r.delta_team_blended_ehp)
+        if score_by == "team_blended"
         else (lambda r: r.delta_ehp)
     )
 
@@ -2823,6 +2891,15 @@ def rank_items_by_ehp(
             f"score_by=cc_blended - ranked on CC-adjusted EHP vs "
             f"{len(enemy_champions)} enemy champ(s)"
             + ("" if enemy_champions else " (no enemies supplied -> identical to blended)")
+        )
+    if score_by == "team_blended":
+        notes.append(
+            "score_by=team_blended - ranked on self EHP + ally-granted EHP"
+            + (
+                f" (ally reach ON, grant amortized at {_ally_grant_mult:.2f})"
+                if _ally_grant_mult
+                else " (champion has no ally-facing ability -> identical to blended)"
+            )
         )
     if surv_active:
         notes.append(
