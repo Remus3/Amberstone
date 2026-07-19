@@ -4,6 +4,65 @@
 
 ---
 
+# 2026-07-19j (gemini-loop cycle 5 - R136 shipped RM-101's numerator half, and two blockers in our OWN ROADMAP turned out to be conventions that already shipped)
+
+**A claim written in our own ROADMAP ages exactly like an external source, and
+inherits no more trust. Verify a BLOCKER before honouring it, not just a formula
+before building on it.**
+
+Shipped (ENGINE 1.224.0 -> 1.225.0, commit `18aca9e3`): `_rune_health_grants.py`
+(Overgrowth 8451 permanent max-HP + Grasp 8437 self-side heal / permanent-HP)
+behind DEFAULT-OFF `apply_rune_health_grants`, and `_rune_hsp_amp.py`
+(Revitalize 8453's flat 5% Heal/Shield Power) behind DEFAULT-OFF
+`apply_rune_hsp_amp`. Both reuse R132's existing `rune_ids` transport, so no
+entry point gained a new ids parameter. Three agents on disjoint file sets with
+the orchestrator holding EVERY shared seam, so the slices structurally could not
+collide - both build agents returned exactly two untracked files and zero seam
+edits, verifier-confirmed.
+
+**The directive was wrong and was not followed.** It ordered all seven RM-101
+runes including Font of Life 8463. Our own spec records 8463 as DATA-BLOCKED on
+an unresolved `@BaseHeal@` DDragon template var; the directive's premise line was
+tagged `[from-digest]` and the digest had dropped the qualifier. Re-confirmed
+from raw source: `@BaseHeal@` appears verbatim in ALL FOUR vendored snapshots, is
+one of only 3 unresolved tokens in the whole rune file, and no independent
+vendored source exists (the aggregator B scrapes re-serve the same DDragon payload; no
+CommunityDragon `perks.json` is vendored). The number was not invented. Two tests
+pin 8463 + 8465 at zero credit so a later pass cannot seed a guess.
+
+**Two ROADMAP claims REFUTED, both re-grepped rather than taken on the agent's
+word.** "Second Wind needs a missing-health convention the scorer lacks" - it is
+a local variable at the exact call site (`ehp.py:355
+_MISSING_HP_SHARE_FOR_HEALS = 0.5`). "Bone Plating needs a hit-count convention
+that does not exist" - `_passive_flat_mitigation_overrides.py:92
+_ASSUMED_FLAT_DR_INSTANCES = 6.0` with discrete instance math at `:270` shipped
+in R9 a MONTH before the claim was written. Both blockers were authored by a
+careful agent that read the rune correctly and simply never checked whether the
+sibling registry it needed already existed. This is the third cycle running in
+the same family (R132's Aftershock cap, R134's audit, now this).
+
+**NEXT: Bone Plating 8473.** Its instance count of 3 is stated in the rune text,
+so it REPLACES that registry's largest assumption instead of adding one, and at
+~154 prevented HP (L13) it is the only buildable remainder big enough to reorder
+a ranking. Shape: rune-keyed `_rune_flat_mitigation.py`, `level_scaled` copied
+from the percent sibling, `_lerp_per_level(30.0, 60.0)`, folded next to
+`flat_mit_*`. The one judgement call is `conditional_probability` - "from
+**them**" scopes the block to a single attacker, so seed it conservatively.
+Then Second Wind (buildable, small at ~50 numerator HP), then Guardian self-only
+(AP-omitted, under the shipped Irelia-W / Fizz-P omission precedent).
+
+Two hazards worth carrying. (1) The rune-HSP seam is only OBSERVABLE on a build
+owning a self-shield - HSP scales the shield pool, so on a shieldless tank build
+arming the flag is correctly a no-op. This cost one red test before it was
+understood; `test_hsp_amp_needs_a_shield_to_amplify` now pins it so nobody
+"fixes" a working seam. (2) After an ENGINE bump the first RC suite run WILL show
+~15 failures that are pure regen debt - build-order engine stamps, the
+`docs/DAEMON_SLAYER.md` banner, and one live-integration test that cannot pass
+until `:8893` is bounced. The regen commands are quoted in
+`tests/test_build_order_engine_stamp_sync.py`'s own docstring.
+
+---
+
 # 2026-07-19i (gemini-loop cycle 4 - the sweep's thesis was refuted by measurement; the shippable bug was found on the way past it)
 
 **A missing guard is not a bug until something can reach it. Measure reachability
@@ -105,99 +164,3 @@ change turns a test RED rather than silently over-crediting tanks.
 Commit `534ab3ef`, ENGINE stays 1.224.0. DS 8686 / RC 11979 green, verifier CONFIRM
 on all four claims. Refutation escalated to the director via `gemini_ask.txt` so
 cycle 4 does not re-issue it or read the absent bump as unfinished work.
-
----
-
-# 2026-07-19g (gemini-loop cycle 2 - DS modelled runes as offense only; defensive resist half now exists)
-
-**The transferable lesson is about how a good agent report can still be wrong.**
-
-The R132 sweep agent that found the rune hole did excellent work: every `file:line`
-it cited survived an independent grep, its REFUTEs were all correct, and the
-structural gap it identified was real. `ehp.py` grep for `rune|perk|keystone`
-returns ZERO matches, `rank.py` returns ZERO, seven live Resolve rune ids return
-0 hits across the entire package, and Aftershock 8439 is registered for damage
-only with its own formula string admitting "(resist-bonus side not modeled)".
-
-It still got the central formula wrong. It reported Aftershock as
-`45 + 75% of Bonus Resists` and dropped the trailing longDesc clause:
-"Resistance bonus from Aftershock capped at: 80-150 (based on level)". Building
-on the paraphrase would have shipped math that over-credits precisely the
-high-resist tanks the feature exists to serve - at level 18 with 150 bonus armor
-the uncapped value is 157.5 against a cap of 150. What caught it was re-reading
-the raw `runesReforged.json` longDesc instead of the agent's summary of it.
-
-**Rule to carry: when a finding hands you a FORMULA, reproduce the formula from
-source before building on it - checking the cited file:line is not the same
-check.** Same failure family as the existing DS probe-trap memories, new surface
-(paraphrase drift rather than probe-parameter drift).
-
-Second lesson, smaller but sharp: **a test suite can PROTECT the defect it ought
-to catch.** R133 found `test_arena_mirrors_credit_same_as_base` asserting
-`base == mirror` - which is exactly the "base nominal" seeding bug expressed as
-an invariant. The wrong Arena magnitudes were not merely uncaught, they were
-pinned. Before assuming a red test means a new break, check what the existing
-tests assert about the values you are correcting.
-
-**Shipped:** R132 `e6a84734` (ENGINE 1.223.0 -> 1.224.0) new
-`_rune_resist_grants.py` for Aftershock / Conditioning / Unflinching, folded into
-`eff_armor` / `eff_mr` behind DEFAULT-OFF `apply_rune_resist_grants`. R133
-`ad16ba65` (executor-opened, no bump) corrected three of four Arena / prismatic
-mirror magnitudes - 226665 is 40% not 30%, 224401 is 50 MR not 70, 663059 is 10%
-not 20% - each re-verified against the raw item index before editing.
-
-**Deliberately not built, spec'd read-only:** RM-99 Heartsteel's permanent-HP
-half is pinned at ZERO stacks forever (~43 EHP per proc; ~16.5 procs takes #1 off
-Randuin's on Sion) - RM-101 the defensive-rune remainder - RM-102 Warmog's Arena
-mirror credited a Vitality passive it does not have - RM-103 Unending Despair's
-250% SELF heal uncredited and mislabelled "ally ... utility-only" - RM-104 Kaenic
-Arena mirror double-gated out of its own shield. Font of Life is DATA-BLOCKED:
-its base heal is an unresolved `@BaseHeal@` template var in live DDragon 16.14.1.
-Do not invent a number for it.
-
----
-
-# 2026-07-19f (gemini-loop cycle 1 - two silent failures closed: the nightly critic and the nightly suite)
-
-**Both failures were invisible to the surfaces we actually watch. That is the
-transferable lesson, not the individual fixes.**
-
-**RC-GeminiAudit produced nothing for 28 nights while reading Enabled/Ready.**
-`ops/runtime/gemini_last_audit.txt` pinned a worktree-slice sha that never
-survived cherry-pick, so `git log <dangling>..HEAD` came back empty and
-`tools/gemini_audit.ps1` took its own "nothing to audit" branch and exited 0 -
-no review, no log line, `logs/gemini_audit.log` did not exist at all. The
-session-start anomaly probe only ever surfaced the unrelated `0xC000013A`.
-**Exit 0 is not success and Ready is not health.** Now self-heals to `HEAD~10`
-with a loud WARN and logs `START pid=...` unconditionally as its first write.
-
-**The 0xC000013A is a SEPARATE fault, still unproven, deliberately left open.**
-Six hypotheses refuted, including my own leading one - InteractiveToken session
-teardown died to a same-night control (5 sibling InteractiveToken tasks ran
-3:00 through 4:17, all result 0, one of them one second earlier). The task was
-NOT re-registered: changing a working ops surface on refuted evidence is churn.
-**If it recurs on a later nightly, the marker fix is not the cause - read the
-log. START then silence = killed mid-run; no START = died before line 20.**
-The task still DISPLAYS `Last Result -1073741510` until the 7/20 run clears it;
-that is historical, not live.
-
-**The nightly full-suite had been red for 12 consecutive days** (runs
-28935372989 .. 29682372934) and nobody saw it, because the push `check` job is
-green BY CONSTRUCTION - it never runs `tests/` as one process, so it cannot
-reproduce the pollution. Only the nightly can. **Two unrelated bugs, not one
-ordering bug**, which is exactly why both files passed in isolation: Playwright's
-session-scoped ProactorEventLoop leaves asyncio's per-thread running-loop marker
-set on the main thread (that marker is LIVE - clearing it in conftest makes
-snapshot_panels time out, tried and reverted), and the Jhin test depended on a
-live `:8893` CI can never spawn (`creationflags=0x08000000` raises on Linux).
-Test-side fixes only. **Main is green: 20544 passed, 82 skipped, 2357 subtests,
-0 failed** (run 29688982602, dispatched manually since only that job reproduces).
-
-**LATENT, carry forward:** `tests/snapshot_panels` still leaks the loop marker.
-Any NEW test calling bare `asyncio.run()` on the main thread and sorting after
-it fails identically - use the `_run_coro`/`_run_poll_loop` pattern. Four
-near-identical local copies now exist; consolidating them is the open follow-up.
-
-**Process note worth keeping:** both slice agents REFUTED an orchestrator
-hypothesis on evidence, and both were right to. They were briefed to verify
-premises rather than accept them. Keep briefing them that way.
