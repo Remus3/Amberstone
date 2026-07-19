@@ -541,6 +541,8 @@ def _route_ehp(body: dict) -> dict:
     apply_rune_hsp_amp = _opt_bool(body, "apply_rune_hsp_amp", False)
     # R137 (ENGINE 1.226.0, RM-99): item permanent-HP-per-proc stack (Heartsteel).
     assume_item_health_stacks = _opt_bool(body, "assume_item_health_stacks", False)
+    apply_rune_flat_mitigation = _opt_bool(body, "apply_rune_flat_mitigation", False)
+    assume_item_proc_heal = _opt_bool(body, "assume_item_proc_heal", False)
     apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     assume_item_general_dr = _opt_bool(body, "assume_item_general_dr", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
@@ -571,6 +573,8 @@ def _route_ehp(body: dict) -> dict:
             apply_rune_health_grants=apply_rune_health_grants,
             apply_rune_hsp_amp=apply_rune_hsp_amp,
             assume_item_health_stacks=assume_item_health_stacks,
+            apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+            assume_item_proc_heal=assume_item_proc_heal,
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
@@ -653,6 +657,8 @@ def _route_rank_tank(body: dict) -> dict:
     apply_rune_hsp_amp = _opt_bool(body, "apply_rune_hsp_amp", False)
     # R137 (ENGINE 1.226.0, RM-99): item permanent-HP-per-proc stack (Heartsteel).
     assume_item_health_stacks = _opt_bool(body, "assume_item_health_stacks", False)
+    apply_rune_flat_mitigation = _opt_bool(body, "apply_rune_flat_mitigation", False)
+    assume_item_proc_heal = _opt_bool(body, "assume_item_proc_heal", False)
     apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     assume_item_general_dr = _opt_bool(body, "assume_item_general_dr", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
@@ -695,6 +701,8 @@ def _route_rank_tank(body: dict) -> dict:
             apply_rune_health_grants=apply_rune_health_grants,
             apply_rune_hsp_amp=apply_rune_hsp_amp,
             assume_item_health_stacks=assume_item_health_stacks,
+            apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+            assume_item_proc_heal=assume_item_proc_heal,
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
@@ -769,6 +777,8 @@ def _route_hybrid(body: dict) -> dict:
     apply_rune_hsp_amp = _opt_bool(body, "apply_rune_hsp_amp", False)
     # R137 (ENGINE 1.226.0, RM-99): item permanent-HP-per-proc stack (Heartsteel).
     assume_item_health_stacks = _opt_bool(body, "assume_item_health_stacks", False)
+    apply_rune_flat_mitigation = _opt_bool(body, "apply_rune_flat_mitigation", False)
+    assume_item_proc_heal = _opt_bool(body, "assume_item_proc_heal", False)
     apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     assume_item_general_dr = _opt_bool(body, "assume_item_general_dr", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
@@ -801,6 +811,8 @@ def _route_hybrid(body: dict) -> dict:
             apply_rune_health_grants=apply_rune_health_grants,
             apply_rune_hsp_amp=apply_rune_hsp_amp,
             assume_item_health_stacks=assume_item_health_stacks,
+            apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+            assume_item_proc_heal=assume_item_proc_heal,
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
@@ -880,6 +892,8 @@ def _route_rank_bruiser(body: dict) -> dict:
     apply_rune_hsp_amp = _opt_bool(body, "apply_rune_hsp_amp", False)
     # R137 (ENGINE 1.226.0, RM-99): item permanent-HP-per-proc stack (Heartsteel).
     assume_item_health_stacks = _opt_bool(body, "assume_item_health_stacks", False)
+    apply_rune_flat_mitigation = _opt_bool(body, "apply_rune_flat_mitigation", False)
+    assume_item_proc_heal = _opt_bool(body, "assume_item_proc_heal", False)
     apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     assume_item_general_dr = _opt_bool(body, "assume_item_general_dr", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
@@ -935,6 +949,8 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_rune_health_grants=apply_rune_health_grants,
             apply_rune_hsp_amp=apply_rune_hsp_amp,
             assume_item_health_stacks=assume_item_health_stacks,
+            apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+            assume_item_proc_heal=assume_item_proc_heal,
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
