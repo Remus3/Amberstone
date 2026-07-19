@@ -856,6 +856,15 @@ def _route_rank_bruiser(body: dict) -> dict:
     # R55: the target_current_hp_pct seam now reaches the bruiser (hybrid)
     # scorer's DPS axis. Default 1.0 -> byte-identical when the body omits it.
     target_current_hp_pct = _opt_float(body, "target_current_hp_pct", 1.0)
+    # RM-39/RM-43 (DEFAULT-OFF): add the PHYSICAL-only ability term to the AD
+    # branch, which is auto-attack-only by design (dps.py:34) for 92 of 173
+    # champions. Routed here so the mandatory cohort-wide golden diff (ON vs
+    # OFF across every AD-axis champion) is measurable over HTTP; without the
+    # surface the ON path is unreachable from :8893. Default body =
+    # byte-identical.
+    apply_ad_axis_ability_damage = _opt_bool(
+        body, "apply_ad_axis_ability_damage", False
+    )
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -890,6 +899,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
             target_current_hp_pct=target_current_hp_pct,
+            apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
