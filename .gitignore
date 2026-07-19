@@ -205,7 +205,7 @@ data/.*.tmp
 # fast cold-cache); db_sizes is just a numerical snapshot.
 data/coach_reference/db_sizes.json
 
-# Cross-Claude bridge folder (RC ↔ Peer-VIP). Durable inheritance docs
+# Cross-Claude bridge folder (RC <-> Peer-VIP). Durable inheritance docs
 # (PEER_VIP_ARCHITECTURE / SETUP / INTAKE_QA / UPDATE_FROM_RC_* /
 # WT_INHERITANCE_*) ARE tracked. Round-trip scratch - asks, file bundles,
 # post-update return prompts, parity sync snapshots - gets consumed by
@@ -288,3 +288,9 @@ ops/audit/ds_perm_swarm/report/WATCHER_STOP
 # Vision calibrator runtime (per-machine HUD profiles + captured native reference frames)
 data/vision_profiles/
 data/vision_calib_reference/
+
+# ds_share_sync stage-then-swap scratch dirs (see tools/ds_share_sync.py::_write).
+# Cleared at the start of the next run and on failure; ignored so a hard crash
+# mid-swap cannot leave them staged into a commit.
+Share/src.tmp/
+Share/src.old/
