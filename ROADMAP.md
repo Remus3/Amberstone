@@ -46,34 +46,16 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
     `/lol-match-history/v1/game-timelines/{gameId}` (RM-106a). S, no schema lift. Note the two
     routes take DIFFERENT identifiers (puuid+game_id versus gameId alone), so this is not a pure
     string swap.
-    - **SHIPPED 2026-07-19. THE PRESCRIBED MECHANISM ABOVE WAS WRONG - do not inherit it.**
-      "A narrowed except that logs a real WARN on a non-200" is mechanically impossible here:
-      `_lcu_get` (`lcu/lcu_postgame_collector.py:891-906`) catches every exception ITSELF and
-      returns `None`, so urllib's `HTTPError` for the 404 is consumed inside the helper and the
-      outer `except Exception` never fired. The 404 arrived as `timeline is None`, failed the
-      `isinstance` guard, and the function returned having logged NOTHING - not even the DEBUG
-      line the filing describes. The fix is a status-aware sibling helper `_lcu_get_status`
-      returning `(status, json)`; `_lcu_get` KEEPS its None-on-failure contract because seven
-      other call sites depend on it and `_get_gameflow_phase` polls it where a non-200 is normal.
-      The outer except is DELETED, not narrowed - after the rewrite nothing in the body can raise.
-    - **HONEST VALUE: this restores ZERO item events, permanently.** `_save_item_events:562`
-      filters to `ITEM_PURCHASED/SOLD/UNDO/DESTROYED`. **MEASURED 2026-07-19: the reduced event set
-      is an LCU-TIMELINE property, not a KIWI property** - a PRACTICETOOL match on the same route
-      returned 5 frames / 17 events, all `CHAMPION_KILL`, zero `ITEM_*`, exactly like KIWI's 88
-      `CHAMPION_KILL` + 7 `BUILDING_KILL`. That settles RM-106a's first open question. All five
-      `*_item_events` tables hold 0 rows and no production module reads them. The patch converts an
-      invisible failure into a visible one and buys an unconsumed per-frame gold/xp payload; it does
-      not restore item history. The zero-ITEM_* outcome is logged at INFO (not WARN) precisely
-      because it is now known to be permanent and would otherwise fire after every game.
-    - **A SECOND SILENT NO-OP, same file, found by the same probe and fixed in the same commit:**
-      `_capture_via_history:755` requested `?begin=0&end=1`, which **measured HTTP 400** live. The
-      supported spelling is `begIndex/endIndex` (`tools/lcu_agent.py:2025` already had it right;
-      the two spellings contradicted each other in-repo). `_lcu_get` collapsed the 400 into `None`,
-      so the EOG match-history fallback returned `False` for its whole life.
-    - **RM-106a QUESTION (b) ANSWERED - the LCU window is HARD-CAPPED AT 20 ENTRIES.** Measured
-      `endIndex=20/40/100/200` all return exactly 20 rows. So this route is recent-matches-only and
-      **cannot backfill** the ~2952-match history. Frame nesting is TOP-LEVEL `frames` (no `info`
-      wrapper). If a backfill is ever wanted, RM-106's SGP adapter is the only candidate left.
+    - **SHIPPED 2026-07-19 (commit `556662a7`).** The path fix landed, plus a
+      SECOND silent no-op found by the same probe (`_capture_via_history` used
+      `?begin=0&end=1`, which measured HTTP 400). **Full detail relocated to
+      `docs/ROADMAP_HISTORY.md` (2026-07-19 block).** Three things must not be
+      re-inherited: the filing's prescribed fix (narrow the except) is
+      MECHANICALLY IMPOSSIBLE because `_lcu_get` swallows the HTTPError itself;
+      the fix restores ZERO item events PERMANENTLY, because the reduced event
+      set is an LCU-TIMELINE property not a KIWI one (a PRACTICETOOL match on
+      the same route also returned only CHAMPION_KILL); and the LCU history
+      window is HARD-CAPPED AT 20 entries, so it can never backfill.
   - **RM-106b the REPLAY API is a second, fully-sanctioned candidate for the timeline half - and it
     does NOT fall under the `.rofl` fence. DEPRIORITIZED by RM-106a, but not closed, and the REASON
     changed:** RM-106a already answers "does an event-mode timeline exist" (yes) far more cheaply,
@@ -145,59 +127,7 @@ deliberately NOT built in that cycle.
 > items to `est_ms`, `assume_ms_utility` is flipped default-ON, or a champion ships with base
 > MS outside 220-415.
 
-- **RM-99 SHIPPED 2026-07-19 (R137, ENGINE 1.226.0) - DEFAULT-OFF `assume_item_health_stacks`.**
-  See the R137 sub-bullet at the end of this item for what shipped and for THREE spec errors in
-  the research narrative below (the 8% coefficient is WRONG, the fold site is under-specified, and
-  the prescribed R46 plumbing is route-unreachable). Original filing, corrections inline:
-  **Heartsteel 3084 permanent-HP half is pinned at ZERO stacks, forever.** Meraki
-  "Colossal Consumption" grants permanent bonus health equal to 8% of the empowered proc damage
-  (30s cooldown per target). Only the damage half is modelled; `_effects_data.py` disclaims the
-  rest verbatim in-line - "The HP-on-damage permanent stack (8% of damage as max HP) is not
-  modeled - that's stat-side, not proc-side". No registry credits it. The structural reason is
-  the familiar one: `_passive_health_overrides.passive_health_stack_hp` (R46) is EXACTLY this
-  axis but is keyed by `(champion_id, ability_key, form_index)`, so an item can never match it,
-  and the two item-side HP-numerator lanes that do exist (`_item_mana_health` R105,
-  `_item_bonus_hp_amp` R107) are both exact conversions of an already-resolved stat and cannot
-  express `procs x hp_per_proc`. Measured live on Sion L13 `[3047, 3068]` via `/rank-tank`:
-  Heartsteel sits #3 (2016.80 delta EHP) behind Randuin's 2731.28 and Warmog's 2240.88, each
-  proc is worth ~43 EHP, so ~5.2 procs passes Warmog's and ~16.5 takes #1 - ordinary mid-game
-  numbers for the item whose entire identity is its stack counter. **Not RM-91** (that is
-  HP-not-priced-as-damage and needs an objective change; this is a pure max-HP pool add landing
-  inside `ds.ehp`'s existing objective) and **not RM-94** (Mejai's is pinned at MAX stacks, this
-  at ZERO). Fix shape: `_item_health_stack.py` + DEFAULT-OFF `assume_item_health_stacks`, folded
-  next to `item_bonus_hp_amp_hp`, with a monotone assumed-procs-by-level curve copying the
-  stack-count-proxy rationale already written in `_passive_health_overrides.py`. S/M, no schema
-  lift. Secondary, offense-side: `every_n_seconds=3.5` drops Meraki's explicit 30s-per-target
-  cooldown, so a single-target rotation gets ~8.57x the real proc count - the same proxy number
-  serves both.
-  - **R137 SHIPPED 2026-07-19 (ENGINE 1.226.0): `_item_health_stack.py` + DEFAULT-OFF
-    `assume_item_health_stacks`, folded into the three main per-type EHP numerators.** Registered
-    3084 AND the Arena mirror 223084 (which the filing above omits entirely). Route-surfaced on
-    `/ehp`, `/rank-tank`, `/hybrid`, `/rank-bruiser`. DS suite 8787 passed / 1 skipped / 2461
-    subtests. **THREE ERRORS IN THE PARAGRAPH ABOVE - do not inherit them.** (1) **The coefficient
-    is 10%, not 8%.** `items_meraki.json` is FROZEN, not lagging: its body is byte-identical across
-    all five vendored patch dirs (md5 `5f2ab2ca072637d9`, 16.10.1 .. 16.14.1) despite five separate
-    fetches - the item-side instance of the RM-81 Meraki-pin defect. DDragon `items.json` in the
-    SAME patch dir, CommunityDragon 16.14 and the wiki all read 10%, and the wiki's dated `V26.11`
-    entry ("increased to 10% from 8%") predicts the exact 8 -> 10 flip observed between the vendored
-    16.10.1 and 16.11.1 dirs. Meraki's 8% was correct for V25.04 .. V26.10. Its 30s per-target
-    cooldown is still correct - only the coefficient moved. (2) **"folded next to
-    `item_bonus_hp_amp_hp`" is under-specified** - there are TWO numerator regions, and this term
-    joins the PERMANENT-HP family (`passive_health_hp` / `rune_perm_hp`), which the
-    `_blend_with_heal` mirror does not carry, so it is folded into the main block ONLY. (3)
-    **"copying the R46 rationale" is right for the MATH and wrong for the PLUMBING** -
-    `assume_passive_health_stacks` never reaches `rank_items_by_ehp`, `hybrid.py` or `server.py`,
-    so mirroring it would have shipped a lane unreachable from the scorer (same defect as
-    `assume_kaenic_shield` / `assume_hsp_amp` / `assume_eclipse_shield` / `assume_chainlaced_shield`
-    - that population is LARGER than the RM-104 note claims). R107/R136 plumbing was used instead.
-    **DDragon's "(0s) per target" is a proven template artifact**, not a real cooldown: 23 items in
-    16.14.1 render `(0s)` and exactly one renders a nonzero value, and Meraki supplies real
-    cooldowns for four of the cohort. **The assumed-procs curve is the one judgement in the lane** -
-    deliberately LOW per the R46 stack-count-proxy convention, zero below L7, 8 at L13 (above the
-    ~5.2 that passes Warmog's, well below the ~16.5 that would take #1), specifically to avoid the
-    RM-94 Mejai's pinned-at-max failure mode. **Arena mirror 223084 is tagged INHERITED, UNSOURCED**
-    - no feed states a coefficient for it and Riot retuned that mirror on other axes (700 HP vs 900,
-    2500g vs 3000g); re-source before any map-30 default-ON flip.
+- **RM-99 SHIPPED 2026-07-19 (R137, ENGINE 1.226.0) - DEFAULT-OFF `assume_item_health_stacks`.** Heartsteel 3084 + Arena mirror 223084 permanent-max-HP half, folded into the three main per-type EHP numerators and route-surfaced on `/ehp`, `/rank-tank`, `/hybrid`, `/rank-bruiser`. **Full narrative relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-07-19 block)** - including the THREE spec errors it corrected (the coefficient is 10 percent not 8, because `items_meraki.json` is FROZEN; the fold site was under-specified; the prescribed R46 plumbing is route-unreachable). The engine-side record is the ENGINE 1.226.0 entry in `agents/daemon_slayer/CHANGELOG.md`. Do NOT re-inherit the 8 percent.
   - **RM-99b OPEN (spun out, NOT shipped): the Heartsteel DAMAGE half's cadence is wrong.**
     `_effects_data.py` carries `every_n_seconds=3.5`, which is neither the 3s charge nor the 30s
     per-target cooldown - a single-target rotation gets ~8.57x the real proc count. Deliberately NOT
@@ -207,70 +137,33 @@ deliberately NOT built in that cycle.
     disagree about firing rate** - matching a known-wrong cadence for self-consistency would have
     made the new lane wrong on purpose. Needs its own operator-gated slice with a measured
     build-order diff. The Arena mirror 223084 carries the identical 3.5s.
-- **RM-101 the defensive-rune remainder (the half R132 deliberately did not build).** R132 shipped
-  the RESIST feed only (Aftershock 8439 / Conditioning 8429 / Unflinching 8242). Still absent:
-  **Overgrowth 8451** (permanent max-HP, a different output field - numerator not denominator),
-  **Revitalize 8453** (5% Heal/Shield Power; `_hsp_amp.py` sums HSP across EQUIPPED ITEMS ONLY, so
-  the rune cannot reach it), **Grasp 8437 self-side** heal + permanent-HP (`rune_procs.py` scores
-  the damage and says "(heal + permanent-HP sides not modeled)"; note the coefficients ALREADY
-  exist, DDragon-cited, on the ENEMY side in `enemy_runes.py` - `poke_heal_pct` 0.013,
-  `perm_hp` 5.0, `ranged_factor` 0.40 - so the self-side feed needs no new data sourcing),
-  **Second Wind 8444 self-side**, **Bone Plating 8473** (flat per-instance mitigation, but
-  INSTANCE-COUNTED rather than window-amortized - needs a hit-count convention the EHP scorer
-  does not have). **Guardian 8465 / Font of Life 8463 are ally-facing and one is data-blocked**:
-  Font of Life's base heal is an unresolved `@BaseHeal@` template var in live DDragon 16.14.1, a
-  genuine data ceiling - do NOT invent a number for it.
-  - **R136 (2026-07-19, ENGINE 1.225.0) SHIPPED three of these: Overgrowth 8451 + Grasp 8437
-    self-side (`_rune_health_grants.py`, DEFAULT-OFF `apply_rune_health_grants`) and Revitalize
-    8453's flat half (`_rune_hsp_amp.py`, DEFAULT-OFF `apply_rune_hsp_amp`).** Both reuse the
-    R132 `rune_ids` transport, so no entry point gained a new ids parameter. Revitalize's
-    "10% stronger below 40% health" clause is deliberately unmodelled (target-state, CLOSED).
-  - **TWO CLAIMS IN THE PARAGRAPH ABOVE ARE REFUTED - do not inherit them.** (1) Second Wind
-    does NOT need a missing-health convention: `ehp.py:355 _MISSING_HP_SHARE_FOR_HEALS = 0.5`
-    is a local variable at the exact call site, and `ability_hps.py:254` carries a second
-    independent `caster_missing_hp_pct` lane. Its coefficient 0.04 is already DDragon-cited at
-    `enemy_runes.py:218-229`. BUILDABLE-NOW, S, but small (~50 numerator HP at 2500 max HP).
-    (2) Bone Plating does NOT need a hit-count convention: `_passive_flat_mitigation_overrides.py:92
-    _ASSUMED_FLAT_DR_INSTANCES = 6.0` with discrete instance math at `:270` shipped in R9 on
-    2026-06-21, a MONTH before this claim was written. **Bone Plating is the ranked next build**
-    - its instance count of 3 is stated in the rune text, so it REPLACES that registry's single
-    largest assumption rather than adding one, and at ~154 prevented HP (L13) it is the only
-    buildable remainder large enough to reorder a ranking. Shape: rune-keyed
-    `_rune_flat_mitigation.py` mirroring the champion registry, `level_scaled` copied from the
-    percent sibling, `_lerp_per_level(30.0, 60.0)`, folded next to `flat_mit_*`. The one
-    judgement call is `conditional_probability` - "from **them**" scopes the block to a single
-    attacker, so seed it conservatively and pin it.
-  - **Guardian 8465 is CONVENTION-BLOCKED on a measured ceiling, not merely ally-facing.**
-    `ehp.py` contains ZERO AP references (`grep -c "\bap\b"` returns 0), so its
-    "+20% of your ability power" shield term is unrepresentable there. It also has a genuine
-    SELF half ("both of you gain a shield") the R132 rejection note missed. A self-only,
-    AP-omitted subset is BUILDABLE at S under the shipped omission precedent
-    (`_passive_mitigation_overrides.py:199-203` Irelia W, `_passive_flat_mitigation_overrides.py:147`
-    Fizz P) - but ship it as an explicit noted omission, never silently. Its ally half belongs
-    in the Term A `_item_ally_grant` flat-HP lane, which needs a rune-keyed sibling.
-  - **Font of Life 8463 stays DATA-BLOCKED - re-confirmed live 2026-07-19.** `@BaseHeal@` is
-    present verbatim in ALL FOUR vendored snapshots (16.11.1 / 16.12.1 / 16.13.1 / 16.14.1), is
-    one of only 3 unresolved tokens in the whole rune file, and no independent vendored source
-    exists (the `data/meta_build/scraped/ugg/*.html` hits are a verbatim re-serve of the same
-    DDragon payload, and no CommunityDragon `perks.json` is vendored at all). Two R136 tests
-    pin 8463 and 8465 at zero credit so a later pass cannot quietly seed a guess.
-- **RM-102 `_item_bonus_hp_amp.py:89` credits Warmog's Vitality 0.12 to Arena mirror 443083, which
-  has no Vitality passive at all.** Verified against the raw index: base `3083` carries "Warmog's
-  Vitality: Gain bonus Health equal to 12% of your Item Health", mirror `443083` carries only
-  Warmog's Heart regen and 4% move speed. This is not a wrong magnitude like R133 - it credits an
-  effect the item does not have. Same "base nominal" seeding root cause as R133, different
-  registry. S, value-only.
-- **RM-103 Unending Despair 2502 self-heal half is uncredited AND mislabelled.** Meraki "Anguish":
-  sap nearby champions every 4s for 3% bonus health magic damage AND "heal yourself equal to 250%
-  of the post-mitigation damage dealt". `_effects_data.py` models the damage and calls the rest
-  "ally self-heal component utility-only" - wrong on both counts (it is a SELF heal, and it is a
-  2.5x multiplier per champion hit, not utility). `heal_total` lands in the EHP NUMERATOR of all
-  three per-type denominators, so it is resist-amplified. Counterfactual measured at the most
-  conservative setting (1 champ in range, 1 trigger per fight window): UD moves #6-8 -> #4 on
-  Sion / Ornn / Zac / Leona / Malphite / Sejuani. Fix shape: `_item_proc_heal.py` sibling of
-  `_item_omnivamp.py`, folded into `heal_item_total` behind DEFAULT-OFF `assume_item_proc_heal`.
-  S, **no schema lift** - `ItemHeal.bonus_hp_scaling` already exists and already resolves, it
-  simply has ZERO carriers today (all four `ItemHeal(` entries are AD-scaled).
+- **RM-101 Bone Plating 8473 SHIPPED 2026-07-19 (ENGINE 1.227.0), DEFAULT-OFF
+  `apply_rune_flat_mitigation`.** NEW `_rune_flat_mitigation.py`, reusing R132's
+  `rune_ids` transport. Instance count 3 is STATED in the rune text, so it REPLACES
+  `_ASSUMED_FLAT_DR_INSTANCES = 6.0` rather than adding an assumption.
+  **The ROADMAP's ~154 prevented HP was an UN-AMORTIZED upper bound, not a
+  coefficient** - it assumed `conditional_probability = 1.0`; the shipped seed is
+  0.25 (the rune scopes the block to a single attacker), giving 38.38 per axis at
+  L13. **The conclusion it supported survives anyway, and was MEASURED:** armed on
+  Sion L13 the seam moves baseline EHP +81.5555 and reorders 9 of 138 positions
+  including a top-6 swap. **STILL OPEN from this item:** Second Wind 8444 self-side
+  (buildable, small) and Guardian 8465 self-only (AP-omitted). **Font of Life 8463
+  stays DATA-BLOCKED** on the unresolved `@BaseHeal@` token - do NOT invent a number;
+  two R136 tests pin 8463 + 8465 at zero. Narrative in `docs/ROADMAP_HISTORY.md`.
+- **RM-102 SHIPPED 2026-07-19 (ENGINE 1.227.0): Warmog's Arena mirror 443083 was
+  credited "Warmog's Vitality", a passive it does not have.** Removed from
+  `_item_bonus_hp_amp.py`; 132.0 phantom EHP measured on a Sion L13 Arena build.
+  Verified BY ID, never by name - base and mirror share the display name.
+  **A full 12-mirror base-nominal sweep came back CLEAN: 443083 is the ONLY
+  instance - do not re-run it.** Narrative in `docs/ROADMAP_HISTORY.md`; record
+  is the ENGINE 1.227.0 CHANGELOG entry.
+- **RM-103 SHIPPED 2026-07-19 (ENGINE 1.227.0): Unending Despair 2502 + Arena
+  mirror 222502 "Anguish" SELF-heal.** NEW `_item_proc_heal.py` behind DEFAULT-OFF
+  `assume_item_proc_heal`. **"No schema lift" was HALF FALSE** - the heal is 250%
+  of POST-mitigation damage and `ehp.py` has ZERO `target_mr` references, resolved
+  with an explicit `_ASSUMED_TARGET_MR_FOR_PROC_HEAL = 60.0`. The passive was
+  MISNAMED "Agony" in six places (both feeds say Anguish) and mis-described as
+  having an ally component it has never had. Narrative in `docs/ROADMAP_HISTORY.md`.
 - **RM-104 Kaenic Rookern Arena mirror 222504 shield is double-gated out.** `_effects_data.py`
   gives 222504 only `defensive_only=True` plus a note that misnames the passive (it calls it
   "Nullmagic Mantle", which is the component - the passive is Magebane), and its `shield` is
@@ -282,25 +175,12 @@ deliberately NOT built in that cycle.
   `rank_items_by_ehp` or any server route, so all five conditional-shield seams are currently
   unreachable from the scorer - this bites only when that flip happens. S, no schema lift.
 
-- **RM-105 `effective_ehp_with_sustain` silently understates whenever ANY permanent-HP-family flag
-  is ON - measured 2026-07-19 during the R137 build, pre-existing, NOT a DS-sweep GAP id.**
-  `ehp.py` assembles its per-type numerators TWICE: the main block, and the `_blend_with_heal`
-  mirror that produces `effective_ehp_with_sustain`. The mirror carries `ext_flat_hp` +
-  `item_mana_health_hp` + `item_bonus_hp_amp_hp` + `flat_mit_*` but OMITS the entire PERMANENT-HP
-  family - `passive_health_hp` (R46), `rune_perm_hp` (R136) and now `item_health_stack_hp` (R137).
-  So the two fields diverge by exactly the omitted HP the moment any of those seams is armed.
-  Measured live on Sion L13 `[3084, 3068]`: `apply_rune_health_grants` ON gives blended 6283.41 vs
-  sustain 5665.08 (**-618.33**, ~10 percent); `assume_passive_health_stacks` ON gives -301.42;
-  `assume_item_health_stacks` ON gives -373.24; at defaults the delta is exactly 0.0000.
-  **Nothing catches it:** `test_ehp_sustain_contract.py`'s
-  `test_effective_equals_blended_when_no_spellvamp_omnivamp` asserts the equality only at DEFAULT
-  flags, and the mirror's own comment claims it mirrors the main numerators - which was true when
-  written and stopped being true at R46. **This bites exactly when the standing plan executes:**
-  every one of these seams is queued for an operator-gated default-ON flip, and the flip is what
-  arms the divergence. Fix shape: add the three terms to `_blend_with_heal` and widen the contract
-  test to assert the equality with each seam ARMED, not just at defaults. S, no schema lift. R137
-  deliberately followed the family precedent (main-only) rather than widening the divergence with a
-  fourth term - correcting the family is this item, not that one.
+- **RM-105 SHIPPED 2026-07-19 (ENGINE 1.227.0): `effective_ehp_with_sustain`
+  omitted the entire PERMANENT-HP family.** `_blend_with_heal` now carries
+  `passive_health_hp` + `rune_perm_hp` + `item_health_stack_hp`, and the contract
+  test asserts the blend equality with EACH seam ARMED rather than only at
+  defaults - which is why it went unseen. Reproduced at 618.3343 EHP on Sion L13
+  before the fix. Narrative in `docs/ROADMAP_HISTORY.md`.
 
 - **RM-108 unresolved-template-token detector - fold into the provenance guard (Lane 1), do not build standalone.** TWO CONFIRMED INSTANCES of one defect class, found a month apart by unrelated work: (1) Font of Life 8463's base heal is the literal token `@BaseHeal@` in all four vendored DDragon rune snapshots, which is why R136 pinned it at zero credit rather than seeding a guess; (2) measured 2026-07-19, DDragon's Morgana Q tooltip reads `Roots the first enemy hit for {{ rootduration }} seconds` while its `effectBurn` is all `'0'` and `vars` is empty - the field is NAMED but the number moved to an unpublished datavalues layer. Same shape: **a vendored feed carries an unresolved placeholder where a number should be, and nothing flags it.** This is strictly worse than stale data, because a naive parser reads 0.0 or the literal string and ships it silently. Shape: a check over vendored feeds for tokens matching `@[A-Za-z_]+@` and `{{ *[a-z_]+ *}}` in fields the engine reads numerically, emitting a registry of known-unresolved (feed, key, token) that a test pins - so a NEW unresolved token fails loudly while the known ones stay documented rather than re-litigated. Cheap, and it shares the guard's whole walk, which is why it belongs inside Lane 1 rather than as its own tool. **BEARS ON THE CC-DURATION CEILING (context, not a re-open):** the item-225 sweep called CC-duration-in-seconds a TRUE CEILING, and that was re-confirmed 2026-07-19 from three angles - CDragon carries only the TAG (`cc_tags: ["Trait_ImmobilizingCCSpell"]` on Morgana Q, no duration) because duration lives in the buff/script layer whose scripts 404; DDragon names it but ships zeros; Meraki is wiki-derived prose. Match volume cannot help - Match-V5 records only aggregate `timeCCingOthers` / `totalTimeCCDealt`, an un-invertible sum over an unknown ability mix, because games record OUTCOMES and CC duration is a static SPEC. The precision worth carrying: the ceiling is on STRUCTURED sources; the wiki-prose route is real and RC already has the pattern for it (RM-86's prose-seeded curated registry per the `_passive_damage_overrides.py` precedent). Do NOT re-scan the four upstream layers - that sweep is EXHAUSTED.
 

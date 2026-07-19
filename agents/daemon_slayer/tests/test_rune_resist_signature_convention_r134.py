@@ -78,6 +78,13 @@ _R136_TAIL = ("apply_rune_health_grants", "apply_rune_hsp_amp")
 # transport - so once again the R132 pair stays adjacent and ordered.
 _R137_TAIL = ("assume_item_health_stacks",)
 
+# ENGINE 1.227.0 (RM-101 + RM-103) appends the next two seams after R137:
+# apply_rune_flat_mitigation (Bone Plating 8473, reusing the existing rune_ids
+# transport) and assume_item_proc_heal (Unending Despair 2502 / 222502, riding
+# the existing item_ids transport). Neither adds an ids parameter, so once again
+# every earlier group stays adjacent and ordered - it is simply no longer the tail.
+_R1227_TAIL = ("apply_rune_flat_mitigation", "assume_item_proc_heal")
+
 _SEAM_ENTRY_POINTS = (
     compute_ehp,
     rank_items_by_ehp,
@@ -90,14 +97,14 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
     """GUARD 1: the R132 pair must be the LAST two parameters on every entry point."""
 
     def test_r132_pair_is_the_signature_tail_on_every_entry_point(self) -> None:
-        # R136 then R137 appended after the R132 pair, so the pair is now the
-        # -5:-3 slice. The invariant the guard actually protects is unchanged:
+        # R136, R137 then the 1.227.0 pair appended after the R132 pair, so the
+        # pair is now the -7:-5 slice. The invariant the guard actually protects is unchanged:
         # these seam kwargs live at the END, in order, never mid-signature.
         for fn in _SEAM_ENTRY_POINTS:
             with self.subTest(fn=fn.__name__):
                 names = tuple(inspect.signature(fn).parameters)
                 self.assertEqual(
-                    names[-5:], _R132_TAIL + _R136_TAIL + _R137_TAIL,
+                    names[-7:], _R132_TAIL + _R136_TAIL + _R137_TAIL + _R1227_TAIL,
                     msg=(
                         f"{fn.__name__} must append the seam kwargs at the END "
                         f"of its signature (compute_ehp's stated convention); got "

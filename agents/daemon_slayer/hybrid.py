@@ -434,6 +434,8 @@ def compute_hybrid(
     # R137 (ENGINE 1.226.0, RM-99): the item permanent-HP-stack seam, appended AFTER
     # the R136 pair per the same convention.
     assume_item_health_stacks: bool = False,
+    apply_rune_flat_mitigation: bool = False,
+    assume_item_proc_heal: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -576,6 +578,8 @@ def compute_hybrid(
         apply_rune_health_grants=apply_rune_health_grants,
         apply_rune_hsp_amp=apply_rune_hsp_amp,
         assume_item_health_stacks=assume_item_health_stacks,
+        apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+        assume_item_proc_heal=assume_item_proc_heal,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -941,6 +945,8 @@ def rank_items_by_hybrid(
     # R137 (ENGINE 1.226.0, RM-99): the item permanent-HP-stack seam, appended AFTER
     # the R136 pair per the same convention.
     assume_item_health_stacks: bool = False,
+    apply_rune_flat_mitigation: bool = False,
+    assume_item_proc_heal: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -1113,6 +1119,8 @@ def rank_items_by_hybrid(
         apply_rune_health_grants=apply_rune_health_grants,
         apply_rune_hsp_amp=apply_rune_hsp_amp,
         assume_item_health_stacks=assume_item_health_stacks,
+        apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+        assume_item_proc_heal=assume_item_proc_heal,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -1256,6 +1264,8 @@ def rank_items_by_hybrid(
                 apply_rune_health_grants=apply_rune_health_grants,
                 apply_rune_hsp_amp=apply_rune_hsp_amp,
                 assume_item_health_stacks=assume_item_health_stacks,
+                apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+                assume_item_proc_heal=assume_item_proc_heal,
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,

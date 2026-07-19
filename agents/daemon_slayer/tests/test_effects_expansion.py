@@ -4407,7 +4407,7 @@ class GamblersBladeDualPenTests(unittest.TestCase):
 
 
 class UnendingDespairCasterHpBurnTests(unittest.TestCase):
-    """Unending Despair (2502) Agony: 3% caster bonus HP magic every 4s (batch 33)."""
+    """Unending Despair (2502) Anguish: 3% caster bonus HP magic every 4s (batch 33)."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -7810,7 +7810,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.226.0")
+        self.assertEqual(ENGINE_VERSION, "1.227.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7871,7 +7871,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.226.0")
+        self.assertEqual(ENGINE_VERSION, "1.227.0")
 
 
 if __name__ == "__main__":

@@ -1335,6 +1335,8 @@ def compute_ehp(
     # arm it. Live default-ON flip is operator-gated. Appended at END per the
     # no-mid-signature-insert convention.
     assume_item_health_stacks: bool = False,
+    apply_rune_flat_mitigation: bool = False,
+    assume_item_proc_heal: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1504,6 +1506,27 @@ def compute_ehp(
         is_ranged=is_ranged,
         missing_hp=missing_hp,
     )
+
+    # RM-103: Unending Despair 2502 / Arena mirror 222502 "Anguish" SELF-heal -
+    # 250% of the post-mitigation 3%-bonus-HP proc damage, per champion hit.
+    # _effects_data called this an "ally self-heal component utility-only",
+    # which was wrong three ways: it is a SELF heal, it is a 2.5x multiplier
+    # rather than utility, and there is no ally component at all (the proc is
+    # an enemy AoE within 650 units).
+    #
+    # ITEM_EFFECTS['2502'].heal and ['222502'].heal are BOTH None, so
+    # _collect_heals skips these ids entirely - there is no double-credit path.
+    # Joins the pool BEFORE heal_amp_mult: Anguish's heal is an ordinary heal
+    # and is amplified by Heal/Shield Power in game, same posture as
+    # rune_heal_hp. OFF -> 0.0 -> byte-identical.
+    if assume_item_proc_heal:
+        from ._item_proc_heal import item_proc_heal_hp as _item_proc_heal_fn
+        heal_item_total += _item_proc_heal_fn(
+            resolved.item_ids,
+            bonus_hp,
+            assume_item_proc_heal=True,
+        )
+
     heal_lifesteal = _lifesteal_heal(
         lifesteal_pct=float(stats.get("lifesteal", 0.0)),
         ad=float(stats.get("ad", 0.0)),
@@ -1659,6 +1682,27 @@ def compute_ehp(
     flat_mit_phys, flat_mit_mag, flat_mit_true = flat_mitigation_hp(
         resolved.champion_id, level, assume_passive_flat_mitigation
     )
+
+    # RM-101: the RUNE-side lane of the SAME flat per-instance damage-block
+    # mechanic. _passive_flat_mitigation_overrides is keyed by champion_id, so
+    # rune 8473 Bone Plating could never match it - the identical structural
+    # gap R132's _rune_resist_grants filled on the resist axis.
+    #
+    # Folded into the SAME flat_mit_* locals, so none of the six numerator
+    # expressions below change at all. apply_rune_flat_mitigation defaults
+    # False -> (0.0, 0.0, 0.0) -> byte-identical, and passing rune_ids alone
+    # does NOT arm it. Gated lazy import keeps OFF import-free (R132 precedent).
+    rune_flat_mit_phys = rune_flat_mit_mag = rune_flat_mit_true = 0.0
+    if apply_rune_flat_mitigation:
+        from ._rune_flat_mitigation import rune_flat_mitigation_hp as _rune_flat_mit_fn
+        rune_flat_mit_phys, rune_flat_mit_mag, rune_flat_mit_true = _rune_flat_mit_fn(
+            rune_ids,
+            level=level,
+            apply_rune_flat_mitigation=True,
+        )
+        flat_mit_phys += rune_flat_mit_phys
+        flat_mit_mag += rune_flat_mit_mag
+        flat_mit_true += rune_flat_mit_true
 
     # ENGINE 1.160.0 (R46, 2026-06-30): GAP - infinitely / permanently STACKING
     # max-HP passives (Sion W Soul Furnace +4 per kill, Cho'Gath R Feast
@@ -2012,16 +2056,27 @@ def compute_ehp(
     # so effective_ehp_with_sustain == blended_ehp today and diverges only when
     # such an item lands.
     def _blend_with_heal(heal_scalar: float) -> float:
-        # Mirror the main numerators (incl flat_mit_<type>) so
-        # _blend_with_heal(heal_total) stays exactly blended_ehp (guard-tested);
-        # flat_mit_* is 0.0 when the flag is off -> byte-identical.
-        p = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
+        # Mirror the main numerators EXACTLY (see physical_ehp / magical_ehp /
+        # true_ehp above) so _blend_with_heal(heal_total) stays exactly
+        # blended_ehp (guard-tested). Every optional term is 0.0 when its flag
+        # is off -> byte-identical at defaults.
+        #
+        # RM-105: the PERMANENT-HP family (passive_health_hp R46, rune_perm_hp
+        # R136, item_health_stack_hp R137) was missing here. The omission was
+        # invisible because the contract test asserted the equality only AT
+        # DEFAULT FLAGS, where every one of those terms is 0.0 - so the two
+        # fields diverged by exactly the omitted HP the moment a seam was armed
+        # (measured 618.33 EHP on Sion L13 with apply_rune_health_grants ON,
+        # about 10 percent), and every one of those seams is queued for a
+        # default-ON flip. If you add a term to the main numerators, ADD IT
+        # HERE TOO - the contract test now arms each seam and will catch you.
+        p = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + item_health_stack_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
             _armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult * item_general_dr_mult
         )
-        m = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
+        m = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + item_health_stack_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
             _armor_factor(eff_mr) * safe_mult * mit_mag * item_general_dr_mult
         )
-        t = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_scalar) / (
+        t = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + item_health_stack_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_scalar) / (
             safe_mult * mit_true * item_general_dr_mult
         )
         p *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
@@ -2696,6 +2751,8 @@ def rank_items_by_ehp(
     # R137 (ENGINE 1.226.0, RM-99): the item permanent-HP-stack seam, appended AFTER
     # the R136 pair per the same convention.
     assume_item_health_stacks: bool = False,
+    apply_rune_flat_mitigation: bool = False,
+    assume_item_proc_heal: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -2859,6 +2916,8 @@ def rank_items_by_ehp(
         apply_rune_health_grants=apply_rune_health_grants,
         apply_rune_hsp_amp=apply_rune_hsp_amp,
         assume_item_health_stacks=assume_item_health_stacks,
+        apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+        assume_item_proc_heal=assume_item_proc_heal,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -2921,6 +2980,8 @@ def rank_items_by_ehp(
                 apply_rune_health_grants=apply_rune_health_grants,
                 apply_rune_hsp_amp=apply_rune_hsp_amp,
                 assume_item_health_stacks=assume_item_health_stacks,
+                apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+                assume_item_proc_heal=assume_item_proc_heal,
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,
