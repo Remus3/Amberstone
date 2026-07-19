@@ -1,0 +1,194 @@
+{
+  "_comment": [
+    "RM-108 unresolved-template-token registry. Generated/checked by",
+    "tools/unresolved_token_scan.py; pinned by",
+    "tests/test_unresolved_template_tokens_rm108.py.",
+    "",
+    "MEASURED 2026-07-19 over 874 vendored JSON files in data/daemon_slayer,",
+    "data/meta_build and data/meta: 56896 token occurrences, 4174 distinct.",
+    "Every single one lands in a DISPLAY-PROSE key. None lands in a key the",
+    "engine reads numerically. longDesc, plaintext, leveltip and costType have",
+    "ZERO runtime readers at all.",
+    "",
+    "So the harm this registry guards is NOT a naive numeric parser (that was",
+    "the ROADMAP's premise and it is measured false). The harm is a HUMAN",
+    "transcribing vendored prose into a hand-pinned registry - the way",
+    "_rune_health_grants.py, rune_procs.py, enemy_runes.py and _per_spell_cc.py",
+    "are all authored - who reaches for a number and finds a token. The",
+    "documented_instances section below is the PRIMARY product and it serves",
+    "those registry authors. numeric_read_keys is the cheap secondary tripwire.",
+    "",
+    "Occurrence COUNTS are deliberately absent. 33293 of the 56896 occurrences",
+    "live in champion_detail, which moves on every champion ship or rework;",
+    "pinning a count buys churn and zero signal."
+  ],
+
+  "numeric_read_keys": [],
+  "_numeric_read_keys_comment": [
+    "EMPTY BY MEASUREMENT, and that emptiness is the load-bearing assertion.",
+    "Any entry that ever appears here is a genuine RM-108 defect: a leaf key",
+    "that the engine parses as a number AND that carries a template token.",
+    "Add a key here only after confirming a runtime reader coerces it to a",
+    "number (int/float/parse), not merely renders it."
+  ],
+
+  "display_key_allowlist": {
+    "_comment": [
+      "Leaf-key NAMES are schema, not content. This list says 'these JSON keys",
+      "are known to carry display prose, so a token in them is expected'. It",
+      "does not enumerate which tokens, which feeds, or how many - all three of",
+      "those move upstream and none of them is a defect signal.",
+      "",
+      "The guard asserts SUBSET, not equality: a new key here means upstream",
+      "grew a prose field and a human should confirm it is not engine-read; a",
+      "key disappearing means a feed dropped a field, which is not this tool's",
+      "problem and must not redden CI.",
+      "",
+      "Regenerate with: python tools/unresolved_token_scan.py --regen-allowlist",
+      "",
+      "The *_raw entries are wiki_ability_stats.json MediaWiki passthroughs -",
+      "raw wikitext stored verbatim on purpose. Their templates are correct-by",
+      "-design, not unresolved."
+    ],
+    "keys": [
+      "angle_raw",
+      "cooldown_raw",
+      "costType",
+      "desc",
+      "description",
+      "effect",
+      "effect_radius_raw",
+      "effects",
+      "inner_radius_raw",
+      "label",
+      "longDesc",
+      "name",
+      "plaintext",
+      "resource",
+      "speed_raw",
+      "tooltip",
+      "width_raw"
+    ]
+  },
+
+  "documented_instances": [
+    {
+      "id": "font-of-life-8463-base-heal",
+      "subject": "Font of Life (rune 8463) base heal magnitude",
+      "feed_globs": [
+        "data/meta_build/ddragon/<patch>/runesReforged.json",
+        "data/meta/ddragon_runes.json"
+      ],
+      "json_path": "[3].slots[1].runes[1].longDesc",
+      "leaf_key": "longDesc",
+      "token": "@BaseHeal@",
+      "status": "pinned-zero",
+      "ref": "agents/daemon_slayer/tests/test_rune_health_seam_r136.py:198-201",
+      "note": [
+        "Present in FIVE vendored files, not the four the ROADMAP claims: all",
+        "four DDragon patch snapshots under data/meta_build/ddragon/ (16.11.1,",
+        "16.12.1, 16.13.1, 16.14.1) AND the unpatched mirror",
+        "data/meta/ddragon_runes.json. Verified 2026-07-19.",
+        "",
+        "R136 hit this while hand-authoring the rune-health registry and",
+        "correctly credited ZERO rather than seeding a guess. The R136 test",
+        "asserts 8463 moves EHP by exactly nothing with both health and hsp",
+        "seams armed. When this row goes red, upstream published the number and",
+        "that zero-pin can be replaced with the real base heal.",
+        "",
+        "Positional json_path: rune 8463 is Resolve tree, slot 1, rune 1. If",
+        "Riot reorders the tree the path shifts and this row needs re-anchoring",
+        "by rune id, not by index."
+      ]
+    },
+    {
+      "id": "unsealed-spellbook-8360-f3",
+      "subject": "Unsealed Spellbook (rune 8360) summoner-swap cooldown reduction",
+      "feed_globs": [
+        "data/meta_build/ddragon/<patch>/runesReforged.json",
+        "data/meta/ddragon_runes.json"
+      ],
+      "json_path": "[1].slots[0].runes[1].longDesc",
+      "leaf_key": "longDesc",
+      "token": "@f3@",
+      "status": "undocumented-until-rm108",
+      "ref": "tools/unresolved_token_scan.py (RM-108); no consuming registry today",
+      "note": [
+        "SURFACED BY RM-108, previously undocumented. R136 documented Font of",
+        "Life next door and never noticed this sibling, which is exactly the",
+        "failure mode this registry exists to prevent.",
+        "",
+        "Inspiration tree, slot 0, rune 1. Same five files as 8463. @f3@ is a",
+        "positional DDragon substitution slot (f-series), so the name carries no",
+        "semantics - the magnitude is simply absent. NOT currently wired into",
+        "any scorer, so nothing is mis-crediting it today; this row exists so",
+        "the next author who reaches for the number finds the answer already",
+        "written down.",
+        "",
+        "The same token also appears in data/daemon_slayer/<patch>/",
+        "arena_augments.json augment tooltips, which are display-only."
+      ]
+    },
+    {
+      "id": "absorb-life-9101-heal-amount",
+      "subject": "Absorb Life (rune 9101) per-takedown heal magnitude",
+      "feed_globs": [
+        "data/meta_build/ddragon/<patch>/runesReforged.json",
+        "data/meta/ddragon_runes.json"
+      ],
+      "json_path": "[2].slots[1].runes[0].longDesc",
+      "leaf_key": "longDesc",
+      "token": "@HealAmount@",
+      "status": "undocumented-until-rm108",
+      "ref": "tools/unresolved_token_scan.py (RM-108); no consuming registry today",
+      "note": [
+        "SURFACED BY RM-108, previously undocumented. Sorcery tree, slot 1,",
+        "rune 0. Same five files as 8463.",
+        "",
+        "This is the one of the three most likely to bite: Absorb Life is a real",
+        "sustain rune, and a future heal-seam registry author WILL reach for its",
+        "magnitude. The magnitude is not in the feed. Pin it at zero or source",
+        "it from wiki prose (the _passive_damage_overrides.py precedent) - do",
+        "not guess.",
+        "",
+        "The same token also appears in data/daemon_slayer/<patch>/",
+        "arena_augments.json augment desc + tooltip, which are display-only."
+      ]
+    },
+    {
+      "id": "morgana-q-root-duration",
+      "subject": "Morgana Q (Dark Binding) root duration in seconds",
+      "feed_globs": [
+        "data/meta_build/ddragon/<patch>/champion_detail/<champ>.json"
+      ],
+      "champion": "Morgana",
+      "json_path": ".data.Morgana.spells[0].tooltip",
+      "leaf_key": "tooltip",
+      "token": "{{ rootduration }}",
+      "status": "unobtainable-upstream",
+      "ref": "ROADMAP.md:305 (RM-108 entry, CC-duration ceiling paragraph)",
+      "note": [
+        "Verified 2026-07-19 on 16.14.1: the tooltip reads 'Roots the first",
+        "enemy hit for {{ rootduration }} seconds' while effectBurn is",
+        "[None, '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'] and vars is [].",
+        "The field is NAMED and the number moved to an unpublished datavalues",
+        "layer.",
+        "",
+        "UNOBTAINABLE-UPSTREAM, not merely unresolved. The item-225 sweep called",
+        "CC-duration-in-seconds a TRUE CEILING and that was re-confirmed from",
+        "three angles: CDragon carries only the tag (cc_tags:",
+        "['Trait_ImmobilizingCCSpell'], no duration) because duration lives in",
+        "the buff/script layer whose scripts 404; DDragon names it and ships",
+        "zeros; Meraki is wiki-derived prose. Match-V5 cannot invert it either -",
+        "it records only aggregate timeCCingOthers / totalTimeCCDealt, a sum over",
+        "an unknown ability mix.",
+        "",
+        "DO NOT re-scan the four upstream layers - that sweep is EXHAUSTED. The",
+        "one live route is wiki prose into a curated registry (the RM-86 /",
+        "_passive_damage_overrides.py pattern).",
+        "",
+        "The same token also lands in spells[0].leveltip.effect[1]."
+      ]
+    }
+  ]
+}

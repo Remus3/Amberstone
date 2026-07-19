@@ -1,0 +1,455 @@
+{
+  "dirs": {
+    "16.10.1": {
+      "arena_augments.json": {
+        "body_md5": "3298a44b",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "champion_abilities.json": {
+        "body_md5": "96da30d8",
+        "declared_patch": "16.10.1",
+        "stamp_field": "version"
+      },
+      "champions.json": {
+        "body_md5": "a7bf567a",
+        "declared_patch": "16.10.1",
+        "stamp_field": "version"
+      },
+      "cherry_augments.json": {
+        "body_md5": "3b34505a",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "enchanter_items.json": {
+        "body_md5": "3b82292c",
+        "declared_patch": "16.9.1",
+        "stamp_field": "_meta.patch"
+      },
+      "items.json": {
+        "body_md5": "ee0303e8",
+        "declared_patch": "16.10.1",
+        "stamp_field": "version"
+      },
+      "items_meraki.json": {
+        "body_md5": "73446cf8",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "manifest.json": {
+        "body_md5": "341d4fd3",
+        "declared_patch": "16.10.1",
+        "stamp_field": "ddragon_version"
+      },
+      "mayhem_augment_stats.json": {
+        "body_md5": "e1e07c87",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "scenarios.json": {
+        "body_md5": "702eaa46",
+        "declared_patch": "16.10.1",
+        "stamp_field": "version"
+      }
+    },
+    "16.11.1": {
+      "arena_augments.json": {
+        "body_md5": "3298a44b",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "build_orders_aram.json": {
+        "body_md5": "560b5cee",
+        "declared_patch": "16.11.1",
+        "stamp_field": "version"
+      },
+      "build_orders_arena.json": {
+        "body_md5": "5ff52673",
+        "declared_patch": "16.11.1",
+        "stamp_field": "version"
+      },
+      "build_orders_sr.json": {
+        "body_md5": "0c941b74",
+        "declared_patch": "16.11.1",
+        "stamp_field": "version"
+      },
+      "cdragon_ability_ratios.json": {
+        "body_md5": "bb1fd9e2",
+        "declared_patch": "16.11.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_ratio_drift.json": {
+        "body_md5": "a6c716d5",
+        "declared_patch": "16.11.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_spell_stats.json": {
+        "body_md5": "ee27a427",
+        "declared_patch": "16.11.1",
+        "stamp_field": "_patch"
+      },
+      "champion_abilities.json": {
+        "body_md5": "96da30d8",
+        "declared_patch": "16.11.1",
+        "stamp_field": "version"
+      },
+      "champions.json": {
+        "body_md5": "45b29b94",
+        "declared_patch": "16.11.1",
+        "stamp_field": "version"
+      },
+      "cherry_augments.json": {
+        "body_md5": "3b34505a",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "enchanter_items.json": {
+        "body_md5": "3b82292c",
+        "declared_patch": "16.9.1",
+        "stamp_field": "_meta.patch"
+      },
+      "items.json": {
+        "body_md5": "8a55e344",
+        "declared_patch": "16.11.1",
+        "stamp_field": "version"
+      },
+      "items_meraki.json": {
+        "body_md5": "73446cf8",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "manifest.json": {
+        "body_md5": "812b1c56",
+        "declared_patch": "16.11.1",
+        "stamp_field": "ddragon_version"
+      },
+      "mayhem_augment_stats.json": {
+        "body_md5": "e1e07c87",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "pickban_targets.json": {
+        "body_md5": "fccddfbb",
+        "declared_patch": "16.11.1",
+        "stamp_field": "patch"
+      },
+      "scenarios.json": {
+        "body_md5": "702eaa46",
+        "declared_patch": "16.11.1",
+        "stamp_field": "version"
+      },
+      "wiki_ability_stats.json": {
+        "body_md5": "f536c0f9",
+        "declared_patch": "16.11.1",
+        "stamp_field": "_patch"
+      },
+      "wiki_stats.json": {
+        "body_md5": "bef0ae84",
+        "declared_patch": "16.11.1",
+        "stamp_field": "_patch"
+      }
+    },
+    "16.12.1": {
+      "arena_augments.json": {
+        "body_md5": "8413698e",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "build_orders_aram.json": {
+        "body_md5": "e4f0c0ed",
+        "declared_patch": "16.12.1",
+        "stamp_field": "version"
+      },
+      "build_orders_arena.json": {
+        "body_md5": "bbdeccea",
+        "declared_patch": "16.12.1",
+        "stamp_field": "version"
+      },
+      "build_orders_sr.json": {
+        "body_md5": "acb61fd8",
+        "declared_patch": "16.12.1",
+        "stamp_field": "version"
+      },
+      "cdragon_ability_ratios.json": {
+        "body_md5": "bb1fd9e2",
+        "declared_patch": "16.11.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_ratio_drift.json": {
+        "body_md5": "a6c716d5",
+        "declared_patch": "16.11.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_spell_stats.json": {
+        "body_md5": "ee27a427",
+        "declared_patch": "16.11.1",
+        "stamp_field": "_patch"
+      },
+      "champion_abilities.json": {
+        "body_md5": "96da30d8",
+        "declared_patch": "16.12.1",
+        "stamp_field": "version"
+      },
+      "champions.json": {
+        "body_md5": "fae7469b",
+        "declared_patch": "16.12.1",
+        "stamp_field": "version"
+      },
+      "cherry_augments.json": {
+        "body_md5": "3b34505a",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "enchanter_items.json": {
+        "body_md5": "3b82292c",
+        "declared_patch": "16.9.1",
+        "stamp_field": "_meta.patch"
+      },
+      "items.json": {
+        "body_md5": "f0288299",
+        "declared_patch": "16.12.1",
+        "stamp_field": "version"
+      },
+      "items_meraki.json": {
+        "body_md5": "73446cf8",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "manifest.json": {
+        "body_md5": "0c15e3f1",
+        "declared_patch": "16.12.1",
+        "stamp_field": "ddragon_version"
+      },
+      "mayhem_augment_stats.json": {
+        "body_md5": "e1e07c87",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "pickban_targets.json": {
+        "body_md5": "42979176",
+        "declared_patch": "16.12.1",
+        "stamp_field": "patch"
+      },
+      "scenarios.json": {
+        "body_md5": "702eaa46",
+        "declared_patch": "16.12.1",
+        "stamp_field": "version"
+      },
+      "wiki_ability_stats.json": {
+        "body_md5": "f536c0f9",
+        "declared_patch": "16.12.1",
+        "stamp_field": "_patch"
+      },
+      "wiki_stats.json": {
+        "body_md5": "bef0ae84",
+        "declared_patch": "16.12.1",
+        "stamp_field": "_patch"
+      }
+    },
+    "16.13.1": {
+      "arena_augments.json": {
+        "body_md5": "3b92a62d",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "build_orders_aram.json": {
+        "body_md5": "4f4ef4e5",
+        "declared_patch": "16.13.1",
+        "stamp_field": "version"
+      },
+      "build_orders_arena.json": {
+        "body_md5": "e4cda8cc",
+        "declared_patch": "16.13.1",
+        "stamp_field": "version"
+      },
+      "build_orders_sr.json": {
+        "body_md5": "1e0b46c6",
+        "declared_patch": "16.13.1",
+        "stamp_field": "version"
+      },
+      "cdragon_ability_ratios.json": {
+        "body_md5": "bb1fd9e2",
+        "declared_patch": "16.11.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_ratio_drift.json": {
+        "body_md5": "a6c716d5",
+        "declared_patch": "16.11.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_spell_stats.json": {
+        "body_md5": "49e9722a",
+        "declared_patch": "16.13.1",
+        "stamp_field": "_patch"
+      },
+      "champion_abilities.json": {
+        "body_md5": "96da30d8",
+        "declared_patch": "16.13.1",
+        "stamp_field": "version"
+      },
+      "champions.json": {
+        "body_md5": "4975bcd2",
+        "declared_patch": "16.13.1",
+        "stamp_field": "version"
+      },
+      "cherry_augments.json": {
+        "body_md5": "3b34505a",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "enchanter_items.json": {
+        "body_md5": "c6f74cae",
+        "declared_patch": "16.9.1",
+        "stamp_field": "_meta.patch"
+      },
+      "items.json": {
+        "body_md5": "f9ef9c1c",
+        "declared_patch": "16.13.1",
+        "stamp_field": "version"
+      },
+      "items_meraki.json": {
+        "body_md5": "73446cf8",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "manifest.json": {
+        "body_md5": "55f3c39c",
+        "declared_patch": "16.13.1",
+        "stamp_field": "ddragon_version"
+      },
+      "mayhem_augment_stats.json": {
+        "body_md5": "e1e07c87",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "pickban_targets.json": {
+        "body_md5": "46ece9d9",
+        "declared_patch": "16.13.1",
+        "stamp_field": "patch"
+      },
+      "scenarios.json": {
+        "body_md5": "55cce5a4",
+        "declared_patch": "16.13.1",
+        "stamp_field": "version"
+      },
+      "wiki_ability_stats.json": {
+        "body_md5": "f536c0f9",
+        "declared_patch": "16.13.1",
+        "stamp_field": "_patch"
+      },
+      "wiki_stats.json": {
+        "body_md5": "bef0ae84",
+        "declared_patch": "16.13.1",
+        "stamp_field": "_patch"
+      }
+    },
+    "16.14.1": {
+      "ability_staleness.json": {
+        "body_md5": "2ad50954",
+        "declared_patch": "16.14.1",
+        "stamp_field": "_patch"
+      },
+      "arena_augments.json": {
+        "body_md5": "6ba12a27",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "build_orders_aram.json": {
+        "body_md5": "c111787b",
+        "declared_patch": "16.14.1",
+        "stamp_field": "version"
+      },
+      "build_orders_arena.json": {
+        "body_md5": "e480ffea",
+        "declared_patch": "16.14.1",
+        "stamp_field": "version"
+      },
+      "build_orders_sr.json": {
+        "body_md5": "9c0a2d99",
+        "declared_patch": "16.14.1",
+        "stamp_field": "version"
+      },
+      "cdragon_ability_ratios.json": {
+        "body_md5": "9c67b58a",
+        "declared_patch": "16.14.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_ratio_drift.json": {
+        "body_md5": "39febcf3",
+        "declared_patch": "16.14.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_spell_stats.json": {
+        "body_md5": "49e9722a",
+        "declared_patch": "16.14.1",
+        "stamp_field": "_patch"
+      },
+      "champion_abilities.json": {
+        "body_md5": "96da30d8",
+        "declared_patch": "16.14.1",
+        "stamp_field": "version"
+      },
+      "champions.json": {
+        "body_md5": "4975bcd2",
+        "declared_patch": "16.14.1",
+        "stamp_field": "version"
+      },
+      "cherry_augments.json": {
+        "body_md5": "3b34505a",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "enchanter_items.json": {
+        "body_md5": "56c5da94",
+        "declared_patch": "16.9.1",
+        "stamp_field": "_meta.patch"
+      },
+      "items.json": {
+        "body_md5": "43eeceb6",
+        "declared_patch": "16.14.1",
+        "stamp_field": "version"
+      },
+      "items_meraki.json": {
+        "body_md5": "73446cf8",
+        "declared_patch": null,
+        "stamp_field": null
+      },
+      "manifest.json": {
+        "body_md5": "addc41ed",
+        "declared_patch": "16.14.1",
+        "stamp_field": "ddragon_version"
+      },
+      "mayhem_augment_stats.json": {
+        "body_md5": "e1e07c87",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "pickban_targets.json": {
+        "body_md5": "6c13d031",
+        "declared_patch": "16.14.1",
+        "stamp_field": "patch"
+      },
+      "scenarios.json": {
+        "body_md5": "6a7a2c65",
+        "declared_patch": "16.14.1",
+        "stamp_field": "version"
+      },
+      "wiki_ability_stats.json": {
+        "body_md5": "f536c0f9",
+        "declared_patch": "16.14.1",
+        "stamp_field": "_patch"
+      },
+      "wiki_stats.json": {
+        "body_md5": "bef0ae84",
+        "declared_patch": "16.14.1",
+        "stamp_field": "_patch"
+      }
+    }
+  },
+  "generated_from_current_txt": "16.14.1",
+  "known_stamp_lag": {
+    "cherry_augments.json": "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged since 16.10.1; authored feed, body has not moved",
+    "enchanter_items.json": "declares _meta.patch 16.9.1 - hand-authored enchanter item list, unchanged since the retired 16.9.1 fixture patch",
+    "mayhem_augment_stats.json": "declares rc_patch 16.10.1 - Mayhem augment stats sourced at 16.10 and carried forward; event-mode feed with no newer upstream"
+  }
+}
