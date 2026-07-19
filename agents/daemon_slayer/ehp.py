@@ -966,6 +966,16 @@ class EhpResult:
     # ``assume_item_general_dr`` and a carrier is equipped, so OFF is byte-identical.
     # Appended at END per the dataclass field-append convention.
     item_general_dr_mult: float = 1.0
+    # ENGINE 1.224.0 (R132, 2026-07-19): rune-side RESOLVE resist grant (Aftershock
+    # 8439 capped 45 + 75% bonus resists / Conditioning 8429 +8 flat and +3% total /
+    # Unflinching 8242 +10 flat) folded into the armor/MR DENOMINATOR (eff_armor /
+    # eff_mr) when ``apply_rune_resist_grants`` is True. Default 0.0 leaves every EHP
+    # field byte-identical. Surfaced (like passive_resist_armor/mr and
+    # item_resist_armor/mr) for observability; amortized by a firing midpoint except
+    # Conditioning, which is EXACT once online. Appended at END per the dataclass
+    # field-append convention.
+    rune_resist_armor: float = 0.0
+    rune_resist_mr: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -1025,6 +1035,8 @@ class EhpResult:
             "item_mana_health_hp": self.item_mana_health_hp,
             "item_resist_armor": self.item_resist_armor,
             "item_resist_mr": self.item_resist_mr,
+            "rune_resist_armor": self.rune_resist_armor,
+            "rune_resist_mr": self.rune_resist_mr,
             "item_bonus_hp_amp_hp": self.item_bonus_hp_amp_hp,
             "item_general_dr_mult": self.item_general_dr_mult,
             "survival_window_mult": self.survival_window_mult,
@@ -1272,6 +1284,21 @@ def compute_ehp(
     # + the _blend_with_heal mirror). Byte-identical OFF (item_general_dr_mult ==
     # 1.0). AMORTIZED-MIDPOINT (uptime-gated). Live default-ON flip operator-gated.
     assume_item_general_dr: bool = False,
+    # ENGINE 1.224.0 (R132, 2026-07-19): credit the DEFENSIVE RESOLVE-RUNE resist
+    # grant (Aftershock 8439 = 45 + 75% bonus resists, capped 80-150 by level /
+    # Conditioning 8429 = +8 flat and +3% total, permanent after 12 min /
+    # Unflinching 8242 = +10 flat while crowd controlled) to the armor/MR
+    # DENOMINATOR. The RUNE-side lane of the champion resist_grants (champion-keyed)
+    # and the item item_resist_grants (item-keyed), neither of which a rune id can
+    # ever match; before this seam the engine modelled runes as OFFENSE ONLY (zero
+    # rune/perk/keystone references in this module, and rune_procs.py registers
+    # Aftershock's explosion alone - "resist-bonus side not modeled"). Amortized by
+    # a firing midpoint except Conditioning, which is EXACT once online.
+    # Byte-identical OFF (rune_resist_* == 0.0), even when rune_ids is supplied.
+    # Live default-ON flip is operator-gated. Appended at END of the signature per
+    # the no-mid-signature-insert convention.
+    apply_rune_resist_grants: bool = False,
+    rune_ids: Iterable[str | int] = (),
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1681,8 +1708,34 @@ def compute_ehp(
             base_armor=float(base.get("armor", 0.0)),
             base_mr=float(base.get("mr", 0.0)),
         )
-    eff_armor = armor + bonus_armor + ext_armor + item_resist_armor
-    eff_mr = mr + bonus_mr + ext_mr + item_resist_mr
+    # ENGINE 1.224.0 (R132, 2026-07-19): rune-side RESIST-GRANT credit - the RUNE
+    # analog of resist_grants / item_resist_grants above (a clean EHP-DENOMINATOR
+    # bonus armor/MR add). Aftershock 8439 (45 + 75% of BONUS resists for 2.5s on a
+    # 20s cooldown, CAPPED at 80-150 by level - the cap BINDS on the high-bonus tank
+    # cohort that actually runs it, so it is modelled explicitly), Conditioning 8429
+    # (+8 flat and +3% of TOTAL, permanent past the 12-minute mark) and Unflinching
+    # 8242 (+10 flat while crowd controlled and 2s after). The champion registry is
+    # champion-keyed and the item registry is item-keyed, so a rune can never match
+    # either - the structural gap this lane fills. Added to eff_armor / eff_mr next
+    # to bonus_armor / ext_armor / item_resist_armor (DENOMINATOR, BEFORE the pen
+    # step + the _armor_factor curve), so it flows into every per-type EHP AND the
+    # _blend_with_heal sustain mirror via the eff_* closure - no numerator touch.
+    # ``apply_rune_resist_grants`` defaults False -> (0.0, 0.0) -> BYTE-IDENTICAL,
+    # and passing rune_ids alone does NOT arm it. The gated lazy import keeps OFF
+    # import-free.
+    rune_resist_armor = 0.0
+    rune_resist_mr = 0.0
+    if apply_rune_resist_grants:
+        from ._rune_resist_grants import rune_resist_grants as _rune_resist_fn
+        rune_resist_armor, rune_resist_mr = _rune_resist_fn(
+            rune_ids,
+            level=level,
+            total_armor=armor, total_mr=mr,
+            base_armor=float(base.get("armor", 0.0)),
+            base_mr=float(base.get("mr", 0.0)),
+        )
+    eff_armor = armor + bonus_armor + ext_armor + item_resist_armor + rune_resist_armor
+    eff_mr = mr + bonus_mr + ext_mr + item_resist_mr + rune_resist_mr
     # DSP7 (2026-06-17, ENGINE 1.133.0): ally enchanter SHIELD / HEAL flat-HP
     # grant - the THIRD ally-grant EHP mode (after the resist denominator add +
     # the revive numerator multiplier). The caller sources it from
@@ -2167,6 +2220,8 @@ def compute_ehp(
         item_general_dr_mult=item_general_dr_mult,
         item_resist_armor=item_resist_armor,
         item_resist_mr=item_resist_mr,
+        rune_resist_armor=rune_resist_armor,
+        rune_resist_mr=rune_resist_mr,
         survival_window_mult=survival_window_mult,
         effective_ehp_with_sustain=effective_ehp_with_sustain,
         ehp_without_sustain=ehp_without_sustain,
@@ -2528,6 +2583,8 @@ def rank_items_by_ehp(
     apply_item_spell_shield: bool = False,
     apply_item_mana_health: bool = False,
     apply_item_resist_grants: bool = False,
+    apply_rune_resist_grants: bool = False,
+    rune_ids: Iterable[str | int] = (),
     apply_item_bonus_hp_amp: bool = False,
     assume_item_general_dr: bool = False,
     apply_survival_window: bool = False,
@@ -2692,6 +2749,8 @@ def rank_items_by_ehp(
         apply_item_spell_shield=apply_item_spell_shield,
         apply_item_mana_health=apply_item_mana_health,
         apply_item_resist_grants=apply_item_resist_grants,
+        apply_rune_resist_grants=apply_rune_resist_grants,
+        rune_ids=rune_ids,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -2749,6 +2808,8 @@ def rank_items_by_ehp(
                 apply_item_spell_shield=apply_item_spell_shield,
                 apply_item_mana_health=apply_item_mana_health,
                 apply_item_resist_grants=apply_item_resist_grants,
+                apply_rune_resist_grants=apply_rune_resist_grants,
+                rune_ids=rune_ids,
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,
