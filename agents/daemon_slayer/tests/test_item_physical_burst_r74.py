@@ -80,8 +80,8 @@ _GOREDRINKER_BUILD = ["3047", _GOREDRINKER_ARENA]
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.225.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.225.0")
+        self.assertEqual(ENGINE_VERSION, "1.226.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.226.0")
 
 
 class SchemaDefaults(unittest.TestCase):

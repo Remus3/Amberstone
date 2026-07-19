@@ -61,7 +61,11 @@ deliberately NOT built in that cycle.
 > items to `est_ms`, `assume_ms_utility` is flipped default-ON, or a champion ships with base
 > MS outside 220-415.
 
-- **RM-99 Heartsteel 3084 permanent-HP half is pinned at ZERO stacks, forever.** Meraki
+- **RM-99 SHIPPED 2026-07-19 (R137, ENGINE 1.226.0) - DEFAULT-OFF `assume_item_health_stacks`.**
+  See the R137 sub-bullet at the end of this item for what shipped and for THREE spec errors in
+  the research narrative below (the 8% coefficient is WRONG, the fold site is under-specified, and
+  the prescribed R46 plumbing is route-unreachable). Original filing, corrections inline:
+  **Heartsteel 3084 permanent-HP half is pinned at ZERO stacks, forever.** Meraki
   "Colossal Consumption" grants permanent bonus health equal to 8% of the empowered proc damage
   (30s cooldown per target). Only the damage half is modelled; `_effects_data.py` disclaims the
   rest verbatim in-line - "The HP-on-damage permanent stack (8% of damage as max HP) is not
@@ -82,6 +86,43 @@ deliberately NOT built in that cycle.
   lift. Secondary, offense-side: `every_n_seconds=3.5` drops Meraki's explicit 30s-per-target
   cooldown, so a single-target rotation gets ~8.57x the real proc count - the same proxy number
   serves both.
+  - **R137 SHIPPED 2026-07-19 (ENGINE 1.226.0): `_item_health_stack.py` + DEFAULT-OFF
+    `assume_item_health_stacks`, folded into the three main per-type EHP numerators.** Registered
+    3084 AND the Arena mirror 223084 (which the filing above omits entirely). Route-surfaced on
+    `/ehp`, `/rank-tank`, `/hybrid`, `/rank-bruiser`. DS suite 8787 passed / 1 skipped / 2461
+    subtests. **THREE ERRORS IN THE PARAGRAPH ABOVE - do not inherit them.** (1) **The coefficient
+    is 10%, not 8%.** `items_meraki.json` is FROZEN, not lagging: its body is byte-identical across
+    all five vendored patch dirs (md5 `5f2ab2ca072637d9`, 16.10.1 .. 16.14.1) despite five separate
+    fetches - the item-side instance of the RM-81 Meraki-pin defect. DDragon `items.json` in the
+    SAME patch dir, CommunityDragon 16.14 and the wiki all read 10%, and the wiki's dated `V26.11`
+    entry ("increased to 10% from 8%") predicts the exact 8 -> 10 flip observed between the vendored
+    16.10.1 and 16.11.1 dirs. Meraki's 8% was correct for V25.04 .. V26.10. Its 30s per-target
+    cooldown is still correct - only the coefficient moved. (2) **"folded next to
+    `item_bonus_hp_amp_hp`" is under-specified** - there are TWO numerator regions, and this term
+    joins the PERMANENT-HP family (`passive_health_hp` / `rune_perm_hp`), which the
+    `_blend_with_heal` mirror does not carry, so it is folded into the main block ONLY. (3)
+    **"copying the R46 rationale" is right for the MATH and wrong for the PLUMBING** -
+    `assume_passive_health_stacks` never reaches `rank_items_by_ehp`, `hybrid.py` or `server.py`,
+    so mirroring it would have shipped a lane unreachable from the scorer (same defect as
+    `assume_kaenic_shield` / `assume_hsp_amp` / `assume_eclipse_shield` / `assume_chainlaced_shield`
+    - that population is LARGER than the RM-104 note claims). R107/R136 plumbing was used instead.
+    **DDragon's "(0s) per target" is a proven template artifact**, not a real cooldown: 23 items in
+    16.14.1 render `(0s)` and exactly one renders a nonzero value, and Meraki supplies real
+    cooldowns for four of the cohort. **The assumed-procs curve is the one judgement in the lane** -
+    deliberately LOW per the R46 stack-count-proxy convention, zero below L7, 8 at L13 (above the
+    ~5.2 that passes Warmog's, well below the ~16.5 that would take #1), specifically to avoid the
+    RM-94 Mejai's pinned-at-max failure mode. **Arena mirror 223084 is tagged INHERITED, UNSOURCED**
+    - no feed states a coefficient for it and Riot retuned that mirror on other axes (700 HP vs 900,
+    2500g vs 3000g); re-source before any map-30 default-ON flip.
+  - **RM-99b OPEN (spun out, NOT shipped): the Heartsteel DAMAGE half's cadence is wrong.**
+    `_effects_data.py` carries `every_n_seconds=3.5`, which is neither the 3s charge nor the 30s
+    per-target cooldown - a single-target rotation gets ~8.57x the real proc count. Deliberately NOT
+    bundled into R137: that is a DEFAULT-ON change to already-shipped damage scoring and would
+    reorder live build orders, whereas R137 is a default-OFF numerator add. R137's proc curve is
+    derived from the REAL 30s cadence, so **the two halves of the Heartsteel model currently
+    disagree about firing rate** - matching a known-wrong cadence for self-consistency would have
+    made the new lane wrong on purpose. Needs its own operator-gated slice with a measured
+    build-order diff. The Arena mirror 223084 carries the identical 3.5s.
 - **RM-101 the defensive-rune remainder (the half R132 deliberately did not build).** R132 shipped
   the RESIST feed only (Aftershock 8439 / Conditioning 8429 / Unflinching 8242). Still absent:
   **Overgrowth 8451** (permanent max-HP, a different output field - numerator not denominator),
@@ -156,6 +197,26 @@ deliberately NOT built in that cycle.
   **Latent, not live**: `assume_kaenic_shield` exists only on `compute_ehp` and is not exposed on
   `rank_items_by_ehp` or any server route, so all five conditional-shield seams are currently
   unreachable from the scorer - this bites only when that flip happens. S, no schema lift.
+
+- **RM-105 `effective_ehp_with_sustain` silently understates whenever ANY permanent-HP-family flag
+  is ON - measured 2026-07-19 during the R137 build, pre-existing, NOT a DS-sweep GAP id.**
+  `ehp.py` assembles its per-type numerators TWICE: the main block, and the `_blend_with_heal`
+  mirror that produces `effective_ehp_with_sustain`. The mirror carries `ext_flat_hp` +
+  `item_mana_health_hp` + `item_bonus_hp_amp_hp` + `flat_mit_*` but OMITS the entire PERMANENT-HP
+  family - `passive_health_hp` (R46), `rune_perm_hp` (R136) and now `item_health_stack_hp` (R137).
+  So the two fields diverge by exactly the omitted HP the moment any of those seams is armed.
+  Measured live on Sion L13 `[3084, 3068]`: `apply_rune_health_grants` ON gives blended 6283.41 vs
+  sustain 5665.08 (**-618.33**, ~10 percent); `assume_passive_health_stacks` ON gives -301.42;
+  `assume_item_health_stacks` ON gives -373.24; at defaults the delta is exactly 0.0000.
+  **Nothing catches it:** `test_ehp_sustain_contract.py`'s
+  `test_effective_equals_blended_when_no_spellvamp_omnivamp` asserts the equality only at DEFAULT
+  flags, and the mirror's own comment claims it mirrors the main numerators - which was true when
+  written and stopped being true at R46. **This bites exactly when the standing plan executes:**
+  every one of these seams is queued for an operator-gated default-ON flip, and the flip is what
+  arms the divergence. Fix shape: add the three terms to `_blend_with_heal` and widen the contract
+  test to assert the equality with each seam ARMED, not just at defaults. S, no schema lift. R137
+  deliberately followed the family precedent (main-only) rather than widening the divergence with a
+  fourth term - correcting the family is this item, not that one.
 
 ### DS per-champion meta-valuation sweep
 

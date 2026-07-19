@@ -754,8 +754,21 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             # "70 plus 6% of your max Health". The level-scaling lerp
             # (70 + 90*(level-1)/17 = 70-160) carried here through batch 16
             # was from a prior patch and was wrong on current data. The
-            # HP-on-damage permanent stack (8% of damage as max HP) is not
-            # modeled - that's stat-side, not proc-side.
+            # HP-on-damage permanent stack (10% of damage as max HP) is not
+            # modeled HERE - that's stat-side, not proc-side. It IS modelled as
+            # of R137 / ENGINE 1.226.0 in ``_item_health_stack.py``, behind the
+            # DEFAULT-OFF ``assume_item_health_stacks`` EHP-numerator seam.
+            # NOTE the coefficient: this comment previously read 8%, inherited
+            # from ``items_meraki.json``, which is FROZEN at content patch 25.15
+            # (its body is byte-identical across all five vendored patch dirs).
+            # DDragon 16.14.1, CommunityDragon 16.14 and the wiki all read 10%,
+            # and the wiki's dated V26.11 note ("increased to 10% from 8%")
+            # matches the 8 -> 10 flip visible between the vendored 16.10.1 and
+            # 16.11.1 dirs. Do NOT re-source this number from Meraki.
+            # CADENCE CAVEAT (RM-99b, open): every_n_seconds=3.5 below is
+            # neither the 3s charge nor the 30s PER-TARGET cooldown, so a
+            # single-target rotation over-procs by ~8.57x. Correcting it is a
+            # default-ON scoring change and is deliberately NOT done here.
             bonus_damage=lambda c: 70.0 + 0.06 * c.caster_max_hp,
             damage_type=PHYSICAL,
             every_n_seconds=3.5,
