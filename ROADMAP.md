@@ -43,10 +43,37 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
     404** against the live client today, inside a bare `except Exception` that logs at DEBUG and
     discards the result - so the failure has been invisible for its whole life, the same
     silent-no-op shape as the RM-100 nightly-critic defect. The working route is the canonical
-    `/lol-match-history/v1/game-timelines/{gameId}` (RM-106a). Fix is a path correction plus a
-    narrowed except that logs a real WARN on a non-200, and a test pinning the canonical path so it
-    cannot silently rot again. S, no schema lift. Note the two routes take DIFFERENT identifiers
-    (puuid+game_id versus gameId alone), so this is not a pure string swap.
+    `/lol-match-history/v1/game-timelines/{gameId}` (RM-106a). S, no schema lift. Note the two
+    routes take DIFFERENT identifiers (puuid+game_id versus gameId alone), so this is not a pure
+    string swap.
+    - **SHIPPED 2026-07-19. THE PRESCRIBED MECHANISM ABOVE WAS WRONG - do not inherit it.**
+      "A narrowed except that logs a real WARN on a non-200" is mechanically impossible here:
+      `_lcu_get` (`lcu/lcu_postgame_collector.py:891-906`) catches every exception ITSELF and
+      returns `None`, so urllib's `HTTPError` for the 404 is consumed inside the helper and the
+      outer `except Exception` never fired. The 404 arrived as `timeline is None`, failed the
+      `isinstance` guard, and the function returned having logged NOTHING - not even the DEBUG
+      line the filing describes. The fix is a status-aware sibling helper `_lcu_get_status`
+      returning `(status, json)`; `_lcu_get` KEEPS its None-on-failure contract because seven
+      other call sites depend on it and `_get_gameflow_phase` polls it where a non-200 is normal.
+      The outer except is DELETED, not narrowed - after the rewrite nothing in the body can raise.
+    - **HONEST VALUE: this restores ZERO item events, permanently.** `_save_item_events:562`
+      filters to `ITEM_PURCHASED/SOLD/UNDO/DESTROYED`. **MEASURED 2026-07-19: the reduced event set
+      is an LCU-TIMELINE property, not a KIWI property** - a PRACTICETOOL match on the same route
+      returned 5 frames / 17 events, all `CHAMPION_KILL`, zero `ITEM_*`, exactly like KIWI's 88
+      `CHAMPION_KILL` + 7 `BUILDING_KILL`. That settles RM-106a's first open question. All five
+      `*_item_events` tables hold 0 rows and no production module reads them. The patch converts an
+      invisible failure into a visible one and buys an unconsumed per-frame gold/xp payload; it does
+      not restore item history. The zero-ITEM_* outcome is logged at INFO (not WARN) precisely
+      because it is now known to be permanent and would otherwise fire after every game.
+    - **A SECOND SILENT NO-OP, same file, found by the same probe and fixed in the same commit:**
+      `_capture_via_history:755` requested `?begin=0&end=1`, which **measured HTTP 400** live. The
+      supported spelling is `begIndex/endIndex` (`tools/lcu_agent.py:2025` already had it right;
+      the two spellings contradicted each other in-repo). `_lcu_get` collapsed the 400 into `None`,
+      so the EOG match-history fallback returned `False` for its whole life.
+    - **RM-106a QUESTION (b) ANSWERED - the LCU window is HARD-CAPPED AT 20 ENTRIES.** Measured
+      `endIndex=20/40/100/200` all return exactly 20 rows. So this route is recent-matches-only and
+      **cannot backfill** the ~2952-match history. Frame nesting is TOP-LEVEL `frames` (no `info`
+      wrapper). If a backfill is ever wanted, RM-106's SGP adapter is the only candidate left.
   - **RM-106b the REPLAY API is a second, fully-sanctioned candidate for the timeline half - and it
     does NOT fall under the `.rofl` fence. DEPRIORITIZED by RM-106a, but not closed, and the REASON
     changed:** RM-106a already answers "does an event-mode timeline exist" (yes) far more cheaply,

@@ -24,6 +24,7 @@ import sqlite3
 import ssl
 import threading
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, Optional
@@ -33,6 +34,11 @@ _log = logging.getLogger("rc.postgame")
 # -- Paths ---------------------------------------------------------------------
 _ROOT    = Path(__file__).parent.parent
 _DB_PATH = _ROOT / "data" / "postgame_stats.db"
+
+# RM-107: the canonical LCU post-game timeline route, keyed on gameId alone.
+# Named so the pin-test asserts against a constant and a future path edit has
+# to consciously break the test rather than silently rot.
+_TIMELINE_PATH = "/lol-match-history/v1/game-timelines/{game_id}"
 _DDRAGON_ITEMS = _ROOT / "data" / "meta" / "ddragon_items.json"
 _DDRAGON_RUNES = _ROOT / "data" / "meta" / "ddragon_runes.json"
 
@@ -752,7 +758,13 @@ class PostgameCollector:
                 return False
 
             # Get last 1 match
-            hist = self._lcu_get(f"/lol-match-history/v1/products/lol/{puuid}/matches?begin=0&end=1")
+            # begIndex/endIndex, NOT begin/end - the latter measured HTTP 400
+            # against the live LCU on 2026-07-19, and _lcu_get collapses a 400
+            # into None, so this fallback silently returned False for its whole
+            # life (same silent-no-op family as RM-107, same file).
+            hist = self._lcu_get(
+                f"/lol-match-history/v1/products/lol/{puuid}/matches"
+                f"?begIndex=0&endIndex=1")
             if not isinstance(hist, dict):
                 return False
 
@@ -779,27 +791,52 @@ class PostgameCollector:
         return False
 
     def _try_fetch_timeline(self, game_id: str, game_mode: str) -> None:
-        """Best-effort: fetch item purchase timeline from match history."""
+        """Fetch the post-game timeline from the canonical LCU route.
+
+        RM-107: the previous path
+        ``/lol-match-history/v1/products/lol/{puuid}/matches/{game_id}/timeline``
+        measured HTTP 404 live, and ``_lcu_get`` collapses a 404 into ``None``
+        inside the helper - so the outer bare ``except`` never fired and the
+        failure produced no log line at all for the whole life of the feature.
+        The canonical route is keyed on gameId alone; no summoner lookup.
+
+        MEASURED 2026-07-19 (RM-106a): this route carries only CHAMPION_KILL /
+        BUILDING_KILL, and that holds for PRACTICETOOL as well as KIWI - so the
+        reduced event set is a property of the LCU TIMELINE, not of event mode.
+        Zero ITEM_* events is therefore the PERMANENT expected outcome, stated
+        at INFO so the gap stays visible without warning after every game.
+        """
         if not game_id:
             return
-        try:
-            summoner = self._lcu_get("/lol-summoner/v1/current-summoner")
-            if not isinstance(summoner, dict):
-                return
-            puuid = summoner.get("puuid") or ""
-            if not puuid:
-                return
-            timeline = self._lcu_get(f"/lol-match-history/v1/products/lol/{puuid}/matches/{game_id}/timeline")
-            if isinstance(timeline, dict):
-                frames = timeline.get("frames") or []
-                events = []
-                for frame in frames:
-                    if isinstance(frame, dict):
-                        for ev in (frame.get("events") or []):
-                            events.append(ev)
-                _save_item_events(game_id, game_mode, events, _ITEM_MAP)
-        except Exception as exc:  # noqa: BLE001
-            _log.debug("postgame timeline fetch failed: %s", exc)
+        path = _TIMELINE_PATH.format(game_id=game_id)
+        status, timeline = self._lcu_get_status(path)
+        if status != 200 or not isinstance(timeline, dict):
+            _log.warning("postgame timeline fetch failed: HTTP %s for %s",
+                         status, path)
+            return
+
+        frames = timeline.get("frames")
+        if not isinstance(frames, list):
+            frames = []
+        events = []
+        for frame in frames:
+            if isinstance(frame, dict):
+                for ev in (frame.get("events") or []):
+                    events.append(ev)
+
+        item_events = [
+            ev for ev in events
+            if isinstance(ev, dict)
+            and str(ev.get("type") or ev.get("eventType") or "").startswith("ITEM_")
+        ]
+        if not item_events:
+            _log.info(
+                "postgame timeline %s: HTTP 200, %d frames, %d events, zero "
+                "ITEM_* events (RM-106a: LCU timelines carry CHAMPION_KILL / "
+                "BUILDING_KILL only, all modes) - no item rows written",
+                game_id, len(frames), len(events))
+            return
+        _save_item_events(game_id, game_mode, item_events, _ITEM_MAP)
 
     def _adapt_match_history(self, game: dict) -> Optional[dict]:
         """
@@ -904,6 +941,34 @@ class PostgameCollector:
                 return json.loads(r.read())
         except Exception:  # noqa: BLE001
             return None
+
+    def _lcu_get_status(self, path: str):
+        """``(status, parsed_json)``. 200 = OK; any other int = the server
+        answered non-200; 0 = transport/auth failure.
+
+        RM-107: unlike ``_lcu_get`` this does NOT collapse a 404 into an
+        indistinguishable ``None``. ``_lcu_get`` keeps its None-on-failure
+        contract deliberately - seven other call sites depend on it, and
+        ``_get_gameflow_phase`` polls it where a non-200 is entirely normal.
+        """
+        port = getattr(self._lcu, "_port", None)
+        auth = getattr(self._lcu, "_auth", None)
+        if not port or not auth:
+            return (0, None)
+        from core.game_host import GAME_HOST
+        url = f"https://{GAME_HOST}:{port}{path}"
+        req = urllib.request.Request(url, headers={
+            "Authorization": f"Basic {auth}",
+            "Accept":        "application/json,*/*",
+        })
+        try:
+            with urllib.request.urlopen(req, context=self._ssl, timeout=5) as r:
+                return (r.status, json.loads(r.read()))
+        except urllib.error.HTTPError as exc:
+            return (exc.code, None)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("LCU GET %s transport failure: %s", path, exc)
+            return (0, None)
 
     def _get_gameflow_phase(self) -> str:
         result = self._lcu_get("/lol-gameflow/v1/phase")

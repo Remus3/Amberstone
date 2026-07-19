@@ -20,6 +20,7 @@ is read. No asyncio.run anywhere (suite-level running-loop hazard).
 """
 from __future__ import annotations
 
+import inspect
 import json
 import sqlite3
 import threading
@@ -114,6 +115,88 @@ def test_save_item_events_bad_numerics_do_not_raise(tmp_path, monkeypatch):
     finally:
         conn.close()
     assert rows == [(3031, 0)]
+
+
+# -----------------------------------------------------------------------------
+# 1b. RM-107: the post-game timeline collector called a 404 path and swallowed it
+# -----------------------------------------------------------------------------
+
+def test_try_fetch_timeline_uses_canonical_game_timelines_path():
+    """RM-107 pin. The old path
+    /lol-match-history/v1/products/lol/{puuid}/matches/{gameId}/timeline
+    measured HTTP 404 live; the canonical route is keyed on gameId ALONE.
+    Pin it so a future edit must consciously break this test."""
+    import lcu.lcu_postgame_collector as pgc
+
+    seen = []
+    c = object.__new__(pgc.PostgameCollector)
+    c._lcu_get_status = lambda path: (seen.append(path), (200, {"frames": []}))[1]
+    c._lcu_get = lambda path: (_ for _ in ()).throw(
+        AssertionError("must not use the status-blind _lcu_get: " + path))
+
+    c._try_fetch_timeline("4242", "ARAM")
+
+    assert seen == ["/lol-match-history/v1/game-timelines/4242"]
+    assert not any("products/lol" in p for p in seen)
+
+
+def test_try_fetch_timeline_warns_on_non_200(caplog):
+    """The 404 must produce a real WARN. Pre-fix _lcu_get collapsed the
+    HTTPError into None inside the helper, so the outer bare `except` never
+    fired and NOTHING was logged - not even the DEBUG line."""
+    import logging
+
+    import lcu.lcu_postgame_collector as pgc
+
+    c = object.__new__(pgc.PostgameCollector)
+    c._lcu_get_status = lambda path: (404, None)
+
+    with caplog.at_level(logging.WARNING, logger=pgc._log.name):
+        c._try_fetch_timeline("4242", "ARAM")
+
+    assert any(r.levelno >= logging.WARNING and "404" in r.getMessage()
+               for r in caplog.records)
+
+
+def test_try_fetch_timeline_zero_item_events_is_reported_not_silent(caplog):
+    """MEASURED 2026-07-19: the canonical LCU route carries no ITEM_* events
+    for ANY mode (KIWI 88 CHAMPION_KILL + 7 BUILDING_KILL; PRACTICETOOL 17
+    CHAMPION_KILL) - so this is an LCU-timeline property, not a KIWI one, and
+    the zero-item outcome is PERMANENT. It must be stated at INFO rather than
+    warned every game, and must never reach _save_item_events."""
+    import logging
+
+    import lcu.lcu_postgame_collector as pgc
+
+    c = object.__new__(pgc.PostgameCollector)
+    c._lcu_get_status = lambda path: (200, {"frames": [
+        {"events": [{"type": "CHAMPION_KILL", "timestamp": 1}]},
+    ]})
+
+    def _boom(*a, **k):
+        raise AssertionError("_save_item_events must not be called with zero item rows")
+
+    with caplog.at_level(logging.INFO, logger=pgc._log.name):
+        _orig = pgc._save_item_events
+        pgc._save_item_events = _boom
+        try:
+            c._try_fetch_timeline("4242", "ARAM")
+        finally:
+            pgc._save_item_events = _orig
+
+    assert any("ITEM_" in r.getMessage() for r in caplog.records)
+
+
+def test_match_history_fallback_uses_supported_pagination_spelling():
+    """MEASURED 2026-07-19: `?begin=0&end=1` returns HTTP 400 from the live
+    LCU; the supported spelling is begIndex/endIndex. _lcu_get collapsed that
+    400 into None, so this fallback returned False for its whole life - the
+    same silent-no-op family as RM-107, in the same file."""
+    import lcu.lcu_postgame_collector as pgc
+
+    src = inspect.getsource(pgc.PostgameCollector._capture_via_history)
+    assert "begIndex" in src and "endIndex" in src
+    assert "begin=0" not in src and "end=1" not in src
 
 
 # =============================================================================
