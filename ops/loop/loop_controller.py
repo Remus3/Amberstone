@@ -233,6 +233,16 @@ PLAN_CTX_CAP = 24_000
 LEDGER_CTX_CAP = 8_000
 ROADMAP_CTX_CAP = 8_000
 
+# Auditor payload split. 2026-07-19 false-positive REGRESS #6: the whole budget
+# went to the diff BODY, which git emits in path byte order - a commit touching
+# the generated mirror (Share/, 'S' 0x53) and its true source (agents/, 'a'
+# 0x61) spent every byte on mirror padding, so the auditor never saw the true
+# source and called a complete, CI-green commit a regression. A complete file
+# manifest is worth far more per byte than deeper diff context, so the body
+# yields 15K to guarantee the manifest always fits under GEMINI_STDIN_CAP.
+AUDIT_DIFF_CAP = 40_000
+AUDIT_MANIFEST_CAP = 12_000
+
 # Proven-safe gemini stdin ceiling (see above). cap_stdin() backstops EVERY
 # gemini() call (director / auditor / stall) at this size.
 GEMINI_STDIN_CAP = 60_000
@@ -435,11 +445,22 @@ def auditor(prev_sha, new_sha, clean_sha=None):
     if not new_sha or prev_sha == new_sha:
         return "VERDICT: CLEAN\n(no new commit this cycle)"
     rng = audit_range(clean_sha, new_sha)
+    # The manifest is complete and authoritative; the diff body is head-truncated
+    # in git path order. Naming every changed file BEFORE the body is what stops
+    # "past the truncation cut" from reading as "absent from the commit" - the
+    # false-positive REGRESS #6 failure mode (see AUDIT_DIFF_CAP).
+    names = [ln for ln in git("diff", "--name-only", rng).splitlines() if ln.strip()]
+    manifest = cap_bytes(git("diff", "--name-status", rng), AUDIT_MANIFEST_CAP, "manifest")
     diff = git("diff", rng)
-    if len(diff) > 55000:
-        diff = diff[:55000] + "\n...[truncated]"
+    if len(diff) > AUDIT_DIFF_CAP:
+        diff = diff[:AUDIT_DIFF_CAP] + (
+            f"\n...[DIFF BODY truncated at {AUDIT_DIFF_CAP} bytes. git emits paths in byte "
+            "order, so later-sorting paths are cut FIRST. Absence of a path below is NOT "
+            "evidence it is unchanged - the FILES CHANGED manifest above is the complete list.]")
     tmpl = (ROOT / "ops/loop/auditor_prompt.md").read_text(encoding="utf-8")
-    body = f"{tmpl}\n\n=== RANGE {rng} ===\n{git('log','--oneline',rng)}\n\n=== DIFF ===\n{diff}"
+    body = (f"{tmpl}\n\n=== RANGE {rng} ===\n{git('log','--oneline',rng)}"
+            f"\n\n=== FILES CHANGED ({len(names)} total; complete + authoritative) ===\n{manifest}"
+            f"\n\n=== DIFF (may be truncated; see manifest above for the full file list) ===\n{diff}")
     verdict = gemini(body, "Audit. First line MUST be 'VERDICT: CLEAN' or 'VERDICT: REGRESS', then the reason.")
     if verdict is None:
         # N3: gemini errored (timeout / CLI) - an un-auditable cycle is NOT a regression.
