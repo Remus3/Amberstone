@@ -39,7 +39,10 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   ASSERT the replacement count is 1. Both traps were caught only because the counts
   were re-verified AFTER writing rather than inferred from the write succeeding.
 - Next up (strict alphabetical): NONE - roster closed at Zyra 2026-07-18.
-  Next free GAP spec = RM-98 (RM-96 Zilean + RM-97 Zyra assigned in batch32).
+  Next free GAP spec = RM-99 (RM-96 Zilean + RM-97 Zyra assigned in batch32;
+  RM-98 cast-rate TIME BASE allocated 2026-07-19 out of the RM-39/RM-43 L2
+  build). Note RM-98 is NOT a champion GAP - it adds no roster checkbox and the
+  Summary counts above are unchanged by it.
 - **RM-86 L1 SHIPPED 2026-07-18 (LEDGER 940, ENGINE 1.218.0)** - the sweep's first
   engine change. `agents/daemon_slayer/kit_conversion.py` + a default-OFF
   `kit_conversion_strength` lever on carry / assassin / mage / tank. Two spec
@@ -138,6 +141,22 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   the RM-86 L2 plan: a pet-damage term is a numerator the scorer does not have, so
   no monotone-lowering L1 gate can reach it** - same structural verdict already
   recorded for RM-91 and RM-92.
+- **RM-98 (ALLOCATED 2026-07-19, NOT a champion GAP) - the AD-axis ability term
+  sums two rates that are on DIFFERENT TIME BASES.** Surfaced by the RM-39/RM-43
+  L2 build (ENGINE 1.223.0), not by the alphabetical sweep, so it carries no
+  roster checkbox and leaves the Summary counts untouched. With
+  `apply_ad_axis_ability_damage` ON, `ds.hybrid` adds a GAME-AVERAGE ability rate
+  to a COMBAT-WINDOW auto rate. `casts_per_sec` comes from
+  `data/daemon_slayer/spell_cast_rates.json`, computed as
+  `spell[1-4]_casts / game_duration_s` over 2851 matches, so it includes laning,
+  recalls and death timers: Renekton W reads **0.0184/s** (about one cast per
+  minute) against the rotation's modelled `w: 1.5` casts in a 3-second window =
+  **0.5/s**, a **27x** discrepancy. The effect is a systematic UNDER-pricing of
+  the ability term relative to the auto term it is added to, which distorts
+  ability-item versus auto-item valuation. **SIZED, NOT ADJUDICATED** - the open
+  question is which time base the summed term should be expressed on, not
+  whether the gap exists. It bears directly on whether a default-ON flip is
+  meaningful, so the RM-39/RM-43 default-ON flip is BLOCKED on it.
   - **Ziggs** (mage) - REFUTE. His ranked head is byte-identical to Xerath's and
     Vex's for all ten top items (exact-prefix agreement 10, top-20 set identical),
     so it carries ZERO champion-specific signal and every divergence from his real

@@ -1,6 +1,75 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19, automatic via `scripts/wakeup_prune.py` (relocated Term A `2026-07-18l`; newest 3 = RM-39 L1 build `2026-07-19c` + RM-39 adjudication `2026-07-19b` + AH-slice `2026-07-19a`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19, automatic via `scripts/wakeup_prune.py` (relocated AH-slice `2026-07-19a`; newest 3 = RM-39 L2 widen `2026-07-19d` + RM-39 L1 build `2026-07-19c` + RM-39 adjudication `2026-07-19b`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-07-19d (RM-39/RM-43 L2 - TRUE credited, MIXED held, and the L1 guard rationale RETRACTED; ENGINE 1.223.0)
+
+**The widen is the small half. The finding is that L1's stated guard was never
+the guard.** L1's docstring claimed a PHYSICAL-only damage-type filter is what
+stops an unfiltered ability term promoting Liandry's Torment to #1 for Aatrox.
+False, twice over. Aatrox has ZERO nonzero non-PHYSICAL rows (Q 16.2499 /
+W 2.6193 PHYSICAL, E and R 0.0), so PHYSICAL / +TRUE / +MIXED / unfiltered all
+return the IDENTICAL number for him - the cited ablation cannot distinguish
+them. What actually stops it is that the helper sums `per_spell`:
+`item_proc_dps` (`ability_dps.py:1376-1381`) folds item burn into
+`total_ability_dps` and appears in NO per_spell row. Measured residue for
+Aatrox: 0.0000 empty, exactly 31.2500 with Liandry's. **That protection had no
+test on it** - a refactor to `return result.total_ability_dps` would have
+silently restored the bug with no filter change visible in the diff. Now pinned
+by `test_ad_axis_term_is_per_spell_sum_not_total_ability_dps`. That pin is worth
+more than the widen.
+
+**L2 shipped:** `_AD_AXIS_CREDITED_DAMAGE_TYPES = frozenset({"PHYSICAL","TRUE"})`,
+still DEFAULT-OFF. Two executable lines. TRUE credited on measurement not
+argument - `_mitigation_factor` returns flat 1.0 for TRUE
+(`ability_dps.py:372-373`) and all 5 in-cohort TRUE rows measured dAP 0.0000 /
+dVoid 0.0000 (Olaf E, Vayne W, Darius R, MasterYi E, Garen R). **MIXED HELD** -
+Yone only, and it does import magic pen (Void Staff 129 -> 111); honest fix is a
+50 pct credit mirroring `ability_dps.py:377`, a separate design. **MAGIC
+excluded permanently** - crediting it climbs Udyr's Rabadon's 55 places.
+
+**THE AXIS SPLIT IS WHAT MAKES TRUE SAFE, NOT THE DAMAGE TYPE.** Roster-wide 2
+of 7 TRUE rows DO scale with AP - Belveth R (dAP +1.2153), Chogath R (+0.6076) -
+and are out of reach only because `_damage_axis` routes them "ap". Do not widen
+assuming TRUE is AP-inert roster-wide.
+
+**Golden diff:** flag OFF 0 of 92 changed; flag ON exactly 5 of 92, precisely
+the TRUE set, zero top-1 changes. 6 HZ tables differ only in stamp fields.
+
+**Reset overlap (L2 part 2): UNRESOLVED-BY-DATA, no code shipped.** `basic` is
+NOT a reset marker - it is a flat swing count present on zero-reset champs
+(Jinx 1, Ashe 3). Three population tests lean EXCLUDES but Nasus is authored
+BOTH ways in the same file (`early[0]` basic:0 vs `mid[2]` basic:1, identical
+1s single-Q sheen:1 rotations). Exposure narrowed 9 champs -> **2 spells**:
+Vi E 6.19 pct, Renekton W 2.35 pct. Nasus Q structurally impossible (no AD
+ratio); Shyvana Q disjoint (models the second strike). A proposed guard was
+REJECTED - it string-matches `effects_descriptions` prose to correct an
+unproven ~6 pct error on one champion on a default-off path.
+
+**NEW: RM-98 filed, and it GATES default-ON.** The two summed terms are on
+different time bases - the ON path adds a GAME-AVERAGE ability rate
+(`spell_casts / game_duration_s` over 2851 matches, so laning + recalls + death
+timers included) to a COMBAT-WINDOW auto rate. Renekton W reads 0.0184/s vs a
+rotation-modelled 0.5/s: **27x**. Systematically under-prices the ability term.
+SIZED, NOT ADJUDICATED. Do not flip default-ON until this is settled.
+
+**Process, two of a kind:** I shipped a false green twice and caught both. The
+DS restart ran through Git Bash, which mangled `schtasks /End` into
+`C:/Program Files/Git/End` and did nothing, while the health poll in the same
+command reported `up after 0s` at the OLD version. The golden diff printed
+`changed 0 of 92` when every champion had thrown `TypeError`
+(`HybridRankResult` is a dataclass, not a dict). **Both look exactly like
+success.** The probe now raises on an empty ranked list. Use PowerShell for
+schtasks. Step 4b rot recurred for the THIRD consecutive bump - `--check` was
+green while `Share/CHANGELOG.md` and the `Share/README.md` release list were
+both stale.
+
+**Do NOT redo:** the RM-39/RM-43 haste adjudication (final). The Zeri
+double-count (REFUTED, AST-locked). The L1 build. The reset-overlap
+investigation - it is UNRESOLVED and further data cannot settle it; it needs the
+lolmath authoring convention or replay-derived counts.
 
 ---
 
@@ -84,39 +153,3 @@ anchor-rule / SESSION_RE tails - all shipped in `2f35163d` with tests.
 **Next:** the AD-axis ability term is the open build. Operator-gated and NOT mine
 to flip: default-ON for `team_blended` (ds.ehp) and `apply_canonical_cast_rate_keys`
 (ult_rates).
-
----
-
-# 2026-07-19a (RM-92 ability-haste slice SIZED -> DEFER, then its 4 tails SHIPPED 1.221.0; 2 commits, CI green)
-
-**Verdict first, no code:** `docs/specs/SCOPE_rm92_ability_haste.md`. All 5 AH
-champions route AWAY from the only scorer that prices ability haste (Twitch /
-Xayah / Yunara -> `dps.py`, Udyr / Yorick -> `hybrid.py` AD branch). `dps.py` has
-no ability model AT ALL - not merely no AH term. **The finding that settled it:
-AH is ~1% live even where it IS wired** - the haste-shortened cooldown only feeds
-the `measured <= 0` fallback (`ability_dps.py:1231`), and on the live 680-pair SR
-table just 8 pairs reach it, 6 effectively. This is MODEL work already spec'd as
-**RM-39 + RM-43 - do NOT open a third id.**
-
-**Then the 4 tails, all shipped** (`5f2371ce`, ENGINE 1.221.0): `aram_ability_haste`
-was assigned total AH and printed an ARAM note during SR runs (fixed, zero
-production consumers); **NEW DEFAULT-OFF seam `apply_canonical_cast_rate_keys`** -
-cast-rate lookups keyed the DISPLAY name against ID-keyed data so 21 champions
-silently took `global_fallback` while still reporting "measured", across **4 call
-sites** not 1, fixed at the `ult_rates.py` chokepoint; plus 3 stale comments and a
-registry docstring citing a regen tool that has never existed. 8 ward PNGs
-restored (zero code refs - removal stays a deliberate call).
-
-**Two process errors, both self-caught.** (1) Skipped the regen step **with a
-memory telling me not to** - `feedback_engine_bump_ritual_order` documents this
-exact failure from the previous session. The stamp is independent of the content;
-byte-identical output still needs the regen. Cost a 20-min suite. (2) Nearly
-reported a stale subagent `repo_suite.txt` as my own run; caught on mtimes.
-
-**Do NOT redo:** the RM-92 population audit (CLOSED), the AH sizing (DEFER is
-final), the 4 tails (shipped + live-probed). **Open:** operator-gated default-ON
-flips for BOTH seams (`team_blended`, `apply_canonical_cast_rate_keys`); three
-Share gaps flagged not fixed (route tables claim "4 GET + 15 POST" vs a live 31;
-`team_blended` + `kit_conversion_strength` undocumented in the authored half;
-three version anchors uncovered by `_doc_anchor_rules()` - which is why README sat
-72 minors stale while `--check` read green).
