@@ -32,17 +32,29 @@ ARCHIVE = ROOT / "docs" / "history_notes.md"
 
 SEP = "\n---\n\n"
 # A session heading is either:
-#   legacy - `# s171 wrap`, `# s171.8 wrap`, `# s209-s213 wrap` (en-dash or
-#            hyphen ranges); or
+#   legacy - `# s171 wrap`, `# s171.8 wrap`, `# s209-s213 wrap` (hyphen ranges;
+#            the range separator was an en-dash/hyphen char class until the
+#            2026-05-18 ASCII purge left it a degenerate `[--]`, now a plain
+#            `-` - en-dash ranges have not matched since and none exist); or
 #   dated  - `# 2026-05-17 (late) - ...`, `# 2026-05-17 wrap - ...`,
-#            `# 2026-05-17 OVERNIGHT RUN-1 - ...` (any suffix after the date).
-# A leading pinned block (`# ✅ RESOLVED 2026-05-17 - ...`) matches NEITHER -
+#            `# 2026-05-17 OVERNIGHT RUN-1 - ...`, `# 2026-07-19a - ...`
+#            (any suffix after the date, including a bare letter suffix).
+# A leading pinned block (`# <U+2705> RESOLVED 2026-05-17 - ...`) matches NEITHER -
 # the date is not at heading-start - so split_sessions folds it into the
 # header rather than archiving it.
+#
+# The dated alternative deliberately has NO trailing `\b`. A `\b` there rejects
+# every heading whose date is followed directly by a word char - notably the
+# letter-suffixed `# 2026-07-19a` form used when two sessions wrap on the same
+# calendar day, since "9" and "a" are both word chars so no boundary exists.
+# That made split_sessions find ZERO sessions and prune/--check silently report
+# "nothing to do" at any file size. Do not re-add it; `^# ` + a full ISO date is
+# already specific enough. Regression: tests/phase7_polish/test_wakeup_prune.py
+# TestSessionReSuffixedDate.
 SESSION_RE = re.compile(
     r"^# (?:"
-    r"s\d+(?:\.\d+)*(?:[--]s\d+(?:\.\d+)*)? wrap\b"
-    r"|\d{4}-\d{2}-\d{2}\b"
+    r"s\d+(?:\.\d+)*(?:-s\d+(?:\.\d+)*)? wrap\b"
+    r"|\d{4}-\d{2}-\d{2}"
     r")",
     re.M,
 )
@@ -52,7 +64,7 @@ ARCHIVE_HEADER = (
     "\n"
     "Sessions older than the last 2-3 full sessions are progressively compacted here.\n"
     "Current WAKEUP_NOTES.md keeps only the most recent 2-3 sessions.\n"
-    "Compaction rule: 3+ sessions old → 1-2 line summary entry below.\n"
+    "Compaction rule: 3+ sessions old -> 1-2 line summary entry below.\n"
 )
 
 
@@ -108,7 +120,7 @@ def split_sessions(text: str) -> tuple[str, list[str]]:
             sessions.extend(_split_on_interior_headings(block))
         elif not seen_session:
             # Pinned non-session block(s) that precede the first session
-            # (e.g. `# ✅ RESOLVED ... `). These belong with the header so
+            # (e.g. `# <U+2705> RESOLVED ... `). These belong with the header so
             # they are never archived and stay at the top of WAKEUP_NOTES.
             leading_pins.append(block)
         else:
