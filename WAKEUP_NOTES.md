@@ -4,6 +4,69 @@
 
 ---
 
+# 2026-07-19e (RM-98 ADJUDICATED - unadjudicated inheritance, defence retracted, both named fixes infeasible)
+
+**Question asked: deliberate modelling choice, or accident of reusing a
+convenient table? Answer: NEITHER.** It is a documented-but-unadjudicated
+inheritance. Exactly one denominator-adjacent choice was made deliberately and
+recorded - **measured vs `1/cooldown`** (`history_notes.md:12534`, Veigar Q
+0.098 measured vs 0.25 theoretical) - and that one is defensible and stands. The
+DENOMINATOR was never in the option set; a combat-window basis first appears
+anywhere in the repo in 2026-07, as an audit finding. The generator admits the
+inheritance in its own words (`build_spell_cast_rates.py:9-11`): "Mirror of the
+(undocumented) s145 ad-hoc query that built `ult_cast_rates.json` for the
+Malignance Hatefog proc". And the "locally correct at origin" escape fails too -
+`ult_rates.py:5-7` says the s145 ancestor already converted the rate into a
+"DPS-time proc rate", so whole-game was never adjudicated correct for a DPS
+context ANYWHERE in the chain. `test_cast_rates.py:194-197` is a 100x-wide band
+that would not have caught a base swap.
+
+**The blocker was FALSE and is retracted - and the mechanism is the lesson.**
+RM-98 defended the basis as "haste-inclusive by construction, which is why the
+RM-39/RM-43 adjudication relied on it". Haste-inclusiveness follows from
+EMPIRICISM, not the denominator (a combat-window empirical table is equally
+haste-inclusive; the generator attributes it correctly to the rate being
+**measured**). And RM-39 did not rely on it - it **condemned** it:
+`SPEC_rm39_rm43_ability_haste.md:187-192` calls the opposite decisive, and
+`:174-176` / `:318-320` prescribe replacing the denominator. **How the error got
+in:** three artifacts each weld "whole-game duration" and "already
+haste-inclusive" with an "and"; a later summary read the conjunction as
+CAUSATION. Two true facts joined by "and" became a false "because". All three
+sources corrected this session.
+
+**Four corrections to RM-98 as filed.** (1) The defect **already ships
+DEFAULT-ON** in `ds.onhit` (`onhit_dps.py:143`, live at `/rank-onhit`), `ds.dps`
+and `ds.hps` - gating a default-OFF flag on it is incoherent, and two docstrings
+assert the falsehood outright (`onhit_dps.py:4-5` "both halves are in the same
+DPS units"; `hybrid.py:151-153` names the step that BREAKS additivity as its
+reason FOR additivity). (2) The term is **NOT inert** - I hypothesised it was and
+was refuted by measurement: 29.2% cohort mean of the AD-axis damage term, 65.9%
+Riven, and it re-orders. Per-cast damage dwarfs per-second auto damage, so a
+small rate still lands. Scaling 27x INVERTS the scorer rather than correcting it.
+(3) **27x overstates** - Q 7.83x / W 27.12x / E 6.44x, characteristic ~7x, and
+the 0.5/s reference is a `scenarios.json` field `_rotation_attack_dps` never
+reads. (4) **Under-scoped** - misses `ability_dps.py:1252`, where 6 champions sum
+BOTH bases in one total.
+
+**Both fixes RM-39 named are INFEASIBLE, and the spec said nobody had sized
+them.** Sized here: "casts per second alive" is computable
+(`participants.time_spent_dead`) but lifts only **1.25x** against a 27x gap, so
+the gap is overwhelmingly LANING time, not death timers. "Per second within N
+seconds of damage" needs sub-window resolution, but `timeline_frames` cadence is
+**60s** (measured 60016-60021 ms) - a 3-10s window is not resolvable.
+
+**Recommendation: do not chase a denominator replacement.** Demote the measured
+rate from a DPS multiplier to a **cast-propensity prior** (`SPEC:198-202`), which
+needs correct relative ordering - preserved by the whole-game basis - not a
+correct denominator. Spec `docs/specs/SPEC_rm98_cast_rate_time_base.md`, LEDGER
+956, commit `3aaf586f`. Tier-0, ENGINE stays 1.223.0. **NEXT:** the open
+hypothesis that the seven-mage Liandry's/Blackfire invariance is partly an
+artifact of this defect (`_rank_mage.py:332` mixes always-on item DPS at combat
+weight with spell rows at whole-game weight) - unproven, needs its own
+experiment.
+
+---
+
 # 2026-07-19d (RM-39/RM-43 L2 - TRUE credited, MIXED held, and the L1 guard rationale RETRACTED; ENGINE 1.223.0)
 
 **The widen is the small half. The finding is that L1's stated guard was never
@@ -127,7 +190,11 @@ at 2 passed in 0.13s. DS-only pre-bump 8625/1 skipped. New file 32 tests.
 
 **Phase 1 answer, and it holds:** haste must NOT modulate the measured cast rate.
 `ult_rates.get_spell_casts_per_sec` takes no `item_ids` (derivative zero across
-candidates); cast rates divide by whole-game duration (already haste-inclusive);
+candidates); cast rates divide by whole-game duration (an ENGAGEMENT statistic, so putting it
+in a per-second combat term is a category error - **do NOT read this as "and
+therefore haste-inclusive"**, see RM-98 2026-07-19: any haste-inclusiveness comes
+from the rate being MEASURED, not from the denominator, and this welded phrasing
+seeded a false blocker);
 and `hybrid._damage_axis` puts Aatrox 8/3 + Ambessa 9/0 on `ad` while every
 `_ability_damage` site gates on `ap`. `grep -c ability_haste` = 0 in `dps.py` and
 `hybrid.py`. Decisive: `compute_ability_dps` is called **0 times** for both in a
