@@ -182,3 +182,56 @@ def test_merge_second_parent_in_window_no_clean_anchor(lc, tmp_path, monkeypatch
         ["git", "-C", str(tmp_path), "diff", rng],
         capture_output=True, text=True).stdout
     assert "engine.py" in diff, f"feature diff must be in {rng} even with no clean anchor"
+
+
+# --- FALSE-POSITIVE REGRESS #6: head-truncation hides late-sorting paths ------
+
+
+def _build_truncation_repo(root: Path) -> dict:
+    """A commit whose early-sorting mirror files alone exceed the diff budget.
+
+    The exact R136 topology that produced FALSE-POSITIVE REGRESS #6: one commit
+    edits BOTH the generated mirror (Share/, 139 files) and the true source
+    (agents/daemon_slayer/, 129 files). git emits paths in byte order, so every
+    'S' (0x53) path precedes every 'a' (0x61) path. The mirror content alone
+    overran the auditor's head-truncation budget, so the true source never
+    reached the prompt and the auditor concluded it was 'missing from the diff'
+    -> REGRESS on a commit that was in fact complete and CI-green."""
+    _init(root)
+    c0 = _commit(root, "base.txt")
+    (root / "Share").mkdir()
+    (root / "agents").mkdir()
+    for i in range(8):
+        (root / "Share" / f"mirror_{i}.py").write_text(
+            "# generated mirror - do not edit\n" + ("x = 1\n" * 3000), encoding="utf-8")
+    (root / "agents" / "engine_true_source.py").write_text(
+        "def rm101_rune_numerator():\n    return 1\n", encoding="utf-8")
+    # auditor() reads its prompt template relative to ROOT
+    (root / "ops" / "loop").mkdir(parents=True)
+    (root / "ops" / "loop" / "auditor_prompt.md").write_text("AUDIT PROMPT", encoding="utf-8")
+    _run(root, "add", "-A")
+    _run(root, "commit", "-q", "-m", "mirror + true source in one commit")
+    return {"c0": c0, "head": _run(root, "rev-parse", "HEAD")}
+
+
+def test_truncated_diff_still_lists_late_sorting_true_source(lc, tmp_path, monkeypatch):
+    """The auditor prompt MUST name every changed file even when the diff body is
+    head-truncated. Without a complete manifest the auditor cannot distinguish
+    'file absent from the commit' from 'file past the truncation point', which is
+    exactly how a complete commit gets audited as a REGRESS."""
+    r = _build_truncation_repo(tmp_path)
+    monkeypatch.setattr(lc, "ROOT", tmp_path)
+    captured = {}
+
+    def _fake_gemini(body, _instruction):
+        captured["body"] = body
+        return "VERDICT: CLEAN"
+
+    monkeypatch.setattr(lc, "gemini", _fake_gemini)
+    lc.auditor(r["c0"], r["head"])
+    body = captured["body"]
+    # precondition: the mirror really does overrun the budget on its own
+    assert "truncated" in body, "test repo must be large enough to trigger truncation"
+    assert "engine_true_source.py" in body, (
+        "a changed file that sorts after the truncation point must still be named "
+        "in the prompt - otherwise the auditor reports it as missing")
