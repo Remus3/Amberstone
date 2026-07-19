@@ -1,6 +1,42 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-18 (the Term A session relocated `2026-07-18i` batch21-25 + `2026-07-18h` RM-86-L1 to `docs/history_notes.md`; newest 3 = Term A `2026-07-18l` + roster-closed `2026-07-18k` + batch26-31 `2026-07-18j`). NOTE: `scripts/wakeup_prune.py` is a silent NO-OP against these headers - its `SESSION_RE` requires a word boundary after the day, so a letter-suffixed header like `# 2026-07-18h` never matches and it reports "nothing to do" at any file size. Relocations are manual until that is fixed (filed as its own task).
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19 (the RM-92 AH session relocated `2026-07-18j` batch26-31 to `docs/history_notes.md`; newest 3 = AH-slice `2026-07-19a` + Term A `2026-07-18l` + roster-closed `2026-07-18k`). NOTE: `scripts/wakeup_prune.py` is STILL a silent NO-OP against these headers - its `SESSION_RE` requires a word boundary after the day, so a letter-suffixed header like `# 2026-07-18h` or `# 2026-07-19a` never matches and it reports "nothing to do" at any file size. Confirmed again 2026-07-19 (`--dry-run` reported "0 session(s) <= keep=3" against a 4-session file). Relocations are manual until that is fixed (filed as its own task).
+
+---
+
+# 2026-07-19a (RM-92 ability-haste slice SIZED -> DEFER, then its 4 tails SHIPPED 1.221.0; 2 commits, CI green)
+
+**Verdict first, no code:** `docs/specs/SCOPE_rm92_ability_haste.md`. All 5 AH
+champions route AWAY from the only scorer that prices ability haste (Twitch /
+Xayah / Yunara -> `dps.py`, Udyr / Yorick -> `hybrid.py` AD branch). `dps.py` has
+no ability model AT ALL - not merely no AH term. **The finding that settled it:
+AH is ~1% live even where it IS wired** - the haste-shortened cooldown only feeds
+the `measured <= 0` fallback (`ability_dps.py:1231`), and on the live 680-pair SR
+table just 8 pairs reach it, 6 effectively. This is MODEL work already spec'd as
+**RM-39 + RM-43 - do NOT open a third id.**
+
+**Then the 4 tails, all shipped** (`5f2371ce`, ENGINE 1.221.0): `aram_ability_haste`
+was assigned total AH and printed an ARAM note during SR runs (fixed, zero
+production consumers); **NEW DEFAULT-OFF seam `apply_canonical_cast_rate_keys`** -
+cast-rate lookups keyed the DISPLAY name against ID-keyed data so 21 champions
+silently took `global_fallback` while still reporting "measured", across **4 call
+sites** not 1, fixed at the `ult_rates.py` chokepoint; plus 3 stale comments and a
+registry docstring citing a regen tool that has never existed. 8 ward PNGs
+restored (zero code refs - removal stays a deliberate call).
+
+**Two process errors, both self-caught.** (1) Skipped the regen step **with a
+memory telling me not to** - `feedback_engine_bump_ritual_order` documents this
+exact failure from the previous session. The stamp is independent of the content;
+byte-identical output still needs the regen. Cost a 20-min suite. (2) Nearly
+reported a stale subagent `repo_suite.txt` as my own run; caught on mtimes.
+
+**Do NOT redo:** the RM-92 population audit (CLOSED), the AH sizing (DEFER is
+final), the 4 tails (shipped + live-probed). **Open:** operator-gated default-ON
+flips for BOTH seams (`team_blended`, `apply_canonical_cast_rate_keys`); three
+Share gaps flagged not fixed (route tables claim "4 GET + 15 POST" vs a live 31;
+`team_blended` + `kit_conversion_strength` undocumented in the authored half;
+three version anchors uncovered by `_doc_anchor_rules()` - which is why README sat
+72 minors stale while `--check` read green).
 
 ---
 
@@ -94,83 +130,3 @@ Soraka/Yuumi "#10 of 10" are `item_ids=[]` ARTIFACTS (Moonstone is #2 at depth a
 shipped build order already buys it); 2 of 6 re-probed rows dissolved, so the 21-champion
 figure is unaudited. Verification metric is CONTEXT LIFT (permutation test); pre-fix
 baseline measures the engine as context-BLIND (MRR +0.0018, 42 pct placebo-identical).
-
----
-
-# 2026-07-18j (DS_SWEEP batch26-31 -> 169/173: 30 champions in one session; 30 GAP, 0 REFUTE, THREE new shapes, and the archetype-invariance measurement that reframes the whole sweep)
-
-Read-only research, NO engine change. LEDGER 944 + 945. Two commits:
-`6f927b40` batch26/27/28 (Thresh..Viktor, 139 -> 154) and `525ac845`
-batch29/30/31 (Vladimir..Zeri, 154 -> 169). CI is path-filtered for docs-only
-pushes BY DESIGN (`paths-ignore: '**/*.md'`), so no run is expected on either;
-the local ASCII-hygiene gate is the backstop and is green (13 passed), ruff
-clean. **FOUR champions remain: Ziggs / Zilean / Zoe / Zyra.**
-
-THREE NEW SHAPES. **RM-93** - support-quest item CANDIDACY is inconsistent
-across archetype pools: Zaz'Zak's 3871 and Bloodsong 3877 are candidates on
-ZERO routes despite carrying full modelled damage formulas and a guard suite,
-while their three siblings rank on mage+tank but not enchanter. Canonical is
-Xerath (Zaz'Zak's at **94.28% presence**, candidate nowhere, WR below his own
-support average). Filter-list work, not L2. **RM-94** - snowball-conditional
-stacks pinned at FULL value: `_effects_data.py:3257` pins Mejai's at
-`bonus_ap_stacked=125.0` under a "sustained-peak convention" comment that
-conflates "reachable in one fight" (Black Cleaver) with "requires already
-having won" (25 kill stacks). Mejai's ranks **#6 for every mage** at 2-5% real
-presence. NOT win-rate contamination - DS default is pure simulation, so it
-reaches the same wrong item by a different route. **RM-95** - ability-data
-COVERAGE, and it is a DIAGNOSTIC defect, not a scoring one: five champions have
-no reachable ability data (3 alias misses where the data exists -
-Wukong->`MonkeyKing`, Nunu & Willump->`Nunu`, Renata Glasc->`Renata` - plus
-Locke and Zaahen genuinely absent), and `champion_ability_data_is_current()`
-returns True for ALL FIVE because absent data cannot be drifted. The RM-81
-staleness program therefore under-reports by exactly the set it should flag
-hardest.
-
-**THE HEADLINE IS NOT A SHAPE - it is a measurement.** The mage head is EXACTLY
-invariant across seven mages spanning both batches: Liandry's #1, Blackfire #2
-and Mejai's #6 for ALL SEVEN, Luden's Echo #13 for six. And BotRK is #1 on
-**11 of 11** AD-routed champions. Only one of the seven mages (Viktor) has its
-real first legendary at the top. This mechanically explains the standing
-batch15 fact that "Luden's Echo appears ZERO times" as a first legendary across
-173 champions - it ranks #13 invariantly, so it structurally cannot be first,
-while being the real #1 for Xerath (87.10%), Vex (88.44%) and Vel'Koz (63.67%).
-**Framing that matters: the BotRK lead is not uniformly WRONG, it is uniformly
-UNCONDITIONAL** - correct for Warwick (76.95%) and Yone (91.8%), wrong for
-Viego (Q duplicates it; real item dead at 4.12% / 46.15% WR), Zeri (right-click
-applies NO on-hit at all) and Urgot (fixed 3.0 attack speed). A remedy must be
-a DISCRIMINATOR, not a demotion. Also generalized: the zero-AD Zeal class is a
-uniform #20-#43 (carry) / #38-#74 (bruiser) band across 11 champions vs IE at
-#6-#16, so it is a stat-signature effect, not per-champion.
-
-**DO NOT REDO / self-corrections that already landed.** (1) The RM-95 alias
-miss does NOT degrade rankings - display-name vs DDragon-id ranking is
-BYTE-IDENTICAL, only the `fell_back` flag differs (consistent with the closed
-Vayne finding that the scorers never import `abilities`). (2) The batch17
-"Nunu [GAP route]" verdict is NOT mis-attributed - that analysis used the id
-form. Both claims were mine, both were wrong, both were caught by measurement
-before reaching the tracker. (3) The Shieldbow/Hexoptics control does NOT show
-the scorer blind - it separates them 10-11 places in the CORRECT direction, so
-the defect is magnitude, not blindness. (4) "Xin Zhao MISSING from
-champions.json" was a lookup error; the file is DDragon-keyed (`XinZhao`), all
-173 present. (5) **Vayne was a roster HOLE**, backfilled from her closed
-do-not-re-probe memory, not re-probed - second instance of that trap.
-(6) Engine credit recorded so it is not re-flagged as a gap: the shipped
-artifact correctly gives Yuumi NO boots, and BotRK #1 is right for Warwick/Yone.
-
-**PROBE RECIPE IS DRIFTED - fix before reuse.** Result rows live under key
-`ranked`, NOT `rows`/`results` (a faithful probe returns pool=0 for every
-champion and looks like total engine failure); there is NO
-`champion_has_ability_data` response key (use
-`champion_ability_data_is_current()`); the tanky/squishy pair varies only
-DPS-side inputs so an identical TANK order across both is CORRECT, not
-target-blindness (probe tanks via `enemy_ad_share`/`enemy_ap_share`); and the
-three item files have three non-guessable shapes (`items.json` is DDragon
-`j['data']`, `items_meraki.json` has NO stats block, `build_orders_sr.json`
-nests under `build_orders`). Shell hazard: a double-quoted bash string eats
-backticks as command substitution - write memory/doc appends from a Python file.
-
-NEXT: last 4 champions (Ziggs / Zilean / Zoe / Zyra) to close the roster at
-173/173, then the ability-shaping review for champions missing kit attributes
-(note them for upstream sourcing), then decide what to DO with the collected
-champion/build data and land it for live usage.
-
