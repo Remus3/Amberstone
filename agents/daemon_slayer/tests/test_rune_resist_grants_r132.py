@@ -1,4 +1,4 @@
-"""Defensive RESOLVE-RUNE resist-grant credit to the EHP denominator (R132, ENGINE 1.224.0).
+"""Defensive RESOLVE-RUNE resist-grant credit to the EHP denominator (R132, ENGINE 1.225.0).
 
 RED-first coverage for the NEW default-OFF ``apply_rune_resist_grants`` seam on
 ``compute_ehp``. Before this slice the engine modelled runes as OFFENSE ONLY: a
@@ -444,7 +444,7 @@ class EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
 
-        self.assertEqual(ENGINE_VERSION, "1.224.0")
+        self.assertEqual(ENGINE_VERSION, "1.225.0")
 
 
 if __name__ == "__main__":  # pragma: no cover

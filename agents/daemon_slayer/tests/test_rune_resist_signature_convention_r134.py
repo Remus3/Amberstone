@@ -66,6 +66,12 @@ def _snap() -> DataSnapshot:
 # The R132 pair, in the order compute_ehp established.
 _R132_TAIL = ("apply_rune_resist_grants", "rune_ids")
 
+# R136 (ENGINE 1.225.0) is the NEXT seam this guard's docstring anticipated: the
+# RM-101 numerator pair appended AFTER the R132 pair. Both new flags reuse the
+# existing ``rune_ids`` transport rather than adding a second ids parameter, so
+# the R132 pair stays adjacent and ordered - it is simply no longer the tail.
+_R136_TAIL = ("apply_rune_health_grants", "apply_rune_hsp_amp")
+
 _SEAM_ENTRY_POINTS = (
     compute_ehp,
     rank_items_by_ehp,
@@ -78,18 +84,30 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
     """GUARD 1: the R132 pair must be the LAST two parameters on every entry point."""
 
     def test_r132_pair_is_the_signature_tail_on_every_entry_point(self) -> None:
+        # R136 appended after the R132 pair, so the pair is now the -4:-2 slice.
+        # The invariant the guard actually protects is unchanged: these seam
+        # kwargs live at the END, in order, never mid-signature.
         for fn in _SEAM_ENTRY_POINTS:
             with self.subTest(fn=fn.__name__):
                 names = tuple(inspect.signature(fn).parameters)
                 self.assertEqual(
-                    names[-2:], _R132_TAIL,
+                    names[-4:], _R132_TAIL + _R136_TAIL,
                     msg=(
-                        f"{fn.__name__} must append the R132 seam kwargs at the END "
+                        f"{fn.__name__} must append the rune seam kwargs at the END "
                         f"of its signature (compute_ehp's stated convention); got "
-                        f"tail {names[-2:]}. A new seam appends AFTER these two and "
+                        f"tail {names[-4:]}. A new seam appends AFTER these four and "
                         f"updates this guard."
                     ),
                 )
+
+    def test_r136_pair_defaults_the_seam_off_on_every_entry_point(self) -> None:
+        # Both R136 flags are DEFAULT-OFF; a flipped default is an engine behavior
+        # change, never a signature-tidy side effect. Same contract as R132's.
+        for fn in _SEAM_ENTRY_POINTS:
+            with self.subTest(fn=fn.__name__):
+                params = inspect.signature(fn).parameters
+                for name in _R136_TAIL:
+                    self.assertIs(params[name].default, False, msg=f"{fn.__name__}.{name}")
 
     def test_r132_pair_is_adjacent_and_ordered(self) -> None:
         for fn in _SEAM_ENTRY_POINTS:
