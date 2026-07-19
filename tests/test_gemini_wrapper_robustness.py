@@ -19,6 +19,16 @@ and mid-session calls depend on:
    (P2_FINDINGS W4 deferred). Both wrappers must bound their retry loop by a
    wall-clock deadline so a stuck call cannot stall a headless/scheduled run.
 
+3. SILENT MARKER WEDGE. ``gemini_audit.ps1`` resumes from the sha in
+   ``ops/runtime/gemini_last_audit.txt``. Worktree-slice shas that never survive
+   cherry-pick are an EXPECTED class in this repo (see the docs/LEDGER.md
+   preamble), and once the marker pins one, ``git log <dangling>..HEAD`` fatals,
+   ``$commits`` comes back empty and the run takes the "nothing to audit" exit 0
+   having written NO review and NO log line. That wedged the nightly audit for 28
+   nights (last review 2026-06-21, marker pinned at edd76db3). The marker must be
+   validated and self-heal, and every run must log unconditionally so a silent
+   no-op is never again indistinguishable from a task that failed to start.
+
 These are static-text guards (the test_ps1_encoding_hygiene / test_bare_py_ban
 precedent) - PowerShell is not executed in CI.
 """
@@ -69,6 +79,35 @@ def test_retry_loop_has_wall_clock_deadline():
             f"{rel} retry loop is not bounded by a wall-clock deadline "
             "(no AddSeconds(/$deadline) - a hung gemini CLI can stall the run)"
         )
+
+
+def test_audit_validates_resume_marker_before_use():
+    # A dangling marker sha must self-heal, not wedge the nightly at exit 0.
+    text = _code_only(_read("tools/gemini_audit.ps1"))
+    assert "Test-CommitResolves" in text and "cat-file -e" in text, (
+        "gemini_audit.ps1 uses the gemini_last_audit.txt sha as a git range "
+        "endpoint without checking it still resolves; a pruned worktree-slice "
+        "sha then silently no-ops every nightly run (2026-06-22..07-19 outage)"
+    )
+
+
+def test_audit_logs_unconditionally_at_start():
+    # Without a first-line write, a run that dies before any conditional branch
+    # is indistinguishable from one that never started - the exact ambiguity that
+    # made the 0xC000013A run unattributable.
+    text = _code_only(_read("tools/gemini_audit.ps1"))
+    assert 'Log "START' in text, (
+        "gemini_audit.ps1 has no unconditional start-of-run log line"
+    )
+
+
+def test_audit_logs_the_nothing_to_audit_path():
+    # This branch exits 0 and used to write nothing at all.
+    text = _code_only(_read("tools/gemini_audit.ps1"))
+    assert "nothing to audit" in text and "SKIP code=0 no new commits" in text, (
+        "the 'nothing to audit' early exit must log, or a wedged resume marker "
+        "looks identical to a healthy quiet night"
+    )
 
 
 def test_wrappers_stay_ascii():
