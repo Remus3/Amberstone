@@ -21,6 +21,76 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
 
 ## NEXT - live-game-gated / operator-gated
 
+### DS defensive-half sweep GAP specs (R132, 2026-07-19 - spec'd read-only, all UNBUILT)
+
+Five verified gaps left over from the R132 defensive sweep. All were confirmed against live
+code + raw `data/daemon_slayer/16.14.1/items.json` by the orchestrator, not just asserted by a
+sweep agent. Ordered best-first. The rune RESIST half shipped as R132 (`e6a84734`) and the
+three wrong mirror magnitudes shipped as R133 (`ad16ba65`); everything below is what was
+deliberately NOT built in that cycle.
+
+- **RM-99 Heartsteel 3084 permanent-HP half is pinned at ZERO stacks, forever.** Meraki
+  "Colossal Consumption" grants permanent bonus health equal to 8% of the empowered proc damage
+  (30s cooldown per target). Only the damage half is modelled; `_effects_data.py` disclaims the
+  rest verbatim in-line - "The HP-on-damage permanent stack (8% of damage as max HP) is not
+  modeled - that's stat-side, not proc-side". No registry credits it. The structural reason is
+  the familiar one: `_passive_health_overrides.passive_health_stack_hp` (R46) is EXACTLY this
+  axis but is keyed by `(champion_id, ability_key, form_index)`, so an item can never match it,
+  and the two item-side HP-numerator lanes that do exist (`_item_mana_health` R105,
+  `_item_bonus_hp_amp` R107) are both exact conversions of an already-resolved stat and cannot
+  express `procs x hp_per_proc`. Measured live on Sion L13 `[3047, 3068]` via `/rank-tank`:
+  Heartsteel sits #3 (2016.80 delta EHP) behind Randuin's 2731.28 and Warmog's 2240.88, each
+  proc is worth ~43 EHP, so ~5.2 procs passes Warmog's and ~16.5 takes #1 - ordinary mid-game
+  numbers for the item whose entire identity is its stack counter. **Not RM-91** (that is
+  HP-not-priced-as-damage and needs an objective change; this is a pure max-HP pool add landing
+  inside `ds.ehp`'s existing objective) and **not RM-94** (Mejai's is pinned at MAX stacks, this
+  at ZERO). Fix shape: `_item_health_stack.py` + DEFAULT-OFF `assume_item_health_stacks`, folded
+  next to `item_bonus_hp_amp_hp`, with a monotone assumed-procs-by-level curve copying the
+  stack-count-proxy rationale already written in `_passive_health_overrides.py`. S/M, no schema
+  lift. Secondary, offense-side: `every_n_seconds=3.5` drops Meraki's explicit 30s-per-target
+  cooldown, so a single-target rotation gets ~8.57x the real proc count - the same proxy number
+  serves both.
+- **RM-101 the defensive-rune remainder (the half R132 deliberately did not build).** R132 shipped
+  the RESIST feed only (Aftershock 8439 / Conditioning 8429 / Unflinching 8242). Still absent:
+  **Overgrowth 8451** (permanent max-HP, a different output field - numerator not denominator),
+  **Revitalize 8453** (5% Heal/Shield Power; `_hsp_amp.py` sums HSP across EQUIPPED ITEMS ONLY, so
+  the rune cannot reach it), **Grasp 8437 self-side** heal + permanent-HP (`rune_procs.py` scores
+  the damage and says "(heal + permanent-HP sides not modeled)"; note the coefficients ALREADY
+  exist, DDragon-cited, on the ENEMY side in `enemy_runes.py` - `poke_heal_pct` 0.013,
+  `perm_hp` 5.0, `ranged_factor` 0.40 - so the self-side feed needs no new data sourcing),
+  **Second Wind 8444 self-side**, **Bone Plating 8473** (flat per-instance mitigation, but
+  INSTANCE-COUNTED rather than window-amortized - needs a hit-count convention the EHP scorer
+  does not have). **Guardian 8465 / Font of Life 8463 are ally-facing and one is data-blocked**:
+  Font of Life's base heal is an unresolved `@BaseHeal@` template var in live DDragon 16.14.1, a
+  genuine data ceiling - do NOT invent a number for it.
+- **RM-102 `_item_bonus_hp_amp.py:89` credits Warmog's Vitality 0.12 to Arena mirror 443083, which
+  has no Vitality passive at all.** Verified against the raw index: base `3083` carries "Warmog's
+  Vitality: Gain bonus Health equal to 12% of your Item Health", mirror `443083` carries only
+  Warmog's Heart regen and 4% move speed. This is not a wrong magnitude like R133 - it credits an
+  effect the item does not have. Same "base nominal" seeding root cause as R133, different
+  registry. S, value-only.
+- **RM-103 Unending Despair 2502 self-heal half is uncredited AND mislabelled.** Meraki "Anguish":
+  sap nearby champions every 4s for 3% bonus health magic damage AND "heal yourself equal to 250%
+  of the post-mitigation damage dealt". `_effects_data.py` models the damage and calls the rest
+  "ally self-heal component utility-only" - wrong on both counts (it is a SELF heal, and it is a
+  2.5x multiplier per champion hit, not utility). `heal_total` lands in the EHP NUMERATOR of all
+  three per-type denominators, so it is resist-amplified. Counterfactual measured at the most
+  conservative setting (1 champ in range, 1 trigger per fight window): UD moves #6-8 -> #4 on
+  Sion / Ornn / Zac / Leona / Malphite / Sejuani. Fix shape: `_item_proc_heal.py` sibling of
+  `_item_omnivamp.py`, folded into `heal_item_total` behind DEFAULT-OFF `assume_item_proc_heal`.
+  S, **no schema lift** - `ItemHeal.bonus_hp_scaling` already exists and already resolves, it
+  simply has ZERO carriers today (all four `ItemHeal(` entries are AD-scaled).
+- **RM-104 Kaenic Rookern Arena mirror 222504 shield is double-gated out.** `_effects_data.py`
+  gives 222504 only `defensive_only=True` plus a note that misnames the passive (it calls it
+  "Nullmagic Mantle", which is the component - the passive is Magebane), and its `shield` is
+  `None`; even after injecting an `ItemShield`, `ehp.py:318` arms only `iid == "2504"`, so the
+  mirror still returns zero. Every sibling includes its mirrors (Eclipse, Seraph's, Fimbulwinter);
+  Kaenic is the sole outlier whose mirror exists in the 706-item index but is uncredited.
+  Measured 1109.0 uncredited magic EHP (+15.0% magical / +5.3% blended) on an Arena build.
+  **Latent, not live**: `assume_kaenic_shield` exists only on `compute_ehp` and is not exposed on
+  `rank_items_by_ehp` or any server route, so all five conditional-shield seams are currently
+  unreachable from the scorer - this bites only when that flip happens. S, no schema lift.
+
 ### DS per-champion meta-valuation sweep
 
 - **RM-04 DS sweep: ROSTER CLOSED 173/173 - the open work is now SHAPE-BUILD, not scanning.** Canonical tracker `docs/DS_SWEEP_TRACKER.md` (Resolved 173/173: **GAP 135 / REFUTE 35 / FENCED 3**, closed 2026-07-18 batch32). **Do NOT re-open the roster or re-scan for uncovered champions** - further growth needs a schema lift, not another roster pass. Per-champion verdicts live in the tracker's `## Resolved verdicts` section + 101 `project_ds_sweep_<champ>_*` memory files; method in memory `feedback_ds_sweep_meta_valuation_research`. The batch-by-batch running narrative that used to live here is relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-07-18 block) - it was a duplicate of the tracker, and its "resolved 169 / remaining 4, next up = Ziggs" line was stale against the closed roster.
