@@ -128,9 +128,62 @@ def test_jhin_select_boots_swiftness():
     )
 
 
+def _dps_rank_fn(champion, archetype, **kw):
+    """In-process mirror of ``rank_for_primary_archetype``'s default route.
+
+    ``plan_build_order``'s stock ``rank_fn`` is the HTTP client for the local
+    :8893 engine, so leaving it unset makes this test require a live server:
+    it passes on a dev box that happens to be running one and returns None
+    (engine unreachable at engine call 1) everywhere else. CI can never
+    satisfy it - ``ensure_running`` spawns with Windows-only ``creationflags``
+    and dies on the Linux runner - which is why only the nightly full-suite
+    job saw it. Injecting the scorer in-process is the same seam
+    test_build_recommendation_p1l5.py and test_double_pen_mutex.py already
+    use, and it exercises the genuine engine math rather than a stub.
+
+    "marksman" matches no named branch of the real router, so it falls
+    through to ``rank_items`` / scorer "dps"; this mirrors that branch and
+    its response envelope.
+    """
+    from agents.daemon_slayer.rank import rank_items
+
+    ranked = rank_items(
+        _SNAP, champion,
+        level=kw["level"],
+        current_item_ids=kw.get("item_ids") or [],
+        mode=kw.get("mode", "SR"),
+        target_armor=kw.get("target_armor", 0.0),
+        target_mr=kw.get("target_mr", 0.0),
+        target_max_hp=kw.get("target_max_hp", 0.0),
+        target_bonus_hp=kw.get("target_bonus_hp", 0.0),
+        top_n=kw.get("top", 8),
+        sort_by=kw.get("sort_by", "delta"),
+        filter_shared_uniques=kw.get("filter_shared_uniques", True),
+    ).ranked
+    return {
+        "ok": True,
+        "scorer": "dps",
+        "archetype": (archetype or "").strip().lower(),
+        "fell_back": False,
+        "ranked": [
+            {
+                "item_id": x.item_id,
+                "item_name": x.item_name,
+                "delta": x.delta_dps,
+                "gold": x.gold,
+                "shares_dead_unique": x.shares_dead_unique,
+                "dead_unique_key": x.dead_unique_key,
+                "unique_passive_key": x.unique_passive_key,
+            }
+            for x in ranked
+        ],
+    }
+
+
 def test_jhin_plan_build_order_uses_swiftness_boots():
     from core.build_order import plan_build_order
-    res = plan_build_order("Jhin", "marksman", level=18, owned_item_ids=[], mode="SR")
+    res = plan_build_order("Jhin", "marksman", level=18, owned_item_ids=[],
+                           mode="SR", rank_fn=_dps_rank_fn)
     assert res is not None
     ids = [s.item_id for s in res.order]
     boots = next(
