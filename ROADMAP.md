@@ -95,6 +95,40 @@ deliberately NOT built in that cycle.
   does not have). **Guardian 8465 / Font of Life 8463 are ally-facing and one is data-blocked**:
   Font of Life's base heal is an unresolved `@BaseHeal@` template var in live DDragon 16.14.1, a
   genuine data ceiling - do NOT invent a number for it.
+  - **R136 (2026-07-19, ENGINE 1.225.0) SHIPPED three of these: Overgrowth 8451 + Grasp 8437
+    self-side (`_rune_health_grants.py`, DEFAULT-OFF `apply_rune_health_grants`) and Revitalize
+    8453's flat half (`_rune_hsp_amp.py`, DEFAULT-OFF `apply_rune_hsp_amp`).** Both reuse the
+    R132 `rune_ids` transport, so no entry point gained a new ids parameter. Revitalize's
+    "10% stronger below 40% health" clause is deliberately unmodelled (target-state, CLOSED).
+  - **TWO CLAIMS IN THE PARAGRAPH ABOVE ARE REFUTED - do not inherit them.** (1) Second Wind
+    does NOT need a missing-health convention: `ehp.py:355 _MISSING_HP_SHARE_FOR_HEALS = 0.5`
+    is a local variable at the exact call site, and `ability_hps.py:254` carries a second
+    independent `caster_missing_hp_pct` lane. Its coefficient 0.04 is already DDragon-cited at
+    `enemy_runes.py:218-229`. BUILDABLE-NOW, S, but small (~50 numerator HP at 2500 max HP).
+    (2) Bone Plating does NOT need a hit-count convention: `_passive_flat_mitigation_overrides.py:92
+    _ASSUMED_FLAT_DR_INSTANCES = 6.0` with discrete instance math at `:270` shipped in R9 on
+    2026-06-21, a MONTH before this claim was written. **Bone Plating is the ranked next build**
+    - its instance count of 3 is stated in the rune text, so it REPLACES that registry's single
+    largest assumption rather than adding one, and at ~154 prevented HP (L13) it is the only
+    buildable remainder large enough to reorder a ranking. Shape: rune-keyed
+    `_rune_flat_mitigation.py` mirroring the champion registry, `level_scaled` copied from the
+    percent sibling, `_lerp_per_level(30.0, 60.0)`, folded next to `flat_mit_*`. The one
+    judgement call is `conditional_probability` - "from **them**" scopes the block to a single
+    attacker, so seed it conservatively and pin it.
+  - **Guardian 8465 is CONVENTION-BLOCKED on a measured ceiling, not merely ally-facing.**
+    `ehp.py` contains ZERO AP references (`grep -c "\bap\b"` returns 0), so its
+    "+20% of your ability power" shield term is unrepresentable there. It also has a genuine
+    SELF half ("both of you gain a shield") the R132 rejection note missed. A self-only,
+    AP-omitted subset is BUILDABLE at S under the shipped omission precedent
+    (`_passive_mitigation_overrides.py:199-203` Irelia W, `_passive_flat_mitigation_overrides.py:147`
+    Fizz P) - but ship it as an explicit noted omission, never silently. Its ally half belongs
+    in the Term A `_item_ally_grant` flat-HP lane, which needs a rune-keyed sibling.
+  - **Font of Life 8463 stays DATA-BLOCKED - re-confirmed live 2026-07-19.** `@BaseHeal@` is
+    present verbatim in ALL FOUR vendored snapshots (16.11.1 / 16.12.1 / 16.13.1 / 16.14.1), is
+    one of only 3 unresolved tokens in the whole rune file, and no independent vendored source
+    exists (the `data/meta_build/scraped/ugg/*.html` hits are a verbatim re-serve of the same
+    DDragon payload, and no CommunityDragon `perks.json` is vendored at all). Two R136 tests
+    pin 8463 and 8465 at zero credit so a later pass cannot quietly seed a guess.
 - **RM-102 `_item_bonus_hp_amp.py:89` credits Warmog's Vitality 0.12 to Arena mirror 443083, which
   has no Vitality passive at all.** Verified against the raw index: base `3083` carries "Warmog's
   Vitality: Gain bonus Health equal to 12% of your Item Health", mirror `443083` carries only
