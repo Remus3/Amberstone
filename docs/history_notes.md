@@ -119,6 +119,43 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-19b (RM-39/RM-43 ADJUDICATED "no haste term", then my own headline RETRACTED; 4 Share/tool tails; 3 commits)
+
+**Phase 1 answer, and it holds:** haste must NOT modulate the measured cast rate.
+`ult_rates.get_spell_casts_per_sec` takes no `item_ids` (derivative zero across
+candidates); cast rates divide by whole-game duration (an ENGAGEMENT statistic, so putting it
+in a per-second combat term is a category error - **do NOT read this as "and
+therefore haste-inclusive"**, see RM-98 2026-07-19: any haste-inclusiveness comes
+from the rate being MEASURED, not from the denominator, and this welded phrasing
+seeded a false blocker);
+and `hybrid._damage_axis` puts Aatrox 8/3 + Ambessa 9/0 on `ad` while every
+`_ability_damage` site gates on `ap`. `grep -c ability_haste` = 0 in `dps.py` and
+`hybrid.py`. Decisive: `compute_ability_dps` is called **0 times** for both in a
+full rank (Veigar control 142). Spec `docs/specs/SPEC_rm39_rm43_ability_haste.md`.
+
+**READ THIS BEFORE ANY DS PROBE.** I published a wrong retraction this session and
+caught it myself. Every `/rank-*` route defaults its target to ALL ZEROS, and
+BotRK's on-hit is %target-max-HP, so a zero-HP target sinks it ~50 places. At the
+sweep's tanky target (`100/60/2500/1200`) the RM-39/RM-43 filings reproduce
+**exactly** - Shojin 51 and 47. Two more traps: body key is `items` NOT `item_ids`,
+and there is no `/rank-hybrid` (bruiser = `/rank-bruiser`). All three now in the
+ROADMAP PROBE HAZARD block + `reference_ds_probe_zero_target_defaults`.
+Eleven agents and an adversarial judge panel did not catch it - they verify that
+code says what you claim, not that your probe asked the same question as the
+finding you are contradicting.
+
+**Do NOT redo:** RM-39/RM-43 are RE-SCOPED not rewritten - defect verbatim,
+mechanism now "missing AD-axis ability term" (92/173 champs, est 3-5 sessions).
+Do not re-pitch a haste term. Do not re-file the Share route-table / seam-doc /
+anchor-rule / SESSION_RE tails - all shipped in `2f35163d` with tests.
+`wakeup_prune.py` works now; the old "manual relocation" note is retired.
+
+**Next:** the AD-axis ability term is the open build. Operator-gated and NOT mine
+to flip: default-ON for `team_blended` (ds.ehp) and `apply_canonical_cast_rate_keys`
+(ult_rates).
+
+---
+
 # 2026-07-19a (RM-92 ability-haste slice SIZED -> DEFER, then its 4 tails SHIPPED 1.221.0; 2 commits, CI green)
 
 **Verdict first, no code:** `docs/specs/SCOPE_rm92_ability_haste.md`. All 5 AH
