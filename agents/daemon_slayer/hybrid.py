@@ -76,9 +76,14 @@ from .survivability_credit import survivability_item_ids
 # that actually reaches this scorer via its normal route. The tie DOES matter to
 # the RM-39 AD-axis ability term below, which keys off this same "ad" branch:
 # three of the four (Seraphine / Rell / Vex) are really AP champions, and the
-# term's PHYSICAL-only damage-type guard is what makes that safe - their spells
-# are magic, so they receive zero credit rather than a wrong one. Akshan is
-# genuinely AD and is credited legitimately.
+# term's damage-type guard is what makes that safe - their spells are MAGIC,
+# which is excluded permanently, so they receive zero credit rather than a wrong
+# one. Akshan is genuinely AD and is credited legitimately.
+# The protection runs the OTHER way too, and that direction is load-bearing
+# after the L2 TRUE widen: Belveth R and Chogath R are AP-SCALING TRUE rows, and
+# nothing in the damage-type filter would stop them. They are safe only because
+# this function routes both to "ap" (magic 7 > attack 4 / 3). Weakening the axis
+# split would expose them.
 def _damage_axis(snapshot: DataSnapshot, champion_id: str) -> str:
     """Return ``"ap"`` when the champion is magic-primary, else ``"ad"``."""
     rec = snapshot.champions.get(str(champion_id)) or {}
@@ -117,6 +122,13 @@ def _ability_damage(
     ).total_ability_dps
 
 
+# Damage types the AD-axis ability term credits (RM-39 / RM-43). PHYSICAL is
+# the L1 set; TRUE was added at L2 on measured evidence. MAGIC and MIXED are
+# deliberately absent - see _physical_ability_damage below for the rationale
+# on each.
+_AD_AXIS_CREDITED_DAMAGE_TYPES = frozenset({"PHYSICAL", "TRUE"})
+
+
 def _physical_ability_damage(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -130,14 +142,15 @@ def _physical_ability_damage(
     augments,
     target_current_hp_pct: float = 1.0,
 ) -> float:
-    """PHYSICAL-only ability-DPS scalar - the AD-axis analogue of
+    """Credited-type ability-DPS scalar - the AD-axis analogue of
     ``_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF seam).
 
-    Same call as ``_ability_damage``; the ONLY difference is that it sums the
-    per-spell rows whose ``damage_type`` normalizes to PHYSICAL instead of
-    returning ``total_ability_dps``. Rows are already post-mitigation and
-    post-cast-rate (``ability_dps.py:1261``), so the sum is directly additive
-    with ``compute_dps().weighted_dps``.
+    Same call as ``_ability_damage``; the ONLY difference is that it SUMS THE
+    PER-SPELL ROWS whose ``damage_type`` normalizes into
+    ``_AD_AXIS_CREDITED_DAMAGE_TYPES``, instead of returning
+    ``total_ability_dps``. Rows are already post-mitigation and post-cast-rate
+    (``ability_dps.py:1261``), so the sum is directly additive with
+    ``compute_dps().weighted_dps``.
 
     The filter reuses the canonical normalization idiom from
     ``ability_dps.py:371`` verbatim - ``(damage_type or "MAGIC").upper()`` - so
@@ -145,15 +158,43 @@ def _physical_ability_damage(
     physical. That fallback is load-bearing: Aatrox E / R and Darius E all
     carry ``damage_type=None``.
 
-    WHY PHYSICAL ONLY (mandatory guard, not a simplification): an UNFILTERED
-    ability term promotes Liandry's Torment to #1 for Aatrox, importing AP burn
-    items onto an AD bruiser (spec section 2.2, Design D ablation row B). TRUE
-    and MAGIC are excluded in this first slice per the CLAUDE.md engine
-    convention - start with the tightest matching set, assert unrelated types
-    are excluded, widen only on test evidence. Darius R (Noxian Guillotine,
-    ``damage_type="TRUE"``) is the live proof case: it is real damage this term
-    deliberately does not price, because crediting TRUE here would drag
-    magic-pen / burn valuation onto the AD axis by the same mechanism.
+    WHY THE PER-SPELL SUM - this is the real guard, and it is NOT the
+    damage-type filter. Returning ``total_ability_dps`` promotes Liandry's
+    Torment to #1 for Aatrox, importing AP burn items onto an AD bruiser. The
+    filter does not prevent that and never did: Aatrox has ZERO nonzero
+    non-PHYSICAL rows (Q 16.2499 / W 2.6193 PHYSICAL, E and R 0.0), so every
+    filter arm - PHYSICAL, +TRUE, +MIXED, unfiltered - returns the identical
+    number for him. The mechanism is ``item_proc_dps``
+    (``ability_dps.py:1376-1381``), which folds item burn / DoT into
+    ``total_ability_dps`` and appears in NO per_spell row. Measured residue
+    (total minus the per_spell sum) for Aatrox: 0.0000 on an empty build,
+    exactly 31.2500 with Liandry's (6653). Pinned by
+    ``test_ad_axis_term_is_per_spell_sum_not_total_ability_dps``.
+
+    WHY TRUE IS CREDITED (the L2 widen): ``_mitigation_factor`` returns a flat
+    1.0 for TRUE (``ability_dps.py:372-373``), so a TRUE row carries no resist
+    derivative onto the AD axis. All 5 in-cohort TRUE rows - Olaf E Reckless
+    Swing, Vayne W Silver Bolts, Darius R Noxian Guillotine, MasterYi E Wuju
+    Style, Garen R Demacian Justice - measured dAP 0.0000 and dVoid 0.0000, so
+    crediting them imports neither AP nor magic-pen valuation. It is flat
+    post-mitigation damage the AD branch was simply dropping.
+
+    THE AXIS SPLIT IS WHAT MAKES THAT SAFE, NOT THE DAMAGE TYPE. Roster-wide
+    there are 7 TRUE rows and 2 of them DO scale with AP: Belveth R
+    (dAP +1.2153) and Chogath R (dAP +0.6076). They are out of reach only
+    because ``_damage_axis`` routes them to "ap" (Belveth attack 4 / magic 7,
+    Chogath attack 3 / magic 7), so they take the AP branch above and never
+    hit this term. Do NOT widen on the assumption that TRUE is AP-inert
+    roster-wide - it is not.
+
+    WHY MIXED IS STILL HELD (a decision, not an oversight): the whole
+    in-cohort MIXED population is Yone (W Spirit Cleave, R Fate Sealed).
+    Unlike TRUE, MIXED does import magic-pen valuation - ``_mitigation_factor``
+    splits it 50/50 across armor and MR (``ability_dps.py:377``), and a full
+    credit moves Yone's Void Staff from 129 to 111. Yone's W / R genuinely are
+    half-physical, so the honest treatment is a 50 pct credit mirroring that
+    same split - a separate design, not a filter widen. MAGIC stays excluded
+    permanently: crediting it climbs Udyr's Rabadon's 55 places (126 -> 71).
     """
     result = compute_ability_dps(
         snapshot,
@@ -171,7 +212,7 @@ def _physical_ability_damage(
     return sum(
         row.dps
         for row in result.per_spell
-        if (row.damage_type or "MAGIC").upper() == "PHYSICAL"
+        if (row.damage_type or "MAGIC").upper() in _AD_AXIS_CREDITED_DAMAGE_TYPES
     )
 
 
