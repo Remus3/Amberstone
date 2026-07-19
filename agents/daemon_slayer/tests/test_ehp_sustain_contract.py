@@ -123,6 +123,45 @@ class LifestealSustainTests(_SnapBase):
             e.effective_ehp_with_sustain, e.blended_ehp, places=9
         )
 
+    def test_effective_equals_blended_with_each_permanent_hp_seam_ARMED(self) -> None:
+        """RM-105. The equality above only ever held AT DEFAULT FLAGS.
+
+        `ehp.py` assembles its per-type numerators TWICE - the main block and
+        the `_blend_with_heal` mirror that produces effective_ehp_with_sustain.
+        The mirror silently OMITTED the entire permanent-HP family
+        (passive_health_hp R46, rune_perm_hp R136, item_health_stack_hp R137),
+        so the two fields diverged by exactly the omitted HP the moment any of
+        those seams was armed - and every one of them is queued for an
+        operator-gated default-ON flip, which is precisely what arms it.
+
+        Measured on Sion L13 [3084, 3068] before the fix: -618.33 with
+        apply_rune_health_grants (about 10 percent), -301.42 with
+        assume_passive_health_stacks, -373.24 with assume_item_health_stacks,
+        and exactly 0.0000 at defaults - which is why nothing caught it.
+
+        The mirror's own comment claimed it mirrored the main numerators. That
+        was true when written and stopped being true at R46.
+        """
+        seams = (
+            ("assume_passive_health_stacks", {}),
+            ("assume_item_health_stacks", {}),
+            ("apply_rune_health_grants", {"rune_ids": ["8451", "8437"]}),
+        )
+        for flag, extra in seams:
+            with self.subTest(seam=flag):
+                e = compute_ehp(
+                    self.snap, "Sion", level=13, item_ids=["3084", "3068"],
+                    **{flag: True}, **extra,
+                )
+                self.assertAlmostEqual(
+                    e.effective_ehp_with_sustain, e.blended_ehp, places=6,
+                    msg=(f"{flag} armed: the sustain mirror diverges from the "
+                         f"main blend by "
+                         f"{e.blended_ehp - e.effective_ehp_with_sustain:.4f} "
+                         f"EHP - the permanent-HP family is missing from "
+                         f"_blend_with_heal"),
+                )
+
     def test_raw_ehp_is_strictly_below_blended_for_a_lifesteal_build(self) -> None:
         # ehp_without_sustain strips the lifesteal heal that blended_ehp
         # carries, so it must be smaller for a build that has lifesteal.
@@ -244,7 +283,7 @@ class ByteIdenticalGuardTests(_SnapBase):
 
 class EngineVersionCurrentTests(unittest.TestCase):
     def test_engine_version_is_1_121_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.226.0")
+        self.assertEqual(ENGINE_VERSION, "1.227.0")
 
 
 if __name__ == "__main__":

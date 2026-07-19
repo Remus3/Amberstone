@@ -2031,7 +2031,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "pen contribution only"
         ),
     ),
-    # Unending Despair (2502): Agony - 3% caster bonus HP magic damage every 4s.
+    # Unending Despair (2502): Anguish - 3% caster bonus HP magic damage every 4s.
     # Meraki: 3% bonus HP to self and nearest ally as magic. Using self-damage value only
     # (the ally component is utility). Caster-bonus-HP-scaled proc via caster_bonus_hp.
     "2502": ItemEffect(
@@ -2039,15 +2039,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Unending Despair",
         periodics=(
             PeriodicProc(
-                name="Agony",
+                name="Anguish",
                 every_n_seconds=4.0,
                 bonus_damage=lambda c: 0.03 * c.caster_bonus_hp,
                 damage_type=MAGICAL,
             ),
         ),
         note=(
-            "Unending Despair: Agony 3% caster bonus HP magic damage every 4s "
-            "(proc AoE to enemy; ally self-heal component utility-only; "
+            "Unending Despair: Anguish 3% caster bonus HP magic damage every 4s "
+            "(proc AoE to all enemy champions within 650u; the SELF-heal half is "
+            "250% of the post-mitigation damage per champion hit - modeled in "
+            "_item_proc_heal.py behind DEFAULT-OFF assume_item_proc_heal, NOT utility; "
             "caster_bonus_hp = item_totals[hp_flat] proxy same as Titanic/Heartsteel)"
         ),
     ),
@@ -3709,12 +3711,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="222502",
         name="Unending Despair",
         periodics=(PeriodicProc(
-            name="Agony",
+            name="Anguish",
             every_n_seconds=4.0,
             bonus_damage=lambda c: 0.03 * c.caster_bonus_hp,
             damage_type=MAGICAL,
         ),),
-        note="Unending Despair (Arena 222502): same as SR 2502 - Agony 3% caster bonus HP magic every 4s",
+        note="Unending Despair (Arena 222502): same as SR 2502 - Anguish 3% caster bonus HP magic every 4s; SELF-heal half in _item_proc_heal.py (DEFAULT-OFF)",
     ),
     "222503": ItemEffect(
         item_id="222503",

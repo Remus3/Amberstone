@@ -75,15 +75,26 @@ class ItemBonusHpAmpRegistryTests(unittest.TestCase):
     def test_single_item_is_12pct_of_bonus_hp(self) -> None:
         self.assertAlmostEqual(item_bonus_hp_amp_hp(["3083"], 1000.0), 120.0, places=9)
 
-    def test_arena_mirror_same_nominal(self) -> None:
-        self.assertAlmostEqual(
-            item_bonus_hp_amp_hp(["443083"], 1000.0), 120.0, places=9
-        )
+    def test_arena_mirror_443083_has_no_vitality_and_must_credit_zero(self) -> None:
+        """RM-102. R107 seeded the Arena mirror with the "base nominal" 0.12.
+
+        The mirror does not have the passive at all. Verified against the raw
+        16.14.1 index by ID, never by name: 3083 carries "Warmog's Vitality:
+        Gain bonus Health equal to 12% of your Item Health", while 443083
+        carries only Warmog's Heart regen and 4% move speed. They share a
+        DISPLAY NAME, which is exactly the trap that has produced a false
+        map-30 report in this repo before - audit these by id.
+
+        This is not a wrong magnitude like R133; it credited an effect the item
+        does not have.
+        """
+        self.assertEqual(item_bonus_hp_amp_hp(["443083"], 1000.0), 0.0)
 
     def test_two_family_items_take_the_max_not_the_sum(self) -> None:
         # "Warmog's Vitality" is a UNIQUE passive over a SHARED bonus-HP pool -> the
-        # MAX percent applies, never the sum (a synthetic base + Arena-mirror
-        # double-equip cannot double-count).
+        # MAX percent applies, never the sum. With 443083 now correctly at zero
+        # credit (RM-102) this also pins that the uncredited mirror cannot drag
+        # the max down when both are synthetically equipped.
         self.assertAlmostEqual(
             item_bonus_hp_amp_hp(["3083", "443083"], 1000.0), 120.0, places=9
         )
@@ -100,8 +111,11 @@ class ItemBonusHpAmpRegistryTests(unittest.TestCase):
     def test_negative_bonus_hp_clamped_to_zero(self) -> None:
         self.assertEqual(item_bonus_hp_amp_hp(["3083"], -500.0), 0.0)
 
-    def test_registered_ids_are_exactly_the_two(self) -> None:
-        self.assertEqual(set(_ITEM_BONUS_HP_AMP_PCT), {"3083", "443083"})
+    def test_registered_ids_are_exactly_the_base(self) -> None:
+        # RM-102: 443083 was removed - it has no Warmog's Vitality passive.
+        # Pinned as an exact set so a future "base nominal" seeding pass cannot
+        # quietly re-add a mirror without justifying it against the raw index.
+        self.assertEqual(set(_ITEM_BONUS_HP_AMP_PCT), {"3083"})
 
     def test_all_pcts_are_12_percent(self) -> None:
         for iid, pct in _ITEM_BONUS_HP_AMP_PCT.items():
@@ -160,12 +174,16 @@ class ItemBonusHpAmpOnCreditTests(unittest.TestCase):
         self.assertGreater(on.true_ehp, off.true_ehp)
         self.assertGreater(on.blended_ehp, off.blended_ehp)
 
-    def test_arena_mirror_also_credits(self) -> None:
+    def test_arena_mirror_443083_credits_nothing_end_to_end(self) -> None:
+        # RM-102: the seam must be a no-op for the mirror even when armed,
+        # because 443083 has no Warmog's Vitality passive. Pinned end-to-end
+        # through compute_ehp, not just at the registry helper, so a re-add
+        # anywhere in the lane fails here too.
         on = compute_ehp(
             _snap(), champion_id="Sion", level=13, item_ids=["443083"], mode="SR",
             apply_item_bonus_hp_amp=True,
         )
-        self.assertGreater(on.item_bonus_hp_amp_hp, 0.0)
+        self.assertEqual(on.item_bonus_hp_amp_hp, 0.0)
 
 
 # ---------------- isolation (no leak) ----------------
