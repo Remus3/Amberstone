@@ -56,19 +56,21 @@ def _run_poll_loop(coach: _StubCoach, box: dict) -> None:
     worker's exception on the caller, so ``pytest.raises`` still sees the
     _StopLoop sentinel.
 
-    Why not a bare ``asyncio.run()`` on the main thread: ``tests/
-    snapshot_panels`` (plus test_dashboard_condense_rc2 /
-    test_lcu_loop_resilience / test_overlay_idle_rc2) drive Playwright's SYNC
-    api, which runs its event loop from a greenlet on the MAIN thread and
-    keeps that loop marked as running for as long as the session-scoped
-    browser is open. ``asyncio.run()`` refuses to start when the calling
-    thread already has a loop marked, so in a single-process full suite these
-    two tests raised "asyncio.run() cannot be called from a running event
-    loop" while passing alone - the nightly job runs `pytest tests/
-    agents/daemon_slayer/tests/` in ONE process, the push `check` job never
-    does. The marker is NOT stale (clearing it in a conftest teardown hangs
-    Playwright's next call), so the loop has to move off the main thread
-    instead. Same resolution as tests/test_p2w2_ds_h.py::_run_coro.
+    Why not a bare ``asyncio.run()`` on the main thread: the Playwright sync
+    fixtures in ``tests/snapshot_panels`` (the only Playwright driver under
+    tests/) leave a greenlet-backed ProactorEventLoop marked running on the
+    MAIN thread for the rest of the session, because playwright.sync_api
+    never clears the marker. ``asyncio.run()`` refuses to start when the
+    calling thread already has a loop marked, so in a single-process full
+    suite these two tests raised "asyncio.run() cannot be called from a
+    running event loop" while passing alone - the nightly job runs `pytest
+    tests/ agents/daemon_slayer/tests/` in ONE process, the push `check` job
+    never does. The marker is NOT stale (clearing it from a conftest teardown
+    hangs Playwright's next call), so the loop has to move off the main
+    thread instead. This is the same immunity the three sibling asyncio-suite
+    files already adopt for this exact polluter class (item 401, cycle-7 obs
+    tests): tests/test_p2w1_core_f.py, tests/test_p2w2_ds_h.py and
+    tests/test_lcu_loop_resilience.py, each via a local ``_run_coro``.
 
     Reading the loop thread's ident from INSIDE the worker keeps the
     off-the-loop-thread assertion honest: comparing the tick thread against
