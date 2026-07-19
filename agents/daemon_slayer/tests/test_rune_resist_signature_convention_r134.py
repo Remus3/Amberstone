@@ -72,6 +72,12 @@ _R132_TAIL = ("apply_rune_resist_grants", "rune_ids")
 # the R132 pair stays adjacent and ordered - it is simply no longer the tail.
 _R136_TAIL = ("apply_rune_health_grants", "apply_rune_hsp_amp")
 
+# R137 (ENGINE 1.226.0, RM-99) is the next seam appended after the R136 pair: the
+# item-side permanent-HP-per-proc stack (Heartsteel). It adds no ids parameter -
+# the item ids already ride the existing ``item_ids`` / ``current_item_ids``
+# transport - so once again the R132 pair stays adjacent and ordered.
+_R137_TAIL = ("assume_item_health_stacks",)
+
 _SEAM_ENTRY_POINTS = (
     compute_ehp,
     rank_items_by_ehp,
@@ -84,21 +90,32 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
     """GUARD 1: the R132 pair must be the LAST two parameters on every entry point."""
 
     def test_r132_pair_is_the_signature_tail_on_every_entry_point(self) -> None:
-        # R136 appended after the R132 pair, so the pair is now the -4:-2 slice.
-        # The invariant the guard actually protects is unchanged: these seam
-        # kwargs live at the END, in order, never mid-signature.
+        # R136 then R137 appended after the R132 pair, so the pair is now the
+        # -5:-3 slice. The invariant the guard actually protects is unchanged:
+        # these seam kwargs live at the END, in order, never mid-signature.
         for fn in _SEAM_ENTRY_POINTS:
             with self.subTest(fn=fn.__name__):
                 names = tuple(inspect.signature(fn).parameters)
                 self.assertEqual(
-                    names[-4:], _R132_TAIL + _R136_TAIL,
+                    names[-5:], _R132_TAIL + _R136_TAIL + _R137_TAIL,
                     msg=(
-                        f"{fn.__name__} must append the rune seam kwargs at the END "
+                        f"{fn.__name__} must append the seam kwargs at the END "
                         f"of its signature (compute_ehp's stated convention); got "
-                        f"tail {names[-4:]}. A new seam appends AFTER these four and "
+                        f"tail {names[-5:]}. A new seam appends AFTER these five and "
                         f"updates this guard."
                     ),
                 )
+
+    def test_r137_seam_defaults_off_on_every_entry_point(self) -> None:
+        # DEFAULT-OFF, same contract as the R132 / R136 seams: a flipped default is
+        # an engine behavior change, never a signature-tidy side effect.
+        for fn in _SEAM_ENTRY_POINTS:
+            with self.subTest(fn=fn.__name__):
+                params = inspect.signature(fn).parameters
+                for name in _R137_TAIL:
+                    self.assertIs(
+                        params[name].default, False, msg=f"{fn.__name__}.{name}"
+                    )
 
     def test_r136_pair_defaults_the_seam_off_on_every_entry_point(self) -> None:
         # Both R136 flags are DEFAULT-OFF; a flipped default is an engine behavior
