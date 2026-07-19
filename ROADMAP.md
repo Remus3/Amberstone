@@ -44,6 +44,23 @@ deliberately NOT built in that cycle.
 > carries the invariant in code ("so there is no self-feedback"). Now machine-guarded by
 > `agents/daemon_slayer/tests/test_rune_resist_signature_convention_r134.py`.
 
+> **CLOSED-INERT 2026-07-19 (R135, `e4ab8144`) - do NOT re-pitch the movespeed soft cap.**
+> The League MS piecewise (`0.8x+83` above 415, `0.5x+230` above 490, `110+0.5x` below 220)
+> is real, correctly stated, and applied NOWHERE in this repo - and it is unreachable at
+> every site, so that is not a gap. `core/champion_movespeed.est_ms` is uncapped but the
+> roster's base MS spans only 315 (Rell) to 355 (Master Yi) across all 173 champs and its
+> sole consumer `core/mia_reachability.py:165` passes NO items, so no breakpoint can bind.
+> `hybrid.py:272 _ms_utility_multiplier` DOES see item-inclusive MS (426.6 measured on
+> Darius + Swifties + DMP + FoN) but `assume_ms_utility` is DEFAULT-OFF with no production
+> caller AND `_MS_UTILITY_DPS_CAP = 0.15` saturates at 1.30x base, bounding the entire error
+> to 0.794 percentage points inside a 27-unit window and to exactly zero above 442.
+> `ability_dps.py:293 caster_bonus_ms` is default-ON but populated by exactly ONE block
+> roster-wide (Janna W), overstating it by 1.09 magic damage only on an off-class Phantom
+> Dancer build. Shipping a DEFAULT-OFF cap seam plus an ENGINE bump for this would correct a
+> quantity that is provably zero on every live path. Re-open ONLY if a caller starts passing
+> items to `est_ms`, `assume_ms_utility` is flipped default-ON, or a champion ships with base
+> MS outside 220-415.
+
 - **RM-99 Heartsteel 3084 permanent-HP half is pinned at ZERO stacks, forever.** Meraki
   "Colossal Consumption" grants permanent bonus health equal to 8% of the empowered proc damage
   (30s cooldown per target). Only the damage half is modelled; `_effects_data.py` disclaims the
