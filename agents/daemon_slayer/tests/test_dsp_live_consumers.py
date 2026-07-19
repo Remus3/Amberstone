@@ -101,4 +101,4 @@ def test_ally_protected_ehp_janna_uplift():
 
 def test_engine_version_pin():
     from agents.daemon_slayer import ENGINE_VERSION
-    assert ENGINE_VERSION == "1.227.0"
+    assert ENGINE_VERSION == "1.228.0"
