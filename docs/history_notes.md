@@ -119,6 +119,102 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-19g (gemini-loop cycle 2 - DS modelled runes as offense only; defensive resist half now exists)
+
+**The transferable lesson is about how a good agent report can still be wrong.**
+
+The R132 sweep agent that found the rune hole did excellent work: every `file:line`
+it cited survived an independent grep, its REFUTEs were all correct, and the
+structural gap it identified was real. `ehp.py` grep for `rune|perk|keystone`
+returns ZERO matches, `rank.py` returns ZERO, seven live Resolve rune ids return
+0 hits across the entire package, and Aftershock 8439 is registered for damage
+only with its own formula string admitting "(resist-bonus side not modeled)".
+
+It still got the central formula wrong. It reported Aftershock as
+`45 + 75% of Bonus Resists` and dropped the trailing longDesc clause:
+"Resistance bonus from Aftershock capped at: 80-150 (based on level)". Building
+on the paraphrase would have shipped math that over-credits precisely the
+high-resist tanks the feature exists to serve - at level 18 with 150 bonus armor
+the uncapped value is 157.5 against a cap of 150. What caught it was re-reading
+the raw `runesReforged.json` longDesc instead of the agent's summary of it.
+
+**Rule to carry: when a finding hands you a FORMULA, reproduce the formula from
+source before building on it - checking the cited file:line is not the same
+check.** Same failure family as the existing DS probe-trap memories, new surface
+(paraphrase drift rather than probe-parameter drift).
+
+Second lesson, smaller but sharp: **a test suite can PROTECT the defect it ought
+to catch.** R133 found `test_arena_mirrors_credit_same_as_base` asserting
+`base == mirror` - which is exactly the "base nominal" seeding bug expressed as
+an invariant. The wrong Arena magnitudes were not merely uncaught, they were
+pinned. Before assuming a red test means a new break, check what the existing
+tests assert about the values you are correcting.
+
+**Shipped:** R132 `e6a84734` (ENGINE 1.223.0 -> 1.224.0) new
+`_rune_resist_grants.py` for Aftershock / Conditioning / Unflinching, folded into
+`eff_armor` / `eff_mr` behind DEFAULT-OFF `apply_rune_resist_grants`. R133
+`ad16ba65` (executor-opened, no bump) corrected three of four Arena / prismatic
+mirror magnitudes - 226665 is 40% not 30%, 224401 is 50 MR not 70, 663059 is 10%
+not 20% - each re-verified against the raw item index before editing.
+
+**Deliberately not built, spec'd read-only:** RM-99 Heartsteel's permanent-HP
+half is pinned at ZERO stacks forever (~43 EHP per proc; ~16.5 procs takes #1 off
+Randuin's on Sion) - RM-101 the defensive-rune remainder - RM-102 Warmog's Arena
+mirror credited a Vitality passive it does not have - RM-103 Unending Despair's
+250% SELF heal uncredited and mislabelled "ally ... utility-only" - RM-104 Kaenic
+Arena mirror double-gated out of its own shield. Font of Life is DATA-BLOCKED:
+its base heal is an unresolved `@BaseHeal@` template var in live DDragon 16.14.1.
+Do not invent a number for it.
+
+---
+
+# 2026-07-19f (gemini-loop cycle 1 - two silent failures closed: the nightly critic and the nightly suite)
+
+**Both failures were invisible to the surfaces we actually watch. That is the
+transferable lesson, not the individual fixes.**
+
+**RC-GeminiAudit produced nothing for 28 nights while reading Enabled/Ready.**
+`ops/runtime/gemini_last_audit.txt` pinned a worktree-slice sha that never
+survived cherry-pick, so `git log <dangling>..HEAD` came back empty and
+`tools/gemini_audit.ps1` took its own "nothing to audit" branch and exited 0 -
+no review, no log line, `logs/gemini_audit.log` did not exist at all. The
+session-start anomaly probe only ever surfaced the unrelated `0xC000013A`.
+**Exit 0 is not success and Ready is not health.** Now self-heals to `HEAD~10`
+with a loud WARN and logs `START pid=...` unconditionally as its first write.
+
+**The 0xC000013A is a SEPARATE fault, still unproven, deliberately left open.**
+Six hypotheses refuted, including my own leading one - InteractiveToken session
+teardown died to a same-night control (5 sibling InteractiveToken tasks ran
+3:00 through 4:17, all result 0, one of them one second earlier). The task was
+NOT re-registered: changing a working ops surface on refuted evidence is churn.
+**If it recurs on a later nightly, the marker fix is not the cause - read the
+log. START then silence = killed mid-run; no START = died before line 20.**
+The task still DISPLAYS `Last Result -1073741510` until the 7/20 run clears it;
+that is historical, not live.
+
+**The nightly full-suite had been red for 12 consecutive days** (runs
+28935372989 .. 29682372934) and nobody saw it, because the push `check` job is
+green BY CONSTRUCTION - it never runs `tests/` as one process, so it cannot
+reproduce the pollution. Only the nightly can. **Two unrelated bugs, not one
+ordering bug**, which is exactly why both files passed in isolation: Playwright's
+session-scoped ProactorEventLoop leaves asyncio's per-thread running-loop marker
+set on the main thread (that marker is LIVE - clearing it in conftest makes
+snapshot_panels time out, tried and reverted), and the Jhin test depended on a
+live `:8893` CI can never spawn (`creationflags=0x08000000` raises on Linux).
+Test-side fixes only. **Main is green: 20544 passed, 82 skipped, 2357 subtests,
+0 failed** (run 29688982602, dispatched manually since only that job reproduces).
+
+**LATENT, carry forward:** `tests/snapshot_panels` still leaks the loop marker.
+Any NEW test calling bare `asyncio.run()` on the main thread and sorting after
+it fails identically - use the `_run_coro`/`_run_poll_loop` pattern. Four
+near-identical local copies now exist; consolidating them is the open follow-up.
+
+**Process note worth keeping:** both slice agents REFUTED an orchestrator
+hypothesis on evidence, and both were right to. They were briefed to verify
+premises rather than accept them. Keep briefing them that way.
+
+---
+
 # 2026-07-19e (RM-98 ADJUDICATED - unadjudicated inheritance, defence retracted, both named fixes infeasible)
 
 **Question asked: deliberate modelling choice, or accident of reusing a
