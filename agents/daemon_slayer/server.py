@@ -537,6 +537,8 @@ def _route_ehp(body: dict) -> dict:
     apply_item_resist_grants = _opt_bool(body, "apply_item_resist_grants", False)
     apply_rune_resist_grants = _opt_bool(body, "apply_rune_resist_grants", False)
     rune_ids = _coerce_str_list(body.get("rune_ids"), "rune_ids")
+    apply_rune_health_grants = _opt_bool(body, "apply_rune_health_grants", False)
+    apply_rune_hsp_amp = _opt_bool(body, "apply_rune_hsp_amp", False)
     apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     assume_item_general_dr = _opt_bool(body, "assume_item_general_dr", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
@@ -564,6 +566,8 @@ def _route_ehp(body: dict) -> dict:
             apply_item_resist_grants=apply_item_resist_grants,
             apply_rune_resist_grants=apply_rune_resist_grants,
             rune_ids=rune_ids,
+            apply_rune_health_grants=apply_rune_health_grants,
+            apply_rune_hsp_amp=apply_rune_hsp_amp,
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
@@ -642,6 +646,8 @@ def _route_rank_tank(body: dict) -> dict:
     apply_item_resist_grants = _opt_bool(body, "apply_item_resist_grants", False)
     apply_rune_resist_grants = _opt_bool(body, "apply_rune_resist_grants", False)
     rune_ids = _coerce_str_list(body.get("rune_ids"), "rune_ids")
+    apply_rune_health_grants = _opt_bool(body, "apply_rune_health_grants", False)
+    apply_rune_hsp_amp = _opt_bool(body, "apply_rune_hsp_amp", False)
     apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     assume_item_general_dr = _opt_bool(body, "assume_item_general_dr", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
@@ -681,6 +687,8 @@ def _route_rank_tank(body: dict) -> dict:
             apply_item_resist_grants=apply_item_resist_grants,
             apply_rune_resist_grants=apply_rune_resist_grants,
             rune_ids=rune_ids,
+            apply_rune_health_grants=apply_rune_health_grants,
+            apply_rune_hsp_amp=apply_rune_hsp_amp,
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
@@ -751,6 +759,8 @@ def _route_hybrid(body: dict) -> dict:
     apply_item_resist_grants = _opt_bool(body, "apply_item_resist_grants", False)
     apply_rune_resist_grants = _opt_bool(body, "apply_rune_resist_grants", False)
     rune_ids = _coerce_str_list(body.get("rune_ids"), "rune_ids")
+    apply_rune_health_grants = _opt_bool(body, "apply_rune_health_grants", False)
+    apply_rune_hsp_amp = _opt_bool(body, "apply_rune_hsp_amp", False)
     apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     assume_item_general_dr = _opt_bool(body, "assume_item_general_dr", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
@@ -780,6 +790,8 @@ def _route_hybrid(body: dict) -> dict:
             apply_item_resist_grants=apply_item_resist_grants,
             apply_rune_resist_grants=apply_rune_resist_grants,
             rune_ids=rune_ids,
+            apply_rune_health_grants=apply_rune_health_grants,
+            apply_rune_hsp_amp=apply_rune_hsp_amp,
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
@@ -855,6 +867,8 @@ def _route_rank_bruiser(body: dict) -> dict:
     apply_item_resist_grants = _opt_bool(body, "apply_item_resist_grants", False)
     apply_rune_resist_grants = _opt_bool(body, "apply_rune_resist_grants", False)
     rune_ids = _coerce_str_list(body.get("rune_ids"), "rune_ids")
+    apply_rune_health_grants = _opt_bool(body, "apply_rune_health_grants", False)
+    apply_rune_hsp_amp = _opt_bool(body, "apply_rune_hsp_amp", False)
     apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     assume_item_general_dr = _opt_bool(body, "assume_item_general_dr", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
@@ -907,6 +921,8 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_item_resist_grants=apply_item_resist_grants,
             apply_rune_resist_grants=apply_rune_resist_grants,
             rune_ids=rune_ids,
+            apply_rune_health_grants=apply_rune_health_grants,
+            apply_rune_hsp_amp=apply_rune_hsp_amp,
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,

@@ -427,6 +427,10 @@ def compute_hybrid(
     # tests/test_rune_resist_signature_convention_r134.py.
     apply_rune_resist_grants: bool = False,
     rune_ids: Iterable[str | int] = (),
+    # R136 (ENGINE 1.225.0): the RM-101 numerator pair, appended AFTER the R132
+    # tail per the same convention. Both reuse the existing ``rune_ids`` transport.
+    apply_rune_health_grants: bool = False,
+    apply_rune_hsp_amp: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -566,6 +570,8 @@ def compute_hybrid(
         apply_item_resist_grants=apply_item_resist_grants,
         apply_rune_resist_grants=apply_rune_resist_grants,
         rune_ids=rune_ids,
+        apply_rune_health_grants=apply_rune_health_grants,
+        apply_rune_hsp_amp=apply_rune_hsp_amp,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -924,6 +930,10 @@ def rank_items_by_hybrid(
     # tests/test_rune_resist_signature_convention_r134.py.
     apply_rune_resist_grants: bool = False,
     rune_ids: Iterable[str | int] = (),
+    # R136 (ENGINE 1.225.0): the RM-101 numerator pair, appended AFTER the R132
+    # tail per the same convention. Both reuse the existing ``rune_ids`` transport.
+    apply_rune_health_grants: bool = False,
+    apply_rune_hsp_amp: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -1093,6 +1103,8 @@ def rank_items_by_hybrid(
         apply_item_resist_grants=apply_item_resist_grants,
         apply_rune_resist_grants=apply_rune_resist_grants,
         rune_ids=rune_ids,
+        apply_rune_health_grants=apply_rune_health_grants,
+        apply_rune_hsp_amp=apply_rune_hsp_amp,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -1233,6 +1245,8 @@ def rank_items_by_hybrid(
                 apply_item_resist_grants=apply_item_resist_grants,
                 apply_rune_resist_grants=apply_rune_resist_grants,
                 rune_ids=rune_ids,
+                apply_rune_health_grants=apply_rune_health_grants,
+                apply_rune_hsp_amp=apply_rune_hsp_amp,
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,

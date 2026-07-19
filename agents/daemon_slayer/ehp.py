@@ -1299,6 +1299,21 @@ def compute_ehp(
     # the no-mid-signature-insert convention.
     apply_rune_resist_grants: bool = False,
     rune_ids: Iterable[str | int] = (),
+    # ENGINE 1.225.0 (R136, 2026-07-19): the RM-101 defensive-rune remainder - the
+    # half R132 deliberately did not build. R132 shipped the resist DENOMINATOR
+    # feed only; these two seams are both NUMERATOR-side and reuse the SAME
+    # ``rune_ids`` transport R132 already plumbed, so no new ids parameter lands.
+    #   * apply_rune_health_grants - Overgrowth 8451 permanent max-HP + Grasp 8437
+    #     self-side heal/permanent-HP (rune_procs.py:606 scores Grasp's DAMAGE and
+    #     admits verbatim "(heal + permanent-HP sides not modeled)").
+    #   * apply_rune_hsp_amp - Revitalize 8453's flat 5% Heal/Shield Power.
+    #     _hsp_amp.sum_wielder_hsp_pct sums heal_shield_amp_pct across EQUIPPED
+    #     ITEMS ONLY, so a rune could never reach it.
+    # Both default False -> 0.0 contributions -> BYTE-IDENTICAL to 1.224.0, and
+    # passing rune_ids alone does NOT arm either. Live default-ON flip is
+    # operator-gated. Appended at END per the no-mid-signature-insert convention.
+    apply_rune_health_grants: bool = False,
+    apply_rune_hsp_amp: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1474,7 +1489,28 @@ def compute_ehp(
         attack_speed=float(stats.get("as", 0.0)),
     )
     heal_amp_mult = _total_heal_amp(resolved.item_ids)
-    heal_total = (heal_item_total + heal_lifesteal) * heal_amp_mult
+    # ENGINE 1.225.0 (R136): RM-101 rune HEALTH grants - Overgrowth 8451's
+    # permanent max-HP (3 per 8 absorbed, plus a DISCRETE 3.5% max-HP threshold at
+    # 120 absorbed) and Grasp 8437's self-side (1.3% max-HP heal + 5 permanent HP,
+    # both 40% effective on ranged). Grasp's coefficients are NOT re-derived here -
+    # they are the same DDragon-cited magnitudes already carried on the ENEMY side
+    # at enemy_runes.py:213/:215/:216, restated so the two sides cannot drift.
+    # permanent HP joins the per-type NUMERATORS next to passive_health_hp; the
+    # heal joins the heal pool BEFORE heal_amp_mult (Grasp's heal is amplifiable
+    # in game). OFF -> (0.0, 0.0) -> byte-identical; the gated lazy import keeps
+    # OFF import-free, matching the R132 rune_resist precedent.
+    rune_perm_hp = 0.0
+    rune_heal_hp = 0.0
+    if apply_rune_health_grants:
+        from ._rune_health_grants import rune_health_grants as _rune_health_fn
+        rune_perm_hp, rune_heal_hp = _rune_health_fn(
+            rune_ids,
+            level=level,
+            max_hp=hp,
+            is_ranged=is_ranged,
+            apply_rune_health_grants=True,
+        )
+    heal_total = (heal_item_total + heal_lifesteal + rune_heal_hp) * heal_amp_mult
 
     # ENGINE 1.29.0 (2026-05-21): Phase 6.5 - Spirit Visage's Boundless
     # Vitality amps "all heal AND shielding +25%" per Riot's tooltip.
@@ -1499,9 +1535,20 @@ def compute_ehp(
     # NOT touched here: lifesteal is not HSP-amped and item heals are out of the
     # directive scope (ItemShield only). The live default-ON flip is
     # operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+    # ENGINE 1.225.0 (R136): the RUNE lane of the same additive HSP model.
+    # Revitalize 8453 grants a flat 5% Heal and Shield Power that the ITEM-keyed
+    # sum_wielder_hsp_pct can never see. Additive with the item sum per the real-LoL
+    # model the "(1 + hsp_pct)" convention already encodes (Redemption 0.10 +
+    # Mikael 0.12 = 0.22; + Revitalize 0.05 = 0.27). Its second clause ("10%
+    # stronger on targets below 40% health") is a TARGET-STATE conditional and is
+    # deliberately NOT modelled - that arc is operator-CLOSED. Independently gated
+    # from assume_hsp_amp so the operator can flip the item and rune lanes apart.
     hsp_pct = (
         sum_wielder_hsp_pct(resolved.item_ids) if assume_hsp_amp else 0.0
     )
+    if apply_rune_hsp_amp:
+        from ._rune_hsp_amp import sum_rune_hsp_pct as _rune_hsp_fn
+        hsp_pct += _rune_hsp_fn(rune_ids)
     shield_amp_mult = heal_amp_mult * (1.0 + hsp_pct)
     shield_any_amped = shield_any * shield_amp_mult
     shield_phys_amped = shield_phys * shield_amp_mult
@@ -1788,9 +1835,13 @@ def compute_ehp(
     # exactly like ``ext_flat_hp`` - it adds RAW to the matching per-type
     # numerator and rides the SAME armor/MR curve. 0.0 when the flag is off ->
     # byte-identical.
-    physical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult * item_general_dr_mult)
-    magical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag * item_general_dr_mult)
-    true_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true * item_general_dr_mult)
+    # ``rune_perm_hp`` (R136) is permanent max HP earned over the game - it rides
+    # the SAME armor/MR curve as base HP, so it adds RAW to each per-type
+    # numerator exactly like its nearest sibling ``passive_health_hp``. 0.0 when
+    # apply_rune_health_grants is off -> byte-identical.
+    physical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult * item_general_dr_mult)
+    magical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag * item_general_dr_mult)
+    true_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + rune_perm_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true * item_general_dr_mult)
 
     # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life.
     # The FIFTH survivability axis and the FIRST EHP-NUMERATOR term: a
@@ -2595,6 +2646,10 @@ def rank_items_by_ehp(
     # tests/test_rune_resist_signature_convention_r134.py.
     apply_rune_resist_grants: bool = False,
     rune_ids: Iterable[str | int] = (),
+    # R136 (ENGINE 1.225.0): the RM-101 numerator pair, appended AFTER the R132
+    # tail per the same convention. Both reuse the existing ``rune_ids`` transport.
+    apply_rune_health_grants: bool = False,
+    apply_rune_hsp_amp: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -2755,6 +2810,8 @@ def rank_items_by_ehp(
         apply_item_resist_grants=apply_item_resist_grants,
         apply_rune_resist_grants=apply_rune_resist_grants,
         rune_ids=rune_ids,
+        apply_rune_health_grants=apply_rune_health_grants,
+        apply_rune_hsp_amp=apply_rune_hsp_amp,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -2814,6 +2871,8 @@ def rank_items_by_ehp(
                 apply_item_resist_grants=apply_item_resist_grants,
                 apply_rune_resist_grants=apply_rune_resist_grants,
                 rune_ids=rune_ids,
+                apply_rune_health_grants=apply_rune_health_grants,
+                apply_rune_hsp_amp=apply_rune_hsp_amp,
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,
