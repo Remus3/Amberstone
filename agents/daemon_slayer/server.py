@@ -610,9 +610,14 @@ def _route_rank_tank(body: dict) -> dict:
     # OFF for blended, explicit 0/1 overrides). Default body = byte-identical.
     enemies = _coerce_str_list(body.get("enemies"), "enemies")
     include_conditional = _opt_bool(body, "include_conditional", False)
+    # Term A (2026-07-18): "team_blended" is tank-only - /rank-bruiser keeps the
+    # two-value allowlist, since ds.hybrid has no ally-grant term.
     score_by = _opt_str(body, "score_by", "blended") or "blended"
-    if score_by not in ("blended", "cc_blended"):
-        raise _ApiError(400, f"score_by: must be blended|cc_blended, got {score_by!r}")
+    if score_by not in ("blended", "cc_blended", "team_blended"):
+        raise _ApiError(
+            400,
+            f"score_by: must be blended|cc_blended|team_blended, got {score_by!r}",
+        )
     apply_build_tenacity = (
         _opt_bool(body, "apply_build_tenacity", False)
         if "apply_build_tenacity" in body else None
