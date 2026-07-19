@@ -15,19 +15,27 @@ SR builds with Cosmic Drive + Frozen Heart now correctly compress
 spell cooldowns via the Riot canonical ``eff_cd = base / (1 + h/100)``
 formula already shipped in ``_effective_ability_cd`` (1.23.0).
 
-Regeneration: when DDragon ships a new patch, re-run::
+Maintenance: this registry is HAND-PINNED. There is no generator - an
+earlier version of this docstring cited ``tools/regen_item_ability_haste.py``,
+which has never existed in this repo. Do not go looking for it.
 
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/regen_item_ability_haste.py <patch> > _item_ability_haste_new.py
+The real tool is the drift checker ``ops/audit/item_ah_drift_check.py``,
+which re-derives AH from the live DDragon ``item.json`` and set-diffs it
+against the pin (added / removed / changed, exit 1 on drift). It resolves
+the patch from ``data/daemon_slayer/current.txt``. It is the parse half of
+the missing generator minus the emit step, so on a patch bump: run it,
+read the diff, and hand-apply the deltas below.
 
-then diff + replace ``_ITEM_ABILITY_HASTE`` below. The generator parses
-``<attention>N</attention> Ability Haste`` from the first ``<stats>``
-block of each item description; subsequent matches (Mythic-passive AH
-grants, proc-on-takedown AH) are intentionally ignored - the static
-lane carries only the build-time base stat. Patch 16.10.1: 220 items
-(count unchanged at 16.12.1; the 16.12.1 refresh re-valued 3 Arena mirror
-ids - Imperial Mandate 224005 35->15, Iceborn 226662 10->15, Serylda's
-226694 10->15 - verified vs data/meta_build/ddragon/16.12.1/item.json).
-Drift-check tool: ops/audit/item_ah_drift_check.py (regen-and-diff).
+The derivation it checks parses ``<attention>N</attention> Ability Haste``
+from the FIRST ``<stats>`` block of each item description; subsequent
+matches (Mythic-passive AH grants, proc-on-takedown AH) are intentionally
+ignored - the static lane carries only the build-time base stat. That also
+means conditional / passive-granted AH is invisible to the checker by
+design. Patch 16.10.1: 220 items (count unchanged at 16.12.1; the 16.12.1
+refresh re-valued 3 Arena mirror ids - Imperial Mandate 224005 35->15,
+Iceborn 226662 10->15, Serylda's 226694 10->15 - verified vs
+data/meta_build/ddragon/16.12.1/item.json). Count still 220 at 16.14.1,
+where the checker caught the 16.13.1 Eclipse 226692 drift.
 
 The registry is keyed by string item_id to match the engine's
 ``resolved.item_ids`` tuple shape (strings throughout).
