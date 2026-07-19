@@ -119,6 +119,62 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-19i (gemini-loop cycle 4 - the sweep's thesis was refuted by measurement; the shippable bug was found on the way past it)
+
+**A missing guard is not a bug until something can reach it. Measure reachability
+before pricing the fix.**
+
+The directive ordered a League movespeed soft-cap seam (caps above 415 / 490,
+floor below 220) and pre-declared ENGINE-IMPACT BUMP. The piecewise is real and
+correctly stated, and nothing in the repo applies it - so the gap looks obvious.
+It is unreachable at every site. `core/champion_movespeed.est_ms` is uncapped but
+the roster's base MS spans only 315 (Rell) to 355 (Master Yi) across all 173
+champs, and its sole consumer `core/mia_reachability.py:165` passes NO items, so
+no breakpoint can bind. The DS path that CAN exceed 415 (`hybrid.py:272`, measured
+426.6 on Darius + Swifties + DMP + FoN) is double-gated: `assume_ms_utility` is
+DEFAULT-OFF with no production caller, AND `_MS_UTILITY_DPS_CAP = 0.15` saturates
+at 1.30x base, bounding the whole error to 0.794 percentage points inside a
+27-unit window and exactly zero above 442. A third site the directive never named,
+`ability_dps.py:293`, is default-ON but populated by exactly one block roster-wide
+(Janna W: 1.09 magic damage, only on an off-class Phantom Dancer build).
+
+Taking the BUMP at face value would have shipped a DEFAULT-OFF seam, an
+ENGINE_VERSION bump, a Share re-sync and a `:8893` bounce to correct a quantity
+that is provably zero on every live path. The `ENGINE-IMPACT` header is a
+PREDICTION, not a fact - and the precommit gate checks it for free ("no mirrored
+DS source staged - skipping Share sync").
+
+**The second lesson is sharper: the existing test passed because it sampled the
+one case outside the failing class.**
+
+The other sweep lane came back CLEAN on mirrors and magnitudes (0 missing, 0 drift
+across 99 MS-bearing items) but found a genuine wrong answer in passing.
+`_item_index()` hit `continue` on zero-MS entries BEFORE the name `setdefault`, so
+a canonical 4-digit id granting no movespeed never claimed its own display name and
+the next mode mirror answered for it: `item_ms("Warmog's Armor")` returned 4% from
+Arena `443083` while canonical `3083` grants none; Gargoyle Stoneplate 10%
+(`443193`); Rite of Ruin 4% (ARAM `123430`). All three reproduced against raw
+DDragon before any code was written.
+
+`tests/test_champion_movespeed.py` pinned exactly one name lookup - "Boots of
+Swiftness" - and Boots of Swiftness is precisely the shape that cannot exhibit the
+bug, a canonical id that HAS movespeed and therefore already claims its own name
+key. A green suite over a sampled-wrong fixture is indistinguishable from a green
+suite over correct code. When a lane reports CLEAN, check what the tests actually
+sample before believing the code is exercised. Same family as R133's
+`test_arena_mirrors_credit_same_as_base`, one rung down: R133 asserted the wrong
+thing, R135 asserted the right thing about the wrong row.
+
+Shipped `e4ab8144` (fix, no ENGINE bump - `core/`, no DS import) + `e2b186ff`
+(docs). Suite 20673 passed / 24 skipped / 0 failed. Zephyr and Gambler's Blade
+deliberately untouched: no 4-digit canonical exists for either, and `3172` is
+Gunmetal Greaves NOT Zephyr, so `"22" + base_id` is a FALSE mirror-pairing rule.
+Also worth keeping: `items_meraki.json` has NO `stats` key on any of its 320
+entries, so DDragon is the SOLE movespeed magnitude source - the habitual
+cross-check-against-Meraki silently cannot run on this axis.
+
+---
+
 # 2026-07-19h (gemini-loop cycle 3 - the REGRESS audit was 2/3 right, and the wrong third was the dangerous one)
 
 **An audit verdict is not privileged evidence. Premise-check it like any other claim.**
