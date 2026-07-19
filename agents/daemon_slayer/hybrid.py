@@ -67,9 +67,18 @@ from .survivability_credit import survivability_item_ids
 # identical to an AD bruiser (zero AP items). We classify AD vs AP from the
 # DDragon info.attack / info.magic ratings on the snapshot champ record
 # (magic > attack -> AP). Self-contained (no `core` import) so the Share mirror
-# stays standalone; the few champs DDragon leaves zeroed (Seraphine / Akshan /
-# Rell / Vex / Qiyana) are all non-bruiser archetypes, so raw info suffices for
-# every champion that actually reaches this scorer.
+# stays standalone. FOUR champions still carry a fully zeroed DDragon info block
+# (attack 0 / magic 0): Seraphine / Akshan / Rell / Vex. They resolve to "ad"
+# through the `0 <= 0` tie rather than through real data - verified against
+# data/meta_build/ddragon/16.14.1/champion.json. (Qiyana was in this list and no
+# longer belongs: she reads attack 0 / magic 4 and routes AP correctly.)
+# They are all non-bruiser archetypes, so raw info suffices for every champion
+# that actually reaches this scorer via its normal route. The tie DOES matter to
+# the RM-39 AD-axis ability term below, which keys off this same "ad" branch:
+# three of the four (Seraphine / Rell / Vex) are really AP champions, and the
+# term's PHYSICAL-only damage-type guard is what makes that safe - their spells
+# are magic, so they receive zero credit rather than a wrong one. Akshan is
+# genuinely AD and is credited legitimately.
 def _damage_axis(snapshot: DataSnapshot, champion_id: str) -> str:
     """Return ``"ap"`` when the champion is magic-primary, else ``"ad"``."""
     rec = snapshot.champions.get(str(champion_id)) or {}
@@ -106,6 +115,64 @@ def _ability_damage(
         target_current_hp_pct=target_current_hp_pct,
         augments=augments,
     ).total_ability_dps
+
+
+def _physical_ability_damage(
+    snapshot: DataSnapshot,
+    champion_id: str,
+    level: int,
+    item_ids,
+    mode: str,
+    target_armor: float,
+    target_mr: float,
+    target_max_hp: float,
+    target_bonus_hp: float,
+    augments,
+    target_current_hp_pct: float = 1.0,
+) -> float:
+    """PHYSICAL-only ability-DPS scalar - the AD-axis analogue of
+    ``_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF seam).
+
+    Same call as ``_ability_damage``; the ONLY difference is that it sums the
+    per-spell rows whose ``damage_type`` normalizes to PHYSICAL instead of
+    returning ``total_ability_dps``. Rows are already post-mitigation and
+    post-cast-rate (``ability_dps.py:1261``), so the sum is directly additive
+    with ``compute_dps().weighted_dps``.
+
+    The filter reuses the canonical normalization idiom from
+    ``ability_dps.py:371`` verbatim - ``(damage_type or "MAGIC").upper()`` - so
+    a None damage_type falls back to MAGIC and is EXCLUDED, never treated as
+    physical. That fallback is load-bearing: Aatrox E / R and Darius E all
+    carry ``damage_type=None``.
+
+    WHY PHYSICAL ONLY (mandatory guard, not a simplification): an UNFILTERED
+    ability term promotes Liandry's Torment to #1 for Aatrox, importing AP burn
+    items onto an AD bruiser (spec section 2.2, Design D ablation row B). TRUE
+    and MAGIC are excluded in this first slice per the CLAUDE.md engine
+    convention - start with the tightest matching set, assert unrelated types
+    are excluded, widen only on test evidence. Darius R (Noxian Guillotine,
+    ``damage_type="TRUE"``) is the live proof case: it is real damage this term
+    deliberately does not price, because crediting TRUE here would drag
+    magic-pen / burn valuation onto the AD axis by the same mechanism.
+    """
+    result = compute_ability_dps(
+        snapshot,
+        champion_id=champion_id,
+        level=level,
+        item_ids=item_ids,
+        mode=mode,
+        target_armor=target_armor,
+        target_mr=target_mr,
+        target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
+        target_current_hp_pct=target_current_hp_pct,
+        augments=augments,
+    )
+    return sum(
+        row.dps
+        for row in result.per_spell
+        if (row.damage_type or "MAGIC").upper() == "PHYSICAL"
+    )
 
 
 _ARCHETYPE_WEIGHTS_PATH = Path(__file__).resolve().parent / "archetype_weights.json"
@@ -312,6 +379,7 @@ def compute_hybrid(
     apply_melee_aa_gate: bool = False,
     caster_current_hp_pct: float = 1.0,
     assume_ms_utility: bool = False,
+    apply_ad_axis_ability_damage: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -371,6 +439,20 @@ def compute_hybrid(
     multiplier scales ONLY the DPS term of ``hybrid_score``; the ``dps``
     field stays RAW weighted_dps. Default False is byte-identical - the
     score line runs on the same raw value with the same op order.
+
+    ``apply_ad_axis_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF) adds the
+    PHYSICAL-only ability term to the AD branch of the damage axis, which is
+    otherwise scored on auto-attack DPS ALONE (``dps.py:34`` - "Ability damage
+    is not included"). 92 of 173 champions resolve ``_damage_axis`` to "ad",
+    so their real ability DPS is computed nowhere today; this is the defect
+    RM-39 and RM-43 actually describe (spec section 2.2 - the ability-HASTE
+    mechanism they originally named is inert precisely BECAUSE there is no
+    ability term on this branch to credit it into). When True the AD branch
+    becomes ``weighted_dps + _physical_ability_damage(...)``; the damage-type
+    guard is mandatory, see that helper. The AP branch is UNCHANGED on both
+    paths. Default False binds the SAME raw ``dps_result.weighted_dps`` value
+    the pre-seam line bound - a name bind, no float op - so the score line is
+    byte-identical.
     """
     level = clamp_level(level)
     if alpha is None or beta is None:
@@ -459,8 +541,17 @@ def compute_hybrid(
     # Damage-axis awareness: an AP-primary champion (info.magic > info.attack)
     # is scored on ABILITY damage so AP items surface; AD champions keep
     # compute_dps().weighted_dps -> byte-identical.
+    # RM-39/RM-43 (DEFAULT-OFF): the AD branch is auto-attack-only by design
+    # (dps.py:34), so 92 of 173 champions never price their ability damage.
+    # ON adds the PHYSICAL-only term; OFF binds the SAME raw value (a name
+    # bind, not a float op) so this line is byte-identical at the default.
     if _damage_axis(snapshot, champion_id) == "ap":
         base_damage = _ability_damage(
+            snapshot, champion_id, level, item_list, mode,
+            target_armor, target_mr, target_max_hp, target_bonus_hp, augments,
+        )
+    elif apply_ad_axis_ability_damage:
+        base_damage = dps_result.weighted_dps + _physical_ability_damage(
             snapshot, champion_id, level, item_list, mode,
             target_armor, target_mr, target_max_hp, target_bonus_hp, augments,
         )
@@ -777,6 +868,7 @@ def rank_items_by_hybrid(
     cost_ceiling: Optional[int] = None,
     target_current_hp_pct: float = 1.0,
     assume_ms_utility: bool = False,
+    apply_ad_axis_ability_damage: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -842,6 +934,20 @@ def rank_items_by_hybrid(
     (baseline and candidate at the same bonus MS) cancels in the normalized
     pct, so only the CANDIDATE's MS delta re-ranks. Default False is
     byte-identical (the OFF branches are the pre-R58 lines verbatim).
+
+    ``apply_ad_axis_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF) adds the
+    PHYSICAL-only ability term to the AD branch of BOTH the baseline and every
+    candidate - the ranker mirrors of the ``compute_hybrid`` gate. See that
+    function for the rationale and ``_physical_ability_damage`` for the
+    mandatory damage-type guard. Unlike the R58 MS multiplier this is an
+    ADDITIVE term on the damage axis, so it does NOT cancel in the normalized
+    ``hybrid_delta_pct``: it raises the baseline denominator (damping every
+    candidate's pct) AND credits each candidate's own AD/on-hit scaling
+    through ``post_mit``, which is the point - an item that scales the
+    champion's abilities is currently invisible to this scorer. The raw row
+    surfaces (``new_dps`` / ``delta_dps``) carry the combined value, matching
+    the AP branch's existing semantics where ``dps`` is ability damage.
+    Default False keeps the pre-seam lines verbatim (byte-identical).
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -935,15 +1041,22 @@ def rank_items_by_hybrid(
         apply_survival_window=apply_survival_window,
         **_ehp_kwargs_baseline,
     )
-    baseline_dps = (
-        _ability_damage(
+    # RM-39/RM-43 (DEFAULT-OFF): ranker-baseline mirror of the compute_hybrid
+    # gate. OFF binds the SAME raw value (a name bind, not a float op).
+    if axis == "ap":
+        baseline_dps = _ability_damage(
             snapshot, champion_id, level, current_ids, mode,
             target_armor, target_mr, target_max_hp, target_bonus_hp,
             augments, target_current_hp_pct,
         )
-        if axis == "ap"
-        else baseline_dps_result.weighted_dps
-    )
+    elif apply_ad_axis_ability_damage:
+        baseline_dps = baseline_dps_result.weighted_dps + _physical_ability_damage(
+            snapshot, champion_id, level, current_ids, mode,
+            target_armor, target_mr, target_max_hp, target_bonus_hp,
+            augments, target_current_hp_pct,
+        )
+    else:
+        baseline_dps = baseline_dps_result.weighted_dps
     # baseline_ehp keeps the blended_ehp semantics for the
     # _hybrid_delta_pct percentage-normalizer below (the ranker compares
     # apples-to-apples: blended_ehp delta over blended_ehp baseline).
@@ -1023,15 +1136,22 @@ def rank_items_by_hybrid(
                 phase=phase, augments=augments,
                 apply_mode_modifiers=apply_mode_modifiers,
             )
-            scored_damage = (
-                _ability_damage(
+            # RM-39/RM-43 (DEFAULT-OFF): per-candidate mirror of the same gate.
+            # OFF binds the SAME raw value (a name bind, not a float op).
+            if axis == "ap":
+                scored_damage = _ability_damage(
                     snapshot, champion_id, level, new_build, mode,
                     target_armor, target_mr, target_max_hp, target_bonus_hp,
                     augments, target_current_hp_pct,
                 )
-                if axis == "ap"
-                else dps_scored.weighted_dps
-            )
+            elif apply_ad_axis_ability_damage:
+                scored_damage = dps_scored.weighted_dps + _physical_ability_damage(
+                    snapshot, champion_id, level, new_build, mode,
+                    target_armor, target_mr, target_max_hp, target_bonus_hp,
+                    augments, target_current_hp_pct,
+                )
+            else:
+                scored_damage = dps_scored.weighted_dps
             # ENGINE 1.39.0 (item 143 Slice B): same conditional kwarg
             # threading pattern as the baseline call above.
             _ehp_kwargs_scored = {}
