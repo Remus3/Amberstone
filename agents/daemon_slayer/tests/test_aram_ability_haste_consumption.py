@@ -240,6 +240,124 @@ class ResultTenacityForwardTests(unittest.TestCase):
         self.assertIn("total_ability_haste", q)
 
 
+# --- the field means the ARAM DELTA, not the total --------------------------
+
+
+class AramAbilityHasteIsDeltaOnlyTests(unittest.TestCase):
+    """``AbilityDpsResult.aram_ability_haste`` carries the ARAM-mode delta
+    ALONE - never the item-AH total.
+
+    Regression: the field used to be assigned ``total_ah`` (item AH + the
+    ARAM delta), so an SR build holding Cosmic Drive reported
+    ``aram_ability_haste=25.0`` when the true ARAM delta is 0. The engine
+    writes the pure delta into ``scaled["aram_ability_haste"]``
+    (engine.py:273), so the result field has to mean the same thing.
+
+    The honestly-named per-spell ``total_ability_haste`` remains the SUM
+    (that is the number the cooldown formula consumes) - these tests pin
+    the two apart on the same call so a future refactor cannot collapse
+    them back together.
+
+    The pre-existing tests in this file all pass ``item_ids=[]``, which
+    makes total and delta coincide - they never exercised the divergent
+    case.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_sr_with_ah_item_reports_zero_aram_delta(self) -> None:
+        # Cosmic Drive (4629) = 25 AH. SR has no ARAM delta at all, so the
+        # ARAM-named field must read 0.0 while the per-spell haste total
+        # still reflects the item.
+        out = compute_ability_dps(
+            self.snap, "Veigar", level=11, item_ids=["4629"], mode="SR",
+        )
+        self.assertAlmostEqual(out.aram_ability_haste, 0.0, places=4)
+        q = next((s for s in out.per_spell if s.key == "Q"), None)
+        self.assertIsNotNone(q)
+        self.assertAlmostEqual(q.total_ability_haste, 25.0, places=4)
+
+    def test_sr_multi_item_haste_still_zero_aram_delta(self) -> None:
+        # Black Cleaver (3071) 20 + Cosmic Drive (4629) 25 = 45 AH.
+        out = compute_ability_dps(
+            self.snap, "Veigar", level=11, item_ids=["3071", "4629"], mode="SR",
+        )
+        self.assertAlmostEqual(out.aram_ability_haste, 0.0, places=4)
+        q = next((s for s in out.per_spell if s.key == "Q"), None)
+        self.assertIsNotNone(q)
+        self.assertAlmostEqual(q.total_ability_haste, 45.0, places=4)
+
+    def test_aram_with_ah_item_reports_delta_alone(self) -> None:
+        # Soraka aramAbilityHaste = +10; Frozen Heart (3110) = 20 AH.
+        # Field = 10 (delta alone); per-spell total = 30 (delta + item).
+        out = compute_ability_dps(
+            self.snap, "Soraka", level=5, item_ids=["3110"], mode="ARAM",
+        )
+        self.assertAlmostEqual(out.aram_ability_haste, 10.0, places=4)
+        q = next((s for s in out.per_spell if s.key == "Q"), None)
+        self.assertIsNotNone(q)
+        self.assertAlmostEqual(q.total_ability_haste, 30.0, places=4)
+
+    def test_aram_negative_delta_with_ah_item(self) -> None:
+        # Seraphine aramAbilityHaste = -20; Cosmic Drive (4629) = 25 AH.
+        # Field = -20 (delta alone); per-spell total = +5.
+        out = compute_ability_dps(
+            self.snap, "Seraphine", level=1, item_ids=["4629"], mode="ARAM",
+        )
+        self.assertAlmostEqual(out.aram_ability_haste, -20.0, places=4)
+        q = next((s for s in out.per_spell if s.key == "Q"), None)
+        self.assertIsNotNone(q)
+        self.assertAlmostEqual(q.total_ability_haste, 5.0, places=4)
+
+    def test_to_dict_carries_the_delta_not_the_total(self) -> None:
+        out = compute_ability_dps(
+            self.snap, "Soraka", level=5, item_ids=["3110"], mode="ARAM",
+        )
+        self.assertAlmostEqual(out.to_dict()["aram_ability_haste"], 10.0, places=4)
+
+    def test_sr_note_does_not_claim_an_aram_delta(self) -> None:
+        # The haste note used to be emitted un-mode-gated, so an SR build
+        # literally printed "ARAM aramAbilityHaste=+25 ...".
+        out = compute_ability_dps(
+            self.snap, "Veigar", level=11, item_ids=["4629"], mode="SR",
+        )
+        for note in out.notes:
+            self.assertNotIn(
+                "ARAM aramAbilityHaste", note,
+                f"SR build emitted an ARAM-labelled haste note: {note!r}",
+            )
+
+    def test_aram_note_splits_item_ah_from_the_aram_delta(self) -> None:
+        # ARAM keeps an ARAM-labelled note (the delta is real there) and
+        # shows the split. Match on "on per-spell cooldowns" specifically:
+        # the ENGINE also emits a bare "ARAM aramAbilityHaste=+10" note
+        # into resolved.notes, so a bare substring check would pass even
+        # if this module stopped emitting anything at all.
+        out = compute_ability_dps(
+            self.snap, "Soraka", level=5, item_ids=["3110"], mode="ARAM",
+        )
+        note = next(
+            (n for n in out.notes if "on per-spell cooldowns" in n), None
+        )
+        self.assertIsNotNone(note, f"haste note missing: {out.notes!r}")
+        # Soraka delta +10, Frozen Heart +20 -> total 30.
+        self.assertIn("+30", note)
+        self.assertIn("item +20", note)
+        self.assertIn("aramAbilityHaste=+10", note)
+
+    def test_sr_note_is_labelled_as_item_haste(self) -> None:
+        out = compute_ability_dps(
+            self.snap, "Veigar", level=11, item_ids=["4629"], mode="SR",
+        )
+        note = next(
+            (n for n in out.notes if "on per-spell cooldowns" in n), None
+        )
+        self.assertIsNotNone(note, f"haste note missing: {out.notes!r}")
+        self.assertIn("item ability haste=+25", note)
+
+
 # --- backward-compat: SR-mode cooldowns unchanged ---------------------------
 
 

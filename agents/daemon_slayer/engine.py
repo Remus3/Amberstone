@@ -233,11 +233,13 @@ def _apply_mode_modifiers(
     ARAM modifiers applied here:
       * ``aramAttackSpeed`` - multiplier on bonus AS. Lifts effective AS.
       * ``aramAbilityHaste`` - integer flat delta in ability-haste points.
-        Surfaced into ``scaled["aram_ability_haste"]`` (default 0). Not
-        folded into ``scaled["ability_haste"]`` yet (no engine consumer
-        for ability-haste exists in the current scorer suite); the value
-        is exposed so downstream callers can compose cooldown math on it
-        once the consumer ships.
+        Surfaced into ``scaled["aram_ability_haste"]`` (default 0).
+        Deliberately NOT folded into ``scaled["ability_haste"]`` - the
+        consumer reads the mode delta separately so item AH and the ARAM
+        delta stay independently attributable. CONSUMED since ENGINE
+        1.23.0 by ``ability_dps._total_ability_haste``
+        (``ability_dps.py:647``), which adds it to item AH before the
+        cooldown math.
       * ``aramTenacity`` - multiplier on effective CC duration applied
         against THIS champion. Surfaced into
         ``scaled["aram_tenacity_mult"]`` (default 1.0). Same exposure-only
@@ -265,7 +267,8 @@ def _apply_mode_modifiers(
     # Azir +20, Brand -10, Camille +10, Corki -20, Hecarim +10, Irelia +20,
     # Katarina +10, Leblanc +20, Lucian +10, Mel -10, Milio -10, Naafiri +10,
     # Rakan +10, Seraphine -20, Sion -10, Smolder -10, Soraka +10, Syndra +5,
-    # Teemo -15, Ziggs -20, Zyra -10). Exposure-only; no scorer reads it yet.
+    # Teemo -15, Ziggs -20, Zyra -10). Consumed since ENGINE 1.23.0 by
+    # ability_dps._total_ability_haste (ability_dps.py:647) - NOT exposure-only.
     aram_ah = float(aram.get("aramAbilityHaste", 0.0))
     scaled["aram_ability_haste"] = aram_ah
     if aram_ah != 0.0:

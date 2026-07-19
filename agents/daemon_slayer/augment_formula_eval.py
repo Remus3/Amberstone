@@ -65,11 +65,16 @@ from .augments import Augment
 #  * mStat=7 is "SpellBlock" (= magic resistance).
 #  * mStat=8 is "AttackSpeed".
 #  * mStat=9 is "CritChance".
-#  * mStat=11 is "AbilityHaste" - NOT a canonical stats.py key today (the
-#    engine has no AH model per `ability_dps.py:49`), but mapping it gives
-#    the calc its honest read; the caller is responsible for whether to
-#    consume it. Returning a non-zero contribution from `read_stat` for AH
-#    is fine - the only canonical-stat-key calc that uses it would land in
+#  * mStat=11 is "AbilityHaste" - NOT a canonical stats.py key today, so
+#    an augment-sourced AH contribution is still dropped on merge. The
+#    engine DOES model ability haste, just on a different lane: item AH
+#    via ``_item_ability_haste`` into ``ability_dps.py:1113``. (An older
+#    comment here cited `ability_dps.py:49` for "the engine has no AH
+#    model" - that cross-reference had rotted and the claim was wrong.)
+#    Mapping mStat=11 still gives the calc its honest read; the caller is
+#    responsible for whether to consume it. Returning a non-zero
+#    contribution from `read_stat` for AH is fine - the only
+#    canonical-stat-key calc that uses it would land in
 #    ``compute_augment_stats`` and be silently dropped on merge.
 #  * mStat=12 / mStat=34 are bonus-resource ordinals (`BonusAD`/`BonusHP`
 #    via mStatFormula). The current engine doesn't expose "bonus" stat
