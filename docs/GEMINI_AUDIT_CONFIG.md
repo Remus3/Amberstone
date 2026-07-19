@@ -5,8 +5,9 @@
 
 ## Division of labor
 
-- **Gemini CLI** = read-only advisor / critic / researcher. Reads the repo,
-  writes findings to a review file. NEVER edits source, never commits.
+- **Gemini CLI** = read-only advisor / critic / researcher. Reads the repo and
+  emits findings to stdout only; `tools/gemini_audit.ps1` is the sole writer of
+  the review file. NEVER edits source, never writes files, never commits.
 - **Claude (me)** = sole implementer / writer. I parse Gemini's review file,
   verify every claim against ground truth, and am the only agent that touches
   source or version control. Gemini proposes; I dispose.
@@ -51,9 +52,16 @@
 - [x] STEP C - DONE. gemini-cli 0.45.1; model gemini-3-pro-preview (via RC_GEMINI_MODEL,
       User scope); read-only enforced by `--approval-mode plan`, workspace via `--skip-trust`;
       tools/gemini_audit.ps1 (stdin-pipe + retry + atomic write) + tools/gemini_audit_prompt.md;
-      .geminiignore; docs/GEMINI_REVIEW_CONSUMPTION.md; RC-GeminiAudit nightly 03:00 (Ready);
-      first real review docs/_archive/EXTERNAL_REVIEW_2026-06-04.md (gitignored) verified genuine.
-- [ ] STEP D - tone/style/memory artifacts
+      .geminiignore; docs/GEMINI_REVIEW_CONSUMPTION.md; RC-GeminiAudit nightly 03:00 registered +
+      Enabled, but NOT confirmed healthy: the 2026-07-19 03:00 run exited 0xC000013A, and as of
+      2026-07-19 the newest review on disk was dated 2026-06-21 ("Ready" is the scheduler idle
+      state, not evidence of a successful run). A tools/gemini_audit.ps1 repair landed 2026-07-19;
+      treat the nightly as UNVERIFIED until a review newer than 2026-06-21 actually appears.
+      First real review docs/_archive/EXTERNAL_REVIEW_2026-06-04.md (gitignored) verified genuine.
+- [x] STEP D - DONE. Tone/style/memory artifacts: GEMINI.md repo-root context (ASCII-only +
+      ultra-terse style, verify-before-assert, frozen-file flag-only) 2026-06-04; stateless-per-call
+      continuity hardened to the caller-appended ALREADY-COMPLETED DIGEST (newest-first LEDGER HEAD
+      + persisted directive chain) 2026-06-27; audit output shape in tools/gemini_audit_prompt.md.
 - [x] EXPANDED - in-session Q/A channel `tools/gemini_ask.ps1` -> `gemini_io/answer_<id>.md`
       (read-only, validated); AHK self-clear primitive `tools/claude_send.ahk` (AHK v2, target
       `ahk_exe claude.exe`, DRY-RUN default + window-verify + kill-switch Ctrl+Alt+Q, NOT auto-wired).
