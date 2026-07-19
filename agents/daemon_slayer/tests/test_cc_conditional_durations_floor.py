@@ -46,7 +46,7 @@ SEED_FLOORS = {
 
 class EngineVersionPinTest(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.223.0")
+        self.assertEqual(ENGINE_VERSION, "1.224.0")
 
 
 class SchemaTests(unittest.TestCase):
