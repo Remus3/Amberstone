@@ -66,10 +66,10 @@ haste formula ``eff_cd = base_cd / (1 + total_AH / 100)`` (mirrors
 
 The total ability-haste plumbed into the formula is the sum of:
 
-* the per-spell ``base_ah`` caller param (defaults to 0; reserved for
-  the future item-AH lane - the dataclass shape in ``_effects_types.py``
-  does not yet ship an ``ability_haste_flat`` field, so item-AH source
-  is currently always 0 and the only non-zero source is the ARAM delta);
+* the ``base_ah`` item lane - ENGINE 1.24.0 (2026-05-21) wired this to
+  ``_item_ability_haste.total_item_ability_haste(item_ids)``, so it is
+  non-zero in EVERY mode including SR (the pre-1.24 docstring claim that
+  item AH "is currently always 0" is obsolete);
 * ``scaled.get("aram_ability_haste", 0.0)`` when ``mode == "ARAM"``
   (SR and other modes strip the delta defensively even if a caller
   pre-populates the key).
@@ -79,13 +79,21 @@ Per-spell ``AbilitySpellDps`` grows two new fields:
 * ``base_cooldown`` - the pre-haste rank cooldown from
   ``_form_cooldown_at_rank`` (back-compat: same value as the pre-1.23
   ``cooldown`` in SR mode with no haste sources).
-* ``total_ability_haste`` - the haste sum used in the formula (0.0
-  outside ARAM, the aramAbilityHaste delta inside ARAM).
+* ``total_ability_haste`` - the haste SUM used in the formula (item AH
+  in every mode, plus the aramAbilityHaste delta inside ARAM).
 
 The ``cooldown`` field becomes the EFFECTIVE post-haste value (identity
 to ``base_cooldown`` when total haste is 0, the natural case for SR
-and most ARAM champions). Result top-level grows ``aram_ability_haste``
-and ``aram_tenacity_mult`` for downstream consumer visibility.
+builds carrying no AH item and most ARAM champions). Result top-level
+grows ``aram_ability_haste`` and ``aram_tenacity_mult`` for downstream
+consumer visibility.
+
+Mind the two different quantities: the result-level
+``aram_ability_haste`` is the ARAM mode delta ALONE (0.0 outside ARAM,
+matching what ``engine._apply_mode_modifiers`` writes), while the
+per-spell ``total_ability_haste`` is the item+delta sum the cooldown
+formula consumes. They coincide only when the build holds no AH item,
+which is why the divergence went unnoticed.
 
 TODO (future EHP-side enemy-CC consumer): ``aram_tenacity_mult`` is
 plumbed forward but NOT consumed in this slice - the consumption point
@@ -616,7 +624,7 @@ def _total_ability_haste(
     """Sum the total ability-haste applied to per-spell cooldowns.
 
     ENGINE 1.23.0 (2026-05-20): mode-gated read of the engine-exposed
-    ``aram_ability_haste`` delta (engine.py line ~210). SR + every
+    ``aram_ability_haste`` delta (engine.py:270). SR + every
     non-ARAM mode strip the delta defensively even if a caller
     pre-populates the key (the engine's _apply_mode_modifiers gates
     on mode == "ARAM"; this helper double-gates so a malformed
@@ -770,10 +778,18 @@ class AbilitySpellDps:
 class AbilityDpsResult:
     """Top-level result from ``compute_ability_dps``.
 
-    ENGINE 1.23.0 (2026-05-20): added ``aram_ability_haste`` (consumed
-    by the per-spell cooldown haste formula) and ``aram_tenacity_mult``
-    (forwarded for a future EHP-side enemy-CC consumer; not consumed in
-    this slice - see module-level TODO).
+    ENGINE 1.23.0 (2026-05-20): added ``aram_ability_haste`` and
+    ``aram_tenacity_mult`` (the latter forwarded for a future EHP-side
+    enemy-CC consumer; not consumed in this slice - see module-level
+    TODO).
+
+    ``aram_ability_haste`` is the ARAM mode delta ALONE - 0.0 in SR and
+    every other non-ARAM mode, whatever the build's item AH. The number
+    the cooldown formula actually consumes is the item+delta SUM, and it
+    is reported per-spell as ``AbilitySpellDps.total_ability_haste``.
+    Keep the two distinct: assigning the sum here made an SR build with
+    Cosmic Drive report ``aram_ability_haste=25.0`` against a true ARAM
+    delta of 0.
     """
     champion_id: str
     champion_name: str
@@ -796,7 +812,7 @@ class AbilityDpsResult:
     block_index_source: str = "default"             # "override" | "champion" | "default"
     block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]" = field(default_factory=dict)
     stats: dict[str, float] = field(default_factory=dict)
-    aram_ability_haste: float = 0.0                 # consumed haste delta (ENGINE 1.23.0)
+    aram_ability_haste: float = 0.0                 # ARAM mode delta ALONE, 0.0 outside ARAM (ENGINE 1.23.0)
     aram_tenacity_mult: float = 1.0                 # forwarded for future EHP consumer (ENGINE 1.23.0)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -1096,6 +1112,14 @@ def compute_ability_dps(
     # the engine layer - per-spell amplifiers are out of scope.
     base_ah = total_item_ability_haste(resolved.item_ids)
     total_ah = _total_ability_haste(resolved.stats, mode, base_ah=base_ah)
+    # The ARAM delta ALONE, for the same-named result field. Reusing the
+    # double-gated helper with base_ah=0.0 keeps a single mode gate: it
+    # returns 0.0 in every non-ARAM mode even if a caller pre-populates
+    # the scaled key. Do NOT substitute ``total_ah`` here - that is the
+    # item+delta sum the cooldown formula consumes, and reporting it as
+    # ``aram_ability_haste`` made an SR Cosmic Drive build claim a +25
+    # ARAM delta that does not exist.
+    aram_ah_delta = _total_ability_haste(resolved.stats, mode, base_ah=0.0)
     # Forward the tenacity multiplier for downstream EHP consumers.
     # NOT consumed in this slice - see module-level TODO.
     aram_tenacity_mult = float(resolved.stats.get("aram_tenacity_mult", 1.0))
@@ -1422,12 +1446,25 @@ def compute_ability_dps(
         )
 
     # ENGINE 1.23.0: surface a note when haste actually shortened or
-    # lengthened the rotation so consumers can see the consumed delta.
+    # lengthened the rotation so consumers can see the consumed total.
+    # The note is mode-gated on its LABEL, not on whether haste applied:
+    # ``total_ah`` is item AH + (ARAM only) the mode delta, so an SR build
+    # holding Cosmic Drive used to print "ARAM aramAbilityHaste=+25" with
+    # no ARAM involved at all. SR reports the item total; ARAM reports the
+    # split so the delta stays legible. Nothing parses these strings.
     if total_ah != 0.0:
-        notes.append(
-            f"ARAM aramAbilityHaste={total_ah:+.0f} on per-spell cooldowns "
-            f"(eff_cd = base / (1 + AH/100))"
-        )
+        if mode == "ARAM" and aram_ah_delta != 0.0:
+            notes.append(
+                f"ability haste={total_ah:+.0f} on per-spell cooldowns "
+                f"(item {total_ah - aram_ah_delta:+.0f}, "
+                f"ARAM aramAbilityHaste={aram_ah_delta:+.0f}) "
+                f"(eff_cd = base / (1 + AH/100))"
+            )
+        else:
+            notes.append(
+                f"item ability haste={total_ah:+.0f} on per-spell cooldowns "
+                f"(eff_cd = base / (1 + AH/100))"
+            )
 
     return AbilityDpsResult(
         champion_id=resolved.champion_id,
@@ -1451,7 +1488,7 @@ def compute_ability_dps(
         block_index_source=block_index_source,
         block_index_resolved=dict(block_index_overrides),
         stats=dict(resolved.stats),
-        aram_ability_haste=total_ah,
+        aram_ability_haste=aram_ah_delta,
         aram_tenacity_mult=aram_tenacity_mult,
         notes=tuple(notes),
     )
