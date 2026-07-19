@@ -140,13 +140,19 @@ def _item_index() -> dict[str, tuple[float, float]]:
             stats = entry.get("stats") or {}
             flat = _num(stats.get(_MS_FLAT_KEY)) or 0.0
             pct = _num(stats.get(_MS_PCT_KEY)) or 0.0
-            if flat == 0.0 and pct == 0.0:
-                continue
             pair = (flat, pct)
-            out.setdefault(str(iid).strip(), pair)
+            # The name key is claimed BEFORE the zero-MS early-out: a canonical
+            # entry that grants no MS must still own its display name, or the
+            # next mirror sharing that name answers bare-name lookups for it
+            # (3083 Warmog's has no MS, 443083 has 4%). Ids stay unambiguous;
+            # a bare name is mode-ambiguous by construction, so it resolves to
+            # the shortest id and the Live Client path prefers itemID anyway.
             name = entry.get("name")
             if isinstance(name, str) and name.strip():
                 out.setdefault(name.casefold().strip(), pair)
+            if flat == 0.0 and pct == 0.0:
+                continue
+            out.setdefault(str(iid).strip(), pair)
     except Exception as exc:  # noqa: BLE001 - fail-soft contract
         _log.warning("champion_movespeed: item index load failed: %s", exc)
         out = {}
