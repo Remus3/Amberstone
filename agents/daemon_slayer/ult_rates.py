@@ -20,6 +20,37 @@ Fallback chain (both functions):
 
 Returns 0.0 only when the JSON is missing entirely - safe no-op for any
 proc that multiplies by this value.
+
+CANONICAL-KEY SEAM (``apply_canonical_cast_rate_keys``, DEFAULT-OFF)
+--------------------------------------------------------------------
+Both JSON files are keyed by canonical DDragon **id** ("KogMaw",
+"Khazix", "MonkeyKing"), but every production caller passes
+``resolved.champion_name``, which ``engine.py`` sets to the DDragon
+**display** name ("Kog'Maw", "Kha'Zix", "Wukong"). The 21 champions whose
+display name differs from their id therefore miss their measured row and
+silently take ``global_fallback`` while ``casts_per_sec_source`` still
+reports ``"measured"``. Four call sites are affected:
+
+  * ``ability_dps.py`` - spell rates (ability DPS) + ult rate (item procs)
+  * ``dps.py``         - ult rate (carry / Malignance)
+  * ``ability_hps.py`` - spell rates (heal/shield HPS)
+
+The correction is NOT byte-identical: ``global_fallback`` is a per-spell
+VECTOR, so fixing the key is a per-spell REWEIGHT rather than a uniform
+scale (measured: 13 of 21 champions reorder on the ability scorer, 3 of
+21 on carry). It therefore ships behind a DEFAULT-OFF flag.
+
+The seam lives HERE rather than at the four callers on purpose - the
+parameter is named ``champion_name``, so any future call site inherits
+the correction instead of re-arming the trap.
+
+Flip it process-wide::
+
+    from agents.daemon_slayer import ult_rates
+    ult_rates.APPLY_CANONICAL_CAST_RATE_KEYS = True
+
+or per call via the trailing ``apply_canonical_cast_rate_keys`` kwarg on
+either public function.
 """
 from __future__ import annotations
 
@@ -42,6 +73,56 @@ _spell_cache: dict | None = None
 
 # Canonical spell-key set; used to validate inputs to ``get_spell_casts_per_sec``.
 _SPELL_KEYS: tuple[str, ...] = ("Q", "W", "E", "R")
+
+# DEFAULT-OFF canonical-key seam (see the module docstring). False keeps
+# every lookup byte-identical to the raw display-name behavior; True
+# resolves the incoming name to its DDragon id before indexing the file.
+APPLY_CANONICAL_CAST_RATE_KEYS = False
+
+
+def _resolve_champ_key(
+    champion_name: str,
+    apply_canonical_cast_rate_keys: bool | None = None,
+) -> str:
+    """Map an incoming champion name onto the dataset's key space.
+
+    ``None`` (the default) defers to the module-level
+    ``APPLY_CANONICAL_CAST_RATE_KEYS``; an explicit bool overrides it for
+    this call only.
+
+    Reuses the single canonical resolver
+    (:func:`core.archetype_picks.canonical_champion_id`) rather than
+    carrying a second alias dict - it is derived from
+    ``ddragon_champions.json``, so a rename or a new release is picked up
+    by a data refresh with no code change. It handles the apostrophe /
+    space variants AND the three names that are not punctuation variants
+    at all ("Wukong" -> MonkeyKing, "Nunu & Willump" -> Nunu, "Renata
+    Glasc" -> Renata).
+
+    The import is deliberately LAZY and wrapped: ``agents/daemon_slayer``
+    has no module-scope dependency on ``core`` and the real dependency
+    runs the other way (``core/aram_tenacity_context.py`` imports
+    ``agents.daemon_slayer.ehp``), so a top-level ``from core...`` here
+    would invert that edge and risk a cycle. Same pattern as
+    ``core.daemon_slayer_client._canon_champ_key``.
+
+    Fail-soft on every path: an unresolvable name, a missing data file, or
+    an import failure all pass the input through unchanged, so a lookup is
+    never gated on the resolver.
+    """
+    enabled = (
+        APPLY_CANONICAL_CAST_RATE_KEYS
+        if apply_canonical_cast_rate_keys is None
+        else bool(apply_canonical_cast_rate_keys)
+    )
+    if not enabled:
+        return champion_name
+    try:
+        from core.archetype_picks import canonical_champion_id
+
+        return canonical_champion_id(champion_name) or champion_name
+    except Exception:  # noqa: BLE001 - fail-soft resolver, never gate a lookup
+        return champion_name
 
 
 def _load_ult() -> dict:
@@ -80,7 +161,11 @@ def reset_cache() -> None:
     _spell_cache = None
 
 
-def get_ult_casts_per_sec(champion_name: str, mode: str) -> float:
+def get_ult_casts_per_sec(
+    champion_name: str,
+    mode: str,
+    apply_canonical_cast_rate_keys: bool | None = None,
+) -> float:
     """Return median ult casts/sec for champion+mode.
 
     Backward-compat shim - predates the Phase 4b spell-rate file. Reads
@@ -90,9 +175,14 @@ def get_ult_casts_per_sec(champion_name: str, mode: str) -> float:
     Used by Malignance Hatefog's proc-rate model. Phase 4b's
     ``compute_ability_dps`` calls ``get_spell_casts_per_sec(..., "R", ...)``
     for parity.
+
+    ``champion_name`` accepts a canonical DDragon id or - only under the
+    DEFAULT-OFF ``apply_canonical_cast_rate_keys`` seam - a display name.
+    See the module docstring.
     """
     data = _load_ult()
-    champ_data = data.get("by_champ_mode", {}).get(champion_name, {})
+    champ_key = _resolve_champ_key(champion_name, apply_canonical_cast_rate_keys)
+    champ_data = data.get("by_champ_mode", {}).get(champ_key, {})
     rate = champ_data.get(mode)
     if rate is not None:
         return float(rate)
@@ -108,7 +198,12 @@ def get_ult_casts_per_sec(champion_name: str, mode: str) -> float:
     return float(fb)
 
 
-def get_spell_casts_per_sec(champion_name: str, key: str, mode: str) -> float:
+def get_spell_casts_per_sec(
+    champion_name: str,
+    key: str,
+    mode: str,
+    apply_canonical_cast_rate_keys: bool | None = None,
+) -> float:
     """Return median casts/sec for one of ``Q/W/E/R`` for champion+mode.
 
     Phase 4b (s178, 2026-05-12). Sibling of ``get_ult_casts_per_sec`` but
@@ -121,11 +216,16 @@ def get_spell_casts_per_sec(champion_name: str, key: str, mode: str) -> float:
 
     Raises ``ValueError`` if ``key`` isn't one of Q/W/E/R - passive
     damage isn't covered by this dataset.
+
+    ``champion_name`` accepts a canonical DDragon id or - only under the
+    DEFAULT-OFF ``apply_canonical_cast_rate_keys`` seam - a display name.
+    See the module docstring.
     """
     if key not in _SPELL_KEYS:
         raise ValueError(f"key must be one of {_SPELL_KEYS}, got {key!r}")
     data = _load_spells()
-    champ_data = data.get("by_champ_mode", {}).get(champion_name, {})
+    champ_key = _resolve_champ_key(champion_name, apply_canonical_cast_rate_keys)
+    champ_data = data.get("by_champ_mode", {}).get(champ_key, {})
     by_mode = champ_data.get(mode)
     if isinstance(by_mode, dict) and key in by_mode:
         v = by_mode.get(key)

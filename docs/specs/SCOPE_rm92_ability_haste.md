@@ -125,10 +125,12 @@ architecture.
 
 Fixing the model before fixing this data would be building on sand.
 
-## 6. What is cheap here, and separable
+## 6. What is cheap here, and separable - ALL FOUR SHIPPED (ENGINE 1.221.0)
 
 These are real, small, and independent of the deferred model work. None is
-required to close RM-92; each is worth its own tier-appropriate slice.
+required to close RM-92. All four landed 2026-07-18 in the slice immediately
+following this verdict. **Item 2 turned out materially bigger than written
+below** - see the correction recorded under it.
 
 1. **Mislabelled ARAM field, fires in SR.** `ability_dps.py:1454` assigns
    `aram_ability_haste=total_ah`, but `total_ah` includes item AH, so an SR
@@ -152,6 +154,49 @@ required to close RM-92; each is worth its own tier-appropriate slice.
    effectively the missing generator's parse half minus the emit step. The
    registry itself is healthy: 309 lines, **220 items**, hand-pinned. Tier-0
    docstring fix, or promote the checker to a real regen tool.
+
+### What actually shipped, and where this section was wrong
+
+**Item 1 - fixed outright.** A consumer trace proved the field is WRITE-ONLY in
+production: declared `ability_dps.py:815`, serialized `:842`, exposed only on
+`POST /ability-dps`, never carried by `/rank-mage`, never printed by
+`format_table`. Zero readers outside tests, so no score or ranking moved. The
+un-mode-gated NOTE was worse than the field - an SR run literally printed
+`ARAM aramAbilityHaste=+25 on per-spell cooldowns`, which a human actually
+sees. Both fixed. Both pre-existing tests passed `item_ids=[]` and therefore
+never exercised the divergent case; a new 8-test class does.
+
+**Item 2 - UNDERSTATED HERE IN TWO WAYS. Shipped DEFAULT-OFF.**
+
+- This section called it a bug "across `ability_dps.py`". It is **four call
+  sites across three modules**: `ability_dps.py:1228` (spell casts),
+  `ability_dps.py:1349` (ult casts into item procs), `dps.py:1023` (carry /
+  Malignance), `ability_hps.py:900` (HPS). Two of those were unknown when this
+  document was written.
+- Section 4 implied the correction was a per-champion rescale. It is not.
+  `global_fallback` is a per-spell VECTOR, so fixing the key is a per-spell
+  REWEIGHT. A uniform scale would have preserved item order exactly (`delta`
+  and `ability_dps_per_1k_gold` scale by the same constant); the reordering is
+  entirely attributable to the reweight. Within-champion ratios swing hard -
+  Bel'Veth Q 3.64x but W 0.82x, Kog'Maw R 4.18x but Q 0.58x.
+- Measured flag-ON: **13 of 21 champions reorder** on the ability scorer
+  (Kha'Zix sharpest - Blackfire Torch falls #2 to outside the top 15), 3 of 21
+  on carry but only with Malignance already owned, plus an unmeasured
+  structurally identical reweight on HPS.
+
+Because it is not byte-identical, it ships behind DEFAULT-OFF
+`apply_canonical_cast_rate_keys`, fixed at the single `ult_rates.py`
+chokepoint rather than the four callers (the parameter is literally named
+`champion_name`; a caller-side patch leaves the trap armed for call site #5).
+Reuses `core/archetype_picks.canonical_champion_id` via a lazy in-function
+import, because `agents/daemon_slayer/` imports `core/` zero times in
+production and the dependency runs the other way. Byte-identity at the default
+is proven, not asserted: 3880 baseline lookups re-run post-fix, 0 diffs.
+Live default-ON flip is operator-gated.
+
+**Items 3 and 4 - fixed outright**, Tier-0 text. The registry docstring now
+states plainly that no generator has ever existed and points at the drift
+checker as the real tool.
 
 ## 7. If it is ever built, the order is
 
