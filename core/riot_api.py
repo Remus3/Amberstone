@@ -61,7 +61,13 @@ _KEY_WARNED_MISSING = False
 
 
 def _get_api_key() -> Optional[str]:
-    """Read + cache the Personal-tier Riot API key.
+    """Read + cache the Riot API key.
+
+    NOTE: this file must hold the **Riot Commander product-app key**, not the
+    personal/development key. Endpoint entitlements differ per app - notably
+    `/lol/match/v5/matches/by-puuid/{puuid}/replays` is approved for the product
+    app only and 400s with the dev key. See memory
+    `reference_riot_app_entitlements`.
 
     Returns the key string or None when:
       - file doesn't exist (logged once at WARNING)
