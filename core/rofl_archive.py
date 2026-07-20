@@ -172,6 +172,122 @@ def pull_replays(match_ids, client, poll_interval=2.0, max_polls=15):
     return res
 
 
+_BLOB_ANCHOR = b'{"gameLength"'
+
+
+@dataclass
+class ExtractResult:
+    """Outcome of a bulk extraction pass. Lists hold match ids."""
+
+    extracted: list = field(default_factory=list)
+    skipped: list = field(default_factory=list)
+    failed: list = field(default_factory=list)
+
+
+def extract_stats(rofl_path):
+    """Pull the Layer-1 stats blob out of a .rofl. None if unreadable.
+
+    MEASURED container shape: magic b"RIOT\\x02\\x00", then a plain UNENCRYPTED
+    JSON object at the TAIL carrying gameLength / lastGameChunkId /
+    lastKeyFrameId / statsJson. Real files yielded 10 players at 367
+    engine-named fields each.
+
+    Two traps, both hit on real data:
+      1. There are TRAILING BYTES past the closing brace, so json.loads raises
+         "Extra data" - raw_decode is required.
+      2. statsJson is a STRING containing JSON, not a nested object.
+
+    No patch gate, no game client, no third-party tool: unlike playback, which
+    is hard patch-locked, extraction works on any archived replay forever.
+    """
+    rofl_path = Path(rofl_path)
+    match_id = match_id_from_name(rofl_path.name)
+    try:
+        raw = rofl_path.read_bytes()
+    except OSError as exc:
+        logger.warning("cannot read replay %s: %s", rofl_path, exc)
+        return None
+
+    idx = raw.find(_BLOB_ANCHOR)
+    if idx == -1:
+        logger.warning("no stats blob found in %s (not a .rofl?)", rofl_path.name)
+        return None
+
+    try:
+        meta, _end = json.JSONDecoder().raw_decode(
+            raw[idx:].decode("utf-8", "replace")
+        )
+        players = json.loads(meta["statsJson"])
+    except (ValueError, KeyError, TypeError) as exc:
+        logger.warning("corrupt stats blob in %s: %s", rofl_path.name, exc)
+        return None
+
+    if not isinstance(players, list):
+        logger.warning("statsJson in %s was %s, expected a list",
+                       rofl_path.name, type(players).__name__)
+        return None
+
+    return {
+        "match_id": match_id,
+        "file": rofl_path.name,
+        "game_length_ms": meta.get("gameLength"),
+        "last_chunk_id": meta.get("lastGameChunkId"),
+        "last_keyframe_id": meta.get("lastKeyFrameId"),
+        "player_count": len(players),
+        "field_count": len(players[0]) if players else 0,
+        "players": players,
+        "extracted_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def extract_archive(archive_dir, stats_dir=None, force=False) -> ExtractResult:
+    """Extract stats for every .rofl in *archive_dir* into JSON sidecars.
+
+    Writes <archive_dir>/stats/<match_id>.json by default. Idempotent unless
+    *force*. Failures are COUNTED, not dropped - an extraction pass where every
+    file was corrupt must not read as success.
+
+    Deliberately does NOT write to rewind_history.db: that is 1.8 GB of
+    production data and merging into it is a separate, schema-aware job.
+    """
+    archive_dir = Path(archive_dir)
+    stats_dir = Path(stats_dir) if stats_dir else archive_dir / "stats"
+
+    res = ExtractResult()
+    if not archive_dir.is_dir():
+        logger.debug("archive dir absent, nothing to extract: %s", archive_dir)
+        return res
+
+    for entry in sorted(archive_dir.iterdir()):
+        if not entry.is_file() or entry.suffix.lower() != ROFL_SUFFIX:
+            continue
+        match_id = match_id_from_name(entry.name)
+        if match_id is None:
+            continue
+
+        target = stats_dir / f"{match_id}.json"
+        if target.exists() and not force:
+            res.skipped.append(match_id)
+            continue
+
+        data = extract_stats(entry)
+        if data is None:
+            res.failed.append(match_id)
+            continue
+
+        try:
+            _atomic_write_json(target, data)
+        except OSError as exc:
+            logger.warning("could not write stats sidecar for %s: %s", match_id, exc)
+            res.failed.append(match_id)
+            continue
+
+        res.extracted.append(match_id)
+        logger.info("extracted %s players=%d fields=%d",
+                    match_id, data["player_count"], data["field_count"])
+    return res
+
+
 @dataclass
 class ArchiveResult:
     """What one archive pass did. Lists hold match ids, not paths."""
