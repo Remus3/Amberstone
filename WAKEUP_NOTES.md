@@ -4,6 +4,59 @@
 
 ---
 
+# 2026-07-20h - R142 RM-101 residual runes SHIPPED: Second Wind 8444 + Guardian 8465
+
+**ENGINE 1.228.0 -> 1.229.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the SAME
+commit, DS `:8893` bounced onto 1.229.0, dual suite green.
+
+Gemini-loop cycle 3. Closes the rune arc R132 opened (resist grants, DENOMINATOR) and R136
+continued (health + Heal/Shield-Power, NUMERATOR). RM-101 now has no buildable rune left.
+
+**Premises checked BEFORE dispatch.** All three longDescs re-read from
+`data/meta_build/ddragon/16.14.1/runesReforged.json`: 8444 and 8465 buildable as described,
+8463 carrying the literal unresolved `@BaseHeal@` - DATA-BLOCKED confirmed, not assumed.
+
+**Shipped, both DEFAULT-OFF, both on the existing `rune_ids` transport:**
+- `_rune_self_heal.py` / `apply_rune_self_heal` - Second Wind 8444, 4% of missing health,
+  reusing the scorer's own `_MISSING_HP_SHARE_FOR_HEALS` rather than inventing a second
+  reading. Discounted 0.6 = `_FIGHT_WINDOW_S / 10s`, derived from two named constants.
+- `_rune_shield_grants.py` / `apply_rune_shield_grants` - Guardian 8465, level-lerped 40-150
+  plus 6% bonus health, amortized 0.2.
+
+**Neither midpoint inherited the sibling 0.3, and each deviation is argued.** Second Wind
+triggers on taking champion damage, which IS the EHP frame's premise - a firing discount
+would price in uncertainty the model does not have, so it takes a DURATION ratio instead.
+Guardian's 75-40s cooldown is 2x-3.75x Aftershock's, so it fires at most once per fight; 0.2
+is the engine's existing value for a reactively popped 1.5s spell shield, which Guardian's
+shield literally is.
+
+**Guardian is AP-OMITTED on purpose - a measured ceiling.** `ehp.py` carries ZERO wielder
+ability power (all 38 `ap` tokens are `enemy_ap_share`, an incoming damage-type share). The
+"+20% AP" term is unrepresentable; omitting it UNDERCOUNTS, which is the safe direction. A
+mutation-tested regression class fails RED if a future edit fabricates an AP value. Ally half
+omitted for the same frame reason.
+
+**Verifiers mutation-tested the guards rather than reading them**, which is the only reason
+the gate meant anything: S1's mutated the `ehp.py` constants and confirmed the convention pin
+went RED (proving it is a real cross-module guard, not a literal asserted against itself);
+S2's injected an `ap_pct` field and confirmed all 4 AP-omission tests went RED, and opened
+`_champion_spell_shield_overrides.py:111` to confirm the cited 0.2 actually exists there.
+S1's verifier also caught two miscited docstring pointers (`ehp.py:341` -> `:342`, `:1477` ->
+`:791`), both fixed at merge. A cited `file:line` is not proof.
+
+**The R134 signature guard caught a real miss, not just bookkeeping.** Widening it -7 -> -9
+surfaced that `hybrid.py` needed the seams threaded too - an ehp-only wiring would have passed
+every new test while leaving both hybrid entry points unable to reach either lane.
+
+Green fresh: DS **8944 passed / 1 skipped / 2543 subtests**; R142 trio **78 passed / 25
+subtests**; ruff clean; 0 non-ASCII introduced; Share `--check` green at 1.229.0 / 493 files.
+
+Don't-redo: RM-101 is CLOSED for every buildable rune. Font of Life 8463 stays DATA-BLOCKED -
+do NOT invent a number. Guardian's AP term stays omitted until `ehp.py` actually carries
+wielder AP; the tripwire enforces it.
+
+---
+
 # 2026-07-20g - R141 RM-100 CLOSED: asyncio leak accepted as a priced tradeoff
 
 **Head `bacc559f` (`ba23bae0` is the content commit). ENGINE-IMPACT NONE** - Tier-0 docs +
@@ -70,41 +123,3 @@ No subagents / worktrees (R9 inline - the build slice was cancelled by ground tr
 steer in `ops/loop/control/gemini_ask.txt`: this loop has now produced several refuted-premise cycles
 (R114, R115, R137, R140) from the same lag, so the director is asked to ground "X is still open"
 premises in a grep checked THIS cycle rather than digest prose.
-
----
-
-# 2026-07-20e - R139 Share/ external-presentation pass
-
-**Head `a700b414`. ENGINE-IMPACT NONE** - docs and presentation only, no DS path, no ENGINE_VERSION bump
-(stays 1.228.0 / patch 16.14.1), no `:8893` restart owed. `tools/ds_share_sync.py --check` green throughout.
-
-Gemini-loop cycle, directive R139: read the entire `Share/` package end-to-end and raise it to external-presentation
-quality, credit upstream data sources explicitly, keep the sync guard green. Two worktree slices, Claude sole merger,
-verifier gate CONFIRM/CONFIRM before merge (6 of 6 factual spot-checks independently re-derived).
-
-**The directive's premise was already on disk.** It claimed the Riot credits were missing from `Share/README.md`;
-they have been there as a four-row "Sources of truth (credited upfront)" table at `Share/README.md:19-32`. Following
-the brief literally would have shipped a duplicate credit block. The real defect was one section below it.
-
-**The guard was green over a five-versions-stale public doc, by design.** The README "Changelog (recent)" list topped
-out at `1.222.0 -> 1.223.0` against a live 1.228.0 engine. `_doc_anchor_rules` in `tools/ds_share_sync.py` deliberately
-EXCLUDES changelog history from the anchor auto-rewrite - so the `**Engine version:**` header stays fresh forever while
-the release list beneath it rots silently. Worth remembering the shape: an anchor guard that covers the header but not
-the body makes staleness invisible rather than loud. Five hand-written bullets now cover 1.224.0 through 1.228.0, each
-grounded in the matching `Share/CHANGELOG.md` entry; the CHANGELOG preamble gained the upstream credit it never had.
-
-**Docs half was the heavy half:** 100-plus stale `file:line` citations across `Share/docs/01..05` plus
-`Share/lolmath_ingest/*` (104 table citations and 27 route refs in `02_FUNCTION_REFERENCE.md` alone), and every drifted
-count re-derived against live ground truth - 172/705 -> 173/706 champs/items, 13 -> 20 snapshot JSONs, 328 -> 339 test
-files, RUNE_PROCS 19 -> 20, NON_DAMAGE_BLOCKS 7 -> 9, `_effects_data.py` 5335 -> 5843 lines, explicit AA cast times
-61 -> 49. One correction was substantive rather than numeric: `04_GAPS_AND_ROADMAP.md` justified the replay-parsing
-ceiling with a reason this repo retired on 2026-06-03 (that a parsed `.rofl` is a strict subset of Match-V5 - it is not;
-367 engine-named stat fields x 10 players, no patch gate). A wrong reason for a right conclusion forecloses the option
-for the next reader, so it now states the honest bound: per-patch Layer-2 re-RE cost.
-
-**Prunes: zero, and that is correct.** Every candidate resolved to load-bearing against the sync tool itself
-(`_DOC_FILES` :71-78, `_INGEST_DOC_FILES` :90-95, `_INGEST_BUNDLE_REL` :96, MANIFEST machine-stamped). Only disposable
-artifact was an untracked gitignored `__pycache__`.
-
-Suites fresh this run: **DS 8866 passed / 1 skipped / 2518 subtests; RC 12290 passed / 23 skipped / 359 subtests.**
-Share `.md` non-ASCII bytes: 0. Worktrees + slice branches cleaned (local and remote).
