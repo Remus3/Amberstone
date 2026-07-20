@@ -70,6 +70,7 @@ data/placement_heatmap.json
 data/tft_live_data.json
 data/rewind_catchup.state.json
 data/coaching/death_patterns.json
+data/coaching/aram_item_interaction.json
 data/post_game_rubric_weights.json
 data/cc_conditional_calibration.json
 data/decisions_heartbeat.json
