@@ -236,6 +236,63 @@ def _dedup_build_vs_owned(item_build: str, items_display: str) -> str:
         if not is_dupe and not is_class_dupe:
             kept.append(p)
     return " → ".join(kept)
+
+
+def _split_item_build_like_ui(item_build: str) -> list:
+    """Split a coach item_build string EXACTLY the way the dashboard strip does.
+
+    Copied from web/js/lib/items_index.js:60-64 (_splitItemList with
+    splitArrow=true), which item_build.js:209 uses to build the Recommended
+    tile name list:
+        const sep = /\\s*(?:,|<U+2192>|->)\\s*/;
+        String(str).split(sep).map(s => s.trim()).filter(Boolean);
+    Keeping the separator set identical is what makes the cue keys match the
+    rendered tile names byte-for-byte. The arrow literal is spelled via
+    chr(0x2192) so this source file stays 7-bit ASCII.
+
+    NOTE: the frontend applies one further owned-item dedup pass
+    (item_build.js:222-226) before rendering. It is a defensive no-op here
+    because the artifact's item_build has already been through the
+    server-side _dedup_build_vs_owned, so the name sets agree.
+    """
+    if not item_build:
+        return []
+    import re as _re
+    _arrow = chr(0x2192)
+    sep = r"\s*(?:,|" + _arrow + r"|->)\s*"
+    return [p.strip() for p in _re.split(sep, str(item_build)) if p.strip()]
+
+
+def _item_interaction_block(item_build: str, enemy_champions, game_time_s,
+                            game_mode) -> dict:
+    """Build the additive {item_interaction_cues, item_interaction_provenance}
+    artifact fragment for the dashboard item strip.
+
+    The context module is imported LAZILY inside this function so a missing or
+    broken core.aram_item_interaction_context can never kill a coaching tick;
+    any failure degrades to the neutral fragment ({} / "").
+    """
+    try:
+        from core.aram_item_interaction_context import (
+            cue_provenance,
+            item_interaction_cues,
+        )
+        names = _split_item_build_like_ui(item_build)
+        cues = item_interaction_cues(
+            enemy_champions or [],
+            game_time_s,
+            names,
+            game_mode=game_mode,
+        )
+        return {
+            "item_interaction_cues": dict(cues or {}),
+            "item_interaction_provenance": str(cue_provenance() or ""),
+        }
+    except Exception as _cue_exc:  # noqa: BLE001
+        logger.debug("ARAM item-interaction cues: %s", _cue_exc)
+        return {"item_interaction_cues": {}, "item_interaction_provenance": ""}
+
+
 if str(_APP_DIR) not in sys.path:
     sys.path.insert(0, str(_APP_DIR))
 
@@ -1005,6 +1062,14 @@ class Coach(BaseCoach):
             from core.coach_output import CoachOutput
             _choices_list = CoachOutput.from_fields(flds).choices
 
+            # Deduped build path - hoisted out of the cur.update() literal so
+            # the item-interaction cue keys are derived from the SAME string
+            # the dashboard strip renders (see _split_item_build_like_ui).
+            _item_build_str = _dedup_build_vs_owned(
+                flds.get("item build", ""),
+                user.split("Items:")[-1].split("\n")[0].strip(),
+            )
+
             cur = load_json(self._out)
             cur.update({
                 "action":        _action_raw.upper(),
@@ -1028,15 +1093,23 @@ class Coach(BaseCoach):
                 # Strip already-owned items from the build path so the
                 # Recommended tile never highlights a completed legendary
                 # (the "Zhonya's bug" - see _dedup_build_vs_owned docstring).
-                "item_build":    _dedup_build_vs_owned(
-                                     flds.get("item build", ""),
-                                     user.split("Items:")[-1].split("\n")[0].strip(),
-                                 ),
+                "item_build":    _item_build_str,
                 "item_extra":    flds.get("item extra", ""),
                 # Per-item coach reasons - keyed by item name so the UI
                 # can show "why this next" on the Recommended tile hover
                 # (opts.reasons -> tile.title in renderItemTiles).
                 "item_build_reasons": _parse_item_reasons(flds.get("item reasons", "")),
+                # Comp-conditioned item-interaction cues, keyed by the same
+                # rendered tile name as item_build_reasons. Fail-soft: the
+                # helper never raises, degrading to {} / "".
+                # enemy roster source: state["enemy_comp"] (also consumed at
+                # the _USER_TMPL fill site, coaches/aram_coach.py:839).
+                **_item_interaction_block(
+                    _item_build_str,
+                    state.get("enemy_comp", []),
+                    state.get("game_seconds", 0),
+                    gm,
+                ),
             })
             mirror_live_stats(cur, state)
 

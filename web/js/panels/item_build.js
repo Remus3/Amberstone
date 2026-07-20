@@ -36,15 +36,29 @@ document.addEventListener("rc:items-ready", () => {
   if (_lastItemBuildState) { try { renderItemBuild(_lastItemBuildState); } catch (_) {} }
 });
 
+// The cue contract's thin/missing-cell sentinel (core.aram_item_interaction
+// _context.CUE_SENTINEL). A cue equal to this is "no data" - it never lands in
+// a tooltip, but it IS what the reserved next-up cue line renders when thin.
+const CUE_SENTINEL = "-";
+function _cueFor(cues, name) {
+  const raw = cues && Object.prototype.hasOwnProperty.call(cues, name)
+    ? cues[name] : "";
+  const txt = String(raw == null ? "" : raw).trim();
+  return (!txt || txt === CUE_SENTINEL) ? "" : txt;
+}
+
 function renderItemTiles(container, names, opts) {
   opts = opts || {};
   // Idempotency: every coach state push hits this path, even when the
   // item list is unchanged. Without this guard the IMG nodes get torn
   // down and recreated each tick, which flashes the panel (especially
   // visible when an item id 404s and the broken-image icon flickers).
+  // opts.cues MUST be part of the signature - a cue-only change (same item
+  // list, new comp-conditioned text) would otherwise be swallowed by the
+  // early-return below and the strip would never repaint.
   const sig = JSON.stringify([
     names, opts.cap || 6, !!opts.withArrows,
-    opts.currentGold || 0, opts.reasons || null,
+    opts.currentGold || 0, opts.reasons || null, opts.cues || null,
   ]);
   if (container.dataset.tilesSig === sig) return;
   container.dataset.tilesSig = sig;
@@ -53,6 +67,13 @@ function renderItemTiles(container, names, opts) {
     container.textContent = "-";
     return;
   }
+  // Cues are "active" whenever the coach handed us a non-empty map. Cues ride
+  // the TOOLTIP only here - the visible surface is the single full-width
+  // next-up cue line rendered below the strip (_updateNextUpCue). A per-tile
+  // caption was measured at 115-119px of text against a 68-70px tile, i.e.
+  // truncated to "62% n=..." on every real sample, so it was removed.
+  const cues = (opts.cues && typeof opts.cues === "object") ? opts.cues : null;
+  const cuesActive = !!(cues && Object.keys(cues).length);
   const CAP = opts.cap || 6;   // glance-read cap - extra tiles summarized as "+N"
   const shown = names.slice(0, CAP);
   const extra = names.length - shown.length;
@@ -67,9 +88,13 @@ function renderItemTiles(container, names, opts) {
     // when available; otherwise the tooltip just shows name + cost.
     const reason = opts.reasons && opts.reasons[name];
     const cost = iid && ITEM_COSTS.byId[iid] ? `${ITEM_COSTS.byId[iid]}g` : "";
+    const cue = cuesActive ? _cueFor(cues, name) : "";
     const parts = [name];
     if (cost) parts.push(cost);
     if (reason) parts.push(reason);
+    // Sentinel cues ("-") carry no information - keep them out of the tooltip.
+    // Every tile keeps its cue here: zero layout cost, full per-item detail.
+    if (cue) parts.push(cue);
     tile.title = parts.join(" - ");
     const iconWrap = document.createElement("div");
     iconWrap.className = "item-icon";
@@ -190,6 +215,63 @@ function _updateItemBuildHeader(champion, mode) {
     });
 }
 
+// Single full-width item-interaction cue line, rendered directly BELOW the
+// recommended strip. It describes the NEXT-UP item only (index 0 of the
+// recommended path), which is the one decision the strip is actually asking
+// the operator to make - six equal-weight per-tile captions flattened that
+// hierarchy, and at 70px per tile every one of them truncated. Full panel
+// width means nothing ellipsises. Per-item cues survive in each tile tooltip.
+//
+// Provenance rides this line (faintest tier) instead of the old #ib-cue-src
+// badge: as a sibling of the display:block #ib-build-label that badge landed
+// on its own line and cost +33px of section height for a tag nobody scans.
+//
+// RESERVED SLOT (no-reflow rule): while cues are active this line ALWAYS
+// renders at a fixed height, showing the "-" sentinel when the next-up cue is
+// thin or missing. When cues are INACTIVE no node is created at all, so
+// non-ARAM modes render byte-identical to the pre-cue DOM.
+function _updateNextUpCue(name, cues, provenance) {
+  const strip = IB.recommended;
+  if (!strip || !strip.parentNode) return;
+  let line = document.getElementById("ib-next-cue");
+  const active = !!(cues && typeof cues === "object" && Object.keys(cues).length);
+  if (!active) { if (line) line.remove(); return; }
+  if (!line) {
+    line = document.createElement("div");
+    line.id = "ib-next-cue";
+    line.className = "ib-next-cue";
+    strip.parentNode.insertBefore(line, strip.nextSibling);
+  }
+  const item = String(name == null ? "" : name).trim() || CUE_SENTINEL;
+  const cue = _cueFor(cues, name) || CUE_SENTINEL;
+  const src = String(provenance == null ? "" : provenance).trim();
+  line.innerHTML = "";
+  const mk = (cls, txt) => {
+    const s = document.createElement("span");
+    s.className = cls;
+    s.textContent = txt;
+    return s;
+  };
+  // End-of-build (nothing left to buy) collapses item AND cue to the sentinel.
+  // Stamping a data-source tag on a row that carries no data reads as broken,
+  // so the provenance is suppressed there - the slot still renders at its fixed
+  // height, it just stops claiming a source for nothing.
+  const hasItem = item !== CUE_SENTINEL;
+  line.appendChild(mk("ib-next-cue__item", item));
+  line.appendChild(mk("ib-next-cue__sep", "|"));
+  line.appendChild(mk("ib-next-cue__val", cue));
+  if (src && hasItem) {
+    line.appendChild(mk("ib-next-cue__sep", "|"));
+    line.appendChild(mk("ib-next-cue__src", src));
+  }
+  // The " - " joiner collides with the "-" sentinel ("next to buy: - - -"),
+  // so the tooltip degrades to a plain statement when there is no next item.
+  line.title = hasItem
+    ? ("next to buy: " + item + " - " + cue
+       + (src ? " - item-interaction cue source: " + src : ""))
+    : "next to buy: nothing - build complete";
+}
+
 function renderItemBuild(p) {
   _lastItemBuildState = p;
   const arena = isArenaPayload(p);
@@ -229,10 +311,18 @@ function renderItemBuild(p) {
   // hover shows the "why this next" coaching note. Owned tiles just
   // show name + cost (no reason - it's already bought).
   const itemReasons = (p && p.item_build_reasons) || {};
+  // Comp-conditioned item-interaction cues ride the RECOMMENDED strip only -
+  // owned tiles are already bought, so a "what this does vs their comp" cue
+  // has nothing to inform. IB.owned deliberately gets no cues.
+  const itemCues = (p && p.item_interaction_cues) || null;
   renderItemTiles(IB.owned, owned, { withArrows: false });
   renderItemTiles(IB.recommended, pathDedup, {
     withArrows: true, currentGold: p.gold, reasons: itemReasons,
+    cues: itemCues,
   });
+  // Full-width next-up cue line under the recommended strip. Rendered after
+  // the strip so the node ordering is strip-then-line on first paint.
+  _updateNextUpCue(pathDedup[0], itemCues, p && p.item_interaction_provenance);
   // DS Engine picks - daemon_slayer_picks: [{id, name, delta_dps, gold, scorer?}, ...]
   // scorer (s182+) flips the unit suffix per archetype (dps/ehp/%/adps/burst/hps).
   const dsPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];

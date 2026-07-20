@@ -189,6 +189,50 @@
   z-index: 2;
   box-shadow: 0 2px 6px rgba(0,0,0,0.6);
 }
+/* Comp-conditioned item-interaction cue - ONE full-width line under the
+ * recommended strip, describing the next-up item only. Full panel width is the
+ * right container: a per-tile caption had 115-119px of text to fit in a 70px
+ * tile and truncated on every real sample. Nothing here ellipsises.
+ *
+ * RESERVED SLOT (no-reflow rule): the box is height-locked by an explicit
+ * line-height (1.2) plus a min-height of the same 1.2em. Every child is a
+ * single-line inline span with white-space: nowrap, so the box is exactly one
+ * line-box tall whether the value slot holds the "-" sentinel or a full
+ * "55% n=38 -442g" cue, and whether or not the provenance span is present.
+ * Content length cannot wrap and therefore cannot change the height. */
+.ib-next-cue {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  line-height: 1.2;
+  min-height: 1.2em;
+  white-space: nowrap;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+.ib-next-cue > span { white-space: nowrap; }
+/* Next-up item name - the thing being recommended, so it holds the top tier. */
+.ib-next-cue__item {
+  color: var(--gold);
+  font-weight: 700;
+}
+/* The cue numbers themselves - secondary tier. */
+.ib-next-cue__val { color: var(--text-dim); }
+/* Provenance (corpus + patch span) - faintest tier, scanned only on demand. */
+.ib-next-cue__src {
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* ASCII pipe separators, dimmer than either side so they read as structure. */
+/* --border is a hairline-alpha token (1.33:1 on the panel bg) and is unreadable
+   as a glyph color - the separators were invisible. --text-faint is the dimmest
+   defined TEXT token, which is what a structural glyph needs. */
+.ib-next-cue__sep { color: var(--text-faint); }
+
 /* Reserve space at the top of any tile-row that contains a next-up
  * tile so the relocated cost-pill (top: -20) doesn't clip against the
  * Item Build panel-body's overflow:hidden. Owned tile rows (no next-up)
