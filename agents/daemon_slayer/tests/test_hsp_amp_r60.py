@@ -33,7 +33,7 @@ from agents.daemon_slayer._hsp_amp import sum_wielder_hsp_pct
 # Curated ids (16.13.1 enchanter_items.json + effects shield registry).
 _REDEMPTION = "3107"          # heal_shield_amp_pct 0.10
 _MIKAEL = "3222"              # heal_shield_amp_pct 0.12
-_MOONSTONE = "6617"           # heal_shield_amp_pct 0.30
+_MOONSTONE = "6617"           # heal_shield_amp_pct 0.30, ally_chain_only (R143)
 _STERAKS = "3053"             # ItemShield ANY (self-shield), no HSP
 _SHIELDBOW = "6673"           # ItemShield ANY (self-shield), no HSP
 
@@ -50,8 +50,14 @@ class SumWielderHspPctTests(unittest.TestCase):
             sum_wielder_hsp_pct([_REDEMPTION, _MIKAEL]), 0.22, places=6
         )
 
-    def test_moonstone_value(self) -> None:
-        self.assertAlmostEqual(sum_wielder_hsp_pct([_MOONSTONE]), 0.30, places=6)
+    def test_moonstone_contributes_zero_to_wielder_self_amp(self) -> None:
+        # R143 CORRECTION (was: asserted 0.30). Moonstone's registry 0.30 is the
+        # Starlit Grace CHAIN-TO-ALLY ratio, not a Heal-and-Shield-Power stat -
+        # the catalog gives 6617 no HSP stat at all and the chain text excludes
+        # the wielder. It stays 0.30 for the hps.py ally-throughput path but must
+        # not amplify the wielder's own shield (ehp.py) or regen (sustain.py).
+        # Full coverage lives in test_hsp_mirror_ids_r143.py.
+        self.assertAlmostEqual(sum_wielder_hsp_pct([_MOONSTONE]), 0.0, places=6)
 
     def test_non_hsp_item_contributes_zero(self) -> None:
         # Sterak's Gage is a self-shield item but carries no HSP stat.
