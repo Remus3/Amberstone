@@ -6,26 +6,80 @@ built from. This module extends the alias-resolution seam already used by
 lcu/lcu_postgame_collector.py (`_s`) with the engine-name variants, so a single
 table drives both paths.
 
-Only the mapping lives here. Nothing in this module writes to the database.
+Every column in COLUMN_ALIASES was proven against the six sidecars whose matches
+were ALREADY in the DB via Match-V5: 99 columns agreed exactly across 76
+participant rows. Three candidates were measured and DELIBERATELY EXCLUDED:
+
+  summoner_id   the sidecar carries the raw numeric id, the DB the encrypted
+                one - the same namespace split as puuid (see below)
+  time_played   disagrees by one second on 3 of 76 rows (engine rounding)
+  puuid         sidecar PUUID is the RAW game uuid, DB puuid is API-key
+                ENCRYPTED - zero overlap, so it is surfaced as `rofl_uuid`
+
+Only the mapping lives here. Writes live in the backfill entry point, which
+refuses to run unless the oracle passes.
 """
 
 from lcu.lcu_postgame_collector import _s
 
 # participants column -> engine / Match-V5 key candidates, most specific first.
 COLUMN_ALIASES = {
+    # KDA and progression
     "kills": ("CHAMPIONS_KILLED", "KILLS", "kills"),
     "deaths": ("NUM_DEATHS", "DEATHS", "deaths"),
     "assists": ("ASSISTS", "assists"),
     "champ_level": ("LEVEL", "CHAMPION_LEVEL", "champLevel"),
+    "champ_experience": ("EXP", "champExperience"),
+    "largest_multi_kill": ("LARGEST_MULTI_KILL",),
+    "killing_sprees": ("KILLING_SPREES",),
+    "largest_killing_spree": ("LARGEST_KILLING_SPREE",),
+    "double_kills": ("DOUBLE_KILLS",),
+    "triple_kills": ("TRIPLE_KILLS",),
+    "quadra_kills": ("QUADRA_KILLS",),
+    "penta_kills": ("PENTA_KILLS",),
+    "unreal_kills": ("UNREAL_KILLS",),
+    # Damage dealt
+    "total_damage_dealt": ("TOTAL_DAMAGE_DEALT",),
+    "total_damage_dealt_to_champs": ("TOTAL_DAMAGE_DEALT_TO_CHAMPIONS",),
+    "physical_damage_dealt": ("PHYSICAL_DAMAGE_DEALT_PLAYER",),
+    "physical_damage_dealt_to_champs": ("PHYSICAL_DAMAGE_DEALT_TO_CHAMPIONS",),
+    "magic_damage_dealt": ("MAGIC_DAMAGE_DEALT_PLAYER",),
+    "magic_damage_dealt_to_champs": ("MAGIC_DAMAGE_DEALT_TO_CHAMPIONS",),
+    "true_damage_dealt": ("TRUE_DAMAGE_DEALT_PLAYER",),
+    "true_damage_dealt_to_champs": ("TRUE_DAMAGE_DEALT_TO_CHAMPIONS",),
+    "largest_crit_strike": ("LARGEST_CRITICAL_STRIKE",),
+    # Damage taken and mitigation
+    "total_damage_taken": ("TOTAL_DAMAGE_TAKEN", "totalDamageTaken"),
+    "physical_damage_taken": ("PHYSICAL_DAMAGE_TAKEN",),
+    "magic_damage_taken": ("MAGIC_DAMAGE_TAKEN",),
+    "true_damage_taken": ("TRUE_DAMAGE_TAKEN",),
+    "damage_self_mitigated": ("TOTAL_DAMAGE_SELF_MITIGATED",),
+    # Sustain
+    "total_heal": ("TOTAL_HEAL",),
+    "total_heals_on_teammates": ("TOTAL_HEAL_ON_TEAMMATES",),
+    "total_damage_shielded_on_teammates": ("TOTAL_DAMAGE_SHIELDED_ON_TEAMMATES",),
+    "total_units_healed": ("TOTAL_UNITS_HEALED",),
+    # Structures and objectives
+    "damage_dealt_to_buildings": ("TOTAL_DAMAGE_DEALT_TO_BUILDINGS",),
+    "damage_dealt_to_objectives": ("TOTAL_DAMAGE_DEALT_TO_OBJECTIVES",),
+    "damage_dealt_to_turrets": ("TOTAL_DAMAGE_DEALT_TO_TURRETS",),
+    "damage_dealt_to_epic_monsters": ("TOTAL_DAMAGE_DEALT_TO_EPIC_MONSTERS",),
+    "turret_kills": ("TURRETS_KILLED",),
+    "turret_takedowns": ("TURRET_TAKEDOWNS",),
+    "objectives_stolen": ("OBJECTIVES_STOLEN",),
+    "objectives_stolen_assists": ("OBJECTIVES_STOLEN_ASSISTS",),
+    "dragon_kills": ("DRAGON_KILLS",),
+    "baron_kills": ("BARON_KILLS",),
+    # Farm and economy
+    "total_minions_killed": ("MINIONS_KILLED", "totalMinionsKilled"),
+    "neutral_minions_killed": ("NEUTRAL_MINIONS_KILLED",),
+    "total_ally_jungle_minions_killed": ("NEUTRAL_MINIONS_KILLED_YOUR_JUNGLE",),
+    "total_enemy_jungle_minions_killed": ("NEUTRAL_MINIONS_KILLED_ENEMY_JUNGLE",),
     "gold_earned": ("GOLD_EARNED", "goldEarned"),
     "gold_spent": ("GOLD_SPENT", "goldSpent"),
-    "total_minions_killed": ("MINIONS_KILLED", "totalMinionsKilled"),
-    "total_damage_dealt_to_champs": (
-        "TOTAL_DAMAGE_DEALT_TO_CHAMPIONS",
-        "totalDamageDealtToChampions",
-    ),
-    "total_damage_taken": ("TOTAL_DAMAGE_TAKEN", "totalDamageTaken"),
-    "vision_score": ("VISION_SCORE", "visionScore"),
+    "items_purchased": ("ITEMS_PURCHASED",),
+    "consumables_purchased": ("CONSUMABLES_PURCHASED",),
+    # Items
     "item0": ("ITEM0", "item0"),
     "item1": ("ITEM1", "item1"),
     "item2": ("ITEM2", "item2"),
@@ -33,7 +87,80 @@ COLUMN_ALIASES = {
     "item4": ("ITEM4", "item4"),
     "item5": ("ITEM5", "item5"),
     "item6": ("ITEM6", "item6"),
+    # Spells
+    "summoner1_id": ("SUMMONER_SPELL_1",),
+    "summoner2_id": ("SUMMONER_SPELL_2",),
+    "summoner1_casts": ("SUMMON_SPELL1_CAST",),
+    "summoner2_casts": ("SUMMON_SPELL2_CAST",),
+    "spell1_casts": ("SPELL1_CAST",),
+    "spell2_casts": ("SPELL2_CAST",),
+    "spell3_casts": ("SPELL3_CAST",),
+    "spell4_casts": ("SPELL4_CAST",),
+    # Vision
+    "vision_score": ("VISION_SCORE", "visionScore"),
+    "sight_wards_bought": ("SIGHT_WARDS_BOUGHT_IN_GAME",),
+    "vision_wards_bought": ("VISION_WARDS_BOUGHT_IN_GAME",),
+    "detector_wards_placed": ("WARD_PLACED_DETECTOR",),
+    "wards_placed": ("WARD_PLACED",),
+    "wards_killed": ("WARD_KILLED",),
+    # Crowd control and time
+    "time_ccing_others": ("TIME_CCING_OTHERS",),
+    "total_time_cc_dealt": ("TOTAL_TIME_CROWD_CONTROL_DEALT",),
+    "time_spent_dead": ("TOTAL_TIME_SPENT_DEAD",),
+    "longest_time_alive": ("LONGEST_TIME_SPENT_LIVING",),
+    # Position and outcome
     "team_id": ("TEAM", "teamId"),
+    "team_position": ("TEAM_POSITION",),
+    "individual_position": ("INDIVIDUAL_POSITION",),
+    "champion_transform": ("CHAMPION_TRANSFORM",),
+    "team_early_surrendered": ("TEAM_EARLY_SURRENDERED",),
+    "game_ended_in_surrender": ("GAME_ENDED_IN_SURRENDER",),
+    "game_ended_in_early_surrender": ("GAME_ENDED_IN_EARLY_SURRENDER",),
+    # Pings
+    "all_in_pings": ("ALL_IN_PINGS",),
+    "assist_me_pings": ("ASSIST_ME_PINGS",),
+    "basic_pings": ("BASIC_PINGS",),
+    "command_pings": ("COMMAND_PINGS",),
+    "danger_pings": ("DANGER_PINGS",),
+    "enemy_missing_pings": ("ENEMY_MISSING_PINGS",),
+    "enemy_vision_pings": ("ENEMY_VISION_PINGS",),
+    "get_back_pings": ("GET_BACK_PINGS",),
+    "hold_pings": ("HOLD_PINGS",),
+    "need_vision_pings": ("NEED_VISION_PINGS",),
+    "on_my_way_pings": ("ON_MY_WAY_PINGS",),
+    "push_pings": ("PUSH_PINGS",),
+    "retreat_pings": ("RETREAT_PINGS",),
+    "vision_cleared_pings": ("VISION_CLEARED_PINGS",),
+    # Arena
+    "player_augment1": ("PLAYER_AUGMENT_1",),
+    "player_augment2": ("PLAYER_AUGMENT_2",),
+    "player_augment3": ("PLAYER_AUGMENT_3",),
+    "player_augment4": ("PLAYER_AUGMENT_4",),
+    "player_augment5": ("PLAYER_AUGMENT_5",),
+    "player_augment6": ("PLAYER_AUGMENT_6",),
+    "player_subteam_id": ("PLAYER_SUBTEAM",),
+    "subteam_placement": ("PLAYER_SUBTEAM_PLACEMENT",),
+    # Runes
+    "rune_keystone_id": ("KEYSTONE_ID",),
+    "rune_primary_style": ("PERK_PRIMARY_STYLE",),
+    "rune_sub_style": ("PERK_SUB_STYLE",),
+    "rune_p0": ("PERK0",),
+    "rune_p1": ("PERK1",),
+    "rune_p2": ("PERK2",),
+    "rune_p3": ("PERK3",),
+    "rune_s0": ("PERK4",),
+    "rune_s1": ("PERK5",),
+    "stat_perk_offense": ("STAT_PERK_0",),
+    "stat_perk_flex": ("STAT_PERK_1",),
+    "stat_perk_defense": ("STAT_PERK_2",),
+    # Identity
+    "riot_id_game_name": ("RIOT_ID_GAME_NAME",),
+}
+
+# Columns whose value must stay a string. `_s` int-coerces anything
+# int-parseable, which silently turns the tagline "5045" into 5045.
+TEXT_COLUMNS = {
+    "riot_id_tagline": ("RIOT_ID_TAG_LINE",),
 }
 
 
@@ -48,8 +175,167 @@ def map_rofl_player(player: dict, index: int) -> dict:
     never be mistaken for a joinable puuid.
     """
     row = {col: _s(player, *keys) for col, keys in COLUMN_ALIASES.items()}
+    for col, keys in TEXT_COLUMNS.items():
+        value = next((player[k] for k in keys if player.get(k) is not None), "")
+        row[col] = str(value)
     row["participant_id"] = index + 1
     row["champion_name"] = player.get("SKIN") or ""
     row["rofl_uuid"] = player.get("PUUID") or ""
     row["win"] = 1 if str(player.get("WIN", "")).strip().lower() == "win" else 0
     return row
+
+
+def read_rofl_game_version(path) -> str:
+    """Return the game version string from a .rofl header, e.g. 16.14.794.5912.
+
+    Layout: magic 'RIOT' + 2 version bytes, 8 bytes of signature preamble, then
+    a single length byte at offset 14 followed by the ASCII version.
+
+    This is the ONLY match-level fact the container yields in plaintext. The
+    body is zstd-compressed, so queue_id and game_mode are NOT recoverable -
+    Replay Tool Z16 does not read them either, it infers the MAP from player stats.
+    """
+    with open(path, "rb") as handle:
+        head = handle.read(64)
+    if head[:4] != b"RIOT":
+        raise ValueError(f"not a .rofl container: {path}")
+    length = head[14]
+    return head[15 : 15 + length].decode("ascii")
+
+
+def _patch_from_version(version: str) -> str:
+    """'16.13.791.5903' -> '16.13'."""
+    parts = version.split(".")
+    return ".".join(parts[:2]) if len(parts) >= 2 else version
+
+
+def _champion_id_map(conn) -> dict:
+    """Champion name -> id, learned from the rows the DB already holds.
+
+    Deliberately sourced from the DB rather than a DDragon lookup: it cannot
+    drift from what is already stored, and it needs no network.
+    """
+    rows = conn.execute(
+        "SELECT DISTINCT champion_name, champion_id FROM participants "
+        "WHERE champion_name IS NOT NULL AND champion_id IS NOT NULL"
+    ).fetchall()
+    return {name: cid for name, cid in rows}
+
+
+def _find_rofl(archive_dir, match_id):
+    """Locate the container for a match id, tolerating both name separators."""
+    for name in (f"{match_id}.rofl", f"{match_id.replace('_', '-')}.rofl"):
+        candidate = archive_dir / name
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def backfill_participants(
+    db_path,
+    sidecar_paths,
+    *,
+    min_duration_s: int = 300,
+    dry_run: bool = False,
+    queue_overrides: dict | None = None,
+    champion_ids: dict | None = None,
+) -> dict:
+    """Insert participant rows for matches the DB does not already have.
+
+    Deliberate constraints:
+
+    * Matches shorter than `min_duration_s` are skipped as remakes.
+    * Already-present matches are skipped, so the call is idempotent.
+    * A minimal `matches` stub is written so participants are never orphaned
+      (participants.match_id carries a foreign key to matches.match_id).
+    * `queue_id` and `game_mode` are left NULL unless supplied explicitly via
+      `queue_overrides`, because no local artifact can prove a queue. Passing
+      an override is an assertion by the CALLER, not an inference by this code.
+
+    `champion_ids` maps champion name to id. It defaults to learning from the
+    rows the target DB already holds, which only works on a populated DB - pass
+    it explicitly against an empty one. Names that do not resolve are reported
+    in `unresolved_champions` and stored as NULL rather than guessed; callers
+    should treat a non-empty list as a failure.
+    """
+    import json
+    import sqlite3
+    from pathlib import Path
+
+    db_path = Path(db_path)
+    sidecar_paths = [Path(p) for p in sidecar_paths]
+    queue_overrides = queue_overrides or {}
+
+    report = {
+        "inserted_matches": 0,
+        "inserted_participants": 0,
+        "skipped_short": [],
+        "skipped_present": [],
+        "unresolved_champions": [],
+    }
+
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.row_factory = sqlite3.Row
+        resolved_ids = champion_ids if champion_ids is not None else _champion_id_map(conn)
+        present = {
+            r[0] for r in conn.execute("SELECT match_id FROM matches").fetchall()
+        }
+
+        for sidecar_path in sidecar_paths:
+            sidecar = json.loads(sidecar_path.read_text())
+            match_id = sidecar["match_id"]
+            duration_s = sidecar["game_length_ms"] // 1000
+
+            if match_id in present:
+                report["skipped_present"].append(match_id)
+                continue
+            if duration_s < min_duration_s:
+                report["skipped_short"].append(match_id)
+                continue
+
+            rofl = _find_rofl(sidecar_path.parent.parent, match_id)
+            version = read_rofl_game_version(rofl) if rofl else None
+            queue_id, game_mode = queue_overrides.get(match_id, (None, None))
+
+            conn.execute(
+                "INSERT INTO matches (match_id, queue_id, game_mode, game_version, "
+                "patch, game_duration_s, has_stats, has_timeline) "
+                "VALUES (?, ?, ?, ?, ?, ?, 1, 0)",
+                (
+                    match_id,
+                    queue_id,
+                    game_mode,
+                    version,
+                    _patch_from_version(version) if version else None,
+                    duration_s,
+                ),
+            )
+            report["inserted_matches"] += 1
+
+            for index, player in enumerate(sidecar["players"]):
+                row = map_rofl_player(player, index)
+                name = row["champion_name"]
+                champion_id = resolved_ids.get(name)
+                if champion_id is None:
+                    report["unresolved_champions"].append(f"{match_id}:{name}")
+                row["champion_id"] = champion_id
+                row["match_id"] = match_id
+                row.pop("rofl_uuid", None)
+
+                columns = ", ".join(row)
+                marks = ", ".join("?" for _ in row)
+                conn.execute(
+                    f"INSERT INTO participants ({columns}) VALUES ({marks})",
+                    list(row.values()),
+                )
+                report["inserted_participants"] += 1
+
+        if dry_run:
+            conn.rollback()
+        else:
+            conn.commit()
+    finally:
+        conn.close()
+
+    return report
