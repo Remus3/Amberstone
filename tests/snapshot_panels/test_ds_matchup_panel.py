@@ -87,6 +87,92 @@ def test_champ_select_no_longer_wires_ds_matchup():
     assert "setDsMatchupScheduler" not in src
 
 
+def test_panel_selects_role_matched_lane_opponent():
+    """BACKLOG F5: the headline pairing is the ROLE-MATCHED laner.
+
+    The pre-fix code took `enemyIds[0]` - the LEADING pick on the enemy
+    roster, which is the operator's actual laner only by coincidence. Guard
+    both halves: the index-0 shortcut is gone, and the role matcher is wired.
+    """
+    src = _read(JS_PATH)
+    assert "enemyIds[0]" not in src, "still picking the leading enemy, not the laner"
+    assert "_laneOpponentIdx" in src
+    assert "_normRole" in src
+    # Role reaches the panel off fields that already exist client-side - the
+    # champ-select cell field and the Live Client roster field. A new backend
+    # field or route would be out of scope for this slice.
+    assert "assignedPosition" in src
+    assert "/api/ds-matchup" in src
+    assert "/api/ds-matchup-grid" not in src, "F1 must reuse the per-pair route"
+
+
+def test_panel_falls_back_to_pick_order_without_roles():
+    """Role-less modes (ARAM / Arena report NONE) must still render a card."""
+    src = _read(JS_PATH)
+    # _laneOpponentIdx returns index 0 when no role matches, and NONE
+    # normalizes to "" so the matcher is skipped rather than matching "NONE".
+    assert '"NONE"' in src or "'NONE'" in src
+
+
+def test_panel_renders_all_enemy_danger_grid():
+    """BACKLOG F1: every committed enemy is binned into a severity grid."""
+    src = _read(JS_PATH)
+    assert "_gridHtml" in src
+    assert "_severity" in src
+    assert "dsm-grid" in src
+    css = _read(CSS_PATH)
+    for cls in (".dsm-grid-cell", ".dsm-sev-good", ".dsm-sev-bad", ".is-lane"):
+        assert cls in css, f"grid style {cls} missing"
+
+
+def test_grid_cells_meet_the_hit_target_floor():
+    """HIT-TARGETS: grid rows carry the same min-height floor as the chip."""
+    css = _read(CSS_PATH)
+    cell = css[css.index(".dsm-grid-cell {"):]
+    cell = cell[:cell.index("}")]
+    assert "--hit-min" in cell, "grid row missing the hit-target floor"
+
+
+def test_grid_severity_is_not_colour_only():
+    """ACCESSIBILITY: each severity bin repeats its meaning as text.
+
+    The verdict word (ALL IN / TRADE / EVEN / BACK OFF) rides every cell, so
+    the red->green rule is reinforcement and never the sole carrier.
+    """
+    src = _read(JS_PATH)
+    assert "dsm-grid-verdict" in src
+    assert "_verdictLabel" in src
+
+
+def test_synthetic_cs_carries_every_enemy_with_roles():
+    """The live feed must stop truncating to one enemy and must pass roles."""
+    src = _read(ACTIVE_MATCH_JS)
+    body = src[src.index("function _amDsSyntheticCs"):]
+    body = body[:body.index("\nfunction ", 10)]
+    assert "matchup uses the FIRST enemy only" not in body, "still truncating"
+    assert "assignedPosition" in body, "roles not forwarded to the panel"
+    assert "my_position" in body, "operator role not forwarded"
+    # Roles ride the EXISTING summarized players list, not a new field.
+    assert "lc.players" in body
+
+
+def test_sr_fixture_carries_the_position_roster():
+    """The audit fixture must mirror the server shape (dashboard/_liveclient).
+
+    Without `players` the ?ui_mock=1&mode=sr audit path cannot exercise the
+    role-matched branch at all, which is how the enemyIds[0] bug survived.
+    """
+    fixture = ROOT / "web" / "data" / "ui_mock" / "active_match_sr.json"
+    lc = json.loads(_read(fixture))["liveclient"]
+    players = lc.get("players")
+    assert isinstance(players, list) and players, "fixture missing players roster"
+    assert len(players) == len(lc["allPlayers"]), "players must be index-aligned"
+    for row in players:
+        for key in ("position", "team", "is_active"):
+            assert key in row, f"fixture player missing {key!r}"
+    assert sum(1 for r in players if r["is_active"]) == 1
+
+
 def test_fixture_is_valid_json_with_expected_keys():
     assert FIXTURE_PATH.exists(), f"fixture missing at {FIXTURE_PATH}"
     data = json.loads(_read(FIXTURE_PATH))
