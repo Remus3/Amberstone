@@ -170,13 +170,16 @@ def test_hud_engine_row_is_pointer_interactive(html: str) -> None:
 
 
 def test_hud_reports_real_node_count(html: str, node_ids: set[str]) -> None:
-    m = re.search(r"<div>nodes:\s*(\d+)</div>", html)
+    # Attribute-tolerant: R146 gave the countable HUD rows explanatory
+    # title tooltips, and a bare-tag regex silently stopped matching
+    # rather than reporting a wrong count.
+    m = re.search(r"<div[^>]*>nodes:\s*(\d+)</div>", html)
     assert m, "HUD is missing a nodes: row"
     assert int(m.group(1)) == len(node_ids)
 
 
 def test_hud_reports_dust_count(html: str, declared_dust_count: int) -> None:
-    m = re.search(r"<div>dust:\s*(\d+)\s+files</div>", html)
+    m = re.search(r"<div[^>]*>dust:\s*(\d+)\s+files</div>", html)
     assert m, "HUD is missing a dust: row"
     assert int(m.group(1)) == declared_dust_count
 
