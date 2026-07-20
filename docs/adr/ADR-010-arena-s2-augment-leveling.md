@@ -152,7 +152,7 @@ The following are explicitly NOT covered by this ADR. Each gets its
 own scope (and likely its own ADR) when 26.09 ships:
 
 - **Crafting Round mechanic.** Round 8 add-slot vs. level-up branching.
-  Touches `modes/arena_coach.py` prompt + the live-match UI surface +
+  Touches `coaches/arena_coach.py` prompt + the live-match UI surface +
   the build planner's per-round projection. Separate session.
 - **Keystone tier at max level.** Visual + stat differentiation when
   an augment reaches level 3 (or level 4 if exposed as a fourth tier).

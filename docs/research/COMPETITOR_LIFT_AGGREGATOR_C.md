@@ -82,12 +82,12 @@ CLOSED, not a lift.
    match stats with a green/red/yellow polarity. Both need each of the 10 players'
    ranked match history keyed by PUUID.
 3. HAVE - PARTIAL / CLOSED for enemies. RC's FU02 team-context
-   (`core/routes_team_context.py`, pre-game rank/LP/WR/mastery card) covers the
+   (`dashboard/routes_team_context.py`, pre-game rank/LP/WR/mastery card) covers the
    ALLY/self scouting card. The behavioral badges over a player's full history are
    CLOSED per ADR-006 single-player-corpus (R112 explicitly: "pre-game behavioral
    badges stays CLOSED"). Scouting all 10 (enemies included) by arbitrary-summoner
    Match-V5 is CLOSED for RC's personal key (R100 / R120).
-4. WHERE - would extend `core/routes_team_context.py`; but the enemy half has no
+4. WHERE - would extend `dashboard/routes_team_context.py`; but the enemy half has no
    in-scope data source.
 5. EFFORT + RISK - CLOSED: enemy per-player history needs a production key; the
    behavioral-badge taxonomy is a single-player-corpus violation + a content/ML
@@ -223,9 +223,9 @@ gold lead" plus pop-ups and a Standings section. Four distinct mechanics:
 3. HAVE - COVERED across the board (grep-cited): builds/runes/skill = DS engine +
    overlay item-1 rune-follows-build (shipped); combos = `dashboard/routes_ds_combo.py`
    + `ds_combo.js`; matchup = `routes_ds_matchup.py`; champion power spikes =
-   spike-curve; team context / scouting = FU02 `core/routes_team_context.py`;
-   duo/team synergy = `core/routes_duo_synergy.py` + `core/synergy_external_source.py`
-   + `core/kit_synergy.py`; damage-type mix = `routes_damage_mix.py`; combat-style
+   spike-curve; team context / scouting = FU02 `dashboard/routes_team_context.py`;
+   duo/team synergy = `dashboard/routes_duo_synergy.py` + `core/synergy_external_source.py`
+   + `core/build_planner/kit_synergy.py`; damage-type mix = `routes_damage_mix.py`; combat-style
    archetype chip = `web/js/panels/archetype_chip.js` (R89 F2 shipped); post-game =
    the PGR suite (`routes_post_game_rubric.py`, `pgr_*.js`, `core/post_game_score.py`).
    The playstyle/behavioral badges half = CLOSED (Feature 1). Gank-opportunity

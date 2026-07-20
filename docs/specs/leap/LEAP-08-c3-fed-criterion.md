@@ -128,7 +128,7 @@ The test harness (no live :8893 needed) + the shadow-first precedent:
 
 IN SCOPE (all headless, all shippable this session):
 
-  1. `core/fed_threat.py` (NEW) - the pure estimator + `compute_fed` + a lazy
+  1. `core/build_planner/fed_threat.py` (NEW) - the pure estimator + `compute_fed` + a lazy
      item-gold-total map loader. Correct-by-construction + fail-soft.
   2. `dashboard/routes_build_plan.py` - parse `enemy_scores` + `enemy_levels`;
      compute `fed`; a shadow-log append behind `RC_FED_SHADOW` (default OFF); a
@@ -187,7 +187,7 @@ est_gold(player) = sum(item_gold_total[id] for id in player.owned_items)
 EnemyProfile.fed := any(fed(X) for X in enemies)     # any single fed enemy fires
 ```
 
-Named constants (in `core/fed_threat.py`, tunable - tests assert ordinal
+Named constants (in `core/build_planner/fed_threat.py`, tunable - tests assert ordinal
 relations + boundaries, never absolute floats):
 
   * `KDA_LEAD_CUT = 3`   - net kills-minus-deaths. A 3-0 / 5-2 / 7-4 enemy is
@@ -235,7 +235,7 @@ label:"SURVIVE", detail:"fed enemy - itemize defense",
 suggest_class:"resist"}`. `_resolve_counter_hints` already `asdict`s it into the
 `counter_hints[]` payload. Nothing to author on the render side.
 
-### `core/fed_threat.py` (NEW - mirrors core/cc_threat.py)
+### `core/build_planner/fed_threat.py` (NEW - mirrors core/cc_threat.py)
 
 Pure, network/LLM/engine-free, fail-soft. Public surface:
 
@@ -348,7 +348,7 @@ team, and fail-softs to `[]` on a non-array roster.
 ## R5 TIER
 
 TIER-1 (RC-side local logic). Justification from the evidence: the ONLY files
-are `core/fed_threat.py` (new, a pure data reader), `dashboard/routes_build_plan.py`
+are `core/build_planner/fed_threat.py` (new, a pure data reader), `dashboard/routes_build_plan.py`
 (consumer plumbing), `web/js/panels/active_match.js` (payload), and their tests.
 There is NO DS engine touch (`agents/daemon_slayer/*` untouched), NO
 `ENGINE_VERSION` bump, NO DS schema / scorer / item-effect change, NO Share
@@ -362,7 +362,7 @@ per ADR-008). NO Tier-2 dual-suite / DS-restart tax.
 
 ## FILES TOUCHED
 
-  * `core/fed_threat.py` - NEW (estimator + compute_fed + gold-map loader).
+  * `core/build_planner/fed_threat.py` - NEW (estimator + compute_fed + gold-map loader).
   * `dashboard/routes_build_plan.py` - enemy_scores/levels coercers; compute
     fed; RC_FED_SHADOW append; fed= kwarg through _resolve_enemy_profile gated
     on RC_FED_HINT.
