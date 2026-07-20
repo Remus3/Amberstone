@@ -947,3 +947,251 @@ _Bone Plating SHIPPED at ENGINE 1.227.0. The unbuilt remainder (Second Wind, Gua
     exists (the `data/meta_build/scraped/ugg/*.html` hits are a verbatim re-serve of the same
     DDragon payload, and no CommunityDragon `perks.json` is vendored at all). Two R136 tests
     pin 8463 and 8465 at zero credit so a later pass cannot quietly seed a guess.
+
+## 2026-07-19 (session 2) - RM-106a closed / RM-106b MEASURED-NO / RM-16 items 215+212 REFUTED / RM-106 edge-blocked (relocated from ROADMAP.md)
+
+Four ROADMAP entries resolved in one session. Every verdict below is a live
+measurement or a cited-code refutation, not a re-reading of the filing prose.
+
+### RM-106a - CLOSED, both "STILL UNMEASURED" questions answered
+
+The block is relocated verbatim below. Its two open questions were both closed by
+the RM-107 probe in the prior session, so nothing remains open here:
+
+1. "whether the reduced event set is a KIWI property or an LCU-timeline property" -
+   ANSWERED: it is an LCU-TIMELINE property. A PRACTICETOOL match on the same route
+   also returned only CHAMPION_KILL. Item and skill events are gone PERMANENTLY on
+   this route, for every mode.
+2. "how far back the LCU match-history window reaches" - ANSWERED: HARD-CAPPED AT 20
+   entries. This is a recent-matches-only route and can NEVER backfill.
+
+Verbatim relocation:
+
+  - **RM-106a TIMELINE QUESTION ANSWERED - YES, MEASURED 2026-07-19, and it needs no SGP at all.**
+    `GET /lol-match-history/v1/game-timelines/{gameId}` on the LOCAL LCU (lockfile auth, the client
+    RC already talks to) returned **HTTP 200 / 66.5 KB / 21 frames** for a KIWI queue-2400 match
+    (gameDuration 1169s), carrying **10 `participantFrames` per frame** and 95 events. So event-mode
+    timelines are NOT unobtainable, and the answer arrives over a surface RC already authenticates
+    against - no SGP token, no new dependency, no ToS exposure beyond existing LCU use. **BUT THE
+    EVENT SET IS REDUCED - price this before building on it.** Only TWO event types were observed:
+    `CHAMPION_KILL` (88) and `BUILDING_KILL` (7). NO `ITEM_PURCHASED` and NO `SKILL_LEVEL_UP`, which
+    are exactly what RC's `/api/replay/events?include=items,skills` consumes. So this unlocks the
+    per-minute gold / xp / level curves (the s220 PGR gold-diff work) and the kill map, and does NOT
+    restore item or skill order. Frame cadence is ~1/minute, matching Match-V5 timeline granularity.
+    **PRIOR ART, do not re-discover:** `docs/LEDGER.md:1904` already records this endpoint as an
+    unconsumed lift, but framed for PGR gold-diff curves and skill-order WPA; nobody had connected
+    it to the event-mode timeline question.
+
+### RM-106b - CLOSED, THE ONE EXPERIMENT RAN AND THE ANSWER IS NO
+
+Measured 2026-07-19 against a replay the operator had actively playing, with
+`League of Legends.exe` (pid 608) up and serving `:2999`:
+
+- `GET :2999/swagger/v3/openapi.json` -> **HTTP 200, 26883 bytes**. The port IS
+  serving, so this is not a connection-refused / wrong-port artifact.
+- The served spec (`title: LoLClient`) ADVERTISES all 12 `/liveclientdata/*` routes.
+- Every one of them measured **HTTP 404 `RESOURCE_NOT_FOUND` / "Invalid URI format"**
+  during playback: allgamedata, activeplayer, playerlist, eventdata, gamestats.
+
+Per RM-106b's own closure condition ("If it does not, close RM-106b and the timeline
+gap stands"), this closes it. Replay playback does not populate the live-client
+surface, so the seek-and-sample reconstruction route does not exist.
+
+**ONE VARIANT LEFT UNTESTED, and it is operator-gated, not an oversight:**
+`EnableReplayApi` is ABSENT from `[General]` in
+`C:\Riot Games\League of Legends\Config\game.cfg` (only `[Replay]` UI keys are
+present: ShowReplayTimeControls, ShowReplayScoreboard, ReplayMiddleMouseScrollSpeed,
+GlobalScaleReplay, ReplayScrollSmoothingEnabled). So the ABSENCE of `/replay/*`
+routes in the served spec is EXPECTED and is NOT evidence about the Replay API. It
+is unproven whether that same flag also gates `/liveclientdata/*` during playback.
+Re-testing means editing the operator's game config and restarting the client, so it
+was deliberately NOT done unilaterally. If the operator ever sets the flag, re-run
+the same five-route probe before concluding anything.
+
+Verbatim relocation of the original block:
+
+  - **RM-106b the REPLAY API is a second, fully-sanctioned candidate for the timeline half - and it
+    does NOT fall under the `.rofl` fence. DEPRIORITIZED by RM-106a, but not closed, and the REASON
+    changed:** RM-106a already answers "does an event-mode timeline exist" (yes) far more cheaply,
+    so RM-106b is no longer about EXISTENCE. What it would still uniquely buy is RESOLUTION and
+    EVENT COVERAGE - RM-106a returns ~1 frame per minute with only CHAMPION_KILL / BUILDING_KILL,
+    whereas replay playback would expose full live state at ARBITRARY timestamps, including the
+    item and skill progression RM-106a does not carry. Chase it only if sub-minute granularity or
+    item/skill order turns out to be load-bearing; otherwise RM-106a is sufficient and cheaper. Riot publishes a first-party reference implementation
+    for its own in-client Replay API, **Apache 2.0 licensed**, which makes it the only source in
+    this research batch that is genuinely liftable rather than reference-only. Enabling it is
+    `EnableReplayApi=1` under `[General]` in `game.cfg` - **a CONFIG FLAG, not a binary patch**, so
+    the do-not-modify-client-files rule (Vanguard) is not engaged; RC already reads `game.cfg` for
+    minimap geometry. **WHY THE .rofl FENCE DOES NOT APPLY:** that fence closed `.rofl` because
+    per-patch Layer-2 obfuscation makes PARSING uneconomic. Playback-based extraction parses
+    nothing - the client decodes the file itself and serves state over a documented local API. The
+    closure REASON does not transfer, so do not kill this by pattern-matching it to "rofl =
+    CLOSED". **HARD BOUNDS, measured 2026-07-19:** exactly ONE
+    `.rofl` exists on disk locally, and replays are generally patch-locked, so this is a
+    FORWARD-CAPTURE route and CANNOT backfill the ~2952-match history. It also needs the game
+    client running with a replay actively playing, so it is an interactive capture, never a
+    background job. **NAME COLLISION - do not conflate:** RC's existing `/api/replay/*` routes
+    (`dashboard/routes_replay_events.py`, ADR-009 replay-events-cleanroom) are RC's OWN
+    match-data feature and have nothing to do with Riot's Replay API.
+
+### RM-16 item 215 (poller relay-first watch) - REFUTED, no code changed
+
+The filed defect ("a dead RC-LiveClientRelay 404 short-circuits 'no game'") does not
+reproduce on the 1-PC topology. The relay cannot emit a 404 for a running local game:
+
+- `game_reader/poller.py:70-103` `_try_relay()` sets `_relay_says_no_game = True` only
+  on `HTTPError` 404 (`:99-100`). A STALE snapshot returns `None` without the flag
+  (`:90-92`); an unreachable relay likewise returns `None` without the flag (`:102-103`).
+- `game_reader/poller.py:149-152` short-circuits ONLY on that flag; both other cases
+  fall through to direct `:2999` at `:154`. So the flag is the single gate, as filed.
+- `vision_server/_http.py:90-99` 404s only when `lc.get("data")` is falsy, and
+  `vision_server/_relay.py:187-198` self-reads Riot's `:2999` IN-PROCESS first whenever
+  `GAME_HOST` is local and the snapshot is older than `_SELF_READ_STALE_S = 2.0`
+  (`_maybe_self_read`, `:138-155`; the read itself at `:113-125`).
+
+So a 404 is emitted only AFTER the vision server has just tried a direct local `:2999`
+read and come up empty. That is a genuine "no game", not a dead-agent artifact. The
+relay agent being dead changes nothing - `handle_upload_liveclient` (`_relay.py:158`)
+only pre-warms the cache. The self-read throttle (`_SELF_READ_MIN_INTERVAL_S = 1.5`,
+`_relay.py:106`) cannot starve the poller either: `core/liveclient_cache.py:35-37` polls
+at 0.5s, so with the agent dead the cache re-reads `:2999` about every 2.5s and never
+crosses into a false 404 while a game is live. The only branch with the self-heal off is
+a REMOTE `RC_GAME_HOST` (`_relay.py:192`), where the proposed "prefer direct local
+:2999" fix would be useless anyway because Riot binds `:2999` localhost-only on the
+remote box (documented `_relay.py:16-20`).
+
+Already pinned by `tests/test_liveclient_self_heal_1pc.py` -
+`test_stale_cache_self_reads_2999` (:50), `test_self_read_failure_returns_empty` (:57),
+`test_remote_host_no_self_read` (:69). Ran that file plus
+`tests/test_liveclient_cache_listeners.py` and
+`tests/test_liveclient_cache_reuse_hot02.py`: **19 passed, 0 failed** (0.48s).
+
+STILL OPEN from the same RM-16 bullet: the OBS DXGI match-end capture watch. Only the
+poller clause is struck.
+
+### RM-16 item 212 (`_csvMaybePushBuildsToLCU` 4-set cap) - REFUTED, no code changed
+
+RC never evicts a foreign (user-authored) item set. `tools/lcu_agent.py` is the ONLY
+writer of `/lol-item-sets/v1/item-sets/{sid}/sets` in the repo, and all three write
+handlers are scoped to the `RC-` uid prefix:
+
+- `apply_item_sets_batch` (`tools/lcu_agent.py:1087`):
+  `sets = [s for s in sets if str(s.get("uid", "")) not in new_uids]`, where `new_uids`
+  (`:1076`) is built exclusively from the batch's OWN `set_uid` values, minted by
+  `web/js/panels/champ_select.js:2341` as `RC-<champion>-<mode>-<uidKey>`. Only an
+  RC-authored uid can collide; `:1088` prepends and carries every other set forward.
+- `delete_stale_rc_item_sets` (`:1138`): `if not uid.startswith("RC-")` preserves
+  unconditionally, BEFORE any RC scope test.
+- `apply_item_set` `replace_all_rc` branch (`:1024`): even the nuclear option filters
+  on `startswith("RC-")`.
+
+The cap itself is `pushUnits.slice(0, 4)` at `web/js/panels/champ_select.js:2340`. It
+bounds how many of RC's OWN builds get pushed, so truncation can only drop a 5th+ RC
+build path - it has no mechanism to touch a user set. The filing INVERTS the direction:
+the cap is a self-limit, not a global slot budget.
+
+Already pinned by `tests/test_lcu_item_sets_wipe_stale.py:166`
+`test_preserves_operator_custom_sets` and `:208` (4 current-scope `RC-` + 1 operator
+custom = 5 kept) - the exact filed scenario is already regression-guarded. Ran
+`tests/test_lcu_item_sets_wipe_stale.py` + `tests/test_csv_push_swap_wipe.py`:
+**27 passed** (0.50s).
+
+REAL RESIDUAL, re-filed rather than dropped: `:1088` does `new_sets + sets`, so RC
+sets sort to the TOP of the client list and a user's set is pushed further DOWN the
+dropdown. That is visual POSITION, not eviction, and the list is not length-capped
+anywhere. If the operator's underlying complaint was ordering, it is a `sortrank` /
+insertion-position item against `tools/lcu_agent.py:1088` and a genuinely different bug.
+
+### RM-106 - BLOCKED AT THE CLOUDFLARE EDGE (not deprioritized, not closed)
+
+The SGP route measured HTTP 200 / 2.0 MB / 20 games on 2026-07-19. Re-probed the same
+day from a standalone Python client and it now measures **HTTP 403, 713 bytes**:
+
+```
+error_code 1010, error_name "browser_signature_banned"
+"The site owner has blocked access based on your browser's signature."
+"retryable": false   Server: cloudflare   zone usw2-red.pp.sgp.pvp.net
+```
+
+The LCU half is FINE and is not the blocker: lockfile auth OK on port 51107, and
+`/lol-league-session/v1/league-session-token` minted a valid token (1123 chars, 3
+segments, `alg RS256`, `iss https://session.gpsrv.pvp.net`, `scp "LOL"`, `cid "lss_lol"`,
+`dat.r = "NA1"`, fresh `exp`); region NA confirmed via `/riotclient/region-locale`. The
+rejection happens at the edge on client signature, BEFORE auth is considered.
+
+**The only way past a `browser_signature_banned` is to forge the User-Agent to
+impersonate the League client. That is bypassing bot detection and was deliberately NOT
+done.** It is also a different risk posture from what was authorized on 2026-07-19:
+read-only human-rate probing, not evasion of an access control the site owner
+deliberately placed. Total requests made: 2 (one probe, one diagnostic), no retry loop.
+
+Measured history depth: **UNKNOWN**. Oldest `gameCreation` reached: none. Paging
+behaviour: unobserved. Do not carry forward any depth number - none was ever measured.
+
+**THE 2026-07-19 2.0 MB CAPTURE DOES NOT EXIST ON DISK.** Repo, all Claude scratchpads
+and temp were searched; nothing survived that session. Any future step-2 work needs a
+fresh real payload - do NOT synthesize a fixture from the ROADMAP's 153-field prose,
+because an adapter green against a self-shaped fixture proves only that it matches its
+own assumptions (`feedback_subagent_fixture_shaped_to_bug`).
+
+**STEP 2 GROUNDWORK THAT SURVIVES (free, verified against code):** RM-106's structural
+claim holds - this is adapter-level, not a new parser. The ingest chokepoint is
+`scripts/rewind_scraper.py`: `:707-708` reads `stats["info"]` / `stats["metadata"]`;
+`:711` iterates `info["participants"]`; `:733-744` reads platformId, queueId, gameMode,
+gameType, mapId, gameVersion, gameDuration, gameCreation, gameEndTimestamp,
+endOfGameResult, tournamentCode off `info`; `:763-765` calls `parse_participant` per
+participant; `:768-769` calls `parse_team` per team. So the adapter maps SGP's `json`
+block onto `match["info"]` and synthesizes `metadata` (chiefly the participants PUUID
+list). **ONE FLAG:** `gameEndTimestamp` (`:742`) is NOT in RM-106's documented field
+list; if SGP omits it that column silently takes the `0` default. Confirm against a real
+payload before building.
+
+### CORRECTION 2026-07-19 (same session) - RM-106b is NOT closed. The "NO" verdict above is RETRACTED.
+
+The RM-106b closure recorded earlier in this block measured the flag-OFF state and is
+WRONG. Do not inherit it. What actually happened: `EnableReplayApi` was ABSENT from
+`game.cfg` at probe time, so every `/liveclientdata/*` route 404'd. The operator then
+launched LeagueDirector (`C:/Users/Administrator/Documents/LeagueDirector/`, created
+19:55), which WROTE `EnableReplayApi=1` into
+`C:/Riot Games/League of Legends/Config/game.cfg` line 18. Re-probed with the flag ON,
+against the same actively-playing KIWI replay:
+
+- `GET :2999/liveclientdata/allgamedata` -> **HTTP 200 / 19846 bytes**, `gameMode KIWI`,
+  `gameTime 25.95`, **10 players**, each carrying `items`, `level`, `runes`, `scores`,
+  `summonerSpells`, `position`, `team`.
+- `/replay/playback`, `/replay/game`, `/replay/particles`, `/replay/render`,
+  `/replay/sequence`, `/replay/recording`, `/replay/banners` all serve (GET, most POST).
+- `GET /replay/playback` -> `{length: 1026.54, paused: false, seeking: false, speed: 1.0,
+  time: 25.99}`.
+
+**SEEK-AND-SAMPLE PROVEN (this is the load-bearing measurement, not an inference):**
+`POST /replay/playback {"time":600.0,"paused":true,"seeking":true}` -> HTTP 200, then
+`GET /liveclientdata/allgamedata` measured `gameTime` exactly **600.0**, with Leona at
+level **12** (was 3) and **5** items (was 4), and populated K/D/A 9/7/13. The sampled
+state follows the seek. So per-timestamp ITEM progression is reconstructable for KIWI by
+seeking and diffing `allPlayers[].items` - which is precisely what RM-106a (LCU timeline)
+and RM-106 (SGP) both CANNOT deliver.
+
+**TWO REAL LIMITS, measured not assumed:**
+
+1. **SKILL ORDER IS NOT RECOVERABLE.** `GET /liveclientdata/activeplayerabilities`
+   returns **HTTP 400** during replay playback - there is no "active player" in a
+   spectator context. Only `implementationDetails` comes back. Do not plan skill-order
+   work on this route.
+2. **ITEMS DO NOT COME FROM EVENTS.** `eventdata` at t=600 carried only `GameStart` (1),
+   `ChampionKill` (7), `Multikill` (1). There is NO `ITEM_PURCHASED`. Item state must be
+   SAMPLED per seek and diffed; the event stream will never carry it.
+
+**HARD BOUNDS UNCHANGED and still binding:** exactly TWO `.rofl` files exist on disk
+(`NA1-5592802194.rofl` 13.0 MB, `NA1-5604806601.rofl` 8.3 MB) and replays are
+patch-locked, so this is a FORWARD-CAPTURE route that CANNOT backfill the ~2952-match
+history. It requires the game client running with a replay actively playing, so it is an
+interactive capture and NEVER a background job.
+
+**PROCESS LESSON:** the earlier verdict was recorded with an explicit caveat naming the
+untested flag, and that caveat is the only reason the error was caught within the hour.
+A measured negative taken while a known gating flag is unverified is not a negative - it
+is an untested configuration. Verify the gate BEFORE recording a closure.
+
+**OPERATOR STATE NOTE:** the seek probe moved the replay to t=600 paused; playback was
+restored afterwards to t=28.0, unpaused, speed 1.0.
