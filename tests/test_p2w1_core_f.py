@@ -31,38 +31,11 @@ import threading
 from pathlib import Path
 
 import pytest
+from tests._asyncio_isolation import run_coro as _run_coro
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 _BANNED_CHARS = "\u2013\u2014\u2018\u2019\u201c\u201d"
-
-
-def _run_coro(coro, timeout=10.0):
-    """Run a coroutine on a fresh loop in a dedicated thread.
-
-    asyncio.run() refuses to start when an earlier suite test leaves a
-    running-loop marker on the main thread; a private thread-local loop is
-    immune to that pollution.
-    """
-    box = {}
-
-    def runner():
-        loop = asyncio.new_event_loop()
-        try:
-            box["value"] = loop.run_until_complete(coro)
-        except BaseException as exc:  # re-raised on the caller thread  # noqa: BLE001
-            box["error"] = exc
-        finally:
-            loop.close()
-
-    t = threading.Thread(target=runner, daemon=True)
-    t.start()
-    t.join(timeout)
-    if t.is_alive():
-        raise TimeoutError(f"coroutine did not finish within {timeout}s")
-    if "error" in box:
-        raise box["error"]
-    return box.get("value")
 
 
 # ---------------------------------------------------------------------------

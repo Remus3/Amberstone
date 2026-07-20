@@ -29,33 +29,11 @@ import time
 from pathlib import Path
 
 import pytest
+from tests._asyncio_isolation import run_coro as _run_coro
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 _BANNED_CHARS = "\u2013\u2014\u2018\u2019\u201c\u201d"
-
-
-def _run_coro(coro, timeout=10.0):
-    """Run a coroutine on a fresh loop in a dedicated thread (immune to
-    running-loop pollution left by earlier suite tests)."""
-    box = {}
-
-    def runner():
-        loop = asyncio.new_event_loop()
-        try:
-            box["value"] = loop.run_until_complete(coro)
-        except BaseException as exc:  # re-raised on the caller thread  # noqa: BLE001
-            box["error"] = exc
-        finally:
-            loop.close()
-
-    t = threading.Thread(target=runner, daemon=True)
-    t.start()
-    t.join(timeout)
-    if "error" in box:
-        raise box["error"]
-    assert "value" in box, "coroutine did not finish within timeout"
-    return box["value"]
 
 
 class _StubWs:
