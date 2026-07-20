@@ -4,6 +4,54 @@
 
 ---
 
+# 2026-07-20i - R143 HSP registry: mirror id-space coverage + Moonstone semantic split
+
+**ENGINE 1.229.0 -> 1.230.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the SAME
+commit, DS `:8893` bounced onto 1.230.0, build-order precompute regenerated, dual suite green.
+
+Gemini-loop cycle 1. Directive asked for an HSP magnitude + mirror sweep of 7 enchanter items.
+
+**The directive's own axis came back CLEAN.** All 12 committed bare-id magnitudes in
+`enchanter_items.json` re-derived from DDragon 16.14.1 - every one already correct. The
+`[UNVERIFIED]` "lack correct magnitudes" premise is REFUTED. Two real defects found off-axis.
+
+**Defect 1 - mirror ids returned a silent 0.0.** `_hsp_amp.sum_wielder_hsp_pct` keys on BARE
+ids; `core/daemon_slayer_resolver.name_to_id` returns `32xxxx` (mode="sr") and `22xxxx`
+(mode="arena") MIRRORS. `_hsp_amp.py:51` missed -> silent 0.0, no raise/log/fallback (R135
+fallthrough class). Live-reachable: `coach_integration/_coach.py:300` -> `item_ids` at :318.
+Measured 0.22 under mode="sr" vs a 0.88 bare-id control.
+
+**The one-line fix would have been WRONG.** Prefix-strip / normalize is the natural fix and it
+ships wrong numbers: mirrors diverge in BOTH directions. Mikael 3222 .12 SR / .15 at `323222`;
+Dawncore 6621 .16 SR / .20 at `326621` / .12 at Arena `226621`. Arena also lifts Redemption
+.10->.12, Ardent .10->.12, Staff .10->.14. 22 mirror records enumerated explicitly instead.
+
+**Defect 2 - Moonstone 6617: right value, wrong consumer.** Its 0.30 is NOT an HSP stat (catalog
+grants none) - it is the Starlit Grace CHAIN-TO-ALLY ratio, which the text says excludes
+yourself. `_hsp_amp` (documented as WIELDER self-amp) read it anyway, over-crediting own shield
+(`ehp.py:1647`) + own regen (`sustain.py:382`) by +30%. **NOT zeroed** - the same field is
+load-bearing for ally throughput at `hps.py:605`. Split via a new `ally_chain_only` bool
+appended at the END of `EnchanterItemFormula` (no-mid-class-insert), True for 6617 alone.
+
+**Flagged side effect:** `hps.py:575` gates on `has_item`, so mirror records now resolve there
+too and compound into `amp_factor`. Closer to correct (was: no amp no heal; now: amp no heal)
+but a real `ds.hps` behavior change riding this bump.
+
+**Bump bookkeeping caught the rest.** RC went 14 red / 7 unique guards, all stamp propagation:
+`test_build_order_engine_stamp_sync` x6 (HZ-B precompute is patch-keyed static data a DS bump
+leaves stale - regen per the guard's own docstring, 3 modes x 173 champs) +
+`test_docs_daemon_slayer_drift` x1 (doc anchor). All 9 green after.
+
+Both defects were latent behind DEFAULT-OFF `assume_hsp_amp` (zero production callers pass
+True) - a pre-flip fix, not an incident.
+
+**Don't-redo:** the 12 bare-id magnitudes are SWEPT and CORRECT. Do NOT "simplify" the mirror
+enumeration into a prefix-strip helper - magnitudes genuinely differ per id space. Moonstone
+6617's 0.30 is CORRECT for `hps.py` - do NOT zero or delete it; it is gated off the wielder
+path by `ally_chain_only`, not by its value.
+
+---
+
 # 2026-07-20h - R142 RM-101 residual runes SHIPPED: Second Wind 8444 + Guardian 8465
 
 **ENGINE 1.228.0 -> 1.229.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the SAME
@@ -90,36 +138,3 @@ in a living doc is a false claim, and living docs are where false claims compoun
 No subagents / worktrees (R9 inline - one ROADMAP bullet, one plan row, one guard run). Fresh
 verification: **RC 12290 passed / 23 skipped / 359 subtests in 1325s** (exit 0), ruff clean, zero
 non-ASCII bytes on any added line. LEDGER 979.
-
----
-
-# 2026-07-20f - R140 RM-100 consolidation: CLEAN / REFUTED-PREMISE
-
-**Head `60ee6289`. ENGINE-IMPACT NONE** - docs-only Tier-0, no ENGINE_VERSION bump (stays 1.228.0 /
-patch 16.14.1), no Share resync, no `:8893` bounce owed. Doc-hygiene guards 13/13 green.
-
-Gemini-loop cycle 2, directive R140: fan out worktree agents to consolidate 5 near-identical local
-`_run_coro` / `_run_poll_loop` copies into `tests/_asyncio_isolation.py`. **Nothing was built, because
-the work had already shipped one cycle earlier in this same loop run** (R137, `114977ee`).
-
-Refuted on ground truth before any dispatch: `tests/_asyncio_isolation.py` on disk since 03:23
-(`run_coro` + `run_coro_capturing_thread`); grep for `def _run_coro` / `def _run_poll_loop` /
-`def run_coro` returns ZERO local definitions under `tests/` or `agents/`; all 5 named files already
-import the shared runner; `tests/test_asyncio_isolation_guard.py` already blocks a sixth copy and
-pins zero bare `asyncio.run(` under `tests/`. Fresh this run: **73 passed in 3.71s**.
-
-**The real defect was the stale prose that manufactured the directive.** `ROADMAP.md:20` still read
-"(5 near-identical copies; consolidating them is the open follow-up)" - R137 shipped the code but
-never cleared the text, and the director builds its refill digest from ROADMAP prose, so a follow-up
-closed in code but open in prose re-picks every cycle. That line now states CLOSED, names the shared
-module and both runners, names the 5 migrated files, and cites `114977ee`.
-
-The RM-100 **LATENT half is deliberately left standing**: `tests/snapshot_panels` still leaks
-asyncio's per-thread running-loop marker via its `scope="session"` `pw_browser` fixture, so a new
-test calling bare `asyncio.run()` on the main thread still fails. Closing consolidation is NOT
-closing the leak - do not conflate them.
-
-No subagents / worktrees (R9 inline - the build slice was cancelled by ground truth). PART C durable
-steer in `ops/loop/control/gemini_ask.txt`: this loop has now produced several refuted-premise cycles
-(R114, R115, R137, R140) from the same lag, so the director is asked to ground "X is still open"
-premises in a grep checked THIS cycle rather than digest prose.
