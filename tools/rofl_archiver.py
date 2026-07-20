@@ -135,6 +135,11 @@ def main(argv=None) -> int:
     ap.add_argument("--pull", action="store_true",
                     help="ask the client to download current-patch replays from "
                          "rewind_history.db before archiving")
+    ap.add_argument("--extract", action="store_true",
+                    help="extract the Layer-1 stats blob from every archived "
+                         "replay into <archive>/stats/<match_id>.json")
+    ap.add_argument("--force", action="store_true",
+                    help="re-extract sidecars that already exist (--extract)")
     ap.add_argument("--db", default=None, help="rewind_history.db path (--pull)")
     ap.add_argument("--limit", type=int, default=50,
                     help="max matches to consider when pulling (default 50)")
@@ -215,7 +220,19 @@ def main(argv=None) -> int:
         print(f"  + {mid}")
     for mid in res.failed:
         print(f"  ! {mid}")
-    return 1 if res.failed else 0
+
+    ex_failed = 0
+    if args.extract:
+        ex = rofl_archive.extract_archive(archive, force=args.force)
+        ex_failed = len(ex.failed)
+        print(f"extract: extracted={len(ex.extracted)} skipped={len(ex.skipped)} "
+              f"failed={ex_failed} -> {archive / 'stats'}")
+        for mid in ex.extracted:
+            print(f"  * {mid}")
+        for mid in ex.failed:
+            print(f"  ! {mid}")
+
+    return 1 if (res.failed or ex_failed) else 0
 
 
 if __name__ == "__main__":
