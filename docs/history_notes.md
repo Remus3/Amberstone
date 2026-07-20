@@ -119,6 +119,119 @@ champion/build data and land it for live usage.
 
 ---
 
+
+# 2026-07-19m (RM-104: the filing named one bug and the sweep found four; the three nobody filed were the live ones)
+
+**The reported defect was real and exactly as described. It was also the least
+important of the four, and the only one that could not reach production. The
+sweep that found the other three took one script.**
+
+Shipped: `1f13188b` ENGINE 1.228.0. DS 8866 passed / 1 skipped / 2518 subtests;
+`tests/` 11993 passed / 23 skipped; `:8893` live at 1.228.0. Ledger 968.
+
+**ALWAYS RUN THE SIBLING SWEEP BEFORE BELIEVING A FILING'S SCOPE.** RM-104 said
+"Kaenic is the sole outlier whose mirror exists in the index but is uncredited."
+False. Shieldbow `226673`, Sterak's `223053` and Maw `223156` had the identical
+`shield=None` defect, are ALWAYS-ON, and had been crediting zero on every Arena
+build. The filed one is default-OFF and reaches no route. A ~30-line script
+resolving each mirror id to its longest base-id suffix proved the population is
+exactly four, and that script is now a standing test - the defect was a CLASS
+(mirror entries copied from an SR entry's prose with `shield=` dropped), so a
+per-instance fix would have left the next one to rot silently.
+
+**A SUBAGENT GAVE ME CORRECT EVIDENCE AND THE WRONG CONCLUSION.** The sourcing
+agent found - accurately - that three of four mirrors are stat-retuned (350 vs
+400 HP, 300 vs 400, 50 vs 60 AD) and concluded inheriting their shields is
+"likely wrong, not merely unsourced." It conflated COEFFICIENT with OUTPUT. The
+formulas scale off the champion's resolved `bonus_hp`/`bonus_ad`/`max_hp`, so
+the retune already flows through: Sterak's credits 0.60 * 300 = 180.0, not 240.
+Measured, not reasoned. Acting on that conclusion would have invented four
+unsourced magnitudes to fix a non-problem. **Verify a subagent's INFERENCE
+separately from its EVIDENCE - they fail independently.**
+
+**I REGENERATED THE WRONG TABLE AND BRIEFLY REPORTED A FALSE RESULT.**
+`tools/daemon_slayer_build_orders_generate.py` is NOT the artifact the stamp /
+freshness tests read - those come from `core.build_order_precompute` and
+`core.build_order_variants` at `--champions all`. The wrong tool returned
+stamp-only, so I told the operator no recommendation had changed. The right
+tools changed **68 of 173 ARENA** entries, all gaining `223053`, SR + ARAM
+untouched. The acceptance criteria's "stamp-only" prediction was itself
+inherited from the filing's latency claim and was wrong for the same reason.
+Operator reviewed and shipped as-is.
+
+**ORDERING: sync Share LAST.** I ran `ds_share_sync`, then edited 120 version-pin
+test files, leaving the mirror stale behind me - one of 14 `tests/` failures,
+none of which came from the fix. The bump ritual's regen/sync-THEN-suite order
+exists for precisely this.
+
+**THE NOTIFICATION LIED AND THE REDIRECT DID NOT.** The background-task
+completion event reported `exit code 0`; the captured file read `MAIN_EXIT=1`
+with 14 failures. Capture pytest by redirect and read the FILE - the
+notification's exit code is not the suite's.
+
+**NEXT: the silent-no-op bare excepts - and THE "~28" IS WRONG, MEASURED.** The
+standing handoff has said "~28 silent-no-op bare excepts logging at DEBUG" for
+three sessions. Re-sized by AST this session (grep is useless here - a naive
+`except .*:` grep returns 232 and a run including vendored `python-embed/`
+site-packages returns 1127). **First-party, excluding `tests/` + `Share/` +
+`python-embed/`: 781 silent-no-op handlers - 166 debug-only and 615
+pass/continue/`...`-only, of which 510 catch broad (bare / `Exception` /
+`BaseException`).** So the debug-only class alone is ~6x the filed figure and
+the total is ~28x. Do NOT scope the next session to 28.
+
+Densest first-party files (debug-only): `game_reader/snapshot_normalizer.py` 23,
+`lcu/lcu_rune_writer.py` 8, `agents/supervisor.py` 7, `coaches/arena_coach.py` 7,
+`coaches/_base_coach.py` 7, `performance_tracker.py` 5. That population has now
+produced FIVE silent failures across three sessions and is the highest-value
+cleanup available - but it is a triage-and-batch job, not a one-session sweep.
+Sizing script: scratchpad `size_silent_excepts.py` (AST, re-runnable).
+
+---
+
+# 2026-07-19l (three lanes shipped; every filing was wrong somewhere load-bearing, and I broke Share/src and fixed it)
+
+**A ROADMAP number, a spec's prescribed fix, and a stated defect premise are all
+just claims. Three of three were wrong this session in ways that would have
+shipped defects, and all three were caught by reading files instead of prose.**
+
+Shipped: `556662a7` RM-107 + the `begin/end` HTTP 400 sibling; `b9ac8de9`
+CHANGELOG 1.224.0/1.225.0 backfill + prepend guard; `8bf21a77` Share/src
+recovery; `ba676157` atomic Share sync; `a60d32e6` Lane 1 feed index + RM-108;
+`37db1414` ENGINE 1.227.0 (RM-101/102/103/105). CI green. Ledger 965-967.
+
+**THE INCIDENT, because it will recur otherwise.** Commit `6464532e` (mine)
+emptied `Share/src` on main - 501 deletions, 596,900 lines, ZERO additions.
+`ds_share_sync._write` was `rmtree` THEN rebuild, so the mirror spent the entire
+~483-file rebuild deleted, and I committed while background agents were live.
+Recovered within minutes; root-fixed in `ba676157` as stage-then-swap. **Do NOT
+restore the rmtree shape.** Two rules earned: never commit while agents are
+live, and verify a commit's CONTENTS, not its message.
+
+**A SECOND silent trap in the same family:** `pathlib.write_text` on Windows
+translates `\n` to `\r\n`, so my patcher scripts CRLF-ified 134 working-tree
+files whose index form is LF. Only the Share byte-compare caught it. Any future
+agent patching files with `write_text` reintroduces it - **use `write_bytes`.**
+
+**Three filings corrected, do not re-inherit them.** (1) RM-107's prescribed
+"narrow the except" is mechanically impossible - `_lcu_get` swallows the error
+itself. (2) RM-101's ~154 HP is an UN-AMORTIZED upper bound, not a coefficient;
+shipped at 0.25 = 38.38, and the "reorders a ranking" conclusion was then
+MEASURED true anyway (+81.56 EHP, 9 of 138 positions, top-6 swap). (3) RM-108's
+"a naive parser reads 0.0" is false - all 56,896 tokens land in display-prose
+keys with zero runtime readers, so the detector serves registry AUTHORS.
+
+**Two guards earned their keep.** The changelog guard I wrote this session
+caught my OWN bump. The R134 signature guard rejected my OWN wiring (flags
+inserted mid-signature). Both fired correctly on their author.
+
+**NEXT: RM-104** (Kaenic mirror 222504) plus the three always-on lifeline
+mirrors `226673` / `223053` / `223156` the verifier found carrying the identical
+`shield=None` defect. Then the ~28 silent-no-op bare excepts the sweep sized but
+did not fix - that population has now produced four silent failures in two
+sessions.
+
+---
+
 # 2026-07-19k (R137 - RM-99 Heartsteel shipped, and the number the spec told us to use was wrong because the FEED was frozen)
 
 **A vendored feed sitting in a `16.14.1/` directory is not 16.14.1 data. Nothing
