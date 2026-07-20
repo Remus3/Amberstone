@@ -441,6 +441,10 @@ def compute_hybrid(
     # through to compute_ehp. Both ride the existing ``rune_ids`` transport.
     apply_rune_self_heal: bool = False,
     apply_rune_shield_grants: bool = False,
+    # R145 (ENGINE 1.232.0): the OFFENSE-side rune adaptive stat-grant seam,
+    # appended at END per the same no-mid-signature-insert convention and passed
+    # straight through to compute_dps. Rides the existing ``rune_ids`` transport.
+    apply_rune_offense_grants: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -551,6 +555,8 @@ def compute_hybrid(
         augments=augments,
         apply_mode_modifiers=apply_mode_modifiers,
         apply_melee_aa_gate=apply_melee_aa_gate,
+        apply_rune_offense_grants=apply_rune_offense_grants,
+        rune_ids=rune_ids,
     )
     # ENGINE 1.39.0 (item 143 Slice B): pass include_conditional through
     # to compute_ehp ONLY when True. This preserves byte-identical
@@ -959,6 +965,10 @@ def rank_items_by_hybrid(
     # through to compute_ehp. Both ride the existing ``rune_ids`` transport.
     apply_rune_self_heal: bool = False,
     apply_rune_shield_grants: bool = False,
+    # R145 (ENGINE 1.232.0): the OFFENSE-side rune adaptive stat-grant seam,
+    # appended at END per the same no-mid-signature-insert convention and passed
+    # straight through to compute_dps. Rides the existing ``rune_ids`` transport.
+    apply_rune_offense_grants: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -1103,6 +1113,8 @@ def rank_items_by_hybrid(
         target_current_hp_pct=target_current_hp_pct,
         phase=phase, augments=augments,
         apply_mode_modifiers=apply_mode_modifiers,
+        apply_rune_offense_grants=apply_rune_offense_grants,
+        rune_ids=rune_ids,
     )
     # ENGINE 1.39.0 (item 143 Slice B): pass include_conditional through
     # only when True (same pattern as compute_hybrid above).
@@ -1234,6 +1246,8 @@ def rank_items_by_hybrid(
                 target_current_hp_pct=target_current_hp_pct,
                 phase=phase, augments=augments,
                 apply_mode_modifiers=apply_mode_modifiers,
+                apply_rune_offense_grants=apply_rune_offense_grants,
+                rune_ids=rune_ids,
             )
             # RM-39/RM-43 (DEFAULT-OFF): per-candidate mirror of the same gate.
             # OFF binds the SAME raw value (a name bind, not a float op).
