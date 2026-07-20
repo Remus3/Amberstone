@@ -119,6 +119,42 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-20g - R141 RM-100 CLOSED: asyncio leak accepted as a priced tradeoff
+
+**Head `bacc559f` (`ba23bae0` is the content commit). ENGINE-IMPACT NONE** - Tier-0 docs +
+guard-verify, no ENGINE_VERSION bump (stays 1.228.0 / patch 16.14.1), no Share resync, no `:8893`
+bounce owed, no route change.
+
+Gemini-loop cycle 4. This cycle answered the PART-C escalation R140 wrote: R140 closed the
+consolidation half of RM-100 and deliberately left the LEAK half standing, so something had to
+decide fix-or-accept. **Decision: option (B), leave it LATENT - and the reason is a priced trade.**
+
+The fix has a known shape and a known price: narrow `pw_browser` off `scope="session"`
+(`tests/snapshot_panels/conftest.py:246`) and pay a browser launch across ~387 snapshot_panels
+tests, permanently. What that buys is bounding a leak that is **already bounded** by
+`PlaywrightContextManager.__exit__` (measured py3.14 + playwright 1.59.0, recorded in R137) and that
+has **zero live trigger** - no bare `asyncio.run(` calls exist under `tests/` at all. Bad trade.
+
+Accepting a latent bug is only defensible if a test fails the moment it stops being latent. It does,
+and it was re-run THIS cycle rather than inherited from the escalation text:
+`tests/test_asyncio_isolation_guard.py` = **7 passed in 2.57s**, pinning both invariants (no bare
+`asyncio.run(` under `tests/`; no sixth local runner copy).
+
+`ROADMAP.md:20` is now a CLOSED bullet that states the tradeoff, its price, and the guard, with an
+explicit do-not-re-pitch. That sentence is the deliverable - it is the same stale-prose failure mode
+R140 root-caused, one level up: an open-reading bullet with no verdict re-picks every director cycle.
+
+**One deliberate deviation, logged not silent.** The directive said mark RM-100 fully CLOSED. The
+RC-GeminiAudit `0xC000013A` last-run result is still genuinely UNPROVEN (six hypotheses refuted), so
+it rides inside the closed bullet as a labelled watch-item. Writing "closed" over an unproven fault
+in a living doc is a false claim, and living docs are where false claims compound.
+
+No subagents / worktrees (R9 inline - one ROADMAP bullet, one plan row, one guard run). Fresh
+verification: **RC 12290 passed / 23 skipped / 359 subtests in 1325s** (exit 0), ruff clean, zero
+non-ASCII bytes on any added line. LEDGER 979.
+
+---
+
 # 2026-07-20f - R140 RM-100 consolidation: CLEAN / REFUTED-PREMISE
 
 **Head `60ee6289`. ENGINE-IMPACT NONE** - docs-only Tier-0, no ENGINE_VERSION bump (stays 1.228.0 /
