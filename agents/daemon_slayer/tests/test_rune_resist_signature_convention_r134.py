@@ -85,6 +85,13 @@ _R137_TAIL = ("assume_item_health_stacks",)
 # every earlier group stays adjacent and ordered - it is simply no longer the tail.
 _R1227_TAIL = ("apply_rune_flat_mitigation", "assume_item_proc_heal")
 
+# ENGINE 1.229.0 (R142) appends the RM-101 RESIDUAL pair: apply_rune_self_heal
+# (Second Wind 8444) and apply_rune_shield_grants (Guardian 8465). Both ride the
+# existing rune_ids transport, so once again no ids parameter lands and every
+# earlier group stays adjacent and ordered - the 1.227.0 pair is simply no longer
+# the tail.
+_R1229_TAIL = ("apply_rune_self_heal", "apply_rune_shield_grants")
+
 _SEAM_ENTRY_POINTS = (
     compute_ehp,
     rank_items_by_ehp,
@@ -97,19 +104,23 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
     """GUARD 1: the R132 pair must be the LAST two parameters on every entry point."""
 
     def test_r132_pair_is_the_signature_tail_on_every_entry_point(self) -> None:
-        # R136, R137 then the 1.227.0 pair appended after the R132 pair, so the
-        # pair is now the -7:-5 slice. The invariant the guard actually protects is unchanged:
-        # these seam kwargs live at the END, in order, never mid-signature.
+        # R136, R137, the 1.227.0 pair then the 1.229.0 pair appended after the
+        # R132 pair, so the pair is now the -9:-7 slice. The invariant the guard
+        # actually protects is unchanged: these seam kwargs live at the END, in
+        # order, never mid-signature.
+        expected = (
+            _R132_TAIL + _R136_TAIL + _R137_TAIL + _R1227_TAIL + _R1229_TAIL
+        )
         for fn in _SEAM_ENTRY_POINTS:
             with self.subTest(fn=fn.__name__):
                 names = tuple(inspect.signature(fn).parameters)
                 self.assertEqual(
-                    names[-7:], _R132_TAIL + _R136_TAIL + _R137_TAIL + _R1227_TAIL,
+                    names[-9:], expected,
                     msg=(
                         f"{fn.__name__} must append the seam kwargs at the END "
                         f"of its signature (compute_ehp's stated convention); got "
-                        f"tail {names[-5:]}. A new seam appends AFTER these five and "
-                        f"updates this guard."
+                        f"tail {names[-9:]}. A new seam appends AFTER these seven "
+                        f"and updates this guard."
                     ),
                 )
 

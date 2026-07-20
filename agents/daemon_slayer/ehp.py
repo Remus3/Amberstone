@@ -1319,6 +1319,16 @@ def compute_ehp(
     #     self-side heal/permanent-HP (rune_procs.py:606 scores Grasp's DAMAGE and
     #     admits verbatim "(heal + permanent-HP sides not modeled)").
     #   * apply_rune_hsp_amp - Revitalize 8453's flat 5% Heal/Shield Power.
+    # ENGINE 1.229.0 (R142) adds the RM-101 residual pair on the same transport,
+    # each independently gated so every rune lane stays separately flippable:
+    #   * apply_rune_self_heal - Second Wind 8444's 4%-of-missing-health heal.
+    #   * apply_rune_shield_grants - Guardian 8465's SELF shield, with the ally
+    #     half and the ability-power term deliberately omitted (this module holds
+    #     no wielder AP, so that term is unrepresentable and its absence is a
+    #     deliberate undercount, which is the safe direction).
+    # Font of Life 8463 stays unbuilt: its DDragon longDesc carries an unresolved
+    # ``@BaseHeal@`` template var in all four vendored snapshots, so there is no
+    # magnitude to model.
     #     _hsp_amp.sum_wielder_hsp_pct sums heal_shield_amp_pct across EQUIPPED
     #     ITEMS ONLY, so a rune could never reach it.
     # Both default False -> 0.0 contributions -> BYTE-IDENTICAL to 1.224.0, and
@@ -1338,6 +1348,13 @@ def compute_ehp(
     assume_item_health_stacks: bool = False,
     apply_rune_flat_mitigation: bool = False,
     assume_item_proc_heal: bool = False,
+    # R142 (ENGINE 1.229.0): the RM-101 residual defensive-rune pair, appended at
+    # END per the no-mid-signature-insert convention. Both ride the existing
+    # ``rune_ids`` transport and are independently gated, so passing rune_ids
+    # alone arms neither and the operator can flip each apart from the R132 /
+    # R136 lanes.
+    apply_rune_self_heal: bool = False,
+    apply_rune_shield_grants: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1475,6 +1492,24 @@ def compute_ehp(
         assume_fimbulwinter_shield=assume_fimbulwinter_shield,
     )
     shield_any = shield_totals.get(ANY, 0.0)
+    # ENGINE 1.229.0 (R142): Guardian 8465's SELF shield - level-lerped 40-150 plus
+    # 6% of bonus health (DDragon 16.14.1). It joins the ANY pool because a rune
+    # shield absorbs any damage type, and it lands BEFORE shield_amp_mult so the
+    # Heal/Shield Power lanes amplify it exactly as they do in game. TWO TERMS ARE
+    # DELIBERATELY OMITTED, not overlooked: the ally half (throughput to a second
+    # unit this frame does not model) and the "+20% ability power" term (this
+    # module holds no wielder AP - every ``ap`` token here is enemy_ap_share, an
+    # incoming-damage-type share - so the term is unrepresentable and omitting it
+    # undercounts, which is the safe direction). OFF -> 0.0 -> byte-identical.
+    if apply_rune_shield_grants:
+        from ._rune_shield_grants import rune_shield_grants as _rune_shield_fn
+        shield_any += _rune_shield_fn(
+            rune_ids,
+            level=level,
+            total_hp=hp,
+            base_hp=float(base.get("hp", 0.0)),
+            apply_rune_shield_grants=True,
+        )
     shield_phys = shield_totals.get(PHYSICAL, 0.0)
     shield_mag = shield_totals.get(MAGICAL, 0.0)
     shield_true = shield_totals.get(TRUE, 0.0)
@@ -1555,7 +1590,27 @@ def compute_ehp(
             is_ranged=is_ranged,
             apply_rune_health_grants=True,
         )
-    heal_total = (heal_item_total + heal_lifesteal + rune_heal_hp) * heal_amp_mult
+    # ENGINE 1.229.0 (R142): Second Wind 8444 - "heal for 4% of your missing health
+    # over 10s" (DDragon 16.14.1, verbatim). Joins the heal pool BEFORE
+    # heal_amp_mult because a rune heal is amplifiable in game, the same placement
+    # Grasp's rune_heal_hp already uses. It reuses this scorer's OWN
+    # _MISSING_HP_SHARE_FOR_HEALS convention rather than inventing a second
+    # missing-health reading, and is discounted by the ratio of the modeled
+    # engagement window to the rune's own 10s heal duration - the magnitude is
+    # exact DDragon and only that uptime ratio is an assumption. OFF -> 0.0 ->
+    # byte-identical; the gated lazy import keeps OFF import-free.
+    rune_self_heal_hp = 0.0
+    if apply_rune_self_heal:
+        from ._rune_self_heal import sum_rune_self_heal as _rune_self_heal_fn
+        rune_self_heal_hp = _rune_self_heal_fn(
+            rune_ids,
+            max_health=hp,
+            missing_hp_share=_MISSING_HP_SHARE_FOR_HEALS,
+            is_ranged=is_ranged,
+        )
+    heal_total = (
+        heal_item_total + heal_lifesteal + rune_heal_hp + rune_self_heal_hp
+    ) * heal_amp_mult
 
     # ENGINE 1.29.0 (2026-05-21): Phase 6.5 - Spirit Visage's Boundless
     # Vitality amps "all heal AND shielding +25%" per Riot's tooltip.
@@ -2754,6 +2809,13 @@ def rank_items_by_ehp(
     assume_item_health_stacks: bool = False,
     apply_rune_flat_mitigation: bool = False,
     assume_item_proc_heal: bool = False,
+    # R142 (ENGINE 1.229.0): the RM-101 residual defensive-rune pair, appended at
+    # END per the no-mid-signature-insert convention. Both ride the existing
+    # ``rune_ids`` transport and are independently gated, so passing rune_ids
+    # alone arms neither and the operator can flip each apart from the R132 /
+    # R136 lanes.
+    apply_rune_self_heal: bool = False,
+    apply_rune_shield_grants: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -2916,6 +2978,8 @@ def rank_items_by_ehp(
         rune_ids=rune_ids,
         apply_rune_health_grants=apply_rune_health_grants,
         apply_rune_hsp_amp=apply_rune_hsp_amp,
+        apply_rune_self_heal=apply_rune_self_heal,
+        apply_rune_shield_grants=apply_rune_shield_grants,
         assume_item_health_stacks=assume_item_health_stacks,
         apply_rune_flat_mitigation=apply_rune_flat_mitigation,
         assume_item_proc_heal=assume_item_proc_heal,
@@ -2980,6 +3044,8 @@ def rank_items_by_ehp(
                 rune_ids=rune_ids,
                 apply_rune_health_grants=apply_rune_health_grants,
                 apply_rune_hsp_amp=apply_rune_hsp_amp,
+                apply_rune_self_heal=apply_rune_self_heal,
+                apply_rune_shield_grants=apply_rune_shield_grants,
                 assume_item_health_stacks=assume_item_health_stacks,
                 apply_rune_flat_mitigation=apply_rune_flat_mitigation,
                 assume_item_proc_heal=assume_item_proc_heal,

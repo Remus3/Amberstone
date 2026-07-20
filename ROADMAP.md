@@ -89,10 +89,19 @@ deliberately NOT built in that cycle.
   0.25 (the rune scopes the block to a single attacker), giving 38.38 per axis at
   L13. **The conclusion it supported survives anyway, and was MEASURED:** armed on
   Sion L13 the seam moves baseline EHP +81.5555 and reorders 9 of 138 positions
-  including a top-6 swap. **STILL OPEN from this item:** Second Wind 8444 self-side
-  (buildable, small) and Guardian 8465 self-only (AP-omitted). **Font of Life 8463
-  stays DATA-BLOCKED** on the unresolved `@BaseHeal@` token - do NOT invent a number;
-  two R136 tests pin 8463 + 8465 at zero. Narrative in `docs/ROADMAP_HISTORY.md`.
+  including a top-6 swap. **RM-101 IS NOW CLOSED for every buildable rune** - the
+  residual pair SHIPPED 2026-07-20 (ENGINE 1.229.0, R142): Second Wind 8444 behind
+  DEFAULT-OFF `apply_rune_self_heal` (`_rune_self_heal.py`; 4% of missing health,
+  reusing the scorer's existing `_MISSING_HP_SHARE_FOR_HEALS`, discounted 0.6 by the
+  10s-heal-vs-6s-window ratio) and Guardian 8465 behind DEFAULT-OFF
+  `apply_rune_shield_grants` (`_rune_shield_grants.py`; level-lerped 40-150 + 6% bonus
+  health, amortized 0.2). **Guardian ships AP-OMITTED on purpose** - `ehp.py` carries
+  ZERO wielder ability power (every `ap` token there is `enemy_ap_share`, an incoming
+  damage-type share), so the "+20% AP" term is unrepresentable and its absence is a
+  deliberate undercount; a mutation-tested regression class fails RED if a future edit
+  fabricates an AP value. The ally half is omitted for the same frame reason. **Font of
+  Life 8463 stays DATA-BLOCKED** on the unresolved `@BaseHeal@` token - do NOT invent a
+  number; R136 and R142 tests both pin it at zero. Narrative in `docs/ROADMAP_HISTORY.md`.
 - **RM-102 SHIPPED 2026-07-19 (ENGINE 1.227.0): Warmog's Arena mirror 443083 was
   credited "Warmog's Vitality", a passive it does not have.** Removed from
   `_item_bonus_hp_amp.py`; 132.0 phantom EHP measured on a Sion L13 Arena build.
