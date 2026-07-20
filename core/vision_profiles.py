@@ -375,3 +375,61 @@ def derive_profile(dst_base, config_key=None, source_regions=None,
     ck = config_key or f"{clean[0]}x{clean[1]}"
     return {"config_key": ck, "base": [clean[0], clean[1]],
             "regions": regions, "source": "derived"}
+
+
+# Seed targets: the 1440p + ultrawide bases worth shipping an untuned starting
+# profile for. The 1920x1080 authoring base is deliberately ABSENT - it is the
+# SOURCE (data/vision_regions.json), and seeding it would be an identity write
+# that could only ever clobber the operator's hand calibration.
+SEED_BASES = [
+    [2560, 1440],   # 16:9  1440p
+    [2560, 1080],   # 21:9  ultrawide 1080p
+    [3440, 1440],   # 21:9  ultrawide 1440p
+    [3840, 1600],   # 21:9  ultrawide 1600p
+    [5120, 1440],   # 32:9  super ultrawide
+]
+
+
+def seed_profiles(bases=None, force: bool = False) -> dict:
+    """Derive + persist an untuned SEED profile per base from the 1920x1080
+    baseline. Returns ``{ok, written, skipped, written_keys, skipped_keys,
+    errors}``.
+
+    A seed is a STARTING POINT, not a calibration. Boxes are pure proportional
+    scales of the hand-calibrated 1080p baseline, which is right for the 16:9
+    bases and only approximate on ultrawide - League anchors much of the HUD to
+    the screen edges rather than stretching it, so the ultrawide boxes still
+    need a live tuning pass before the OCR path should trust them. Seeding
+    exists so that first pass starts from plausible rectangles instead of
+    unscaled 1080p ones.
+
+    ADDITIVE by default: a base whose profile file already exists is SKIPPED,
+    never overwritten, so this is safe to re-run and can never destroy a tuned
+    profile. ``force=True`` rewrites (calibration-reset path only). Writes go
+    through save_profile, which is atomic. Never raises.
+    """
+    targets = SEED_BASES if bases is None else bases
+    src_regions = _load_legacy_regions()
+    written, skipped, errors = [], [], []
+    for base in targets:
+        ok, err, clean = validate_base(base)
+        if not ok:
+            errors.append({"base": base, "error": err})
+            continue
+        ck = f"{clean[0]}x{clean[1]}"
+        try:
+            if not force and profile_path(ck).exists():
+                skipped.append(ck)
+                continue
+            prof = derive_profile(clean, config_key=ck,
+                                  source_regions=src_regions)
+            res = save_profile(ck, prof["regions"], prof["base"])
+            if res.get("ok"):
+                written.append(ck)
+            else:
+                errors.append({"base": base, "error": "save failed"})
+        except Exception as exc:  # noqa: BLE001
+            log.warning("seed failed for %s: %s", ck, exc)
+            errors.append({"base": base, "error": "seed failed"})
+    return {"ok": not errors, "written": len(written), "skipped": len(skipped),
+            "written_keys": written, "skipped_keys": skipped, "errors": errors}
