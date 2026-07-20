@@ -119,6 +119,39 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-20f - R140 RM-100 consolidation: CLEAN / REFUTED-PREMISE
+
+**Head `60ee6289`. ENGINE-IMPACT NONE** - docs-only Tier-0, no ENGINE_VERSION bump (stays 1.228.0 /
+patch 16.14.1), no Share resync, no `:8893` bounce owed. Doc-hygiene guards 13/13 green.
+
+Gemini-loop cycle 2, directive R140: fan out worktree agents to consolidate 5 near-identical local
+`_run_coro` / `_run_poll_loop` copies into `tests/_asyncio_isolation.py`. **Nothing was built, because
+the work had already shipped one cycle earlier in this same loop run** (R137, `114977ee`).
+
+Refuted on ground truth before any dispatch: `tests/_asyncio_isolation.py` on disk since 03:23
+(`run_coro` + `run_coro_capturing_thread`); grep for `def _run_coro` / `def _run_poll_loop` /
+`def run_coro` returns ZERO local definitions under `tests/` or `agents/`; all 5 named files already
+import the shared runner; `tests/test_asyncio_isolation_guard.py` already blocks a sixth copy and
+pins zero bare `asyncio.run(` under `tests/`. Fresh this run: **73 passed in 3.71s**.
+
+**The real defect was the stale prose that manufactured the directive.** `ROADMAP.md:20` still read
+"(5 near-identical copies; consolidating them is the open follow-up)" - R137 shipped the code but
+never cleared the text, and the director builds its refill digest from ROADMAP prose, so a follow-up
+closed in code but open in prose re-picks every cycle. That line now states CLOSED, names the shared
+module and both runners, names the 5 migrated files, and cites `114977ee`.
+
+The RM-100 **LATENT half is deliberately left standing**: `tests/snapshot_panels` still leaks
+asyncio's per-thread running-loop marker via its `scope="session"` `pw_browser` fixture, so a new
+test calling bare `asyncio.run()` on the main thread still fails. Closing consolidation is NOT
+closing the leak - do not conflate them.
+
+No subagents / worktrees (R9 inline - the build slice was cancelled by ground truth). PART C durable
+steer in `ops/loop/control/gemini_ask.txt`: this loop has now produced several refuted-premise cycles
+(R114, R115, R137, R140) from the same lag, so the director is asked to ground "X is still open"
+premises in a grep checked THIS cycle rather than digest prose.
+
+---
+
 # 2026-07-20e - R139 Share/ external-presentation pass
 
 **Head `a700b414`. ENGINE-IMPACT NONE** - docs and presentation only, no DS path, no ENGINE_VERSION bump
