@@ -92,12 +92,19 @@ _R1227_TAIL = ("apply_rune_flat_mitigation", "assume_item_proc_heal")
 # the tail.
 _R1229_TAIL = ("apply_rune_self_heal", "apply_rune_shield_grants")
 
-_SEAM_ENTRY_POINTS = (
-    compute_ehp,
-    rank_items_by_ehp,
-    compute_hybrid,
-    rank_items_by_hybrid,
-)
+# R145 (ENGINE 1.232.0) appends the FIRST seam in this chain that is OFFENSIVE:
+# apply_rune_offense_grants, the adaptive AD/AP rune stat-grant lane. It rides the
+# existing rune_ids transport, so once again no ids parameter lands. It differs
+# from every earlier group in ONE respect and the guard has to express it: an
+# offense seam has no business on an EHP entry point, so it lands ONLY on the two
+# hybrid entry points (and on compute_dps, which is not in this guard's set). The
+# invariant is unchanged - seam kwargs live at the END, in order, never
+# mid-signature - it is simply no longer the SAME tail on all four functions.
+_R145_TAIL = ("apply_rune_offense_grants",)
+
+_EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
+_HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
+_SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
 
 
 class RuneResistTrailingKwargConventionTests(unittest.TestCase):
@@ -105,24 +112,48 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
 
     def test_r132_pair_is_the_signature_tail_on_every_entry_point(self) -> None:
         # R136, R137, the 1.227.0 pair then the 1.229.0 pair appended after the
-        # R132 pair, so the pair is now the -9:-7 slice. The invariant the guard
-        # actually protects is unchanged: these seam kwargs live at the END, in
-        # order, never mid-signature.
-        expected = (
+        # R132 pair, and R145 appended the offense flag after THAT on the hybrid
+        # pair only. The invariant the guard actually protects is unchanged:
+        # these seam kwargs live at the END, in order, never mid-signature.
+        shared = (
             _R132_TAIL + _R136_TAIL + _R137_TAIL + _R1227_TAIL + _R1229_TAIL
         )
-        for fn in _SEAM_ENTRY_POINTS:
+        cases = (
+            (_EHP_ENTRY_POINTS, shared),
+            (_HYBRID_ENTRY_POINTS, shared + _R145_TAIL),
+        )
+        for fns, expected in cases:
+            for fn in fns:
+                with self.subTest(fn=fn.__name__):
+                    names = tuple(inspect.signature(fn).parameters)
+                    n = len(expected)
+                    self.assertEqual(
+                        names[-n:], expected,
+                        msg=(
+                            f"{fn.__name__} must append the seam kwargs at the "
+                            f"END of its signature (compute_ehp's stated "
+                            f"convention); got tail {names[-n:]}. A new seam "
+                            f"appends AFTER these and updates this guard."
+                        ),
+                    )
+
+    def test_r145_offense_seam_is_hybrid_only_and_defaults_off(self) -> None:
+        # An OFFENSE seam must never appear on an EHP entry point - that would be
+        # a signature-tidy pretending to be an axis. And like every seam before
+        # it, it is DEFAULT-OFF.
+        for fn in _HYBRID_ENTRY_POINTS:
             with self.subTest(fn=fn.__name__):
-                names = tuple(inspect.signature(fn).parameters)
-                self.assertEqual(
-                    names[-9:], expected,
-                    msg=(
-                        f"{fn.__name__} must append the seam kwargs at the END "
-                        f"of its signature (compute_ehp's stated convention); got "
-                        f"tail {names[-9:]}. A new seam appends AFTER these seven "
-                        f"and updates this guard."
-                    ),
-                )
+                params = inspect.signature(fn).parameters
+                for name in _R145_TAIL:
+                    self.assertIn(name, params, msg=f"{fn.__name__}.{name}")
+                    self.assertIs(
+                        params[name].default, False, msg=f"{fn.__name__}.{name}"
+                    )
+        for fn in _EHP_ENTRY_POINTS:
+            with self.subTest(fn=fn.__name__):
+                params = inspect.signature(fn).parameters
+                for name in _R145_TAIL:
+                    self.assertNotIn(name, params, msg=f"{fn.__name__}.{name}")
 
     def test_r137_seam_defaults_off_on_every_entry_point(self) -> None:
         # DEFAULT-OFF, same contract as the R132 / R136 seams: a flipped default is
