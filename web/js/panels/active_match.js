@@ -1145,21 +1145,40 @@ function _amDsSyntheticCs(p, ctx) {
   const queueId = (modeLow === "aram") ? 450
                 : (modeLow === "arena") ? 1750
                 : 420;
-  // Live lane opponent for the matchup panel: the first enemy champion in the
-  // liveclient (team != the active player's team). Resolved slug -> numeric so
-  // renderDsMatchupForChampSelect's resolveChampNames round-trips it.
+  // Live enemy roster for the matchup panel: EVERY enemy champion in the
+  // liveclient (team != the active player's team), each carrying its ROLE.
+  // Resolved slug -> numeric so renderDsMatchupForChampSelect's
+  // resolveChampNames round-trips it.
+  //
+  // BACKLOG F5/F1 (2026-07-20): this used to break after the first enemy, so
+  // the matchup card read whoever happened to lead the roster rather than the
+  // operator's actual laner. Roles come from the summarized `liveclient.players`
+  // list (dashboard/_liveclient.py:225), which is built from the SAME
+  // allPlayers array under the same isinstance filter and is therefore
+  // index-aligned; `position` there is an LCU ROLE STRING, never map
+  // coordinates (memory reference_liveclient_no_positions). Role-less modes
+  // report NONE, which the panel treats as absent and falls back to pick
+  // order. Length is asserted before trusting the alignment.
   const theirTeam = [];
+  let myPosition = "";
   const lc = (ctx && ctx.liveclient) || null;
   if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
     const myTeam = _resolveMyTeam(lc);
-    for (const pl of lc.allPlayers) {
+    const roster = Array.isArray(lc.players) ? lc.players : [];
+    const aligned = roster.length === lc.allPlayers.length;
+    for (let i = 0; i < lc.allPlayers.length; i += 1) {
+      const pl = lc.allPlayers[i];
       if (!pl || typeof pl !== "object") continue;
+      const meta = aligned ? (roster[i] || null) : null;
+      if (meta && meta.is_active) myPosition = String(meta.position || "");
       if (myTeam && pl.team === myTeam) continue;
       const slug = pl.rawChampionName || pl.championName || "";
       const eid = parseInt(_resolveChampId(slug) || "0", 10) || 0;
       if (eid > 0) {
-        theirTeam.push({ championId: eid });
-        break;  // matchup uses the FIRST enemy only
+        theirTeam.push({
+          championId: eid,
+          assignedPosition: meta ? String(meta.position || "") : "",
+        });
       }
     }
   }
@@ -1170,6 +1189,7 @@ function _amDsSyntheticCs(p, ctx) {
     my_completed: true,
     queue_id: queueId,
     their_team: theirTeam,
+    my_position: myPosition,
     my_owned_items: owned,
   };
 }
