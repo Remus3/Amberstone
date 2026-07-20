@@ -119,6 +119,48 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-20b - pro-match corpus CLOSED (no API needed) + ds_patch_diff shipped
+
+Commits `533d70fb`, `999cb1b8`. CI green. LEDGER 972-973. RM-109 + RM-110.
+
+**The planned session was wrong and the correction is the headline.** The plan was
+a Match-V5 fan-out: resolve ~30 pro Riot IDs to puuids, page each pro's id list,
+intersect with the operator's. Unnecessary. `participants.riot_id_game_name` +
+`riot_id_tagline` are populated on 29418 of 30592 rows, so the recovery is a LOCAL
+read-only SQL join at ZERO API calls. The rejected fan-out would have cost ~700+
+calls / ~14 min at the real `DualBucket` ceiling (20/1s + 100/120s = 0.83 req/s)
+for no new information.
+
+**Final answer: 26 matches**, pro-attributed, 29 same-team appearances, 49 matches
+containing any pro. All 26 already `has_stats=1 AND has_timeline=1` - Phase 2
+(ingest) was already done. `core/pro_match_index.py` + 4 oracle tests reproduce it.
+
+**Do NOT redo any of these - all operator-confirmed closed:**
+- Roster expansion: 66 candidate teammates (>=5 games, minus the 30 known and the
+  Chunjae duo alts) checked against aggregator G. **ZERO are pro.** Do not rebuild the
+  list or re-scrape aggregator G.
+- The post-2025-09 coverage hole is REAL play history, not missing data. Never run
+  a catchup for it.
+- Blank-name risk is dead: only **8** blank `riot_id_game_name` rows on the
+  operator's side (the 1174 figure was corpus-wide, mostly enemy rows).
+- Identity notes kept for premade work: xChunjae / vChunjae / zChunjae are ONE duo
+  partner; candidate rows 12+15 are alts of row 6, row 22 = row 19.
+
+**`tools/ds_patch_diff.py` shipped** (16 tests, Tier-1). Measured 16.13.1 ->
+16.14.1: 8 changed items (Phantom Dancer AS 0.6 -> 0.65, Kraken Slayer 0.35 ->
+0.4, Hextech Rocketbelt AP 70 -> 60, Protoplasm Harness 2500 -> 2600g), 0 champion
+changes, 90 SR build-order changes. **Ability diffs read 0 across 16.10.1 ..
+16.14.1 and that is CORRECT, not a bug** - the payload is byte-identical, Meraki
+`latest` is pinned at content patch 25.15. Documented in the module docstring so
+"0" is never misread as "no balance changes". `ability_staleness.json` (RM-81, 75
+stale champions / 123 findings) is what answers that question.
+
+**ARAM item-interaction coach scoped to BACKLOG** (RM-111) with its data gate
+MEASURED GREEN: 2073 queue-450 matches, all 2073 carrying both `ITEM_PURCHASED`
+and `timeline_frames`. Own session, do not bolt onto other work.
+
+---
+
 # 2026-07-20a - .rofl sidecar backfill of rewind_history.db, executed live
 
 Commits `5174058f`, `533e7e47`, `1e3a186c`, `d7901101`. CI green. LEDGER 971.
