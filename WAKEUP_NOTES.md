@@ -4,6 +4,52 @@
 
 ---
 
+# 2026-07-20d - R138 HEXCORE offline explorer refresh
+
+Merge `ee0e2f62` (slice `ab16e062`) + docs `001b3fc0`. LEDGER 976. gemini-loop
+cycle 1 of the 2026-07-20 standing autonomous grant. Docs artifact only -
+ENGINE-IMPACT NONE, no ENGINE_VERSION bump, no Share sync, no restart owed.
+
+**The file count needed adjudication, not a raw git diff.** The directive said
+"find net-new non-test .py files since d584e02e". The raw command returns 36;
+10 of those are `Share/src/agents/daemon_slayer/*.py`, which are byte mirrors
+emitted by `tools/ds_share_sync.py`, not distinct source units. Shipping 36
+would have double-counted the DS mirror inside a visualization whose entire
+point is file density. 26 unique units landed. **Do not "re-add the missing
+10" in a later pass - the exclusion is deliberate.**
+
+**The stale literal occurred three times, not two.** The `293` dust count lived
+in the `// DUST:` comment, the sr-only accessibility paragraph, AND the no-JS
+fallback prose near the file end. The third was found by the build agent, not
+by the brief. All three now read 319 and a test pins comment-vs-prose
+agreement, so the page can no longer silently lie about its own contents.
+
+**The HUD engine pair was read live, not off docs.** `:8893/health` returned
+`1.228.0 / 16.14.1`; CLAUDE.md's own header still says 1.226.0 and would have
+shipped a wrong number into the artifact. Same for commits (3733) and HEAD
+(`114977ee`), both re-derived from git rather than carried forward.
+
+**Worth remembering about the test.** The build agent's first `CATS` parser
+anchored to line start, matched only 6 of 15 keys, and produced a FALSE
+integrity failure against pre-existing data. It fixed the parser rather than
+relaxing the assertion, and added a `len(keys) >= 15` self-check so a silently
+degraded parse fails loudly instead of green-washing. That is the right
+instinct on a referential-integrity test and is the reason claim 8 (every dust
+parentNodeId resolves in NODES) is trustworthy.
+
+**Verified.** verifier subagent CONFIRM 13/13 (independently re-parsed DUST,
+re-ran `node --check` on the extracted ~600KB script block, re-counted NODES,
+confirmed the 2-file blast radius). Full RC suite **12290 passed / 0 failed /
+23 skipped / 359 subtests** in 20m38s. ruff clean; file remains 0 non-ASCII
+bytes and fully self-contained.
+
+**No visual capture owed** - `docs/HEXCORE_offline.html` is a standalone offline
+artifact, not a dashboard or overlay page, so the 3b overlay-capture ritual
+does not apply. The `node --check` guard plus the referential-integrity tests
+are the proof surface for this file.
+
+---
+
 # 2026-07-20c - RM-111 ARAM comp-conditioned item-interaction aggregator
 
 Commit `d96ba4c5`. LEDGER 974. New `core/aram_item_interaction.py`, 24 tests.
@@ -87,54 +133,3 @@ stale champions / 123 findings) is what answers that question.
 **ARAM item-interaction coach scoped to BACKLOG** (RM-111) with its data gate
 MEASURED GREEN: 2073 queue-450 matches, all 2073 carrying both `ITEM_PURCHASED`
 and `timeline_frames`. Own session, do not bolt onto other work.
-
----
-
-# 2026-07-20a - .rofl sidecar backfill of rewind_history.db, executed live
-
-Commits `5174058f`, `533e7e47`, `1e3a186c`, `d7901101`. CI green. LEDGER 971.
-
-SHIPPED. 12 archived stats sidecars mapped to the 147-col `participants` schema;
-3 net-new matches INSERTED into production (2961 -> 2964 matches, 30562 -> 30592
-participants, 0 orphans). Backup `data/rewind_history.db.bak-20260720` (gitignored).
-The DB now has its FIRST event-mode row (queue 2400 / KIWI) - was zero.
-
-TWO FINDINGS THAT INVERTED THE DESIGN - do NOT re-derive:
-- Sidecar PUUID is the RAW game uuid; DB puuid is API-key-ENCRYPTED. Zero overlap,
-  a puuid join matches 0 of 18 rows. Join on sidecar player ORDER (index+1 ==
-  participant_id), champion-name cross-checked. Pinned by test. Memory:
-  `reference_rofl_sidecar_join_key`.
-- Replay Tool Z16 does NOT read map/mode from the file - `GameDetailsInferrer.cs`
-  INFERS map from player stats (no jungle creeps => Howling Abyss). Yields MAP not
-  QUEUE and cannot separate ARAM 450 from Mayhem 2400. So queue_id/game_mode stay
-  NULL unless a caller asserts them via `queue_overrides`. Header game VERSION is
-  real (offset 14, plaintext) and oracle-verified.
-
-118 columns mapped, each proven against the 6 overlap matches. summoner_id and
-time_played were probed, DISAGREED, and are deliberately excluded.
-
-DO NOT REDO: L1 (RM-100 asyncio dedup, `b54e315d`) and L3 (RM-108 token detector,
-`a60d32e6`) were ALREADY SHIPPED - the lane list was half stale. RM-108 is now
-marked SHIPPED in ROADMAP with its spec relocated to ROADMAP_HISTORY.
-
-NEXT - operator-prioritised (Vanguard is OFF, so replay work is possible now):
-replay-based coaching training. GROUND TRUTH PROBED THIS SESSION:
-- Only 7 .rofl exist locally, all 16.12-16.14. The historical pro matches are NOT
-  available as replays and never will be (.rofl is patch-locked to the running
-  client, and Riot does not retain old files).
-- BUT Match-V5 STILL SERVES those old matches: NA1_5221491343 / NA1_5217712024 /
-  NA1_5216883079 all return 200, queue 420, patch 15.2, WITH full timelines
-  (31 frames @ 60s, 1024 events - item purchases w/ timestamps, skill order,
-  wards, kills w/ positions). That is the coaching substrate, no replay needed.
-- The pro xlsx (Desktop\Challenger) has 93 strings: pro names + NA Riot IDs +
-  role/team. No match ids recorded - but the ids are RECOVERABLE by resolving
-  each pro's Riot ID to a puuid and intersecting their match list with the
-  operator's. That is fully autonomous work.
-
-ALSO OPEN: patch-change datasets. 5 per-patch snapshots exist
-(data/daemon_slayer/16.10.1 .. 16.14.1) but there is NO cross-patch diff tooling -
-that lane is genuinely unbuilt, not done.
-
-STILL NEEDS THE OPERATOR: the /replays 5-per-account rotation question. All
-observations so far ran with no games in between, so rotated=False proves nothing.
-Play games, then `python tools/rofl_archiver.py --pull --no-lcu-pull`.
