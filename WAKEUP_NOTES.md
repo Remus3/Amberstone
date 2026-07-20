@@ -4,6 +4,69 @@
 
 ---
 
+# 2026-07-20m - R148 E12 residual: lever L3 unblocked (not built) + an R146 regression
+
+**Tier-1. No ENGINE bump, no Share touch.** Commits `6eb3837a` + merge `b3698bda`
+(code), `06c52f0f` (docs + regression fix), `f460c9f3` (live-gated row). CI green.
+Gemini-loop cycle 3 of the 2026-07-20 standing autonomous grant. LEDGER 985.
+
+## The directive's premise was half stale, and the surviving half was mis-specced
+
+"Build RM-03 E12 responsiveness levers residual." E12 reads OPEN in `ROADMAP.md:18`
+but DONE in `docs/RC2_PLAN.md:95`. `docs/RC2_QA_CONSOLIDATED.md:167` breaks the tie:
+the residual is QA items 59 + 62. **Item 59 was already shipped** (`_cached_lobby_mode`)
+and had already been caught stale once - `ORCHESTRATION_FINDINGS_ARCHIVE.md` OQ10.
+So the real residual was item 62 / lever L3 alone. ROADMAP now says exactly that
+instead of restating "residual" for a third cycle.
+
+**Lever L3 is not buildable as written.** The research note
+(`docs/research/RC2_RESEARCH_io_timing_map.md:174-178`) says to point `build_state` at
+the in-process `LcuClient` instead of the `/latest-lcu` relay hop. But the relayed
+payload is AGENT-SHAPED by `capture_state()` - ~155 lines of enrichment - while
+`LcuClient.get_champ_select()` is a bare session. A direct swap silently guts
+`_cs_retention`, `_party_mains`, the preflip, `_active_champion` and `/api/state`'s
+`lcu` key. The relay-self-heal alternative hits the same blocker AND keeps the
+round-trip, so it cannot deliver the ~1.0s win either.
+
+## What shipped: the prerequisite both variants need, and nothing more
+
+`lcu/champ_select_shape.py` - `shape_champ_select(request, phase)`, the shaping lifted
+out as a pure connection-agnostic function. `tools/lcu_agent.py` drops 283 lines to a
+4-line call. **The L3 rewire itself is deliberately NOT built** - now unblocked and
+re-sized against a named seam.
+
+Byte-identity was PROVEN, not asserted: the verifier diffed pre/post `capture_state()`
+across 5 fixtures - zero mismatches, identical key order. The real risk was the live
+ONLOGON agent: the new import needs a repo-root `sys.path` insert, and RC-LCUAgent runs
+with an **EMPTY WorkingDirectory** (defaults to `System32`). The shim anchors to
+`__file__`, so cwd is irrelevant - verified under the literal task `pythonw.exe`, then
+confirmed live by restarting the agent post-merge (came up clean, PID 24428).
+
+## Caught in passing: R146 broke two tests and the Tier-0 exemption hid it
+
+`test_hexcore_offline_dust.py` HUD count guards failed on `main` BEFORE this slice.
+R146 added `title=` tooltips to those rows; the guards matched a bare `<div>` tag, so
+they stopped matching entirely - the counts (141/322) were right all along. R146 was
+correctly Tier-0 and correctly skipped the suite, and it still shipped a red. Fixed at
+root (attribute-tolerant regex, sibling-swept, mutation-checked so it still fails on a
+perturbed count).
+
+## Carry-forward
+
+- **G1-00 (new, GATE 1):** the new shaping path has never executed live - the agent
+  restart happened with the client Offline, so only the early-return ran. Closes on one
+  champ-select, no game needed.
+- `tests/test_zoi_influence_dmz.py::test_rosters_fail_soft_on_garbage_roster` ERRORs
+  under the full-suite random seed, passes 3/3 standalone. Same flake LEDGER 983 saw.
+  Recorded, not silently re-rolled.
+- The `my_pick` non-dict `AttributeError` is pinned by a test as pre-existing behavior.
+  Hardening it belongs in its own slice, not a byte-identity one.
+
+**VERIFIED FRESH:** RC 12338 passed / 23 skipped / 386 subtests; DS 9054 passed / 1
+skipped / 3582 subtests; ruff clean; ASCII trio 13 passed.
+
+---
+
 # 2026-07-20j - R144 item-registry mode-mirror sweep: 1 real gap, 4 CLEAN
 
 **ENGINE 1.230.0 -> 1.231.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the
@@ -149,56 +212,3 @@ True) - a pre-flip fix, not an incident.
 enumeration into a prefix-strip helper - magnitudes genuinely differ per id space. Moonstone
 6617's 0.30 is CORRECT for `hps.py` - do NOT zero or delete it; it is gated off the wielder
 path by `ally_chain_only`, not by its value.
-
----
-
-# 2026-07-20h - R142 RM-101 residual runes SHIPPED: Second Wind 8444 + Guardian 8465
-
-**ENGINE 1.228.0 -> 1.229.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the SAME
-commit, DS `:8893` bounced onto 1.229.0, dual suite green.
-
-Gemini-loop cycle 3. Closes the rune arc R132 opened (resist grants, DENOMINATOR) and R136
-continued (health + Heal/Shield-Power, NUMERATOR). RM-101 now has no buildable rune left.
-
-**Premises checked BEFORE dispatch.** All three longDescs re-read from
-`data/meta_build/ddragon/16.14.1/runesReforged.json`: 8444 and 8465 buildable as described,
-8463 carrying the literal unresolved `@BaseHeal@` - DATA-BLOCKED confirmed, not assumed.
-
-**Shipped, both DEFAULT-OFF, both on the existing `rune_ids` transport:**
-- `_rune_self_heal.py` / `apply_rune_self_heal` - Second Wind 8444, 4% of missing health,
-  reusing the scorer's own `_MISSING_HP_SHARE_FOR_HEALS` rather than inventing a second
-  reading. Discounted 0.6 = `_FIGHT_WINDOW_S / 10s`, derived from two named constants.
-- `_rune_shield_grants.py` / `apply_rune_shield_grants` - Guardian 8465, level-lerped 40-150
-  plus 6% bonus health, amortized 0.2.
-
-**Neither midpoint inherited the sibling 0.3, and each deviation is argued.** Second Wind
-triggers on taking champion damage, which IS the EHP frame's premise - a firing discount
-would price in uncertainty the model does not have, so it takes a DURATION ratio instead.
-Guardian's 75-40s cooldown is 2x-3.75x Aftershock's, so it fires at most once per fight; 0.2
-is the engine's existing value for a reactively popped 1.5s spell shield, which Guardian's
-shield literally is.
-
-**Guardian is AP-OMITTED on purpose - a measured ceiling.** `ehp.py` carries ZERO wielder
-ability power (all 38 `ap` tokens are `enemy_ap_share`, an incoming damage-type share). The
-"+20% AP" term is unrepresentable; omitting it UNDERCOUNTS, which is the safe direction. A
-mutation-tested regression class fails RED if a future edit fabricates an AP value. Ally half
-omitted for the same frame reason.
-
-**Verifiers mutation-tested the guards rather than reading them**, which is the only reason
-the gate meant anything: S1's mutated the `ehp.py` constants and confirmed the convention pin
-went RED (proving it is a real cross-module guard, not a literal asserted against itself);
-S2's injected an `ap_pct` field and confirmed all 4 AP-omission tests went RED, and opened
-`_champion_spell_shield_overrides.py:111` to confirm the cited 0.2 actually exists there.
-S1's verifier also caught two miscited docstring pointers (`ehp.py:341` -> `:342`, `:1477` ->
-`:791`), both fixed at merge. A cited `file:line` is not proof.
-
-**The R134 signature guard caught a real miss, not just bookkeeping.** Widening it -7 -> -9
-surfaced that `hybrid.py` needed the seams threaded too - an ehp-only wiring would have passed
-every new test while leaving both hybrid entry points unable to reach either lane.
-
-Green fresh: DS **8944 passed / 1 skipped / 2543 subtests**; R142 trio **78 passed / 25
-subtests**; ruff clean; 0 non-ASCII introduced; Share `--check` green at 1.229.0 / 493 files.
-
-Don't-redo: RM-101 is CLOSED for every buildable rune. Font of Life 8463 stays DATA-BLOCKED -
-do NOT invent a number. Guardian's AP term stays omitted until `ehp.py` actually carries
-wielder AP; the tripwire enforces it.
