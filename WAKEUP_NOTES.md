@@ -4,6 +4,44 @@
 
 ---
 
+# 2026-07-20e - R139 Share/ external-presentation pass
+
+**Head `a700b414`. ENGINE-IMPACT NONE** - docs and presentation only, no DS path, no ENGINE_VERSION bump
+(stays 1.228.0 / patch 16.14.1), no `:8893` restart owed. `tools/ds_share_sync.py --check` green throughout.
+
+Gemini-loop cycle, directive R139: read the entire `Share/` package end-to-end and raise it to external-presentation
+quality, credit upstream data sources explicitly, keep the sync guard green. Two worktree slices, Claude sole merger,
+verifier gate CONFIRM/CONFIRM before merge (6 of 6 factual spot-checks independently re-derived).
+
+**The directive's premise was already on disk.** It claimed the Riot credits were missing from `Share/README.md`;
+they have been there as a four-row "Sources of truth (credited upfront)" table at `Share/README.md:19-32`. Following
+the brief literally would have shipped a duplicate credit block. The real defect was one section below it.
+
+**The guard was green over a five-versions-stale public doc, by design.** The README "Changelog (recent)" list topped
+out at `1.222.0 -> 1.223.0` against a live 1.228.0 engine. `_doc_anchor_rules` in `tools/ds_share_sync.py` deliberately
+EXCLUDES changelog history from the anchor auto-rewrite - so the `**Engine version:**` header stays fresh forever while
+the release list beneath it rots silently. Worth remembering the shape: an anchor guard that covers the header but not
+the body makes staleness invisible rather than loud. Five hand-written bullets now cover 1.224.0 through 1.228.0, each
+grounded in the matching `Share/CHANGELOG.md` entry; the CHANGELOG preamble gained the upstream credit it never had.
+
+**Docs half was the heavy half:** 100-plus stale `file:line` citations across `Share/docs/01..05` plus
+`Share/lolmath_ingest/*` (104 table citations and 27 route refs in `02_FUNCTION_REFERENCE.md` alone), and every drifted
+count re-derived against live ground truth - 172/705 -> 173/706 champs/items, 13 -> 20 snapshot JSONs, 328 -> 339 test
+files, RUNE_PROCS 19 -> 20, NON_DAMAGE_BLOCKS 7 -> 9, `_effects_data.py` 5335 -> 5843 lines, explicit AA cast times
+61 -> 49. One correction was substantive rather than numeric: `04_GAPS_AND_ROADMAP.md` justified the replay-parsing
+ceiling with a reason this repo retired on 2026-06-03 (that a parsed `.rofl` is a strict subset of Match-V5 - it is not;
+367 engine-named stat fields x 10 players, no patch gate). A wrong reason for a right conclusion forecloses the option
+for the next reader, so it now states the honest bound: per-patch Layer-2 re-RE cost.
+
+**Prunes: zero, and that is correct.** Every candidate resolved to load-bearing against the sync tool itself
+(`_DOC_FILES` :71-78, `_INGEST_DOC_FILES` :90-95, `_INGEST_BUNDLE_REL` :96, MANIFEST machine-stamped). Only disposable
+artifact was an untracked gitignored `__pycache__`.
+
+Suites fresh this run: **DS 8866 passed / 1 skipped / 2518 subtests; RC 12290 passed / 23 skipped / 359 subtests.**
+Share `.md` non-ASCII bytes: 0. Worktrees + slice branches cleaned (local and remote).
+
+---
+
 # 2026-07-20d - R138 HEXCORE offline explorer refresh
 
 Merge `ee0e2f62` (slice `ab16e062`) + docs `001b3fc0`. LEDGER 976. gemini-loop
@@ -91,45 +129,3 @@ narratives relocated verbatim to `docs/ROADMAP_HISTORY.md`; the condensed pointe
 left behind KEEP every still-open thread (the `0xC000013A` unknown, the
 snapshot_panels asyncio-marker leak, the replay URL-rotation hypothesis, RM-106b's
 unmeasured archive depth).
-
----
-
-# 2026-07-20b - pro-match corpus CLOSED (no API needed) + ds_patch_diff shipped
-
-Commits `533d70fb`, `999cb1b8`. CI green. LEDGER 972-973. RM-109 + RM-110.
-
-**The planned session was wrong and the correction is the headline.** The plan was
-a Match-V5 fan-out: resolve ~30 pro Riot IDs to puuids, page each pro's id list,
-intersect with the operator's. Unnecessary. `participants.riot_id_game_name` +
-`riot_id_tagline` are populated on 29418 of 30592 rows, so the recovery is a LOCAL
-read-only SQL join at ZERO API calls. The rejected fan-out would have cost ~700+
-calls / ~14 min at the real `DualBucket` ceiling (20/1s + 100/120s = 0.83 req/s)
-for no new information.
-
-**Final answer: 26 matches**, pro-attributed, 29 same-team appearances, 49 matches
-containing any pro. All 26 already `has_stats=1 AND has_timeline=1` - Phase 2
-(ingest) was already done. `core/pro_match_index.py` + 4 oracle tests reproduce it.
-
-**Do NOT redo any of these - all operator-confirmed closed:**
-- Roster expansion: 66 candidate teammates (>=5 games, minus the 30 known and the
-  Chunjae duo alts) checked against aggregator G. **ZERO are pro.** Do not rebuild the
-  list or re-scrape aggregator G.
-- The post-2025-09 coverage hole is REAL play history, not missing data. Never run
-  a catchup for it.
-- Blank-name risk is dead: only **8** blank `riot_id_game_name` rows on the
-  operator's side (the 1174 figure was corpus-wide, mostly enemy rows).
-- Identity notes kept for premade work: xChunjae / vChunjae / zChunjae are ONE duo
-  partner; candidate rows 12+15 are alts of row 6, row 22 = row 19.
-
-**`tools/ds_patch_diff.py` shipped** (16 tests, Tier-1). Measured 16.13.1 ->
-16.14.1: 8 changed items (Phantom Dancer AS 0.6 -> 0.65, Kraken Slayer 0.35 ->
-0.4, Hextech Rocketbelt AP 70 -> 60, Protoplasm Harness 2500 -> 2600g), 0 champion
-changes, 90 SR build-order changes. **Ability diffs read 0 across 16.10.1 ..
-16.14.1 and that is CORRECT, not a bug** - the payload is byte-identical, Meraki
-`latest` is pinned at content patch 25.15. Documented in the module docstring so
-"0" is never misread as "no balance changes". `ability_staleness.json` (RM-81, 75
-stale champions / 123 findings) is what answers that question.
-
-**ARAM item-interaction coach scoped to BACKLOG** (RM-111) with its data gate
-MEASURED GREEN: 2073 queue-450 matches, all 2073 carrying both `ITEM_PURCHASED`
-and `timeline_frames`. Own session, do not bolt onto other work.
