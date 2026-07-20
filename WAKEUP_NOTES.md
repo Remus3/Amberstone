@@ -4,6 +4,68 @@
 
 ---
 
+# 2026-07-19h
+
+**Session: the sanctioned Match-V5 replay pull, BUILT and LIVE-PROVEN, plus the
+key-scoped account-cache fix it depended on.** No ENGINE bump.
+
+## What shipped
+
+1. **The cache defect is fixed.** `core/riot_api.py` account cache keys now carry
+   `_key_fingerprint()` - a truncated sha256 of the ACTIVE key. PUUIDs are a
+   per-API-key encryption, so a key-agnostic key over an IMMUTABLE row poisoned
+   the entry permanently on rotation. Regression test:
+   `test_key_rotation_invalidates_the_account_cache`. The sibling keys were left
+   alone on purpose - `league:v4:{region}:{puuid}` and the mastery keys embed the
+   PUUID, so a new key yields a new cache key for free.
+2. **The pull.** `core/riot_api.get_replay_urls` (uncached - the URLs die in an
+   hour) + `core/rofl_archive.download_replays` + `_api_pull` in
+   `tools/rofl_archiver.py`, wired under the SAME `--pull` the RC-RoflArchive
+   task already passes, so the 15-minute cadence picked it up with NO task edit.
+   `--no-api-pull` / `--no-lcu-pull` split the two halves.
+
+## MEASURED on the live runs - four things no amount of reading would have given
+
+- **The bodies are GZIP-framed** and urllib does not decompress. The first live
+  pull discarded 5 of 5 as "not a replay". The is-this-actually-a-replay guard
+  is what caught it instead of writing 5 gzip blobs under `.rofl` names.
+- **SamplePlayer#Vayne: all five URLs 404.** Riot LISTS the match and no longer
+  retains the file. Permanent and expected, so it is counted `gone`, NOT
+  `failed` - otherwise the scheduled task reports LastTaskResult=1 forever and
+  buries any real fault. Trist's five downloaded clean.
+- **The two sources spell one match differently** (`NA1-x.rofl` from the client,
+  `NA1_x.rofl` from the API), so a filename-keyed skip re-downloaded 10 MB. The
+  live archive has one such duplicate pair (`NA1_5595187452`), harmless, left in
+  place. Skip is now match-id-keyed across both spellings.
+- **Idempotency is proven live:** run 2 downloaded 5, run 3 skipped 5.
+
+## THE OPEN QUESTION - now instrumented, do NOT guess at it
+
+Does the 5-per-account window ROTATE as games are played? If yes, cadence alone
+converts a rolling window into a permanent archive and no bulk trick is needed.
+
+Every pull now appends what it saw to `<archive>/pull_log.jsonl`, and `--pull`
+prints a rotation verdict. **Four observations exist, all with NO games played
+in between, so the printed `rotated=False` means nothing yet.**
+`pull_rotation_report` returns `rotated=None` on a single observation rather
+than fabricating a negative - do not read a False from same-window pulls as an
+answer. **PLAY GAMES, then run `--pull` and read the rotation line.**
+
+## Live state at wrap
+
+Archive holds 13 `.rofl` (12 unique matches) + 12 stat sidecars at
+`Documents\RC_ROFL_Archive`. Two sidecars briefly failed with WinError 32
+against a concurrent scheduled run; a re-run wrote them (known Windows
+concurrency shape, not a defect in this code).
+
+## Do NOT redo
+
+- SGP (Cloudflare 1010; getting past it is bot-detection evasion).
+- Old-client installs are game-files-only, no LCU, so no `/lol-replays/` there.
+- Backoff for the 20000/10s limit. It cannot bind; the binding limits are the
+  5-per-account window and the 1-hour URL expiry, and retrying helps neither.
+
+
 # 2026-07-19g
 
 **Session: replay forward-capture pipeline + silent-except batch program + three of my own claims retracted.**
