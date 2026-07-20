@@ -34,6 +34,28 @@ replacing it. Vayne's 5 are 15.x-era ids and Trist's are 16.14-era, so it is
    persists. Bypass the cache (call Account-V1 through `_http_get` directly) and
    the fresh puuid 200s immediately. Verified both accounts.
 
+**THE PRECISE DEFECT AND THE PRECISE FIX** (sharpened after the operator pointed
+out it is about WHICH KEY RESOLVED THE PUUID, not which key sends it):
+
+```python
+core/riot_api.py:351
+cache_key = f"account:v1:{region}:{name}#{tag}".lower()   # key-AGNOSTIC key ...
+                                                          # ... for a key-SCOPED value
+```
+
+PUUIDs are a per-API-key encryption of the same account - the value changes the
+instant the KEY changes, NOT on any time schedule (the old "Riot slowly rotates
+PUUIDs" model is retracted; memory `reference_riot_puuid_rotation` is corrected).
+The Riot ID is the durable identity; the PUUID is a key-scoped handle. Because
+the account cache key omits key identity and the value lands in the IMMUTABLE
+cache, one rotation poisons it permanently.
+
+**Fix: include a fingerprint of the active API key in the account cache key.**
+The other cache keys need no change - `league:v4:{region}:{puuid}` and the
+mastery keys embed the PUUID itself, so a new key naturally yields a new cache
+key. Add a test that a key change invalidates the account entry; it is the
+regression that would otherwise silently return.
+
 **OPEN AND UNFIXED, fix BEFORE any bulk pull:** all 2961 PUUIDs in
 `rewind_history.db` are stale against the API (still fine as an internal join
 key, useless as a request parameter), and NOTHING invalidates the immutable cache
