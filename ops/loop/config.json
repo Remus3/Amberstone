@@ -10,16 +10,39 @@
   "ignore_no_progress": false,
   "clear_each_cycle": true,
   "session_jsonl": "",
-  "directive_suffix": "OPERATOR RUN FOCUS (2026-07-03 /orchestrated-run relaunch, 100 cycles, multi-agent orchestrated): docs/ORCHESTRATION_PLAN.md is the PRIMARY work source. Pick the next OPEN session top-down - the curated 'ORCHESTRATED-RUN RELAUNCH 2026-07-03' queue (ORUN1-ORUN5) comes FIRST. Each ORUN row says VERIFY-PREMISE FIRST: fresh-probe the premise (grep cited file:line + live /api/state + ops/runtime/health.json), and if the unit is already shipped record a CLEAN no-commit with evidence in the Findings log instead of re-doing it (the R73 / cycle-13 stale-digest guard). When the curated queue drains, apply the director_prompt.md REFILL PROTOCOL - this run does NOT stop on a drained plan: SYNTHESIZE one self-directed unit, append it as a DIRECTOR REFILL row (id R<N>, N > 76, Status WIP), then work it. Rotate: DS sweep/audit-iteration -> research+competitor lift (Section 7b) -> un-audited Electron-OVERLAY surface (5-phase audit + Playwright ui_recon visual; the Chrome :8888 dashboard is RETIRED as an audit surface) -> haiku-zero lane advance -> cost/latency lever. A DS-sweep refill MUST come from a FRESH adversarial Meraki-vs-registry refute pass: the R66 residual list is EXHAUSTED this patch (R70 Finding - do NOT re-pick #1-#6; #7 shield-lerp is next-patch-ingest gated). DS seams ship DEFAULT-OFF, Meraki + data/rewind_history.db WIN anchored, ENGINE bump + DS :8893 restart + Share sync in the SAME commit; the live default-ON flip is EXCLUDED - append to docs/LIVE_GAME_GATED_SYNC.md. EXCLUDE the deferred Cluster A AP-in-ARAM set (Zilean/Shaco/Kayle/Seraphine). Frozen-file + .md rewrites AUTHORIZED this run; operator-gated forks -> gemini PART C recommended path, NEVER block; truth_gate PROCEED before every multi-slice commit; commit + push origin/main + CI green + /done each cycle.",
+  "directive_suffix": "OPERATOR RUN FOCUS (2026-07-20 standing autonomous grant - SUPERSEDES the 2026-07-03 ORUN focus). Run until the operator halts; this run does NOT stop on a drained plan. WORK SOURCE, in order: (1) ROADMAP.md open items, (2) BACKLOG.md incl. future / nice-to-have / needs-research / needs-planning rows, (3) docs/ORCHESTRATION_PLAN.md open sessions, (4) unfinished goals from PRIOR autonomous directives (read directive_history.jsonl + docs/LEDGER.md), (5) when all drain, SYNTHESIZE via the director_prompt.md REFILL PROTOCOL and keep going. VERIFY-PREMISE FIRST on every unit: grep the cited file:line + live /api/state + ops/runtime/health.json before building. An already-shipped unit records a CLEAN no-commit with evidence - never a redo. STANDING GRANTS: frozen-file edits AUTHORIZED once the executor self-adjudicates and agrees the edit is necessary (say so in the commit body); refactor, reorganization and repo restructure AUTHORIZED; full computer access AUTHORIZED; self-heal and monitor RC / DS / scheduled tasks as required. UI-UX OVERLAY WORK: drive overlay capture from a REPLAY FILE or a SELF-RENDER (?overlay=1 over live or synthetic /api/state) so a UI slice is never blocked on a live game; the Chrome :8888 dashboard stays RETIRED as an audit surface. The 5-phase UI audit remains a hard pre-commit gate. CLEANLINESS IS A DELIVERABLE, not a side effect: audit-and-clean as found across .md content, repo layout and file contents - dead code, stale refs, orphaned docs, duplicated narrative blocks, ASCII hygiene. NAMED UNITS this run: (a) update docs/HEXCORE_offline.html (stats HUD + ENGINE tooltips + DUST leaves for every net-new non-test .py since d584e02e/2026-07-14; keep node --check clean and the file self-contained); (b) read the ENTIRE Share/ folder end to end and update / clean / prune it as a NEW EXTERNAL PRESENTATION, better formatted - Share is public-facing, treat it as a product artifact, keep tools/ds_share_sync.py --check green and credit Riot Data Dragon / CommunityDragon / Meraki. ORCHESTRATION: plan AND act in the SAME cycle where possible; parallel worktree agents on disjoint file sets with the Claude executor as sole merger plus a read-only verifier gate before every merge. truth_gate PROCEED before each multi-slice commit; commit + push origin/main + CI green + /done each cycle. NEVER block on AskUserQuestion - use the PART C gemini escalation channel.",
   "claude_window_title": "Claude",
   "gemini_model": "gemini-3-pro-preview",
   "gemini_cmd": "gemini",
   "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
-  "gemini_price_per_mtok": {"input": 2.0, "output": 12.0},
+  "gemini_price_per_mtok": {
+    "input": 2.0,
+    "output": 12.0
+  },
   "price_per_mtok": {
-    "opus":   {"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5},
-    "sonnet": {"input": 3.0,  "output": 15.0, "cache_write": 3.75,  "cache_read": 0.3},
-    "haiku":  {"input": 1.0,  "output": 5.0,  "cache_write": 1.25,  "cache_read": 0.1},
-    "default":{"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5}
+    "opus": {
+      "input": 15.0,
+      "output": 75.0,
+      "cache_write": 18.75,
+      "cache_read": 1.5
+    },
+    "sonnet": {
+      "input": 3.0,
+      "output": 15.0,
+      "cache_write": 3.75,
+      "cache_read": 0.3
+    },
+    "haiku": {
+      "input": 1.0,
+      "output": 5.0,
+      "cache_write": 1.25,
+      "cache_read": 0.1
+    },
+    "default": {
+      "input": 15.0,
+      "output": 75.0,
+      "cache_write": 18.75,
+      "cache_read": 1.5
+    }
   }
 }
