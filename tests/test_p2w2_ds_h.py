@@ -54,32 +54,7 @@ from agents import _supervisor_common as common
 from agents import _supervisor_http as http_mod
 from agents import _supervisor_ephemeral as eph
 from agents.supervisor import Supervisor
-
-
-def _run_coro(coro) -> None:
-    """Run *coro* in a fresh loop on a dedicated thread.
-
-    The full suite leaves a running event loop marked on the MAIN thread (a
-    known W5-lens polluter, ops/audit/P2_FINDINGS.md; same class the cycle-7
-    obs tests hit, item 401). A bare ``asyncio.run(coro)`` on the main thread
-    then raises "cannot be called from a running event loop". Running on a
-    separate thread sidesteps the marker; these tests pass either way in
-    isolation. A worker exception is re-raised on the caller thread so the
-    test still sees real failures.
-    """
-    box: dict[str, BaseException] = {}
-
-    def _worker() -> None:
-        try:
-            asyncio.run(coro)
-        except BaseException as exc:  # noqa: BLE001 - re-raised below
-            box["err"] = exc
-
-    t = threading.Thread(target=_worker)
-    t.start()
-    t.join()
-    if "err" in box:
-        raise box["err"]
+from tests._asyncio_isolation import run_coro as _run_coro
 
 
 # ---------------------------------------------------------------------------
