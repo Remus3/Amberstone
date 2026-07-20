@@ -4,6 +4,106 @@
 
 ---
 
+# 2026-07-20j - R144 item-registry mode-mirror sweep: 1 real gap, 4 CLEAN
+
+**ENGINE 1.230.0 -> 1.231.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the
+SAME commit `52258f17`, DS `:8893` bounced onto 1.231.0, dual suite green.
+Gemini-loop cycle 2 of the 2026-07-20 standing autonomous grant. LEDGER 982.
+
+## What the directive asked vs what was true
+
+Extend R143's `_hsp_amp.py` mirror finding to the remaining 14 id-keyed registries
+under `agents/daemon_slayer/_item_*.py`. **The premise was partly REFUTED and that is
+the headline:** the predicted silent-zero defect exists in **exactly ONE** registry,
+not across the set. Four of five slices came back CLEAN. They are recorded as
+negatives, not dressed up as a sweep.
+
+## The one real defect (slice A, `_item_ally_grant.py`)
+
+Four SR mirrors priced 0.00 vs bare-id controls: `323107` Redemption, `323190`
+Locket, `323222` Mikael's, `326620` Helia. Live-probed -
+`name_to_id("Echoes of Helia", mode="sr")` returns `326620`.
+
+**The failure mode was subtler than R143's and this is the durable lesson: it was NOT
+a missing key.** R143 had already added these mirror rows to `enchanter_items.json`
+with the per-proc fields left at 0.0 ("not measured this pass"), so the lookup
+SUCCEEDED and returned a silent zero. A key-presence check cannot see this class.
+
+Fixed with an id-to-id remap (`_ALLY_GRANT_MIRROR_SOURCE`), one functional line.
+**No new magnitude constant was authored** - the 873.36 / 1018.32 / 205.84 / 61.12
+values are computed OUTPUTS of the pre-existing bare-id formula, so they cannot drift
+from it. Verifier reproduced each and confirmed mirror == bare at levels 1/6/11/13/18.
+
+The four Arena `22xxxx` mirrors are **HELD at 0.0 on purpose**: grant stated in prose,
+magnitude stated nowhere, and Riot retuned every absolute (Locket 400 vs 200 HP). A
+base-nominal carry would invent a number.
+
+Default output BYTE-IDENTICAL - `ehp.py score_by="team_blended"` is DEFAULT-OFF. This
+is a pre-flip fix, not an incident.
+
+## Findings the directive did not ask for
+
+- **ANTI-NORMALIZATION, stronger than R133/R143.** Zephyr ships ONLY as mirrors
+  `223172`/`663172`. The bare `3172` a prefix-strip would synthesize is **GUNMETAL
+  GREAVES** - an unrelated boot with zero tenacity. A strip does not mis-price; it
+  resolves to a DIFFERENT ITEM. (Shadowflame is the magnitude version: `4645` 20% vs
+  Arena `224645` 15%.)
+- **FEED CONFLICT.** Meraki's single Crown row keyed `444644` (50%/3s) matches
+  DDragon's SR `664644` (40%/3s), not DDragon's own `444644` (90%/1.25s). The feeds
+  disagree about which item the key NAMES. No constant invented; the guard re-derives
+  the conflict each run and fails if a patch makes them agree.
+
+## CARRY-FORWARD - live-gated, do NOT settle offline
+
+Arena Awe mirrors `223119` Winter's Approach / `223121` Fimbulwinter read "Health
+equal to Total Mana" / "based on Mana" where SR reads "bonus mana", and their stat
+blocks are genuinely retuned (600 mana / 400 HP vs 500 / 550, gold 2500 vs 2400).
+DDragon strips the numeral from every Arena row; Meraki keys base ids ONLY (all five
+mirrors absent from its 320 entries). Verifier independently confirmed **the catalog
+CANNOT settle it**. Base nominal carried, not guessed. Needs a live Arena probe.
+
+## Process findings worth keeping
+
+1. **Suite totals are ORDER-SENSITIVE under `pytest-randomly`** - the same worktree
+   gave 8976/2664 and 8965/3208 on two runs, both green; some tests re-shape into
+   subtests by collection order. Pin `-p no:randomly` before comparing counts. An
+   arithmetic reconciliation of two slices' counts mid-run was spurious and was
+   retracted.
+2. **The gist hook corrupted the INDEX in 3 of 5 worktrees** post-commit (~4654
+   phantom staged deletions; `ls-tree` 4657 vs index 4; files intact on disk). Commit
+   trees were clean, so the round merged by **CHERRY-PICK, never `git merge`** - a
+   merge from a corrupt index would have shipped the deletions. Final commit verified
+   `--diff-filter=D` EMPTY.
+3. **There are TWO changelogs and a bump needs BOTH.**
+   `agents/daemon_slayer/CHANGELOG.md` (format `1.231.0 (`) is what
+   `test_changelog_tracks_engine_version` reads; `Share/CHANGELOG.md` (format
+   `## ENGINE_VERSION x -> y`) is the package one. Updating only Share fails the
+   suite - the guard caught it.
+4. A bump is a **128-file / 149-literal** mechanical edit (quoted literal pinned
+   across the DS test suite).
+
+## Verified fresh (ordering pinned)
+
+DS **9026 passed / 1 skipped / 3554 subtests**; RC **12288 passed / 23 skipped / 359
+subtests**; ruff repo-wide clean; ASCII hygiene 13 passed; `ds_share_sync --check` in
+sync 1.231.0 / 499 files; DS `:8893` live at 1.231.0 / 16.14.1 / 173 champs / 706
+items. The 2 post-bump reds were stamp-propagation (doc anchor + a live probe against
+the still-stale server), both green after the fix and bounce - not logic regressions.
+
+Five worktree slices, five verifier gates, Claude sole merger.
+
+## Don't-redo
+
+- The 14 `_item_*.py` registries are SWEPT for mirror coverage - do not re-scan.
+- `_ALLY_GRANT_MIRROR_SOURCE` is an id-to-id map ON PURPOSE. Do NOT "simplify" it to a
+  prefix-strip or normalization helper - Zephyr proves a strip resolves to a different
+  ITEM.
+- The Arena `22xxxx` ally-grant mirrors are held at 0.0 DELIBERATELY. Do not seed them
+  with base nominals.
+- Crown `444644` stays excluded until the two feeds agree.
+
+---
+
 # 2026-07-20i - R143 HSP registry: mirror id-space coverage + Moonstone semantic split
 
 **ENGINE 1.229.0 -> 1.230.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the SAME
@@ -102,39 +202,3 @@ subtests**; ruff clean; 0 non-ASCII introduced; Share `--check` green at 1.229.0
 Don't-redo: RM-101 is CLOSED for every buildable rune. Font of Life 8463 stays DATA-BLOCKED -
 do NOT invent a number. Guardian's AP term stays omitted until `ehp.py` actually carries
 wielder AP; the tripwire enforces it.
-
----
-
-# 2026-07-20g - R141 RM-100 CLOSED: asyncio leak accepted as a priced tradeoff
-
-**Head `bacc559f` (`ba23bae0` is the content commit). ENGINE-IMPACT NONE** - Tier-0 docs +
-guard-verify, no ENGINE_VERSION bump (stays 1.228.0 / patch 16.14.1), no Share resync, no `:8893`
-bounce owed, no route change.
-
-Gemini-loop cycle 4. This cycle answered the PART-C escalation R140 wrote: R140 closed the
-consolidation half of RM-100 and deliberately left the LEAK half standing, so something had to
-decide fix-or-accept. **Decision: option (B), leave it LATENT - and the reason is a priced trade.**
-
-The fix has a known shape and a known price: narrow `pw_browser` off `scope="session"`
-(`tests/snapshot_panels/conftest.py:246`) and pay a browser launch across ~387 snapshot_panels
-tests, permanently. What that buys is bounding a leak that is **already bounded** by
-`PlaywrightContextManager.__exit__` (measured py3.14 + playwright 1.59.0, recorded in R137) and that
-has **zero live trigger** - no bare `asyncio.run(` calls exist under `tests/` at all. Bad trade.
-
-Accepting a latent bug is only defensible if a test fails the moment it stops being latent. It does,
-and it was re-run THIS cycle rather than inherited from the escalation text:
-`tests/test_asyncio_isolation_guard.py` = **7 passed in 2.57s**, pinning both invariants (no bare
-`asyncio.run(` under `tests/`; no sixth local runner copy).
-
-`ROADMAP.md:20` is now a CLOSED bullet that states the tradeoff, its price, and the guard, with an
-explicit do-not-re-pitch. That sentence is the deliverable - it is the same stale-prose failure mode
-R140 root-caused, one level up: an open-reading bullet with no verdict re-picks every director cycle.
-
-**One deliberate deviation, logged not silent.** The directive said mark RM-100 fully CLOSED. The
-RC-GeminiAudit `0xC000013A` last-run result is still genuinely UNPROVEN (six hypotheses refuted), so
-it rides inside the closed bullet as a labelled watch-item. Writing "closed" over an unproven fault
-in a living doc is a false claim, and living docs are where false claims compound.
-
-No subagents / worktrees (R9 inline - one ROADMAP bullet, one plan row, one guard run). Fresh
-verification: **RC 12290 passed / 23 skipped / 359 subtests in 1325s** (exit 0), ruff clean, zero
-non-ASCII bytes on any added line. LEDGER 979.
