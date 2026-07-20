@@ -106,16 +106,19 @@ _LEGENDARY_MIN_GOLD = 2200
 _SHRINK_K = 5.0
 
 
-def load_legendary_ids(items_json: Path | None = None) -> dict[int, str]:
-    """Return ``{item_id: name}`` for completed, SR-legal legendaries.
+def load_legendary_ids(items_json: Path | None = None,
+                       map_id: int = 11) -> dict[int, str]:
+    """Return ``{item_id: name}`` for completed legendaries legal on ``map_id``.
 
     A completed legendary is: purchasable, builds into NOTHING (empty
     ``into`` - nothing further is built from it), is a built item (has a
     ``from`` component list or a ``depth``), is expensive
     (>= ``_LEGENDARY_MIN_GOLD`` total gold), carries no Boots/Consumable/
-    Trinket tag, and is legal on Summoner's Rift (``maps["11"]``). The SR
-    gate naturally excludes the Arena 22-prefixed mirror ids and the
-    Golden Spatula (ARAM-only joke item).
+    Trinket tag, and is legal on ``map_id`` (``maps["<map_id>"]``). ``map_id``
+    DEFAULTS to 11 (Summoner's Rift) - unchanged for every existing caller;
+    the SR gate naturally excludes the Arena 22-prefixed mirror ids and the
+    Golden Spatula (ARAM-only joke item). ``core.aram_item_interaction`` passes
+    12 for the ARAM-legal set.
 
     Fail-soft: a missing or unparseable catalog returns ``{}``.
     """
@@ -129,7 +132,7 @@ def load_legendary_ids(items_json: Path | None = None) -> dict[int, str]:
     data = raw.get("data", raw)
     out: dict[int, str] = {}
     for iid_str, item in data.items():
-        if not _is_completed_legendary(item):
+        if not _is_completed_legendary(item, map_id):
             continue
         try:
             out[int(iid_str)] = str(item.get("name") or iid_str)
@@ -138,8 +141,8 @@ def load_legendary_ids(items_json: Path | None = None) -> dict[int, str]:
     return out
 
 
-def _is_completed_legendary(item: dict) -> bool:
-    """Heuristic gate for a completed, SR-legal legendary item dict."""
+def _is_completed_legendary(item: dict, map_id: int = 11) -> bool:
+    """Heuristic gate for a completed legendary item dict legal on ``map_id``."""
     gold = item.get("gold") or {}
     if not gold.get("purchasable"):
         return False
@@ -154,7 +157,7 @@ def _is_completed_legendary(item: dict) -> bool:
     if item.get("depth") is None and not item.get("from"):
         return False
     maps = item.get("maps") or {}
-    if not maps.get("11"):  # SR-legal only
+    if not maps.get(str(map_id)):  # legal on the requested map only
         return False
     return True
 
