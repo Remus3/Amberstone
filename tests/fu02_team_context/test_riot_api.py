@@ -187,12 +187,56 @@ class TestEndpointsHappyPath(_ApiKeyTestCase):
         self.assertEqual(out2, fake)
         self.assertEqual(m.call_count, 1)
 
+    def test_key_rotation_invalidates_the_account_cache(self):
+        # PUUIDs are a PER-API-KEY encryption of the same account: the value
+        # changes the instant the KEY changes. A key-agnostic cache key over an
+        # IMMUTABLE row therefore poisons the entry permanently on rotation -
+        # get_account_by_riot_id hands back the dead PUUID before any network
+        # call and every downstream request 400s "Exception decrypting".
+        old = {"puuid": "PUUID_UNDER_OLD_KEY", "gameName": "Test", "tagLine": "NA1"}
+        new = {"puuid": "PUUID_UNDER_NEW_KEY", "gameName": "Test", "tagLine": "NA1"}
+        with mock.patch.object(
+            RA, "_http_get",
+            side_effect=[_resp(200, old), _resp(200, new)],
+        ) as m:
+            first = RA.get_account_by_riot_id("Test", "NA1")
+            self.assertEqual(first["puuid"], "PUUID_UNDER_OLD_KEY")
+            # Operator rotates the key (same effect as editing the key file
+            # and calling reload_api_key()).
+            RA._KEY_CACHE = "RGAPI-rotated-key-bbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            second = RA.get_account_by_riot_id("Test", "NA1")
+        self.assertEqual(second["puuid"], "PUUID_UNDER_NEW_KEY")
+        self.assertEqual(m.call_count, 2)
+
     def test_get_recent_matches_returns_list(self):
         fake = ["NA1_111", "NA1_222", "NA1_333"]
         with mock.patch.object(RA, "_http_get",
                                return_value=_resp(200, fake)):
             out = RA.get_recent_matches("PUUID1", count=3)
         self.assertEqual(out, fake)
+
+    def test_get_replay_urls_returns_the_url_list(self):
+        body = {"total": 2, "matchFileURLs": ["https://s3/a.rofl?X-Amz-Expires=3600",
+                                              "https://s3/b.rofl?X-Amz-Expires=3600"]}
+        with mock.patch.object(RA, "_http_get", return_value=_resp(200, body)):
+            out = RA.get_replay_urls("PUUID1")
+        self.assertEqual(len(out), 2)
+        self.assertTrue(out[0].endswith("X-Amz-Expires=3600"))
+
+    def test_get_replay_urls_is_not_cached(self):
+        # The URLs are pre-signed and expire in an hour - caching them would
+        # serve dead links. Two calls must both hit the network.
+        body = {"total": 1, "matchFileURLs": ["https://s3/a.rofl"]}
+        with mock.patch.object(RA, "_http_get",
+                               return_value=_resp(200, body)) as m:
+            RA.get_replay_urls("PUUID1")
+            RA.get_replay_urls("PUUID1")
+        self.assertEqual(m.call_count, 2)
+
+    def test_get_replay_urls_empty_puuid_skips_http(self):
+        with mock.patch.object(RA, "_http_get") as m:
+            self.assertIsNone(RA.get_replay_urls(""))
+        m.assert_not_called()
 
     def test_get_recent_matches_empty_puuid_skips_http(self):
         with mock.patch.object(RA, "_http_get") as m:

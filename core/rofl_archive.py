@@ -1,21 +1,40 @@
-"""Forward-capture archiver for League replay (.rofl) files.
+"""Archiver for League replay (.rofl) files - two sources, one archive.
 
-WHY THIS EXISTS - measured against the live client 2026-07-19:
+THE PRIMARY SOURCE, measured 2026-07-19: Riot serves the files itself.
+`GET /lol/match/v5/matches/by-puuid/{puuid}/replays` returns 200 with five
+pre-signed S3 URLs, needs no game client and has no patch gate, and is an
+APPROVED endpoint of the product app (834837) - the dev key 400s on it.
+`download_replays` is that path. Two measured properties shape it: the bodies
+arrive GZIP-framed (urllib will not decompress them for you), and an account
+whose files Riot no longer retains 404s on every URL - permanent and expected,
+so it is counted as `gone`, never as a failure.
+
+That route serves exactly FIVE per account: a rolling recency window, NOT an
+archive. Its value comes entirely from cadence - pull often, keep what falls
+out the back - which is why every path below is idempotent and additive, and
+why each pull records what it saw in `pull_log.jsonl` (see
+`pull_rotation_report`).
+
+THE SECOND SOURCE is the local client, measured against the live LCU the same
+day:
 
 `POST /lol-replays/v1/rofls/{gameId}/download` returns 204 for any game id, but
 `GET /lol-replays/v1/metadata/{gameId}` then reports `state: "incompatible"` for
 anything not on the CURRENT game patch - confirmed for a patch-16.13 match (only
 ONE patch behind, client on 16.14.794.5912) and for a 14.24 match from Dec 2024.
-So replays are hard patch-locked: a .rofl can only be obtained while its own
-patch is live, and no route retroactively downloads history. There is also no
-third-party source for personal match replays.
+So the LCU route is hard patch-locked: it can only fetch a replay while that
+replay's own patch is live. This is a limit of the CLIENT, not of replay
+availability in general - the Match-V5 route above has no such gate.
 
-Consequence: `data/rewind_history.db` holds 2961 matches spanning 60 patches
-(11.8 .. 16.13) and exactly TWO .rofl files exist on disk. The historical gap is
-permanent. The only thing that can still be saved is the FORWARD stream, and the
-client prunes its own Replays directory, so replays must be copied out promptly.
+The client also prunes its own Replays directory, so anything it does write
+must be copied out promptly.
 
-This module is that copy step. It is deliberately boring:
+Both paths land in one archive, keyed on match id. They spell the same match
+differently - the client writes "NA1-5595187452.rofl" and the API path writes
+the underscore form - so the skip check looks for EITHER, or the same game gets
+downloaded twice (measured on the live archive).
+
+This module is deliberately boring:
   - idempotent (keyed on match id, so re-running is free),
   - atomic (tmp + os.replace, per the repo's atomic-write rule - a half-copied
     13 MB binary would be indistinguishable from a good one),
@@ -37,6 +56,8 @@ import os
 import re
 import shutil
 import time
+import urllib.error
+import urllib.parse
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -272,6 +293,312 @@ def archive_highlights(source_dir, archive_dir, index_path=None) -> ArchiveResul
     return res
 
 
+# ---------------------------------------------------------------------------
+# Sanctioned Match-V5 pull (GET .../matches/by-puuid/{puuid}/replays)
+# ---------------------------------------------------------------------------
+#
+# Riot serves the .rofl files itself, pre-signed, to an entitled API key. This
+# is a strictly better route than the LCU pull above: no client, no patch gate.
+# It is NOT an archive - exactly five per account, rotating - so the value comes
+# from running it on a cadence and keeping what falls out the back of the
+# window. Everything below is therefore idempotent and additive.
+
+DEFAULT_ACCOUNTS = [("SamplePlayer", "Trist"), ("SamplePlayer", "Vayne")]
+
+_AMZ_DATE_FMT = "%Y%m%dT%H%M%SZ"
+
+# A real replay body starts with the container magic. S3 can hand back an XML
+# error document under a 200; writing that under a .rofl name would poison both
+# the archive and every later extract pass.
+_ROFL_MAGIC = b"RIOT"
+
+
+def parse_account(riot_id: str):
+    """"SamplePlayer#Vayne" -> ("SamplePlayer", "Vayne"). Raises on a bare name.
+
+    The Riot ID is the durable identity - PUUIDs are scoped to whichever API
+    key resolved them, so every pull re-resolves from this pair rather than
+    reading a stored PUUID.
+    """
+    name, sep, tag = str(riot_id or "").partition("#")
+    if not sep or not name.strip() or not tag.strip():
+        raise ValueError(f"expected a Riot ID of the form name#tag, got {riot_id!r}")
+    return name.strip(), tag.strip()
+
+
+def match_id_from_replay_url(url: str):
+    """Pull "NA1_5595187452" out of a pre-signed replay URL.
+
+    The authoritative name is in `response-content-disposition`
+    (`attachment; filename="NA1_5595187452.rofl"`), which is already in RC's
+    underscore form. The URL path is the fallback. None when neither parses, so
+    an unexpected URL is skipped rather than fatal.
+    """
+    if not url:
+        return None
+    parts = urllib.parse.urlsplit(str(url))
+    disp = urllib.parse.parse_qs(parts.query).get("response-content-disposition")
+    if disp:
+        m = re.search(r'filename="?([^";]+)"?', disp[0])
+        if m:
+            mid = match_id_from_name(m.group(1).strip())
+            if mid:
+                return mid
+    return match_id_from_name(parts.path.rsplit("/", 1)[-1])
+
+
+def replay_url_expired(url: str, now=None) -> bool:
+    """True once the S3 signature is past `X-Amz-Date + X-Amz-Expires`.
+
+    MEASURED bound: `X-Amz-Expires=3600` - one hour. An expired URL 403s with
+    no useful body, so catching it here turns a mystery transport failure into
+    a named outcome. A URL with no signature returns False: unknown expiry must
+    not silently drop a link that may well be good.
+    """
+    q = urllib.parse.parse_qs(urllib.parse.urlsplit(str(url or "")).query)
+    stamp = (q.get("X-Amz-Date") or [None])[0]
+    expires = (q.get("X-Amz-Expires") or [None])[0]
+    if not stamp or not expires:
+        return False
+    try:
+        signed = datetime.strptime(stamp, _AMZ_DATE_FMT).replace(tzinfo=timezone.utc)
+        deadline = signed.timestamp() + int(expires)
+    except (ValueError, TypeError) as exc:
+        logger.warning("unparseable signature on replay URL (%s) - trying it anyway", exc)
+        return False
+    now = time.time() if now is None else now
+    return now > deadline
+
+
+def _archived_file(archive_dir: Path, match_id: str):
+    """The on-disk replay for *match_id*, whichever separator it was saved
+    under. None when the archive does not hold it."""
+    platform, _sep, game_id = str(match_id).partition("_")
+    for name in (f"{match_id}{ROFL_SUFFIX}",
+                 f"{platform}-{game_id}{ROFL_SUFFIX}"):
+        candidate = archive_dir / name
+        if candidate.exists():
+            return candidate
+    return None
+
+
+_PULL_LOG = "pull_log.jsonl"
+
+
+def record_pull_observation(archive_dir, account, match_ids, now=None) -> None:
+    """Append what one pull SAW for one account.
+
+    The open question this answers over time: Riot serves exactly five replays
+    per account - does that window ROTATE as new games are played? If it does,
+    running this on a cadence converts a rolling window into a permanent
+    archive, and no bulk trick is needed. That cannot be settled inside one
+    run, so each run leaves evidence instead.
+
+    Append-only JSONL, and a write failure is logged rather than raised: losing
+    an observation must never fail the pull that actually saved a replay.
+    """
+    archive_dir = Path(archive_dir)
+    row = {
+        "account": account,
+        "match_ids": list(match_ids or []),
+        "observed_at_unix": time.time() if now is None else now,
+        "observed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        with (archive_dir / _PULL_LOG).open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, sort_keys=True) + "\n")
+    except OSError as exc:
+        logger.warning("could not record pull observation for %s: %s", account, exc)
+
+
+def load_pull_observations(archive_dir) -> list:
+    """Every recorded observation, oldest first. Corrupt lines are skipped
+    LOUDLY - a silently dropped row would understate rotation."""
+    path = Path(archive_dir) / _PULL_LOG
+    if not path.exists():
+        return []
+    rows = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        logger.warning("cannot read %s: %s", path, exc)
+        return []
+    for n, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except ValueError as exc:
+            logger.warning("skipping corrupt pull-log line %d: %s", n, exc)
+    return rows
+
+
+def pull_rotation_report(archive_dir) -> dict:
+    """Per account: did the served set change between the first and last pull?
+
+    `rotated` is None with fewer than two observations - one sample cannot show
+    rotation, and answering "False" there would fabricate a negative answer to
+    the question this log exists to settle.
+    """
+    by_account: dict = {}
+    for row in load_pull_observations(archive_dir):
+        by_account.setdefault(row.get("account"), []).append(row)
+
+    report = {}
+    for account, rows in by_account.items():
+        rows.sort(key=lambda r: r.get("observed_at_unix") or 0)
+        first = set(rows[0].get("match_ids") or [])
+        last = set(rows[-1].get("match_ids") or [])
+        new_ids = sorted(last - first)
+        report[account] = {
+            "observations": len(rows),
+            "rotated": (bool(new_ids) if len(rows) > 1 else None),
+            "new_ids": new_ids,
+            "dropped_ids": sorted(first - last),
+            "first_seen": sorted(first),
+            "last_seen": sorted(last),
+        }
+    return report
+
+
+@dataclass
+class DownloadResult:
+    """Outcome of one API pull. Lists hold match ids.
+
+    `expired` is separated from `failed` on purpose: an expired URL means the
+    pull ran more than an hour after the URLs were fetched (a scheduling
+    defect), while `failed` means the transfer itself broke. Collapsing them
+    would hide which one is happening.
+    """
+
+    downloaded: list = field(default_factory=list)
+    skipped: list = field(default_factory=list)
+    failed: list = field(default_factory=list)
+    expired: list = field(default_factory=list)
+    gone: list = field(default_factory=list)
+
+
+_GZIP_MAGIC = b"\x1f\x8b"
+
+
+def _maybe_gunzip(body: bytes) -> bytes:
+    """MEASURED 2026-07-19: Riot's pre-signed bodies arrive GZIP-framed, and
+    urllib does not decompress. Returning the compressed bytes unchanged made
+    the first live pull discard 5 of 5 as "not a replay". Left as-is when it is
+    not gzip, so a raw body still works."""
+    if not body or not body.startswith(_GZIP_MAGIC):
+        return body
+    import gzip
+    try:
+        return gzip.decompress(body)
+    except (OSError, EOFError, ValueError) as exc:
+        logger.warning("gzip body would not decompress (%d bytes): %s", len(body), exc)
+        return b""
+
+
+def _http_get_bytes(url: str) -> bytes:
+    import urllib.request
+    with urllib.request.urlopen(url, timeout=120) as resp:
+        return resp.read()
+
+
+def download_replays(urls, archive_dir, index_path=None, fetcher=None,
+                     now=None) -> DownloadResult:
+    """Download each pre-signed replay URL straight into the archive.
+
+    Same contract as archive_replays: idempotent (keyed on match id, so a
+    repeat pull of the same rotating window costs one skip each), atomic (a
+    partial 10 MB transfer must never appear under its final name), and loud
+    about every non-success.
+
+    *fetcher* is injected so the transport stays out of the logic and the pass
+    is testable without S3.
+    """
+    archive_dir = Path(archive_dir)
+    index_path = Path(index_path) if index_path else archive_dir / "index.json"
+    fetcher = fetcher or _http_get_bytes
+
+    res = DownloadResult()
+    index = _load_index(index_path)
+    known = index["replays"]
+    dirty = False
+
+    for url in urls or []:
+        match_id = match_id_from_replay_url(url)
+        if match_id is None:
+            logger.warning("cannot parse a match id out of replay URL: %s", url)
+            res.failed.append(url)
+            continue
+
+        dest = archive_dir / f"{match_id}{ROFL_SUFFIX}"
+        # Skip on the MATCH ID present on disk under EITHER naming convention,
+        # not on this function's own filename: the client writes the hyphen
+        # form ("NA1-5595187452.rofl") and archive_replays preserves it, so a
+        # filename-keyed check re-downloads 10 MB and leaves two copies of one
+        # game (measured on the live archive).
+        if match_id in known and _archived_file(archive_dir, match_id) is not None:
+            res.skipped.append(match_id)
+            continue
+
+        if replay_url_expired(url, now=now):
+            # One hour is the whole window; if we are past it the fetch step
+            # ran too long after the URL step.
+            logger.warning("replay URL for %s expired before it was used", match_id)
+            res.expired.append(match_id)
+            continue
+
+        try:
+            body = fetcher(url)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                # MEASURED: an entire account's window 404s. Riot still LISTS
+                # the match but no longer retains the file. Permanent and
+                # expected - not a failure, or the scheduled task reports
+                # LastTaskResult=1 forever and a real fault hides in it.
+                logger.info("replay %s is listed but no longer retained (404)",
+                            match_id)
+                res.gone.append(match_id)
+            else:
+                logger.warning("download failed for %s: HTTP %s", match_id, exc.code)
+                res.failed.append(match_id)
+            continue
+        except OSError as exc:
+            logger.warning("download failed for %s: %s", match_id, exc)
+            res.failed.append(match_id)
+            continue
+
+        body = _maybe_gunzip(body)
+        if not body or not body.startswith(_ROFL_MAGIC):
+            logger.warning(
+                "response for %s is not a replay (%d bytes, starts %r) - discarded",
+                match_id, len(body or b""), (body or b"")[:16],
+            )
+            res.failed.append(match_id)
+            continue
+
+        try:
+            _atomic_write_bytes(dest, body)
+        except OSError as exc:
+            logger.warning("could not write replay %s: %s", match_id, exc)
+            res.failed.append(match_id)
+            continue
+
+        known[match_id] = {
+            "file": dest.name,
+            "size": len(body),
+            "source": "match_v5_replays",
+            "archived_at": datetime.now(timezone.utc).isoformat(),
+        }
+        dirty = True
+        res.downloaded.append(match_id)
+        logger.info("downloaded replay %s (%d bytes)", match_id, len(body))
+
+    if dirty or not index_path.exists():
+        _atomic_write_json(index_path, index)
+    return res
+
+
 @dataclass
 class ExtractResult:
     """Outcome of a bulk extraction pass. Lists hold match ids."""
@@ -470,6 +797,23 @@ def _atomic_write_json(target: Path, payload: dict) -> None:
     tmp = target.with_suffix(target.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     tmp.replace(target)
+
+
+def _atomic_write_bytes(target: Path, payload: bytes) -> None:
+    """Write a downloaded replay via a tmp sibling then replace, and leave no
+    tmp artifact behind on failure - a truncated 10 MB body under the final
+    name would be indistinguishable from a good replay."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    try:
+        tmp.write_bytes(payload)
+        tmp.replace(target)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError as exc:
+                logger.warning("could not clean tmp artifact %s: %s", tmp, exc)
 
 
 def _atomic_copy(src: Path, dst: Path) -> None:
