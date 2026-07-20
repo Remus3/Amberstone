@@ -3,9 +3,13 @@
 Pins the contracts added to `tools/lcu_agent.py` for the
 Champ Select view's command flow:
 
-  - _active_round  -> derive {type, cell_ids} from session.actions[]
-  - _swap_entries  -> slim positionSwaps / pickOrderSwaps for the push
-  - _arena_teams   -> distil additionalSubteamData with is_me detection
+  - active_round  -> derive {type, cell_ids} from session.actions[]
+  - swap_entries  -> slim positionSwaps / pickOrderSwaps for the push
+  - arena_teams   -> distil additionalSubteamData with is_me detection
+
+(those three now live in lcu/champ_select_shape.py - RC2 L3 moved the
+champ-select shaping out of the agent so the dashboard can build the same
+payload in-process; the agent imports them from there.)
   - _local_in_progress_action -> walk actions for the local cell's
                                 in-progress ban|pick
 
@@ -28,6 +32,8 @@ sys.path.insert(0, str(_PROJECT_ROOT / "tools"))
 
 import lcu_agent as agent  # noqa: E402
 
+from lcu import champ_select_shape as shape  # noqa: E402
+
 
 # ---------------------------------------------------------------------------
 # Pure helpers - no LCU contact, just shape transforms.
@@ -36,8 +42,8 @@ import lcu_agent as agent  # noqa: E402
 
 class TestActiveRound(unittest.TestCase):
     def test_returns_none_when_no_actions(self):
-        self.assertIsNone(agent._active_round({}))
-        self.assertIsNone(agent._active_round({"actions": []}))
+        self.assertIsNone(shape.active_round({}))
+        self.assertIsNone(shape.active_round({"actions": []}))
 
     def test_returns_none_when_nothing_in_progress(self):
         sess = {
@@ -46,7 +52,7 @@ class TestActiveRound(unittest.TestCase):
                  "completed": True, "isInProgress": False},
             ]]
         }
-        self.assertIsNone(agent._active_round(sess))
+        self.assertIsNone(shape.active_round(sess))
 
     def test_picks_in_progress_returns_pick_with_cells(self):
         sess = {
@@ -59,7 +65,7 @@ class TestActiveRound(unittest.TestCase):
                   "completed": False, "isInProgress": True}],
             ]
         }
-        out = agent._active_round(sess)
+        out = shape.active_round(sess)
         self.assertEqual(out["type"], "pick")
         self.assertEqual(sorted(out["cell_ids"]), [3, 6])
 
@@ -68,13 +74,13 @@ class TestActiveRound(unittest.TestCase):
             {"id": 1, "actorCellId": 0, "type": "ban",
              "completed": False, "isInProgress": True},
         ]]}
-        self.assertEqual(agent._active_round(sess)["type"], "ban")
+        self.assertEqual(shape.active_round(sess)["type"], "ban")
 
     def test_skips_malformed_inner_arrays(self):
         sess = {"actions": ["not a list",
                             [{"actorCellId": 2, "type": "pick",
                               "isInProgress": True}]]}
-        out = agent._active_round(sess)
+        out = shape.active_round(sess)
         self.assertEqual(out["type"], "pick")
         self.assertEqual(out["cell_ids"], [2])
 
@@ -85,7 +91,7 @@ class TestSwapEntries(unittest.TestCase):
             {"id": 0, "cellId": 5, "state": "AVAILABLE", "other": "ignored"},
             {"id": 1, "cellId": 6, "state": "SENT"},
         ]
-        out = agent._swap_entries(raw)
+        out = shape.swap_entries(raw)
         self.assertEqual(len(out), 2)
         self.assertEqual(out[0],
                          {"id": 0, "cellId": 5, "state": "AVAILABLE"})
@@ -93,17 +99,17 @@ class TestSwapEntries(unittest.TestCase):
                          {"id": 1, "cellId": 6, "state": "SENT"})
 
     def test_handles_none_and_empty(self):
-        self.assertEqual(agent._swap_entries(None), [])
-        self.assertEqual(agent._swap_entries([]), [])
+        self.assertEqual(shape.swap_entries(None), [])
+        self.assertEqual(shape.swap_entries([]), [])
 
     def test_skips_non_dict_entries(self):
-        self.assertEqual(agent._swap_entries([None, "x", 7]), [])
+        self.assertEqual(shape.swap_entries([None, "x", 7]), [])
 
 
 class TestArenaTeams(unittest.TestCase):
     def test_empty_when_no_subteam_data(self):
-        self.assertEqual(agent._arena_teams({}), [])
-        self.assertEqual(agent._arena_teams({"additionalSubteamData": []}), [])
+        self.assertEqual(shape.arena_teams({}), [])
+        self.assertEqual(shape.arena_teams({"additionalSubteamData": []}), [])
 
     def test_full_4_subteam_distil_with_is_me(self):
         sess = {
@@ -119,7 +125,7 @@ class TestArenaTeams(unittest.TestCase):
                  "members": [{"cellId": 4, "championId": 86}]},
             ],
         }
-        out = agent._arena_teams(sess)
+        out = shape.arena_teams(sess)
         self.assertEqual(len(out), 3)
         # Local cell is 2 -> subteam 2 is mine
         me = next(t for t in out if t["is_me"])
@@ -136,7 +142,7 @@ class TestArenaTeams(unittest.TestCase):
                  "members": [{"cellId": 0, "championId": 67}]},
             ],
         }
-        out = agent._arena_teams(sess)
+        out = shape.arena_teams(sess)
         self.assertFalse(out[0]["is_me"])
 
     def test_name_fallback_when_missing(self):
@@ -146,7 +152,7 @@ class TestArenaTeams(unittest.TestCase):
                 {"id": 5, "members": [{"cellId": 0, "championId": 1}]},
             ],
         }
-        out = agent._arena_teams(sess)
+        out = shape.arena_teams(sess)
         self.assertEqual(out[0]["name"], "Team 5")
 
 
@@ -425,16 +431,16 @@ class TestAramQueueIdsAntiDrift(unittest.TestCase):
     core.queue_modes - this guards it from silently drifting again."""
 
     def test_mayhem_2400_in_aram_set(self):
-        self.assertIn(2400, agent._ARAM_QUEUE_IDS)
-        self.assertIn(450, agent._ARAM_QUEUE_IDS)
+        self.assertIn(2400, shape.ARAM_QUEUE_IDS)
+        self.assertIn(450, shape.ARAM_QUEUE_IDS)
 
     def test_mirror_matches_core_queue_modes_aram_keys(self):
         from core.queue_modes import QUEUE_ID_TO_MODE_KEY
         core_aram = {qid for qid, m in QUEUE_ID_TO_MODE_KEY.items()
                      if m == "aram"}
         self.assertEqual(
-            set(agent._ARAM_QUEUE_IDS), core_aram,
-            "tools/lcu_agent._ARAM_QUEUE_IDS drifted from "
+            set(shape.ARAM_QUEUE_IDS), core_aram,
+            "tools/lcu_shape.ARAM_QUEUE_IDS drifted from "
             "core.queue_modes aram keys - keep the mirror in sync")
 
 
