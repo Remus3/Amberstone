@@ -4,6 +4,42 @@
 
 ---
 
+# 2026-07-20g - R141 RM-100 CLOSED: asyncio leak accepted as a priced tradeoff
+
+**Head `bacc559f` (`ba23bae0` is the content commit). ENGINE-IMPACT NONE** - Tier-0 docs +
+guard-verify, no ENGINE_VERSION bump (stays 1.228.0 / patch 16.14.1), no Share resync, no `:8893`
+bounce owed, no route change.
+
+Gemini-loop cycle 4. This cycle answered the PART-C escalation R140 wrote: R140 closed the
+consolidation half of RM-100 and deliberately left the LEAK half standing, so something had to
+decide fix-or-accept. **Decision: option (B), leave it LATENT - and the reason is a priced trade.**
+
+The fix has a known shape and a known price: narrow `pw_browser` off `scope="session"`
+(`tests/snapshot_panels/conftest.py:246`) and pay a browser launch across ~387 snapshot_panels
+tests, permanently. What that buys is bounding a leak that is **already bounded** by
+`PlaywrightContextManager.__exit__` (measured py3.14 + playwright 1.59.0, recorded in R137) and that
+has **zero live trigger** - no bare `asyncio.run(` calls exist under `tests/` at all. Bad trade.
+
+Accepting a latent bug is only defensible if a test fails the moment it stops being latent. It does,
+and it was re-run THIS cycle rather than inherited from the escalation text:
+`tests/test_asyncio_isolation_guard.py` = **7 passed in 2.57s**, pinning both invariants (no bare
+`asyncio.run(` under `tests/`; no sixth local runner copy).
+
+`ROADMAP.md:20` is now a CLOSED bullet that states the tradeoff, its price, and the guard, with an
+explicit do-not-re-pitch. That sentence is the deliverable - it is the same stale-prose failure mode
+R140 root-caused, one level up: an open-reading bullet with no verdict re-picks every director cycle.
+
+**One deliberate deviation, logged not silent.** The directive said mark RM-100 fully CLOSED. The
+RC-GeminiAudit `0xC000013A` last-run result is still genuinely UNPROVEN (six hypotheses refuted), so
+it rides inside the closed bullet as a labelled watch-item. Writing "closed" over an unproven fault
+in a living doc is a false claim, and living docs are where false claims compound.
+
+No subagents / worktrees (R9 inline - one ROADMAP bullet, one plan row, one guard run). Fresh
+verification: **RC 12290 passed / 23 skipped / 359 subtests in 1325s** (exit 0), ruff clean, zero
+non-ASCII bytes on any added line. LEDGER 979.
+
+---
+
 # 2026-07-20f - R140 RM-100 consolidation: CLEAN / REFUTED-PREMISE
 
 **Head `60ee6289`. ENGINE-IMPACT NONE** - docs-only Tier-0, no ENGINE_VERSION bump (stays 1.228.0 /
@@ -72,49 +108,3 @@ artifact was an untracked gitignored `__pycache__`.
 
 Suites fresh this run: **DS 8866 passed / 1 skipped / 2518 subtests; RC 12290 passed / 23 skipped / 359 subtests.**
 Share `.md` non-ASCII bytes: 0. Worktrees + slice branches cleaned (local and remote).
-
----
-
-# 2026-07-20d - R138 HEXCORE offline explorer refresh
-
-Merge `ee0e2f62` (slice `ab16e062`) + docs `001b3fc0`. LEDGER 976. gemini-loop
-cycle 1 of the 2026-07-20 standing autonomous grant. Docs artifact only -
-ENGINE-IMPACT NONE, no ENGINE_VERSION bump, no Share sync, no restart owed.
-
-**The file count needed adjudication, not a raw git diff.** The directive said
-"find net-new non-test .py files since d584e02e". The raw command returns 36;
-10 of those are `Share/src/agents/daemon_slayer/*.py`, which are byte mirrors
-emitted by `tools/ds_share_sync.py`, not distinct source units. Shipping 36
-would have double-counted the DS mirror inside a visualization whose entire
-point is file density. 26 unique units landed. **Do not "re-add the missing
-10" in a later pass - the exclusion is deliberate.**
-
-**The stale literal occurred three times, not two.** The `293` dust count lived
-in the `// DUST:` comment, the sr-only accessibility paragraph, AND the no-JS
-fallback prose near the file end. The third was found by the build agent, not
-by the brief. All three now read 319 and a test pins comment-vs-prose
-agreement, so the page can no longer silently lie about its own contents.
-
-**The HUD engine pair was read live, not off docs.** `:8893/health` returned
-`1.228.0 / 16.14.1`; CLAUDE.md's own header still says 1.226.0 and would have
-shipped a wrong number into the artifact. Same for commits (3733) and HEAD
-(`114977ee`), both re-derived from git rather than carried forward.
-
-**Worth remembering about the test.** The build agent's first `CATS` parser
-anchored to line start, matched only 6 of 15 keys, and produced a FALSE
-integrity failure against pre-existing data. It fixed the parser rather than
-relaxing the assertion, and added a `len(keys) >= 15` self-check so a silently
-degraded parse fails loudly instead of green-washing. That is the right
-instinct on a referential-integrity test and is the reason claim 8 (every dust
-parentNodeId resolves in NODES) is trustworthy.
-
-**Verified.** verifier subagent CONFIRM 13/13 (independently re-parsed DUST,
-re-ran `node --check` on the extracted ~600KB script block, re-counted NODES,
-confirmed the 2-file blast radius). Full RC suite **12290 passed / 0 failed /
-23 skipped / 359 subtests** in 20m38s. ruff clean; file remains 0 non-ASCII
-bytes and fully self-contained.
-
-**No visual capture owed** - `docs/HEXCORE_offline.html` is a standalone offline
-artifact, not a dashboard or overlay page, so the 3b overlay-capture ritual
-does not apply. The `node --check` guard plus the referential-integrity tests
-are the proof surface for this file.
