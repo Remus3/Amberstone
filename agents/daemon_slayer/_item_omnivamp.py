@@ -49,6 +49,17 @@ DROPPED / DEFERRED:
     omnivamp (grants bonus HP IF lifesteal + omnivamp >= 30%), NOT an omnivamp
     grant. Excluded by definition.
 
+R144 MIRROR-COVERAGE RE-MEASURE (16.14.1, slice C). Re-audited against
+``core.daemon_slayer_resolver.name_to_id``, which hands the engine mirror ids
+(``224633`` under mode="arena") where a bare-id-only registry would fall
+through to a silent 0.0 - the R143 / da5cb2ae defect class. COMPLETE: the
+16.14.1 index carries exactly two ids named "Riftmaker" (``4633`` and
+``224633``) and both were already registered. The DROPPED ids below were
+re-confirmed genuinely ABSENT from the index, so their absence is correct
+rather than a gap (compare R143's Forbidden Idol 3114, which likewise has no
+mirror and correctly gained none). Both facts are pinned by
+``tests/test_r144_mirror_slice_c.py``.
+
 Regeneration on a patch bump: re-scan ``items_meraki.json`` effect text for
 ``omnivamp}}`` grants that are clean always-on / max-stacks passives (drop the
 takedown / proc-gated / consumer entries above), map each to its ``is_ranged``

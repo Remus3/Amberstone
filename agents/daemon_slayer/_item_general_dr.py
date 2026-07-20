@@ -54,15 +54,32 @@ Registered ids (each confirmed present + live in the DS item index
   * 664644 - Crown of the Shattered Queen (SR, ``maps.11``; premium mage item).
     DDragon-verified 40 (Meraki-absent).
 
-DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
+DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class).
+These are enumerated MACHINE-READABLY in ``_GENERAL_DR_UNSOURCED_MIRRORS`` below so
+the R144 coverage guard can tell "knowingly excluded" apart from "silently missed":
   * 444644 - Crown of the Shattered Queen (Arena mirror, ``maps.30``): the source
     magnitude CONFLICTS unresolvably headless - ``items_meraki.json`` says 50% but
     ``items.json`` (DDragon) says a boosted 90% (an Arena-prismatic variant). With
-    no way to confirm the true 16.13.1 Arena value without a live Arena game, this
-    mirror is EXCLUDED pending a live confirm (mirrors R107's exclusion of the
-    absent 223083/323083 mirrors - do not seed an unverifiable constant).
+    no way to confirm the true Arena value without a live Arena game, this mirror
+    is EXCLUDED pending a live confirm (mirrors R107's exclusion of the absent
+    223083/323083 mirrors - do not seed an unverifiable constant).
+    RE-VERIFIED AT 16.14.1 (R144): the conflict is unchanged AND is worse than the
+    original note recorded. Meraki carries exactly ONE Crown row in the whole feed,
+    keyed 444644, and its text ("50%, lingering for 3 seconds") matches the linger
+    of the SR row 664644 (40% / 3s) rather than DDragon's own 444644 (90% / 1.25s)
+    - so the feeds disagree on WHICH ITEM the key names, not just on a magnitude.
+    Three candidate values (40 / 50 / 90) across two feeds with mismatched keying
+    is not a discrepancy a headless pass can adjudicate. The R144 guard re-derives
+    this conflict from the shipped feeds every run, so if a future patch refresh
+    makes them agree the test FAILS and the exclusion is revisited on evidence
+    rather than left to rot.
   * 4644 / 224644 - Crown of the Shattered Queen ids present in the index but with
     NO live map flag (``maps`` all-False) - disabled this patch, never equippable.
+    Both state a clean 40% (matching the SR row), so the exclusion is a
+    REACHABILITY call, not a magnitude one; the guard asserts they stay map-dead.
+    ``name_to_id`` returns 4644 under mode="aram" purely because no ARAM Crown
+    exists and the lookup falls through to the legacy shortest-id index - a 0.0
+    there is CORRECT, since the item cannot be owned on that map.
   * Anathema's Chains 228001/8001 "Vendetta" (30% reduced damage from a single
     Nemesis): source- AND target-conditional (one specific enemy), with no clean
     whole-fight fold point - a different (single-target) mechanic, not this
@@ -105,6 +122,25 @@ _ITEM_GENERAL_DR: dict[str, tuple[float, float]] = {
     "3869":   (0.35, 0.25),  # Celestial Opposition - Blessing (Meraki 16.13.1 {{rd|35%|25%}}); SR maps.11
     "664644": (0.40, 0.40),  # Crown of the Shattered Queen - Safeguard 40% (DDragon 16.13.1, range-agnostic); SR maps.11
 }
+
+
+# Mode-mirror ids of a REGISTERED carrier that are deliberately NOT priced, so the
+# R144 coverage guard can distinguish a knowing exclusion from the silent-0.0 defect
+# class (a registry keyed on bare ids missing the mirror ``name_to_id`` actually
+# returns). Membership here is a documented decision, NOT a magnitude: every id
+# below scores the identity 1.0 exactly as an unknown id would. See the DOCUMENTED
+# EXCLUSIONS block in the module docstring for the per-id reason and its evidence.
+#
+# Deliberately NOT a prefix-strip fallback. Resolving 444644 to the base 664644's
+# 40% would be the tempting one-liner and would be wrong in the largest measured
+# way in this repo: DDragon states the Arena mirror at 90%, and mode mirrors are
+# retuned in both directions (R133 Jak'Sho 226665 40% vs base 30%; R143 Dawncore
+# 326621 .20 vs base .16). Magnitudes are enumerated per id or they are excluded.
+_GENERAL_DR_UNSOURCED_MIRRORS: frozenset[str] = frozenset({
+    "444644",  # Arena mirror, maps.30 - LIVE-REACHABLE; feeds conflict 50 vs 90
+    "4644",    # maps all-False - never equippable this patch (states 40%)
+    "224644",  # maps all-False - never equippable this patch (states 40%)
+})
 
 
 def item_general_dr_multiplier(

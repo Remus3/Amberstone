@@ -42,6 +42,16 @@ NOT REGISTERED:
     Unending Despair has no 32xxxx mirror; base 2502 IS the ARAM item
     (``maps["12"] == True``). Verified against the item index, not assumed.
 
+R144 MIRROR-COVERAGE RE-MEASURE (16.14.1, slice C). Re-audited against
+``core.daemon_slayer_resolver.name_to_id``, which hands the engine ``222502``
+under mode="arena" where a bare-id-only registry would fall through to a silent
+0.0 (the R143 / da5cb2ae defect class). COMPLETE: both ids were already
+registered, and the missing ``322502`` was re-confirmed absent from the index.
+The Arena mirror IS retuned in its stat block (350 HP / 10 AH vs the base
+400 / 15), but its Anguish passive text is identical to the base's ("heal for
+250% of the damage dealt"), so the 0.075 coefficient is carried on measured
+text rather than assumed. Pinned by ``tests/test_r144_mirror_slice_c.py``.
+
 THE ONE ASSUMPTION IN THIS LANE: ``_ASSUMED_TARGET_MR_FOR_PROC_HEAL``.
 The heal is 250% of POST-mitigation damage, but the EHP consumer
 (``ehp._collect_heals`` -> ``ItemHeal.resolve_magnitude``,

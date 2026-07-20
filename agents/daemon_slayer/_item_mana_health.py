@@ -69,6 +69,26 @@ DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class)
     spent; Diadem of Songs 2530 ally heal from your max mana): heal throughput /
     ally grants, not a self bonus-max-HP conversion.
 
+R144 MIRROR-COVERAGE RE-MEASURE (16.14.1, slice C). Re-audited against
+``core.daemon_slayer_resolver.name_to_id`` - the resolver hands the engine
+mirror ids, and a registry keyed on bare ids alone falls through to a silent
+0.0 (the R143 / da5cb2ae defect class). This registry came back COMPLETE: the
+index carries exactly six ids across the two names (``3119`` / ``223119`` /
+``323119`` and ``3121`` / ``223121`` / ``323121``), and all six were already
+registered. Pinned by ``tests/test_r144_mirror_slice_c.py``. Note the resolver
+never actually emits the ``32xxxx`` pair for these names - both 32 mirrors
+declare ``maps["11"]`` only, and the bare id wins the first-write-wins per-mode
+index - so those two rows are defensive coverage rather than a live path.
+
+OPEN, NOT ACTED ON (R144): the Arena mirrors' DDragon copy reads "Gain bonus
+Health equal to Total Mana" where the SR/ARAM line reads "bonus mana", and the
+Arena stat blocks are genuinely retuned (223119 carries 600 mana / 400 HP vs
+the base 500 / 550). DDragon strips the numeral from the Awe tooltip and Meraki
+keys base ids only, so the catalog cannot settle whether the Arena percent or
+its mana BASE differs from 15% of BONUS mana. The base nominal is therefore
+carried unchanged rather than retuned on a guess; settling it needs a live
+Arena probe, not another catalog pass.
+
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: the ``apply_item_mana_health`` seam on
 ``compute_ehp`` defaults False; with it OFF the credited HP is 0.0 and every EHP
 numerator is unchanged. The live default-ON flip is operator-gated (mirrors
