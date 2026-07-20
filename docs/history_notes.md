@@ -119,6 +119,57 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-20a - .rofl sidecar backfill of rewind_history.db, executed live
+
+Commits `5174058f`, `533e7e47`, `1e3a186c`, `d7901101`. CI green. LEDGER 971.
+
+SHIPPED. 12 archived stats sidecars mapped to the 147-col `participants` schema;
+3 net-new matches INSERTED into production (2961 -> 2964 matches, 30562 -> 30592
+participants, 0 orphans). Backup `data/rewind_history.db.bak-20260720` (gitignored).
+The DB now has its FIRST event-mode row (queue 2400 / KIWI) - was zero.
+
+TWO FINDINGS THAT INVERTED THE DESIGN - do NOT re-derive:
+- Sidecar PUUID is the RAW game uuid; DB puuid is API-key-ENCRYPTED. Zero overlap,
+  a puuid join matches 0 of 18 rows. Join on sidecar player ORDER (index+1 ==
+  participant_id), champion-name cross-checked. Pinned by test. Memory:
+  `reference_rofl_sidecar_join_key`.
+- Replay Tool Z16 does NOT read map/mode from the file - `GameDetailsInferrer.cs`
+  INFERS map from player stats (no jungle creeps => Howling Abyss). Yields MAP not
+  QUEUE and cannot separate ARAM 450 from Mayhem 2400. So queue_id/game_mode stay
+  NULL unless a caller asserts them via `queue_overrides`. Header game VERSION is
+  real (offset 14, plaintext) and oracle-verified.
+
+118 columns mapped, each proven against the 6 overlap matches. summoner_id and
+time_played were probed, DISAGREED, and are deliberately excluded.
+
+DO NOT REDO: L1 (RM-100 asyncio dedup, `b54e315d`) and L3 (RM-108 token detector,
+`a60d32e6`) were ALREADY SHIPPED - the lane list was half stale. RM-108 is now
+marked SHIPPED in ROADMAP with its spec relocated to ROADMAP_HISTORY.
+
+NEXT - operator-prioritised (Vanguard is OFF, so replay work is possible now):
+replay-based coaching training. GROUND TRUTH PROBED THIS SESSION:
+- Only 7 .rofl exist locally, all 16.12-16.14. The historical pro matches are NOT
+  available as replays and never will be (.rofl is patch-locked to the running
+  client, and Riot does not retain old files).
+- BUT Match-V5 STILL SERVES those old matches: NA1_5221491343 / NA1_5217712024 /
+  NA1_5216883079 all return 200, queue 420, patch 15.2, WITH full timelines
+  (31 frames @ 60s, 1024 events - item purchases w/ timestamps, skill order,
+  wards, kills w/ positions). That is the coaching substrate, no replay needed.
+- The pro xlsx (Desktop\Challenger) has 93 strings: pro names + NA Riot IDs +
+  role/team. No match ids recorded - but the ids are RECOVERABLE by resolving
+  each pro's Riot ID to a puuid and intersecting their match list with the
+  operator's. That is fully autonomous work.
+
+ALSO OPEN: patch-change datasets. 5 per-patch snapshots exist
+(data/daemon_slayer/16.10.1 .. 16.14.1) but there is NO cross-patch diff tooling -
+that lane is genuinely unbuilt, not done.
+
+STILL NEEDS THE OPERATOR: the /replays 5-per-account rotation question. All
+observations so far ran with no games in between, so rotated=False proves nothing.
+Play games, then `python tools/rofl_archiver.py --pull --no-lcu-pull`.
+
+---
+
 # 2026-07-19h
 
 **Session: the sanctioned Match-V5 replay pull, BUILT and LIVE-PROVEN, plus the
