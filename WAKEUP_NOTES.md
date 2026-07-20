@@ -51,6 +51,17 @@ in between, so the printed `rotated=False` means nothing yet.**
 than fabricating a negative - do not read a False from same-window pulls as an
 answer. **PLAY GAMES, then run `--pull` and read the rotation line.**
 
+## The API-served .rofl are NOT degraded - measured, do not re-investigate
+
+They extract at **201 fields** per player where client-saved replays from the
+SAME era give 367, which looks alarming and is not. Diffed: all 166 extra fields
+are mission / event / battle-pass counters (`Missions_*`, `HoL_*`, `Event_*`,
+`WeeklyMission_*`, `DemonsHand_*`) - account progression, not match data. ZERO
+fields are API-only, and every core stat (ITEM0-6, GOLD_EARNED,
+CHAMPIONS_KILLED, NUM_DEATHS, ASSISTS, LEVEL, MINIONS_KILLED,
+TOTAL_DAMAGE_DEALT_TO_CHAMPIONS, TIME_PLAYED, WIN) is present in both. The
+sidecar backfill plan loses nothing by sourcing from the API pull.
+
 ## Live state at wrap
 
 Archive holds 13 `.rofl` (12 unique matches) + 12 stat sidecars at
