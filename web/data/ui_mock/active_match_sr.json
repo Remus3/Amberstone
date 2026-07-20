@@ -55,6 +55,18 @@
       {"summonerName": "TimeWarp", "championName": "Ekko", "rawChampionName": "Ekko", "team": "CHAOS", "items": [{"itemID": 6653, "slot": 0}, {"itemID": 3020, "slot": 1}]},
       {"summonerName": "BotDC", "championName": "Kaisa", "rawChampionName": "Kaisa", "team": "CHAOS", "items": [{"itemID": 6671, "slot": 0}, {"itemID": 3006, "slot": 1}]},
       {"summonerName": "GrabBag", "championName": "Blitzcrank", "rawChampionName": "Blitzcrank", "team": "CHAOS", "items": [{"itemID": 3190, "slot": 0}, {"itemID": 3047, "slot": 1}]}
+    ],
+    "players": [
+      {"position": "TOP", "team": "ORDER", "creep_score": 148, "is_active": false},
+      {"position": "JUNGLE", "team": "ORDER", "creep_score": 96, "is_active": false},
+      {"position": "MIDDLE", "team": "ORDER", "creep_score": 171, "is_active": false},
+      {"position": "BOTTOM", "team": "ORDER", "creep_score": 183, "is_active": true},
+      {"position": "UTILITY", "team": "ORDER", "creep_score": 24, "is_active": false},
+      {"position": "TOP", "team": "CHAOS", "creep_score": 152, "is_active": false},
+      {"position": "JUNGLE", "team": "CHAOS", "creep_score": 88, "is_active": false},
+      {"position": "MIDDLE", "team": "CHAOS", "creep_score": 165, "is_active": false},
+      {"position": "BOTTOM", "team": "CHAOS", "creep_score": 178, "is_active": false},
+      {"position": "UTILITY", "team": "CHAOS", "creep_score": 19, "is_active": false}
     ]
   },
   "minimap_rect": {"x": 1600, "y": 760, "w": 312, "h": 312, "flip": false, "source": "settings", "native_w": 2560, "native_h": 1440},
