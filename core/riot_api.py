@@ -34,6 +34,7 @@ platform=`na1`. Multi-region support is out of scope for v1.
 from __future__ import annotations
 
 import collections
+import hashlib
 import json
 import logging
 import threading
@@ -105,6 +106,23 @@ def _get_api_key() -> Optional[str]:
         _KEY_CACHE = raw
         _KEY_WARNED_MISSING = False
         return _KEY_CACHE
+
+
+def _key_fingerprint() -> str:
+    """Short, non-reversible tag for the ACTIVE key - a cache-key component.
+
+    PUUIDs are a per-API-key encryption of the same account: the value changes
+    when the KEY changes, not on any time schedule. Any cache key over a PUUID
+    must therefore carry key identity, or one rotation poisons the row forever
+    (the account row lands in the IMMUTABLE cache, which never expires).
+
+    Truncated sha256, never the key itself - the cache DB is not a secret store.
+    "nokey" when no key resolves, so the key-less path still has a stable key.
+    """
+    key = _get_api_key()
+    if not key:
+        return "nokey"
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
 
 
 def reload_api_key() -> None:
@@ -344,11 +362,21 @@ def get_account_by_riot_id(
 ) -> Optional[dict]:
     """Account-V1: PUUID lookup by Riot ID (game-name + tag-line).
 
-    Cached in the immutable cache - Riot IDs map stably to PUUIDs.
+    Cached in the immutable cache, SCOPED TO THE ACTIVE API KEY. The Riot ID is
+    the durable identity; the PUUID is a key-scoped handle - Riot encrypts it
+    per API key, so rotating the key changes the value. Without the fingerprint
+    in the cache key, one rotation permanently poisons this row and every
+    caller gets a PUUID that 400s "Exception decrypting" - returned from cache
+    below before any network call, so even a deliberate re-resolve cannot
+    escape it.
+
+    Sibling keys need no equivalent: `league:v4:{region}:{puuid}` and the
+    mastery keys embed the PUUID itself, so a new key yields a new cache key
+    for free.
     """
     name_e = urllib.parse.quote(name, safe="")
     tag_e = urllib.parse.quote(tag, safe="")
-    cache_key = f"account:v1:{region}:{name}#{tag}".lower()
+    cache_key = f"account:v1:{_key_fingerprint()}:{region}:{name}#{tag}".lower()
     cached = get_cache().get_immutable(cache_key)
     if cached is not None:
         _bump_metric("account_v1", "cache")
@@ -361,6 +389,43 @@ def get_account_by_riot_id(
     if data is not None:
         get_cache().set_immutable(cache_key, data)
     return data
+
+
+def get_replay_urls(
+    puuid: str,
+    region: str = "americas",
+) -> Optional[list]:
+    """Match-V5: pre-signed download URLs for this account's retained replays.
+
+    MEASURED 2026-07-19: 200 `{"total": 5, "matchFileURLs": [...]}`, each a
+    pre-signed S3 link on `lol-prod-us-west-2-match-history-replay` with
+    `response-content-disposition=attachment; filename="NA1_xxxx.rofl"`.
+
+    Deliberately NOT cached: the URLs carry `X-Amz-Expires=3600`, so a cached
+    list is a list of dead links inside the hour. Riot serves exactly FIVE per
+    account - a rolling recency window, not an archive - which is why the
+    caller archives what it pulls.
+
+    ENTITLEMENT: `/replays` is approved for the PRODUCT app (834837) only; the
+    personal/dev key 400s on this exact route. `API-Key-Riot.txt` must hold the
+    product key. Rate limit is 20000/10s, so throughput never binds here.
+    """
+    if not puuid:
+        return None
+    url = (
+        f"https://{region}.api.riotgames.com"
+        f"/lol/match/v5/matches/by-puuid/{urllib.parse.quote(puuid, safe='')}"
+        f"/replays"
+    )
+    data = _call("match_v5_replays", url)
+    if data is None:
+        return None
+    urls = data.get("matchFileURLs") if isinstance(data, dict) else None
+    if not isinstance(urls, list):
+        log.warning("riot_api: match_v5_replays unexpected shape: %s",
+                    type(data).__name__)
+        return None
+    return urls
 
 
 def get_recent_matches(

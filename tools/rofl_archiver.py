@@ -1,18 +1,28 @@
-"""CLI for the forward-capture .rofl archiver (core.rofl_archive).
+"""CLI for the .rofl archiver (core.rofl_archive).
 
-Replays are hard patch-locked (measured 2026-07-19: a match ONE patch behind
-already reports `state: "incompatible"` from the LCU), and the client prunes its
-own Replays directory - so a replay not copied out promptly is gone permanently.
-Run this after games, or on a schedule.
+`--pull` runs TWO independent pulls, and neither can stop the other:
+
+  1. Riot's own `/lol/match/v5/matches/by-puuid/{puuid}/replays` - five
+     pre-signed URLs per account, no game client, no patch gate. This is the
+     primary route. `--no-api-pull` opts out.
+  2. The local LCU, which can only fetch replays on the client's CURRENT patch
+     (measured: one patch behind already reports "incompatible"). Needs a
+     running client, so it is skipped for most of a 15-minute duty cycle.
+     `--no-lcu-pull` opts out.
+
+Both are SKIPS when unavailable, never failures - the scheduled task must keep
+reporting 0 so that a real fault is visible when it happens.
 
 Usage:
-    python tools/rofl_archiver.py                 # default dirs
+    python tools/rofl_archiver.py                 # default dirs, archive only
+    python tools/rofl_archiver.py --pull --extract --highlights --quiet
     python tools/rofl_archiver.py --dry-run
-    python tools/rofl_archiver.py --source <dir> --archive <dir>
+    python tools/rofl_archiver.py --account SamplePlayer#Vayne --pull
     python tools/rofl_archiver.py --lcu-path      # ask the live client where
                                                   # its Replays dir actually is
 
-Exit codes: 0 nothing-to-do or success, 1 one or more replays failed to copy.
+Exit codes: 0 nothing-to-do or success, 1 one or more replays failed to copy or
+download. A replay Riot no longer retains (404) is `gone`, not a failure.
 """
 from __future__ import annotations
 
@@ -27,6 +37,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from core import riot_api  # noqa: E402
 from core import rofl_archive  # noqa: E402
 
 _LOCKFILE = Path(r"C:\Riot Games\League of Legends\lockfile")
@@ -123,6 +134,63 @@ def _lcu_replays_path():
         return None
 
 
+def _api_pull(accounts, archive, index) -> int:
+    """Pull each account's retained replays straight from Riot. Returns the
+    failure count (0 when everything worked or was benignly skipped).
+
+    Two things this deliberately does NOT do:
+      - resolve a PUUID from storage. PUUIDs are encrypted PER API KEY, so a
+        stored one is a dead handle the moment the key changes. Always resolve
+        from the Riot ID.
+      - back off. The limit on this route is 20000/10s; the binding limits are
+        the 5-per-account window and the 1-hour URL expiry, neither of which
+        retrying helps.
+    """
+    failures = 0
+    for name, tag in accounts:
+        riot_id = f"{name}#{tag}"
+        account = riot_api.get_account_by_riot_id(name, tag)
+        puuid = (account or {}).get("puuid")
+        if not puuid:
+            # No key, an unentitled key, or a transient error. On a 15-minute
+            # schedule this is routine - report it, never fail the run.
+            print(f"api pull SKIPPED for {riot_id} - could not resolve a PUUID "
+                  f"(is API-Key-Riot.txt the PRODUCT key?)")
+            continue
+
+        urls = riot_api.get_replay_urls(puuid)
+        if urls is None:
+            print(f"api pull SKIPPED for {riot_id} - /replays returned nothing "
+                  f"(the dev key is not entitled to this route)")
+            continue
+
+        ids = [rofl_archive.match_id_from_replay_url(u) for u in urls]
+        rofl_archive.record_pull_observation(
+            archive, riot_id, [i for i in ids if i])
+
+        dl = rofl_archive.download_replays(urls, archive, index)
+        failures += len(dl.failed)
+        print(f"api pull {riot_id}: served={len(urls)} "
+              f"downloaded={len(dl.downloaded)} skipped={len(dl.skipped)} "
+              f"expired={len(dl.expired)} gone={len(dl.gone)} "
+              f"failed={len(dl.failed)}")
+        for mid in dl.downloaded:
+            print(f"  v {mid}")
+
+    report = rofl_archive.pull_rotation_report(archive)
+    for riot_id, r in sorted(report.items()):
+        if r["rotated"] is None:
+            # One observation cannot answer the question; say so rather than
+            # printing a number that reads like an answer.
+            print(f"rotation {riot_id}: 1 observation - need a second pull, "
+                  f"with games played in between, to tell")
+        else:
+            print(f"rotation {riot_id}: rotated={r['rotated']} over "
+                  f"{r['observations']} observations, "
+                  f"new={len(r['new_ids'])} dropped={len(r['dropped_ids'])}")
+    return failures
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Archive League .rofl replays.")
     ap.add_argument("--source", default=None, help="Replays dir to read from")
@@ -145,6 +213,16 @@ def main(argv=None) -> int:
                          "Highlights dir (filenames carry patch + match id)")
     ap.add_argument("--highlights-source", default=None,
                     help="override the Highlights dir to read from")
+    ap.add_argument("--no-api-pull", action="store_true",
+                    help="skip the sanctioned Match-V5 /replays pull (--pull "
+                         "runs it by default; it needs no game client)")
+    ap.add_argument("--no-lcu-pull", action="store_true",
+                    help="skip the LCU half of --pull (which needs a running "
+                         "client on the match's own patch)")
+    ap.add_argument("--account", action="append", default=None,
+                    metavar="NAME#TAG",
+                    help="Riot ID to pull for; repeatable. Defaults to both "
+                         "live accounts.")
     ap.add_argument("--db", default=None, help="rewind_history.db path (--pull)")
     ap.add_argument("--limit", type=int, default=50,
                     help="max matches to consider when pulling (default 50)")
@@ -187,11 +265,26 @@ def main(argv=None) -> int:
             print(f"  {n}")
         return 0
 
+    # The sanctioned route first: Riot serves the .rofl files itself to an
+    # entitled key, with no client and no patch gate, so it runs even when the
+    # LCU half below cannot. Exactly 5 per account, rotating - the archive is
+    # what accumulates, which is why cadence matters more than batch size.
+    api_failed = 0
+    if args.pull and not args.no_api_pull:
+        try:
+            accounts = ([rofl_archive.parse_account(a) for a in args.account]
+                        if args.account else rofl_archive.DEFAULT_ACCOUNTS)
+        except ValueError as exc:
+            print(f"api pull SKIPPED - {exc}")
+            accounts = []
+        if accounts:
+            api_failed = _api_pull(accounts, archive, index)
+
     # A closed client is the NORMAL case on a 15-minute schedule, so a failed
     # pull is a SKIP, never a failure - and it must not stop the archive /
     # highlights / extract steps below, none of which need the LCU at all.
     pull_client = None
-    if args.pull:
+    if args.pull and not args.no_lcu_pull:
         try:
             pull_client = LcuReplayClient()
         except (OSError, ValueError) as exc:
@@ -258,7 +351,7 @@ def main(argv=None) -> int:
         for mid in ex.failed:
             print(f"  ! {mid}")
 
-    return 1 if (res.failed or ex_failed or hl_failed) else 0
+    return 1 if (res.failed or ex_failed or hl_failed or api_failed) else 0
 
 
 if __name__ == "__main__":
