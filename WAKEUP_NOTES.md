@@ -4,6 +4,39 @@
 
 ---
 
+# 2026-07-20f - R140 RM-100 consolidation: CLEAN / REFUTED-PREMISE
+
+**Head `60ee6289`. ENGINE-IMPACT NONE** - docs-only Tier-0, no ENGINE_VERSION bump (stays 1.228.0 /
+patch 16.14.1), no Share resync, no `:8893` bounce owed. Doc-hygiene guards 13/13 green.
+
+Gemini-loop cycle 2, directive R140: fan out worktree agents to consolidate 5 near-identical local
+`_run_coro` / `_run_poll_loop` copies into `tests/_asyncio_isolation.py`. **Nothing was built, because
+the work had already shipped one cycle earlier in this same loop run** (R137, `114977ee`).
+
+Refuted on ground truth before any dispatch: `tests/_asyncio_isolation.py` on disk since 03:23
+(`run_coro` + `run_coro_capturing_thread`); grep for `def _run_coro` / `def _run_poll_loop` /
+`def run_coro` returns ZERO local definitions under `tests/` or `agents/`; all 5 named files already
+import the shared runner; `tests/test_asyncio_isolation_guard.py` already blocks a sixth copy and
+pins zero bare `asyncio.run(` under `tests/`. Fresh this run: **73 passed in 3.71s**.
+
+**The real defect was the stale prose that manufactured the directive.** `ROADMAP.md:20` still read
+"(5 near-identical copies; consolidating them is the open follow-up)" - R137 shipped the code but
+never cleared the text, and the director builds its refill digest from ROADMAP prose, so a follow-up
+closed in code but open in prose re-picks every cycle. That line now states CLOSED, names the shared
+module and both runners, names the 5 migrated files, and cites `114977ee`.
+
+The RM-100 **LATENT half is deliberately left standing**: `tests/snapshot_panels` still leaks
+asyncio's per-thread running-loop marker via its `scope="session"` `pw_browser` fixture, so a new
+test calling bare `asyncio.run()` on the main thread still fails. Closing consolidation is NOT
+closing the leak - do not conflate them.
+
+No subagents / worktrees (R9 inline - the build slice was cancelled by ground truth). PART C durable
+steer in `ops/loop/control/gemini_ask.txt`: this loop has now produced several refuted-premise cycles
+(R114, R115, R137, R140) from the same lag, so the director is asked to ground "X is still open"
+premises in a grep checked THIS cycle rather than digest prose.
+
+---
+
 # 2026-07-20e - R139 Share/ external-presentation pass
 
 **Head `a700b414`. ENGINE-IMPACT NONE** - docs and presentation only, no DS path, no ENGINE_VERSION bump
@@ -85,47 +118,3 @@ bytes and fully self-contained.
 artifact, not a dashboard or overlay page, so the 3b overlay-capture ritual
 does not apply. The `node --check` guard plus the referential-integrity tests
 are the proof surface for this file.
-
----
-
-# 2026-07-20c - RM-111 ARAM comp-conditioned item-interaction aggregator
-
-Commit `d96ba4c5`. LEDGER 974. New `core/aram_item_interaction.py`, 24 tests.
-
-**What it answers.** For the local ARAM corpus: "when did buying this item
-actually pay off AGAINST THIS SHAPE of enemy comp, in my own games". That is a
-different question from Daemon Slayer's, and the two must not be mixed - DS
-answers what is optimal in simulation. The module is DESCRIPTIVE ONLY and is
-firewalled from `agents/daemon_slayer` rank by a test that greps its own source
-for an `agents` import.
-
-**The predicted scope cut landed on granularity, not on the item.** Comp shape is
-a COARSE 9-way bucket - enemy damage axis (ad_heavy / mixed / ap_heavy at >=4 of
-5 leaning) x enemy frontline count (none / light / heavy) - never a 5-champion
-tuple, and the champion axis is OFF by default.
-
-**The MIN_BUCKET_N gate is load-bearing, and that is MEASURED.** Live probe over
-the real corpus: 2049 ARAM matches, **776 cells surviving, 1281 dropped** at
-n<15. 62 percent of cells are too thin to show. 8 of 9 shapes populate
-(`ad_heavy/fl_none` is empty - an all-AD comp with zero frontline is rare).
-
-**Pressure metric decided:** own-minus-enemy `total_gold` delta over a 120s
-window after the purchase. If the window is not fully covered by frames (game
-ended first) the observation records `None`, never a truncated reading. A per-frame
-HP swing is NOT possible - `timeline_frames` stores no champion HP.
-
-**Two things worth remembering.**
-- `core.item_wpa.load_legendary_ids` gained a `map_id` param **defaulting to 11**,
-  so every SR caller is byte-identical. ARAM passes 12.
-- Champion resolution joins on the numeric `key`, NOT `participants.champion_name`.
-  The stored name is the DDragon id ("MonkeyKing"); the comp-fact extractor keys on
-  the display name ("Wukong"). A string join silently drops champions.
-
-**OWED:** the consumer surface is NOT wired. The coach `watch`/`next` channel and
-the overlay item strip are untouched - this slice is the aggregator only.
-
-**Docs:** ROADMAP.md 81889 -> 74976 bytes. RM-100 / RM-106 / RM-106a / RM-106b full
-narratives relocated verbatim to `docs/ROADMAP_HISTORY.md`; the condensed pointers
-left behind KEEP every still-open thread (the `0xC000013A` unknown, the
-snapshot_panels asyncio-marker leak, the replay URL-rotation hypothesis, RM-106b's
-unmeasured archive depth).
