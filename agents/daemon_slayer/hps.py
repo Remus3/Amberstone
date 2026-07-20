@@ -109,6 +109,12 @@ class EnchanterItemFormula:
     heal_shield_amp_pct: float
     ally_buff_credit_per_second: float
     notes: str
+    # R143: True when heal_shield_amp_pct is an ALLY-CHAIN ratio rather than a
+    # wielder Heal-and-Shield-Power stat (Moonstone Renewer's Starlit Grace
+    # explicitly excludes the wielder). The ally-throughput path in this module
+    # still compounds it; ``_hsp_amp.sum_wielder_hsp_pct`` skips it.
+    # Appended at the END with a default per CLAUDE.md "Python Conventions".
+    ally_chain_only: bool = False
 
     @classmethod
     def from_dict(cls, item_id: str, d: dict) -> "EnchanterItemFormula":
@@ -128,6 +134,7 @@ class EnchanterItemFormula:
             heal_shield_amp_pct=float(d.get("heal_shield_amp_pct", 0.0)),
             ally_buff_credit_per_second=float(d.get("ally_buff_credit_per_second", 0.0)),
             notes=str(d.get("notes", "")),
+            ally_chain_only=bool(d.get("ally_chain_only", False)),
         )
 
     def heal_per_proc_at(self, level: int, ap: float) -> float:
