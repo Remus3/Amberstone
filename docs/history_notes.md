@@ -119,6 +119,50 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-20c - RM-111 ARAM comp-conditioned item-interaction aggregator
+
+Commit `d96ba4c5`. LEDGER 974. New `core/aram_item_interaction.py`, 24 tests.
+
+**What it answers.** For the local ARAM corpus: "when did buying this item
+actually pay off AGAINST THIS SHAPE of enemy comp, in my own games". That is a
+different question from Daemon Slayer's, and the two must not be mixed - DS
+answers what is optimal in simulation. The module is DESCRIPTIVE ONLY and is
+firewalled from `agents/daemon_slayer` rank by a test that greps its own source
+for an `agents` import.
+
+**The predicted scope cut landed on granularity, not on the item.** Comp shape is
+a COARSE 9-way bucket - enemy damage axis (ad_heavy / mixed / ap_heavy at >=4 of
+5 leaning) x enemy frontline count (none / light / heavy) - never a 5-champion
+tuple, and the champion axis is OFF by default.
+
+**The MIN_BUCKET_N gate is load-bearing, and that is MEASURED.** Live probe over
+the real corpus: 2049 ARAM matches, **776 cells surviving, 1281 dropped** at
+n<15. 62 percent of cells are too thin to show. 8 of 9 shapes populate
+(`ad_heavy/fl_none` is empty - an all-AD comp with zero frontline is rare).
+
+**Pressure metric decided:** own-minus-enemy `total_gold` delta over a 120s
+window after the purchase. If the window is not fully covered by frames (game
+ended first) the observation records `None`, never a truncated reading. A per-frame
+HP swing is NOT possible - `timeline_frames` stores no champion HP.
+
+**Two things worth remembering.**
+- `core.item_wpa.load_legendary_ids` gained a `map_id` param **defaulting to 11**,
+  so every SR caller is byte-identical. ARAM passes 12.
+- Champion resolution joins on the numeric `key`, NOT `participants.champion_name`.
+  The stored name is the DDragon id ("MonkeyKing"); the comp-fact extractor keys on
+  the display name ("Wukong"). A string join silently drops champions.
+
+**OWED:** the consumer surface is NOT wired. The coach `watch`/`next` channel and
+the overlay item strip are untouched - this slice is the aggregator only.
+
+**Docs:** ROADMAP.md 81889 -> 74976 bytes. RM-100 / RM-106 / RM-106a / RM-106b full
+narratives relocated verbatim to `docs/ROADMAP_HISTORY.md`; the condensed pointers
+left behind KEEP every still-open thread (the `0xC000013A` unknown, the
+snapshot_panels asyncio-marker leak, the replay URL-rotation hypothesis, RM-106b's
+unmeasured archive depth).
+
+---
+
 # 2026-07-20b - pro-match corpus CLOSED (no API needed) + ds_patch_diff shipped
 
 Commits `533d70fb`, `999cb1b8`. CI green. LEDGER 972-973. RM-109 + RM-110.
