@@ -4,6 +4,127 @@
 
 ---
 
+# 2026-07-19g
+
+**Session: replay forward-capture pipeline + silent-except batch program + three of my own claims retracted.**
+Commits `b54e315d`..`d750c8be` (+ this docs sync). LEDGER 969. No ENGINE bump.
+
+## START HERE NEXT SESSION - build the sanctioned replay pull
+
+`GET https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/replays`
+returns **200** `{"total": 5, "matchFileURLs": [...]}` - pre-signed S3 URLs on
+`lol-prod-us-west-2-match-history-replay` with
+`response-content-disposition=attachment; filename="NA1_xxxx.rofl"`. Ordinary API
+key, no third party, no `.bat`, no bearer-token scraping. **This supersedes both
+the third-party route and SGP.**
+
+Bounds MEASURED, do not re-derive: `X-Amz-Expires=3600` (ONE hour) and exactly
+**5 per account**. A refreshing recency window, NOT an archive - so it PAIRS with
+`tools/rofl_archiver.py` (pull 5 -> archive permanently -> extract) rather than
+replacing it. Vayne's 5 are 15.x-era ids and Trist's are 16.14-era, so it is
+"last 5 with a replay retained" PER ACCOUNT, not a global recency cut.
+
+**TWO TRAPS THAT WILL COST AN HOUR IF RE-INHERITED:**
+
+1. **PUUIDs ARE ENCRYPTED PER API KEY.** Cycling the key 400s every stored one
+   with `"Bad Request - Exception decrypting <puuid>"`. All three of ours did.
+2. **`core/riot_api.get_account_by_riot_id` CANNOT re-resolve them** - it checks
+   `get_cache().get_immutable()` BEFORE any network call (`riot_api.py:346`), so
+   a "re-resolve" silently returns the OLD key's cached PUUID and the 400
+   persists. Bypass the cache (call Account-V1 through `_http_get` directly) and
+   the fresh puuid 200s immediately. Verified both accounts.
+
+**OPEN AND UNFIXED, fix BEFORE any bulk pull:** all 2961 PUUIDs in
+`rewind_history.db` are stale against the API (still fine as an internal join
+key, useless as a request parameter), and NOTHING invalidates the immutable cache
+on key rotation. That cache invalidation is the first piece of work.
+
+Build: fetch URLs -> download -> archive -> extract, into `core/rofl_archive.py`
++ `tools/rofl_archiver.py`, wired into the existing `RC-RoflArchive` task, with
+the cache fix. Same TDD treatment as the rest of the module (RED first; the
+1-hour URL expiry and the 5-cap both want explicit tests).
+
+**OPERATOR HYPOTHESIS TO TEST (worth real effort):** the third-party service
+served matches across the last ~3 patches, which is far more than 5 per account.
+If it polls this same endpoint per user over time and ACCUMULATES, then the
+"faster way" is simply to run our pull on a cadence and let the archive grow -
+converting a rolling 5-match window into a permanent archive. Test by pulling
+twice with games played in between and confirming the 5 rotate. If they rotate,
+cadence beats any bulk trick and the current 15-minute task already does it.
+
+## Second task, if the first lands early
+
+`--extract` writes JSON sidecars only; it deliberately does NOT touch
+`data/rewind_history.db` (1.8 GB of production data, and merging is a
+schema-aware job with dedupe questions). Backfilling the event-mode hole from
+sidecars is the natural follow-up. `.rofl` stats have NO patch gate, so this
+works for every archived replay forever.
+
+## Live state at wrap
+
+RC pid was 8148 mode=game (it restarted mid-session; 10624 was the earlier pid).
+DS `:8893` engine 1.228.0 patch 16.14.1, 173 champs / 706 items. `RC-RoflArchive`
+Ready, LastTaskResult=0, 15-min interval. Archive holds **7 replays + 1 clip + 8
+stat sidecars** at `Documents\RC_ROFL_Archive`. League client was CLOSED at wrap
+(lockfile absent) - that is now a reported SKIP, not a failure.
+
+## Do NOT redo / do NOT re-inherit
+
+- **Three claims of mine were RETRACTED this session, all by measurement.** Do not
+  re-inherit any of them: "RM-106b is closed / playback does not serve `:2999`"
+  (that probe ran with `EnableReplayApi` ABSENT - it measured the flag-OFF state);
+  "there is no third-party source for personal replays" (one HOSTS them); and
+  "forward-capture only, CANNOT backfill" (conditionally false once an old
+  `.rofl` + a matching old client exist). ROADMAP + history carry the corrected
+  versions.
+- **SGP is DEAD as a route.** Cloudflare `error code 1010`; getting past it means
+  forging a User-Agent to defeat bot detection, which was deliberately NOT done
+  and should not be revisited. Narrative relocated to `ROADMAP_HISTORY`.
+- **Riot's own LCU download is patch-locked to the RUNNING client** - a match ONE
+  patch back reports `incompatible`. Use `/download/graceful`, never `/download`.
+- **Old-client installs are game-files-only** (30 GB, `Game/` + the exe, NO
+  `LeagueClient.exe`), so they have NO LCU. Do not plan anything around calling
+  an old client's `/lol-replays/` API. The Replay API is served by the GAME
+  process, so `:2999` seek-and-sample DOES work there - but `EnableReplayApi=1`
+  must be set in THAT install's own `game.cfg`.
+- **Playback needs Vanguard stopped (=> reboot to play live again); STAT
+  EXTRACTION DOES NOT.** Extraction is pure file reading and runs alongside a live
+  Vanguard - the 15-min task does it now. Only per-timestamp work pays the reboot.
+- The spec at `docs/specs/2026-07-19-silent-except-triage.md` has RELIABLE
+  file:line citations but **UNRELIABLE exception-type lists** - section 2c was
+  refuted independently 4 times. Re-derive every type set from the call chain.
+- `lcu_client._request` swallow contract is deliberately UNCHANGED (report-only)
+  and pinned by a passing test. Changing it alters error semantics on every LCU
+  path repo-wide - its own session.
+- ~680 silent handlers remain untriaged; the TFT cluster (~39) is the obvious
+  next tranche. 48 frozen-file handlers ARE now triaged (grant was given).
+
+## Traps re-confirmed this session
+
+- **The background-task notification lied about the exit code on ALL THREE suite
+  runs** - it reported 0 while the captured file read `MAIN_EXIT=1`. Capture by
+  redirect and READ THE FILE. Never trust the notification.
+- The RF5 `assert_prod_artifacts_unchanged` teardown ERROR is the LIVE RC process
+  writing `data/` mid-run, not a regression (LEDGER 861/860/755/659). It fires
+  even on a 0.5-second run, which no test could cause.
+- A **vacuous test** slipped past me AND past a build agent in the same session -
+  mine had a broad `except` swallowing a signature `TypeError`; the agent's
+  sampled its expected key out of the poisoned map. Both "passed" before the fix.
+  Confirm RED for the RIGHT REASON, not just RED.
+
+## Next session prompt
+
+> Build the sanctioned Match-V5 replay pull into `core/rofl_archive.py` +
+> `tools/rofl_archiver.py`: fetch `matchFileURLs` for each account, download,
+> archive, extract, wired into `RC-RoflArchive`. FIRST fix the immutable-cache
+> invalidation on API-key rotation (`riot_api.py:346`) - without it every stored
+> PUUID stays stale and every pull 400s. Read the RM-106 block in ROADMAP.md and
+> the two traps in WAKEUP before writing code; both are measured, not guessed.
+> TDD, RED first, pytest exit captured BY REDIRECT and read from the file.
+
+---
+
+
 # 2026-07-19m (RM-104: the filing named one bug and the sweep found four; the three nobody filed were the live ones)
 
 **The reported defect was real and exactly as described. It was also the least
@@ -113,103 +234,3 @@ mirrors `226673` / `223053` / `223156` the verifier found carrying the identical
 `shield=None` defect. Then the ~28 silent-no-op bare excepts the sweep sized but
 did not fix - that population has now produced four silent failures in two
 sessions.
-
----
-
-# 2026-07-19k (R137 - RM-99 Heartsteel shipped, and the number the spec told us to use was wrong because the FEED was frozen)
-
-**A vendored feed sitting in a `16.14.1/` directory is not 16.14.1 data. Nothing
-in this repo checks that, and one frozen feed put a wrong coefficient into a spec
-that then propagated into ROADMAP prose as fact. The cross-patch hash was the only
-thing that could see it.**
-
-Shipped (ENGINE 1.225.0 -> 1.226.0, commit `843f83a3`): `_item_health_stack.py`
-crediting Heartsteel 3084 + Arena mirror 223084's permanent-max-HP half behind
-DEFAULT-OFF `assume_item_health_stacks`, folded into the three main per-type EHP
-numerators next to `passive_health_hp` / `rune_perm_hp`, route-surfaced on `/ehp`,
-`/rank-tank`, `/hybrid`, `/rank-bruiser`. Built inline, not with worktree agents -
-every edit landed in shared seams (`ehp.py` / `hybrid.py` / `server.py` /
-`__init__.py`), so a split would have been all-collision with no parallelism to win.
-
-**THREE spec errors, each caught by reading files instead of prose.** (1) RM-99
-says the coefficient is 8 percent. It is 10. `items_meraki.json` is FROZEN, not
-lagging: strip `fetched_at` and its body is byte-identical across all five
-vendored patch dirs (md5 `5f2ab2ca072637d9`, 16.10.1 .. 16.14.1) despite five
-separate fetches - pinned at content patch 25.15, the item-side twin of the RM-81
-defect. DDragon `items.json` IN THE SAME DIRECTORY, CommunityDragon 16.14 and the
-wiki all read 10, and the wiki's dated `V26.11` note ("increased to 10% from 8%")
-predicts the exact 8 -> 10 flip visible between our OWN vendored 16.10.1 and
-16.11.1 dirs. (2) "Folded next to `item_bonus_hp_amp_hp`" is under-specified -
-there are TWO numerator regions and this term belongs to the permanent-HP family,
-which the `_blend_with_heal` mirror does not carry. (3) "Copy R46" is right for
-the math and wrong for the plumbing: `assume_passive_health_stacks` never reaches
-`rank_items_by_ehp`, `hybrid.py` or `server.py`, so mirroring it ships a lane the
-scorer cannot reach. That unreachable population is BIGGER than ROADMAP claims -
-`assume_kaenic_shield`, `assume_hsp_amp`, `assume_eclipse_shield` and
-`assume_chainlaced_shield` are all compute_ehp-only too.
-
-**Two things deliberately NOT done, both filed instead.** RM-99's secondary clause
-wanted `every_n_seconds=3.5` on the damage half fixed "with the same proxy number";
-that is a DEFAULT-ON change to shipped scoring that moves live build orders, so it
-is RM-99b now. Consequence stated rather than hidden: the two halves of the
-Heartsteel model currently disagree about firing rate (~8.57x single-target), and
-matching a known-wrong cadence for self-consistency would have made the new lane
-wrong on purpose. And RM-105, found by probe while waiting on a regen:
-`effective_ehp_with_sustain` understates whenever ANY permanent-HP seam is armed,
-because `_blend_with_heal` omits the whole family - measured -618.33 EHP with
-`apply_rune_health_grants` ON, -301.42 with R46, -373.24 with this lane, 0.0000 at
-defaults. Pre-existing, unguarded (the sustain contract test only asserts equality
-at default flags), and it fires exactly when the queued default-ON flips happen.
-
-**Process notes for next time.** The `tests/` background run reported "exit code
-0" in its notification - that was `tail`'s code through the pipe, and pytest had
-actually failed one doc-drift test. Read the output, never the piped status.
-`agents/daemon_slayer/CHANGELOG.md` is missing entries for 1.224.0 AND 1.225.0
-despite `__init__.py` mandating the prepend; not reconstructed, because building
-them from ROADMAP prose would be inventing history. ENGINE anchors are ~141 hard
-assertions across 120 test files - bump them mechanically but filter to
-assertion-shaped lines, since 3 occurrences are historical docstring references
-that must NOT move.
-
-**Verified this run, nothing carried forward:** DS 8787 passed / 1 skipped / 2461
-subtests; `tests/` 11987 passed / 23 skipped / 359 subtests; all 9 regenerated
-build-order tables stamp-only (zero non-stamp changed lines); Share 1.226.0
-`--check` clean; DS `:8893` live at 1.226.0.
-
-**SECOND HALF - a research thread that found more than the research was for.**
-Operator supplied external links and authorized the ToS risk; the SGP route was
-probed live and WORKS (RM-106): the LCU mints a session JWT, and the NA host
-returns Match-V5-shaped rows for KIWI / queue-2400, 14 of the last 20 games, with
-`perks` and `playerAugment1/2` on 153-field participants. But the better find came
-from a triage agent, not the links: **`GET /lol-match-history/v1/game-timelines/{gameId}`
-on the LOCAL LCU returns 200 with 21 frames and 10 participantFrames for a KIWI
-match** (RM-106a) - so the event-mode timeline question is answered YES with no SGP
-at all. Caveat priced in: only CHAMPION_KILL + BUILDING_KILL events, NO
-ITEM_PURCHASED / SKILL_LEVEL_UP, so it unlocks gold/xp curves and kill maps but not
-item or skill order. **And it exposed a live defect (RM-107):** RC's post-game
-collector calls a DIFFERENT path that measured 404, inside a bare `except` logging
-at DEBUG - invisible for its whole life. That is the THIRD silent-no-op this
-session after the RM-100 nightly critic and a `tail`-masked pytest exit code; a
-bare `except` at DEBUG is functionally no error handling and this repo has a
-pattern of them.
-
-**Two of my own assertions were wrong and caught by verifying:** I claimed ChampR's
-in-client item-set writing might be an uncovered gap - RC already does it
-(`tools/lcu_agent.py:1040`); and I framed a client-debugger tool as promising when
-its own README tells you to stop the Vanguard services. Same failure mode as the
-RM-99 coefficient: reasoning from plausibility instead of reading. Three times in
-one session.
-
-**THE PROVENANCE SPEC IS RESEARCH, NOT A READY PLAN - do not implement it as
-written.** Two workflow passes (38 agents, ~6.2M subagent tokens). Revision 1: 911
-lines, 43 audit gaps. Revision 2: 2019 lines, 32 gaps, 3 of 3 lenses NEEDS_WORK.
-Findings improved a lot (measured, with resolutions attached - the run-scope
-BLOCKER is a real design error caught by replaying commit `544d6362`), but the
-DOCUMENT DOUBLED while converging. The operator asked for a guard plus an index
-over five dirs, "hours, no network"; what exists is a 7-rule classification ladder
-plus run semantics plus a citation-baseline generator plus per-value provenance.
-Partly my fault - I specified 9 required sections and ran a 4-way architecture
-competition, which selects for elaboration. **Next session should OPEN BY CUTTING
-to the real Phase 1**, keeping only the resolutions in
-`docs/specs/SPEC_data_provenance_AUDIT_rev2.md` that survive the cut. Do not start
-by implementing 2019 lines.

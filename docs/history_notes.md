@@ -119,6 +119,106 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-19k (R137 - RM-99 Heartsteel shipped, and the number the spec told us to use was wrong because the FEED was frozen)
+
+**A vendored feed sitting in a `16.14.1/` directory is not 16.14.1 data. Nothing
+in this repo checks that, and one frozen feed put a wrong coefficient into a spec
+that then propagated into ROADMAP prose as fact. The cross-patch hash was the only
+thing that could see it.**
+
+Shipped (ENGINE 1.225.0 -> 1.226.0, commit `843f83a3`): `_item_health_stack.py`
+crediting Heartsteel 3084 + Arena mirror 223084's permanent-max-HP half behind
+DEFAULT-OFF `assume_item_health_stacks`, folded into the three main per-type EHP
+numerators next to `passive_health_hp` / `rune_perm_hp`, route-surfaced on `/ehp`,
+`/rank-tank`, `/hybrid`, `/rank-bruiser`. Built inline, not with worktree agents -
+every edit landed in shared seams (`ehp.py` / `hybrid.py` / `server.py` /
+`__init__.py`), so a split would have been all-collision with no parallelism to win.
+
+**THREE spec errors, each caught by reading files instead of prose.** (1) RM-99
+says the coefficient is 8 percent. It is 10. `items_meraki.json` is FROZEN, not
+lagging: strip `fetched_at` and its body is byte-identical across all five
+vendored patch dirs (md5 `5f2ab2ca072637d9`, 16.10.1 .. 16.14.1) despite five
+separate fetches - pinned at content patch 25.15, the item-side twin of the RM-81
+defect. DDragon `items.json` IN THE SAME DIRECTORY, CommunityDragon 16.14 and the
+wiki all read 10, and the wiki's dated `V26.11` note ("increased to 10% from 8%")
+predicts the exact 8 -> 10 flip visible between our OWN vendored 16.10.1 and
+16.11.1 dirs. (2) "Folded next to `item_bonus_hp_amp_hp`" is under-specified -
+there are TWO numerator regions and this term belongs to the permanent-HP family,
+which the `_blend_with_heal` mirror does not carry. (3) "Copy R46" is right for
+the math and wrong for the plumbing: `assume_passive_health_stacks` never reaches
+`rank_items_by_ehp`, `hybrid.py` or `server.py`, so mirroring it ships a lane the
+scorer cannot reach. That unreachable population is BIGGER than ROADMAP claims -
+`assume_kaenic_shield`, `assume_hsp_amp`, `assume_eclipse_shield` and
+`assume_chainlaced_shield` are all compute_ehp-only too.
+
+**Two things deliberately NOT done, both filed instead.** RM-99's secondary clause
+wanted `every_n_seconds=3.5` on the damage half fixed "with the same proxy number";
+that is a DEFAULT-ON change to shipped scoring that moves live build orders, so it
+is RM-99b now. Consequence stated rather than hidden: the two halves of the
+Heartsteel model currently disagree about firing rate (~8.57x single-target), and
+matching a known-wrong cadence for self-consistency would have made the new lane
+wrong on purpose. And RM-105, found by probe while waiting on a regen:
+`effective_ehp_with_sustain` understates whenever ANY permanent-HP seam is armed,
+because `_blend_with_heal` omits the whole family - measured -618.33 EHP with
+`apply_rune_health_grants` ON, -301.42 with R46, -373.24 with this lane, 0.0000 at
+defaults. Pre-existing, unguarded (the sustain contract test only asserts equality
+at default flags), and it fires exactly when the queued default-ON flips happen.
+
+**Process notes for next time.** The `tests/` background run reported "exit code
+0" in its notification - that was `tail`'s code through the pipe, and pytest had
+actually failed one doc-drift test. Read the output, never the piped status.
+`agents/daemon_slayer/CHANGELOG.md` is missing entries for 1.224.0 AND 1.225.0
+despite `__init__.py` mandating the prepend; not reconstructed, because building
+them from ROADMAP prose would be inventing history. ENGINE anchors are ~141 hard
+assertions across 120 test files - bump them mechanically but filter to
+assertion-shaped lines, since 3 occurrences are historical docstring references
+that must NOT move.
+
+**Verified this run, nothing carried forward:** DS 8787 passed / 1 skipped / 2461
+subtests; `tests/` 11987 passed / 23 skipped / 359 subtests; all 9 regenerated
+build-order tables stamp-only (zero non-stamp changed lines); Share 1.226.0
+`--check` clean; DS `:8893` live at 1.226.0.
+
+**SECOND HALF - a research thread that found more than the research was for.**
+Operator supplied external links and authorized the ToS risk; the SGP route was
+probed live and WORKS (RM-106): the LCU mints a session JWT, and the NA host
+returns Match-V5-shaped rows for KIWI / queue-2400, 14 of the last 20 games, with
+`perks` and `playerAugment1/2` on 153-field participants. But the better find came
+from a triage agent, not the links: **`GET /lol-match-history/v1/game-timelines/{gameId}`
+on the LOCAL LCU returns 200 with 21 frames and 10 participantFrames for a KIWI
+match** (RM-106a) - so the event-mode timeline question is answered YES with no SGP
+at all. Caveat priced in: only CHAMPION_KILL + BUILDING_KILL events, NO
+ITEM_PURCHASED / SKILL_LEVEL_UP, so it unlocks gold/xp curves and kill maps but not
+item or skill order. **And it exposed a live defect (RM-107):** RC's post-game
+collector calls a DIFFERENT path that measured 404, inside a bare `except` logging
+at DEBUG - invisible for its whole life. That is the THIRD silent-no-op this
+session after the RM-100 nightly critic and a `tail`-masked pytest exit code; a
+bare `except` at DEBUG is functionally no error handling and this repo has a
+pattern of them.
+
+**Two of my own assertions were wrong and caught by verifying:** I claimed ChampR's
+in-client item-set writing might be an uncovered gap - RC already does it
+(`tools/lcu_agent.py:1040`); and I framed a client-debugger tool as promising when
+its own README tells you to stop the Vanguard services. Same failure mode as the
+RM-99 coefficient: reasoning from plausibility instead of reading. Three times in
+one session.
+
+**THE PROVENANCE SPEC IS RESEARCH, NOT A READY PLAN - do not implement it as
+written.** Two workflow passes (38 agents, ~6.2M subagent tokens). Revision 1: 911
+lines, 43 audit gaps. Revision 2: 2019 lines, 32 gaps, 3 of 3 lenses NEEDS_WORK.
+Findings improved a lot (measured, with resolutions attached - the run-scope
+BLOCKER is a real design error caught by replaying commit `544d6362`), but the
+DOCUMENT DOUBLED while converging. The operator asked for a guard plus an index
+over five dirs, "hours, no network"; what exists is a 7-rule classification ladder
+plus run semantics plus a citation-baseline generator plus per-value provenance.
+Partly my fault - I specified 9 required sections and ran a 4-way architecture
+competition, which selects for elaboration. **Next session should OPEN BY CUTTING
+to the real Phase 1**, keeping only the resolutions in
+`docs/specs/SPEC_data_provenance_AUDIT_rev2.md` that survive the cut. Do not start
+by implementing 2019 lines.
+
+---
+
 # 2026-07-19j (gemini-loop cycle 5 - R136 shipped RM-101's numerator half, and two blockers in our OWN ROADMAP turned out to be conventions that already shipped)
 
 **A claim written in our own ROADMAP ages exactly like an external source, and
