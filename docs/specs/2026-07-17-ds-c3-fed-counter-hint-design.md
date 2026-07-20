@@ -59,7 +59,7 @@ NON-GOALS (out of scope, deferred):
      fields (absent fields -> fed False -> no chip), which preserves the
      ship-dark posture without a flag.
   2. Module lives at `core/build_planner/fed_threat.py` (NOT
-     `core/fed_threat.py`) - slice file ownership is `core/build_planner/**`.
+     `core/build_planner/fed_threat.py`) - slice file ownership is `core/build_planner/**`.
      It is a build-planner-scoped concern; the cc_threat/heal_threat shape is
      mirrored, only the directory differs.
   3. The served fed hint gains a per-threat damage-axis direction (LEAP-08
