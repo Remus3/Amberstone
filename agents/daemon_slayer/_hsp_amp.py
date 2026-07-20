@@ -30,6 +30,16 @@ def sum_wielder_hsp_pct(
     contribute 0.0. Returns 0.0 on an empty / None inventory or any load failure -
     the seam callers gate on ``assume_hsp_amp`` so a 0.0 return is byte-identical.
 
+    R143: mode-mirror ids resolve natively - the live resolver hands this
+    function ``32xxxx`` (SR/ARAM mirror) and ``22xxxx`` (Arena mirror) ids, which
+    are registered explicitly because their magnitudes DIFFER from the SR line
+    (Arena Redemption 12% vs SR 10%). Never normalize by stripping the prefix.
+
+    R143: formulas flagged ``ally_chain_only`` are skipped - their
+    ``heal_shield_amp_pct`` is an ally-chain ratio (Moonstone Renewer) that the
+    catalog text excludes the wielder from, so it must not amplify a self-shield
+    or self-regen even though ``hps.py`` still compounds it for ally throughput.
+
     ``patch`` defaults to the current-patch cached enchanter formulas; pass an
     explicit patch string to read a specific snapshot.
     """
@@ -49,6 +59,9 @@ def sum_wielder_hsp_pct(
     total = 0.0
     for iid in ids:
         formula = snap.formulas.get(iid)
-        if formula is not None:
-            total += float(formula.heal_shield_amp_pct)
+        if formula is None:
+            continue
+        if getattr(formula, "ally_chain_only", False):
+            continue
+        total += float(formula.heal_shield_amp_pct)
     return total
