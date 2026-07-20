@@ -64,6 +64,7 @@ from .effects import (
     total_takedown_bonus_ad,
     total_target_bonus_hp_amp_multiplier,
 )
+from ._rune_offense_grants import rune_offense_grants
 from .engine import build_champion
 from .stats import clamp_level
 from .ult_rates import get_ult_casts_per_sec
@@ -699,6 +700,12 @@ def compute_dps(
     assume_passive_reflect: bool = False,
     assume_lifeline_shield: bool = False,
     only_phase: Optional[str] = None,
+    # R145 (ENGINE 1.232.0): the OFFENSE-side rune adaptive stat-grant seam,
+    # appended at the END of the signature per the no-mid-signature-insert
+    # convention that ``compute_ehp`` established for its R132 rune pair. Rides
+    # its own ``rune_ids`` transport (compute_dps had none before this seam).
+    apply_rune_offense_grants: bool = False,
+    rune_ids: Iterable[str | int] = (),
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -910,6 +917,29 @@ def compute_dps(
     # AP. Raw stat blocks (/stats) unchanged; only CallContext.ap sees it.
     stacked_ap = total_stacked_ap(item_effects)
     ap += stacked_ap
+    # R145 (ENGINE 1.232.0): the OFFENSE-side rune adaptive stat-grant lane -
+    # Sorcery's Gathering Storm 8236 and Absolute Focus 8233. Both are registered
+    # in rune_procs.py with proc_type "adaptive", and EVERY consumer of that
+    # registry skips exactly that proc_type (burst.py:1034), so the adaptive force
+    # was computed and then discarded - no DPS path had ever credited it.
+    # apply_rune_offense_grants=False (the default) -> both grants are 0.0, no
+    # stats copy, no note, byte-identical to pre-R145 regardless of what rune_ids
+    # carries. Placed HERE so the AP side lands next to stacked_ap: before ap_amp,
+    # so Rabadon's amplifies the rune AP the same way it amplifies Mejai's stacks
+    # (both are real AP). The AD side folds into bonus_ad, which the CallContext
+    # and the rotation fold below both read. The adaptive side is decided from the
+    # RESOLVED build (bonus_ad vs ap), AD winning ties per rune_procs._adaptive_coeff.
+    rune_offense_ad = 0.0
+    rune_offense_ap = 0.0
+    if apply_rune_offense_grants:
+        rune_offense_ad, rune_offense_ap = rune_offense_grants(
+            rune_ids or (),
+            level=level,
+            bonus_ad=bonus_ad,
+            ap=ap,
+        )
+        bonus_ad += rune_offense_ad
+        ap += rune_offense_ap
     # Phase 4 batch 32 (2026-05-04): multiplicative AP amplifier. Applied
     # after ap_from_hp + stacked_ap so Rabadon's Magical Opus boosts ALL
     # AP, including the HP-converted and kill-stacked contributions.
@@ -985,6 +1015,16 @@ def compute_dps(
             stats_for_rotation = dict(stats)
         stats_for_rotation["ad"] = (
             stats_for_rotation.get("ad", 0.0) + missing_hp_bonus_ad
+        )
+    # R145 (1.232.0): fold the adaptive rune bonus AD into the rotation AD so the
+    # AA damage reflects Gathering Storm / Absolute Focus (same shape as the DSV2
+    # takedown and R111 Retribution folds above). Gated on > 0 so the OFF path
+    # never copies stats - byte-identical to pre-R145.
+    if rune_offense_ad > 0:
+        if stats_for_rotation is stats:
+            stats_for_rotation = dict(stats)
+        stats_for_rotation["ad"] = (
+            stats_for_rotation.get("ad", 0.0) + rune_offense_ad
         )
     # R7 (1.147.0): per-stack champion self-Attack-Speed passive seam.
     # assume_passive_as_stacks=False (the default) -> passive_as stays 0.0, no
@@ -1081,7 +1121,9 @@ def compute_dps(
     # DSV2 (1.125.0): the per-hit display AD (avg_attack_dmg / raw_attack_dps,
     # read by burst.compute_burst_damage as the AA per-hit) includes the
     # takedown bonus AD. 0.0 when the seam is OFF -> byte-identical.
-    ad = float(stats.get("ad", 0.0)) + takedown_bonus_ad
+    # R145 (1.232.0): the adaptive rune bonus AD joins the same display total,
+    # 0.0 when the seam is OFF -> byte-identical.
+    ad = float(stats.get("ad", 0.0)) + takedown_bonus_ad + rune_offense_ad
     eff_as = float(stats.get("as", 0.0))
     # Phase 4 batch 14: per-hit display value reflects the same amp the
     # rotation DPS uses, so /dps clients see consistent numbers. Item 247:
