@@ -271,7 +271,18 @@ def _augment_name_map() -> dict[str, str]:
                 out[api.lower()] = api
             break
     except Exception as exc:  # noqa: BLE001
-        logger.debug("arena augment name map: %s", exc)
+        # Never commit a failed OR partially built map to the process-lifetime
+        # cache. Pinning a partial map is worse than pinning an empty one: only
+        # SOME augments stop resolving, so the symptom reads as bad data rather
+        # than a crash, and augment persistence is skipped for the rest of the
+        # process (see this function's docstring). Leaving the cache unset makes
+        # the next call retry.
+        logger.warning(
+            "arena augment name map build failed (%d partial entries "
+            "discarded, retrying on next call): %s",
+            len(out), exc,
+        )
+        return {}
     _AUG_NAME_MAP_CACHE = out
     return out
 
@@ -877,6 +888,8 @@ class Coach(BaseCoach):
                 from core.coaching_timestamps import write_coaching_ts as _wts
                 _wts("arena")
             except Exception:  # noqa: BLE001
+                # D-class: callee already swallows (core/coaching_timestamps.py:73-74
+                # returns None), so narrowing this handler would be dead code.
                 pass
         except Exception as exc:
             raise exc
@@ -953,6 +966,8 @@ class Coach(BaseCoach):
                     reco_fields,
                 )
             except Exception:  # noqa: BLE001
+                # D-class: callee already swallows (core/augment_shadow.py:112-113),
+                # so narrowing this handler would be dead code.
                 pass
         except Exception as exc:  # noqa: BLE001
             logger.error("Arena augment select: %s", exc)
@@ -969,6 +984,8 @@ class Coach(BaseCoach):
                     })
                     safe_write(self._out, current)
                 except Exception as exc2:  # noqa: BLE001
+                    # D-class: callees already swallow (coaches/_base_coach.py:66-68
+                    # load_json -> {}, :100-102 safe_write returns).
                     logger.debug("Arena augment reco persist: %s", exc2)
 
     def _reconcile_augment_hud(self, vision_state: dict) -> None:
@@ -1006,6 +1023,8 @@ class Coach(BaseCoach):
                     current["augments_picked"] = list(self._picked_augments)
                     safe_write(self._out, current)
             except Exception as exc:  # noqa: BLE001
+                # D-class: callees already swallow (coaches/_base_coach.py:66-68
+                # load_json -> {}, :100-102 safe_write returns).
                 logger.debug("HUD reconcile (confirm) write: %s", exc)
             return
         logger.info(
@@ -1019,6 +1038,8 @@ class Coach(BaseCoach):
             current["augments_source"] = "vision_hud"
             safe_write(self._out, current)
         except Exception as exc:  # noqa: BLE001
+            # D-class: callees already swallow (coaches/_base_coach.py:66-68
+            # load_json -> {}, :100-102 safe_write returns).
             logger.debug("HUD reconcile write: %s", exc)
 
     def _handle_anvil(self, vision_state: dict) -> None:

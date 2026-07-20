@@ -145,7 +145,12 @@ class GameLifecycleManager:
                            if app._game_state else "CLASSIC")
                     _pgc.trigger(_gm)
             except Exception as _pgc_exc:
-                _log.debug("postgame trigger error: %s", _pgc_exc)
+                # Fires at most once per game end - no spam risk. At debug this
+                # was indistinguishable from the collector never being wired
+                # (the RM-107 shape): a permanently broken trigger produced no
+                # signal any operator surface reads.
+                _log.warning("postgame trigger error: %s", _pgc_exc,
+                             exc_info=True)
         # Live rewind-DB writer (item 119): post-gameEnd, fire-and-forget
         # schedule Match-V5 + timeline fetch + INSERT OR IGNORE into
         # rewind_history.db so the operator's "what did I just play"
@@ -155,7 +160,12 @@ class GameLifecycleManager:
             from lib.rewind_live_writer import schedule_live_insert
             schedule_live_insert(app)
         except Exception as _rlw_exc:
-            _log.debug("rewind live-writer trigger error: %s", _rlw_exc)
+            # Once per game end. This path has NO success log at all, so at
+            # debug a permanently failing import/schedule was invisible - the
+            # rewind DB would simply never gain live rows and nothing would say
+            # so. schedule_live_insert() already handles its own RuntimeError.
+            _log.warning("rewind live-writer trigger error: %s", _rlw_exc,
+                         exc_info=True)
         _sp = app._tft_mode or app._arena_mode or app._brawl_mode or app._aram_mode
         if _sp:
             if HAS_TRACKER:
@@ -309,7 +319,10 @@ class GameLifecycleManager:
                 k = p.read_text(encoding="utf-8").strip()
                 if k.startswith("sk-ant-"):
                     return k
-        except Exception:
+        except (OSError, UnicodeDecodeError):
+            # exists()/read_text() are the only raising calls; strip() and
+            # startswith() cannot raise on a str. Falls through to the env var,
+            # and an absent key degrades to coach-off (project_sr_api_key_file).
             pass
         return os.environ.get("ANTHROPIC_API_KEY", "")
 

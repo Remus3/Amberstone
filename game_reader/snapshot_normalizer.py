@@ -14,6 +14,7 @@ endpoints) resolve through MRO at runtime.
 
 import logging
 import math
+import time
 import urllib.parse
 
 from core.mode_capabilities import has_capability
@@ -37,6 +38,53 @@ def _normalize_name(name: str) -> str:
     if not name:
         return ""
     return name.split("#")[0].strip().lower()
+
+
+# ----------------------------------------------------------------------
+# Live Client subresource degradation observability (silent-except A4)
+# ----------------------------------------------------------------------
+# `_PollerMixin._get` (game_reader/poller.py:250-253) does NOT swallow - it
+# lets urllib raise. That makes the handlers in the rune / ability readers
+# below the SOLE swallow point for a 404, endpoint rename or auth change on
+# /activeplayerrunes, /playermainrunes and /activeplayerabilities. Those
+# fields feed live coach prompts (coaches/aram_coach.py:350, 352), so a
+# permanently-404ing endpoint used to degrade every prompt at DEBUG only,
+# i.e. with zero operator signal.
+#
+# WARNING makes the failure falsifiable; the throttle keeps a continuously
+# polling reader from emitting one record per tick. The counter is NOT
+# throttled, so the log under-reports frequency but the counter never does.
+LIVE_SUBRESOURCE_WARN_INTERVAL = 60.0  # seconds between warnings per subresource
+
+_subresource_failures: dict = {}
+_subresource_last_warn: dict = {}
+
+
+def get_liveclient_subresource_failures() -> dict:
+    """Cumulative swallowed-failure count per Live Client subresource."""
+    return dict(_subresource_failures)
+
+
+def reset_liveclient_subresource_failures() -> None:
+    """Clear the counters and the throttle state (test / new-game hook)."""
+    _subresource_failures.clear()
+    _subresource_last_warn.clear()
+
+
+def _note_subresource_failure(subresource: str, exc: BaseException) -> None:
+    """Count a swallowed subresource read failure and warn (throttled)."""
+    count = _subresource_failures.get(subresource, 0) + 1
+    _subresource_failures[subresource] = count
+    now = time.monotonic()
+    last = _subresource_last_warn.get(subresource)
+    if last is None or (now - last) >= LIVE_SUBRESOURCE_WARN_INTERVAL:
+        _subresource_last_warn[subresource] = now
+        _log.warning(
+            "live-client subresource unavailable: %s (%s: %s) - "
+            "%d failure(s) so far this session; dependent coach prompt "
+            "fields degrade to empty",
+            subresource, type(exc).__name__, exc, count,
+        )
 
 
 def _coerce_num(value, default=0.0) -> float:
@@ -1054,7 +1102,7 @@ class _NormalizerMixin:
             if ks_name:
                 return f"{ks_name} | {pri_name} / {sec_name}".strip(" |/")
         except Exception as exc:  # noqa: BLE001
-            _log.debug("swallowed exception: %s", exc)
+            _note_subresource_failure("/activeplayerrunes", exc)
         return ""
 
     def _read_my_runes_structured(self) -> dict:
@@ -1102,7 +1150,7 @@ class _NormalizerMixin:
                 ],
             }
         except Exception as exc:  # noqa: BLE001
-            _log.debug("_read_my_runes_structured failed: %s", exc)
+            _note_subresource_failure("/activeplayerrunes", exc)
         return {}
 
     def _read_enemy_runes(self, enemies: list) -> dict:
@@ -1131,7 +1179,7 @@ class _NormalizerMixin:
                 if ks_name:
                     result[name] = f"{ks_name} | {pri_name}".strip(" |")
             except Exception as exc:  # noqa: BLE001
-                _log.debug("swallowed exception: %s", exc)
+                _note_subresource_failure("/playermainrunes", exc)
         return result
 
     def _read_my_abilities(self) -> dict:
@@ -1159,7 +1207,7 @@ class _NormalizerMixin:
                     }
             return result
         except Exception as exc:  # noqa: BLE001
-            _log.debug("swallowed exception: %s", exc)
+            _note_subresource_failure("/activeplayerabilities", exc)
             return {}
 
     # ------------------------------------------------------------------

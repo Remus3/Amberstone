@@ -655,7 +655,16 @@ class Supervisor:
         # AND file a post-game summary note so the dashboard's activity
         # ticker shows something visible as soon as the match ends.
         if prev_norm in ("game", "in_progress") and new_norm not in ("game", "in_progress"):
-            self._file_post_game_summary(prev_norm, new_norm)
+            # Kept LOUD but decoupled: the A3 fix makes a rating-locator bug
+            # propagate out of _file_post_game_summary instead of silently
+            # stripping fields, which is correct - but these two statements were
+            # coupled only by order, so an unrelated summary failure would also
+            # stop auto-analyze from ever being scheduled. warning + exc_info
+            # preserves everything the outer file_ingest guard would have logged.
+            try:
+                self._file_post_game_summary(prev_norm, new_norm)
+            except Exception as e:  # noqa: BLE001 - must not block auto-analyze
+                log.warning("post-game summary failed: %s", e, exc_info=True)
             loop = asyncio.get_running_loop() if asyncio.get_event_loop().is_running() else None
             if loop is None:
                 log.debug("no running loop - skipping auto-analyze schedule")
@@ -723,12 +732,17 @@ class Supervisor:
         # (which ignored RC_ACCOUNT_ID namespacing) to the most-recently-
         # modified last_<mode>.json - performance_tracker._latest_rating_file
         # is the authoritative locator.
+        # The guard covers ONLY the import it was written for (performance_tracker
+        # unavailable = no rating enrichment, not a crashed transition handler).
+        # The locator CALL is deliberately hoisted out: a bug inside
+        # _latest_rating_file used to be swallowed here, silently stripping
+        # rating / label / stats from the filed summary with no signal.
         try:
             from performance_tracker import _latest_rating_file as _lrf  # type: ignore
-            rating_path = _lrf(str(_PROJECT_ROOT))
-        except Exception as e:  # noqa: BLE001
+        except ImportError as e:
             log.debug("rating-file locator import failed: %s", e)
-            rating_path = None
+            _lrf = None
+        rating_path = _lrf(str(_PROJECT_ROOT)) if _lrf is not None else None
         try:
             if rating_path and rating_path.exists():
                 rating_data = json.loads(rating_path.read_text(encoding="utf-8"))
@@ -756,7 +770,11 @@ class Supervisor:
             log.info("post-game summary filed (prev=%s new=%s champ=%s)",
                      prev, new, summary_payload.get("champion", "?"))
         except Exception as e:  # noqa: BLE001
-            log.debug("post-game summary filing failed: %s", e)
+            # Must be >= WARNING: this function exists solely to file the
+            # summary, so a DEBUG-only failure makes a permanently broken
+            # filing path look identical to the function never running.
+            # Matches the reconciler's own warning at :467.
+            log.warning("post-game summary filing failed: %s", e)
 
     # ---- auto-analyze lifecycle --------------------------------------
     def _schedule_auto_analyze(self) -> None:

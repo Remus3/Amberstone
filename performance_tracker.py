@@ -259,13 +259,24 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
     if placement<1 or placement>mx: return ("", [])
     ss=tft_live.get("stage_round","");sn=0
     if ss:
+        # Narrowed 2026-07-19: the only raising statement is int(); it raises
+        # ValueError on a non-numeric stage prefix. TypeError covers a
+        # stage_round whose str()/split shape is not a plain string. No other
+        # statement in the try can raise.
         try:sn=int(str(ss).split("-")[0])
-        except Exception as _e: _log.debug("TFT stage parse: %s", _e)  # QUAL-002  # noqa: BLE001
+        except (TypeError, ValueError) as _e: _log.debug("TFT stage parse: %s", _e)  # QUAL-002
     if not sn and tft_coaching:sn=tft_coaching.get("stage",0)
     lv=tft_live.get("level") or (tft_coaching or {}).get("level",0) or 0
     gs=(tft_coaching or {}).get("game_time_s",0);gm=max(0,gs/60) if gs else 0
     traits=tft_live.get("traits_active",[]) or [];units=tft_live.get("board_units",[]) or []
     augments=tft_live.get("augments",[]) or []
+    # Bound BEFORE the try: the enrichment below is best-effort, but _sel is
+    # read unconditionally at the `comp=` line past the handler. Binding it
+    # inside the try meant a missing/corrupt comp_state.json turned a swallowed
+    # read error into an UnboundLocalError one line later (data/comp_state.json
+    # is a gitignored data/ artifact, so a clean checkout hits this; the caller
+    # is app/_game_lifecycle.py:168 at TFT game end).
+    _sel = ""
     try:
         import json as _j
         _sd = Path(script_dir)
@@ -318,8 +329,16 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
     try:
         from tft.placement_aggregator import update_heatmap as _uh
         _uh()
+    # LEFT BROAD 2026-07-19: update_heatmap -> build_heatmap
+    # (tft/placement_aggregator.py:45) re-walks and re-parses the whole ratings
+    # dir, so the reachable set is at least ImportError / OSError / KeyError /
+    # TypeError / ValueError and is not closed by inspection. Could not rule out
+    # further types from build_heatmap's own callees, so the handler stays broad.
+    # Level lifted debug -> warning: the two sibling save failures in this same
+    # function (the rating write and the DB write above) both log at warning, so
+    # a silently-dead heatmap was the only invisible failure here.
     except Exception as _e:  # noqa: BLE001
-        _log.debug("Heatmap update: %s", _e)
+        _log.warning("Heatmap update: %s", _e)
     return grade, notes
 
 def save_rating(script_dir,champion,game_state,ally_kills_total):
@@ -385,7 +404,11 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
             api_key = ""
             try:
                 api_key = (Path(script_dir) / "API-Key-Claude.txt").read_text(encoding="utf-8").strip()
-            except Exception: pass  # noqa: BLE001
+            # Narrowed 2026-07-19: read_text raises OSError (absent / locked
+            # key file) or UnicodeDecodeError (a ValueError subclass) on a
+            # non-UTF-8 file; Path() raises TypeError on a non-path script_dir.
+            # str.strip() cannot raise.
+            except (OSError, TypeError, ValueError): pass
             gs_for_record = {
                 "kda":         kda_str,
                 "kp_pct":      kp,
@@ -401,7 +424,12 @@ def load_rating(sd,category=""):
     try:
         p = _mode_file(sd, category) if category else _latest_rating_file(sd)
         if p and p.exists(): return json.loads(p.read_text(encoding="utf-8"))
-    except Exception as _e: _log.debug("load_rating %s: %s", category or 'default', _e)  # QUAL-002  # noqa: BLE001
+    # Narrowed 2026-07-19: _ratings_dir().mkdir, Path.exists and read_text all
+    # raise OSError; read_text can raise UnicodeDecodeError and json.loads
+    # JSONDecodeError, both ValueError subclasses; Path(sd) raises TypeError on
+    # a non-path sd. _latest_rating_file already swallows its own OSError
+    # (:131). Those are every raising statement in the try.
+    except (OSError, TypeError, ValueError) as _e: _log.debug("load_rating %s: %s", category or 'default', _e)  # QUAL-002
     return None
 def load_all_ratings(sd):
     r={}
