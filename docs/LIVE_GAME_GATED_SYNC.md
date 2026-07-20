@@ -99,6 +99,18 @@ their live callers still omit the flags. DSP5/6/7 + anti-tank P3.2 are producer-
 
 Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a match.
 
+- **G1-00** `[CS-CAPTURE]` R148 champ-select shaping refactor - live confirm OWED. `lcu/champ_select_shape.py`
+  extracted the ~155-line shaping out of `capture_state()` (`tools/lcu_agent.py`) as a behavior-identical
+  pure function. Offline proof is strong: a pre/post `capture_state()` differential over 5 fixtures
+  (SR draft, ARAM bench, Arena augments, None-session, empty-dict) returned ZERO mismatches with
+  identical key order, plus 272 tests on the touched suites. RC-LCUAgent was restarted post-merge under
+  the real scheduler invocation and came up clean (the `sys.path` shim works against the task's EMPTY
+  WorkingDirectory), but the client was Offline, so the agent only exercised the early-return shape
+  (`config` / `phase` / `ts`) - **the new shaping code path has never executed live.**
+  **CHECK:** enter ANY champ-select, then `curl -k https://127.0.0.1:8888/api/state` and confirm
+  `lcu.champ_select` is populated with the usual fields (bench, actions, my_pick, team picks; plus
+  `arena_teams` + `augments` if it is an Arena lobby) and that the champ-select view renders as before.
+  A silent `{}` or a missing key is the failure mode to look for. Closes on one lobby - no game needed.
 - **G1-01** `[CS-CAPTURE]` (was A8) Locked-own-champ champ-select panel captures - **SHRUNK 6 -> 3
   artifacts 2026-07-18; still OPEN at GATE 1.**
   **RE-FILED, GATE 1 -> GATE 2:** ds-sweep / ds-relscore / ds-statcheck are ACTIVE-MATCH panels, not
