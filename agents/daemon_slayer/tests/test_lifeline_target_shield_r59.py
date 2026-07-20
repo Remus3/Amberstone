@@ -41,7 +41,7 @@ _ITEMS = ["3153", "3006"]  # Blade of the Ruined King + Berserker's - clean ADC.
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.231.0")
+        self.assertEqual(ENGINE_VERSION, "1.232.0")
 
 
 class HelperGroundTruth(unittest.TestCase):
