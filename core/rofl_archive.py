@@ -174,6 +174,103 @@ def pull_replays(match_ids, client, poll_interval=2.0, max_polls=15):
 
 _BLOB_ANCHOR = b'{"gameLength"'
 
+# Highlight clips: "16-13_NA1-5592802194_01.webm" = patch 16.13, match
+# NA1_5592802194, clip index 01. The filename is a direct join key onto
+# matches.match_id and onto the archived .rofl for the same game.
+_CLIP_RE = re.compile(
+    r"^(?P<pmaj>\d+)-(?P<pmin>\d+)_(?P<platform>[A-Za-z0-9]+)-(?P<game_id>\d+)_(?P<idx>\d+)$"
+)
+_CLIP_SUFFIXES = {".webm", ".mp4", ".mkv", ".avi", ".mov"}
+
+_DEFAULT_HIGHLIGHTS = (
+    Path.home() / "Documents" / "League of Legends" / "Highlights"
+)
+
+
+def default_highlights_dir() -> Path:
+    """The client's own Highlights directory (clip capture target)."""
+    return _DEFAULT_HIGHLIGHTS
+
+
+def highlight_key_from_name(name: str):
+    """"16-13_NA1-5592802194_01.webm" -> ("NA1_5592802194", "16.13", "01").
+
+    None when the file is not a recognisable clip, so a stray file in the
+    Highlights directory is skipped rather than fatal.
+    """
+    p = Path(name)
+    if p.suffix.lower() not in _CLIP_SUFFIXES:
+        return None
+    m = _CLIP_RE.match(p.stem)
+    if not m:
+        return None
+    match_id = f"{m.group('platform')}_{m.group('game_id')}"
+    patch = f"{m.group('pmaj')}.{m.group('pmin')}"
+    return match_id, patch, m.group("idx")
+
+
+def archive_highlights(source_dir, archive_dir, index_path=None) -> ArchiveResult:
+    """Copy every not-yet-archived highlight clip into <archive_dir>/highlights.
+
+    Same contract as archive_replays: idempotent, atomic, and it NEVER deletes
+    from the source (the client owns that directory). Keyed on
+    "<match_id>_<clip_index>" so two clips of the SAME game cannot collide and
+    silently drop one.
+    """
+    source_dir = Path(source_dir)
+    archive_dir = Path(archive_dir)
+    index_path = Path(index_path) if index_path else archive_dir / "clips.json"
+    dest_dir = archive_dir / "highlights"
+
+    res = ArchiveResult()
+    if not source_dir.is_dir():
+        logger.debug("highlights dir absent, nothing to archive: %s", source_dir)
+        return res
+
+    index = _load_index(index_path, key="clips")
+    known = index["clips"]
+    dirty = False
+
+    for entry in sorted(source_dir.iterdir()):
+        if not entry.is_file():
+            continue
+        parsed = highlight_key_from_name(entry.name)
+        if parsed is None:
+            continue
+        match_id, patch, idx = parsed
+        clip_key = f"{match_id}_{idx}"
+
+        dest = dest_dir / entry.name
+        if clip_key in known and dest.exists():
+            res.skipped.append(clip_key)
+            continue
+
+        try:
+            size = entry.stat().st_size
+            _atomic_copy(entry, dest)
+        except OSError as exc:
+            # Loud: a clip we failed to copy is a clip lost once the client
+            # prunes it.
+            logger.warning("failed to archive clip %s: %s", entry.name, exc)
+            res.failed.append(clip_key)
+            continue
+
+        known[clip_key] = {
+            "file": entry.name,
+            "match_id": match_id,
+            "patch": patch,
+            "clip_index": idx,
+            "size": size,
+            "archived_at": datetime.now(timezone.utc).isoformat(),
+        }
+        dirty = True
+        res.copied.append(clip_key)
+        logger.info("archived clip %s (patch %s, %d bytes)", clip_key, patch, size)
+
+    if dirty or not index_path.exists():
+        _atomic_write_json(index_path, index)
+    return res
+
 
 @dataclass
 class ExtractResult:
@@ -341,25 +438,30 @@ def load_index(index_path) -> dict:
     return _load_index(Path(index_path))
 
 
-def _load_index(index_path: Path) -> dict:
-    """Read the archive index, recovering loudly from a corrupt one."""
+def _load_index(index_path: Path, key: str = "replays") -> dict:
+    """Read an archive index, recovering loudly from a corrupt one.
+
+    *key* is the top-level collection name ("replays" for .rofl files,
+    "clips" for highlights) so both archives share one implementation and one
+    corrupt-index policy.
+    """
     if not index_path.exists():
-        return {"replays": {}}
+        return {key: {}}
     try:
         raw = json.loads(index_path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         # Recover, but never silently: a swallowed corrupt index would quietly
         # re-copy everything and hide real disk trouble.
         logger.warning(
-            "rofl archive index unreadable (%s) - rebuilding from disk: %s",
+            "archive index unreadable (%s) - rebuilding from disk: %s",
             index_path, exc,
         )
-        return {"replays": {}}
-    if not isinstance(raw, dict) or not isinstance(raw.get("replays"), dict):
+        return {key: {}}
+    if not isinstance(raw, dict) or not isinstance(raw.get(key), dict):
         logger.warning(
-            "rofl archive index has unexpected shape (%s) - rebuilding", index_path
+            "archive index has unexpected shape (%s) - rebuilding", index_path
         )
-        return {"replays": {}}
+        return {key: {}}
     return raw
 
 
