@@ -119,6 +119,44 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-20e - R139 Share/ external-presentation pass
+
+**Head `a700b414`. ENGINE-IMPACT NONE** - docs and presentation only, no DS path, no ENGINE_VERSION bump
+(stays 1.228.0 / patch 16.14.1), no `:8893` restart owed. `tools/ds_share_sync.py --check` green throughout.
+
+Gemini-loop cycle, directive R139: read the entire `Share/` package end-to-end and raise it to external-presentation
+quality, credit upstream data sources explicitly, keep the sync guard green. Two worktree slices, Claude sole merger,
+verifier gate CONFIRM/CONFIRM before merge (6 of 6 factual spot-checks independently re-derived).
+
+**The directive's premise was already on disk.** It claimed the Riot credits were missing from `Share/README.md`;
+they have been there as a four-row "Sources of truth (credited upfront)" table at `Share/README.md:19-32`. Following
+the brief literally would have shipped a duplicate credit block. The real defect was one section below it.
+
+**The guard was green over a five-versions-stale public doc, by design.** The README "Changelog (recent)" list topped
+out at `1.222.0 -> 1.223.0` against a live 1.228.0 engine. `_doc_anchor_rules` in `tools/ds_share_sync.py` deliberately
+EXCLUDES changelog history from the anchor auto-rewrite - so the `**Engine version:**` header stays fresh forever while
+the release list beneath it rots silently. Worth remembering the shape: an anchor guard that covers the header but not
+the body makes staleness invisible rather than loud. Five hand-written bullets now cover 1.224.0 through 1.228.0, each
+grounded in the matching `Share/CHANGELOG.md` entry; the CHANGELOG preamble gained the upstream credit it never had.
+
+**Docs half was the heavy half:** 100-plus stale `file:line` citations across `Share/docs/01..05` plus
+`Share/lolmath_ingest/*` (104 table citations and 27 route refs in `02_FUNCTION_REFERENCE.md` alone), and every drifted
+count re-derived against live ground truth - 172/705 -> 173/706 champs/items, 13 -> 20 snapshot JSONs, 328 -> 339 test
+files, RUNE_PROCS 19 -> 20, NON_DAMAGE_BLOCKS 7 -> 9, `_effects_data.py` 5335 -> 5843 lines, explicit AA cast times
+61 -> 49. One correction was substantive rather than numeric: `04_GAPS_AND_ROADMAP.md` justified the replay-parsing
+ceiling with a reason this repo retired on 2026-06-03 (that a parsed `.rofl` is a strict subset of Match-V5 - it is not;
+367 engine-named stat fields x 10 players, no patch gate). A wrong reason for a right conclusion forecloses the option
+for the next reader, so it now states the honest bound: per-patch Layer-2 re-RE cost.
+
+**Prunes: zero, and that is correct.** Every candidate resolved to load-bearing against the sync tool itself
+(`_DOC_FILES` :71-78, `_INGEST_DOC_FILES` :90-95, `_INGEST_BUNDLE_REL` :96, MANIFEST machine-stamped). Only disposable
+artifact was an untracked gitignored `__pycache__`.
+
+Suites fresh this run: **DS 8866 passed / 1 skipped / 2518 subtests; RC 12290 passed / 23 skipped / 359 subtests.**
+Share `.md` non-ASCII bytes: 0. Worktrees + slice branches cleaned (local and remote).
+
+---
+
 # 2026-07-20d - R138 HEXCORE offline explorer refresh
 
 Merge `ee0e2f62` (slice `ab16e062`) + docs `001b3fc0`. LEDGER 976. gemini-loop

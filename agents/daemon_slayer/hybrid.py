@@ -436,6 +436,11 @@ def compute_hybrid(
     assume_item_health_stacks: bool = False,
     apply_rune_flat_mitigation: bool = False,
     assume_item_proc_heal: bool = False,
+    # R142 (ENGINE 1.229.0): the RM-101 residual defensive-rune pair, appended at
+    # END per the same no-mid-signature-insert convention and passed straight
+    # through to compute_ehp. Both ride the existing ``rune_ids`` transport.
+    apply_rune_self_heal: bool = False,
+    apply_rune_shield_grants: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -580,6 +585,8 @@ def compute_hybrid(
         assume_item_health_stacks=assume_item_health_stacks,
         apply_rune_flat_mitigation=apply_rune_flat_mitigation,
         assume_item_proc_heal=assume_item_proc_heal,
+        apply_rune_self_heal=apply_rune_self_heal,
+        apply_rune_shield_grants=apply_rune_shield_grants,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -947,6 +954,11 @@ def rank_items_by_hybrid(
     assume_item_health_stacks: bool = False,
     apply_rune_flat_mitigation: bool = False,
     assume_item_proc_heal: bool = False,
+    # R142 (ENGINE 1.229.0): the RM-101 residual defensive-rune pair, appended at
+    # END per the same no-mid-signature-insert convention and passed straight
+    # through to compute_ehp. Both ride the existing ``rune_ids`` transport.
+    apply_rune_self_heal: bool = False,
+    apply_rune_shield_grants: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -1121,6 +1133,8 @@ def rank_items_by_hybrid(
         assume_item_health_stacks=assume_item_health_stacks,
         apply_rune_flat_mitigation=apply_rune_flat_mitigation,
         assume_item_proc_heal=assume_item_proc_heal,
+        apply_rune_self_heal=apply_rune_self_heal,
+        apply_rune_shield_grants=apply_rune_shield_grants,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
@@ -1266,6 +1280,8 @@ def rank_items_by_hybrid(
                 assume_item_health_stacks=assume_item_health_stacks,
                 apply_rune_flat_mitigation=apply_rune_flat_mitigation,
                 assume_item_proc_heal=assume_item_proc_heal,
+                apply_rune_self_heal=apply_rune_self_heal,
+                apply_rune_shield_grants=apply_rune_shield_grants,
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,
