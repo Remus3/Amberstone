@@ -246,7 +246,16 @@ class LcuClient(_PGMixin):
             try:
                 self._auto_accept_tick()
             except Exception:
-                pass
+                # Parity with the async sibling in _auto_accept_loop_async: a
+                # raising tick must never kill the loop, but it must leave a
+                # traceback. This thread path is the non-AppLoop fallback and
+                # had ZERO trace, the same blind spot as the 2026-07-04 silent
+                # death. Kept at debug (not warning) deliberately: this loop
+                # runs at 1 Hz, so a persistently failing tick would otherwise
+                # flood the 3 MB log. core/log_setup.py sends DEBUG to file
+                # unconditionally, so the traceback is still on disk.
+                _log.debug("auto-accept tick raised; loop continues",
+                           exc_info=True)
             time.sleep(interval)
 
     async def _auto_accept_loop_async(self, interval):

@@ -367,7 +367,13 @@ def save_spell_pref(mode_key: str, value: str) -> None:
                             pass
                     else:
                         time.sleep(0.015 * (2 ** attempt))
-    except Exception as exc:  # noqa: BLE001
+    # Narrowed 2026-07-19: Path.exists / read_text / write_text / Path.replace
+    # raise OSError (PermissionError is retried inline above); read_text raises
+    # UnicodeDecodeError and json.loads raises JSONDecodeError, both ValueError
+    # subclasses; prefs[mode_key] = value raises TypeError when the file stored
+    # a JSON list instead of an object, and json.dumps raises TypeError /
+    # ValueError. Those are every raising statement in the try.
+    except (OSError, TypeError, ValueError) as exc:
         _log.debug("save_spell_pref: %s", exc)
 
 
@@ -485,7 +491,12 @@ def save_champ_spell_pref(champion: str, mode: str,
                             pass
                     else:
                         time.sleep(0.015 * (2 ** attempt))
-    except Exception as exc:  # noqa: BLE001
+    # Narrowed 2026-07-19: same raise surface as save_spell_pref above -
+    # OSError from exists/read_text/write_text/replace, ValueError from
+    # UnicodeDecodeError + JSONDecodeError, TypeError/ValueError from
+    # json.dumps. mode_tag (:397) is pure str/dict work and cannot raise, and
+    # prefs / by_champ / per_mode are all isinstance-guarded to dict above.
+    except (OSError, TypeError, ValueError) as exc:
         _log.debug("save_champ_spell_pref(%s/%s): %s", champion, mode, exc)
 
 
@@ -885,6 +896,12 @@ class RuneWriter:
                 gc = lobby.get("gameConfig", {})
                 self._cached_lobby_mode = gc.get("gameMode", "CLASSIC").upper()
                 return self._cached_lobby_mode
+        # D-CLASS, narrowing is mechanically impossible: the callee already
+        # swallows. LCUClient._request (lcu/lcu_client.py:173-183) returns None
+        # on URLError / OSError / TimeoutError / JSONDecodeError /
+        # UnicodeDecodeError / ValueError, and returns None on any non-2xx at
+        # :160 - so no transport or JSON exception ever reaches this handler.
+        # lcu/lcu_client.py is on the CLAUDE.md frozen list; do not edit it.
         except Exception:  # noqa: BLE001
             pass
         return "CLASSIC"
@@ -917,7 +934,13 @@ class RuneWriter:
 
                 return ""  # found my slot but no champ selected
 
-        except Exception as exc:  # noqa: BLE001
+        # Narrowed 2026-07-19: session.get raises AttributeError when a caller
+        # hands in a non-dict session; iterating my_team and comparing
+        # champ_id > 0 raise TypeError on a non-iterable / non-numeric shape.
+        # _id_to_name (:924) cannot raise - build_champ_id_map (:249) swallows
+        # everything and returns {} at :264-266. Those are every raising
+        # statement in the try.
+        except (AttributeError, TypeError) as exc:
             _log.debug("_detect_my_champion: %s", exc)
         return ""
 
@@ -993,6 +1016,13 @@ class RuneWriter:
                     if page_id:
                         self._lcu._request("DELETE", f"/lol-perks/v1/pages/{page_id}")
                         _log.debug("Deleted old RC page: %s (id=%s)", p.get("name"), page_id)
+        # D-CLASS, narrowing is mechanically impossible: both callees already
+        # swallow. get_all_rune_pages (lcu/lcu_client.py:384) returns a list or
+        # None after pure isinstance/.get work, and _request
+        # (lcu/lcu_client.py:173-183) returns None on every transport and JSON
+        # error plus any non-2xx at :160 - so no exception from the LCU round
+        # trip ever reaches this handler. lcu/lcu_client.py is frozen; do not
+        # edit it.
         except Exception as exc:  # noqa: BLE001
             _log.debug("_write_page delete step: %s", exc)
 

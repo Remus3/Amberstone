@@ -63,12 +63,19 @@ class DailyRotatingFileHandler(RotatingFileHandler):
         # the file path before the size check sees a stale baseFilename.
         today = date.today()
         if today != self._current_day:
-            try:
-                if self.stream:
-                    self.stream.close()
-                    self.stream = None
-            except Exception:
-                pass
+            # Drop the handle FIRST and unconditionally. If close() raises and
+            # `self.stream = None` is skipped, the handler keeps emitting into
+            # YESTERDAY's already-open file for the rest of the process - the
+            # exact bug this class exists to fix, made silent. Clearing the
+            # reference forces FileHandler.emit to reopen at the new
+            # baseFilename even when the old handle refuses to close.
+            _stale = self.stream
+            self.stream = None
+            if _stale:
+                try:
+                    _stale.close()
+                except Exception:
+                    pass
             self._current_day = today
             self.baseFilename = str(self._path_for(today))
             # New day, fresh file - no need to rotate via size logic.
@@ -90,9 +97,12 @@ def _prune_old_logs(log_dir: Path, retention_days: int = _RETENTION_DAYS) -> int
                 if f.stat().st_mtime < cutoff:
                     f.unlink()
                     deleted += 1
-            except Exception:
+            except OSError:
+                # stat()/unlink() are the only raising calls in this block.
                 pass
-    except Exception:
+    except OSError:
+        # glob() iteration is the only raising call left; anything else
+        # propagates to setup()'s guard, which degrades to 0 pruned.
         pass
     return deleted
 

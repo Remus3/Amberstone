@@ -108,14 +108,38 @@ def _load_counters_index() -> dict:
     out: dict = {}
     try:
         raw = json.loads(_COUNTERS_PATH.read_text(encoding="utf-8"))
-        for k, v in (raw.get("counters") or {}).items():
+        # isinstance guards keep the handler below provably narrow: a
+        # structurally wrong (but valid) JSON body can no longer raise
+        # AttributeError out of .get()/.items().
+        counters = raw.get("counters") if isinstance(raw, dict) else None
+        for k, v in (counters if isinstance(counters, dict) else {}).items():
             if not isinstance(v, list):
                 continue
             out[_norm_name(k)] = list(v)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, json.JSONDecodeError) as exc:
+        # A5 (docs/specs/2026-07-19-silent-except-triage.md): NEVER cache a
+        # failed load. Returning uncached leaves the module-level global at
+        # None so the next call retries instead of pinning an empty map for
+        # the whole process lifetime.
         log.debug("pickban: counters load failed: %s", exc)
+        return out
     _COUNTERS_INDEX = out
     return out
+
+
+def _ddragon_champ_entries() -> dict:
+    """Read the DDragon champion file and return its ``data`` mapping.
+
+    Raises only ``OSError`` (read) or ``json.JSONDecodeError`` (parse): the
+    isinstance guards mean a structurally wrong body degrades to ``{}``
+    instead of raising AttributeError out of ``.get()`` / ``.values()``.
+    That is what lets the three callers below hold a provably narrow
+    ``(OSError, json.JSONDecodeError)`` handler."""
+    raw = json.loads(_DDRAGON_CHAMPS_PATH.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        return {}
+    data = raw.get("data", raw)
+    return data if isinstance(data, dict) else {}
 
 
 def _load_champ_name_to_id() -> dict[str, int]:
@@ -126,8 +150,7 @@ def _load_champ_name_to_id() -> dict[str, int]:
         return _CHAMP_NAME_TO_ID
     out: dict[str, int] = {}
     try:
-        raw = json.loads(_DDRAGON_CHAMPS_PATH.read_text(encoding="utf-8"))
-        data = raw.get("data", raw)
+        data = _ddragon_champ_entries()
         for entry in data.values():
             if not isinstance(entry, dict):
                 continue
@@ -143,8 +166,10 @@ def _load_champ_name_to_id() -> dict[str, int]:
             for variant in (name, slug):
                 if variant:
                     out[_norm_name(variant)] = cid
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, json.JSONDecodeError) as exc:
+        # A5: do not cache a failed load - see _load_counters_index.
         log.debug("pickban: champ name->id load failed: %s", exc)
+        return out
     _CHAMP_NAME_TO_ID = out
     return out
 
@@ -155,16 +180,17 @@ def _load_champ_id_to_name() -> dict[int, str]:
         return _CHAMP_ID_TO_NAME
     out: dict[int, str] = {}
     try:
-        raw = json.loads(_DDRAGON_CHAMPS_PATH.read_text(encoding="utf-8"))
-        data = raw.get("data", raw)
+        data = _ddragon_champ_entries()
         for entry in data.values():
             if isinstance(entry, dict) and entry.get("key") and entry.get("name"):
                 try:
                     out[int(entry["key"])] = str(entry["name"])
                 except (TypeError, ValueError):
                     continue
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, json.JSONDecodeError) as exc:
+        # A5: do not cache a failed load - see _load_counters_index.
         log.debug("pickban: champ id->name load failed: %s", exc)
+        return out
     _CHAMP_ID_TO_NAME = out
     return out
 
@@ -179,8 +205,7 @@ def _load_champ_id_to_info() -> dict[int, tuple[int, int]]:
         return _CHAMP_ID_TO_INFO
     out: dict[int, tuple[int, int]] = {}
     try:
-        raw = json.loads(_DDRAGON_CHAMPS_PATH.read_text(encoding="utf-8"))
-        data = raw.get("data", raw)
+        data = _ddragon_champ_entries()
         for entry in data.values():
             if not (isinstance(entry, dict) and entry.get("key")):
                 continue
@@ -198,8 +223,10 @@ def _load_champ_id_to_info() -> dict[int, tuple[int, int]]:
             except (KeyError, TypeError, ValueError):
                 continue
             out[cid] = (attack, magic)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, json.JSONDecodeError) as exc:
+        # A5: do not cache a failed load - see _load_counters_index.
         log.debug("pickban: champ id->info load failed: %s", exc)
+        return out
     _CHAMP_ID_TO_INFO = out
     return out
 
@@ -696,7 +723,9 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
                 m = max(float(d) for d in durations if d is not None)
                 if m > max_cc:
                     max_cc = m
-            except Exception:  # noqa: BLE001
+            # ValueError: empty after the None filter, or float("x").
+            # TypeError: durations not iterable, or a non-coercible element.
+            except (TypeError, ValueError, AttributeError):
                 continue
         for entry in cond_entries:
             # ConditionalCcEntry carries per-rank ``durations_s`` (the
@@ -707,7 +736,9 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
                         default=0.0)
                 if d > max_cc:
                     max_cc = d
-            except Exception:  # noqa: BLE001
+            # AttributeError: a ``durations_s`` property that itself raises.
+            # TypeError / ValueError: non-iterable or non-coercible values.
+            except (TypeError, ValueError, AttributeError):
                 continue
         if max_cc >= HEAVY_THRESHOLD:
             heavy_cc_champs.append(name)

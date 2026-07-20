@@ -901,7 +901,14 @@ class Supervisor:
                     self.process.kill()
                     try:
                         self.process.wait(timeout=2.0)
-                    except Exception:
+                    except Exception:  # noqa: BLE001
+                        # LEFT BROAD DELIBERATELY (2026-07-19 triage). Popen.wait()
+                        # on Windows is NOT TimeoutExpired-only: _wait() calls
+                        # _winapi.WaitForSingleObject + GetExitCodeProcess, both of
+                        # which raise OSError on a bad/closed handle. Could not
+                        # rule out OSError here, and an escape would propagate out
+                        # of stop_app() into the restart path - a silent crash
+                        # under pythonw. Narrow only with a proven raise set.
                         pass
             self.process = None
 
@@ -1205,7 +1212,8 @@ class Supervisor:
                 self.log(f"supervisor_request read error {path.name}: {exc}")
                 try:
                     path.unlink(missing_ok=True)
-                except Exception:
+                except OSError:
+                    # unlink() is the only raising call.
                     pass
                 continue
 
@@ -1276,7 +1284,9 @@ class Supervisor:
                 continue
             try:
                 rel = src.relative_to(latest)
-            except Exception:
+            except ValueError:
+                # relative_to() raises only ValueError; src comes from
+                # latest.rglob() so this is defence-in-depth.
                 continue
             rel_str = str(rel)
             # Exclusions

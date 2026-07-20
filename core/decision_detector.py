@@ -687,7 +687,11 @@ class DecisionStore:
             tmp = self._pending_path.with_suffix(self._pending_path.suffix + ".tmp")
             tmp.write_text(json.dumps(items, indent=2), encoding="utf-8")
             tmp.replace(self._pending_path)
-        except Exception as exc:  # noqa: BLE001
+        # Narrowed 2026-07-19: mkdir / write_text / Path.replace raise OSError;
+        # json.dumps raises TypeError on a non-serializable decision field and
+        # ValueError on a circular ref or out-of-range float; with_suffix raises
+        # ValueError on a malformed suffix. Those are every raising statement.
+        except (OSError, TypeError, ValueError) as exc:
             _log.debug("pending write failed: %s", exc)
 
     def reconcile(self, fresh: list[Decision], game_time: float) -> None:

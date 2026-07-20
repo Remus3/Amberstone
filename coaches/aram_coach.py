@@ -554,6 +554,10 @@ class Coach(BaseCoach):
                 if cur.get("my_team") != mt:
                     cur["my_team"] = mt
                     safe_write(self._out, cur)
+        # D-CLASS: callee already swallows. load_json (_base_coach.py:66-68)
+        # returns {} on any error and safe_write (:100-102) returns after
+        # logging, so no exception from either can reach this handler. It is
+        # mechanically unreachable and cannot be narrowed.
         except Exception:  # noqa: BLE001
             pass
         # Dynamic debounce: relax polling rate when game state is stable
@@ -576,13 +580,23 @@ class Coach(BaseCoach):
             from core.feature_policy import is_allowed as _fp_ok
             if not _fp_ok("aram", "live_coaching"):
                 return
-        except Exception:  # noqa: BLE001
+        # is_allowed (core/feature_policy.py:305-350) is total by construction:
+        # _check_reload is already guarded internally, every branch returns a
+        # bool, the mode/feature literals here are str, and _matrix is only ever
+        # assigned a validated dict. The import is the only raising statement.
+        except ImportError:
             pass
 
         _ai = self._overlay.get("ai_bar") if self._overlay else None
         if _ai:
             try:
                 _ai.set_scanning(0)
+            # LEFT BROAD (silent-except triage, C-class declined): _ai comes
+            # from self._overlay, which BaseCoach initialises to {} at
+            # coaches/_base_coach.py:297 and nothing in the coach package ever
+            # populates. set_scanning has no implementation in this repo (only
+            # test stubs), so the callee is an unconstrained duck-typed object
+            # and no exception set is provable from the source.
             except Exception:  # noqa: BLE001
                 pass
         try:
@@ -636,6 +650,9 @@ class Coach(BaseCoach):
             if _ai2:
                 try:
                     _ai2.set_done()
+                # LEFT BROAD (silent-except triage, C-class declined): same
+                # unconstrained duck-typed overlay callee as the set_scanning
+                # site above; no exception set is provable from the source.
                 except Exception:  # noqa: BLE001
                     pass
         except Exception as exc:  # noqa: BLE001

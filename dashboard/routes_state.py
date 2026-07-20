@@ -658,17 +658,34 @@ def _serve_ds_preview_post(h, payload) -> None:
         # network. Skipped when no enemy champions resolvable.
         threat = None
         defensive = []
+        # BATCH 4 (docs/specs/2026-07-19-silent-except-triage.md, 2c): the
+        # import guard narrows to ImportError, which is all the import itself
+        # can raise.
         try:
             from core.defensive_picks import (
                 compute_threat_profile, recommend_defensive_items,
             )
-            enemy_names = _resolve_enemy_champions(payload)
-            if enemy_names:
-                threat = compute_threat_profile(enemy_names, enemy_items=None)
-                defensive = recommend_defensive_items(
-                    threat, my_champion=champion,
-                    my_owned_items=items, top_n=4,
-                )
+        except ImportError as exc:
+            log.debug("ds-preview defensive import: %s", exc)
+            compute_threat_profile = None
+        # The COMPUTE below stays broad on purpose - it is NOT an import
+        # guard. compute_threat_profile reads the DDragon champ-info file and
+        # recommend_defensive_items coerces caller-supplied threat floats, so
+        # OSError / ValueError / TypeError are all genuinely reachable.
+        # Narrowing to ImportError here would let those escape to the outer
+        # handler at the bottom of this function and 500 the whole ds-preview
+        # route, losing the build recommendation because an OPTIONAL advisory
+        # section failed. That is a regression, not a fix, so it stays broad.
+        # (_resolve_enemy_champions already swallows internally and returns [].)
+        try:
+            if compute_threat_profile is not None:
+                enemy_names = _resolve_enemy_champions(payload)
+                if enemy_names:
+                    threat = compute_threat_profile(enemy_names, enemy_items=None)
+                    defensive = recommend_defensive_items(
+                        threat, my_champion=champion,
+                        my_owned_items=items, top_n=4,
+                    )
         except Exception as exc:  # noqa: BLE001
             log.debug("ds-preview defensive resolve: %s", exc)
         # L4 Phase-D capability-gap surface (RC_CAPGAP_SURFACE - default ON
