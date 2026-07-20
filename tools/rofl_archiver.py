@@ -140,6 +140,11 @@ def main(argv=None) -> int:
                          "replay into <archive>/stats/<match_id>.json")
     ap.add_argument("--force", action="store_true",
                     help="re-extract sidecars that already exist (--extract)")
+    ap.add_argument("--highlights", action="store_true",
+                    help="also archive highlight clips out of the client's "
+                         "Highlights dir (filenames carry patch + match id)")
+    ap.add_argument("--highlights-source", default=None,
+                    help="override the Highlights dir to read from")
     ap.add_argument("--db", default=None, help="rewind_history.db path (--pull)")
     ap.add_argument("--limit", type=int, default=50,
                     help="max matches to consider when pulling (default 50)")
@@ -182,18 +187,25 @@ def main(argv=None) -> int:
             print(f"  {n}")
         return 0
 
+    # A closed client is the NORMAL case on a 15-minute schedule, so a failed
+    # pull is a SKIP, never a failure - and it must not stop the archive /
+    # highlights / extract steps below, none of which need the LCU at all.
+    pull_client = None
     if args.pull:
-        db = Path(args.db) if args.db else _DEFAULT_DB
         try:
-            client = LcuReplayClient()
+            pull_client = LcuReplayClient()
         except (OSError, ValueError) as exc:
-            print(f"cannot pull - LCU lockfile unavailable ({exc}); is the client running?")
-            return 1
+            print(f"pull SKIPPED - LCU unavailable ({exc}); is the client running?")
+
+    if pull_client is not None:
+        client = pull_client
+        db = Path(args.db) if args.db else _DEFAULT_DB
         gv = client.game_version()
         current = rofl_archive.patch_from_game_version(gv)
         if not current:
-            print(f"cannot pull - unreadable gameVersion from the client: {gv!r}")
-            return 1
+            print(f"pull SKIPPED - unreadable gameVersion from the client: {gv!r}")
+            current = None
+    if pull_client is not None and current:
         known = set(rofl_archive.load_index(index).get("replays", {}))
         rows = _db_rows(db, args.limit)
         pullable = rofl_archive.select_pullable(rows, current, already=known)
@@ -221,6 +233,20 @@ def main(argv=None) -> int:
     for mid in res.failed:
         print(f"  ! {mid}")
 
+    hl_failed = 0
+    if args.highlights:
+        hl_src = (Path(args.highlights_source) if args.highlights_source
+                  else rofl_archive.default_highlights_dir())
+        hl = rofl_archive.archive_highlights(hl_src, archive, archive / "clips.json")
+        hl_failed = len(hl.failed)
+        print(f"clips  : {hl_src}")
+        print(f"clips  : copied={len(hl.copied)} skipped={len(hl.skipped)} "
+              f"failed={hl_failed}")
+        for k in hl.copied:
+            print(f"  ~ {k}")
+        for k in hl.failed:
+            print(f"  ! {k}")
+
     ex_failed = 0
     if args.extract:
         ex = rofl_archive.extract_archive(archive, force=args.force)
@@ -232,7 +258,7 @@ def main(argv=None) -> int:
         for mid in ex.failed:
             print(f"  ! {mid}")
 
-    return 1 if (res.failed or ex_failed) else 0
+    return 1 if (res.failed or ex_failed or hl_failed) else 0
 
 
 if __name__ == "__main__":
