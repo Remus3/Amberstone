@@ -171,6 +171,145 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
+/* F5: the role of the pairing the swing bar describes. Cyan so it pops as
+ * the "which lane is this" answer without competing with the gold marker. */
+.dsm-head-lane {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6cf;
+}
+
+/* --- F1 per-enemy danger grid ------------------------------------- */
+
+.dsm-grid {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dsm-grid-title {
+  margin-bottom: var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dsm-grid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One row per enemy. Fixed column track so the role / champ / verdict /
+ * swing columns stay aligned down the grid and a late-landing cell swaps
+ * its placeholder in place instead of reflowing the block. */
+.dsm-grid-cell {
+  display: grid;
+  grid-template-columns: 3.5em minmax(0, 1fr) 5.5em 3.5em;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--hit-min, 42px);
+  padding: var(--space-1) var(--space-2);
+  border-left: 3px solid transparent;
+  border-radius: var(--panel-radius-sm, 10px);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: var(--fs-xs);
+}
+
+.dsm-grid-role {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dsm-grid-champ {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  overflow-wrap: anywhere;
+}
+
+.dsm-grid-verdict {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dsm-grid-swing {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* The role-matched laner - the row the headline card above is describing.
+ * Cyan matches .dsm-head-lane so the two read as one statement. */
+.dsm-grid-cell.is-lane {
+  background: rgba(102, 204, 255, 0.1);
+  outline: 1px solid rgba(102, 204, 255, 0.35);
+}
+
+/* Severity bins, read red -> green from the OPERATOR's point of view. The
+ * left rule carries the hue; the verdict text repeats it so the grid is not
+ * colour-only (an operator who cannot separate the hues still reads the
+ * words ALL IN / TRADE / EVEN / BACK OFF). */
+.dsm-sev-good {
+  border-left-color: var(--signal-good, #6ec977);
+}
+
+.dsm-sev-good .dsm-grid-verdict {
+  color: var(--signal-good, #6ec977);
+}
+
+.dsm-sev-lean-good {
+  border-left-color: rgba(110, 201, 119, 0.55);
+}
+
+.dsm-sev-lean-good .dsm-grid-verdict {
+  color: rgba(110, 201, 119, 0.9);
+}
+
+.dsm-sev-even {
+  border-left-color: var(--signal-info, #8a8cf0);
+}
+
+.dsm-sev-even .dsm-grid-verdict {
+  color: var(--signal-info, #8a8cf0);
+}
+
+.dsm-sev-lean-bad {
+  border-left-color: rgba(255, 80, 80, 0.55);
+}
+
+.dsm-sev-lean-bad .dsm-grid-verdict {
+  color: rgba(255, 80, 80, 0.9);
+}
+
+.dsm-sev-bad {
+  border-left-color: var(--signal-bad, #ff5050);
+}
+
+.dsm-sev-bad .dsm-grid-verdict {
+  color: var(--signal-bad, #ff5050);
+}
+
+/* Cell whose fetch has not landed - muted, same footprint. */
+.dsm-sev-unknown {
+  border-left-color: rgba(255, 255, 255, 0.15);
+}
+
+.dsm-sev-unknown .dsm-grid-champ,
+.dsm-sev-unknown .dsm-grid-verdict,
+.dsm-sev-unknown .dsm-grid-swing {
+  color: rgba(255, 255, 255, 0.4);
+}
+
 /* Full-combo marker tag prefixing a note line. */
 .dsm-cast {
   display: inline-block;
