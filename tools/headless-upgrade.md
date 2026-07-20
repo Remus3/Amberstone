@@ -94,7 +94,7 @@ Reorient the coach output from prose-block to A/B choice format:
 
 - `rewind_history.db` weekly catchup task already registered (`RC-RewindCatchup` Sundays 04:00).
 - Live wire = streaming new match into DB as soon as Match-V5 returns post-game, without waiting for cron.
-- Hook point: `post_game_*` route or `dashboard/_state_authority.py` end-of-game callback.
+- Hook point: `post_game_*` route or `app/_state_authority.py` end-of-game callback.
 - Idempotent INSERT OR IGNORE; reuse PUUID-rotation auto-handling via Account-V1.
 
 ### 9. Frozen-file edits
