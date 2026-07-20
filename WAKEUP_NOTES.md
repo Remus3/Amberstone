@@ -4,6 +4,50 @@
 
 ---
 
+# 2026-07-20c - RM-111 ARAM comp-conditioned item-interaction aggregator
+
+Commit `d96ba4c5`. LEDGER 974. New `core/aram_item_interaction.py`, 24 tests.
+
+**What it answers.** For the local ARAM corpus: "when did buying this item
+actually pay off AGAINST THIS SHAPE of enemy comp, in my own games". That is a
+different question from Daemon Slayer's, and the two must not be mixed - DS
+answers what is optimal in simulation. The module is DESCRIPTIVE ONLY and is
+firewalled from `agents/daemon_slayer` rank by a test that greps its own source
+for an `agents` import.
+
+**The predicted scope cut landed on granularity, not on the item.** Comp shape is
+a COARSE 9-way bucket - enemy damage axis (ad_heavy / mixed / ap_heavy at >=4 of
+5 leaning) x enemy frontline count (none / light / heavy) - never a 5-champion
+tuple, and the champion axis is OFF by default.
+
+**The MIN_BUCKET_N gate is load-bearing, and that is MEASURED.** Live probe over
+the real corpus: 2049 ARAM matches, **776 cells surviving, 1281 dropped** at
+n<15. 62 percent of cells are too thin to show. 8 of 9 shapes populate
+(`ad_heavy/fl_none` is empty - an all-AD comp with zero frontline is rare).
+
+**Pressure metric decided:** own-minus-enemy `total_gold` delta over a 120s
+window after the purchase. If the window is not fully covered by frames (game
+ended first) the observation records `None`, never a truncated reading. A per-frame
+HP swing is NOT possible - `timeline_frames` stores no champion HP.
+
+**Two things worth remembering.**
+- `core.item_wpa.load_legendary_ids` gained a `map_id` param **defaulting to 11**,
+  so every SR caller is byte-identical. ARAM passes 12.
+- Champion resolution joins on the numeric `key`, NOT `participants.champion_name`.
+  The stored name is the DDragon id ("MonkeyKing"); the comp-fact extractor keys on
+  the display name ("Wukong"). A string join silently drops champions.
+
+**OWED:** the consumer surface is NOT wired. The coach `watch`/`next` channel and
+the overlay item strip are untouched - this slice is the aggregator only.
+
+**Docs:** ROADMAP.md 81889 -> 74976 bytes. RM-100 / RM-106 / RM-106a / RM-106b full
+narratives relocated verbatim to `docs/ROADMAP_HISTORY.md`; the condensed pointers
+left behind KEEP every still-open thread (the `0xC000013A` unknown, the
+snapshot_panels asyncio-marker leak, the replay URL-rotation hypothesis, RM-106b's
+unmeasured archive depth).
+
+---
+
 # 2026-07-20b - pro-match corpus CLOSED (no API needed) + ds_patch_diff shipped
 
 Commits `533d70fb`, `999cb1b8`. CI green. LEDGER 972-973. RM-109 + RM-110.
@@ -94,77 +138,3 @@ that lane is genuinely unbuilt, not done.
 STILL NEEDS THE OPERATOR: the /replays 5-per-account rotation question. All
 observations so far ran with no games in between, so rotated=False proves nothing.
 Play games, then `python tools/rofl_archiver.py --pull --no-lcu-pull`.
-
----
-
-# 2026-07-19h
-
-**Session: the sanctioned Match-V5 replay pull, BUILT and LIVE-PROVEN, plus the
-key-scoped account-cache fix it depended on.** No ENGINE bump.
-
-## What shipped
-
-1. **The cache defect is fixed.** `core/riot_api.py` account cache keys now carry
-   `_key_fingerprint()` - a truncated sha256 of the ACTIVE key. PUUIDs are a
-   per-API-key encryption, so a key-agnostic key over an IMMUTABLE row poisoned
-   the entry permanently on rotation. Regression test:
-   `test_key_rotation_invalidates_the_account_cache`. The sibling keys were left
-   alone on purpose - `league:v4:{region}:{puuid}` and the mastery keys embed the
-   PUUID, so a new key yields a new cache key for free.
-2. **The pull.** `core/riot_api.get_replay_urls` (uncached - the URLs die in an
-   hour) + `core/rofl_archive.download_replays` + `_api_pull` in
-   `tools/rofl_archiver.py`, wired under the SAME `--pull` the RC-RoflArchive
-   task already passes, so the 15-minute cadence picked it up with NO task edit.
-   `--no-api-pull` / `--no-lcu-pull` split the two halves.
-
-## MEASURED on the live runs - four things no amount of reading would have given
-
-- **The bodies are GZIP-framed** and urllib does not decompress. The first live
-  pull discarded 5 of 5 as "not a replay". The is-this-actually-a-replay guard
-  is what caught it instead of writing 5 gzip blobs under `.rofl` names.
-- **SamplePlayer#Vayne: all five URLs 404.** Riot LISTS the match and no longer
-  retains the file. Permanent and expected, so it is counted `gone`, NOT
-  `failed` - otherwise the scheduled task reports LastTaskResult=1 forever and
-  buries any real fault. Trist's five downloaded clean.
-- **The two sources spell one match differently** (`NA1-x.rofl` from the client,
-  `NA1_x.rofl` from the API), so a filename-keyed skip re-downloaded 10 MB. The
-  live archive has one such duplicate pair (`NA1_5595187452`), harmless, left in
-  place. Skip is now match-id-keyed across both spellings.
-- **Idempotency is proven live:** run 2 downloaded 5, run 3 skipped 5.
-
-## THE OPEN QUESTION - now instrumented, do NOT guess at it
-
-Does the 5-per-account window ROTATE as games are played? If yes, cadence alone
-converts a rolling window into a permanent archive and no bulk trick is needed.
-
-Every pull now appends what it saw to `<archive>/pull_log.jsonl`, and `--pull`
-prints a rotation verdict. **Four observations exist, all with NO games played
-in between, so the printed `rotated=False` means nothing yet.**
-`pull_rotation_report` returns `rotated=None` on a single observation rather
-than fabricating a negative - do not read a False from same-window pulls as an
-answer. **PLAY GAMES, then run `--pull` and read the rotation line.**
-
-## The API-served .rofl are NOT degraded - measured, do not re-investigate
-
-They extract at **201 fields** per player where client-saved replays from the
-SAME era give 367, which looks alarming and is not. Diffed: all 166 extra fields
-are mission / event / battle-pass counters (`Missions_*`, `HoL_*`, `Event_*`,
-`WeeklyMission_*`, `DemonsHand_*`) - account progression, not match data. ZERO
-fields are API-only, and every core stat (ITEM0-6, GOLD_EARNED,
-CHAMPIONS_KILLED, NUM_DEATHS, ASSISTS, LEVEL, MINIONS_KILLED,
-TOTAL_DAMAGE_DEALT_TO_CHAMPIONS, TIME_PLAYED, WIN) is present in both. The
-sidecar backfill plan loses nothing by sourcing from the API pull.
-
-## Live state at wrap
-
-Archive holds 13 `.rofl` (12 unique matches) + 12 stat sidecars at
-`Documents\RC_ROFL_Archive`. Two sidecars briefly failed with WinError 32
-against a concurrent scheduled run; a re-run wrote them (known Windows
-concurrency shape, not a defect in this code).
-
-## Do NOT redo
-
-- SGP (Cloudflare 1010; getting past it is bot-detection evasion).
-- Old-client installs are game-files-only, no LCU, so no `/lol-replays/` there.
-- Backoff for the 20000/10s limit. It cannot bind; the binding limits are the
-  5-per-account window and the 1-hour URL expiry, and retrying helps neither.
