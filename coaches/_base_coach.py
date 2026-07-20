@@ -53,7 +53,10 @@ def read_api_key(app_dir: Path = _APP_DIR) -> str:
             k = p.read_text(encoding="utf-8").strip()
             if k.startswith("sk-ant-"):
                 return k
-        except Exception:  # noqa: BLE001
+        # read_text is the only raising statement: OSError (perms / lock) or
+        # UnicodeDecodeError (non-UTF8 key file). str.strip / str.startswith
+        # cannot raise. Falls through to the env-var lookup either way.
+        except (OSError, UnicodeDecodeError):
             pass
     return os.environ.get("ANTHROPIC_API_KEY", "")
 
@@ -93,8 +96,9 @@ def safe_write(path: Path, data: dict) -> None:
             except PermissionError:
                 if attempt == 2:
                     _log.warning("safe_write %s: gave up after 3 retries", path.name)
+                    # Path.unlink(missing_ok=True) raises only OSError.
                     try: tmp.unlink(missing_ok=True)
-                    except Exception: pass  # noqa: BLE001
+                    except OSError: pass
                 else:
                     import time as _tw; _tw.sleep(0.015 * (2 ** attempt))
             except Exception as exc:  # noqa: BLE001
@@ -339,7 +343,10 @@ class BaseCoach(abc.ABC):
         try:
             from core.hotkeys import register_coach as _hk_reg
             _hk_reg(self)
-        except Exception:  # noqa: BLE001
+        # register_coach (core/hotkeys.py:24-28) is an identity `not in` test
+        # plus list.append on a module global - it cannot raise. The import is
+        # therefore the only raising statement here.
+        except ImportError:
             pass
         logging.getLogger(f"rc.coaches.{self._MODE_NAME}").info(
             "%s Coach started", _mn
@@ -444,7 +451,13 @@ class BaseCoach(abc.ABC):
                         if _ft > self._last_force_check:
                             self._last_force_check = _ft
                             forced = True
-                except Exception:  # noqa: BLE001
+                # Complete raise set for the block above: OSError (read_text),
+                # ValueError (JSONDecodeError / UnicodeDecodeError),
+                # AttributeError (.get on a non-dict JSON document),
+                # TypeError (json.loads on a non-str, or comparing a non-numeric
+                # "force" value). A malformed force_scan.json just means no
+                # forced scan this tick.
+                except (OSError, ValueError, AttributeError, TypeError):
                     pass
                 if forced or now - self._last_vision >= self._VISION_INTERVAL:
                     self._last_vision = now
@@ -455,6 +468,16 @@ class BaseCoach(abc.ABC):
                     try:
                         from core.cost_tracker import get_tracker as _gt
                         _vision_off = _gt().gate_disabled("vision")
+                    # LEFT BROAD (silent-except triage, C-class declined): the
+                    # import is NOT the only raising statement. get_tracker()
+                    # constructs CostTracker on first call (mkdir -> OSError;
+                    # float(vision_burst) -> TypeError/ValueError,
+                    # core/cost_tracker.py:218-222) and gate_disabled ->
+                    # coach_disabled (:423-425) builds a set over a
+                    # disk-sourced config value (TypeError if not iterable),
+                    # via read_json_dict which can also surface
+                    # UnicodeDecodeError. No complete type set is provable
+                    # without pinning the whole cost_tracker/polled_json chain.
                     except Exception:  # noqa: BLE001
                         pass
                     if not _vision_off:
@@ -474,6 +497,11 @@ class BaseCoach(abc.ABC):
             from core.cost_tracker import get_tracker as _gt
             if _gt().coach_disabled(self._MODE_NAME):
                 return
+        # LEFT BROAD (silent-except triage, C-class declined): same reason as
+        # the vision gate above - get_tracker()/coach_disabled reach disk I/O
+        # and JSON shape coercion, so ImportError is not the complete set.
+        # This handler is on the live coaching path; an escaped exception
+        # would kill every coach tick.
         except Exception:  # noqa: BLE001
             pass
         # AUDIT 2026-04-28 (5.4): hard daily-budget gate.
@@ -481,6 +509,11 @@ class BaseCoach(abc.ABC):
             from core.cost_tracker import get_tracker as _gt
             if not _gt().allow_call():
                 return
+        # LEFT BROAD (silent-except triage, C-class declined): allow_call
+        # (core/cost_tracker.py:336-340) compares a disk-sourced
+        # daily_spend()["total_usd"] against the budget - a non-numeric ledger
+        # value raises TypeError, and daily_spend -> read_json_dict can raise
+        # UnicodeDecodeError. Live coaching path; not worth a guessed set.
         except Exception:  # noqa: BLE001
             pass
         now      = time.time()
@@ -579,7 +612,12 @@ class BaseCoach(abc.ABC):
             path.parent.mkdir(parents=True, exist_ok=True)
             with open(path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(rec) + "\n")
-        except Exception:  # noqa: BLE001
+        # Complete raise set: OSError (mkdir / open / write), TypeError or
+        # ValueError (float(dur_ms), json.dumps of a non-serializable
+        # game_time), AttributeError (struct.get when struct is truthy but not
+        # a dict). This is pure instrumentation - dropping a trace line must
+        # never affect the coach tick.
+        except (OSError, TypeError, ValueError, AttributeError):
             pass
 
     def _dispatch_coach(self, state: dict, struct: "dict | None" = None) -> None:
@@ -699,6 +737,11 @@ class BaseCoach(abc.ABC):
                     cache_read=cr, cache_write=cw,
                     extra=extra,
                 )
+            # LEFT BROAD (silent-except triage, C-class declined): the import
+            # is not the only raising statement - coach_trace.append
+            # (core/coach_trace.py:65-77) runs int() / _truncate over
+            # caller-supplied values, so TypeError, ValueError and OSError are
+            # all reachable and no complete set is provable.
             except Exception as exc:  # noqa: BLE001
                 _log.debug("coach_trace append: %s", exc)
         except Exception as exc:  # noqa: BLE001

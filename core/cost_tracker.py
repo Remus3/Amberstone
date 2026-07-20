@@ -486,7 +486,26 @@ class CostTracker:
                 atomic_write_json(_recent_path, {"matches": matches})
                 atomic_write_json(_open_path,
                                   {"by_purpose": now_bp, "ts": time.time()})
-        except Exception as exc:  # noqa: BLE001
+        # Narrowed 2026-07-19. Enumerated raise surface of the block above:
+        #   read_json_dict / daily_spend (core/polled_json.py:75-93) swallows
+        #     OSError + JSONDecodeError but lets UnicodeDecodeError (ValueError)
+        #     escape on a non-UTF-8 ledger;
+        #   float()/int() over ledger values -> ValueError / TypeError;
+        #   matches.append(...) -> AttributeError when a corrupt file stored a
+        #     non-list under "matches";
+        #   atomic_write_json (core/polled_json.py:51-60) -> OSError from
+        #     mkdir/write_text/os.replace, TypeError/ValueError from json.dumps.
+        #   now_bp.items() / matches.append -> AttributeError when a corrupt
+        #     ledger stored a list where a dict/list was expected.
+        # _purpose_to_gate (:165) is pure str/dict work over the GATE_META
+        # literal (:134-158, every entry has "purposes"), so it cannot raise.
+        # CostTracker.__init__ (:218-222) does raise OSError/TypeError/ValueError
+        # via mkdir + float(cfg), but construction has already completed before
+        # this instance method is enterable, so that path is not reachable here.
+        # COUPLING: this narrowing depends on the current internals of
+        # core/polled_json.read_json_dict / atomic_write_json. If either grows a
+        # new raise type, widen this handler with it.
+        except (OSError, TypeError, ValueError, AttributeError) as exc:
             _log.debug("note_match_boundary: %s", exc)
 
     def recent_match_avg(self) -> dict:
