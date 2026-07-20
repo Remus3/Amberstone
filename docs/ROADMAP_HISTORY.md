@@ -1,5 +1,11 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-07-20 - RM-109 pro-match corpus + RM-110 ds_patch_diff (relocated from ROADMAP)
+
+- **RM-109 SHIPPED + CLOSED 2026-07-20 (`533d70fb`) - the played-with-pro corpus needed ZERO Riot API calls.** The planned Match-V5 fan-out was unnecessary: `participants.riot_id_game_name` + `riot_id_tagline` are populated on 29418 of 30592 rows, so recovery is a local read-only SQL join. **26 matches**, pro-attributed, all already `has_stats=1 AND has_timeline=1` - the planned Phase-2 ingest was already done. `core/pro_match_index.py` + 4 oracle tests. Joins on Riot ID, NEVER puuid (stored puuids are key-scoped). **Three sub-questions operator-CLOSED, do NOT re-open:** roster expansion (66 candidates checked on aggregator G, ZERO pro - do not rebuild the list or re-scrape); the post-2025-09 hole is REAL play history (never run a catchup); blank-name risk is dead (8 rows on the operator side, not 1174). Full record: LEDGER 972 + memories `reference_pro_roster_expansion_closed` / `reference_rewind_db_2025_gap_is_real`.
+- **RM-110 SHIPPED 2026-07-20 (`999cb1b8`) - `tools/ds_patch_diff.py`, cross-patch DS snapshot diff.** Covers items / champions / abilities / build orders across sr-aram-arena; text plus atomic JSON, `--min-pct`, `--sections`. Walks champ -> key -> form_index -> damage_blocks: the registry is nested (171 champion entries but **927 forms**, 58 multiform keys), so any `len(data)` count mis-parses. Tier-1, 16 tests, synthetic fixtures only. Measured 16.13.1 -> 16.14.1: 8 changed items, 0 champion changes, 90 SR build-order changes. **`abilities: 0` across 16.10.1 .. 16.14.1 is CORRECT, not a bug** - the payload is byte-identical (Meraki pinned at content patch 25.15); an injected change IS detected and a test pins it. Read `ability_staleness.json` (RM-81) for the real balance question. Full record: LEDGER 973.
+
+
 > **CITATION CAVEAT (measured 2026-07-18) - about half the commit hashes cited for
 > 2026-04 through 2026-06 do NOT resolve in this repo. This is a known, bounded,
 > already-self-corrected defect. Do not chase them.**

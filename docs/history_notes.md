@@ -119,6 +119,148 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-19g
+
+**Session: replay forward-capture pipeline + silent-except batch program + three of my own claims retracted.**
+Commits `b54e315d`..`d750c8be` (+ this docs sync). LEDGER 969. No ENGINE bump.
+
+## START HERE NEXT SESSION - build the sanctioned replay pull
+
+`GET https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/replays`
+returns **200** `{"total": 5, "matchFileURLs": [...]}` - pre-signed S3 URLs on
+`lol-prod-us-west-2-match-history-replay` with
+`response-content-disposition=attachment; filename="NA1_xxxx.rofl"`. Ordinary API
+key, no third party, no `.bat`, no bearer-token scraping. **This supersedes both
+the third-party route and SGP.**
+
+Bounds MEASURED, do not re-derive: `X-Amz-Expires=3600` (ONE hour) and exactly
+**5 per account**. A refreshing recency window, NOT an archive - so it PAIRS with
+`tools/rofl_archiver.py` (pull 5 -> archive permanently -> extract) rather than
+replacing it. Vayne's 5 are 15.x-era ids and Trist's are 16.14-era, so it is
+"last 5 with a replay retained" PER ACCOUNT, not a global recency cut.
+
+**TWO TRAPS THAT WILL COST AN HOUR IF RE-INHERITED:**
+
+1. **PUUIDs ARE ENCRYPTED PER API KEY.** Cycling the key 400s every stored one
+   with `"Bad Request - Exception decrypting <puuid>"`. All three of ours did.
+2. **`core/riot_api.get_account_by_riot_id` CANNOT re-resolve them** - it checks
+   `get_cache().get_immutable()` BEFORE any network call (`riot_api.py:346`), so
+   a "re-resolve" silently returns the OLD key's cached PUUID and the 400
+   persists. Bypass the cache (call Account-V1 through `_http_get` directly) and
+   the fresh puuid 200s immediately. Verified both accounts.
+
+**THE PRECISE DEFECT AND THE PRECISE FIX** (sharpened after the operator pointed
+out it is about WHICH KEY RESOLVED THE PUUID, not which key sends it):
+
+```python
+core/riot_api.py:351
+cache_key = f"account:v1:{region}:{name}#{tag}".lower()   # key-AGNOSTIC key ...
+                                                          # ... for a key-SCOPED value
+```
+
+PUUIDs are a per-API-key encryption of the same account - the value changes the
+instant the KEY changes, NOT on any time schedule (the old "Riot slowly rotates
+PUUIDs" model is retracted; memory `reference_riot_puuid_rotation` is corrected).
+The Riot ID is the durable identity; the PUUID is a key-scoped handle. Because
+the account cache key omits key identity and the value lands in the IMMUTABLE
+cache, one rotation poisons it permanently.
+
+**Fix: include a fingerprint of the active API key in the account cache key.**
+The other cache keys need no change - `league:v4:{region}:{puuid}` and the
+mastery keys embed the PUUID itself, so a new key naturally yields a new cache
+key. Add a test that a key change invalidates the account entry; it is the
+regression that would otherwise silently return.
+
+**OPEN AND UNFIXED, fix BEFORE any bulk pull:** all 2961 PUUIDs in
+`rewind_history.db` are stale against the API (still fine as an internal join
+key, useless as a request parameter), and NOTHING invalidates the immutable cache
+on key rotation. That cache invalidation is the first piece of work.
+
+Build: fetch URLs -> download -> archive -> extract, into `core/rofl_archive.py`
++ `tools/rofl_archiver.py`, wired into the existing `RC-RoflArchive` task, with
+the cache fix. Same TDD treatment as the rest of the module (RED first; the
+1-hour URL expiry and the 5-cap both want explicit tests).
+
+**OPERATOR HYPOTHESIS TO TEST (worth real effort):** the third-party service
+served matches across the last ~3 patches, which is far more than 5 per account.
+If it polls this same endpoint per user over time and ACCUMULATES, then the
+"faster way" is simply to run our pull on a cadence and let the archive grow -
+converting a rolling 5-match window into a permanent archive. Test by pulling
+twice with games played in between and confirming the 5 rotate. If they rotate,
+cadence beats any bulk trick and the current 15-minute task already does it.
+
+## Second task, if the first lands early
+
+`--extract` writes JSON sidecars only; it deliberately does NOT touch
+`data/rewind_history.db` (1.8 GB of production data, and merging is a
+schema-aware job with dedupe questions). Backfilling the event-mode hole from
+sidecars is the natural follow-up. `.rofl` stats have NO patch gate, so this
+works for every archived replay forever.
+
+## Live state at wrap
+
+RC pid was 8148 mode=game (it restarted mid-session; 10624 was the earlier pid).
+DS `:8893` engine 1.228.0 patch 16.14.1, 173 champs / 706 items. `RC-RoflArchive`
+Ready, LastTaskResult=0, 15-min interval. Archive holds **7 replays + 1 clip + 8
+stat sidecars** at `Documents\RC_ROFL_Archive`. League client was CLOSED at wrap
+(lockfile absent) - that is now a reported SKIP, not a failure.
+
+## Do NOT redo / do NOT re-inherit
+
+- **Three claims of mine were RETRACTED this session, all by measurement.** Do not
+  re-inherit any of them: "RM-106b is closed / playback does not serve `:2999`"
+  (that probe ran with `EnableReplayApi` ABSENT - it measured the flag-OFF state);
+  "there is no third-party source for personal replays" (one HOSTS them); and
+  "forward-capture only, CANNOT backfill" (conditionally false once an old
+  `.rofl` + a matching old client exist). ROADMAP + history carry the corrected
+  versions.
+- **SGP is DEAD as a route.** Cloudflare `error code 1010`; getting past it means
+  forging a User-Agent to defeat bot detection, which was deliberately NOT done
+  and should not be revisited. Narrative relocated to `ROADMAP_HISTORY`.
+- **Riot's own LCU download is patch-locked to the RUNNING client** - a match ONE
+  patch back reports `incompatible`. Use `/download/graceful`, never `/download`.
+- **Old-client installs are game-files-only** (30 GB, `Game/` + the exe, NO
+  `LeagueClient.exe`), so they have NO LCU. Do not plan anything around calling
+  an old client's `/lol-replays/` API. The Replay API is served by the GAME
+  process, so `:2999` seek-and-sample DOES work there - but `EnableReplayApi=1`
+  must be set in THAT install's own `game.cfg`.
+- **Playback needs Vanguard stopped (=> reboot to play live again); STAT
+  EXTRACTION DOES NOT.** Extraction is pure file reading and runs alongside a live
+  Vanguard - the 15-min task does it now. Only per-timestamp work pays the reboot.
+- The spec at `docs/specs/2026-07-19-silent-except-triage.md` has RELIABLE
+  file:line citations but **UNRELIABLE exception-type lists** - section 2c was
+  refuted independently 4 times. Re-derive every type set from the call chain.
+- `lcu_client._request` swallow contract is deliberately UNCHANGED (report-only)
+  and pinned by a passing test. Changing it alters error semantics on every LCU
+  path repo-wide - its own session.
+- ~680 silent handlers remain untriaged; the TFT cluster (~39) is the obvious
+  next tranche. 48 frozen-file handlers ARE now triaged (grant was given).
+
+## Traps re-confirmed this session
+
+- **The background-task notification lied about the exit code on ALL THREE suite
+  runs** - it reported 0 while the captured file read `MAIN_EXIT=1`. Capture by
+  redirect and READ THE FILE. Never trust the notification.
+- The RF5 `assert_prod_artifacts_unchanged` teardown ERROR is the LIVE RC process
+  writing `data/` mid-run, not a regression (LEDGER 861/860/755/659). It fires
+  even on a 0.5-second run, which no test could cause.
+- A **vacuous test** slipped past me AND past a build agent in the same session -
+  mine had a broad `except` swallowing a signature `TypeError`; the agent's
+  sampled its expected key out of the poisoned map. Both "passed" before the fix.
+  Confirm RED for the RIGHT REASON, not just RED.
+
+## Next session prompt
+
+> Build the sanctioned Match-V5 replay pull into `core/rofl_archive.py` +
+> `tools/rofl_archiver.py`: fetch `matchFileURLs` for each account, download,
+> archive, extract, wired into `RC-RoflArchive`. FIRST fix the immutable-cache
+> invalidation on API-key rotation (`riot_api.py:346`) - without it every stored
+> PUUID stays stale and every pull 400s. Read the RM-106 block in ROADMAP.md and
+> the two traps in WAKEUP before writing code; both are measured, not guessed.
+> TDD, RED first, pytest exit captured BY REDIRECT and read from the file.
+
+---
+
 
 # 2026-07-19m (RM-104: the filing named one bug and the sweep found four; the three nobody filed were the live ones)
 
