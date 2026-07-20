@@ -36,6 +36,7 @@ import logging
 import os
 import re
 import shutil
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -52,6 +53,123 @@ _NAME_RE = re.compile(r"^(?P<platform>[A-Za-z0-9]+)[-_](?P<game_id>\d+)$")
 _ENV_ARCHIVE_DIR = "RC_ROFL_ARCHIVE_DIR"
 _DEFAULT_ARCHIVE = Path.home() / "Documents" / "RC_ROFL_Archive"
 _DEFAULT_REPLAYS = Path.home() / "Documents" / "League of Legends" / "Replays"
+
+
+_GAME_VERSION_RE = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)(?:\.|$)")
+
+# Terminal states observed on the live client. "checking" is the only transient
+# one; anything else ends the poll.
+STATE_WATCH = "watch"
+STATE_INCOMPATIBLE = "incompatible"
+STATE_CHECKING = "checking"
+
+
+@dataclass
+class PullResult:
+    """Outcome of one pull pass. Lists hold match ids.
+
+    `incompatible` is expected to be the LARGE bucket - replays are locked to
+    the current patch - which is exactly why it is counted rather than dropped.
+    A pull where everything came back incompatible must not look like a success.
+    """
+
+    downloaded: list = field(default_factory=list)
+    incompatible: list = field(default_factory=list)
+    timed_out: list = field(default_factory=list)
+    failed: list = field(default_factory=list)
+
+
+def patch_from_game_version(game_version):
+    """"16.14.794.5912" -> "16.14". None when it cannot be parsed.
+
+    The LCU reports a 4-part build string at
+    GET /lol-replays/v1/configuration; rewind_history.db stores the 2-part
+    patch. This is the join between them.
+    """
+    if not game_version or not isinstance(game_version, str):
+        return None
+    m = _GAME_VERSION_RE.match(game_version.strip())
+    if not m:
+        return None
+    return f"{m.group('major')}.{m.group('minor')}"
+
+
+def game_id_from_match_id(match_id):
+    """"NA1_5592802194" -> "5592802194" (the id the LCU replay routes take)."""
+    if not match_id or not isinstance(match_id, str):
+        return None
+    tail = match_id.rsplit("_", 1)[-1].strip()
+    return tail if tail.isdigit() else None
+
+
+def select_pullable(rows, current_patch, already=None):
+    """Match ids worth asking the client to download.
+
+    *rows* is an iterable of (match_id, patch). Only the CURRENT patch is
+    pullable - measured: a match one patch behind already reports
+    "incompatible" - so everything else is filtered out before any request is
+    made rather than discovered one round-trip at a time.
+    """
+    already = already or set()
+    out = []
+    for match_id, patch in rows:
+        if not patch or not match_id:
+            continue
+        if patch != current_patch:
+            continue
+        if match_id in already:
+            continue
+        out.append(match_id)
+    return out
+
+
+def pull_replays(match_ids, client, poll_interval=2.0, max_polls=15):
+    """Ask the client to download each replay, then poll to a terminal state.
+
+    *client* needs `request_download(game_id) -> int` (HTTP status) and
+    `metadata(game_id) -> dict`. Injecting it keeps this loop testable without
+    a live client and keeps the transport out of the logic.
+
+    Nothing here retries: an "incompatible" verdict is final (the patch will
+    only move further away), and hammering the client would be pointless.
+    """
+    res = PullResult()
+    for match_id in match_ids or []:
+        game_id = game_id_from_match_id(match_id)
+        if game_id is None:
+            logger.warning("skipping unparseable match id: %r", match_id)
+            res.failed.append(match_id)
+            continue
+
+        status = client.request_download(game_id)
+        if status not in (200, 202, 204):
+            logger.warning("download request for %s returned HTTP %s", match_id, status)
+            res.failed.append(match_id)
+            continue
+
+        state = None
+        for _ in range(max_polls):
+            state = (client.metadata(game_id) or {}).get("state")
+            if state != STATE_CHECKING:
+                break
+            if poll_interval:
+                time.sleep(poll_interval)
+
+        if state == STATE_WATCH:
+            logger.info("replay available: %s", match_id)
+            res.downloaded.append(match_id)
+        elif state == STATE_INCOMPATIBLE:
+            # Expected for anything off the current patch. Logged at INFO, not
+            # swallowed: a silent skip here would hide a fully-failed pull.
+            logger.info("replay incompatible (patch-locked): %s", match_id)
+            res.incompatible.append(match_id)
+        elif state == STATE_CHECKING:
+            logger.warning("replay still checking after %d polls: %s", max_polls, match_id)
+            res.timed_out.append(match_id)
+        else:
+            logger.warning("replay %s ended in unexpected state %r", match_id, state)
+            res.failed.append(match_id)
+    return res
 
 
 @dataclass
@@ -99,6 +217,12 @@ def default_archive_dir() -> Path:
     """
     env = os.environ.get(_ENV_ARCHIVE_DIR, "").strip()
     return Path(env) if env else _DEFAULT_ARCHIVE
+
+
+def load_index(index_path) -> dict:
+    """Public read of the archive index (callers need the archived-id set to
+    avoid re-requesting a replay they already hold)."""
+    return _load_index(Path(index_path))
 
 
 def _load_index(index_path: Path) -> dict:
