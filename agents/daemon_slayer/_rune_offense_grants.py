@@ -266,6 +266,18 @@ seeded ALLOWLIST like its R132 sibling, and the rest of the Sorcery + Domination
     8224 Nullifying Orb (ultimate damage amp, a multiplier lane not a stat) grant
     no AD, AP or attack speed.
 
+TWO TREES ARE MACHINE-GUARDED AS OF R158, THE OTHER THREE ARE NOT. Every rune in
+DOMINATION 8100 (12 runes) and SORCERY 8200 (13 runes) is now either seeded above
+or recorded in ``_ADJUDICATED_NON_GRANTS`` below, and
+``tests/test_rune_offense_saturation_r158.py`` fails if the live DDragon feed
+ever carries a rune in those two trees that is neither. Those two trees are
+SATURATED: the exclusions list above is no longer only prose for them. PRECISION
+8000, RESOLVE 8400 and INSPIRATION 8300 are explicitly NOT guarded - this
+registry has Precision (8010, 9104) and Inspiration (8316) entries but has never
+swept either tree end to end, so claiming completeness there would be claiming
+something unmeasured. Extending the guard to those three trees is the future
+pass, and the test's ``_SATURATED_TREE_IDS`` tuple is where it lands.
+
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: the ``apply_rune_offense_grants`` seam on
 ``compute_dps`` / ``compute_hybrid`` / ``rank_items_by_hybrid`` defaults False;
 with it OFF all three grants are 0.0 and every DPS field is unchanged, even when
@@ -818,6 +830,71 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
         legend_stacks, jack_stacks: (
             jack_of_all_trades_grant(jack_stacks) + (0.0,)
         ),
+    ),
+}
+
+
+# THE EXCLUSIONS BLOCK ABOVE IS PROSE, AND PROSE CANNOT FAIL CI. That is the
+# whole reason this mapping exists. Every rune below was read and rejected, and
+# the docstring already says so in sentences - but a docstring cannot notice
+# when a patch adds a THIRTEENTH Domination rune. An unlisted rune contributes
+# 0.0 by construction (the registry is an allowlist), which is exactly what a
+# deliberately-excluded rune contributes, so the two states are
+# indistinguishable at runtime. The new rune would silently earn nothing
+# forever and nothing in the repo would say a word.
+#
+# This mapping is the machine-readable half of the same claim. It carries no
+# magnitudes and no behavior: nothing reads it except
+# ``tests/test_rune_offense_saturation_r158.py``, which asserts that every rune
+# id in DOMINATION 8100 and SORCERY 8200 in the live DDragon
+# ``runesReforged.json`` feed is either in ``_RUNE_OFFENSE_GRANTS`` or here, that
+# the two sets are disjoint, and - running the claim the other way - that every
+# id here actually EXISTS in the feed. That last direction is not decoration:
+# adjudicating a rune that has been REMOVED from the game (Eyeball Collection
+# 8138, Ghost Poro 8120, Zombie Ward - all absent from 16.14.1) records a
+# decision about something nobody can equip, and reads as coverage while
+# providing none.
+#
+# Reasons are lifted from the DELIBERATE EXCLUSIONS block above rather than
+# re-derived, so the two records cannot drift into disagreeing about why a rune
+# was declined. SCOPE IS THE TWO SWEPT TREES ONLY - Precision, Resolve and
+# Inspiration runes do not belong here until their own sweep happens.
+_ADJUDICATED_NON_GRANTS: dict[str, str] = {
+    # --- Domination 8100 (12 runes, none registered) ---
+    "8112": "proc damage, registered in rune_procs.py and scored by the burst consumer",
+    "8128": "proc damage, registered in rune_procs.py and scored by the burst consumer",
+    "9923": (
+        "burst-window attack-speed steroid (3 attacks on a 10s cooldown), already "
+        "registered and scored at rune_procs.py:685 - adding it here would "
+        "double-credit it"
+    ),
+    "8126": "proc damage, registered in rune_procs.py and scored by the burst consumer",
+    "8139": "heal, not an offensive stat - grants no AD, AP or attack speed",
+    "8143": "proc damage, registered in rune_procs.py and scored by the burst consumer",
+    "8137": "vision, not an offensive stat - grants no AD, AP or attack speed",
+    "8140": "trinket haste, not an offensive stat - grants no AD, AP or attack speed",
+    "8141": "ward duration, not an offensive stat - grants no AD, AP or attack speed",
+    "8135": "gold, not an offensive stat - grants no AD, AP or attack speed",
+    "8105": "move speed only - no offensive stat on it",
+    "8106": "ability haste only, and Ability Haste as a DS axis was MEASURED INERT",
+    # --- Sorcery 8200 (13 runes; 8236 + 8233 are REGISTERED above) ---
+    "8214": "proc damage, registered in rune_procs.py and scored by the burst consumer",
+    "8229": "proc damage, registered in rune_procs.py and scored by the burst consumer",
+    "8230": "move speed only - no offensive stat on it",
+    "8992": "proc damage, registered in rune_procs.py and scored by the burst consumer",
+    "8224": "ultimate damage amp, a multiplier lane not a stat",
+    "8226": (
+        "maximum mana, which is the _item_mana_health axis and not an offensive stat"
+    ),
+    "8275": "move speed only - no offensive stat on it",
+    "8210": "ability haste only, and Ability Haste as a DS axis was MEASURED INERT",
+    "8234": "move speed only - no offensive stat on it",
+    "8237": "proc damage, registered in rune_procs.py and scored by the burst consumer",
+    "8232": (
+        "UPTIME-BLOCKED, not a non-grant: it does grant 13-30 Adaptive Force by "
+        "level, but only while in the river, and river occupancy has no anchor "
+        "anywhere in this engine - the best candidate for a future pass that "
+        "gains a positional signal"
     ),
 }
 
