@@ -4,6 +4,103 @@
 
 ---
 
+# 2026-07-20p - LIVE-GATED DRAIN, operator present, 4 games - 6 rows closed, 9 new bugs
+
+**Tier-1 RC-side. The one Tier-2 slice is parked on branch `ds/g2-12-ranged-reflect`
+(`6fe6df12`), NOT on main.** LEDGER 987. Full detail: the dated drain block now at the
+TOP of `docs/LIVE_GAME_GATED_SYNC.md` (that block is the real hand-off; this is the
+summary).
+
+Games: practice SR q3140 -> ARAM Mayhem q2400 -> Arena q1750 -> real SR draft q400.
+
+## Closed (6): G1-00, G6-02, G2-18, G2-29, G2-34, G2-35
+
+- **G1-00** - CHECK 1 across ALL FOUR champ-select shapes; CHECK 2 `champ_select`
+  **BYTE-IDENTICAL** flag-ON vs OFF in the same lobby. Divergence was TWO keys
+  (`config` AND `lcu_port`), not the one predicted. Adjudicated AGAINST the doc's
+  premise - live `config.auto_accept` was `false`, so carry it, never synthesize.
+- **G6-02** - first GATE 6 row ever closed. Ctrl+Shift+A with League foreground:
+  PASSIVE -> ACTIVE + the 20s auto-revert, with listener receipts.
+- **G2-18/29/34/35** - operator rulings + measurements; see the drain block.
+
+## The 5 fixes sitting on main, UNCOMMITTED at time of writing -> now committed
+
+ARAM balance resolver (dead in EVERY ARAM, fixed + live-verified in-game), auto-PGR
+arm (= G4-26, root-caused to a 5s TTL vs a documented 8-11s capture lag), minimap
+clear-on-exit, KP live value, champ-select mastery/meta placeholders.
+
+## DO NOT REDO / carry-forward
+
+- **G2-12 is decided, not open**: operator ruled the Thornmail reflect credit TOO HIGH
+  (+8.963 pct measured, control byte-identical). The ranged-exposure fix is BUILT and
+  DS-green on the branch. What is owed is the Tier-2 ritual: ENGINE bump, Share resync
+  in the SAME commit, dual suite, `:8893` restart, LEDGER + doc update. **Open question
+  the operator raised live: ARAM is a permanent teamfight, so the factor may need to be
+  MODE-AWARE rather than a global 0.35.**
+- **G2-18's residual is a code slice, not a game**: wire the live HP feed and delete the
+  0.35 midpoint. RC already emits hp/hp_max (item 639).
+- **G5-01 is THREE questions now** - augments WORK, anvils FAIL, rows are CORRUPT. Do not
+  re-file it as one row. The anvil failure is most likely the 23-30s vision cadence, not
+  a wiring gap.
+- **Do NOT re-run the "is the ingest rail broken" investigation** - it is HEALTHY
+  (2964 -> 2965, Arena game ingested). The 12-day gap was ARAM Mayhem + customs, operator
+  confirmed. What remains is a rendering defect (`Unknown / 0-0-0`).
+- `coaches/arena_coach.py` work from a CANCELLED agent is preserved as
+  `CANCELLED_arena_coach.patch` in the session scratchpad - the tree was reverted, not
+  shipped.
+
+## Process lessons worth keeping
+
+1. **Editing any `web/js/*` file hot-reloads every connected client mid-game** (ADR-008).
+   This contaminated one of my own "clean reproduction" claims and probably caused an
+   overlay-stranded-on-dashboard incident I first reported as spontaneous. Do not run
+   web-touching agents while the operator is in a game they care about.
+2. **pytest writes into `logs/hotkey_listener.log`** - a test monkeypatches the signal
+   path to `Z:/nonexistent/...`. It produced two false readings during triage tonight.
+3. **`zoom` re-captures the screen live** rather than cropping the previous screenshot -
+   do not use it to inspect a frame that has already moved on.
+4. I was WRONG four times and each correction changed the answer: the auto-PGR feed
+   hypothesis (there IS a writer), "round counter stuck" (it RESETS), "re-trigger dead"
+   (it fires), and an "independent reproduction" that was actually an overlay-shell
+   client the router pins by design. Re-probe before asserting.
+
+## NEXT SESSION (operator-chosen) - UI/UX
+
+**Queue doc: `docs/qa/UI_UX_QUEUE_2026-07-21.md`** - written at the end of this session,
+carries the operator's own framing plus ~20 concrete defects measured live tonight. Read
+it first; this is the summary.
+
+Build **dev display data for the out-of-game pages** + a **pseudo-screen for the in-game
+overlay** so UI work stops depending on catching a live game in the right state.
+
+Operator's three asks, in his framing:
+1. **Colour is off for RC as a whole**, out-of-game AND in-game - some pairs mix well,
+   others read optically wrong, and **some panels do not match the rest thematically**.
+   He wants a **theme swap explored**, not per-cell patching.
+2. **2-3 LAYOUT ALTERNATIVES per page** to choose between, not one proposal to approve.
+3. **Daily-use data points are redundant or lacking** - a content audit, not styling.
+4. His own note: the earlier per-page UI reviews were **never finished** (larger issues
+   kept interrupting). Treat the E11 sweep as INCOMPLETE.
+
+**DO NOT close (1) by citing the old palette pass.** Memory
+`feedback_operator_ui_qa_method` says E11 out-of-game is done for palette - that was a
+COMPLIANCE hunt (bare hex vs tokens) and comes back near-empty. The operator is asking
+about OPTICAL RESULT and CROSS-PANEL COHERENCE, which that pass never asked. Explicitly
+re-opened by him.
+
+**Highest-leverage content fix, and it needs no API:** the `Unknown / 0-0-0` rows are
+backfillable from the local `.rofl` archive. `RC-RoflArchive` runs every 15 min into
+`C:\Users\Administrator\Documents\RC_ROFL_Archive` and was VERIFIED working tonight - it
+captured the SR, the Arena AND the q2400 ARAM Mayhem game that Match-V5 will never
+return. Layer-1 extraction gives 365-367 fields x 10 players, no client, no patch gate.
+Traps: join on participant ORDER never puuid, and sidecars carry no queue_id.
+
+Method: the operator's own per-page loop (MAP -> ADVOCATE ROUNDS with counter-arguments,
+he wants pushback -> ACT behind a verifier gate + the 5-phase fixture audit). One
+cross-page design-system pass FIRST, or every page re-litigates the same colours.
+
+---
+
 # 2026-07-20n - RM-03 E12 lever L3 BUILT (dark) - full in-process snapshot port
 
 **Tier-1 -> full suite. No ENGINE bump, no Share touch.** Commit `875aa355` (ff-merge
@@ -44,6 +141,8 @@ flag-OFF - must be identical. **Adjudicate live:** in-process path omits `state.
 so the `main.js:5663` auto-accept pill loses its source - decide whether the reader
 synthesizes `config` (main `_lcu` auto-accept is always ON) or the pill re-sources. Flag
 stays OFF until this passes. Do NOT re-extract - the extraction is DONE + verifier-proven.
+
+---
 
 # 2026-07-20m - R148 E12 residual: lever L3 unblocked (not built) + an R146 regression
 
@@ -205,51 +304,3 @@ Five worktree slices, five verifier gates, Claude sole merger.
 - The Arena `22xxxx` ally-grant mirrors are held at 0.0 DELIBERATELY. Do not seed them
   with base nominals.
 - Crown `444644` stays excluded until the two feeds agree.
-
----
-
-# 2026-07-20i - R143 HSP registry: mirror id-space coverage + Moonstone semantic split
-
-**ENGINE 1.229.0 -> 1.230.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the SAME
-commit, DS `:8893` bounced onto 1.230.0, build-order precompute regenerated, dual suite green.
-
-Gemini-loop cycle 1. Directive asked for an HSP magnitude + mirror sweep of 7 enchanter items.
-
-**The directive's own axis came back CLEAN.** All 12 committed bare-id magnitudes in
-`enchanter_items.json` re-derived from DDragon 16.14.1 - every one already correct. The
-`[UNVERIFIED]` "lack correct magnitudes" premise is REFUTED. Two real defects found off-axis.
-
-**Defect 1 - mirror ids returned a silent 0.0.** `_hsp_amp.sum_wielder_hsp_pct` keys on BARE
-ids; `core/daemon_slayer_resolver.name_to_id` returns `32xxxx` (mode="sr") and `22xxxx`
-(mode="arena") MIRRORS. `_hsp_amp.py:51` missed -> silent 0.0, no raise/log/fallback (R135
-fallthrough class). Live-reachable: `coach_integration/_coach.py:300` -> `item_ids` at :318.
-Measured 0.22 under mode="sr" vs a 0.88 bare-id control.
-
-**The one-line fix would have been WRONG.** Prefix-strip / normalize is the natural fix and it
-ships wrong numbers: mirrors diverge in BOTH directions. Mikael 3222 .12 SR / .15 at `323222`;
-Dawncore 6621 .16 SR / .20 at `326621` / .12 at Arena `226621`. Arena also lifts Redemption
-.10->.12, Ardent .10->.12, Staff .10->.14. 22 mirror records enumerated explicitly instead.
-
-**Defect 2 - Moonstone 6617: right value, wrong consumer.** Its 0.30 is NOT an HSP stat (catalog
-grants none) - it is the Starlit Grace CHAIN-TO-ALLY ratio, which the text says excludes
-yourself. `_hsp_amp` (documented as WIELDER self-amp) read it anyway, over-crediting own shield
-(`ehp.py:1647`) + own regen (`sustain.py:382`) by +30%. **NOT zeroed** - the same field is
-load-bearing for ally throughput at `hps.py:605`. Split via a new `ally_chain_only` bool
-appended at the END of `EnchanterItemFormula` (no-mid-class-insert), True for 6617 alone.
-
-**Flagged side effect:** `hps.py:575` gates on `has_item`, so mirror records now resolve there
-too and compound into `amp_factor`. Closer to correct (was: no amp no heal; now: amp no heal)
-but a real `ds.hps` behavior change riding this bump.
-
-**Bump bookkeeping caught the rest.** RC went 14 red / 7 unique guards, all stamp propagation:
-`test_build_order_engine_stamp_sync` x6 (HZ-B precompute is patch-keyed static data a DS bump
-leaves stale - regen per the guard's own docstring, 3 modes x 173 champs) +
-`test_docs_daemon_slayer_drift` x1 (doc anchor). All 9 green after.
-
-Both defects were latent behind DEFAULT-OFF `assume_hsp_amp` (zero production callers pass
-True) - a pre-flip fix, not an incident.
-
-**Don't-redo:** the 12 bare-id magnitudes are SWEPT and CORRECT. Do NOT "simplify" the mirror
-enumeration into a prefix-strip helper - magnitudes genuinely differ per id space. Moonstone
-6617's 0.30 is CORRECT for `hps.py` - do NOT zero or delete it; it is gated off the wielder
-path by `ally_chain_only`, not by its value.

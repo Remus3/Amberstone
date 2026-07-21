@@ -65,6 +65,7 @@ def update_game_started(
     prior: Optional[str],
     *,
     live: bool = True,
+    mode: Optional[str] = None,
 ) -> Optional[str]:
     """Advance the sticky `gameStarted` flag per the JS transition table.
 
@@ -82,6 +83,19 @@ def update_game_started(
     value. The genuine CS->game flip is still caught by the ungated
     GameStart/InProgress phase arms, so gating the null-only inference on
     ``live`` loses no real promotion.
+
+    ``mode`` arms the sticky off the item-281 null-phase in-game promotion
+    (the ``not phase and mode in IN_GAME_MODES and live`` path in
+    ``derive_view``). Pre-fix that path rendered the in-game view without
+    recording that a game was running, so a page session that never saw an
+    explicit ChampSelect/GameStart/InProgress phase reached game-end with the
+    sticky still ``None`` and the auto-show-PGR arm was skipped. That is not a
+    rare blip: ``tools/lcu_agent.py`` ``capture_state`` finishes 8-11s behind
+    in-game (LCU calls run slow under League CPU pressure) while
+    ``dashboard/_liveclient.lcu_summary`` drops any snapshot older than 5s and
+    returns ``{}``, so ``/api/state.lcu`` carries no ``phase`` for much of a
+    live game. Keyword-only with a ``None`` default, so callers that do not
+    pass it keep the pre-fix transition table exactly.
     """
     if phase == "ChampSelect":
         return "champ-select"
@@ -105,6 +119,12 @@ def update_game_started(
     # transient null-phase blip DURING champ select (no game running) does
     # not misfire into the in-game view.
     if prior == "champ-select" and not phase and live:
+        return "in-progress"
+
+    # Null-phase in-game promotion (item 281) arms the sticky. Same gate the
+    # view derivation already trusts to render active-match: a real live game
+    # (liveclient non-empty) in a real in-game mode.
+    if not phase and live and mode in IN_GAME_MODES:
         return "in-progress"
 
     return prior
@@ -134,7 +154,9 @@ def derive_view(
     those are NOT gated on ``live`` (the game may be loading before
     LiveClient :2999 answers).
     """
-    game_started = update_game_started(phase, prior_game_started, live=live)
+    game_started = update_game_started(
+        phase, prior_game_started, live=live, mode=mode,
+    )
 
     # s209: GameStart routes to active-match (was "loading" pre-s209).
     if phase == "GameStart" and active_match_enabled:
@@ -175,6 +197,30 @@ def derive_view(
     if mode in (None, "", "client", "lobby") or not live:
         return DeriveResult("home", game_started)
     return DeriveResult("last-match", game_started)
+
+
+def is_postgame_pgr_edge(
+    phase: Optional[str],
+    prior_game_started: Optional[str],
+) -> bool:
+    """Is this tick the game-end edge that auto-shows the Post Game Review?
+
+    Mirror of the inner guard inside `_viewAutoDerive` (web/js/main.js) that
+    clears the sticky and pins the last-match view via
+    ``_viewSaveManual("last-match")`` + ``fetchAndRenderLastMatch()``. The
+    original auto-PGR change left this side-effect out of the mirror on the
+    grounds that "navigation is a side-effect, not a derived view" - which is
+    why it shipped without a regression test. Modelled here so the arm is
+    testable headless.
+
+    True exactly once per game: the edge clears ``game_started``, so the very
+    next tick with the same phase is no longer an edge.
+
+    ``Matchmaking`` / ``ReadyCheck`` / the literal ``"None"`` are deliberately
+    NOT edges even though they sit in the sticky-clear arm - a mid-game blip
+    to one of those must not flush the in-game view (s209).
+    """
+    return prior_game_started == "in-progress" and phase in _POSTGAME_PHASES
 
 
 def is_urgent(target_view: str) -> bool:

@@ -599,6 +599,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // before LiveClient answers), so those paths are not gated on `live`.
     const _lcLive = (state.latest && state.latest.liveclient) || null;
     const live = !!(_lcLive && Object.keys(_lcLive).length);
+    // Hoisted above the sticky block (was declared just before its first
+    // read, further down) so the null-phase sticky arm can use it. Mirrors
+    // IN_GAME_MODES in dashboard/view_router_state.py.
+    const inGame = ["sr", "aram", "arena", "brawl", "tft"].includes(mode);
     // s171 post-CS sticky guard: once we've entered ChampSelect, the
     // dashboard should never drop back to home/lobby until the game has
     // cleanly resolved. LCU briefly emits phase=null or stale phase=Lobby
@@ -670,6 +674,23 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     else if (_VIEW.gameStarted === "champ-select" && !phase && live) {
       _VIEW.gameStarted = "in-progress";
     }
+    // 2026-07-20: the item-281 null-phase in-game promotion below (which
+    // returns "active-match" off `!phase && inGame && live`) has to ARM the
+    // sticky too, not just render. Without this, a page session that never
+    // observed an explicit ChampSelect/GameStart/InProgress phase runs the
+    // whole game with gameStarted === null, so the post-game arm above is
+    // skipped and the operator lands on home instead of the Post Game
+    // Review. That is the common case, not a blip: tools/lcu_agent.py
+    // capture_state finishes 8-11s behind in-game (LCU calls run slow under
+    // League CPU pressure) while dashboard/_liveclient.lcu_summary drops any
+    // snapshot older than 5s and returns {}, so /api/state.lcu carries no
+    // `phase` for much of a live game - and any mid-game reload (ADR-008
+    // asset-hash auto-reload) or tab opened mid-game starts from null.
+    // Same gate the derivation already trusts: a real live game (liveclient
+    // non-empty) in a real in-game mode.
+    else if (!phase && live && inGame) {
+      _VIEW.gameStarted = "in-progress";
+    }
     // s209: GameStart routes directly to active-match. The loading
     // view was retired (games load too fast for it to be useful);
     // active-match panels render their own "waiting for liveclient"
@@ -687,7 +708,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (activeMatchEnabled() && phase === "InProgress") {
       return "active-match";
     }
-    const inGame = ["sr", "aram", "arena", "brawl", "tft"].includes(mode);
     // item 281: require a live game for the null-phase in-game promotion.
     if (activeMatchEnabled() && !phase && inGame && live) {
       return "active-match";
@@ -6851,6 +6871,33 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // ~nil and the server build_state is itself ~1s-cached.
   (function setupMinimapPoller() {
     let inflight = false;
+    // CLEAR-ON-EXIT (2026-07-20, arena stale-box bug). The narrow gate below is
+    // CORRECT and must NOT widen - arena / tft have no minimap and their
+    // renderers must never fire there. The defect was that nothing ran when
+    // that gate went FALSE: this poll is the ONLY unconditional in-game feed of
+    // the three minimap siblings, so on an aram -> arena flip
+    // state.latest.minimap_rect kept the LAST ARAM rect and the UNGATED onState
+    // dispatch (renderMinimapRect(state.latest.minimap_rect ...) up in the state
+    // dispatcher) repainted it every frame - an ARAM box sat over the Arena
+    // minimap for a whole game (measured live, rounds 1-9). So on EXIT: drop the
+    // siblings + hide both widgets, once per transition.
+    //
+    // renderMinimapZoi debounces TRANSIENT nulls - it clears its canvas only
+    // after _NULL_CLEAR_STREAK consecutive null ticks (panels/minimap_zoi.js) so
+    // a one-frame data hiccup inside a minimap mode cannot blank the overlay. A
+    // mode EXIT is definitive, not transient, so satisfy that debounce
+    // deliberately here. renderMinimapRect needs no repeat: the signature of a
+    // null rect is "" which never equals a painted signature, so its sig-dedup
+    // guard passes the first null straight through to mount.hidden = true.
+    const MM_ZOI_NULL_TICKS = 3;   // >= minimap_zoi._NULL_CLEAR_STREAK
+    let mmCleared = false;         // latch - one clear per exit transition
+    function clearMinimapWidgets() {
+      state.latest.minimap_rect = null;
+      state.latest.minimap_dots = null;
+      state.latest.zoi = null;
+      renderMinimapRect(null);
+      for (let i = 0; i < MM_ZOI_NULL_TICKS; i += 1) renderMinimapZoi(null);
+    }
     async function pollMinimap() {
       if (typeof document === "undefined" || !document.body) return;
       if (document.body.dataset.shell !== "overlay") return;
@@ -6873,11 +6920,23 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           // on a mode with no minimap. Coaching renderers are fail-soft + data-
           // gated, so an absent sibling just keeps the mount hidden (no crash).
           if (st && ["sr", "aram", "brawl"].includes(st.mode_key)) {
+            mmCleared = false;   // re-arm so a LATER exit clears again
             state.latest.minimap_rect = st.minimap_rect || null;
             state.latest.minimap_dots = st.minimap_dots || null;
             state.latest.zoi = st.zoi || null;
             renderMinimapRect(state.latest.minimap_rect);
             renderMinimapZoi(state.latest.zoi);
+          } else if (st && !mmCleared && !_amIsMock()) {
+            // Left the minimap modes (arena / tft / client / post-game). Only a
+            // POSITIVE out-of-set mode_key clears: a failed or empty fetch (st
+            // falsy) deliberately does nothing, so a transient poll error never
+            // blanks a live minimap (feedback_no_reflow_on_data_absence).
+            // ?ui_mock=1 is exempt: there the widgets are painted from the local
+            // fixture (_amMockData.minimap_rect / .zoi), NOT from /api/state -
+            // which the audit harness serves EMPTY - so clearing off live state
+            // would blank the very box the UI-audit capture exists to show.
+            mmCleared = true;
+            clearMinimapWidgets();
           }
           if (st && ["sr", "aram", "brawl", "arena", "tft"].includes(st.mode_key)) {
             // E6 (2026-07-06): lead_projection / callouts / coach.choices /

@@ -70,6 +70,27 @@ const WIDGETS = [
   // (SR in-game only); peripheral right-edge default, clear of the minimap
   // (1600,760). (The SUMMS dial was removed 2026-07-05: no Live Client CD data.)
   { id: "w-objgauges", sel: "#am-obj-gauges", x: 1690, y: 320, tier: "ambient", label: "Objective Gauges" },
+  // ARAM balance grid (panels/aram_balance.js). Promoted OUT of the BUILD pane
+  // to its own widget 2026-07-20 (operator): once the champion-resolution fix
+  // made it actually populate, its ~11 rows pushed META BUILD / the DS item row
+  // into a scroll region inside .am-pane-build and clipped them in-game. It is
+  // glanceable REFERENCE data, not read line-by-line beside the build order, so
+  // it earns its own freely-positionable surface. tier "ambient" (never urgent).
+  // Self-gates to ARAM in its own renderer (renderAramBalance hides the mount
+  // outside _AB_ARAM_MODES), so it occupies nothing in SR / Arena.
+  //
+  // Default anchor: right-of-center playfield, deliberately checked against
+  // EVERY other default in this array (LEDGER 873 (C): w-stats once defaulted
+  // on top of w-call). --ovx-w is 620 (overlay.css - a 3-chip row needs ~615px
+  // or the chips wrap and DOUBLE the height of all 11 rows), and the populated
+  // grid MEASURES 436px tall at 10 rows (headless overlay probe), so budget
+  // ~480 for a full 11-row ARAM lobby: the box is x 1050..1670, y 290..~770.
+  // That clears w-objgauges (anchor x 1690, past our right edge) and
+  // w-enemyspells (x 1500..1780 but y 120..~270, above our top) and w-callouts
+  // (anchor y 780, below our bottom), and every left-side default
+  // (w-call / w-ovds / w-lead / w-stats / w-build / w-spike / w-choices /
+  // w-launcher) is left of x 1050. Drag still overrides + persists.
+  { id: "w-arambalance", sel: "#aram-balance-panel", x: 1050, y: 290, tier: "ambient", label: "ARAM Balance" },
 ];
 
 // The launcher is a CONTROL widget, not a panel: a small always-visible square

@@ -3690,6 +3690,10 @@ function _csvResolveRole(cs) {
 
 // Placeholder pick/ban data per role. Phase B replaces this with
 // computed values from rewind_history.db + counter matrix + LCU mastery.
+// 2026-07-20: the PICK rows no longer read this table at all - a short
+// backend payload pads with an empty ("-", champId 0) slot instead of
+// borrowing a champion name it has no data for. Only `.bans` is still
+// consumed (and only for the name; its pct is forced to 0, see counterBans).
 const _PB_PLACEHOLDERS = {
   BOT: {
     performance: {
@@ -3888,25 +3892,39 @@ function _csvRenderPickBan(cs, myCid) {
   );
   const liveRoleMatch = (liveRecs && Array.isArray(liveRecs.performance_picks))
     ? liveRecs.performance_picks : [];
-  const fallbackPicks = [ph.performance, ph.mastery, ph.meta];
-  // 3 role-matching picks: backend raw top-3 by score, padded with
-  // placeholders so the row keeps its 4-cell geometry on a thin DB.
+  // 3 role-matching picks: backend raw top-3 by score, padded with EMPTY
+  // slots so the row keeps its 4-cell geometry on a thin DB (no reflow).
+  //
+  // 2026-07-20 provenance fix: the pad used to borrow the _PB_PLACEHOLDERS
+  // champion for the slot (Vayne / Kai'Sa on any role), so a 1-pick payload
+  // rendered "Vayne: [no data] (mastery)" in WHY THESE and left a hardcoded
+  // champion CLICKABLE (a click fires set_pick_intent). Live repro:
+  // /api/champ-select/pickban-recs?role=TOP&queue=400&top=3&exclude=67
+  // returns exactly 1 pick. A padded slot now carries champId 0 + "-", which
+  // also drops it from the WHY THESE loop (gated on p.champId).
+  //
+  // sourceKey stays positional - it drives the rank tag (TOP / #2 / #3) and
+  // the row tint only. `provenance` is the honest source for the reason line:
+  // ALL THREE role-match picks come from one backend list (routes_pickban.py
+  // performance_picks); the mastery + meta sources were never built (see that
+  // module's docstring), so tagging #2 "mastery" / #3 "meta" was a lie.
   const roleMatchPicks = [0, 1, 2].map((i) => {
     const p = liveRoleMatch[i];
     if (p) {
       return {
-        champId:   p.champId,
-        champName: p.champName,
-        reason:    p.reason,
-        sourceKey: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
+        champId:    p.champId,
+        champName:  p.champName,
+        reason:     p.reason,
+        sourceKey:  i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
+        provenance: "performance",
       };
     }
-    const fb = fallbackPicks[i] || {};
     return {
-      champId:   fb.champId   || 0,
-      champName: fb.champName || "-",
-      reason:    "[no data]",
-      sourceKey: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
+      champId:    0,
+      champName:  "-",
+      reason:     "[no data]",
+      sourceKey:  i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
+      provenance: "no data",
     };
   });
   // 4th pick: last-in-queue (score-invariant). When backend can't resolve
@@ -3914,16 +3932,18 @@ function _csvRenderPickBan(cs, myCid) {
   const lastInQueue = liveRecs && liveRecs.last_in_queue;
   const fourthPick = lastInQueue
     ? {
-        champId:   lastInQueue.champId,
-        champName: lastInQueue.champName,
-        reason:    lastInQueue.reason,
-        sourceKey: "last",
+        champId:    lastInQueue.champId,
+        champName:  lastInQueue.champName,
+        reason:     lastInQueue.reason,
+        sourceKey:  "last",
+        provenance: "last in queue",
       }
     : {
-        champId:   0,
-        champName: "-",
-        reason:    "no recent history in this queue",
-        sourceKey: "last",
+        champId:    0,
+        champName:  "-",
+        reason:     "no recent history in this queue",
+        sourceKey:  "last",
+        provenance: "last in queue",
       };
   const allPicks = [...roleMatchPicks, fourthPick];
 
@@ -3992,7 +4012,9 @@ function _csvRenderPickBan(cs, myCid) {
   }
   allPicks.forEach((p) => {
     if (!p.champId) return;
-    const tag = p.sourceKey === "last" ? "last in queue" : p.sourceKey;
+    // Honest source tag: the pick's own provenance, never the positional
+    // sourceKey (which only names the slot / tint - see roleMatchPicks).
+    const tag = p.provenance || p.sourceKey;
     explanationLines.push({
       cls: `csv-pb168-expl-pick is-${p.sourceKey}`,
       text: `${p.champName}: ${p.reason} (${tag})`,
