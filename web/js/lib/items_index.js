@@ -98,7 +98,13 @@ export function diffVariantItemIds(variants) {
 // champion name.
 const _CHAMP_RENAME_OVERRIDES = {};
 
-// Resolve a champion name to its numeric ID string.
+// Resolve a champion display name to its CANONICAL DDragon id STRING -
+// the name form ("Aatrox", "Kaisa", "MonkeyKing", "TahmKench"), NOT the
+// numeric key. CHAMPS.byName maps normalized-name -> canonical name, and
+// every caller uses the return directly as a DDragon file id (icon URLs
+// like /img/champion/<cid>.png). The `Id` in the function name is
+// historical; CHAMPS.byId is a SEPARATE map keyed by the numeric id, so
+// indexing byId with this return value always misses.
 export function _resolveChampId(name) {
   const n = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!n) return null;

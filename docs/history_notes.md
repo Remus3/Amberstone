@@ -119,6 +119,54 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-20i - R143 HSP registry: mirror id-space coverage + Moonstone semantic split
+
+**ENGINE 1.229.0 -> 1.230.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the SAME
+commit, DS `:8893` bounced onto 1.230.0, build-order precompute regenerated, dual suite green.
+
+Gemini-loop cycle 1. Directive asked for an HSP magnitude + mirror sweep of 7 enchanter items.
+
+**The directive's own axis came back CLEAN.** All 12 committed bare-id magnitudes in
+`enchanter_items.json` re-derived from DDragon 16.14.1 - every one already correct. The
+`[UNVERIFIED]` "lack correct magnitudes" premise is REFUTED. Two real defects found off-axis.
+
+**Defect 1 - mirror ids returned a silent 0.0.** `_hsp_amp.sum_wielder_hsp_pct` keys on BARE
+ids; `core/daemon_slayer_resolver.name_to_id` returns `32xxxx` (mode="sr") and `22xxxx`
+(mode="arena") MIRRORS. `_hsp_amp.py:51` missed -> silent 0.0, no raise/log/fallback (R135
+fallthrough class). Live-reachable: `coach_integration/_coach.py:300` -> `item_ids` at :318.
+Measured 0.22 under mode="sr" vs a 0.88 bare-id control.
+
+**The one-line fix would have been WRONG.** Prefix-strip / normalize is the natural fix and it
+ships wrong numbers: mirrors diverge in BOTH directions. Mikael 3222 .12 SR / .15 at `323222`;
+Dawncore 6621 .16 SR / .20 at `326621` / .12 at Arena `226621`. Arena also lifts Redemption
+.10->.12, Ardent .10->.12, Staff .10->.14. 22 mirror records enumerated explicitly instead.
+
+**Defect 2 - Moonstone 6617: right value, wrong consumer.** Its 0.30 is NOT an HSP stat (catalog
+grants none) - it is the Starlit Grace CHAIN-TO-ALLY ratio, which the text says excludes
+yourself. `_hsp_amp` (documented as WIELDER self-amp) read it anyway, over-crediting own shield
+(`ehp.py:1647`) + own regen (`sustain.py:382`) by +30%. **NOT zeroed** - the same field is
+load-bearing for ally throughput at `hps.py:605`. Split via a new `ally_chain_only` bool
+appended at the END of `EnchanterItemFormula` (no-mid-class-insert), True for 6617 alone.
+
+**Flagged side effect:** `hps.py:575` gates on `has_item`, so mirror records now resolve there
+too and compound into `amp_factor`. Closer to correct (was: no amp no heal; now: amp no heal)
+but a real `ds.hps` behavior change riding this bump.
+
+**Bump bookkeeping caught the rest.** RC went 14 red / 7 unique guards, all stamp propagation:
+`test_build_order_engine_stamp_sync` x6 (HZ-B precompute is patch-keyed static data a DS bump
+leaves stale - regen per the guard's own docstring, 3 modes x 173 champs) +
+`test_docs_daemon_slayer_drift` x1 (doc anchor). All 9 green after.
+
+Both defects were latent behind DEFAULT-OFF `assume_hsp_amp` (zero production callers pass
+True) - a pre-flip fix, not an incident.
+
+**Don't-redo:** the 12 bare-id magnitudes are SWEPT and CORRECT. Do NOT "simplify" the mirror
+enumeration into a prefix-strip helper - magnitudes genuinely differ per id space. Moonstone
+6617's 0.30 is CORRECT for `hps.py` - do NOT zero or delete it; it is gated off the wielder
+path by `ally_chain_only`, not by its value.
+
+---
+
 # 2026-07-20h - R142 RM-101 residual runes SHIPPED: Second Wind 8444 + Guardian 8465
 
 **ENGINE 1.228.0 -> 1.229.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the SAME
