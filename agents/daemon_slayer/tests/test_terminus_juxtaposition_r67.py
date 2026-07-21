@@ -6,8 +6,15 @@ stacks up to 3 times. Dark hits grant 10% armor penetration and magic
 penetration per stack - "30% resistances penetration at maximum stacks".
 The registry encoded only ONE Dark stack (0.10/0.10); per the repo
 full-stack sustained-DPS convention (Black Cleaver 3071 5-stack 0.30
-shred, Guinsoo 3124 4-stack 0.32 cond-AS - R66) both SR 3302 and the
-Arena map-30 mirror 223302 pin at 0.30 armor pen + 0.30 magic pen.
+shred, Guinsoo 3124 4-stack 0.32 cond-AS - R66) SR 3302 pins at 0.30
+armor pen + 0.30 magic pen.
+
+R161 SPLIT THE ARENA MIRROR OFF THAT PIN. Under doctrine B - a DDragon
+Arena mirror that states its OWN explicit stat line credits that line
+rather than its SR twin's - map-30 mirror 223302 derives from the Arena
+feed's 8-percent-per-stack wording, so it pins at 8 x 3 = 0.24 on both
+axes while SR keeps 0.30. The convention (per-stack x cap) is unchanged;
+only the per-stack INPUT differs between the two maps.
 
 Light hits (6-8 bonus armor+MR per stack, level pp 1;11;14) are
 CASTER-side resists and stay out of scope: no item-keyed resist-grant
@@ -49,7 +56,11 @@ class EngineVersion(unittest.TestCase):
 
 
 class JuxtapositionRegistryPins(unittest.TestCase):
-    """Full-stack steady-state pin: 10% x 3 Dark stacks = 0.30 each axis."""
+    """Full-stack steady-state pins: per-stack x 3 Dark stacks, per map.
+
+    SR 3302 states 10 percent per stack -> 0.30 each axis. Arena 223302
+    states 8 percent per stack -> 0.24 each axis (R161 doctrine B).
+    """
 
     def test_terminus_sr_armor_pen(self) -> None:
         eff = ITEM_EFFECTS.get("3302")
@@ -64,12 +75,12 @@ class JuxtapositionRegistryPins(unittest.TestCase):
     def test_terminus_arena_armor_pen(self) -> None:
         eff = ITEM_EFFECTS.get("223302")
         self.assertIsNotNone(eff)
-        self.assertAlmostEqual(eff.armor_pen_pct, 0.30, places=6)
+        self.assertAlmostEqual(eff.armor_pen_pct, 0.24, places=6)
 
     def test_terminus_arena_magic_pen(self) -> None:
         eff = ITEM_EFFECTS.get("223302")
         self.assertIsNotNone(eff)
-        self.assertAlmostEqual(eff.magic_pen_pct, 0.30, places=6)
+        self.assertAlmostEqual(eff.magic_pen_pct, 0.24, places=6)
 
 
 class JuxtapositionMerakiTruth(unittest.TestCase):
@@ -116,6 +127,12 @@ class JuxtapositionMerakiTruth(unittest.TestCase):
         )
 
     def test_registry_matches_meraki_per_stack_times_cap(self) -> None:
+        # SR 3302 ONLY. This file reads the PINNED 16.13.1 Meraki
+        # snapshot, whose 22xxxx Arena-mirror coverage is partial and does
+        # NOT include 223302, so the Arena magnitude cannot come from
+        # Meraki at all - it comes from the DDragon Arena feed. Looping
+        # the mirror into this SR-derived expectation is exactly what
+        # locked 223302 at the wrong 0.30 before R161.
         pct = int(
             re.search(r"Dark'' hits grant (\d+)%", self.text).group(1)
         )
@@ -123,11 +140,38 @@ class JuxtapositionMerakiTruth(unittest.TestCase):
             re.search(r"stacks up to (\d+) times", self.text).group(1)
         )
         expected = pct / 100.0 * cap
-        for item_id in ("3302", "223302"):
-            eff = ITEM_EFFECTS.get(item_id)
-            self.assertIsNotNone(eff)
-            self.assertAlmostEqual(eff.armor_pen_pct, expected, places=6)
-            self.assertAlmostEqual(eff.magic_pen_pct, expected, places=6)
+        eff = ITEM_EFFECTS.get("3302")
+        self.assertIsNotNone(eff)
+        self.assertAlmostEqual(eff.armor_pen_pct, expected, places=6)
+        self.assertAlmostEqual(eff.magic_pen_pct, expected, places=6)
+
+    def test_meraki_snapshot_has_no_terminus_arena_mirror(self) -> None:
+        # The reason the assertion above cannot cover 223302, asserted
+        # rather than left in a comment. Meraki's Arena-mirror coverage is
+        # partial (a handful of 22xxxx ids are present), but Terminus's
+        # mirror is absent, so there is no Meraki-derived Arena magnitude
+        # to compare against and DDragon is the only source.
+        doc = json.loads(_MERAKI_PATH.read_text(encoding="utf-8"))
+        self.assertIn("3302", doc["items"])
+        self.assertNotIn("223302", doc["items"])
+
+    def test_arena_mirror_credits_its_own_feed_per_stack_times_cap(self) -> None:
+        # R161 doctrine B: 223302's per-stack value comes from the ARENA
+        # DDragon line ("8% Armor Penetration" per Dark stack), not from
+        # SR's 10. Same cap, same convention, different stated input, so
+        # the two maps must land on different magnitudes.
+        cap = int(
+            re.search(r"stacks up to (\d+) times", self.text).group(1)
+        )
+        arena_per_stack = 8.0
+        expected = arena_per_stack / 100.0 * cap
+        eff = ITEM_EFFECTS.get("223302")
+        self.assertIsNotNone(eff)
+        self.assertAlmostEqual(eff.armor_pen_pct, expected, places=6)
+        self.assertAlmostEqual(eff.magic_pen_pct, expected, places=6)
+        self.assertNotAlmostEqual(
+            eff.armor_pen_pct, ITEM_EFFECTS["3302"].armor_pen_pct, places=6
+        )
 
 
 class PenFoldProperty(unittest.TestCase):
