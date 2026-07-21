@@ -13,14 +13,25 @@ OFFLINE ONLY: no live :8893, no network.
 """
 from __future__ import annotations
 
+import ast
 import inspect
+import pathlib
 import unittest
 
 from agents.daemon_slayer import ENGINE_VERSION
+from agents.daemon_slayer._effects_data import ITEM_EFFECTS
 from agents.daemon_slayer._rune_offense_grants import (
+    _ABSOLUTE_FOCUS_AD_AT_LEVEL_1,
+    _ABSOLUTE_FOCUS_AD_AT_LEVEL_18,
+    _ABSOLUTE_FOCUS_AP_AT_LEVEL_1,
+    _ABSOLUTE_FOCUS_AP_AT_LEVEL_18,
+    _ADAPTIVE_FORCE_AD_PER_AF,
+    _ASSUMED_CONQUEROR_STACKS,
+    _CONQUEROR_MAX_STACKS,
     _GATHERING_STORM_STEPS,
     _RUNE_OFFENSE_GRANTS,
     absolute_focus_grant,
+    conqueror_grant,
     gathering_storm_step,
     rune_offense_grants,
 )
@@ -30,6 +41,7 @@ from agents.daemon_slayer.hybrid import compute_hybrid, rank_items_by_hybrid
 
 GATHERING_STORM = "8236"
 ABSOLUTE_FOCUS = "8233"
+CONQUEROR = "8010"
 # Not in the registry by DESIGN (documented exclusions): proc damage, ability
 # haste, mana, move speed.
 ELECTROCUTE = "8112"
@@ -117,13 +129,173 @@ class AbsoluteFocusGrantTests(unittest.TestCase):
         self.assertNotEqual(absolute_focus_grant(18, 0.701), (0.0, 0.0))
 
 
+class AdaptiveForceConversionTests(unittest.TestCase):
+    """1 Adaptive Force is 1 AP or 0.6 AD - pinned by the registry's OWN rows.
+
+    Conqueror's feed states a raw Adaptive Force scalar and no per-column split,
+    so its entry has to convert. The conversion ratio is not taken on faith: the
+    two entries whose feeds DO enumerate both columns exhibit it in their stated
+    data, and that is asserted here as a property so the constant cannot drift.
+    """
+
+    # Read from the module's own constants, never hand-copied, so the property
+    # is pinned against the registry data itself.
+    _EXACT_ROWS = (
+        ("AbsoluteFocus L1", _ABSOLUTE_FOCUS_AD_AT_LEVEL_1, _ABSOLUTE_FOCUS_AP_AT_LEVEL_1),
+        ("AbsoluteFocus L18", _ABSOLUTE_FOCUS_AD_AT_LEVEL_18, _ABSOLUTE_FOCUS_AP_AT_LEVEL_18),
+    )
+    _ROUNDED_ROWS = tuple(
+        (f"GatheringStorm {int(minute)}min", ad, ap)
+        for minute, ad, ap in _GATHERING_STORM_STEPS
+    )
+
+    def test_the_ratio_is_exact_where_the_feed_states_full_precision(self) -> None:
+        # Absolute Focus publishes 1.8/3.0 and 18/30 - unrounded, so 0.6 * AP
+        # reproduces the AD column exactly.
+        for label, ad, ap in self._EXACT_ROWS:
+            with self.subTest(row=label):
+                self.assertAlmostEqual(_ADAPTIVE_FORCE_AD_PER_AF * ap, ad, places=9)
+
+    def test_the_ratio_holds_to_feed_rounding_on_every_integer_row(self) -> None:
+        # Gathering Storm publishes integers (5/8, 14/24, ...), so the ratio
+        # shows up as the product rounded to the nearest whole number.
+        for label, ad, ap in self._ROUNDED_ROWS:
+            with self.subTest(row=label):
+                self.assertEqual(round(_ADAPTIVE_FORCE_AD_PER_AF * ap), ad)
+                self.assertLessEqual(abs(_ADAPTIVE_FORCE_AD_PER_AF * ap - ad), 0.5)
+
+    def test_no_stated_row_supports_a_one_to_one_af_to_ad_reading(self) -> None:
+        # The guard on the error this conversion exists to prevent: if AD were
+        # the raw Adaptive Force, AD would equal AP on every row. It never does.
+        for label, ad, ap in self._EXACT_ROWS + self._ROUNDED_ROWS:
+            with self.subTest(row=label):
+                self.assertNotAlmostEqual(ad, ap, places=3)
+
+    def test_the_constant_is_the_documented_zero_point_six(self) -> None:
+        self.assertEqual(_ADAPTIVE_FORCE_AD_PER_AF, 0.6)
+
+
+class ConquerorGrantTests(unittest.TestCase):
+    """Verbatim: "1.8-4 Adaptive Force per stack. Stacks up to 12 times."."""
+
+    # 12 stacks * 1.8 AF = 21.6 AF at L1; * 4.0 = 48.0 AF at L18. AF pays the AP
+    # column 1:1 and the AD column at 0.6.
+    _AF_L1 = 21.6
+    _AF_L18 = 48.0
+
+    def test_default_stack_magnitude_at_level_one(self) -> None:
+        ad, ap = conqueror_grant(1)
+        self.assertAlmostEqual(ap, self._AF_L1, places=9)
+        self.assertAlmostEqual(ad, 12.96, places=9)
+
+    def test_default_stack_magnitude_at_level_eighteen(self) -> None:
+        ad, ap = conqueror_grant(18)
+        self.assertAlmostEqual(ap, self._AF_L18, places=9)
+        self.assertAlmostEqual(ad, 28.8, places=9)
+
+    def test_the_ad_column_is_the_converted_af_never_the_raw_scalar(self) -> None:
+        # The specific error this entry exists to avoid: reading the raw Adaptive
+        # Force onto AD would over-credit it by 1/0.6 = 1.667x.
+        for level in range(1, 19):
+            with self.subTest(level=level):
+                ad, ap = conqueror_grant(level)
+                self.assertAlmostEqual(ad, _ADAPTIVE_FORCE_AD_PER_AF * ap, places=9)
+                self.assertLess(ad, ap)
+
+    def test_the_raw_per_stack_adaptive_force_is_the_feed_walk(self) -> None:
+        # 1.8 at L1 to 4.0 at L18, recovered by dividing out the stack count.
+        for level, expected in ((1, 1.8), (18, 4.0)):
+            with self.subTest(level=level):
+                _ad, ap = conqueror_grant(level, _CONQUEROR_MAX_STACKS)
+                self.assertAlmostEqual(ap / _CONQUEROR_MAX_STACKS, expected, places=9)
+
+    def test_it_is_monotone_nondecreasing_in_level(self) -> None:
+        values = [conqueror_grant(lvl)[1] for lvl in range(1, 19)]
+        self.assertEqual(values, sorted(values))
+        self.assertLess(values[0], values[-1])
+
+    def test_out_of_range_levels_clamp_rather_than_extrapolate(self) -> None:
+        self.assertEqual(conqueror_grant(0), conqueror_grant(1))
+        self.assertEqual(conqueror_grant(99), conqueror_grant(18))
+
+
+class ConquerorStackKnobTests(unittest.TestCase):
+    """The stack count is an explicit knob, not a hardcoded 12.
+
+    ``rune_procs.py:212`` assigns the live stack count to the CALLER ("the caller
+    multiplies by the live stack count (max 12)"). The default is the feed's cap
+    because the modeled fight is fully committed, but max-stacks is the
+    anti-conservative reading on the SELF side, so it must stay overridable.
+    """
+
+    def test_the_feed_cap_and_the_assumed_default_are_both_twelve(self) -> None:
+        # "Stacks up to 12 times."
+        self.assertEqual(_CONQUEROR_MAX_STACKS, 12.0)
+        self.assertEqual(_ASSUMED_CONQUEROR_STACKS, 12.0)
+
+    def test_the_default_is_the_assumed_constant_not_a_literal(self) -> None:
+        self.assertEqual(
+            conqueror_grant(18), conqueror_grant(18, _ASSUMED_CONQUEROR_STACKS)
+        )
+
+    def test_the_grant_is_linear_in_the_stack_count(self) -> None:
+        one = conqueror_grant(18, 1)[1]
+        for stacks in range(0, 13):
+            with self.subTest(stacks=stacks):
+                self.assertAlmostEqual(
+                    conqueror_grant(18, stacks)[1], one * stacks, places=9
+                )
+
+    def test_zero_stacks_grants_nothing(self) -> None:
+        self.assertEqual(conqueror_grant(18, 0), (0.0, 0.0))
+
+    def test_the_stack_count_clamps_to_the_feed_range(self) -> None:
+        self.assertEqual(conqueror_grant(18, 99), conqueror_grant(18, 12))
+        self.assertEqual(conqueror_grant(18, -5), conqueror_grant(18, 0))
+
+    def test_a_junk_stack_count_falls_back_to_the_default(self) -> None:
+        self.assertEqual(conqueror_grant(18, "many"), conqueror_grant(18))
+
+    def test_the_knob_reaches_the_registry_through_the_public_entry_point(self) -> None:
+        full = rune_offense_grants(
+            [CONQUEROR], level=18, bonus_ad=250.0, ap=0.0
+        )
+        half = rune_offense_grants(
+            [CONQUEROR], level=18, bonus_ad=250.0, ap=0.0, conqueror_stacks=6
+        )
+        self.assertAlmostEqual(half[0], full[0] / 2.0, places=9)
+        self.assertGreater(full[0], 0.0)
+
+    def test_the_knob_does_not_disturb_the_other_entries(self) -> None:
+        # conqueror_stacks is Conqueror's gate alone - the Sorcery pair must be
+        # untouched by it.
+        for rid in (GATHERING_STORM, ABSOLUTE_FOCUS):
+            with self.subTest(rune=rid):
+                self.assertEqual(
+                    rune_offense_grants(
+                        [rid], level=18, bonus_ad=250.0, ap=0.0, game_minute=60.0
+                    ),
+                    rune_offense_grants(
+                        [rid], level=18, bonus_ad=250.0, ap=0.0, game_minute=60.0,
+                        conqueror_stacks=1,
+                    ),
+                )
+
+
 class RegistryShapeTests(unittest.TestCase):
     """The registry is a seeded ALLOWLIST - the exclusions are the point."""
 
-    def test_only_the_two_sorcery_adaptive_stat_grants_are_seeded(self) -> None:
+    def test_exactly_the_seeded_adaptive_stat_grants_are_present(self) -> None:
         self.assertEqual(
-            set(_RUNE_OFFENSE_GRANTS), {GATHERING_STORM, ABSOLUTE_FOCUS}
+            set(_RUNE_OFFENSE_GRANTS),
+            {GATHERING_STORM, ABSOLUTE_FOCUS, CONQUEROR},
         )
+
+    def test_every_entry_declares_a_tree_and_a_unique_family(self) -> None:
+        families = [e.family for e in _RUNE_OFFENSE_GRANTS.values()]
+        self.assertTrue(all(families), "an empty family disables the dedup guard")
+        self.assertEqual(len(families), len(set(families)))
+        self.assertEqual(_RUNE_OFFENSE_GRANTS[CONQUEROR].tree, "Precision")
 
     def test_documented_exclusions_contribute_nothing(self) -> None:
         # Proc damage (already in rune_procs), ability haste (measured inert),
@@ -228,7 +400,7 @@ class ByteIdentityTests(unittest.TestCase):
     """With the flag OFF, a full rune page must not move a single number."""
 
     _RUNE_PAGE = [
-        "8236", "8233", "8112", "8210", "8226", "8234", "8232",
+        "8236", "8233", "8010", "8112", "8210", "8226", "8234", "8232",
     ]
 
     def test_compute_dps_absent_equals_explicit_off(self) -> None:
@@ -358,6 +530,192 @@ class DivergenceFromRuneProcsIsDeliberateAndOneSidedTests(unittest.TestCase):
 
         self.assertEqual(RUNE_PROCS[8236].proc_type, "adaptive")
         self.assertEqual(RUNE_PROCS[8233].proc_type, "adaptive")
+
+
+class ConquerorAdaptiveSideResolutionTests(unittest.TestCase):
+    """Conqueror pays ONE side, chosen from the RESOLVED BUILD. AD wins ties."""
+
+    # 12 stacks at level 18: 48.0 Adaptive Force -> 48.0 AP or 28.8 AD.
+    _AD_L18 = 28.8
+    _AP_L18 = 48.0
+
+    def test_ad_build_takes_the_ad_column(self) -> None:
+        ad, ap = rune_offense_grants(
+            [CONQUEROR], level=18, bonus_ad=250.0, ap=0.0
+        )
+        self.assertAlmostEqual(ad, self._AD_L18, places=9)
+        self.assertAlmostEqual(ap, 0.0, places=9)
+
+    def test_ap_build_takes_the_ap_column(self) -> None:
+        ad, ap = rune_offense_grants(
+            [CONQUEROR], level=18, bonus_ad=0.0, ap=600.0
+        )
+        self.assertAlmostEqual(ad, 0.0, places=9)
+        self.assertAlmostEqual(ap, self._AP_L18, places=9)
+
+    def test_ad_wins_ties(self) -> None:
+        ad, ap = rune_offense_grants(
+            [CONQUEROR], level=18, bonus_ad=100.0, ap=100.0
+        )
+        self.assertAlmostEqual(ad, self._AD_L18, places=9)
+        self.assertAlmostEqual(ap, 0.0, places=9)
+
+    def test_exactly_one_side_is_ever_nonzero(self) -> None:
+        for build_ad, build_ap, expected in (
+            (250.0, 0.0, self._AD_L18),
+            (0.0, 600.0, self._AP_L18),
+            (100.0, 100.0, self._AD_L18),
+        ):
+            with self.subTest(bonus_ad=build_ad, ap=build_ap):
+                ad, ap = rune_offense_grants(
+                    [CONQUEROR], level=18, bonus_ad=build_ad, ap=build_ap
+                )
+                self.assertEqual(min(ad, ap), 0.0)
+                self.assertAlmostEqual(max(ad, ap), expected, places=9)
+
+    def test_a_duplicated_id_cannot_double_credit(self) -> None:
+        once = rune_offense_grants(
+            [CONQUEROR], level=18, bonus_ad=250.0, ap=0.0
+        )
+        many = rune_offense_grants(
+            [CONQUEROR, CONQUEROR, 8010, "8010"],
+            level=18, bonus_ad=250.0, ap=0.0,
+        )
+        self.assertEqual(once, many)
+        self.assertAlmostEqual(once[0], self._AD_L18, places=9)
+
+    def test_it_is_game_clock_and_caster_health_independent(self) -> None:
+        # Conqueror's gate is stack count, not the clock or caster HP - so unlike
+        # its two registry siblings it must not move with either input.
+        baseline = rune_offense_grants(
+            [CONQUEROR], level=18, bonus_ad=250.0, ap=0.0
+        )
+        for minute, hp_pct in ((0.0, 1.0), (60.0, 1.0), (15.0, 0.05)):
+            with self.subTest(game_minute=minute, caster_hp_pct=hp_pct):
+                self.assertEqual(
+                    rune_offense_grants(
+                        [CONQUEROR], level=18, bonus_ad=250.0, ap=0.0,
+                        game_minute=minute, caster_hp_pct=hp_pct,
+                    ),
+                    baseline,
+                )
+
+    def test_it_sums_with_the_other_families_on_the_chosen_side(self) -> None:
+        ad, ap = rune_offense_grants(
+            [CONQUEROR, GATHERING_STORM, ABSOLUTE_FOCUS],
+            level=18, bonus_ad=250.0, ap=0.0, game_minute=30.0,
+        )
+        self.assertAlmostEqual(ad, self._AD_L18 + 29.0 + 18.0, places=9)
+        self.assertAlmostEqual(ap, 0.0, places=9)
+
+
+class ConquerorSeamTests(unittest.TestCase):
+    """DEFAULT-OFF inertness, then a non-vacuous ON check."""
+
+    _ITEMS = ["3031", "3094"]
+
+    def _dps(self, **kw):
+        return compute_dps(
+            _snap(), champion_id="Jinx", level=18,
+            item_ids=self._ITEMS, mode="SR", target_armor=100.0, **kw,
+        )
+
+    def test_flag_off_with_conqueror_is_byte_identical_to_no_rune_ids(self) -> None:
+        absent = self._dps()
+        off = self._dps(apply_rune_offense_grants=False, rune_ids=[CONQUEROR])
+        self.assertAlmostEqual(absent.weighted_dps, off.weighted_dps, places=12)
+        self.assertGreater(absent.weighted_dps, 0.0, "fixture is not exercising")
+
+    def test_flag_on_with_conqueror_raises_dps(self) -> None:
+        base = self._dps()
+        on = self._dps(apply_rune_offense_grants=True, rune_ids=[CONQUEROR])
+        self.assertGreater(
+            on.weighted_dps, base.weighted_dps,
+            "Conqueror credited no adaptive AD - the entry is inert",
+        )
+
+
+class RuneItemIdKeyspaceCollisionTests(unittest.TestCase):
+    """8010 is Conqueror in the RUNE keyspace and Bloodletter's Curse in the ITEM one.
+
+    The two keyspaces are disjoint by transport, not by value: this registry is
+    reachable only through ``rune_ids``, and ``item_ids`` never touches it. That
+    is asserted here rather than assumed, because the shared literal is exactly
+    the kind of collision a future refactor could merge by accident.
+    """
+
+    # Every rune key that is ALSO a live item key. 8010 is the first and, as of
+    # this slice, only one. Pinned as an exact set so a future entry that
+    # collides with the item keyspace goes RED and has to be looked at, while the
+    # one known collision stays documented rather than silently tolerated.
+    _KNOWN_KEYSPACE_OVERLAP = {"8010"}
+
+    def test_the_collision_is_real_and_pinned(self) -> None:
+        self.assertIn("8010", _RUNE_OFFENSE_GRANTS)
+        self.assertEqual(_RUNE_OFFENSE_GRANTS["8010"].name, "Conqueror")
+        self.assertIn("8010", ITEM_EFFECTS)
+        self.assertEqual(ITEM_EFFECTS["8010"].name, "Bloodletter's Curse")
+
+    def test_no_undocumented_rune_key_collides_with_the_item_keyspace(self) -> None:
+        overlap = set(_RUNE_OFFENSE_GRANTS) & set(ITEM_EFFECTS)
+        self.assertEqual(
+            overlap,
+            self._KNOWN_KEYSPACE_OVERLAP,
+            "a rune id now collides with an item id undocumented - confirm the "
+            "rune_ids transport still keeps the two keyspaces apart",
+        )
+
+    def test_the_item_8010_cannot_reach_the_rune_registry(self) -> None:
+        # Buying Bloodletter's Curse must not silently grant Conqueror's force,
+        # even with the seam explicitly ON and no runes supplied at all.
+        def _dps(**kw):
+            return compute_dps(
+                _snap(), champion_id="Jinx", level=18,
+                item_ids=["3031", "8010"], mode="SR", target_armor=100.0, **kw,
+            )
+
+        off = _dps()
+        on_no_runes = _dps(apply_rune_offense_grants=True, rune_ids=[])
+        self.assertAlmostEqual(off.weighted_dps, on_no_runes.weighted_dps, places=12)
+        self.assertGreater(off.weighted_dps, 0.0, "fixture is not exercising")
+
+    def test_the_rune_8010_is_not_reduced_to_an_item_lookup(self) -> None:
+        # The converse direction: an item id that is NOT a rune contributes
+        # nothing, so the registry is keyed on runes and never falls back to
+        # items. 3031 Infinity Edge is an item id with no rune counterpart.
+        self.assertNotIn("3031", _RUNE_OFFENSE_GRANTS)
+        self.assertEqual(
+            rune_offense_grants(["3031"], level=18, bonus_ad=250.0, ap=0.0),
+            (0.0, 0.0),
+        )
+        self.assertNotEqual(
+            rune_offense_grants([CONQUEROR], level=18, bonus_ad=250.0, ap=0.0),
+            (0.0, 0.0),
+        )
+
+    def test_every_call_site_feeds_the_registry_rune_ids_never_item_ids(self) -> None:
+        # Source-level guard: the transport separation is the whole defense, so
+        # it is checked structurally rather than only behaviourally.
+        pkg = pathlib.Path(inspect.getsourcefile(compute_dps)).parent
+        call_sites = 0
+        for path in sorted(pkg.glob("*.py")):
+            src = path.read_text(encoding="utf-8")
+            if "rune_offense_grants(" not in src:
+                continue
+            for node in ast.walk(ast.parse(src)):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                if not isinstance(func, ast.Name) or func.id != "rune_offense_grants":
+                    continue
+                call_sites += 1
+                first = ast.get_source_segment(src, node.args[0]) if node.args else ""
+                kwargs = {kw.arg for kw in node.keywords}
+                with self.subTest(file=path.name, line=node.lineno):
+                    self.assertIn("rune_ids", first or "")
+                    self.assertNotIn("item_ids", first or "")
+                    self.assertNotIn("item_ids", kwargs)
+        self.assertGreater(call_sites, 0, "found no call site to guard")
 
 
 class EngineVersionTests(unittest.TestCase):
