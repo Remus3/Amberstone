@@ -48,6 +48,9 @@ LEGEND_ALACRITY = "9104"
 # Read and rejected in the same feed slot - see the module docstring exclusions.
 LEGEND_HASTE = "9105"
 LEGEND_BLOODLINE = "9103"
+# Seeded in R156, but adaptive - it never touches the attack-speed column, and
+# with no census supplied it grants nothing at all. Kept in this file's fixtures
+# as a control that the third column stays its own lane.
 JACK_OF_ALL_TRADES = "8316"
 # The three R145 adaptive entries, used to prove the columns stay independent.
 GATHERING_STORM = "8236"
@@ -223,10 +226,9 @@ class ThirdColumnTests(unittest.TestCase):
 
     def test_the_documented_legend_exclusions_contribute_nothing(self) -> None:
         # 9105 is ability haste (MEASURED INERT as a DS axis, settled); 9103 is
-        # life steal + max health (the sustain / EHP lane); 8316 is a real
-        # uncredited Adaptive Force grant whose stack count needs a distinct
-        # item-stat-type census - a schema lift, recorded not built.
-        for rid in (LEGEND_HASTE, LEGEND_BLOODLINE, JACK_OF_ALL_TRADES):
+        # life steal + max health (the sustain / EHP lane). Both are permanent
+        # exclusions, not pending work.
+        for rid in (LEGEND_HASTE, LEGEND_BLOODLINE):
             with self.subTest(rune=rid):
                 self.assertNotIn(rid, _RUNE_OFFENSE_GRANTS)
                 self.assertEqual(
@@ -235,6 +237,24 @@ class ThirdColumnTests(unittest.TestCase):
                     ),
                     (0.0, 0.0, 0.0),
                 )
+
+    def test_the_jack_exclusion_was_lifted_in_r156(self) -> None:
+        # R155 recorded 8316 as a MEASURED FUTURE blocked on a distinct
+        # item-stat census. R156 built that census, so the rune is seeded - but
+        # it stays inert to THIS lane: it is adaptive, so its attack-speed
+        # column is zero, and with no census supplied it grants nothing at all.
+        self.assertIn(JACK_OF_ALL_TRADES, _RUNE_OFFENSE_GRANTS)
+        self.assertEqual(
+            rune_offense_grants(
+                [JACK_OF_ALL_TRADES], level=18, bonus_ad=250.0, ap=0.0
+            ),
+            (0.0, 0.0, 0.0),
+        )
+        _ad, _ap, as_frac = rune_offense_grants(
+            [JACK_OF_ALL_TRADES],
+            level=18, bonus_ad=250.0, ap=0.0, jack_stacks=10,
+        )
+        self.assertAlmostEqual(as_frac, 0.0, places=12)
 
 
 class SeamDefaultOffTests(unittest.TestCase):
@@ -397,7 +417,7 @@ class AttackSpeedLockGateTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version_pin(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.236.0")
+        self.assertEqual(ENGINE_VERSION, "1.237.0")
 
 
 if __name__ == "__main__":

@@ -64,7 +64,7 @@ from .effects import (
     total_takedown_bonus_ad,
     total_target_bonus_hp_amp_multiplier,
 )
-from ._rune_offense_grants import rune_offense_grants
+from ._rune_offense_grants import jack_of_all_trades_stacks, rune_offense_grants
 from .engine import build_champion
 from .stats import clamp_level
 from .ult_rates import get_ult_casts_per_sec
@@ -940,11 +940,23 @@ def compute_dps(
     rune_offense_ap = 0.0
     rune_offense_as = 0.0
     if apply_rune_offense_grants:
+        # R156 (ENGINE 1.237.0): Jack Of All Trades 8316 is the first entry whose
+        # stack count is COMPUTED rather than assumed - "For each different stat
+        # gained from items, gain one Jack stack" - so the census is taken HERE,
+        # from the resolved build, in the same shape engine.py:318-320 uses. It
+        # sits INSIDE the seam so the default-OFF path pays neither the item
+        # lookups nor the aggregation and stays byte-identical. Passing no census
+        # (the registry's None default) means the entry contributes nothing, so
+        # every other caller of rune_offense_grants is unaffected.
+        _jack_stat_blocks = [
+            snapshot.item(i).get("stats", {}) for i in resolved.item_ids
+        ]
         rune_offense_ad, rune_offense_ap, rune_offense_as = rune_offense_grants(
             rune_ids or (),
             level=level,
             bonus_ad=bonus_ad,
             ap=ap,
+            jack_stacks=jack_of_all_trades_stacks(_jack_stat_blocks),
         )
         bonus_ad += rune_offense_ad
         ap += rune_offense_ap

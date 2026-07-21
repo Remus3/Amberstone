@@ -211,7 +211,7 @@ class EngineVersionPinTests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
 
-        self.assertEqual(ENGINE_VERSION, "1.236.0")
+        self.assertEqual(ENGINE_VERSION, "1.237.0")
 
 
 if __name__ == "__main__":
