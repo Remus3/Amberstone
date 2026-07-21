@@ -22,6 +22,11 @@ SetTitleMatchMode 2
 ; Emits control\ahk_heartbeat.txt (ONE bare unix-epoch-seconds integer) at ~1Hz for its
 ; whole life, including mid-directive; the controller treats >60s stale as a dead bridge
 ; instead of burning a full cycle deadline on dead air.
+; control\ahk_partial.flag records a directive that only PARTIALLY typed, and latches the
+; bridge against re-sending THAT directive (re-typing it would double-send the lines that
+; already landed). The latch is SCOPED BY CONTENT HASH, not by cycle number, and a
+; different directive auto-clears it - see ContentTag() for why the CYCLE=n header cannot
+; be used and why an absolute latch is unacceptable in an autonomous loop.
 ; Live mode with a missing/empty target_hwnd.txt ABORTS the bridge outright.
 ; Exits when control\STOP appears.
 
@@ -57,6 +62,7 @@ T := DEF.Clone()
 g_seq_active := 0
 g_seq_cycle := ""
 g_seq_typed := 0
+g_seq_tag := ""
 
 OnError(BridgeFatal)
 
@@ -66,12 +72,15 @@ LogMsg(s) {
 }
 
 BridgeFatal(err, mode) {
-    global PARTF, g_seq_active, g_seq_cycle, g_seq_typed
+    global PARTF, g_seq_active, g_seq_cycle, g_seq_typed, g_seq_tag
     msg := "UNCAUGHT ERROR"
     try msg .= ": " err.Message " (" err.File ":" err.Line ")"
     LogMsg(msg)
-    if (g_seq_active)
-        try FileAppend(g_seq_cycle " aborted after " g_seq_typed " lines: uncaught bridge error`n", PARTF)
+    if (g_seq_active) {
+        LogMsg("LATCH SET (fatal): " g_seq_cycle " typed=" g_seq_typed " tag=" g_seq_tag)
+        rec := FormatTime(, "yyyy-MM-dd HH:mm:ss") " " g_seq_cycle " typed=" g_seq_typed " tag=" g_seq_tag " reason=uncaught bridge error`n"
+        try FileAppend(rec, PARTF)
+    }
     ; An AHK error dialog is MODAL: it would park the hands of an autonomous loop forever
     ; with no signal. Exit instead, so the heartbeat goes stale and the controller sees a
     ; dead bridge within its staleness window.
@@ -216,28 +225,119 @@ IdleGuard() {
         LogMsg("idle guard: deferred " waited "ms for physical operator input")
 }
 
+ContentTag(s) {
+    ; Identity of a directive, used ONLY to decide whether an incoming gemini.ready is the
+    ; SAME one a partial type failed on.
+    ; NOT keyed on the CYCLE=n header: the controller's one-shot stall recovery REUSES the
+    ; stalled cycle number (stall_recovery_directive, pinned by
+    ; tests/test_loop_stall_recovery.py to emit "CYCLE=7" for cycle 7). A header-keyed
+    ; latch would therefore refuse the very recovery directive that exists to unwedge a
+    ; stalled bridge, and the controller would hard-stop 120s later. Bodies always differ,
+    ; so hash the FULL content instead.
+    ; Polynomial rolling hash with an explicit modulus - AHK v2 has no hash builtin, and an
+    ; unbounded multiply would overflow 64-bit. 131 * 1e9 stays far inside the range.
+    ; Length is prefixed so a hash collision alone cannot alias two directives.
+    h := 0
+    Loop Parse, s
+        h := Mod(h * 131 + Ord(A_LoopField), 1000000007)
+    return StrLen(s) "-" h
+}
+
+PartialTag() {
+    global PARTF
+    ; "" means either no flag, or a flag this bridge did not write (see the untagged
+    ; branch in the main loop - that case is held absolutely, on purpose).
+    txt := ""
+    try {
+        if FileExist(PARTF)
+            txt := FileRead(PARTF)
+    }
+    catch {
+        return ""
+    }
+    if RegExMatch(txt, "tag=(\S+)", &m)
+        return m[1]
+    return ""
+}
+
+WritePartial(cycleHdr, typedCount, tag) {
+    global PARTF
+    ; Single-record STATE file answering "which directive was partially typed", so the
+    ; latch can be scoped to it. The append-only HISTORY of latch/clear events lives in
+    ; ahk_bridge.log, because a latched bridge keeps heartbeating and is otherwise
+    ; indistinguishable from a healthy one.
+    rec := FormatTime(, "yyyy-MM-dd HH:mm:ss") " " cycleHdr " typed=" typedCount " tag=" tag " reason=focus lost mid-sequence, re-activation failed`n"
+    try {
+        if FileExist(PARTF)
+            FileDelete(PARTF)
+        FileAppend(rec, PARTF)
+    }
+    catch {
+        LogMsg("WARNING: could not write ahk_partial.flag - the in-process latch still holds for this directive")
+    }
+}
+
+LatchDue(&lastTs) {
+    ; Latch state is logged on transition and then RE-STATED every 60s. Every latch set and
+    ; every auto-clear is recorded; the periodic re-statement is what turns a chronic focus
+    ; problem into a visible repeating pattern rather than one line lost in the log.
+    if (lastTs && A_TickCount - lastTs < 60000)
+        return 0
+    lastTs := A_TickCount
+    return 1
+}
+
 LogMsg("ahk bridge start")
 Beat()
-latched := 0
+latchTag := ""       ; content tag of a partially-typed directive we must NOT re-send
+latchLogTs := 0
 Loop {
     Beat()
     if FileExist(STOPF) {
         LogMsg("STOP seen, exit")
         ExitApp()
     }
-    if FileExist(PARTF) {
-        ; A partial directive is already sitting in the target window. Re-consuming any
-        ; gemini.ready would double-send those lines, so latch until an operator (or the
-        ; launch script's pre-clean) removes the flag.
-        if !latched {
-            LogMsg("ahk_partial.flag present - refusing to consume gemini.ready until it is cleared")
-            latched := 1
-        }
-    }
-    else if FileExist(READY) {
-        latched := 0
-        LoadTimings()
+    if FileExist(READY) {
         content := FileRead(READY)
+        tag := ContentTag(content)
+        ; SCOPED LATCH. A partial type leaves lines already sitting in the target window,
+        ; so re-sending THAT directive would double-send them. But an ABSOLUTE latch
+        ; (clearable only by relaunch) would let one mid-run focus steal wedge the loop
+        ; until a human intervened, which defeats autonomous looping. So the latch is
+        ; scoped to the failed directive's CONTENT: same content holds, anything else
+        ; clears it and proceeds.
+        holdTag := ""
+        if FileExist(PARTF) {
+            holdTag := PartialTag()
+            if (holdTag = "") {
+                ; No tag=... means this bridge did not write the flag (an operator pause,
+                ; or a truncated write). Absolute hold is the safe reading of an unknown
+                ; flag, and deleting the file clears it.
+                if LatchDue(&latchLogTs)
+                    LogMsg("LATCH HOLD (untagged): ahk_partial.flag has no tag=... - refusing every pickup until the file is removed. Bridge is ALIVE and still heartbeating.")
+                Sleep 1000
+                continue
+            }
+        }
+        else if (latchTag != "") {
+            holdTag := latchTag        ; flag write failed earlier; in-process latch stands
+        }
+        if (holdTag != "") {
+            if (holdTag = tag) {
+                if LatchDue(&latchLogTs)
+                    LogMsg("LATCH HOLD: incoming gemini.ready is the SAME directive that partially typed (tag=" tag ") - refusing to re-send it. Bridge is ALIVE and still heartbeating, so the controller's stale-heartbeat check CANNOT see this state; this log line is the only signal of it.")
+                Sleep 1000
+                continue
+            }
+            ; Different content = a new directive supersedes the partial one. This is the
+            ; path the controller's one-shot stall recovery takes: it reuses the stalled
+            ; CYCLE number, so only the content distinguishes it from what stalled.
+            LogMsg("LATCH AUTO-CLEAR: new directive tag=" tag " differs from partially-typed tag=" holdTag " - clearing ahk_partial.flag and proceeding normally")
+            try FileDelete(PARTF)
+            latchTag := ""
+            latchLogTs := 0
+        }
+        LoadTimings()
         lines := StrSplit(content, "`n", "`r")
         cycleHdr := lines.Length ? Trim(lines[1]) : "CYCLE=?"
         win := Target()
@@ -262,6 +362,7 @@ Loop {
         g_seq_active := 1
         g_seq_cycle := cycleHdr
         g_seq_typed := 0
+        g_seq_tag := tag
         for idx, lineText in lines {
             if (idx = 1)                 ; skip CYCLE=n header
                 continue
@@ -304,9 +405,10 @@ Loop {
             ; Diagnosable, not silent: record WHICH cycle stopped and HOW MANY lines
             ; landed. gemini.ready is left unconsumed on purpose - a partial type is not
             ; a type, and the controller must see a timeout rather than a false ack.
-            try FileAppend(cycleHdr " aborted after " typed " lines: focus lost mid-sequence, re-activation failed`n", PARTF)
-            LogMsg("PARTIAL: " cycleHdr " aborted after " typed " lines - gemini.ready left unconsumed")
-            latched := 1
+            WritePartial(cycleHdr, typed, tag)
+            LogMsg("LATCH SET: PARTIAL " cycleHdr " aborted after " typed " lines (tag=" tag ") - gemini.ready left unconsumed. Latched against THIS directive only; a different directive auto-clears it.")
+            latchTag := tag
+            latchLogTs := A_TickCount
         }
         else {
             FileDelete(READY)          ; READY consumed = the "typed" signal the controller waits on
