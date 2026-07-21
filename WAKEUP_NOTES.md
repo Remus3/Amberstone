@@ -4,6 +4,81 @@
 
 ---
 
+# 2026-07-21j - R159 RUNE-OFFENSE SATURATION, REMAINING THREE TREES (gemini headless loop, cycle 6) - ENGINE UNCHANGED 1.237.0
+
+LEDGER 1000. Merge `add6f26f` (slice `77d448af`). ENGINE-IMPACT NONE - no math change, no behavior
+change, no `ENGINE_VERSION` bump. The default-OFF `apply_rune_offense_grants` path stays
+byte-identical. No DS bounce, no RC restart: there is nothing to reload.
+
+## What shipped
+
+R158 closed Domination `8100` + Sorcery `8200` and recorded the carry-forward that Precision
+`8000`, Resolve `8400` and Inspiration `8300` were still PROSE-ONLY. This closes them.
+`_SATURATED_TREE_IDS` in `agents/daemon_slayer/tests/test_rune_offense_saturation_r158.py` is now
+all five trees, so the module docstring's saturation claim is a thing CI can fail on rather than a
+sentence. Coverage: 62 live runes = 5 registered (`8010`, `8233`, `8236`, `8316`, `9104`) + 57
+adjudicated, up from 23, counted by a new test rather than eyeballed.
+
+## The point of the slice is the two honest non-answers, not the 32 easy ones
+
+A guard whose reasons are wrong is worse than no guard - it converts an unmeasured claim into a
+green test. Two of the 34 new ids DO grant a real offensive stat, and both are recorded as blocked
+gaps naming the blocker, following the `8232` Waterwalking precedent:
+
+- **`8008` Lethal Tempo - ROLE-BLOCKED.** It grants stacking attack speed (6% melee / 4% ranged per
+  stack to 6 stacks). The value is role-split and this seam takes no melee-or-ranged argument, AND
+  that same bonus attack speed is already an INPUT to Lethal Tempo's own on-attack damage term in
+  `rune_procs.py`. Crediting it here independently would DOUBLE-COUNT, not close a gap. The two
+  lanes have to be wired together.
+- **`8313` Triple Tonic - UPTIME-BLOCKED.** Its level-6 Elixir of Force grants 25 Adaptive Force,
+  but for 60 seconds once, and this engine has no consumable-uptime anchor to spend that against.
+  Its two siblings grant nothing offensive (Elixir of Avarice is gold plus minion-only true damage,
+  Elixir of Skill is a skill point).
+
+The other 32 are plain non-grants, each grounded in the rune's own DDragon `longDesc` and, where
+applicable, an existing registration elsewhere: `8005`, `8014`, `8017`, `8299`, `8369`, `8437`,
+`8439`, `8401` cite `rune_procs.py`; `8439`, `8429`, `8242` cite `_rune_resist_grants.py`; `8446`
+Demolish and `8021` Fleet Footwork cite the explicit honest-exclusion notes already in
+`rune_procs.py` (tower-only damage, and a heal whose AD/AP appear only as scaling INPUTS); `9105`
+Legend: Haste and `8347` Cosmic Insight use the settled MEASURED-INERT ability-haste wording;
+`8451` Overgrowth and `8345` Biscuit Delivery say health is not one of this registry's three
+columns rather than falsely claiming no offensive stat.
+
+## Verification
+
+TDD RED recorded before the mapping landed: `2 failed, 9 passed, 52 subtests` -
+`AssertionError: 28 != 62` on the new counting test, plus a 34-element diff naming every uncovered
+id starting at `('8005', 'Precision/PressTheAttack')`.
+
+Verifier subagent CONFIRM 8/8, re-running the DS suite itself rather than taking the slice's
+numbers: `_ADJUDICATED_NON_GRANTS` resolved by AST `literal_eval` (57 keys, no silent dict-literal
+collapse), `ENGINE_VERSION` diffed against main to prove it untouched, and - the claim that
+mattered - the `longDesc` for `8008`, `8021`, `8299`, `9103`, `8451`, `8446` read out of the feed
+and compared against each reason string to hunt for a false non-grant.
+
+DS 9173 passed / 1 skipped / 3837 subtests (verifier's own fresh run, exit 0). ruff
+`All checks passed!`. 0 non-ASCII bytes in both sources and both Share mirrors. Commit is exactly 5
+files with 0 deletions. `test_no_adjudicated_id_credits_anything_on_its_own` grew to 114 subtests
+(57 x 2), which is what proves the mapping inert on both an AD and an AP build. Share mirror +
+`MANIFEST.md` restamp landed in the SAME commit via the precommit hook; `--check` in sync at
+1.237.0 / 496 files.
+
+The slice agent hit the known worktree-index corruption right after committing (~500 phantom staged
+deletions). `git reset` repaired it; both the agent and the verifier re-confirmed the commit is
+still the same 5 files with everything present on disk.
+
+## Don't-redo
+
+All five rune trees are now machine-guarded and the sweep is CLOSED. A future patch that adds a
+stat rune will fail the guard by itself, so do NOT re-scan the feed for uncovered runes.
+
+`8008` Lethal Tempo and `8313` Triple Tonic are KNOWN, RECORDED gaps with named blockers, not
+oversights. Crediting Lethal Tempo needs the attack-speed lane wired to its existing `rune_procs.py`
+damage term (double-count hazard); Triple Tonic needs a consumable-uptime anchor that does not
+exist. Neither is a free win.
+
+---
+
 # 2026-07-21i - R158 RUNE-OFFENSE SATURATION GUARD (gemini headless loop, cycle 5) - ENGINE UNCHANGED 1.237.0
 
 LEDGER 999. Merge `b3085653` (slice `3deb619d`). ENGINE-IMPACT NONE - no math change, no behavior
@@ -104,70 +179,3 @@ HEXCORE is CURRENT as of `9403b8ca`. Do NOT re-run a "net-new .py since `d584e02
 baseline now yields zero real work and manufactures a duplicate of R151/R157. Diff from
 `9403b8ca` forward, and remember the count lives in five places including the machine-read
 `// DUST:` comment.
-
----
-
-# 2026-07-21g - R156 JACK OF ALL TRADES 8316 (gemini headless loop, cycle 3 + injected stall diagnose) - ENGINE 1.236.0 -> 1.237.0
-
-LEDGER 997. Pushed `0563537f..35a34db4` (slice `2ae85d74`, merge `ca5f77c6`). CI green on
-both ci and CodSpeed. DS `:8893` bounced and confirmed serving 1.237.0.
-
-## What shipped
-
-R155's registry docstring recorded 8316 Jack Of All Trades as "a real, currently uncredited
-Adaptive Force grant with an exact magnitude - a MEASURED FUTURE", excluded because its stack
-count is "a census of DISTINCT STAT TYPES across the resolved build, and no such per-build
-stat-type decomposition exists in this engine today: it is a schema lift, not a registry
-entry." The decomposition was one derivation away from something that already existed:
-`stats.py:134 aggregate_item_stats` already reduces a build's DDragon stat blocks to canonical
-`{axis}_{flat|pct}` slots, so the census is that map with the kind suffix stripped and distinct
-nonzero axes counted, clamped 0..10, an axis counted ONCE when an item grants it both flat and
-percent (movement speed is the live case).
-
-**The grant is a STEP and the tiers do NOT sum.** The 16.14.1 longDesc reads "Gain 10 or 25
-bonus Adaptive Force at 5 and 10 stacks, respectively" - "or ... respectively" is two discrete
-tiers where the higher REPLACES the lower, so under 5 stacks is 0, 5 through 9 is 10 AF, 10 or
-more is 25 AF. Converted at the registry's OWN `_ADAPTIVE_FORCE_AD_PER_AF` 0.6, giving
-(6.0 AD | 10.0 AP) and (15.0 AD | 25.0 AP).
-
-**The ability-haste half stays uncredited.** "Each stack grants you 1 Ability Haste" lands on
-the axis this engine MEASURED INERT and settled - the same finding that permanently excludes
-9105 Legend: Haste. Stated limitation rather than a gap: Ability Haste is absent from
-`ITEM_STAT_KEY_MAP` entirely, so an AH-only item censuses no stack.
-
-`jack_stacks` appended at the END of the public `rune_offense_grants` signature defaulting to
-None, and the census computed INSIDE the `if apply_rune_offense_grants:` block in `dps.py`, so
-the default-OFF path is byte-identical and pays zero cost. `hybrid.py` grep-verified to only
-forward the flag - untouched. MEASURED: Caitlyn L18 `3031/3094/3006/3072/3036/3046` censuses 5
-axes (ad, as, crit, lifesteal, ms) -> low tier -> +6.0 AD, weighted_dps 409.6728 -> 417.1840
-(+1.83 percent); a 4-axis two-item build censuses 4 and stays inert with the flag ON.
-
-Verifier gate 9/9 CONFIRM. DS suite re-run FRESH on merged main: 9162 passed / 1 skipped /
-3717 subtests. RC `tests/` 12515 passed / 52 skipped / 406 subtests with a single pre-restart
-failure - `test_sr_draft_profile_engine.py::test_live_three_profiles` asserts the LIVE `:8893`
-engine version against the source constant - which cleared to 18 passed after the DS bounce.
-ruff clean; 0 non-ASCII added; 0 file deletions across 272 files; Share `--check` in sync at
-1.237.0 / 495 files. Worktree removed, slice branch deleted local and remote.
-
-## The injected stall diagnose: NOT a stall, and the breach was self-inflicted
-
-The controller logged `cycle 3: deadline breach 1` at 12:52:06 against a 5400s deadline typed
-at 11:22:05. Three hypotheses:
-
-- **Genuine hang - REFUTED.** Three commits landed after the typed timestamp, CI went green,
-  the worktree was cleaned. Progress never stopped.
-- **Ghost controller (the item-996 bug) - REFUTED.** `controller.log` shows one monotonic
-  cycle-3 sequence, no interleaved second numbering and no second `loop start` line.
-- **Deadline shorter than the honest workload - CONFIRMED by arithmetic.** The build agent
-  alone ran 2506s and the verifier 1696s: 4202s of subagent wall-clock before the merge even
-  began, against a 5400s cycle.
-
-**Root cause of the BREACH is an R6 violation of my own, not a loop defect.** After the
-verifier had already run `tests/` FRESH on byte-identical worktree content, I launched a
-second full RC suite (~1330s) in the main repo. R6 says run the relevant suite ONCE and trust
-the exit code, re-running only if edited-since or the pipe glitched - neither applied. That
-prophylactic third suite is what pushed the cycle past its deadline; it was killed at
-recovery rather than waited out. **Durable consequence for the loop:** an orchestrated cycle
-that spends a build agent plus a verifier full-suite gate does not fit 5400s with any
-redundant suite added. Either the redundant suite goes (correct, and free) or
-`cycle_deadline_sec` rises.
