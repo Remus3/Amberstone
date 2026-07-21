@@ -4,6 +4,54 @@
 
 ---
 
+# 2026-07-21i - R158 RUNE-OFFENSE SATURATION GUARD (gemini headless loop, cycle 5) - ENGINE UNCHANGED 1.237.0
+
+LEDGER 999. Merge `b3085653` (slice `3deb619d`). ENGINE-IMPACT NONE - no math change, no behavior
+change, no `ENGINE_VERSION` bump, diff purely additive (77 lines, 0 deleted). No DS bounce, no RC
+restart: there is nothing to reload.
+
+## What shipped
+
+The directive asked for "raw AD/AP grants for Domination and Sorcery" and named five runes. All
+five were refuted against `data/meta_build/ddragon/16.14.1/runesReforged.json` before any code was
+written. Eyeball Collection `8138`, Zombie Ward and Ghost Poro `8120` are ABSENT from 16.14.1 -
+Domination slot 2 is Sixth Sense / Grisly Mementos / Deep Ward, slot 3 is Treasure Hunter /
+Relentless Hunter / Ultimate Hunter. `8126` is Cheap Shot (proc damage). `8234` is Celerity (move
+speed only); Absolute Focus is `8233` and shipped with `8236` in R145. Both cited PATHS were wrong
+too - the module is `agents/daemon_slayer/_rune_offense_grants.py`, not `core/`, and the feed is
+under `data/meta_build/ddragon/`, not `data/daemon_slayer/`.
+
+Sweeping all 25 runes across both trees came back SATURATED: 2 registered, 23 already adjudicated
+(proc damage / move speed / ability haste on the settled measured-inert axis / gold / trinket haste
+/ ward / vision / heal / mana / ult-amp), plus `8232` Waterwalking, which grants real Adaptive Force
+but is uptime-blocked on river occupancy with no anchor in this engine. Zero uncovered grants.
+
+So the artifact is a GUARD, not a grant. The saturation claim lived only in the module docstring's
+prose exclusions - which cannot fail CI when a patch adds a stat rune, and which is exactly how a
+directive came to spend a cycle chasing three runes deleted from the game. Added
+`_ADJUDICATED_NON_GRANTS` (23 ids -> the verbatim existing reasons) beside the 5-entry registry, and
+`agents/daemon_slayer/tests/test_rune_offense_saturation_r158.py` (7 tests / 52 subtests): every
+rune registered OR adjudicated with the offending id named on failure, sets disjoint, **every
+adjudicated id still EXISTS in the feed** (the check that catches this directive's own error class),
+ASCII reasons, and byte-identical credit between the full 25-id list and `[8236, 8233]` alone. TDD
+confirmed by a pre-mapping `ImportError`.
+
+## Gates
+
+Verifier 10/10 CONFIRM, re-running both suites itself: `git diff --numstat` `77 0` / 0 deleted
+lines, `ENGINE_VERSION` untouched, 0 non-ASCII in 53956 + 9156 bytes, 23/5 disjoint by real import,
+no `Share.zip` / `_scratch/` / mass-deletion in the commit. DS 9169 passed / 1 skipped / 3769
+subtests post-merge. ruff clean. Hygiene 13/13. Share `--check` in sync at 1.237.0 / 496 files -
+mirror + `MANIFEST.md` restamp landed in the SAME commit via the precommit hook's own sync run.
+
+## Carry-forward
+
+Precision, Resolve and Inspiration are still prose-only. Precision is the live risk: `9105` Legend:
+Haste and `9103` Legend: Bloodline sit unguarded beside the registered `8010` Conqueror and `9104`
+Legend: Alacrity - the same shape this cycle just closed for two trees. That is the obvious R159.
+
+---
+
 # 2026-07-21h - R157 HEXCORE OFFLINE EXPLORER (gemini headless loop, cycle 4) - ENGINE UNCHANGED 1.237.0
 
 LEDGER 998. Pushed `fc8199c9..d2f87add` (`9403b8ca` html + `d2f87add` docs sync). ENGINE-IMPACT
@@ -123,55 +171,3 @@ recovery rather than waited out. **Durable consequence for the loop:** an orches
 that spends a build agent plus a verifier full-suite gate does not fit 5400s with any
 redundant suite added. Either the redundant suite goes (correct, and free) or
 `cycle_deadline_sec` rises.
-
----
-
-# 2026-07-21f - R154 SHARE EXTERNAL PRESENTATION (headless loop, cycle 1) - ENGINE unchanged 1.235.0
-
-LEDGER 994. Pushed `1b32aedc..02f80fce` (work commit `664806c1`). ENGINE-IMPACT NONE -
-`git diff --stat agents/` empty, no DS bounce needed, no RC restart (no routes, no web assets).
-
-## What shipped
-
-The `Share/` package - the DS engine artifact handed to an outside technical reviewer - was
-re-presented as a public-facing product. Six slices on disjoint file sets, one merger,
-preceded by two read-only research agents and gated by an adversarial verifier.
-
-**The headline was not a presentation defect.** The package's own documented first command
-ran ZERO tests: `pytest agents/daemon_slayer/tests` from `Share/src` gave `9008 collected`,
-`9 errors during collection`, `Interrupted`. Nine mirrored modules import host-only `core.*`,
-or read a host-only `web/` asset through an extractor import. Fixed at root with
-`_HOST_DEPENDENT_TESTS` in `tools/ds_share_sync.py` - 502 -> 493 files, 350 -> 341 test
-files, 9008 collected with 0 errors.
-
-Also: new `Share/LICENSE.md` (the package shipped externally with no stated terms at all);
-three credit misattributions corrected against the shipped data, not against another doc
-(`champion_abilities` is Meraki not Data Dragon, `enchanter_items` is hand-curated not
-Meraki, `wiki_ability_stats` carries no damage ratios); lolmath.net credited for the first
-time inside the folder named after it; 41 stale `file:line` citations fixed and all 280 then
-swept clean; MANIFEST's `Share/`-prefixed self-references fixed in the generator template.
-
-## Read this before touching Share/ again
-
-- The directive claimed this unit was unexecuted. It was WRONG - R149 (`dfb509b8`,
-  2026-07-20) is the same unit. Check LEDGER before accepting a director's novelty claim.
-- `Share/src/**` and `Share/MANIFEST.md` are machine-generated. Never hand-edit either;
-  change the template in `tools/ds_share_sync.py`.
-- The three `lolmath_ingest` docs plus the `.d.ts` get UNANCHORED semver rewrites - any new
-  `N.N.N` token written there is drift.
-- A shell whose cwd is `Share/src` makes the sync tool's `os.replace` fail with WinError 32.
-  Commit and sync from the repo root.
-
-## Open, carried forward
-
-**RM-112** (new, ROADMAP NOW): the package still reports `8723 passed / 108 failed /
-170 errors` standalone, because 51 of its 341 test files reach outside the package for
-host-only data. Documented in `docs/05_AUDIT_AND_REFACTOR.md`, not hidden. Not live-gated -
-a straight drain, and the natural next unit.
-
-## Gates
-
-DS 9100 passed / 1 skipped / 3672 subtests. RC 12539 passed / 23 skipped / 406 subtests.
-`-k "ds_share or hygiene"` 370 passed. `ds_share_sync.py --check` in sync at 1.235.0 /
-493 files. ruff clean. 0 non-ASCII in the authored package, 0 banned glyphs in the 238KB
-diff. Verifier gate 8 CONFIRM / 2 PARTIAL, both PARTIALs fixed by the merger.
