@@ -126,3 +126,59 @@ DONE - All 51 rows DONE (LEDGER 784 + 903; newest R129 = LEDGER 903). Rows reloc
 - 2026-07-13 OQ25 (gemini-loop directive cycle 10, head aa5956a6) DONE (`<this commit>`) - directive: execute OQ25 - sweep real-meta build habits vs DS engine divergence, compare live meta vs DS reco, flag divergence, write docs/research/OQ25_meta_divergence_report.md, classify NOW/FUTURE, no blind flip; orchestrator subagent + verifier-gate, ENGINE-IMPACT NONE. PREMISE VERIFIED live before dispatch: OQ25 OPEN in ORCHESTRATION_PLAN.md; DS :8893 live 1.210.0 patch 16.13.1 (173 champs / 706 items). GROUNDED live sweep (16 AD carries/assassins, POST /rank carry-scorer + /rank-assassin burst-scorer, L11 target_armor=100 SR) captured verbatim into the report. Research+write via 1 general-purpose subagent (single new .md, sole writer, no worktree per R9 <3-file) fed the LOCKED live baselines + the no-third-party-source-names + ASCII rules; read-only verifier subagent gate CONFIRM 5/5 (doc written 148 lines; git shows ONLY the new report - ZERO code mutation; 0 non-ASCII; no site names; the load-bearing Jhin reconciliation TRUE - core/ds_champion_fight_length.py jhin=0.5 + core/daemon_slayer_client.py:1297/1351/1370 thread it into the /rank body). KEY RECONCILIATION (subagent caught, verifier confirmed, independently re-probed): the raw /rank probe defaults fight_length=None (server.py:464) which BYPASSES the live coach's per-champ fight_length policy - so Jhin's LIVE reco is ALREADY lethality/burst-corrected (LEDGER 875, shipped ENGINE 1.208.0); the report frames Jhin as the NOW-lever-ALREADY-SHIPPED proof (do NOT re-pitch/re-wire), not an open bug. BUCKETS: NOW = extend the fight_length allow-map to unmapped lethality carries (Varus poke / MF crit) + the L5/L6 crit-burst tail (EXISTING lever - a future ds-engine cycle, TDD RED-first, NOT this research slice); FUTURE = AD-assassin Zed/Talon/Qiyana pure-lethality valuation (/rank-assassin surfaces armor-pen Serylda's/Umbral Glaive but under-weights the snowball lethality cores Youmuu's/Opportunity/Profane Hydra/Edge of Night, leans crit IE/Essence Reaver/Sundered Sky) = a weights lift in burst.py rank_items_by_burst -> BACKLOG (no entry yet); VALIDATED-CORRECT (do NOT touch) = the on-hit/AS/crit marksman cluster Ashe/Kai'Sa/Kog'Maw/Vayne/Kalista/Aphelios/Jinx/Caitlyn/Draven/Samira, carry /rank reproduces their real meta. NO blind flip - live routing unchanged by this report. Doc-hygiene guards green (smart-quote/mojibake/u2500 13/13). ENGINE-IMPACT NONE (research .md only; no code/engine/ENGINE_VERSION/Share/DS restart; DS live 1.210.0 healthy). done_sentinel --tests 13 --regressions 0. Don't-redo: the marksman/assassin meta-divergence is now MAPPED (docs/research/OQ25_meta_divergence_report.md on disk) - Jhin lethality-crit is SHIPPED live (do NOT re-pitch/re-wire it), the on-hit/crit marksman cluster is VALIDATED-CORRECT (do NOT "fix" it); the ONLY open engine work from this sweep = the AD-assassin lethality-weighting FUTURE (burst.py rank_items_by_burst -> BACKLOG) + the NOW allow-map-extension tail, both do-not-flip-blind.
 
 - 2026-07-13 OQ24-Step1b (gemini-loop directive cycle 9, head 66415445) DONE (`<this commit>`) - directive: process OQ24, re-verify premise, build the remaining ds-build-coherence-refactor slices (fix ER/Eclipse on wrong AD kits WITHOUT a kit-axis flip; TDD RED-first; verifier-gate; full suite green). PREMISE VERIFIED LIVE before any edit (verify-before-declare-broken): Step-1a shipped (main `77f56d70`) but the spec's KNOWN GAP persisted in code - is_caster_marksman (core/build_planner/champ_kit_data.py) gated ONLY on the Marksman+Mage DDragon tag, over-excluding crit/on-hit ADCs that carry an incidental secondary Mage tag from the coherence dock, so their Essence Reaver (3508) / Eclipse (6692) artifact survived. LIVE-CONFIRMED via ds-preview BEFORE the fix (SR L13 + ARAM L18): MissFortune Eclipse#4 ER#6, Jhin ER#2, Kai'Sa ER#5 Eclipse#6, Varus ER#4 Eclipse#6, Smolder ER#3 - all kept the artifact; control Twitch/Jinx (no Mage tag) already clean from Step-1a. FIX (core-side Tier-1, single tightly-coupled 2-source-file slice - inline per R9 <3-file + an independent read-only verifier gate, no worktree fanout for a 3-line change): tighten is_caster_marksman with a METRIC ability-AP-scaling floor (`_ability_agg("ap") >= _CASTER_MKS_ABIL_AP_FLOOR` = 2.0) ON TOP of the tag - genuine hybrid casters Ezreal 4.25 / Corki 2.50 / Smolder 2.55 stay dock-EXEMPT (protect their real spellblade/mana core), crit/on-hit ADCs Jhin 1.60 / Kai'Sa 1.40 / Varus 1.25 / MissFortune 1.20 FLIP to docked; mage-archetype Marksman+Mage champs Azir/Kog'Maw/Twisted Fate exempt via coherence's archetype early-return regardless. NOT a hand-blacklist, NOT a win-rate seam - the kit axis is NOT flipped (memory project_ds_build_reco_optimal_not_winrate honored). NO ENGINE bump / Share / :8893 restart (is_caster_marksman has ZERO agents/daemon_slayer consumer - verifier-confirmed); RC dashboard reload only. TDD RED-first: tests/test_champ_kit_data.py::CasterMarksmanGate (4 tests) + tests/test_carry_coherence_rerank.py::CarryCoherenceRerankTest::test_mage_tagged_crit_adcs_now_docked (control-gated, non-vacuous) RED pre-fix -> GREEN. VERIFIER GATE (fresh, read-only) CONFIRM 6/6: fix present, 76 targeted tests green, behavior exact (Ezreal/Corki/Smolder True; Jhin/Kaisa/Varus/MF/Jinx/Caitlyn/Twitch False), Tier-1 no-engine-consumer, ruff clean. GATES: RC full suite 11605 passed / 22 skip / 3 fail - ALL PRE-EXISTING, ZERO regression from this slice: 2x test_coach_poll_offload_hot03 = the documented LEDGER-828 asyncio test-isolation flake (re-ran ISOLATED = 2 passed) + 1x test_dark_values_ratchet_oq6 = a PRE-EXISTING R102 red (`926f69a5` added a 2nd #1b1d27 dark literal to build_module.css .counter-chip vs ceiling 1; R102's scoped suite missed it) which this cycle FIXED in a separate commit (dropped the redundant fallback of the defined --surface-2 token = rendering-identical zero-pixel; ratchet now green 3/3). LIVE PROOF post-RC-restart (pid 1944, ds-preview SR L13): ER + Eclipse REMOVED for MissFortune/Jhin/Varus (Jhin now leads Collector/IE/Youmuu's = his real lethality-crit core), ER removed for Kai'Sa (Eclipse #6 borderline residual - the deliberately-light Eclipse dock is a separate calibration, FUTURE); Ezreal/Corki keep ER/Eclipse (protected, correct); Smolder keeps ER (exempt by design). ENGINE-IMPACT NONE. done_sentinel --tests 11605 --regressions 0. Don't-redo: the ER/Eclipse-on-wrong-kits artifact is CLOSED for the crit/on-hit AD roster (Step-1a no-Mage-tag Twitch/Jinx + Step-1b Mage-tagged Jhin/Kaisa/Varus/MF); is_caster_marksman uses an ability-AP floor (do NOT revert to tag-only, do NOT hand-blacklist, do NOT flip the kit axis); Smolder ER + Ezreal/Corki ER/Eclipse are INTENTIONAL (protected ability-casters, not artifacts); RESIDUAL = FUTURE only (Kai'Sa Eclipse#6 light-dock calibration, Zeri Lich Bane/Liandry's AP-on-AD-marksman distinct class, precompute build_order backfill owed-since-1a + non-live-critical, Step-3 ally-synergy / NL "why X over Y" / catalog hygiene Stormrazor 3097).
+
+## Sessions - DIRECTOR REFILL 2026-07-21
+
+| ID | Theme | Scope | Status | Commit |
+|----|-------|-------|--------|--------|
+| R150 | ds-sweep-conqueror-offense-grant | Sweep offensive rune stat grants vs DDragon 16.14.1 and credit the remaining real gap. ENGINE-IMPACT BUMP 1.232.0 -> 1.233.0. | DONE | `a7c5f9db` + bump |
+
+**THE DIRECTIVE'S 7 TARGETS RESOLVED TO 1 REAL GAP, and the audit that established
+that ran BEFORE any code.** 8236 Gathering Storm and 8233 Absolute Focus were ALREADY
+SHIPPED by R145 in `_rune_offense_grants.py`. 8138 Eyeball Collection, 8136 Zombie Ward
+and 8120 Ghost Poro are NOT PRESENT in `data/meta_build/ddragon/16.14.1/runesReforged.json`
+at all - they were removed from the game, so they are dead ids, not gaps. 8210
+Transcendence grants Ability Haste only, and the AH axis is MEASURED INERT and settled.
+Only 8010 Conqueror was genuinely uncredited on the self side. Two further directive
+errors were corrected rather than followed: the feed path it cited
+(`data/daemon_slayer/16.14.1/runesReforged.json`) does not exist, and the NEW module +
+NEW flag it asked for (`core/_rune_stat_grants.py`, `apply_rune_stat_grants`) would have
+duplicated the shipped `_rune_offense_grants.py` lane and its `apply_rune_offense_grants`
+seam. Scope was redirected to extending the existing registry.
+
+**AN ADVERSARIAL SLICE REFUTED THE ORCHESTRATOR'S OWN BRIEF MID-RUN, and that is the
+headline.** The build agent was originally instructed to mirror `enemy_runes.py:149` at
+21.6 -> 48.0. That is correct ADAPTIVE FORCE but it is NOT an AD number: the enemy lane
+uses AF as a raw damage proxy and never as a stat, so it converts nothing. Riot's rule is
+1 AF = 1 AP or 0.6 AD, so the uncorrected brief would have inflated the AD column by
+1/0.6 = 1.667x. The refutation was issued before the builder finished and the correction
+was applied in-slice. The 0.6 ratio is pinned by a property test against the registry's
+OWN sibling rows (`round(0.6 * ap) == ad` on all 7 stated values), not by an asserted
+constant. Two further corrections landed from the same refutation: the stack count became
+a knob (`_ASSUMED_CONQUEROR_STACKS` = 12.0 + per-call `conqueror_stacks`, clamped 0-12)
+because `rune_procs.py:212` puts the stack count on the caller, and the docstring stopped
+citing the enemy lane as precedent because max-stacks INVERTS from conservative
+(enemy-threat lens) to optimistic (self lens).
+
+VERIFIER GATE (read-only, 9 claims, pre-merge): MERGE-SAFE YES. It independently
+reproduced the DEFAULT-OFF byte-identity (Jinx L18 / 3031,3094 / armor 100 =
+`65.28245833333332` with and without `rune_ids=['8010']`, exact equality; flag ON gives
+`73.18805833333334`, so the seam is non-vacuous), confirmed the stack knob actually
+reaches the grant, and diffed the two pre-existing tests to confirm neither assertion was
+gutted to pass.
+
+**THE 29-TEST SKIP DELTA WAS RUN TO GROUND, NOT WAVED OFF.** The slice reported RC
+12441 passed / 52 skipped against R149's 12470 / 23 - same 12493 total, so 29 tests
+appeared to move from passed to skipped. Cheap arithmetic refuted a slice cause first
+(the slice touches ONE RC-suite file, which holds 16 tests, and 16 < 29). The verifier
+then measured the mechanism directly by running the 16 skip-producing files in BOTH
+trees: `data/rewind_history.db` is gitignored, so `git worktree add` never copied it, and
+its absence skips 27 tests, plus 2 more for absent local 2560x1440 HUD profiles.
+12441+29 = 12470 and 23+29 = 52 reconcile exactly. Environment-dependent, not slice-caused.
+
+Don't-redo: the offensive-rune sweep is now CLOSED for the 16.14.1 feed - 8236 / 8233
+shipped R145, 8010 shipped R150, and every other offensive rune in the tree is either a
+dead id, an Ability-Haste-only rune on a settled-inert axis, a move-speed rune, a
+proc-damage rune already scored by the burst consumer, or 8232 Waterwalking which is
+uptime-blocked with no positional signal in the engine. Do NOT re-scan the rune trees for
+uncredited stat grants; a further pass needs a positional/role signal, not another sweep.
