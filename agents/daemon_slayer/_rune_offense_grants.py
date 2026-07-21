@@ -6,6 +6,9 @@ DENOMINATOR, this one credits a rune-granted adaptive bonus ATTACK DAMAGE /
 ABILITY POWER into the DPS stat block - the axis every DS offensive scorer
 already reads from items and from nothing else.
 
+Three runes are seeded: the two Sorcery adaptive stat grants (Gathering Storm
+8236, Absolute Focus 8233) and the Precision keystone Conqueror 8010.
+
 WHAT WAS MISSING. ``rune_procs.py`` DOES register both Sorcery adaptive stat
 grants - Absolute Focus 8233 (``rune_procs.py:743``) and Gathering Storm 8236
 (``rune_procs.py:762``) - but it registers them with ``proc_type="adaptive"``,
@@ -33,6 +36,11 @@ text otherwise unaltered):
   * 8233 Absolute Focus: "While above 70% health, gain an adaptive bonus of up to
     18 Attack Damage or 30 Ability Power (based on level). <br><br>Grants 1.8
     Attack Damage or 3 Ability Power at level 1. "
+  * 8010 Conqueror: "Basic attacks or spells that deal damage to an enemy
+    champion grant 2 stacks of Conqueror for 5s, gaining 1.8-4 Adaptive Force
+    per stack. Stacks up to 12 times. Ranged champions gain only 1 stack per
+    basic attack.<br><br>When fully stacked, heal for 8% of the damage you deal
+    to champions (5% for ranged champions)."
 
 GATHERING STORM IS A STEP FUNCTION, NOT A RAMP - this is the load-bearing
 modelling decision and it is a deliberate DIVERGENCE from the pre-existing
@@ -65,6 +73,49 @@ AP) to the level-18 endpoint (18.0 AD / 30.0 AP) using the standard Riot linear
 per-level interpolation every other "based on level" magnitude in this engine
 uses. Nothing here is a tuned constant.
 
+CONQUEROR'S RAW FEED NUMBER IS ADAPTIVE FORCE, NOT AD - converting it is
+mandatory and is the easiest way to get 8010 wrong. Gathering Storm and Absolute
+Focus each enumerate their two columns explicitly ("168 AP or 101 AD"; "18 Attack
+Damage or 30 Ability Power"), so those entries transcribe and never convert.
+Conqueror states only the undifferentiated scalar "1.8-4 Adaptive Force per
+stack", so this entry MUST apply Riot's conversion: 1 Adaptive Force is 1 Ability
+Power OR 0.6 Attack Damage. That ratio is not imported from outside - it is the
+registry's OWN data, since ``round(0.6 * ap) == ad`` holds for every stated row
+above (18/30; 5/8, 14/24, 29/48, 48/80, 72/120, 101/168), and a property test
+pins it against those rows so the conversion cannot drift from the feed. Reading
+the raw Adaptive Force scalar straight onto the AD column would inflate the AD
+side by 1/0.6 = 1.667x.
+
+CONQUEROR'S STACK COUNT IS A KNOB, NOT A HARDCODED 12 - this is the load-bearing
+modelling decision for 8010. The feed's cap is 12 ("Stacks up to 12 times"), and
+``rune_procs.py:212`` states the engine's own contract for this rune in its own
+words: "compute_rune_proc_damage surfaces the PER-STACK adaptive force; the
+caller multiplies by the live stack count (max 12)". The stack count therefore
+belongs to the CALLER, and this module exposes it as
+``_ASSUMED_CONQUEROR_STACKS`` (default 12.0, the feed's cap) overridable per call
+via ``conqueror_stacks`` - exactly the shape ``_ASSUMED_GAME_MINUTE`` /
+``game_minute`` already has here.
+
+WHY A KNOB RATHER THAN A CONSTANT - the SIGN OF THE CONSERVATISM INVERTS between
+the two sides of the fight. On a THREAT lane, assuming an ENEMY is at max stacks
+is the pessimistic-for-the-player reading: it over-states incoming danger, which
+is the safe direction to be wrong in. On the SELF side the identical assumption
+over-states OUR OWN build and flatters every item ranked underneath it - the
+unsafe direction. A max-stack default is defensible for the fully-committed
+teamfight this registry models, but it must stay a stated, overridable assumption
+rather than a baked-in constant, so a consumer holding a real stack reading can
+supply it. For that reason no precedent is taken from any threat-lane treatment
+of this rune; the citation above is the feed and the rune_procs contract.
+
+THE RANGED STACK PENALTY IS OUT OF SCOPE, recorded rather than guessed. The feed
+says "Ranged champions gain only 1 stack per basic attack" - a stacking-RATE
+difference against a cap that is 12 for everyone. ``rune_offense_grants`` has no
+role parameter and no attack-range input: ``burst.py:1030`` derives its
+``_caster_role`` from attackrange, but this lane never receives it. Applying a
+ranged reduction would mean inventing a magnitude rather than deriving one, so it
+is left unmodeled and stated. A consumer that knows the real accrual should
+express it through the ``conqueror_stacks`` knob, which is what the knob is for.
+
 ADAPTIVE SIDE RESOLUTION reuses the engine's existing rule rather than restating
 it: ``rune_procs._adaptive_coeff`` documents "AD wins ties (League's adaptive
 force defaults to AD when AD bonus >= AP bonus)". This module applies the same
@@ -74,8 +125,18 @@ AD column, decided by the resolved build rather than by a per-champion guess.
 
 DELIBERATE EXCLUSIONS - read and rejected, not overlooked. This registry is a
 seeded ALLOWLIST like its R132 sibling, and the rest of the Sorcery + Domination
-offensive surface is out of it for stated reasons:
++ Precision offensive surface is out of it for stated reasons:
 
+  * 8010 Conqueror's fully-stacked HEAL ("heal for 8% of the damage you deal to
+    champions (5% for ranged champions)") is EXCLUDED while its Adaptive Force
+    is credited. The two halves of that rune sit on different axes: the force is
+    a persistent offensive stat and belongs in the DPS numerator this registry
+    feeds, but the heal is SUSTAIN - it converts damage already dealt into
+    effective health and moves no DPS field. It is the survivability lane's to
+    price (the same lane that already carries heal / shield / DR), not this
+    one's. Crediting it here would be scoring a defensive quantity on an
+    offensive axis, and would silently double-count once the sustain lane
+    reaches it.
   * 8232 Waterwalking ("Gain 10 Move Speed and 13 - 30 Adaptive Force (based on
     level) when in the river") DOES grant adaptive force with an exact magnitude,
     but only "when in the river". Unlike Absolute Focus's caster-HP gate and
@@ -154,6 +215,29 @@ _ABSOLUTE_FOCUS_AP_AT_LEVEL_18: float = 30.0
 # at ``caster_hp_pct <= 0.70``.
 _ABSOLUTE_FOCUS_HP_GATE: float = 0.70
 
+# Riot's Adaptive Force conversion: 1 AF is 1 Ability Power OR 0.6 Attack Damage.
+# Needed only by Conqueror, whose feed states a raw AF scalar instead of the two
+# explicit columns its registry siblings enumerate. Pinned by a property test
+# against those siblings' rows (round(0.6 * ap) == ad on all 7), so this is the
+# registry's own ratio rather than an outside assertion.
+_ADAPTIVE_FORCE_AD_PER_AF: float = 0.6
+
+# Conqueror 8010 per-stack endpoints, verbatim: "gaining 1.8-4 Adaptive Force per
+# stack." Units are ADAPTIVE FORCE, not AD - see the conversion above.
+_CONQUEROR_AF_PER_STACK_AT_LEVEL_1: float = 1.8
+_CONQUEROR_AF_PER_STACK_AT_LEVEL_18: float = 4.0
+
+# The feed's hard cap, verbatim: "Stacks up to 12 times." Used to CLAMP a
+# caller-supplied stack count, never as the stack count itself.
+_CONQUEROR_MAX_STACKS: float = 12.0
+
+# The modeled stack count, EXPLICIT and overridable per call via
+# ``conqueror_stacks`` - rune_procs.py:212 puts the stack count on the caller
+# ("the caller multiplies by the live stack count (max 12)"). Defaults to the cap
+# for the fully-committed teamfight this registry models, but stays a knob
+# because max-stacks is conservative on a threat lane and ANTI-conservative here.
+_ASSUMED_CONQUEROR_STACKS: float = 12.0
+
 
 def _clamp_level(level: float) -> float:
     """Clamp to the 1-18 champion level range, fail-soft to 1.0."""
@@ -220,6 +304,54 @@ def absolute_focus_grant(level: float, caster_hp_pct: float) -> tuple[float, flo
     )
 
 
+def conqueror_grant(
+    level: float, stacks: Optional[float] = None
+) -> tuple[float, float]:
+    """Return the ``(ad, ap)`` Conqueror grant at ``level`` and ``stacks``.
+
+    Verbatim longDesc: "Basic attacks or spells that deal damage to an enemy
+    champion grant 2 stacks of Conqueror for 5s, gaining 1.8-4 Adaptive Force per
+    stack. Stacks up to 12 times. Ranged champions gain only 1 stack per basic
+    attack. When fully stacked, heal for 8% of the damage you deal to champions
+    (5% for ranged champions)."
+
+    UNITS: the feed's per-stack number is ADAPTIVE FORCE, not AD. It pays out as
+    the AP column directly and as ``0.6 * AF`` on the AD column, Riot's standard
+    conversion - the same ratio every explicitly-enumerated row in this registry
+    already exhibits. Returning the raw scalar on both columns would over-credit
+    AD by 1.667x.
+
+    ``stacks`` defaults to ``_ASSUMED_CONQUEROR_STACKS`` and is CLAMPED to the
+    feed's 0..12 range. It is a knob rather than a constant because
+    ``rune_procs.py:212`` assigns the live stack count to the caller, and because
+    a max-stack assumption is conservative on a threat lane but ANTI-conservative
+    on this one, where it flatters our own build.
+
+    STATED LIMITATION - RANGED ACCRUAL IS OUT OF SCOPE: the "only 1 stack per
+    basic attack" clause is not applied. It is a stacking-RATE difference against
+    an identical 12 cap, and no role / attack-range input reaches this function
+    (its surface is level and stacks), so applying it would mean inventing a
+    magnitude rather than deriving one. A caller that knows the real accrual
+    expresses it through ``stacks``.
+
+    The fully-stacked 8% / 5% heal is deliberately NOT credited here; it is a
+    sustain quantity on a different axis, not an offensive stat. See the module
+    docstring's DELIBERATE EXCLUSIONS.
+    """
+    count = _ASSUMED_CONQUEROR_STACKS if stacks is None else stacks
+    try:
+        count = float(count)
+    except (TypeError, ValueError):
+        count = _ASSUMED_CONQUEROR_STACKS
+    count = max(0.0, min(_CONQUEROR_MAX_STACKS, count))
+    adaptive_force = count * _lerp_by_level(
+        _CONQUEROR_AF_PER_STACK_AT_LEVEL_1,
+        _CONQUEROR_AF_PER_STACK_AT_LEVEL_18,
+        level,
+    )
+    return (_ADAPTIVE_FORCE_AD_PER_AF * adaptive_force, adaptive_force)
+
+
 @dataclass(frozen=True)
 class RuneOffenseEntry:
     """One rune's adaptive offensive stat grant.
@@ -242,12 +374,22 @@ class RuneOffenseEntry:
     _grant: object = field(default=None, repr=False)
 
     def grant(
-        self, *, level: float, game_minute: float, caster_hp_pct: float
+        self,
+        *,
+        level: float,
+        game_minute: float,
+        caster_hp_pct: float,
+        conqueror_stacks: Optional[float],
     ) -> tuple[float, float]:
         fn = self._grant
         if fn is None:  # pragma: no cover - every seeded entry supplies one
             return (0.0, 0.0)
-        return fn(level=level, game_minute=game_minute, caster_hp_pct=caster_hp_pct)
+        return fn(
+            level=level,
+            game_minute=game_minute,
+            caster_hp_pct=caster_hp_pct,
+            conqueror_stacks=conqueror_stacks,
+        )
 
 
 _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
@@ -267,8 +409,8 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             "Gathering Storm: adaptive step grant at each 10-minute mark, "
             "5/14/29/48/72/101 AD or 8/24/48/80/120/168 AP, clamped at 60 min"
         ),
-        _grant=lambda *, level, game_minute, caster_hp_pct: gathering_storm_step(
-            game_minute
+        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks: (
+            gathering_storm_step(game_minute)
         ),
     ),
     # 8233 Absolute Focus (Sorcery, slot 3) - verbatim: "While above 70% health,
@@ -286,8 +428,50 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             "Absolute Focus: adaptive 1.8-18 AD or 3-30 AP by level, "
             "while above 70% caster health"
         ),
-        _grant=lambda *, level, game_minute, caster_hp_pct: absolute_focus_grant(
-            level, caster_hp_pct
+        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks: (
+            absolute_focus_grant(level, caster_hp_pct)
+        ),
+    ),
+    # 8010 Conqueror (Precision keystone, slot 0) - verbatim: "Basic attacks or
+    # spells that deal damage to an enemy champion grant 2 stacks of Conqueror
+    # for 5s, gaining 1.8-4 Adaptive Force per stack. Stacks up to 12 times.
+    # Ranged champions gain only 1 stack per basic attack. When fully stacked,
+    # heal for 8% of the damage you deal to champions (5% for ranged champions)."
+    #
+    # UNITS: the feed's "1.8-4 Adaptive Force per stack" is ADAPTIVE FORCE, not
+    # AD. Its siblings above enumerate both columns and so never convert; this
+    # one must, at Riot's 1 AF = 1 AP or 0.6 AD. At the default 12 stacks that is
+    # 21.6-48.0 AP or 12.96-28.8 AD by level. Putting the raw AF scalar on the AD
+    # column would over-credit AD by 1.667x - the specific error this entry is
+    # written to avoid.
+    #
+    # STACK MODELLING: the stack count is a KNOB (_ASSUMED_CONQUEROR_STACKS,
+    # default 12 = the feed's cap, per-call override conqueror_stacks), NOT a
+    # hardcoded 12. rune_procs.py:212 assigns the live stack count to the caller
+    # in its own words, and the conservatism inverts by side: max-stacks is the
+    # safe pessimistic reading for an ENEMY's Conqueror but the unsafe optimistic
+    # one for our own, where it inflates this build against every item ranked
+    # under it. Hence a stated default, not a constant. The ranged
+    # 1-stack-per-AA clause is left unmodeled because no role / attack-range
+    # input reaches this lane - stated in conqueror_grant's docstring, and
+    # expressible through the same knob.
+    #
+    # The fully-stacked 8% / 5% HEAL is deliberately excluded: it is sustain, not
+    # an offensive stat, so it belongs to the survivability lane and not to this
+    # DPS-numerator registry. Crediting it here would score a defensive quantity
+    # on an offensive axis. See the module docstring's DELIBERATE EXCLUSIONS.
+    "8010": RuneOffenseEntry(
+        name="Conqueror",
+        tree="Precision",
+        gate="stack_uptime",
+        family="conqueror",
+        note=(
+            "Conqueror: 1.8-4 Adaptive Force per stack by level at the "
+            "assumed 12-stack count, converted to 21.6-48.0 AP or "
+            "12.96-28.8 AD; the fully-stacked heal is sustain and is excluded"
+        ),
+        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks: (
+            conqueror_grant(level, conqueror_stacks)
         ),
     ),
 }
@@ -301,6 +485,7 @@ def rune_offense_grants(
     ap: float,
     game_minute: Optional[float] = None,
     caster_hp_pct: float = 1.0,
+    conqueror_stacks: Optional[float] = None,
 ) -> tuple[float, float]:
     """Return the ``(bonus_ad, bonus_ap)`` rune-side adaptive offensive grant.
 
@@ -312,7 +497,10 @@ def rune_offense_grants(
     ``level`` drives Absolute Focus's walk. ``game_minute`` defaults to the
     explicit, tunable ``_ASSUMED_GAME_MINUTE`` and drives Gathering Storm's step.
     ``caster_hp_pct`` defaults to 1.0 (the full-health sustained-DPS frame) and
-    gates Absolute Focus.
+    gates Absolute Focus. ``conqueror_stacks`` defaults to the equally explicit
+    ``_ASSUMED_CONQUEROR_STACKS`` and scales Conqueror; it is a knob because
+    ``rune_procs.py:212`` puts the live stack count on the caller and because a
+    max-stack assumption flatters our own build on this side of the fight.
 
     Per entry: the ``(ad, ap)`` pair is resolved, then ONE side is taken by the
     standard adaptive rule (AD when ``bonus_ad >= ap``, matching
@@ -350,7 +538,10 @@ def rune_offense_grants(
         if entry.family:
             seen_families.add(entry.family)
         side_ad, side_ap = entry.grant(
-            level=level, game_minute=minute, caster_hp_pct=caster_hp_pct
+            level=level,
+            game_minute=minute,
+            caster_hp_pct=caster_hp_pct,
+            conqueror_stacks=conqueror_stacks,
         )
         if prefer_ad:
             grant_ad += side_ad

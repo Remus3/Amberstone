@@ -78,8 +78,12 @@ _PRECISION = {
 # Runes whose contribution to the burst total must be STRICTLY POSITIVE today.
 _CREDITED_IN_BURST = (8005, 8008, 8014, 8017)
 
-# Runes that reach NO offensive axis today. 8010 is the interesting one - it is
-# REGISTERED in RUNE_PROCS yet contributes nothing; the rest are absent outright.
+# Runes that reach no BURST axis today. 8010 is the interesting one - it is
+# REGISTERED in RUNE_PROCS yet contributes nothing there; the rest are absent
+# outright. R150 UPDATE: 8010 is no longer uncredited ENGINE-WIDE - it is now a
+# seeded ``_rune_offense_grants`` entry and reaches the sustained DPS/hybrid stat
+# block behind the default-OFF ``apply_rune_offense_grants`` seam. The burst
+# reading below is unchanged, because burst.py still skips proc_type "adaptive".
 _UNCREDITED_REGISTERED = (8010,)
 _UNCREDITED_ABSENT = (8021, 9101, 9111, 8009, 9104, 9105, 9103)
 
@@ -179,17 +183,24 @@ class CreditedPrecisionRunesTests(unittest.TestCase):
 class UncreditedPrecisionRunesTests(unittest.TestCase):
     """The gap guards. Any of these failing means somebody wired an axis."""
 
-    def test_conqueror_is_registered_but_credits_nothing(self):
-        """8010 Conqueror - REAL GAP.
+    def test_conqueror_is_registered_but_credits_no_burst(self):
+        """8010 Conqueror - the BURST half of the gap, still open.
 
         DDragon 16.14.1 longDesc: "Basic attacks or spells that deal damage to
         an enemy champion grant 2 stacks of Conqueror for 5s, gaining 1.8-4
         Adaptive Force per stack. Stacks up to 12 times."
 
         The per-stack value IS computable (the closure exists and returns a
-        positive number) but ``burst.py`` skips ``proc_type == "adaptive"``,
-        and no other scorer reads it - so up to 12 x 1.8-4.0 adaptive force
-        reaches no AD / AP / damage axis anywhere.
+        positive number) but ``burst.py`` skips ``proc_type == "adaptive"``, so
+        it reaches no BURST axis.
+
+        R150 CLOSED THE SUSTAINED HALF, and this docstring is narrowed to match:
+        8010 is now a seeded ``_rune_offense_grants`` entry, so its Adaptive
+        Force DOES reach the DPS / hybrid stat block (converted at 1 AF = 1 AP or
+        0.6 AD, at the assumed 12-stack count) behind the default-OFF
+        ``apply_rune_offense_grants`` seam. The claim that it "reaches no axis
+        anywhere" is therefore no longer true and is not asserted here. What IS
+        still asserted, unchanged, is the burst reading below.
         """
         proc = RUNE_PROCS.get(8010)
         self.assertIsNotNone(proc, "Conqueror vanished from RUNE_PROCS")
