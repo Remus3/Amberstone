@@ -32,7 +32,7 @@ def test_machine_fields_survive_verbatim():
     for line in (
         f"- ENGINE_VERSION: {_VERSION}",
         f"- data patch: {sync._PATCH}",
-        f"- files mirrored under Share/src: {_N_FILES}",
+        f"- files mirrored under src/: {_N_FILES}",
         f"- engine .py modules: {_ENG_FILES}",
         f"- last synced: {_TS}",
     ):
@@ -68,13 +68,43 @@ def test_explains_what_the_stamp_means():
 
 
 def test_marks_generated_vs_authored():
-    """The whole point: nobody should hand-edit a regenerated path."""
+    """The whole point: nobody should hand-edit a regenerated path.
+
+    The table's paths are written relative to the package root (the folder this
+    manifest sits in), which is what the recipient actually has - see
+    ``test_paths_are_relative_to_the_package_root``.
+    """
     body = _body()
     assert "## Generated vs authored" in body
     assert "silently reverted" in body
-    for path in ("`Share/src/**`", "`Share/MANIFEST.md`", "`Share/README.md`",
-                 "`Share/docs/*.md`", "`Share/CHANGELOG.md`"):
+    for path in ("`src/**`", "`MANIFEST.md`", "`README.md`",
+                 "`docs/*.md`", "`CHANGELOG.md`", "`LICENSE.md`"):
         assert path in body, f"generated-vs-authored table is missing {path}"
+
+
+def test_paths_are_relative_to_the_package_root():
+    """The recipient's root IS the ``Share`` folder, so a ``Share/`` prefix in
+    the generated text is wrong by one level for every path it names."""
+    body = _body()
+    offenders = [ln for ln in body.splitlines() if "Share/" in ln]
+    assert not offenders, f"Share/-prefixed path(s) in the manifest: {offenders}"
+
+
+def test_credits_the_upstream_data_sources_and_points_at_the_terms():
+    """The package ships derived upstream data, so the machine record names
+    where it came from and where the terms live."""
+    body = _body()
+    for fragment in ("Data Dragon", "CommunityDragon", "Meraki Analytics",
+                     "`LICENSE.md`", "`docs/03_DATA_AND_SOURCES.md`"):
+        assert fragment in body, f"upstream credit/terms pointer missing: {fragment!r}"
+
+
+def test_does_not_cite_an_unshipped_host_repo_tool():
+    """``tools/ds_share_sync.py`` is host-repo maintenance tooling and is NOT in
+    the package (``src/tools/`` has no such file), so naming it sends a reviewer
+    looking for a file that does not exist."""
+    body = _body()
+    assert "ds_share_sync" not in body
 
 
 def test_points_at_the_readme_and_the_five_docs():
@@ -119,7 +149,7 @@ def test_stamp_manifest_writes_the_template(tmp_path, monkeypatch):
 
     written = (tmp_path / "MANIFEST.md").read_text(encoding="utf-8")
     assert f"- ENGINE_VERSION: {_VERSION}" in written
-    assert f"- files mirrored under Share/src: {_N_FILES}" in written
+    assert f"- files mirrored under src/: {_N_FILES}" in written
     assert "- engine .py modules: 1" in written
     assert "## Generated vs authored" in written
     assert "## Where to start" in written
