@@ -119,6 +119,80 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-21b - R150 CONQUEROR 8010 OFFENSE GRANT (gemini headless loop, cycle 2) - ENGINE 1.233.0
+
+**Tier-2 engine run.** LEDGER 989. Pushed `774ed236..7dfa003b`. ENGINE 1.232.0 -> 1.233.0.
+Slice merge `a7c5f9db`, engine-tail commit `7dfa003b` (267 files).
+
+## What shipped
+
+Rune 8010 Conqueror credited into the EXISTING `agents/daemon_slayer/_rune_offense_grants.py`
+registry behind the EXISTING `apply_rune_offense_grants` seam. No new module, no new flag.
+Magnitudes at the default 12 stacks: **AD 12.96 (L1) -> 28.8 (L18), AP 21.6 -> 48.0**.
+
+## The directive was mostly wrong and the audit ran BEFORE any code
+
+7 target runes named; 6 were not work. 8236 + 8233 already shipped in R145. **8138 Eyeball
+Collection, 8136 Zombie Ward, 8120 Ghost Poro are NOT IN the 16.14.1 `runesReforged.json`
+at all** (removed from the game). 8210 Transcendence is Ability-Haste-only, settled inert.
+The feed path the directive cited does not exist (real one is
+`data/meta_build/ddragon/16.14.1/runesReforged.json`), and the new module + new flag it
+specified would have duplicated the shipped lane.
+
+## An adversarial slice refuted MY OWN brief mid-run
+
+I told the builder to mirror `enemy_runes.py:149` at 21.6 -> 48.0. That is correct ADAPTIVE
+FORCE but **AF IS NOT AD** - the enemy lane uses AF as a raw damage proxy, never as a stat.
+Riot converts 1 AF = 1 AP **or 0.6 AD**, so my brief would have inflated the AD column by
+**1.667x**. Caught pre-merge, corrected in-slice. The 0.6 ratio is pinned by a property test
+against the registry's OWN rows (`round(0.6 * ap) == ad` on all 7 stated values), not by an
+asserted constant. Same refutation also forced the stack count to become a KNOB
+(`_ASSUMED_CONQUEROR_STACKS` + per-call `conqueror_stacks`, clamped 0-12) per
+`rune_procs.py:212`, and killed the enemy-lane precedent citation because max-stacks flips
+from conservative (threat lens) to optimistic (self lens).
+
+## Traps hit this run - read before the next DS bump
+
+1. **THREE build-order generators, two keyspaces.** FLAT `data/daemon_slayer/<patch>/` <-
+   `tools/daemon_slayer_build_orders_generate.py`; NESTED HZ-B
+   `data/daemon_slayer/build_orders/<patch>/` <- `core.build_order_precompute`; variants <-
+   `core.build_order_variants`. **The stamp tests read the NESTED ones.** All need
+   `--champions all`. I regenerated the flat set first and stayed red.
+2. **TWO changelogs.** `test_changelog_tracks_engine_version` reads
+   `agents/daemon_slayer/CHANGELOG.md` (bare `X.Y.Z (date` format), NOT `Share/CHANGELOG.md`
+   (`## X -> Y (date)`). I edited Share first and stayed red. Both need an entry.
+3. **`data/rewind_history.db` is gitignored**, so `git worktree add` never copies it and 27
+   db-backed tests SKIP in any worktree (plus 2 for absent 1440p HUD profiles). That is the
+   whole of the 29-test "passed -> skipped" delta a worktree slice will report. Not a
+   regression. Confirmed by the skip count returning to 23 on main.
+
+## OWED - real finding, not absorbed silently
+
+**The FLAT Arena build-order table on main is five engine versions stale** (last written by
+`1f13188b` at ENGINE 1.228.0; engine is now 1.233.0). Regenerating it changes 365 lines of
+item ids - a material change to live Arena recommendations. Proven NOT caused by this slice
+(`apply_rune_offense_grants`/`rune_ids` appear in neither generator, so the entry is
+unreachable from build-order generation) and proven deterministic (two consecutive regens
+content-identical). The three flat tables were REVERTED rather than ride into an engine-bump
+commit. **Needs its own slice with its own validation.**
+
+## Loop health
+
+Cycle 2 breached its 5400s deadline at 03:13:51 - build subagent ~60 min, verifier ~29 min.
+Controller injected stall recovery and extended once; no STOP. Not a hang.
+`ops/loop/control/blocker.txt` on disk is STALE R145 text - do not read it as current.
+
+## Don't-redo
+
+Offensive-rune sweep is CLOSED for the 16.14.1 feed. Every remaining offensive rune is a
+dead id, an AH-only rune on a settled-inert axis, a move-speed rune, a proc-damage rune
+already scored by the burst consumer, or 8232 Waterwalking (uptime-blocked, no positional
+signal). A further pass needs a role/positional signal, not another sweep. Do NOT model
+Conqueror at a fixed 12 stacks. Do NOT mirror `enemy_runes.py` magnitudes into a STAT
+registry without the AF conversion.
+
+---
+
 # 2026-07-21a - R149 SHARE FOLDER OVERHAUL (gemini headless loop, cycle N) - docs only
 
 **Tier-0/1 docs run, ENGINE-IMPACT NONE.** LEDGER 988. Pushed `d4070710..dfb509b8`.
