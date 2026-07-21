@@ -266,17 +266,25 @@ seeded ALLOWLIST like its R132 sibling, and the rest of the Sorcery + Domination
     8224 Nullifying Orb (ultimate damage amp, a multiplier lane not a stat) grant
     no AD, AP or attack speed.
 
-TWO TREES ARE MACHINE-GUARDED AS OF R158, THE OTHER THREE ARE NOT. Every rune in
-DOMINATION 8100 (12 runes) and SORCERY 8200 (13 runes) is now either seeded above
-or recorded in ``_ADJUDICATED_NON_GRANTS`` below, and
-``tests/test_rune_offense_saturation_r158.py`` fails if the live DDragon feed
-ever carries a rune in those two trees that is neither. Those two trees are
-SATURATED: the exclusions list above is no longer only prose for them. PRECISION
-8000, RESOLVE 8400 and INSPIRATION 8300 are explicitly NOT guarded - this
-registry has Precision (8010, 9104) and Inspiration (8316) entries but has never
-swept either tree end to end, so claiming completeness there would be claiming
-something unmeasured. Extending the guard to those three trees is the future
-pass, and the test's ``_SATURATED_TREE_IDS`` tuple is where it lands.
+ALL FIVE TREES ARE MACHINE-GUARDED AS OF R159. R158 guarded DOMINATION 8100 (12
+runes) and SORCERY 8200 (13 runes); R159 swept the remaining three - PRECISION
+8000 (13), INSPIRATION 8300 (12) and RESOLVE 8400 (12) - so every one of the 62
+runes the live DDragon feed carries is now either seeded above or recorded in
+``_ADJUDICATED_NON_GRANTS`` below: 5 registered (8010, 8233, 8236, 8316, 9104)
+and 57 adjudicated. ``tests/test_rune_offense_saturation_r158.py`` fails if the
+feed ever carries a rune - in any tree - that is neither, if an adjudicated id
+stops existing, if a tree id in its sweep list is not in the feed, or if the
+feed grows a tree the list omits. The exclusions list above is no longer prose
+anywhere: the registry is SATURATED against the whole feed, and further coverage
+needs a schema lift (a role argument, a positional signal, a consumable-uptime
+anchor), not another scan.
+
+THREE ADJUDICATED ROWS ARE DELIBERATE GAPS RATHER THAN NON-GRANTS, and their
+reasons name what blocks them instead of falsely claiming no offensive stat:
+8232 Waterwalking (Adaptive Force, but river-uptime-blocked), 8008 Lethal Tempo
+(stacking attack speed, but role-split with no role argument at this seam, and
+already an input to its own rune_procs term) and 8313 Triple Tonic (a 60-second
+Elixir of Force at level 6, with no consumable-uptime anchor).
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: the ``apply_rune_offense_grants`` seam on
 ``compute_dps`` / ``compute_hybrid`` / ``rank_items_by_hybrid`` defaults False;
@@ -846,7 +854,7 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
 # This mapping is the machine-readable half of the same claim. It carries no
 # magnitudes and no behavior: nothing reads it except
 # ``tests/test_rune_offense_saturation_r158.py``, which asserts that every rune
-# id in DOMINATION 8100 and SORCERY 8200 in the live DDragon
+# id in ALL FIVE TREES in the live DDragon
 # ``runesReforged.json`` feed is either in ``_RUNE_OFFENSE_GRANTS`` or here, that
 # the two sets are disjoint, and - running the claim the other way - that every
 # id here actually EXISTS in the feed. That last direction is not decoration:
@@ -855,10 +863,20 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
 # decision about something nobody can equip, and reads as coverage while
 # providing none.
 #
-# Reasons are lifted from the DELIBERATE EXCLUSIONS block above rather than
-# re-derived, so the two records cannot drift into disagreeing about why a rune
-# was declined. SCOPE IS THE TWO SWEPT TREES ONLY - Precision, Resolve and
-# Inspiration runes do not belong here until their own sweep happens.
+# Domination and Sorcery reasons are lifted from the DELIBERATE EXCLUSIONS block
+# above rather than re-derived, so the two records cannot drift into disagreeing
+# about why a rune was declined. The R159 rows (Precision 8000, Inspiration 8300,
+# Resolve 8400) had no prose to lift from and were adjudicated straight off the
+# 16.14.1 ``longDesc`` for each id, reusing the same vocabulary. SCOPE IS NOW THE
+# WHOLE FEED: five trees, 62 runes, 5 registered and 57 recorded here.
+#
+# THREE ROWS ARE DELIBERATE GAPS, NOT NON-GRANTS, and say so in their own words
+# (8232 Waterwalking river uptime, 8008 Lethal Tempo role-split attack speed,
+# 8313 Triple Tonic's 60-second Elixir of Force). A saturation guard
+# whose reasons quietly claimed "no offensive stat" for a rune that grants one
+# would be worse than no guard: it would launder an unmodelled grant as a
+# measured decision. Naming the blocker keeps the record honest and keeps each
+# row a live candidate for the pass that gains the missing anchor.
 _ADJUDICATED_NON_GRANTS: dict[str, str] = {
     # --- Domination 8100 (12 runes, none registered) ---
     "8112": "proc damage, registered in rune_procs.py and scored by the burst consumer",
@@ -895,6 +913,146 @@ _ADJUDICATED_NON_GRANTS: dict[str, str] = {
         "level, but only while in the river, and river occupancy has no anchor "
         "anywhere in this engine - the best candidate for a future pass that "
         "gains a positional signal"
+    ),
+    # --- Precision 8000 (13 runes; 8010 + 9104 are REGISTERED above) ---
+    "8005": (
+        "bonus adaptive burst plus a flat 8% damage amp, both registered in "
+        "rune_procs.py and scored by the burst consumer - the amp is a "
+        "multiplier lane, not a stat"
+    ),
+    "8008": (
+        "ROLE-BLOCKED, not a non-grant: it does grant stacking attack speed "
+        "(6% melee / 4% ranged per stack, up to 6 stacks), but the value is "
+        "role-split and this seam takes no melee-or-ranged argument, and the "
+        "same bonus attack speed is already an INPUT to its on-attack damage "
+        "term in rune_procs.py, so the two lanes would have to be wired "
+        "together rather than credited independently"
+    ),
+    "8021": (
+        "energized heal plus move speed - no AD, AP or attack speed, and "
+        "deliberately excluded from rune_procs.py as well (it heals, it does "
+        "not deal damage)"
+    ),
+    "9101": "heal on kill, not an offensive stat - grants no AD, AP or attack speed",
+    "9111": (
+        "takedown heal plus gold, not an offensive stat - grants no AD, AP or "
+        "attack speed"
+    ),
+    "8009": (
+        "mana or energy restore, which is the _item_mana_health axis and not an "
+        "offensive stat"
+    ),
+    "9105": (
+        "basic ability haste only (1.5 per Legend stack), and Ability Haste as "
+        "a DS axis was MEASURED INERT"
+    ),
+    "9103": (
+        "life steal (0.45% per Legend stack) plus 85 max health at full stacks "
+        "- sustain and health, neither is AD, AP or attack speed"
+    ),
+    "8014": (
+        "conditional damage amp (8% against targets below 40% health), a "
+        "multiplier lane not a stat, and already registered in rune_procs.py "
+        "with its target-health gate"
+    ),
+    "8017": (
+        "conditional damage amp (8% against targets above 60% health), a "
+        "multiplier lane not a stat, and already registered in rune_procs.py "
+        "with its target-health gate"
+    ),
+    "8299": (
+        "conditional damage amp (5-11% while below 60% of your own health), a "
+        "multiplier lane not a stat, and already registered in rune_procs.py "
+        "with its caster-health gate"
+    ),
+    # --- Inspiration 8300 (12 runes; 8316 is REGISTERED above) ---
+    "8351": (
+        "slow plus a damage-reduction zone applied to enemies - crowd control "
+        "and an enemy-side multiplier lane, not an AD, AP or attack speed grant"
+    ),
+    "8360": (
+        "swaps a Summoner Spell, not an offensive stat - grants no AD, AP or "
+        "attack speed"
+    ),
+    "8369": (
+        "gold plus a 7% damage amp, registered in rune_procs.py and scored as a "
+        "multiplier lane, not a stat"
+    ),
+    "8306": (
+        "replaces Flash with a Hexflash blink - mobility, not an offensive stat"
+    ),
+    "8304": (
+        "free boots at 12 min plus 10 move speed - move speed only, no "
+        "offensive stat on it"
+    ),
+    "8321": (
+        "gold back on Legendary purchases, not an offensive stat - grants no "
+        "AD, AP or attack speed"
+    ),
+    "8313": (
+        "UPTIME-BLOCKED, not a non-grant: the level-6 Elixir of Force it hands "
+        "out grants 25 Adaptive Force, but for 60 seconds once, and this engine "
+        "has no consumable-uptime anchor to spend that against; its two "
+        "siblings grant nothing offensive (Elixir of Avarice is gold plus "
+        "minion-only true damage, Elixir of Skill is a skill point)"
+    ),
+    "8352": (
+        "front-loads potion healing (40% of the restoration immediately), not "
+        "an offensive stat"
+    ),
+    "8345": (
+        "biscuit healing plus 30 permanent max health per biscuit - heal and "
+        "health, neither is AD, AP or attack speed"
+    ),
+    "8347": (
+        "18 Summoner Spell Haste and 10 Item Haste only - a cooldown lane, and "
+        "haste as a DS axis was MEASURED INERT"
+    ),
+    "8410": "move speed only - no offensive stat on it",
+    # --- Resolve 8400 (12 runes, none registered) ---
+    "8437": (
+        "proc magic damage off max health, registered in rune_procs.py and "
+        "scored by the burst consumer; its heal and permanent 5 health per proc "
+        "are sustain, not AD, AP or attack speed"
+    ),
+    "8439": (
+        "armor and magic resist, registered in _rune_resist_grants.py, and its "
+        "explosion damage is registered in rune_procs.py - neither half is an "
+        "AD, AP or attack speed grant"
+    ),
+    "8465": "ally shield, not an offensive stat - grants no AD, AP or attack speed",
+    "8446": (
+        "bonus physical damage against TOWERS only, deliberately excluded from "
+        "rune_procs.py for the same reason - it never touches a champion damage "
+        "lane, let alone a stat"
+    ),
+    "8463": (
+        "heal on self and the lowest-health nearby ally, not an offensive stat"
+    ),
+    "8401": (
+        "bonus adaptive damage on the next attack after gaining a shield, "
+        "registered in rune_procs.py and scored by the burst consumer"
+    ),
+    "8429": (
+        "flat plus percentage armor and magic resist, registered in "
+        "_rune_resist_grants.py - resists, not an offensive stat"
+    ),
+    "8444": "heal over time off missing health, not an offensive stat",
+    "8473": (
+        "flat damage reduction on the next 3 hits taken, a mitigation lane not "
+        "a stat"
+    ),
+    "8451": (
+        "permanent maximum health only - health is not one of this registry's "
+        "three columns (AD, AP, attack speed)"
+    ),
+    "8453": (
+        "5% Heal and Shield Power plus a low-health heal and shield amp - a "
+        "healing lane, not AD, AP or attack speed"
+    ),
+    "8242": (
+        "10 armor and magic resist while crowd controlled, registered in "
+        "_rune_resist_grants.py - resists, not an offensive stat"
     ),
 }
 
