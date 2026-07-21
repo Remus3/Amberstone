@@ -98,6 +98,8 @@ DONE - All 51 rows DONE (LEDGER 784 + 903; newest R129 = LEDGER 903). Rows reloc
 
 | R160 | ds-sweep-penetration | Directive: DS sweep of item penetration stats (percent armor pen, lethality, magic pen) across `data/daemon_slayer/16.14.1/items.json` vs the DS item registries, Arena/ARAM mirrors included. PREMISE-CHECKED before dispatch: R152 already closed the lethality catalog (31 exact-match, 0 absent) and R153 already closed FLAT magic pen with a permanent catalog guard, so the only unswept axis is PERCENT pen (`armor_pen_pct` / `magic_pen_pct`), which has no catalog-parity guard. | DONE | `d6d3fb3f` | Three read-only sweep agents on disjoint scopes (armor-pct catalog->registry, magic-pct catalog->registry, and the REVERSE registry->catalog direction) converged: **zero uncredited live ids on either axis.** 12 armor-pct ids swept (6 exact), 9 magic-pct ids (7 exact), 16 credited rows, 0 stale, 0 inert-credited. So the shippable artifact is the guard, not a data fix. **THE THREE DIVERGENCES ARE PINNED AS FACTS, NOT FIXED.** `223036` and `226694` state 40 percent in the Arena feed while the registry credits their SR twins' 35 - the SAME held doctrine call R152 recorded for 7 lethality rows and R153 pinned for `223020` / `224645`, now 12 rows across three sweeps, so it was escalated via PART C rather than decided by a sweep. Terminus `3302` / `223302` state a PER-STACK magnitude (10 SR, 8 Arena) against a full-stack credited 0.30, so plain equality would be wrong by construction: SR pinned to stated x cap, Arena pinned to the SR value it inherits (feed-accurate is 0.24). `6632` / `226632` state 3 percent from dead mythic-template text but are unmapped and unpurchasable - pinned WITH those flags so a re-list goes red. **A PREMISE WAS CORRECTED BY THE TEST FAILING.** The first draft asserted the flat and percent sweeps are disjoint by id; it went RED on `3175` Spellslinger's Shoes, which states BOTH "18 Magic Penetration" and "8% Magic Penetration" on consecutive rows (DS credits both axes correctly). The sweeps are disjoint by MAGNITUDE, not by id - now pinned, since a second such item is exactly the shape a single-axis sweep misses. Ordering + multiplicative composition deliberately NOT re-asserted (`test_engine_math_correctness_pipeline_c.py` already pins them; duplicating would catch nothing). Verifier CONFIRM 8/8 with live-object defect injection (baseline 0 failures; `3135` pen -> 0.0 gives 2; `3036` -> 0.99 gives 1; restored 0) and caught one wrong docstring path, fixed pre-commit. DS 9190 passed / 1 skipped / 3865 subtests; guard 17 / 28 subtests; ruff clean; 0 non-ASCII; Share `--check` in sync 1.237.0 / 497 files. No bump, no DS bounce, no RC restart, no UI surface. |
 
+| R161 | ds-arena-stat-line-doctrine | Directive: resolve the Arena mirror stat-line question that R152, R153 and R160 each measured and deferred - 12 Arena mirror ids state a penetration magnitude in DDragon 16.14.1 that differs from the SR twin the registry credits. DIRECTOR ADJUDICATED **doctrine B**: when a mirror states its OWN explicit stat line, the Arena feed value WINS and mirrors no longer inherit SR base stat magnitudes; inheritance of passive COEFFICIENTS where Meraki has no mirror entry is UNCHANGED. ENGINE-IMPACT BUMP 1.237.0 -> 1.238.0. | DONE | `<this commit>` | **THIS WAS NEVER A DATA BUG, WHICH IS EXACTLY WHY THREE SWEEPS COULD NOT CLOSE IT.** Each of R152, R153 and R160 correctly reported the drift and correctly declined to fix it, because the inheritance was deliberate doctrine carried by guard tests - and a guard asserting an inheritance the feed contradicts protects the defect rather than the invariant. The 12 re-credited rows: lethality `223142` 18 -> 22, `223814` 15 -> 14, `224004` 15 -> 21, `226676` 10 -> 12, `226699` 10 -> 20, `226701` 18 -> 15, `226691` 18 -> 22 (unbuyable on every map, inert, re-credited for consistency); flat magic pen `223020` 12 -> 20 and `224645` 15 -> 10; percent armor pen `223036` and `226694` both 0.35 -> 0.40; and Terminus `223302` 0.30 -> 0.24 on BOTH pen axes, the Arena feed stating 8 percent per stack against the SR 10 at the same cap of 3. **HIGHEST LIVE IMPACT IS THE BOOT, NOT THE LETHALITY LIST:** `223020` is the Arena mage DEFAULT boot, so it lands in essentially every Arena AP build, and at 12 it was under-crediting magic damage by roughly 5.7-6.9 percent through `effective_target_mr`. **ONE DIRECTIVE PREMISE WAS REFUTED IN VERIFICATION AND IS FENCED SO IT DOES NOT RETURN:** `226693` Prowler's Claw was listed as a divergent row, but the Arena feed and SR `6693` BOTH state 22 lethality - an exact match, never a divergence, and its guard test was correctly NOT inverted. Doctrine A ("mirrors inherit everything from the SR twin") is dead; doctrine B is also the rule the registry already followed at `226695` Arena Serpent's Fang, which has always credited its own feed value of 19 against the SR `6695` 15. Docs half of the slice: the R152 OPEN block in this file is rewritten as RESOLVED, the R152 don't-redo paragraph carries the RC-B closure plus the `226693` fence, and `ROADMAP.md` RM-34 standing fences carries the one-line doctrine. Engine data + guard-test inversion shipped by parallel agents on disjoint files. |
+
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
 - DS Phase-D default-ON flag flips (apply_passive_damage, non-every-AA on_hit, per-stack assumed_stacks) - need real-game re-ranking validation.
@@ -256,26 +258,39 @@ RC-A (stat entirely absent, 5 ids) and RC-B (Arena magnitude drift, 7 ids). Only
 data bug. Shipping one agent's top pick would have left the other four RC-A ids uncredited
 and, worse, invited a later slice to "fix" RC-B by weakening a guard.
 
-**OPEN - RC-B ARENA LETHALITY MAGNITUDE DRIFT (doctrine call, NOT a data bug, needs a
-director decision before any code).** Seven Arena ids state a lethality in DDragon that
-differs from the SR parent DS inherits: `223142` Youmuu's 22 vs 18, `223814` Edge of Night
-14 vs 15, `224004` Spectral Cutlass 21 vs 15, `226676` The Collector 12 vs 10, `226699`
-Voltaic 20 vs 10, `226701` Opportunity 15 vs 18, `226691` Duskblade 22 vs 18 (all-maps-false,
-inert). The same defect class covers `223020` Arena Sorcerer's Shoes (20 vs 12 flat magic
-pen - the Arena mage DEFAULT boot, so it lands in essentially every Arena AP build; measured
-5.7-6.9 percent magic damage under-credit through `effective_target_mr`), `224645` Arena
-Shadowflame (10 vs 15, over-credit), and `223302` Arena Terminus (8 percent per stack x3 = 24
-vs the SR-inherited 30, over-credit on BOTH the armor-pen and magic-pen axes). ROOT CAUSE:
-Meraki carries no 22xxxx/44xxxx mirror ids at all, so the Arena mirrors were seeded
-"same as SR" and DDragon was never re-read per-mirror. THE COLLISION: that inheritance is
-deliberate doctrine with guard tests (`test_arena_prowlers_lethality_same_as_sr`,
-`test_arena_serylda_armor_pen_same_as_sr`, and `test_terminus_juxtaposition_r67.py:118`
-which STRUCTURALLY derives the Arena value from the SR Meraki entry and asserts it on both
-ids - that guard is the mechanism locking the wrong magnitude in place, and it reads the
-pinned 16.13.1 Meraki file, not 16.14.1). Correcting these means deciding whether the
-doctrine is "mirrors inherit passive COEFFICIENTS where Meraki has no mirror entry" (the
-case it was written for) or "mirrors inherit everything including base stat lines DDragon
-states explicitly and differently per map". That is a director/operator call.
+**RESOLVED R161 - RC-B ARENA STAT-LINE DRIFT, DECIDED AS DOCTRINE B (director call, shipped
+with ENGINE 1.237.0 -> 1.238.0).** THE DECISION: when a DDragon Arena mirror states its OWN
+explicit stat line and that line differs from its Summoner's Rift twin, THE ARENA FEED VALUE
+WINS. Arena mirrors no longer inherit SR base stat magnitudes. Inheritance of passive
+COEFFICIENTS where Meraki has no mirror entry is UNCHANGED - that is the case the rule was
+written for, and only explicitly-stated base stat lines flip. The rejected alternative,
+doctrine A ("mirrors inherit everything from the SR twin"), is DEAD: do not present it as
+the standing rule and do not re-file the question as open.
+
+TWELVE ROWS ARE RE-CREDITED FROM THEIR OWN FEED ENTRY. Lethality: `223142` Youmuu's 18 -> 22,
+`223814` Edge of Night 15 -> 14, `224004` Spectral Cutlass 15 -> 21, `226676` The Collector
+10 -> 12, `226699` Voltaic Cyclosword 10 -> 20, `226701` Opportunity 18 -> 15, `226691`
+Duskblade 18 -> 22 (unbuyable on every map and therefore inert, re-credited for consistency
+rather than for effect). Flat magic pen: `223020` Sorcerer's Shoes 12 -> 20, `224645`
+Shadowflame 15 -> 10. Percent armor pen: `223036` Lord Dominik's 0.35 -> 0.40, `226694`
+Serylda's 0.35 -> 0.40. And `223302` Terminus 0.30 -> 0.24 on BOTH pen axes, because the
+Arena feed states 8 percent per stack against the SR 10 at the same cap of 3.
+
+HIGHEST LIVE IMPACT IS THE BOOT, not the lethality list. `223020` is the Arena mage DEFAULT
+boot, so it lands in essentially every Arena AP build, and at 12 instead of 20 it was
+under-crediting magic damage by roughly 5.7-6.9 percent through `effective_target_mr`.
+
+ROOT CAUSE was never in dispute: Meraki carries no 22xxxx/44xxxx mirror ids at all, so the
+Arena mirrors were seeded "same as SR" and DDragon was never re-read per-mirror. What kept
+this open across R152, R153 and R160 is that the inheritance had guard tests behind it
+(`test_arena_prowlers_lethality_same_as_sr`, `test_arena_serylda_armor_pen_same_as_sr`, and
+`test_terminus_juxtaposition_r67.py:118`, which STRUCTURALLY derives the Arena value from
+the SR Meraki entry and asserts it on both ids off the pinned 16.13.1 Meraki file, not
+16.14.1). A guard asserting an inheritance the feed contradicts protects the defect instead
+of the invariant - which is why three sweeps could correctly REPORT the drift and none of
+them could decide it. Doctrine B is also not novel to the registry, it is now consistent
+with it: `226695` Arena Serpent's Fang has always credited its own feed value of 19 against
+the SR `6695` 15.
 
 **OPEN - smaller tails.** `1111` Jarvan I's carries 12 flat magic pen and has NO
 `ITEM_EFFECTS` entry at all, though DS does register its 10 AH (`_item_ability_haste.py:50`)
@@ -289,4 +304,10 @@ Don't-redo: RC-A is CLOSED (31 exact-match, 0 absent). Penetration has no generi
 do not re-search for one and do not re-derive magnitudes from `items_meraki.json`. `226695`
 Arena Serpent's Fang is 19 where SR `6695` is 15 and that divergence is REAL in the feed -
 do not normalize them. `6632`/`226632` Divine Sunderer 3 percent armor pen is uncredited but
-INERT (all maps false, unbuyable everywhere) - not a gap.
+INERT (all maps false, unbuyable everywhere) - not a gap. RC-B is CLOSED under doctrine B
+(R161): an Arena mirror's own explicit stat line WINS over the SR twin's, so do not re-open
+the inheritance question and do not re-pitch doctrine A. `226693` Prowler's Claw is NOT a
+divergence and never was - the Arena feed and SR `6693` BOTH state 22 lethality, an exact
+match. It was named as a divergent row in the R161 directive and REFUTED during
+verification, so its guard test was correctly left un-inverted; do not "correct" it in
+either direction.
