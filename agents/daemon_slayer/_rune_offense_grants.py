@@ -1,13 +1,22 @@
-"""Per-rune adaptive OFFENSIVE stat-grant registry, keyed by rune id.
+"""Per-rune OFFENSIVE stat-grant registry, keyed by rune id.
 
 The OFFENSE-side mirror of the R132 ``_rune_resist_grants`` lane. Where that
 registry credits a rune-granted bonus armor / magic resist into the EHP
-DENOMINATOR, this one credits a rune-granted adaptive bonus ATTACK DAMAGE /
-ABILITY POWER into the DPS stat block - the axis every DS offensive scorer
-already reads from items and from nothing else.
+DENOMINATOR, this one credits a rune-granted bonus ATTACK DAMAGE / ABILITY
+POWER / ATTACK SPEED into the DPS stat block - the axes every DS offensive
+scorer already reads from items and from nothing else.
 
-Three runes are seeded: the two Sorcery adaptive stat grants (Gathering Storm
-8236, Absolute Focus 8233) and the Precision keystone Conqueror 8010.
+Four runes are seeded: the two Sorcery adaptive stat grants (Gathering Storm
+8236, Absolute Focus 8233), the Precision keystone Conqueror 8010, and the
+Precision attack-speed grant Legend: Alacrity 9104.
+
+THREE COLUMNS, NOT TWO (R155). Every entry resolves an ``(ad, ap,
+attack_speed_fraction)`` triple. The first two are ADAPTIVE - exactly one of
+them pays out, chosen from the resolved build - and the third is NOT. Attack
+speed has no adaptive sides: Legend: Alacrity grants the identical bonus to an
+AD build and an AP build, so the third column BYPASSES the ``prefer_ad``
+branch and accumulates on every entry. Folding it through the adaptive branch
+would silently delete the grant for whichever side lost the comparison.
 
 WHAT WAS MISSING. ``rune_procs.py`` DOES register both Sorcery adaptive stat
 grants - Absolute Focus 8233 (``rune_procs.py:743``) and Gathering Storm 8236
@@ -41,6 +50,41 @@ text otherwise unaltered):
     per stack. Stacks up to 12 times. Ranged champions gain only 1 stack per
     basic attack.<br><br>When fully stacked, heal for 8% of the damage you deal
     to champions (5% for ranged champions)."
+  * 9104 Legend: Alacrity: "Gain 3% attack speed plus an additional 1.5% for
+    every <i>Legend</i> stack (<statGood>max 10 stacks</statGood>).<br><br>Earn
+    progress toward <i>Legend</i> stacks for every champion takedown, epic
+    monster takedown, large monster kill, and minion kill."
+
+LEGEND: ALACRITY IS A FRACTION, AND THE FOLD IS WHERE IT GOES WRONG. The value
+this entry returns is a BONUS-AS FRACTION (0.03 at zero stacks, 0.18 at the
+feed's 10-stack cap), but ``stats["as"]`` in the DPS pipeline is FINAL attacks
+per second - ``engine.py:196`` resolves it as ``base_as * (1 + bonus_pct)``.
+League folds bonus attack speed onto the INNATE base AS, so the consumer MUST
+scale by ``champ["stats"]["attackspeed"]`` before adding. Adding the raw
+fraction to the final AS field over-credits by ``1 / base_as`` - the identical
+unit bug R42 fixed for Yun Tal's ``cond_as`` and R7 for ``passive_as``, whose
+folds this one is written to mirror exactly.
+
+ATTACK-SPEED-LOCK CHAMPIONS GET ZERO, AND THAT IS DELIBERATE. ``engine.py:439``
+zeroes ``item_totals["as_pct"]`` for any champion carrying an
+``_passive_as_lock_overrides.as_lock_entry`` with ``locks_as`` set (Jhin's
+Whisper: his attack speed cannot increase, and would-be bonus AS is converted
+into bonus AD instead). The rune AS fold in ``dps.py`` runs DOWNSTREAM of that
+zeroing, so the consumer re-checks the lock and grants nothing. The
+``ad_per_bonus_as`` conversion is NOT applied to the rune: that coefficient was
+authored against ITEM attack speed, and routing a rune through it would be
+inventing a magnitude the override table was never built against. Conservative
+by construction and recorded here rather than guessed.
+
+LEGEND: ALACRITY'S STACK COUNT IS A KNOB, NOT A HARDCODED 10 - the same
+doctrine as ``_ASSUMED_CONQUEROR_STACKS`` below, for the same reason. The feed
+caps at 10 ("max 10 stacks"), and the accrual is a takedown / large-monster /
+minion-kill counter that no input reaching this lane can observe. So the count
+is ``_ASSUMED_LEGEND_STACKS`` (default 10.0, the feed's cap), overridable per
+call via ``legend_stacks`` and clamped to 0..10. Max-stacks is the pessimistic
+(safe) reading on a THREAT lane and the ANTI-conservative one here, where it
+flatters our own build against every item ranked under it - so it must stay a
+stated, overridable assumption rather than a baked-in constant.
 
 GATHERING STORM IS A STEP FUNCTION, NOT A RAMP - this is the load-bearing
 modelling decision and it is a deliberate DIVERGENCE from the pre-existing
@@ -148,6 +192,27 @@ seeded ALLOWLIST like its R132 sibling, and the rest of the Sorcery + Domination
     positional signal.
   * 8210 Transcendence, 8106 Ultimate Hunter grant Ability Haste only. Ability
     Haste as a DS axis was MEASURED INERT and is settled - not re-litigated here.
+  * 9105 Legend: Haste ("Gain 1.5 basic ability haste for every Legend stack
+    (max 10 stacks)") is 9104's slot-mate and grants ABILITY HASTE only, so it
+    falls under the same settled measured-inert finding. EXCLUDED permanently,
+    not pending: crediting it would be scoring an axis this engine has proven
+    moves nothing.
+  * 9103 Legend: Bloodline ("Gain 0.45% Life Steal for every Legend stack (max
+    15 stacks). At maximum Legend stacks, gain 85 max health") is the third
+    Legend slot-mate. Both of its halves are SUSTAIN / EFFECTIVE-HEALTH - life
+    steal and max health - so it belongs to the survivability lane that already
+    prices heal / shield / DR, not to this DPS-numerator registry. Note its cap
+    is 15 stacks, not 10: ``_LEGEND_MAX_STACKS`` here is Alacrity's own cap and
+    must not be reused for Bloodline if that lane ever credits it.
+  * 8316 Jack Of All Trades ("For each different stat gained from items, gain
+    one Jack stack. Each stack grants you 1 Ability Haste. Gain 10 or 25 bonus
+    Adaptive Force at 5 and 10 stacks, respectively") IS a real, currently
+    uncredited Adaptive Force grant with an exact magnitude - a MEASURED FUTURE,
+    recorded here rather than overlooked. It is excluded because its stack count
+    is a census of DISTINCT STAT TYPES across the resolved build, and no such
+    per-build stat-type decomposition exists in this engine today: it is a
+    schema lift, not a registry entry. Its ability-haste half is inert regardless
+    (see 9105 above). Do not credit it by guessing a stack count.
   * 8226 Manaflow Band grants maximum MANA ("permanently increases your maximum
     mana by 25, up to 250 mana"), which is the ``_item_mana_health`` axis, not an
     offensive stat.
@@ -168,8 +233,8 @@ seeded ALLOWLIST like its R132 sibling, and the rest of the Sorcery + Domination
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: the ``apply_rune_offense_grants`` seam on
 ``compute_dps`` / ``compute_hybrid`` / ``rank_items_by_hybrid`` defaults False;
-with it OFF both grants are 0.0 and every DPS field is unchanged, even when a
-full rune page is supplied via ``rune_ids``. The live default-ON flip is
+with it OFF all three grants are 0.0 and every DPS field is unchanged, even when
+a full rune page is supplied via ``rune_ids``. The live default-ON flip is
 operator-gated, mirroring ``apply_rune_resist_grants``.
 
 Keyed by string rune_id to match the engine's item-id convention (strings
@@ -237,6 +302,24 @@ _CONQUEROR_MAX_STACKS: float = 12.0
 # for the fully-committed teamfight this registry models, but stays a knob
 # because max-stacks is conservative on a threat lane and ANTI-conservative here.
 _ASSUMED_CONQUEROR_STACKS: float = 12.0
+
+# Legend: Alacrity 9104, verbatim: "Gain 3% attack speed plus an additional 1.5%
+# for every Legend stack (max 10 stacks)." Units are a BONUS-AS FRACTION, never
+# a final attacks/sec value - see the module docstring's fold note.
+_LEGEND_ALACRITY_BASE_AS: float = 0.03
+_LEGEND_ALACRITY_AS_PER_STACK: float = 0.015
+
+# The feed's hard cap for the ALACRITY stack counter, verbatim: "max 10 stacks".
+# Used to CLAMP a caller-supplied count, never as the count itself. NOT shared
+# with Legend: Bloodline, whose own feed text caps at 15.
+_LEGEND_MAX_STACKS: float = 10.0
+
+# The modeled Legend stack count, EXPLICIT and overridable per call via
+# ``legend_stacks``. Defaults to the feed's cap for the completed-build fight
+# this registry models, but stays a knob for the same reason
+# _ASSUMED_CONQUEROR_STACKS does: max-stacks is conservative on a threat lane
+# and ANTI-conservative on our own build.
+_ASSUMED_LEGEND_STACKS: float = 10.0
 
 
 def _clamp_level(level: float) -> float:
@@ -352,14 +435,58 @@ def conqueror_grant(
     return (_ADAPTIVE_FORCE_AD_PER_AF * adaptive_force, adaptive_force)
 
 
+def legend_alacrity_grant(stacks: Optional[float] = None) -> float:
+    """Return the Legend: Alacrity bonus-ATTACK-SPEED FRACTION at ``stacks``.
+
+    Verbatim longDesc: "Gain 3% attack speed plus an additional 1.5% for every
+    Legend stack (max 10 stacks). Earn progress toward Legend stacks for every
+    champion takedown, epic monster takedown, large monster kill, and minion
+    kill."
+
+    So 0.03 at zero stacks, 0.18 at the feed's 10-stack cap, linear between.
+    Nothing here is interpolated or tuned: both coefficients and the cap are the
+    feed's own numbers.
+
+    UNITS: the return is a bonus-AS FRACTION. The consumer must fold it as
+    ``innate_base_as * fraction`` onto the FINAL attacks/sec field, not add it
+    raw - see the module docstring. This function has no unit ambiguity to
+    resolve on its own, so the contract is stated at both ends.
+
+    ``stacks`` defaults to ``_ASSUMED_LEGEND_STACKS`` and is CLAMPED to the
+    feed's 0..10 range. It is a knob rather than a constant because the accrual
+    is a takedown / large-monster / minion-kill counter that no input reaching
+    this lane observes, and because a max-stack assumption flatters our own
+    build on this side of the fight. A caller holding a real Legend count
+    supplies it.
+
+    STATED LIMITATION - THE ACCRUAL RATE IS OUT OF SCOPE: the feed enumerates
+    four progress sources but states no per-source progress value, so no
+    time-to-max model is derivable from it. That is why the count is an
+    assumption with a knob and not a computed quantity.
+    """
+    count = _ASSUMED_LEGEND_STACKS if stacks is None else stacks
+    try:
+        count = float(count)
+    except (TypeError, ValueError):
+        count = _ASSUMED_LEGEND_STACKS
+    count = max(0.0, min(_LEGEND_MAX_STACKS, count))
+    return _LEGEND_ALACRITY_BASE_AS + count * _LEGEND_ALACRITY_AS_PER_STACK
+
+
 @dataclass(frozen=True)
 class RuneOffenseEntry:
-    """One rune's adaptive offensive stat grant.
+    """One rune's offensive stat grant.
 
-    ``grant`` resolves the ``(ad, ap)`` PAIR the rune would give on each side; the
-    caller then picks ONE side by the adaptive rule (AD on ties). Holding both
-    columns rather than a pre-resolved scalar is what lets the adaptive decision
-    be made from the RESOLVED BUILD instead of being baked into the registry.
+    ``grant`` resolves the ``(ad, ap, attack_speed_fraction)`` TRIPLE the rune
+    would give. The first two columns are ADAPTIVE - the caller picks ONE of
+    them by the adaptive rule (AD on ties). Holding both rather than a
+    pre-resolved scalar is what lets the adaptive decision be made from the
+    RESOLVED BUILD instead of being baked into the registry.
+
+    The THIRD column is NOT adaptive and is never routed through that choice:
+    attack speed has no sides, so it accumulates on every entry. An entry that
+    grants no attack speed returns 0.0 there, and vice versa; nothing in the
+    registry pays out on both an adaptive column and the AS column today.
 
     ``family`` mirrors the R132 lane's duplicate guard: a family is credited at
     most once, so a duplicated or aliased id cannot double-credit. Runes have no
@@ -380,15 +507,17 @@ class RuneOffenseEntry:
         game_minute: float,
         caster_hp_pct: float,
         conqueror_stacks: Optional[float],
-    ) -> tuple[float, float]:
+        legend_stacks: Optional[float],
+    ) -> tuple[float, float, float]:
         fn = self._grant
         if fn is None:  # pragma: no cover - every seeded entry supplies one
-            return (0.0, 0.0)
+            return (0.0, 0.0, 0.0)
         return fn(
             level=level,
             game_minute=game_minute,
             caster_hp_pct=caster_hp_pct,
             conqueror_stacks=conqueror_stacks,
+            legend_stacks=legend_stacks,
         )
 
 
@@ -409,8 +538,9 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             "Gathering Storm: adaptive step grant at each 10-minute mark, "
             "5/14/29/48/72/101 AD or 8/24/48/80/120/168 AP, clamped at 60 min"
         ),
-        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks: (
-            gathering_storm_step(game_minute)
+        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks,
+        legend_stacks: (
+            gathering_storm_step(game_minute) + (0.0,)
         ),
     ),
     # 8233 Absolute Focus (Sorcery, slot 3) - verbatim: "While above 70% health,
@@ -428,8 +558,9 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             "Absolute Focus: adaptive 1.8-18 AD or 3-30 AP by level, "
             "while above 70% caster health"
         ),
-        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks: (
-            absolute_focus_grant(level, caster_hp_pct)
+        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks,
+        legend_stacks: (
+            absolute_focus_grant(level, caster_hp_pct) + (0.0,)
         ),
     ),
     # 8010 Conqueror (Precision keystone, slot 0) - verbatim: "Basic attacks or
@@ -470,8 +601,53 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             "assumed 12-stack count, converted to 21.6-48.0 AP or "
             "12.96-28.8 AD; the fully-stacked heal is sustain and is excluded"
         ),
-        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks: (
-            conqueror_grant(level, conqueror_stacks)
+        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks,
+        legend_stacks: (
+            conqueror_grant(level, conqueror_stacks) + (0.0,)
+        ),
+    ),
+    # 9104 Legend: Alacrity (Precision, slot 2) - verbatim: "Gain 3% attack speed
+    # plus an additional 1.5% for every Legend stack (max 10 stacks). Earn
+    # progress toward Legend stacks for every champion takedown, epic monster
+    # takedown, large monster kill, and minion kill."
+    #
+    # THE ONLY NON-ADAPTIVE ENTRY, and the reason this registry grew a third
+    # column. Its two adaptive columns are 0.0 and its whole payout is the AS
+    # fraction, which the caller accumulates OUTSIDE the prefer_ad branch. An AD
+    # build and an AP build receive the identical grant, which is what the feed
+    # describes and what the adaptive branch would have destroyed.
+    #
+    # UNITS: a bonus-AS FRACTION (0.03 at 0 stacks, 0.18 at the cap), NOT final
+    # attacks/sec. The consumer folds it as ``innate_base_as * fraction`` with
+    # the 2.5 League hard-cap re-clamp, mirroring the R42 cond_as and R7
+    # passive_as folds. Adding the raw fraction over-credits by 1 / base_as.
+    #
+    # STACK MODELLING: a KNOB (_ASSUMED_LEGEND_STACKS, default 10 = the feed's
+    # cap, per-call override legend_stacks), NOT a hardcoded 10 - identical
+    # doctrine to Conqueror's above, including the inverted conservatism by side
+    # of the fight. The four stated progress sources carry no per-source value in
+    # the feed, so no accrual model is derivable and the count stays an
+    # assumption.
+    #
+    # AS-LOCK CHAMPIONS: the consumer gates this grant on
+    # _passive_as_lock_overrides.as_lock_entry (engine.py:439) and grants ZERO to
+    # a locked champion (Jhin). Deliberately conservative - the override table's
+    # ad_per_bonus_as conversion is authored against ITEM attack speed and is not
+    # applied to a rune. Stated, not guessed.
+    "9104": RuneOffenseEntry(
+        name="Legend: Alacrity",
+        tree="Precision",
+        gate="legend_stacks",
+        family="legend_alacrity",
+        note=(
+            "Legend: Alacrity: 3% attack speed plus 1.5% per Legend stack at "
+            "the assumed 10-stack cap = 0.18 bonus-AS fraction; NOT adaptive, "
+            "so AD and AP builds receive it identically; zero for an "
+            "attack-speed-locked champion"
+        ),
+        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks,
+        legend_stacks: (
+            (0.0, 0.0, legend_alacrity_grant(legend_stacks))
         ),
     ),
 }
@@ -486,8 +662,9 @@ def rune_offense_grants(
     game_minute: Optional[float] = None,
     caster_hp_pct: float = 1.0,
     conqueror_stacks: Optional[float] = None,
-) -> tuple[float, float]:
-    """Return the ``(bonus_ad, bonus_ap)`` rune-side adaptive offensive grant.
+    legend_stacks: Optional[float] = None,
+) -> tuple[float, float, float]:
+    """Return the ``(bonus_ad, bonus_ap, bonus_as_fraction)`` rune-side grant.
 
     ``bonus_ad`` / ``ap`` are the champion's RESOLVED build offensive stats - the
     same pair ``compute_dps`` derives before it builds its ``CallContext``. They
@@ -501,18 +678,25 @@ def rune_offense_grants(
     ``_ASSUMED_CONQUEROR_STACKS`` and scales Conqueror; it is a knob because
     ``rune_procs.py:212`` puts the live stack count on the caller and because a
     max-stack assumption flatters our own build on this side of the fight.
+    ``legend_stacks`` is the same shape for Legend: Alacrity, defaulting to
+    ``_ASSUMED_LEGEND_STACKS`` and clamped to the feed's 0..10 range.
 
-    Per entry: the ``(ad, ap)`` pair is resolved, then ONE side is taken by the
-    standard adaptive rule (AD when ``bonus_ad >= ap``, matching
-    ``rune_procs._adaptive_coeff``), then accumulated onto the matching return
-    slot. A ``family`` tag is credited at most once, so a duplicated or aliased id
-    cannot double-credit; different families sum.
+    Per entry: the ``(ad, ap, as_frac)`` triple is resolved. ONE of the first two
+    is taken by the standard adaptive rule (AD when ``bonus_ad >= ap``, matching
+    ``rune_procs._adaptive_coeff``) and accumulated onto the matching return
+    slot. The THIRD column bypasses that choice entirely and always accumulates:
+    attack speed is not adaptive, so routing it through ``prefer_ad`` would drop
+    the grant for whichever side lost. A ``family`` tag is credited at most once,
+    so a duplicated or aliased id cannot double-credit on ANY column; different
+    families sum.
 
     Runes not in the registry contribute 0 - the registry is a seeded allowlist,
     so every proc-damage keystone, every move-speed rune and every ability-haste
-    rune returns 0.0 by construction. The returned values are added to
-    ``bonus_ad`` and ``ap`` inside ``compute_dps``. The default-OFF gating lives
-    in ``compute_dps`` (this function is only called when
+    rune returns 0.0 by construction. The AD / AP values are added to
+    ``bonus_ad`` and ``ap`` inside ``compute_dps``; the AS FRACTION is folded
+    there as ``innate_base_as * fraction`` onto the rotation AS (never added
+    raw), gated on the champion not being attack-speed-locked. The default-OFF
+    gating lives in ``compute_dps`` (this function is only called when
     ``apply_rune_offense_grants`` is True).
     """
     minute = _ASSUMED_GAME_MINUTE if game_minute is None else float(game_minute)
@@ -528,6 +712,7 @@ def rune_offense_grants(
 
     grant_ad = 0.0
     grant_ap = 0.0
+    grant_as = 0.0
     seen_families: set[str] = set()
     for rid in rune_ids:
         entry = _RUNE_OFFENSE_GRANTS.get(str(rid))
@@ -537,14 +722,18 @@ def rune_offense_grants(
             continue
         if entry.family:
             seen_families.add(entry.family)
-        side_ad, side_ap = entry.grant(
+        side_ad, side_ap, side_as = entry.grant(
             level=level,
             game_minute=minute,
             caster_hp_pct=caster_hp_pct,
             conqueror_stacks=conqueror_stacks,
+            legend_stacks=legend_stacks,
         )
         if prefer_ad:
             grant_ad += side_ad
         else:
             grant_ap += side_ap
-    return (grant_ad, grant_ap)
+        # NOT inside the prefer_ad branch: attack speed is not adaptive, so an
+        # AD build and an AP build must both receive it in full.
+        grant_as += side_as
+    return (grant_ad, grant_ap, grant_as)
