@@ -544,6 +544,13 @@ def _doc_anchor_rules() -> tuple[tuple[str, "re.Pattern[str]", str], ...]:
       * the copy-forward authoring patches of the hand-curated files
       * loopback addresses (``127.0.0.1`` is semver-shaped)
       * changelog history entries, incl. the README's "Changelog (recent)" list
+
+    That last exclusion is correct but leaves a hole this tool cannot see: it
+    means nothing here fails when a shipped ENGINE_VERSION never gets a release
+    entry at all (measured twice - ORCHESTRATION_PLAN row R139, then again at
+    1.238.0 with the newest entry still at 1.236.0). Freshness of the release
+    history itself is guarded from the test suite instead, by
+    ``tests/test_ds_share_changelog_freshness.py``.
     """
     version = _engine_version()
     patch = _PATCH
