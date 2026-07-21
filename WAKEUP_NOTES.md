@@ -4,6 +4,66 @@
 
 ---
 
+# 2026-07-21l - R161 ARENA STAT LINE DOCTRINE B (gemini headless loop, cycle 8) - ENGINE 1.237.0 -> 1.238.0
+
+LEDGER 1002. Commit `77a34890`. ENGINE-IMPACT BUMP. DS bounced, both build-order families
+regenerated, Share mirror re-synced. No RC restart needed (no route change).
+
+## The decision
+
+R152, R153 and R160 each surfaced the same question and each correctly refused to answer it: do
+Arena mirrors inherit their SR twin's coefficients, or does an explicitly different DDragon stat
+line win? The director answered **doctrine B - an explicit Arena stat line wins.** Arena mirrors no
+longer inherit SR BASE STAT magnitudes. Passive-COEFFICIENT inheritance where Meraki has no mirror
+entry is unchanged; only explicitly-stated base stat lines flip.
+
+Twelve rows re-credited from their own DDragon 16.14.1 feed entry: lethality `223142` 18->22,
+`223814` 15->14, `224004` 15->21, `226676` 10->12, `226699` 10->20, `226701` 18->15, `226691`
+18->22 (inert, maps={}); flat magic pen `223020` 12->20, `224645` 15->10; percent pen `223036`
+0.35->0.40, `226694` 0.35->0.40, `223302` Terminus 0.30->0.24 on both axes (8 percent per stack,
+cap 3). SR twins untouched.
+
+Highest live impact is the BOOT, not the lethality list: `223020` is the Arena mage default boot,
+in essentially every Arena AP build, under-crediting magic damage ~5.7-6.9 percent through
+`effective_target_mr`.
+
+## Two directive premises were refuted before any code landed
+
+1. The directive said to invert `test_arena_prowlers_lethality_same_as_sr`. `226693` Prowler's Claw
+   states 22 in the Arena feed and SR `6693` states 22 - an exact match, never a divergence.
+   Inverting it would have fabricated a failure. Kept; only its docstring reason changed.
+2. "Meraki carries no 22xxxx/44xxxx mirror ids at all" (repeated in ORCHESTRATION_PLAN since R152)
+   is FALSE - the pinned 16.13.1 snapshot carries 17. It just lacks `223302`, the only claim the
+   Terminus guard needed. Both corrections are now fenced in the plan's don't-redo.
+
+Doctrine B also was not novel: `226695` Arena Serpent's Fang has always credited its own 19 against
+SR `6695` 15, and R152 said "do not normalize them". The call generalizes an existing exception.
+
+## The bump was not the deliverable - the regen was
+
+A bump alone leaves every precomputed Arena build order computed under the REJECTED doctrine. Both
+families regenerated against the bounced 1.238.0 engine: **99 of 173 Arena build orders and 89 of
+173 Arena variants moved.** Drift-guard held exactly as predicted - SR and ARAM differ only in
+stamp fields (all 12 ids are map-30 only), so a non-stamp SR/ARAM diff would have meant a leak.
+`reference_build_order_regen_full_roster_and_nightly` earned its keep twice: the WRONG-TOOL trap
+(the `tools/` script is not what the stamp tests read) and the `--champions all` trap (omitting it
+collapses 173 champs to a 10-champ seed).
+
+## Incidental find - the flat table was ten engine versions stale
+
+`data/daemon_slayer/16.14.1/build_orders_sr.json` picked up a `6696` -> `6695` flip in 6 SR cells
+(Zed, Qiyana). Last written at ENGINE 1.228.0 (`1f13188b`); the nested table already carried `6695`
+at 1.237.0, so the two disagreed before this cycle. The live deterministic + laning coaches had
+been serving 1.228.0-era builds. Now current. Not caused by doctrine B.
+
+## Gates
+
+Verifier CONFIRM 8/8 on the merged tree. DS 9190 passed / 1 skipped / 3865 subtests. RC suite
+green. ruff clean. `ds_share_sync --check` green at 1.238.0. Three worktree agents on disjoint file
+sets (engine data / guard tests / docs), Claude sole merger, engine merged first and docs last.
+
+---
+
 # 2026-07-21k - R160 PERCENT-PENETRATION CATALOG PARITY (gemini headless loop, cycle 7) - ENGINE UNCHANGED 1.237.0
 
 LEDGER 1001. Commit `d6d3fb3f`. ENGINE-IMPACT NONE - no math change, no production `.py` touched,
@@ -123,106 +183,3 @@ stat rune will fail the guard by itself, so do NOT re-scan the feed for uncovere
 oversights. Crediting Lethal Tempo needs the attack-speed lane wired to its existing `rune_procs.py`
 damage term (double-count hazard); Triple Tonic needs a consumable-uptime anchor that does not
 exist. Neither is a free win.
-
----
-
-# 2026-07-21i - R158 RUNE-OFFENSE SATURATION GUARD (gemini headless loop, cycle 5) - ENGINE UNCHANGED 1.237.0
-
-LEDGER 999. Merge `b3085653` (slice `3deb619d`). ENGINE-IMPACT NONE - no math change, no behavior
-change, no `ENGINE_VERSION` bump, diff purely additive (77 lines, 0 deleted). No DS bounce, no RC
-restart: there is nothing to reload.
-
-## What shipped
-
-The directive asked for "raw AD/AP grants for Domination and Sorcery" and named five runes. All
-five were refuted against `data/meta_build/ddragon/16.14.1/runesReforged.json` before any code was
-written. Eyeball Collection `8138`, Zombie Ward and Ghost Poro `8120` are ABSENT from 16.14.1 -
-Domination slot 2 is Sixth Sense / Grisly Mementos / Deep Ward, slot 3 is Treasure Hunter /
-Relentless Hunter / Ultimate Hunter. `8126` is Cheap Shot (proc damage). `8234` is Celerity (move
-speed only); Absolute Focus is `8233` and shipped with `8236` in R145. Both cited PATHS were wrong
-too - the module is `agents/daemon_slayer/_rune_offense_grants.py`, not `core/`, and the feed is
-under `data/meta_build/ddragon/`, not `data/daemon_slayer/`.
-
-Sweeping all 25 runes across both trees came back SATURATED: 2 registered, 23 already adjudicated
-(proc damage / move speed / ability haste on the settled measured-inert axis / gold / trinket haste
-/ ward / vision / heal / mana / ult-amp), plus `8232` Waterwalking, which grants real Adaptive Force
-but is uptime-blocked on river occupancy with no anchor in this engine. Zero uncovered grants.
-
-So the artifact is a GUARD, not a grant. The saturation claim lived only in the module docstring's
-prose exclusions - which cannot fail CI when a patch adds a stat rune, and which is exactly how a
-directive came to spend a cycle chasing three runes deleted from the game. Added
-`_ADJUDICATED_NON_GRANTS` (23 ids -> the verbatim existing reasons) beside the 5-entry registry, and
-`agents/daemon_slayer/tests/test_rune_offense_saturation_r158.py` (7 tests / 52 subtests): every
-rune registered OR adjudicated with the offending id named on failure, sets disjoint, **every
-adjudicated id still EXISTS in the feed** (the check that catches this directive's own error class),
-ASCII reasons, and byte-identical credit between the full 25-id list and `[8236, 8233]` alone. TDD
-confirmed by a pre-mapping `ImportError`.
-
-## Gates
-
-Verifier 10/10 CONFIRM, re-running both suites itself: `git diff --numstat` `77 0` / 0 deleted
-lines, `ENGINE_VERSION` untouched, 0 non-ASCII in 53956 + 9156 bytes, 23/5 disjoint by real import,
-no `Share.zip` / `_scratch/` / mass-deletion in the commit. DS 9169 passed / 1 skipped / 3769
-subtests post-merge. ruff clean. Hygiene 13/13. Share `--check` in sync at 1.237.0 / 496 files -
-mirror + `MANIFEST.md` restamp landed in the SAME commit via the precommit hook's own sync run.
-
-## Carry-forward
-
-Precision, Resolve and Inspiration are still prose-only. Precision is the live risk: `9105` Legend:
-Haste and `9103` Legend: Bloodline sit unguarded beside the registered `8010` Conqueror and `9104`
-Legend: Alacrity - the same shape this cycle just closed for two trees. That is the obvious R159.
-
----
-
-# 2026-07-21h - R157 HEXCORE OFFLINE EXPLORER (gemini headless loop, cycle 4) - ENGINE UNCHANGED 1.237.0
-
-LEDGER 998. Pushed `fc8199c9..d2f87add` (`9403b8ca` html + `d2f87add` docs sync). ENGINE-IMPACT
-NONE - `docs/HEXCORE_offline.html` is a standalone offline artifact; no DS math, no served path,
-no Share mirror delta, no DS bounce, no RC restart.
-
-## What shipped
-
-The directive asked for the same unit R151 already executed, and its NOT-A-DUPLICATE line was
-wrong: it claimed R155/R156 shipped net-new `.py` files. They did not - R155 widened an existing
-`(ad, ap)` tuple to `(ad, ap, attack_speed_fraction)` inside `_rune_offense_grants.py` and R156
-appended a census function to that same existing file. Diffing R151's OWN merge point (`79c3deba`)
-instead of the directive's inherited `d584e02e` baseline, additions only, minus tests, minus
-`Share/`, returns exactly ONE path: `ops/loop/adjudicator.py`.
-
-The gap worth fixing was bigger and was not what the directive asked for: the whole `ops/loop/`
-subsystem - the autonomous loop that AUTHORS these directives - had zero representation in the
-explorer. Added node `o_headlessloop` plus dust leaves for `loop_controller.py`, `adjudicator.py`,
-`done_sentinel.py`, `claude_stub.py`.
-
-Stale anchors resynced at every site, not just the obvious one: `nodes: 141` -> 142 lives in FOUR
-places (HUD row, header lede, `sr-only` h2, `noscript` fallback) and `325 dust` -> 329 in FOUR
-(those three plus a machine-read comment). Also ENGINE 1.233.0 -> 1.237.0 and 9087 -> 9162 DS
-tests in both the HUD tooltip and the DAEMON_SLAYER.md node desc, LEDGER entry 989 -> 997,
-commits 3789 -> 3823.
-
-## Two lessons worth carrying
-
-**A verifier gate only checks the claims you thought to make.** The 11-claim verifier returned
-11/11 CONFIRM and even re-ran the DS suite itself rather than taking 9162 on faith - but it never
-knew about `tests/test_hexcore_offline_dust.py`, an 11-test pre-existing guard that pins a
-machine-readable `// DUST: N real extra source files` comment as the DECLARED count and
-cross-checks it three ways. The visible-text edit left that comment at 325 and the full RC suite
-failed 3/3. Green verifier is not a substitute for the suite.
-
-**The visual capture earned its cost on a docs-only change.** The browser render is what caught
-the header lede still reading 141 while the HUD beneath it read 142 - a mismatch invisible to the
-grep that had just "fixed" the count.
-
-## Gates
-
-DS 9162 passed / 1 skipped / 3717 subtests. RC 12545 passed / 23 skipped / 406 subtests (first
-run 3 failed / 12542 passed - exactly the hexcore guard - then re-run end to end after the fix
-rather than reporting a patched number). ruff clean. Hygiene 13/13. Verifier 11/11 CONFIRM.
-`node --check` exit 0 on both extracted inline script blocks. 0 non-ASCII bytes.
-
-## Don't-redo
-
-HEXCORE is CURRENT as of `9403b8ca`. Do NOT re-run a "net-new .py since `d584e02e`" sync - that
-baseline now yields zero real work and manufactures a duplicate of R151/R157. Diff from
-`9403b8ca` forward, and remember the count lives in five places including the machine-read
-`// DUST:` comment.
