@@ -119,6 +119,48 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-21c - R151 HEXCORE OFFLINE EXPLORER RE-SYNC (gemini headless loop, cycle 3) - NO ENGINE CHANGE
+
+**Tier-0/docs run.** LEDGER 990. Slice merge `79c3deba`. ENGINE-IMPACT NONE - no DS math
+path, no ENGINE bump, no Share churn, no restart.
+
+## What shipped
+
+`docs/HEXCORE_offline.html` re-synced against the repo. 3 missing dust leaves added
+(`dashboard/_lcu_inprocess.py` -> `m_dashserver`, `lcu/champ_select_shape.py` -> `m_lcupre`,
+`lcu/snapshot_shape.py` -> `m_lcupost`), dust 322 -> 325 at all four sites, ENGINE tooltips
+1.232.0 -> 1.233.0 / 9087 tests, LEDGER node desc entry 903 -> 989, repo-stats HUD
+re-anchored to `eb111c36` / 2026-07-21 / commits 3789. Guard test
+`tests/test_hexcore_offline_dust.py` `EXPECTED_NEW_BASENAMES` widened 26 -> 32.
+
+## The directive assumed a cold sync; the real gap was 3 files, not 32
+
+45 net-new `.py` adds since `d584e02e`, minus 13 `Share/src/agents/daemon_slayer/*.py`
+byte mirrors = 32 real files - and R138 had already landed 29 of them. Grounding this
+BEFORE dispatching turned a 32-file rewrite into a 3-entry append.
+
+## Both gates earned their keep
+
+The **verifier** caught that the slice agent finished both edits but never committed:
+branch had zero commits, `main...HEAD` empty, so a naive merge would have been a silent
+no-op reporting success. The **5-phase fixture audit** caught two number defects the
+verifier did not: the ENGINE tooltip took the COLLECTED DS count (9088) where the repo
+convention for that anchor is the PASSED count (9087, per `docs/DAEMON_SLAYER.md`) -
+which also called a skipped test green - and advancing the engine/ledger rows to
+2026-07-21 left the neighbouring repo-stats rows on a 2026-07-20 snapshot, so the HUD
+contradicted itself. Both fixed in-slice before push. Zero MUST-FIX.
+
+## Don't-redo
+
+HEXCORE dust set is CLOSED against `d584e02e..eb111c36`. `Share/src` mirrors stay
+EXCLUDED (byte-identical duplicates would double-render their parents' clusters). Do not
+"correct" `snapshot_shape.py` -> `m_lcupost`: the DUST parent convention is decorative
+round-robin, not semantic (`lcu_rune_writer.py`, a pre-game module, is parented
+`m_lcupost` too). The 8-10px type in `#hexcore-stats` is correct for a zoomable canvas
+doc; the v2.1 `--fs-xs` floor governs the dashboard, not this offline artifact.
+
+---
+
 # 2026-07-21b - R150 CONQUEROR 8010 OFFENSE GRANT (gemini headless loop, cycle 2) - ENGINE 1.233.0
 
 **Tier-2 engine run.** LEDGER 989. Pushed `774ed236..7dfa003b`. ENGINE 1.232.0 -> 1.233.0.
