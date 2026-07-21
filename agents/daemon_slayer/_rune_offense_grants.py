@@ -6,9 +6,10 @@ DENOMINATOR, this one credits a rune-granted bonus ATTACK DAMAGE / ABILITY
 POWER / ATTACK SPEED into the DPS stat block - the axes every DS offensive
 scorer already reads from items and from nothing else.
 
-Four runes are seeded: the two Sorcery adaptive stat grants (Gathering Storm
-8236, Absolute Focus 8233), the Precision keystone Conqueror 8010, and the
-Precision attack-speed grant Legend: Alacrity 9104.
+Five runes are seeded: the two Sorcery adaptive stat grants (Gathering Storm
+8236, Absolute Focus 8233), the Precision keystone Conqueror 8010, the
+Precision attack-speed grant Legend: Alacrity 9104, and the Inspiration
+census-driven adaptive grant Jack Of All Trades 8316.
 
 THREE COLUMNS, NOT TWO (R155). Every entry resolves an ``(ad, ap,
 attack_speed_fraction)`` triple. The first two are ADAPTIVE - exactly one of
@@ -54,6 +55,9 @@ text otherwise unaltered):
     every <i>Legend</i> stack (<statGood>max 10 stacks</statGood>).<br><br>Earn
     progress toward <i>Legend</i> stacks for every champion takedown, epic
     monster takedown, large monster kill, and minion kill."
+  * 8316 Jack Of All Trades: "For each different stat gained from items, gain
+    one Jack stack. Each stack grants you 1 Ability Haste.<br><br>Gain 10 or 25
+    bonus Adaptive Force at 5 and 10 stacks, respectively."
 
 LEGEND: ALACRITY IS A FRACTION, AND THE FOLD IS WHERE IT GOES WRONG. The value
 this entry returns is a BONUS-AS FRACTION (0.03 at zero stacks, 0.18 at the
@@ -160,6 +164,36 @@ ranged reduction would mean inventing a magnitude rather than deriving one, so i
 is left unmodeled and stated. A consumer that knows the real accrual should
 express it through the ``conqueror_stacks`` knob, which is what the knob is for.
 
+JACK OF ALL TRADES'S STACK COUNT IS NOT A KNOB - it is the only entry here whose
+count is COMPUTED, and computing it is the whole reason 8316 moved out of the
+exclusions block. The feed says "For each different stat gained from items, gain
+one Jack stack", so the census is over the engine's OWN canonical item-stat
+decomposition: ``stats.aggregate_item_stats`` maps every DDragon item stat key
+onto a ``{axis}_{flat|pct}`` slot, and ``jack_of_all_trades_stacks`` counts the
+DISTINCT AXES with a nonzero total. The ``_flat`` / ``_pct`` kind suffix is
+stripped before counting, so movement speed - which arrives through TWO DDragon
+keys (``FlatMovementSpeedMod`` + ``PercentMovementSpeedMod``) and lands in two
+slots - is one different stat and contributes one stack, which is what the feed
+describes. R145's ``conqueror_stacks`` / R155's ``legend_stacks`` are knobs
+because their accrual is an unobservable in-game counter; this one is a property
+of the build the caller already holds, so it is derived instead of assumed.
+
+THE CENSUS IS BLIND TO ABILITY HASTE, and that is a DATA limitation rather than
+a modelling choice: ``ITEM_STAT_KEY_MAP`` has no Ability Haste entry at all
+because DDragon item stat blocks do not carry one. So an AH-only item
+contributes NO stack in this model and the census is a floor, not an exact
+count. Recorded rather than guessed - inventing an AH column here would mean
+inventing the per-item magnitudes to fill it. The rune's own ability-haste half
+("Each stack grants you 1 Ability Haste") is uncredited for the separate and
+settled reason that Ability Haste as a DS axis was MEASURED INERT.
+
+STEP, NOT RAMP, AND THE TIERS ARE NOT SUMMED. "Gain 10 or 25 bonus Adaptive
+Force at 5 and 10 stacks, respectively" is two discrete tiers joined by "or":
+the 10-stack tier pays 25 TOTAL, replacing the 5-stack tier's 10 rather than
+adding to it. Below 5 stacks the rune has granted no Adaptive Force at all, and
+7 stacks pays exactly what 5 stacks pays. Reading it as a per-stack ramp, or
+summing the two rows to 35, are the two ways to get the magnitude wrong.
+
 ADAPTIVE SIDE RESOLUTION reuses the engine's existing rule rather than restating
 it: ``rune_procs._adaptive_coeff`` documents "AD wins ties (League's adaptive
 force defaults to AD when AD bonus >= AP bonus)". This module applies the same
@@ -204,15 +238,16 @@ seeded ALLOWLIST like its R132 sibling, and the rest of the Sorcery + Domination
     prices heal / shield / DR, not to this DPS-numerator registry. Note its cap
     is 15 stacks, not 10: ``_LEGEND_MAX_STACKS`` here is Alacrity's own cap and
     must not be reused for Bloodline if that lane ever credits it.
-  * 8316 Jack Of All Trades ("For each different stat gained from items, gain
-    one Jack stack. Each stack grants you 1 Ability Haste. Gain 10 or 25 bonus
-    Adaptive Force at 5 and 10 stacks, respectively") IS a real, currently
-    uncredited Adaptive Force grant with an exact magnitude - a MEASURED FUTURE,
-    recorded here rather than overlooked. It is excluded because its stack count
-    is a census of DISTINCT STAT TYPES across the resolved build, and no such
-    per-build stat-type decomposition exists in this engine today: it is a
-    schema lift, not a registry entry. Its ability-haste half is inert regardless
-    (see 9105 above). Do not credit it by guessing a stack count.
+  * 8316 Jack Of All Trades's ABILITY HASTE half ("Each stack grants you 1
+    Ability Haste") stays EXCLUDED under the same settled measured-inert
+    finding as 9105 above, while its ADAPTIVE FORCE half is CREDITED as of R156
+    - the two halves of the rune sit on different axes and only one of them
+    moves a DPS field. The R155 note recorded the Adaptive Force half as a
+    MEASURED FUTURE blocked on a per-build distinct-stat census; that census is
+    now built (``jack_of_all_trades_stacks`` over
+    ``stats.aggregate_item_stats``) and the entry is seeded, so this bullet is
+    kept as the record of what changed and why, not as a fence. The stack count
+    is still never guessed: it is derived from the resolved build.
   * 8226 Manaflow Band grants maximum MANA ("permanently increases your maximum
     mana by 25, up to 250 mana"), which is the ``_item_mana_health`` axis, not an
     offensive stat.
@@ -245,6 +280,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
+
+# The census substrate. ``stats`` is a leaf module (stdlib imports only), so
+# this cannot cycle back through the registry.
+from .stats import aggregate_item_stats
 
 # Operator-tunable game-clock reading for the modeled fight, EXPLICIT so no
 # caller silently inherits a lategame assumption. Adopted UNCHANGED from
@@ -320,6 +359,20 @@ _LEGEND_MAX_STACKS: float = 10.0
 # _ASSUMED_CONQUEROR_STACKS does: max-stacks is conservative on a threat lane
 # and ANTI-conservative on our own build.
 _ASSUMED_LEGEND_STACKS: float = 10.0
+
+# Jack Of All Trades 8316, verbatim: "For each different stat gained from items,
+# gain one Jack stack. Each stack grants you 1 Ability Haste. Gain 10 or 25
+# bonus Adaptive Force at 5 and 10 stacks, respectively." Units on the two tier
+# values are ADAPTIVE FORCE, so they convert through
+# _ADAPTIVE_FORCE_AD_PER_AF exactly as Conqueror's do. The tiers REPLACE one
+# another ("10 or 25"), they do not sum, and nothing is granted below the low
+# tier. 10 stacks is both the high tier and the model's cap: the feed states no
+# row above it and the census has no axis left to add.
+_JACK_AF_AT_LOW_TIER: float = 10.0
+_JACK_AF_AT_HIGH_TIER: float = 25.0
+_JACK_LOW_TIER_STACKS: float = 5.0
+_JACK_HIGH_TIER_STACKS: float = 10.0
+_JACK_MAX_STACKS: float = 10.0
 
 
 def _clamp_level(level: float) -> float:
@@ -473,6 +526,80 @@ def legend_alacrity_grant(stacks: Optional[float] = None) -> float:
     return _LEGEND_ALACRITY_BASE_AS + count * _LEGEND_ALACRITY_AS_PER_STACK
 
 
+def jack_of_all_trades_stacks(item_stat_blocks) -> float:
+    """Census the DISTINCT canonical stat AXES a resolved build supplies.
+
+    Verbatim longDesc: "For each different stat gained from items, gain one Jack
+    stack." The census is taken over the engine's own item-stat decomposition -
+    ``aggregate_item_stats`` maps each DDragon key onto a ``{axis}_{kind}`` slot
+    - by stripping the ``_flat`` / ``_pct`` kind suffix and counting the axes
+    with a nonzero total. An axis reached through BOTH a flat and a pct key
+    (movement speed is the live case) is ONE different stat and so contributes
+    ONE stack, which is the specific miscount this shape exists to avoid.
+
+    ``item_stat_blocks`` is the same list ``engine.py:318-320`` builds from a
+    resolved build: ``[record.get("stats", {}) for record in item_records]``.
+
+    STATED LIMITATION - ABILITY HASTE IS INVISIBLE HERE: ``ITEM_STAT_KEY_MAP``
+    carries no Ability Haste key because DDragon item stat blocks do not carry
+    one, so an AH-only item adds no stack and this count is a floor rather than
+    an exact census. Recorded, not guessed.
+
+    Clamped to ``0.._JACK_MAX_STACKS`` and fail-soft to 0.0 on junk input, so a
+    caller that cannot decompose its build gets no grant rather than a wrong one.
+    """
+    try:
+        blocks = [b for b in item_stat_blocks if isinstance(b, dict)]
+        totals = aggregate_item_stats(blocks)
+    except (TypeError, ValueError, AttributeError):
+        return 0.0
+    per_axis: dict[str, float] = {}
+    for slot, value in totals.items():
+        axis = slot.rsplit("_", 1)[0]
+        per_axis[axis] = per_axis.get(axis, 0.0) + abs(float(value))
+    count = float(sum(1 for total in per_axis.values() if total > 0.0))
+    return max(0.0, min(_JACK_MAX_STACKS, count))
+
+
+def jack_of_all_trades_grant(stacks) -> tuple[float, float]:
+    """Return the ``(ad, ap)`` Jack Of All Trades grant at ``stacks``.
+
+    Verbatim longDesc: "For each different stat gained from items, gain one Jack
+    stack. Each stack grants you 1 Ability Haste. Gain 10 or 25 bonus Adaptive
+    Force at 5 and 10 stacks, respectively."
+
+    A STEP FUNCTION WITH TWO TIERS, NOT A RAMP - the feed enumerates exactly two
+    magnitudes at exactly two stack counts, so 7 stacks pays what 5 stacks pays
+    and 4 stacks pays nothing. Reading "one Jack stack" per stat as a per-stack
+    Adaptive Force accrual is the misread: the stacks are the COUNTER, and only
+    the two stated thresholds pay.
+
+    THE TIERS ARE NOT CUMULATIVE. "10 or 25" is a disjunction, so reaching the
+    10-stack tier grants 25 Adaptive Force TOTAL - the high tier REPLACES the
+    low one. Summing the rows to 35 would over-credit the rune by 40%.
+
+    UNITS: the feed's numbers are ADAPTIVE FORCE, the same as Conqueror's and
+    unlike Gathering Storm's and Absolute Focus's explicitly-enumerated columns,
+    so they convert at Riot's 1 AF = 1 AP or 0.6 AD. That is 6.0 AD / 10.0 AP at
+    the low tier and 15.0 AD / 25.0 AP at the high one.
+
+    The ability-haste half is deliberately NOT credited: Ability Haste as a DS
+    axis was measured inert and is settled. See the module docstring.
+    """
+    try:
+        count = float(stacks)
+    except (TypeError, ValueError):
+        return (0.0, 0.0)
+    count = max(0.0, min(_JACK_MAX_STACKS, count))
+    if count >= _JACK_HIGH_TIER_STACKS:
+        adaptive_force = _JACK_AF_AT_HIGH_TIER
+    elif count >= _JACK_LOW_TIER_STACKS:
+        adaptive_force = _JACK_AF_AT_LOW_TIER
+    else:
+        return (0.0, 0.0)
+    return (_ADAPTIVE_FORCE_AD_PER_AF * adaptive_force, adaptive_force)
+
+
 @dataclass(frozen=True)
 class RuneOffenseEntry:
     """One rune's offensive stat grant.
@@ -508,6 +635,7 @@ class RuneOffenseEntry:
         caster_hp_pct: float,
         conqueror_stacks: Optional[float],
         legend_stacks: Optional[float],
+        jack_stacks: Optional[float],
     ) -> tuple[float, float, float]:
         fn = self._grant
         if fn is None:  # pragma: no cover - every seeded entry supplies one
@@ -518,6 +646,7 @@ class RuneOffenseEntry:
             caster_hp_pct=caster_hp_pct,
             conqueror_stacks=conqueror_stacks,
             legend_stacks=legend_stacks,
+            jack_stacks=jack_stacks,
         )
 
 
@@ -539,7 +668,7 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             "5/14/29/48/72/101 AD or 8/24/48/80/120/168 AP, clamped at 60 min"
         ),
         _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks,
-        legend_stacks: (
+        legend_stacks, jack_stacks: (
             gathering_storm_step(game_minute) + (0.0,)
         ),
     ),
@@ -559,7 +688,7 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             "while above 70% caster health"
         ),
         _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks,
-        legend_stacks: (
+        legend_stacks, jack_stacks: (
             absolute_focus_grant(level, caster_hp_pct) + (0.0,)
         ),
     ),
@@ -602,7 +731,7 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             "12.96-28.8 AD; the fully-stacked heal is sustain and is excluded"
         ),
         _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks,
-        legend_stacks: (
+        legend_stacks, jack_stacks: (
             conqueror_grant(level, conqueror_stacks) + (0.0,)
         ),
     ),
@@ -646,8 +775,48 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             "attack-speed-locked champion"
         ),
         _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks,
-        legend_stacks: (
+        legend_stacks, jack_stacks: (
             (0.0, 0.0, legend_alacrity_grant(legend_stacks))
+        ),
+    ),
+    # 8316 Jack Of All Trades (Inspiration, slot 2) - verbatim: "For each
+    # different stat gained from items, gain one Jack stack. Each stack grants
+    # you 1 Ability Haste. Gain 10 or 25 bonus Adaptive Force at 5 and 10
+    # stacks, respectively."
+    #
+    # THE ONLY ENTRY WHOSE COUNT IS COMPUTED. Conqueror's and Alacrity's stack
+    # counts are unobservable in-game counters and therefore knobs with stated
+    # defaults; this one is a property of the build the caller already holds, so
+    # jack_stacks is DERIVED (jack_of_all_trades_stacks over the resolved build's
+    # item stat blocks) rather than assumed. jack_stacks=None means the caller
+    # supplied no census, and the entry then contributes 0.0 - which is what
+    # keeps every pre-R156 call site byte-identical.
+    #
+    # UNITS: the feed's "10 or 25 bonus Adaptive Force" is ADAPTIVE FORCE like
+    # Conqueror's, not AD, so it converts at 1 AF = 1 AP or 0.6 AD -> 6.0 AD /
+    # 10.0 AP at the low tier, 15.0 AD / 25.0 AP at the high one.
+    #
+    # STEP AND NOT CUMULATIVE: "at 5 and 10 stacks, respectively" is two
+    # thresholds and "10 or 25" is a disjunction, so the high tier REPLACES the
+    # low one and sub-5 pays nothing. Summing them would over-credit by 40%.
+    #
+    # The ability-haste half is EXCLUDED - Ability Haste as a DS axis was
+    # measured inert and is settled - and the attack-speed column is 0.0: this
+    # is an adaptive grant, so exactly one of its first two columns pays out.
+    "8316": RuneOffenseEntry(
+        name="Jack Of All Trades",
+        tree="Inspiration",
+        gate="distinct_item_stats",
+        family="jack_of_all_trades",
+        note=(
+            "Jack Of All Trades: 10 Adaptive Force at 5 distinct item stats "
+            "and 25 at 10 (the tiers replace, they do not sum), converted to "
+            "6.0/15.0 AD or 10.0/25.0 AP; the stack count is censused from the "
+            "resolved build, and the per-stack ability haste is excluded"
+        ),
+        _grant=lambda *, level, game_minute, caster_hp_pct, conqueror_stacks,
+        legend_stacks, jack_stacks: (
+            jack_of_all_trades_grant(jack_stacks) + (0.0,)
         ),
     ),
 }
@@ -663,6 +832,10 @@ def rune_offense_grants(
     caster_hp_pct: float = 1.0,
     conqueror_stacks: Optional[float] = None,
     legend_stacks: Optional[float] = None,
+    # R156: appended at the END per the no-mid-signature-insert convention, and
+    # defaulting to None so a caller that supplies no census gets no Jack grant
+    # and stays byte-identical.
+    jack_stacks: Optional[float] = None,
 ) -> tuple[float, float, float]:
     """Return the ``(bonus_ad, bonus_ap, bonus_as_fraction)`` rune-side grant.
 
@@ -680,6 +853,12 @@ def rune_offense_grants(
     max-stack assumption flatters our own build on this side of the fight.
     ``legend_stacks`` is the same shape for Legend: Alacrity, defaulting to
     ``_ASSUMED_LEGEND_STACKS`` and clamped to the feed's 0..10 range.
+
+    ``jack_stacks`` is NOT that shape. Jack Of All Trades's count is censused
+    from the caller's own resolved build (``jack_of_all_trades_stacks``), so
+    there is no defensible assumed default: None means "no census supplied" and
+    the entry then contributes 0.0, which is what keeps every pre-R156 caller
+    byte-identical. A supplied value is clamped to 0..``_JACK_MAX_STACKS``.
 
     Per entry: the ``(ad, ap, as_frac)`` triple is resolved. ONE of the first two
     is taken by the standard adaptive rule (AD when ``bonus_ad >= ap``, matching
@@ -709,6 +888,14 @@ def rune_offense_grants(
     except (TypeError, ValueError):
         build_ap = 0.0
     prefer_ad = build_ad >= build_ap
+    # None stays None so the Jack entry can tell "no census supplied" (contribute
+    # nothing) apart from "censused zero"; both pay 0.0, but only the clamp is
+    # this function's business.
+    if jack_stacks is not None:
+        try:
+            jack_stacks = max(0.0, min(_JACK_MAX_STACKS, float(jack_stacks)))
+        except (TypeError, ValueError):
+            jack_stacks = None
 
     grant_ad = 0.0
     grant_ap = 0.0
@@ -728,6 +915,7 @@ def rune_offense_grants(
             caster_hp_pct=caster_hp_pct,
             conqueror_stacks=conqueror_stacks,
             legend_stacks=legend_stacks,
+            jack_stacks=jack_stacks,
         )
         if prefer_ad:
             grant_ad += side_ad
