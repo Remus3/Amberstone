@@ -263,6 +263,82 @@ def test_stickiness_survives_a_supervisor_rebuild(adj, tmp_path, nosleep):
     assert adj.FailoverAdjudicator(_cfg(), tmp_path, state=state).active_name == "claude"
 
 
+def test_sticky_state_is_ignored_when_cfg_arms_no_fallback(adj, tmp_path, nosleep):
+    """A sticky decision must not outlive the config that authorized it.
+
+    Honouring it against a cfg that names no resolvable fallback routes the call
+    to a backend the ACTIVE configuration never authorized. Production cfg is
+    fixed for a whole run so this gate is a no-op for every real launch, but it
+    is what stops a decision taken under one config from leaking into a call
+    made under another.
+    """
+    sticky = {"active": "claude", "failed_over": True, "usd": {}}
+    unarmed = {"gemini_model": "g-pro", "gemini_fallback_model": "g-flash"}
+    sup = adj.FailoverAdjudicator(unarmed, tmp_path, state=sticky)
+    assert not sup.failover_armed()
+    assert sup.active_name == "gemini"
+    fake, seen = _run_returning("", "", "", "flash-answer")
+    with mock.patch.object(adj.subprocess, "run", side_effect=fake):
+        out = sup.ask("body", "inst")
+    # the whole 3+2 ladder must run on gemini and reach the fallback MODEL
+    assert out == "flash-answer"
+    assert all("--approval-mode plan" in c for c in seen)
+    assert all("g-pro" in c for c in seen[:3]) and "g-flash" in seen[3]
+
+
+def test_sticky_state_is_ignored_when_failover_is_switched_off(adj, tmp_path, nosleep):
+    sticky = {"active": "claude", "failed_over": True, "usd": {}}
+    sup = adj.FailoverAdjudicator(_cfg(adjudicator_failover=False), tmp_path, state=sticky)
+    assert not sup.failover_armed()
+    assert sup.active_name == "gemini"
+
+
+def test_sticky_state_still_applies_while_the_cfg_arms_failover(adj, tmp_path):
+    # The gate must not weaken real stickiness - an armed cfg still honours it.
+    sticky = {"active": "claude", "failed_over": True, "usd": {}}
+    sup = adj.FailoverAdjudicator(_cfg(), tmp_path, state=sticky)
+    assert sup.failover_armed()
+    assert sup.active_name == "claude" and sup.failed_over
+
+
+def test_refusing_a_sticky_route_never_discards_spend(adj, tmp_path):
+    # Accounting is not a routing decision: the ceiling must still see prior
+    # spend even when the sticky ROUTE is refused.
+    sticky = {"active": "claude", "failed_over": True, "usd": {"gemini": 3.0, "claude": 9.0}}
+    sup = adj.FailoverAdjudicator({"gemini_model": "g-pro"}, tmp_path, state=sticky)
+    assert sup.usd == {"gemini": 3.0, "claude": 9.0}
+    assert sup.total_usd() == pytest.approx(12.0)
+
+
+def test_controller_sticky_state_does_not_leak_across_configs(lc, tmp_path):
+    """The merged-main regression, at the controller seam.
+
+    A gemini() call that fired a failover under the live config must not route a
+    LATER gemini() call whose cfg arms no fallback. That leak silently skipped
+    the 3+2 gemini retry ladder, which is the 2026-07-02 9-hour-outage guard.
+    """
+    state = {"active": "claude", "failed_over": True, "usd": {}}
+    seen = []
+
+    def fake(args, **_k):
+        seen.append(args[-1])
+        return mock.Mock(stdout="" if len(seen) <= 3 else "flash-directive")
+
+    unarmed = {"gemini_model": "gemini-3-pro-preview",
+               "gemini_fallback_model": "gemini-2.5-flash"}
+    with mock.patch.object(lc, "CFG", unarmed), \
+            mock.patch.object(lc, "CTL", tmp_path), \
+            mock.patch.object(lc, "_ADJ_STATE", state), \
+            mock.patch.object(lc.subprocess, "run", side_effect=fake), \
+            mock.patch.object(lc.time, "sleep", lambda *_a, **_k: None), \
+            mock.patch.object(lc, "log", lambda *_a, **_k: None), \
+            mock.patch.object(lc, "awrite", lambda *_a, **_k: None):
+        out = lc.gemini("body", "inst")
+    assert out == "flash-directive"
+    assert all("gemini-3-pro-preview" in c for c in seen[:3])
+    assert "gemini-2.5-flash" in seen[3]
+
+
 def test_failover_can_be_disabled(adj, tmp_path, nosleep):
     _stderr(tmp_path, "_gemini_err.txt", "Error: quota exhausted")
     fake, _seen = _run_returning()
