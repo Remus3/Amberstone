@@ -119,6 +119,52 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-21a - R149 SHARE FOLDER OVERHAUL (gemini headless loop, cycle N) - docs only
+
+**Tier-0/1 docs run, ENGINE-IMPACT NONE.** LEDGER 988. Pushed `d4070710..dfb509b8`.
+`Share/` re-presented as an external product artifact across FOUR disjoint worktree
+slices (Claude sole merger, `verifier` subagent gate before every merge).
+
+## What shipped
+
+- **README** - external product page: problem framing, at-a-glance / contents / docs
+  tables, a **Data sources and credits** section (Riot Data Dragon, CommunityDragon,
+  Meraki/lolstaticdata, LoL wiki + attribution notes), an honest **Limitations** block.
+- **docs 01-05** - net -294 lines. `04` -285 (registries + kit axes -> two tables),
+  `05` -81 (stale audit residue cut). `02` gained the missing 7th-scorer section
+  (`onhit_dps.py`); `03` gained per-provider credits + two corrected facts.
+- **CHANGELOG** - 2737 -> 1079 lines, **105/105 release entries + dates preserved**
+  (verifier diffed the semver token sets independently; zero new range compression).
+- **MANIFEST template** - `tools/ds_share_sync.py` `_manifest_body()` split out under
+  TDD; the GENERATED file now carries a product intro, `## Package stamp`,
+  `## Generated vs authored`, and `## Where to start`.
+
+## The two things worth remembering
+
+1. **`Share/MANIFEST.md` CANNOT be hand-edited.** `_stamp_manifest()` regenerates it
+   wholesale and the pre-commit hook re-runs the sync, so a hand edit is silently
+   reverted with no error. Change the template in `tools/ds_share_sync.py` instead.
+   `--check` deliberately excludes MANIFEST, so this never fails CI - it just vanishes.
+2. **The verifier gate caught three factual defects the slice agents missed in their
+   own work:** stale suite counts (8866/339 -> 9054/349), a wrong standalone error
+   count (170 -> 179), and a documented reproduction command that aborts at collection
+   and runs ZERO tests without `--continue-on-collection-errors`. All fixed pre-push.
+
+## Carry-forward
+
+- New disclosure now IN the package: it does not run its own suite clean standalone
+  (8677 passed / 108 failed / 179 errors) because 60 of 349 test files reach outside
+  it; the other 289 pass clean (6666 / 1915 subtests). Closing that boundary gap is
+  unclaimed work, not scheduled.
+- The `gist_share_sync` post-commit index corruption fired in 3 of 4 worktrees (up to
+  4748 phantom deletions). Every agent caught it via `git show --stat` + plain
+  `git reset`. Nothing phantom entered a commit. Guard still needed on every run.
+
+Gates: `ds_share_sync --check` green (1.232.0, 501 files), RC **12470 passed**,
+DS **9054 passed / 3582 subtests**, `ruff check .` clean.
+
+---
+
 # 2026-07-20p - LIVE-GATED DRAIN, operator present, 4 games - 6 rows closed, 9 new bugs
 
 **Tier-1 RC-side. The one Tier-2 slice is parked on branch `ds/g2-12-ranged-reflect`

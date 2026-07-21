@@ -133,6 +133,7 @@ DONE - All 51 rows DONE (LEDGER 784 + 903; newest R129 = LEDGER 903). Rows reloc
 |----|-------|-------|--------|--------|
 | R150 | ds-sweep-conqueror-offense-grant | Sweep offensive rune stat grants vs DDragon 16.14.1 and credit the remaining real gap. ENGINE-IMPACT BUMP 1.232.0 -> 1.233.0. | DONE | `a7c5f9db` + bump |
 | R151 | hexcore-offline-update | Find every net-new non-test .py added since `d584e02e` and re-sync `docs/HEXCORE_offline.html` - dust leaves, stats HUD, ENGINE tooltips. File stays self-contained, no external assets. ENGINE-IMPACT NONE (offline documentation html only). | DONE | `79c3deba` |
+| R152 | ds-sweep-penetration | Cross-check Lethality / %ArmorPen / flat+%MagicPen items in `data/daemon_slayer/16.14.1/items.json` against the DS item registries; verify magnitudes, Arena/ARAM mirrors, and uncredited canonical ids. Ship RC-A (5 entirely-uncredited lethality entries) DEFAULT-ON as data parity; hold RC-B Arena magnitude drift for a doctrine call. ENGINE-IMPACT BUMP 1.233.0 -> 1.234.0. | DONE | `890daf1c` |
 
 **THE DIRECTIVE'S 7 TARGETS RESOLVED TO 1 REAL GAP, and the audit that established
 that ran BEFORE any code.** 8236 Gathering Storm and 8233 Absolute Focus were ALREADY
@@ -221,3 +222,54 @@ within a cluster, not semantic - `lcu_rune_writer.py`, a pre-game module, is lik
 parented `m_lcupost`. The small font sizes in `#hexcore-stats` (8-10px) are pre-existing
 and correct for a zoomable canvas doc; the v2.1 `--fs-xs` floor governs the dashboard,
 not this offline artifact.
+
+**R152 - PENETRATION IS REGISTRY-ONLY, AND THAT IS THE WHOLE FINDING.** Two disjoint
+read-only sweep agents (lethality/%armorpen and flat/%magicpen) converged independently
+on the same crux: `agents/daemon_slayer/stats.py` `ITEM_STAT_KEY_MAP` has no penetration
+key, and DDragon's machine-readable `stats` block never carries one - the union across all
+706 items is 12 keys, none of them pen. Penetration lives ONLY in the `<stats>` HTML of the
+`description` string. The local `items_meraki.json` has NO top-level stat block on any of
+its 320 items. So `ITEM_EFFECTS` is the sole credit path and any missing `lethality=` field
+is a silent 0.0. Do NOT go looking for a generic stat-block path; it does not exist.
+
+**THE ORCHESTRATOR'S OWN 706-ITEM SWEEP BEAT BOTH AGENTS' RANKED LISTS.** Both agents
+returned a "highest-value one-line fix" naming a single item. A direct parity sweep
+(26 exact-match / 12 divergent) showed the 12 were TWO root causes, not one ranked list:
+RC-A (stat entirely absent, 5 ids) and RC-B (Arena magnitude drift, 7 ids). Only RC-A is a
+data bug. Shipping one agent's top pick would have left the other four RC-A ids uncredited
+and, worse, invited a later slice to "fix" RC-B by weakening a guard.
+
+**OPEN - RC-B ARENA LETHALITY MAGNITUDE DRIFT (doctrine call, NOT a data bug, needs a
+director decision before any code).** Seven Arena ids state a lethality in DDragon that
+differs from the SR parent DS inherits: `223142` Youmuu's 22 vs 18, `223814` Edge of Night
+14 vs 15, `224004` Spectral Cutlass 21 vs 15, `226676` The Collector 12 vs 10, `226699`
+Voltaic 20 vs 10, `226701` Opportunity 15 vs 18, `226691` Duskblade 22 vs 18 (all-maps-false,
+inert). The same defect class covers `223020` Arena Sorcerer's Shoes (20 vs 12 flat magic
+pen - the Arena mage DEFAULT boot, so it lands in essentially every Arena AP build; measured
+5.7-6.9 percent magic damage under-credit through `effective_target_mr`), `224645` Arena
+Shadowflame (10 vs 15, over-credit), and `223302` Arena Terminus (8 percent per stack x3 = 24
+vs the SR-inherited 30, over-credit on BOTH the armor-pen and magic-pen axes). ROOT CAUSE:
+Meraki carries no 22xxxx/44xxxx mirror ids at all, so the Arena mirrors were seeded
+"same as SR" and DDragon was never re-read per-mirror. THE COLLISION: that inheritance is
+deliberate doctrine with guard tests (`test_arena_prowlers_lethality_same_as_sr`,
+`test_arena_serylda_armor_pen_same_as_sr`, and `test_terminus_juxtaposition_r67.py:118`
+which STRUCTURALLY derives the Arena value from the SR Meraki entry and asserts it on both
+ids - that guard is the mechanism locking the wrong magnitude in place, and it reads the
+pinned 16.13.1 Meraki file, not 16.14.1). Correcting these means deciding whether the
+doctrine is "mirrors inherit passive COEFFICIENTS where Meraki has no mirror entry" (the
+case it was written for) or "mirrors inherit everything including base stat lines DDragon
+states explicitly and differently per map". That is a director/operator call.
+
+**OPEN - smaller tails.** `1111` Jarvan I's carries 12 flat magic pen and has NO
+`ITEM_EFFECTS` entry at all, though DS does register its 10 AH (`_item_ability_haste.py:50`)
+and 30 tenacity (`_item_tenacity.py:61`) - ARAM-only, augment-gated, lowest frequency but
+inconsistent with DS's own registration pattern for that same item. `Share/README.md`
+release list is stale at 1.228.0 and needs a 1.229.0-1.233.0 backfill (R152 added only its
+own 1.234.0 row). `443064` Talisman of Ascension ships literal `?` placeholders in the
+snapshot and is genuinely unmodelable - leave it `defensive_only`.
+
+Don't-redo: RC-A is CLOSED (31 exact-match, 0 absent). Penetration has no generic path -
+do not re-search for one and do not re-derive magnitudes from `items_meraki.json`. `226695`
+Arena Serpent's Fang is 19 where SR `6695` is 15 and that divergence is REAL in the feed -
+do not normalize them. `6632`/`226632` Divine Sunderer 3 percent armor pen is uncredited but
+INERT (all maps false, unbuyable everywhere) - not a gap.

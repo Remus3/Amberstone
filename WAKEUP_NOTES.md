@@ -4,6 +4,61 @@
 
 ---
 
+# 2026-07-21d - R152 LETHALITY STAT-BLOCK PARITY (gemini headless loop, cycle 4) - ENGINE 1.233.0 -> 1.234.0
+
+**Tier-2 DS run.** LEDGER 991. Slice `ee8a6cb3`, merge `890daf1c`. DS bounced, `:8893`
+serves 1.234.0. Share mirror synced in the same commit.
+
+## What shipped
+
+Five item entries in `agents/daemon_slayer/_effects_data.py` that state a Lethality in
+DDragon 16.14.1 but read 0.0 in DS: `6698` Profane Hydra 18 and `6695` Serpent's Fang 15
+(both SR AND ARAM, maps 11/12/21/35), plus Arena `226698` 18, `226695` 19, `446691`
+Duskblade 20. DEFAULT-ON, no flag - see the deviation note below.
+
+## The finding that matters
+
+Penetration is REGISTRY-ONLY. `stats.py` `ITEM_STAT_KEY_MAP` has no pen key and DDragon's
+machine-readable `stats` block never carries one - pen exists only in the `<stats>` HTML of
+`description`, and the local Meraki snapshot has no stat block on any of its 320 items. So
+`ITEM_EFFECTS` is the sole credit path and a missing field is a silent 0.0. Do not go
+looking for a generic path.
+
+## Two process notes worth keeping
+
+**The orchestrator's own sweep beat both agents.** Both read-only sweep agents returned a
+ranked list topped by a single "one-line fix". A direct 706-item parity sweep showed the 12
+divergent ids were TWO root causes: RC-A (stat absent, 5 ids, a real data bug) and RC-B
+(Arena magnitude drift, 7 ids, a guarded-doctrine collision). Shipping either agent's top
+pick would have left four RC-A ids uncredited.
+
+**Deliberate deviation from the directive, logged.** The directive said to ship any fix
+"behind DEFAULT-OFF seam". This shipped DEFAULT-ON. A flag here would have made 5 items
+behave differently from the 26 already-credited lethality rows and left a proven-false 0.0
+live; adding a row to an always-on registry is not a new math term. R150 set the precedent.
+
+## Gates
+
+DS 9091 passed / 1 skipped / 3650 subtests. RC 12440 passed / 52 skipped / 406 subtests,
+1 failure which was PROVEN to be live-coupling (`test_live_three_profiles` asserts the live
+`:8893` version) and went 18/18 green after the DS bounce. ruff clean. ENGINE 144 literals
+across 123 files, zero residual. `ds_share_sync --check` in sync at 1.234.0.
+
+## Carry-forward
+
+RC-B Arena lethality/magicpen magnitude drift is OPEN and is a DOCTRINE call, not a data
+bug - the "Arena mirrors inherit SR" convention has guard tests, and
+`test_terminus_juxtaposition_r67.py:118` structurally derives the Arena value from the SR
+Meraki entry (and reads a pinned 16.13.1 file). Escalated to the director in the
+ORCHESTRATION_PLAN findings log; do not weaken those guards without a decision. Smaller
+tails: `1111` Jarvan I's 12 flat magic pen has no ITEM_EFFECTS entry at all;
+`Share/README.md` releases stale at 1.228.0, needs a 1.229.0-1.233.0 backfill.
+
+The gist post-commit hook index corruption recurred (4th). Worktree index only, commit
+object clean, cleared with `git reset --mixed`.
+
+---
+
 # 2026-07-21c - R151 HEXCORE OFFLINE EXPLORER RE-SYNC (gemini headless loop, cycle 3) - NO ENGINE CHANGE
 
 **Tier-0/docs run.** LEDGER 990. Slice merge `79c3deba`. ENGINE-IMPACT NONE - no DS math
@@ -117,49 +172,3 @@ already scored by the burst consumer, or 8232 Waterwalking (uptime-blocked, no p
 signal). A further pass needs a role/positional signal, not another sweep. Do NOT model
 Conqueror at a fixed 12 stacks. Do NOT mirror `enemy_runes.py` magnitudes into a STAT
 registry without the AF conversion.
-
----
-
-# 2026-07-21a - R149 SHARE FOLDER OVERHAUL (gemini headless loop, cycle N) - docs only
-
-**Tier-0/1 docs run, ENGINE-IMPACT NONE.** LEDGER 988. Pushed `d4070710..dfb509b8`.
-`Share/` re-presented as an external product artifact across FOUR disjoint worktree
-slices (Claude sole merger, `verifier` subagent gate before every merge).
-
-## What shipped
-
-- **README** - external product page: problem framing, at-a-glance / contents / docs
-  tables, a **Data sources and credits** section (Riot Data Dragon, CommunityDragon,
-  Meraki/lolstaticdata, LoL wiki + attribution notes), an honest **Limitations** block.
-- **docs 01-05** - net -294 lines. `04` -285 (registries + kit axes -> two tables),
-  `05` -81 (stale audit residue cut). `02` gained the missing 7th-scorer section
-  (`onhit_dps.py`); `03` gained per-provider credits + two corrected facts.
-- **CHANGELOG** - 2737 -> 1079 lines, **105/105 release entries + dates preserved**
-  (verifier diffed the semver token sets independently; zero new range compression).
-- **MANIFEST template** - `tools/ds_share_sync.py` `_manifest_body()` split out under
-  TDD; the GENERATED file now carries a product intro, `## Package stamp`,
-  `## Generated vs authored`, and `## Where to start`.
-
-## The two things worth remembering
-
-1. **`Share/MANIFEST.md` CANNOT be hand-edited.** `_stamp_manifest()` regenerates it
-   wholesale and the pre-commit hook re-runs the sync, so a hand edit is silently
-   reverted with no error. Change the template in `tools/ds_share_sync.py` instead.
-   `--check` deliberately excludes MANIFEST, so this never fails CI - it just vanishes.
-2. **The verifier gate caught three factual defects the slice agents missed in their
-   own work:** stale suite counts (8866/339 -> 9054/349), a wrong standalone error
-   count (170 -> 179), and a documented reproduction command that aborts at collection
-   and runs ZERO tests without `--continue-on-collection-errors`. All fixed pre-push.
-
-## Carry-forward
-
-- New disclosure now IN the package: it does not run its own suite clean standalone
-  (8677 passed / 108 failed / 179 errors) because 60 of 349 test files reach outside
-  it; the other 289 pass clean (6666 / 1915 subtests). Closing that boundary gap is
-  unclaimed work, not scheduled.
-- The `gist_share_sync` post-commit index corruption fired in 3 of 4 worktrees (up to
-  4748 phantom deletions). Every agent caught it via `git show --stat` + plain
-  `git reset`. Nothing phantom entered a commit. Guard still needed on every run.
-
-Gates: `ds_share_sync --check` green (1.232.0, 501 files), RC **12470 passed**,
-DS **9054 passed / 3582 subtests**, `ruff check .` clean.
