@@ -22,6 +22,18 @@ The sweep test below is the durable half: it re-derives the swept set
 from the shipped catalog on every run, so any FUTURE item authored the
 same way - pen stated in prose, omitted from ``stats`` - fails here
 immediately instead of quietly costing an item its penetration.
+
+R161 - THE ARENA-DRIFT ESCALATION IS RESOLVED AS DOCTRINE B, AND THIS
+SWEEP IS NOW EXEMPTION-FREE ON THIS AXIS. R153 shipped with a two-row
+holdout (``223020`` stated 20 while crediting SR 3020's 12, ``224645``
+stated 10 while crediting SR 4645's 15) because reconciling them
+collided with the standing "Arena mirrors inherit SR coefficients"
+doctrine. The director answered it: when a DDragon Arena mirror states
+its OWN explicit stat line that differs from its SR twin, THE ARENA
+FEED VALUE WINS. Both rows now credit their stated magnitude, so the
+plain stated-equals-credited assertion covers every swept id with no
+skip list - which is the whole point of the doctrine call. SR parents
+are untouched (3020 stays 12, 4645 stays 15).
 """
 
 from __future__ import annotations
@@ -48,16 +60,6 @@ _PATCH_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 _FLAT_MAGIC_PEN_RE = re.compile(
     r"<attention>\s*(\d+(?:\.\d+)?)\s*</attention>\s*Magic Penetration"
 )
-
-# Arena mirrors whose DDragon magnitude diverges from the credited one.
-# Out of R153 scope and escalated separately: they collide with the
-# standing "Arena mirrors inherit SR coefficients" doctrine, exactly like
-# the 7 rows R152 held back. Pinned below so a fix cannot land silently.
-#   item_id -> (DDragon 16.14.1 value, currently credited value)
-_ARENA_DRIFT_HOLDOUT = {
-    "223020": (20.0, 12.0),   # Sorcerer's Shoes (Arena) vs SR 3020 = 12
-    "224645": (10.0, 15.0),   # Shadowflame (Arena)      vs SR 4645 = 15
-}
 
 
 def _catalog() -> dict:
@@ -140,23 +142,29 @@ class R153FlatMagicPenCatalogSweepTests(unittest.TestCase):
                 )
 
     def test_registered_magnitude_matches_the_stated_value(self) -> None:
+        # R161 doctrine B: no exemptions. Every swept id, Arena mirror or
+        # not, credits exactly the magnitude its own description states.
         for iid, (name, stated) in sorted(self.swept.items()):
-            if iid in _ARENA_DRIFT_HOLDOUT:
-                continue
             with self.subTest(item_id=iid, name=name):
                 self.assertAlmostEqual(
                     ITEM_EFFECTS[iid].magic_pen_flat, stated, places=3
                 )
 
-    def test_arena_drift_holdout_still_diverges(self) -> None:
-        # Fails the day someone reconciles one of these, forcing the
-        # Arena-inheritance question to be answered deliberately rather
-        # than absorbed into an unrelated sweep.
-        for iid, (ddragon, credited) in _ARENA_DRIFT_HOLDOUT.items():
-            with self.subTest(item_id=iid):
-                self.assertAlmostEqual(self.swept[iid][1], ddragon, places=3)
+    def test_arena_mirrors_credit_their_own_feed_not_their_sr_twin(self) -> None:
+        # The two rows R153 held back. Asserted as a DIVERGENCE so a
+        # regression that re-inherits the SR magnitude fails loudly here
+        # rather than only inside the generic parity loop above.
+        for arena, sr in (("223020", "3020"), ("224645", "4645")):
+            with self.subTest(item_id=arena):
+                arena_credit = ITEM_EFFECTS[arena].magic_pen_flat
                 self.assertAlmostEqual(
-                    ITEM_EFFECTS[iid].magic_pen_flat, credited, places=3
+                    arena_credit, self.swept[arena][1], places=3
+                )
+                self.assertAlmostEqual(
+                    ITEM_EFFECTS[sr].magic_pen_flat, self.swept[sr][1], places=3
+                )
+                self.assertNotAlmostEqual(
+                    arena_credit, ITEM_EFFECTS[sr].magic_pen_flat, places=3
                 )
 
     def test_placeholder_stat_item_is_not_swept(self) -> None:
