@@ -3514,9 +3514,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226694": ItemEffect(
         item_id="226694",
         name="Serylda's Grudge",
-        armor_pen_pct=0.35,
+        # R161 doctrine B: Arena feed states 40% armor pen vs SR 6694's 35%;
+        # the explicitly-stated Arena value wins over SR inheritance.
+        armor_pen_pct=0.40,
         unique_passive_key="last_whisper",
-        note="Serylda's Grudge (Arena 226694): same as SR 6694 - 35% armor penetration",
+        note="Serylda's Grudge (Arena 226694): 40% armor penetration per the Arena feed (SR 6694 carries 35%)",
     ),
     "226696": ItemEffect(
         item_id="226696",
@@ -3562,14 +3564,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_seconds=4.0,
         ),),
-        lethality=10.0,
-        note="Voltaic Cyclosword (Arena 226699): same as SR 6699 - Energized 100 flat bonus physical, 10 lethality",
+        # R161 doctrine B: Arena feed states 20 Lethality vs SR 6699's 10;
+        # the explicitly-stated Arena value wins over SR inheritance. The
+        # Firmament coefficient above still rides the SR mirror (Meraki has
+        # no 226699 entry) - only the stated base stat line flips.
+        lethality=20.0,
+        note="Voltaic Cyclosword (Arena 226699): Energized 100 flat bonus physical (SR 6699 mirror) + 20 lethality per the Arena feed (SR 6699 carries 10)",
     ),
     "226701": ItemEffect(
         item_id="226701",
         name="Opportunity",
-        lethality=18.0,
-        note="Opportunity (Arena 226701): same as SR 6701 - 18 lethality",
+        # R161 doctrine B: Arena feed states 15 Lethality vs SR 6701's 18;
+        # the explicitly-stated Arena value wins over SR inheritance.
+        lethality=15.0,
+        note="Opportunity (Arena 226701): 15 lethality per the Arena feed (SR 6701 carries 18)",
     ),
 
     # -- 14 defensive_only Arena mirrors -----------------------------------
@@ -3708,12 +3716,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226676": ItemEffect(
         item_id="226676",
         name="The Collector",
-        lethality=10.0,
+        # R161 doctrine B: Arena feed states 12 Lethality vs SR 6676's 10;
+        # the explicitly-stated Arena value wins over SR inheritance.
+        lethality=12.0,
         # DSV2 (1.125.0): Arena mirror of SR 6676 Death execute finisher.
         execute_max_hp_pct=0.05,
-        note="The Collector (Arena 226676): mirrors SR 6676 - 50 AD + 10 Lethality + 25% Crit; "
+        note="The Collector (Arena 226676): 12 Lethality per the Arena feed (SR 6676 carries 10); "
              "Death execute below 5% HP valued as a kill-state finisher under assume_takedown; "
-             "Taxes (25g) is out-of-combat. lethality=10.0 feeds the rotation.",
+             "Taxes (25g) is out-of-combat. lethality feeds the rotation.",
     ),
     "226695": ItemEffect(
         item_id="226695",
@@ -3855,8 +3865,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "224004": ItemEffect(
         item_id="224004",
         name="Spectral Cutlass",
-        lethality=15.0,
-        note="Spectral Cutlass (Arena 224004): same as SR 4004 - 15 lethality (level-scaled flat pen)",
+        # R161 doctrine B: Arena feed states 21 Lethality vs SR 4004's 15;
+        # the explicitly-stated Arena value wins over SR inheritance.
+        lethality=21.0,
+        note="Spectral Cutlass (Arena 224004): 21 lethality per the Arena feed (SR 4004 carries 15)",
     ),
     "224005": ItemEffect(
         item_id="224005",
@@ -3892,8 +3904,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "224645": ItemEffect(
         item_id="224645",
         name="Shadowflame",
-        magic_pen_flat=15.0,
-        note="Shadowflame (Arena 224645): same as SR 4645 - Cinderbloom 15 flat magic pen",
+        # R161 doctrine B: Arena feed states 10 flat magic pen vs SR 4645's
+        # 15; the explicitly-stated Arena value wins over SR inheritance.
+        magic_pen_flat=10.0,
+        note="Shadowflame (Arena 224645): Cinderbloom 10 flat magic pen per the Arena feed (SR 4645 carries 15)",
     ),
     "224646": ItemEffect(
         item_id="224646",
@@ -4056,8 +4070,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223020": ItemEffect(
         item_id="223020",
         name="Sorcerer's Shoes",
-        magic_pen_flat=12.0,
-        note="Sorcerer's Shoes (Arena 223020): same as SR 3020 - 12 flat magic pen",
+        # R161 doctrine B: Arena feed states 20 flat magic pen vs SR 3020's
+        # 12; the explicitly-stated Arena value wins over SR inheritance.
+        magic_pen_flat=20.0,
+        note="Sorcerer's Shoes (Arena 223020): 20 flat magic pen per the Arena feed (SR 3020 carries 12)",
     ),
     "223031": ItemEffect(
         item_id="223031",
@@ -4085,11 +4101,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223036": ItemEffect(
         item_id="223036",
         name="Lord Dominik's Regards",
-        armor_pen_pct=0.35,
+        # R161 doctrine B: Arena feed states 40% armor pen vs SR 3036's 35%;
+        # the explicitly-stated Arena value wins over SR inheritance. The
+        # Giant Slayer coefficients below still ride the SR mirror.
+        armor_pen_pct=0.40,
         target_bonus_hp_amp_max_pct=0.15,
         target_bonus_hp_amp_cap=1500.0,
         unique_passive_key="last_whisper",
-        note="Lord Dominik's (Arena 223036): same as SR 3036 - 35% armor pen + Giant Slayer up to 15% at 1500 bonus HP",
+        note="Lord Dominik's (Arena 223036): 40% armor pen per the Arena feed (SR 3036 carries 35%) + Giant Slayer up to 15% at 1500 bonus HP (SR 3036 mirror)",
     ),
     "223039": ItemEffect(
         item_id="223039",
@@ -4308,8 +4327,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223142": ItemEffect(
         item_id="223142",
         name="Youmuu's Ghostblade",
-        lethality=18.0,
-        note="Youmuu's Ghostblade (Arena 223142): same as SR 3142 - 18 lethality",
+        # R161 doctrine B: the Arena mirror states its OWN stat line in the
+        # DDragon 16.14.1 feed (22 Lethality vs SR 3142's 18). The feed value
+        # wins - Arena mirrors no longer inherit SR base stat magnitudes.
+        lethality=22.0,
+        note="Youmuu's Ghostblade (Arena 223142): 22 lethality per the Arena feed (SR 3142 carries 18)",
     ),
     "223146": ItemEffect(
         item_id="223146",
@@ -4353,9 +4375,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_attacks=1,
         ),),
-        armor_pen_pct=0.30,
-        magic_pen_pct=0.30,
-        note="Terminus (Arena 223302): same as SR 3302 - Shadow 30 magic on-hit + Juxtaposition Dark 3-stack steady-state 30% armor+magic pen (BC full-stack convention); Light caster-side resists not modeled",
+        # R161 doctrine B: the Arena feed states Juxtaposition Dark at 8% pen
+        # PER STACK (cap 3) vs SR 3302's 10% per stack, so full-stack steady
+        # state is 0.24 here and stays 0.30 on the SR row.
+        armor_pen_pct=0.24,
+        magic_pen_pct=0.24,
+        note="Terminus (Arena 223302): Shadow 30 magic on-hit (SR 3302 mirror) + Juxtaposition Dark 3-stack steady-state 24% armor+magic pen per the Arena feed's 8%/stack (SR 3302 is 10%/stack -> 30%); Light caster-side resists not modeled",
     ),
     "223508": ItemEffect(
         item_id="223508",
@@ -4417,8 +4442,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223814": ItemEffect(
         item_id="223814",
         name="Edge of Night",
-        lethality=15.0,
-        note="Edge of Night (Arena 223814): same as SR 3814 - 15 lethality",
+        # R161 doctrine B: Arena feed states 14 Lethality vs SR 3814's 15;
+        # the explicitly-stated Arena value wins over SR inheritance.
+        lethality=14.0,
+        note="Edge of Night (Arena 223814): 14 lethality per the Arena feed (SR 3814 carries 15)",
     ),
 
     # -- 25 defensive_only 223xxx mirrors ---------------------------------
@@ -4977,8 +5004,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226691": ItemEffect(
         item_id="226691",
         name="Duskblade of Draktharr",
-        lethality=18.0,
-        note="Duskblade of Draktharr (Arena 226691): same as SR 6691 - 18 lethality",
+        # R161 doctrine B: Arena feed states 22 Lethality vs SR 6691's 18.
+        # Re-credited for catalog consistency even though maps={} makes this
+        # id unbuyable and therefore inert at score time.
+        lethality=22.0,
+        note="Duskblade of Draktharr (Arena 226691): 22 lethality per the Arena feed (SR 6691 carries 18); maps={} so the row is inert",
     ),
     "228020": ItemEffect(
         item_id="228020",
