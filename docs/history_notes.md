@@ -119,6 +119,61 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-21d - R152 LETHALITY STAT-BLOCK PARITY (gemini headless loop, cycle 4) - ENGINE 1.233.0 -> 1.234.0
+
+**Tier-2 DS run.** LEDGER 991. Slice `ee8a6cb3`, merge `890daf1c`. DS bounced, `:8893`
+serves 1.234.0. Share mirror synced in the same commit.
+
+## What shipped
+
+Five item entries in `agents/daemon_slayer/_effects_data.py` that state a Lethality in
+DDragon 16.14.1 but read 0.0 in DS: `6698` Profane Hydra 18 and `6695` Serpent's Fang 15
+(both SR AND ARAM, maps 11/12/21/35), plus Arena `226698` 18, `226695` 19, `446691`
+Duskblade 20. DEFAULT-ON, no flag - see the deviation note below.
+
+## The finding that matters
+
+Penetration is REGISTRY-ONLY. `stats.py` `ITEM_STAT_KEY_MAP` has no pen key and DDragon's
+machine-readable `stats` block never carries one - pen exists only in the `<stats>` HTML of
+`description`, and the local Meraki snapshot has no stat block on any of its 320 items. So
+`ITEM_EFFECTS` is the sole credit path and a missing field is a silent 0.0. Do not go
+looking for a generic path.
+
+## Two process notes worth keeping
+
+**The orchestrator's own sweep beat both agents.** Both read-only sweep agents returned a
+ranked list topped by a single "one-line fix". A direct 706-item parity sweep showed the 12
+divergent ids were TWO root causes: RC-A (stat absent, 5 ids, a real data bug) and RC-B
+(Arena magnitude drift, 7 ids, a guarded-doctrine collision). Shipping either agent's top
+pick would have left four RC-A ids uncredited.
+
+**Deliberate deviation from the directive, logged.** The directive said to ship any fix
+"behind DEFAULT-OFF seam". This shipped DEFAULT-ON. A flag here would have made 5 items
+behave differently from the 26 already-credited lethality rows and left a proven-false 0.0
+live; adding a row to an always-on registry is not a new math term. R150 set the precedent.
+
+## Gates
+
+DS 9091 passed / 1 skipped / 3650 subtests. RC 12440 passed / 52 skipped / 406 subtests,
+1 failure which was PROVEN to be live-coupling (`test_live_three_profiles` asserts the live
+`:8893` version) and went 18/18 green after the DS bounce. ruff clean. ENGINE 144 literals
+across 123 files, zero residual. `ds_share_sync --check` in sync at 1.234.0.
+
+## Carry-forward
+
+RC-B Arena lethality/magicpen magnitude drift is OPEN and is a DOCTRINE call, not a data
+bug - the "Arena mirrors inherit SR" convention has guard tests, and
+`test_terminus_juxtaposition_r67.py:118` structurally derives the Arena value from the SR
+Meraki entry (and reads a pinned 16.13.1 file). Escalated to the director in the
+ORCHESTRATION_PLAN findings log; do not weaken those guards without a decision. Smaller
+tails: `1111` Jarvan I's 12 flat magic pen has no ITEM_EFFECTS entry at all;
+`Share/README.md` releases stale at 1.228.0, needs a 1.229.0-1.233.0 backfill.
+
+The gist post-commit hook index corruption recurred (4th). Worktree index only, commit
+object clean, cleared with `git reset --mixed`.
+
+---
+
 # 2026-07-21c - R151 HEXCORE OFFLINE EXPLORER RE-SYNC (gemini headless loop, cycle 3) - NO ENGINE CHANGE
 
 **Tier-0/docs run.** LEDGER 990. Slice merge `79c3deba`. ENGINE-IMPACT NONE - no DS math
