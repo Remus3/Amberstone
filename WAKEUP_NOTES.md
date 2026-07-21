@@ -4,6 +4,61 @@
 
 ---
 
+# 2026-07-21h - R157 HEXCORE OFFLINE EXPLORER (gemini headless loop, cycle 4) - ENGINE UNCHANGED 1.237.0
+
+LEDGER 998. Pushed `fc8199c9..d2f87add` (`9403b8ca` html + `d2f87add` docs sync). ENGINE-IMPACT
+NONE - `docs/HEXCORE_offline.html` is a standalone offline artifact; no DS math, no served path,
+no Share mirror delta, no DS bounce, no RC restart.
+
+## What shipped
+
+The directive asked for the same unit R151 already executed, and its NOT-A-DUPLICATE line was
+wrong: it claimed R155/R156 shipped net-new `.py` files. They did not - R155 widened an existing
+`(ad, ap)` tuple to `(ad, ap, attack_speed_fraction)` inside `_rune_offense_grants.py` and R156
+appended a census function to that same existing file. Diffing R151's OWN merge point (`79c3deba`)
+instead of the directive's inherited `d584e02e` baseline, additions only, minus tests, minus
+`Share/`, returns exactly ONE path: `ops/loop/adjudicator.py`.
+
+The gap worth fixing was bigger and was not what the directive asked for: the whole `ops/loop/`
+subsystem - the autonomous loop that AUTHORS these directives - had zero representation in the
+explorer. Added node `o_headlessloop` plus dust leaves for `loop_controller.py`, `adjudicator.py`,
+`done_sentinel.py`, `claude_stub.py`.
+
+Stale anchors resynced at every site, not just the obvious one: `nodes: 141` -> 142 lives in FOUR
+places (HUD row, header lede, `sr-only` h2, `noscript` fallback) and `325 dust` -> 329 in FOUR
+(those three plus a machine-read comment). Also ENGINE 1.233.0 -> 1.237.0 and 9087 -> 9162 DS
+tests in both the HUD tooltip and the DAEMON_SLAYER.md node desc, LEDGER entry 989 -> 997,
+commits 3789 -> 3823.
+
+## Two lessons worth carrying
+
+**A verifier gate only checks the claims you thought to make.** The 11-claim verifier returned
+11/11 CONFIRM and even re-ran the DS suite itself rather than taking 9162 on faith - but it never
+knew about `tests/test_hexcore_offline_dust.py`, an 11-test pre-existing guard that pins a
+machine-readable `// DUST: N real extra source files` comment as the DECLARED count and
+cross-checks it three ways. The visible-text edit left that comment at 325 and the full RC suite
+failed 3/3. Green verifier is not a substitute for the suite.
+
+**The visual capture earned its cost on a docs-only change.** The browser render is what caught
+the header lede still reading 141 while the HUD beneath it read 142 - a mismatch invisible to the
+grep that had just "fixed" the count.
+
+## Gates
+
+DS 9162 passed / 1 skipped / 3717 subtests. RC 12545 passed / 23 skipped / 406 subtests (first
+run 3 failed / 12542 passed - exactly the hexcore guard - then re-run end to end after the fix
+rather than reporting a patched number). ruff clean. Hygiene 13/13. Verifier 11/11 CONFIRM.
+`node --check` exit 0 on both extracted inline script blocks. 0 non-ASCII bytes.
+
+## Don't-redo
+
+HEXCORE is CURRENT as of `9403b8ca`. Do NOT re-run a "net-new .py since `d584e02e`" sync - that
+baseline now yields zero real work and manufactures a duplicate of R151/R157. Diff from
+`9403b8ca` forward, and remember the count lives in five places including the machine-read
+`// DUST:` comment.
+
+---
+
 # 2026-07-21g - R156 JACK OF ALL TRADES 8316 (gemini headless loop, cycle 3 + injected stall diagnose) - ENGINE 1.236.0 -> 1.237.0
 
 LEDGER 997. Pushed `0563537f..35a34db4` (slice `2ae85d74`, merge `ca5f77c6`). CI green on
@@ -120,67 +175,3 @@ DS 9100 passed / 1 skipped / 3672 subtests. RC 12539 passed / 23 skipped / 406 s
 `-k "ds_share or hygiene"` 370 passed. `ds_share_sync.py --check` in sync at 1.235.0 /
 493 files. ruff clean. 0 non-ASCII in the authored package, 0 banned glyphs in the 238KB
 diff. Verifier gate 8 CONFIRM / 2 PARTIAL, both PARTIALs fixed by the merger.
-
----
-
-# 2026-07-21e - R153 FLAT MAGIC-PEN PARITY + ADJUDICATOR SWAP SEAM (headless loop, cycle 5 + operator interrupt) - ENGINE 1.234.0 -> 1.235.0
-
-**Two units in one cycle.** LEDGER 992 (R153) + 993 (swap). Merges `5872fa91`,
-`e7be8ed2`, `bd50e88c`, `a430abae`, `f47a5082`, `48975ead`, `afb15a17`. DS bounced,
-`:8893` serves 1.235.0. Share mirror synced. Pushed `6948b387..afb15a17`.
-
-## What shipped
-
-R153 credited `1111` Jarvan I's 12 flat magic pen (stated in DDragon description text,
-absent from the structured stat block) - the only gap in a 10-id population, confirmed by
-three independent sweeps. Added a permanent catalog-sweep guard, marked `443064` Talisman
-of Ascension unmodelable (literal `?` placeholders), and backfilled the `Share/README.md`
-release list 1.229.0-1.235.0.
-
-The operator interrupted mid-run to direct the Gemini-to-local-Claude transition structure.
-`ops/loop/adjudicator.py` now sits behind the single `gemini()` call site with automatic
-credit-exhaustion failover that retries the same call on the fallback so no cycle is lost.
-The AHK bridge was hardened in the same round. Gemini stays the live default.
-
-## The three things worth remembering
-
-**1. A slice's own green suite cannot prove a merged-state property.** The adjudicator
-slice and its verifier BOTH measured 183 passed on byte-identical code; the merged state
-gave 2 failed. Neither lied - pre-merge `config.json` had no `adjudicator_fallback`, so the
-earlier test never fired a failover. **The merge itself armed the defect.** The fresh
-merged-state re-verify is not ceremony; it is the only gate that could have caught this.
-
-**2. Misrouting a message to the wrong agent produced a better result than routing it
-correctly.** The AHK latch correction went to the adjudicator agent by mistake. It refused
-to edit a sibling's file and instead verified the contract my fix depended on, finding that
-`stall_recovery_directive()` reuses the stalled cycle number and `tests/test_loop_stall_recovery.py:32`
-pins that format - so my cycle-header-keyed latch would have refused the very recovery
-directive meant to unstick it. Re-keyed on a content hash.
-
-**3. Sticky state must be re-validated against the config that is live NOW.** The defect
-was a sticky failover decision being honored by a call whose config armed no fallback at
-all - routing to a backend the active configuration never authorized. No-op in production,
-but the fix restores the pure-function contract the pre-existing 9h-outage tests encode.
-
-## Gates
-
-DS 9100 passed / 1 skipped / 3672 subtests. Dual suite on the merged state 21570 passed /
-24 skipped / 4078 subtests, exit 0. RC suite after the swap merges 12531 passed / 23
-skipped / 406 subtests, exit 0. `tests/test_loop_gemini_timeout.py` 7 passed as a file AND
-7/7 individually. Loop gate 188 passed. ruff clean. AHK `/validate` exit 0 with 0 stderr
-bytes, proven discriminating against a broken control script. Heartbeat interop proven by
-executing both halves against each other, UTC epoch checked against the 18000s Central
-offset. 4 worktrees cleaned, 0 remaining.
-
-## Carry-forward
-
-Two Arena flat-pen drift rows (`223020` states 20 credits 12; `224645` states 10 credits
-15) are the magic-side counterpart of R152's held-back RC-B lethality drift and need the
-SAME doctrine call. Escalated to the director via `ops/loop/control/gemini_ask.txt` as ONE
-question covering both axes - do not resolve one without the other.
-
-The bridge must be RELAUNCHED before a heartbeat appears; the running PID still holds the
-pre-hardening script, so `AHK BRIDGE STALE (missing)` until then is expected, not a fault.
-
-FUTURE: a lint rule that any test touching `lc.gemini` must patch `lc.subprocess.run` - a
-draft test omitted it and made a real billed CLI call, caught only by its 29-second runtime.
