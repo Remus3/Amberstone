@@ -22,6 +22,7 @@ from __future__ import annotations
 import concurrent.futures
 import json
 import logging
+import os
 import time
 import unicodedata
 from pathlib import Path
@@ -69,6 +70,29 @@ MODE_TO_FILE = {
 # post-game summary picker - should use this instead of hardcoding
 # their own list. Source-of-truth pattern per ADR-008.
 MODE_FILES: tuple[str, ...] = tuple(dict.fromkeys(MODE_TO_FILE.values()))
+
+
+def _read_lcu_snapshot() -> dict:
+    """Source the whole LCU snapshot for build_state.
+
+    DEFAULT-OFF in-process path (RC2 RM-03 E12 lever L3): when
+    ``RC_LCU_INPROCESS=1`` AND the dashboard-owned LcuClient returns a
+    snapshot, build the payload in-process via lcu.snapshot_shape (no :8889
+    relay round-trip). Otherwise - flag unset, client unconnected, or any
+    error - fall back to the relay ``lcu_summary()`` so today's live path is
+    byte-identical. Landed DARK; G1-00 live confirm (flag ON in a live
+    champ-select) is owed before flipping. Imported lazily to avoid an import
+    cycle through dashboard._lcu_inprocess -> lcu.lcu_client at module load.
+    """
+    if os.environ.get("RC_LCU_INPROCESS") == "1":
+        try:
+            from dashboard._lcu_inprocess import lcu_summary_inprocess
+            snap = lcu_summary_inprocess()
+        except Exception:  # noqa: BLE001
+            snap = None
+        if snap is not None:
+            return snap
+    return lcu_summary()
 
 
 def _preflip_mode_from_lcu(lcu_snapshot: dict | None) -> str | None:
@@ -307,7 +331,7 @@ def build_state() -> dict:
         _lc_future = None
 
     health = read_json("ops/runtime/health.json")
-    lcu_snapshot = lcu_summary()
+    lcu_snapshot = _read_lcu_snapshot()
     _mark("lcu")
     # Hold the last champ_select across the fast no-draft (ARAM /
     # Mayhem / Arena) champ-select -> game transition + >5s agent-push
