@@ -4,6 +4,49 @@
 
 ---
 
+# 2026-07-21m - R162 SHARE PACKAGE MADE SHIPPABLE (gemini headless loop, cycle 9 - FINAL cycle)
+
+LEDGER 1003. Merge `0bda3c2e` (six slices). ENGINE-IMPACT NONE - no bump, no DS bounce, no RC
+restart. Operator stopped the loop at this cycle ("last headless run for these cycles");
+`ops/loop/control/STOP` is written, so there is no cycle 10.
+
+## What the directive asked vs what was actually wrong
+
+The directive called the `Share/` presentation overhaul an unstarted unit. It is the THIRD pick of
+it - R139 (`a4261c54`) and R149 (`774ed236`, the same day) both shipped it. The drift was real
+anyway, and chasing it surfaced three defects that are product defects, not presentation:
+
+1. **The shipped package could not pass its own test suite.** The sync mirrored
+   `data/daemon_slayer/<patch>/**` only, so the patch-independent tables the engine reads through
+   `ult_rates.py:60-63` (`spell_cast_rates.json`, `ult_cast_rates.json`) never shipped. A reviewer
+   running it got 8802 passed / 108 failed / 172 errors while the README advertised 9190 passing.
+   Both files ship now (497 -> 498). Honest exit-0 subset: 6920 passed / 0 failed with the 46
+   ignored files named and the command printed.
+2. **The public package redistributed a Overlay App E win-rate scrape.**
+   `mayhem_augment_stats.json` (endpoint `data.v2.iesdev.com`, 199 augments with `win_rate`) shipped
+   inside `Share/src` with no license grant, while the README claimed DS does not scrape win-rate
+   aggregators and that the sidecars were consistent with Riot's no-win-rate policy. The DS engine
+   has ZERO references to it. Excluded from the mirror; the live RC feed is untouched; the Overlay App E
+   credit is reframed in `LICENSE.md`, not deleted.
+3. **The recurrence is now mechanized.** `tests/test_ds_share_changelog_freshness.py` and
+   `tests/test_ds_share_data_snapshot_scope.py` pin both classes by property. R139 had already
+   diagnosed WHY this rots (the anchor rules exclude changelog history by design) and nobody wrote
+   the guard - that is why it came back twice.
+
+## Carry-forward for the next session
+
+- The full `tests/` run was still in flight when this note was written; DS was 9190 passed / 1
+  skipped / 3865 subtests and `ds_share_sync --check` green at 498 files. Confirm the RC suite +
+  CI green for the final SHA before treating the package as reviewer-ready.
+- The 46-file boundary set in the shipped package is characterized but not closed: 434 references
+  to absent historical patch dirs (`16.10.1` / `16.11.1` / `16.13.1`) plus 8 lazy host imports.
+  Closing it means either shipping the historical snapshots or re-pinning those tests.
+- `Share/` should now be treated as a real external deliverable. Anything that changes the engine's
+  data reads has to go through the sync's `_ROOT_DATA_FILES` / `_EXCLUDED_SNAPSHOT_FILES` or the new
+  guards fail - which is the intended behaviour.
+
+---
+
 # 2026-07-21l - R161 ARENA STAT LINE DOCTRINE B (gemini headless loop, cycle 8) - ENGINE 1.237.0 -> 1.238.0
 
 LEDGER 1002. Commit `77a34890`. ENGINE-IMPACT BUMP. DS bounced, both build-order families
