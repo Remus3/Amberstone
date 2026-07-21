@@ -15,9 +15,19 @@ $stub = "$root\ops\loop\claude_stub.py"
 $env:GEMINI_API_KEY = [Environment]::GetEnvironmentVariable("GEMINI_API_KEY", "User")
 if (-not $Cfg) { $Cfg = if ($Mode -eq "live") { "$root\ops\loop\config.json" } else { "$root\ops\loop\config.dry.json" } }
 
-# pre-clean stale sentinels so a prior run's STOP cannot early-kill this one
-"STOP", "gemini.ready", "typed.flag", "claude.done", "cycle.txt" | ForEach-Object {
+# pre-clean stale sentinels so a prior run's STOP cannot early-kill this one.
+# ahk_heartbeat.txt: a stale one reads as a LIVE bridge until it ages past the staleness
+# window. ahk_partial.flag: it latches the bridge OFF, so a leftover flag would make the
+# new run refuse every directive. adjudicator_active.txt: a stale marker claims a backend
+# pass is still running.
+"STOP", "gemini.ready", "typed.flag", "claude.done", "cycle.txt",
+"ahk_heartbeat.txt", "ahk_heartbeat.tmp", "ahk_partial.flag", "adjudicator_active.txt" | ForEach-Object {
   Remove-Item "$ctl\$_" -Force -ErrorAction SilentlyContinue
+}
+# seed the LIVE timings copy from the shipped defaults. Only when absent - control/ is
+# runtime state, so an operator's tuning survives a relaunch.
+if (-not (Test-Path "$ctl\ahk_timings.json")) {
+  Copy-Item "$root\ops\loop\ahk_timings.default.json" "$ctl\ahk_timings.json" -Force -ErrorAction SilentlyContinue
 }
 # kill ONLY this repo's bridge instances - a global AutoHotkey64 kill murders the
 # sibling Sibling-A loop's bridge mid-run (and vice versa). Scoped by cmdline.
