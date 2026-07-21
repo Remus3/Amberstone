@@ -929,10 +929,18 @@ def compute_dps(
     # (both are real AP). The AD side folds into bonus_ad, which the CallContext
     # and the rotation fold below both read. The adaptive side is decided from the
     # RESOLVED build (bonus_ad vs ap), AD winning ties per rune_procs._adaptive_coeff.
+    #
+    # R155 (ENGINE 1.236.0): the registry grew a THIRD column - a bonus-ATTACK-
+    # SPEED FRACTION - and Legend: Alacrity 9104 is its first occupant. Unlike
+    # the AD/AP pair it is NOT adaptive (an AD build and an AP build get the
+    # same grant), and unlike them it does not belong in the CallContext: it is
+    # folded onto the ROTATION attack speed below, next to the cond_as / passive_as
+    # folds that share its units. 0.0 whenever the seam is OFF.
     rune_offense_ad = 0.0
     rune_offense_ap = 0.0
+    rune_offense_as = 0.0
     if apply_rune_offense_grants:
-        rune_offense_ad, rune_offense_ap = rune_offense_grants(
+        rune_offense_ad, rune_offense_ap, rune_offense_as = rune_offense_grants(
             rune_ids or (),
             level=level,
             bonus_ad=bonus_ad,
@@ -1026,6 +1034,42 @@ def compute_dps(
         stats_for_rotation["ad"] = (
             stats_for_rotation.get("ad", 0.0) + rune_offense_ad
         )
+    # R155 (1.236.0): fold the rune bonus ATTACK SPEED (Legend: Alacrity 9104)
+    # into the rotation AS. Same shape as the R42 cond_as fold and the R7
+    # passive_as fold below - and the same unit trap: rune_offense_as is a
+    # bonus-AS FRACTION (0.18 at the feed's 10-stack cap) while stats["as"] is
+    # FINAL attacks/sec (engine.py:196 resolves it as base_as * (1 + bonus_pct)).
+    # League folds bonus AS onto the INNATE base AS, so scale by base_as before
+    # adding; adding the raw fraction over-credits by 1/base_as. The 2.5 League
+    # hard-cap re-clamp is mandatory and matches both neighbouring folds.
+    #
+    # ATTACK-SPEED-LOCK GATE: engine.py:439 zeroes item_totals["as_pct"] for a
+    # champion carrying an as_lock_entry with locks_as (Jhin's Whisper - his AS
+    # cannot increase and would-be bonus AS converts to AD instead). This fold
+    # runs DOWNSTREAM of that zeroing, so without this gate it would hand a
+    # locked champion attack speed they can never have in game. A locked
+    # champion is granted ZERO here, deliberately: the override table's
+    # ad_per_bonus_as conversion was authored against ITEM attack speed, and
+    # routing a rune through it would invent a magnitude it was not built
+    # against. Conservative, recorded, and pinned by test_rune_offense_attack_
+    # speed_r155.AttackSpeedLockGateTests.
+    #
+    # Gated on > 0 so the OFF path never copies stats - byte-identical to
+    # pre-R155 regardless of what rune_ids carries.
+    if rune_offense_as > 0:
+        from ._passive_as_lock_overrides import as_lock_entry
+
+        _as_lock = as_lock_entry(resolved.champion_id)
+        if _as_lock is None or not _as_lock.locks_as:
+            if stats_for_rotation is stats:
+                stats_for_rotation = dict(stats)
+            innate_base_as = float(
+                (champ.get("stats") or {}).get("attackspeed", 0.0) or 0.0
+            )
+            stats_for_rotation["as"] = min(
+                2.5,
+                stats_for_rotation.get("as", 0.0) + innate_base_as * rune_offense_as,
+            )
     # R7 (1.147.0): per-stack champion self-Attack-Speed passive seam.
     # assume_passive_as_stacks=False (the default) -> passive_as stays 0.0, no
     # stats copy, no note - byte-identical. When True, the champion's registered
