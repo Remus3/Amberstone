@@ -4,6 +4,58 @@
 
 ---
 
+# 2026-07-21f - R154 SHARE EXTERNAL PRESENTATION (headless loop, cycle 1) - ENGINE unchanged 1.235.0
+
+LEDGER 994. Pushed `1b32aedc..02f80fce` (work commit `664806c1`). ENGINE-IMPACT NONE -
+`git diff --stat agents/` empty, no DS bounce needed, no RC restart (no routes, no web assets).
+
+## What shipped
+
+The `Share/` package - the DS engine artifact handed to an outside technical reviewer - was
+re-presented as a public-facing product. Six slices on disjoint file sets, one merger,
+preceded by two read-only research agents and gated by an adversarial verifier.
+
+**The headline was not a presentation defect.** The package's own documented first command
+ran ZERO tests: `pytest agents/daemon_slayer/tests` from `Share/src` gave `9008 collected`,
+`9 errors during collection`, `Interrupted`. Nine mirrored modules import host-only `core.*`,
+or read a host-only `web/` asset through an extractor import. Fixed at root with
+`_HOST_DEPENDENT_TESTS` in `tools/ds_share_sync.py` - 502 -> 493 files, 350 -> 341 test
+files, 9008 collected with 0 errors.
+
+Also: new `Share/LICENSE.md` (the package shipped externally with no stated terms at all);
+three credit misattributions corrected against the shipped data, not against another doc
+(`champion_abilities` is Meraki not Data Dragon, `enchanter_items` is hand-curated not
+Meraki, `wiki_ability_stats` carries no damage ratios); lolmath.net credited for the first
+time inside the folder named after it; 41 stale `file:line` citations fixed and all 280 then
+swept clean; MANIFEST's `Share/`-prefixed self-references fixed in the generator template.
+
+## Read this before touching Share/ again
+
+- The directive claimed this unit was unexecuted. It was WRONG - R149 (`dfb509b8`,
+  2026-07-20) is the same unit. Check LEDGER before accepting a director's novelty claim.
+- `Share/src/**` and `Share/MANIFEST.md` are machine-generated. Never hand-edit either;
+  change the template in `tools/ds_share_sync.py`.
+- The three `lolmath_ingest` docs plus the `.d.ts` get UNANCHORED semver rewrites - any new
+  `N.N.N` token written there is drift.
+- A shell whose cwd is `Share/src` makes the sync tool's `os.replace` fail with WinError 32.
+  Commit and sync from the repo root.
+
+## Open, carried forward
+
+**RM-112** (new, ROADMAP NOW): the package still reports `8723 passed / 108 failed /
+170 errors` standalone, because 51 of its 341 test files reach outside the package for
+host-only data. Documented in `docs/05_AUDIT_AND_REFACTOR.md`, not hidden. Not live-gated -
+a straight drain, and the natural next unit.
+
+## Gates
+
+DS 9100 passed / 1 skipped / 3672 subtests. RC 12539 passed / 23 skipped / 406 subtests.
+`-k "ds_share or hygiene"` 370 passed. `ds_share_sync.py --check` in sync at 1.235.0 /
+493 files. ruff clean. 0 non-ASCII in the authored package, 0 banned glyphs in the 238KB
+diff. Verifier gate 8 CONFIRM / 2 PARTIAL, both PARTIALs fixed by the merger.
+
+---
+
 # 2026-07-21e - R153 FLAT MAGIC-PEN PARITY + ADJUDICATOR SWAP SEAM (headless loop, cycle 5 + operator interrupt) - ENGINE 1.234.0 -> 1.235.0
 
 **Two units in one cycle.** LEDGER 992 (R153) + 993 (swap). Merges `5872fa91`,
@@ -120,45 +172,3 @@ tails: `1111` Jarvan I's 12 flat magic pen has no ITEM_EFFECTS entry at all;
 
 The gist post-commit hook index corruption recurred (4th). Worktree index only, commit
 object clean, cleared with `git reset --mixed`.
-
----
-
-# 2026-07-21c - R151 HEXCORE OFFLINE EXPLORER RE-SYNC (gemini headless loop, cycle 3) - NO ENGINE CHANGE
-
-**Tier-0/docs run.** LEDGER 990. Slice merge `79c3deba`. ENGINE-IMPACT NONE - no DS math
-path, no ENGINE bump, no Share churn, no restart.
-
-## What shipped
-
-`docs/HEXCORE_offline.html` re-synced against the repo. 3 missing dust leaves added
-(`dashboard/_lcu_inprocess.py` -> `m_dashserver`, `lcu/champ_select_shape.py` -> `m_lcupre`,
-`lcu/snapshot_shape.py` -> `m_lcupost`), dust 322 -> 325 at all four sites, ENGINE tooltips
-1.232.0 -> 1.233.0 / 9087 tests, LEDGER node desc entry 903 -> 989, repo-stats HUD
-re-anchored to `eb111c36` / 2026-07-21 / commits 3789. Guard test
-`tests/test_hexcore_offline_dust.py` `EXPECTED_NEW_BASENAMES` widened 26 -> 32.
-
-## The directive assumed a cold sync; the real gap was 3 files, not 32
-
-45 net-new `.py` adds since `d584e02e`, minus 13 `Share/src/agents/daemon_slayer/*.py`
-byte mirrors = 32 real files - and R138 had already landed 29 of them. Grounding this
-BEFORE dispatching turned a 32-file rewrite into a 3-entry append.
-
-## Both gates earned their keep
-
-The **verifier** caught that the slice agent finished both edits but never committed:
-branch had zero commits, `main...HEAD` empty, so a naive merge would have been a silent
-no-op reporting success. The **5-phase fixture audit** caught two number defects the
-verifier did not: the ENGINE tooltip took the COLLECTED DS count (9088) where the repo
-convention for that anchor is the PASSED count (9087, per `docs/DAEMON_SLAYER.md`) -
-which also called a skipped test green - and advancing the engine/ledger rows to
-2026-07-21 left the neighbouring repo-stats rows on a 2026-07-20 snapshot, so the HUD
-contradicted itself. Both fixed in-slice before push. Zero MUST-FIX.
-
-## Don't-redo
-
-HEXCORE dust set is CLOSED against `d584e02e..eb111c36`. `Share/src` mirrors stay
-EXCLUDED (byte-identical duplicates would double-render their parents' clusters). Do not
-"correct" `snapshot_shape.py` -> `m_lcupost`: the DUST parent convention is decorative
-round-robin, not semantic (`lcu_rune_writer.py`, a pre-game module, is parented
-`m_lcupost` too). The 8-10px type in `#hexcore-stats` is correct for a zoomable canvas
-doc; the v2.1 `--fs-xs` floor governs the dashboard, not this offline artifact.
