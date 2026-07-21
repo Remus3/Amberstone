@@ -1,26 +1,755 @@
 [
   {
-    "champion": "Caitlyn",
+    "champion": "KSante",
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
       "DSP8_target_preset=tank",
       "DSV3_assume_squishy_target",
-      "DSV4_assume_ability_amp"
+      "RF36_survivability_ehp"
     ],
     "seams": {
       "DSV2_assume_takedown": {
         "off_top": [
           "Trinity Force",
           "Essence Reaver",
+          "Iceborn Gauntlet",
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "on_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Iceborn Gauntlet",
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSV3_assume_squishy_target": {
+        "off_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Iceborn Gauntlet",
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "on_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Lich Bane",
+          "Iceborn Gauntlet",
+          "Lord Dominik's Regards",
+          "Dusk and Dawn"
+        ],
+        "entered": [
+          "Lich Bane",
+          "Lord Dominik's Regards",
+          "Dusk and Dawn"
+        ],
+        "left": [
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "moves": true
+      },
+      "DSV4_assume_ability_amp": {
+        "off_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Iceborn Gauntlet",
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "on_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Iceborn Gauntlet",
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSP8_target_preset=tank": {
+        "off_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Iceborn Gauntlet",
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "on_top": [
+          "Trinity Force",
+          "Lord Dominik's Regards",
+          "Essence Reaver",
+          "Serylda's Grudge",
+          "Mortal Reminder",
+          "Black Cleaver"
+        ],
+        "entered": [
+          "Lord Dominik's Regards",
+          "Serylda's Grudge",
+          "Mortal Reminder",
+          "Black Cleaver"
+        ],
+        "left": [
+          "Iceborn Gauntlet",
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "moves": true
+      },
+      "DSP11_kit_axis_burst": {
+        "off_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Iceborn Gauntlet",
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "on_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Iceborn Gauntlet",
+          "Sundered Sky",
+          "Runaan's Hurricane",
+          "Infinity Edge"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSP2_exempt_offclass": {
+        "off_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Stormrazor",
+          "Infinity Edge"
+        ],
+        "on_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Stormrazor",
+          "Infinity Edge"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSP11_kit_axis_dps": {
+        "off_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Stormrazor",
+          "Infinity Edge"
+        ],
+        "on_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Stormrazor",
+          "Infinity Edge"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "RF1_survivability_hybrid": {
+        "off_top": [
+          "Void Immolation",
+          "Trinity Force",
+          "Heartsteel",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer"
+        ],
+        "on_top": [
+          "Void Immolation",
+          "Trinity Force",
+          "Heartsteel",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "RF2_survivability_hps": {
+        "off_top": [
+          "Echoes of Helia",
+          "Ardent Censer",
+          "Locket of the Iron Solari",
+          "Staff of Flowing Water",
+          "Knight's Vow",
+          "Redemption"
+        ],
+        "on_top": [
+          "Echoes of Helia",
+          "Ardent Censer",
+          "Locket of the Iron Solari",
+          "Staff of Flowing Water",
+          "Knight's Vow",
+          "Redemption"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "RF36_survivability_ehp": {
+        "off_top": [
+          "Void Immolation",
+          "Warmog's Armor",
+          "Jak'Sho, The Protean",
+          "Kaenic Rookern",
+          "Heartsteel",
+          "Randuin's Omen"
+        ],
+        "on_top": [
+          "Iceborn Gauntlet",
+          "Thornmail",
+          "Void Immolation",
+          "Warmog's Armor",
+          "Jak'Sho, The Protean",
+          "Kaenic Rookern"
+        ],
+        "entered": [
+          "Iceborn Gauntlet",
+          "Thornmail"
+        ],
+        "left": [
+          "Heartsteel",
+          "Randuin's Omen"
+        ],
+        "moves": true
+      }
+    }
+  },
+  {
+    "champion": "Briar",
+    "mode": "ARAM",
+    "level": 13,
+    "moved_seams": [
+      "DSP8_target_preset=tank",
+      "DSV3_assume_squishy_target",
+      "RF1_survivability_hybrid"
+    ],
+    "seams": {
+      "DSV2_assume_takedown": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "on_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSV3_assume_squishy_target": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "on_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Shadowflame",
+          "Banshee's Veil"
+        ],
+        "entered": [
+          "Shadowflame",
+          "Banshee's Veil"
+        ],
+        "left": [
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "moves": true
+      },
+      "DSV4_assume_ability_amp": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "on_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSP8_target_preset=tank": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "on_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Void Staff",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Shadowflame"
+        ],
+        "entered": [
+          "Void Staff",
+          "Shadowflame"
+        ],
+        "left": [
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "moves": true
+      },
+      "DSP11_kit_axis_burst": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "on_top": [
+          "Wooglet's Witchcap",
+          "Rabadon's Deathcap",
+          "Lich Bane",
+          "Hextech Gunblade",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSP2_exempt_offclass": {
+        "off_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Stormrazor",
+          "Heartsteel"
+        ],
+        "on_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Stormrazor",
+          "Heartsteel"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSP11_kit_axis_dps": {
+        "off_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Stormrazor",
+          "Heartsteel"
+        ],
+        "on_top": [
+          "Trinity Force",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Stormrazor",
+          "Heartsteel"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "RF1_survivability_hybrid": {
+        "off_top": [
+          "Void Immolation",
+          "Trinity Force",
+          "Heartsteel",
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer"
+        ],
+        "on_top": [
+          "Sundered Sky",
+          "Sterak's Gage",
+          "Death's Dance",
+          "Void Immolation",
+          "Trinity Force",
+          "Heartsteel"
+        ],
+        "entered": [
+          "Sundered Sky",
+          "Sterak's Gage",
+          "Death's Dance"
+        ],
+        "left": [
+          "Essence Reaver",
+          "Runaan's Hurricane",
+          "Kraken Slayer"
+        ],
+        "moves": true
+      },
+      "RF2_survivability_hps": {
+        "off_top": [
+          "Echoes of Helia",
+          "Ardent Censer",
+          "Staff of Flowing Water",
+          "Locket of the Iron Solari",
+          "Knight's Vow",
+          "Redemption"
+        ],
+        "on_top": [
+          "Echoes of Helia",
+          "Ardent Censer",
+          "Staff of Flowing Water",
+          "Locket of the Iron Solari",
+          "Knight's Vow",
+          "Redemption"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "RF36_survivability_ehp": {
+        "off_top": [
+          "Void Immolation",
+          "Warmog's Armor",
+          "Heartsteel",
+          "Kaenic Rookern",
+          "Jak'Sho, The Protean",
+          "Randuin's Omen"
+        ],
+        "on_top": [
+          "Void Immolation",
+          "Warmog's Armor",
+          "Heartsteel",
+          "Kaenic Rookern",
+          "Jak'Sho, The Protean",
+          "Randuin's Omen"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      }
+    }
+  },
+  {
+    "champion": "Ezreal",
+    "mode": "ARAM",
+    "level": 13,
+    "moved_seams": [
+      "DSP11_kit_axis_burst",
+      "DSP11_kit_axis_dps",
+      "DSP2_exempt_offclass",
+      "DSP8_target_preset=tank",
+      "DSV3_assume_squishy_target"
+    ],
+    "seams": {
+      "DSV2_assume_takedown": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Essence Reaver",
+          "Trinity Force",
+          "Infinity Edge",
+          "Lich Bane",
+          "Rabadon's Deathcap"
+        ],
+        "on_top": [
+          "Wooglet's Witchcap",
+          "Essence Reaver",
+          "Trinity Force",
+          "Infinity Edge",
+          "Lich Bane",
+          "Rabadon's Deathcap"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSV3_assume_squishy_target": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Essence Reaver",
+          "Trinity Force",
+          "Infinity Edge",
+          "Lich Bane",
+          "Rabadon's Deathcap"
+        ],
+        "on_top": [
+          "Wooglet's Witchcap",
+          "Lich Bane",
+          "Rabadon's Deathcap",
+          "Hextech Gunblade",
+          "Essence Reaver",
+          "Infinity Edge"
+        ],
+        "entered": [
+          "Hextech Gunblade"
+        ],
+        "left": [
+          "Trinity Force"
+        ],
+        "moves": true
+      },
+      "DSV4_assume_ability_amp": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Essence Reaver",
+          "Trinity Force",
+          "Infinity Edge",
+          "Lich Bane",
+          "Rabadon's Deathcap"
+        ],
+        "on_top": [
+          "Wooglet's Witchcap",
+          "Essence Reaver",
+          "Trinity Force",
+          "Infinity Edge",
+          "Lich Bane",
+          "Rabadon's Deathcap"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "DSP8_target_preset=tank": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Essence Reaver",
+          "Trinity Force",
+          "Infinity Edge",
+          "Lich Bane",
+          "Rabadon's Deathcap"
+        ],
+        "on_top": [
+          "Wooglet's Witchcap",
+          "Void Staff",
+          "Lich Bane",
+          "Rabadon's Deathcap",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "entered": [
+          "Void Staff"
+        ],
+        "left": [
+          "Infinity Edge"
+        ],
+        "moves": true
+      },
+      "DSP11_kit_axis_burst": {
+        "off_top": [
+          "Wooglet's Witchcap",
+          "Essence Reaver",
+          "Trinity Force",
+          "Infinity Edge",
+          "Lich Bane",
+          "Rabadon's Deathcap"
+        ],
+        "on_top": [
+          "Essence Reaver",
+          "Trinity Force",
+          "Wooglet's Witchcap",
+          "Infinity Edge",
+          "Lich Bane",
+          "Rabadon's Deathcap"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": true
+      },
+      "DSP2_exempt_offclass": {
+        "off_top": [
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Essence Reaver",
+          "Stormrazor",
+          "Infinity Edge",
+          "Yun Tal Wildarrows"
+        ],
+        "on_top": [
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Essence Reaver",
+          "Trinity Force",
+          "Stormrazor",
+          "Infinity Edge"
+        ],
+        "entered": [
+          "Trinity Force"
+        ],
+        "left": [
+          "Yun Tal Wildarrows"
+        ],
+        "moves": true
+      },
+      "DSP11_kit_axis_dps": {
+        "off_top": [
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Essence Reaver",
+          "Stormrazor",
+          "Infinity Edge",
+          "Yun Tal Wildarrows"
+        ],
+        "on_top": [
+          "Essence Reaver",
+          "Trinity Force",
+          "Runaan's Hurricane",
+          "Kraken Slayer",
+          "Stormrazor",
+          "Infinity Edge"
+        ],
+        "entered": [
+          "Trinity Force"
+        ],
+        "left": [
+          "Yun Tal Wildarrows"
+        ],
+        "moves": true
+      },
+      "RF1_survivability_hybrid": {
+        "off_top": [
+          "Void Immolation",
+          "Trinity Force",
+          "Runaan's Hurricane",
+          "Heartsteel",
+          "Kraken Slayer",
+          "Essence Reaver"
+        ],
+        "on_top": [
+          "Void Immolation",
+          "Trinity Force",
+          "Runaan's Hurricane",
+          "Heartsteel",
+          "Kraken Slayer",
+          "Essence Reaver"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "RF2_survivability_hps": {
+        "off_top": [
+          "Echoes of Helia",
+          "Ardent Censer",
+          "Staff of Flowing Water",
+          "Locket of the Iron Solari",
+          "Knight's Vow",
+          "Redemption"
+        ],
+        "on_top": [
+          "Echoes of Helia",
+          "Ardent Censer",
+          "Staff of Flowing Water",
+          "Locket of the Iron Solari",
+          "Knight's Vow",
+          "Redemption"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      },
+      "RF36_survivability_ehp": {
+        "off_top": [
+          "Void Immolation",
+          "Warmog's Armor",
+          "Jak'Sho, The Protean",
+          "Kaenic Rookern",
+          "Heartsteel",
+          "Randuin's Omen"
+        ],
+        "on_top": [
+          "Void Immolation",
+          "Warmog's Armor",
+          "Jak'Sho, The Protean",
+          "Kaenic Rookern",
+          "Heartsteel",
+          "Randuin's Omen"
+        ],
+        "entered": [],
+        "left": [],
+        "moves": false
+      }
+    }
+  },
+  {
+    "champion": "Nilah",
+    "mode": "ARAM",
+    "level": 13,
+    "moved_seams": [
+      "DSP11_kit_axis_burst",
+      "DSP11_kit_axis_dps",
+      "DSP8_target_preset=tank",
+      "DSV3_assume_squishy_target"
+    ],
+    "seams": {
+      "DSV2_assume_takedown": {
+        "off_top": [
+          "Essence Reaver",
+          "Trinity Force",
           "Infinity Edge",
           "Sundered Sky",
           "Bloodthirster",
           "Kraken Slayer"
         ],
         "on_top": [
-          "Trinity Force",
           "Essence Reaver",
+          "Trinity Force",
           "Infinity Edge",
           "Sundered Sky",
           "Bloodthirster",
@@ -32,83 +761,73 @@
       },
       "DSV3_assume_squishy_target": {
         "off_top": [
-          "Trinity Force",
           "Essence Reaver",
+          "Trinity Force",
           "Infinity Edge",
           "Sundered Sky",
           "Bloodthirster",
           "Kraken Slayer"
         ],
         "on_top": [
-          "Trinity Force",
           "Essence Reaver",
-          "Lich Bane",
+          "Trinity Force",
           "Infinity Edge",
-          "Lord Dominik's Regards",
-          "Serylda's Grudge"
-        ],
-        "entered": [
-          "Lich Bane",
-          "Lord Dominik's Regards",
-          "Serylda's Grudge"
-        ],
-        "left": [
           "Sundered Sky",
           "Bloodthirster",
+          "Umbral Glaive"
+        ],
+        "entered": [
+          "Umbral Glaive"
+        ],
+        "left": [
           "Kraken Slayer"
         ],
         "moves": true
       },
       "DSV4_assume_ability_amp": {
         "off_top": [
-          "Trinity Force",
           "Essence Reaver",
+          "Trinity Force",
           "Infinity Edge",
           "Sundered Sky",
           "Bloodthirster",
           "Kraken Slayer"
         ],
         "on_top": [
-          "Trinity Force",
           "Essence Reaver",
+          "Trinity Force",
           "Infinity Edge",
           "Sundered Sky",
           "Bloodthirster",
-          "Spear of Shojin"
-        ],
-        "entered": [
-          "Spear of Shojin"
-        ],
-        "left": [
           "Kraken Slayer"
         ],
-        "moves": true
+        "entered": [],
+        "left": [],
+        "moves": false
       },
       "DSP8_target_preset=tank": {
         "off_top": [
-          "Trinity Force",
           "Essence Reaver",
+          "Trinity Force",
           "Infinity Edge",
           "Sundered Sky",
           "Bloodthirster",
           "Kraken Slayer"
         ],
         "on_top": [
-          "Lord Dominik's Regards",
-          "Serylda's Grudge",
-          "Trinity Force",
           "Essence Reaver",
-          "Terminus",
+          "Trinity Force",
+          "Serylda's Grudge",
+          "Lord Dominik's Regards",
+          "Infinity Edge",
           "Mortal Reminder"
         ],
         "entered": [
-          "Lord Dominik's Regards",
           "Serylda's Grudge",
-          "Terminus",
+          "Lord Dominik's Regards",
           "Mortal Reminder"
         ],
         "left": [
-          "Infinity Edge",
           "Sundered Sky",
           "Bloodthirster",
           "Kraken Slayer"
@@ -117,41 +836,49 @@
       },
       "DSP11_kit_axis_burst": {
         "off_top": [
-          "Trinity Force",
           "Essence Reaver",
+          "Trinity Force",
           "Infinity Edge",
           "Sundered Sky",
           "Bloodthirster",
           "Kraken Slayer"
         ],
         "on_top": [
-          "Trinity Force",
-          "Essence Reaver",
           "Infinity Edge",
+          "Immortal Shieldbow",
+          "Lord Dominik's Regards",
+          "Navori Flickerblade",
+          "Essence Reaver",
+          "Trinity Force"
+        ],
+        "entered": [
+          "Immortal Shieldbow",
+          "Lord Dominik's Regards",
+          "Navori Flickerblade"
+        ],
+        "left": [
           "Sundered Sky",
           "Bloodthirster",
           "Kraken Slayer"
         ],
-        "entered": [],
-        "left": [],
-        "moves": false
+        "moves": true
       },
       "DSP2_exempt_offclass": {
         "off_top": [
-          "Runaan's Hurricane",
+          "Trinity Force",
           "Essence Reaver",
           "Kraken Slayer",
           "Stormrazor",
-          "Infinity Edge",
-          "Yun Tal Wildarrows"
+          "Heartsteel",
+          "Runaan's Hurricane"
         ],
         "on_top": [
-          "Runaan's Hurricane",
+          "Trinity Force",
           "Essence Reaver",
           "Kraken Slayer",
           "Stormrazor",
-          "Infinity Edge",
-          "Yun Tal Wildarrows"
+          "Heartsteel",
+          "Runaan's Hurricane"
         ],
         "entered": [],
         "left": [],
@@ -159,37 +886,47 @@
       },
       "DSP11_kit_axis_dps": {
         "off_top": [
-          "Runaan's Hurricane",
+          "Trinity Force",
           "Essence Reaver",
           "Kraken Slayer",
           "Stormrazor",
-          "Infinity Edge",
-          "Yun Tal Wildarrows"
+          "Heartsteel",
+          "Runaan's Hurricane"
         ],
         "on_top": [
-          "Runaan's Hurricane",
-          "Essence Reaver",
+          "Infinity Edge",
+          "Navori Flickerblade",
+          "Immortal Shieldbow",
+          "Lord Dominik's Regards",
+          "Trinity Force",
+          "Essence Reaver"
+        ],
+        "entered": [
+          "Infinity Edge",
+          "Navori Flickerblade",
+          "Immortal Shieldbow",
+          "Lord Dominik's Regards"
+        ],
+        "left": [
           "Kraken Slayer",
           "Stormrazor",
-          "Infinity Edge",
-          "Yun Tal Wildarrows"
+          "Heartsteel",
+          "Runaan's Hurricane"
         ],
-        "entered": [],
-        "left": [],
-        "moves": false
+        "moves": true
       },
       "RF1_survivability_hybrid": {
         "off_top": [
+          "Void Immolation",
           "Trinity Force",
-          "Runaan's Hurricane",
           "Heartsteel",
           "Essence Reaver",
           "Kraken Slayer",
           "Stormrazor"
         ],
         "on_top": [
+          "Void Immolation",
           "Trinity Force",
-          "Runaan's Hurricane",
           "Heartsteel",
           "Essence Reaver",
           "Kraken Slayer",
@@ -222,20 +959,20 @@
       },
       "RF36_survivability_ehp": {
         "off_top": [
-          "Randuin's Omen",
+          "Void Immolation",
           "Warmog's Armor",
-          "Jak'Sho, The Protean",
           "Kaenic Rookern",
+          "Jak'Sho, The Protean",
           "Heartsteel",
-          "Force of Nature"
+          "Randuin's Omen"
         ],
         "on_top": [
-          "Randuin's Omen",
+          "Void Immolation",
           "Warmog's Armor",
-          "Jak'Sho, The Protean",
           "Kaenic Rookern",
+          "Jak'Sho, The Protean",
           "Heartsteel",
-          "Force of Nature"
+          "Randuin's Omen"
         ],
         "entered": [],
         "left": [],
