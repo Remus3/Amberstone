@@ -46,6 +46,10 @@ CONQUEROR = "8010"
 # allowlist assertion below stays exact; its behaviour is pinned in
 # test_rune_offense_attack_speed_r155.py.
 LEGEND_ALACRITY = "9104"
+# R156: the registry's census-driven adaptive entry, named here for the same
+# reason; its behaviour is pinned in
+# test_rune_offense_jack_of_all_trades_r156.py.
+JACK_OF_ALL_TRADES = "8316"
 # Not in the registry by DESIGN (documented exclusions): proc damage, ability
 # haste, mana, move speed.
 ELECTROCUTE = "8112"
@@ -290,12 +294,20 @@ class RegistryShapeTests(unittest.TestCase):
     """The registry is a seeded ALLOWLIST - the exclusions are the point."""
 
     def test_exactly_the_seeded_adaptive_stat_grants_are_present(self) -> None:
-        # R155 added the non-adaptive attack-speed entry 9104 Legend: Alacrity;
-        # its own registry / column assertions live in
-        # test_rune_offense_attack_speed_r155.py.
+        # R155 added the non-adaptive attack-speed entry 9104 Legend: Alacrity
+        # and R156 the census-driven adaptive entry 8316 Jack Of All Trades;
+        # their own registry / column assertions live in
+        # test_rune_offense_attack_speed_r155.py and
+        # test_rune_offense_jack_of_all_trades_r156.py.
         self.assertEqual(
             set(_RUNE_OFFENSE_GRANTS),
-            {GATHERING_STORM, ABSOLUTE_FOCUS, CONQUEROR, LEGEND_ALACRITY},
+            {
+                GATHERING_STORM,
+                ABSOLUTE_FOCUS,
+                CONQUEROR,
+                LEGEND_ALACRITY,
+                JACK_OF_ALL_TRADES,
+            },
         )
 
     def test_every_entry_declares_a_tree_and_a_unique_family(self) -> None:
@@ -727,7 +739,7 @@ class RuneItemIdKeyspaceCollisionTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version_pin(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.236.0")
+        self.assertEqual(ENGINE_VERSION, "1.237.0")
 
 
 if __name__ == "__main__":
