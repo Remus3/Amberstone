@@ -122,7 +122,14 @@ def test_capture_state_flag_from_available():
     the reused Arena queue-id guard literal, and the non-empty-list truthiness
     that maps available -> the flag.
     """
-    src = inspect.getsource(agent.capture_state)
+    # RC2 RM-03 E12 lever L3 (2026-07-20): capture_state now delegates the
+    # pure snapshot assembly (incl. the Arena cherry-augment probe) to
+    # lcu.snapshot_shape.shape_snapshot so the dashboard can build the same
+    # payload from an in-process client. The probe LOGIC is unchanged - only
+    # its home moved - so inspect the whole delegation chain.
+    import lcu.snapshot_shape as snap
+    src = (inspect.getsource(agent.capture_state)
+           + inspect.getsource(snap.shape_snapshot))
     # the augment endpoint is probed
     assert "/lol-cherry-game-intra-event/v1/augments" in src
     # the flag exists and defaults present
@@ -159,6 +166,7 @@ def test_state_loop_wires_helper():
 
 @pytest.mark.parametrize("rel", [
     "tools/lcu_agent.py",
+    "lcu/snapshot_shape.py",
     "tests/test_lcu_agent_augment_force_scan.py",
 ])
 def test_no_banned_typography(rel):
