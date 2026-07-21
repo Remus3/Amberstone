@@ -4,6 +4,53 @@
 
 ---
 
+# 2026-07-21k - R160 PERCENT-PENETRATION CATALOG PARITY (gemini headless loop, cycle 7) - ENGINE UNCHANGED 1.237.0
+
+LEDGER 1001. Commit `d6d3fb3f`. ENGINE-IMPACT NONE - no math change, no production `.py` touched,
+no `ENGINE_VERSION` bump, no DS bounce, no RC restart.
+
+## What shipped
+
+`agents/daemon_slayer/tests/test_pen_pct_catalog_r160.py` - a catalog-derived parity guard for the
+PERCENT penetration axis. The directive asked for a pen sweep across percent armor pen, lethality
+and magic pen; R152 had already closed lethality (31 exact-match, 0 absent) and R153 had already
+closed FLAT magic pen with a permanent guard. The premise check found the one third nobody swept:
+`armor_pen_pct` / `magic_pen_pct` had no catalog-derived test at all.
+
+Three read-only agents on disjoint scopes - two catalog to registry, one running it BACKWARDS
+(registry to catalog, the direction that catches a credited id the catalog dropped). All three
+converged: **zero uncredited live ids on either axis.** 12 armor-pct swept (6 exact), 9 magic-pct
+(7 exact), 16 credited rows, 0 stale. Every population was re-derived independently against both
+catalog layouts before a single assertion was written.
+
+## The three divergences are pinned, not fixed
+
+- `223036` / `226694` state 40 percent in the Arena feed, registry credits their SR twins' 35.
+- Terminus `3302` / `223302` state a PER-STACK value (10 SR, 8 Arena) vs a full-stack credited 0.30.
+- `6632` / `226632` state 3 percent from dead mythic-template text but are unbuyable everywhere.
+
+## The test failed first, and the failure was the finding
+
+The draft asserted the flat and percent sweeps are disjoint by id. RED on `3175` Spellslinger's
+Shoes, which states BOTH `18 Magic Penetration` and `8% Magic Penetration` on consecutive rows -
+DS credits both axes correctly. They are disjoint by MAGNITUDE, never by id. Now pinned.
+
+## Gates
+
+Verifier CONFIRM 8/8 with live-object defect injection (baseline 0 failures; `3135` pen to 0.0
+gives 2; `3036` to 0.99 gives 1; restored 0), and it caught a wrong docstring path fixed
+pre-commit. DS 9190 passed / 1 skipped / 3865 subtests. Guard 17 / 28 subtests. ruff clean,
+0 non-ASCII, zero production mutation. Share `--check` in sync 1.237.0 / 497 files.
+
+## Carry-forward
+
+The Arena-inheritance doctrine call is now 12 rows across three sweeps (R152 7 lethality, R153 2
+flat magic pen, R160 2 percent armor pen + Terminus). Escalated to the director via PART C
+`gemini_ask.txt` with both options and their blast radius. Do NOT reconcile any of those rows
+without the answer - the guard will go red by design if someone tries.
+
+---
+
 # 2026-07-21j - R159 RUNE-OFFENSE SATURATION, REMAINING THREE TREES (gemini headless loop, cycle 6) - ENGINE UNCHANGED 1.237.0
 
 LEDGER 1000. Merge `add6f26f` (slice `77d448af`). ENGINE-IMPACT NONE - no math change, no behavior
