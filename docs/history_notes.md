@@ -119,6 +119,58 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-21f - R154 SHARE EXTERNAL PRESENTATION (headless loop, cycle 1) - ENGINE unchanged 1.235.0
+
+LEDGER 994. Pushed `1b32aedc..02f80fce` (work commit `664806c1`). ENGINE-IMPACT NONE -
+`git diff --stat agents/` empty, no DS bounce needed, no RC restart (no routes, no web assets).
+
+## What shipped
+
+The `Share/` package - the DS engine artifact handed to an outside technical reviewer - was
+re-presented as a public-facing product. Six slices on disjoint file sets, one merger,
+preceded by two read-only research agents and gated by an adversarial verifier.
+
+**The headline was not a presentation defect.** The package's own documented first command
+ran ZERO tests: `pytest agents/daemon_slayer/tests` from `Share/src` gave `9008 collected`,
+`9 errors during collection`, `Interrupted`. Nine mirrored modules import host-only `core.*`,
+or read a host-only `web/` asset through an extractor import. Fixed at root with
+`_HOST_DEPENDENT_TESTS` in `tools/ds_share_sync.py` - 502 -> 493 files, 350 -> 341 test
+files, 9008 collected with 0 errors.
+
+Also: new `Share/LICENSE.md` (the package shipped externally with no stated terms at all);
+three credit misattributions corrected against the shipped data, not against another doc
+(`champion_abilities` is Meraki not Data Dragon, `enchanter_items` is hand-curated not
+Meraki, `wiki_ability_stats` carries no damage ratios); lolmath.net credited for the first
+time inside the folder named after it; 41 stale `file:line` citations fixed and all 280 then
+swept clean; MANIFEST's `Share/`-prefixed self-references fixed in the generator template.
+
+## Read this before touching Share/ again
+
+- The directive claimed this unit was unexecuted. It was WRONG - R149 (`dfb509b8`,
+  2026-07-20) is the same unit. Check LEDGER before accepting a director's novelty claim.
+- `Share/src/**` and `Share/MANIFEST.md` are machine-generated. Never hand-edit either;
+  change the template in `tools/ds_share_sync.py`.
+- The three `lolmath_ingest` docs plus the `.d.ts` get UNANCHORED semver rewrites - any new
+  `N.N.N` token written there is drift.
+- A shell whose cwd is `Share/src` makes the sync tool's `os.replace` fail with WinError 32.
+  Commit and sync from the repo root.
+
+## Open, carried forward
+
+**RM-112** (new, ROADMAP NOW): the package still reports `8723 passed / 108 failed /
+170 errors` standalone, because 51 of its 341 test files reach outside the package for
+host-only data. Documented in `docs/05_AUDIT_AND_REFACTOR.md`, not hidden. Not live-gated -
+a straight drain, and the natural next unit.
+
+## Gates
+
+DS 9100 passed / 1 skipped / 3672 subtests. RC 12539 passed / 23 skipped / 406 subtests.
+`-k "ds_share or hygiene"` 370 passed. `ds_share_sync.py --check` in sync at 1.235.0 /
+493 files. ruff clean. 0 non-ASCII in the authored package, 0 banned glyphs in the 238KB
+diff. Verifier gate 8 CONFIRM / 2 PARTIAL, both PARTIALs fixed by the merger.
+
+---
+
 # 2026-07-21e - R153 FLAT MAGIC-PEN PARITY + ADJUDICATOR SWAP SEAM (headless loop, cycle 5 + operator interrupt) - ENGINE 1.234.0 -> 1.235.0
 
 **Two units in one cycle.** LEDGER 992 (R153) + 993 (swap). Merges `5872fa91`,
