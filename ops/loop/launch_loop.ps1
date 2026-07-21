@@ -29,6 +29,19 @@ if (-not $Cfg) { $Cfg = if ($Mode -eq "live") { "$root\ops\loop\config.json" } e
 if (-not (Test-Path "$ctl\ahk_timings.json")) {
   Copy-Item "$root\ops\loop\ahk_timings.default.json" "$ctl\ahk_timings.json" -Force -ErrorAction SilentlyContinue
 }
+# kill ONLY this repo's PRIOR controller. Without this a relaunch orphans its
+# predecessor: the old controller keeps its own cycle counter and its own deadline, keeps
+# appending to the shared controller.log, and keeps typing into the same Claude window, so
+# its stale deadline eventually breaches and injects a stall recovery INTO AN UNRELATED
+# LIVE CYCLE. Measured 2026-07-21: PID 22768 (start 00:51:36, its cycle 7) breached at
+# 10:13:25 and interrupted the 08:43:51 controller's healthy cycle 2. Scoped by cmdline for
+# the same reason the AutoHotkey kill below is - a bare python kill would take out RC
+# itself, the Daemon Slayer server and every scheduled task.
+Get-CimInstance Win32_Process -Filter "Name='python.exe' OR Name='pythonw.exe'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -like "*Riot Commander\ops\loop\loop_controller.py*" } |
+  Where-Object { $_.ProcessId -ne $PID } |
+  ForEach-Object { & taskkill /F /PID $_.ProcessId | Out-Null }
+
 # kill ONLY this repo's bridge instances - a global AutoHotkey64 kill murders the
 # sibling Sibling-A loop's bridge mid-run (and vice versa). Scoped by cmdline.
 Get-CimInstance Win32_Process -Filter "Name='AutoHotkey64.exe'" -ErrorAction SilentlyContinue |
