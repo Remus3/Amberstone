@@ -444,7 +444,7 @@ class EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
 
-        self.assertEqual(ENGINE_VERSION, "1.232.0")
+        self.assertEqual(ENGINE_VERSION, "1.233.0")
 
 
 if __name__ == "__main__":  # pragma: no cover
