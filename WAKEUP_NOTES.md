@@ -4,6 +4,70 @@
 
 ---
 
+# 2026-07-21e - R153 FLAT MAGIC-PEN PARITY + ADJUDICATOR SWAP SEAM (headless loop, cycle 5 + operator interrupt) - ENGINE 1.234.0 -> 1.235.0
+
+**Two units in one cycle.** LEDGER 992 (R153) + 993 (swap). Merges `5872fa91`,
+`e7be8ed2`, `bd50e88c`, `a430abae`, `f47a5082`, `48975ead`, `afb15a17`. DS bounced,
+`:8893` serves 1.235.0. Share mirror synced. Pushed `6948b387..afb15a17`.
+
+## What shipped
+
+R153 credited `1111` Jarvan I's 12 flat magic pen (stated in DDragon description text,
+absent from the structured stat block) - the only gap in a 10-id population, confirmed by
+three independent sweeps. Added a permanent catalog-sweep guard, marked `443064` Talisman
+of Ascension unmodelable (literal `?` placeholders), and backfilled the `Share/README.md`
+release list 1.229.0-1.235.0.
+
+The operator interrupted mid-run to direct the Gemini-to-local-Claude transition structure.
+`ops/loop/adjudicator.py` now sits behind the single `gemini()` call site with automatic
+credit-exhaustion failover that retries the same call on the fallback so no cycle is lost.
+The AHK bridge was hardened in the same round. Gemini stays the live default.
+
+## The three things worth remembering
+
+**1. A slice's own green suite cannot prove a merged-state property.** The adjudicator
+slice and its verifier BOTH measured 183 passed on byte-identical code; the merged state
+gave 2 failed. Neither lied - pre-merge `config.json` had no `adjudicator_fallback`, so the
+earlier test never fired a failover. **The merge itself armed the defect.** The fresh
+merged-state re-verify is not ceremony; it is the only gate that could have caught this.
+
+**2. Misrouting a message to the wrong agent produced a better result than routing it
+correctly.** The AHK latch correction went to the adjudicator agent by mistake. It refused
+to edit a sibling's file and instead verified the contract my fix depended on, finding that
+`stall_recovery_directive()` reuses the stalled cycle number and `tests/test_loop_stall_recovery.py:32`
+pins that format - so my cycle-header-keyed latch would have refused the very recovery
+directive meant to unstick it. Re-keyed on a content hash.
+
+**3. Sticky state must be re-validated against the config that is live NOW.** The defect
+was a sticky failover decision being honored by a call whose config armed no fallback at
+all - routing to a backend the active configuration never authorized. No-op in production,
+but the fix restores the pure-function contract the pre-existing 9h-outage tests encode.
+
+## Gates
+
+DS 9100 passed / 1 skipped / 3672 subtests. Dual suite on the merged state 21570 passed /
+24 skipped / 4078 subtests, exit 0. RC suite after the swap merges 12531 passed / 23
+skipped / 406 subtests, exit 0. `tests/test_loop_gemini_timeout.py` 7 passed as a file AND
+7/7 individually. Loop gate 188 passed. ruff clean. AHK `/validate` exit 0 with 0 stderr
+bytes, proven discriminating against a broken control script. Heartbeat interop proven by
+executing both halves against each other, UTC epoch checked against the 18000s Central
+offset. 4 worktrees cleaned, 0 remaining.
+
+## Carry-forward
+
+Two Arena flat-pen drift rows (`223020` states 20 credits 12; `224645` states 10 credits
+15) are the magic-side counterpart of R152's held-back RC-B lethality drift and need the
+SAME doctrine call. Escalated to the director via `ops/loop/control/gemini_ask.txt` as ONE
+question covering both axes - do not resolve one without the other.
+
+The bridge must be RELAUNCHED before a heartbeat appears; the running PID still holds the
+pre-hardening script, so `AHK BRIDGE STALE (missing)` until then is expected, not a fault.
+
+FUTURE: a lint rule that any test touching `lc.gemini` must patch `lc.subprocess.run` - a
+draft test omitted it and made a real billed CLI call, caught only by its 29-second runtime.
+
+---
+
 # 2026-07-21d - R152 LETHALITY STAT-BLOCK PARITY (gemini headless loop, cycle 4) - ENGINE 1.233.0 -> 1.234.0
 
 **Tier-2 DS run.** LEDGER 991. Slice `ee8a6cb3`, merge `890daf1c`. DS bounced, `:8893`
@@ -98,77 +162,3 @@ EXCLUDED (byte-identical duplicates would double-render their parents' clusters)
 round-robin, not semantic (`lcu_rune_writer.py`, a pre-game module, is parented
 `m_lcupost` too). The 8-10px type in `#hexcore-stats` is correct for a zoomable canvas
 doc; the v2.1 `--fs-xs` floor governs the dashboard, not this offline artifact.
-
----
-
-# 2026-07-21b - R150 CONQUEROR 8010 OFFENSE GRANT (gemini headless loop, cycle 2) - ENGINE 1.233.0
-
-**Tier-2 engine run.** LEDGER 989. Pushed `774ed236..7dfa003b`. ENGINE 1.232.0 -> 1.233.0.
-Slice merge `a7c5f9db`, engine-tail commit `7dfa003b` (267 files).
-
-## What shipped
-
-Rune 8010 Conqueror credited into the EXISTING `agents/daemon_slayer/_rune_offense_grants.py`
-registry behind the EXISTING `apply_rune_offense_grants` seam. No new module, no new flag.
-Magnitudes at the default 12 stacks: **AD 12.96 (L1) -> 28.8 (L18), AP 21.6 -> 48.0**.
-
-## The directive was mostly wrong and the audit ran BEFORE any code
-
-7 target runes named; 6 were not work. 8236 + 8233 already shipped in R145. **8138 Eyeball
-Collection, 8136 Zombie Ward, 8120 Ghost Poro are NOT IN the 16.14.1 `runesReforged.json`
-at all** (removed from the game). 8210 Transcendence is Ability-Haste-only, settled inert.
-The feed path the directive cited does not exist (real one is
-`data/meta_build/ddragon/16.14.1/runesReforged.json`), and the new module + new flag it
-specified would have duplicated the shipped lane.
-
-## An adversarial slice refuted MY OWN brief mid-run
-
-I told the builder to mirror `enemy_runes.py:149` at 21.6 -> 48.0. That is correct ADAPTIVE
-FORCE but **AF IS NOT AD** - the enemy lane uses AF as a raw damage proxy, never as a stat.
-Riot converts 1 AF = 1 AP **or 0.6 AD**, so my brief would have inflated the AD column by
-**1.667x**. Caught pre-merge, corrected in-slice. The 0.6 ratio is pinned by a property test
-against the registry's OWN rows (`round(0.6 * ap) == ad` on all 7 stated values), not by an
-asserted constant. Same refutation also forced the stack count to become a KNOB
-(`_ASSUMED_CONQUEROR_STACKS` + per-call `conqueror_stacks`, clamped 0-12) per
-`rune_procs.py:212`, and killed the enemy-lane precedent citation because max-stacks flips
-from conservative (threat lens) to optimistic (self lens).
-
-## Traps hit this run - read before the next DS bump
-
-1. **THREE build-order generators, two keyspaces.** FLAT `data/daemon_slayer/<patch>/` <-
-   `tools/daemon_slayer_build_orders_generate.py`; NESTED HZ-B
-   `data/daemon_slayer/build_orders/<patch>/` <- `core.build_order_precompute`; variants <-
-   `core.build_order_variants`. **The stamp tests read the NESTED ones.** All need
-   `--champions all`. I regenerated the flat set first and stayed red.
-2. **TWO changelogs.** `test_changelog_tracks_engine_version` reads
-   `agents/daemon_slayer/CHANGELOG.md` (bare `X.Y.Z (date` format), NOT `Share/CHANGELOG.md`
-   (`## X -> Y (date)`). I edited Share first and stayed red. Both need an entry.
-3. **`data/rewind_history.db` is gitignored**, so `git worktree add` never copies it and 27
-   db-backed tests SKIP in any worktree (plus 2 for absent 1440p HUD profiles). That is the
-   whole of the 29-test "passed -> skipped" delta a worktree slice will report. Not a
-   regression. Confirmed by the skip count returning to 23 on main.
-
-## OWED - real finding, not absorbed silently
-
-**The FLAT Arena build-order table on main is five engine versions stale** (last written by
-`1f13188b` at ENGINE 1.228.0; engine is now 1.233.0). Regenerating it changes 365 lines of
-item ids - a material change to live Arena recommendations. Proven NOT caused by this slice
-(`apply_rune_offense_grants`/`rune_ids` appear in neither generator, so the entry is
-unreachable from build-order generation) and proven deterministic (two consecutive regens
-content-identical). The three flat tables were REVERTED rather than ride into an engine-bump
-commit. **Needs its own slice with its own validation.**
-
-## Loop health
-
-Cycle 2 breached its 5400s deadline at 03:13:51 - build subagent ~60 min, verifier ~29 min.
-Controller injected stall recovery and extended once; no STOP. Not a hang.
-`ops/loop/control/blocker.txt` on disk is STALE R145 text - do not read it as current.
-
-## Don't-redo
-
-Offensive-rune sweep is CLOSED for the 16.14.1 feed. Every remaining offensive rune is a
-dead id, an AH-only rune on a settled-inert axis, a move-speed rune, a proc-damage rune
-already scored by the burst consumer, or 8232 Waterwalking (uptime-blocked, no positional
-signal). A further pass needs a role/positional signal, not another sweep. Do NOT model
-Conqueror at a fixed 12 stacks. Do NOT mirror `enemy_runes.py` magnitudes into a STAT
-registry without the AF conversion.
