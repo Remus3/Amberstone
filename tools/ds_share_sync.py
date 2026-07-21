@@ -6,9 +6,10 @@ snapshot, plus authored handoff docs. This script is the single durable
 "update path" that keeps ``Share/src`` in lock-step with the live engine.
 
 What it mirrors into ``Share/src`` (deterministic - same input -> same output):
-  * ``agents/daemon_slayer/**``  (engine + tests) -> ``Share/src/agents/daemon_slayer/``
+  * ``agents/daemon_slayer/**``  (engine + tests, less the host-dependent test
+    modules in ``_HOST_DEPENDENT_TESTS``) -> ``Share/src/agents/daemon_slayer/``
   * a curated set of DS tools     -> ``Share/src/tools/``
-  * ``data/daemon_slayer/16.11.1/** + current.txt`` -> ``Share/src/data/daemon_slayer/``
+  * ``data/daemon_slayer/<patch>/** + current.txt`` -> ``Share/src/data/daemon_slayer/``
 
 Two transforms are applied to copied ``.py`` text so the package presents the
 engine on its own technical merits:
@@ -114,6 +115,35 @@ _DS_TOOLS: tuple[str, ...] = (
     "ds_max_priority_prefilter.py",
     "ds_unmapped_key_prefilter.py",
 )
+
+# Mirrored-test exclusions, applied only inside ``agents/daemon_slayer/tests/``.
+#
+# These nine modules cannot pass inside an engine-only package by construction:
+# eight import the host application's ``core.*`` wrappers (build_order,
+# build_planner.coherence, daemon_slayer_client, daemon_slayer_resolver), and
+# ``test_abilities_content_freshness.py`` reaches the host-only web asset
+# ``web/data/champion_aliases.json`` through its extractor import. ``core/`` and
+# ``web/`` are host-repo-only by design and are deliberately not shipped, so all
+# nine raise at IMPORT time.
+#
+# That is what makes them a shipped defect rather than an accepted gap: a pytest
+# import failure is a COLLECTION error, and a collection error aborts the whole
+# session. The command the package README hands an external reviewer
+# (``python -m pytest agents/daemon_slayer/tests -q``) therefore ran ZERO of the
+# ~9000 tests and exited ``Interrupted: 9 errors during collection``. Excluding
+# them costs the package nothing it could otherwise have: they pin the host-side
+# integration seam, not engine math.
+_HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
+    "test_abilities_content_freshness.py",
+    "test_build_recommendation_p1l5.py",
+    "test_coherence_burst_score_l1.py",
+    "test_double_pen_mutex.py",
+    "test_r144_mirror_slice_b.py",
+    "test_r144_mirror_slice_c.py",
+    "test_r144_mirror_slice_d.py",
+    "test_r144_mirror_slice_e.py",
+    "test_unique_passive_key_phase4d.py",
+})
 
 # Bounded, exact-substring rewrites of development-context comment phrases that
 # name the review provenance. Applied to copied .py text only. Engine logic,
@@ -234,6 +264,8 @@ def _build_expected() -> dict[str, bytes]:
             "antitank_registry_notes.json",
             "extendedduel_registry_notes.json",
         ) and p.parent == eng:
+            continue
+        if p.name in _HOST_DEPENDENT_TESTS and p.parent == eng / "tests":
             continue
         if p.name == "__init__.py" and p.parent == eng:
             out[rel] = _CLEAN_INIT.format(version=version).encode("utf-8")
@@ -377,58 +409,66 @@ data patch, and file counts everything else here was generated from. Where any
 other file in the package disagrees with the numbers below, these are the
 authoritative ones.
 
+The reference-data snapshot is derived from public upstream sources - Riot Games
+Data Dragon, CommunityDragon, and Meraki Analytics, plus a small set of fields
+from the League community wiki and lolmath.net. Each keeps its own separate
+terms: see `LICENSE.md` for the package terms and the credits, and
+`docs/03_DATA_AND_SOURCES.md` for per-file provenance.
+
 ## Package stamp
 
 - ENGINE_VERSION: {version}
 - data patch: {_PATCH}
-- files mirrored under Share/src: {n_files}
+- files mirrored under src/: {n_files}
 - engine .py modules: {eng_files}
 - last synced: {ts}
 
 `last synced` is the UTC time the mirror was last regenerated - a sync stamp,
 not a release date; it moves whenever the sync runs, even if nothing changed.
-`files mirrored under Share/src` counts every file in the mirror - engine,
-tooling, and the reference-data snapshot. `engine .py modules` counts only the
-Python files of the engine package itself, so the two are expected to differ.
+`files mirrored under src/` counts every file in the mirror - engine, tooling,
+and the reference-data snapshot. `engine .py modules` counts only the Python
+files of the engine package itself, so the two are expected to differ.
 
 ## Generated vs authored
 
+Paths are relative to this folder, the package root.
+
 | Path | Origin |
 |---|---|
-| `Share/src/**` | GENERATED - a mirror of the live engine, tooling, and data snapshot |
-| `Share/MANIFEST.md` | GENERATED - this file, rewritten in full on every sync |
-| `Share/README.md` | authored - version/patch tokens auto-restamped |
-| `Share/docs/*.md` | authored - version/patch tokens auto-restamped |
-| `Share/CHANGELOG.md` | authored |
+| `src/**` | GENERATED - a mirror of the live engine, tooling, and data snapshot |
+| `MANIFEST.md` | GENERATED - this file, rewritten in full on every sync |
+| `README.md` | authored - version/patch tokens auto-restamped |
+| `docs/*.md` | authored - version/patch tokens auto-restamped |
+| `CHANGELOG.md` | authored |
+| `LICENSE.md` | authored |
 
-Everything marked GENERATED is rewritten wholesale by
-`tools/ds_share_sync.py`, so a hand edit there is silently reverted by the next
-sync - change the live engine or the generator instead. The authored files are
-safe to edit, with the exception of their engine-version and patch tokens, which
-the same tool restamps to the live values.
+Everything marked GENERATED is rewritten wholesale by the upstream sync step
+that builds this package - a maintenance tool in the engine's own repository,
+which is not shipped here. A hand edit to a generated path is therefore
+silently reverted by the next sync; the live engine or the generator is what
+changes instead. The authored files are safe to edit, with the exception of
+their engine-version and patch tokens, which the same step restamps to the live
+values.
 
 ## Where to start
 
-`README.md` is the entry point: it credits the upstream data sources and
-explains how to read and run the package. The five authored documents then go in
-depth, in order:
+`README.md` is the entry point, and this file does not repeat it: it states what
+the engine does, credits the upstream data sources, and explains how to read and
+run the package. Read it first.
 
-1. `docs/01_OVERVIEW.md` - what the engine is, the data-flow pipeline, the
-   compute surface, the scorers, the HTTP service.
-2. `docs/02_FUNCTION_REFERENCE.md` - a per-module reference: every public
-   function and registry, plus the full HTTP route table.
-3. `docs/03_DATA_AND_SOURCES.md` - sources of truth, data layering, the
-   reference-data snapshot, and the patch-refresh pipeline.
-4. `docs/04_GAPS_AND_ROADMAP.md` - what is included, staged next, deferred,
-   and the hard data/policy ceilings.
-5. `docs/05_AUDIT_AND_REFACTOR.md` - an internal engineering audit: verified
-   invariants, code-quality observations, and the test posture.
+The five authored documents in `docs/` are then meant to be read in order, and
+`README.md` says what each one covers: `docs/01_OVERVIEW.md`,
+`docs/02_FUNCTION_REFERENCE.md`, `docs/03_DATA_AND_SOURCES.md`,
+`docs/04_GAPS_AND_ROADMAP.md`, `docs/05_AUDIT_AND_REFACTOR.md`.
+
+Terms of use and the upstream data credits are in `LICENSE.md`.
 
 ## Layout
 
 ```
-Share/
+(package root)
   README.md                 entry point + how to read / run the package
+  LICENSE.md                terms of use + upstream data credits
   CHANGELOG.md              authored release notes + sync history
   MANIFEST.md               this file (machine record)
   docs/                     authored handoff docs (overview, function
@@ -441,8 +481,11 @@ Share/
 
 ## Running the engine from this package
 
+The full instructions, including the health check, are in `README.md`. The short
+form, from this folder:
+
 ```
-cd Share/src
+cd src
 set PYTHONPATH=.                       # Windows;  export PYTHONPATH=. on POSIX
 python -m pytest agents/daemon_slayer/tests -q
 python tools/start_daemon_slayer.py    # serves the engine on http://127.0.0.1:8893
