@@ -280,13 +280,18 @@ HIGHEST LIVE IMPACT IS THE BOOT, not the lethality list. `223020` is the Arena m
 boot, so it lands in essentially every Arena AP build, and at 12 instead of 20 it was
 under-crediting magic damage by roughly 5.7-6.9 percent through `effective_target_mr`.
 
-ROOT CAUSE was never in dispute: Meraki carries no 22xxxx/44xxxx mirror ids at all, so the
-Arena mirrors were seeded "same as SR" and DDragon was never re-read per-mirror. What kept
+ROOT CAUSE: Meraki carries no mirror entry for these ids, so the Arena mirrors were seeded
+"same as SR" and DDragon was never re-read per-mirror. CORRECTED IN R161 - the older
+shorthand "Meraki carries no 22xxxx/44xxxx mirror ids at all" is FALSE and should not be
+repeated: the pinned 16.13.1 snapshot carries 17 of them (`220000`-`220007`, `223005`,
+`223039`, `223069`, `223185`, `224004`, `224403`, `226630`, `228001`, `228002`). It simply
+does not carry `223302`, which is the only claim the Terminus guard ever needed. What kept
 this open across R152, R153 and R160 is that the inheritance had guard tests behind it
-(`test_arena_prowlers_lethality_same_as_sr`, `test_arena_serylda_armor_pen_same_as_sr`, and
-`test_terminus_juxtaposition_r67.py:118`, which STRUCTURALLY derives the Arena value from
-the SR Meraki entry and asserts it on both ids off the pinned 16.13.1 Meraki file, not
-16.14.1). A guard asserting an inheritance the feed contradicts protects the defect instead
+(`test_arena_prowlers_lethality_same_as_sr`, `test_arena_serylda_armor_pen_diverges_from_sr`
+- inverted and renamed in R161 - and `test_terminus_juxtaposition_r67.py:118`, which
+STRUCTURALLY derived the Arena value from the SR Meraki entry and asserted it on both ids
+off the pinned 16.13.1 Meraki file, not 16.14.1). A guard asserting an inheritance the feed
+contradicts protects the defect instead
 of the invariant - which is why three sweeps could correctly REPORT the drift and none of
 them could decide it. Doctrine B is also not novel to the registry, it is now consistent
 with it: `226695` Arena Serpent's Fang has always credited its own feed value of 19 against
