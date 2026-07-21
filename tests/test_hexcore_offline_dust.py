@@ -25,7 +25,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HEXCORE = REPO_ROOT / "docs" / "HEXCORE_offline.html"
 
-# The 26 net-new non-test .py files added since d584e02e. The ten
+# The 32 net-new non-test .py files added since d584e02e. The ten
 # Share/src/agents/daemon_slayer/*.py hits are byte mirrors of the
 # agents/daemon_slayer/*.py hits and are deliberately excluded.
 EXPECTED_NEW_BASENAMES = (
@@ -37,6 +37,9 @@ EXPECTED_NEW_BASENAMES = (
     "_rune_health_grants.py",
     "_rune_hsp_amp.py",
     "_rune_resist_grants.py",
+    "_rune_offense_grants.py",
+    "_rune_self_heal.py",
+    "_rune_shield_grants.py",
     "kit_conversion.py",
     "onhit_dps.py",
     "aram_item_interaction.py",
@@ -48,6 +51,9 @@ EXPECTED_NEW_BASENAMES = (
     "pro_match_index.py",
     "rofl_archive.py",
     "rofl_stats_backfill.py",
+    "_lcu_inprocess.py",
+    "champ_select_shape.py",
+    "snapshot_shape.py",
     "aram_item_interaction_precompute.py",
     "ds_feed_index.py",
     "ds_onhit_ap_prefilter.py",
