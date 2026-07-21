@@ -4,6 +4,47 @@
 
 ---
 
+# 2026-07-20n - RM-03 E12 lever L3 BUILT (dark) - full in-process snapshot port
+
+**Tier-1 -> full suite. No ENGINE bump, no Share touch.** Commit `875aa355` (ff-merge
+to main, pushed). Full `tests/` suite 12324 passed / 53 skipped / 0 failed
+(verifier-CONFIRMED, independent re-run). LEDGER pending append.
+
+## Scope grew on contact: L3 needed a lobby extraction R148 never did
+
+The WAKEUP framed L3 as "point `_state_builder:310` at an in-process reader using
+`shape_champ_select`." Ground-truth probing showed the relay hop `lcu_summary()` carries
+the WHOLE agent snapshot (phase + lobby + ready_check + champ_select + mastery), not just
+champ_select - and `build_state` reads `lobby` (party_mains, preflip) + dumps the whole
+thing to `state.lcu`. `shape_champ_select` only covers champ_select; the lobby/mastery
+shaping lived ONLY in the standalone agent, un-extracted. Operator chose **full in-process
+port** (framed Q). So L3 first needed a `shape_champ_select`-style extraction of the REST.
+
+## What shipped (all DARK - flag DEFAULT-OFF, live path byte-identical today)
+
+- `lcu/snapshot_shape.py` - `shape_snapshot(request, config, *, enrich=True)`, transport-injected,
+  stdlib-only. Moved the lobby + mastery helpers verbatim from `tools/lcu_agent.py`
+  (`_slim_lobby_member`, `_lookup_summoner_by_id`, `_derive_search_state`,
+  `_resolve_local_summoner_id`, `_maybe_refresh_mastery` + their caches, `_LOBBY_QUEUE_NAMES`).
+  Reuses `shape_champ_select`. Does NOT emit `config`/`lcu_port` (caller/transport-owned).
+- `tools/lcu_agent.capture_state()` now delegates (`state.update(shape_snapshot(lcu_request, CONFIG))`);
+  helper names re-exported so existing patches still bind. -405 lines. Agent byte-identical
+  (parity tests + `test_champ_select_shape_rc2::TestAgentParity` green unchanged).
+- `dashboard/_lcu_inprocess.py` - dashboard-OWNED `LcuClient` (no frozen main.py accessor edit),
+  `_request`->`(payload,None)` adapter, `lcu_summary_inprocess() -> dict|None` (None when
+  unconnected / on any exception -> relay fallback).
+- `dashboard/_state_builder._read_lcu_snapshot()` at the call site: in-process ONLY when
+  `RC_LCU_INPROCESS==1` AND in-process non-None, else relay `lcu_summary()`. Flag OFF default.
+
+## NEXT / owed (G1-00, needs a live champ-select - no game)
+
+Folded into `docs/LIVE_GAME_GATED_SYNC.md` G1-00 CHECK 2: with champ-select up, set
+`RC_LCU_INPROCESS=1`, restart RC, byte-compare `/api/state` `lcu.champ_select` flag-ON vs
+flag-OFF - must be identical. **Adjudicate live:** in-process path omits `state.lcu.config`
+so the `main.js:5663` auto-accept pill loses its source - decide whether the reader
+synthesizes `config` (main `_lcu` auto-accept is always ON) or the pill re-sources. Flag
+stays OFF until this passes. Do NOT re-extract - the extraction is DONE + verifier-proven.
+
 # 2026-07-20m - R148 E12 residual: lever L3 unblocked (not built) + an R146 regression
 
 **Tier-1. No ENGINE bump, no Share touch.** Commits `6eb3837a` + merge `b3698bda`

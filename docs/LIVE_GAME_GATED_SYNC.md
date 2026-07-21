@@ -111,6 +111,16 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   `lcu.champ_select` is populated with the usual fields (bench, actions, my_pick, team picks; plus
   `arena_teams` + `augments` if it is an Arena lobby) and that the champ-select view renders as before.
   A silent `{}` or a missing key is the failure mode to look for. Closes on one lobby - no game needed.
+  **L3 ADDENDUM (2026-07-20, commit `875aa355`):** the E12 lever L3 in-process rewire landed DARK.
+  `lcu/snapshot_shape.shape_snapshot` now owns the FULL snapshot assembly (agent delegates to it,
+  champ_select byte-identical, suite green 12324/0), and `dashboard/_lcu_inprocess.lcu_summary_inprocess`
+  is wired into `dashboard/_state_builder._read_lcu_snapshot` behind DEFAULT-OFF flag `RC_LCU_INPROCESS`.
+  **CHECK 2 (same lobby):** with a champ-select up, set `RC_LCU_INPROCESS=1`, restart RC, `curl -k
+  https://127.0.0.1:8888/api/state`, and byte-compare `lcu.champ_select` against the flag-OFF relay value -
+  they MUST be identical. **Accepted divergence to adjudicate live:** the in-process path omits
+  `state.lcu.config`, so the `main.js:5663` auto-accept pill loses its source when the flag is ON - decide
+  at G1-00 whether the dashboard reader should synthesize `config` (main-process `_lcu` auto-accept is
+  always ON) or whether the pill moves to a different signal. Flag stays OFF until this check passes.
 - **G1-01** `[CS-CAPTURE]` (was A8) Locked-own-champ champ-select panel captures - **SHRUNK 6 -> 3
   artifacts 2026-07-18; still OPEN at GATE 1.**
   **RE-FILED, GATE 1 -> GATE 2:** ds-sweep / ds-relscore / ds-statcheck are ACTIVE-MATCH panels, not
