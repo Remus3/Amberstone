@@ -4,6 +4,73 @@
 
 ---
 
+# 2026-07-21g - R156 JACK OF ALL TRADES 8316 (gemini headless loop, cycle 3 + injected stall diagnose) - ENGINE 1.236.0 -> 1.237.0
+
+LEDGER 997. Pushed `0563537f..35a34db4` (slice `2ae85d74`, merge `ca5f77c6`). CI green on
+both ci and CodSpeed. DS `:8893` bounced and confirmed serving 1.237.0.
+
+## What shipped
+
+R155's registry docstring recorded 8316 Jack Of All Trades as "a real, currently uncredited
+Adaptive Force grant with an exact magnitude - a MEASURED FUTURE", excluded because its stack
+count is "a census of DISTINCT STAT TYPES across the resolved build, and no such per-build
+stat-type decomposition exists in this engine today: it is a schema lift, not a registry
+entry." The decomposition was one derivation away from something that already existed:
+`stats.py:134 aggregate_item_stats` already reduces a build's DDragon stat blocks to canonical
+`{axis}_{flat|pct}` slots, so the census is that map with the kind suffix stripped and distinct
+nonzero axes counted, clamped 0..10, an axis counted ONCE when an item grants it both flat and
+percent (movement speed is the live case).
+
+**The grant is a STEP and the tiers do NOT sum.** The 16.14.1 longDesc reads "Gain 10 or 25
+bonus Adaptive Force at 5 and 10 stacks, respectively" - "or ... respectively" is two discrete
+tiers where the higher REPLACES the lower, so under 5 stacks is 0, 5 through 9 is 10 AF, 10 or
+more is 25 AF. Converted at the registry's OWN `_ADAPTIVE_FORCE_AD_PER_AF` 0.6, giving
+(6.0 AD | 10.0 AP) and (15.0 AD | 25.0 AP).
+
+**The ability-haste half stays uncredited.** "Each stack grants you 1 Ability Haste" lands on
+the axis this engine MEASURED INERT and settled - the same finding that permanently excludes
+9105 Legend: Haste. Stated limitation rather than a gap: Ability Haste is absent from
+`ITEM_STAT_KEY_MAP` entirely, so an AH-only item censuses no stack.
+
+`jack_stacks` appended at the END of the public `rune_offense_grants` signature defaulting to
+None, and the census computed INSIDE the `if apply_rune_offense_grants:` block in `dps.py`, so
+the default-OFF path is byte-identical and pays zero cost. `hybrid.py` grep-verified to only
+forward the flag - untouched. MEASURED: Caitlyn L18 `3031/3094/3006/3072/3036/3046` censuses 5
+axes (ad, as, crit, lifesteal, ms) -> low tier -> +6.0 AD, weighted_dps 409.6728 -> 417.1840
+(+1.83 percent); a 4-axis two-item build censuses 4 and stays inert with the flag ON.
+
+Verifier gate 9/9 CONFIRM. DS suite re-run FRESH on merged main: 9162 passed / 1 skipped /
+3717 subtests. RC `tests/` 12515 passed / 52 skipped / 406 subtests with a single pre-restart
+failure - `test_sr_draft_profile_engine.py::test_live_three_profiles` asserts the LIVE `:8893`
+engine version against the source constant - which cleared to 18 passed after the DS bounce.
+ruff clean; 0 non-ASCII added; 0 file deletions across 272 files; Share `--check` in sync at
+1.237.0 / 495 files. Worktree removed, slice branch deleted local and remote.
+
+## The injected stall diagnose: NOT a stall, and the breach was self-inflicted
+
+The controller logged `cycle 3: deadline breach 1` at 12:52:06 against a 5400s deadline typed
+at 11:22:05. Three hypotheses:
+
+- **Genuine hang - REFUTED.** Three commits landed after the typed timestamp, CI went green,
+  the worktree was cleaned. Progress never stopped.
+- **Ghost controller (the item-996 bug) - REFUTED.** `controller.log` shows one monotonic
+  cycle-3 sequence, no interleaved second numbering and no second `loop start` line.
+- **Deadline shorter than the honest workload - CONFIRMED by arithmetic.** The build agent
+  alone ran 2506s and the verifier 1696s: 4202s of subagent wall-clock before the merge even
+  began, against a 5400s cycle.
+
+**Root cause of the BREACH is an R6 violation of my own, not a loop defect.** After the
+verifier had already run `tests/` FRESH on byte-identical worktree content, I launched a
+second full RC suite (~1330s) in the main repo. R6 says run the relevant suite ONCE and trust
+the exit code, re-running only if edited-since or the pipe glitched - neither applied. That
+prophylactic third suite is what pushed the cycle past its deadline; it was killed at
+recovery rather than waited out. **Durable consequence for the loop:** an orchestrated cycle
+that spends a build agent plus a verifier full-suite gate does not fit 5400s with any
+redundant suite added. Either the redundant suite goes (correct, and free) or
+`cycle_deadline_sec` rises.
+
+---
+
 # 2026-07-21f - R154 SHARE EXTERNAL PRESENTATION (headless loop, cycle 1) - ENGINE unchanged 1.235.0
 
 LEDGER 994. Pushed `1b32aedc..02f80fce` (work commit `664806c1`). ENGINE-IMPACT NONE -
@@ -117,58 +184,3 @@ pre-hardening script, so `AHK BRIDGE STALE (missing)` until then is expected, no
 
 FUTURE: a lint rule that any test touching `lc.gemini` must patch `lc.subprocess.run` - a
 draft test omitted it and made a real billed CLI call, caught only by its 29-second runtime.
-
----
-
-# 2026-07-21d - R152 LETHALITY STAT-BLOCK PARITY (gemini headless loop, cycle 4) - ENGINE 1.233.0 -> 1.234.0
-
-**Tier-2 DS run.** LEDGER 991. Slice `ee8a6cb3`, merge `890daf1c`. DS bounced, `:8893`
-serves 1.234.0. Share mirror synced in the same commit.
-
-## What shipped
-
-Five item entries in `agents/daemon_slayer/_effects_data.py` that state a Lethality in
-DDragon 16.14.1 but read 0.0 in DS: `6698` Profane Hydra 18 and `6695` Serpent's Fang 15
-(both SR AND ARAM, maps 11/12/21/35), plus Arena `226698` 18, `226695` 19, `446691`
-Duskblade 20. DEFAULT-ON, no flag - see the deviation note below.
-
-## The finding that matters
-
-Penetration is REGISTRY-ONLY. `stats.py` `ITEM_STAT_KEY_MAP` has no pen key and DDragon's
-machine-readable `stats` block never carries one - pen exists only in the `<stats>` HTML of
-`description`, and the local Meraki snapshot has no stat block on any of its 320 items. So
-`ITEM_EFFECTS` is the sole credit path and a missing field is a silent 0.0. Do not go
-looking for a generic path.
-
-## Two process notes worth keeping
-
-**The orchestrator's own sweep beat both agents.** Both read-only sweep agents returned a
-ranked list topped by a single "one-line fix". A direct 706-item parity sweep showed the 12
-divergent ids were TWO root causes: RC-A (stat absent, 5 ids, a real data bug) and RC-B
-(Arena magnitude drift, 7 ids, a guarded-doctrine collision). Shipping either agent's top
-pick would have left four RC-A ids uncredited.
-
-**Deliberate deviation from the directive, logged.** The directive said to ship any fix
-"behind DEFAULT-OFF seam". This shipped DEFAULT-ON. A flag here would have made 5 items
-behave differently from the 26 already-credited lethality rows and left a proven-false 0.0
-live; adding a row to an always-on registry is not a new math term. R150 set the precedent.
-
-## Gates
-
-DS 9091 passed / 1 skipped / 3650 subtests. RC 12440 passed / 52 skipped / 406 subtests,
-1 failure which was PROVEN to be live-coupling (`test_live_three_profiles` asserts the live
-`:8893` version) and went 18/18 green after the DS bounce. ruff clean. ENGINE 144 literals
-across 123 files, zero residual. `ds_share_sync --check` in sync at 1.234.0.
-
-## Carry-forward
-
-RC-B Arena lethality/magicpen magnitude drift is OPEN and is a DOCTRINE call, not a data
-bug - the "Arena mirrors inherit SR" convention has guard tests, and
-`test_terminus_juxtaposition_r67.py:118` structurally derives the Arena value from the SR
-Meraki entry (and reads a pinned 16.13.1 file). Escalated to the director in the
-ORCHESTRATION_PLAN findings log; do not weaken those guards without a decision. Smaller
-tails: `1111` Jarvan I's 12 flat magic pen has no ITEM_EFFECTS entry at all;
-`Share/README.md` releases stale at 1.228.0, needs a 1.229.0-1.233.0 backfill.
-
-The gist post-commit hook index corruption recurred (4th). Worktree index only, commit
-object clean, cleared with `git reset --mixed`.
