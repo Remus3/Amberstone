@@ -1330,10 +1330,14 @@ class R152LethalityStatBlockParityTests(unittest.TestCase):
     their OWN DDragon number - 226695 is 19 while SR 6695 is 15, and that
     divergence is real in the feed, so it is deliberately NOT normalized.
 
-    Out of scope (escalated separately): the Arena magnitude DRIFT rows
-    223142 / 223814 / 224004 / 226676 / 226699 / 226701 / 226691, which
-    collide with the standing "Arena mirrors inherit SR coefficients"
-    doctrine and its guard tests.
+    R161 RESOLVES the escalation R152 recorded here. The Arena magnitude
+    DRIFT rows 223142 / 223814 / 224004 / 226676 / 226699 / 226701 /
+    226691 are no longer out of scope: under doctrine B, when a DDragon
+    Arena mirror states its OWN explicit stat line that differs from its
+    SR twin, THE ARENA FEED VALUE WINS. Those 7 rows are now credited at
+    their own feed magnitude (22 / 14 / 21 / 12 / 20 / 15 / 22), the SR
+    parents are untouched, and the old "Arena mirrors inherit SR
+    coefficients" guard tests were inverted in the same slice.
     """
 
     # item_id -> (name, DDragon 16.14.1 lethality)
@@ -5624,14 +5628,17 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
         self.assertAlmostEqual(e.lethality, 22.0)
 
     def test_arena_seryldas_armor_pen(self) -> None:
+        # Doctrine B (R161): the Arena feed states 40 percent, so 226694
+        # credits its own line rather than SR 6694's 35 percent.
         e = ITEM_EFFECTS.get("226694")
         self.assertIsNotNone(e, "226694 missing")
-        self.assertAlmostEqual(e.armor_pen_pct, 0.35)
+        self.assertAlmostEqual(e.armor_pen_pct, 0.40)
 
     def test_arena_voltaic_lethality_and_proc(self) -> None:
+        # Doctrine B (R161): Arena feed states 20 lethality, SR 6699 = 10.
         e = ITEM_EFFECTS.get("226699")
         self.assertIsNotNone(e, "226699 missing")
-        self.assertAlmostEqual(e.lethality, 10.0)
+        self.assertAlmostEqual(e.lethality, 20.0)
         self.assertEqual(len(e.periodics), 1)
 
     def test_arena_immortal_shieldbow_lifeline(self) -> None:
@@ -5658,16 +5665,34 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
         self.assertGreater(arena.weighted_dps, base.weighted_dps)
 
     def test_arena_prowlers_lethality_same_as_sr(self) -> None:
-        """226693 and 6693 share the same lethality=22."""
+        """226693 and 6693 both read 22 lethality - a feed AGREEMENT.
+
+        Under doctrine B (R161) an Arena mirror credits its OWN DDragon
+        stat line, so agreement here is not inheritance: the Arena feed
+        for 226693 independently states 22 lethality and SR 6693 states
+        22 as well. The equality is therefore feed-accurate on both
+        sides, and it survives the doctrine change unchanged.
+        """
         sr = ITEM_EFFECTS["6693"]
         arena = ITEM_EFFECTS["226693"]
         self.assertAlmostEqual(sr.lethality, arena.lethality)
+        self.assertAlmostEqual(arena.lethality, 22.0)
 
-    def test_arena_serylda_armor_pen_same_as_sr(self) -> None:
-        """226694 and 6694 share the same armor_pen_pct=0.35."""
+    def test_arena_serylda_armor_pen_diverges_from_sr(self) -> None:
+        """226694 credits its own Arena feed, NOT SR 6694's magnitude.
+
+        Doctrine B (R161): when a DDragon Arena mirror states an explicit
+        stat line that differs from its SR twin, the Arena feed value
+        wins. Serylda's Grudge states 40 percent armor pen in the Arena
+        feed and 35 percent on SR, so the two must DIVERGE - the old
+        "Arena mirrors inherit SR coefficients" guard that pinned them
+        equal is exactly what locked the wrong magnitude in place.
+        """
         sr = ITEM_EFFECTS["6694"]
         arena = ITEM_EFFECTS["226694"]
-        self.assertAlmostEqual(sr.armor_pen_pct, arena.armor_pen_pct)
+        self.assertAlmostEqual(sr.armor_pen_pct, 0.35)
+        self.assertAlmostEqual(arena.armor_pen_pct, 0.40)
+        self.assertNotAlmostEqual(sr.armor_pen_pct, arena.armor_pen_pct)
 
     # -- defensive_only Arena mirrors --------------------------------------
 
@@ -5688,7 +5713,9 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
             "226665": "Jak'Sho, The Protean",
             "226675": "Navori Flickerblades",
             # 226676 The Collector promoted off defensive_only in iter 14
-            # (mirrors iter-10 SR 6676 - lethality=10.0 feeds the rotation)
+            # (SR 6676 was promoted in iter 10; lethality feeds the
+            # rotation on both, at 12.0 Arena / 10.0 SR under R161
+            # doctrine B - the Arena feed states its own magnitude)
             "226695": "Serpent's Fang",
         }
         for iid, name in expected.items():
@@ -5733,9 +5760,10 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
         self.assertEqual(len(e.periodics), 1)
 
     def test_224004_spectral_cutlass_lethality(self) -> None:
+        # Doctrine B (R161): Arena feed states 21 lethality, SR 4004 = 15.
         e = ITEM_EFFECTS.get("224004")
         self.assertIsNotNone(e, "224004 missing")
-        self.assertAlmostEqual(e.lethality, 15.0)
+        self.assertAlmostEqual(e.lethality, 21.0)
 
     def test_224633_riftmaker_amp_and_ap_per_hp(self) -> None:
         e = ITEM_EFFECTS.get("224633")
@@ -5744,9 +5772,11 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
         self.assertAlmostEqual(e.ap_per_bonus_hp_pct, 0.02)
 
     def test_224645_shadowflame_flat_pen(self) -> None:
+        # Doctrine B (R161): Arena feed states 10 flat magic pen while
+        # SR 4645 states 15, so the mirror credits its own line.
         e = ITEM_EFFECTS.get("224645")
         self.assertIsNotNone(e, "224645 missing")
-        self.assertAlmostEqual(e.magic_pen_flat, 15.0)
+        self.assertAlmostEqual(e.magic_pen_flat, 10.0)
 
     def test_323003_archangel_aram(self) -> None:
         e = ITEM_EFFECTS.get("323003")
@@ -5864,9 +5894,11 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
         self.assertEqual(e.unique_passive_key, "lifeline")
 
     def test_223036_ldr_armor_pen_and_giant_slayer(self) -> None:
+        # Doctrine B (R161): Arena feed states 40 percent armor pen,
+        # SR 3036 states 35 percent and is unchanged.
         e = ITEM_EFFECTS.get("223036")
         self.assertIsNotNone(e, "223036 missing")
-        self.assertAlmostEqual(e.armor_pen_pct, 0.35)
+        self.assertAlmostEqual(e.armor_pen_pct, 0.40)
         self.assertAlmostEqual(e.target_bonus_hp_amp_max_pct, 0.15)
 
     def test_223039_atmas_crit_ramp(self) -> None:
@@ -5876,12 +5908,15 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
         self.assertAlmostEqual(e.crit_chance_bonus_per_bonus_hp_cap, 3000.0)
 
     def test_223302_terminus_dual_pen_and_proc(self) -> None:
-        # R67 (ENGINE 1.174.0): rebaselined 0.10 -> 0.30 with SR 3302
-        # (Juxtaposition Dark 3-stack max = 30% armor+magic pen).
+        # R67 (ENGINE 1.174.0) rebaselined 0.10 -> full-stack steady
+        # state (Juxtaposition Dark, per-stack x 3 stacks). R161 doctrine
+        # B then re-based the ARENA row onto its own feed line: the Arena
+        # description states 8 percent per stack (SR 3302 states 10), so
+        # 8 x 3 = 0.24 here while SR keeps 0.30 on both axes.
         e = ITEM_EFFECTS.get("223302")
         self.assertIsNotNone(e, "223302 missing")
-        self.assertAlmostEqual(e.armor_pen_pct, 0.30)
-        self.assertAlmostEqual(e.magic_pen_pct, 0.30)
+        self.assertAlmostEqual(e.armor_pen_pct, 0.24)
+        self.assertAlmostEqual(e.magic_pen_pct, 0.24)
         self.assertEqual(len(e.periodics), 1)
 
     def test_223748_titanic_dual_procs(self) -> None:
@@ -5900,9 +5935,10 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
         self.assertAlmostEqual(e.magic_pen_pct, 0.40)
 
     def test_223142_youmuu_lethality(self) -> None:
+        # Doctrine B (R161): Arena feed states 22 lethality, SR 3142 = 18.
         e = ITEM_EFFECTS.get("223142")
         self.assertIsNotNone(e, "223142 missing")
-        self.assertAlmostEqual(e.lethality, 18.0)
+        self.assertAlmostEqual(e.lethality, 22.0)
 
     # -- proc formulas match SR counterparts -------------------------------
 
@@ -6209,8 +6245,9 @@ class Batch46Arena226x228x224xAndSRTests(unittest.TestCase):
         self.assertAlmostEqual(arena_dmg, sr_dmg, places=2)
 
     def test_226691_duskblade_lethality(self) -> None:
+        # Doctrine B (R161): Arena feed states 22 lethality, SR 6691 = 18.
         e = ITEM_EFFECTS["226691"]
-        self.assertAlmostEqual(e.lethality, 18.0, places=2)
+        self.assertAlmostEqual(e.lethality, 22.0, places=2)
         self.assertFalse(e.defensive_only)
 
     def test_228020_abyssal_mask_magic_amp(self) -> None:

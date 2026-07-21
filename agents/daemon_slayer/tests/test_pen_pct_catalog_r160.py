@@ -14,33 +14,34 @@ inside the ``<stats>`` HTML or the passive prose of ``description`` and
 ``ITEM_EFFECTS`` is the SOLE credit path. An id absent from ``ITEM_EFFECTS``,
 or present with the field omitted, silently reads 0.0.
 
-WHAT THIS SWEEP FOUND (no live data bug, three deliberate divergences):
+WHAT THIS SWEEP FOUND, AS OF R161 (no live data bug, two holdout classes and
+NEITHER of them is a magnitude divergence any more):
 
-* Percent armor pen - 12 swept ids, 6 exact, 4 divergent, 2 inert.
+* Percent armor pen - 12 swept ids, 8 exact, 2 stacking-convention, 2 inert.
 * Percent magic pen - 9 swept ids, 7 exact, 0 divergent, 2 inert.
 
-The divergences are pinned below rather than "fixed", because each one is a
-standing doctrine question and not an oversight:
+R161 - THE ARENA-FEED DOCTRINE QUESTION IS ANSWERED. R160 shipped an
+``_ARENA_FEED_DRIFT`` holdout for ``223036`` and ``226694``, which state 40
+percent in the Arena feed while the registry credited their SR twins' 35
+percent, and recorded the open question: do Arena mirrors inherit their SR
+coefficients, or does an explicitly different DDragon stat line win? The
+director answered DOCTRINE B - when a DDragon Arena mirror states its OWN
+explicit stat line that differs from its SR twin, THE ARENA FEED VALUE WINS.
+Both rows now credit 0.40, so they pass the plain parity assertion and the
+holdout is GONE, along with the sibling escalations R152 recorded for its 7
+lethality rows and R153 pinned for ``223020`` / ``224645``. SR parents are
+untouched (``3036`` and ``6694`` stay 0.35). The inheritance-side guard in
+``test_effects_expansion`` was inverted in the same slice and is now
+``test_arena_serylda_armor_pen_diverges_from_sr``.
 
-``_ARENA_FEED_DRIFT`` - ``223036`` and ``226694`` state 40 percent in the
-Arena feed while the registry credits their SR twins' 35 percent, with the
-inheritance stated verbatim in the registry notes (``_effects_data.py:4090``,
-``:3520``). Reconciling them is the SAME held doctrine call R152 recorded for
-its 7 lethality rows and R153 pinned for ``223020`` / ``224645``: do Arena
-mirrors inherit their SR coefficients, or does an explicitly different DDragon
-stat line win? That call is the director's, so the divergence is asserted as a
-FACT here - the day someone reconciles one, this test goes red and forces the
-question to be answered deliberately instead of absorbed into an unrelated
-sweep. ``test_effects_expansion.test_arena_serylda_armor_pen_same_as_sr``
-currently pins the inheritance side of the same pair.
-
-``_STACKING_FULL_STACK`` - Terminus. DDragon states a PER-STACK magnitude
+``_STACKING_FULL_STACK`` - Terminus. This one SURVIVES doctrine B because it
+is a units convention, not a divergence: DDragon states a PER-STACK magnitude
 (10 percent SR, 8 percent Arena) and never prints the 3-stack cap, while the
 registry credits the full-stack steady state under the Black Cleaver / Guinsoo
-convention. So a plain stated-equals-credited assertion would be wrong by
-construction on these two rows. The SR row is pinned to stated x cap; the Arena
-row is pinned to the SR value it inherits (a feed-accurate reading would be
-0.24), which is the same doctrine question as above on a second mechanic.
+convention. So a plain stated-equals-credited assertion is wrong by
+construction on these two rows regardless of doctrine. Under R161 BOTH rows
+derive from their OWN stated per-stack value times the cap - SR 10 x 3 = 0.30,
+Arena 8 x 3 = 0.24 - so the Arena row no longer inherits anything.
 
 ``_INERT_DELISTED`` - ``6632`` / ``226632`` Divine Sunderer state 3 percent of
 both pen axes in leftover ``{{ Item_Mythic_Passive }}`` text. They are the only
@@ -96,16 +97,13 @@ _PCT_ARMOR_PROSE_RE = re.compile(
     r"(\d+(?:\.\d+)?)%\s*<scaleArmor>Armor Penetration</scaleArmor>"
 )
 
-# item_id -> (percent stated in the Arena feed, percent credited from the SR twin)
-_ARENA_FEED_DRIFT = {
-    "223036": (40.0, 0.35),   # Lord Dominik's Regards (Arena) vs SR 3036 = 35
-    "226694": (40.0, 0.35),   # Serylda's Grudge (Arena)       vs SR 6694 = 35
-}
-
 # item_id -> (percent stated PER STACK, percent credited at full stacks)
+# The ONE surviving holdout class after R161: a units convention, not a
+# magnitude divergence. Each row credits ITS OWN stated per-stack value
+# times the 3-stack cap - no cross-map inheritance on either row.
 _STACKING_FULL_STACK = {
     "3302": (10.0, 0.30),     # SR: 10 per stack x 3 == the credited 0.30
-    "223302": (8.0, 0.30),    # Arena: inherits SR 0.30; feed-accurate is 0.24
+    "223302": (8.0, 0.24),    # Arena: its own 8 per stack x 3 == 0.24
 }
 _TERMINUS_STACK_CAP = 3
 
@@ -167,7 +165,7 @@ def _credited(swept: dict, field: str) -> dict:
     return out
 
 
-_HOLDOUTS = set(_ARENA_FEED_DRIFT) | set(_STACKING_FULL_STACK) | set(_INERT_DELISTED)
+_HOLDOUTS = set(_STACKING_FULL_STACK) | set(_INERT_DELISTED)
 
 
 class R160PercentPenPopulationTests(unittest.TestCase):
@@ -314,26 +312,11 @@ class R160PercentPenParityTests(unittest.TestCase):
 
 
 class R160HeldDivergenceTests(unittest.TestCase):
-    """The three deliberate divergences, asserted as facts so no silent fix."""
+    """The two surviving holdout classes, asserted so no silent drift.
 
-    def test_arena_feed_drift_still_diverges(self) -> None:
-        swept = _swept_armor_pct()
-        for iid, (stated, credited) in sorted(_ARENA_FEED_DRIFT.items()):
-            with self.subTest(item_id=iid):
-                self.assertAlmostEqual(swept[iid][1], stated, places=3)
-                self.assertAlmostEqual(
-                    ITEM_EFFECTS[iid].armor_pen_pct, credited, places=3
-                )
-
-    def test_arena_drift_rows_credit_their_sr_twin(self) -> None:
-        # Names the inheritance explicitly: this is the doctrine, not a typo.
-        for arena, sr in (("223036", "3036"), ("226694", "6694")):
-            with self.subTest(item_id=arena):
-                self.assertAlmostEqual(
-                    ITEM_EFFECTS[arena].armor_pen_pct,
-                    ITEM_EFFECTS[sr].armor_pen_pct,
-                    places=3,
-                )
+    R161 removed the third (``_ARENA_FEED_DRIFT``): under doctrine B those
+    rows credit their own feed and are covered by the plain parity tests.
+    """
 
     def test_terminus_credits_the_full_stack_steady_state(self) -> None:
         swept = _swept_armor_pct()
@@ -356,14 +339,25 @@ class R160HeldDivergenceTests(unittest.TestCase):
             places=6,
         )
 
-    def test_terminus_arena_inherits_sr_rather_than_its_own_feed(self) -> None:
-        # The feed-accurate reading would be 0.24. Pinned so the Arena
-        # inheritance question is answered deliberately, not by a sweep.
+    def test_terminus_arena_credits_its_own_feed(self) -> None:
+        # R161 doctrine B: the Arena row is derived STRUCTURALLY from its
+        # own stated per-stack value times the cap (8 x 3), not copied
+        # from SR. Derived rather than hardcoded so a per-stack or cap
+        # change in a future patch lands here instead of drifting.
         feed_accurate = (
             _swept_armor_pct()["223302"][1] / 100.0 * _TERMINUS_STACK_CAP
         )
         self.assertAlmostEqual(feed_accurate, 0.24, places=6)
-        self.assertAlmostEqual(
+        for field in ("armor_pen_pct", "magic_pen_pct"):
+            with self.subTest(field=field):
+                self.assertAlmostEqual(
+                    float(getattr(ITEM_EFFECTS["223302"], field)),
+                    feed_accurate,
+                    places=6,
+                )
+        # And it must now DIVERGE from the SR twin, which keeps its own
+        # 10-per-stack derivation at 0.30.
+        self.assertNotAlmostEqual(
             ITEM_EFFECTS["223302"].armor_pen_pct,
             ITEM_EFFECTS["3302"].armor_pen_pct,
             places=6,
