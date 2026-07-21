@@ -1311,6 +1311,84 @@ class ProfaneHydraCleaveTests(unittest.TestCase):
         self.assertEqual(ph.resolve_damage(ctx), 0.0)
 
 
+class R152LethalityStatBlockParityTests(unittest.TestCase):
+    """R152 - lethality stat-block parity for 5 entries that carried NONE.
+
+    ``ITEM_EFFECTS`` is the ONLY source of lethality credit in the engine:
+    ``stats.ITEM_STAT_KEY_MAP`` has no lethality key and DDragon ``stats``
+    blocks never carry one - the magnitude lives only in the ``<stats>``
+    HTML of ``description``. So an entry that omits ``lethality=`` reads
+    0.0 at ``effects.effective_target_armor`` (the sum folds 1:1 into
+    ``pen_flat`` post-V14.1) and at ``dps.py`` ``caster_lethality``.
+
+    These 5 ids each carry a real lethality number in DDragon 16.14.1 but
+    credited zero. This is a DATA-PARITY correction joining 26 already-
+    correct siblings (e.g. 6691 / 6676 / 3142), NOT a new math term.
+
+    Magnitudes read from ``data/daemon_slayer/16.14.1/items.json``
+    ``description`` ``<stats>`` blocks. Arena mirrors are credited at
+    their OWN DDragon number - 226695 is 19 while SR 6695 is 15, and that
+    divergence is real in the feed, so it is deliberately NOT normalized.
+
+    Out of scope (escalated separately): the Arena magnitude DRIFT rows
+    223142 / 223814 / 224004 / 226676 / 226699 / 226701 / 226691, which
+    collide with the standing "Arena mirrors inherit SR coefficients"
+    doctrine and its guard tests.
+    """
+
+    # item_id -> (name, DDragon 16.14.1 lethality)
+    EXPECTED = {
+        "6698": ("Profane Hydra", 18.0),
+        "6695": ("Serpent's Fang", 15.0),
+        "226698": ("Profane Hydra", 18.0),
+        "226695": ("Serpent's Fang", 19.0),
+        "446691": ("Duskblade of Draktharr", 20.0),
+    }
+
+    def test_lethality_matches_ddragon_stat_block(self) -> None:
+        for iid, (name, leth) in self.EXPECTED.items():
+            with self.subTest(item_id=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} ({name}) missing from ITEM_EFFECTS")
+                self.assertEqual(e.name, name, iid)
+                self.assertAlmostEqual(e.lethality, leth, places=3)
+
+    def test_lethality_folds_into_flat_pen(self) -> None:
+        # Post-V14.1 lethality is flat pen 1:1 at any level, so each entry
+        # must actually move effective armor by its own magnitude. Pins the
+        # consumer, not just the field - a field with no consumer is inert.
+        for iid, (_name, leth) in self.EXPECTED.items():
+            with self.subTest(item_id=iid):
+                self.assertAlmostEqual(
+                    effective_target_armor(100.0, [ITEM_EFFECTS[iid]], level=11),
+                    100.0 - leth,
+                    places=3,
+                )
+
+    def test_arena_serpents_fang_not_normalized_to_sr(self) -> None:
+        # 226695 (19) genuinely diverges from SR 6695 (15) in DDragon
+        # 16.14.1. Guards against a later "mirror inherits SR" sweep
+        # silently flattening the Arena number.
+        self.assertAlmostEqual(ITEM_EFFECTS["226695"].lethality, 19.0, places=3)
+        self.assertAlmostEqual(ITEM_EFFECTS["6695"].lethality, 15.0, places=3)
+        self.assertNotAlmostEqual(
+            ITEM_EFFECTS["226695"].lethality,
+            ITEM_EFFECTS["6695"].lethality,
+            places=3,
+        )
+
+    def test_defensive_only_flags_unchanged(self) -> None:
+        # defensive_only is doc-only (zero engine consumers) and the
+        # lethality fold in effective_target_armor does NOT filter on it,
+        # so crediting lethality does not require promoting these off the
+        # flag. Existing batch39 / batch41 sweeps pin these - keep them.
+        self.assertTrue(ITEM_EFFECTS["6695"].defensive_only)
+        self.assertTrue(ITEM_EFFECTS["226695"].defensive_only)
+        self.assertTrue(ITEM_EFFECTS["446691"].defensive_only)
+        self.assertFalse(ITEM_EFFECTS["6698"].defensive_only)
+        self.assertFalse(ITEM_EFFECTS["226698"].defensive_only)
+
+
 class EssenceReaverSpellbladeTests(unittest.TestCase):
     """Phase 4 batch 21 - Essence Reaver (3508) promoted via the new
     CallContext.crit_chance schema.
@@ -7810,7 +7888,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.233.0")
+        self.assertEqual(ENGINE_VERSION, "1.234.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7871,7 +7949,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.233.0")
+        self.assertEqual(ENGINE_VERSION, "1.234.0")
 
 
 if __name__ == "__main__":
