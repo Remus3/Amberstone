@@ -132,6 +132,7 @@ DONE - All 51 rows DONE (LEDGER 784 + 903; newest R129 = LEDGER 903). Rows reloc
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
 | R150 | ds-sweep-conqueror-offense-grant | Sweep offensive rune stat grants vs DDragon 16.14.1 and credit the remaining real gap. ENGINE-IMPACT BUMP 1.232.0 -> 1.233.0. | DONE | `a7c5f9db` + bump |
+| R151 | hexcore-offline-update | Find every net-new non-test .py added since `d584e02e` and re-sync `docs/HEXCORE_offline.html` - dust leaves, stats HUD, ENGINE tooltips. File stays self-contained, no external assets. ENGINE-IMPACT NONE (offline documentation html only). | DONE | `79c3deba` |
 
 **THE DIRECTIVE'S 7 TARGETS RESOLVED TO 1 REAL GAP, and the audit that established
 that ran BEFORE any code.** 8236 Gathering Storm and 8233 Absolute Focus were ALREADY
@@ -182,3 +183,41 @@ dead id, an Ability-Haste-only rune on a settled-inert axis, a move-speed rune, 
 proc-damage rune already scored by the burst consumer, or 8232 Waterwalking which is
 uptime-blocked with no positional signal in the engine. Do NOT re-scan the rune trees for
 uncredited stat grants; a further pass needs a positional/role signal, not another sweep.
+
+**THE DIRECTIVE ASSUMED A COLD SYNC; THE REAL GAP WAS 3 FILES, NOT 32.** Grounding
+first: `git diff --diff-filter=A d584e02e..HEAD -- '*.py'` yields 45 net-new adds, of
+which 13 are `Share/src/agents/daemon_slayer/*.py` byte mirrors of their
+`agents/daemon_slayer/*.py` originals - excluded, leaving 32 real net-new non-test
+source files. R138 had already landed 29 of those as dust leaves. Only three were
+missing: `dashboard/_lcu_inprocess.py`, `lcu/champ_select_shape.py`,
+`lcu/snapshot_shape.py`. Parented to `m_dashserver` / `m_lcupre` / `m_lcupost`
+(all pre-existing nodes; no new node added, count stays 141). Dust 322 -> 325,
+propagated to all four sites the guard test checks - the `var DUST=` literal, the
+`// DUST:` comment, the HUD row, and both `dust-file star particles` prose strings.
+
+TDD was real: `tests/test_hexcore_offline_dust.py` already existed from R138 but its
+`EXPECTED_NEW_BASENAMES` tuple listed 26 of the 32. Widening it to 32 FIRST produced a
+genuine RED on exactly the three absent basenames, then the html fix took it GREEN
+(11 passed, `node --check` green on the extracted script block, 0 non-ascii bytes).
+
+**THE 5-PHASE FIXTURE AUDIT PAID FOR ITSELF WITH TWO CATCHES NEITHER THE SLICE AGENT
+NOR THE VERIFIER FOUND.** (1) The ENGINE tooltip was given the COLLECTED DS count
+(9088) where the repo convention for that anchor is the PASSED count - `docs/DAEMON_SLAYER.md`
+says 9087 (9087 passed / 1 skipped), so 9088 both broke a previously-agreeing anchor pair
+and counted a skipped test as green. (2) Updating the engine / ledger rows to 2026-07-21
+state left the neighbouring repo-stats rows at a 2026-07-20 snapshot, so the HUD block
+contradicted itself; re-anchored to `eb111c36` / 2026-07-21 with commits 3762 -> 3789.
+Both fixed in-slice before push, per the ritual. Zero MUST-FIX. The verifier gate
+separately caught that the slice agent finished its edits but never committed them -
+the branch had zero commits and `main...HEAD` was empty, so a naive merge would have
+been a silent no-op that still reported success.
+
+Don't-redo: the HEXCORE dust set is CLOSED against `d584e02e..eb111c36` - all 32
+net-new non-test source files are present. The `Share/src/agents/daemon_slayer/*.py`
+mirrors are DELIBERATELY excluded (byte-identical duplicates would double-render their
+parents' clusters). Do not "fix" `snapshot_shape.py` being parented to `m_lcupost`
+rather than a dashboard node: the DUST parent convention is decorative round-robin
+within a cluster, not semantic - `lcu_rune_writer.py`, a pre-game module, is likewise
+parented `m_lcupost`. The small font sizes in `#hexcore-stats` (8-10px) are pre-existing
+and correct for a zoomable canvas doc; the v2.1 `--fs-xs` floor governs the dashboard,
+not this offline artifact.
