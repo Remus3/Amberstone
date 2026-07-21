@@ -438,6 +438,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="6695",
         name="Serpent's Fang",
         defensive_only=True,
+        # R152 lethality stat-block parity: DDragon 16.14.1 <stats> carries
+        # 15 Lethality; previously credited 0.0. defensive_only stays True -
+        # it is doc-only (zero engine consumers) and the lethality fold in
+        # effective_target_armor does not filter on it.
+        lethality=15.0,
         # R75 DSV9 (1.179.0): Meraki 16.13.1 Shield Reaver, byte-grounded -
         # "Dealing damage to an enemy champion inflicts them with venom for
         # 3 seconds, reducing any shields they gain within the duration by
@@ -866,6 +871,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "6698": ItemEffect(
         item_id="6698",
         name="Profane Hydra",
+        # R152 lethality stat-block parity: DDragon 16.14.1 description
+        # <stats> carries 18 Lethality (NOT in DDragon's stats keys, and
+        # stats.ITEM_STAT_KEY_MAP has no lethality key) - so ITEM_EFFECTS
+        # is the only credit path and this entry read 0.0 flat pen.
+        lethality=18.0,
         periodics=(PeriodicProc(
             name="Cleave",
             # Melee: 40% total AD physical to other enemies (primary
@@ -3087,10 +3097,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="446691",
         name="Duskblade of Draktharr",
         defensive_only=True,
+        # R152 lethality stat-block parity: DDragon 16.14.1 <stats> carries
+        # 20 Lethality; previously credited 0.0. The Nightstalker PASSIVE
+        # stays deferred (ability-cast schema gap) - only the stat block
+        # lands here. defensive_only stays True (doc-only flag).
+        lethality=20.0,
         note=(
-            "Duskblade of Draktharr (446691 Arena): Nightstalker - ability damage amp "
-            "based on target missing HP; ability-cast schema gap; deferred. "
-            "Different mechanism from SR 6691 (which just carries lethality)"
+            "Duskblade of Draktharr (446691 Arena): 20 Lethality stat block now "
+            "credited (R152); Nightstalker - ability damage amp based on target "
+            "missing HP - remains an ability-cast schema gap and is deferred. "
+            "Different passive mechanism from SR 6691 (which carries lethality only)"
         ),
     ),
     "446667": ItemEffect(
@@ -3515,6 +3531,9 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226698": ItemEffect(
         item_id="226698",
         name="Profane Hydra",
+        # R152 lethality stat-block parity: DDragon 16.14.1 <stats> carries
+        # 18 Lethality (same as SR 6698); previously credited 0.0.
+        lethality=18.0,
         periodics=(PeriodicProc(
             name="Cleave",
             bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
@@ -3695,6 +3714,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="226695",
         name="Serpent's Fang",
         defensive_only=True,
+        # R152 lethality stat-block parity: DDragon 16.14.1 <stats> carries
+        # 19 Lethality for the Arena mirror while SR 6695 carries 15. That
+        # divergence is real in the 16.14.1 feed, so each id is credited at
+        # its OWN number - deliberately NOT normalized to the SR value.
+        lethality=19.0,
         # R75 DSV9 (1.179.0): Arena mirror of SR 6695 Shield Reaver.
         # Meraki 16.13.1 carries NO 226695 entry, so the mirror truth is
         # DDragon items.json 226695 (map 30 only, same Shield Reaver
