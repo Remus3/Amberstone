@@ -64,7 +64,30 @@ clear-on-exit, KP live value, champ-select mastery/meta placeholders.
    (it fires), and an "independent reproduction" that was actually an overlay-shell
    client the router pins by design. Re-probe before asserting.
 
-## NEXT SESSION (operator-chosen) - UI/UX
+## NEXT SESSION = GEMINI HEADLESS LOOP (operator, 2026-07-20 end of session)
+
+The next session CONTINUES the gemini headless loop, NOT the UI/UX pass below.
+
+**The UI/UX work is OPERATOR-PRESENT and cannot run headless.** Its core is the
+advocate-round loop where the operator rules element by element and explicitly wants
+pushback - a Gemini-directed autonomous cycle has nobody to argue with, and item (2)
+below ("offer 2-3 layout alternatives to choose between") is a decision request by
+construction. Do NOT let a headless cycle "do the UI pass" and close it.
+
+**What a headless cycle CAN legitimately build for it** (all non-interactive, and it
+unblocks the operator-present session):
+- the **dev display data** for the out-of-game pages (fixtures that make Home / PGR /
+  Session / History / Replay / User Builds / Build Insights / Settings render fully
+  populated with no live game),
+- the **pseudo-screen for the in-game overlay** (a fixture harness that renders the HUD
+  surface at 2560x1440 without League running),
+- the **.rofl backfill** in section C of the queue doc (mechanical, testable, no
+  operator judgement needed),
+- any of the ~20 already-diagnosed defects in section B that are one-liners with a
+  clear correct answer (e.g. the "Legion-PC" footer, the dangling no-data dots, the
+  Replay table clipping) - but NOT the theme/layout/content questions.
+
+## QUEUED (operator-present, run when he is at the keyboard) - UI/UX
 
 **Queue doc: `docs/qa/UI_UX_QUEUE_2026-07-21.md`** - written at the end of this session,
 carries the operator's own framing plus ~20 concrete defects measured live tonight. Read
