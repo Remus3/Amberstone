@@ -9,7 +9,9 @@ What it mirrors into ``Share/src`` (deterministic - same input -> same output):
   * ``agents/daemon_slayer/**``  (engine + tests, less the host-dependent test
     modules in ``_HOST_DEPENDENT_TESTS``) -> ``Share/src/agents/daemon_slayer/``
   * a curated set of DS tools     -> ``Share/src/tools/``
-  * ``data/daemon_slayer/<patch>/** + current.txt`` -> ``Share/src/data/daemon_slayer/``
+  * ``data/daemon_slayer/<patch>/**`` (less ``_EXCLUDED_SNAPSHOT_FILES``),
+    ``current.txt``, and the patch-independent engine tables in
+    ``_ROOT_DATA_FILES`` -> ``Share/src/data/daemon_slayer/``
 
 Two transforms are applied to copied ``.py`` text so the package presents the
 engine on its own technical merits:
@@ -143,6 +145,58 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     "test_r144_mirror_slice_d.py",
     "test_r144_mirror_slice_e.py",
     "test_unique_passive_key_phase4d.py",
+})
+
+# PATCH-INDEPENDENT engine data tables, which live at the ``data/daemon_slayer/``
+# ROOT rather than inside the per-patch snapshot directory. They must ship, or
+# the package's own test suite cannot pass.
+#
+# The mirror originally copied ``current.txt`` plus ``<patch>/**`` only, which
+# silently dropped both files below. ``ult_rates.py:60-63`` joins them directly
+# onto the data root, and four production call sites read through it
+# (``ability_dps.py`` spell rates + ult item procs, ``dps.py`` Malignance,
+# ``ability_hps.py`` HPS). The lookup is fail-soft, so the engine still LOADED -
+# which is exactly why the omission survived: nothing crashed, it just answered
+# with ``global_fallback`` everywhere. MEASURED consequence in the shipped
+# package: 8802 passed / 108 failed / 16 skipped / 172 errors, while the package
+# README advertised a clean offline run.
+#
+# The set is EMPIRICAL, not a guess: every ``data/daemon_slayer/*.json`` at the
+# root was checked against the engine source, and only these two are read.
+# ``sr_draft_presets.json``, ``vision_atlas_manifest.json``,
+# ``vision_region_atlas.json`` and ``user_builds.json`` are RC-host files the
+# engine never opens, so they are deliberately NOT shipped.
+# ``tests/test_ds_share_data_snapshot_scope.py`` re-derives the engine's actual
+# root-level reads from source and fails if a new one is not declared here.
+_ROOT_DATA_FILES: tuple[str, ...] = (
+    "spell_cast_rates.json",
+    "ult_cast_rates.json",
+)
+
+# Per-patch snapshot files EXCLUDED from the public package.
+#
+# ``mayhem_augment_stats.json`` is a Overlay App E dataset - its own ``endpoint``
+# field is ``https://data.v2.iesdev.com/api/v1/query_objects/prod/lol/
+# aram_mayhem_augments`` - carrying ``win_rate`` / ``num_games`` / ``pick_rate``
+# / ``tier`` for 199 ARAM Mayhem augments. Three reasons it is not
+# redistributed, and the first alone is sufficient:
+#
+#   1. NO LICENSE GRANT. It is a third party's aggregate play data, fetched from
+#      an unauthenticated public endpoint. Shipping it in a package handed to an
+#      external reviewer redistributes it under terms nobody granted.
+#   2. THE ENGINE NEVER READS IT. Verified by grep: zero references anywhere
+#      under ``agents/daemon_slayer/``, tests included. The only consumers are
+#      host-side (``core/augment_external_source.py``, ``tools/ds_feed_index.py``),
+#      and neither ships. Excluding it costs the package no capability at all.
+#   3. IT FALSIFIED THE PACKAGE'S OWN DOCS. ``Share/README.md`` states that DS
+#      does not scrape win-rate aggregators and that the shipped mode sidecars
+#      carry pick-rate-class data, which Riot developer policy permits where win
+#      rate does not. Both statements were false while this file shipped.
+#
+# It is NOT deleted from ``data/daemon_slayer/`` - it is a live RC runtime feed
+# on the host. This excludes it from the public mirror only.
+_EXCLUDED_SNAPSHOT_FILES: frozenset[str] = frozenset({
+    "mayhem_augment_stats.json",
 })
 
 # Bounded, exact-substring rewrites of development-context comment phrases that
@@ -286,9 +340,15 @@ def _build_expected() -> dict[str, bytes]:
     cur = data / "current.txt"
     if cur.exists():
         out["data/daemon_slayer/current.txt"] = cur.read_bytes()
+    for name in _ROOT_DATA_FILES:
+        p = data / name
+        if p.exists():
+            out[f"data/daemon_slayer/{name}"] = p.read_bytes()
     snap = data / _PATCH
     for p in sorted(snap.rglob("*")):
         if p.is_dir():
+            continue
+        if p.name in _EXCLUDED_SNAPSHOT_FILES:
             continue
         out[f"data/daemon_slayer/{_PATCH}/{p.relative_to(snap).as_posix()}"] = p.read_bytes()
 
