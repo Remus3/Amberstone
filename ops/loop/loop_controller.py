@@ -9,12 +9,25 @@ IPC = files in control_dir, atomic (tmp + os.replace), plain-text where AHK read
 Both gemini and claude are stateless per cycle; continuity lives on disk
 (git history + docs/LEDGER.md + the directive chain). See the Desktop BUILD LOG.
 """
+import importlib.util
 import json
 import os
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+# The controller is loaded by absolute file path (launcher + tests), so ops/loop
+# is never on sys.path; bind the sibling adjudicator module explicitly.
+_ADJ_MODNAME = "rc_loop_adjudicator"
+if _ADJ_MODNAME in sys.modules:
+    adjudicator = sys.modules[_ADJ_MODNAME]
+else:
+    _adj_spec = importlib.util.spec_from_file_location(
+        _ADJ_MODNAME, Path(__file__).resolve().parent / "adjudicator.py")
+    adjudicator = importlib.util.module_from_spec(_adj_spec)
+    sys.modules[_ADJ_MODNAME] = adjudicator
+    _adj_spec.loader.exec_module(adjudicator)
 
 _CFG_ARG = (sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].endswith(".json")
             else r"C:\Riot Commander\ops\loop\config.json")
@@ -31,6 +44,11 @@ CTL = Path(CFG.get("control_dir", Path(__file__).resolve().parent / "control"))
 CTL.mkdir(parents=True, exist_ok=True)
 DRY = bool(CFG.get("dry_run", False))
 GEMINI_USD = 0.0  # cumulative estimated Gemini spend - THIS is the capped budget (not Claude)
+# Adjudicator (external-brain) run state: which backend is live, whether the
+# one-way exhaustion failover already fired, and per-backend estimated spend.
+# Caller-owned so gemini() can rebuild the supervisor from the CURRENT module
+# globals every call without resetting the sticky decision or the spend.
+_ADJ_STATE = {"active": "", "failed_over": False, "usd": {}}
 
 def log(m):
     line = f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {m}"
@@ -324,75 +342,37 @@ def _format_directive_chain(recs):
                    f"-> {r.get('sha_after', '')} [{r.get('verdict', '')}]")
     return "\n".join(out)
 
-# ---- gemini (read-only, STDIN pipe; mirrors tools/gemini_audit.ps1) ----
-def _read_err(errfile):
-    # PS 5.1 `2>'file'` writes the error stream UTF-16 LE (Out-File default);
-    # the old utf-8 read mojibake'd it, which masked the real API error behind
-    # NUL-interleaved node warnings for the whole 2026-07-02 01:56-11:17 outage.
-    try:
-        raw = errfile.read_bytes()
-    except OSError:
-        return ""
-    enc = "utf-16" if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-8"
-    return raw.decode(enc, errors="replace").strip()
+# ---- external brain (backends + failover live in ops/loop/adjudicator.py) ----
+def _supervisor():
+    """The failover supervisor, built from the CURRENT module globals.
 
-def _err_summary(txt, cap=400):
-    # Surface the ERROR lines (503 overload / 429 quota) - the node/terminal
-    # warnings that open the stream otherwise crowd them out of a head read.
-    hits = [ln.strip() for ln in txt.splitlines()
-            if any(k in ln.lower() for k in ("error", "unavailable", "exhausted", "quota", "429", "503"))]
-    return (" | ".join(hits) if hits else txt)[:cap]
+    Rebuilt per call because CFG / CTL / log / awrite are module-scope and are
+    swapped by the loop test-suite and by an operator hot-editing config.json;
+    _ADJ_STATE carries the sticky failover decision and the accumulated
+    per-backend spend across every rebuild.
+    """
+    return adjudicator.FailoverAdjudicator(CFG, CTL, log, awrite, state=_ADJ_STATE)
 
 def gemini(prompt_body, instruction):
+    """The loop's single external-brain call site, routed to the resolved
+    adjudicator backend (gemini today; claude after a config flip or after the
+    automatic credit-exhaustion failover fires).
+
+    Kept under the historical name because director()/auditor() call it and it is
+    the monkeypatch seam every existing loop test binds to. All vendor mechanics -
+    the PowerShell invocation, the retry ladder, the UTF-16 stderr decode and the
+    None-on-empty sentinel - now live in the backend classes; N3 semantics are
+    unchanged: EMPTY output is NEVER a usable answer, so a completed-but-empty
+    call returns None exactly like a timeout does.
+    """
     global GEMINI_USD
-    prompt_body = cap_stdin(prompt_body)
-    infile = CTL / "_gemini_in.txt"
-    errfile = CTL / "_gemini_err.txt"
-    awrite(infile, prompt_body)
-    model = CFG.get("gemini_model", "gemini-3-pro-preview")
-    # 2026-07-02 outage fix: gemini-3-pro-preview 503-overloads for hours at a
-    # time (big prompts rejected, small ones admitted); 3 empty tries then
-    # advancing burned 92 directive-less cycles. After the primary tries
-    # exhaust, retry on the cheaper fallback model - a flash directive beats
-    # an empty cycle.
-    fallback = CFG.get("gemini_fallback_model", "gemini-2.5-flash")
-    attempts = [model] * 3 + ([fallback] * 2 if fallback and fallback != model else [])
-    inst = instruction.replace("'", "''")
-    out = ""
-    for tryn, m in enumerate(attempts, start=1):
-        ps = ("$ErrorActionPreference='Continue';"
-              "$env:GEMINI_API_KEY=[Environment]::GetEnvironmentVariable('GEMINI_API_KEY','User');"
-              f"Get-Content -Raw '{infile}' | "
-              f"{CFG.get('gemini_cmd', 'gemini')} -p '{inst}' -m '{m}' --approval-mode plan --skip-trust 2>'{errfile}' | Out-String")
-        try:
-            r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
-                               capture_output=True, text=True, timeout=300,
-                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-            out = (r.stdout or "").strip()
-        except Exception as e:  # noqa: BLE001
-            out = ""
-            log(f"gemini try {tryn} ({m}) error: {e}")
-        if out:
-            break
-        # Empty stdout: surface WHY (decoded + error-line filtered stderr).
-        err = _err_summary(_read_err(errfile))
-        if err:
-            log(f"gemini try {tryn} ({m}) empty stdout; stderr: {err}")
-        time.sleep(8 * tryn)
-    gp = CFG.get("gemini_price_per_mtok", {"input": 2.0, "output": 12.0})
-    GEMINI_USD += (len(prompt_body) / 4 * gp["input"] + len(out) / 4 * gp["output"]) / 1_000_000
-    # N3 (revised 2026-07-01): EMPTY output is NEVER a usable answer - the director
-    # prompt mandates a directive or the literal NO_WORK token, the auditor a VERDICT
-    # line - so a completed-but-empty call is a swallowed CLI/API error, exactly like
-    # a timeout. Return the None sentinel for BOTH, so the director path advances the
-    # cycle instead of mis-reading "" as NO_WORK and falsely terminating a run with
-    # OPEN queue rows (the 2026-07-01 17:57 false-stop; the same-sha no-progress
-    # guard still ends a persistent outage cleanly).
-    if not out:
-        return None
+    sup = _supervisor()
+    out = sup.ask(cap_stdin(prompt_body), instruction)
+    sup.save_state(_ADJ_STATE)
+    GEMINI_USD = _ADJ_STATE["usd"].get(adjudicator.GeminiAdjudicator.name, 0.0)
     return out
 
-# ---- gemini roles ------------------------------------------------------
+# ---- adjudicator roles -------------------------------------------------
 def build_director_context(last_done, last_audit, *, root=None, ctl=None):
     """Pure: assemble the context appended after the director prompt template.
 
@@ -463,10 +443,10 @@ def auditor(prev_sha, new_sha, clean_sha=None):
             f"\n\n=== DIFF (may be truncated; see manifest above for the full file list) ===\n{diff}")
     verdict = gemini(body, "Audit. First line MUST be 'VERDICT: CLEAN' or 'VERDICT: REGRESS', then the reason.")
     if verdict is None:
-        # N3: gemini errored (timeout / CLI) - an un-auditable cycle is NOT a regression.
-        # Return a safe CLEAN so the controller's string ops never hit the None sentinel
-        # and a flaky auditor never falsely blocks a clean cycle.
-        return "VERDICT: CLEAN\n(auditor gemini error - could not audit this cycle; treated as non-regress)"
+        # N3: the adjudicator errored (timeout / CLI) - an un-auditable cycle is NOT a
+        # regression. Return a safe CLEAN so the controller's string ops never hit the
+        # None sentinel and a flaky auditor never falsely blocks a clean cycle.
+        return "VERDICT: CLEAN\n(auditor adjudicator error - could not audit this cycle; treated as non-regress)"
     return verdict
 
 # ---- budget meter: sum active-session JSONL usage since start_ts -------
@@ -518,13 +498,48 @@ def meter(start_ts):
             continue
     return round(spent, 4)
 
+# ---- AHK bridge liveness ------------------------------------------------
+# The AHK bridge rewrites control/ahk_heartbeat.txt with an integer unix-epoch
+# timestamp about once a second while it is alive. Without a liveness read a
+# dead bridge is indistinguishable from a slow executor, so the controller sat
+# out the whole cycle_deadline_sec (5400s = 90 minutes of dead air per hang)
+# before saying anything.
+AHK_HEARTBEAT_STALE_SEC = 60
+
+def heartbeat_age(ctl=None, now=None):
+    """Seconds since the AHK bridge last stamped its heartbeat, or None when the
+    file is missing / unparseable / not yet written. Pure; ctl+now injectable."""
+    base = Path(ctl) if ctl is not None else CTL
+    p = base / "ahk_heartbeat.txt"
+    try:
+        stamp = int(float(p.read_text(encoding="utf-8", errors="replace").strip()))
+    except (OSError, ValueError):
+        return None
+    return int((time.time() if now is None else now) - stamp)
+
+def bridge_stale_message(age, limit=AHK_HEARTBEAT_STALE_SEC):
+    """The loud one-liner for a dead bridge, or None while it is healthy. A
+    future stamp (clock skew) is healthy, not stale. Advisory only - the caller
+    logs it and lets the existing deadline logic decide whether to stop."""
+    if age is None:
+        return "AHK BRIDGE STALE (missing)"
+    if age > limit:
+        return f"AHK BRIDGE STALE ({age}s)"
+    return None
+
 # ---- main loop ---------------------------------------------------------
-def wait_for(path, deadline_ts):
+def wait_for(path, deadline_ts, watch_bridge=False):
+    warned = False
     while time.time() < deadline_ts:
         if (CTL / "STOP").exists():
             log("external STOP seen"); sys.exit(0)
         if Path(path).exists():
             return True
+        if watch_bridge and not warned:
+            msg = bridge_stale_message(heartbeat_age())
+            if msg:
+                log(msg)
+                warned = True
         time.sleep(CFG["poll_sec"])
     return False
 
@@ -600,10 +615,10 @@ def main():
         else:
             body = director(last_done, last_audit)
             if body is None:
-                # N3: gemini retries exhausted (timeout / CLI error) - NOT a real NO_WORK
-                # signal. Advance to the next cycle instead of terminating the whole run;
-                # the no-progress (same-sha) guard still stops a persistent outage cleanly.
-                log(f"cycle {cycle}: director gemini error (retries exhausted) - advancing, NOT terminating")
+                # N3: adjudicator retries exhausted (timeout / CLI error) - NOT a real
+                # NO_WORK signal. Advance to the next cycle instead of terminating the whole
+                # run; the no-progress (same-sha) guard still stops a persistent outage.
+                log(f"cycle {cycle}: director adjudicator error (retries exhausted) - advancing, NOT terminating")
                 continue
             if body[:40].upper().find("NO_WORK") >= 0:
                 stop("director returned NO_WORK")
@@ -633,7 +648,7 @@ def main():
         # runaway backstops so a truly wedged run still stops cleanly after exactly one
         # recovery attempt.
         breach = 0
-        while not wait_for(CTL / "claude.done", deadline):
+        while not wait_for(CTL / "claude.done", deadline, watch_bridge=True):
             breach += 1
             if stall_action(breach) == "stop":
                 stop(f"cycle {cycle}: claude.done not seen after stall recovery (hard hang)")
@@ -649,13 +664,23 @@ def main():
         log(f"cycle {cycle}: claude.done sha={new_sha[:8]} tests={done.get('tests_pass')} regress={done.get('regressions')}")
 
         claude_info = meter(start_ts)  # informational only - NO cap on Claude (operator directive)
+        brain = _ADJ_STATE.get("active") or adjudicator.backend_name(CFG)
+        brain_usd = sum(float(v or 0.0) for v in (_ADJ_STATE.get("usd") or {}).values())
+        # gemini_usd stays for backward compatibility (dashboards + prior runs read it).
         awrite(CTL / "budget.json", json.dumps(
             {"gemini_usd": round(GEMINI_USD, 4), "gemini_ceiling": CFG["ceiling_usd"],
+             "adjudicator": brain, "adjudicator_usd": round(brain_usd, 4),
              "claude_usd_info": claude_info, "cycle": cycle}))
-        log(f"cycle {cycle}: gemini=${round(GEMINI_USD, 4)}/{CFG['ceiling_usd']} "
-            f"claude_info(uncapped)=${claude_info}")
-        if GEMINI_USD >= CFG["ceiling_usd"]:
-            stop(f"gemini budget ceiling hit: ${round(GEMINI_USD, 4)} >= ${CFG['ceiling_usd']}")
+        # ceiling_usd is a runaway rail on the METERED vendor. claude adjudicator
+        # spend is EXCLUDED unless claude_adjudicator.count_against_ceiling is
+        # true, because operator policy is that Claude spend is uncapped - a swap
+        # to the local adjudicator must not inherit the $200 gemini rail and then
+        # silently stop an otherwise-free run.
+        capped_usd = adjudicator.ceiling_spend(CFG, _ADJ_STATE.get("usd"))
+        log(f"cycle {cycle}: adjudicator={brain} capped=${round(capped_usd, 4)}/{CFG['ceiling_usd']} "
+            f"total=${round(brain_usd, 4)} claude_info(uncapped)=${claude_info}")
+        if capped_usd >= CFG["ceiling_usd"]:
+            stop(f"adjudicator budget ceiling hit: ${round(capped_usd, 4)} >= ${CFG['ceiling_usd']}")
 
         if not CFG.get("ignore_no_progress"):
             same_sha_streak = same_sha_streak + 1 if new_sha == prev_sha else 0

@@ -24,7 +24,7 @@ HARD RULES for the directive you emit:
   read-only consumer is NONE (memory feedback_ds_forward_marker_no_bump); only a math / schema
   / scorer change a test or served path consumes is BUMP. NEVER pair a bump instruction with a
   "byte-identical when unconsumed" instruction in the same directive - that pairing is the R19
-  contradiction and forces a wasted gemini round-trip to resolve.
+  contradiction and forces a wasted adjudicator round-trip to resolve.
 - BUILD ON, NEVER REPEAT (continuity is on disk, not in your memory). The context below
   carries an "ALREADY-COMPLETED DIGEST": the recent commits (newest first), the NEWEST
   docs/LEDGER.md items (each line is a DONE item), and "DIRECTIVES ALREADY ISSUED THIS RUN"
