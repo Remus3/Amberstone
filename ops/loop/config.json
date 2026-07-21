@@ -14,6 +14,17 @@
   "claude_window_title": "Claude",
   "gemini_model": "gemini-3-pro-preview",
   "gemini_cmd": "gemini",
+  "adjudicator": "gemini",
+  "adjudicator_fallback": "claude",
+  "adjudicator_failover": true,
+  "_adjudicator_note": "THE MANUAL SWAP IS THIS ONE KEY: set \"adjudicator\" to \"claude\" and relaunch. Everything else (director + auditor prompts, budget accounting, retry semantics) is vendor-neutral. Usually no edit is needed at all: with \"adjudicator_failover\": true the controller swaps to \"adjudicator_fallback\" by itself the first time the live backend returns nothing AND its stderr carries a credit / quota exhaustion signature (quota, exhausted, insufficient credit, out of credit, billing, top up, 429, RESOURCE_EXHAUSTED), logs ADJUDICATOR FAILOVER, records the new backend in control/adjudicator_active.txt, retries the same call on the fallback so the cycle is not lost, and stays sticky for the rest of the run. A transient 503 / overload does NOT failover - the in-backend retry ladder and the cheaper fallback model handle that. Set \"adjudicator_failover\": false to require a manual swap.",
+  "claude_adjudicator": {
+    "cmd": "C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd",
+    "model": "opus",
+    "timeout_sec": 300,
+    "count_against_ceiling": false,
+    "_note": "Read-only by --permission-mode plan (the claude CLI equivalent of the gemini --approval-mode plan guarantee), non-interactive by -p/--print, body on stdin. count_against_ceiling is FALSE on purpose: ceiling_usd is a runaway rail on the METERED vendor, and operator policy is that Claude spend is uncapped, so swapping to the local adjudicator must not inherit the gemini rail and silently stop an otherwise-free run."
+  },
   "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
   "gemini_price_per_mtok": {
     "input": 2.0,
