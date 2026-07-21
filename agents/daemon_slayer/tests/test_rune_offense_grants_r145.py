@@ -42,6 +42,10 @@ from agents.daemon_slayer.hybrid import compute_hybrid, rank_items_by_hybrid
 GATHERING_STORM = "8236"
 ABSOLUTE_FOCUS = "8233"
 CONQUEROR = "8010"
+# R155: the registry's non-adaptive attack-speed entry. Named here only so the
+# allowlist assertion below stays exact; its behaviour is pinned in
+# test_rune_offense_attack_speed_r155.py.
+LEGEND_ALACRITY = "9104"
 # Not in the registry by DESIGN (documented exclusions): proc damage, ability
 # haste, mana, move speed.
 ELECTROCUTE = "8112"
@@ -286,9 +290,12 @@ class RegistryShapeTests(unittest.TestCase):
     """The registry is a seeded ALLOWLIST - the exclusions are the point."""
 
     def test_exactly_the_seeded_adaptive_stat_grants_are_present(self) -> None:
+        # R155 added the non-adaptive attack-speed entry 9104 Legend: Alacrity;
+        # its own registry / column assertions live in
+        # test_rune_offense_attack_speed_r155.py.
         self.assertEqual(
             set(_RUNE_OFFENSE_GRANTS),
-            {GATHERING_STORM, ABSOLUTE_FOCUS, CONQUEROR},
+            {GATHERING_STORM, ABSOLUTE_FOCUS, CONQUEROR, LEGEND_ALACRITY},
         )
 
     def test_every_entry_declares_a_tree_and_a_unique_family(self) -> None:
@@ -309,7 +316,7 @@ class RegistryShapeTests(unittest.TestCase):
                     rune_offense_grants(
                         [rid], level=18, bonus_ad=200.0, ap=0.0, game_minute=60.0
                     ),
-                    (0.0, 0.0),
+                    (0.0, 0.0, 0.0),
                 )
 
 
@@ -317,14 +324,14 @@ class AdaptiveSideResolutionTests(unittest.TestCase):
     """One side pays out, chosen from the RESOLVED BUILD. AD wins ties."""
 
     def test_ad_build_takes_the_ad_column(self) -> None:
-        ad, ap = rune_offense_grants(
+        ad, ap, _as = rune_offense_grants(
             [GATHERING_STORM], level=18, bonus_ad=250.0, ap=0.0, game_minute=30.0
         )
         self.assertAlmostEqual(ad, 29.0, places=9)
         self.assertAlmostEqual(ap, 0.0, places=9)
 
     def test_ap_build_takes_the_ap_column(self) -> None:
-        ad, ap = rune_offense_grants(
+        ad, ap, _as = rune_offense_grants(
             [GATHERING_STORM], level=18, bonus_ad=0.0, ap=600.0, game_minute=30.0
         )
         self.assertAlmostEqual(ad, 0.0, places=9)
@@ -333,14 +340,14 @@ class AdaptiveSideResolutionTests(unittest.TestCase):
     def test_ad_wins_ties(self) -> None:
         # rune_procs._adaptive_coeff: "AD wins ties (League's adaptive force
         # defaults to AD when AD bonus >= AP bonus)".
-        ad, ap = rune_offense_grants(
+        ad, ap, _as = rune_offense_grants(
             [GATHERING_STORM], level=18, bonus_ad=100.0, ap=100.0, game_minute=30.0
         )
         self.assertAlmostEqual(ad, 29.0, places=9)
         self.assertAlmostEqual(ap, 0.0, places=9)
 
     def test_both_runes_sum_on_the_chosen_side(self) -> None:
-        ad, ap = rune_offense_grants(
+        ad, ap, _as = rune_offense_grants(
             [GATHERING_STORM, ABSOLUTE_FOCUS],
             level=18, bonus_ad=250.0, ap=0.0, game_minute=30.0,
         )
@@ -370,7 +377,7 @@ class AdaptiveSideResolutionTests(unittest.TestCase):
 
     def test_default_game_minute_is_the_explicit_tunable_constant(self) -> None:
         # _ASSUMED_GAME_MINUTE is 15.0, which sits in the 10-minute decade.
-        ad, _ap = rune_offense_grants(
+        ad, _ap, _as = rune_offense_grants(
             [GATHERING_STORM], level=18, bonus_ad=250.0, ap=0.0
         )
         self.assertAlmostEqual(ad, 5.0, places=9)
@@ -540,21 +547,21 @@ class ConquerorAdaptiveSideResolutionTests(unittest.TestCase):
     _AP_L18 = 48.0
 
     def test_ad_build_takes_the_ad_column(self) -> None:
-        ad, ap = rune_offense_grants(
+        ad, ap, _as = rune_offense_grants(
             [CONQUEROR], level=18, bonus_ad=250.0, ap=0.0
         )
         self.assertAlmostEqual(ad, self._AD_L18, places=9)
         self.assertAlmostEqual(ap, 0.0, places=9)
 
     def test_ap_build_takes_the_ap_column(self) -> None:
-        ad, ap = rune_offense_grants(
+        ad, ap, _as = rune_offense_grants(
             [CONQUEROR], level=18, bonus_ad=0.0, ap=600.0
         )
         self.assertAlmostEqual(ad, 0.0, places=9)
         self.assertAlmostEqual(ap, self._AP_L18, places=9)
 
     def test_ad_wins_ties(self) -> None:
-        ad, ap = rune_offense_grants(
+        ad, ap, _as = rune_offense_grants(
             [CONQUEROR], level=18, bonus_ad=100.0, ap=100.0
         )
         self.assertAlmostEqual(ad, self._AD_L18, places=9)
@@ -567,7 +574,7 @@ class ConquerorAdaptiveSideResolutionTests(unittest.TestCase):
             (100.0, 100.0, self._AD_L18),
         ):
             with self.subTest(bonus_ad=build_ad, ap=build_ap):
-                ad, ap = rune_offense_grants(
+                ad, ap, _as = rune_offense_grants(
                     [CONQUEROR], level=18, bonus_ad=build_ad, ap=build_ap
                 )
                 self.assertEqual(min(ad, ap), 0.0)
@@ -601,7 +608,7 @@ class ConquerorAdaptiveSideResolutionTests(unittest.TestCase):
                 )
 
     def test_it_sums_with_the_other_families_on_the_chosen_side(self) -> None:
-        ad, ap = rune_offense_grants(
+        ad, ap, _as = rune_offense_grants(
             [CONQUEROR, GATHERING_STORM, ABSOLUTE_FOCUS],
             level=18, bonus_ad=250.0, ap=0.0, game_minute=30.0,
         )
@@ -686,11 +693,11 @@ class RuneItemIdKeyspaceCollisionTests(unittest.TestCase):
         self.assertNotIn("3031", _RUNE_OFFENSE_GRANTS)
         self.assertEqual(
             rune_offense_grants(["3031"], level=18, bonus_ad=250.0, ap=0.0),
-            (0.0, 0.0),
+            (0.0, 0.0, 0.0),
         )
         self.assertNotEqual(
             rune_offense_grants([CONQUEROR], level=18, bonus_ad=250.0, ap=0.0),
-            (0.0, 0.0),
+            (0.0, 0.0, 0.0),
         )
 
     def test_every_call_site_feeds_the_registry_rune_ids_never_item_ids(self) -> None:
@@ -720,7 +727,7 @@ class RuneItemIdKeyspaceCollisionTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version_pin(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.235.0")
+        self.assertEqual(ENGINE_VERSION, "1.236.0")
 
 
 if __name__ == "__main__":
