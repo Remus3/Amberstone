@@ -292,12 +292,27 @@ class FailoverAdjudicator:
     # -- state is caller-owned so the controller can rebuild this object per
     # -- call (CFG / CTL / log / awrite are module-scope and monkeypatched)
     # -- without ever resetting the sticky decision or the accumulated spend.
+    def failover_armed(self):
+        """True when the CURRENT cfg both enables failover and names a fallback
+        backend that actually resolves."""
+        return (bool(self.cfg.get("adjudicator_failover", True))
+                and self.fallback_name in BACKENDS)
+
     def load_state(self, state):
-        active = str(state.get("active") or "").strip().lower()
-        if active in BACKENDS:
-            self.active_name = active
-        self.failed_over = bool(state.get("failed_over"))
+        # Spend is accounting, not routing: it is restored unconditionally so the
+        # ceiling never loses sight of money already spent.
         self.usd = dict(state.get("usd") or {})
+        # WHY the arming gate: a sticky failover decision is honoured only while
+        # the CURRENT cfg still arms failover. Without it, a decision taken under
+        # one config routes a later call whose config never authorized that
+        # backend - and because the fallback is then asked instead of the
+        # primary, the gemini 3+2 retry ladder silently stops running (that
+        # ladder is the 2026-07-02 9-hour-outage guard). Production cfg is fixed
+        # for a whole run, so this gate is a no-op for every real launch.
+        active = str(state.get("active") or "").strip().lower()
+        if active in BACKENDS and self.failover_armed():
+            self.active_name = active
+            self.failed_over = bool(state.get("failed_over"))
         return self
 
     def save_state(self, state):
@@ -317,9 +332,7 @@ class FailoverAdjudicator:
     def _failover_reason(self, backend):
         if self.failed_over:
             return None
-        if not self.cfg.get("adjudicator_failover", True):
-            return None
-        if self.fallback_name not in BACKENDS or self.fallback_name == backend.name:
+        if not self.failover_armed() or self.fallback_name == backend.name:
             return None
         return match_exhaustion(backend.last_stderr)
 
