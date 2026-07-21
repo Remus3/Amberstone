@@ -8,11 +8,12 @@ silently contributes 0.0 forever, which is indistinguishable from a rune that
 was read and rejected.
 
 ``_ADJUDICATED_NON_GRANTS`` is the machine-readable half of that same claim, and
-this file is what makes it bite. For the two trees swept to saturation as of
-R158 - Domination 8100 and Sorcery 8200 - every rune id in the live DDragon
-``runesReforged.json`` feed must be either REGISTERED (it grants an offensive
-stat) or ADJUDICATED (it was read and rejected, with the reason recorded). A
-patch that introduces a thirteenth Domination rune reds this suite by name.
+this file is what makes it bite. For ALL FIVE trees - Precision 8000, Domination
+8100, Sorcery 8200, Inspiration 8300 and Resolve 8400, saturated as of R159 -
+every rune id in the live DDragon ``runesReforged.json`` feed must be either
+REGISTERED (it grants an offensive stat) or ADJUDICATED (it was read and
+rejected, with the reason recorded). A patch that introduces a thirteenth
+Domination rune reds this suite by name.
 
 The third guard runs the claim in the OTHER direction and is the one that
 catches the specific error that produced this directive: an id can only be
@@ -21,15 +22,17 @@ adjudicated if it actually EXISTS in the feed. Adjudicating Eyeball Collection
 16.14.1 - would be recording a decision about a rune nobody can equip, which is
 worse than no record at all because it reads as coverage.
 
-SCOPE IS DELIBERATELY TWO TREES. Precision, Resolve and Inspiration are NOT
-machine-guarded yet: the registry has entries in Precision (8010, 9104) and
-Inspiration (8316) but has never swept either tree to saturation, so asserting
-completeness over them would be asserting something unmeasured. That is the
-future pass, and this file's tree list is where it lands.
+SCOPE IS EVERY TREE AS OF R159. The R158 scope note said Precision, Resolve and
+Inspiration were deliberately out because the registry had entries in Precision
+(8010, 9104) and Inspiration (8316) without ever having swept either tree end to
+end. R159 swept all three, so the tuple below is now the complete feed and two
+extra tests defend that: one asserts every id in the tuple actually exists as a
+tree in the feed (a typo would silently shrink the guard to nothing for that
+tree), and one asserts the feed carries no tree the tuple omits.
 
-NO BEHAVIOR MAY CHANGE. The last test pins that: the new mapping is a pure
-record and credits nothing, so ranking the full 25-rune Domination + Sorcery id
-list returns exactly what ranking the two REGISTERED ids returns.
+NO BEHAVIOR MAY CHANGE. R159 adds ZERO math - only records. The invariance tests
+pin that: the mapping credits nothing, so ranking the full 62-rune five-tree id
+list returns exactly what ranking the REGISTERED ids alone returns.
 
 OFFLINE ONLY: no live :8893, no network. Skips cleanly when the vendored feed is
 absent so a data-less checkout does not red the suite.
@@ -49,10 +52,11 @@ from agents.daemon_slayer._rune_offense_grants import (
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _CURRENT_TXT = _REPO_ROOT / "data" / "daemon_slayer" / "current.txt"
 
-# The two trees this registry has swept to saturation as of R158. Precision
-# 8000, Resolve 8400 and Inspiration 8300 are deliberately absent - see the
-# module docstring.
-_SATURATED_TREE_IDS: tuple[int, ...] = (8100, 8200)
+# ALL FIVE trees, swept to saturation as of R159. Precision 8000, Inspiration
+# 8300 and Resolve 8400 joined Domination 8100 + Sorcery 8200 - see the module
+# docstring. Every live rune belongs to one of these five, so this tuple is now
+# the whole game, not a subset of it.
+_SATURATED_TREE_IDS: tuple[int, ...] = (8000, 8100, 8200, 8300, 8400)
 
 
 def _feed_path() -> Path | None:
@@ -77,6 +81,15 @@ def _feed_path() -> Path | None:
     return vendored[-1] if vendored else None
 
 
+def _feed_tree_ids() -> set[int]:
+    """Return every tree id the live feed carries, as ints."""
+    path = _feed_path()
+    if path is None:
+        raise unittest.SkipTest("no vendored runesReforged.json snapshot on disk")
+    trees = json.loads(path.read_text(encoding="utf-8"))
+    return {int(tree["id"]) for tree in trees}
+
+
 def _saturated_tree_runes() -> dict[str, str]:
     """Return ``{rune_id: "<TreeKey>/<RuneKey>"}`` for every rune in the swept trees."""
     path = _feed_path()
@@ -94,12 +107,59 @@ def _saturated_tree_runes() -> dict[str, str]:
 
 
 class RuneOffenseSaturationTests(unittest.TestCase):
-    """Domination 8100 + Sorcery 8200 are adjudicated to saturation."""
+    """All five rune trees are adjudicated to saturation."""
+
+    def test_every_saturated_tree_id_is_present_in_the_feed(self) -> None:
+        feed_ids = _feed_tree_ids()
+        missing = sorted(tid for tid in _SATURATED_TREE_IDS if tid not in feed_ids)
+        self.assertEqual(
+            missing,
+            [],
+            msg=(
+                "tree id(s) in _SATURATED_TREE_IDS that the live feed does not "
+                "carry: "
+                + ", ".join(str(tid) for tid in missing)
+                + ". A typo here silently SHRINKS the guard - the sweep filter "
+                "matches nothing for that tree, so every rune in it goes "
+                "unchecked while the suite stays green. Feed tree ids: "
+                + ", ".join(str(tid) for tid in sorted(feed_ids))
+            ),
+        )
+
+    def test_the_guard_covers_every_tree_the_feed_carries(self) -> None:
+        self.assertEqual(
+            sorted(_feed_tree_ids()),
+            sorted(_SATURATED_TREE_IDS),
+            msg=(
+                "the feed carries a tree this guard does not sweep. R159 "
+                "claims ALL FIVE trees are saturated; a sixth tree (or a "
+                "renumbered one) makes that claim false and must be swept, "
+                "not filtered out."
+            ),
+        )
+
+    def test_swept_rune_count_equals_registered_plus_adjudicated_coverage(self) -> None:
+        runes = _saturated_tree_runes()
+        self.assertGreaterEqual(
+            len(runes), 60, "the all-five-tree rune list looks truncated"
+        )
+        registered = set(runes) & set(_RUNE_OFFENSE_GRANTS)
+        adjudicated = set(runes) & set(_ADJUDICATED_NON_GRANTS)
+        self.assertEqual(
+            len(registered) + len(adjudicated),
+            len(runes),
+            msg=(
+                "saturation is a COUNTING claim: every one of the "
+                f"{len(runes)} live runes must be registered "
+                f"({len(registered)}) or adjudicated ({len(adjudicated)}), "
+                "with no id doing both and none left over."
+            ),
+        )
 
     def test_every_swept_tree_rune_is_registered_or_adjudicated(self) -> None:
         runes = _saturated_tree_runes()
         self.assertGreaterEqual(
-            len(runes), 20, "the swept-tree rune list looks truncated"
+            len(runes), 60, "the swept-tree rune list looks truncated"
         )
         unadjudicated = sorted(
             (rid, key)
@@ -163,7 +223,20 @@ class RuneOffenseSaturationTests(unittest.TestCase):
 class RuneOffenseSaturationInvarianceTests(unittest.TestCase):
     """The new mapping is a pure RECORD: it must credit nothing."""
 
-    _REGISTERED_IN_SWEPT_TREES = ("8236", "8233")
+    _REGISTERED_IN_SWEPT_TREES = ("8236", "8233", "8010", "9104", "8316")
+
+    def test_the_pin_names_every_registered_rune_in_the_swept_trees(self) -> None:
+        runes = _saturated_tree_runes()
+        self.assertEqual(
+            sorted(self._REGISTERED_IN_SWEPT_TREES),
+            sorted(set(_RUNE_OFFENSE_GRANTS) & set(runes)),
+            msg=(
+                "_REGISTERED_IN_SWEPT_TREES is the control group for the two "
+                "invariance tests below. If it drifts from the real registered "
+                "set, those tests compare a page against a SUBSET of itself and "
+                "pass for the wrong reason."
+            ),
+        )
 
     def _grants(self, ids, *, bonus_ad: float, ap: float):
         return rune_offense_grants(
