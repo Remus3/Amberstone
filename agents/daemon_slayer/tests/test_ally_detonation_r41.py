@@ -204,7 +204,7 @@ class OnPathDeltaTests(unittest.TestCase):
 
 class EngineVersionTest(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.233.0")
+        self.assertEqual(ENGINE_VERSION, "1.234.0")
 
 
 if __name__ == "__main__":

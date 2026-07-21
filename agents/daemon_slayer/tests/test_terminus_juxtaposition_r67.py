@@ -44,8 +44,8 @@ _MERAKI_PATH = (
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_pinned(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.233.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.233.0")
+        self.assertEqual(ENGINE_VERSION, "1.234.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.234.0")
 
 
 class JuxtapositionRegistryPins(unittest.TestCase):
