@@ -475,6 +475,26 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-objgauges"] {
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-enemyspells"] {
   --ovx-w: 280px;
 }
+/* w-arambalance (2026-07-20): the ARAM balance grid became its own widget once
+ * the champion-resolution fix made it populate - 11 rows inside .am-pane-build
+ * pushed META BUILD + the DS item row into a clipped scroll region. Same
+ * widen-to-fit law as w-build / w-objgauges / w-enemyspells: a row is the kind
+ * tag (5ch) + the champion name (9ch) + up to three delta chips, and the
+ * dashboard render measures ~615px at the widest (Annie: dealt + taken +
+ * shielding). Below that .ab-row / .ab-deltas flex-wrap fold the chips onto a
+ * second line and DOUBLE the height of every row - 11 rows becomes 22. 620px
+ * fits the widest measured row on one line. Tunable live via the SZ slider. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-arambalance"] {
+  --ovx-w: 620px;
+}
+/* The panel's dashboard chrome (a top hairline + pane padding that separated it
+ * from the BUILD body it used to live inside) is redundant now that the widget
+ * frame draws its own Hextech border - and the stray rule read as a seam across
+ * the widget interior. */
+body[data-shell="overlay"] #aram-balance-panel {
+  border-top: none;
+  padding: 0;
+}
 
 /* BATCH A (2026-07-06): drop the "BUILD" pane-head title bar in-game (operator:
  * "knows what it is; wastes vertical space"). The widget chrome already labels

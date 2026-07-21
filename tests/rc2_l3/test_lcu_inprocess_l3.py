@@ -136,15 +136,22 @@ class TestLcuSummaryInprocess(unittest.TestCase):
             _PHASE_PATH: "ChampSelect",
             _SESSION_PATH: session,
         })
-        with mock.patch.object(inp, "_get_client", return_value=client):
+        # Stub the relay read so the suite never touches the live :8889.
+        with mock.patch.object(inp, "_get_client", return_value=client), \
+                mock.patch.object(inp, "_read_relay_snapshot",
+                                  return_value={}):
             snap = inp.lcu_summary_inprocess()
         self.assertIsNotNone(snap)
         self.assertEqual(snap["phase"], "ChampSelect")
         self.assertIn("champ_select", snap)
         self.assertTrue(snap["champ_select"]["is_aram"])
-        # config is caller-owned - shape_snapshot must not emit it (the
-        # ACCEPTED, documented flag-ON divergence vs the relay payload).
-        self.assertNotIn("config", snap)
+        # config + lcu_port are caller-owned: shape_snapshot still must not
+        # emit them (lcu/snapshot_shape.py:337-340), but lcu_summary_inprocess
+        # DOES add them itself so the flag-ON payload matches the relay's.
+        # G1-00 CHECK 2 follow-up (2026-07-20) - see
+        # tests/rc2_l3/test_lcu_inprocess_config_port_l3.py.
+        self.assertIn("config", snap)
+        self.assertEqual(snap["lcu_port"], "1234")
 
 
 if __name__ == "__main__":
