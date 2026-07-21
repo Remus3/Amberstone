@@ -1,0 +1,16 @@
+{
+  "_comment": "Shipped defaults for the AHK GUI bridge (ops/loop/claude_gui_bridge.ahk). launch_loop.ps1 copies this to control/ahk_timings.json when that live copy is absent; control/ is runtime state, so an operator edit there survives a relaunch. The bridge re-reads the live copy at EVERY gemini.ready pickup, so a running loop can be retuned without restarting the bridge or the controller. Every key below also has a hardcoded fallback in the script: a missing, truncated or malformed file degrades to these exact values rather than breaking the hands of the loop. These values reproduce the pre-hardening timing behavior exactly.",
+  "_units": "all *_ms are milliseconds, *_sec is seconds, retries is a count",
+
+  "line_pause_ms": 1500,
+  "pre_enter_pause_ms": 350,
+  "clear_pause_ms": 5000,
+  "slash_split_pause_ms": 400,
+  "pre_type_settle_ms": 500,
+
+  "activate_retries": 3,
+  "activate_timeout_sec": 5,
+
+  "idle_guard_ms": 2000,
+  "idle_guard_max_defer_ms": 30000
+}
