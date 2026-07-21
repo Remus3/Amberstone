@@ -14,10 +14,11 @@
 // Data source: GET /api/aram-balance, fetched ONCE and cached client-side
 // (the map is immutable per patch). Keys are canonical DDragon champ ids
 // (e.g. "Aatrox", "TahmKench"); the liveclient championName is a display
-// name, so it is bridged to the canonical id via _resolveChampId ->
-// CHAMPS.byId[numericKey].
+// name, so it is bridged to the canonical id via _resolveChampId, which
+// (despite its name) returns the canonical NAME - champions_index.json
+// byName maps normalized-name -> "Aatrox". See _abCanonicalId.
 
-import { CHAMPS, _resolveChampId } from '../lib/items_index.js';
+import { _resolveChampId } from '../lib/items_index.js';
 
 const _AB_CONTAINER_ID = "aram-balance-panel";
 
@@ -77,21 +78,38 @@ function _abEnsureFetched(onLand) {
     });
 }
 
+// Live Client `rawChampionName` is a LOCALIZATION KEY, not a name:
+// "game_character_displayname_Singed". It normalizes to
+// "gamecharacterdisplaynamesinged" and resolves to null, so it must be
+// stripped back to the canonical tail before any lookup. Measured live
+// 2026-07-20 (ARAM Mayhem, queue 2400): the unstripped form killed every
+// ally + enemy row.
+const _AB_RAW_PREFIX = /^game_character_displayname_/i;
+
+function _abStripRawName(name) {
+  return String(name || "").replace(_AB_RAW_PREFIX, "");
+}
+
 // Resolve a liveclient display name (or a coach slug) to the canonical
 // DDragon champ id used as the /api/aram-balance map key. The coach
 // payload already carries a slug; liveclient names ("Tahm Kench",
-// "Kha'Zix") round-trip slug -> numeric key -> canonical slug.
+// "Kha'Zix") normalize into the same canonical id.
+//
+// _resolveChampId returns the canonical NAME ("Aatrox"), NOT a numeric id -
+// items_index CHAMPS.byName maps normalized-name -> NAME. Feeding that
+// return into CHAMPS.byId (an id -> name map) never hit and yielded "",
+// which is what emptied this panel for the whole game.
 function _abCanonicalId(name) {
-  if (!name) return "";
+  const nm = _abStripRawName(name);
+  if (!nm) return "";
   // Direct hit: already a canonical id present in the map.
-  if (_AB.champions && Object.prototype.hasOwnProperty.call(_AB.champions, name)) {
-    return name;
+  if (_AB.champions && Object.prototype.hasOwnProperty.call(_AB.champions, nm)) {
+    return nm;
   }
-  const numKey = _resolveChampId(name);
-  if (numKey && CHAMPS.byId && CHAMPS.byId[numKey]) {
-    return CHAMPS.byId[numKey];
-  }
-  return "";
+  // A champion legitimately ABSENT from the balance map (no ARAM changes
+  // this patch) still resolves here, so it keeps its row; only a name that
+  // resolves to nothing at all returns "" and is dropped.
+  return _resolveChampId(nm) || "";
 }
 
 // Build the ordered row set: SELF first, then allies, then enemies.
@@ -114,7 +132,11 @@ function _abBuildRows(p, ctx) {
     const myTeam = _abResolveMyTeam(lc);
     for (const pl of lc.allPlayers) {
       if (!pl || typeof pl !== "object") continue;
-      const nm = pl.rawChampionName || pl.championName || "";
+      // championName is the DISPLAY name and resolves directly;
+      // rawChampionName is the localization-key form, usable only after
+      // _abCanonicalId strips its prefix - so it is the FALLBACK, never the
+      // preference.
+      const nm = pl.championName || pl.rawChampionName || "";
       if (!nm) continue;
       // Unknown team -> treat as ally (no worse than mislabeling enemy).
       const kind = (myTeam && pl.team && pl.team !== myTeam) ? "enemy" : "ally";
@@ -284,9 +306,13 @@ function _abRow(row) {
     deltas.appendChild(chip);
   }
   if (!any) {
+    // Resolved fine, just carries no modifiers this patch. Saying so beats
+    // a bare "neutral" - the operator must be able to tell an unadjusted
+    // champion from a panel that failed to resolve anyone (an unresolvable
+    // name produces NO row at all).
     const neutral = document.createElement("span");
     neutral.className = "ab-neutral";
-    neutral.textContent = "neutral";
+    neutral.textContent = "no ARAM changes";
     deltas.appendChild(neutral);
   }
   el.appendChild(deltas);

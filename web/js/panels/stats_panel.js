@@ -18,8 +18,11 @@
 //           (no CS), gated to "no benchmark" (there is no Arena seed yet).
 //           You cell = live ground truth; Bench cell = the rank-tier average
 //           from GET /api/rank-tier-bench. LVL has no bench producer (the seed
-//           carries cs/kda/kp only) and KP has no live producer, so each honest
-//           "-" is a reserved slot, never a removed row (no reflow).
+//           carries cs/kda/kp only), so its honest "-" is a reserved slot,
+//           never a removed row (no reflow). KP is live on both sides since
+//           2026-07-20 (dashboard/_liveclient.py emits kill_participation_pct
+//           as a percent-suffixed string); it falls back to the same reserved
+//           "-" when the producer omits the key (0 team kills).
 //
 // The scaffold is (re)built when the mode's row set changes; every tick updates
 // the cell text IN PLACE (no innerHTML churn) so the panel never flickers.
@@ -42,9 +45,9 @@ const _TTL_MS = 5 * 60 * 1000;
 const _BRACKET_EARLY_MAX_S = 840;
 const _BRACKET_MID_MAX_S = 1500;
 
-// Mode-specific metric rows (keys) + labels. lvl/cs/kda have a live "You" value;
-// cs/kda/kp have a rank-tier "Avg" value. lvl is You-only (no seed metric) and
-// kp is Avg-only (no Live Client producer) - both render an honest "-".
+// Mode-specific metric rows (keys) + labels. lvl/cs/kda/kp all have a live
+// "You" value; cs/kda/kp have a rank-tier "Avg" value. lvl is You-only (no
+// seed metric) and renders an honest "-" on the Avg side.
 const _ROW_LABELS = { lvl: "LVL", cs: "CS", kda: "KDA", kp: "KP" };
 const _ROWS_BY_MODE = {
   SR: ["lvl", "cs", "kda", "kp"],
@@ -127,6 +130,20 @@ function _kdaRatio(kda) {
   const d = Number(parts[1]) || 0;
   const a = Number(parts[2]) || 0;
   return (k + a) / (d > 0 ? d : 1);
+}
+
+// Live KP normalizer. The producer (dashboard/_liveclient.py) emits a STRING
+// with a percent sign ("44%") while the benchmark side is a bare number in
+// percent points (kp avg 58 from /api/rank-tier-bench), so strip the sign and
+// hand _fmt a number for a like-for-like two-column compare. Returns null on
+// an absent / empty / non-numeric value - _liveclient omits the key entirely
+// at 0 team kills (KP is undefined there), and that honest "-" is correct.
+function _kpPct(v) {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim().replace(/%$/, "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return isFinite(n) ? n : null;
 }
 
 function _fmt(v) {
@@ -290,12 +307,14 @@ export function renderStatsPanel(lc, opts) {
   _ensureScaffold(mount, benchMode);
   // Bracket follows the live clock so the benchmark is same-length games.
   _bracket = _bracketFor(lc.game_time_s);
-  // You side - live ground truth. lvl/cs/kda are live; kp has no live producer.
+  // You side - live ground truth for every row (lvl / cs / kda / kp). The KP
+  // key is optional on the snapshot, so _kpPct -> _fmt keeps the honest "-"
+  // when it is absent (Arena never asks: its row set is lvl/kda only).
   const keys = _ROWS_BY_MODE[benchMode] || _ROWS_BY_MODE.SR;
   if (keys.indexOf("lvl") >= 0) _setCell(mount, "sp-you", "lvl", lc.level == null ? "-" : String(lc.level));
   if (keys.indexOf("cs") >= 0) _setCell(mount, "sp-you", "cs", lc.cs == null ? "-" : String(lc.cs));
   if (keys.indexOf("kda") >= 0) _setCell(mount, "sp-you", "kda", _fmt(_kdaRatio(lc.kda)));
-  if (keys.indexOf("kp") >= 0) _setCell(mount, "sp-you", "kp", "-");   // no live KP producer
+  if (keys.indexOf("kp") >= 0) _setCell(mount, "sp-you", "kp", _fmt(_kpPct(lc.kill_participation_pct)));
   // Benchmark side - cached rank-tier averages for the selected tier.
   const tier = readBenchmarkRankTier();
   _fetchBench(mount, benchMode, tier);
@@ -314,4 +333,4 @@ export function _resetStatsPanel() {
   }
 }
 
-export const __test = { _detectRole, _POS_ROLE, _CLASS_ROLE, _benchMode, _bracketFor };
+export const __test = { _detectRole, _POS_ROLE, _CLASS_ROLE, _benchMode, _bracketFor, _kpPct };

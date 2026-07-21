@@ -1,6 +1,146 @@
 # Live-Game-Gated Sync Checklist
 
-**OPEN: 118 rows** (was 124; six CLOSED 2026-07-18 - see the synthetic-triage note below).
+## DRAIN SESSION 2026-07-20 (4 games: practice SR, ARAM Mayhem q2400, Arena q1750, real SR q400)
+
+**CLOSED THIS SITTING (6):**
+- **G1-00** BOTH CHECKS PASS. CHECK 1 exercised live across ALL FOUR champ-select shapes - practice SR
+  (q3140), ARAM bench (q2400, bench populated), Arena augments (q1750, `arena_teams` + `augments` keys
+  present), real draft (q400, `sr_draft=true`, `active_round={type:'ban'}`). CHECK 2 byte-compared
+  flag-ON vs flag-OFF in the SAME champ-select: `champ_select` **BYTE-IDENTICAL: True**. Divergence is
+  outside champ_select and was TWO keys, not one: `config` (predicted) AND `lcu_port` (NOT recorded in
+  the doc). ADJUDICATED: the reader must CARRY both through, not synthesize - live `config.auto_accept`
+  was `false` with the Settings checkbox unchecked, and `main.js:5661-5672` drives both the lobby pill
+  and `#set-lobby-auto-accept` from it. Fix built + tested (uncommitted at time of writing).
+  SEPARATE BUG FOUND: `data/auto_accept_pref.json` = `{"enabled":true}` while the agent's
+  `config.auto_accept` = false, so the frozen in-process `_auto_accept_tick` auto-accepts ready-checks
+  while the checkbox reads OFF.
+- **G6-02** ACTIVE-knob round trip - **PASS, first GATE 6 row ever closed.** With League FOREGROUND the
+  operator pressed Ctrl+Shift+A and watched PASSIVE -> ACTIVE (edge glow, body-drag) then the 20s
+  auto-revert fire. Listener receipts tonight at 22:27:38 / 22:32:37 / 22:32:42 from
+  `signal_overlay_active_toggle`, which has EXACTLY ONE caller repo-wide and ZERO test callers.
+- **G2-18** eyeball DISCHARGED by operator ruling. MEASURED on the operator's real build
+  `[2501,3032,3031,3075,6695]` L14: seam OFF 219.145 -> ON 232.294 dps (+6.00 pct); at his REAL 96.5 pct
+  missing HP it would be 245.443 (+12.00 pct), i.e. the 0.35 midpoint realizes exactly 50.0 pct as
+  designed; no-carrier control byte-identical (delta 0.000000). RULING: **wire the live HP feed and
+  delete the midpoint guess** (RC already emits hp/hp_max, item 639). Residual is now a named code
+  slice, not a game.
+- **G2-29** ARAM flood-tint question ANSWERED: **no flood.** Minimap ZOI rendered the ARAM bridge as a
+  diagonal band, and ZOI proved genuinely mode-aware - districts came back
+  `['blue_base','red_base','aram_bridge','brush_north','brush_south']`, and in Arena `zoi` is null
+  entirely.
+- **G2-34** RULED **HORIZONTAL**. Also root-caused the operator's "I don't see them": gate is
+  `mode==='sr' && Number.isFinite(lc.game_time_s)` and live state satisfied BOTH (game_time_s=645); in a
+  fresh client at default layout `#am-obj-gauges` probed VISIBLE + populated (1170 chars, drake dial).
+  Missing on his overlay only -> saved-layout/RM-05 drag class, re-filed to G2-32. Later confirmed
+  rendering in-game (DRAKE/BARON/ELDER dials, horizontal).
+- **G2-35** RULED **pace-projected baseline** (keep the tier AVG but scale it to the current game clock).
+  The panel was comparing live CS 30 against a FULL-GAME average of 260.
+
+**ADVANCED WITH RECORDED EVIDENCE:** G1-02 (lobby payload AND render evidenced - queue 1750 "Arena",
+full `_slim_lobby_member` shape, `lv-members-list` / `lv-mainchamps-list` / `lv-top8-list` populated),
+G4-01 (ban/pick reason labels render live with provenance tags + a STRUGGLE tier), G2-12 (mechanism
+proven + leak-free control, calibration REJECTED by operator - see below), G2-17 (correctly DEFERRED to
+a shielded comp; practice bots carry no shields), G2-26 (pixel capture done: 5 enemies x 2 spells),
+G2-28 (3 of 4 verified live: rn-lead 298 chars / rn-choices 2205 / rn-callouts 701 all VISIBLE;
+am-spike-cue is documented data-gated so HIDDEN at a non-spike moment is honest, positive confirm still
+owed), G2-41 (premise confirmed: `/latest-frame` measured 1280x720 vs a 2560x1440 display),
+G2-42 (b: 13 live districts with occupancy + last_seen; c: frame `source='obs'`, GDI baseline ok at
+2560x1440), G3-01 (bench swap propagated inside ONE 0.5s sample; the subjective "visibly faster" half
+deferred to the operator's next swap), G4-16 (three of five chips seen lit: C3 fed-enemy "SURVIVE fed
+Tristana 11/1 - build armor", C5 pen_type, C6 tenacity).
+
+**G2-38 STAYS OPEN, and the reason matters:** 281 samples across two games (practice SR levels 13-16,
+ARAM levels 1-14). ARAM produced a REAL top-1 flip at 6:51/lvl 9 (Blade of The Ruined King ->
+Runaan's Hurricane) that then held to lvl 14 - no oscillation. BUT the top-two NEVER came within 5 pct
+in either game (tightest 9.02 pct, at that very flip), so the ~3 pct incumbent band was never
+exercised. Stability without a tight margin is CONSISTENT WITH the hysteresis but does not prove it.
+The row's precondition may be rarer in practice than the row assumes.
+
+**G5-01 IS THREE QUESTIONS, NOT ONE - re-file accordingly:**
+(a) **AUGMENT EMISSION WORKS.** Two rows written in one Arena game; at the round-8 window
+`augment_choices` matched the three on-screen cards EXACTLY (OCR correct), Haiku take recorded, and the
+deterministic recommender ranked all three (top "Gain a Prismatic Stat Anvil" 0.6667). The doc's
+suspected upstream gap at `ArenaVisionReader.read()` is **REFUTED for augments**, and the round-based
+re-trigger DOES fire. `cherry_augment_open` stayed false throughout - augment detection is vision/OCR,
+not LCU.
+(b) **ANVIL EMISSION FAILS.** Operator took an anvil; `anvil_shadow.jsonl` was never created, across two
+separate opportunities plus a dedicated 75s tight-poll of the shop window. BEST CANDIDATE (not a wiring
+gap): vision polls every **23-30s**, each call taking 2.5-5s (measured from the log), while a shop anvil
+is on screen for seconds - the same cadence-miss as the open ARAM augment bug.
+(c) **THE ROWS ARE CORRUPT.** Both rows recorded `round:"~1"` (operator was on real rounds 1 and 8),
+`picked:[]` never accumulates, and the `deterministic` block is empty although the live payload carried
+the full recommender output at that instant. Net: the shadow ledger cannot compare Haiku vs
+deterministic conditioned on prior picks, so the G7 augment-agreement rail can never yield a valid
+comparison. Tonight it missed a REAL disagreement (Haiku "Augment Slot" vs recommender "Prismatic Stat
+Anvil"; the operator's own pick matched the deterministic one).
+
+**ARENA ROUND COUNTER RESETS MID-GAME** (159 samples at 3s): climbs to ~17 then RESETS to 0 and restarts
+at ~1, at least four times in one game, and changes TYPE (int `0`, once `""`). That int 0 is almost
+certainly what trips `coaching_payload` with "round: Input should be a valid string" - thousands of
+warnings per Arena game - so the validation spam and the reset are ONE bug. The Arena coach ACTION is
+healthy by contrast (14 distinct actions across those samples); an earlier "stuck on CAMP PHASE"
+suspicion is REFUTED.
+
+**MATCH-V5 INGEST IS HEALTHY - the 12-day gap was EXPECTED.** `rewind_history.db` went 2964 -> 2965
+during the session, ingesting tonight's Arena game (NA1_5605680438, q1750 CHERRY, patch 16.14, Vayne).
+Operator confirmed he played NO real matchmade SR between Jul 9 and Jul 20, so the gap was ARAM Mayhem
+(q2400, 403-excluded by design) plus customs, exactly as the settled note says. What remains is a
+RENDERING defect, not an ingest one: RC watched those games live and still shows them as
+`Unknown / 0-0-0` on Home / Session / PGR instead of using the champion it held in `liveclient`.
+
+**NEW BUGS FOUND THIS SITTING (none were in this doc), fixes written + tested but UNCOMMITTED:**
+1. **ARAM balance panel dead in EVERY ARAM** - two independent defects. `_resolveChampId` returns a
+   canonical NAME while `_abCanonicalId` indexes `CHAMPS.byId` (an id->name map) with it, and
+   `_abBuildRows` prefers `rawChampionName` (`game_character_displayname_X`) which resolves to null.
+   FIXED and LIVE-VERIFIED in-game via ADR-008 hot reload: all 10 champions resolved with correct
+   ally/enemy split and real modifiers. Operator RULED it gets its OWN draggable widget (it is ~11 rows
+   and was pushing the build panel into a scroll region).
+2. **R40 draft-elo chip dead in-game** - mounted INSIDE `.am-pane-head`, which `overlay.css:482` hides
+   for `w-build` (BATCH A title-bar removal). Computes fine (de-state=ready), can never paint. Fix is a
+   re-parent, NOT a CSS exception.
+3. **Auto-PGR never fires** (this is G4-26) - ROOT-CAUSED AND FIXED. `tools/lcu_agent.py:288-292`
+   documents an 8-11s in-game capture lag; `dashboard/_liveclient.py:107-108` drops any snapshot older
+   than 5s and returns `{}`. So `/api/state.lcu` is `{}` for much of a game -> `phase` undefined -> the
+   in-memory sticky `_VIEW.gameStarted` never arms -> the post-game arm is skipped -> derive falls to
+   "home". Reproduced deterministically in a Node harness slicing the real `_viewAutoDerive`. Fixed by
+   arming the sticky on the same null-phase in-game signal the renderer already trusts, mirrored into
+   `dashboard/view_router_state.py`. **The 5s TTL vs 8-11s capture is a broader unfixed bug.**
+4. **Stale minimap box persists into Arena** - `main.js` gates the minimap render block to
+   `["sr","aram","brawl"]`, so in Arena the renderers are never called and nothing clears the last
+   painted box. Fixed with a latched clear-on-exit (gate deliberately NOT widened).
+   `renderMinimapZoi` needed 3 null calls - it debounces with `_NULL_CLEAR_STREAK = 3`.
+5. **KP row is a hardcoded dash over real data** - `stats_panel.js:298` paints `"-"` with a comment
+   claiming "no live KP producer", but `liveclient.kill_participation_pct` and
+   `coach.kill_participation_pct` both read `'44%'` live.
+6. **Champ-select `[no data] (mastery)`** for Vayne and Kai'Sa while `lcu.mastery` carries 24,953 and
+   50,145 points - keyed by numeric id as a string. Same lookup class as (1).
+7. **`health.overlay_visible` reports FALSE while the overlay is visibly rendering** (confirmed twice).
+8. **Home panels strand on "loading..." forever** after one transient fetch failure (RC restarted at
+   game end). `/api/home/summary` returns 200 with full data throughout; Ctrl+R fixes it. No retry, no
+   error state.
+9. **BACKSLASH-U-2014 ESCAPE BLIND SPOT in ASCII enforcement** - `performance_tracker.py:39` holds
+   `"BELOW <u2014> focus on one area at a time"` as a literal backslash-u escape. The file is byte-wise
+   7-bit ASCII (0 non-ASCII chars) so `tools/strip_em_dashes.py`, the ASCII hygiene tests and the
+   precommit gate ALL pass it, while Python resolves it to a real U+2014 that renders in the UI and has
+   been written into `data/ratings/last_sr.json` + `last_arena.json`. Repo-wide scope NOT reliably
+   measured (the scan used had an escaping bug) - a proper sweep is owed.
+10. **pytest writes into `logs/hotkey_listener.log`** (`tests/test_hotkey_panel_cycle_signal.py`
+    monkeypatches the path to `Z:/nonexistent/...`), polluting the operational log triage reads. It
+    caused two false readings during this session. Note G6-02's evidence base is NOT contaminated for
+    the ACTIVE-toggle chord, which no test emits.
+
+**DOC CORRECTIONS:** G2-25's "ward_heat strip" and "spike-markers live-clock cursor" sub-items are
+MIS-FILED against the overlay gate - `overlay.css:134-142` is an explicit "GPU-light" block that hides
+`#am-spike-curve`, `#am-spike-markers` and `#am-ward-heat` in the overlay shell BY DESIGN, so no in-game
+pass can ever close them; they are dashboard/companion-surface captures. Memory
+`reference_overlay_stuck_on_dashboard_liveclient_freeze` is INCOMPLETE - an overlay window showed the
+dashboard Home surface with a fully healthy feed; with `data-shell="overlay"` stamped there are two
+independent gates preventing that, so a visible Home surface proves the stamp was ABSENT (missing
+`?overlay=1` or `overlay.css` failed to load), which is an rc-shell window/asset fault.
+
+---
+
+**OPEN: 112 rows** (was 118; six CLOSED 2026-07-20 in the drain block above; was 124 before 2026-07-18).
 Per gate: G1 6 / G2 41 / G3 12 / G4 28 / G5 10 / G6 3 / G7 18. Of these, 9 carry a PARKED/HOLD
 tag (3 inline at G5-10 / G7-16 / G7-19, 6 in the PARKED section) and 1 (G3-15) is a cross-reference
 that adds no new work.

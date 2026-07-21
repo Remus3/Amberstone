@@ -38,7 +38,15 @@ MAIN_JS = REPO / "web" / "js" / "main.js"
 NARROW_GATE = '["sr", "aram", "brawl"].includes(st.mode_key)'
 WIDE_GATE = '["sr", "aram", "brawl", "arena", "tft"].includes(st.mode_key)'
 
-MINIMAP_RENDERERS = ("renderMinimapRect(", "renderMinimapZoi(")
+# The PAINTING call sites specifically. 2026-07-20: the poller also calls both
+# renderers with an explicit null on the clear-on-exit path (the stale-box fix,
+# tests/test_overlay_minimap_clear_on_exit.py) - a null call hides the widget,
+# it never paints off-mode, so the "exactly once" pin keys off the data-bearing
+# argument rather than the bare renderer name.
+MINIMAP_RENDERERS = (
+    "renderMinimapRect(state.latest.minimap_rect)",
+    "renderMinimapZoi(state.latest.zoi)",
+)
 COACHING_RENDERERS = (
     "renderLead(st)",
     "renderCallouts(st)",

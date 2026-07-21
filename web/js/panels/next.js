@@ -163,7 +163,12 @@ function renderNext(p) {
     if (rows[2]) rows[2].textContent = "Wave";
   } else if (arena) {
     // Headline: round # + rank + alive teams, since those drive every decision.
-    const rd = p.round != null ? `Round ${p.round}` : "";
+    // `round` is the coach's "~N" approximate label, or "" in the blank
+    // artifact written at coach init (see coaches/arena_coach.py
+    // _blank_artifact_data). Guard on truthiness, not != null, so the blank
+    // falls through to the action fallback below instead of rendering a
+    // dangling "Round " with no number.
+    const rd = p.round ? `Round ${p.round}` : "";
     const rk = p.rank != null && p.rank !== "?" ? `#${p.rank}/${p.alive_teams || 8}` : "";
     const head = [rd, rk].filter(Boolean).join(" · ") || safe(p.action) || "-";
     NX.next.textContent = head;
