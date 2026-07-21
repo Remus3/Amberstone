@@ -2891,6 +2891,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "no basic-attack DPS proc"
         ),
     ),
+    # PERMANENTLY UNMODELABLE - do not re-investigate on a catalog sweep.
+    # 443064's DDragon description renders every stat line as a literal
+    # "?" placeholder ("? || ?%" Magic Penetration) over an EMPTY stats
+    # block. There is no static magnitude to credit on any axis, so a
+    # digit-based sweep correctly skips it rather than missing it.
     "443064": ItemEffect(
         item_id="443064",
         name="Talisman of Ascension",
@@ -5863,5 +5868,26 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True, note="Veigar's Talisman of Ascension (663064): +100% XP bonus; no DPS contribution"),
     "994403": ItemEffect(item_id="994403", name="Golden Spatula",
         defensive_only=True, note="Golden Spatula (994403): cross-mode item; no DPS contribution in SR/ARAM/Arena model"),
+
+    # -- R153 (2026-07-21): flat magic-pen stat-block parity --
+    # Same catalog defect class as the R152 lethality slice: DDragon's
+    # structured stats block has no flat-magic-pen key, so the magnitude
+    # survives only in the description prose. An id with no entry here
+    # reads 0.0 at effects.effective_target_mr. 1111 was the only such
+    # gap in the 706-item catalog.
+    "1111": ItemEffect(
+        item_id="1111",
+        name="Jarvan I's",
+        magic_pen_flat=12.0,
+        note=(
+            "Jarvan I's (1111): 12 flat magic pen. The value appears ONLY in the "
+            "description text (<attention>12</attention> Magic Penetration); the "
+            "structured DDragon stats block omits it, carrying just MR/MS/armor/AS. "
+            "DS already registered this item's 10 ability haste (_item_ability_haste) "
+            "and 30 tenacity (_item_tenacity), so the pen credit restores registration "
+            "consistency across all three axes. ARAM-only (maps.12) augment-gated "
+            "all-boots prismatic; the Jarvan One all-boots-passives grant is not modeled"
+        ),
+    ),
 
 }
