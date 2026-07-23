@@ -1232,6 +1232,17 @@
                dashboard/routes_playstyle_labels.py. Self-shows on render. -->
           <div class="session-card session-card-wide" id="playstyle-labels-card"
                hidden></div>
+          <!-- Haiku-to-ZERO 2026-07-23: what THIS patch changed for the
+               champions the operator actually plays (core.patch_impact) - the
+               RM-110 cross-patch DS snapshot diff intersected with the local
+               rewind corpus. Descriptive only: it reports that a stat /
+               ability / build / build-item moved, never that the champion got
+               better. A champion with no changes keeps its row and renders "-"
+               so the card does not reflow between patches.
+               Renderer: renderPatchImpact (web/js/panels/patch_impact.js);
+               backend dashboard/routes_patch_impact.py. Self-shows on render. -->
+          <div class="session-card session-card-wide" id="patch-impact-card"
+               hidden></div>
         </div>
       </div>
     </section>

@@ -50,6 +50,7 @@
 @import './panels/draft_score.css';
 @import './panels/session_hygiene.css';
 @import './panels/playstyle_labels.css';
+@import './panels/patch_impact.css';
 @import './panels/personal_build.css';
 @import './panels/ds_sweep.css';
 @import './panels/ds_profile.css';
