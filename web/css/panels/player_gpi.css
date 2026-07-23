@@ -350,3 +350,35 @@
   border-radius: 50%;
   background: var(--signal-warn, #f1b04a);
 }
+
+/* Target-profile reference polygon - the operator's own winning games. Teal is
+ * the one panel hue not already spoken for (good/warn/info/dim/gold all carry
+ * meaning here), and the dashed unfilled stroke keeps it legible BEHIND the
+ * filled recent-form polygon at every tier tint. stroke-width / dasharray are
+ * SVG user-units inside the radar viewBox, not CSS px - the same documented
+ * exception as the .gpi-ring / .gpi-spoke strokes above. */
+.gpi-ref-area {
+  fill: none;
+  stroke: rgba(var(--prim-teal, 10, 200, 185), 0.85);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  stroke-linejoin: round;
+}
+
+/* Legend line for the reference polygon - same dim metadata treatment as the
+ * this-match legend, led by a short dashed rule echoing the polygon stroke so
+ * "dashed teal ring = my winning games" reads without a lookup. */
+.gpi-ref-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--dim);
+}
+
+.gpi-ref-swatch {
+  flex: 0 0 auto;
+  width: 1.1em;
+  height: 0;
+  border-top: 2px dashed rgba(var(--prim-teal, 10, 200, 185), 0.85);
+}
