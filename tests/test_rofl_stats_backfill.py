@@ -20,6 +20,7 @@ from core.rofl_stats_backfill import (
     COLUMN_ALIASES,
     TEXT_COLUMNS,
     backfill_participants,
+    backfill_tracked_summary,
     map_rofl_player,
     read_rofl_game_version,
 )
@@ -263,3 +264,308 @@ def test_backfill_dry_run_writes_nothing(empty_db, champion_ids):
         assert conn.execute("SELECT COUNT(*) FROM participants").fetchone()[0] == 0
     finally:
         conn.close()
+
+
+# --- tracked-summary backfill (hermetic; no production DB or sidecar dir) ----
+#
+# The rows this recovers are NOT missing - they exist in matches with tracked_*
+# NULL (queue_id/game_mode already correct from Match-V5). NULL champion renders
+# "Unknown", NULL kda renders "0-0-0". The fix is an UPDATE of tracked_* on the
+# existing row, joined file->row by match_id and player->operator by RIOT ID
+# (never the sidecar's raw PUUID). These tests build their own schema + sidecars
+# so they run with zero dependency on the archived data on disk.
+
+OPERATOR = ("SamplePlayer", "Vayne")
+
+# Champion name -> Riot id, passed explicitly so resolution is deterministic and
+# never learned from a (possibly empty) participants table.
+CHAMP_IDS = {
+    "Vayne": 67, "Lux": 99, "Ashe": 22, "Thresh": 412, "Garen": 86,
+    "Ahri": 103, "Jinx": 222, "Leona": 89, "Darius": 122, "Sona": 37,
+}
+
+
+def _oplayer(name, tag, champ, team, k, d, a, win, puuid="raw-uuid"):
+    """One sidecar player entry in engine-key shape."""
+    return {
+        "RIOT_ID_GAME_NAME": name,
+        "RIOT_ID_TAG_LINE": tag,
+        "SKIN": champ,
+        "TEAM": team,
+        "CHAMPIONS_KILLED": k,
+        "NUM_DEATHS": d,
+        "ASSISTS": a,
+        "WIN": "Win" if win else "Fail",
+        "PUUID": puuid,
+    }
+
+
+def _lobby_with_operator():
+    """Ten players; the operator sits at index 3, not index 0."""
+    names = [
+        ("decoyA", "NA1", "Lux"), ("decoyB", "NA1", "Ashe"),
+        ("decoyC", "NA1", "Thresh"), (OPERATOR[0], OPERATOR[1], "Vayne"),
+        ("decoyD", "NA1", "Garen"), ("decoyE", "NA1", "Ahri"),
+        ("decoyF", "NA1", "Jinx"), ("decoyG", "NA1", "Leona"),
+        ("decoyH", "NA1", "Darius"), ("decoyI", "NA1", "Sona"),
+    ]
+    players = []
+    for i, (nm, tg, champ) in enumerate(names):
+        team = 100 if i < 5 else 200
+        if nm == OPERATOR[0] and tg == OPERATOR[1]:
+            players.append(_oplayer(nm, tg, champ, team, 12, 3, 7, True))
+        else:
+            players.append(_oplayer(nm, tg, champ, team, i, i, i, i % 2 == 0))
+    return players
+
+
+def _lobby_without_operator():
+    names = [f"stranger{i}" for i in range(10)]
+    champs = list(CHAMP_IDS)
+    return [
+        _oplayer(names[i], "EUW", champs[i], 100 if i < 5 else 200, i, 1, i, i % 2 == 0)
+        for i in range(10)
+    ]
+
+
+def _write_sidecar(stats_dir, match_id, players, game_length_ms=1250000):
+    stats_dir.mkdir(parents=True, exist_ok=True)
+    path = stats_dir / f"{match_id}.json"
+    path.write_text(
+        json.dumps(
+            {"match_id": match_id, "game_length_ms": game_length_ms, "players": players}
+        )
+    )
+    return path
+
+
+_TEXT_PARTICIPANT_COLS = {
+    "champion_name", "riot_id_game_name", "riot_id_tagline",
+    "match_id", "puuid", "team_position", "individual_position",
+    "champion_transform",
+}
+
+
+def _participant_columns():
+    """Every column backfill_participants writes to participants."""
+    cols = list(COLUMN_ALIASES) + list(TEXT_COLUMNS)
+    cols += ["participant_id", "champion_name", "win", "champion_id", "match_id", "puuid"]
+    return cols
+
+
+def _hermetic_db(tmp_path):
+    """A DB with matches (incl tracked_*) and a participants table wide enough
+    for the full backfill_participants INSERT - no production schema needed."""
+    path = tmp_path / "rewind_test.db"
+    conn = sqlite3.connect(path)
+    try:
+        defs = [
+            f"{c} {'TEXT' if c in _TEXT_PARTICIPANT_COLS else 'INTEGER'}"
+            for c in _participant_columns()
+        ]
+        conn.execute("CREATE TABLE participants (" + ", ".join(defs) + ")")
+        conn.execute(
+            "CREATE TABLE matches ("
+            "match_id TEXT PRIMARY KEY, queue_id INTEGER, game_mode TEXT, "
+            "game_version TEXT, patch TEXT, game_duration_s INTEGER, "
+            "has_stats INTEGER, has_timeline INTEGER, "
+            "tracked_champion_id INTEGER, tracked_champion_name TEXT, "
+            "tracked_team_id INTEGER, tracked_win INTEGER, "
+            "tracked_kills INTEGER, tracked_deaths INTEGER, tracked_assists INTEGER)"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return path
+
+
+def _seed_match(db, match_id, queue_id, game_mode, players=None):
+    """Insert a matches row with tracked_* NULL, plus optional participants."""
+    conn = sqlite3.connect(db)
+    try:
+        conn.execute(
+            "INSERT INTO matches (match_id, queue_id, game_mode, has_stats, has_timeline) "
+            "VALUES (?, ?, ?, 1, 1)",
+            (match_id, queue_id, game_mode),
+        )
+        for index, player in enumerate(players or []):
+            row = map_rofl_player(player, index)
+            row.pop("rofl_uuid", None)
+            row["match_id"] = match_id
+            row["champion_id"] = CHAMP_IDS.get(row["champion_name"])
+            cols = ", ".join(row)
+            marks = ", ".join("?" for _ in row)
+            conn.execute(
+                f"INSERT INTO participants ({cols}) VALUES ({marks})", list(row.values())
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _match_row(db, match_id):
+    conn = sqlite3.connect(db)
+    try:
+        conn.row_factory = sqlite3.Row
+        return conn.execute(
+            "SELECT * FROM matches WHERE match_id = ?", (match_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def test_backfill_recovers_null_tracked_summary(tmp_path):
+    """The corrupted-row recovery: a q2400 row with tracked_* NULL is filled,
+    and queue_id/game_mode are left exactly as Match-V5 wrote them."""
+    db = _hermetic_db(tmp_path)
+    players = _lobby_with_operator()
+    _seed_match(db, "NA1_5604806601", 2400, "KIWI", players)
+    sidecar = _write_sidecar(tmp_path / "stats", "NA1_5604806601", players)
+
+    report = backfill_tracked_summary(
+        db, [sidecar], operator_accounts=[OPERATOR], champion_ids=CHAMP_IDS
+    )
+
+    assert "NA1_5604806601" in report["updated"]
+    row = _match_row(db, "NA1_5604806601")
+    assert row["tracked_champion_name"] == "Vayne"
+    assert row["tracked_champion_id"] == 67
+    assert row["tracked_team_id"] == 100
+    assert row["tracked_kills"] == 12
+    assert row["tracked_deaths"] == 3
+    assert row["tracked_assists"] == 7
+    assert row["tracked_win"] == 1
+    # Untouched: the queue the sidecar cannot prove.
+    assert row["queue_id"] == 2400
+    assert row["game_mode"] == "KIWI"
+
+
+def test_tracked_player_selected_by_riot_id(tmp_path):
+    """Selection is by Riot ID; scrambling every sidecar PUUID changes nothing.
+
+    Pins the join so a future reader cannot "fix" it back onto puuid (raw here,
+    key-encrypted in the DB) and silently pick the wrong - or zero - players.
+    """
+    db = _hermetic_db(tmp_path)
+    players = _lobby_with_operator()
+    for i, player in enumerate(players):
+        player["PUUID"] = f"scrambled-{i}"
+    _seed_match(db, "NA1_5600000001", 450, "ARAM", players)
+    sidecar = _write_sidecar(tmp_path / "stats", "NA1_5600000001", players)
+
+    report = backfill_tracked_summary(
+        db, [sidecar], operator_accounts=[OPERATOR], champion_ids=CHAMP_IDS
+    )
+
+    assert "NA1_5600000001" in report["updated"]
+    row = _match_row(db, "NA1_5600000001")
+    # The operator (index 3, Vayne), never index 0 (Lux).
+    assert row["tracked_champion_name"] == "Vayne"
+    assert row["tracked_kills"] == 12
+
+
+def test_backfill_skips_lobby_without_operator(tmp_path):
+    """No operator in the lobby -> tracked_* stays NULL and is reported; the
+    code never falls back to guessing index 0."""
+    db = _hermetic_db(tmp_path)
+    players = _lobby_without_operator()
+    _seed_match(db, "NA1_5600000002", 420, "CLASSIC", players)
+    sidecar = _write_sidecar(tmp_path / "stats", "NA1_5600000002", players)
+
+    report = backfill_tracked_summary(
+        db, [sidecar], operator_accounts=[OPERATOR], champion_ids=CHAMP_IDS
+    )
+
+    assert "NA1_5600000002" in report["skipped_no_operator"]
+    assert report["updated"] == []
+    row = _match_row(db, "NA1_5600000002")
+    assert row["tracked_champion_name"] is None
+    assert row["tracked_kills"] is None
+
+
+def test_backfill_tracked_summary_is_idempotent(tmp_path):
+    """A second pass over already-filled rows updates nothing."""
+    db = _hermetic_db(tmp_path)
+    players = _lobby_with_operator()
+    _seed_match(db, "NA1_5600000003", 2400, "KIWI", players)
+    sidecar = _write_sidecar(tmp_path / "stats", "NA1_5600000003", players)
+
+    backfill_tracked_summary(
+        db, [sidecar], operator_accounts=[OPERATOR], champion_ids=CHAMP_IDS
+    )
+    report = backfill_tracked_summary(
+        db, [sidecar], operator_accounts=[OPERATOR], champion_ids=CHAMP_IDS
+    )
+
+    assert report["updated"] == []
+    assert "NA1_5600000003" in report["skipped_already_filled"]
+
+
+def test_net_new_insert_fills_tracked_summary(tmp_path):
+    """The INSERT path also closes the hole: a net-new operator-present match
+    gets tracked_* filled, while queue_id/game_mode stay NULL."""
+    db = _hermetic_db(tmp_path)
+    players = _lobby_with_operator()
+    sidecar = _write_sidecar(tmp_path / "stats", "NA1_5600000004", players)
+
+    report = backfill_participants(
+        db, [sidecar], min_duration_s=300, champion_ids=CHAMP_IDS,
+        operator_accounts=[OPERATOR],
+    )
+
+    assert report["inserted_matches"] == 1
+    assert report["inserted_participants"] == 10
+    row = _match_row(db, "NA1_5600000004")
+    assert row["tracked_champion_name"] == "Vayne"
+    assert row["tracked_champion_id"] == 67
+    assert row["tracked_team_id"] == 100
+    assert row["tracked_kills"] == 12
+    assert row["tracked_deaths"] == 3
+    assert row["tracked_assists"] == 7
+    assert row["tracked_win"] == 1
+    # No local artifact can prove a queue for a net-new row.
+    assert row["queue_id"] is None
+    assert row["game_mode"] is None
+
+
+def test_backfill_tracked_summary_dry_run_writes_nothing(tmp_path):
+    """dry_run reports the intended update but rolls the write back."""
+    db = _hermetic_db(tmp_path)
+    players = _lobby_with_operator()
+    _seed_match(db, "NA1_5600000005", 2400, "KIWI", players)
+    sidecar = _write_sidecar(tmp_path / "stats", "NA1_5600000005", players)
+
+    report = backfill_tracked_summary(
+        db, [sidecar], operator_accounts=[OPERATOR], champion_ids=CHAMP_IDS,
+        dry_run=True,
+    )
+
+    assert "NA1_5600000005" in report["updated"]
+    row = _match_row(db, "NA1_5600000005")
+    assert row["tracked_champion_name"] is None
+
+
+def test_backfill_sweeps_all_null_rows_regardless_of_queue(tmp_path):
+    """The entry point recovers EVERY tracked-NULL row that has a sidecar with
+    the operator, not just q2400 - the root cause spans 420/450/2400."""
+    db = _hermetic_db(tmp_path)
+    seeds = [
+        ("NA1_5600000010", 420, "CLASSIC"),
+        ("NA1_5600000011", 450, "ARAM"),
+        ("NA1_5600000012", 2400, "KIWI"),
+    ]
+    sidecars = []
+    for match_id, queue_id, game_mode in seeds:
+        players = _lobby_with_operator()
+        _seed_match(db, match_id, queue_id, game_mode, players)
+        sidecars.append(_write_sidecar(tmp_path / "stats", match_id, players))
+
+    report = backfill_tracked_summary(
+        db, sidecars, operator_accounts=[OPERATOR], champion_ids=CHAMP_IDS
+    )
+
+    assert sorted(report["updated"]) == [m for m, _q, _g in seeds]
+    for match_id, queue_id, _g in seeds:
+        row = _match_row(db, match_id)
+        assert row["tracked_champion_name"] == "Vayne"
+        assert row["queue_id"] == queue_id
