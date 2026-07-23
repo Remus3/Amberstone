@@ -4,6 +4,48 @@
 
 ---
 
+# 2026-07-22b - UI/UX pass: spatial brand decided + 6-theme OKLCH system + overlay/rofl infra (operator-present)
+
+Merges into main: overlay `77ed2798`, rofl `fb91c2bb`, theme `a2848e4c` (+ 3 --no-ff merge commits). Full
+program ledger: `docs/qa/UI_UX_PROGRAM_QA_2026-07-22.md`. This was a live operator-present session (per
+`feedback_operator_ui_qa_method`), NOT headless.
+
+DECISIONS + DELIVERABLES:
+- **SPATIAL BRAND (operator-adjudicated):** RC out-of-game = a full floating LANDSCAPE hub +
+  resolution-adaptive auto-fit + manual scale + remembered position. RETIRES the 920x1280 portrait AND
+  the "live in the empty gutter beside the client" premise (no competitor does it; it was the root of the
+  overflow/wrong-resolution pain). Measured Legion desktop 2560x1440 (work area 2560x1400, taskbar 40px,
+  League client fixed 1280x720 centered). Swept 6 competitors LIVE (Overlay App E/Aggregator A/Coaching App Z7/Overlay App F/
+  Aggregator C/Aggregator B/Overlay App Z5) - all floating landscape hubs ~1000-1650 wide, NONE dock to the client;
+  Aggregator A's resolution auto-fit is the overflow cure. Full record: `docs/qa/SPATIAL_BRAND_SPEC_2026-07-22.md`.
+  Memory `project_out_of_game_spatial_brand`.
+- **THEME SYSTEM:** collapsed the 3 competing panel-chrome systems into ONE (killed the white-glass
+  hairline on 10 DS panels), fixed the `--faint` AA contrast fail, repaired ds_statcheck. NEW
+  `web/css/themes.css` = 6 swappable OKLCH multi-hue palettes (hextech/terminal/ember/bloodmoon/moonlit/
+  arcane) via the `?theme` seam, **DEFAULT = terminal**. Passed the 5-phase fixture audit. Method +
+  OKLCH recipes: `docs/qa/THEME_MULTIHUE_METHOD_2026-07-22.md`; design map:
+  `docs/qa/DESIGN_SYSTEM_MAP_2026-07-22.md`.
+- **OVERLAY pseudo-screen:** `tools/pseudo_screen_overlay.py` renders the in-game HUD headless at
+  2560x1440 with no League (modes sr/aram/mayhem/complete) + 2 mock fixtures + a 2-line `_amMockUrl` seam.
+- **ROFL q2400 backfill:** recovered 3 NULL-tracked rows LIVE incl `NA1_5604806601` (ARAM Mayhem q2400 ->
+  Aurora 9/12/21, queue_id preserved). `core/rofl_stats_backfill.py` + `tools/rofl_tracked_backfill.py`
+  (--commit gated, Riot-ID join never puuid). 25/25 tests pass on main. (4 net-new matches not in the DB
+  are a separate ingest gap, not fixed here.)
+
+NEXT SESSION (queued - `docs/qa/UI_UX_PROGRAM_QA_2026-07-22.md` + `SPATIAL_BRAND_SPEC` section 5):
+- **Per-panel competitor capture library** (operator ask): capture each competitor app's individual
+  panels for content+spacing research. Apps stay installed/logged-in on Legion; full-window shots
+  preserved LOCAL (not committed) at `C:\Users\Administrator\Documents\RC_Competitor_Research\`.
+- **Build the landscape auto-fit hub** (resolution-adaptive sizing; retire the 920x1280 portrait).
+- **2-3 layout alternatives per page** (item A2) against the landscape hub + Terminal theme.
+- **champ_select_view.css** Tailwind->theme conversion (ruling DS4 - the last off-theme page).
+- Logged defects: footer "Legion-PC" (`web/index.html:2251`), em-dash `GRADE_LABEL` escapes
+  (`performance_tracker.py:37-39`) + `data/ratings/*.json` backfill, nav-grid gaps, loading-forever,
+  PGR double-grade/phantom button/provenance, Replay header clip, Settings voice picker.
+- Optional: full theme deployment-map polish (header sweeps, gradient hairlines per the method doc).
+
+---
+
 # 2026-07-22a - HEXCORE Snapshots gallery refresh (full-scope mock + overlay mockup)
 
 Commit `a50d42e2` (pushed, CI green). LEDGER 1004. ENGINE-IMPACT NONE (docs-only).
