@@ -45,6 +45,7 @@ Share touch). Tier-1 + UI. ZERO API / ZERO LLM / ZERO server-side additions.
   shipped `core/playstyle_labels.py` + `/api/playstyle-labels` +
   `#playstyle-labels-card` (`6f1b6d11`, LEDGER 1008).
 
+---
 
 # 2026-07-23f - GPI radar target-profile reference polygon (BACKLOG NOW/MED closed)
 
@@ -122,31 +123,3 @@ live-gated - `data/fusion_shadow.jsonl` does not exist yet, so the flip gate is 
 unmet. Do NOT flip blind. Non-gated BACKLOG siblings left in this lane: the radar
 target-profile reference polygon and the predicted roam/invade route. Premade detection
 stays BLOCKED (tracked-only matches table). Do NOT touch RM-99b Heartsteel cadence.
-
----
-
-# 2026-07-23d - Haiku-to-ZERO: all 3 aggregator routes wired to UI cards + scaling layer activated
-
-Three commits (all pushed): `7c86c4fa` `6f1b6d11` `703af159` + LEDGER 1008.
-ENGINE-IMPACT NONE (asset + route-layer only; no DS bump, no :8893 bounce, no Share).
-
-- **draft-score card** `7c86c4fa` -> Champ Select `#csv-draft-score`: 42-58 score +
-  HIGH/MED/LOW chip + 5-layer contributed/inert breakdown, "-" sentinel on inert.
-  SR-draft-only, hidden until 5 ally committed. NEW `web/js/panels/draft_score.js`
-  (+ .css, 12 tests). 5-phase audit caught+fixed a flex horizontal-overflow MUST-FIX.
-- **session-hygiene + playstyle cards** `6f1b6d11` -> Session view: NEW
-  `session_hygiene.js` (`#session-hygiene-card` "SHOULD I QUEUE" 0-100 readiness +
-  signed factor nudges + 8-bar tilt strip, 10 tests) + `playstyle_labels.js`
-  (`#playstyle-labels-card` labeled-only champs, top-12 + "+N more", 9 tests). Both
-  self-fetch on the session view switch (`main.js`). 5-phase audit PASS both.
-- **scaling layer activated** `703af159`: `routes_draft_score._SpikeScalingResolver`
-  derives per-champ power-timing 0..1 by reusing `routes_spike_curve._build_champ_curve`
-  + the 70%-crossing minute (pure `_peak_timing` helper). Layer now CONTRIBUTES
-  (live: contributing 4->5, scaling sub 0.65, score 55.5). 10 route tests. Cold
-  1518ms / warm 0ms / 24h per-champ curve cache. All 5 draft-score layers now live.
-- Verified: ruff clean, hygiene 13, py 42, node 31 green; RC pid 21616 alive+reload_ok.
-
-NEXT: nothing pending on the Haiku-to-ZERO aggregator lane (BACKLOG lines 56-57
-consumer surfaces DONE). Premade detection stays BLOCKED (tracked-only matches
-table). Pre-existing `ds_shaper.test.mjs` red (5/6, unrelated) flagged as a chip.
-Do NOT touch RM-99b Heartsteel cadence (operator-gated).
