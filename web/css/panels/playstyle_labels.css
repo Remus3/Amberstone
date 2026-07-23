@@ -1,0 +1,78 @@
+/* Haiku-to-ZERO per-champion playstyle-labels card (Session view).
+ * core.playstyle_labels over the local rewind corpus. Tokens per
+ * docs/UI_SCALE_SPEC_V2.md v2.1; ASCII only; DEFINED tokens with NO dark-hex
+ * fallbacks so the dark-values ratchet pin holds. */
+
+#playstyle-labels-card[hidden] { display: none; }
+
+#playstyle-labels-card .pl-baseline {
+  margin-left: var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--text-faint);
+}
+#playstyle-labels-card .pl-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap-tight);
+  margin-top: var(--space-2);
+}
+#playstyle-labels-card .pl-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+#playstyle-labels-card .pl-champ {
+  flex: 0 0 8em;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+#playstyle-labels-card .pl-games {
+  margin-left: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+#playstyle-labels-card .pl-wr {
+  flex: 0 0 3em;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+#playstyle-labels-card .pl-wr.pl-good { color: var(--signal-good); }
+#playstyle-labels-card .pl-wr.pl-bad  { color: var(--signal-bad); }
+#playstyle-labels-card .pl-wr.pl-dim  { color: var(--signal-dim); }
+#playstyle-labels-card .pl-chips {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+#playstyle-labels-card .pl-chip {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+#playstyle-labels-card .pl-chip.pl-good { color: var(--signal-good); }
+#playstyle-labels-card .pl-chip.pl-bad  { color: var(--signal-bad); }
+#playstyle-labels-card .pl-chip.pl-dim  { color: var(--text-faint); }
+#playstyle-labels-card .pl-more {
+  margin-top: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+#playstyle-labels-card .pl-caption {
+  margin-top: var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+#playstyle-labels-card .pl-empty {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+  padding: var(--space-4) 0;
+}
