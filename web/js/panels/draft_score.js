@@ -93,8 +93,7 @@ function _layerRow(layer) {
   const val = live ? `${(Number(layer.sub_score) * 100).toFixed(1)}%` : '-';
   const pct = live
     ? Math.max(0, Math.min(100, Number(layer.sub_score) * 100)) : 0;
-  const nTxt = live ? `n=${layer.n | 0}` : (layer.name === 'scaling'
-    ? 'reserved' : 'no data');
+  const nTxt = live ? `n=${layer.n | 0}` : 'no data';
   return (
     `<div class="ds-layer${live ? '' : ' is-inert'}">` +
       `<div class="ds-layer-name">${_esc(name)}` +
@@ -130,8 +129,8 @@ function draftScoreHtml(payload) {
     `<div class="ds-draft-caption">` +
       `${contributing} of ${(payload.layers || []).length} layers contributing ` +
       `over your own game corpus. Honest ${band[0]}-${band[1]} band - a lean, ` +
-      `not a win probability; inert layers (no enemy comp / no scaling ` +
-      `primitive) show "-" and drop out of the blend.` +
+      `not a win probability; inert layers (e.g. no enemy comp) show "-" ` +
+      `and drop out of the blend.` +
     `</div>`
   );
 }

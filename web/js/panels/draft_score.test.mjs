@@ -74,15 +74,15 @@ test("_layerRow: a contributed layer shows its WR% + n + human label", () => {
   assert.doesNotMatch(html, /is-inert/);
 });
 
-test("_layerRow: an inert layer shows the '-' sentinel + 'reserved' for scaling", () => {
+test("_layerRow: an inert layer shows the '-' sentinel + 'no data'", () => {
   const html = _layerRow(PAYLOAD.layers[3]);  // scaling, contributed=false
   assert.match(html, /is-inert/);
   assert.match(html, />-</);            // the "-" val
-  assert.match(html, /reserved/);       // scaling-specific inert note
+  assert.match(html, /no data/);        // inert note (no longer "reserved")
   assert.doesNotMatch(html, /n=0/);     // no fake sample count on an inert row
 });
 
-test("_layerRow: a non-scaling inert layer reads 'no data'", () => {
+test("_layerRow: any inert layer reads 'no data', never 'reserved'", () => {
   const inertMatchup = { name: "matchup", weight: 0.3, sub_score: null, n: 0, contributed: false };
   const html = _layerRow(inertMatchup);
   assert.match(html, /no data/);
