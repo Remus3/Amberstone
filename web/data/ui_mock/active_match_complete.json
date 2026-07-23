@@ -1,0 +1,63 @@
+{
+  "mock": true,
+  "note": "Active Match COMPLETE-BUILD mock fixture (pseudo-screen overlay, 2026-07-22). Activated via ?ui_mock=1&mode=complete URL flags (tools/pseudo_screen_overlay.py + _amMockUrl in web/js/main.js). SR shape with a full 6-item liveclient inventory on the active player, but EMPTY coach.daemon_slayer_picks and EMPTY coach.item_build - this reproduces queue defect B#3: the DAEMON SLAYER / META BUILD headers paint with nothing underneath once the build is complete and there is no next-item recommendation. Use it to design the finished-build empty-state instead of leaving bare headers.",
+  "mode": "sr",
+  "phase": "InProgress",
+  "coach": {
+    "champion": "Jinx",
+    "game_time": "31:20",
+    "level": 16,
+    "items": ["Berserker's Greaves", "The Collector", "Infinity Edge", "Lord Dominik's Regards", "Runaan's Hurricane", "Bloodthirster"],
+    "action": "Full build online - group and force fights around Baron",
+    "immediate": "Baron up in 40s - do not step past the mid wall without vision",
+    "next": "Take Baron after the enemy JG shows bot, then close on inhibs",
+    "objective": "Elder spawns 33:00 - your team must contest with full items",
+    "item_build": "",
+    "daemon_slayer_picks": []
+  },
+  "liveclient": {
+    "activePlayer": {
+      "summonerName": "SamplePlayer",
+      "riotIdGameName": "SamplePlayer",
+      "championStats": {
+        "currentHealth": 2140,
+        "maxHealth": 2140,
+        "resourceValue": 470,
+        "resourceMax": 470
+      }
+    },
+    "gameData": {
+      "gameTime": 1880
+    },
+    "allPlayers": [
+      {"summonerName": "TopGapper", "championName": "Jax", "rawChampionName": "Jax", "team": "ORDER", "items": [{"itemID": 3074, "slot": 0}, {"itemID": 3047, "slot": 1}, {"itemID": 3133, "slot": 2}, {"itemID": 3053, "slot": 3}]},
+      {"summonerName": "JgUnit", "championName": "LeeSin", "rawChampionName": "LeeSin", "team": "ORDER", "items": [{"itemID": 6701, "slot": 0}, {"itemID": 3158, "slot": 1}, {"itemID": 3071, "slot": 2}]},
+      {"summonerName": "MidCarry", "championName": "Syndra", "rawChampionName": "Syndra", "team": "ORDER", "items": [{"itemID": 6655, "slot": 0}, {"itemID": 3020, "slot": 1}, {"itemID": 3089, "slot": 2}]},
+      {"summonerName": "SamplePlayer", "championName": "Jinx", "rawChampionName": "Jinx", "team": "ORDER", "items": [{"itemID": 3006, "slot": 0}, {"itemID": 6676, "slot": 1}, {"itemID": 3031, "slot": 2}, {"itemID": 3036, "slot": 3}, {"itemID": 3085, "slot": 4}, {"itemID": 3072, "slot": 5}]},
+      {"summonerName": "HookKing", "championName": "Thresh", "rawChampionName": "Thresh", "team": "ORDER", "items": [{"itemID": 3190, "slot": 0}, {"itemID": 3158, "slot": 1}, {"itemID": 3050, "slot": 2}]},
+      {"summonerName": "BlindPick99", "championName": "Teemo", "rawChampionName": "Teemo", "team": "CHAOS", "items": [{"itemID": 3115, "slot": 0}, {"itemID": 3020, "slot": 1}, {"itemID": 3157, "slot": 2}, {"itemID": 3089, "slot": 3}]},
+      {"summonerName": "SpiderMain", "championName": "Elise", "rawChampionName": "Elise", "team": "CHAOS", "items": [{"itemID": 3742, "slot": 0}, {"itemID": 3111, "slot": 1}, {"itemID": 3075, "slot": 2}]},
+      {"summonerName": "TimeWarp", "championName": "Ekko", "rawChampionName": "Ekko", "team": "CHAOS", "items": [{"itemID": 6653, "slot": 0}, {"itemID": 3020, "slot": 1}, {"itemID": 3157, "slot": 2}]},
+      {"summonerName": "BotDC", "championName": "Kaisa", "rawChampionName": "Kaisa", "team": "CHAOS", "items": [{"itemID": 6671, "slot": 0}, {"itemID": 3006, "slot": 1}, {"itemID": 3094, "slot": 2}]},
+      {"summonerName": "GrabBag", "championName": "Blitzcrank", "rawChampionName": "Blitzcrank", "team": "CHAOS", "items": [{"itemID": 3190, "slot": 0}, {"itemID": 3047, "slot": 1}, {"itemID": 3050, "slot": 2}]}
+    ],
+    "players": [
+      {"position": "TOP", "team": "ORDER", "creep_score": 268, "is_active": false},
+      {"position": "JUNGLE", "team": "ORDER", "creep_score": 196, "is_active": false},
+      {"position": "MIDDLE", "team": "ORDER", "creep_score": 291, "is_active": false},
+      {"position": "BOTTOM", "team": "ORDER", "creep_score": 323, "is_active": true},
+      {"position": "UTILITY", "team": "ORDER", "creep_score": 44, "is_active": false},
+      {"position": "TOP", "team": "CHAOS", "creep_score": 252, "is_active": false},
+      {"position": "JUNGLE", "team": "CHAOS", "creep_score": 188, "is_active": false},
+      {"position": "MIDDLE", "team": "CHAOS", "creep_score": 275, "is_active": false},
+      {"position": "BOTTOM", "team": "CHAOS", "creep_score": 308, "is_active": false},
+      {"position": "UTILITY", "team": "CHAOS", "creep_score": 39, "is_active": false}
+    ]
+  },
+  "summoner_cooldowns": [
+    {"slot": "D", "name": "Flash", "remaining_s": 120, "rdy_at": "33:20", "tag": "ally-jinx"},
+    {"slot": "F", "name": "Heal", "remaining_s": 30, "rdy_at": "31:50", "tag": "ally-jinx"},
+    {"slot": "D", "name": "Flash", "remaining_s": 200, "rdy_at": "34:40", "tag": "enemy-kaisa"},
+    {"slot": "F", "name": "Cleanse", "remaining_s": 150, "rdy_at": "33:50", "tag": "enemy-kaisa"}
+  ]
+}
