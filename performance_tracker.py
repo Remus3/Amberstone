@@ -34,9 +34,9 @@ def _atomic_write_json(path: Path, data: dict) -> None:
     os.replace(tmp, path)
 BENCHMARKS = {"cs_per_min": 8.5, "deaths_per_10": 0.8, "kp_pct": 65, "gold_per_min": 380}
 GRADE_COLORS = {"S": "#FFD700", "A": "#44FF88", "B": "#4A9EFF", "C": "#D0D0E0", "D": "#FFA84A", "F": "#FF4A6A"}
-GRADE_LABEL = {"S": "DOMINANT \u2014 elite across all metrics", "A": "GREAT \u2014 above baseline, one area to sharpen",
-    "B": "SOLID \u2014 on track, tighten fundamentals", "C": "AVERAGE \u2014 clear gaps to address",
-    "D": "BELOW \u2014 focus on one area at a time", "F": "REBUILD \u2014 fundamentals need serious work"}
+GRADE_LABEL = {"S": "DOMINANT - elite across all metrics", "A": "GREAT - above baseline, one area to sharpen",
+    "B": "SOLID - on track, tighten fundamentals", "C": "AVERAGE - clear gaps to address",
+    "D": "BELOW - focus on one area at a time", "F": "REBUILD - fundamentals need serious work"}
 _MODE_CATEGORY = {"CLASSIC":"SR","RANKED_SOLO":"SR","RANKED_FLEX":"SR","PRACTICETOOL":None,"TUTORIAL":None,
     "ARAM":"ARAM","ARAM_UNRANKED_5X5":"ARAM","ARAM_UNRANKED_5x5":"ARAM","KIWI":"ARAM","ARENA":"ARENA","CHERRY":"ARENA",
     "NEXUSBLITZ":"BRAWL","ULTBOOK":"BRAWL","URF":"BRAWL","ARURF":"BRAWL","ONEFORALL":"BRAWL","GAMEMODEX":"BRAWL",
@@ -145,7 +145,7 @@ def calculate_rating(s):
     else:sc+=15
     if d10<=0.5:sc+=30;n.append(f"Excellent survival ({d}d)")
     elif d10<=1.0:sc+=22
-    elif d10<=1.8:sc+=12;n.append(f"{d} deaths \u2014 review avoidable ones")
+    elif d10<=1.8:sc+=12;n.append(f"{d} deaths - review avoidable ones")
     else:sc+=2;n.append(f"Too many deaths ({d})")
     r=min(1.3,kp/BENCHMARKS["kp_pct"]);sc+=r*25
     if kp<45:n.append(f"KP ({kp:.0f}%) too low")
@@ -162,7 +162,7 @@ def calculate_aram_rating(s):
     kda=(k+a)/max(1,d)
     if kda>=5:sc+=40;n.append(f"Dominant KDA ({kda:.1f})")
     elif kda>=3:sc+=28
-    elif kda>=2:sc+=18;n.append(f"KDA ({kda:.1f}) \u2014 pick fights carefully")
+    elif kda>=2:sc+=18;n.append(f"KDA ({kda:.1f}) - pick fights carefully")
     else:sc+=5;n.append(f"Low KDA ({kda:.1f})")
     if d10<=1.5:sc+=30
     elif d10<=2.5:sc+=20
@@ -202,8 +202,8 @@ def calculate_brawl_rating(s):
 
 _TFT_GRADE={1:"S",2:"A",3:"A",4:"B",5:"C",6:"D",7:"D",8:"F"}
 _TFT_GRADE_DUO={1:"S",2:"A",3:"D",4:"F"}
-_TFT_LABEL={1:"1ST PLACE \u2014 dominant lobby",2:"TOP 2 \u2014 strong board",3:"TOP 3 \u2014 solid comp",4:"TOP 4 \u2014 positive LP",5:"5TH \u2014 missed top 4",6:"6TH \u2014 board fell off",7:"7TH \u2014 major gaps",8:"8TH \u2014 full rebuild"}
-_TFT_LABEL_DUO={1:"1ST \u2014 won the lobby",2:"2ND \u2014 strong run",3:"3RD \u2014 board fell off",4:"4TH \u2014 eliminated early"}
+_TFT_LABEL={1:"1ST PLACE - dominant lobby",2:"TOP 2 - strong board",3:"TOP 3 - solid comp",4:"TOP 4 - positive LP",5:"5TH - missed top 4",6:"6TH - board fell off",7:"7TH - major gaps",8:"8TH - full rebuild"}
+_TFT_LABEL_DUO={1:"1ST - won the lobby",2:"2ND - strong run",3:"3RD - board fell off",4:"4TH - eliminated early"}
 
 def _parse_tft_placement(s):
     if not s: return 0
@@ -234,14 +234,14 @@ def calculate_tft_rating(placement,stage=0,level=0,game_mins=0.0,traits=None,uni
     if placement<1 or placement>mx: return ("", [])
     gm=(_TFT_GRADE_DUO if is_duo else _TFT_GRADE).get(placement,"C");n=[];comp=_identify_comp(traits or [],units or []);core=_core_units(units or [])
     tag=" (Double Up)" if is_duo else ""
-    if placement==1:n.append(f"1st place{tag} \u2014 dominant")
-    elif placement<=2:n.append(f"Top {placement}{tag} \u2014 close to winning")
-    elif placement<=4 and is_duo:n.append(f"#{placement}{tag} \u2014 review board + partner sync")
-    elif placement<=4:n.append("Top 4 \u2014 LP positive")
-    elif placement<=6:n.append(f"#{placement} \u2014 review rolldown timing")
-    else:n.append(f"#{placement} \u2014 early board needs work")
+    if placement==1:n.append(f"1st place{tag} - dominant")
+    elif placement<=2:n.append(f"Top {placement}{tag} - close to winning")
+    elif placement<=4 and is_duo:n.append(f"#{placement}{tag} - review board + partner sync")
+    elif placement<=4:n.append("Top 4 - LP positive")
+    elif placement<=6:n.append(f"#{placement} - review rolldown timing")
+    else:n.append(f"#{placement} - early board needs work")
     if core:n.append(f"Core units: {', '.join(core)}")
-    if 0<stage<=4:n.append(f"Eliminated Stage {stage} \u2014 stabilize earlier")
+    if 0<stage<=4:n.append(f"Eliminated Stage {stage} - stabilize earlier")
     return gm,n[:4]
 
 def save_tft_rating(script_dir,tft_live,tft_coaching=None):
