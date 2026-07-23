@@ -18,10 +18,11 @@
   gap: var(--space-2);
   margin-bottom: var(--space-2);
   padding: var(--panel-padding);
-  background: rgba(20, 22, 30, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--signal-info, #8a8cf0);
-  border-radius: var(--panel-radius-sm, 10px);
+  border-radius: var(--radius);
 }
 
 .player-gpi[hidden] {
@@ -40,7 +41,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text);
 }
 
 /* Mode toggle (SR / ARAM). Each button clears the --hit-min target floor so
@@ -56,16 +57,16 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.03em;
-  color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--dim);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm, 10px);
   cursor: pointer;
 }
 
 .gpi-mode:hover {
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+  background: var(--surface-2);
 }
 
 .gpi-mode-on {
@@ -96,9 +97,9 @@
   padding: 0 var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.75);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm, 10px);
   cursor: pointer;
   text-overflow: ellipsis;
@@ -108,8 +109,8 @@
 }
 
 .gpi-champ-select:hover {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+  background: var(--surface-2);
 }
 
 .gpi-champ-select:focus-visible {
@@ -143,12 +144,12 @@
  * --fs floor does not apply. */
 .gpi-ring {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.1);
+  stroke: var(--border);
   stroke-width: 0.5;
 }
 
 .gpi-spoke {
-  stroke: rgba(255, 255, 255, 0.08);
+  stroke: var(--border);
   stroke-width: 0.5;
 }
 
@@ -162,14 +163,14 @@
 }
 
 .gpi-dot {
-  fill: rgba(255, 255, 255, 0.85);
+  fill: var(--text);
 }
 
 /* Per-vertex axis label + score. SVG text scales with the viewBox; font-size
  * here is in user-units so the rendered glyph tracks the radar size rather
  * than a fixed CSS px - the --fs floor governs HTML text, not in-SVG marks. */
 .gpi-axis-label {
-  fill: rgba(255, 255, 255, 0.75);
+  fill: var(--text);
   font-size: 8px;
   font-weight: 600;
   text-transform: uppercase;
@@ -177,7 +178,7 @@
 }
 
 .gpi-axis-score {
-  fill: rgba(255, 255, 255, 0.95);
+  fill: var(--text);
   font-size: 8.5px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -193,7 +194,7 @@
   min-width: 5em;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--panel-radius-sm, 10px);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-2);
 }
 
 .gpi-overall-num {
@@ -210,7 +211,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--dim);
 }
 
 /* Caption row - mode / games / window / confidence, dim metadata. */
@@ -220,17 +221,17 @@
   align-items: baseline;
   gap: var(--space-2);
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--dim);
 }
 
 .gpi-cap-mode {
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--text);
 }
 
 .gpi-cap-sep {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--dim);
 }
 
 .gpi-cap-conf {
@@ -256,11 +257,11 @@
   padding: var(--space-4) 0;
   text-align: center;
   font-size: var(--fs-sm);
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--dim);
 }
 
 .gpi-msg-dim {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--dim);
 }
 
 /* Tier tints driven by the overall score - applied to the radar fill/stroke
@@ -316,7 +317,7 @@
 
 .gpi-tip-text {
   font-size: var(--fs-sm);
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--text);
   line-height: 1.35;
 }
 
@@ -326,7 +327,7 @@
  * same documented exception as the .gpi-ring / .gpi-spoke strokes above. */
 .gpi-match-dot {
   fill: var(--signal-warn, #f1b04a);
-  stroke: rgba(20, 22, 30, 0.9);
+  stroke: var(--surface);
   stroke-width: 0.8;
 }
 
@@ -339,7 +340,7 @@
   align-items: center;
   gap: var(--space-2);
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--dim);
 }
 
 .gpi-match-swatch {

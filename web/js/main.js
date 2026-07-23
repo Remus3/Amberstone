@@ -105,6 +105,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
   }
 
+  // DS2 candidate-theme swap seam. DEFAULT (no ?theme) = "terminal" (operator-chosen
+  // default 2026-07-22). ?theme=<name> stamps :root[data-theme="<name>"] from
+  // web/css/themes.css; ?theme=hextech leaves no attribute so base.css :root (the
+  // gold Hextech palette) owns it. Also usable by a future Settings toggle.
+  const tm = location.search.match(/[?&]theme=(hextech|terminal|ember|bloodmoon|moonlit|arcane)/);
+  const theme = tm ? tm[1] : "terminal";
+  if (theme !== "hextech") {
+    document.documentElement.dataset.theme = theme;
+  }
+
   const WS_HOST = location.hostname || "legion-pc.local";
   const WS_PORT = 8891;
   // WS host selection (mixed-content + TLS aware). The :8891 push server is
