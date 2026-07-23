@@ -108,6 +108,8 @@ def _gather_get() -> list:
                                routes_team_context,
                                routes_ward_heat,
                                routes_archetype, routes_last_match,
+                               routes_session_hygiene,
+                               routes_playstyle_labels,
                                routes_vision_calibrator)
         _GET_CACHE = (list(routes_static.GET_ROUTES)
                       + list(routes_state.GET_ROUTES)
@@ -171,6 +173,8 @@ def _gather_get() -> list:
                       + list(routes_ward_heat.GET_ROUTES)
                       + list(routes_archetype.GET_ROUTES)
                       + list(routes_last_match.GET_ROUTES)
+                      + list(routes_session_hygiene.GET_ROUTES)
+                      + list(routes_playstyle_labels.GET_ROUTES)
                       + list(routes_vision_calibrator.GET_ROUTES))
     return _GET_CACHE
 
