@@ -20,10 +20,11 @@
   gap: 4px;
   margin-bottom: 8px;
   padding: 6px 8px;
-  background: rgba(20, 22, 30, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--signal-info, #8a8cf0);
-  border-radius: 4px;
+  border-radius: var(--radius);
 }
 
 .ds-knobs[hidden] {
@@ -42,12 +43,12 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text);
 }
 
 .dsk-head-sub {
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--dim);
 }
 
 /* Control strip: three labelled numeric inputs in a row. */
@@ -56,7 +57,7 @@
   gap: 8px;
   flex-wrap: wrap;
   padding: 2px 0 4px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border);
 }
 
 .dsk-knob {
@@ -69,7 +70,7 @@
 
 .dsk-knob > span {
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.60);
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -80,9 +81,9 @@
   min-height: var(--hit-min, 42px);
   padding: var(--space-1, 4px) var(--space-2, 8px);
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm, 10px);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
   font-size: var(--fs-sm, 18px);
   font-variant-numeric: tabular-nums;
 }
@@ -93,7 +94,7 @@
 }
 
 .dsk-knob > input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--dim);
 }
 
 /* Ranked-rows list: item | +delta dps | gold. */
@@ -108,7 +109,7 @@
   align-items: center;
   gap: 8px;
   padding: 2px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
 }
 
@@ -124,7 +125,7 @@
   white-space: nowrap;
   font-size: var(--fs-sm, 18px);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.90);
+  color: var(--text);
 }
 
 .dsk-delta {
@@ -137,11 +138,11 @@
 .dsk-gold {
   flex: 0 0 auto;
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--dim);
 }
 
 .dsk-empty {
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--faint);
   padding: 4px 0;
 }

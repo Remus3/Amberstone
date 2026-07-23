@@ -58,6 +58,35 @@
   border-bottom-right-radius: var(--radius);
 }
 
+/* ---- Multi-hue deployment: gradient top-rule on card primitives -----
+ * ONE token-driven rule so every theme's --hextech-fill reads on the
+ * rendered pages, not just the palette. A 2px gradient strip is layered
+ * across the TOP of each canonical card (and the converted glass panels)
+ * as a background-image ONLY - the panel's own background-color (surface)
+ * still paints under it, so this composes without overriding any bg. The
+ * card radius clips the strip to a tasteful top accent. Pop stays tiny
+ * (a 2px strip; the scarce cyan lives at the gradient END). Reversible:
+ * delete this rule to remove it everywhere. The `:root ` prefix lifts
+ * specificity so it wins over panel roots imported after hextech.css.
+ * Each theme paints its OWN --hextech-fill here (hextech teal->gold,
+ * terminal cyan->gold, ember red->orange->gold, bloodmoon red->light-red,
+ * moonlit blue->cyan->aqua, arcane purple->magenta->cyan). */
+:root .hx-card,
+:root .panel,
+:root .player-gpi,
+:root .player-snapshot,
+:root .personal-build,
+:root .personal-context-section,
+:root .ds-sweep,
+:root .ds-knobs,
+:root .ds-combo,
+:root .spike-markers {
+  background-image: var(--hextech-fill);
+  background-repeat: no-repeat;
+  background-size: 100% 2px;
+  background-position: left top;
+}
+
 /* ---- hx-chip: outline pill, sharp radius, tabular-friendly ----------
  * A compact status / metadata pill. Sharper radius than a card so it
  * reads as a control, not a surface. tabular-nums keeps numeric chips
