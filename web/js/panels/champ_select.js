@@ -38,6 +38,14 @@ import {
   fetchPersonalBuild, getCachedPersonalBuild,
   getPersonalBuildCacheCount, renderPersonalBuild, pbwModeForQueue,
 } from './personal_build.js';
+// Haiku-to-ZERO 2026-07-23: deterministic five-layer draft-quality score for
+// the committed ally comp (optionally vs the enemy comp). SR-draft-only - the
+// corpus layers read the SR-queue participant table; ARAM/Arena have no
+// participant rows there so the card stays off those modes. Backend:
+// dashboard/routes_draft_score.py. Read-only, no Riot/Claude dependency.
+import {
+  fetchDraftScore, getCachedDraftScore, renderDraftScore,
+} from './draft_score.js';
 // QA 2026-07-03 slice A (B12/B20/B22/B23): the CC-pairing card, DS profile,
 // DS knobs, DS stat-check, and the player-GPI radar were removed from champ
 // select (slice C re-mounts the DS trio on the Builds view; the radar stays
@@ -1033,6 +1041,9 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // QA 2026-07-03 slice A (B8/B9/B18): team-damage lean + the two CC
   // chips render inside the collapsed TEAM ANALYSIS cluster.
   _csvRenderTeamAnalysis(cs);
+  // Haiku-to-ZERO 2026-07-23: deterministic five-layer draft-quality score
+  // (SR-draft-only; hidden until 5 ally are committed).
+  _csvRenderDraftScore(cs);
   // 2026-06-26 (item 633): L4 Phase-D capability-gap surface. For the
   // operator's OWN locked champion vs the live enemy roster, the single
   // highest-severity capability DEFICIT (anti-tank / anti-heal / anti-poke)
@@ -1802,6 +1813,34 @@ function _csvRenderCcConditionalPressure(cs) {
   fetchCcConditionalPressure(allyNames, enemyNames, mode, _csvScheduleRender);
   const payload = getCachedCcConditionalPressure(allyNames, enemyNames, mode);
   renderCcConditionalPressure(block, payload);
+}
+
+// Haiku-to-ZERO draft-score card. Calls /api/draft-score with the
+// operator's committed ally comp (exactly 5) + enemy comp (if a full 5) and
+// renders the bounded 42-58 score + confidence chip + per-layer
+// contributed/inert breakdown into #csv-draft-score. Hidden until 5 ally are
+// committed (the route rejects a short ally list). SR-draft-only: called only
+// from _csvRenderSuggestions (the corpus layers read the SR participant
+// table). Mirrors the cc-chip renderers' gate + cache-then-render shape.
+function _csvRenderDraftScore(cs) {
+  const block = document.getElementById("csv-draft-score");
+  if (!block) return;
+  const allyIds = (cs.my_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  if (allyIds.length !== 5) {
+    block.hidden = true;
+    return;
+  }
+  const enemyRaw = (cs.their_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  const enemyIds = enemyRaw.length === 5 ? enemyRaw : null;
+  // No queue filter: the route defaults to the SR ranked set, which matches
+  // the participant corpus these layers read.
+  fetchDraftScore(allyIds, enemyIds, null, _csvScheduleRender);
+  const payload = getCachedDraftScore(allyIds, enemyIds, null);
+  renderDraftScore(block, payload);
 }
 
 // QA 2026-07-03 slice A (B19): the cooldown-watch renderer was removed

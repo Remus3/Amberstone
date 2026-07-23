@@ -1,0 +1,123 @@
+/* Haiku-to-ZERO draft-score card (Champ Select). core.draft_score's bounded
+ * 42-58 five-layer draft-quality read for the committed ally comp. Tokens per
+ * docs/UI_SCALE_SPEC_V2.md v2.1; ASCII only. New rules reference DEFINED
+ * tokens with NO dark-hex fallbacks so the dark-values ratchet pin holds. */
+
+#csv-draft-score.draft-score {
+  display: block;
+}
+#csv-draft-score[hidden] {
+  display: none;
+}
+
+/* Header: title + the big banded score + the confidence pill. */
+#csv-draft-score .ds-draft-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+#csv-draft-score .ds-draft-title {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+#csv-draft-score .ds-draft-score {
+  margin-left: auto;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+#csv-draft-score .ds-draft-score.ds-good { color: var(--signal-good); }
+#csv-draft-score .ds-draft-score.ds-bad  { color: var(--signal-bad); }
+#csv-draft-score .ds-draft-score.ds-even { color: var(--signal-info); }
+#csv-draft-score .ds-draft-score.ds-dim  { color: var(--signal-dim); }
+
+#csv-draft-score .ds-draft-conf {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+#csv-draft-score .ds-draft-conf.ds-conf-high { color: var(--signal-good); }
+#csv-draft-score .ds-draft-conf.ds-conf-med  { color: var(--signal-info); }
+#csv-draft-score .ds-draft-conf.ds-conf-low  { color: var(--text-faint); }
+
+/* Per-layer breakdown rows. */
+#csv-draft-score .ds-draft-layers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap-tight);
+}
+#csv-draft-score .ds-layer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+#csv-draft-score .ds-layer.is-inert {
+  opacity: 0.6;
+}
+#csv-draft-score .ds-layer-name {
+  flex: 1 1 7em;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+#csv-draft-score .ds-layer-w {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+#csv-draft-score .ds-layer-track {
+  flex: 1 1 auto;
+  min-width: 40px;
+  height: 18px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm);
+  overflow: hidden;
+}
+#csv-draft-score .ds-layer-fill {
+  height: 100%;
+  border-radius: var(--panel-radius-sm) 0 0 var(--panel-radius-sm);
+  transition: width 220ms ease;
+}
+#csv-draft-score .ds-layer-fill.ds-good { background: var(--signal-good); }
+#csv-draft-score .ds-layer-fill.ds-bad  { background: var(--signal-bad); }
+#csv-draft-score .ds-layer-fill.ds-even { background: var(--signal-info); }
+#csv-draft-score .ds-layer-fill.ds-dim  { background: var(--signal-dim); }
+#csv-draft-score .ds-layer-val {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+#csv-draft-score .ds-layer-val.ds-good { color: var(--signal-good); }
+#csv-draft-score .ds-layer-val.ds-bad  { color: var(--signal-bad); }
+#csv-draft-score .ds-layer-val.ds-even { color: var(--signal-info); }
+#csv-draft-score .ds-layer-val.ds-dim  { color: var(--signal-dim); }
+#csv-draft-score .ds-layer-n {
+  margin-left: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+#csv-draft-score .ds-draft-caption {
+  margin-top: var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+#csv-draft-score .ds-draft-empty {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+  padding: var(--space-4) 0;
+}
