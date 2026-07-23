@@ -17,6 +17,7 @@ import { _to12, el, fmtList, safe, fitText, logLine, isArenaPayload, classifyAct
 import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
 import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
 import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
+import { applyTheme, resolveBootTheme } from './lib/theme.js';
 
 // ── Panel modules ─────────────────────────────────────────────────────────
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
@@ -113,15 +114,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
   }
 
-  // DS2 candidate-theme swap seam. DEFAULT (no ?theme) = "terminal" (operator-chosen
-  // default 2026-07-22). ?theme=<name> stamps :root[data-theme="<name>"] from
-  // web/css/themes.css; ?theme=hextech leaves no attribute so base.css :root (the
-  // gold Hextech palette) owns it. Also usable by a future Settings toggle.
-  const tm = location.search.match(/[?&]theme=(hextech|terminal|ember|bloodmoon|moonlit|arcane)/);
-  const theme = tm ? tm[1] : "terminal";
-  if (theme !== "hextech") {
-    document.documentElement.dataset.theme = theme;
-  }
+  // DS2 theme swap. Precedence (web/js/lib/theme.js resolveBootTheme):
+  //   ?theme=<whitelisted>  wins, session only - it never writes localStorage
+  //   else localStorage "rc-theme" (whitelisted; garbage is rejected)
+  //   else the operator default "terminal" (2026-07-22).
+  // A stamped data-theme selects the matching :root[data-theme="..."] block in
+  // web/css/themes.css; "hextech" leaves NO attribute so base.css :root (the
+  // gold Hextech palette) owns it. The inline <head> guard in index.html has
+  // already applied the same value pre-paint; this is a harmless re-apply.
+  // The Settings DISPLAY picker (#set-theme, panels/dev.js) is the live writer.
+  applyTheme(resolveBootTheme());
 
   const WS_HOST = location.hostname || "legion-pc.local";
   const WS_PORT = 8891;
