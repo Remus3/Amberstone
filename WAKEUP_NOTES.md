@@ -4,6 +4,50 @@
 
 ---
 
+# 2026-07-23f - GPI radar target-profile reference polygon (BACKLOG NOW/MED closed)
+
+One commit, pushed: `8afe91cf` + LEDGER 1010. CI green (ci + CodSpeed).
+ENGINE-IMPACT NONE (core module + route passthrough + asset layer; no DS bump,
+no :8893 bounce, no Share touch). Tier-1 + UI. ZERO API / ZERO LLM.
+
+- **The probe changed the design before any code.** BACKLOG asked for a "better-WR
+  reference polygon". Measured live: `rewind_history.db` = 30928 participant rows over
+  **23441 DISTINCT puuids**, only **20 puuids reach 20 games** (operator + a few
+  premades). No population to rank win rates over -> a better-WR cohort would have to
+  be INVENTED. Built the operator's OWN winning games, which the task pre-authorized.
+  SR 338W/296L, ARAM 1028W/976L - ample.
+- **`core/player_gpi._reference_block(games, window)`** -> `{kind:"own_wins", label, n,
+  min_games, axes:[{key,score} x 8]}`, None below `MIN_REFERENCE_GAMES` (5) wins -
+  never a partial polygon. Reuses `_relative_axis` / `_versatility_axis` /
+  `_consistency_axis` unchanged (survival sign handling comes free, pinned).
+- **Two parity decisions carry the feature.** (a) The percentile baseline stays the
+  FULL filtered history - the same baseline `axes` uses - so a reference vertex and a
+  player vertex at equal radius mean the same thing. (b) The reference set is capped at
+  the most recent `window` WINS, not all wins: versatility is Shannon entropy
+  normalized by `log(n)`, which saturates at `log(pool)` while the normalizer keeps
+  growing, so 338 wins vs a 20-game window would read artificially LOW for no reason.
+- **Route unchanged** - `/api/player-profile` passes the block through, cache included.
+  The `EMPTY_KEYS` contract guard in `test_player_gpi_robustness.py` caught the payload
+  change on the first run (the guard working, not a regression).
+- **Panel** `web/js/panels/player_gpi.js`: `_refPolySvg` + `_refLegend`. Dashed teal
+  ring emitted BEFORE `_dataSvg` so the filled recent-form polygon paints on top (SVG
+  has no z-index - pinned by a document-order test), matched by axis KEY not position,
+  ALL-OR-NOTHING on a null axis (a truncated ring would read as a real shape).
+  `_signature` grew a `ref:` segment. Teal = the one panel hue not already spoken for.
+- **5-phase fixture audit PASS, zero MUST-FIX.** ASCII asserted across .js/.css/.py/test.
+- **Live SR read (634 games, 20-win reference):** objectives 41.5 -> 65.5, survival
+  30.0 -> 45.2, tempo 48.1 -> 63.1 = the actionable gap. Versatility flat 44.9 vs 44.3,
+  which is decision (b) paying off.
+- **Verified:** 21 new backend + 6 new panel tests; 106 GPI/route green; full
+  `tests/snapshot_panels` 393 green; 472 green across the gpi/player_profile/
+  asset-hash/contract selection; ruff clean; RC pid 25664 alive + last_reload_ok; live
+  HTTPS probe served the block.
+- **Docs/memory:** BACKLOG line closed (the CHI-paper Diamond+ mechanics-band tail is
+  left OPEN - it needs an external distribution RC does not have). Memory
+  `reference_rewind_history_db` gained the no-cohort measurement + the equal-n rule.
+
+---
+
 # 2026-07-23e - patch-impact aggregator + route + Session card (+ the flagged ds_shaper red)
 
 Three commits (all pushed): `ff77164f` `ad99cec7` `86b40fe7` + LEDGER 1009.
@@ -64,33 +108,3 @@ NEXT: nothing pending on the Haiku-to-ZERO aggregator lane (BACKLOG lines 56-57
 consumer surfaces DONE). Premade detection stays BLOCKED (tracked-only matches
 table). Pre-existing `ds_shaper.test.mjs` red (5/6, unrelated) flagged as a chip.
 Do NOT touch RM-99b Heartsteel cadence (operator-gated).
-
----
-
-# 2026-07-23c - Haiku-to-ZERO: five-layer deterministic draft score aggregator + route
-
-Commit pending push. ENGINE-IMPACT NONE (no DS bump, no :8893 bounce, no Share touch). LEDGER 1007.
-
-- **NEW `core/draft_score.py`** (Haiku-to-ZERO sibling of session_hygiene / playstyle_labels): closes
-  the BACKLOG "Five-layer deterministic draft score" NOW item. ZERO API/LLM. Fuses lane-matchup 30pct /
-  pairwise-synergy 20pct / AD-AP-tank damage-balance 15pct / early-late scaling 10pct / base-WR 25pct
-  into ONE bounded score + HIGH/MED/LOW confidence.
-- **Data sources (all owned):** matchup / synergy / base-WR from `core.draft_elo_db` (the `participants`
-  table = full 10-player Match-V5 rows, DISTINCT from the tracked-only `matches` table playstyle/hygiene
-  read; Laplace-smoothed via core.smoothed_rates). Damage-balance from an injectable DS kit-mix resolver
-  (`core.damage_mix` with EMPTY items = kit-only physical/magical lean). Synergy nudged by item-277 101qq.
-- **HONEST 42-58 band** (no-fake-spread): trust-weighted (weight x shrink(n)) mean of layer WR-deviations,
-  50 + delta*100, hard-clamped [42,58]. A layer with no evidence is marked contributed=False and drops
-  out of the blend - NOT dragged toward 50. Scaling layer ships INERT by design (no cheap per-champ
-  power-timing primitive; declared with reserved 10pct weight, activates when a scaling_resolver is fed).
-  Pure `fuse_layers()` split out DB-free for the math proof. Never-raises.
-- **NEW route `/api/draft-score`** (`routes_draft_score.py`): ?ally + ?enemy + ?queue, 5min LRU cache,
-  structured 400/500, wires the default DS + 101qq + name resolvers. Into `_dispatch.py` GET chain (110 routes).
-- Verified: 23 aggregator/route tests + 1435 dispatch/route/draft suite green, ruff clean, RC restart
-  alive+reload_ok (pid 9584), live HTTPS probe served score 54.4/MED (4 layers contributing from real
-  corpus + DS kit-mix), 400 on bad-length, matchup inert with no enemy comp.
-
-NEXT: Haiku-to-ZERO consumer/UI wiring for the three new routes (session-hygiene / playstyle-labels /
-draft-score) is operator-present-preferred (do NOT build headless). Premade detection stays BLOCKED
-(tracked-only matches table). Do NOT touch RM-99b Heartsteel cadence. A DS spike-derived scaling_resolver
-would activate the draft-score scaling layer (future, when the operator wants it).
