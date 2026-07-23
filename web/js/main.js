@@ -63,6 +63,12 @@ import { initOverlayPulse } from './overlay_pulse.js';
 // Task 6 (spec 7.1): Home player-snapshot adapter over the Task-5
 // presentational card.
 import { renderPlayerSnapshot } from './panels/player_snapshot.js';
+// Haiku-to-ZERO 2026-07-23: Session-view corpus retrospectives - the
+// "Should I Queue" readiness card + the per-champion playstyle fingerprint.
+// Both self-fetch their thin routes over the operator's OWN rewind corpus
+// (no Riot/Claude dependency) and self-show on render.
+import { renderSessionHygiene } from './panels/session_hygiene.js';
+import { renderPlaystyleLabels } from './panels/playstyle_labels.js';
 // Task 8 (spec 7.1): View Profile -> GPI radar mount. showPlayerGpi is the
 // self-fetch + render entry point (player_gpi.js:444) - first production
 // mount of that panel.
@@ -791,7 +797,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         _amMockLoad();
       }
     }
-    if (viewId === "session")     { _sessionFetchAndRender(); }
+    if (viewId === "session")     { _sessionFetchAndRender(); renderSessionHygiene(); renderPlaystyleLabels(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "last-match")  { wireLastMatchOnce(); fetchAndRenderLastMatch(); }
     if (viewId === "historical-pgr") {
