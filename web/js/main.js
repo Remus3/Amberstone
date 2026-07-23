@@ -69,6 +69,7 @@ import { renderPlayerSnapshot } from './panels/player_snapshot.js';
 // (no Riot/Claude dependency) and self-show on render.
 import { renderSessionHygiene } from './panels/session_hygiene.js';
 import { renderPlaystyleLabels } from './panels/playstyle_labels.js';
+import { renderPatchImpact } from './panels/patch_impact.js';
 // Task 8 (spec 7.1): View Profile -> GPI radar mount. showPlayerGpi is the
 // self-fetch + render entry point (player_gpi.js:444) - first production
 // mount of that panel.
@@ -797,7 +798,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         _amMockLoad();
       }
     }
-    if (viewId === "session")     { _sessionFetchAndRender(); renderSessionHygiene(); renderPlaystyleLabels(); }
+    if (viewId === "session")     { _sessionFetchAndRender(); renderSessionHygiene(); renderPlaystyleLabels(); renderPatchImpact(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "last-match")  { wireLastMatchOnce(); fetchAndRenderLastMatch(); }
     if (viewId === "historical-pgr") {

@@ -1,0 +1,83 @@
+/* Haiku-to-ZERO patch-impact card (Session view). core.patch_impact - the
+ * cross-patch DS snapshot diff x the operator's own played champions. Tokens
+ * per docs/UI_SCALE_SPEC_V2.md v2.1; ASCII only; DEFINED tokens with NO dark-hex
+ * fallbacks so the dark-values ratchet pin holds. */
+
+#patch-impact-card[hidden] { display: none; }
+
+#patch-impact-card .pi-from {
+  margin-left: var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--text-faint);
+}
+#patch-impact-card .pi-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap-tight);
+  margin-top: var(--space-2);
+}
+#patch-impact-card .pi-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+#patch-impact-card .pi-champ {
+  flex: 0 0 8em;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+#patch-impact-card .pi-games {
+  margin-left: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+#patch-impact-card .pi-wr {
+  flex: 0 0 3em;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+#patch-impact-card .pi-wr.pi-good { color: var(--signal-good); }
+#patch-impact-card .pi-wr.pi-bad  { color: var(--signal-bad); }
+#patch-impact-card .pi-wr.pi-dim  { color: var(--signal-dim); }
+#patch-impact-card .pi-chips {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+/* Every chip is the same neutral tone on purpose: the card reports that a
+ * section moved, never that the move was good or bad. */
+#patch-impact-card .pi-chip {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+#patch-impact-card .pi-chip.pi-build { color: var(--text); }
+#patch-impact-card .pi-none {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+#patch-impact-card .pi-more {
+  margin-top: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+#patch-impact-card .pi-caption {
+  margin-top: var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+#patch-impact-card .pi-empty {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+  padding: var(--space-4) 0;
+}
