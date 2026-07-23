@@ -45,7 +45,7 @@ PINS = {
     "web/css/panels/champ_select_view.css": 42,
     "web/css/panels/coach_choices.css": 2,
     "web/css/panels/coach_decisions.css": 1,
-    "web/css/panels/ds_statcheck.css": 3,
+    "web/css/panels/ds_statcheck.css": 0,
     "web/css/panels/duration_winrate.css": 4,
     "web/css/panels/header.css": 5,
     "web/css/panels/home.css": 2,
@@ -57,6 +57,12 @@ PINS = {
     "web/css/panels/spike_curve.css": 1,
     "web/css/panels/ward_heat.css": 1,
     "web/css/tokens.css": 1,
+    # LEDGER (2026-07-23 headless): themes.css is the 6-theme OKLCH swap
+    # SOURCE layer (commit a2848e4c) - the 36 dark literals ARE the per-theme
+    # canvas/surface/accent ramps (the palette must live somewhere, same as
+    # tokens.css:40). JUSTIFIED audit-doc section added; the ratchet still
+    # blocks any 37th stray literal.
+    "web/css/themes.css": 36,
 }
 
 
