@@ -67,7 +67,7 @@
   align-items: center;
   padding: 6px 8px;
   background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm);
   min-height: 56px;
 }
@@ -76,14 +76,14 @@
   height: 36px;
   border-radius: 50%;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-2);
   display: grid;
   place-items: center;
   font-size: 17px;
   color: var(--text-faint);
 }
 .tc-slot-icon.skel {
-  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border: 1px dashed var(--border);
 }
 .tc-slot-icon img {
   width: 100%;
@@ -165,8 +165,8 @@
  * so it reads "data pending" rather than "no data". Visually-quiet
  * enough that a fully-populated card doesn't look like a downgrade. */
 .skel {
-  color: rgba(255, 255, 255, 0.28) !important;
-  text-decoration: underline dashed rgba(255, 255, 255, 0.18);
+  color: var(--dim) !important;
+  text-decoration: underline dashed var(--border);
   text-underline-offset: 2px;
 }
 
