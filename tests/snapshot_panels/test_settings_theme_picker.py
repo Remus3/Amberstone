@@ -1,19 +1,18 @@
 """
 tests/snapshot_panels/test_settings_theme_picker.py
-Settings THEME PICKER coverage - TDD red phase for the DS2 theme selector.
+Settings THEME PICKER coverage (DS2 theme selector, shipped 09cc0482).
 
-The feature under test does NOT exist yet. This file is the failing
-specification for it:
+Contract under test:
 
   * a <select id="set-theme"> mounted inside the Settings view, in the
-    DISPLAY settings-card (web/index.html:1583-1589), carrying exactly six
-    options in order: hextech, terminal, ember, bloodmoon, moonlit, arcane.
+    DISPLAY settings-card, carrying exactly six options in order:
+    hextech, terminal, ember, bloodmoon, moonlit, arcane.
   * persistence key "rc-theme" in localStorage (kebab-case, matching the
     existing rc-view-manual / rc-home-mode-tab / rc-ui-mock convention).
   * boot resolution order:
         ?theme=<whitelisted>  WINS (session only - must NOT write storage)
         else localStorage "rc-theme" (whitelisted)
-        else the default "terminal"
+        else the operator default (see DEFAULT_THEME below)
   * "hextech" stamps NO attribute at all (base.css :root owns the gold
     Hextech palette, so document.documentElement.getAttribute("data-theme")
     must read null). Every other theme stamps data-theme="<name>", which is
@@ -21,11 +20,9 @@ specification for it:
   * changing the select applies live - no page navigation - and writes
     localStorage.
 
-Today main.js:116-124 only reads the ?theme= query param and defaults to
-"terminal"; there is no select, no storage read, and no live apply. The
-query-param and default-fallback cases below therefore already hold (they
-are characterization guards against a regression while the picker lands);
-the select / storage / live-apply cases are the red.
+web/js/lib/theme.js is the single source of truth; the inline pre-paint
+guard in web/index.html hand-copies the whitelist + default because it runs
+before the module graph loads, so a static drift test pins the two copies.
 
 Harness: the same headless mock-server + Playwright rig as
 test_settings_view.py (session-scoped mock_server + pw_browser fixtures from
@@ -42,7 +39,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 THEMES_CSS = ROOT / "web" / "css" / "themes.css"
 
 # Option order is part of the contract - hextech first (it is the base
-# palette / no-attribute case), then the operator default "terminal".
+# palette / no-attribute case). Order is asserted, not the default.
 EXPECTED_THEMES = [
     "hextech",
     "terminal",
@@ -53,6 +50,11 @@ EXPECTED_THEMES = [
 ]
 
 STORAGE_KEY = "rc-theme"
+
+# Operator default when nothing else resolves. Must track DEFAULT_THEME in
+# web/js/lib/theme.js and the inline FOUC guard in web/index.html; the drift
+# test at the bottom of this file pins all three together.
+DEFAULT_THEME = "arcane"
 
 
 def _seed_script(items: dict) -> str:
@@ -142,13 +144,14 @@ def test_theme_select_mounted_with_six_options(mock_server, pw_browser):
     assert not errors, f"JS errors [theme select mounted]: {errors[:3]}"
 
 
-def test_theme_defaults_to_terminal(mock_server, pw_browser):
-    """No ?theme=, no stored preference -> the operator default terminal."""
+def test_theme_defaults_to_operator_default(mock_server, pw_browser):
+    """No ?theme=, no stored preference -> the operator default."""
     ctx, page, errors = _open_settings(pw_browser, mock_server)
     try:
         stamped = _stamped_theme(page)
-        assert stamped == "terminal", (
-            f"default boot stamped data-theme={stamped!r}, expected 'terminal'"
+        assert stamped == DEFAULT_THEME, (
+            f"default boot stamped data-theme={stamped!r}, "
+            f"expected {DEFAULT_THEME!r}"
         )
     finally:
         page.close()
@@ -157,19 +160,25 @@ def test_theme_defaults_to_terminal(mock_server, pw_browser):
 
 
 def test_stored_theme_applies_and_selects(mock_server, pw_browser):
-    """localStorage rc-theme=arcane stamps arcane and preselects the option."""
+    """A stored preference stamps and preselects that theme.
+
+    The seeded value MUST NOT be DEFAULT_THEME, or this passes even when
+    the storage read is broken and boot merely falls through to the
+    default."""
+    stored = next(t for t in EXPECTED_THEMES
+                  if t not in (DEFAULT_THEME, "hextech"))
     ctx, page, errors = _open_settings(
-        pw_browser, mock_server, storage={STORAGE_KEY: "arcane"}
+        pw_browser, mock_server, storage={STORAGE_KEY: stored}
     )
     try:
         stamped = _stamped_theme(page)
-        assert stamped == "arcane", (
-            f"stored rc-theme='arcane' stamped data-theme={stamped!r}"
+        assert stamped == stored, (
+            f"stored rc-theme={stored!r} stamped data-theme={stamped!r}"
         )
         sel = page.locator("#view-settings #set-theme")
         assert sel.count() == 1, "no #set-theme select to reflect stored theme"
-        assert sel.input_value() == "arcane", (
-            f"#set-theme value {sel.input_value()!r} != 'arcane'"
+        assert sel.input_value() == stored, (
+            f"#set-theme value {sel.input_value()!r} != {stored!r}"
         )
     finally:
         page.close()
@@ -260,17 +269,17 @@ def test_selecting_theme_applies_live_and_persists(mock_server, pw_browser):
     assert not errors, f"JS errors [theme live apply]: {errors[:3]}"
 
 
-def test_garbage_stored_theme_falls_back_to_terminal(mock_server, pw_browser):
+def test_garbage_stored_theme_falls_back_to_default(mock_server, pw_browser):
     """A non-whitelisted stored value is rejected (no attribute injection)
-    and boot falls back to the default terminal."""
+    and boot falls back to the operator default."""
     ctx, page, errors = _open_settings(
         pw_browser, mock_server, storage={STORAGE_KEY: "../evil"}
     )
     try:
         stamped = _stamped_theme(page)
-        assert stamped == "terminal", (
+        assert stamped == DEFAULT_THEME, (
             f"garbage rc-theme stamped data-theme={stamped!r}, expected "
-            "the 'terminal' fallback"
+            f"the {DEFAULT_THEME!r} fallback"
         )
     finally:
         page.close()
@@ -319,8 +328,11 @@ def test_fouc_guard_whitelist_matches_theme_module():
     assert 'localStorage.getItem("rc-theme")' in html, (
         "FOUC guard reads a storage key other than rc-theme"
     )
-    assert 't = "terminal"' in html, (
-        "FOUC guard default drifted from DEFAULT_THEME"
+    assert f't = "{DEFAULT_THEME}"' in html, (
+        f"FOUC guard default drifted from DEFAULT_THEME {DEFAULT_THEME!r}"
+    )
+    assert f'export const DEFAULT_THEME = "{DEFAULT_THEME}";' in mod, (
+        f"theme.js DEFAULT_THEME drifted from {DEFAULT_THEME!r}"
     )
 
 

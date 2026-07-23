@@ -117,7 +117,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // DS2 theme swap. Precedence (web/js/lib/theme.js resolveBootTheme):
   //   ?theme=<whitelisted>  wins, session only - it never writes localStorage
   //   else localStorage "rc-theme" (whitelisted; garbage is rejected)
-  //   else the operator default "terminal" (2026-07-22).
+  //   else the operator default "arcane" (2026-07-23; was "terminal").
   // A stamped data-theme selects the matching :root[data-theme="..."] block in
   // web/css/themes.css; "hextech" leaves NO attribute so base.css :root (the
   // gold Hextech palette) owns it. The inline <head> guard in index.html has
