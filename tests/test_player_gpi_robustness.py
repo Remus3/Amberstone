@@ -32,7 +32,8 @@ ALLOWED_SCORING = {"relative", "absolute"}
 EMPTY_KEYS = {
     "ok", "mode", "champion", "n_games", "window", "window_n", "min_games",
     "confidence", "axes", "overall", "weakest_axis", "tip", "this_match",
-    "win_streak", "win_rate", "kp_pct", "kda_mean", "strongest_axis",
+    "reference", "win_streak", "win_rate", "kp_pct", "kda_mean",
+    "strongest_axis",
 }
 
 

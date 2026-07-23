@@ -13,8 +13,13 @@
 //     confidence: "high" | "low" | "insufficient",
 //     axes: [{key, label, unit, scoring, higher_is_better,
 //             score, recent_value, baseline_p50, sample_n}, ... 8 ...],
-//     overall
+//     overall,
+//     reference: {kind, label, n, min_games,
+//                 axes: [{key, score}, ... 8 ...]} | null
 //   }
+//   reference is the target-profile polygon - the same 8 axes scored over the
+//   operator's OWN winning games - drawn behind the recent-form polygon. Null
+//   (too few wins) renders the shipped radar unchanged.
 //   confidence == "insufficient" -> axes == [] and overall == null: the panel
 //   renders an empty-state ("not enough games yet - N/min_games") rather than a
 //   degenerate zero-area radar.
@@ -175,8 +180,16 @@ function _signature(payload) {
         .map((a) => a.key + "=" + (a.score == null ? "-" : a.score))
         .join(",")
     : "none";
+  // The reference polygon participates too: it moves only when the operator's
+  // winning-games profile moves, which is exactly a repaint-worthy change.
+  const ref = payload.reference;
+  const refSig = (ref && Array.isArray(ref.axes))
+    ? (ref.n | 0) + ":" + ref.axes
+        .map((a) => a.key + "=" + (a.score == null ? "-" : a.score))
+        .join(",")
+    : "none";
   return _mode(payload.mode) + "|" + _fmtScore(payload.overall) + "|" + body
-       + "|tm:" + tmSig;
+       + "|tm:" + tmSig + "|ref:" + refSig;
 }
 
 // Build the grid rings (concentric octagons) + radial spokes as one SVG string.
@@ -235,6 +248,49 @@ function _matchDotsSvg(axes, thisMatch) {
          + '" r="2.4" />';
   }
   return out;
+}
+
+// Target-profile reference polygon: the same eight axes scored over the
+// operator's own WINNING games, drawn BEHIND the recent-form polygon so the
+// gap between the two reads as "what my winning games look like vs now".
+// Matched by axis KEY (not position) so a backend axis reorder cannot skew the
+// shape. All-or-nothing: unless every axis resolves to a finite reference
+// score the polygon is skipped entirely - a partial ring would read as a real
+// shape while silently dropping vertices. Returns "" without a reference block
+// so the shipped radar renders byte-identical without it.
+function _refPolySvg(axes, reference) {
+  if (!reference || !Array.isArray(reference.axes)) return "";
+  const byKey = Object.create(null);
+  for (const a of reference.axes) {
+    if (a && a.key != null) byKey[String(a.key)] = a;
+  }
+  const n = axes.length;
+  if (n < 3) return "";
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const key = axes[i] && axes[i].key;
+    const entry = key == null ? null : byKey[String(key)];
+    if (!entry || entry.score == null || !isFinite(+entry.score)) return "";
+    const [x, y] = _vertex(i, n, _clampScore(entry.score) / 100);
+    pts.push(x + "," + y);
+  }
+  return '<polygon class="gpi-ref-area" points="' + pts.join(" ") + '" />';
+}
+
+// One-line legend for the reference polygon, rendered only when the polygon
+// actually draws. The count is the number of winning games behind the shape so
+// the operator can weigh it (a 5-win reference is thinner than a 20-win one).
+function _refLegend(reference) {
+  if (!reference || !Array.isArray(reference.axes) || !reference.axes.length) {
+    return "";
+  }
+  const label = reference.label ? String(reference.label) : "winning games";
+  const n = reference.n | 0;
+  const text = "reference - " + label + (n > 0 ? " (" + n + ")" : "");
+  return '<div class="gpi-ref-legend">'
+    + '<span class="gpi-ref-swatch"></span>'
+    + '<span class="gpi-ref-text">' + _esc(text) + "</span>"
+    + "</div>";
 }
 
 // Build the axis labels + per-vertex score chips placed just outside the outer
@@ -394,6 +450,7 @@ export function renderPlayerGpi(blockEl, payload, activeMode, activeChampion) {
     + '" preserveAspectRatio="xMidYMid meet" role="img"'
     + ' aria-label="eight-axis player profile radar">'
     + _gridSvg(n)
+    + _refPolySvg(axes, payload.reference)
     + _dataSvg(axes, overallTier)
     + _matchDotsSvg(axes, payload.this_match)
     + _labelsSvg(axes)
@@ -434,6 +491,7 @@ export function renderPlayerGpi(blockEl, payload, activeMode, activeChampion) {
     + overallBlock
     + "</div>"
     + caption
+    + _refLegend(payload.reference)
     + _matchLegend(payload.this_match)
     + tipBlock;
 }
@@ -504,6 +562,8 @@ export const __test = {
   _champSelect,
   _matchDotsSvg,
   _matchLegend,
+  _refPolySvg,
+  _refLegend,
   _GPI_TTL_MS,
   _R,
   _CX,

@@ -27,6 +27,12 @@ history) so the radar can overlay "this game" on the longitudinal profile.
 The champion drilldown composes for free: ``games`` is already
 champion-filtered before the block is built.
 
+It also carries ``reference`` - a second 8-axis polygon scored over the
+operator's own WINNING games (the target profile drawn behind the recent-form
+polygon). Not a global better-win-rate cohort: the local DB has no population
+to rank win rates over (see ``_reference_block``). None below
+MIN_REFERENCE_GAMES wins.
+
 Public API:
     compute_gpi(mode="sr", window=20, champion=None) -> dict   # the contract
     list_champions(mode="sr") -> [{champion_id, n_games}, ...] # drilldown pool
@@ -50,6 +56,7 @@ MODE_MAPS: dict[str, int] = {"sr": 11, "aram": 12, "arena": 30}
 DEFAULT_WINDOW = 20
 MIN_GAMES = 10            # below this the percentile baseline is too thin to trust
 MIN_DURATION_S = 300      # drop remakes / very-early surrenders
+MIN_REFERENCE_GAMES = 5   # below this the winning-games reference polygon is noise
 
 # (key, label, unit, higher_is_better, per-game metric selector)
 _RELATIVE_AXES: tuple[tuple[str, str, str, bool, Callable[[dict], float]], ...] = (
@@ -97,6 +104,7 @@ def _empty(mode: str, window: int, n_games: int, champion: Optional[int],
         "weakest_axis": None,
         "tip": None,
         "this_match": None,
+        "reference": None,
         "win_streak": None,
         "win_rate": None,
         "kp_pct": None,
@@ -308,6 +316,48 @@ def _this_match_block(games: list[dict]) -> Optional[dict]:
     }
 
 
+def _reference_block(games: list[dict], window: int) -> Optional[dict]:
+    """Target-profile polygon: the same 8 axes scored over the operator's own
+    WINNING games, drawn behind the recent-form polygon on the radar.
+
+    Why the operator's own wins and not a better-win-rate cohort: the local
+    rewind DB is tracked-player-only for longitudinal purposes (23441 distinct
+    puuids over 30928 participant rows; only 20 puuids reach 20 games, the
+    operator plus a few premades). There is no population to rank win rates
+    over, so a "better-WR cohort" would have to be invented. The operator's own
+    wins are real, deterministic, and answer the same question - "what does my
+    game look like when I win".
+
+    Parity with the player polygon is deliberate and total:
+      - the percentile baseline is the FULL filtered history, exactly the
+        baseline ``axes`` uses, so a reference vertex and a player vertex at
+        the same radius mean the same thing;
+      - the reference "recent" set is the most recent ``window`` wins, so the
+        two window-shape axes (versatility = normalized Shannon entropy,
+        consistency = inverse KDA dispersion) compare at EQUAL n. Scoring
+        versatility over all 300 wins against a 20-game window would read
+        artificially low - entropy saturates at log(pool) while the log(n)
+        normalizer keeps growing.
+
+    Returns None below MIN_REFERENCE_GAMES wins (never a partial polygon).
+    """
+    wins = [g for g in games if g["win"]]
+    if len(wins) < MIN_REFERENCE_GAMES:
+        return None
+    recent = wins[:window]
+    axes = [_relative_axis(spec, games, window, recent)
+            for spec in _RELATIVE_AXES]
+    axes.append(_versatility_axis(games, window, recent))
+    axes.append(_consistency_axis(games, window, recent))
+    return {
+        "kind": "own_wins",
+        "label": "winning games",
+        "n": len(recent),
+        "min_games": MIN_REFERENCE_GAMES,
+        "axes": [{"key": a["key"], "score": a["score"]} for a in axes],
+    }
+
+
 def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
                 champion: Optional[int] = None,
                 conn: Optional[sqlite3.Connection] = None,
@@ -359,6 +409,7 @@ def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
     out["overall"] = overall
     out["window_n"] = len(recent)
     out["this_match"] = _this_match_block(games)
+    out["reference"] = _reference_block(games, window)
 
     # Weakest-axis call-out drives the single improvement tip. Only the relative
     # skill axes are eligible (see _AXIS_TIPS); ties break on axis order.
