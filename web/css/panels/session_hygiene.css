@@ -1,0 +1,131 @@
+/* Haiku-to-ZERO "Should I Queue" readiness card (Session view).
+ * core.session_hygiene over the local rewind corpus. Tokens per
+ * docs/UI_SCALE_SPEC_V2.md v2.1; ASCII only; DEFINED tokens with NO dark-hex
+ * fallbacks so the dark-values ratchet pin holds. */
+
+#session-hygiene-card[hidden] { display: none; }
+
+#session-hygiene-card .sh-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 var(--space-3);
+}
+#session-hygiene-card .sh-score {
+  font-size: var(--fs-lg, 28px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+#session-hygiene-card .sh-score.sh-good { color: var(--signal-good); }
+#session-hygiene-card .sh-score.sh-bad  { color: var(--signal-bad); }
+#session-hygiene-card .sh-score.sh-even { color: var(--signal-info); }
+#session-hygiene-card .sh-score.sh-dim  { color: var(--signal-dim); }
+#session-hygiene-card .sh-score-max {
+  margin-left: 2px;
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  color: var(--text-faint);
+}
+#session-hygiene-card .sh-conf {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+#session-hygiene-card .sh-conf.sh-conf-high { color: var(--signal-good); }
+#session-hygiene-card .sh-conf.sh-conf-med  { color: var(--signal-info); }
+#session-hygiene-card .sh-conf.sh-conf-low  { color: var(--text-faint); }
+
+#session-hygiene-card .sh-factors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap-tight);
+}
+#session-hygiene-card .sh-factor {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+#session-hygiene-card .sh-factor.is-inert { opacity: 0.6; }
+#session-hygiene-card .sh-factor-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+#session-hygiene-card .sh-factor-note {
+  margin-left: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+#session-hygiene-card .sh-factor-val {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+#session-hygiene-card .sh-factor-val.sh-good { color: var(--signal-good); }
+#session-hygiene-card .sh-factor-val.sh-bad  { color: var(--signal-bad); }
+#session-hygiene-card .sh-factor-val.sh-dim  { color: var(--signal-dim); }
+#session-hygiene-card .sh-factor-n {
+  margin-left: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+/* Win-rate-by-session-position tilt strip: vertical bars, one per game #. */
+#session-hygiene-card .sh-tilt-wrap { margin-top: var(--space-4); }
+#session-hygiene-card .sh-tilt-head {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  margin-bottom: var(--space-2);
+}
+#session-hygiene-card .sh-tilt {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+#session-hygiene-card .sh-tilt-col {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+#session-hygiene-card .sh-tilt-track {
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--surface-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm);
+  overflow: hidden;
+}
+#session-hygiene-card .sh-tilt-fill {
+  width: 100%;
+  transition: height 220ms ease;
+}
+#session-hygiene-card .sh-tilt-fill.sh-good { background: var(--signal-good); }
+#session-hygiene-card .sh-tilt-fill.sh-bad  { background: var(--signal-bad); }
+#session-hygiene-card .sh-tilt-fill.sh-dim  { background: var(--signal-dim); }
+#session-hygiene-card .sh-tilt-label {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+#session-hygiene-card .sh-caption {
+  margin-top: var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+#session-hygiene-card .sh-empty {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+  padding: var(--space-4) 0;
+}
