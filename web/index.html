@@ -2163,6 +2163,13 @@
              am-grid child so overlay_layout.js can lift it to
              position:fixed without a transformed-pane trap. -->
         <div class="obj-gauges" id="am-obj-gauges" hidden></div>
+        <!-- w-nextbuy (BACKLOG "Overlay HUD micro-lifts"): NEXT BUY rule
+             lines (panels/next_buy.js) - gold remaining to the next
+             DS-recommended item + the free yellow-trinket upgrade nudge.
+             Overlay-only; hidden entirely outside a live game with a build
+             path (honest no-data). Direct am-grid child so overlay_layout.js
+             can lift it to position:fixed without a transformed-pane trap. -->
+        <div class="next-buy" id="am-next-buy" hidden></div>
         <!-- w-arambalance (2026-07-20): ARAM balance-adjustment grid
              (aram_balance.js) - Riot's per-champion ARAM modifiers (dmg
              dealt/taken, healing, shielding, tenacity, attack speed, ability

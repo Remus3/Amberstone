@@ -1,0 +1,82 @@
+/* web/css/panels/next_buy.css
+ *
+ * NEXT BUY overlay widget (web/js/panels/next_buy.js): three fixed rows -
+ * NEXT (the DS-recommended item), GOLD (gold remaining to it), TRINKET (the
+ * free yellow -> Farsight upgrade nudge). Overlay-only: the base rule hides it
+ * on the 1920 dashboard (which already shows the full build module); only
+ * body[data-shell="overlay"] shows it, and only when next_buy.js clears
+ * [hidden] (a live game with a build path).
+ *
+ * NO REFLOW: all three rows are ALWAYS present once the widget is visible - an
+ * absent value renders the "-" sentinel - and the label column is a fixed
+ * width, so a value appearing or vanishing never shifts the rows. The
+ * ready / due states change colour + weight only, never geometry.
+ *
+ * GPU-light: static text, no animation. Colours ride the overlay tokens.
+ */
+
+.next-buy {
+  display: none; /* dashboard surface: never shown */
+}
+
+body[data-shell="overlay"] .next-buy {
+  display: block;
+}
+
+body[data-shell="overlay"] .next-buy[hidden] {
+  display: none;
+}
+
+.next-buy .nb-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.next-buy .nb-row {
+  display: grid;
+  /* Fixed label column: the value column can never push the label around as
+   * the gold count ticks down. */
+  grid-template-columns: 64px 1fr;
+  align-items: baseline;
+  gap: var(--space-2, 8px);
+  line-height: 1.25;
+}
+
+.next-buy .nb-k {
+  font-size: var(--fs-ov-chip); /* overlay game-distance token (13px) - same operator-accepted sub-floor as objective_chips.css / objective_gauges.css */
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(var(--ovx-text, 255, 255, 255), 0.55);
+}
+
+.next-buy .nb-v {
+  font-size: 17px; /* clears the 16px --fs-xs floor - this is a read-at-a-glance value row, not a chip */
+  font-weight: 700;
+  color: rgba(var(--ovx-text, 255, 255, 255), 0.96);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The gold figure ticks every second - tabular digits keep it steady. */
+.next-buy .nb-gold .nb-v {
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--ovx-gold, 200, 170, 110));
+}
+
+/* Affordable: the good-green signal, same convention as the objective-gauge
+ * UP state (doctrine sec 5 reserves lethal red for the ONE emergency). */
+.next-buy .nb-gold[data-nb-state="ready"] .nb-v {
+  color: rgb(var(--ovx-good, 55, 208, 138));
+}
+
+/* Trinket rule line: gold when the free upgrade is due, dim as the "-"
+ * sentinel otherwise - a dead row must never read as an action. */
+.next-buy .nb-trinket .nb-v {
+  color: rgba(var(--ovx-text, 255, 255, 255), 0.45);
+}
+
+.next-buy .nb-trinket[data-nb-state="due"] .nb-v {
+  color: rgb(var(--ovx-gold, 200, 170, 110));
+}

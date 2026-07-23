@@ -487,6 +487,18 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-enemyspells"] {
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-arambalance"] {
   --ovx-w: 620px;
 }
+/* w-nextbuy (BACKLOG "Overlay HUD micro-lifts", 2026-07-23): same widen-to-fit
+ * law. A row is the fixed 64px label column + an 8px gap + the value, and the
+ * longest values are real item names - "Berserker's Greaves" / the trinket
+ * rule's "Farsight Alteration" measure ~155px at the 17px value size. The
+ * default --ovx-w:210px left ~164px of interior, which ellipsised the trinket
+ * line to "Farsight Alte..." (measured 2026-07-23). 260px gives ~244px
+ * interior: label + gap + ~172px of value. The rows are nowrap + ellipsis, so
+ * an even longer name degrades by truncating - never by wrapping, which would
+ * change the widget height mid-game. Tunable live via the SZ slider. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-nextbuy"] {
+  --ovx-w: 260px;
+}
 /* The panel's dashboard chrome (a top hairline + pane padding that separated it
  * from the BUILD body it used to live inside) is redundant now that the widget
  * frame draws its own Hextech border - and the stray rule read as a seam across

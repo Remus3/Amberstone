@@ -34,6 +34,13 @@
 //   - kill-anchored respawns keep UP until the next kill event lands (the
 //     objective really is up - same convention as objective_chips.js:66-67).
 //
+// DOUBLE-ALERT CADENCE (BACKLOG "Overlay HUD micro-lifts"): each counting-down
+// dial also carries an alert tier - "soon" at eta <= 90s, "imminent" at
+// eta <= 10s - emitted as data-og-alert and styled in the CSS (steady tint
+// then a slow pulse). Derived from the SAME etaS the ring already shows, so it
+// adds no data source and cannot drift from the schedule mirror. UP and "-"
+// dials never alert (UP is already the loud green state; "-" has no clock).
+//
 // HONEST NO-DATA: outside a live SR game (mode not "sr", or no liveclient
 // game clock) the widget hides ENTIRELY - no placeholder ghosts. A single
 // dial without data mid-game renders the approved "-" sentinel.
@@ -51,6 +58,13 @@ const OG_SCHED = {
   elderNominalS: 2100,
   activeWindowS: 30,
   soulSecuredStacks: 4,
+  // Double-alert cadence (BACKLOG "Overlay HUD micro-lifts"): a dial that is
+  // counting down crosses two precomputed thresholds - 90s (rotate/reset, the
+  // window where a team actually starts walking) then 10s (contest now). Pure
+  // arithmetic on the SAME etaS the ring already shows: nothing fetched, no
+  // new field, no timer invented beyond the canonical schedule mirror above.
+  alertSoonS: 90,
+  alertImminentS: 10,
 };
 
 // Ring geometry: r=36 in an 88x88 viewBox; circumference = 2*pi*36.
@@ -108,15 +122,34 @@ function _staticCadenceEta(gt, firstS, cadenceS) {
   return firstS + (nPassed + 1) * cadenceS - gt;
 }
 
+// Double-alert tier for a counting-down dial: "" (quiet) | "soon" (<= 90s)
+// | "imminent" (<= 10s). Only an "eta" dial alerts - an UP dial is already the
+// loud green state and a "-" dial has no clock, so neither escalates.
+function _alertTier(state, etaS) {
+  if (state !== "eta") return "";
+  const t = Number(etaS);
+  if (!Number.isFinite(t) || t <= 0) return "";
+  if (t <= OG_SCHED.alertImminentS) return "imminent";
+  if (t <= OG_SCHED.alertSoonS) return "soon";
+  return "";
+}
+
 // One dial descriptor: state "eta" (counting down) | "up" | "none" ("-").
 // frac = ring fill toward ready in [0,1] (up = 1, none = 0).
+// alert = the double-alert tier (see _alertTier).
 function _dial(key, state, etaS, windowS) {
   if (state === "eta") {
     const w = Number.isFinite(windowS) && windowS > 0 ? windowS : etaS;
     const frac = Math.max(0, Math.min(1, 1 - etaS / (w > 0 ? w : 1)));
-    return { key, label: OG_LABEL[key], state, etaS, frac };
+    return {
+      key, label: OG_LABEL[key], state, etaS, frac,
+      alert: _alertTier(state, etaS),
+    };
   }
-  return { key, label: OG_LABEL[key], state, etaS: 0, frac: state === "up" ? 1 : 0 };
+  return {
+    key, label: OG_LABEL[key], state, etaS: 0,
+    frac: state === "up" ? 1 : 0, alert: "",
+  };
 }
 
 function _drakeDial(events, gt) {
@@ -198,7 +231,8 @@ function dialHtml(d) {
   const arc = (Math.max(0, Math.min(1, d.frac)) * OG_RING_C).toFixed(1);
   const eta = d.state === "up" ? "UP" : d.state === "none" ? "-" : fmtEta(d.etaS);
   return (
-    `<div class="og-dial og-${d.key}" data-obj="${d.key}" data-og-state="${d.state}">`
+    `<div class="og-dial og-${d.key}" data-obj="${d.key}" data-og-state="${d.state}"`
+    + ` data-og-alert="${d.alert || ""}">`
     + `<svg viewBox="0 0 88 88" width="88" height="88" aria-hidden="true">`
     + `<circle class="og-track" cx="44" cy="44" r="36"></circle>`
     + `<circle class="og-arc" cx="44" cy="44" r="36"`
@@ -217,7 +251,8 @@ function gaugesHtml(dials) {
 // Signature over the rendered dials so an unchanged tick skips the DOM write.
 function gaugesSig(dials) {
   return dials
-    .map((d) => `${d.key}:${d.state}:${Math.round(d.etaS)}:${d.frac.toFixed(2)}`)
+    .map((d) => `${d.key}:${d.state}:${Math.round(d.etaS)}:${d.frac.toFixed(2)}`
+      + `:${d.alert || ""}`)
     .join("|");
 }
 
@@ -259,6 +294,7 @@ export const __test = {
   OG_SCHED,
   OG_RING_C,
   computeGauges,
+  _alertTier,
   _drakeDial,
   fmtEta,
   dialHtml,

@@ -50,6 +50,7 @@ import { renderObjectiveChips } from './panels/objective_chips.js';
 // (DRAKE/BARON/ELDER/SUMMS ring dials). Self-gates on the overlay shell +
 // SR mode; a cheap no-op on the 1920 dashboard.
 import { renderObjectiveGauges } from './panels/objective_gauges.js';
+import { renderNextBuy } from './panels/next_buy.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
 // HIST2: detached historical PGR (archive view for a clicked History /
 // Session match row). Separate DOM + state from last_match.js - never
@@ -1408,6 +1409,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           liveclient: _amMockData.liveclient || null,
           cooldowns: _amMockData.summoner_cooldowns || null,
         });
+        // NEXT BUY rule lines ride the ui_mock dispatch too; the widget
+        // self-hides when the mock liveclient carries no sr_items / gold.
+        renderNextBuy({ liveclient: _amMockData.liveclient || null });
         // ARAM balance grid rides the ui_mock dispatch too, so the
         // documented ?ui_mock=1&mode=aram#active-match audit/preview path
         // renders it (the live branch below wires it for real games). Mode
@@ -1477,6 +1481,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         liveclient: (state.latest && state.latest.liveclient) || null,
         cooldowns: (state.latest && state.latest.summoner_cooldowns) || null,
       });
+      // NEXT BUY: gold-to-next-DS-item + the free trinket upgrade nudge, off
+      // the same liveclient block (gold + sr_items + owned_items +
+      // game_time_s). Null-safe; hides outside a live game with a build path.
+      renderNextBuy({ liveclient: (state.latest && state.latest.liveclient) || null });
     }
     // s164: re-fire champ-select view on every state envelope when it's
     // active. lcu envelopes are one-shot from FakeSocket, so a render
