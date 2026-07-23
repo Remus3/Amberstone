@@ -4,6 +4,41 @@
 
 ---
 
+# 2026-07-23e - patch-impact aggregator + route + Session card (+ the flagged ds_shaper red)
+
+Three commits (all pushed): `ff77164f` `ad99cec7` `86b40fe7` + LEDGER 1009.
+ENGINE-IMPACT NONE (aggregator + route + asset layer; no DS bump, no :8893 bounce, no Share).
+
+- **ds_shaper red closed first** `ff77164f`: the 5/6 failure was the test file's own
+  FakeEl shim missing `setAttribute` (prod `renderShaperStrip` marks the strip
+  `[data-rc-zone]` for the overlay clickthrough zones). Added the attribute trio +
+  a regression assert on `data-rc-zone`. 6/6. The task chip can be dismissed.
+- **NEW `core/patch_impact.py`** `ad99cec7` (Haiku-to-ZERO sibling; closes the BACKLOG
+  "patch-diff what changed for YOUR champs" tail): RM-110 cross-patch DS snapshot diff
+  x the player's own rewind play counts. `_open_ro` + injectable `diff_fn`/`patches`/
+  `key_map`, laplace winrate, never-raises with a stated reason. Join is on
+  `champions.json` `key` (numeric), NOT the display name; item changes attribute only
+  when the item is in that champ's build order for the mode. 29 tests.
+- **NEW `/api/patch-impact`** same commit: `?mode&top&min_games&old&new`, 5min cache,
+  structured 400/500, patch names gated on the ON-DISK allowlist (`ds_patch_diff._resolve`
+  takes any existing dir - never hand it the raw query). 16 tests.
+- **NEW Session `#patch-impact-card`** `86b40fe7` (`web/js/panels/patch_impact.js` + .css,
+  21 tests): per-champ stat/ability/build/item chips, detail in tooltips, `-` sentinel on
+  a no-change champ (no reflow). Descriptive-only is TEST-PINNED (no buff/nerf wording).
+  5-phase audit PASS, zero MUST-FIX.
+- Live: 16.13.1 -> 16.14.1 over 2044 ARAM matches in 76ms; the 8 changed items are Arena
+  mirrors + components + Rocketbelt, so zero ARAM-build attributions is correct.
+- Doc drift corrected against git: ROADMAP RM-111 "consumer surface NOT wired" was stale
+  (shipped `a626ece0`); BACKLOG `/api/personal-build` UI tail likewise already shipped.
+
+NEXT: RM-01 (Haiku-to-ZERO Lane E CV substrate) is still the top open thread and is
+live-gated - `data/fusion_shadow.jsonl` does not exist yet, so the flip gate is genuinely
+unmet. Do NOT flip blind. Non-gated BACKLOG siblings left in this lane: the radar
+target-profile reference polygon and the predicted roam/invade route. Premade detection
+stays BLOCKED (tracked-only matches table). Do NOT touch RM-99b Heartsteel cadence.
+
+---
+
 # 2026-07-23d - Haiku-to-ZERO: all 3 aggregator routes wired to UI cards + scaling layer activated
 
 Three commits (all pushed): `7c86c4fa` `6f1b6d11` `703af159` + LEDGER 1008.
@@ -59,31 +94,3 @@ NEXT: Haiku-to-ZERO consumer/UI wiring for the three new routes (session-hygiene
 draft-score) is operator-present-preferred (do NOT build headless). Premade detection stays BLOCKED
 (tracked-only matches table). Do NOT touch RM-99b Heartsteel cadence. A DS spike-derived scaling_resolver
 would activate the draft-score scaling layer (future, when the operator wants it).
-
----
-
-# 2026-07-23b - Haiku-to-ZERO: playstyle-labels aggregator + session-hygiene/playstyle routes
-
-Commit `06cd7bf3` (pushed, CI pending). ENGINE-IMPACT NONE (no DS bump, no :8893 bounce). 5 files, 849 insertions.
-
-- **NEW `core/playstyle_labels.py`** (Haiku-to-ZERO sibling of session_hygiene): deterministic
-  per-champion playstyle fingerprint over the player's own rewind_history.db. ZERO API/LLM.
-  Self-relative VERDICT labels (death-prone/averse, kill-focused/low-kill, team-involved/solo-leaning,
-  consistent/high-variance) comparing each champ's per-game means to the player's OWN cross-champion
-  baseline - observation not causal advice. **Champion-keyed on purpose**: corpus is ARAM-dominant,
-  `tracked_lane` is 0 for 2963/2966 games so a lane/role split degenerates to one bucket. Mirrors
-  session_hygiene: `_open_ro` seam, laplace/shrink/blend, never-raises, "-" thin sentinel. 16 tests.
-  Live corpus: 83/99 eligible champs labeled; CV_HIGH=0.70 catches top ~20% (well-calibrated, not
-  firing on everything).
-- **NEW route `/api/session-hygiene`** (`routes_session_hygiene.py`) - the OWED consumer surface for
-  the already-shipped session_hygiene aggregator (`1653d959`). ?queue filter, 5min cache, structured
-  400/500 (no raw error leak). Mirrors routes_duration_winrate.
-- **NEW route `/api/playstyle-labels`** (`routes_playstyle_labels.py`) - ?queue + ?min_games, 5min cache.
-- Both wired into `dashboard/_dispatch.py` GET chain.
-- Verified: 38 aggregator tests + 25 route-count guards green, ruff clean, RC restart alive+reload_ok
-  (pid 31872), both endpoints serve well-formed JSON over live HTTPS (n=2963 / n=2966).
-
-NEXT: remaining Haiku-to-ZERO siblings - the five-layer deterministic draft score (needs duo-synergy +
-DS damage-mix fusion; honest 42-58 band) is the biggest open one. Premade detection is BLOCKED (matches
-table is tracked-player-only; no teammate identity columns). UI/snapshot-card wiring for both new routes
-is operator-present-preferred (do NOT build headless). Do NOT touch RM-99b Heartsteel cadence.
