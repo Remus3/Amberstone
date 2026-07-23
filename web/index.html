@@ -1119,6 +1119,19 @@
                        data-cc-cond-tier="warn" hidden></div>
                 </div>
               </div>
+              <!-- Haiku-to-ZERO 2026-07-23: deterministic five-layer
+                   draft-quality score for the committed ally comp
+                   (optionally vs the enemy comp). One bounded 42-58 score +
+                   HIGH/MED/LOW confidence chip + per-layer contributed/inert
+                   breakdown ("-" sentinel on thin/inert layers). Computed
+                   entirely over the operator's OWN rewind participant corpus
+                   + owned DS/101qq primitives (no Riot/Claude dependency).
+                   Renderer: _csvRenderDraftScore in champ_select.js; backend
+                   dashboard/routes_draft_score.py. Hidden until 5 ally are
+                   committed; SR-draft-only. -->
+              <div class="csv-sugg-section draft-score"
+                   id="csv-draft-score"
+                   hidden></div>
               <!-- QA 2026-07-03 slice A: the cooldown-watch card (B19) +
                    the ally CC-pairing card (B12) were removed from champ
                    select; their backends stay. -->
