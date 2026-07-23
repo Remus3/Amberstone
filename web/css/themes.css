@@ -1,0 +1,502 @@
+/* ============================================================================
+ * RC dashboard candidate THEME overrides (DS2 - operator swap-and-pick pass).
+ *
+ * Palette A "hextech" is the DEFAULT and lives at :root in panels/base.css +
+ * tokens.css - no attribute needed. This file adds ONE override block for the
+ * second candidate, palette B "terminal", keyed on the document root's
+ * data-theme attribute. main.js reads ?theme=hextech|terminal and stamps
+ * document.documentElement.dataset.theme = "terminal" for the override.
+ *
+ * Imported AFTER panels/base.css in dashboard.css, and the attribute selector
+ * :root[data-theme="terminal"] outscores the plain :root of base.css +
+ * tokens.css, so every var declared here wins wherever it is set - including
+ * the --prim-* rgb parts that tokens.css derives every --signal-* / --hextech-*
+ * token from, so the whole status + component layer re-tints from this one
+ * block.
+ *
+ * ASCII only (repo hard rule - no em / en dashes, no smart quotes).
+ * ==========================================================================*/
+
+:root[data-theme="terminal"] {
+  /* Deep Terminal - deeper, cooler, higher-contrast, desaturated, tighter.
+   * Gold is DEMOTED to a sparing hero accent; the chrome hairline is neutral
+   * steel, not gold. */
+
+  /* Surfaces - deep near-black, cool stack. Pushed markedly darker than
+   * Hextech so the two themes read distinct at a glance. */
+  --canvas:        #03050A;   /* deep near-black page bg */
+  --surface:       #0A0E15;   /* panel bg */
+  --surface-2:     #10161F;   /* raised surface / card head */
+  --surface-3:     #171F2B;   /* input / chip / icon well */
+  --surface-head:  #10161F;   /* -> surface-2 */
+  --surface-alt:   #171F2B;   /* -> surface-3 */
+
+  /* Ink - higher-contrast, cooler. --faint computed >= 4.5:1 on the deeper
+   * --surface #0A0E15 (final #7688A2 == 5.35:1). */
+  --text:          #F2F6FF;
+  --dim:           #9AB0CC;
+  --text-dim:      #9AB0CC;
+  --faint:         #7688A2;   /* WCAG-AA 5.35:1 on --surface #0A0E15 */
+  --text-faint:    #7688A2;
+  --label:         #9AB0CC;   /* -> --dim */
+
+  /* Chrome hairline - STRONG neutral STEEL (gold is NOT the border in this
+   * theme). Higher alpha + cooler than Hextech's gold hairline; this is the
+   * single most differentiating cue vs the default palette. */
+  --border:        rgba(130,160,205,.34);
+  --border-soft:   rgba(130,160,205,.20);
+
+  /* Accents - gold kept but sparing (hero numbers / clock only); the working
+   * secondary accent is a brighter, distinct cyan so active / status reads
+   * clearly different from Hextech's teal. */
+  --accent:        #C8AA6E;   /* gold, sparing */
+  --accent-2:      #2ED3E0;   /* bright cyan - secondary accent */
+  --gold:          #C8AA6E;   /* hero numbers / clock */
+  --gold-soft:     rgba(200,170,110,.18);
+  --clock:         #C8AA6E;
+
+  /* Semantic status - desaturated B hues. */
+  --good:          #46B989;
+  --good-soft:     rgba(70,185,137,.18);
+  --warn:          #D9A24A;
+  --warn-soft:     rgba(217,162,74,.18);
+  --bad:           #E0596B;
+  --bad-soft:      rgba(224,89,107,.18);
+  --info:          #86ADEE;
+  --info-soft:     rgba(134,173,238,.18);
+  --advisory:      #E0596B;
+  --advisory-soft: rgba(224,89,107,.18);
+
+  /* Primitive rgb parts (tokens.css derives every --signal-* + --hextech-*
+   * from these). Re-tint here so the status + component layer follows the B
+   * hues without restating each semantic token. Gold parts unchanged. */
+  --prim-green: 70, 185, 137;    /* #46B989 */
+  --prim-amber: 217, 162, 74;    /* #D9A24A */
+  --prim-red:   224, 89, 107;    /* #E0596B */
+  --prim-slate: 147, 166, 192;   /* #93A6C0 */
+  --prim-blue:  134, 173, 238;   /* #86ADEE */
+  --prim-gold:  200, 170, 110;   /* #C8AA6E - unchanged */
+  --prim-teal:  46, 211, 224;    /* #2ED3E0 bright cyan */
+
+  /* Hextech component chrome follows the strong steel hairline + cyan bloom
+   * so hx-cards match the unified terminal chrome. */
+  --hextech-border: rgba(130,160,205,.34);
+  --hextech-glow:   rgba(46,211,224,.32);
+
+  /* Teal bloom -> bright cyan. */
+  --glow:          rgba(46,211,224,.32);
+
+  /* Tighter, more square shape language vs Hextech's rounded 16px. */
+  --radius:        8px;
+  --radius-sm:     6px;
+
+  /* Deeper shadow for the darker canvas. */
+  --shadow-card:      0 6px 26px -8px rgba(0,0,0,0.72), 0 2px 8px rgba(0,0,0,0.48);
+  --shadow-card-soft: 0 2px 10px -4px rgba(0,0,0,0.62);
+}
+
+/* ============================================================================
+ * JEWEL THEMES (coordinated multi-hue palettes, method
+ * docs/qa/THEME_MULTIHUE_METHOD_2026-07-22.md). Each is a COORDINATED palette
+ * (dominant base, structural metal, primary hue, scarce pop/complement) blended
+ * through the existing global gradient-strip (--hextech-fill), glow (--glow),
+ * and pop focus-ring (--focus-ring) deployment - NOT a flat single accent on
+ * grey. Authored OKLCH-first with a hex fallback line ABOVE each property (old
+ * browsers keep the hex; UAs with oklch() apply the override). Each hex is the
+ * sRGB-clamped equivalent of its oklch.
+ *
+ * RED-COLLISION GUARD (ember + bloodmoon): decorative red lives ONLY in the
+ * gradient fill / glow / large accent fills; the semantic --bad is a SOLID red
+ * at a DISTINCT lightness (>= 0.08 L above the red accent) and icon-paired in
+ * the UI, so status never blurs with the red accent. good / warn stay
+ * green / amber so the status triad reads. moonlit (aqua + gold) has no red
+ * accent, so its status triad is left at the base semantic values.
+ * ==========================================================================*/
+
+/* THEME "ember" - black / red / gold / white; warm analogous run (red -> orange
+ * -> gold), structural metal = gold, pop = crisp WHITE (focus ring + hero).
+ * Tension is VALUE (dark base vs bright pop), not hue clash. */
+:root[data-theme="ember"] {
+  /* Surfaces - warm near-black stack. */
+  --canvas:        #150a09;
+  --canvas:        oklch(0.16 0.020 25);
+  --surface:       #211514;
+  --surface:       oklch(0.21 0.020 25);
+  --surface-2:     #301f1d;
+  --surface-2:     oklch(0.26 0.028 25);
+  --surface-3:     #412927;
+  --surface-3:     oklch(0.31 0.036 25);
+  --surface-head:  #301f1d;
+  --surface-head:  oklch(0.26 0.028 25);
+  --surface-alt:   #412927;
+  --surface-alt:   oklch(0.31 0.036 25);
+
+  /* Ink - warm near-white; --faint computed >= 4.5:1 on --surface #211514
+   * (final #a28075 == 4.98:1). */
+  --text:          #f6ece5;
+  --text:          oklch(0.95 0.015 60);
+  --dim:           #bfa499;
+  --dim:           oklch(0.74 0.035 45);
+  --text-dim:      #bfa499;
+  --text-dim:      oklch(0.74 0.035 45);
+  --faint:         #a28075;   /* WCAG-AA 4.98:1 on --surface #211514 */
+  --faint:         oklch(0.63 0.045 40);
+  --text-faint:    #a28075;
+  --text-faint:    oklch(0.63 0.045 40);
+  --label:         #bfa499;
+  --label:         oklch(0.74 0.035 45);
+
+  /* Structural metal -> GOLD (frame / hero metal); hairline is gold low-alpha. */
+  --accent:        #e1b850;
+  --accent:        oklch(0.80 0.130 88);
+  --gold:          #e1b850;
+  --gold:          oklch(0.80 0.130 88);
+  --clock:         #e1b850;
+  --clock:         oklch(0.80 0.130 88);
+  --gold-soft:     rgba(225,184,80,.18);
+  --gold-soft:     oklch(0.80 0.130 88 / .18);
+  --border:        rgba(225,184,80,.24);
+  --border:        oklch(0.80 0.130 88 / .24);
+  --border-soft:   rgba(225,184,80,.14);
+  --border-soft:   oklch(0.80 0.130 88 / .14);
+
+  /* Primary accent - decorative deep red (structure / volume). */
+  --accent-2:      #d02e1e;
+  --accent-2:      oklch(0.56 0.200 30);
+
+  /* Scarce WHITE pop (<=3%): keyboard focus ring is 2px crisp white; white
+   * also carries the single hero exception. */
+  --focus-ring:    0 0 0 2px #f7f5ef;
+  --focus-ring:    0 0 0 2px oklch(0.97 0.008 90);
+
+  /* Warm analogous jewel sweep: red -> (lighter+chromatic) orange MID -> gold. */
+  --hextech-fill:  linear-gradient(90deg, #cc2827, #e87f25, #ebbd57);
+  --hextech-fill:  linear-gradient(90deg in oklch, oklch(0.55 0.20 27), oklch(0.70 0.16 55), oklch(0.82 0.13 85));
+
+  /* Ember-red bloom (glow) + gold hextech hairline. */
+  --glow:          rgba(217,74,60,.35);
+  --glow:          oklch(0.66 0.190 30 / .35);
+  --hextech-glow:  rgba(217,74,60,.35);
+  --hextech-glow:  oklch(0.66 0.190 30 / .35);
+  --hextech-border: rgba(225,184,80,.24);
+  --hextech-border: oklch(0.80 0.130 88 / .24);
+
+  /* Semantic status - good/warn stay green/amber; --bad is a SOLID red held a
+   * distinct 0.09 L ABOVE the 0.56 red accent (red-collision guard) so status
+   * red never blurs with the decorative accent red. --prim-* re-tinted to
+   * match so the derived signal layer follows. */
+  --good:          #59be6c;
+  --good:          oklch(0.72 0.150 148);
+  --good-soft:     rgba(89,190,108,.18);
+  --warn:          #e7b643;
+  --warn:          oklch(0.80 0.140 85);
+  --warn-soft:     rgba(231,182,67,.18);
+  --bad:           #e65a56;
+  --bad:           oklch(0.65 0.175 25);
+  --bad-soft:      rgba(230,90,86,.18);
+  --info:          #7CA8FF;
+  --prim-green: 89, 190, 108;
+  --prim-amber: 231, 182, 67;
+  --prim-red:   230, 90, 86;
+  --prim-gold:  225, 184, 80;
+
+  --radius:        14px;
+  --radius-sm:     9px;
+
+  --shadow-card:      0 6px 26px -8px rgba(0,0,0,0.72), 0 2px 8px rgba(0,0,0,0.46);
+  --shadow-card-soft: 0 2px 10px -4px rgba(0,0,0,0.60);
+}
+
+/* THEME "bloodmoon" - black / red / gold / light-red SHIFT; analogous
+ * mono-with-shift (deep red -> light red), structural metal = gold, pop =
+ * LIGHT-RED (focus ring + gradient END). Lowest-clash of the reds. Distinct
+ * from ember: ember pop = white, bloodmoon pop = light-red. */
+:root[data-theme="bloodmoon"] {
+  /* Surfaces - deep blood-black stack. */
+  --canvas:        #130807;
+  --canvas:        oklch(0.15 0.020 22);
+  --surface:       #1e1212;
+  --surface:       oklch(0.20 0.020 22);
+  --surface-2:     #2e1c1c;
+  --surface-2:     oklch(0.25 0.028 22);
+  --surface-3:     #3e2726;
+  --surface-3:     oklch(0.30 0.036 22);
+  --surface-head:  #2e1c1c;
+  --surface-head:  oklch(0.25 0.028 22);
+  --surface-alt:   #3e2726;
+  --surface-alt:   oklch(0.30 0.036 22);
+
+  /* Ink - warm near-white; --faint computed >= 4.5:1 on --surface #1e1212
+   * (final #a37f79 == 5.10:1). */
+  --text:          #f8ebe9;
+  --text:          oklch(0.95 0.015 30);
+  --dim:           #c3a29c;
+  --dim:           oklch(0.74 0.040 30);
+  --text-dim:      #c3a29c;
+  --text-dim:      oklch(0.74 0.040 30);
+  --faint:         #a37f79;   /* WCAG-AA 5.10:1 on --surface #1e1212 */
+  --faint:         oklch(0.63 0.045 30);
+  --text-faint:    #a37f79;
+  --text-faint:    oklch(0.63 0.045 30);
+  --label:         #c3a29c;
+  --label:         oklch(0.74 0.040 30);
+
+  /* Structural metal -> GOLD; hairline is gold low-alpha. */
+  --accent:        #e4b750;
+  --accent:        oklch(0.80 0.130 85);
+  --gold:          #e4b750;
+  --gold:          oklch(0.80 0.130 85);
+  --clock:         #e4b750;
+  --clock:         oklch(0.80 0.130 85);
+  --gold-soft:     rgba(228,183,80,.18);
+  --gold-soft:     oklch(0.80 0.130 85 / .18);
+  --border:        rgba(228,183,80,.24);
+  --border:        oklch(0.80 0.130 85 / .24);
+  --border-soft:   rgba(228,183,80,.14);
+  --border-soft:   oklch(0.80 0.130 85 / .14);
+
+  /* Primary accent - decorative deep red (structure / volume). */
+  --accent-2:      #cc2827;
+  --accent-2:      oklch(0.55 0.200 27);
+
+  /* Scarce LIGHT-RED pop (<=3%): keyboard focus ring is 2px light-red; light-
+   * red also anchors the gradient END + glow below. */
+  --focus-ring:    0 0 0 2px #f97676;
+  --focus-ring:    0 0 0 2px oklch(0.72 0.160 22);
+
+  /* Mono-with-shift jewel sweep: deep red -> (lighter+chromatic) red MID ->
+   * light-red END. */
+  --hextech-fill:  linear-gradient(90deg, #c9222b, #f3625f, #f97676);
+  --hextech-fill:  linear-gradient(90deg in oklch, oklch(0.54 0.20 25), oklch(0.68 0.18 24), oklch(0.72 0.16 22));
+
+  /* Light-red bloom (glow) + gold hextech hairline. */
+  --glow:          rgba(243,98,95,.38);
+  --glow:          oklch(0.68 0.180 24 / .38);
+  --hextech-glow:  rgba(243,98,95,.38);
+  --hextech-glow:  oklch(0.68 0.180 24 / .38);
+  --hextech-border: rgba(228,183,80,.24);
+  --hextech-border: oklch(0.80 0.130 85 / .24);
+
+  /* Semantic status - good/warn stay green/amber; --bad is a SOLID red held a
+   * distinct 0.09 L ABOVE the 0.55 red accent (red-collision guard). The pop
+   * light-red (0.72) only appears at focus + gradient END, never as a fill,
+   * so it stays clear of the 0.64 status --bad. */
+  --good:          #59be6c;
+  --good:          oklch(0.72 0.150 148);
+  --good-soft:     rgba(89,190,108,.18);
+  --warn:          #e7b643;
+  --warn:          oklch(0.80 0.140 85);
+  --warn-soft:     rgba(231,182,67,.18);
+  --bad:           #e3584c;
+  --bad:           oklch(0.64 0.175 28);
+  --bad-soft:      rgba(227,88,76,.18);
+  --info:          #7CA8FF;
+  --prim-green: 89, 190, 108;
+  --prim-amber: 231, 182, 67;
+  --prim-red:   227, 88, 76;
+  --prim-gold:  228, 183, 80;
+
+  --radius:        14px;
+  --radius-sm:     9px;
+
+  --shadow-card:      0 6px 26px -8px rgba(0,0,0,0.72), 0 2px 8px rgba(0,0,0,0.46);
+  --shadow-card-soft: 0 2px 10px -4px rgba(0,0,0,0.60);
+}
+
+/* THEME "moonlit" - blue-black / gold / ethereal aqua / white; near-
+ * complementary aqua-vs-gold (the native LoL Hextech language). Structural
+ * metal = gold, primary = aqua, pop = crisp WHITE (focus ring). Aqua + gold do
+ * NOT collide with the semantic red/green/amber, so status is left at base. */
+:root[data-theme="moonlit"] {
+  /* Surfaces - blue-black stack. */
+  --canvas:        #040e1a;
+  --canvas:        oklch(0.16 0.030 250);
+  --surface:       #0d1926;
+  --surface:       oklch(0.21 0.030 250);
+  --surface-2:     #152536;
+  --surface-2:     oklch(0.26 0.038 250);
+  --surface-3:     #1e3247;
+  --surface-3:     oklch(0.31 0.046 251);
+  --surface-head:  #152536;
+  --surface-head:  oklch(0.26 0.038 250);
+  --surface-alt:   #1e3247;
+  --surface-alt:   oklch(0.31 0.046 251);
+
+  /* Ink - cool near-white; --faint computed >= 4.5:1 on --surface #0d1926
+   * (final #748d9f == 5.11:1). */
+  --text:          #e5f0f7;
+  --text:          oklch(0.95 0.015 235);
+  --dim:           #95afc2;
+  --dim:           oklch(0.74 0.040 240);
+  --text-dim:      #95afc2;
+  --text-dim:      oklch(0.74 0.040 240);
+  --faint:         #748d9f;   /* WCAG-AA 5.11:1 on --surface #0d1926 */
+  --faint:         oklch(0.63 0.040 240);
+  --text-faint:    #748d9f;
+  --text-faint:    oklch(0.63 0.040 240);
+  --label:         #95afc2;
+  --label:         oklch(0.74 0.040 240);
+
+  /* Structural metal -> GOLD (frame / hero metal / clock). */
+  --accent:        #e7bf57;
+  --accent:        oklch(0.82 0.130 88);
+  --gold:          #e7bf57;
+  --gold:          oklch(0.82 0.130 88);
+  --clock:         #e7bf57;
+  --clock:         oklch(0.82 0.130 88);
+  --gold-soft:     rgba(231,191,87,.18);
+  --gold-soft:     oklch(0.82 0.130 88 / .18);
+
+  /* Aqua hairline (chrome identity, near-complement to the gold metal). */
+  --border:        rgba(94,218,218,.26);
+  --border:        oklch(0.82 0.110 195 / .26);
+  --border-soft:   rgba(94,218,218,.15);
+  --border-soft:   oklch(0.82 0.110 195 / .15);
+
+  /* Primary accent - ethereal aqua. */
+  --accent-2:      #5edada;
+  --accent-2:      oklch(0.82 0.110 195);
+
+  /* Scarce WHITE pop (<=3%): keyboard focus ring is 2px crisp white. */
+  --focus-ring:    0 0 0 2px #eff6fb;
+  --focus-ring:    0 0 0 2px oklch(0.97 0.010 240);
+
+  /* Near-complementary jewel sweep: deep blue -> (lighter+chromatic) cyan MID
+   * -> aqua END. Aqua also drives the teal-derived signal sweep. */
+  --hextech-fill:  linear-gradient(90deg, #215da5, #00a6c7, #5edada);
+  --hextech-fill:  linear-gradient(90deg in oklch, oklch(0.48 0.13 255), oklch(0.66 0.14 215), oklch(0.82 0.11 195));
+  --prim-teal:  94, 218, 218;   /* #5edada aqua */
+
+  /* Aqua bloom (glow) + aqua hextech hairline. */
+  --glow:          rgba(94,218,218,.36);
+  --glow:          oklch(0.82 0.110 195 / .36);
+  --hextech-glow:  rgba(94,218,218,.36);
+  --hextech-glow:  oklch(0.82 0.110 195 / .36);
+  --hextech-border: rgba(94,218,218,.26);
+  --hextech-border: oklch(0.82 0.110 195 / .26);
+
+  /* Status left at base semantic green/amber/red; aqua + gold do not collide.
+   * info shifts to an aqua-blue to sit inside the theme. */
+  --info:          #49bfd9;
+  --info:          oklch(0.75 0.110 215);
+
+  --radius:        14px;
+  --radius-sm:     9px;
+
+  --shadow-card:      0 6px 26px -8px rgba(0,0,0,0.70), 0 2px 8px rgba(0,0,0,0.45);
+  --shadow-card-soft: 0 2px 10px -4px rgba(0,0,0,0.58);
+}
+
+/* THEME "arcane" - coordinated multi-hue upgrade of flat "mystic": an
+ * analogous purple -> magenta run with a scarce cyan split-complement POP,
+ * structural metal shifted to LAVENDER-SILVER (not gold). Authored OKLCH-first
+ * with a hex fallback line ABOVE each property (old browsers keep the hex; UAs
+ * that support oklch() apply the override). Each hex is the sRGB-clamped
+ * equivalent of its oklch. STATUS (good/warn/bad) is NOT overridden - it stays
+ * the base semantic green/amber/red (arcane's accents do not collide).
+ * The purple->magenta->cyan sweep + magenta bloom deploy through --hextech-fill
+ * / --glow / --hextech-glow consumers (hextech.css .hx-card/.panel gradient
+ * top-rule + home week-bar + coach-pick glow), and the scarce cyan pop rides
+ * --focus-ring + the gradient END. */
+:root[data-theme="arcane"] {
+  /* Surfaces - twilight violet stack. */
+  --canvas:        #17101f;
+  --canvas:        oklch(0.16 0.040 300);
+  --surface:       #231730;
+  --surface:       oklch(0.22 0.050 300);
+  --surface-2:     #2f1f42;
+  --surface-2:     oklch(0.27 0.060 302);
+  --surface-3:     #3b2853;
+  --surface-3:     oklch(0.32 0.070 305);
+  --surface-head:  #2f1f42;
+  --surface-head:  oklch(0.27 0.060 302);
+  --surface-alt:   #3b2853;
+  --surface-alt:   oklch(0.32 0.070 305);
+
+  /* Ink - bright cool near-white; --faint computed >= 4.5:1 on --surface
+   * #231730 (final #9C8ABA == 5.47:1). */
+  --text:          #F3ECFF;
+  --text:          oklch(0.94 0.020 305);
+  --dim:           #B7A6D0;
+  --dim:           oklch(0.74 0.045 305);
+  --text-dim:      #B7A6D0;
+  --text-dim:      oklch(0.74 0.045 305);
+  --faint:         #9C8ABA;   /* WCAG-AA 5.47:1 on --surface #231730 */
+  --faint:         oklch(0.63 0.055 305 / 1);
+  --text-faint:    #9C8ABA;
+  --text-faint:    oklch(0.63 0.055 305 / 1);
+  --label:         #B7A6D0;
+  --label:         oklch(0.74 0.045 305);
+
+  /* Structural metal -> LAVENDER-SILVER (replaces gold as the frame / hero
+   * metal). The hairline is this metal at low alpha. */
+  --accent:        #ad9dbd;
+  --accent:        oklch(0.72 0.045 305);
+  --gold:          #ad9dbd;
+  --gold:          oklch(0.72 0.045 305);
+  --clock:         #ad9dbd;
+  --clock:         oklch(0.72 0.045 305);
+  --gold-soft:     rgba(173,157,189,.18);
+  --gold-soft:     oklch(0.72 0.045 305 / .18);
+  --border:        rgba(173,157,189,.30);
+  --border:        oklch(0.72 0.045 305 / .30);
+  --border-soft:   rgba(173,157,189,.18);
+  --border-soft:   oklch(0.72 0.045 305 / .18);
+
+  /* Primary accent - purple. */
+  --accent-2:      #9646d9;
+  --accent-2:      oklch(0.58 0.190 305);
+
+  /* Scarce cyan POP (<=3%): the keyboard focus ring is 2px cyan; cyan also
+   * anchors the gradient END + glow rim below. */
+  --focus-ring:    0 0 0 2px #35d9d2;
+  --focus-ring:    0 0 0 2px oklch(0.80 0.130 195);
+
+  /* Multi-hue jewel sweep: purple -> (luminous) magenta MID -> cyan END. The
+   * lighter, higher-chroma magenta middle is what keeps the run luminous. */
+  --hextech-fill:  linear-gradient(90deg, #9646d9, #e5449a, #35d9d2);
+  --hextech-fill:  linear-gradient(90deg in oklch, oklch(0.55 0.19 305), oklch(0.66 0.23 335), oklch(0.80 0.13 195));
+
+  /* Magenta bloom (glow) + violet-metal hextech hairline. */
+  --glow:          rgba(229,68,154,.40);
+  --glow:          oklch(0.66 0.23 335 / .40);
+  --hextech-glow:  rgba(229,68,154,.40);
+  --hextech-glow:  oklch(0.66 0.23 335 / .40);
+  --hextech-border: rgba(173,157,189,.30);
+  --hextech-border: oklch(0.72 0.045 305 / .30);
+
+  --radius:        16px;
+  --radius-sm:     10px;
+
+  --shadow-card:      0 6px 26px -8px rgba(0,0,0,0.72), 0 2px 8px rgba(0,0,0,0.46);
+  --shadow-card-soft: 0 2px 10px -4px rgba(0,0,0,0.60);
+}
+
+/* ---- Arcane focal DIAL (scoped to data-theme="arcane") --------------------
+ * Two nudges that sharpen the magenta<->cyan tension at the page's focal
+ * points without touching any other theme. Both stay inside the palette's
+ * scarce-pop budget (a 2px underline + a 1px-stronger hero strip).
+ *
+ * (1) ACTIVE NAV/MODE TAB gets the scarce CYAN pop as a 2px underline - the eye
+ *     is pulled to the one live tab by the reward color (cyan), while the tab
+ *     body keeps its purple accent fill. The mode-tab strip already draws a 2px
+ *     underline in the structural metal (home.css .home-mode-tab.active); here
+ *     it is re-tinted to the cyan pop. This is the only place cyan appears as a
+ *     solid stroke, so the pop stays scarce. */
+:root[data-theme="arcane"] .home-mode-tab.active,
+:root[data-theme="arcane"] .view-menu-item.active,
+:root[data-theme="arcane"] .view-tab.active,
+:root[data-theme="arcane"] .view-section-btn.active {
+  box-shadow: inset 0 -2px 0 0 #35d9d2;
+  box-shadow: inset 0 -2px 0 0 oklch(0.80 0.130 195);
+}
+
+/* (2) TONIGHT'S PICK (hero) reads a touch stronger than standard cards: its
+ *     purple->magenta->cyan top-strip is 3px (standard cards are 2px) and the
+ *     magenta bloom is lifted, so the single focal card carries the full
+ *     multi-hue run more emphatically. Specificity (attr + 2 classes) beats
+ *     both the global 2px strip rule and home.css's base card rule. */
+:root[data-theme="arcane"] .home-coach-pick.hx-card {
+  background-size: 100% 3px;
+  box-shadow: 0 0 18px -3px var(--hextech-glow);
+}
