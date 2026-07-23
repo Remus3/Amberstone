@@ -269,3 +269,16 @@ an old-palette skin predating the RC2 Hextech redesign).
 |---|---|---|---|---|---|
 | 40 | #0AC8B9 | /* #0AC8B9 Hextech teal */ doc comment on --prim-teal definition line | JUSTIFIED | - | Hex lives inside the token-definition doc comment itself (rule 3); the palette must live somewhere. |
 
+
+## web/css/themes.css (36 hits: 0 lock / 0 reskin / 36 justified)
+
+Added 2026-07-23 (headless). themes.css is the 6-theme OKLCH multi-hue swap
+SOURCE layer (commit a2848e4c) - the canonical per-theme definition file, the
+same role tokens.css plays for the base palette. Its 36 dark hex literals ARE
+the theme definitions themselves (each theme's canvas / surface-* / accent
+ramp: Terminal #03050A/#0A0E15/#10161F/#171F2B, warm-dark #150a09/#211514,
+etc). The palette must live somewhere (rule 3, same justification as
+tokens.css:40); consumers reference the resulting --canvas / --surface-* /
+--prim-* tokens, never these raw values. All 36 are JUSTIFIED as source-layer
+definitions. The ratchet pins themes.css at 36 so any 37th stray literal still
+fails CI.
