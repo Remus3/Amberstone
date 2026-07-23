@@ -5,6 +5,20 @@
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
   <title>Riot Commander - Phase 3</title>
   <link rel="stylesheet" href="/css/dashboard.css?v=2026051125" />
+  <!-- FOUC guard: stamp the theme BEFORE first paint. Plain script on purpose
+       (type=module would defer past paint). MUST stay in sync with the THEMES
+       whitelist + precedence in web/js/lib/theme.js; main.js re-applies the
+       same value later, which is a no-op. -->
+  <script>
+    (function () {
+      var T = ["hextech","terminal","ember","bloodmoon","moonlit","arcane"];
+      var m = String(location.search || "").match(/[?&]theme=([A-Za-z]+)/);
+      var t = (m && T.indexOf(m[1]) >= 0) ? m[1] : null;
+      if (!t) { try { var s = localStorage.getItem("rc-theme"); if (T.indexOf(s) >= 0) t = s; } catch (e) {} }
+      if (!t) t = "terminal";
+      if (t !== "hextech") document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
   <!-- HZ-D1 overlay shell (docs/ELECTRON_OVERLAY.md sec 6+7): inert
        until main.js stamps body[data-shell="overlay"] on ?overlay=1.
        The ?v= query is rewritten at serve time by inject_asset_hash
@@ -1582,6 +1596,17 @@
         </div>
         <div class="settings-card">
           <div class="settings-card-head">DISPLAY</div>
+          <label class="settings-row">
+            <span>Theme</span>
+            <select id="set-theme" data-tt="Dashboard color palette. Applies live and persists across sessions (rc-theme). A ?theme= URL param overrides the saved choice for that session only and does not change it.">
+              <option value="hextech">Hextech</option>
+              <option value="terminal">Terminal</option>
+              <option value="ember">Ember</option>
+              <option value="bloodmoon">Bloodmoon</option>
+              <option value="moonlit">Moonlit</option>
+              <option value="arcane">Arcane</option>
+            </select>
+          </label>
           <label class="settings-row" data-tt="Render deterministic mock data on panels that have no live game data. Useful during UI work; default OFF for normal operation. Each panel decides per-render whether to honor body[data-ui-mock] - empty live data + mock toggle ON renders the panel's mock fixture instead of the empty state.">
             <input type="checkbox" id="set-ui-mock" />
             <span>Dev UI mock data (panels render fixtures when no live game)</span>
