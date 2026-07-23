@@ -35,7 +35,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 0 0 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border);
 }
 
 .ovds-knob {
@@ -47,7 +47,7 @@
 
 .ovds-knob > span {
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.60);
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -58,9 +58,9 @@
   min-height: var(--hit-min, 42px);
   padding: 4px 8px;
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm, 10px);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
   font-size: var(--fs-sm, 18px);
   font-variant-numeric: tabular-nums;
 }
@@ -71,7 +71,7 @@
 }
 
 .ovds-knob > input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--dim);
 }
 
 /* Re-ranked rows: item | +delta dps | gold. This list IS the "build
@@ -88,7 +88,7 @@
   align-items: center;
   gap: 8px;
   padding: 2px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
 }
 
@@ -105,7 +105,7 @@
   line-height: 1.2;
   font-size: var(--fs-xs, 16px);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.90);
+  color: var(--text);
 }
 
 .ovds-delta {
@@ -118,12 +118,12 @@
 .ovds-gold {
   flex: 0 0 auto;
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--dim);
 }
 
 .ovds-empty {
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--faint);
   padding: 4px 0;
 }
 
@@ -136,12 +136,12 @@
   flex-direction: column;
   gap: 6px;
   padding: 0 0 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border);
 }
 
 .ovset-cap {
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--faint);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -155,7 +155,7 @@
 
 .ovset-row > span {
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.60);
+  color: var(--dim);
 }
 
 .ovset-toggle {
@@ -180,9 +180,9 @@
   min-height: var(--hit-min, 42px);
   padding: 4px 8px;
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm, 10px);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
   font-size: var(--fs-sm, 18px);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -209,9 +209,9 @@
   min-height: var(--hit-min, 42px);
   padding: 4px 8px;
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm, 10px);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
   font-size: var(--fs-sm, 18px);
   cursor: pointer;
 }
@@ -256,9 +256,9 @@
   min-height: var(--hit-min, 42px);
   padding: 4px 6px;
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm, 10px);
-  color: rgba(255, 255, 255, 0.70);
+  color: var(--dim);
   font-size: var(--fs-xs, 16px);
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -266,7 +266,7 @@
 }
 
 .ovset-seg-btn:hover {
-  border-color: rgba(255, 255, 255, 0.30);
+  border-color: var(--border);
 }
 
 .ovset-seg-btn:focus-visible {
@@ -285,16 +285,16 @@
   min-height: var(--hit-min, 42px);
   padding: 4px 8px;
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm, 10px);
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text);
   font-size: var(--fs-xs, 16px);
   font-weight: 700;
   cursor: pointer;
 }
 
 .ovset-act:hover {
-  border-color: rgba(255, 255, 255, 0.30);
+  border-color: var(--border);
 }
 
 .ovset-act:focus-visible {

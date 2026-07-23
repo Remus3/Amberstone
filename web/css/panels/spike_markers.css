@@ -27,10 +27,11 @@
   gap: var(--space-1);
   margin-bottom: var(--space-2);
   padding: var(--space-2);
-  background: rgba(20, 22, 30, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--signal-good, #4ad295);
-  border-radius: var(--panel-radius-sm);
+  border-radius: var(--radius);
 }
 
 .spike-markers[hidden] {
@@ -49,12 +50,12 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text);
 }
 
 .spm-head-sub {
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--dim);
 }
 
 /* One family row: a left tag (LVL / ITEMS) + the threshold track. */
@@ -70,7 +71,7 @@
   font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--dim);
   text-align: right;
 }
 
@@ -93,8 +94,8 @@
   gap: 1px;  /* intra-cell text hairline (sub-grid, intentional) */
   padding: var(--space-1);
   border-radius: var(--panel-radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   font-variant-numeric: tabular-nums;
   min-width: 0;
 }
@@ -116,7 +117,7 @@
 .spm-mark {
   font-size: var(--fs-sm);
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
 }
 
 .spm-cell[data-spm-state="crossed"] .spm-mark {
@@ -129,7 +130,7 @@
 
 .spm-lbl {
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.60);
+  color: var(--dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -138,7 +139,7 @@
 
 .spm-dps {
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--faint);
 }
 
 /* The "next spike" caption under the tracks. */
