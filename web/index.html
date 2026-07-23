@@ -15,7 +15,7 @@
       var m = String(location.search || "").match(/[?&]theme=([A-Za-z]+)/);
       var t = (m && T.indexOf(m[1]) >= 0) ? m[1] : null;
       if (!t) { try { var s = localStorage.getItem("rc-theme"); if (T.indexOf(s) >= 0) t = s; } catch (e) {} }
-      if (!t) t = "terminal";
+      if (!t) t = "arcane";
       if (t !== "hextech") document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
