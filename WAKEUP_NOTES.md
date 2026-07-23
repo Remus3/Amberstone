@@ -4,6 +4,36 @@
 
 ---
 
+# 2026-07-23c - Haiku-to-ZERO: five-layer deterministic draft score aggregator + route
+
+Commit pending push. ENGINE-IMPACT NONE (no DS bump, no :8893 bounce, no Share touch). LEDGER 1007.
+
+- **NEW `core/draft_score.py`** (Haiku-to-ZERO sibling of session_hygiene / playstyle_labels): closes
+  the BACKLOG "Five-layer deterministic draft score" NOW item. ZERO API/LLM. Fuses lane-matchup 30pct /
+  pairwise-synergy 20pct / AD-AP-tank damage-balance 15pct / early-late scaling 10pct / base-WR 25pct
+  into ONE bounded score + HIGH/MED/LOW confidence.
+- **Data sources (all owned):** matchup / synergy / base-WR from `core.draft_elo_db` (the `participants`
+  table = full 10-player Match-V5 rows, DISTINCT from the tracked-only `matches` table playstyle/hygiene
+  read; Laplace-smoothed via core.smoothed_rates). Damage-balance from an injectable DS kit-mix resolver
+  (`core.damage_mix` with EMPTY items = kit-only physical/magical lean). Synergy nudged by item-277 101qq.
+- **HONEST 42-58 band** (no-fake-spread): trust-weighted (weight x shrink(n)) mean of layer WR-deviations,
+  50 + delta*100, hard-clamped [42,58]. A layer with no evidence is marked contributed=False and drops
+  out of the blend - NOT dragged toward 50. Scaling layer ships INERT by design (no cheap per-champ
+  power-timing primitive; declared with reserved 10pct weight, activates when a scaling_resolver is fed).
+  Pure `fuse_layers()` split out DB-free for the math proof. Never-raises.
+- **NEW route `/api/draft-score`** (`routes_draft_score.py`): ?ally + ?enemy + ?queue, 5min LRU cache,
+  structured 400/500, wires the default DS + 101qq + name resolvers. Into `_dispatch.py` GET chain (110 routes).
+- Verified: 23 aggregator/route tests + 1435 dispatch/route/draft suite green, ruff clean, RC restart
+  alive+reload_ok (pid 9584), live HTTPS probe served score 54.4/MED (4 layers contributing from real
+  corpus + DS kit-mix), 400 on bad-length, matchup inert with no enemy comp.
+
+NEXT: Haiku-to-ZERO consumer/UI wiring for the three new routes (session-hygiene / playstyle-labels /
+draft-score) is operator-present-preferred (do NOT build headless). Premade detection stays BLOCKED
+(tracked-only matches table). Do NOT touch RM-99b Heartsteel cadence. A DS spike-derived scaling_resolver
+would activate the draft-score scaling layer (future, when the operator wants it).
+
+---
+
 # 2026-07-23b - Haiku-to-ZERO: playstyle-labels aggregator + session-hygiene/playstyle routes
 
 Commit `06cd7bf3` (pushed, CI pending). ENGINE-IMPACT NONE (no DS bump, no :8893 bounce). 5 files, 849 insertions.
