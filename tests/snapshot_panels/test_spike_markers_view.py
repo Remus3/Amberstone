@@ -110,19 +110,34 @@ def test_spike_markers_strip_renders(mock_server, pw_browser):
         )
         assert "NEXT SPIKE" in next_txt, f"spm-next missing caption: {next_txt!r}"
 
-        # Grid-compliance teeth (RED before the R28 sweep, GREEN after):
-        #   card + cell radius -> --panel-radius-sm (10px), was raw 4px;
-        #   head gap -> --space-2 (8px), was off-grid 6px.
+        # Grid-compliance teeth (RED before the R28 sweep, GREEN after): both radii
+        # must CONSUME a grid token, not a raw px. The card root uses --radius (the
+        # unified panel-chrome radius since the 2026-07-22 chrome sweep), the cell uses
+        # --panel-radius-sm. Assert each equals its own token's resolved value so the
+        # test stays correct across theme swaps (Terminal default = 8px, Hextech = 16px)
+        # instead of pinning one theme's literal.
         card_radius = page.eval_on_selector(
             "#am-spike-markers",
             "el => getComputedStyle(el).borderTopLeftRadius",
         )
-        assert card_radius == "10px", f"card radius != 10px (--panel-radius-sm): {card_radius}"
+        card_token = page.eval_on_selector(
+            "#am-spike-markers",
+            "el => getComputedStyle(el).getPropertyValue('--radius').trim()",
+        )
+        assert card_radius == card_token, (
+            f"card radius should consume --radius ({card_token}): {card_radius}"
+        )
         cell_radius = page.eval_on_selector(
             "#am-spike-markers .spm-cell",
             "el => getComputedStyle(el).borderTopLeftRadius",
         )
-        assert cell_radius == "10px", f"cell radius != 10px (--panel-radius-sm): {cell_radius}"
+        cell_token = page.eval_on_selector(
+            "#am-spike-markers .spm-cell",
+            "el => getComputedStyle(el).getPropertyValue('--panel-radius-sm').trim()",
+        )
+        assert cell_radius == cell_token, (
+            f"cell radius should consume --panel-radius-sm ({cell_token}): {cell_radius}"
+        )
         head_gap = page.eval_on_selector(
             "#am-spike-markers .spm-head",
             "el => getComputedStyle(el).columnGap",
