@@ -133,6 +133,65 @@ def _default_name_resolver(champ_id):
         return None
 
 
+# Power-spike threshold: the fraction of a champ's own end-game potential at
+# which it is judged "online". Mirrors routes_spike_curve._PEAK_THRESHOLD so
+# the draft-score scaling timing and the spike-curve peak marker key off the
+# SAME crossing (kept as a local constant so the pure helper below imports
+# without pulling in the DS engine).
+_SCALING_PEAK_THRESHOLD = 0.70
+
+
+def _peak_timing(curve, threshold=_SCALING_PEAK_THRESHOLD):
+    """Per-champ power-timing (0=early .. 1=late) as a fraction of the curve's
+    timeline: the FIRST index crossing ``threshold`` of the curve's own max,
+    divided by the last index. This is the spike-curve "comes online" minute,
+    normalized - a carry that crosses 70% at minute ~25 reads ~0.6; a tank
+    that only crosses at ~38 reads ~0.95.
+
+    Returns None on a degenerate curve (empty / all-zero) so the scaling layer
+    stays inert rather than crediting a champ with no computable spike.
+    """
+    if not curve:
+        return None
+    vals = [float(v) for v in curve]
+    mx = max(vals)
+    if mx <= 0.0:
+        return None
+    thr = mx * threshold
+    n = len(vals)
+    for i, v in enumerate(vals):
+        if v >= thr:
+            return (i / (n - 1)) if n > 1 else 0.0
+    return 1.0
+
+
+class _SpikeScalingResolver:
+    """DS spike-derived per-champ power-timing resolver (0=early .. 1=late)
+    for the draft-score scaling layer. Reuses routes_spike_curve's cached
+    per-champ power curve (fraction of end-game potential over minutes 0..40)
+    and reports the normalized 70%-crossing minute. Fail-soft to None per
+    champ so a missing slug / snapshot leaves that champ out of the coherence
+    blend rather than raising."""
+
+    def __call__(self, champ_id):
+        try:
+            from dashboard.routes_spike_curve import (
+                _build_champ_curve, _load_id_to_slug, _resolve_archetype,
+            )
+            slug = _load_id_to_slug().get(int(champ_id))
+            if not slug:
+                return None
+            archetype = _resolve_archetype(slug)
+            curve = _build_champ_curve(slug, archetype, "SR")
+            return _peak_timing(curve)
+        except Exception:  # noqa: BLE001 - scaling timing is best-effort
+            return None
+
+
+def _default_scaling_resolver():
+    return _SpikeScalingResolver()
+
+
 def _serve_draft_score(h) -> None:
     t0 = time.time()
     try:
@@ -184,6 +243,7 @@ def _serve_draft_score(h) -> None:
             damage_class_resolver=_default_damage_resolver(),
             duo_synergy_lookup=_default_duo_lookup,
             champ_name_resolver=_default_name_resolver,
+            scaling_resolver=_default_scaling_resolver(),
         )
         payload["cached"] = False
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
