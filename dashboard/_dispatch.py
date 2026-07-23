@@ -92,6 +92,7 @@ def _gather_get() -> list:
                                routes_player_profile,
                                routes_player_snapshot,
                                routes_duration_winrate,
+                               routes_patch_impact,
                                routes_snowball_elasticity,
                                routes_champ_benchmarks,
                                routes_bench_role_bracket,
@@ -156,6 +157,7 @@ def _gather_get() -> list:
                       + list(routes_player_profile.GET_ROUTES)
                       + list(routes_player_snapshot.GET_ROUTES)
                       + list(routes_duration_winrate.GET_ROUTES)
+                      + list(routes_patch_impact.GET_ROUTES)
                       + list(routes_snowball_elasticity.GET_ROUTES)
                       + list(routes_champ_benchmarks.GET_ROUTES)
                       + list(routes_bench_role_bracket.GET_ROUTES)
