@@ -1166,6 +1166,16 @@
         <span class="view-section-sub" id="session-window">-</span>
       </div>
       <div class="view-section-body" id="session-body">
+        <!-- Haiku-to-ZERO 2026-07-23: "Should I Queue" readiness card over
+             the operator's OWN rewind corpus (core.session_hygiene). Bounded
+             0-100 readiness + HIGH/MED/LOW confidence + the contributing
+             factors (session position / rust / hour / weekday) as signed win%
+             nudges + a win-rate-by-session-position tilt strip. "-" sentinel
+             on inert factors. Read-only, no Riot/Claude dependency. Renderer:
+             renderSessionHygiene (web/js/panels/session_hygiene.js); backend
+             dashboard/routes_session_hygiene.py. Self-shows on render. -->
+        <div class="session-card session-card-wide" id="session-hygiene-card"
+             hidden></div>
         <!-- R30 page-4 design review: session tilt/fatigue trend - the
              view's stated job (gemini: "track daily tilt, fatigue, and
              cumulative performance limits"). A chronological grade strip
@@ -1211,6 +1221,17 @@
             <div class="session-card-head">MATCHES</div>
             <ul class="session-match-list" id="session-matches"><li class="home-empty">-</li></ul>
           </div>
+          <!-- Haiku-to-ZERO 2026-07-23: per-champion playstyle fingerprint
+               over the operator's OWN rewind corpus (core.playstyle_labels).
+               Self-relative verdict labels (dies more/less than your norm,
+               kill-focused, team-involved, consistent / coinflip) per champ,
+               vs YOUR cross-champion baseline - an observation, not advice.
+               Only labeled champs surface; "-" until the sample clears.
+               Renderer: renderPlaystyleLabels
+               (web/js/panels/playstyle_labels.js); backend
+               dashboard/routes_playstyle_labels.py. Self-shows on render. -->
+          <div class="session-card session-card-wide" id="playstyle-labels-card"
+               hidden></div>
         </div>
       </div>
     </section>
