@@ -44,6 +44,60 @@ from dataclasses import dataclass
 # seams' assumed proc counts.
 _ASSUMED_REFLECT_BURST_WINDOW_S: float = 3.0
 
+# RANGED-EXPOSURE amortization (G2-12 live calibration, 2026-07-20).
+#
+# WHY: ``reflect_cadence_s`` (1.0s) and ``_ASSUMED_REFLECT_BURST_WINDOW_S``
+# (3.0s) together assert that the CARRIER is taking one incoming basic attack
+# every second for the whole fight. That is the MELEE-tank case the Thorns /
+# Defensive Ball Curl mechanic is built around (Rammus is attackrange 125; the
+# thing auto-attacking him is standing on top of him), and it stays credited at
+# full strength here.
+#
+# It is NOT the RANGED case. A 650-range carry holding Thornmail spends most of
+# a fight outside melee reach and is auto-attacked only in the windows where an
+# enemy ADC / dive actually reaches her - so a flat 1-incoming-basic-per-second
+# assumption over-credits her reflect stream. MEASURED (Caitlyn L14, real live
+# build ['2501','3032','3031','3075','6695'] vs armor 60 / MR 40 / 2200 HP):
+# seam OFF weighted_dps 219.145, seam ON 238.788 -> the reflect was crediting
+# +8.96% of her TOTAL damage output. Operator ruling after seeing it live: too
+# high; Thornmail did not contribute anywhere near a tenth of his damage.
+#
+# WHAT: the exposure factor scales the CREDIT, not the mechanic - melee 1.0
+# (byte-identical to the pre-2026-07-20 behavior for every melee carrier,
+# including the only registered champion entry, Rammus), ranged
+# ``_REFLECT_RANGED_EXPOSURE``. Applied identically to the champion stream and
+# the item Thorns stream, in BOTH consumers (``dps.compute_dps`` amortized DPS
+# and ``burst.compute_burst_damage`` window damage), so the two never disagree.
+#
+# VALUE: 0.35 is an operator-tunable midpoint in the same class as
+# ``_item_general_dr._GENERAL_DR_UPTIME`` (0.4),
+# ``ehp._ASSUMED_INCOMING_AA_SHARE`` (0.5) and
+# ``dps._ASSUMED_CASTER_MISSING_HP`` (0.35 = half of the 0.70 cap). It is a
+# JUDGEMENT call, not a measured incoming-attack rate - DS has no live
+# incoming-attack telemetry. At 0.35 the measured Caitlyn case drops from
+# +8.96% to +3.14% of total DPS. Change this ONE literal to retune; the seam is
+# still default-OFF (``assume_passive_reflect=False``), so the byte-identical
+# baseline is untouched regardless of this value.
+_REFLECT_RANGED_EXPOSURE: float = 0.35
+
+
+def reflect_exposure_factor(is_melee: bool) -> float:
+    """Credit multiplier for the reflect stream by wielder attack range.
+
+    ``1.0`` for a melee wielder (the mechanic's intended user - unchanged),
+    ``_REFLECT_RANGED_EXPOSURE`` for a ranged wielder, whose fight-long
+    exposure to incoming basic attacks is a fraction of the melee case.
+
+    The caller supplies the predicate it already owns: ``dps.compute_dps``
+    passes ``CallContext.is_melee`` (``dps.MELEE_RANGE_CEILING`` 350) and
+    ``burst.compute_burst_damage`` passes ``rank._champion_is_melee``
+    (``MELEE_ATTACKRANGE_CEILING`` 250, the DSV9 shield-cut convention right
+    above it). The two thresholds agree on every 16.14.1 champion - the range
+    histogram is empty between Nilah 225 and Xayah 525 (``dps.py`` line 78) -
+    so no champion is classified differently by the two consumers.
+    """
+    return 1.0 if is_melee else _REFLECT_RANGED_EXPOSURE
+
 
 @dataclass(frozen=True)
 class PassiveReflectEntry:
