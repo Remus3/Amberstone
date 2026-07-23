@@ -2,6 +2,7 @@
 import { el, safe, fmtList, _to12, logLine } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
+import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } from '../lib/theme.js';
 // s220 PGR S5: Match-V5 timeline event ribbon for the Replay view.
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
 import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './replay_events.js';
@@ -75,6 +76,21 @@ function _settingsRefresh() {
   if (lpd) {
     lpd.value = get("rc-lobby-party-default") || "open";
     lpd.addEventListener("change", () => { setLS("rc-lobby-party-default", lpd.value); });
+  }
+
+  // DISPLAY: theme picker. web/js/lib/theme.js is the single source of truth
+  // (whitelist + precedence + the sole writer of <html data-theme>). The
+  // select reflects the SESSION theme, so a ?theme= override shows up here
+  // without overwriting the stored preference; a change persists + applies
+  // live (pure CSS-variable rebinding, no reload).
+  const themeSel = document.getElementById("set-theme");
+  if (themeSel) {
+    themeSel.value = queryTheme() || readStoredTheme() || DEFAULT_THEME;
+    themeSel.addEventListener("change", () => {
+      const v = themeSel.value;
+      saveTheme(v);
+      applyTheme(v);
+    });
   }
 
   // Live metrics status (read-only - env var)
