@@ -13,7 +13,7 @@
 export const THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"];
 
 // Operator-chosen default (2026-07-22).
-export const DEFAULT_THEME = "terminal";
+export const DEFAULT_THEME = "arcane";
 
 // kebab-case, matching the rc-view-manual / rc-home-mode-tab / rc-ui-mock
 // localStorage convention.
