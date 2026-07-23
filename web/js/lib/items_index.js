@@ -148,6 +148,11 @@ export function _resolveSpell(name) {
     const j = await r.json();
     ITEM_COSTS.byId = j.byId || {};
     ITEM_COSTS.ready = true;
+    // Mirror of the rc:items-ready dispatch above: a consumer that renders a
+    // GOLD figure (panels/next_buy.js) must be able to re-render once the
+    // costs land, or its first tick is stuck on the "-" sentinel until the
+    // next state envelope happens to change something else.
+    document.dispatchEvent(new CustomEvent("rc:item-costs-ready"));
   } catch (_) {}
 })();
 

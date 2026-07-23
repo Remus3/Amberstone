@@ -70,6 +70,11 @@ const WIDGETS = [
   // (SR in-game only); peripheral right-edge default, clear of the minimap
   // (1600,760). (The SUMMS dial was removed 2026-07-05: no Live Client CD data.)
   { id: "w-objgauges", sel: "#am-obj-gauges", x: 1690, y: 320, tier: "ambient", label: "Objective Gauges" },
+  // NEXT BUY rule lines (panels/next_buy.js): gold-to-next-DS-item + the free
+  // trinket upgrade. Display-only + data-gated (a live game with a build path).
+  // Sits low-left under the Stats panel, near the in-game gold/shop corner and
+  // clear of the center combat column.
+  { id: "w-nextbuy", sel: "#am-next-buy", x: 40, y: 620, tier: "ambient", label: "Next Buy" },
   // ARAM balance grid (panels/aram_balance.js). Promoted OUT of the BUILD pane
   // to its own widget 2026-07-20 (operator): once the champion-resolution fix
   // made it actually populate, its ~11 rows pushed META BUILD / the DS item row

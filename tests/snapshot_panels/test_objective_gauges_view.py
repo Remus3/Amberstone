@@ -144,6 +144,51 @@ def test_gauges_render_live_sr_state(mock_server, pw_browser):
     assert not errors, f"JS errors [gauges live sr]: {errors[:3]}"
 
 
+def test_gauges_double_alert_cadence_paints(mock_server, pw_browser):
+    """BACKLOG "Overlay HUD micro-lifts" (a): a counting-down dial escalates
+    twice - data-og-alert "soon" at 90s, "imminent" at 10s. Proven on the
+    BARON dial's static first spawn (1200s), and the escalation must NOT move
+    any geometry (no-reflow law)."""
+    def _baron_at(clock_s):
+        d = {k: v for k, v in _SR_STATE.items()}
+        d["liveclient"] = {"level": 6, "game_time_s": clock_s,
+                           "objective_events": []}
+        return d
+
+    def _alert_and_box(clock_s):
+        ctx, page, errors = _open_live(pw_browser, mock_server,
+                                       _baron_at(clock_s))
+        try:
+            page.wait_for_function(
+                "() => { const m = document.getElementById('am-obj-gauges');"
+                " return m && !m.hidden &&"
+                " m.querySelectorAll('.og-dial').length === 3; }",
+                timeout=10_000,
+            )
+            alert = page.eval_on_selector(
+                '#am-obj-gauges .og-dial[data-obj="baron"]',
+                "el => el.dataset.ogAlert")
+            box = page.eval_on_selector(
+                "#am-obj-gauges .og-grid",
+                "el => { const r = el.getBoundingClientRect();"
+                " return [Math.round(r.width), Math.round(r.height)]; }")
+        finally:
+            page.close()
+            ctx.close()
+        assert not errors, f"JS errors [gauges alert @{clock_s}]: {errors[:3]}"
+        return alert, box
+
+    quiet, box_quiet = _alert_and_box(600)     # eta 10:00 -> no alert
+    soon, box_soon = _alert_and_box(1150)      # eta 0:50  -> soon
+    imminent, box_imm = _alert_and_box(1195)   # eta 0:05  -> imminent
+    assert quiet == "", f"far-out dial must stay quiet, got {quiet!r}"
+    assert soon == "soon", f"eta 50s must be 'soon', got {soon!r}"
+    assert imminent == "imminent", f"eta 5s must be 'imminent', got {imminent!r}"
+    # NO REFLOW: escalation is colour + opacity only.
+    assert box_quiet == box_soon == box_imm, (
+        f"alert tiers moved the cluster: {box_quiet} / {box_soon} / {box_imm}")
+
+
 def test_gauges_hidden_when_idle(mock_server, pw_browser):
     """HONEST NO-DATA: an empty envelope (no live game) keeps the widget
     hidden entirely - display none, no placeholder ghosts."""

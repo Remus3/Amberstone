@@ -13,7 +13,9 @@ import assert from "node:assert";
 
 import { __test } from "./objective_gauges.js";
 
-const { OG_SCHED, computeGauges, _drakeDial, fmtEta, dialHtml, gaugesSig } = __test;
+const {
+  OG_SCHED, computeGauges, _alertTier, _drakeDial, fmtEta, dialHtml, gaugesSig,
+} = __test;
 
 function byKey(dials, key) {
   return dials.find((d) => d.key === key);
@@ -155,4 +157,62 @@ test("dialHtml: states render UP / '-' / M:SS with the state attribute", () => {
 test("gaugesSig: stable for an unchanged tick", () => {
   const dials = computeGauges("sr", { game_time_s: 60, objective_events: [] }, null);
   assert.strictEqual(gaugesSig(dials), gaugesSig(dials.map((d) => ({ ...d }))));
+});
+
+// --- double-alert cadence (BACKLOG "Overlay HUD micro-lifts") -----------------
+
+test("OG_SCHED carries the 90s / 10s double-alert thresholds", () => {
+  assert.strictEqual(OG_SCHED.alertSoonS, 90);
+  assert.strictEqual(OG_SCHED.alertImminentS, 10);
+});
+
+test("_alertTier: two escalations, inclusive at each boundary", () => {
+  assert.strictEqual(_alertTier("eta", 300), "");
+  assert.strictEqual(_alertTier("eta", 91), "");
+  assert.strictEqual(_alertTier("eta", 90), "soon");
+  assert.strictEqual(_alertTier("eta", 11), "soon");
+  assert.strictEqual(_alertTier("eta", 10), "imminent");
+  assert.strictEqual(_alertTier("eta", 0.5), "imminent");
+});
+
+test("_alertTier: only a counting-down dial alerts", () => {
+  // UP is already the loud green state; "-" has no clock. Neither escalates.
+  assert.strictEqual(_alertTier("up", 0), "");
+  assert.strictEqual(_alertTier("none", 0), "");
+  // A non-positive or junk eta never alerts (no fabricated urgency).
+  assert.strictEqual(_alertTier("eta", 0), "");
+  assert.strictEqual(_alertTier("eta", -5), "");
+  assert.strictEqual(_alertTier("eta", "x"), "");
+});
+
+test("computeGauges: the alert tier rides the live dials", () => {
+  // Baron static one-shot at 1200: at 1150 the eta is 50s -> "soon".
+  const soon = computeGauges("sr", { game_time_s: 1150, objective_events: [] });
+  assert.strictEqual(byKey(soon, "baron").state, "eta");
+  assert.strictEqual(byKey(soon, "baron").alert, "soon");
+  // At 1195 the eta is 5s -> "imminent".
+  const imm = computeGauges("sr", { game_time_s: 1195, objective_events: [] });
+  assert.strictEqual(byKey(imm, "baron").alert, "imminent");
+  // Far out -> quiet.
+  const quiet = computeGauges("sr", { game_time_s: 60, objective_events: [] });
+  assert.strictEqual(byKey(quiet, "baron").alert, "");
+  // An UP dial never carries an alert.
+  const up = computeGauges("sr", { game_time_s: 1210, objective_events: [] });
+  assert.strictEqual(byKey(up, "baron").state, "up");
+  assert.strictEqual(byKey(up, "baron").alert, "");
+});
+
+test("dialHtml emits data-og-alert; gaugesSig separates the tiers", () => {
+  const d = (alert) => ({
+    key: "baron", label: "BARON", state: "eta", etaS: 50, frac: 0.9, alert,
+  });
+  assert.ok(dialHtml(d("soon")).includes('data-og-alert="soon"'));
+  assert.ok(dialHtml(d("imminent")).includes('data-og-alert="imminent"'));
+  assert.ok(dialHtml(d("")).includes('data-og-alert=""'));
+  // A dial descriptor with no alert key at all still renders (defensive).
+  const bare = dialHtml({ key: "drake", label: "DRAKE", state: "up", etaS: 0, frac: 1 });
+  assert.ok(bare.includes('data-og-alert=""'));
+  // The sig must change when only the tier changes, or the DOM would keep a
+  // stale alert class through a threshold crossing.
+  assert.notStrictEqual(gaugesSig([d("soon")]), gaugesSig([d("imminent")]));
 });
