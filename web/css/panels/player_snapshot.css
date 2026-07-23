@@ -20,10 +20,11 @@
   gap: var(--space-3);
   min-height: var(--space-8);
   padding: var(--panel-padding);
-  background: rgba(20, 22, 30, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--signal-gold);
-  border-radius: var(--panel-radius-sm);
+  border-radius: var(--radius);
 }
 
 /* ----- Empty / reserved-height state -------------------------------------
@@ -53,7 +54,7 @@
 
 .ps-empty-msg {
   font-size: var(--fs-sm);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--dim);
   text-align: center;
 }
 
@@ -75,7 +76,7 @@
 .ps-name {
   font-size: var(--fs-md);
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -92,7 +93,7 @@
 
 .ps-level {
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--dim);
   white-space: nowrap;
 }
 
@@ -134,7 +135,7 @@
 
 .ps-dial-track {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.1);
+  stroke: var(--border);
   stroke-width: 9;
   stroke-linecap: round;
 }
@@ -168,7 +169,7 @@
   margin-top: var(--space-1);
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--dim);
   text-align: center;
   white-space: nowrap;
 }
@@ -188,7 +189,7 @@
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-2);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-2);
   border-radius: var(--panel-radius-sm);
 }
 
@@ -197,14 +198,14 @@
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
 }
 
 .ps-mini-key {
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--dim);
 }
 
 .ps-mini.ps-inferred .ps-mini-key {
@@ -229,7 +230,7 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.03em;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -242,7 +243,7 @@
 .ps-bar-track {
   position: relative;
   height: var(--space-2);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-2);
   border-radius: var(--panel-radius-sm);
   overflow: hidden;
 }
@@ -258,7 +259,7 @@
   font-weight: 700;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text);
 }
 
 /* ----- Behavioral tag chips: exactly 3, [strong, neutral, weak] ---------- */
@@ -275,7 +276,7 @@
   letter-spacing: 0.02em;
   border: 1px solid;
   border-radius: var(--panel-radius-sm);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-2);
 }
 
 /* ----- View Profile expand button ----------------------------------------
@@ -289,7 +290,7 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--signal-gold);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-2);
   border: 1px solid var(--hextech-border);
   border-radius: var(--panel-radius-sm);
   cursor: pointer;
@@ -301,7 +302,7 @@
 }
 
 .ps-viewprofile:not([aria-disabled="true"]):hover {
-  background: rgba(255, 255, 255, 0.09);
+  background: var(--surface-2);
 }
 
 .ps-viewprofile:focus-visible {

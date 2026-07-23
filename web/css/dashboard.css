@@ -14,6 +14,9 @@
 
 @import './tokens.css';
 @import './panels/base.css';
+/* Candidate theme overrides (DS2). MUST cascade after base.css so the
+ * :root[data-theme="terminal"] block outscores base's plain :root. */
+@import './themes.css';
 @import './panels/header.css';
 @import './panels/grid.css';
 @import './panels/coach_decisions.css';

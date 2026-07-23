@@ -16,9 +16,9 @@
   --text:          #ECF2FF;   /* primary text */
   --dim:           #8FA3BF;   /* secondary text / labels (NEW name) */
   --text-dim:      #8FA3BF;   /* secondary text / labels */
-  --faint:         #5C6E88;   /* ternary / captions (NEW name) */
-  --text-faint:    #5C6E88;   /* ternary / captions */
-  --border:        rgba(200,170,110,.16);   /* gold-tinted hairline */
+  --faint:         #74879F;   /* ternary / captions (NEW name) - WCAG-AA raised (4.88:1 on --surface) */
+  --text-faint:    #74879F;   /* ternary / captions - WCAG-AA raised (4.88:1 on --surface) */
+  --border:        rgba(200,170,110,.20);   /* canonical gold hairline (unified chrome) */
   --border-soft:   rgba(200,170,110,.10);   /* dashed dividers, lighter */
 
   /* Accent pairs. Primary accent is hextech gold; secondary comparative
@@ -52,7 +52,7 @@
 
   /* Shape language */
   --radius:        16px;      /* card corner radius */
-  --radius-sm:     8px;       /* chips/pills radius */
+  --radius-sm:     10px;      /* chips/pills radius */
   --shadow-card:   0 6px 24px -8px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35);
   --shadow-card-soft: 0 2px 10px -4px rgba(0,0,0,0.5);
 }
