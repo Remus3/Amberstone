@@ -1324,8 +1324,14 @@ def compute_dps(
             _ITEM_REFLECT_NAMES,
             item_reflect_entry,
             reflect_entry,
+            reflect_exposure_factor,
             reflect_per_proc,
         )
+
+        # G2-12 (2026-07-20): ranged carriers are not auto-attacked at the
+        # melee-tank cadence the 1.0s reflect_cadence_s asserts, so the credit
+        # is scaled by the wielder's exposure. Melee -> 1.0 (unchanged).
+        _rexp = reflect_exposure_factor(call_ctx.is_melee)
 
         _rentry = reflect_entry(resolved.champion_id)
         if _rentry is not None:
@@ -1346,14 +1352,18 @@ def compute_dps(
                     if _rentry.reflect_cadence_s > 0.0
                     else 1.0
                 )
-                _reflect_dps = _rproc * _rmit * mode_mult * damage_amp / _rcad
+                _reflect_dps = (
+                    _rproc * _rmit * mode_mult * damage_amp / _rcad * _rexp
+                )
                 if _reflect_dps > 0.0:
                     weighted_dps += _reflect_dps
                     phase_dps = {p: v + _reflect_dps for p, v in phase_dps.items()}
                     notes.append(
                         f"on-being-hit reflect {_rentry.attribute} folded to DPS: "
                         f"+{_reflect_dps:.1f} DPS ({_rentry.damage_type}, "
-                        f"1 incoming basic / {_rcad:.2g}s; assume_passive_reflect)"
+                        f"1 incoming basic / {_rcad:.2g}s x {_rexp:.2g} "
+                        f"{'melee' if call_ctx.is_melee else 'ranged'} exposure; "
+                        "assume_passive_reflect)"
                     )
 
         # R68 (1.175.0): ITEM-keyed Thorns reflect (Thornmail 3075 + pool
@@ -1387,7 +1397,9 @@ def compute_dps(
                     if _ientry.reflect_cadence_s > 0.0
                     else 1.0
                 )
-                _item_reflect_dps = _iproc * _imit * mode_mult * damage_amp / _icad
+                _item_reflect_dps = (
+                    _iproc * _imit * mode_mult * damage_amp / _icad * _rexp
+                )
                 if _item_reflect_dps > 0.0:
                     weighted_dps += _item_reflect_dps
                     phase_dps = {
@@ -1398,7 +1410,9 @@ def compute_dps(
                         f"item {_ientry.attribute} reflect ({_iname} {_iid}) "
                         f"folded to DPS: +{_item_reflect_dps:.1f} DPS "
                         f"({_ientry.damage_type}, 1 incoming basic / "
-                        f"{_icad:.2g}s; unique passive counted once; "
+                        f"{_icad:.2g}s x {_rexp:.2g} "
+                        f"{'melee' if call_ctx.is_melee else 'ranged'} exposure; "
+                        "unique passive counted once; "
                         "assume_passive_reflect)"
                     )
 
