@@ -42,7 +42,7 @@ block reads as own stats (provenance not unmissable).
 Replay: right pane clips header ("GOL"), dead slider.
 Settings: voice picker empty option list.
 Global: footer says "Legion-PC" (retired), large dead space below fold on Home/PGR/Session,
-`performance_tracker.py:39` grade labels carry a — escape rendering an em-dash in-UI + written
+`performance_tracker.py:39` grade labels carry a  -  escape rendering an em-dash in-UI + written
 into data/ratings/last_sr.json + last_arena.json (repo-wide scope unmeasured).
 Overlay: THREATS row empty placeholder circles (5 SR/12 Arena), dead DMG/SURV/UTIL steppers
 (RM-05 ruled DEAD, removal never landed), complete-build renders bare DAEMON SLAYER/META BUILD
@@ -56,10 +56,10 @@ G2-34 objective gauges collapse horizontally.
 
 - Footer `Legion-PC`: `web/index.html:2251` (`<span>Legion-PC ... </span>`). One-liner but the
   replacement text is an operator-read UI string -> defer wording to advocate round.
-- Em-dash escapes: `performance_tracker.py:37-39` - `—` in ALL SIX `GRADE_LABEL` entries
+- Em-dash escapes: `performance_tracker.py:37-39` - ` - ` in ALL SIX `GRADE_LABEL` entries
   (queue logged only line 39). Renders em-dash in-UI + serializes into `data/ratings/last_sr.json`
   + `last_arena.json`. Fix needs the Data-Fixes backfill tail (recover already-written rows),
-  not just the source edit. Repo-wide `—`/`–` escape scope still to be swept.
+  not just the source edit. Repo-wide ` - `/` - ` escape scope still to be swept.
 
 ## Rulings ledger
 
