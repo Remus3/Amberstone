@@ -4110,6 +4110,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       if (m === "sr")         url = "/data/ui_mock/active_match_sr.json";
       else if (m === "aram")  url = "/data/ui_mock/active_match_aram.json";
       else if (m === "arena") url = "/data/ui_mock/active_match_arena.json";
+      else if (m === "mayhem") url = "/data/ui_mock/active_match_aram_mayhem.json";
+      else if (m === "complete") url = "/data/ui_mock/active_match_complete.json";
     } catch (_) {}
     return url;
   }
