@@ -20,6 +20,7 @@ Only the mapping lives here. Writes live in the backfill entry point, which
 refuses to run unless the oracle passes.
 """
 
+from core.rofl_archive import DEFAULT_ACCOUNTS
 from lcu.lcu_postgame_collector import _s
 
 # participants column -> engine / Match-V5 key candidates, most specific first.
@@ -231,6 +232,140 @@ def _find_rofl(archive_dir, match_id):
     return None
 
 
+def _select_operator_player(players, accounts):
+    """Return the sidecar player entry belonging to a tracked account, or None.
+
+    The join is by RIOT ID ((RIOT_ID_GAME_NAME, RIOT_ID_TAG_LINE)), case
+    insensitive - never the sidecar PUUID, which is the RAW game uuid and shares
+    no namespace with the key-encrypted puuid the DB stores. Returning None when
+    no operator is in the lobby is deliberate: the caller must leave tracked_*
+    NULL rather than guess a player (there is no "index 0 is me" fallback).
+    """
+    wanted = {(str(n).strip().lower(), str(t).strip().lower()) for n, t in accounts}
+    for player in players:
+        name = str(player.get("RIOT_ID_GAME_NAME", "")).strip().lower()
+        tag = str(player.get("RIOT_ID_TAG_LINE", "")).strip().lower()
+        if (name, tag) in wanted:
+            return player
+    return None
+
+
+def _tracked_values(player, resolved_ids):
+    """Map one operator sidecar entry onto the matches.tracked_* columns.
+
+    champion_id is looked up in `resolved_ids` and left None when the name does
+    not resolve - never invented. Returns (values_dict, unresolved_name) where
+    unresolved_name is the champion name if its id could not be resolved.
+    """
+    name = player.get("SKIN") or ""
+    champion_id = resolved_ids.get(name)
+    values = {
+        "tracked_champion_name": name,
+        "tracked_champion_id": champion_id,
+        "tracked_team_id": _s(player, "TEAM"),
+        "tracked_kills": _s(player, "CHAMPIONS_KILLED"),
+        "tracked_deaths": _s(player, "NUM_DEATHS"),
+        "tracked_assists": _s(player, "ASSISTS"),
+        "tracked_win": 1 if str(player.get("WIN", "")).strip().lower() == "win" else 0,
+    }
+    return values, (name if champion_id is None else None)
+
+
+def backfill_tracked_summary(
+    db_path,
+    sidecar_paths,
+    *,
+    operator_accounts=DEFAULT_ACCOUNTS,
+    dry_run: bool = False,
+    champion_ids: dict | None = None,
+) -> dict:
+    """Fill matches.tracked_* on rows that already exist but are NULL-tracked.
+
+    These rows are NOT missing: Match-V5 wrote the match with a correct
+    queue_id/game_mode but no tracked summary, so the dashboard renders the
+    operator's champion as "Unknown" and the KDA as "0-0-0". The fix is an
+    UPDATE of the seven tracked_* columns on the existing row, joined:
+
+      * file -> row by match_id (from the sidecar's own field), and
+      * player -> operator by RIOT ID (see `_select_operator_player`).
+
+    queue_id and game_mode are NEVER touched - the sidecar cannot prove a queue,
+    and the existing value is already correct from Match-V5. The sweep is over
+    every sidecar handed in whose match row is tracked-NULL, regardless of queue
+    (the same root cause spans 420/450/2400/customs), so the caller drives
+    breadth by which sidecars it globs.
+
+    `champion_ids` maps champion name to Riot id; it defaults to learning from
+    the participants the target DB already holds. Names that do not resolve are
+    reported in `unresolved_champions` and stored as NULL, never guessed.
+
+    Idempotent: a row that already carries a tracked_champion_name is reported
+    in `skipped_already_filled` and left alone. A sidecar whose match is not in
+    the DB at all is reported in `net_new` (that is the INSERT path's job, see
+    `backfill_participants`), not inserted here.
+    """
+    import json
+    import sqlite3
+    from pathlib import Path
+
+    db_path = Path(db_path)
+    sidecar_paths = [Path(p) for p in sidecar_paths]
+
+    report = {
+        "updated": [],
+        "skipped_no_operator": [],
+        "skipped_already_filled": [],
+        "net_new": [],
+        "unresolved_champions": [],
+    }
+
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.row_factory = sqlite3.Row
+        resolved_ids = champion_ids if champion_ids is not None else _champion_id_map(conn)
+
+        for sidecar_path in sidecar_paths:
+            sidecar = json.loads(sidecar_path.read_text())
+            match_id = sidecar["match_id"]
+
+            row = conn.execute(
+                "SELECT tracked_champion_name FROM matches WHERE match_id = ?",
+                (match_id,),
+            ).fetchone()
+            if row is None:
+                report["net_new"].append(match_id)
+                continue
+            if row["tracked_champion_name"] is not None:
+                report["skipped_already_filled"].append(match_id)
+                continue
+
+            player = _select_operator_player(sidecar["players"], operator_accounts)
+            if player is None:
+                report["skipped_no_operator"].append(match_id)
+                continue
+
+            values, unresolved = _tracked_values(player, resolved_ids)
+            if unresolved is not None:
+                report["unresolved_champions"].append(f"{match_id}:{unresolved}")
+
+            assignments = ", ".join(f"{col} = ?" for col in values)
+            conn.execute(
+                f"UPDATE matches SET {assignments} "
+                "WHERE match_id = ? AND tracked_champion_name IS NULL",
+                [*values.values(), match_id],
+            )
+            report["updated"].append(match_id)
+
+        if dry_run:
+            conn.rollback()
+        else:
+            conn.commit()
+    finally:
+        conn.close()
+
+    return report
+
+
 def backfill_participants(
     db_path,
     sidecar_paths,
@@ -239,6 +374,7 @@ def backfill_participants(
     dry_run: bool = False,
     queue_overrides: dict | None = None,
     champion_ids: dict | None = None,
+    operator_accounts=DEFAULT_ACCOUNTS,
 ) -> dict:
     """Insert participant rows for matches the DB does not already have.
 
@@ -298,10 +434,32 @@ def backfill_participants(
             version = read_rofl_game_version(rofl) if rofl else None
             queue_id, game_mode = queue_overrides.get(match_id, (None, None))
 
+            # Close the tracked_* hole on the way in: a net-new operator-present
+            # match is rendered "Unknown / 0-0-0" unless the summary is filled
+            # here too. queue_id/game_mode stay NULL - only tracked_* is derived
+            # from the sidecar. No operator in the lobby -> all tracked_* NULL.
+            operator = _select_operator_player(sidecar["players"], operator_accounts)
+            if operator is not None:
+                tracked, unresolved = _tracked_values(operator, resolved_ids)
+                if unresolved is not None:
+                    report["unresolved_champions"].append(f"{match_id}:{unresolved}")
+            else:
+                tracked = {
+                    "tracked_champion_name": None,
+                    "tracked_champion_id": None,
+                    "tracked_team_id": None,
+                    "tracked_kills": None,
+                    "tracked_deaths": None,
+                    "tracked_assists": None,
+                    "tracked_win": None,
+                }
+
             conn.execute(
                 "INSERT INTO matches (match_id, queue_id, game_mode, game_version, "
-                "patch, game_duration_s, has_stats, has_timeline) "
-                "VALUES (?, ?, ?, ?, ?, ?, 1, 0)",
+                "patch, game_duration_s, has_stats, has_timeline, "
+                "tracked_champion_name, tracked_champion_id, tracked_team_id, "
+                "tracked_kills, tracked_deaths, tracked_assists, tracked_win) "
+                "VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     match_id,
                     queue_id,
@@ -309,6 +467,13 @@ def backfill_participants(
                     version,
                     _patch_from_version(version) if version else None,
                     duration_s,
+                    tracked["tracked_champion_name"],
+                    tracked["tracked_champion_id"],
+                    tracked["tracked_team_id"],
+                    tracked["tracked_kills"],
+                    tracked["tracked_deaths"],
+                    tracked["tracked_assists"],
+                    tracked["tracked_win"],
                 ),
             )
             report["inserted_matches"] += 1
