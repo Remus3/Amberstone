@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-07-23a - headless loop: 5 slices + 1 CLEAN sweep (self-adjudicated, operator away)
+
+Commits (all pushed, CI-green): `02137ffb` `0a05e897` `083605c5` `37d13e85` `1653d959` + LEDGER `1006`.
+
+- **CI-red fix** `02137ffb`: nightly OQ6 dark-ratchet red on the theme swap - themes.css pinned at 36 (theme-source layer), ds_statcheck pin 3->0.
+- **G2-12 ranged reflect** `0a05e897`, **ENGINE 1.238.0 -> 1.239.0**: shipped a stale WIP branch (rebased 1.232->main), ranged exposure factor 0.35, melee byte-identical; 145 pins synced, DS live 1.239.0, 9203 DS tests. FUTURE: mode-aware ARAM factor.
+- **RM-112 CLOSED** `083605c5`: Share package runs its own suite clean standalone (7270/0/0). Excluded 40 host/cross-patch tests + shipped CC_CONDITIONAL_NOTES.md; rewrote 05_AUDIT + added the 1.239.0 Share release entry. 97 guards green.
+- **perf-tracker em-dash strip** `37d13e85`: 27 runtime em-dash escapes -> hyphen (source-byte scanners miss the `\uXXXX` class), 4 ratings JSON backfilled, new runtime-ASCII guard.
+- **session-hygiene aggregator** `1653d959` (Haiku-to-ZERO): NEW `core/session_hygiene.py` + 22 tests - deterministic tilt/readiness over rewind_history.db, zero API/LLM. Consumer surface (route + card) OWED.
+- **cost/latency sweep**: 7/7 CLEAN, no commit.
+
+NEXT: build the sibling Haiku-to-ZERO deterministic aggregators (playstyle labels / draft score / premade detection) + wire session-hygiene to a read-only `/api/session-hygiene` route. Do NOT redo RM-112 (closed) or re-ship G2-12 (1.239.0 live). Do NOT touch RM-99b Heartsteel cadence headless (operator-gated). UI wiring is operator-present-preferred.
+
+---
+
 # 2026-07-22b - UI/UX pass: spatial brand decided + 6-theme OKLCH system + overlay/rofl infra (operator-present)
 
 Merges into main: overlay `77ed2798`, rofl `fb91c2bb`, theme `a2848e4c` (+ 3 --no-ff merge commits). Full
