@@ -1,0 +1,56 @@
+{
+  "mock": true,
+  "note": "Active Match ARAM Mayhem mock fixture (pseudo-screen overlay, 2026-07-22). Activated via ?ui_mock=1&mode=mayhem URL flags (tools/pseudo_screen_overlay.py + _amMockUrl in web/js/main.js). ARAM Mayhem is queue 2400 / gameMode KIWI, which RC maps to MODE_ARAM (game_snapshot); the canonical RC mode string is therefore \"aram\", which both the active-match ARAM render path and the aram_balance panel gate (_AB_ARAM_MODES = {aram, kiwi}) accept. Mayhem-representative state lives in the CONTENT (fast souls-brawl tempo, high level for game_time, 5v5 Howling Abyss roster). Coach payload mirrors data/aram_coaching_data.json shape.",
+  "mode": "aram",
+  "phase": "InProgress",
+  "coach": {
+    "champion": "Ziggs",
+    "game_time": "09:47",
+    "level": 13,
+    "items": ["Luden's Companion", "Sorcerer's Shoes", "Shadowflame"],
+    "action": "Mayhem tempo - shove and poke the choke, never walk up alone",
+    "immediate": "Hold W knockback for the Sett all-in, do not waste it on wave",
+    "next": "Group at 10:30 - Mayhem gold rush lets enemies 3-item spike early",
+    "objective": "First tower falls fast in Mayhem - deny the enemy dive at 11:00",
+    "daemon_slayer_picks": [
+      {"name": "Rabadon's Deathcap", "item_id": 3089, "scorer": "mage", "delta_dps": 168},
+      {"name": "Void Staff", "item_id": 3135, "scorer": "mage", "delta_dps": 121},
+      {"name": "Zhonya's Hourglass", "item_id": 3157, "scorer": "mage", "delta_dps": 74},
+      {"name": "Cryptbloom", "item_id": 3137, "scorer": "mage", "delta_dps": 66},
+      {"name": "Morellonomicon", "item_id": 3165, "scorer": "mage", "delta_dps": 52}
+    ]
+  },
+  "liveclient": {
+    "activePlayer": {
+      "summonerName": "SamplePlayer",
+      "riotIdGameName": "SamplePlayer",
+      "championStats": {
+        "currentHealth": 1385,
+        "maxHealth": 1710,
+        "resourceValue": 412,
+        "resourceMax": 640
+      }
+    },
+    "gameData": {
+      "gameTime": 587
+    },
+    "allPlayers": [
+      {"summonerName": "SamplePlayer", "championName": "Ziggs", "rawChampionName": "Ziggs", "team": "ORDER", "items": [{"itemID": 6655, "slot": 0}, {"itemID": 3020, "slot": 1}, {"itemID": 4645, "slot": 2}]},
+      {"summonerName": "AllyOne", "championName": "Braum", "rawChampionName": "Braum", "team": "ORDER", "items": [{"itemID": 3190, "slot": 0}, {"itemID": 3047, "slot": 1}]},
+      {"summonerName": "AllyTwo", "championName": "Kayle", "rawChampionName": "Kayle", "team": "ORDER", "items": [{"itemID": 3115, "slot": 0}, {"itemID": 3006, "slot": 1}, {"itemID": 3085, "slot": 2}]},
+      {"summonerName": "AllyThree", "championName": "Sett", "rawChampionName": "Sett", "team": "ORDER", "items": [{"itemID": 3071, "slot": 0}, {"itemID": 3047, "slot": 1}]},
+      {"summonerName": "AllyFour", "championName": "Nami", "rawChampionName": "Nami", "team": "ORDER", "items": [{"itemID": 3504, "slot": 0}, {"itemID": 3107, "slot": 1}]},
+      {"summonerName": "EnemyOne", "championName": "Sett", "rawChampionName": "Sett", "team": "CHAOS", "items": [{"itemID": 6630, "slot": 0}, {"itemID": 3047, "slot": 1}, {"itemID": 3053, "slot": 2}]},
+      {"summonerName": "EnemyTwo", "championName": "Jinx", "rawChampionName": "Jinx", "team": "CHAOS", "items": [{"itemID": 3031, "slot": 0}, {"itemID": 3006, "slot": 1}]},
+      {"summonerName": "EnemyThree", "championName": "Brand", "rawChampionName": "Brand", "team": "CHAOS", "items": [{"itemID": 6653, "slot": 0}, {"itemID": 3020, "slot": 1}]},
+      {"summonerName": "EnemyFour", "championName": "Malphite", "rawChampionName": "Malphite", "team": "CHAOS", "items": [{"itemID": 3068, "slot": 0}, {"itemID": 3047, "slot": 1}]},
+      {"summonerName": "EnemyFive", "championName": "Lux", "rawChampionName": "Lux", "team": "CHAOS", "items": [{"itemID": 6655, "slot": 0}, {"itemID": 3020, "slot": 1}]}
+    ]
+  },
+  "summoner_cooldowns": [
+    {"slot": "D", "name": "Flash", "remaining_s": 64, "rdy_at": "10:51", "tag": "ally-ziggs"},
+    {"slot": "F", "name": "Mark", "remaining_s": 8, "rdy_at": "09:55", "tag": "ally-ziggs"},
+    {"slot": "D", "name": "Flash", "remaining_s": 190, "rdy_at": "12:57", "tag": "enemy-sett"},
+    {"slot": "F", "name": "Mark", "remaining_s": 21, "rdy_at": "10:08", "tag": "enemy-sett"}
+  ]
+}
