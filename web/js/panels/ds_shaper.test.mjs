@@ -8,10 +8,10 @@
 // querySelectorAll / click), so this file installs a MINIMAL globalThis.document
 // shim + a fetch mock (jsdom is not a repo dependency). The shim implements
 // exactly the surface ds_shaper.js touches: element props (className /
-// textContent / type / dataset), addEventListener('click'), appendChild /
-// removeChild / replaceChildren / firstChild, click() dispatch, and a
-// class-selector querySelectorAll. computeShaperQuery + resetShaper are pure and
-// exercised directly.
+// textContent / type / dataset), setAttribute / getAttribute / hasAttribute,
+// addEventListener('click'), appendChild / removeChild / replaceChildren /
+// firstChild, click() dispatch, and a class-selector querySelectorAll.
+// computeShaperQuery + resetShaper are pure and exercised directly.
 
 import test from "node:test";
 import assert from "node:assert";
@@ -27,6 +27,17 @@ class FakeEl {
     this.children = [];
     this._listeners = {};
     this._innerHTML = "";
+    this._attrs = {};
+  }
+  setAttribute(name, value) {
+    this._attrs[String(name)] = String(value);
+  }
+  getAttribute(name) {
+    const k = String(name);
+    return Object.prototype.hasOwnProperty.call(this._attrs, k) ? this._attrs[k] : null;
+  }
+  hasAttribute(name) {
+    return Object.prototype.hasOwnProperty.call(this._attrs, String(name));
   }
   get firstChild() {
     return this.children.length ? this.children[0] : null;
@@ -146,6 +157,10 @@ test("renderShaperStrip builds exactly 3 axes, each 2 btns + 1 val", () => {
   // Exactly one strip + one out area under the row.
   assert.strictEqual(row.querySelectorAll(".bm-shaper-strip").length, 1);
   assert.strictEqual(row.querySelectorAll(".bm-shaper-out").length, 1);
+  // The strip is an overlay interactive zone (clickthrough_zones.js selector
+  // [data-rc-zone]) - without it the +/- clicks pass through to the game.
+  const strip = row.querySelectorAll(".bm-shaper-strip")[0];
+  assert.strictEqual(strip.hasAttribute("data-rc-zone"), true, "strip is a click zone");
 });
 
 test("plus button increments and clamps at +2", () => {
