@@ -130,3 +130,42 @@ body[data-shell="overlay"] .obj-gauges[hidden] {
 .obj-gauges .og-dial[data-og-state="none"] .og-eta {
   color: rgba(var(--ovx-text, 255, 255, 255), 0.45);
 }
+
+/* Double-alert cadence (objective_gauges.js _alertTier): a counting-down dial
+ * escalates twice - "soon" at 90s (steady brighten, no motion: it is a
+ * rotate-now hint, not an emergency) then "imminent" at 10s (slow 1s pulse on
+ * the ring + the ETA). Doctrine sec 5 keeps lethal red for the ONE emergency
+ * pop-out, so the escalation is carried by the dial's OWN hue + opacity, not a
+ * new colour. NOTE: geometry is untouched in every tier - no size, weight or
+ * layout change - so an alerting dial cannot reflow the cluster. */
+.obj-gauges .og-dial[data-og-alert="soon"] .og-arc,
+.obj-gauges .og-dial[data-og-alert="imminent"] .og-arc {
+  filter: brightness(1.35);
+}
+
+.obj-gauges .og-dial[data-og-alert="soon"] .og-eta {
+  color: rgb(var(--ovx-gold, 200, 170, 110));
+}
+
+.obj-gauges .og-dial[data-og-alert="imminent"] .og-eta {
+  color: rgb(var(--ovx-gold, 200, 170, 110));
+  animation: og-alert-pulse 1s ease-in-out infinite;
+}
+
+.obj-gauges .og-dial[data-og-alert="imminent"] .og-arc {
+  animation: og-alert-pulse 1s ease-in-out infinite;
+}
+
+@keyframes og-alert-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+/* Respect the OS reduced-motion setting: keep the brightened tier, drop the
+ * pulse (the 10s tier is still distinguishable by hue + brightness). */
+@media (prefers-reduced-motion: reduce) {
+  .obj-gauges .og-dial[data-og-alert="imminent"] .og-eta,
+  .obj-gauges .og-dial[data-og-alert="imminent"] .og-arc {
+    animation: none;
+  }
+}
