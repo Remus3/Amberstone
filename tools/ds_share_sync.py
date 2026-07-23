@@ -136,6 +136,7 @@ _DS_TOOLS: tuple[str, ...] = (
 # them costs the package nothing it could otherwise have: they pin the host-side
 # integration seam, not engine math.
 _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
+    # -- Collection-aborting host imports (the original nine, item R154) --
     "test_abilities_content_freshness.py",
     "test_build_recommendation_p1l5.py",
     "test_coherence_burst_score_l1.py",
@@ -145,6 +146,59 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     "test_r144_mirror_slice_d.py",
     "test_r144_mirror_slice_e.py",
     "test_unique_passive_key_phase4d.py",
+    # -- RM-112 (2026-07-23): runtime host-data reaches. These COLLECT clean
+    # but FAIL at run time inside the engine-only, current-patch package,
+    # because they load a HISTORICAL patch snapshot (16.10.1 / 16.11.1 /
+    # 16.13.1 - the mirror ships only 16.14.1; a full prior snapshot is ~11 MB
+    # and carries the license-excluded mayhem_augment_stats.json, so shipping
+    # it is out) or reach the host core.* / host-meta layer at RUN time. A
+    # cross-patch regression anchor is a host-CI seam, not portable engine math
+    # at the shipped patch. Named per-file, not by predicate, so the > 300
+    # scope guard stays honest.
+    # historical 16.10.1 snapshot loads:
+    "test_abilities_extract_descriptions.py",
+    "test_arena_augment_e2e_p1l26.py",
+    "test_beam.py",
+    "test_beam_ranker_p1l18.py",
+    "test_dps.py",
+    "test_effects_expansion.py",
+    "test_enemy_item_modeling_p1l1.py",
+    "test_gold_efficiency_p1l13.py",
+    "test_rank.py",
+    "test_cc_conditional_wave14.py",
+    "test_cc_conditional_wave15.py",
+    "test_cc_conditional_wave16.py",
+    "test_cc_conditional_wave17.py",
+    "test_cc_conditional_wave19.py",
+    "test_cc_conditional_wave20.py",
+    "test_cc_conditional_wave21.py",
+    "test_cc_conditional_wave22.py",
+    "test_cc_conditional_wave23.py",
+    # historical 16.11.1 snapshot loads:
+    "test_mana_sim_ammo.py",
+    "test_passive_damage_bilinear_item248.py",
+    "test_passive_damage_caster_resist_item513.py",
+    "test_passive_damage_conditional_gate_item255.py",
+    "test_passive_damage_exotic_item247.py",
+    "test_passive_damage_overrides_2026_05_31.py",
+    "test_passive_damage_per_stack_item249.py",
+    # historical 16.13.1 snapshot loads:
+    "test_guinsoo_seething_strike_r66.py",
+    "test_item_active_magic_burst_r69.py",
+    "test_item_dsv9_r75.py",
+    "test_item_hydra_active_burst_r113.py",
+    "test_item_magic_burst_zekes_r70.py",
+    "test_item_missing_hp_ad_r111.py",
+    "test_item_physical_burst_r74.py",
+    "test_item_reflect_thornmail_r68.py",
+    "test_item_takedown_eruption_r70.py",
+    "test_passive_damage_all_out_bonus_r50.py",
+    "test_terminus_juxtaposition_r67.py",
+    # host core.* / host-meta reads at run time:
+    "test_jhin_whisper_as_lock.py",
+    "test_r144_mirror_slice_a.py",
+    "test_engine_math_correctness_pipeline_c.py",
+    "test_cast_rate_canonical_keys.py",
 })
 
 # PATCH-INDEPENDENT engine data tables, which live at the ``data/daemon_slayer/``
@@ -285,12 +339,15 @@ def _build_expected() -> dict[str, bytes]:
         # The live engine CHANGELOG.md is the repo-internal release history
         # relocated out of __init__.py (item 241). The Share package carries its
         # own authored Share/CHANGELOG.md and a stubbed __init__, so the engine
-        # changelog is intentionally not mirrored. CC_CONDITIONAL_NOTES.md is the
-        # repo-internal authoring source + REJECT rationale relocated out of the
-        # cc_conditional.py builders (item 245 A3); it carries dev-context (wave /
-        # item numbers) and is not read at runtime (the loader reads the mirrored
-        # cc_conditional_registry.json), so it is intentionally not mirrored.
-        # cc_output_registry_notes.json (item 294) is the same: provenance source
+        # changelog is intentionally not mirrored. CC_CONDITIONAL_NOTES.md WAS
+        # excluded on the same "not read at runtime" reasoning, but RM-112
+        # (2026-07-23) ships it: six cc_conditional wave tests
+        # (test_cc_conditional_wave9/10/11/12/13/18) assert it exists + is
+        # ASCII-clean as a maintained engine-provenance artifact, so the package
+        # cannot pass its own suite without it. It carries 0 scrub-target phrases
+        # (its wave / item provenance is the same class already shipped in the
+        # mirrored .py comments), so it mirrors verbatim like any other doc.
+        # cc_output_registry_notes.json (item 294) stays excluded: provenance source
         # quotes for the cc_output.py CC-kind registry, not read at runtime (the
         # registry is baked into cc_output.py), so it too is not mirrored.
         # mobility_registry_notes.json (item 297) is the mobility.py analog.
@@ -305,7 +362,6 @@ def _build_expected() -> dict[str, bytes]:
         # extendedduel_registry_notes.json (item 309) is the extendedduel.py analog.
         if p.name in (
             "CHANGELOG.md",
-            "CC_CONDITIONAL_NOTES.md",
             "cc_output_registry_notes.json",
             "mobility_registry_notes.json",
             "sustain_registry_notes.json",
