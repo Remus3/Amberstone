@@ -1238,7 +1238,16 @@ def compute_burst_damage(
             _ITEM_REFLECT_NAMES,
             item_reflect_entry,
             reflect_entry,
+            reflect_exposure_factor,
             reflect_per_proc,
+        )
+
+        # G2-12 (2026-07-20): DPS-side mirror - a ranged carrier is exposed to
+        # incoming basics for a fraction of the assumed burst window, so the
+        # credit is scaled. Melee -> 1.0 (unchanged). Uses the same
+        # ``_champion_is_melee`` predicate as the DSV9 shield-cut block above.
+        _rexp = reflect_exposure_factor(
+            _champion_is_melee(snapshot.champions.get(str(champion_id)))
         )
 
         _rentry = reflect_entry(resolved.champion_id)
@@ -1263,7 +1272,7 @@ def compute_burst_damage(
                 )
                 _rhits = _ASSUMED_REFLECT_BURST_WINDOW_S / _rcad
                 reflect_burst_damage = (
-                    _rproc * mode_mult * _ramp * _rmit * _rhits * _rlowhp
+                    _rproc * mode_mult * _ramp * _rmit * _rhits * _rlowhp * _rexp
                 )
                 total_burst += reflect_burst_damage
 
@@ -1299,7 +1308,7 @@ def compute_burst_damage(
                 )
                 _ihits = _ASSUMED_REFLECT_BURST_WINDOW_S / _icad
                 item_reflect_burst_damage = (
-                    _iproc * mode_mult * _iamp * _imit * _ihits * _ilowhp
+                    _iproc * mode_mult * _iamp * _imit * _ihits * _ilowhp * _rexp
                 )
                 total_burst += item_reflect_burst_damage
                 _item_reflect_label = (
