@@ -83,12 +83,18 @@ def sample(ws, msg_id):
     page = _cdp_eval(ws, PAGE_EXPR, msg_id)
     st = _api_state()
     lc = st.get("liveclient") or {}
-    ap = lc.get("activePlayer") or {}
-    stats = ap.get("currentGold")
+    # /api/state.liveclient is the FLATTENED block built by
+    # dashboard/_liveclient.py:114 liveclient_summary() (attached at
+    # dashboard/_state_builder.py:687), NOT the raw Live Client :2999 payload.
+    # Gold lands at out["gold"] (_liveclient.py:148) and the clock at
+    # out["game_time_s"] (_liveclient.py:144). The raw activePlayer.currentGold
+    # / gameData.gameTime paths this probe used to read never exist here and
+    # always read null - that is the widget-vs-probe null the 2026-07-23
+    # WAKEUP flagged as unconfirmed.
     return {
         "mode_key": st.get("mode_key"),
-        "game_time_s": (lc.get("gameData") or {}).get("gameTime"),
-        "current_gold": stats if stats is not None else lc.get("current_gold"),
+        "game_time_s": lc.get("game_time_s"),
+        "current_gold": lc.get("gold"),
         "page": page,
     }
 
