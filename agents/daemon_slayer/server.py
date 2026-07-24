@@ -1896,7 +1896,12 @@ def _route_rank_assassin(body: dict) -> dict:
     # R30 assume_magic_burst + R74 assume_physical_burst + R75
     # assume_shielded_target are scoped to the /burst route: rank_items_by_burst
     # does NOT accept them (only compute_burst_damage does at burst.py:485).
+    #   exclude_off_axis_items (RM-41) - strip candidates whose offense sits
+    #     entirely on the champion's OFF damage axis (AD spellblade/on-hit/crit
+    #     on a pure-AP assassin, and the RM-35 mirror). Data-driven gate; a
+    #     champion without a decisive damage split is a no-op.
     prefer_kit_axis_by_win = _opt_bool(body, "prefer_kit_axis_by_win", False)
+    exclude_off_axis_items = _opt_bool(body, "exclude_off_axis_items", False)
     # OQ17: the enemy-comp / kill-state ranking seams the burst ranker already
     # forwards to compute_burst_damage (assume_takedown/assume_ability_amp) or
     # resolves itself (assume_squishy_target/target_preset). DEFAULT-OFF/None ->
@@ -1929,6 +1934,7 @@ def _route_rank_assassin(body: dict) -> dict:
             runes=(runes or None),
             aoe_targets_hit=aoe_targets_hit,
             prefer_kit_axis_by_win=prefer_kit_axis_by_win,
+            exclude_off_axis_items=exclude_off_axis_items,
             assume_takedown=assume_takedown,
             assume_squishy_target=assume_squishy_target,
             assume_ability_amp=assume_ability_amp,
