@@ -4367,5 +4367,5 @@
   },
   "generated_at": "2026-05-12",
   "source": "data/rewind_history.db (2851 matches, spell[1-4]_casts / game_duration_s)",
-  "note": "Casts/sec \u2014 measured median across observed games per champion \u00d7 mode. Q=spell1, W=spell2, E=spell3, R=spell4. Used by daemon_slayer.cast_rates.get_spell_casts_per_sec(). Mode-specific buckets require >= 5 samples; 'global' falls through."
+  "note": "Casts/sec - measured median across observed games per champion x mode. Q=spell1, W=spell2, E=spell3, R=spell4. Used by daemon_slayer.cast_rates.get_spell_casts_per_sec(). Mode-specific buckets require >= 5 samples; 'global' falls through."
 }

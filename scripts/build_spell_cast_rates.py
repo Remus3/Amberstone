@@ -176,7 +176,7 @@ def main() -> int:
         ),
         "note": (
             "Casts/sec - measured median across observed games per "
-            "champion × mode. Q=spell1, W=spell2, E=spell3, R=spell4. "
+            "champion x mode. Q=spell1, W=spell2, E=spell3, R=spell4. "
             "Used by daemon_slayer.cast_rates.get_spell_casts_per_sec(). "
             "Mode-specific buckets require >= "
             f"{MIN_SAMPLES} samples; 'global' falls through."
