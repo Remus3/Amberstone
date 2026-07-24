@@ -4,6 +4,31 @@
 
 ---
 
+# 2026-07-24 - R185 ui-audit-spike-cue (CLEAN) + operator halt
+
+Gemini-loop DIRECTOR REFILL cycle 15 (REFILL PROTOCOL 3). Commit `850c577f`,
+LEDGER 1035, Tier-0/1 test+docs, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
+
+- **R185 = CLEAN, ZERO MUST-FIX.** 5-phase Section-3b UI audit of the in-game
+  Spike Cue overlay widget (`web/js/panels/spike_cue.js` 158L + `.css` 68L,
+  mount `#am-spike-cue`, `w-spike` urgent). Un-audited IN-GAME overlay pick via
+  read-only Explore recon; champ-select set CLOSED. STRUCTURE/HIERARCHY clean,
+  HIT-TARGETS N/A (zero clickables), ASCII 0 non-ASCII bytes (up-triangle is a
+  CSS `\25B2` escape), TYPOGRAPHY already R33-guarded (spike_cue.css is in
+  `test_overlay_css_typography_tokens.py` `_OVERLAY_CUE_CSS`, rides `--fs-ov-chip`).
+- Drift-guard `tests/test_spike_cue_ascii.py` (3 tests) added. Full RC `tests/`:
+  12765 passed / 22 skip / 1 error - the error is the documented RF5 hermeticity
+  flake (live loop controller grew `controller.log` mid-suite, conftest.py:145),
+  DISJOINT from R185; re-ran isolated = 4 passed. Regressions 0.
+- **Operator interrupted -> requested loop halt + /done for a fresh claude
+  restart.** Dropped `ops/loop/control/STOP`; controller.log confirms "external
+  STOP seen" (cycle 15). Loop is halted. Do NOT relaunch it unless the operator
+  re-invokes /gemini-headless-upgrade.
+- Do NOT redo: the in-game overlay glance-cue set (ward/spike/objective) + the
+  champ-select audit set (R173/R180/R182/R183/R184) are all UI-audit CLEAN.
+
+---
+
 # 2026-07-24 - R166 share-presentation-overhaul + baseline drift fix (near-CLEAN)
 
 Gemini-loop DIRECTOR REFILL unit (b). Two commits (`5bd0854e`, `69d06ef7`),
@@ -65,28 +90,3 @@ the four acceptance lines were adjudicated against a real 22m30s game (Kai'Sa,
 - **NEXT SESSION:** one SR game closes the TRINKET line with no new analysis -
   just run the probe and read `holds_upgradable_trinket` + `stage` against the
   TRINKET row. Then RM-114 needs an operator decision, not code.
-
----
-
-# 2026-07-23j - live-frame probe gold/clock paths root-caused (caveat retired)
-
-One commit (`10e92cf5`), Tier-1, ENGINE-IMPACT NONE. The live-frame acceptance
-is STILL OWED - fourth session now - and still needs the operator in an SR game.
-No headless work remains on it; the pre-flight is fully discharged.
-
-- **Probe pre-flight PASSES.** rc-shell still alive with the CDP flags (root
-  pid 2232) - no relaunch needed, the `2026-07-23i` blocker stays cleared.
-  Probe attaches, reads the DOM, reports `#am-next-buy` present + hidden +
-  rect 0x0 at `mode_key=client`.
-- **The `2026-07-23i` caveat is RETIRED - it was a real bug, now fixed.**
-  `/api/state.liveclient` is the FLATTENED block from
-  `dashboard/_liveclient.py:114 liveclient_summary()` (attached at
-  `dashboard/_state_builder.py:687`), NOT the raw Live Client `:2999` payload.
-  Gold is `liveclient.gold` (`_liveclient.py:148`); the clock is
-  `liveclient.game_time_s` (`_liveclient.py:144`). The probe read
-  `activePlayer.currentGold` / `current_gold` / `gameData.gameTime` - none of
-  those keys exist in that shape, so BOTH fields would have read null in-game
-  regardless of widget behavior. A null GOLD in the next run is now a real
-  widget signal, not probe noise.
-- **Do NOT redo:** everything the `2026-07-23i` do-not-redo list names, plus
-  this path fix. Do NOT re-derive the CDP session - use the committed probe.
