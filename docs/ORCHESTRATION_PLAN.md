@@ -366,6 +366,36 @@ either direction.
 |----|-------|-------|--------|--------|
 | R164 | hexcore-offline-update | DIRECTOR REFILL unit (a). Identify every net-new non-test .py added since `d584e02e` (2026-07-14) and re-sync `docs/HEXCORE_offline.html` - DUST leaves for the files not yet present, stats HUD, ENGINE tooltips. File stays self-contained, node --check clean. ENGINE-IMPACT NONE (offline documentation html only). | DONE | `<this commit>` |
 | R165 | ds-sweep-sustain | DIRECTOR REFILL. Theme ds-sweep-sustain. Directive: DS sweep Lifesteal / Omnivamp vs Meraki truth - premise [UNVERIFIED] that item vamp grants lack Meraki-verified Arena/ARAM mirrors + EHP integration, ONE new math lane behind DEFAULT-OFF `apply_vamp_sustain`. PREMISE VERIFIED-FALSE before any build spend: item vamp is already read per-mirror and EHP-credited. ENGINE-IMPACT NONE (no math change - no bump). | DONE (CLEAN no-change) | `<this commit>` |
+| R166 | share-presentation-overhaul | DIRECTOR REFILL unit (b). Read ENTIRE Share/ folder end to end; update / clean / prune the authored docs as a NEW EXTERNAL PRESENTATION. Distinct from R163 (which only reconciled README test numbers). Orchestrator multi-agent fanout on disjoint Share/ subsets; fix stale refs / orphaned docs / duplicated narrative, improve external-audience formatting, keep Riot Data Dragon / CommunityDragon / Meraki credits explicit. `ds_share_sync.py --check` green, 7-bit ASCII. ENGINE-IMPACT NONE (docs / presentation only). | DONE (near-CLEAN) | `<this commit>` |
+
+**R166 - THE SHARE DOCS WERE ALREADY PRISTINE (R163 OVERHAUL); ONE REAL OFF-BY-ONE FIXED.** The
+directive commanded a full external-presentation overhaul of the ENTIRE Share/ authored doc set.
+Four parallel general-purpose audit agents read the disjoint authored surface end to end (Agent A
+`README.md`; B `docs/01_OVERVIEW.md` + `docs/02_FUNCTION_REFERENCE.md`; C `docs/03_DATA_AND_SOURCES.md`
++ `04_GAPS_AND_ROADMAP.md` + `05_AUDIT_AND_REFACTOR.md`; D `CHANGELOG.md` + `LICENSE.md` +
+`lolmath_ingest/{README,INGEST_SPEC}.md`), each briefed with the canonical ground truth and the
+don't-touch set (`MANIFEST.md` + `Share/src/**` are machine-GENERATED, and the version/patch anchors
+are sync-restamped). Claude (sole merger) reviewed every proposed change against `git diff` and the
+live repo before applying. **Net change: ONE line.** `Share/README.md` Release-history header read
+"The five most recent:" above a list of SIX version-bump entries (1.238->1.239 down through
+1.233->1.234); corrected to "The six most recent:". Every other authored doc verified CLEAN and
+internally consistent: version anchors 1.239.0 / patch 16.14.1 exact; 173 catalog / 171 ability,
+706 items, 7 scorers, 9 compute functions, 35 HTTP paths (31 POST in server.py `_POST_ROUTES` + 4
+GET, order-matched); test posture 306 of 355 shipped (49 host-coupled excluded; 9+36+4=49, 306+49=355)
+/ 7270 passed + 2330 subtests + 16 skipped standalone / 9203 passed + 1 skipped in-repo; all five
+source credits (Riot Data Dragon, CommunityDragon, Meraki/lolstaticdata, League community wiki CC-BY-SA,
+lolmath.net) plus the Overlay App E host-only-not-shipped credit + Riot non-endorsement disclaimer present
+and intact; `lolmath_ingest` path/count refs match the shipping dir (bundle 14,046,703 bytes, 19 source
+keys, patch 16.14.1). All authored files 7-bit ASCII clean (per-file byte scan >127 = zero hits).
+Two nits deliberately LEFT (not drift, light-touch mandate): `burst.py` line-number citations drift
++9 (symbol resolves - a documented, tolerated drift, not a broken ref); `05` sec 3.4 tail narrates the
+retired pre-RM-112 46-file state in present tense but is internally coherent as a historical block.
+Verifier gate: `ds_share_sync.py --check` green (Share/src + doc anchors + lolmath_ingest in sync,
+engine 1.239.0, 460 files); Share guard suite `pytest -k share` 203 passed + 88 subtests. ENGINE-IMPACT
+NONE - no `agents/daemon_slayer/` path touched, no ENGINE bump, no DS bounce, no RC restart, no Share/src
+regen needed. **Don't-redo: the Share/ authored presentation is current + credit-complete as of R163+R166;
+do NOT re-pitch a Share doc overhaul - future drift is a mechanical anchor restamp (handled by the sync
+guard) or a genuine content change from an engine bump, not another end-to-end prose pass.**
 
 **R165 - THE PREMISE WAS VERIFIED-FALSE, SO THE BUILD LANE WAS NOT SCAFFOLDED.** The directive
 commanded a new DEFAULT-OFF `apply_vamp_sustain` seam mapping vamp into the EHP/DPS scorer, with
