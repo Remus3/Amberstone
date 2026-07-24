@@ -25,10 +25,11 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HEXCORE = REPO_ROOT / "docs" / "HEXCORE_offline.html"
 
-# The 44 net-new non-test .py files added since d584e02e. The 13
+# The 45 net-new non-test .py files added since d584e02e. The 13
 # Share/src/agents/daemon_slayer/*.py hits are byte mirrors of the
 # agents/daemon_slayer/*.py hits and are deliberately excluded.
 EXPECTED_NEW_BASENAMES = (
+    "_burst_off_axis.py",
     "_champion_ally_reach.py",
     "_item_ally_grant.py",
     "_item_health_stack.py",
