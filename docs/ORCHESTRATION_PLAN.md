@@ -367,6 +367,31 @@ either direction.
 | R164 | hexcore-offline-update | DIRECTOR REFILL unit (a). Identify every net-new non-test .py added since `d584e02e` (2026-07-14) and re-sync `docs/HEXCORE_offline.html` - DUST leaves for the files not yet present, stats HUD, ENGINE tooltips. File stays self-contained, node --check clean. ENGINE-IMPACT NONE (offline documentation html only). | DONE | `<this commit>` |
 | R165 | ds-sweep-sustain | DIRECTOR REFILL. Theme ds-sweep-sustain. Directive: DS sweep Lifesteal / Omnivamp vs Meraki truth - premise [UNVERIFIED] that item vamp grants lack Meraki-verified Arena/ARAM mirrors + EHP integration, ONE new math lane behind DEFAULT-OFF `apply_vamp_sustain`. PREMISE VERIFIED-FALSE before any build spend: item vamp is already read per-mirror and EHP-credited. ENGINE-IMPACT NONE (no math change - no bump). | DONE (CLEAN no-change) | `<this commit>` |
 | R166 | share-presentation-overhaul | DIRECTOR REFILL unit (b). Read ENTIRE Share/ folder end to end; update / clean / prune the authored docs as a NEW EXTERNAL PRESENTATION. Distinct from R163 (which only reconciled README test numbers). Orchestrator multi-agent fanout on disjoint Share/ subsets; fix stale refs / orphaned docs / duplicated narrative, improve external-audience formatting, keep Riot Data Dragon / CommunityDragon / Meraki credits explicit. `ds_share_sync.py --check` green, 7-bit ASCII. ENGINE-IMPACT NONE (docs / presentation only). | DONE (near-CLEAN) | `<this commit>` |
+| R167 | ds-sweep-hsp | DIRECTOR REFILL. DS sweep Healing and Shielding Power (HSP) item grants (Moonstone Renewer, Dawncore, Redemption, Mikael's Blessing, Ardent Censer, Staff of Flowing Water, Echoes of Helia). Premise [UNVERIFIED] that HSP item magnitudes / mode mirrors match base and are EHP-credited, ONE new math lane behind DEFAULT-OFF `apply_item_hsp`. PREMISE VERIFIED-TRUE before any build spend: R143 already registered all 7 targets (+3 more) per-mirror at measured magnitudes with the seam integrated into both EHP scorers + sustain self-regen. ENGINE-IMPACT NONE (no math change - no bump). | DONE (CLEAN no-change) | `<this commit>` |
+
+**R167 - THE PREMISE WAS VERIFIED-TRUE, SO NO `apply_item_hsp` LANE WAS SCAFFOLDED.** The directive
+commanded a DEFAULT-OFF `apply_item_hsp` seam crediting Heal-and-Shield-Power (HSP) item grants across
+7 targets (Moonstone Renewer 6617, Dawncore 6621, Redemption 3107, Mikael's Blessing 3222, Ardent
+Censer 3504, Staff of Flowing Water 6616, Echoes of Helia 6620), with Agent A read-only sweeping
+Meraki/DDragon and Agent B building the lane in a worktree. Inspection before dispatch showed the seam
+would DUPLICATE shipped code: R143 (ENGINE 1.147.0) already registered all 7 targets - PLUS Whispering
+Circlet 2526, Knight's Vow 3109, Locket 3190, Imperial Mandate 4005, Forbidden Idol 3114 - in the
+curated `enchanter_items.json` snapshot as an explicit per-id truth table with SR bare, ARAM `32xxxx`,
+and Arena `22xxxx` mode mirrors carrying their MEASURED (not prefix-stripped) magnitudes (e.g. Arena
+Redemption 12% vs SR 10%; ARAM Mikael's 15% vs SR 12%; Dawncore 16/20/12; Staff 10/10/14). The wielder
+sum flows through `_hsp_amp.sum_wielder_hsp_pct`, consumed by BOTH EHP scorers (`ehp.py:1647`, the
+wielder ItemShield pool) and sustain self-regen (`sustain.py:382`), each gated DEFAULT-OFF on
+`assume_hsp_amp` so a 0.0 return is byte-identical. Two catalog subtleties already handled: Moonstone
+Renewer's 0.30 is the Starlit Grace ally-CHAIN ratio (`ally_chain_only` flag) so it reads 0.0 on the
+wielder-self path while `hps.py` keeps 0.30 for ally throughput; and Echoes of Helia correctly carries
+0.0 HSP-amp (it is a proc item, no Heal-and-Shield-Power stat line). Verification: the HSP suite
+(`test_hsp_mirror_ids_r143` + `test_hsp_amp_r60` + `test_ability_hsp_amp` + `test_enchanter_pool_hsp_rm90`)
+ran green - 48 passed + 82 subtests - and the R143 TRUTH table is measured directly from
+`data/daemon_slayer/16.14.1/items.json`, so green == magnitudes still match base. ENGINE-IMPACT NONE -
+no `agents/daemon_slayer/` math path touched, no ENGINE bump, no DS bounce, no Share/src regen. **Don't-redo:
+HSP item grants + mode mirrors + EHP/sustain integration are COMPLETE and base-accurate as of R143; do
+NOT re-pitch an `apply_item_hsp` item lane. Any future HSP work is a per-patch magnitude re-measure into
+the `enchanter_items.json` snapshot, or a genuinely new HSP-bearing item, not a new seam.**
 
 **R166 - THE SHARE DOCS WERE ALREADY PRISTINE (R163 OVERHAUL); ONE REAL OFF-BY-ONE FIXED.** The
 directive commanded a full external-presentation overhaul of the ENTIRE Share/ authored doc set.
