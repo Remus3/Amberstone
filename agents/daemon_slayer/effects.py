@@ -527,6 +527,10 @@ def effective_target_armor(
     target_armor: float,
     effects: Iterable[ItemEffect],
     level: int | None = None,
+    # R190: appended at the END per the no-mid-signature-insert convention,
+    # and both defaulting to 0.0 so every pre-R190 call site is byte-identical.
+    kit_pen_pct: float = 0.0,
+    kit_pen_flat: float = 0.0,
 ) -> float:
     """Apply armor reduction -> % pen -> flat pen pipeline.
 
@@ -574,6 +578,23 @@ def effective_target_armor(
     yield ``1 - 0.65*0.65 = 0.5775`` (57.75%), not 0.70. The same rule
     applies to multiple ``armor_reduction_pct`` sources. Single-source
     builds are unaffected (composition of one factor is the factor).
+
+    R190 slice A - CHAMPION-KIT penetration (``kit_pen_pct`` /
+    ``kit_pen_flat``). ``effects`` accepts ONLY ``ItemEffect`` objects, so a
+    champion whose OWN KIT grants percent armor penetration (Darius E 40
+    percent, Ambessa R 30, Pantheon R 30) had that penetration credited
+    nowhere in the damage math. These two arguments are the seam.
+    ``kit_pen_pct`` is a single already-composed penetration FRACTION that
+    joins the percent-penetration stage MULTIPLICATIVELY - the same rule item
+    percent pen obeys, and the rule Darius's own wiki notes state verbatim
+    ("stacks multiplicatively with other forms of percentage armor
+    penetration"). ``kit_pen_flat`` sums into the flat-penetration stage
+    alongside item flat pen and lethality, and is therefore subject to the
+    same zero floor. BOTH DEFAULT TO 0.0 and no existing call site passes
+    either, so every pre-R190 result - including the passthrough and the
+    negative-armor no-op - is byte-identical. Callers do not assemble these
+    values by hand: ``_kit_penetration.apply_kit_penetration`` is the
+    DEFAULT-OFF seam that resolves them from the registry.
     """
     eff_list = list(effects)
     red_flat = sum(e.armor_reduction_flat for e in eff_list)
@@ -587,10 +608,14 @@ def effective_target_armor(
     # Percent armor penetration also composes multiplicatively (LDR
     # 0.35 + Serylda 0.35 = 0.5775 effective pen, NOT 0.70). Pre-1.5.1
     # this was an additive sum which over-penetrated multi-pen builds.
+    # R190: the kit fraction joins the SAME product, so item pen and kit pen
+    # can never sum. Folding it here (rather than into the effect list) keeps
+    # the item-side generator untouched and makes the zero default a literal
+    # multiply-by-one no-op.
     pen_pct = 1.0 - _composed_keep_factor(
         e.armor_pen_pct for e in eff_list
-    )
-    pen_flat = sum(e.armor_pen_flat for e in eff_list)
+    ) * (1.0 - kit_pen_pct)
+    pen_flat = sum(e.armor_pen_flat for e in eff_list) + kit_pen_flat
     if level is not None:
         lethality_total = sum(e.lethality for e in eff_list)
         if lethality_total > 0:
