@@ -154,6 +154,48 @@ DONE - All 51 rows DONE (LEDGER 784 + 903; newest R129 = LEDGER 903). Rows reloc
 | R152 | ds-sweep-penetration | Cross-check Lethality / %ArmorPen / flat+%MagicPen items in `data/daemon_slayer/16.14.1/items.json` against the DS item registries; verify magnitudes, Arena/ARAM mirrors, and uncredited canonical ids. Ship RC-A (5 entirely-uncredited lethality entries) DEFAULT-ON as data parity; hold RC-B Arena magnitude drift for a doctrine call. ENGINE-IMPACT BUMP 1.233.0 -> 1.234.0. | DONE | `890daf1c` |
 | R153 | ds-sweep-magic-pen | Execute the two FUTURE tails R152 identified but left unbuilt: credit `1111` Jarvan I's 12 flat magic pen in `ITEM_EFFECTS` (stated in description text, absent from the structured stat block), add a permanent catalog-sweep guard, mark `443064` Talisman of Ascension unmodelable, and backfill the `Share/README.md` release list 1.229.0-1.235.0. ENGINE-IMPACT BUMP 1.234.0 -> 1.235.0. | DONE | `e7be8ed2` |
 | OP-ADJ | adjudicator-swap-seam | OPERATOR-DIRECTED mid-run (not a refill item). Make the loop's external brain vendor-pluggable so the Gemini-to-local-Claude transition is rapid and low-disruption whenever Gemini credits run out: `ops/loop/adjudicator.py` seam behind the single `gemini()` call site, automatic credit-exhaustion failover that retries the same call on the fallback, AHK bridge focus/timing/liveness hardening, and `docs/ADJUDICATOR_SWAP.md`. Gemini remains the live default; every new default reproduces prior behavior. ENGINE-IMPACT NONE. | DONE | `f47a5082` + `48975ead` |
+| R163 | share-external-presentation | OPERATOR RUN FOCUS unit B - Share/ folder external-presentation pass. Read + clean + prune + format the public product artifact; keep source credits (Riot Data Dragon / CommunityDragon / Meraki) explicit; preserve mechanical version/patch anchors (`ds_share_sync.py --check` green). ENGINE-IMPACT NONE (docs only). | DONE | `<this commit>` |
+
+**R163 - THE WHOLESALE-REWRITE PREMISE WAS REFUTED ON GROUND TRUTH, and one real
+defect was found and fixed instead.** The directive framed Share/ as an unworked
+artifact needing an end-to-end external-presentation overhaul. It is not: the eight
+authored files are already a polished, internally-consistent external package -
+`README.md` credits all six upstream sources explicitly (Riot Data Dragon /
+CommunityDragon / Meraki / community wiki / lolmath.net + the named-not-shipped
+Overlay App E feed) in two places, `LICENSE.md` repeats the per-source terms with the
+CC-BY-SA obligation and the Riot non-endorsement disclaimer, all six doc anchors
+track live (engine 1.239.0 / patch 16.14.1), `ds_share_sync.py --check` was GREEN
+at baseline, and every authored file is ASCII-clean (0 non-ASCII bytes, verified).
+A fabricated rewrite of accurate technical docs would have been net-negative and
+high-risk against a public product artifact - so it was not done (precedent: the
+R114 / R115 CLEAN-REFUTED-PREMISE rows).
+
+**The one genuine defect: `README.md` still described the RETIRED test-packaging
+state.** Its At-a-glance row, its entire "What that test run reports" narrative, and
+its Notation section said the package ships **345 test files / 9098 tests**, that
+running the suite yields **8816 passed / 108 failed / 16 skipped / 158 errors** with
+**46 of the 345 files reaching outside**, and that a reviewer must build a **46-line
+`--ignore` block** to reach a green baseline (measured **6920 passed**). That state
+was retired by RM-112 (2026-07-23): the 49 host-coupled modules are now excluded from
+the mirror at generation, so the shipped package is **306 of the engine's 355 source
+test files** and the plain command exits GREEN. `docs/05_AUDIT_AND_REFACTOR.md` had
+already been updated to that reality; README had not, so it contradicted its own
+audit doc and told an external reviewer to expect 108 failures and 158 errors that
+cannot occur. FIX: reconciled README's three stale sites to the re-measured current
+truth - I ran the shipped suite myself (`PYTHONPATH=. python -m pytest
+agents/daemon_slayer/tests -q` from `Share/src`) and observed **7270 passed, 16
+skipped, 2330 subtests, 0 failed, 0 errors, 66.7s, exit 0**, matching doc 05 exactly.
+
+**Verification.** `ds_share_sync.py --check` GREEN post-edit (anchors intact, `src`
+mirror byte-identical - README/LICENSE/docs are authored, not part of the
+deterministic mirror). Share doc-guard + hygiene suite (`test_ds_share_*` x11 +
+smart-quote / mojibake / u2500) **110 passed + 24 subtests**. README **0 non-ASCII
+bytes**. No test pins the old README numbers (grep-checked). Inline single-file edit
+(premise collapsed the 4-slice fan-out to one file; R7 exempts an own single-thread
+edit from the verifier-subagent gate, and every claim was independently re-measured
+against ground truth). Don't-redo: Share/ is already a complete, credited, ASCII-clean
+external artifact - do NOT re-pitch a wholesale rewrite; the README test-suite numbers
+are now the RM-112 306/355/49 + 7270-green reality and track doc 05.
 
 **THE DIRECTIVE'S 7 TARGETS RESOLVED TO 1 REAL GAP, and the audit that established
 that ran BEFORE any code.** 8236 Gathering Storm and 8233 Absolute Focus were ALREADY
