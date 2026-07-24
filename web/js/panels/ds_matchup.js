@@ -17,6 +17,14 @@
 // fanned out over all committed enemies and binned into a severity grid, so
 // the whole enemy team is readable at a glance and not just the laner.
 //
+// C-09 (2026-07-24): F1 shipped, but the card still collapsed WHOLE whenever
+// the headline (lane) pairing had not landed or came back not-ok - taking the
+// four renderable enemy rows down with it and popping the block back in when
+// the lane fetch resolved. Per feedback_no_reflow_on_data_absence a scaffold
+// whose rows exist keeps its geometry and renders the "-" sentinel; only a
+// truly-empty enemy roster is allowed to collapse. The card now scaffolds off
+// the grid and hides only when there is nothing at all to show.
+//
 // Backend wire:
 //   GET /api/ds-matchup?champ_a=<slug-or-numeric>&champ_b=<slug-or-numeric>&mode=SR
 //   Response (ok=true): {
@@ -48,6 +56,10 @@ const _DSM_INFLIGHT = Object.create(null);
 const _DSM_TS = Object.create(null);
 const _DSM_SIG = Object.create(null);       // mount-id -> last-rendered sig
 const _DSM_TTL_MS = 5 * 60 * 1000;          // matches backend TTL
+
+// The repo-wide no-data sentinel (CLAUDE.md: empty dashboard cells render
+// "-"). A single hyphen, never a double - the double reads as a truncation.
+const _EMPTY = "-";
 
 function _cacheKey(champA, champB, mode) {
   return `${champA || ""}|${champB || ""}|${(mode || "SR").toUpperCase()}`;
@@ -243,9 +255,13 @@ function _signature(payload, grid) {
     ].join("|");
   // The grid re-renders on any cell landing / changing, so its own shape has
   // to be part of the sig or a late-landing enemy fetch would be swallowed.
+  // C-09: champA rides the tail because a pending headline draws its names off
+  // the lane CELL, so a champ change while the fetch is still in flight has to
+  // move the sig or the dedup gate would pin the stale pairing.
   const cells = Array.isArray(grid) ? grid : [];
   const tail = cells.map((c) => [
     c && c.champ ? c.champ : "",
+    c && c.champA ? c.champA : "",
     c && c.role ? c.role : "",
     c && c.isLane ? "L" : "",
     _severity(c && c.payload),
@@ -302,6 +318,9 @@ function _notesHtml(payload) {
 function _gridHtml(grid) {
   const cells = Array.isArray(grid) ? grid : [];
   if (cells.length < 2) return "";  // a lone enemy IS the headline card
+  // C-09: every handed row renders, INCLUDING one whose fetch is still in
+  // flight and one whose slug has not resolved off the CHAMPS index yet. The
+  // row keeps its footprint and shows the sentinel; it never waits to exist.
   // AUDIT (HIERARCHY): only claim a lane match when one actually happened.
   // In the role-less modes (ARAM / Arena) _laneOpponentIdx falls back to pick
   // order, so marking that row "lane opponent" and tinting it would assert a
@@ -315,10 +334,11 @@ function _gridHtml(grid) {
     const role = _roleShort(c && c.role);
     const lane = (roleMatched && c && c.isLane) ? " is-lane" : "";
     const nm = _esc(_shortName(c && c.champ));
-    const verdict = ok ? _esc(_verdictLabel(p.verdict)) : "--";
-    const swing = ok ? `${_clampSwing(p.swing_pct)}%` : "--";
+    const verdict = ok ? _esc(_verdictLabel(p.verdict)) : _EMPTY;
+    const swing = ok ? `${_clampSwing(p.swing_pct)}%` : _EMPTY;
+    const empty = ok ? "" : " is-empty";
     return (
-      `<li class="dsm-grid-cell dsm-sev-${sev}${lane}">`
+      `<li class="dsm-grid-cell dsm-sev-${sev}${lane}${empty}">`
       + `<span class="dsm-grid-role">${_esc(role)}</span>`
       + `<span class="dsm-grid-champ">${nm}</span>`
       + `<span class="dsm-grid-verdict">${verdict}</span>`
@@ -342,31 +362,42 @@ function _gridHtml(grid) {
 // optional per-enemy severity list. Hides on null / not-ok payloads.
 export function renderDsMatchup(blockEl, payload, grid) {
   if (!blockEl) return;
+  const cells = Array.isArray(grid) ? grid : [];
   const sigKey = blockEl.id || "_dsm_default";
-  const sig = _signature(payload, grid);
+  const sig = _signature(payload, cells);
   if (_DSM_SIG[sigKey] === sig) return;
   _DSM_SIG[sigKey] = sig;
 
-  if (!payload || !payload.ok) {
+  const ok = !!(payload && payload.ok);
+  // C-09 no-reflow gate. Collapsing is correct ONLY for truly-no-data-anywhere
+  // (no committed enemies at all, and the plain two-arg call every existing
+  // caller still makes). A pending or dead HEADLINE over a populated roster is
+  // a scaffold: it keeps its geometry and renders sentinels.
+  if (!ok && !cells.length) {
     blockEl.hidden = true;
     return;
   }
   blockEl.hidden = false;
 
-  const aName = _esc(payload.champ_a || "");
-  const bName = _esc(payload.champ_b || "");
-  const aShort = _esc(_shortName(payload.champ_a));
-  const bShort = _esc(_shortName(payload.champ_b));
-  const verdictCls = _verdictClass(payload.verdict);
-  const verdictLbl = _esc(_verdictLabel(payload.verdict));
-  const swing = _clampSwing(payload.swing_pct);
-  const aRemoved = _pctRemoved(payload.pct_a_removed);
-  const bRemoved = _pctRemoved(payload.pct_b_removed);
-  const notes = _notesHtml(payload);
-  const gridHtml = _gridHtml(grid);
   // Role of the pairing the swing bar describes, so the operator can see the
-  // headline is their LANE and not just whoever picked first (F5).
-  const laneCell = (Array.isArray(grid) ? grid : []).find((c) => c && c.isLane);
+  // headline is their LANE and not just whoever picked first (F5). The cell
+  // also carries the names, which is what lets the pending head still say
+  // WHICH pairing it is waiting on instead of going blank.
+  const laneCell = cells.find((c) => c && c.isLane) || cells[0] || null;
+  const champA = ok ? payload.champ_a : (laneCell && laneCell.champA);
+  const champB = ok ? payload.champ_b : (laneCell && laneCell.champ);
+  const aName = _esc(champA || _EMPTY);
+  const bName = _esc(champB || _EMPTY);
+  const aShort = _esc(_shortName(champA));
+  const bShort = _esc(_shortName(champB));
+  const verdictCls = ok ? _verdictClass(payload.verdict) : "dsm-even is-empty";
+  const verdictLbl = ok ? _esc(_verdictLabel(payload.verdict)) : _EMPTY;
+  const swing = ok ? _clampSwing(payload.swing_pct) : 50;
+  const swingCls = ok ? "dsm-swing" : "dsm-swing is-empty";
+  const aRemoved = ok ? `${_pctRemoved(payload.pct_a_removed)}% removed` : _EMPTY;
+  const bRemoved = ok ? `${_pctRemoved(payload.pct_b_removed)}% removed` : _EMPTY;
+  const notes = ok ? _notesHtml(payload) : "";
+  const gridHtml = _gridHtml(cells);
   const laneRole = _esc(_roleShort(laneCell && laneCell.role));
   const laneTag = laneRole
     ? `<span class="dsm-head-lane">${laneRole} lane</span>`
@@ -379,17 +410,17 @@ export function renderDsMatchup(blockEl, payload, grid) {
     + laneTag
     + `<span class="dsm-verdict ${verdictCls}">${verdictLbl}</span>`
     + `</div>`
-    + `<div class="dsm-swing">`
+    + `<div class="${swingCls}">`
     + `<div class="dsm-swing-track">`
     + `<span class="dsm-swing-mid"></span>`
     + `<span class="dsm-swing-marker" style="left:${swing}%"></span>`
     + `</div>`
     + `<div class="dsm-swing-ends">`
     + `<span class="dsm-swing-end dsm-swing-end-a">`
-    + `${aShort} <span class="dsm-swing-pct">${bRemoved}% removed</span>`
+    + `${aShort} <span class="dsm-swing-pct">${bRemoved}</span>`
     + `</span>`
     + `<span class="dsm-swing-end dsm-swing-end-b">`
-    + `<span class="dsm-swing-pct">${aRemoved}% removed</span> ${bShort}`
+    + `<span class="dsm-swing-pct">${aRemoved}</span> ${bShort}`
     + `</span>`
     + `</div>`
     + `</div>`
@@ -429,13 +460,17 @@ export function renderDsMatchupForChampSelect(cs, blockId) {
   const grid = [];
   for (let i = 0; i < rows.length; i += 1) {
     const champB = resolveChampNames([rows[i].id])[0] || "";
-    if (!champB) continue;
-    fetchDsMatchup(champA, champB, mode, _dsmOnLand);
+    // C-09: a committed enemy whose slug has not resolved off the CHAMPS index
+    // yet still OCCUPIES a row - dropping it and re-adding it when the index
+    // lands is exactly the reflow this slice removes. No slug means no fetch,
+    // so the row simply carries the sentinel until the next tick resolves it.
+    if (champB) fetchDsMatchup(champA, champB, mode, _dsmOnLand);
     grid.push({
       champ: champB,
+      champA: champA,
       role: rows[i].role,
       isLane: (i === laneIdx),
-      payload: getCachedDsMatchup(champA, champB, mode),
+      payload: champB ? getCachedDsMatchup(champA, champB, mode) : null,
     });
   }
   if (!grid.length) {

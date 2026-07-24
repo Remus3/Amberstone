@@ -182,6 +182,66 @@ def test_fixture_is_valid_json_with_expected_keys():
     assert data["ok"] is True
 
 
+def test_grid_never_collapses_while_enemy_rows_are_renderable():
+    """C-09: a pending / dead HEADLINE must not take the enemy grid with it.
+
+    F1 shipped the 5-enemy grid but kept the pre-F1 hide-on-not-ok guard, so a
+    lane pairing that had not landed (or came back no_matchup) collapsed the
+    whole block and popped it back in on landing. Per
+    feedback_no_reflow_on_data_absence only a truly-empty roster may collapse.
+    """
+    src = _read(JS_PATH)
+    body = src[src.index("export function renderDsMatchup(") :]
+    body = body[: body.index("\n// Entry point")]
+    # The collapse branch must be gated on there being nothing to scaffold.
+    assert "!ok && !cells.length" in body, "card still collapses on a not-ok headline"
+    assert "blockEl.hidden = false" in body
+    # And the pending headline still names the pairing it is waiting on, which
+    # it can only do off the lane CELL - the payload is absent by definition.
+    assert "laneCell.champA" in body or "laneCell && laneCell.champA" in body
+
+
+def test_no_data_cells_use_the_single_hyphen_sentinel():
+    """The repo no-data sentinel is "-", not a double hyphen."""
+    src = _read(JS_PATH)
+    assert 'const _EMPTY = "-";' in src, "sentinel constant missing"
+    grid = src[src.index("function _gridHtml(") :]
+    grid = grid[: grid.index("\n// Render the matchup card")]
+    assert '"--"' not in grid, "grid still renders the double-hyphen placeholder"
+    assert "_EMPTY" in grid
+
+
+def test_scaffold_states_are_tint_only():
+    """No-reflow is a CSS contract too: .is-empty may not change geometry."""
+    css = _read(CSS_PATH)
+    block = css[css.index("/* --- C-09 no-data scaffold states") :]
+    block = block[: block.index("/* Full-combo marker tag")]
+    for prop in ("display:", "height:", "padding:", "margin:", "font-size:"):
+        assert prop not in block, f".is-empty rules must not set {prop}"
+    for cls in (".dsm-verdict.is-empty", ".dsm-grid-cell.is-empty",
+                ".dsm-swing.is-empty"):
+        assert cls in css, f"scaffold style {cls} missing"
+
+
+def test_unresolved_slug_keeps_its_row():
+    """A committed enemy whose slug has not resolved still occupies a row."""
+    src = _read(JS_PATH)
+    body = src[src.index("export function renderDsMatchupForChampSelect(") :]
+    assert "if (!champB) continue;" not in body, "unresolved slug still drops a row"
+    assert "if (champB) fetchDsMatchup(" in body, "must not fetch on an empty slug"
+
+
+def test_node_test_module_exists_and_is_wired():
+    """The behavioural half of this panel lives in a node --test module."""
+    mjs = ROOT / "web" / "js" / "panels" / "ds_matchup.test.mjs"
+    assert mjs.exists(), f"node test module missing at {mjs}"
+    src = _read(mjs)
+    assert 'import test from "node:test";' in src
+    assert "renderDsMatchup" in src
+    raw = mjs.read_bytes()
+    assert not [b for b in raw if b > 0x7F], "non-ASCII byte in the node test module"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F."""
     for p in (JS_PATH, CSS_PATH, FIXTURE_PATH, Path(__file__)):
