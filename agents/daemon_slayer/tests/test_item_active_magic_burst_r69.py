@@ -75,8 +75,8 @@ _ROCKETBELT_BUILD = ["3047", _ROCKETBELT]
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.239.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.239.0")
+        self.assertEqual(ENGINE_VERSION, "1.240.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.240.0")
 
 
 class MerakiTruth(unittest.TestCase):
