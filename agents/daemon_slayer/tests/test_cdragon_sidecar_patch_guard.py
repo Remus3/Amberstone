@@ -7,17 +7,25 @@
 forward verbatim therefore silently RE-ARMS stale ratios as authoritative over
 the Meraki snapshot, with no signal anywhere.
 
-That is not hypothetical: ``cdragon_ability_ratios.json`` is byte-identical
+That was not hypothetical: ``cdragon_ability_ratios.json`` was byte-identical
 across the 16.11.1 / 16.12.1 / 16.13.1 / 16.14.1 directories and every copy
-carries ``"patch": "16.11.1"`` internally, while ``current.txt`` is 16.14.1.
+carried ``"patch": "16.11.1"`` internally, while ``current.txt`` was 16.14.1.
+The 16.14 re-extract repaired the CURRENT directory only - the three older
+directories are still byte-identical 16.11.1 copies - so the guard stays load
+bearing against the next copy-forward.
 
 These tests pin the guard:
 
 * the mismatch is DETECTED and logged loudly on every load (no silent re-arm),
 * ``strict_cdragon_patch=True`` DROPS the stale sidecar and falls back to Meraki,
-* the default stays non-strict so engine output is byte-identical until the
-  16.14 re-extract lands as its own deliberate diff,
+* ``strict_cdragon_patch=False`` reproduces the pre-guard apply-anyway behavior,
 * the ``cdragon_root`` override seam is validated the same way.
+
+The enforcement default flipped to True alongside the 16.14 re-extract. Both
+enforcement outcomes are pinned with the flag passed EXPLICITLY so neither can
+be turned into a tautology by a future default flip; exactly one test
+(``test_default_is_strict_stale_sidecar_dropped``) reads the default on
+purpose, and it is the characterization of WHICH default ships.
 """
 from __future__ import annotations
 
