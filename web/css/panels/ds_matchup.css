@@ -1,8 +1,13 @@
-/* DS-Matchup champ-select card. Renders the LOCKED champion vs the FIRST
- * committed enemy as a verdict chip (all-in / trade / back-off / even) over
- * a centered swing bar - the operator scans whether the lane trade favors
- * them at a glance. Mounts inside the Suggestions card during champ-select,
- * a sibling of the ds-profile + ds-sweep + cooldown-watch cards.
+/* DS-Matchup card. Renders the operator's champion vs the ROLE-MATCHED lane
+ * opponent (BACKLOG F5) as a verdict chip (all-in / trade / back-off / even)
+ * over a centered swing bar, above a per-enemy danger grid covering the whole
+ * enemy team (BACKLOG F1) - the operator scans the lane trade and the team
+ * threat picture at a glance. Mounts in the Active Match view (CS3 moved it
+ * off champ-select), a sibling of the ds-profile + ds-sweep cards.
+ *
+ * C-09: the card is a SCAFFOLD. Pending / dead cells keep their footprint and
+ * carry .is-empty plus the "-" sentinel; the block never collapses while any
+ * enemy row is renderable (feedback_no_reflow_on_data_absence).
  *
  * Uses the semantic tokens from web/css/tokens.css. Verdict tint: all-in
  * and trade read favorable (success/positive), back-off reads danger, even
@@ -212,7 +217,7 @@
  * its placeholder in place instead of reflowing the block. */
 .dsm-grid-cell {
   display: grid;
-  grid-template-columns: 3.5em minmax(0, 1fr) 5.5em 3.5em;
+  grid-template-columns: 3.5em minmax(0, 1fr) 6.5em 3.5em;
   align-items: center;
   gap: var(--space-2);
   min-height: var(--hit-min, 42px);
@@ -235,10 +240,17 @@
   overflow-wrap: anywhere;
 }
 
+/* AUDIT (C-09, STRUCTURE + state-coverage): the widest verdict is "BACK OFF",
+ * which sat within a couple of px of the old 5.5em track. A wrap there would
+ * push that ONE row to two lines - breaking the column rhythm and, worse,
+ * changing the row height between the "-" placeholder and the landed verdict,
+ * which is the exact reflow this slice exists to remove. nowrap + a 6.5em
+ * track make the widest string structurally unable to wrap. */
 .dsm-grid-verdict {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .dsm-grid-swing {
@@ -307,6 +319,39 @@
 .dsm-sev-unknown .dsm-grid-champ,
 .dsm-sev-unknown .dsm-grid-verdict,
 .dsm-sev-unknown .dsm-grid-swing {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* --- C-09 no-data scaffold states ---------------------------------
+ *
+ * Every rule here is a TINT change only. Nothing sets display, height, or
+ * padding, so an .is-empty element occupies exactly the footprint it will
+ * occupy once its data lands - the swap is invisible to the layout.
+ */
+
+/* Headline verdict chip waiting on (or denied) its pairing. Keeps the chip
+ * box + the --hit-min floor inherited from .dsm-verdict. */
+.dsm-verdict.is-empty {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Swing bar with no verdict behind it - the gold marker is the strongest mark
+ * on the card, so it must not read as a real reading while it is a placeholder.
+ * The track keeps its 12px height either way. */
+.dsm-swing.is-empty .dsm-swing-marker {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+}
+
+.dsm-swing.is-empty .dsm-swing-pct {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Grid row whose fetch has not landed. Pairs with .dsm-sev-unknown; both are
+ * tint-only so the row height never moves. */
+.dsm-grid-cell.is-empty .dsm-grid-verdict,
+.dsm-grid-cell.is-empty .dsm-grid-swing {
   color: rgba(255, 255, 255, 0.4);
 }
 
