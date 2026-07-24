@@ -127,6 +127,41 @@ OFFCLASS_MARKSMAN_ITEM_NAMES: frozenset[str] = frozenset({
 })
 
 
+# RM-04 A-01 (2026-07-24) - CARRY CANDIDATE-POOL WIDEN set (DEFAULT-OFF seam).
+#
+# MEASURED premise, in-process + live :8893 at ENGINE 1.241.0 / patch 16.14.1:
+# the SR carry pool is 108 items (the ROADMAP filing's "111" does not
+# reproduce) and is SET-IDENTICAL across Caitlyn / Jinx / Ashe / Sivir /
+# Senna / Smolder / Ezreal, because the deny above is class-wide by NAME with
+# no per-champion axis. Verified BY ID, not by name (the Arena mirrors 223071
+# / 223161 / 226631 / 223053 share the display names and are maps["11"]=False,
+# so they never reach SR anyway):
+#   3071 Black Cleaver   - denied by name
+#   3161 Spear of Shojin - denied by name
+#   6631 Stridebreaker   - denied by name
+#   3053 Sterak's Gage   - denied by name
+#   3877 Bloodsong       - denied by _SR_EXCLUDED_ITEM_IDS (RM-93 support
+#                          quest), a DIFFERENT mechanism, NOT widened here
+#   6692 Eclipse         - admitted at the default (control)
+#
+# This set is the smallest defensible widen: exactly the four ROADMAP-named
+# items that the off-class NAME deny actually strips. It is deliberately
+# NARROWER than the full deny-set (Heartsteel / Thornmail / Warmog's stay
+# stripped - a ranged ADC does not build tank frontline as a DPS slot) and
+# BROADER than the pre-existing DSP2 ``exempt_offclass_by_win`` table, which
+# is per-champion (only Corki / Ezreal / Senna / Smolder) and carries no
+# Stridebreaker or Sterak's Gage entry for anyone.
+#
+# Consumed ONLY by ``rank_items(widen_carry_pool=True)``. Default False is a
+# byte-identical no-op (pinned by tests/test_rank_carry_pool_widen_rm04.py).
+CARRY_POOL_WIDEN_ITEM_NAMES: frozenset[str] = frozenset({
+    "Black Cleaver",     # 3071 - armor shred, Senna/Smolder empirical core
+    "Spear of Shojin",   # 3161 - ability-haste caster-marksman core
+    "Stridebreaker",     # 6631 - AD/HP + slow, no exemption-table entry
+    "Sterak's Gage",     # 3053 - AD/HP lifeline, no exemption-table entry
+})
+
+
 # Non-coachable joke / meme / anvil items that DDragon mis-flags as buyable
 # on real maps (e.g. Golden Spatula carries maps['12']=True for ARAM with a
 # full all-stats block, so the DPS scorer ranked it #2 for a live ARAM Varus).
@@ -854,6 +889,7 @@ def rank_items(
     cost_ceiling: Optional[int] = None,
     target_current_hp_pct: float = 1.0,
     kit_conversion_strength: float = 0.0,
+    widen_carry_pool: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -936,6 +972,19 @@ def rank_items(
     positive-delta kit-axis item is floated above the generic template (model
     order preserved within each tier). Champs absent from the table are a no-op.
     The live default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``widen_carry_pool`` is the OPTIONAL RM-04 A-01 seam (DEFAULT-OFF). The
+    item-213 off-class deny is class-wide by NAME, so the SR carry pool is 108
+    items SET-IDENTICAL across every ranged marksman and categorically excludes
+    Black Cleaver (3071) / Spear of Shojin (3161) / Stridebreaker (6631) /
+    Sterak's Gage (3053) BEFORE scoring runs. When ``True`` and the champion is
+    a ranged marksman, ``CARRY_POOL_WIDEN_ITEM_NAMES`` is un-stripped from the
+    deny for EVERY ranged marksman - broader than ``exempt_offclass_by_win``,
+    which is a 4-champion table with no Stridebreaker / Sterak's entry. NOTE
+    Bloodsong (3877) is NOT widened: it is denied by ``_SR_EXCLUDED_ITEM_IDS``
+    (the RM-93 support-quest deny, a different mechanism, measured harmful when
+    admitted). When ``False`` (default) the output is byte-identical. The live
+    default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
 
     ``cost_ceiling`` is the OPTIONAL F2 cost-aware-top seam (DEFAULT-OFF). When a
     positive int, candidates whose ``gold.total`` exceeds it are dropped from the
@@ -1058,6 +1107,13 @@ def rank_items(
             axis_names = kit_axis_item_names(str(champion_id), champ_rec)
             if axis_names:
                 exclude_names = exclude_names - axis_names
+        # RM-04 A-01 (DEFAULT-OFF): class-wide widen. Un-strip the four
+        # ROADMAP-named off-class items (Black Cleaver / Spear of Shojin /
+        # Stridebreaker / Sterak's Gage) for EVERY ranged marksman, not just
+        # the four DSP2-tabled champions. Composes with both seams above (set
+        # difference is order-independent). Byte-identical when off.
+        if widen_carry_pool:
+            exclude_names = exclude_names - CARRY_POOL_WIDEN_ITEM_NAMES
 
     candidates = _filter_candidates(
         snapshot,

@@ -451,8 +451,11 @@ def _route_rank(body: dict) -> dict:
     #     genuinely wins on (Ezreal/Corki/Smolder Trinity Force / Spear of Shojin).
     #   prefer_kit_axis_by_win (DSP11) - float a champ's WIN-anchored kit-axis items.
     #   cost_ceiling (F2) - drop candidates above the gold ceiling.
+    #   widen_carry_pool (RM-04 A-01) - class-wide un-strip of Black Cleaver /
+    #     Spear of Shojin / Stridebreaker / Sterak's Gage for ranged marksmen.
     exempt_offclass_by_win = _opt_bool(body, "exempt_offclass_by_win", False)
     prefer_kit_axis_by_win = _opt_bool(body, "prefer_kit_axis_by_win", False)
+    widen_carry_pool = _opt_bool(body, "widen_carry_pool", False)
     cost_ceiling = _opt_int(body, "cost_ceiling", None)
     # R55: the target_current_hp_pct seam now reaches rank_items (carry/dps
     # scorer) too. Default 1.0 -> byte-identical when the body omits it. NOTE
@@ -482,6 +485,7 @@ def _route_rank(body: dict) -> dict:
             apply_mode_modifiers=apply_mode_modifiers,
             exempt_offclass_by_win=exempt_offclass_by_win,
             prefer_kit_axis_by_win=prefer_kit_axis_by_win,
+            widen_carry_pool=widen_carry_pool,
             cost_ceiling=cost_ceiling,
             target_current_hp_pct=target_current_hp_pct,
         )
