@@ -561,6 +561,16 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   drake, (b) district vector on `/api/state.zoi.districts`, (c) OBS frames matching the GDI baseline,
   (d) MIA rings + fluid DMZ + weighted bubbles render. Practice suffices (fog/presence/CV/OBS
   round-trip, no enemy-comp/rune dependency). SOURCE: ZOI_DISTRICT_ORCHESTRATION_PLAN.md:107-109.
+- **G2-43** RM-41 `exclude_off_axis_items` default-ON flip (ENGINE 1.240.0, `ds.burst`). The seam
+  strips a burst candidate whose offense sits entirely on the champion's OFF damage axis. Headless
+  is DONE and is not the question: pool 140 -> 88 on the seven-champion AP-assassin cohort, 6 of 7
+  top-8 changes, Gunblade #11 -> #8 for Akali, Zed's top-8 byte-identical, Shaco a no-op, all 9
+  build-order tables stamp-only. What headless CANNOT settle is whether the stripped rows were ever
+  a recommendation a player would want offered: play an AP assassin (Akali / Katarina / Fizz) and an
+  AD one (Zed / Talon) and confirm the served list reads sane with the flag ON - specifically that
+  no legitimate hybrid or defensive buy disappeared. **Do NOT flip blind** - a strip is invisible in
+  the UI (the item simply is not there), so a wrong exclusion cannot be caught by looking at what IS
+  shown. SOURCE: agents/daemon_slayer/CHANGELOG.md 1.240.0 + ROADMAP RM-41.
 
 ---
 

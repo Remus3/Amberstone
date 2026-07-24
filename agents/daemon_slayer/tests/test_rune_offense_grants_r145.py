@@ -739,7 +739,7 @@ class RuneItemIdKeyspaceCollisionTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version_pin(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.239.0")
+        self.assertEqual(ENGINE_VERSION, "1.240.0")
 
 
 if __name__ == "__main__":
