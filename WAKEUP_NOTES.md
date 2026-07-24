@@ -4,6 +4,41 @@
 
 ---
 
+# 2026-07-24 - R188 HEXCORE offline explorer re-sync (docs, commit `bb847bd0`)
+
+gemini-loop DIRECTOR REFILL unit (a), second pass. Tier-0 docs + guard.
+LEDGER 1038, ZERO API / ZERO LLM. No ENGINE bump, no Share sync, no DS bounce,
+no RC restart.
+
+- **The drift was ONE file, not a batch.** R164 already landed 44 of the 45
+  net-new non-test .py files added since `d584e02e`. The 45th is
+  `_burst_off_axis.py`, added by `534096e6` (R186 / RM-41) EARLIER IN THIS SAME
+  LOOP CHAIN - the directive was written against a tree its own predecessor
+  cycle had just moved. Verify the premise, then size the slice to it.
+- **RED first.** Widened `EXPECTED_NEW_BASENAMES` 44 -> 45 and watched
+  `tests/test_hexcore_offline_dust.py` fail before touching the HTML.
+- Added dust triple `_burst_off_axis.py|modules|m_dsengine`, bumped all four
+  dust-count literals 340 -> 341.
+- **Stats HUD re-ground against live truth:** ENGINE 1.239.0 -> 1.240.0 on the
+  HUD row AND its `title=` tooltip (checked against `:8893/health` + the repo
+  `ENGINE_VERSION`), a second staler 1.237.0 in the DAEMON_SLAYER node desc,
+  DS tests -> 9238 (measured this run), commits -> 3931, last -> `b9412b51`.
+- **Verifier gate 7/7 CONFIRM** before commit. It surfaced a durable gotcha:
+  the file embeds ~957KB of base64 JPEG snapshots, so a shell `grep -c` on a
+  short numeric literal returns ~1.8MB of noise - count checks on this file
+  must be base64-aware Python regex, never shell grep.
+- Live render proof: browser pane, zero console errors, HUD read back
+  `commits: 3931 / engine: DS 1.240.0 / nodes: 142 / dust: 341 files`.
+- Suites: DS 9238 passed / 1 skipped / 3928 subtests; RC 12765 passed /
+  22 skipped / 406 subtests (exit 0, no RF5 flake this run). ruff clean.
+- **ROADMAP.md deliberately untouched** - 81472 of 81920 bytes (448 free) and
+  R188 opens no roadmap work.
+
+**Next:** the dust field is guard-locked; the stats HUD is a hand-maintained
+snapshot with no auto-refresh - treat its numbers as stale-by-default.
+
+---
+
 # 2026-07-24 - R186 RM-41 burst off-class exclusion SHIPPED (ENGINE 1.240.0)
 
 First ROADMAP GAP-spec build since the gemini loop halted. Tier-2, LEDGER 1036,
@@ -61,67 +96,3 @@ LEDGER 1035, Tier-0/1 test+docs, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
   re-invokes /gemini-headless-upgrade.
 - Do NOT redo: the in-game overlay glance-cue set (ward/spike/objective) + the
   champ-select audit set (R173/R180/R182/R183/R184) are all UI-audit CLEAN.
-
----
-
-# 2026-07-24 - R166 share-presentation-overhaul + baseline drift fix (near-CLEAN)
-
-Gemini-loop DIRECTOR REFILL unit (b). Two commits (`5bd0854e`, `69d06ef7`),
-LEDGER 1019, Tier-0 docs-only, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
-
-- **R166 = near-CLEAN.** Four parallel audit agents read the ENTIRE `Share/`
-  authored doc set (README, docs/01-05, CHANGELOG, LICENSE, lolmath_ingest/*)
-  end to end as external presentation. Docs were already pristine from R163;
-  ONE real defect: README Release-history header said "five most recent" over
-  a SIX-entry list -> "six". Everything else verified CLEAN + internally
-  consistent (1.239.0/16.14.1, 173/171, 706, 7 scorers, 35 paths, 306/355,
-  7270+2330/9203) and all upstream credits (Riot Data Dragon / CommunityDragon
-  / Meraki / wiki / lolmath / Overlay App E host-only) intact. 7-bit ASCII clean.
-- **Baseline red fixed (`5bd0854e`).** The full-suite gate surfaced a
-  pre-existing red on main: `test_docs_daemon_slayer_drift.py` - the
-  `docs/DAEMON_SLAYER.md` banner still read ENGINE_VERSION 1.238.0 after the
-  engine bumped to 1.239.0 at R164. Bumped banner 1.238.0 -> 1.239.0, count
-  9190 -> 9203. Not caused by R166; fixed per "fix red baseline first".
-- **Suites green:** DS 9203 passed / 1 skip / 3865 subtests; RC 12742 passed
-  / 23 skip (the 1 drift red now green); `-k share` 203 passed; `ds_share_sync
-  --check` in sync (460 files, 1.239.0). CI `paths-ignore '**/*.md'` so the
-  all-markdown push triggers no per-push run; nightly runs the full suite and
-  the drift guard is now green.
-- **Don't-redo:** Share/ authored presentation is current + credit-complete as
-  of R163+R166 - do NOT re-pitch a Share doc overhaul; future drift is a
-  mechanical anchor restamp or a real engine-bump content change.
-
----
-
-# 2026-07-23k - live-frame acceptance ADJUDICATED (owed 4 sessions, now closed out)
-
-One commit, LEDGER 1014, Tier-1, ENGINE-IMPACT NONE. The operator queued SR and
-the four acceptance lines were adjudicated against a real 22m30s game (Kai'Sa,
-~300 CDP samples). **2 PASS, 1 FAIL-upstream, 1 OPEN.** RM-113 + RM-114 opened.
-
-- **PASS - OQ16 cadence, both edges seen live.** `""` -> `soon` on drake at eta
-  `1:32` -> `1:29`; `soon` -> `imminent` on baron at `0:11` -> `0:09`; then
-  `state=up` at spawn. Matches `alertSoonS: 90` / `alertImminentS: 10`
-  (`objective_gauges.js:66-67`) within the 3s sampling.
-- **PASS - no reflow.** `#am-next-buy` = 108px across 235 in-game samples; the
-  only `h=0` rows land after `game_time_s` goes null, so it tears down cleanly.
-- **FAIL, but NOT the widget - RM-114.** `item_advisor.resolve_build` covers
-  **6 of 172 champions** (Caitlyn, Jinx, Miss Fortune, Nilah, Tristana, Vayne).
-  Kai'Sa returns `[]`, so no `sr_items` row carries `next:true` and the GOLD row
-  correctly renders `-`. Invariant across three `owned` states (not the
-  empty-build artifact) and across `Kai'Sa`/`Kaisa`/`KaiSa` plus plain `Ashe`
-  (not name normalization). **Do NOT fix this blind** - sourcing `next` from DS
-  changes what "next item" means; it is an operator product call.
-- **OPEN - TRINKET, one field short.** Never activated in 260 samples, but
-  `stageFor` returns `mid` on the clock arm alone at `c >= 600`
-  (`next_buy_model.js:68-72`), so stage was provably `mid`/`late` for the last
-  12.5 min and the gate cannot explain it. Hinges entirely on whether
-  `owned_items` still held `stealth ward`. The probe now records that.
-- **Probe fixed twice:** now emits `owned_items` / `completed_count` / `stage` /
-  `holds_upgradable_trinket` / `next_item` / `sr_items_len`, and flushes per
-  sample. **The flush matters** - block-buffered redirect served a 7-min-stale
-  baron ETA that got reported as current, contradicting the operator mid-game.
-  They were right; the file was wrong. Re-probe live before contradicting.
-- **NEXT SESSION:** one SR game closes the TRINKET line with no new analysis -
-  just run the probe and read `holds_upgradable_trinket` + `stage` against the
-  TRINKET row. Then RM-114 needs an operator decision, not code.
