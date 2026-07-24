@@ -111,6 +111,7 @@ from .effects import (
 )
 from .engine import build_champion
 from .geometry import spell_aoe_multiplier
+from ._burst_off_axis import champion_burst_axis, is_off_axis_candidate
 from .kit_axis_credit import kit_axis_item_ids
 from .kit_conversion import conversion_factor, damage_objective, kit_conversion
 from .rune_procs import (
@@ -1918,6 +1919,7 @@ def rank_items_by_burst(
     target_preset: Optional[str] = None,
     prefer_kit_axis_by_win: bool = False,
     kit_conversion_strength: float = 0.0,
+    exclude_off_axis_items: bool = False,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -1975,6 +1977,16 @@ def rank_items_by_burst(
     above the generic template (model order preserved within each tier). Champs
     absent from the table are a no-op. The live default-ON flip is EXCLUDED ->
     docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``exclude_off_axis_items`` is the RM-41 kit-axis off-class strip
+    (DEFAULT-OFF). The burst model credits AD spellblade / on-hit / crit procs
+    on an AP assassin's ability-empowered auto (and the RM-35 mirror puts dead
+    AP items in an AD assassin's list), so a candidate whose OFFENSE sits
+    entirely on the champion's off axis is dropped from the pool. See
+    ``_burst_off_axis`` for the data-driven champion + item gates. This is a
+    STRIP, not a reweight: surviving rows keep their relative model order. A
+    champion without a decisive damage split is a no-op. The live default-ON
+    flip is operator-gated -> docs/LIVE_GAME_GATED_SYNC.md.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -2073,6 +2085,20 @@ def rank_items_by_burst(
             snapshot.champions.get(str(champion_id)), augments
         ),
     )
+
+    # RM-41 (DEFAULT-OFF): strip candidates whose offense is entirely on the
+    # champion's OFF axis. Resolving the axis once keeps this O(candidates);
+    # an indecisive split leaves off_axis None and the comprehension is a
+    # byte-identical no-op.
+    off_axis: Optional[str] = (
+        champion_burst_axis(snapshot.champions.get(str(champion_id)))
+        if exclude_off_axis_items else None
+    )
+    if off_axis is not None:
+        candidates = [
+            (item_id, rec) for item_id, rec in candidates
+            if not is_off_axis_candidate(rec, off_axis)
+        ]
 
     ranked: list[BurstRankedItem] = []
     for item_id, rec in candidates:
