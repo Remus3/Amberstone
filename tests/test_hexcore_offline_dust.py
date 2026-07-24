@@ -25,7 +25,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HEXCORE = REPO_ROOT / "docs" / "HEXCORE_offline.html"
 
-# The 32 net-new non-test .py files added since d584e02e. The ten
+# The 44 net-new non-test .py files added since d584e02e. The 13
 # Share/src/agents/daemon_slayer/*.py hits are byte mirrors of the
 # agents/daemon_slayer/*.py hits and are deliberately excluded.
 EXPECTED_NEW_BASENAMES = (
@@ -46,20 +46,32 @@ EXPECTED_NEW_BASENAMES = (
     "aram_item_interaction_context.py",
     "fed_threat.py",
     "cc_threat.py",
+    "draft_score.py",
     "ds_onhit_ap_roster.py",
     "ds_support_route_overrides.py",
+    "patch_impact.py",
+    "playstyle_labels.py",
     "pro_match_index.py",
     "rofl_archive.py",
     "rofl_stats_backfill.py",
+    "session_hygiene.py",
     "_lcu_inprocess.py",
+    "routes_draft_score.py",
+    "routes_patch_impact.py",
+    "routes_playstyle_labels.py",
+    "routes_session_hygiene.py",
     "champ_select_shape.py",
     "snapshot_shape.py",
+    "adjudicator.py",
     "aram_item_interaction_precompute.py",
     "ds_feed_index.py",
     "ds_onhit_ap_prefilter.py",
     "ds_patch_diff.py",
     "ds_wiki_staleness_check.py",
+    "overlay_live_frame_probe.py",
+    "pseudo_screen_overlay.py",
     "rofl_archiver.py",
+    "rofl_tracked_backfill.py",
     "unresolved_token_scan.py",
 )
 
