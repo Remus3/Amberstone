@@ -16,9 +16,11 @@ Trust model per field, over union(live_client, cv_reads):
     value is ignored. A gap field that CV did not read is simply absent.
   - fresh, non-gap, in live_client: LC is exact - confidence 1.0.
   - stale, non-gap, in live_client: if CV also read it AND the CV confidence
-    clears CV_OVERRIDE_STALE_THRESHOLD, CV wins; else the stale LC read is
-    kept at STALE_LIVECLIENT_CONF (0.5) rather than dropped (always emit
-    SOMETHING - graceful degradation).
+    clears CV_OVERRIDE_STALE_THRESHOLD AND the CV value passes the
+    is_plausible_cv gate, CV wins; else the stale LC read is kept at
+    STALE_LIVECLIENT_CONF (0.5) rather than dropped (always emit SOMETHING -
+    graceful degradation). A CV read rejected by the gate is tagged
+    cv_implausible:<field> in _notes.
   - non-gap, only in cv_reads: CV fallback at its confidence.
 
 CV reads carry NO per-field score today - core/vision_routing.read_or_escalate
@@ -42,6 +44,95 @@ STALE_LIVECLIENT_CONF = 0.5
 CV_DEFAULT_CONF = 0.7
 #: A CV read must meet or clear this confidence to override a stale LC read.
 CV_OVERRIDE_STALE_THRESHOLD = 0.6
+
+# -- RM-01 Lane E B-01: CV plausibility gate ---------------------------------
+# Confidence alone is NOT enough to let CV beat a known-good Live Client value.
+# Measured over data/fusion_shadow.jsonl (230 real-game records, 2026-07-18 ->
+# 2026-07-24): 41 of 41 cv_override_stale decisions - i.e. every override the
+# layer has ever made - were the field `gold` with a CV value of literally 1
+# beating a Live Client gold of 87 / 913 / 6423 / 8703 / 12761 / 30410. The
+# CV read is a mis-read (the vision relay answers a TFT-shaped prompt in every
+# mode, so a non-board frame degrades to a single junk numeric), but the fusion
+# layer is the trust arbiter and must be robust to it: per the shipped safety
+# doctrine a wrong precompute is worse than a Haiku call. The gate is applied
+# ONLY to the contested stale-override branch - the fresh-LC, api_gap and
+# cv-only fallback paths emit exactly what they emitted before.
+
+#: Fields whose in-game value only ever increases: a CV read strictly below the
+#: last known Live Client value is a mis-read, not a state change. `gold` is
+#: deliberately absent - currentGold drops on every purchase.
+MONOTONIC_NONDECREASING_FIELDS = frozenset({"level", "cs"})
+
+#: Hard plausible ranges for numeric HUD fields, mirroring the bounds in
+#: core.vision_routing.DEFAULT_VALIDATORS. A field absent here is not
+#: range-checked (the gate defaults open).
+PLAUSIBLE_RANGES = {
+    "gold": (0, 99999),
+    "level": (1, 18),
+    "cs": (0, 1000),
+}
+
+#: A CV read diverging from the Live Client anchor by this factor or more is an
+#: order-of-magnitude mis-read (8703 vs 1 is a factor of 8703).
+CV_ORDER_OF_MAGNITUDE_FACTOR = 10.0
+
+#: The divergence ratio is only meaningful once one side is this large; below
+#: it a real early-game swing (3 gold -> 40 gold) would trip a pure ratio test.
+CV_DIVERGENCE_ABS_FLOOR = 50.0
+
+
+def _numeric(v):
+    """Return ``v`` as a float when it is a real numeric, else None.
+
+    bool is a subclass of int - augment_select True/False must never be run
+    through the numeric divergence rules, so bools are rejected here.
+    """
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    return float(v)
+
+
+def is_plausible_cv(field, cv_value, lc_value=None) -> bool:
+    """Is ``cv_value`` a believable read for ``field`` given the LC anchor?
+
+    Fail-soft and DEFAULTS OPEN: anything the gate cannot judge (unknown
+    field, non-numeric pair, missing anchor, any internal error) is reported
+    plausible, so the gate can never silently swallow a field it does not
+    understand. Three rules, each independently sufficient to reject:
+
+      1. hard range - the value is outside PLAUSIBLE_RANGES[field].
+      2. monotonic  - field is monotonic non-decreasing and the CV read sits
+         strictly below the Live Client anchor.
+      3. divergence - CV and LC differ by CV_ORDER_OF_MAGNITUDE_FACTOR or
+         more, once either side clears CV_DIVERGENCE_ABS_FLOOR. A numeric LC
+         anchor paired with a non-numeric CV read is a parse miss and is
+         rejected by the same rule.
+    """
+    try:
+        cv = _numeric(cv_value)
+        lo_hi = PLAUSIBLE_RANGES.get(field)
+        if cv is not None and lo_hi is not None:
+            if cv < lo_hi[0] or cv > lo_hi[1]:
+                return False
+
+        lc = _numeric(lc_value)
+        if lc is None:
+            return True
+        if cv is None:
+            # Numeric anchor paired with a non-numeric CV read: a parse miss.
+            return False
+
+        if field in MONOTONIC_NONDECREASING_FIELDS and cv < lc:
+            return False
+
+        hi = max(abs(cv), abs(lc))
+        lo = min(abs(cv), abs(lc))
+        if hi >= CV_DIVERGENCE_ABS_FLOOR:
+            if hi / max(lo, 1.0) >= CV_ORDER_OF_MAGNITUDE_FACTOR:
+                return False
+        return True
+    except Exception:  # noqa: BLE001 - fail-soft: an unjudgeable read is open
+        return True
 
 
 def _cv_conf(field, cv_confidence):
@@ -130,7 +221,21 @@ def fuse_reads(
                 notes.append("lc_exact:" + str(f))
             elif in_lc and live_stale:
                 conf = _cv_conf(f, cv_confidence) if in_cv else 0.0
+                # B-01 gate: confidence alone must not let an implausible CV
+                # read beat a known-good LC value. Evaluated through the module
+                # attribute so a monkeypatched gate is honored; a gate that
+                # raises degrades to "plausible" (fail-soft, never-raises).
+                plausible = True
                 if in_cv and conf >= CV_OVERRIDE_STALE_THRESHOLD:
+                    try:
+                        plausible = bool(
+                            is_plausible_cv(f, cv_reads[f], live_client[f])
+                        )
+                    except Exception:  # noqa: BLE001 - gate must never raise
+                        plausible = True
+                    if not plausible:
+                        notes.append("cv_implausible:" + str(f))
+                if in_cv and conf >= CV_OVERRIDE_STALE_THRESHOLD and plausible:
                     result[f] = {
                         "value": cv_reads[f],
                         "source": "cv",
