@@ -2101,10 +2101,26 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "663060": ItemEffect(
         item_id="663060",
         name="Sword of the Divine",
+        # R170 (2026-07-24) crit-sweep note refresh (NO math change): Sword of
+        # the Divine is an ARENA-ONLY prismatic (Meraki lists it solely as
+        # 443060; there is no 4-digit SR shop id - 3131 is inert/no-map). DDragon
+        # 16.14.1 mislabels this 66xxxx alias maps["11"]=True, so it survives the
+        # SR map-filter + alias dedup as the only same-name SR id. It stays
+        # defensive_only so it does NOT pollute SR offensive beam/rank builds
+        # (promoting its Excoriate crit-damage would surface a non-SR item on the
+        # Rift AND KeyError the Meraki gold cross-check, which has no 663060 row).
+        # The item's real offensive value IS credited on its Arena twin 443060
+        # (crit_damage_bonus=0.25, EV of Excoriate's uniform 0-50%). The old
+        # "Pact of the Blade" text described a removed item version; DDragon's
+        # current 663060 line is the same Excoriate as 443060. Excluding the
+        # broader 66xxxx Arena-orphan idspace from the SR pool is a separate
+        # build-pool concern (see docs Findings log), NOT a crit-magnitude fix.
         defensive_only=True,
         note=(
-            "Sword of the Divine: Pact of the Blade conditional 100% crit guarantee "
-            "on ability (ability-cast schema gap); stat block AS bonus only"
+            "Sword of the Divine (Arena-only; DDragon 66xxxx map11 quirk-alias): "
+            "kept defensive_only to exclude from SR offensive builds. Real "
+            "offensive value (Excoriate +25% crit damage EV) is modeled on the "
+            "Arena twin 443060"
         ),
     ),
     "667112": ItemEffect(
