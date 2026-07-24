@@ -119,6 +119,31 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-23j - live-frame probe gold/clock paths root-caused (caveat retired)
+
+One commit (`10e92cf5`), Tier-1, ENGINE-IMPACT NONE. The live-frame acceptance
+is STILL OWED - fourth session now - and still needs the operator in an SR game.
+No headless work remains on it; the pre-flight is fully discharged.
+
+- **Probe pre-flight PASSES.** rc-shell still alive with the CDP flags (root
+  pid 2232) - no relaunch needed, the `2026-07-23i` blocker stays cleared.
+  Probe attaches, reads the DOM, reports `#am-next-buy` present + hidden +
+  rect 0x0 at `mode_key=client`.
+- **The `2026-07-23i` caveat is RETIRED - it was a real bug, now fixed.**
+  `/api/state.liveclient` is the FLATTENED block from
+  `dashboard/_liveclient.py:114 liveclient_summary()` (attached at
+  `dashboard/_state_builder.py:687`), NOT the raw Live Client `:2999` payload.
+  Gold is `liveclient.gold` (`_liveclient.py:148`); the clock is
+  `liveclient.game_time_s` (`_liveclient.py:144`). The probe read
+  `activePlayer.currentGold` / `current_gold` / `gameData.gameTime` - none of
+  those keys exist in that shape, so BOTH fields would have read null in-game
+  regardless of widget behavior. A null GOLD in the next run is now a real
+  widget signal, not probe noise.
+- **Do NOT redo:** everything the `2026-07-23i` do-not-redo list names, plus
+  this path fix. Do NOT re-derive the CDP session - use the committed probe.
+
+---
+
 # 2026-07-23i - rc-shell stale-overlay blocker cleared + 1.239.0 stamp drift
 
 Two commits, LEDGER 1013. Tier-1 + data-regen. ENGINE-IMPACT NONE. CI green
