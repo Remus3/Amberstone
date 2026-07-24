@@ -459,14 +459,20 @@ def _load_cdragon_ratio_sidecar(
 
     STALE-COPY GUARD: the sidecar used to be resolved by DIRECTORY alone, so a
     patch-refresh commit that copied the previous patch's file forward silently
-    re-armed stale ratios as authoritative (live today: every 16.1x directory
-    ships a byte-identical sidecar whose payload reads ``"patch": "16.11.1"``).
+    re-armed stale ratios as authoritative. That was live for three patches -
+    the 16.11.1 / 16.12.1 / 16.13.1 sidecars are still byte-identical copies
+    whose payload reads ``"patch": "16.11.1"``. The 16.14 re-extract fixed the
+    CURRENT directory, so 16.14.1 carries its own matching payload patch and the
+    guard is a no-op on shipped data; it only bites if a future patch-refresh
+    copies a sidecar forward again, or if an older directory is loaded.
+
     The payload's own ``patch`` is now compared against the requested one and any
     mismatch - including an absent ``patch`` field - is logged at WARNING. With
     ``strict=True`` the stale sidecar is DROPPED and Meraki stays authoritative,
-    which is what the fail-soft contract above already promises. ``strict``
-    defaults False so detection lands without moving engine output; see
-    ``AbilitiesSnapshot.load``.
+    which is what the fail-soft contract above already promises. This helper
+    keeps ``strict=False`` as its own default so a direct caller gets pure
+    detection; the LIVE path is ``AbilitiesSnapshot.load``, whose
+    ``strict_cdragon_patch`` defaults True and passes enforcement in.
 
     Returns ``{champion_id: {slot: [block, ...]}}`` where each block is the raw
     resolver dict (``{name, base, ap_pct, ..., resolution, calc_type}``).
