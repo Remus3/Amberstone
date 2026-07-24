@@ -4,6 +4,59 @@
 
 ---
 
+# 2026-07-23h - Settings theme picker + arcane default
+
+Two commits, LEDGER 1012. Operator-ad-hoc (not a ROADMAP item). Tier-1 + UI.
+ENGINE-IMPACT NONE. ZERO API / ZERO LLM / ZERO server-side additions. CI green
+(`30054685888`). The live-frame overlay verification queued for this session
+was BLOCKED - no game was running - and is still owed; see below.
+
+- **Trigger:** operator noticed the dashboard has no theme selector. Probe
+  confirmed it: the 6 DS2 palettes were reachable ONLY via `?theme=`
+  (`main.js:116-124`), a swap-and-pick evaluation seam that never shipped a
+  control. Settings `#view-settings` was the obvious home.
+- **NEW `web/js/lib/theme.js`** is the single source of truth (THEMES
+  whitelist, DEFAULT_THEME, THEME_KEY, and the SOLE writer of
+  `<html data-theme>`). `hextech` stays UNSTAMPED - base.css `:root` owns the
+  gold palette, so stamping the string would break it. Precedence:
+  `?theme=` wins session-only and never writes storage -> localStorage
+  `rc-theme` -> default.
+- **Storage key is `rc-theme`, NOT `rc_theme`.** The Plan agent caught that my
+  proposed underscore key contradicted the repo convention (`rc-view-manual` /
+  `rc-ui-mock`); underscores are infra-only (`rc_dash_token`).
+- **Inline pre-paint `<head>` guard in index.html.** Without it a persisted
+  theme flashes the gold base palette on EVERY load, because main.js is a
+  `type=module` at end-of-body. It hand-copies the whitelist (it must run
+  before the module graph), so a static drift test pins the two copies.
+- **Then the default flipped terminal -> arcane** (operator pick, `7d63b85b`).
+  The flip silently WEAKENED an existing test - `test_stored_theme_applies_
+  and_selects` seeded `arcane` to prove the storage read works, and `arcane`
+  had just become the default, so it would have passed with the read fully
+  broken. Now it picks the first non-default non-hextech theme. Caught on
+  review, not by a failure. **Lesson: flipping a default can turn a real
+  assertion into a tautology - re-read every test that names the old value.**
+- **Verified:** 14 green (`test_settings_theme_picker.py` 10 new + 
+  `test_settings_view.py` 4), ruff clean, hygiene trio 13 green, CI green.
+  5-phase UI audit did a REAL live render (Chrome DevTools MCP, not static):
+  select measures 360x45 / 22px `--fs-md`, byte-identical to the sibling
+  select. Zero MUST-FIX. ADR-008 covers all four web files - no RC restart.
+- **Do NOT redo:** the picker, the FOUC guard, the drift test, or the default
+  flip. All shipped and pushed.
+- **Logged, NOT fixed (both pre-existing, now more visible):** 7 panels emit
+  hardcoded hex into generated SVG (`active_match`, `ds_sweep`, `map_state`,
+  `objective_gauges`, `spike_curve`, `threat_donut`, `ward_heat`) and do NOT
+  re-tint on a live theme switch. And the DISPLAY settings-card renders at
+  y=1092 on the 1920x1080 baseline - below the fold, because CLIENT SETTINGS
+  sits above it in a single 896px column.
+- **STILL OWED from 2026-07-23g:** live-frame verification of `w-nextbuy` +
+  the OQ16 90s/10s cadence. Probed this session: `mode_key=client`,
+  `has_game=false`. Also found rc-shell is STALE - the electron processes
+  started 17:36:32, the widget landed 18:10:21, so the running overlay has no
+  `w-nextbuy` module at all. It needs a full relaunch (NOT a hot-reload)
+  before any live check is meaningful.
+
+---
+
 # 2026-07-23g - Overlay HUD micro-lifts (BACKLOG NOW closed, all 3 slices)
 
 One commit + LEDGER 1011. ENGINE-IMPACT NONE (frontend panels + CSS + one
@@ -88,38 +141,3 @@ no :8893 bounce, no Share touch). Tier-1 + UI. ZERO API / ZERO LLM.
 - **Docs/memory:** BACKLOG line closed (the CHI-paper Diamond+ mechanics-band tail is
   left OPEN - it needs an external distribution RC does not have). Memory
   `reference_rewind_history_db` gained the no-cohort measurement + the equal-n rule.
-
----
-
-# 2026-07-23e - patch-impact aggregator + route + Session card (+ the flagged ds_shaper red)
-
-Three commits (all pushed): `ff77164f` `ad99cec7` `86b40fe7` + LEDGER 1009.
-ENGINE-IMPACT NONE (aggregator + route + asset layer; no DS bump, no :8893 bounce, no Share).
-
-- **ds_shaper red closed first** `ff77164f`: the 5/6 failure was the test file's own
-  FakeEl shim missing `setAttribute` (prod `renderShaperStrip` marks the strip
-  `[data-rc-zone]` for the overlay clickthrough zones). Added the attribute trio +
-  a regression assert on `data-rc-zone`. 6/6. The task chip can be dismissed.
-- **NEW `core/patch_impact.py`** `ad99cec7` (Haiku-to-ZERO sibling; closes the BACKLOG
-  "patch-diff what changed for YOUR champs" tail): RM-110 cross-patch DS snapshot diff
-  x the player's own rewind play counts. `_open_ro` + injectable `diff_fn`/`patches`/
-  `key_map`, laplace winrate, never-raises with a stated reason. Join is on
-  `champions.json` `key` (numeric), NOT the display name; item changes attribute only
-  when the item is in that champ's build order for the mode. 29 tests.
-- **NEW `/api/patch-impact`** same commit: `?mode&top&min_games&old&new`, 5min cache,
-  structured 400/500, patch names gated on the ON-DISK allowlist (`ds_patch_diff._resolve`
-  takes any existing dir - never hand it the raw query). 16 tests.
-- **NEW Session `#patch-impact-card`** `86b40fe7` (`web/js/panels/patch_impact.js` + .css,
-  21 tests): per-champ stat/ability/build/item chips, detail in tooltips, `-` sentinel on
-  a no-change champ (no reflow). Descriptive-only is TEST-PINNED (no buff/nerf wording).
-  5-phase audit PASS, zero MUST-FIX.
-- Live: 16.13.1 -> 16.14.1 over 2044 ARAM matches in 76ms; the 8 changed items are Arena
-  mirrors + components + Rocketbelt, so zero ARAM-build attributions is correct.
-- Doc drift corrected against git: ROADMAP RM-111 "consumer surface NOT wired" was stale
-  (shipped `a626ece0`); BACKLOG `/api/personal-build` UI tail likewise already shipped.
-
-NEXT: RM-01 (Haiku-to-ZERO Lane E CV substrate) is still the top open thread and is
-live-gated - `data/fusion_shadow.jsonl` does not exist yet, so the flip gate is genuinely
-unmet. Do NOT flip blind. Non-gated BACKLOG siblings left in this lane: the radar
-target-profile reference polygon and the predicted roam/invade route. Premade detection
-stays BLOCKED (tracked-only matches table). Do NOT touch RM-99b Heartsteel cadence.
