@@ -4,6 +4,40 @@
 
 ---
 
+# 2026-07-23i - rc-shell stale-overlay blocker cleared + 1.239.0 stamp drift
+
+Two commits, LEDGER 1013. Tier-1 + data-regen. ENGINE-IMPACT NONE. CI green
+(`30057696467` + `30057696474`). The live-frame acceptance is STILL OWED - it
+is not drainable headlessly; see below.
+
+- **Blocker cleared.** Electron was started 17:36:32, the widget landed
+  18:10:21, so the running overlay had no `w-nextbuy`. Killed the tree,
+  relaunched with `--remote-debugging-port=9222 --remote-allow-origins=*`.
+  CDP confirms the renderer fetched `next_buy.js` / `next_buy_model.js` /
+  `next_buy.css` / `overlay_layout.js`, and `#am-next-buy` is present,
+  hidden, `display:none`, rect 0x0 - the no-reflow half is discharged.
+- **GOTCHA: rc-shell holds a single-instance lock.** A second launch with
+  new flags exits silently and leaves the STALE process serving. Kill the
+  ROOT pid `/T` first.
+- **1.239.0 stamp drift was 12 red, not 14.** Regenerated both tables with
+  the commands the failures cite; re-ran fresh: 19 passed, 6 skipped, and
+  each of the 12 verified PASSED individually. The 6 skips are the opt-in
+  `test_content_freshness_matches_static_regen` params, skipped before too.
+- **NEW `tools/overlay_live_frame_probe.py`** - one command for the owed
+  acceptance. Selectors verified against source first; my first draft
+  guessed `#am-objective-gauges` / `[data-og-dial]` and both were wrong.
+- **STILL OWED - needs the operator in an SR game.** All four acceptance
+  lines gate on `body[data-shell="overlay"]` (`next_buy.js:83`), which only
+  exists mid-game. ARAM/Arena exercise neither BARON nor the trinket row.
+- **Caveat on my own tool:** its `current_gold` path
+  (`liveclient.activePlayer.currentGold`, fallback `liveclient.current_gold`)
+  was never confirmed against a real payload - liveclient was empty all
+  session. A null GOLD cross-check in-game means that path, not the widget.
+- **Do NOT redo:** the theme picker, the widget, the cadence, or the table
+  regen. Do NOT re-derive the CDP session - use the committed probe.
+
+---
+
 # 2026-07-23h - Settings theme picker + arcane default
 
 Two commits, LEDGER 1012. Operator-ad-hoc (not a ROADMAP item). Tier-1 + UI.
@@ -97,47 +131,3 @@ Share touch). Tier-1 + UI. ZERO API / ZERO LLM / ZERO server-side additions.
 - Also closed the BACKLOG playstyle-inference line, verified stale against the
   shipped `core/playstyle_labels.py` + `/api/playstyle-labels` +
   `#playstyle-labels-card` (`6f1b6d11`, LEDGER 1008).
-
----
-
-# 2026-07-23f - GPI radar target-profile reference polygon (BACKLOG NOW/MED closed)
-
-One commit, pushed: `8afe91cf` + LEDGER 1010. CI green (ci + CodSpeed).
-ENGINE-IMPACT NONE (core module + route passthrough + asset layer; no DS bump,
-no :8893 bounce, no Share touch). Tier-1 + UI. ZERO API / ZERO LLM.
-
-- **The probe changed the design before any code.** BACKLOG asked for a "better-WR
-  reference polygon". Measured live: `rewind_history.db` = 30928 participant rows over
-  **23441 DISTINCT puuids**, only **20 puuids reach 20 games** (operator + a few
-  premades). No population to rank win rates over -> a better-WR cohort would have to
-  be INVENTED. Built the operator's OWN winning games, which the task pre-authorized.
-  SR 338W/296L, ARAM 1028W/976L - ample.
-- **`core/player_gpi._reference_block(games, window)`** -> `{kind:"own_wins", label, n,
-  min_games, axes:[{key,score} x 8]}`, None below `MIN_REFERENCE_GAMES` (5) wins -
-  never a partial polygon. Reuses `_relative_axis` / `_versatility_axis` /
-  `_consistency_axis` unchanged (survival sign handling comes free, pinned).
-- **Two parity decisions carry the feature.** (a) The percentile baseline stays the
-  FULL filtered history - the same baseline `axes` uses - so a reference vertex and a
-  player vertex at equal radius mean the same thing. (b) The reference set is capped at
-  the most recent `window` WINS, not all wins: versatility is Shannon entropy
-  normalized by `log(n)`, which saturates at `log(pool)` while the normalizer keeps
-  growing, so 338 wins vs a 20-game window would read artificially LOW for no reason.
-- **Route unchanged** - `/api/player-profile` passes the block through, cache included.
-  The `EMPTY_KEYS` contract guard in `test_player_gpi_robustness.py` caught the payload
-  change on the first run (the guard working, not a regression).
-- **Panel** `web/js/panels/player_gpi.js`: `_refPolySvg` + `_refLegend`. Dashed teal
-  ring emitted BEFORE `_dataSvg` so the filled recent-form polygon paints on top (SVG
-  has no z-index - pinned by a document-order test), matched by axis KEY not position,
-  ALL-OR-NOTHING on a null axis (a truncated ring would read as a real shape).
-  `_signature` grew a `ref:` segment. Teal = the one panel hue not already spoken for.
-- **5-phase fixture audit PASS, zero MUST-FIX.** ASCII asserted across .js/.css/.py/test.
-- **Live SR read (634 games, 20-win reference):** objectives 41.5 -> 65.5, survival
-  30.0 -> 45.2, tempo 48.1 -> 63.1 = the actionable gap. Versatility flat 44.9 vs 44.3,
-  which is decision (b) paying off.
-- **Verified:** 21 new backend + 6 new panel tests; 106 GPI/route green; full
-  `tests/snapshot_panels` 393 green; 472 green across the gpi/player_profile/
-  asset-hash/contract selection; ruff clean; RC pid 25664 alive + last_reload_ok; live
-  HTTPS probe served the block.
-- **Docs/memory:** BACKLOG line closed (the CHI-paper Diamond+ mechanics-band tail is
-  left OPEN - it needs an external distribution RC does not have). Memory
-  `reference_rewind_history_db` gained the no-cohort measurement + the equal-n rule.
