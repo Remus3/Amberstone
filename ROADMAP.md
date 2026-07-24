@@ -59,22 +59,7 @@ deliberately NOT built in that cycle.
 > carries the invariant in code ("so there is no self-feedback"). Now machine-guarded by
 > `agents/daemon_slayer/tests/test_rune_resist_signature_convention_r134.py`.
 
-> **CLOSED-INERT 2026-07-19 (R135, `e4ab8144`) - do NOT re-pitch the movespeed soft cap.**
-> The League MS piecewise (`0.8x+83` above 415, `0.5x+230` above 490, `110+0.5x` below 220)
-> is real, correctly stated, and applied NOWHERE in this repo - and it is unreachable at
-> every site, so that is not a gap. `core/champion_movespeed.est_ms` is uncapped but the
-> roster's base MS spans only 315 (Rell) to 355 (Master Yi) across all 173 champs and its
-> sole consumer `core/mia_reachability.py:165` passes NO items, so no breakpoint can bind.
-> `hybrid.py:272 _ms_utility_multiplier` DOES see item-inclusive MS (426.6 measured on
-> Darius + Swifties + DMP + FoN) but `assume_ms_utility` is DEFAULT-OFF with no production
-> caller AND `_MS_UTILITY_DPS_CAP = 0.15` saturates at 1.30x base, bounding the entire error
-> to 0.794 percentage points inside a 27-unit window and to exactly zero above 442.
-> `ability_dps.py:293 caster_bonus_ms` is default-ON but populated by exactly ONE block
-> roster-wide (Janna W), overstating it by 1.09 magic damage only on an off-class Phantom
-> Dancer build. Shipping a DEFAULT-OFF cap seam plus an ENGINE bump for this would correct a
-> quantity that is provably zero on every live path. Re-open ONLY if a caller starts passing
-> items to `est_ms`, `assume_ms_utility` is flipped default-ON, or a champion ships with base
-> MS outside 220-415.
+> **CLOSED-INERT 2026-07-19 (R135, `e4ab8144`) - do NOT re-pitch the movespeed soft cap.** The League MS piecewise is real, correctly stated, and unreachable at every live site, so it is not a gap. Full evidence (the three call sites, the measured bounds, and the exact conditions that would re-open it) is relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-07-24 block).
 
 - **RM-99 SHIPPED 2026-07-19 (R137, ENGINE 1.226.0) - DEFAULT-OFF `assume_item_health_stacks`.** Heartsteel 3084 + Arena mirror 223084 permanent-max-HP half, folded into the three main per-type EHP numerators and route-surfaced on `/ehp`, `/rank-tank`, `/hybrid`, `/rank-bruiser`. **Full narrative relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-07-19 block)** - including the THREE spec errors it corrected (the coefficient is 10 percent not 8, because `items_meraki.json` is FROZEN; the fold site was under-specified; the prescribed R46 plumbing is route-unreachable). The engine-side record is the ENGINE 1.226.0 entry in `agents/daemon_slayer/CHANGELOG.md`. Do NOT re-inherit the 8 percent.
   - **RM-99b OPEN (spun out, NOT shipped): the Heartsteel DAMAGE half's cadence is wrong.**
@@ -191,6 +176,8 @@ deliberately NOT built in that cycle.
   | RM-46 | Ashe, `ds.dps` | DISTINCT root cause inside the crit-marksman family: her Frost passive means crits deal NO bonus damage (crit-chance converts to flat AD), so IE's multiplier is largely DEAD on her, and Ranger's Focus is mis-read as on-hit uptime. Phantom Dancer is dead-last even in a whitelist of her own 6 core items | MODEL Frost + MODEL Ranger's Focus as an AS steroid. Aphelios is the CONTRAST twin (his crits deal full damage, so `ds.dps` ranks him right) | `project_ds_sweep_ashe_crit_as_onhit_overlead` |
   | RM-47 | Aurora (also Mel), `ds.ability` | RM-40/45 shape; Luden's buried #12. **`ds.burst` reroute REFUTED here on live data** - the assassin route leads Trinity #1 / Lich Bane #2, proving the RM-41 pollution, so the fix belongs in the MAGE scorer | shared RM-40 fix + do not read a front-loaded %maxHP burst passive as DoT synergy. Aurelion Sol is the same-batch control | `project_ds_sweep_aurora_burst_ludens` |
   | RM-48 | Azir, `ds.ability` | NEW shape. Soldier attack cadence is gated by Azir's AS and soldiers apply on-hit at 50%; Nashor's buried #17. **CRITICAL: routing him to `ds.onhit` STILL leads Liandry's #1 and STILL buries Nashor's #17** - no scorer models the soldier axis, so an on-hit-roster add ALONE is insufficient | MODEL soldier DPS as an AS-scaling stream applying on-hit at 50%. Consider the sibling pet-DPS cohort (Yorick / Malzahar voidlings / Heimerdinger turrets) as the sweep reaches it | `project_ds_sweep_azir_soldier_onhit_as` |
+
+- **RM-40 / RM-45 / RM-47 are BLOCKED on a prerequisite, MEASURED 2026-07-24 at ENGINE 1.240.0 - do NOT start them as a valuation tweak.** All three are filed as "shared RM-40 fix" in the table above, and RM-45 names Anivia as the explicit REFUTE control that must NOT move. Probed through `/rank-mage` at L13 vs the squishy target (armor 30 / mr 30 / hp 1900 / bonus 800): **Ahri, Annie, Aurora and Anivia return the SAME head** - Liandry's #1, Blackfire #2, Rabadon's #3 - with Malignance at #14 / #15 / #14 / #16. Widened to seven mages (adding Veigar / Syndra / Lux) the top-8 SET overlap versus Ahri is **7-8 of 8 for every one**, reproducing the RM-04 invariance measurement on live 1.240.0 data. **The GAP champion and its own control are indistinguishable to the scorer**, so no dampening coefficient, DoT amortization or item-filter edit can separate a one-shot burst ult from a persistent DoT zone - `ds.ability` has no channel that carries the difference. The prerequisite is CHAMPION-SENSITIVITY in the mage scorer (the RM-04 "shape-build" work), and it must land before any of the three can be judged fixed. A fix shipped without it would be unfalsifiable: Anivia would move exactly as much as Annie.
 
 ### Programs with open kernels
 
