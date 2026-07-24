@@ -4,6 +4,41 @@
 
 ---
 
+# 2026-07-23k - live-frame acceptance ADJUDICATED (owed 4 sessions, now closed out)
+
+One commit, LEDGER 1014, Tier-1, ENGINE-IMPACT NONE. The operator queued SR and
+the four acceptance lines were adjudicated against a real 22m30s game (Kai'Sa,
+~300 CDP samples). **2 PASS, 1 FAIL-upstream, 1 OPEN.** RM-113 + RM-114 opened.
+
+- **PASS - OQ16 cadence, both edges seen live.** `""` -> `soon` on drake at eta
+  `1:32` -> `1:29`; `soon` -> `imminent` on baron at `0:11` -> `0:09`; then
+  `state=up` at spawn. Matches `alertSoonS: 90` / `alertImminentS: 10`
+  (`objective_gauges.js:66-67`) within the 3s sampling.
+- **PASS - no reflow.** `#am-next-buy` = 108px across 235 in-game samples; the
+  only `h=0` rows land after `game_time_s` goes null, so it tears down cleanly.
+- **FAIL, but NOT the widget - RM-114.** `item_advisor.resolve_build` covers
+  **6 of 172 champions** (Caitlyn, Jinx, Miss Fortune, Nilah, Tristana, Vayne).
+  Kai'Sa returns `[]`, so no `sr_items` row carries `next:true` and the GOLD row
+  correctly renders `-`. Invariant across three `owned` states (not the
+  empty-build artifact) and across `Kai'Sa`/`Kaisa`/`KaiSa` plus plain `Ashe`
+  (not name normalization). **Do NOT fix this blind** - sourcing `next` from DS
+  changes what "next item" means; it is an operator product call.
+- **OPEN - TRINKET, one field short.** Never activated in 260 samples, but
+  `stageFor` returns `mid` on the clock arm alone at `c >= 600`
+  (`next_buy_model.js:68-72`), so stage was provably `mid`/`late` for the last
+  12.5 min and the gate cannot explain it. Hinges entirely on whether
+  `owned_items` still held `stealth ward`. The probe now records that.
+- **Probe fixed twice:** now emits `owned_items` / `completed_count` / `stage` /
+  `holds_upgradable_trinket` / `next_item` / `sr_items_len`, and flushes per
+  sample. **The flush matters** - block-buffered redirect served a 7-min-stale
+  baron ETA that got reported as current, contradicting the operator mid-game.
+  They were right; the file was wrong. Re-probe live before contradicting.
+- **NEXT SESSION:** one SR game closes the TRINKET line with no new analysis -
+  just run the probe and read `holds_upgradable_trinket` + `stage` against the
+  TRINKET row. Then RM-114 needs an operator decision, not code.
+
+---
+
 # 2026-07-23j - live-frame probe gold/clock paths root-caused (caveat retired)
 
 One commit (`10e92cf5`), Tier-1, ENGINE-IMPACT NONE. The live-frame acceptance

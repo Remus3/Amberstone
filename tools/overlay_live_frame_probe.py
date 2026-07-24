@@ -79,6 +79,32 @@ def _api_state():
         return json.load(fh)
 
 
+# Stage + trinket mirrors of web/js/lib/next_buy_model.js (NB_STAGE:39-44,
+# NB_TRINKETS:55-58, NB_TRINKET_FROM:50). Recorded per sample so the TRINKET
+# acceptance line is adjudicable from the capture alone: without owned_items
+# and the stage they imply, a "-" row is indistinguishable from a gate miss
+# and a correctly-gated quiet row (the 2026-07-23 session lost criterion 2 to
+# exactly this gap - 260 samples, no way to tell which).
+_EARLY_CLOCK_S = 600
+_LATE_CLOCK_S = 1320
+_MID_OWNED = 2
+_LATE_OWNED = 4
+_STAGE_ORDER = {"early": 0, "mid": 1, "late": 2}
+_TRINKETS = {"farsight alteration", "stealth ward", "oracle lens",
+             "scrying orb", "warding totem"}
+_TRINKET_FROM = {"stealth ward", "warding totem"}
+
+
+def _stage_for(clock_s, owned_count):
+    """stageFor(next_buy_model.js:67-75): the FURTHER along of clock and count."""
+    by_clock = ("early" if not isinstance(clock_s, (int, float))
+                or clock_s < _EARLY_CLOCK_S
+                else "mid" if clock_s < _LATE_CLOCK_S else "late")
+    by_owned = ("early" if owned_count < _MID_OWNED
+                else "mid" if owned_count < _LATE_OWNED else "late")
+    return by_clock if _STAGE_ORDER[by_clock] >= _STAGE_ORDER[by_owned] else by_owned
+
+
 def sample(ws, msg_id):
     page = _cdp_eval(ws, PAGE_EXPR, msg_id)
     st = _api_state()
@@ -91,10 +117,26 @@ def sample(ws, msg_id):
     # / gameData.gameTime paths this probe used to read never exist here and
     # always read null - that is the widget-vs-probe null the 2026-07-23
     # WAKEUP flagged as unconfirmed.
+    owned = [x for x in (lc.get("owned_items") or []) if x]
+    completed = [x for x in owned if str(x).strip().lower() not in _TRINKETS]
+    clock = lc.get("game_time_s")
+    stage = _stage_for(clock, len(completed))
+    sr_items = lc.get("sr_items") or []
     return {
         "mode_key": st.get("mode_key"),
-        "game_time_s": lc.get("game_time_s"),
+        "game_time_s": clock,
         "current_gold": lc.get("gold"),
+        # Every input the TRINKET + GOLD acceptance lines are judged against.
+        "owned_items": owned,
+        "completed_count": len(completed),
+        "stage": stage,
+        "holds_upgradable_trinket": any(
+            str(x).strip().lower() in _TRINKET_FROM for x in owned),
+        # The GOLD row targets the first sr_items row with next===true
+        # (next_buy_model.js:12-16). No such row means the widget CANNOT
+        # render a countdown, which is an upstream feed fact, not a widget bug.
+        "next_item": next((r.get("name") for r in sr_items if r.get("next")), None),
+        "sr_items_len": len(sr_items),
         "page": page,
     }
 
@@ -117,7 +159,10 @@ def main():
             h = ((row["page"].get("nextbuy") or {}).get("rect") or {}).get("h")
             if h:
                 heights.add(round(h, 1))
-            print(json.dumps(row, indent=2))
+            # flush per sample: a redirected stdout is block-buffered, so a
+            # `> file.json` capture lags reality by minutes. The 2026-07-23
+            # session read a 7-minute-stale baron ETA off exactly that lag.
+            print(json.dumps(row, indent=2), flush=True)
             if i + 1 < args.watch:
                 time.sleep(args.every)
     finally:
