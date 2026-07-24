@@ -219,9 +219,11 @@ _BUILD_BUCKET = "balanced"
 # Memoised build_orders_<mode>.json by lower-case mode: champ -> bucket -> [id].
 _BUILD_ORDERS_CACHE: dict[str, dict] = {}
 
-# Read cache keyed (mode, patch) -> (mtime, payload). mtime-aware: a stale entry
-# is dropped when the file on disk is newer than what we cached.
-_CACHE: dict[Tuple[str, str], Tuple[float, dict]] = {}
+# Read cache keyed (mode, requested_patch) -> (mtime, payload, served_patch).
+# mtime + served-patch aware: an entry is dropped when the resolved file on disk
+# is newer OR when the served patch changes (a prior-patch fallback healing to
+# the current-patch table once it lands).
+_CACHE: dict[Tuple[str, str], Tuple[float, dict, str]] = {}
 
 
 # --------------------------------------------------------------------------- #
@@ -903,21 +905,68 @@ def _db_path(mode: str, patch: str) -> Path:
     return _DS_DIR / _OUT_SUBDIR / patch / f"laning_scenarios_{str(mode).lower()}.json"
 
 
+def _patch_sort_key(version: str) -> list[int]:
+    """Numeric-component sort key for a patch string (``"16.10.1"`` outranks
+    ``"16.9.1"`` - a lexicographic sort would invert them). Non-numeric parts
+    sort lowest so a malformed dir never wins the fallback."""
+    out: list[int] = []
+    for part in str(version).split("."):
+        try:
+            out.append(int(part))
+        except ValueError:
+            out.append(-1)
+    return out
+
+
+def _latest_available_patch(mode: str) -> Optional[str]:
+    """Newest patch dir (by numeric-version sort) that actually has a table for
+    ``mode``, or ``None`` if none exists. Powers the read-layer prior-patch
+    fallback so Lane A stays warm across the post-bump regen gap."""
+    base = _DS_DIR / _OUT_SUBDIR
+    fname = f"laning_scenarios_{str(mode).lower()}.json"
+    try:
+        cands = [
+            p.name for p in base.iterdir()
+            if p.is_dir() and (p / fname).is_file()
+        ]
+    except Exception:  # noqa: BLE001 - missing base dir -> no fallback
+        return None
+    return max(cands, key=_patch_sort_key) if cands else None
+
+
 def load_laning_scenarios(mode: str = "sr", patch: Optional[str] = None) -> dict:
     """Return the laning-scenarios payload for ``mode`` + patch (or ``{}``).
 
     Cached + mtime-aware; fail-soft to ``{}`` on any missing / parse error.
-    """
-    use_patch = patch or resolve_patch()
-    key = (str(mode).lower(), use_patch)
-    path = _db_path(mode, use_patch)
+
+    Prior-patch fallback (HZ-A): when the caller does NOT pin an explicit
+    ``patch`` and the current patch's table is absent (the post-bump regen gap),
+    serve the newest AVAILABLE prior-patch table instead of going dark, tagged
+    ``_stale_patch`` / ``_served_patch`` / ``_requested_patch`` so a live-flip
+    gate can decline it (a wrong precompute is worse than a Haiku call). An
+    EXPLICIT ``patch`` pin is honored verbatim (no substitute), and the fallback
+    self-heals once the current-patch table lands (the resolved path's mtime
+    changes -> cache miss -> reload)."""
+    requested = patch or resolve_patch()
+    key = (str(mode).lower(), requested)
+    path = _db_path(mode, requested)
+    served = requested
+    if patch is None and not path.is_file():
+        fallback = _latest_available_patch(mode)
+        if fallback and fallback != requested:
+            served = fallback
+            path = _db_path(mode, fallback)
     try:
         mtime = path.stat().st_mtime
     except Exception:  # noqa: BLE001 - missing file -> empty
         _CACHE.pop(key, None)
         return {}
     cached = _CACHE.get(key)
-    if cached is not None and cached[0] == mtime:
+    # Invalidate on served-patch change too, not just mtime: a fallback->real
+    # transition swaps the resolved path to a DIFFERENT file whose mtime can
+    # coincide with the prior file's (coarse clock), so mtime alone would serve
+    # a stale fallback after the current-patch table lands.
+    if cached is not None and cached[0] == mtime and cached[2] == served:
         return cached[1]
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -925,7 +974,11 @@ def load_laning_scenarios(mode: str = "sr", patch: Optional[str] = None) -> dict
             payload = {}
     except Exception:  # noqa: BLE001 - malformed -> empty
         payload = {}
-    _CACHE[key] = (mtime, payload)
+    if payload and served != requested:
+        payload["_served_patch"] = served
+        payload["_requested_patch"] = requested
+        payload["_stale_patch"] = True
+    _CACHE[key] = (mtime, payload, served)
     return payload
 
 
