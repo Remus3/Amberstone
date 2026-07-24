@@ -365,6 +365,33 @@ either direction.
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
 | R164 | hexcore-offline-update | DIRECTOR REFILL unit (a). Identify every net-new non-test .py added since `d584e02e` (2026-07-14) and re-sync `docs/HEXCORE_offline.html` - DUST leaves for the files not yet present, stats HUD, ENGINE tooltips. File stays self-contained, node --check clean. ENGINE-IMPACT NONE (offline documentation html only). | DONE | `<this commit>` |
+| R165 | ds-sweep-sustain | DIRECTOR REFILL. Theme ds-sweep-sustain. Directive: DS sweep Lifesteal / Omnivamp vs Meraki truth - premise [UNVERIFIED] that item vamp grants lack Meraki-verified Arena/ARAM mirrors + EHP integration, ONE new math lane behind DEFAULT-OFF `apply_vamp_sustain`. PREMISE VERIFIED-FALSE before any build spend: item vamp is already read per-mirror and EHP-credited. ENGINE-IMPACT NONE (no math change - no bump). | DONE (CLEAN no-change) | `<this commit>` |
+
+**R165 - THE PREMISE WAS VERIFIED-FALSE, SO THE BUILD LANE WAS NOT SCAFFOLDED.** The directive
+commanded a new DEFAULT-OFF `apply_vamp_sustain` seam mapping vamp into the EHP/DPS scorer, with
+Agent A read-only sweeping Meraki and Agent B building the lane in a worktree. Inspection before
+dispatch showed the seam would DUPLICATE shipped code: ability-based vamp
+(LIFESTEAL/OMNIVAMP/SPELLVAMP/DRAIN) is fully scored in `agents/daemon_slayer/sustain.py` with a
+per-champion registry (ENGINE 1.110.0, item 298), and vamp-to-EHP conversion already ships in
+`agents/daemon_slayer/ehp.py` (lifesteal ENGINE 1.28.0, generalized to spellvamp/omnivamp
+1.121.0), plus `test_item_omnivamp_credit_r100.py` and `test_hsp_amp_r60.py` cover item omnivamp
+and HSP amp - the directive's own "if clean, pivot to HSP" fallback also lands on shipped ground.
+So Agent B was NOT dispatched (building a redundant seam violates the no-shim / no-tautology
+anti-patterns and CLAUDE.md Settled "survivability axes COMPLETE"). Instead ONE read-only sweep
+agent verified the ONE genuinely open question - do vamp-bearing ITEMS carry correct Meraki
+magnitude through DS stats + EHP, INCLUDING Arena (map 30) / ARAM (map 12) mirrors under R161
+Doctrine B. **VERDICT CLEAN, numerically proven + orchestrator-reverified:** `stats.py:110`
+maps `PercentLifeStealMod -> lifesteal`, `engine.py:204-205` folds it additively, `ehp.py:1566`
+credits `_lifesteal_heal`; mirrors carry their OWN magnitude (Bloodthirster SR `3072`=0.15 vs
+Arena `223072`=0.18; Ravenous Hydra `3074`=0.12 vs `223074`=0.15 - independently confirmed
+against `data/daemon_slayer/16.14.1/items.json`). ARAM (map 12) serves the SR id for every vamp
+item so no drift is possible; NO item carries `PercentSpellVampMod` this patch (all SV=None), so
+there is no item spellvamp to verify. No ENGINE bump, no Share sync (no `agents/daemon_slayer/`
+math path touched), no DS bounce, no RC restart. Tier-0 docs-only cycle recording a verified
+no-change. **Don't-redo: item vamp + Arena/ARAM mirrors are correctly read + EHP-credited under
+Doctrine B - do NOT re-pitch an `apply_vamp_sustain` seam or an item-vamp/mirror drift sweep;
+growth here needs a schema lift (e.g. an item spellvamp source appearing in a future patch), not
+another scan.**
 
 **R164 - THE DUST SET HAD ALREADY DRIFTED PAST THE GUARD'S 32-FILE SUBSET.** The `d584e02e`
 net-new census is 44 canonical non-test .py files (13 `Share/src/agents/daemon_slayer/*.py`
