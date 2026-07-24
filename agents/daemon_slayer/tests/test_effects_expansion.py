@@ -4530,6 +4530,11 @@ class Batch33DefensiveOnlyTests(unittest.TestCase):
     EXPECTED: dict[str, str] = {
         # 4636 Night Harvester promoted to active periodic in batch 52
         # 2512 Fiendhunter Bolts promoted to active periodic (Opening Barrage 45s CD)
+        # 663060 stays defensive_only (R170 crit-sweep): Sword of the Divine is
+        #   Arena-only (Meraki has it solely as 443060). DDragon mislabels this
+        #   66xxxx alias map11=True; keeping it defensive_only excludes the
+        #   non-SR item from SR offensive builds. Its Excoriate crit damage IS
+        #   credited on the Arena twin 443060 (Batch54SwordOfDivineEvTests).
         "663060": "Sword of the Divine",
         # 667112 Flesheater promoted to active in batch 50 (armor_reduction_flat)
         "664011": "Sword of Blossoming Dawn",
@@ -6952,6 +6957,17 @@ class Batch54SwordOfDivineEvTests(unittest.TestCase):
         # No new entries - 2 items promoted from defensive_only to active.
         # Total ITEM_EFFECTS count stays at 501.
         self.assertGreaterEqual(len(ITEM_EFFECTS), 501)
+
+    def test_663060_map11_twin_stays_defensive_only(self) -> None:
+        # R170 crit-sweep guard: the map11 quirk-alias 663060 must NOT be
+        # promoted to an offensive crit-damage item. Sword of the Divine is
+        # Arena-only (Meraki has it solely as 443060); DDragon mislabels 663060
+        # maps["11"]=True, so promoting it would surface a non-SR item in SR
+        # beam/rank builds and KeyError the Meraki gold cross-check. Its real
+        # Excoriate crit damage is credited on the Arena twin 443060 above.
+        eff = ITEM_EFFECTS["663060"]
+        self.assertTrue(eff.defensive_only)
+        self.assertEqual(eff.crit_damage_bonus, 0.0)
 
 
 class Batch55DDragonCoverageTests(unittest.TestCase):
