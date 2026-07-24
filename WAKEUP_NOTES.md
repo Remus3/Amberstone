@@ -4,6 +4,31 @@
 
 ---
 
+# 2026-07-23j - live-frame probe gold/clock paths root-caused (caveat retired)
+
+One commit (`10e92cf5`), Tier-1, ENGINE-IMPACT NONE. The live-frame acceptance
+is STILL OWED - fourth session now - and still needs the operator in an SR game.
+No headless work remains on it; the pre-flight is fully discharged.
+
+- **Probe pre-flight PASSES.** rc-shell still alive with the CDP flags (root
+  pid 2232) - no relaunch needed, the `2026-07-23i` blocker stays cleared.
+  Probe attaches, reads the DOM, reports `#am-next-buy` present + hidden +
+  rect 0x0 at `mode_key=client`.
+- **The `2026-07-23i` caveat is RETIRED - it was a real bug, now fixed.**
+  `/api/state.liveclient` is the FLATTENED block from
+  `dashboard/_liveclient.py:114 liveclient_summary()` (attached at
+  `dashboard/_state_builder.py:687`), NOT the raw Live Client `:2999` payload.
+  Gold is `liveclient.gold` (`_liveclient.py:148`); the clock is
+  `liveclient.game_time_s` (`_liveclient.py:144`). The probe read
+  `activePlayer.currentGold` / `current_gold` / `gameData.gameTime` - none of
+  those keys exist in that shape, so BOTH fields would have read null in-game
+  regardless of widget behavior. A null GOLD in the next run is now a real
+  widget signal, not probe noise.
+- **Do NOT redo:** everything the `2026-07-23i` do-not-redo list names, plus
+  this path fix. Do NOT re-derive the CDP session - use the committed probe.
+
+---
+
 # 2026-07-23i - rc-shell stale-overlay blocker cleared + 1.239.0 stamp drift
 
 Two commits, LEDGER 1013. Tier-1 + data-regen. ENGINE-IMPACT NONE. CI green
@@ -88,46 +113,3 @@ was BLOCKED - no game was running - and is still owed; see below.
   started 17:36:32, the widget landed 18:10:21, so the running overlay has no
   `w-nextbuy` module at all. It needs a full relaunch (NOT a hot-reload)
   before any live check is meaningful.
-
----
-
-# 2026-07-23g - Overlay HUD micro-lifts (BACKLOG NOW closed, all 3 slices)
-
-One commit + LEDGER 1011. ENGINE-IMPACT NONE (frontend panels + CSS + one
-CustomEvent in the shared item dictionary; no DS bump, no :8893 bounce, no
-Share touch). Tier-1 + UI. ZERO API / ZERO LLM / ZERO server-side additions.
-
-- **The probe found slice (c) already built server-side and never rendered.**
-  `core/build_planner/replan.py:684-689` has emitted `kind="upgrade_trinket"`
-  (3340 Stealth Ward -> 3363 Farsight Alteration, gated `stage >= mid` via
-  `scoring.stage_for`) all along - no surface consumed it. So the trinket lift
-  is a CONSUMER, not a new heuristic. Do not re-invent that rule.
-- **(a)** `objective_gauges.js` `_alertTier` -> `soon` (<= 90s) / `imminent`
-  (<= 10s) on any counting-down dial, off the SAME `etaS` the ring draws (so
-  it cannot drift from the `core/event_callouts.py` mirror). UP / "-" never
-  escalate. In `gaugesSig`, else a threshold crossing leaves a stale alert.
-- **(b)+(c)** NEW `w-nextbuy` widget: `web/js/lib/next_buy_model.js` (PURE,
-  node --test) + `web/js/panels/next_buy.js` (thin render) + `#am-next-buy`.
-  Rows NEXT / GOLD / TRINKET. GOLD = cost - owned DIRECT components - gold.
-- **Two bugs the tests caught, neither shipped.** `Number(null) === 0` made an
-  ABSENT purse read as a confident `0g` (gold is activePlayer-only). And
-  `ITEM_COSTS` is an ASYNC fetch - the first render beat it and sig-dedup then
-  PINNED the "-" sentinel; fixed with a new `rc:item-costs-ready` event from
-  the `items_index.js` cost loader. **The second was invisible to unit tests -
-  only the rendered-Chromium harness caught it.** Any future overlay panel
-  that reads an items_index singleton needs the same re-render wiring.
-- **Widen-to-fit is real, not theoretical.** The 210px `--ovx-w` default
-  ellipsised "Farsight Alteration" in the rendered proof -> 260px in
-  `overlay.css`, pinned by a `scrollWidth <= clientWidth` assertion.
-- **OWED: in-game live-frame verification.** rc-shell does NOT hot-reload a
-  NEW overlay JS module ([[reference_overlay_live_verify_technique]]), so
-  `w-nextbuy` needs a relaunch + a live game. No game ran at ship time.
-- **Repo was already RED before this slice.** 14 pre-existing failures, all DS
-  `ENGINE_VERSION` stamp drift from `3956081f` (build-order precompute +
-  variants tables stamped 1.238.0 vs engine 1.239.0, plus the docs drift + the
-  Share-mirror check). PROVEN pre-existing in a detached worktree at clean
-  HEAD `7a563ae0`. **A build-order table regen + docs sync is owed by whoever
-  owns that DS bump - it is not this slice's to fix.**
-- Also closed the BACKLOG playstyle-inference line, verified stale against the
-  shipped `core/playstyle_labels.py` + `/api/playstyle-labels` +
-  `#playstyle-labels-card` (`6f1b6d11`, LEDGER 1008).
