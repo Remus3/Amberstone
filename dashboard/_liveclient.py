@@ -27,6 +27,14 @@ inside the same Legion process). Token is sourced via
 path via `item_advisor.resolve_build` (+ boots phase + redundancy
 filter). The import is hoisted to module scope - `item_advisor` is
 pure-Python data dicts at load time with no expensive side effects.
+
+RM-114 / item A-27 (2026-07-24): `resolve_build` covers only the 6
+curated champions in `item_advisor.CHAMPION_BUILDS`, so the other 167
+emitted no next-buy row. `core.next_buy_fallback` re-sources those from
+the STATIC precomputed Daemon Slayer build-order tables (mode-aware
+sr/aram/arena, no live :8893 call, kill switch
+`RC_NEXTBUY_DS_FALLBACK=0`). It is consulted ONLY when `resolve_build`
+returns [], so the curated 6 keep priority and are byte-identical.
 """
 from __future__ import annotations
 
@@ -34,6 +42,7 @@ import json
 import time
 import urllib.request
 
+from core import next_buy_fallback as _next_buy_fallback
 from core.vision_token import get_vision_token
 from core.ward_cue import compute_ward_cue
 from item_advisor import (
@@ -374,6 +383,23 @@ def liveclient_summary() -> dict:
             champ = out.get("champion", "")
             if champ:
                 build = resolve_build(champ, enemy_team, owned_items)
+                # RM-114 / item A-27: resolve_build is a 6-of-173 curated
+                # table (the operator's own pool), so 97 percent of the roster
+                # produced NO next-buy row and the in-game GOLD / TRINKET rows
+                # rendered "-". Re-source the missing builds from the STATIC
+                # precomputed DS build-order tables - FALLBACK ONLY, so the 6
+                # curated builds keep priority and come through byte-identical.
+                # Static file read, never a live :8893 call, so it cannot stall
+                # this path; fail-soft to [] on any error (kill switch
+                # RC_NEXTBUY_DS_FALLBACK=0). The result feeds the SAME
+                # boots-phase / is_redundant pipeline below, not around it.
+                if not build:
+                    try:
+                        build = _next_buy_fallback.fallback_build(
+                            champ, out.get("game_mode")
+                        )
+                    except Exception:  # noqa: BLE001
+                        build = []
                 norm_owned = {x.lower().strip() for x in owned_items}
                 build_lc = {x.lower().strip() for x in build}
                 items_view = []
