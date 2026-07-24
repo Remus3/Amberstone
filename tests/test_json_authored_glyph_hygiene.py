@@ -26,14 +26,17 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 # Data Dragon uses for item and ability text.
 AUTHORED_KEYS = ("note", "notes", "generated_note", "source")
 
+# Written as escapes, not literals: `test_smart_quote_hygiene` byte-scans this
+# very file, so spelling the glyphs out here would make the detector trip the
+# detector. The escapes decode to the same characters at runtime.
 BANNED_GLYPHS = {
-    "—": "EM DASH",
-    "–": "EN DASH",
-    "×": "MULTIPLICATION SIGN",
-    "‘": "LEFT SINGLE QUOTE",
-    "’": "RIGHT SINGLE QUOTE",
-    "“": "LEFT DOUBLE QUOTE",
-    "”": "RIGHT DOUBLE QUOTE",
+    "\u2014": "EM DASH",
+    "\u2013": "EN DASH",
+    "\u00d7": "MULTIPLICATION SIGN",
+    "\u2018": "LEFT SINGLE QUOTE",
+    "\u2019": "RIGHT SINGLE QUOTE",
+    "\u201c": "LEFT DOUBLE QUOTE",
+    "\u201d": "RIGHT DOUBLE QUOTE",
 }
 
 DATA_ROOTS = (
