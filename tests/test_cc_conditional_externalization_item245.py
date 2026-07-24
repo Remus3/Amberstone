@@ -102,16 +102,24 @@ class StructureRelocationTests(unittest.TestCase):
 
 
 class ShareMirrorTests(unittest.TestCase):
-    def test_notes_excluded_from_share_but_json_included(self) -> None:
+    def test_notes_and_json_both_mirrored(self) -> None:
+        # RM-112 (2026-07-23) reversed the earlier decision: CC_CONDITIONAL_NOTES.md
+        # now SHIPS in the mirror. Six cc_conditional wave tests assert it exists and
+        # is ASCII-clean as a maintained engine-provenance artifact, so the package
+        # cannot pass its own suite without it, and it carries 0 scrub-target phrases
+        # so it mirrors verbatim like any other engine doc. This test previously
+        # asserted the notes were EXCLUDED (the pre-RM-112 packaging) and drifted red
+        # in the nightly once RM-112 landed.
         from tools import ds_share_sync
         expected = ds_share_sync._build_expected()
         self.assertIn(
             "agents/daemon_slayer/cc_conditional_registry.json", expected,
             "registry JSON must be mirrored to Share (loader reads it)",
         )
-        self.assertNotIn(
+        self.assertIn(
             "agents/daemon_slayer/CC_CONDITIONAL_NOTES.md", expected,
-            "NOTES.md is repo-internal dev-context; must not be mirrored",
+            "CC_CONDITIONAL_NOTES.md must be mirrored (RM-112: the cc_conditional "
+            "wave tests assert it ships in the package)",
         )
 
 
