@@ -4,6 +4,46 @@
 
 ---
 
+# 2026-07-24b - R190 kit-intrinsic penetration lane (ENGINE 1.241.0, commit `349d833a`)
+
+gemini-loop DIRECTOR REFILL, rotation source 1 (DS sweep). Tier-2: new engine
+module + a narrow `effects.py` signature extension + ENGINE bump + Share re-sync
++ DS `:8893` bounce. LEDGER 1040. ZERO API / ZERO LLM.
+
+**The stated scope was already closed; the real gap was next to it.** R152 /
+R153 / R160 / R161 had already swept every ITEM-side penetration magnitude, and
+`effective_target_armor` / `effective_target_mr` already implement League's
+two-rule split correctly. What was missing is a SOURCE: both pipelines accept
+`ItemEffect` objects only, so CHAMPION-KIT penetration never entered the damage
+math - it lived solely as a row in the standalone opt-in anti-tank RANKING axis,
+which feeds no resist computation.
+
+NEW `agents/daemon_slayer/_kit_penetration.py`, DEFAULT-OFF: Darius E 40 pct,
+Gangplank E 40 pct, Nilah Q 33 pct, Ambessa R 30 pct, Pantheon R 30 pct, each
+row carrying its verbatim `champion_abilities.json` tooltip.
+`effective_target_armor` gains `kit_pen_pct` / `kit_pen_flat` appended at the
+END with 0.0 defaults; the kit fraction joins the SAME `_composed_keep_factor`
+product as item percent pen so they can never sum. Zero production call sites
+pass either argument - the live flip stays operator-gated.
+
+Magic side is a REFUTE made machine-enforced: 14 kit-intrinsic magic-side
+grants, 13 already credited, the lone hole Annie R (15/17.5/20 pct, absent from
+the anti-tank registry entirely) now pinned as known-uncredited.
+
+**Carry-forward for the next engine bump.** The DS dir went green at 9290 while
+the RC suite was still RED in three classes a DS-only gate cannot see: the HZ-B
+build-order tables are patch-keyed STATIC data and need BOTH generators re-run
+(`core.build_order_precompute` AND `core.build_order_variants`,
+`--static --mode all --champions all` - variants alone leaves the precompute set
+stale), `docs/DAEMON_SLAYER.md` pins ENGINE + test count in its status line, and
+`Share/README.md`'s release-history list must NAME the live engine version.
+
+DS 9290 passed / 1 skipped / 4331 subtests. RC `tests/` 12769 passed / 22
+skipped / 406 subtests. ruff clean. `ds_share_sync --check` in sync (466 files).
+DS `:8893` re-probed live at 1.241.0 / patch 16.14.1.
+
+---
+
 # 2026-07-24 - R188 HEXCORE offline explorer re-sync (docs, commit `bb847bd0`)
 
 gemini-loop DIRECTOR REFILL unit (a), second pass. Tier-0 docs + guard.
@@ -71,28 +111,3 @@ DEFAULT-OFF `exclude_off_axis_items`, ZERO API / ZERO LLM.
 - Default-ON flip is new gated row **G2-43**. Do not flip blind: a strip is
   invisible in the UI, so a wrong exclusion cannot be caught by looking at what
   IS shown.
-
----
-
-# 2026-07-24 - R185 ui-audit-spike-cue (CLEAN) + operator halt
-
-Gemini-loop DIRECTOR REFILL cycle 15 (REFILL PROTOCOL 3). Commit `850c577f`,
-LEDGER 1035, Tier-0/1 test+docs, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
-
-- **R185 = CLEAN, ZERO MUST-FIX.** 5-phase Section-3b UI audit of the in-game
-  Spike Cue overlay widget (`web/js/panels/spike_cue.js` 158L + `.css` 68L,
-  mount `#am-spike-cue`, `w-spike` urgent). Un-audited IN-GAME overlay pick via
-  read-only Explore recon; champ-select set CLOSED. STRUCTURE/HIERARCHY clean,
-  HIT-TARGETS N/A (zero clickables), ASCII 0 non-ASCII bytes (up-triangle is a
-  CSS `\25B2` escape), TYPOGRAPHY already R33-guarded (spike_cue.css is in
-  `test_overlay_css_typography_tokens.py` `_OVERLAY_CUE_CSS`, rides `--fs-ov-chip`).
-- Drift-guard `tests/test_spike_cue_ascii.py` (3 tests) added. Full RC `tests/`:
-  12765 passed / 22 skip / 1 error - the error is the documented RF5 hermeticity
-  flake (live loop controller grew `controller.log` mid-suite, conftest.py:145),
-  DISJOINT from R185; re-ran isolated = 4 passed. Regressions 0.
-- **Operator interrupted -> requested loop halt + /done for a fresh claude
-  restart.** Dropped `ops/loop/control/STOP`; controller.log confirms "external
-  STOP seen" (cycle 15). Loop is halted. Do NOT relaunch it unless the operator
-  re-invokes /gemini-headless-upgrade.
-- Do NOT redo: the in-game overlay glance-cue set (ward/spike/objective) + the
-  champ-select audit set (R173/R180/R182/R183/R184) are all UI-audit CLEAN.
