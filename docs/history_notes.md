@@ -119,6 +119,31 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-24 - R185 ui-audit-spike-cue (CLEAN) + operator halt
+
+Gemini-loop DIRECTOR REFILL cycle 15 (REFILL PROTOCOL 3). Commit `850c577f`,
+LEDGER 1035, Tier-0/1 test+docs, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
+
+- **R185 = CLEAN, ZERO MUST-FIX.** 5-phase Section-3b UI audit of the in-game
+  Spike Cue overlay widget (`web/js/panels/spike_cue.js` 158L + `.css` 68L,
+  mount `#am-spike-cue`, `w-spike` urgent). Un-audited IN-GAME overlay pick via
+  read-only Explore recon; champ-select set CLOSED. STRUCTURE/HIERARCHY clean,
+  HIT-TARGETS N/A (zero clickables), ASCII 0 non-ASCII bytes (up-triangle is a
+  CSS `\25B2` escape), TYPOGRAPHY already R33-guarded (spike_cue.css is in
+  `test_overlay_css_typography_tokens.py` `_OVERLAY_CUE_CSS`, rides `--fs-ov-chip`).
+- Drift-guard `tests/test_spike_cue_ascii.py` (3 tests) added. Full RC `tests/`:
+  12765 passed / 22 skip / 1 error - the error is the documented RF5 hermeticity
+  flake (live loop controller grew `controller.log` mid-suite, conftest.py:145),
+  DISJOINT from R185; re-ran isolated = 4 passed. Regressions 0.
+- **Operator interrupted -> requested loop halt + /done for a fresh claude
+  restart.** Dropped `ops/loop/control/STOP`; controller.log confirms "external
+  STOP seen" (cycle 15). Loop is halted. Do NOT relaunch it unless the operator
+  re-invokes /gemini-headless-upgrade.
+- Do NOT redo: the in-game overlay glance-cue set (ward/spike/objective) + the
+  champ-select audit set (R173/R180/R182/R183/R184) are all UI-audit CLEAN.
+
+---
+
 # 2026-07-24 - R166 share-presentation-overhaul + baseline drift fix (near-CLEAN)
 
 Gemini-loop DIRECTOR REFILL unit (b). Two commits (`5bd0854e`, `69d06ef7`),
