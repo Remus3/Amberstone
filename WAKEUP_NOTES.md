@@ -4,6 +4,35 @@
 
 ---
 
+# 2026-07-24 - R166 share-presentation-overhaul + baseline drift fix (near-CLEAN)
+
+Gemini-loop DIRECTOR REFILL unit (b). Two commits (`5bd0854e`, `69d06ef7`),
+LEDGER 1019, Tier-0 docs-only, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
+
+- **R166 = near-CLEAN.** Four parallel audit agents read the ENTIRE `Share/`
+  authored doc set (README, docs/01-05, CHANGELOG, LICENSE, lolmath_ingest/*)
+  end to end as external presentation. Docs were already pristine from R163;
+  ONE real defect: README Release-history header said "five most recent" over
+  a SIX-entry list -> "six". Everything else verified CLEAN + internally
+  consistent (1.239.0/16.14.1, 173/171, 706, 7 scorers, 35 paths, 306/355,
+  7270+2330/9203) and all upstream credits (Riot Data Dragon / CommunityDragon
+  / Meraki / wiki / lolmath / Overlay App E host-only) intact. 7-bit ASCII clean.
+- **Baseline red fixed (`5bd0854e`).** The full-suite gate surfaced a
+  pre-existing red on main: `test_docs_daemon_slayer_drift.py` - the
+  `docs/DAEMON_SLAYER.md` banner still read ENGINE_VERSION 1.238.0 after the
+  engine bumped to 1.239.0 at R164. Bumped banner 1.238.0 -> 1.239.0, count
+  9190 -> 9203. Not caused by R166; fixed per "fix red baseline first".
+- **Suites green:** DS 9203 passed / 1 skip / 3865 subtests; RC 12742 passed
+  / 23 skip (the 1 drift red now green); `-k share` 203 passed; `ds_share_sync
+  --check` in sync (460 files, 1.239.0). CI `paths-ignore '**/*.md'` so the
+  all-markdown push triggers no per-push run; nightly runs the full suite and
+  the drift guard is now green.
+- **Don't-redo:** Share/ authored presentation is current + credit-complete as
+  of R163+R166 - do NOT re-pitch a Share doc overhaul; future drift is a
+  mechanical anchor restamp or a real engine-bump content change.
+
+---
+
 # 2026-07-23k - live-frame acceptance ADJUDICATED (owed 4 sessions, now closed out)
 
 One commit, LEDGER 1014, Tier-1, ENGINE-IMPACT NONE. The operator queued SR and
@@ -61,90 +90,3 @@ No headless work remains on it; the pre-flight is fully discharged.
   widget signal, not probe noise.
 - **Do NOT redo:** everything the `2026-07-23i` do-not-redo list names, plus
   this path fix. Do NOT re-derive the CDP session - use the committed probe.
-
----
-
-# 2026-07-23i - rc-shell stale-overlay blocker cleared + 1.239.0 stamp drift
-
-Two commits, LEDGER 1013. Tier-1 + data-regen. ENGINE-IMPACT NONE. CI green
-(`30057696467` + `30057696474`). The live-frame acceptance is STILL OWED - it
-is not drainable headlessly; see below.
-
-- **Blocker cleared.** Electron was started 17:36:32, the widget landed
-  18:10:21, so the running overlay had no `w-nextbuy`. Killed the tree,
-  relaunched with `--remote-debugging-port=9222 --remote-allow-origins=*`.
-  CDP confirms the renderer fetched `next_buy.js` / `next_buy_model.js` /
-  `next_buy.css` / `overlay_layout.js`, and `#am-next-buy` is present,
-  hidden, `display:none`, rect 0x0 - the no-reflow half is discharged.
-- **GOTCHA: rc-shell holds a single-instance lock.** A second launch with
-  new flags exits silently and leaves the STALE process serving. Kill the
-  ROOT pid `/T` first.
-- **1.239.0 stamp drift was 12 red, not 14.** Regenerated both tables with
-  the commands the failures cite; re-ran fresh: 19 passed, 6 skipped, and
-  each of the 12 verified PASSED individually. The 6 skips are the opt-in
-  `test_content_freshness_matches_static_regen` params, skipped before too.
-- **NEW `tools/overlay_live_frame_probe.py`** - one command for the owed
-  acceptance. Selectors verified against source first; my first draft
-  guessed `#am-objective-gauges` / `[data-og-dial]` and both were wrong.
-- **STILL OWED - needs the operator in an SR game.** All four acceptance
-  lines gate on `body[data-shell="overlay"]` (`next_buy.js:83`), which only
-  exists mid-game. ARAM/Arena exercise neither BARON nor the trinket row.
-- **Caveat on my own tool:** its `current_gold` path
-  (`liveclient.activePlayer.currentGold`, fallback `liveclient.current_gold`)
-  was never confirmed against a real payload - liveclient was empty all
-  session. A null GOLD cross-check in-game means that path, not the widget.
-- **Do NOT redo:** the theme picker, the widget, the cadence, or the table
-  regen. Do NOT re-derive the CDP session - use the committed probe.
-
----
-
-# 2026-07-23h - Settings theme picker + arcane default
-
-Two commits, LEDGER 1012. Operator-ad-hoc (not a ROADMAP item). Tier-1 + UI.
-ENGINE-IMPACT NONE. ZERO API / ZERO LLM / ZERO server-side additions. CI green
-(`30054685888`). The live-frame overlay verification queued for this session
-was BLOCKED - no game was running - and is still owed; see below.
-
-- **Trigger:** operator noticed the dashboard has no theme selector. Probe
-  confirmed it: the 6 DS2 palettes were reachable ONLY via `?theme=`
-  (`main.js:116-124`), a swap-and-pick evaluation seam that never shipped a
-  control. Settings `#view-settings` was the obvious home.
-- **NEW `web/js/lib/theme.js`** is the single source of truth (THEMES
-  whitelist, DEFAULT_THEME, THEME_KEY, and the SOLE writer of
-  `<html data-theme>`). `hextech` stays UNSTAMPED - base.css `:root` owns the
-  gold palette, so stamping the string would break it. Precedence:
-  `?theme=` wins session-only and never writes storage -> localStorage
-  `rc-theme` -> default.
-- **Storage key is `rc-theme`, NOT `rc_theme`.** The Plan agent caught that my
-  proposed underscore key contradicted the repo convention (`rc-view-manual` /
-  `rc-ui-mock`); underscores are infra-only (`rc_dash_token`).
-- **Inline pre-paint `<head>` guard in index.html.** Without it a persisted
-  theme flashes the gold base palette on EVERY load, because main.js is a
-  `type=module` at end-of-body. It hand-copies the whitelist (it must run
-  before the module graph), so a static drift test pins the two copies.
-- **Then the default flipped terminal -> arcane** (operator pick, `7d63b85b`).
-  The flip silently WEAKENED an existing test - `test_stored_theme_applies_
-  and_selects` seeded `arcane` to prove the storage read works, and `arcane`
-  had just become the default, so it would have passed with the read fully
-  broken. Now it picks the first non-default non-hextech theme. Caught on
-  review, not by a failure. **Lesson: flipping a default can turn a real
-  assertion into a tautology - re-read every test that names the old value.**
-- **Verified:** 14 green (`test_settings_theme_picker.py` 10 new + 
-  `test_settings_view.py` 4), ruff clean, hygiene trio 13 green, CI green.
-  5-phase UI audit did a REAL live render (Chrome DevTools MCP, not static):
-  select measures 360x45 / 22px `--fs-md`, byte-identical to the sibling
-  select. Zero MUST-FIX. ADR-008 covers all four web files - no RC restart.
-- **Do NOT redo:** the picker, the FOUC guard, the drift test, or the default
-  flip. All shipped and pushed.
-- **Logged, NOT fixed (both pre-existing, now more visible):** 7 panels emit
-  hardcoded hex into generated SVG (`active_match`, `ds_sweep`, `map_state`,
-  `objective_gauges`, `spike_curve`, `threat_donut`, `ward_heat`) and do NOT
-  re-tint on a live theme switch. And the DISPLAY settings-card renders at
-  y=1092 on the 1920x1080 baseline - below the fold, because CLIENT SETTINGS
-  sits above it in a single 896px column.
-- **STILL OWED from 2026-07-23g:** live-frame verification of `w-nextbuy` +
-  the OQ16 90s/10s cadence. Probed this session: `mode_key=client`,
-  `has_game=false`. Also found rc-shell is STALE - the electron processes
-  started 17:36:32, the widget landed 18:10:21, so the running overlay has no
-  `w-nextbuy` module at all. It needs a full relaunch (NOT a hot-reload)
-  before any live check is meaningful.
