@@ -337,5 +337,96 @@ class EngineCharacterizationTests(unittest.TestCase):
         self.assertEqual(cell["net_swing"], lsp._round(ref.net_swing))
 
 
+class PatchFallbackTests(unittest.TestCase):
+    """Read layer serves the newest AVAILABLE prior-patch table when the current
+    patch has not been regenerated yet (the post-bump regen gap), so the Lane A
+    shadow path stays WARM instead of going dark. HZ-A: without this a patch bump
+    dark-outs the entire laning precompute until a ~2h full-roster regen lands,
+    stalling current-patch shadow accrual (the gate to flipping Haiku off). The
+    fallback self-heals once the current-patch table appears, refuses to mask an
+    EXPLICIT patch pin, and tags the payload stale so a live-flip gate can decline
+    to serve it (a wrong precompute is worse than a Haiku call)."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self._orig_ds_dir = lsp._DS_DIR
+        self._orig_current = lsp._CURRENT_TXT
+        lsp._DS_DIR = Path(self._tmp.name) / "data" / "daemon_slayer"
+        lsp._CURRENT_TXT = lsp._DS_DIR / "current.txt"
+        lsp._DS_DIR.mkdir(parents=True, exist_ok=True)
+        lsp._CACHE.clear()
+
+    def tearDown(self) -> None:
+        lsp._DS_DIR = self._orig_ds_dir
+        lsp._CURRENT_TXT = self._orig_current
+        lsp._CACHE.clear()
+        self._tmp.cleanup()
+
+    def _write_table(self, patch: str, mode: str, verdict: str = "even") -> None:
+        d = lsp._DS_DIR / lsp._OUT_SUBDIR / patch
+        d.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "version": patch, "mode": mode, "schema": "laning_scenarios/v4",
+            "scenarios": {"Garen": {"Darius": {"L6": {"full": {"all_up": {
+                "none": {"verdict": verdict, "net_swing": 0.0}}}}}}},
+        }
+        (d / f"laning_scenarios_{mode.lower()}.json").write_text(
+            json.dumps(payload), encoding="utf-8")
+
+    def _set_current(self, patch: str) -> None:
+        lsp._CURRENT_TXT.write_text(patch, encoding="utf-8")
+
+    def test_missing_current_patch_falls_back_to_latest_available(self) -> None:
+        self._write_table("16.13.1", "sr", verdict="trade")
+        self._set_current("16.14.1")  # no table for the current patch
+        payload = lsp.load_laning_scenarios("sr")
+        self.assertTrue(payload, "expected fallback payload, got empty (dark)")
+        self.assertEqual(payload.get("version"), "16.13.1")
+        self.assertTrue(payload.get("_stale_patch"))
+        self.assertEqual(payload.get("_served_patch"), "16.13.1")
+        self.assertEqual(payload.get("_requested_patch"), "16.14.1")
+        cell = lsp.lookup(payload, "Garen", "Darius", "L6", "full", "all_up")
+        self.assertEqual(cell.get("verdict"), "trade")
+
+    def test_explicit_patch_pin_does_not_fall_back(self) -> None:
+        self._write_table("16.13.1", "sr")
+        # An explicit pin to a missing patch must stay empty - no silent substitute.
+        self.assertEqual(lsp.load_laning_scenarios("sr", patch="16.14.1"), {})
+
+    def test_present_current_patch_has_no_stale_tag(self) -> None:
+        self._write_table("16.14.1", "sr", verdict="all_in")
+        self._set_current("16.14.1")
+        payload = lsp.load_laning_scenarios("sr")
+        self.assertEqual(payload.get("version"), "16.14.1")
+        self.assertFalse(payload.get("_stale_patch"))
+        self.assertIsNone(payload.get("_served_patch"))
+
+    def test_fallback_picks_numeric_latest_not_lexicographic(self) -> None:
+        # "16.9.1" > "16.10.1" lexicographically, but 16.10.1 is the newer patch.
+        self._write_table("16.9.1", "sr", verdict="back_off")
+        self._write_table("16.10.1", "sr", verdict="trade")
+        self._set_current("16.14.1")
+        payload = lsp.load_laning_scenarios("sr")
+        self.assertEqual(payload.get("_served_patch"), "16.10.1")
+        cell = lsp.lookup(payload, "Garen", "Darius", "L6", "full", "all_up")
+        self.assertEqual(cell.get("verdict"), "trade")
+
+    def test_self_heals_when_current_patch_table_appears(self) -> None:
+        self._write_table("16.13.1", "sr", verdict="trade")
+        self._set_current("16.14.1")
+        p1 = lsp.load_laning_scenarios("sr")
+        self.assertEqual(p1.get("_served_patch"), "16.13.1")
+        self._write_table("16.14.1", "sr", verdict="all_in")  # regen lands
+        p2 = lsp.load_laning_scenarios("sr")
+        self.assertEqual(p2.get("version"), "16.14.1")
+        self.assertFalse(p2.get("_stale_patch"))
+        cell = lsp.lookup(p2, "Garen", "Darius", "L6", "full", "all_up")
+        self.assertEqual(cell.get("verdict"), "all_in")
+
+    def test_no_tables_at_all_returns_empty(self) -> None:
+        self._set_current("16.14.1")
+        self.assertEqual(lsp.load_laning_scenarios("sr"), {})
+
+
 if __name__ == "__main__":
     unittest.main()
