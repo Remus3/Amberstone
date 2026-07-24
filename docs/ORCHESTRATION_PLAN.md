@@ -359,3 +359,30 @@ divergence and never was - the Arena feed and SR `6693` BOTH state 22 lethality,
 match. It was named as a divergent row in the R161 directive and REFUTED during
 verification, so its guard test was correctly left un-inverted; do not "correct" it in
 either direction.
+
+## Sessions - DIRECTOR REFILL 2026-07-24
+
+| ID | Theme | Scope | Status | Commit |
+|----|-------|-------|--------|--------|
+| R164 | hexcore-offline-update | DIRECTOR REFILL unit (a). Identify every net-new non-test .py added since `d584e02e` (2026-07-14) and re-sync `docs/HEXCORE_offline.html` - DUST leaves for the files not yet present, stats HUD, ENGINE tooltips. File stays self-contained, node --check clean. ENGINE-IMPACT NONE (offline documentation html only). | DONE | `<this commit>` |
+
+**R164 - THE DUST SET HAD ALREADY DRIFTED PAST THE GUARD'S 32-FILE SUBSET.** The `d584e02e`
+net-new census is 44 canonical non-test .py files (13 `Share/src/agents/daemon_slayer/*.py`
+byte-mirrors excluded), but the R138/R151 guard `tests/test_hexcore_offline_dust.py` only
+pinned 32 of them, so a straight "add every net-new file" pass would have looked done while
+12 files were unrepresented. Measured the actual gap by parsing the live `var DUST=` literal
+rather than trusting the guard: 33 of 44 were already present (adjudicator.py included, added
+after R151), leaving exactly **11 missing** - core `draft_score` / `patch_impact` /
+`playstyle_labels` / `session_hygiene`, their four `routes_*` siblings, and tools
+`overlay_live_frame_probe` / `pseudo_screen_overlay` / `rofl_tracked_backfill`. Added those 11
+DUST leaves (parents all valid node ids: the four analytics cores + `rofl_tracked_backfill`
+-> `m_matchdb`, the four routes -> `m_routes`, `overlay_live_frame_probe` -> `vision`,
+`pseudo_screen_overlay` -> `el_shell`), bumped every dust-count reference 329 -> 340 (the
+`// DUST:` comment, the sr-only h2, the HUD `dust:` row, and the no-render fallback prose),
+and refreshed the stale stats HUD + ENGINE tooltip against ground truth: ENGINE 1.237.0 ->
+1.239.0 (live `/health`), 9162 -> 9204 DS tests, commits 3823 -> 3902, last `fc8199c9`
+2026-07-21 -> `a7280c26` 2026-07-24, updated date bumped. Widened the guard's
+EXPECTED_NEW_BASENAMES to the full 44 so the next drift goes RED instead of silently passing.
+Guard 11/11 green (includes node --check on the embedded script block, ASCII, and dust
+referential integrity); 0 non-ASCII bytes; ruff clean. Tier-0 docs-only, no ENGINE bump, no
+DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched).
