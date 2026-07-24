@@ -4579,7 +4579,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
                 every_n_seconds=1.0,
             ),
         ),
-        note="Malignance ARAM mirror (223118) Hatefog: (180+15%AP) magic per ult zone hit",
+        note="Malignance Arena mirror (223118) Hatefog: (180+15%AP) magic per ult zone hit",
     ),
     "223119": ItemEffect(
         item_id="223119",
@@ -5360,13 +5360,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="222065",
         name="Shurelya's Battlesong",
         defensive_only=True,
-        note="Shurelya's Battlesong (ARAM 222065): same as SR 2065 - Inspire MS burst aura, no self DPS",
+        note="Shurelya's Battlesong (Arena 222065): same as SR 2065 - Inspire MS burst aura, no self DPS",
     ),
     "222051": ItemEffect(
         item_id="222051",
         name="Guardian's Horn",
         defensive_only=True,
-        note="Guardian's Horn (ARAM 222051): HP + defensive stats component - no DPS proc",
+        note="Guardian's Horn (Arena 222051): HP + defensive stats component - no DPS proc",
     ),
     "222524": ItemEffect(
         item_id="222524",

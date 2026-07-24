@@ -368,6 +368,37 @@ either direction.
 | R165 | ds-sweep-sustain | DIRECTOR REFILL. Theme ds-sweep-sustain. Directive: DS sweep Lifesteal / Omnivamp vs Meraki truth - premise [UNVERIFIED] that item vamp grants lack Meraki-verified Arena/ARAM mirrors + EHP integration, ONE new math lane behind DEFAULT-OFF `apply_vamp_sustain`. PREMISE VERIFIED-FALSE before any build spend: item vamp is already read per-mirror and EHP-credited. ENGINE-IMPACT NONE (no math change - no bump). | DONE (CLEAN no-change) | `<this commit>` |
 | R166 | share-presentation-overhaul | DIRECTOR REFILL unit (b). Read ENTIRE Share/ folder end to end; update / clean / prune the authored docs as a NEW EXTERNAL PRESENTATION. Distinct from R163 (which only reconciled README test numbers). Orchestrator multi-agent fanout on disjoint Share/ subsets; fix stale refs / orphaned docs / duplicated narrative, improve external-audience formatting, keep Riot Data Dragon / CommunityDragon / Meraki credits explicit. `ds_share_sync.py --check` green, 7-bit ASCII. ENGINE-IMPACT NONE (docs / presentation only). | DONE (near-CLEAN) | `<this commit>` |
 | R167 | ds-sweep-hsp | DIRECTOR REFILL. DS sweep Healing and Shielding Power (HSP) item grants (Moonstone Renewer, Dawncore, Redemption, Mikael's Blessing, Ardent Censer, Staff of Flowing Water, Echoes of Helia). Premise [UNVERIFIED] that HSP item magnitudes / mode mirrors match base and are EHP-credited, ONE new math lane behind DEFAULT-OFF `apply_item_hsp`. PREMISE VERIFIED-TRUE before any build spend: R143 already registered all 7 targets (+3 more) per-mirror at measured magnitudes with the seam integrated into both EHP scorers + sustain self-regen. ENGINE-IMPACT NONE (no math change - no bump). | DONE (CLEAN no-change) | `<this commit>` |
+| R168 | ds-sweep-penetration | DIRECTOR REFILL. DS sweep Armor Penetration / Lethality / Magic Penetration item grants + Arena(22xxxx)/ARAM(32xxxx) mode mirrors vs DDragon truth (LDR, Mortal Reminder, Serylda's, Black Cleaver, Youmuu's, Hubris, Opportunity, Edge of Night, Collector, Void Staff, Cryptbloom, Shadowflame, Stormsurge, Sorcerer's Shoes, Malignance). Premise [UNVERIFIED] that pen mirrors exist + match base magnitudes + integrate into damage scorers. 2 parallel read-only truth-sweep agents; build DEFAULT-OFF fix only if drift/gap found, else CLEAN docs-only. PREMISE VERIFIED-TRUE: all 15 base magnitudes match own DDragon line, all Arena mirrors exist + credit their OWN line (doctrine B), no pen-item 32xxxx ARAM mirror exists (base serves ARAM via map12=True; only Hubris 126697 distinct). Engine NOT blind - pen consumed in effects.py:591-662 + dps.py:896 + ehp.py. Fixed 3 cosmetic note mislabels (Arena ids called "ARAM"). ENGINE-IMPACT NONE (no math - no bump). | DONE (CLEAN no-change) | `<this commit>` |
+
+**R168 - THE PENETRATION AXIS WAS ALREADY FULLY MODELED + MIRROR-PARITY CLEAN.** The directive's
+[UNVERIFIED] premise was that Lethality / % Armor Pen / Flat + % Magic Pen item mirrors might be
+missing, drifted, or unread by the damage scorers. Two parallel read-only truth-sweep agents (A:
+armor-pen/lethality - LDR 3036, Mortal Reminder 3033, Serylda's 6694, Black Cleaver 3071, Youmuu's
+3142, Hubris 6697, Opportunity 6701, Edge of Night 3814, Collector 6676; B: magic-pen - Void Staff
+3135, Cryptbloom 3137, Sorcerer's Shoes 3020, Shadowflame 4645, Stormsurge 4646, Malignance 3118)
+each ground-truthed every base + mirror ITEM_EFFECTS entry against its OWN `data/daemon_slayer/16.14.1/
+items.json` stat line, and BOTH returned VERIFIED-TRUE / CLEAN. Every SR base magnitude matches its own
+DDragon line; every Arena (22xxxx) mirror exists and credits its OWN Arena magnitude, not the SR twin
+(R161 doctrine B, confirmed on the six real deltas: LDR 35->40%, Serylda 35->40%, Youmuu 18->22 leth,
+Collector 10->12, Opportunity 18->15, Edge 15->14, plus magic-pen Sorc Shoes 12->20 flat, Shadowflame
+15->10 flat); no pen-item ARAM (32xxxx) mirror exists in DDragon (base serves Howling Abyss via
+`maps["12"]=True`, so their absence from ITEM_EFFECTS is CORRECT) - the sole distinct ARAM mirror is
+Hubris 126697, present + correct at 18 lethality. The engine is NOT blind to penetration: pct pen
+composes multiplicatively then flat pen (incl post-V14.1 lethality 1:1) subtracts in `effects.py:591-627`
+(armor) / `:660-662` (magic), consumed by `dps.py:896` (caster_lethality) and `ehp.py:1959/1965`
+(enemy flat pen). Orchestrator independently spot-checked the crux claims (Shadowflame 224645 flat=10.0,
+Youmuu 223142 key present, zero of the 15 pen-item 32xxxx ids exist). Two premise corrections (data, not
+defects): Malignance 3118 carries NO pen field - its Hatefog is MR SHRED not penetration, so its absence
+is correct and it is off-axis; the assumed generic `32xxxx` ARAM scheme is not universal (26 unrelated
+32xxxx keys exist, none for these pen items). Per the DECIDE branch, NO seam was scaffolded and NO
+ENGINE bump taken. The ONLY edit was a Tier-0 sibling-swept cosmetic cleanup surfaced by Agent B: three
+ITEM_EFFECTS notes mislabeled Arena (22xxxx) mirror ids as "ARAM" - Malignance 223118, Shurelya's
+222065, Guardian's Horn 222051 - all corrected to "Arena". Comment-only, runtime byte-identical (no
+test asserts on the note text; no ENGINE_VERSION bump; no DS :8893 bounce). Share/src byte-mirror +
+MANIFEST re-synced (`ds_share_sync.py --check` green, 460 files, engine 1.239.0) so the mirror does not
+drift on the touched `agents/daemon_slayer/_effects_data.py`. Don't-redo: the pen axis
+(lethality/armor-pen/magic-pen) is mirror-parity CLEAN + scorer-integrated as of R168 - do NOT re-sweep
+it; Malignance is off the pen axis (MR shred).
 
 **R167 - THE PREMISE WAS VERIFIED-TRUE, SO NO `apply_item_hsp` LANE WAS SCAFFOLDED.** The directive
 commanded a DEFAULT-OFF `apply_item_hsp` seam crediting Heal-and-Shield-Power (HSP) item grants across
