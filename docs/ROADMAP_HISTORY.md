@@ -6,6 +6,25 @@
 
 - **RM-112 (original) - the `Share/` package does not pass its own test suite standalone.** R154 (2026-07-21) fixed the ABORT: nine mirrored test modules imported host-only `core.*` (or read a host-only `web/` asset), so `pytest agents/daemon_slayer/tests` died at collection and an external reviewer following the README ran ZERO tests. Those nine are now excluded from the mirror by `_HOST_DEPENDENT_TESTS` in `tools/ds_share_sync.py` and the suite collects 9008 clean. **What remains is the residue:** 51 of the shipped 341 test files still reach outside the package for host-only data, giving `108 failed / 170 errors / 8723 passed` standalone. Sampled causes are all `FileNotFoundError` on paths the mirror deliberately does not carry - `data/daemon_slayer/spell_cast_rates.json` + `ult_cast_rates.json` (outside the patch dir), historical patch snapshots `16.10.1` / `16.13.1`, and `agents/daemon_slayer/CC_CONDITIONAL_NOTES.md`. Two candidate fixes, both cheap, neither yet adjudicated: widen the mirror to carry the missing data, or widen the exclusion set the way the nine were handled. Choose per-file, not wholesale - some of those tests are real engine coverage worth shipping. Documented honestly today in `Share/docs/05_AUDIT_AND_REFACTOR.md` rather than hidden. Not live-gated, not operator-gated - a straight drain.
 
+## 2026-07-24 - R135 movespeed-soft-cap CLOSED-INERT verdict (relocated from ROADMAP)
+
+> **CLOSED-INERT 2026-07-19 (R135, `e4ab8144`) - do NOT re-pitch the movespeed soft cap.**
+> The League MS piecewise (`0.8x+83` above 415, `0.5x+230` above 490, `110+0.5x` below 220)
+> is real, correctly stated, and applied NOWHERE in this repo - and it is unreachable at
+> every site, so that is not a gap. `core/champion_movespeed.est_ms` is uncapped but the
+> roster's base MS spans only 315 (Rell) to 355 (Master Yi) across all 173 champs and its
+> sole consumer `core/mia_reachability.py:165` passes NO items, so no breakpoint can bind.
+> `hybrid.py:272 _ms_utility_multiplier` DOES see item-inclusive MS (426.6 measured on
+> Darius + Swifties + DMP + FoN) but `assume_ms_utility` is DEFAULT-OFF with no production
+> caller AND `_MS_UTILITY_DPS_CAP = 0.15` saturates at 1.30x base, bounding the entire error
+> to 0.794 percentage points inside a 27-unit window and to exactly zero above 442.
+> `ability_dps.py:293 caster_bonus_ms` is default-ON but populated by exactly ONE block
+> roster-wide (Janna W), overstating it by 1.09 magic damage only on an off-class Phantom
+> Dancer build. Shipping a DEFAULT-OFF cap seam plus an ENGINE bump for this would correct a
+> quantity that is provably zero on every live path. Re-open ONLY if a caller starts passing
+> items to `est_ms`, `assume_ms_utility` is flipped default-ON, or a champion ships with base
+> MS outside 220-415.
+
 ## 2026-07-24 - RM-41 burst off-class exclusion full narrative (relocated from ROADMAP)
 
 - **RM-41 SHIPPED 2026-07-24 (ENGINE 1.240.0, DEFAULT-OFF `exclude_off_axis_items`).** `ds.burst` is axis-agnostic by design - it serves AD assassins on lethality AND AP assassins on burst magic - but it ranked every purchasable, mode-legal candidate by raw burst delta with no notion of which axis the kit actually scales on, so AD spellblade / on-hit / crit procs got credited on an AP assassin's ability-EMPOWERED AUTO. **Defect re-confirmed live at 1.239.0 before any code was written** (the sweep's original probe was at 1.216.0): against the sweep-standard squishy target (armor 30 / mr 30 / hp 1900 / bonus 800, L13, empty build) Akali - 85.5 percent magical damage, an assassin who buys zero AD in any source - was served Essence Reaver #4, Trinity Force #5, Blade of The Ruined King #7 and Infinity Edge #12, with Hextech Gunblade buried at #11 beneath all four. The mirror direction is the RM-35 note (dead AP items in an AD burst champ's list), so the seam was built SYMMETRIC and one flag covers both; **RM-35's own crit-burst cohort work is untouched.**
