@@ -244,6 +244,12 @@ def dispatch_for_coach(
     if not champion or not str(champion).strip():
         return None
 
+    # Seam kwargs threaded into the ordered-build planner (see the
+    # with_build_order branch below). Built alongside the flat ranking's
+    # kwargs so RANK and PLAN can never disagree on a seam; declared here so
+    # it survives the try/except scope.
+    plan_rank_kwargs: dict = {}
+
     try:
         # Local imports keep the helper lightweight at module-load time +
         # mirror the pattern the coaches use to defer DS imports until
@@ -279,24 +285,27 @@ def dispatch_for_coach(
         # Seam flags: forward only non-default values so a flagless dispatch
         # stays byte-identical to pre-seam behavior (the rank_* helpers emit
         # a body key only when truthy/non-null, mirroring `if augments:`).
+        # Collected into ONE dict so the flat ranking below and the ordered
+        # build planner (with_build_order branch) receive the identical set.
+        seams: dict = {}
         if exempt_offclass_by_win:
-            kwargs["exempt_offclass_by_win"] = True
+            seams["exempt_offclass_by_win"] = True
         if prefer_kit_axis_by_win:
-            kwargs["prefer_kit_axis_by_win"] = True
+            seams["prefer_kit_axis_by_win"] = True
         if cost_ceiling is not None:
-            kwargs["cost_ceiling"] = int(cost_ceiling)
+            seams["cost_ceiling"] = int(cost_ceiling)
         if prefer_survivability_by_win:
-            kwargs["prefer_survivability_by_win"] = True
+            seams["prefer_survivability_by_win"] = True
         if assume_magic_burst:
-            kwargs["assume_magic_burst"] = True
+            seams["assume_magic_burst"] = True
         if assume_passive_as_stacks:
-            kwargs["assume_passive_as_stacks"] = True
+            seams["assume_passive_as_stacks"] = True
         if apply_target_vuln:
-            kwargs["apply_target_vuln"] = True
+            seams["apply_target_vuln"] = True
         if assume_missing_hp_heal_amp:
-            kwargs["assume_missing_hp_heal_amp"] = True
+            seams["assume_missing_hp_heal_amp"] = True
         if widen_carry_pool:
-            kwargs["widen_carry_pool"] = True
+            seams["widen_carry_pool"] = True
 
         # R5 self-HP -> caster_missing_hp_pct. Shared guard: absent HP or
         # hp_max <= 0 yields 0.0 ("no signal", OFF) and is NOT forwarded.
@@ -308,7 +317,28 @@ def dispatch_for_coach(
         if _hp_max > 0:
             _missing = max(0.0, min(1.0, 1.0 - _hp / _hp_max))
             if _missing:
-                kwargs["caster_missing_hp_pct"] = _missing
+                seams["caster_missing_hp_pct"] = _missing
+
+        kwargs.update(seams)
+
+        # SLICE A defect 2: build the planner's rank_kwargs from the SAME
+        # seam dict. Before this, the with_build_order branch forwarded ZERO
+        # seams, so a dispatch RANKED with prefer_kit_axis_by_win ON (its
+        # dispatch-level default since the C4 flip) and PLANNED the ordered
+        # build with it OFF - the flat DS rows and the ordered build the
+        # operator follows disagreed silently.
+        #
+        # The damage-type split rides along too: plan_build_order reads
+        # enemy_ad_share / enemy_ap_share out of rank_kwargs for its boots
+        # pick (core/build_order.py:574-575) and splats them into every
+        # ranker call. A neutral 0.5 / 0.5 split IS that function's own
+        # default, so it is omitted - a seam-free dispatch keeps the exact
+        # pre-fix planner call shape.
+        plan_rank_kwargs = dict(seams)
+        for _share_key in ("enemy_ad_share", "enemy_ap_share"):
+            _share_val = kwargs.get(_share_key)
+            if _share_val is not None and float(_share_val) != 0.5:
+                plan_rank_kwargs[_share_key] = float(_share_val)
 
         out = _ds.rank_for_primary_archetype(**kwargs)
     except Exception as exc:  # noqa: BLE001
@@ -353,6 +383,13 @@ def dispatch_for_coach(
                 slots=int(build_order_slots),
                 augments=list(augments) if augments else None,
                 timeout=timeout,
+                # SLICE A defect 2: seams the flat ranking used, splatted
+                # into every planner ranker call. Empty dict -> None so the
+                # no-seam path is byte-identical to the pre-fix call.
+                # plan_build_order re-pins filter_shared_uniques=True AFTER
+                # this splat (core/build_order.py:618-619), so caller
+                # rank_kwargs can never weaken the no-double-unique rule.
+                rank_kwargs=plan_rank_kwargs or None,
                 rank_fn=_ds.rank_for_primary_archetype,
             )
         except Exception as exc:  # noqa: BLE001
