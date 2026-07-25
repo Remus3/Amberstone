@@ -621,9 +621,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # convention (Black Cleaver 3071 5-stack 0.30 shred, Guinsoo
         # 3124 4-stack 0.32 cond-AS) the Dark 3-stack steady state pins
         # at 0.30 armor pen + 0.30 magic pen. Light hits (6-8 bonus
-        # armor+MR per stack, level pp 1;11;14) stay caster-side and
-        # OUT of scope - no item-keyed resist-grant path exists
-        # (_passive_resist_overrides.py is champion-keyed only); FUTURE.
+        # armor+MR per stack, level pp 1;11;14 -> 18/21/24 at the 3-stack
+        # cap) are caster-side and so belong to the EHP DENOMINATOR, not
+        # to this DPS-side effect row: they are CREDITED in
+        # ``_item_resist_grants`` row "3302" (level_scaled, prob 1.0 to
+        # match this row's unamortized full-stack Dark half), reached via
+        # the DEFAULT-OFF ``apply_item_resist_grants`` seam on
+        # ``compute_ehp``. The older "no item-keyed resist-grant path
+        # exists (_passive_resist_overrides.py is champion-keyed only);
+        # FUTURE" note was stale - that path landed 2026-07-11 (R106,
+        # ENGINE 1.199.0).
         periodics=(PeriodicProc(
             name="Shadow",
             bonus_damage=30.0,
@@ -635,8 +642,9 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note=(
             "Terminus: Shadow on-hit ~30 magic damage per attack + "
             "Juxtaposition Dark 3-stack steady-state 30% armor pen + "
-            "30% magic pen (BC full-stack convention); Light caster-side "
-            "resists not modeled"
+            "30% magic pen (BC full-stack convention); the Light caster-side "
+            "18/21/24 bonus armor+MR half is credited on the EHP denominator "
+            "in _item_resist_grants row 3302 (DEFAULT-OFF seam), not here"
         ),
     ),
     "6692": ItemEffect(
@@ -4444,9 +4452,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # R161 doctrine B: the Arena feed states Juxtaposition Dark at 8% pen
         # PER STACK (cap 3) vs SR 3302's 10% per stack, so full-stack steady
         # state is 0.24 here and stays 0.30 on the SR row.
+        #
+        # The Juxtaposition LIGHT half stays UNCREDITED on this row - and, unlike
+        # SR 3302, is not credited in _item_resist_grants either. Not an oversight
+        # and not a missing path: NO on-disk feed carries an Arena Light
+        # magnitude. items.json 16.14.1 names the grant ("Light Attacks grant
+        # Armor and Magic Resist for 5s") with no number, and items_meraki.json
+        # holds zero *3302 mirror rows. Scaling the SR 18/21/24 by this row's
+        # 8-vs-10 pen ratio would be inheritance by arithmetic, which doctrine B
+        # forbids. Enumerated in _item_resist_grants._ITEM_RESIST_UNSOURCED_MIRRORS
+        # so the R144 coverage guard reads it as a knowing exclusion.
         armor_pen_pct=0.24,
         magic_pen_pct=0.24,
-        note="Terminus (Arena 223302): Shadow 30 magic on-hit (SR 3302 mirror) + Juxtaposition Dark 3-stack steady-state 24% armor+magic pen per the Arena feed's 8%/stack (SR 3302 is 10%/stack -> 30%); Light caster-side resists not modeled",
+        note="Terminus (Arena 223302): Shadow 30 magic on-hit (SR 3302 mirror) + Juxtaposition Dark 3-stack steady-state 24% armor+magic pen per the Arena feed's 8%/stack (SR 3302 is 10%/stack -> 30%); Light caster-side resists UNCREDITED on both this row and _item_resist_grants - no on-disk feed states an Arena Light magnitude (doctrine B, see _ITEM_RESIST_UNSOURCED_MIRRORS)",
     ),
     "223508": ItemEffect(
         item_id="223508",

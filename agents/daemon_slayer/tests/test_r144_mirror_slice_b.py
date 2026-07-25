@@ -64,7 +64,10 @@ from agents.daemon_slayer._item_general_dr import (
     _ITEM_GENERAL_DR,
     item_general_dr_multiplier,
 )
-from agents.daemon_slayer._item_resist_grants import _ITEM_RESIST_GRANTS
+from agents.daemon_slayer._item_resist_grants import (
+    _ITEM_RESIST_GRANTS,
+    _ITEM_RESIST_UNSOURCED_MIRRORS,
+)
 from agents.daemon_slayer._item_tenacity import _ITEM_TENACITY, item_tenacity
 
 _ROOT = Path(__file__).resolve().parents[3]
@@ -154,7 +157,9 @@ class ResolverReachabilityTests(unittest.TestCase):
         )
 
     def test_resist_grants_registry_covers_every_resolvable_mirror(self) -> None:
-        self._assert_reachable(_ITEM_RESIST_GRANTS, frozenset(), "resist_grants")
+        self._assert_reachable(
+            _ITEM_RESIST_GRANTS, _ITEM_RESIST_UNSOURCED_MIRRORS, "resist_grants"
+        )
 
     def test_every_registered_id_exists_in_the_catalog(self) -> None:
         catalog = _catalog()
@@ -321,6 +326,9 @@ class ResistGrantsMirrorCoverageTests(unittest.TestCase):
     """R133 proved the magnitudes; this only guards that no pair loses a half."""
 
     def test_every_family_keeps_both_of_its_ids(self) -> None:
+        # "terminus" is deliberately a ONE-id family: the Arena mirror 223302 has
+        # no on-disk Light magnitude in any feed, so doctrine B (R161) forbids a
+        # row for it. It lives in _ITEM_RESIST_UNSOURCED_MIRRORS instead.
         families: dict[str, set[str]] = {}
         for item_id, entry in _ITEM_RESIST_GRANTS.items():
             families.setdefault(entry.family, set()).add(item_id)
@@ -331,6 +339,7 @@ class ResistGrantsMirrorCoverageTests(unittest.TestCase):
                 "jaksho": ["226665", "6665"],
                 "molten_stone": ["443058", "663058"],
                 "starry_night": ["443059", "663059"],
+                "terminus": ["3302"],
             },
         )
 
@@ -344,6 +353,8 @@ class ResistGrantsMirrorCoverageTests(unittest.TestCase):
                 continue
             if not any((record.get("maps") or {}).values()):
                 continue  # never equippable - correctly absent
+            if item_id in _ITEM_RESIST_UNSOURCED_MIRRORS:
+                continue  # documented exclusion, not a silent 0.0
             with self.subTest(id=item_id, name=record.get("name")):
                 self.assertIn(item_id, _ITEM_RESIST_GRANTS)
 
