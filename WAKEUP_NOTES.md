@@ -4,6 +4,59 @@
 
 ---
 
+# 2026-07-26 - five open-item slices, parallel worktrees (ENGINE 1.243.0)
+
+HEAD after this session: see `git log -1`. ENGINE **1.243.0**, patch 16.14.1,
+DS **9353** / RC **12849**, DS `:8893` bounced and serving 1.243.0.
+Full narrative: `docs/LEDGER.md` 1042.
+
+## What shipped
+
+| id | outcome |
+|---|---|
+| A-27b | **REAL, item-213 recurred.** Golden Spatula `224403` (Arena) was the FIRST BUY in 104 of 246 branch-instances across 82/173 Arena champions. Item 213 denied only the map-12 id. Now denies `224403` + `4403` + `443064`. Arena regen 82/173 changed, 246 -> 0. |
+| A-25 / RM-94 | **REAL, wrong constant.** Mejai's `bonus_ap_stacked` 125.0 -> 25.0. Mage rank 9 -> 33/34/35, Riftmaker fills the slot. **Build orders UNCHANGED in all three modes** - it was already outside the 6-slot order. |
+| B-01b | **REAL, shipped DEFAULT-OFF.** `vision_routing.py:118` scope filter behind `RC_VISION_MERGE_STRICT`. 104/232 shadow records change. |
+| D-01b | **REAL, closed end to end.** Producer + consumer + a 572-row backfill. Games joined 41 -> 50, observations 378 -> 462, first ARENA cell ever. |
+| A-02b | **REAL but MIS-COUNTED.** Two unmarked artifacts, not six. Guard DEFAULT-OFF on measurement. |
+
+## Three things that would have shipped wrong
+
+1. **The first table regen was a false negative.** 0/173 changed in every mode.
+   `daemon_slayer_build_orders_generate.py` routes through `daemon_slayer_client`
+   to the LIVE `:8893` server, which is NOT supervisor-watched and was still on
+   1.242.0. **Ritual order is bump -> RESTART `:8893` -> regen -> measure.**
+2. **The first backfill was a silent no-op.** It wrote the full `NA1_<id>` while
+   `_game_key()` indexes on the bare numeric suffix. Joins stayed at 41. Redone
+   with the bare key -> 50.
+3. **B-01b default-ON would have been a live regression.** `shared_vision.py:418`
+   aliases `is_augment_select` -> `augment_select` AFTER the merge, and it is in
+   NO coach's `TIERED_FIELDS`.
+
+## Standing hazards for the next session
+
+- `ROADMAP.md` is **74778 bytes / 7142 headroom** after two prunes this session.
+  Comfortable, but the 80KB `tests/test_doc_size_budget.py` ceiling is real.
+- **Do NOT flip `RC_VISION_MERGE_STRICT` on** until `is_augment_select` is
+  re-homed into a `TIERED_FIELDS` list. Also unmeasured: the same scope shrinks
+  `_log_fusion_shadow`'s `cv_reads` payload.
+- **Never re-run `tools/daemon_slayer_extract.py` in the same commit as a
+  build-order regen.** It re-fetches the MUTABLE Meraki / CDragon `latest`
+  endpoints and destroys attribution between the two changes.
+- `ds_share_sync.py` must NOT run while the RC suite is in flight - it produced
+  9 false failures this session.
+- ARAM's 5257 keyless calibration rows are **permanently unrecoverable** (Mayhem
+  is queue 2400 / `KIWI`, Match-V5 403s). Do not plan a recovery pass for them.
+
+## Next 5 (see the closing handoff for the full framing)
+
+C-06 / RM-26 vision-profile seeds unwired; A-01b `daemon_slayer_client` seam
+forwarding; C-17 `ds_matchup` unreachable under `?ui_mock=1`; the RM-92
+ability-haste residual (SIZED, verdict DEFER - re-read the scope doc before
+re-opening); RM-98 cast-propensity prior.
+
+---
+
 # 2026-07-25 - open-item review + 6-slice orchestrated build (ENGINE 1.242.0)
 
 Operator asked for ONE categorical inventory of every open item, then said build the
@@ -87,73 +140,3 @@ stale), `docs/DAEMON_SLAYER.md` pins ENGINE + test count in its status line, and
 DS 9290 passed / 1 skipped / 4331 subtests. RC `tests/` 12769 passed / 22
 skipped / 406 subtests. ruff clean. `ds_share_sync --check` in sync (466 files).
 DS `:8893` re-probed live at 1.241.0 / patch 16.14.1.
-
----
-
-# 2026-07-24 - R188 HEXCORE offline explorer re-sync (docs, commit `bb847bd0`)
-
-gemini-loop DIRECTOR REFILL unit (a), second pass. Tier-0 docs + guard.
-LEDGER 1038, ZERO API / ZERO LLM. No ENGINE bump, no Share sync, no DS bounce,
-no RC restart.
-
-- **The drift was ONE file, not a batch.** R164 already landed 44 of the 45
-  net-new non-test .py files added since `d584e02e`. The 45th is
-  `_burst_off_axis.py`, added by `534096e6` (R186 / RM-41) EARLIER IN THIS SAME
-  LOOP CHAIN - the directive was written against a tree its own predecessor
-  cycle had just moved. Verify the premise, then size the slice to it.
-- **RED first.** Widened `EXPECTED_NEW_BASENAMES` 44 -> 45 and watched
-  `tests/test_hexcore_offline_dust.py` fail before touching the HTML.
-- Added dust triple `_burst_off_axis.py|modules|m_dsengine`, bumped all four
-  dust-count literals 340 -> 341.
-- **Stats HUD re-ground against live truth:** ENGINE 1.239.0 -> 1.240.0 on the
-  HUD row AND its `title=` tooltip (checked against `:8893/health` + the repo
-  `ENGINE_VERSION`), a second staler 1.237.0 in the DAEMON_SLAYER node desc,
-  DS tests -> 9238 (measured this run), commits -> 3931, last -> `b9412b51`.
-- **Verifier gate 7/7 CONFIRM** before commit. It surfaced a durable gotcha:
-  the file embeds ~957KB of base64 JPEG snapshots, so a shell `grep -c` on a
-  short numeric literal returns ~1.8MB of noise - count checks on this file
-  must be base64-aware Python regex, never shell grep.
-- Live render proof: browser pane, zero console errors, HUD read back
-  `commits: 3931 / engine: DS 1.240.0 / nodes: 142 / dust: 341 files`.
-- Suites: DS 9238 passed / 1 skipped / 3928 subtests; RC 12765 passed /
-  22 skipped / 406 subtests (exit 0, no RF5 flake this run). ruff clean.
-- **ROADMAP.md deliberately untouched** - 81472 of 81920 bytes (448 free) and
-  R188 opens no roadmap work.
-
-**Next:** the dust field is guard-locked; the stats HUD is a hand-maintained
-snapshot with no auto-refresh - treat its numbers as stale-by-default.
-
----
-
-# 2026-07-24 - R186 RM-41 burst off-class exclusion SHIPPED (ENGINE 1.240.0)
-
-First ROADMAP GAP-spec build since the gemini loop halted. Tier-2, LEDGER 1036,
-DEFAULT-OFF `exclude_off_axis_items`, ZERO API / ZERO LLM.
-
-- **RM-41 BUILT.** NEW `agents/daemon_slayer/_burst_off_axis.py` strips a burst
-  candidate whose offense sits entirely on the champion's OFF damage axis,
-  applied at the `_filter_candidates` seam in `burst.rank_items_by_burst` and
-  route-surfaced on `/rank-assassin`. Built SYMMETRIC, so the RM-35 mirror
-  clause is covered - RM-35's own crit-burst cohort work is NOT.
-- **Defect re-probed live at 1.239.0 before building** (the sweep filed it at
-  1.216.0): Akali served Essence Reaver #4 / Trinity #5 / BotRK #7 / IE #12 with
-  Gunblade at #11. Flag-ON: cohort pool 140 -> 88, 6 of 7 top-8 changes, Gunblade
-  #11 -> #8. **Leblanc top-8 byte-identical** - reproduces the sweep's
-  no-empowered-auto-hook prediction. Zed top-8 byte-identical (AD core intact).
-  Shaco a no-op (inside the axis margin).
-- **Neither gate is a curated list** - champion axis from the snapshot's own
-  `lolmath.damage_distribution` at the archetype_picks thresholds, item gate from
-  its own stat line. **Do NOT re-add the spec's hand-curated deny list:** it named
-  Statikk Shiv, which is 45 AP + 45 AD and correctly survives.
-- **Ritual in memory-prescribed order:** bump (125 files, quoted-literal only, zero
-  forged JSON stamps) -> DS restart -> 9-table regen -> Share sync (463 files) ->
-  docs. **All 9 tables stamp-only diffs, zero content lines** - byte-identity at
-  the default proven, not asserted.
-- **Dual suite 22002 passed / 23 skip / 4334 subtests, 1 failed.** The failure was
-  `test_doc_size_budget` tripped by this work's own ROADMAP prose, not a
-  regression; fixed by relocating the RM-41 narrative + the superseded
-  RM-112-original block to `docs/ROADMAP_HISTORY.md`. Re-verified green.
-  **ROADMAP had only 486 bytes of headroom - budget every future NOW-row.**
-- Default-ON flip is new gated row **G2-43**. Do not flip blind: a strip is
-  invisible in the UI, so a wrong exclusion cannot be caught by looking at what
-  IS shown.

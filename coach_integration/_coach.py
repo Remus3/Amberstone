@@ -331,8 +331,15 @@ class CoachIntegration:
         if _ds_dispatch is not None and _ds_dispatch.rows:
             try:
                 from core.ds_calibration import log_ds_run as _ds_log
+                # D-01b: SR usually has a real game_id (the key then resolves to
+                # live_<gameId>); mint through the same seam so every mode's
+                # rows carry one uniform join key.
+                _ds_mk = live_metrics.match_key(
+                    self, {"champion": champion,
+                           "game_time_s": game_state.get("game_seconds")},
+                    game_state, "SR")
                 _ds_log(champion=champion, mode="SR", level=int(game_state.get("level", 1)) or 1,
-                        owned_items=list(_owned_ids),
+                        owned_items=list(_owned_ids), match_key=_ds_mk,
                         game_id=str(game_state.get("game_id") or ""),
                         ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
                                    "delta_dps": _r["delta_dps"], "gold": _r["gold"],
