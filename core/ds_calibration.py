@@ -26,6 +26,7 @@ def log_ds_run(
     owned_items: list,
     ds_picks: list,
     game_id: str = "",
+    match_key: str = "",
 ) -> None:
     """Append one DS observation to the calibration log.
 
@@ -36,6 +37,18 @@ def log_ds_run(
         owned_items: item IDs currently in inventory (list of str or int)
         ds_picks:    list of dicts with keys item_id, item_name, delta_dps, gold
         game_id:     optional Riot match/game id for exact cross-reference
+        match_key:   stable per-match key from ``core.live_metrics.match_key``
+                     (D-01b). ARAM / Arena never surface a Live Client game_id,
+                     so those rows were 100 percent unjoinable; this key groups
+                     every tick of one game even with no game_id. Appended at
+                     the END of the signature and written as a NEW record field
+                     - ``game_id`` keeps its exact old meaning and value, so
+                     every existing consumer and every historical row still
+                     parse unchanged. Falls back to ``game_id`` when empty.
+
+    Record shape (additive):
+        ts / champion / mode / level / owned_items / ds_picks / game_id
+        + match_key  <- new; "" only when neither key was resolvable
     """
     entry = {
         "ts": time.time(),
@@ -45,6 +58,7 @@ def log_ds_run(
         "owned_items": [str(i) for i in owned_items],
         "ds_picks": ds_picks,
         "game_id": game_id,
+        "match_key": match_key or game_id,
     }
     try:
         with open(_LOG_PATH, "a", encoding="utf-8") as f:

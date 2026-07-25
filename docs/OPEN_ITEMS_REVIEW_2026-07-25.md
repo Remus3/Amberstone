@@ -325,3 +325,33 @@ that collapsed was tagged SOURCE-READ or AS-FILED, and every item tagged PROBED 
 Non-live-gated inventory moves from 105 to **101**: minus A-02, C-09 and the F5 row
 (closed), minus A-01's original framing (rebuilt as an RM-86-shaped residual), plus the
 six new rows above. Stale rows to strike moves from 9 to **13**.
+
+## PART 5 - WHAT THE 2026-07-26 BUILD SESSION PROVED (second build off this inventory)
+
+Five slices dispatched against the PART-4 rows plus A-25. **All five were REAL -
+none collapsed.** That is the difference PART 4 predicted: PART 4's rows were
+written after probing, and every row tagged PROBED reproduced exactly.
+
+| id | outcome |
+|---|---|
+| A-27b | **REAL.** Item 213 denied ONE of THREE purchasable Golden Spatula ids. `224403` was the FIRST BUY in 104 of 246 branch-instances across 82/173 Arena champions - the PART-4 note said "slot 3", which understated it. Sibling sweep found `443064` too, reachable only by an ID-SUFFIX pass. Arena regen 82/173, 246 -> 0. |
+| A-25 / RM-94 | **REAL, wrong constant.** 125.0 -> 25.0. **The filed "#6 for every mage" was itself an `item_ids=[]` artifact - at depth it was #9.** Now 33-35. Build orders unchanged in all three modes; the movement is on the rank route + NEXT BUY only. |
+| B-01b | **REAL.** Shipped DEFAULT-OFF: default-ON would have regressed the ARAM Mayhem augment-select path via the `is_augment_select` alias. 104/232 shadow records change. |
+| D-01b | **REAL.** Producer + consumer + a 572-row backfill. Joins 41 -> 50, observations 378 -> 462, first ARENA cell. ARAM's 5257 rows are provably unrecoverable. |
+| A-02b | **REAL but MIS-COUNTED - two artifacts, not six.** Ten of twelve already carried a marker in one of five spellings. Guard ships DEFAULT-OFF on measurement. |
+
+### Corrections this build made to PART 0-4
+
+- A-25's cited `_effects_data.py:3257` is `:3309`.
+- A-02b's "six per-patch artifacts" is **two**.
+- D-01b's keyless-row count is **6109**, not 5967 - 142 SR rows are also keyless.
+- A-27b's "slot 3" is a slot CENSUS: index 0 x104 / 2 x121 / 3 x15 / 4 x2 / 5 x4.
+
+### Method note that generalises
+
+Two fixes were measured as no-ops and were NOT. The build-order regen read 0/173
+changed because it routes to the live `:8893` server, which is not
+supervisor-watched and still ran the old engine; the calibration backfill read 0
+new joins because it wrote a full `NA1_<id>` where the index keys the bare
+suffix. **A measured "no movement" must be shown to come from the NEW code path
+before it is believed.**

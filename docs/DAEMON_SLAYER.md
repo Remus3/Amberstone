@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion x item x target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.242.0 - 9306 tests - patch 16.14.1.
+**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.243.0 - 9353 tests - patch 16.14.1.
 
 ## Engine substrate & registries
 

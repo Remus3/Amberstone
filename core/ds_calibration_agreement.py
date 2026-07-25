@@ -284,6 +284,21 @@ def compute_ds_calibration_agreement(
     for entry in records:
         gid = str(entry.get("game_id") or "").strip()
         if not gid:
+            # D-01b: a REAL Riot id can now arrive only via ``match_key``, which
+            # ``core/live_metrics.match_key()`` mints as ``live_<gameId>``. Accept
+            # that form so the producer-side key is actually read.
+            #
+            # Synthetic ``sess_<mode>_<champ>_<seq>`` keys are deliberately NOT
+            # accepted here. They group every tick of one game (which is what the
+            # producer fix buys) but they can never resolve against
+            # rewind_history.db, so admitting them would move ~5967 ARAM/Arena
+            # rows out of ``records_without_game_id`` and into ``games_unjoined``
+            # while adding exactly zero joins - a worse diagnostic, not a better
+            # one. Grouping without an outcome is not a join.
+            match_key = str(entry.get("match_key") or "").strip()
+            if match_key.startswith("live_"):
+                gid = match_key[len("live_"):].strip()
+        if not gid:
             no_game_id += 1
             continue
         by_game.setdefault(gid, []).append(entry)

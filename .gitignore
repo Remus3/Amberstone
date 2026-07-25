@@ -54,6 +54,8 @@ data/auto_accept_pref.json
 data/spell_prefs.json
 data/decisions_log.jsonl
 data/ds_calibration.jsonl
+# D-01b backfill safety copies - same reason as the log itself (local data, not source).
+data/ds_calibration.jsonl.*
 data/ds_calibration_agreement.json
 data/ds_coach_hints_shadow.jsonl
 data/det_coach_shadow.jsonl

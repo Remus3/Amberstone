@@ -126,6 +126,33 @@ def _resolve_match_id(holder, cur: dict, state: dict, mode: str) -> str:
     return session
 
 
+def match_key(holder, cur: dict, state: dict, mode: str) -> str:
+    """Public, fail-soft wrapper over ``_resolve_match_id`` (D-01b).
+
+    The DS calibration log needs the SAME per-match key the metric streamer
+    uses, so ARAM / Arena rows - which never carry a Live Client game_id - stop
+    being permanently unjoinable. This is deliberately a thin wrapper and NOT a
+    second minting implementation: one seam, one key, so a calibration row and
+    a metric row for the same tick agree.
+
+    Two shapes come back:
+      ``live_<gameId>``               a real game_id was present (SR)
+      ``sess_<mode>_<champ>_<seq>``   synthesised, stable for the whole game
+
+    Unlike ``stream()`` this is NOT gated on ``enabled()`` - calibration keys
+    must be minted whether or not metric capture is switched on.
+
+    Returns ``""`` on any failure. Calibration logging is best-effort and must
+    never be able to take down a coach tick, so the caller can pass the result
+    straight through without its own guard.
+    """
+    try:
+        return _resolve_match_id(holder, cur or {}, state or {}, mode)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("live-metrics match_key error (%s): %s", mode, exc)
+        return ""
+
+
 def stream(holder, cur: dict, state: dict, mode: str) -> int:
     """Feed one coach tick to a per-match MetricStreamer stashed on `holder`.
 

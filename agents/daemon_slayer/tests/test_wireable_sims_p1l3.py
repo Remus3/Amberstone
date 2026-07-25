@@ -708,10 +708,11 @@ class PeriodicEveryNSecondsDerivation(unittest.TestCase):
 
 class NStackItemDerivation(_SnapBase):
     def test_full_stack_pin_items_contribute_their_pinned_value(self) -> None:
-        # Engine pins kill-stack / ramp items at full stacks (sustained-
-        # peak convention). Find one with bonus_ap_stacked (Mejai's) and
-        # assert it is exposed via total_stacked_ap as the documented
-        # full-stack constant.
+        # Find an item with bonus_ap_stacked (Mejai's) and assert its
+        # registered constant is exposed verbatim via total_stacked_ap.
+        # RM-94: that constant is an EXPECTED value for takedown-earned
+        # stacks, not the full-stack peak - this test is value-agnostic and
+        # only pins the plumbing.
         from agents.daemon_slayer.effects import total_stacked_ap
         stacked_id = None
         for iid, e in ITEM_EFFECTS.items():
