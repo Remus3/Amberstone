@@ -44,6 +44,10 @@ teammate"):
     basic attacks apply HER Frost stacks. The direction of benefit is reversed -
     allies feed Sejuani, she grants them nothing.
 
+Documented positive OVERRIDES (``_ALLY_REACH_INCLUDED``, A-21 / RM-90 S2) cover
+the reverse failure - champions the ``affects`` field cannot express. See the
+per-champion rationale on that constant.
+
 The two THIN inclusions, kept deliberately and flagged for review: Nunu P (grants
 a nearby ally attack speed / move speed) and Rell E (tethers move speed to one
 ally). Neither grant is durability, so neither is an EHP grant in its own right -
@@ -72,6 +76,36 @@ _ALLY_TOKEN = "allies"
 # Strict ``allies`` hits that are parser false positives. See the module
 # docstring for the reason class on each.
 _ALLY_REACH_EXCLUDED = frozenset({"Ornn", "Sejuani"})
+
+# A-21 / RM-90 Slice S2 (2026-07-25) - the POSITIVE twin of the exclusion set.
+# Keys are DDragon ids, machine-checked against ``champion_abilities.json`` by
+# ``tests/test_champion_ally_reach_overrides.py`` so a rename cannot silently
+# no-op. Every entry is individually justified; the set is NOT certified by
+# count. Each is Support-role and tank-routed, i.e. inside the RM-90 cohort
+# whose 28 champions collapsed onto one shipped build order.
+#
+#   - Leona. The ONE textual case, and the reason a prose scan is tempting.
+#     Her Sunlight passive reads "Allied champions' damaging attacks and
+#     abilities against a marked target will consume the mark to deal ... bonus
+#     magic damage" - a genuine ally-facing grant. ``affects`` reports
+#     ``"Enemies"`` for it and is not wrong: the MARK sits on the enemy. The
+#     beneficiary is the ally, which the field simply cannot express. Same class
+#     as the K'Sante case the docstring above names, one layer deeper.
+#   - Blitzcrank / Nautilus / Poppy. NO ally token and NO ally-facing prose -
+#     admitted on the THIN, proximity-POSITIVE basis the docstring already
+#     applies to Nunu P and Rell E: they are melee engage frontliners played
+#     between the enemy and their own carries, so an ally-shielding item lands
+#     on someone. That is the only question this gate asks. Flagged for review
+#     alongside the other two thin inclusions.
+#
+# DELIBERATELY NOT a prose-token widening of ``_affects_tokens``: scanning
+# ``effects_descriptions`` for allied/allies/ally admits 27 further champions at
+# 16.14.1 (Akshan, Annie, Fiora, Jhin, Kha'Zix, ...), almost all of them allied
+# TURRET / MINION / wave references. A four-name override is smaller, auditable,
+# and reversible; a parser change is none of those.
+_ALLY_REACH_INCLUDED = frozenset({
+    "Blitzcrank", "Leona", "Nautilus", "Poppy",
+})
 
 
 def _affects_tokens(raw: object) -> list[str]:
@@ -146,6 +180,15 @@ def _ally_reach_index(patch: Optional[str] = None) -> frozenset[str]:
                     break
             if _norm_key(champion_id) in reached:
                 break
+    # Slice S2: fold in the positive overrides. Applied AFTER the derivation and
+    # only on a successful load, so the documented fail-soft contract holds - a
+    # missing / malformed abilities file still yields an EMPTY set and leaves the
+    # whole team_blended seam inert rather than partially live off a literal
+    # list. The exclusion set still wins (the two sets are asserted disjoint).
+    for champion_id in _ALLY_REACH_INCLUDED:
+        if champion_id in _ALLY_REACH_EXCLUDED or champion_id not in body:
+            continue
+        reached.add(_norm_key(champion_id))
     return frozenset(reached)
 
 

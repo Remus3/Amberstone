@@ -72,11 +72,23 @@ class KitConversionRouteExposureTests(unittest.TestCase):
                 )
 
     def test_off_registry_champion_is_inert(self):
-        """Quinn is not in _KIT_CONVERSION, so the lever is exactly inert (RM-89)."""
-        body = dict(self.BODY, champion="Quinn")
-        off = server._route_rank(dict(body))
-        on = server._route_rank(dict(body, kit_conversion_strength=1.0))
-        self.assertEqual(_names(off), _names(on))
+        """A champion absent from _KIT_CONVERSION gets _IDENTITY - exactly inert.
+
+        This originally used Quinn, which was true when written and is no longer:
+        the A-20 / RM-89 slice SEEDED Quinn into the registry in this same batch,
+        which is the whole point of that row. Jinx and Caitlyn are the controls
+        A-20 itself pinned as byte-identical at full strength.
+        """
+        from agents.daemon_slayer.kit_conversion import registry_champion_ids
+
+        registry = registry_champion_ids()
+        for champ in ("Jinx", "Caitlyn"):
+            with self.subTest(champion=champ):
+                self.assertNotIn(champ, registry)
+                body = dict(self.BODY, champion=champ)
+                off = server._route_rank(dict(body))
+                on = server._route_rank(dict(body, kit_conversion_strength=1.0))
+                self.assertEqual(_names(off), _names(on))
 
 
 if __name__ == "__main__":
