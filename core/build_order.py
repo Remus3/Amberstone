@@ -349,6 +349,36 @@ def _select_boots(
     return (iid, _BOOTS_NAMES.get(iid, "Boots"))
 
 
+# --------------------------------------------------------------------------- #
+# Item IDENTITY for duplicate rejection (2026-07-25, W3).
+#
+# ``3004`` and ``323004`` are both Manamune; ``6676`` and ``667666`` are both The
+# Collector. A raw-string compare therefore does NOT answer "is this item already
+# in the build", and the shipped 16.14.1 tables proved it: Viego and Samira both
+# shipped orders that bought one item twice, burning a slot.
+#
+# The single normalizer for this repo is
+# ``core.build_planner.kit_synergy.canonical_item_id`` (added 2026-07-25 for the
+# Arena spellblade dock). It is imported LAZILY and fail-soft: kit_synergy reads
+# the live items.json at import time, and this module is on the coach hot path in
+# environments where that data may be absent. On any import failure the identity
+# degrades to the raw id, i.e. exactly the pre-fix behavior.
+# --------------------------------------------------------------------------- #
+def _canonical_id(item_id) -> str:
+    """Canonical (SR) id string for ``item_id`` - "" for a blank/None id."""
+    sid = str(item_id or "").strip()
+    if not sid:
+        return ""
+    try:
+        from core.build_planner.kit_synergy import canonical_item_id
+    except Exception:  # noqa: BLE001 - fail-soft to raw-id semantics
+        return sid
+    try:
+        return canonical_item_id(sid) or sid
+    except Exception:  # noqa: BLE001
+        return sid
+
+
 @dataclass(frozen=True)
 class BuildStep:
     """One slot in the planned order (counts NEW picks only - owned items
@@ -600,7 +630,15 @@ def plan_build_order(
         return result
 
     accumulated: list[str] = list(owned)
-    picked_ids: set[str] = set(owned)
+    # 2026-07-25 (W3): duplicate rejection keys on the CANONICAL item id, not the
+    # raw catalog id. DDragon ships one item under several ids (SR canonical +
+    # mode-mirror / alias forms), so a raw compare let the same item take two
+    # slots - the shipped 16.14.1 SR table had Viego on 3004 + 323004 (both
+    # Manamune) and Samira on 6676 + 667666 (both The Collector), i.e. real
+    # FIVE-item builds. The engine's own owned-id skip compares raw ids too, so
+    # the alias is offered as a fresh candidate and the planner must be the one
+    # to reject it. See core/build_planner/kit_synergy.canonical_item_id.
+    picked_ids: set[str] = {_canonical_id(i) for i in owned}
 
     # 2026-05-23 (item 164b): boots-slot pre-determination. Boots get
     # inserted INSIDE the iteration loop (after slot 1) so the engine
@@ -711,7 +749,7 @@ def plan_build_order(
         rows = [r for r in (out.get("ranked") or []) if r.get("item_id")]
         # Defensive: the engine already skips owned ids, but never let a
         # duplicate slip into the sequence.
-        rows = [r for r in rows if str(r.get("item_id")) not in picked_ids]
+        rows = [r for r in rows if _canonical_id(r.get("item_id")) not in picked_ids]
         if not rows:
             result.notes.append(
                 f"no further legal items after engine call {engine_call_i - 1} "
@@ -760,7 +798,7 @@ def plan_build_order(
         )
         result.order.append(step)
         accumulated.append(item_id)
-        picked_ids.add(item_id)
+        picked_ids.add(_canonical_id(item_id))
         next_slot += 1
 
         # 2026-05-23 (item 164b): boots inject AFTER slot 1 - the engine
@@ -786,7 +824,7 @@ def plan_build_order(
             )
             result.order.append(boots_step)
             accumulated.append(boots_id)
-            picked_ids.add(boots_id)
+            picked_ids.add(_canonical_id(boots_id))
             next_slot += 1
             boots_inserted = True
             result.notes.append(

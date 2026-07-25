@@ -4,6 +4,82 @@
 
 ---
 
+# 2026-07-25f - three rows closed, two built, and one defect nobody filed (ENGINE 1.249.0)
+
+ENGINE **1.248.0 -> 1.249.0**, patch 16.14.1. Five read-only probe agents in
+parallel, then four worktree build agents on disjoint file sets, one Claude as
+sole merger. Tier-2 in ritual order: bump by quoted literal (254 files,
+`.claude` + `docs/_archive` excluded) -> :8893 restarted -> `/health` re-read
+**1.249.0 BEFORE the regen** -> all three build-order families across BOTH
+keyspaces -> Share sync (488 files, `--check` green) -> the three ENGINE doc
+sites plus the engine `CHANGELOG.md`.
+
+Suites: **DS 9636 passed / 1 skipped / 4617 subtests.** RC `tests/` run fresh
+after every doc edit.
+
+## What shipped
+
+| slice | default | headline |
+|---|---|---|
+| alias/mirror build dedup (UNFILED) | **ON** | 14 cells were shipping FIVE-item builds; 3619 of 3633 cells byte-identical |
+| A-07 / RM-82 TERM 2 passive aura | OFF | Mordekaiser ability DPS 11.677 -> 72.155; 14 of 140 rows move; 143 controls unmoved |
+| client seam plumb | n/a | both 1.248.0 seams were **0-of-27** on the client path; now Ashe and Quinn move |
+| A-26 / RM-95b B1 roster de-cap | OFF | "blocked upstream" was FALSE - it is an RC-controlled roster cap |
+
+## The headline: probing found a bug worth more than any row on the menu
+
+Five of five menu rows were probed before any code. **Three closed without
+code** (A-21 S3, A-12 Ranger's Focus, the RM-37/42/38 successor). The largest
+win came from a tail observation in a probe report, not from the menu: the build
+planner was buying the same item twice under two catalog ids, so Viego and Samira
+shipped six-item builds containing five items - in every damage profile, in both
+keyspaces, live on disk. Sixth consecutive session where the menu was less
+valuable than the probe.
+
+## Three things to carry forward
+
+- **A naive fix can be worse than the bug.** Blind structural id-folding would
+  have collapsed `223069` Void Immolation and `443069` Hamstringer - different
+  items - onto one identity, suppressing **84 legal Arena purchases**. The
+  shipped fold validates identity against the catalog (name OR tags) and keeps
+  unresolvable ids distinct. Sweep by ID, never by name, and always check the
+  false-positive side of a normalizer.
+- **`reference_ds_kit_conversion_not_route_exposed` has a second layer.** Route
+  exposure is not reachability: `apply_crit_conversion` and
+  `kit_conversion_strength` were parsed by the server AND accepted by the engine
+  and still moved **0 of 27** champions, because `core/daemon_slayer_client.py`
+  could not forward them. Check the CLIENT, not just the route, on every seam.
+- **Four sessions measured an artifact and called it a block.** The A-07 "GAP
+  champion and its control are indistinguishable" premise is REFUTED: a
+  roster-wide sweep returns 78 distinct top-8 heads, 20 among the 84 AP-scaling
+  champions, and the REFUTE control Anivia is already alone in its class. The
+  invariance was top-3 stat dominance over a hand-picked 4-champion sample. When
+  a measurement repeats identically across sessions, widen the sample before
+  concluding the scorer is blind.
+
+## Fences added
+
+- **A-21 / RM-90 is CLOSED at the ally-grant lane.** The ally lane's ceiling is
+  993.6 raw HP (amortized 496.8) against a 1700-4800 per-slot self-EHP deficit -
+  an order-of-magnitude mismatch, not a coefficient gap. Do not file a fifth
+  ally-grant registry row. Successor is the `ds.ehp` champion-sensitivity lift.
+- **The carry fight-length map stays hand-curated.** 125 scalar quantities
+  scanned, ZERO separate the six members; the one corpus source with sufficient
+  n does not reproduce it either. An allow-map entry is an operator meta
+  assertion validated by live play, not a threshold.
+- **A-12's AS half is CLOSED** and the row mis-names the ability (Ranger's Focus
+  is Ashe's Q; her W is Volley). Any future attempt should target the flurry
+  AD-amp / on-hit-once asymmetry, not the AS steroid.
+
+## Still open off this session
+
+- **B2** - promote wiki `leveling` to typed damage blocks. B1 shipped, but Locke's
+  `baseline_burst` still reads 0.0 and no currently-read feed supplies his damage.
+- **A-07 TERM 1** (slow credit / Rylai's) stays blocked: 88 of 161 registered
+  champions carry a SLOW entry, so it lifts GAP and control together.
+
+---
+
 # 2026-07-25e - the four PART-7 survivors BUILT (ENGINE 1.248.0)
 
 ENGINE **1.247.0 -> 1.248.0**, patch 16.14.1. Four parallel worktree agents on
@@ -89,45 +165,3 @@ regen" - that hazard is UNVERIFIED and roughly contradicts the bump ritual.
 RM-86 L1 lever cannot reach any shipped build table - A-12 and A-20 both need
 that route exposure before they can be proven. Any `dps.py` slice inherits
 `2d3ddcba` (G2-12 WIP, NOT SHIPPABLE, ENGINE bump owed).
-
----
-
-# 2026-07-25c - 5 rows named, 3 dissolved, 4 seams shipped (ENGINE 1.247.0)
-
-ENGINE **1.247.0**, patch 16.14.1, DS **9546 passed / 1 skipped / 4547 subtests**,
-RC `tests/` **13061 passed / 106 skipped / 448 subtests / 0 failed** (fresh re-run
-after the mirror fix). DS `:8893` bounced and `/health` re-read as 1.247.0 BEFORE any
-regen. All 9 build-order tables regenerated across BOTH keyspaces and corroborated
-STAMP-ONLY by a stamp-stripped payload diff, not by the generator's silent exit 0.
-Share mirror 479 files. Full narrative: `docs/LEDGER.md` 1046 + DS CHANGELOG 1.247.0
-+ `docs/OPEN_ITEMS_REVIEW_2026-07-25.md` PART 6.
-
-## What shipped (all DEFAULT-OFF, all byte-identical OFF)
-
-- **A-18 / RM-87** resist-to-damage coupling in `ds.ehp`. NEW
-  `agents/daemon_slayer/_resist_damage_coupling.py`, 6 machine-swept rows, SORT-ONLY
-  credit in `_base_key`. Ornn Thornmail #16 -> #11, Kaenic #6 -> #3, Warmog's #2 -> #7.
-  Poppy negative control byte-identical ON.
-- **A-31 / R67** Terminus SR `3302` Light-side resists, 18 / 21 / 24 at L1 / L11 / L14.
-  Arena `223302` REFUSED - no on-disk feed carries its magnitude.
-- **A-08 / RM-35 clause 2** `exclude_off_axis_items` extended to the CARRY route.
-- **A-39** boot-utility CC input replaces the AP-share proxy.
-
-## The headline: the mis-file rate did not fall, and the reason changed
-
-Three of the five rows the prompt named dissolved under probe (A-27 and A-30 already
-shipped, A-11 unfalsifiable), so two replacements were pulled. **9 mis-files caught
-before code across three sessions.** These were not bad research - they were STALE
-research: A-27 was closed 1 day before the row was written, A-30 thirteen days before,
-and A-31's "needs a schema lift" blocker had been false for eight. A tier records how
-well a row was probed, never how recently.
-
-## Two traps that bit again
-
-- The `item_ids=[]` artifact manufactured its FOURTH false headline (A-08's "BotRK #1
-  for Miss Fortune"; at real depth the leads are Runaan's / LDR / Terminus).
-- A slice reported "+1 line in `ehp.py`" and the 3-line anchor matched TWICE in the
-  file. Merging by file copy would have been wrong either way - the fix was to confirm
-  only one real `item_resist_grants` call site exists before applying it.
-
----

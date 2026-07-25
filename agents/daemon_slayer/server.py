@@ -1205,6 +1205,12 @@ def _route_rank_mage(body: dict) -> dict:
     cast formula plus ``budget`` / ``slots`` / ``top`` / ``sort`` /
     ``include_components`` / ``only`` / ``filter_shared_uniques`` for the
     candidate-filtering pipeline shared with the other rankers.
+
+    ``apply_passive_aura_damage`` (A-07 / RM-82 TERM 2, default False) opts
+    into crediting a ``per_second``-cadence passive aura - Mordekaiser P
+    Darkness Rise is the only registered one - on the ability clock. This is
+    NOT the ``apply_passive_damage`` flag that ``/rank`` and ``/rank-onhit``
+    parse; that one routes on_hit passives onto the AUTO-ATTACK cadence.
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -1232,6 +1238,11 @@ def _route_rank_mage(body: dict) -> dict:
     include_components = _opt_bool(body, "include_components", False)
     filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
     apply_ability_amps = _opt_bool(body, "apply_ability_amps", False)
+    # A-07 / RM-82 TERM 2 - sustained passive-aura (P) damage credit. Parsed
+    # exactly like apply_ability_amps directly above (same _opt_bool idiom,
+    # same default-OFF contract) so an absent key and an explicit false are
+    # indistinguishable at the scorer.
+    apply_passive_aura_damage = _opt_bool(body, "apply_passive_aura_damage", False)
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
@@ -1253,6 +1264,7 @@ def _route_rank_mage(body: dict) -> dict:
             block_index_overrides=block_index_overrides,
             filter_shared_uniques=filter_shared_uniques,
             apply_ability_amps=apply_ability_amps,
+            apply_passive_aura_damage=apply_passive_aura_damage,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))

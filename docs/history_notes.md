@@ -119,6 +119,48 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-25c - 5 rows named, 3 dissolved, 4 seams shipped (ENGINE 1.247.0)
+
+ENGINE **1.247.0**, patch 16.14.1, DS **9546 passed / 1 skipped / 4547 subtests**,
+RC `tests/` **13061 passed / 106 skipped / 448 subtests / 0 failed** (fresh re-run
+after the mirror fix). DS `:8893` bounced and `/health` re-read as 1.247.0 BEFORE any
+regen. All 9 build-order tables regenerated across BOTH keyspaces and corroborated
+STAMP-ONLY by a stamp-stripped payload diff, not by the generator's silent exit 0.
+Share mirror 479 files. Full narrative: `docs/LEDGER.md` 1046 + DS CHANGELOG 1.247.0
++ `docs/OPEN_ITEMS_REVIEW_2026-07-25.md` PART 6.
+
+## What shipped (all DEFAULT-OFF, all byte-identical OFF)
+
+- **A-18 / RM-87** resist-to-damage coupling in `ds.ehp`. NEW
+  `agents/daemon_slayer/_resist_damage_coupling.py`, 6 machine-swept rows, SORT-ONLY
+  credit in `_base_key`. Ornn Thornmail #16 -> #11, Kaenic #6 -> #3, Warmog's #2 -> #7.
+  Poppy negative control byte-identical ON.
+- **A-31 / R67** Terminus SR `3302` Light-side resists, 18 / 21 / 24 at L1 / L11 / L14.
+  Arena `223302` REFUSED - no on-disk feed carries its magnitude.
+- **A-08 / RM-35 clause 2** `exclude_off_axis_items` extended to the CARRY route.
+- **A-39** boot-utility CC input replaces the AP-share proxy.
+
+## The headline: the mis-file rate did not fall, and the reason changed
+
+Three of the five rows the prompt named dissolved under probe (A-27 and A-30 already
+shipped, A-11 unfalsifiable), so two replacements were pulled. **9 mis-files caught
+before code across three sessions.** These were not bad research - they were STALE
+research: A-27 was closed 1 day before the row was written, A-30 thirteen days before,
+and A-31's "needs a schema lift" blocker had been false for eight. A tier records how
+well a row was probed, never how recently.
+
+## Two traps that bit again
+
+- The `item_ids=[]` artifact manufactured its FOURTH false headline (A-08's "BotRK #1
+  for Miss Fortune"; at real depth the leads are Runaan's / LDR / Terminus).
+- A slice reported "+1 line in `ehp.py`" and the 3-line anchor matched TWICE in the
+  file. Merging by file copy would have been wrong either way - the fix was to confirm
+  only one real `item_resist_grants` call site exists before applying it.
+
+---
+
+---
+
 # 2026-07-27 - five open-item slices, parallel in-repo agents (ENGINE 1.244.0)
 
 HEAD after this session: see `git log -1`. ENGINE **1.244.0**, patch 16.14.1,

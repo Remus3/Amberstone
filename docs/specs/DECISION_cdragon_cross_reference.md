@@ -455,10 +455,15 @@ The reasoning, in order:
 1. **The wiki wins on every axis that RM-79 and RM-81 actually turn on.** It is
    the true upstream. It carries `base` and `cooldown`, which CDragon's drift
    report structurally cannot see (GT-3). It covers P-slot passives, which
-   CDragon's `spellNames` path cannot (GT-4). It reaches Locke and Zaahen, which
-   CDragon cannot, because CDragon's roster is capped by the same dead Meraki file
-   (GT-6). It is already running at full roster scale (GT-7). Option A cannot
-   close either gap; that is not a close call.
+   CDragon's `spellNames` path cannot (GT-4). It reaches Locke and Zaahen -
+   though so does CDragon, once RC stops capping it: **CDragon is blocked ONLY by
+   the same RC-controlled roster cap** (GT-6), and the character bins for both
+   exist (`locke` 57068 bytes / `zaahen` 55748 bytes, HTTP 200 on 2026-07-25 at
+   the exact URL `daemon_slayer_cdragon_ratio_extract.py` already requests). An
+   earlier draft of this line said CDragon "cannot" reach them; that was wrong and
+   contradicted GT-6 above. It is already running at full roster scale (GT-7).
+   Option A still cannot close the `base` / `cooldown` gap; that half is not a
+   close call.
 
 2. **But CDragon is not therefore worthless, and the independent-failure argument
    is genuinely strong.** The wiki's failure modes are human - editor lag,
@@ -499,12 +504,41 @@ revisit only if `raw.communitydragon.org` breaks.
 | Step | Work | Sessions |
 |---|---|---|
 | P0 | Sidecar patch guard + 16.14 re-extract + fix 3 stale comments | 0.5 |
-| B1 | De-cap the wiki roster filter; prove Locke + Zaahen parse | 0.5 to 1 |
+| B1 | De-cap the wiki roster filter; prove Locke + Zaahen parse - **SHIPPED 2026-07-25** | 0.5 to 1 |
 | B2 | Promote `leveling` to typed damage blocks, default-OFF flag | 1 to 1.5 |
 | B3 | Reconcile against Meraki on the 96 non-stale champions as the flip gate | 0.5 |
 | C1 | Demote the ratio sidecar to alarm-only; define the triage threshold | 1 |
 
 **Total ~3.5 to 4.5 sessions**, with real value banked at P0 and again at B1.
+
+#### B1 status (A-26 / RM-95b, shipped 2026-07-25)
+
+All four sidecar extractors now take a DEFAULT-OFF `--full-roster` opt-in that
+sources the champion keyspace from `champions.json` (173) instead of
+`champion_abilities.json` (171). OFF, the champion list is byte-identical to the
+pre-change code on all four (proven by importing the HEAD modules alongside the
+new ones and diffing; the wiki-ability `extract()` payload compares 1119 bytes
+to 1119 bytes). ON, all four reach 173 and gain exactly `['Locke','Zaahen']`.
+
+**Size the deliverable honestly: B1 buys CC / geometry / cooldown / cast-time
+for these two, NOT the damage the scorers need.** Measured 2026-07-25:
+
+- `wiki_ability_stats.json` (1046 abilities) carries **no `leveling` key and no
+  damage block for any champion** - the entire field census is cast_time_raw 714,
+  cooldown_raw 672, spellshield 667, effect_radius_raw 407, speed_raw 311,
+  cdstart_raw 266, parry 215, width_raw 204, grounded 165, knockdown 135,
+  callforhelp 105, static 55, silence 54, angle_raw 48, collision_radius_raw 30,
+  recharge_raw 20, recharge_ranks 19, terraingrace 17, tether_radius_raw 17,
+  ontargetcdstatic_raw 15, inner_radius_raw 14, ontargetcd_raw 1.
+  `Ahri/Charm` = `{cast_time_raw, cooldown_raw, speed_raw, spellshield,
+  width_raw}`; `Ahri/Essence Theft` = `{}`.
+- DDragon cannot supply the damage either: for Locke, Zaahen AND Ahri at 16.14.1,
+  `spells[0].vars == []` and `effectBurn == [None,'0','0','0']`, with unresolved
+  `{{ missiledamage }}` / `{{ totaldamage }}` tooltip placeholders.
+
+So `POST /rank-assassin` `baseline_burst` for Locke stays **0.0** after B1.
+Closing that is **B2** (promote the wiki `leveling` blocks to typed damage
+blocks), which is still open.
 
 ---
 
