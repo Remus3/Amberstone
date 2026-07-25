@@ -104,8 +104,8 @@ class EngineVersion(unittest.TestCase):
     """EXPECTED RED in the engine slice - the orchestrator owns the bump."""
 
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.248.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.248.0")
+        self.assertEqual(ENGINE_VERSION, "1.249.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.249.0")
 
 
 class SchemaDefaults(unittest.TestCase):
@@ -410,7 +410,19 @@ class ComputeDpsSurface(unittest.TestCase):
         # R110 END-appended a new burst seam on BOTH consumers (inert on dps),
         # advancing this end marker from assume_shielded_target.
         self.assertEqual(burst_params[-1], "assume_item_lowhp_magic_crit")
-        self.assertEqual(dps_params[-1], "assume_item_lowhp_magic_crit")
+        # A-07 / RM-82 TERM 2 END-appended apply_passive_aura_damage to
+        # compute_ability_dps ONLY (the passive-aura seam has no burst-side
+        # sibling), advancing the ability-dps end marker off
+        # assume_item_lowhp_magic_crit. The convention this test exists to
+        # guard is unchanged and is asserted directly below: a new kwarg goes
+        # at the END, so assume_item_lowhp_magic_crit must still sit after
+        # every pre-R110 seam and the new kwarg must be last.
+        self.assertEqual(dps_params[-1], "apply_passive_aura_damage")
+        self.assertEqual(dps_params[-2], "assume_item_lowhp_magic_crit")
+        self.assertLess(
+            dps_params.index("assume_shielded_target"),
+            dps_params.index("assume_item_lowhp_magic_crit"),
+        )
 
 
 class AbilityDpsInertKwarg(unittest.TestCase):

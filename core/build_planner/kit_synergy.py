@@ -211,10 +211,15 @@ def _load_items() -> dict[str, dict]:
 
 
 def _invalidate_item_cache() -> None:
-    """Drop the item cache so the next read re-pulls (patch refresh / tests)."""
+    """Drop the item cache so the next read re-pulls (patch refresh / tests).
+
+    Also drops the catalog-derived alias index below - it is a projection of the
+    same items.json, so a stale index would outlive the data it came from.
+    """
     global _ITEM_CACHE
     with _ITEM_LOCK:
         _ITEM_CACHE = None
+    _invalidate_alias_index()
 
 
 # --------------------------------------------------------------------------- #
@@ -257,6 +262,140 @@ def _item_id(item) -> Optional[str]:
 _MIRROR_ID_WIDTH = 6
 _CANONICAL_ID_WIDTH = 4
 
+# --------------------------------------------------------------------------- #
+# Residual alias index (2026-07-25, W3).
+#
+# The structural rule above answers for 197 of the 277 six-digit ids in the
+# 16.14.1 catalog (200 trailing-4 hits, 3 of them rejected as cross-item by
+# ``_same_item``). It does NOT cover an alias form whose trailing 4 digits are
+# not a catalog id at all - measured residue:
+#
+#     667666 The Collector       trailing 4 = "7666"  <- absent from the catalog
+#     447111 Overlord's Bloodmail            "7111"   <- absent
+#     220000 Stat Bonus                      "0000"   <- absent
+#     220013 Poro-Snax                       "0013"   <- absent
+#
+# 667666 is the id that shipped the Samira five-item build
+# (6676 The Collector AND 667666 The Collector in the same order), so the gap is
+# not theoretical. These are resolved against the LIVE catalog, never guessed:
+# an id folds onto a 4-digit id only when exactly one 4-digit entry carries the
+# same normalized name AND the same tag list. ``tags`` is the structural
+# identity signal the mirror-id tests already use - gold is NOT usable (Arena
+# forms are repriced: 3190 costs 2200, 323190 costs 2600).
+#
+# The index is consulted ONLY when the structural rule declines to answer, so it
+# can never override a fold that already works.
+# --------------------------------------------------------------------------- #
+_ALIAS_INDEX: Optional[dict[str, str]] = None
+_ALIAS_LOCK = threading.Lock()
+
+
+def _norm_name(entry: dict) -> str:
+    return str((entry or {}).get("name") or "").strip().lower()
+
+
+def _norm_tags(entry: dict) -> tuple[str, ...]:
+    return tuple(sorted(str(t) for t in ((entry or {}).get("tags") or [])))
+
+
+def _same_item(a: dict, b: dict) -> bool:
+    """True iff two catalog entries denote the SAME underlying item.
+
+    Neither signal alone is sufficient, MEASURED over the 200 structural pairs
+    in the 16.14.1 catalog:
+      * name alone rejects 8 real mirrors that Riot renamed, re-cased or shipped
+        blank (226653 Liandry's Anguish / 6653 Liandry's Torment, 226660 blank /
+        6660 Bami's Cinder, 226675 Navori Flickerblades / 6675 Navori
+        Flickerblade, 994403 Golden Spatula / 4403 The Golden Spatula, ...);
+      * tags alone rejects 28 real mirrors whose tag list drifted between the
+        SR and Arena entries (226630 Goredrinker, 223084 Heartsteel, ...).
+    Their UNION accepts every real mirror and still rejects the genuinely
+    different pairs: 3172 Gunmetal Greaves vs 223172 / 663172 Zephyr, and 3095
+    "Deprecated item" vs 223095 Stormrazor.
+    """
+    return _norm_name(a) == _norm_name(b) or _norm_tags(a) == _norm_tags(b)
+
+
+def _structural_canonical(sid: str, items: dict) -> Optional[str]:
+    """The VALIDATED structural fold for ``sid``, or None when it has none.
+
+    None means "the 2-digit-prefix rule cannot answer for this id" - either the
+    trailing 4 digits are not a catalog id (667666), or they are a genuinely
+    DIFFERENT item (223172 Zephyr vs 3172 Gunmetal Greaves).
+    """
+    if len(sid) != _MIRROR_ID_WIDTH or not sid.isdigit():
+        return None
+    struct = sid[_MIRROR_ID_WIDTH - _CANONICAL_ID_WIDTH:]
+    mirror = items.get(sid)
+    if mirror is None:
+        return struct  # id not in the catalog - historic rule, no evidence
+    base = items.get(struct)
+    if base is None:
+        return None
+    return struct if _same_item(mirror, base) else None
+
+
+def _build_alias_index() -> dict[str, str]:
+    """Derive {alias_id -> canonical_id} for ids the structural rule cannot fold.
+
+    Same-item grouping is STRICT here (identical normalized name AND identical
+    tags) because there is no structural evidence to lean on. Two shapes:
+
+      * the group holds exactly one 4-digit id -> that id is the canonical.
+        667666 -> 6676 (The Collector), 447111 -> 2501 (Overlord's Bloodmail).
+      * the group holds no 4-digit id at all -> elect the lowest member as the
+        representative, so the two Arena prismatic forms of one item still
+        compare equal. 663059 -> 443059 (Cloak of Starry Night), 667112 ->
+        447112 (Flesheater), 663172 -> 223172 (Zephyr).
+
+    An id with no same-item partner is left alone - 223069 Void Immolation and
+    443069 Hamstringer are singletons and must NOT be collapsed onto each other.
+    """
+    items = _load_items()
+    groups: dict[tuple[str, tuple[str, ...]], list[str]] = {}
+    for iid, entry in items.items():
+        name = _norm_name(entry)
+        if not name:
+            continue
+        groups.setdefault((name, _norm_tags(entry)), []).append(iid)
+    out: dict[str, str] = {}
+    for ids in groups.values():
+        unresolved = [i for i in ids
+                      if len(i) == _MIRROR_ID_WIDTH and i.isdigit()
+                      and _structural_canonical(i, items) is None]
+        if not unresolved:
+            continue
+        four = sorted(i for i in ids
+                      if len(i) == _CANONICAL_ID_WIDTH and i.isdigit())
+        if len(four) == 1:
+            target = four[0]
+        elif not four and len(ids) > 1:
+            target = min(ids)
+        else:
+            continue  # ambiguous - leave every member as its own identity
+        for i in unresolved:
+            out[i] = target
+    return out
+
+
+def _alias_index() -> dict[str, str]:
+    global _ALIAS_INDEX
+    with _ALIAS_LOCK:
+        if _ALIAS_INDEX is None:
+            try:
+                _ALIAS_INDEX = _build_alias_index()
+            except Exception as exc:  # noqa: BLE001 - fail-soft to structural
+                _log.warning("kit_synergy: alias index build failed: %s", exc)
+                _ALIAS_INDEX = {}
+        return _ALIAS_INDEX
+
+
+def _invalidate_alias_index() -> None:
+    """Drop the alias index (patch refresh / tests)."""
+    global _ALIAS_INDEX
+    with _ALIAS_LOCK:
+        _ALIAS_INDEX = None
+
 
 def canonical_item_id(item_id) -> Optional[str]:
     """Return the CANONICAL (Summoner's Rift) id string for ``item_id``.
@@ -267,15 +406,43 @@ def canonical_item_id(item_id) -> Optional[str]:
     numeric is returned unchanged, which makes the function the IDENTITY on the
     whole 4-digit keyspace - it can never merge two canonical items.
 
-    Used ONLY to normalize membership tests against this module's curated
-    SR-literal id tables. It deliberately does NOT redirect the items.json stat
-    lookup: an Arena mirror credits its OWN DDragon stat line (R161 doctrine B).
+    Three refinements over the raw structural rule, all catalog-DRIVEN
+    (2026-07-25, W3 - the rule became an item-identity key, so a wrong fold now
+    suppresses a legal purchase instead of just missing a curated flag):
+
+      * the fold is VALIDATED. ``223172`` / ``663172`` Zephyr must not become
+        ``3172`` Gunmetal Greaves, and ``223095`` Stormrazor must not become
+        ``3095`` "Deprecated item" - see ``_same_item``.
+      * a 6-digit id whose trailing 4 digits are NOT a catalog id gets no
+        structural answer at all (``667666`` The Collector), so the alias index
+        above answers - name + tags matched, exactly one hit. Without it Samira
+        shipped ``6676`` AND ``667666`` in the same six-item build.
+      * an unresolvable 6-digit id keeps its own id rather than inventing a
+        canonical. ``223069`` Void Immolation and ``443069`` Hamstringer are two
+        DIFFERENT items and ``3069`` does not exist - the old rule collapsed
+        both onto it, which would have made the dedup below reject Hamstringer
+        in 84 shipped Arena / legacy-SR cells.
+
+    Fail-soft: with no catalog on disk the historic structural rule is used
+    verbatim, so nothing regresses when the DS data dir is absent.
+
+    Used to normalize membership tests against this module's curated SR-literal
+    id tables, and (2026-07-25) as the item-IDENTITY key for build-order
+    duplicate rejection in core/build_order.py. It deliberately does NOT redirect
+    the items.json stat lookup: an Arena mirror credits its OWN DDragon stat line
+    (R161 doctrine B).
     """
     if item_id is None:
         return None
     sid = str(item_id)
     if len(sid) == _MIRROR_ID_WIDTH and sid.isdigit():
-        return sid[_MIRROR_ID_WIDTH - _CANONICAL_ID_WIDTH:]
+        items = _load_items()
+        if not items:  # no catalog (fail-soft) - keep the historic rule
+            return sid[_MIRROR_ID_WIDTH - _CANONICAL_ID_WIDTH:]
+        struct = _structural_canonical(sid, items)
+        if struct is not None:
+            return struct
+        return _alias_index().get(sid, sid)
     return sid
 
 

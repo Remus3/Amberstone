@@ -601,3 +601,132 @@ not re-attempt S1 expecting table movement.
 - **Regen result: stamp-stripped payload diff SAME on all 9 files.** Correct and expected,
   since every seam is DEFAULT-OFF. Recorded as corroboration of the no-movement claim
   rather than as a claim taken on report.
+
+## PART 9 - FIVE ROWS PROBED, TWO BUILT, THREE CLOSED, ONE UNFILED DEFECT FOUND (2026-07-25, sixth session off this inventory)
+
+ENGINE 1.248.0 -> **1.249.0**. Five read-only probe agents ran first, in parallel, each
+required to age-check cited files, grep `docs/specs/**` + `tests/**` before believing a row
+unbuilt, carry the full DS probe-trap list, and treat BLOCKED-UNFALSIFIABLE as an acceptable
+answer. Four worktree build agents then ran on disjoint file sets with one Claude as sole
+merger. **The mis-file rate did not fall: three of the five named rows closed without code,
+and the session's largest win was a live shipped-table defect that no row had filed.**
+
+| row | verdict | headline measurement |
+|---|---|---|
+| **UNFILED** alias/mirror build dedup | **SHIPPED, DEFAULT-ON** | 14 cells / 2 champions shipping FIVE-item builds; 3619 of 3633 cells byte-identical |
+| A-07 / RM-82 TERM 2 passive aura | **SHIPPED, DEFAULT-OFF** | Mordekaiser ability DPS 11.677 -> 72.155; 14 of 140 rows move; 143 controls unmoved |
+| carry tail: client seam plumb | **SHIPPED** | both 1.248.0 seams were 0-of-27 on the client path; now Ashe and Quinn move |
+| A-26 / RM-95b Locke / Zaahen | **SHIPPED (B1), DEFAULT-OFF** | "blocked upstream" was FALSE - it is an RC-controlled roster cap |
+| A-21 / RM-90 S3 | **CLOSED, BLOCKED-UNFALSIFIABLE** | ally-lane ceiling 496.8 against a 1700-4800 per-slot self-EHP deficit |
+| A-12 / RM-46 Ranger's Focus | **CLOSED, BLOCKED-UNFALSIFIABLE** | Caitlyn and Master Yi show the IDENTICAL swap under an AS proxy |
+| RM-37/42/38 successor | **CLOSED-WITH-A-FINDING** | 125 scalar quantities scanned; ZERO separate the six-member map |
+
+### The unfiled defect - the best result of the session
+
+A six-item build was naming five items. `core/build_order.py:714` rejected duplicates with a
+raw string compare, and DDragon ships one item under a base id plus per-mode variants, so
+`3004`/`323004` Manamune and `6676`/`667666` The Collector both survived. **Viego and Samira,
+every damage profile, both keyspaces, SR only - 14 cells.** ARAM and Arena were clean.
+
+The naive fix would have been worse than the bug. Blind structural folding of the 2-digit
+prefix produced **84 FALSE POSITIVES** where `223069` Void Immolation and `443069`
+Hamstringer - different items - both collapsed onto an absent `3069`, which would have
+suppressed 84 legal Arena purchases. `canonical_item_id` was extended with a validated fold
+(`_same_item`, name OR tags - measured over all 200 structural pairs, name alone rejects 8
+real renamed mirrors and tags alone rejects 28 tag-drifted ones, union is exact), an 18-entry
+catalog-derived residual alias index for the non-structural cases such as `667666 -> 6676`,
+and identity-preservation for unresolvable 6-digit ids. Shipped DEFAULT-ON: the OFF position
+is a known-wrong build. Proof is a full re-plan of all 3633 generated cells through both real
+generator entry points - **3619 byte-identical, 14 changed, exactly the defective set** - run
+twice with byte-equal diffs. The latent Locket `3190`/`323190` case found by the A-21 probe is
+covered and guarded.
+
+### The three closures
+
+**A-21 / RM-90 S3 is BLOCKED-UNFALSIFIABLE and its population is 1, not 4.** All four
+exclusion reasons at `_item_ally_grant.py:95-105` verify TRUE against their own 16.14.1 feeds:
+Zeke's 3050 has zero ally-facing text on any of its three ids (pricing it is a category
+error), Bandlepipes 2524 grants ally ATTACK SPEED and the only ally-offense field in the repo
+(`ally_buff_credit_per_second`, `hps.py:613`) lives on the ENCHANTER route in RATE units so
+mixing it is the cross-unit error the module forbids at `:23-27`, Solstice Sleigh 3876 is
+pool-illegal everywhere behind the do-not-reopen RM-93 deny, and Knight's Vow 3109 is a
+pre-mitigation damage REDIRECT needing an assumed-ally-stat prior that no registry carries.
+**The prize was sized and it does not exist:** the entire ally lane's ceiling is 993.6 raw HP
+(Locket, the largest grant in the game), amortized 496.8, against a self-EHP deficit of
+1700-4800 per slot. Sweeping the amortizer gives 1 distinct order at p=0.5, still 1 at p=0.78,
+and needs p=1.0 to move anything - a coefficient and an invented constant, not a schema lift.
+**Also corrected: "Locket is the ONLY priced support core item" is FALSE** - Redemption 3107
+(+401.4), Mikael's 3222 (+94.1) and Echoes of Helia 6620 (+28.8) are priced and in the tank
+pool. The support-cohort collapse is a `ds.ehp` champion-sensitivity problem, the same
+structural finding as A-11 / RM-44 and A-22 / RM-91. Do not file a fifth ally-grant row.
+
+**A-12 / RM-46 Ranger's Focus is BLOCKED-UNFALSIFIABLE, and the row mis-names the ability -
+Ranger's Focus is Ashe's Q; `data.Ashe.W` is Volley.** A per-champion self-AS lane already
+exists (`_passive_as_overrides.py`, consumer `dps.py:1174`, gated `assume_passive_as_stacks`),
+so this would have been a registry row - except `grep assume_passive_as_stacks rank.py`
+returns ZERO, so that seam is `/dps`-scoped and provably inert in every build table. The gate
+then fails on measurement: 22 self-AS blocks across 20 champions with Ashe's 75 pct ranking
+about eighth, and injecting +45 pct AS as a proxy moves head-4 not at all and produces exactly
+one adjacent swap that **Caitlyn and Master Yi show identically** - neither has a kit AS
+steroid. The reorder belongs to the item pool at that AS level, not to the champion. The
+prescription is also directionally suspect, since AS raises the very on-hit proc rate it was
+meant to demote. The genuinely champion-selective term is the flurry asymmetry (110-140 pct
+total AD per auto while on-hit applies ONCE); that is a different, unmeasured row.
+
+**The RM-37 / RM-42 / RM-38 successor closes with a finding: keep the map hand-curated.** The
+invariance reproduces exactly (IE at #11 for all six named ADCs; 12 of 27 shipped carries emit
+the byte-identical order), but "the fight-length map is the SOLE discriminator" is REFUTED -
+the client path emits 16 distinct top-6 orders over 27 champions. A brute-force scan of **125
+scalar quantities** (every numeric leaf of the champion snapshot plus 12 engine axis routes)
+separates the six-member map ZERO times; best near-miss still admits 4 of 21 unmapped
+champions. The one corpus source that qualifies on n - `rewind_history.db`, 274890 of 274890
+`CHAMPION_KILL` rows carrying `victim_damage_json`, n >= 650 for 27 of 27 because dealer keying
+draws from all ten players so the 92-pct-one-account limit does not bind - does not reproduce
+it either (basic-attack share mapped [21.2, 49.1] vs unmapped [0.1, 46.3], fully interleaved).
+A-08 / RM-35's ordering is REPRODUCED, not contradicted. The map is purely editorial; its
+provenance is the operator's live evidence recorded at `core/ds_champion_fight_length.py:66-72`.
+**Fence: an allow-map entry is an operator meta assertion validated by live play, and adding
+one requires operator evidence, not a threshold.**
+
+### Corrections PART 9 makes to PART 7 / PART 8 and to the hand-off prompt
+
+- **A-07's two named terms both survive probing, but TERM 1 is dead and TERM 2 is narrower
+  than filed.** TERM 1 (slow credit / Rylai's `defensive_only`) is BLOCKED: 88 of 161
+  champions in `cc_output.py`'s registry carry a SLOW entry, so crediting it lifts GAP Aurora
+  and REFUTE control Anivia together. TERM 2 is real but the data premise inverts - only
+  **1** of 171 champions (Aphelios) has any P `damage_blocks` from Meraki, so the P lane is
+  the hand-authored 32-entry registry, and Mordekaiser was simply not in it.
+- **The A-07 block premise "GAP champion and control are indistinguishable" is REFUTED.** A
+  roster-wide sweep at the A-16 params returns **78 distinct top-8 heads, 20 among the 84
+  AP-scaling champions**, and Anivia - the REFUTE control - is already alone in its own class
+  at top-8 under default flags. The invariance was a top-3 stat-dominance artifact confined to
+  a hand-picked 4-champion sample. Four sessions measured that artifact and called it a block.
+- **`apply_passive_damage` does NOT already cover the P gap and this was measured.** Forcing
+  it ON injects Aurora's P block and the mage scorer is byte-identical, because `SPELL_KEYS`
+  never reads `P`. A distinct `apply_passive_aura_damage` kwarg was required because the
+  existing registry mixes cadences: 25 entries are `on_hit` riders belonging on the auto clock,
+  and the `dot` cadence authors a TOTAL over a burn duration, not a per-second rate.
+- **RM-82's own acceptance hope is refuted by the build that satisfied its criterion.**
+  Rylai's does NOT move - #24 OFF, #24 ON. Its value is the slow, and aura damage does not
+  price a slow. TERM 2 shipped anyway because its blast radius is provable; the Rylai's
+  question needs TERM 1, which is blocked.
+- **A-26 / RM-95b was mis-filed as "blocked upstream in Meraki", and the answer had been on
+  disk for seven days** at `docs/specs/DECISION_cdragon_cross_reference.md:150` (`c4d5e907`,
+  2026-07-18), titled verbatim "RM-79 is NOT blocked upstream. RC's own extractor filters
+  Locke and Zaahen out". The four "independent" 171-keyed sidecars are ONE feed - every one
+  derives its champion list from `champion_abilities.json`. **CDragon bins for both exist**
+  (HTTP 200, 57068 B and 55748 B, at the URL the ratio extractor already uses), so that spec's
+  own `:458` contradicted its `:182-186` and is now reconciled.
+- **B1 is a partial and is recorded as one.** The de-cap buys cast times, cooldowns, CC tags
+  and geometry - not damage. `wiki_ability_stats.json` carries no `leveling` key and no damage
+  field for ANY champion, and DDragon supplies none either (`spells[0].vars == []`,
+  `effectBurn == [None,'0','0','0']` for Locke, Zaahen **and Ahri**). **Locke's
+  `/rank-assassin` `baseline_burst` still reads 0.0** against Zed 938.46. B2 stays open.
+- **Two 1.248.0 seams were inert everywhere that matters.** `apply_crit_conversion` and
+  `kit_conversion_strength` were parsed by the server and accepted by the engine but absent
+  from `core/daemon_slayer_client.py`, so the chokepoint every live coach tick and every
+  generated table passes through could not forward them: 1-of-27 movement on `/rank` direct,
+  **0-of-27 on the client path**. This is `reference_ds_kit_conversion_not_route_exposed` one
+  layer further down the stack, and it is worth checking on every future seam.
+- **The empty-build artifact claimed no new headline this session.** Every probe carried an
+  explicit non-empty item list and explicit non-zero target stats. The count stays at five.

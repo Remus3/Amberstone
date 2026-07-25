@@ -306,6 +306,24 @@ def _load_meta_champ_data(patch: str) -> dict[str, Any]:
     return json.loads(champ_json.read_text(encoding="utf-8")).get("data", {})
 
 
+def _load_roster_champion_ids(patch: str) -> list[str]:
+    """DDragon ids from the committed ROSTER snapshot (``champions.json``).
+
+    A-26 / RM-95b. The abilities snapshot is a Meraki derivative frozen upstream
+    since 2025-08-01 and is 2 champions short of the live roster (Locke,
+    Zaahen). The roster file keys champions under ``data`` the same way.
+    OPT-IN ONLY - reached via ``_load_champion_ids(..., full_roster=True)``.
+    """
+    roster = DATA_DIR / patch / "champions.json"
+    if not roster.exists():
+        raise SystemExit(f"roster file missing: {roster} (run the champions extractor first)")
+    raw = json.loads(roster.read_text(encoding="utf-8"))
+    champs = raw.get("data") or {}
+    if not champs:
+        raise SystemExit(f"roster file {roster} has no 'data' champion container")
+    return sorted(champs.keys())
+
+
 def _load_champion_ids(patch: str) -> list[str]:
     """DDragon ids to extract, from the committed abilities snapshot.
 
@@ -321,6 +339,17 @@ def _load_champion_ids(patch: str) -> list[str]:
     if not champs:
         raise SystemExit(f"abilities file {abil} has no 'data' champion container")
     return sorted(champs.keys())
+
+
+def _resolve_champion_ids(patch: str, full_roster: bool) -> list[str]:
+    """Pick the champion keyspace: the abilities snapshot (default) or the roster.
+
+    ``full_roster=False`` is the pre-A-26 behavior and MUST stay byte-identical:
+    it delegates to ``_load_champion_ids`` unchanged.
+    """
+    if full_roster:
+        return _load_roster_champion_ids(patch)
+    return _load_champion_ids(patch)
 
 
 def _wiki_name(ddragon_id: str, display_names: dict[str, str]) -> str:
@@ -655,7 +684,8 @@ def _atomic_write_json(path: Path, payload: Any) -> None:
 
 
 def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
-            source: str = "both", default_cast: bool = True) -> dict[str, Any]:
+            source: str = "both", default_cast: bool = True,
+            *, full_roster: bool = False) -> dict[str, Any]:
     """Extract the sidecar payload for ``patch`` (does NOT write).
 
     ``source``: ``wiki`` (action=raw + getter fallback only), ``cdragon``
@@ -678,7 +708,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
     use_cdragon = source in ("cdragon", "both")
     display_names = _load_display_names(patch)
     attack_ranges = _load_attack_ranges(patch)
-    ids = _load_champion_ids(patch)
+    ids = _resolve_champion_ids(patch, full_roster)
     if limit:
         ids = ids[:limit]
 
@@ -847,6 +877,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="do NOT fill the 0.25s default for champs with no measured cast time "
              "(leaves them null instead of 171/171)",
     )
+    ap.add_argument(
+        "--full-roster", action="store_true",
+        help="A-26/RM-95b: source champs from champions.json (173) instead of "
+             "champion_abilities.json (171); the only way Locke + Zaahen are reached",
+    )
     ap.add_argument("--dry-run", action="store_true", help="extract but do not write")
     ap.add_argument("-v", "--verbose", action="store_true", help="per-champ progress")
     args = ap.parse_args(argv)
@@ -855,7 +890,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     out_path = Path(args.out) if args.out else (DATA_DIR / patch / "wiki_stats.json")
 
     payload = extract(patch, args.sleep, args.limit or None, args.verbose, args.source,
-                      default_cast=not args.no_default_cast)
+                      default_cast=not args.no_default_cast,
+                      full_roster=args.full_roster)
     print(
         f"patch={patch} source={args.source} champs={payload['_champ_count']} "
         f"with_cast_time={payload['_with_cast_time']} "

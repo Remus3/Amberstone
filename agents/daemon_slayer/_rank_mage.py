@@ -207,6 +207,7 @@ def rank_items_by_ability_dps(
     filter_shared_uniques: bool = True,
     apply_ability_amps: bool = False,
     kit_conversion_strength: float = 0.0,
+    apply_passive_aura_damage: bool = False,
 ) -> AbilityDpsRankResult:
     """Rank items by total-ability-DPS gain when added to ``current_item_ids``.
 
@@ -229,6 +230,13 @@ def rank_items_by_ability_dps(
     ``max_priority``, ``block_strategy``, ``form_index_overrides``,
     ``block_index_overrides``, and ``target_current_hp_pct`` flow through
     to ``compute_ability_dps`` for both the baseline and each candidate.
+
+    ``apply_passive_aura_damage`` (A-07 / RM-82 TERM 2, default OFF =
+    byte-identical) likewise flows to BOTH the baseline and every candidate,
+    which is what makes the ranking coherent: the aura's item-independent
+    terms (its flat base + its %-of-target-max-HP term) then cancel exactly in
+    ``delta = scored - baseline``, so the only part of the aura that can move
+    a rank is its AP ratio - the honest item-sensitive half.
     """
     from .ability_dps import (
         _resolve_block_index_overrides,
@@ -285,6 +293,7 @@ def rank_items_by_ability_dps(
         form_index_overrides=resolved_form_index,
         block_index_overrides=resolved_block_index,
         apply_ability_amps=apply_ability_amps,
+        apply_passive_aura_damage=apply_passive_aura_damage,
     )
 
     candidates = _filter_candidates(
@@ -325,6 +334,7 @@ def rank_items_by_ability_dps(
                 form_index_overrides=resolved_form_index,
                 block_index_overrides=resolved_block_index,
                 apply_ability_amps=apply_ability_amps,
+                apply_passive_aura_damage=apply_passive_aura_damage,
             )
         except (KeyError, ValueError):
             continue

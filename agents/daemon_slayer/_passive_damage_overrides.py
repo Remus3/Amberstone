@@ -55,7 +55,22 @@ correct clock:
   - "per_fight"- one trigger per fight window (e.g. a per-target internal CD
                  longer than a typical trade).
   - "dot"      - damage-over-time tick (e.g. Gangplank Trial by Fire's 2.5s
-                 burn) - STAGED, not seeded in v1.
+                 burn) - STAGED, not seeded in v1. IMPORTANT: every seeded
+                 "dot" entry authors the TOTAL over the burn / bleed duration
+                 (Gangplank over 2.5s, Lillia over 3s, Twitch over 6s, Darius
+                 over the bleed), NOT a per-second rate. A per-second consumer
+                 must NOT read a "dot" entry as a DPS.
+  - "per_second" - A-07 (RM-82 TERM 2): a SUSTAINED AURA whose authored
+                 magnitude already IS a per-second rate, with no duration to
+                 divide by and no discrete trigger event (Mordekaiser P
+                 Darkness Rise). This is the ONLY cadence the
+                 ``ability_dps.compute_ability_dps`` seam
+                 (``apply_passive_aura_damage``) credits, precisely because
+                 it is the only one whose units are already DPS - an "on_hit"
+                 entry belongs on the AA clock (dps.py routes it there) and a
+                 "dot" / "per_fight" entry is a per-event total, so crediting
+                 either on the per-second ability clock would be wrong-units
+                 and would double-count against ``compute_dps``.
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: the seam in ``abilities.py`` only injects
 when the opt-in ``apply_passive_damage=True`` flag is passed to
@@ -925,6 +940,52 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
         note="Bio-Arcane Barrage: 6% (+ 1% per 100 AP) of target max HP bonus magic on-hit at max rank (flat L13), scaled by 8s/17s ~= 0.47 toggle uptime = 2.823529% (+ 0.470588% per 100 AP) amortized; vs-minion/monster 100 cap uncapped (champ context)",
         attribute="Bio-Arcane Barrage",
     ),
+    # --- A-07 / RM-82 TERM 2: the FIRST "per_second" sustained-aura entry.
+    #
+    # Mordekaiser P Darkness Rise. SOURCE FIELD = the champion's OWN 16.14.1
+    # feed, data/daemon_slayer/16.14.1/champion_abilities.json ->
+    # data.Mordekaiser.P[0].effects_descriptions[2], verbatim:
+    #   "Darkness Rise: Mordekaiser gains 3% / 6% / 9% (based on level) bonus
+    #    movement speed and deals[ 5 (+ 30% AP) (+ 1% : 5% (based on level) of
+    #    target's maximum health) magic damage every second ][ 0.625 (+ 3.75%
+    #    AP) (+ 0.13% : 0.63% (based on level) of target's maximum health)
+    #    magic damage every 0.125 seconds ]to nearby enemies."
+    # docs/DS_SWEEP_TRACKER.md:839 records the same numbers ("5 + 30% AP +
+    # 1-5% target max HP per second, 8 ticks/s"), so the two AGREE - the
+    # 0.125s bracket is the identical rate expressed per tick (0.625 x 8 = 5;
+    # 3.75% x 8 = 30%). Doctrine B (credit the champion's OWN 16.14.1 line) is
+    # therefore not load-bearing here; the per-SECOND bracket is authored
+    # because that is the unit the per_second cadence contract requires.
+    #
+    # base 5.0 is level-FLAT (built through _lerp_per_level(5.0, 5.0) so the
+    # tuple is the canonical 18-element shape, every element 5.0). The
+    # 1% : 5% target-max-HP term is Meraki's smooth-lerp notation, so it rides
+    # a per-level target_max_hp_pct tuple (value_at-indexed by
+    # rank_at_level("P", level) == level - 1), exactly like Aatrox P.
+    #
+    # DELIBERATE OMISSIONS, each an existing seam's business not this entry's:
+    #   * effects_descriptions[0] "basic attacks are empowered to deal 40% AP
+    #     bonus magic damage on-hit" is a SEPARATE on_hit AA rider - it belongs
+    #     on the auto-attack clock (dps.py's apply_passive_damage routing), not
+    #     on this per-second aura, and folding it in here would double-count.
+    #   * the 3-stack arming gate (Darkness Rise only runs at 3 stacks) is left
+    #     at full uptime: Mordekaiser arms it off any damaging basic attack OR
+    #     basic ability and it refreshes on every subsequent hit, so inside the
+    #     sustained-rotation window this scorer models it is effectively
+    #     always-on. A future operator-tunable haircut belongs on
+    #     conditional_probability, not in the coefficients.
+    #   * the vs-monster cap (40 : 200 per second) is champ-context, uncapped
+    #     here - the same precedent as Aatrox / Zed / Gwen.
+    #   * the 3%/6%/9% bonus movement speed is utility, not damage.
+    ("Mordekaiser", "P", 0): PassiveDamageEntry(
+        base=_lerp_per_level(5.0, 5.0),
+        ap_pct=30.0,
+        target_max_hp_pct=_lerp_per_level(1.0, 5.0),
+        damage_type="MAGIC",
+        cadence="per_second",
+        note="Darkness Rise: 5 (+ 30% AP) (+ 1% : 5% (based on level) of target's maximum health) magic damage EVERY SECOND (the 0.125s bracket is the same rate per tick); 40% AP on-hit AA rider + 3-stack arming gate + vs-monster 40:200/s cap + movement speed not modeled here; per_second cadence",
+        attribute="Darkness Rise",
+    ),
 }
 
 
@@ -1136,6 +1197,43 @@ def aa_routed_on_hit_entry(champion_id: str):
             continue
         entry = _PASSIVE_DAMAGE_OVERRIDES.get(key)
         if entry is None or entry.cadence != "on_hit":
+            continue
+        return key, entry
+    return None
+
+
+def per_second_aura_entry(champion_id: str):
+    """Return ``(key, entry)`` for the champion's ``per_second`` aura passive.
+
+    A-07 / RM-82 TERM 2. The accessor the ``ability_dps`` seam
+    (``apply_passive_aura_damage``) reads. Returns ``None`` for every champion
+    with no ``per_second``-cadence entry - which is every champion but
+    Mordekaiser today - so the seam is byte-identical for the whole rest of the
+    roster BY CONSTRUCTION, not by luck.
+
+    The cadence gate is the load-bearing part. The registry's other 32 entries
+    are ``on_hit`` (25), ``dot`` (4) and ``per_fight`` (3); NONE of them may be
+    credited on the per-second ability clock:
+
+    * an ``on_hit`` entry's damage rides the AUTO-ATTACK cadence and
+      ``dps.py``'s ``apply_passive_damage`` seam already routes the
+      allowlisted ones there - crediting them here would double-count;
+    * a ``dot`` entry authors the TOTAL over its burn / bleed duration and a
+      ``per_fight`` entry authors one trigger per engagement - both are
+      per-EVENT magnitudes, so reading either as a per-second rate is
+      wrong-units.
+
+    Only ``per_second`` carries a magnitude that is already a DPS, which is
+    why the seam multiplies it by exactly ``1.0`` casts/sec. Keys are iterated
+    in sorted order for a deterministic pick.
+    """
+    if not champion_id:
+        return None
+    for key in sorted(_PASSIVE_DAMAGE_OVERRIDES):
+        if key[0] != champion_id:
+            continue
+        entry = _PASSIVE_DAMAGE_OVERRIDES[key]
+        if entry.cadence != "per_second":
             continue
         return key, entry
     return None

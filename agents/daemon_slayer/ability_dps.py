@@ -208,6 +208,14 @@ from ._rank_mage import (  # noqa: F401
 # level-scaled passive damage doesn't fit the per-rank model.
 SPELL_KEYS: tuple[str, ...] = ("Q", "W", "E", "R")
 
+# A-07 / RM-82 TERM 2. The clock a ``per_second``-cadence passive aura runs on.
+# Named rather than inlined so the "1.0" is auditable as a UNIT CONTRACT, not a
+# magic number: a per_second entry's authored magnitude is already a per-second
+# rate, so the casts/sec multiplier is exactly one by definition. Any other
+# cadence (on_hit / dot / per_fight) is rejected upstream by
+# ``_passive_damage_overrides.per_second_aura_entry`` rather than rescaled here.
+_PASSIVE_AURA_CASTS_PER_SEC: float = 1.0
+
 # Standard max-priority rank tables (0-indexed rank at champion level).
 # Pin to the conventional "Q-first, W-second, E-third" max order; Phase 4d
 # (s185) ships per-champion overrides via ``champion_max_priority.json``
@@ -949,6 +957,7 @@ def compute_ability_dps(
     assume_physical_burst: bool = False,
     assume_shielded_target: bool = False,
     assume_item_lowhp_magic_crit: bool = False,
+    apply_passive_aura_damage: bool = False,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -985,6 +994,30 @@ def compute_ability_dps(
         "Bonus Magic Damage" block0. When ``None``, the per-champion override
         registry (``champion_block_index.json``) is consulted; falls back
         to block 0 for unmapped (champion, key) pairs.
+    apply_passive_aura_damage:
+        A-07 / RM-82 TERM 2. DEFAULT OFF = byte-identical (the registry is
+        never read). When True, a champion carrying a ``per_second``-cadence
+        entry in ``_PASSIVE_DAMAGE_OVERRIDES`` gets that sustained passive
+        aura credited as a fifth ``per_spell`` row keyed ``"P"`` at exactly
+        1.0 casts/sec, and its DPS is added to ``total_ability_dps``.
+
+        This CLOSES the module's long-standing "Phase 4b deliberate omission"
+        of P damage (see the docstring list above) for the one cadence whose
+        units are already a per-second rate. ``SPELL_KEYS`` is deliberately
+        NOT widened to include ``"P"``: the P slot has no rank model, no
+        cooldown and no measured cast rate, so it would score 0 through the
+        ordinary loop; the aura is evaluated on its own explicit 1/sec clock
+        instead.
+
+        NOT the same flag as ``abilities.AbilitiesSnapshot.load``'s
+        ``apply_passive_damage`` / ``dps.compute_dps``'s ``apply_passive_damage``,
+        and deliberately named apart from them. That flag injects EVERY
+        registry entry regardless of cadence; 25 of the 33 are ``on_hit``
+        riders whose sustained DPS belongs on the auto-attack clock (which
+        ``compute_dps`` already routes) and the rest are per-event totals.
+        Crediting those here would be wrong-units and would double-count
+        against ``compute_dps``. See ``_passive_damage_overrides
+        .per_second_aura_entry`` for the cadence gate.
     """
     if block_strategy not in _BLOCK_STRATEGIES:
         raise ValueError(
@@ -1382,6 +1415,69 @@ def compute_ability_dps(
     primary = _classify_primary_scaling(per_spell, forms_for_classification)
 
     notes: list[str] = list(resolved.notes)
+    # A-07 / RM-82 TERM 2 - sustained passive-aura (P) damage credit.
+    #
+    # apply_passive_aura_damage default False -> the registry is never read and
+    # nothing is appended, so this is byte-identical for EVERY champion. When
+    # True, only a champion with a ``per_second``-cadence entry matches
+    # (Mordekaiser P Darkness Rise is the only one today), so the blast radius
+    # is bounded BY CONSTRUCTION rather than by measurement.
+    #
+    # The pipeline below is the per-spell loop's pipeline, term for term:
+    # evaluate the synthetic block -> x mode_mult -> x damage_amp -> x magic_amp
+    # (magic-typed only) -> x mitigation on the EFFECTIVE resists -> x casts/sec.
+    # The only difference is the clock: a per_second aura has no cooldown, no
+    # rank model and no measured cast rate, so casts/sec is the literal 1.0 that
+    # the cadence contract guarantees (the authored magnitude IS the per-second
+    # rate). It is placed AFTER _classify_primary_scaling and after the
+    # assume_ability_amp multiply on purpose: the aura is not an ability cast,
+    # so it must neither steer the primary-scaling classification nor be
+    # amplified by Spear of Shojin's ability amp.
+    if apply_passive_aura_damage:
+        from ._passive_damage_overrides import (
+            per_second_aura_entry,
+            to_damage_block,
+        )
+
+        _aura = per_second_aura_entry(resolved.champion_id)
+        if _aura is not None:
+            _akey, _aentry = _aura
+            _araw = _evaluate_block(
+                to_damage_block(_aentry), rank_at_level("P", level), ctx,
+            )
+            if _araw > 0.0:
+                _adt = (_aentry.damage_type or "MAGIC").upper()
+                _amagic_amp = magic_amp if _adt == "MAGIC" else 1.0
+                _apost_mode = _araw * mode_mult
+                _apost_amps = _apost_mode * damage_amp * _amagic_amp
+                _apost_mit = _apost_amps * _mitigation_factor(
+                    _adt, target_armor_eff, target_mr_eff,
+                )
+                _adps = _apost_mit * _PASSIVE_AURA_CASTS_PER_SEC
+                per_spell.append(AbilitySpellDps(
+                    key="P",
+                    form_name=_aentry.attribute,
+                    form_index=_akey[2],
+                    rank=rank_at_level("P", level),
+                    cooldown=0.0,
+                    cost=0.0,
+                    damage_type=_adt,
+                    resource=None,
+                    raw_damage_per_cast=_araw,
+                    post_mode_damage_per_cast=_apost_mode,
+                    post_mitigation_damage_per_cast=_apost_mit,
+                    casts_per_sec=_PASSIVE_AURA_CASTS_PER_SEC,
+                    casts_per_sec_source="per_second_aura",
+                    mana_uptime_factor=1.0,
+                    dps=_adps,
+                    notes=(_aentry.note,),
+                ))
+                total_dps += _adps
+                notes.append(
+                    f"passive aura {_aentry.attribute} credited on the "
+                    f"per-second clock: +{_adps:.1f} DPS ({_adt}) "
+                    "(apply_passive_aura_damage)"
+                )
     if mode == "ARAM" and mode_mult != 1.0:
         notes.append(f"ARAM aramDamageDealt={mode_mult:.3f} on per-cast damage")
     n_missing = sum(1 for s in per_spell if s.casts_per_sec_source == "missing")
