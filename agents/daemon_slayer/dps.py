@@ -6,6 +6,17 @@ champion's resolved AD/AS/crit at the requested level + items. Mode hook
 applies ``aram_modifiers.aramDamageDealt`` for ARAM. Target armor uses
 the standard League formula.
 
+Degenerate-scenario fallback (RM-48, 2026-07-25) - READ BEFORE CITING:
+when a champion's scenario rotations encode zero basic attacks for the
+SELECTED phase, ``weighted_dps`` falls back to ``raw_attack_dps *
+mode_mult`` and emits a note. This is a DEGENERATE-VALUE fix - a 0.0 DPS
+breaks every blended scorer that divides by or weights on it - and it is
+explicitly NOT a champion damage model. The fallback credits AD/crit auto
+DPS, which for Azir is the wrong model (his soldier stabs scale 45-65 pct
+AP with ZERO AD scaling). Modelling a champion's non-AA damage stream is a
+schema lift and is out of scope for this seam; do not cite it as evidence
+that any champion's kit is modelled.
+
 Phase 4 thin slice (2026-05-03): ``effects.ITEM_EFFECTS`` layers
 per-item conditionals on top of the stat math - Infinity Edge bumps the
 crit-damage multiplier, Kraken Slayer adds an every-3rd-attack physical
@@ -1236,12 +1247,14 @@ def compute_dps(
 
     if only_phase is not None:
         # HOT-01 fast path. Compute the selected phase first. If it carries DPS,
-        # the all-phases-zero fallback (guarded on ``not any(phase_dps.values())``
-        # below) provably cannot fire, so the other two convolutions are dead
-        # work - skip them. Only when the selected phase is zero do we compute
-        # the remaining phases, so the fallback decision stays byte-identical to
-        # the full 3-phase path (a champion with rotations only in a non-selected
-        # phase must NOT trip the champion-level fallback).
+        # the degenerate-scenario fallback (guarded on
+        # ``not phase_dps[selected_phase]`` below) provably cannot fire, so the
+        # other two convolutions are dead work - skip them. Only when the
+        # selected phase is zero do we compute the remaining phases: the
+        # fallback still needs them to tell the all-phase-degenerate branch
+        # (flatten every phase, legacy note) from the per-phase branch
+        # (substitute only the selected phase, keep the healthy ones). That
+        # keeps this path byte-identical to the full 3-phase path.
         _sel_dps = _phase_dps_for(selected_phase)
         if _sel_dps > 0.0:
             phase_dps = {selected_phase: _sel_dps}
@@ -1320,17 +1333,54 @@ def compute_dps(
     # damage in this mode" zero, not a scenario gap. raw_attack_dps is mode-
     # independent so it is >0 even for a disabled champ; multiplying by
     # mode_mult keeps a disabled champ at 0 AND scales an enabled champ's
-    # fallback by the ARAM modifier, consistent with avg_attack_dmg. Guarded
-    # on ALL phases == 0, so the champs with real basic-attack rotations are
-    # byte-identical.
-    if raw_attack_dps > 0.0 and mode_mult > 0.0 and not any(phase_dps.values()):
+    # fallback by the ARAM modifier, consistent with avg_attack_dmg.
+    #
+    # RM-48 (2026-07-25): the guard was PER-CHAMPION (``not any(...)``) and so
+    # only fired when EVERY phase was zero. Champions whose rotations encode
+    # basic=0 in mid+late but a real basic-attack rotation in early never
+    # tripped it, and when the SELECTED phase was one of the zero ones the
+    # champion shipped a silent, note-free weighted_dps == 0.0. Measured at
+    # 16.14.1 over the full 173-champion roster: 3 champions land in that hole
+    # (Azir, Karthus, Viktor - all degenerate in {mid, late}). Downstream,
+    # onhit_dps.py adds baseline_auto_dps to ability_dps, so a 0.0 here makes
+    # /rank-onhit silently return a /rank-mage-identical response.
+    #
+    # The guard is now PER PHASE - it fires when the SELECTED phase is
+    # degenerate, even if another phase is not. The all-phase case keeps its
+    # original behavior exactly (every phase flattened to the fallback, same
+    # note text); the new per-phase case substitutes ONLY the selected phase
+    # and leaves the healthy phases at their rotation values, so the champions
+    # with a healthy selected phase stay byte-identical.
+    #
+    # HONESTY CAVEAT: this is a DEGENERATE-VALUE fix, NOT a champion damage
+    # model. The fallback credits AD/crit auto DPS. For Azir that is the wrong
+    # damage model - his soldier stabs scale 45-65 pct AP and take ZERO AD
+    # scaling, and a counterfactual measured in the same session showed the
+    # restored auto DPS makes /rank-onhit return Yun Tal #1 / Infinity Edge #2
+    # at coherence 0.0, which is wrong for him. It ships because a 0.0 DPS
+    # breaks every blended scorer that divides by or weights on it. Modelling
+    # the soldier stream is a schema lift and is out of scope - do NOT cite
+    # this seam as "Azir's soldiers are modelled".
+    if raw_attack_dps > 0.0 and mode_mult > 0.0 and not phase_dps[selected_phase]:
         fallback_dps = raw_attack_dps * mode_mult
         weighted_dps = fallback_dps
-        phase_dps = {p: fallback_dps for p in PHASES}
-        notes.append(
-            "weighted_dps fell back to raw_attack_dps*mode_mult (scenario "
-            "rotations encode zero basic attacks for this champion)"
-        )
+        if not any(phase_dps.values()):
+            phase_dps = {p: fallback_dps for p in PHASES}
+            notes.append(
+                "weighted_dps fell back to raw_attack_dps*mode_mult (scenario "
+                "rotations encode zero basic attacks for this champion)"
+            )
+        else:
+            _degenerate = [p for p in phase_dps if not phase_dps[p]]
+            phase_dps = {**phase_dps, selected_phase: fallback_dps}
+            notes.append(
+                "weighted_dps fell back to raw_attack_dps*mode_mult for the "
+                f"selected phase {selected_phase!r} (scenario rotations "
+                f"encode zero basic attacks for phase(s) "
+                f"{', '.join(_degenerate)}; the non-selected phases keep "
+                "their rotation values unchanged). Degenerate-VALUE fallback "
+                "only - this is NOT a kit damage model"
+            )
 
     # A-12 / RM-46: empty string on the default path -> no note, byte-identical.
     if crit_conversion_note:
