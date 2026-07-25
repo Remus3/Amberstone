@@ -70,12 +70,16 @@ def _snap() -> DataSnapshot:
 class ItemResistRegistryTests(unittest.TestCase):
     def test_registered_ids_are_the_expected_set(self) -> None:
         # R106 ramping combat passives (Jak'Sho / FoN) + R124 prismatic always-on
-        # percent-of-total self-amps (Molten Stone / Starry Night, base + mirror).
+        # percent-of-total self-amps (Molten Stone / Starry Night, base + mirror)
+        # + the R67-tail level-scaled Terminus Light row (SR 3302 only; the Arena
+        # mirror 223302 is a documented doctrine-B exclusion, pinned in
+        # test_item_resist_grants_terminus_r67.py).
         self.assertEqual(
             set(_ITEM_RESIST_GRANTS),
             {
                 "6665", "226665", "4401", "224401",
                 "443058", "663058", "443059", "663059",
+                "3302",
             },
         )
 

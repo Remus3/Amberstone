@@ -199,6 +199,13 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     "test_r144_mirror_slice_a.py",
     "test_engine_math_correctness_pipeline_c.py",
     "test_cast_rate_canonical_keys.py",
+    # A-39 (2026-07-25, ENGINE 1.247.0): the boot-utility v2 CC-input test
+    # asserts the seam end-to-end, so it imports the HOST caller
+    # ``core.build_order._select_boots`` / ``_select_boots_utility`` at module
+    # level. The engine-side half (``boot_utility.comp_cc_signal``) is portable;
+    # the boots CHOICE lives host-side, so this module cannot collect in an
+    # engine-only package.
+    "test_boot_utility_cc_v2_a39.py",
 })
 
 # PATCH-INDEPENDENT engine data tables, which live at the ``data/daemon_slayer/``

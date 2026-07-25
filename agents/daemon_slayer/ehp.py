@@ -138,6 +138,7 @@ from .rank import (
 from .stats import clamp_level
 from .survivability_credit import survivability_item_ids_tank
 from .kit_conversion import conversion_factor, kit_conversion
+from ._resist_damage_coupling import coupled_resist_points, resist_damage_coupling
 from ._hsp_amp import sum_wielder_hsp_pct
 from ._item_ally_grant import ally_grant_hp, total_item_ally_grant_hp
 from ._champion_ally_reach import champion_ally_reach
@@ -1355,6 +1356,16 @@ def compute_ehp(
     # R136 lanes.
     apply_rune_self_heal: bool = False,
     apply_rune_shield_grants: bool = False,
+    # RM-87 / row A-18 (2026-07-25): the champion RESIST -> DAMAGE coupling seam,
+    # appended at END per the no-mid-signature-insert convention. This pair is a
+    # RANKING-ONLY lever: it is consumed by ``rank_items_by_ehp``'s sort key (the
+    # ``_conv_key`` precedent - never a row value), so on THIS function it is
+    # accepted for signature parity + forward-compat and validated only. Nothing
+    # in the EHP math below reads it, which is why compute_ehp stays provably
+    # byte-identical whatever is passed. See ``_resist_damage_coupling`` for the
+    # registry and the refutation of the original "resists pay twice" filing.
+    apply_resist_damage_coupling: bool = False,
+    resist_coupling_strength: float = 0.0,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1416,6 +1427,13 @@ def compute_ehp(
     if total_share > 1.0001:  # 1e-4 tolerance for float arithmetic
         raise ValueError(
             f"enemy_ad_share + enemy_ap_share must be <= 1.0, got {total_share}"
+        )
+    # RM-87: the coupling lever is ranking-only (see the signature note), but its
+    # magnitude is validated HERE so an invalid value fails at the same boundary
+    # as the enemy-share floats rather than silently inverting a sort key.
+    if resist_coupling_strength < 0.0:
+        raise ValueError(
+            f"resist_coupling_strength must be >= 0.0, got {resist_coupling_strength}"
         )
 
     resolved = build_champion(
@@ -1896,6 +1914,7 @@ def compute_ehp(
             total_armor=armor, total_mr=mr,
             base_armor=float(base.get("armor", 0.0)),
             base_mr=float(base.get("mr", 0.0)),
+            level=level,
         )
     # ENGINE 1.224.0 (R132, 2026-07-19): rune-side RESIST-GRANT credit - the RUNE
     # analog of resist_grants / item_resist_grants above (a clean EHP-DENOMINATOR
@@ -2650,6 +2669,17 @@ class EhpRankedItem:
     # no-grant identity (team == blended) so the row stays byte-identical.
     team_blended_ehp: float = 0.0
     delta_team_blended_ehp: float = 0.0
+    # RM-87 / row A-18 (2026-07-25): OBSERVABILITY ONLY - the candidate's armor /
+    # MR gain over the baseline build, which is the quantity the resist -> damage
+    # coupling credit reads. Appended at END with defaults per the Python
+    # dataclass convention (a mid-class required field breaks every positional
+    # construction). Populated ONLY when the coupling lever is engaged; 0.0
+    # otherwise, so the default row stays at identity and the OFF path is
+    # byte-identical. They explain a reorder (Thornmail's armor delta pays a
+    # second time on Ornn; Warmog's 0.0 is why it does not) - the ranker's sort
+    # key is the only consumer.
+    delta_armor: float = 0.0
+    delta_mr: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -2669,6 +2699,8 @@ class EhpRankedItem:
             "survivability_score": self.survivability_score,
             "team_blended_ehp": self.team_blended_ehp,
             "delta_team_blended_ehp": self.delta_team_blended_ehp,
+            "delta_armor": self.delta_armor,
+            "delta_mr": self.delta_mr,
         }
 
 
@@ -2816,6 +2848,14 @@ def rank_items_by_ehp(
     # R136 lanes.
     apply_rune_self_heal: bool = False,
     apply_rune_shield_grants: bool = False,
+    # RM-87 / row A-18 (2026-07-25): the champion RESIST -> DAMAGE coupling lever,
+    # appended at END per the no-mid-signature-insert convention. THIS is the
+    # function that consumes it: a sort-ONLY credit folded into ``_base_key``
+    # (the ``_conv_key`` precedent), never into a row value. Inert unless the flag
+    # is True AND the strength is > 0.0 AND the champion is seeded in
+    # ``_resist_damage_coupling`` - any one of those failing is an exact no-op.
+    apply_resist_damage_coupling: bool = False,
+    resist_coupling_strength: float = 0.0,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -2986,7 +3026,53 @@ def rank_items_by_ehp(
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
+        # RM-87: forwarded to the BASELINE call only, and only so the strength is
+        # validated at the same boundary as the enemy-share floats. The pair is
+        # inert inside compute_ehp by construction (nothing in the EHP math reads
+        # it), so this forward cannot perturb a single baseline value; the
+        # per-candidate calls below deliberately do NOT forward it, because a
+        # sort-only lever has no business being re-validated once per candidate.
+        apply_resist_damage_coupling=apply_resist_damage_coupling,
+        resist_coupling_strength=resist_coupling_strength,
     )
+
+    # RM-87 / row A-18 (2026-07-25): resolve the resist -> damage coupling ONCE.
+    # Consulted ONLY when the flag is engaged AND the strength is positive, so a
+    # default call never touches the registry (the ``_conv`` gating shape).
+    # ``_coupling_pool`` is the BASELINE build's RAW resist pool (armor + MR on the
+    # basis the entry names, percent-FREE) - the denominator that turns a
+    # candidate's coupled resist points into a dimensionless percent-delta,
+    # exactly how ``hybrid._hybrid_delta_pct`` normalizes ``delta_dps /
+    # baseline_dps`` and ``delta_ehp / baseline_ehp`` before weighting two
+    # different units. Percent-FREE on purpose: normalizing by the percent-
+    # weighted baseline would cancel the percents and hand a 5-percent converter
+    # the same credit as a 40-percent one. A non-positive pool (a level-1
+    # no-item bonus-basis build) disarms the lane rather than dividing by zero.
+    _coupling = (
+        resist_damage_coupling(str(champion_id))
+        if (apply_resist_damage_coupling and resist_coupling_strength > 0.0)
+        else None
+    )
+    _coupling_pool = 0.0
+    if _coupling is not None:
+        if _coupling.pct_base == "bonus":
+            # BONUS basis: subtract the champion's own base block, exactly how
+            # compute_ehp derives its bonus_hp / bonus_ad (``stats`` minus
+            # ``base_stats`` off the SAME resolved build).
+            _cpl_resolved = build_champion(
+                snapshot, champion_id, level, item_ids=current_ids, mode=mode,
+                augments=augments, apply_mode_modifiers=apply_mode_modifiers,
+            )
+            _cpl_base = _cpl_resolved.base_stats
+            _basis_armor = max(
+                0.0, baseline.armor - float(_cpl_base.get("armor", 0.0))
+            )
+            _basis_mr = max(0.0, baseline.mr - float(_cpl_base.get("mr", 0.0)))
+        else:
+            _basis_armor, _basis_mr = baseline.armor, baseline.mr
+        _coupling_pool = _basis_armor + _basis_mr
+        if _coupling_pool <= 0.0:
+            _coupling = None
 
     candidates = _filter_candidates(
         snapshot,
@@ -3084,6 +3170,15 @@ def rank_items_by_ehp(
         # when the seam is engaged, else 0.0. Floated BY MEMBERSHIP - these items
         # are pooled but the raw-EHP-max delta sort buries the win-correlated ones.
         survivability_score = 1.0 if (surv_active and item_id in surv_ids) else 0.0
+        # RM-87 observability: the candidate's resist gain, which is the quantity
+        # the coupling credit reads. 0.0 unless the lane is armed -> the default
+        # row (and to_dict) stays at identity.
+        if _coupling is not None:
+            cpl_d_armor = scored.armor - baseline.armor
+            cpl_d_mr = scored.mr - baseline.mr
+        else:
+            cpl_d_armor = 0.0
+            cpl_d_mr = 0.0
         ranked.append(EhpRankedItem(
             item_id=item_id,
             item_name=str(rec.get("name", item_id)),
@@ -3101,6 +3196,8 @@ def rank_items_by_ehp(
             survivability_score=survivability_score,
             team_blended_ehp=team_ehp,
             delta_team_blended_ehp=team_delta,
+            delta_armor=cpl_d_armor,
+            delta_mr=cpl_d_mr,
         ))
 
     # Item 236: the sort key tracks score_by. Default "blended" sorts on
@@ -3142,15 +3239,50 @@ def rank_items_by_ehp(
             _conv_memo[item_id] = factor
         return value * factor
 
+    def _coupling_key(value: float, r: EhpRankedItem) -> float:
+        """RM-87 sort-only view of ``value`` - never mutates the row itself.
+
+        The champion's kit re-spends a fraction of its resists as damage
+        (``_resist_damage_coupling``), and this module credits that payment
+        nowhere: ``ehp.py`` reads zero damage_blocks. The credit is a
+        NORMALIZED percent-delta, the ``hybrid._hybrid_delta_pct`` idiom:
+
+            points = armor_pct/100 * delta_armor + mr_pct/100 * delta_mr
+            credit = strength * conditional_probability * points / pool
+
+        where ``pool`` is the BASELINE build's RAW resist total on the basis the
+        entry names (total or bonus per ``pct_base``), percent-FREE. Both halves
+        are resist points, so ``points / pool`` is dimensionless and the lever
+        stays unit-free - no EHP-vs-damage unit mixing enters the sort key - and
+        because the pool carries no percents the credit scales with the
+        conversion MAGNITUDE (Ornn's 40 percent earns 8x Rell's 5 percent).
+
+        Only ever RAISES, and only for a candidate that actually grants resists.
+        A non-positive value is returned unchanged (the ``_conv_key`` guard,
+        mirrored: scaling a negative delta UP would push a regression further
+        down, which is a behavior change this seam has no business making).
+        """
+        if _coupling is None or value <= 0.0:
+            return value
+        points = coupled_resist_points(_coupling, r.delta_armor, r.delta_mr)
+        if points <= 0.0:
+            return value
+        credit = (
+            resist_coupling_strength
+            * _coupling.conditional_probability
+            * (points / _coupling_pool)
+        )
+        return value * (1.0 + credit)
+
     def _base_key(r: EhpRankedItem) -> tuple:
         if sort_by == "efficiency":
             return (
-                _conv_key(r.ehp_per_1k_gold, r.item_id),
-                _conv_key(_active(r), r.item_id),
+                _coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r),
+                _coupling_key(_conv_key(_active(r), r.item_id), r),
             )
         return (
-            _conv_key(_active(r), r.item_id),
-            _conv_key(r.ehp_per_1k_gold, r.item_id),
+            _coupling_key(_conv_key(_active(r), r.item_id), r),
+            _coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r),
         )
 
     if surv_active:
@@ -3205,6 +3337,20 @@ def rank_items_by_ehp(
         notes.append(
             f"prefer_survivability_by_win=ON - {len(surv_ids)} WIN-anchored "
             f"survivability item(s) floated above the max-EHP ordering"
+        )
+    if _coupling is not None:
+        notes.append(
+            f"apply_resist_damage_coupling=ON ({_coupling.attribute}) - sort-only "
+            f"credit for {_coupling.armor_pct:.0f}% {_coupling.pct_base} armor + "
+            f"{_coupling.mr_pct:.0f}% {_coupling.pct_base} MR re-spent as damage, "
+            f"strength={resist_coupling_strength:.2f}, amortized at "
+            f"{_coupling.conditional_probability:.2f}, normalized against a "
+            f"{_coupling_pool:.1f}-point baseline {_coupling.pct_base} resist pool"
+        )
+    elif apply_resist_damage_coupling and resist_coupling_strength > 0.0:
+        notes.append(
+            "apply_resist_damage_coupling=ON but inert - champion has no seeded "
+            "resist->damage conversion (or a zero baseline resist pool)"
         )
 
     return EhpRankResult(

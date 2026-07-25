@@ -241,18 +241,27 @@ def _select_boots_utility(
     enemy_ad_share: float,
     enemy_ap_share: float,
     champion: str = "",
+    enemy_champions: Optional[Iterable[str]] = None,
 ) -> str:
     """ON-path boot pick: comp-conditioned utility argmax with archetype-default
     hysteresis. Lazy-imports the DS primitive (byte-identical OFF never touches it).
 
     ``champion`` (default "") consults the per-champion boots override as the
     hysteresis default when present (Jhin -> Swiftness); blank / unlisted
-    champions keep the archetype default, so the ON path stays byte-identical."""
+    champions keep the archetype default, so the ON path stays byte-identical.
+
+    ``enemy_champions`` (default None, A-39 v2 input) supplies the real enemy
+    roster so the CC axis is fed from ``boot_utility.comp_cc_signal`` (per-champion
+    hand-weighted lockdown seconds) instead of the v1 AP-share proxy. None - every
+    pre-A-39 caller - keeps the v1 proxy, so the ON path stays byte-identical."""
     from agents.daemon_slayer import boot_utility as bu
     default_id = _BOOTS_OVERRIDE_BY_CHAMP.get(champion) or _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
-    # v1 CC proxy: AP-heavy comps carry more lockdown (real per-champion CC via
-    # enemy_champions is a follow-up; frontline CC is under-credited by this proxy).
-    cc_proxy = float(enemy_ap_share)
+    # v2 (A-39): real per-champion enemy CC when the caller supplies the roster.
+    # The v1 AP-share proxy is the documented fallback - it under-credits an
+    # AD-dominant lockdown frontline (measured comp-mean lockdown 3.650 for
+    # Nautilus/Amumu/Leona/Sejuani/Malphite against an AP share near 0.25).
+    cc_signal = bu.comp_cc_signal(enemy_champions)
+    cc_proxy = float(enemy_ap_share) if cc_signal is None else float(cc_signal)
     weights = bu.comp_weights(arch, float(enemy_ad_share), float(enemy_ap_share), cc_proxy)
     return bu.select_boot(bu.SELECTABLE_TIER2, weights, default_id)
 
@@ -266,6 +275,7 @@ def _select_boots(
     enemy_ap_share: float = 0.5,
     assume_boot_utility: bool = False,
     champion: str = "",
+    enemy_champions: Optional[Iterable[str]] = None,
 ) -> tuple[str, str]:
     """Pick the appropriate boots family given the operator's archetype +
     enemy AD/AP comp signal. Returns ``(item_id, item_name)``.
@@ -290,12 +300,18 @@ def _select_boots(
     Arena (``mode`` in :data:`_ARENA_MODES`, map 30) remaps the resolved
     tier-2 boot to its map30-legal 22-prefixed mirror via
     :data:`_BOOTS_ARENA_MIRROR`.
+
+    ``enemy_champions`` (default None, A-39) is forwarded to the ON path only,
+    where it upgrades the CC axis from the v1 AP-share proxy to a real
+    per-champion lockdown signal. It is inert on the OFF path and inert when
+    None, so every pre-A-39 caller is byte-identical.
     """
     arch = (archetype or "carry").strip().lower() or "carry"
     if assume_boot_utility:
         iid = _select_boots_utility(
             arch, float(enemy_ad_share), float(enemy_ap_share),
             champion=champion,
+            enemy_champions=enemy_champions,
         )
     else:
         is_dps_axis = arch in ("dps", "carry", "marksman", "adc")
@@ -478,6 +494,7 @@ def plan_build_order(
     incumbent: Optional[Iterable[str]] = None,
     incumbent_margin: float = 0.03,
     assume_boot_utility: bool = False,
+    enemy_champions: Optional[Iterable[str]] = None,
 ) -> Optional[BuildOrderResult]:
     """Plan a contextual, match-specific item ORDER for the remaining slots.
 
@@ -499,6 +516,11 @@ def plan_build_order(
     ``alpha`` / ``max_priority`` / ``combo_sequence`` / ``only_item_ids``
     / ...); the dispatcher silently ignores knobs irrelevant to the
     routed scorer.
+
+    ``enemy_champions`` (default None, A-39) is the enemy roster, forwarded ONLY
+    to :func:`_select_boots` so the boot-utility ON path can feed its CC axis from
+    real per-champion lockdown data instead of the v1 AP-share proxy. It is NOT
+    splatted into the ranker, and None (every pre-A-39 caller) is byte-identical.
     """
     if not champion or not str(champion).strip():
         return None
@@ -575,6 +597,7 @@ def plan_build_order(
             enemy_ap_share=float(extra.get("enemy_ap_share", 0.5)),
             assume_boot_utility=assume_boot_utility,
             champion=champ_name_norm,
+            enemy_champions=enemy_champions,
         )
 
     # next_slot tracks the 1-based slot for the NEXT entry appended to

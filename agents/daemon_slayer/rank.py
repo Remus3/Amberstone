@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Optional
 
+from ._burst_off_axis import champion_burst_axis, is_off_axis_candidate
 from .data_loader import DataSnapshot
 from .dps import _select_phase, compute_dps
 from .effects import ITEM_EFFECTS
@@ -916,6 +917,7 @@ def rank_items(
     target_current_hp_pct: float = 1.0,
     kit_conversion_strength: float = 0.0,
     widen_carry_pool: bool = False,
+    exclude_off_axis_items: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -1011,6 +1013,26 @@ def rank_items(
     (the RM-93 support-quest deny, a different mechanism, measured harmful when
     admitted). When ``False`` (default) the output is byte-identical. The live
     default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``exclude_off_axis_items`` is the OPTIONAL RM-35 clause-(2) seam
+    (DEFAULT-OFF) - the CARRY-route consumer of the symmetric kit-axis gate
+    RM-41 built for ``ds.burst`` (``._burst_off_axis``). It matters here because
+    of the ``fight_length`` blend above: the burst half of ``effective_score``
+    credits a pure-AP item on an AD marksman even when its sustained
+    ``delta_dps`` is exactly ZERO, so engaging ``fight_length`` floats dead AP
+    gold into the ranking. MEASURED at 1.246.0, level 13, tanky target, each
+    champion at its own shipped depth: Twitch (FL 0.5, already in the shipped
+    ``core.ds_champion_fight_length`` allow-map) ranks Lich Bane 3100 at #7 on
+    ``delta_dps`` 22.86 vs ``effective_score`` 251.00, and Rabadon's Deathcap
+    3089 scores ``effective_score`` 176.21 off ``delta_dps`` 0.000 - the whole
+    score is burst term. The gate is DATA-DRIVEN, not a curated list: the
+    champion's axis comes from its own ``lolmath.damage_distribution`` and the
+    item gate from its own DDragon offensive stat line, so hybrids survive by
+    construction (Hextech Gunblade 3146, 80 AP + 40 AD, is NOT stripped) and a
+    champion with no decisive split (Shaco) resolves to ``None`` and is a
+    byte-identical no-op. When ``False`` (default) the candidate pool and every
+    row are byte-identical. The live default-ON flip is EXCLUDED ->
+    docs/LIVE_GAME_GATED_SYNC.md.
 
     ``cost_ceiling`` is the OPTIONAL F2 cost-aware-top seam (DEFAULT-OFF). When a
     positive int, candidates whose ``gold.total`` exceeds it are dropped from the
@@ -1154,6 +1176,21 @@ def rank_items(
         # champ is melee - the in-game shop blocks the purchase (2026-07-02).
         champion_is_melee=_champion_is_melee(champ_rec, augments),
     )
+
+    # RM-35 clause (2), DEFAULT-OFF: strip candidates whose offense sits
+    # ENTIRELY on this champion's OFF axis. Same symmetric gate the RM-41
+    # ds.burst ranker uses (agents/daemon_slayer/_burst_off_axis.py), wired
+    # here because the fight_length burst term credits a zero-DPS AP item on
+    # an AD marksman. Axis resolved ONCE (O(candidates)); an indecisive damage
+    # split leaves off_axis None and the comprehension is a no-op.
+    off_axis: Optional[str] = (
+        champion_burst_axis(champ_rec) if exclude_off_axis_items else None
+    )
+    if off_axis is not None:
+        candidates = [
+            (item_id, rec) for item_id, rec in candidates
+            if not is_off_axis_candidate(rec, off_axis)
+        ]
 
     ranked: list[RankedItem] = []
     for item_id, rec in candidates:

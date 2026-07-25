@@ -10,12 +10,43 @@ never match it - the exact structural gap the ``_item_revive`` /
 registries fill for the champion revive / survival-window / spell-shield / mana-HP
 axes.
 
-Two entry SHAPES share this registry + the one ``apply_item_resist_grants`` seam:
+Three entry SHAPES share this registry + the one ``apply_item_resist_grants`` seam:
 (1) the RAMPING combat passives below (Jak'Sho / Force of Nature, ``conditional_
 probability`` 0.5 at-max-stacks midpoint); (2) R124 (ENGINE 1.212.0) prismatic
 ALWAYS-ON percent-of-TOTAL self-amps (Shield of Molten Stone +20% armor, Cloak of
 Starry Night +20% MR) at ``conditional_probability=1.0`` (EXACT, no amortization) -
-see their inline block in ``_ITEM_RESIST_GRANTS``.
+see their inline block in ``_ITEM_RESIST_GRANTS``; (3) the R67-tail LEVEL-SCALED
+flat grant (Terminus 3302 "Juxtaposition" Light), whose ``armor`` / ``mr`` carry an
+explicit 18-long per-CHAMPION-LEVEL tuple resolved by ``level_scaled`` - the
+``_passive_resist_overrides.PassiveResistEntry.level_scaled`` shape, ported to the
+item lane.
+
+R67 TAIL (Terminus 3302 Juxtaposition LIGHT) - the filed blocker was STALE. The
+``_effects_data`` 3302 note read "Light hits ... stay caster-side and OUT of scope -
+no item-keyed resist-grant path exists (_passive_resist_overrides.py is champion-
+keyed only); FUTURE". THIS module is that path (it landed 2026-07-11, R106, ENGINE
+1.199.0, eight days before the note was re-read), so the Light half is credited here
+now. Meraki 16.14.1 items.3302 passive "Juxtaposition", verbatim: "''Light'' hits
+grant {{pp|6 to 8 for 3|1;11;14|type=level}} {{as|'''bonus''' armor}} and {{as|
+'''bonus''' magic resistance}} while ''Dark'' hits grant 10% {{as|armor
+penetration}} and {{as|magic penetration}}, for a total of {{pp|6*3 to 8*3 for 3|
+1;11;14}} '''bonus''' resistances and 30% resistances penetration at maximum stacks
+of each." -> 6 / 7 / 8 per stack at level breakpoints 1 / 11 / 14, cap 3 stacks, so
+the at-max-stacks Light total is 18 / 21 / 24. The tuple encodes those EXPLICIT feed
+breakpoints directly rather than an even-thirds ``_step_per_level`` interpolation,
+whose boundaries (levels 1 / 7 / 13) would disagree with the feed's 1 / 11 / 14.
+
+ARENA MIRROR 223302 IS DELIBERATELY UNREGISTERED (doctrine B, R161). Its only
+on-disk text (``items.json`` DDragon 16.14.1) is "Light Attacks grant Armor and
+Magic Resist for 5s" - the grant is NAMED but carries NO magnitude, and
+``items_meraki.json`` holds ZERO ``*3302`` mirror rows (only ``3302``). No feed on
+disk carries an Arena Light value, so the only way to produce one would be to scale
+the SR 18/21/24 by the Dark pen ratio (Arena 8%/stack vs SR 10%/stack) - inheritance
+by arithmetic, exactly what doctrine B forbids. The id is enumerated in
+``_ITEM_RESIST_UNSOURCED_MIRRORS`` so the R144 coverage guard can tell a knowing
+exclusion from the silent-0.0 defect class. Sibling suffix sweep: only ``3302``
+(maps 11 / 12 / 21 / 35) and ``223302`` (map 30) exist; map 21 is Nexus Blitz and is
+unwired, so the ONE SR row covers SR + ARAM + Brawl.
 
 Mechanic: two current-patch (16.13.1 Meraki) item COMBAT passives grant bonus
 resists that RAMP to max stacks in combat and are ABSENT from the resolved stat
@@ -123,27 +154,50 @@ from typing import Iterable
 _ITEM_RESIST_STACK_PROB: float = 0.5
 
 
+# Mode-mirror ids of a REGISTERED carrier that are deliberately NOT priced, so the
+# R144 coverage guard (``tests/test_r144_mirror_slice_b.py``) can distinguish a
+# knowing exclusion from the silent-0.0 defect class (a registry keyed on bare ids
+# missing the mirror ``name_to_id`` actually returns). Membership here is a
+# documented DECISION, not a magnitude: every id below contributes 0.0 exactly as an
+# unregistered id would. Mirrors ``_item_general_dr._GENERAL_DR_UNSOURCED_MIRRORS``.
+#
+#   * 223302 - Terminus (Arena, maps.30). Juxtaposition LIGHT. Its DDragon text
+#     names the grant ("Light Attacks grant Armor and Magic Resist for 5s") but
+#     states NO number, and Meraki carries no ``*3302`` mirror row, so NO on-disk
+#     feed holds an Arena Light magnitude. Scaling the SR 18/21/24 by the Dark pen
+#     ratio (Arena 8%/stack vs SR 10%/stack) would be inheritance by arithmetic,
+#     which doctrine B (R161) forbids. Its DARK half IS credited, in
+#     ``_effects_data`` 223302 (``armor_pen_pct=0.24``), from the Arena feed's own
+#     8%/stack - that half has a number on disk; this one does not.
+_ITEM_RESIST_UNSOURCED_MIRRORS: frozenset[str] = frozenset({"223302"})
+
+
 @dataclass(frozen=True)
 class ItemResistEntry:
     """One item-keyed conditional bonus armor / magic-resistance grant.
 
-    ``armor`` / ``mr`` are flat bonus values (FoN +70 MR). ``armor_pct`` /
-    ``mr_pct`` carry a PERCENT (30.0 == 30%) of the champion's resist selected by
-    ``pct_base`` ("total" = base + build, or "bonus" = build delta = total - base)
-    - Jak'Sho +30% of BONUS armor + MR. An entry may carry both the flat and the
-    percent fields; they sum. ``conditional_probability`` amortizes the ramp by the
-    expected at-max-stacks uptime. ``family`` dedups a base + its Arena mirror
-    (mutually exclusive in a real build) so the grant is credited once.
+    ``armor`` / ``mr`` are flat bonus values (FoN +70 MR), or - when
+    ``level_scaled`` is True - a per-CHAMPION-LEVEL tuple read at ``level-1``
+    (Terminus Light 18/21/24). ``armor_pct`` / ``mr_pct`` carry a PERCENT (30.0 ==
+    30%) of the champion's resist selected by ``pct_base`` ("total" = base + build,
+    or "bonus" = build delta = total - base) - Jak'Sho +30% of BONUS armor + MR. An
+    entry may carry both the flat and the percent fields; they sum.
+    ``conditional_probability`` amortizes the ramp by the expected at-max-stacks
+    uptime. ``family`` dedups a base + its Arena mirror (mutually exclusive in a
+    real build) so the grant is credited once. ``level_scaled`` (appended at END per
+    the dataclass field-append convention) mirrors
+    ``_passive_resist_overrides.PassiveResistEntry.level_scaled``.
     """
 
-    armor: float = 0.0
-    mr: float = 0.0
+    armor: float | tuple[float, ...] = 0.0
+    mr: float | tuple[float, ...] = 0.0
     armor_pct: float = 0.0
     mr_pct: float = 0.0
     pct_base: str = "total"
     conditional_probability: float = _ITEM_RESIST_STACK_PROB
     family: str = ""
     note: str = ""
+    level_scaled: bool = False
 
 
 _ITEM_RESIST_GRANTS: dict[str, ItemResistEntry] = {
@@ -215,7 +269,70 @@ _ITEM_RESIST_GRANTS: dict[str, ItemResistEntry] = {
              " HALF the base 443059 percent (items.json DDragon 16.14.1);"
              " MR-scaled non-AA DR secondary uncredited",
     ),
+    # R67 tail: Terminus "Juxtaposition" LIGHT half - the caster-side bonus armor
+    # AND bonus magic resistance. LEVEL-SCALED: Meraki 16.14.1 states 6 to 8 per
+    # stack at the explicit level breakpoints 1 / 11 / 14, cap 3 stacks, "for a
+    # total of 6*3 to 8*3" -> 18 (L1-10) / 21 (L11-13) / 24 (L14-18), encoded as an
+    # explicit 18-tuple so the boundaries match the FEED rather than an even-thirds
+    # interpolation. Both axes are equal (the tooltip grants armor and MR together).
+    #
+    # conditional_probability=1.0 (NOT the registry's ramping 0.5 default). This was
+    # a judgement call between two live conventions and the evidence for each:
+    #   (a) the registry default, ``_ITEM_RESIST_STACK_PROB = 0.5`` at line 123 of
+    #       this file, whose rationale note reads "the expected fraction of the
+    #       modeled sustained fight spent AT MAX STACKS ... so the first seconds of
+    #       a fight are sub-max".
+    #   (b) the ALREADY-SHIPPED DARK half of the SAME tooltip clause, which is
+    #       credited at the FULL 3-stack steady state with NO amortization:
+    #       ``_effects_data.py:633-634`` sets ``armor_pen_pct=0.30`` /
+    #       ``magic_pen_pct=0.30`` (10%/stack x 3), and its note at
+    #       ``_effects_data.py:620-623`` justifies that as "the full-stack
+    #       sustained-DPS convention (Black Cleaver 3071 5-stack 0.30 shred, Guinsoo
+    #       3124 4-stack 0.32 cond-AS)". ``tests/test_pen_pct_catalog_r160.py:105``
+    #       pins it: ``"3302": (10.0, 0.30)``.
+    # DECISION: (b). Light and Dark are two halves of ONE alternating-basic-attack
+    # accrual - same stack cap 3, same 5s window, same trigger. Crediting Light at
+    # 0.5 while Dark sits at 1.0 would make one mechanic's two halves disagree
+    # inside one engine, and the disagreement would be an artifact of which registry
+    # each half happened to land in, not of the game. Convention (a) exists for
+    # Jak'Sho / FoN, which ramp on a SLOWER clock (5 seconds in combat / 8 stacks of
+    # TAKING magic damage) than a 3-stack alternating on-hit an attacking champion
+    # fills in ~6 attacks. The 0.5 default is left untouched for those rows.
+    "3302": ItemResistEntry(
+        armor=(18.0,) * 10 + (21.0,) * 3 + (24.0,) * 5,
+        mr=(18.0,) * 10 + (21.0,) * 3 + (24.0,) * 5,
+        conditional_probability=1.0,
+        family="terminus",
+        level_scaled=True,
+        note="Juxtaposition Light: 6 to 8 bonus armor AND bonus MR per stack"
+             " (Meraki 16.14.1 pp 1;11;14), cap 3 stacks -> 18 / 21 / 24 at max"
+             " stacks; full-stack steady state (prob 1.0) to match the already"
+             " credited Dark half of the same clause; Arena mirror 223302"
+             " deliberately absent (no on-disk Light magnitude, doctrine B)",
+    ),
 }
+
+
+def _value_at_level(
+    val: float | tuple[float, ...], level: int, level_scaled: bool
+) -> float:
+    """Resolve a grant value at the champion level.
+
+    A LOCAL copy of the ``_passive_resist_overrides._value_at_level`` level branch
+    (that module's ``rank_scaled`` ability-rank branch has no item analogue, and this
+    registry must not depend on the champion registry). ``level_scaled`` reads an
+    18-long per-CHAMPION-LEVEL tuple at ``level-1``, clamped to 1..18 by the tuple
+    bounds. A flat value is its float; a tuple on a NON-scaled entry defensively
+    resolves at its first element (the champion-registry behavior).
+    """
+    if level_scaled and isinstance(val, (tuple, list)):
+        if not val:
+            return 0.0
+        idx = max(0, min(int(level) - 1, len(val) - 1))
+        return float(val[idx])
+    if isinstance(val, (tuple, list)):
+        return float(val[0]) if val else 0.0
+    return float(val)
 
 
 def item_resist_grants(
@@ -225,6 +342,7 @@ def item_resist_grants(
     total_mr: float,
     base_armor: float,
     base_mr: float,
+    level: int = 1,
 ) -> tuple[float, float]:
     """Return the ``(bonus_armor, bonus_mr)`` item-side conditional resist grant.
 
@@ -236,6 +354,11 @@ def item_resist_grants(
     never yields a negative grant); the percent-of-total grant multiplies the
     resolved total. Each grant is scaled by its entry's
     ``conditional_probability`` (the at-max-stacks midpoint).
+
+    ``level`` selects the per-CHAMPION-LEVEL value on a ``level_scaled`` row
+    (Terminus Light 18 / 21 / 24) and is clamped to 1..18 by the tuple bounds; it is
+    inert on every flat / percent row (the ``_item_health_stack.item_health_stack_hp``
+    level-argument precedent). Default 1 keeps pre-existing callers unchanged.
 
     A ``family`` tag is credited at most once (a base + its Arena mirror are
     mutually exclusive; crediting both would double-count the percent half).
@@ -256,9 +379,9 @@ def item_resist_grants(
             continue
         seen_families.add(entry.family)
         prob = entry.conditional_probability
-        # Flat add (item-264 mode).
-        bonus_armor += entry.armor * prob
-        bonus_mr += entry.mr * prob
+        # Flat add (item-264 mode), level-resolved when ``level_scaled``.
+        bonus_armor += _value_at_level(entry.armor, level, entry.level_scaled) * prob
+        bonus_mr += _value_at_level(entry.mr, level, entry.level_scaled) * prob
         # Percent-of-resist add (item-268 mode).
         if entry.armor_pct or entry.mr_pct:
             if entry.pct_base == "bonus":

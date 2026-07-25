@@ -1,165 +1,238 @@
-# Riot Commander - next session: build the NEXT 5 open non-gated items
+# Riot Commander - next session: clean up ROADMAP.md, THEN the next 5 open rows
+
+## 0. FIRST TASK, OPERATOR-DIRECTED 2026-07-25: clean up `ROADMAP.md`
+
+This is the priority for the session and it is not optional. `ROADMAP.md` is
+**78500-79500 bytes against the 81920 ceiling** in `tests/test_doc_size_budget.py`
+(`ROADMAP_MAX = 80 * 1024`). Measure it first (`(Get-Item ROADMAP.md).Length`), because
+three sessions in a row have each spent 600-1500 bytes of the remaining headroom on
+status flips. It will hit the budget and fail CI within about two more sessions.
+
+What the file has become: a mix of live open work, SHIPPED entries kept in place with
+verdicts appended, and BLOCKED entries carrying full measurement narratives. The
+cleanup is a RELOCATION job, not a deletion job.
+
+- **The destination already exists:** `docs/ROADMAP_HISTORY.md` (unbudgeted). Two prior
+  relocations are already recorded there (a 2026-07-18 block for the RM-35..RM-48 sweep
+  narrative, a 2026-07-25 block for RM-79..RM-98). Follow that established pattern - a
+  dated block, verbatim text, and a one-line pointer left behind in `ROADMAP.md`.
+- **Relocate:** every SHIPPED row's narrative (keep a one-line "SHIPPED at ENGINE
+  x.y.z, see LEDGER n" stub), and every BLOCKED row's measurement evidence (keep the
+  verdict plus the named prerequisite, drop the numbers to history). This session alone
+  added long verdicts to RM-35, RM-44 and RM-114 that belong in history now.
+- **Do NOT relocate or reword:** the "DS per-champion meta-valuation sweep" section - it
+  carries load-bearing PROBE HAZARD text that agents read to avoid the `item_ids=[]` and
+  `/rank`-vs-`/rank-<archetype>` traps. It stays in `ROADMAP.md` verbatim.
+- **Do NOT delete anything.** `feedback_no_history_rewrite` - the ledger and roadmap
+  files are append-or-relocate only.
+- **Verify:** `python -m pytest tests/test_doc_size_budget.py tests/test_docs_*.py -q`,
+  and re-measure the byte count. Target leaving at least 8-10 KB of headroom so the
+  next few sessions do not immediately re-breach it. Also check whether any
+  `ROADMAP.md` cross-reference elsewhere in the repo (grep for `ROADMAP.md#`) still
+  resolves after the move.
+- While you are in there: `CLAUDE.md:135` still says "20,190 tests", which is wrong.
+  The measured counts are DS **9546** and RC `tests/` **13061**. This session already
+  fixed CLAUDE.md's stale `ENGINE_VERSION 1.244.0` pointer; the test count is the last
+  known stale number in that file.
 
 ## CONTEXT (do not re-derive)
 
-- HEAD `3ad4d075`, ENGINE **1.246.0**, patch 16.14.1, DS `agents/daemon_slayer/tests`
-  **9471** / RC `tests/` **13061**. Tree clean, pushed. DS `:8893` live serving 1.246.0.
-- Full writeup: `agents/daemon_slayer/CHANGELOG.md` 1.246.0 +
-  `docs/OPEN_ITEMS_REVIEW_2026-07-25.md` (rows A-01e / A-04-3131 / A-26 / A-40(3) now
-  SHIPPED; **A-15 REFUTED**).
-- `ROADMAP.md` is **77834 bytes / 4086 headroom** against the 81920 limit
-  (`tests/test_doc_size_budget.py`). Terse status flips only; narrative goes in
-  `docs/LEDGER.md` (unbudgeted) + the DS CHANGELOG. Do NOT relocate the "DS per-champion
-  meta-valuation sweep" section - it carries load-bearing PROBE HAZARD text.
-- Last session ran 5 rows. **THREE filings were wrong in whole or part** and probe-first
-  caught all three. Running total across two sessions: **6 mis-files caught before code.**
+- ENGINE **1.247.0**, patch 16.14.1. DS `agents/daemon_slayer/tests` **9546 passed /
+  1 skipped / 4547 subtests**; RC `tests/` **13061 passed / 106 skipped / 448 subtests
+  / 0 failed** (both measured 2026-07-25). Tree clean, pushed. DS `:8893` serving
+  1.247.0.
+- Full writeup: `agents/daemon_slayer/CHANGELOG.md` 1.247.0 + `docs/LEDGER.md` 1046 +
+  `docs/OPEN_ITEMS_REVIEW_2026-07-25.md` **PART 6**.
+- Shipped this session, all DEFAULT-OFF: `apply_resist_damage_coupling` /
+  `resist_coupling_strength` (new `_resist_damage_coupling.py`), Terminus SR `3302`
+  Light resists in `_item_resist_grants.py`, `exclude_off_axis_items` on the CARRY
+  route (`rank.rank_items` + `/rank`), and `boot_utility.comp_cc_signal` +
+  `enemy_champions` on `core/build_order._select_boots*` / `plan_build_order`.
+- **Three rows CLOSED without code and they must NOT be re-opened:** A-27 / RM-114
+  (NEXT BUY DS fallback already shipped DEFAULT-ON as `core/next_buy_fallback.py`),
+  A-30 / BACKLOG R129 (sub-fix B IS `apply_ad_axis_ability_damage`; building
+  `blend_ability_axis` would REGRESS), A-11 / RM-44 (BLOCKED-UNFALSIFIABLE).
 
 ## METHOD (standing directive - this is a LOOP)
 
-Five open **non-gated** items per session. Probe every row to PROBED before building:
-grep the cited symbol, hit the live route, read the spec. Build as parallel worktree
-agents on **disjoint file sets**, with you as **sole merger** holding every shared seam:
-`ENGINE_VERSION`, both CHANGELOGs, **all three table regens across BOTH keyspaces**,
-Share sync, living docs. Then `/done` + the next prompt.
+After the ROADMAP cleanup: five open **non-gated** items. Probe every row to PROBED
+before building - grep the cited symbol, hit the live route, read the spec. Build as
+parallel worktree agents on **disjoint file sets**, with you as **sole merger** holding
+every shared seam: `ENGINE_VERSION`, both CHANGELOGs, **all three table regens across
+BOTH keyspaces**, Share sync, living docs. Then `/done` + the next prompt.
 
 **Operator decisions do NOT block.** When a row needs a default-ON/OFF or scope call,
 dispatch a **self-adjudicating agent with scope to decide**, and require the evidence it
 decided on, not just the verdict.
 
 **Grep `docs/specs/**` and `tests/**` for every cited id/symbol BEFORE touching
-implementation code.** That step has now caught 6 mis-files in two sessions.
+implementation code** - that step has now caught **9** mis-files in three sessions.
+
+**NEW, and this is the lesson of this session: also check the row's AGE against
+`git log` for the file it cites.** Three of the five rows this session were closed by
+work that had already landed - one of them a single day before the row was written. A
+tier tag (PROBED / SOURCE-READ / AS-FILED) records how well a row was probed, never how
+recently. Cheapest possible first move on any row: `git log --oneline -5 -- <cited file>`.
 
 **When open non-gated items run dry, roll this queue:** DS sweep -> UI/UX -> repo /
 structure / security -> future-backlog -> research.
 
-## BUILD THESE 5
+## CANDIDATE ROWS (all from `docs/OPEN_ITEMS_REVIEW_2026-07-25.md`, none pre-probed)
 
-### 1. A-27 / RM-114 NEXT BUY gold feed. **PROBED - cite corrected, root cause found.**
-The row cites `core/item_advisor.resolve_build`; the real path is **`item_advisor.py:331`
-at the REPO ROOT** (`core/item_advisor.py` does not exist). Root cause measured this
-session: `resolve_build` early-returns `[]` on `if champion not in CHAMPION_BUILDS`, and
-**`CHAMPION_BUILDS` is a hardcoded 6-entry dict** - exactly `['Caitlyn', 'Jinx',
-'Miss Fortune', 'Nilah', 'Tristana', 'Vayne']` (the operator's own pool). Meanwhile DS
-serves 173 champions with real build orders. So the widget is dark for 167 of 173.
-The fix is to fall back to the DS build-order tables when `CHAMPION_BUILDS` misses, NOT
-to hand-author 167 more dict entries. Check `data/daemon_slayer/16.14.1/build_orders_sr.json`
-and `core/build_order.py` for the right seam. Watch the two-keyspace hazard below.
-Files: `item_advisor.py` + tests.
+Pick five AFTER the ROADMAP cleanup, and probe each one first - the list below is a
+menu, not a verdict.
 
-### 2. A-18 / RM-87 intra-pool `ds.ehp` weighting (Ornn / Rammus).
-Filed: resists pay twice while a self-EHP objective counts them once. Verify that claim
-against the actual `ds.ehp` scorer before building - derive the double-count from source,
-do not take the row's word for it (`feedback_reproduce_formula_from_source`: a cited
-file:line is not a correct claim). If the double-count is real, the fix is an objective
-shape change, so expect it to be Tier-2 and to move tank builds - measure which.
-
-### 3. A-31 / BACKLOG R67 Terminus Light-side caster resists. **PROBED.**
-`agents/daemon_slayer/_effects_data.py:611` is SR `3302`; the comment at **`:626`** says
-"(_passive_resist_overrides.py is champion-keyed only); FUTURE" - that is the actual
-blocker, and it is an ITEM-keyed vs CHAMPION-keyed schema mismatch, not a missing number.
-The Arena mirror `223302` is at `:4437` and its note (`:4449`) already states "Light
-caster-side resists not modeled". Per doctrine B the mirror carries a DIFFERENT magnitude
-(Arena feed 8%/stack vs SR 10%/stack) - source each from its OWN feed, do not inherit.
-Files: `_effects_data.py` + `_passive_resist_overrides.py` + tests.
-
-### 4. A-11 / RM-44 Amumu magic-tank AP rush.
-First tank gap: an axis-neutral EHP scorer structurally cannot value an AP damage item,
-so his highest-WR Abyssal Mask is buried. Probe `/rank-tank` (NOT `/rank`) with explicit
-target stats before accepting the filing. **Beware the RM-40/45/47 precedent** (ROADMAP,
-measured 2026-07-24): a GAP champion and its own REFUTE control came back indistinguishable
-to the scorer, which made the whole cluster unfalsifiable and BLOCKED. Pick a control
-champion FIRST and check it is separable, before building anything.
-
-### 5. A-30 / BACKLOG R129 bruiser-hybrid ability-DPS XOR. **Spec exists - READ IT FIRST.**
-`docs/specs/leap/LEAP-06-r129-viego-hybrid-xor.md`, Sub-fix B (`:37`). Sub-fix A already
-shipped at ENGINE 1.245.0 (`apply_cdragon_surplus_ad`), so only B remains. `hybrid.py`
-scores damage as a strict XOR - AD-axis champs score on AUTO DPS only and their non-zero
-ability damage is discarded. **Note the interaction:** `apply_ad_axis_ability_damage`
-(RM-39 L2, ENGINE 1.223.0) already credits PHYSICAL+TRUE on the AD axis DEFAULT-OFF, so
-establish what B adds ON TOP of that seam before building, or you will re-ship it.
+1. **A-03 / RM-81 re-source the 6 champions that matter.** 75 of 171 carry drifted
+   values but only 6 change any ranked order, 2 touch a top-5, 0 change a recommended
+   core. Re-source 6, not 75. **Scheduling hazard: never re-run
+   `tools/daemon_slayer_extract.py` in the same commit as a table regen**, and never
+   `--force` a Meraki re-extract (the `latest` endpoint is mutable). If this row is
+   picked it probably wants its own commit ahead of any ENGINE bump.
+2. **A-12 / RM-46 Ashe Frost + Ranger's Focus.** Crits deal no bonus damage (crit
+   chance converts to flat AD) so IE's multiplier is largely dead on her; Phantom
+   Dancer dead-last even in a 6-item self-whitelist. Aphelios is the named contrast
+   twin. **Run the falsifiability gate FIRST** - pick the control, prove separation.
+3. **A-16 / RM-82 Mordekaiser.** Rylai's / Riftmaker buried under a never-built AP-amp
+   plus magic-pen lead. Same gate applies.
+4. **A-20 / RM-89 Quinn.** The first champion carrying BOTH RC-1 and RC-2, filed as the
+   proof that the shipped L1 kit-conversion lever is necessary and provably
+   INSUFFICIENT. Read what "insufficient" was measured to mean before designing.
+5. **A-21 / RM-90 support-cohort build-order collapse.** Verified against the shipped
+   `build_orders_sr.json`; the prior Alistar / Blitzcrank / Braum / Bard / Rakan
+   REFUTEs were judged TOO LENIENT. **Check the shipped build order before accepting
+   any new team-aura REFUTE.** Note the A-11 measurement this session found the tank
+   route emitting a byte-identical 6-item order across 6 champions - the support
+   cohort may be the same class of defect, which would make this row bigger than 1S.
+6. **A-10 / RM-37 + RM-42 empowered-auto crit machinery (Lucian, Akshan).**
+   Lightslinger double-tap + Dirty Fighting 200pct crit double-shot unmodelled, and
+   `coherence_rerank` additionally DOCKS Lucian's #1 item Essence Reaver from raw #4 to
+   #10-18. Shared machinery, batch them.
+7. **The A-18 follow-through, now that `ds.ehp` HAS a champion channel.** A-11 / RM-44
+   was blocked on "champion-sensitivity in `ds.ehp`" and this session shipped the first
+   such lane (sort-only, registry-keyed). Whether an AP-damage-tank credit can ride the
+   same shape is an open DESIGN question, not a filed row - it needs its own probe, and
+   the RM-44 verdict says rerouting is NOT the answer.
 
 ## DO NOT PICK
 
-- **A-25 / RM-94 Mejai's snowball stacks - ALREADY SHIPPED, row is stale.** I probed this
-  while writing this prompt: the row says "`_effects_data.py:3257` pins Mejai's at +125 AP"
-  but the live value is **`bonus_ap_stacked=25.0` at `_effects_data.py:3355`**, fixed at
-  ENGINE 1.243.0. Close the row; do not rebuild. (Note `:2649-2655` is a DIFFERENT item
-  at `bonus_ap_stacked=175.0` - an Arena per-round item, deliberate, leave it.)
-- **A-15 / RM-80 Master Yi - REFUTED + CLOSED 2026-07-25.** `ds.onhit` is the on-hit-**AP**
-  scorer (`core/ds_onhit_ap_roster.json` = Gwen/Kayle/KogMaw only); Yi is pure AD.
-  44 bruisers enumerated, 11 probed, 0 moved. Do not re-open.
-- **A-24 / RM-93 support-quest candidacy - REFUTED + CLOSED.** Deny is deliberate and
+- **A-27 / RM-114, A-30 / R129, A-11 / RM-44** - closed this session, evidence in
+  PART 6. A-11 specifically is BLOCKED on a schema lift, not on effort.
+- **A-15 / RM-80 Master Yi** - REFUTED + CLOSED 2026-07-25. `ds.onhit` is the on-hit-AP
+  scorer (roster Gwen / Kayle / KogMaw); Yi is pure AD.
+- **A-24 / RM-93 support-quest candidacy** - REFUTED, deny is deliberate and
   test-pinned (`test_sr_quest_line_deny_rm93.py`).
-- **A-14 / RM-79 + RM-95b Locke / Zaahen ability data - BLOCKED UPSTREAM.** Both are
-  absent from Meraki's 171-champ bulk map. 95a closed 2026-07-25; do NOT try to synthesize
-  their kits.
-- **RM-92 ability-haste residual** - SIZED, verdict DEFER (`docs/specs/SCOPE_rm92_ability_haste.md`).
-- **RM-40 / RM-45 / RM-47 mage cluster** - MEASURED BLOCKED on a scorer prerequisite.
-- **`RC_VISION_MERGE_STRICT` default-ON** - LIVE-GATED, not headless-drainable.
-- **A-09 / RM-36+RM-38 AD-caster pool** - A-01 already MEASURED un-filtering as necessary
-  and NOT sufficient (108 -> 112, ZERO top-8 changes). Residual is RM-86 scorer kit-blindness.
+- **A-25 / RM-94 Mejai's** - SHIPPED at 1.243.0 (`bonus_ap_stacked=25.0`).
+- **A-14 / RM-79 + RM-95b Locke / Zaahen ability data** - BLOCKED UPSTREAM (absent from
+  Meraki's 171-champ bulk map). Do NOT synthesize their kits.
+- **A-23 / RM-92 ability-haste residual** - SIZED, verdict DEFER
+  (`docs/specs/SCOPE_rm92_ability_haste.md`).
+- **A-07 / RM-40 / RM-45 / RM-47 mage cluster** - MEASURED BLOCKED on a scorer
+  prerequisite; GAP champion and its own control are indistinguishable.
+- **A-09 / RM-36 + RM-38 AD-caster pool** - A-01 already MEASURED un-filtering as
+  necessary and NOT sufficient (108 -> 112, ZERO top-8 changes).
+- **`RC_VISION_MERGE_STRICT` default-ON**, and the two new gated rows below - LIVE-GATED,
+  not headless-drainable.
 
 ## HAZARDS carried forward
 
-- **NEW, cost 3 test failures last session: an ENGINE bump needs THREE doc sites the
-  in-repo CHANGELOG does not cover.** `docs/DAEMON_SLAYER.md` status banner,
-  `Share/CHANGELOG.md` (`## <prev> -> <new> (YYYY-MM-DD)` at the top of "Recent releases"),
-  and the `Share/README.md` release-history list. **`tools/ds_share_sync.py` deliberately
-  does NOT rewrite changelog history, so `--check` reads GREEN while the public history
-  silently loses a release** - only `tests/test_ds_share_changelog_freshness.py` catches it.
-- **NEW: the harness reported exit code 0 on a `tests/` run whose own summary said
-  `3 failed`.** Exit code is NOT ground truth. Redirect pytest to a file and read the
-  summary line; the first run's output file held nothing but a logging tail.
+- **The ENGINE bump needs THREE doc sites the in-repo CHANGELOG does not cover:**
+  `docs/DAEMON_SLAYER.md` status banner (version AND test count), `Share/CHANGELOG.md`
+  (`## <prev> -> <new> (YYYY-MM-DD)` at the top of "Recent releases"), and the
+  `Share/README.md` release-history list. `tools/ds_share_sync.py` deliberately does NOT
+  rewrite changelog history, so `--check` reads GREEN while the public history silently
+  loses a release; only `tests/test_ds_share_changelog_freshness.py` catches it.
+- **Bump by QUOTED literal only** (`"1.247.0"` / `'1.247.0'`), never by bare string:
+  `.md` prose mentions of an old version are historical MEASUREMENT CITATIONS and
+  rewriting them falsifies the record. This session's blanket-census would have
+  rewritten 12 such citations in `docs/OPEN_ITEMS_REVIEW_2026-07-25.md` alone. Exclude
+  `.claude` (live agent worktrees are full repo copies). True count this session: **249
+  code files / 283 occurrences**.
+- **A NEW-TEST-IN-THE-MIRROR TRAP, cost 3 test failures this session.** Any new test
+  under `agents/daemon_slayer/tests/` that imports a HOST package (`core.*`) at module
+  level MUST be added to `_HOST_DEPENDENT_TESTS` in `tools/ds_share_sync.py`, then
+  re-synced. Otherwise `tests/test_ds_share_host_dependent_tests_excluded.py` and
+  `tests/test_ds_share_sync_determinism.py` fail. Check every new test's imports before
+  running `tests/`.
+- **Exit code is NOT ground truth** (a prior session saw exit 0 on a run whose summary
+  said `3 failed`). Redirect pytest to a FILE and read the summary line. Also: a
+  `tests/` run takes **~24 minutes** - launch it in the background and do docs work
+  while it runs, and re-run it FRESH after any late fix rather than reasoning about
+  which failures were stale.
 - **Build-order tables: THREE families across TWO keyspaces; a bump needs ALL of them:**
   ```
   python tools/daemon_slayer_build_orders_generate.py --mode all        (--mode, NOT --champions)
   python -m core.build_order_precompute --static --mode all --champions all
   python -m core.build_order_variants   --static --mode all --champions all
   ```
-  Families B and C write **silently with exit 0 and zero stdout** - confirm via
-  `git status data/`, not stdout. (Confirmed again this session.) A stamp-only diff across
-  all 9 files is the honest way to CORROBORATE a "no movement" claim instead of taking it
-  on report - that is what happened this session.
-- **ENGINE bump ritual: bump -> RESTART `:8893` -> VERIFY `/health` reads the NEW version
-  -> regen -> measure.** Restart via `taskkill /F /PID <pid>; schtasks /Run /TN
-  "RC-DaemonSlayer"` in **PowerShell** (Git Bash mangles `/F` and `/Run` into paths). Get
-  the pid with `Get-NetTCPConnection -LocalPort 8893 -State Listen`.
-- **Bump by quoted-literal replace and EXCLUDE `.claude`** - live agent worktrees are full
-  repo copies. True in-repo + Share count was **253** files this session.
-- **Run `tools/ds_share_sync.py` AFTER writing the in-repo CHANGELOG**, never before.
-- **Check `git show --stat HEAD` for unintended staged deletions after every commit** (the
-  precommit hook runs its own sync). Zero deletions this session - keep verifying.
+  Family A takes ~215s and prints; families B and C write **silently with exit 0 and
+  zero stdout** - confirm via `git status data/`. **Then CORROBORATE "no movement" with
+  a stamp-stripped payload diff against the committed blobs** (this session's
+  `scratchpad/stampcheck.py` pattern: `git show HEAD:<file>` vs working tree, recursively
+  dropping `engine_version` / `generated_at` keys, then diff the payload). A 1-2 line
+  numstat is NOT proof on a single-line JSON file.
+- **ENGINE bump ritual: bump -> RESTART `:8893` -> VERIFY `/health` reads the NEW
+  version -> regen -> measure.** Restart in **PowerShell**:
+  `taskkill /F /PID <pid>; schtasks /Run /TN "RC-DaemonSlayer"` (Git Bash mangles `/F`
+  and `/Run` into paths). Get the pid with
+  `Get-NetTCPConnection -LocalPort 8893 -State Listen`.
+- **`git apply` of a worktree diff FAILS in this repo** (EOL / whitespace mismatch -
+  it failed on 5 of 6 files this session). Merge a slice by copying its owned files
+  outright, and hand-apply any edit that lands in a file another slice also owns.
+- **A slice's "+1 line" report is not a merge instruction.** One slice reported a
+  one-line `ehp.py` change whose 3-line anchor matched TWICE. Confirm the call site is
+  unique (grep the callee, not the argument block) before applying.
+- **Check `git show --stat HEAD` for unintended staged deletions after every commit**
+  (the precommit hook runs its own sync). Zero deletions this session - keep verifying.
 - **A default flip makes its own tests vacuous** (`feedback_default_flip_weakens_tests`).
-  Pins for a now-default value must derive it from the feed, and a mutation check must show
-  real failures.
-- **Do not anchor a magnitude measurement on the engine still recommending the item you are
-  demoting**, and **never probe at an empty item list** - that artifact has manufactured
-  false headlines three times.
+  Pins for a now-default value must derive it from the feed, and a mutation check must
+  show real failures. Two mutation checks earned their keep this session: one caught a
+  normalization that cancelled the very percentages it was meant to weigh, and one
+  caught a knob bound at `def` time that was documented as runtime-tunable.
+- **Never probe at an empty item list.** That artifact has now manufactured FOUR false
+  headlines (latest: "BotRK #1 for Miss Fortune"). And do not anchor a magnitude
+  measurement on the engine still recommending the item you are demoting.
 - **DS probe traps:** `POST /rank` is the CARRY scorer and silently ignores
-  `enemy_ad_share`/`enemy_ap_share` (use `/rank-<archetype>`; there is NO `/rank-hybrid` -
-  bruisers use `/rank-bruiser`); body key is `items` not `item_ids`; `top` defaults to 40;
-  always pass explicit target stats (route defaults are 0.0 and a zero-HP target nullifies
-  every percent-max-HP effect). **DS is plain HTTP on `:8893` - HTTPS returns curl exit 35.**
-  In-process, `rank_items(snapshot, champion_id, level, ...)` needs `DataSnapshot.load()`
-  as its first positional and returns a `RankResult` whose rows are under **`.ranked`**
-  (it is not iterable).
-- **NEW: map ids are not what you assume.** ARAM is map **12**; map **21 is Nexus Blitz**
-  (I got this wrong this session and a build agent corrected me). `MODE_MAP_ID` wires only
-  `{SR:11, ARAM:12, ARENA:30, BRAWL:35}`, so anything map-21-only is pool-illegal in every
-  shipped mode. Verify a map id by listing its exclusive item pool before trusting it.
-- **Deny/sibling sweeps go by ID SUFFIX across every map, never by name.** `3172` Gunmetal
-  Greaves and `223172` Zephyr are DIFFERENT items. Meraki `rank: DISTRIBUTED` is NOT a
-  pollution test.
+  `enemy_ad_share` / `enemy_ap_share` (use `/rank-<archetype>`; there is NO
+  `/rank-hybrid` - bruisers use `/rank-bruiser`); body key is `items`, not `item_ids`;
+  `top` defaults to 40; always pass explicit non-zero target stats (route defaults are
+  0.0 and a zero-HP target nullifies every percent-max-HP effect). **DS is plain HTTP
+  on `:8893` - HTTPS returns curl exit 35.** In-process,
+  `rank_items(DataSnapshot.load(), champion_id, level, ...)` returns a `RankResult`
+  whose rows live under **`.ranked`** (it is not iterable).
+- **THE FALSIFIABILITY GATE IS NOW MANDATORY ON ANY PER-CHAMPION VALUATION ROW.** Three
+  clusters are now measured BLOCKED-UNFALSIFIABLE for the same reason (RM-40/45/47,
+  RM-44 + siblings RM-51 / RM-55, RM-35 clause 1): the GAP champion and its own REFUTE
+  control return the same answer, so no test can distinguish the right fix from a wrong
+  one. Pick the control FIRST, prove separation, and only then design. A scorer whose
+  objective contains no term for the thing the row is about cannot be fixed by a
+  coefficient - `ds.ehp`'s `blended_ehp` has no damage term on any axis, and `ehp.py`
+  imports no abilities at all.
+- **Deny / sibling sweeps go by ID SUFFIX across every map, never by name.** `3172`
+  Gunmetal Greaves and `223172` Zephyr are DIFFERENT items. Meraki `rank: DISTRIBUTED`
+  is NOT a pollution test. Map ids wired: `{SR:11, ARAM:12, ARENA:30, BRAWL:35}`; map
+  **21 is Nexus Blitz** and is unwired, so a map-21-only item is pool-illegal everywhere.
+- **Doctrine B has teeth: a mirror with no on-disk magnitude gets NOTHING.** Arena
+  `223302` was refused this session rather than inheriting SR's number by ratio. The
+  pattern for that is `_ITEM_RESIST_UNSOURCED_MIRRORS` (mirroring
+  `_item_general_dr._GENERAL_DR_UNSOURCED_MIRRORS`).
 - `tools/ds_feed_index.py` `KNOWN_STAMP_LAG` is NOT what its guard test reads - edit the
   `.py`, then run `python tools/ds_feed_index.py --write`.
-- Never re-run `tools/daemon_slayer_extract.py` in the same commit as a table regen.
-- **CLAUDE.md's "20,190 tests" is stale** against the measured `tests/` count (13061).
-  Correct it at the next docs sync, not inline.
+
+## OPEN, HELD FOR AN OPERATOR CALL
+
+- **K'Sante Q Ntofo Strikes** at `bonus_armor_pct` 40 / `bonus_mr_pct` 40 - a clean
+  linear resist-to-damage form that the documented K'Sante **P** reject
+  (`_passive_damage_overrides.py:839-843`) does not cover. Held OUT of
+  `_resist_damage_coupling.py`. Promoting it is a valuation call, not a data question.
+- **Two NEW live-gated rows** were added to `docs/LIVE_GAME_GATED_SYNC.md` as **G2-44**
+  (the carry-route `exclude_off_axis_items` default-ON flip - payoff is concrete: Twitch
+  serves Lich Bane #7 today) and, unfiled but adjacent, the A-39 boot-CC default-ON
+  flip. Both are do-not-flip-blind.
 
 ## EXPECT
 
 Measure before/after for every item and report the delta honestly, **including "no
-movement" - but PROVE a no-op came from the NEW code path** (a spy recording the kwargs it
-received is the technique that keeps working). Report the exact pass/fail counts you
-observed THIS run; never carry a prior or subagent-reported count forward. Then `/done`,
-and hand over the next 5.
+movement" - but PROVE a no-op came from the NEW code path** (a spy recording the kwargs
+it received is the technique that keeps working; a stamp-stripped payload diff is the
+technique for tables). Report the exact pass/fail counts you observed THIS run; never
+carry a prior or subagent-reported count forward. Then `/done`, and hand over the next 5.
