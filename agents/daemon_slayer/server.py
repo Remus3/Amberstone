@@ -479,6 +479,13 @@ def _route_rank(body: dict) -> dict:
     # tools/daemon_slayer_build_orders_generate.py drives the shipped build
     # tables through :8893 - so no kit-conversion fix could reach an artifact.
     kit_conversion_strength = _opt_float(body, "kit_conversion_strength", 0.0)
+    # A-12 / RM-46 crit conversion (Ashe Frost Shot: ad * (1 + 1.15c), and
+    # Infinity Edge's bonus crit damage REPLACED rather than added, because her
+    # passive states critical strikes deal no additional damage). Registry is
+    # _crit_conversion_overrides.py, gate at dps.py:890. Route-exposed for the
+    # same reason as kit_conversion_strength above: the shipped build tables are
+    # generated through :8893, so a Python-API-only seam cannot reach them.
+    apply_crit_conversion = _opt_bool(body, "apply_crit_conversion", False)
     try:
         result = rank_items(
             snap,
@@ -502,6 +509,7 @@ def _route_rank(body: dict) -> dict:
             target_current_hp_pct=target_current_hp_pct,
             exclude_off_axis_items=exclude_off_axis_items,
             kit_conversion_strength=kit_conversion_strength,
+            apply_crit_conversion=apply_crit_conversion,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))

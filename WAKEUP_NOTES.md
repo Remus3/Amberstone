@@ -4,6 +4,62 @@
 
 ---
 
+# 2026-07-25e - the four PART-7 survivors BUILT (ENGINE 1.248.0)
+
+ENGINE **1.247.0 -> 1.248.0**, patch 16.14.1. Four parallel worktree agents on
+disjoint file sets, one Claude as sole merger. Tier-2 done in ritual order:
+bump by quoted literal (256 files / 295 occurrences, `.claude` excluded) ->
+:8893 restarted -> `/health` re-read 1.248.0 BEFORE the regen -> all three
+build-order families across BOTH keyspaces -> Share sync + the three ENGINE doc
+sites. **Stamp-stripped payload diff: SAME on all 9 table files** - correct and
+expected, since every seam is DEFAULT-OFF.
+
+**Prerequisite (main thread, `9a33134a`):** `kit_conversion_strength`
+route-exposed on POST /rank. `server.py` held ZERO `kit_conversion` references,
+so the RM-86 L1 lever was Python-API-only while the shipped tables are generated
+through :8893.
+
+**Built (4):**
+- **A-12 / RM-46 Ashe** - `_crit_conversion_overrides.py`, DEFAULT-OFF
+  `apply_crit_conversion`. IE #8 -> #10, PD #36 -> #30, Yun Tal #11 -> #8,
+  ER #7 -> #5; Aphelios byte-identical ON. Her P reads "critical strikes do not
+  deal any additional damage", so the 1.15 factor REPLACES the item crit-damage
+  sum and IE is INERT on her - stronger than the filing.
+- **A-20 / RM-89 Quinn** - both slices. BotRK #1 -> #31, Runaan's #2 -> #41;
+  pool 107 -> 109 admitting exactly `{6698, 3179}` via a per-champion
+  `marksman_offclass_exempt.json` row.
+- **A-03 / RM-81** - `_ability_base_overrides.py` + `abilities.py` hook, six
+  champions, exactly 6 of 1033 forms move.
+- **A-21 / RM-90 S1+S2** - plumb shipped, **acceptance criterion REFUTED**.
+
+**The refutation to carry forward:** A-21 S1's tank distinct-order count does
+NOT move off 1-of-28, in any of 7 keyspace/profile cells, carry control 14/27
+both ways. The seam IS live at the RANKING level (Locket #23 -> #6 Alistar,
+#20 -> #5 Thresh, Malphite/Ornn/Sion pinned) but never wins a greedy slot -
+Leona's last slot has Locket 3116.8 vs Spirit Visage 4389.6 against only +496.8
+ally credit. **Order-level movement needs the S3 schema lift, not a coefficient
+or a flag. Do not re-attempt S1 expecting table movement.**
+
+**Two honest negatives inside shipped rows:** A-12's Runaan's deny is a
+REGRESSION GUARD, not a demotion (Wind's Fury is flat `2 x 55% total AD`, no
+crit term). A-20's Stormrazor lead does NOT move (#5 -> #5) - scaled, but its
+neighbours fall further.
+
+**Main-thread follow-ons (operator-approved mid-session):** `apply_crit_conversion`
+plumbed through `rank_items` + POST /rank to BOTH `compute_dps` call sites, and
+`tools/daemon_slayer_build_orders_generate.py` gained the `score_by`
+pass-through + `--score-by` flag (the FLAT keyspace the A-21 agent was scoped
+out of). Both plumbs SUPERSEDED a test premise and both were repaired, not
+suppressed - A-12's helper monkeypatched `compute_dps` and would now silently
+no-op, and the prerequisite's Quinn negative control stopped being true once
+A-20 seeded her.
+
+**Do NOT redo:** A-16 / RM-82 and A-10 / RM-37+RM-42 stay CLOSED. Do not
+re-probe A-21 S1 for table movement. Full record: `docs/OPEN_ITEMS_REVIEW_2026-07-25.md`
+**PART 8** + `docs/LEDGER.md` 1048.
+
+---
+
 # 2026-07-25d - ROADMAP budget cleanup + six rows probed, ZERO code shipped
 
 ENGINE stays **1.247.0**, patch 16.14.1. Tree clean, pushed. Commit `b4d1ee56`.
@@ -75,60 +131,3 @@ well a row was probed, never how recently.
   only one real `item_resist_grants` call site exists before applying it.
 
 ---
-
-# 2026-07-25 - five open-item rows probed, three built, three mis-filed (ENGINE 1.245.0)
-
-HEAD after this session: see `git log -1`. ENGINE **1.245.0**, patch 16.14.1,
-DS **9446** / `tests/` **12987**, DS `:8893` bounced and verified serving 1.245.0
-BEFORE any regen. Full narrative: `docs/LEDGER.md` 1044.
-
-## What shipped
-
-- **A-04 / RM-99b Heartsteel cadence, SR ON / Arena OFF** (operator call). SR 3084
-  corrected to the real 30s per-target gate directly in `_effects_data.py`; Arena
-  223084 held at 3.5 because 30s is unsourced on its own feed. Filed 8.5714x was
-  EXACT. The over-credit was supplying **13-32 pct of total credited auto DPS** on
-  shipped bruiser builds. SR occurrences 135 -> 6, ARAM 156 -> 27.
-- **A-29 / R129 Viego R** surplus-block MERGE, DEFAULT-OFF `apply_cdragon_surplus_ad`.
-  0.000 -> 1.169 DPS. Population is **1 champion, not 6**.
-- **A-01d seam forwarding.** `/api/ds-preview` reached zero of nine seams; and the
-  `with_build_order` branch RANKED with `prefer_kit_axis_by_win` ON and PLANNED with
-  it OFF. Both sides now pinned to agree.
-- **A-40(1): the first Family A staleness guard** - which immediately caught a live
-  bug (below). The row's "OPEN DESIGN Q" was stale; already answered in LEAP-04.
-- **Arena mirror-id dock gap, DEFAULT-ON.** `kit_synergy.py` matched spellblade items
-  by SR id only, so the carry coherence dock was **inert in Arena**: Essence Reaver's
-  mirror 223508 sat at slot 1 for 6 carries. 18 -> 0.
-
-## Three things that would have shipped wrong
-
-1. **Three of five rows were mis-filed, in two recurring classes.** A row whose answer
-   already existed on disk (A-40's design Q, answered in LEAP-04 with
-   `UNVERIFIED-SKIP count: 0`), and a row describing INTENDED behavior as a bug
-   (A-24 / RM-93 - the deny is deliberate and test-pinned, and the "modelled damage
-   formulas" the row cites as evidence are the REASON for it). Both closed with no
-   code. **Probe the row before building it.**
-2. **The A-04 fix invalidated its own test.** The magnitude test anchored on Aatrox's
-   shipped SR build and asserted Heartsteel was in it - then the fix evicted Heartsteel
-   from that build (Aatrox now takes Randuin's 3143). The guard fired correctly; the
-   anchor was self-defeating. Never anchor a measurement on the engine still
-   recommending the thing you are about to demote.
-3. **The ENGINE literal count read 1442, not ~372.** The excess was five live agent
-   worktrees, each a full repo copy. A blind repo-wide replace would have rewritten
-   `ENGINE_VERSION` inside all of them. Real count excluding `.claude` is 241.
-
-## Standing hazards for the next session
-
-- **Keyspace 2 was MORE stale than keyspace 1** (195 vs 135 Heartsteel occurrences),
-  vindicating LEDGER 1043's doctrine one session later. A regen is not done until all
-  three families across BOTH keyspaces have run.
-- **Share sync must run AFTER the CHANGELOG entry**, not before. It ran twice this
-  session because of that ordering; the determinism test caught it.
-- **`3131` Sword of the Divine is a NEW open residual:** `every_n_seconds=15.0` against
-  a 90s active cooldown in its own DDragon text, uncited 6x over-credit, absent from
-  Meraki. Same operator-gated class as A-04. Not yet filed to a row.
-- **Zeri's Arena cell is flagged, not accepted:** the dock fix changes 4 of 6 slots and
-  trades the ER artifact for Liandry's + Dusk and Dawn, which is the AP-on-AD-marksman
-  class `coherence.py:138-139` already defers. The eviction is right; the replacement
-  is not clearly better.
-- CLAUDE.md's **"20,190 tests" is stale** against the measured `tests/` count (12987).

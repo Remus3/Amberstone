@@ -167,6 +167,39 @@ _KIT_CONVERSION: dict[str, KitConversion] = {
             "she IS the EHP objective."
         ),
     ),
+    "Quinn": KitConversion(
+        attack_speed=0.20, crit=0.55, on_hit=0.15, off_axis_stat=1.00,
+        note=(
+            "P Harrier: 'Quinn's basic attacks against Vulnerable targets are "
+            "empowered to consume the mark to deal 10 : 95 (based on level) "
+            "(+ 16% : 50% (based on level) AD) bonus physical damage', and the "
+            "16.14.1 record carries cooldown [8.0, 8.0, 8.0] with damage_blocks "
+            "EMPTY (parse_status no_damage). attack_speed 0.20: the mark sits on "
+            "a STATIC cooldown, so purchased attack speed cannot raise the proc "
+            "rate at all, and W Heightened Senses already self-supplies "
+            "[28,41,54,67,80] pct bonus attack speed on every Vulnerable "
+            "consume - twice diluted; nonzero only because her ordinary autos "
+            "still swing faster. on_hit 0.15: same static-cooldown argument, and "
+            "her real builds are ~0 pct on-hit (DS_SWEEP_TRACKER batch19), so "
+            "only her plain autos carry an on-hit proc. crit 0.55 is "
+            "deliberately the HIGHEST of the three and is NOT a 'she does not "
+            "crit' claim: the Harrier proc itself does not crit, but crit chance "
+            "scales its cooldown (5s down to 1.83s), a term no objective models, "
+            "so the two errors partly cancel and her late build genuinely runs "
+            "Lord Dominik's / Infinity Edge 5th-6th. off_axis_stat stays 1.00 on "
+            "purpose - see the over-fire note below."
+        ),
+    ),
+    # OVER-FIRE GUARD for the Quinn entry, the Blackfire shape from the Orianna
+    # seed. It is TRUE that health converts to zero carry-route DPS for her - but
+    # that is true of every AD carry, so it is a class-wide statement, not Quinn
+    # kit signal, and the channel is a 300g-of-off-axis-stat presence test that
+    # fires on Edge of Night (3814, 350 HP). Edge of Night IS a real Quinn core
+    # item (Profane Hydra or Hubris -> boots -> Collector -> Edge of Night ->
+    # Lord Dominik's -> Infinity Edge). A fraction below 1.0 would demote her own
+    # build alongside the leads this seed exists to suppress, so the channel is
+    # left at face value and the whole correction rides on the three offensive
+    # channels.
     "RekSai": KitConversion(
         attack_speed=0.45, crit=0.40, on_hit=0.45,
         note=(
