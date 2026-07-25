@@ -140,7 +140,7 @@ class AllowlistAndHelperTests(_Base):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.246.0")
+        self.assertEqual(ENGINE_VERSION, "1.247.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):

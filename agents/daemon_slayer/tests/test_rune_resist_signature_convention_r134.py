@@ -110,6 +110,15 @@ _R145_TAIL = ("apply_rune_offense_grants",)
 # earlier group stays adjacent and ordered; R145 is simply no longer the tail.
 _RM98_TAIL = ("apply_cast_rate_propensity_prior",)
 
+# RM-87 / row A-18 (2026-07-25) appends the champion RESIST -> DAMAGE coupling
+# pair. It is the mirror image of R145 / RM-98: those are offense seams and so
+# land on the HYBRID pair only, while this one corrects the TANK objective's
+# blindness to a kit that re-spends its own resists as damage, so it lands on the
+# EHP pair only. It adds no ids parameter (the champion id is already the first
+# argument). The invariant is unchanged - seam kwargs live at the END, in order,
+# never mid-signature - so the 1.229.0 pair is simply no longer the EHP tail.
+_RM87_TAIL = ("apply_resist_damage_coupling", "resist_coupling_strength")
+
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
 _SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
@@ -121,14 +130,15 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
     def test_r132_pair_is_the_signature_tail_on_every_entry_point(self) -> None:
         # R136, R137, the 1.227.0 pair then the 1.229.0 pair appended after the
         # R132 pair, then R145 and RM-98 appended after THAT on the hybrid pair
-        # only (both are offense-side seams). The invariant the guard actually
+        # only (both are offense-side seams) and RM-87 appended after it on the
+        # EHP pair only (a tank-objective seam). The invariant the guard actually
         # protects is unchanged: these seam kwargs live at the END, in order,
         # never mid-signature.
         shared = (
             _R132_TAIL + _R136_TAIL + _R137_TAIL + _R1227_TAIL + _R1229_TAIL
         )
         cases = (
-            (_EHP_ENTRY_POINTS, shared),
+            (_EHP_ENTRY_POINTS, shared + _RM87_TAIL),
             (_HYBRID_ENTRY_POINTS, shared + _R145_TAIL + _RM98_TAIL),
         )
         for fns, expected in cases:

@@ -571,6 +571,17 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   no legitimate hybrid or defensive buy disappeared. **Do NOT flip blind** - a strip is invisible in
   the UI (the item simply is not there), so a wrong exclusion cannot be caught by looking at what IS
   shown. SOURCE: agents/daemon_slayer/CHANGELOG.md 1.240.0 + ROADMAP RM-41.
+- **G2-44** RM-35 clause 2 `exclude_off_axis_items` on the CARRY route default-ON flip (ENGINE
+  1.247.0, `rank.rank_items` + `/rank`). Same seam and same gate as G2-43, now extended from
+  `ds.burst` to the carry scorer. Headless is DONE: Miss Fortune Lich Bane #6 and Rabadon's #14
+  stripped, hybrid Hextech Gunblade SURVIVES (#18 -> #16, so it is not a blanket AP strip), pool
+  107 -> 71, Shaco (`champion_burst_axis` None) byte-identical with a non-empty AP-carrying OFF
+  baseline. The payoff is already live and is NOT hypothetical: **Twitch is in the shipped
+  `_CHAMPION_FIGHT_LENGTH` allow-map and his served carry top-8 contains Lich Bane at #7 today**
+  (`delta_dps` 22.86 against `effective_score` 251.00). What headless cannot settle is the same
+  question as G2-43 - play a crit ADC with a short fight_length mapped (Jhin / Jinx / Caitlyn /
+  Twitch) and confirm no legitimate hybrid or defensive buy vanished from the served list. **Do NOT
+  flip blind** - a strip is invisible in the UI. SOURCE: ROADMAP RM-35 + CHANGELOG 1.247.0.
 
 ---
 
