@@ -6841,9 +6841,11 @@ class Batch53CritBleedAndSquallTests(unittest.TestCase):
 class Batch54StackedApTests(unittest.TestCase):
     """Mejai's bonus_ap_stacked schema (batch 54).
 
-    DDragon carries only the base 20 AP; Glory stacked AP (125 at full
-    stacks) is engine-added via compute_dps before CallContext so AP-scaling
-    procs and Rabadon's amplification both see the total.
+    DDragon carries only the base 20 AP; Glory stacked AP is engine-added via
+    compute_dps before CallContext so AP-scaling procs and Rabadon's
+    amplification both see the total. RM-94 (2026-07-24) re-valued the field
+    from the 125.0 full-stack cap to a 25.0 expected-value pin; the adjudication
+    and its guards live in test_mejais_expected_stacks_rm94.py.
     """
 
     @classmethod
@@ -6857,10 +6859,10 @@ class Batch54StackedApTests(unittest.TestCase):
 
     def test_mejais_bonus_ap_stacked_value(self) -> None:
         eff = ITEM_EFFECTS["3041"]
-        self.assertAlmostEqual(eff.bonus_ap_stacked, 125.0)
+        self.assertAlmostEqual(eff.bonus_ap_stacked, 25.0)
 
     def test_mejais_raises_dps_vs_naked_ap_caster(self) -> None:
-        # Lux with Nashor's Tooth benefits from the +125 stacked AP proc.
+        # Lux with Nashor's Tooth benefits from the stacked AP proc.
         bare = compute_dps(self.snap, "Lux", level=11, item_ids=["3115"])
         with_mejais = compute_dps(
             self.snap, "Lux", level=11, item_ids=["3115", "3041"]
@@ -6873,7 +6875,7 @@ class Batch54StackedApTests(unittest.TestCase):
 
     def test_mejais_stacked_ap_amplified_by_rabadon(self) -> None:
         # Rabadon's (3089) + Mejai's: Rabadon's multiplies ALL AP including
-        # the stacked 125 -> effective total should exceed either alone.
+        # the stacked AP -> effective total should exceed either alone.
         rabadon_only = compute_dps(
             self.snap, "Lux", level=11, item_ids=["3115", "3089"]
         )
@@ -7941,7 +7943,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.242.0")
+        self.assertEqual(ENGINE_VERSION, "1.243.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -8002,7 +8004,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.242.0")
+        self.assertEqual(ENGINE_VERSION, "1.243.0")
 
 
 if __name__ == "__main__":

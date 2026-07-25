@@ -169,9 +169,35 @@ CARRY_POOL_WIDEN_ITEM_NAMES: frozenset[str] = frozenset({
 # rank pool reads the DDragon maps flag directly, so they leaked back into
 # daemon_slayer_picks. Deny by stable item id (unconditional, every mode +
 # every scorer) - these are never a real recommendation in any mode.
+#
+# SIBLING-COMPLETE since RM-04 A-27b (2026-07-24). Item 213 / item 243 denied
+# ONE id per family - the id it happened to see in a live ARAM game - and the
+# identical pollution then recurred one map over. DDragon 16.14.1 ships FOUR
+# Golden Spatula rows and TWO Talisman of Ascension rows in separate map-mirror
+# id namespaces; the pre-A-27b deny caught exactly one of each, so the Arena
+# twins 224403 + 443064 stayed reachable (MEASURED: 224403 sits at slot index 2
+# of ad_heavy / ap_heavy / balanced for 82 of 173 champions in
+# build_orders_arena.json - 246 branch instances; SR + ARAM carry it zero
+# times). Full sweep, by id + maps + purchasable, all six rows:
+#   994403 Golden Spatula                 maps 12  2500g purchasable  DENIED
+#   224403 The Golden Spatula             maps 30  2500g purchasable  DENIED (new)
+#     4403 The Golden Spatula             maps 21  7187g purchasable  DENIED (new)
+#   664403 The Golden Spatula             maps 11  2500g NOT purchasable
+#   663064 Veigar's Talisman of Ascension maps 11   900g purchasable  DENIED
+#   443064 Talisman Of Ascension          maps 30  2750g purchasable  DENIED (new)
+# 664403 needs no entry: purchasable=False already self-excludes it, and
+# tests/test_non_coachable_arena_spatula_a27b.py fails loudly if a patch
+# re-extract ever flips that flag.
+#
+# Meraki rank is NOT a usable pollution test here: 224403 reads ["DISTRIBUTED"],
+# but so does the entire legitimate Arena prismatic pool (Galeforce 446671,
+# Darksteel Talons 443054, ...). Deny stays by stable item id.
 _NON_COACHABLE_ITEM_IDS: frozenset[str] = frozenset({
     "994403",  # Golden Spatula - Arena anvil/joke (all 13 stats); maps['12']=True
+    "224403",  # The Golden Spatula - Arena twin; maps['30']=True, 2500g, buyable
+    "4403",    # The Golden Spatula - Nexus Blitz twin; maps['21']=True, 7187g
     "663064",  # Veigar's Talisman of Ascension - "no stats, 100% XP" meme item
+    "443064",  # Talisman Of Ascension - Arena twin; maps['30']=True, 2750g, statless
 })
 
 

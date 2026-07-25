@@ -28,6 +28,10 @@ from typing import Callable, Dict, Iterable, Optional
 
 _log = logging.getLogger("rc.vision_routing")
 
+# Distinct dropped-key signatures already surfaced at WARNING (RM-01 merge
+# scope). Process-lifetime dedupe only - the JSONL shadow row is unconditional.
+_WARNED_DROP_SIGS: set = set()
+
 # Default validators: each takes the field's parsed value and returns
 # True if the value is plausible. None always fails.
 DEFAULT_VALIDATORS: Dict[str, Callable[[object], bool]] = {
@@ -63,6 +67,24 @@ def read_or_escalate(
     to data/ocr_shadow.jsonl per shadow field. The OCR value is logged only -
     Sonnet's value wins in the returned dict. This is the confidence dataset
     the Lane E OCR migration needs before any field flips to OCR-only.
+
+    RM-01 (upstream half) merge scope: the escalation answer is scored
+    against `missing` - the exact list handed to `escalate_fn` - NOT against
+    `targets`. `missing` is chosen deliberately:
+      * it is literally what was asked for, so anything else is an
+        unrequested key (the live relay answers every mode with the TFT
+        prompt, so board_units / shop_units / traits_active / stage_round
+        ride along on ARAM ticks);
+      * fields OCR already resolved AND validated are excluded from
+        `missing`, so scoping to it also stops Sonnet clobbering a good OCR
+        read - which is exactly the contract
+        `modes/shared_vision.read_tiered` already documents ("OCR wins for
+        numeric fields it validates; Sonnet fills the rest").
+      * shadow fields are force-added to `missing`, so the shadow contract
+        above (Sonnet's value wins) is unaffected.
+    The filter is DEFAULT-OFF behind RC_VISION_MERGE_STRICT - see
+    `_merge_strict_enabled` for the measured reason. The dropped-key set is
+    logged unconditionally (WARNING + data/vision_merge_shadow.jsonl).
     """
     validators = validators or DEFAULT_VALIDATORS
     targets = list(fields)
@@ -115,8 +137,104 @@ def read_or_escalate(
     if shadow:
         _log_ocr_shadow(ocr, sonnet, shadow)
 
-    out.update({k: v for k, v in sonnet.items() if v is not None})
+    # -- RM-01 upstream half: scope the escalation merge -------------------
+    # Pre-fix this line was an unconditional
+    #   out.update({k: v for k, v in sonnet.items() if v is not None})
+    # which accepted EVERY key the model returned - keys nobody asked for
+    # AND keys OCR had already resolved and validated.
+    accepted = {k: v for k, v in sonnet.items() if v is not None}
+    strict = _merge_strict_enabled()
+    dropped = {k: v for k, v in accepted.items() if k not in set(missing)}
+    if dropped:
+        # WARNING once per distinct dropped-key signature, DEBUG thereafter.
+        # The live vision tick fires every ~8-12s and (measured on
+        # data/fusion_shadow.jsonl) 44.8% of reads over-answer with the same
+        # TFT-shaped key set, so an unconditional WARNING would be ~180
+        # identical lines per game. Every distinct key still gets its WARNING,
+        # and the JSONL row below is written on EVERY occurrence, so no
+        # observation is lost.
+        sig = tuple(sorted(dropped))
+        _emit = _log.debug if sig in _WARNED_DROP_SIGS else _log.warning
+        _WARNED_DROP_SIGS.add(sig)
+        _emit(
+            "vision_routing: escalation returned %d key(s) outside the "
+            "requested set %s: %s (strict=%s)",
+            len(dropped), sorted(missing), list(sig), strict,
+        )
+        _log_merge_drops(missing, accepted, dropped, strict)
+    if strict:
+        accepted = {k: v for k, v in accepted.items() if k in set(missing)}
+
+    out.update(accepted)
     return out or None
+
+
+def _merge_strict_enabled() -> bool:
+    """DEFAULT-OFF gate for the scoped escalation merge (RM-01 upstream).
+
+    Set ``RC_VISION_MERGE_STRICT=1`` to filter the Sonnet merge down to the
+    fields actually requested. OFF by default because the filter provably
+    changes served coach dicts:
+
+    ``modes/shared_vision.GameVisionReader._postprocess`` (shared_vision.py
+    :416-418) aliases the relay's ``is_augment_select`` into the consumed
+    ``augment_select`` AFTER read_or_escalate returns, and
+    ``is_augment_select`` is in NO coach's TIERED_FIELDS - so it is an
+    unrequested key with a live consumer. Replaying the 232 real records in
+    data/fusion_shadow.jsonl: 104 of them (44.8%) carry ``is_augment_select``,
+    and in all 104 the consumed ``augment_select`` equals it (i.e. it exists
+    only because of the alias). Filtering by default would silently regress
+    the 2026-07-12 ARAM Mayhem augment-select fix. The drop set is logged
+    unconditionally so the flip stays a measured decision, not a guess.
+    """
+    import os
+    raw = (os.getenv("RC_VISION_MERGE_STRICT") or "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _merge_shadow_path():
+    """Resolve the merge-drop shadow-log path. Honors RC_VISION_MERGE_SHADOW_PATH
+    (tests + ops override), else data/vision_merge_shadow.jsonl at the repo root.
+
+    Deliberately its OWN lane rather than data/ocr_shadow.jsonl: that log has a
+    fixed per-field schema {ts, field, ocr_val, sonnet_val, match} which
+    tools/ocr_shadow_report.py aggregates by field, and a per-call drop record
+    would corrupt those match rates.
+    """
+    import os
+    from pathlib import Path
+    override = os.getenv("RC_VISION_MERGE_SHADOW_PATH")
+    if override:
+        return Path(override)
+    return (Path(__file__).resolve().parent.parent
+            / "data" / "vision_merge_shadow.jsonl")
+
+
+def _log_merge_drops(requested, returned: dict, dropped: dict,
+                     strict: bool) -> None:
+    """Append one merge-scope shadow row per escalation that over-answered.
+
+    The row records what was asked for, what came back, and what the scoped
+    merge did (strict=True) or would have (strict=False) discarded - the
+    shadow-compare corpus for flipping RC_VISION_MERGE_STRICT on. Fail-soft:
+    never raises into the live vision path.
+    """
+    try:
+        import json
+        import time
+        row = json.dumps({
+            "ts": time.time(),
+            "strict": bool(strict),
+            "requested": sorted(requested),
+            "returned": sorted(returned),
+            "dropped": {k: dropped[k] for k in sorted(dropped)},
+        }, ensure_ascii=True, default=str)
+        path = _merge_shadow_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(row + "\n")
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("vision_routing: merge-drop log failed: %s", exc)
 
 
 def _ocr_shadow_path():

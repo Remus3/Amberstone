@@ -704,8 +704,15 @@ class Coach(BaseCoach):
             if _ds_dispatch is not None and _ds_dispatch.rows:
                 try:
                     from core.ds_calibration import log_ds_run as _ds_log
+                    # D-01b: Arena never surfaces a Live Client game_id, so mint
+                    # the shared per-match key (same seam the metric streamer
+                    # uses) or these rows stay permanently unjoinable.
+                    _ds_mk = live_metrics.match_key(
+                        self, {"champion": champ,
+                               "game_time_s": state.get("game_seconds")},
+                        state, "ARENA")
                     _ds_log(champion=champ, mode="ARENA", level=int(state.get("level", 1)) or 1,
-                            owned_items=list(owned_ids),
+                            owned_items=list(owned_ids), match_key=_ds_mk,
                             ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
                                        "delta_dps": _r["delta_dps"], "gold": _r["gold"],
                                        "scorer": _r["scorer"]}

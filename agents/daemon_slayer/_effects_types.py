@@ -686,12 +686,16 @@ class ItemEffect:
     ap_amp_pct_per_100_caster_hp: float = 0.0     # 0.015 for 444637 (1.5% per 100 HP)
     ap_amp_pct_per_100_caster_hp_cap: float = 0.0 # 0.45 for 444637 (45% cap at 3000 HP)
     # Phase 4 batch 54 (2026-05-04): kill-stacking AP not captured in DDragon.
-    # Mejai's Soulstealer "Glory" grants 5 AP per stack (max 25 stacks = 125 AP);
-    # DDragon's FlatMagicDamageMod only carries the base 20 AP. Engine pins at
-    # full stacks (same sustained-peak convention as Black Cleaver full-stack
-    # armor reduction). Added to effective AP before CallContext - AP-scaling
-    # procs (Lich Bane, Nashor's) see the stacked total, and Rabadon's
-    # ap_amp multiplies it. Default 0.0 -> no contribution.
+    # Mejai's Soulstealer "Glory" grants 5 AP per stack (cap 25 stacks);
+    # DDragon's FlatMagicDamageMod only carries the base 20 AP. Added to
+    # effective AP before CallContext - AP-scaling procs (Lich Bane, Nashor's)
+    # see the stacked total, and Rabadon's ap_amp multiplies it.
+    # RM-94 (2026-07-24): registrants carry an EXPECTED value, NOT the cap.
+    # The Black Cleaver / Riftmaker sustained-peak convention applies only to
+    # stacks the simulated rotation itself generates within one fight; Glory is
+    # earned across the game from takedowns and loses 10 stacks per death, so
+    # its entry is an assumed sustained count (see _effects_data 3041).
+    # Default 0.0 -> no contribution.
     bonus_ap_stacked: float = 0.0
     # Phase 4 batch 54 (2026-05-04): conditional bonus AS not modeled as a stat.
     # Yun Tal Wildarrows "Flurry": on-attacking an enemy champion, gain 30%

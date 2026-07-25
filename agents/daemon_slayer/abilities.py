@@ -418,9 +418,9 @@ def _apply_passive_shield_overrides(cid: str, key: str, form: AbilityForm) -> Ab
     )
 
 
-def _read_cdragon_sidecar_doc(root: Path, patch: str) -> dict | None:
-    """Parse ``<root>/<patch>/cdragon_ability_ratios.json``; None if unusable."""
-    path = root / patch / _CDRAGON_RATIO_SIDECAR
+def _read_artifact_doc(root: Path, patch: str, artifact: str) -> dict | None:
+    """Parse ``<root>/<patch>/<artifact>``; None if absent, unreadable, or not a dict."""
+    path = root / patch / artifact
     if not path.exists():
         return None
     try:
@@ -428,6 +428,137 @@ def _read_cdragon_sidecar_doc(root: Path, patch: str) -> dict | None:
     except (ValueError, OSError):
         return None
     return doc if isinstance(doc, dict) else None
+
+
+def _read_cdragon_sidecar_doc(root: Path, patch: str) -> dict | None:
+    """Parse ``<root>/<patch>/cdragon_ability_ratios.json``; None if unusable."""
+    return _read_artifact_doc(root, patch, _CDRAGON_RATIO_SIDECAR)
+
+
+# Patch-marker key spellings actually present under data/daemon_slayer/, in
+# PRECEDENCE order. Measured 2026-07-24 across all five shipped dirs (16.10.1
+# .. 16.14.1, 87 feed rows):
+#
+#   patch            cdragon_ability_ratios, cdragon_ratio_drift, pickban_targets
+#   _patch           ability_staleness, cdragon_spell_stats, wiki_ability_stats,
+#                    wiki_stats
+#   rc_patch         the two authored event-mode augment feeds
+#                    (tools/ds_feed_index.KNOWN_STAMP_LAG names them; they are
+#                    NOT spelled out here because one is Share-excluded and a
+#                    bare mention trips tests/test_ds_share_data_snapshot_scope)
+#   ddragon_version  manifest
+#   version          items, champions, scenarios, champion_abilities,
+#                    build_orders_{sr,aram,arena}
+#
+# ``patch`` is canonical - it is what the RM-81 reference guard
+# (``cdragon_sidecar_patch``) reads and what every NEW stamp must use. The rest
+# are pre-existing divergence: they are READ tolerantly so the guard works on
+# artifacts that already carry a marker, and are never re-spelled on disk.
+#
+# ``version`` sits LAST because it is the ambiguous spelling (a schema version
+# would collide). It still counts as a patch marker: RC's patch identity IS the
+# DDragon version - manifest.json's ``ddragon_version`` equals current.txt and
+# equals the directory name in every shipped dir - so the two are the same
+# string by construction, not by coincidence.
+_PATCH_MARKER_KEYS: tuple[str, ...] = (
+    "patch",
+    "_patch",
+    "rc_patch",
+    "ddragon_version",
+    "version",
+)
+
+# One level of nesting is also searched: enchanter_items.json carries its stamp
+# at ``_meta.patch``. Mirrors the same reach as tools/ds_feed_index.extract_stamp.
+_PATCH_MARKER_PARENTS: tuple[str, ...] = ("_meta", "meta")
+
+
+def artifact_patch_marker(doc: object) -> tuple[str | None, str | None]:
+    """The ``(key, value)`` of ``doc``'s own patch marker, or ``(None, None)``.
+
+    Tolerant across every spelling shipped under ``data/daemon_slayer/`` (see
+    ``_PATCH_MARKER_KEYS``) plus the nested ``_meta.patch`` form, so the RM-81
+    stale-copy guard works on artifacts that ALREADY carry a marker without
+    anything being rewritten on disk.
+
+    ``(None, None)`` for a non-dict, an absent marker, or a non-string / empty
+    value - an unprovable vintage, which callers treat exactly like a mismatch
+    (the contract ``cdragon_sidecar_patch`` established).
+    """
+    if not isinstance(doc, dict):
+        return None, None
+    for key in _PATCH_MARKER_KEYS:
+        val = doc.get(key)
+        if isinstance(val, str) and val:
+            return key, val
+    for parent in _PATCH_MARKER_PARENTS:
+        nested = doc.get(parent)
+        if not isinstance(nested, dict):
+            continue
+        for key in _PATCH_MARKER_KEYS:
+            val = nested.get(key)
+            if isinstance(val, str) and val:
+                return f"{parent}.{key}", val
+    return None, None
+
+
+def artifact_patch(root: Path, patch: str, artifact: str) -> str | None:
+    """The patch ``<root>/<patch>/<artifact>`` was actually GENERATED at.
+
+    The generalized sibling of :func:`cdragon_sidecar_patch`: reads the
+    payload's OWN marker, which is what a patch-refresh commit does NOT update
+    when it copies an artifact forward. ``None`` when the artifact is absent,
+    unreadable, or carries no marker.
+    """
+    return artifact_patch_marker(_read_artifact_doc(root, patch, artifact))[1]
+
+
+def check_artifact_patch(
+    root: Path, patch: str, artifact: str, *, strict: bool = False
+) -> bool:
+    """Verify ``<root>/<patch>/<artifact>`` declares the patch it sits under.
+
+    Returns True only when the artifact's own marker equals ``patch``. Any
+    mismatch - INCLUDING an absent marker - is logged at WARNING and returns
+    False.
+
+    ``strict`` (default False / OFF) additionally raises ``ValueError``.
+    Enforcement ships OFF because it is measurably NOT a no-op on the shipped
+    16.14.1 data, which is the bar RM-81's ``strict_cdragon_patch`` cleared and
+    this guard cannot:
+
+    * ``arena_augments.json`` and ``items_meraki.json`` carry no marker at all.
+      ``tools/daemon_slayer_extract.py`` stamps both as of this commit, but the
+      copies on disk predate the stamp and only a re-extract clears them.
+    * The two authored event-mode augment feeds declare ``rc_patch`` 16.10.1 ON
+      PURPOSE - their body has not moved. They are named once, in
+      ``tools/ds_feed_index.KNOWN_STAMP_LAG``, and deliberately not repeated here:
+      one of them is Share-excluded and ``tests/test_ds_share_data_snapshot_scope``
+      reads a bare mention inside the engine package as evidence the engine READS
+      it. Enforcing stamp-equals-directory on them would be a false positive.
+
+    Detection is therefore always on and enforcement is opt-in. Flip ``strict``
+    per-call once an artifact is known clean; do NOT flip the default until the
+    pending set is empty and the lag list is handled explicitly.
+    """
+    key, got = artifact_patch_marker(_read_artifact_doc(root, patch, artifact))
+    if got == patch:
+        return True
+    if got is None:
+        msg = (
+            f"DS artifact {patch}/{artifact} carries no patch marker - its "
+            f"vintage is unprovable, so a copy-forward is undetectable "
+            f"(RM-81 class). Re-generate it so the payload stamps its own patch."
+        )
+    else:
+        msg = (
+            f"DS artifact {patch}/{artifact} was generated at patch {got!r} "
+            f"(marker {key!r}), not {patch!r} - stale copy carried forward."
+        )
+    _LOG.warning("%s", msg)
+    if strict:
+        raise ValueError(msg)
+    return False
 
 
 def cdragon_sidecar_patch(root: Path, patch: str) -> str | None:
