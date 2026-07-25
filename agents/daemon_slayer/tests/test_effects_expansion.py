@@ -927,14 +927,24 @@ class CasterHpItemTests(unittest.TestCase):
     def test_heartsteel_raises_dps_via_caster_max_hp(self) -> None:
         # Heartsteel grants 900 HP itself; with Aatrox base ~1790 lvl 11
         # max_hp ~ 2690. Per DDragon 16.9.1 "70 plus 6%": flat 70 +
-        # 0.06*2690 ~ 231 per ~3.5s ~ 66 DPS. (Pre-batch-17 the lambda
-        # added a wrong 90*(level-1)/17 lerp that came from an older
-        # patch.) Threshold left at 30 - still well above noise.
+        # 0.06*2690 ~ 231 damage per proc. (Pre-batch-17 the lambda added a
+        # wrong 90*(level-1)/17 lerp that came from an older patch.)
+        #
+        # A-04 (2026-07-24): the threshold used to be a bare 30.0, sized off
+        # the old every_n_seconds=3.5 (231/3.5 ~ 66 DPS). That cadence was
+        # wrong - the real gate is the 30s PER-TARGET cooldown - so the
+        # magnitude fell ~8.57x and the bare literal went stale. Derive the
+        # floor from the SHIPPED cadence instead of pinning a number, so this
+        # test keeps proving "the proc contributes" without re-breaking the
+        # next time the cadence is re-sourced. Half the un-mitigated proc DPS
+        # leaves room for the target's armor to take its cut.
+        proc = ITEM_EFFECTS["3084"].periodics[0]
         bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
         with_hs = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3084"],
         ).weighted_dps
-        self.assertGreater(with_hs - bare, 30.0)  # well above noise
+        unmitigated_proc_dps = (70.0 + 0.06 * 2690.0) / proc.every_n_seconds
+        self.assertGreater(with_hs - bare, unmitigated_proc_dps * 0.5)
 
     def test_heartsteel_scales_with_external_hp(self) -> None:
         # Adding Warmog's on top of Heartsteel should keep raising the
@@ -7943,7 +7953,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.244.0")
+        self.assertEqual(ENGINE_VERSION, "1.245.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -8004,7 +8014,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.244.0")
+        self.assertEqual(ENGINE_VERSION, "1.245.0")
 
 
 if __name__ == "__main__":

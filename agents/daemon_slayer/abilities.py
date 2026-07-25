@@ -648,6 +648,60 @@ _CDRAGON_RESOURCE_EXCLUSIONS: frozenset[tuple[str, str]] = frozenset(
     {("MissFortune", "R")}
 )
 
+# A-29 / BACKLOG R129 - the CDragon SURPLUS-block allowlist.
+#
+# ``_apply_cdragon_ratio_preference`` is overwrite-only: it never changes the
+# damage-block count, and any Meraki-vs-CDragon cardinality mismatch falls the
+# WHOLE form back to Meraki. Viego R is that case - Meraki carries ONE damage
+# block (the 12/16/20 percent missing-HP strike) while the sidecar resolves TWO
+# mechanical blocks, and the surplus one is the 120 percent total-AD primary hit
+# ("All targets hit are dealt 120% : 240% (based on critical strike chance) AD
+# physical damage"). Dropping it makes ``compute_ability_dps("Viego")`` credit
+# 0.0 for R at full target HP, because BOTH of the surviving block's
+# coefficients scale on MISSING HP (measured 2026-07-24 at patch 16.14.1).
+#
+# Each entry maps ``(champion_id, spell_key)`` to
+# ``(cdragon_block_name, meraki_damage_block_ordinal)``: the sidecar block to
+# read the coefficient from, and which of the form's ``attribute_kind ==
+# "damage"`` blocks (0-based among damage blocks only) receives it. Consulted
+# ONLY when ``AbilitiesSnapshot.load(apply_cdragon_surplus_ad=True)``.
+#
+# MERGE, not append. ``compute_ability_dps`` defaults to
+# ``block_strategy="first"``, which evaluates ``damage_blocks[0]`` and nothing
+# else (``ability_dps._select_blocks``), and Viego has no
+# ``champion_block_index.json`` override to widen that - so a block APPENDED at
+# index 1 would never be read and the credit would stay 0.0. Merging the surplus
+# ratio into the target block credits it under every strategy, keeps the
+# block-count invariant that ``test_cdragon_ratio_matcher`` pins, and disturbs no
+# block index. Only stat FAMILIES the target does not already carry are merged,
+# so the family router can never double-count.
+#
+# Deliberately NOT a general "append every surplus CDragon block" seam. That was
+# measured over the live sidecar: 329 surplus blocks across 220 (champion, spell)
+# pairs, 65 of which already carry at least as many Meraki damage blocks as the
+# sidecar resolves, and 8 of 8 spot-checks were outright duplicates (Teemo E
+# ImpactCalculatedDamage == "Magic Damage On-Hit" coefficient for coefficient;
+# Pantheon Q HoldDamageCalc == "Hurl Physical Damage"; Jax E TotalDamage ==
+# "Minimum Magic Damage"; Yone W WDamage == "Total Mixed Damage" plus a second
+# anonymous 100 percent-AD block) or not damage at all (Shyvana W Calc_Shield is
+# a shield, Ornn W TotalMonsterDamageCap is a cap). The general seam is REFUTED.
+#
+# The five filed siblings are all v1-EXCLUDED on their own effects text, and each
+# additionally has ZERO Meraki damage blocks for the slot, so the merge seam
+# cannot reach them even if the semantics passed:
+#   Pyke   R - the 80 percent bonus AD is an execute HEALTH THRESHOLD, not damage.
+#   Rengar R - "next basic attack ... 100% AD bonus": an auto empower compute_dps
+#              already counts.
+#   Quinn  R - the 35 percent block is Skystrike (form_index 1); the sidecar is
+#              form-indexless and only form 0 (the damage-less channel) is seen.
+#   Yorick R - YorickBigGhoulDamage is the Maiden PET's damage, another cadence.
+#   Jinx   Q - "Basic attacks with Fishbones ... 110% AD": an auto modifier.
+# Widen this registry only on per-champion evidence, with an exclusion test for
+# every neighbour left out.
+_CDRAGON_SURPLUS_AD_MERGES: dict[tuple[str, str], tuple[str, int]] = {
+    ("Viego", "R"): ("TotalDamage", 0),
+}
+
 
 def _cdragon_family(field_name: str) -> str:
     """Collapse a scaling field to its stat FAMILY (AD / HP) or itself."""
@@ -786,6 +840,82 @@ def _apply_cdragon_ratio_preference(form: AbilityForm, cd_blocks: list) -> Abili
     return replace(form, damage_blocks=tuple(new_blocks))
 
 
+def _apply_cdragon_surplus_ad_merge(
+    cid: str, key: str, form: AbilityForm, cd_blocks: list
+) -> AbilityForm:
+    """Merge an allowlisted SURPLUS CDragon ratio into its Meraki damage block.
+
+    A-29 / BACKLOG R129. ``_apply_cdragon_ratio_preference`` re-sources only when
+    the two block sets form a clean bijection; a form whose sidecar resolves MORE
+    mechanical blocks than Meraki carries falls back whole and its extra
+    coefficient is lost. For the narrow hand-audited set in
+    ``_CDRAGON_SURPLUS_AD_MERGES`` this reads the named sidecar block and merges
+    the stat families the target block does NOT already carry into it, through the
+    same ``_apply_cdragon_block`` field-router the bijection path uses.
+
+    Only the SURPLUS families are applied: a family the target already carries is
+    left to (and was already declined by) the bijection path, so this can never
+    double-count a stat, and the damage-block COUNT never changes. Ratio arrays
+    are trimmed to the target block's existing per-rank length to keep block rank
+    lengths stable.
+
+    Returns ``form`` unchanged when the pair is not allowlisted, the named sidecar
+    block is absent / unresolved, the target ordinal does not exist, or every
+    family the sidecar offers is already present. The default (flag OFF) path in
+    ``AbilitiesSnapshot.load`` never calls this, so it is byte-identical.
+    """
+    entry = _CDRAGON_SURPLUS_AD_MERGES.get((cid, key))
+    if entry is None:
+        return form
+    block_name, ordinal = entry
+    cd = next(
+        (
+            b
+            for b in cd_blocks
+            if isinstance(b, dict)
+            and b.get("resolution") == "mechanical"
+            and b.get("name") == block_name
+            and _cdragon_block_signature(b)
+        ),
+        None,
+    )
+    if cd is None:
+        return form
+    dmg_idx = [
+        i for i, b in enumerate(form.damage_blocks) if b.attribute_kind == "damage"
+    ]
+    if not 0 <= ordinal < len(dmg_idx):
+        return form
+    idx = dmg_idx[ordinal]
+    target = form.damage_blocks[idx]
+    surplus = _cdragon_block_signature(cd) - _meraki_block_signature(target)
+    if not surplus:
+        return form
+    lengths = [
+        len(getattr(target, f))
+        for f in _SCALING_FIELDS
+        if getattr(target, f) is not None
+    ]
+    rank_len = max(lengths) if lengths else None
+    filtered: dict[str, Any] = {}
+    for fld in _CDRAGON_RATIO_FIELDS:
+        v = cd.get(fld)
+        if not (isinstance(v, list) and v):
+            continue
+        family = "base" if fld == "base" else _cdragon_family(fld)
+        if family not in surplus:
+            continue
+        filtered[fld] = v[:rank_len] if rank_len else v
+    if not filtered:
+        return form
+    merged = _apply_cdragon_block(target, filtered)
+    if merged is target:
+        return form
+    new_blocks = list(form.damage_blocks)
+    new_blocks[idx] = merged
+    return replace(form, damage_blocks=tuple(new_blocks))
+
+
 @dataclass(frozen=True)
 class AbilitiesSnapshot:
     """Versioned snapshot of all champion ability records.
@@ -814,6 +944,7 @@ class AbilitiesSnapshot:
         apply_cdragon_resource_guard: bool = False,
         cdragon_root: Path | None = None,
         strict_cdragon_patch: bool = True,
+        apply_cdragon_surplus_ad: bool = False,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
 
@@ -874,6 +1005,20 @@ class AbilitiesSnapshot:
         directory, so enforcement is now a no-op on the shipped data and only
         bites if a future patch-refresh copies a sidecar forward again. Pass
         False only to reproduce pre-guard behavior in a test.
+
+        ``apply_cdragon_surplus_ad`` (A-29 / BACKLOG R129, default False / OFF) is
+        the SURPLUS-block seam. ``prefer_cdragon_ratios`` above is overwrite-only
+        - it never changes a form's damage-block count, and a form whose sidecar
+        resolves MORE mechanical blocks than Meraki carries falls back whole, so
+        the extra coefficient is silently lost. When True, each pair in
+        ``_CDRAGON_SURPLUS_AD_MERGES`` has that surplus ratio MERGED into its
+        Meraki damage block (see ``_apply_cdragon_surplus_ad_merge``); v1 seeds
+        only Viego R, whose 120 percent total-AD primary hit is otherwise
+        uncredited so ``compute_ability_dps("Viego")`` scores R as 0.0 at full
+        target HP. Requires the sidecar (it is where the coefficient comes from),
+        so it is inert when ``prefer_cdragon_ratios=False`` or the sidecar is
+        missing / rejected by the patch guard. Default OFF = byte-identical, and
+        even ON the damage-block COUNT is invariant.
         """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:
@@ -952,6 +1097,14 @@ class AbilitiesSnapshot:
                         cd_slot = (cd_map.get(cid) or {}).get(key)
                         if cd_slot:
                             fm = _apply_cdragon_ratio_preference(fm, cd_slot)
+                            # A-29 surplus-block merge (Viego R 120% total AD):
+                            # allowlist-gated, opt-in, default OFF. Runs AFTER the
+                            # bijection re-source so it only ever adds a stat
+                            # family that path declined to supply.
+                            if apply_cdragon_surplus_ad:
+                                fm = _apply_cdragon_surplus_ad_merge(
+                                    cid, key, fm, cd_slot
+                                )
                     built.append(fm)
                 per_key[key] = tuple(built)
             champions[cid] = per_key

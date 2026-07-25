@@ -9,6 +9,8 @@ extractor manifest is the trigger), exactly as before the split.
 
 from __future__ import annotations
 
+import dataclasses
+
 from ._effects_types import (
     ANY,
     CallContext,
@@ -770,17 +772,27 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             # and the wiki's dated V26.11 note ("increased to 10% from 8%")
             # matches the 8 -> 10 flip visible between the vendored 16.10.1 and
             # 16.11.1 dirs. Do NOT re-source this number from Meraki.
-            # CADENCE CAVEAT (RM-99b, open): every_n_seconds=3.5 below is
-            # neither the 3s charge nor the 30s PER-TARGET cooldown, so a
-            # single-target rotation over-procs by ~8.57x. Correcting it is a
-            # default-ON scoring change and is deliberately NOT done here.
+            # CADENCE CORRECTED (RM-99b / A-04, operator-flipped 2026-07-24).
+            # This carried every_n_seconds=3.5 - neither the 3s charge nor the
+            # 30s PER-TARGET cooldown - so a single-target rotation over-procced
+            # by exactly 30/3.5 = 8.5714x (MEASURED at shipped build depth, not
+            # at an empty build; the proc supplied 13-32 pct of total credited
+            # auto DPS on shipped bruiser builds). The 30.0 below is the real
+            # per-target gate, sourced from the Meraki passive text quoted in the
+            # seam block at the bottom of this file, and is now the SHIPPED
+            # DEFAULT for SR: correcting the data table needs no consumer wire,
+            # since all six scorers read ITEM_EFFECTS directly.
+            # KNOWN live effect: Heartsteel falls from #1-#2 to #6-#43 on
+            # /rank-bruiser and it sits in 49 of 173 shipped SR build orders.
+            # The ARENA mirror 223084 is deliberately NOT corrected here - its
+            # 30s is unsourced on its own feed. See HEARTSTEEL_CADENCE_FIX_IDS.
             bonus_damage=lambda c: 70.0 + 0.06 * c.caster_max_hp,
             damage_type=PHYSICAL,
-            every_n_seconds=3.5,
+            every_n_seconds=30.0,
         ),),
         note=(
             "Heartsteel: Colossal Consumption flat 70 + 6% caster max HP "
-            "physical every ~3.5s in combat"
+            "physical, 30s per-target cooldown"
         ),
     ),
     "3083": ItemEffect(
@@ -4234,6 +4246,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             name="Colossal Consumption",
             bonus_damage=lambda c: 70.0 + 0.06 * c.caster_max_hp,
             damage_type=PHYSICAL,
+            # CADENCE CAVEAT (RM-99b / A-04): still the SR twin's old 3.5, and
+            # DELIBERATELY so. The SR entry 3084 was corrected to the real 30s
+            # per-target gate (operator-flipped 2026-07-24) but this mirror was
+            # held OFF: per R161 doctrine B the mirror's OWN feed was checked
+            # first and states no cooldown (absent from Meraki; its DDragon text
+            # renders "(0s) per target"), so 30s here would be INHERITED and
+            # UNSOURCED - and Riot demonstrably retuned this mirror on other
+            # axes (700 vs 900 Health, 2500g vs 3000g), so an SR magnitude is
+            # not a safe default. Correcting it is opt-in via
+            # ``apply_heartsteel_cadence_fix``. Re-source 223084's own cooldown
+            # before flipping that seam's default.
             every_n_seconds=3.5,
         ),),
         note="Heartsteel (Arena 223084): same as SR 3084 - Colossal Consumption 70+6% caster max HP every 3.5s",
@@ -5964,3 +5987,114 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     ),
 
 }
+
+
+# ---------------------------------------------------------------------------
+# A-04 / RM-99b: Heartsteel damage-half cadence correction (DEFAULT-OFF seam)
+# ---------------------------------------------------------------------------
+#
+# WHAT IS WRONG. The 3084 / 223084 Colossal Consumption procs above carry
+# ``every_n_seconds=3.5``, which is NEITHER interval the item's own feed states.
+# Meraki ``items["3084"].passives[0].effects`` (the only feed that states a number
+# for this item) reads: "generate a stack on them each second, stacking up to 3
+# times" and "(30 second cooldown per target)". So the two real intervals are a
+# 3-second charge window and a 30-second per-target cooldown. The empowered attack
+# is gated by the COOLDOWN, not the charge. ``dps._periodic_proc_dps`` computes
+# ``procs = duration / every_n_seconds``, so a single-target rotation is credited
+# 30 / 3.5 = 8.5714x the real proc count. MEASURED at shipped build depth
+# (build_orders_sr.json 4-to-6 item prefixes, 8 bruiser/tank champions): the
+# isolated Heartsteel damage term is exactly 8.5714x too large in every case, and
+# it supplies 13% to 32% of total credited auto-attack DPS on those builds.
+#
+# WHY IT MATTERS BEYOND THE ONE ITEM. R137's ``_item_health_stack`` models the OTHER
+# half of the same passive (the permanent-HP-per-proc grant) and derives its proc
+# curve from the REAL 30s, then records the disagreement in its docstring as
+# deliberate and unresolved. The two halves of one item's model therefore disagree
+# about how often it fires. That disagreement - not the raw constant - is the
+# invariant ``tests/test_heartsteel_cadence_a04.py`` pins.
+#
+# WHY DEFAULT-OFF. Correcting the constant is a change to already-shipped damage
+# scoring, and it REORDERS live build orders hard: on /rank-bruiser at real depth
+# Heartsteel currently reads #1 or #2 for every bruiser measured and drops to #6
+# through #43 of a ~135-item pool once corrected. That is an operator call, not an
+# agent call, so the corrected value lands here behind a named flag that defaults
+# False and returns the live mapping ITSELF when off (identity - byte-identical, no
+# copy, no consumer change). Flipping the default is a one-line edit plus a wire in
+# ``dps.py`` / the rank routes; nothing is wired yet.
+#
+# ARENA MIRROR (R161 doctrine B - credit the mirror from its OWN feed). Checked
+# first, and the answer is that no feed states a cooldown for 223084: it is absent
+# from Meraki entirely, and its own DDragon description renders the cooldown as a
+# zeroed template ("Colossal Consumption (0s) per target"). Its description DOES
+# carry the literal "per target" token, so the per-target-cooldown STRUCTURE is
+# confirmed on the mirror's own data; only the magnitude is unavailable. The 30s
+# below is therefore INHERITED and UNSOURCED for 223084 - the same provenance
+# ``_item_health_stack`` records for its own 223084 coefficient, and Riot
+# demonstrably retuned this mirror on other axes (700 vs 900 Health, 2500g vs
+# 3000g). Re-source before any map-30 default-ON flip.
+
+# The real gate on the empowered attack, per the Meraki passive text quoted above.
+# Patch-pinned like every other constant in this file; the test parses the feed and
+# fails if this drifts from it.
+HEARTSTEEL_PER_TARGET_COOLDOWN_S: float = 30.0
+
+# ARENA MIRROR ONLY (operator decision 2026-07-24). The SR entry 3084 now ships
+# the corrected 30.0 directly in the table above - it is no longer behind this
+# seam, because the SR magnitude is sourced from the Meraki passive text. The
+# Arena mirror 223084 stays at the old 3.5 and is corrected only when this seam
+# is switched on, because 30s is UNSOURCED on 223084's own feed (R161 doctrine
+# B). If 223084's real per-target cooldown is ever sourced, correct the table
+# entry and retire this seam rather than flipping its default.
+HEARTSTEEL_CADENCE_FIX_IDS: tuple[str, ...] = ("223084",)
+
+
+def heartsteel_per_target_cooldown_s() -> float:
+    """Return the corrected Colossal Consumption cadence in seconds.
+
+    A function rather than a bare constant read so a consumer cannot accidentally
+    close over a stale value at import time.
+    """
+    return HEARTSTEEL_PER_TARGET_COOLDOWN_S
+
+
+def apply_heartsteel_cadence_fix(
+    effects: dict[str, ItemEffect] | None = None,
+    *,
+    apply_heartsteel_per_target_cadence: bool = False,
+) -> dict[str, ItemEffect]:
+    """Return item effects with the ARENA Heartsteel mirror's cadence corrected.
+
+    SCOPE NARROWED 2026-07-24 (operator decision). The SR entry 3084 now ships the
+    corrected 30s per-target gate directly in :data:`ITEM_EFFECTS`, so it is NOT
+    routed through this seam - flipping this flag does not move any SR scoring.
+    This seam covers only the Arena mirror 223084, whose 30s would be inherited
+    from the SR twin rather than sourced from its own feed (R161 doctrine B).
+
+    ``effects`` defaults to the live :data:`ITEM_EFFECTS`. When
+    ``apply_heartsteel_per_target_cadence`` is False (the default) the SAME mapping
+    object is returned unchanged - identity, so callers are byte-identical and no
+    scoring moves. When True, a shallow copy is returned in which each id in
+    :data:`HEARTSTEEL_CADENCE_FIX_IDS` has its seconds-based procs re-timed to
+    :func:`heartsteel_per_target_cooldown_s`; every other entry is the same object,
+    the damage FORMULA is untouched, and :data:`ITEM_EFFECTS` is never mutated.
+
+    Unregistered or attack-counted procs are left alone, so this is a no-op on any
+    build that does not carry the Arena Heartsteel mirror.
+    """
+    src = ITEM_EFFECTS if effects is None else effects
+    if not apply_heartsteel_per_target_cadence:
+        return src
+    cadence = heartsteel_per_target_cooldown_s()
+    patched = dict(src)
+    for item_id in HEARTSTEEL_CADENCE_FIX_IDS:
+        entry = patched.get(item_id)
+        if entry is None or not entry.periodics:
+            continue
+        procs = tuple(
+            dataclasses.replace(p, every_n_seconds=cadence)
+            if p.every_n_seconds > 0
+            else p
+            for p in entry.periodics
+        )
+        patched[item_id] = dataclasses.replace(entry, periodics=procs)
+    return patched
