@@ -2,12 +2,31 @@
 
 Composes compute_ability_dps().total_ability_dps (Q/W/E/R) with
 compute_dps().weighted_dps (autos + on-hit item procs, incl. Nashor's
-Icathian Bite) into ONE combined-DPS score by PLAIN SUM - both halves are
-in the same DPS units. The two are non-overlapping by design: the passive
-(P) on-hit lives in compute_dps, the four active spells live in
-compute_ability_dps. Neither half alone surfaces Nashor's; their sum is the
-champion's true total sustained DPS. Sibling of hybrid.py (which composes
-dps + EHP with alpha/beta) - here no weights are needed.
+Icathian Bite) into ONE combined-DPS score by PLAIN SUM. The two are
+non-overlapping by design: the passive (P) on-hit lives in compute_dps, the
+four active spells live in compute_ability_dps. Neither half alone surfaces
+Nashor's. Sibling of hybrid.py (which composes dps + EHP with alpha/beta) -
+here no weights are needed.
+
+THE TWO HALVES ARE NOT IN THE SAME DPS UNITS (RM-98, corrected 2026-07-24).
+This docstring previously asserted that they were, and that the sum was
+therefore "the champion's true total sustained DPS". Both claims are false.
+``weighted_dps`` is a combat-window per-second figure; every spell row inside
+``total_ability_dps`` is multiplied by a WHOLE-GAME cast rate
+(``data/daemon_slayer/spell_cast_rates.json`` - casts divided by
+``matches.game_duration_s``, ``ability_dps.py:1261``), so the ability half is
+systematically under-weighted against the auto half.
+``docs/specs/SPEC_rm98_cast_rate_time_base.md:76-83`` adjudicates this and
+names THIS line as the shipped, DEFAULT-ON instance of the defect; the
+characteristic per-spell distortion is ~7x (SPEC:100-107).
+
+Neither denominator replacement RM-39 named is available at the required
+fidelity (SPEC:116-133) - do not re-attempt either. The adjudicated repair is
+the cast-propensity prior in ``cast_propensity.py``; it is wired into
+``hybrid.py`` behind DEFAULT-OFF ``apply_cast_rate_propensity_prior`` and is
+deliberately NOT wired here yet (SPEC:109-114 - narrow first, widen on test
+evidence). This scorer's arithmetic is UNCHANGED; only the claim about it is
+corrected.
 
 ASCII only - use " - " for a clause break (repo hard rule).
 """

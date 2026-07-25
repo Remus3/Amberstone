@@ -15,7 +15,7 @@
 // nothing changes for users who haven't opted in.
 
 import {
-  ITEMS, ITEM_COSTS, CHAMPS, DDRAGON_FALLBACK_VERSION, _resolveChampId,
+  ITEMS, ITEM_COSTS, CHAMPS, DDRAGON_FALLBACK_VERSION,
   _resolveItemId, _splitItemList, componentProgress,
 } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
@@ -96,6 +96,38 @@ const _SPK_NAME_TO_KEY = {
   version: "",
   map: {},
 };
+
+// C-17 (2026-07-24): the ONE champion-name -> NUMERIC-key resolver for this
+// module. Returns the DDragon numeric key (Jinx -> 222) or 0 when the name
+// is unknown / the CHAMPS index has not loaded yet.
+//
+// Do NOT reach for _resolveChampId here: that returns the canonical DDragon
+// SLUG ("Jinx"), so parseInt() on it is always NaN. The DS combat-analysis
+// cluster on Active Match was dead in mock AND in live games for exactly
+// that reason - _amDsSyntheticCs resolved my_champion to 0 and bailed,
+// hiding all seven cards. CHAMPS.byId is {numericKeyString -> Slug}, so the
+// reverse map below is the only correct route.
+//
+// The map is rebuilt lazily and memoized until CHAMPS.version changes, and
+// normalization is the same lowercase + strip-non-alphanumeric pass
+// _resolveChampId uses so the liveclient display forms ("Lee Sin",
+// "Kha'Zix") hit the same row as their slugs ("LeeSin", "Khazix").
+function _champNumericKey(nameOrSlug) {
+  const norm = String(nameOrSlug || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!norm) return 0;
+  if (!CHAMPS.byId || !Object.keys(CHAMPS.byId).length) return 0;
+  if (!_SPK_NAME_TO_KEY.ready || _SPK_NAME_TO_KEY.version !== CHAMPS.version) {
+    _SPK_NAME_TO_KEY.map = {};
+    for (const [keyStr, slug] of Object.entries(CHAMPS.byId)) {
+      const numKey = parseInt(keyStr, 10);
+      if (!numKey || !slug) continue;
+      _SPK_NAME_TO_KEY.map[String(slug).toLowerCase().replace(/[^a-z0-9]/g, "")] = numKey;
+    }
+    _SPK_NAME_TO_KEY.version = CHAMPS.version;
+    _SPK_NAME_TO_KEY.ready = true;
+  }
+  return _SPK_NAME_TO_KEY.map[norm] || 0;
+}
 
 // s170 (step 2): per-tick DS rerank cache. Keyed by a coarse "input
 // fingerprint" so we don't refetch on every state envelope (~1 Hz)
@@ -1137,7 +1169,7 @@ export function renderActiveMatch(payload, ctx) {
 function _amDsSyntheticCs(p, ctx) {
   const champSlug = (p && p.champion) || "";
   if (!champSlug) return null;
-  const myId = parseInt(_resolveChampId(champSlug) || "0", 10) || 0;
+  const myId = _champNumericKey(champSlug);
   if (myId <= 0) return null;
   const modeLow = String((ctx && ctx.mode) || "sr").toLowerCase();
   // Mode -> a representative queue_id the relscore panel's _modeForQueue maps
@@ -1173,7 +1205,7 @@ function _amDsSyntheticCs(p, ctx) {
       if (meta && meta.is_active) myPosition = String(meta.position || "");
       if (myTeam && pl.team === myTeam) continue;
       const slug = pl.rawChampionName || pl.championName || "";
-      const eid = parseInt(_resolveChampId(slug) || "0", 10) || 0;
+      const eid = _champNumericKey(slug);
       if (eid > 0) {
         theirTeam.push({
           championId: eid,
@@ -1863,26 +1895,13 @@ function _renderSpikeCurveFromCtx(ctx) {
     return;
   }
 
-  // Lookup champion numeric key from the CHAMPS index (loaded by
-  // items_index.js from /data/champions_index.json). CHAMPS.byId is
-  // {numericKey -> Slug}; we want the reverse (Slug -> numericKey) +
-  // matching by the liveclient championName which may carry spaces
-  // / apostrophes ("Lee Sin", "Kha'Zix") that the slug strips. Memoized
-  // module-scope so re-renders during one CS session don't re-build it.
+  // Lookup champion numeric keys through the shared _champNumericKey helper
+  // (memoized reverse of CHAMPS.byId, which is {numericKey -> Slug}). The
+  // liveclient championName may carry spaces / apostrophes ("Lee Sin",
+  // "Kha'Zix") that the slug strips; the helper normalizes both sides.
   if (!CHAMPS.byId || !Object.keys(CHAMPS.byId).length) {
     renderSpikeCurve(mount, null, null, null, null, {});
     return;
-  }
-  if (!_SPK_NAME_TO_KEY.ready || _SPK_NAME_TO_KEY.version !== CHAMPS.version) {
-    _SPK_NAME_TO_KEY.map = {};
-    for (const [keyStr, slug] of Object.entries(CHAMPS.byId)) {
-      const numKey = parseInt(keyStr, 10);
-      if (!numKey || !slug) continue;
-      const norm = String(slug).toLowerCase().replace(/[^a-z0-9]/g, "");
-      _SPK_NAME_TO_KEY.map[norm] = numKey;
-    }
-    _SPK_NAME_TO_KEY.version = CHAMPS.version;
-    _SPK_NAME_TO_KEY.ready = true;
   }
 
   const allyIds = [];
@@ -1891,8 +1910,7 @@ function _renderSpikeCurveFromCtx(ctx) {
     if (!pl || typeof pl !== "object") continue;
     const champ = pl.championName || pl.rawChampionName || "";
     if (!champ) continue;
-    const norm = String(champ).toLowerCase().replace(/[^a-z0-9]/g, "");
-    const numKey = _SPK_NAME_TO_KEY.map[norm] || 0;
+    const numKey = _champNumericKey(champ);
     if (!numKey) continue;
     if (pl.team === myTeam) {
       allyIds.push(numKey);
@@ -2032,25 +2050,13 @@ function _renderDraftEloFromCtx(ctx) {
     renderDraftElo(mount, null);
     return;
   }
-  if (!_SPK_NAME_TO_KEY.ready || _SPK_NAME_TO_KEY.version !== CHAMPS.version) {
-    _SPK_NAME_TO_KEY.map = {};
-    for (const [keyStr, slug] of Object.entries(CHAMPS.byId)) {
-      const numKey = parseInt(keyStr, 10);
-      if (!numKey || !slug) continue;
-      const norm = String(slug).toLowerCase().replace(/[^a-z0-9]/g, "");
-      _SPK_NAME_TO_KEY.map[norm] = numKey;
-    }
-    _SPK_NAME_TO_KEY.version = CHAMPS.version;
-    _SPK_NAME_TO_KEY.ready = true;
-  }
   const allyIds = [];
   const enemyIds = [];
   for (const pl of lc.allPlayers) {
     if (!pl || typeof pl !== "object") continue;
     const champ = pl.championName || pl.rawChampionName || "";
     if (!champ) continue;
-    const norm = String(champ).toLowerCase().replace(/[^a-z0-9]/g, "");
-    const numKey = _SPK_NAME_TO_KEY.map[norm] || 0;
+    const numKey = _champNumericKey(champ);
     if (!numKey) continue;
     if (pl.team === myTeam) allyIds.push(numKey);
     else                    enemyIds.push(numKey);
@@ -2468,3 +2474,11 @@ function _dsIconFallback(name, id, delta) {
   tile.textContent = String(name).slice(0, 8);
   return tile;
 }
+
+// --- test seam -------------------------------------------------------------
+// Module-private helpers exposed for `node --test`
+// (web/js/panels/active_match_dscluster.test.mjs). Not part of the page API.
+export const __test = {
+  _champNumericKey,
+  _amDsSyntheticCs,
+};
