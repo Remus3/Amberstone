@@ -223,6 +223,10 @@ def dispatch_for_coach(
     assume_missing_hp_heal_amp: bool = False,
     caster_hp: Optional[float] = None,
     caster_hp_max: Optional[float] = None,
+    # RM-04 A-01 (DEFAULT-OFF, CARRY-ONLY): class-wide un-strip of the four
+    # ROADMAP-named off-class items for EVERY ranged marksman, not just the
+    # four DSP2-tabled champions. Appended at the END per repo convention.
+    widen_carry_pool: bool = False,
 ) -> Optional[CoachDispatchResult]:
     """Resolve archetype for ``champion`` + call the right DS scorer.
 
@@ -291,6 +295,8 @@ def dispatch_for_coach(
             kwargs["apply_target_vuln"] = True
         if assume_missing_hp_heal_amp:
             kwargs["assume_missing_hp_heal_amp"] = True
+        if widen_carry_pool:
+            kwargs["widen_carry_pool"] = True
 
         # R5 self-HP -> caster_missing_hp_pct. Shared guard: absent HP or
         # hp_max <= 0 yields 0.0 ("no signal", OFF) and is NOT forwarded.

@@ -4,6 +4,73 @@
 
 ---
 
+# 2026-07-27 - five open-item slices, parallel in-repo agents (ENGINE 1.244.0)
+
+HEAD after this session: see `git log -1`. ENGINE **1.244.0**, patch 16.14.1,
+DS **9369** / RC suite re-run this session, DS `:8893` bounced and serving 1.244.0.
+Full narrative: `docs/LEDGER.md` 1043.
+
+## What shipped
+
+1. **C-06 / RM-26** - vision-profile seeds were dead on disk. New `resolution_seed`
+   tier in `core/vision_profiles.py` between the exact-`config_key` hit and
+   `legacy_seed`. The ultrawide accuracy caveat is preserved verbatim; no parity
+   claim across aspect ratios.
+2. **B-01b** - `is_augment_select` re-homed into ARAM + Arena `TIERED_FIELDS`
+   (brawl deliberately excluded - zero augment references in that coach).
+   `RC_VISION_MERGE_STRICT` is still **NOT** default-ON; see below.
+3. **A-01b + A-01c** - `widen_carry_pool` seam-forwarded through
+   `core/daemon_slayer_client.py` AND `coach_integration/archetype_dispatch.py`.
+   It was broken in two places, not one.
+4. **C-17** - filed cause refuted, real cause fixed. Seven DS cards plus the L4
+   capability-gap chip were dead in **every real game**, not just headless.
+5. **RM-98** - cast-propensity prior, DEFAULT-OFF `apply_cast_rate_propensity_prior`.
+
+## Three things that would have shipped wrong
+
+- **C-17's filed cause was false.** "Gates on `isLive`" - it does not; `?ui_mock=1`
+  sets `lcuPhase: "InProgress"`. Had that been built as filed, the actual bug (a
+  slug fed to `parseInt`) would have survived, and it was a LIVE bug, not a
+  headless one. The operator tagging the row SOURCE-READ is what caught this.
+- **The RM-98 brief's formula was the identity.** `theoretical * (measured/theoretical)`
+  is a no-op; the agent said so instead of building it, and introduced the p90
+  reference the construction actually needs.
+- **A DEFAULT-OFF seam was almost assumed to be a no-op.** It was PROVEN instead:
+  regen against the restarted 1.244.0 server returned all three tables
+  byte-identical except `generated_at`.
+
+## Standing hazards for the next session
+
+- ENGINE bump ritual order is bump -> RESTART `:8893` -> regen -> measure. The
+  generator computes over live HTTP; a stale server returns a confident, wrong
+  "0 changed". Verified live this session (`/health` read 1.244.0 before regen).
+- 372 test files carry the ENGINE literal pin. Bump them by quoted-literal
+  replace; `.pyc` files will still grep-match and are noise.
+- `tools/daemon_slayer_build_orders_generate.py` takes `--mode`, NOT `--champions`.
+- **The build-order tables live in TWO keyspaces and last session only regenerated
+  ONE.** `tools/daemon_slayer_build_orders_generate.py --mode all` writes
+  `data/daemon_slayer/16.14.1/`. The `build_order_precompute/v1` artifacts under
+  `data/daemon_slayer/build_orders/16.14.1/` come from
+  `python -m core.build_order_precompute --static --mode all --champions all`.
+  At HEAD `b23b5f16` that second keyspace still carried the denied Arena Golden
+  Spatula `224403` **331 times** and Mejai's `3041` **17 times**, a full session
+  after both fixes "landed" - and it is the keyspace `next_buy_fallback.py`
+  reads. A regen is not done until BOTH are re-run, and "0 changed" in one says
+  nothing about the other. **It is actually THREE families:**
+  `build_order_variants_<mode>.json` has its own entrypoint
+  (`python -m core.build_order_variants --static --mode all --champions all`) and
+  carried the same pollution independently (arena `224403` x165, sr `3041` x50).
+  **563 stale rows total were being served live.** Run the FULL `tests/` suite
+  after a bump - each family has its own stamp guard and that is what found them.
+- `tools/ds_feed_index.py` `KNOWN_STAMP_LAG` is not the source of truth the test
+  reads. Edit the `.py`, then `python tools/ds_feed_index.py --write` to
+  regenerate `tools/ds_feed_index.json`, or the guard stays red.
+- **ROADMAP.md is now 76108 bytes / 3892 headroom** against its 80KB budget.
+  That is tight. Relocate before adding a long row.
+- Never run `tools/ds_share_sync.py` while a suite is in flight.
+
+---
+
 # 2026-07-26 - five open-item slices, parallel worktrees (ENGINE 1.243.0)
 
 HEAD after this session: see `git log -1`. ENGINE **1.243.0**, patch 16.14.1,
