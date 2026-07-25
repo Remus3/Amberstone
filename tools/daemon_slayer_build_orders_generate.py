@@ -86,7 +86,11 @@ sys.path.insert(0, str(_ROOT))
 
 from core import archetype_picks
 from core import daemon_slayer_client as dsc
-from core.build_order import plan_build_order
+from core.build_order import (
+    SCORE_BY_DEFAULT,
+    SCORE_BY_VALUES,
+    plan_build_order,
+)
 
 _DATA_DIR = _ROOT / "data"
 _DS_DIR = _DATA_DIR / "daemon_slayer"
@@ -176,6 +180,7 @@ def build_order_for_class(
     archetype: str,
     mode: str,
     comp_class: str,
+    score_by: str = SCORE_BY_DEFAULT,
 ) -> list[str]:
     """Call ``plan_build_order`` for one (champion, archetype, mode,
     enemy-comp-class) cell. Returns the ordered item-id list (incl. boots),
@@ -187,6 +192,14 @@ def build_order_for_class(
     """
     ad_share, ap_share = _COMP_SHARES[comp_class]
     ds_mode = DS_MODE_BY_KEY.get(mode, "SR")
+    # A-21 / RM-90 S1 tail: the EHP metric the ranker sorts by. The default is
+    # never inserted into the call, so a run that does not ask for the seam is
+    # byte-identical to the pre-seam generator (core/build_order.py:571-576
+    # would resolve it to the same value anyway, but omitting it keeps an
+    # injected/older plan_build_order signature working).
+    extra: dict = {}
+    if score_by and score_by != SCORE_BY_DEFAULT:
+        extra["score_by"] = score_by
     try:
         result = plan_build_order(
             champion,
@@ -204,6 +217,7 @@ def build_order_for_class(
             # 0.7 + 0.5 = 1.2 over-sum returns an empty plan.
             rank_kwargs={"enemy_ad_share": ad_share, "enemy_ap_share": ap_share},
             timeout=_TIMEOUT,
+            **extra,
         )
     except Exception as exc:  # noqa: BLE001 - one bad cell never sinks the run
         print(f"WARN: plan_build_order raised for {champion}|{archetype}|"
@@ -217,13 +231,14 @@ def build_order_for_class(
 def build_orders_for_champion(
     champion: str,
     mode: str,
+    score_by: str = SCORE_BY_DEFAULT,
 ) -> dict[str, list[str]]:
     """Return ``{comp_class: [id, ...]}`` for one champion in one mode."""
     archetype = archetype_for(champion)
     out: dict[str, list[str]] = {}
     for comp_class in ENEMY_COMP_CLASSES:
         out[comp_class] = build_order_for_class(
-            champion, archetype, mode, comp_class,
+            champion, archetype, mode, comp_class, score_by=score_by,
         )
     return out
 
@@ -232,11 +247,12 @@ def generate_mode(
     mode: str,
     champions: Iterable[str],
     patch: str,
+    score_by: str = SCORE_BY_DEFAULT,
 ) -> dict:
     """Build the full payload dict for one mode."""
     build_orders: dict[str, dict[str, list[str]]] = {}
     for champ in champions:
-        build_orders[champ] = build_orders_for_champion(champ, mode)
+        build_orders[champ] = build_orders_for_champion(champ, mode, score_by=score_by)
     return {
         "version":       patch,
         "generated_at":  _now_iso(),
@@ -287,7 +303,7 @@ def _count_cells(payload: dict) -> tuple[int, int]:
     return champs, cells
 
 
-def main() -> int:
+def _build_arg_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", default="all",
                     choices=("all", "sr", "aram", "arena"),
@@ -298,6 +314,16 @@ def main() -> int:
                     help="Print per-mode counts without writing the file(s).")
     ap.add_argument("--out", default="",
                     help="Override output directory (default: data/daemon_slayer/<patch>).")
+    # A-21 / RM-90 S1 tail. Same whitelist as core/build_order.py so the two
+    # keyspaces cannot drift apart on which metrics are legal.
+    ap.add_argument("--score-by", default=SCORE_BY_DEFAULT,
+                    choices=tuple(sorted(SCORE_BY_VALUES)),
+                    help="EHP metric the ranker sorts by (default: %(default)s).")
+    return ap
+
+
+def main() -> int:
+    ap = _build_arg_parser()
     args = ap.parse_args()
 
     if not args.dry_run and not dsc.is_engine_up(timeout=1.0):
@@ -323,7 +349,7 @@ def main() -> int:
 
     started = time.time()
     for mode in target_modes:
-        payload = generate_mode(mode, champions, patch)
+        payload = generate_mode(mode, champions, patch, score_by=args.score_by)
         champs, cells = _count_cells(payload)
         if args.dry_run:
             print(f"  [dry-run] {mode:5s}: {champs} champions, "

@@ -110,7 +110,12 @@ if str(_PKG_ROOT) not in sys.path:
 # it pulls engine code (not data); plan_build_order resolves its own DS
 # dispatcher lazily, and accepts an injectable rank_fn for headless tests. We do
 # NOT reimplement ordering, boots injection, or the no-double-unique rule here.
-from core.build_order import DEFAULT_SLOTS, plan_build_order
+from core.build_order import (
+    DEFAULT_SLOTS,
+    SCORE_BY_DEFAULT,
+    SCORE_BY_VALUES,
+    plan_build_order,
+)
 from core import archetype_picks
 
 # Project root: core/ -> C:\Riot Commander\
@@ -287,6 +292,7 @@ def compute_cell(
     archetype: Optional[str] = None,
     level: int = DEFAULT_LEVEL,
     rank_fn: Optional[Callable[..., Optional[dict]]] = None,
+    score_by: str = SCORE_BY_DEFAULT,
 ) -> dict:
     """Compute ONE precompute cell via the shipped ``plan_build_order``.
 
@@ -300,16 +306,26 @@ def compute_cell(
     ``archetype`` defaults to the champion's resolved primary scorer.
     ``rank_fn`` is forwarded to ``plan_build_order`` for headless tests (the DS
     dispatcher stand-in); production leaves it None so the engine resolves it.
+
+    ``score_by`` (default ``"blended"``, A-21 / RM-90 S1) is the EHP objective
+    the TANK-routed cells rank on. It is NOT part of ``COMP_BIAS`` on purpose:
+    the comp axis describes the ENEMY, while ``score_by`` picks which objective
+    the scorer optimizes, so it is a sweep-wide knob rather than a per-class
+    bias. Forwarded ONLY when non-default so a default regen is byte-identical.
     """
     bias = bias_for(comp_archetype)
     direct, rank_kwargs = split_bias(bias)
     arch = archetype if archetype is not None else archetype_for(champion)
     ds_mode = DS_MODE_BY_KEY.get(str(mode).lower(), str(mode))
+    score_kwargs = (
+        {} if str(score_by) == SCORE_BY_DEFAULT else {"score_by": str(score_by)}
+    )
     try:
         result = plan_build_order(
             champion, arch,
             level=int(level), owned_item_ids=[], mode=ds_mode,
-            slots=SLOTS, rank_fn=rank_fn, rank_kwargs=rank_kwargs, **direct,
+            slots=SLOTS, rank_fn=rank_fn, rank_kwargs=rank_kwargs,
+            **score_kwargs, **direct,
         )
     except Exception:  # noqa: BLE001 - one bad cell never sinks the sweep
         result = None
@@ -330,16 +346,19 @@ def build_orders_for_champion(
     mode: str = "SR",
     level: int = DEFAULT_LEVEL,
     rank_fn: Optional[Callable[..., Optional[dict]]] = None,
+    score_by: str = SCORE_BY_DEFAULT,
 ) -> dict[str, dict]:
     """Return ``{comp_archetype: cell}`` for one champion in one mode. The
     champion's scorer archetype is resolved once + reused across comp classes
-    (the comp axis does not change which scorer a champion reads)."""
+    (the comp axis does not change which scorer a champion reads).
+
+    ``score_by`` is passed through to every cell (see :func:`compute_cell`)."""
     arch = archetype_for(champion)
     out: dict[str, dict] = {}
     for comp in COMP_ARCHETYPES:
         out[comp] = compute_cell(
             champion, comp, mode=mode, archetype=arch,
-            level=level, rank_fn=rank_fn,
+            level=level, rank_fn=rank_fn, score_by=score_by,
         )
     return out
 
@@ -350,30 +369,40 @@ def generate_table(
     mode: str = "SR",
     level: int = DEFAULT_LEVEL,
     rank_fn: Optional[Callable[..., Optional[dict]]] = None,
+    score_by: str = SCORE_BY_DEFAULT,
 ) -> dict:
     """Sweep the (champ x comp-archetype) grid into a payload dict.
 
     Cell order is deterministic (champions outer, then COMP_ARCHETYPES). Every
     leaf is a ``compute_cell`` dict. Stamps the patch + DS engine version +
     schema + the comp-archetype dimensions stanza.
+
+    ``score_by`` is stamped into ``dimensions`` ONLY when non-default, so a
+    default regen writes a payload byte-identical to the committed table while a
+    seam-ON regen is self-describing (a reader can tell which objective the
+    table was built against without re-deriving it).
     """
     build_orders: dict[str, dict] = {}
     for champ in champions:
         build_orders[archetype_picks.canonical_champion_id(champ)] = (
             build_orders_for_champion(
                 champ, mode=mode, level=level, rank_fn=rank_fn,
+                score_by=score_by,
             )
         )
+    dimensions: dict = {
+        "comp_archetypes": list(COMP_ARCHETYPES),
+        "level": int(level),
+    }
+    if str(score_by) != SCORE_BY_DEFAULT:
+        dimensions["score_by"] = str(score_by)
     return {
         "version": resolve_patch(),
         "generated_at": _now_iso(),
         "mode": str(mode).lower(),
         "schema": SCHEMA_VERSION,
         "engine_version": engine_version(),
-        "dimensions": {
-            "comp_archetypes": list(COMP_ARCHETYPES),
-            "level": int(level),
-        },
+        "dimensions": dimensions,
         "build_orders": build_orders,
     }
 
@@ -609,7 +638,12 @@ def _install_static_transport() -> None:
     dsc._post_json = _inprocess_post
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def _build_arg_parser() -> argparse.ArgumentParser:
+    """Build the CLI parser.
+
+    Split out of :func:`main` so a test can assert the flag surface (notably the
+    A-21 ``--score-by`` default + whitelist) without running a sweep.
+    """
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", default="all",
                     choices=("all",) + _MODE_KEYS,
@@ -635,6 +669,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                          ":8893 HTTP / no running server). Self-contained regen "
                          "for patch-refresh; output is identical to the live "
                          "path by construction.")
+    ap.add_argument("--score-by", default=SCORE_BY_DEFAULT,
+                    choices=tuple(sorted(SCORE_BY_VALUES)),
+                    help="EHP objective the TANK-routed cells rank on (A-21 / "
+                         "RM-90 S1). 'blended' (default) is today's own-EHP "
+                         "behavior and writes a byte-identical table; "
+                         "'team_blended' additionally prices the EHP an item "
+                         "confers on teammates, per-champion gated by the DS "
+                         "engine's ally-reach signal. Ignored by every non-tank "
+                         "archetype.")
+    return ap
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    ap = _build_arg_parser()
     args = ap.parse_args(argv)
 
     champions = resolve_champions(args.champions)
@@ -656,13 +704,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     logger.info(f"build-order precompute gen patch={patch} modes={target_modes} "
           f"champions={len(champions)} level={args.level} "
+          f"score_by={args.score_by} "
           f"dry_run={args.dry_run} out={out_dir}")
 
     started = time.time()
     for mode_key in target_modes:
         payload = generate_table(
             champions, mode=DS_MODE_BY_KEY.get(mode_key, "SR"),
-            level=int(args.level),
+            level=int(args.level), score_by=args.score_by,
         )
         champs, cells = _count_cells(payload)
         if args.dry_run:

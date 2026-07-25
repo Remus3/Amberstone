@@ -235,6 +235,24 @@ _BOOTS_OVERRIDE_BY_CHAMP: dict[str, str] = {
     "Jhin": "3009",
 }
 
+# A-21 / RM-90 Slice S1 (2026-07-25): the ``score_by`` EHP-objective selector.
+# ``POST /rank-tank`` has parsed this since ENGINE 1.220.0 (server.py:639-643)
+# and ``rank_for_primary_archetype`` has forwarded it since the same bump, but
+# NO build-order caller could set it, so no shipped table could emit the Term A
+# ally-granted-EHP (``team_blended``) ranking. This is the missing client-side
+# half - there is no server change in the slice.
+#
+# TANK-ONLY by construction: ``rank_for_primary_archetype`` threads ``score_by``
+# into the ds.ehp branch and nowhere else, so a carry / mage / bruiser plan is
+# unaffected whatever this is set to.
+#
+# DEFAULT-OFF: ``"blended"`` is today's value AND is never emitted into the
+# ranker kwargs at all (see the forward site in :func:`plan_build_order`), so an
+# unchanged caller - including an injected test ``rank_fn`` with no ``**kwargs``
+# - sees a byte-identical call.
+SCORE_BY_DEFAULT = "blended"
+SCORE_BY_VALUES: frozenset = frozenset({"blended", "cc_blended", "team_blended"})
+
 
 def _select_boots_utility(
     arch: str,
@@ -495,6 +513,7 @@ def plan_build_order(
     incumbent_margin: float = 0.03,
     assume_boot_utility: bool = False,
     enemy_champions: Optional[Iterable[str]] = None,
+    score_by: str = SCORE_BY_DEFAULT,
 ) -> Optional[BuildOrderResult]:
     """Plan a contextual, match-specific item ORDER for the remaining slots.
 
@@ -521,6 +540,16 @@ def plan_build_order(
     to :func:`_select_boots` so the boot-utility ON path can feed its CC axis from
     real per-champion lockdown data instead of the v1 AP-share proxy. It is NOT
     splatted into the ranker, and None (every pre-A-39 caller) is byte-identical.
+
+    ``score_by`` (default ``"blended"``, A-21 / RM-90 S1) selects the EHP
+    objective the TANK route ranks on: ``"blended"`` (own EHP - today),
+    ``"cc_blended"``, or ``"team_blended"`` (Term A - also prices the EHP an
+    item confers on teammates, gated per champion by ``_champion_ally_reach``).
+    It is emitted into the ranker call ONLY when non-default and only when it is
+    a recognized value, so every existing caller is byte-identical and an
+    unrecognized string can never reach the engine as a 400. A value threaded
+    the old way through ``rank_kwargs`` still works; this named parameter wins
+    when both are supplied.
     """
     if not champion or not str(champion).strip():
         return None
@@ -535,6 +564,16 @@ def plan_build_order(
     arch = (archetype or "carry").strip().lower() or "carry"
     owned: list[str] = [str(i) for i in (owned_item_ids or ()) if str(i).strip()]
     extra: dict = dict(rank_kwargs or {})
+
+    # A-21 S1: resolve the EHP objective ONCE. Unrecognized -> treated as the
+    # default (logged, never raised, never forwarded) so a typo degrades to
+    # today's behavior instead of a 400 that reads as "engine down".
+    score_by_resolved = str(score_by or SCORE_BY_DEFAULT)
+    if score_by_resolved not in SCORE_BY_VALUES:
+        logger.debug(
+            "build_order: ignoring unrecognized score_by=%r", score_by_resolved
+        )
+        score_by_resolved = SCORE_BY_DEFAULT
 
     context = {
         "target_armor": float(target_armor),
@@ -640,6 +679,11 @@ def plan_build_order(
         call_kwargs.update(extra)
         # Caller-supplied rank_kwargs must never weaken the rule.
         call_kwargs["filter_shared_uniques"] = True
+        # A-21 S1: DEFAULT-OFF forward. Absent (not "blended") when unset, so an
+        # injected rank_fn without **kwargs keeps working; the named parameter
+        # is applied AFTER ``extra`` so it wins over a rank_kwargs backdoor.
+        if score_by_resolved != SCORE_BY_DEFAULT:
+            call_kwargs["score_by"] = score_by_resolved
 
         try:
             out = rank_fn(champion, arch, **call_kwargs)

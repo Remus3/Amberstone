@@ -1,5 +1,6 @@
 {
   "_comment": "DSP2 Cluster-B: per-ranged-marksman off-class WIN-exemption table. Consumed by rank.rank_items(exempt_offclass_by_win=True) (DEFAULT-OFF seam). Built by ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py from the cross-eval empirical (rewind WIN+usage) data. ASCII only.",
+  "_manual_entries_comment": "A-20 / RM-89 (2026-07-25) hand-seeded the Quinn row; it is NOT reproduced by build_marksman_offclass_exempt.py and a regeneration of this file MUST re-add it. Rationale: Quinn trips _is_ranged_marksman (Marksman tag, 525 attackrange), so OFFCLASS_MARKSMAN_ITEM_NAMES strips Profane Hydra and Umbral Glaive from her candidate pool entirely - yet her real meta is a ~85-90 pct lethality assassin whose second-most-picked item IS Profane Hydra (~12k games, behind only Hubris at ~22k), with Umbral Glaive a standard lethality rotation (docs/DS_SWEEP_TRACKER.md batch19). The class-wide rank.CARRY_POOL_WIDEN_ITEM_NAMES seam does not reach either name and must NOT be widened to: no crit ADC should be handed a bruiser hydra. Per-champion is the correct blast radius. Measured 2026-07-25: with the seam ON her SR carry pool goes 107 -> 109 and admits exactly these two ids (6698, 3179), while Jinx and Caitlyn stay byte-identical.",
   "patch": "16.12.1",
   "generated_from": "ops/audit/ds_cross_eval/data",
   "min_usage": 30,
@@ -12,6 +13,10 @@
     "Ezreal": [
       "Spear of Shojin",
       "Trinity Force"
+    ],
+    "Quinn": [
+      "Profane Hydra",
+      "Umbral Glaive"
     ],
     "Senna": [
       "Black Cleaver"

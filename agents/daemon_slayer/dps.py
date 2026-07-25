@@ -276,6 +276,7 @@ def _periodic_proc_dps(
     magic_amp: float = 1.0,
     ability_dot_only: bool = False,
     apply_melee_aa_gate: bool = False,
+    crit_denied_item_ids: frozenset[str] = frozenset(),
 ) -> float:
     """Sum DPS contribution from every conditional proc in the build.
 
@@ -294,11 +295,24 @@ def _periodic_proc_dps(
     ``total_magic_amp_multiplier``) is applied only to magical procs -
     models target-debuff auras (Abyssal Mask Unmake) that increase magic
     damage taken without affecting physical auto-attack damage.
+
+    A-12 / RM-46 (2026-07-25): ``crit_denied_item_ids`` is the crit-conversion
+    proc deny. Procs belonging to a listed item resolve against a
+    crit_chance=0.0 context, so a crit-scaling on-hit rider is never credited a
+    converted crit (Ashe's Frost Shot, whose passive states Runaan's Hurricane
+    bolts deal no additional damage on crit). Empty by default -> no ctx copy,
+    byte-identical.
     """
     if duration <= 0:
         return 0.0
     total = 0.0
+    denied_ctx = (
+        replace(call_ctx, crit_chance=0.0) if crit_denied_item_ids else call_ctx
+    )
     for e in effects:
+        proc_ctx = (
+            denied_ctx if e.item_id in crit_denied_item_ids else call_ctx
+        )
         for proc in e.periodics:
             # B1 (1.141.0): a ranged-only proc (Runaan's bolts) contributes
             # nothing on a melee auto. Default-OFF -> never skips (byte-identical).
@@ -340,7 +354,7 @@ def _periodic_proc_dps(
             is_true = proc.damage_type == TRUE
             resist = 0.0 if is_true else (target_armor_for_physical if is_physical else target_mr)
             type_amp = 1.0 if (is_physical or is_true) else magic_amp
-            dmg = proc.resolve_damage(call_ctx)
+            dmg = proc.resolve_damage(proc_ctx)
             total += procs * dmg * _armor_factor(resist) * mode_dmg_mult * type_amp
     return total / duration
 
@@ -456,6 +470,7 @@ def _per_attack_proc_damage(
     magic_amp: float = 1.0,
     damage_amp: float = 1.0,
     apply_melee_aa_gate: bool = False,
+    crit_denied_item_ids: frozenset[str] = frozenset(),
 ) -> float:
     """Per-attack on-hit proc damage (post-mit, post-mode, post-amps).
 
@@ -475,9 +490,19 @@ def _per_attack_proc_damage(
     Returns the total on-hit damage a single AA contributes - already
     armor/MR-mitigated, mode-multiplied, magic-amp-applied for magical
     procs, and wrapped in ``damage_amp`` to match the rotation pipeline.
+
+    A-12 / RM-46 (2026-07-25): ``crit_denied_item_ids`` mirrors the sister
+    function's crit-conversion proc deny - a listed item's procs resolve against
+    a crit_chance=0.0 context. Empty by default -> byte-identical.
     """
     total = 0.0
+    denied_ctx = (
+        replace(call_ctx, crit_chance=0.0) if crit_denied_item_ids else call_ctx
+    )
     for e in effects:
+        proc_ctx = (
+            denied_ctx if e.item_id in crit_denied_item_ids else call_ctx
+        )
         for proc in e.periodics:
             # B1 (1.141.0): ranged-only proc contributes nothing on a melee
             # auto. Default-OFF -> never skips (byte-identical to pre-B1 burst).
@@ -501,7 +526,7 @@ def _per_attack_proc_damage(
             is_true = proc.damage_type == TRUE
             resist = 0.0 if is_true else (target_armor_for_physical if is_physical else target_mr)
             type_amp = 1.0 if (is_physical or is_true) else magic_amp
-            dmg = proc.resolve_damage(call_ctx)
+            dmg = proc.resolve_damage(proc_ctx)
             total += procs_per_aa * dmg * _armor_factor(resist) * mode_dmg_mult * type_amp
     return total * damage_amp
 
@@ -519,6 +544,7 @@ def _rotation_attack_dps(
     magic_amp: float = 1.0,
     aa_empower_amp: float = 1.0,
     apply_melee_aa_gate: bool = False,
+    crit_denied_item_ids: frozenset[str] = frozenset(),
 ) -> float:
     """DPS contribution from basic attacks during a single rotation.
 
@@ -546,6 +572,13 @@ def _rotation_attack_dps(
     / Nidalee Q). Default 1.0 = byte-identical; the seam is gated on
     ``compute_dps(apply_ability_amps=True)`` and currently inert (placeholder
     entries, Phase D authors the real per-champ value).
+
+    A-12 / RM-46 (2026-07-25): ``crit_bonus`` may carry a per-champion CRIT
+    CONVERSION factor (Ashe Frost Shot 1.15) instead of the universal
+    ``DEFAULT_CRIT_BONUS + item crit damage``; it scales ONLY the base AA term
+    below, never ``proc_dps``, which is why the Runaan's bolts cannot pick the
+    conversion up. ``crit_denied_item_ids`` additionally denies a listed item's
+    procs any crit-scaled rider. Empty by default -> byte-identical.
     """
     duration = float(rotation.get("duration", 0) or 0)
     if duration <= 0:
@@ -578,6 +611,7 @@ def _rotation_attack_dps(
         effects, total_attacks, duration,
         target_armor_for_physical, target_mr, mode_dmg_mult, rotation_ctx,
         magic_amp=magic_amp, apply_melee_aa_gate=apply_melee_aa_gate,
+        crit_denied_item_ids=crit_denied_item_ids,
     )
     return (base_dps * aa_empower_amp + proc_dps) * damage_amp
 
@@ -595,6 +629,7 @@ def _phase_weighted_dps(
     magic_amp: float = 1.0,
     aa_empower_amp: float = 1.0,
     apply_melee_aa_gate: bool = False,
+    crit_denied_item_ids: frozenset[str] = frozenset(),
 ) -> float:
     """Weighted average of rotation DPS within a phase (weights from lolmath)."""
     if not rotations:
@@ -610,6 +645,7 @@ def _phase_weighted_dps(
             mode_dmg_mult, crit_bonus, effects, call_ctx, damage_amp,
             magic_amp=magic_amp, aa_empower_amp=aa_empower_amp,
             apply_melee_aa_gate=apply_melee_aa_gate,
+            crit_denied_item_ids=crit_denied_item_ids,
         )
         total_weight += w
     if total_weight <= 0:
@@ -706,6 +742,9 @@ def compute_dps(
     # its own ``rune_ids`` transport (compute_dps had none before this seam).
     apply_rune_offense_grants: bool = False,
     rune_ids: Iterable[str | int] = (),
+    # A-12 / RM-46 (2026-07-25): the per-champion CRIT CONVERSION seam, appended
+    # at the END of the signature per the no-mid-signature-insert convention.
+    apply_crit_conversion: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -757,6 +796,22 @@ def compute_dps(
     post-amp AP. A champion with no registered passive contributes 0 even with
     the flag on. The live default-ON flip stays validation-gated (do-not-flip-
     blind); see docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``apply_crit_conversion`` (A-12 / RM-46, 2026-07-25): the per-champion CRIT
+    CONVERSION seam. Default False -> byte-identical for EVERY champion,
+    including the one registered champion. When True and the champion carries a
+    ``_crit_conversion_overrides`` entry, the auto-attack crit factor is taken
+    from that entry instead of ``DEFAULT_CRIT_BONUS + item crit damage``: Ashe's
+    Frost Shot converts crit chance into flat bonus physical damage at 0.75 +
+    0.40 = 1.15 and her critical strikes "do not deal any additional damage", so
+    an Infinity Edge crit-damage bonus is inert on her. The entry's
+    ``crit_denied_item_ids`` additionally resolves that item's procs at
+    crit_chance=0.0 (Runaan's Hurricane bolts). An unregistered champion is
+    byte-identical even with the flag on. The live default-ON flip stays
+    validation-gated (do-not-flip-blind); note that ``rank.py`` has no
+    crit-conversion parameter, so no shipped build table can reach this seam
+    today - the same route blocker PART 7 named for the RM-86 kit-conversion
+    lever.
     """
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
@@ -825,6 +880,31 @@ def compute_dps(
 
     item_effects = collect_effects(resolved.item_ids)
     crit_bonus = DEFAULT_CRIT_BONUS + total_crit_damage_bonus(item_effects)
+    # A-12 / RM-46 (2026-07-25): per-champion crit conversion. DEFAULT-OFF, so
+    # the registry module is not even imported on the default path. When ON, an
+    # unregistered champion (172 of 173) still resolves the universal factor
+    # above unchanged - ``resolve_crit_bonus`` returns it verbatim - so the seam
+    # is byte-identical for everyone but the registered champion.
+    crit_denied_item_ids: frozenset[str] = frozenset()
+    crit_conversion_note = ""
+    if apply_crit_conversion:
+        from ._crit_conversion_overrides import resolve_crit_bonus
+
+        crit_bonus, _cc_entry = resolve_crit_bonus(
+            resolved.champion_id, crit_bonus
+        )
+        if _cc_entry is not None:
+            crit_denied_item_ids = _cc_entry.crit_denied_item_ids
+            crit_conversion_note = (
+                f"crit conversion applied ({resolved.champion_name}): "
+                f"auto-attack crit factor {crit_bonus:.2f}"
+                + (
+                    " (replaces the item crit-damage sum)"
+                    if _cc_entry.replaces_item_crit_damage
+                    else " (added to the item crit-damage sum)"
+                )
+                + " - A-12 / RM-46"
+            )
     # Phase 4 batch 14 (2026-05-04): build-wide damage amp. 1.0 when no
     # items carry an amp, so pre-batch builds pass through unchanged.
     damage_amp = total_damage_amp_multiplier(item_effects)
@@ -1151,6 +1231,7 @@ def compute_dps(
             mode_mult, crit_bonus, item_effects, call_ctx, damage_amp,
             magic_amp=magic_amp, aa_empower_amp=aa_empower_amp,
             apply_melee_aa_gate=apply_melee_aa_gate,
+            crit_denied_item_ids=crit_denied_item_ids,
         )
 
     if only_phase is not None:
@@ -1198,6 +1279,7 @@ def compute_dps(
         item_effects, target_armor_eff, target_mr_eff, mode_mult,
         call_ctx, magic_amp=magic_amp, damage_amp=damage_amp,
         apply_melee_aa_gate=apply_melee_aa_gate,
+        crit_denied_item_ids=crit_denied_item_ids,
     )
     # Phase 5.7 (s189, 2026-05-13): Spellblade per-proc damage. Returned
     # to burst.py separately from per_attack_on_hit_damage because
@@ -1249,6 +1331,10 @@ def compute_dps(
             "weighted_dps fell back to raw_attack_dps*mode_mult (scenario "
             "rotations encode zero basic attacks for this champion)"
         )
+
+    # A-12 / RM-46: empty string on the default path -> no note, byte-identical.
+    if crit_conversion_note:
+        notes.append(crit_conversion_note)
 
     if takedown_bonus_ad > 0:
         notes.append(
