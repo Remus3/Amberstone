@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from .ability_dps import compute_ability_dps
+from .cast_propensity import propensity_adjusted_dps_delta
 from .data_loader import DataSnapshot
 from .dps import compute_dps
 from .effects import ITEM_EFFECTS
@@ -105,9 +106,19 @@ def _ability_damage(
     target_bonus_hp: float,
     augments,
     target_current_hp_pct: float = 1.0,
+    apply_cast_rate_propensity_prior: bool = False,
 ) -> float:
-    """Ability-DPS scalar (the AP analogue of compute_dps().weighted_dps)."""
-    return compute_ability_dps(
+    """Ability-DPS scalar (the AP analogue of compute_dps().weighted_dps).
+
+    ``apply_cast_rate_propensity_prior`` (RM-98, DEFAULT-OFF) adds the
+    per-spell re-basing delta from ``cast_propensity`` on top of the total.
+    Expressed as a DELTA so the ability-amp multiplier and the always-on
+    ``item_proc_dps`` fold inside ``total_ability_dps`` stay untouched - the
+    proc fold is one of the consumers RM-98 is deliberately NOT wiring here
+    (SPEC:109-114). Default False never calls the helper, so this returns the
+    same attribute read it always did (byte-identical).
+    """
+    result = compute_ability_dps(
         snapshot,
         champion_id=champion_id,
         level=level,
@@ -119,7 +130,10 @@ def _ability_damage(
         target_bonus_hp=target_bonus_hp,
         target_current_hp_pct=target_current_hp_pct,
         augments=augments,
-    ).total_ability_dps
+    )
+    if not apply_cast_rate_propensity_prior:
+        return result.total_ability_dps
+    return result.total_ability_dps + propensity_adjusted_dps_delta(result.per_spell)
 
 
 # Damage types the AD-axis ability term credits (RM-39 / RM-43). PHYSICAL is
@@ -141,6 +155,7 @@ def _physical_ability_damage(
     target_bonus_hp: float,
     augments,
     target_current_hp_pct: float = 1.0,
+    apply_cast_rate_propensity_prior: bool = False,
 ) -> float:
     """Credited-type ability-DPS scalar - the AD-axis analogue of
     ``_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF seam).
@@ -148,9 +163,29 @@ def _physical_ability_damage(
     Same call as ``_ability_damage``; the ONLY difference is that it SUMS THE
     PER-SPELL ROWS whose ``damage_type`` normalizes into
     ``_AD_AXIS_CREDITED_DAMAGE_TYPES``, instead of returning
-    ``total_ability_dps``. Rows are already post-mitigation and post-cast-rate
-    (``ability_dps.py:1261``), so the sum is directly additive with
-    ``compute_dps().weighted_dps``.
+    ``total_ability_dps``.
+
+    THE SUM IS NOT DIMENSIONALLY ADDITIVE WITH ``weighted_dps`` (RM-98,
+    corrected 2026-07-24). This docstring previously asserted that rows being
+    "post-mitigation and post-cast-rate (``ability_dps.py:1261``)" made the sum
+    "directly additive". Post-cast-rate is precisely what BREAKS additivity:
+    the cast rate is a WHOLE-GAME rate
+    (``data/daemon_slayer/spell_cast_rates.json`` - casts divided by
+    ``matches.game_duration_s``) while ``weighted_dps`` is a combat-window
+    per-second figure. ``docs/specs/SPEC_rm98_cast_rate_time_base.md:76-89``
+    adjudicates this and sizes the characteristic distortion at ~7x per spell.
+    The term is still LOAD-BEARING and must not be dropped - measured at 30.5
+    pct of Renekton's ON damage term, 29.2 pct cohort mean, 65.9 pct for Riven
+    (SPEC:91-99). ``apply_cast_rate_propensity_prior`` (below) is the
+    adjudicated repair; it is DEFAULT-OFF, so the sum this function returns at
+    the default is still the mixed-basis one.
+
+    ``apply_cast_rate_propensity_prior`` (RM-98, DEFAULT-OFF) re-bases the
+    measured rows onto ``availability * propensity_prior`` before summing - see
+    ``cast_propensity``. The delta is filtered by the SAME
+    ``_AD_AXIS_CREDITED_DAMAGE_TYPES`` set as the sum itself, so the
+    damage-type guard below is not weakened. Default False never calls the
+    helper (byte-identical).
 
     The filter reuses the canonical normalization idiom from
     ``ability_dps.py:371`` verbatim - ``(damage_type or "MAGIC").upper()`` - so
@@ -209,10 +244,16 @@ def _physical_ability_damage(
         target_current_hp_pct=target_current_hp_pct,
         augments=augments,
     )
-    return sum(
+    credited = sum(
         row.dps
         for row in result.per_spell
         if (row.damage_type or "MAGIC").upper() in _AD_AXIS_CREDITED_DAMAGE_TYPES
+    )
+    if not apply_cast_rate_propensity_prior:
+        return credited
+    return credited + propensity_adjusted_dps_delta(
+        result.per_spell,
+        credited_damage_types=_AD_AXIS_CREDITED_DAMAGE_TYPES,
     )
 
 
@@ -445,6 +486,10 @@ def compute_hybrid(
     # appended at END per the same no-mid-signature-insert convention and passed
     # straight through to compute_dps. Rides the existing ``rune_ids`` transport.
     apply_rune_offense_grants: bool = False,
+    # RM-98 (2026-07-24): the cast-rate propensity prior. Appended at END per the
+    # same no-mid-signature-insert convention. Touches ONLY the ability half of
+    # the damage axis (both branches); the EHP half and compute_dps are untouched.
+    apply_cast_rate_propensity_prior: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -518,6 +563,22 @@ def compute_hybrid(
     paths. Default False binds the SAME raw ``dps_result.weighted_dps`` value
     the pre-seam line bound - a name bind, no float op - so the score line is
     byte-identical.
+
+    ``apply_cast_rate_propensity_prior`` (RM-98, DEFAULT-OFF) fixes the
+    TIME-BASE of the ability half of the damage axis. The measured cast rate
+    every ability row is multiplied by is a WHOLE-GAME rate being folded into a
+    combat-window per-second term (``SPEC_rm98_cast_rate_time_base.md``); both
+    candidate denominator replacements are measured infeasible (SPEC:116-133),
+    so the adjudicated repair demotes the measured rate to a dimensionless
+    cast-propensity PRIOR and rebuilds the rate on cooldown-inverse
+    availability. See ``cast_propensity`` for the math and the calibration.
+
+    It applies to BOTH damage-axis branches - the AP branch's
+    ``total_ability_dps`` and the AD branch's credited per-spell sum - but ONLY
+    to the per-spell rows the engine sourced from the measured table. On the AD
+    branch it is therefore inert unless ``apply_ad_axis_ability_damage`` is also
+    True, because the OFF branch has no ability term to re-base. Default False
+    never calls the transform on either branch, so both are byte-identical.
     """
     level = clamp_level(level)
     if alpha is None or beta is None:
@@ -621,15 +682,19 @@ def compute_hybrid(
     # (dps.py:34), so 92 of 173 champions never price their ability damage.
     # ON adds the PHYSICAL-only term; OFF binds the SAME raw value (a name
     # bind, not a float op) so this line is byte-identical at the default.
+    # RM-98 (DEFAULT-OFF): the cast-rate propensity prior rides BOTH ability
+    # branches. Passed by keyword so the positional tail is unchanged.
     if _damage_axis(snapshot, champion_id) == "ap":
         base_damage = _ability_damage(
             snapshot, champion_id, level, item_list, mode,
             target_armor, target_mr, target_max_hp, target_bonus_hp, augments,
+            apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
         )
     elif apply_ad_axis_ability_damage:
         base_damage = dps_result.weighted_dps + _physical_ability_damage(
             snapshot, champion_id, level, item_list, mode,
             target_armor, target_mr, target_max_hp, target_bonus_hp, augments,
+            apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
         )
     else:
         base_damage = dps_result.weighted_dps
@@ -969,6 +1034,9 @@ def rank_items_by_hybrid(
     # appended at END per the same no-mid-signature-insert convention and passed
     # straight through to compute_dps. Rides the existing ``rune_ids`` transport.
     apply_rune_offense_grants: bool = False,
+    # RM-98 (2026-07-24): ranker mirror of the compute_hybrid seam. Appended at
+    # END per the same no-mid-signature-insert convention.
+    apply_cast_rate_propensity_prior: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -1048,6 +1116,15 @@ def rank_items_by_hybrid(
     surfaces (``new_dps`` / ``delta_dps``) carry the combined value, matching
     the AP branch's existing semantics where ``dps`` is ability damage.
     Default False keeps the pre-seam lines verbatim (byte-identical).
+
+    ``apply_cast_rate_propensity_prior`` (RM-98, DEFAULT-OFF) is the ranker
+    mirror of the ``compute_hybrid`` seam - see that function. It is applied to
+    the baseline AND every candidate through the same helpers, so the
+    normalized ``hybrid_delta_pct`` stays a like-for-like comparison. It does
+    NOT cancel in that ratio: the transform is a per-spell reweight (each row
+    lifts by its own ``availability / (measured_propensity_reference)`` factor,
+    and 10.4 pct of rows clamp), not a uniform scale, and it raises the
+    baseline denominator. Default False keeps the pre-seam lines verbatim.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -1154,17 +1231,21 @@ def rank_items_by_hybrid(
     )
     # RM-39/RM-43 (DEFAULT-OFF): ranker-baseline mirror of the compute_hybrid
     # gate. OFF binds the SAME raw value (a name bind, not a float op).
+    # RM-98 (DEFAULT-OFF): same prior on the ranker baseline as on the
+    # candidates below, so the delta_pct comparison stays like-for-like.
     if axis == "ap":
         baseline_dps = _ability_damage(
             snapshot, champion_id, level, current_ids, mode,
             target_armor, target_mr, target_max_hp, target_bonus_hp,
             augments, target_current_hp_pct,
+            apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
         )
     elif apply_ad_axis_ability_damage:
         baseline_dps = baseline_dps_result.weighted_dps + _physical_ability_damage(
             snapshot, champion_id, level, current_ids, mode,
             target_armor, target_mr, target_max_hp, target_bonus_hp,
             augments, target_current_hp_pct,
+            apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
         )
     else:
         baseline_dps = baseline_dps_result.weighted_dps
@@ -1251,17 +1332,20 @@ def rank_items_by_hybrid(
             )
             # RM-39/RM-43 (DEFAULT-OFF): per-candidate mirror of the same gate.
             # OFF binds the SAME raw value (a name bind, not a float op).
+            # RM-98 (DEFAULT-OFF): per-candidate mirror of the prior.
             if axis == "ap":
                 scored_damage = _ability_damage(
                     snapshot, champion_id, level, new_build, mode,
                     target_armor, target_mr, target_max_hp, target_bonus_hp,
                     augments, target_current_hp_pct,
+                    apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
                 )
             elif apply_ad_axis_ability_damage:
                 scored_damage = dps_scored.weighted_dps + _physical_ability_damage(
                     snapshot, champion_id, level, new_build, mode,
                     target_armor, target_mr, target_max_hp, target_bonus_hp,
                     augments, target_current_hp_pct,
+                    apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
                 )
             else:
                 scored_damage = dps_scored.weighted_dps

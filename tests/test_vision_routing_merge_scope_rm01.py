@@ -10,10 +10,11 @@ plausibility gate in core/vision_fusion.py shipped 2026-07-25).
 
 These tests pin the new merge-scope seam:
   * default OFF - the served coach dict is byte-identical to today, so no
-    live consumer can regress (measured: 104 of 232 real fusion-shadow
-    records carry `is_augment_select`, an UNREQUESTED key that
+    live consumer can regress (measured: 104 of 233 real fusion-shadow
+    records carry `is_augment_select`, which
     modes/shared_vision.GameVisionReader._postprocess aliases into the
-    consumed `augment_select`);
+    consumed `augment_select`; B-01b re-homed that key into the ARAM +
+    Arena TIERED_FIELDS so strict no longer drops it);
   * RC_VISION_MERGE_STRICT=1 - the merge is filtered to the exact field
     list handed to escalate_fn;
   * the drop telemetry is written in both modes, to its own JSONL lane
@@ -167,13 +168,17 @@ def test_default_off_still_lets_sonnet_win_over_ocr(monkeypatch, tmp_path):
     assert result["level"] == 1
 
 
-def test_is_augment_select_is_why_the_flag_is_default_off(monkeypatch, tmp_path):
-    """Guard the measured reason strict mode is not the default.
+def test_is_augment_select_only_survives_strict_when_requested(monkeypatch, tmp_path):
+    """B-01b: the OLD invariant was "is_augment_select is in NO TIERED_FIELDS".
 
-    `is_augment_select` is never in any coach TIERED_FIELDS, but
-    modes/shared_vision.GameVisionReader._postprocess aliases it into the
-    consumed `augment_select` AFTER read_or_escalate returns. Strict mode
-    removes it; default mode must keep it.
+    That was the bug, not the contract. `is_augment_select` has a live consumer
+    (modes/shared_vision.GameVisionReader._postprocess aliases it into the
+    consumed `augment_select` AFTER read_or_escalate returns), so it has been
+    re-homed into the ARAM + Arena TIERED_FIELDS. The generic router rule is
+    unchanged and is what this test now pins: strict mode keeps the key when it
+    is in the requested field list and drops it when it is not. The
+    coach-registration half is pinned in
+    tests/test_vision_merge_augment_rehome_b01b.py.
     """
     _redirect_logs(monkeypatch, tmp_path)
     _install_fake_tesseract(monkeypatch, {})
@@ -181,17 +186,27 @@ def test_is_augment_select_is_why_the_flag_is_default_off(monkeypatch, tmp_path)
     def escalate_fn(img_b64, missing):
         return {"gold": 913, "is_augment_select": True}
 
+    # OFF path unchanged: everything the model answers with is merged.
     monkeypatch.delenv("RC_VISION_MERGE_STRICT", raising=False)
     lenient = vision_routing.read_or_escalate(
         "dummyb64", fields=["gold"], escalate_fn=escalate_fn
     )
+    assert lenient.get("is_augment_select") is True
+
     monkeypatch.setenv("RC_VISION_MERGE_STRICT", "1")
-    strict = vision_routing.read_or_escalate(
+    # Not requested -> still dropped (the router rule itself did not change).
+    strict_unrequested = vision_routing.read_or_escalate(
         "dummyb64", fields=["gold"], escalate_fn=escalate_fn
     )
+    assert "is_augment_select" not in strict_unrequested
 
-    assert lenient.get("is_augment_select") is True
-    assert "is_augment_select" not in strict
+    # Requested (what the re-homed coaches now do) -> kept.
+    strict_requested = vision_routing.read_or_escalate(
+        "dummyb64",
+        fields=["gold", "is_augment_select"],
+        escalate_fn=escalate_fn,
+    )
+    assert strict_requested.get("is_augment_select") is True
 
 
 # -- drop telemetry ----------------------------------------------------------

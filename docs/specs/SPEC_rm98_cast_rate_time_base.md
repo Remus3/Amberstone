@@ -1,7 +1,35 @@
 # RM-98 - cast-rate TIME-BASE adjudication
 
-Status: **ADJUDICATED 2026-07-19.** Supersedes the "SIZED, NOT ADJUDICATED"
-line in `docs/DS_SWEEP_TRACKER.md:144-159`.
+Status: **ADJUDICATED 2026-07-19. BUILT 2026-07-26, ENGINE 1.244.0.** Supersedes
+the "SIZED, NOT ADJUDICATED" line in `docs/DS_SWEEP_TRACKER.md:144-159`.
+
+> **Build note (2026-07-26).** The Recommendation below shipped DEFAULT-OFF as
+> `apply_cast_rate_propensity_prior` in `agents/daemon_slayer/cast_propensity.py`,
+> wired into `hybrid.py` ONLY. The five other consumers named under "RM-98 is
+> under-scoped" are documented at the seam and deliberately NOT wired - narrow
+> first, widen on test evidence.
+>
+> Two things the build learned that this spec does not say:
+>
+> 1. **The prior needs a REFERENCE propensity.** `availability * (measured /
+>    availability)` is algebraically the identity. The shipped form is
+>    `prior = min(1, propensity / FULL_AVAILABILITY_PROPENSITY)` with the
+>    reference calibrated at 0.7191, the p90 of the roster-wide propensity
+>    distribution (676 measured rows, 173 champions, L13 SR). p90 and not the
+>    median, because a median reference hands half the roster a prior above full
+>    availability. The reference being calibrated from the SAME table is what
+>    makes the construction basis-free: a wrong denominator distorts numerator
+>    and reference by one common factor, which cancels.
+> 2. **24 of 676 rows measure propensity > 1.0** (Ivern R 10.98, Shaco R 5.56,
+>    Riven Q 2.59) - multi-cast and pet kits fire more `spell[N]_casts` than one
+>    cooldown permits. A `max(measured, ...)` floor is therefore required and is
+>    provable rather than tuned (combat time is a subset of game time, so the
+>    whole-game rate is a strict lower bound on the combat rate). Without it,
+>    Riven Q is CUT 2.6x on the term she is 65.9% dependent on.
+>
+> Corollary for anyone re-reading item 2 of "Four corrections": the ability term
+> is load-bearing, and the prior moves it. MEASURED L13 SR dps delta spans +1.68%
+> (Riven, floor-clamped) to +39.06% (Veigar / Mordekaiser).
 
 Question asked: is the whole-game basis of
 `data/daemon_slayer/spell_cast_rates.json` a DELIBERATE modelling choice, or

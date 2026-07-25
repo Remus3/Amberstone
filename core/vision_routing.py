@@ -173,19 +173,31 @@ def _merge_strict_enabled() -> bool:
     """DEFAULT-OFF gate for the scoped escalation merge (RM-01 upstream).
 
     Set ``RC_VISION_MERGE_STRICT=1`` to filter the Sonnet merge down to the
-    fields actually requested. OFF by default because the filter provably
-    changes served coach dicts:
+    fields actually requested.
 
-    ``modes/shared_vision.GameVisionReader._postprocess`` (shared_vision.py
-    :416-418) aliases the relay's ``is_augment_select`` into the consumed
-    ``augment_select`` AFTER read_or_escalate returns, and
-    ``is_augment_select`` is in NO coach's TIERED_FIELDS - so it is an
-    unrequested key with a live consumer. Replaying the 232 real records in
-    data/fusion_shadow.jsonl: 104 of them (44.8%) carry ``is_augment_select``,
-    and in all 104 the consumed ``augment_select`` equals it (i.e. it exists
-    only because of the alias). Filtering by default would silently regress
-    the 2026-07-12 ARAM Mayhem augment-select fix. The drop set is logged
-    unconditionally so the flip stays a measured decision, not a guess.
+    ORIGINAL blocker (RM-01, now CLEARED by B-01b):
+    ``modes/shared_vision.GameVisionReader._postprocess`` aliases the relay's
+    ``is_augment_select`` into the consumed ``augment_select`` AFTER
+    read_or_escalate returns, and ``is_augment_select`` used to be in NO
+    coach's TIERED_FIELDS - so it was an unrequested key with a live consumer.
+    Replaying the 233 real records in data/fusion_shadow.jsonl: 104 of them
+    (44.6%) carry ``is_augment_select``, and in all 104 the consumed
+    ``augment_select`` equals it (i.e. it exists only because of the alias).
+    Filtering it by default would have silently regressed the 2026-07-12 ARAM
+    Mayhem augment-select fix.
+
+    B-01b re-homed the field: ``is_augment_select`` is now declared in
+    ``coaches.aram_coach.Coach._ARAM_TIERED_FIELDS`` and
+    ``coaches.arena_coach.ArenaVisionReader.TIERED_FIELDS`` (the two modes
+    with a live augment consumer), so strict mode keeps it and the alias still
+    fires. Brawl/Nexus-Blitz/URF deliberately do NOT declare it - neither
+    prompt asks for augments and no brawl code path reads ``augment_select``.
+
+    Still DEFAULT-OFF: the flip is the operator's call. Measured effect of
+    strict on the same 233-record corpus AFTER the re-home is a
+    telemetry-only narrowing - see tests/test_vision_merge_augment_rehome_b01b.py.
+    The drop set is logged unconditionally so the flip stays a measured
+    decision, not a guess.
     """
     import os
     raw = (os.getenv("RC_VISION_MERGE_STRICT") or "").strip().lower()

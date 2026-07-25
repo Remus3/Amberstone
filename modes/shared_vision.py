@@ -413,6 +413,10 @@ class GameVisionReader:
         # relay detects the ARAM Mayhem augment cards correctly; only the field
         # name diverged (is_augment_select vs augment_select). An explicit
         # augment_select is authoritative and is never overwritten.
+        # B-01b (2026-07-25): `is_augment_select` is now ALSO declared in the
+        # ARAM + Arena TIERED_FIELDS, so it survives a scoped
+        # (RC_VISION_MERGE_STRICT=1) escalation merge and this alias still has
+        # something to alias. Brawl/URF stay out - no augment consumer there.
         if (isinstance(d, dict) and "augment_select" not in d
                 and "is_augment_select" in d):
             d["augment_select"] = d["is_augment_select"]

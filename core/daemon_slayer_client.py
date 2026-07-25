@@ -153,6 +153,7 @@ def rank_for(
     apply_target_vuln: bool = False,         # R12
     target_current_hp_pct: float = 1.0,      # R55
     fight_length: Optional[float] = None,    # per-champ burst-carry blend (Jhin pilot)
+    widen_carry_pool: bool = False,          # RM-04 A-01
 ) -> Optional[list[RankedItem]]:
     """Call POST /rank and return the parsed top-N rows. None on engine failure.
 
@@ -184,6 +185,12 @@ def rank_for(
     engages the burst-vs-sustained blend. Set at the carry chokepoint from the
     ``core.ds_champion_fight_length`` allow-map (see
     ``rank_for_primary_archetype``).
+
+    ``widen_carry_pool`` (RM-04 A-01, DEFAULT-OFF) opts into the engine's
+    class-wide un-strip of the carry candidate pool (``rank_items``'s
+    ``widen_carry_pool``, parsed server-side off the same body key). False
+    (default) omits the body key entirely, so the request is byte-identical
+    to the pre-seam path.
     """
     body = {
         "champion": champion,
@@ -219,6 +226,9 @@ def rank_for(
     # byte-identical to the pre-calibration request.
     if fight_length is not None:
         body["fight_length"] = float(fight_length)
+    # RM-04 A-01: emit only when True so an un-widened call is byte-identical.
+    if widen_carry_pool:
+        body["widen_carry_pool"] = True
     data = _post_json("/rank", body, timeout=timeout)
     if data is None:
         return None
@@ -1398,6 +1408,7 @@ def rank_for_primary_archetype(
     caster_missing_hp_pct: float = 0.0,          # enchanter (R5 input)
     assume_archetype_hp_pct: bool = False,       # carry+bruiser+mage+assassin (R55)
     apply_squishy_burst_target: bool = True,     # carry (L4) - see the swap below
+    widen_carry_pool: bool = False,              # carry (RM-04 A-01)
 ) -> Optional[dict]:
     """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) - route to the right scorer per archetype.
 
@@ -1435,6 +1446,11 @@ def rank_for_primary_archetype(
     ``archetype_target_current_hp_pct`` (SUSTAINED / juggernaut -> 0.5, target
     ground down over the fight; BURST + non-damage / unknown -> 1.0). The live
     default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``widen_carry_pool`` (RM-04 A-01, DEFAULT-OFF) is CARRY-ONLY - it is
+    forwarded to the ds.dps branch's ``rank_for`` call and never reaches the
+    tank / bruiser / mage / assassin / enchanter / on-hit branches. False
+    (default) omits the body key, so a flagless dispatch is byte-identical.
     """
     arch = (archetype or "").strip().lower()
     # Kit-dependent-scorer fallback (see _kitless_all_zero): default False.
@@ -1782,6 +1798,7 @@ def rank_for_primary_archetype(
         assume_passive_as_stacks=assume_passive_as_stacks,
         apply_target_vuln=apply_target_vuln,
         fight_length=_carry_fight_length,
+        widen_carry_pool=widen_carry_pool,
         **_carry_hp_kwargs,
     )
     if rows is None:

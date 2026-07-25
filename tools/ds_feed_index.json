@@ -449,7 +449,6 @@
   "generated_from_current_txt": "16.14.1",
   "known_stamp_lag": {
     "cherry_augments.json": "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged since 16.10.1; authored feed, body has not moved",
-    "enchanter_items.json": "declares _meta.patch 16.9.1 - hand-authored enchanter item list, unchanged since the retired 16.9.1 fixture patch",
     "mayhem_augment_stats.json": "declares rc_patch 16.10.1 - Mayhem augment stats sourced at 16.10 and carried forward; event-mode feed with no newer upstream"
   }
 }

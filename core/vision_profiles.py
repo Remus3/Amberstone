@@ -137,10 +137,71 @@ def reference_path(config_key: str, state=None) -> Path:
     return REFERENCE_DIR / f"{_safe(config_key)}__{_safe(state)}.jpg"
 
 
+_RES_KEY_RE = re.compile(r"^(\d{1,5})x(\d{1,5})$")
+
+
+def _res_key(width, height):
+    """``"WxH"`` for a valid base, else None (shares validate_base's limits)."""
+    ok, _err, clean = validate_base([width, height])
+    if not ok:
+        return None
+    return f"{clean[0]}x{clean[1]}"
+
+
+def _resolution_key_from_config_key(config_key):
+    """The resolution-only key implied by a config_key STRING, or None.
+
+    Format proved from core/hud_settings.py:133-134 - read_hud_settings builds
+    ``config_key = "|".join([f"{width}x{height}"] + layout parts)``, so the
+    leading pipe-delimited token is always ``WxH``. Anything else (notably the
+    ``"unknown"`` sentinel at hud_settings.py:136) yields None."""
+    head = str(config_key or "").split("|", 1)[0].strip()
+    m = _RES_KEY_RE.match(head)
+    if not m:
+        return None
+    return _res_key(int(m.group(1)), int(m.group(2)))
+
+
+def _live_resolution_key():
+    """The resolution-only key from the LIVE settings, or None. Preferred over
+    the string parse because ``read_hud_settings`` exposes real integer
+    ``width`` / ``height`` fields (core/hud_settings.py:121-122, 148-149) rather
+    than a formatted key. Fail-soft: never raises."""
+    try:
+        from core.hud_settings import read_hud_settings
+        h = read_hud_settings()
+        if not h.get("ok"):
+            return None
+        return _res_key(h.get("width"), h.get("height"))
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def load_profile(config_key=None) -> dict:
     """Return the active (or given) profile: ``{config_key, base:[w,h],
-    regions:{name:[x1,y1,x2,y2]}, source}``. Falls back to seeding from the
-    legacy data/vision_regions.json (base 1920x1080) when no profile exists yet."""
+    regions:{name:[x1,y1,x2,y2]}, source}``, resolved in three tiers:
+
+      1. ``"profile"`` - the exact profile file for this full config_key (a
+         real calibration for this resolution AND HUD toggle set).
+      2. ``"resolution_seed"`` - the resolution-only profile file keyed
+         ``"WxH"``, which is how ``seed_profiles`` writes the shipped seeds.
+         A live config_key carries the HUD toggles too (see
+         core/hud_settings.py:133-134), so without this tier a seeded machine
+         never matched its own seed and fell to tier 3. The resolution is taken
+         from the live ``read_hud_settings`` width/height when available and
+         from the key's leading ``WxH`` token otherwise; the response also
+         carries ``resolution_key``.
+      3. ``"legacy_seed"`` - the hand-calibrated data/vision_regions.json at
+         base 1920x1080, the last resort.
+
+    KNOWN LIMIT of tier 2: a seed is a proportional scale of the 1080p
+    baseline, and League edge-anchors much of its HUD instead of stretching it.
+    The 16:9 2560x1440 seed is therefore materially more accurate than the 21:9
+    (2560x1080 / 3440x1440 / 3840x1600) and 32:9 (5120x1440) seeds, whose boxes
+    are stretched horizontally away from the real anchored elements. Tier 2 is
+    a plausible STARTING POINT for a calibration pass, NOT parity across aspect
+    ratios - an ultrawide profile still needs a live tuning pass before the OCR
+    path should trust its boxes."""
     ck = config_key or active_config_key()
     p = profile_path(ck)
     try:
@@ -150,6 +211,19 @@ def load_profile(config_key=None) -> dict:
                     "regions": d.get("regions", {}), "source": "profile"}
     except Exception:  # noqa: BLE001
         log.debug("profile read failed for %s", ck)
+    res_ck = _live_resolution_key() if config_key is None else None
+    if res_ck is None:
+        res_ck = _resolution_key_from_config_key(ck)
+    if res_ck and res_ck != ck:
+        rp = profile_path(res_ck)
+        try:
+            if rp.exists():
+                d = json.loads(rp.read_text(encoding="utf-8"))
+                return {"config_key": ck, "base": d.get("base", _LEGACY_BASE),
+                        "regions": d.get("regions", {}),
+                        "source": "resolution_seed", "resolution_key": res_ck}
+        except Exception:  # noqa: BLE001
+            log.debug("resolution seed read failed for %s", res_ck)
     try:
         regions = json.loads(_LEGACY_REGIONS.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
