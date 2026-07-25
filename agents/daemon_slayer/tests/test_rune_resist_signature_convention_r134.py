@@ -102,6 +102,14 @@ _R1229_TAIL = ("apply_rune_self_heal", "apply_rune_shield_grants")
 # mid-signature - it is simply no longer the SAME tail on all four functions.
 _R145_TAIL = ("apply_rune_offense_grants",)
 
+# RM-98 (2026-07-24) appends the cast-rate propensity prior after R145. Like
+# R145 it is an OFFENSE-side seam - it re-bases the ability half of the damage
+# axis onto a combat-window cast rate - so it lands ONLY on the two hybrid entry
+# points. It adds no ids parameter (the per-spell rows already ride the existing
+# item_ids / current_item_ids transport into compute_ability_dps), so every
+# earlier group stays adjacent and ordered; R145 is simply no longer the tail.
+_RM98_TAIL = ("apply_cast_rate_propensity_prior",)
+
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
 _SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
@@ -112,15 +120,16 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
 
     def test_r132_pair_is_the_signature_tail_on_every_entry_point(self) -> None:
         # R136, R137, the 1.227.0 pair then the 1.229.0 pair appended after the
-        # R132 pair, and R145 appended the offense flag after THAT on the hybrid
-        # pair only. The invariant the guard actually protects is unchanged:
-        # these seam kwargs live at the END, in order, never mid-signature.
+        # R132 pair, then R145 and RM-98 appended after THAT on the hybrid pair
+        # only (both are offense-side seams). The invariant the guard actually
+        # protects is unchanged: these seam kwargs live at the END, in order,
+        # never mid-signature.
         shared = (
             _R132_TAIL + _R136_TAIL + _R137_TAIL + _R1227_TAIL + _R1229_TAIL
         )
         cases = (
             (_EHP_ENTRY_POINTS, shared),
-            (_HYBRID_ENTRY_POINTS, shared + _R145_TAIL),
+            (_HYBRID_ENTRY_POINTS, shared + _R145_TAIL + _RM98_TAIL),
         )
         for fns, expected in cases:
             for fn in fns:

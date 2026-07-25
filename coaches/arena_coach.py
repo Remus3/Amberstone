@@ -1143,6 +1143,13 @@ Rules:
         "round_number",
         "augment_select", "augment_choices", "anvil_choices",
         "augment_hud_slots", "camp_phase",
+        # B-01b re-home: the live relay answers every mode with the TFT prompt
+        # (vision_server/_inference.py:36), which emits the augment flag as
+        # `is_augment_select`. modes/shared_vision._postprocess aliases it into
+        # the consumed `augment_select` at :606, so it IS a requested field for
+        # this mode - declaring it here stops RC_VISION_MERGE_STRICT filtering
+        # it out before the alias runs. Arena has augments.
+        "is_augment_select",
         # Lane E CV OCR shadow-only numerics (logged, not consumed)
         "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
         "gold", "level", "cs", "kda",
@@ -1154,6 +1161,7 @@ Rules:
     TIERED_VALIDATORS = {
         "round_number":      lambda v: isinstance(v, int) and 1 <= v <= 30,
         "augment_select":    lambda v: isinstance(v, bool),
+        "is_augment_select": lambda v: isinstance(v, bool),
         "augment_choices":   lambda v: isinstance(v, list),
         "anvil_choices":     lambda v: isinstance(v, list),
         "augment_hud_slots": lambda v: isinstance(v, list),
