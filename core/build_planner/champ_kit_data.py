@@ -190,6 +190,63 @@ def is_caster_marksman(champ) -> bool:
     return _ability_agg(entry).get("ap", 0.0) >= _CASTER_MKS_ABIL_AP_FLOOR
 
 
+# --------------------------------------------------------------------------- #
+# LEAP-07 DD1 - the AP-on-AD-marksman coherence class (the "Zeri class").
+# docs/specs/leap/LEAP-07-build-coherence-calibration-r2.md, section DD1.
+# --------------------------------------------------------------------------- #
+# The AP-hybrid item set: heavy flat-AP items that are ON-AXIS only for a
+# marksman whose kit genuinely converts ability AP into sim DPS. Lich Bane 3100
+# and Liandry's Torment 6653, each with its Arena mirror id. Deliberately NOT
+# extended to Dusk and Dawn 2510 (a legit on-hit hybrid - OnHit + AS + AP -
+# coherent for ANY on-hit marksman; spec GHOST LIST, do not dock it).
+_AP_HYBRID_ITEM_IDS: frozenset[str] = frozenset({"3100", "223100", "6653", "226653"})
+
+# Per-champion allow-map, EMPTY at ship. A champion earns membership ONLY when a
+# RED test proves the DS engine credits its ability-AP for _AP_HYBRID_ITEM_IDS
+# ABOVE a pure-AD-marksman control (Caitlyn / Jinx) at a fixed target.
+# MEASURED at engine 1.245.0 / patch 16.14.1 (SR level 13, target armor 100 /
+# MR 50 / max HP 2000 / bonus HP 800, empty build):
+#   Lich Bane 3100 delta - Zeri 21.87 vs Caitlyn 26.16 / Jinx 24.65
+#   Liandry's 6653 delta - Zeri 28.81 vs Caitlyn 29.98 / Jinx 29.29
+# Zeri sits BELOW both controls on both items, so the engine does NOT credit her
+# Q ability-AP above a pure-AD baseline - she does NOT qualify and the map ships
+# empty (byte-identical behavior; the R77/Stormrazor precedent - build the seam
+# and the guard, ship no behavior flip). Pinned by
+# tests/test_carry_coherence_rerank.py::test_measured_membership_rule_keeps_zeri_out.
+_AP_HYBRID_MARKSMAN: frozenset[str] = frozenset()
+
+
+def _norm(champ) -> str:
+    """Case/format-insensitive champion key - lowercase alphanumerics only.
+
+    Mirrors core.ds_champion_fight_length._norm so a coach-supplied display id,
+    a DDragon id, or a lower-cased name all resolve identically ("Kog'Maw" ->
+    "kogmaw"). Duplicated rather than imported so this leaf module keeps zero
+    intra-package imports (the split-brain guard).
+    """
+    return "".join(ch for ch in (str(champ) if champ is not None else "").lower()
+                   if ch.isalnum())
+
+
+def is_ap_hybrid_marksman(champ) -> bool:
+    """A carry-archetype Marksman whose kit genuinely converts AP into sim DPS
+    through an ability the DS engine credits - so Lich Bane / Liandry's are
+    ON-AXIS for it, not wasted stat.
+
+    A DISTINCT class from ``is_caster_marksman``: that gate protects a
+    spellblade / mana ability-caster (Ezreal, Corki, Smolder) from the coherence
+    dock wholesale; this one marks a marksman for whom a specific flat-AP item
+    set is coherent while the rest of the standard carry dock still applies.
+
+    Explicit per-champion allow-map, mirroring ``_CHAMPION_FIGHT_LENGTH`` and
+    ``is_caster_marksman`` - a champion earns membership ONLY when the RED test
+    proves the engine credits its ability-AP for ``_AP_HYBRID_ITEM_IDS`` above a
+    pure-AD-marksman baseline (see the ``_AP_HYBRID_MARKSMAN`` measurement note).
+    Fail-soft False when unresolved.
+    """
+    return _norm(champ) in _AP_HYBRID_MARKSMAN
+
+
 def _ability_agg(entry: dict) -> dict[str, float]:
     """Sum ap_pct + total_ad_pct across all spell blocks (top-rank value),
     normalized to fractions. Used only as a secondary AD/AP confirmation."""
@@ -275,8 +332,12 @@ def derive_kit_weights(champ) -> Optional[dict[str, float]]:
     # AD - physical-damage reliance.
     w["AD"] = _clamp(phys * 1.25)
     # AP - magical reliance; a marksman's magic is auto/on-hit (not AP scaling),
-    # so discount it heavily for any marksman.
-    w["AP"] = _clamp(mag * (0.3 if is_mks else 1.35))
+    # so discount it heavily for any marksman. EXCEPT an AP-hybrid-marksman
+    # class member (LEAP-07 DD1): its magic IS ability-AP the engine credits, so
+    # it is scored on its own kit weights, NOT the generic marksman AP discount.
+    # The allow-map is empty at ship, so this is byte-identical today.
+    ap_discounted = is_mks and not is_ap_hybrid_marksman(champ)
+    w["AP"] = _clamp(mag * (0.3 if ap_discounted else 1.35))
     # bonusAD - archetype-shaped (the cdragon ratios carry no bonus_ad split).
     # Marksman identity wins over a SECONDARY Assassin/Fighter tag: a crit / on-
     # hit marksman (Twitch/Quinn/Akshan/Lucian carry a dual Assassin tag) is a

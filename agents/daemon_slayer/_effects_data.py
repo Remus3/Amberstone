@@ -4821,6 +4821,39 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     ),
 
     # --- full items with DPS passive ---
+    # Cadence CORRECTED 15.0 -> 90.0 (2026-07-25). The old 15.0 was uncited: no
+    # loaded feed states 15 seconds anywhere on this item. 3131 is ABSENT from
+    # Meraki, so per R161 doctrine B the number is sourced from 3131's OWN
+    # DDragon line in data/daemon_slayer/<patch>/items.json, which states the
+    # active cooldown twice and consistently - the description renders it as
+    # "(90(0s))" (authored 90, zeroed template) and effect.Effect5Amount is
+    # "90". dps._periodic_proc_dps computes procs = duration / every_n_seconds,
+    # so 15.0 credited 90 / 15 = 6x the real proc count.
+    #
+    # BLAST RADIUS - 3131's own feed line reports maps 11 / 12 / 30 / 35 ALL
+    # false and only 21 true. Map 21 is NEXUS BLITZ, not the Howling Abyss
+    # (ARAM is map 12): the map-21 pool on this feed is the classic Nexus Blitz
+    # set - Ghostcrawlers 3005, Deathfire Grasp 3128, Innervating Locket 4402,
+    # The Golden Spatula 4403, and this item. Nexus Blitz is not in
+    # rank.MODE_MAP_ID, so _is_legal_in_mode rejects 3131 for SR / ARAM / ARENA
+    # / BRAWL alike and it never reaches a candidate pool or a generated build
+    # order. The over-credit was only reachable through an explicit compute_dps
+    # item list. There is no id-suffix mirror - a scan of the full id feed
+    # returns exactly ["3131"]. 443060 (Arena) and 663060 both share the display
+    # NAME but are a DIFFERENT item (Excoriate bonus crit damage, no periodic)
+    # and inherit nothing from here.
+    #
+    # The effect KIND is deliberately NOT remodelled in this slice. The real
+    # active is a timed window - 100% Attack Speed AND 100% Critical Strike
+    # Chance for 3 seconds or 3 basic attacks - and PeriodicProc can express
+    # neither half faithfully. The crit half's MARGINAL value is
+    # (1 - crit_chance)-scaled, so a literal 3-guaranteed-crit model collapses
+    # to zero for exactly the high-crit builds that buy the item, while the
+    # attack-speed half is a temporary stat buff with no damage field at all and
+    # would stay uncredited - i.e. the "faithful" magnitude would trade one bias
+    # for another. A correct model needs a timed-buff-window schema lift; that
+    # is filed as its own row. Until then the single guaranteed-crit-worth proc
+    # is kept as the conservative stand-in and only its firing rate is fixed.
     "3131": ItemEffect(
         item_id="3131",
         name="Sword of the Divine",
@@ -4829,9 +4862,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             name="Divine Judgment",
             bonus_damage=lambda c: 0.75 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
-            every_n_seconds=15.0,
+            every_n_seconds=90.0,
         ),),
-        note="Sword of the Divine (3131): 18 leth + Divine Judgment guaranteed-crit bonus (~75% AD extra) every 15s",
+        note=(
+            "Sword of the Divine (3131): 18 leth + Divine Blessing active - "
+            "guaranteed-crit bonus (~75% AD extra) on the DDragon-stated 90s "
+            "cooldown; Nexus Blitz only (maps 21 true, 11/12/30/35 false), so it "
+            "is unbuyable in every mode the engine wires"
+        ),
     ),
     "6700": ItemEffect(
         item_id="6700",

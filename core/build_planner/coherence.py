@@ -28,7 +28,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from core.build_planner.champ_kit_data import is_caster_marksman
+from core.build_planner.champ_kit_data import (
+    _AP_HYBRID_ITEM_IDS,
+    is_ap_hybrid_marksman,
+    is_caster_marksman,
+)
 from core.build_planner.kit_synergy import (
     anti_synergy_penalty,
     champ_kit_traits,
@@ -75,7 +79,8 @@ _W_EFF = 6.0
 _CARRY_ARCHETYPE = "carry"
 
 
-def _coherence_adj(row, champion: str, fight_length: Optional[float] = None) -> float:
+def _coherence_adj(row, champion: str, fight_length: Optional[float] = None,
+                   ap_hybrid: Optional[bool] = None) -> float:
     """A BASE score docked by the wasted-stat penalty and nudged by kit fit.
 
     The BASE is the burst-inclusive ``effective_score`` when ``fight_length`` is
@@ -91,6 +96,14 @@ def _coherence_adj(row, champion: str, fight_length: Optional[float] = None) -> 
     (~tens). This keeps the delta branch BYTE-IDENTICAL while scaling the
     penalty dock to the effective_score magnitude so the Essence Reaver / Eclipse
     artifacts stay docked below the crit core on the engaged path (L4).
+
+    ``ap_hybrid`` (LEAP-07 DD1) is the precomputed
+    ``is_ap_hybrid_marksman(champion)`` verdict, resolved lazily when None. For
+    a CLASS MEMBER an ``_AP_HYBRID_ITEM_IDS`` row (Lich Bane / Liandry's + Arena
+    mirrors) is ON-AXIS: its wasted-stat dock is waived and it keeps the full
+    ``+ w * fit`` nudge. Every OTHER item keeps its dock even for a member, and
+    a NON-member (every champion today - the allow-map ships empty) is
+    byte-identical to the pre-DD1 path.
 
     Resolves the item by ``row.item_id`` through the kit_synergy resolver; an
     unresolvable id (or any metric error) falls back to the chosen BASE so the
@@ -110,6 +123,15 @@ def _coherence_adj(row, champion: str, fight_length: Optional[float] = None) -> 
         pen = anti_synergy_penalty(str(iid), champion)
     except Exception:  # noqa: BLE001 - missing kit data -> raw base, no crash
         return base
+    if pen and str(iid) in _AP_HYBRID_ITEM_IDS:
+        if ap_hybrid is None:
+            try:
+                ap_hybrid = is_ap_hybrid_marksman(champion)
+            except Exception:  # noqa: BLE001 - unknown champ -> not a member
+                ap_hybrid = False
+        if ap_hybrid:
+            # Class member: this item is ON-AXIS, waive the wasted-stat dock.
+            pen = 0.0
     return base - mu * pen + w * fit
 
 
@@ -135,10 +157,14 @@ def coherence_rerank(rows, champion, top: int = 6, fight_length: Optional[float]
     ADCs that carry an INCIDENTAL secondary Mage tag but no ability-caster core
     (Jhin / Kai'Sa / Varus / Miss Fortune) - the ability-AP floor in
     is_caster_marksman stops the tag alone from sparing their Essence Reaver /
-    Eclipse artifact (gate tightened 2026-07-13). (Zeri surfaces an AP-on-AD-
-    marksman artifact class - Lich Bane / Liandry's - this fix does not target;
-    that is a separate future slice.) The live client only calls this on the
-    carry branch anyway; the gates are a belt-and-suspenders guarantee.
+    Eclipse artifact (gate tightened 2026-07-13). The AP-on-AD-marksman class
+    (Lich Bane / Liandry's - the "Zeri class", LEAP-07 DD1) is now a THIRD gate,
+    resolved by is_ap_hybrid_marksman: a class MEMBER keeps those items on-axis
+    (dock waived), a NON-member takes the standard dock. The allow-map ships
+    EMPTY (Zeri measured BELOW the pure-AD control at engine 1.245.0), so no
+    champion is a member today and this branch is byte-identical. The live
+    client only calls this on the carry branch anyway; the gates are a
+    belt-and-suspenders guarantee.
 
     ``fight_length`` (L1 crit-burst fix, 2026-07-13) is the OPTIONAL
     fight-length-reweight knob mirrored from the engine. When engaged (a positive
@@ -158,11 +184,17 @@ def coherence_rerank(rows, champion, top: int = 6, fight_length: Optional[float]
         arch, caster_mks = None, False
     if arch != _CARRY_ARCHETYPE or caster_mks:
         return rows[:top]
+    # LEAP-07 DD1 - resolved ONCE per re-rank, after the early-returns, so the
+    # class predicate is consulted on exactly the carry path it governs.
+    try:
+        ap_hybrid = is_ap_hybrid_marksman(champion)
+    except Exception:  # noqa: BLE001 - unknown champ -> not a member
+        ap_hybrid = False
     # Stable sort: equal-adj rows keep their original engine order (Python's
     # sorted is stable and reverse=True does not reorder equal keys).
     ranked = sorted(
         rows,
-        key=lambda r: _coherence_adj(r, champion, fight_length),
+        key=lambda r: _coherence_adj(r, champion, fight_length, ap_hybrid),
         reverse=True,
     )
     return ranked[:top]

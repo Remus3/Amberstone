@@ -227,6 +227,18 @@ def dispatch_for_coach(
     # ROADMAP-named off-class items for EVERY ranged marksman, not just the
     # four DSP2-tabled champions. Appended at the END per repo convention.
     widen_carry_pool: bool = False,
+    # TRI-STATE seam (Optional[bool], NOT a plain bool - the asymmetry with
+    # every seam above is deliberate). Those all default FALSE in the engine,
+    # so `if flag: seams[k] = True` covers their whole range. This one defaults
+    # TRUE (core/daemon_slayer_client.py:1410 - the L4 burst-carry target
+    # swap), so the same idiom could only ever say "on" and the OFF half was
+    # unreachable through this dispatcher; core/build_order_variants.py:333 had
+    # to hand-build its rank_kwargs to get it. None = inherit the engine
+    # default (kwarg omitted, byte-identical to every pre-existing caller),
+    # True = force on, False = force off. Appended at the END per repo
+    # convention. Resolved here, NOT in the client - the client signature and
+    # its True default are untouched.
+    apply_squishy_burst_target: Optional[bool] = None,
 ) -> Optional[CoachDispatchResult]:
     """Resolve archetype for ``champion`` + call the right DS scorer.
 
@@ -306,6 +318,11 @@ def dispatch_for_coach(
             seams["assume_missing_hp_heal_amp"] = True
         if widen_carry_pool:
             seams["widen_carry_pool"] = True
+        # Tri-state: an explicit False MUST survive (it is the whole point of
+        # the seam), so this is an `is not None` test, not a truthiness test.
+        # None leaves the kwarg absent -> the engine's own True default.
+        if apply_squishy_burst_target is not None:
+            seams["apply_squishy_burst_target"] = bool(apply_squishy_burst_target)
 
         # R5 self-HP -> caster_missing_hp_pct. Shared guard: absent HP or
         # hp_max <= 0 yields 0.0 ("no signal", OFF) and is NOT forwarded.
