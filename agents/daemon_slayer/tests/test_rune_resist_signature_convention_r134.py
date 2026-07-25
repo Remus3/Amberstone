@@ -119,6 +119,19 @@ _RM98_TAIL = ("apply_cast_rate_propensity_prior",)
 # never mid-signature - so the 1.229.0 pair is simply no longer the EHP tail.
 _RM87_TAIL = ("apply_resist_damage_coupling", "resist_coupling_strength")
 
+# ENGINE 1.250.0 appends the three assumed-share seams to ``rank_items_by_ehp``
+# ONLY. They already existed on ``compute_ehp`` (mid-signature, index 37 of 59)
+# and were merely never exposed on the ranker, so the ranker gains a new tail
+# while ``compute_ehp`` keeps the RM-87 pair as its own. That asymmetry is why
+# the two EHP entry points are now cased separately below rather than sharing
+# one expected tuple. The invariant the guard protects is unchanged: newly
+# EXPOSED seam kwargs land at the END, in order, never mid-signature.
+_A1250_TAIL = (
+    "assume_item_crit_dr",
+    "assume_item_aa_dr",
+    "assume_item_enemy_as_slow",
+)
+
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
 _SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
@@ -138,7 +151,8 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
             _R132_TAIL + _R136_TAIL + _R137_TAIL + _R1227_TAIL + _R1229_TAIL
         )
         cases = (
-            (_EHP_ENTRY_POINTS, shared + _RM87_TAIL),
+            ((compute_ehp,), shared + _RM87_TAIL),
+            ((rank_items_by_ehp,), shared + _RM87_TAIL + _A1250_TAIL),
             (_HYBRID_ENTRY_POINTS, shared + _R145_TAIL + _RM98_TAIL),
         )
         for fns, expected in cases:

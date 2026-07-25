@@ -730,3 +730,170 @@ one requires operator evidence, not a threshold.**
   layer further down the stack, and it is worth checking on every future seam.
 - **The empty-build artifact claimed no new headline this session.** Every probe carried an
   explicit non-empty item list and explicit non-zero target stats. The count stays at five.
+
+## PART 10 - FIVE ROWS PROBED, FOUR CLOSED WITHOUT CODE, AND THE PROBES ALL FOUND THE SAME BUG (2026-07-25, seventh session off this inventory)
+
+ENGINE 1.249.0 -> **1.250.0**. Five read-only probe agents ran first, in parallel, each on a
+different menu row. **For the first time in this program they converged: every one of the five
+independently surfaced the same systemic defect, and no row had filed it.** Three worktree build
+agents then ran on disjoint file sets with one Claude as sole merger.
+
+| row | verdict | headline measurement |
+|---|---|---|
+| **UNFILED** the three-gate seam census | **MEASURED + GUARDED** | 43 route-parsed seams, **9** reachable through the client, **34** stranded |
+| A-11 / RM-44 + A-22 / RM-91 + A-21 S3 | **CLOSED, PREMISE REFUTED** | champion-sensitivity in `ds.ehp` shipped at 1.247.0; the invariance is two 0.5 constants |
+| assumed-share exposure (the real fix) | **SHIPPED**, byte-identical by default | Randuin's #1 -> #6 forced off; +49.7 pct armed |
+| A-26 / RM-95b B2 Locke + Zaahen | **SHIPPED, DEFAULT-ON** | burst 0.0 -> 418.61 / 959.79; Locke's whole SR build corrected |
+| A-13 / RM-48 Azir soldier axis | **CLOSED, BLOCKED-UNFALSIFIABLE** | nine mages, pet or no pet, all return Liandry's #1 / Nashor's #16-19 |
+| **UNFILED** degenerate DPS fallback | **SHIPPED, DEFAULT-ON** | 3 of 173 champions shipped `weighted_dps == 0.0` silently |
+| A-32 / R190 kit-pen tails (a)-(d) | **CLOSED, 3 of 4 MIS-FILED** | row names the wrong module; (c) is intended behavior |
+| A-17 RM-85 Nasus | **MIS-FILED** | five routes return the IDENTICAL 135-item set |
+| A-17 RM-83 Naafiri | **SHIPPED-ALREADY, gate-blocked** | seeded 2026-07-18; `/rank-assassin` swallows the flag |
+| A-17 RM-96 Zilean | **REAL, specced, not built** | cast rate 0.00424, 15.9x below Soraka - cleanly separable |
+
+### The convergent finding - a DS seam has THREE gates and most seams clear one
+
+Every probe hit this from a different direction, so it is recorded once here rather than five
+times. Measured in the main thread, not inherited:
+
+- **43** seam-shaped kwargs are parsed by `server.py` route handlers.
+- **9** are expressible through `core/daemon_slayer_client.py`.
+- **34** are default-OFF and stranded.
+
+`core/daemon_slayer_client.py` is the chokepoint that every generated build table and every live
+coach tick passes through. `rank_for` (24 params), `rank_tank_for` (15) and
+`rank_for_primary_archetype` (40) carry **no `**kwargs`**, and `core/build_order.py`'s own
+docstring says its `rank_fn` takes none either - so a stranded seam cannot be smuggled through
+`rank_kwargs`. This was verified by calling `inspect.signature` on all three, not by grep.
+
+The consequence is not academic. **A-28 / RM-14 is filed as "the canonical index of default-OFF
+seams awaiting an operator decision". Even if the operator decided, there is no wire.**
+
+Named casualties, each independently confirmed:
+
+- `apply_ability_base_overrides` - the A-03 / RM-81 six hand-authored ability-base corrections,
+  selected precisely BECAUSE they change a ranked order. **Zero** occurrences in `server.py`,
+  `rank.py` and the client. Reachable only from its own test file. Six known-wrong ability bases
+  are live in every shipped table.
+- `apply_passive_aura_damage` - **shipped one release earlier at 1.249.0.** Cleared gates 1 and 2,
+  dead at gate 3. The hand-off prompt that shipped it carried the warning about exactly this.
+- `_kit_penetration.py` - the entire 15.9 KB module has **zero production callers**; its only
+  non-test reference is a docstring mention at `effects.py:596`. Darius 40 pct, Ambessa 30 pct and
+  Pantheon 30 pct are as uncredited as the bonus-armor rows the BACKLOG singles out.
+- `kit_conversion.py` (RM-86 L1) - a curated, prose-justified, test-guarded 9-champion registry
+  that reaches **1 champion**. `server.py` parses `kit_conversion_strength` at exactly one site
+  (`:481`, CARRY), and `hybrid.py` contains **zero** occurrences, stranding Olaf / Pantheon /
+  RekSai / Riven at gate 1. Memory `reference_ds_kit_conversion_not_route_exposed` reads as
+  resolved by `9a33134a` and is not.
+
+Shipped this session: `test_route_seams_reach_the_client.py` collects the route-parsed seam set by
+introspection and asserts client expressibility, carrying the stranded set as an explicit debt
+ledger. GREEN on arrival, RED the moment a new route seam ships without a wire.
+
+### The headline row was mis-filed, and the real cause was two constants
+
+**A-11 / RM-44, A-22 / RM-91 and A-21 / RM-90 S3 had all independently named "champion-sensitivity
+in `ds.ehp`" as their blocker and successor. That prerequisite already shipped at 1.247.0.**
+Forcing `_resist_damage_coupling` ON reorders 43 rows for Ornn, 38 Taric, 40 Galio, 24 Rammus,
+21 Rell, 19 Malphite, with Poppy and Amumu byte-identical as controls.
+
+The residual invariance is `ehp.py:1212-1218`, which sets `assume_item_crit_dr`,
+`assume_item_aa_dr` and `assume_item_enemy_as_slow` to **True** off two champion-blind module
+constants, `_ASSUMED_INCOMING_CRIT_SHARE = 0.5` (`:521`) and `_ASSUMED_INCOMING_AA_SHARE = 0.5`
+(`:559`). `rank_items_by_ehp` exposed none of the three and `server.py` parsed none, so no caller
+could disable them. Measured (Amumu L13, SR, prefix `['3068','3047']`, shares 0.50/0.50):
+
+| item | armed | forced off | delta |
+|---|---|---|---|
+| Randuin's 3143 | 2419.9494 | 1616.2956 | **+49.7 pct** |
+| Frozen Heart 3110 | 1209.3659 | 774.1125 | +56.2 pct |
+| Warmog's 3083 (control) | 2097.5007 | 2031.2375 | +3.26 pct |
+
+Head flips `3143, 3083, 3084, 6665, 2504, 3053` -> `3083, 3084, 2504, 6665, 3053, 3143`.
+
+Corroborated against the shipped artifact rather than asserted: `build_orders_sr.json` `mixed`
+carries 58 distinct orders over 173 champions with a largest cohort of **28 sharing one
+byte-identical order led by 3143**; `burst_heavy` 63/28; `frontline_heavy` 56/25. The `poke`
+profile, which targets a squishier dummy, drops Randuin's to slot 6 - the tell. 71 of 173
+champions carry 3143 somewhere in their SR order.
+
+All three candidate lift shapes were REJECTED on measurement, not on taste:
+
+- an RM-91 HP-to-damage sort credit at the shipped calibration moves **one row across seven
+  champions** (Warmog's 800 HP at Cho'Gath's 10 pct = +1.98 pct against a 15.37 pct gap to #1);
+- extending the resist coupling from sort-only to scored credits ARMOR, so it **raises** Randuin's
+  and pulls opposite to RM-91;
+- importing `damage_blocks` into `ehp.py` is a genuine unit-mixing lift with no defensible
+  conversion constant, plus the partial-module cycle risk its own lazy-import comment documents.
+
+**Do not re-file this as a schema lift.** The lift exists; the constants are the row.
+
+### The two unfiled defects that shipped
+
+**Three champions shipped `weighted_dps == 0.0`, silently.** `dps.py` gated the degenerate-scenario
+fallback on `not any(phase_dps.values())`, so a champion with a real early rotation and an empty
+late one never tripped it. Azir 0.0 -> 94.325, Karthus 0.0 -> 63.903, Viktor 0.0 -> 70.792; the
+other 170 byte-identical on `(weighted_dps, raw_attack_dps, mode_multiplier, phase_dps, notes)`.
+**This is the actual cause of the four-session A-13 / RM-48 misdiagnosis:** `onhit_dps.py:162`
+computes `onhit_dps = ability_dps + baseline_auto_dps`, so a 0.0 made `/rank-onhit` return a
+`/rank-mage`-identical response with `notes == []`, and four sessions read that as a missing pet
+model. Recorded caveat, in three places in-source: the fallback credits AD/crit, which is the
+**wrong model for Azir** (soldiers scale 45-65 pct AP, zero AD). It ships because a 0.0 breaks
+every blended scorer that weights on it. Do not cite it as "Azir's soldiers are modelled".
+
+**Two champions had no ability data at all.** Roster 173, ability keyspace 171, difference exactly
+`['Locke','Zaahen']`; champions with zero damage-kind blocks: 0. `abilities.py:1076` iterates the
+snapshot, and every existing override registry AMENDS a form rather than INJECTING a champion.
+New `_ability_wiki_damage_registry.py`, 10 hand-authored forms, injected keys-not-present-only,
+DEFAULT-ON (a champion the snapshot lacks has no prior behavior to preserve). Locke `baseline_burst`
+**0.0 -> 418.6104**, Zaahen **0.0 -> 959.7884**, Zed control exactly 807.3862433862435 unchanged,
+171 of 171 pre-existing champions byte-identical, 0 degenerate rows left.
+
+**Locke's shipped SR build was wrong and is now right:**
+
+```
+old  3153 BotRK / 3111 / 3097 / 3078 Trinity / 3036 LDR / 3031 IE      (a marksman build)
+new  6653 Liandry's / 3111 / 2503 Blackfire / 3135 Void / 4645 Shadowflame / 4646 Stormsurge
+```
+
+Zaahen's order correctly did NOT move - his authored damage is PHYSICAL (Grim Deliverance
++200 pct bonus AD), so the AD template already pointed the right way. Six of nine tables changed,
+Locke-only, proven by a stamp-stripped payload diff.
+
+Three transcription corrections were made against the live wiki by the build agent and
+independently re-verified by the merger via the wiki API: **Grim Deliverance is `(+ 200 pct bonus
+AD)`, not the 50 pct in the brief; `Ritual Nails` is LOCKE's Q, not Zaahen's; and that page carries
+`leveling` = Armor Penetration with damage in `leveling2`.** The last one matters: `_evaluate_block`
+does not filter on `attribute_kind` and `_select_blocks` reads `damage_blocks[0]`, so an armor-pen
+row left at index 0 would have scored as raw damage.
+
+### Corrections PART 10 makes to PART 9 and to the hand-off prompt
+
+- **The prompt's menu was wrong about its own top item.** "The single best-evidenced open row and
+  it is now three rows deep in agreement" was three rows agreeing on a prerequisite that had
+  already shipped. Agreement between rows is not evidence when all three inherited the same
+  unverified premise.
+- **The merger's own seam census was inflated.** It reported 36 stranded seams using substring
+  matching; `gate_caster_hp` and `gate_target_hp` do not exist in `server.py` and were artifacts
+  of `gate_caster_hp_amp` / `gate_target_hp_amp`. Word-boundary count is **34**. The build agent
+  caught this and was right to trust its own measurement over the brief.
+- **RM-95b B2 as specced is not what closes the symptom.** The spec bills "wiki becomes the numeric
+  authority for bases, ratios and cooldowns across 171" and "close Locke's 0.0" as one job at
+  1-1.5 sessions. They are different jobs: the second is a 2-champion registry, the first is a
+  genuine schema lift and should be re-costed well above that before anyone starts it.
+- **B1 shipped code with no data.** `--full-roster` exists but no 16.14.1 artifact was regenerated
+  with it - `wiki_ability_stats.json` (mtime 07-16), `cdragon_ability_ratios.json`
+  (`_champ_count: 171`) and `cdragon_spell_stats.json` all still contain zero Locke/Zaahen records.
+  The CC / geometry / cooldown half B1 claimed is not available to any consumer.
+- **RM-85's RC-2 claim rests on a `top=40` truncation.** Five routes return the identical 135-item
+  set at both gates; at `top=300` Protoplasm Harness is #54 bruiser / #20 tank. So the RM-86 spec's
+  "RC-2 is structurally the inverse of RC-1" has **one** instance (Quinn, via the carry-only client
+  gate), not two.
+- **A probe-hygiene trap worth the same status as the `top=40` and empty-list traps:** `/rank*`
+  returns `item_id` as a **string**. A probe comparing against integer ids reads ABSENT for every
+  watched item and looks exactly like a clean pool-exclusion finding.
+- **`parse_leveling_bases` has a structural blind spot** (`ds_wiki_staleness_check.py:188-196`): it
+  keeps only the first label pair per `{{st}}` block, and over a 50-page sample **31 of 90 blocks
+  carry two or more pairs, dropping 35 labels** that match Meraki attributes verbatim. The
+  RM-81 staleness report is an undercount, and `_ability_base_overrides`'s "exactly those six"
+  scope was derived from it.

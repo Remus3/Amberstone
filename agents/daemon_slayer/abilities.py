@@ -46,6 +46,9 @@ from typing import Any, Iterable
 
 from ._ability_base_overrides import apply_base_overrides as _apply_base_overrides
 from ._ability_overrides import DAMAGE_TYPE_OVERRIDES, NON_DAMAGE_BLOCKS
+from ._ability_wiki_damage_registry import (
+    inject_missing_champions as _inject_wiki_damage_champions,
+)
 from ._passive_damage_overrides import (
     _ALL_OUT_BONUS_OVERRIDES,
     _PASSIVE_DAMAGE_OVERRIDES,
@@ -917,6 +920,60 @@ def _apply_cdragon_surplus_ad_merge(
     return replace(form, damage_blocks=tuple(new_blocks))
 
 
+def _coverage_with_injected(
+    coverage: dict,
+    data_block: dict,
+    injected: tuple[str, ...],
+) -> dict:
+    """Return ``coverage`` reconciled with the hand-authored injected forms.
+
+    ``coverage`` is the EXTRACTOR's own tally of the file on disk, and
+    ``test_abilities.CoverageThresholdTests`` asserts it describes what the
+    loaded snapshot actually contains (``iter_forms`` count and
+    ``parse_status_counts`` must both match). Injecting champions the file does
+    not carry would drift both, so the counts are folded forward additively
+    here. Purely derived - every number comes from the injected payloads, and
+    with no injection the input dict is returned unchanged (same object).
+
+    ``ok_rate`` / ``parsed_rate`` are recomputed the way the extractor defines
+    them: over ``damage_eligible`` (= forms that are not ``no_damage``),
+    rounded to 4 places.
+    """
+    if not injected:
+        return coverage
+    out = {k: (dict(v) if isinstance(v, dict) else v) for k, v in coverage.items()}
+    status_counts = {k: int(v) for k, v in (out.get("status_counts") or {}).items()}
+    by_key_src = out.get("by_key") or {}
+    by_key = {k: {kk: int(vv) for kk, vv in (v or {}).items()}
+              for k, v in by_key_src.items()}
+    total_forms = int(out.get("total_forms") or 0)
+    damage_eligible = int(out.get("damage_eligible") or 0)
+    for cid in injected:
+        for key, forms in (data_block.get(cid) or {}).items():
+            for f in forms:
+                if not isinstance(f, dict):
+                    continue
+                status = f.get("parse_status") or "unparsed"
+                total_forms += 1
+                status_counts[status] = status_counts.get(status, 0) + 1
+                if key in by_key:
+                    by_key[key][status] = by_key[key].get(status, 0) + 1
+                if status != "no_damage":
+                    damage_eligible += 1
+    out["total_forms"] = total_forms
+    out["status_counts"] = status_counts
+    if by_key:
+        out["by_key"] = by_key
+    if "damage_eligible" in out or damage_eligible:
+        out["damage_eligible"] = damage_eligible
+    if damage_eligible:
+        ok = status_counts.get("ok", 0)
+        partial = status_counts.get("partial", 0)
+        out["ok_rate"] = round(ok / damage_eligible, 4)
+        out["parsed_rate"] = round((ok + partial) / damage_eligible, 4)
+    return out
+
+
 @dataclass(frozen=True)
 class AbilitiesSnapshot:
     """Versioned snapshot of all champion ability records.
@@ -947,6 +1004,7 @@ class AbilitiesSnapshot:
         strict_cdragon_patch: bool = True,
         apply_cdragon_surplus_ad: bool = False,
         apply_ability_base_overrides: bool = False,
+        apply_wiki_ability_damage: bool = True,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
 
@@ -1034,6 +1092,29 @@ class AbilitiesSnapshot:
         registry is the final authority. Each entry is guarded on the stale
         series still being present, so a repaired upstream can never be
         double-corrected. Default OFF = byte-identical: not one form is touched.
+
+        ``apply_wiki_ability_damage`` (default True / ON) closes the 173-vs-171
+        keyspace hole. The Meraki bulk snapshot never shipped ``Locke`` or
+        ``Zaahen`` - they are the entire set difference against
+        ``champions.json``, and the loop below constructs nothing for a
+        champion absent from ``data``, so both fall through to
+        ``total_burst_damage == 0.0`` with every cast noted "ability data
+        unavailable" and every ranked candidate at ``delta_burst 0.0``. When
+        True, ``_ability_wiki_damage_registry.inject_missing_champions`` adds
+        the two hand-authored, wiki-sourced payloads to ``data_block`` BEFORE
+        the loop, so they are built through the identical
+        ``AbilityForm.from_dict`` + override + CDragon path as every Meraki
+        champion.
+
+        This is the ONE seam in this loader that ships DEFAULT-ON, and
+        deliberately: every other flag MUTATES a form the engine already
+        serves, so OFF is their byte-identical contract, whereas a champion the
+        snapshot does not contain has no prior behavior to preserve and
+        therefore no regression surface. The injection is
+        KEYS-NOT-PRESENT-ONLY, so it can never overwrite a champion Meraki
+        does ship - which also makes it silently inert the day a re-extract
+        supplies them for real. Pass False to reproduce the pre-registry
+        171-champion keyspace.
         """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:
@@ -1072,6 +1153,20 @@ class AbilitiesSnapshot:
             if prefer_cdragon_ratios
             else {}
         )
+        # Wiki-sourced injection for champions the Meraki bulk snapshot never
+        # shipped (Locke / Zaahen). MUST run before the loop below: that loop
+        # iterates ``data_block`` and constructs NOTHING for an absent
+        # champion. Keys-not-present-only, so a champion Meraki does ship is
+        # never overwritten and the other 171 stay byte-identical.
+        injected: tuple[str, ...] = ()
+        if apply_wiki_ability_damage:
+            injected = _inject_wiki_damage_champions(data_block)
+            if injected:
+                _LOG.debug(
+                    "abilities: injected hand-authored wiki payloads for %s "
+                    "(snapshot %s carried %d champions)",
+                    ", ".join(injected), patch, len(data_block) - len(injected),
+                )
         champions: dict[str, dict[str, tuple[AbilityForm, ...]]] = {}
         for cid, keymap in data_block.items():
             if not isinstance(keymap, dict):
@@ -1134,7 +1229,9 @@ class AbilitiesSnapshot:
             patch=patch,
             fetched_at=doc.get("fetched_at") or "",
             source=doc.get("source") or "",
-            coverage=doc.get("coverage") or {},
+            coverage=_coverage_with_injected(
+                doc.get("coverage") or {}, data_block, injected
+            ),
             champions=champions,
             data_root=root,
         )

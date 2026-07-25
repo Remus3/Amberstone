@@ -146,6 +146,15 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     "test_r144_mirror_slice_d.py",
     "test_r144_mirror_slice_e.py",
     "test_unique_passive_key_phase4d.py",
+    # -- RM-115 (ENGINE 1.250.0, 2026-07-25): the seam-reachability pair. Both
+    # import core.daemon_slayer_client at module level, and that is inherent to
+    # what they assert rather than incidental - their whole subject is whether
+    # an engine seam parsed by server.py is expressible through the HOST client
+    # dispatcher. The client is host-only by design (the shipped package is the
+    # engine, not RC's integration layer), so these can never be mirror-safe
+    # and are excluded by name rather than refactored.
+    "test_assumed_share_exposure.py",
+    "test_route_seams_reach_the_client.py",
     # -- RM-112 (2026-07-23): runtime host-data reaches. These COLLECT clean
     # but FAIL at run time inside the engine-only, current-patch package,
     # because they load a HISTORICAL patch snapshot (16.10.1 / 16.11.1 /

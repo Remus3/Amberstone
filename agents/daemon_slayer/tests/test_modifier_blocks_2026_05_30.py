@@ -95,9 +95,18 @@ class SummarizeModifiersTests(unittest.TestCase):
     def test_roster_totals(self):
         s = summarize_modifiers(_AB)
         self.assertIsInstance(s, ModifierSummary)
-        # Live 16.11.1 count - pins the bag is heterogeneous (a blanket
+        # Live count - pins the bag is heterogeneous (a blanket
         # "apply every modifier as a multiplier" would be wrong).
-        self.assertEqual(s.total, 180)
+        # 180 -> 181 at ENGINE 1.250.0: the Locke / Zaahen ability injection
+        # (_ability_wiki_damage_registry) closed the 173-vs-171 keyspace hole,
+        # and Zaahen R carries an "Armor Penetration" row. It is authored
+        # BEHIND his damage block on purpose - _select_blocks reads
+        # damage_blocks[0] and _evaluate_block does not filter on
+        # attribute_kind, so an armor-pen row at index 0 would score as raw
+        # damage. Verified the delta is exactly that one row: the two injected
+        # champions contribute 5 non-damage blocks and exactly 1 of kind
+        # "modifier".
+        self.assertEqual(s.total, 181)
         self.assertEqual(set(s.by_kind.keys()), set(MODIFIER_KINDS))
         self.assertEqual(sum(s.by_kind.values()), s.total)
 
@@ -121,7 +130,7 @@ class SummarizeModifiersTests(unittest.TestCase):
     def test_to_dict_shape(self):
         s = summarize_modifiers(_AB)
         d = s.to_dict()
-        self.assertEqual(d["total"], 180)
+        self.assertEqual(d["total"], 181)  # see test_roster_totals for the 180 -> 181 cause
         self.assertIn("by_kind", d)
         self.assertIn("target_shred_examples", d)
         import json
