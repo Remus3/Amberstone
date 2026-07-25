@@ -132,7 +132,7 @@ curl -k https://127.0.0.1:8888/api/health/all
 
 ## TDD First
 
-All feature work and bug fixes follow TDD: write failing characterization/regression test first, then implement, then verify full suite (20,190 tests) before committing.
+All feature work and bug fixes follow TDD: write failing characterization/regression test first, then implement, then verify full suite (DS 9546 + RC `tests/` 13061, measured 2026-07-25) before committing.
 
 ## Subagent Code Quality
 

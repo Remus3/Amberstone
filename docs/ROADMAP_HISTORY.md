@@ -1,5 +1,161 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-07-25 (cleanup pass 2) - shipped narratives + blocked evidence (relocated from ROADMAP)
+
+> Relocated verbatim to keep `ROADMAP.md` under the 80KB `tests/test_doc_size_budget.py` ceiling (it stood at 79443 bytes). Nothing was
+> deleted: `ROADMAP.md` keeps the verdict plus a pointer for every entry below, and
+> every RM id is still reachable there. The DS per-champion meta-valuation sweep
+> section was deliberately left untouched - it carries load-bearing PROBE HAZARD text.
+
+### RM-100 nightly-critic repair + the asyncio marker-leak adjudication
+
+- **RM-100 CLOSED 2026-07-20** (repair `aa90e9b4` / `fb88c7d8` / `cf71753f`; consolidation `114977ee`; adjudication R141). The nightly critic + the nightly full-suite were both silently dead and are repaired. **The asyncio running-loop-marker leak is an ACCEPTED TRADEOFF, not an open bug - do not re-pitch a fix.** Measured (py3.14 + playwright 1.59.0): the leak is BOUNDED by `PlaywrightContextManager.__exit__`, and spans the session only because the `pw_browser` fixture is `scope="session"` (`tests/snapshot_panels/conftest.py:246`). Narrowing that scope would bound it but costs a browser launch across ~387 snapshot_panels tests - test latency the operator declines to pay. The residual latent bug is pinned by `tests/test_asyncio_isolation_guard.py` (7 tests): zero bare `asyncio.run(` calls remain under `tests/`, and the guard fails if one reappears or if a sixth local runner copy is added. Any new test needing a coroutine uses the shared `tests/_asyncio_isolation.py` runner (`run_coro` / `run_coro_capturing_thread`). **One watch-item survives closure (NOT a re-open):** the RC-GeminiAudit `0xC000013A` last-run result is still UNPROVEN (six hypotheses refuted); the unconditional `START` log line makes the next occurrence attributable - if it recurs, the marker fix is not the cause, read the log. Full record: `docs/ROADMAP_HISTORY.md` (2026-07-20 block).
+
+### RM-106a LCU event-mode timelines
+
+  - **RM-106a CLOSED 2026-07-19** - event-mode timelines ARE obtainable over the local LCU (`/lol-match-history/v1/game-timelines/{gameId}`, HTTP 200 on a KIWI queue-2400 match), with a permanently reduced event set: gold / xp / level curves + the kill map, NO item or skill order. The reduction is an LCU-timeline property, not a KIWI one, and the history window is hard-capped at 20 entries, so this route can NEVER backfill. Full record: `docs/ROADMAP_HISTORY.md`.
+
+### RM-109 pro corpus + RM-111 ARAM item-interaction aggregator
+
+- **RM-109 SHIPPED + CLOSED 2026-07-20 (`533d70fb`)** - played-with-pro corpus: **26 matches**, recovered by a LOCAL SQL join at zero Riot API calls, all already carrying stats + timelines. Roster expansion, the post-2025-09 gap, and the blank-name risk are all operator-CLOSED. Detail: `docs/ROADMAP_HISTORY.md` + LEDGER 972.
+- **RM-111 SHIPPED 2026-07-20** - ARAM comp-conditioned item-interaction aggregator, `core/aram_item_interaction.py`. Mines the local ARAM corpus for (enemy-comp-shape x item x purchase-timing) -> outcome. **Descriptive only - firewalled from `agents/daemon_slayer` rank, pinned by a test.** The predicted scope cut landed: comp shape is a COARSE 9-way bucket (enemy damage axis x frontline count), never a 5-champion tuple, and the champion axis is OFF by default. `MIN_BUCKET_N=15` is a hard drop proven by test at n-1 / n. Live probe: 2049 ARAM matches, 776 cells surviving, **1281 dropped** - the gate is load-bearing, not decorative. Reuses `core.item_wpa` (which gained a `map_id` param defaulting to 11, so SR callers are unchanged), `core.post_game_score`, `core.aram_comp_verdict`, `core.smoothed_rates`. 24 tests. **CONSUMER SURFACE DONE 2026-07-20 (`a626ece0`)** - the owed coach cue shipped the same night: `core/aram_item_interaction_context.py` + the `coaches/aram_coach.py` wiring + the comp-conditioned cue in the build strip (`web/js/panels/item_build.js` + `.css`) + `tools/aram_item_interaction_precompute.py`, 2 test modules. Nothing left open on RM-111.
+
+### RM-112 Share-package standalone-suite closure
+
+- **RM-112 CLOSED 2026-07-23 (`083605c5`) - the `Share/` package now runs its own suite clean standalone** (7270 passed / 0 fail / 0 err). The 40 host/cross-patch residue tests are excluded via `_HOST_DEPENDENT_TESTS` (a prior patch snapshot is ~11 MB + carries license-excluded data, so cross-patch anchors are host-CI seams, not shipped engine math) and `CC_CONDITIONAL_NOTES.md` now ships for the 6 meta-tests that assert it. `05_AUDIT_AND_REFACTOR.md` rewritten to the clean-run state; the retired 46-line `--ignore` workaround is gone. Below is the original OPEN text, retained for context.
+- **RM-112 (original)** - the pre-closure OPEN text (the 51-of-341 host-only-data residue, the sampled `FileNotFoundError` causes, and the two candidate fixes) is relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-07-24 block). It is superseded by the CLOSED line above; read it only for the reasoning behind the per-file choice.
+
+### RM-113 the two PASSing live-frame acceptance measurements
+
+- **RM-113 w-nextbuy live-frame acceptance: 2 PASS, 1 FAIL-upstream, 1 OPEN (2026-07-23, session k).** Real SR game (Kai'Sa, 22m30s, ~300 CDP samples). **PASS** OQ16 cadence: `""` -> `soon` caught at drake `1:32` -> `1:29`, `soon` -> `imminent` at baron `0:11` -> `0:09`, matching `alertSoonS: 90` / `alertImminentS: 10` (`web/js/panels/objective_gauges.js:66-67`) within 3s sampling. **PASS** no-reflow: `#am-next-buy` held 108px across 235 in-game samples, collapsing to 0 only after `game_time_s` went null (clean teardown, no stale block). **FAIL upstream, not the widget:** GOLD countdown - see RM-114. **OPEN** TRINKET: never activated in 260 samples, but `stageFor` returns `mid` on the clock arm alone at `c >= 600` (`web/js/lib/next_buy_model.js:68-72`), so stage was provably `mid`/`late` for the final 12.5 min and the stage gate cannot explain the silence. Reduces to one unrecorded fact: whether `owned_items` still held `stealth ward`. The probe now records it, so the next SR game closes this line with no new analysis.
+  - Probe hardened same session: `tools/overlay_live_frame_probe.py` emits `owned_items` / `completed_count` / `stage` / `holds_upgradable_trinket` / `next_item` / `sr_items_len` per sample and flushes each row. The flush is load-bearing - redirected stdout is block-buffered, and this session read a 7-min-stale baron ETA off that lag and briefly contradicted the operator with it.
+
+### RM-114 pre-fix filing (the item_advisor 6-of-172 measurement)
+
+- **RM-114 NEXT BUY gold row - CLOSED 2026-07-25: the DS fallback is SHIPPED and DEFAULT-ON** (`core/next_buy_fallback.py`, kill switch `RC_NEXTBUY_DS_FALLBACK=0`), 173/173 champions in sr/aram/arena, curated 6 byte-identical. Row below is the pre-fix filing, kept legible. `item_advisor.resolve_build` returns a build for exactly **6 of 172** champions (Caitlyn, Jinx, Miss Fortune, Nilah, Tristana, Vayne - seeded to the operator's pool). All others return `[]`, invariant across three `owned` states, so NOT the empty-build probe artifact (memory `reference_ds_probe_empty_build_artifact`). No build means `dashboard/_liveclient.py:387-393` emits no `sr_items` row with `next: true`, so `next_buy_model.js:12-16` has nothing to count toward and both rows correctly render `-`. **Widget faithful; feed empty for 97% of the roster.** Deliberately NOT pre-decided: re-source `next` from Daemon Slayer (173 champs, live at `:8893`) versus widen `item_advisor`. Do not build either until the operator picks - the DS route changes what "next item" MEANS (simulation-optimal, memory `reference_ds_simulation_default_not_winrate_hybrid`).
+
+### R134 CLOSED-REFUTED - the term-by-term rune-resist signature evidence
+
+> **CLOSED-REFUTED 2026-07-19 (R134, `534ab3ef`) - do NOT re-pitch.** An automated audit
+> reported that `ehp.py compute_ehp` "misses item bonus_armor" when it passes
+> `total_armor=armor` to the rune lane, and prescribed
+> `total_armor=armor+bonus_armor+ext_armor+item_resist_armor`. Every added term is
+> misidentified: `armor` is the RESOLVED build armor and already contains item armor
+> (Malphite L13 measures 94.2 bare -> 219.2 with 3068+3075); `bonus_armor` (`ehp.py:1668`) is
+> the CHAMPION `resist_grants(...)` registry OUTPUT, a peer conditional-grant lane and not a
+> stat; `item_resist_armor` is the ITEM registry output, itself derived from `total_armor=armor`;
+> `ext_armor` is an ALLY-conferred resist. Applying it feeds three peer grant lanes into the
+> fourth (Aftershock would take 75 percent of OTHER grants - measured, L1 goes
+> `(14.625, 15.3)` -> `(24.0, 24.0)`) and makes the result depend on the SOURCE ORDER of four
+> peer registries. `_rune_resist_grants.py:227-230` states the real contract and `ehp.py:1663-1664`
+> carries the invariant in code ("so there is no self-feedback"). Now machine-guarded by
+> `agents/daemon_slayer/tests/test_rune_resist_signature_convention_r134.py`.
+
+### RM-99 / RM-99b Heartsteel - both halves
+
+- **RM-99 SHIPPED 2026-07-19 (R137, ENGINE 1.226.0) - DEFAULT-OFF `assume_item_health_stacks`.** Heartsteel 3084 + Arena mirror 223084 permanent-max-HP half, folded into the three main per-type EHP numerators and route-surfaced on `/ehp`, `/rank-tank`, `/hybrid`, `/rank-bruiser`. **Full narrative relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-07-19 block)** - including the THREE spec errors it corrected (the coefficient is 10 percent not 8, because `items_meraki.json` is FROZEN; the fold site was under-specified; the prescribed R46 plumbing is route-unreachable). The engine-side record is the ENGINE 1.226.0 entry in `agents/daemon_slayer/CHANGELOG.md`. Do NOT re-inherit the 8 percent.
+  - ~~**RM-99b the Heartsteel DAMAGE half's cadence is wrong**~~ **SHIPPED 2026-07-25, ENGINE
+    1.245.0.** REAL, and the filed 8.5714x is EXACT (`procs = duration / every_n_seconds`,
+    `dps.py:327`), reproduced 15/15 at shipped-build depth. The over-credit supplied **13-32 pct of
+    total credited auto DPS** on shipped bruiser builds. **SR 3084 corrected to 30.0 directly in the
+    data table, DEFAULT-ON (operator call); Arena 223084 HELD at 3.5** - unsourced on its own feed
+    per doctrine B, so `apply_heartsteel_cadence_fix` survives rescoped to the mirror only. Regen:
+    SR 135 -> 6, ARAM 156 -> 27, Arena 223084 unchanged. Sibling sweep: Heartsteel was the ONLY
+    genuine two-half disagreement; 0 mirror cadence disagreements across 23 SR/Arena proc pairs.
+    **NEW residual: `3131` Sword of the Divine 15.0s vs a 90s active cooldown (uncited 6x
+    over-credit, absent from Meraki) - own slice, same operator-gated class.**
+
+### RM-101 rune mitigation - Bone Plating / Second Wind / Guardian magnitudes
+
+- **RM-101 Bone Plating 8473 SHIPPED 2026-07-19 (ENGINE 1.227.0), DEFAULT-OFF
+  `apply_rune_flat_mitigation`.** NEW `_rune_flat_mitigation.py`, reusing R132's
+  `rune_ids` transport. Instance count 3 is STATED in the rune text, so it REPLACES
+  `_ASSUMED_FLAT_DR_INSTANCES = 6.0` rather than adding an assumption.
+  **The ROADMAP's ~154 prevented HP was an UN-AMORTIZED upper bound, not a
+  coefficient** - it assumed `conditional_probability = 1.0`; the shipped seed is
+  0.25 (the rune scopes the block to a single attacker), giving 38.38 per axis at
+  L13. **The conclusion it supported survives anyway, and was MEASURED:** armed on
+  Sion L13 the seam moves baseline EHP +81.5555 and reorders 9 of 138 positions
+  including a top-6 swap. **RM-101 IS NOW CLOSED for every buildable rune** - the
+  residual pair SHIPPED 2026-07-20 (ENGINE 1.229.0, R142): Second Wind 8444 behind
+  DEFAULT-OFF `apply_rune_self_heal` (`_rune_self_heal.py`; 4% of missing health,
+  reusing the scorer's existing `_MISSING_HP_SHARE_FOR_HEALS`, discounted 0.6 by the
+  10s-heal-vs-6s-window ratio) and Guardian 8465 behind DEFAULT-OFF
+  `apply_rune_shield_grants` (`_rune_shield_grants.py`; level-lerped 40-150 + 6% bonus
+  health, amortized 0.2). **Guardian ships AP-OMITTED on purpose** - `ehp.py` carries
+  ZERO wielder ability power (every `ap` token there is `enemy_ap_share`, an incoming
+  damage-type share), so the "+20% AP" term is unrepresentable and its absence is a
+  deliberate undercount; a mutation-tested regression class fails RED if a future edit
+  fabricates an AP value. The ally half is omitted for the same frame reason. **Font of
+  Life 8463 stays DATA-BLOCKED** on the unresolved `@BaseHeal@` token - do NOT invent a
+  number; R136 and R142 tests both pin it at zero. Narrative in `docs/ROADMAP_HISTORY.md`.
+
+### RM-102 Warmog's mirror + RM-103 Unending Despair
+
+- **RM-102 SHIPPED 2026-07-19 (ENGINE 1.227.0): Warmog's Arena mirror 443083 was
+  credited "Warmog's Vitality", a passive it does not have.** Removed from
+  `_item_bonus_hp_amp.py`; 132.0 phantom EHP measured on a Sion L13 Arena build.
+  Verified BY ID, never by name - base and mirror share the display name.
+  **A full 12-mirror base-nominal sweep came back CLEAN: 443083 is the ONLY
+  instance - do not re-run it.** Narrative in `docs/ROADMAP_HISTORY.md`; record
+  is the ENGINE 1.227.0 CHANGELOG entry.
+- **RM-103 SHIPPED 2026-07-19 (ENGINE 1.227.0): Unending Despair 2502 + Arena
+  mirror 222502 "Anguish" SELF-heal.** NEW `_item_proc_heal.py` behind DEFAULT-OFF
+  `assume_item_proc_heal`. **"No schema lift" was HALF FALSE** - the heal is 250%
+  of POST-mitigation damage and `ehp.py` has ZERO `target_mr` references, resolved
+  with an explicit `_ASSUMED_TARGET_MR_FOR_PROC_HEAL = 60.0`. The passive was
+  MISNAMED "Agony" in six places (both feeds say Anguish) and mis-described as
+  having an ally component it has never had. Narrative in `docs/ROADMAP_HISTORY.md`.
+
+### RM-104 the four zero-shield Arena mirrors - full narrative
+
+- **RM-104 SHIPPED 2026-07-19 (ENGINE 1.228.0): four Arena mirrors credited ZERO shield EHP,
+  not one.** The filing's Kaenic half is confirmed exactly as written - 222504 had no `shield`
+  field AND `ehp.py:318` armed only `iid == "2504"`, a genuine double gate, either half of which
+  alone zeroed the credit. Both are open (`iid in ("2504", "222504")`), and the note's misnaming
+  of Magebane as "Nullmagic Mantle" (the component) is corrected. **But the filing's claim that
+  "Kaenic is the sole outlier" is FALSE and that is the larger half of the fix**: Immortal
+  Shieldbow 226673, Sterak's Gage 223053 and Maw of Malmortius 223156 carried the lifeline family
+  key with no `shield` field either. They are always-on (`default_off` False), so unlike Kaenic
+  they need NO flag and unlike Kaenic they are LIVE - measured 180.0 + 455.4 + 700.0 shield EHP
+  on an Aatrox L18 Arena build that previously did not exist, confirmed on the live `:8893`
+  `/ehp` route. The Kaenic half measures 1087.9 magical EHP on Aatrox L18 (the filing's 1109.0
+  was a different champion/level) and remains **latent**, exactly as filed: `assume_kaenic_shield`
+  reaches no route. **Population is provably exactly four** - a machine sweep resolving every
+  mirror id to its longest base-id suffix found no fifth, and that sweep is now a standing test
+  (`MirrorShieldClassGuardTests`), because this was a class (mirrors authored by copying an SR
+  entry's prose and dropping its `shield=`), not four typos. **Magnitudes are INHERITED-UNSOURCED
+  and were re-sourced, not copied on faith**: DDragon carries all four mirrors but scrubs every
+  shield magnitude, and `items_meraki.json` has zero Arena mirror entries. The obvious objection -
+  three of the four mirrors ARE stat-retuned (350 vs 400 HP, 300 vs 400 HP, 50 vs 60 AD), so
+  surely their shields are too - was tested and REFUTED: the formulas scale off the resolved
+  champion's stats, so the retune already flows through the output (Sterak's credits 0.60 * 300 =
+  180.0, not 240). One sourced retune is deliberately unmodelled: the mirror's Magebane window is
+  10s vs the base's 15s, and `ItemShield` has no uptime field. **The regen was NOT stamp-only,
+  contrary to this item's acceptance criteria** - that expectation inherited the filing's latency
+  claim, which covers only the Kaenic half. `core.build_order_precompute` +
+  `core.build_order_variants` at `--champions all` changed 68 of 173 ARENA entries, all gaining
+  223053, and left SR + ARAM untouched (the coherence check: Arena-mirror ids may only move
+  Arena). Operator-reviewed and shipped as-is. Narrative in
+  `agents/daemon_slayer/CHANGELOG.md`.
+
+### RM-105 permanent-HP family in effective_ehp_with_sustain
+
+- **RM-105 SHIPPED 2026-07-19 (ENGINE 1.227.0): `effective_ehp_with_sustain`
+  omitted the entire PERMANENT-HP family.** `_blend_with_heal` now carries
+  `passive_health_hp` + `rune_perm_hp` + `item_health_stack_hp`, and the contract
+  test asserts the blend equality with EACH seam ARMED rather than only at
+  defaults - which is why it went unseen. Reproduced at 618.3343 EHP on Sion L13
+  before the fix. Narrative in `docs/ROADMAP_HISTORY.md`.
+
+### RM-108 detector - the delivered shape and the FALSE premise
+
+- **RM-108 unresolved-template-token detector - SHIPPED 2026-07-19 (`a60d32e6`, LEDGER 966). Do NOT rebuild.** Delivered as `tools/unresolved_token_scan.py` + `tools/data/unresolved_template_tokens.json` + `tests/test_unresolved_template_tokens_rm108.py`, alongside the Lane-1 provenance guard rather than folded into its walk. **The premise below is measured FALSE:** all 56,896 occurrences across 874 files land in display-prose keys, ZERO in a numerically-read key, so the real product is the `documented_instances` registry for human registry authors, not a numeric tripwire. The spec's own regex `{{ *[a-z_]+ *}}` is lowercase-only and misses all 21 `items.json` tokens. Retained below as the original spec, for context only. Original spec relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-07-20 block).
+
+### RM-32 D-01b - the match_key backfill measurements
+
+- **RM-32 DS calibration pipeline - UNBLOCKED + BUILT 2026-07-25; the residual is CORPUS, not code.** The old "data-blocked" text was measured FALSE on both halves (queue 420 has 516 matches, max 2026-07-01; `ds_calibration.jsonl` holds 10139 records, SR 4172). Built `core/ds_calibration_agreement.py` + `tools/ds_calibration_report.py` (Laplace, `MIN_BUCKET_N = 20`, DS-rank firewall pinned). **First result is instrumentation, NOT a verdict** - 41 joinable games / 378 observations cannot separate a +0.0677 shrunk delta from noise. **Structural blocker CLOSED 2026-07-25 (D-01b).** The producer now mints through the existing `core/live_metrics.match_key()` seam (additive `match_key` field; `game_id` unchanged) and the consumer reads a real id out of it - synthetic `sess_*` keys are deliberately REFUSED, since grouping without an outcome is not a join. **Backfill executed, not deferred: 572 of 6109 keyless rows recovered** (Arena 450 / SR 122, zero ambiguous; backup at `data/ds_calibration.jsonl.pre-d01b-backfill.bak`). **ARAM 5257 is provably UNRECOVERABLE and that is not a bug** - zero of the db's 2081 ARAM matches fall in the log's window because the ARAM played there is Mayhem (`KIWI`/queue 2400), which Match-V5 403s. Measured gain: games joined 41 -> **50**, observations 378 -> **462**, and the **first ARENA cell ever emitted** (`ARENA/dps` n=26). Two counts in the old text were wrong: keyless rows are 6109 not 5967 (142 SR rows are also keyless), and the seam is at `live_metrics.py:99`.
+
 ## 2026-07-25 - RM-01 Lane E / RM-32 / RM-81 P0 narratives (relocated from ROADMAP)
 
 > Relocated to keep `ROADMAP.md` under the 80KB `tests/test_doc_size_budget.py` ceiling.
