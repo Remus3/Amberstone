@@ -237,6 +237,25 @@ def _cdragon_patch_segment(patch: str) -> str:
     return patch
 
 
+def _load_roster_champion_ids(patch: str) -> list[str]:
+    """DDragon ids from the committed ROSTER snapshot (``champions.json``).
+
+    A-26 / RM-95b. The abilities snapshot is a Meraki derivative frozen upstream
+    since 2025-08-01 and is 2 champions short of the live roster (Locke,
+    Zaahen). CDragon character bins for both DO exist, so this cap - not
+    CDragon - is what keeps them out of the spell sidecar.
+    OPT-IN ONLY - reached via ``_load_champion_ids(..., full_roster=True)``.
+    """
+    roster = DATA_DIR / patch / "champions.json"
+    if not roster.exists():
+        raise SystemExit(f"roster file missing: {roster} (run the champions extractor first)")
+    raw = json.loads(roster.read_text(encoding="utf-8"))
+    champs = raw.get("data") or {}
+    if not champs:
+        raise SystemExit(f"roster file {roster} has no 'data' champion container")
+    return sorted(champs.keys())
+
+
 def _load_champion_ids(patch: str) -> list[str]:
     """DDragon ids to extract, from the committed abilities snapshot.
 
@@ -254,6 +273,17 @@ def _load_champion_ids(patch: str) -> list[str]:
     if not champs:
         raise SystemExit(f"abilities file {abil} has no 'data' champion container")
     return sorted(champs.keys())
+
+
+def _resolve_champion_ids(patch: str, full_roster: bool) -> list[str]:
+    """Pick the champion keyspace: the abilities snapshot (default) or the roster.
+
+    ``full_roster=False`` is the pre-A-26 behavior and MUST stay byte-identical:
+    it delegates to ``_load_champion_ids`` unchanged.
+    """
+    if full_roster:
+        return _load_roster_champion_ids(patch)
+    return _load_champion_ids(patch)
 
 
 def _cdragon_slug(ddragon_id: str) -> str:
@@ -555,7 +585,7 @@ def _atomic_write_json(path: Path, payload: Any) -> None:
 
 
 def extract(patch: str, sleep_s: float, limit: Optional[int],
-            verbose: bool) -> dict[str, Any]:
+            verbose: bool, *, full_roster: bool = False) -> dict[str, Any]:
     """Extract the per-spell sidecar payload for ``patch`` (does NOT write).
 
     One character-bin fetch per champ (with backoff retries). Per champ, the bin
@@ -564,7 +594,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int],
     error + an empty spell map.
     """
     patch_segment = _cdragon_patch_segment(patch)
-    ids = _load_champion_ids(patch)
+    ids = _resolve_champion_ids(patch, full_roster)
     if limit:
         ids = ids[:limit]
 
@@ -655,6 +685,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         "--limit", type=int, default=0,
         help="extract only the first N champs (smoke test)",
     )
+    ap.add_argument(
+        "--full-roster", action="store_true",
+        help="A-26/RM-95b: source champs from champions.json (173) instead of "
+             "champion_abilities.json (171); the only way Locke + Zaahen are reached",
+    )
     ap.add_argument("--dry-run", action="store_true", help="extract but do not write")
     ap.add_argument("-v", "--verbose", action="store_true", help="per-champ progress")
     args = ap.parse_args(argv)
@@ -665,7 +700,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         else (DATA_DIR / patch / "cdragon_spell_stats.json")
     )
 
-    payload = extract(patch, args.sleep, args.limit or None, args.verbose)
+    payload = extract(patch, args.sleep, args.limit or None, args.verbose,
+                      full_roster=args.full_roster)
     print(
         f"patch={patch} (cdragon={payload['_patch_segment']}) "
         f"champs={payload['_champ_count']} with_ammo={payload['_with_ammo']} "

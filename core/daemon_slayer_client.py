@@ -154,6 +154,10 @@ def rank_for(
     target_current_hp_pct: float = 1.0,      # R55
     fight_length: Optional[float] = None,    # per-champ burst-carry blend (Jhin pilot)
     widen_carry_pool: bool = False,          # RM-04 A-01
+    # W2 conversion seams - appended LAST per the repo convention. Both are
+    # parsed off the SAME POST /rank body server-side (server.py:481 / :488).
+    kit_conversion_strength: float = 0.0,    # RM-86 L1 lever
+    apply_crit_conversion: bool = False,     # A-12 / RM-46 (Ashe Frost Shot)
 ) -> Optional[list[RankedItem]]:
     """Call POST /rank and return the parsed top-N rows. None on engine failure.
 
@@ -185,6 +189,19 @@ def rank_for(
     engages the burst-vs-sustained blend. Set at the carry chokepoint from the
     ``core.ds_champion_fight_length`` allow-map (see
     ``rank_for_primary_archetype``).
+
+    ``kit_conversion_strength`` (RM-86 L1, DEFAULT-0.0) and
+    ``apply_crit_conversion`` (A-12 / RM-46, DEFAULT-OFF) are the two
+    champion-selective conversion seams. Both were already parsed by the server
+    (``agents/daemon_slayer/server.py:481`` / ``:488``) and accepted by the
+    engine (``rank.py:918`` / ``:921``) but had NO client plumb, so the Ashe +
+    Quinn fixes shipped 2026-07-25 could not reach a live coach tick or a
+    generated build table. The engine gates are NOT symmetric:
+    ``apply_crit_conversion`` is a bool whose omit-value is False, while
+    ``kit_conversion_strength`` is a float that ``rank.py:1303-1305`` consults
+    the registry for ONLY when it is ``> 0.0``. Each key is therefore emitted
+    only when it would actually do something, keeping a flagless request
+    byte-identical to the pre-plumb path.
 
     ``widen_carry_pool`` (RM-04 A-01, DEFAULT-OFF) opts into the engine's
     class-wide un-strip of the carry candidate pool (``rank_items``'s
@@ -229,6 +246,14 @@ def rank_for(
     # RM-04 A-01: emit only when True so an un-widened call is byte-identical.
     if widen_carry_pool:
         body["widen_carry_pool"] = True
+    # RM-86 L1: the engine consults the kit-conversion registry only when the
+    # lever is strictly positive (rank.py:1303-1305), so 0.0 and any negative
+    # are inert server-side - emit nothing and stay byte-identical.
+    if kit_conversion_strength > 0.0:
+        body["kit_conversion_strength"] = float(kit_conversion_strength)
+    # A-12 / RM-46: bool seam, engine default False - emit only when ON.
+    if apply_crit_conversion:
+        body["apply_crit_conversion"] = True
     data = _post_json("/rank", body, timeout=timeout)
     if data is None:
         return None
@@ -1464,6 +1489,12 @@ def rank_for_primary_archetype(
     assume_archetype_hp_pct: bool = False,       # carry+bruiser+mage+assassin (R55)
     apply_squishy_burst_target: bool = True,     # carry (L4) - see the swap below
     widen_carry_pool: bool = False,              # carry (RM-04 A-01)
+    # W2 conversion seams - appended LAST per the repo convention. Both are
+    # CARRY-ONLY (POST /rank is the only route that parses them), so they are
+    # forwarded to the ds.dps chokepoint alone and never reach the tank /
+    # bruiser / mage / assassin / enchanter / on-hit branches.
+    kit_conversion_strength: float = 0.0,        # carry (RM-86 L1)
+    apply_crit_conversion: bool = False,         # carry (A-12 / RM-46)
 ) -> Optional[dict]:
     """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) - route to the right scorer per archetype.
 
@@ -1506,6 +1537,13 @@ def rank_for_primary_archetype(
     forwarded to the ds.dps branch's ``rank_for`` call and never reaches the
     tank / bruiser / mage / assassin / enchanter / on-hit branches. False
     (default) omits the body key, so a flagless dispatch is byte-identical.
+
+    ``kit_conversion_strength`` (RM-86 L1, DEFAULT-0.0) and
+    ``apply_crit_conversion`` (A-12 / RM-46, DEFAULT-OFF) are CARRY-ONLY for the
+    same reason - POST /rank is the only route that parses them. Before this
+    plumb the dispatcher could not express either, so both registries
+    (``kit_conversion.py`` / ``_crit_conversion_overrides.py``) were inert on
+    every shipped path. See ``rank_for`` for the per-key emit gates.
     """
     arch = (archetype or "").strip().lower()
     # Kit-dependent-scorer fallback (see _kitless_all_zero): default False.
@@ -1854,6 +1892,11 @@ def rank_for_primary_archetype(
         apply_target_vuln=apply_target_vuln,
         fight_length=_carry_fight_length,
         widen_carry_pool=widen_carry_pool,
+        # W2: the two champion-selective conversion seams. rank_for emits each
+        # body key only when it is non-default, so a flagless dispatch keeps the
+        # exact pre-plumb payload.
+        kit_conversion_strength=kit_conversion_strength,
+        apply_crit_conversion=apply_crit_conversion,
         **_carry_hp_kwargs,
     )
     if rows is None:

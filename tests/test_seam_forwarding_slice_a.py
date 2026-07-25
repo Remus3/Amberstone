@@ -110,6 +110,14 @@ _SEAM_KEYS = (
     # existing no-op pin also proves it stays ABSENT on a seam-free call -
     # "absent" is the only value that means "inherit the engine default".
     "apply_squishy_burst_target",
+    # W2 conversion seams (2026-07-25). rank_for_primary_archetype grew both
+    # kwargs so the Ashe (_crit_conversion_overrides) + Quinn (kit_conversion)
+    # registries can reach the shipped client path at all. Listed here so every
+    # existing no-op pin ALSO proves the new plumb cannot leak a value into a
+    # seam-free /api/ds-preview or with_build_order dispatch - the same
+    # byte-identical discipline the tri-state block above pins.
+    "kit_conversion_strength",
+    "apply_crit_conversion",
 )
 
 
