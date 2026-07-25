@@ -15,11 +15,16 @@ from __future__ import annotations
 import json
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from core.archetype_picks import get_archetype_for  # noqa: F401 - parity import
+from core.build_planner import champ_kit_data as ckd
 from core.build_planner.champ_kit_data import (
+    _AP_HYBRID_ITEM_IDS,
+    _AP_HYBRID_MARKSMAN,
     _AXES,
     derive_kit_weights,
+    is_ap_hybrid_marksman,
     is_caster_marksman,
 )
 from core.build_planner.kit_synergy import AXES as SYN_AXES
@@ -163,6 +168,80 @@ class CasterMarksmanGate(unittest.TestCase):
     def test_unknown_champ_fail_soft(self):
         self.assertFalse(is_caster_marksman(""))
         self.assertFalse(is_caster_marksman("NotARealChampion"))
+
+
+class ApHybridMarksmanClass(unittest.TestCase):
+    """LEAP-07 DD1 - the AP-on-AD-marksman coherence class (the "Zeri class").
+
+    A DISTINCT class from is_caster_marksman: a carry-archetype Marksman whose
+    kit genuinely converts ability AP into sim DPS, so the AP-hybrid item set
+    (Lich Bane 3100 / Liandry's 6653 + their Arena mirrors) is ON-AXIS rather
+    than wasted stat. Explicit per-champion allow-map, membership earned ONLY by
+    a measured engine-credit test against a pure-AD-marksman control.
+
+    See docs/specs/leap/LEAP-07-build-coherence-calibration-r2.md "DD1". The
+    allow-map ships EMPTY (the measured verdict, re-run at engine 1.245.0 - see
+    test_measured_membership_rule_keeps_zeri_out), so the class is a wired-but-
+    unpopulated seam and production behavior is byte-identical. These tests
+    therefore prove the seam is CONSULTED and REACHABLE, not merely inert.
+    """
+
+    def test_item_set_is_the_spec_set(self):
+        self.assertEqual(
+            _AP_HYBRID_ITEM_IDS,
+            frozenset({"3100", "223100", "6653", "226653"}),
+            "AP-hybrid item set must stay the spec's Lich Bane / Liandry's pair "
+            "plus their Arena mirrors",
+        )
+
+    def test_allow_map_ships_empty_and_zeri_is_not_a_member(self):
+        # The DD1 decision pin: NO champion qualifies at ship, so every carry
+        # marksman keeps the standard dock (byte-identical production behavior).
+        self.assertEqual(_AP_HYBRID_MARKSMAN, frozenset())
+        for champ in ("Zeri", "Jinx", "Caitlyn", "Ashe", "Ezreal", "Kog'Maw"):
+            self.assertFalse(is_ap_hybrid_marksman(champ), champ)
+
+    def test_allow_map_is_consulted_and_name_normalized(self):
+        # REACHABILITY, not inertness: seed the allow-map and prove the predicate
+        # actually reads it, through the same name normalization the sibling
+        # fight-length allow-map uses (case / spacing / apostrophe insensitive).
+        with mock.patch.object(ckd, "_AP_HYBRID_MARKSMAN", frozenset({"zeri"})):
+            for spelling in ("Zeri", "ZERI", "zeri", " Zeri "):
+                self.assertTrue(is_ap_hybrid_marksman(spelling), spelling)
+            self.assertFalse(is_ap_hybrid_marksman("Caitlyn"))
+        with mock.patch.object(ckd, "_AP_HYBRID_MARKSMAN", frozenset({"kogmaw"})):
+            self.assertTrue(is_ap_hybrid_marksman("Kog'Maw"))
+
+    def test_fail_soft_on_blank_and_unknown(self):
+        self.assertFalse(is_ap_hybrid_marksman(""))
+        self.assertFalse(is_ap_hybrid_marksman(None))
+        self.assertFalse(is_ap_hybrid_marksman("NotARealChampion"))
+
+    def test_member_lifts_the_generic_marksman_ap_discount(self):
+        """The CLASS BEHAVIOR half wired into the derivation: a member is scored
+        on its own kit weights, NOT the generic marksman AP discount (mag*0.3
+        at champ_kit_data.derive_kit_weights). Proven by seeding the allow-map
+        and observing the AP axis rise - so the seam is live the moment a
+        champion qualifies."""
+        base = derive_kit_weights("Zeri")
+        cait_base = derive_kit_weights("Caitlyn")
+        self.assertGreater(base["AP"], 0.0, "control needs a nonzero magic share")
+        with mock.patch.object(ckd, "_AP_HYBRID_MARKSMAN", frozenset({"zeri"})):
+            member = derive_kit_weights("Zeri")
+            cait = derive_kit_weights("Caitlyn")
+        self.assertGreater(
+            member["AP"], base["AP"],
+            "an AP-hybrid member must NOT take the marksman AP discount",
+        )
+        # Scoped: only the AP axis moves for the member.
+        for axis in _AXES:
+            if axis != "AP":
+                self.assertAlmostEqual(member[axis], base[axis], places=9, msg=axis)
+        # Blast-radius guard: a NON-member marksman is untouched by the class.
+        self.assertEqual(
+            [cait[a] for a in _AXES], [cait_base[a] for a in _AXES],
+            "a non-member marksman must not move when the allow-map is seeded",
+        )
 
 
 if __name__ == "__main__":

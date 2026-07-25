@@ -557,5 +557,106 @@ class KitlessFallbackTests(unittest.TestCase):
         self.assertFalse(out["fell_back"])
 
 
+class DispatchForCoachSquishyBurstTristateTests(unittest.TestCase):
+    """``dispatch_for_coach`` must be able to express all THREE states of
+    ``apply_squishy_burst_target``.
+
+    Every other dispatcher seam defaults FALSE, so `if flag: seams[k] = True`
+    covers its whole range. This one defaults TRUE in the engine
+    (core/daemon_slayer_client.py:1410), so that idiom can only ever say
+    "on" - the OFF half was unreachable through the dispatcher, and
+    core/build_order_variants.py:333 had to build its rank_kwargs by hand to
+    get it. The parameter is therefore Optional[bool] with None = inherit.
+    """
+
+    class _Stats:
+        armor = 80.0
+        mr = 30.0
+        max_hp = 2000.0
+        bonus_hp = 500.0
+
+    @staticmethod
+    def _response() -> dict:
+        return {
+            "ok": True, "scorer": "dps", "archetype": "carry",
+            "ranked": [{"item_id": "3078", "item_name": "Trinity Force",
+                        "delta": 60.0, "gold": 3333,
+                        "shares_dead_unique": False, "dead_unique_key": ""}],
+            "fell_back": False,
+        }
+
+    def _dispatch(self, m_rk, **kw):
+        """Run one dispatch with the ranker spied; return (flat_kwargs,
+        plan_rank_kwargs). The spy is the point: it records exactly what the
+        engine call was handed, so an OFF claim is proven, not assumed."""
+        from coach_integration.archetype_dispatch import dispatch_for_coach
+        m_rk.return_value = self._response()
+        with mock.patch("core.build_order.plan_build_order") as m_plan:
+            m_plan.return_value = None
+            res = dispatch_for_coach(
+                "Caitlyn", mode_engine="SR", level=11, item_ids=[],
+                enemy_stats=self._Stats(), with_build_order=True, **kw,
+            )
+        self.assertIsNotNone(res)
+        self.assertEqual(m_plan.call_count, 1)
+        return (m_rk.call_args.kwargs,
+                m_plan.call_args.kwargs.get("rank_kwargs") or {})
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_omitted_parameter_forwards_nothing(self, m_arch, m_rk):
+        """PIN: default None must leave the call byte-identical - no
+        apply_squishy_burst_target kwarg on either the flat rank or the
+        planner, so the engine's own True default still applies."""
+        m_arch.return_value = {"primary": "carry"}
+        flat, plan = self._dispatch(m_rk)
+        self.assertNotIn("apply_squishy_burst_target", flat)
+        self.assertNotIn("apply_squishy_burst_target", plan)
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_explicit_true_reaches_rank_and_plan(self, m_arch, m_rk):
+        m_arch.return_value = {"primary": "carry"}
+        flat, plan = self._dispatch(m_rk, apply_squishy_burst_target=True)
+        self.assertIs(flat.get("apply_squishy_burst_target"), True)
+        self.assertIs(plan.get("apply_squishy_burst_target"), True)
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_explicit_false_reaches_rank_and_plan(self, m_arch, m_rk):
+        """The previously unreachable state. RANK and PLAN must agree on it
+        for the same reason the other seams do."""
+        m_arch.return_value = {"primary": "carry"}
+        flat, plan = self._dispatch(m_rk, apply_squishy_burst_target=False)
+        self.assertIn("apply_squishy_burst_target", flat)
+        self.assertIs(flat["apply_squishy_burst_target"], False)
+        self.assertIn("apply_squishy_burst_target", plan)
+        self.assertIs(plan["apply_squishy_burst_target"], False)
+
+    @mock.patch("core.daemon_slayer_client.rank_for")
+    def test_dispatcher_off_actually_changes_the_engine_target(self, mock_rank):
+        """End of the thread: the OFF value the dispatcher now forwards is
+        the same one that suppresses the L4 squishy-target swap inside
+        rank_for_primary_archetype for a MAPPED burst carry."""
+        mock_rank.return_value = _make_dps_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Caitlyn", "carry", level=11, item_ids=[],
+            target_armor=120.0, target_mr=80.0,
+            apply_squishy_burst_target=True,
+        )
+        swapped = mock_rank.call_args.kwargs["target_armor"]
+        mock_rank.reset_mock()
+        mock_rank.return_value = _make_dps_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Caitlyn", "carry", level=11, item_ids=[],
+            target_armor=120.0, target_mr=80.0,
+            apply_squishy_burst_target=False,
+        )
+        verbatim = mock_rank.call_args.kwargs["target_armor"]
+        self.assertLess(swapped, 120.0)
+        self.assertEqual(verbatim, 120.0)
+        self.assertNotEqual(swapped, verbatim)
+
+
 if __name__ == "__main__":
     unittest.main()

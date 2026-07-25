@@ -571,6 +571,40 @@ _DS_PREVIEW_SEAM_FLOATS = (
 _DS_PREVIEW_SCORE_BY_VALUES = ("blended", "team_blended")
 _DS_PREVIEW_SCORE_BY_DEFAULT = "blended"
 
+# TRI-STATE seams. Read this before "fixing" the asymmetry with the eight
+# plain bools above - it is deliberate, not an oversight.
+#
+# Those eight all default FALSE in the engine, so the repo-wide "forward only
+# non-default values" idiom (`if flag: kwargs[key] = True`) can express their
+# entire range: absent == False == the default. apply_squishy_burst_target
+# defaults TRUE (core/daemon_slayer_client.py:1410 - the L4 burst-carry target
+# swap), so that same idiom can only ever say "on"; it physically cannot
+# express turning the seam OFF, which is why this seam was originally left
+# unexposed on /api/ds-preview entirely.
+#
+# A tri-state fixes that without touching the client signature or its True
+# default: the route resolves the third state by OMITTING the kwarg.
+#   absent / null -> omitted -> engine default (currently True)
+#   true          -> True    -> forced on
+#   false         -> False   -> forced off (the state the idiom could not reach)
+# Only bools and the unambiguous strings "true" / "false" parse. Ints are NOT
+# accepted (a client sending 0/1 for "unset" would silently force the seam);
+# anything else is dropped, i.e. inherited - the same never-500, never-flip-a-
+# different-knob contract every other seam here follows.
+_DS_PREVIEW_SEAM_TRISTATE = (
+    "apply_squishy_burst_target",
+)
+_DS_PREVIEW_TRISTATE_STRINGS = {"true": True, "false": False}
+
+
+def _parse_tristate(raw) -> "bool | None":
+    """Coerce a tri-state seam value; ``None`` means "inherit / drop"."""
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        return _DS_PREVIEW_TRISTATE_STRINGS.get(raw.strip().lower())
+    return None
+
 
 def _ds_preview_seam_kwargs(payload: dict) -> dict:
     """Extract + coerce the seam flags a /api/ds-preview body opted into.
@@ -579,6 +613,11 @@ def _ds_preview_seam_kwargs(payload: dict) -> dict:
     parameter names. A body with no seam keys returns ``{}``. Unparseable
     values are dropped (a malformed seam must never 500 the preview or
     silently flip a different knob).
+
+    The tri-state seams are the one exception to "non-default only": an
+    explicit ``false`` IS forwarded, because their engine default is True
+    and omission is what means "inherit" (see _DS_PREVIEW_SEAM_TRISTATE).
+    Omission still produces no entry, so a seam-less body is unchanged.
     """
     seams: dict = {}
     if not isinstance(payload, dict):
@@ -587,6 +626,11 @@ def _ds_preview_seam_kwargs(payload: dict) -> dict:
     for key in _DS_PREVIEW_SEAM_BOOLS:
         if bool(payload.get(key)):
             seams[key] = True
+
+    for key in _DS_PREVIEW_SEAM_TRISTATE:
+        parsed = _parse_tristate(payload.get(key))
+        if parsed is not None:
+            seams[key] = parsed
 
     ceiling = payload.get("cost_ceiling")
     if ceiling is not None:

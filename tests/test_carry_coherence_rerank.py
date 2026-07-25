@@ -18,9 +18,13 @@ artifact IS in the raw top-6 (proving the defect + that the re-rank is the lever
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
+from unittest import mock
 
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.rank import rank_items
+from core.build_planner import coherence as coherence_mod
+from core.build_planner.champ_kit_data import _AP_HYBRID_ITEM_IDS
 from core.build_planner.coherence import coherence_rerank
 
 _ER = "3508"        # Essence Reaver - the systemic artifact (caster-marksman)
@@ -49,6 +53,25 @@ _CRIT_ADCS = ("Twitch", "Jinx", "Caitlyn", "Ashe")
 # 2026-07-13). The ability-AP-scaling floor tightening reaches them now. Keyed by
 # canonical DDragon id (rank_items needs the id, not the display name).
 _MAGE_TAGGED_CRIT_ADCS = ("MissFortune", "Jhin", "Kaisa", "Varus")
+
+
+# LEAP-07 DD1 - the AP-on-AD-marksman ("Zeri") class.
+_LICH = "3100"        # Lich Bane
+_LIANDRYS = "6653"    # Liandry's Torment
+_STORM = "3097"       # Stormrazor - Zeri's next-best on-hit/AS slot-4 candidate
+# The MEASURED membership cell (spec DD1 "Engine-AP-credit control", re-run at
+# engine 1.245.0): SR level 13 at an explicit armor-100 target. Explicit target
+# stats are mandatory - the ranker defaults are all 0.0 and a zero-HP target
+# nullifies every percent-max-HP effect (Liandry's burn).
+_AP_CREDIT_CELL = dict(
+    level=13, current_item_ids=[], mode="SR", top_n=706, sort_by="delta",
+    filter_shared_uniques=True, target_armor=100.0, target_mr=50.0,
+    target_max_hp=2000.0, target_bonus_hp=800.0,
+)
+# The greedy prefix that surfaces Liandry's for Zeri in the build-order path:
+# BORK + Plated Steelcaps + Dusk and Dawn (2510, a GHOST-LIST legit on-hit
+# hybrid carrying 60 AP).
+_GREEDY_PREFIX = ["3153", "3047", "2510"]
 
 
 class CarryCoherenceRerankTest(unittest.TestCase):
@@ -160,6 +183,156 @@ class CarryCoherenceRerankTest(unittest.TestCase):
                 )
                 # Same row objects, not reconstructed copies.
                 self.assertEqual(list(out), list(rows[:top]))
+
+
+class ApHybridMarksmanClassSeam(unittest.TestCase):
+    """LEAP-07 DD1 - the AP-on-AD-marksman coherence class, wired at the carry
+    chokepoint (docs/specs/leap/LEAP-07-build-coherence-calibration-r2.md).
+
+    The allow-map ships EMPTY, so production behavior is byte-identical. A test
+    that only asserted "nothing moved" would be vacuous, so these prove the
+    predicate is genuinely CONSULTED on the carry path and that the member
+    branch CHANGES the ranking the moment a champion qualifies.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.snap = DataSnapshot.load()
+
+    def _delta(self, champ, item_id, **overrides):
+        cell = dict(_AP_CREDIT_CELL, **overrides)
+        for row in rank_items(self.snap, champ, **cell).ranked:
+            if str(row.item_id) == item_id:
+                return float(row.delta_dps)
+        return None
+
+    def test_measured_membership_rule_keeps_zeri_out(self):
+        """The DD1 membership rule, re-measured at the LIVE engine: a marksman
+        joins the class ONLY if its AP-hybrid deltas materially EXCEED a pure-AD
+        marksman control (Caitlyn / Jinx) at a fixed target. Zeri's deltas sit
+        BELOW both controls for both items - the engine does not credit her Q
+        ability-AP above a pure-AD baseline - so the allow-map stays empty.
+
+        A failure here means the engine moved and DD1 membership must be
+        re-adjudicated (per the spec), NOT that this assertion needs relaxing.
+        """
+        for item in (_LICH, _LIANDRYS):
+            zeri = self._delta("Zeri", item)
+            cait = self._delta("Caitlyn", item)
+            jinx = self._delta("Jinx", item)
+            self.assertIsNotNone(zeri, f"{item}: Zeri row absent - probe is vacuous")
+            self.assertIsNotNone(cait, f"{item}: Caitlyn row absent")
+            self.assertIsNotNone(jinx, f"{item}: Jinx row absent")
+            self.assertLess(
+                zeri, min(cait, jinx),
+                f"item {item}: Zeri delta {zeri:.3f} is NOT below the pure-AD "
+                f"control (Caitlyn {cait:.3f} / Jinx {jinx:.3f}) - re-adjudicate "
+                f"_AP_HYBRID_MARKSMAN membership per LEAP-07 DD1",
+            )
+
+    def test_greedy_liandrys_is_champion_invariant_not_an_ap_hybrid_artifact(self):
+        """The DD1 CONTINGENCY probe (no off-axis AP-waste dock shipped).
+
+        Zeri's greedy build surfaces Liandry's at #4, but the driver is the
+        Dusk-and-Dawn (2510, 60 AP) prefix, not her kit: given the IDENTICAL
+        prefix a pure-AD control (Jinx) credits Liandry's at least as much. A
+        champion-invariant effect is not an AP-on-AD-marksman coherence artifact,
+        so the contingency dock is NOT warranted - it would be a general
+        item-valuation change owned by a different slice.
+        """
+        zeri = self._delta("Zeri", _LIANDRYS, current_item_ids=_GREEDY_PREFIX)
+        jinx = self._delta("Jinx", _LIANDRYS, current_item_ids=_GREEDY_PREFIX)
+        self.assertIsNotNone(zeri, "Zeri Liandry's row absent at the greedy prefix")
+        self.assertIsNotNone(jinx, "Jinx Liandry's row absent at the greedy prefix")
+        self.assertGreaterEqual(
+            jinx, zeri,
+            f"pure-AD control Jinx ({jinx:.3f}) credits Liandry's LESS than Zeri "
+            f"({zeri:.3f}) at the shared prefix - the effect would then be "
+            f"kit-driven and the DD1 contingency dock must be re-opened",
+        )
+
+    def test_class_predicate_is_consulted_on_the_carry_path(self):
+        """REACHABILITY: the carry chokepoint actually calls the class predicate
+        for a carry marksman (and not only for a hypothetical member)."""
+        seen = []
+
+        def spy(champ):
+            seen.append(champ)
+            return False
+
+        rows = rank_items(self.snap, "Zeri", **_AP_CREDIT_CELL).ranked
+        self.assertTrue(rows, "no engine rows for Zeri")
+        with mock.patch.object(coherence_mod, "is_ap_hybrid_marksman", spy):
+            coherence_rerank(rows, "Zeri", top=6)
+        self.assertIn(
+            "Zeri", seen,
+            "coherence_rerank never consulted is_ap_hybrid_marksman on the "
+            "carry path - the DD1 seam is not wired",
+        )
+
+    def test_member_exempts_ap_hybrid_items_from_the_waste_dock(self):
+        """CLASS BEHAVIOR: for a MEMBER the AP-hybrid item set is ON-AXIS and
+        exempt from the wasted-stat dock; every other item keeps its dock.
+
+        Driven with a FORCED nonzero penalty so the exemption is observable (the
+        live penalty for these ids happens to be 0.0 today, which would make the
+        assertion vacuous)."""
+        forced_pen = 1.0
+
+        def fake_pen(item, champ, *a, **kw):
+            return forced_pen if str(item) in _AP_HYBRID_ITEM_IDS | {_ER} else 0.0
+
+        rows = [
+            SimpleNamespace(item_id=_LIANDRYS, delta_dps=40.0, effective_score=0.0),
+            SimpleNamespace(item_id=_ER, delta_dps=40.0, effective_score=0.0),
+            SimpleNamespace(item_id=_STORM, delta_dps=29.0, effective_score=0.0),
+        ]
+        with mock.patch.object(coherence_mod, "anti_synergy_penalty", fake_pen):
+            with mock.patch.object(
+                coherence_mod, "is_ap_hybrid_marksman", lambda c: False
+            ):
+                non_member = [
+                    str(r.item_id) for r in coherence_rerank(rows, "Zeri", top=3)
+                ]
+                er_non_member = coherence_mod._coherence_adj(rows[1], "Zeri")
+            with mock.patch.object(
+                coherence_mod, "is_ap_hybrid_marksman", lambda c: True
+            ):
+                member = [
+                    str(r.item_id) for r in coherence_rerank(rows, "Zeri", top=3)
+                ]
+                er_member = coherence_mod._coherence_adj(rows[1], "Zeri")
+
+        self.assertNotEqual(
+            non_member[0], _LIANDRYS,
+            f"non-member: the docked AP-hybrid item still leads: {non_member}",
+        )
+        self.assertEqual(
+            member[0], _LIANDRYS,
+            f"member: the exempt AP-hybrid item must lead: {member}",
+        )
+        # SCOPED: an off-set artifact (Essence Reaver) keeps its dock for a
+        # member - the exemption applies only to _AP_HYBRID_ITEM_IDS.
+        self.assertAlmostEqual(
+            er_member, er_non_member, places=9,
+            msg="membership must not exempt Essence Reaver (3508) from its dock",
+        )
+
+    def test_nonmember_carry_marksman_is_byte_identical_today(self):
+        """Ship-state pin: with the allow-map EMPTY, a carry marksman's coherence
+        top-6 is exactly what it was before the DD1 seam (the member branch is
+        unreachable in production)."""
+        for champ in ("Zeri", "Jinx", "Caitlyn"):
+            rows = rank_items(self.snap, champ, **_AP_CREDIT_CELL).ranked
+            self.assertTrue(rows, f"{champ}: no engine rows")
+            live = [str(r.item_id) for r in coherence_rerank(rows, champ, top=6)]
+            with mock.patch.object(
+                coherence_mod, "is_ap_hybrid_marksman", lambda c: False
+            ):
+                forced_nonmember = [
+                    str(r.item_id) for r in coherence_rerank(rows, champ, top=6)
+                ]
+            self.assertEqual(live, forced_nonmember, champ)
 
 
 if __name__ == "__main__":

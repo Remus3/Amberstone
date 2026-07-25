@@ -106,6 +106,10 @@ _SEAM_KEYS = (
     "assume_passive_as_stacks", "apply_target_vuln",
     "assume_missing_hp_heal_amp", "widen_carry_pool",
     "enemy_ad_share", "enemy_ap_share",
+    # TRI-STATE seam (see the tri-state block below). Listed here so every
+    # existing no-op pin also proves it stays ABSENT on a seam-free call -
+    # "absent" is the only value that means "inherit the engine default".
+    "apply_squishy_burst_target",
 )
 
 
@@ -240,6 +244,142 @@ class DsPreviewSeamForwardingTests(unittest.TestCase):
         self.assertEqual(h.status, 200)
         for key in _SEAM_KEYS:
             self.assertNotIn(key, m_rk.call_args.kwargs)
+
+
+# ===========================================================================
+# TRI-STATE seam - apply_squishy_burst_target
+#
+# Every other seam on the route is a default-FALSE boolean, so the universal
+# "forward only non-default values" idiom (`if flag: kwargs[key] = True`) can
+# express its whole range. apply_squishy_burst_target defaults TRUE in the
+# engine (core/daemon_slayer_client.py:1410), so that idiom physically cannot
+# express turning it OFF - which is exactly why the seam was left off
+# /api/ds-preview. The route therefore treats it as tri-state:
+#   absent / null -> kwarg OMITTED  (inherit the engine's True default)
+#   true          -> kwarg True     (force ON)
+#   false         -> kwarg False    (force OFF - the previously unreachable state)
+# Malformed values are dropped, same contract as every other seam.
+# ===========================================================================
+class DsPreviewSquishyBurstTristateTests(unittest.TestCase):
+
+    _PIN_BODY = {
+        "champion": "Ezreal", "mode": "SR", "level": 11,
+        "target_armor": 80.0, "target_mr": 30.0,
+        "target_max_hp": 2000.0, "target_bonus_hp": 500.0,
+    }
+    _PIN_KWARGS = {
+        "champion": "Ezreal",
+        "archetype": "carry",
+        "level": 11,
+        "item_ids": [],
+        "mode": "SR",
+        "top": 8,
+        "sort_by": "delta",
+        "timeout": 2.0,
+        "target_armor": 80.0,
+        "target_mr": 30.0,
+        "target_max_hp": 2000.0,
+        "target_bonus_hp": 500.0,
+    }
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_absent_key_keeps_kwargs_byte_identical(self, m_arch, m_rk):
+        """PIN EXTENSION: the tri-state seam must not weaken
+        test_flagless_request_kwargs_are_byte_identical. Omitting the key
+        means INHERIT, so the kwarg set stays exactly the pre-fix one."""
+        m_arch.return_value = {"primary": "carry"}
+        m_rk.return_value = _dispatcher_response()
+        h = _Handler()
+        _serve_ds_preview_post(h, dict(self._PIN_BODY))
+        self.assertEqual(h.status, 200)
+        self.assertEqual(m_rk.call_args.args, ())
+        self.assertEqual(m_rk.call_args.kwargs, self._PIN_KWARGS)
+        self.assertNotIn("apply_squishy_burst_target", m_rk.call_args.kwargs)
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_json_null_keeps_kwargs_byte_identical(self, m_arch, m_rk):
+        """Explicit JSON null is the wire spelling of "inherit" - a client
+        echoing its whole state back with the knob unset changes nothing."""
+        m_arch.return_value = {"primary": "carry"}
+        m_rk.return_value = _dispatcher_response()
+        h = _Handler()
+        body = dict(self._PIN_BODY)
+        body["apply_squishy_burst_target"] = None
+        _serve_ds_preview_post(h, body)
+        self.assertEqual(h.status, 200)
+        self.assertEqual(m_rk.call_args.kwargs, self._PIN_KWARGS)
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_true_forces_the_seam_on(self, m_arch, m_rk):
+        m_arch.return_value = {"primary": "carry"}
+        m_rk.return_value = _dispatcher_response()
+        h = _Handler()
+        body = dict(self._PIN_BODY)
+        body["apply_squishy_burst_target"] = True
+        _serve_ds_preview_post(h, body)
+        self.assertEqual(h.status, 200)
+        self.assertIs(
+            m_rk.call_args.kwargs.get("apply_squishy_burst_target"), True)
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_false_forces_the_seam_off(self, m_arch, m_rk):
+        """THE DEFECT: before the tri-state, no /api/ds-preview body could
+        produce this kwarg at all - the truthiness idiom drops False."""
+        m_arch.return_value = {"primary": "carry"}
+        m_rk.return_value = _dispatcher_response()
+        h = _Handler()
+        body = dict(self._PIN_BODY)
+        body["apply_squishy_burst_target"] = False
+        _serve_ds_preview_post(h, body)
+        self.assertEqual(h.status, 200)
+        kwargs = m_rk.call_args.kwargs
+        self.assertIn("apply_squishy_burst_target", kwargs)
+        self.assertIs(kwargs["apply_squishy_burst_target"], False)
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_malformed_values_are_dropped_not_coerced(self, m_arch, m_rk):
+        """A malformed seam must never 500 the preview and must never
+        silently resolve to ON or OFF - it is dropped, i.e. inherited.
+        Ints are deliberately NOT accepted: 0/1 is too easy to send by
+        accident from a client that means "unset"."""
+        m_arch.return_value = {"primary": "carry"}
+        m_rk.return_value = _dispatcher_response()
+        for bad in ("maybe", "", 0, 1, [], {}, 2.5):
+            with self.subTest(bad=bad):
+                m_rk.reset_mock()
+                m_rk.return_value = _dispatcher_response()
+                h = _Handler()
+                body = dict(self._PIN_BODY)
+                body["apply_squishy_burst_target"] = bad
+                _serve_ds_preview_post(h, body)
+                self.assertEqual(h.status, 200)
+                self.assertNotIn(
+                    "apply_squishy_burst_target", m_rk.call_args.kwargs)
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_string_booleans_are_accepted(self, m_arch, m_rk):
+        """Query-string / form-shaped clients send "true" / "false" as
+        strings; those are unambiguous, so they parse."""
+        m_arch.return_value = {"primary": "carry"}
+        m_rk.return_value = _dispatcher_response()
+        for raw, expected in (("true", True), ("False", False)):
+            with self.subTest(raw=raw):
+                m_rk.reset_mock()
+                m_rk.return_value = _dispatcher_response()
+                h = _Handler()
+                body = dict(self._PIN_BODY)
+                body["apply_squishy_burst_target"] = raw
+                _serve_ds_preview_post(h, body)
+                self.assertEqual(h.status, 200)
+                self.assertIs(
+                    m_rk.call_args.kwargs.get("apply_squishy_burst_target"),
+                    expected)
 
 
 # ===========================================================================

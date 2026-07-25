@@ -1254,27 +1254,19 @@ def champion_has_ability_data(champion: str) -> bool:
 _champ_stale_index: Optional[dict] = None
 
 
-def champion_ability_data_is_current(champion: str) -> bool:
-    """False when ``champion``'s stored ability values are known to be STALE (RM-81).
+# Tri-state ability-data coverage (RM-95 / A-26). Plain lowercase strings so the
+# value is JSON-serializable straight onto a diagnostic surface.
+ABILITY_DATA_ABSENT = "absent"
+ABILITY_DATA_STALE = "stale"
+ABILITY_DATA_CURRENT = "current"
 
-    :func:`champion_has_ability_data` answers "is the champion PRESENT?" - the
-    RM-79 kit-less case. This answers the orthogonal question "are the values
-    still RIGHT?". The Meraki ``latest`` endpoint is frozen at content patch
-    25.15 while the live game runs ~11 patches ahead, so a champion can be
-    present (that guard returns True) while carrying numbers from a kit that no
-    longer exists - e.g. Mel, whose stored W is still the pre-26.03
-    invulnerability with a 35s cooldown against a live 38s shield.
 
-    Reads the report written by ``tools/ds_wiki_staleness_check.py``, which
-    diffs stored base-damage and cooldown endpoints against the live wiki Data
-    templates.
+def _champion_is_stale(champion: str) -> bool:
+    """True when ``champion`` is named in the RM-81 wiki staleness report.
 
-    Fail-soft in BOTH directions and deliberately so: a missing or unreadable
-    report returns True for every champion (absence of evidence is not evidence
-    of staleness, and a report problem must never flag the whole roster), while
-    a champion absent from a PRESENT report also returns True. The report
-    under-reports by design - it skips damage labels it cannot match verbatim -
-    so True means "no drift proven", not "verified current".
+    Fail-soft: a missing or unreadable report yields an empty index, so every
+    champion reads False (not stale). Absence of evidence is not evidence of
+    staleness and a report problem must never flag the whole roster.
     """
     global _champ_stale_index
     if _champ_stale_index is None:
@@ -1291,7 +1283,70 @@ def champion_ability_data_is_current(champion: str) -> bool:
         except (OSError, ValueError, AttributeError):
             index = {}
         _champ_stale_index = index
-    return not _champ_stale_index.get(_canon_champ_key(champion), False)
+    return bool(_champ_stale_index.get(_canon_champ_key(champion), False))
+
+
+def champion_ability_data_status(champion: str) -> str:
+    """Tri-state ability-data coverage: ABSENT / STALE / CURRENT (RM-95).
+
+    Composes the two guards that were previously never composed:
+
+    * :func:`champion_has_ability_data` - "is the champion PRESENT?" (RM-79).
+    * the RM-81 wiki staleness report - "are the values still RIGHT?".
+
+    Why a third state is needed. ``tools/ds_wiki_staleness_check.py`` derives
+    its target roster from ``champion_abilities.json`` itself, so a champion
+    ABSENT from that file can never become a check target, never lands in
+    ``stale_champions``, and therefore came back "current". The staleness
+    program certified as clean exactly the champions with no ability data at
+    all (16.14.1: Locke, Zaahen - both missing from Meraki's bulk map, which
+    carries 171 of 173). ABSENT and STALE are also differently actionable:
+    STALE is fixed by a data refresh, ABSENT is blocked upstream and cannot be.
+
+    ABSENT wins over STALE when a champion is somehow both - there are no
+    stored values to refresh, so the stronger signal is the honest one.
+
+    THE FAIL-SOFT CONTRACT IS UNCHANGED, and the whole point of this function is
+    that it keeps the two failure kinds apart:
+
+    * A missing / unreadable REPORT (either file) is a snapshot problem. Every
+      champion reads CURRENT - the roster is never flagged off a broken read.
+      :func:`champion_has_ability_data` already returns True for everyone when
+      its index is empty, so ABSENT is unreachable on that path by construction.
+    * A champion with no entry in a PRESENT ability map is a per-champion data
+      hole and reads ABSENT.
+
+    CURRENT means "no drift proven", not "verified current": the staleness
+    report under-reports by design, skipping damage labels it cannot match
+    verbatim.
+
+    Keys resolve through :func:`_canon_champ_key`, so a DDragon id ("MonkeyKing")
+    and a Live Client display name ("Wukong") give the same answer.
+    """
+    if not champion_has_ability_data(champion):
+        return ABILITY_DATA_ABSENT
+    if _champion_is_stale(champion):
+        return ABILITY_DATA_STALE
+    return ABILITY_DATA_CURRENT
+
+
+def champion_ability_data_is_current(champion: str) -> bool:
+    """False when ``champion``'s ability data is STALE or ABSENT (RM-81 / RM-95).
+
+    Thin boolean view over :func:`champion_ability_data_status` - prefer that
+    function for anything diagnostic, since it separates the two failure kinds.
+
+    RM-95 correction: this used to read ``not stale_index.get(champion)`` alone,
+    which returned True for a champion with NO ability data at all, because
+    absent data can never be proven drifted. It certified precisely the
+    champions it should have flagged hardest. Absent data is now False - a guard
+    whose job is to catch bad data must not certify data it does not have.
+
+    Fail-soft is preserved exactly: a missing or unreadable report (of either
+    kind) still returns True for every champion. See
+    :func:`champion_ability_data_status` for the full contract.
+    """
+    return champion_ability_data_status(champion) == ABILITY_DATA_CURRENT
 
 
 # Kit-dependent scorers (ds.ability / ds.burst / ds.hps) need the champion's
