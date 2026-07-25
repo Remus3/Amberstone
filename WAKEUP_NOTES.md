@@ -4,6 +4,52 @@
 
 ---
 
+# 2026-07-25 - open-item review + 6-slice orchestrated build (ENGINE 1.242.0)
+
+Operator asked for ONE categorical inventory of every open item, then said build the
+top 5 plus the runner-up in orchestrated parallel. LEDGER 1041. ZERO API / ZERO LLM.
+Deliverable: `docs/OPEN_ITEMS_REVIEW_2026-07-25.md`.
+
+**THE LESSON, and it is about the review method rather than any slice.** Every
+inventory row carries a VERIFICATION TIER - PROBED / SOURCE-READ / AS-FILED. Three of
+the six build targets turned out to be already shipped, and **all three were tagged
+SOURCE-READ or AS-FILED. Nothing tagged PROBED collapsed.** Tag your rows, and treat
+ROADMAP prose as a claim rather than a fact: 13 rows read open and are not, including
+one (the champ-select brief Haiku flip) that survived in THREE separate docs eight
+weeks after the flip actually happened.
+
+**Built, real:**
+- **B-01 RM-01 Lane E** - `data/fusion_shadow.jsonl` accrued 230 real-game records and
+  **41 of 41 CV overrides in its whole history were garbage** (all `gold`, all the
+  literal value `1`). Two causes: `core/vision_routing.py:118` merges unrequested keys
+  from the Sonnet escalation, and `core/vision_fusion.py` had no plausibility check.
+  Fixed at the fusion layer. Upstream half deferred - it changes served coach dicts.
+- **D-01 RM-32** - data block cleared; built the pick-vs-outcome aggregator. First
+  result is **instrumentation, not a verdict**: 41 joinable games cannot separate a
+  +0.0677 shrunk delta from noise. 100 pct of ARAM + Arena rows have no `game_id`.
+- **A-27 RM-114** - NEXT BUY coverage 6/173 -> 173/173, curated 6 byte-identical.
+- **A-01 RM-04** - built DEFAULT-OFF, and **the premise is half-refuted**: the pool is
+  108 not 111, and widening it changes ZERO top-8 entries for any of seven marksmen.
+  Re-file as RM-86 scorer work.
+
+**Already closed (do not re-dispatch):** RM-81 P0 (`4cd3c4c6` + `544d6362`),
+competitor-lift F1 + F5 (`533e7e47`). Both slices found real defects nearby instead -
+a stale docstring set, and a `hide-on-data-absence` reflow bug in the shipped grid.
+
+**TWO PROCESS CATCHES WORTH KEEPING.** (1) I nearly shipped a one-line `game_id=`
+kwarg "fix" on a subagent's framing; checking the source first showed
+`coaches/aram_coach.py:599` hardcodes `""` and the Live Client never surfaces one, so
+it would have been a no-op reported as a fix. (2) A slice flagged "Golden Spatula in
+Miss Fortune's SR order" - wrong twice. `3600` is Kalista's Black Spear, SR carries
+zero, and the real number is **`224403` in 82 of 173 ARENA orders**. Verify subagent
+specifics, not just their direction.
+
+**Carry-forward hazard:** `ROADMAP.md` blew its 80KB budget during the docs pass and
+is back at 81905 bytes with **15 bytes of headroom**. The next session that touches it
+must prune to `docs/ROADMAP_HISTORY.md` FIRST.
+
+---
+
 # 2026-07-24b - R190 kit-intrinsic penetration lane (ENGINE 1.241.0, commit `349d833a`)
 
 gemini-loop DIRECTOR REFILL, rotation source 1 (DS sweep). Tier-2: new engine
