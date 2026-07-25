@@ -396,3 +396,133 @@ supervisor-watched and still ran the old engine; the calibration backfill read 0
 new joins because it wrote a full `NA1_<id>` where the index keys the bare
 suffix. **A measured "no movement" must be shown to come from the NEW code path
 before it is believed.**
+
+## PART 7 - SIX ROWS PROBED READ-ONLY (2026-07-25, fourth session off this inventory)
+
+No code shipped for any row below. ENGINE stays 1.247.0. Six probe agents ran in
+parallel, read-only, each required to age-check the cited files, grep `docs/specs/**`
+plus `tests/**` before believing a row unbuilt, carry the full DS probe-trap list, and
+treat BLOCKED-UNFALSIFIABLE as an acceptable answer. Two rows closed without code.
+**All four survivors were mis-scoped by their filing** - none was buildable as written.
+
+| row | verdict | what the filing got wrong |
+|---|---|---|
+| A-16 / RM-82 Mordekaiser | **CLOSED, BLOCKED-UNFALSIFIABLE** | inherits the A-07 `ds.ability` block; no coefficient exists to turn |
+| A-10 / RM-37 + RM-42 Lucian/Akshan | **CLOSED, unmeasurable as filed** | symptom is champion-invariant across 12+ ADCs; the ER dock is intended |
+| A-03 / RM-81 | BUILDABLE, 1S | it is a code slice, not a data pull - no tool can re-source 6 champions |
+| A-12 / RM-46 Ashe | BUILDABLE | headline backwards - the engine UNDER-values her crit, it does not lead with it |
+| A-20 / RM-89 Quinn | BUILDABLE, 2 slices | the L1 lever is exactly inert for her - she is not in the registry |
+| A-21 / RM-90 support cohort | BUILDABLE, 3 slices | under-scoped - the collapse is 28-of-28 on the TANK route, not 5 champions |
+
+### The two closures
+
+**A-16 / RM-82** routes `/rank-mage` = `ds.ability`, the scorer already blocked at A-07.
+Against the batch32 REFUTE control Ziggs at identical params (`level 13`, `items
+["3047"]`, armor 100 / MR 60 / 2400 max HP / 1200 bonus HP, `top 200`): Rylai's #24 both,
+Riftmaker #9 both, Liandry's #1 both. At depth the top-8 head is byte-identical across
+Mordekaiser / Ziggs / Anivia / Xerath. Re-run gate-ON with `apply_ability_amps:true` -
+byte-identical, so this is NOT a flag-OFF negative. The `/rank-bruiser` reroute lifts the
+filed items equally for Ziggs and Rumble, champions who build neither: a cohort-wide route
+shift, not champion signal. Two missing terms are now named, which is this probe's value
+over a fourth invariance measurement: `ability_dps.py` holds ZERO `slow` tokens (Rylai's is
+registered `defensive_only=True` in `_effects_data.py:1783-1791`), and `ability_dps.py:44-45`
+excludes `P` abilities, so Darkness Rise - his whole signature - is invisible to his own
+scorer. That is also why a burn item leads: the engine cannot see he already owns the burn.
+Fold into the A-07 mage-cluster block as a fourth instance; do NOT re-probe standalone.
+
+**A-10 / RM-37 + RM-42** dies on its own control. `rank_for_primary_archetype(champ,
+"carry", level=16, items=["3153","3047"], armor=110, mr=52, max_hp=2500, bonus_hp=1200,
+top=40)` returns Infinity Edge at **exactly #11 for Lucian, Akshan, Xayah, Tristana, Sivir
+and Kalista**, and twelve ADCs emit the byte-identical shipped order `[BotRK, Plated,
+Runaan's, LDR, Terminus, Yun Tal]`. The sole discriminator is membership in
+`core/ds_champion_fight_length.py:105` (six champions), which BOTH filings explicitly reject
+as the fix. Cleanest disproof: **Sivir IS in the aa-empower registry and is indistinguishable
+from Lucian** - registry membership currently changes nothing, because the seam is gated on
+`apply_ability_amps` and `_route_rank` (POST `/rank`) never parses it. The `coherence_rerank`
+half is INTENDED, not a defect: `coherence.py:155-158` names Lucian deliberately, rationale at
+`coherence.py:4-19`, constants marked DO-NOT-RETUNE at `coherence.py:42-54`, and
+`anti_synergy_penalty("3508", champ)` is 2.500 identically for Lucian / Akshan / Jinx /
+Caitlyn / Draven / Twitch. The filed magnitude does not reproduce - ER is raw **#10** at
+shipped-build depth, not #4; the #4 is the empty-build artifact, now its FIFTH false headline.
+**Successor row (falsifiable, subsumes RM-37 / RM-42 / RM-38):** the champion-invariant carry
+on-hit bias across 12+ ADCs, where the six fight-length members are the built-in control group
+and the real question is whether that map should be a hand-curated list at all.
+
+### The cross-cutting blocker, verified in the main thread
+
+**`agents/daemon_slayer/server.py` contains ZERO `kit_conversion` / `conversion_strength`
+references.** The RM-86 L1 lever is Python-API-only, and
+`tools/daemon_slayer_build_orders_generate.py` drives the shipped build tables through
+`:8893`, so no kit-conversion fix can reach a shipped artifact today. This is a prerequisite
+slice for BOTH A-12 and A-20, and it is why those two cannot be proven end-to-end as filed.
+
+### Re-scoping notes for the four survivors
+
+- **A-03 / RM-81.** The 6 champions are already on disk at
+  `docs/research/DS_ABILITY_SHAPING_NOTES.md:445-620` (Mordekaiser, Naafiri, Heimerdinger,
+  Azir, Malzahar, Ahri); Ahri R and Naafiri R re-verified stale in
+  `data/daemon_slayer/16.14.1/champion_abilities.json`. But
+  `tools/daemon_slayer_abilities_extract.py:761-774` is `--force`/`--patch` only, all-or-
+  nothing, with `_EXPECTED_MERAKI_CONTENT_PATCH = "25.15"` frozen at `:128`, so re-running it
+  REPRODUCES the stale numbers; the wiki extractor writes a geometry sidecar with no base
+  damage. Shape is a new `_ability_base_overrides.py` registry plus an `abilities.py` hook,
+  following the `_passive_damage_overrides.py` precedent. The committed
+  `ability_staleness.json` baseline predates the `62e4a410` shape fix (it still reports
+  Mordekaiser Q at 389 pct against a true 4.6 pct), so any before/after must regenerate it
+  first or the baseline lies. 4 of the 6 move only at ranks 8 / 19 / 25 / 37.
+- **A-12 / RM-46 Ashe.** Gate passed wide against Aphelios at identical params: Ashe BotRK #1
+  / Runaan's #2 / IE #8 vs Aphelios Yun Tal #1 / IE #2 / BotRK #13 - the control returns the
+  opposite ordering. But the engine models `ad * (1 + 1.00c)` where correct Ashe is
+  `ad * (1 + 1.15c)`, so it UNDER-values her crit by 22.9 pct at c=1.00 and a Frost model
+  RAISES her crit items; what Frost correctly does is demote IE relative to pure crit-chance
+  items (simulated IE #8 -> #9, PD #35 -> #29). Symptom relief lives in the on-hit half.
+  Third small term: Runaan's needs its own deny (DDragon's Ashe P states Hurricane bolts deal
+  no additional damage on crit), because under a Frost sim it otherwise RISES. Drop "Phantom
+  Dancer dead-last" as an acceptance criterion - its Ashe value is Spectral Waltz move-speed,
+  which no DPS objective contains, the same limit `kit_conversion.py:50-55` already names.
+- **A-20 / RM-89 Quinn.** Separation measured 116-of-134 rows (Naafiri) vs 0-of-104 (Quinn)
+  vs 0-of-103 (Jinx) at `kit_conversion_strength` 0.0 -> 1.0. `_KIT_CONVERSION` holds exactly
+  8 champions (`kit_conversion.py:106-212`) and **Quinn is not one**, so the lever returns
+  `_IDENTITY` and is exactly inert for her - the filed claim that L1 suppresses her three bad
+  leads is false as measured. RC-2 half re-measured against `widen_carry_pool` (shipped
+  1.242.0, AFTER the row was written): pool 104 -> 108, Profane Hydra 6698 + Umbral Glaive
+  3179 still absent, because both names sit in `OFFCLASS_MARKSMAN_ITEM_NAMES`
+  (`rank.py:107-108`) applied behind `_is_ranged_marksman` at `rank.py:1044`. Quinn is in
+  neither escape hatch. Prefer a per-champion `marksman_offclass_exempt.json` entry over
+  editing `CARRY_POOL_WIDEN_ITEM_NAMES`, which is class-wide. Both halves must land for the
+  row's thesis to be discharged: L1 can only demote (`conversion_factor` never exceeds 1.0),
+  and pool-widening alone was already measured to change zero top-8 entries.
+- **A-21 / RM-90 support cohort.** Distinct 6-item orders in the shipped
+  `build_orders_sr.json`, both keyspaces: **tank 1 of 28**, enchanter 2 of 11, mage 6 of 45,
+  assassin 10 of 15, bruiser 21 of 44, **carry control 14 of 27**. The true support cohort
+  (11 enchanter-routed + 12 Support-role tank-routed) emits **3 distinct orders across 23
+  champions**. All five named REFUTEs (Alistar / Blitzcrank / Braum / Bard / Rakan) overlap
+  their real `data/meta_build/sr_champion_builds.json` build **0 of 6**, while real tanks
+  score 1-3 of 6 - so the route is mediocre for tanks and categorically wrong for supports.
+  Bard / Rakan / Taric / Thresh were moved onto this route BY RM-84 Slice C, which swapped a
+  10-into-1 collapse for a 28-into-1 one. The `_aura_caveat` pin at
+  `core/ds_support_route_overrides.json:62` is falsified on its operative half: the
+  `score_by="team_blended"` seam landed at ENGINE 1.220.0 AFTER it was written and is
+  correctly champion-selective (Locket #22 -> #6 for Alistar / Braum / Thresh / Taric / Rakan,
+  byte-identical #23 for Malphite and Ornn) but `core/build_order.py` and
+  `core/build_order_precompute.py` contain ZERO `score_by` occurrences, so no shipped table
+  can emit it. `_champion_ally_reach.py:152` covers 36 of 173 and omits Blitzcrank / Leona /
+  Nautilus / Poppy. `_item_ally_grant.py:95-105` hard-excludes Knight's Vow 3109, Zeke's 3050,
+  Bandlepipes 2524 and Solstice Sleigh 3876, so flipping the seam recovers exactly ONE of six
+  real support core items - the rest are a schema lift (S3), not a coefficient. Acceptance
+  metric for the whole row: support-cohort distinct-order ratio 3/23 -> >= 10/23 with carry
+  14/27 unchanged and Malphite / Ornn / Sion byte-identical.
+
+### Corrections this session made to the hand-off prompt
+
+- **"Never run an extract in the same commit as a table regen" is UNVERIFIED.** It appears
+  nowhere in code, docs, memory or `tools/precommit_gate.py`, and
+  `feedback_engine_bump_ritual_order` mandates roughly the opposite (regen is step 3 of the
+  same Tier-2 bump commit). Do not design a slice around avoiding it. The sibling hazard -
+  never `--force` a Meraki re-extract, because `latest` is mutable - IS confirmed at three
+  independent sites.
+- **Any slice touching `dps.py` inherits an owed bump.** Its HEAD is `2d3ddcba` "wip(ds):
+  G2-12 ranged reflect exposure factor - NOT SHIPPABLE, ENGINE bump owed" (2026-07-20),
+  confirmed in the file's git log.
+- The empty-build probe artifact claimed its **fifth** false headline this session (the filed
+  Lucian "Essence Reaver raw #4"). The count in PART 6 said four.
