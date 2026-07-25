@@ -4,6 +4,65 @@
 
 ---
 
+# 2026-07-25 - five open-item rows probed, three built, three mis-filed (ENGINE 1.245.0)
+
+HEAD after this session: see `git log -1`. ENGINE **1.245.0**, patch 16.14.1,
+DS **9446** / `tests/` **12987**, DS `:8893` bounced and verified serving 1.245.0
+BEFORE any regen. Full narrative: `docs/LEDGER.md` 1044.
+
+## What shipped
+
+- **A-04 / RM-99b Heartsteel cadence, SR ON / Arena OFF** (operator call). SR 3084
+  corrected to the real 30s per-target gate directly in `_effects_data.py`; Arena
+  223084 held at 3.5 because 30s is unsourced on its own feed. Filed 8.5714x was
+  EXACT. The over-credit was supplying **13-32 pct of total credited auto DPS** on
+  shipped bruiser builds. SR occurrences 135 -> 6, ARAM 156 -> 27.
+- **A-29 / R129 Viego R** surplus-block MERGE, DEFAULT-OFF `apply_cdragon_surplus_ad`.
+  0.000 -> 1.169 DPS. Population is **1 champion, not 6**.
+- **A-01d seam forwarding.** `/api/ds-preview` reached zero of nine seams; and the
+  `with_build_order` branch RANKED with `prefer_kit_axis_by_win` ON and PLANNED with
+  it OFF. Both sides now pinned to agree.
+- **A-40(1): the first Family A staleness guard** - which immediately caught a live
+  bug (below). The row's "OPEN DESIGN Q" was stale; already answered in LEAP-04.
+- **Arena mirror-id dock gap, DEFAULT-ON.** `kit_synergy.py` matched spellblade items
+  by SR id only, so the carry coherence dock was **inert in Arena**: Essence Reaver's
+  mirror 223508 sat at slot 1 for 6 carries. 18 -> 0.
+
+## Three things that would have shipped wrong
+
+1. **Three of five rows were mis-filed, in two recurring classes.** A row whose answer
+   already existed on disk (A-40's design Q, answered in LEAP-04 with
+   `UNVERIFIED-SKIP count: 0`), and a row describing INTENDED behavior as a bug
+   (A-24 / RM-93 - the deny is deliberate and test-pinned, and the "modelled damage
+   formulas" the row cites as evidence are the REASON for it). Both closed with no
+   code. **Probe the row before building it.**
+2. **The A-04 fix invalidated its own test.** The magnitude test anchored on Aatrox's
+   shipped SR build and asserted Heartsteel was in it - then the fix evicted Heartsteel
+   from that build (Aatrox now takes Randuin's 3143). The guard fired correctly; the
+   anchor was self-defeating. Never anchor a measurement on the engine still
+   recommending the thing you are about to demote.
+3. **The ENGINE literal count read 1442, not ~372.** The excess was five live agent
+   worktrees, each a full repo copy. A blind repo-wide replace would have rewritten
+   `ENGINE_VERSION` inside all of them. Real count excluding `.claude` is 241.
+
+## Standing hazards for the next session
+
+- **Keyspace 2 was MORE stale than keyspace 1** (195 vs 135 Heartsteel occurrences),
+  vindicating LEDGER 1043's doctrine one session later. A regen is not done until all
+  three families across BOTH keyspaces have run.
+- **Share sync must run AFTER the CHANGELOG entry**, not before. It ran twice this
+  session because of that ordering; the determinism test caught it.
+- **`3131` Sword of the Divine is a NEW open residual:** `every_n_seconds=15.0` against
+  a 90s active cooldown in its own DDragon text, uncited 6x over-credit, absent from
+  Meraki. Same operator-gated class as A-04. Not yet filed to a row.
+- **Zeri's Arena cell is flagged, not accepted:** the dock fix changes 4 of 6 slots and
+  trades the ER artifact for Liandry's + Dusk and Dawn, which is the AP-on-AD-marksman
+  class `coherence.py:138-139` already defers. The eviction is right; the replacement
+  is not clearly better.
+- CLAUDE.md's **"20,190 tests" is stale** against the measured `tests/` count (12987).
+
+---
+
 # 2026-07-27 - five open-item slices, parallel in-repo agents (ENGINE 1.244.0)
 
 HEAD after this session: see `git log -1`. ENGINE **1.244.0**, patch 16.14.1,

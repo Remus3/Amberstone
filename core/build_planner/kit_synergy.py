@@ -242,6 +242,43 @@ def _item_id(item) -> Optional[str]:
     return str(item)
 
 
+# Mode-mirror id widths, DERIVED from the live 706-item catalog (16.14.1) rather
+# than assumed. Measured facts behind the normalizer below:
+#   * every catalog id is a pure numeric of width 4 (429 ids) or 6 (277 ids);
+#   * NO id is a suffix of another id of the SAME width, so width alone decides;
+#   * every suffix relation in the catalog (200 pairs) is exactly a 2-digit
+#     prefix on a 4-digit canonical id - observed prefixes 12 / 22 / 32 / 44 /
+#     55 / 66 / 99, of which 22 (175 ids, 143 on map 30) is the Arena mirror.
+# So "6 digits -> take the last 4" is unambiguous and collision-free over the
+# real catalog. A naive endswith() would NOT be: it would also fold long ids into
+# short ones in the wrong direction. tests/test_kit_synergy_mirror_ids.py asserts
+# every one of these structural facts against the live items.json, so a Riot
+# id-space change fails loudly instead of silently re-opening the gap.
+_MIRROR_ID_WIDTH = 6
+_CANONICAL_ID_WIDTH = 4
+
+
+def canonical_item_id(item_id) -> Optional[str]:
+    """Return the CANONICAL (Summoner's Rift) id string for ``item_id``.
+
+    A mode-mirror id (Arena / map 30 ``22xxxx``, and the sibling 12 / 32 / 44 /
+    55 / 66 / 99 families) is a 2-digit prefix on the canonical 4-digit id, so the
+    canonical form is the trailing 4 digits. Anything that is not a 6-digit pure
+    numeric is returned unchanged, which makes the function the IDENTITY on the
+    whole 4-digit keyspace - it can never merge two canonical items.
+
+    Used ONLY to normalize membership tests against this module's curated
+    SR-literal id tables. It deliberately does NOT redirect the items.json stat
+    lookup: an Arena mirror credits its OWN DDragon stat line (R161 doctrine B).
+    """
+    if item_id is None:
+        return None
+    sid = str(item_id)
+    if len(sid) == _MIRROR_ID_WIDTH and sid.isdigit():
+        return sid[_MIRROR_ID_WIDTH - _CANONICAL_ID_WIDTH:]
+    return sid
+
+
 # --------------------------------------------------------------------------- #
 # item_vector + item_effect_flags
 # --------------------------------------------------------------------------- #
@@ -257,7 +294,19 @@ def item_effect_flags(item) -> frozenset[str]:
         flags.add("on-hit")
     if "AbilityHaste" in tags:
         flags.add("AH")
-    iid = _item_id(item)
+    # Every curated table below holds CANONICAL 4-digit SR ids, so the incoming id
+    # is normalized by SUFFIX first - otherwise a mode-mirror id (Arena 22xxxx and
+    # the 12 / 32 / 44 / 55 / 66 / 99 families) misses every membership test and
+    # silently loses its curated flags. That gap made the carry coherence dock
+    # INERT IN ARENA: item_effect_flags("223508") returned only the tag-driven
+    # {AH, on-hit} while item_effect_flags("3508") returned the full
+    # {AH, bonusAD, on-hit, spellblade}, so anti_synergy_penalty / stat_fit never
+    # docked Essence Reaver's Arena mirror and it held slot 1 for Caitlyn / Jinx /
+    # Twitch in build_orders_arena.json. Suffix normalization (not name matching)
+    # is the repo rule - memory feedback_deny_sweep_by_id_suffix_not_name; 5 of the
+    # 175 Arena pairs carry a renamed or blank mirror name, so a name join drops
+    # them. The tag-driven flags above still read the MIRROR's own entry.
+    iid = canonical_item_id(_item_id(item))
     if iid is not None:
         if iid in _MAXHP_DAMAGE_IDS:
             flags.add("%maxHP")

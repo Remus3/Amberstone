@@ -534,6 +534,85 @@ _DS_PREVIEW_MODE_ALIASES = {
     "CHERRY":      "ARENA",
 }
 
+# SLICE A defect 1: /api/ds-preview seam opt-in.
+#
+# The route used to call rank_for_primary_archetype with a FIXED kwarg list,
+# so no caller could reach ANY of the dispatcher's seam flags - the champ
+# select + in-game BUILD preview always ranked at the client defaults. These
+# three tables name the seams the body may opt into; the key IS the
+# dispatcher parameter name (core/daemon_slayer_client.py:1399-1411), so the
+# route stays a pass-through and never restates an engine default.
+#
+# Only NON-DEFAULT values are forwarded (the same `if flag: kwargs[...]`
+# idiom as coach_integration/archetype_dispatch.py:282-299), which keeps a
+# flagless request byte-identical to the pre-fix call - a client that echoes
+# its whole state back with every seam off changes nothing.
+_DS_PREVIEW_SEAM_BOOLS = (
+    "exempt_offclass_by_win",
+    "prefer_kit_axis_by_win",
+    "prefer_survivability_by_win",
+    "assume_magic_burst",
+    "assume_passive_as_stacks",
+    "apply_target_vuln",
+    "assume_missing_hp_heal_amp",
+    "widen_carry_pool",
+)
+# Float seams: forwarded whenever present + parseable. enemy_ad_share /
+# enemy_ap_share are the EHP-side comp split - note the probe trap: the raw
+# POST /rank route is the CARRY scorer and silently ignores them; only the
+# per-archetype route consumes them, which is exactly what this handler calls.
+_DS_PREVIEW_SEAM_FLOATS = (
+    "enemy_ad_share",
+    "enemy_ap_share",
+    "caster_missing_hp_pct",
+)
+# score_by is a string seam with a closed value set (tank Term A); anything
+# outside the whitelist is dropped rather than passed to the engine.
+_DS_PREVIEW_SCORE_BY_VALUES = ("blended", "team_blended")
+_DS_PREVIEW_SCORE_BY_DEFAULT = "blended"
+
+
+def _ds_preview_seam_kwargs(payload: dict) -> dict:
+    """Extract + coerce the seam flags a /api/ds-preview body opted into.
+
+    Returns only non-default entries, keyed by the dispatcher's own
+    parameter names. A body with no seam keys returns ``{}``. Unparseable
+    values are dropped (a malformed seam must never 500 the preview or
+    silently flip a different knob).
+    """
+    seams: dict = {}
+    if not isinstance(payload, dict):
+        return seams
+
+    for key in _DS_PREVIEW_SEAM_BOOLS:
+        if bool(payload.get(key)):
+            seams[key] = True
+
+    ceiling = payload.get("cost_ceiling")
+    if ceiling is not None:
+        try:
+            seams["cost_ceiling"] = int(ceiling)
+        except (TypeError, ValueError):
+            pass
+
+    for key in _DS_PREVIEW_SEAM_FLOATS:
+        raw = payload.get(key)
+        if raw is None:
+            continue
+        try:
+            seams[key] = float(raw)
+        except (TypeError, ValueError):
+            continue
+
+    score_by = payload.get("score_by")
+    if isinstance(score_by, str):
+        candidate = score_by.strip().lower()
+        if (candidate in _DS_PREVIEW_SCORE_BY_VALUES
+                and candidate != _DS_PREVIEW_SCORE_BY_DEFAULT):
+            seams["score_by"] = candidate
+
+    return seams
+
 
 def _serve_ds_preview_post(h, payload) -> None:
     """POST {champion, mode, level?, items?, archetype?} -> DS top picks.
@@ -609,7 +688,7 @@ def _serve_ds_preview_post(h, payload) -> None:
         # explicit target_* fields in body (used by champ-select preview).
         tgt = _resolve_ds_target_stats(payload, mode=mode, level=level)
 
-        out = rank_for_primary_archetype(
+        rank_kwargs: dict = dict(
             champion=champion, archetype=archetype, level=level,
             item_ids=items, mode=mode, top=8, sort_by="delta", timeout=2.0,
             target_armor=tgt["target_armor"],
@@ -617,6 +696,9 @@ def _serve_ds_preview_post(h, payload) -> None:
             target_max_hp=tgt["target_max_hp"],
             target_bonus_hp=tgt["target_bonus_hp"],
         )
+        rank_kwargs.update(_ds_preview_seam_kwargs(payload))
+
+        out = rank_for_primary_archetype(**rank_kwargs)
         if out is None:
             h._send(503, json.dumps({"ok": False, "error": "DS engine unavailable"}).encode(),
                     "application/json")
