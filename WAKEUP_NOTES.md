@@ -134,10 +134,15 @@ A-17/RM-96 Zilean is REAL and specced but not built.
   `_ability_base_overrides`'s "exactly those six" scope derives from it.
 - **B1 shipped code with no data** - `--full-roster` exists but no 16.14.1
   artifact was regenerated with it.
-- **DS `:8893` is running from a foreground launch, not the scheduled task.**
-  `RC-DaemonSlayer` returned `LastResult 0x0` but left state `Ready` twice; the
-  code is fine (the same entry point serves 1.250.0 in the foreground). Restore
-  and confirm `Running` next session.
+- **DS `:8893` restart quirk, RESOLVED but worth knowing.** The first
+  `Stop-ScheduledTask` / `Start-ScheduledTask` of `RC-DaemonSlayer` left state
+  `Ready` with `LastResult 0x0` and nothing listening, twice. The code was never
+  the problem - the same entry point served 1.250.0 immediately when launched in
+  the foreground. Recovered by `taskkill /F` on the foreground PID and starting
+  the task again; it is now **Running** and `/health` reads 1.250.0. Root cause
+  of the initial no-start is NOT established. If it recurs, check for a listener
+  already holding `:8893` before assuming a code fault. Note `taskkill /F` must
+  be run from PowerShell - Git Bash mangles `/F` into a path.
 
 ---
 
