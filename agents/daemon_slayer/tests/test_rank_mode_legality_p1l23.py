@@ -315,6 +315,14 @@ class KnownExceptionScopingTests(unittest.TestCase):
             # out of the Arena pool too. The real 22-mirrors (223xxx, 228001
             # Anathema's, 228009, 228020) have no <ornnBonus> tag and remain.
             and not _is_ornn_masterwork(r)
+            # Exclude the non-coachable deny set for the same reason (RM-04
+            # A-27b): 224403 "The Golden Spatula" is a purchasable terminal
+            # map-30 mirror by every source field, but it is a joke/anvil item
+            # denied unconditionally, so it is legitimately absent from the
+            # Arena pool. This assertion is about mirror-id MAP RESOLUTION, not
+            # about coachability - the deny is pinned separately in
+            # test_non_coachable_arena_spatula_a27b.py.
+            and k not in _NON_COACHABLE_ITEM_IDS
         ]
         self.assertGreater(
             len(mirror_ids), 0, "no purchasable 22-prefixed mirror items"

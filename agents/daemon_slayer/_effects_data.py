@@ -3309,16 +3309,43 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3041": ItemEffect(
         item_id="3041",
         name="Mejai's Soulstealer",
-        # Phase 4 batch 54 (2026-05-04): promoted. Glory grants 5 AP per kill
-        # stack (max 25 stacks = 125 AP); DDragon's FlatMagicDamageMod only
-        # carries the base 20 AP. Engine pins at full 25 stacks (same
-        # sustained-peak convention as BC armor-reduction at full stacks /
-        # Riftmaker at full ramp). AP-scaling procs (Lich Bane, Nashor's) and
-        # Rabadon's amplification both see the stacked total via compute_dps.
-        bonus_ap_stacked=125.0,
+        # Phase 4 batch 54 (2026-05-04): promoted. Glory grants 5 AP per
+        # takedown stack; DDragon's FlatMagicDamageMod only carries the base
+        # 20 AP. AP-scaling procs (Lich Bane, Nashor's) and Rabadon's
+        # amplification both see the stacked total via compute_dps.
+        #
+        # RM-94 (2026-07-24): re-valued 125.0 -> 25.0. The original pin took
+        # the 25-stack CAP and justified it with the sustained-peak convention
+        # used for Black Cleaver's full-stack armor reduction and Riftmaker's
+        # full ramp. That is a category error and the sibling registry
+        # ``_item_health_stack`` already says so in-line ("the RM-94 Mejai's
+        # failure mode"). BC and Riftmaker accrue from the caster's OWN combat
+        # output inside one fight, saturate in seconds and reset out of combat,
+        # so the modelled rotation generates every stack and full value IS the
+        # steady state. Glory accrues from TAKEDOWNS across the whole game and
+        # loses 10 stacks per death (DDragon 16.14.1: "Takedowns grant Glory,
+        # up to 25. 10 Glory is lost on death. Gain 5 Ability Power per
+        # Glory"). No simulated rotation produces a single stack; full stacks
+        # is a game-state precondition - already having won - and pinning it
+        # ranked Mejai's invariantly into the mage head at 2-5% real presence.
+        #
+        # THE COUNT IS THE ONLY JUDGEMENT (same framing as the
+        # ``_item_health_stack`` proc curve: exact per-unit, conservative
+        # assumed count). Per-stack AP is exact and sourced. The count is
+        # bounded above by the item's own "ahead" threshold - Riot attaches the
+        # move-speed bonus at 10+ Glory, and 10 is also the single-death loss,
+        # so any sustained count >= 10 assumes the snowball already landed.
+        # Assumed = midpoint of the not-yet-ahead band 0..10 = 5 stacks.
+        # Deliberately LOW rather than centred on an unobservable takedown
+        # distribution, matching the sibling curve's never-over-state rule, and
+        # midpoint-of-band matches the field's only other occupant (Innervating
+        # Locket 447104 = 175.0, midpoint of its 100-250 range).
+        bonus_ap_stacked=25.0,
         note=(
-            "Mejai's Soulstealer: Glory +125 stacked AP (25 stacks x 5 AP; "
-            "full-stacks pin - same sustained-peak convention as Black Cleaver)"
+            "Mejai's Soulstealer: Glory +25 stacked AP (assumed 5 of 25 stacks "
+            "x 5 AP; expected-value, NOT the full-stack peak - Glory is earned "
+            "across the game and 10 stacks are lost per death, so RM-94 rejects "
+            "the Black Cleaver / Riftmaker single-fight ramp precedent)"
         ),
     ),
     "3140": ItemEffect(

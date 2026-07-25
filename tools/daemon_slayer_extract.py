@@ -801,9 +801,14 @@ def fetch_meraki_items() -> dict:
 def fetch_arena_augments() -> dict:
     """Fetch the cdragon Arena augment dump and return a normalized payload.
 
-    Returns ``{"version": <patch>, "fetched_at": <iso>, "count": N,
+    Returns ``{"fetched_at": <iso>, "source": <url>, "count": N,
                "augments": [{id, apiName, name, rarity, desc, tooltip,
                              dataValues, calculations, iconLarge, iconSmall}, ...]}``
+
+    NOTE: this docstring used to advertise a ``version`` key that the function
+    never actually returned. The patch marker is applied at the WRITE site by
+    ``stamp_patch`` (spelled ``patch``), not here - the fetch helper stays pure
+    transport.
 
     Failure raises - augment data is small (~400KB) and rarely flaky.
     """
@@ -833,6 +838,34 @@ def fetch_arena_augments() -> dict:
         "count": len(augs_out),
         "augments": augs_out,
     }
+
+
+# --- Patch stamping (RM-81 residual) -----------------------------------------
+
+# arena_augments.json and items_meraki.json were the only two artifacts under
+# data/daemon_slayer/<patch>/ with NO internal patch marker of any spelling
+# (measured 2026-07-24 across 16.10.1 .. 16.14.1). Both are re-fetched every
+# extract from MUTABLE `latest` endpoints, so a patch-refresh commit that copied
+# either forward was undetectable by inspection - the RM-81 bug class that
+# `cdragon_ability_ratios.json` already closed for itself.
+#
+# Every other artifact stamps itself at build time (champions/items/scenarios
+# via `version`, manifest via `ddragon_version`). These two are stamped here at
+# the write site instead of inside the fetchers, so the fetch helpers stay pure
+# transport and the stamp lives next to the directory it must agree with.
+#
+# `patch` is the canonical spelling - it is what the RM-81 reference guard
+# (agents/daemon_slayer/abilities.cdragon_sidecar_patch) reads. The four other
+# spellings already on disk (`_patch`, `rc_patch`, `ddragon_version`, `version`)
+# are pre-existing divergence: read tolerantly by
+# abilities.artifact_patch_marker, never re-spelled here.
+def stamp_patch(payload: dict, patch: str) -> dict:
+    """Return a copy of ``payload`` declaring the ``patch`` it was built for.
+
+    Non-mutating so a caller that reuses the payload (build_manifest reads both
+    of these) sees no surprise key.
+    """
+    return {**payload, "patch": patch}
 
 
 # --- Emission ----------------------------------------------------------------
@@ -1103,8 +1136,8 @@ def main() -> int:
     _atomic_write_json(patch_dir / "champions.json", champions_payload)
     _atomic_write_json(patch_dir / "items.json", items_payload)
     _atomic_write_json(patch_dir / "scenarios.json", scenarios_payload)
-    _atomic_write_json(patch_dir / "arena_augments.json", arena_augments)
-    _atomic_write_json(patch_dir / "items_meraki.json", meraki_items)
+    _atomic_write_json(patch_dir / "arena_augments.json", stamp_patch(arena_augments, patch))
+    _atomic_write_json(patch_dir / "items_meraki.json", stamp_patch(meraki_items, patch))
     _atomic_write_json(patch_dir / "manifest.json", manifest)
     _atomic_write_text(DATA_ROOT / "current.txt", patch)
 
