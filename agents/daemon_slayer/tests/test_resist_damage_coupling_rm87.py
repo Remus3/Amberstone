@@ -172,14 +172,32 @@ class SignatureConventionTests(unittest.TestCase):
     """Appended at the END of both signatures, DEFAULT-OFF."""
 
     def test_kwargs_are_the_signature_tail_and_default_off(self) -> None:
+        # RELAXED 2026-07-25: this used to pin the pair to ``names[-2:]``, i.e.
+        # the literal end of the signature. That pin is self-breaking - the very
+        # next seam appended at END (here: the three assumed-incoming-share
+        # flags on ``rank_items_by_ehp``) fails it while honoring the exact
+        # convention the test is meant to protect. What the convention actually
+        # requires is that the pair was APPENDED as an adjacent block after the
+        # pre-existing parameters and never spliced into the middle, so that is
+        # what is asserted: adjacency, order within the pair, and a position in
+        # the trailing default-carrying tail. Both remain DEFAULT-OFF.
         for fn in (compute_ehp, rank_items_by_ehp):
             with self.subTest(fn=fn.__name__):
                 params = inspect.signature(fn).parameters
                 names = tuple(params)
+                i = names.index("apply_resist_damage_coupling")
                 self.assertEqual(
-                    names[-2:],
+                    names[i:i + 2],
                     ("apply_resist_damage_coupling", "resist_coupling_strength"),
                 )
+                # Everything from the pair onward must carry a default - proof
+                # the pair sits in the appended tail, not spliced ahead of a
+                # required positional.
+                for later in names[i:]:
+                    self.assertIsNot(
+                        params[later].default, inspect.Parameter.empty,
+                        f"{later} follows the RM-87 pair but has no default",
+                    )
                 self.assertIs(params["apply_resist_damage_coupling"].default, False)
                 self.assertEqual(params["resist_coupling_strength"].default, 0.0)
 

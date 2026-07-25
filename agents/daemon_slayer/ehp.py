@@ -516,8 +516,14 @@ def _total_heal_amp(item_ids: Iterable[str]) -> float:
 # (same class as the flat-mitigation instance count / health-stack count) -
 # modeled as a conservative operator-tunable midpoint. A 30% crit-DR at a 0.5
 # share yields a x0.85 physical denominator (+17.6% physical EHP) when armed.
-# ``assume_item_crit_dr`` defaults False -> the helper short-circuits to the
-# identity 1.0 before any item is inspected -> BYTE-IDENTICAL.
+# CURRENT DEFAULT (corrected 2026-07-25): ARMED. The helper below still defaults
+# ``assume_item_crit_dr`` False, but every real caller overrides that -
+# ``compute_ehp`` and ``rank_items_by_ehp`` both default it TRUE (the B45/B46
+# operator flip, 2026-07-06), so the shipped tank ranking DOES carry this credit
+# and Randuin's Omen leads the SR tank order partly because of it. The earlier
+# "defaults False -> BYTE-IDENTICAL" note described the pre-flip posture and is
+# no longer true of anything a caller can reach. Pass False explicitly (route key
+# ``assume_item_crit_dr``, or the ``rank_tank_for`` kwarg) to opt back out.
 _ASSUMED_INCOMING_CRIT_SHARE = 0.5
 
 
@@ -528,8 +534,10 @@ def item_crit_dr_multiplier(
     """Physical-denominator multiplier from item-keyed crit-damage reduction.
 
     Returns ``1.0`` (identity) when ``assume_item_crit_dr`` is False or no
-    equipped item carries ``crit_damage_reduction`` - BYTE-IDENTICAL. When
-    armed, each such item contributes ``(1 - crit_damage_reduction *
+    equipped item carries ``crit_damage_reduction``. NOTE the parameter default
+    here is False but is NOT the shipped posture: ``compute_ehp`` /
+    ``rank_items_by_ehp`` both pass True by default, so the live scorer runs this
+    ARMED. When armed, each such item contributes ``(1 - crit_damage_reduction *
     _ASSUMED_INCOMING_CRIT_SHARE)`` multiplicatively (Randuin's is the only
     carrier today, so no unique-passive stacking question arises). A value
     ``< 1.0`` shrinks the physical denominator -> larger physical EHP, the
@@ -557,8 +565,13 @@ def item_crit_dr_multiplier(
 # The basic-attack SHARE of incoming physical damage is the live feed we lack
 # (same class as R77's crit-share) - a conservative operator-tunable midpoint.
 # A 10% AA-DR at a 0.5 share yields a x0.95 physical denominator (+5.3% physical
-# EHP) when armed. ``assume_item_aa_dr`` defaults False -> the helper short-
-# circuits to the identity 1.0 before any item is inspected -> BYTE-IDENTICAL.
+# EHP) when armed. CURRENT DEFAULT (corrected 2026-07-25): ARMED - the helper
+# below still defaults ``assume_item_aa_dr`` False, but ``compute_ehp`` and
+# ``rank_items_by_ehp`` both default it TRUE (the B45/B46 operator flip,
+# 2026-07-06), so the shipped ranking carries this credit. The earlier "defaults
+# False -> BYTE-IDENTICAL" note described the pre-flip posture. Pass False
+# explicitly (route key ``assume_item_aa_dr``, or the ``rank_tank_for`` kwarg) to
+# opt back out.
 _ASSUMED_INCOMING_AA_SHARE = 0.5
 
 
@@ -569,8 +582,10 @@ def item_aa_dr_multiplier(
     """Physical-denominator multiplier from item-keyed basic-attack DR.
 
     Returns ``1.0`` (identity) when ``assume_item_aa_dr`` is False or no
-    equipped item carries ``basic_attack_damage_reduction`` - BYTE-IDENTICAL.
-    When armed, each such item contributes ``(1 - basic_attack_damage_reduction
+    equipped item carries ``basic_attack_damage_reduction``. NOTE the parameter
+    default here is False but is NOT the shipped posture: ``compute_ehp`` /
+    ``rank_items_by_ehp`` both pass True by default, so the live scorer runs this
+    ARMED. When armed, each such item contributes ``(1 - basic_attack_damage_reduction
     * _ASSUMED_INCOMING_AA_SHARE)`` multiplicatively (Plated Steelcaps is the
     only carrier today, so no unique-passive stacking question arises). A value
     ``< 1.0`` shrinks the physical denominator -> larger physical EHP, the
@@ -598,8 +613,14 @@ def item_aa_dr_multiplier(
 # distinct item-keyed lane from R77's crit-DR and R80's per-hit AA-DR (each item
 # carries only its own reduction, so the lanes never cross-credit and stack
 # multiplicatively). The basic-attack SHARE of incoming physical reuses R80's
-# midpoint ``_ASSUMED_INCOMING_AA_SHARE`` (the live feed we lack). Default False ->
-# identity 1.0 before any item is inspected -> BYTE-IDENTICAL.
+# midpoint ``_ASSUMED_INCOMING_AA_SHARE`` (the live feed we lack). CURRENT
+# DEFAULT (corrected 2026-07-25): ARMED. The helper below still defaults
+# ``assume_item_enemy_as_slow`` False, but ``compute_ehp`` and
+# ``rank_items_by_ehp`` both default it TRUE, so the shipped ranking carries this
+# credit (Frozen Heart's dEHP is ~56 pct higher armed than forced off on a mid
+# tank build). The earlier "Default False -> BYTE-IDENTICAL" note described a
+# posture no reachable caller uses. Pass False explicitly (route key
+# ``assume_item_enemy_as_slow``, or the ``rank_tank_for`` kwarg) to opt back out.
 def item_enemy_as_slow_multiplier(
     item_ids: Iterable[str],
     assume_item_enemy_as_slow: bool = False,
@@ -607,8 +628,10 @@ def item_enemy_as_slow_multiplier(
     """Physical-denominator multiplier from item-keyed enemy AS-slow auras.
 
     Returns ``1.0`` (identity) when ``assume_item_enemy_as_slow`` is False or no
-    equipped item carries ``enemy_attack_speed_slow`` - BYTE-IDENTICAL. When
-    armed, each such item contributes ``(1 - enemy_attack_speed_slow *
+    equipped item carries ``enemy_attack_speed_slow``. NOTE the parameter default
+    here is False but is NOT the shipped posture: ``compute_ehp`` /
+    ``rank_items_by_ehp`` both pass True by default, so the live scorer runs this
+    ARMED. When armed, each such item contributes ``(1 - enemy_attack_speed_slow *
     _ASSUMED_INCOMING_AA_SHARE)`` multiplicatively (Frozen Heart is the only
     carrier today, so no unique-passive stacking question arises). A value
     ``< 1.0`` shrinks the physical denominator -> larger physical EHP, the
@@ -1213,8 +1236,9 @@ def compute_ehp(
     assume_item_aa_dr: bool = True,
     # R86 (1.182.0): item-keyed enemy AS-slow aura (Frozen Heart -20% enemy AS
     # ~= 20% less incoming basic-attack RATE, ~+11.1% physical EHP at the assumed
-    # 0.5 AA share). Ships DEFAULT-OFF pending its own live-gated flip (unlike the
-    # already-flipped R77/R80); identity multiplier when False -> BYTE-IDENTICAL.
+    # 0.5 AA share). Corrected 2026-07-25: this ships DEFAULT-ON like R77/R80 -
+    # the "DEFAULT-OFF pending its own live-gated flip" note contradicted the
+    # literal below. Pass False for the identity multiplier.
     assume_item_enemy_as_slow: bool = True,
     # Riftmaker (2026-07-10): default-OFF opt-in to credit item-passive omnivamp
     # (Void Corruption 10% melee / 6% ranged AT MAX Void Corruption stacks) to the
@@ -1696,7 +1720,8 @@ def compute_ehp(
     # Crit is PHYSICAL, so this is a SEPARATE physical-only denominator factor
     # applied alongside mit_phys (NOT folded into it - mit_phys stays the pure
     # champion percent-DR value for reporting). ``assume_item_crit_dr`` defaults
-    # False -> identity 1.0 -> BYTE-IDENTICAL. Item-keyed (mit_phys is
+    # TRUE here (B45/B46 flip) -> ARMED on the shipped path; pass False for the
+    # identity 1.0. Item-keyed (mit_phys is
     # champion_id-keyed and cannot see the build's items).
     item_crit_dr_mult = item_crit_dr_multiplier(
         resolved.item_ids, assume_item_crit_dr
@@ -1707,8 +1732,9 @@ def compute_ehp(
     # Basic-attack damage is PHYSICAL, so this is a SEPARATE physical-only
     # denominator factor applied alongside mit_phys + item_crit_dr_mult (NOT
     # folded into mit_phys - it stays the pure champion percent-DR value for
-    # reporting). ``assume_item_aa_dr`` defaults False -> identity 1.0 ->
-    # BYTE-IDENTICAL. Item-keyed lane distinct from R77's crit-DR (each item
+    # reporting). ``assume_item_aa_dr`` defaults TRUE here (B45/B46 flip) ->
+    # ARMED on the shipped path; pass False for the identity 1.0.
+    # Item-keyed lane distinct from R77's crit-DR (each item
     # carries only its own reduction, so the two seams never cross-credit).
     item_aa_dr_mult = item_aa_dr_multiplier(
         resolved.item_ids, assume_item_aa_dr
@@ -1719,8 +1745,9 @@ def compute_ehp(
     # RATE). Basic-attack damage is PHYSICAL, so this is a SEPARATE physical-only
     # denominator factor applied alongside item_crit_dr_mult + item_aa_dr_mult (NOT
     # folded into mit_phys - it stays the pure champion percent-DR value for
-    # reporting). ``assume_item_enemy_as_slow`` defaults False -> identity 1.0 ->
-    # BYTE-IDENTICAL. Distinct item-keyed lane from R77/R80 (never cross-credit;
+    # reporting). ``assume_item_enemy_as_slow`` defaults TRUE here -> ARMED on the
+    # shipped path; pass False for the identity 1.0.
+    # Distinct item-keyed lane from R77/R80 (never cross-credit;
     # stacks multiplicatively with Steelcaps' per-hit AA-DR on a build with both).
     item_enemy_as_slow_mult = item_enemy_as_slow_multiplier(
         resolved.item_ids, assume_item_enemy_as_slow
@@ -2856,6 +2883,18 @@ def rank_items_by_ehp(
     # ``_resist_damage_coupling`` - any one of those failing is an exact no-op.
     apply_resist_damage_coupling: bool = False,
     resist_coupling_strength: float = 0.0,
+    # 2026-07-25: the three ASSUMED-INCOMING-SHARE seams, appended at END per the
+    # no-mid-signature-insert convention. ``compute_ehp`` arms all three
+    # DEFAULT-ON (B45/B46 operator flip for crit-DR + aa-DR, R86 for the enemy
+    # AS-slow aura) off a champion-blind 0.5 share constant, but this ranker did
+    # not expose them, so no HTTP or client caller could opt back out. Defaults
+    # mirror ``compute_ehp`` exactly (True), so an unchanged call site is
+    # byte-identical; passing False forwards the opt-out to BOTH the baseline and
+    # every candidate call, which is the only way the OFF comparison stays a
+    # like-for-like delta.
+    assume_item_crit_dr: bool = True,
+    assume_item_aa_dr: bool = True,
+    assume_item_enemy_as_slow: bool = True,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -3034,6 +3073,13 @@ def rank_items_by_ehp(
         # sort-only lever has no business being re-validated once per candidate.
         apply_resist_damage_coupling=apply_resist_damage_coupling,
         resist_coupling_strength=resist_coupling_strength,
+        # Assumed-incoming-share seams: forwarded to the BASELINE call so the
+        # prefix build's own carriers (Plated Steelcaps' aa-DR is a common early
+        # tank buy) are treated the same way as the candidates'. Forwarding only
+        # one side would compare an armed baseline against a disarmed candidate.
+        assume_item_crit_dr=assume_item_crit_dr,
+        assume_item_aa_dr=assume_item_aa_dr,
+        assume_item_enemy_as_slow=assume_item_enemy_as_slow,
     )
 
     # RM-87 / row A-18 (2026-07-25): resolve the resist -> damage coupling ONCE.
@@ -3138,6 +3184,10 @@ def rank_items_by_ehp(
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,
+                # Same seams as the baseline call - see the note there.
+                assume_item_crit_dr=assume_item_crit_dr,
+                assume_item_aa_dr=assume_item_aa_dr,
+                assume_item_enemy_as_slow=assume_item_enemy_as_slow,
             )
         except (KeyError, ValueError):
             continue

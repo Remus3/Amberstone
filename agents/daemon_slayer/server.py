@@ -712,6 +712,25 @@ def _route_rank_tank(body: dict) -> dict:
             "resist_coupling_strength: must be >= 0.0, got "
             f"{resist_coupling_strength!r}",
         )
+    # 2026-07-25: the three ASSUMED-INCOMING-SHARE seams. UNLIKE every other seam
+    # on this route these ship DEFAULT-ON in ``compute_ehp`` (a champion-blind 0.5
+    # incoming crit / basic-attack share), so the route needs an OFF switch, not
+    # an ON one. Tri-state, following the ``apply_build_tenacity`` idiom above: a
+    # key that is ABSENT is not forwarded AT ALL, so an unchanged body produces a
+    # byte-identical engine call. Only an explicitly-sent key is passed through.
+    assumed_share_kwargs: dict[str, bool] = {}
+    if "assume_item_crit_dr" in body:
+        assumed_share_kwargs["assume_item_crit_dr"] = _opt_bool(
+            body, "assume_item_crit_dr", True
+        )
+    if "assume_item_aa_dr" in body:
+        assumed_share_kwargs["assume_item_aa_dr"] = _opt_bool(
+            body, "assume_item_aa_dr", True
+        )
+    if "assume_item_enemy_as_slow" in body:
+        assumed_share_kwargs["assume_item_enemy_as_slow"] = _opt_bool(
+            body, "assume_item_enemy_as_slow", True
+        )
     try:
         result = rank_items_by_ehp(
             snap,
@@ -751,6 +770,7 @@ def _route_rank_tank(body: dict) -> dict:
             cost_ceiling=cost_ceiling,
             apply_resist_damage_coupling=apply_resist_damage_coupling,
             resist_coupling_strength=resist_coupling_strength,
+            **assumed_share_kwargs,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))

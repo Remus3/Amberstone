@@ -315,6 +315,20 @@ def rank_tank_for(
     prefer_survivability_by_win: bool = False,  # RF3
     cost_ceiling: Optional[int] = None,         # F2
     score_by: str = "blended",                  # Term A: + team_blended
+    # 2026-07-25: the three ASSUMED-INCOMING-SHARE seams. These are the ONLY
+    # seams on this route that ship DEFAULT-ON in the engine (a champion-blind
+    # 0.5 incoming crit / basic-attack share), so what a caller needs is an OFF
+    # switch. ``None`` = inherit the engine default and OMIT the key entirely,
+    # which keeps a flagless call byte-identical. Appended at END per the
+    # no-mid-signature-insert convention.
+    assume_item_crit_dr: Optional[bool] = None,
+    assume_item_aa_dr: Optional[bool] = None,
+    assume_item_enemy_as_slow: Optional[bool] = None,
+    # RM-87 / row A-18: the champion RESIST -> DAMAGE coupling lever
+    # (/rank-tank only, sort-only). Both default None -> key omitted -> the
+    # engine's DEFAULT-OFF path, byte-identical.
+    apply_resist_damage_coupling: Optional[bool] = None,
+    resist_coupling_strength: Optional[float] = None,
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -353,6 +367,18 @@ def rank_tank_for(
     # Term A: emit only when non-default so a flagless call is byte-identical.
     if score_by != "blended":
         body["score_by"] = score_by
+    # Assumed-share seams + the RM-87 coupling pair: None means "inherit", and an
+    # omitted key is what makes a flagless call byte-identical on the wire.
+    for _key, _val in (
+        ("assume_item_crit_dr", assume_item_crit_dr),
+        ("assume_item_aa_dr", assume_item_aa_dr),
+        ("assume_item_enemy_as_slow", assume_item_enemy_as_slow),
+        ("apply_resist_damage_coupling", apply_resist_damage_coupling),
+    ):
+        if _val is not None:
+            body[_key] = bool(_val)
+    if resist_coupling_strength is not None:
+        body["resist_coupling_strength"] = float(resist_coupling_strength)
     data = _post_json("/rank-tank", body, timeout=timeout)
     if data is None:
         return None
