@@ -44,6 +44,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Iterable
 
+from ._ability_base_overrides import apply_base_overrides as _apply_base_overrides
 from ._ability_overrides import DAMAGE_TYPE_OVERRIDES, NON_DAMAGE_BLOCKS
 from ._passive_damage_overrides import (
     _ALL_OUT_BONUS_OVERRIDES,
@@ -945,6 +946,7 @@ class AbilitiesSnapshot:
         cdragon_root: Path | None = None,
         strict_cdragon_patch: bool = True,
         apply_cdragon_surplus_ad: bool = False,
+        apply_ability_base_overrides: bool = False,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
 
@@ -1019,6 +1021,19 @@ class AbilitiesSnapshot:
         so it is inert when ``prefer_cdragon_ratios=False`` or the sidecar is
         missing / rejected by the patch guard. Default OFF = byte-identical, and
         even ON the damage-block COUNT is invariant.
+
+        ``apply_ability_base_overrides`` (A-03 / RM-81, default False / OFF)
+        corrects the six STALE ability base-damage series that the 2026-07-18
+        RM-81 characterization measured as the only ones that change a ranked
+        item order (Mordekaiser Q / Naafiri R / Heimerdinger W / Azir W /
+        Malzahar W / Ahri R). The extractor cannot re-source them - it is pinned
+        to Meraki content patch 25.15 and a ``--force`` re-extract is a standing
+        repo hazard - so the corrections are hand-authored in
+        ``_ability_base_overrides`` and spliced over the stale rank HEAD of the
+        block's ``base`` at load time, after the CDragon re-source so the
+        registry is the final authority. Each entry is guarded on the stale
+        series still being present, so a repaired upstream can never be
+        double-corrected. Default OFF = byte-identical: not one form is touched.
         """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:
@@ -1105,6 +1120,13 @@ class AbilitiesSnapshot:
                                 fm = _apply_cdragon_surplus_ad_merge(
                                     cid, key, fm, cd_slot
                                 )
+                    # A-03 / RM-81 stale base-damage corrections: opt-in,
+                    # default OFF. Runs LAST so the hand-authored wiki value is
+                    # the final authority over both Meraki and the CDragon
+                    # re-source (and so its stale-guard sees exactly what the
+                    # consumer would otherwise have got).
+                    if apply_ability_base_overrides:
+                        fm = _apply_base_overrides(cid, key, fm)
                     built.append(fm)
                 per_key[key] = tuple(built)
             champions[cid] = per_key

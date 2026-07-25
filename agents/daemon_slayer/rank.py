@@ -918,6 +918,7 @@ def rank_items(
     kit_conversion_strength: float = 0.0,
     widen_carry_pool: bool = False,
     exclude_off_axis_items: bool = False,
+    apply_crit_conversion: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -1088,6 +1089,11 @@ def rank_items(
     # pass it as only_phase so each compute_dps skips the 2 unused phase
     # convolutions. weighted_dps for the selected phase is byte-identical.
     _selected_phase = phase or _select_phase(level)
+    # A-12 / RM-46: the crit-conversion flag must reach BOTH compute_dps calls
+    # (this baseline and the per-candidate score below). Feeding only one would
+    # subtract a converted score from an unconverted baseline and manufacture a
+    # delta out of the seam itself. DEFAULT-OFF -> byte-identical (dps.py:890
+    # performs no lookup and no arithmetic when the flag is False).
     baseline = compute_dps(
         snapshot,
         champion_id=champion_id,
@@ -1103,6 +1109,7 @@ def rank_items(
         augments=augments,
         apply_mode_modifiers=apply_mode_modifiers,
         only_phase=_selected_phase,
+        apply_crit_conversion=apply_crit_conversion,
     )
 
     # Baseline burst with the current build (item 219 C). Computed ONCE and
@@ -1218,6 +1225,7 @@ def rank_items(
                 augments=augments,
                 apply_mode_modifiers=apply_mode_modifiers,
                 only_phase=_selected_phase,
+                apply_crit_conversion=apply_crit_conversion,
             )
         except (KeyError, ValueError):
             continue
