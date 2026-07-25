@@ -132,3 +132,63 @@ def select_boot(
     if challenger != did and _eff(challenger) > default_score * (1.0 + switch_margin):
         return challenger
     return did
+
+
+# --- v2 CC input (A-39) ----------------------------------------------------
+# The comp-MEAN ``cc_output.total_lockdown_score`` that saturates the tenacity
+# axis at 1.0. Measured over the whole 161-champion cc_output registry at ENGINE
+# 1.246.0: median 1.400, p75 2.100, p90 2.790, max 7.125 (Mordekaiser). 3.0 sits
+# just above p90, so only a genuinely lockdown-stacked comp saturates while a
+# median comp lands near 0.47. Operator-tunable, same spirit as _KIT / _TEN.
+_CC_LOCKDOWN_REF = 3.0
+
+
+def comp_cc_signal(
+    enemy_champions: Iterable[str] | None,
+    mode: str = "SR",
+    lockdown_ref: float | None = None,
+) -> float | None:
+    """Real per-champion enemy-CC signal in [0,1], or ``None`` when unavailable.
+
+    Replaces the v1 AP-share ``cc_proxy``: reads each enemy champion's
+    hand-weighted lockdown score from :func:`cc_output.compute_cc_output` and
+    returns the comp MEAN divided by ``lockdown_ref``, clamped to [0,1]. The
+    kind weights already price a 1.5s suppression above a 1.5s slow, so an
+    AD-dominant hard-CC frontline is credited correctly - the exact case the
+    AP-share proxy under-credits.
+
+    Returns ``None`` (never 0.0) when there is nothing to read - a blank / empty
+    roster, or ``cc_output`` being unimportable - so the caller can fall back to
+    the v1 proxy and stay byte-identical. ``cc_output`` is imported LAZILY to
+    keep this module's import graph pure, matching how ``core.build_order``
+    lazy-imports this module on its ON path only.
+
+    A champion absent from the cc_output registry (12 of 173 at 1.246.0)
+    contributes 0.0 rather than raising, which under-credits rather than
+    over-credits. ``mode`` is accepted and forwarded for parity with the other
+    scorers but is provably inert today (``cc_output.compute_cc_output``
+    docstring: offensive output is target-independent).
+
+    ``lockdown_ref`` defaults to None and is resolved to the module-level
+    ``_CC_LOCKDOWN_REF`` at CALL time, not bound at def time, so the knob stays
+    genuinely operator-tunable (and monkeypatchable) at runtime.
+    """
+    if not enemy_champions:
+        return None
+    names = [str(c).strip() for c in enemy_champions if str(c).strip()]
+    if not names:
+        return None
+    ref = float(_CC_LOCKDOWN_REF if lockdown_ref is None else lockdown_ref)
+    if ref <= 0.0:
+        return None
+    try:
+        from agents.daemon_slayer.cc_output import compute_cc_output
+    except Exception:  # noqa: BLE001 - fail-soft to the v1 proxy
+        return None
+    total = 0.0
+    for name in names:
+        try:
+            total += float(compute_cc_output(name, mode).total_lockdown_score)
+        except Exception:  # noqa: BLE001 - one bad name must not sink the comp
+            continue
+    return max(0.0, min(1.0, (total / float(len(names))) / ref))

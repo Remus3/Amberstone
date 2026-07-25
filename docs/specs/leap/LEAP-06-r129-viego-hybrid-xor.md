@@ -10,6 +10,28 @@
 >    here and belongs to LEAP-04/07.
 
 Status: SPEC (Fable 5 forward-leap portfolio, 2026-07-16). No code in this file.
+
+> CLOSURE 2026-07-25 (measured at ENGINE 1.246.0, patch 16.14.1) - read this before
+> building anything below:
+> - **Sub-fix A SHIPPED at ENGINE 1.245.0** as `apply_cdragon_surplus_ad`
+>   (`abilities.py:947`, pinned by `agents/daemon_slayer/tests/test_cdragon_surplus_ad_a29.py`).
+>   D2's APPEND prescription was corrected in flight to a field-level merge because
+>   `compute_ability_dps` reads `damage_blocks[0]` only.
+> - **Sub-fix B is ALREADY SHIPPED** as `apply_ad_axis_ability_damage` (RM-39/RM-43 L2,
+>   ENGINE 1.223.0, DEFAULT-OFF). All three XOR sites carry the three-arm shape:
+>   `hybrid.py:687-700`, `:1236-1251`, `:1336-1351`; flag appended at `:464` and `:1012`;
+>   route at `server.py:922-966`; 37 pins in `test_ad_axis_ability_damage_rm39.py`.
+>   **D6 / D7 are SUPERSEDED and `blend_ability_axis` must NOT be built.** Its only delta
+>   over the shipped seam is crediting MAGIC damage rows and `item_proc_dps`, both measured
+>   and refuted by name at RM-39 (MAGIC excluded permanently, MIXED held, and
+>   `total_ability_dps` folds `item_proc_dps` which promotes Liandry's to #1 for Aatrox).
+>   For B's own primary seed Riven the two formulations are numerically identical
+>   (87.0619 either way). B's double-count premise is refuted too: `compute_dps`
+>   auto-empower credit is `aa_empower_amp`, gated on DEFAULT-OFF `apply_ability_amps`
+>   with placeholder `(0.0,)` entries (`dps.py:808-826`), roster Caitlyn W / Fiora E /
+>   Jayce W / Sivir W / Nidalee Q - none of the six bruisers D7 excludes.
+> - Remaining value on this seam is the RM-39 default-ON flip, which is live-gated and
+>   blocked on the RM-98 cast-rate time base, not in this spec.
 Owner of execution: one cold Opus 4.8 (Max20) session, effort max.
 Scope discipline: this spec is self-contained. A session with ONLY CLAUDE.md +
 this file has everything it needs. Do not re-derive scope from chat or memory.

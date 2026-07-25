@@ -467,6 +467,10 @@ def _route_rank(body: dict) -> dict:
     # identical default ranking (no burst compute paid). The client sets it
     # from the champion -> fight_length allow-map at the carry chokepoint.
     fight_length = _opt_float(body, "fight_length", None)
+    # RM-35 clause 2 (A-08): the RM-41 SYMMETRIC off-axis strip, extended from
+    # the assassin/burst route to the CARRY route. DEFAULT-OFF -> byte-identical.
+    # Reuses the existing champion_burst_axis gate, no new curated list.
+    exclude_off_axis_items = _opt_bool(body, "exclude_off_axis_items", False)
     try:
         result = rank_items(
             snap,
@@ -488,6 +492,7 @@ def _route_rank(body: dict) -> dict:
             widen_carry_pool=widen_carry_pool,
             cost_ceiling=cost_ceiling,
             target_current_hp_pct=target_current_hp_pct,
+            exclude_off_axis_items=exclude_off_axis_items,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -675,6 +680,21 @@ def _route_rank_tank(body: dict) -> dict:
     #   prefer_survivability_by_win (RF3) - float the WIN-anchored survivability set.
     cost_ceiling = _opt_int(body, "cost_ceiling", None)
     prefer_survivability_by_win = _opt_bool(body, "prefer_survivability_by_win", False)
+    # RM-87 / row A-18 (2026-07-25): the champion RESIST -> DAMAGE coupling lever.
+    # /rank-tank ONLY - the seam corrects the TANK objective's blindness to a kit
+    # that re-spends its own resists as damage (Rammus P / Ornn E), so it has no
+    # place on the other archetype routes. Sort-only + DEFAULT-OFF: omitting both
+    # keys (or sending a zero strength) is byte-identical.
+    apply_resist_damage_coupling = _opt_bool(
+        body, "apply_resist_damage_coupling", False
+    )
+    resist_coupling_strength = _opt_float(body, "resist_coupling_strength", 0.0)
+    if resist_coupling_strength < 0.0:
+        raise _ApiError(
+            400,
+            "resist_coupling_strength: must be >= 0.0, got "
+            f"{resist_coupling_strength!r}",
+        )
     try:
         result = rank_items_by_ehp(
             snap,
@@ -712,6 +732,8 @@ def _route_rank_tank(body: dict) -> dict:
             apply_survival_window=apply_survival_window,
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
+            apply_resist_damage_coupling=apply_resist_damage_coupling,
+            resist_coupling_strength=resist_coupling_strength,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
