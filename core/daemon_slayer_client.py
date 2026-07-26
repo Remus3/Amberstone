@@ -581,6 +581,13 @@ def rank_mage_for(
     form_index: Optional[dict[str, int]] = None,
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
+    # A-07 / RM-82 TERM 2 seam - appended LAST per the repo convention. Parsed
+    # off the POST /rank-mage body server-side (server.py:1265).
+    apply_passive_aura_damage: bool = False,  # A-07 / RM-82 (Morde Darkness Rise)
+    # RM-115 A-03 / RM-81 ability-base seam. DEFAULT-OFF; omitted key ==
+    # byte-identical. Load-time on the engine (abilities.py:1006), resolved
+    # server-side into an abilities snapshot.
+    apply_ability_base_overrides: bool = False,
 ) -> Optional[list[MageRankedItem]]:
     """Call POST /rank-mage and return the parsed top-N rows. None on engine failure.
 
@@ -595,6 +602,18 @@ def rank_mage_for(
     (default Q->W->E server-side); ``block_strategy`` is first|sum|max for
     multi-block abilities; ``form_index`` is a per-key form override
     dict for multi-form abilities (Aphelios, Jayce).
+
+    ``apply_passive_aura_damage`` (A-07 / RM-82 TERM 2, DEFAULT-OFF) credits
+    per-second passive aura damage into the ability DPS total. It is a bool
+    seam whose omit-value is False, so leaving it alone keeps the request body
+    byte-identical to every pre-seam call. The registry backing it
+    (``_passive_damage_overrides.per_second_aura_entry``) resolves a
+    ``per_second`` aura for Mordekaiser only today; every other champion
+    returns None and is unmoved with the flag ON.
+
+    NOT to be confused with ``apply_passive_damage`` - that is the separate
+    AA-cadence passive flag on /rank and /rank-onhit. This one is MAGE-ONLY:
+    /rank-mage is the sole route that parses it (server.py:1265).
     """
     body: dict = {
         "champion": champion,
@@ -619,6 +638,12 @@ def rank_mage_for(
         body["only"] = [str(i) for i in only_item_ids if i]
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    # A-07 / RM-82 TERM 2: bool seam, engine default False - emit only when ON.
+    if apply_passive_aura_damage:
+        body["apply_passive_aura_damage"] = True
+    # RM-115: bool seam, engine default False - emit only when ON.
+    if apply_ability_base_overrides:
+        body["apply_ability_base_overrides"] = True
     data = _post_json("/rank-mage", body, timeout=timeout)
     if data is None:
         return None
@@ -642,12 +667,17 @@ def ability_dps_for(
     block_strategy: str = "first",
     form_index: Optional[dict[str, int]] = None,
     timeout: float = DEFAULT_TIMEOUT,
+    # RM-115 seams - appended LAST per the repo convention. Both are parsed off
+    # the POST /ability-dps body server-side and are DEFAULT-OFF, so an omitted
+    # key leaves the request byte-identical to every pre-seam call.
+    apply_passive_aura_damage: bool = False,   # A-07 / RM-82 TERM 2
+    apply_ability_base_overrides: bool = False,  # A-03 / RM-81
 ) -> Optional[dict]:
     """Call POST /ability-dps and return the raw result dict. None on failure.
 
     Phase 4c sibling of ``dps_for`` / ``ehp_for`` / ``hybrid_for``. See
     ``rank_mage_for`` for ``max_priority`` / ``block_strategy`` /
-    ``form_index`` semantics.
+    ``form_index`` semantics, and for what the two RM-115 seams do.
     """
     body: dict = {
         "champion": champion,
@@ -667,6 +697,11 @@ def ability_dps_for(
         body["form_index"] = {str(k): int(v) for k, v in form_index.items()}
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    # RM-115: bool seams, engine default False - emit only when ON.
+    if apply_passive_aura_damage:
+        body["apply_passive_aura_damage"] = True
+    if apply_ability_base_overrides:
+        body["apply_ability_base_overrides"] = True
     return _post_json("/ability-dps", body, timeout=timeout)
 
 
@@ -727,6 +762,12 @@ def rank_assassin_for(
     # Seam flags (Tier-2, behavior-preserving; emitted only when set).
     prefer_kit_axis_by_win: bool = False,  # DSP11
     assume_magic_burst: bool = False,      # R30
+    # RM-115 gate-3 seam - appended LAST per the repo convention. Parsed off
+    # the POST /rank-assassin body server-side.
+    kit_conversion_strength: float = 0.0,  # RM-86 L1 lever (RM-83 Naafiri)
+    # RM-115 A-03 / RM-81 ability-base seam. DEFAULT-OFF; omitted key ==
+    # byte-identical. Naafiri is the one of the six that routes here.
+    apply_ability_base_overrides: bool = False,
 ) -> Optional[list[AssassinRankedItem]]:
     """Call POST /rank-assassin and return the parsed top-N rows. None on engine failure.
 
@@ -770,6 +811,14 @@ def rank_assassin_for(
         body["prefer_kit_axis_by_win"] = True
     if assume_magic_burst:
         body["assume_magic_burst"] = True
+    # RM-86 L1: the engine consults the kit-conversion registry only when the
+    # lever is strictly positive (burst.py:2160-2162), so 0.0 and any negative
+    # are inert server-side - emit nothing and stay byte-identical.
+    if kit_conversion_strength > 0.0:
+        body["kit_conversion_strength"] = float(kit_conversion_strength)
+    # RM-115: bool seam, engine default False - emit only when ON.
+    if apply_ability_base_overrides:
+        body["apply_ability_base_overrides"] = True
     data = _post_json("/rank-assassin", body, timeout=timeout)
     if data is None:
         return None
@@ -794,6 +843,9 @@ def burst_for(
     form_index: Optional[dict[str, int]] = None,
     combo_sequence: Optional[Iterable[str]] = None,
     timeout: float = DEFAULT_TIMEOUT,
+    # RM-115 A-03 / RM-81 ability-base seam - appended LAST per the repo
+    # convention. DEFAULT-OFF; omitted key == byte-identical.
+    apply_ability_base_overrides: bool = False,
 ) -> Optional[dict]:
     """Call POST /burst and return the raw result dict. None on failure.
 
@@ -821,6 +873,9 @@ def burst_for(
         body["combo_sequence"] = [str(t) for t in combo_sequence if t]
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    # RM-115: bool seam, engine default False - emit only when ON.
+    if apply_ability_base_overrides:
+        body["apply_ability_base_overrides"] = True
     return _post_json("/burst", body, timeout=timeout)
 
 
@@ -1515,12 +1570,22 @@ def rank_for_primary_archetype(
     assume_archetype_hp_pct: bool = False,       # carry+bruiser+mage+assassin (R55)
     apply_squishy_burst_target: bool = True,     # carry (L4) - see the swap below
     widen_carry_pool: bool = False,              # carry (RM-04 A-01)
-    # W2 conversion seams - appended LAST per the repo convention. Both are
-    # CARRY-ONLY (POST /rank is the only route that parses them), so they are
-    # forwarded to the ds.dps chokepoint alone and never reach the tank /
-    # bruiser / mage / assassin / enchanter / on-hit branches.
-    kit_conversion_strength: float = 0.0,        # carry (RM-86 L1)
+    # W2 conversion seams - appended LAST per the repo convention.
+    # ``apply_crit_conversion`` is CARRY-ONLY (POST /rank is the only route
+    # that parses it). ``kit_conversion_strength`` is carry + assassin as of
+    # RM-115: /rank and /rank-assassin both parse it, so it is forwarded to
+    # the ds.dps and ds.burst chokepoints and never reaches the tank /
+    # bruiser / mage / enchanter / on-hit branches.
+    kit_conversion_strength: float = 0.0,        # carry + assassin (RM-86 L1)
     apply_crit_conversion: bool = False,         # carry (A-12 / RM-46)
+    # RM-115 gate-3 seam, MAGE-ONLY: /rank-mage is the sole route that parses
+    # apply_passive_aura_damage (server.py:1265), so it is forwarded to the
+    # ds.ability branch alone. Forwarding it elsewhere would be inert.
+    apply_passive_aura_damage: bool = False,     # mage (A-07 / RM-82 TERM 2)
+    # RM-115 A-03 / RM-81: mage + assassin. All six corrected champions route
+    # to one of those two archetypes, so it is forwarded to both branches and
+    # nowhere else. /rank, /rank-tank and /rank-bruiser do not parse it.
+    apply_ability_base_overrides: bool = False,  # mage + assassin (A-03 / RM-81)
 ) -> Optional[dict]:
     """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) - route to the right scorer per archetype.
 
@@ -1693,6 +1758,8 @@ def rank_for_primary_archetype(
             form_index=form_index,
             filter_shared_uniques=filter_shared_uniques,
             timeout=timeout,
+            apply_passive_aura_damage=apply_passive_aura_damage,
+            apply_ability_base_overrides=apply_ability_base_overrides,
         )
         if rows is None:
             return None
@@ -1740,6 +1807,8 @@ def rank_for_primary_archetype(
             timeout=timeout,
             prefer_kit_axis_by_win=prefer_kit_axis_by_win,
             assume_magic_burst=assume_magic_burst,
+            kit_conversion_strength=kit_conversion_strength,
+            apply_ability_base_overrides=apply_ability_base_overrides,
         )
         if rows is None:
             return None
