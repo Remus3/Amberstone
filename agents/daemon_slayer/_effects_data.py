@@ -1149,20 +1149,25 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Ravenous Hydra",
         periodics=(PeriodicProc(
             name="Cleave",
-            # Melee: 35% total AD physical to nearby enemies only (no
-            # damage to primary target - that already lands via the basic
-            # attack). With targets_in_rotation=1.0 the cleave hits 0 enemies
-            # and contributes zero, exactly the historic single-target shape.
-            # Ranged variant 21% under-counted - same call as Titanic.
+            # Melee: 40% total AD physical to other enemies (primary
+            # already lands via the basic attack itself). At
+            # targets_in_rotation=1.0 the cleave hits 0 enemies and adds
+            # zero DPS - preserves the historic single-target shape for
+            # all-n=1 rotations.
+            # R193: read 0.35 (with a stale 21% ranged remark) while its
+            # two byte-identical-text siblings 6631 / 6698 were already at
+            # 0.40. Meraki 16.14.1 items.3074 Cleave = "40% AD / 20% AD",
+            # so 0.35 was stale-patch drift. The family pins the melee
+            # value - no ranged split, same call as 6631 / 6698.
             bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
-                * 0.35 * (c.base_ad + c.bonus_ad),
+                * 0.40 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
         # Iter 3 (2026-05-19): hydra_cleave family - see Stridebreaker.
         unique_passive_key="hydra_cleave",
         physical_burst_total_ad_ratio=0.80,
-        note="Ravenous Hydra: Cleave ~35% AD physical to nearby enemies (melee, scales with rotation targets); Ravenous Crescent active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
+        note="Ravenous Hydra: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets); Ravenous Crescent active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.14.1, R193)",
     ),
 
     # -- Phase 4 batch 9 (2026-05-04): Immolate items --
@@ -4226,14 +4231,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Ravenous Hydra",
         periodics=(PeriodicProc(
             name="Cleave",
+            # R193: mirrors the SR 3074 correction from 0.35 to the Meraki
+            # 16.14.1 melee value. The family pins melee - no ranged split.
             bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
-                * 0.35 * (c.base_ad + c.bonus_ad),
+                * 0.40 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
         unique_passive_key="hydra_cleave",
         physical_burst_total_ad_ratio=0.80,
-        note="Ravenous Hydra (Arena 223074): same as SR 3074 - Cleave 35% AD to other enemies; Ravenous Crescent active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
+        note="Ravenous Hydra (Arena 223074): same as SR 3074 - Cleave 40% AD to other enemies (melee pin); Ravenous Crescent active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.14.1, R193)",
     ),
     "223078": ItemEffect(
         item_id="223078",
