@@ -582,8 +582,14 @@ class KnownLimitTests(unittest.TestCase):
     item. The lever raises health-granting candidates relative to resist-only
     ones - that is its whole job - but it cannot re-order WITHIN the health axis.
 
-    Crediting an ITEM's own caster-HP-scaling proc is a separate follow-on (T2)
-    and is explicitly out of scope here.
+    Crediting an ITEM's own caster-HP-scaling proc is a separate follow-on, and
+    it SHIPPED as T2 (ENGINE 1.259.0, ``_item_caster_hp_proc``). This pin is
+    still correct and still load-bearing: it constrains T1's OWN flag, which is
+    what the runs below arm. T2 lifts the limit only under its own separate flag
+    (``apply_item_caster_hp_proc``), and
+    ``tests/test_item_caster_hp_proc_rm91_t2.py::KnownLimitLiftedTests`` asserts
+    both halves of that - this pin holding under T1 alone, and the same
+    dominating pair inverting once T2 is armed.
     """
 
     def test_monotone_in_delta_max_hp_cannot_invert_a_dominating_pair(self) -> None:

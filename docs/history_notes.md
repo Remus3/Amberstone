@@ -119,6 +119,50 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-26j - REPLAY ANALYSIS SUBSTRATE (RM-117, LEDGER 1062). 28 commits, 112 tests.
+
+**NOT a DS session.** No ENGINE bump, no Share mirror, nothing under `agents/daemon_slayer/`.
+
+## The one thing to carry forward
+The brief assumed frame-level replay analysis needed the Settled `.rofl` Layer-2
+fence opened. **It does not, and the fence stays CLOSED.** Four measurements:
+1. The v2 container has NO encryption - plain zstd, stdlib-openable. The
+   roflxd/Blowfish layout everyone cites is the OLDER v1 container. The fence's
+   crypto rationale is void; its CHURN rationale stands (2 builds inside 16.14).
+2. Positions come from the sanctioned replay API at **~19 map units** via an
+   analytic ray/ground-plane solve. `cameraRotation` is `{x:YAW, y:PITCH}`, the
+   camera looks `h/tan(p)` AHEAD of its own coords, and `cameraPosition` is
+   writable ONLY in `cameraMode:"fps"`.
+3. **Match-V5 60 s positions carry ~2000 units of error** (replicated on 2 games;
+   8 of 33 samples wrong by more than the 2750-unit decision threshold). An
+   earlier claim in this same session that the signal decay was "real behaviour"
+   is RETRACTED in-file - it was sampling noise.
+4. Paused renders are BIT-DETERMINISTIC (0 px), so flipping one entity toggle
+   makes the pixel diff that entity class. **Wave state and ward coverage both
+   unblock** with no ML. Buff camps untried.
+
+## Running unattended - DO NOT ASSUME THESE FINISHED
+- `timeline_ingest` pid 7580: **1092 / 3005** timelines at hand-off.
+- `build_rank_baselines` pid 17616: waiting for idle, then 31 per-division cohorts.
+- **`RC-ReplayChainWatch`** (new, PT15M) re-enables `RC-ReplayRosterPull` and runs
+  the miner once both finish. `RC-ReplayRosterPull` is **Disabled** until it does.
+- **GAP:** nothing restarts `timeline_ingest` if it died. Check the count first;
+  it is resumable and skips existing files.
+
+## Don't-redo
+No fetch-by-match-id route exists (two requested matches rotated out of the
+5-wide window mid-session, permanently gone) - never plan a `.rofl` backfill.
+Summoner spells are LOADOUT ONLY (no Flash/TP/Smite timings anywhere). Buff
+intervals and sharing are unrecoverable. Do not re-derive `FAR_UNITS` /
+`SIGNAL_DECAY` as jungler facts.
+
+## Owed / operator-gated
+**B13** - Riot's acceptable-use position on bulk replay harvesting at
+108-account scale is UNMEASURED. No retention policy on a 6.78 GB corpus
+growing hourly. The win/loss promotion gate is BUILT but UNRUN at scale.
+
+---
+
 # 2026-07-26i - RM-95b residual SHIPPED: population 3 measured down to 1
 
 **Shipped:** ENGINE 1.256.0 -> **1.257.0**, DEFAULT-OFF `apply_wiki_form_damage`. LEDGER 1061.
