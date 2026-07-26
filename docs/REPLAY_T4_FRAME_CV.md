@@ -52,6 +52,52 @@ lane, to ~76 units. For reference a champion radius is ~65 units.
 WAVE STATE IS THEREFORE NO LONGER BLOCKED. It was blocked at every data tier
 and is measurable from frames.
 
+### Experiment 2 - champion mask vs screenPositionBottom (free ground truth)
+
+Champions appear BOTH as pixels and as a reported screen position, so the mask
+can be scored with no labelling. Diffing the `champions` toggle and matching
+each reported position to its nearest mask blob:
+
+| camera height | champions on screen | changed px | median error | within 60 px |
+|---|---|---|---|---|
+| 6000 | 7 | 2380 | 172 px | 2 of 7 |
+| 3500 | 6 | 7977 | **42 px** | 5 of 6 |
+| 2500 | 4 | 20966 | 56 px | 3 of 4 |
+
+PASSES at a working height, and the first run failing was MY setup error: at
+h=6000 a champion covers only ~340 px, which sits at the blob-detection floor.
+The minion go/no-go had run at h=3000 and I did not carry that over.
+
+**CAMERA HEIGHT IS A DETECTION PARAMETER, not just a framing choice.** Working
+range is roughly h=2500..3500. Higher trades entity size for map coverage, and
+past ~6000 entities stop being reliably separable. Any sampling pass has to
+pick height per what it is detecting, and a wide overhead shot is NOT free.
+
+**The champion mask FRAGMENTS**: 10 blobs for 6 champions, 13 for 4. A model
+splits into parts, so blob COUNT is not entity count and naive counting
+overcounts. Cluster before counting - and note the minion result did not show
+this as strongly, so per-class clustering needs its own check.
+
+Champion detection is also mostly redundant, since `screenPositionBottom`
+already gives champion positions directly. Its value here is exactly what it
+was used for: scoring the technique against truth.
+
+### Experiment 5 - capture geometry
+
+Full-screen `PIL.ImageGrab` returns **2560 x 1440**, matching the viewport the
+back-projection intrinsics were solved for (`LEGION_2560x1440_FOV60`). No
+rescaling needed on this machine; a different resolution needs a re-solve.
+
+### Experiment 6 - unattended operation: NEGATIVE by construction
+
+The capture path is a FULL-SCREEN grab, so the game must be visible and
+unoccluded. Anything covering the window is captured instead of it. **T4
+therefore cannot run unattended alongside other work on the same display.**
+
+UNMEASURED and the only plausible escape: a window-directed capture
+(Win32 `PrintWindow`) can sometimes capture an occluded window. Untested here.
+Until it is tested, plan T4 as attended and exclusive.
+
 ## 1. Why this tier has to exist
 
 Three items on the operator's list are BLOCKED at every data tier, and they are
