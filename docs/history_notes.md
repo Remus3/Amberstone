@@ -119,6 +119,112 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-26a - RM-115 CLOSED, and the last four pairs are declines (ENGINE 1.254.0)
+
+ENGINE **1.253.0 -> 1.254.0**, patch 16.14.1. Two read-only spec agents in
+parallel over the eight tail routes, then the wiring applied in the main thread
+(one file - worktrees would only have made merge work). One build agent wrote
+the acceptance test. Tier-2 in ritual order: bump by quoted literal (126 files /
+154 occurrences) -> :8893 restarted -> `/health` re-read **1.254.0 BEFORE the
+regen** -> both build-order families across both keyspaces -> Share sync (492
+files, `--check` green) -> all four ENGINE doc sites **plus the two Share
+release notes `--check` cannot see**.
+
+Suites, both measured fresh AFTER the last edit:
+**DS 9746 passed / 1 skipped / 4653 subtests.**
+**RC `tests/` 13110 passed / 106 skipped / 460 subtests.**
+
+## The headline is the DECLINE, not the drain
+
+**Per-route stranded debt 25 -> 4. Name-collapsed 12 -> 2.** 21 pairs wired
+across six client functions (`/burst` 7, `/dps` 6, `/rank-assassin` 4, `/rank`
+2, `/ability-dps` 1, `/rank-mage` 1).
+
+The session prompt framed `/beam` and `/v2/fight-report` as "a design call, not
+wiring". The answer is **DECLINE for both**, and that is the durable output of
+this session:
+
+- `/v2/fight-report` has **ZERO callers repo-wide** - the literal appears only
+  in its own docstring, the dispatch table, `docs/DAEMON_SLAYER.md`, the
+  CHANGELOG and the two ledgers, and both of its tests call
+  `compute_fight_report` in process. Served, never requested.
+- `/beam` has ONE live consumer, `coaches/sr_draft_profile.py`, which holds its
+  own HTTP call for reasons a migration must break: a 4.0s budget against this
+  client's deliberate 0.5s `DEFAULT_TIMEOUT` fail-silent contract, and a
+  two-value error channel that `_post_json`'s None collapses. And the seam is
+  **arithmetically inert** for it - `mode="SR"`, and no champion carries an
+  `sr` key in `wiki_stats.json`.
+
+**The ledger's honest end state is 4, not 0.** Both declines carry an inline
+re-open condition. A future session that reads 4 as debt and wires it will
+re-introduce the exact reachable-and-dead illusion RM-115 existed to kill.
+
+## What generalises
+
+**The transport trap fired a third time, on a NEW key.** `/burst` parses
+`runes` - **NOT** the EHP family's `rune_ids` - plus `caster_current_hp_pct`.
+Neither is seam-prefixed, so neither guard sees them, and without them BOTH
+`gate_*` seams are reachable-and-dead (measured byte-identical with `runes`
+omitted). Same concept, different key per route: the 1.253.0 wiring did not
+carry over.
+
+**The gates are HONESTY gates and the direction inverts.** OFF applies the rune
+amp unconditionally, so turning `gate_target_hp_amp` ON against a full-HP target
+correctly REMOVES Coup de Grace's amp (716.343 -> 663.281). A test asserting
+"ON is bigger" would have been wrong.
+
+**Two silent traps on `/rank-assassin`, one of them the client's own default.**
+`assume_squishy_target` is disabled by any positive `target_armor`
+(`burst.py:2018`); the Collector arm of `assume_takedown` is disabled by
+`target_max_hp=0.0` (`burst.py:1075`), which IS `rank_assassin_for`'s default -
+so the seam reads half-working rather than misconfigured.
+
+**`top` is a load-bearing transport.** `exclude_off_axis_items` REMOVES rows
+rather than reordering them, and on an auto-attack scorer every removed row is
+deep: Jhin is byte-identical at the client default `top=8` and only moves at
+`top=200`.
+
+**`apply_mode_modifiers` on `/rank` has two lanes and only one can reorder** -
+the URF multiplier lane scales uniformly (Jhin top row x1.01, all 214 rows hold
+order); the ar/swift addend lane does reorder.
+
+## Judgement calls worth knowing about
+
+- **`assume_magic_burst` was NOT deleted**, against the spec's recommendation.
+  The route is right and the client is wrong, but the parameter is load-bearing
+  across `archetype_dispatch`, `routes_state` and four test files. Resolved by
+  making the lever reachable on the route that DOES parse it,
+  `burst_for(assume_magic_burst=...)`, and filing the dead one.
+- **One pre-existing test broke and was re-expressed, not relaxed.**
+  `tests/test_ds_client_conversion_seam_plumb_w2.py` asserted the two W2 seams
+  are the FINAL TWO parameters of `rank_for` - stricter than the convention its
+  own docstring cites, and false for any correct append. Replaced with the
+  property the convention actually protects (only the three genuine inputs may
+  lack a default; both seams KEYWORD_ONLY with defaults; both after `timeout`;
+  relative order preserved), which is strictly stronger.
+- **The committed `build_order_variants_*` tables were STALE.** Six of nine
+  tables are byte-identical after stamp-stripping; the three variants tables
+  moved. Proven NOT attributable to this change by regenerating against the
+  PRE-change client and getting byte-identical output to the post-change client,
+  with both differing from the committed table.
+
+## Filed, not fixed (each has real blast radius)
+
+1. The dead `rank_assassin_for(assume_magic_burst=...)` parameter.
+2. `rank_for` likewise emits `assume_passive_as_stacks` and `apply_target_vuln`
+   into a `/rank` body that never parses them.
+3. `rank_for_primary_archetype` has no pass-through for the 21 new kwargs, so no
+   live coach tick can flip one yet. All 21 are DEFAULT-OFF, so nothing regresses.
+
+## Ops note
+
+`Get-NetTCPConnection -LocalPort 8893` matches lingering **TimeWait** sockets
+(`OwningProcess = 0`), which reads as "port still bound" when DS is fully down -
+and `taskkill /F /PID 0` fails as a critical system process. Filter on
+`-State Listen`. Memory updated.
+
+---
+
 # 2026-07-25j - the EHP-family block drained, and the transports nobody was counting (ENGINE 1.253.0)
 
 ENGINE **1.252.0 -> 1.253.0**, patch 16.14.1. Operator-directed ("drain the
