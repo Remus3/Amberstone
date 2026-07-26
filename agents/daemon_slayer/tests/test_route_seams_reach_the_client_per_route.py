@@ -74,8 +74,8 @@ _BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
 
 # ------------------------------------------------------------ the debt ledger
 # route -> seams that route parses but the client function POSTing that route
-# cannot express. Measured by the introspection below at ENGINE 1.253.0, NOT
-# copied from prose. 25 entries across 8 routes.
+# cannot express. Measured by the introspection below at ENGINE 1.254.0, NOT
+# copied from prose. 4 entries across 2 routes.
 #
 # Wired across the RM-115 drain passes, and therefore ABSENT here:
 #   apply_ability_base_overrides ... /ability-dps, /burst, /rank-assassin,
@@ -84,45 +84,45 @@ _BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
 #                                    (A-07 / RM-82 TERM 2, gate 3)
 #   the 20-seam EHP-family block ... /ehp, /hybrid, /rank-tank,
 #                                    /rank-bruiser (1.253.0, 76 pairs)
+#   the 21-pair tail ............... /burst 7, /dps 6, /rank-assassin 4,
+#                                    /rank 2, /ability-dps 1, /rank-mage 1
+#                                    (1.254.0)
+#
+# THE HONEST END STATE OF THIS LEDGER IS 4, NOT 0. The two routes below are
+# DECLINED BY DESIGN, not undrained debt. Wiring them would flip the guard
+# green while manufacturing reachability with no reader - precisely the
+# reachable-and-dead illusion RM-115 exists to kill. Wire the CONSUMER first;
+# only then wire the seam. Both decisions are re-checkable, and the exact
+# conditions that would re-open each are recorded inline.
 _STRANDED_BY_ROUTE: dict[str, frozenset[str]] = {
-    '/ability-dps': frozenset({
-        'apply_ability_amps',
-    }),
-    # No client function POSTs /beam at all - every seam it parses is stranded.
+    # DECLINED 1.254.0. /beam has exactly one live consumer,
+    # coaches/sr_draft_profile.py, and it holds its OWN HTTP call
+    # (sr_draft_profile.py:271-304) rather than going through this client, for
+    # two reasons that a migration would have to break: it needs a 4.0s budget
+    # because a cold beam exceeds a second, against this module's deliberate
+    # 0.5s DEFAULT_TIMEOUT fail-silent contract; and it needs the error STRING
+    # to distinguish "engine HTTP {code}" from "engine unreachable", which
+    # _post_json's None collapses. The seam itself is also arithmetically inert
+    # for that consumer: it hardcodes mode="SR", and no champion in
+    # wiki_stats.json carries an "sr" mode_modifiers key (the seven that exist
+    # are ar/aram/nb/ofa/swift/urf/usb), so both lanes resolve to identity.
+    # RE-OPEN IF: a non-SR beam consumer appears (an Arena or URF draft
+    # profile). At that point the reorder-capable lane is the ADDEND lane
+    # (ar/swift), not URF - see the /rank docstring in the client.
     '/beam': frozenset({
         'apply_mode_modifiers',
     }),
-    '/burst': frozenset({
-        'assume_ability_amp',
-        'assume_magic_burst',
-        'assume_physical_burst',
-        'assume_shielded_target',
-        'assume_takedown',
-        'gate_caster_hp_amp',
-        'gate_target_hp_amp',
-    }),
-    '/dps': frozenset({
-        'apply_ability_amps',
-        'apply_melee_aa_gate',
-        'apply_mode_modifiers',
-        'apply_passive_damage',
-        'apply_target_vuln',
-        'assume_passive_as_stacks',
-    }),
-    '/rank': frozenset({
-        'apply_mode_modifiers',
-        'exclude_off_axis_items',
-    }),
-    '/rank-assassin': frozenset({
-        'assume_ability_amp',
-        'assume_squishy_target',
-        'assume_takedown',
-        'exclude_off_axis_items',
-    }),
-    '/rank-mage': frozenset({
-        'apply_ability_amps',
-    }),
-    # No client function POSTs /v2/fight-report at all.
+    # DECLINED 1.254.0. /v2/fight-report has ZERO callers repo-wide. Verified
+    # by grep at 1.254.0: the literal "/v2/fight-report" appears only in its
+    # own docstring, the dispatch table, docs/DAEMON_SLAYER.md, the CHANGELOG,
+    # and these two ledgers. cli.py has no fight-report subcommand, and
+    # test_fight_report.py / test_flag_wiring_item235.py call
+    # compute_fight_report IN PROCESS, never the route. The route is served and
+    # has never been requested by anything. The three seams are engine-complete
+    # (gate_ammo -> mana_sim.py:600-604, apply_ability_haste ->
+    # mana_sim.py:609-611, apply_mode_modifiers -> the self-shred physical-DPS
+    # term), so this is a consumer gap, not an engine gap.
+    # RE-OPEN IF: any caller of the ROUTE appears. Wire the consumer first.
     '/v2/fight-report': frozenset({
         'apply_ability_haste',
         'apply_mode_modifiers',

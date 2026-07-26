@@ -159,15 +159,57 @@ class RankForConversionSeamBodyTests(unittest.TestCase):
 
     def test_seam_kwargs_are_keyword_only_and_appended_last(self):
         """Repo Python convention: a new param is appended at the END with a
-        default, so no positional construction anywhere can shift."""
+        default, so no positional construction anywhere can shift.
+
+        RE-EXPRESSED at RM-115 (ENGINE 1.254.0), deliberately NOT weakened.
+        The original form asserted ``params[-2:] == [_KIT_KEY, _CRIT_KEY]``,
+        i.e. that these two seams are the FINAL two parameters. That is a
+        stricter statement than the convention it cites, and it is false for
+        any correct future append: RM-115 appended ``apply_mode_modifiers``
+        and ``exclude_off_axis_items`` to ``rank_for`` exactly as the
+        convention requires, and the assertion broke even though nothing it
+        was protecting against had happened.
+
+        What the convention actually protects is that no EXISTING positional
+        construction can shift. The checks below assert that property
+        directly, and are strictly STRONGER than the original: the original
+        said nothing about defaults at all, and said nothing about the other
+        23 parameters. Concretely:
+
+          * only the three genuine inputs may lack a default, so every seam
+            ever appended is optional and no call site breaks;
+          * both W2 seams are KEYWORD_ONLY, so neither can be reached
+            positionally in the first place;
+          * both sit after ``timeout`` - i.e. after the entire pre-seam
+            surface - which is the "appended at the end" half, expressed so
+            that a later append is allowed to also sit after them;
+          * their relative order is preserved.
+        """
         import inspect
 
-        params = list(inspect.signature(dsc.rank_for).parameters)
-        self.assertEqual(params[-2:], [_KIT_KEY, _CRIT_KEY])
         sig = inspect.signature(dsc.rank_for)
+        params = list(sig.parameters)
+
+        required = [n for n, v in sig.parameters.items()
+                    if v.default is inspect.Parameter.empty]
+        self.assertEqual(
+            required, ["champion", "level", "item_ids"],
+            "a parameter without a default appeared in rank_for - that is "
+            "the actual way a positional construction shifts, and it is what "
+            "the append-last convention exists to prevent",
+        )
+
         for key in (_KIT_KEY, _CRIT_KEY):
             self.assertIs(sig.parameters[key].kind,
                           inspect.Parameter.KEYWORD_ONLY)
+            self.assertIsNot(sig.parameters[key].default,
+                             inspect.Parameter.empty)
+            self.assertGreater(
+                params.index(key), params.index("timeout"),
+                f"{key} moved ahead of the pre-seam parameter surface",
+            )
+
+        self.assertLess(params.index(_KIT_KEY), params.index(_CRIT_KEY))
 
 
 # ===========================================================================
