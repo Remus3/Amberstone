@@ -81,6 +81,46 @@ def row_metrics(player: dict) -> dict:
     return out
 
 
+# Match-V5 participant field names for the SAME metrics. Kept separate from
+# METRICS rather than mapped, because the two sources genuinely disagree on
+# naming and a single table would hide that: the sidecar says CHAMPIONS_KILLED
+# and MINIONS_KILLED, Match-V5 says kills and totalMinionsKilled.
+MV5_METRICS = {
+    "cs_per_min": (("totalMinionsKilled", "neutralMinionsKilled"), True),
+    "jungle_cs_per_min": (("neutralMinionsKilled",), True),
+    "gold_per_min": (("goldEarned",), True),
+    "damage_to_champs_per_min": (("totalDamageDealtToChampions",), True),
+    "damage_taken_per_min": (("totalDamageTaken",), True),
+    "vision_score_per_min": (("visionScore",), True),
+    "wards_placed_per_min": (("wardsPlaced",), True),
+    "wards_killed_per_min": (("wardsKilled",), True),
+    "cc_seconds_per_min": (("timeCCingOthers",), True),
+    "heal_on_teammates_per_min": (("totalHealsOnTeammates",), True),
+    "turret_damage_per_min": (("damageDealtToTurrets",), True),
+    "kills": (("kills",), False),
+    "deaths": (("deaths",), False),
+    "assists": (("assists",), False),
+}
+
+
+def participant_metrics(participant: dict) -> dict:
+    """Match-V5 participant -> the same metric dict as row_metrics().
+
+    Lets a baseline be built from match blobs alone - one API call per match,
+    no timeline and no .rofl - which is what makes an all-ranks sweep
+    affordable.
+    """
+    time_played = _num(participant.get("timePlayed"))
+    if time_played < MIN_TIME_PLAYED_S:
+        return {}
+    minutes = time_played / 60.0
+    out = {}
+    for name, (fields, per_minute) in MV5_METRICS.items():
+        total = sum(_num(participant.get(f)) for f in fields)
+        out[name] = (total / minutes) if per_minute else total
+    return out
+
+
 def build(rows) -> dict:
     """rows = iterable of (role, metric_dict) -> percentile tables per role.
 
