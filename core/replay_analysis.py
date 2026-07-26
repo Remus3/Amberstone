@@ -74,6 +74,7 @@ class FrameSample:
     level: int = 0
     cs: int = 0
     jungle_cs: int = 0
+    item_ids: list = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -97,6 +98,10 @@ class Timeline:
     frames: list = field(default_factory=list)
     events: list = field(default_factory=list)
     frame_interval_ms: int = 60000
+    # Whether frames carry real map coordinates. The :2999 seek producer sets
+    # this False - Riot exposes no champion coordinates there, so x/y are 0 and
+    # any distance computed from them would measure from the map origin.
+    positions_available: bool = True
 
 
 @dataclass(frozen=True)
@@ -142,7 +147,8 @@ def team_of(participant_id: int) -> int:
 def normalize_timeline(raw) -> Timeline:
     """Match-V5 timeline blob -> the neutral shape every derivation consumes."""
     info = (raw or {}).get("info") or {}
-    tl = Timeline(frame_interval_ms=int(info.get("frameInterval") or 60000))
+    tl = Timeline(frame_interval_ms=int(info.get("frameInterval") or 60000),
+                  positions_available=True)
     for frame in info.get("frames") or []:
         for pf in (frame.get("participantFrames") or {}).values():
             pos = pf.get("position") or {}
@@ -180,6 +186,11 @@ def position_at(tl: Timeline, participant_id: int, t_ms: int):
     Returns the sampling error rather than hiding it: at a 60 s interval the
     answer can be up to half an interval away from the moment asked about.
     """
+    if not tl.positions_available:
+        raise ValueError(
+            "this timeline has no position data (produced by a source that "
+            "exposes no map coordinates); a distance derivation cannot run "
+            "on it")
     mine = [f for f in tl.frames if f.participant_id == participant_id]
     if not mine:
         return None
@@ -235,6 +246,10 @@ def drake_pathing_verdict(tl: Timeline, participant_id: int,
             f"{SUPPORTED_LEAD_MAX_S}s; measured accuracy falls to "
             f"{SIGNAL_DECAY.get(60, 0):.3f} at 60s. Re-run the calibration "
             f"before widening it.")
+    if not tl.positions_available:
+        raise ValueError(
+            "this timeline has no position data; the drake pathing verdict is "
+            "distance-based and cannot run on it")
     my_team = team_of(participant_id)
     out = []
     for ev in objective_events(tl, "DRAGON"):
