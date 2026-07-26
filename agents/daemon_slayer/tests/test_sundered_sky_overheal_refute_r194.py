@@ -204,7 +204,7 @@ class OverhealIsInertUnderShippedConventionTests(unittest.TestCase):
                 )
 
     def test_level_one_worst_case_stays_far_below_the_threshold(self) -> None:
-        # Measured 2026-07-26 at ENGINE 1.255.0 / patch 16.14.1: Kled is
+        # Measured 2026-07-26 at ENGINE 1.256.0 / patch 16.14.1: Kled is
         # the roster maximum at 0.220. A generous 0.5 ceiling keeps this
         # from flapping on champion base-stat patches while still failing
         # loudly if the convention or the heal coefficients move a lot.
