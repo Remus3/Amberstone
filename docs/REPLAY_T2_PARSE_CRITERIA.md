@@ -248,6 +248,39 @@ that is neither an outcome restatement nor an exposure artefact. Everything
 else that survives (`deaths_per_min`, `shutdown_rate`, TEAM
 `gold_deficit_profile` at -2.01) restates the outcome.
 
+### 4b-3. JUNGLE plate_share, interrogated (5636 jungler rows)
+
+The obvious kill for this row is that winning junglers take more plates simply
+because they were already ahead. Testing that needs care about WHICH lead you
+condition on: the 14-minute gold state is a MEDIATOR, because plates are one of
+the things that produce it, so conditioning there would be conditioning on the
+outcome of the behaviour. The 5-minute state is pre-treatment - plates only
+become available at 5:00 - so that is the control.
+
+| 5-min team gold state | win | loss | effect | n |
+|---|---|---|---|---|
+| unconditioned | 0.0810 | 0.0463 | **+0.46** | 2818/2818 |
+| BEHIND at 5m | 0.0845 | 0.0411 | **+0.57** | 629/1249 |
+| EVEN at 5m | 0.0797 | 0.0504 | **+0.38** | 940/940 |
+| AHEAD at 5m | 0.0802 | 0.0506 | **+0.40** | 1249/629 |
+
+**The confound is refuted, and the shape of the refutation is the interesting
+part.** A lead proxy would collapse once the early lead is held constant, and
+would be weakest among junglers who were behind. This does the opposite: the
+separation is **strongest in the BEHIND stratum**. The winning-side mean is
+also nearly flat across all three states (0.0845 / 0.0797 / 0.0802) - winning
+junglers take about 8 percent of their team's plates whether they were ahead or
+behind at 5 minutes - while the losing-side mean is what moves. Behaviour
+invariant to the early game state is what a real behavioural difference looks
+like; an outcome echo is not.
+
+**This is the first row in the corpus to survive hygiene, the effect gate, the
+held-out re-test AND a pre-treatment confound control.** It is still not
+causal: jungler skill, champion pick and team composition are uncontrolled, and
+no experiment here can separate "taking plates helps you win" from "junglers
+who win are the sort who take plates". It is a candidate worth a real trial,
+which is more than anything else in this table has earned.
+
 ---
 
 ## 5. Criteria by role
