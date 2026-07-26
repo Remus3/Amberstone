@@ -6070,7 +6070,9 @@ class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
     def test_3077_tiamat_cleave_scales_multi_target(self) -> None:
         ctx_multi = CallContext(base_ad=70.0, bonus_ad=50.0, level=10, targets_in_rotation=3.0)
         dmg = ITEM_EFFECTS["3077"].periodics[0].resolve_damage(ctx_multi)
-        self.assertAlmostEqual(dmg, 2.0 * 0.50 * 120.0, places=2)
+        # R193: 40% total AD, matching the rest of the hydra_cleave family
+        # and Meraki 16.14.1 (was a stale-patch 50%).
+        self.assertAlmostEqual(dmg, 2.0 * 0.40 * 120.0, places=2)
 
     def test_3145_hextech_alternator_revved_proc(self) -> None:
         e = ITEM_EFFECTS["3145"]

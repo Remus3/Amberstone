@@ -4793,13 +4793,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Tiamat",
         periodics=(PeriodicProc(
             name="Cleave",
+            # Melee: 40% total AD physical to other enemies (primary
+            # already lands via the basic attack itself). At
+            # targets_in_rotation=1.0 the cleave hits 0 enemies and adds
+            # zero DPS - preserves the historic single-target shape for
+            # all-n=1 rotations. Melee-pinned like the rest of the
+            # hydra_cleave family (Meraki 16.14.1 reads 40% / 20%).
             bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
-                * 0.50 * (c.base_ad + c.bonus_ad),
+                * 0.40 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
         physical_burst_total_ad_ratio=0.75,
-        note="Tiamat (3077): Cleave 50% total AD to nearby - zero in single-target, scales with targets_in_rotation; Crescent active 75% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
+        note="Tiamat (3077): Cleave 40% total AD to nearby - zero in single-target, scales with targets_in_rotation; Crescent active 75% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.14.1, R193 sibling sweep of the R113 magnitude)",
     ),
     "3145": ItemEffect(
         item_id="3145",
