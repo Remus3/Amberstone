@@ -120,6 +120,10 @@ _TEMPLATE_PREFIX = "Template:Data "
 # The skill slots, in a stable order (i = passive/inherent, then q/w/e/r).
 _SKILL_SLOTS = ("i", "q", "w", "e", "r")
 
+# Wiki slot token -> the AbilitiesSnapshot key letter (RM-95b B2 join key).
+# The wiki calls the passive "i" (inherent); the snapshot calls it "P".
+_SLOT_LETTER = {"i": "P", "q": "Q", "w": "W", "e": "E", "r": "R"}
+
 # Typed CC-class boolean params (true/True/1 -> True; false/False -> False;
 # the tri-state spellshield=Special and any other non-empty/non-bool token is
 # kept as the raw string; an EMPTY param value -> omitted).
@@ -154,6 +158,20 @@ _GEOMETRY_PARAMS = (
     "tether radius",
     "speed",
     "cast time",
+)
+
+# Leveling params captured RAW (RM-95b B2). These are the ONLY multi-line params
+# on a Template:Data page: the {{st|Label|Value|...}} payload wraps across as
+# many lines as the editor liked, so they are read by a brace-depth scan rather
+# than the line-anchored _param_re the other families use. Numbered variants are
+# listed explicitly because _param_re / _block_param both exclude a digit that
+# sits between the name and the ``=``.
+_LEVELING_PARAMS = (
+    "leveling",
+    "leveling2",
+    "leveling3",
+    "leveling4",
+    "leveling5",
 )
 
 
@@ -301,15 +319,22 @@ def _parse_champion_skills(raw: str) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _build_titles(skills_by_api: dict[str, dict[str, Any]],
-                  keep_apinames: Optional[set[str]]) -> list[tuple[str, str, str]]:
-    """Build the (apiname, display, ability_name) tuples for every skill entry.
+def _build_title_index(
+    skills_by_api: dict[str, dict[str, Any]],
+    keep_apinames: Optional[set[str]],
+) -> list[tuple[str, str, str, str]]:
+    """The (apiname, slot, display, ability_name) rows for every skill entry.
+
+    RM-95b B2: the SLOT is carried here because the emitted sidecar record needs
+    an ``apiname`` + ``P/Q/W/E/R`` join key to reach an ``AbilitiesSnapshot``
+    form; keying on ``display + "/" + ability_name`` alone cannot. ``_build_titles``
+    is the 3-tuple wrapper that predates this and stays byte-identical.
 
     Restricts to ``keep_apinames`` when given (the abilities-snapshot champs).
     De-dups identical (display, ability_name) pairs across slots (rare). Order:
     sorted by apiname, then slot order, then array order.
     """
-    triples: list[tuple[str, str, str]] = []
+    rows: list[tuple[str, str, str, str]] = []
     seen: set[tuple[str, str]] = set()
     for api in sorted(skills_by_api):
         if keep_apinames is not None and api not in keep_apinames:
@@ -323,8 +348,19 @@ def _build_titles(skills_by_api: dict[str, dict[str, Any]],
                 if key in seen:
                     continue
                 seen.add(key)
-                triples.append((api, display, name))
-    return triples
+                rows.append((api, _SLOT_LETTER[slot], display, name))
+    return rows
+
+
+def _build_titles(skills_by_api: dict[str, dict[str, Any]],
+                  keep_apinames: Optional[set[str]]) -> list[tuple[str, str, str]]:
+    """Build the (apiname, display, ability_name) tuples for every skill entry.
+
+    Thin wrapper over ``_build_title_index`` that drops the slot letter. Kept at
+    its original 3-tuple shape because existing callers and tests unpack three.
+    """
+    return [(api, display, name) for api, _slot, display, name in
+            _build_title_index(skills_by_api, keep_apinames)]
 
 
 # --------------------------------------------------------------------------- param parsing
@@ -440,6 +476,58 @@ def _first_param(wikitext: str, rx: "re.Pattern[str]") -> Optional[str]:
     return m.group(1).strip()
 
 
+def _block_param(wikitext: str, name: str) -> Optional[str]:
+    """A param value that MAY SPAN LINES, terminated by brace depth (RM-95b B2).
+
+    ``_param_re`` stops at end-of-line on purpose: the params it was written for
+    are one-per-line. ``leveling`` is not - its ``{{st|Label|Value|...}}`` payload
+    wraps freely, so a line-anchored capture truncates it mid-template. Scanning
+    ``{{``/``}}`` and ``[[``/``]]`` depth is the only correct terminator.
+
+    The value is returned VERBATIM (markup preserved) with runs of whitespace
+    collapsed to single spaces so the emitted JSON stays one line. Terminates on
+    a newline or a fresh ``|`` at depth 0, or on the outer template's own ``}}``.
+    An absent OR empty param returns None, matching the ``if v:`` gate the
+    cooldown / geometry families already use.
+    """
+    m = re.search(
+        r"\|\s*" + re.escape(name) + r"[^\S\n]*=[^\S\n]*",
+        wikitext or "",
+        re.IGNORECASE,
+    )
+    if not m:
+        return None
+    i, n = m.end(), len(wikitext)
+    depth = 0
+    out: list[str] = []
+    while i < n:
+        two = wikitext[i:i + 2]
+        if two in ("{{", "[["):
+            depth += 1
+            out.append(two)
+            i += 2
+            continue
+        if two in ("}}", "]]"):
+            if depth <= 0:
+                break  # the ENCLOSING template closed; the value ended
+            depth -= 1
+            out.append(two)
+            i += 2
+            continue
+        ch = wikitext[i]
+        if ch == "\n":
+            if depth <= 0:
+                break
+            out.append(" ")
+            i += 1
+            continue
+        if ch == "|" and depth <= 0:
+            break
+        out.append(ch)
+        i += 1
+    return " ".join("".join(out).split()) or None
+
+
 def _geom_key(param_name: str) -> str:
     """``effect radius`` -> ``effect_radius_raw`` (output key for a geometry param)."""
     return param_name.replace(" ", "_") + "_raw"
@@ -487,6 +575,12 @@ def _parse_ability_page(wikitext: str) -> dict[str, Any]:
         v = _first_param(wikitext, _GEOMETRY_RES[p])
         if v:  # non-empty
             rec[_geom_key(p)] = v
+
+    # --- leveling family (raw, MULTI-LINE; RM-95b B2) ---
+    for p in _LEVELING_PARAMS:
+        v = _block_param(wikitext, p)
+        if v:  # non-empty
+            rec[p + "_raw"] = v
 
     return rec
 
@@ -542,7 +636,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
 
     module_text = _module_text if _module_text is not None else _fetch_raw_module()
     skills_by_api = _parse_champion_skills(module_text)
-    triples = _build_titles(skills_by_api, keep)
+    triples = _build_title_index(skills_by_api, keep)
 
     if limit:
         keep_apis = sorted({t[0] for t in triples})[:limit]
@@ -553,10 +647,12 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
     # may NORMALIZE a title (it did not in probing, but be safe): we match on the
     # ``Template:Data <display>/<ability>`` string we sent.
     title_for: dict[str, tuple[str, str]] = {}
+    ident_for: dict[str, tuple[str, str]] = {}  # title -> (apiname, slot letter)
     titles: list[str] = []
-    for _api, display, ability in triples:
+    for api, slot, display, ability in triples:
         title = _TEMPLATE_PREFIX + display + "/" + ability
         title_for[title] = (display, ability)
+        ident_for[title] = (api, slot)
         titles.append(title)
 
     batch_fn = _batch_fn if _batch_fn is not None else _fetch_batch
@@ -593,7 +689,13 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             if wt is None:
                 missing.append(okey)
                 continue
-            abilities[okey] = _parse_ability_page(wt)
+            parsed = _parse_ability_page(wt)
+            # RM-95b B2 join key: apiname + P/Q/W/E/R. Additive - every
+            # pre-existing consumer keys on the ``display/ability`` map key.
+            api_slot = ident_for.get(title)
+            if api_slot is not None:
+                parsed["apiname"], parsed["slot"] = api_slot
+            abilities[okey] = parsed
             got += 1
         if verbose:
             print(f"[batch {bi + 1}/{len(batches)}] {len(batch)} titles -> {got} parsed")
@@ -605,6 +707,10 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
     with_cc = sum(
         1 for r in abilities.values()
         if any(p in r for p in _CC_FLAG_PARAMS)
+    )
+    with_leveling = sum(
+        1 for r in abilities.values()
+        if any(p + "_raw" in r for p in _LEVELING_PARAMS)
     )
 
     return {
@@ -624,7 +730,12 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             "tri-state spellshield=Special kept as the raw string, empty param "
             "omitted. Geometry (*_raw) kept verbatim (markup-laden). There is NO "
             "CC-duration-seconds param on these pages - CC duration lives only in "
-            "free-text leveling/description, NOT queryable here. Only params "
+            "the free-text leveling/description payload, which is NOT typed here: "
+            "RM-95b B2 captures leveling / leveling2..5 VERBATIM as leveling*_raw "
+            "(multi-line, brace-depth terminated) and promoting it to typed blocks "
+            "is a separate consumer-side step. Each record also carries its "
+            "apiname + slot (P/Q/W/E/R) as the AbilitiesSnapshot join key. "
+            "Only params "
             "present on a page are emitted. An _ability_count==0 means the host "
             "could not reach the wiki (edge block) - do NOT commit."
         ),
@@ -632,6 +743,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
         "_with_static": with_static,
         "_with_recharge": with_recharge,
         "_with_cc_flags": with_cc,
+        "_with_leveling": with_leveling,
         "_missing_pages": sorted(missing),
         "_errors": errs,
         "abilities": abilities,
