@@ -4,6 +4,91 @@
 
 ---
 
+# 2026-07-26l - RM-117 cohort bands CLOSED, RM-91 SHIPPED (ENGINE 1.258.0), repo md cleanup. 9 commits.
+
+**IS a DS session.** ENGINE 1.257.0 -> 1.258.0, Share mirror regenerated, `:8893`
+bounced and live-probed, both build-order keyspaces regenerated.
+
+## The hand-off task closed, but not for the predicted reason
+`build_rank_baselines` finished at **30 cohorts, not 31** - MASTER logged
+"no accounts resolved - SKIPPED". The file landed and the absent-baselines warning
+went away, but all 14 metrics still read "no cohort table". **The real defect was a
+producer/consumer shape mismatch, not a missing file:** `cohort_baseline.load()` did
+`.get("roles")` at the TOP level (the single-cohort shape) while the renderer defaults
+to `rank_baselines.json`, which is `{"tiers": {COHORT: {"roles": ...}}}`. It returned
+`{}` and every band was omitted silently. Fixed with `--cohort`; a tiers-shaped file
+with no cohort named now RAISES and lists all 30 (`ecf59a29`).
+
+**Then reading the now-working output found a worse bug.** `rank_of` kept the LAST
+threshold a value cleared, so on a metric where p10..p90 are all 0.0 a 0.0 cleared
+every band and kept p90 - a TOP laner who healed nobody was told they were 90th
+percentile. Three of fourteen live metrics were wrong. Ties now take the LOWEST
+percentile sharing the threshold plus a `tied` marker (`ec4d1e15`).
+
+## RM-91 shipped, and the filed row was wrong about its own size
+Population is **11 tank-routed champions, not the 5 filed**. Sett and Sion are
+REFUTED - they scale off the TARGET's health. Built by a worktree agent, merged by
+Claude, every claim re-verified independently (all 11 seeded values re-derived,
+DS suite re-run 9900 passed, seam live-probed on `:8893`). **The double-count trap is
+the thing to remember:** most of these kits emit sub-component AND Total blocks for
+one ability (Sejuani W 4.0 + 8.0 with a Total of 12.0 that IS their sum), so a naive
+sum triple-counts. **KNOWN LIMIT, pinned as a test:** T1 is monotone in `delta_hp`,
+so it does NOT fix the Randuin's headline - that needs T2 (the item's own caster-HP
+proc), which is unbuilt.
+
+## RM-118 filed - and "file it as RM-99" would have been a collision
+RM-99 was already allocated 2026-07-19 and shipped as `assume_item_health_stacks`.
+**TWO id-allocation lines were stale** (ROADMAP said next-free RM-99, the tracker said
+RM-105); both corrected to RM-119, and the tracker now says to check ITSELF, never
+ROADMAP prose, before taking an id. RM-118 is mana-as-damage on `/rank-tank`,
+population exactly 1 (Blitzcrank). Kassadin and Ryze are NOT defects.
+
+## Repo cleanup - the inventory agent was wrong twice and counting caught both
+27 orphans archived by `git mv`, each verified individually. That check saved a
+`proposal.md` and a nested `README.md` (basename collision with root README), and
+refuted the "archive the P0..P6 set" recommendation - 8 of 9 still carry 2-7 inbound
+refs. 11 `.claude/commands/*.md` had ZERO version control and are now tracked.
+ROADMAP gained a "WHERE WORK LIVES" table; three rival "single source of truth"
+claims scoped.
+
+## Do NOT redo / traps that cost time this session
+- `agents/agent6_auditor/reports/` LOOKS dead but `_supervisor_ephemeral.py:86` writes
+  failure stubs there. It is live.
+- `docs/_archive` is gitignored yet its ~300 files are TRACKED. Archive with `git mv`
+  ONLY - `cp` + `git add` silently fails and can drop a file from version control.
+  Now recorded in `.gitignore`.
+- DS champion-coverage: count from the nested `champions` key. A flat top-level count
+  returns 2. The doc's old "196 entries / 125 champions / 73%" was that mis-parse plus
+  block_index's own count mistaken for the distinct total. **True: 132 champions / 167
+  entries / 77.2%.**
+- **Share has THREE doc sites.** README got the 1.258.0 note, CHANGELOG.md was missed,
+  and `ds_share_sync --check` reads GREEN anyway because it deliberately does not
+  rewrite changelog history.
+- An ENGINE bump REQUIRES regenerating BOTH build-order keyspaces. Diff should be
+  exactly 2 lines per file (engine_version, generated_at) - that is the byte-identical
+  proof for a DEFAULT-OFF lever.
+- The "tracked tools/ copy always wins" mirror rule was WRONG and had preserved the
+  ADR-012-decommissioned bridge in `done.md` for a month. Corrected in sync-all-md
+  section 9: promote the NEWER side, ASCII-clean it, and normalize glyphs BEFORE
+  diffing or the s244 em-dash purge hides whether content actually diverged.
+
+## OPEN, not started
+- **Share standalone has 13 REAL failures** (7832 passed / 13 failed). None is an
+  engine failure - each opens a CWD-relative path that exists only at the source-repo
+  root. They are host-dependent by exactly the `_HOST_DEPENDENT_TESTS` definition and
+  were never added to it. Documented in `Share/README.md`, NOT fixed. Fix = anchor on
+  `__file__`; excluding them would drop 13 files of real coverage.
+- RM-91 **T2** (item's own caster-HP proc) - the half that actually fixes Randuin's.
+- RM-118 build (mana axis, population 1).
+- `objective_participation` REFUTED verdict is recorded in LEDGER but
+  `docs/REPLAY_T2_PARSE_CRITERIA.md:309` still has the sign backwards ("would inflate
+  these rows" - measured, it DEFLATES them), plus two ELITE_MONSTER_KILL field-list
+  corrections (`assistingParticipantIds` carries ENEMY participants; `monsterSubType`
+  is DRAGON-only).
+- MASTER cohort missing from `rank_baselines.json`.
+
+---
+
 # 2026-07-26k - RM-117 chain verified, full-corpus table read, multikills SHIPPED. 6 commits.
 
 **NOT a DS session.** No ENGINE bump, no Share mirror, nothing under `agents/daemon_slayer/`.
@@ -95,64 +180,3 @@ intervals and sharing are unrecoverable. Do not re-derive `FAR_UNITS` /
 **B13** - Riot's acceptable-use position on bulk replay harvesting at
 108-account scale is UNMEASURED. No retention policy on a 6.78 GB corpus
 growing hourly. The win/loss promotion gate is BUILT but UNRUN at scale.
-
----
-
-# 2026-07-26i - RM-95b residual SHIPPED: population 3 measured down to 1
-
-**Shipped:** ENGINE 1.256.0 -> **1.257.0**, DEFAULT-OFF `apply_wiki_form_damage`. LEDGER 1061.
-Tier-2 - new engine registry + an `abilities.py` seam, so the full dual suite, the Share
-mirror, the DS `:8893` bounce and a four-family build-order regen all rode.
-
-**The headline is that two thirds of the filed item was a refutation, and the row's own
-filter is why.** RM-95b B2's closing sentence left a residual: "Three hand-authored registry
-entries are the proportionate fix", naming Jayce W Hyper Charge, Mel W Rebuttal and Quinn R
-Skystrike. That population came from a filter over the DATA ("names a real damage label AND
-carries no `attribute_kind == "damage"` block"). Re-running it against the live snapshot
-AND the live EVALUATOR - the question a build engine actually answers - collapses it to 1.
-
-**The one that is real: Quinn's ultimate contributed exactly 0.0 to her own ability lane.**
-Quinn R ships as two forms. Form 1 `Skystrike` carries ZERO blocks; form 0 `Behind Enemy
-Lines` carries only a movement-speed modifier - and form 0 is the one the engine SERVES,
-because `get_form_index_for("Quinn")` returns `({}, 'default')`. Measured at L13 against the
-sweep-standard tanky target: R `raw_damage_per_cast` **exactly 0.0** while Q read 205.0 and E
-read 40.0. The movement-speed modifier is correctly credited zero, so this was a silent
-absence rather than a mis-credit - which is exactly why nothing caught it.
-
-**Authoring onto the SERVED form is the load-bearing detail.** Putting the block on form 1 -
-the form actually NAMED Skystrike - produces a block the evaluator never reads; re-routing R
-to form 1 instead swaps in a form whose `cooldown` and `cost` are both `None`. So it is
-PREPENDED onto form 0 (damage-first, since `_select_blocks` reads `damage_blocks[0]` and
-Quinn carries no block-index override), labelled `Skystrike Physical Damage`, with a guard
-pinning `get_form_index_for("Quinn")` at the default so a future form-registry change goes
-RED instead of silently unreading the entry. Armed on Quinn L13 SR `[3031, 3006, 6672]`:
-R **0.0 -> 132.0** raw, total ability DPS **4.1864 -> 4.5815**.
-
-**The two refutations, both pinned as tests so the population-is-3 reading cannot come back.**
-Jayce W Hyper Charge already has its numbers on disk (`[70, 78, 86, 94, 102, 110] % AD`), and
-the served Jayce W form is `Lightning Field` at a real 380.0 raw - Hyper Charge is the
-Mercury-Cannon alternate and an AUTO-ATTACK rider, so crediting it on the ability clock is the
-face-value credit RM-86 fences. Mel W Rebuttal likewise has its numbers on disk
-(`[40, 45, 50, 55, 60] %` OF THE ORIGINAL DAMAGE) but is a fraction of an incoming projectile
-no registry can price - the RM-90 S3 assumed-prior class - so 0.0 is correct. Each refutation
-asserts both the on-disk numbers AND that the registry carries no entry for that champion.
-
-**DEFAULT-OFF, and the asymmetry with its sibling is deliberate.** `apply_wiki_ability_damage`
-ships DEFAULT-ON because it INJECTS a champion with no prior behavior to preserve; this seam
-MUTATES a served form, so OFF is the byte-identical contract. Blast radius proven by
-construction - a full-snapshot OFF-vs-ON sweep over every champion and key returns exactly one
-moved cell, `("Quinn", "R")`. Anti-double-apply: the entry applies only when the target form
-has no damage block at all, so a future Meraki re-extract that ships Skystrike makes the
-registry silently inert with no code change.
-
-**Verification (fresh this session, measured AFTER the last edit):** DS **9861 passed / 1 skipped / 4661 subtests**;
-RC `tests/` **13117 passed / 106 skipped / 460 subtests**; ruff clean across `agents/ tools/ core/ tests/`; the three
-ASCII/mojibake/u2500 hygiene modules 15 passed / 7 skipped; doc-size budget 2 passed;
-`ds_share_sync --check` in sync at 500 files; zero non-ASCII bytes added (CHANGELOG.md 590 and
-CLAUDE.md 29 both unchanged against HEAD); live `:8893` `/health` re-probed at
-**1.257.0 / 16.14.1 / 173 champions / 706 items**. All four build-order table families
-regenerated against the restarted server across BOTH keyspaces - every diff is stamp lines
-only, as a DEFAULT-OFF seam requires.
-
-**Don't-redo:** do NOT author registry entries for Jayce W Hyper Charge or Mel W Rebuttal -
-both are refuted with guards on disk. Do NOT re-file the RM-95b residual as a population of 3.
