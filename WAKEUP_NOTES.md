@@ -4,6 +4,73 @@
 
 ---
 
+# 2026-07-26m - RM-91 T2 SHIPPED, RM-91 CLOSED both halves (ENGINE 1.259.0). 1 commit.
+
+**IS a DS session.** ENGINE 1.258.0 -> 1.259.0, Share mirror regenerated, `:8893`
+bounced and live-probed, both build-order keyspaces regenerated at exactly 2 lines
+per file.
+
+## The hand-off task closed, and the headline is finally fixed
+T1 shipped monotone in `delta_hp` and could not reorder two health items, so
+Randuin's Omen 3143 still ranked #1 for five tanks. **T2 credits the candidate
+ITEM's own caster-HP proc, keyed by ITEM ID, so the factor is INDEPENDENT of the
+health delta** - a zero-proc item earns nothing however durable it is. Measured
+live on `:8893`: Titanic Hydra 3748 walks **#13 -> #8 (strength 2) -> #5 (4) ->
+#4 (6) -> #2 (8) -> #1 (10)**, Randuin's falls to #2, and **every `delta_ehp` is
+byte-identical across the flip** - the sort-only proof. Acceptance pinned at
+strength 12 for all five tanks, and the FLOOR pinned too (strength 4 must NOT
+flip) so the test cannot go vacuous.
+
+## The design decision worth keeping: T2 is DERIVED, not hand-authored
+T1 needed a hand-seeded champion table because ability data needs human
+adjudication. T2 does not - the coefficient already lives in `_effects_data.py`
+as executable code, so the module **differentiates each
+`PeriodicProc.resolve_damage` against its own `CallContext`**. Consequences: a
+coefficient edit propagates automatically; **the irregular mirror prefixes the
+hand-off warned about (2502 -> 222502 ARAM but 2501/447111 Arena) stop
+mattering**; and it CAUGHT that **Heartsteel's cadence is NOT mirrored** (SR 3084
+every 30s, Arena 223084 every 3.5s), which a by-name table would have flattened.
+
+## The filed row was wrong about its own size, again
+**Population is 16 credited of 17 sensitive, not the 21 filed** - the 21 was a
+COMMENT count. 4645 and 6675 name `caster_max_hp` in prose only; 4015 Perplexity
+has no `periodics` at all.
+
+## THE TRAP - T2's equivalent of T1's double-count trap
+**A finite-difference probe reports a confident, linear slope for any proc that
+MENTIONS caster health, including one where caster health is not the damage
+SOURCE.** `4017` Hellfire Hatchet probes as a clean 6 percent converter and is
+not one - its Char reads `caster_max_hp - target_max_hp`, a tankiness COMPARISON
+rewarding out-tanking the target. A linearity guard does NOT catch it. Denied by
+ID, with a test asserting the deny is non-vacuous.
+
+## Two process traps that cost real time
+- **Running the DS suite from `agents/daemon_slayer/` produces 13 FALSE
+  failures** (CWD-relative path opens + 2 ASCII-hygiene tests). All 159 pass from
+  the repo root. **Run the DS suite from the repo root.**
+- **`schtasks /End` then an immediate `/Run` leaves :8893 DEAD.** `/End` kills the
+  server but the port is still bound when the launcher fires, so
+  `start_daemon_slayer.py` logs "port 8893 already bound - skipping (exit 0)" and
+  exits clean while nothing ends up listening - and the task reports
+  `Last Result: 0`. A second `/Run` after the port frees is the fix. Also
+  `schtasks /End /TN ...` cannot be issued from the Bash tool at all (Git Bash
+  rewrites `/End` into `C:/Program Files/Git/End`); use PowerShell.
+- **There is a FOURTH ENGINE doc-anchor site** beyond the three known Share ones:
+  `docs/HEXCORE_offline.html` carries the version AND the test count in a HUD
+  tooltip and a node description, guarded by 3 tests in
+  `tests/test_hexcore_offline_dust.py`. The dual suite caught it; the ritual
+  checklist did not mention it.
+
+## Do NOT redo
+- RM-91 is CLOSED, both halves. Do not re-file the health axis, do not re-scan
+  for caster-HP items - the population is machine-derived and pinned in BOTH
+  directions, so a "missing item" claim must first fail the census guard test.
+- Do not re-pitch merging T1 and T2 onto one flag (different payers, different
+  pools). Do not "fix" 4017 into the registry.
+- T1's known-limit pin was KEPT, not deleted - it still constrains T1's own flag.
+
+---
+
 # 2026-07-26l - RM-117 cohort bands CLOSED, RM-91 SHIPPED (ENGINE 1.258.0), repo md cleanup. 9 commits.
 
 **IS a DS session.** ENGINE 1.257.0 -> 1.258.0, Share mirror regenerated, `:8893`
@@ -151,47 +218,3 @@ is the only thing left**: `python tools/pgr_event_report.py --latest --pid 1`
 should stop printing `rank_baselines.json absent`. Retention policy still blocked
 on a 2nd `rofl_archive_growth.jsonl` sample (1 sample as of 12:32; mtimes CANNOT
 answer it - bulk seed day). Quarantine PURGED this session (8 files, 24.7 MB).
-
----
-
-# 2026-07-26j - REPLAY ANALYSIS SUBSTRATE (RM-117, LEDGER 1062). 28 commits, 112 tests.
-
-**NOT a DS session.** No ENGINE bump, no Share mirror, nothing under `agents/daemon_slayer/`.
-
-## The one thing to carry forward
-The brief assumed frame-level replay analysis needed the Settled `.rofl` Layer-2
-fence opened. **It does not, and the fence stays CLOSED.** Four measurements:
-1. The v2 container has NO encryption - plain zstd, stdlib-openable. The
-   roflxd/Blowfish layout everyone cites is the OLDER v1 container. The fence's
-   crypto rationale is void; its CHURN rationale stands (2 builds inside 16.14).
-2. Positions come from the sanctioned replay API at **~19 map units** via an
-   analytic ray/ground-plane solve. `cameraRotation` is `{x:YAW, y:PITCH}`, the
-   camera looks `h/tan(p)` AHEAD of its own coords, and `cameraPosition` is
-   writable ONLY in `cameraMode:"fps"`.
-3. **Match-V5 60 s positions carry ~2000 units of error** (replicated on 2 games;
-   8 of 33 samples wrong by more than the 2750-unit decision threshold). An
-   earlier claim in this same session that the signal decay was "real behaviour"
-   is RETRACTED in-file - it was sampling noise.
-4. Paused renders are BIT-DETERMINISTIC (0 px), so flipping one entity toggle
-   makes the pixel diff that entity class. **Wave state and ward coverage both
-   unblock** with no ML. Buff camps untried.
-
-## Running unattended - DO NOT ASSUME THESE FINISHED
-- `timeline_ingest` pid 7580: **1092 / 3005** timelines at hand-off.
-- `build_rank_baselines` pid 17616: waiting for idle, then 31 per-division cohorts.
-- **`RC-ReplayChainWatch`** (new, PT15M) re-enables `RC-ReplayRosterPull` and runs
-  the miner once both finish. `RC-ReplayRosterPull` is **Disabled** until it does.
-- **GAP:** nothing restarts `timeline_ingest` if it died. Check the count first;
-  it is resumable and skips existing files.
-
-## Don't-redo
-No fetch-by-match-id route exists (two requested matches rotated out of the
-5-wide window mid-session, permanently gone) - never plan a `.rofl` backfill.
-Summoner spells are LOADOUT ONLY (no Flash/TP/Smite timings anywhere). Buff
-intervals and sharing are unrecoverable. Do not re-derive `FAR_UNITS` /
-`SIGNAL_DECAY` as jungler facts.
-
-## Owed / operator-gated
-**B13** - Riot's acceptable-use position on bulk replay harvesting at
-108-account scale is UNMEASURED. No retention policy on a 6.78 GB corpus
-growing hourly. The win/loss promotion gate is BUILT but UNRUN at scale.

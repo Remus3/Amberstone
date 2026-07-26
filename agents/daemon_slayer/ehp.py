@@ -140,6 +140,12 @@ from .survivability_credit import survivability_item_ids_tank
 from .kit_conversion import conversion_factor, kit_conversion
 from ._resist_damage_coupling import coupled_resist_points, resist_damage_coupling
 from ._health_damage_coupling import coupled_health_points, health_damage_coupling
+from ._item_caster_hp_proc import (
+    _MAX_CONVERTED_FRACTION,
+    _REFERENCE_FIGHT_SECONDS,
+    item_caster_hp_proc,
+    proc_converted_points,
+)
 from ._hsp_amp import sum_wielder_hsp_pct
 from ._item_ally_grant import ally_grant_hp, total_item_ally_grant_hp
 from ._champion_ally_reach import champion_ally_reach
@@ -3188,6 +3194,27 @@ def rank_items_by_ehp(
     # credit on a resist converter and vice versa.
     apply_health_damage_coupling: bool = False,
     health_coupling_strength: float = 0.0,
+    # RM-91 T2 (2026-07-26): the ITEM caster-HP proc credit, appended at END per
+    # the no-mid-signature-insert convention. T1 above credits the CHAMPION's kit
+    # for re-spending the health DELTA a candidate grants, which is monotone in
+    # that delta and so cannot reorder two health items. THIS pair credits the
+    # candidate ITEM's OWN caster-HP-scaling proc (Titanic Hydra Cleave 1 percent
+    # of max health per basic attack, Heartsteel 6 percent, Unending Despair 3
+    # percent of bonus health every 4s) - keyed by ITEM ID, so it is independent
+    # of the health delta and a zero-proc item (Randuin's Omen 3143) earns
+    # nothing however much health it grants. That independence is the whole point:
+    # it is what lets a real core item overtake Randuin's.
+    #
+    # NOT a double-count with T1: different payers out of different pools (the
+    # champion's kit spends the delta, the item spends the existing pool), so the
+    # two may be armed together. Separate flags for the same reason RM-87 and
+    # RM-91 T1 are separate - arming one must never silently arm the other.
+    #
+    # Sort-ONLY, folded into ``_base_key``, never into a row value. Inert unless
+    # the flag is True AND the strength is > 0.0 - either failing is an exact
+    # no-op.
+    apply_item_caster_hp_proc: bool = False,
+    item_caster_hp_proc_strength: float = 0.0,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -3265,6 +3292,13 @@ def rank_items_by_ehp(
     if health_coupling_strength < 0.0:
         raise ValueError(
             f"health_coupling_strength must be >= 0.0, got {health_coupling_strength}"
+        )
+    # RM-91 T2: same boundary, same reason - a negative strength would invert the
+    # sort key rather than disarm the lever.
+    if item_caster_hp_proc_strength < 0.0:
+        raise ValueError(
+            "item_caster_hp_proc_strength must be >= 0.0, got "
+            f"{item_caster_hp_proc_strength}"
         )
     enemy_champions = tuple(str(e) for e in (enemy_champions or ()))
     # Item 236: tenacity-credit defaults ON for cc_blended ranking (an
@@ -3454,6 +3488,10 @@ def rank_items_by_ehp(
         else None
     )
     _health_pool = 0.0
+    # RM-91 T2 shares this resolve with T1 rather than building the champion
+    # twice when both levers are armed. None until some lane actually needs the
+    # base-stat block, so a default call still resolves nothing.
+    _hcpl_resolved = None
     if _health_coupling is not None:
         if _health_coupling.pct_base == "bonus":
             # BONUS basis: subtract the champion's own base block at THIS level,
@@ -3471,6 +3509,36 @@ def rank_items_by_ehp(
             _health_pool = baseline.hp
         if _health_pool <= 0.0:
             _health_coupling = None
+
+    # RM-91 T2 (2026-07-26): resolve the ITEM-proc pools ONCE. Unlike T1 this
+    # lever is CHAMPION-BLIND - an item's proc pays out for whoever wields it -
+    # so there is no registry lookup here, only the two health pools every
+    # candidate's credit normalizes against.
+    #
+    # BOTH pools are needed, not one: a max-basis proc (Titanic 1 percent) reads
+    # the total pool while a bonus-basis proc (Unending Despair 3 percent of BONUS
+    # health) reads the much smaller item-granted pool, and collapsing them would
+    # over-price every bonus-basis item by the ratio between them.
+    _hp_proc_armed = bool(
+        apply_item_caster_hp_proc and item_caster_hp_proc_strength > 0.0
+    )
+    _hp_proc_pool_total = 0.0
+    _hp_proc_pool_bonus = 0.0
+    if _hp_proc_armed:
+        if _hcpl_resolved is None:
+            _hcpl_resolved = build_champion(
+                snapshot, champion_id, level, item_ids=current_ids, mode=mode,
+                augments=augments, apply_mode_modifiers=apply_mode_modifiers,
+            )
+        _hp_proc_pool_total = max(0.0, baseline.hp)
+        _hp_proc_pool_bonus = max(
+            0.0, baseline.hp - float(_hcpl_resolved.base_stats.get("hp", 0.0))
+        )
+        # A non-positive TOTAL pool would divide by zero. The bonus pool may
+        # legitimately be zero (a no-health build) and simply zeroes the
+        # bonus-basis half of the numerator, so it is not a disarm condition.
+        if _hp_proc_pool_total <= 0.0:
+            _hp_proc_armed = False
 
     candidates = _filter_candidates(
         snapshot,
@@ -3745,15 +3813,57 @@ def rank_items_by_ehp(
         )
         return value * (1.0 + credit)
 
+    def _hp_proc_key(value: float, r: EhpRankedItem) -> float:
+        """RM-91 T2 sort-only view of ``value`` - never mutates the row itself.
+
+        The candidate ITEM's own proc re-spends a fraction of the WIELDER's
+        health pool as damage, and ``ehp.py`` prices it nowhere (it reads zero
+        damage). Same normalized-percent shape as ``_coupling_key`` /
+        ``_health_key``, one payer over:
+
+            points = max_hp_pct/100 * pool_total + bonus_hp_pct/100 * pool_bonus
+            credit = strength * min(cap, fires_per_fight * points / pool_total)
+
+        The decisive difference from T1: ``points`` reads the EXISTING pool, not
+        the candidate's health delta, so the factor is INDEPENDENT of how much
+        health the candidate grants. A candidate with no caster-HP proc gets
+        exactly nothing (Randuin's Omen 3143, Frozen Heart 3110), which is what
+        allows a smaller-EHP core item to overtake a bigger-EHP one - the
+        reordering T1 provably could not perform.
+
+        Dimensionless throughout: both halves of ``points / pool_total`` are
+        health points, so no EHP-vs-damage unit mixing enters the sort key.
+
+        Only ever RAISES, and only for a candidate whose own proc converts caster
+        health. A non-positive value is returned unchanged (the ``_conv_key``
+        guard, mirrored: scaling a negative delta up would push a regression
+        further down).
+        """
+        if not _hp_proc_armed or value <= 0.0:
+            return value
+        entry = item_caster_hp_proc(r.item_id)
+        if entry is None:
+            return value
+        points = proc_converted_points(
+            entry, _hp_proc_pool_total, _hp_proc_pool_bonus
+        )
+        if points <= 0.0:
+            return value
+        fraction = min(
+            _MAX_CONVERTED_FRACTION,
+            entry.fires_per_fight * (points / _hp_proc_pool_total),
+        )
+        return value * (1.0 + item_caster_hp_proc_strength * fraction)
+
     def _base_key(r: EhpRankedItem) -> tuple:
         if sort_by == "efficiency":
             return (
-                _health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r),
-                _health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r),
+                _hp_proc_key(_health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r), r),
+                _hp_proc_key(_health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r), r),
             )
         return (
-            _health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r),
-            _health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r),
+            _hp_proc_key(_health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r), r),
+            _hp_proc_key(_health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r), r),
         )
 
     if surv_active:
@@ -3846,6 +3956,25 @@ def rank_items_by_ehp(
         notes.append(
             "apply_health_damage_coupling=ON but inert - champion has no seeded "
             "health->damage conversion (or a zero baseline health pool)"
+        )
+    if _hp_proc_armed:
+        # Count the credited candidates from the POOL, not from the census: what
+        # the operator needs to know is how many of the items actually on offer
+        # earned the credit, which is the number that explains the reorder.
+        _hp_proc_hits = sum(
+            1 for r in ranked if item_caster_hp_proc(r.item_id) is not None
+        )
+        notes.append(
+            f"apply_item_caster_hp_proc=ON - sort-only credit for a candidate's "
+            f"OWN caster-health proc on {_hp_proc_hits} of {len(ranked)} ranked "
+            f"item(s), strength={item_caster_hp_proc_strength:.2f}, cadence "
+            f"amortized over a {_REFERENCE_FIGHT_SECONDS:.0f}s reference fight, "
+            f"normalized against a {_hp_proc_pool_total:.1f}-point total / "
+            f"{_hp_proc_pool_bonus:.1f}-point bonus health pool"
+        )
+    elif apply_item_caster_hp_proc and item_caster_hp_proc_strength > 0.0:
+        notes.append(
+            "apply_item_caster_hp_proc=ON but inert - zero baseline health pool"
         )
 
     return EhpRankResult(
