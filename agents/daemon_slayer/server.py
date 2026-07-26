@@ -768,6 +768,33 @@ def _route_rank_tank(body: dict) -> dict:
             "resist_coupling_strength: must be >= 0.0, got "
             f"{resist_coupling_strength!r}",
         )
+    # RM-91 T1 (2026-07-26): the champion HEALTH -> DAMAGE coupling lever, the
+    # health-axis twin of the RM-87 pair above (Shen E spends 11 percent of his
+    # bonus health as physical damage; Sejuani W spends 12 percent of her maximum
+    # health). Sort-only + DEFAULT-OFF: omitting both keys (or sending a zero
+    # strength) is byte-identical.
+    #
+    # /rank-tank ONLY, and the other routes are excluded for a REASON, not an
+    # oversight - each one would double-count:
+    #   * /rank-bruiser (ds.hybrid) already prices this for the Fighter-primary
+    #     caster-health champions (Gnar, Volibear) via the shipped DEFAULT-OFF
+    #     apply_ad_axis_ability_damage.
+    #   * /rank-mage (ds.ability) evaluates Vladimir's caster-health damage_blocks
+    #     directly.
+    #   * /rank (the CARRY scorer), /rank-assassin and /rank-enchanter have no
+    #     caster-health converter in their cohort at all.
+    # The registry is 11 TANK-primary champions precisely so this route is the
+    # only correct home for it.
+    apply_health_damage_coupling = _opt_bool(
+        body, "apply_health_damage_coupling", False
+    )
+    health_coupling_strength = _opt_float(body, "health_coupling_strength", 0.0)
+    if health_coupling_strength < 0.0:
+        raise _ApiError(
+            400,
+            "health_coupling_strength: must be >= 0.0, got "
+            f"{health_coupling_strength!r}",
+        )
     # 2026-07-25: the three ASSUMED-INCOMING-SHARE seams. UNLIKE every other seam
     # on this route these ship DEFAULT-ON in ``compute_ehp`` (a champion-blind 0.5
     # incoming crit / basic-attack share), so the route needs an OFF switch, not
@@ -827,6 +854,8 @@ def _route_rank_tank(body: dict) -> dict:
             cost_ceiling=cost_ceiling,
             apply_resist_damage_coupling=apply_resist_damage_coupling,
             resist_coupling_strength=resist_coupling_strength,
+            apply_health_damage_coupling=apply_health_damage_coupling,
+            health_coupling_strength=health_coupling_strength,
             **assumed_share_kwargs,
         )
     except KeyError as e:
