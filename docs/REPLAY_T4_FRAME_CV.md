@@ -115,7 +115,60 @@ For reference the `characters` toggle changed 59313 px across 81 blobs at the
 same instant - a much broader class than wards. It was not characterised
 further.
 
-### Experiment 5 - capture geometry
+### Experiment 4 - buff camps: INCONCLUSIVE, and it found a method defect
+
+Measured 2026-07-26 on a live operator replay, camera parked over the
+blue-side red buff at h=3500, pitch 56, fov 60, `interfaceAll`/`fogOfWar`/
+`particles`/`floatingText` off.
+
+**THE DEFECT, AND IT INVALIDATES ANY DIFF TAKEN WITHOUT A WARM-UP. The first
+`/replay/render` POST after a pause or a camera move causes a one-time change
+of about 35,000 px that NEVER REVERTS.** Measured directly by toggling an
+entity class off and back on and re-diffing against the original base:
+
+```
+control grab-vs-grab                                      0
+characters   off-vs-base=  54071   RESTORED-vs-base=  34954
+champions    off-vs-base=  37213   RESTORED-vs-base=  34954
+minions      off-vs-base=  37250   RESTORED-vs-base=  34954
+```
+
+The identical 34954 under all three toggles is the tell: it is not an entity
+class, it is a constant added to every measurement. **A single dummy toggle
+round-trip before grabbing the base fixes it completely** - RESTORED-vs-base
+becomes exactly 0 for all three, and the real numbers appear:
+
+```
+post-warmup control                                       0
+characters   off-vs-base=  27410   RESTORED-vs-base=      0
+champions    off-vs-base=   2258   RESTORED-vs-base=      0
+minions      off-vs-base=   2296   RESTORED-vs-base=      0
+```
+
+**Every future T4 diff MUST warm up and MUST assert RESTORED-vs-base == 0.**
+The grab-vs-grab control that experiments 1 to 3 used does NOT catch this: it
+reads 0 while the base is already stale. The 11694 px wave-state figure and
+the 13-blob ward figure were taken without a warm-up and should be re-measured
+before either is built on.
+
+**What the corrected numbers say.** `characters` removes 27410 px where
+`champions` removes 2258 and `minions` removes 2296, so about **83 percent of
+the `characters` class at a camp-aimed pose is neither a champion nor a lane
+minion**. Neutral entities render and are separable in principle.
+
+**Why it is still INCONCLUSIVE.** The residual
+`characters AND NOT champions AND NOT minions` is not a clean camp signal: it
+contains STATIC objects. Sampled at t=100, 400 and 800 s from an unmoved
+camera, the largest residual blob is **6213 px at map (5121,4735) at all three
+times, to the pixel**. A living monster's idle animation cannot produce an
+identical pixel count at three different game instants; jungle plants and
+scenery can. Residual totals were 22874 / 15448 / 13933 px, so the class does
+vary with time, but the variation is not attributable.
+
+**The next experiment, not run here:** diff the SAME pose at TWO TIMES with
+identical toggles. Static scenery cancels; anything that moved or died does
+not. That is the discriminator this run lacked, and it needs no new
+machinery.
 
 Full-screen `PIL.ImageGrab` returns **2560 x 1440**, matching the viewport the
 back-projection intrinsics were solved for (`LEGION_2560x1440_FOV60`). No
