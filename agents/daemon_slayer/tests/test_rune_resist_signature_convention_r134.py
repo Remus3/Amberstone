@@ -144,6 +144,18 @@ _A1250_TAIL = (
 # order, never mid-signature.
 _RM115P4_TAIL = ("kit_conversion_strength",)
 
+# R193 slice B (crit-weighted vamp heal pool) appends the crit-weight seam to
+# ``compute_ehp`` ONLY. It weights the vamp heal POOL - a magnitude computed
+# inside the per-build EHP math - so it belongs on the function that computes
+# that pool and nowhere else; ``rank_items_by_ehp`` orders builds and holds no
+# heal pool of its own, so exposing it there would be a signature-tidy
+# pretending to be a capability (the same reasoning the 1.250.0 and RM-115 p4
+# splits above already record, applied in the opposite direction). That is why
+# ``compute_ehp`` gains a tail entry the ranker does not. The invariant the
+# guard protects is unchanged: seam kwargs land at the END, in order, never
+# mid-signature.
+_R193_TAIL = ("assume_crit_weighted_vamp",)
+
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
 _SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
@@ -156,15 +168,17 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
         # R136, R137, the 1.227.0 pair then the 1.229.0 pair appended after the
         # R132 pair, then R145 and RM-98 appended after THAT on the hybrid pair
         # only (both are offense-side seams) and RM-87 appended after it on the
-        # EHP pair only (a tank-objective seam). The invariant the guard actually
-        # protects is unchanged: these seam kwargs live at the END, in order,
-        # never mid-signature.
+        # EHP pair only (a tank-objective seam), then R193 after RM-87 on
+        # compute_ehp alone (it weights a per-build heal pool, which only that
+        # function holds). The invariant the guard actually protects is
+        # unchanged: these seam kwargs live at the END, in order, never
+        # mid-signature.
         shared = (
             _R132_TAIL + _R136_TAIL + _R137_TAIL + _R1227_TAIL + _R1229_TAIL
         )
         hybrid_shared = shared + _R145_TAIL + _RM98_TAIL
         cases = (
-            ((compute_ehp,), shared + _RM87_TAIL),
+            ((compute_ehp,), shared + _RM87_TAIL + _R193_TAIL),
             ((rank_items_by_ehp,), shared + _RM87_TAIL + _A1250_TAIL),
             ((compute_hybrid,), hybrid_shared),
             ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL),
