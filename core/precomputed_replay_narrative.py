@@ -78,6 +78,62 @@ _MULTI_KILL_NAMES = {
     5: "Penta Kill",
 }
 
+# Elite monsters and buildings, named and tiered. Counted over the live
+# timeline_events table: HORDE 3336 / RIFTHERALD 664 / BARON_NASHOR 577 /
+# DRAGON 2479 over six subtypes + ELDER_DRAGON 43 + UNKNOWN 51 / ATAKHAN 143,
+# and OUTER 6684 / NEXUS_TURRET 4810 / INHIBITOR 4803 / BASE 3661 / INNER 2462.
+#
+# Impact was previously "BARON or DRAGON -> 60, any other elite -> 45", which
+# priced a 6-minute infernal the same as Baron, an Elder the same as either,
+# and voidgrubs above a champion kill. (label, impact) keyed by the subtype
+# where one exists, else the monster type.
+_MONSTER_TIERS: dict[str, tuple[str, float]] = {
+    "ELDER_DRAGON": ("Elder Dragon", 70.0),
+    "BARON_NASHOR": ("Baron Nashor", 60.0),
+    "ATAKHAN": ("Atakhan", 55.0),
+    "FIRE_DRAGON": ("Infernal Drake", 45.0),
+    "EARTH_DRAGON": ("Mountain Drake", 45.0),
+    "WATER_DRAGON": ("Ocean Drake", 45.0),
+    "AIR_DRAGON": ("Cloud Drake", 45.0),
+    "CHEMTECH_DRAGON": ("Chemtech Drake", 45.0),
+    "HEXTECH_DRAGON": ("Hextech Drake", 45.0),
+    "DRAGON": ("Drake", 45.0),
+    "RIFTHERALD": ("Rift Herald", 40.0),
+    "HORDE": ("Voidgrub", 22.0),
+}
+_MONSTER_FALLBACK = ("an objective", 40.0)
+
+# Buildings tier by lane depth. The inhibitor rows carry
+# building_type=INHIBITOR_BUILDING with a NULL tower_type and the old impact
+# branch read tower_type only, so all 4803 inhibitors scored as ordinary
+# towers despite the branch intending otherwise.
+_BUILDING_TIERS: dict[str, tuple[str, float]] = {
+    "INHIBITOR_BUILDING": ("Inhibitor", 50.0),
+    "NEXUS_TURRET": ("Nexus Turret", 48.0),
+    "BASE_TURRET": ("Base Turret", 44.0),
+    "INNER_TURRET": ("Inner Turret", 40.0),
+    "OUTER_TURRET": ("Outer Turret", 35.0),
+}
+_BUILDING_FALLBACK = ("a structure", 35.0)
+
+
+def _monster_tier(event: dict[str, Any]) -> tuple[str, float]:
+    """(label, impact) for an ELITE_MONSTER_KILL, subtype first."""
+    subtype = (event.get("monster_subtype") or "").upper()
+    if subtype in _MONSTER_TIERS:
+        return _MONSTER_TIERS[subtype]
+    monster = (event.get("monster_type") or "").upper()
+    return _MONSTER_TIERS.get(monster) or _MONSTER_FALLBACK
+
+
+def _building_tier(event: dict[str, Any]) -> tuple[str, float]:
+    """(label, impact) for a BUILDING_KILL, tower tier first."""
+    tower = (event.get("tower_type") or "").upper()
+    if tower in _BUILDING_TIERS:
+        return _BUILDING_TIERS[tower]
+    building = (event.get("building_type") or "").upper()
+    return _BUILDING_TIERS.get(building) or _BUILDING_FALLBACK
+
 
 def _as_float(value: Any) -> float:
     """Best-effort float coercion. Returns 0.0 on any failure."""
@@ -303,11 +359,9 @@ def _moment_impact(event: dict[str, Any], operator_pid: Any) -> float:
     etype = event.get("event_type") or ""
     impact = 0.0
     if etype == "ELITE_MONSTER_KILL":
-        monster = (event.get("monster_type") or "").upper()
-        impact = 60.0 if "BARON" in monster or "DRAGON" in monster else 45.0
+        impact = _monster_tier(event)[1]
     elif etype == "BUILDING_KILL":
-        ttype = (event.get("tower_type") or "").upper()
-        impact = 50.0 if "NEXUS" in ttype or "INHIBITOR" in ttype else 35.0
+        impact = _building_tier(event)[1]
     elif etype == "TURRET_PLATE_DESTROYED":
         impact = 20.0
     elif etype == "CHAMPION_KILL":
@@ -365,12 +419,19 @@ def _describe_moment(event: dict[str, Any], operator_pid: Any,
     clock = _fmt_clock(event.get("timestamp_ms"))
     etype = event.get("event_type") or "EVENT"
     if etype == "ELITE_MONSTER_KILL":
-        monster = (event.get("monster_type") or "objective").title()
-        who = "your team" if event.get("killer_id") == operator_pid else "a team"
-        return f"{clock} - {monster} taken by {who}"
+        label = _monster_tier(event)[0]
+        if event.get("killer_id") == operator_pid:
+            return f"{clock} - you took {label}"
+        taker = names.get(event.get("killer_id"))
+        return (f"{clock} - {label} taken by {taker}" if taker
+                else f"{clock} - {label} taken")
     if etype == "BUILDING_KILL":
-        building = (event.get("building_type") or "structure").replace("_", " ").title()
-        return f"{clock} - {building} destroyed"
+        label = _building_tier(event)[0]
+        if event.get("killer_id") == operator_pid:
+            return f"{clock} - you destroyed {label}"
+        taker = names.get(event.get("killer_id"))
+        return (f"{clock} - {label} destroyed by {taker}" if taker
+                else f"{clock} - {label} destroyed")
     if etype == "TURRET_PLATE_DESTROYED":
         return f"{clock} - turret plate destroyed"
     if etype == "CHAMPION_SPECIAL_KILL":
