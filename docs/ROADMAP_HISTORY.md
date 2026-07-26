@@ -1,5 +1,83 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-07-26 - R194 DS vamp/sustain follow-ons (RM-116 CLOSED, ENGINE 1.256.0)
+
+### The row that did not survive contact with arithmetic
+
+RM-116 (b) asked for Sundered Sky 6610's overheal-to-bonus-health, "Meraki-cited and
+UNMODELLED", modelled on Bloodthirster's `ItemShield` shape. The Meraki clause is real -
+`items_meraki.json` item 6610 "Lightshield Strike" ends `Excess healing beyond
+{{as|'''maximum''' health}} is converted to {{as|'''bonus''' health}} for 8 seconds.` -
+which is exactly why the row was persuasive. The model is still wrong, on two independent
+grounds:
+
+1. **It double counts.** `compute_ehp` puts `heal_total` and `shield_any_amped` in the SAME
+   EHP numerator across all three of `physical_ehp` / `magical_ehp` / `true_ehp`, and
+   `_collect_heals` credits `ItemHeal.resolve_magnitude` in FULL - the only adjustments are
+   takedown gating and a non-positive skip, with no clamp against missing HP. The engine
+   therefore ALREADY assumes zero healing is wasted, which is precisely the guarantee the
+   overheal conversion provides. Measured with the naive shield injected: Aatrox L11
+   physical EHP 3991.0 -> 4348.2, all 357.2 (+8.9%) of it double count.
+2. **The honest form is identically zero.** The correct term is
+   `max(0, heal_magnitude - missing_hp)`. Under the shipped
+   `_MISSING_HP_SHARE_FOR_HEALS = 0.5` (`ehp.py:357`, consumed at `ehp.py:1645`), the
+   per-trigger heal is `base_ad + 0.06 * missing_hp`. Swept over all 173 champions at L1 and
+   L18, the worst heal-to-missing ratio is **0.2205 (Kled L1)**; the clamp would require
+   `base_ad >= 0.47 * max_hp`, which no champion approaches. A DEFAULT-OFF seam that
+   resolves to 0.0 even when armed is not a model.
+
+**Why Bloodthirster's shape does not transfer:** Ichorshield accrues from LIFESTEAL, which
+ticks on minions and camps out of combat at full HP - a genuine pre-fight accrual lane
+disjoint from the in-fight heal pool, and the stated basis for its full-cap steady-state
+assumption. Sundered Sky fires only off the next basic attack against a champion, so its
+heal and its overheal are one trigger, mutually exclusive by construction. Pinned by
+`test_sundered_sky_overheal_refute_r194.py` (12 tests), including a census asserting no item
+carries both an `ItemHeal` and an `ItemShield`.
+
+### The sweep that narrowed instead of widening
+
+RM-116 (c) is real and shipped, but the obvious implementation was wrong. Meraki states the
+Ravenous Cleave passive and the Ravenous Crescent active both benefit from life steal at
+100% effectiveness, and the naive read is that the `hydra_cleave` family does. It does not:
+**Tiamat 3077, Titanic Hydra 3748, Profane Hydra 6698 and Stridebreaker 6631 all ship the
+identical Cleave shape with NO lifesteal sentence**, so a name-based or family-key fold
+would have silently over-credited four items. The eligible set resolves by ID SUFFIX to
+exactly `{"3074", "223074"}`. A naive substring grep for "lifesteal" false-positives on all
+five items via the `"lifesteal": {"flat": 0.0}` stat key - the clause lives in the `effects`
+prose field, and that is where the check has to look.
+
+No coefficient was invented: the Cleave magnitude is read back out of the item's own
+`PeriodicProc.bonus_damage` against a `CallContext`, the Crescent out of its own
+`physical_burst_total_ad_ratio`, routed through `collect_effects` so `hydra_cleave`
+first-seen-wins is honoured. DEFAULT-OFF is guaranteed by the FLAG rather than the target
+count, because Cleave contributes nothing at `targets_in_rotation=1.0` but Crescent does.
+
+### The seam that was stranded one lane short
+
+RM-116 (a): `assume_max_stacks_omnivamp` had been reachable on `/ehp` since R193 slice C but
+could never influence a RANKING, which is the surface every generated build table and live
+coach tick actually reads. It now reaches `rank_items_by_ehp` behind `score_by="sustain"`.
+The seam is NOT the RM-115 inert shape - a uniform multiplier on the EHP numerator is
+invariant under a ratio sort key, but `_blend_with_heal` folds the vamp pool in as an
+ADDEND and only candidates carrying omnivamp earn one. Measured on Amumu L13 SR behind
+Sunfire Aegis 3068 + Plated Steelcaps 3047 over the full 138-item pool: Riftmaker 4633 moves
+blended rank 43 -> sustain rank 35 (`delta_ehp` 734.1252302631583 vs `delta_sustain_ehp`
+849.3574186147398) while Rylai's 3116 sits 35 -> 36 at the identity 839.0002631578955 on
+both. OFF is bit-identical: 2827 rows over 22 champion/mode cases, max absolute deviation
+exactly 0.0, zero order mismatches.
+
+`/rank-tank` is the ONLY EHP-family ranker route, so no sibling is left stranded:
+`/rank-bruiser` ranks on `rank_items_by_hybrid`, and `hybrid.py` carries no
+`effective_ehp_with_sustain` surface at all.
+
+### Process note - two tails, one round, one name
+
+Slices A and C landed in the same round on DIFFERENT entry points and both defined
+`_R194_TAIL` in the R134 signature-convention guard. Merged verbatim, the second definition
+shadows the first and BOTH case rows silently resolve to one tuple. Resolved by renaming to
+`_R194A_TAIL` (`rank_items_by_ehp`) and `_R194C_TAIL` (`compute_ehp`). Any future
+concurrent-slice round appending to that guard must expect the same collision.
+
 ## 2026-07-25 (cleanup pass 2) - shipped narratives + blocked evidence (relocated from ROADMAP)
 
 > Relocated verbatim to keep `ROADMAP.md` under the 80KB `tests/test_doc_size_budget.py` ceiling (it stood at 79443 bytes). Nothing was
