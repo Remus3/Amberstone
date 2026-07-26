@@ -119,6 +119,64 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-26d - the directive asked for a sweep that was already closed (R193, gemini loop cycle 3)
+
+ENGINE **1.254.0 -> 1.255.0**, patch 16.14.1. HEAD `9fde56bb`. Three worktree
+slices on disjoint file sets, Claude sole merger, read-only verifier gate before
+every merge. Suites fresh AFTER the last edit: DS **9783 passed / 1 skipped /
+4653 subtests**, RC `tests/` **13115 passed / 106 skipped / 460 subtests**.
+
+**The first deliverable was refusing the stated scope.** R193 asked for base
+lifesteal magnitudes + Arena/ARAM mirror parity on the six headline vamp items -
+R181 verbatim, which measured ZERO DRIFT and left a 15-test guard on disk, with
+Bloodthirster's Ichorshield, Shieldbow's Lifeline and Riftmaker's omnivamp all
+already modelled. Re-running it would have produced a confident CLEAN and no
+value. Three read-only recon agents were aimed at what R181 did NOT cover - the
+vamp math model, the wider sustain family's magnitudes, and route reachability -
+and every one came back with a real defect.
+
+What landed:
+
+- **hydra_cleave had desynced and the suite was defending the bug.** Ravenous
+  Hydra 3074 / 223074 modelled Cleave at 0.35 total AD; Meraki 16.14.1 reads
+  40%; the two siblings with byte-identical Meraki text were already at 0.40.
+  Two tests asserted Ravenous scores BELOW its own siblings - a stale
+  coefficient frozen as a feature. Sibling sweep then caught Tiamat 3077 at
+  0.50, likewise pinned. Fixing only 3074 would have repeated the
+  narrow-first-fix pattern of items 208/213.
+- **Neither fix moves a shipped build table, and that was measured** - all four
+  families regenerated full-roster across BOTH keyspaces, every diff is the two
+  stamp lines. Cleave only fires at `targets_in_rotation > 1`; the tables are
+  single-target.
+- **DEFAULT-OFF `assume_crit_weighted_vamp`** - the vamp heal pool priced
+  lifesteal off an auto-attack that never crits. OFF byte-identical (verifier
+  re-measured against main, full result-dict md5 match), ARMED x1.7875 on Jinx
+  L16, exact no-op at zero crit. It moves `blended_ehp`, so the flip is
+  operator-gated.
+- **`assume_max_stacks_omnivamp` was stranded** - zero occurrences in
+  `server.py`. Now on `/ehp` + client keyword. **Both reachability guards were
+  green the whole time and structurally cannot see this class**: they enumerate
+  keys `server.py` already parses, so a never-parsed kwarg never enters the set.
+  A green seam guard is evidence about parsed keys, not about capability.
+
+**The verifier gate paid for itself again.** It BLOCKED slice B on a real
+regression (`test_rune_resist_signature_convention_r134.py`) that neither of
+that slice's own test scopes collected, so the slice's green claim was true and
+insufficient. It also found corrupted git indexes in two worktrees (phantom
+staged deletions, files intact) and proved every committed blob matched disk.
+
+Three RC-side failures at the end were mine and are fixed, not waived: the
+Share README release-history is a SEPARATE site from the auto-restamped header,
+and the new route test imports the host-only client by design so it needed
+registering in `ds_share_sync._HOST_DEPENDENT_TESTS`.
+
+Next session: RM-116 (a) ranker-lane forwarding of the omnivamp flag, (b)
+Sundered Sky 6610 overheal-to-bonus-health, (c) lifesteal credit on Ravenous
+Cleave/Crescent. Do NOT re-commission a vamp base-magnitude sweep - closed
+twice now.
+
+---
+
 
 # 2026-07-26c - the Share package's green-suite promise was false (R192, gemini loop cycle 2)
 
