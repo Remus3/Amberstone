@@ -4,6 +4,96 @@
 
 ---
 
+# 2026-07-25i - RM-115 priority 4: the bruiser gate, and Option B paid for itself (ENGINE 1.252.0)
+
+ENGINE **1.251.0 -> 1.252.0**, patch 16.14.1. Operator-directed single slice
+("go with option B and build priority 4"), main thread. Tier-2 in ritual order:
+bump by quoted literal (132 files / 153 occurrences) -> :8893 restarted ->
+`/health` re-read **1.252.0 BEFORE the regen** -> both build-order families
+across both keyspaces -> Share sync (492 files, `--check` green) -> all four
+ENGINE doc sites.
+
+Suites, both measured fresh AFTER the last edit:
+**DS 9702 passed / 1 skipped / 4650 subtests.**
+**RC `tests/` 13110 passed / 106 skipped / 460 subtests.**
+
+## All four filed RM-115 priorities are now shipped
+
+`hybrid.py` had ZERO occurrences of `kit_conversion_strength`, stranding Olaf /
+Pantheon / RekSai / Riven at GATE 1. All three gates shipped in one slice,
+because gate 1 alone is exactly the RM-115 failure mode - a seam measurable only
+from a test file. `rank_items_by_hybrid` is the only target: it is the sole
+entry point in the module that SORTS, and the RM-86 transform is a sort-key
+transform, so `compute_hybrid` would have carried a kwarg that looks like a
+capability and does nothing.
+
+| champion | BotRK | Kraken | Guinsoo's | head |
+|---|---|---|---|---|
+| Olaf | **#1 -> #20** | #3 -> #58 | #8 -> #60 | Trinity **#2 -> #1** |
+| Riven | #1 -> #4 | #5 -> #44 | #18 -> #50 | Trinity #2 -> #1 |
+| RekSai | #1 -> #9 | #3 -> #51 | #11 -> #57 | Trinity #2 -> #1 |
+| Pantheon | #1 -> #61 | #13 -> #84 | #34 -> #94 | Trinity #2 -> #1 |
+| **Darius (control)** | #1 -> #1 | #5 -> #5 | #17 -> #17 | **byte-identical** |
+
+Measured live through `rank_bruiser_for` with the BEFORE payload captured before
+any edit and asserted unchanged. The dispatcher moves too (Olaf bruiser top-1
+3153 -> 3078), which is what makes it reachable from a coach tick. All nine
+build tables byte-identical.
+
+## Option B was not the cautious choice - it was the correct one
+
+The filed concern was that the bare damage axis would "over-fire" for Naafiri
+and Orianna. It is worse: at strength 1.0 the bare axis multiplies Warmog's,
+Randuin's, Thornmail, Dead Man's Plate and Sterak's Gage by **EXACTLY 0.0** for
+both - total suppression of every tank item on a scorer whose beta term IS
+effective HP, on a route that accepts any champion. Silent, no symptom test.
+
+The blended sets are the INTERSECTION of the damage set and the `ehp` set, and
+are machine-checked against that derivation rather than hand-listed:
+`hybrid_ad = {FlatMagicDamageMod}`, `hybrid_ap = {FlatPhysicalDamageMod,
+PercentLifeStealMod}`. `test_hybrid_objective_protects_ehp_stats` asserts BOTH
+sides - that the bare axis annihilates and the blended one does not - so the
+cheaper option cannot be quietly substituted later.
+
+## The pinned-tail hazard fired, and was repaired not suppressed
+
+Appending the kwarg at END broke `test_rune_resist_signature_convention_r134.py`
+GUARD 1 - the self-defeating pinned-tail shape fenced last session. Its own
+docstring names the correct response ("the intended forcing function"), so the
+two HYBRID entry points were cased separately, exactly as the two EHP ones were
+at 1.250.0, and the assertion stayed at full strength.
+
+**A new assertion added in the same edit caught an error in my own first
+draft.** I asserted the gate was absent from every non-hybrid entry point;
+`rank_items_by_ehp` has carried it since RM-86. The real invariant is cleaner
+and is what shipped: **both RANKERS carry it, neither `compute_*` does**, with
+the ABSENCE half load-bearing.
+
+## Corrections
+
+- Pantheon and RekSai read #59 and #8 in-process but **#61 and #9 live** - the
+  route carries `enemy_ad_share` / `enemy_ap_share` that the in-process call did
+  not. The live figures are the ones published.
+
+## Still open off this session
+
+- **The other 98 per-route stranded pairs** are now the whole of RM-115.
+  `/ehp`, `/hybrid`, `/rank-tank` and `/rank-bruiser` share ONE 18-19 seam
+  EHP-family block, so a single client wiring pass would likely clear most of
+  them. **Do NOT do all of them in one session** - each needs its own
+  before/after with a named control. `/beam` and `/v2/fight-report` have no
+  client function at all.
+- **`kit_conversion_strength` is not seam-PREFIXED**, so it appears in NEITHER
+  reachability ledger. That is why this slice carries its own acceptance test,
+  and it is worth remembering before trusting either guard's green for a
+  non-prefixed seam.
+- **RM-96 Zilean**, **`parse_leveling_bases`** (35 labels dropped across 31 of
+  90 blocks), **B1**'s unregenerated `--full-roster` artifact, and the
+  `rank_assassin_for(assume_magic_burst=...)` dead parameter all carry forward
+  unchanged.
+
+---
+
 # 2026-07-25h - RM-115 first drain pass: three seams wired, and the count was wrong (ENGINE 1.251.0)
 
 ENGINE **1.250.0 -> 1.251.0**, patch 16.14.1. Four read-only probe agents in
@@ -235,79 +325,3 @@ A-17/RM-96 Zilean is REAL and specced but not built.
   of the initial no-start is NOT established. If it recurs, check for a listener
   already holding `:8893` before assuming a code fault. Note `taskkill /F` must
   be run from PowerShell - Git Bash mangles `/F` into a path.
-
----
-
-# 2026-07-25f - three rows closed, two built, and one defect nobody filed (ENGINE 1.249.0)
-
-ENGINE **1.248.0 -> 1.249.0**, patch 16.14.1. Five read-only probe agents in
-parallel, then four worktree build agents on disjoint file sets, one Claude as
-sole merger. Tier-2 in ritual order: bump by quoted literal (254 files,
-`.claude` + `docs/_archive` excluded) -> :8893 restarted -> `/health` re-read
-**1.249.0 BEFORE the regen** -> all three build-order families across BOTH
-keyspaces -> Share sync (488 files, `--check` green) -> the three ENGINE doc
-sites plus the engine `CHANGELOG.md`.
-
-Suites: **DS 9636 passed / 1 skipped / 4617 subtests.** RC `tests/` run fresh
-after every doc edit.
-
-## What shipped
-
-| slice | default | headline |
-|---|---|---|
-| alias/mirror build dedup (UNFILED) | **ON** | 14 cells were shipping FIVE-item builds; 3619 of 3633 cells byte-identical |
-| A-07 / RM-82 TERM 2 passive aura | OFF | Mordekaiser ability DPS 11.677 -> 72.155; 14 of 140 rows move; 143 controls unmoved |
-| client seam plumb | n/a | both 1.248.0 seams were **0-of-27** on the client path; now Ashe and Quinn move |
-| A-26 / RM-95b B1 roster de-cap | OFF | "blocked upstream" was FALSE - it is an RC-controlled roster cap |
-
-## The headline: probing found a bug worth more than any row on the menu
-
-Five of five menu rows were probed before any code. **Three closed without
-code** (A-21 S3, A-12 Ranger's Focus, the RM-37/42/38 successor). The largest
-win came from a tail observation in a probe report, not from the menu: the build
-planner was buying the same item twice under two catalog ids, so Viego and Samira
-shipped six-item builds containing five items - in every damage profile, in both
-keyspaces, live on disk. Sixth consecutive session where the menu was less
-valuable than the probe.
-
-## Three things to carry forward
-
-- **A naive fix can be worse than the bug.** Blind structural id-folding would
-  have collapsed `223069` Void Immolation and `443069` Hamstringer - different
-  items - onto one identity, suppressing **84 legal Arena purchases**. The
-  shipped fold validates identity against the catalog (name OR tags) and keeps
-  unresolvable ids distinct. Sweep by ID, never by name, and always check the
-  false-positive side of a normalizer.
-- **`reference_ds_kit_conversion_not_route_exposed` has a second layer.** Route
-  exposure is not reachability: `apply_crit_conversion` and
-  `kit_conversion_strength` were parsed by the server AND accepted by the engine
-  and still moved **0 of 27** champions, because `core/daemon_slayer_client.py`
-  could not forward them. Check the CLIENT, not just the route, on every seam.
-- **Four sessions measured an artifact and called it a block.** The A-07 "GAP
-  champion and its control are indistinguishable" premise is REFUTED: a
-  roster-wide sweep returns 78 distinct top-8 heads, 20 among the 84 AP-scaling
-  champions, and the REFUTE control Anivia is already alone in its class. The
-  invariance was top-3 stat dominance over a hand-picked 4-champion sample. When
-  a measurement repeats identically across sessions, widen the sample before
-  concluding the scorer is blind.
-
-## Fences added
-
-- **A-21 / RM-90 is CLOSED at the ally-grant lane.** The ally lane's ceiling is
-  993.6 raw HP (amortized 496.8) against a 1700-4800 per-slot self-EHP deficit -
-  an order-of-magnitude mismatch, not a coefficient gap. Do not file a fifth
-  ally-grant registry row. Successor is the `ds.ehp` champion-sensitivity lift.
-- **The carry fight-length map stays hand-curated.** 125 scalar quantities
-  scanned, ZERO separate the six members; the one corpus source with sufficient
-  n does not reproduce it either. An allow-map entry is an operator meta
-  assertion validated by live play, not a threshold.
-- **A-12's AS half is CLOSED** and the row mis-names the ability (Ranger's Focus
-  is Ashe's Q; her W is Volley). Any future attempt should target the flurry
-  AD-amp / on-hit-once asymmetry, not the AS steroid.
-
-## Still open off this session
-
-- **B2** - promote wiki `leveling` to typed damage blocks. B1 shipped, but Locke's
-  `baseline_burst` still reads 0.0 and no currently-read feed supplies his damage.
-- **A-07 TERM 1** (slow credit / Rylai's) stays blocked: 88 of 161 registered
-  champions carry a SLOW entry, so it lifts GAP and control together.

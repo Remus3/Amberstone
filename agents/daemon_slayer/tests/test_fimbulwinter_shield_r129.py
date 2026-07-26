@@ -251,7 +251,7 @@ class FimbulwinterEngineVersionPin(unittest.TestCase):
     """The Fimbulwinter shield credit bumps the engine revision."""
 
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.251.0")
+        self.assertEqual(ENGINE_VERSION, "1.252.0")
 
 
 if __name__ == "__main__":

@@ -46,6 +46,7 @@ from .data_loader import DataSnapshot
 from .dps import compute_dps
 from .effects import ITEM_EFFECTS
 from .ehp import compute_ehp
+from .kit_conversion import conversion_factor, kit_conversion
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -1037,6 +1038,9 @@ def rank_items_by_hybrid(
     # RM-98 (2026-07-24): ranker mirror of the compute_hybrid seam. Appended at
     # END per the same no-mid-signature-insert convention.
     apply_cast_rate_propensity_prior: bool = False,
+    # RM-115 p4 (RM-86 L1): the kit-conversion sort gate reaches the BRUISER
+    # scorer. Appended at END per the same no-mid-signature-insert convention.
+    kit_conversion_strength: float = 0.0,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -1460,10 +1464,46 @@ def rank_items_by_hybrid(
             ms_utility_mult=cand_ms_mult,
         ))
 
+    # RM-115 p4 / RM-86 L1 kit-conversion gate (DEFAULT-OFF). The registry is
+    # consulted ONLY when the lever is strictly positive, so 0.0 performs no
+    # lookup and no arithmetic and is provably byte-identical.
+    _conv = (
+        kit_conversion(str(champion_id), champ_rec)
+        if kit_conversion_strength > 0.0 else None
+    )
+    # The BLENDED objective, not the bare damage axis - ds.hybrid scores
+    # alpha*dps + beta*ehp, so health and resists are ON-axis here. See
+    # kit_conversion._OFF_AXIS_KEYS["hybrid_ad"] / ["hybrid_ap"].
+    _conv_objective = f"hybrid_{axis}" if _conv is not None else ""
+    _conv_memo: dict[str, float] = {}
+
+    def _conv_key(value: float, item_id: str) -> float:
+        """Sort-only view of ``value`` - never mutates the row itself.
+
+        Only ever LOWERS: a non-positive value is returned unchanged, because
+        scaling a negative number toward zero would RAISE its rank.
+        """
+        if _conv is None or value <= 0.0:
+            return value
+        factor = _conv_memo.get(item_id)
+        if factor is None:
+            factor = conversion_factor(
+                _conv, item_id, snapshot.items.get(item_id) or {},
+                kit_conversion_strength, _conv_objective,
+            )
+            _conv_memo[item_id] = factor
+        return value * factor
+
     def _base_key(r: HybridRankedItem) -> tuple:
         if sort_by == "efficiency":
-            return (r.hybrid_per_1k_gold, r.hybrid_delta_pct)
-        return (r.hybrid_delta_pct, r.hybrid_per_1k_gold)
+            return (
+                _conv_key(r.hybrid_per_1k_gold, r.item_id),
+                _conv_key(r.hybrid_delta_pct, r.item_id),
+            )
+        return (
+            _conv_key(r.hybrid_delta_pct, r.item_id),
+            _conv_key(r.hybrid_per_1k_gold, r.item_id),
+        )
 
     if surv_active:
         # RF1: float surfaced survivability items above the generic template,
