@@ -12,6 +12,9 @@ What it mirrors into ``Share/src`` (deterministic - same input -> same output):
   * ``data/daemon_slayer/<patch>/**`` (less ``_EXCLUDED_SNAPSHOT_FILES``),
     ``current.txt``, and the patch-independent engine tables in
     ``_ROOT_DATA_FILES`` -> ``Share/src/data/daemon_slayer/``
+  * the host assets in ``_HOST_ASSET_FILES``, at their SAME repo-relative path
+    (currently ``web/data/champion_aliases.json`` -> ``Share/src/web/data/``),
+    because the mirrored tooling resolves them off the package root
 
 Two transforms are applied to copied ``.py`` text so the package presents the
 engine on its own technical merits:
@@ -102,7 +105,20 @@ _INGEST_GENERATED_NOTE = "static one-shot export"
 # DS engine tooling copied into the package (extractors + serving + the
 # patch-bump prefilter/inspect scanners). This script is intentionally NOT in
 # the list (it is repo-internal maintenance tooling).
+#
+# ``ds_feed_index.py`` is NOT optional tooling, it is a TEST DEPENDENCY:
+# ``agents/daemon_slayer/tests/test_artifact_patch_marker_guard.py`` loads it by
+# absolute path off the package root to read ``KNOWN_STAMP_LAG``, deliberately
+# importing the known-stamp-lag exception list rather than restating it. It was
+# absent from this tuple, so two of that module's tests raised
+# ``FileNotFoundError`` inside the shipped package while ``Share/README.md``
+# advertised the suite as exiting green offline. It is stdlib-only and does no
+# file I/O at import time, so the ``.py`` alone is sufficient - its sidecar
+# ``tools/ds_feed_index.json`` is a generated index guarded by
+# ``_INDEX_PATH.exists()`` and is deliberately not mirrored (``--check`` in the
+# package prints "run --write" instead of raising).
 _DS_TOOLS: tuple[str, ...] = (
+    "ds_feed_index.py",
     "daemon_slayer_extract.py",
     "daemon_slayer_abilities_extract.py",
     "daemon_slayer_cdragon_spell_extract.py",
@@ -123,10 +139,16 @@ _DS_TOOLS: tuple[str, ...] = (
 # These nine modules cannot pass inside an engine-only package by construction:
 # eight import the host application's ``core.*`` wrappers (build_order,
 # build_planner.coherence, daemon_slayer_client, daemon_slayer_resolver), and
-# ``test_abilities_content_freshness.py`` reaches the host-only web asset
-# ``web/data/champion_aliases.json`` through its extractor import. ``core/`` and
-# ``web/`` are host-repo-only by design and are deliberately not shipped, so all
-# nine raise at IMPORT time.
+# ``test_abilities_content_freshness.py`` reaches host-only ability-source data
+# through its extractor import. ``core/`` is host-repo-only by design and is
+# deliberately not shipped, so all nine raise at IMPORT time.
+#
+# HISTORICAL NOTE: the ninth was originally attributed to the missing web asset
+# ``web/data/champion_aliases.json``. That asset now ships (see
+# ``_HOST_ASSET_FILES``), so the extractor import itself is no longer the
+# blocker; the module stays excluded on its remaining host-data reach, and
+# re-admitting it is a separate, measured decision rather than a side effect of
+# this fix.
 #
 # That is what makes them a shipped defect rather than an accepted gap: a pytest
 # import failure is a COLLECTION error, and a collection error aborts the whole
@@ -253,6 +275,32 @@ _ROOT_DATA_FILES: tuple[str, ...] = (
     "ult_cast_rates.json",
 )
 
+# HOST ASSETS the mirrored TOOLING reads by package-root-relative path. Declared
+# as repo-relative relpaths and mirrored at the IDENTICAL relpath, because that
+# is how the reading code resolves them - rewriting the layout would break the
+# very resolution this exists to satisfy.
+#
+# Same failure shape as ``_ROOT_DATA_FILES`` above, one layer out.
+# ``tools/daemon_slayer_extract.py`` IS mirrored, and it executes
+# ``_LOLMATH_TO_DDRAGON_ALIAS = _load_champion_aliases()`` at MODULE level
+# (``daemon_slayer_extract.py:892``), which reads ``_CANONICAL_ALIAS_PATH`` =
+# ``<root>/web/data/champion_aliases.json``. No ``web/`` tree shipped, so the
+# read raised at import: the extractor was not merely untested in the package
+# but UNIMPORTABLE, while ``README.md`` and ``MANIFEST.md`` both advertise
+# ``src/tools/`` as the offline data extractors. Two tests in
+# ``test_artifact_patch_marker_guard.py`` import that module to exercise
+# ``stamp_patch`` and failed for exactly this reason.
+#
+# The file is 81 bytes of lolmath-name -> DDragon-id aliases, RC-authored, with
+# no third-party licensing question. Making ``_load_champion_aliases`` fail-soft
+# was the alternative and was rejected: it would silently change extractor
+# behaviour to hide a packaging gap. ``tests/test_ds_share_mirror_self_contained``
+# re-derives this class from the mirrored source, so a new host-asset reach
+# fails there until it is declared here.
+_HOST_ASSET_FILES: tuple[str, ...] = (
+    "web/data/champion_aliases.json",
+)
+
 # Per-patch snapshot files EXCLUDED from the public package.
 #
 # ``mayhem_augment_stats.json`` is a Overlay App E dataset - its own ``endpoint``
@@ -266,8 +314,11 @@ _ROOT_DATA_FILES: tuple[str, ...] = (
 #      external reviewer redistributes it under terms nobody granted.
 #   2. THE ENGINE NEVER READS IT. Verified by grep: zero references anywhere
 #      under ``agents/daemon_slayer/``, tests included. The only consumers are
-#      host-side (``core/augment_external_source.py``, ``tools/ds_feed_index.py``),
-#      and neither ships. Excluding it costs the package no capability at all.
+#      ``core/augment_external_source.py`` (host-only, never mirrored) and
+#      ``tools/ds_feed_index.py``, which DOES now ship - but only NAMES the file
+#      in its ``KNOWN_STAMP_LAG`` provenance table and reaches it through a
+#      ``glob`` of the snapshot dir, so a mirror without the file simply has one
+#      fewer feed row. Excluding it costs the package no capability at all.
 #   3. IT FALSIFIED THE PACKAGE'S OWN DOCS. ``Share/README.md`` states that DS
 #      does not scrape win-rate aggregators and that the shipped mode sidecars
 #      carry pick-rate-class data, which Riot developer policy permits where win
@@ -298,8 +349,8 @@ _CLEAN_INIT = '''\
 
 This package computes auto-attack DPS, ability DPS, burst, effective HP, healing
 throughput, and crowd-control pressure for a champion at a given level and mode
-against a target's defensive profile, and ranks item builds for six archetypes
-(carry / tank / bruiser / mage / assassin / enchanter). It reads a versioned
+against a target's defensive profile, and ranks item builds for seven archetypes
+(carry / tank / bruiser / mage / assassin / enchanter / on-hit). It reads a versioned
 reference-data snapshot (``data/daemon_slayer/<patch>/``) derived from Riot Data
 Dragon, CommunityDragon, and Meraki Analytics, and serves results over a local
 HTTP endpoint (see ``server.py``).
@@ -416,6 +467,13 @@ def _build_expected() -> dict[str, bytes]:
         src = tools / name
         if src.exists():
             out[f"tools/{name}"] = _scrub(src.read_text(encoding="utf-8")).encode("utf-8")
+
+    # Host assets the mirrored tooling resolves off the package root. Copied
+    # verbatim, at the SAME relpath (see _HOST_ASSET_FILES).
+    for rel in _HOST_ASSET_FILES:
+        src = _REPO / rel
+        if src.exists():
+            out[rel] = src.read_bytes()
 
     # Reference-data snapshot (verbatim - it is data).
     data = _REPO / "data" / "daemon_slayer"
@@ -619,6 +677,7 @@ Terms of use and the upstream data credits are in `LICENSE.md`.
     agents/daemon_slayer/   the engine package (source + tests)
     tools/                  DS extractors, the server launcher, patch-bump scanners
     data/daemon_slayer/     the versioned reference-data snapshot ({_PATCH})
+    web/data/               the champion-name alias map the extractors read
 ```
 
 ## Running the engine from this package
@@ -873,10 +932,17 @@ _SYNC_TRIGGER_DIR_PREFIXES: tuple[str, ...] = (
 
 def _should_sync(staged: list[str]) -> bool:
     """True if any staged path is a mirrored DS source (engine package, data
-    snapshot, a curated DS tool, or the Share package itself)."""
-    tool_paths = {f"tools/{name}" for name in _DS_TOOLS}
+    snapshot, a curated DS tool, a mirrored host asset, or the Share package
+    itself).
+
+    The host assets are matched here as exact paths for the same reason the
+    tools are: they live under repo trees (``web/``) that are overwhelmingly
+    NOT mirrored, so a directory prefix would re-arm the hook for every
+    dashboard commit and undo the D1 churn fix.
+    """
+    exact_paths = {f"tools/{name}" for name in _DS_TOOLS} | set(_HOST_ASSET_FILES)
     for s in staged:
-        if s in tool_paths:
+        if s in exact_paths:
             return True
         if any(s.startswith(p) for p in _SYNC_TRIGGER_DIR_PREFIXES):
             return True
