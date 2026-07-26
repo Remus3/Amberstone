@@ -25,10 +25,19 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HEXCORE = REPO_ROOT / "docs" / "HEXCORE_offline.html"
 
-# The 45 net-new non-test .py files added since d584e02e. The 13
-# Share/src/agents/daemon_slayer/*.py hits are byte mirrors of the
-# agents/daemon_slayer/*.py hits and are deliberately excluded.
+# The 54 net-new non-test .py files added since d584e02e. Everything under
+# Share/ is excluded (byte mirrors of the repo-root modules) and so is
+# everything under tests/, which is what "non-test" means here.
 EXPECTED_NEW_BASENAMES = (
+    "_ability_base_overrides.py",
+    "_ability_wiki_damage_registry.py",
+    "_crit_conversion_overrides.py",
+    "_kit_penetration.py",
+    "_resist_damage_coupling.py",
+    "cast_propensity.py",
+    "ds_calibration_agreement.py",
+    "next_buy_fallback.py",
+    "ds_calibration_report.py",
     "_burst_off_axis.py",
     "_champion_ally_reach.py",
     "_item_ally_grant.py",
