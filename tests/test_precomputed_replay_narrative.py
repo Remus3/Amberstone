@@ -358,12 +358,64 @@ def test_ace_text_and_rank():
     assert "ace" in moments[0]["text"].lower()
 
 
-def test_ace_and_multikill_at_same_instant_both_survive_dedup():
-    # A pentakill that aces emits BOTH rows at the same timestamp with the same
-    # killer. The dedup key must separate them or the ace silently eats the
-    # penta (or vice versa).
+def _ace_row(timestamp_ms, killer_id=2):
+    return {
+        "event_type": "CHAMPION_SPECIAL_KILL",
+        "timestamp_ms": timestamp_ms,
+        "killer_id": killer_id,
+        "victim_id": None,
+        "raw_json": '{"killType": "KILL_ACE"}',
+    }
+
+
+def test_ace_suppressed_when_it_coincides_with_a_multikill():
+    # A multikill that also aces emits both rows at the SAME timestamp with the
+    # same killer, and rendering both describes one feat twice. Measured over
+    # the 63505 special-kill rows in rewind_history.db, this is sharply
+    # bimodal: 5202 aces sit at EXACTLY 0 ms from a same-killer multikill and
+    # every other ace is 6 s or more away. So coincidence is exact-timestamp,
+    # not a window - the multikill is the more specific description and wins.
     blob = _special_kill_blob(
         '{"killType": "KILL_MULTI", "multiKillLength": 5}',
+        killer_id=2, timestamp_ms=900000)
+    blob["events"].append(_ace_row(900000, killer_id=2))
+    texts = [m["text"] for m in _only_special(build_narrative(blob))]
+    assert len(texts) == 1
+    assert "Penta Kill" in texts[0]
+
+
+def test_standalone_ace_survives():
+    blob = _special_kill_blob('{"killType": "KILL_ACE"}', killer_id=2)
+    assert len(_only_special(build_narrative(blob))) == 1
+
+
+def test_ace_at_a_different_instant_is_not_suppressed():
+    # The far mode of the measured distribution: a later ace by the same player
+    # is a separate feat.
+    blob = _special_kill_blob(
+        '{"killType": "KILL_MULTI", "multiKillLength": 2}',
+        killer_id=2, timestamp_ms=900000)
+    blob["events"].append(_ace_row(1000000, killer_id=2))
+    assert len(_only_special(build_narrative(blob))) == 2
+
+
+def test_ace_by_a_different_killer_is_not_suppressed():
+    # One player multikills while a team-mate lands the ace: two feats.
+    blob = _special_kill_blob(
+        '{"killType": "KILL_MULTI", "multiKillLength": 2}',
+        killer_id=2, timestamp_ms=900000)
+    blob["events"].append(_ace_row(900000, killer_id=1))
+    assert len(_only_special(build_narrative(blob))) == 2
+
+
+def test_first_blood_and_multikill_at_same_instant_both_survive():
+    # A first-blood double kill puts KILL_FIRST_BLOOD and KILL_MULTI on the
+    # same timestamp with the same killer - 2 real occurrences in the corpus.
+    # These are two genuinely different facts, so unlike the ace case both are
+    # kept, and the dedup key must carry the type or one silently eats the
+    # other.
+    blob = _special_kill_blob(
+        '{"killType": "KILL_MULTI", "multiKillLength": 2}',
         killer_id=2, timestamp_ms=900000)
     blob["events"].append(
         {
@@ -371,13 +423,13 @@ def test_ace_and_multikill_at_same_instant_both_survive_dedup():
             "timestamp_ms": 900000,
             "killer_id": 2,
             "victim_id": None,
-            "raw_json": '{"killType": "KILL_ACE"}',
+            "raw_json": '{"killType": "KILL_FIRST_BLOOD"}',
         }
     )
     texts = [m["text"] for m in _only_special(build_narrative(blob))]
     assert len(texts) == 2
-    assert any("Penta Kill" in t for t in texts)
-    assert any("ace" in t.lower() for t in texts)
+    assert any("Double Kill" in t for t in texts)
+    assert any("First Blood" in t for t in texts)
 
 
 def test_multikill_streak_collapses_to_its_terminal_rung():
