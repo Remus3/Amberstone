@@ -38,6 +38,17 @@ outcome - so n is an upper bound on information, not a sample size. No p-value
 is reported here, deliberately, because computing one under that dependence
 would be a fabricated precision.
 
+WHAT IS DONE INSTEAD OF A P-VALUE: a held-out split BY MATCH (`--holdout`,
+default 0.30). Every SEPARATES row is re-tested on matches that were never
+mined, and the holdout column reports CONFIRMED, NOT REPRODUCED, or REFUTED -
+REFUTED meaning the held-out half separated the other way. Splitting by match
+rather than by row is the whole point: a row-level split would put the same
+game's winners in train and its losers in test.
+
+HYGIENE IS ON BY DEFAULT (`--no-hygiene` to disable). A remake or an early
+surrender contributes ten rows of noise to every criterion, and both are
+visible from the match blob via core.corpus_hygiene.
+
 Reads `<corpus>/timelines/*.json` written by tools/timeline_ingest.py. No API
 calls, no client - this runs entirely off disk and can be re-run freely.
 """
@@ -45,6 +56,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import hashlib
 import json
 import statistics
 import sys
@@ -52,6 +64,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from core import corpus_hygiene as ch                          # noqa: E402
 from core import event_patterns as ep                          # noqa: E402
 from core import replay_roster as rr                           # noqa: E402
 
@@ -191,6 +204,37 @@ def verdict(win_values, loss_values, min_sample, min_sep, min_effect) -> dict:
             "sd_loss": sd_l, "n_win": n_w, "n_loss": n_l}
 
 
+def holdout_side(match_id: str, frac: float) -> str:
+    """Assign a match to `train` or `test`, deterministically in its id.
+
+    A function of the match id ALONE, deliberately. Anything that depends on
+    corpus order or size reshuffles every match on the next ingest, and a
+    held-out result that moves between runs proves nothing. This corpus grows
+    hourly, so that property is not hypothetical.
+    """
+    if frac <= 0:
+        return "train"
+    digest = hashlib.sha1(match_id.encode("utf-8")).hexdigest()[:8]
+    return "test" if int(digest, 16) / 0xFFFFFFFF < frac else "train"
+
+
+def holdout_verdict(train: dict, test: dict) -> str:
+    """Does the held-out half say the same thing as the mined half?
+
+    Direction is checked, not just magnitude. A row that separates one way on
+    the mined matches and the other way on the held-out ones is REFUTED by the
+    holdout, not confirmed by it - which a gap-only check would miss.
+    """
+    if test["verdict"] == "INSUFFICIENT":
+        return "UNTESTED"
+    if train["verdict"] != "SEPARATES":
+        return ""
+    if test["verdict"] != "SEPARATES":
+        return "NOT REPRODUCED"
+    same_way = (train["delta"] >= 0) == (test["delta"] >= 0)
+    return "CONFIRMED" if same_way else "REFUTED"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Mine event criteria into rates.")
     ap.add_argument("--root", help="corpus root")
@@ -203,6 +247,11 @@ def main(argv=None) -> int:
     ap.add_argument("--min-effect", type=float, default=0.20,
                     help="standardised effect size also required (default "
                          "0.20, a conventionally SMALL effect)")
+    ap.add_argument("--holdout", type=float, default=0.30,
+                    help="fraction of MATCHES held out to re-test every "
+                         "SEPARATES row (default 0.30; 0 disables)")
+    ap.add_argument("--no-hygiene", dest="hygiene", action="store_false",
+                    help="mine remakes and early surrenders too")
     ap.add_argument("--out", default="data/event_pattern_rates.json")
     ap.add_argument("--limit", type=int)
     args = ap.parse_args(argv)
@@ -215,9 +264,12 @@ def main(argv=None) -> int:
         return 2
     print(f"reading {len(files)} matches")
 
-    buckets = collections.defaultdict(lambda: {"win": [], "loss": []})
+    buckets = collections.defaultdict(
+        lambda: {"train": {"win": [], "loss": []},
+                 "test": {"win": [], "loss": []}})
     absences = collections.defaultdict(lambda: {"win": 0, "loss": 0})
     bad = 0
+    dropped = collections.Counter()
     wanted = {r.upper() for r in args.role} if args.role else None
     for fp in files:
         try:
@@ -226,29 +278,45 @@ def main(argv=None) -> int:
             if not match or not timeline:
                 bad += 1
                 continue
+            # A remake or an early surrender contributes ten rows of noise to
+            # every criterion, and both are cheap to see from the blob.
+            if args.hygiene:
+                v = ch.judge(match)
+                if not v.include:
+                    dropped[v.reason.split(" (")[0]] += 1
+                    continue
+            split = holdout_side(fp.stem, args.holdout)
             rows = player_rows(match, timeline) + team_rows(match, timeline)
             for row in rows:
                 if wanted and row["role"] not in wanted | {"TEAM"}:
                     continue
                 side = "win" if row["win"] else "loss"
                 for crit, val in row["values"].items():
-                    buckets[(row["role"], crit)][side].append(val)
+                    buckets[(row["role"], crit)][split][side].append(val)
                 for crit in row["absent"]:
                     absences[(row["role"], crit)][side] += 1
         except (OSError, json.JSONDecodeError):
             bad += 1
     if bad:
         print(f"skipped {bad} unreadable or partial files")
+    if dropped:
+        print(f"dropped {sum(dropped.values())} matches on hygiene: "
+              + ", ".join(f"{n} {r}" for r, n in dropped.most_common()))
 
     out = {"matches": len(files), "min_sample": args.min_sample,
            "min_separation": args.min_sep, "min_effect": args.min_effect,
-           "rows": []}
-    for (role, crit), sides in sorted(buckets.items()):
-        stats = verdict(sides["win"], sides["loss"], args.min_sample,
-                        args.min_sep, args.min_effect)
+           "holdout": args.holdout, "hygiene": args.hygiene,
+           "dropped_on_hygiene": sum(dropped.values()), "rows": []}
+    for (role, crit), splits in sorted(buckets.items()):
+        stats = verdict(splits["train"]["win"], splits["train"]["loss"],
+                        args.min_sample, args.min_sep, args.min_effect)
+        held = verdict(splits["test"]["win"], splits["test"]["loss"],
+                       args.min_sample, args.min_sep, args.min_effect)
         gap = absences.get((role, crit), {"win": 0, "loss": 0})
         out["rows"].append({
             "role": role, "criterion": crit, "verdict": stats["verdict"],
+            "holdout": holdout_verdict(stats, held),
+            "holdout_effect": round(held["effect"], 3),
             "win_mean": round(stats["win_mean"], 4),
             "loss_mean": round(stats["loss_mean"], 4),
             "delta": round(stats["delta"], 4),
@@ -263,12 +331,14 @@ def main(argv=None) -> int:
     tmp.replace(dest)
 
     print(f"{'role':8} {'criterion':26} {'win':>10} {'loss':>10} "
-          f"{'delta':>10} {'effect':>7}  n(w/l)  absent(w/l)  verdict")
+          f"{'delta':>10} {'effect':>7}  n(w/l)  absent(w/l)  verdict "
+          f"| holdout")
     for r in sorted(out["rows"], key=lambda x: (x["role"], x["criterion"])):
         print(f"{r['role']:<8} {r['criterion']:<26} {r['win_mean']:>10.3f} "
               f"{r['loss_mean']:>10.3f} {r['delta']:>10.3f} "
               f"{r['effect']:>7.2f}  {r['n_win']}/{r['n_loss']}  "
-              f"{r['absent_win']}/{r['absent_loss']}  {r['verdict']}")
+              f"{r['absent_win']}/{r['absent_loss']}  {r['verdict']}"
+              f"{(' | ' + r['holdout']) if r['holdout'] else ''}")
     print(f"\nwrote {dest}")
     print("NOTE: SEPARATES means the two sides differ, NOT that the behaviour "
           "is causal. It is a candidate for a rule, never a rule by itself.")
