@@ -795,6 +795,32 @@ def _route_rank_tank(body: dict) -> dict:
             "health_coupling_strength: must be >= 0.0, got "
             f"{health_coupling_strength!r}",
         )
+    # RM-91 T2 (2026-07-26): the ITEM caster-HP proc credit, the half that fixes
+    # the row's headline. T1 above is monotone in the candidate's health delta, so
+    # it cannot reorder two health items; THIS pair credits the candidate ITEM's
+    # own caster-HP-scaling proc (Titanic Hydra Cleave 1 percent of max health per
+    # basic attack, Heartsteel 6 percent, Unending Despair 3 percent of bonus
+    # health every 4s) and is keyed by ITEM ID, so Randuin's Omen 3143 - which has
+    # no such proc - earns nothing and stops holding rank #1. Sort-only +
+    # DEFAULT-OFF: omitting both keys (or a zero strength) is byte-identical.
+    #
+    # /rank-tank ONLY, on the SAME reasoning as T1 - ehp.py is the only scorer
+    # with zero references to the damage model, so it is the only route where an
+    # item's proc damage is priced nowhere. Every other archetype route already
+    # reads ITEM_EFFECTS periodics through its own DPS path, so wiring this there
+    # would double-count the proc outright.
+    apply_item_caster_hp_proc = _opt_bool(
+        body, "apply_item_caster_hp_proc", False
+    )
+    item_caster_hp_proc_strength = _opt_float(
+        body, "item_caster_hp_proc_strength", 0.0
+    )
+    if item_caster_hp_proc_strength < 0.0:
+        raise _ApiError(
+            400,
+            "item_caster_hp_proc_strength: must be >= 0.0, got "
+            f"{item_caster_hp_proc_strength!r}",
+        )
     # 2026-07-25: the three ASSUMED-INCOMING-SHARE seams. UNLIKE every other seam
     # on this route these ship DEFAULT-ON in ``compute_ehp`` (a champion-blind 0.5
     # incoming crit / basic-attack share), so the route needs an OFF switch, not
@@ -856,6 +882,8 @@ def _route_rank_tank(body: dict) -> dict:
             resist_coupling_strength=resist_coupling_strength,
             apply_health_damage_coupling=apply_health_damage_coupling,
             health_coupling_strength=health_coupling_strength,
+            apply_item_caster_hp_proc=apply_item_caster_hp_proc,
+            item_caster_hp_proc_strength=item_caster_hp_proc_strength,
             **assumed_share_kwargs,
         )
     except KeyError as e:
