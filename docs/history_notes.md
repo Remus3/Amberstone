@@ -119,6 +119,67 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-26i - RM-95b residual SHIPPED: population 3 measured down to 1
+
+**Shipped:** ENGINE 1.256.0 -> **1.257.0**, DEFAULT-OFF `apply_wiki_form_damage`. LEDGER 1061.
+Tier-2 - new engine registry + an `abilities.py` seam, so the full dual suite, the Share
+mirror, the DS `:8893` bounce and a four-family build-order regen all rode.
+
+**The headline is that two thirds of the filed item was a refutation, and the row's own
+filter is why.** RM-95b B2's closing sentence left a residual: "Three hand-authored registry
+entries are the proportionate fix", naming Jayce W Hyper Charge, Mel W Rebuttal and Quinn R
+Skystrike. That population came from a filter over the DATA ("names a real damage label AND
+carries no `attribute_kind == "damage"` block"). Re-running it against the live snapshot
+AND the live EVALUATOR - the question a build engine actually answers - collapses it to 1.
+
+**The one that is real: Quinn's ultimate contributed exactly 0.0 to her own ability lane.**
+Quinn R ships as two forms. Form 1 `Skystrike` carries ZERO blocks; form 0 `Behind Enemy
+Lines` carries only a movement-speed modifier - and form 0 is the one the engine SERVES,
+because `get_form_index_for("Quinn")` returns `({}, 'default')`. Measured at L13 against the
+sweep-standard tanky target: R `raw_damage_per_cast` **exactly 0.0** while Q read 205.0 and E
+read 40.0. The movement-speed modifier is correctly credited zero, so this was a silent
+absence rather than a mis-credit - which is exactly why nothing caught it.
+
+**Authoring onto the SERVED form is the load-bearing detail.** Putting the block on form 1 -
+the form actually NAMED Skystrike - produces a block the evaluator never reads; re-routing R
+to form 1 instead swaps in a form whose `cooldown` and `cost` are both `None`. So it is
+PREPENDED onto form 0 (damage-first, since `_select_blocks` reads `damage_blocks[0]` and
+Quinn carries no block-index override), labelled `Skystrike Physical Damage`, with a guard
+pinning `get_form_index_for("Quinn")` at the default so a future form-registry change goes
+RED instead of silently unreading the entry. Armed on Quinn L13 SR `[3031, 3006, 6672]`:
+R **0.0 -> 132.0** raw, total ability DPS **4.1864 -> 4.5815**.
+
+**The two refutations, both pinned as tests so the population-is-3 reading cannot come back.**
+Jayce W Hyper Charge already has its numbers on disk (`[70, 78, 86, 94, 102, 110] % AD`), and
+the served Jayce W form is `Lightning Field` at a real 380.0 raw - Hyper Charge is the
+Mercury-Cannon alternate and an AUTO-ATTACK rider, so crediting it on the ability clock is the
+face-value credit RM-86 fences. Mel W Rebuttal likewise has its numbers on disk
+(`[40, 45, 50, 55, 60] %` OF THE ORIGINAL DAMAGE) but is a fraction of an incoming projectile
+no registry can price - the RM-90 S3 assumed-prior class - so 0.0 is correct. Each refutation
+asserts both the on-disk numbers AND that the registry carries no entry for that champion.
+
+**DEFAULT-OFF, and the asymmetry with its sibling is deliberate.** `apply_wiki_ability_damage`
+ships DEFAULT-ON because it INJECTS a champion with no prior behavior to preserve; this seam
+MUTATES a served form, so OFF is the byte-identical contract. Blast radius proven by
+construction - a full-snapshot OFF-vs-ON sweep over every champion and key returns exactly one
+moved cell, `("Quinn", "R")`. Anti-double-apply: the entry applies only when the target form
+has no damage block at all, so a future Meraki re-extract that ships Skystrike makes the
+registry silently inert with no code change.
+
+**Verification (fresh this session, measured AFTER the last edit):** DS **9861 passed / 1 skipped / 4661 subtests**;
+RC `tests/` **13117 passed / 106 skipped / 460 subtests**; ruff clean across `agents/ tools/ core/ tests/`; the three
+ASCII/mojibake/u2500 hygiene modules 15 passed / 7 skipped; doc-size budget 2 passed;
+`ds_share_sync --check` in sync at 500 files; zero non-ASCII bytes added (CHANGELOG.md 590 and
+CLAUDE.md 29 both unchanged against HEAD); live `:8893` `/health` re-probed at
+**1.257.0 / 16.14.1 / 173 champions / 706 items**. All four build-order table families
+regenerated against the restarted server across BOTH keyspaces - every diff is stamp lines
+only, as a DEFAULT-OFF seam requires.
+
+**Don't-redo:** do NOT author registry entries for Jayce W Hyper Charge or Mel W Rebuttal -
+both are refuted with guards on disk. Do NOT re-file the RM-95b residual as a population of 3.
+
+---
+
 # 2026-07-26h - RM-95b B2 REFUTED on measurement + 2 stale ROADMAP rows corrected
 
 **Shipped:** `4046b6d8` (tools) + `0216516d` (docs), pushed. Tier-1 - a `tools/` module only,
@@ -166,11 +227,6 @@ doc-size budget 2 passed; ASCII/mojibake/u2500 hygiene 486 passed / 10 skipped; 
 non-ASCII added. DS `:8893` unchanged at 1.256.0 / 16.14.1 (correctly - Tier-1).
 Also compacted `MEMORY.md` 19.8KB -> 16.8KB on a hook prompt (247 links, 0 broken, 0 entries
 dropped).
-
----
-
-
-_Older sessions archived to `docs/history_notes.md`._
 
 ---
 
@@ -19513,6 +19569,11 @@ Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sw
 - **KEY batch12 insight:** FOUR family-extensions + ONE class-REFUTE - the burst-mage-BURIED family reaches 6 (Kennen, with a can't-value-active-engage Rocketbelt wrinkle), the crit-marksman burst-blend family gains a MILD hybrid (Kindred, whose on-hit Kraken opener makes the lead partly-right), the ds.hybrid bruiser family gains a NEW health-scaling sub-shape (Kled, the "false on-hit match" - health-scaling W-on-hit != item-on-hit), and the two-build-routing family gains a two-BUILD member (Kog'Maw, Slice-B-serves-minority-AP); PLUS the Zed/Talon/Qiyana FENCED lethality-assassin REFUTE is confirmed on a 4th champ (Kha'Zix - the lethality under-lead is a KNOWN data-refuted pattern, NOT a new GAP). Recurring discriminator: a never-built-on-hit/spellblade LEAD is a GAP unless the champ's real signature IS that item (Kalista/Varus REFUTE) OR the fix is the data-refuted lethality-weighting (Kha'Zix/Zed FENCED).
 
 **NEXT SESSION: strict ALPHABETICAL, next-up = LeBlanc**, then Lee Sin, Leona, Lillia, Lissandra (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch12.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct not `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's DEFAULT route via `core.archetype_picks.default_for_champion` [Slice A `_AP_ASSASSIN_IDS` -> assassin/burst; Slice B onhit-roster -> onhit; else axis-corrected tag] then `rank_for_primary_archetype` + reroutes at top=40; dump full top-40 to JSON). Skip resolved (Aatrox..Kog'Maw + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: LeBlanc (AP burst assassin/mage - mimic R chain-combo; check `_AP_ASSASSIN_IDS` membership [the Akali cohort note said "except Leblanc", so she may NOT leak the Trinity/ER AD-pollution - verify]; else a burst-mage Liandry's over-lead like the Gragas/Ahri family with her signature Malignance/Luden's/Shadowflame buried); Lee Sin (AD early-game skirmisher jungle - bruiser [Eclipse/Trinity/Black Cleaver/Sundered] OR lethality [Youmuu's/Profane]; watch ability-bruiser Aatrox-family GAP vs the FENCED lethality REFUTE vs served); Leona (tank support - the Alistar/Blitzcrank/Braum tank-support REFUTE, zero damage, engage; tank/ds.ehp self-durability served); Lillia (AP sustained-DoT/burn jungle - passive Dream-Laden Bough %maxHP burn + Liandry's/Blackfire/Riftmaker; watch the Brand/Cassiopeia sustained-DoT REFUTE [Liandry's lead correct] vs a burst-mage GAP); Lissandra (AP burst/control mage - Rocketbelt/Ludens/Liandry's, R self-freeze; watch the Gragas/Kennen burst-mage-BURIED family Liandry's over-lead vs served)). Next GAP spec = RM-77.
+
+---
+
+
+_Older sessions archived to `docs/history_notes.md`._
 
 ---
 
