@@ -82,6 +82,39 @@ Champion detection is also mostly redundant, since `screenPositionBottom`
 already gives champion positions directly. Its value here is exactly what it
 was used for: scoring the technique against truth.
 
+### Experiment 3 - do ENEMY wards render under fogOfWar=false? YES
+
+Diffing the `healthBarWards` toggle at t=900 with fog off, h=3500:
+
+    changed px .......... 8618
+    blobs >= 25 px ......   13
+
+and sampling each blob's colour in the ON frame gives BOTH team colours:
+
+    area 814  RGB (146, 74, 73)   red
+    area 807  RGB ( 66,122,146)   blue
+    area 733  RGB (  4, 70,101)   blue
+    area 518  RGB (110, 33, 34)   red
+
+**So enemy wards DO render with fog disabled, and WARD COVERAGE UNBLOCKS.**
+Vision coverage was blocked at T1/T2 because `WARD_PLACED` carries no position;
+it is recoverable here. The near-identical blob areas (814/813/811, 518/518/518)
+are consistent with fixed-size markers rather than noise.
+
+TWO CAVEATS before building on it:
+
+1. **The marker is a HEALTH BAR, drawn ABOVE the ward, not at its feet.** The
+   back-projection assumes a ground point, so ward map positions will carry a
+   systematic offset until that is calibrated - most cheaply by placing a known
+   ward and solving the delta, exactly as the camera intrinsics were solved.
+2. **The blob count is NOT verified against a ward count.** Wards expire and
+   the timeline emits no expiry event, so placed-minus-killed is only an upper
+   bound. 13 blobs is plausible for mid-game but is UNCONFIRMED.
+
+For reference the `characters` toggle changed 59313 px across 81 blobs at the
+same instant - a much broader class than wards. It was not characterised
+further.
+
 ### Experiment 5 - capture geometry
 
 Full-screen `PIL.ImageGrab` returns **2560 x 1440**, matching the viewport the
