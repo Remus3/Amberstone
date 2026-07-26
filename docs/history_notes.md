@@ -119,6 +119,102 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-25j - the EHP-family block drained, and the transports nobody was counting (ENGINE 1.253.0)
+
+ENGINE **1.252.0 -> 1.253.0**, patch 16.14.1. Operator-directed ("drain the
+EHP-family block next"). Four read-only probe agents in parallel gathered
+acceptance evidence for all 20 seams against live :8893; the wiring itself is
+ONE file, so it was applied in the main thread. Tier-2 in ritual order: bump by
+quoted literal (132 files / 153 occurrences) -> :8893 restarted -> `/health`
+re-read **1.253.0 BEFORE the regen** -> both build-order families across both
+keyspaces -> Share sync (492 files, `--check` green) -> all four ENGINE doc
+sites.
+
+Suites, both measured fresh AFTER the last edit:
+**DS 9721 passed / 1 skipped / 4653 subtests.**
+**RC `tests/` 13110 passed / 106 skipped / 460 subtests.**
+
+## The headline
+
+**Per-route stranded debt 101 -> 25. Name-collapsed 33 -> 12.** Twenty seams
+shared by `/ehp`, `/hybrid`, `/rank-tank` and `/rank-bruiser` (17 on all four)
+were engine- and route-complete but unreachable from the client: 76 of the 101
+pairs.
+
+Evidence standard, stated because it narrows the operator's one-control-per-seam
+rule deliberately: REACHABILITY proven structurally for all 76 pairs by the
+per-route guard (that is what it exists for); behavioural EFFECT proven ONCE per
+seam on its most diagnostic route against a NAMED registry-proven control. 19
+live cases through the real client.
+
+## Two findings that outlive this block
+
+**THREE STRANDED TRANSPORTS, and BOTH guards are blind to all three** because
+none is seam-PREFIXED. `rune_ids` and `enemies` were parsed by all four routes
+and sent by NO client function; `score_by` was missing from `rank_bruiser_for`.
+EIGHT of the twenty seams consume one of them, so wiring the flags alone would
+have made ~16 pairs reachable-and-DEAD - the exact illusion RM-115 exists to
+kill, introduced by the fix for it. It surfaced only because the acceptance test
+was written from MEASURED cases and failed with `TypeError: unexpected keyword
+argument 'enemies'`. A test built from assumptions would have gone green.
+**Any future drain must check the non-prefixed transports a seam consumes.**
+
+**A defect I introduced and caught before shipping.** `apply_build_tenacity` is
+TRI-STATE - `_route_rank_tank` (`server.py:701-703`) and `_route_rank_bruiser`
+(`:973-975`) read it as None-when-absent and the engine defaults it ON under
+`score_by="cc_blended"`. My first pass gave it the uniform `bool = False` +
+emit-when-True treatment of the other nineteen, which cannot express False: an
+OFF switch that could not turn anything off. Now `Optional[bool] = None`, with
+an assertion that omitting the key reproduces the ON ordering. Confirmed it is
+the ONLY tri-state seam by an AST scan of all four handlers, not by eye.
+
+## Recorded so nobody rediscovers them
+
+- **Three seams provably CANNOT reorder**: `apply_survival_window`,
+  `apply_passive_revive`, and `apply_champion_tenacity` without
+  `apply_build_tenacity`. Each is a uniform multiplier on the EHP numerator and
+  a ratio sort key is invariant under uniform scale - Tryndamere's ratio is
+  exactly 1.291666667 on all 138 rows, both sort keys. The "moved" rows for
+  Zac/Anivia/K'Sante are 1e-12 ULP ties. Acceptance is the `/ehp` SCALAR; a rank
+  criterion is unsatisfiable by construction.
+- **`apply_mode_modifiers` is INERT on ARAM.** The ARAM axes apply
+  unconditionally; the flag gates the wiki-sidecar lane, which excludes ARAM to
+  avoid double-counting. URF is the mover. An ARAM case would look like a bug.
+- **Seven companion gates**, each a false negative if missed - rune ids, a
+  SHIELD for `apply_rune_hsp_amp`, level >= 7 for `assume_item_health_stacks`,
+  `enemies` AND an unsaturated comp for the spell shields (five heavy-CC enemies
+  pin `cc_pressure_fraction` at 1.0 and the clamp eats the seam), build tenacity
+  for champion tenacity, and `target_max_hp` (NOT `target_hp`) for the AD axis.
+- **One control shape is INVALID and the test asserts it**: a manaless champion
+  is not a control for `apply_item_mana_health` - the item supplies its own mana
+  (Garen 5099.337 -> 5242.948).
+
+## Corrections to my own work
+
+- I said `apply_mode_modifiers` is parsed by **SEVEN** routes, three times. It
+  is **EIGHT**. Corrected in the live artifacts; LEDGER 1051 and the
+  1.250.0/1.251.0 CHANGELOG entries are append-only and were left as written,
+  with the correction recorded forward.
+- The guard assertion pinning the per-route ledger at a FLOOR of 33 was
+  disproved by this drain (25 vs the sibling's 12). The premise was wrong, not
+  the number, so it was replaced with the inequality that holds BY
+  CONSTRUCTION: a name stranded everywhere contributes at least one (route,
+  seam) pair, so per-route total >= name-collapsed total, always.
+
+## Still open
+
+**25 pairs, and none is a shared block:** `/burst` 7, `/dps` 6,
+`/rank-assassin` 4, `/v2/fight-report` 3, `/rank` 2, one each on
+`/ability-dps`, `/rank-mage`, `/beam`. **`/beam` and `/v2/fight-report` have NO
+client function at all** - those four pairs need one invented before any wiring.
+The cheap shared-block phase of RM-115 is over; what remains is per-seam work.
+
+Unchanged carry-forwards: RM-96 Zilean, `parse_leveling_bases` (35 labels across
+31 of 90 blocks), B1's unregenerated `--full-roster` artifact, and the
+`rank_assassin_for(assume_magic_burst=...)` dead parameter.
+
+---
+
 # 2026-07-25i - RM-115 priority 4: the bruiser gate, and Option B paid for itself (ENGINE 1.252.0)
 
 ENGINE **1.251.0 -> 1.252.0**, patch 16.14.1. Operator-directed single slice
