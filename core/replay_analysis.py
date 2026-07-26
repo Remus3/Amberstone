@@ -47,9 +47,31 @@ FAR_UNITS = 2750
 DEFAULT_LEAD_S = 30
 
 # MEASURED SIGNAL DECAY - lead_s -> best achievable accuracy, same 308 samples.
-# Mean sample age is a flat ~15 s at every lead, so this decay is REAL
-# behaviour, not sampling error: junglers cross the map, and position a minute
-# out does not determine drake control.
+#
+# !! THE INTERPRETATION BELOW WAS WRONG AND IS RETRACTED. It read: "mean sample
+# age is a flat ~15 s at every lead, so this decay is REAL behaviour, not
+# sampling error." That is a non-sequitur. Constant staleness produces constant
+# NOISE, and the noise turned out to be enormous.
+#
+# MEASURED 2026-07-26 against seek-sampled exact positions (~19 unit precision)
+# on NA1_5607614664, 21 drake/jungler samples:
+#     Match-V5 distance error vs exact:  mean 1971, median 853, max 8565 units
+#     samples whose error alone exceeds the 2750 threshold:  6 of 21
+# Worst case: at the 706 s drake, Vi's exact distance was 61 units - he was
+# standing on the dragon and killed it - while the Match-V5 frame put him at
+# 8626 units, across the map.
+#
+# So a 60 s-sampled position CANNOT support a 2750-unit threshold, and the
+# decay curve below is substantially an artefact of sampling noise rather than
+# a measurement of jungler behaviour. Lead 0 scores best not because its data
+# is cleaner but because the true answer there is strongly bimodal and survives
+# heavy noise.
+#
+# CONSEQUENCE: FAR_UNITS and SIGNAL_DECAY are retained ONLY as the historical
+# 60 s-tier calibration. Do not treat either as a fact about junglers, and do
+# not re-derive coaching from them. A trustworthy version of this metric needs
+# seek-sampled positions (core/replay_camera.screen_to_map), which is
+# interactive and one game at a time - see docs/REPLAY_FRAME_ANALYSIS_SPEC.md.
 #
 #   lead    0 s -> 0.692     lead   30 s -> 0.688
 #   lead   60 s -> 0.568     lead   90 s -> 0.529     lead  120 s -> 0.516
