@@ -178,6 +178,11 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     "test_assumed_share_exposure.py",
     "test_route_seams_reach_the_client.py",
     "test_route_seams_reach_the_client_per_route.py",
+    # -- R193 (ENGINE 1.255.0, 2026-07-26): same class as the RM-115 pair. It
+    # asserts that the omnivamp EHP seam parsed by server.py is expressible
+    # through the HOST client, so importing core.daemon_slayer_client is its
+    # subject rather than an accident.
+    "test_route_omnivamp_seam_r193.py",
     # The behavioural half of the same drain: it drives the HOST client against
     # the live engine to prove each EHP-family seam actually does something.
     # Host-only for the same reason as its two siblings - the shipped package is
