@@ -322,6 +322,12 @@ class TankRankedItem:
     # client-side - dropping the active field is how a live re-rank silently
     # reads as inert.
     delta_team_blended_ehp: float = 0.0
+    # R194 slice A (2026-07-26): the vamp-inclusive EHP delta. Equals
+    # ``delta_ehp`` unless the caller asked for score_by="sustain" AND armed
+    # ``assume_max_stacks_omnivamp``. Parsed explicitly for the same reason as
+    # the Term A field above - dropping the ACTIVE field is how a live re-rank
+    # silently reads as inert.
+    delta_sustain_ehp: float = 0.0
 
     @classmethod
     def from_dict(cls, d: dict) -> "TankRankedItem":
@@ -335,6 +341,9 @@ class TankRankedItem:
             unique_passive_key=str(d.get("unique_passive_key", "")),
             delta_team_blended_ehp=float(
                 d.get("delta_team_blended_ehp", d.get("delta_ehp", 0.0))
+            ),
+            delta_sustain_ehp=float(
+                d.get("delta_sustain_ehp", d.get("delta_ehp", 0.0))
             ),
         )
 
@@ -356,7 +365,7 @@ def rank_tank_for(
     # Seam flags (Tier-2, behavior-preserving; emitted only when set).
     prefer_survivability_by_win: bool = False,  # RF3
     cost_ceiling: Optional[int] = None,         # F2
-    score_by: str = "blended",                  # Term A: + team_blended
+    score_by: str = "blended",                  # Term A: + team_blended; R194: + sustain
     # 2026-07-25: the three ASSUMED-INCOMING-SHARE seams. These are the ONLY
     # seams on this route that ship DEFAULT-ON in the engine (a champion-blind
     # 0.5 incoming crit / basic-attack share), so what a caller needs is an OFF
@@ -406,6 +415,12 @@ def rank_tank_for(
     # plain ``bool = False`` with emit-when-True could never express the OFF.
     # None = inherit (omit the key), False = explicitly disable.
     apply_build_tenacity: Optional[bool] = None,
+    # R194 slice A (RM-116 part a): the item-passive omnivamp credit on the
+    # RANKER lane, appended at END per the repo convention. Plain DEFAULT-OFF
+    # bool emitted only when True. It is INERT unless ``score_by="sustain"`` is
+    # also sent - the credit lands on the sustain metric alone - which is why
+    # the two are documented as a pair rather than as independent switches.
+    assume_max_stacks_omnivamp: bool = False,
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -480,6 +495,7 @@ def rank_tank_for(
         assume_item_general_dr=assume_item_general_dr,
         assume_item_health_stacks=assume_item_health_stacks,
         assume_item_proc_heal=assume_item_proc_heal,
+        assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
     )
     # Tri-state: None omits the key and inherits the engine's default-ON for
     # cc_blended; an explicit False is the only way to turn it OFF.
@@ -535,10 +551,9 @@ def ehp_for(
     assume_item_health_stacks: bool = False,
     assume_item_proc_heal: bool = False,
     # R193 slice C: item-passive omnivamp (Riftmaker at max Void Corruption
-    # stacks) into the EHP SUSTAIN axis. /ehp-only - the seam is parsed by
-    # ``_route_ehp`` alone, because ``rank_items_by_ehp`` does not accept the
-    # kwarg, so wiring it onto the ranker entry points would manufacture
-    # reachability with no engine consumer.
+    # stacks) into the EHP SUSTAIN axis. This is the SCALAR lane; R194 slice A
+    # added the ranker lane, where ``rank_tank_for`` carries the same seam and
+    # it becomes visible under ``score_by="sustain"``.
     assume_max_stacks_omnivamp: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
