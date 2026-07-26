@@ -156,6 +156,11 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     "test_assumed_share_exposure.py",
     "test_route_seams_reach_the_client.py",
     "test_route_seams_reach_the_client_per_route.py",
+    # The behavioural half of the same drain: it drives the HOST client against
+    # the live engine to prove each EHP-family seam actually does something.
+    # Host-only for the same reason as its two siblings - the shipped package is
+    # the engine, not RC's integration layer.
+    "test_ehp_family_seams_reach_the_client_rm115.py",
     # -- RM-112 (2026-07-23): runtime host-data reaches. These COLLECT clean
     # but FAIL at run time inside the engine-only, current-patch package,
     # because they load a HISTORICAL patch snapshot (16.10.1 / 16.11.1 /

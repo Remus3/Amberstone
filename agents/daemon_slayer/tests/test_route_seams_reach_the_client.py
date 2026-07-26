@@ -49,6 +49,13 @@ were dropped, the measurement was trusted over the hand-off, and
 ``apply_resist_damage_coupling`` was wired into ``rank_tank_for`` in this same
 change, leaving 33.
 
+UPDATE (ENGINE 1.253.0): the whole EHP-family block was wired into the four
+client entry points that POST /ehp, /hybrid, /rank-tank and /rank-bruiser,
+taking this ledger from 33 to 12. Note what that does NOT mean - see the
+sibling file ``test_route_seams_reach_the_client_per_route.py``. This guard
+answers "is the seam settable from the client AT ALL"; it went green for
+several of these names long before every route that parses them was wired.
+
 OFFLINE ONLY: pure AST over two source files. No snapshot, no engine, no network.
 """
 from __future__ import annotations
@@ -78,28 +85,8 @@ _BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
 # the introspection below, NOT copied from prose. Grouped by the route that owns
 # them so a future wiring pass can take one route at a time.
 _STRANDED_TODAY = frozenset({
-    # --- EHP-family levers (/ehp, /hybrid, /rank-tank, /rank-bruiser) ---------
-    "apply_build_tenacity",
-    "apply_champion_tenacity",
-    "apply_item_bonus_hp_amp",
-    "apply_item_mana_health",
-    "apply_item_resist_grants",
-    "apply_item_spell_shield",
-    "apply_passive_mitigation",
-    "apply_passive_resist",
-    "apply_passive_revive",
-    "apply_rune_flat_mitigation",
-    "apply_rune_health_grants",
-    "apply_rune_hsp_amp",
-    "apply_rune_resist_grants",
-    "apply_spell_shield",
-    "apply_survival_window",
-    "assume_item_general_dr",
-    "assume_item_health_stacks",
-    "assume_item_proc_heal",
-    # --- damage-family levers (/dps, /ability-dps, /rank-mage, /rank-bruiser) -
+    # --- damage-family levers (/dps, /ability-dps, /rank-mage) ---------------
     "apply_ability_amps",
-    "apply_ad_axis_ability_damage",
     "apply_melee_aa_gate",
     # --- burst / assassin levers (/burst, /rank-assassin) --------------------
     "assume_ability_amp",
@@ -109,11 +96,10 @@ _STRANDED_TODAY = frozenset({
     "assume_takedown",
     "gate_caster_hp_amp",
     "gate_target_hp_amp",
-    # --- fight-report levers (/fight-report) ---------------------------------
+    # --- fight-report levers (/v2/fight-report) ------------------------------
     "apply_ability_haste",
     "gate_ammo",
     # --- cross-route ----------------------------------------------------------
-    "apply_mode_modifiers",
     "exclude_off_axis_items",
 })
 
