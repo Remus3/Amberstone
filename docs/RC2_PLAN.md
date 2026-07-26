@@ -1,6 +1,12 @@
 # RC 2.0 - Master Orchestration Plan
 
-LIVING DOC. Single source of truth for the RC 2.0 program. `/RC2-Continue`
+> **SCOPE (2026-07-26, one-tracker pass):** this is a PROGRAM SUBPLAN, not a rival tracker.
+> It is authoritative for the RC 2.0 program's stage sequence ONLY. All open work is tracked
+> in `ROADMAP.md` (see its "WHERE WORK LIVES" table); the RC 2.0 lane there is RM-03. Do not
+> file general open work here. It previously read "Single source of truth", which collided
+> verbatim with `docs/ORCHESTRATION_PLAN.md`'s identical claim.
+
+LIVING DOC for the RC 2.0 program. `/RC2-Continue`
 reads this, finds the first non-DONE stage (top-to-bottom), and resumes.
 Continuity = this file + git history + `docs/LEDGER.md` + the directive chain.
 
