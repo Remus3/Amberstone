@@ -22,7 +22,7 @@ vamp heal pool as an ADDEND to the numerator, and the addend is per-CANDIDATE
 (only a candidate that carries omnivamp earns one), so it moves rows relative
 to each other.
 
-MEASURED 2026-07-26, ENGINE 1.255.0, Amumu L13, mode SR, prefix Sunfire Aegis
+MEASURED 2026-07-26, ENGINE 1.256.0, Amumu L13, mode SR, prefix Sunfire Aegis
 3068 + Plated Steelcaps 3047, shares 0.50/0.50, top_n=None (pool 138):
 
   assume_max_stacks_omnivamp=True
