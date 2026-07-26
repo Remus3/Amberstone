@@ -177,3 +177,42 @@ def test_a_cohort_on_a_single_cohort_file_is_ignored_not_an_error():
     with tempfile.TemporaryDirectory() as d:
         fp = _write(Path(d), {"roles": _ROLES})
         assert cb.load(fp, cohort="GOLD_II") == _ROLES
+
+
+# --------------------------------------------------------------- tie plateaus
+
+def _flat(role, metric, values):
+    return [(role, {metric: v}) for v in values]
+
+
+def test_a_zero_in_a_mostly_zero_metric_does_not_read_as_top_decile():
+    # 90 of 100 rows are 0.0, so p10..p90 are all 0.0 and every band ties.
+    # Crediting the highest tells a player who healed nobody that they are
+    # 90th percentile, which is how this was rendering live.
+    base = cb.build(_flat("TOP", "heal", [0.0] * 90 + [5.0] * 10))
+    r = cb.rank_of(base, "TOP", "heal", 0.0)
+    assert r["at_or_above_p"] == 10, r
+    assert r["tied"] is True
+
+
+def test_a_value_clear_of_the_plateau_still_ranks_normally():
+    base = cb.build(_flat("TOP", "heal", [0.0] * 90 + [5.0] * 10))
+    r = cb.rank_of(base, "TOP", "heal", 5.0)
+    assert r["at_or_above_p"] == 90
+    assert r["tied"] is False
+
+
+def test_an_exact_tie_at_a_unique_threshold_keeps_its_band():
+    # A plateau of one is not a plateau - this must not regress to a lower
+    # band just because the value equals the threshold exactly.
+    base = cb.build(_flat("MID", "cs", [float(v) for v in range(100)]))
+    median = cb.build(_flat("MID", "cs", [float(v) for v in range(100)]))
+    thr = median["MID"]["cs"]["p50"]
+    r = cb.rank_of(base, "MID", "cs", thr)
+    assert r["at_or_above_p"] == 50
+    assert r["tied"] is False
+
+
+def test_a_value_under_every_threshold_is_still_the_bottom_band():
+    base = cb.build(_flat("BOT", "cs", [float(v) for v in range(1, 101)]))
+    assert cb.rank_of(base, "BOT", "cs", 0.0)["at_or_above_p"] == 0
