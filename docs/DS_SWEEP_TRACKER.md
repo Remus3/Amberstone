@@ -39,7 +39,12 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   ASSERT the replacement count is 1. Both traps were caught only because the counts
   were re-verified AFTER writing rather than inferred from the write succeeding.
 - Next up (strict alphabetical): NONE - roster closed at Zyra 2026-07-18.
-  Next free GAP spec = RM-105 (RM-96 Zilean + RM-97 Zyra assigned in batch32;
+  Next free GAP spec = RM-119 (the earlier "RM-105" reading was STALE - ids
+  RM-105..RM-117 were consumed after it was written, and RM-118 was allocated
+  2026-07-26 to the mana-as-damage `ds.ehp` blindness, population 1
+  (Blitzcrank), the third instance of the RM-87 / RM-91 lever - ITEM / AXIS
+  gap, no roster checkbox. Verify against this file, never against ROADMAP
+  prose, before taking an id; RM-96 Zilean + RM-97 Zyra assigned in batch32;
   RM-98 cast-rate TIME BASE allocated 2026-07-19 out of the RM-39/RM-43 L2
   build; RM-99 + RM-101..RM-104 allocated 2026-07-19 to the R132 defensive-half
   sweep - Heartsteel HP-stack, the defensive-rune remainder, the Warmog's Arena
