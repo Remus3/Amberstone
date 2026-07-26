@@ -125,7 +125,7 @@ class GlobalDefaultUnchanged(unittest.TestCase):
 
 class EngineVersionPin(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.251.0")
+        self.assertEqual(ENGINE_VERSION, "1.252.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):
