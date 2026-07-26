@@ -4,6 +4,60 @@
 
 ---
 
+# 2026-07-26f - R194 DS vamp/sustain follow-ons (gemini loop cycle 4, unattended)
+
+**Shipped:** ENGINE 1.255.0 -> 1.256.0 (`223362e3`), ROADMAP **RM-116 CLOSED**. Three
+worktree slices, Claude sole merger, verifier gate before every merge: `928c750b` (B),
+`3ad5b46f` (A), `86006150` (C). DS `:8893` bounced, `/health` reads 1.256.0.
+
+**The result worth carrying forward: one of the three filed rows was WRONG, and each slice
+was explicitly told a REFUTE was an allowed deliverable.** That instruction is the only
+reason it did not ship.
+
+- **(b) Sundered Sky 6610 overheal-to-bonus-health is REFUTED, not built.** The Meraki
+  clause is genuinely there, which is exactly why the row was persuasive. But
+  `heal_total` and `shield_any_amped` share the SAME EHP numerator and `_collect_heals`
+  credits the heal in FULL with no missing-HP clamp - the engine already assumes zero
+  healing is wasted, which is precisely what the overheal conversion guarantees. Naive
+  injection: Aatrox L11 EHP 3991.0 -> 4348.2, all double count. And the honest clamped
+  term is 0.0 for all 173 champions at L1 and L18 (worst heal-to-missing ratio 0.2205,
+  Kled L1). Pinned by a 12-test guard so it cannot be re-filed.
+- **(c) The sibling sweep NARROWED the set** - the opposite of the items 208/213 pattern
+  and the more dangerous direction. Tiamat 3077 / Titanic 3748 / Profane 6698 /
+  Stridebreaker 6631 ship byte-identical Cleave shapes with NO lifesteal clause, so a
+  name or family-key fold would have over-credited four items. Eligible set is exactly
+  3074 + 223074 by ID SUFFIX. **A naive substring grep for lifesteal false-positives on
+  all five** via the zero-valued `lifesteal` STAT key - the clause lives in the `effects`
+  prose field, and that is where the check has to look.
+- **(a) The omnivamp seam was stranded one lane short of the surface that matters.** It
+  reached `/ehp` in R193 but could never influence a RANKING. Now on `rank_items_by_ehp`
+  behind `score_by=sustain`. It provably reorders (Amumu L13 SR, Riftmaker 4633 blended
+  43 -> sustain 35) because the vamp pool enters as an ADDEND, not a uniform multiplier -
+  that arithmetic distinction is what separates it from RM-115's provably-inert seams.
+
+**New process hazards recorded:**
+1. **Two tails, one round, one name.** Slices A and C both defined `_R194_TAIL` in the
+   R134 signature guard on DIFFERENT entry points. Merged verbatim, the second definition
+   shadows the first and BOTH case rows collapse to one tuple. Fix is a RENAME
+   (`_R194A_TAIL` / `_R194C_TAIL`), never a blind concatenation.
+2. **Cite function boundaries, not round line numbers.** Splitting one file by line region
+   (A below 2500, C above) auto-merged cleanly, but C's diff landed a hunk 25 lines past
+   the stated boundary - inside `compute_ehp`'s own return, ~370 lines clear of the ranker.
+   Intent held; my number was wrong for the function it protected.
+3. **The two post-bump failures were the known pair, not new breakage** - the phase8
+   live-engine pin needs the DS bounce, and `test_ds_share_changelog_freshness` needs the
+   Share README release-history site, which is SEPARATE from the auto-restamped header.
+   R193 recorded this same trap at its item (7).
+
+**Suites (fresh, after the last edit):** DS 9849 passed / 1 skipped / 4661 subtests; RC
+`tests/` 13116 passed / 106 skipped / 460 subtests. ruff clean; ASCII/mojibake/u2500
+hygiene green; `ds_share_sync --check` in sync at 498 files.
+
+**Don't-redo:** the vamp base-magnitude / mirror-parity lane is now closed THREE times
+over (R181 + R193 + R194). The Sundered Sky overheal shield is REFUTED with a guard.
+
+---
+
 # 2026-07-26e - weekly hygiene (unattended)
 
 **Relocated:** none. WAKEUP already at exactly 3 sessions; CLAUDE.md 27KB (under 60KB); no stray ledger entries.
@@ -77,106 +131,3 @@ Next session: RM-116 (a) ranker-lane forwarding of the omnivamp flag, (b)
 Sundered Sky 6610 overheal-to-bonus-health, (c) lifesteal credit on Ravenous
 Cleave/Crescent. Do NOT re-commission a vamp base-magnitude sweep - closed
 twice now.
-
----
-
-
-# 2026-07-26c - the Share package's green-suite promise was false (R192, gemini loop cycle 2)
-
-Commit `f26f651c`. No ENGINE bump, no DS bounce, no RC restart. Share mirror
-regenerated (492 -> 494 files), `ds_share_sync.py --check` green.
-
-Directive: unit (b) - read the ENTIRE `Share/` folder end to end and update /
-clean / prune it as a new external presentation.
-
-**Unit (b) has now run four times (R139 / R163 / R166 / R189 / this one), and
-the two findings that mattered came from something no prior pass did: running
-the package's own advertised quickstart.** `Share/README.md` promises the
-shipped suite "exits green offline with no flags ... 0 failed, 0 errors, exit
-code 0". It exited **1, with 4 failures**. For a package whose product IS a
-runnable artifact, prose-checking cannot surface an exit code.
-
-Two root causes, one bug class - the mirror shipped consumers without their
-dependencies:
-
-1. `tools/ds_feed_index.py` was not in the generator's `_DS_TOOLS`, so
-   `test_artifact_patch_marker_guard.py` (landed `b23b5f16`, ENGINE 1.243.0 -
-   after the last audit) raised `FileNotFoundError` on a path-import.
-2. `web/data/champion_aliases.json` was unmirrored while the mirrored
-   `tools/daemon_slayer_extract.py` reads it at MODULE IMPORT time. So a tool
-   the package advertises as a shipped offline extractor could not be imported
-   inside the package at all. That is the worse of the two, and the failing
-   test is only how it surfaced.
-
-Fixed at the generator (`_HOST_ASSET_FILES`, exact-path match, asset mirrored
-at its identical repo-relative path), NOT by adding the test to
-`_HOST_DEPENDENT_TESTS` - that would have gone green while dropping a real
-engine guard and leaving the extractor broken. Guarded by a new failing-first
-PROPERTY test, `tests/test_ds_share_mirror_self_contained.py`, which pins
-self-containment rather than the two incident filenames.
-
-**A premise in my own brief was measured and refuted.** I told slice C that
-fourteen versions of RM-115 seam-wiring had probably made `docs/04`'s "no
-caller can switch it on" rows stale. It re-probed every one: all still hold.
-`docs/03` needed zero edits - all 22 mirror files, every size, every embedded
-count correct. A no-change verdict backed by probes is the point.
-
-Countable drift corrected: test files 309/358 -> 331/386, boundary set 49 ->
-55, engine modules 106 -> 112, flag matrix 47 -> 55 names (tri-state 1 -> 4),
-DS suite 9238 -> 9746, "the fourteen most recent" releases listed fifteen; 148
-of 342 `file:line` citations re-anchored, 0 broken symbols; the generated
-engine `__init__` docstring said six archetypes when there are seven.
-
-Suites, all re-run by the merger after the last edit: Share package **7729
-passed / 16 skipped / 3109 subtests, exit 0**; DS **9746 / 1 / 4653**; RC
-`tests/` **13118 / 106 / 460**. ruff clean, 0 non-ASCII across every authored
-Share file, six worktrees removed after confirming 0 unmerged each.
-
-**Next Share pass: run the quickstart FIRST, then re-measure the countables.**
-Do not re-read the prose top-to-bottom - both real findings this round came
-from the exit code and from `find | wc -l`, not from reading. Two residuals
-left deliberately: `ds_feed_index.py`'s CLI still imports a repo-side `tests/`
-module so it cannot run inside the package (import and `KNOWN_STAMP_LAG` are
-fine), and `test_abilities_content_freshness.py` may now be re-admittable to
-the mirror but has a second host reach - that should be a measured decision,
-not a side effect.
-
----
-
-# 2026-07-26b - HEXCORE offline sync, and the debt was 9 not 54 (R191, gemini loop cycle 1)
-
-Tier-0 presentation artifact. Commit `b4df6494`. No ENGINE bump, no DS bounce,
-no RC restart, no Share sync.
-
-Directive: re-sync `docs/HEXCORE_offline.html` against the net-new non-test .py
-files added since `d584e02e` (2026-07-14).
-
-**The measurement was the work.** `git diff --diff-filter=A d584e02e..HEAD -- '*.py'`
-returns 297 files. Drop `Share/` (74 - byte mirrors of repo-root modules) and
-`tests/` (223 - "non-test" is the unit's own wording) and 54 real source files
-remain. **45 of those already had DUST leaves from the R138 pass**, so the real
-debt was **9**. Adding all 54 would have made 45 duplicate particles; the guard's
-`test_no_duplicate_dust_entries` catches that, but only after the edit.
-
-Shipped: 9 leaves (parents from the existing DS spread - `m_dsengine`,
-`m_dsserver`, `m_dsclient`, `ds`, `daemonslayer`, `m_buildorder`, `t_dsextract`),
-dust 341 -> 350 across all four cross-asserted count sites, and a stats HUD
-re-anchored to ground truth: ENGINE 1.240.0 -> 1.254.0, 9238 -> 9746 DS tests,
-commits 3931 -> 3972, last `686a4b48` 2026-07-25, LEDGER high-water 997 -> 1054.
-The same stale ENGINE pair sat in the `DAEMON_SLAYER.md` NODE description too -
-a sweep that reads only the HUD tooltip misses it.
-
-TDD RED-first (`EXPECTED_NEW_BASENAMES` 45 -> 54 before any HTML edit). Verifier
-subagent CONFIRM on all 5 claims, re-deriving the missing set from git itself and
-re-running `node --check` on the extracted 957k-char script block; it caught a
-stale comment in the guard's own docstring (20/2 claimed vs 74/223 actual), fixed
-in-slice. Rendered probe taken anyway (edit lands inside an inline JS literal):
-0 console errors, HUD reads `dust: 350 files` / `engine: DS 1.254.0`.
-
-Suites fresh after the last edit: **DS 9746 passed / 1 skipped / 4653 subtests**,
-**RC `tests/` 13110 passed / 106 skipped / 460 subtests**. Guard 11/11, ruff clean,
-0 non-ASCII.
-
-**Next pass must re-derive its own delta** (`git diff --diff-filter=A <last-synced-sha>..HEAD`
-minus `Share/` minus `tests/` minus basenames already in the DUST literal) and must
-NOT trust a count carried in a directive.
