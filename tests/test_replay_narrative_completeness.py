@@ -115,6 +115,128 @@ def test_describe_moment_still_works_without_a_names_argument():
     assert pn._describe_moment(ev, 1)
 
 
+# ------------------------------------------- naming the objective, not "a team"
+#
+# The taxonomy below is the live one, counted over rewind_history.db:
+#   ELITE_MONSTER_KILL  HORDE 3336 / RIFTHERALD 664 / BARON_NASHOR 577 /
+#                       DRAGON 2479 across 6 subtypes + ELDER_DRAGON 43 +
+#                       UNKNOWN 51 / ATAKHAN 143
+#   BUILDING_KILL       OUTER 6684 / NEXUS_TURRET 4810 / INHIBITOR 4803 /
+#                       BASE 3661 / INNER 2462
+# monster_subtype and tower_type were both being thrown away by the renderer.
+
+
+def _monster(monster_type, subtype=None, killer_id=3, ts=1_500_000):
+    return {"event_type": "ELITE_MONSTER_KILL", "timestamp_ms": ts,
+            "monster_type": monster_type, "monster_subtype": subtype,
+            "killer_id": killer_id}
+
+
+def test_drake_subtype_is_named():
+    expected = {
+        "FIRE_DRAGON": "Infernal",
+        "EARTH_DRAGON": "Mountain",
+        "WATER_DRAGON": "Ocean",
+        "AIR_DRAGON": "Cloud",
+        "CHEMTECH_DRAGON": "Chemtech",
+        "HEXTECH_DRAGON": "Hextech",
+    }
+    for subtype, label in expected.items():
+        text = pn._describe_moment(_monster("DRAGON", subtype), 1, {3: "Vayne"})
+        assert label in text, f"{subtype} rendered as {text}"
+
+
+def test_elder_dragon_is_named_and_outranks_a_normal_drake():
+    elder = _monster("DRAGON", "ELDER_DRAGON")
+    drake = _monster("DRAGON", "FIRE_DRAGON")
+    assert "Elder" in pn._describe_moment(elder, 1, {3: "Vayne"})
+    assert pn._moment_impact(elder, 1) > pn._moment_impact(drake, 1)
+
+
+def test_unknown_drake_subtype_degrades_without_emitting_none():
+    for subtype in (None, "UNKNOWN", ""):
+        text = pn._describe_moment(_monster("DRAGON", subtype), 1, {3: "Vayne"})
+        assert "None" not in text
+        assert text.strip()
+
+
+def test_atakhan_and_rift_herald_are_named():
+    assert "Atakhan" in pn._describe_moment(_monster("ATAKHAN"), 1, {3: "Vayne"})
+    assert "Rift Herald" in pn._describe_moment(
+        _monster("RIFTHERALD"), 1, {3: "Vayne"})
+
+
+def test_voidgrubs_rank_far_below_baron():
+    # HORDE is the most common elite monster in the corpus by a wide margin and
+    # was scoring 45, the same as a Rift Herald and 1.5x a plain champion kill.
+    # Three spawn and they are a minor objective.
+    horde = pn._moment_impact(_monster("HORDE"), 1)
+    baron = pn._moment_impact(_monster("BARON_NASHOR"), 1)
+    plain_kill = pn._moment_impact(
+        {"event_type": "CHAMPION_KILL", "timestamp_ms": 1, "killer_id": 3}, 1)
+    assert horde < plain_kill < baron
+
+
+def test_objective_names_the_taker_when_known():
+    text = pn._describe_moment(_monster("BARON_NASHOR"), 1, {3: "Vayne"})
+    assert "Baron" in text
+    assert "Vayne" in text
+
+
+def test_objective_taken_by_the_operator_is_second_person():
+    text = pn._describe_moment(
+        _monster("BARON_NASHOR", killer_id=1), 1, {1: "Vayne"})
+    assert "Baron" in text
+    assert "you" in text.lower()
+
+
+def test_objective_with_no_known_taker_does_not_emit_none():
+    text = pn._describe_moment(_monster("BARON_NASHOR"), 1, {})
+    assert "None" not in text
+    assert "Baron" in text
+
+
+def _building(building_type, tower_type=None, killer_id=3):
+    return {"event_type": "BUILDING_KILL", "timestamp_ms": 1_200_000,
+            "building_type": building_type, "tower_type": tower_type,
+            "killer_id": killer_id}
+
+
+def test_tower_tier_is_named_not_just_tower_building():
+    expected = {"OUTER_TURRET": "Outer", "INNER_TURRET": "Inner",
+                "BASE_TURRET": "Base", "NEXUS_TURRET": "Nexus"}
+    for tower_type, label in expected.items():
+        text = pn._describe_moment(
+            _building("TOWER_BUILDING", tower_type), 1, {3: "Vayne"})
+        assert label in text, f"{tower_type} rendered as {text}"
+        assert "Tower Building" not in text
+
+
+def test_inhibitor_is_named_and_scores_above_a_plain_tower():
+    # The inhibitor rows carry building_type=INHIBITOR_BUILDING with a NULL
+    # tower_type, and the impact branch only ever read tower_type - so all 4803
+    # inhibitors in the corpus scored 35, the ordinary-tower value, despite the
+    # branch intending 50.
+    inhib = _building("INHIBITOR_BUILDING")
+    outer = _building("TOWER_BUILDING", "OUTER_TURRET")
+    assert "Inhibitor" in pn._describe_moment(inhib, 1, {3: "Vayne"})
+    assert pn._moment_impact(inhib, 1) > pn._moment_impact(outer, 1)
+
+
+def test_tower_tiers_are_ordered_by_impact():
+    tiers = [pn._moment_impact(_building("TOWER_BUILDING", t), 1)
+             for t in ("OUTER_TURRET", "INNER_TURRET",
+                       "BASE_TURRET", "NEXUS_TURRET")]
+    assert tiers == sorted(tiers)
+    assert len(set(tiers)) == 4
+
+
+def test_building_with_no_type_does_not_emit_none():
+    text = pn._describe_moment(_building(None, None), 1, {})
+    assert "None" not in text
+    assert text.strip()
+
+
 # ------------------------------------------------------------ duplicates
 
 def _blob(events):
