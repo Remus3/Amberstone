@@ -156,6 +156,11 @@ _RM115P4_TAIL = ("kit_conversion_strength",)
 # mid-signature.
 _R193_TAIL = ("assume_crit_weighted_vamp",)
 
+# R194 landed as two independent slices in one round, each appending to a
+# DIFFERENT entry point, so the two tails carry slice-suffixed names. Merging
+# them under one shared name would let the second definition shadow the first
+# and silently retarget both case rows onto one tuple.
+#
 # R194 slice A (RM-116 part a) appends the item-passive omnivamp credit to
 # ``rank_items_by_ehp``. Unlike the 1.250.0 / RM-115 p4 / R193 splits above this
 # one does NOT introduce an asymmetry: ``compute_ehp`` has carried the same
@@ -164,7 +169,18 @@ _R193_TAIL = ("assume_crit_weighted_vamp",)
 # appears once here, on the entry point that newly EXPOSED it. The invariant the
 # guard protects is unchanged: newly exposed seam kwargs land at the END, in
 # order, never mid-signature.
-_R194_TAIL = ("assume_max_stacks_omnivamp",)
+_R194A_TAIL = ("assume_max_stacks_omnivamp",)
+
+# R194 slice C (RM-116c, lifesteal credit on Ravenous Hydra Cleave + Crescent)
+# appends a PAIR to ``compute_ehp`` ONLY, for the same reason R193 did: the
+# credit is a magnitude computed inside the per-build heal pool, and
+# ``rank_items_by_ehp`` orders builds and holds no heal pool of its own. The
+# pair is ordered value-then-gate (``targets_in_rotation`` names the AoE enemy
+# count, matching the DPS side's ``CallContext`` field; ``assume_cleave_
+# lifesteal`` is the DEFAULT-OFF arm) because passing the value alone must not
+# arm the credit. The invariant the guard protects is unchanged: seam kwargs
+# land at the END, in order, never mid-signature.
+_R194C_TAIL = ("targets_in_rotation", "assume_cleave_lifesteal")
 
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
@@ -180,7 +196,10 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
         # only (both are offense-side seams) and RM-87 appended after it on the
         # EHP pair only (a tank-objective seam), then R193 after RM-87 on
         # compute_ehp alone (it weights a per-build heal pool, which only that
-        # function holds). The invariant the guard actually protects is
+        # function holds), then R194 split two ways in one round: slice C after
+        # R193 on compute_ehp alone for the same per-build-heal-pool reason, and
+        # slice A on rank_items_by_ehp alone because the ranker is the entry
+        # point that newly EXPOSED the omnivamp seam. The invariant the guard actually protects is
         # unchanged: these seam kwargs live at the END, in order, never
         # mid-signature.
         shared = (
@@ -188,8 +207,11 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
         )
         hybrid_shared = shared + _R145_TAIL + _RM98_TAIL
         cases = (
-            ((compute_ehp,), shared + _RM87_TAIL + _R193_TAIL),
-            ((rank_items_by_ehp,), shared + _RM87_TAIL + _A1250_TAIL + _R194_TAIL),
+            ((compute_ehp,), shared + _RM87_TAIL + _R193_TAIL + _R194C_TAIL),
+            (
+                (rank_items_by_ehp,),
+                shared + _RM87_TAIL + _A1250_TAIL + _R194A_TAIL,
+            ),
             ((compute_hybrid,), hybrid_shared),
             ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL),
         )
