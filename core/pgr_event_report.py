@@ -228,9 +228,13 @@ def render_text(report: dict) -> str:
     if cohort["ranked"]:
         out.append("cohort:")
         for r in cohort["ranked"]:
+            # A tied band means most of the cohort scored the same value, so
+            # the percentile separates nothing - say so rather than implying
+            # a real standing.
+            tied = "  [tied - cohort mostly level here]" if r.get("tied") else ""
             out.append(f"  {r['metric']:<26} {r['value']:>9.2f}  "
                        f"at or above p{r['at_or_above_p']}  "
-                       f"(median {r['median']}, n={r['n']})")
+                       f"(median {r['median']}, n={r['n']}){tied}")
     if cohort["unavailable"]:
         out.append("no cohort table: " + ", ".join(cohort["unavailable"]))
     for note in report["notes"]:
