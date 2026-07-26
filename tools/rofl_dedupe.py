@@ -29,7 +29,9 @@ from __future__ import annotations
 
 import argparse
 import collections
+import datetime
 import hashlib
+import json
 import os
 import sys
 from pathlib import Path
@@ -87,6 +89,36 @@ def plan(root: Path):
     return links, mismatched, already
 
 
+def sample_size(root: Path) -> dict:
+    """Apparent vs actual bytes, counted by distinct inode.
+
+    Growth CANNOT be recovered from mtimes: the roster pull wrote 406 of 418
+    files on the seed day, so every timestamp reflects the bulk download rather
+    than organic accrual, and the daily mean it produces is an artifact. The
+    only honest measurement is forward sampling, which is why this runs on the
+    same daily schedule as the dedupe.
+    """
+    files = [p for p in root.rglob("*.rofl") if "_quarantine" not in p.parts]
+    inodes = {}
+    apparent = 0
+    for p in files:
+        st = p.stat()
+        apparent += st.st_size
+        inodes.setdefault(st.st_ino, st.st_size)
+    return {"files": len(files), "distinct": len(inodes),
+            "apparent_bytes": apparent, "actual_bytes": sum(inodes.values())}
+
+
+def append_sample(root: Path, stamp: str) -> Path:
+    """One JSON line per run. Two lines a day apart give the growth rate."""
+    dest = Path(__file__).parent.parent / "data" / "rofl_archive_growth.jsonl"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    row = dict(sample_size(root), at=stamp)
+    with dest.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row) + "\n")
+    return dest
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Hardlink duplicate .rofl files.")
     ap.add_argument("--root", default=str(DEFAULT_ROOT))
@@ -135,6 +167,29 @@ def main(argv=None) -> int:
                     pass
     print(f"\nrelinked {done}, failed {failed}, "
           f"reclaimed about {reclaim / 2**30:.2f} GB")
+
+    sample = append_sample(root, datetime.datetime.now().isoformat(
+        timespec="seconds"))
+    rows = [json.loads(ln) for ln in
+            sample.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    print(f"size sample appended to {sample.name} ({len(rows)} total)")
+    if len(rows) >= 2:
+        first, last = rows[0], rows[-1]
+        t0 = datetime.datetime.fromisoformat(first["at"])
+        t1 = datetime.datetime.fromisoformat(last["at"])
+        days = (t1 - t0).total_seconds() / 86400.0
+        grew = last["actual_bytes"] - first["actual_bytes"]
+        if days >= 0.5:
+            per_day = grew / days / 2**30
+            print(f"measured growth {per_day:.2f} GB/day over {days:.1f} days")
+            if per_day > 0:
+                here = last["actual_bytes"] / 2**30
+                for cap in (200, 250):
+                    print(f"  cap {cap} GB reached in "
+                          f"{(cap - here) / per_day:.0f} days "
+                          f"(now {here:.1f} GB)")
+        else:
+            print(f"only {days * 24:.1f} h of history - need a day for a rate")
     return 0 if not failed else 1
 
 
