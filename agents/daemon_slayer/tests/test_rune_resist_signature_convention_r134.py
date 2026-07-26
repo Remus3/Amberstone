@@ -156,6 +156,17 @@ _RM115P4_TAIL = ("kit_conversion_strength",)
 # mid-signature.
 _R193_TAIL = ("assume_crit_weighted_vamp",)
 
+# R194 slice C (RM-116c, lifesteal credit on Ravenous Hydra Cleave + Crescent)
+# appends a PAIR to ``compute_ehp`` ONLY, for the same reason R193 did: the
+# credit is a magnitude computed inside the per-build heal pool, and
+# ``rank_items_by_ehp`` orders builds and holds no heal pool of its own. The
+# pair is ordered value-then-gate (``targets_in_rotation`` names the AoE enemy
+# count, matching the DPS side's ``CallContext`` field; ``assume_cleave_
+# lifesteal`` is the DEFAULT-OFF arm) because passing the value alone must not
+# arm the credit. The invariant the guard protects is unchanged: seam kwargs
+# land at the END, in order, never mid-signature.
+_R194_TAIL = ("targets_in_rotation", "assume_cleave_lifesteal")
+
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
 _SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
@@ -170,7 +181,8 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
         # only (both are offense-side seams) and RM-87 appended after it on the
         # EHP pair only (a tank-objective seam), then R193 after RM-87 on
         # compute_ehp alone (it weights a per-build heal pool, which only that
-        # function holds). The invariant the guard actually protects is
+        # function holds), then R194 after R193 on compute_ehp alone for the
+        # same per-build-heal-pool reason. The invariant the guard actually protects is
         # unchanged: these seam kwargs live at the END, in order, never
         # mid-signature.
         shared = (
@@ -178,7 +190,7 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
         )
         hybrid_shared = shared + _R145_TAIL + _RM98_TAIL
         cases = (
-            ((compute_ehp,), shared + _RM87_TAIL + _R193_TAIL),
+            ((compute_ehp,), shared + _RM87_TAIL + _R193_TAIL + _R194_TAIL),
             ((rank_items_by_ehp,), shared + _RM87_TAIL + _A1250_TAIL),
             ((compute_hybrid,), hybrid_shared),
             ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL),
