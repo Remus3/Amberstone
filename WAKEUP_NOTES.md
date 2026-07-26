@@ -4,6 +4,56 @@
 
 ---
 
+# 2026-07-26k - RM-117 chain verified, full-corpus table read, multikills SHIPPED. 6 commits.
+
+**NOT a DS session.** No ENGINE bump, no Share mirror, nothing under `agents/daemon_slayer/`.
+
+## Chain state - nothing failed, do not "repair" it
+`timeline_ingest` CLOSED at **3005**. `build_rank_baselines` pid 17616 was still
+alive at wrap (14/31 cohorts, ~170s each), started 10:25 - it PREDATES the
+session, so it is not session-owned and survives `/clear`. **`RC-ReplayRosterPull`
+Disabled with a non-empty `busy` list is CORRECT, not a stuck watchdog** -
+`replay_chain_watch.py:93` short-circuits while an ingest holds the rate budget.
+`RC-ReplayChainWatch` runs PT15M (verified `LastTaskResult=0`, NextRunTime live)
+and owns re-enabling RosterPull + the miner. Verified `needs_mine()` is **False**
+(`matches: 3005` vs `timelines_count() 3005`) so it will NOT re-mine in a loop.
+
+## Full-corpus table (3005 matches, 44 remakes dropped, 2094/2094 per role)
+Mined manually - the miner is local-only, no Riot calls, so it did not have to
+wait on the rate budget. Written up as `REPLAY_T2_PARSE_CRITERIA.md` **4b-4**.
+**Nothing promoted.** JUNGLE `plate_share` HOLDS and strengthens: 0.082 vs 0.045,
+**effect 0.49** (was 0.46) - still the only survivor. `kill_participation` still
+inert in all 5 roles at 2x corpus. Two new rows both die: TOP `plate_share` -0.21
+NOT REPRODUCED **with the sign inverted**; `solo_deaths_per_min` carries LESS
+signal than the `deaths_per_min` axis it subsets, so it is that restatement plus
+noise.
+
+## Shipped
+Postgame narrative now carries CHAMPION_SPECIAL_KILL (`5a5ac3f6`, `ae1d6f19`) and
+named/tiered objectives + buildings (`114f4d6c`). Three real defects found by
+rendering actual matches, not by reading code: Riot emits **one row per multikill
+rung** (a penta arrives as double->triple->quadra->penta and ate 2 of 5 slots); a
+penta that aces emits both at the same ts and they collided in the dedup key; and
+**all 4803 inhibitors scored 35 instead of 50** because the impact branch read
+`tower_type`, which is NULL on inhibitor rows. Module is SHADOW-ONLY - no live
+coach path flipped.
+
+## Docs
+ROADMAP.md was **already over its 80KB budget at HEAD** (82977) before this
+session. Two relocation passes (`156dbe0e`, `a83360b8`) took it to **71819**; the
+RM-79..RM-98 shape-backlog bullet went 16290 -> 7506. 21 CLOSED entries relocated
+VERBATIM to ROADMAP_HISTORY.md, each leaving a pointer that keeps its fences AND
+its measurement traps. Zero RM ids lost (diffed against HEAD).
+
+## Owed
+`rank_baselines.json` (31 cohorts) not yet on disk - **the PGR cohort-band check
+is the only thing left**: `python tools/pgr_event_report.py --latest --pid 1`
+should stop printing `rank_baselines.json absent`. Retention policy still blocked
+on a 2nd `rofl_archive_growth.jsonl` sample (1 sample as of 12:32; mtimes CANNOT
+answer it - bulk seed day). Quarantine PURGED this session (8 files, 24.7 MB).
+
+---
+
 # 2026-07-26j - REPLAY ANALYSIS SUBSTRATE (RM-117, LEDGER 1062). 28 commits, 112 tests.
 
 **NOT a DS session.** No ENGINE bump, no Share mirror, nothing under `agents/daemon_slayer/`.
@@ -45,6 +95,8 @@ intervals and sharing are unrecoverable. Do not re-derive `FAR_UNITS` /
 **B13** - Riot's acceptable-use position on bulk replay harvesting at
 108-account scale is UNMEASURED. No retention policy on a 6.78 GB corpus
 growing hourly. The win/loss promotion gate is BUILT but UNRUN at scale.
+
+---
 
 # 2026-07-26i - RM-95b residual SHIPPED: population 3 measured down to 1
 
@@ -104,58 +156,3 @@ only, as a DEFAULT-OFF seam requires.
 
 **Don't-redo:** do NOT author registry entries for Jayce W Hyper Charge or Mel W Rebuttal -
 both are refuted with guards on disk. Do NOT re-file the RM-95b residual as a population of 3.
-
----
-
-# 2026-07-26h - RM-95b B2 REFUTED on measurement + 2 stale ROADMAP rows corrected
-
-**Shipped:** `4046b6d8` (tools) + `0216516d` (docs), pushed. Tier-1 - a `tools/` module only,
-so no ENGINE bump, no DS bounce, no RC restart, no Share regen. LEDGER 1060.
-
-**The deliverable is a refutation, and the session's real lesson is that my OWN measurement
-was wrong twice before it was right.** Picked RM-95b "B2" (promote wiki `leveling` to typed
-damage blocks) off ROADMAP NEXT. Two rows turned out stale before any build:
-
-1. RM-99b's "NEW residual, OPEN: `3131` Sword of the Divine 15.0s vs 90s" is already SHIPPED
-   (`3ad4d075`, ENGINE 1.246.0, guarded by `test_sword_of_divine_cadence.py`). Caught by a
-   `git log -- <cited file>` age check.
-2. B2's own justification - "closes Locke/Zaahen `baseline_burst=0.0`" - died with
-   `e6b7b238` / ENGINE 1.250.0, which hand-authors both kits in
-   `_ability_wiki_damage_registry.py` DEFAULT-**ON**. A spec subagent surfaced this; I
-   re-probed it myself rather than taking its word (snapshot loads 173, Locke Q = Ritual
-   Nails / MAGIC / 6 blocks).
-
-**Then the surviving roster-wide half was MEASURED and it died too.** Against a live 16.14.1
-`--full-roster` extract (1058 abilities, 0 errors, 688 with a leveling payload):
-937 forms -> 361 with no damage block -> 146 with their own leveling -> **3** naming a real
-damage label once stat grants are excluded (Jayce W Hyper Charge, Mel W Rebuttal, Quinn R
-Skystrike), **all 3 fully literal**. So the `{{#var:}}` scanner + arithmetic evaluator that
-dominated the spec's risk section buys nothing. Three hand-authored registry entries are the
-proportionate fix - do NOT build the promoter.
-
-**The count read 1, then 16, then 3, and the 16 was the dangerous one** because it clustered
-into a tidy story (Hwei's subject spells, Kha'Zix's evolved forms, Riven R) that would have
-justified the whole build. It was a join artifact: a slot-level fallback attributed the
-PRIMARY form's leveling text to its alternate forms. A separate `Bonus[a-z ]*Damage` label
-regex independently inflated 3 -> 36 by matching the "Bonus Attack Damage" STAT GRANT. Both
-traps are now written into the ROADMAP row. New memory
-`feedback_population_sizing_middle_answer_trap`.
-
-**What shipped anyway (good independent of the verdict):** the extractor now captures
-`leveling*_raw` via a new `_block_param` brace-depth scanner - `leveling` is the ONLY
-multi-line param on a Template:Data page, so the line-anchored `_param_re` truncates it, and
-a test asserts `_param_re` is genuinely insufficient so the capture test cannot go vacuous.
-Plus an `apiname`+slot join key that did not previously exist. The committed sidecar is
-deliberately NOT regenerated - the capture is inert until the extractor is re-run, which is
-what keeps this Tier-1.
-
-**Verification (fresh this session):** ruff clean; `tools/tests/` 346 passed (22 new);
-doc-size budget 2 passed; ASCII/mojibake/u2500 hygiene 486 passed / 10 skipped; zero
-non-ASCII added. DS `:8893` unchanged at 1.256.0 / 16.14.1 (correctly - Tier-1).
-Also compacted `MEMORY.md` 19.8KB -> 16.8KB on a hook prompt (247 links, 0 broken, 0 entries
-dropped).
-
----
-
-
-_Older sessions archived to `docs/history_notes.md`._
