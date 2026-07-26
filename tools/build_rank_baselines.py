@@ -11,12 +11,19 @@ CHEAPER THAN THE T0 BUILD: every metric exists on the Match-V5 participant, so
 this needs ONE call per match - no timeline, no .rofl. That is what makes an
 all-tiers sweep affordable at Riot's 100/120 s app cap.
 
-TIER SAMPLING. Non-apex tiers are paged from league-exp-v4 per division;
-apex tiers (MASTER / GRANDMASTER / CHALLENGER) have their own league-v4
-endpoints and no divisions. Divisions within a tier are MERGED into one
-baseline: a per-division sweep costs four times as much for a distinction
-finer than a coaching line needs. That merge is a stated tradeoff, not an
-oversight - Platinum IV and Platinum I do differ.
+COHORT GRANULARITY IS PER DIVISION. Iron I through Diamond IV are sampled and
+reported separately, giving 28 divisional cohorts plus the three apex tiers
+(MASTER / GRANDMASTER / CHALLENGER, which genuinely have no divisions) - 31
+cohorts in total.
+
+An earlier version merged divisions to save four-fifths of the calls. That was
+the wrong call for coaching: Platinum IV and Platinum I are materially
+different players, and a merged Platinum median flatters the bottom of the
+tier and understates the top. The cost is real - roughly 4x the calls - and it
+is paid deliberately.
+
+Apex tiers are paged from their own league-v4 endpoints; every other cohort
+comes from league-exp-v4 for that exact tier and division.
 
 DO NOT RUN CONCURRENTLY with another RC ingest; --wait-for-idle blocks until
 the others are done.
@@ -64,22 +71,32 @@ def _call(label, url, timeout=30.0):
     return riot_api._call(label, url, rate_limit_timeout_s=timeout)
 
 
-def accounts_for_tier(tier: str, want: int) -> list:
-    """PUUIDs sampled from a tier, spread across its divisions."""
+def cohorts(tiers) -> list:
+    """(cohort_name, tier, division) for every cohort to sample.
+
+    Apex tiers have no divisions, so their cohort name is the bare tier.
+    """
+    out = []
+    for tier in tiers:
+        if tier in APEX:
+            out.append((tier, tier, None))
+        else:
+            for div in DIVISIONS:
+                out.append((f"{tier}_{div}", tier, div))
+    return out
+
+
+def accounts_for_cohort(tier: str, division, want: int) -> list:
+    """PUUIDs sampled from ONE cohort - a single tier+division, or an apex tier."""
     if tier in APEX:
         blob = _call("league_v4", f"https://{PLATFORM}.api.riotgames.com/lol/"
                                   f"league/v4/{APEX[tier]}/by-queue/{QUEUE}")
         entries = (blob or {}).get("entries") or []
         return [e["puuid"] for e in entries[:want] if e.get("puuid")]
-    out, per_div = [], max(1, want // len(DIVISIONS))
-    for div in DIVISIONS:
-        page = _call("league_exp_v4",
-                     f"https://{PLATFORM}.api.riotgames.com/lol/league-exp/v4/"
-                     f"entries/{QUEUE}/{tier}/{div}?page=1")
-        for e in (page or [])[:per_div]:
-            if e.get("puuid"):
-                out.append(e["puuid"])
-    return out[:want]
+    page = _call("league_exp_v4",
+                 f"https://{PLATFORM}.api.riotgames.com/lol/league-exp/v4/"
+                 f"entries/{QUEUE}/{tier}/{division}?page=1")
+    return [e["puuid"] for e in (page or [])[:want] if e.get("puuid")]
 
 
 def match_ids(puuid: str, count: int) -> list:
@@ -105,7 +122,7 @@ def _others_running() -> bool:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Per-rank cohort baselines.")
-    ap.add_argument("--accounts-per-tier", type=int, default=16)
+    ap.add_argument("--accounts-per-cohort", type=int, default=14)
     ap.add_argument("--matches-per-account", type=int, default=8)
     ap.add_argument("--tiers", default=",".join(TIERS))
     ap.add_argument("--out", default="data/rank_baselines.json")
@@ -127,16 +144,17 @@ def main(argv=None) -> int:
     tiers = [t.strip().upper() for t in args.tiers.split(",") if t.strip()]
     t0 = time.time()
     out = {"source": "match_v5", "tier": "T0", "queue": QUEUE,
-           "accounts_per_tier": args.accounts_per_tier,
+           "accounts_per_cohort": args.accounts_per_cohort,
            "matches_per_account": args.matches_per_account,
-           "divisions_merged": True,
+           "divisions_merged": False,
            "undetectable_afk_rate": ch.UNDETECTABLE_AFK_RATE, "tiers": {}}
 
-    for tier in tiers:
-        puuids = accounts_for_tier(tier, args.accounts_per_tier)
-        print(f"{tier}: {len(puuids)} accounts", flush=True)
+    plan = cohorts(tiers)
+    print(f"{len(plan)} cohorts to sample", flush=True)
+    for name, tier, division in plan:
+        puuids = accounts_for_cohort(tier, division, args.accounts_per_cohort)
         if not puuids:
-            print(f"  {tier}: no accounts resolved - SKIPPED", flush=True)
+            print(f"  {name}: no accounts resolved - SKIPPED", flush=True)
             continue
         wanted, seen = [], set()
         for pu in puuids:
@@ -160,10 +178,11 @@ def main(argv=None) -> int:
                 metrics = cb.participant_metrics(p)
                 if role and metrics:
                     rows.append((role, metrics))
-        out["tiers"][tier] = {
+        out["tiers"][name] = {
+            "tier": tier, "division": division,
             "matches": kept, "dropped": dropped, "failed": failed,
             "player_rows": len(rows), "roles": cb.build(rows)}
-        print(f"  {tier}: matches={kept} dropped={dropped} failed={failed} "
+        print(f"  {name}: matches={kept} dropped={dropped} failed={failed} "
               f"rows={len(rows)} elapsed={time.time() - t0:.0f}s", flush=True)
 
     dest = Path(args.out)
@@ -183,7 +202,7 @@ def main(argv=None) -> int:
         for role in ("TOP", "JUNGLE", "MID", "BOT", "SUPPORT"):
             tbl = (t["roles"].get(role) or {}).get("cs_per_min")
             med.append(f"{tbl['p50']:>9.2f}" if tbl else f"{'-':>9}")
-        print(f"{tier:14} {t['player_rows']:>6} " + " ".join(med), flush=True)
+        print(f"{name:14} {t['player_rows']:>6} " + " ".join(med), flush=True)
     print("(median cs_per_min by role)", flush=True)
     return 0
 
