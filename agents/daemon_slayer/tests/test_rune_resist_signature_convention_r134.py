@@ -182,6 +182,18 @@ _R194A_TAIL = ("assume_max_stacks_omnivamp",)
 # land at the END, in order, never mid-signature.
 _R194C_TAIL = ("targets_in_rotation", "assume_cleave_lifesteal")
 
+# RM-91 T1 appends the champion HEALTH -> DAMAGE coupling pair to
+# ``rank_items_by_ehp`` ONLY. It is the health-axis twin of the RM-87 resist
+# pair, and like that pair it is a RANKING-only lever - but unlike RM-87 it is
+# not mirrored onto ``compute_ehp`` for signature parity, because nothing in the
+# EHP math reads it and an unread kwarg on the scalar entry point is a
+# signature-tidy pretending to be a capability (the same reasoning the 1.250.0 /
+# RM-115 p4 / R193 splits above already record). The pair is ordered
+# gate-then-magnitude, matching RM-87. The invariant the guard protects is
+# unchanged: newly exposed seam kwargs land at the END, in order, never
+# mid-signature.
+_RM91_TAIL = ("apply_health_damage_coupling", "health_coupling_strength")
+
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
 _SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
@@ -210,7 +222,7 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
             ((compute_ehp,), shared + _RM87_TAIL + _R193_TAIL + _R194C_TAIL),
             (
                 (rank_items_by_ehp,),
-                shared + _RM87_TAIL + _A1250_TAIL + _R194A_TAIL,
+                shared + _RM87_TAIL + _A1250_TAIL + _R194A_TAIL + _RM91_TAIL,
             ),
             ((compute_hybrid,), hybrid_shared),
             ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL),

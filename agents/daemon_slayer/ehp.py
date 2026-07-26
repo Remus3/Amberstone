@@ -139,6 +139,7 @@ from .stats import clamp_level
 from .survivability_credit import survivability_item_ids_tank
 from .kit_conversion import conversion_factor, kit_conversion
 from ._resist_damage_coupling import coupled_resist_points, resist_damage_coupling
+from ._health_damage_coupling import coupled_health_points, health_damage_coupling
 from ._hsp_amp import sum_wielder_hsp_pct
 from ._item_ally_grant import ally_grant_hp, total_item_ally_grant_hp
 from ._champion_ally_reach import champion_ally_reach
@@ -2956,6 +2957,25 @@ class EhpRankedItem:
     # is unmoved.
     sustain_ehp: float = 0.0
     delta_sustain_ehp: float = 0.0
+    # RM-91 T1 (2026-07-26): OBSERVABILITY ONLY - the candidate's MAXIMUM HEALTH
+    # gain over the baseline build, which is the quantity the health -> damage
+    # coupling credit reads. Appended at the VERY END with a default per the
+    # Python dataclass convention (a mid-class required field breaks every
+    # positional construction). Populated ONLY when the health coupling lever is
+    # engaged; 0.0 otherwise, so the default row stays at identity and the OFF
+    # path is byte-identical.
+    #
+    # ONE field, not two, and the omission is deliberate rather than lazy: the
+    # entry's ``pct_base`` may read the BONUS pool, but for an ITEM delta the
+    # bonus-health gain and the maximum-health gain are the SAME number - both
+    # builds resolve at the same level, so the champion's base block is identical
+    # on both sides and cancels out of the subtraction. A second
+    # ``delta_bonus_hp`` field would therefore be an exact duplicate column on
+    # every row the ranker can ever produce. The ranker passes this one value for
+    # both arguments of ``coupled_health_points``, whose two-argument shape is
+    # kept so a future non-item caller (a rune / augment lane that grants base
+    # health) can distinguish them without a signature change.
+    delta_max_hp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -2979,6 +2999,7 @@ class EhpRankedItem:
             "delta_mr": self.delta_mr,
             "sustain_ehp": self.sustain_ehp,
             "delta_sustain_ehp": self.delta_sustain_ehp,
+            "delta_max_hp": self.delta_max_hp,
         }
 
 
@@ -3156,6 +3177,17 @@ def rank_items_by_ehp(
     # the credit lands on the SUSTAIN metric alone, so it moves the ordering
     # only under ``score_by="sustain"``.
     assume_max_stacks_omnivamp: bool = False,
+    # RM-91 T1 (2026-07-26): the champion HEALTH -> DAMAGE coupling lever, the
+    # HEALTH-axis twin of the RM-87 resist pair above, appended at END per the
+    # no-mid-signature-insert convention. A sort-ONLY credit folded into
+    # ``_base_key`` (the ``_conv_key`` precedent), never into a row value. Inert
+    # unless the flag is True AND the strength is > 0.0 AND the champion is seeded
+    # in ``_health_damage_coupling`` - any one of those failing is an exact no-op.
+    # DELIBERATELY a SEPARATE flag from the RM-87 pair: the two registries are
+    # disjoint (zero champion overlap), so one merged flag would arm a health
+    # credit on a resist converter and vice versa.
+    apply_health_damage_coupling: bool = False,
+    health_coupling_strength: float = 0.0,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -3224,6 +3256,15 @@ def rank_items_by_ehp(
         raise ValueError(
             "score_by must be 'blended', 'cc_blended', 'team_blended' or "
             f"'sustain', got {score_by!r}"
+        )
+    # RM-91: the health-coupling magnitude is validated at the same boundary as
+    # the other scalars rather than silently inverting a sort key. The RM-87
+    # sibling gets this for free by forwarding its pair to ``compute_ehp``; this
+    # lever is ranker-ONLY (nothing in the EHP math reads it), so it is not
+    # forwarded anywhere and is checked here instead.
+    if health_coupling_strength < 0.0:
+        raise ValueError(
+            f"health_coupling_strength must be >= 0.0, got {health_coupling_strength}"
         )
     enemy_champions = tuple(str(e) for e in (enemy_champions or ()))
     # Item 236: tenacity-credit defaults ON for cc_blended ranking (an
@@ -3394,6 +3435,43 @@ def rank_items_by_ehp(
         if _coupling_pool <= 0.0:
             _coupling = None
 
+    # RM-91 T1 (2026-07-26): resolve the HEALTH -> damage coupling ONCE, the exact
+    # mirror of the RM-87 block above on the health axis. Consulted ONLY when the
+    # flag is engaged AND the strength is positive, so a default call never
+    # touches the registry.
+    #
+    # ``_health_pool`` is the BASELINE build's RAW health on the basis the entry
+    # names, percent-FREE - the denominator that turns a candidate's coupled
+    # health points into a dimensionless percent-delta. Percent-FREE is
+    # load-bearing for the same reason it is on the resist lever: normalizing by
+    # a percent-weighted pool would cancel the percents and hand a 2.5-percent
+    # converter (Braum) the same credit as an 11-percent one (Shen). A
+    # non-positive pool (a level-1 no-item bonus-basis build) disarms the lane
+    # rather than dividing by zero.
+    _health_coupling = (
+        health_damage_coupling(str(champion_id))
+        if (apply_health_damage_coupling and health_coupling_strength > 0.0)
+        else None
+    )
+    _health_pool = 0.0
+    if _health_coupling is not None:
+        if _health_coupling.pct_base == "bonus":
+            # BONUS basis: subtract the champion's own base block at THIS level,
+            # exactly how compute_ehp derives its bonus_hp (``stats`` minus
+            # ``base_stats`` off the SAME resolved build). ``base_stats`` is the
+            # level-scaled no-item block, so this is item-granted health.
+            _hcpl_resolved = build_champion(
+                snapshot, champion_id, level, item_ids=current_ids, mode=mode,
+                augments=augments, apply_mode_modifiers=apply_mode_modifiers,
+            )
+            _health_pool = max(
+                0.0, baseline.hp - float(_hcpl_resolved.base_stats.get("hp", 0.0))
+            )
+        else:
+            _health_pool = baseline.hp
+        if _health_pool <= 0.0:
+            _health_coupling = None
+
     candidates = _filter_candidates(
         snapshot,
         mode=mode,
@@ -3513,6 +3591,13 @@ def rank_items_by_ehp(
         else:
             cpl_d_armor = 0.0
             cpl_d_mr = 0.0
+        # RM-91 observability: the candidate's maximum-health gain, which is the
+        # quantity the health-coupling credit reads. Both builds resolve at the
+        # same level, so the champion's base block cancels and this ALSO equals
+        # the bonus-health gain - which is why one field covers both bases.
+        # 0.0 unless the lane is armed -> the default row (and to_dict) stays at
+        # identity.
+        hcpl_d_hp = (scored.hp - baseline.hp) if _health_coupling is not None else 0.0
         ranked.append(EhpRankedItem(
             item_id=item_id,
             item_name=str(rec.get("name", item_id)),
@@ -3534,6 +3619,7 @@ def rank_items_by_ehp(
             delta_mr=cpl_d_mr,
             sustain_ehp=scored.effective_ehp_with_sustain,
             delta_sustain_ehp=sustain_delta,
+            delta_max_hp=hcpl_d_hp,
         ))
 
     # Item 236: the sort key tracks score_by. Default "blended" sorts on
@@ -3613,15 +3699,61 @@ def rank_items_by_ehp(
         )
         return value * (1.0 + credit)
 
+    def _health_key(value: float, r: EhpRankedItem) -> float:
+        """RM-91 sort-only view of ``value`` - never mutates the row itself.
+
+        The champion's kit re-spends a fraction of its HEALTH as damage
+        (``_health_damage_coupling``), and this module credits that payment
+        nowhere: ``ehp.py`` reads zero damage_blocks. Same shape as
+        ``_coupling_key``, one axis over:
+
+            points = max_hp_pct/100 * delta_max_hp + bonus_hp_pct/100 * delta_bonus_hp
+            credit = strength * conditional_probability * points / pool
+
+        where ``pool`` is the BASELINE build's RAW health on the basis the entry
+        names (total or bonus per ``pct_base``), percent-FREE. Both halves are
+        health points, so ``points / pool`` is dimensionless and the lever stays
+        unit-free, and because the pool carries no percents the credit scales
+        with the conversion MAGNITUDE (Shen's 11 percent earns 2.75x Tahm
+        Kench's 4 percent).
+
+        For an ITEM delta the maximum-health and bonus-health gains are the same
+        number (the base block cancels), so ``r.delta_max_hp`` is passed for
+        both - see the field's note on ``EhpRankedItem``.
+
+        Only ever RAISES, and only for a candidate that actually grants health.
+        A non-positive value is returned unchanged (the ``_conv_key`` guard,
+        mirrored).
+
+        KNOWN LIMIT, deliberate and out of scope for T1: this factor is MONOTONE
+        in ``delta_max_hp``, so it can raise health-granting candidates above
+        resist-only ones but can never re-order WITHIN the health axis - a
+        600-HP item cannot overtake a 1000-HP one. Crediting an ITEM's own
+        caster-HP-scaling proc is the follow-on (T2).
+        """
+        if _health_coupling is None or value <= 0.0:
+            return value
+        points = coupled_health_points(
+            _health_coupling, r.delta_max_hp, r.delta_max_hp
+        )
+        if points <= 0.0:
+            return value
+        credit = (
+            health_coupling_strength
+            * _health_coupling.conditional_probability
+            * (points / _health_pool)
+        )
+        return value * (1.0 + credit)
+
     def _base_key(r: EhpRankedItem) -> tuple:
         if sort_by == "efficiency":
             return (
-                _coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r),
-                _coupling_key(_conv_key(_active(r), r.item_id), r),
+                _health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r),
+                _health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r),
             )
         return (
-            _coupling_key(_conv_key(_active(r), r.item_id), r),
-            _coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r),
+            _health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r),
+            _health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r),
         )
 
     if surv_active:
@@ -3699,6 +3831,21 @@ def rank_items_by_ehp(
         notes.append(
             "apply_resist_damage_coupling=ON but inert - champion has no seeded "
             "resist->damage conversion (or a zero baseline resist pool)"
+        )
+    if _health_coupling is not None:
+        _hc_pct = _health_coupling.max_hp_pct + _health_coupling.bonus_hp_pct
+        notes.append(
+            f"apply_health_damage_coupling=ON ({_health_coupling.attribute}) - "
+            f"sort-only credit for {_hc_pct:.1f}% {_health_coupling.pct_base} "
+            f"health re-spent as damage, strength={health_coupling_strength:.2f}, "
+            f"amortized at {_health_coupling.conditional_probability:.2f}, "
+            f"normalized against a {_health_pool:.1f}-point baseline "
+            f"{_health_coupling.pct_base} health pool"
+        )
+    elif apply_health_damage_coupling and health_coupling_strength > 0.0:
+        notes.append(
+            "apply_health_damage_coupling=ON but inert - champion has no seeded "
+            "health->damage conversion (or a zero baseline health pool)"
         )
 
     return EhpRankResult(
