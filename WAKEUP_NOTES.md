@@ -4,6 +4,48 @@
 
 ---
 
+# 2026-07-26j - REPLAY ANALYSIS SUBSTRATE (RM-117, LEDGER 1062). 28 commits, 112 tests.
+
+**NOT a DS session.** No ENGINE bump, no Share mirror, nothing under `agents/daemon_slayer/`.
+
+## The one thing to carry forward
+The brief assumed frame-level replay analysis needed the Settled `.rofl` Layer-2
+fence opened. **It does not, and the fence stays CLOSED.** Four measurements:
+1. The v2 container has NO encryption - plain zstd, stdlib-openable. The
+   roflxd/Blowfish layout everyone cites is the OLDER v1 container. The fence's
+   crypto rationale is void; its CHURN rationale stands (2 builds inside 16.14).
+2. Positions come from the sanctioned replay API at **~19 map units** via an
+   analytic ray/ground-plane solve. `cameraRotation` is `{x:YAW, y:PITCH}`, the
+   camera looks `h/tan(p)` AHEAD of its own coords, and `cameraPosition` is
+   writable ONLY in `cameraMode:"fps"`.
+3. **Match-V5 60 s positions carry ~2000 units of error** (replicated on 2 games;
+   8 of 33 samples wrong by more than the 2750-unit decision threshold). An
+   earlier claim in this same session that the signal decay was "real behaviour"
+   is RETRACTED in-file - it was sampling noise.
+4. Paused renders are BIT-DETERMINISTIC (0 px), so flipping one entity toggle
+   makes the pixel diff that entity class. **Wave state and ward coverage both
+   unblock** with no ML. Buff camps untried.
+
+## Running unattended - DO NOT ASSUME THESE FINISHED
+- `timeline_ingest` pid 7580: **1092 / 3005** timelines at hand-off.
+- `build_rank_baselines` pid 17616: waiting for idle, then 31 per-division cohorts.
+- **`RC-ReplayChainWatch`** (new, PT15M) re-enables `RC-ReplayRosterPull` and runs
+  the miner once both finish. `RC-ReplayRosterPull` is **Disabled** until it does.
+- **GAP:** nothing restarts `timeline_ingest` if it died. Check the count first;
+  it is resumable and skips existing files.
+
+## Don't-redo
+No fetch-by-match-id route exists (two requested matches rotated out of the
+5-wide window mid-session, permanently gone) - never plan a `.rofl` backfill.
+Summoner spells are LOADOUT ONLY (no Flash/TP/Smite timings anywhere). Buff
+intervals and sharing are unrecoverable. Do not re-derive `FAR_UNITS` /
+`SIGNAL_DECAY` as jungler facts.
+
+## Owed / operator-gated
+**B13** - Riot's acceptable-use position on bulk replay harvesting at
+108-account scale is UNMEASURED. No retention policy on a 6.78 GB corpus
+growing hourly. The win/loss promotion gate is BUILT but UNRUN at scale.
+
 # 2026-07-26i - RM-95b residual SHIPPED: population 3 measured down to 1
 
 **Shipped:** ENGINE 1.256.0 -> **1.257.0**, DEFAULT-OFF `apply_wiki_form_damage`. LEDGER 1061.
@@ -115,42 +157,5 @@ dropped).
 
 ---
 
-# 2026-07-26g - R195 HEXCORE anchor drift made machine-enforced (gemini loop cycle 5, operator halt)
 
-**Shipped:** `a27e5e6b` + `07360f10` (sha fill), pushed. Tier-0/1 - no ENGINE bump, no DS
-bounce, no RC restart, no Share sync.
-
-**The result worth carrying forward: the directive's DUST half was already done, and
-measuring that before editing was the deliverable.** The directive asked for DUST leaves for
-every net-new non-test `.py` since `d584e02e` - but that is R164's baseline and three refills
-have landed on top of it (R188 `bb847bd0`, R191 `b4df6494`, which literally says "9 net-new
-DUST leaves, dust 341 -> 350"). Parsing the shipped `var DUST=` literal against the 54
-net-new basenames gives **0 missing**. Zero DUST edits was the correct output. A
-`git log -1 -- <cited file>` age check caught it before any code.
-
-**The real defect was anchor drift, and the fix is a guard rather than a seventh hand
-refill.** Six passes (R146, R151, R157, R164, R188, R191) re-typed the same numbers by hand
-because nothing tied them to the repo, so the HUD sat three ENGINE bumps stale. Re-anchored
-ENGINE 1.254.0 -> 1.256.0, 9746 -> 9849 DS tests (both cite sites), commits 3972 -> 4007,
-last `686a4b48` -> `cc6c241f`, LEDGER 1054 -> 1058. Then added 4 guards to
-`tests/test_hexcore_offline_dust.py` (11 -> 15) that read `ENGINE_VERSION` out of
-`agents/daemon_slayer/__init__.py` + the patch out of `data/daemon_slayer/current.txt`, so the
-NEXT bump that forgets this file goes RED at the bump. The DS test count is pinned for
-INTERNAL AGREEMENT across cite sites, not to a literal - the live number moves every batch, so
-a literal guard is either wrong or forces an edit per batch, while agreement still catches the
-half-refill. The LEDGER high-water anchor is deliberately unguarded (advances every session).
-
-**Carry-forward / OWED:** the full RC `tests/` run was still in flight when the operator
-called halt - it is NOT measured this cycle and NOT carried forward from R194. DS is measured:
-9849 passed / 1 skipped / 4661 subtests. Targeted gate (hexcore guard + the three
-ASCII/mojibake/u2500 hygiene modules) 28 passed, ruff clean, `node --check` clean on the
-extracted 147956-char script block, 0 non-ASCII bytes. CI was in_progress at halt on
-`07360f10` - confirm green next session.
-
-**Don't-redo:** the `d584e02e` DUST baseline is exhausted. Do NOT re-issue "sync HEXCORE
-against net-new files since d584e02e". A future refill computes its baseline from
-`git log -1 -- docs/HEXCORE_offline.html`, never from a directive's remembered sha.
-
-**Loop:** operator sent "halt when done" mid-cycle. In-flight slice finished, committed,
-pushed; `ops/loop/control/STOP` dropped so the controller + AHK bridge exit. No new phase
-started.
+_Older sessions archived to `docs/history_notes.md`._
