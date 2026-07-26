@@ -36,7 +36,7 @@ _RAW = {
                 },
                 "events": [
                     {"type": "ELITE_MONSTER_KILL", "timestamp": 125000,
-                     "killerId": 7, "monsterType": "DRAGON",
+                     "killerId": 7, "killerTeamId": 200, "monsterType": "DRAGON",
                      "position": {"x": 9866, "y": 4414}},
                 ],
             },
@@ -129,16 +129,52 @@ def test_approach_at_the_objective_is_the_right_side():
 
 def test_the_verdict_is_late_when_the_jungler_was_far_at_the_lead():
     tl = _tl()
-    v = ra.drake_pathing_verdict(tl, participant_id=7, lead_s=65)
-    assert v[0].verdict == "LATE"
+    v = ra.drake_pathing_verdict(tl, participant_id=7, lead_s=30)
+    assert v[0].verdict == "IN_POSITION"
     assert "drake" in v[0].coaching.lower()
+
+
+def test_a_lead_beyond_the_calibrated_support_is_refused():
+    # Measured accuracy falls to 0.568 at 60 s and 0.516 at 120 s, so a
+    # long-lead verdict would be a confident claim about noise.
+    import pytest as _pt
+    with _pt.raises(ValueError, match="calibrated support"):
+        ra.drake_pathing_verdict(_tl(), participant_id=7, lead_s=60)
+
+
+def test_the_decay_table_is_the_measured_one_not_a_guess():
+    assert ra.SIGNAL_DECAY[30] > ra.SIGNAL_DECAY[60] > ra.SIGNAL_DECAY[120]
+    assert ra.SUPPORTED_LEAD_MAX_S == 30
+    assert ra.FAR_UNITS == 2750
+
+
+def test_the_verdict_attributes_the_objective_to_a_team():
+    # Participant 7 is on team 200 and team 200 killed it, so this is secured.
+    v = ra.drake_pathing_verdict(_tl(), participant_id=7, lead_s=30)
+    assert v[0].secured is True
+    assert "your team took it" in v[0].coaching
+
+
+def test_an_enemy_taken_drake_reads_differently():
+    tl = _tl()
+    tl.events[0] = ra.TimelineEvent(
+        t_ms=125000, type="ELITE_MONSTER_KILL", actor_id=1,
+        x=9866, y=4414, monster_type="DRAGON", killer_team_id=100)
+    v = ra.drake_pathing_verdict(tl, participant_id=7, lead_s=30)
+    assert v[0].secured is False
+    assert "enemy took it" in v[0].coaching
+
+
+def test_team_of_follows_the_verified_seat_convention():
+    assert ra.team_of(1) == 100 and ra.team_of(5) == 100
+    assert ra.team_of(6) == 200 and ra.team_of(10) == 200
 
 
 def test_the_verdict_carries_provenance_not_just_a_number():
     # A coaching line built on a 60 s sample must say so, per the metric
     # provenance rule - otherwise it reads as a measurement it is not.
     tl = _tl()
-    v = ra.drake_pathing_verdict(tl, participant_id=7, lead_s=65)
+    v = ra.drake_pathing_verdict(tl, participant_id=7, lead_s=30)
     assert v[0].source == "match_v5_timeline"
     assert v[0].sample_age_s >= 0
 
@@ -151,3 +187,22 @@ def test_no_objectives_yields_no_verdicts_rather_than_a_default():
 def test_pit_coordinates_are_named_constants_not_magic_numbers():
     assert ra.DRAGON_PIT == (9866, 4414)
     assert ra.MAP_MAX > 14000
+
+
+def test_the_two_pits_are_on_opposite_halves():
+    # The regression that motivated the fix: with the anti-diagonal test,
+    # DRAGON_PIT (sum 14280 < MAP_MAX 14820) classified as TOP side, so a
+    # jungler 3000 units from the drake read as "opposite half of the map".
+    drake_side = (ra.DRAGON_PIT[0] - ra.DRAGON_PIT[1]) > 0
+    baron_side = (ra.BARON_PIT[0] - ra.BARON_PIT[1]) > 0
+    assert drake_side is True      # bot-right
+    assert baron_side is False     # top-left
+    assert drake_side != baron_side
+
+
+def test_a_point_near_the_drake_is_the_same_half_as_the_drake():
+    tl = _tl()
+    ev = tl.events[0]
+    ap = ra.objective_approach(tl, participant_id=7, event=ev, leads_s=(5,))
+    assert ap[0].distance < 1000
+    assert ap[0].same_half is True
