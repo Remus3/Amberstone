@@ -119,6 +119,96 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-25i - RM-115 priority 4: the bruiser gate, and Option B paid for itself (ENGINE 1.252.0)
+
+ENGINE **1.251.0 -> 1.252.0**, patch 16.14.1. Operator-directed single slice
+("go with option B and build priority 4"), main thread. Tier-2 in ritual order:
+bump by quoted literal (132 files / 153 occurrences) -> :8893 restarted ->
+`/health` re-read **1.252.0 BEFORE the regen** -> both build-order families
+across both keyspaces -> Share sync (492 files, `--check` green) -> all four
+ENGINE doc sites.
+
+Suites, both measured fresh AFTER the last edit:
+**DS 9702 passed / 1 skipped / 4650 subtests.**
+**RC `tests/` 13110 passed / 106 skipped / 460 subtests.**
+
+## All four filed RM-115 priorities are now shipped
+
+`hybrid.py` had ZERO occurrences of `kit_conversion_strength`, stranding Olaf /
+Pantheon / RekSai / Riven at GATE 1. All three gates shipped in one slice,
+because gate 1 alone is exactly the RM-115 failure mode - a seam measurable only
+from a test file. `rank_items_by_hybrid` is the only target: it is the sole
+entry point in the module that SORTS, and the RM-86 transform is a sort-key
+transform, so `compute_hybrid` would have carried a kwarg that looks like a
+capability and does nothing.
+
+| champion | BotRK | Kraken | Guinsoo's | head |
+|---|---|---|---|---|
+| Olaf | **#1 -> #20** | #3 -> #58 | #8 -> #60 | Trinity **#2 -> #1** |
+| Riven | #1 -> #4 | #5 -> #44 | #18 -> #50 | Trinity #2 -> #1 |
+| RekSai | #1 -> #9 | #3 -> #51 | #11 -> #57 | Trinity #2 -> #1 |
+| Pantheon | #1 -> #61 | #13 -> #84 | #34 -> #94 | Trinity #2 -> #1 |
+| **Darius (control)** | #1 -> #1 | #5 -> #5 | #17 -> #17 | **byte-identical** |
+
+Measured live through `rank_bruiser_for` with the BEFORE payload captured before
+any edit and asserted unchanged. The dispatcher moves too (Olaf bruiser top-1
+3153 -> 3078), which is what makes it reachable from a coach tick. All nine
+build tables byte-identical.
+
+## Option B was not the cautious choice - it was the correct one
+
+The filed concern was that the bare damage axis would "over-fire" for Naafiri
+and Orianna. It is worse: at strength 1.0 the bare axis multiplies Warmog's,
+Randuin's, Thornmail, Dead Man's Plate and Sterak's Gage by **EXACTLY 0.0** for
+both - total suppression of every tank item on a scorer whose beta term IS
+effective HP, on a route that accepts any champion. Silent, no symptom test.
+
+The blended sets are the INTERSECTION of the damage set and the `ehp` set, and
+are machine-checked against that derivation rather than hand-listed:
+`hybrid_ad = {FlatMagicDamageMod}`, `hybrid_ap = {FlatPhysicalDamageMod,
+PercentLifeStealMod}`. `test_hybrid_objective_protects_ehp_stats` asserts BOTH
+sides - that the bare axis annihilates and the blended one does not - so the
+cheaper option cannot be quietly substituted later.
+
+## The pinned-tail hazard fired, and was repaired not suppressed
+
+Appending the kwarg at END broke `test_rune_resist_signature_convention_r134.py`
+GUARD 1 - the self-defeating pinned-tail shape fenced last session. Its own
+docstring names the correct response ("the intended forcing function"), so the
+two HYBRID entry points were cased separately, exactly as the two EHP ones were
+at 1.250.0, and the assertion stayed at full strength.
+
+**A new assertion added in the same edit caught an error in my own first
+draft.** I asserted the gate was absent from every non-hybrid entry point;
+`rank_items_by_ehp` has carried it since RM-86. The real invariant is cleaner
+and is what shipped: **both RANKERS carry it, neither `compute_*` does**, with
+the ABSENCE half load-bearing.
+
+## Corrections
+
+- Pantheon and RekSai read #59 and #8 in-process but **#61 and #9 live** - the
+  route carries `enemy_ad_share` / `enemy_ap_share` that the in-process call did
+  not. The live figures are the ones published.
+
+## Still open off this session
+
+- **The other 98 per-route stranded pairs** are now the whole of RM-115.
+  `/ehp`, `/hybrid`, `/rank-tank` and `/rank-bruiser` share ONE 18-19 seam
+  EHP-family block, so a single client wiring pass would likely clear most of
+  them. **Do NOT do all of them in one session** - each needs its own
+  before/after with a named control. `/beam` and `/v2/fight-report` have no
+  client function at all.
+- **`kit_conversion_strength` is not seam-PREFIXED**, so it appears in NEITHER
+  reachability ledger. That is why this slice carries its own acceptance test,
+  and it is worth remembering before trusting either guard's green for a
+  non-prefixed seam.
+- **RM-96 Zilean**, **`parse_leveling_bases`** (35 labels dropped across 31 of
+  90 blocks), **B1**'s unregenerated `--full-roster` artifact, and the
+  `rank_assassin_for(assume_magic_burst=...)` dead parameter all carry forward
+  unchanged.
+
+---
+
 # 2026-07-25h - RM-115 first drain pass: three seams wired, and the count was wrong (ENGINE 1.251.0)
 
 ENGINE **1.250.0 -> 1.251.0**, patch 16.14.1. Four read-only probe agents in
