@@ -132,6 +132,18 @@ _A1250_TAIL = (
     "assume_item_enemy_as_slow",
 )
 
+# RM-115 p4 (ENGINE 1.252.0) appends the RM-86 L1 kit-conversion gate to
+# ``rank_items_by_hybrid`` ONLY. This is the HYBRID mirror of the 1.250.0 split
+# above: the seam is a SORT-KEY transform (``kit_conversion.py:16-18`` - the
+# registry supplies the vector, each ranker scales its own key), and
+# ``compute_hybrid`` scores one resolved build and has no sort key, so putting
+# the kwarg there would be a signature-tidy pretending to be a capability. The
+# two hybrid entry points are therefore cased separately below rather than
+# sharing one expected tuple, exactly as the two EHP ones already are. The
+# invariant the guard protects is unchanged: seam kwargs land at the END, in
+# order, never mid-signature.
+_RM115P4_TAIL = ("kit_conversion_strength",)
+
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
 _SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
@@ -150,10 +162,12 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
         shared = (
             _R132_TAIL + _R136_TAIL + _R137_TAIL + _R1227_TAIL + _R1229_TAIL
         )
+        hybrid_shared = shared + _R145_TAIL + _RM98_TAIL
         cases = (
             ((compute_ehp,), shared + _RM87_TAIL),
             ((rank_items_by_ehp,), shared + _RM87_TAIL + _A1250_TAIL),
-            (_HYBRID_ENTRY_POINTS, shared + _R145_TAIL + _RM98_TAIL),
+            ((compute_hybrid,), hybrid_shared),
+            ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL),
         )
         for fns, expected in cases:
             for fn in fns:
@@ -168,6 +182,32 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
                             f"convention); got tail {names[-n:]}. A new seam "
                             f"appends AFTER these and updates this guard."
                         ),
+                    )
+
+    def test_kit_conversion_gate_is_ranker_only_and_defaults_off(self) -> None:
+        """The RM-86 L1 gate belongs on entry points that SORT, and only those.
+
+        It scales a sort key, so a ``compute_*`` entry point - which scores one
+        already-resolved build and never orders anything - would carry a kwarg
+        that looks like a capability and does nothing. ``rank_items_by_ehp``
+        already carried it before RM-115 p4; the p4 slice added the hybrid
+        ranker, completing the pair. Asserting the ABSENCE is the load-bearing
+        half here.
+        """
+        for fn in (rank_items_by_ehp, rank_items_by_hybrid):
+            with self.subTest(fn=fn.__name__):
+                params = inspect.signature(fn).parameters
+                for name in _RM115P4_TAIL:
+                    self.assertIn(name, params, msg=f"{fn.__name__}.{name}")
+                    self.assertEqual(
+                        params[name].default, 0.0, msg=f"{fn.__name__}.{name}"
+                    )
+        for fn in (compute_ehp, compute_hybrid):
+            with self.subTest(fn=fn.__name__):
+                for name in _RM115P4_TAIL:
+                    self.assertNotIn(
+                        name, inspect.signature(fn).parameters,
+                        msg=f"{fn.__name__}.{name} - this entry point does not sort",
                     )
 
     def test_r145_offense_seam_is_hybrid_only_and_defaults_off(self) -> None:

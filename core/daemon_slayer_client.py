@@ -477,6 +477,11 @@ def rank_bruiser_for(
     prefer_survivability_by_win: bool = False,  # RF1
     cost_ceiling: Optional[int] = None,         # F2
     target_current_hp_pct: float = 1.0,         # R55
+    # RM-115 p4 seam - appended LAST per the repo convention. Parsed off the
+    # POST /rank-bruiser body server-side. DEFAULT-0.0; the engine consults the
+    # kit-conversion registry only when strictly positive, so omitting the key
+    # keeps the request byte-identical to every pre-seam call.
+    kit_conversion_strength: float = 0.0,       # RM-86 L1 (Olaf/Pantheon/RekSai/Riven)
 ) -> Optional[list[BruiserRankedItem]]:
     """Call POST /rank-bruiser and return the parsed top-N rows. None on engine failure.
 
@@ -520,6 +525,11 @@ def rank_bruiser_for(
     # R55: emit only when non-default so a call at 1.0 is byte-identical.
     if target_current_hp_pct != 1.0:
         body["target_current_hp_pct"] = float(target_current_hp_pct)
+    # RM-86 L1: the engine consults the kit-conversion registry only when the
+    # lever is strictly positive (the hybrid.py sort gate), so 0.0 and any
+    # negative are inert server-side - emit nothing and stay byte-identical.
+    if kit_conversion_strength > 0.0:
+        body["kit_conversion_strength"] = float(kit_conversion_strength)
     data = _post_json("/rank-bruiser", body, timeout=timeout)
     if data is None:
         return None
@@ -1572,11 +1582,11 @@ def rank_for_primary_archetype(
     widen_carry_pool: bool = False,              # carry (RM-04 A-01)
     # W2 conversion seams - appended LAST per the repo convention.
     # ``apply_crit_conversion`` is CARRY-ONLY (POST /rank is the only route
-    # that parses it). ``kit_conversion_strength`` is carry + assassin as of
-    # RM-115: /rank and /rank-assassin both parse it, so it is forwarded to
-    # the ds.dps and ds.burst chokepoints and never reaches the tank /
-    # bruiser / mage / enchanter / on-hit branches.
-    kit_conversion_strength: float = 0.0,        # carry + assassin (RM-86 L1)
+    # that parses it). ``kit_conversion_strength`` is carry + assassin +
+    # bruiser as of RM-115: /rank, /rank-assassin and /rank-bruiser all parse
+    # it, so it is forwarded to the ds.dps, ds.burst and ds.hybrid chokepoints
+    # and never reaches the tank / mage / enchanter / on-hit branches.
+    kit_conversion_strength: float = 0.0,        # carry + assassin + bruiser (RM-86 L1)
     apply_crit_conversion: bool = False,         # carry (A-12 / RM-46)
     # RM-115 gate-3 seam, MAGE-ONLY: /rank-mage is the sole route that parses
     # apply_passive_aura_damage (server.py:1265), so it is forwarded to the
@@ -1712,6 +1722,7 @@ def rank_for_primary_archetype(
             timeout=timeout,
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
+            kit_conversion_strength=kit_conversion_strength,
             **_bruiser_hp_kwargs,
         )
         if rows is None:
