@@ -421,6 +421,13 @@ def rank_tank_for(
     # also sent - the credit lands on the sustain metric alone - which is why
     # the two are documented as a pair rather than as independent switches.
     assume_max_stacks_omnivamp: bool = False,
+    # RM-91 T1: the champion HEALTH -> DAMAGE coupling lever (/rank-tank only,
+    # sort-only), the health-axis twin of the RM-87 pair above and a SEPARATE
+    # flag because the two registries are disjoint. Both default None -> key
+    # omitted -> the engine's DEFAULT-OFF path, byte-identical. Appended at END
+    # per the no-mid-signature-insert convention.
+    apply_health_damage_coupling: Optional[bool] = None,
+    health_coupling_strength: Optional[float] = None,
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -466,11 +473,15 @@ def rank_tank_for(
         ("assume_item_aa_dr", assume_item_aa_dr),
         ("assume_item_enemy_as_slow", assume_item_enemy_as_slow),
         ("apply_resist_damage_coupling", apply_resist_damage_coupling),
+        # RM-91: the health-axis twin, same None-means-inherit contract.
+        ("apply_health_damage_coupling", apply_health_damage_coupling),
     ):
         if _val is not None:
             body[_key] = bool(_val)
     if resist_coupling_strength is not None:
         body["resist_coupling_strength"] = float(resist_coupling_strength)
+    if health_coupling_strength is not None:
+        body["health_coupling_strength"] = float(health_coupling_strength)
     if enemies:
         body["enemies"] = [str(e) for e in enemies if e]
     if rune_ids:
