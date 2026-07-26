@@ -174,12 +174,25 @@ def rank_of(baselines: dict, role: str, metric: str, value: float):
     if not table:
         return None
     bands = [(table[f"p{p}"], p) for p in PERCENTILES if f"p{p}" in table]
-    band = 0
+    band, matched = 0, None
     for threshold, pct in bands:
         if value >= threshold:
-            band = pct
+            band, matched = pct, threshold
+
+    # Tie plateau. A metric most of the cohort scores 0.0 on has every
+    # percentile sitting at 0.0, so a 0.0 clears them all and the loop above
+    # keeps the HIGHEST - telling a player who healed nobody they are 90th
+    # percentile. When the value merely TIES the threshold, credit the lowest
+    # percentile sharing it: that band is still literally true, and `tied`
+    # tells the renderer the comparison carries little information.
+    tied = False
+    if matched is not None and value == matched:
+        sharing = [pct for threshold, pct in bands if threshold == matched]
+        band, tied = min(sharing), len(sharing) > 1
+
     return {"metric": metric, "role": role, "value": round(value, 3),
-            "at_or_above_p": band, "median": table["p50"], "n": table["n"]}
+            "at_or_above_p": band, "median": table["p50"], "n": table["n"],
+            "tied": tied}
 
 
 def load(path, cohort: str | None = None) -> dict:
