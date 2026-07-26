@@ -4,6 +4,65 @@
 
 ---
 
+# 2026-07-26d - the directive asked for a sweep that was already closed (R193, gemini loop cycle 3)
+
+ENGINE **1.254.0 -> 1.255.0**, patch 16.14.1. HEAD `9fde56bb`. Three worktree
+slices on disjoint file sets, Claude sole merger, read-only verifier gate before
+every merge. Suites fresh AFTER the last edit: DS **9783 passed / 1 skipped /
+4653 subtests**, RC `tests/` **13115 passed / 106 skipped / 460 subtests**.
+
+**The first deliverable was refusing the stated scope.** R193 asked for base
+lifesteal magnitudes + Arena/ARAM mirror parity on the six headline vamp items -
+R181 verbatim, which measured ZERO DRIFT and left a 15-test guard on disk, with
+Bloodthirster's Ichorshield, Shieldbow's Lifeline and Riftmaker's omnivamp all
+already modelled. Re-running it would have produced a confident CLEAN and no
+value. Three read-only recon agents were aimed at what R181 did NOT cover - the
+vamp math model, the wider sustain family's magnitudes, and route reachability -
+and every one came back with a real defect.
+
+What landed:
+
+- **hydra_cleave had desynced and the suite was defending the bug.** Ravenous
+  Hydra 3074 / 223074 modelled Cleave at 0.35 total AD; Meraki 16.14.1 reads
+  40%; the two siblings with byte-identical Meraki text were already at 0.40.
+  Two tests asserted Ravenous scores BELOW its own siblings - a stale
+  coefficient frozen as a feature. Sibling sweep then caught Tiamat 3077 at
+  0.50, likewise pinned. Fixing only 3074 would have repeated the
+  narrow-first-fix pattern of items 208/213.
+- **Neither fix moves a shipped build table, and that was measured** - all four
+  families regenerated full-roster across BOTH keyspaces, every diff is the two
+  stamp lines. Cleave only fires at `targets_in_rotation > 1`; the tables are
+  single-target.
+- **DEFAULT-OFF `assume_crit_weighted_vamp`** - the vamp heal pool priced
+  lifesteal off an auto-attack that never crits. OFF byte-identical (verifier
+  re-measured against main, full result-dict md5 match), ARMED x1.7875 on Jinx
+  L16, exact no-op at zero crit. It moves `blended_ehp`, so the flip is
+  operator-gated.
+- **`assume_max_stacks_omnivamp` was stranded** - zero occurrences in
+  `server.py`. Now on `/ehp` + client keyword. **Both reachability guards were
+  green the whole time and structurally cannot see this class**: they enumerate
+  keys `server.py` already parses, so a never-parsed kwarg never enters the set.
+  A green seam guard is evidence about parsed keys, not about capability.
+
+**The verifier gate paid for itself again.** It BLOCKED slice B on a real
+regression (`test_rune_resist_signature_convention_r134.py`) that neither of
+that slice's own test scopes collected, so the slice's green claim was true and
+insufficient. It also found corrupted git indexes in two worktrees (phantom
+staged deletions, files intact) and proved every committed blob matched disk.
+
+Three RC-side failures at the end were mine and are fixed, not waived: the
+Share README release-history is a SEPARATE site from the auto-restamped header,
+and the new route test imports the host-only client by design so it needed
+registering in `ds_share_sync._HOST_DEPENDENT_TESTS`.
+
+Next session: RM-116 (a) ranker-lane forwarding of the omnivamp flag, (b)
+Sundered Sky 6610 overheal-to-bonus-health, (c) lifesteal credit on Ravenous
+Cleave/Crescent. Do NOT re-commission a vamp base-magnitude sweep - closed
+twice now.
+
+---
+
+
 # 2026-07-26c - the Share package's green-suite promise was false (R192, gemini loop cycle 2)
 
 Commit `f26f651c`. No ENGINE bump, no DS bounce, no RC restart. Share mirror
@@ -103,109 +162,3 @@ Suites fresh after the last edit: **DS 9746 passed / 1 skipped / 4653 subtests**
 **Next pass must re-derive its own delta** (`git diff --diff-filter=A <last-synced-sha>..HEAD`
 minus `Share/` minus `tests/` minus basenames already in the DUST literal) and must
 NOT trust a count carried in a directive.
-
----
-
-# 2026-07-26a - RM-115 CLOSED, and the last four pairs are declines (ENGINE 1.254.0)
-
-ENGINE **1.253.0 -> 1.254.0**, patch 16.14.1. Two read-only spec agents in
-parallel over the eight tail routes, then the wiring applied in the main thread
-(one file - worktrees would only have made merge work). One build agent wrote
-the acceptance test. Tier-2 in ritual order: bump by quoted literal (126 files /
-154 occurrences) -> :8893 restarted -> `/health` re-read **1.254.0 BEFORE the
-regen** -> both build-order families across both keyspaces -> Share sync (492
-files, `--check` green) -> all four ENGINE doc sites **plus the two Share
-release notes `--check` cannot see**.
-
-Suites, both measured fresh AFTER the last edit:
-**DS 9746 passed / 1 skipped / 4653 subtests.**
-**RC `tests/` 13110 passed / 106 skipped / 460 subtests.**
-
-## The headline is the DECLINE, not the drain
-
-**Per-route stranded debt 25 -> 4. Name-collapsed 12 -> 2.** 21 pairs wired
-across six client functions (`/burst` 7, `/dps` 6, `/rank-assassin` 4, `/rank`
-2, `/ability-dps` 1, `/rank-mage` 1).
-
-The session prompt framed `/beam` and `/v2/fight-report` as "a design call, not
-wiring". The answer is **DECLINE for both**, and that is the durable output of
-this session:
-
-- `/v2/fight-report` has **ZERO callers repo-wide** - the literal appears only
-  in its own docstring, the dispatch table, `docs/DAEMON_SLAYER.md`, the
-  CHANGELOG and the two ledgers, and both of its tests call
-  `compute_fight_report` in process. Served, never requested.
-- `/beam` has ONE live consumer, `coaches/sr_draft_profile.py`, which holds its
-  own HTTP call for reasons a migration must break: a 4.0s budget against this
-  client's deliberate 0.5s `DEFAULT_TIMEOUT` fail-silent contract, and a
-  two-value error channel that `_post_json`'s None collapses. And the seam is
-  **arithmetically inert** for it - `mode="SR"`, and no champion carries an
-  `sr` key in `wiki_stats.json`.
-
-**The ledger's honest end state is 4, not 0.** Both declines carry an inline
-re-open condition. A future session that reads 4 as debt and wires it will
-re-introduce the exact reachable-and-dead illusion RM-115 existed to kill.
-
-## What generalises
-
-**The transport trap fired a third time, on a NEW key.** `/burst` parses
-`runes` - **NOT** the EHP family's `rune_ids` - plus `caster_current_hp_pct`.
-Neither is seam-prefixed, so neither guard sees them, and without them BOTH
-`gate_*` seams are reachable-and-dead (measured byte-identical with `runes`
-omitted). Same concept, different key per route: the 1.253.0 wiring did not
-carry over.
-
-**The gates are HONESTY gates and the direction inverts.** OFF applies the rune
-amp unconditionally, so turning `gate_target_hp_amp` ON against a full-HP target
-correctly REMOVES Coup de Grace's amp (716.343 -> 663.281). A test asserting
-"ON is bigger" would have been wrong.
-
-**Two silent traps on `/rank-assassin`, one of them the client's own default.**
-`assume_squishy_target` is disabled by any positive `target_armor`
-(`burst.py:2018`); the Collector arm of `assume_takedown` is disabled by
-`target_max_hp=0.0` (`burst.py:1075`), which IS `rank_assassin_for`'s default -
-so the seam reads half-working rather than misconfigured.
-
-**`top` is a load-bearing transport.** `exclude_off_axis_items` REMOVES rows
-rather than reordering them, and on an auto-attack scorer every removed row is
-deep: Jhin is byte-identical at the client default `top=8` and only moves at
-`top=200`.
-
-**`apply_mode_modifiers` on `/rank` has two lanes and only one can reorder** -
-the URF multiplier lane scales uniformly (Jhin top row x1.01, all 214 rows hold
-order); the ar/swift addend lane does reorder.
-
-## Judgement calls worth knowing about
-
-- **`assume_magic_burst` was NOT deleted**, against the spec's recommendation.
-  The route is right and the client is wrong, but the parameter is load-bearing
-  across `archetype_dispatch`, `routes_state` and four test files. Resolved by
-  making the lever reachable on the route that DOES parse it,
-  `burst_for(assume_magic_burst=...)`, and filing the dead one.
-- **One pre-existing test broke and was re-expressed, not relaxed.**
-  `tests/test_ds_client_conversion_seam_plumb_w2.py` asserted the two W2 seams
-  are the FINAL TWO parameters of `rank_for` - stricter than the convention its
-  own docstring cites, and false for any correct append. Replaced with the
-  property the convention actually protects (only the three genuine inputs may
-  lack a default; both seams KEYWORD_ONLY with defaults; both after `timeout`;
-  relative order preserved), which is strictly stronger.
-- **The committed `build_order_variants_*` tables were STALE.** Six of nine
-  tables are byte-identical after stamp-stripping; the three variants tables
-  moved. Proven NOT attributable to this change by regenerating against the
-  PRE-change client and getting byte-identical output to the post-change client,
-  with both differing from the committed table.
-
-## Filed, not fixed (each has real blast radius)
-
-1. The dead `rank_assassin_for(assume_magic_burst=...)` parameter.
-2. `rank_for` likewise emits `assume_passive_as_stacks` and `apply_target_vuln`
-   into a `/rank` body that never parses them.
-3. `rank_for_primary_archetype` has no pass-through for the 21 new kwargs, so no
-   live coach tick can flip one yet. All 21 are DEFAULT-OFF, so nothing regresses.
-
-## Ops note
-
-`Get-NetTCPConnection -LocalPort 8893` matches lingering **TimeWait** sockets
-(`OwningProcess = 0`), which reads as "port still bound" when DS is fully down -
-and `taskkill /F /PID 0` fails as a critical system process. Filter on
-`-State Listen`. Memory updated.
