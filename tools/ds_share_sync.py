@@ -183,6 +183,11 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # through the HOST client, so importing core.daemon_slayer_client is its
     # subject rather than an accident.
     "test_route_omnivamp_seam_r193.py",
+    # -- R194 slice A (RM-116 part a): the RANKER lane of the same omnivamp
+    # seam, plus the score_by="sustain" transport. Same class again - it asserts
+    # the (route, seam) pair is expressible through the HOST client, so the
+    # core.daemon_slayer_client import is its subject, not an accident.
+    "test_r194_sustain_ranker_seam.py",
     # The behavioural half of the same drain: it drives the HOST client against
     # the live engine to prove each EHP-family seam actually does something.
     # Host-only for the same reason as its two siblings - the shipped package is
