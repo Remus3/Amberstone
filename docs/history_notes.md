@@ -119,6 +119,94 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-25e - the four PART-7 survivors BUILT (ENGINE 1.248.0)
+
+ENGINE **1.247.0 -> 1.248.0**, patch 16.14.1. Four parallel worktree agents on
+disjoint file sets, one Claude as sole merger. Tier-2 done in ritual order:
+bump by quoted literal (256 files / 295 occurrences, `.claude` excluded) ->
+:8893 restarted -> `/health` re-read 1.248.0 BEFORE the regen -> all three
+build-order families across BOTH keyspaces -> Share sync + the three ENGINE doc
+sites. **Stamp-stripped payload diff: SAME on all 9 table files** - correct and
+expected, since every seam is DEFAULT-OFF.
+
+**Prerequisite (main thread, `9a33134a`):** `kit_conversion_strength`
+route-exposed on POST /rank. `server.py` held ZERO `kit_conversion` references,
+so the RM-86 L1 lever was Python-API-only while the shipped tables are generated
+through :8893.
+
+**Built (4):**
+- **A-12 / RM-46 Ashe** - `_crit_conversion_overrides.py`, DEFAULT-OFF
+  `apply_crit_conversion`. IE #8 -> #10, PD #36 -> #30, Yun Tal #11 -> #8,
+  ER #7 -> #5; Aphelios byte-identical ON. Her P reads "critical strikes do not
+  deal any additional damage", so the 1.15 factor REPLACES the item crit-damage
+  sum and IE is INERT on her - stronger than the filing.
+- **A-20 / RM-89 Quinn** - both slices. BotRK #1 -> #31, Runaan's #2 -> #41;
+  pool 107 -> 109 admitting exactly `{6698, 3179}` via a per-champion
+  `marksman_offclass_exempt.json` row.
+- **A-03 / RM-81** - `_ability_base_overrides.py` + `abilities.py` hook, six
+  champions, exactly 6 of 1033 forms move.
+- **A-21 / RM-90 S1+S2** - plumb shipped, **acceptance criterion REFUTED**.
+
+**The refutation to carry forward:** A-21 S1's tank distinct-order count does
+NOT move off 1-of-28, in any of 7 keyspace/profile cells, carry control 14/27
+both ways. The seam IS live at the RANKING level (Locket #23 -> #6 Alistar,
+#20 -> #5 Thresh, Malphite/Ornn/Sion pinned) but never wins a greedy slot -
+Leona's last slot has Locket 3116.8 vs Spirit Visage 4389.6 against only +496.8
+ally credit. **Order-level movement needs the S3 schema lift, not a coefficient
+or a flag. Do not re-attempt S1 expecting table movement.**
+
+**Two honest negatives inside shipped rows:** A-12's Runaan's deny is a
+REGRESSION GUARD, not a demotion (Wind's Fury is flat `2 x 55% total AD`, no
+crit term). A-20's Stormrazor lead does NOT move (#5 -> #5) - scaled, but its
+neighbours fall further.
+
+**Main-thread follow-ons (operator-approved mid-session):** `apply_crit_conversion`
+plumbed through `rank_items` + POST /rank to BOTH `compute_dps` call sites, and
+`tools/daemon_slayer_build_orders_generate.py` gained the `score_by`
+pass-through + `--score-by` flag (the FLAT keyspace the A-21 agent was scoped
+out of). Both plumbs SUPERSEDED a test premise and both were repaired, not
+suppressed - A-12's helper monkeypatched `compute_dps` and would now silently
+no-op, and the prerequisite's Quinn negative control stopped being true once
+A-20 seeded her.
+
+**Do NOT redo:** A-16 / RM-82 and A-10 / RM-37+RM-42 stay CLOSED. Do not
+re-probe A-21 S1 for table movement. Full record: `docs/OPEN_ITEMS_REVIEW_2026-07-25.md`
+**PART 8** + `docs/LEDGER.md` 1048.
+
+---
+
+# 2026-07-25d - ROADMAP budget cleanup + six rows probed, ZERO code shipped
+
+ENGINE stays **1.247.0**, patch 16.14.1. Tree clean, pushed. Commit `b4d1ee56`.
+DS untouched, so no Share sync and no table regen this session.
+
+**Done (1):** operator-directed `ROADMAP.md` cleanup, **79443 -> 72052 bytes**,
+headroom **9868** against the 81920 ceiling. Relocation only: 16 rows of shipped
+narrative / blocked evidence moved verbatim to the `2026-07-25 (cleanup pass 2)`
+block at the TOP of `docs/ROADMAP_HISTORY.md`, each leaving a verdict + pointer.
+Nothing deleted, no RM id dropped, DS per-champion sweep section untouched
+(PROBE HAZARD text). `CLAUDE.md:135` stale "20,190 tests" -> DS 9546 + RC 13061.
+
+**Done (2):** six candidate rows probed read-only in parallel. Verdicts in
+`docs/OPEN_ITEMS_REVIEW_2026-07-25.md` **PART 7** + `docs/LEDGER.md` 1047.
+CLOSED without code: **A-16 / RM-82 Mordekaiser** (BLOCKED-UNFALSIFIABLE,
+inherits A-07) and **A-10 / RM-37+RM-42 Lucian/Akshan** (IE pins at #11 for the
+GAP champions AND four controls; the ER dock is intended). Buildable but ALL
+FOUR re-scoped: A-03 / RM-81, A-12 / RM-46 Ashe, A-20 / RM-89 Quinn,
+A-21 / RM-90 support cohort.
+
+**Do NOT redo:** the ROADMAP relocation, and do not re-probe A-16 or A-10 as
+standalone rows. Do not design around "never extract in the same commit as a
+regen" - that hazard is UNVERIFIED and roughly contradicts the bump ritual.
+
+**Next:** build the four re-scoped rows. **Prerequisite first:**
+`agents/daemon_slayer/server.py` has ZERO `kit_conversion` references, so the
+RM-86 L1 lever cannot reach any shipped build table - A-12 and A-20 both need
+that route exposure before they can be proven. Any `dps.py` slice inherits
+`2d3ddcba` (G2-12 WIP, NOT SHIPPABLE, ENGINE bump owed).
+
+---
+
 # 2026-07-25c - 5 rows named, 3 dissolved, 4 seams shipped (ENGINE 1.247.0)
 
 ENGINE **1.247.0**, patch 16.14.1, DS **9546 passed / 1 skipped / 4547 subtests**,
@@ -156,75 +244,6 @@ well a row was probed, never how recently.
 - A slice reported "+1 line in `ehp.py`" and the 3-line anchor matched TWICE in the
   file. Merging by file copy would have been wrong either way - the fix was to confirm
   only one real `item_resist_grants` call site exists before applying it.
-
----
-
----
-
-# 2026-07-27 - five open-item slices, parallel in-repo agents (ENGINE 1.244.0)
-
-HEAD after this session: see `git log -1`. ENGINE **1.244.0**, patch 16.14.1,
-DS **9369** / RC suite re-run this session, DS `:8893` bounced and serving 1.244.0.
-Full narrative: `docs/LEDGER.md` 1043.
-
-## What shipped
-
-1. **C-06 / RM-26** - vision-profile seeds were dead on disk. New `resolution_seed`
-   tier in `core/vision_profiles.py` between the exact-`config_key` hit and
-   `legacy_seed`. The ultrawide accuracy caveat is preserved verbatim; no parity
-   claim across aspect ratios.
-2. **B-01b** - `is_augment_select` re-homed into ARAM + Arena `TIERED_FIELDS`
-   (brawl deliberately excluded - zero augment references in that coach).
-   `RC_VISION_MERGE_STRICT` is still **NOT** default-ON; see below.
-3. **A-01b + A-01c** - `widen_carry_pool` seam-forwarded through
-   `core/daemon_slayer_client.py` AND `coach_integration/archetype_dispatch.py`.
-   It was broken in two places, not one.
-4. **C-17** - filed cause refuted, real cause fixed. Seven DS cards plus the L4
-   capability-gap chip were dead in **every real game**, not just headless.
-5. **RM-98** - cast-propensity prior, DEFAULT-OFF `apply_cast_rate_propensity_prior`.
-
-## Three things that would have shipped wrong
-
-- **C-17's filed cause was false.** "Gates on `isLive`" - it does not; `?ui_mock=1`
-  sets `lcuPhase: "InProgress"`. Had that been built as filed, the actual bug (a
-  slug fed to `parseInt`) would have survived, and it was a LIVE bug, not a
-  headless one. The operator tagging the row SOURCE-READ is what caught this.
-- **The RM-98 brief's formula was the identity.** `theoretical * (measured/theoretical)`
-  is a no-op; the agent said so instead of building it, and introduced the p90
-  reference the construction actually needs.
-- **A DEFAULT-OFF seam was almost assumed to be a no-op.** It was PROVEN instead:
-  regen against the restarted 1.244.0 server returned all three tables
-  byte-identical except `generated_at`.
-
-## Standing hazards for the next session
-
-- ENGINE bump ritual order is bump -> RESTART `:8893` -> regen -> measure. The
-  generator computes over live HTTP; a stale server returns a confident, wrong
-  "0 changed". Verified live this session (`/health` read 1.244.0 before regen).
-- 372 test files carry the ENGINE literal pin. Bump them by quoted-literal
-  replace; `.pyc` files will still grep-match and are noise.
-- `tools/daemon_slayer_build_orders_generate.py` takes `--mode`, NOT `--champions`.
-- **The build-order tables live in TWO keyspaces and last session only regenerated
-  ONE.** `tools/daemon_slayer_build_orders_generate.py --mode all` writes
-  `data/daemon_slayer/16.14.1/`. The `build_order_precompute/v1` artifacts under
-  `data/daemon_slayer/build_orders/16.14.1/` come from
-  `python -m core.build_order_precompute --static --mode all --champions all`.
-  At HEAD `b23b5f16` that second keyspace still carried the denied Arena Golden
-  Spatula `224403` **331 times** and Mejai's `3041` **17 times**, a full session
-  after both fixes "landed" - and it is the keyspace `next_buy_fallback.py`
-  reads. A regen is not done until BOTH are re-run, and "0 changed" in one says
-  nothing about the other. **It is actually THREE families:**
-  `build_order_variants_<mode>.json` has its own entrypoint
-  (`python -m core.build_order_variants --static --mode all --champions all`) and
-  carried the same pollution independently (arena `224403` x165, sr `3041` x50).
-  **563 stale rows total were being served live.** Run the FULL `tests/` suite
-  after a bump - each family has its own stamp guard and that is what found them.
-- `tools/ds_feed_index.py` `KNOWN_STAMP_LAG` is not the source of truth the test
-  reads. Edit the `.py`, then `python tools/ds_feed_index.py --write` to
-  regenerate `tools/ds_feed_index.json`, or the guard stays red.
-- **ROADMAP.md is now 76108 bytes / 3892 headroom** against its 80KB budget.
-  That is tight. Relocate before adding a long row.
-- Never run `tools/ds_share_sync.py` while a suite is in flight.
 
 ---
 
@@ -18604,6 +18623,75 @@ Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sw
 - **KEY batch12 insight:** FOUR family-extensions + ONE class-REFUTE - the burst-mage-BURIED family reaches 6 (Kennen, with a can't-value-active-engage Rocketbelt wrinkle), the crit-marksman burst-blend family gains a MILD hybrid (Kindred, whose on-hit Kraken opener makes the lead partly-right), the ds.hybrid bruiser family gains a NEW health-scaling sub-shape (Kled, the "false on-hit match" - health-scaling W-on-hit != item-on-hit), and the two-build-routing family gains a two-BUILD member (Kog'Maw, Slice-B-serves-minority-AP); PLUS the Zed/Talon/Qiyana FENCED lethality-assassin REFUTE is confirmed on a 4th champ (Kha'Zix - the lethality under-lead is a KNOWN data-refuted pattern, NOT a new GAP). Recurring discriminator: a never-built-on-hit/spellblade LEAD is a GAP unless the champ's real signature IS that item (Kalista/Varus REFUTE) OR the fix is the data-refuted lethality-weighting (Kha'Zix/Zed FENCED).
 
 **NEXT SESSION: strict ALPHABETICAL, next-up = LeBlanc**, then Lee Sin, Leona, Lillia, Lissandra (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch12.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct not `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's DEFAULT route via `core.archetype_picks.default_for_champion` [Slice A `_AP_ASSASSIN_IDS` -> assassin/burst; Slice B onhit-roster -> onhit; else axis-corrected tag] then `rank_for_primary_archetype` + reroutes at top=40; dump full top-40 to JSON). Skip resolved (Aatrox..Kog'Maw + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: LeBlanc (AP burst assassin/mage - mimic R chain-combo; check `_AP_ASSASSIN_IDS` membership [the Akali cohort note said "except Leblanc", so she may NOT leak the Trinity/ER AD-pollution - verify]; else a burst-mage Liandry's over-lead like the Gragas/Ahri family with her signature Malignance/Luden's/Shadowflame buried); Lee Sin (AD early-game skirmisher jungle - bruiser [Eclipse/Trinity/Black Cleaver/Sundered] OR lethality [Youmuu's/Profane]; watch ability-bruiser Aatrox-family GAP vs the FENCED lethality REFUTE vs served); Leona (tank support - the Alistar/Blitzcrank/Braum tank-support REFUTE, zero damage, engage; tank/ds.ehp self-durability served); Lillia (AP sustained-DoT/burn jungle - passive Dream-Laden Bough %maxHP burn + Liandry's/Blackfire/Riftmaker; watch the Brand/Cassiopeia sustained-DoT REFUTE [Liandry's lead correct] vs a burst-mage GAP); Lissandra (AP burst/control mage - Rocketbelt/Ludens/Liandry's, R self-freeze; watch the Gragas/Kennen burst-mage-BURIED family Liandry's over-lead vs served)). Next GAP spec = RM-77.
+
+---
+
+---
+
+# 2026-07-27 - five open-item slices, parallel in-repo agents (ENGINE 1.244.0)
+
+HEAD after this session: see `git log -1`. ENGINE **1.244.0**, patch 16.14.1,
+DS **9369** / RC suite re-run this session, DS `:8893` bounced and serving 1.244.0.
+Full narrative: `docs/LEDGER.md` 1043.
+
+## What shipped
+
+1. **C-06 / RM-26** - vision-profile seeds were dead on disk. New `resolution_seed`
+   tier in `core/vision_profiles.py` between the exact-`config_key` hit and
+   `legacy_seed`. The ultrawide accuracy caveat is preserved verbatim; no parity
+   claim across aspect ratios.
+2. **B-01b** - `is_augment_select` re-homed into ARAM + Arena `TIERED_FIELDS`
+   (brawl deliberately excluded - zero augment references in that coach).
+   `RC_VISION_MERGE_STRICT` is still **NOT** default-ON; see below.
+3. **A-01b + A-01c** - `widen_carry_pool` seam-forwarded through
+   `core/daemon_slayer_client.py` AND `coach_integration/archetype_dispatch.py`.
+   It was broken in two places, not one.
+4. **C-17** - filed cause refuted, real cause fixed. Seven DS cards plus the L4
+   capability-gap chip were dead in **every real game**, not just headless.
+5. **RM-98** - cast-propensity prior, DEFAULT-OFF `apply_cast_rate_propensity_prior`.
+
+## Three things that would have shipped wrong
+
+- **C-17's filed cause was false.** "Gates on `isLive`" - it does not; `?ui_mock=1`
+  sets `lcuPhase: "InProgress"`. Had that been built as filed, the actual bug (a
+  slug fed to `parseInt`) would have survived, and it was a LIVE bug, not a
+  headless one. The operator tagging the row SOURCE-READ is what caught this.
+- **The RM-98 brief's formula was the identity.** `theoretical * (measured/theoretical)`
+  is a no-op; the agent said so instead of building it, and introduced the p90
+  reference the construction actually needs.
+- **A DEFAULT-OFF seam was almost assumed to be a no-op.** It was PROVEN instead:
+  regen against the restarted 1.244.0 server returned all three tables
+  byte-identical except `generated_at`.
+
+## Standing hazards for the next session
+
+- ENGINE bump ritual order is bump -> RESTART `:8893` -> regen -> measure. The
+  generator computes over live HTTP; a stale server returns a confident, wrong
+  "0 changed". Verified live this session (`/health` read 1.244.0 before regen).
+- 372 test files carry the ENGINE literal pin. Bump them by quoted-literal
+  replace; `.pyc` files will still grep-match and are noise.
+- `tools/daemon_slayer_build_orders_generate.py` takes `--mode`, NOT `--champions`.
+- **The build-order tables live in TWO keyspaces and last session only regenerated
+  ONE.** `tools/daemon_slayer_build_orders_generate.py --mode all` writes
+  `data/daemon_slayer/16.14.1/`. The `build_order_precompute/v1` artifacts under
+  `data/daemon_slayer/build_orders/16.14.1/` come from
+  `python -m core.build_order_precompute --static --mode all --champions all`.
+  At HEAD `b23b5f16` that second keyspace still carried the denied Arena Golden
+  Spatula `224403` **331 times** and Mejai's `3041` **17 times**, a full session
+  after both fixes "landed" - and it is the keyspace `next_buy_fallback.py`
+  reads. A regen is not done until BOTH are re-run, and "0 changed" in one says
+  nothing about the other. **It is actually THREE families:**
+  `build_order_variants_<mode>.json` has its own entrypoint
+  (`python -m core.build_order_variants --static --mode all --champions all`) and
+  carried the same pollution independently (arena `224403` x165, sr `3041` x50).
+  **563 stale rows total were being served live.** Run the FULL `tests/` suite
+  after a bump - each family has its own stamp guard and that is what found them.
+- `tools/ds_feed_index.py` `KNOWN_STAMP_LAG` is not the source of truth the test
+  reads. Edit the `.py`, then `python tools/ds_feed_index.py --write` to
+  regenerate `tools/ds_feed_index.json`, or the guard stays red.
+- **ROADMAP.md is now 76108 bytes / 3892 headroom** against its 80KB budget.
+  That is tight. Relocate before adding a long row.
+- Never run `tools/ds_share_sync.py` while a suite is in flight.
 
 ---
 
