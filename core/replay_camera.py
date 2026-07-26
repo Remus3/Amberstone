@@ -41,7 +41,22 @@ is not:
 
   SOLVED - visibility. With cameraMode fps, fov 60, h=4000 and the offset
   above, 6 of 10 champions reported real screenPositionCenter /
-  screenPositionBottom values simultaneously.
+  screenPositionBottom values simultaneously. At h=8000 all 10 report at once,
+  so one seek plus one camera placement yields the whole team.
+
+  TWO OPERATIONAL REQUIREMENTS, both learned by getting them wrong:
+
+  1. fogOfWar MUST be False. A champion inside fog does not render and
+     reports FLT_MAX, so a sampling pass with fog on silently returns a
+     partial team and looks like a visibility failure. Restoring fog to True
+     after an experiment and then re-sampling cost exactly this.
+
+  2. NORMALISE CHAMPION NAMES before joining to Match-V5. The live client
+     spells them differently from DDragon ids - "Lee Sin" vs "LeeSin",
+     "Kog'Maw" vs "KogMaw". A raw-string join silently drops those champions
+     and the pass looks like it merely could not see them. Strip everything
+     outside [a-z] and lowercase both sides. See memory
+     reference_liveclient_name_vs_ddragon_id, which already warned about this.
 
   MEASURED ACCURACY, and it is approximate rather than exact. Scored against
   Match-V5 frame 600263 ms as ground truth, screen -> map by least-squares

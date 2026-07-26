@@ -53,13 +53,17 @@ DEFAULT_LEAD_S = 30
 # sampling error." That is a non-sequitur. Constant staleness produces constant
 # NOISE, and the noise turned out to be enormous.
 #
-# MEASURED 2026-07-26 against seek-sampled exact positions (~19 unit precision)
-# on NA1_5607614664, 21 drake/jungler samples:
-#     Match-V5 distance error vs exact:  mean 1971, median 853, max 8565 units
-#     samples whose error alone exceeds the 2750 threshold:  6 of 21
-# Worst case: at the 706 s drake, Vi's exact distance was 61 units - he was
-# standing on the dragon and killed it - while the Match-V5 frame put him at
-# 8626 units, across the map.
+# MEASURED 2026-07-26 against seek-sampled exact positions (~19 unit precision),
+# REPLICATED across two independent games:
+#     NA1_5607614664 (Vi)      mean 1971, median 853, max 8565   n=21
+#     NA1_5607594617 (Lee Sin) mean 2037, median 881, max 8895   n=12
+#     combined: 8 of 33 samples had error alone exceeding the 2750 threshold
+# The signature failure is identical in both games: a jungler standing ON the
+# drake he is killing, reported by Match-V5 as being across the map.
+#     Vi      at the 706 s drake: exact 61 units,  Match-V5 8626
+#     Lee Sin at the 696 s drake: exact 161 units, Match-V5 9057
+# In both cases the nearest 60 s frame was ~25 s stale, and a champion covers
+# most of the map in that time.
 #
 # So a 60 s-sampled position CANNOT support a 2750-unit threshold, and the
 # decay curve below is substantially an artefact of sampling noise rather than
