@@ -4,6 +4,56 @@
 
 ---
 
+# 2026-07-26h - RM-95b B2 REFUTED on measurement + 2 stale ROADMAP rows corrected
+
+**Shipped:** `4046b6d8` (tools) + `0216516d` (docs), pushed. Tier-1 - a `tools/` module only,
+so no ENGINE bump, no DS bounce, no RC restart, no Share regen. LEDGER 1060.
+
+**The deliverable is a refutation, and the session's real lesson is that my OWN measurement
+was wrong twice before it was right.** Picked RM-95b "B2" (promote wiki `leveling` to typed
+damage blocks) off ROADMAP NEXT. Two rows turned out stale before any build:
+
+1. RM-99b's "NEW residual, OPEN: `3131` Sword of the Divine 15.0s vs 90s" is already SHIPPED
+   (`3ad4d075`, ENGINE 1.246.0, guarded by `test_sword_of_divine_cadence.py`). Caught by a
+   `git log -- <cited file>` age check.
+2. B2's own justification - "closes Locke/Zaahen `baseline_burst=0.0`" - died with
+   `e6b7b238` / ENGINE 1.250.0, which hand-authors both kits in
+   `_ability_wiki_damage_registry.py` DEFAULT-**ON**. A spec subagent surfaced this; I
+   re-probed it myself rather than taking its word (snapshot loads 173, Locke Q = Ritual
+   Nails / MAGIC / 6 blocks).
+
+**Then the surviving roster-wide half was MEASURED and it died too.** Against a live 16.14.1
+`--full-roster` extract (1058 abilities, 0 errors, 688 with a leveling payload):
+937 forms -> 361 with no damage block -> 146 with their own leveling -> **3** naming a real
+damage label once stat grants are excluded (Jayce W Hyper Charge, Mel W Rebuttal, Quinn R
+Skystrike), **all 3 fully literal**. So the `{{#var:}}` scanner + arithmetic evaluator that
+dominated the spec's risk section buys nothing. Three hand-authored registry entries are the
+proportionate fix - do NOT build the promoter.
+
+**The count read 1, then 16, then 3, and the 16 was the dangerous one** because it clustered
+into a tidy story (Hwei's subject spells, Kha'Zix's evolved forms, Riven R) that would have
+justified the whole build. It was a join artifact: a slot-level fallback attributed the
+PRIMARY form's leveling text to its alternate forms. A separate `Bonus[a-z ]*Damage` label
+regex independently inflated 3 -> 36 by matching the "Bonus Attack Damage" STAT GRANT. Both
+traps are now written into the ROADMAP row. New memory
+`feedback_population_sizing_middle_answer_trap`.
+
+**What shipped anyway (good independent of the verdict):** the extractor now captures
+`leveling*_raw` via a new `_block_param` brace-depth scanner - `leveling` is the ONLY
+multi-line param on a Template:Data page, so the line-anchored `_param_re` truncates it, and
+a test asserts `_param_re` is genuinely insufficient so the capture test cannot go vacuous.
+Plus an `apiname`+slot join key that did not previously exist. The committed sidecar is
+deliberately NOT regenerated - the capture is inert until the extractor is re-run, which is
+what keeps this Tier-1.
+
+**Verification (fresh this session):** ruff clean; `tools/tests/` 346 passed (22 new);
+doc-size budget 2 passed; ASCII/mojibake/u2500 hygiene 486 passed / 10 skipped; zero
+non-ASCII added. DS `:8893` unchanged at 1.256.0 / 16.14.1 (correctly - Tier-1).
+Also compacted `MEMORY.md` 19.8KB -> 16.8KB on a hook prompt (247 links, 0 broken, 0 entries
+dropped).
+
+---
+
 # 2026-07-26g - R195 HEXCORE anchor drift made machine-enforced (gemini loop cycle 5, operator halt)
 
 **Shipped:** `a27e5e6b` + `07360f10` (sha fill), pushed. Tier-0/1 - no ENGINE bump, no DS
@@ -97,21 +147,3 @@ hygiene green; `ds_share_sync --check` in sync at 498 files.
 
 **Don't-redo:** the vamp base-magnitude / mirror-parity lane is now closed THREE times
 over (R181 + R193 + R194). The Sundered Sky overheal shield is REFUTED with a guard.
-
----
-
-# 2026-07-26e - weekly hygiene (unattended)
-
-**Relocated:** none. WAKEUP already at exactly 3 sessions; CLAUDE.md 27KB (under 60KB); no stray ledger entries.
-
-**Memory update (autonomous):** `project_codebase_audit_clean_baseline.md` - removed stale "Game-PC MCP :8892 required for web/ fixture audit" clause (Game-PC retired ADR-011; correct path is Legion :8888 + headless audit via [[feedback_phase3_fixture_ritual]]).
-
-**Anomaly triage:** all 19 RC-* tasks in expected states. RC alive, DS :8893 alive patch=16.14.1, LCU Offline (no game in progress). No actionable anomalies.
-
-**Flags for operator (judgment calls - no action taken):**
-
-1. `_next_session_snapshot_card_build.md` in memory dir: player-snapshot card SHIPPED (PR #6, LEDGER 782). Handoff memo is consumed. Safe to delete.
-2. `_handoff_competitor_deep_research.md` in memory dir: main research EXECUTED 2026-07-05. Lolmath SELECTIVE-SAVE DS-knob coverage check marked "still queued" at bottom but is NOT in ROADMAP. Clarify: still wanted, or abandon?
-3. `feedback_gamepc_league_fullscreen_lockup.md` in memory dir: Game-PC RETIRED. Advice names dead infra (Parsec + Duet adapters on Game-PC). Delete or retarget to Legion virtual-display guidance?
-4. `project_out_of_game_spatial_brand.md` in memory dir: parked worktree files (pseudo_screen_overlay.py, rofl_stats_backfill.py) are merged to main. Theme work (Hextech-Unified + Deep Terminal, palette pick) status unclear - resolved or still pending?
-5. CLAUDE.md "TDD First" section: stale suite counts (DS 9546 / RC 13061, dated 2026-07-25). Current from 2026-07-26d: DS 9783 / RC 13115. Approve CLAUDE.md touch to update?
