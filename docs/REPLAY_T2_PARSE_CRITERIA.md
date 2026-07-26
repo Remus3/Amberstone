@@ -260,3 +260,84 @@ happened once here, at ~2000 units of error.
 - Whether `activePlayer` populates in a replay (its abilities route 400s).
 - Whether any minion or ward entity is exposed anywhere on `:2999`. If wards
   are, the SUPPORT coverage row unblocks at T3.
+
+---
+
+## 9. Operator points-of-interest, triaged against the substrate
+
+The 25 items below are the operator's list (2026-07-26), kept in their words.
+Each is assigned a verdict against MEASURED fields, not against what would be
+convenient. Counts: **14 measurable headless today, 7 need T3, 1 partial,
+3 blocked.**
+
+### 9.1 MEASURABLE NOW - T1/T2, headless, whole ladder
+
+| # | point | tier | fields |
+|---|---|---|---|
+| 1 | Starting item | T2 | `ITEM_PURCHASED` at t<=0; verified two entries at t=0.0 |
+| 4 | Timing (spikes, objective windows) | T2 | event timestamps, sub-second |
+| 7 | Objectives | T2 | `ELITE_MONSTER_KILL` - verified types DRAGON (+`monsterSubType` FIRE/HEXTECH/CHEMTECH), HORDE, RIFTHERALD, BARON_NASHOR, with `killerTeamId`, `position`, `bounty` |
+| 8 | Post fight aggression | T2 | events in the window after a kill cluster: plates, buildings, monsters, further kills |
+| 9 | Shop intervals | T2 | `ITEM_PURCHASED` clustering; a cluster IS a shop visit. Recall itself has no event - infer from the cluster plus a gold drop |
+| 10 | Item builds | T0+T2 | sidecar ITEM0-6; full purchase history |
+| 11 | Item ordering | T2 | `ITEM_PURCHASED` sequence, with `ITEM_UNDO` and `ITEM_SOLD` to correct it |
+| 12 | Runes | match blob | `perks.styles[].selections[].perk` + `perks.statPerks{offense,flex,defense}` - verified present |
+| 16 | Turret pressure / plates | T2 | `TURRET_PLATE_DESTROYED{killerId,teamId,laneType,position}`, `BUILDING_KILL{towerType,buildingType,laneType,bounty}` |
+| 19 | Farming cs | T1 | `minionsKilled`, `jungleMinionsKilled` per 60 s |
+| 21 | Threat analysis on locations and timings | T2 | **every `CHAMPION_KILL` carries `position` and a sub-second timestamp.** A death heatmap by map region and game minute is directly computable across the whole corpus. One of the strongest items on the list |
+| 23 | Targeting priority | T2 | `victimDamageReceived[].participantId` says who focused whom; `victimDamageDealt` says who the victim was hitting |
+| 24 | Post objective actions to end the game | T2 | ordered events after each `ELITE_MONSTER_KILL`, magnitude by bounty |
+| 25 | Actions done while behind to not be behind anymore | T1+T2 | gold-deficit windows from `totalGold`, with the T2 events inside them; comeback = deficit series reversing |
+
+### 9.2 T3 REQUIRED - interactive, one game at a time
+
+These need continuous position. T1's 60 s sampling is disqualified by
+measurement, not preference: ~2000 unit mean error, 8 of 33 samples wrong by
+more than the decision threshold.
+
+| # | point | why T3 |
+|---|---|---|
+| 2 | Pre-minion positioning | frame 0 exists (verified, all 10 at spawn ~(603,611)) but the next frame is t=60005 ms. The entire pre-minion phase has exactly ONE sample |
+| 3 | Jungle pathing | route between camps is continuous position. T1 gives only a `jungleMinionsKilled` slope, which is throughput not path |
+| 13 | Lane assessment for ganking | needs enemy position AND hp at the decision instant. `championStats.health/healthMax` is 60 s sampled |
+| 17 | Split pushes and grouping | team dispersion is a position statistic |
+| 18 | Time and approaches for ganking | approach VECTOR is continuous position; the arrival is T2 |
+| 20 | Over-extended lane | position relative to lane midpoint vs enemy proximity |
+| 22 | Teamfight positioning | who stood where. NOTE the T2 consolation prize is real: damage-taken order and focus are available headless |
+
+### 9.3 PARTIAL
+
+| # | point | what works, what does not |
+|---|---|---|
+| 6 | Trading | **Lethal trades are fully measurable** - `victimDamageDealt` / `victimDamageReceived` name the spell (`spellName`, `spellSlot`, `basic`) and split physical/magic/true. A trade NOBODY DIED IN is invisible except as a 60 s `damageStats` delta. So "how did this trade go" is answerable when it ended in a kill, and only coarsely otherwise |
+
+### 9.4 BLOCKED - do not build these until Layer-2
+
+| # | point | measured reason |
+|---|---|---|
+| 5 | Wave state | no minion entities in any tier. cs rate and plate timing are PROXIES and must be labelled as such. This is the single biggest gap on the list and it gates 2 and 20 as well |
+| 14 | Buff intervals | **VERIFIED ABSENT.** `ELITE_MONSTER_KILL` covers DRAGON / HORDE / RIFTHERALD / BARON_NASHOR only. Blue and red buff are ordinary jungle camps, and `jungleMinionsKilled` is a COUNT that never names the camp. Zero event types matching BUFF or CAMP exist |
+| 15 | Sharing (buff sharing) | same root cause as 14 - the camp is never identified, so who took which buff is unrecoverable |
+
+### 9.5 Also verified while triaging
+
+- **Summoner spells are LOADOUT ONLY.** `summoner1Id`/`summoner2Id` give the
+  pair (verified 4 = Flash, 11 = Smite). No cast event exists in any tier, so
+  Flash timers, TP windows and Smite usage are NOT measurable. This kills the
+  TOP teleport-window row in section 5.2 for good.
+- The match blob carries a large `challenges` object of Riot-computed metrics.
+  UNMEASURED whether any are useful here; worth one probe before hand-rolling
+  a metric Riot already computes.
+
+### 9.6 What this implies for build order
+
+Section 7 stands, with one sharpening: **items 1, 4, 7, 8, 9, 10, 11, 12, 16,
+19, 21, 23, 24, 25 are buildable right now against the corpus already on disk,
+with no client and no Layer-2.** That is 14 of 25 and it includes the whole
+economic and decision-timing spine plus the death-threat map. Build those,
+mine win-rate differences from them, and the haiku-zero table has a real
+backbone before any interactive work is needed.
+
+The 7 T3 items are exactly the ones worth hand-curating a small deep corpus
+for. The 3 blocked items are the honest case for reopening the Layer-2 fence
+later - and wave state alone is most of that case.
