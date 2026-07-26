@@ -1,5 +1,9 @@
 # RC UI/UX Full Redesign - Living Plan
 
+> **SCOPE (2026-07-26, one-tracker pass):** SUPERSEDED for overlay build detail by
+> `docs/OVERLAY_BUILD_MASTER_PLAN.md` (newer, more referenced). Retained as the 2026-06-22
+> redesign directive + page inventory. Open work is tracked in `ROADMAP.md` (RM-03), not here.
+
 Operator directive 2026-06-22: redesign ALL pages (in-game + out-of-game), Gemini-directed,
 grounded in `docs/design/RC2_DESIGN.html` (greenlit Hextech) + `docs/research/RC2_RESEARCH_*`,
 using mocks + screen captures, looped exhaustively. The 2026-06-21 dashboard-retirement is

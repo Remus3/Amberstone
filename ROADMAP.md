@@ -1,5 +1,28 @@
 # Riot Commander - Roadmap
 
+## WHERE WORK LIVES - this file is THE tracker
+
+**One tracker rule (operator-directed 2026-07-26):** open work lives HERE. If another doc
+claims to be a "source of truth" or "single source of truth" for open work and is not in the
+table below, it is a SUBPLAN - scope it to its program or archive it. Do not start a rival list.
+
+| doc | holds | may I put open work in it? |
+|---|---|---|
+| `ROADMAP.md` (this) | ALL open work, NOW / NEXT / LATER, stable `RM-NN` ids | **YES - this is the one tracker** |
+| `BACKLOG.md` | aspirational tier, overflow only (ROADMAP is CI-budgeted < 80KB) | only if it does not fit here |
+| `docs/LIVE_GAME_GATED_SYNC.md` | rows that need the operator IN a live game | only live-gated rows |
+| `docs/DS_SWEEP_TRACKER.md` | **authoritative `RM-NN` id registry** - take ids from here, never from ROADMAP prose | no - ids only |
+| `docs/LEDGER.md` | append-only per-item completions | no - history |
+| `docs/ROADMAP_HISTORY.md` | relocated shipped/closed narrative | no - history |
+| `WAKEUP_NOTES.md` | session continuity, auto-pruned to 3 | no - per-session |
+| `docs/specs/**`, `docs/research/**` | per-item spec-first output, one per item | no - they are INDEXED by a ROADMAP row, never a rival plan |
+
+Program subplans (scoped, NOT rival trackers): `docs/ORCHESTRATION_PLAN.md` (loop director,
+machine-read each cycle), `docs/RC2_PLAN.md` (RC 2.0 program only),
+`docs/OVERLAY_BUILD_MASTER_PLAN.md` (overlay build spec).
+
+---
+
 _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, mdclean C2; ids never renumber - new items take the next free id). Shipped/closed entries relocate verbatim to `docs/ROADMAP_HISTORY.md` (append-only); per-item ledger in `docs/LEDGER.md`; aspirational work in `BACKLOG.md`; live-gated drains in `docs/LIVE_GAME_GATED_SYNC.md`._
 
 > **Pruned 2026-07-18 (per-item adjudication pass, 85125 -> under the 80KB `tests/test_doc_size_budget.py` budget).** Every NEXT bullet was decided against ground truth (LEDGER, git, files on disk, the live `:8893`), NOT against its own prose. Shipped research narrative relocated verbatim to `docs/ROADMAP_HISTORY.md`; purely live-gated rows rerouted to `docs/LIVE_GAME_GATED_SYNC.md` (which already carried most of them). No RM id was deleted and no open work was dropped - every id below is still reachable, either as a bullet or as a routed row in the tables. Rationale + evidence per bullet: the 2026-07-18 block in `docs/ROADMAP_HISTORY.md`.
