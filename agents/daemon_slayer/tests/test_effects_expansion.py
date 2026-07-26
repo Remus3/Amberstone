@@ -983,7 +983,9 @@ class CallContextTargetsInRotationTests(unittest.TestCase):
         self.assertEqual(ctx.targets_in_rotation, 1.0)
 
     def test_cleave_to_others_zero_at_single_target(self) -> None:
-        # Ravenous-style: max(0, n-1) * 0.35 * (base_ad + bonus_ad).
+        # Hydra-cleave shape: max(0, n-1) * coef * (base_ad + bonus_ad).
+        # Coefficient here is arbitrary - this pins the CallContext field,
+        # not any shipped item's calibration.
         proc = PeriodicProc(
             name="cleave_others",
             bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
@@ -1135,11 +1137,11 @@ class StridebreakerCleaveTests(unittest.TestCase):
     """Phase 4 batch 21 - Stridebreaker (6631) promoted via the same
     multi-target rotation layer as Ravenous Hydra (3074).
 
-    Coefficient is 40% AD (Ravenous is 35%), so on a champion whose
-    rotations include n>1 targets, Stridebreaker should outscore
-    Ravenous on the cleave piece. Stat blocks differ - Ravenous brings
-    omnivamp + 5% MS; Stridebreaker brings AS + Halting Slash active -
-    so we test the cleave-piece signal, not the absolute total.
+    Coefficient is 40% AD. R193 corrected Ravenous from a stale 0.35 to
+    the same 0.40 Meraki value, so the two now match on the cleave piece
+    instead of Stridebreaker outscoring it. Stat blocks still differ -
+    Ravenous brings omnivamp + 5% MS; Stridebreaker brings AS + Halting
+    Slash active - so we test the cleave-piece signal, not the total.
     """
 
     @classmethod
@@ -1189,22 +1191,24 @@ class StridebreakerCleaveTests(unittest.TestCase):
         joined = " ".join(result.notes)
         self.assertNotIn("no rotations", joined)
 
-    def test_stridebreaker_cleave_outscores_ravenous_at_same_n(self) -> None:
-        # Direct coefficient check: 40% > 35% on the cleave piece. Stat
-        # blocks differ between the two items, so we can't compare total
-        # DPS - we compare proc resolution at a fixed CallContext.
+    def test_stridebreaker_cleave_matches_ravenous_at_same_n(self) -> None:
+        # R193: this asserted 40% > 35%. Meraki 16.14.1 gives both items
+        # the same "40% AD / 20% AD" Cleave text, so the 0.35 Ravenous
+        # coefficient was stale-patch drift and the family is now flat.
+        # Stat blocks still differ, so we compare proc resolution at a
+        # fixed CallContext rather than total DPS.
         sb = ITEM_EFFECTS["6631"].periodics[0]
         rh = ITEM_EFFECTS["3074"].periodics[0]
         # n=3, base_ad=100, bonus_ad=50 -> cleave hits 2 enemies.
-        # SB: 2 * 0.40 * 150 = 120; RH: 2 * 0.35 * 150 = 105.
+        # Both: 2 * 0.40 * 150 = 120.
         ctx = CallContext(
             base_ad=100.0, bonus_ad=50.0, level=11, targets_in_rotation=3.0,
         )
         sb_dmg = sb.resolve_damage(ctx)
         rh_dmg = rh.resolve_damage(ctx)
-        self.assertGreater(sb_dmg, rh_dmg)
+        self.assertAlmostEqual(sb_dmg, rh_dmg, places=3)
         self.assertAlmostEqual(sb_dmg, 120.0, places=3)
-        self.assertAlmostEqual(rh_dmg, 105.0, places=3)
+        self.assertAlmostEqual(rh_dmg, 120.0, places=3)
 
     def test_stridebreaker_zero_at_targets_one(self) -> None:
         # Single-target rotation -> max(0, 1-1) * coef * AD = 0. Pins the
@@ -1298,18 +1302,20 @@ class ProfaneHydraCleaveTests(unittest.TestCase):
         self.assertAlmostEqual(ph_dmg, sb_dmg, places=3)
         self.assertAlmostEqual(ph_dmg, 120.0, places=3)
 
-    def test_profane_hydra_outscores_ravenous_cleave(self) -> None:
-        # Direct coefficient check: 40% > 35% on the cleave piece, same
-        # structure as Stridebreaker vs Ravenous comparison. Pins the
-        # batch-24 coefficient choice ("matches Stridebreaker, not
-        # Ravenous"). Stat blocks aside.
+    def test_profane_hydra_matches_ravenous_cleave(self) -> None:
+        # R193: this asserted 40% > 35%. Ravenous was corrected to the
+        # shared Meraki 16.14.1 melee value, so the batch-24 choice
+        # ("matches Stridebreaker") now also matches Ravenous - one flat
+        # family coefficient. Stat blocks aside.
         ph = ITEM_EFFECTS["6698"].periodics[0]
         rh = ITEM_EFFECTS["3074"].periodics[0]
         ctx = CallContext(
             base_ad=100.0, bonus_ad=50.0, level=11, targets_in_rotation=3.0,
         )
-        self.assertGreater(ph.resolve_damage(ctx), rh.resolve_damage(ctx))
-        self.assertAlmostEqual(rh.resolve_damage(ctx), 105.0, places=3)
+        self.assertAlmostEqual(
+            ph.resolve_damage(ctx), rh.resolve_damage(ctx), places=3,
+        )
+        self.assertAlmostEqual(rh.resolve_damage(ctx), 120.0, places=3)
 
     def test_profane_hydra_zero_at_targets_one(self) -> None:
         # Single-target rotation -> max(0, 1-1) * 0.40 * AD = 0. Pins
