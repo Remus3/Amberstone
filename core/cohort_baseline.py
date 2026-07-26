@@ -182,5 +182,26 @@ def rank_of(baselines: dict, role: str, metric: str, value: float):
             "at_or_above_p": band, "median": table["p50"], "n": table["n"]}
 
 
-def load(path) -> dict:
-    return json.loads(Path(path).read_text(encoding="utf-8")).get("roles", {})
+def load(path, cohort: str | None = None) -> dict:
+    """Per-role tables from either baseline file shape.
+
+    `tools/build_cohort_baseline.py` writes one cohort as {"roles": ...}.
+    `tools/build_rank_baselines.py` writes many as {"tiers": {NAME: {"roles":
+    ...}}} and needs `cohort` to say which one to compare against.
+
+    A tiers-shaped file with no cohort named RAISES rather than reading empty.
+    Returning {} there is indistinguishable from "this cohort has no table",
+    so every band is silently omitted and the report looks merely sparse.
+    """
+    blob = json.loads(Path(path).read_text(encoding="utf-8"))
+    tiers = blob.get("tiers")
+    if not tiers:
+        return blob.get("roles", {})
+    available = ", ".join(sorted(tiers))
+    if not cohort:
+        raise ValueError(
+            f"{path} holds {len(tiers)} cohorts and none was named - "
+            f"pass one of: {available}")
+    if cohort not in tiers:
+        raise ValueError(f"no cohort {cohort} in {path} - have: {available}")
+    return (tiers[cohort] or {}).get("roles", {})

@@ -108,3 +108,72 @@ def test_rank_carries_the_sample_size_and_median():
     r = cb.rank_of(base, "TOP", "cs_per_min", 30.0)
     assert r["n"] == 50
     assert "median" in r
+
+
+# ------------------------------------------------------------------- loading
+
+def _write(tmp_path, blob):
+    import json
+    fp = tmp_path / "baselines.json"
+    fp.write_text(json.dumps(blob), encoding="utf-8")
+    return fp
+
+
+_ROLES = {"TOP": {"cs_per_min": {"n": 30, "mean": 6.0, "p50": 6.0}}}
+
+
+def test_load_reads_a_single_cohort_file():
+    # tools/build_cohort_baseline.py writes {"roles": ...} with no tiers.
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as d:
+        fp = _write(Path(d), {"source": "t0", "roles": _ROLES})
+        assert cb.load(fp) == _ROLES
+
+
+def test_load_selects_the_named_cohort_from_a_multi_cohort_file():
+    # tools/build_rank_baselines.py nests roles under tiers[COHORT].
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as d:
+        fp = _write(Path(d), {"tiers": {
+            "GOLD_II": {"roles": _ROLES},
+            "IRON_IV": {"roles": {}}}})
+        assert cb.load(fp, cohort="GOLD_II") == _ROLES
+
+
+def test_a_multi_cohort_file_without_a_cohort_raises_rather_than_reading_empty():
+    # The regression this test exists for: load() used to .get("roles") at the
+    # top level, so a tiers-shaped file silently yielded {} and every band was
+    # omitted as "no cohort table" with no indication anything was wrong.
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as d:
+        fp = _write(Path(d), {"tiers": {"GOLD_II": {"roles": _ROLES}}})
+        try:
+            cb.load(fp)
+        except ValueError as exc:
+            assert "GOLD_II" in str(exc)
+        else:
+            raise AssertionError("silently returned instead of raising")
+
+
+def test_an_unknown_cohort_names_the_available_ones():
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as d:
+        fp = _write(Path(d), {"tiers": {"GOLD_II": {"roles": _ROLES}}})
+        try:
+            cb.load(fp, cohort="CHALLENGER")
+        except ValueError as exc:
+            assert "CHALLENGER" in str(exc) and "GOLD_II" in str(exc)
+        else:
+            raise AssertionError("unknown cohort did not raise")
+
+
+def test_a_cohort_on_a_single_cohort_file_is_ignored_not_an_error():
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as d:
+        fp = _write(Path(d), {"roles": _ROLES})
+        assert cb.load(fp, cohort="GOLD_II") == _ROLES
