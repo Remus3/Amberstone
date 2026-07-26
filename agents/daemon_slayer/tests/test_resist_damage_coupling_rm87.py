@@ -204,9 +204,22 @@ class SignatureConventionTests(unittest.TestCase):
     def test_observability_fields_are_appended_at_the_end_with_defaults(self) -> None:
         import dataclasses
 
-        names = [f.name for f in dataclasses.fields(ehp_mod.EhpRankedItem)]
-        self.assertEqual(names[-2:], ["delta_armor", "delta_mr"])
-        for f in dataclasses.fields(ehp_mod.EhpRankedItem):
+        fields = list(dataclasses.fields(ehp_mod.EhpRankedItem))
+        names = [f.name for f in fields]
+        # The RM-87 pair went in as the tail; R194 slice A appended the sustain
+        # pair AFTER it, which is the convention working, not breaking. What the
+        # guard actually protects is that the pair is CONTIGUOUS, carries
+        # defaults, and that nothing without a default was inserted after it -
+        # a required field appearing later is what breaks every positional
+        # construction.
+        i = names.index("delta_armor")
+        self.assertEqual(names[i:i + 2], ["delta_armor", "delta_mr"])
+        for f in fields[i:]:
+            self.assertIsNot(
+                f.default, dataclasses.MISSING,
+                f"{f.name} follows the RM-87 pair but has no default",
+            )
+        for f in fields:
             if f.name in ("delta_armor", "delta_mr"):
                 self.assertEqual(f.default, 0.0)
 
