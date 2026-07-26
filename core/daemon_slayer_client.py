@@ -534,6 +534,12 @@ def ehp_for(
     assume_item_general_dr: bool = False,
     assume_item_health_stacks: bool = False,
     assume_item_proc_heal: bool = False,
+    # R193 slice C: item-passive omnivamp (Riftmaker at max Void Corruption
+    # stacks) into the EHP SUSTAIN axis. /ehp-only - the seam is parsed by
+    # ``_route_ehp`` alone, because ``rank_items_by_ehp`` does not accept the
+    # kwarg, so wiring it onto the ranker entry points would manufacture
+    # reachability with no engine consumer.
+    assume_max_stacks_omnivamp: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
@@ -581,6 +587,7 @@ def ehp_for(
         assume_item_general_dr=assume_item_general_dr,
         assume_item_health_stacks=assume_item_health_stacks,
         assume_item_proc_heal=assume_item_proc_heal,
+        assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
     )
     return _post_json("/ehp", body, timeout=timeout)
 
