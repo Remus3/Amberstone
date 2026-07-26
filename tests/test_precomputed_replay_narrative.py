@@ -237,3 +237,218 @@ def test_deterministic_repeat_calls_match():
     first = build_narrative(blob)
     second = build_narrative(blob)
     assert first == second
+
+
+# --- CHAMPION_SPECIAL_KILL (first blood / multikill / ace) -------------------
+#
+# Shape verified live against rewind_history.db (63505 rows): the type lives in
+# raw_json as {"killType": ...}, KILL_MULTI additionally carries
+# "multiKillLength", killer_id is populated and victim_id is always NULL - the
+# companion CHAMPION_KILL row at the same timestamp carries the victim. So a
+# special-kill line names the killer and the feat, never a victim.
+
+
+def _special_kill_blob(raw_json, killer_id=1, timestamp_ms=800000):
+    """The synthetic blob plus ONE CHAMPION_SPECIAL_KILL row.
+
+    raw_json is passed through verbatim so the tests can cover the str form the
+    db actually stores, the already-parsed dict form, and malformed values.
+    """
+    blob = _synthetic_blob()
+    blob["events"].append(
+        {
+            "event_type": "CHAMPION_SPECIAL_KILL",
+            "timestamp_ms": timestamp_ms,
+            "killer_id": killer_id,
+            "victim_id": None,
+            "raw_json": raw_json,
+        }
+    )
+    return blob
+
+
+def _only_special(result):
+    return [m for m in result["key_moments"]
+            if m["event_type"] == "CHAMPION_SPECIAL_KILL"]
+
+
+def test_special_kill_is_a_candidate_moment():
+    result = build_narrative(_special_kill_blob('{"killType": "KILL_FIRST_BLOOD"}'))
+    assert len(_only_special(result)) == 1
+
+
+def test_first_blood_text_names_the_feat():
+    # Killer is the operator (participant 1).
+    result = build_narrative(_special_kill_blob('{"killType": "KILL_FIRST_BLOOD"}'))
+    text = _only_special(result)[0]["text"]
+    assert "First Blood" in text
+    assert "you" in text
+
+
+def test_first_blood_text_names_another_champion():
+    # participant 2 is LeeSin in the synthetic blob.
+    result = build_narrative(
+        _special_kill_blob('{"killType": "KILL_FIRST_BLOOD"}', killer_id=2))
+    text = _only_special(result)[0]["text"]
+    assert "First Blood" in text
+    assert "LeeSin" in text
+
+
+def test_multikill_names_scale_with_length():
+    expected = {2: "Double Kill", 3: "Triple Kill",
+                4: "Quadra Kill", 5: "Penta Kill"}
+    for length, name in expected.items():
+        blob = _special_kill_blob(
+            f'{{"killType": "KILL_MULTI", "multiKillLength": {length}}}',
+            killer_id=2)
+        text = _only_special(build_narrative(blob))[0]["text"]
+        assert name in text, f"length {length} did not render {name}: {text}"
+        assert "LeeSin" in text
+
+
+def test_multikill_impact_increases_with_length():
+    impacts = []
+    for length in (2, 3, 4, 5):
+        blob = _special_kill_blob(
+            f'{{"killType": "KILL_MULTI", "multiKillLength": {length}}}',
+            killer_id=2)
+        impacts.append(_only_special(build_narrative(blob))[0]["impact"])
+    assert impacts == sorted(impacts)
+    assert len(set(impacts)) == 4
+
+
+def test_penta_kill_clears_the_epic_monster_floor():
+    # A pentakill is the headline of any game it happens in and must clear the
+    # 60-point epic-monster base. It does NOT have to outrank the fixture's
+    # Baron, which the operator took: operator credit is worth +25 and this
+    # narrative is deliberately operator-centric, so an objective the operator
+    # personally secured outranking someone else's penta is correct.
+    blob = _special_kill_blob(
+        '{"killType": "KILL_MULTI", "multiKillLength": 5}', killer_id=2)
+    penta = _only_special(build_narrative(blob))[0]
+    assert penta["impact"] > 60.0
+    assert "Penta Kill" in penta["text"]
+
+
+def test_penta_kill_outranks_an_uncredited_baron():
+    # Same comparison with the operator credit removed from both sides: the
+    # penta must come out on top.
+    blob = _special_kill_blob(
+        '{"killType": "KILL_MULTI", "multiKillLength": 5}', killer_id=2)
+    for ev in blob["events"]:
+        if ev.get("event_type") == "ELITE_MONSTER_KILL":
+            ev["killer_id"] = 2
+    result = build_narrative(blob)
+    assert result["key_moments"][0]["event_type"] == "CHAMPION_SPECIAL_KILL"
+    assert "Penta Kill" in result["key_moments"][0]["text"]
+
+
+def test_double_kill_does_not_outrank_baron():
+    # The other side of the scale: a double kill is a moment, not the headline.
+    blob = _special_kill_blob(
+        '{"killType": "KILL_MULTI", "multiKillLength": 2}', killer_id=2)
+    result = build_narrative(blob)
+    assert result["key_moments"][0]["event_type"] == "ELITE_MONSTER_KILL"
+
+
+def test_ace_text_and_rank():
+    blob = _special_kill_blob('{"killType": "KILL_ACE"}', killer_id=2)
+    moments = _only_special(build_narrative(blob))
+    assert len(moments) == 1
+    assert "ace" in moments[0]["text"].lower()
+
+
+def test_ace_and_multikill_at_same_instant_both_survive_dedup():
+    # A pentakill that aces emits BOTH rows at the same timestamp with the same
+    # killer. The dedup key must separate them or the ace silently eats the
+    # penta (or vice versa).
+    blob = _special_kill_blob(
+        '{"killType": "KILL_MULTI", "multiKillLength": 5}',
+        killer_id=2, timestamp_ms=900000)
+    blob["events"].append(
+        {
+            "event_type": "CHAMPION_SPECIAL_KILL",
+            "timestamp_ms": 900000,
+            "killer_id": 2,
+            "victim_id": None,
+            "raw_json": '{"killType": "KILL_ACE"}',
+        }
+    )
+    texts = [m["text"] for m in _only_special(build_narrative(blob))]
+    assert len(texts) == 2
+    assert any("Penta Kill" in t for t in texts)
+    assert any("ace" in t.lower() for t in texts)
+
+
+def test_multikill_streak_collapses_to_its_terminal_rung():
+    # Riot emits one row per RUNG as a streak grows, so a pentakill arrives as
+    # double -> triple -> quadra -> penta, four rows for one feat. Verified on
+    # NA1_5094273204: a 14:42 Quadra and a 14:46 Penta by the same player are
+    # the same streak. Only the terminal rung is a moment.
+    blob = _synthetic_blob()
+    for offset, length in ((0, 2), (3000, 3), (7000, 4), (11000, 5)):
+        blob["events"].append(
+            {
+                "event_type": "CHAMPION_SPECIAL_KILL",
+                "timestamp_ms": 800000 + offset,
+                "killer_id": 2,
+                "victim_id": None,
+                "raw_json":
+                    f'{{"killType": "KILL_MULTI", "multiKillLength": {length}}}',
+            }
+        )
+    texts = [m["text"] for m in _only_special(build_narrative(blob))]
+    assert len(texts) == 1
+    assert "Penta Kill" in texts[0]
+
+
+def test_separate_multikill_streaks_both_survive():
+    # Two Double Kills minutes apart are two feats, not one streak.
+    blob = _synthetic_blob()
+    for ts in (400000, 900000):
+        blob["events"].append(
+            {
+                "event_type": "CHAMPION_SPECIAL_KILL",
+                "timestamp_ms": ts,
+                "killer_id": 2,
+                "victim_id": None,
+                "raw_json": '{"killType": "KILL_MULTI", "multiKillLength": 2}',
+            }
+        )
+    assert len(_only_special(build_narrative(blob))) == 2
+
+
+def test_concurrent_streaks_by_different_players_do_not_collapse():
+    # Two players each getting a Double Kill in the same teamfight are two
+    # feats. Collapsing must be per-killer, not global.
+    blob = _synthetic_blob()
+    for killer in (1, 2):
+        blob["events"].append(
+            {
+                "event_type": "CHAMPION_SPECIAL_KILL",
+                "timestamp_ms": 800000 + killer * 1000,
+                "killer_id": killer,
+                "victim_id": None,
+                "raw_json": '{"killType": "KILL_MULTI", "multiKillLength": 2}',
+            }
+        )
+    assert len(_only_special(build_narrative(blob))) == 2
+
+
+def test_raw_json_accepts_already_parsed_dict():
+    blob = _special_kill_blob(
+        {"killType": "KILL_MULTI", "multiKillLength": 3}, killer_id=2)
+    assert "Triple Kill" in _only_special(build_narrative(blob))[0]["text"]
+
+
+def test_failsoft_malformed_special_kill_raw_json():
+    for bad in (None, "", "not json", "[]", 42, '{"killType": null}',
+                '{"killType": "KILL_MULTI"}'):
+        result = build_narrative(_special_kill_blob(bad, killer_id=2))
+        assert result["ok"] is True
+        moments = _only_special(result)
+        # It still renders as a moment; it must never raise and never emit a
+        # None-shaped label.
+        assert len(moments) == 1
+        assert moments[0]["text"]
+        assert "None" not in moments[0]["text"]

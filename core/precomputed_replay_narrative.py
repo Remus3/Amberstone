@@ -58,11 +58,25 @@ _OBJ_COLUMNS = (
 _MOMENT_EVENT_TYPES = frozenset(
     {
         "CHAMPION_KILL",
+        "CHAMPION_SPECIAL_KILL",
         "ELITE_MONSTER_KILL",
         "BUILDING_KILL",
         "TURRET_PLATE_DESTROYED",
     }
 )
+
+# CHAMPION_SPECIAL_KILL carries its type only in raw_json. Verified live over
+# the 63505 rows in rewind_history.db: killType is one of KILL_FIRST_BLOOD /
+# KILL_MULTI / KILL_ACE, KILL_MULTI alone adds multiKillLength, killer_id is
+# populated and victim_id is always NULL - the companion CHAMPION_KILL row at
+# the same timestamp carries the victim. A special-kill line therefore names
+# the killer and the feat, never a victim.
+_MULTI_KILL_NAMES = {
+    2: "Double Kill",
+    3: "Triple Kill",
+    4: "Quadra Kill",
+    5: "Penta Kill",
+}
 
 
 def _as_float(value: Any) -> float:
@@ -182,6 +196,73 @@ def _find_operator_row(
     return pool[0]
 
 
+def _special_kill(event: dict[str, Any]) -> tuple[str, int]:
+    """Parse a CHAMPION_SPECIAL_KILL row into (kill_type, multi_kill_length).
+
+    raw_json arrives as the stored JSON string, or already parsed when a caller
+    hydrated it. Returns ("", 0) for anything unrecognised so every consumer can
+    branch on a plain string and never sees None.
+    """
+    raw = event.get("raw_json")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (ValueError, TypeError):
+            return ("", 0)
+    if not isinstance(raw, dict):
+        return ("", 0)
+    kill_type = raw.get("killType")
+    if not isinstance(kill_type, str):
+        return ("", 0)
+    return (kill_type, _as_int(raw.get("multiKillLength")))
+
+
+def _multi_kill_name(length: int) -> str:
+    """Riot caps multiKillLength at 5; anything else degrades to a count."""
+    return _MULTI_KILL_NAMES.get(length) or f"{length}-kill streak"
+
+
+# Riot's multikill window. Consecutive kills further apart than this start a
+# new streak rather than extending the current one.
+_MULTI_KILL_WINDOW_MS = 10_000
+
+
+def _superseded_multikill_ids(events: list) -> set[int]:
+    """id()s of KILL_MULTI rows that a later rung of the SAME streak replaces.
+
+    A pentakill does not arrive as one row: Riot emits a rung at every step, so
+    one feat lands as double -> triple -> quadra -> penta. Measured on
+    NA1_5094273204, a 14:42 Quadra and a 14:46 Penta by the same player are the
+    same streak, and keeping both spends two of the five moment slots on one
+    event. A streak continues while the same killer's next rung is strictly
+    longer and lands inside the multikill window; only its terminal rung is a
+    moment.
+
+    Keyed on id() rather than on a value tuple because two genuinely distinct
+    rows can be byte-identical, and returning a set of dropped identities would
+    take both.
+    """
+    by_killer: dict[Any, list] = {}
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        if (ev.get("event_type") or "") != "CHAMPION_SPECIAL_KILL":
+            continue
+        if _special_kill(ev)[0] != "KILL_MULTI":
+            continue
+        by_killer.setdefault(ev.get("killer_id"), []).append(ev)
+
+    superseded: set[int] = set()
+    for rows in by_killer.values():
+        rows.sort(key=lambda e: _as_int(e.get("timestamp_ms")))
+        for cur, nxt in zip(rows, rows[1:]):
+            gap = _as_int(nxt.get("timestamp_ms")) - _as_int(cur.get("timestamp_ms"))
+            longer = _special_kill(nxt)[1] > _special_kill(cur)[1]
+            if longer and 0 <= gap <= _MULTI_KILL_WINDOW_MS:
+                superseded.add(id(cur))
+    return superseded
+
+
 def _moment_impact(event: dict[str, Any], operator_pid: Any) -> float:
     """Score a single timeline event for impact ranking.
 
@@ -204,6 +285,23 @@ def _moment_impact(event: dict[str, Any], operator_pid: Any) -> float:
         impact = 30.0
         impact += _as_float(event.get("bounty")) / 50.0
         impact += _as_float(event.get("shutdown_bounty")) / 25.0
+    elif etype == "CHAMPION_SPECIAL_KILL":
+        kill_type, length = _special_kill(event)
+        if kill_type == "KILL_MULTI":
+            # 42 / 54 / 66 / 78 for double through penta. Calibrated against
+            # the fixed anchors above: a double kill sits between a plain kill
+            # and an outer tower, and a pentakill clears the 60-point epic
+            # monster floor because it is the headline of any game it happens
+            # in. A KILL_MULTI with no length is a multikill by definition, so
+            # it floors at 2 rather than scoring as nothing.
+            impact = 30.0 + 12.0 * (max(2, length) - 1)
+        elif kill_type == "KILL_ACE":
+            impact = 55.0
+        elif kill_type == "KILL_FIRST_BLOOD":
+            impact = 32.0
+        else:
+            # Unrecognised killType: still a moment, ranked below a plain kill.
+            impact = 25.0
 
     # Operator involvement boost (killer / victim / assist).
     if operator_pid is not None:
@@ -246,6 +344,28 @@ def _describe_moment(event: dict[str, Any], operator_pid: Any,
         return f"{clock} - {building} destroyed"
     if etype == "TURRET_PLATE_DESTROYED":
         return f"{clock} - turret plate destroyed"
+    if etype == "CHAMPION_SPECIAL_KILL":
+        kill_type, length = _special_kill(event)
+        is_operator = event.get("killer_id") == operator_pid
+        killer = names.get(event.get("killer_id"))
+        if kill_type == "KILL_MULTI":
+            feat = _multi_kill_name(max(2, length))
+            if is_operator:
+                return f"{clock} - you got a {feat}"
+            return f"{clock} - {killer} {feat}" if killer else f"{clock} - {feat}"
+        if kill_type == "KILL_ACE":
+            if is_operator:
+                return f"{clock} - you aced the enemy team"
+            if killer:
+                return f"{clock} - {killer} aces the enemy team"
+            return f"{clock} - enemy team aced"
+        if kill_type == "KILL_FIRST_BLOOD":
+            if is_operator:
+                return f"{clock} - First Blood - you drew first blood"
+            if killer:
+                return f"{clock} - First Blood - {killer}"
+            return f"{clock} - First Blood"
+        return f"{clock} - special kill"
     if etype == "CHAMPION_KILL":
         killer = names.get(event.get("killer_id"))
         victim = names.get(event.get("victim_id"))
@@ -454,10 +574,13 @@ def build_narrative(blob: dict[str, Any] | None) -> dict[str, Any]:
         # Impact-rank the timeline. Score every candidate event, sort by impact
         # descending (stable on timestamp for ties), keep the top 5.
         scored: list[tuple[float, int, dict[str, Any]]] = []
+        superseded = _superseded_multikill_ids(events)
         for ev in events:
             if not isinstance(ev, dict):
                 continue
             if (ev.get("event_type") or "") not in _MOMENT_EVENT_TYPES:
+                continue
+            if id(ev) in superseded:
                 continue
             impact = _moment_impact(ev, operator_pid)
             scored.append((impact, _as_int(ev.get("timestamp_ms")), ev))
@@ -478,11 +601,16 @@ def build_narrative(blob: dict[str, Any] | None) -> dict[str, Any]:
         key_moments: list[dict[str, Any]] = []
         seen: set[tuple] = set()
         for impact, _ts, ev in scored:
+            # The special-kill type is part of the identity: a pentakill that
+            # aces emits a KILL_MULTI and a KILL_ACE row at the SAME timestamp
+            # with the same killer and a NULL victim, so without it the two
+            # collide and one of the game's two headline moments is silently
+            # dropped.
             ident = (
                 ev.get("timestamp_ms"), ev.get("event_type"),
                 ev.get("killer_id"), ev.get("victim_id"),
                 ev.get("participant_id"), ev.get("building_type"),
-                ev.get("monster_type"),
+                ev.get("monster_type"), _special_kill(ev),
             )
             if ident in seen:
                 continue
