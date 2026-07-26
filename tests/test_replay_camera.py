@@ -75,3 +75,67 @@ def test_back_projection_offsets_from_screen_centre_by_the_scale():
 def test_the_sentinel_threshold_sits_far_below_flt_max():
     assert rcam.FLT_MAX_SENTINEL < 3.4028235e38
     assert rcam.FLT_MAX_SENTINEL > 1e30
+
+
+# ------------------------------------------- analytic ray / ground-plane solve
+
+def _cam(x=7000.0, y=4000.0, z=4000.0):
+    return rcam.CameraState(x=x, y=y, z=z, fov=60.0, mode="fps")
+
+
+def test_camera_rotation_is_yaw_then_pitch_not_the_obvious_reading():
+    # cameraRotation is {x: YAW, y: PITCH}. Pitch is a DOWNWARD tilt, so
+    # forward must carry a negative y. Getting this backwards is what pointed
+    # the camera at empty space during the live probe.
+    fwd, _right, _up = rcam.camera_basis(0.0, 56.0)
+    assert fwd[1] < 0
+    assert round(fwd[2], 3) == round(__import__("math").cos(
+        __import__("math").radians(56.0)), 3)
+
+
+def test_the_camera_does_not_look_at_its_own_coordinates():
+    # h/tan(p): 1289 units ahead at the default replay height and pitch.
+    assert round(rcam.look_at_offset(1911.0, 56.0)) == 1289
+
+
+def test_a_screen_pixel_round_trips_back_to_the_same_map_point():
+    cam = _cam()
+    intr = rcam.LEGION_2560x1440_FOV60
+    for target in ((7000.0, 6000.0), (8500.0, 5200.0), (6000.0, 7000.0)):
+        screen = rcam.map_to_screen(cam, target[0], target[1], intr)
+        assert screen is not None
+        back = rcam.screen_to_map(cam, screen, intr)
+        assert back is not None
+        assert abs(back[0] - target[0]) < 1.0
+        assert abs(back[1] - target[1]) < 1.0
+
+
+def test_moving_the_camera_moves_the_recovered_point_with_it():
+    # The transform is camera-relative; the same pixel under a camera shifted
+    # +900 on x must resolve 900 further along x.
+    intr = rcam.LEGION_2560x1440_FOV60
+    screen = rcam.ScreenPos(1400.0, 900.0)
+    a = rcam.screen_to_map(_cam(), screen, intr)
+    b = rcam.screen_to_map(_cam(x=7900.0), screen, intr)
+    assert round(b[0] - a[0]) == 900
+    assert round(b[1] - a[1]) == 0
+
+
+def test_a_ray_that_does_not_descend_returns_none_not_a_fake_point():
+    # A pixel far above the horizon: the ray never meets the ground. Returning
+    # a point behind the camera would look like a legitimate coordinate.
+    cam = _cam()
+    assert rcam.screen_to_map(cam, rcam.ScreenPos(1259.0, -80000.0),
+                              rcam.LEGION_2560x1440_FOV60) is None
+
+
+def test_a_point_behind_the_camera_has_no_screen_position():
+    cam = _cam(z=9000.0)
+    assert rcam.map_to_screen(cam, 7000.0, 1000.0,
+                              rcam.LEGION_2560x1440_FOV60) is None
+
+
+def test_the_shipped_intrinsics_are_the_measured_ones():
+    intr = rcam.LEGION_2560x1440_FOV60
+    assert intr.focal_px == 1291.0
+    assert intr.ground_y == 50.0

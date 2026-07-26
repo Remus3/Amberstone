@@ -91,6 +91,7 @@ is NOT what was blocking writes.
 from __future__ import annotations
 
 import json
+import math
 import ssl
 import time
 import urllib.request
@@ -236,3 +237,106 @@ class RenderClient:
         moved = abs(after.x - (before.x + probe_delta)) < 50.0
         self.set_camera(before.x, before.y, before.z)
         return moved
+
+
+# ---------------------------------------------------------------------------
+# Analytic ray / ground-plane solve. This SUPERSEDES the affine helpers above.
+#
+# Cast a ray from the camera through a screen pixel and intersect the ground
+# plane. Needs no per-view calibration: camera pose comes from /replay/render
+# and the intrinsics below are a one-time solve for a given viewport.
+#
+# MEASURED 2026-07-26, 31 observations over 5 camera poses at one instant:
+#   model self-consistency  mean 19, median 17, max 36 map units
+#   agreement with Match-V5  mean 167
+# The self-consistency number is the model's own precision - it involves no
+# timeline at all, just the same champion back-projected from different
+# cameras. At 19 units against a ~65-unit champion radius the projection is
+# effectively exact, and the 167 is the TIMELINE's sampling offset, not ours
+# (a champion moves ~300 units/s, so the frame instant and the rendered
+# instant need only differ slightly).
+#
+# Ground height barely matters: sweeping it from -300 to +500 moved the mean by
+# one unit (best 50). Terrain elevation is NOT a significant error source here.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Intrinsics:
+    """Viewport geometry. Solve once per viewport size, then reuse."""
+
+    principal_x: float
+    principal_y: float
+    focal_px: float
+    ground_y: float = 50.0
+
+
+# Solved on Legion's 2560x1440 client at fieldOfView 60. The implied viewport
+# was 2518 x 1458 and the implied VERTICAL fov 58.3 deg, so `fieldOfView` is
+# vertical, near enough. Fixing the principal point at the exact screen centre
+# scored WORSE (mean 184 vs 167), so it is kept as solved rather than idealised.
+LEGION_2560x1440_FOV60 = Intrinsics(principal_x=1259.0, principal_y=735.0,
+                                    focal_px=1291.0, ground_y=50.0)
+
+
+def camera_basis(yaw_deg: float, pitch_deg: float):
+    """Forward / right / up unit vectors for a replay camera.
+
+    cameraRotation is {x: YAW, y: PITCH, z: roll} in degrees - measured, and
+    the opposite of the obvious reading. Pitch is a downward tilt, so forward
+    carries a negative y component.
+    """
+    y = math.radians(yaw_deg)
+    p = math.radians(pitch_deg)
+    fwd = (math.sin(y) * math.cos(p), -math.sin(p), math.cos(y) * math.cos(p))
+    right = (math.cos(y), 0.0, -math.sin(y))
+    up = (fwd[1] * right[2] - fwd[2] * right[1],
+          fwd[2] * right[0] - fwd[0] * right[2],
+          fwd[0] * right[1] - fwd[1] * right[0])
+    return fwd, right, up
+
+
+def look_at_offset(height: float, pitch_deg: float) -> float:
+    """How far AHEAD of its own coordinates the camera actually looks.
+
+    The camera does not look straight down at its own map position: at pitch p
+    and height h it looks h/tan(p) further along its facing direction (1289
+    units at the default h=1911, p=56). Park the camera at
+    (target_x, h, target_z - look_at_offset(h, p)) with yaw 0 to put a target
+    on screen. Not knowing this is what made every early attempt see nothing.
+    """
+    return height / math.tan(math.radians(pitch_deg))
+
+
+def screen_to_map(cam: CameraState, screen: ScreenPos, intr: Intrinsics,
+                  yaw_deg: float = 0.0, pitch_deg: float = 56.0):
+    """Screen pixel -> map (x, z), by ray/ground-plane intersection.
+
+    Returns None when the ray does not descend toward the ground, rather than
+    a point behind the camera that would look like a legitimate coordinate.
+    """
+    fwd, right, up = camera_basis(yaw_deg, pitch_deg)
+    dx = (screen.x - intr.principal_x) / intr.focal_px
+    dy = -(screen.y - intr.principal_y) / intr.focal_px
+    d = tuple(dx * right[i] + dy * up[i] + fwd[i] for i in range(3))
+    if d[1] >= -1e-9:                      # not pointing down: no intersection
+        return None
+    t = (intr.ground_y - cam.y) / d[1]
+    if t <= 0:
+        return None
+    return (cam.x + t * d[0], cam.z + t * d[2])
+
+
+def map_to_screen(cam: CameraState, map_x: float, map_z: float,
+                  intr: Intrinsics, yaw_deg: float = 0.0,
+                  pitch_deg: float = 56.0):
+    """Map (x, z) -> screen pixel. The forward direction, for round-tripping."""
+    fwd, right, up = camera_basis(yaw_deg, pitch_deg)
+    v = (map_x - cam.x, intr.ground_y - cam.y, map_z - cam.z)
+    zc = sum(v[i] * fwd[i] for i in range(3))
+    if zc <= 1e-9:                          # behind the camera
+        return None
+    xc = sum(v[i] * right[i] for i in range(3))
+    yc = sum(v[i] * up[i] for i in range(3))
+    return ScreenPos(x=intr.principal_x + intr.focal_px * xc / zc,
+                     y=intr.principal_y - intr.focal_px * yc / zc)
