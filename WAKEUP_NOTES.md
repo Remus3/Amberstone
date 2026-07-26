@@ -72,7 +72,22 @@ claims scoped.
   section 9: promote the NEWER side, ASCII-clean it, and normalize glyphs BEFORE
   diffing or the s244 em-dash purge hides whether content actually diverged.
 
+## Console flash FIXED (`e872d9c9`) - and the diagnosis is the reusable part
+Operator reported cmd/PS windows flashing, "3 in a row sequenced". **It was NOT the
+task config** - every frequent RC-* task already uses `pythonw.exe`. **`pythonw`
+suppresses the console of the process IT hosts, not of any child it spawns.**
+`tools/replay_chain_watch.py` calls `_ps()` from THREE sites every 15 min, each
+spawning `powershell` with no `creationflags` - exactly 3 windows, 4x an hour.
+`tools/ci_watchdog.py:315` already had the guard AND a comment naming this symptom.
+Fix = `creationflags=0x08000000` (CREATE_NO_WINDOW). Swept siblings: `rofl_archive`,
+`replay_roster`, `cost_health_watchdog`, `replay_roster_pull` spawn nothing.
+`tests/test_no_console_flash_scheduled_tools.py` pins it by AST (verified NOT a
+tautology - it flags `timeline_ingest.py:119`). **If a flash reappears, look for a
+CHILD process, never the task's own executable.**
+
 ## OPEN, not started
+- **`ops/rc_dev_runtime.py` spawns unguarded too** but is on the CLAUDE.md FROZEN
+  list - needs explicit operator approval before touching. Same one-line fix.
 - **Share standalone has 13 REAL failures** (7832 passed / 13 failed). None is an
   engine failure - each opens a CWD-relative path that exists only at the source-repo
   root. They are host-dependent by exactly the `_HOST_DEPENDENT_TESTS` definition and
