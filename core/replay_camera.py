@@ -31,24 +31,57 @@ is not:
   the whole time the writes were failing; the camera mode was the cause. An
   earlier note in this repo blamed the directed camera; do not inherit it.
 
-  OPEN - champion VISIBILITY. Every attempt left all ten screenPositionCenter
-  values at FLT_MAX, so nothing could be back-projected. cameraRotation
-  semantics are undocumented and unmeasured: the observed default is
-  {x: 0, y: 56, z: 0}, and pitch guesses of +/-90 on the x axis pointed the
-  camera at empty space (which also blanks the render, and looks like a
-  crash). Solve rotation FIRST - the maths below is untestable until at least
-  one champion reports a real screen position.
+  SOLVED - cameraRotation is {x: YAW, y: PITCH, z: roll}, degrees. The
+  observed default y=56 is the standard SR top-down pitch. The camera does NOT
+  look at its own map coordinates: at pitch p and height h it looks at a point
+  h/tan(p) further along the facing direction (1289 units at the default
+  h=1911, p=56). Park it at (target_x, h, target_z - h/tan(p)) with yaw 0 and
+  the target is on screen. Guessing +/-90 pitch on the WRONG axis is what
+  pointed the camera at empty space earlier.
 
-  ORACLE IS READY for the moment visibility works: seek to a Match-V5 frame
-  timestamp (e.g. 600263 ms) and all ten true map positions are known, so a
-  back-projection can be scored directly rather than eyeballed.
+  SOLVED - visibility. With cameraMode fps, fov 60, h=4000 and the offset
+  above, 6 of 10 champions reported real screenPositionCenter /
+  screenPositionBottom values simultaneously.
 
-STATUS: the geometry below is UNVERIFIED against live bytes. It is written to
-be calibrated, not trusted - `solve_scale` derives the screen-to-map factor
-empirically by moving the camera a known distance and observing the screen
-delta, rather than assuming a projection matrix that Riot has not documented.
-Do not wire any coaching derivation to this until `calibrate` has run against a
-live replay and its residuals are reported.
+  MEASURED ACCURACY, and it is approximate rather than exact. Scored against
+  Match-V5 frame 600263 ms as ground truth, screen -> map by least-squares
+  AFFINE fit on the visible champions:
+      same-view fit residual        mean  88, max 208 map units
+      transfer to a camera moved 900 units   mean 168, max 348
+      transfer to a camera moved 900 on z    mean 293, max 472
+  screenPositionBottom (feet) and screenPositionCenter score identically, so
+  model elevation is not the error source. A homography fit scored WORSE
+  (mean 277) - ill-conditioned on 6 near-collinear points, do not reach for it
+  with a small sample.
+
+  WHY AFFINE IS THE WRONG MODEL, and what to do instead: under perspective the
+  screen-to-ground scale varies with depth, which an affine map cannot express
+  - hence the residual growing on transfer. The principled fix needs NO
+  empirical calibration at all: camera position, yaw, pitch and fov are all
+  readable, so cast a ray from the camera through the pixel and intersect the
+  ground plane. The only unmeasured inputs are the viewport pixel size and
+  whether fieldOfView is horizontal or vertical. Do that before trusting any
+  number here.
+
+  FIT FOR PURPOSE TODAY: ~100-300 units of error on a 14820-unit map is fine
+  for coarse questions - the calibrated drake threshold is 2750 units, an order
+  of magnitude above the noise. It is NOT fine for lane-trade geometry, where
+  auto-attack range is ~550 and champion radius ~65.
+
+  ORACLE, used above and reusable: seek to a Match-V5 frame timestamp (e.g.
+  600263 ms) and all ten true map positions are known, so any back-projection
+  is scored against ground truth rather than eyeballed. Note the truth itself
+  carries error - a champion moves ~300 units/s, so a sub-second mismatch
+  between the frame instant and the rendered instant is worth ~100 units on
+  its own. Some of the residual above is that, not model error.
+
+STATUS: the route WORKS end to end - camera control, visibility and a scored
+back-projection all measured live. The geometry helpers below are the crude
+affine version and are deliberately calibration-first: `solve_scale` derives
+the factor from an observed camera displacement rather than assuming an
+undocumented projection matrix, and returns None instead of a fabricated
+default when the camera did not move. Replace them with the analytic
+ray/ground-plane solve before wiring any coaching derivation to this.
 
 PREREQUISITE: `cameraMode` must be `fps` before any cameraPosition write. That
 is the real gate, measured. `EnableDirectedCamera=0` in game.cfg `[Replay]` is
