@@ -20,6 +20,36 @@ Timeline it emits is flagged `positions_available=False` so that a distance
 derivation REFUSES it instead of quietly measuring from the map origin.
 Sub-minute positions exist only inside the .rofl chunk stream (Layer-2).
 
+LIVE-VALIDATED 2026-07-26 against NA1_5607614664 playing on Legion:
+  - Seek is EXACT when playback is PAUSED first: request 600.0 -> time 600.0.
+    An earlier "3 s drift" reading was my own error - playback was still
+    running at speed 1.0 during the read. ALWAYS POST {"paused": true, "time":
+    t} and let the client settle before sampling, or the sample is from
+    wherever playback drifted to.
+  - Inventory is GROUND TRUTH, checked against the match blob's final item
+    slots: [2019, 3078, 3111, 3133, 3364, 6610, 6695] sampled == the same 7
+    from Match-V5, level 16 == 16, cs 210 vs 212 (sampled 5 s before the end).
+  - Reconstructing inventory from Match-V5 ITEM_PURCHASED events instead is
+    ERROR-PRONE - it has to model component consumption on upgrade, starting
+    trinkets, and ITEM_UNDO. A naive replay of those events disagreed with the
+    client at every timestamp tried. So the seek lane is not merely an
+    event-mode fallback: it is the only source that reports the inventory the
+    game itself had.
+
+A CAMERA ROUTE TO MAP POSITIONS EXISTS AND IS UNPROVEN - do not treat the
+"no positions" line above as final without testing it. `/replay/render` exposes
+`cameraPosition` in MAP coordinates (the map is the x/z plane; y is height),
+plus `cameraRotation`, `fieldOfView` (40.0), and a `fogOfWar` toggle. Each
+player carries `screenPositionCenter` / `screenPositionBottom`, which hold a
+real screen projection for VISIBLE champions and FLT_MAX (3.4e38) when off
+screen. Back-projecting a screen position through a known camera would yield
+map coordinates at ARBITRARY time resolution, which is exactly what Match-V5's
+60 s sampling cannot give.
+BLOCKER measured today: `EnableDirectedCamera=1` in game.cfg `[Replay]`
+auto-drives the camera to follow the action, so a POST to `cameraPosition`
+returns 200 and is then immediately overridden. Disabling it is the first step
+of any attempt.
+
 LIVE PREREQUISITES - none of this works headless:
   1. `EnableReplayApi=1` in the client's `game.cfg`. CONFIRMED PRESENT on
      Legion 2026-07-26, line 18 under `[General]`, at the INSTALL dir:
@@ -39,6 +69,7 @@ from __future__ import annotations
 
 import json
 import ssl
+import time
 import urllib.request
 from dataclasses import dataclass, field
 
@@ -80,16 +111,28 @@ class SeekSample:
 class ReplayClient:
     """Thin HTTP client for the local replay API."""
 
-    def __init__(self, base: str = BASE, timeout_s: float = 5.0):
+    def __init__(self, base: str = BASE, timeout_s: float = 5.0,
+                 settle_s: float = 2.5):
         self.base = base.rstrip("/")
         self.timeout_s = timeout_s
+        self.settle_s = settle_s
 
     def post_playback(self, t_s: float) -> None:
-        body = json.dumps({"time": float(t_s)}).encode("utf-8")
+        """Seek to *t_s*, PAUSED.
+
+        The pause is not optional and is not politeness. Live-measured: with
+        playback running at speed 1.0, a seek to 400.0 followed by a 3 s read
+        reported 403.0 - the sample silently came from 3 s past where it was
+        asked for. Pausing makes the seek exact (600.0 -> 600.0).
+        """
+        body = json.dumps({"time": float(t_s), "paused": True}).encode("utf-8")
         req = urllib.request.Request(
             f"{self.base}/replay/playback", data=body, method="POST",
             headers={"Content-Type": "application/json"})
         urllib.request.urlopen(req, timeout=self.timeout_s, context=_CTX).read()
+        # The client needs a moment to render the sought frame; reading too
+        # early returns the PREVIOUS frame's state.
+        time.sleep(self.settle_s)
 
     def get_allgamedata(self) -> dict:
         req = urllib.request.Request(
