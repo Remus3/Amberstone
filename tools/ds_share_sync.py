@@ -161,6 +161,10 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # Host-only for the same reason as its two siblings - the shipped package is
     # the engine, not RC's integration layer.
     "test_ehp_family_seams_reach_the_client_rm115.py",
+    # The same behavioural half for the RM-115 TAIL block (/dps, /ability-dps,
+    # /burst, /rank, /rank-mage, /rank-assassin). Host-only for the identical
+    # reason - it drives the HOST client against the live engine.
+    "test_rm115_tail_seams_reach_the_client.py",
     # -- RM-112 (2026-07-23): runtime host-data reaches. These COLLECT clean
     # but FAIL at run time inside the engine-only, current-patch package,
     # because they load a HISTORICAL patch snapshot (16.10.1 / 16.11.1 /

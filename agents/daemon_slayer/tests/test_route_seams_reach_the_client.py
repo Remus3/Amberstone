@@ -81,26 +81,26 @@ _BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
                  "_coerce_str_list", "_required_str", "get")
 
 # --------------------------------------------------------------- the debt ledger
-# Route-parsed, client-unreachable as of 2026-07-25 (ENGINE 1.249.0). Measured by
-# the introspection below, NOT copied from prose. Grouped by the route that owns
-# them so a future wiring pass can take one route at a time.
+# Route-parsed, client-unreachable as of 2026-07-25 (ENGINE 1.254.0). Measured by
+# the introspection below, NOT copied from prose.
+#
+# This ledger fell 12 -> 2 in the 1.254.0 RM-115 tail pass. Both survivors are
+# parsed ONLY by /v2/fight-report, which is DECLINED BY DESIGN rather than
+# undrained: the route has zero callers repo-wide, so a client function for it
+# would manufacture reachability with no reader. The full rationale and the
+# re-open condition live with the per-route entry in the sibling file
+# (``test_route_seams_reach_the_client_per_route.py``), which is the one that
+# can express "stranded on THIS route".
+#
+# Note what this ledger CANNOT say, and why the sibling exists: /beam is also
+# unwired by design, but its one seam (``apply_mode_modifiers``) is named by
+# other client functions, so this name-collapsed view reads it as reached. The
+# sibling carries that pair. Same collapse that kept this file green through
+# the entire period /rank-assassin could not set ``kit_conversion_strength``.
 _STRANDED_TODAY = frozenset({
-    # --- damage-family levers (/dps, /ability-dps, /rank-mage) ---------------
-    "apply_ability_amps",
-    "apply_melee_aa_gate",
-    # --- burst / assassin levers (/burst, /rank-assassin) --------------------
-    "assume_ability_amp",
-    "assume_physical_burst",
-    "assume_shielded_target",
-    "assume_squishy_target",
-    "assume_takedown",
-    "gate_caster_hp_amp",
-    "gate_target_hp_amp",
-    # --- fight-report levers (/v2/fight-report) ------------------------------
+    # --- fight-report levers (/v2/fight-report) - DECLINED, see above --------
     "apply_ability_haste",
     "gate_ammo",
-    # --- cross-route ----------------------------------------------------------
-    "exclude_off_axis_items",
 })
 
 

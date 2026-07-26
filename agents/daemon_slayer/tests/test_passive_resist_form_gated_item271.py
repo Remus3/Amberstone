@@ -178,8 +178,8 @@ class EngineVersionTests(unittest.TestCase):
     def test_engine_pin(self):
         import agents.daemon_slayer as ds
 
-        self.assertEqual(ds.ENGINE_VERSION, "1.253.0")
-        self.assertEqual(ENGINE_VERSION, "1.253.0")
+        self.assertEqual(ds.ENGINE_VERSION, "1.254.0")
+        self.assertEqual(ENGINE_VERSION, "1.254.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):

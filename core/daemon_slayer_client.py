@@ -178,6 +178,10 @@ def rank_for(
     # parsed off the SAME POST /rank body server-side (server.py:481 / :488).
     kit_conversion_strength: float = 0.0,    # RM-86 L1 lever
     apply_crit_conversion: bool = False,     # A-12 / RM-46 (Ashe Frost Shot)
+    # RM-115 tail (1.254.0) - the two seams /rank parses that no client
+    # function could express. DEFAULT-OFF; omitted key == byte-identical.
+    apply_mode_modifiers: bool = False,
+    exclude_off_axis_items: bool = False,
 ) -> Optional[list[RankedItem]]:
     """Call POST /rank and return the parsed top-N rows. None on engine failure.
 
@@ -274,6 +278,24 @@ def rank_for(
     # A-12 / RM-46: bool seam, engine default False - emit only when ON.
     if apply_crit_conversion:
         body["apply_crit_conversion"] = True
+    # RM-115 tail: bool seams, engine default False - emit only when ON.
+    #
+    # apply_mode_modifiers has TWO lanes and only one can reorder. The
+    # MULTIPLIER lane (urf/ofa/usb/nb dmg_dealt) scales weighted_dps
+    # uniformly, so every delta scales by the same constant and a delta sort
+    # is invariant under uniform scale - measured on Jhin mode=URF, the top
+    # row moves exactly x1.01 and all 214 rows keep their order. The ADDEND
+    # lane (ar/swift growth addends) shifts base AD and base AS
+    # non-uniformly and DOES reorder (Quinn mode=ARENA, 34 of 148 rows).
+    # ``mode`` is the transport; SR and ARAM are both inert.
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
+    # exclude_off_axis_items strips rows rather than reordering them, and on
+    # this auto-attack scorer every stripped row is DEEP - Jhin at the client
+    # default top=8 is byte-identical, and only widens at top >= 50. ``top``
+    # is therefore a load-bearing transport for observing this seam.
+    if exclude_off_axis_items:
+        body["exclude_off_axis_items"] = True
     data = _post_json("/rank", body, timeout=timeout)
     if data is None:
         return None
@@ -816,6 +838,11 @@ def rank_mage_for(
     # byte-identical. Load-time on the engine (abilities.py:1006), resolved
     # server-side into an abilities snapshot.
     apply_ability_base_overrides: bool = False,
+    # RM-115 tail (1.254.0). The Hwei staged-block lane is keyed
+    # ("Hwei","Q",2), so it needs form_index={"Q": 2} to fire; Illaoi is
+    # registry-present but documented LIVE-INERT at this snapshot, so it is
+    # the wrong control. DEFAULT-OFF.
+    apply_ability_amps: bool = False,
 ) -> Optional[list[MageRankedItem]]:
     """Call POST /rank-mage and return the parsed top-N rows. None on engine failure.
 
@@ -872,6 +899,8 @@ def rank_mage_for(
     # RM-115: bool seam, engine default False - emit only when ON.
     if apply_ability_base_overrides:
         body["apply_ability_base_overrides"] = True
+    if apply_ability_amps:
+        body["apply_ability_amps"] = True
     data = _post_json("/rank-mage", body, timeout=timeout)
     if data is None:
         return None
@@ -900,12 +929,18 @@ def ability_dps_for(
     # key leaves the request byte-identical to every pre-seam call.
     apply_passive_aura_damage: bool = False,   # A-07 / RM-82 TERM 2
     apply_ability_base_overrides: bool = False,  # A-03 / RM-81
+    apply_ability_amps: bool = False,          # RM-115 tail (1.254.0)
 ) -> Optional[dict]:
     """Call POST /ability-dps and return the raw result dict. None on failure.
 
     Phase 4c sibling of ``dps_for`` / ``ehp_for`` / ``hybrid_for``. See
     ``rank_mage_for`` for ``max_priority`` / ``block_strategy`` /
-    ``form_index`` semantics, and for what the two RM-115 seams do.
+    ``form_index`` semantics, and for what the three RM-115 seams do.
+
+    ``apply_ability_amps`` needs no extra transport - its three lanes read
+    ``champion`` / ``level`` / ``max_priority`` / ``form_index``, all already
+    on the wire. The staged-block lane is keyed ``("Hwei","Q",2)``, so that
+    one requires ``form_index={"Q": 2}`` to fire.
     """
     body: dict = {
         "champion": champion,
@@ -930,6 +965,8 @@ def ability_dps_for(
         body["apply_passive_aura_damage"] = True
     if apply_ability_base_overrides:
         body["apply_ability_base_overrides"] = True
+    if apply_ability_amps:
+        body["apply_ability_amps"] = True
     return _post_json("/ability-dps", body, timeout=timeout)
 
 
@@ -996,6 +1033,27 @@ def rank_assassin_for(
     # RM-115 A-03 / RM-81 ability-base seam. DEFAULT-OFF; omitted key ==
     # byte-identical. Naafiri is the one of the six that routes here.
     apply_ability_base_overrides: bool = False,
+    # RM-115 tail (1.254.0) - the four seams /rank-assassin parses that this
+    # function could not express, plus target_preset. All DEFAULT-OFF.
+    #
+    # ``assume_magic_burst`` above is DELIBERATELY NOT one of them and must not
+    # be "fixed" by adding a route parse: /rank-assassin correctly refuses it
+    # (rank_items_by_burst has no such parameter, only compute_burst_damage
+    # does, burst.py:522). It stays here because it is load-bearing across
+    # coach_integration/archetype_dispatch.py and dashboard/routes_state.py.
+    # The lever is now legitimately reachable on the route that DOES parse it:
+    # ``burst_for(assume_magic_burst=...)``, wired in the same pass.
+    #
+    # ``target_preset`` is the DSP8 SUPERSET of assume_squishy_target - it is
+    # the only path that also substitutes target MR. Shipping the binary alias
+    # without the superset would be exactly the half-wire RM-115 exists to
+    # prevent, so both go on the wire together. Values: squishy / bruiser /
+    # tank / high_cc.
+    exclude_off_axis_items: bool = False,
+    assume_takedown: bool = False,
+    assume_squishy_target: bool = False,
+    assume_ability_amp: bool = False,
+    target_preset: Optional[str] = None,
 ) -> Optional[list[AssassinRankedItem]]:
     """Call POST /rank-assassin and return the parsed top-N rows. None on engine failure.
 
@@ -1047,6 +1105,26 @@ def rank_assassin_for(
     # RM-115: bool seam, engine default False - emit only when ON.
     if apply_ability_base_overrides:
         body["apply_ability_base_overrides"] = True
+    # RM-115 tail: bool seams, engine default False - emit only when ON.
+    #
+    # TWO TRANSPORT TRAPS, both measured and both silent:
+    #   * assume_squishy_target is disabled by any POSITIVE target_armor - the
+    #     substitution is guarded on target_armor <= 0.0 (burst.py:2018). At
+    #     the client default 0.0 it works; a coach that supplies a measured
+    #     enemy armor turns it off without any error.
+    #   * the Collector arm of assume_takedown is disabled by target_max_hp
+    #     == 0.0 (burst.py:1075), which IS this function's own default. Hubris
+    #     and Hollow Radiance still move; The Collector never gets credited.
+    if exclude_off_axis_items:
+        body["exclude_off_axis_items"] = True
+    if assume_takedown:
+        body["assume_takedown"] = True
+    if assume_squishy_target:
+        body["assume_squishy_target"] = True
+    if assume_ability_amp:
+        body["assume_ability_amp"] = True
+    if target_preset:
+        body["target_preset"] = str(target_preset)
     data = _post_json("/rank-assassin", body, timeout=timeout)
     if data is None:
         return None
@@ -1074,12 +1152,50 @@ def burst_for(
     # RM-115 A-03 / RM-81 ability-base seam - appended LAST per the repo
     # convention. DEFAULT-OFF; omitted key == byte-identical.
     apply_ability_base_overrides: bool = False,
+    # RM-115 tail (1.254.0). TWO STRANDED TRANSPORTS FIRST, then the 7 seams.
+    # ``runes`` and ``caster_current_hp_pct`` are NOT seam-prefixed, so neither
+    # RM-115 guard can see them - and without them BOTH gate_* seams below are
+    # reachable-and-dead, which is the exact illusion RM-115 exists to kill.
+    # Measured at 1.253.0: with ``runes`` omitted, gate_target_hp_amp=True and
+    # gate_caster_hp_amp=True are byte-identical to baseline.
+    # NOTE the key is ``runes``, NOT the EHP family's ``rune_ids`` - /burst
+    # parses a different key, so the 1.253.0 rune_ids wiring does not help here.
+    runes: Optional[Iterable] = None,
+    caster_current_hp_pct: float = 1.0,
+    score_completion_runes: bool = False,
+    assume_ability_amp: bool = False,
+    assume_magic_burst: bool = False,
+    assume_physical_burst: bool = False,
+    assume_shielded_target: bool = False,
+    assume_takedown: bool = False,
+    gate_caster_hp_amp: bool = False,
+    gate_target_hp_amp: bool = False,
 ) -> Optional[dict]:
     """Call POST /burst and return the raw result dict. None on failure.
 
     Phase 5 sibling of ``ability_dps_for`` / ``dps_for`` / ``ehp_for`` /
     ``hybrid_for``. See ``rank_assassin_for`` for ``combo_sequence``
     semantics.
+
+    /burst is a single-build scalar compute with no candidate loop, so every
+    RM-115 acceptance on this route is a SCALAR; a rank criterion is
+    unsatisfiable by construction. All seams are DEFAULT-OFF.
+
+    Transport traps, all measured:
+
+      * ``gate_target_hp_amp`` / ``gate_caster_hp_amp`` need ``runes`` to
+        carry the gated rune (Cut Down 8017 / Coup de Grace 8014 for the
+        target gate, Last Stand 8299 for the caster gate). Omit ``runes`` and
+        the flags are inert.
+      * ``gate_caster_hp_amp`` additionally needs ``caster_current_hp_pct``
+        below 1.0 - Last Stand ramps 1.05 -> 1.11 over caster HP 0.60 -> 0.30.
+      * The gates are HONESTY gates, not enablers: OFF applies the amp
+        unconditionally, so turning ``gate_target_hp_amp`` ON at a full-HP
+        target correctly REMOVES Coup de Grace's amp (a negative delta).
+      * ``assume_shielded_target`` and the Collector arm of
+        ``assume_takedown`` both need ``target_max_hp`` > 0.
+      * ``score_completion_runes`` is not seam-prefixed either, and is the
+        only way Shield Bash 8401 reaches the score once ``runes`` is wired.
     """
     body: dict = {
         "champion": champion,
@@ -1104,6 +1220,28 @@ def burst_for(
     # RM-115: bool seam, engine default False - emit only when ON.
     if apply_ability_base_overrides:
         body["apply_ability_base_overrides"] = True
+    # RM-115 tail: the two stranded transports, emitted only when non-default
+    # so an untouched call stays byte-identical.
+    if runes:
+        body["runes"] = [str(r) for r in runes if str(r).strip()]
+    if caster_current_hp_pct != 1.0:
+        body["caster_current_hp_pct"] = float(caster_current_hp_pct)
+    if score_completion_runes:
+        body["score_completion_runes"] = True
+    if assume_ability_amp:
+        body["assume_ability_amp"] = True
+    if assume_magic_burst:
+        body["assume_magic_burst"] = True
+    if assume_physical_burst:
+        body["assume_physical_burst"] = True
+    if assume_shielded_target:
+        body["assume_shielded_target"] = True
+    if assume_takedown:
+        body["assume_takedown"] = True
+    if gate_caster_hp_amp:
+        body["gate_caster_hp_amp"] = True
+    if gate_target_hp_amp:
+        body["gate_target_hp_amp"] = True
     return _post_json("/burst", body, timeout=timeout)
 
 
@@ -2334,10 +2472,38 @@ def dps_for(
     target_bonus_hp: float = 0.0,
     augments: Optional[Iterable[str]] = None,
     timeout: float = DEFAULT_TIMEOUT,
+    # RM-115 tail (1.254.0) - the six seams /dps parses that no client function
+    # could express. Appended LAST per the repo convention, all DEFAULT-OFF in
+    # the engine (dps.py), so an omitted key is byte-identical to a pre-seam
+    # call. /dps is a single-build scalar compute with no candidate loop, so
+    # every acceptance here is a SCALAR - a rank criterion is unsatisfiable.
+    # NO extra transport is required: champion / level / items / mode / the
+    # four target_* / augments are all already on the wire below, and that is
+    # the complete transport set all six consumers need.
+    apply_ability_amps: bool = False,
+    apply_melee_aa_gate: bool = False,
+    apply_mode_modifiers: bool = False,
+    apply_passive_damage: bool = False,
+    apply_target_vuln: bool = False,
+    assume_passive_as_stacks: bool = False,
 ) -> Optional[dict]:
     """Call POST /dps and return the raw result dict. None on failure.
 
     See ``rank_for`` for ``target_max_hp`` / ``target_bonus_hp`` semantics.
+
+    RM-115 seams, all DEFAULT-OFF:
+
+      * ``apply_mode_modifiers`` - ``mode`` is the transport. SR is inert (the
+        wiki sidecar has no ``sr`` key) and ARAM is inert by construction
+        (dps.py applies the ARAM axes unconditionally; the flag gates the
+        ``elif`` sidecar lane only). URF is the mover.
+      * ``apply_ability_amps`` - Fiora E is the only non-placeholder
+        ``base="aa"`` entry in ``_ability_amp_overrides``; do not reach for
+        Caitlyn/Jayce/Sivir/Nidalee, whose entries are 0.0 placeholders.
+      * ``apply_melee_aa_gate`` - drops ``ranged_only`` procs on a melee
+        caster, so the delta is NEGATIVE (Runaan's 3085 on Fiora).
+      * ``apply_passive_damage`` / ``assume_passive_as_stacks`` /
+        ``apply_target_vuln`` - champion-keyed registry lanes.
     """
     body = {
         "champion": champion,
@@ -2351,6 +2517,19 @@ def dps_for(
     }
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    # RM-115: bool seams, engine default False - emit only when ON.
+    if apply_ability_amps:
+        body["apply_ability_amps"] = True
+    if apply_melee_aa_gate:
+        body["apply_melee_aa_gate"] = True
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
+    if apply_passive_damage:
+        body["apply_passive_damage"] = True
+    if apply_target_vuln:
+        body["apply_target_vuln"] = True
+    if assume_passive_as_stacks:
+        body["assume_passive_as_stacks"] = True
     return _post_json("/dps", body, timeout=timeout)
 
 
