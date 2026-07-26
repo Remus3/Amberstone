@@ -223,8 +223,18 @@ def _moment_impact(event: dict[str, Any], operator_pid: Any) -> float:
     return impact
 
 
-def _describe_moment(event: dict[str, Any], operator_pid: Any) -> str:
-    """Build a deterministic one-line description of a timeline event."""
+def _describe_moment(event: dict[str, Any], operator_pid: Any,
+                     names: dict[Any, str] | None = None) -> str:
+    """Build a deterministic one-line description of a timeline event.
+
+    *names* maps participant_id -> champion name. Optional and defaulted so
+    every existing caller keeps working; when absent, kills involving other
+    players degrade to the old generic wording rather than emitting "None
+    kills None". The row already carries killer_id and victim_id, so throwing
+    the identities away was a loss with no upside - the bar to clear is a
+    chapter line like "First Blood - Vayne kills Lee Sin".
+    """
+    names = names or {}
     clock = _fmt_clock(event.get("timestamp_ms"))
     etype = event.get("event_type") or "EVENT"
     if etype == "ELITE_MONSTER_KILL":
@@ -237,10 +247,14 @@ def _describe_moment(event: dict[str, Any], operator_pid: Any) -> str:
     if etype == "TURRET_PLATE_DESTROYED":
         return f"{clock} - turret plate destroyed"
     if etype == "CHAMPION_KILL":
+        killer = names.get(event.get("killer_id"))
+        victim = names.get(event.get("victim_id"))
         if event.get("killer_id") == operator_pid:
-            tag = "you secured a kill"
+            tag = f"you killed {victim}" if victim else "you secured a kill"
         elif event.get("victim_id") == operator_pid:
-            tag = "you were killed"
+            tag = f"{killer} killed you" if killer else "you were killed"
+        elif killer and victim:
+            tag = f"{killer} kills {victim}"
         else:
             tag = "a kill traded"
         shutdown = _as_float(event.get("shutdown_bounty"))
@@ -449,16 +463,40 @@ def build_narrative(blob: dict[str, Any] | None) -> dict[str, Any]:
             scored.append((impact, _as_int(ev.get("timestamp_ms")), ev))
         scored.sort(key=lambda t: (-t[0], t[1]))
 
+        names = {
+            p.get("participant_id"): p.get("champion_name") or p.get("champion")
+            for p in participants
+            if isinstance(p, dict) and (p.get("champion_name") or p.get("champion"))
+        }
+
+        # Dedup on event IDENTITY, not on the clock. Three matches in the live
+        # db carry 6x and 12x duplicated timeline rows (the writer uses
+        # INSERT OR IGNORE but the table had no UNIQUE constraint for it to
+        # bite on), and one narrative came out as five copies of the same
+        # 1:45 kill. Keying on the clock alone would instead delete real
+        # teamfight kills that legitimately share a second.
         key_moments: list[dict[str, Any]] = []
-        for impact, _ts, ev in scored[:5]:
+        seen: set[tuple] = set()
+        for impact, _ts, ev in scored:
+            ident = (
+                ev.get("timestamp_ms"), ev.get("event_type"),
+                ev.get("killer_id"), ev.get("victim_id"),
+                ev.get("participant_id"), ev.get("building_type"),
+                ev.get("monster_type"),
+            )
+            if ident in seen:
+                continue
+            seen.add(ident)
             key_moments.append(
                 {
                     "clock": _fmt_clock(ev.get("timestamp_ms")),
                     "event_type": ev.get("event_type") or "",
                     "impact": round(impact, 1),
-                    "text": _describe_moment(ev, operator_pid),
+                    "text": _describe_moment(ev, operator_pid, names),
                 }
             )
+            if len(key_moments) == 5:
+                break
 
         lessons = _lessons_from_grade(grade)
         summary = _build_summary(match, operator_row, grade, len(key_moments))

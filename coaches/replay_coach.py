@@ -33,6 +33,11 @@ from typing import Any
 logger = logging.getLogger("rc.replay_coach")
 
 _REWIND_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
+
+# Upper bound on timeline rows pulled per match, to keep the blob (and the
+# prompt built from it) bounded. See _load_match for why the ORDER BY matters
+# more than the number.
+_EVENT_ROW_CAP = 600
 _MODEL = "claude-haiku-4-5-20251001"
 _MAX_TOKENS = 800
 
@@ -67,10 +72,26 @@ def _load_match(match_id: str) -> dict[str, Any] | None:
         participants = [dict(r) for r in conn.execute(
             "SELECT * FROM participants WHERE match_id = ?", (match_id,)
         ).fetchall()]
+        # Match-SHAPING events first, then everything else, and only then the
+        # row cap. A flat `ORDER BY timestamp_ms LIMIT 600` looks harmless and
+        # is not: median events per match is 879 and 2677 of 2961 matches
+        # exceed the cap, so it silently truncated the timeline at roughly the
+        # midpoint. Measured on one clean 22-minute game it stopped at 11
+        # minutes, leaving 2 of 9 BUILDING_KILL events visible - baron, late
+        # objectives and inhibitors could not appear in the narrative at all.
+        # The cap still exists to bound the prompt; it now spends its budget on
+        # the events that matter instead of on early item purchases.
         events = [dict(r) for r in conn.execute(
             "SELECT * FROM timeline_events WHERE match_id = ? "
-            "ORDER BY timestamp_ms LIMIT 600", (match_id,)
+            "ORDER BY CASE WHEN event_type IN "
+            "  ('CHAMPION_KILL','ELITE_MONSTER_KILL','BUILDING_KILL',"
+            "   'CHAMPION_SPECIAL_KILL','TURRET_PLATE_DESTROYED') "
+            "  THEN 0 ELSE 1 END, timestamp_ms LIMIT ?",
+            (match_id, _EVENT_ROW_CAP)
         ).fetchall()]
+        # Restore chronology - the priority ordering above is a selection
+        # device, and every consumer downstream assumes time order.
+        events.sort(key=lambda e: e.get("timestamp_ms") or 0)
         return {"match": dict(m), "participants": participants, "events": events}
     except Exception as exc:  # noqa: BLE001
         logger.warning("rewind read failed match=%s: %s", match_id, exc)
