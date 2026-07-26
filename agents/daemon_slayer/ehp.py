@@ -115,8 +115,8 @@ from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
 from .data_loader import DataSnapshot
-from .effects import ITEM_EFFECTS
-from ._effects_types import ANY, MAGICAL, PHYSICAL, TRUE
+from .effects import ITEM_EFFECTS, collect_effects
+from ._effects_types import ANY, CallContext, MAGICAL, PHYSICAL, TRUE
 from .engine import build_champion
 from ._passive_mitigation_overrides import mitigation_multipliers
 from ._passive_flat_mitigation_overrides import flat_mitigation_hp
@@ -758,6 +758,121 @@ def _crit_weighted_vamp_multiplier(
     return 1.0 + crit_total * crit_bonus
 
 
+# R194 slice C (RM-116c): the base item ids whose AoE damage Meraki 16.14.1
+# explicitly labels lifesteal-eligible. Ravenous Hydra is the ONLY member of the
+# hydra_cleave family that carries the clause - its Cleave reads "This damage
+# benefits from life steal at 100% effectiveness" and its Ravenous Crescent
+# active repeats it verbatim, while Tiamat 3077, Titanic 3748, Profane 6698 and
+# Stridebreaker 6631 carry the same Cleave shape with NO such sentence. Start
+# tight; widen only when a patch adds the clause somewhere else.
+_VAMP_ELIGIBLE_CLEAVE_BASE_IDS: frozenset[str] = frozenset({"3074"})
+
+# Mode-mirror id prefixes. DDragon ships one item under several ids (Arena 22*,
+# ARAM 32*, plus the rarer 12* copies), so the credited set is resolved by ID
+# SUFFIX against ITEM_EFFECTS rather than by NAME - a name sweep silently misses
+# a renamed mirror, and a bare-base-id registry silently returns 0.0 for the
+# mirror id the Arena resolver actually hands the engine (the R143 defect class).
+_MODE_MIRROR_ID_PREFIXES: tuple[str, ...] = ("", "12", "22", "32")
+
+
+def _resolve_vamp_eligible_cleave_ids() -> frozenset[str]:
+    """Expand the base ids to every mode-mirror id the engine can resolve."""
+    out: set[str] = set()
+    for base in _VAMP_ELIGIBLE_CLEAVE_BASE_IDS:
+        for prefix in _MODE_MIRROR_ID_PREFIXES:
+            candidate = prefix + base
+            if candidate in ITEM_EFFECTS:
+                out.add(candidate)
+    return frozenset(out)
+
+
+# 16.14.1 resolves to {"3074", "223074"} - pinned by the R194 suffix-sweep test.
+VAMP_ELIGIBLE_CLEAVE_ITEM_IDS: frozenset[str] = _resolve_vamp_eligible_cleave_ids()
+
+
+def _cleave_vamp_damage(
+    item_ids: Iterable[str | int],
+    base_ad: float,
+    bonus_ad: float,
+    attack_speed: float,
+    targets_in_rotation: float = 1.0,
+    fight_window_s: float = _FIGHT_WINDOW_S,
+    assume_cleave_lifesteal: bool = False,
+) -> float:
+    """R194 (slice C, RM-116c): lifesteal-eligible AoE damage over the fight window.
+
+    Returns the PRE-mitigation physical damage that Meraki labels
+    lifesteal-eligible but that ``_vamp_heal_pool`` cannot see, so the caller can
+    price it at the build's lifesteal fraction. Returns ``0.0`` (identity) when
+    ``assume_cleave_lifesteal`` is False - the shipped default, so every existing
+    EHP number is byte-identical.
+
+    WHY this seam exists: ``_vamp_heal_pool`` prices vamp off ``AD * AS *
+    window``, the AUTO-ATTACK throughput and nothing else. Ravenous Hydra adds
+    two damage sources that its own tooltip says lifesteal heals off at FULL
+    effectiveness - the Cleave rider on every basic and the Ravenous Crescent
+    active - and neither is auto-attack damage, so neither reaches the pool. The
+    miss grows with the fight: a melee bruiser swinging into three enemies reads
+    the sustain of a single-target duel.
+
+    No coefficient is invented here. The Cleave magnitude is read back out of
+    ``ITEM_EFFECTS`` by evaluating the item's OWN ``PeriodicProc.bonus_damage``
+    against a ``CallContext`` carrying ``targets_in_rotation``, so this lane and
+    the DPS lane cannot drift apart - the same no-second-source discipline
+    ``_crit_weighted_vamp_multiplier`` uses. The Crescent magnitude is the item's
+    OWN ``physical_burst_total_ad_ratio`` (0.80 total AD), the field the DSV8
+    burst scorer already reads.
+
+    WHY the item set is narrow: only the base ids in
+    ``_VAMP_ELIGIBLE_CLEAVE_BASE_IDS`` (expanded to their mode mirrors) carry the
+    Meraki lifesteal clause. The four structurally identical hydra siblings do
+    not, so they contribute nothing here even though they proc the same shape.
+
+    WHY it is DEFAULT-OFF rather than simply keyed on ``targets_in_rotation``:
+    the Cleave term is genuinely 0.0 at ``targets_in_rotation=1.0``
+    (``max(0, n - 1)``), but the Crescent term is NOT - a single-target fight
+    still lands one Crescent. So the flag, not the target count, is what
+    guarantees byte-identity. Two assumptions also ride here and both deserve an
+    operator gate: the enemy-agnostic scorer has no live enemy count, and the
+    Crescent is modelled as ONE cast per fight window (Meraki carries no cooldown
+    for it, so this reuses the DSV8 one-cast burst-window convention - an upper
+    bound in a 6s window).
+
+    The ``hydra_cleave`` unique-passive family is honoured by routing through
+    ``collect_effects``, which is first-seen-wins: a build whose family winner is
+    a lifesteal-silent hydra procs no Ravenous Cleave in game and is credited
+    nothing here. Duplicate ids collapse the same way.
+
+    Damage is PRE-mitigation and carries no mode multiplier, matching
+    ``_vamp_heal_pool``'s deliberate enemy-agnostic posture rather than
+    introducing a second convention.
+    """
+    if not assume_cleave_lifesteal or fight_window_s <= 0:
+        return 0.0
+    safe_base_ad = max(0.0, base_ad)
+    safe_bonus_ad = max(0.0, bonus_ad)
+    attacks = max(0.0, attack_speed) * fight_window_s
+    ctx = CallContext(
+        base_ad=safe_base_ad,
+        bonus_ad=safe_bonus_ad,
+        level=1,
+        targets_in_rotation=max(0.0, targets_in_rotation),
+    )
+    total_ad = safe_base_ad + safe_bonus_ad
+    total = 0.0
+    for eff in collect_effects(item_ids):
+        if eff.item_id not in VAMP_ELIGIBLE_CLEAVE_ITEM_IDS:
+            continue
+        for proc in eff.periodics:
+            if proc.damage_type != PHYSICAL or proc.every_n_attacks <= 0:
+                continue
+            total += (attacks / proc.every_n_attacks) * max(
+                0.0, proc.resolve_damage(ctx)
+            )
+        total += max(0.0, eff.physical_burst_total_ad_ratio) * total_ad
+    return max(0.0, total)
+
+
 def effective_cc_duration(base_cc_s: float, tenacity_mult: float) -> float:
     """Apply ARAM tenacity multiplier to a base CC duration.
 
@@ -1065,6 +1180,13 @@ class EhpResult:
     # cumulative proc count by level. Appended at END per the dataclass field-append
     # convention.
     item_health_stack_hp: float = 0.0
+    # R194 slice C (RM-116c): the lifesteal HP credited off Ravenous Hydra's
+    # Cleave + Ravenous Crescent when ``assume_cleave_lifesteal`` is armed,
+    # reported apart from ``heal_lifesteal`` (which it is INCLUDED in) so the
+    # AA-throughput half and the AoE half stay separable. 0.0 at the default
+    # flag -> every existing field byte-identical. Appended at END per the
+    # dataclass field-append convention.
+    heal_cleave_lifesteal: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -1457,6 +1579,21 @@ def compute_ehp(
     # ``_crit_weighted_vamp_multiplier`` for that rationale. Appended at END per
     # the no-mid-signature-insert convention.
     assume_crit_weighted_vamp: bool = False,
+    # R194 slice C (RM-116c): default-OFF opt-in to credit the build's lifesteal
+    # on Ravenous Hydra's Cleave and Ravenous Crescent - two damage sources
+    # Meraki 16.14.1 states benefit from life steal at 100% effectiveness and
+    # that ``_vamp_heal_pool`` (AA throughput only) cannot see. ``targets_in_
+    # rotation`` is the enemy count the AoE lands on, the same field name the
+    # DPS side's ``CallContext`` carries (dps.py:40) so the two halves of the
+    # engine name the quantity identically. Passing ``targets_in_rotation``
+    # ALONE does NOT arm the credit: the Cleave term is already 0.0 at 1.0, but
+    # the Crescent term is not, so the FLAG is what guarantees byte-identity.
+    # Live default-ON flip is operator-gated - see ``_cleave_vamp_damage`` for
+    # the two assumptions (no live enemy count on an enemy-agnostic scorer; one
+    # Crescent cast per fight window). Appended at END per the
+    # no-mid-signature-insert convention.
+    targets_in_rotation: float = 1.0,
+    assume_cleave_lifesteal: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1681,11 +1818,28 @@ def compute_ehp(
         caster_bonus_hp=bonus_hp,
         assume_crit_weighted_vamp=assume_crit_weighted_vamp,
     )
+    lifesteal_pct = float(stats.get("lifesteal", 0.0))
     heal_lifesteal = _lifesteal_heal(
-        lifesteal_pct=float(stats.get("lifesteal", 0.0)),
+        lifesteal_pct=lifesteal_pct,
         ad=float(stats.get("ad", 0.0)),
         attack_speed=float(stats.get("as", 0.0)),
     ) * crit_vamp_mult
+    # R194 slice C (RM-116c): the AoE half of the same lifesteal stat. Priced at
+    # the SAME fraction as the AA half above and folded INTO heal_lifesteal, so
+    # it inherits that lane's placement (before heal_amp_mult) with no new
+    # posture. It deliberately does NOT take ``crit_vamp_mult``: no source says
+    # Cleave or Crescent can crit, and inventing a crit weight for them would be
+    # a second unsourced assumption on top of the two the seam already carries.
+    # 0.0 at the default flag -> byte-identical.
+    heal_cleave_lifesteal = lifesteal_pct * _cleave_vamp_damage(
+        resolved.item_ids,
+        base_ad=base_ad,
+        bonus_ad=bonus_ad,
+        attack_speed=float(stats.get("as", 0.0)),
+        targets_in_rotation=targets_in_rotation,
+        assume_cleave_lifesteal=assume_cleave_lifesteal,
+    )
+    heal_lifesteal += heal_cleave_lifesteal
     heal_amp_mult = _total_heal_amp(resolved.item_ids)
     # ENGINE 1.225.0 (R136): RM-101 rune HEALTH grants - Overgrowth 8451's
     # permanent max-HP (3 per 8 absorbed, plus a DISCRETE 3.5% max-HP threshold at
@@ -2525,6 +2679,7 @@ def compute_ehp(
         shield_amp_mult=shield_amp_mult,
         heal_item_total=heal_item_total,
         heal_lifesteal=heal_lifesteal,
+        heal_cleave_lifesteal=heal_cleave_lifesteal,
         heal_amp_mult=heal_amp_mult,
         heal_total=heal_total,
         heal_sources=heal_sources,
