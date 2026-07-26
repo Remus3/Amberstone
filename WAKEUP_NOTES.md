@@ -4,6 +4,112 @@
 
 ---
 
+# 2026-07-26a - RM-115 CLOSED, and the last four pairs are declines (ENGINE 1.254.0)
+
+ENGINE **1.253.0 -> 1.254.0**, patch 16.14.1. Two read-only spec agents in
+parallel over the eight tail routes, then the wiring applied in the main thread
+(one file - worktrees would only have made merge work). One build agent wrote
+the acceptance test. Tier-2 in ritual order: bump by quoted literal (126 files /
+154 occurrences) -> :8893 restarted -> `/health` re-read **1.254.0 BEFORE the
+regen** -> both build-order families across both keyspaces -> Share sync (492
+files, `--check` green) -> all four ENGINE doc sites **plus the two Share
+release notes `--check` cannot see**.
+
+Suites, both measured fresh AFTER the last edit:
+**DS 9746 passed / 1 skipped / 4653 subtests.**
+**RC `tests/` 13110 passed / 106 skipped / 460 subtests.**
+
+## The headline is the DECLINE, not the drain
+
+**Per-route stranded debt 25 -> 4. Name-collapsed 12 -> 2.** 21 pairs wired
+across six client functions (`/burst` 7, `/dps` 6, `/rank-assassin` 4, `/rank`
+2, `/ability-dps` 1, `/rank-mage` 1).
+
+The session prompt framed `/beam` and `/v2/fight-report` as "a design call, not
+wiring". The answer is **DECLINE for both**, and that is the durable output of
+this session:
+
+- `/v2/fight-report` has **ZERO callers repo-wide** - the literal appears only
+  in its own docstring, the dispatch table, `docs/DAEMON_SLAYER.md`, the
+  CHANGELOG and the two ledgers, and both of its tests call
+  `compute_fight_report` in process. Served, never requested.
+- `/beam` has ONE live consumer, `coaches/sr_draft_profile.py`, which holds its
+  own HTTP call for reasons a migration must break: a 4.0s budget against this
+  client's deliberate 0.5s `DEFAULT_TIMEOUT` fail-silent contract, and a
+  two-value error channel that `_post_json`'s None collapses. And the seam is
+  **arithmetically inert** for it - `mode="SR"`, and no champion carries an
+  `sr` key in `wiki_stats.json`.
+
+**The ledger's honest end state is 4, not 0.** Both declines carry an inline
+re-open condition. A future session that reads 4 as debt and wires it will
+re-introduce the exact reachable-and-dead illusion RM-115 existed to kill.
+
+## What generalises
+
+**The transport trap fired a third time, on a NEW key.** `/burst` parses
+`runes` - **NOT** the EHP family's `rune_ids` - plus `caster_current_hp_pct`.
+Neither is seam-prefixed, so neither guard sees them, and without them BOTH
+`gate_*` seams are reachable-and-dead (measured byte-identical with `runes`
+omitted). Same concept, different key per route: the 1.253.0 wiring did not
+carry over.
+
+**The gates are HONESTY gates and the direction inverts.** OFF applies the rune
+amp unconditionally, so turning `gate_target_hp_amp` ON against a full-HP target
+correctly REMOVES Coup de Grace's amp (716.343 -> 663.281). A test asserting
+"ON is bigger" would have been wrong.
+
+**Two silent traps on `/rank-assassin`, one of them the client's own default.**
+`assume_squishy_target` is disabled by any positive `target_armor`
+(`burst.py:2018`); the Collector arm of `assume_takedown` is disabled by
+`target_max_hp=0.0` (`burst.py:1075`), which IS `rank_assassin_for`'s default -
+so the seam reads half-working rather than misconfigured.
+
+**`top` is a load-bearing transport.** `exclude_off_axis_items` REMOVES rows
+rather than reordering them, and on an auto-attack scorer every removed row is
+deep: Jhin is byte-identical at the client default `top=8` and only moves at
+`top=200`.
+
+**`apply_mode_modifiers` on `/rank` has two lanes and only one can reorder** -
+the URF multiplier lane scales uniformly (Jhin top row x1.01, all 214 rows hold
+order); the ar/swift addend lane does reorder.
+
+## Judgement calls worth knowing about
+
+- **`assume_magic_burst` was NOT deleted**, against the spec's recommendation.
+  The route is right and the client is wrong, but the parameter is load-bearing
+  across `archetype_dispatch`, `routes_state` and four test files. Resolved by
+  making the lever reachable on the route that DOES parse it,
+  `burst_for(assume_magic_burst=...)`, and filing the dead one.
+- **One pre-existing test broke and was re-expressed, not relaxed.**
+  `tests/test_ds_client_conversion_seam_plumb_w2.py` asserted the two W2 seams
+  are the FINAL TWO parameters of `rank_for` - stricter than the convention its
+  own docstring cites, and false for any correct append. Replaced with the
+  property the convention actually protects (only the three genuine inputs may
+  lack a default; both seams KEYWORD_ONLY with defaults; both after `timeout`;
+  relative order preserved), which is strictly stronger.
+- **The committed `build_order_variants_*` tables were STALE.** Six of nine
+  tables are byte-identical after stamp-stripping; the three variants tables
+  moved. Proven NOT attributable to this change by regenerating against the
+  PRE-change client and getting byte-identical output to the post-change client,
+  with both differing from the committed table.
+
+## Filed, not fixed (each has real blast radius)
+
+1. The dead `rank_assassin_for(assume_magic_burst=...)` parameter.
+2. `rank_for` likewise emits `assume_passive_as_stacks` and `apply_target_vuln`
+   into a `/rank` body that never parses them.
+3. `rank_for_primary_archetype` has no pass-through for the 21 new kwargs, so no
+   live coach tick can flip one yet. All 21 are DEFAULT-OFF, so nothing regresses.
+
+## Ops note
+
+`Get-NetTCPConnection -LocalPort 8893` matches lingering **TimeWait** sockets
+(`OwningProcess = 0`), which reads as "port still bound" when DS is fully down -
+and `taskkill /F /PID 0` fails as a critical system process. Filter on
+`-State Listen`. Memory updated.
+
+---
+
 # 2026-07-25j - the EHP-family block drained, and the transports nobody was counting (ENGINE 1.253.0)
 
 ENGINE **1.252.0 -> 1.253.0**, patch 16.14.1. Operator-directed ("drain the
@@ -187,95 +293,3 @@ the ABSENCE half load-bearing.
   90 blocks), **B1**'s unregenerated `--full-roster` artifact, and the
   `rank_assassin_for(assume_magic_burst=...)` dead parameter all carry forward
   unchanged.
-
----
-
-# 2026-07-25h - RM-115 first drain pass: three seams wired, and the count was wrong (ENGINE 1.251.0)
-
-ENGINE **1.250.0 -> 1.251.0**, patch 16.14.1. Four read-only probe agents in
-parallel on the four RM-115 priority plumbs, then the wiring applied in the
-MAIN THREAD - all three shipped slices edit the same two files
-(`agents/daemon_slayer/server.py`, `core/daemon_slayer_client.py`), so worktree
-agents would have been false parallelism, not speed. Tier-2 in ritual order:
-bump by quoted literal (132 files / 153 occurrences, `.claude` +
-`docs/_archive` + `Share` excluded) -> :8893 restarted -> `/health` re-read
-**1.251.0 BEFORE the regen** -> both build-order families across both keyspaces
--> Share sync (491 files, `--check` green) -> all four ENGINE doc sites.
-
-Suites, both measured fresh AFTER the last edit:
-**DS 9692 passed / 1 skipped / 4646 subtests.** RC `tests/` 13110 passed / 106 skipped / 460 subtests.
-
-## The result that matters: the debt is 3x bigger than filed
-
-RM-115 shipped last session with a headline of **34 stranded seams**. That
-number answers the weaker of two questions. `test_route_seams_reach_the_client.py`
-collapses reachability to a NAME - "is this seam settable from the client AT
-ALL" - so `apply_mode_modifiers`, parsed by SEVEN routes, reads as reached on
-all seven the moment ONE client function names it, and
-`apply_item_resist_grants` on `/ehp` hides behind its `/rank-tank` wire.
-
-Measured per **(route, seam)** pair the stranded set is **101**, concentrated in
-`/rank-bruiser` 20, `/hybrid` 19, `/rank-tank` 19, `/ehp` 18, plus `/beam` and
-`/v2/fight-report` which have NO client function at all.
-
-The sharpest proof that the name-based guard is insufficient: **it stayed GREEN
-the entire time `/rank-assassin` could not set `kit_conversion_strength`**,
-because `rank_for` already named it on the carry path. New
-`test_route_seams_reach_the_client_per_route.py` carries the stronger question
-with the same self-cleaning equality contract. **Do not treat the name-based
-guard's green as evidence that a specific route is wired.**
-
-## What shipped (each with a live before/after and a NAMED control)
-
-| seam | gates fixed | headline | control |
-|---|---|---|---|
-| `apply_ability_base_overrides` | 2 + 3 (was 0/0/0) | Morde `/rank-mage` rank-2 swap; Naafiri rank-3 swap | Ziggs, Lux, Zed, Talon byte-identical |
-| `apply_passive_aura_damage` | 3 (+ an unfiled `/ability-dps` gate-2 half) | Void Staff 69.059 -> 208.800, top-1 REORDERS | Ahri byte-identical |
-| `kit_conversion_strength` on `/rank-assassin` | 2 + 3 | Naafiri BotRK **#2 -> #23** (core-3) | Talon, Zed byte-identical over all 60 rows |
-
-All DEFAULT-OFF. **All nine shipped build-table files across both keyspaces are
-byte-identical after stamp-stripping** - the artifact proves the default.
-
-`apply_ability_base_overrides` turned out to be a **ROUTE-LEVEL-ONLY** plumb:
-every engine intermediate already carried `abilities_snapshot`. But the flag is
-LOAD-time and `abilities.load_default()` is keyless, so `server.py` gained
-`_AbilitiesOverrideCache` - builds the flag-ON snapshot once (~30 ms),
-`get(False)` returns `None` so the OFF path is untouched. It is reset in
-`start_server` so it cannot outlive its `DataSnapshot`.
-
-## Corrections made this session
-
-- **A probe's "bonus defect" was wrong in its fix direction and I did not apply
-  it.** The client emits `assume_magic_burst` to `/rank-assassin` while only
-  `_route_burst` parses it; the probe filed that as a missing route parse.
-  `server.py:1971-1973` documents deliberately that `rank_items_by_burst` does
-  NOT accept it and only `compute_burst_damage` does - so the ROUTE is correct
-  and the real defect is the CLIENT exposing a parameter that can never take
-  effect. Filed, not fixed; the fix direction is a genuine choice.
-- **My brief's `11.677 -> 72.155` headline did not reproduce** at the probe's
-  params (it measured `11.700 -> 48.904`). Parameterization, not contradiction -
-  but third session running where reproducing a finding's ORIGINAL params was
-  the difference between a correction and a false retraction.
-
-## Still open off this session
-
-- **RM-115 priority 4 is SPECCED and deliberately NOT BUILT.** `hybrid.py` has
-  ZERO occurrences of `kit_conversion_strength`, stranding Olaf / Pantheon /
-  RekSai / Riven at GATE 1. `rank_items_by_hybrid` (`hybrid.py:969`) is the only
-  target - `compute_hybrid` has no sort key so the kwarg is inert there. It is
-  held on a REAL decision, not budget: **the objective string.** Passing the
-  local `axis` is the minimal diff and is measured INERT for all four named
-  champions (`off_axis_stat` 1.00 -> shortfall exactly 0), but OVER-FIRES for
-  Naafiri and Orianna (`off_axis_stat` 0.00) on a scorer whose beta term IS
-  EHP. Alternative: a `hybrid_{axis}` off-axis set in `kit_conversion.py`
-  (+6 lines, the intersection of the damage and EHP sets), which reproduces
-  Olaf's own registry note verbatim. Gates 2+3 are ~7 further lines.
-- **The other 98 per-route stranded pairs.** `/ehp`, `/hybrid`, `/rank-tank` and
-  `/rank-bruiser` share one 18-19 seam EHP-family block - one client wiring pass
-  would likely clear most of it. Do NOT do all of them in one session; each
-  needs its own before/after with a named control.
-- **RM-96 Zilean** still fully specced, still unbuilt. Trap: a factor seeded off
-  `ability_hps` MAGNITUDE gives a silent null (4.66 vs Janna 5.06); only the
-  CAST RATE 0.00424 separates him.
-- **`parse_leveling_bases`** dropping 35 labels across 31 of 90 blocks, and
-  **B1**'s `--full-roster` artifact that was never regenerated.
