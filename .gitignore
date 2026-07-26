@@ -298,3 +298,7 @@ data/vision_calib_reference/
 # mid-swap cannot leave them staged into a commit.
 Share/src.tmp/
 Share/src.old/
+
+# Session 2026-07-26: pre-dedupe rewind backup (1.7 GB) + forward growth samples
+data/*.db.bak_*
+data/rofl_archive_growth.jsonl
