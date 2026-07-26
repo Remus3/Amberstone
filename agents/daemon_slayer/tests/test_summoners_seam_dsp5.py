@@ -137,7 +137,7 @@ class TestFailSoftAndClamp(unittest.TestCase):
 
 class TestEngineVersionPin(unittest.TestCase):
     def test_engine_version_bumped(self):
-        self.assertEqual(ds.ENGINE_VERSION, "1.253.0")
+        self.assertEqual(ds.ENGINE_VERSION, "1.254.0")
 
 
 if __name__ == "__main__":
