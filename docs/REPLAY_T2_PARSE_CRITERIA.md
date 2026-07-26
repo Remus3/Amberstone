@@ -281,6 +281,38 @@ no experiment here can separate "taking plates helps you win" from "junglers
 who win are the sort who take plates". It is a candidate worth a real trial,
 which is more than anything else in this table has earned.
 
+### 4b-4. The full corpus, 3005 matches - nothing new promoted
+
+Mined 2026-07-26 once the timeline ingest closed at 3005 matches (44 dropped on
+hygiene, all remakes; 2094 win rows and 2094 loss rows per role). This is the
+first table over the finished corpus rather than a mid-ingest slice, and it is
+almost entirely a confirmation of 4b-2. **Nothing was promoted.**
+
+**JUNGLE `plate_share` holds and strengthens: 0.082 vs 0.045, effect 0.49**
+(was 0.46 at 1556 matches), SEPARATES and CONFIRMED on held-out matches. It
+remains the only row that is neither an outcome restatement nor an exposure
+artefact, and doubling the corpus moved it the right way.
+
+`kill_participation` is still inert in all five roles - no role clears the
+effect gate, MID peaks at 0.27 and reads NO SEPARATION. 4b's call survives a
+doubled corpus.
+
+Two rows are new at this size and both die on inspection:
+
+| row | full corpus | why it is not a candidate |
+|---|---|---|
+| TOP `plate_share` | -0.21, NOT REPRODUCED | below the 0.3 working rule, and the sign is NEGATIVE - winning TOPs took FEWER plates. Whatever this is, it is not the JUNGLE row. |
+| `solo_deaths_per_min` (4 roles) | -0.37 to -0.47, CONFIRMED | a strict subset of `deaths_per_min`, which separates two to three times harder (-0.93 to -1.43). Less signal than the axis it is drawn from means it is the same outcome restatement with noise added, not an independent behaviour. |
+
+BOT and MID `objective_participation` now clear the gate and the holdout (0.38
+and 0.22) but still carry `absent 6/422`. That is the 4b exposure artefact
+unchanged and it is exactly the bias that would inflate these rows: the loss
+mean is taken over survivors. Not promotable at this `n` or any other - the fix
+is a criterion that does not vanish on teams that took zero objectives.
+
+The standing constraint in 4b applies here without change: ten rows per match
+are not independent, so `n` bounds information rather than sampling it.
+
 ---
 
 ## 5. Criteria by role
