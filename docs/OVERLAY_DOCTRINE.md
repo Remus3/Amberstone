@@ -1,6 +1,12 @@
 # RC Overlay Doctrine (2026-06-21)
 
-THE canonical design law for RC's in-game UI. Operator decision 2026-06-21:
+> **SCOPE (2026-07-26, one-tracker pass):** this doc states the SURFACE DOCTRINE (which
+> surface the in-game UI is and why). The authoritative BUILD spec is
+> `docs/OVERLAY_BUILD_MASTER_PLAN.md`, which is newer and more referenced; where the two
+> disagree on build detail, MASTER_PLAN wins. Open work goes in `ROADMAP.md`, not here.
+> The "THE canonical design law" wording below is retained as the 2026-06-21 decision record.
+
+The 2026-06-21 design law for RC's in-game UI surface. Operator decision 2026-06-21:
 the transparent always-on-top Electron overlay over the Borderless game is the
 PRIMARY in-game user-facing surface. (UPDATE 2026-06-22: the operator REVERSED the
 dashboard retirement - the 1920 Chrome dashboard at `:8888` is back in scope and was
