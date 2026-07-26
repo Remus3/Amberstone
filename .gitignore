@@ -11,6 +11,14 @@ API-Key-Riot.txt
 python-embed/
 
 # Audit-cleanup quarantine (move-not-delete pattern; safe to rm after stability confirmed)
+#
+# TRAP (recorded 2026-07-26): this rule ignores the PATH, but the ~300 files already under
+# docs/_archive/ are TRACKED - they were added before the rule existed. That mix means:
+#   - `git mv <file> docs/_archive/...`  KEEPS the file tracked (git mv stages explicitly and
+#     bypasses the ignore rule). This is the ONLY correct way to archive.
+#   - `cp` + `git add`                   SILENTLY FAILS - the add is refused as ignored, and if
+#     you then delete the original you have removed the file from version control entirely.
+# Always archive with `git mv`, then confirm with `git ls-files docs/_archive/<dest> | wc -l`.
 _archive/
 
 # Scratch / session-debug logs (pytest output, wakeup snapshots, iter loggings)
