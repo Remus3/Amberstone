@@ -21,8 +21,14 @@ derivation REFUSES it instead of quietly measuring from the map origin.
 Sub-minute positions exist only inside the .rofl chunk stream (Layer-2).
 
 LIVE PREREQUISITES - none of this works headless:
-  1. `EnableReplayApi=1` in the client's `game.cfg` (measured ABSENT on Legion
-     2026-07-26; LeagueDirector writes it, or add the line by hand).
+  1. `EnableReplayApi=1` in the client's `game.cfg`. CONFIRMED PRESENT on
+     Legion 2026-07-26, line 18 under `[General]`, at the INSTALL dir:
+     `C:/Riot Games/League of Legends/Config/game.cfg`.
+     It is NOT under Documents - `<userprofile>/Documents/League of Legends/
+     Config/` does not exist at all. Probing there with a shell fallback made a
+     missing FILE print the same message as a missing FLAG, and that miss got
+     recorded as a false ABSENT reading in this file's first version. A missing
+     file and a missing flag are not the same measurement.
   2. A replay actually PLAYING - the routes 404 otherwise.
   3. The client on the replay's own patch; playback is hard patch-locked, so
      only a current-patch .rofl plays. Our whole corpus is 16.14, so it is
