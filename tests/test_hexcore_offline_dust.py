@@ -235,3 +235,56 @@ def test_main_script_block_parses_under_node(html: str) -> None:
     finally:
         os.unlink(path)
     assert proc.returncode == 0, proc.stderr or proc.stdout
+
+
+def _repo_engine_version() -> str:
+    src = (REPO_ROOT / "agents" / "daemon_slayer" / "__init__.py").read_text(
+        encoding="utf-8"
+    )
+    m = re.search(r'^ENGINE_VERSION\s*=\s*"([^"]+)"', src, re.M)
+    assert m, "could not read ENGINE_VERSION from agents/daemon_slayer/__init__.py"
+    return m.group(1)
+
+
+def _repo_patch() -> str:
+    return (REPO_ROOT / "data" / "daemon_slayer" / "current.txt").read_text(
+        encoding="utf-8"
+    ).strip()
+
+
+# R195: the engine/patch anchors in this file drifted silently across six
+# hand refills (R146, R151, R157, R164, R188, b4df6494) because nothing tied
+# them to the repo. These guards make a stale anchor a red test, not a
+# cosmetic doc bug someone notices three ENGINE bumps later.
+def test_hud_engine_anchor_matches_repo(html: str) -> None:
+    engine, patch = _repo_engine_version(), _repo_patch()
+    m = re.search(r"<div[^>]*>engine:\s*DS\s+([\d.]+)\s*/\s*patch\s+([\d.]+)</div>", html)
+    assert m, "HUD is missing an engine: row"
+    assert m.group(1) == engine, f"HUD engine {m.group(1)} != repo {engine}"
+    assert m.group(2) == patch, f"HUD patch {m.group(2)} != repo {patch}"
+
+
+def test_engine_tooltip_anchors_match_repo(html: str) -> None:
+    engine, patch = _repo_engine_version(), _repo_patch()
+    tips = re.findall(r'title="([^"]*ENGINE_VERSION[^"]*)"', html)
+    assert tips, "no ENGINE_VERSION tooltip found"
+    for tip in tips:
+        assert f"ENGINE_VERSION {engine}" in tip, tip
+        assert f"patch {patch}" in tip, tip
+
+
+def test_daemonslayer_node_desc_engine_anchor_matches_repo(html: str) -> None:
+    engine, patch = _repo_engine_version(), _repo_patch()
+    m = re.search(r'"id": "daemonslayer".*?"desc": "([^"]+)"', html, re.S)
+    assert m, "daemonslayer node not found"
+    desc = m.group(1)
+    assert f"ENGINE {engine}" in desc, desc
+    assert f"patch {patch}" in desc, desc
+
+
+def test_ds_test_count_anchor_is_internally_consistent(html: str) -> None:
+    # The live count moves every batch, so pin consistency rather than a
+    # literal: every place that cites a DS test count must cite the same one.
+    counts = set(re.findall(r"(\d{4,5})\s+(?:DS\s+)?tests\b", html))
+    assert counts, "no DS test-count anchor found"
+    assert len(counts) == 1, f"DS test-count anchors disagree: {sorted(counts)}"
