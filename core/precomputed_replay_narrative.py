@@ -227,40 +227,69 @@ def _multi_kill_name(length: int) -> str:
 _MULTI_KILL_WINDOW_MS = 10_000
 
 
-def _superseded_multikill_ids(events: list) -> set[int]:
-    """id()s of KILL_MULTI rows that a later rung of the SAME streak replaces.
+def _suppressed_special_kill_ids(events: list) -> set[int]:
+    """id()s of CHAMPION_SPECIAL_KILL rows another row already describes.
 
-    A pentakill does not arrive as one row: Riot emits a rung at every step, so
-    one feat lands as double -> triple -> quadra -> penta. Measured on
-    NA1_5094273204, a 14:42 Quadra and a 14:46 Penta by the same player are the
-    same streak, and keeping both spends two of the five moment slots on one
-    event. A streak continues while the same killer's next rung is strictly
-    longer and lands inside the multikill window; only its terminal rung is a
-    moment.
+    Two distinct redundancies, both measured against the 63505 special-kill
+    rows in rewind_history.db:
+
+    1. RUNG COLLAPSE. A pentakill does not arrive as one row - Riot emits a
+       rung at every step, so one feat lands as double -> triple -> quadra ->
+       penta. On NA1_5094273204 a 14:42 Quadra and a 14:46 Penta by the same
+       player are the same streak, and keeping both spends two of the five
+       moment slots on one event. A streak continues while the same killer's
+       next rung is strictly longer and lands inside the multikill window; only
+       the terminal rung is a moment.
+
+    2. COINCIDENT ACE. A multikill that also aces emits a KILL_ACE alongside
+       the KILL_MULTI, describing one feat twice. The distribution is sharply
+       bimodal: 5202 aces sit at EXACTLY 0 ms from a same-killer multikill and
+       every other ace is 6 s or more away, so coincidence is exact-timestamp
+       rather than a window, and no ace that stands on its own is at risk. The
+       multikill is the more specific description, so the ace yields.
+
+    KILL_FIRST_BLOOD is deliberately NOT folded in. It also collides with a
+    KILL_MULTI on the same timestamp (2 occurrences - a first-blood double
+    kill), but "first blood" and "double kill" are two different facts about
+    the same instant rather than one fact told twice.
 
     Keyed on id() rather than on a value tuple because two genuinely distinct
     rows can be byte-identical, and returning a set of dropped identities would
     take both.
     """
-    by_killer: dict[Any, list] = {}
+    multi_by_killer: dict[Any, list] = {}
+    aces: list = []
     for ev in events:
         if not isinstance(ev, dict):
             continue
         if (ev.get("event_type") or "") != "CHAMPION_SPECIAL_KILL":
             continue
-        if _special_kill(ev)[0] != "KILL_MULTI":
-            continue
-        by_killer.setdefault(ev.get("killer_id"), []).append(ev)
+        kill_type = _special_kill(ev)[0]
+        if kill_type == "KILL_MULTI":
+            multi_by_killer.setdefault(ev.get("killer_id"), []).append(ev)
+        elif kill_type == "KILL_ACE":
+            aces.append(ev)
 
-    superseded: set[int] = set()
-    for rows in by_killer.values():
+    suppressed: set[int] = set()
+
+    for rows in multi_by_killer.values():
         rows.sort(key=lambda e: _as_int(e.get("timestamp_ms")))
         for cur, nxt in zip(rows, rows[1:]):
             gap = _as_int(nxt.get("timestamp_ms")) - _as_int(cur.get("timestamp_ms"))
             longer = _special_kill(nxt)[1] > _special_kill(cur)[1]
             if longer and 0 <= gap <= _MULTI_KILL_WINDOW_MS:
-                superseded.add(id(cur))
-    return superseded
+                suppressed.add(id(cur))
+
+    multi_instants = {
+        (ev.get("killer_id"), _as_int(ev.get("timestamp_ms")))
+        for rows in multi_by_killer.values()
+        for ev in rows
+    }
+    for ev in aces:
+        if (ev.get("killer_id"), _as_int(ev.get("timestamp_ms"))) in multi_instants:
+            suppressed.add(id(ev))
+
+    return suppressed
 
 
 def _moment_impact(event: dict[str, Any], operator_pid: Any) -> float:
@@ -574,7 +603,7 @@ def build_narrative(blob: dict[str, Any] | None) -> dict[str, Any]:
         # Impact-rank the timeline. Score every candidate event, sort by impact
         # descending (stable on timestamp for ties), keep the top 5.
         scored: list[tuple[float, int, dict[str, Any]]] = []
-        superseded = _superseded_multikill_ids(events)
+        superseded = _suppressed_special_kill_ids(events)
         for ev in events:
             if not isinstance(ev, dict):
                 continue
