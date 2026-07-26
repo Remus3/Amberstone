@@ -202,6 +202,49 @@ rule is stronger than experiment 4 stated:
 > Warm up with the SAME toggle you are about to measure, and assert
 > RESTORED-vs-base == 0. Discard any measurement where it is not 0.
 
+### Experiment 4c - the two-time discriminator WORKS, and it is bimodal
+
+Run 2026-07-26. Camera parked over the blue-side red buff, unmoved, at t=100 s
+and t=800 s with identical toggles. All six RESTORED checks returned 0.
+
+Scenery cancels between two instants; anything that moved, died or respawned
+does not. Applied to the neutral residual
+(`characters AND NOT champions AND NOT minions`):
+
+| blob px | map | changed by t=800 | verdict |
+|---|---|---|---|
+| 6213 | 5121,4735 | **0 pct** | STATIC |
+| 3740 | 6516,3295 | 12 pct | STATIC |
+| 1571 | 4033,6362 | **98 pct** | MOVER |
+| 1246 | 9000,8297 | 3 pct | STATIC |
+| 1212 | 11323,3928 | 0 pct | STATIC |
+| 815 | 6937,5248 | **100 pct** | MOVER |
+| 439 | 3870,3763 | 0 pct | STATIC |
+
+**The separation is bimodal with nothing in between** - 0/0/3/12 percent
+against 98/100. There is no threshold to tune, which is what makes this usable.
+
+**The 6213-px blob that appeared identical at t=100, 400 and 800 in experiment
+4 is now PROVEN static** at 0 percent changed over 700 seconds. That confirms
+the suspicion 4 could only raise: the neutral residual is dominated by scenery.
+Roughly 2400 px of ~19300 are movers, so **about 87 percent of what
+`characters` removes at a camp-aimed pose is world geometry, not entities.**
+
+**What this means for camps.** The right signal is a state CHANGE, not a
+presence. A camp alive at both instants reads static like a plant does; a camp
+killed, respawned or pulled between them reads as a mover. So camp TIMING is
+measurable by differencing two instants, while camp PRESENCE at a single
+instant is not separable from scenery by this method. Two movers were isolated
+here, at (4033,6362) and (6937,5248); confirming they are camps rather than
+pets or other neutrals still needs ground truth, which no data tier supplies
+(`ELITE_MONSTER_KILL` covers only DRAGON/HORDE/RIFTHERALD/BARON).
+
+**Warm-up, third correction.** A SEEK re-arms the one-time settle, and one
+same-toggle round-trip is not enough to drain it after a seek plus a camera
+move - the strict RESTORED==0 assert fired on the first attempt. Two
+round-trips per toggle plus a 2.5 s settle after the seek drove all six to 0.
+Keep the assert; it is the only thing that catches this.
+
 ### Experiment 5 - capture geometry
 
 Full-screen `PIL.ImageGrab` returns **2560 x 1440**, matching the viewport the
