@@ -4,6 +4,102 @@
 
 ---
 
+# 2026-07-25j - the EHP-family block drained, and the transports nobody was counting (ENGINE 1.253.0)
+
+ENGINE **1.252.0 -> 1.253.0**, patch 16.14.1. Operator-directed ("drain the
+EHP-family block next"). Four read-only probe agents in parallel gathered
+acceptance evidence for all 20 seams against live :8893; the wiring itself is
+ONE file, so it was applied in the main thread. Tier-2 in ritual order: bump by
+quoted literal (132 files / 153 occurrences) -> :8893 restarted -> `/health`
+re-read **1.253.0 BEFORE the regen** -> both build-order families across both
+keyspaces -> Share sync (492 files, `--check` green) -> all four ENGINE doc
+sites.
+
+Suites, both measured fresh AFTER the last edit:
+**DS 9721 passed / 1 skipped / 4653 subtests.**
+**RC `tests/` 13110 passed / 106 skipped / 460 subtests.**
+
+## The headline
+
+**Per-route stranded debt 101 -> 25. Name-collapsed 33 -> 12.** Twenty seams
+shared by `/ehp`, `/hybrid`, `/rank-tank` and `/rank-bruiser` (17 on all four)
+were engine- and route-complete but unreachable from the client: 76 of the 101
+pairs.
+
+Evidence standard, stated because it narrows the operator's one-control-per-seam
+rule deliberately: REACHABILITY proven structurally for all 76 pairs by the
+per-route guard (that is what it exists for); behavioural EFFECT proven ONCE per
+seam on its most diagnostic route against a NAMED registry-proven control. 19
+live cases through the real client.
+
+## Two findings that outlive this block
+
+**THREE STRANDED TRANSPORTS, and BOTH guards are blind to all three** because
+none is seam-PREFIXED. `rune_ids` and `enemies` were parsed by all four routes
+and sent by NO client function; `score_by` was missing from `rank_bruiser_for`.
+EIGHT of the twenty seams consume one of them, so wiring the flags alone would
+have made ~16 pairs reachable-and-DEAD - the exact illusion RM-115 exists to
+kill, introduced by the fix for it. It surfaced only because the acceptance test
+was written from MEASURED cases and failed with `TypeError: unexpected keyword
+argument 'enemies'`. A test built from assumptions would have gone green.
+**Any future drain must check the non-prefixed transports a seam consumes.**
+
+**A defect I introduced and caught before shipping.** `apply_build_tenacity` is
+TRI-STATE - `_route_rank_tank` (`server.py:701-703`) and `_route_rank_bruiser`
+(`:973-975`) read it as None-when-absent and the engine defaults it ON under
+`score_by="cc_blended"`. My first pass gave it the uniform `bool = False` +
+emit-when-True treatment of the other nineteen, which cannot express False: an
+OFF switch that could not turn anything off. Now `Optional[bool] = None`, with
+an assertion that omitting the key reproduces the ON ordering. Confirmed it is
+the ONLY tri-state seam by an AST scan of all four handlers, not by eye.
+
+## Recorded so nobody rediscovers them
+
+- **Three seams provably CANNOT reorder**: `apply_survival_window`,
+  `apply_passive_revive`, and `apply_champion_tenacity` without
+  `apply_build_tenacity`. Each is a uniform multiplier on the EHP numerator and
+  a ratio sort key is invariant under uniform scale - Tryndamere's ratio is
+  exactly 1.291666667 on all 138 rows, both sort keys. The "moved" rows for
+  Zac/Anivia/K'Sante are 1e-12 ULP ties. Acceptance is the `/ehp` SCALAR; a rank
+  criterion is unsatisfiable by construction.
+- **`apply_mode_modifiers` is INERT on ARAM.** The ARAM axes apply
+  unconditionally; the flag gates the wiki-sidecar lane, which excludes ARAM to
+  avoid double-counting. URF is the mover. An ARAM case would look like a bug.
+- **Seven companion gates**, each a false negative if missed - rune ids, a
+  SHIELD for `apply_rune_hsp_amp`, level >= 7 for `assume_item_health_stacks`,
+  `enemies` AND an unsaturated comp for the spell shields (five heavy-CC enemies
+  pin `cc_pressure_fraction` at 1.0 and the clamp eats the seam), build tenacity
+  for champion tenacity, and `target_max_hp` (NOT `target_hp`) for the AD axis.
+- **One control shape is INVALID and the test asserts it**: a manaless champion
+  is not a control for `apply_item_mana_health` - the item supplies its own mana
+  (Garen 5099.337 -> 5242.948).
+
+## Corrections to my own work
+
+- I said `apply_mode_modifiers` is parsed by **SEVEN** routes, three times. It
+  is **EIGHT**. Corrected in the live artifacts; LEDGER 1051 and the
+  1.250.0/1.251.0 CHANGELOG entries are append-only and were left as written,
+  with the correction recorded forward.
+- The guard assertion pinning the per-route ledger at a FLOOR of 33 was
+  disproved by this drain (25 vs the sibling's 12). The premise was wrong, not
+  the number, so it was replaced with the inequality that holds BY
+  CONSTRUCTION: a name stranded everywhere contributes at least one (route,
+  seam) pair, so per-route total >= name-collapsed total, always.
+
+## Still open
+
+**25 pairs, and none is a shared block:** `/burst` 7, `/dps` 6,
+`/rank-assassin` 4, `/v2/fight-report` 3, `/rank` 2, one each on
+`/ability-dps`, `/rank-mage`, `/beam`. **`/beam` and `/v2/fight-report` have NO
+client function at all** - those four pairs need one invented before any wiring.
+The cheap shared-block phase of RM-115 is over; what remains is per-seam work.
+
+Unchanged carry-forwards: RM-96 Zilean, `parse_leveling_bases` (35 labels across
+31 of 90 blocks), B1's unregenerated `--full-roster` artifact, and the
+`rank_assassin_for(assume_magic_burst=...)` dead parameter.
+
+---
+
 # 2026-07-25i - RM-115 priority 4: the bruiser gate, and Option B paid for itself (ENGINE 1.252.0)
 
 ENGINE **1.251.0 -> 1.252.0**, patch 16.14.1. Operator-directed single slice
@@ -183,145 +279,3 @@ LOAD-time and `abilities.load_default()` is keyless, so `server.py` gained
   CAST RATE 0.00424 separates him.
 - **`parse_leveling_bases`** dropping 35 labels across 31 of 90 blocks, and
   **B1**'s `--full-roster` artifact that was never regenerated.
-
----
-
-# 2026-07-25g - five probes, one answer: the seams do not reach production (ENGINE 1.250.0)
-
-ENGINE **1.249.0 -> 1.250.0**, patch 16.14.1. Five read-only probe agents in
-parallel on five DIFFERENT menu rows, then three worktree build agents on
-disjoint file sets, one Claude as sole merger. Tier-2 in ritual order: bump by
-quoted literal (132 files, `.claude` + `docs/_archive` + `Share` excluded) ->
-:8893 restarted -> `/health` re-read **1.250.0 BEFORE the regen** -> both
-build-order families across both keyspaces -> Share sync -> all four ENGINE doc
-sites.
-
-Suites, both measured THIS session after every edit:
-**DS 9686 passed / 1 skipped / 4646 subtests.** RC `tests/` re-run fresh at the
-end (first pass 13106/106/460 with 4 known-cause failures, all repaired).
-
-## The result that matters
-
-**Five probes, five different rows, one shared finding that nobody had filed.**
-A DS seam has THREE gates - engine kwarg, HTTP route parse, and
-`core/daemon_slayer_client.py`. Census over `server.py`: **43 route-parsed
-seam-shaped kwargs, 9 expressible through the client, 34 default-OFF and
-stranded.** The client is the chokepoint every generated build table and every
-live coach tick passes through, and none of `rank_for` (24 params),
-`rank_tank_for` (15) or `rank_for_primary_archetype` (40) carries `**kwargs` -
-verified by `inspect.signature`, not grep. `core/build_order.py`'s own docstring
-says its `rank_fn` takes none either, so nothing can be smuggled via
-`rank_kwargs`.
-
-This re-scopes **A-28 / RM-14**, filed as default-OFF levers awaiting an
-operator decision: even if the operator decided, there is no wire. Filed as
-**RM-115** with a 4-item priority list.
-
-Named casualties: `apply_ability_base_overrides` (RM-81's six ability-base
-corrections, chosen BECAUSE they move a ranked order) is 0/0/0, reachable only
-from its own test; `apply_passive_aura_damage` shipped LAST SESSION at 1.249.0
-and was already dead at gate 3; `_kit_penetration.py` (15.9 KB, ENGINE-bumped)
-has ZERO production callers; `kit_conversion.py` reaches **1 of its 9 curated
-champions** because `hybrid.py` has zero occurrences of the kwarg.
-
-Guarded going forward: `test_route_seams_reach_the_client.py` collects the
-route-parsed seam set by introspection and carries the stranded set as an
-explicit debt ledger - GREEN today, RED on any new route seam without a wire.
-
-## The headline menu row was mis-filed
-
-A-11/RM-44 + A-22/RM-91 + A-21/RM-90 S3 had each independently named
-"champion-sensitivity in `ds.ehp`" as their blocker and successor. **That
-shipped at 1.247.0.** Three rows agreeing was not evidence - all three had
-inherited the same unverified premise.
-
-The real cause is two constants. `ehp.py:1212-1218` arms
-`assume_item_crit_dr` / `assume_item_aa_dr` / `assume_item_enemy_as_slow` off
-`_ASSUMED_INCOMING_CRIT_SHARE = 0.5` and `_ASSUMED_INCOMING_AA_SHARE = 0.5`,
-and no route or client could disable them. They are worth **+49.7 pct to
-Randuin's** (2419.95 -> 1616.30 forced off) and flip it **#1 -> #6**. In the
-shipped SR table 28 champions share one byte-identical `mixed` order led by
-Randuin's; the `poke` profile, which targets a squishier dummy, drops it to slot
-6 - the tell. Now exposed through all three gates, byte-identical by default.
-
-All three candidate "lift" shapes were rejected ON MEASUREMENT, not taste. See
-LEDGER 1050.
-
-## What else shipped
-
-- **3 champions shipped `weighted_dps == 0.0` silently.** `dps.py` gated its
-  degenerate fallback on all-phase instead of the selected phase. Azir/Karthus/
-  Viktor now report real values; 170 of 173 byte-identical. **This is the actual
-  cause of the four-session A-13/RM-48 "Azir soldier axis" misdiagnosis** -
-  `onhit_dps.py:162` sums ability+auto, so a 0.0 made `/rank-onhit` return a
-  `/rank-mage`-identical response with `notes == []`.
-- **Locke and Zaahen had NO ability data at all** (roster 173, keyspace 171).
-  New hand-authored registry, injected keys-not-present-only, DEFAULT-ON. Burst
-  0.0 -> 418.61 / 959.79, 171 of 171 others byte-identical. **Locke's shipped SR
-  build went from a marksman template to a correct AP mage build.** Zaahen's
-  correctly did not move - his damage really is physical.
-
-## Four rows closed without code
-
-A-13/RM-48 Azir (BLOCKED-UNFALSIFIABLE - nine mages, pet or no pet, identical
-ordering), A-32/R190 kit-pen (3 of 4 mis-filed; the row even names the wrong
-module), A-17/RM-85 Nasus (MIS-FILED - five routes return the IDENTICAL 135-item
-set; "absent from top-40" was the `top=40` trap), and the RM-44/RM-91/RM-90 S3
-convergence above. A-17/RM-83 Naafiri is SHIPPED-ALREADY but gate-blocked;
-A-17/RM-96 Zilean is REAL and specced but not built.
-
-## Corrections to my own work this session
-
-- My first seam census said **36** stranded. It used substring matching, so
-  `gate_caster_hp` / `gate_target_hp` were phantoms of their `_amp` siblings.
-  Word-boundary count is **34**. A build agent caught it and was right to trust
-  its own measurement over my brief.
-- My build brief gave a build agent **two wrong wiki numbers** (Grim Deliverance
-  50 pct vs the real 200 pct bonus AD; `Ritual Nails` attributed to Zaahen when
-  it is Locke's Q). The agent re-fetched, corrected both, and I re-verified via
-  the wiki API. **Telling agents to trust their own measurement over the brief
-  is what saved this.**
-- I warned only ONE of three build agents about the `_HOST_DEPENDENT_TESTS`
-  mirror trap. The two tests that needed it were written by a different agent
-  and broke the RC suite. Registered by name.
-
-## Fences added
-
-- **Row agreement is not evidence.** Three rows converging on one prerequisite
-  meant three rows inheriting one unverified premise. Verify the prerequisite
-  before treating convergence as strength.
-- **A pinned "signature tail" assertion is self-defeating** under an
-  append-at-END convention. Three tests carried one; each fails on the next
-  legitimate append - the very convention they exist to protect. Repair the
-  premise onto the shipped path (case the entry points separately), never
-  weaken the assertion.
-- **`/rank*` returns `item_id` as a STRING.** A probe comparing against integer
-  ids reads ABSENT for every watched item and looks exactly like a clean
-  pool-exclusion finding. Same status as the `top=40` and empty-list traps.
-
-## Still open off this session
-
-- **RM-115 priority list** (in value order): plumb `apply_ability_base_overrides`
-  through gates 2+3; `apply_passive_aura_damage` gate 3; `kit_conversion_strength`
-  on `/rank-assassin` + client (closes RM-83, already seeded and green in-engine);
-  give `hybrid.py` the kwarg at all (unblocks Olaf/Pantheon/RekSai/Riven).
-- **RM-96 Zilean** is fully specced. Trap for whoever builds it: his `ability_hps`
-  MAGNITUDE is 4.66 vs Janna 5.06, only 8 pct apart - a factor seeded off HPS
-  magnitude produces a silent null. Only the CAST RATE separates him (0.00424,
-  15.9x below Soraka).
-- **`parse_leveling_bases` blind spot** (`ds_wiki_staleness_check.py:188-196`):
-  keeps only the first label pair per `{{st}}` block; 31 of 90 blocks in a
-  50-page sample carry two or more, dropping 35 Meraki-matching labels. So
-  `ability_staleness.json` is a structural undercount and
-  `_ability_base_overrides`'s "exactly those six" scope derives from it.
-- **B1 shipped code with no data** - `--full-roster` exists but no 16.14.1
-  artifact was regenerated with it.
-- **DS `:8893` restart quirk, RESOLVED but worth knowing.** The first
-  `Stop-ScheduledTask` / `Start-ScheduledTask` of `RC-DaemonSlayer` left state
-  `Ready` with `LastResult 0x0` and nothing listening, twice. The code was never
-  the problem - the same entry point served 1.250.0 immediately when launched in
-  the foreground. Recovered by `taskkill /F` on the foreground PID and starting
-  the task again; it is now **Running** and `/health` reads 1.250.0. Root cause
-  of the initial no-start is NOT established. If it recurs, check for a listener
-  already holding `:8893` before assuming a code fault. Note `taskkill /F` must
-  be run from PowerShell - Git Bash mangles `/F` into a path.
