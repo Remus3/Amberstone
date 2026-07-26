@@ -19,6 +19,7 @@ the corpus has grown since the last mine.
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -34,10 +35,19 @@ BUSY_PATTERNS = ("timeline_ingest", "build_rank_baselines",
                  "replay_roster_pull", "ladder_role_scout")
 
 
+# CREATE_NO_WINDOW: this module runs under a pythonw.exe-hosted scheduled task
+# (RC-ReplayChainWatch, every 15 min). pythonw suppresses ITS OWN console but not
+# a child's, so without this each powershell child allocates a console that
+# flashes onscreen - three per run, since _ps() has three call sites. Same guard
+# and same reason as tools/ci_watchdog.py:315-317.
+_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+
+
 def _ps(cmd: str) -> str:
     try:
         out = subprocess.run(["powershell", "-NoProfile", "-Command", cmd],
-                             capture_output=True, text=True, timeout=60)
+                             capture_output=True, text=True, timeout=60,
+                             creationflags=_NO_WINDOW)
         return (out.stdout or "").strip()
     except Exception as exc:  # noqa: BLE001 - a probe must never abort the watch
         return f"<error {exc}>"
@@ -105,7 +115,8 @@ def main(argv=None) -> int:
         res = subprocess.run(
             [sys.executable, str(ROOT / "tools" / "mine_event_patterns.py"),
              "--out", str(RATES)],
-            capture_output=True, text=True, cwd=str(ROOT), timeout=3600)
+            capture_output=True, text=True, cwd=str(ROOT), timeout=3600,
+            creationflags=_NO_WINDOW)
         tail = (res.stdout or "").strip().splitlines()[-12:]
         print("\n".join(tail) or (res.stderr or "").strip()[-500:])
     else:
