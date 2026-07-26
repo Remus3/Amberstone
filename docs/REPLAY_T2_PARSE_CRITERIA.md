@@ -211,8 +211,42 @@ participation figure for a game that had nothing to participate in.
 The ten rows from one match share a game, a duration and an outcome, so they
 are **not independent**. `n` is an upper bound on information, not a sample
 size, and no p-value is reported - computing one under that dependence would
-be fabricated precision. Promotion needs a held-out split by MATCH, not by
-row, and that split is not built yet.
+be fabricated precision.
+
+### 4b-2. The held-out split, and what it killed (1556 matches)
+
+Because a p-value is unavailable, the miner instead holds out **30 percent of
+MATCHES** (`--holdout`) and re-tests every SEPARATES row on games it never
+mined. The split is a hash of the match id, so a match keeps its side as the
+corpus grows - a held-out result that reshuffles between runs proves nothing,
+and this corpus grows hourly. Splitting by MATCH rather than by row is the
+whole point: a row-level split puts one game's winners in train and its losers
+in test. The column reports CONFIRMED, NOT REPRODUCED, or REFUTED, the last
+meaning the held-out half separated the OTHER WAY.
+
+**Hygiene is now on by default too, and it was not free: 26 remakes were in
+the corpus**, each contributing ten rows of noise to every criterion.
+
+**Four rows cleared the effect gate and then failed the holdout:**
+
+| row | effect | holdout |
+|---|---|---|
+| MID `kill_participation` | 0.29 | NOT REPRODUCED |
+| TOP `objective_participation` | 0.26 | NOT REPRODUCED |
+| SUPPORT `early_deaths` | -0.21 | NOT REPRODUCED |
+| SUPPORT `early_deaths_per_min` | -0.23 | NOT REPRODUCED |
+
+Every one sits in the 0.2 to 0.3 effect band, which is exactly where a lone
+effect-size threshold over-promotes. **Working rule for this corpus: an effect
+below about 0.3 does not survive a held-out re-test.** MID
+`kill_participation` is the pointed one - it is the single role where the
+inert criterion looked alive, and the holdout says it was not.
+
+**What survives everything.** JUNGLE `plate_share` 0.081 vs 0.046, effect
+**0.46**, SEPARATES and CONFIRMED on held-out matches. It remains the only row
+that is neither an outcome restatement nor an exposure artefact. Everything
+else that survives (`deaths_per_min`, `shutdown_rate`, TEAM
+`gold_deficit_profile` at -2.01) restates the outcome.
 
 ---
 
