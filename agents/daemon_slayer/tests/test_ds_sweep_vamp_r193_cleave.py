@@ -84,6 +84,40 @@ class RavenousHydraCleaveCoefficientR193Tests(unittest.TestCase):
             self.assertIn("40%", note, f"{item_id} note omits the 40% pin")
 
 
+class TiamatCleaveCoefficientR193Tests(unittest.TestCase):
+    """Tiamat 3077 carries the same Meraki Cleave text as the finished items.
+
+    Found by the R193 sibling sweep: the component was left at a stale 50%
+    while its own upgrades sat at 40%, so a Tiamat-only build over-credited
+    cleave by a quarter. Tiamat has no ``unique_passive_key`` (a component
+    never contests the family), which is why it is pinned here rather than
+    folded into the parity tuple below.
+    """
+
+    def test_tiamat_cleave_is_forty_percent_total_ad(self) -> None:
+        proc = ITEM_EFFECTS["3077"].periodics[0]
+        self.assertEqual(proc.name, "Cleave")
+        self.assertEqual(proc.damage_type, PHYSICAL)
+        self.assertAlmostEqual(
+            proc.resolve_damage(_multi_target_ctx()), _EXPECTED, places=3,
+        )
+
+    def test_tiamat_matches_its_own_upgrades(self) -> None:
+        ctx = _multi_target_ctx()
+        tiamat = ITEM_EFFECTS["3077"].periodics[0].resolve_damage(ctx)
+        for item_id in _SR_AD_CLEAVERS:
+            self.assertAlmostEqual(
+                ITEM_EFFECTS[item_id].periodics[0].resolve_damage(ctx),
+                tiamat, places=3,
+                msg=f"{item_id} desynced from its Tiamat component",
+            )
+
+    def test_tiamat_note_does_not_advertise_the_stale_coefficient(self) -> None:
+        note = ITEM_EFFECTS["3077"].note
+        self.assertNotIn("50% total AD to nearby", note)
+        self.assertIn("40%", note)
+
+
 class HydraCleaveFamilyParityR193Tests(unittest.TestCase):
     """No family member may drift alone - parity is asserted, not assumed."""
 
