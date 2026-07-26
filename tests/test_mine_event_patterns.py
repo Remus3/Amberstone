@@ -7,6 +7,8 @@ section 4b.
 """
 from __future__ import annotations
 
+import json
+
 from tools import mine_event_patterns as mine
 
 
@@ -148,3 +150,68 @@ def test_rows_a_criterion_declines_to_emit_are_counted_not_silently_lost():
     for row in rows:
         assert "objective_participation" not in row["values"]
         assert "objective_participation" in row["absent"]
+
+
+# ------------------------------------------------------- held-out split
+
+def test_a_match_keeps_its_holdout_side_as_the_corpus_grows():
+    # The split must be a function of the match id ALONE. Anything that
+    # depends on corpus order or size reshuffles every match on the next
+    # ingest, and a "held-out" result that moves between runs proves nothing.
+    first = mine.holdout_side("NA1_5576603201", 0.3)
+    assert first == mine.holdout_side("NA1_5576603201", 0.3)
+    assert first in {"train", "test"}
+
+
+def test_a_zero_fraction_puts_everything_in_train():
+    ids = [f"NA1_{n}" for n in range(200)]
+    assert {mine.holdout_side(i, 0.0) for i in ids} == {"train"}
+
+
+def test_the_split_is_close_to_the_requested_fraction():
+    ids = [f"NA1_{n}" for n in range(2000)]
+    test = sum(1 for i in ids if mine.holdout_side(i, 0.3) == "test")
+    assert 0.25 < test / len(ids) < 0.35
+
+
+def test_a_holdout_verdict_needs_the_same_direction_not_just_a_gap():
+    # A row that separates on train and separates the OTHER WAY on the
+    # held-out matches is refuted by the holdout, not confirmed by it.
+    train = mine.verdict([5.0, 5.1] * 40, [8.0, 8.1] * 40, 30, 0.10, 0.2)
+    flipped = mine.verdict([8.0, 8.1] * 40, [5.0, 5.1] * 40, 30, 0.10, 0.2)
+    assert mine.holdout_verdict(train, flipped) == "REFUTED"
+    same = mine.verdict([5.0, 5.2] * 40, [8.0, 8.2] * 40, 30, 0.10, 0.2)
+    assert mine.holdout_verdict(train, same) == "CONFIRMED"
+
+
+# --------------------------------------------------------- hygiene gate
+
+def _blob(match_id, duration=1800):
+    match = _match(duration=duration)
+    tl = _tl([_kill(60000, 7, 2)])
+    return match_id, {"match": match, "timeline": tl}
+
+
+def test_a_remake_is_dropped_before_it_reaches_the_table(tmp_path, capsys):
+    # A 3-minute remake contributes ten rows of noise to every criterion.
+    directory = tmp_path / "timelines"
+    directory.mkdir()
+    for mid, blob in [_blob("NA1_1"), _blob("NA1_2"),
+                      _blob("NA1_3", duration=120)]:
+        (directory / f"{mid}.json").write_text(json.dumps(blob),
+                                               encoding="utf-8")
+    rc = mine.main(["--root", str(tmp_path), "--min-sample", "1",
+                    "--out", str(tmp_path / "rates.json")])
+    assert rc == 0
+    assert "dropped 1" in capsys.readouterr().out
+
+
+def test_hygiene_can_be_turned_off_explicitly(tmp_path, capsys):
+    directory = tmp_path / "timelines"
+    directory.mkdir()
+    for mid, blob in [_blob("NA1_1"), _blob("NA1_3", duration=120)]:
+        (directory / f"{mid}.json").write_text(json.dumps(blob),
+                                               encoding="utf-8")
+    mine.main(["--root", str(tmp_path), "--no-hygiene", "--min-sample", "1",
+               "--out", str(tmp_path / "rates.json")])
+    assert "dropped" not in capsys.readouterr().out
