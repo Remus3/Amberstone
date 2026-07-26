@@ -95,7 +95,7 @@ class TestAbilityHspAmp(unittest.TestCase):
         self.assertAlmostEqual(off.total_throughput, on.total_throughput, places=9)
 
     def test_engine_version_bumped(self):
-        self.assertEqual(ENGINE_VERSION, "1.252.0")
+        self.assertEqual(ENGINE_VERSION, "1.253.0")
 
 
 if __name__ == "__main__":

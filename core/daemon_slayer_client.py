@@ -72,6 +72,26 @@ class RankedItem:
         )
 
 
+def _emit_ehp_family_seams(body: dict, **seams: bool) -> None:
+    """Write the True members of the RM-115 EHP-family seam block into ``body``.
+
+    All twenty seams in this block are ``_opt_bool`` server-side with an engine
+    default of False, so the emit rule is uniform: a False (or absent) flag
+    writes NOTHING, keeping the request byte-identical to every pre-seam call.
+    That uniformity is why this is one helper rather than the same four-line
+    ``if`` repeated seventy-six times across the four entry points.
+
+    The seam NAMES stay declared as explicit keyword arguments on each calling
+    function - never ``**kwargs`` - because
+    ``agents/daemon_slayer/tests/test_route_seams_reach_the_client_per_route.py``
+    reads those signatures to decide whether a route's seams are reachable, and
+    a passthrough would make an unreachable seam look wired.
+    """
+    for name, on in seams.items():
+        if on:
+            body[name] = True
+
+
 def _post_json(path: str, body: dict, timeout: float = DEFAULT_TIMEOUT) -> Optional[dict]:
     url = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}{path}"
     try:
@@ -329,6 +349,41 @@ def rank_tank_for(
     # engine's DEFAULT-OFF path, byte-identical.
     apply_resist_damage_coupling: Optional[bool] = None,
     resist_coupling_strength: Optional[float] = None,
+    # RM-115 transport: the four routes have always parsed an ``enemies``
+    # roster, and no client function sent one. Four seams in the block below
+    # (apply_spell_shield, apply_item_spell_shield, apply_champion_tenacity,
+    # apply_build_tenacity) consume it and are INERT without it, so wiring the
+    # flags alone would have made them reachable and dead.
+    enemies: Optional[Iterable[str]] = None,
+    # RM-115 EHP-family seam block - appended LAST per the repo convention.
+    # All bools, all DEFAULT-OFF, all emitted only when True. ``rune_ids`` is
+    # the transport the four apply_rune_* seams ride; _route_rank_tank has
+    # always parsed it and no client function sent it.
+    rune_ids: Optional[Iterable[str]] = None,
+    apply_item_resist_grants: bool = False,
+    apply_item_bonus_hp_amp: bool = False,
+    apply_item_mana_health: bool = False,
+    apply_item_spell_shield: bool = False,
+    apply_spell_shield: bool = False,
+    apply_passive_resist: bool = False,
+    apply_passive_mitigation: bool = False,
+    apply_passive_revive: bool = False,
+    apply_champion_tenacity: bool = False,
+    apply_survival_window: bool = False,
+    apply_mode_modifiers: bool = False,
+    apply_rune_resist_grants: bool = False,
+    apply_rune_health_grants: bool = False,
+    apply_rune_hsp_amp: bool = False,
+    apply_rune_flat_mitigation: bool = False,
+    assume_item_general_dr: bool = False,
+    assume_item_health_stacks: bool = False,
+    assume_item_proc_heal: bool = False,
+    # TRI-STATE, unlike every other seam in this block. ``_route_rank_tank``
+    # (server.py:701-703) reads it as None-when-absent, and the engine turns it
+    # ON by default for the cc_blended metric - so this is an OFF switch, and a
+    # plain ``bool = False`` with emit-when-True could never express the OFF.
+    # None = inherit (omit the key), False = explicitly disable.
+    apply_build_tenacity: Optional[bool] = None,
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -379,6 +434,35 @@ def rank_tank_for(
             body[_key] = bool(_val)
     if resist_coupling_strength is not None:
         body["resist_coupling_strength"] = float(resist_coupling_strength)
+    if enemies:
+        body["enemies"] = [str(e) for e in enemies if e]
+    if rune_ids:
+        body["rune_ids"] = [str(r) for r in rune_ids if r]
+    _emit_ehp_family_seams(
+        body,
+        apply_item_resist_grants=apply_item_resist_grants,
+        apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
+        apply_item_mana_health=apply_item_mana_health,
+        apply_item_spell_shield=apply_item_spell_shield,
+        apply_spell_shield=apply_spell_shield,
+        apply_passive_resist=apply_passive_resist,
+        apply_passive_mitigation=apply_passive_mitigation,
+        apply_passive_revive=apply_passive_revive,
+        apply_champion_tenacity=apply_champion_tenacity,
+        apply_survival_window=apply_survival_window,
+        apply_mode_modifiers=apply_mode_modifiers,
+        apply_rune_resist_grants=apply_rune_resist_grants,
+        apply_rune_health_grants=apply_rune_health_grants,
+        apply_rune_hsp_amp=apply_rune_hsp_amp,
+        apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+        assume_item_general_dr=assume_item_general_dr,
+        assume_item_health_stacks=assume_item_health_stacks,
+        assume_item_proc_heal=assume_item_proc_heal,
+    )
+    # Tri-state: None omits the key and inherits the engine's default-ON for
+    # cc_blended; an explicit False is the only way to turn it OFF.
+    if apply_build_tenacity is not None:
+        body["apply_build_tenacity"] = bool(apply_build_tenacity)
     data = _post_json("/rank-tank", body, timeout=timeout)
     if data is None:
         return None
@@ -396,10 +480,47 @@ def ehp_for(
     enemy_ap_share: Optional[float] = None,
     augments: Optional[Iterable[str]] = None,
     timeout: float = DEFAULT_TIMEOUT,
+    # RM-115 transport: the four routes have always parsed an ``enemies``
+    # roster, and no client function sent one. Four seams in the block below
+    # (apply_spell_shield, apply_item_spell_shield, apply_champion_tenacity,
+    # apply_build_tenacity) consume it and are INERT without it, so wiring the
+    # flags alone would have made them reachable and dead.
+    enemies: Optional[Iterable[str]] = None,
+    # RM-115 EHP-family seam block - appended LAST per the repo convention.
+    # Every one is a bool parsed by _route_ehp with an engine default of False,
+    # so an omitted key leaves the request byte-identical to every pre-seam
+    # call. ``rune_ids`` is the TRANSPORT the four apply_rune_* seams ride: the
+    # route has always parsed it, but no client function sent it, so wiring the
+    # flags without it would make them reachable and inert - the exact failure
+    # mode RM-115 exists to kill.
+    rune_ids: Optional[Iterable[str]] = None,
+    apply_item_resist_grants: bool = False,
+    apply_item_bonus_hp_amp: bool = False,
+    apply_item_mana_health: bool = False,
+    apply_item_spell_shield: bool = False,
+    apply_spell_shield: bool = False,
+    apply_passive_resist: bool = False,
+    apply_passive_mitigation: bool = False,
+    apply_passive_revive: bool = False,
+    apply_champion_tenacity: bool = False,
+    apply_survival_window: bool = False,
+    apply_mode_modifiers: bool = False,
+    apply_rune_resist_grants: bool = False,
+    apply_rune_health_grants: bool = False,
+    apply_rune_hsp_amp: bool = False,
+    apply_rune_flat_mitigation: bool = False,
+    assume_item_general_dr: bool = False,
+    assume_item_health_stacks: bool = False,
+    assume_item_proc_heal: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
     Phase 1 sibling of ``dps_for``. See ``rank_tank_for`` for share semantics.
+
+    The RM-115 seam block is DEFAULT-OFF end to end: each flag is emitted only
+    when True, so omitting them all reproduces the pre-seam request byte for
+    byte. ``apply_build_tenacity`` is deliberately absent - ``_route_ehp`` does
+    not parse it (it needs a resolved build, which /ehp does not rank over).
     """
     _resolved_ad_share, _resolved_ap_share = _resolve_enemy_shares(
         enemy_ad_share, enemy_ap_share
@@ -414,6 +535,31 @@ def ehp_for(
     }
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    if enemies:
+        body["enemies"] = [str(e) for e in enemies if e]
+    if rune_ids:
+        body["rune_ids"] = [str(r) for r in rune_ids if r]
+    _emit_ehp_family_seams(
+        body,
+        apply_item_resist_grants=apply_item_resist_grants,
+        apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
+        apply_item_mana_health=apply_item_mana_health,
+        apply_item_spell_shield=apply_item_spell_shield,
+        apply_spell_shield=apply_spell_shield,
+        apply_passive_resist=apply_passive_resist,
+        apply_passive_mitigation=apply_passive_mitigation,
+        apply_passive_revive=apply_passive_revive,
+        apply_champion_tenacity=apply_champion_tenacity,
+        apply_survival_window=apply_survival_window,
+        apply_mode_modifiers=apply_mode_modifiers,
+        apply_rune_resist_grants=apply_rune_resist_grants,
+        apply_rune_health_grants=apply_rune_health_grants,
+        apply_rune_hsp_amp=apply_rune_hsp_amp,
+        apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+        assume_item_general_dr=assume_item_general_dr,
+        assume_item_health_stacks=assume_item_health_stacks,
+        assume_item_proc_heal=assume_item_proc_heal,
+    )
     return _post_json("/ehp", body, timeout=timeout)
 
 
@@ -482,6 +628,46 @@ def rank_bruiser_for(
     # kit-conversion registry only when strictly positive, so omitting the key
     # keeps the request byte-identical to every pre-seam call.
     kit_conversion_strength: float = 0.0,       # RM-86 L1 (Olaf/Pantheon/RekSai/Riven)
+    # RM-115 transport: _route_rank_bruiser parses score_by and rank_tank_for
+    # has always sent it; this one never did, so the cc_blended metric that
+    # the two tenacity seams move was unreachable on the bruiser route.
+    score_by: str = "blended",
+    # RM-115 transport: the four routes have always parsed an ``enemies``
+    # roster, and no client function sent one. Four seams in the block below
+    # (apply_spell_shield, apply_item_spell_shield, apply_champion_tenacity,
+    # apply_build_tenacity) consume it and are INERT without it, so wiring the
+    # flags alone would have made them reachable and dead.
+    enemies: Optional[Iterable[str]] = None,
+    # RM-115 EHP-family seam block - appended LAST per the repo convention.
+    # /rank-bruiser parses the widest set of the four: it is the only route in
+    # the family that also carries apply_ad_axis_ability_damage (RM-39/RM-43).
+    # All bools, all DEFAULT-OFF, emitted only when True. ``rune_ids`` is the
+    # transport the four apply_rune_* seams ride.
+    rune_ids: Optional[Iterable[str]] = None,
+    apply_item_resist_grants: bool = False,
+    apply_item_bonus_hp_amp: bool = False,
+    apply_item_mana_health: bool = False,
+    apply_item_spell_shield: bool = False,
+    apply_spell_shield: bool = False,
+    apply_passive_resist: bool = False,
+    apply_passive_mitigation: bool = False,
+    apply_passive_revive: bool = False,
+    apply_champion_tenacity: bool = False,
+    apply_survival_window: bool = False,
+    apply_mode_modifiers: bool = False,
+    apply_rune_resist_grants: bool = False,
+    apply_rune_health_grants: bool = False,
+    apply_rune_hsp_amp: bool = False,
+    apply_rune_flat_mitigation: bool = False,
+    assume_item_general_dr: bool = False,
+    assume_item_health_stacks: bool = False,
+    assume_item_proc_heal: bool = False,
+    apply_ad_axis_ability_damage: bool = False,
+    # TRI-STATE, unlike every other seam in this block - see rank_tank_for.
+    # ``_route_rank_bruiser`` (server.py:973-975) reads it as None-when-absent
+    # and the engine defaults it ON for cc_blended, so None = inherit and
+    # False = explicitly disable. A plain bool could not express the OFF.
+    apply_build_tenacity: Optional[bool] = None,
 ) -> Optional[list[BruiserRankedItem]]:
     """Call POST /rank-bruiser and return the parsed top-N rows. None on engine failure.
 
@@ -530,6 +716,38 @@ def rank_bruiser_for(
     # negative are inert server-side - emit nothing and stay byte-identical.
     if kit_conversion_strength > 0.0:
         body["kit_conversion_strength"] = float(kit_conversion_strength)
+    if enemies:
+        body["enemies"] = [str(e) for e in enemies if e]
+    if rune_ids:
+        body["rune_ids"] = [str(r) for r in rune_ids if r]
+    _emit_ehp_family_seams(
+        body,
+        apply_item_resist_grants=apply_item_resist_grants,
+        apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
+        apply_item_mana_health=apply_item_mana_health,
+        apply_item_spell_shield=apply_item_spell_shield,
+        apply_spell_shield=apply_spell_shield,
+        apply_passive_resist=apply_passive_resist,
+        apply_passive_mitigation=apply_passive_mitigation,
+        apply_passive_revive=apply_passive_revive,
+        apply_champion_tenacity=apply_champion_tenacity,
+        apply_survival_window=apply_survival_window,
+        apply_mode_modifiers=apply_mode_modifiers,
+        apply_rune_resist_grants=apply_rune_resist_grants,
+        apply_rune_health_grants=apply_rune_health_grants,
+        apply_rune_hsp_amp=apply_rune_hsp_amp,
+        apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+        assume_item_general_dr=assume_item_general_dr,
+        assume_item_health_stacks=assume_item_health_stacks,
+        assume_item_proc_heal=assume_item_proc_heal,
+        apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
+    )
+    # Tri-state, same contract as rank_tank_for: None omits the key and
+    # inherits the engine's default-ON for cc_blended.
+    if apply_build_tenacity is not None:
+        body["apply_build_tenacity"] = bool(apply_build_tenacity)
+    if score_by != "blended":
+        body["score_by"] = score_by
     data = _post_json("/rank-bruiser", body, timeout=timeout)
     if data is None:
         return None
@@ -905,6 +1123,37 @@ def hybrid_for(
     beta: Optional[float] = None,
     augments: Optional[Iterable[str]] = None,
     timeout: float = DEFAULT_TIMEOUT,
+    # RM-115 transport: the four routes have always parsed an ``enemies``
+    # roster, and no client function sent one. Four seams in the block below
+    # (apply_spell_shield, apply_item_spell_shield, apply_champion_tenacity,
+    # apply_build_tenacity) consume it and are INERT without it, so wiring the
+    # flags alone would have made them reachable and dead.
+    enemies: Optional[Iterable[str]] = None,
+    # RM-115 EHP-family seam block - appended LAST per the repo convention.
+    # All bools, all DEFAULT-OFF, emitted only when True. ``rune_ids`` is the
+    # transport the four apply_rune_* seams ride. ``apply_ad_axis_ability_damage``
+    # is deliberately absent: _route_hybrid does not parse it (it is
+    # /rank-bruiser only).
+    rune_ids: Optional[Iterable[str]] = None,
+    apply_item_resist_grants: bool = False,
+    apply_item_bonus_hp_amp: bool = False,
+    apply_item_mana_health: bool = False,
+    apply_item_spell_shield: bool = False,
+    apply_spell_shield: bool = False,
+    apply_passive_resist: bool = False,
+    apply_passive_mitigation: bool = False,
+    apply_passive_revive: bool = False,
+    apply_champion_tenacity: bool = False,
+    apply_build_tenacity: bool = False,
+    apply_survival_window: bool = False,
+    apply_mode_modifiers: bool = False,
+    apply_rune_resist_grants: bool = False,
+    apply_rune_health_grants: bool = False,
+    apply_rune_hsp_amp: bool = False,
+    apply_rune_flat_mitigation: bool = False,
+    assume_item_general_dr: bool = False,
+    assume_item_health_stacks: bool = False,
+    assume_item_proc_heal: bool = False,
 ) -> Optional[dict]:
     """Call POST /hybrid and return the raw result dict. None on failure.
 
@@ -932,6 +1181,32 @@ def hybrid_for(
         body["beta"] = float(beta)
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    if enemies:
+        body["enemies"] = [str(e) for e in enemies if e]
+    if rune_ids:
+        body["rune_ids"] = [str(r) for r in rune_ids if r]
+    _emit_ehp_family_seams(
+        body,
+        apply_item_resist_grants=apply_item_resist_grants,
+        apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
+        apply_item_mana_health=apply_item_mana_health,
+        apply_item_spell_shield=apply_item_spell_shield,
+        apply_spell_shield=apply_spell_shield,
+        apply_passive_resist=apply_passive_resist,
+        apply_passive_mitigation=apply_passive_mitigation,
+        apply_passive_revive=apply_passive_revive,
+        apply_champion_tenacity=apply_champion_tenacity,
+        apply_build_tenacity=apply_build_tenacity,
+        apply_survival_window=apply_survival_window,
+        apply_mode_modifiers=apply_mode_modifiers,
+        apply_rune_resist_grants=apply_rune_resist_grants,
+        apply_rune_health_grants=apply_rune_health_grants,
+        apply_rune_hsp_amp=apply_rune_hsp_amp,
+        apply_rune_flat_mitigation=apply_rune_flat_mitigation,
+        assume_item_general_dr=assume_item_general_dr,
+        assume_item_health_stacks=assume_item_health_stacks,
+        assume_item_proc_heal=assume_item_proc_heal,
+    )
     return _post_json("/hybrid", body, timeout=timeout)
 
 

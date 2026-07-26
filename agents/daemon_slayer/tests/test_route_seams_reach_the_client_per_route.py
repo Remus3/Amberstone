@@ -9,14 +9,24 @@ in ``core/daemon_slayer_client.py`` can express, and subtracts. That answers
 question and caught the ASSUMED-INCOMING-SHARE regression it was written for.
 
 It is not the question a caller actually has. ``apply_mode_modifiers`` is
-parsed by SEVEN routes; the moment ONE client function names it, the name-based
-guard reads it as reached on all seven. The same collapse hides
+parsed by EIGHT routes (/dps, /rank, /ehp, /rank-tank, /hybrid, /rank-bruiser,
+/v2/fight-report, /beam); the moment ONE client function names it, the
+name-based guard reads it as reached on all eight. The same collapse hides
 ``apply_item_resist_grants`` on ``/ehp`` behind its ``/rank-tank`` wire.
+
+(The 1.250.0 and 1.251.0 write-ups of this file say SEVEN. That was a
+miscount by one on my part and is corrected here; the argument is unaffected.
+Those entries are append-only history and were left as written.)
 
 Measured 2026-07-25 (ENGINE 1.250.0), the two questions differ by 3x:
 
   * name-collapsed stranded set  ..... 33
   * per-(route, seam) stranded set ... 101
+
+ENGINE 1.253.0 drained the EHP-family block - the 20 seams shared by /ehp,
+/hybrid, /rank-tank and /rank-bruiser, which were 76 of those 101 pairs -
+leaving 25 here and 12 in the sibling. The gap between the two questions is
+still real (25 vs 12) and still the reason this file exists.
 
 So RM-115's headline "34 stranded" is an UNDERCOUNT of the operator-visible
 debt, not because the census was sloppy but because it answered the weaker
@@ -64,14 +74,16 @@ _BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
 
 # ------------------------------------------------------------ the debt ledger
 # route -> seams that route parses but the client function POSTing that route
-# cannot express. Measured by the introspection below at ENGINE 1.250.0, NOT
-# copied from prose. 101 entries across 12 routes.
+# cannot express. Measured by the introspection below at ENGINE 1.253.0, NOT
+# copied from prose. 25 entries across 8 routes.
 #
-# Wired in the RM-115 pass that created this file, and therefore ABSENT here:
+# Wired across the RM-115 drain passes, and therefore ABSENT here:
 #   apply_ability_base_overrides ... /ability-dps, /burst, /rank-assassin,
 #                                    /rank-mage   (A-03 / RM-81, gates 2+3)
 #   apply_passive_aura_damage ...... /ability-dps, /rank-mage
 #                                    (A-07 / RM-82 TERM 2, gate 3)
+#   the 20-seam EHP-family block ... /ehp, /hybrid, /rank-tank,
+#                                    /rank-bruiser (1.253.0, 76 pairs)
 _STRANDED_BY_ROUTE: dict[str, frozenset[str]] = {
     '/ability-dps': frozenset({
         'apply_ability_amps',
@@ -97,47 +109,6 @@ _STRANDED_BY_ROUTE: dict[str, frozenset[str]] = {
         'apply_target_vuln',
         'assume_passive_as_stacks',
     }),
-    '/ehp': frozenset({
-        'apply_champion_tenacity',
-        'apply_item_bonus_hp_amp',
-        'apply_item_mana_health',
-        'apply_item_resist_grants',
-        'apply_item_spell_shield',
-        'apply_mode_modifiers',
-        'apply_passive_mitigation',
-        'apply_passive_resist',
-        'apply_passive_revive',
-        'apply_rune_flat_mitigation',
-        'apply_rune_health_grants',
-        'apply_rune_hsp_amp',
-        'apply_rune_resist_grants',
-        'apply_spell_shield',
-        'apply_survival_window',
-        'assume_item_general_dr',
-        'assume_item_health_stacks',
-        'assume_item_proc_heal',
-    }),
-    '/hybrid': frozenset({
-        'apply_build_tenacity',
-        'apply_champion_tenacity',
-        'apply_item_bonus_hp_amp',
-        'apply_item_mana_health',
-        'apply_item_resist_grants',
-        'apply_item_spell_shield',
-        'apply_mode_modifiers',
-        'apply_passive_mitigation',
-        'apply_passive_resist',
-        'apply_passive_revive',
-        'apply_rune_flat_mitigation',
-        'apply_rune_health_grants',
-        'apply_rune_hsp_amp',
-        'apply_rune_resist_grants',
-        'apply_spell_shield',
-        'apply_survival_window',
-        'assume_item_general_dr',
-        'assume_item_health_stacks',
-        'assume_item_proc_heal',
-    }),
     '/rank': frozenset({
         'apply_mode_modifiers',
         'exclude_off_axis_items',
@@ -148,51 +119,8 @@ _STRANDED_BY_ROUTE: dict[str, frozenset[str]] = {
         'assume_takedown',
         'exclude_off_axis_items',
     }),
-    '/rank-bruiser': frozenset({
-        'apply_ad_axis_ability_damage',
-        'apply_build_tenacity',
-        'apply_champion_tenacity',
-        'apply_item_bonus_hp_amp',
-        'apply_item_mana_health',
-        'apply_item_resist_grants',
-        'apply_item_spell_shield',
-        'apply_mode_modifiers',
-        'apply_passive_mitigation',
-        'apply_passive_resist',
-        'apply_passive_revive',
-        'apply_rune_flat_mitigation',
-        'apply_rune_health_grants',
-        'apply_rune_hsp_amp',
-        'apply_rune_resist_grants',
-        'apply_spell_shield',
-        'apply_survival_window',
-        'assume_item_general_dr',
-        'assume_item_health_stacks',
-        'assume_item_proc_heal',
-    }),
     '/rank-mage': frozenset({
         'apply_ability_amps',
-    }),
-    '/rank-tank': frozenset({
-        'apply_build_tenacity',
-        'apply_champion_tenacity',
-        'apply_item_bonus_hp_amp',
-        'apply_item_mana_health',
-        'apply_item_resist_grants',
-        'apply_item_spell_shield',
-        'apply_mode_modifiers',
-        'apply_passive_mitigation',
-        'apply_passive_resist',
-        'apply_passive_revive',
-        'apply_rune_flat_mitigation',
-        'apply_rune_health_grants',
-        'apply_rune_hsp_amp',
-        'apply_rune_resist_grants',
-        'apply_spell_shield',
-        'apply_survival_window',
-        'assume_item_general_dr',
-        'assume_item_health_stacks',
-        'assume_item_proc_heal',
     }),
     # No client function POSTs /v2/fight-report at all.
     '/v2/fight-report': frozenset({
@@ -371,18 +299,44 @@ class PerRouteSeamReachabilityTests(unittest.TestCase):
                 "kit_conversion_strength",
             )
 
-    def test_per_route_debt_exceeds_the_name_collapsed_count(self) -> None:
-        """Pin the measured gap between the two questions.
+    def test_per_route_debt_is_never_smaller_than_the_name_collapsed_debt(
+        self,
+    ) -> None:
+        """The structural relationship between the two ledgers.
 
-        Not a magic number - a floor. If a future pass makes the per-route
-        total DROP below the name-collapsed sibling's ledger size, the two
-        files have stopped measuring what their docstrings claim.
+        The original form of this test pinned a FLOOR of 33 - the sibling's
+        size at the time - on the theory that the per-route total dropping
+        below it would mean the two files had stopped measuring what their
+        docstrings claim. That premise was wrong, and draining the EHP-family
+        block at 1.253.0 disproved it: the per-route total legitimately fell to
+        25 while the sibling fell to 12. A hard floor was never the invariant.
+
+        The real one is an inequality that holds by construction. If a seam is
+        stranded by NAME it is expressible from no client function at all, so it
+        is stranded on EVERY route that parses it - at least one (route, seam)
+        pair. Therefore per-route total >= name-collapsed total, always, and
+        equality only when every stranded name is parsed by exactly one route.
+        A violation means one of the two introspections has drifted.
         """
-        total = sum(len(s) for s in _STRANDED_BY_ROUTE.values())
+        from agents.daemon_slayer.tests import (  # noqa: PLC0415
+            test_route_seams_reach_the_client as sibling,
+        )
+
+        per_route = sum(len(s) for s in _STRANDED_BY_ROUTE.values())
+        by_name = len(sibling._STRANDED_TODAY)
         self.assertGreaterEqual(
-            total, 33,
-            "the per-route ledger has fallen below the name-collapsed "
-            "sibling's - re-read both docstrings before touching this",
+            per_route, by_name,
+            f"per-route debt ({per_route}) is below the name-collapsed debt "
+            f"({by_name}), which is impossible if both introspections are "
+            "sound: a name stranded everywhere must contribute at least one "
+            "(route, seam) pair. One of the two scans has drifted.",
+        )
+        # And the gap is the whole reason this file exists - if it ever closes,
+        # every stranded name is single-route and the sibling would suffice.
+        self.assertGreater(
+            per_route, by_name,
+            "the two ledgers have converged; re-read both docstrings before "
+            "assuming this file still earns its keep",
         )
 
 
