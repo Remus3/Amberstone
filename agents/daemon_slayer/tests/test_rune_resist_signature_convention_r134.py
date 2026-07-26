@@ -194,6 +194,16 @@ _R194C_TAIL = ("targets_in_rotation", "assume_cleave_lifesteal")
 # mid-signature.
 _RM91_TAIL = ("apply_health_damage_coupling", "health_coupling_strength")
 
+# RM-91 T2 appends the ITEM caster-HP proc pair after T1's, again to
+# ``rank_items_by_ehp`` ONLY and for the same reason: nothing in the EHP math
+# reads it, so mirroring it onto ``compute_ehp`` would be a signature-tidy
+# pretending to be a capability. T2 is a SEPARATE pair from T1 rather than a
+# widening of it because the two credit different payers - T1 the champion's kit
+# re-spending the health DELTA, T2 the candidate item re-spending the EXISTING
+# pool - so one merged flag would arm a credit the other never earned. Ordered
+# gate-then-magnitude, matching both siblings.
+_RM91T2_TAIL = ("apply_item_caster_hp_proc", "item_caster_hp_proc_strength")
+
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
 _SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
@@ -222,7 +232,8 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
             ((compute_ehp,), shared + _RM87_TAIL + _R193_TAIL + _R194C_TAIL),
             (
                 (rank_items_by_ehp,),
-                shared + _RM87_TAIL + _A1250_TAIL + _R194A_TAIL + _RM91_TAIL,
+                shared + _RM87_TAIL + _A1250_TAIL + _R194A_TAIL + _RM91_TAIL
+                + _RM91T2_TAIL,
             ),
             ((compute_hybrid,), hybrid_shared),
             ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL),

@@ -428,6 +428,16 @@ def rank_tank_for(
     # per the no-mid-signature-insert convention.
     apply_health_damage_coupling: Optional[bool] = None,
     health_coupling_strength: Optional[float] = None,
+    # RM-91 T2: the ITEM caster-HP proc lever (/rank-tank only, sort-only) - the
+    # half that fixes the row's headline. T1 above is monotone in the candidate's
+    # health delta and so cannot reorder two health items; this pair credits the
+    # candidate ITEM's own caster-HP-scaling proc and is keyed by ITEM ID, so a
+    # zero-proc item (Randuin's Omen 3143) earns nothing regardless of how much
+    # health it grants. A SEPARATE flag from T1 because the two credit different
+    # payers, so arming one must never silently arm the other. Both default None
+    # -> key omitted -> the engine's DEFAULT-OFF path, byte-identical.
+    apply_item_caster_hp_proc: Optional[bool] = None,
+    item_caster_hp_proc_strength: Optional[float] = None,
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -475,6 +485,8 @@ def rank_tank_for(
         ("apply_resist_damage_coupling", apply_resist_damage_coupling),
         # RM-91: the health-axis twin, same None-means-inherit contract.
         ("apply_health_damage_coupling", apply_health_damage_coupling),
+        # RM-91 T2: the ITEM-keyed half, same contract again.
+        ("apply_item_caster_hp_proc", apply_item_caster_hp_proc),
     ):
         if _val is not None:
             body[_key] = bool(_val)
@@ -482,6 +494,8 @@ def rank_tank_for(
         body["resist_coupling_strength"] = float(resist_coupling_strength)
     if health_coupling_strength is not None:
         body["health_coupling_strength"] = float(health_coupling_strength)
+    if item_caster_hp_proc_strength is not None:
+        body["item_caster_hp_proc_strength"] = float(item_caster_hp_proc_strength)
     if enemies:
         body["enemies"] = [str(e) for e in enemies if e]
     if rune_ids:
