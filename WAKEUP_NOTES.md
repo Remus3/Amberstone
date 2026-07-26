@@ -4,6 +4,48 @@
 
 ---
 
+# 2026-07-26g - R195 HEXCORE anchor drift made machine-enforced (gemini loop cycle 5, operator halt)
+
+**Shipped:** `a27e5e6b` + `07360f10` (sha fill), pushed. Tier-0/1 - no ENGINE bump, no DS
+bounce, no RC restart, no Share sync.
+
+**The result worth carrying forward: the directive's DUST half was already done, and
+measuring that before editing was the deliverable.** The directive asked for DUST leaves for
+every net-new non-test `.py` since `d584e02e` - but that is R164's baseline and three refills
+have landed on top of it (R188 `bb847bd0`, R191 `b4df6494`, which literally says "9 net-new
+DUST leaves, dust 341 -> 350"). Parsing the shipped `var DUST=` literal against the 54
+net-new basenames gives **0 missing**. Zero DUST edits was the correct output. A
+`git log -1 -- <cited file>` age check caught it before any code.
+
+**The real defect was anchor drift, and the fix is a guard rather than a seventh hand
+refill.** Six passes (R146, R151, R157, R164, R188, R191) re-typed the same numbers by hand
+because nothing tied them to the repo, so the HUD sat three ENGINE bumps stale. Re-anchored
+ENGINE 1.254.0 -> 1.256.0, 9746 -> 9849 DS tests (both cite sites), commits 3972 -> 4007,
+last `686a4b48` -> `cc6c241f`, LEDGER 1054 -> 1058. Then added 4 guards to
+`tests/test_hexcore_offline_dust.py` (11 -> 15) that read `ENGINE_VERSION` out of
+`agents/daemon_slayer/__init__.py` + the patch out of `data/daemon_slayer/current.txt`, so the
+NEXT bump that forgets this file goes RED at the bump. The DS test count is pinned for
+INTERNAL AGREEMENT across cite sites, not to a literal - the live number moves every batch, so
+a literal guard is either wrong or forces an edit per batch, while agreement still catches the
+half-refill. The LEDGER high-water anchor is deliberately unguarded (advances every session).
+
+**Carry-forward / OWED:** the full RC `tests/` run was still in flight when the operator
+called halt - it is NOT measured this cycle and NOT carried forward from R194. DS is measured:
+9849 passed / 1 skipped / 4661 subtests. Targeted gate (hexcore guard + the three
+ASCII/mojibake/u2500 hygiene modules) 28 passed, ruff clean, `node --check` clean on the
+extracted 147956-char script block, 0 non-ASCII bytes. CI was in_progress at halt on
+`07360f10` - confirm green next session.
+
+**Don't-redo:** the `d584e02e` DUST baseline is exhausted. Do NOT re-issue "sync HEXCORE
+against net-new files since d584e02e". A future refill computes its baseline from
+`git log -1 -- docs/HEXCORE_offline.html`, never from a directive's remembered sha.
+
+**Loop:** operator sent "halt when done" mid-cycle. In-flight slice finished, committed,
+pushed; `ops/loop/control/STOP` dropped so the controller + AHK bridge exit. No new phase
+started.
+
+---
+
 # 2026-07-26f - R194 DS vamp/sustain follow-ons (gemini loop cycle 4, unattended)
 
 **Shipped:** ENGINE 1.255.0 -> 1.256.0 (`223362e3`), ROADMAP **RM-116 CLOSED**. Three
@@ -73,61 +115,3 @@ over (R181 + R193 + R194). The Sundered Sky overheal shield is REFUTED with a gu
 3. `feedback_gamepc_league_fullscreen_lockup.md` in memory dir: Game-PC RETIRED. Advice names dead infra (Parsec + Duet adapters on Game-PC). Delete or retarget to Legion virtual-display guidance?
 4. `project_out_of_game_spatial_brand.md` in memory dir: parked worktree files (pseudo_screen_overlay.py, rofl_stats_backfill.py) are merged to main. Theme work (Hextech-Unified + Deep Terminal, palette pick) status unclear - resolved or still pending?
 5. CLAUDE.md "TDD First" section: stale suite counts (DS 9546 / RC 13061, dated 2026-07-25). Current from 2026-07-26d: DS 9783 / RC 13115. Approve CLAUDE.md touch to update?
-
----
-
-# 2026-07-26d - the directive asked for a sweep that was already closed (R193, gemini loop cycle 3)
-
-ENGINE **1.254.0 -> 1.255.0**, patch 16.14.1. HEAD `9fde56bb`. Three worktree
-slices on disjoint file sets, Claude sole merger, read-only verifier gate before
-every merge. Suites fresh AFTER the last edit: DS **9783 passed / 1 skipped /
-4653 subtests**, RC `tests/` **13115 passed / 106 skipped / 460 subtests**.
-
-**The first deliverable was refusing the stated scope.** R193 asked for base
-lifesteal magnitudes + Arena/ARAM mirror parity on the six headline vamp items -
-R181 verbatim, which measured ZERO DRIFT and left a 15-test guard on disk, with
-Bloodthirster's Ichorshield, Shieldbow's Lifeline and Riftmaker's omnivamp all
-already modelled. Re-running it would have produced a confident CLEAN and no
-value. Three read-only recon agents were aimed at what R181 did NOT cover - the
-vamp math model, the wider sustain family's magnitudes, and route reachability -
-and every one came back with a real defect.
-
-What landed:
-
-- **hydra_cleave had desynced and the suite was defending the bug.** Ravenous
-  Hydra 3074 / 223074 modelled Cleave at 0.35 total AD; Meraki 16.14.1 reads
-  40%; the two siblings with byte-identical Meraki text were already at 0.40.
-  Two tests asserted Ravenous scores BELOW its own siblings - a stale
-  coefficient frozen as a feature. Sibling sweep then caught Tiamat 3077 at
-  0.50, likewise pinned. Fixing only 3074 would have repeated the
-  narrow-first-fix pattern of items 208/213.
-- **Neither fix moves a shipped build table, and that was measured** - all four
-  families regenerated full-roster across BOTH keyspaces, every diff is the two
-  stamp lines. Cleave only fires at `targets_in_rotation > 1`; the tables are
-  single-target.
-- **DEFAULT-OFF `assume_crit_weighted_vamp`** - the vamp heal pool priced
-  lifesteal off an auto-attack that never crits. OFF byte-identical (verifier
-  re-measured against main, full result-dict md5 match), ARMED x1.7875 on Jinx
-  L16, exact no-op at zero crit. It moves `blended_ehp`, so the flip is
-  operator-gated.
-- **`assume_max_stacks_omnivamp` was stranded** - zero occurrences in
-  `server.py`. Now on `/ehp` + client keyword. **Both reachability guards were
-  green the whole time and structurally cannot see this class**: they enumerate
-  keys `server.py` already parses, so a never-parsed kwarg never enters the set.
-  A green seam guard is evidence about parsed keys, not about capability.
-
-**The verifier gate paid for itself again.** It BLOCKED slice B on a real
-regression (`test_rune_resist_signature_convention_r134.py`) that neither of
-that slice's own test scopes collected, so the slice's green claim was true and
-insufficient. It also found corrupted git indexes in two worktrees (phantom
-staged deletions, files intact) and proved every committed blob matched disk.
-
-Three RC-side failures at the end were mine and are fixed, not waived: the
-Share README release-history is a SEPARATE site from the auto-restamped header,
-and the new route test imports the host-only client by design so it needed
-registering in `ds_share_sync._HOST_DEPENDENT_TESTS`.
-
-Next session: RM-116 (a) ranker-lane forwarding of the omnivamp flag, (b)
-Sundered Sky 6610 overheal-to-bonus-health, (c) lifesteal credit on Ravenous
-Cleave/Crescent. Do NOT re-commission a vamp base-magnitude sweep - closed
-twice now.
