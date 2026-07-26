@@ -145,6 +145,77 @@ promoting anything to a coaching rule.
 
 ---
 
+## 4b. What the first corpus run actually said - normalisation decided
+
+Measured 2026-07-26 over 1266 matches, re-measured at 1343 after the fixes
+below. The corpus was still ingesting, so treat the numbers as a shape, not a
+final table. **Nothing was promoted to a coaching rule, and the reason is that
+the loudest rows were artefacts of how the population was counted.**
+
+Four corrections now ship inside `tools/mine_event_patterns.py`:
+
+**1. A team-level criterion was counted five times.** `gold_deficit_profile`
+is computed from TEAM gold totals, so all five players on a side carry the
+identical value. The tell was in the output: it read `0.240 / 0.709 / -0.469`
+byte-identically across all five roles. It now mines once per team under the
+role `TEAM`, and its `n` is halved to what it always was.
+
+**2. Raw counts confounded "died more" with "played longer."** Losing games
+are not the same length as winning ones, so `death_cost`, `early_deaths`,
+`solo_deaths` and `death_gold_given` now carry per-minute companions. The
+per-minute view is the stronger one - JUNGLE `deaths_per_min` reaches effect
+-1.43 against -1.17 for the raw count.
+
+**3. `shutdowns_given` measured exposure, not behaviour, and unnormalised it
+would have coached the opposite of the truth.** Winners gave MORE shutdown
+gold in every single role (1.42 vs 0.52). A shutdown is only payable if the
+victim was already on a streak, so the raw count measures how often you were
+ahead. It is now accompanied by `shutdown_rate` = shutdowns over your own
+deaths. **That rate still separates hugely (JUNGLE 0.505 vs 0.097) and is
+still NOT promotable**, because "half of a winner's deaths were made while
+ahead" restates the outcome. Only a rate over *deaths while on a streak* would
+be a behaviour, and streak state is not directly carried per victim.
+
+**4. The gate flagged a 0.008 difference.** A relative-separation threshold
+alone clears trivially when the base is small: SUPPORT `plate_share` read
+SEPARATES on 0.035 vs 0.027. Every row now also carries a standardised effect
+size and SEPARATES needs both. That correction alone flipped SUPPORT, MID and
+TOP `plate_share` to NO SEPARATION and left JUNGLE standing.
+
+**A fifth problem is exposed rather than fixed, because fixing it in the
+criterion would be worse.** `objective_participation` emits nothing when a
+team took zero elite monsters, and those teams are disproportionately the
+losing ones - measured, 209 absent loss rows against 29 absent win rows. The
+loss mean is therefore taken over survivors and reads too high. Every row now
+prints `absent(w/l)`; emitting a synthetic 0.0 instead would invent a
+participation figure for a game that had nothing to participate in.
+
+### The reading
+
+- **`kill_participation` is inert, not merely near-tautological.** NO
+  SEPARATION in all five roles (BOT 0.487 vs 0.473, effect 0.11). It is
+  already team-normalised, and with five players sharing credit on every kill
+  its mean is mechanically pinned. The suspicion in the brief was right, and
+  the correctly-normalised version of a tautology is a criterion that says
+  nothing at all. That is the model for every other row.
+- **Death rate and gold deficit separate hardest and are the least useful.**
+  `deaths_per_min` and TEAM `gold_deficit_profile` (effect -1.92) restate the
+  outcome. Do not promote an outcome as a lesson.
+- **The one candidate worth a targeted follow-up is JUNGLE `plate_share`**:
+  0.079 vs 0.047, effect 0.42, and it is the only role where plate share
+  survives the effect gate. It is role-specific, not an outcome restatement,
+  and not obvious.
+
+### Standing constraint on every row here
+
+The ten rows from one match share a game, a duration and an outcome, so they
+are **not independent**. `n` is an upper bound on information, not a sample
+size, and no p-value is reported - computing one under that dependence would
+be fabricated precision. Promotion needs a held-out split by MATCH, not by
+row, and that split is not built yet.
+
+---
+
 ## 5. Criteria by role
 
 Each row: **what** | **tier** | **fields** | **LIVE / PGR**.
