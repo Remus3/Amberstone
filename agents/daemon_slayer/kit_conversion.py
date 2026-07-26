@@ -299,6 +299,21 @@ _OFF_AXIS_KEYS = {
     "ap": {"FlatHPPoolMod", "FlatArmorMod", "FlatSpellBlockMod",
            "FlatPhysicalDamageMod", "PercentLifeStealMod"},
     "ehp": {"FlatPhysicalDamageMod", "FlatMagicDamageMod", "PercentLifeStealMod"},
+    # RM-115 p4: the BLENDED objective. ds.hybrid scores alpha*dps + beta*ehp,
+    # so a stat is off-axis for it only when it is off-axis for BOTH terms -
+    # i.e. the INTERSECTION of the damage set and the "ehp" set above, not
+    # either one alone. Health, armor and magic resist are therefore ON-axis
+    # here even though the damage sets penalise them: for a bruiser they ARE
+    # the beta term. Reproduces the Olaf note at :128-129 ("nothing is off-axis
+    # for him except AP") exactly.
+    #
+    # Passing a bare "ad"/"ap" here instead would be inert for the four bruiser
+    # entries (their off_axis_stat is 1.00, so the shortfall is 0 and the set is
+    # never consulted) but would OVER-FIRE for the two entries with
+    # off_axis_stat 0.00 - Naafiri and Orianna - which /rank-bruiser will
+    # happily accept. `_off_axis_intersection_rm115` guards the derivation.
+    "hybrid_ad": {"FlatMagicDamageMod"},
+    "hybrid_ap": {"FlatPhysicalDamageMod", "PercentLifeStealMod"},
 }
 
 # One component's worth of off-axis stat. Liandry's clears it at 800g and

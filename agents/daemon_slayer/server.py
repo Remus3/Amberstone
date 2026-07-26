@@ -1020,6 +1020,12 @@ def _route_rank_bruiser(body: dict) -> dict:
     apply_ad_axis_ability_damage = _opt_bool(
         body, "apply_ad_axis_ability_damage", False
     )
+    # RM-115 p4 / RM-86 L1: the kit-conversion gate, extended from the CARRY
+    # route (server.py:518) to the bruiser ranker - the gate-2 half of the
+    # plumb that strands Olaf / Pantheon / RekSai / Riven. hybrid.py consults
+    # the registry ONLY when the strength is > 0.0, so 0.0 does no lookup and
+    # no arithmetic and is byte-identical to omitting the key.
+    kit_conversion_strength = _opt_float(body, "kit_conversion_strength", 0.0)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -1062,6 +1068,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             cost_ceiling=cost_ceiling,
             target_current_hp_pct=target_current_hp_pct,
             apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
+            kit_conversion_strength=kit_conversion_strength,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
