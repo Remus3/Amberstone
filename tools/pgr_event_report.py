@@ -49,6 +49,8 @@ def main(argv=None) -> int:
     ap.add_argument("--pid", type=int, default=1, help="participant 1-10")
     ap.add_argument("--all-players", action="store_true")
     ap.add_argument("--baselines", default=DEFAULT_BASELINES)
+    ap.add_argument("--cohort", help="rank cohort to compare against, e.g. "
+                    "GOLD_II. Required when --baselines holds many cohorts.")
     ap.add_argument("--json", action="store_true", help="emit the raw dict")
     args = ap.parse_args(argv)
 
@@ -67,7 +69,11 @@ def main(argv=None) -> int:
     baselines = {}
     bp = Path(args.baselines)
     if bp.exists():
-        baselines = cb.load(bp)
+        try:
+            baselines = cb.load(bp, cohort=args.cohort)
+        except ValueError as exc:
+            print(f"NOTE: {exc}")
+            return 2
     else:
         print(f"NOTE: {bp} absent - cohort bands will report as unavailable")
 
