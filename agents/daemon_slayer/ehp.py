@@ -704,6 +704,60 @@ def _lifesteal_heal(
     return _vamp_heal_pool(lifesteal_pct, ad, attack_speed, fight_window_s)
 
 
+def _crit_weighted_vamp_multiplier(
+    item_ids: Iterable[str | int],
+    crit_chance: float,
+    caster_bonus_hp: float = 0.0,
+    assume_crit_weighted_vamp: bool = False,
+) -> float:
+    """R193 (slice B): crit-weight factor for the vamp heal pool.
+
+    Returns ``1.0`` (identity) when ``assume_crit_weighted_vamp`` is False - the
+    shipped default, so every existing EHP number is byte-identical - and
+    ``1 + crit_total * crit_damage_bonus_total`` when armed.
+
+    WHY this seam exists: ``_vamp_heal_pool`` prices vamp off ``AD * AS *
+    window``, the UNCRIT auto-attack throughput. An auto-attack actually lands
+    ``AD * (1 + crit * crit_damage_bonus)`` (the expression DS already ships at
+    dps.py:1283) and lifesteal heals off that crit-inflated hit, so a crit
+    carry's sustain is under-credited by the whole crit factor (measured 306.18
+    -> 547.30, x1.788, on a 5-item L16 Jinx). Crit is a WIELDER-side stat the
+    EHP scorer already fully resolves - ``stats["crit"]`` plus the item-effect
+    crit-chance lane (Yun Tal / Atma's) that dps.py:1083 folds in - so unlike an
+    enemy-state term there is nothing to assume here.
+
+    WHY it is nonetheless DEFAULT-OFF and operator-gated: the pool's
+    pre-mitigation over-credit (vamp priced off PRE-armor damage) is a
+    DELIBERATE enemy-agnostic posture of this scorer, not an oversight - see the
+    ``_vamp_heal_pool`` docstring. Arming this seam multiplies the crit factor
+    straight into that same unmitigated number, so it WIDENS the pre-mitigation
+    over-credit on exactly the crit builds where it is already largest. Getting
+    the crit half right and the armor half wrong is a net posture change, which
+    is why the live flip stays with the operator. This seam does NOT touch the
+    pre-mitigation posture in either direction.
+
+    No formula is invented here: the crit-chance stack (sum then clamp at 1.0,
+    honouring the engine's crit cap at engine.py:185) and the crit-damage bonus
+    (``DEFAULT_CRIT_BONUS`` plus ``total_crit_damage_bonus``) are lifted from
+    dps.py:1083 / dps.py:1283 verbatim so the two sides cannot drift. The dps
+    import is lazy + flag-gated so the OFF path pays no import cost.
+    """
+    if not assume_crit_weighted_vamp:
+        return 1.0
+    from .effects import total_crit_chance_bonus, total_crit_damage_bonus
+    from .dps import DEFAULT_CRIT_BONUS
+
+    effects = []
+    for item_id in item_ids:
+        eff = ITEM_EFFECTS.get(str(item_id))
+        if eff is not None:
+            effects.append(eff)
+    crit_from_effects = total_crit_chance_bonus(effects, max(0.0, caster_bonus_hp))
+    crit_total = min(max(0.0, crit_chance) + max(0.0, crit_from_effects), 1.0)
+    crit_bonus = max(0.0, DEFAULT_CRIT_BONUS + total_crit_damage_bonus(effects))
+    return 1.0 + crit_total * crit_bonus
+
+
 def effective_cc_duration(base_cc_s: float, tenacity_mult: float) -> float:
     """Apply ARAM tenacity multiplier to a base CC duration.
 
@@ -1390,6 +1444,19 @@ def compute_ehp(
     # registry and the refutation of the original "resists pay twice" filing.
     apply_resist_damage_coupling: bool = False,
     resist_coupling_strength: float = 0.0,
+    # R193 slice B: default-OFF opt-in to CRIT-WEIGHT the vamp heal pool
+    # (lifesteal / spellvamp / omnivamp). The pool prices vamp off the UNCRIT
+    # ``AD * AS * window`` throughput even though the wielder's crit is already
+    # resolved in ``stats``; an auto-attack lands ``AD * (1 + crit *
+    # crit_damage_bonus)`` (dps.py:1283) and lifesteal heals off that hit, so a
+    # crit carry's sustain is under-credited by the whole crit factor (x1.788
+    # measured on a 5-item L16 Jinx; a zero-crit build is an exact no-op).
+    # Byte-identical OFF (``_crit_weighted_vamp_multiplier`` returns 1.0).
+    # Live default-ON flip is operator-gated BECAUSE arming it widens the
+    # deliberate pre-mitigation over-credit on crit builds - see
+    # ``_crit_weighted_vamp_multiplier`` for that rationale. Appended at END per
+    # the no-mid-signature-insert convention.
+    assume_crit_weighted_vamp: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1605,11 +1672,20 @@ def compute_ehp(
             assume_item_proc_heal=True,
         )
 
+    # R193 slice B: the crit-weight factor for every vamp lane (lifesteal here,
+    # spellvamp / omnivamp at the sustain blend below) is resolved ONCE so the
+    # three lanes cannot drift apart. 1.0 when the seam is OFF -> byte-identical.
+    crit_vamp_mult = _crit_weighted_vamp_multiplier(
+        resolved.item_ids,
+        float(stats.get("crit", 0.0)),
+        caster_bonus_hp=bonus_hp,
+        assume_crit_weighted_vamp=assume_crit_weighted_vamp,
+    )
     heal_lifesteal = _lifesteal_heal(
         lifesteal_pct=float(stats.get("lifesteal", 0.0)),
         ad=float(stats.get("ad", 0.0)),
         attack_speed=float(stats.get("as", 0.0)),
-    )
+    ) * crit_vamp_mult
     heal_amp_mult = _total_heal_amp(resolved.item_ids)
     # ENGINE 1.225.0 (R136): RM-101 rune HEALTH grants - Overgrowth 8451's
     # permanent max-HP (3 per 8 absorbed, plus a DISCRETE 3.5% max-HP threshold at
@@ -2190,12 +2266,15 @@ def compute_ehp(
 
     ad_stat = float(stats.get("ad", 0.0))
     as_stat = float(stats.get("as", 0.0))
+    # R193 slice B: the same ``crit_vamp_mult`` the lifesteal lane took above -
+    # these two lanes share the AA-throughput proxy, so they share its crit
+    # weighting. 1.0 when the seam is OFF -> byte-identical.
     heal_spellvamp = _vamp_heal_pool(
         float(stats.get("spellvamp", 0.0)), ad_stat, as_stat
-    )
+    ) * crit_vamp_mult
     heal_omnivamp = _vamp_heal_pool(
         float(stats.get("omnivamp", 0.0)), ad_stat, as_stat
-    )
+    ) * crit_vamp_mult
     vamp_extra_amped = (heal_spellvamp + heal_omnivamp) * heal_amp_mult
     effective_ehp_with_sustain = _blend_with_heal(heal_total + vamp_extra_amped)
     ehp_without_sustain = _blend_with_heal(heal_item_total * heal_amp_mult)
