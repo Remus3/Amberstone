@@ -2786,6 +2786,21 @@ class EhpRankedItem:
     # key is the only consumer.
     delta_armor: float = 0.0
     delta_mr: float = 0.0
+    # R194 slice A (RM-116 part a): the SUSTAIN axis surface. ``sustain_ehp`` is
+    # the new build's ``effective_ehp_with_sustain`` - blended EHP with the vamp
+    # heal pool (lifesteal + spellvamp + omnivamp) folded into the numerator -
+    # and ``delta_sustain_ehp`` is its gain over the baseline build. The vamp
+    # extra is an ADDEND, not a multiplier, and only a candidate that actually
+    # carries vamp earns one, which is why ranking on it reorders where a
+    # uniform numerator multiplier provably cannot.
+    #
+    # Appended at END with defaults per the Python dataclass convention. No
+    # shipped item resolves a spellvamp or omnivamp STAT, so both fields sit at
+    # their blended identity (sustain == blended) until
+    # ``assume_max_stacks_omnivamp`` arms the Riftmaker credit - the default row
+    # is unmoved.
+    sustain_ehp: float = 0.0
+    delta_sustain_ehp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -2807,6 +2822,8 @@ class EhpRankedItem:
             "delta_team_blended_ehp": self.delta_team_blended_ehp,
             "delta_armor": self.delta_armor,
             "delta_mr": self.delta_mr,
+            "sustain_ehp": self.sustain_ehp,
+            "delta_sustain_ehp": self.delta_sustain_ehp,
         }
 
 
@@ -2829,7 +2846,8 @@ class EhpRankResult:
     ranked: tuple[EhpRankedItem, ...]
     notes: tuple[str, ...] = field(default_factory=tuple)
     # Item 236: which EHP metric drove the ranking - "blended" (default,
-    # PRE-cc) or "cc_blended" (enemy-CC-lockdown-adjusted).
+    # PRE-cc), "cc_blended" (enemy-CC-lockdown-adjusted), "team_blended"
+    # (self + ally-granted) or "sustain" (vamp-inclusive, R194 slice A).
     score_by: str = "blended"
 
     def to_dict(self) -> dict:
@@ -2974,6 +2992,15 @@ def rank_items_by_ehp(
     assume_item_crit_dr: bool = True,
     assume_item_aa_dr: bool = True,
     assume_item_enemy_as_slow: bool = True,
+    # R194 slice A (RM-116 part a): the item-passive omnivamp credit (Riftmaker
+    # 4633 / 224633 Void Corruption at MAX stacks), forwarded verbatim to BOTH
+    # the baseline and every candidate ``compute_ehp`` call. Appended at END per
+    # the no-mid-signature-insert convention. ``compute_ehp`` has carried it
+    # since 2026-07-10 and R193 slice C exposed it on the /ehp SCALAR lane only;
+    # this is the RANKER lane. DEFAULT-OFF and byte-identical OFF - and even ON
+    # the credit lands on the SUSTAIN metric alone, so it moves the ordering
+    # only under ``score_by="sustain"``.
+    assume_max_stacks_omnivamp: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -2998,6 +3025,14 @@ def rank_items_by_ehp(
         so nothing about the ordering changes).
       * ``"cc_blended"`` - the enemy-CC-lockdown-adjusted ``cc_blended_ehp`` delta.
         A tank picking into a heavy-CC comp ranks by CC-adjusted effective HP.
+      * ``"sustain"`` - R194 slice A (RM-116 part a). The vamp-inclusive
+        ``effective_ehp_with_sustain`` delta: blended EHP with the lifesteal /
+        spellvamp / omnivamp heal pool folded into the numerator. The vamp extra
+        is an ADDEND earned per CANDIDATE, so unlike a uniform numerator
+        multiplier it genuinely reorders. No shipped item resolves a spellvamp
+        or omnivamp STAT, so this mode is the byte-identical blended order until
+        ``assume_max_stacks_omnivamp`` arms the Riftmaker credit - the same
+        arms-when-fed shape as ``cc_blended`` with no ``enemy_champions``.
     ``enemy_champions`` (the enemy comp) + ``include_conditional`` (fold the
     probability-weighted conditional-CC registry into the discount) are threaded
     into every ``compute_ehp`` call so the baseline + each candidate share the
@@ -3030,10 +3065,10 @@ def rank_items_by_ehp(
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
-    if score_by not in ("blended", "cc_blended", "team_blended"):
+    if score_by not in ("blended", "cc_blended", "team_blended", "sustain"):
         raise ValueError(
-            "score_by must be 'blended', 'cc_blended' or 'team_blended', "
-            f"got {score_by!r}"
+            "score_by must be 'blended', 'cc_blended', 'team_blended' or "
+            f"'sustain', got {score_by!r}"
         )
     enemy_champions = tuple(str(e) for e in (enemy_champions or ()))
     # Item 236: tenacity-credit defaults ON for cc_blended ranking (an
@@ -3159,6 +3194,11 @@ def rank_items_by_ehp(
         assume_item_crit_dr=assume_item_crit_dr,
         assume_item_aa_dr=assume_item_aa_dr,
         assume_item_enemy_as_slow=assume_item_enemy_as_slow,
+        # R194 slice A: forwarded to the BASELINE call so a prefix build that
+        # already owns Riftmaker is credited the same way a candidate is.
+        # Forwarding only the candidate side would compare an armed candidate
+        # against a disarmed baseline and manufacture the whole delta.
+        assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
     )
 
     # RM-87 / row A-18 (2026-07-25): resolve the resist -> damage coupling ONCE.
@@ -3267,6 +3307,7 @@ def rank_items_by_ehp(
                 assume_item_crit_dr=assume_item_crit_dr,
                 assume_item_aa_dr=assume_item_aa_dr,
                 assume_item_enemy_as_slow=assume_item_enemy_as_slow,
+                assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
             )
         except (KeyError, ValueError):
             continue
@@ -3289,9 +3330,18 @@ def rank_items_by_ehp(
         )
         team_delta = delta + cand_ally_grant
         team_ehp = scored.blended_ehp + _baseline_ally_ehp + cand_ally_grant
+        # R194 slice A: the vamp-inclusive delta. ``compute_ehp`` already
+        # computes both sides, so this costs one subtraction and no extra call.
+        # Equals ``delta`` exactly whenever neither build resolves a spellvamp
+        # or omnivamp stat, which is every build until the omnivamp seam is
+        # armed - the row identity the default path relies on.
+        sustain_delta = (
+            scored.effective_ehp_with_sustain - baseline.effective_ehp_with_sustain
+        )
         active_delta = (
             cc_delta if score_by == "cc_blended"
             else team_delta if score_by == "team_blended"
+            else sustain_delta if score_by == "sustain"
             else delta
         )
         eff = (active_delta / (gold / 1000.0)) if (gold > 0 and active_delta > 0) else 0.0
@@ -3327,16 +3377,21 @@ def rank_items_by_ehp(
             delta_team_blended_ehp=team_delta,
             delta_armor=cpl_d_armor,
             delta_mr=cpl_d_mr,
+            sustain_ehp=scored.effective_ehp_with_sustain,
+            delta_sustain_ehp=sustain_delta,
         ))
 
     # Item 236: the sort key tracks score_by. Default "blended" sorts on
     # delta_ehp (byte-identical); "cc_blended" sorts on delta_cc_blended_ehp.
     # Term A: "team_blended" sorts on delta_team_blended_ehp.
+    # R194 slice A: "sustain" sorts on delta_sustain_ehp.
     _active = (
         (lambda r: r.delta_cc_blended_ehp)
         if score_by == "cc_blended"
         else (lambda r: r.delta_team_blended_ehp)
         if score_by == "team_blended"
+        else (lambda r: r.delta_sustain_ehp)
+        if score_by == "sustain"
         else (lambda r: r.delta_ehp)
     )
 
@@ -3460,6 +3515,15 @@ def rank_items_by_ehp(
                 f" (ally reach ON, grant amortized at {_ally_grant_mult:.2f})"
                 if _ally_grant_mult
                 else " (champion has no ally-facing ability -> identical to blended)"
+            )
+        )
+    if score_by == "sustain":
+        notes.append(
+            "score_by=sustain - ranked on vamp-inclusive effective EHP"
+            + (
+                " (assume_max_stacks_omnivamp ON - item omnivamp credited)"
+                if assume_max_stacks_omnivamp
+                else " (no vamp source armed -> identical to blended)"
             )
         )
     if surv_active:

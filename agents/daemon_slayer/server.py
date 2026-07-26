@@ -620,8 +620,8 @@ def _route_ehp(body: dict) -> dict:
     # (ehp.py) and was STRANDED - no route parsed it, so no client could arm it,
     # and the two reachability guards could not see it (they build their universe
     # from keys server.py already parses). Absent key -> False -> byte-identical
-    # response. /ehp ONLY: rank_items_by_ehp does not accept the kwarg, so the
-    # ranker lane stays deliberately unexposed.
+    # response. R194 slice A extended the seam to the RANKER lane as well, where
+    # it is only visible under score_by="sustain" (see _route_rank_tank).
     assume_max_stacks_omnivamp = _opt_bool(body, "assume_max_stacks_omnivamp", False)
     try:
         result = compute_ehp(
@@ -700,12 +700,15 @@ def _route_rank_tank(body: dict) -> dict:
     enemies = _coerce_str_list(body.get("enemies"), "enemies")
     include_conditional = _opt_bool(body, "include_conditional", False)
     # Term A (2026-07-18): "team_blended" is tank-only - /rank-bruiser keeps the
-    # two-value allowlist, since ds.hybrid has no ally-grant term.
+    # two-value allowlist, since ds.hybrid has no ally-grant term. R194 slice A
+    # adds "sustain" on the same tank-only footing: ds.hybrid has no
+    # effective_ehp_with_sustain surface to rank on.
     score_by = _opt_str(body, "score_by", "blended") or "blended"
-    if score_by not in ("blended", "cc_blended", "team_blended"):
+    if score_by not in ("blended", "cc_blended", "team_blended", "sustain"):
         raise _ApiError(
             400,
-            f"score_by: must be blended|cc_blended|team_blended, got {score_by!r}",
+            "score_by: must be blended|cc_blended|team_blended|sustain, got "
+            f"{score_by!r}",
         )
     apply_build_tenacity = (
         _opt_bool(body, "apply_build_tenacity", False)
@@ -740,6 +743,11 @@ def _route_rank_tank(body: dict) -> dict:
     # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
     # / Elise E / Fizz E / Mel W). Default off -> byte-identical.
     apply_survival_window = _opt_bool(body, "apply_survival_window", False)
+    # R194 slice A (RM-116 part a): the item-passive omnivamp credit on the
+    # RANKER lane. Absent key -> False -> byte-identical response. The credit is
+    # SUSTAIN-only by construction (it never touches blended_ehp), so sending it
+    # without score_by="sustain" is armed-but-invisible rather than wrong.
+    assume_max_stacks_omnivamp = _opt_bool(body, "assume_max_stacks_omnivamp", False)
     # /rank-tank seam flags (DEFAULT-OFF/null -> byte-identical when omitted):
     #   cost_ceiling (F2) - drop candidates above the gold ceiling.
     #   prefer_survivability_by_win (RF3) - float the WIN-anchored survivability set.
@@ -814,6 +822,7 @@ def _route_rank_tank(body: dict) -> dict:
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
+            assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
             apply_resist_damage_coupling=apply_resist_damage_coupling,
