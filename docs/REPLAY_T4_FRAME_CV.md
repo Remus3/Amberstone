@@ -1,11 +1,56 @@
 # T4 - rendered-frame analysis of replays
 
-Authored 2026-07-26. Status: **PLAN. The enabling primitives are measured; the
-technique itself is UNVERIFIED and section 6 lists the experiments that decide
-it.** Nothing here should be built on until those run.
+Authored 2026-07-26. Status: **GO. Experiments 1 and 4 RAN AND PASSED against
+a live replay - the technique is measured, not inferred.** Results in section
+0. The remaining experiments in section 6 are still open.
 
 Companions: `docs/REPLAY_FRAME_ANALYSIS_SPEC.md` (acquisition),
 `docs/REPLAY_T2_PARSE_CRITERIA.md` (what the data tiers can and cannot answer).
+
+## 0. MEASURED RESULT - the go/no-go passed
+
+Run 2026-07-26 against a live replay paused at t=420.0, camera in fps mode at
+(7200, 3000, 5176), fov 60, fog off, interface off.
+
+**Experiment 4 first (determinism), because experiment 1 depends on it:**
+
+    two identical renders, pixel delta over threshold 30 ..... 0 px
+
+Exactly zero, and zero again under every combination of particles /
+floatingText / banners / environment / champions toggled off. **The paused
+render IS deterministic.** A first attempt appeared to show a 96337 px noise
+floor; that was my error - the frames were grabbed before the scene had
+settled after a camera move, not because anything was animating. Always settle
+after a camera change before the first grab.
+
+**Experiment 1 (the go/no-go):**
+
+    minions ON vs minions OFF ....... 11694 px changed (0.317% of frame)
+    minions ON vs minions ON ........      0 px changed
+    connected components >= 40 px ...      8 blobs
+
+Signal against a zero noise floor. **The toggle isolates a real entity class.**
+
+**Composition test - differential mask through the existing back-projection:**
+taking each blob's foot point (bottom of the mask column, matching the
+`screenPositionBottom` convention) and running `screen_to_map`:
+
+| blobs | mean distance off the mid-lane axis | max |
+|---|---|---|
+| 6 blobs >= 500 px | **76 units** | 137 |
+| all 8 | 515 units | 3653 |
+
+The six substantial blobs have centroid (7023, 7069) and span x 6618..7467,
+z 6695..7394 - a minion wave sitting on the mid-lane diagonal. The single
+outlier is a 175 px blob 3653 units away, i.e. a different entity elsewhere on
+screen, not a failure of the projection.
+
+**So the full chain works end to end:** toggle diff -> connected components ->
+foot point -> ray/ground-plane solve -> map coordinates that land on the actual
+lane, to ~76 units. For reference a champion radius is ~65 units.
+
+WAVE STATE IS THEREFORE NO LONGER BLOCKED. It was blocked at every data tier
+and is measurable from frames.
 
 ## 1. Why this tier has to exist
 
