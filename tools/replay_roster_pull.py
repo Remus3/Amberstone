@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -36,12 +37,36 @@ def _now_stamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+# SELF-PACING, load-bearing at roster scale.
+#
+# riot_api._call waits only rate_limit_timeout_s (default 5 s) for a bucket
+# token, then returns None. Riot's app cap is 100 calls / 120 s. With a handful
+# of accounts that never binds; across 100+ it binds almost immediately, and
+# every later queue lookup returns None - which plan_pull reads as "queue
+# unresolved" and REJECTS. The pull would then report ranked=0 for most of the
+# roster and look like there was simply nothing to fetch. Fails closed, so no
+# bad data, but it silently skips real ranked games.
+#
+# The scout hit the same bug at 302 accounts. Pace below the cap instead.
+_MIN_INTERVAL_S = 1.35
+_last_call_at = 0.0
+
+
+def _pace():
+    global _last_call_at
+    gap = time.monotonic() - _last_call_at
+    if gap < _MIN_INTERVAL_S:
+        time.sleep(_MIN_INTERVAL_S - gap)
+    _last_call_at = time.monotonic()
+
+
 def _queue_lookup(match_id):
     """Match-V5 queue id for one match, or None when it cannot be resolved.
 
     None is a REJECT, not a maybe - plan_pull fails closed rather than spend a
     10 MB download on a guess.
     """
+    _pace()
     try:
         blob = riot_api.get_match(match_id)
     except Exception as exc:                       # noqa: BLE001 - report, never abort the roster
@@ -54,11 +79,13 @@ def _queue_lookup(match_id):
 
 def _pull_one(entry, root, queues, dry_run, extract):
     pdir = rr.player_dir(root, entry.role, entry.name, entry.tag)
+    _pace()
     acct = riot_api.get_account_by_riot_id(entry.name, entry.tag)
     if not acct or not acct.get("puuid"):
         print(f"{entry.role:7} {entry.riot_id:24} ACCOUNT LOOKUP FAILED")
         return 1
 
+    _pace()
     urls = riot_api.get_replay_urls(acct["puuid"]) or []
     plan = rr.plan_pull(urls, _queue_lookup, queues=queues, archive_dir=pdir)
 

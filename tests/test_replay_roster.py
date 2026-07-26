@@ -57,6 +57,28 @@ def test_player_slug_sanitises_characters_that_cannot_be_a_windows_dir():
     assert "\\" not in rr.player_slug("a/b", "c\\d")
 
 
+def test_two_different_unicode_names_do_not_collide(tmp_path):
+    # Collapsing CJK to underscores is lossy: without a disambiguating digest
+    # these two distinct players share a directory and their replays merge.
+    a = rr.player_slug("我依然", "我不")
+    b = rr.player_slug("東方树", "爱七")
+    assert a != b
+    assert len(a.split("-")) == 3      # name-tag-digest
+
+
+def test_an_ascii_riot_id_keeps_its_plain_slug():
+    # The guard must NOT rename directories that already hold pulled replays.
+    # never_type-1998 exists on disk with 5 files in it; adding a digest here
+    # would orphan them.
+    assert rr.player_slug("blaberfish2", "NA1") == "blaberfish2-NA1"
+    assert rr.player_slug("never type", "1998") == "never_type-1998"
+    assert rr.player_slug("Big Daddy", "NA 1") == "Big_Daddy-NA_1"
+
+
+def test_the_digest_is_stable_across_calls():
+    assert rr.player_slug("我依", "x") == rr.player_slug("我依", "x")
+
+
 def test_stats_dir_sits_inside_the_player_dir(tmp_path):
     pdir = rr.player_dir(tmp_path, "TOP", "SamplePlayer2", "BIG")
     assert rr.stats_dir(pdir) == pdir / "stats"
