@@ -156,6 +156,16 @@ _RM115P4_TAIL = ("kit_conversion_strength",)
 # mid-signature.
 _R193_TAIL = ("assume_crit_weighted_vamp",)
 
+# R194 slice A (RM-116 part a) appends the item-passive omnivamp credit to
+# ``rank_items_by_ehp``. Unlike the 1.250.0 / RM-115 p4 / R193 splits above this
+# one does NOT introduce an asymmetry: ``compute_ehp`` has carried the same
+# kwarg since 2026-07-10, mid-signature, and is not moved (moving it would break
+# every positional construction). The ranker is simply catching up, so the name
+# appears once here, on the entry point that newly EXPOSED it. The invariant the
+# guard protects is unchanged: newly exposed seam kwargs land at the END, in
+# order, never mid-signature.
+_R194_TAIL = ("assume_max_stacks_omnivamp",)
+
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
 _SEAM_ENTRY_POINTS = _EHP_ENTRY_POINTS + _HYBRID_ENTRY_POINTS
@@ -179,7 +189,7 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
         hybrid_shared = shared + _R145_TAIL + _RM98_TAIL
         cases = (
             ((compute_ehp,), shared + _RM87_TAIL + _R193_TAIL),
-            ((rank_items_by_ehp,), shared + _RM87_TAIL + _A1250_TAIL),
+            ((rank_items_by_ehp,), shared + _RM87_TAIL + _A1250_TAIL + _R194_TAIL),
             ((compute_hybrid,), hybrid_shared),
             ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL),
         )
