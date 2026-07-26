@@ -31,6 +31,11 @@ from core.rofl_archive import (download_replays, extract_archive,  # noqa: E402
 log = logging.getLogger("replay_roster_pull")
 
 
+def _now_stamp() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
 def _queue_lookup(match_id):
     """Match-V5 queue id for one match, or None when it cannot be resolved.
 
@@ -111,12 +116,26 @@ def main(argv=None) -> int:
                     help="list and filter, download nothing")
     ap.add_argument("--no-extract", action="store_true",
                     help="skip the Layer-1 stats sidecar extraction")
+    ap.add_argument("--log-file", metavar="PATH",
+                    help="append stdout AND logging here. REQUIRED under the "
+                         "scheduled task: it runs via pythonw.exe, which "
+                         "discards stdout, so without this a failing run is "
+                         "silent")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
 
-    logging.basicConfig(
-        level=logging.WARNING if args.quiet else logging.INFO,
-        format="%(levelname)s %(message)s")
+    level = logging.WARNING if args.quiet else logging.INFO
+    if args.log_file:
+        sink = Path(args.log_file)
+        sink.parent.mkdir(parents=True, exist_ok=True)
+        stream = sink.open("a", encoding="utf-8", buffering=1)
+        sys.stdout = stream
+        sys.stderr = stream
+        logging.basicConfig(level=level, stream=stream,
+                            format="%(asctime)s %(levelname)s %(message)s")
+        print(f"--- roster pull {_now_stamp()} ---")
+    else:
+        logging.basicConfig(level=level, format="%(levelname)s %(message)s")
 
     entries = rr.load_roster(args.roster)
     if args.role:

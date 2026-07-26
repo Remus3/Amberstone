@@ -83,6 +83,8 @@ first resort.
 | `RC-UpstreamDriftCheck` | Daily | Administrator | Upstream content-drift detector ddragon/meraki/cdragon (`tools/upstream_drift_check.py`) |
 | `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
 | `RC-RewindCatchup` | Weekly Sunday 04:00 | Administrator | `scripts/rewind_catchup.py` (pull new Match-V5 records into rewind_history.db) |
+| `RC-RoflArchive` | Every 15 min | Administrator / HIGHEST | The OPERATOR's own replays: `tools/rofl_archiver.py --pull --lcu-path --extract --highlights --quiet` |
+| `RC-ReplayRosterPull` | Hourly | Administrator / HIGHEST | TRACKED PLAYERS' ranked replays into the role-partitioned corpus: `tools/replay_roster_pull.py --quiet --log-file logs/replay_roster.log`. Roster: `data/replay_roster.json`. **Cadence is not cosmetic** - `/replays` holds only the 5 most recent retained games per account and has NO fetch-by-match-id route, so a game nobody pulls during its residency is lost permanently (measured twice on 2026-07-26: two specifically requested matches had already rotated out). Five games is the whole window, so hourly leaves roughly a 2.5x margin over a fast laddering session. Log: `logs/replay_roster.log` (pythonw discards stdout, so `--log-file` is mandatory here) |
 | `RC-WeeklyHygiene` | Weekly Sunday 04:17 | Administrator | Unattended `/weekly-hygiene` pass via headless Claude (`tools/weekly_hygiene_run.ps1`; install `ops/install_RC_WeeklyHygiene.ps1`) |
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
 | `RC-Phase3-Supervisor` | At logon | Administrator | Phase 3 agent supervisor |
