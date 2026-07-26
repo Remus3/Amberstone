@@ -32,6 +32,7 @@ a transport.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from dataclasses import dataclass, field
@@ -92,8 +93,27 @@ def player_slug(name: str, tag: str) -> str:
     a directory name would write outside the corpus, so everything outside
     [A-Za-z0-9._] collapses to an underscore. The '-' between name and tag is
     the only structural character.
+
+    COLLISION GUARD: collapsing unicode to underscores is LOSSY, and two
+    different CJK or Hangul Riot IDs of the same length produce the SAME slug -
+    which would silently merge two players' replays into one directory and
+    poison every per-player statistic drawn from it. So a NON-ASCII id gets a
+    short digest of its true Riot ID appended.
+
+    The digest is deliberately scoped to non-ASCII ids only. An ASCII id whose
+    spaces become underscores ("never type" -> "never_type") keeps its plain
+    slug, because widening the guard to every sanitised character would RENAME
+    existing corpus directories and orphan the replays already inside them.
+    The residual risk is an ASCII pair like "a b" vs "a_b" colliding, which is
+    accepted: both are legible, unlike two identical rows of underscores.
     """
-    return f"{_UNSAFE_RE.sub('_', name)}-{_UNSAFE_RE.sub('_', tag)}"
+    safe_name = _UNSAFE_RE.sub("_", name)
+    safe_tag = _UNSAFE_RE.sub("_", tag)
+    slug = f"{safe_name}-{safe_tag}"
+    if not f"{name}{tag}".isascii():
+        digest = hashlib.sha256(f"{name}#{tag}".encode()).hexdigest()[:8]
+        slug = f"{slug}-{digest}"
+    return slug
 
 
 def default_corpus_root() -> Path:
