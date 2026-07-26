@@ -615,6 +615,14 @@ def _route_ehp(body: dict) -> dict:
     # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
     # / Elise E / Fizz E / Mel W). Default off -> byte-identical.
     apply_survival_window = _opt_bool(body, "apply_survival_window", False)
+    # R193 slice C: item-passive omnivamp (Riftmaker 4633 Void Corruption AT MAX
+    # stacks) into the EHP SUSTAIN axis. The engine kwarg shipped 2026-07-10
+    # (ehp.py) and was STRANDED - no route parsed it, so no client could arm it,
+    # and the two reachability guards could not see it (they build their universe
+    # from keys server.py already parses). Absent key -> False -> byte-identical
+    # response. /ehp ONLY: rank_items_by_ehp does not accept the kwarg, so the
+    # ranker lane stays deliberately unexposed.
+    assume_max_stacks_omnivamp = _opt_bool(body, "assume_max_stacks_omnivamp", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -642,6 +650,7 @@ def _route_ehp(body: dict) -> dict:
             assume_item_proc_heal=assume_item_proc_heal,
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
+            assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
             apply_survival_window=apply_survival_window,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,
