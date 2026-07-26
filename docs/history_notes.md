@@ -119,6 +119,24 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-26e - weekly hygiene (unattended)
+
+**Relocated:** none. WAKEUP already at exactly 3 sessions; CLAUDE.md 27KB (under 60KB); no stray ledger entries.
+
+**Memory update (autonomous):** `project_codebase_audit_clean_baseline.md` - removed stale "Game-PC MCP :8892 required for web/ fixture audit" clause (Game-PC retired ADR-011; correct path is Legion :8888 + headless audit via [[feedback_phase3_fixture_ritual]]).
+
+**Anomaly triage:** all 19 RC-* tasks in expected states. RC alive, DS :8893 alive patch=16.14.1, LCU Offline (no game in progress). No actionable anomalies.
+
+**Flags for operator (judgment calls - no action taken):**
+
+1. `_next_session_snapshot_card_build.md` in memory dir: player-snapshot card SHIPPED (PR #6, LEDGER 782). Handoff memo is consumed. Safe to delete.
+2. `_handoff_competitor_deep_research.md` in memory dir: main research EXECUTED 2026-07-05. Lolmath SELECTIVE-SAVE DS-knob coverage check marked "still queued" at bottom but is NOT in ROADMAP. Clarify: still wanted, or abandon?
+3. `feedback_gamepc_league_fullscreen_lockup.md` in memory dir: Game-PC RETIRED. Advice names dead infra (Parsec + Duet adapters on Game-PC). Delete or retarget to Legion virtual-display guidance?
+4. `project_out_of_game_spatial_brand.md` in memory dir: parked worktree files (pseudo_screen_overlay.py, rofl_stats_backfill.py) are merged to main. Theme work (Hextech-Unified + Deep Terminal, palette pick) status unclear - resolved or still pending?
+5. CLAUDE.md "TDD First" section: stale suite counts (DS 9546 / RC 13061, dated 2026-07-25). Current from 2026-07-26d: DS 9783 / RC 13115. Approve CLAUDE.md touch to update?
+
+---
+
 # 2026-07-26d - the directive asked for a sweep that was already closed (R193, gemini loop cycle 3)
 
 ENGINE **1.254.0 -> 1.255.0**, patch 16.14.1. HEAD `9fde56bb`. Three worktree
