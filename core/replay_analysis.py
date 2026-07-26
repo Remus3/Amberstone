@@ -33,7 +33,32 @@ BARON_PIT = (5007, 10471)
 MAP_MAX = 14820
 
 # Distance beyond which a jungler is not plausibly contesting the objective.
-FAR_UNITS = 5000
+#
+# CALIBRATED, not chosen. Measured 2026-07-26 over all 46 corpus matches, both
+# junglers, every drake: 308 samples, a balanced 154 secured / 154 lost. The
+# threshold that best separates them at the default 30 s lead is 2750 units
+# (68.8 pct accuracy). The previous hand-picked 5000 scored 53.6 pct at 60 s,
+# i.e. barely above a coin flip.
+FAR_UNITS = 2750
+
+# Default lead. 30 s is the operating point: it is the longest lead that still
+# carries signal AND is actionable (a 0 s verdict is near-tautological - "you
+# were at the drake when your team took the drake").
+DEFAULT_LEAD_S = 30
+
+# MEASURED SIGNAL DECAY - lead_s -> best achievable accuracy, same 308 samples.
+# Mean sample age is a flat ~15 s at every lead, so this decay is REAL
+# behaviour, not sampling error: junglers cross the map, and position a minute
+# out does not determine drake control.
+#
+#   lead    0 s -> 0.692     lead   30 s -> 0.688
+#   lead   60 s -> 0.568     lead   90 s -> 0.529     lead  120 s -> 0.516
+#
+# CONSEQUENCE, and the reason `drake_pathing_verdict` refuses a long lead: any
+# verdict at 60 s or beyond is not supported by this data. Do not widen the
+# lead without re-running the calibration - see tests for the guard.
+SIGNAL_DECAY = {0: 0.692, 30: 0.688, 60: 0.568, 90: 0.529, 120: 0.516}
+SUPPORTED_LEAD_MAX_S = 30
 
 
 @dataclass(frozen=True)
@@ -64,6 +89,7 @@ class TimelineEvent:
     item_id: int = 0
     monster_type: str = ""
     ward_type: str = ""
+    killer_team_id: int = 0
 
 
 @dataclass
@@ -100,6 +126,17 @@ class Verdict:
     coaching: str
     source: str
     sample_age_s: float
+    secured: bool = False       # did THIS player's team take the objective
+    lead_s: float = DEFAULT_LEAD_S
+
+
+def team_of(participant_id: int) -> int:
+    """Match-V5 seats 1-5 on team 100 and 6-10 on team 200.
+
+    Verified, not assumed: 460 of 460 participants across all 46 corpus
+    matches agree, 0 exceptions.
+    """
+    return 100 if participant_id <= 5 else 200
 
 
 def normalize_timeline(raw) -> Timeline:
@@ -127,7 +164,8 @@ def normalize_timeline(raw) -> Timeline:
                 x=int(pos.get("x") or 0), y=int(pos.get("y") or 0),
                 item_id=int(ev.get("itemId") or 0),
                 monster_type=str(ev.get("monsterType") or ""),
-                ward_type=str(ev.get("wardType") or "")))
+                ward_type=str(ev.get("wardType") or ""),
+                killer_team_id=int(ev.get("killerTeamId") or 0)))
     return tl
 
 
@@ -164,9 +202,16 @@ def objective_approach(tl: Timeline, participant_id: int, event: TimelineEvent,
         sample = position_at(tl, participant_id, event.t_ms - int(lead * 1000))
         if sample is None:
             continue
-        # "Same half" is the diagonal SR split: bot-right vs top-left of the
-        # anti-diagonal through the map centre.
-        same = ((sample.x + sample.y) > MAP_MAX) == ((target[0] + target[1]) > MAP_MAX)
+        # SR side is the sign of (x - y), the main diagonal from base to base:
+        # bot-right is x > y, top-left is y > x.
+        #
+        # NOT (x + y) vs the map size - that is the ANTI-diagonal, which
+        # measures how far advanced toward the enemy base a player is, not
+        # which side of the map they are on. Measured consequence of getting
+        # this wrong: DRAGON_PIT sums to 14280 against a 14820 map, so the
+        # drake pit itself classified as top side and a jungler standing
+        # 3063 units from the pit was reported "opposite half of the map".
+        same = ((sample.x - sample.y) > 0) == ((target[0] - target[1]) > 0)
         out.append(Approach(lead_s=lead,
                             distance=_distance((sample.x, sample.y), target),
                             same_half=same, sample_age_s=sample.age_s))
@@ -174,32 +219,49 @@ def objective_approach(tl: Timeline, participant_id: int, event: TimelineEvent,
 
 
 def drake_pathing_verdict(tl: Timeline, participant_id: int,
-                          lead_s: float = 60) -> list:
+                          lead_s: float = DEFAULT_LEAD_S) -> list:
     """One verdict per drake: was this jungler in position, or late?
 
     Deliberately narrow. It exists to prove the pipeline answers a real
     question end to end, not to be a general pathing model.
+
+    Raises on a lead beyond SUPPORTED_LEAD_MAX_S. That is not defensiveness -
+    the calibration measured the signal decaying to 0.516 by 120 s, so a
+    long-lead verdict would be a confident statement about noise.
     """
+    if lead_s > SUPPORTED_LEAD_MAX_S:
+        raise ValueError(
+            f"lead_s={lead_s} exceeds the calibrated support of "
+            f"{SUPPORTED_LEAD_MAX_S}s; measured accuracy falls to "
+            f"{SIGNAL_DECAY.get(60, 0):.3f} at 60s. Re-run the calibration "
+            f"before widening it.")
+    my_team = team_of(participant_id)
     out = []
     for ev in objective_events(tl, "DRAGON"):
         ap = objective_approach(tl, participant_id, ev, leads_s=(lead_s,))
         if not ap:
             continue
         a = ap[0]
+        secured = ev.killer_team_id == my_team
+        at = f"{ev.t_ms / 1000:.0f}s"
         if a.distance <= FAR_UNITS:
             verdict = "IN_POSITION"
-            line = (f"In position for the drake at {ev.t_ms / 1000:.0f}s "
-                    f"({a.distance:.0f} units out {lead_s:.0f}s prior).")
+            line = (f"In position {lead_s:.0f}s before the drake at {at} "
+                    f"({a.distance:.0f} units out); "
+                    + ("your team took it." if secured else "the enemy took it."))
         elif not a.same_half:
             verdict = "LATE"
-            line = (f"Wrong side of the map {lead_s:.0f}s before the drake at "
-                    f"{ev.t_ms / 1000:.0f}s ({a.distance:.0f} units out). "
-                    f"Start the rotation a camp earlier.")
+            line = (f"Opposite half of the map {lead_s:.0f}s before the drake "
+                    f"at {at} ({a.distance:.0f} units out); "
+                    + ("your team took it anyway." if secured
+                       else "the enemy took it."))
         else:
             verdict = "TRAILING"
             line = (f"Right side but {a.distance:.0f} units off the drake at "
-                    f"{ev.t_ms / 1000:.0f}s, {lead_s:.0f}s prior.")
+                    f"{at}, {lead_s:.0f}s prior; "
+                    + ("secured." if secured else "lost it."))
         out.append(Verdict(t_ms=ev.t_ms, verdict=verdict, distance=a.distance,
                            coaching=line, source="match_v5_timeline",
-                           sample_age_s=a.sample_age_s))
+                           sample_age_s=a.sample_age_s, secured=secured,
+                           lead_s=lead_s))
     return out
