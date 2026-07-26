@@ -4,6 +4,67 @@
 
 ---
 
+# 2026-07-26i - RM-95b residual SHIPPED: population 3 measured down to 1
+
+**Shipped:** ENGINE 1.256.0 -> **1.257.0**, DEFAULT-OFF `apply_wiki_form_damage`. LEDGER 1061.
+Tier-2 - new engine registry + an `abilities.py` seam, so the full dual suite, the Share
+mirror, the DS `:8893` bounce and a four-family build-order regen all rode.
+
+**The headline is that two thirds of the filed item was a refutation, and the row's own
+filter is why.** RM-95b B2's closing sentence left a residual: "Three hand-authored registry
+entries are the proportionate fix", naming Jayce W Hyper Charge, Mel W Rebuttal and Quinn R
+Skystrike. That population came from a filter over the DATA ("names a real damage label AND
+carries no `attribute_kind == "damage"` block"). Re-running it against the live snapshot
+AND the live EVALUATOR - the question a build engine actually answers - collapses it to 1.
+
+**The one that is real: Quinn's ultimate contributed exactly 0.0 to her own ability lane.**
+Quinn R ships as two forms. Form 1 `Skystrike` carries ZERO blocks; form 0 `Behind Enemy
+Lines` carries only a movement-speed modifier - and form 0 is the one the engine SERVES,
+because `get_form_index_for("Quinn")` returns `({}, 'default')`. Measured at L13 against the
+sweep-standard tanky target: R `raw_damage_per_cast` **exactly 0.0** while Q read 205.0 and E
+read 40.0. The movement-speed modifier is correctly credited zero, so this was a silent
+absence rather than a mis-credit - which is exactly why nothing caught it.
+
+**Authoring onto the SERVED form is the load-bearing detail.** Putting the block on form 1 -
+the form actually NAMED Skystrike - produces a block the evaluator never reads; re-routing R
+to form 1 instead swaps in a form whose `cooldown` and `cost` are both `None`. So it is
+PREPENDED onto form 0 (damage-first, since `_select_blocks` reads `damage_blocks[0]` and
+Quinn carries no block-index override), labelled `Skystrike Physical Damage`, with a guard
+pinning `get_form_index_for("Quinn")` at the default so a future form-registry change goes
+RED instead of silently unreading the entry. Armed on Quinn L13 SR `[3031, 3006, 6672]`:
+R **0.0 -> 132.0** raw, total ability DPS **4.1864 -> 4.5815**.
+
+**The two refutations, both pinned as tests so the population-is-3 reading cannot come back.**
+Jayce W Hyper Charge already has its numbers on disk (`[70, 78, 86, 94, 102, 110] % AD`), and
+the served Jayce W form is `Lightning Field` at a real 380.0 raw - Hyper Charge is the
+Mercury-Cannon alternate and an AUTO-ATTACK rider, so crediting it on the ability clock is the
+face-value credit RM-86 fences. Mel W Rebuttal likewise has its numbers on disk
+(`[40, 45, 50, 55, 60] %` OF THE ORIGINAL DAMAGE) but is a fraction of an incoming projectile
+no registry can price - the RM-90 S3 assumed-prior class - so 0.0 is correct. Each refutation
+asserts both the on-disk numbers AND that the registry carries no entry for that champion.
+
+**DEFAULT-OFF, and the asymmetry with its sibling is deliberate.** `apply_wiki_ability_damage`
+ships DEFAULT-ON because it INJECTS a champion with no prior behavior to preserve; this seam
+MUTATES a served form, so OFF is the byte-identical contract. Blast radius proven by
+construction - a full-snapshot OFF-vs-ON sweep over every champion and key returns exactly one
+moved cell, `("Quinn", "R")`. Anti-double-apply: the entry applies only when the target form
+has no damage block at all, so a future Meraki re-extract that ships Skystrike makes the
+registry silently inert with no code change.
+
+**Verification (fresh this session, measured AFTER the last edit):** DS **9861 passed / 1 skipped / 4661 subtests**;
+RC `tests/` **13117 passed / 106 skipped / 460 subtests**; ruff clean across `agents/ tools/ core/ tests/`; the three
+ASCII/mojibake/u2500 hygiene modules 15 passed / 7 skipped; doc-size budget 2 passed;
+`ds_share_sync --check` in sync at 500 files; zero non-ASCII bytes added (CHANGELOG.md 590 and
+CLAUDE.md 29 both unchanged against HEAD); live `:8893` `/health` re-probed at
+**1.257.0 / 16.14.1 / 173 champions / 706 items**. All four build-order table families
+regenerated against the restarted server across BOTH keyspaces - every diff is stamp lines
+only, as a DEFAULT-OFF seam requires.
+
+**Don't-redo:** do NOT author registry entries for Jayce W Hyper Charge or Mel W Rebuttal -
+both are refuted with guards on disk. Do NOT re-file the RM-95b residual as a population of 3.
+
+---
+
 # 2026-07-26h - RM-95b B2 REFUTED on measurement + 2 stale ROADMAP rows corrected
 
 **Shipped:** `4046b6d8` (tools) + `0216516d` (docs), pushed. Tier-1 - a `tools/` module only,
