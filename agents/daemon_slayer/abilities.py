@@ -49,6 +49,9 @@ from ._ability_overrides import DAMAGE_TYPE_OVERRIDES, NON_DAMAGE_BLOCKS
 from ._ability_wiki_damage_registry import (
     inject_missing_champions as _inject_wiki_damage_champions,
 )
+from ._ability_wiki_form_damage import (
+    apply_wiki_form_damage as _apply_wiki_form_damage,
+)
 from ._passive_damage_overrides import (
     _ALL_OUT_BONUS_OVERRIDES,
     _PASSIVE_DAMAGE_OVERRIDES,
@@ -1005,6 +1008,7 @@ class AbilitiesSnapshot:
         apply_cdragon_surplus_ad: bool = False,
         apply_ability_base_overrides: bool = False,
         apply_wiki_ability_damage: bool = True,
+        apply_wiki_form_damage: bool = False,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
 
@@ -1106,6 +1110,19 @@ class AbilitiesSnapshot:
         ``AbilityForm.from_dict`` + override + CDragon path as every Meraki
         champion.
 
+        ``apply_wiki_form_damage`` (RM-95b residual, default False / OFF) is
+        the sibling of that injection for a form Meraki DOES ship but shipped
+        with no ``attribute_kind == "damage"`` block. The measured population
+        is ONE - Quinn R, whose served form (``Behind Enemy Lines``) carries
+        only a movement-speed modifier while the Skystrike form carries no
+        block at all, so her ultimate contributes 0.0 to her own ability lane.
+        The two siblings the RM-95b row named alongside it are refuted in
+        ``_ability_wiki_form_damage``: Jayce W Hyper Charge is an auto-attack
+        rider whose numbers are already on disk, and Mel W Rebuttal is a
+        percentage of an incoming projectile no registry can price. This seam
+        MUTATES a served form, so it ships DEFAULT-OFF and OFF is
+        byte-identical.
+
         This is the ONE seam in this loader that ships DEFAULT-ON, and
         deliberately: every other flag MUTATES a form the engine already
         serves, so OFF is their byte-identical contract, whereas a champion the
@@ -1166,6 +1183,18 @@ class AbilitiesSnapshot:
                     "abilities: injected hand-authored wiki payloads for %s "
                     "(snapshot %s carried %d champions)",
                     ", ".join(injected), patch, len(data_block) - len(injected),
+                )
+        # RM-95b residual: authored damage blocks for forms Meraki DOES ship but
+        # shipped with no damage block at all (population 1: Quinn R Skystrike).
+        # Runs after the injection above and before the build loop, so the block
+        # is built through the identical AbilityForm path. DEFAULT-OFF: unlike
+        # the injection this MUTATES a served form.
+        if apply_wiki_form_damage:
+            patched = _apply_wiki_form_damage(data_block)
+            if patched:
+                _LOG.debug(
+                    "abilities: applied hand-authored wiki form damage to %s",
+                    ", ".join(patched),
                 )
         champions: dict[str, dict[str, tuple[AbilityForm, ...]]] = {}
         for cid, keymap in data_block.items():
