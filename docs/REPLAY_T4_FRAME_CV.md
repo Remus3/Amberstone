@@ -170,6 +170,40 @@ identical toggles. Static scenery cancels; anything that moved or died does
 not. That is the discriminator this run lacked, and it needs no new
 machinery.
 
+### Experiment 4b - re-measure of wave state and wards under the warm-up
+
+Run 2026-07-26 immediately after the defect above, same live replay, t=900 s,
+camera on the mid-lane centroid (7023,7069) at h=3500, fov 60, fog off.
+
+**WAVE STATE SURVIVES. THE MAGNITUDE DOES NOT.** With control 0 and
+RESTORED-vs-base 0, the `minions` toggle changes **4787 px across 7 blobs**,
+against the originally reported 11694 px / 8 blobs - the original was inflated
+roughly 2.4x by the missing warm-up. The capability claim is unaffected:
+minions render as a separable class, and the blobs landing on the mid-lane
+axis land tightly (64, 7 and 92 units off it, consistent with the original
+76-unit mean). The remaining blobs sit 1593 to 3204 units off-axis and are
+other-lane or jungle units in frame, not wave members, so **blob count is not
+wave size** and off-axis distance is the filter that separates them.
+
+**WARDS: METHOD CLEAN, COUNT NOT REPLICATED.** `healthBarWards` gives 1595 px
+across **2 blobs** with RESTORED 0. This does NOT refute the original 13 - that
+run used a different game and framing, and a mid-lane pose sees fewer wards
+than a wide one. What it establishes is that the ward class restores
+deterministically and renders, which is what the capability rests on.
+
+**A CORRECTION TO EXPERIMENT 4'S WARM-UP RULE, measured.** A first attempt here
+read RESTORED=4728 on `minions`, and the obvious inference - that the minions
+class is non-deterministic - is WRONG. Three consecutive `minions` round-trips
+immediately afterwards each returned exactly 0, as did two `healthBarWards`
+round-trips. The residual was the one-time settle still draining, because the
+warm-up used a DIFFERENT toggle (`banners`) from the one being measured. So the
+rule is stronger than experiment 4 stated:
+
+> Warm up with the SAME toggle you are about to measure, and assert
+> RESTORED-vs-base == 0. Discard any measurement where it is not 0.
+
+### Experiment 5 - capture geometry
+
 Full-screen `PIL.ImageGrab` returns **2560 x 1440**, matching the viewport the
 back-projection intrinsics were solved for (`LEGION_2560x1440_FOV60`). No
 rescaling needed on this machine; a different resolution needs a re-solve.
