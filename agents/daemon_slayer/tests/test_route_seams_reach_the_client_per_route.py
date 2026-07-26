@@ -1,0 +1,390 @@
+"""Seam reachability measured PER ROUTE, not per name.
+
+WHY THIS EXISTS ALONGSIDE ``test_route_seams_reach_the_client.py``
+-----------------------------------------------------------------
+The sibling guard collapses the question to a NAME: it collects every
+seam-shaped body key any ``_route_*`` parses, collects every name any function
+in ``core/daemon_slayer_client.py`` can express, and subtracts. That answers
+"can this seam be set from the client AT ALL", which was the right first
+question and caught the ASSUMED-INCOMING-SHARE regression it was written for.
+
+It is not the question a caller actually has. ``apply_mode_modifiers`` is
+parsed by SEVEN routes; the moment ONE client function names it, the name-based
+guard reads it as reached on all seven. The same collapse hides
+``apply_item_resist_grants`` on ``/ehp`` behind its ``/rank-tank`` wire.
+
+Measured 2026-07-25 (ENGINE 1.250.0), the two questions differ by 3x:
+
+  * name-collapsed stranded set  ..... 33
+  * per-(route, seam) stranded set ... 101
+
+So RM-115's headline "34 stranded" is an UNDERCOUNT of the operator-visible
+debt, not because the census was sloppy but because it answered the weaker
+question. This file carries the stronger one.
+
+WHAT IS CHECKED
+---------------
+By INTROSPECTION over the two source files, never a hardcoded key list:
+
+  * map ``"/path" -> _route_handler`` out of ``server.py``'s dispatch table,
+  * for each handler, collect the seam-shaped keys it reads out of ``body``,
+  * for each client function, find which ``_post_json("/path", ...)`` it calls
+    and collect the names THAT function can express (its keyword arguments plus
+    the string keys it writes into its request body),
+  * assert the stranded set, keyed by (route, seam), is EXACTLY the ledger.
+
+A route with NO client function at all (``/beam``, ``/v2/fight-report``) has
+every one of its seams stranded, which is the correct reading.
+
+THE LEDGER IS DEBT, NOT AN EXEMPTION
+------------------------------------
+Same self-cleaning equality contract as the sibling file: adding a route seam
+with no client wire turns this RED, and wiring one turns it RED until the entry
+is deleted. The ledger can only shrink. The intended end state is empty.
+
+OFFLINE ONLY: pure AST over two source files. No snapshot, no engine, no
+network. Host-dependent (it imports ``core.*``), so it is registered in
+``tools/ds_share_sync._HOST_DEPENDENT_TESTS`` alongside its sibling.
+"""
+from __future__ import annotations
+
+import ast
+import pathlib
+import unittest
+
+import agents.daemon_slayer.server as server_mod
+import core.daemon_slayer_client as client_mod
+
+_SERVER_PY = pathlib.Path(server_mod.__file__)
+_CLIENT_PY = pathlib.Path(client_mod.__file__)
+
+_SEAM_PREFIXES = ("apply_", "assume_", "gate_", "exclude_")
+_BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
+                 "_coerce_str_list", "_required_str", "get")
+
+# ------------------------------------------------------------ the debt ledger
+# route -> seams that route parses but the client function POSTing that route
+# cannot express. Measured by the introspection below at ENGINE 1.250.0, NOT
+# copied from prose. 101 entries across 12 routes.
+#
+# Wired in the RM-115 pass that created this file, and therefore ABSENT here:
+#   apply_ability_base_overrides ... /ability-dps, /burst, /rank-assassin,
+#                                    /rank-mage   (A-03 / RM-81, gates 2+3)
+#   apply_passive_aura_damage ...... /ability-dps, /rank-mage
+#                                    (A-07 / RM-82 TERM 2, gate 3)
+_STRANDED_BY_ROUTE: dict[str, frozenset[str]] = {
+    '/ability-dps': frozenset({
+        'apply_ability_amps',
+    }),
+    # No client function POSTs /beam at all - every seam it parses is stranded.
+    '/beam': frozenset({
+        'apply_mode_modifiers',
+    }),
+    '/burst': frozenset({
+        'assume_ability_amp',
+        'assume_magic_burst',
+        'assume_physical_burst',
+        'assume_shielded_target',
+        'assume_takedown',
+        'gate_caster_hp_amp',
+        'gate_target_hp_amp',
+    }),
+    '/dps': frozenset({
+        'apply_ability_amps',
+        'apply_melee_aa_gate',
+        'apply_mode_modifiers',
+        'apply_passive_damage',
+        'apply_target_vuln',
+        'assume_passive_as_stacks',
+    }),
+    '/ehp': frozenset({
+        'apply_champion_tenacity',
+        'apply_item_bonus_hp_amp',
+        'apply_item_mana_health',
+        'apply_item_resist_grants',
+        'apply_item_spell_shield',
+        'apply_mode_modifiers',
+        'apply_passive_mitigation',
+        'apply_passive_resist',
+        'apply_passive_revive',
+        'apply_rune_flat_mitigation',
+        'apply_rune_health_grants',
+        'apply_rune_hsp_amp',
+        'apply_rune_resist_grants',
+        'apply_spell_shield',
+        'apply_survival_window',
+        'assume_item_general_dr',
+        'assume_item_health_stacks',
+        'assume_item_proc_heal',
+    }),
+    '/hybrid': frozenset({
+        'apply_build_tenacity',
+        'apply_champion_tenacity',
+        'apply_item_bonus_hp_amp',
+        'apply_item_mana_health',
+        'apply_item_resist_grants',
+        'apply_item_spell_shield',
+        'apply_mode_modifiers',
+        'apply_passive_mitigation',
+        'apply_passive_resist',
+        'apply_passive_revive',
+        'apply_rune_flat_mitigation',
+        'apply_rune_health_grants',
+        'apply_rune_hsp_amp',
+        'apply_rune_resist_grants',
+        'apply_spell_shield',
+        'apply_survival_window',
+        'assume_item_general_dr',
+        'assume_item_health_stacks',
+        'assume_item_proc_heal',
+    }),
+    '/rank': frozenset({
+        'apply_mode_modifiers',
+        'exclude_off_axis_items',
+    }),
+    '/rank-assassin': frozenset({
+        'assume_ability_amp',
+        'assume_squishy_target',
+        'assume_takedown',
+        'exclude_off_axis_items',
+    }),
+    '/rank-bruiser': frozenset({
+        'apply_ad_axis_ability_damage',
+        'apply_build_tenacity',
+        'apply_champion_tenacity',
+        'apply_item_bonus_hp_amp',
+        'apply_item_mana_health',
+        'apply_item_resist_grants',
+        'apply_item_spell_shield',
+        'apply_mode_modifiers',
+        'apply_passive_mitigation',
+        'apply_passive_resist',
+        'apply_passive_revive',
+        'apply_rune_flat_mitigation',
+        'apply_rune_health_grants',
+        'apply_rune_hsp_amp',
+        'apply_rune_resist_grants',
+        'apply_spell_shield',
+        'apply_survival_window',
+        'assume_item_general_dr',
+        'assume_item_health_stacks',
+        'assume_item_proc_heal',
+    }),
+    '/rank-mage': frozenset({
+        'apply_ability_amps',
+    }),
+    '/rank-tank': frozenset({
+        'apply_build_tenacity',
+        'apply_champion_tenacity',
+        'apply_item_bonus_hp_amp',
+        'apply_item_mana_health',
+        'apply_item_resist_grants',
+        'apply_item_spell_shield',
+        'apply_mode_modifiers',
+        'apply_passive_mitigation',
+        'apply_passive_resist',
+        'apply_passive_revive',
+        'apply_rune_flat_mitigation',
+        'apply_rune_health_grants',
+        'apply_rune_hsp_amp',
+        'apply_rune_resist_grants',
+        'apply_spell_shield',
+        'apply_survival_window',
+        'assume_item_general_dr',
+        'assume_item_health_stacks',
+        'assume_item_proc_heal',
+    }),
+    # No client function POSTs /v2/fight-report at all.
+    '/v2/fight-report': frozenset({
+        'apply_ability_haste',
+        'apply_mode_modifiers',
+        'gate_ammo',
+    }),
+}
+
+
+def _seam_keys(fn: ast.FunctionDef) -> set[str]:
+    """Seam-shaped body keys read inside one ``_route_*`` handler."""
+    keys: list[str] = []
+    for node in ast.walk(fn):
+        if isinstance(node, ast.Call):
+            name = getattr(node.func, "id", None) or getattr(node.func, "attr", None)
+            if name in _BODY_READERS:
+                keys += [
+                    a.value for a in node.args
+                    if isinstance(a, ast.Constant) and isinstance(a.value, str)
+                ]
+        elif isinstance(node, ast.Compare) and isinstance(node.left, ast.Constant):
+            # the ``"key" in body`` tri-state idiom
+            if isinstance(node.left.value, str):
+                keys.append(node.left.value)
+    return {k for k in keys if k.startswith(_SEAM_PREFIXES)}
+
+
+def _route_table() -> tuple[dict[str, frozenset[str]], dict[str, str]]:
+    """``"/path" -> seams parsed`` and ``"/path" -> handler name``."""
+    tree = ast.parse(_SERVER_PY.read_text(encoding="utf-8"))
+    handlers = {
+        f.name: f for f in ast.walk(tree)
+        if isinstance(f, ast.FunctionDef) and f.name.startswith("_route_")
+    }
+    path_of: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Dict):
+            continue
+        for k, v in zip(node.keys, node.values):
+            if not (isinstance(k, ast.Constant) and isinstance(k.value, str)):
+                continue
+            if not k.value.startswith("/"):
+                continue
+            nm = getattr(v, "id", None) or getattr(v, "attr", None)
+            if nm in handlers:
+                path_of.setdefault(k.value, nm)
+    parsed = {p: frozenset(_seam_keys(handlers[h])) for p, h in path_of.items()}
+    return {p: s for p, s in parsed.items() if s}, path_of
+
+
+def _client_by_route() -> dict[str, frozenset[str]]:
+    """``"/path" -> names the client function(s) POSTing it can express``."""
+    tree = ast.parse(_CLIENT_PY.read_text(encoding="utf-8"))
+    out: dict[str, set[str]] = {}
+    for fn in ast.walk(tree):
+        if not isinstance(fn, ast.FunctionDef):
+            continue
+        posts: set[str] = set()
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Call):
+                nm = getattr(node.func, "id", None) or getattr(node.func, "attr", None)
+                if nm == "_post_json" and node.args:
+                    a = node.args[0]
+                    if isinstance(a, ast.Constant) and isinstance(a.value, str):
+                        posts.add(a.value)
+        if not posts:
+            continue
+        a = fn.args
+        names = {x.arg for x in list(a.posonlyargs) + list(a.args) + list(a.kwonlyargs)}
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant):
+                if isinstance(node.slice.value, str):
+                    names.add(node.slice.value)
+            elif isinstance(node, ast.Dict):
+                names.update(
+                    k.value for k in node.keys
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str)
+                )
+        for p in posts:
+            out.setdefault(p, set()).update(names)
+    return {p: frozenset(n) for p, n in out.items()}
+
+
+class PerRouteSeamReachabilityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.parsed, cls.path_of = _route_table()
+        cls.client = _client_by_route()
+        cls.stranded = {
+            path: frozenset(seams - cls.client.get(path, frozenset()))
+            for path, seams in cls.parsed.items()
+        }
+        cls.stranded = {p: s for p, s in cls.stranded.items() if s}
+
+    def test_introspection_actually_found_routes(self) -> None:
+        """Guard the guard - a broken parse must not read as a clean bill."""
+        self.assertGreater(
+            len(self.parsed), 10,
+            "the server.py dispatch-table scan found almost no seam-parsing "
+            "routes - the parse shape drifted, so every other assertion here "
+            "is vacuous",
+        )
+        self.assertIn("/rank-tank", self.parsed)
+        self.assertIn("/rank-mage", self.parsed)
+        # the client side must resolve too, or everything reads as stranded
+        self.assertIn("/rank", self.client)
+        self.assertIn("/rank-mage", self.client)
+
+    def test_no_new_per_route_stranded_seam(self) -> None:
+        new = sorted(
+            (path, seam)
+            for path, seams in self.stranded.items()
+            for seam in seams
+            if seam not in _STRANDED_BY_ROUTE.get(path, frozenset())
+        )
+        self.assertEqual(
+            new, [],
+            "route seam(s) parsed by server.py that the client function "
+            f"POSTing that route cannot express: {new}. Add the keyword "
+            "argument to that specific client function rather than adding the "
+            "pair to _STRANDED_BY_ROUTE.",
+        )
+
+    def test_ledger_has_no_stale_entries(self) -> None:
+        stale = sorted(
+            (path, seam)
+            for path, seams in _STRANDED_BY_ROUTE.items()
+            for seam in seams
+            if seam not in self.stranded.get(path, frozenset())
+        )
+        self.assertEqual(
+            stale, [],
+            "these (route, seam) pairs are now reachable - delete them from "
+            f"_STRANDED_BY_ROUTE so the debt ledger keeps shrinking: {stale}",
+        )
+
+    def test_rm115_wired_seams_are_reachable_on_their_own_routes(self) -> None:
+        """The named RM-115 wirings, asserted per ROUTE rather than per name.
+
+        This is the assertion the name-collapsed sibling guard cannot make:
+        ``kit_conversion_strength`` was already a client keyword on the CARRY
+        path, so the sibling stayed green while /rank-assassin could not set
+        it. These pairs pin the actual wire.
+        """
+        expected = {
+            "apply_ability_base_overrides": (
+                "/ability-dps", "/burst", "/rank-assassin", "/rank-mage",
+            ),
+            "apply_passive_aura_damage": ("/ability-dps", "/rank-mage"),
+        }
+        for seam, routes in expected.items():
+            for path in routes:
+                self.assertIn(
+                    seam, self.parsed.get(path, frozenset()),
+                    f"{path} no longer parses {seam}",
+                )
+                self.assertIn(
+                    seam, self.client.get(path, frozenset()),
+                    f"{seam} is parsed by {path} but the client function "
+                    f"POSTing {path} cannot express it",
+                )
+
+    def test_kit_conversion_reaches_the_assassin_route(self) -> None:
+        """RM-83 Naafiri: the wire the name-based guard is blind to.
+
+        ``kit_conversion_strength`` is not seam-PREFIXED, so it never appears
+        in either ledger; and it was already expressible via ``rank_for`` on
+        the carry path, so a name-based check reads green either way. Assert
+        the route-specific pair directly.
+        """
+        for path in ("/rank", "/rank-assassin"):
+            self.assertIn(
+                "kit_conversion_strength", self.client.get(path, frozenset()),
+                f"the client function POSTing {path} cannot set "
+                "kit_conversion_strength",
+            )
+
+    def test_per_route_debt_exceeds_the_name_collapsed_count(self) -> None:
+        """Pin the measured gap between the two questions.
+
+        Not a magic number - a floor. If a future pass makes the per-route
+        total DROP below the name-collapsed sibling's ledger size, the two
+        files have stopped measuring what their docstrings claim.
+        """
+        total = sum(len(s) for s in _STRANDED_BY_ROUTE.values())
+        self.assertGreaterEqual(
+            total, 33,
+            "the per-route ledger has fallen below the name-collapsed "
+            "sibling's - re-read both docstrings before touching this",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

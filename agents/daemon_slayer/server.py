@@ -48,6 +48,7 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlsplit
 
 from . import ENGINE_VERSION
+from .abilities import AbilitiesSnapshot
 from .ability_dps import (
     _BLOCK_INDEX_CONDITIONS,
     _BLOCK_INDEX_DEFAULT_KEY,
@@ -186,6 +187,44 @@ class _SnapshotCache:
 
 
 _CACHE = _SnapshotCache()
+
+
+class _AbilitiesOverrideCache:
+    """RM-115 / A-03 / RM-81: lazy holder for the OVERRIDE-ON abilities snapshot.
+
+    ``apply_ability_base_overrides`` is a load-time kwarg on
+    ``AbilitiesSnapshot.load`` (abilities.py:1006), not a per-call ranking
+    flag, and ``abilities.load_default()`` (abilities.py:1302-1315) is keyless
+    - it caches ONE snapshot for the process and cannot represent both states.
+
+    Rather than key that global cache, this holder builds the flag-ON snapshot
+    once (~30 ms) and hands it to the engine through the ``abilities_snapshot``
+    kwarg the rankers already accept. ``get(False)`` returns ``None`` so the
+    OFF path falls through to ``load_default()`` exactly as before - the
+    default request stays byte-identical, and no OFF-path allocation is added.
+    """
+
+    def __init__(self) -> None:
+        self._on: Optional[AbilitiesSnapshot] = None
+        self._lock = threading.Lock()
+
+    def get(self, apply_overrides: bool) -> Optional[AbilitiesSnapshot]:
+        if not apply_overrides:
+            return None
+        with self._lock:
+            if self._on is None:
+                self._on = AbilitiesSnapshot.load(
+                    apply_ability_base_overrides=True
+                )
+            return self._on
+
+    def reset(self) -> None:
+        """Test hook - drop the memoized flag-ON snapshot."""
+        with self._lock:
+            self._on = None
+
+
+_ABIL_CACHE = _AbilitiesOverrideCache()
 
 
 def _load_default_snapshot(
@@ -1196,6 +1235,13 @@ def _route_ability_dps(body: dict) -> dict:
     form_index_overrides = _parse_form_index(body)
     block_index_overrides = _parse_block_index(body)
     apply_ability_amps = _opt_bool(body, "apply_ability_amps", False)
+    # RM-115: both seams below are accepted by compute_ability_dps
+    # (ability_dps.py:960 / :949) but were never parsed here, so /ability-dps
+    # could not reach either. A-07 / RM-82 TERM 2 and A-03 / RM-81 respectively.
+    apply_passive_aura_damage = _opt_bool(body, "apply_passive_aura_damage", False)
+    apply_ability_base_overrides = _opt_bool(
+        body, "apply_ability_base_overrides", False
+    )
     try:
         result = compute_ability_dps(
             snap, champion_id=champion, level=level,
@@ -1209,6 +1255,8 @@ def _route_ability_dps(body: dict) -> dict:
             form_index_overrides=form_index_overrides,
             block_index_overrides=block_index_overrides,
             apply_ability_amps=apply_ability_amps,
+            apply_passive_aura_damage=apply_passive_aura_damage,
+            abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1263,6 +1311,13 @@ def _route_rank_mage(body: dict) -> dict:
     # same default-OFF contract) so an absent key and an explicit false are
     # indistinguishable at the scorer.
     apply_passive_aura_damage = _opt_bool(body, "apply_passive_aura_damage", False)
+    # RM-115 / A-03 / RM-81 - the six wiki-verified ability-base corrections.
+    # This one is a LOAD-time kwarg, not a ranking flag, so it is resolved into
+    # an abilities snapshot here; False yields None and the engine falls
+    # through to abilities.load_default() exactly as before.
+    apply_ability_base_overrides = _opt_bool(
+        body, "apply_ability_base_overrides", False
+    )
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
@@ -1285,6 +1340,7 @@ def _route_rank_mage(body: dict) -> dict:
             filter_shared_uniques=filter_shared_uniques,
             apply_ability_amps=apply_ability_amps,
             apply_passive_aura_damage=apply_passive_aura_damage,
+            abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1418,6 +1474,11 @@ def _route_burst(body: dict) -> dict:
     gate_target_hp_amp = _opt_bool(body, "gate_target_hp_amp", False)
     gate_caster_hp_amp = _opt_bool(body, "gate_caster_hp_amp", False)
     caster_current_hp_pct = _opt_float(body, "caster_current_hp_pct", 1.0)
+    # RM-115 / A-03 / RM-81 - load-time ability-base corrections, resolved into
+    # an abilities snapshot. False yields None -> abilities.load_default().
+    apply_ability_base_overrides = _opt_bool(
+        body, "apply_ability_base_overrides", False
+    )
     try:
         result = compute_burst_damage(
             snap, champion_id=champion, level=level,
@@ -1442,6 +1503,7 @@ def _route_burst(body: dict) -> dict:
             gate_target_hp_amp=gate_target_hp_amp,
             gate_caster_hp_amp=gate_caster_hp_amp,
             caster_current_hp_pct=caster_current_hp_pct,
+            abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1988,6 +2050,17 @@ def _route_rank_assassin(body: dict) -> dict:
     assume_squishy_target = _opt_bool(body, "assume_squishy_target", False)
     assume_ability_amp = _opt_bool(body, "assume_ability_amp", False)
     target_preset = _opt_str(body, "target_preset", None)
+    # RM-115 / RM-83: the RM-86 L1 kit-conversion gate, extended from the CARRY
+    # route (server.py:481) to the assassin/burst ranker. burst.py:2160-2163
+    # consults the registry ONLY when the strength is > 0.0, so 0.0 does no
+    # lookup and no arithmetic and is byte-identical to omitting the key.
+    kit_conversion_strength = _opt_float(body, "kit_conversion_strength", 0.0)
+    # RM-115 / A-03 / RM-81 - load-time ability-base corrections. Naafiri is the
+    # one of the six that routes here; False yields None so the OFF path still
+    # falls through to abilities.load_default() and stays byte-identical.
+    apply_ability_base_overrides = _opt_bool(
+        body, "apply_ability_base_overrides", False
+    )
     try:
         result = rank_items_by_burst(
             snap,
@@ -2014,6 +2087,8 @@ def _route_rank_assassin(body: dict) -> dict:
             assume_squishy_target=assume_squishy_target,
             assume_ability_amp=assume_ability_amp,
             target_preset=target_preset,
+            kit_conversion_strength=kit_conversion_strength,
+            abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -2465,6 +2540,11 @@ def start_server(
     if snapshot is None:
         snapshot = _load_default_snapshot(patch=patch, data_root=data_root)
     _CACHE.set(snapshot)
+    # RM-115: the flag-ON abilities snapshot is memoized for the process, so it
+    # must not outlive the DataSnapshot it was built beside. There is no
+    # hot-reload path today (Phase 7), but start_server IS called more than
+    # once per process on the test path, sometimes at a different patch.
+    _ABIL_CACHE.reset()
     srv = ThreadingHTTPServer((host, port), Handler)
     srv.daemon_threads = True
     return srv

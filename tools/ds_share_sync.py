@@ -155,6 +155,7 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # and are excluded by name rather than refactored.
     "test_assumed_share_exposure.py",
     "test_route_seams_reach_the_client.py",
+    "test_route_seams_reach_the_client_per_route.py",
     # -- RM-112 (2026-07-23): runtime host-data reaches. These COLLECT clean
     # but FAIL at run time inside the engine-only, current-patch package,
     # because they load a HISTORICAL patch snapshot (16.10.1 / 16.11.1 /

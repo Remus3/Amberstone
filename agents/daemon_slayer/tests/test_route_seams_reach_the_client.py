@@ -101,7 +101,6 @@ _STRANDED_TODAY = frozenset({
     "apply_ability_amps",
     "apply_ad_axis_ability_damage",
     "apply_melee_aa_gate",
-    "apply_passive_aura_damage",
     # --- burst / assassin levers (/burst, /rank-assassin) --------------------
     "assume_ability_amp",
     "assume_physical_burst",
