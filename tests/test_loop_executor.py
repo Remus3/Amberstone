@@ -448,3 +448,200 @@ def test_shipped_configs_carry_no_dollar_cap():
         cfg = _json.loads((ROOT / "ops" / "loop" / name).read_text(encoding="utf-8"))
         assert "cycle_budget_usd" not in cfg, f"{name} re-armed the dollar cap"
         assert cfg.get("cycle_deadline_sec"), f"{name} must still rail the executor on TIME"
+
+
+# ---- parallel-agent disjointness guard --------------------------------------
+#
+# MEASURED, twice: the director wrote "dispatch 3 parallel disjoint worktree
+# agents" and the named file sets were NOT disjoint (R194 collided on a shared
+# guard tail, R196 put all three tails in the same two files with slice 2 a
+# schema lift the other two consumed). Both times a human caught it. When nobody
+# catches it, the agents clobber each other.
+
+_DISJOINT = """THEME: F1 phase 6
+Dispatch 3 parallel disjoint worktree agents on disjoint file sets.
+
+AGENT 1: ops/loop/executor.py
+AGENT 2: tests/test_loop_concurrency.py
+AGENT 3: ops/loop/slots.py
+"""
+
+_R196 = """THEME: F1 phase 6
+Dispatch 3 parallel disjoint worktree agents.
+
+AGENT 1: ops/loop/executor.py plus tests/test_loop_executor.py
+AGENT 2: ops/loop/executor.py schema lift the other two consume
+AGENT 3: tests/test_loop_executor.py tail
+"""
+
+
+def test_a_directive_with_no_parallel_dispatch_is_not_judged():
+    plan = executor.parallel_plan(
+        "Edit ops/loop/executor.py and tests/test_loop_executor.py in this session.")
+    assert plan.verdict == "none"
+    assert plan.deviates is False
+
+
+def test_disjoint_file_sets_pass_untouched():
+    plan = executor.parallel_plan(_DISJOINT)
+    assert plan.agents == 3
+    assert plan.verdict == "disjoint"
+    assert plan.deviates is False
+    logs = []
+    assert executor.enforce_agent_disjointness(4, _DISJOINT, log=logs.append) == _DISJOINT
+    assert logs == [], "a directive that is already fine must produce no deviation record"
+
+
+def test_overlapping_file_sets_serialize_and_record():
+    plan = executor.parallel_plan(_R196)
+    assert plan.verdict == "overlap"
+    assert plan.deviates is True
+    assert "executor.py" in plan.detail
+    logs = []
+    out = executor.enforce_agent_disjointness(7, _R196, log=logs.append)
+    assert out != _R196
+    assert logs and executor.PARALLEL_MARKER in logs[0]
+    assert "SEQUENTIALLY" in out
+    assert _R196.strip() in out, "the original directive text must survive verbatim"
+
+
+def test_the_marker_is_distinct_from_the_winmutex_one():
+    """winmutex greps UNSERIALIZED; a substring collision would cross the wires."""
+    assert "UNSERIALIZED" not in executor.PARALLEL_MARKER
+    assert executor.PARALLEL_MARKER.startswith("executor: ")
+
+
+def test_unextractable_file_sets_are_recorded_not_silently_passed():
+    """The failure mode this repo keeps hitting: a guard that degrades into
+    always-passing on every input it cannot parse."""
+    body = ("Dispatch three parallel worktree agents, one per scorer.\n"
+            "Each agent picks its own slice and stays out of the others' way.\n")
+    plan = executor.parallel_plan(body)
+    assert plan.agents == 3
+    assert plan.verdict == "unverified"
+    assert plan.deviates is True
+    logs = []
+    out = executor.enforce_agent_disjointness(2, body, log=logs.append)
+    assert logs and executor.PARALLEL_MARKER in logs[0]
+    assert "could not verify" in logs[0].lower()
+    assert out != body
+
+
+def test_a_partially_extracted_directive_is_unverified_not_disjoint():
+    body = ("Dispatch 3 parallel worktree agents.\n"
+            "AGENT 1: ops/loop/a.py\n"
+            "AGENT 2: ops/loop/b.py\n")
+    plan = executor.parallel_plan(body)
+    assert plan.agents == 3
+    assert plan.verdict == "unverified", "2 of 3 file sets found is not proof of disjointness"
+
+
+def test_a_named_agent_with_no_files_is_unverified():
+    body = ("Dispatch 2 parallel worktree agents.\n"
+            "AGENT 1: ops/loop/a.py\n"
+            "AGENT 2: whatever is left over\n")
+    assert executor.parallel_plan(body).verdict == "unverified"
+
+
+def test_a_single_agent_directive_is_unaffected():
+    for body in ("Do this in one session: ops/loop/executor.py, tests/test_loop_executor.py.",
+                 "Dispatch 1 parallel worktree agent on ops/loop/executor.py."):
+        plan = executor.parallel_plan(body)
+        assert plan.verdict == "none", body
+        assert executor.enforce_agent_disjointness(1, body) == body
+
+
+def test_absolute_and_relative_spellings_of_one_file_still_collide():
+    body = ("Dispatch 2 parallel worktree agents.\n"
+            "AGENT 1: C:\\Riot Commander\\ops\\loop\\executor.py\n"
+            "AGENT 2: ops/loop/executor.py\n")
+    assert executor.parallel_plan(body).verdict == "overlap"
+
+
+def test_word_counts_and_slice_labels_are_understood():
+    body = ("Fan out two parallel slices.\n"
+            "SLICE A - ops/loop/executor.py\n"
+            "SLICE B - ops/loop/slots.py\n")
+    plan = executor.parallel_plan(body)
+    assert plan.agents == 2 and plan.verdict == "disjoint"
+
+
+def test_prose_version_numbers_are_not_mistaken_for_files():
+    body = ("Dispatch 2 parallel worktree agents. Bump ENGINE_VERSION to 1.260.1, e.g. "
+            "in the usual places.\n"
+            "AGENT 1: ops/loop/executor.py\n"
+            "AGENT 2: ops/loop/slots.py\n")
+    assert executor.parallel_plan(body).verdict == "disjoint"
+
+
+def test_ahk_channel_rewrites_directive_md_and_types_the_serialized_body(tmp_path: Path):
+    """The director path types only the opener - the session READS directive.md, so
+    the correction has to land in the file or it is not applied at all."""
+    r = _Rec(tmp_path, {"sha": "d" * 40})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5}, tmp_path, **r.deps())
+    ex.run(5, _R196, "director")
+    assert "SEQUENTIALLY" in r.written["directive.md"]
+    assert any(executor.PARALLEL_MARKER in m for m in r.logs)
+
+
+def test_ahk_channel_leaves_a_clean_directive_alone(tmp_path: Path):
+    r = _Rec(tmp_path, {"sha": "d" * 40})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5}, tmp_path, **r.deps())
+    ex.run(5, _DISJOINT, "fixed")
+    assert "directive.md" not in r.written, "no rewrite when the directive is already fine"
+    assert r.written["gemini.ready"] == f"CYCLE=5\n/clear\n{_DISJOINT}"
+    assert not any(executor.PARALLEL_MARKER in m for m in r.logs)
+
+
+def test_a_proven_collision_leaves_the_session_no_discretion():
+    out = executor.serialize_directive(_R196, executor.parallel_plan(_R196))
+    assert "ONE AT A TIME" in out
+    assert "AGENT 1 -> AGENT 2 -> AGENT 3" in out, "serialize in the order named"
+
+
+def test_an_unverifiable_dispatch_must_be_proven_or_serialized():
+    """Not the same instruction as a proven collision. 'Fan out 10 parallel agents
+    across different effect channels' names no files and may well be disjoint -
+    forcing 10 scouts sequential is a real cost - but it may not be dispatched
+    unexamined either, which is what the executor did before this guard."""
+    body = ("Fan out 10 parallel sub-agents across DIFFERENT effect channels, "
+            "each scouting one channel.\n")
+    plan = executor.parallel_plan(body)
+    assert plan.verdict == "unverified"
+    out = executor.serialize_directive(body, plan)
+    assert "file set" in out
+    assert "SEQUENTIALLY" in out, "the fallback when it cannot be proven"
+
+
+def test_the_real_r196_directive_is_flagged():
+    """The measured incident, verbatim from the shape the director actually wrote:
+    3 parallel worktree subagents, slice 2 a schema lift the other two consumed,
+    and no file set stated for it at all."""
+    body = (
+        "Task: DS sweep kit-penetration tails from BACKLOG.md.\n"
+        "Slice 1: Credit Annie R in antitank._ANTITANK_REGISTRY. Flip uncredited pin in "
+        "agents/daemon_slayer/tests/test_kit_magic_pen_catalog_r190.py.\n"
+        "Slice 2: Add AXIS field (PHYSICAL/MAGICAL/BOTH) to _ANTITANK_REGISTRY rows. "
+        "Make guard exact via new AXIS field.\n"
+        "Slice 3: Correct Amumu P in _ANTITANK_REGISTRY.\n"
+        "Use ORCHESTRATOR MULTI-AGENT pattern. Dispatch 3 parallel worktree subagents "
+        "(isolation:worktree).\n")
+    plan = executor.parallel_plan(body)
+    assert plan.agents == 3
+    assert plan.deviates is True, "this exact directive shape collided twice"
+    assert "SLICE 2" in plan.detail
+
+
+def test_sdk_channel_records_the_deviation_too(tmp_path: Path):
+    payload = json.dumps({"is_error": False, "total_cost_usd": 0.0,
+                          "structured_output": {"sha": "a" * 40, "tests_pass": "1",
+                                                "regressions": False, "summary": "s"}})
+    logs, written = [], {}
+    ex = executor.build(
+        {"channel": "sdk", "repo_root": str(tmp_path), "cycle_deadline_sec": 60,
+         "executor_cmd": _stub_claude(tmp_path, payload)}, tmp_path,
+        log=logs.append, stop=lambda m: None,
+        awrite=lambda p, t: written.__setitem__(Path(p).name, t))
+    ex.run(3, _R196, "director")
+    assert any(executor.PARALLEL_MARKER in m for m in logs)
+    assert "SEQUENTIALLY" in written["directive.md"]
