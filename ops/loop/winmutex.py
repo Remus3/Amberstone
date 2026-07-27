@@ -90,8 +90,17 @@ def hold(name: str, *, timeout: float | None = None, log=None):
                 f"(its work may be half-done)")
         if not acquired and log:
             log(f"winmutex: unexpected wait result {rc} for {name} - proceeding")
+        # ACQUIRED/RELEASED are logged so the hold window is OBSERVABLE in each
+        # repo's controller.log. Without them "the two runs' gemini calls never
+        # overlap" is only arguable from reading the code; with them it is
+        # measurable from two log files after a concurrent run. Both repos pass
+        # log= here, so the trace appears on both sides for free.
+        if log:
+            log(f"winmutex: ACQUIRED {name}")
         yield handle
     finally:
+        if acquired and log:
+            log(f"winmutex: RELEASED {name}")
         if acquired:
             try:
                 k32.ReleaseMutex(handle)

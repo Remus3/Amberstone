@@ -49,6 +49,10 @@ def _bind(modname, filename):
 # tests/test_loop_concurrency.py hashes both against the LW copies.
 slots = _bind("rc_loop_slots", "slots.py")
 winmutex = _bind("rc_loop_winmutex", "winmutex.py")
+# The EXECUTOR seam (the thing that does the work), companion to the adjudicator
+# (the read-only brain). NOT a shared byte-identical file - it lifts THIS repo's
+# controller code and carries RC's directive opener and watch_bridge wait.
+executor = _bind("rc_loop_executor", "executor.py")
 
 _CFG_ARG = (sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].endswith(".json")
             else r"C:\Riot Commander\ops\loop\config.json")
@@ -655,6 +659,19 @@ def main():
     same_sha_streak = 0
     log(f"loop start dry_run={DRY} ceiling={CFG['ceiling_usd']} head={prev_sha[:8]}")
 
+    # core.hooksPath is LOCAL config and is not cloned, so a fresh clone runs with
+    # NO commit gate while the tracked .githooks sits there looking installed. An
+    # unattended run in that state pushes ungated and no one reads a session
+    # report, so refuse to start instead.
+    gate_gap = executor.gate_inactive_reason(ROOT)
+    if gate_gap:
+        stop(f"commit gate not active - refusing to run ungated: {gate_gap} "
+             f"(fix: python scripts/install_hooks.py)")
+    EXEC = executor.build(
+        CFG, CTL, log=log, stop=stop, awrite=awrite, wait_for=wait_for,
+        wait_gone=wait_gone, rjson=rjson, stall_action=stall_action,
+        stall_recovery_directive=stall_recovery_directive)
+
     FIXED = CFG.get("fixed_directive")  # fixed-message mode: skip gemini director+auditor entirely
     CYCLE_CMD = CFG.get("cycle_command")  # self-directing slash command typed verbatim; director SKIPPED, auditor KEPT
     for cycle in range(1, CFG["max_cycles"] + 1):
@@ -685,58 +702,37 @@ def main():
                 stop("director returned NO_WORK")
         awrite(CTL / "directive.md", body)
         awrite(CTL / "cycle.txt", str(cycle))
-        # Slot held ONLY around the executor call (the AHK type handshake plus
-        # the wait for claude.done) - never around git, the director or the
-        # auditor, so a long merge in this repo cannot starve the other one.
+        # The channel-specific half of a cycle (the AHK typing handshake + done
+        # sentinel; one `claude -p` call on the sdk channel) lives behind the
+        # executor seam. Artifacts both channels share stay here: directive.md,
+        # cycle.txt, budget.json and the metering below.
+        # Slot held ONLY around the executor call - never around git, the director
+        # or the auditor, so a long merge in this repo cannot starve the other one.
         with slots.hold(int(CFG.get("max_concurrent_lanes", 2)),
                         repo=str(ROOT), run_id=RUN_ID, cycle=cycle, log=log):
-            clear_line = "/clear\n" if CFG.get("clear_each_cycle", True) else ""
-            if src in ("cycle_command", "fixed"):
-                # type the literal task line (single line, no embedded newlines) after /clear
-                awrite(CTL / "gemini.ready", f"CYCLE={cycle}\n{clear_line}{body}")
-            else:
-                awrite(CTL / "gemini.ready",
-                       f"CYCLE={cycle}\n{clear_line}"
-                       "/gemini-headless-upgrade and Read the file ops/loop/control/directive.md and fully execute it now. "
-                       "No questions; auto-pick the recommended option and proceed.")
-            log(f"cycle {cycle}: directive written ({len(body)} chars), gemini.ready set")
-
-            # AHK/stub deletes gemini.ready after typing; its disappearance IS the typed signal
-            if not wait_gone(CTL / "gemini.ready", time.time() + 120):
-                stop(f"cycle {cycle}: AHK never typed (gemini.ready not consumed in 120s)")
-            deadline = time.time() + CFG["cycle_deadline_sec"]
-            log(f"cycle {cycle}: typed (ready consumed); deadline in {CFG['cycle_deadline_sec']}s")
-
-            # WP-I3: one-shot stall recovery before a hard STOP. On the FIRST cycle-deadline
-            # breach, inject a /diagnose recovery directive into the existing (stalled) session
-            # and extend the deadline ONCE (decision = stall_action, pure + tested); hard-STOP
-            # only on a SECOND breach. The no-progress and AHK-never-typed guards remain the
-            # runaway backstops so a truly wedged run still stops cleanly after exactly one
-            # recovery attempt.
-            breach = 0
-            while not wait_for(CTL / "claude.done", deadline, watch_bridge=True):
-                breach += 1
-                if stall_action(breach) == "stop":
-                    stop(f"cycle {cycle}: claude.done not seen after stall recovery (hard hang)")
-                log(f"cycle {cycle}: deadline breach {breach} - injecting stall recovery, extending once")
-                awrite(CTL / "gemini.ready", stall_recovery_directive(cycle))
-                if not wait_gone(CTL / "gemini.ready", time.time() + 120):
-                    stop(f"cycle {cycle}: AHK never typed the stall-recovery directive")
-                deadline = time.time() + CFG["cycle_deadline_sec"]
-            done = rjson(CTL / "claude.done", {})
-            (CTL / "claude.done").unlink(missing_ok=True)
+            rec = EXEC.run(cycle, body, src)
+        done = rec.raw
         last_done = done
-        new_sha = done.get("sha") or head()
+        new_sha = rec.sha or head()
         log(f"cycle {cycle}: claude.done sha={new_sha[:8]} tests={done.get('tests_pass')} regress={done.get('regressions')}")
 
         claude_info = meter(start_ts)  # informational only - NO cap on Claude (operator directive)
         brain = _ADJ_STATE.get("active") or adjudicator.backend_name(CFG)
         brain_usd = sum(float(v or 0.0) for v in (_ADJ_STATE.get("usd") or {}).values())
         # gemini_usd stays for backward compatibility (dashboards + prior runs read it).
-        awrite(CTL / "budget.json", json.dumps(
-            {"gemini_usd": round(GEMINI_USD, 4), "gemini_ceiling": CFG["ceiling_usd"],
-             "adjudicator": brain, "adjudicator_usd": round(brain_usd, 4),
-             "claude_usd_info": claude_info, "cycle": cycle}))
+        budget_rec = {"gemini_usd": round(GEMINI_USD, 4), "gemini_ceiling": CFG["ceiling_usd"],
+                      "adjudicator": brain, "adjudicator_usd": round(brain_usd, 4),
+                      "claude_usd_info": claude_info, "cycle": cycle}
+        # The sdk channel returns an authoritative per-cycle receipt (the CLI's own
+        # total_cost_usd). Recorded ONLY when the channel actually produced one, so
+        # the ahk channel's budget.json stays byte-identical to the pre-seam shape.
+        # This is the number to trust: claude_usd_info comes from transcript
+        # scraping, which LW measured wrong in three independent directions
+        # (repeated usage records, dedup undercounting subagents, and pinning the
+        # operator's interactive session instead of the executor's).
+        if rec.cost_usd:
+            budget_rec["executor_usd"] = round(rec.cost_usd, 4)
+        awrite(CTL / "budget.json", json.dumps(budget_rec))
         # ceiling_usd is a runaway rail on the METERED vendor. claude adjudicator
         # spend is EXCLUDED unless claude_adjudicator.count_against_ceiling is
         # true, because operator policy is that Claude spend is uncapped - a swap
