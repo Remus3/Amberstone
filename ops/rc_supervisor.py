@@ -101,9 +101,18 @@ def _pid_alive(pid: int) -> bool:
         return True
     except Exception:
         try:
+            # CREATE_NO_WINDOW: this module runs under a pythonw.exe-hosted
+            # scheduled task (RC-Supervisor), which must stay Interactive
+            # because it drives the Electron overlay - so unlike the S4U tasks
+            # it has a desktop and a console child WOULD flash onscreen.
+            # pythonw suppresses its OWN console, never a child's, and
+            # capture_output/check_output does not suppress it either
+            # (e872d9c9, same class). Platform-guarded: passing creationflags
+            # on POSIX raises, and CI runs these tests on ubuntu.
             out = subprocess.check_output(
                 ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV"],
                 stderr=subprocess.DEVNULL, text=True, timeout=5,
+                creationflags=(0x08000000 if os.name == "nt" else 0),
             )
             return str(pid) in out
         except Exception:
@@ -431,6 +440,7 @@ class _Phase3Watcher:
                 subprocess.run(
                     ["taskkill", "/F", "/PID", str(int(stale_pid))],
                     capture_output=True, timeout=10,
+                    creationflags=(0x08000000 if os.name == "nt" else 0),
                 )
                 # Wait for the process to actually exit so the task slot
                 # is released before /Run (else IgnoreNew still refuses).
@@ -444,6 +454,7 @@ class _Phase3Watcher:
             result = subprocess.run(
                 ["schtasks", "/Run", "/TN", task_name],
                 capture_output=True, timeout=10,
+                creationflags=(0x08000000 if os.name == "nt" else 0),
             )
             return result.returncode == 0
         except (OSError, subprocess.SubprocessError, ValueError):
@@ -1387,6 +1398,11 @@ class Supervisor:
                 stderr=subprocess.DEVNULL,
                 text=True,
                 timeout=120.0,
+                # Same CREATE_NO_WINDOW rationale as _pid_alive above. This one
+                # spawns self.python_exe (console python.exe, not pythonw), so
+                # it is the most visible of the four - DEVNULL redirects the
+                # streams but does NOT stop Windows allocating the console.
+                creationflags=(0x08000000 if os.name == "nt" else 0),
             )
             self.log(f"deploy {stem} finished exit={proc.returncode}")
         except subprocess.TimeoutExpired:
