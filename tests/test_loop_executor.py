@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import time
@@ -315,6 +316,12 @@ def _tracked_hook_repo(tmp_path: Path, *, executable: bool,
     if executable:
         _git(tmp_path, "update-index", "--chmod=+x", "--", *rel)
     _git(tmp_path, "config", "core.hooksPath", ".githooks")
+    # The index mode and the on-disk bit are two separate checks, so the fixture
+    # has to be coherent in BOTH or a POSIX run fails for the wrong reason: git
+    # add records whatever the disk says, so the chmod lands after update-index
+    # (a 0o755 before the add would make `executable=False` record 100755).
+    for n in names:
+        os.chmod(hooks / n, 0o755 if executable else 0o644)
     return hooks
 
 
@@ -350,6 +357,10 @@ def test_untracked_hooks_dir_is_not_reported_as_a_mode_breach(tmp_path: Path):
     real.mkdir(parents=True, exist_ok=True)
     for n in ("pre-commit", "commit-msg"):
         (real / n).write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        # A real .git/hooks install is executable; write_text is not. Without
+        # this the on-disk check below would fire on POSIX and this test would
+        # pass or fail for a reason that has nothing to do with the index.
+        os.chmod(real / n, 0o755)
     _git(tmp_path, "config", "core.hooksPath", str(real))
     assert executor.gate_inactive_reason(tmp_path) is None
 
@@ -361,6 +372,135 @@ def test_missing_hook_file_still_wins_over_the_mode_check(tmp_path: Path):
     reason = executor.gate_inactive_reason(tmp_path)
     assert reason and reason.startswith("hooks missing from")
     assert "commit-msg" in reason
+
+
+# ---- commit gate: the ON-DISK exec bit --------------------------------------
+#
+# The index mode is what a fresh clone materializes, but it is not what git
+# actually consults at commit time - that is the working-tree file. A hook can
+# be tracked 100755 and still be 644 on disk (a later `chmod -x`, a clone with
+# core.fileMode=false, an export/rsync/zip that dropped modes, a container
+# bind-mount), and git skips it silently. The index-mode check reports green on
+# every one of those, which is the same always-passing failure it was added to
+# fix, one layer down.
+#
+# `os.access(p, os.X_OK)` is True for any existing file on nt, so the probe can
+# only bite on POSIX. That is NOT a reason to skipif the tests away: skipping
+# here would mean the branch that matters is the branch nothing runs. The
+# platform seam is a monkeypatchable helper instead, so both directions are
+# pinned on Windows and on Linux with no skip.
+
+def test_the_on_disk_probe_is_a_documented_no_op_on_windows(tmp_path: Path):
+    """Pin the platform contract itself, so the no-op is a decision not a surprise."""
+    plain = tmp_path / "plain.sh"
+    plain.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    os.chmod(plain, 0o644)
+    if os.name == "nt":
+        assert executor._is_on_disk_executable(plain) is True, (
+            "nt has no exec bit to read - inventing a breach there would block "
+            "the loop on the one machine that actually runs it")
+    else:
+        assert executor._is_on_disk_executable(plain) is False
+
+
+def test_the_posix_branch_asks_the_filesystem(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Force the non-nt branch while running on nt. A helper that returned True
+    unconditionally would pass every other test on this machine, so the one
+    thing the POSIX side must do - actually probe X_OK - is pinned here rather
+    than left for a Linux run to discover."""
+    plain = tmp_path / "probe.sh"
+    plain.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    seen = []
+
+    def _fake_access(p, mode):
+        seen.append((p, mode))
+        return True
+
+    monkeypatch.setattr(executor.os, "name", "posix")
+    monkeypatch.setattr(executor.os, "access", _fake_access)
+    assert executor._is_on_disk_executable(plain) is True
+    assert seen == [(plain, os.X_OK)]
+
+
+def test_a_hook_tracked_100755_but_not_executable_on_disk_is_ungated(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """The index is right and the gate is still dead - green here is a lie."""
+    _tracked_hook_repo(tmp_path, executable=True)
+    monkeypatch.setattr(executor, "_is_on_disk_executable", lambda p: False)
+    reason = executor.gate_inactive_reason(tmp_path)
+    assert reason, "a 644 working-tree hook does not run, whatever the index says"
+    assert "chmod +x" in reason, "the message has to carry the fix, not just the fault"
+    assert "pre-commit" in reason and "commit-msg" in reason
+
+
+def test_only_the_hook_whose_disk_bit_is_clear_is_named(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Same contract as the index-mode check: naming a healthy hook sends the
+    operator to chmod a file that was never the problem."""
+    _tracked_hook_repo(tmp_path, executable=True)
+    monkeypatch.setattr(executor, "_is_on_disk_executable",
+                        lambda p: Path(p).name != "commit-msg")
+    reason = executor.gate_inactive_reason(tmp_path)
+    assert reason and "commit-msg" in reason
+    assert "pre-commit" not in reason
+
+
+def test_the_disk_bit_reason_is_distinguishable_from_the_index_mode_reason(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Two different faults with two different fixes - `git update-index
+    --chmod=+x` cannot repair a working-tree bit and `chmod +x` cannot repair
+    the index, so a caller that cannot tell them apart gets sent to the wrong
+    command half the time."""
+    idx_repo, disk_repo = tmp_path / "idx", tmp_path / "disk"
+    idx_repo.mkdir()
+    disk_repo.mkdir()
+    _tracked_hook_repo(idx_repo, executable=False)
+    index_reason = executor.gate_inactive_reason(idx_repo)
+    _tracked_hook_repo(disk_repo, executable=True)
+    monkeypatch.setattr(executor, "_is_on_disk_executable", lambda p: False)
+    disk_reason = executor.gate_inactive_reason(disk_repo)
+    assert index_reason and disk_reason and index_reason != disk_reason
+    assert "update-index" in index_reason and "update-index" not in disk_reason
+    assert "chmod +x" in disk_reason
+
+
+def test_an_executable_on_disk_hook_is_clean(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """The other direction: the new check must be reachable-clean, not a breach
+    nobody can clear."""
+    _tracked_hook_repo(tmp_path, executable=True)
+    monkeypatch.setattr(executor, "_is_on_disk_executable", lambda p: True)
+    assert executor.gate_inactive_reason(tmp_path) is None
+
+
+def test_missing_hook_file_still_wins_over_the_on_disk_check(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Ordering is load-bearing and already pinned against the index-mode check;
+    the new check must not preempt the missing-file finding either."""
+    _tracked_hook_repo(tmp_path, executable=True, names=("pre-commit",))
+    monkeypatch.setattr(executor, "_is_on_disk_executable", lambda p: False)
+    reason = executor.gate_inactive_reason(tmp_path)
+    assert reason and reason.startswith("hooks missing from")
+    assert "commit-msg" in reason
+
+
+def test_an_untracked_hook_dir_is_still_judged_on_the_disk_bit(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """A `.git/hooks` install has no index mode to read, which is why the
+    index-mode check skips it - but the file is right there and git will skip a
+    non-executable one just the same. Scoping the disk probe to tracked hooks
+    would rebuild the exact hole this check exists to close."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, timeout=60)
+    (tmp_path / ".githooks").mkdir()
+    real = tmp_path / ".git" / "hooks"
+    real.mkdir(parents=True, exist_ok=True)
+    for n in ("pre-commit", "commit-msg"):
+        (real / n).write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    _git(tmp_path, "config", "core.hooksPath", str(real))
+    monkeypatch.setattr(executor, "_is_on_disk_executable", lambda p: False)
+    reason = executor.gate_inactive_reason(tmp_path)
+    assert reason and "chmod +x" in reason
 
 
 # ---- FINAL STEP: one source of truth per channel ----------------------------
