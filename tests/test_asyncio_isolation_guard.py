@@ -30,6 +30,45 @@ _SANCTIONED_LOOP_MODULE = "_asyncio_isolation.py"
 _BANNED_ASYNCIO_CALLS = {"run", "new_event_loop", "set_event_loop"}
 
 
+# IsolatedAsyncioTestCase is the SAME breakage wearing a class statement.
+# unittest drives its asyncSetUp through asyncio.Runner.run() on the MAIN
+# thread, so it raises "Runner.run() cannot be called from a running event
+# loop" under the snapshot_panels marker exactly as a bare asyncio.run() does.
+_BANNED_ASYNC_BASES = {"IsolatedAsyncioTestCase"}
+
+
+def _banned_async_test_bases(tree: ast.AST) -> list[tuple[int, str]]:
+    """Locate classes deriving from IsolatedAsyncioTestCase.
+
+    MEASURED 2026-07-27, and this is why the check exists: the call-based scan
+    above walks ast.Call and therefore CANNOT see a base class. Seven tests in
+    tests/preflip_mode/ inherited IsolatedAsyncioTestCase and failed with the
+    identical RuntimeError the module docstring describes, while this guard
+    reported green - it was blind to the most common way a unittest suite
+    enters a loop on the main thread. The sibling test's docstring claimed it
+    "catches the breakage itself, not by runner-function name"; it caught one
+    spelling of it.
+
+    Matches both `unittest.IsolatedAsyncioTestCase` (ast.Attribute) and a bare
+    `IsolatedAsyncioTestCase` from `from unittest import ...` (ast.Name).
+    Deliberately AST-based rather than a text grep, so the prose in a docstring
+    explaining why NOT to use it does not flag itself.
+    """
+    hits = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        for base in node.bases:
+            name = None
+            if isinstance(base, ast.Attribute):
+                name = base.attr
+            elif isinstance(base, ast.Name):
+                name = base.id
+            if name in _BANNED_ASYNC_BASES:
+                hits.append((node.lineno, f"class {node.name}({name})"))
+    return hits
+
+
 def _guarded_paths() -> list[Path]:
     """Every test module pytest imports, minus the sanctioned runner.
 
@@ -77,6 +116,65 @@ def _banned_loop_calls(tree: ast.AST) -> list[tuple[int, str]]:
         elif isinstance(func, ast.Name) and func.id in direct_names:
             hits.append((node.lineno, f"{direct_names[func.id]}() (from asyncio import)"))
     return hits
+
+
+def test_no_isolated_asyncio_testcase_under_tests():
+    """The blind spot that let seven real failures through a green guard.
+
+    tests/preflip_mode/{test_file_ingest_mirror,test_body_data_mode_no_flap}.py
+    both derived IsolatedAsyncioTestCase. Alone they passed; in any run that
+    also collected snapshot_panels - the nightly dual suite, or `-n 8` when one
+    worker drew both files - all seven raised "Runner.run() cannot be called
+    from a running event loop". Converted to plain TestCase driving the
+    coroutines through run_coro, with assertions unchanged.
+    """
+    offenders = []
+    for path in _guarded_paths():
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+        for lineno, what in _banned_async_test_bases(tree):
+            offenders.append(f"{path.relative_to(_TESTS_DIR)}:{lineno} {what}")
+    assert not offenders, (
+        "IsolatedAsyncioTestCase found under tests/ - it enters the event loop "
+        "on the MAIN thread and dies under the snapshot_panels running-loop "
+        "marker. Use a plain unittest.TestCase and drive the coroutine with "
+        "run_coro from tests._asyncio_isolation:\n  " + "\n  ".join(offenders)
+    )
+
+
+def test_the_async_base_scan_actually_matches_both_spellings():
+    """Negative control: a guard that matches nothing would pass forever.
+
+    Pins that the scan really fires on both the qualified and the bare base,
+    so a future 'fix' cannot be to quietly loosen it into never matching.
+    """
+    src = (
+        "import unittest\n"
+        "from unittest import IsolatedAsyncioTestCase\n"
+        "class A(unittest.IsolatedAsyncioTestCase):\n    pass\n"
+        "class B(IsolatedAsyncioTestCase):\n    pass\n"
+        "class C(unittest.TestCase):\n    pass\n"
+    )
+    hits = _banned_async_test_bases(ast.parse(src))
+    assert len(hits) == 2, hits
+    assert {h[1] for h in hits} == {
+        "class A(IsolatedAsyncioTestCase)",
+        "class B(IsolatedAsyncioTestCase)",
+    }
+
+
+def test_the_async_base_scan_ignores_prose_mentions():
+    """A docstring explaining why NOT to use it must not flag itself.
+
+    This is the reason the check is AST-based and not a text grep - both
+    converted files carry exactly such a docstring.
+    """
+    src = (
+        'import unittest\n'
+        'class D(unittest.TestCase):\n'
+        '    """Plain TestCase, NOT IsolatedAsyncioTestCase - see the note."""\n'
+        '    pass\n'
+    )
+    assert _banned_async_test_bases(ast.parse(src)) == []
 
 
 def test_no_bare_asyncio_loop_entry_points_under_tests():

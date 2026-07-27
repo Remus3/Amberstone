@@ -64,21 +64,32 @@ jobs:
         run: |
           # Runs the exhaustive 23k+ test suite.
           #
-          # DELIBERATELY STILL SERIAL. `-n 8 --dist loadfile` was measured on
-          # this exact command and it is dramatically faster - 2m18s against
-          # 20m37s, 23759 passed - but it also produces SEVEN failures that do
-          # not exist serially, all in tests/preflip_mode/ (the file-ingest
-          # mirror set plus the asyncio no-flap seam). The same directory is
-          # 34 passed / 0 failed when run on its own.
+          # PARALLEL as of 2026-07-27: 20m37s serial -> 2m20s, measured twice
+          # at 23769 passed / 106 skipped / 6045 subtests / ZERO failures.
           #
-          # So the speedup is real and the blocker is real: switching this job
-          # to -n today would turn a green job red, which is how a gate gets
-          # ignored and then deleted. The failures are latent test-isolation
-          # bugs worth fixing on their own merit, and fixing them is the
-          # precondition for both the speedup AND for ever promoting this job
-          # to something that blocks. Filed in RM-119; do not flip this to -n
-          # until tests/preflip_mode/ is green under it.
-          pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=120
+          # The blocker that held this back for one commit is fixed, not waived.
+          # `-n` used to produce SEVEN failures that did not exist serially, all
+          # in tests/preflip_mode/, and the cause was not parallelism: both
+          # classes derived unittest.IsolatedAsyncioTestCase, which drives
+          # asyncSetUp through asyncio.Runner.run() on the MAIN thread, and
+          # Playwright's sync API leaves asyncio's running-loop marker set on
+          # that thread for the whole session. So they died in ANY run that also
+          # collected snapshot_panels - the serial nightly included - and `-n`
+          # merely made a worker draw both files more often. Converted to plain
+          # TestCase driving the coroutines through tests/_asyncio_isolation
+          # run_coro, assertions unchanged and proven still failing when the
+          # production mirror is disabled.
+          #
+          # --dist loadfile keeps every test in a file on ONE worker, so
+          # within-file ordering and file-scoped fixtures still hold; only
+          # cross-FILE isolation is newly assumed.
+          #
+          # A 20-minute job nobody reads is how four real failures sat red here
+          # while push CI stayed green (RM-119). At 2m20s this is now fast
+          # enough to be worth reading, and cheap enough to be a candidate for
+          # an actual gate.
+          pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
+            -n 8 --dist loadfile
 
   check:
     if: github.event_name != 'schedule'
