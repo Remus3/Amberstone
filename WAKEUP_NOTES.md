@@ -6,6 +6,62 @@
 
 ---
 
+## 2026-07-27e - R208 the director stamped its own premises UNVERIFIED and nothing read the stamp (ENGINE-IMPACT NONE, `f4815e16`)
+
+**Sixth cycle in seven with a premise stale on disk.** The directive was the
+f1-phase6 inbox apply again. STEP A ordered a commit of staged `.githooks` changes -
+`git diff --cached` empty. STEP B ordered `winmutex.py.from-lw` applied plus the
+item-5a pin - `ops/loop/winmutex.py` already `f1b4b011...`, byte-identical to the
+inbox copy (bytes compared, not digests-of-record), already pinned by
+`SHARED_SHA256` beside `slots.py` `95077a62...`, UNSERIALIZED already 3, both POSIX
+monkeypatch tests already present. STEP C ordered claiming queue item 2, which
+shipped `05319608` / `54bad078`. Nothing to do; measuring that was deliverable one.
+
+**Re-cut to the guard that let it through.** `director_prompt.md:18` mandates a
+`PREMISE-CHECK` line tagging each claim `[from-digest]` or `[UNVERIFIED]`.
+`executor.py:420-424` checked the other two grounding fields and DELIBERATELY
+abstained on this one as "free prose with no machine-readable referent". Half right:
+the executor must not judge whether a semantic claim is true, but the referent is the
+TAG - the director has already called the claim an unknown. The file states its own
+doctrine four times that an unknown is never a pass (`:188`, `:213`, `:478`, `:558`),
+and the one place the director stamps its OWN doubt was the only self-declared
+unknown in the seam that failed OPEN. 13 `unverified` hits across `ops/loop`, all in
+`executor.py`; three shapes already fail closed, the fourth fixed here.
+
+**The defect was in the guard's own regression corpus from day one.** `_R200` at
+`tests/test_loop_executor.py:1064`, the fixture for the ORIGINAL incident this guard
+was written for, ends `PREMISE-CHECK: winmutex.py still carries the old bytes
+[UNVERIFIED]` and main returns only `['stale-head']` on it. Every existing test
+survived the change because every one filters by finding kind.
+
+**The verifier gate refuted the build twice and both were false NEGATIVES.** (1) A
+trailing tag folded in the preceding claim, and two trailing tags on one line dropped
+the first claim outright. (2) Only the first line-anchored `PREMISE-CHECK` was
+scanned, so an indented block-quote of a prior directive above the real field
+silenced the guard - live shape, this loop quotes prior directives constantly. (3)
+The sentence-split fix for (1) introduced a third: claims opening with an
+abbreviation vanished (`e.g.` / `i.e.` / `cf.` / `etc.` / `vs.` / `no.`). Fixed by
+keeping the sentence edge only on the BACKWARD path where defect 1 lived; forward
+reads tag-to-next-tag and cannot mis-split an abbreviation.
+
+**Don't-redo:** `PREMISE-CHECK` `[UNVERIFIED]` tags are now machine-read and produce
+findings - do NOT re-pitch "the executor should check premises". `GROUNDING_MARKER`
+stays `executor: STALE-GROUNDING` deliberately (operator grep token + historical
+`controller.log` lines); the detail string carries the discriminator instead.
+`grounding_findings` MUST stay pure - no fs, no git on the premise path.
+
+**Counts:** `tests/test_loop_*.py` 361 -> 385 (+24 exact); RC `tests/` 13653 -> 13677
+passed / 106 skipped / 460 subtests (+24 exact); ASCII hygiene 14; ruff clean
+repo-wide; 0 non-ASCII. DS untouched. Tier-1. A build-agent count of 382 was retired
+rather than carried - real run, wrong label (an explicit 19-file list including
+`test_lcu_loop_resilience.py`, not a `test_loop*.py` glob match).
+
+**Carry-forward, unchanged and now five cycles old:** the running loop controller
+still predates `d4b1a762`, so it cannot load its own self-reload fix. It must be
+bounced BY HAND once.
+
+---
+
 ## 2026-07-27d - R207 the reports dir was exempt from the guard that would have caught it (ENGINE-IMPACT NONE, `829700e1`)
 
 **The first cycle in six whose premise actually held on disk.** The named file really
