@@ -138,8 +138,19 @@ class JackStepFunctionTests(unittest.TestCase):
         self.assertEqual(jack_of_all_trades_grant(-5), (0.0, 0.0))
 
     def test_a_junk_stack_count_is_fail_soft(self) -> None:
+        """The junk values are the test - only the subTest LABEL is repr'd.
+
+        MEASURED 2026-07-26: a bare object() passed as a subTest kwarg fails
+        under `pytest -n` and only under `-n`. pytest 9 puts the raw kwargs in
+        the report and emits one for every subtest, and execnet serializes only
+        builtins, so subTest.__exit__ raises DumpError and fails the PARENT
+        test. Serially there is no channel and the same matrix passes. Three
+        sibling instances in tests/ were mislabelled "xdist shared-state" for
+        months on that asymmetry; this is the fourth, found by enumerating the
+        defect class rather than by hitting it.
+        """
         for junk in ("many", None, object()):
-            with self.subTest(junk=junk):
+            with self.subTest(junk=repr(junk)):
                 self.assertEqual(jack_of_all_trades_grant(junk), (0.0, 0.0))
 
 
