@@ -1,0 +1,304 @@
+"""Per-session drift guard. Cheap invariant checks, run at every /done.
+
+WHY THIS EXISTS
+---------------
+Drift in this repo does not announce itself. It accumulates silently across
+sessions and then costs a WHOLE DEDICATED SESSION to unpick. Measured examples,
+every one of which actually happened here:
+
+  * ROADMAP.md silently breached its 80KB CI budget and SAT over it, forcing two
+    emergency relocation passes in one session (LEDGER 1063).
+  * ``tools/done.md`` and ``.claude/commands/done.md`` are two copies of the SAME
+    ritual document. They diverged for a MONTH, preserving an
+    ADR-012-decommissioned instruction that sessions kept following.
+  * 27 orphaned docs accumulated before anyone noticed; archiving them took most
+    of a session (LEDGER 1064).
+  * 11 authored ``.claude/commands/*.md`` had ZERO version control for months,
+    because the directory is gitignored.
+  * An ENGINE bump left a stale version in ``docs/HEXCORE_offline.html`` - a
+    FOURTH anchor site no checklist named - and it surfaced only 25 minutes into
+    a full CI run (2026-07-26, ENGINE 1.259.0).
+  * ``Share/README.md`` said "the fifteen most recent" above a list of twenty.
+
+Each of those is seconds to DETECT and a session to REPAIR. That asymmetry is
+the entire argument for this file.
+
+WHY A SCRIPT AND NOT A CHECKLIST ITEM
+-------------------------------------
+Because a prose checklist is precisely what drifted. The mirror rule above sat
+WRONG inside a document for a month while that same document instructed every
+session to follow it. A check that executes cannot rot silently; a paragraph
+telling a reader to remember something can, and did.
+
+CONTRACT
+--------
+Exit 0 = clean, exit 1 = at least one breach. Every check is pure and takes its
+roots as arguments so the test suite can exercise both the breach and the clean
+path - a check that can only ever pass is worse than no check, because it buys
+false confidence.
+
+Usage:
+    python tools/drift_guard.py                 # every session
+    python tools/drift_guard.py 1.258.0         # after a bump: pass the OLD version
+"""
+from __future__ import annotations
+
+import pathlib
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+# ---- CONFIG - the only per-project section --------------------------------
+# Budgets mirror the CI size checks. The guard warns at 90 percent because at
+# 100 percent the relocation is already an emergency.
+DOC_BUDGETS = {"ROADMAP.md": 81920, "CLAUDE.md": 61440}
+BUDGET_WARN_PCT = 90.0
+
+# Same-basename .md in both directories must be byte-identical.
+MIRROR_PAIRS = [("tools", ".claude/commands")]
+
+MEMORY_DIR = pathlib.Path(
+    r"C:\Users\Administrator\.claude\projects\C--Riot-Commander\memory"
+)
+MEMORY_INDEX = "MEMORY.md"
+# The ~99 per-champion sweep memories are deliberately not indexed individually;
+# MEMORY.md carries one line covering the closed 173/173 sweep instead.
+# "_"-prefixed files are transient session scratch (hand-off notes, next-session
+# cards), not memories - they carry no description frontmatter and are not
+# meant to outlive their session, so the index does not track them.
+MEMORY_UNINDEXED_OK = ("project_ds_sweep_", "_")
+
+DOC_GLOBS = ("*.md", "docs/*.md", "docs/**/*.md", "docs/**/*.html", "Share/*.md")
+# Files that legitimately name OLD versions forever.
+HISTORICAL = re.compile(r"CHANGELOG|HISTORY|LEDGER|WAKEUP|_archive|ROADMAP_HISTORY", re.I)
+EXCLUDE_PATH = ("_archive", "node_modules", ".git", "Share/src")
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Finding:
+    """One breach. ``kind`` groups them; ``message`` is operator-facing."""
+
+    kind: str
+    message: str
+
+
+def _iter_docs(root: pathlib.Path) -> list[pathlib.Path]:
+    seen: set[pathlib.Path] = set()
+    for pattern in DOC_GLOBS:
+        for p in root.glob(pattern):
+            if not p.is_file():
+                continue
+            rel = p.relative_to(root).as_posix()
+            if any(x in rel for x in EXCLUDE_PATH):
+                continue
+            seen.add(p)
+    return sorted(seen)
+
+
+def check_doc_budgets(
+    root: pathlib.Path, budgets: dict[str, int]
+) -> list[Finding]:
+    """A CI-budgeted doc that is over, or close enough that it will be soon."""
+    out: list[Finding] = []
+    for name, budget in budgets.items():
+        p = root / name
+        if not p.is_file() or budget <= 0:
+            continue
+        size = p.stat().st_size
+        pct = 100.0 * size / budget
+        if size > budget:
+            out.append(Finding(
+                "doc-budget",
+                f"{name} is {size} bytes, OVER its {budget}-byte budget "
+                f"({pct:.0f}%) - relocate content now",
+            ))
+        elif pct >= BUDGET_WARN_PCT:
+            out.append(Finding(
+                "doc-budget",
+                f"{name} at {pct:.0f}% of its {budget}-byte budget - "
+                "relocate before it breaches",
+            ))
+    return out
+
+
+def check_mirror_parity(
+    root: pathlib.Path, pairs: list[tuple[str, str]]
+) -> list[Finding]:
+    """Two copies of one document must not disagree.
+
+    Only files present on BOTH sides are compared - a command that exists in one
+    place only is normal, not drift.
+    """
+    out: list[Finding] = []
+    for a, b in pairs:
+        da, db = root / a, root / b
+        if not (da.is_dir() and db.is_dir()):
+            continue
+        for fa in sorted(da.glob("*.md")):
+            fb = db / fa.name
+            if not fb.is_file():
+                continue
+            if fa.read_bytes() != fb.read_bytes():
+                newer = fa if fa.stat().st_mtime > fb.stat().st_mtime else fb
+                out.append(Finding(
+                    "mirror-drift",
+                    f"{a}/{fa.name} != {b}/{fa.name} - promote the NEWER side "
+                    f"({newer.relative_to(root).as_posix()}) and re-mirror",
+                ))
+    return out
+
+
+def check_memory_index(
+    memory_dir: pathlib.Path, exempt_prefixes: tuple[str, ...]
+) -> list[Finding]:
+    """An unindexed memory is invisible to the next session; a dead link lies."""
+    out: list[Finding] = []
+    if not memory_dir.is_dir():
+        return out
+    index = memory_dir / MEMORY_INDEX
+    if not index.is_file():
+        return [Finding("memory-index", f"no {MEMORY_INDEX} in {memory_dir}")]
+    text = index.read_text(encoding="utf-8", errors="replace")
+    files = {p.stem for p in memory_dir.glob("*.md") if p.name != MEMORY_INDEX}
+    linked = set(re.findall(r"\]\(([A-Za-z0-9_\-]+)\.md\)", text))
+    dead = sorted(linked - files)
+    if dead:
+        out.append(Finding(
+            "memory-index",
+            f"{len(dead)} dead index link(s) - target file missing: {dead[:5]}",
+        ))
+    unindexed = sorted(
+        f for f in (files - linked) if not f.startswith(exempt_prefixes)
+    )
+    if unindexed:
+        out.append(Finding(
+            "memory-index",
+            f"{len(unindexed)} memory file(s) not in {MEMORY_INDEX}: "
+            f"{unindexed[:6]}",
+        ))
+    return out
+
+
+def check_version_anchors(
+    root: pathlib.Path, old_version: str | None
+) -> list[Finding]:
+    """After a bump, no authored doc may still present the OLD version as live.
+
+    Sweeps HTML as well as markdown - a ``*.md``-only grep is exactly how the
+    ``docs/HEXCORE_offline.html`` anchor was missed on the 1.259.0 bump.
+    Changelogs, ledgers and history files legitimately name old versions and are
+    excluded by name.
+    """
+    if not old_version:
+        return []
+    hits: list[str] = []
+    for p in _iter_docs(root):
+        rel = p.relative_to(root).as_posix()
+        if HISTORICAL.search(rel):
+            continue
+        try:
+            if old_version in p.read_text(encoding="utf-8", errors="replace"):
+                hits.append(rel)
+        except OSError:
+            continue
+    if hits:
+        return [Finding(
+            "version-anchor",
+            f"old version {old_version} still present in {hits}",
+        )]
+    return []
+
+
+_COUNT_WORDS = {
+    "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
+    "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "fifteen": 15,
+    "sixteen": 16, "eighteen": 18, "twenty": 20, "thirty": 30,
+}
+
+
+def check_counted_claims(root: pathlib.Path) -> list[Finding]:
+    """A doc claiming "the N most recent" above a list of a different length."""
+    out: list[Finding] = []
+    for p in _iter_docs(root):
+        if p.suffix != ".md":
+            continue
+        text = p.read_text(encoding="utf-8", errors="replace")
+        m = re.search(r"[Tt]he (\w+) most recent", text)
+        if not m:
+            continue
+        claimed = _COUNT_WORDS.get(m.group(1).lower())
+        if claimed is None:
+            continue
+        actual = len(re.findall(r"^- \d+\.\d+\.\d+ ->", text[m.end():], re.M))
+        if actual and actual != claimed:
+            out.append(Finding(
+                "count-claim",
+                f"{p.relative_to(root).as_posix()} says '{m.group(1)} most "
+                f"recent' but lists {actual}",
+            ))
+    return out
+
+
+def check_untracked_authored(
+    root: pathlib.Path, pairs: list[tuple[str, str]]
+) -> list[Finding]:
+    """Authored docs git is not tracking - the zero-version-control class.
+
+    Checked in ONE ``git ls-files`` call rather than one per file; the per-file
+    shape took long enough that it discouraged running the guard at all.
+    """
+    out: list[Finding] = []
+    for a, _b in pairs:
+        d = root / a
+        if not d.is_dir():
+            continue
+        candidates = sorted(d.glob("*.md"))
+        if not candidates:
+            continue
+        r = subprocess.run(
+            ["git", "-C", str(root), "ls-files", f"{a}/"],
+            capture_output=True, text=True,
+        )
+        if r.returncode != 0:
+            continue
+        tracked = set(r.stdout.split())
+        for f in candidates:
+            rel = f.relative_to(root).as_posix()
+            if rel not in tracked:
+                out.append(Finding(
+                    "untracked", f"{rel} is authored but NOT tracked by git"
+                ))
+    return out
+
+
+def run_all(
+    root: pathlib.Path = ROOT, old_version: str | None = None
+) -> list[Finding]:
+    """Every check, in the order a reader would want them reported."""
+    findings: list[Finding] = []
+    findings += check_doc_budgets(root, DOC_BUDGETS)
+    findings += check_mirror_parity(root, MIRROR_PAIRS)
+    findings += check_memory_index(MEMORY_DIR, MEMORY_UNINDEXED_OK)
+    findings += check_version_anchors(root, old_version)
+    findings += check_counted_claims(root)
+    findings += check_untracked_authored(root, MIRROR_PAIRS)
+    return findings
+
+
+def main(argv: list[str]) -> int:
+    old_version = argv[1] if len(argv) > 1 else None
+    findings = run_all(ROOT, old_version)
+    for f in findings:
+        print(f"  BREACH [{f.kind}] {f.message}")
+    if not findings:
+        print("  clean - no drift detected")
+    print(f"drift_guard: {len(findings)} breach(es)")
+    return 1 if findings else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

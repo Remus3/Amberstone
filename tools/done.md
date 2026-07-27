@@ -10,6 +10,40 @@ description: End-of-session ritual - auto-commit any pending changes, push, do t
 
 The user wants to end the session cleanly so the next one starts with a fresh context window. This is /wrap, but with auto-commit instead of "stop and ask". Run all sections in order; surface a tight final banner.
 
+> **SHAPE (measured 2026-07-26, LEDGER 1065).** This ritual is FOUR PHASES, and
+> the ordering is load-bearing rather than cosmetic:
+> **Phase 1** the fast local gate (section 0-0c, target 60-90s) -
+> **Phase 2** commit + push + FIRE the full suite at CI (sections 1-2) -
+> **Phase 3** all the paperwork WHILE CI runs (sections 3-7) -
+> **Phase 4** collect CI, banner, next-session prompt (sections 8-10).
+>
+> **Why:** the old shape ran a ~27-minute local dual suite and THEN blocked on a
+> CI watch, with ~15 minutes of doc writing after that. Measured: the local dual
+> suite is **1642s / 23,250 tests**, while the SAME suite on CI's ubuntu runner
+> is **16m47s / 22,749 tests (97.8% of local)** - CI is FASTER than this machine
+> and it is off the box. Dispatching CI at Phase 2 makes the ~15 minutes of
+> paperwork overlap the ~17-minute CI run, so the wrap costs the LONGER of the
+> two instead of their sum.
+>
+> **Do NOT reintroduce a full local dual suite into Phase 1.** It was measured
+> and it does not have a slow minority to trim: the slowest 40 tests are only
+> **10.7%** of wall clock and the mean is 71ms across 23,250 tests, so the cost
+> is broad, not concentrated. The targeted slice plus the CI dispatch is the
+> replacement, not a shortcut.
+
+> **MEASURED 2026-07-26 - pytest-xdist is an 11.4x win and is NOT yet adopted.**
+> `pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile` runs the full
+> dual suite in **144.65s (2m24s) against the serial 1642s (27m22s)**, with
+> **6 failures out of 23,272**. Those six are shared-state artifacts that serial
+> execution was hiding - four fail-soft "never raises on garbage" tests
+> (`test_aram_fight_risk` x3, `test_aram_action_rule`), one rune-registry
+> fail-soft (`test_rune_offense_jack_of_all_trades_r156`), and one genuine
+> asyncio conflict (`preflip_mode/test_body_data_mode_no_flap` -
+> "Runner.run() cannot be called from a running event loop").
+> **Fix those six, then this replaces the CI dispatch as the primary gate** and
+> the whole wrap collapses to a couple of minutes. Until they are fixed, `-n 8`
+> is not trustworthy as a gate. Do NOT adopt it by suppressing the six.
+
 ### 0. Local check gate - commit only when green
 
 Versioning is cheap; lost work is not. The operator never passes up a commit + push. So the DEFAULT is: always commit + push when local checks are green. Do NOT leave authored work uncommitted at session end just because a change feels small or unfinished - if it passes its checks, it ships.
@@ -19,10 +53,11 @@ Versioning is cheap; lost work is not. The operator never passes up a commit + p
   - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m ruff check .` (must report ALL CHECKS PASSED)
   - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m py_compile <each touched .py>` (syntax - silent-crash guard per CLAUDE.md hard rule)
   - **Authored-source hygiene (ALWAYS run, every /done - this is the same step CI runs):** `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py tests/test_u2500_hygiene.py -q`. Must be green. No smart quotes / em-en dashes / NBSP / ellipsis / mojibake / U+2500 in authored source. The `Share/src` DS data mirror is excluded as external data. If this fails, it is NEVER "pre-existing / unrelated / not in CI" - it is in CI now; fix it (`"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply` for smart-quote/dash drift) before the gate is green.
-  - Test slice covering the change: full `tests/` for broad edits, the targeted module for narrow ones, DS suite `agents/daemon_slayer/tests/` if the engine was touched.
+  - Test slice covering the change: **the targeted module**, plus the DS suite `agents/daemon_slayer/tests/` if the engine was touched (that one is genuinely fast - 9932 tests in ~115s). Do NOT run the full `tests/` suite here; section 2c dispatches it to CI instead. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
 - Ground truth, not memory (per CLAUDE.md Verification Discipline): run the gate FRESH this turn, read the pass/fail counts you observe now, and `ls` any test file you cite as added - never carry forward a prior or subagent-reported green. If the work came from parallel slices, the `verifier` subagent's CONFIRM is the gate, not the slice agent's claim.
-- GREEN: proceed to commit (section 1).
+- GREEN: proceed to section 0c, then commit (section 1).
 - RED: fix and re-run. If the failure is pre-existing and unrelated to this session's work, note it ABOVE the banner and commit only the green-verified authored files - never commit over a regression you introduced.
+
 
 ### 0b. DS Share package sync (when Daemon Slayer was touched)
 
@@ -40,6 +75,24 @@ The `Share/` folder is the external-facing DS review package (engine source + DS
 - If `ENGINE_VERSION` changed this session: prepend a dated release entry to `Share/CHANGELOG.md` (header `## ENGINE_VERSION <v> - <UTC timestamp>`, then a tight bullet list of the engine changes) and append a one-line entry under the sync-history section. Credit the upstream sources of truth (Riot Data Dragon / CommunityDragon / Meraki Analytics) in the entry when the change added or corrected formula data. (A plain patch bump - new `current.txt` patch, no engine code change - also needs a manual doc pass for the patch FORMS the auto-rewrite leaves alone: the `data/daemon_slayer/<patch>/` path citations and the CommunityDragon two-segment pin in `03_DATA_AND_SOURCES.md`.)
 - Stage `Share/` with the rest of the authored files in section 1 - the package sync is part of the SAME commit as the engine change, never a trailing afterthought. Credit the sources of truth in the commit body too.
 
+### 0c. Drift guard - the check that saves the cleanup sessions
+
+```
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/tools/drift_guard.py"
+```
+
+After an ENGINE bump, pass the version you bumped FROM so the anchor sweep runs:
+
+```
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/tools/drift_guard.py" 1.258.0
+```
+
+Runs in well under a second and exits 1 on any breach. It checks doc-size budgets, `tools/*.md` vs `.claude/commands/*.md` mirror parity, memory-index integrity, stale version anchors (HTML included), self-inconsistent counted claims, and authored files git is not tracking.
+
+**Every check exists because that exact drift ACTUALLY HAPPENED here and later cost a whole dedicated session** - ROADMAP silently breaching its CI budget and sitting over it, two copies of THIS file diverging for a month while preserving a decommissioned instruction, 27 orphaned docs, 11 command docs with zero version control, a fourth ENGINE anchor site found only 25 minutes into a CI run. Detection is seconds; repair is a session. Fix what it reports NOW rather than letting it accrue - that is the entire point of the guard.
+
+Do NOT silence a breach by loosening the check. If a finding is genuinely a false positive, fix the check and add a case to `tests/test_drift_guard.py` (which asserts both the breach and the clean path for every check, so a check cannot silently degrade into always-passing).
+
 ### 1. Auto-commit any pending changes
 
 - `git -C "C:/Riot Commander" status -s`
@@ -49,7 +102,9 @@ The `Share/` folder is the external-facing DS review package (engine source + DS
   - **Frozen-file guard**: per `CLAUDE.md`, several files require explicit user approval before editing. If any modified path is in the frozen list, stop and ask - auto-commit is too dangerous here. Frozen list lives at the top of CLAUDE.md.
   - Stage only the changes you authored this session (`git add <specific files>`). Do NOT use `git add -A` - accidentally commits .env / runtime junk.
   - Draft a one-line commit message summarising the session's work (1-2 sentences, "why" over "what"). If multiple distinct themes: list them as bullets in the body.
-  - Commit with the standard `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>` trailer.
+  - Commit with the `Co-Authored-By:` trailer the RUNNING HARNESS specifies - do NOT hardcode a model name here.
+    (This line previously pinned `Claude Opus 4.7 (1M context)` and went stale when the model changed; a
+    hardcoded identifier in prose is exactly the drift class section 0c exists to catch.)
   - If pre-commit hooks fail: fix and create a new commit (never `--amend`).
 
 ### 2. Push
@@ -62,25 +117,36 @@ The `Share/` folder is the external-facing DS review package (engine source + DS
 
 ### 2b. GitHub CI verification
 
-- After the push lands, confirm CI goes green for the pushed SHA:
+- **Do NOT block here.** This is Phase 2; both CI runs are collected in section 8c after the
+  paperwork is done. Just capture the run id so 8c can find it.
+- Note the push-triggered `check` run for the pushed SHA:
   - `gh run list --branch <branch> --limit 1` to find the run id (gh = `C:/Program Files/GitHub CLI/gh.exe`; use the absolute path in older shells).
-  - `gh run watch <run-id> --exit-status` - blocks until the run finishes; exit 0 = green.
 - Report the CI result in the banner: `green | red | pending`.
 - If CI goes RED on a real test/lint failure: surface the failing job ABOVE the banner and add "resolve CI <job> before /clear" to the bottom line. The local gate (section 0) should have caught it, so a red here usually means an env-only delta - investigate before declaring the session cleanly wrapped.
 - Do NOT block /clear on flaky-infra red, but do NOT silently ignore a genuine failure either.
+
+### 2c. Dispatch the FULL suite to CI, then walk away from it
+
+The full dual suite does NOT run locally at wrap (see the SHAPE note at the top). Fire it off-machine the moment the push lands, so it runs while you do the paperwork in sections 3-7:
+
+```
+gh workflow run ci.yml --ref main
+```
+
+This triggers the `nightly-full-suite` job through its existing `workflow_dispatch` gate - no workflow edit is needed. On the ubuntu runner it is **16m47s for 22,749 tests (97.8% of the local 23,250)**, which is FASTER than running it here.
+
+- Note the dispatched run id now (`gh run list --workflow=ci.yml --limit 1`); section 8c collects it.
+- Do NOT block here. Go straight to section 3.
+- **Once per SESSION, never per push.** The repo is PRIVATE, so Actions minutes are metered and this repo has already tripped its spending limit once. A billing block looks exactly like a red CI - a 2-3 second "failure" carrying a "job was not started" annotation - so do not provoke it by wiring the full suite into every push. See memory `reference_ci_billing_fastfail`.
+- The ~142 tests that SKIP on Linux (Windows paths, PowerShell, scheduled tasks) are the residue CI cannot cover. If this session's work was in that surface, run those locally rather than trusting the CI green.
 
 ### 3. Background tasks started this session
 
 - TaskList - show anything still running.
 - Each one: TaskStop. DO NOT leave monitors armed; they're useless after /clear.
 
-### 3b. Peer bridge probe - DEPRECATED (operator 2026-06-21)
 
-- The Peer cross-Claude bridge loop-liveness probe is NO LONGER part of /done. Do
-  not dispatch a bridge_task probe and do not flag a dead Peer `/loop
-  /process-bridge-tasks` at wrap. Skip this section entirely.
-
-### 4. RC restart pending
+### 5. RC restart pending
 
 - Check `C:/Riot Commander/restart_trigger.txt` - if non-empty, RC may still be reloading. Confirm `ops/runtime/health.json` shows `alive=true` AND `last_reload_ok=true` before declaring done.
 
@@ -145,6 +211,20 @@ Manual follow-ups (only if needed):
 - Find the active session jsonl: `Get-ChildItem "C:/Users/Administrator/.claude/projects/C--Riot-Commander/" -Filter "*.jsonl" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 Name, @{N='MB';E={[math]::Round($_.Length/1MB,1)}}`
 - > 10 MB: add "session file > 10 MB - /clear overdue" to the banner.
 - > 20 MB: escalate ABOVE the banner - at this size compaction is lossy and the model is already degraded.
+
+### 8c. Collect BOTH CI runs (Phase 4)
+
+By now the paperwork has overlapped most of the ~17-minute full run. Collect both:
+
+```
+gh run watch <check-run-id> --exit-status
+gh run watch <full-suite-run-id> --exit-status
+```
+
+- Report each in the banner as `green | red | pending`.
+- A RED full run means fixing FORWARD on main - that is the accepted trade for not paying 27 minutes locally before every commit. Surface the failing job ABOVE the banner and add "resolve CI <job> before /clear" to the bottom line.
+- Distinguish a real failure from a BILLING block: a 2-3 second "failure" with a "job was not started" annotation is the spending limit, not your code (memory `reference_ci_billing_fastfail`).
+- Do NOT block /clear on flaky-infra red, but never silently ignore a genuine failure.
 
 ### 9. Final banner
 
