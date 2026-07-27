@@ -57,12 +57,27 @@ jobs:
           # / json5 / anthropic), so the nightly installs requirements.txt - unlike
           # the pure-Python `check` job which runs a minimal ImportError-guarded subset.
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-timeout ruff playwright
+          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
       - name: Full Dual Suite
         run: |
-          # Runs the exhaustive 14k+ test suite.
+          # Runs the exhaustive 23k+ test suite.
+          #
+          # DELIBERATELY STILL SERIAL. `-n 8 --dist loadfile` was measured on
+          # this exact command and it is dramatically faster - 2m18s against
+          # 20m37s, 23759 passed - but it also produces SEVEN failures that do
+          # not exist serially, all in tests/preflip_mode/ (the file-ingest
+          # mirror set plus the asyncio no-flap seam). The same directory is
+          # 34 passed / 0 failed when run on its own.
+          #
+          # So the speedup is real and the blocker is real: switching this job
+          # to -n today would turn a green job red, which is how a gate gets
+          # ignored and then deleted. The failures are latent test-isolation
+          # bugs worth fixing on their own merit, and fixing them is the
+          # precondition for both the speedup AND for ever promoting this job
+          # to something that blocks. Filed in RM-119; do not flip this to -n
+          # until tests/preflip_mode/ is green under it.
           pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=120
 
   check:
@@ -88,7 +103,7 @@ jobs:
           # pyyaml parses .github/workflows/*.yml for the docs-guard contract
           # test below. Without it those assertions degrade to skips, and a
           # skipped test is a green tick.
-          pip install pytest pytest-asyncio pytest-timeout ruff pydantic>=2.0 playwright mypy pyyaml
+          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff pydantic>=2.0 playwright mypy pyyaml
 
       # MINUTE SAVER (2026-06-30): cache the Chromium browser binary so only
       # the (fast) --with-deps apt step runs on a hit; the ~120MB download is
@@ -232,6 +247,36 @@ jobs:
       - name: panel snapshot tests
         run: |
           pytest tests/snapshot_panels/ -q --tb=short --timeout=60
+
+      - name: "DS suite (RM-119 - this was ZERO coverage on push)"
+        run: |
+          # MEASURED 2026-07-27 (RM-119). This repo has 397 Daemon Slayer test
+          # files and NOT ONE of them ran on a push or a pull request. They ran
+          # only under nightly-full-suite, which is gated on `schedule ||
+          # workflow_dispatch` and therefore blocks nothing - so a DS regression
+          # merged green and surfaced, at best, the next morning in a job with
+          # no gating power. DS is the engine behind every build recommendation
+          # the live dashboard serves, which makes it the worst possible half of
+          # the tree to leave ungated.
+          #
+          # It is cheap, which is why this is the first half of RM-119 to land:
+          # 9963 passed / 1 skipped in 44s at `-n 8`, and the package imports
+          # NOTHING from the runtime stack (no anthropic / PIL / websockets /
+          # portalocker / json5 / cv2 / numpy), verified by grep before wiring
+          # it here - so the minimal-deps install above is sufficient and this
+          # step adds no pip time.
+          #
+          # It was NOT cheap a day ago, and the reason is worth recording: the
+          # identical command returned 11 failures that morning. They were not
+          # 11 problems and not flakiness - they were one defect, a
+          # ThreadingHTTPServer left at socketserver's default
+          # request_queue_size of 5, so concurrent load got connections REFUSED
+          # and `core/daemon_slayer_client.py` mapped the transport error to
+          # None, which callers read as an engine verdict. Fixed at source in
+          # c009efea. Any future "the DS tests are flaky under -n" claim should
+          # be re-measured before it is believed.
+          pytest agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
+            -n 8 --dist loadfile
 
       - name: mypy gradual typing
         continue-on-error: true
