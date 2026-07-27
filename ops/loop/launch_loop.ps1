@@ -56,6 +56,15 @@ if ($Mode -eq "dry") {
   Start-Process $py -ArgumentList $sa -WorkingDirectory $root
   Write-Host "dry: claude_stub launched (regress=$Regressions hang=$($Hang.IsPresent))"
 }
+elseif ((Get-Content $Cfg -Raw | ConvertFrom-Json).channel -eq "sdk") {
+  # The sdk channel runs headless `claude -p`: no window, no typing, nothing for
+  # the bridge to do. Starting it anyway would resurrect the machine-wide
+  # singleton that F1 removed and could block the sibling Sibling-A loop,
+  # and the strict window-bind below would refuse to launch at all whenever no
+  # window is titled claude_window_title. Both are pure AHK-channel concerns.
+  # LW parity: Sibling-A c47b2b8.
+  Write-Host "live: channel=sdk - no AHK bridge, no window bind"
+}
 else {
   # STRICT window-bind (LW a703ac1 parity): ONE claude.exe process owns MULTIPLE
   # project windows (Image/RC/Claude), so "first titled claude process" is WRONG
