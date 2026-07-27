@@ -306,6 +306,38 @@ def check_git_hooks_path(root: pathlib.Path) -> list[Finding]:
     )]
 
 
+def check_orphaned_git_hooks(root: pathlib.Path) -> list[Finding]:
+    """A hook in .git/hooks with no counterpart in .githooks is now INERT.
+
+    Flipping core.hooksPath to the tracked directory silently disables every
+    hook that lives ONLY in the untracked one. Measured 2026-07-26: the flip
+    orphaned `post-checkout`, `pre-push` (both Git LFS, and this repo has
+    LFS-tracked files, so LFS checkout and LFS UPLOAD both break) and
+    `post-commit` (the Share review-gist mirror). Nothing reports it - git simply
+    stops consulting them, pushes still look clean, and LFS content quietly never
+    reaches the remote.
+
+    Reported as a breach rather than a note because the failure is silent in
+    exactly the direction that loses data.
+    """
+    tracked = root / ".githooks"
+    untracked = root / ".git" / "hooks"
+    if not (tracked.is_dir() and untracked.is_dir()):
+        return []
+    have = {p.name for p in tracked.iterdir() if p.is_file()}
+    orphans = sorted(
+        p.name for p in untracked.iterdir()
+        if p.is_file() and not p.name.endswith(".sample") and p.name not in have
+    )
+    if not orphans:
+        return []
+    return [Finding(
+        "orphaned-hook",
+        f"{orphans} exist in .git/hooks but NOT in .githooks - core.hooksPath "
+        "points at .githooks, so these are INERT. Port them or delete them.",
+    )]
+
+
 def run_all(
     root: pathlib.Path = ROOT, old_version: str | None = None
 ) -> list[Finding]:
@@ -318,6 +350,7 @@ def run_all(
     findings += check_counted_claims(root)
     findings += check_untracked_authored(root, MIRROR_PAIRS)
     findings += check_git_hooks_path(root)
+    findings += check_orphaned_git_hooks(root)
     return findings
 
 
