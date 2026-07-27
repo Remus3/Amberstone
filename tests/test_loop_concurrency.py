@@ -233,14 +233,33 @@ def test_controller_reclaims_a_lock_held_by_a_dead_pid(tmp_path: Path):
 
 # ---- named mutexes ---------------------------------------------------------
 
+@pytest.mark.skipif(sys.platform != "win32", reason="windows mutex semantics")
 def test_mutex_is_reentrant_for_the_same_thread():
-    """Windows mutexes are owned per-thread; nesting must not self-deadlock."""
+    """Windows mutexes are owned per-thread; nesting must not self-deadlock.
+
+    Skipped off win32 for the same reason as the serialization test below, but
+    it hid better because it fails the other way: the POSIX no-op nests happily,
+    so this went GREEN on every Linux checkout while proving nothing about
+    re-entrancy. A vacuous pass is worse than a red - it reports coverage no
+    non-Windows run has ever actually exercised.
+    """
     with winmutex.hold("Global\\LWRC_TEST_RC_NEST", timeout=5):
         with winmutex.hold("Global\\LWRC_TEST_RC_NEST", timeout=5):
             pass
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="windows mutex semantics")
 def test_mutex_serializes_two_threads():
+    """peak == 1 is assertable only where the primitive EXISTS. hold() short
+    circuits at winmutex.py:57 on any non-win32 platform and yields unheld by
+    design, so off Windows this asserted a guarantee the module openly declines
+    to make - it was red on every Linux checkout including nightly CI run
+    30261946219. The absent thing is the Win32 named-mutex NAMESPACE, an
+    environment capability, which is exactly what the skip doctrine reserves a
+    skip for; the code under test is present and fine. Coverage is not dropped:
+    the three test_posix_no_op_* tests below pin the other branch, and they run
+    on EVERY platform because they reach it by monkeypatching sys.platform.
+    """
     live = 0
     peak = 0
     lock = threading.Lock()
@@ -339,6 +358,50 @@ def test_posix_no_op_branch_survives_a_caller_that_passes_no_log(monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
     with winmutex.hold("Global\\LWRC_TEST_RC_POSIX_NOLOG") as h:
         assert h is None
+
+
+def test_posix_no_op_lets_a_second_caller_in_while_the_first_holds(monkeypatch):
+    """The POSIX mirror of test_mutex_timeout_raises_when_held_elsewhere, and
+    the half that test_mutex_serializes_two_threads stops covering off Windows.
+    The marker assertions above prove the no-op ANNOUNCES itself; only an actual
+    second entry into a held name proves what it is announcing, and it must be
+    proven rather than assumed - a future fcntl or RLock fallback would keep
+    emitting the marker while quietly changing this behaviour, and the guard
+    that noticed would be the one deleted as redundant.
+
+    Overlap is established by events, not by timing: the first caller is parked
+    inside its block until the second has been and gone. The marker is counted
+    PER ENTRY because a log-reading judge sizes the breach by line count - one
+    line per name would render N unprotected calls as a single incident.
+    """
+    monkeypatch.setattr(sys, "platform", "linux")
+    name = "Global\\LWRC_TEST_RC_POSIX_OVERLAP"
+    lines: list[str] = []
+    inside = threading.Event()
+    release = threading.Event()
+
+    def holder():
+        with winmutex.hold(name, timeout=5, log=lines.append):
+            inside.set()
+            release.wait(timeout=10)
+
+    t = threading.Thread(target=holder)
+    t.start()
+    try:
+        assert inside.wait(timeout=10), "the first caller never entered its block"
+        with winmutex.hold(name, timeout=0.2, log=lines.append) as h:
+            assert h is None, "the POSIX branch holds no handle"
+            assert not release.is_set(), \
+                "the first caller must still be inside or this proves no overlap"
+    finally:
+        release.set()
+        t.join(timeout=10)
+
+    marker = "winmutex: UNSERIALIZED " + name
+    assert sum(ln.startswith(marker) for ln in lines) == 2, \
+        f"one marker per unprotected entry, not one per name, got {lines!r}"
+    assert not any("ACQUIRED" in ln for ln in lines), \
+        "a no-op must never claim ACQUIRED - it opens a window RELEASED never closes"
 
 
 # ---- f1-phase6 item 5a: pinned parity constants -----------------------------
