@@ -231,8 +231,13 @@ class LiveDataContractTests(unittest.TestCase):
     def test_sr_contract_holds_on_real_data(self):
         path = (Path(__file__).resolve().parent.parent / "data"
                 / "coach_reference" / "champion_benchmarks.json")
-        if not path.is_file():
-            self.skipTest("champion_benchmarks.json not present")
+        # Tracked in git, so its absence means the corpus is broken, not that
+        # this checkout lacks a capability - skipping here never fired.
+        self.assertTrue(
+            path.is_file(),
+            "data/coach_reference/champion_benchmarks.json is tracked in git "
+            "and must be present in every checkout",
+        )
         h = _RouteHarness("mode=sr")
         rcb._serve_champ_benchmarks(h)
         self.assertEqual(h.sent_status, 200)
