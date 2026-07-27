@@ -130,8 +130,10 @@ def test_load_missing_is_empty(tmp_path):
 def test_icon_hash_real():
     cv2 = pytest.importorskip("cv2")
     ids = vtm.list_ids("items")
-    if not ids:
-        pytest.skip("no item icons")
+    # data/icons/items/ is TRACKED (36 committed icons), so an empty list means
+    # list_ids() or the committed icon set broke. cv2 above is the only real
+    # capability gate here.
+    assert ids, "no item icons found under the tracked data/icons/items/ dir"
     d = vtm._CATEGORY_DIRS["items"]
     h = vap.icon_hash(d / (ids[0] + ".png"))
     assert isinstance(h, int)

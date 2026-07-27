@@ -67,10 +67,22 @@ def _snapshot_present() -> bool:
     )
 
 
-requires_snapshot = pytest.mark.skipif(
-    not _snapshot_present(),
-    reason="no data/daemon_slayer/*/arena_augments.json snapshot on disk",
-)
+def test_arena_augment_snapshot_is_committed() -> None:
+    """Meta-guard: the snapshot every test below reads is TRACKED.
+
+    2026-07-27 skip audit: this module used to hang a module-wide
+    ``skipif(not _snapshot_present())`` off that same lookup.
+    data/daemon_slayer/<patch>/arena_augments.json is committed for every
+    vendored patch (16.10.1 .. 16.14.1), so the condition could only ever be
+    true when the committed snapshot had been deleted - i.e. exactly when the
+    cache tests matter - and the whole module would have gone green by
+    skipping. Pinning it as its own assertion keeps the requirement visible
+    without gating the suite behind it.
+    """
+    assert _snapshot_present(), (
+        "no data/daemon_slayer/*/arena_augments.json on disk - the tracked "
+        "Arena augment snapshot is missing from this checkout"
+    )
 
 
 def _expected_keys_from_disk() -> list[str]:
@@ -109,7 +121,6 @@ class _PartialList(list):
             yield item
 
 
-@requires_snapshot
 def test_total_failure_is_not_cached_and_map_recovers(monkeypatch):
     """RECOVERY shape - a total build failure must not poison the cache."""
     real_iterdir = Path.iterdir
@@ -129,7 +140,6 @@ def test_total_failure_is_not_cached_and_map_recovers(monkeypatch):
     )
 
 
-@requires_snapshot
 def test_partial_build_is_not_cached_and_map_recovers(monkeypatch):
     """RECOVERY shape - the worse case: a PARTIALLY built map gets pinned.
 
@@ -155,7 +165,6 @@ def test_partial_build_is_not_cached_and_map_recovers(monkeypatch):
     )
 
 
-@requires_snapshot
 def test_partial_build_resolves_every_augment_after_recovery(monkeypatch):
     """A resolver miss caused by the partial cache is operator-invisible."""
     real_loads = json.loads
