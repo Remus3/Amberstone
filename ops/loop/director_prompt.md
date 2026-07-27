@@ -98,6 +98,41 @@ HARD RULES for the directive you emit:
   is the SOLE merger - run the `verifier` subagent on each slice's claim BEFORE merging it,
   merge only green+verified slices, run the full suite, then commit. A trivial one-file item
   may use a single agent (no fan-out).
+- PARALLEL FILE SETS ARE A CONTRACT, NOT A CLAIM. A directive naming N > 1 parallel agents
+  MUST assert each agent's file set and PROVE them disjoint, written in the shape that
+  `parallel_plan` in `ops/loop/executor.py` can read - that function is the machine that
+  checks you, and a proof it cannot parse is not a proof. COPY THE SHAPE OF THIS BLOCK.
+  The block is NORMATIVE; the prose under it only DESCRIBES it. If the two ever disagree,
+  the BLOCK wins and the prose is the defect:
+    CANONICAL PARALLEL BLOCK - BEGIN
+    Dispatch 2 parallel worktree subagents, one slice each, in a single message.
+    AGENT 1: owns path/to/slice_one_module.py and path/to/slice_one_notes.md
+    AGENT 2: owns path/to/slice_two_module.py
+    CANONICAL PARALLEL BLOCK - END
+  Those paths are placeholders - substitute the real ones. What the block demonstrates:
+    1. A preamble sentence carrying a parallel trigger word (parallel / concurrently /
+       simultaneously / fan-out) AND the agent count, on the SAME line.
+    2. ONE heading line per agent, STARTING the line, keyed `AGENT` / `SLICE` / `LANE` /
+       `WORKTREE`. PARSES: `AGENT 1:` `SLICE 12:` `LANE b:` `WORKTREE 7)`.
+       DOES NOT PARSE: `AGENT 123:` `AGENT one:` `see AGENT 1:`.
+       So `<id>` is one or two digits or a single letter, closed by `:` `.` `,` `)` `-`
+       or end of line, and a heading buried mid-sentence is not a heading. Markdown
+       `**`, `-` and `#` prefixes are tolerated.
+    3. EVERY block names at least one repo-relative path with a real file extension. A
+       block naming no file is UNVERIFIABLE, not empty - it is a deviation, same as a
+       collision.
+    4. NO path appears under two headings. The comparison is suffix-aware, so
+       `C:\Riot Commander\ops\loop\executor.py` and `ops/loop/executor.py` are the SAME
+       file and DO collide.
+    5. Paths in the PREAMBLE are attributed to NO agent, so the sets must live UNDER the
+       headings. Naming the files in the dispatch sentence proves nothing.
+  The executor ENFORCES this: `overlap` gets the SERIALIZE override, `unverified` gets the
+  prove-or-serialize override, and the executor MUST report that deviation in its summary
+  line - a silent correction teaches the director nothing and the same broken shape gets
+  written the next cycle. R200 is the live scar: the two sets WERE disjoint, the directive
+  had just not written them where the parser looks, so the cycle serialized and R203
+  sidestepped it by dropping to one agent. If the work cannot be cut into disjoint sets,
+  direct ONE agent - never name N and hope.
 - The directive MUST instruct Claude to: follow TDD (failing test first), run py_compile
   before any restart, and run the full test suite at the end.
 - DEFECT-CLASS ENUMERATION - the directive MUST instruct Claude that no fix commits until the
@@ -109,6 +144,13 @@ HARD RULES for the directive you emit:
   not a fix, and a population of 1 is a measured result that must be SHOWN, never assumed.
   Cross-check the class against sibling modes / duplicate build paths / alias ids before
   declaring it closed. See the `root-cause-fix` skill and CLAUDE.md "Engine / Build Conventions".
+- TEST, NOT TRANSCRIPT. A claim heavy enough to justify a schema change - a new field, a
+  new registry key, a new persisted shape, an ENGINE_VERSION bump - ships as a TEST, not
+  as a transcript. The directive MUST require an executable assertion over the new shape
+  in the SAME commit. A findings paragraph, a count quoted in prose, or an agent's report
+  is NOT evidence: prose rots and is never re-run, a test is re-run every cycle. Where the
+  claim is a MEASUREMENT - a population count, a saturation figure - the test PINS the
+  number, so it goes red on drift instead of aging quietly into a wrong sentence.
 - The directive MUST instruct Claude: do NOT call AskUserQuestion; if a choice arises,
   auto-pick the recommended/safest option and proceed. Full authority, no user gating.
 - The directive MUST instruct Claude to update docs/ORCHESTRATION_PLAN.md: flip the picked
