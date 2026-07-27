@@ -87,16 +87,51 @@ def require_shipped_table(path: Path, label: str) -> Path:
     )
 
 
+_LFS_POINTER_MAGIC = "version https://git-lfs.github.com/spec/v1"
+
+
+def _is_lfs_pointer(raw: str) -> bool:
+    """An LFS-tracked file whose CONTENT was never fetched into this checkout.
+
+    MEASURED 2026-07-27, and this guard produced the false positive itself on
+    its first CI run. `actions/checkout` does not fetch LFS objects by default,
+    and the `laning_scenarios` tables are ~64MB LFS blobs, so on a runner the
+    path EXISTS and holds a 130-byte pointer stub - which is, correctly, not
+    valid JSON. Reporting that as a corrupt shipped table is wrong twice over:
+    it blames the artifact for a checkout setting, and it fires on every CI run
+    forever, which is how a guard gets loosened by whoever is tired of it.
+
+    An unfetched pointer is a CAPABILITY condition - the same category as "not
+    generated yet" - so it routes to the absence branch and skips. A file whose
+    content IS present and malformed remains a hard failure. Keeping those two
+    apart is the entire point of this module's split.
+    """
+    return raw.lstrip().startswith(_LFS_POINTER_MAGIC)
+
+
 def load_shipped_table(path: Path, label: str) -> dict:
     """`require_shipped_table` plus a read that is deliberately NOT fail-soft.
 
     The production loader swallows a parse error into `{}` on purpose - the live
     dashboard must degrade, not crash. A TEST inheriting that swallow is how a
     corrupt shipped table came to report as "no table yet, skipped". Once the
-    file exists at all, every byte of it is under assertion here.
+    file exists AND its content is materialized, every byte is under assertion.
     """
     require_shipped_table(path, label)
     raw = path.read_text(encoding="utf-8")
+    if _is_lfs_pointer(raw):
+        # Skips even when RC_REQUIRE_BUILD_ORDER_TABLES is armed, deliberately.
+        # That flag asserts the tables were GENERATED; whether LFS content was
+        # FETCHED into this checkout is a different question with a different
+        # owner (actions/checkout `lfs: true`, and ~190MB of transfer). Making
+        # one flag mean both would force CI to choose between a permanent red
+        # and paying for LFS on every run - and a permanently red guard gets
+        # deleted, not fixed. If asserting LFS-backed tables in CI is ever
+        # wanted, turn on LFS checkout; do not weaken this branch.
+        raise unittest.SkipTest(
+            f"{label} at {path} is an unfetched git-lfs pointer - the content "
+            "is not in this checkout, so there is nothing to assert against"
+        )
     try:
         payload = json.loads(raw)
     except Exception as exc:  # noqa: BLE001 - a corrupt shipped table is a FAIL
@@ -432,6 +467,52 @@ class ShippedTableGateTests(unittest.TestCase):
     arms are pinned: absent-and-not-required SKIPS, absent-and-required FAILS,
     and a file that exists but is corrupt FAILS rather than skipping.
     """
+
+    def _write(self, body: str) -> Path:
+        p = Path(tempfile.mkdtemp()) / "table.json"
+        p.write_text(body, encoding="utf-8")
+        return p
+
+    def test_an_unfetched_lfs_pointer_skips_rather_than_reading_as_corrupt(self) -> None:
+        """CI found this by failing on it - see `_is_lfs_pointer`.
+
+        actions/checkout does not fetch LFS objects, and the laning_scenarios
+        tables are ~64MB LFS blobs, so on a runner the path exists and holds a
+        pointer stub. That stub is legitimately not JSON, and calling it a
+        corrupt shipped table blames the artifact for a checkout setting.
+        """
+        p = self._write(
+            "version https://git-lfs.github.com/spec/v1\n"
+            "oid sha256:0123456789abcdef\nsize 4242\n")
+        os.environ.pop(REQUIRE_TABLES_ENV, None)
+        with self.assertRaises(unittest.SkipTest):
+            load_shipped_table(p, "lfs-backed table")
+
+    def test_the_lfs_pointer_skip_is_not_overridden_by_the_require_flag(self) -> None:
+        """The flag asserts GENERATION, not LFS FETCH - different owners.
+
+        Conflating them would force CI to choose between a permanent red and
+        paying ~190MB of LFS transfer per run, and a permanently red guard gets
+        deleted rather than fixed.
+        """
+        p = self._write("version https://git-lfs.github.com/spec/v1\nsize 1\n")
+        prev = os.environ.get(REQUIRE_TABLES_ENV)
+        os.environ[REQUIRE_TABLES_ENV] = "1"
+        try:
+            with self.assertRaises(unittest.SkipTest):
+                load_shipped_table(p, "lfs-backed table")
+        finally:
+            if prev is None:
+                os.environ.pop(REQUIRE_TABLES_ENV, None)
+            else:
+                os.environ[REQUIRE_TABLES_ENV] = prev
+
+    def test_a_corrupt_non_lfs_file_still_fails_and_is_not_mistaken_for_a_pointer(self) -> None:
+        """The narrowing must not have widened into 'anything unparseable skips'."""
+        p = self._write("{ this is not json")
+        os.environ.pop(REQUIRE_TABLES_ENV, None)
+        with self.assertRaises(AssertionError):
+            load_shipped_table(p, "real but corrupt table")
 
     def _missing(self) -> Path:
         return Path(tempfile.mkdtemp()) / "build_orders_sr.json"
