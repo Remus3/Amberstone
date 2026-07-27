@@ -655,3 +655,78 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 | R202 | loop-controller-stale-code | DIRECTOR REFILL 2026-07-27, cycle 7. Directive was f1-phase6 item 2 (`gate_inactive_reason` exec bit) for the SECOND time. **PREMISE FALSE ON DISK** - it shipped at `05319608` (LEDGER 1074, 03:23). Re-cut to the root cause of the repetition one layer above R201. ENGINE-IMPACT NONE. | DONE | `d4b1a762` | FINDINGS: **the running controller had not loaded ANY of the three fixes shipped to it.** pid 18300 started 00:37:50; `6c3851d0` / `ff439e14` / `d048f96f` landed 05:03 / 05:24 / 05:34, and python binds a module once at process start. Proven by strings current code cannot emit: `control/_gemini_in.txt` (05:45) carries the PRE-fix `cap_bytes(..., 'LEDGER head')` label from `6c3851d0^:431`, and `6c3851d0`'s other fix (`DIRECTIVE_METADATA_PREFIXES`) is equally inert - chain records written at 05:04 and 05:45 are still titled `GROUNDED-AGAINST:`. The stdin cap DID fire at 05:45 as R201 predicted for the pre-fix image, eating the plan tail plus the ledger digest header. A near-miss the verifier caught: that marker string appears TWICE in the artifact, one real cut and one quoted at `docs/LEDGER.md:47` (item 1075 narrating the R201 fix) - I attributed the wrong one first. Fix = the controller digests its own imported source (`CODE_FILES`, 5 files bound into one image by `_bind`) and `os.execv`s at a cycle TOP; execv preserves the pid so `claim_repo` reclaims rather than exits 2; cycle counter survives via consume-once `resume_cycle.txt`; spend re-seeds from `budget.json` as a FLOOR so a self-restart cannot reset `ceiling_usd`; exec failure degrades to stale-but-alive. `director_prompt.md` deliberately excluded (re-read per cycle), pinned by test. Class enumerated: 39 candidates, 15 ALREADY-COVERED, 17 OUT-OF-SCOPE, 7 GENUINE-GAP, 1 fixed, 6 FILED to BACKLOG - two were live-stale when measured (`RC-DS-MatchDB-MCP` pid 1940, vision server pid 10788). CARRY-FORWARD: the controller must be bounced BY HAND once; the fix cannot install itself. TDD RED 17 -> GREEN 17. Verifier CONFIRM 5/6 + REFUTE on the marker attribution, corrected before commit. RC 13584 passed / 106 skipped / 460 subtests; DS 10053 / 5585. |
 | R203 | skip-hygiene-regression-guard | DIRECTOR REFILL 2026-07-27, cycle 12. Directive was f1-phase6 item 5 (the codebase-wide skipif audit) for the SECOND time. **PREMISE FALSE ON DISK** - it shipped at `39aa89ee` (merged `54bad078`, LEDGER R200, 03:57 today), and the cause of the repetition is measurable: controller pid 18300 started 00:37:50, before R202's self-reload fix (`d4b1a762`) landed, so the running image still cannot load its own fix. R202's carry-forward stands unchanged - the controller must be bounced BY HAND once. The EXECUTOR OVERRIDE demanding proven disjointness was satisfied trivially by re-cutting to ONE build agent, file set `{tests/test_skip_condition_hygiene.py}`, with merger-only edits confined to `docs/*.md` plus the one module the guard indicted. ENGINE-IMPACT NONE. FINDINGS: **R200 converted 51 always-passing skips and shipped no machine guard, so nothing stopped #52 - and #52 already existed.** The new AST guard found it on its first real run: `tests/test_routes_champ_benchmarks.py:235` skipped when `data/coach_reference/champion_benchmarks.json` was absent, a file the module's OWN docstring calls "checked in, not gitignored"; the audit disposition table had recorded it against an untracked `data/champion_benchmarks.json`, a different path. That skip had never been able to fire. Converted to a hard assert in-slice and its allowlist entry deleted. Guard design took both predecessor lessons from `test_no_console_flash_scheduled_tools.py` pre-`756db42a`: the universe is GLOBBED (1236 modules) not hand-listed, and classification is `ast.parse` with scope chains + cross-module resolution, never substring grep. Corpus 107 skip sites / 106 CAPABILITY / 1 allowlisted FUTURE row (the RM-95 patch pin); allowlist entries are scoped to the EXACT tracked artifact set, so a new skip in an allowlisted module still fails, backed by three anti-rot tests. **The verifier earned its slot: CONFIRM 8/8 but it found a real evasion hole by deviating from the author's idioms.** `import pytest as _p` + `_p.skip(...)` was INVISIBLE to the scanner - not misclassified, absent - because `pytest.skip` is matched on the full dotted chain (a bare `.skip` tail would collect unrelated calls). Closed with `_canonical_call` before landing and pinned by a new mutation; teeth proven directly - with the rewrite suppressed the poisoned source scans to ZERO findings, with it `DEFECT: ops/rc_config.json`. Verifier also broke `_classify` to always return CAPABILITY and 10 of 21 tests went red, so the mutation tests are not decorative. Two limits recorded rather than papered over, live exposure zero for both: an `and`-joined compound gate classifies CAPABILITY because a capability signal wins regardless of the boolean operator, and aliased `sys`/`shutil` imports resolve UNRESOLVED which fails loud. `tests/test_loop_concurrency.py` untouched, so the cross-repo `SHARED_SHA256` pins were never read or regenerated. RC `tests/` 13584 baseline -> 13606 passed / 106 skipped / 460 subtests (+22 exact); DS 10053 passed / 0 skipped / 5585 subtests, untouched; ruff clean repo-wide; 0 non-ASCII. Tier-1: no ENGINE bump, no DS bounce, no RC restart, no Share sync. | DONE | `f24dea5f` |
 | R204 | loop-director-parallel-file-set-contract | DIRECTOR REFILL 2026-07-27, cycle 13. Directive was f1-phase6 items 7 and 11 as HARD RULES in `ops/loop/director_prompt.md`, one agent, no fan-out. ENGINE-IMPACT NONE. STEP A was a NO-OP and measuring it was the first deliverable - `git diff --cached` empty, `.githooks/*` already `100755` in the index, so the staged exec-bit commit it ordered had already landed; THIRD consecutive cycle with a premise stale on disk. FINDINGS: **item 7 was HALF SHIPPED and the missing half was the expensive one.** `ops/loop/executor.py` already carries the whole enforcement side (`parallel_plan()` `:198`, the four-valued `none/disjoint/overlap/unverified` verdict, `SERIALIZE_HEADER` `:253`, `UNVERIFIED_HEADER` `:254`, `PARALLEL_MARKER` `:101`), but nothing ever taught the DIRECTOR what shape that parser reads - R200 is the live scar, where the two file sets WERE disjoint and the directive had simply not written them where the parser looks, and R203 sidestepped the same override by dropping to one agent. So the rule does not say 'assert disjointness': it carries a NORMATIVE exemplar between `CANONICAL PARALLEL BLOCK - BEGIN/END` markers with the prose explicitly subordinate ('if the two ever disagree, the BLOCK wins and the prose is the defect'), plus machine-checkable `PARSES:` / `DOES NOT PARSE:` literal lists. Item 11 net-new (0 prior `transcript` hits). Class enumerated in-file then codebase-wide: 2 hits, `:96` PARTIAL-EXTENDED and `:24` OUT-OF-SCOPE, executor counterpart ALREADY-SHIPPED, population a measured 1. **THE FIRST BUILD WAS REFUTED AT THE VERIFIER GATE.** Its 9 tests hardcoded `AGENT 1:` in their own bodies, so its anti-rot docstring was false - rewording the rule to a THREE-digit id (`\d{1,2}` rejects it) or to a mid-line heading (the `^` anchor rejects it) each aims the director at a guaranteed deviation and all 9 stayed GREEN; same always-passing class as `SCHEDULED_SPAWNERS` pre-`756db42a`. Rebuilt to read the shape OFF DISK - `_exemplar()` slices the marker block into the real `parallel_plan()`, `KEYWORDS` regexed from the rule text, PARSES/REJECTS literals read from their spans, redundant duplicate test deleted. Second round MERGE: 12 tests, every one with an independent kill, and the verifier attacked the marker slicer itself - deleting a marker, planting a SECOND identically-marked block, and emptying the block all go RED because `_exemplar()` asserts exactly-one before slicing. LIMIT RECORDED: a prose-only reword contradicting the exemplar stays uncaught (prose is not checkable - hence the block is normative), though a COHERENT reword that also fixes the literal does go red. CARRY-FORWARD (four cycles old, unchanged): controller pid 18300 started 00:37:50 before `d4b1a762`, so it still cannot load its own self-reload fix - MUST BE BOUNCED BY HAND ONCE. CARRY-FORWARD (newly enumerated, not characterized): nightly `30261946219` red on exactly 5 ubuntu-only loop-infra tests (`test_mutex_serializes_two_threads`, `test_loop_director_context_caps` x2, `test_sdk_timeout_kills_the_tree_and_fails_the_cycle`, `test_gate_is_active_in_this_repo`), predating this cycle; push CI green on HEAD. RC `tests/` 13606 -> 13618 passed / 106 skipped / 460 subtests (+12 exact); DS 10053 / 0 skipped / 5585, untouched; ruff clean; drift_guard 0 breaches; 0 non-ASCII. Tier-1: no ENGINE bump, no DS bounce, no RC restart, no Share sync. | DONE | `7f89cd6c` |
+
+## R205 findings - 2026-07-27 - the nightly-CI loop-infra red, and what it taught
+
+**Directive premise was stale for the fourth cycle running.** All four ordered tasks
+(winmutex inbox APPLY, the UNSERIALIZED bump, the `SHARED_SHA256` pin, item 2's POSIX
+exec bit, item 5's skip audit) were already on disk and were verified there by digest
+and file:line before any code was written. Recording it here because the pattern now
+has a measured cause - see the carry-forward at the bottom.
+
+### The finding the directive was aiming at but mis-diagnosed
+
+Push CI has been green on every commit. The SCHEDULED nightly (`30261946219`) was red:
+`5 failed, 23474 passed, 254 skipped`. One property explains all five: **they assert
+against the Legion working tree**, so they pass on this box and can only fail on a fresh
+POSIX clone. A suite that is green where it runs and red where it does not is not a
+flake - it is a test that encoded the developer's machine as a fact.
+
+| # | Test | Class | Real defect? |
+|---|------|-------|--------------|
+| 1 | `test_mutex_serializes_two_threads` | asserts a Win32-only capability | no - test-side |
+| 2 | `test_overflow_is_repaid_out_of_the_plan_slice` | depends on ambient repo size | yes, transitively |
+| 3 | `test_operator_brief_is_labelled...` | reads a config that never loaded | **yes** |
+| 4 | `test_sdk_timeout_kills_the_tree...` | POSIX teardown never worked | **yes** |
+| 5 | `test_gate_is_active_in_this_repo` | asserts operator-local git config | no - test-side |
+
+### Three lessons worth reusing
+
+**1. A skip for an absent capability should trigger an audit of its siblings.** Fixing
+(1) meant justifying a `skipif`, and that audit found
+`test_mutex_is_reentrant_for_the_same_thread` carrying the identical defect in the
+opposite direction: the POSIX no-op nests happily, so it went GREEN on every Linux run
+while proving nothing. **A red eventually gets fixed; a vacuous pass never surfaces.**
+Where one test asserts an absent primitive, look for the sibling that trivially succeeds
+against the same absence.
+
+**2. A skip must not silently delete coverage - check what it was carrying.** Both
+existing POSIX no-op tests are single-threaded and only inspect the log, so
+"never claims ACQUIRED" was pinned and "never serializes" - the substantive half, and
+exactly what the new skips stop covering on Linux - was pinned by nobody.
+
+**3. Static provability can be the whole protection.** Slice C was REFUTED for moving
+`creationflags` behind `**kwargs`. Runtime Windows behavior stayed correct, but
+`tests/test_no_console_flash_scheduled_tools.py` resolves it BY AST and went blind to
+the loop's only spawn site (18 passed -> 2 failed). For a defect whose only symptom is a
+flicker on the operator's desktop, nobody is watching at runtime - the static proof IS
+the guard. **The fix restored the literal; the guard file was not edited.** Teaching a
+guard to trust an indirection defeats it for every future call site.
+
+### Defect-class sweep: the hardcoded repo root
+
+`loop_controller.py`'s absolute config literal turned out to be one of three. Full
+disposition of every module-level drive-letter constant under `ops/loop/`:
+
+| Module | Constant | Disposition |
+|---|---|---|
+| `loop_controller.py` | config default | FIXED (slice B) - module-relative + `is_absolute()` guard |
+| `done_sentinel.py:15` | `ROOT` | FIXED - no override and no fallback, strictly worse |
+| `claude_stub.py:20` | `ROOT` | FIXED - worst case: a dry-run stub that only runs on Legion cannot prove the plumbing anywhere it is in doubt |
+| `adjudicator.py:25` | `DEFAULT_CLAUDE_CMD` | **OUT OF SCOPE, with reason** - an external TOOL path with no repo-relative answer, already overridable at `adjudicator.py:188`. Widening the guard to cover it would force a fake fix. |
+
+Guarded by `tests/test_loop_module_root_resolution.py`, written RED first (5 failed / 6
+passed). The guard asserts its own REACH as well as its rule, because a scan that
+silently matches nothing is this shape's real failure mode.
+
+### CARRY-FORWARD - five cycles old, and this cycle made it worse
+
+Controller pid 18300 started `2026-07-27 00:37:50`. `ops/loop/loop_controller.py` now
+has mtime `08:20:22` - **this cycle edited the very module the running image cannot
+reload.** Re-verified live, not carried forward on recollection.
+
+It is structurally un-actionable by an executor cycle: bouncing the controller mid-cycle
+abandons the `claude.done` handshake it is blocked on, and R202's self-reload guard is
+itself inside the code the stale image cannot load. **The fix for stale code is in the
+stale code.** One external bounce breaks the loop; no cycle can supply it. This is the
+most likely cause of the four-cycle run of stale directive premises.
