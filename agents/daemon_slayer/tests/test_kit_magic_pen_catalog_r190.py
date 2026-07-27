@@ -56,18 +56,28 @@ R190 OUTCOME - NOT saturated. One real gap:
 
   Annie R "Summon: Tibbers" states "Passive: Annie gains magic
   penetration" and ships a STRUCTURED block - attribute "Magic
-  Penetration", values [15, 17.5, 20], units all "%" - and Annie is
+  Penetration", values [15, 17.5, 20], units all "%" - and Annie was
   absent from ``_ANTITANK_REGISTRY`` entirely (and from every other
   penetration lane in the engine; ``grep -rn "magic_pen"`` over
   ``agents/daemon_slayer/*.py`` reaches only ``ItemEffect`` fields,
   ``boot_utility``'s Sorcerer's-Shoes tag, and the ``ehp`` enemy-pen
-  knobs). This module PINS that gap as a known-uncredited row rather
-  than fixing it - crediting a registry row is an engine change and
-  this slice is test-only. When a later slice adds the row, the pin
-  below flips RED and forces the update, which is the intended
-  behavior in both directions.
+  knobs). R190 slice B PINNED that gap rather than fixing it, because
+  crediting a registry row is an engine change and that slice was
+  test-only.
 
-  The other 13 kit grants on this axis are all already credited.
+R196 OUTCOME - the R190 gap is CLOSED and the guard is now exact:
+
+  * Annie R is CREDITED - ``PERCENT_PEN`` / axis ``MAGICAL`` /
+    ``SUSTAINED`` / magnitude 0.7, the calibrated twin of the
+    Mordekaiser E always-on magic-pen passive. The known-uncredited pin
+    below is now EMPTY and every one of the 14 swept grants carries a
+    resist-lowering registry row.
+  * ``AntiTankEntry`` gained an ``axis`` field (``PHYSICAL`` /
+    ``MAGICAL`` / ``BOTH``), so the non-grant rule below is decided by
+    the row's own declared axis instead of by a hand-maintained
+    physical-side exemption dict. The K'Sante R exemption is deleted.
+  * ``compute_antitank`` is otherwise untouched: ``axis`` is metadata
+    and moves no score (``test_antitank_axis_r196.py``).
 """
 
 from __future__ import annotations
@@ -172,30 +182,29 @@ _NON_GRANT_MAGIC_SIDE_MENTIONS: dict[tuple[str, str], str] = {
     ("Singed", "R"): "self bonus MR from Insanity Potion",
 }
 
-# The one swept grant with no engine credit anywhere. See the module
-# docstring - fixing it is an engine change, out of this slice's scope.
-_KNOWN_UNCREDITED_GRANTS: dict[tuple[str, str], str] = {
-    ("Annie", "R"): "Annie has no _ANTITANK_REGISTRY entry at all, so her"
-                    " 15 / 17.5 / 20 percent kit magic pen reads 0.0 on the"
-                    " anti-tank axis. R190 slice B records this as a FUTURE"
-                    " engine finding; it does not credit it.",
-}
+# Swept grants with no engine credit anywhere. EMPTY since R196 closed
+# the Annie R gap - every swept grant now carries a resist-lowering
+# registry row. The dict and its subset test are KEPT deliberately: they
+# are the forcing function for the next gap, so a future patch that
+# introduces an uncredited kit grant has an obvious, already-wired place
+# to be recorded instead of being bolted on.
+_KNOWN_UNCREDITED_GRANTS: dict[tuple[str, str], str] = {}
 
 # Registry kinds that represent lowering a target's resists.
 _RESIST_LOWERING_KINDS = frozenset({"SHRED", "PERCENT_PEN"})
 
-# ``_ANTITANK_REGISTRY`` rows carry NO axis field - SHRED / PERCENT_PEN
-# are axis-agnostic, so a physical-side row is indistinguishable from a
-# magic-side one by kind alone. These non-grant slots legitimately carry
-# a resist-lowering row for a PHYSICAL-side reason and are therefore
-# exempt from the "a non-grant must not be registered as a shred" rule.
-# Pinned individually so the exemption cannot quietly widen.
-_NON_GRANT_WITH_PHYSICAL_SIDE_ROW: dict[tuple[str, str], str] = {
-    ("KSante", "R"): "All Out grants 50 percent bonus-ARMOR penetration."
-                     " The registry PERCENT_PEN row is that physical-side"
-                     " credit; K'Sante's magic-side mention is the cut to"
-                     " his OWN base MR, which is not a target shred.",
-}
+# Axes on which a resist-lowering row touches the MAGIC side. A row
+# declared PHYSICAL cannot make a magic-side mention into a shred.
+_MAGIC_SIDE_AXES = frozenset({"MAGICAL", "BOTH"})
+
+# WHY THERE IS NO EXEMPTION DICT HERE ANY MORE (R196): R190 had to carry
+# ``_NON_GRANT_WITH_PHYSICAL_SIDE_ROW`` - one hand-maintained entry for
+# K'Sante R - because ``_ANTITANK_REGISTRY`` rows had no axis field, so
+# SHRED / PERCENT_PEN could not distinguish an armor-side row from a
+# magic-side one and the non-grant rule below over-fired. R196 added
+# ``AntiTankEntry.axis``; the rule is now decided by the row's own
+# declared axis and the exemption dict (plus its staleness test) is
+# deleted. A PHYSICAL row on a non-grant slot needs no exemption.
 
 
 # --------------------------------------------------------------------------
@@ -338,38 +347,58 @@ class R190KitMagicPenSweepTests(unittest.TestCase):
         # mistaken for a shred. Champions in this bucket may still carry
         # a resist-lowering row on a DIFFERENT slot (Rell P shreds while
         # Rell W is a self buff), so this asserts per-slot.
+        #
+        # R196: the rule is now AXIS-EXACT rather than exemption-based. A
+        # non-grant slot may carry a resist-lowering row only if that row
+        # declares axis PHYSICAL (K'Sante R's bonus-ARMOR pen is the
+        # canonical case - his magic-side mention is the cut to his OWN
+        # base MR). A MAGICAL / BOTH row on a non-grant slot is the real
+        # defect this test hunts.
         for key, why in sorted(_NON_GRANT_MAGIC_SIDE_MENTIONS.items()):
             champion, slot = key
             if (champion, slot) in _KIT_MAGIC_PEN_GRANTS:
                 continue
-            if (champion, slot) in _NON_GRANT_WITH_PHYSICAL_SIDE_ROW:
-                continue
             with self.subTest(champion=champion, slot=slot):
                 for row in _registry_rows(champion, slot):
+                    if row.kind not in _RESIST_LOWERING_KINDS:
+                        continue
                     self.assertNotIn(
-                        row.kind,
-                        _RESIST_LOWERING_KINDS,
-                        f"{champion} {slot} is a non-grant ({why}) but is"
-                        f" registered as {row.kind}",
+                        row.axis,
+                        _MAGIC_SIDE_AXES,
+                        f"{champion} {slot} is a non-grant ({why}) but carries"
+                        f" a {row.kind} row on the {row.axis} axis",
                     )
 
-    def test_physical_side_exemptions_are_still_needed(self) -> None:
-        # A dead exemption is drift too - if the physical-side row goes
-        # away, the exemption must be retired rather than left standing.
-        for key, why in sorted(_NON_GRANT_WITH_PHYSICAL_SIDE_ROW.items()):
+    def test_credited_grants_declare_a_magic_side_axis(self) -> None:
+        # The inverse of the rule above, and the half that makes the
+        # guard exact in BOTH directions: a swept magic-side GRANT must
+        # be registered on an axis that actually includes the magic side.
+        # A grant silently registered PHYSICAL would read as credited
+        # here while crediting the wrong resist.
+        for key in sorted(_KIT_MAGIC_PEN_GRANTS):
+            if key in _KNOWN_UNCREDITED_GRANTS:
+                continue
             champion, slot = key
             with self.subTest(champion=champion, slot=slot):
-                self.assertIn(key, _NON_GRANT_MAGIC_SIDE_MENTIONS)
-                kinds = {row.kind for row in _registry_rows(champion, slot)}
+                axes = {
+                    row.axis
+                    for row in _registry_rows(champion, slot)
+                    if row.kind in _RESIST_LOWERING_KINDS
+                }
                 self.assertTrue(
-                    kinds & _RESIST_LOWERING_KINDS,
-                    f"{champion} {slot} exemption ({why}) is stale - no"
-                    " resist-lowering row remains on that slot",
+                    axes & _MAGIC_SIDE_AXES,
+                    f"{champion} {slot} is a magic-side grant but its"
+                    f" resist-lowering row(s) declare {sorted(axes)}",
                 )
 
 
 class R190KnownUncreditedGapTests(unittest.TestCase):
-    """Annie R - the one real gap R190 slice B measured."""
+    """Annie R - the one real gap R190 slice B measured, CLOSED in R196.
+
+    The shipped-data assertion below is unchanged (the structured
+    "Magic Penetration" block is still what the credit rests on); the
+    registry assertion is INVERTED - Annie is now credited.
+    """
 
     def test_annie_r_states_structured_percent_magic_pen(self) -> None:
         blocks = _structured_magic_side_blocks().get(("Annie", "R"))
@@ -383,21 +412,29 @@ class R190KnownUncreditedGapTests(unittest.TestCase):
         self.assertEqual([float(v) for v in values], [15.0, 17.5, 20.0])
         self.assertEqual(set(units), {"%"})
 
-    def test_annie_is_absent_from_the_antitank_registry(self) -> None:
-        # Pinned as a KNOWN GAP. When a later slice credits Annie this
-        # fails, which is the intended forcing function - update the pin
-        # and move the row into the credited population above.
-        self.assertNotIn("Annie", _ANTITANK_REGISTRY)
-        self.assertEqual(_registry_rows("Annie", "R"), ())
+    def test_annie_is_credited_on_the_antitank_registry(self) -> None:
+        # INVERTED in R196 (was test_annie_is_absent_from_the_antitank_
+        # registry). The forcing function fired exactly as designed: the
+        # gap pin went RED when the row landed, and the assertion now
+        # states the credited shape instead of the absence.
+        self.assertIn("Annie", _ANTITANK_REGISTRY)
+        rows = _registry_rows("Annie", "R")
+        self.assertTrue(rows)
+        self.assertEqual([row.kind for row in rows], ["PERCENT_PEN"])
+        self.assertEqual([row.axis for row in rows], ["MAGICAL"])
         result = compute_antitank("Annie")
-        self.assertFalse(result.shreds_resist)
-        self.assertEqual(result.antitank_score, 0.0)
+        self.assertTrue(result.shreds_resist)
+        self.assertGreater(result.antitank_score, 0.0)
 
-    def test_the_uncredited_magnitude_is_materially_large(self) -> None:
-        # What the gap is worth, expressed through the ONE consumer that
-        # can express it: an equivalent 20 percent ITEM percent-pen
-        # source strips 20 MR off a 100-MR target. Annie's kit reaches
-        # none of that, because effective_target_mr has no kit lane.
+    def test_the_credited_magnitude_still_never_reaches_the_mr_pipeline(self) -> None:
+        # RENAMED in R196 (was test_the_uncredited_magnitude_is_
+        # materially_large). The assertion below still measures something
+        # true and now measures the SEAM rather than the gap: an
+        # equivalent 20 percent ITEM percent-pen source strips 20 MR off a
+        # 100-MR target, while Annie's newly-credited kit row moves ONLY
+        # the anti-tank score. R196 closed the anti-tank half of the gap;
+        # it did not open a kit lane into effective_target_mr, and it is
+        # not meant to (that function takes ItemEffect objects only).
         equivalent = ItemEffect(
             item_id="R190-annie-r-equivalent",
             name="Annie R kit magic pen (rank 3, 20 percent)",
@@ -406,6 +443,8 @@ class R190KnownUncreditedGapTests(unittest.TestCase):
         self.assertAlmostEqual(
             effective_target_mr(100.0, [equivalent]), 80.0, places=3
         )
+        self.assertGreater(compute_antitank("Annie").antitank_score, 0.0)
+        self.assertAlmostEqual(effective_target_mr(100.0, []), 100.0, places=3)
 
 
 class R190KitAxisSeparationTests(unittest.TestCase):

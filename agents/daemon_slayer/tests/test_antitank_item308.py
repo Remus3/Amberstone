@@ -116,7 +116,12 @@ class DirectionalTests(unittest.TestCase):
     def test_flat_damage_champs_score_zero(self):
         # The axis is SELECTIVE: a champion whose damage ignores enemy health and
         # resists is absent from the registry.
-        for champ in ("MasterYi", "Annie", "Talon", "Katarina", "Lux",
+        # R196 swapped two names here. Annie LEFT the list - her R states a
+        # structured 15 / 17.5 / 20 percent magic-pen passive and is now a
+        # credited PERCENT_PEN row. Amumu JOINED it - his P was registered SHRED
+        # 0.6, but the 16.14.1 passive is a bonus-TRUE-damage vulnerability that
+        # lowers no resist, so the row was removed and he correctly scores zero.
+        for champ in ("MasterYi", "Amumu", "Talon", "Katarina", "Lux",
                       "Soraka", "Veigar", "Akali", "Lulu", "Janna"):
             self.assertEqual(compute_antitank(champ).antitank_score, 0.0, champ)
 
@@ -247,6 +252,10 @@ class RegistryInvariantTests(unittest.TestCase):
         # tools/ds_antitank_build.py against a fresh scan updates these.
         # R93 (ENGINE 1.190.0) added the 6th PERCENT_PEN row: Darius E Apprehend
         # (always-on 20-40% armor pen), the SUSTAINED sibling of Mordekaiser E.
+        # R196 added the 7th - Annie R (always-on 15 / 17.5 / 20% MAGIC pen) - and
+        # removed the wrong Amumu P SHRED row in the same slice, so the champion
+        # count, the entry total and the shreds_resist count are all unchanged and
+        # only the PERCENT_PEN count moves.
         self.assertEqual(len(_ANTITANK_REGISTRY), 79)
         total = sum(len(v) for v in _ANTITANK_REGISTRY.values())
         self.assertEqual(total, 103)
@@ -258,7 +267,7 @@ class RegistryInvariantTests(unittest.TestCase):
             1 for v in _ANTITANK_REGISTRY.values()
             for e in v if e.kind == "PERCENT_PEN"
         )
-        self.assertEqual(pen_count, 6)
+        self.assertEqual(pen_count, 7)
 
 
 class RouteAndVersionTests(unittest.TestCase):
