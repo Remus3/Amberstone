@@ -863,10 +863,15 @@ body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-slider {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+/* The wrapper's min-height alone leaves the native control at Chromium's ~21px,
+ * so only the middle half of the reserved row actually drags the thumb. Size
+ * the input itself (same fix as web/css/panels/header.css:2902 +
+ * web/css/panels/overlay_ds_controls.css:231). */
 body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-slider input[type="range"] {
   flex: 1;
   width: 100%;
   min-width: 0;
+  height: var(--hit-min);
   accent-color: rgb(var(--ovx-gold));
   cursor: pointer;
 }
