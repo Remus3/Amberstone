@@ -33,6 +33,28 @@ every flag the executor needs:
 | `--append-system-prompt` | inject the standing directive without retyping it |
 | `--add-dir`, `--model`, `--fallback-model`, `--agents`, `--settings` | per-project scoping |
 
+### NOT used: `--max-budget-usd` (operator decision, 2026-07-26)
+
+The executor deliberately passes NO dollar cap, and `cycle_budget_usd` is absent from
+every `ops/loop/config*.json`. The account is a **Claude Code Max 20x subscription**, so
+the CLI's `total_cost_usd` is a notional API-equivalent price, not money being billed. A
+cap set against that number truncates a cycle mid-work for no real saving.
+
+Measured on the F1 phase-6 gate run: the cycle reported `$22.01` against a `$25` cap and
+a slightly larger scope would have been cut off, while nothing was actually spent per
+call. Contrast the P5 doc-append cycles at `$0.56` and `$0.66` - the figure tracks
+workload size, which is why it is still recorded.
+
+Two rails survive and mean different things:
+
+- `ceiling_usd` rails the ADJUDICATOR (gemini). That is metered money and a real cap.
+- `cycle_deadline_sec` rails the executor. **Time is the executor's only real budget**,
+  because it bounds a runaway cycle without pricing the work.
+
+`executor_usd` in `control/budget.json` stays as a relative effort signal. Read it as
+workload size, never as spend, and never gate on it. The transcript-scraped
+`claude_usd_info` is weaker still - see the meter caveats in section 4.
+
 ## 2. What the GUI path costs today
 
 These are the failure modes the headless lane removes outright, all of them
