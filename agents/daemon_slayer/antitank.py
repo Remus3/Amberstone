@@ -97,6 +97,18 @@ factor is always 1.0 and every existing row is byte-identical. The seeded set is
 (Absolution, "1% : 10% (based on level) of target's current health"). ``level=None``
 (the /anti-tank route default) and ``level=18`` stay byte-identical to item
 308/315/R17. The live default-ON flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+
+R196 schema lift: each ``AntiTankEntry`` carries an ``axis`` -
+``"PHYSICAL"`` / ``"MAGICAL"`` / ``"BOTH"`` (default ``"BOTH"``). ``SHRED`` and
+``PERCENT_PEN`` say only THAT a row lowers resists, never WHICH resist, so an
+armor-side row (Darius E armor pen, K'Sante R bonus-armor pen) was indistinguishable
+from a magic-side one (Mordekaiser E magic pen) and the R190 magic-pen catalog guard
+had to carry a hand-maintained physical-side exemption dict. ``axis`` makes that
+guard exact. It is METADATA ONLY - no scoring path reads it, it is not serialized
+onto ``AntiTankSourceEntry.to_dict()``, and every ``compute_antitank`` output is
+byte-identical to R39 (measured over all 171 shipped champions x
+{level None/1/9/18} x {stats on/off}). It is load-bearing only on the
+``SHRED`` / ``PERCENT_PEN`` rows; every other kind keeps the default.
 """
 
 from __future__ import annotations
@@ -167,6 +179,14 @@ _ANTITANK_CADENCE_MULT: dict[str, float] = {
 # zone-control / ally-amplification shape.
 _ANTITANK_CONDITIONAL_PROB = 0.5
 
+# Resist axis a row acts on (R196). PHYSICAL = it lowers the target's ARMOR (or
+# amplifies physical damage against it), MAGICAL = magic resist, BOTH = it lowers
+# both at once (the "reduces their armor and magic resistance" family) or
+# amplifies damage from every source. METADATA ONLY - no scoring path reads it;
+# it exists so a consumer / guard can tell an armor-side SHRED / PERCENT_PEN row
+# from a magic-side one, which the kind alone never expressed.
+_ANTITANK_AXES: frozenset[str] = frozenset({"PHYSICAL", "MAGICAL", "BOTH"})
+
 
 @dataclass(frozen=True)
 class AntiTankEntry:
@@ -191,6 +211,13 @@ class AntiTankEntry:
     level)" endpoints; ``current_hp_ramp_lo`` / ``current_hp_ramp_hi`` (R39) are the
     same for a %current-HP row (Senna P). Default 0.0 keeps the row level-static.
     A row carries at most ONE ramp pair (max-HP OR current-HP, never both).
+
+    ``axis`` (R196) is a key of ``_ANTITANK_AXES`` - WHICH resist the row lowers
+    (or, for a damage-vulnerability debuff, which damage it amplifies). It is
+    load-bearing only on the ``SHRED`` / ``PERCENT_PEN`` rows; every other kind
+    keeps the ``"BOTH"`` default. METADATA ONLY - ``_mechanism_value`` and
+    ``compute_antitank`` never read it and it is not serialized, so it cannot move
+    a score. APPENDED LAST with a default per the CLAUDE.md dataclass convention.
     """
 
     source: str
@@ -204,6 +231,7 @@ class AntiTankEntry:
     ramp_hi: float = 0.0
     current_hp_ramp_lo: float = 0.0
     current_hp_ramp_hi: float = 0.0
+    axis: str = "BOTH"
 
 
 # Champion level endpoints the ramp interpolates between (levels 1..18).
@@ -348,6 +376,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
         ramp_hi: float = 0.0,
         current_hp_ramp_lo: float = 0.0,
         current_hp_ramp_hi: float = 0.0,
+        axis: str = "BOTH",
     ) -> None:
         raw.setdefault(champ, []).append(
             AntiTankEntry(
@@ -362,22 +391,69 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
                 ramp_hi=float(ramp_hi),
                 current_hp_ramp_lo=float(current_hp_ramp_lo),
                 current_hp_ramp_hi=float(current_hp_ramp_hi),
+                axis=str(axis),
             )
         )
 
+    # ------------------------------------------------------------------
+    # AXIS CONVENTION (R196). Every SHRED / PERCENT_PEN row below states an
+    # EXPLICIT axis, derived from the shipped 16.14.1 champion_abilities.json
+    # tooltip for that slot. A row that only says "armor" is PHYSICAL, one
+    # that only says "magic resistance" / "magic penetration" is MAGICAL, and
+    # the large "reduces their armor and magic resistance" family is BOTH.
+    # Every other kind (MAX_HP / CURRENT_HP) leaves the "BOTH" default, where
+    # the field is inert. Inline citations appear only where the axis is not
+    # obvious from the ability name.
+    # ------------------------------------------------------------------
+
     # Aatrox - P %max-HP ramps 4%:8% (based on level) per the kit source_quote.
     add("Aatrox", "P", "MAX_HP", "SUSTAINED", magnitude=0.85, ramp_lo=4.0, ramp_hi=8.0)
-    # Amumu
-    add("Amumu", "P", "SHRED", "SUSTAINED", magnitude=0.6)
+    # Amumu - DELIBERATELY UNREGISTERED (R196). The item-308 fan-out registered
+    # add("Amumu", "P", "SHRED", "SUSTAINED", magnitude=0.6), but the 16.14.1
+    # passive lowers NO resist: "Cursed targets receive 10% bonus true damage from
+    # all incoming pre-mitigation magic damage" - a damage-vulnerability debuff
+    # paid out as TRUE damage, which is a different mechanic on a different axis.
+    # SHRED means "lowers the target's resists", so the row was factually wrong
+    # and is removed. No other Amumu slot belongs here either: W is a flat
+    # "Magic Damage Per Tick" toggle (no %max-HP term) and Q / E / R are flat
+    # magic damage, so Amumu correctly drops OFF this SELECTIVE axis and scores
+    # 0.0. Pinned by test_antitank_axis_r196.py so a future patch that turns
+    # Curse back into a real shred goes RED instead of being re-added blind.
+    # Annie - R Summon: Tibbers carries an always-on PASSIVE percent MAGIC
+    # penetration: 16.14.1 champion_abilities.json states "Passive: Annie gains
+    # magic penetration" with a structured damage_block attribute "Magic
+    # Penetration", raw_modifiers values [15.0, 17.5, 20.0], units all "%". The
+    # shipped prose states NO gate (no "while Tibbers is alive" clause anywhere in
+    # her R forms), so the row is cond=False / SUSTAINED - the exact shape of the
+    # Mordekaiser E magic-pen passive, which is likewise a percent-pen passive
+    # stated on an ability slot. The registry does not treat "it lives on the ult"
+    # as conditional either (Trundle R and Vladimir R are both cond=False).
+    #
+    # MAGNITUDE CALIBRATION (0..1 reliability weight, NOT a percentage). The two
+    # always-on SUSTAINED PERCENT_PEN anchors bracket Annie on the real-percentage
+    # axis and are both 0.7: Mordekaiser E 15% max-rank -> 0.7 and Darius E 40%
+    # max-rank -> 0.7. Annie's 20% sits strictly between them, so monotone
+    # interpolation between two equal endpoints gives exactly 0.7. It exceeds no
+    # sibling with a strictly larger real magnitude (Darius E 40% is also 0.7) and
+    # stays above Mordekaiser E's 15%, which it genuinely beats. Value =
+    # 0.65 (PERCENT_PEN) * 1.0 (SUSTAINED) * 0.7 = 0.455.
+    #
+    # RANK: max-rank only, the convention every kit-pen magnitude here follows
+    # (BACKLOG tail (d) - rank-aware resolution needs the rank threaded to the
+    # seam and is still OPEN; this row does not close it).
+    add("Annie", "R", "PERCENT_PEN", "SUSTAINED", magnitude=0.7, axis="MAGICAL")
     # AurelionSol
     add("AurelionSol", "Q", "MAX_HP", "SUSTAINED", magnitude=0.7)
     # Aurora
     add("Aurora", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True)
     # Brand
     add("Brand", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, ramp_lo=8.0, ramp_hi=12.0)
-    add("Brand", "W", "SHRED", "PERIODIC", magnitude=0.65, cond=True)
+    # Brand W is a damage-vulnerability amp, not a resist cut ("Ablaze Bonus: The
+    # target takes 25% increased damage"), and the damage it amplifies is Brand's
+    # own MAGIC damage - hence MAGICAL rather than BOTH.
+    add("Brand", "W", "SHRED", "PERIODIC", magnitude=0.65, cond=True, axis="MAGICAL")
     # Briar
-    add("Briar", "Q", "SHRED", "PERIODIC", magnitude=0.7)
+    add("Briar", "Q", "SHRED", "PERIODIC", magnitude=0.7, axis="BOTH")
     # Camille - W outer-cone %max-HP carries a bonus-AD term (P3.2 expansion:
     # champion_abilities.json W block "% per 100 bonus AD"); R current-HP is flat.
     add("Camille", "W", "MAX_HP", "PERIODIC", magnitude=0.65, ad_ratio=0.0004)
@@ -385,18 +461,18 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Chogath
     add("Chogath", "E", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True)
     # Corki
-    add("Corki", "E", "SHRED", "SUSTAINED", magnitude=0.6)
+    add("Corki", "E", "SHRED", "SUSTAINED", magnitude=0.6, axis="BOTH")
     # Darius - E Apprehend passive grants always-on % armor penetration
     # (20% : 40% by E rank per champion_abilities.json 16.13.1 raw damage_blocks),
     # a kit-intrinsic PERCENT_PEN that scales with the target's armor stack. The
     # SUSTAINED sibling of Mordekaiser E's magic-pen row (R93, ENGINE 1.190.0).
-    add("Darius", "E", "PERCENT_PEN", "SUSTAINED", magnitude=0.7)
+    add("Darius", "E", "PERCENT_PEN", "SUSTAINED", magnitude=0.7, axis="PHYSICAL")
     # DrMundo
     add("DrMundo", "Q", "CURRENT_HP", "PERIODIC", magnitude=0.7)
     # Elise
     add("Elise", "Q", "CURRENT_HP", "PERIODIC", magnitude=0.6)
     # Evelynn
-    add("Evelynn", "W", "SHRED", "PERIODIC", magnitude=0.45, cond=True)
+    add("Evelynn", "W", "SHRED", "PERIODIC", magnitude=0.45, cond=True, axis="MAGICAL")
     add("Evelynn", "E", "MAX_HP", "PERIODIC", magnitude=0.6)
     # Fiddlesticks
     add("Fiddlesticks", "Q", "CURRENT_HP", "PERIODIC", magnitude=0.55)
@@ -405,9 +481,10 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Galio
     add("Galio", "Q", "MAX_HP", "PERIODIC", magnitude=0.6)
     # Gangplank
-    add("Gangplank", "E", "PERCENT_PEN", "PERIODIC", magnitude=0.4, cond=True)
+    # Keg explosion damage "ignores 40% of the target's armor" - armor only.
+    add("Gangplank", "E", "PERCENT_PEN", "PERIODIC", magnitude=0.4, cond=True, axis="PHYSICAL")
     # Garen
-    add("Garen", "E", "SHRED", "SUSTAINED", magnitude=0.5, cond=True)
+    add("Garen", "E", "SHRED", "SUSTAINED", magnitude=0.5, cond=True, axis="PHYSICAL")
     # Gnar
     add("Gnar", "W", "MAX_HP", "SUSTAINED", magnitude=0.65, cond=True)
     # Gragas
@@ -420,22 +497,26 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("Illaoi", "W", "MAX_HP", "SUSTAINED", magnitude=0.7)
     # JarvanIV
     add("JarvanIV", "P", "CURRENT_HP", "SUSTAINED", magnitude=0.6)
-    add("JarvanIV", "Q", "SHRED", "PERIODIC", magnitude=0.6)
+    add("JarvanIV", "Q", "SHRED", "PERIODIC", magnitude=0.6, axis="PHYSICAL")
     # Jax
     add("Jax", "E", "MAX_HP", "PERIODIC", magnitude=0.6)
     # Jayce
     add("Jayce", "E", "MAX_HP", "PERIODIC", magnitude=0.8)
-    add("Jayce", "R", "SHRED", "SUSTAINED", magnitude=0.65, cond=True)
+    add("Jayce", "R", "SHRED", "SUSTAINED", magnitude=0.65, cond=True, axis="BOTH")
     # KSante
     add("KSante", "P", "MAX_HP", "SUSTAINED", magnitude=0.6, ramp_lo=1.0, ramp_hi=2.0)
     add("KSante", "W", "MAX_HP", "PERIODIC", magnitude=0.65)
-    add("KSante", "R", "PERCENT_PEN", "BURST", magnitude=0.55, cond=True)
+    # All Out grants "50% bonus-armor penetration" - PHYSICAL. His All Out prose
+    # also says "magic resistance", but that is the cut to K'Sante's OWN base MR,
+    # not a target shred; the axis field is what retires the R190 magic-guard
+    # exemption that used to encode this by hand.
+    add("KSante", "R", "PERCENT_PEN", "BURST", magnitude=0.55, cond=True, axis="PHYSICAL")
     # Kalista
     add("Kalista", "W", "MAX_HP", "SUSTAINED", magnitude=0.45, cond=True)
     # Karthus
-    add("Karthus", "W", "SHRED", "PERIODIC", magnitude=0.6)
+    add("Karthus", "W", "SHRED", "PERIODIC", magnitude=0.6, axis="MAGICAL")
     # Kayle
-    add("Kayle", "Q", "SHRED", "PERIODIC", magnitude=0.6)
+    add("Kayle", "Q", "SHRED", "PERIODIC", magnitude=0.6, axis="BOTH")
     # Kindred
     add("Kindred", "W", "CURRENT_HP", "SUSTAINED", magnitude=0.6, cond=True)
     # Kled
@@ -443,7 +524,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("Kled", "R", "MAX_HP", "BURST", magnitude=0.55, cond=True)
     # KogMaw - W on-hit %max-HP carries an AP term (P3.2 item 315 seed); Q shred
     # is flat.
-    add("KogMaw", "Q", "SHRED", "PERIODIC", magnitude=0.7)
+    add("KogMaw", "Q", "SHRED", "PERIODIC", magnitude=0.7, axis="BOTH")
     add("KogMaw", "W", "MAX_HP", "SUSTAINED", magnitude=0.9, cond=True, ap_ratio=0.0004)
     # Lillia
     add("Lillia", "P", "MAX_HP", "SUSTAINED", magnitude=0.85)
@@ -453,19 +534,20 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Maokai
     add("Maokai", "Q", "MAX_HP", "PERIODIC", magnitude=0.45)
     # MonkeyKing
-    add("MonkeyKing", "Q", "SHRED", "PERIODIC", magnitude=0.65)
+    add("MonkeyKing", "Q", "SHRED", "PERIODIC", magnitude=0.65, axis="PHYSICAL")
     add("MonkeyKing", "R", "MAX_HP", "BURST", magnitude=0.7, cond=True)
     # Mordekaiser
     add("Mordekaiser", "P", "MAX_HP", "SUSTAINED", magnitude=0.85, cond=True, ramp_lo=1.0, ramp_hi=5.0)
-    add("Mordekaiser", "E", "PERCENT_PEN", "SUSTAINED", magnitude=0.7)
-    add("Mordekaiser", "R", "SHRED", "BURST", magnitude=0.5, cond=True)
+    add("Mordekaiser", "E", "PERCENT_PEN", "SUSTAINED", magnitude=0.7, axis="MAGICAL")
+    add("Mordekaiser", "R", "SHRED", "BURST", magnitude=0.5, cond=True, axis="BOTH")
     # Nasus
-    add("Nasus", "E", "SHRED", "PERIODIC", magnitude=0.7)
+    add("Nasus", "E", "SHRED", "PERIODIC", magnitude=0.7, axis="PHYSICAL")
     add("Nasus", "R", "MAX_HP", "BURST", magnitude=0.55, cond=True)
     # Nilah
-    add("Nilah", "Q", "PERCENT_PEN", "SUSTAINED", magnitude=0.45)
+    # "Nilah gains 0% : 33% (based on critical strike chance) armor penetration".
+    add("Nilah", "Q", "PERCENT_PEN", "SUSTAINED", magnitude=0.45, axis="PHYSICAL")
     # Olaf
-    add("Olaf", "Q", "SHRED", "PERIODIC", magnitude=0.55)
+    add("Olaf", "Q", "SHRED", "PERIODIC", magnitude=0.55, axis="PHYSICAL")
     # Ornn
     add("Ornn", "P", "MAX_HP", "PERIODIC", magnitude=0.7, cond=True, ramp_lo=10.0, ramp_hi=18.0)
     add("Ornn", "W", "MAX_HP", "PERIODIC", magnitude=0.75)
@@ -478,18 +560,18 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # RekSai
     add("RekSai", "R", "MAX_HP", "BURST", magnitude=0.8, cond=True)
     # Rell
-    add("Rell", "P", "SHRED", "SUSTAINED", magnitude=0.75)
+    add("Rell", "P", "SHRED", "SUSTAINED", magnitude=0.75, axis="BOTH")
     add("Rell", "E", "MAX_HP", "SUSTAINED", magnitude=0.5)
     # Renata
     add("Renata", "P", "MAX_HP", "SUSTAINED", magnitude=0.55, ramp_lo=1.0, ramp_hi=2.0)
     # Renekton
-    add("Renekton", "E", "SHRED", "PERIODIC", magnitude=0.45, cond=True)
+    add("Renekton", "E", "SHRED", "PERIODIC", magnitude=0.45, cond=True, axis="PHYSICAL")
     # Rengar
-    add("Rengar", "R", "SHRED", "BURST", magnitude=0.45, cond=True)
+    add("Rengar", "R", "SHRED", "BURST", magnitude=0.45, cond=True, axis="PHYSICAL")
     # Rumble
     add("Rumble", "P", "MAX_HP", "SUSTAINED", magnitude=0.6, cond=True)
     add("Rumble", "Q", "MAX_HP", "PERIODIC", magnitude=0.85)
-    add("Rumble", "E", "SHRED", "PERIODIC", magnitude=0.65)
+    add("Rumble", "E", "SHRED", "PERIODIC", magnitude=0.65, axis="MAGICAL")
     # Sejuani
     add("Sejuani", "P", "MAX_HP", "PERIODIC", magnitude=0.7, cond=True)
     # Senna - P Absolution deals current-HP physical damage ramping 1%:10% (based
@@ -507,7 +589,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Sion
     add("Sion", "P", "MAX_HP", "SUSTAINED", magnitude=0.55, cond=True)
     add("Sion", "W", "MAX_HP", "PERIODIC", magnitude=0.7)
-    add("Sion", "E", "SHRED", "PERIODIC", magnitude=0.55)
+    add("Sion", "E", "SHRED", "PERIODIC", magnitude=0.55, axis="PHYSICAL")
     # Skarner
     add("Skarner", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True, ramp_lo=5.0, ramp_hi=9.0)
     add("Skarner", "Q", "MAX_HP", "PERIODIC", magnitude=0.6)
@@ -517,7 +599,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("TahmKench", "R", "MAX_HP", "BURST", magnitude=0.6, cond=True)
     # Trundle
     add("Trundle", "R", "MAX_HP", "BURST", magnitude=0.8)
-    add("Trundle", "R", "SHRED", "BURST", magnitude=0.85)
+    add("Trundle", "R", "SHRED", "BURST", magnitude=0.85, axis="BOTH")
     # Udyr - Q on-hit %max-HP carries a bonus-AD term (P3.2 expansion:
     # champion_abilities.json Q block "% per 100 bonus AD").
     add("Udyr", "Q", "MAX_HP", "PERIODIC", magnitude=0.8, ad_ratio=0.0004)
@@ -531,11 +613,12 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Vi - W Denting Blows %max-HP carries a bonus-AD term (P3.2 expansion:
     # champion_abilities.json W block "% per 100 bonus AD"); the armor SHRED is flat.
     add("Vi", "W", "MAX_HP", "SUSTAINED", magnitude=0.6, ad_ratio=0.0004)
-    add("Vi", "W", "SHRED", "SUSTAINED", magnitude=0.6)
+    add("Vi", "W", "SHRED", "SUSTAINED", magnitude=0.6, axis="PHYSICAL")
     # Viego
     add("Viego", "Q", "CURRENT_HP", "SUSTAINED", magnitude=0.65)
     # Vladimir
-    add("Vladimir", "R", "SHRED", "BURST", magnitude=0.65)
+    # Hemoplague amps "the damage they take from all sources by 10%" - BOTH axes.
+    add("Vladimir", "R", "SHRED", "BURST", magnitude=0.65, axis="BOTH")
     # Volibear
     add("Volibear", "E", "MAX_HP", "PERIODIC", magnitude=0.7)
     # Warwick
@@ -543,12 +626,15 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # XinZhao
     add("XinZhao", "R", "CURRENT_HP", "BURST", magnitude=0.6, cond=True)
     # Yasuo
-    add("Yasuo", "R", "PERCENT_PEN", "BURST", magnitude=0.5, cond=True)
+    # Crits "ignore 60% of the target's bonus armor" - PHYSICAL (and BACKLOG tail
+    # (e): percent-of-BONUS-armor stays uncreditable until the target model splits
+    # base from bonus armor).
+    add("Yasuo", "R", "PERCENT_PEN", "BURST", magnitude=0.5, cond=True, axis="PHYSICAL")
     # Yone
     add("Yone", "W", "MAX_HP", "PERIODIC", magnitude=0.68)
     # Yorick
     add("Yorick", "E", "MAX_HP", "PERIODIC", magnitude=0.6)
-    add("Yorick", "E", "SHRED", "PERIODIC", magnitude=0.6)
+    add("Yorick", "E", "SHRED", "PERIODIC", magnitude=0.6, axis="PHYSICAL")
     # Zac
     add("Zac", "W", "MAX_HP", "PERIODIC", magnitude=0.7)
     # Zed
@@ -556,7 +642,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Zeri
     add("Zeri", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True, ramp_lo=1.0, ramp_hi=11.0)
     # Zoe
-    add("Zoe", "E", "SHRED", "PERIODIC", magnitude=0.5, cond=True)
+    add("Zoe", "E", "SHRED", "PERIODIC", magnitude=0.5, cond=True, axis="MAGICAL")
 
     return {champ: tuple(entries) for champ, entries in raw.items()}
 
@@ -727,6 +813,7 @@ __all__ = [
     "_ANTITANK_KIND_WEIGHT",
     "_ANTITANK_CADENCE_MULT",
     "_ANTITANK_CONDITIONAL_PROB",
+    "_ANTITANK_AXES",
     "_ANTITANK_REGISTRY",
     "_level_ramp_factor",
     "_current_hp_level_ramp_factor",
