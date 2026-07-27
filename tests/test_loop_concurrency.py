@@ -381,3 +381,49 @@ def test_shared_module_matches_the_pinned_cross_repo_digest(name: str):
         f"{name} no longer matches the digest agreed with Sibling-A. "
         f"If this change is intended, re-sync BOTH trees and re-pin on BOTH "
         f"sides in the same round - do not just update this constant.")
+
+
+# ---- the shared surface that is a VALUE, not a file -------------------------
+#
+# A byte-digest pin structurally cannot cover this one. max_concurrent_lanes is
+# the TOTAL number of concurrent executor calls allowed on this box across BOTH
+# repos, enforced by slots.py against the single shared root
+# C:\ProgramData\lw-loop\slots. Each repo reads its OWN config, so if the two
+# values disagree the governor silently permits max(rc, lw) holders - RC's
+# config.json calls that "theater" in its own note. Nothing asserted it.
+
+def _lane_counts(root: Path) -> dict[str, int]:
+    """Every ops/loop/config*.json in a tree that declares the lane count."""
+    found = {}
+    for cfg in sorted((root / "ops" / "loop").glob("config*.json")):
+        try:
+            data = json.loads(cfg.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict) and "max_concurrent_lanes" in data:
+            found[cfg.name] = data["max_concurrent_lanes"]
+    return found
+
+
+def test_rc_configs_agree_on_the_lane_count():
+    """One RC config disagreeing with another is the same bug as disagreeing
+    with LW: whichever config the running mode loaded sets the ceiling."""
+    counts = _lane_counts(ROOT)
+    assert counts, "no RC ops/loop/config*.json declares max_concurrent_lanes"
+    assert len(set(counts.values())) == 1, (
+        f"RC config files disagree on max_concurrent_lanes: {counts}. The value "
+        f"is a shared ceiling, so every mode's config must carry the same one.")
+
+
+def test_rc_and_lw_agree_on_the_lane_count():
+    """Cross-repo half. Skips off-box, so the RC-internal test above is the one
+    CI actually runs - keep both."""
+    lw = _lane_counts(LW_ROOT)
+    if not lw:
+        pytest.skip("Sibling-A tree not present on this machine")
+    rc = _lane_counts(ROOT)
+    assert set(rc.values()) == set(lw.values()), (
+        f"RC {rc} and Sibling-A {lw} disagree on max_concurrent_lanes. "
+        f"Both loops enforce it against the same slot root, so the effective "
+        f"ceiling becomes the LARGER of the two and the governor is theater. "
+        f"Change it on both sides in the same round.")
