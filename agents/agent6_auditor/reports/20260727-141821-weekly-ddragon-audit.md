@@ -11,18 +11,18 @@
 - **Missing icon files this run:** 0
 
 ## Status
-✓ All fixtures resolve
-✓ All rewind_history items have icons
-✓ Clean baseline — no coverage gaps
+OK All fixtures resolve
+OK All rewind_history items have icons
+OK Clean baseline - no coverage gaps
 
 ## Top 10 Unresolved Names
-(None — audit is clean)
+(None - audit is clean)
 
 ## Newly Broken Since Last Weekly
-(None — no delta from 2026-07-20)
+(None - no delta from 2026-07-20)
 
 ## Fixed Since Last Weekly
-(None — maintained clean state)
+(None - maintained clean state)
 
 ## Raw Script Output (tail)
 ```
