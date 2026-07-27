@@ -1296,3 +1296,178 @@ def test_the_live_head_lookup_resolves_in_this_repo():
     assert executor._git_is_ancestor(str(ROOT), head, head)
     assert executor._git_resolve(str(ROOT), head[:8]) == head
     assert executor._git_resolve(str(ROOT), "0" * 12) == ""
+
+
+# ---- the deviation stamp: what actually reaches the DIRECTOR -----------------
+#
+# MEASURED 2026-07-27, one layer above the two guards above. Both of them correct
+# a bad directive and then RECORD the correction - but the only thing either put
+# in front of the director was a sentence in the override header asking the
+# executing model to state the deviation in its summary line. controller.log is
+# not a director input: loop_controller.py:577 dumps the model-authored
+# claude.done payload as `=== LAST claude.done ===` and rec.raw is that payload,
+# so whether the director ever learned its directive was wrong depended on the
+# model volunteering it in prose. A model that silently complies teaches the
+# director nothing and it writes the same broken shape again next cycle - which
+# is the exact failure both guards' own comments say recording exists to prevent.
+# The stamp asks the model for nothing.
+
+
+def test_no_deviations_leaves_the_summary_byte_identical():
+    """Every clean cycle stays untouched; the stamp exists only for deviating ones."""
+    assert executor.stamp_deviations("shipped the thing", []) == "shipped the thing"
+    assert executor.stamp_deviations("shipped the thing", None) == "shipped the thing"
+
+
+def test_the_stamp_is_a_prefix_and_the_models_own_summary_survives_after_it():
+    out = executor.stamp_deviations("shipped the thing", [f"{executor.PARALLEL_MARKER} sets collide"])
+    assert out.startswith(executor.DEVIATION_STAMP)
+    assert out.endswith(" | shipped the thing")
+    assert executor.PARALLEL_MARKER in out
+
+
+def test_an_empty_model_summary_leaves_no_dangling_separator():
+    """The error paths stamp over "" - a trailing " | " there would read as a
+    truncated summary rather than as a cycle that produced none."""
+    out = executor.stamp_deviations("", [f"{executor.GROUNDING_MARKER} stale"])
+    assert out == f"{executor.DEVIATION_STAMP}: {executor.GROUNDING_MARKER} stale"
+    assert not out.endswith("|") and " | " not in out
+
+
+def test_stamping_twice_is_the_same_as_stamping_once():
+    """run() applies it once per record, but the two guards both feed one list -
+    a second pass over an already-stamped string must not nest the marker."""
+    once = executor.stamp_deviations("s", ["a", "b"])
+    assert executor.stamp_deviations(once, ["a", "b"]) == once
+    assert once.count(executor.DEVIATION_STAMP) == 1
+    assert once == f"{executor.DEVIATION_STAMP}: a; b | s"
+
+
+def test_the_ahk_channel_stamps_a_deviation_the_model_never_mentioned(tmp_path: Path):
+    """The measured shape: the model complies with the serialization and says
+    nothing about it. raw is asserted explicitly because raw - not the record -
+    is the seam loop_controller dumps into the next director call."""
+    r = _Rec(tmp_path, {"sha": "d" * 40, "tests_pass": "13061", "regressions": False,
+                        "summary": "ran the three slices, all green"})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5}, tmp_path, **r.deps())
+    rec = ex.run(5, _R196, "director")
+    assert executor.DEVIATION_STAMP in rec.summary
+    assert executor.PARALLEL_MARKER in rec.summary
+    assert "ran the three slices, all green" in rec.summary
+    assert executor.PARALLEL_MARKER in rec.raw["summary"]
+
+
+def test_the_sdk_channel_stamps_a_deviation_the_model_never_mentioned(tmp_path: Path):
+    payload = json.dumps({"is_error": False, "total_cost_usd": 0.0,
+                          "structured_output": {"sha": "a" * 40, "tests_pass": "13061",
+                                                "regressions": False,
+                                                "summary": "ran the three slices"}})
+    ex = executor.build(
+        {"channel": "sdk", "repo_root": str(tmp_path), "cycle_deadline_sec": 60,
+         "executor_cmd": _stub_claude(tmp_path, payload)}, tmp_path,
+        log=lambda m: None, stop=lambda m: None, awrite=lambda p, t: None)
+    rec = ex.run(3, _R196, "director")
+    assert executor.DEVIATION_STAMP in rec.summary
+    assert executor.PARALLEL_MARKER in rec.summary
+    assert "ran the three slices" in rec.summary
+    assert executor.PARALLEL_MARKER in rec.raw["summary"]
+
+
+def test_a_clean_cycle_carries_the_models_summary_and_nothing_else(tmp_path: Path):
+    r = _Rec(tmp_path, {"sha": "d" * 40, "tests_pass": "13061", "regressions": False,
+                        "summary": "shipped item 7"})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5}, tmp_path, **r.deps())
+    rec = ex.run(5, _DISJOINT, "fixed")
+    assert rec.summary == "shipped item 7"
+    assert rec.raw["summary"] == "shipped item 7"
+
+
+def test_the_grounding_guard_stamps_the_deviation_too(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Second instance of the same defect class: this guard's correction was just
+    as invisible to the director, and it is the guard whose measured incident WAS
+    the director re-issuing landed work."""
+    g = _Git(landed=["05319608", "19b680cc"])
+    monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
+    monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
+    monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
+    r = _Rec(tmp_path, {"sha": "d" * 40, "tests_pass": "13061", "regressions": False,
+                        "summary": "applied the inbox"})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5, "repo_root": str(tmp_path)},
+                        tmp_path, **r.deps())
+    rec = ex.run(8, _R200, "director")
+    assert executor.GROUNDING_MARKER in rec.summary
+    assert executor.GROUNDING_MARKER in rec.raw["summary"]
+    assert "applied the inbox" in rec.summary
+
+
+def test_deviations_do_not_leak_from_one_cycle_into_the_next(tmp_path: Path):
+    """The executors outlive the cycle - the controller builds one and calls run()
+    per cycle - so an unreset list would stamp every later clean cycle with cycle
+    1's deviation and teach the director a fault that is not there."""
+    r = _Rec(tmp_path, {"sha": "d" * 40, "tests_pass": "1", "regressions": False,
+                        "summary": "cycle one"})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5}, tmp_path, **r.deps())
+    first = ex.run(1, _R196, "director")
+    assert executor.DEVIATION_STAMP in first.summary
+    r.done = {"sha": "e" * 40, "tests_pass": "1", "regressions": False,
+              "summary": "cycle two"}
+    second = ex.run(2, _DISJOINT, "fixed")
+    assert second.summary == "cycle two"
+    assert executor.DEVIATION_STAMP not in second.summary
+    assert executor.DEVIATION_STAMP not in second.raw["summary"]
+
+
+# The two tests above hand the ahk channel a payload carrying a `summary` key.
+# The REAL producer does not: ops/loop/done_sentinel.py writes exactly cycle /
+# sha / tests_pass / regressions, and claude_stub.py the same. So every live ahk
+# cycle takes the branch neither of them exercises, which is the one worth
+# pinning - a stamp that writes unconditionally would add `"summary": ""` to the
+# director's context on every clean cycle, a shape change to the seam rather than
+# a record of anything.
+
+
+def test_a_clean_ahk_cycle_does_not_invent_a_summary_the_sentinel_never_wrote(tmp_path: Path):
+    r = _Rec(tmp_path, {"sha": "d" * 40, "tests_pass": "13648", "regressions": False})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5}, tmp_path, **r.deps())
+    rec = ex.run(5, _DISJOINT, "fixed")
+    assert rec.summary == ""
+    assert "summary" not in rec.raw, "raw is the director's context - do not widen it"
+    assert set(rec.raw) == {"sha", "tests_pass", "regressions"}
+
+
+def test_a_deviating_ahk_cycle_stamps_although_the_sentinel_writes_no_summary(tmp_path: Path):
+    """The live shape of the defect this whole section closes: no model prose to
+    append to, and the correction still has to reach the director."""
+    r = _Rec(tmp_path, {"sha": "d" * 40, "tests_pass": "13648", "regressions": False})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5}, tmp_path, **r.deps())
+    rec = ex.run(5, _R196, "director")
+    assert rec.raw["summary"] == rec.summary
+    assert executor.PARALLEL_MARKER in rec.raw["summary"]
+    assert not rec.summary.endswith(" | "), "no dangling separator over an absent summary"
+
+
+def test_an_sdk_failure_carries_the_stamp_where_the_controller_actually_reads(tmp_path: Path):
+    """A cycle that deviated and then died. The controller takes `rec.raw` and
+    nothing else off the record, so a stamp living only on DoneRecord.summary
+    would be invisible on the one branch that has no model prose at all."""
+    payload = json.dumps({"is_error": True, "result": "boom", "total_cost_usd": 0.0})
+    ex = executor.build(
+        {"channel": "sdk", "repo_root": str(tmp_path), "cycle_deadline_sec": 60,
+         "executor_cmd": _stub_claude(tmp_path, payload)}, tmp_path,
+        log=lambda m: None, stop=lambda m: None, awrite=lambda p, t: None)
+    rec = ex.run(3, _R196, "director")
+    assert rec.error
+    assert executor.PARALLEL_MARKER in rec.raw["summary"]
+
+
+def test_a_clean_sdk_failure_leaves_raw_empty_exactly_as_before(tmp_path: Path):
+    payload = json.dumps({"is_error": True, "result": "boom", "total_cost_usd": 0.0})
+    ex = executor.build(
+        {"channel": "sdk", "repo_root": str(tmp_path), "cycle_deadline_sec": 60,
+         "executor_cmd": _stub_claude(tmp_path, payload)}, tmp_path,
+        log=lambda m: None, stop=lambda m: None, awrite=lambda p, t: None)
+    rec = ex.run(3, _DISJOINT, "fixed")
+    assert rec.error
+    assert rec.raw == {}
+    assert rec.summary == ""
