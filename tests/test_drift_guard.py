@@ -268,6 +268,42 @@ class GitHooksPathTests(unittest.TestCase):
         self.assertEqual(drift_guard.check_git_hooks_path(REPO), [])
 
 
+class OrphanedHookTests(unittest.TestCase):
+    """The regression that flipping core.hooksPath actually caused."""
+
+    def _tree(self, tracked: tuple[str, ...], untracked: tuple[str, ...]) -> pathlib.Path:
+        root = pathlib.Path(tempfile.mkdtemp())
+        (root / ".githooks").mkdir()
+        (root / ".git" / "hooks").mkdir(parents=True)
+        for n in tracked:
+            (root / ".githooks" / n).write_text("x", encoding="utf-8")
+        for n in untracked:
+            (root / ".git" / "hooks" / n).write_text("x", encoding="utf-8")
+        return root
+
+    def test_orphan_is_a_breach(self) -> None:
+        import drift_guard
+        root = self._tree(("pre-commit",), ("pre-commit", "pre-push"))
+        out = drift_guard.check_orphaned_git_hooks(root)
+        self.assertTrue(out)
+        self.assertIn("pre-push", out[0].message)
+
+    def test_samples_are_ignored(self) -> None:
+        import drift_guard
+        root = self._tree(("pre-commit",), ("pre-commit", "pre-push.sample"))
+        self.assertEqual(drift_guard.check_orphaned_git_hooks(root), [])
+
+    def test_full_parity_is_clean(self) -> None:
+        import drift_guard
+        root = self._tree(("pre-commit", "pre-push"), ("pre-commit", "pre-push"))
+        self.assertEqual(drift_guard.check_orphaned_git_hooks(root), [])
+
+    def test_live_repo_has_no_orphans(self) -> None:
+        """Pinned: this repo lost LFS checkout AND LFS upload to this exact bug."""
+        import drift_guard
+        self.assertEqual(drift_guard.check_orphaned_git_hooks(REPO), [])
+
+
 class LiveRepoTests(unittest.TestCase):
     """The guard must RUN against this repo without exploding.
 
