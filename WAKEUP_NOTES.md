@@ -6,6 +6,72 @@
 
 ---
 
+## 2026-07-27h - R211 the incident writeup was the next incident (ENGINE-IMPACT NONE, `61401222`)
+
+**Eighth cycle in nine with a premise false on disk, and this time the premise
+came from us.** The directive was cycle 15's, repeated: fix-first REGRESS on
+invalid action refs at `docs-guards.yml:62,69`. Disk says that file has `uses:`
+at 61 and 68 only, both real tags; all 10 refs across the 3 workflow files are
+real; `gh run list` shows every recent `ci` / `docs-guards` / `CodSpeed` run
+completed SUCCESS, including at the exact HEAD the audit called regressed. Two
+of the three reported failures were fabricated.
+
+**The third was true, and it is the whole finding.** Item 1084 - R210's own
+writeup, one cycle earlier - quoted the hallucinated literal VERBATIM into
+durable prose. The auditor is a diff scanner over model-authored markdown, and
+that token has the exact shape of a `uses:` ref whose version tag was replaced
+by a file path. So every later diff carrying that doc line re-manufactures the
+same false REGRESS. The fix documented the trap and armed it in the same commit.
+
+DEFECT-CLASS ENUMERATION is why this was not a one-line edit. The directive
+scoped the grep to `docs/LEDGER.md`. A literal grep finds 4 files. The
+shape-precise sweep finds **7 lines across 4 files carrying THREE distinct
+fabricated literals** - R210's, a 2026-07-05 one, an R175 one. The class is the
+writeup habit, not the incident. And `ORCHESTRATION_FINDINGS_ARCHIVE.md:378` is
+self-referential proof it recurs: it records cycle 8's auditor reading cycle 7's
+QUOTATION of a hallucinated string and re-flagging the quote as a fresh defect.
+Written down once, then left armed for three weeks.
+
+All 7 now write the literal with `[at]` for the bare `@`. Preservation is
+machine-checked, not eyeballed - `git diff --word-diff` is exactly 7 changed
+word-pairs, each satisfying `minus.replace('@','[at]',1) == plus`, zero prose
+reworded or deleted, so the historical records stay byte-intact.
+
+New guard `tests/test_doc_action_ref_hygiene.py`, 7 tests. Three properties
+worth keeping: it enumerates via `git ls-files` so an untracked scratch file
+cannot fail the suite; it carries a negative control asserting the pattern still
+MATCHES the real incident token, so a future failure cannot be "fixed" by
+loosening the pattern until it matches nothing; and it builds that token by
+runtime concatenation rather than containing it contiguously, because a guard
+that re-armed the trap it disarms would be worse than no guard. Scope is `.md`
+only and that fence is deliberate - the elided `test_x.py` form in
+`ops/loop/executor.py` and `tests/test_loop_executor.py` is the exemplar R210's
+grounding guard is specified against. Prose docs are the diff-poison surface;
+code is not.
+
+Verifier CONFIRM 9/10, the tenth being pre-existing LEDGER glyphs on untouched
+lines. It proved the guard can FAIL rather than only pass: a poison line
+appended to a tracked doc turned it red and named the file:line.
+
+RC `tests/` 13706 -> **13713 passed** / 106 skipped / 460 subtests, +7 exact.
+Ruff clean. DS untouched. Tier-1: no ENGINE bump, no DS bounce, no restart, no
+Share sync.
+
+**CARRY-FORWARD, seventh cycle, and it now has a measured cost.** Controller pid
+18300 started `00:37:50`. The R210 guard - built to flag exactly this unverified
+`[from-digest]` premise - landed in `executor.py` at `12:53:04` the same day. It
+is on disk and DEAD IN MEMORY, which is precisely why this cycle's false premise
+arrived unflagged. **It must be bounced by hand once**, and cannot be bounced
+from inside a cycle it would kill.
+
+Minor drift fixed in passing: R210's hand-off entry was written as an `h1` at
+the BOTTOM of this file with a `2026-07-27c` suffix already used by R206.
+Promoted to `##` and re-lettered `2026-07-27g` in place so `wakeup_prune.py`
+sees it; its position at the file tail is left alone rather than risk a block
+move, and is noted here for the next prune.
+
+---
+
 ## 2026-07-27f - R209 docs-only pushes ran no CI while 49 guards read docs off disk (ENGINE-IMPACT NONE, `2719dc2a`)
 
 **Seventh cycle in eight with a premise stale on disk.** The directive was
@@ -608,7 +674,7 @@ DS 10052 / 1 skipped / 5585 subtests. RC 13485 / 106 skipped / 460 subtests.
 
 
 
-# 2026-07-27c - R210 gemini-loop cycle 15. The premise was false; the guard was the work. 2 commits.
+## 2026-07-27g - R210 gemini-loop cycle 15. The premise was false; the guard was the work. 2 commits.
 
 HEAD `594e458c`. CI 3/3 green (`ci`, `docs-guards`, `CodSpeed`). RC `tests/` 13706 passed
 / 106 skipped / 460 subtests, +22 exact over the 13684 baseline. DS untouched, no ENGINE
