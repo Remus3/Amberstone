@@ -102,9 +102,16 @@ Do NOT silence a breach by loosening the check. If a finding is genuinely a fals
   - **Frozen-file guard**: per `CLAUDE.md`, several files require explicit user approval before editing. If any modified path is in the frozen list, stop and ask - auto-commit is too dangerous here. Frozen list lives at the top of CLAUDE.md.
   - Stage only the changes you authored this session (`git add <specific files>`). Do NOT use `git add -A` - accidentally commits .env / runtime junk.
   - Draft a one-line commit message summarising the session's work (1-2 sentences, "why" over "what"). If multiple distinct themes: list them as bullets in the body.
-  - Commit with the `Co-Authored-By:` trailer the RUNNING HARNESS specifies - do NOT hardcode a model name here.
-    (This line previously pinned `Claude Opus 4.7 (1M context)` and went stale when the model changed; a
-    hardcoded identifier in prose is exactly the drift class section 0c exists to catch.)
+  - **Do NOT add a `Co-Authored-By: Claude` trailer.** Operator policy 2026-06-03: this repo
+    never emits one. `.githooks/commit-msg` STRIPS any `^Co-Authored-By: Claude` line before
+    the subject is validated, so adding one is a silent no-op, not a choice - it is removed
+    whether or not you meant it. A harness whose own instructions add the trailer by habit is
+    fine; the hook absorbs it. Do not spend a line of the message on it, and do not "restore"
+    it when you notice it missing from a prior commit - that absence is the policy working.
+    (This instruction previously said to add the trailer "the RUNNING HARNESS specifies", and
+    before that hardcoded `Claude Opus 4.7 (1M context)`. Both were wrong in the same
+    direction: prose describing a step the tooling deletes. Verify against `.githooks/` before
+    re-editing this line.)
   - If pre-commit hooks fail: fix and create a new commit (never `--amend`).
 
 ### 2. Push
