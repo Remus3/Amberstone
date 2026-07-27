@@ -108,7 +108,15 @@ class OwnFilesTests(unittest.TestCase):
 class WiringTests(unittest.TestCase):
     """Shared-file wiring guard. CS3 (2026-06-08) moved this surface from
     champ-select to the Active Match view; the assertions now pin the
-    active-match home so a refactor that drops a wire is caught."""
+    active-match home so a refactor that drops a wire is caught.
+
+    MEASURED 2026-07-26 (skip audit): the guard the class carried defeated
+    exactly that. `setUpClass` recorded `wired = _MOUNT_ID in index` and
+    `setUp` skipped the class when it was false, while `test_mount_present`
+    asserted the same mount id one method later - so the class could not fail,
+    only assert-what-it-had-already-checked or skip. The mount is present in
+    web/index.html, confirmed before removal, so the guard is gone.
+    """
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -116,11 +124,6 @@ class WiringTests(unittest.TestCase):
         cls.cs = _read(CHAMP_SELECT_JS)
         cls.am = _read(ACTIVE_MATCH_JS)
         cls.dashboard_css = _read(DASHBOARD_CSS)
-        cls.wired = _MOUNT_ID in cls.index
-
-    def setUp(self) -> None:
-        if not self.wired:
-            self.skipTest("ds-sweep panel not yet wired into shared files")
 
     def test_mount_present(self) -> None:
         self.assertIn(_MOUNT_ID, self.index)

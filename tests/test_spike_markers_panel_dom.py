@@ -14,9 +14,10 @@ pins the two FRONTEND files this task OWNS:
     tokens + the [hidden] rule.
 
 The shared-file wiring (web/index.html mount id, web/css/dashboard.css
-@import, web/js/panels/active_match.js render call) is done by the
-orchestrator, NOT this task - so those wires are checked opportunistically
-(skip-if-absent) rather than asserted, to keep this slice green pre-wire.
+@import, web/js/panels/active_match.js render call) was landed by the
+orchestrator and is now asserted outright. It was originally checked
+skip-if-absent to keep this slice green pre-wire; that scaffold outlived the
+wire-up and made the three wiring tests unable to fail (removed 2026-07-26).
 
 Grep-based smoke checks - cheap, fast, enough to catch a missing wire.
 Mirrors test_cooldown_watch_panel_dom.py.
@@ -109,26 +110,27 @@ class CssContractTests(unittest.TestCase):
 
 
 class SharedWiringTests(unittest.TestCase):
-    """The shared-file wires are owned by the orchestrator. Checked
-    opportunistically (skip when absent) so this slice stays green before
-    the orchestrator lands the mount + @import + render call."""
+    """The three shared-file wires, asserted unconditionally.
 
-    def test_dashboard_css_import_when_wired(self) -> None:
-        text = _read(DASHBOARD_CSS)
-        if "spike_markers.css" not in text:
-            self.skipTest("dashboard.css @import not wired yet (orchestrator)")
-        self.assertIn("./panels/spike_markers.css", text)
+    MEASURED 2026-07-26 (skip audit): each of these was `if <wire> not in text:
+    skipTest(...)` immediately above an assertion that the same wire is there -
+    a test that asserts a thing exists and skips when it does not CANNOT FAIL.
+    The comment said so out loud ("so this slice stays green before the
+    orchestrator lands the mount"), and the orchestrator landed - the scaffold
+    just outlived its reason. All three wires were confirmed present on disk
+    before the guards were removed, so this is now a live regression guard: a
+    refactor that drops the @import, the mount, or the render call fails here.
+    """
 
-    def test_index_mount_when_wired(self) -> None:
-        text = _read(INDEX_HTML)
-        if "am-spike-markers" not in text:
-            self.skipTest("index.html mount not wired yet (orchestrator)")
-        self.assertIn('id="am-spike-markers"', text)
+    def test_dashboard_css_import(self) -> None:
+        self.assertIn("./panels/spike_markers.css", _read(DASHBOARD_CSS))
 
-    def test_active_match_render_when_wired(self) -> None:
+    def test_index_mount(self) -> None:
+        self.assertIn('id="am-spike-markers"', _read(INDEX_HTML))
+
+    def test_active_match_render(self) -> None:
         text = _read(ACTIVE_MATCH_JS)
-        if "spike_markers.js" not in text:
-            self.skipTest("active_match.js render not wired yet (orchestrator)")
+        self.assertIn("spike_markers.js", text)
         self.assertIn("renderSpikeMarkers", text)
 
 

@@ -39,6 +39,15 @@ if str(_ROOT) not in sys.path:
 import core.build_order_variants as bov  # noqa: E402
 import core.build_order_precompute as bop  # noqa: E402
 
+# The shipped-table gate lives in the HZ-B1 suite (one implementation, not
+# seven copies). Importing the two FUNCTIONS by name binds only those names -
+# the sibling module's TestCase classes are not pulled into this namespace and
+# so are not collected twice.
+from tests.test_build_order_precompute import (  # noqa: E402
+    load_shipped_table,
+    require_shipped_table,
+)
+
 
 # --------------------------------------------------------------------------- #
 # Headless fake ranker (the DS dispatcher stand-in) - mirrors the HZ-B1 test.
@@ -231,12 +240,21 @@ class LiveEnginePivotTests(unittest.TestCase):
     })
 
     def setUp(self):
+        # MEASURED 2026-07-26 (skip audit): this used to be one try block with a
+        # bare `except Exception` wrapped around BOTH the import and the
+        # skipTest below it. `unittest.SkipTest` subclasses `Exception`, so the
+        # "engine is down" skip was caught by its own handler and re-raised as
+        # "DS client import failed". Probed the same day: the import succeeds -
+        # every transient :8893 timeout for the life of this test was reported
+        # to the operator as a broken import, pointing debugging at the wrong
+        # half of the system. The except now covers the import ONLY, so the
+        # reported reason is the real one.
         try:
             from core import daemon_slayer_client as dsc
-            if not dsc.is_engine_up(timeout=1.5):
-                self.skipTest("DS engine at 127.0.0.1:8893 is down")
-        except Exception:  # noqa: BLE001
-            self.skipTest("DS client import failed")
+        except Exception as exc:  # noqa: BLE001 - a genuine import failure
+            self.skipTest(f"DS client import failed: {exc}")
+        if not dsc.is_engine_up(timeout=1.5):
+            self.skipTest("DS engine at 127.0.0.1:8893 is down")
 
     def test_anti_tank_surfaces_a_penetration_or_hp_item(self):
         cell = bov.compute_variant_cell(
@@ -404,12 +422,16 @@ class SeedTableTests(unittest.TestCase):
     """The committed SR variant seed table is present, well-formed, and matches
     the module's declared schema + taxonomy. The anti_tank variant of at least
     one seeded champ DIFFERS from its anti_squishy variant (the table actually
-    encodes a pivot, not two identical builds)."""
+    encodes a pivot, not two identical builds).
+
+    Read through `load_shipped_table`, NOT the fail-soft production loader: only
+    an ABSENT table may skip, and a corrupt one must fail."""
 
     def test_committed_sr_seed_is_wellformed(self):
-        payload = bov.load_build_order_variants(mode="sr")
-        if not payload:
-            self.skipTest("no committed SR variant seed table for this patch")
+        payload = load_shipped_table(
+            bov._db_path("sr", bov.resolve_patch()),
+            "HZ-B2 build_order_variants/sr",
+        )
         self.assertEqual(payload["schema"], bov.SCHEMA_VERSION)
         self.assertEqual(
             set(payload["dimensions"]["variants"]), set(bov.VARIANTS)
@@ -425,9 +447,10 @@ class SeedTableTests(unittest.TestCase):
                 self.assertIn("antitank", cell)
 
     def test_committed_seed_has_a_real_pivot(self):
-        payload = bov.load_build_order_variants(mode="sr")
-        if not payload:
-            self.skipTest("no committed SR variant seed table for this patch")
+        payload = load_shipped_table(
+            bov._db_path("sr", bov.resolve_patch()),
+            "HZ-B2 build_order_variants/sr",
+        )
         bo = payload["build_orders"]
         differs = [
             champ for champ, v in bo.items()
@@ -450,9 +473,10 @@ class AsciiHygieneTests(unittest.TestCase):
         self.assertEqual(non_ascii, [], f"non-ASCII in module: {non_ascii[:5]}")
 
     def test_seed_table_is_ascii(self):
-        path = bov._db_path("sr", bov.resolve_patch())
-        if not path.exists():
-            self.skipTest("no committed SR variant seed table")
+        path = require_shipped_table(
+            bov._db_path("sr", bov.resolve_patch()),
+            "HZ-B2 build_order_variants/sr",
+        )
         data = path.read_bytes()
         self.assertTrue(all(b < 0x80 for b in data), "non-ASCII in seed table")
 
