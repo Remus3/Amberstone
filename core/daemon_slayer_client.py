@@ -580,6 +580,17 @@ def ehp_for(
     # added the ranker lane, where ``rank_tank_for`` carries the same seam and
     # it becomes visible under ``score_by="sustain"``.
     assume_max_stacks_omnivamp: bool = False,
+    # R197: the ITEM lane of the wielder Heal-and-Shield-Power axis, the twin of
+    # the rune lane ``apply_rune_hsp_amp`` already in the block above. ``item_ids``
+    # is its transport - the engine sums ``heal_shield_amp_pct`` over the
+    # CANDIDATE'S OWN inventory (Redemption 3107 = 0.10, Mikael 3222 = 0.12), so
+    # an empty build collapses it to 1.0 and the flag alone would be reachable and
+    # inert. Deliberately NOT routed through ``_emit_ehp_family_seams``: that
+    # helper is called by four functions, and only /ehp parses this key - folding
+    # it in would let a later edit leak the seam onto /rank-tank, /rank-bruiser or
+    # /hybrid, none of which parse it. Appended at END per the
+    # no-mid-signature-insert convention.
+    assume_hsp_amp: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
@@ -629,7 +640,74 @@ def ehp_for(
         assume_item_proc_heal=assume_item_proc_heal,
         assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
     )
+    # DEFAULT-OFF, emit-when-True: an omitted key leaves _route_ehp's
+    # _opt_bool(body, "assume_hsp_amp", False) on its engine default, so a call
+    # that does not name the seam is byte-identical on the wire to a pre-R197 one.
+    if assume_hsp_amp:
+        body["assume_hsp_amp"] = True
     return _post_json("/ehp", body, timeout=timeout)
+
+
+def sustain_for(
+    champion: str,
+    *,
+    mode: str = "SR",
+    item_ids: Optional[Iterable[str]] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+    # R197: the SUSTAIN half of the same wielder-HSP item lane ``ehp_for``
+    # carries above. Scoped to the REGEN kind engine-side - a vamp-only champion
+    # is byte-identical even with the seam ON - and INERT without ``item_ids``,
+    # which is why the two are declared as a pair rather than as independent
+    # switches. DEFAULT-OFF, emitted only when True.
+    assume_hsp_amp: bool = False,
+) -> Optional[dict]:
+    """Call POST /sustain and return the raw SustainResult dict. None on failure.
+
+    Item 298 (ENGINE 1.110.0) scalar probe - the sustain / vamp-throughput axis.
+    Same engine-down semantics as ``ehp_for`` / ``hps_for`` (None = unreachable),
+    same ``DEFAULT_TIMEOUT`` fail-silent contract.
+
+    WHY THIS FUNCTION EXISTS AT ALL, given it has no caller yet
+    ----------------------------------------------------------
+    ``_route_sustain`` began parsing ``assume_hsp_amp`` at R197 and no client
+    function POSTed /sustain, so the per-route reachability guard
+    (``agents/daemon_slayer/tests/test_route_seams_reach_the_client_per_route.py``)
+    went RED with ('/sustain', 'assume_hsp_amp'). That guard offers two remedies
+    and states its own preference plainly: wire the client function, or add the
+    pair to ``_STRANDED_BY_ROUTE``. The ledger was declined here for two reasons.
+
+    First, /sustain is not the shape of the two routes that ARE declined in that
+    ledger. /v2/fight-report is declined because its compute has only test
+    callers; ``compute_sustain`` has LIVE in-process consumers today
+    (``dashboard/routes_ds_profile.py:204`` and ``core/ds_capability_gap.py:164``),
+    so the metric already ships to the operator and this is only the
+    out-of-process door to it. /beam is declined because its live consumer holds
+    a deliberately bespoke HTTP call (a 4.0s budget and an error STRING that
+    ``_post_json``'s None collapses); /sustain has no such contract conflict.
+
+    Second, having no caller is not this module's bar for existing: ``ehp_for``,
+    ``hybrid_for``, ``ability_dps_for``, ``hps_for`` and ``matchup`` all carry
+    zero non-test call sites and none of them are ledgered. This module is a
+    probe surface as much as a consumer surface.
+
+    Be honest about what that buys: this makes the seam EXPRESSIBLE, not live.
+    Nothing in RC calls this yet, and the two in-process consumers above call
+    ``compute_sustain(champion, mode)`` positionally with no inventory, so they
+    cannot arm the seam either. Wiring a real consumer is separate work.
+    """
+    body: dict = {
+        "champion": champion,
+        "mode": mode,
+    }
+    # Emitted only when non-empty: _route_sustain reads items through
+    # _coerce_str_list(body.get("items")), which maps an absent key to [], so
+    # omitting it is the same request as sending an empty list with fewer bytes.
+    if item_ids:
+        body["items"] = [str(i) for i in item_ids if i]
+    # DEFAULT-OFF, emit-when-True - same contract as the ``ehp_for`` twin.
+    if assume_hsp_amp:
+        body["assume_hsp_amp"] = True
+    return _post_json("/sustain", body, timeout=timeout)
 
 
 @dataclass(frozen=True)

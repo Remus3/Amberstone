@@ -623,6 +623,17 @@ def _route_ehp(body: dict) -> dict:
     # response. R194 slice A extended the seam to the RANKER lane as well, where
     # it is only visible under score_by="sustain" (see _route_rank_tank).
     assume_max_stacks_omnivamp = _opt_bool(body, "assume_max_stacks_omnivamp", False)
+    # R197: the ITEM lane of the wielder Heal-and-Shield-Power axis, stranded
+    # since ENGINE 1.171.0 (R60). ``compute_ehp`` has accepted this kwarg from
+    # the start but NO route parsed it, so the item half of the HSP model
+    # (enchanter_items.json ``heal_shield_amp_pct`` - Redemption 3107 = 0.10,
+    # Mikael 3222 = 0.12) could not be armed by any client while its RUNE twin
+    # ``apply_rune_hsp_amp`` shipped on four routes. Same defect class R194(a)
+    # fixed for ``assume_max_stacks_omnivamp``, and invisible to both existing
+    # reachability guards for the same reason - they build their seam universe
+    # from the keys server.py already parses. Absent key -> False -> hsp_pct 0.0
+    # -> shield_amp_mult unchanged -> byte-identical response.
+    assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -651,6 +662,7 @@ def _route_ehp(body: dict) -> dict:
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
+            assume_hsp_amp=assume_hsp_amp,
             apply_survival_window=apply_survival_window,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,
@@ -1733,13 +1745,25 @@ def _route_sustain(body: dict) -> dict:
     kind into a single sustain score. Body:
       * ``champion`` (required)
       * ``mode`` (default SR; carried on the result, does not change output)
+      * ``items`` + ``assume_hsp_amp`` (R197, both DEFAULT-OFF)
     Additive read-only metric: it perturbs no other route.
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
     mode = _opt_str(body, "mode", "SR") or "SR"
+    # R197: the SUSTAIN half of the stranded wielder HSP item lane. ENGINE
+    # 1.171.0 (R60) gave compute_sustain both ``item_ids`` and
+    # ``assume_hsp_amp``; this route parsed NEITHER, so the seam had no
+    # inventory to sum even if a client could have set the flag. Both halves
+    # are required - a parsed flag with no items is still inert. Absent keys ->
+    # [] / False -> hsp_mult 1.0 -> byte-identical response.
+    items = _coerce_str_list(body.get("items"), "items")
+    assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
     try:
-        result = compute_sustain(champion, mode=mode)
+        result = compute_sustain(
+            champion, mode=mode, item_ids=items,
+            assume_hsp_amp=assume_hsp_amp,
+        )
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
