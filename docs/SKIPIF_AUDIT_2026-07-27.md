@@ -284,3 +284,53 @@ The Share tree's own suite was then run from `Share/src` to confirm the
 byte-identity pins. Its two Sibling-A skips and its win32 skip are
 CAPABILITY-OK and were left exactly as-is; no digest was read, regenerated, or
 modified.
+
+## Regression guard (R203, same day)
+
+The audit above fixed 51 instances and shipped no machine guard, so instance
+#52 could land unnoticed. `tests/test_skip_condition_hygiene.py` closes that:
+an AST scanner over every module under `tests/**` and
+`agents/daemon_slayer/tests/**` that resolves each skip condition and FAILS
+when the condition gates on a git-TRACKED artifact.
+
+Two predecessor lessons shaped it, both from
+`tests/test_no_console_flash_scheduled_tools.py` before `756db42a`:
+
+- The universe is GLOBBED (`rglob`, 1236 modules), never a hand-written list.
+  A hand list is how that guard went green over the exact class it existed to
+  catch.
+- Classification is `ast.parse` with scope chains, name bindings and
+  cross-module resolution - never substring grep. A grep for a literal is
+  satisfied by a module that passes the value to nothing.
+
+Corpus at landing: 107 skip sites, 106 CAPABILITY, 1 allowlisted FUTURE row.
+
+**The guard found instance #52 on its first real run.**
+`tests/test_routes_champ_benchmarks.py:235` skipped when
+`data/coach_reference/champion_benchmarks.json` was absent. The disposition
+table above recorded it as gating on an untracked `data/champion_benchmarks.json`;
+the code gates on the `coach_reference/` path, which IS tracked - and the
+module docstring already said so ("it is checked in, not gitignored"). That
+skip had never been able to fire. Converted to a hard assert in the same slice.
+
+`_ALLOWLIST` holds exactly one entry, the RM-95 patch-pin FUTURE row. Entries
+are scoped to the EXACT tracked artifact set they excuse, not to the module, so
+a new skip in an allowlisted module still fails. Three anti-rot tests assert
+every entry still exists on disk, still flags, and still excuses only what it
+claims.
+
+### Known limits (measured, live exposure zero)
+
+- An `and`-joined compound gate (`not TRACKED.exists() and sys.platform == ...`)
+  classifies CAPABILITY because a capability signal wins regardless of the
+  boolean operator. Such a gate can never fire. Three real sites rely on the
+  masking rule and all three are legitimately capability-gated.
+- `import sys as _s` / `from sys import platform` resolve UNRESOLVED, which the
+  guard treats as failure. Fails loud, not silent.
+
+An aliased-module hole was found by the verifier and closed before landing:
+`import pytest as _p` + `_p.skip(...)` was invisible to the scanner because
+`pytest.skip` is matched on the full dotted chain (a bare `.skip` tail would
+collect unrelated calls). `_canonical_call` now rewrites the alias head.
+Pinned by `aliased_pytest_bare_skip_on_tracked_path`; with the rewrite
+suppressed the site scans to zero findings.
