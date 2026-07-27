@@ -74,7 +74,8 @@ def hold(name: str, *, timeout: float | None = None, log=None):
         # loud log rather than wedging the run - an unserialized gemini call is
         # a cost risk, a deadlocked loop is a dead run.
         if log:
-            log(f"winmutex: CreateMutexW failed for {name} - proceeding UNSERIALIZED")
+            log(f"winmutex: UNSERIALIZED {name} - CreateMutexW failed; "
+                f"proceeding WITHOUT the lock")
         yield None
         return
 
@@ -88,15 +89,25 @@ def hold(name: str, *, timeout: float | None = None, log=None):
         if rc == _WAIT_ABANDONED and log:
             log(f"winmutex: {name} was ABANDONED by a dead holder - acquiring anyway "
                 f"(its work may be half-done)")
-        if not acquired and log:
-            log(f"winmutex: unexpected wait result {rc} for {name} - proceeding")
         # ACQUIRED/RELEASED are logged so the hold window is OBSERVABLE in each
         # repo's controller.log. Without them "the two runs' gemini calls never
         # overlap" is only arguable from reading the code; with them it is
         # measurable from two log files after a concurrent run. Both repos pass
         # log= here, so the trace appears on both sides for free.
-        if log:
-            log(f"winmutex: ACQUIRED {name}")
+        #
+        # ACQUIRED is gated on `acquired` and the fail-open branch emits a
+        # DISTINCT marker instead. Getting this wrong is worse than not logging
+        # at all: an unconditional ACQUIRED on the fail-open path opens a window
+        # that RELEASED (gated) never closes, so a window-pairing parser drops it
+        # silently - making the ONE case where the mutex did not serialize the
+        # one case invisible to the overlap check. An unserialized concurrent
+        # call would then pass green. Found by RC on review, 2026-07-26.
+        if acquired:
+            if log:
+                log(f"winmutex: ACQUIRED {name}")
+        elif log:
+            log(f"winmutex: UNSERIALIZED {name} - unexpected wait result {rc}; "
+                f"proceeding WITHOUT the lock")
         yield handle
     finally:
         if acquired and log:
