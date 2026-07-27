@@ -6,6 +6,8 @@
   "max_cycles": 100,
   "cycle_deadline_sec": 5400,
   "poll_sec": 5,
+  "max_concurrent_lanes": 2,
+  "_max_concurrent_lanes_note": "TOTAL concurrent executor calls allowed on this box across ALL callers (RC + Sibling-A), enforced by ops/loop/slots.py against C:\\ProgramData\\lw-loop\\slots. MUST match the LW config value or the governor is theater. 2 is a starting guess; the P5 concurrent run is where it gets evidence.",
   "dry_run": false,
   "ignore_no_progress": false,
   "clear_each_cycle": true,
