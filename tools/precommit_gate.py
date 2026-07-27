@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+import pathlib
 import re
 import subprocess
 import sys
@@ -139,7 +140,53 @@ def _compile_errors(pyfiles: list[str], root: str) -> list[str]:
     return out
 
 
+def _check_message_file(path: str) -> int:
+    """commit-msg entry point: scan the prepared commit message for glyphs.
+
+    WHY THIS EXISTS SEPARATELY FROM THE STDIN PATH
+    ----------------------------------------------
+    As a Claude PreToolUse hook this gate receives the whole command string, so
+    the ``-m "..."`` text is scanned for free. As a GIT hook it does not:
+    ``pre-commit`` runs BEFORE the message is prepared, so
+    ``.git/COMMIT_EDITMSG`` does not exist yet and there is nothing to read. The
+    message check therefore has to live in ``commit-msg``, which is handed the
+    message file as ``$1``.
+
+    Missing that distinction is a silent failure, not a loud one: the
+    staged-content and ruff halves still fire from pre-commit, so the gate looks
+    healthy while the message half checks nothing. Measured 2026-07-26 - a commit
+    whose subject carried a U+2014 em-dash landed clean.
+
+    FAILS OPEN on an unreadable file. A gate that crashes on its own bug would
+    wedge every commit in the repo, which is worse than the drift it guards.
+    """
+    try:
+        text = pathlib.Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return 0
+    # Drop git's own template comments - they are stripped before the commit is
+    # created, so a glyph inside one is not a glyph in the message.
+    body = "\n".join(
+        ln for ln in text.splitlines() if not ln.lstrip().startswith("#")
+    )
+    hits = _glyph_hits(body)
+    if not hits:
+        return 0
+    print(
+        "precommit_gate BLOCKED commit - banned glyph in the commit message:\n"
+        f"  {', '.join(hits)}\n\n"
+        "Rewrite the message in 7-bit ASCII (spaced hyphen ' - ' for a clause "
+        "break) and re-commit."
+    )
+    return 2
+
+
 def main() -> int:
+    # commit-msg mode. Explicit flag rather than sniffing argv, so the hook's
+    # intent is readable in the hook body itself.
+    if len(sys.argv) >= 3 and sys.argv[1] == "--message-file":
+        return _check_message_file(sys.argv[2])
+
     raw = sys.stdin.read() if not sys.stdin.isatty() else ""
     # PowerShell 5.1 pipes prepend a UTF-8 BOM; json.loads rejects it and the
     # raw-string fallback then never regex-matches -> silent pass. Strip it.
