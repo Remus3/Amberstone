@@ -17,8 +17,14 @@ import subprocess
 import time
 from pathlib import Path
 
-ROOT = r"C:\Riot Commander"
-CTL = Path(ROOT) / "ops" / "loop" / "control"
+# This module sits at <repo>/ops/loop/, so the checkout is two levels up. This
+# was an absolute C: literal, which is right on exactly one host and silently
+# wrong everywhere else - and it matters more here than it looks: the dry-run
+# stub exists to prove the loop's plumbing without spend, so a stub that can
+# only run on Legion cannot prove the plumbing anywhere it would actually be in
+# doubt. See tests/test_loop_module_root_resolution.py.
+ROOT = Path(__file__).resolve().parents[2]
+CTL = ROOT / "ops" / "loop" / "control"
 # CREATE_NO_WINDOW: 0 on non-Windows so the module still imports/tests in CI.
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
