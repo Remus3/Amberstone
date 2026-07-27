@@ -174,6 +174,12 @@ STRANDED_TODAY: dict[str, str] = {
     # RM-98 adjudicated the cast-rate TIME BASE; the propensity PRIOR is the
     # separate half that was never route-exposed.
     "apply_cast_rate_propensity_prior": "RM-98 cast-rate prior - never route-exposed",
+    # R212 crit CHANCE / crit DAMAGE MULTIPLIER registry (Yasuo / Yone doubling
+    # + overflow AD, Senna overflow life steal, Jhin's 0.86 Whisper penalty).
+    # Engine-only by design: the sibling RM-46 crit-CONVERSION seam took its own
+    # slice to reach rank.py + POST /rank, and wiring this one in the same slice
+    # would ship an unmeasured second live flip on the same auto-attack term.
+    "apply_crit_chance_overrides": "R212 crit chance/damage multiplier - engine-only, live flip unmeasured",
     # Rune lanes whose ENGINE side shipped but whose route wire did not.
     "apply_rune_offense_grants": "rune offense grants - engine-only since 1.223.0",
     "apply_rune_self_heal": "rune self-heal lane - engine-only",

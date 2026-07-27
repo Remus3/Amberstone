@@ -756,6 +756,10 @@ def compute_dps(
     # A-12 / RM-46 (2026-07-25): the per-champion CRIT CONVERSION seam, appended
     # at the END of the signature per the no-mid-signature-insert convention.
     apply_crit_conversion: bool = False,
+    # R212 (2026-07-27): the per-champion CRIT CHANCE / CRIT DAMAGE MULTIPLIER
+    # seam, appended at the END per the same convention. Orthogonal to
+    # apply_crit_conversion above (that one owns the crit-damage-BONUS axis).
+    apply_crit_chance_overrides: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -823,6 +827,24 @@ def compute_dps(
     crit-conversion parameter, so no shipped build table can reach this seam
     today - the same route blocker PART 7 named for the RM-86 kit-conversion
     lever.
+
+    ``apply_crit_chance_overrides`` (R212, 2026-07-27): the per-champion CRIT
+    CHANCE / CRIT DAMAGE MULTIPLIER seam. Default False -> byte-identical for
+    EVERY champion, including the four registered ones; the registry module is
+    not even imported on the default path. When True and the champion carries a
+    ``_crit_chance_overrides`` entry: (1) the resolved crit chance is multiplied
+    and re-capped at 100% (Yasuo / Yone double theirs "from all other sources"),
+    (2) the crit chance discarded by that cap converts into flat bonus AD
+    (Yasuo / Yone, 0.5 AD per excess percentage point), folded into the same
+    rotation / CallContext / display AD channels the DSV2 takedown and R145 rune
+    grants use, and (3) the crit factor is multiplied as a WHOLE - Jhin's
+    Whisper penalty is ``(1 + crit_bonus) x 0.86``, not an additive term. This
+    is ORTHOGONAL to ``apply_crit_conversion``: that seam owns the
+    crit-damage-BONUS axis, this one owns the chance axis plus the multiplicative
+    damage axis, and no champion is in both registries. An unregistered champion
+    is byte-identical even with the flag on. The live default-ON flip stays
+    validation-gated (do-not-flip-blind); ``rank.py`` has no parameter for this
+    seam, so no shipped build table reaches it today.
     """
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
@@ -1087,6 +1109,60 @@ def compute_dps(
     else:
         stats_for_rotation = stats
     crit_chance_ctx = crit_total
+    # R212 (2026-07-27): per-champion CRIT CHANCE / CRIT DAMAGE MULTIPLIER.
+    # DEFAULT-OFF, so the registry module is not even imported on the default
+    # path. Resolved HERE (not next to the RM-46 block, which runs before the
+    # build's crit chance exists) because this seam needs the finished
+    # ``crit_total``; ``crit_bonus`` has no reader between the two points.
+    # An unregistered champion (169 of 173) gets both inputs back verbatim, so
+    # the seam is byte-identical for everyone but the four registered rows.
+    crit_overflow_ad = 0.0
+    crit_chance_note = ""
+    if apply_crit_chance_overrides:
+        from ._crit_chance_overrides import overflow_bonus_ad, resolve_crit
+
+        _eff_crit, _eff_bonus, _cx_entry = resolve_crit(
+            resolved.champion_id, crit_total, crit_bonus
+        )
+        if _cx_entry is not None:
+            # WHY the raw (pre-multiply) crit_total: the doubling is what
+            # CREATES the excess, so the overflow helper applies the multiplier
+            # itself rather than reading the already-capped effective chance.
+            crit_overflow_ad = overflow_bonus_ad(_cx_entry, crit_total)
+            crit_bonus = _eff_bonus
+            if _eff_crit != crit_total:
+                if stats_for_rotation is stats:
+                    stats_for_rotation = dict(stats)
+                stats_for_rotation["crit"] = _eff_crit
+                crit_total = _eff_crit
+                crit_chance_ctx = _eff_crit
+            if crit_overflow_ad > 0:
+                # Same three channels the DSV2 takedown / R145 rune AD grants
+                # use: bonus_ad feeds CallContext (bonus-AD-scaling procs),
+                # stats_for_rotation["ad"] feeds the rotation, and the display
+                # ``ad`` below feeds avg_attack_dmg / raw_attack_dps.
+                bonus_ad += crit_overflow_ad
+                if stats_for_rotation is stats:
+                    stats_for_rotation = dict(stats)
+                stats_for_rotation["ad"] = (
+                    stats_for_rotation.get("ad", 0.0) + crit_overflow_ad
+                )
+            # The entry's life-steal overflow (Senna) is DELIBERATELY not read:
+            # compute_dps models no life steal or sustain, so there is no honest
+            # consumer and inventing one would fabricate DPS. It stays registry
+            # + test only until a sustain scorer exists.
+            crit_chance_note = (
+                f"crit chance override applied ({resolved.champion_name}): "
+                f"crit chance x{_cx_entry.crit_chance_multiplier:.2f} "
+                f"(capped) -> {crit_total:.4f}, crit factor "
+                f"x{_cx_entry.crit_damage_multiplier:.2f} -> {crit_bonus:.4f}"
+                + (
+                    f", overflow bonus AD +{crit_overflow_ad:.1f}"
+                    if crit_overflow_ad > 0
+                    else ""
+                )
+                + " - R212"
+            )
     # Phase 4 batch 54 (2026-05-04): conditional bonus AS (Yun Tal Flurry).
     # Added to stats_for_rotation["as"] alongside crit_from_effects - both
     # are DPS-time cross-derivations that don't appear in /stats. The AS
@@ -1273,7 +1349,15 @@ def compute_dps(
     # takedown bonus AD. 0.0 when the seam is OFF -> byte-identical.
     # R145 (1.232.0): the adaptive rune bonus AD joins the same display total,
     # 0.0 when the seam is OFF -> byte-identical.
-    ad = float(stats.get("ad", 0.0)) + takedown_bonus_ad + rune_offense_ad
+    # R212 (2026-07-27): the crit-overflow bonus AD (Yasuo / Yone above the 100%
+    # cap) joins the same display total. 0.0 when the seam is OFF -> byte-
+    # identical.
+    ad = (
+        float(stats.get("ad", 0.0))
+        + takedown_bonus_ad
+        + rune_offense_ad
+        + crit_overflow_ad
+    )
     eff_as = float(stats.get("as", 0.0))
     # Phase 4 batch 14: per-hit display value reflects the same amp the
     # rotation DPS uses, so /dps clients see consistent numbers. Item 247:
@@ -1385,6 +1469,10 @@ def compute_dps(
     # A-12 / RM-46: empty string on the default path -> no note, byte-identical.
     if crit_conversion_note:
         notes.append(crit_conversion_note)
+
+    # R212: same contract - empty string on the default path, so no note.
+    if crit_chance_note:
+        notes.append(crit_chance_note)
 
     if takedown_bonus_ad > 0:
         notes.append(
