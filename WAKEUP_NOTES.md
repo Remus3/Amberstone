@@ -608,6 +608,36 @@ DS 10052 / 1 skipped / 5585 subtests. RC 13485 / 106 skipped / 460 subtests.
 
 
 
+# 2026-07-27c - R210 gemini-loop cycle 15. The premise was false; the guard was the work. 2 commits.
+
+HEAD `594e458c`. CI 3/3 green (`ci`, `docs-guards`, `CodSpeed`). RC `tests/` 13706 passed
+/ 106 skipped / 460 subtests, +22 exact over the 13684 baseline. DS untouched, no ENGINE
+bump, Tier-1 throughout.
+
+The directive ordered a fix-first REGRESS on `.github/workflows/docs-guards.yml:62,69`,
+claiming the `uses:` refs had been corrupted into
+`@agents\daemon_slayer\tests\test_magic_burst_valuation_dsv6.py`. It had not happened. All
+10 `uses:` clauses across the 3 workflows are real tags, and `docs-guards` run
+`30289333992` had completed SUCCESS at the very HEAD the directive was grounded against.
+The claim was tagged `[from-digest]`, and `executor.py:537` skipped every tag that was not
+`[UNVERIFIED]` - so R208's grounding guard, built for exactly this failure mode, watched
+the one tag and not the other. Re-cut the slice to that: `digest-premise`, a fourth finding
+kind that names the resolved path a from-digest claim cites and tells the session to
+re-read it, without ever asserting the claim is false. Two tests pin that restraint.
+
+Worth knowing next time: the premise field carried only the BASENAME `docs-guards.yml`, so
+naive path-existence resolution would have found nothing and the guard would have shipped
+green over its own incident. `_repo_path` falls back to a bounded `git ls-files` against
+the index. That detail is the difference between a guard and a decoration.
+
+The `docs-guards` workflow R209 shipped has now executed on GitHub for the first time and
+passed in 1m33s, which retires R209's stated LIMIT (trigger semantics unproven).
+
+CARRY-FORWARD, now six cycles old and still nobody's done it: controller pid 18300 started
+00:37:50, before its own self-reload fix `d4b1a762` landed. It cannot load that fix. It
+MUST BE BOUNCED BY HAND ONCE. Every stale-premise cycle since traces back here.
+
+
 # 2026-07-27b - F1 queue drain, paired with Sibling-A. RC-owned items all closed.
 
 Ran alongside the LW session on the shared 11-item f1-phase6 queue, coordinating
