@@ -43,13 +43,22 @@ def _current_patch() -> str | None:
 
 
 def _require_live_sidecar() -> None:
-    """Skip (not silently pass) when the current-patch sidecar is not on disk."""
+    """Fail (never skip) when the current-patch sidecar is not on disk.
+
+    2026-07-27 skip audit: both halves are TRACKED and vendored into BOTH trees
+    - data/daemon_slayer/current.txt and
+    data/daemon_slayer/<patch>/cdragon_ability_ratios.json exist in the main
+    repo and in Share/src. Absence therefore means a committed artifact was
+    deleted or the patch pointer moved ahead of its extract - exactly the drift
+    these tests exist to catch.
+    """
     patch = _current_patch()
-    if not patch:
-        pytest.skip("no current.txt patch pointer")
+    assert patch, f"tracked patch pointer {_DEFAULT_DATA_ROOT / 'current.txt'} is missing or empty"
     sidecar = _DEFAULT_DATA_ROOT / patch / _CDRAGON_RATIO_SIDECAR
-    if not sidecar.exists():
-        pytest.skip(f"CDragon sidecar absent for patch {patch}: {sidecar}")
+    assert sidecar.exists(), (
+        f"current.txt points at patch {patch!r} but the tracked CDragon sidecar "
+        f"{sidecar} is not committed"
+    )
 
 
 def _live_pair():

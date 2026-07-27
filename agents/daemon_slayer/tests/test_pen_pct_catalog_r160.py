@@ -78,6 +78,17 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _META_CATALOG = _REPO_ROOT / "data" / "meta" / "ddragon_items.json"
 _PATCH_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
+# Which TREE is this file running from? Both catalogs are tracked in the main
+# repo, so there "only one layout present" can only mean a committed catalog was
+# deleted - a failure. The Share handoff genuinely does not vendor data/meta, so
+# the two-layout agreement check is unrunnable there and must skip.
+#
+# Keyed on the mirror PATH, never on the file's absence: keying on absence would
+# let a deleted data/meta/ddragon_items.json silently skip in the main tree,
+# which is the exact failure this guard exists to catch. Same idiom as
+# test_changelog_tracks_engine_version._IS_SHARE_MIRROR.
+_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in Path(__file__).resolve().parents)
+
 # Percent only. The mandatory "%" before the closing tag is the exact
 # mirror-image of R153's flat regex, whose digits must butt directly against
 # the closing tag. That makes the two sweeps disjoint by MAGNITUDE - neither
@@ -220,10 +231,14 @@ class R160PercentPenPopulationTests(unittest.TestCase):
         # The Share package resolves the patch layout while the repo resolves
         # data/meta; a divergence would make this guard mean different things
         # in the two trees.
+        if _IS_SHARE_MIRROR:
+            self.skipTest("Share/src does not vendor data/meta by design")
         patch = (_PATCH_ROOT / "current.txt").read_text(encoding="utf-8").strip()
         patch_file = _PATCH_ROOT / patch / "items.json"
-        if not (_META_CATALOG.is_file() and patch_file.is_file()):
-            self.skipTest("only one catalog layout present")
+        # Both layouts are TRACKED in the main repo - absence is a deleted
+        # committed catalog, not a missing capability.
+        self.assertTrue(_META_CATALOG.is_file(), f"tracked {_META_CATALOG} is missing")
+        self.assertTrue(patch_file.is_file(), f"tracked {patch_file} is missing")
         meta = json.loads(_META_CATALOG.read_text(encoding="utf-8"))["data"]
         vendored = json.loads(patch_file.read_text(encoding="utf-8"))["data"]
         for pattern in (

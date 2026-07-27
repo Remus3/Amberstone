@@ -54,6 +54,11 @@ _MIKAEL = "3222"      # heal_shield_amp_pct 0.12
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
+# True only inside the Share handoff mirror, which does not vendor
+# data/meta_build. See _require_rune_files for why this keys on the PATH rather
+# than on the snapshot glob coming back empty.
+_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in Path(__file__).resolve().parents)
+
 
 class SumRuneHspPctTests(unittest.TestCase):
     """The additive rune-HSP sum helper."""
@@ -152,10 +157,33 @@ class RuneTreeSweepTests(unittest.TestCase):
             "*/runesReforged.json"
         ))
 
-    def test_exactly_one_rune_in_the_whole_tree_grants_hsp(self) -> None:
+    def _require_rune_files(self) -> list[Path]:
+        """The rune snapshots or an explanation of why they cannot exist.
+
+        data/meta_build/ddragon/*/runesReforged.json is TRACKED in the main
+        repo (four patch bundles as of 16.14.1), so an empty glob there means a
+        committed snapshot was deleted and the sweep below would pass over
+        nothing. The Share handoff deliberately does not vendor meta_build, so
+        the sweep is genuinely unrunnable there. Discriminate on the mirror
+        PATH, never on the glob being empty - keying on emptiness would let a
+        deleted snapshot silently skip in the main tree.
+        """
         files = self._rune_files()
-        if not files:
-            self.skipTest("no vendored runesReforged.json snapshots on disk")
+        if not files and _IS_SHARE_MIRROR:
+            self.skipTest("Share/src does not vendor data/meta_build by design")
+        # The message names the dir as a plain literal, never as a path join -
+        # test_ds_share_mirror_self_contained scans mirrored test modules for
+        # root-anchored joins and only forgives ones consumed by a tolerant
+        # method (.glob/.exists/...). A join built just to format an error is a
+        # HARD reference to a dir the Share package does not ship.
+        self.assertTrue(
+            files,
+            "no tracked runesReforged.json snapshots under data/meta_build/ddragon",
+        )
+        return files
+
+    def test_exactly_one_rune_in_the_whole_tree_grants_hsp(self) -> None:
+        files = self._require_rune_files()
         for path in files:
             with self.subTest(patch=path.parent.name):
                 trees = json.loads(path.read_text(encoding="utf-8"))
@@ -179,9 +207,7 @@ class RuneTreeSweepTests(unittest.TestCase):
     def test_revitalize_longdesc_still_says_five_percent(self) -> None:
         # Patch-drift guard: if Riot renumbers the flat grant, this fails loudly
         # rather than letting a stale 0.05 ship.
-        latest = self._rune_files()
-        if not latest:
-            self.skipTest("no vendored runesReforged.json snapshots on disk")
+        latest = self._require_rune_files()
         trees = json.loads(latest[-1].read_text(encoding="utf-8"))
         desc = next(
             r["longDesc"]
