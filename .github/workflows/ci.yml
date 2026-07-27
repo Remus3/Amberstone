@@ -118,7 +118,11 @@ jobs:
           # pyyaml parses .github/workflows/*.yml for the docs-guard contract
           # test below. Without it those assertions degrade to skips, and a
           # skipped test is a green tick.
-          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff pydantic>=2.0 playwright mypy pyyaml
+          # json5 (pinned to the requirements.txt version) is here for the DS
+          # suite step, NOT for RC's runtime stack. The DS tests import
+          # tools/daemon_slayer_{extract,abilities_extract}.py, which import
+          # json5 - so the package is pure-stdlib but its TESTS are not.
+          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff pydantic>=2.0 playwright mypy pyyaml json5==0.14.0
 
       # MINUTE SAVER (2026-06-30): cache the Chromium browser binary so only
       # the (fast) --with-deps apt step runs on a hit; the ~120MB download is
@@ -279,11 +283,18 @@ jobs:
           # box. `-n auto` HERE, not `-n 8`: a GitHub runner has 2-4 vCPU, so a
           # hardcoded 8 oversubscribes it and runs SLOWER than the local number
           # suggests - which is how the first attempt at this step blew the
-          # job's 10-minute budget and was cancelled mid-run. The package imports
-          # NOTHING from the runtime stack (no anthropic / PIL / websockets /
-          # portalocker / json5 / cv2 / numpy), verified by grep before wiring
-          # it here - so the minimal-deps install above is sufficient and this
-          # step adds no pip time.
+          # job's 10-minute budget and was cancelled mid-run.
+          #
+          # DEPENDENCIES, corrected after CI proved the first claim wrong. The
+          # DS package itself imports nothing from the runtime stack, but its
+          # TESTS reach outside it: they import 6 modules from core/ and tools/,
+          # and tools/daemon_slayer_{extract,abilities_extract}.py import json5,
+          # so the step failed with ModuleNotFoundError until json5 was added
+          # above. The original claim came from a grep over
+          # `agents/daemon_slayer/*.py`, which does NOT recurse and does not see
+          # what the tests import - enumerate the transitive set, not the glob.
+          # Re-checked exhaustively: across all 6 of those modules json5 is the
+          # only third-party import, so the deps above are now complete.
           #
           # It was NOT cheap a day ago, and the reason is worth recording: the
           # identical command returned 11 failures that morning. They were not
