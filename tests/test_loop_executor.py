@@ -1298,6 +1298,265 @@ def test_the_live_head_lookup_resolves_in_this_repo():
     assert executor._git_resolve(str(ROOT), "0" * 12) == ""
 
 
+# ---- the third grounding field: the director's own [UNVERIFIED] tag ----------
+#
+# MEASURED 2026-07-27, cycle 13 of this run. The guard above judged two of the
+# three mandated fields and abstained on PREMISE-CHECK as "free prose with no
+# machine-readable referent". The referent is the TAG: director_prompt.md:18
+# makes the director tag every claim [from-digest] or [UNVERIFIED], so an
+# [UNVERIFIED] premise is the director declaring its own claim an unknown. Cycle
+# 13 shipped two of them, both false on disk (`git diff --cached` was empty and
+# winmutex.py was already byte-identical to the inbox copy and already SHA-
+# pinned), zero findings fired, and the cycle was a full no-op - the 6th stale-
+# premise cycle in 7. Propagating a verdict the director already stamped is not
+# inventing one, and this file has pinned four times over that an unknown is
+# never a pass (executor.py:188, :213, :478, :558).
+
+# The cycle-13 line, verbatim. The trailing backslash is a source-wrap only - the
+# value carries it as ONE line, which is the shape the field is bounded by.
+_CYCLE13 = f"""GROUNDED-AGAINST: HEAD={_HEAD[:8]} LEDGER-TOP=1081 CHAIN-LAST=cycle 12
+NOT-A-DUPLICATE-OF: LEDGER 1081 | distinct because the inbox apply is not on disk
+PREMISE-CHECK: [from-digest] OPERATOR RUN FOCUS requires CYCLE 1 IS THE INBOX APPLY.\
+ [UNVERIFIED] staged .githooks changes exist. [UNVERIFIED] moon_sync_inbox holds winmutex.py.from-lw.
+
+# cycle 13 inbox apply
+Apply the inbox copy, chmod +x the githooks, pin the SHARED_SHA256.
+"""
+
+# The false positive that WILL occur in production: this repo's own ledger rows
+# and ORCHESTRATION_PLAN rows carry [UNVERIFIED] in their prose, and the director
+# quotes them into the directive body constantly.
+_LEDGER_QUOTE_BODY = f"""GROUNDED-AGAINST: HEAD={_HEAD[:8]} LEDGER-TOP=1081 CHAIN-LAST=cycle 12
+NOT-A-DUPLICATE-OF: LEDGER 1081 | distinct because executor.py has no premise check
+PREMISE-CHECK: the executor reads two of the three grounding fields [from-digest]
+
+# item 1082 - propagate the director's own tag
+Context from docs/LEDGER.md, newest first:
+
+- **1081 - loop: the executor deviation stamp (R206)** - the two guards recorded
+  their corrections where the director never reads. Rows still tagged [UNVERIFIED]
+  in docs/ORCHESTRATION_PLAN.md stay [UNVERIFIED] until a session probes them on
+  disk; the live-gated set is UNVERIFIED by construction.
+"""
+
+
+def test_the_cycle_13_premise_check_fires_one_finding_per_self_declared_unknown():
+    """The regression that would have caught today. The HEAD is clean and the
+    directive names no landed sha, so the old guard saw a perfect directive."""
+    found = executor.grounding_findings(_CYCLE13, **_Git().kwargs())
+    assert [f.kind for f in found] == ["unverified-premise", "unverified-premise"]
+    assert not [f for f in found if f.kind == "stale-head"]
+    joined = " | ".join(f.token for f in found)
+    assert "staged .githooks changes exist" in joined
+    assert "moon_sync_inbox holds winmutex.py.from-lw" in joined
+    assert "OPERATOR RUN FOCUS" not in joined, "a [from-digest] claim is not an unknown"
+
+
+def test_a_premise_check_of_only_from_digest_claims_is_not_a_finding():
+    assert executor.grounding_findings(_GROUNDED_CLEAN, **_Git().kwargs()) == []
+
+
+def test_a_directive_with_no_premise_check_line_is_not_a_finding():
+    assert executor.grounding_findings(
+        f"GROUNDED-AGAINST: HEAD={_HEAD[:8]} LEDGER-TOP=1081 CHAIN-LAST=none\n"
+        "Bump ENGINE_VERSION to 1.261.0.", **_Git().kwargs()) == []
+
+
+def test_the_word_unverified_in_the_directive_body_is_not_a_finding():
+    """FALSE-POSITIVE side, and the one that decides whether this guard is usable:
+    the field is scanned, never the body. A ledger row quoted into the directive
+    is context, not a premise the director is relying on."""
+    assert _LEDGER_QUOTE_BODY.count("[UNVERIFIED]") == 2
+    assert executor.grounding_findings(_LEDGER_QUOTE_BODY, **_Git().kwargs()) == []
+
+
+def test_the_prompt_templates_own_placeholder_is_not_a_premise():
+    """A directive about THIS loop quotes director_prompt.md:18 verbatim, template
+    angle brackets and all. `<... or [UNVERIFIED]>` carries no claim."""
+    body = ("Read ops/loop/director_prompt.md:18, which mandates:\n"
+            "    PREMISE-CHECK: <each factual claim you rely on, tagged [from-digest] "
+            "or [UNVERIFIED]>\n")
+    assert executor.grounding_findings(body, **_Git().kwargs()) == []
+
+
+def test_a_trailing_tag_claim_does_not_swallow_the_preceding_from_digest_claim():
+    """The tag can END its claim, and the claim before it may be a DIFFERENT one
+    the director already verified. Folding them together quotes a [from-digest]
+    fact back at the session as something to go and check - the wasted work this
+    guard exists to prevent, dressed up as a correction."""
+    body = "PREMISE-CHECK: [from-digest] the loop is armed. winmutex still old [UNVERIFIED]\n"
+    found = executor.grounding_findings(body, **_Git().kwargs())
+    assert [f.token for f in found] == ["winmutex still old"]
+    assert "the loop is armed" not in found[0].detail
+
+
+def test_two_trailing_tag_claims_on_one_line_are_attributed_separately():
+    """The ambiguous shape underneath the same defect: with the tag AFTER the
+    claim, the text following a tag belongs to the NEXT claim, not to it."""
+    body = ("PREMISE-CHECK: the githooks are executable [UNVERIFIED]. "
+            "the inbox holds the file [UNVERIFIED]\n")
+    found = executor.grounding_findings(body, **_Git().kwargs())
+    assert [f.token for f in found] == ["the githooks are executable",
+                                        "the inbox holds the file"]
+
+
+@pytest.mark.parametrize("claim", [
+    "e.g. the hooks are missing",
+    "i.e. the inbox is empty",
+    "cf. the R206 note",
+    "etc. still pending",
+    "vs. the main tree",
+    "no. 5 is stale",
+])
+def test_an_abbreviation_inside_a_claim_does_not_drop_the_claim(claim: str):
+    """An abbreviation carries a dot AND the space after it, so anything cutting
+    claims on sentence punctuation cuts here too. A claim that VANISHES is the
+    failure direction this guard exists to close, and this reaches it from the
+    tag position the live directives actually use."""
+    found = executor.grounding_findings(f"PREMISE-CHECK: [UNVERIFIED] {claim}\n",
+                                        **_Git().kwargs())
+    assert [f.token for f in found] == [claim]
+
+
+def test_an_abbreviation_does_not_drop_the_claims_after_it():
+    """Per-claim, not per-line: one abbreviation must not cost the whole field."""
+    body = ("PREMISE-CHECK: [UNVERIFIED] e.g. the hooks are missing. "
+            "[UNVERIFIED] the inbox holds the file\n")
+    found = executor.grounding_findings(body, **_Git().kwargs())
+    assert [f.token for f in found] == ["e.g. the hooks are missing",
+                                        "the inbox holds the file"]
+
+
+def test_a_short_claim_is_still_a_claim():
+    """A length floor is the wrong instrument for rejecting the prompt template -
+    it silently drops real claims that happen to be terse, which is the same
+    dropped-claim failure by another route."""
+    for short in ("CI", "abc", "the DS suite"):
+        found = executor.grounding_findings(f"PREMISE-CHECK: [UNVERIFIED] {short}\n",
+                                            **_Git().kwargs())
+        assert [f.token for f in found] == [short]
+
+
+def test_a_block_quoted_premise_line_above_the_real_field_does_not_shadow_it():
+    """This loop's directives quote the PRIOR directive routinely, indented. A
+    first-match scan reads the quote and goes silent on the live field - a false
+    NEGATIVE, which is the direction this whole guard exists to close."""
+    body = f"""GROUNDED-AGAINST: HEAD={_HEAD[:8]} LEDGER-TOP=1081 CHAIN-LAST=cycle 12
+NOT-A-DUPLICATE-OF: LEDGER 1081 | distinct because the apply is not on disk
+The cycle 12 directive opened:
+
+    PREMISE-CHECK: [from-digest] the executor seam is under test
+
+PREMISE-CHECK: [UNVERIFIED] the githooks are executable on disk
+
+Apply the inbox copy.
+"""
+    found = executor.grounding_findings(body, **_Git().kwargs())
+    assert [f.token for f in found] == ["the githooks are executable on disk"]
+
+
+def test_the_same_premise_quoted_twice_is_reported_once():
+    """The routine cost of scanning every field instead of the first: a re-quoted
+    prior directive repeats the SAME premise, and a duplicate bullet is noise the
+    session learns to skim past."""
+    body = ("    PREMISE-CHECK: [UNVERIFIED] the githooks are executable\n"
+            "PREMISE-CHECK: [UNVERIFIED] the githooks are executable\n")
+    found = executor.grounding_findings(body, **_Git().kwargs())
+    assert [f.token for f in found] == ["the githooks are executable"]
+
+
+def test_controller_log_tells_a_premise_finding_from_a_stale_head_one(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """GROUNDING_MARKER stays ONE grep token - operators grep it and the existing
+    controller.log history carries it - so the DETAIL after it is what has to
+    disambiguate. A log line that only says STALE-GROUNDING over a HEAD the same
+    function just measured as current is a lie to the only human reader."""
+    g = _Git(landed=["05319608"])
+    monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
+    monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
+    monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
+    premise_logs, head_logs = [], []
+    executor.enforce_directive_grounding(13, _CYCLE13, log=premise_logs.append)
+    executor.enforce_directive_grounding(14, _R200, log=head_logs.append)
+    assert "UNVERIFIED-PREMISE" in premise_logs[0]
+    assert "stale digest" not in premise_logs[0]
+    assert "stale digest" in head_logs[0]
+
+
+def test_the_premise_finding_count_is_capped():
+    """Same reason _MAX_SHA_PROBES exists: the loop is unattended, and one
+    pathological line must not bury the directive under its own correction."""
+    line = " ".join(f"[UNVERIFIED] claim number {i} is not on disk." for i in range(20))
+    found = executor.grounding_findings(f"PREMISE-CHECK: {line}\n", **_Git().kwargs())
+    assert len(found) == executor._MAX_PREMISE_FINDINGS < 20
+
+
+def test_the_override_on_premise_only_findings_does_not_claim_the_head_is_stale():
+    """The head is FINE on this directive. A correction that opens by calling it
+    stale is the guard lying about what it measured."""
+    found = executor.grounding_findings(_CYCLE13, **_Git().kwargs())
+    out = executor.reground_directive(_CYCLE13, found)
+    assert out.startswith(executor.PREMISE_HEADER)
+    assert executor.GROUNDING_HEADER not in out
+    # The marker is the operator's single grep token for this guard and stays one
+    # string, so it is excised before the claim is measured. Everything the SESSION
+    # reads has to be free of it.
+    prose = out.lower().replace(executor.GROUNDING_MARKER.lower(), "")
+    assert "stale" not in prose, "nothing here is stale - do not say it is"
+    assert executor.GROUNDING_MARKER in out
+    assert "staged .githooks changes exist" in out
+    assert "moon_sync_inbox holds winmutex.py.from-lw" in out
+    assert "--- ORIGINAL DIRECTIVE FOLLOWS, UNCHANGED ---" in out
+    assert _CYCLE13.strip() in out
+
+
+def test_a_premise_only_override_tells_the_session_what_to_do_on_a_no_op():
+    """Matched to the already-landed step: a directive whose premises do not hold
+    is a no-op, and a session told only 'verify' will verify and then run it."""
+    found = executor.grounding_findings(_CYCLE13, **_Git().kwargs())
+    out = executor.reground_directive(_CYCLE13, found)
+    assert "on disk" in out.lower()
+    assert "NON-duplicate" in out and "say which" in out
+
+
+def test_a_stale_head_still_wins_the_header_when_both_kinds_fire():
+    """_R200 carries both. The head being wrong is the stronger claim and the one
+    the session must act on first, so the header must not soften to the premise
+    wording."""
+    found = executor.grounding_findings(_R200, **_Git(landed=["05319608"]).kwargs())
+    kinds = {f.kind for f in found}
+    assert kinds == {"stale-head", "unverified-premise"}
+    assert executor.reground_directive(_R200, found).startswith(executor.GROUNDING_HEADER)
+
+
+def test_an_unverified_premise_is_not_bucketed_with_the_stale_head_findings():
+    """kind is matched exactly at executor.py:528. A prefix/substring bucket would
+    print 'the grounding prefix below is stale' over a perfectly current HEAD."""
+    found = executor.grounding_findings(_CYCLE13, **_Git().kwargs())
+    out = executor.reground_directive(_CYCLE13, found)
+    assert "grounding prefix below is stale" not in out
+
+
+def test_a_premise_only_finding_reaches_the_director_through_the_stamp(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """R206 end to end: controller.log is not a director input, so the correction
+    only teaches the component that caused it if it rides the claude.done stamp."""
+    g = _Git()
+    monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
+    monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
+    monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
+    r = _Rec(tmp_path, {"sha": "d" * 40, "tests_pass": "13061", "regressions": False,
+                        "summary": "applied the inbox"})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5, "repo_root": str(tmp_path)},
+                        tmp_path, **r.deps())
+    rec = ex.run(13, _CYCLE13, "director")
+    assert r.stopped == [], "an unverified premise must not stop the run"
+    assert executor.GROUNDING_MARKER in rec.raw["summary"]
+    assert "applied the inbox" in rec.summary
+    assert executor.PREMISE_HEADER in r.written["directive.md"]
+    assert any(executor.GROUNDING_MARKER in m for m in r.logs)
+
+
 # ---- the deviation stamp: what actually reaches the DIRECTOR -----------------
 #
 # MEASURED 2026-07-27, one layer above the two guards above. Both of them correct
