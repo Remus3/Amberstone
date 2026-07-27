@@ -291,6 +291,37 @@ ROADMAP_CTX_CAP = 8_000
 # the tail would trade one starvation mode for the other.
 PLAN_CTX_HEAD = 8_000
 
+# 2026-07-27 digest-starvation fix. Every cap above bounds one COMPONENT, and
+# nothing bounded their SUM plus the prompt template plus the operator brief.
+# Measured live: a 63,192-byte body against GEMINI_STDIN_CAP 60,000, so
+# cap_stdin's blind 60/40 middle cut fired on EVERY cycle - and the bytes it
+# discarded were exactly the ALREADY-COMPLETED DIGEST header and the whole
+# RECENT COMMITS block, i.e. the literal refutation of the duplicate directive
+# the director kept re-emitting. An overflow is therefore repaid out of the
+# plan, the one genuinely expendable component: the plan is a work MENU that
+# degrades gracefully, while the digest is the de-dup EVIDENCE and degrades
+# into the exact failure this loop keeps hitting. The floor sits above
+# PLAN_CTX_HEAD so repayment can never silently delete the plan's TAIL, where
+# the newest queue rows live. Raising GEMINI_STDIN_CAP is not the alternative:
+# a 79,911-byte payload returns silent EMPTY from the CLI (measured).
+PLAN_CTX_MIN = 12_000
+# Repay slightly more than the overflow: the rebuilt context is re-measured by
+# nobody, so landing exactly ON the cap leaves no room for the marker text the
+# smaller budget stamps.
+PLAN_CTX_SLACK = 512
+
+# 2026-07-27. The operator brief is 5,273 bytes of STATIC prose appended after
+# the LAST AUDIT body. Joined with a bare blank line and no header it read as
+# the tail of that audit - so the director treated standing background policy
+# as this cycle's work order, and prose written before the last N cycles
+# shipped outranked the digest that says they did. The header restores the
+# section boundary and states the precedence in the one place the director
+# cannot miss it.
+DIRECTIVE_SUFFIX_HEADER = (
+    "=== OPERATOR STANDING BRIEF (background policy, NOT this cycle's work order. "
+    "It is STATIC and does not know what has shipped since it was written - the "
+    "ALREADY-COMPLETED DIGEST OVERRIDES it) ===")
+
 # The ledger needs the opposite treatment. It IS newest-first, so head-keeping
 # was already right, but a modern item is one 5-10KB LINE (item 1074 alone is
 # 10,749 bytes), so an 8,000-byte cap over whole items delivered ONE partial id
@@ -486,7 +517,8 @@ def _gemini_call(prompt_body, instruction):
     return out
 
 # ---- adjudicator roles -------------------------------------------------
-def build_director_context(last_done, last_audit, *, root=None, ctl=None):
+def build_director_context(last_done, last_audit, *, root=None, ctl=None,
+                           plan_cap=None, escalation=""):
     """Pure: assemble the context appended after the director prompt template.
 
     Carries an explicit ALREADY-COMPLETED DIGEST (recent commits newest-first +
@@ -497,7 +529,8 @@ def build_director_context(last_done, last_audit, *, root=None, ctl=None):
     base = Path(root) if root is not None else ROOT
     plan = base / "docs/ORCHESTRATION_PLAN.md"
     plan_txt = plan.read_text(encoding="utf-8", errors="replace") if plan.exists() else "(no plan file)"
-    plan_txt = cap_bytes_head_tail(plan_txt, PLAN_CTX_CAP, "ORCHESTRATION_PLAN", PLAN_CTX_HEAD)
+    plan_txt = cap_bytes_head_tail(plan_txt, PLAN_CTX_CAP if plan_cap is None else plan_cap,
+                                   "ORCHESTRATION_PLAN", PLAN_CTX_HEAD)
     chain = _format_directive_chain(read_directive_history(12, ctl=ctl))
     ctx = (
         f"\n\n=== ORCHESTRATION PLAN (PRIMARY work source; pick next OPEN session, skip EXCLUDED) ===\n{plan_txt}"
@@ -516,28 +549,68 @@ def build_director_context(last_done, last_audit, *, root=None, ctl=None):
         f"{cap_bytes(head_lines('ROADMAP.md', 120, root=root), ROADMAP_CTX_CAP, 'ROADMAP head')}"
         f"\n\n=== LAST claude.done ===\n{json.dumps(last_done)}"
         f"\n\n=== LAST AUDIT (if REGRESS, the directive MUST fix it first) ===\n{last_audit or '(none)'}")
-    ask = (Path(ctl) if ctl is not None else CTL) / "gemini_ask.txt"
-    if ask.exists():
-        try:
-            q = ask.read_text(encoding="utf-8", errors="replace").strip()
-        except Exception:  # noqa: BLE001
-            q = ""
-        if q:
-            ctx += ("\n\n=== EXECUTOR ESCALATION (resolve FIRST; the directive MUST encode this "
-                    "decision + instruct the scaffolding + any ROADMAP/BACKLOG reshape) ===\n" + q)
-        ask.unlink(missing_ok=True)
-    ctx += "\n\n" + CFG.get("directive_suffix", "")
+    if escalation:
+        ctx += ("\n\n=== EXECUTOR ESCALATION (resolve FIRST; the directive MUST encode this "
+                "decision + instruct the scaffolding + any ROADMAP/BACKLOG reshape) ===\n" + escalation)
+    suffix = CFG.get("directive_suffix", "")
+    if suffix:
+        ctx += "\n\n" + DIRECTIVE_SUFFIX_HEADER + "\n" + suffix
     return ctx
 
-def director(last_done, last_audit):
-    tmpl = (ROOT / "ops/loop/director_prompt.md").read_text(encoding="utf-8")
+
+def pop_executor_escalation(ctl=None):
+    """Read and CONSUME the executor's escalation question.
+
+    Consumed by the body assembler rather than by build_director_context so a
+    context REBUILD cannot swallow it: the file is unlinked on read, so a second
+    build would find nothing and the question would vanish from the very prompt
+    it was raised for.
+    """
+    ask = (Path(ctl) if ctl is not None else CTL) / "gemini_ask.txt"
+    if not ask.exists():
+        return ""
+    try:
+        q = ask.read_text(encoding="utf-8", errors="replace").strip()
+    except Exception:  # noqa: BLE001
+        q = ""
+    ask.unlink(missing_ok=True)
+    return q
+
+
+def build_director_body(last_done, last_audit, *, root=None, ctl=None):
+    """Assemble the exact stdin a director cycle sends: template + context.
+
+    Sizing the WHOLE body is the point. The component caps cannot see the
+    template or the operator brief, so only here is the real stdin known; an
+    overflow is repaid out of the plan slice, which keeps the digest whole and
+    keeps cap_stdin - whose blind middle cut lands squarely on that digest -
+    from firing at all.
+    """
+    # Resolved next to this module, not under ROOT. The template is CODE that
+    # ships with the controller, while ROOT is a configured repo_root pointing
+    # at the checkout whose DOCS are read. In a worktree those differ, and
+    # measuring a template other than the one actually sent is the same
+    # wrong-component mistake this budget exists to stop.
+    tmpl = (Path(__file__).resolve().parent / "director_prompt.md").read_text(encoding="utf-8")
     # The completion step is CHANNEL-SPECIFIC and the director must not invent it:
     # ahk blocks on control/claude.done (so the directive carries the sentinel
     # command), sdk returns a schema-validated structured_output (so it must NOT).
     # Substituted here because only the controller knows which channel is live.
     tmpl = tmpl.replace("{{FINAL_STEP}}", executor.final_step_instruction(CFG.get("channel")))
-    ctx = build_director_context(last_done, last_audit)
-    return gemini(tmpl + ctx, "Output ONLY the directive markdown for the next cycle. No preamble.")
+    escalation = pop_executor_escalation(ctl)
+    ctx = build_director_context(last_done, last_audit, root=root, ctl=ctl,
+                                 escalation=escalation)
+    overflow = len(tmpl) + len(ctx) - GEMINI_STDIN_CAP
+    if overflow > 0:
+        plan_cap = max(PLAN_CTX_CAP - overflow - PLAN_CTX_SLACK, PLAN_CTX_MIN)
+        ctx = build_director_context(last_done, last_audit, root=root, ctl=ctl,
+                                     plan_cap=plan_cap, escalation=escalation)
+    return tmpl + ctx
+
+
+def director(last_done, last_audit):
+    return gemini(build_director_body(last_done, last_audit),
+                  "Output ONLY the directive markdown for the next cycle. No preamble.")
 
 def auditor(prev_sha, new_sha, clean_sha=None):
     if not new_sha or prev_sha == new_sha:
