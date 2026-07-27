@@ -276,6 +276,33 @@ correct pattern and is **not currently using it**:
 Share sync. **Three tracked guards are therefore not running on any commit**, and
 that is a pre-existing defect independent of this spec.
 
+**FIXED 2026-07-26 (`4e19196f`).** All three steps landed together, in this
+order, because flipping the pointer at a failing hook would have blocked every
+commit in the repo:
+
+  1. Verified the tracked hook's three checks against the live tree FIRST. Two
+     FAILED - `gen_archmap --check` and `gen_state_schema --check` - because the
+     artifacts had drifted while the hook sat inactive (25 lines of
+     ARCHITECTURE.md, 10 of state_schema.js). Regenerated, re-verified all three
+     PASSING, and only then continued.
+  2. Merged both hook pairs so nothing was lost. `pre-commit` now runs the
+     glyph/ruff gate FIRST, then py_compile, archmap, state_schema, and the Share
+     sync LAST (it stages files, and Share/src is generated data outside the
+     hygiene checks). `commit-msg` now carries BOTH jobs that had been split
+     across the two copies - the co-author-trailer strip and the
+     Conventional-Commits check.
+  3. `scripts/install_hooks.py` rewritten to SET `core.hooksPath` and write no
+     hook body at all. It was the root cause: it used to clobber
+     `.git/hooks/pre-commit` with a Share-sync-only file.
+
+**Verified by re-running the exact experiment from the top of this section:** a
+nested `claude -p --permission-mode bypassPermissions` with a banned em-dash
+staged previously COMMITTED IT; it is now **BLOCKED, exit 1, HEAD unchanged**.
+
+`drift_guard.check_git_hooks_path` now fails if the pointer ever moves back.
+
+The original three-step plan, kept for the reasoning:
+
 So the mitigation is a three-step job, not a one-liner:
 
   1. Reconcile `.githooks/pre-commit` with whatever the active hook legitimately
@@ -291,6 +318,7 @@ verification pass - do not fold it into an unrelated commit.
 
 Insert before step 3 of section 6:
 
-  **Step 2b (P0).** Land the git-level gate. The SDK channel must not ship before
-  it, because shipping it first means every headless commit for that window is
-  ungated.
+  ~~**Step 2b (P0).** Land the git-level gate.~~ **DONE 2026-07-26 (`4e19196f`) -
+  the SDK channel is no longer blocked on it.** Sibling-A needs the same
+  fix before its SDK channel ships; the gate is only channel-independent in a
+  repo whose core.hooksPath points at tracked hooks.
