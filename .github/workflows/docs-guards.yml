@@ -1,0 +1,104 @@
+# The complement of ci.yml's MINUTE SAVER.
+#
+# MEASURED 2026-07-27. ci.yml AND codspeed.yml both carry
+# `paths-ignore: ['**/*.md']` (2026-06-30), so a docs-only commit triggers no
+# workflow at all. But ~48 test modules read tracked .md files off disk and
+# assert on their CONTENT, so a .md-only commit can turn a .py guard RED with
+# nothing watching. It happened twice in a row:
+#
+#   6bad3814  docs-only. Pushed the newest `| R<n> |` row of
+#             docs/ORCHESTRATION_PLAN.md past the 16000-byte director-context
+#             tail and turned tests/test_loop_director_context_caps.py RED.
+#             No CI run.
+#   8d22734b  the docs-only FIX for that. Also no CI run, so the fix's own
+#             green was never machine-confirmed.
+#
+# This workflow fires on exactly what ci.yml declines and runs ONLY the
+# md-reading guards. The minute saver survives intact: a prose edit that no
+# guard reads still skips the full suite, py_compile sweep, ruff, playwright,
+# the DS Share sync and mypy.
+#
+# The module list is NOT written here. A hand-maintained universe in YAML is
+# green over every module added after it was written (the SCHEDULED_SPAWNERS
+# failure). tools/md_guard_selector.py derives it from `git ls-files` at CI
+# time, and tests/test_ci_docs_guard_coverage.py re-derives it independently
+# and fails if the selector's live output has a gap.
+
+name: docs-guards
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.md'
+      # Edits to the mechanism itself must re-run the mechanism.
+      - 'tools/md_guard_selector.py'
+      - 'tests/test_ci_docs_guard_coverage.py'
+      - '.github/workflows/docs-guards.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.md'
+      - 'tools/md_guard_selector.py'
+      - 'tests/test_ci_docs_guard_coverage.py'
+      - '.github/workflows/docs-guards.yml'
+  workflow_dispatch:
+
+# A newer docs push supersedes an in-flight one, same shape as ci.yml.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  md-guards:
+    name: guards that read docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # The selector shells out to `git ls-files`, which needs the real
+          # index - a fetch-depth of 1 still provides one, but be explicit
+          # that this job is git-dependent.
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install minimal test deps
+        run: |
+          python -m pip install --upgrade pip
+          # MEASURED 2026-07-27: not one of the 48 currently-selected modules
+          # imports the runtime stack (anthropic / PIL / cv2 / websockets /
+          # portalocker / json5 / psutil), so this stays deliberately small -
+          # this job runs on ~55% of commits. pyyaml is for the workflow-shape
+          # assertions in tests/test_ci_docs_guard_coverage.py; without it
+          # those degrade to skips, and a skipped test is a green tick.
+          pip install pytest pytest-asyncio pytest-timeout pyyaml "pydantic>=2.0"
+
+      - name: Derive the md-reading guard set
+        id: select
+        run: |
+          # Printed to the log so a failure names the exact modules that ran.
+          python tools/md_guard_selector.py --explain
+          python tools/md_guard_selector.py > /tmp/md_guard_modules.txt
+          echo "selected $(wc -l < /tmp/md_guard_modules.txt) module(s)"
+
+      - name: Guards that read tracked .md
+        run: |
+          # The selector exits 1 on an empty selection, so xargs can never be
+          # handed an empty argv and quietly pass.
+          xargs -a /tmp/md_guard_modules.txt \
+            python -m pytest -q --tb=short --timeout=300 -p no:randomly
+
+      - name: The docs-guard contract itself
+        run: |
+          # Not selected by the selector (it reads workflow YAML, not .md), so
+          # it is named explicitly: it is this workflow's own guard.
+          pytest tests/test_ci_docs_guard_coverage.py \
+            -q --tb=short --timeout=120 -p no:randomly
