@@ -291,6 +291,56 @@ def test_mutex_timeout_raises_when_held_elsewhere():
         t.join(timeout=10)
 
 
+def test_acquired_is_logged_only_when_actually_held():
+    """ACQUIRED must be gated on a real acquisition, and the fail-open path must
+    emit a DISTINCT marker. An unconditional ACQUIRED opens a window that the
+    gated RELEASED never closes, so the one case where the mutex did NOT
+    serialize becomes the one case invisible to the overlap check."""
+    src = (ROOT / "ops" / "loop" / "winmutex.py").read_text(encoding="utf-8")
+    body = src[src.index("acquired = rc in"):src.index("yield handle")]
+    assert "if acquired:" in body, "ACQUIRED must be gated on acquired"
+    assert "UNSERIALIZED" in body, "the fail-open branch needs a distinct marker"
+    gated = body[body.index("if acquired:"):]
+    assert "ACQUIRED" in gated
+
+
+def test_unserialized_marker_wording_is_the_judge_contract():
+    """p5_probe greps for this exact token; every emit site must use it."""
+    src = (ROOT / "ops" / "loop" / "winmutex.py").read_text(encoding="utf-8")
+    assert src.count("winmutex: UNSERIALIZED") == 3, (
+        "all three unserialized paths (CreateMutexW failure, unexpected wait "
+        "result, and the non-Windows no-op) must emit the same marker the "
+        "judge hard-fails on")
+
+
+def test_posix_no_op_branch_is_traced_not_silent(monkeypatch):
+    """f1-phase6 item 9. Off Windows there is no named-mutex primitive, so hold
+    degrades to a no-op - which is defensible. Yielding SILENTLY is not: every
+    overlap guard in this file then passes VACUOUSLY on a POSIX runner, and the
+    controller.log the judge reads carries no trace that nothing was serialized.
+    Rejected alternative: an fcntl fallback. POSIX record locks are per-PROCESS,
+    so test_mutex_serializes_two_threads (threads in ONE process) would stay red
+    without a second RLock layer - the wrong size of change for a file that is
+    byte-identical across two repos."""
+    lines: list[str] = []
+    monkeypatch.setattr(sys, "platform", "linux")
+    with winmutex.hold("Global\\LWRC_TEST_RC_POSIX", timeout=5, log=lines.append) as h:
+        assert h is None, "the POSIX branch holds no handle"
+    assert any(ln.startswith("winmutex: UNSERIALIZED Global\\LWRC_TEST_RC_POSIX")
+               for ln in lines), \
+        f"the no-op branch must emit the judge's marker, got {lines!r}"
+    assert not any("ACQUIRED" in ln for ln in lines), \
+        "a no-op must never claim ACQUIRED - it would open a window RELEASED never closes"
+
+
+def test_posix_no_op_branch_survives_a_caller_that_passes_no_log(monkeypatch):
+    """log= is optional on the two Windows fail-open branches; the new one must
+    stay optional too or an unlogged caller crashes off-Windows."""
+    monkeypatch.setattr(sys, "platform", "linux")
+    with winmutex.hold("Global\\LWRC_TEST_RC_POSIX_NOLOG") as h:
+        assert h is None
+
+
 # ---- f1-phase6 item 5a: pinned parity constants -----------------------------
 #
 # slots.py and winmutex.py are BYTE-IDENTICAL between this repo and
