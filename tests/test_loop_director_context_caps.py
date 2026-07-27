@@ -364,8 +364,29 @@ def test_overflow_is_repaid_out_of_the_plan_slice(lc, tmp_path):
     """The plan is the ONLY expendable component - it is a work menu, and both
     its head and tail slices survive a smaller budget. The digest is evidence,
     so it must never be the thing that shrinks. The stamped truncation marker
-    names the budget actually applied, so it reports which component paid."""
-    body = _real_body(lc, tmp_path)
+    names the budget actually applied, so it reports which component paid.
+
+    DETERMINISM FIX 2026-07-27. This used to take the ambient _real_body and
+    hope it overflowed, which made the CHECKOUT an uncontrolled input: the same
+    commit read green on Legion and red on the ubuntu nightly, because the live
+    margin was measured at 996 bytes and LF-vs-CRLF alone moves the assembled
+    body by more than that. When nothing overflows the plan is never repaid, so
+    its marker stamps the full cap and `< PLAN_CTX_CAP` fails for a reason that
+    has nothing to do with the repayment mechanism.
+
+    The overflow is therefore DRIVEN. LAST AUDIT is an uncapped component -
+    build_director_context embeds the auditor verdict verbatim, which is exactly
+    how a real REGRESS body inflates a cycle - so padding it past the stdin
+    ceiling exercises the real production path on every platform. The pad is
+    sized from the measured baseline rather than pinned, so it cannot rot into a
+    literal that stops overflowing when the docs shrink."""
+    _seed_directive_chain(tmp_path)
+    baseline = lc.build_director_body({}, "", root=_REPO, ctl=tmp_path)
+    pad = max(lc.GEMINI_STDIN_CAP - len(baseline), 0) + 4_096
+    audit = "AUDIT-PAD-MARKER " + "p" * pad
+    body = lc.build_director_body({}, audit, root=_REPO, ctl=tmp_path)
+    assert "AUDIT-PAD-MARKER" in body, "the driven overflow never reached the body"
+
     applied = re.search(r"\[ORCHESTRATION_PLAN truncated at (\d+) bytes", body)
     assert applied, "the plan carries no truncation marker to attribute the cut to"
     assert int(applied.group(1)) < lc.PLAN_CTX_CAP, (
@@ -415,6 +436,15 @@ def test_escalation_survives_a_context_rebuild(lc, tmp_path):
 # --- cycle's audit - i.e. as a work order the director should act on now.
 
 def test_operator_brief_is_labelled_and_not_attributed_to_last_audit(lc, tmp_path):
+    """The brief this asserts on is the one the controller actually loads, so
+    the assertion below doubles as a guard on CFG RESOLUTION. It was red on the
+    ubuntu nightly and green on Legion because the controller defaulted to an
+    absolute C: config path: off that one host CFG resolved to {}, the brief
+    read as empty, and the labelling behaviour was never exercised at all.
+    ops/loop/config.json is TRACKED, so an empty directive_suffix is the thing
+    under test being broken - never an absent environment capability - which is
+    why this stays an assert rather than a skip (tests/test_skip_condition_
+    hygiene.py fails any skip gated on a tracked artifact)."""
     suffix = lc.CFG.get("directive_suffix", "")
     assert suffix, "config.json lost directive_suffix - this test needs it non-empty"
     ctx = lc.build_director_context({}, "AUDIT-BODY-MARKER", root=_REPO, ctl=tmp_path)

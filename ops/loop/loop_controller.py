@@ -56,18 +56,44 @@ winmutex = _bind("rc_loop_winmutex", "winmutex.py")
 # controller code and carries RC's directive opener and watch_bridge wait.
 executor = _bind("rc_loop_executor", "executor.py")
 
-_CFG_ARG = (sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].endswith(".json")
-            else r"C:\Riot Commander\ops\loop\config.json")
+_HERE = Path(__file__).resolve().parent
+# The default config is a REPO ASSET, not a machine location. This literal used
+# to be an absolute C: path, which resolves on exactly ONE host: every other
+# checkout took the not-found branch and ran the module against CFG={}. The
+# failure is silent until something asserts on a CFG value, and then it is
+# platform-split - measured 2026-07-27, the directive_suffix guard was green on
+# Legion and red on the ubuntu nightly for this reason alone. ops/loop/config.json
+# is tracked and sits next to this module, so resolving it from __file__ finds
+# the same bytes in a worktree, a fresh clone and CI.
+_CFG_ARG = (Path(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].endswith(".json")
+            else _HERE / "config.json")
 try:
     CFG = json.loads(Path(_CFG_ARG).read_text(encoding="utf-8"))
 except (FileNotFoundError, OSError):
-    # Import-only fallback: a clean / non-Legion checkout (e.g. the Linux CI
-    # nightly) has no config.json, and the pure helpers under unit test never
-    # read CFG. A live launch always passes a real --config path, so production
-    # never reaches this branch.
+    # Still possible when the controller is vendored without its config; the
+    # pure helpers under unit test never read CFG, and a live launch always
+    # passes a real --config path.
     CFG = {}
-ROOT = Path(CFG.get("repo_root", Path(__file__).resolve().parents[2]))
-CTL = Path(CFG.get("control_dir", Path(__file__).resolve().parent / "control"))
+
+
+def _cfg_path(key, default):
+    """A CFG path key addresses the HOST that authored it, nothing more.
+
+    config.json carries Legion drive-letter paths, and on POSIX such a string
+    parses as a RELATIVE single-component name - so adopting it verbatim would
+    mint a literal drive-letter DIRECTORY inside the checkout at the CTL.mkdir
+    below, and point ROOT at a repo that is not the one under test. Absoluteness
+    is the platform-agnostic test for "this value means what it says here";
+    anything else falls back to the checkout-relative location, which is what
+    every non-Legion run resolved to before the config became readable at all.
+    """
+    raw = CFG.get(key)
+    p = Path(raw) if raw else None
+    return p if p is not None and p.is_absolute() else default
+
+
+ROOT = _cfg_path("repo_root", _HERE.parents[1])
+CTL = _cfg_path("control_dir", _HERE / "control")
 CTL.mkdir(parents=True, exist_ok=True)
 DRY = bool(CFG.get("dry_run", False))
 GEMINI_USD = 0.0  # cumulative estimated Gemini spend - THIS is the capped budget (not Claude)
