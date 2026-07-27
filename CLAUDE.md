@@ -14,6 +14,8 @@ Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude H
 | **Legion** | `legion-rc` / `100.70.22.55` | `192.168.8.230` | 1-PC (2026-05-29, ADR-011): runs League + Vanguard + RC + supervisor + vision server + dashboard + OBS. Relocated agents run local as ONLOGON tasks: RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener. Tailscale node stays `legion-rc` though Windows hostname is now `DESKTOP-JKZECV9` |
 | **Peer** | `peer-host` / `<peer-tailnet-ip>` | - | Separate machine (separate private project); RC<->Peer cross-Claude bridge decommissioned 2026-06-24 |
 
+**Cross-repo channel with Sibling-A (`C:\Sibling-A`):** gitignored `moon_sync_inbox/` in EACH repo root - you WRITE into the sibling's, you READ your own. Both sessions independently invented a different channel on 2026-07-26 before finding this one; do not invent a third. `ops/loop/slots.py` + `ops/loop/winmutex.py` are BYTE-IDENTICAL-BY-CONTRACT across the two repos, pinned by `SHARED_SHA256` in `tests/test_loop_concurrency.py`. Re-pinning is a JOINT act: never regenerate the digests from local disk - both trees hashing equal IS the acceptance, not a note claiming it.
+
 Both in tailnet `tailc150de.ts.net` (Game-PC retired from the pipeline 2026-05-29, ADR-011). Prefer tailnet hostnames. Vision runs in-process at `127.0.0.1:8889`. The game host is config not code: `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`) is where every live reader finds Live Client `:2999` + LCU.
 
 ## Paths
