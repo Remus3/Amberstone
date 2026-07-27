@@ -6,6 +6,52 @@
 
 ---
 
+## 2026-07-27d - R207 the reports dir was exempt from the guard that would have caught it (ENGINE-IMPACT NONE, `829700e1`)
+
+**The first cycle in six whose premise actually held on disk.** The named file really
+did carry non-ASCII, so the deliverable was the thing the directive pointed at rather
+than a correction of the directive - plus the structural reason it survived a week.
+
+**Enumerated the directory, not the one file.** 4 tracked, 3 dirty, 58 bytes / 22
+characters: `20260720-140835` U+2713 x3 + U+2014 x4, `20260721-140611` U+00D7 x8,
+`20260727-141821` (the named one) U+2713 x3 + U+2014 x4, `20260719-183521-FAILED`
+clean. Fixing only the named file leaves two siblings holding the identical class.
+The director guessed "???, em-dashes, or emojis" and only em-dash was right; the real
+set is a decorative checkmark, an em-dash, and a multiplication sign used as a table
+bullet, mapped to `OK` / ` - ` / `x` so meaning and column width both survive.
+
+**Two independent failures, and the second is the load-bearing one.** These files are
+written by cloud scheduled routines committing straight to main
+(`weekly-ddragon-audit@anthropic-routines`, `ef8ade31`), so no PreToolUse hook and no
+git hook on Legion is ever in the path - CI is structurally the only gate that can
+fire. And `test_smart_quote_hygiene.py:121-125` blanket-exempted the whole directory
+from the tree-wide walk on an immutable-dated-artifact rationale. That rationale is
+**correct for history and wrong for a directory a robot appends to weekly**: it
+exempted not just the past but every future write. The one gate that could have
+caught this had been told not to look.
+
+**Both sides measured.** A guard passing on clean data proves nothing. Injecting
+U+2713 + U+2014 fails BOTH the now-unexempted `test_no_smart_quotes_in_authored_source`
+(em-dash) AND the new `test_agent6_reports_are_ascii` (checkmark). The banned set is 8
+codepoints and would have caught only 8 of the 22 characters here, which is why the new
+test asserts full 7-bit ASCII rather than the banned set.
+
+**The repo corrected the fix.** First draft used `pytest.skip` on an absent dir;
+`test_skip_condition_hygiene.py` rejected it - the dir is tracked, so absence is a
+defect that must FAIL, not silently pass. Now a hard assert.
+
+**STILL OWED:** the routine's prompt is the true origin, lives in cloud scheduling
+config, is not in this repo, and is not reachable from an executor cycle (`CronList` is
+session-scoped). Until an operator edits it via `/schedule`, next Monday may land
+another checkmark - and CI will now go red on it by design rather than pass in silence.
+
+Carry-forward, now seven cycles old: the running loop controller predates its own
+self-reload fix and needs one manual bounce. No executor cycle can supply it.
+
+RC 13653 passed / 460 subtests. DS 10053 passed / 5585 subtests.
+
+---
+
 ## 2026-07-27c - R206 the guard recorded its correction where the guilty party never looks (ENGINE-IMPACT NONE, `7c8765a6`)
 
 **Two of the directive's four steps were no-ops - fifth straight cycle with a stale
