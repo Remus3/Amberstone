@@ -315,8 +315,14 @@ class FailSoftTests(unittest.TestCase):
 class SpellNameTests(unittest.TestCase):
     def test_real_catalog_names_resolve(self):
         names = summoner_spell_wpa.load_spell_names()
-        if not names:
-            self.skipTest("summoner.json catalog not available")
+        # summoner.json is TRACKED under data/meta_build/ddragon/<patch>/
+        # (pinned 16.11.1 fallback), so it is present in every checkout. An
+        # empty catalog means the loader is broken - fail rather than skip.
+        self.assertTrue(
+            names,
+            "load_spell_names() returned nothing from the tracked summoner.json "
+            "catalog",
+        )
         self.assertEqual(names.get(FLASH), "Flash")
         self.assertEqual(names.get(IGNITE), "Ignite")
         # A bogus id is NOT a spell in summoner.json.
@@ -324,8 +330,11 @@ class SpellNameTests(unittest.TestCase):
 
     def test_name_and_icon_populated_in_output(self):
         names = summoner_spell_wpa.load_spell_names()
-        if names.get(FLASH) != "Flash":
-            self.skipTest("summoner.json catalog not available")
+        # Decidable against the tracked catalog - see the sibling test above.
+        self.assertEqual(
+            names.get(FLASH), "Flash",
+            "tracked summoner.json did not resolve Flash",
+        )
         conn = _build_db()
         for i in range(25):
             _add_match(

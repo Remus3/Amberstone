@@ -75,8 +75,14 @@ def _patch() -> str:
 
 def _catalog() -> dict:
     path = _ROOT / "data" / "meta_build" / "ddragon" / _patch() / "item.json"
-    if not path.exists():
-        raise unittest.SkipTest(f"no DDragon item.json at {path}")
+    # TRACKED in git for every patch current.txt can point at, and this module
+    # is NOT part of the Share mirror, so absence means the committed catalog
+    # was deleted or current.txt moved ahead of its DDragon pull - a failure,
+    # not an absent capability.
+    assert path.exists(), (
+        f"current.txt points at patch {_patch()!r} but the tracked DDragon "
+        f"catalog {path} is not committed"
+    )
     return json.loads(path.read_text(encoding="utf-8"))["data"]
 
 

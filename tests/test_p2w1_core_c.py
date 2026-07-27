@@ -165,37 +165,51 @@ class SummonerSpellWpaDefaultCatalogTests(unittest.TestCase):
 
 class LiveRepoCatalogTests(unittest.TestCase):
     """The defaults track the LIVE patch markers in this checkout - the audit
-    finding was a 16.11.1 pin while current.txt said 16.12.1. These guards
-    skip (not fail) when the tracked data files are absent."""
+    finding was a 16.11.1 pin while current.txt said 16.12.1.
+
+    2026-07-27 skip audit: these guards used to SKIP when the marker files or
+    their bundles were absent, and the old docstring called them "the tracked
+    data files" in the same breath. Every one of them (current.txt,
+    data/daemon_slayer/<patch>/items.json, meta_build/ddragon/_index.json and
+    the latest_pulled runes/summoner bundles) IS tracked in git, so absence can
+    only mean a committed artifact was deleted or a marker points at a bundle
+    that was never committed - both of which are exactly the pin-drift this
+    class exists to catch. They now fail."""
 
     def test_item_default_is_current_patch(self):
-        if not _DS_CURRENT.is_file():
-            self.skipTest("daemon_slayer/current.txt absent")
+        self.assertTrue(_DS_CURRENT.is_file(), f"tracked {_DS_CURRENT} is missing")
         patch = _DS_CURRENT.read_text(encoding="utf-8").strip()
-        if not (_REPO / "data" / "daemon_slayer" / patch / "items.json").is_file():
-            self.skipTest("patch-current items.json absent")
+        items = _REPO / "data" / "daemon_slayer" / patch / "items.json"
+        self.assertTrue(
+            items.is_file(),
+            f"current.txt points at patch {patch!r} but {items} is not committed",
+        )
         self.assertEqual(item_wpa._default_items_json().parts[-2], patch)
 
     def test_rune_default_is_latest_pulled(self):
-        if not _DD_INDEX.is_file():
-            self.skipTest("meta_build ddragon _index.json absent")
+        self.assertTrue(_DD_INDEX.is_file(), f"tracked {_DD_INDEX} is missing")
         ver = str(json.loads(_DD_INDEX.read_text(encoding="utf-8")).get(
             "latest_pulled") or "").strip()
+        self.assertTrue(ver, "_index.json carries no latest_pulled version")
         bundle = _REPO / "data" / "meta_build" / "ddragon" / ver
-        if not ver or not (bundle / "runesReforged.json").is_file():
-            self.skipTest("latest_pulled runes bundle absent")
+        self.assertTrue(
+            (bundle / "runesReforged.json").is_file(),
+            f"latest_pulled is {ver!r} but {bundle}/runesReforged.json is not committed",
+        )
         self.assertEqual(rune_wpa._default_runes_json().parts[-2], ver)
         # And the catalog actually parses non-empty at that path.
         self.assertTrue(rune_wpa.load_rune_catalog())
 
     def test_summoner_default_is_latest_pulled(self):
-        if not _DD_INDEX.is_file():
-            self.skipTest("meta_build ddragon _index.json absent")
+        self.assertTrue(_DD_INDEX.is_file(), f"tracked {_DD_INDEX} is missing")
         ver = str(json.loads(_DD_INDEX.read_text(encoding="utf-8")).get(
             "latest_pulled") or "").strip()
+        self.assertTrue(ver, "_index.json carries no latest_pulled version")
         bundle = _REPO / "data" / "meta_build" / "ddragon" / ver
-        if not ver or not (bundle / "summoner.json").is_file():
-            self.skipTest("latest_pulled summoner bundle absent")
+        self.assertTrue(
+            (bundle / "summoner.json").is_file(),
+            f"latest_pulled is {ver!r} but {bundle}/summoner.json is not committed",
+        )
         self.assertEqual(
             summoner_spell_wpa._default_summoner_json().parts[-2], ver
         )

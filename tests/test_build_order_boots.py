@@ -353,8 +353,13 @@ class BootsInjectionTests(unittest.TestCase):
         import os
         items_path = os.path.join(
             "data", "daemon_slayer", "16.12.1", "items.json")
-        if not os.path.exists(items_path):
-            self.skipTest("items.json absent (clean checkout)")
+        # TRACKED in git, so it is present in every checkout INCLUDING a clean
+        # CI one - the old "clean checkout" reason was wrong. Its absence means
+        # the committed catalog was deleted, which is a failure not a skip.
+        self.assertTrue(
+            os.path.exists(items_path),
+            f"tracked catalog {items_path} is missing from this checkout",
+        )
         with open(items_path, encoding="utf-8") as fh:
             raw = json.load(fh)
         items = raw.get("data", raw)

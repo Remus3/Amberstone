@@ -50,6 +50,10 @@ from agents.daemon_slayer._rune_offense_grants import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+
+# True only inside the Share handoff mirror, which does not vendor
+# data/meta_build. See _require_feed_path.
+_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in Path(__file__).resolve().parents)
 _CURRENT_TXT = _REPO_ROOT / "data" / "daemon_slayer" / "current.txt"
 
 # ALL FIVE trees, swept to saturation as of R159. Precision 8000, Inspiration
@@ -81,20 +85,40 @@ def _feed_path() -> Path | None:
     return vendored[-1] if vendored else None
 
 
-def _feed_tree_ids() -> set[int]:
-    """Return every tree id the live feed carries, as ints."""
+def _require_feed_path() -> Path:
+    """The newest rune snapshot, or a hard failure explaining its absence.
+
+    data/meta_build/ddragon/*/runesReforged.json is TRACKED in the main repo,
+    so _feed_path() returning None there means a committed snapshot was deleted
+    and every sweep below would silently cover nothing. The Share handoff
+    deliberately does not vendor meta_build, so the sweep is unrunnable there.
+    Discriminate on the mirror PATH, never on the lookup returning None.
+    """
     path = _feed_path()
     if path is None:
-        raise unittest.SkipTest("no vendored runesReforged.json snapshot on disk")
+        if _IS_SHARE_MIRROR:
+            raise unittest.SkipTest(
+                "Share/src does not vendor data/meta_build by design"
+            )
+        # Plain literal, never a path join: test_ds_share_mirror_self_contained
+        # treats a root-anchored join that is not consumed by a tolerant method
+        # (.glob/.exists/...) as a HARD dependency on a dir Share does not ship.
+        raise AssertionError(
+            "no tracked runesReforged.json snapshot under data/meta_build/ddragon"
+        )
+    return path
+
+
+def _feed_tree_ids() -> set[int]:
+    """Return every tree id the live feed carries, as ints."""
+    path = _require_feed_path()
     trees = json.loads(path.read_text(encoding="utf-8"))
     return {int(tree["id"]) for tree in trees}
 
 
 def _saturated_tree_runes() -> dict[str, str]:
     """Return ``{rune_id: "<TreeKey>/<RuneKey>"}`` for every rune in the swept trees."""
-    path = _feed_path()
-    if path is None:
-        raise unittest.SkipTest("no vendored runesReforged.json snapshot on disk")
+    path = _require_feed_path()
     trees = json.loads(path.read_text(encoding="utf-8"))
     out: dict[str, str] = {}
     for tree in trees:

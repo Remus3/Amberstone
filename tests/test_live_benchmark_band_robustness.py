@@ -128,12 +128,15 @@ def test_at_15_bands_cs_only(monkeypatch):
 ])
 def test_multiword_display_name_bands_same_as_canonical(monkeypatch, display,
                                                         canonical):
-    # Sanity: the real resolver maps display -> canonical. If DDragon data is
-    # unavailable in this env it returns the input unchanged; guard so the test
-    # is meaningful, else skip rather than false-pass.
+    # Sanity: the real resolver maps display -> canonical. The champion data it
+    # reads is TRACKED, so all four parametrized names resolve in every checkout
+    # (MEASURED 2026-07-27). A mismatch is a resolver regression - the exact
+    # item-447 bug this test pins - so it must fail, not skip.
     resolved = lbb.canonical_champion_id(display)
-    if resolved != canonical:
-        pytest.skip(f"DDragon resolver unavailable: {display!r}->{resolved!r}")
+    assert resolved == canonical, (
+        f"canonical_champion_id({display!r}) returned {resolved!r}, want "
+        f"{canonical!r} - the item-447 multiword canonicalization regressed"
+    )
 
     fake = _FakeBench(champ_canonical=canonical)
     _install(monkeypatch, fake)
