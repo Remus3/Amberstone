@@ -22,6 +22,24 @@ from __future__ import annotations
 import unittest
 
 
+def _label(value):
+    """Serialization-safe subTest label for an arbitrary hostile value.
+
+    MEASURED 2026-07-26 under ``pytest -n 8``: pytest 9's
+    ``_pytest/unittest.py:436`` addSubTest stuffs the RAW ``subTest``
+    kwargs into ``SubtestContext(msg=..., kwargs=dict(test.params))``
+    and emits a report for EVERY subtest, passing ones included. Under
+    xdist that report crosses the execnet channel, and execnet's
+    serializer only handles builtin primitives - a bare ``object()`` (or
+    a ``set()``) raises ``execnet.gateway_base.DumpError: can't
+    serialize <class 'object'>`` from inside ``subTest.__exit__``,
+    failing the parent test. Serially there is no channel, so the same
+    matrix passes. Labelling by repr keeps the hostile inputs below
+    byte-identical - only the reported label changes.
+    """
+    return repr(value)
+
+
 class DecideActionContractTests(unittest.TestCase):
     """The exact (hp_pct, wave_pct, low_enemy_count) -> label contract."""
 
@@ -111,7 +129,7 @@ class FailSoftTests(unittest.TestCase):
             (float("nan"), 50, 0),
             (90, float("nan"), 2),
         ]:
-            with self.subTest(args=args):
+            with self.subTest(args=_label(args)):
                 out = decide_action(*args)
                 self.assertIn(out, self.LABELS)
 

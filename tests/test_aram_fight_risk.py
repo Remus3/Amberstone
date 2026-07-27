@@ -34,6 +34,24 @@ def _entry(champion, duration, kind, spell_key):
     }
 
 
+def _label(value):
+    """Serialization-safe subTest label for an arbitrary hostile value.
+
+    MEASURED 2026-07-26 under ``pytest -n 8``: pytest 9's
+    ``_pytest/unittest.py:436`` addSubTest stuffs the RAW ``subTest``
+    kwargs into ``SubtestContext(msg=..., kwargs=dict(test.params))``
+    and emits a report for EVERY subtest, passing ones included. Under
+    xdist that report crosses the execnet channel, and execnet's
+    serializer only handles builtin primitives - a bare ``object()``
+    raises ``execnet.gateway_base.DumpError: can't serialize <class
+    'object'>`` from inside ``subTest.__exit__``, failing the parent
+    test. Serially there is no channel, so the same matrix passes.
+    Labelling by repr keeps the hostile inputs below byte-identical -
+    only the reported label changes.
+    """
+    return repr(value)
+
+
 class FightRuleTests(unittest.TestCase):
     """fight_rule -> <=12-word engage condition naming the top threat."""
 
@@ -70,7 +88,7 @@ class FightRuleTests(unittest.TestCase):
         from core.aram_fight_risk import fight_rule
 
         for bad in (123, object(), [{"nope": 1}], [None], {"x": "y"}):
-            with self.subTest(bad=bad):
+            with self.subTest(bad=_label(bad)):
                 self.assertEqual(fight_rule(bad), "")
 
 
@@ -111,7 +129,7 @@ class RiskTests(unittest.TestCase):
         from core.aram_fight_risk import risk
 
         for bad in (123, object(), [{"nope": 1}], [None], 3.14):
-            with self.subTest(bad=bad):
+            with self.subTest(bad=_label(bad)):
                 self.assertEqual(risk(bad), "")
 
 
@@ -127,7 +145,7 @@ class NeverRaisesTests(unittest.TestCase):
             ["raw string entry"], [["nested"]],
         ]
         for h in hostile:
-            with self.subTest(h=h):
+            with self.subTest(h=_label(h)):
                 self.assertIsInstance(fight_rule(h), str)
                 self.assertIsInstance(risk(h), str)
 
