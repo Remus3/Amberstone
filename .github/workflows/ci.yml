@@ -13,6 +13,14 @@ on:
     # ASCII-hygiene guard that scans .md is backstopped locally by the
     # precommit_gate.py PreToolUse hook (blocks banned glyphs on staged
     # lines), so nothing authored slips past on a docs-only push.
+    #
+    # CORRECTED 2026-07-27: that backstop only ever covered GLYPHS. ~48 test
+    # modules read tracked .md off disk and assert on their CONTENT, and
+    # 6bad3814 turned tests/test_loop_director_context_caps.py RED with a
+    # docs-only push that ran no CI at all. The complement now lives in
+    # .github/workflows/docs-guards.yml, which fires on exactly what this
+    # filter declines. Do not remove one without the other - the pairing is
+    # pinned by tests/test_ci_docs_guard_coverage.py.
     paths-ignore:
       - '**/*.md'
   pull_request:
@@ -77,7 +85,10 @@ jobs:
           # is intentionally not installed; tests that import it must guard
           # for ImportError or be marked phase2_smoke / snapshot_regressions
           # which are pure-Python.
-          pip install pytest pytest-asyncio pytest-timeout ruff pydantic>=2.0 playwright mypy
+          # pyyaml parses .github/workflows/*.yml for the docs-guard contract
+          # test below. Without it those assertions degrade to skips, and a
+          # skipped test is a green tick.
+          pip install pytest pytest-asyncio pytest-timeout ruff pydantic>=2.0 playwright mypy pyyaml
 
       # MINUTE SAVER (2026-06-30): cache the Chromium browser binary so only
       # the (fast) --with-deps apt step runs on a hit; the ~120MB download is
@@ -136,6 +147,21 @@ jobs:
           pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py \
             tests/test_u2500_hygiene.py \
             -q --tb=line --timeout=60
+
+      - name: docs-guard complement is wired
+        run: |
+          # MEASURED 2026-07-27: the paths-ignore above means a docs-only push
+          # runs NO workflow, yet ~48 test modules read tracked .md off disk and
+          # assert on their content. 6bad3814 broke
+          # tests/test_loop_director_context_caps.py that way, and 8d22734b -
+          # the docs-only FIX - also ran no CI, so it was never confirmed green.
+          #
+          # docs-guards.yml is the complement. This step runs HERE - on the
+          # non-.md side - because a commit that deletes docs-guards.yml or
+          # breaks tools/md_guard_selector.py is by definition not a docs-only
+          # commit, so the docs workflow would not fire to defend itself.
+          pytest tests/test_ci_docs_guard_coverage.py \
+            -q --tb=short --timeout=120
 
       - name: git hook gate armed and firing
         run: |
