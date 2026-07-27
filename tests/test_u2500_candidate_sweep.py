@@ -162,8 +162,10 @@ def test_archive_ui_base_is_clean() -> None:
 
 def test_web_legacy_index_html_is_clean() -> None:
     p = _REPO_ROOT / "web" / "legacy_index.html"
-    if not p.is_file():
-        pytest.skip(f"target absent on this checkout (gitignored/decommissioned): {p}")
+    # TRACKED in git (unlike the _archive/ targets above, which really are
+    # gitignored + decommissioned), so it is present in every checkout and a
+    # skip here would silently retire the glyph guard on a live file.
+    assert p.is_file(), f"tracked {p} is missing from this checkout"
     n = _count_u2500(p)
     assert n == 0, (
         f"web/legacy_index.html contains {n} U+2500 chars (item 187 "
@@ -173,8 +175,8 @@ def test_web_legacy_index_html_is_clean() -> None:
 
 def test_ops_rc_config_json_is_clean() -> None:
     p = _REPO_ROOT / "ops" / "rc_config.json"
-    if not p.is_file():
-        pytest.skip(f"target absent on this checkout (gitignored/decommissioned): {p}")
+    # TRACKED in git - see the sibling web/legacy_index.html guard above.
+    assert p.is_file(), f"tracked {p} is missing from this checkout"
     n = _count_u2500(p)
     assert n == 0, (
         f"ops/rc_config.json contains {n} U+2500 chars (item 187 swept "

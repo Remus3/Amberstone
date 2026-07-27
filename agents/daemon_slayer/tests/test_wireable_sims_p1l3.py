@@ -245,13 +245,18 @@ class TargetMrProcDerivation(_SnapBase):
         # MR-100 vs MR-0 delta equals proc_per_sec*(1 - 0.5) exactly.
         sid = "3097"
         e = ITEM_EFFECTS.get(sid)
-        if e is None:
-            self.skipTest("Stormrazor 3097 not in registry this patch")
+        # ITEM_EFFECTS is a TRACKED python registry, so both of these are
+        # decidable at author time (MEASURED 2026-07-27: 3097 present with 1
+        # constant-damage periodic). A registry change that drops the item or
+        # converts its proc to stat-scaling must surface as a failure so the
+        # target_mr derivation below gets re-derived, not silently retired.
+        self.assertIsNotNone(e, "Stormrazor 3097 dropped out of ITEM_EFFECTS")
         proc = next((p for p in e.periodics
                      if p.every_n_seconds > 0
                      and not callable(p.bonus_damage)), None)
-        if proc is None:
-            self.skipTest("Stormrazor proc is stat-scaling this patch")
+        self.assertIsNotNone(
+            proc, "Stormrazor 3097 no longer registers a constant-damage periodic"
+        )
         no_mr = compute_dps(self.snap, "Aatrox", level=11,
                             item_ids=[sid], target_mr=0.0,
                             target_armor=0.0)
@@ -383,8 +388,12 @@ class HpsTargetsOverrideDerivation(_SnapBase):
             ) and f.heal_targets_per_proc > 0:
                 item_id = iid
                 break
-        if item_id is None:
-            self.skipTest("no curated heal-throughput enchanter item")
+        # The curated formulas are TRACKED (MEASURED 2026-07-27: 3 items carry
+        # non-zero heal throughput), so an empty result is a registry
+        # regression, not a missing capability.
+        self.assertIsNotNone(
+            item_id, "no curated heal-throughput enchanter item in the tracked formulas"
+        )
         champ = "Soraka"
         one = compute_hps(self.snap, champ, level=11, item_ids=[item_id],
                           targets_per_proc_override=1.0)
@@ -719,8 +728,11 @@ class NStackItemDerivation(_SnapBase):
             if e.bonus_ap_stacked > 0:
                 stacked_id = iid
                 break
-        if stacked_id is None:
-            self.skipTest("no bonus_ap_stacked item (Mejai's) in registry")
+        # TRACKED registry (MEASURED 2026-07-27: 2 items carry
+        # bonus_ap_stacked), so absence is a registry regression.
+        self.assertIsNotNone(
+            stacked_id, "no bonus_ap_stacked item in the tracked ITEM_EFFECTS registry"
+        )
         e = ITEM_EFFECTS[stacked_id]
         eff = collect_effects([stacked_id])
         self.assertAlmostEqual(total_stacked_ap(eff), e.bonus_ap_stacked,
