@@ -6,6 +6,56 @@
 
 ---
 
+## 2026-07-27c - R206 the guard recorded its correction where the guilty party never looks (ENGINE-IMPACT NONE, `7c8765a6`)
+
+**Two of the directive's four steps were no-ops - fifth straight cycle with a stale
+premise.** STEP 1 wanted a staged `.githooks` exec-bit commit: nothing staged, tree
+clean, already `100755` since `19b680cc`. STEP 4 wanted the TEST-NOT-TRANSCRIPT rule
+made durable: already at `director_prompt.md:147-153`, already pinned by a test.
+
+**So the cycle became STEP 3, and item 7 turned out to have three pieces.** The parser
+and serialize override shipped long ago; the director-side contract shipped R204. The
+missing one was REPORTING.
+
+Both executor guards correct a bad directive, log to `controller.log`, then ask the
+model: *"State this deviation in your summary line."* That ask was the whole mechanism,
+and **controller.log is not a director input** - the controller takes `rec.raw` (the
+MODEL's payload) and dumps it forward as `=== LAST claude.done ===`. So whether the
+director ever learned its directive was wrong depended on the model volunteering it.
+A model that silently complies teaches it nothing, which is verbatim what the guards'
+own comments say recording exists to prevent, one layer up. Now a mechanical stamp.
+
+**The verifier gate paid twice, and the second one is the reusable lesson.** CONFIRM
+8/8, plus one out-of-claim observation that was a real defect: the four sdk failure
+paths stamped the record but left `raw` empty, so a cycle that deviated and then DIED
+carried the correction nowhere - the branch with no model prose at all.
+
+Then the merger found a second hole **by checking the PRODUCER instead of the test
+fixture**. Every new test handed the ahk channel a payload with a `summary` key.
+`done_sentinel.py:45` writes cycle / sha / tests_pass / regressions and no summary at
+all - so every LIVE cycle took the branch no test exercised, and the unconditional
+write-back was adding `"summary": ""` to the director's context on every CLEAN cycle.
+A fixture shaped to the feature rather than to the real producer hides exactly this.
+
+Both merger fixes proven by mutation, not argued: reverting the guard injects exactly
+`'summary': ''`; dropping the error-path raw raises `KeyError: 'summary'`.
+
+Cross-repo reply sent under the channel's dated convention rather than the
+`rc_sync_reply.txt` the directive named (flagged, not silently renamed). It answers
+LW's `is_absolute()` ordering question (RC guards inside `_cfg_path` before the
+import-time mkdir - RC cannot mint the drive-letter dir), acks LW's own retraction of
+a false CI-green claim, and records their blind-configuration rule as an OPERATOR
+decision rather than building it. Neither shared file nor the pin was touched.
+
+**CARRY-FORWARD, six cycles old: the controller must be bounced by hand once.** It
+predates its own self-reload fix and no executor cycle can supply the bounce. This is
+the measured cause of the stale-premise run.
+
+RC `tests/` 13639 -> **13652 passed / 106 skipped / 460 subtests** (+13 exact: 9 build
+agent, 4 merger). DS 10053 / 5585 untouched. ruff clean. 0 non-ASCII. Tier-1.
+
+---
+
 ## 2026-07-27b - R205 the nightly was red for a month of cycles and the directive kept aiming elsewhere (ENGINE-IMPACT NONE, `1ce998a0`)
 
 **The directive's four ordered tasks were all already on disk.** Fourth consecutive
