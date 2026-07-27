@@ -45,6 +45,7 @@ from unittest import mock
 from agents.agent2_backend import file_ingest
 from agents.agent2_backend.file_ingest import FileIngest
 from dashboard import _state_builder
+from tests._asyncio_isolation import run_coro as _run_coro
 
 
 # --- onHealth tag derivation, mirrored from web/js/main.js:1493-1496 ------
@@ -103,10 +104,19 @@ _SCENARIOS = [
 ]
 
 
-class BodyDataModeNoFlapTests(unittest.IsolatedAsyncioTestCase):
+class BodyDataModeNoFlapTests(unittest.TestCase):
     """For each LCU snapshot, the HTTP-seam tag, the WS-seam tag, and the
     onState mode_key must all agree - the precondition for a stable
-    body[data-mode]."""
+    body[data-mode].
+
+    PLAIN TestCase, NOT IsolatedAsyncioTestCase - see the sibling note in
+    test_file_ingest_mirror.py. IsolatedAsyncioTestCase enters the loop via
+    `asyncio.Runner.run()` on the MAIN thread, which raises whenever
+    Playwright has left its running-loop marker set there, so this test was
+    green alone and red in any run that also collected snapshot_panels. The
+    WS-seam coroutine now goes through run_coro; the assertions and the
+    scenario matrix are unchanged.
+    """
 
     def setUp(self) -> None:
         self._patches = [
@@ -154,11 +164,11 @@ class BodyDataModeNoFlapTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(ws.sent), 1, "expected one health broadcast")
         return _derive_health_tag(ws.sent[0]["payload"])
 
-    async def test_seams_agree_no_flap(self) -> None:
+    def test_seams_agree_no_flap(self) -> None:
         for name, lcu, expected in _SCENARIOS:
             with self.subTest(scenario=name):
                 mode_key, http_tag = self._http_seam_tag(lcu)
-                ws_tag = await self._ws_seam_tag(lcu)
+                ws_tag = _run_coro(self._ws_seam_tag(lcu))
                 # onState authority resolves the expected mode.
                 self.assertEqual(
                     mode_key, expected,
