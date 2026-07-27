@@ -25,7 +25,9 @@ holder's work may be half-done, but refusing to proceed would let one crashed
 process deadlock the other repo indefinitely.
 
 On non-Windows this degrades to a no-op context manager so the module imports
-and unit-tests cleanly in CI.
+and unit-tests cleanly in CI - but it LOGS the same UNSERIALIZED marker as the
+Windows fail-open branches. Otherwise a POSIX CI run passes every serialization
+test vacuously and leaves no trace of it in the log the judge reads.
 """
 from __future__ import annotations
 
@@ -53,7 +55,19 @@ def hold(name: str, *, timeout: float | None = None, log=None):
     treat as a failed step rather than as permission to proceed unserialized.
     """
     if sys.platform != "win32":
-        # Non-Windows: nothing to serialize against (the loops are Windows-only).
+        # WINDOWS-ONLY ASSERTION, made explicit: real serialization here requires
+        # the Win32 named-mutex namespace. Off Windows there is no primitive to
+        # degrade to, so this yields unheld - and says so, using the SAME marker
+        # as the two fail-open branches below. A SILENT yield was the bug: every
+        # overlap guard in tests/test_loop_concurrency.py then passes VACUOUSLY
+        # on a POSIX runner, and the controller.log the judge greps carries no
+        # evidence that nothing was serialized, so green proves nothing.
+        # NOT an fcntl fallback: POSIX record locks are per-PROCESS, so the
+        # two-threads-one-process test would stay red without a second RLock
+        # layer - the wrong size of change for a byte-identical shared file.
+        if log:
+            log(f"winmutex: UNSERIALIZED {name} - no named mutex on "
+                f"{sys.platform}; proceeding WITHOUT the lock")
         yield None
         return
 
