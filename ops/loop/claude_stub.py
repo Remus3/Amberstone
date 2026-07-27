@@ -19,11 +19,14 @@ from pathlib import Path
 
 ROOT = r"C:\Riot Commander"
 CTL = Path(ROOT) / "ops" / "loop" / "control"
+# CREATE_NO_WINDOW: 0 on non-Windows so the module still imports/tests in CI.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 def head():
     try:
         return subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
-                              capture_output=True, text=True, timeout=30).stdout.strip()
+                              capture_output=True, text=True, timeout=30,
+                              creationflags=NO_WINDOW).stdout.strip()
     except (subprocess.SubprocessError, OSError):
         return ""
 
