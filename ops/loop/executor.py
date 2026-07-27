@@ -345,6 +345,37 @@ class SdkExecutor:
 HOOK_NAMES = ("pre-commit", "commit-msg")
 
 
+def _hook_index_modes(root, hooks) -> dict:
+    """Index mode per hook basename, from `git ls-files -s -- <hooks_dir>`.
+
+    The GIT INDEX is the source of truth here, not the on-disk bit. On NTFS the
+    POSIX exec bit is meaningless - `os.access(p, os.X_OK)` is True for every
+    readable file - so an on-disk check is vacuous on the very machine that runs
+    this loop, which is the "guard that degrades into always-passing" failure
+    this repo keeps hitting. The index mode is what a fresh POSIX clone
+    materializes, so it is what decides whether the hook runs THERE.
+
+    Returns {} when the dir is untracked or outside the work tree (e.g. a
+    `.git/hooks` install). Nothing in the index means nothing to judge - the
+    caller must not read that as a breach.
+    """
+    try:
+        r = subprocess.run(["git", "-C", str(root), "ls-files", "-s", "--", str(hooks)],
+                           capture_output=True, text=True, timeout=30,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    if r.returncode != 0:
+        return {}
+    modes = {}
+    for line in (r.stdout or "").splitlines():
+        meta, _, path = line.partition("\t")
+        parts = meta.split()
+        if path and parts:
+            modes[path.rsplit("/", 1)[-1]] = parts[0]
+    return modes
+
+
 def gate_inactive_reason(repo_root) -> str | None:
     """Why the commit gate is not active, or None if it looks active.
 
@@ -356,11 +387,20 @@ def gate_inactive_reason(repo_root) -> str | None:
     So the loop refuses to start rather than run ungated: this is the one place
     where failing loud beats degrading quietly.
 
-    HONEST LIMIT, per the CLAUDE.md hard rule: this is a PRESENCE check, and a
-    hook's presence is never proof it fires. It catches the fresh-clone case
-    (the one that actually bites) and nothing subtler. The end-to-end test -
-    stage a banned glyph, attempt a real commit, assert HEAD unchanged - stays
-    the only real proof and is not something a loop start can run.
+    Presence alone was not enough. MEASURED 2026-07-26: all five tracked hooks
+    in `.githooks/` were index mode 100644, and git silently refuses to run a
+    non-executable hook on a POSIX clone - so the gate was inert on every Linux
+    checkout, CI included, and this check called it green. So the index mode is
+    read too (see _hook_index_modes for why the index and not the on-disk bit).
+
+    HONEST LIMIT, per the CLAUDE.md hard rule: this is still a PRESENCE check,
+    and a hook's presence is never proof it fires. The index-mode read raises the
+    floor - it now catches the fresh-clone case AND the mode-100644 case, both of
+    which actually bit - but it does not close the gap: a hook can be present,
+    tracked, executable, and still be a no-op (empty body, an early `exit 0`, a
+    shebang pointing at a missing interpreter). The end-to-end test - stage a
+    banned glyph, attempt a real commit, assert HEAD unchanged - stays the only
+    real proof and is not something a loop start can run.
     """
     root = Path(repo_root)
     if not (root / ".githooks").is_dir():
@@ -382,6 +422,16 @@ def gate_inactive_reason(repo_root) -> str | None:
     missing = [n for n in HOOK_NAMES if not (hooks / n).is_file()]
     if missing:
         return f"hooks missing from {hooks}: {', '.join(missing)}"
+    modes = _hook_index_modes(root, hooks)
+    # A hook absent from the index has no mode to judge (untracked dir, or a
+    # `.git/hooks` install) - that is the already-covered presence case, not a
+    # mode breach, so it is skipped rather than reported.
+    not_exec = [f"{n} is {modes[n]}" for n in HOOK_NAMES
+                if modes.get(n) not in (None, "100755")]
+    if not_exec:
+        return (f"hooks tracked non-executable in {hooks} ({', '.join(not_exec)}, want 100755): "
+                "git silently skips a non-executable hook on any POSIX clone, so this gate "
+                "is inert there - fix with `git update-index --chmod=+x`")
     return None
 
 

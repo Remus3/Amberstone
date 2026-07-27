@@ -17,16 +17,21 @@ into always-passing (the failure mode that makes a guard worse than useless).
 """
 from __future__ import annotations
 
+import functools
+import os
 import pathlib
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 GUARD = REPO / "tools" / "drift_guard.py"
 
 sys.path.insert(0, str(REPO / "tools"))
+
+REQUIRE_GATE_ENV = "RC_REQUIRE_HOOK_GATE"
 
 
 def _is_configured_clone() -> bool:
@@ -43,6 +48,54 @@ def _is_configured_clone() -> bool:
         capture_output=True, text=True,
     )
     return r.returncode == 0 and r.stdout.strip() != ""
+
+
+def _hook_gate_is_required() -> bool:
+    """True when the CALLER has declared that the gate is already armed.
+
+    Set by the `check` job in .github/workflows/ci.yml, immediately after it
+    runs `python scripts/install_hooks.py`. Unset everywhere else.
+    """
+    return os.environ.get(REQUIRE_GATE_ENV, "").strip().lower() not in (
+        "", "0", "false", "no", "off",
+    )
+
+
+def requires_armed_hook_gate(func):
+    """Skip on an unwired clone - unless the caller SAID it wired one.
+
+    MEASURED 2026-07-26: all five tracked hooks in .githooks/ were committed
+    mode 100644, so git silently refused to run ANY of them on every Linux
+    clone, CI included. The bug survived because the two live-repo assertions
+    in this file were guarded by `_is_configured_clone()`, which is false in
+    CI - and a SKIPPED test reports as a green tick. CI was structurally unable
+    to observe its own missing gate.
+
+    Deleting the skip is not the fix. `core.hooksPath` is LOCAL config, is not
+    cloned, and a fresh developer checkout legitimately has it unset, so an
+    unconditional assertion would fail forever on every new clone - which is
+    exactly the reasoning recorded in `_is_configured_clone`. The fix is an
+    explicit opt-in: when RC_REQUIRE_HOOK_GATE is set, "unconfigured" stops
+    being an excuse and becomes the hard failure it actually is.
+
+    Both directions are pinned by HookGateRequirementTests below, because this
+    repo has repeatedly been bitten by guards that degraded into always-passing.
+    """
+
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if _is_configured_clone():
+            return func(self, *args, **kwargs)
+        if _hook_gate_is_required():
+            raise AssertionError(
+                f"{REQUIRE_GATE_ENV} is set, so the hook gate was supposed to be "
+                "ARMED - but core.hooksPath is unset, meaning git is running no "
+                "hooks at all. Run: python scripts/install_hooks.py"
+            )
+        raise unittest.SkipTest("hooksPath unset - fresh clone (set "
+                                f"{REQUIRE_GATE_ENV}=1 to make this a failure)")
+
+    return wrapper
 
 
 class ModuleShapeTests(unittest.TestCase):
@@ -235,6 +288,57 @@ class VersionAnchorTests(unittest.TestCase):
         (root / "docs" / "G.md").write_text("1.258.0", encoding="utf-8")
         self.assertEqual(drift_guard.check_version_anchors(root, None), [])
 
+    def test_a_release_transition_line_is_history_not_a_stale_anchor(self) -> None:
+        """The check excluded historical FILES by name but not historical LINES.
+
+        MEASURED 2026-07-26: `Share/README.md` carries a release-history list
+        whose entries read `- 1.259.0 -> 1.260.0 - <prose>`. That names the old
+        version, so the whole-file scan flagged it - but the line is CORRECT
+        history, and the honest fix is a smaller check, not a looser one. A
+        `N.N.N -> N.N.N` transition on the line is the marker: it presents the
+        version as a step that was taken, not as the version in force.
+        """
+        import drift_guard
+
+        root = self._tree()
+        (root / "docs" / "REL.md").write_text(
+            "# Releases\n\n"
+            "- 1.259.0 -> 1.260.0 - closed three filed defects\n"
+            "- 1.258.0 -> 1.259.0 - the second term the last release needed\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(drift_guard.check_version_anchors(root, "1.259.0"), [])
+
+    def test_a_stale_line_in_a_file_that_also_has_history_still_breaches(self) -> None:
+        """The narrowing must be per LINE, not per file.
+
+        A whole-file exemption keyed on "this doc contains a transition list"
+        would re-open the exact hole the check exists to close - the stale
+        anchor and the legitimate history routinely live in the SAME doc.
+        """
+        import drift_guard
+
+        root = self._tree()
+        (root / "docs" / "REL.md").write_text(
+            "Current ENGINE_VERSION is 1.259.0.\n\n"
+            "- 1.259.0 -> 1.260.0 - closed three filed defects\n",
+            encoding="utf-8",
+        )
+        out = drift_guard.check_version_anchors(root, "1.259.0")
+        self.assertTrue(out, "a live claim must still breach next to real history")
+        self.assertIn("docs/REL.md:1", out[0].message)
+
+    def test_the_live_repo_has_no_stale_anchor_for_the_previous_engine(self) -> None:
+        """Pinned against the false positive that motivated the fix.
+
+        This is the assertion the 2026-07-26 wrap could not make: the guard
+        reported three sites naming 1.259.0 and all three were history. If a
+        future bump leaves a genuinely stale anchor behind, this fails.
+        """
+        import drift_guard
+
+        self.assertEqual(drift_guard.check_version_anchors(REPO, "1.259.0"), [])
+
 
 class CountedClaimTests(unittest.TestCase):
     """The 'fifteen most recent' above a list of twenty."""
@@ -291,7 +395,7 @@ class GitHooksPathTests(unittest.TestCase):
         self.assertTrue(out, "an unset core.hooksPath with tracked hooks must breach")
         self.assertIn("unset", out[0].message.lower())
 
-    @unittest.skipUnless(_is_configured_clone(), "hooksPath unset - fresh clone or CI")
+    @requires_armed_hook_gate
     def test_live_repo_points_at_the_tracked_dir(self) -> None:
         """This repo must stay pointed at .githooks.
 
@@ -333,11 +437,78 @@ class OrphanedHookTests(unittest.TestCase):
         root = self._tree(("pre-commit", "pre-push"), ("pre-commit", "pre-push"))
         self.assertEqual(drift_guard.check_orphaned_git_hooks(root), [])
 
-    @unittest.skipUnless(_is_configured_clone(), "hooksPath unset - fresh clone or CI")
+    @requires_armed_hook_gate
     def test_live_repo_has_no_orphans(self) -> None:
         """Pinned: this repo lost LFS checkout AND LFS upload to this exact bug."""
         import drift_guard
         self.assertEqual(drift_guard.check_orphaned_git_hooks(REPO), [])
+
+
+class HookGateRequirementTests(unittest.TestCase):
+    """Guards the guard's ESCAPE HATCH, both directions.
+
+    The skip that `requires_armed_hook_gate` replaced was not wrong - it was
+    unfalsifiable. It reported green on the one machine (CI) where the gate was
+    entirely absent, for the whole life of the mode-100644 bug. A replacement
+    that can only ever skip would be the same bug wearing a new name, so the
+    opt-in is pinned in both directions: it must SKIP on a bare clone and it
+    must FAIL when the caller has declared the gate armed.
+    """
+
+    def _decorated(self):
+        calls: list[str] = []
+
+        class Probe(unittest.TestCase):
+            @requires_armed_hook_gate
+            def runTest(probe_self) -> None:
+                calls.append("ran")
+
+        return Probe(), calls
+
+    def test_env_unset_is_not_required(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(REQUIRE_GATE_ENV, None)
+            self.assertFalse(_hook_gate_is_required())
+
+    def test_env_set_to_one_is_required(self) -> None:
+        with mock.patch.dict(os.environ, {REQUIRE_GATE_ENV: "1"}):
+            self.assertTrue(_hook_gate_is_required())
+
+    def test_falsey_spellings_are_not_required(self) -> None:
+        """`RC_REQUIRE_HOOK_GATE=0` must not arm the assertion by accident."""
+        for value in ("0", "", "false", "FALSE", "no", "off", "  "):
+            with mock.patch.dict(os.environ, {REQUIRE_GATE_ENV: value}):
+                self.assertFalse(
+                    _hook_gate_is_required(), f"{value!r} must read as not-required"
+                )
+
+    def test_unconfigured_clone_skips_when_not_required(self) -> None:
+        probe, calls = self._decorated()
+        with mock.patch(f"{__name__}._is_configured_clone", return_value=False), \
+                mock.patch(f"{__name__}._hook_gate_is_required", return_value=False):
+            with self.assertRaises(unittest.SkipTest):
+                probe.runTest()
+        self.assertEqual(calls, [], "the body must not run on an unwired clone")
+
+    def test_unconfigured_clone_FAILS_when_required(self) -> None:
+        """The whole point: a declared-armed gate that is not armed is a failure."""
+        probe, calls = self._decorated()
+        with mock.patch(f"{__name__}._is_configured_clone", return_value=False), \
+                mock.patch(f"{__name__}._hook_gate_is_required", return_value=True):
+            with self.assertRaises(AssertionError) as ctx:
+                probe.runTest()
+        self.assertIn("install_hooks.py", str(ctx.exception))
+        self.assertNotIsInstance(
+            ctx.exception, unittest.SkipTest, "must not degrade back into a skip"
+        )
+        self.assertEqual(calls, [])
+
+    def test_configured_clone_runs_the_body(self) -> None:
+        probe, calls = self._decorated()
+        with mock.patch(f"{__name__}._is_configured_clone", return_value=True), \
+                mock.patch(f"{__name__}._hook_gate_is_required", return_value=False):
+            probe.runTest()
+        self.assertEqual(calls, ["ran"])
 
 
 class LiveRepoTests(unittest.TestCase):
