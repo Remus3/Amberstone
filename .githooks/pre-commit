@@ -1,11 +1,26 @@
 #!/bin/sh
-# Riot Commander pre-commit hook (proposal 4.1).
+# Riot Commander pre-commit hook.
 #
 # Install per-clone with:
+#   python scripts/install_hooks.py        (sets core.hooksPath for you)
+# or directly:
 #   git config core.hooksPath .githooks
 #
-# The hook py_compiles every staged .py file. A syntax error here is a
-# silent crash under pythonw.exe at runtime (see CLAUDE.md hard rule).
+# WHY THIS FILE IS THE AUTHORITATIVE ONE (2026-07-26):
+# `.git/hooks/` is NOT version controlled, so a hook that lives only there does
+# not reach a fresh clone, another machine, or a sibling project. This directory
+# IS tracked, and `core.hooksPath` must point at it.
+#
+# This file previously diverged from the active `.git/hooks/pre-commit` for long
+# enough that THREE tracked guards silently stopped running (py_compile, the
+# ARCHITECTURE.md module map, and the state_schema.js typedefs), and both
+# generated artifacts had drifted by the time anyone noticed. The cause was
+# `scripts/install_hooks.py`, which used to WRITE `.git/hooks/pre-commit` with
+# only the Share sync, clobbering everything else. It now sets core.hooksPath
+# instead. Do not reintroduce a hook-writing installer.
+#
+# ORDER IS DELIBERATE: the glyph/ruff gate runs FIRST so a bad commit fails fast,
+# and before the Share sync mutates the index.
 
 set -e
 
@@ -17,13 +32,38 @@ if ! command -v "$PY" >/dev/null 2>&1; then
     PY=python
 fi
 
+# 1. Banned glyphs + net-new ruff on STAGED lines.
+#
+# This is the same gate Claude Code runs as a PreToolUse hook, deliberately
+# duplicated here. MEASURED 2026-07-26: a headless
+# `claude -p --permission-mode bypassPermissions` run committed a banned em-dash
+# straight through because the PreToolUse gate did not fire - while the git hooks
+# in this file DID. A git-level gate is channel-independent: the AHK executor,
+# the headless SDK executor, a human at a terminal and CI all get it.
+#
+# It reads a command string on stdin (its Claude-hook JSON payload falls back to
+# raw text), so "git commit" is what tells it a commit is in flight.
+echo "git commit" | "$PY" "$ROOT/tools/precommit_gate.py" || exit 1
+
+# 2. py_compile every staged .py. A syntax error here is a silent crash under
+# pythonw.exe at runtime (see CLAUDE.md hard rule).
 "$PY" "$ROOT/scripts/precommit_pycompile.py" || exit 1
 
-# Ensure ARCHITECTURE.md module map is in sync with # arch: headers.
+# 3. Ensure ARCHITECTURE.md module map is in sync with # arch: headers.
 "$PY" "$ROOT/tools/gen_archmap.py" --check || {
     echo "Run: python tools/gen_archmap.py"
     exit 1
 }
 
-# Ensure state_schema.js JSDoc typedefs are in sync with pydantic models.
-"$PY" "$ROOT/tools/gen_state_schema.py" --check || exit 1
+# 4. Ensure state_schema.js JSDoc typedefs are in sync with pydantic models.
+"$PY" "$ROOT/tools/gen_state_schema.py" --check || {
+    echo "Run: python tools/gen_state_schema.py"
+    exit 1
+}
+
+# 5. DS Share package mirror. Runs LAST because it stages files, and staging
+# after the gate is intentional - Share/src is generated data, not authored
+# source, so it is deliberately outside the hygiene checks above.
+echo "Running Share/ mirror sync (precommit-gated)..."
+"$PY" "$ROOT/tools/ds_share_sync.py" --precommit
+git add Share/

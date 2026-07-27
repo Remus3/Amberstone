@@ -275,6 +275,37 @@ def check_untracked_authored(
     return out
 
 
+def check_git_hooks_path(root: pathlib.Path) -> list[Finding]:
+    """core.hooksPath must point at the TRACKED hooks directory.
+
+    `.git/hooks/` is not version controlled. When core.hooksPath resolves there,
+    the tracked hooks in `.githooks/` are inert and can drift indefinitely - which
+    is exactly what happened before 2026-07-26: three tracked guards (py_compile,
+    the ARCHITECTURE.md module map, the state_schema.js typedefs) had silently
+    stopped running, and both generated artifacts had drifted. It also silently
+    removes the banned-glyph gate from any headless
+    `claude -p --permission-mode bypassPermissions` commit, which is how a banned
+    em-dash reached a commit under test.
+    """
+    if not (root / ".githooks").is_dir():
+        return []
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "config", "core.hooksPath"],
+            capture_output=True, text=True,
+        )
+    except OSError:
+        return []
+    configured = out.stdout.strip()
+    if configured.replace("\\", "/").rstrip("/").endswith(".githooks"):
+        return []
+    return [Finding(
+        "git-hooks-path",
+        f"core.hooksPath is {configured or '(unset)'}, not .githooks - the TRACKED "
+        "hooks are inert. Run: python scripts/install_hooks.py",
+    )]
+
+
 def run_all(
     root: pathlib.Path = ROOT, old_version: str | None = None
 ) -> list[Finding]:
@@ -286,6 +317,7 @@ def run_all(
     findings += check_version_anchors(root, old_version)
     findings += check_counted_claims(root)
     findings += check_untracked_authored(root, MIRROR_PAIRS)
+    findings += check_git_hooks_path(root)
     return findings
 
 
