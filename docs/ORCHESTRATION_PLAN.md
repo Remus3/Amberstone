@@ -826,3 +826,79 @@ via `CronCreate` in-session). The durable in-repo move is exactly what shipped -
 CI go red on the next bad write instead of passing in silence - with the failure
 message naming the prompt as the real fix site so the next reader is not left
 guessing.
+
+## R208 - the director stamped its own premises UNVERIFIED and nothing read the stamp (2026-07-27, `f4815e16`)
+
+DIRECTOR REFILL 2026-07-27, cycle 13. Directive was the f1-phase6 inbox apply
+again. **STEP A AND STEP B WERE BOTH NO-OPS AND MEASURING THAT WAS THE FIRST
+DELIVERABLE - the sixth cycle in seven with a premise stale on disk.**
+`git diff --cached` empty; `ops/loop/winmutex.py` already
+`f1b4b011112685efb88616c52752657cf896fbb0993b2d2d264e7b3edde8b4f4`,
+byte-identical to `moon_sync_inbox/winmutex.py.from-lw` (bytes compared, not
+digests-of-record), already pinned by `SHARED_SHA256` beside `slots.py`
+`95077a62...`, UNSERIALIZED count already 3, both POSIX monkeypatch tests already
+present. STEP C ordered claiming "next queue item (item 2)", which shipped at
+`05319608` / `54bad078` - not claimed. ENGINE-IMPACT NONE.
+
+**The deliverable was re-cut to the guard that let it through.**
+`director_prompt.md:18` mandates a `PREMISE-CHECK` line tagging each claim
+`[from-digest]` or `[UNVERIFIED]`; `executor.py:420-424` checked the other two
+grounding fields and DELIBERATELY abstained on this one as "free prose with no
+machine-readable referent". Half right - the executor must not judge whether a
+semantic claim is true, but the referent is the TAG: the director has already
+declared the claim an unknown. The file states its own doctrine four times that an
+unknown is never a pass (`:188` four-valued verdict, `:213`, `:478`, `:558`), and
+the one place the director stamps its OWN doubt was the only self-declared unknown
+in the seam that failed OPEN. Defect class enumerated: 13 `unverified` hits across
+`ops/loop`, all in `executor.py`; three shapes already fail closed
+(`ParallelPlan` verdict, unreadable-HEAD branch, `gate_inactive_reason`
+missing-file arm), the fourth fixed here; no other module accepts a self-declared
+unknown from a model.
+
+**The defect was in the guard's OWN regression corpus from day one.** `_R200` at
+`tests/test_loop_executor.py:1064` - the fixture written for the original incident
+this guard exists to catch - ends `PREMISE-CHECK: winmutex.py still carries the old
+bytes [UNVERIFIED]`, and main returns only `['stale-head']` on it. Every existing
+test survived the change because every one filters by finding kind, so none could
+ever have seen the gap. Same class as the vacuous-pass pair traded with LW.
+
+**Three rounds; the verifier gate refuted the build TWICE and both refutations
+were false NEGATIVES** - the direction the slice exists to close. (1) A trailing
+tag folded in the PRECEDING claim, so the correction would have told the session to
+verify something the director marked verified; two trailing tags on one line
+dropped the first claim outright. (2) Only the first line-anchored `PREMISE-CHECK`
+was scanned, so an indented block-quote of a prior directive above the real field
+silenced the guard - and this loop quotes prior directives routinely. (3) The
+sentence-split fix for (1) introduced a third: any claim opening with an
+abbreviation vanished (`e.g.` / `i.e.` / `cf.` / `etc.` / `vs.` / `no.` all 0
+findings). Resolved by making the sentence edge load-bearing only on the BACKWARD
+path where defect 1 lived; forward reads tag-to-next-tag and cannot mis-split an
+abbreviation. Residual is a truncated QUOTE, never a lost finding. The length floor
+that rejected the prompt placeholder also rejected real short claims
+(`[UNVERIFIED] CI`), so the template is now rejected for what it is, `^<[^<>]*>$`.
+
+`finditer` + union + case-insensitive dedup deliberately fails toward REPORTING
+(a re-quoted premise costs one bullet and usually collapses in the dedup; silence
+costs a measured no-op cycle), bounded by `_MAX_PREMISE_FINDINGS` 8.
+`GROUNDING_MARKER` deliberately NOT renamed - it is the operator's grep token and
+appears in historical `controller.log` lines - but its detail now opens with the
+finding kind so the two are distinguishable in the log.
+`grounding_findings` stays PURE (verifier proved it by booby-trapping the injected
+lookups to raise and confirming they are never called);
+`enforce_directive_grounding` byte-identical to main, so R206's mechanical stamp
+carries the correction to the director unchanged.
+
+**Both sides measured.** FIRES: the real cycle-13 line -> exactly 2 findings
+against a MATCHING head (no stale-head masking it); same input on main -> 0.
+SILENT: `[from-digest]`-only, no `PREMISE-CHECK` line, `[UNVERIFIED]` quoted inside
+a LEDGER-style row in the body, and `director_prompt.md:18`'s own template quoted
+verbatim. One agent-reported count retired rather than carried: 382 was a real run
+of an explicit 19-file list including `test_lcu_loop_resilience.py`, not a
+`test_loop*.py` glob match; the glob figure is 385.
+
+`tests/test_loop_*.py` 361 -> 385 (+24 exact); RC `tests/` 13653 -> 13677 passed /
+106 skipped / 460 subtests (+24 exact); ASCII hygiene 14 passed; ruff clean
+repo-wide; 0 non-ASCII. DS untouched. Tier-1: no ENGINE bump, no DS bounce, no RC
+restart, no Share sync. Cross-repo note sent to LW
+(`2026-07-27-1620-from-RC-directive-was-a-no-op-...`), parity pin re-hashed and
+unmoved.
