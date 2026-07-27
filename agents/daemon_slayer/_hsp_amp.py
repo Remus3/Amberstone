@@ -22,6 +22,8 @@ from typing import Iterable, Optional
 def sum_wielder_hsp_pct(
     item_ids: Optional[Iterable[str | int]],
     patch: Optional[str] = None,
+    *,
+    assume_scaling_hsp_grants: bool = False,
 ) -> float:
     """Sum ``heal_shield_amp_pct`` across the wielder's items (additive, fail-soft).
 
@@ -42,6 +44,13 @@ def sum_wielder_hsp_pct(
 
     ``patch`` defaults to the current-patch cached enchanter formulas; pass an
     explicit patch string to read a specific snapshot.
+
+    R197 ``assume_scaling_hsp_grants`` (DEFAULT-OFF, keyword-only): folds in the
+    ADDITIONAL HSP that ``_scaling_hsp`` earns from SCALING clauses. The curated
+    ``heal_shield_amp_pct`` field carries only the FLAT PRINTED stat, so
+    Dawncore's First Light ("2% heal and shield power for every additional 100%
+    base mana regeneration") earns zero without this flag. OFF is the default
+    and adds nothing, so every existing caller stays byte-identical.
     """
     ids = [str(i) for i in (item_ids or []) if i is not None and str(i)]
     if not ids:
@@ -64,4 +73,12 @@ def sum_wielder_hsp_pct(
         if getattr(formula, "ally_chain_only", False):
             continue
         total += float(formula.heal_shield_amp_pct)
+    if assume_scaling_hsp_grants:
+        # Lazy import for the same cycle-freedom reason as the ``.hps`` import.
+        try:
+            from ._scaling_hsp import sum_scaling_hsp_pct
+
+            total += sum_scaling_hsp_pct(ids, patch)
+        except Exception:
+            pass
     return total
