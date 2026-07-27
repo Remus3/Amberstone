@@ -118,11 +118,6 @@ def _is_external_data(rel_posix: str) -> bool:
                      "data/meta/ddragon_runes.json",
                      "data/meta/ddragon_summoner_spells.json"}:
         return True
-    # Dated audit reports under agents/agent6_auditor/reports/ are
-    # immutable per feedback_no_history_rewrite; em-dash drift inside
-    # them is operator-gated cleanup, not authored-source drift.
-    if rel_posix.startswith("agents/agent6_auditor/reports/"):
-        return True
     return False
 
 
@@ -298,6 +293,44 @@ def test_strip_smart_quotes_tool_is_ascii() -> None:
     assert not non_ascii, (
         f"tools/strip_smart_quotes.py has {len(non_ascii)} non-ASCII bytes; "
         f"first at offset {non_ascii[0][0]}"
+    )
+
+
+def test_agent6_reports_are_ascii() -> None:
+    """Weekly audit reports under agents/agent6_auditor/reports/ MUST be
+    7-bit ASCII.
+
+    These files are authored by CLOUD SCHEDULED ROUTINES that commit
+    straight to main (author 'weekly-ddragon-audit@anthropic-routines'),
+    so no in-session hook or PreToolUse gate ever sees them - CI is the
+    only gate that can. The directory used to be blanket-exempted from
+    the tree-wide banned-glyph walk on an 'immutable dated artifact'
+    rationale; that exemption let three reports land carrying U+2713,
+    U+2014 and U+00D7 (58 non-ASCII bytes) before the 2026-07-27 audit
+    caught them by eye. The exemption is gone and this asserts the
+    stricter full-ASCII bar, because the routines emit decorative
+    checkmarks that the 8-codepoint banned set does not cover.
+
+    A failure here means a routine prompt is emitting non-ASCII. Fix the
+    landed file with tools/strip_smart_quotes.py --apply, then fix the
+    routine prompt itself - the prompt lives in cloud scheduling config,
+    not in this repo, so it needs an operator edit via /schedule.
+    """
+    reports = _REPO_ROOT / "agents" / "agent6_auditor" / "reports"
+    assert reports.is_dir(), f"tracked reports dir missing at {reports}"
+    violations: list[tuple[str, int, int]] = []
+    for p in sorted(reports.rglob("*")):
+        if not p.is_file():
+            continue
+        raw = p.read_bytes()
+        non_ascii = [(i, b) for i, b in enumerate(raw) if b > 127]
+        if non_ascii:
+            rel = p.relative_to(_REPO_ROOT).as_posix()
+            violations.append((rel, len(non_ascii), non_ascii[0][0]))
+    assert not violations, (
+        "Non-ASCII byte(s) in agent6 audit report(s):\n"
+        + "\n".join(f"  {rel}: {n} byte(s), first at offset {off}"
+                    for rel, n, off in violations)
     )
 
 
