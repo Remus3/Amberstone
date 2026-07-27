@@ -119,6 +119,104 @@ champion/build data and land it for live usage.
 
 ---
 
+
+
+# 2026-07-26k - RM-117 chain verified, full-corpus table read, multikills SHIPPED. 6 commits.
+
+
+
+**NOT a DS session.** No ENGINE bump, no Share mirror, nothing under `agents/daemon_slayer/`.
+
+
+
+## Chain state - nothing failed, do not "repair" it
+
+`timeline_ingest` CLOSED at **3005**. `build_rank_baselines` pid 17616 was still
+
+alive at wrap (14/31 cohorts, ~170s each), started 10:25 - it PREDATES the
+
+session, so it is not session-owned and survives `/clear`. **`RC-ReplayRosterPull`
+
+Disabled with a non-empty `busy` list is CORRECT, not a stuck watchdog** -
+
+`replay_chain_watch.py:93` short-circuits while an ingest holds the rate budget.
+
+`RC-ReplayChainWatch` runs PT15M (verified `LastTaskResult=0`, NextRunTime live)
+
+and owns re-enabling RosterPull + the miner. Verified `needs_mine()` is **False**
+
+(`matches: 3005` vs `timelines_count() 3005`) so it will NOT re-mine in a loop.
+
+
+
+## Full-corpus table (3005 matches, 44 remakes dropped, 2094/2094 per role)
+
+Mined manually - the miner is local-only, no Riot calls, so it did not have to
+
+wait on the rate budget. Written up as `REPLAY_T2_PARSE_CRITERIA.md` **4b-4**.
+
+**Nothing promoted.** JUNGLE `plate_share` HOLDS and strengthens: 0.082 vs 0.045,
+
+**effect 0.49** (was 0.46) - still the only survivor. `kill_participation` still
+
+inert in all 5 roles at 2x corpus. Two new rows both die: TOP `plate_share` -0.21
+
+NOT REPRODUCED **with the sign inverted**; `solo_deaths_per_min` carries LESS
+
+signal than the `deaths_per_min` axis it subsets, so it is that restatement plus
+
+noise.
+
+
+
+## Shipped
+
+Postgame narrative now carries CHAMPION_SPECIAL_KILL (`5a5ac3f6`, `ae1d6f19`) and
+
+named/tiered objectives + buildings (`114f4d6c`). Three real defects found by
+
+rendering actual matches, not by reading code: Riot emits **one row per multikill
+
+rung** (a penta arrives as double->triple->quadra->penta and ate 2 of 5 slots); a
+
+penta that aces emits both at the same ts and they collided in the dedup key; and
+
+**all 4803 inhibitors scored 35 instead of 50** because the impact branch read
+
+`tower_type`, which is NULL on inhibitor rows. Module is SHADOW-ONLY - no live
+
+coach path flipped.
+
+
+
+## Docs
+
+ROADMAP.md was **already over its 80KB budget at HEAD** (82977) before this
+
+session. Two relocation passes (`156dbe0e`, `a83360b8`) took it to **71819**; the
+
+RM-79..RM-98 shape-backlog bullet went 16290 -> 7506. 21 CLOSED entries relocated
+
+VERBATIM to ROADMAP_HISTORY.md, each leaving a pointer that keeps its fences AND
+
+its measurement traps. Zero RM ids lost (diffed against HEAD).
+
+
+
+## Owed
+
+`rank_baselines.json` (31 cohorts) not yet on disk - **the PGR cohort-band check
+
+is the only thing left**: `python tools/pgr_event_report.py --latest --pid 1`
+
+should stop printing `rank_baselines.json absent`. Retention policy still blocked
+
+on a 2nd `rofl_archive_growth.jsonl` sample (1 sample as of 12:32; mtimes CANNOT
+
+answer it - bulk seed day). Quarantine PURGED this session (8 files, 24.7 MB).
+
+---
+
 # 2026-07-26j - REPLAY ANALYSIS SUBSTRATE (RM-117, LEDGER 1062). 28 commits, 112 tests.
 
 **NOT a DS session.** No ENGINE bump, no Share mirror, nothing under `agents/daemon_slayer/`.
