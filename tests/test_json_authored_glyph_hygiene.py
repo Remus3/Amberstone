@@ -104,8 +104,9 @@ def test_spell_cast_rates_note_matches_its_generator():
     on the next regeneration run.
     """
     data_path = REPO_ROOT / "data/daemon_slayer/spell_cast_rates.json"
-    if not data_path.exists():
-        pytest.skip("spell_cast_rates.json not present")
+    # TRACKED in git - present in every checkout. Its absence is a deleted
+    # shipped artifact, which must fail rather than green-skip the glyph guard.
+    assert data_path.is_file(), f"tracked {data_path} is missing from this checkout"
 
     note = json.loads(data_path.read_text(encoding="utf-8")).get("note", "")
     assert note, "spell_cast_rates.json carries a note field"
@@ -117,8 +118,8 @@ def test_spell_cast_rates_note_matches_its_generator():
 def test_cast_rate_generator_source_is_seven_bit_ascii():
     """The generator itself carries no non-ASCII byte."""
     path = REPO_ROOT / CAST_RATE_GENERATOR
-    if not path.exists():
-        pytest.skip(f"{CAST_RATE_GENERATOR.as_posix()} not present")
+    # scripts/build_spell_cast_rates.py is TRACKED - see the sibling test above.
+    assert path.is_file(), f"tracked {CAST_RATE_GENERATOR.as_posix()} is missing"
 
     raw = path.read_bytes()
     bad = [(i, hex(b)) for i, b in enumerate(raw) if b > 127]
@@ -129,8 +130,11 @@ def test_share_cast_rates_mirror_matches_source():
     """The public mirror carries the same note as the repo file."""
     src = REPO_ROOT / "data/daemon_slayer/spell_cast_rates.json"
     mirror = REPO_ROOT / "Share/src/data/daemon_slayer/spell_cast_rates.json"
-    if not (src.exists() and mirror.exists()):
-        pytest.skip("cast-rate source or mirror not present")
+    # BOTH sides are TRACKED (the Share mirror is committed, not generated at
+    # test time), so a missing half means the mirror sync was skipped - the
+    # exact drift this test exists to catch.
+    assert src.is_file(), f"tracked {src} is missing"
+    assert mirror.is_file(), f"tracked Share mirror {mirror} is missing"
 
     src_note = json.loads(src.read_text(encoding="utf-8")).get("note")
     mirror_note = json.loads(mirror.read_text(encoding="utf-8")).get("note")

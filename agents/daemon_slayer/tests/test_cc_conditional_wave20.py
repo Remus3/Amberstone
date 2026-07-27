@@ -425,11 +425,10 @@ class Wave20DefaultByteIdenticalTests(unittest.TestCase):
     def test_vayne_default_pressure_only_counts_unconditional(self) -> None:
         # Default include_conditional=False - only unconditional 0.5s
         # entry is counted (the 0.5s knockback).
-        try:
-            from agents.daemon_slayer.cc_pressure import compute_cc_pressure
-        except ImportError:
-            self.skipTest("cc_pressure consumer not importable in this env")
-            return
+        # agents/daemon_slayer/cc_pressure.py is TRACKED - it is in every
+        # checkout, so an ImportError means the consumer under test is broken.
+        # Letting it propagate turns that into a hard error instead of a skip.
+        from agents.daemon_slayer.cc_pressure import compute_cc_pressure
         result = compute_cc_pressure("Vayne", "sr", include_conditional=False)
         # Result shape varies; assert it is a non-None object and the
         # value carries the unconditional 0.5s contribution (5 ranks x

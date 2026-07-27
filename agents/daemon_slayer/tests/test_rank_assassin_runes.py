@@ -35,8 +35,13 @@ def _resolve_assassin(snap: DataSnapshot) -> str:
             continue
         if r.ranked:
             return champ
-    raise unittest.SkipTest(
-        f"no assassin from {_ASSASSIN_CANDIDATES} resolved a ranking"
+    # The roster + burst registry are TRACKED, so all three candidates resolve
+    # in every checkout (MEASURED 2026-07-27: Zed / Talon / Qiyana each return 5
+    # ranked rows). None resolving means the burst ranker or the roster broke -
+    # a failure, not an absent capability.
+    raise AssertionError(
+        f"no assassin from {_ASSASSIN_CANDIDATES} resolved a ranking from the "
+        "tracked snapshot - rank_items_by_burst or the roster regressed"
     )
 
 

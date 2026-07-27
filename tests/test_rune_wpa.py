@@ -322,8 +322,15 @@ class FailSoftTests(unittest.TestCase):
 class RuneNameTests(unittest.TestCase):
     def test_real_catalog_names_resolve(self):
         names = rune_wpa.load_rune_names()
-        if not names:
-            self.skipTest("runesReforged.json catalog not available")
+        # runesReforged.json is TRACKED under data/meta_build/ddragon/<patch>/
+        # (pinned 16.11.1 fallback), so it is present in every checkout. An
+        # empty catalog means the loader is broken, not that a capability is
+        # missing - fail rather than skip past every assertion below.
+        self.assertTrue(
+            names,
+            "load_rune_names() returned nothing from the tracked "
+            "runesReforged.json catalog",
+        )
         self.assertEqual(names.get(ELECTROCUTE), "Electrocute")
         self.assertEqual(names.get(CHEAP_SHOT), "Cheap Shot")
         # A stat shard id is NOT a named rune in runesReforged.
@@ -331,8 +338,11 @@ class RuneNameTests(unittest.TestCase):
 
     def test_name_populated_in_output(self):
         names = rune_wpa.load_rune_names()
-        if names.get(ELECTROCUTE) != "Electrocute":
-            self.skipTest("runesReforged.json catalog not available")
+        # Decidable against the tracked catalog - see the sibling test above.
+        self.assertEqual(
+            names.get(ELECTROCUTE), "Electrocute",
+            "tracked runesReforged.json did not resolve Electrocute",
+        )
         conn = _build_db()
         for i in range(25):
             _add_match(

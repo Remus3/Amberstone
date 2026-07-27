@@ -229,8 +229,13 @@ class ARAMModeTests(unittest.TestCase):
             if isinstance(mult, (int, float)) and 0.5 <= mult < 1.0:
                 candidate = (cid, float(mult))
                 break
-        if candidate is None:
-            self.skipTest("no champion with aramDamageTaken < 1.0 in snapshot")
+        # The snapshot is TRACKED and this cohort is large (MEASURED 2026-07-27:
+        # 50 champions in [0.5, 1.0)), so an empty result is a snapshot
+        # regression, not an absent capability.
+        self.assertIsNotNone(
+            candidate,
+            "no champion with aramDamageTaken < 1.0 in the tracked snapshot",
+        )
         cid, mult = candidate
         sr = compute_ehp(self.snap, cid, level=11, mode="SR")
         aram = compute_ehp(self.snap, cid, level=11, mode="ARAM")
@@ -247,8 +252,11 @@ class ARAMModeTests(unittest.TestCase):
             if isinstance(mult, (int, float)) and 1.0 < mult <= 1.5:
                 candidate = (cid, float(mult))
                 break
-        if candidate is None:
-            self.skipTest("no champion with aramDamageTaken > 1.0 in snapshot")
+        # MEASURED 2026-07-27: 52 champions in (1.0, 1.5] - tracked snapshot.
+        self.assertIsNotNone(
+            candidate,
+            "no champion with aramDamageTaken > 1.0 in the tracked snapshot",
+        )
         cid, mult = candidate
         sr = compute_ehp(self.snap, cid, level=11, mode="SR")
         aram = compute_ehp(self.snap, cid, level=11, mode="ARAM")
@@ -400,8 +408,12 @@ class NotesTests(unittest.TestCase):
             if isinstance(mult, (int, float)) and not math.isclose(mult, 1.0):
                 candidate = cid
                 break
-        if candidate is None:
-            self.skipTest("no champion with non-unit aramDamageTaken in snapshot")
+        # MEASURED 2026-07-27: 102 champions carry a non-unit aramDamageTaken in
+        # the tracked snapshot, so an empty result is a data regression.
+        self.assertIsNotNone(
+            candidate,
+            "no champion with non-unit aramDamageTaken in the tracked snapshot",
+        )
         r = compute_ehp(self.snap, candidate, level=11, mode="ARAM")
         self.assertTrue(
             any("aramDamageTaken" in n for n in r.notes),

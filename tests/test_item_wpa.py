@@ -100,9 +100,15 @@ def _add_match(
 class LegendaryFilterTests(unittest.TestCase):
     def test_real_catalog_yields_legendary_set(self):
         legendary = item_wpa.load_legendary_ids()
-        # The real 16.11.1 catalog should be present in this worktree.
-        if not legendary:
-            self.skipTest("items.json catalog not available")
+        # The catalog is TRACKED (data/daemon_slayer/<patch>/items.json, with a
+        # pinned 16.11.1 fallback), so it is present in every checkout. An empty
+        # result means the loader or the committed catalog is BROKEN - the exact
+        # thing this test exists to catch - so it must fail, not skip.
+        self.assertTrue(
+            legendary,
+            "load_legendary_ids() returned nothing from the tracked items.json "
+            "catalog - the loader or the committed catalog is broken",
+        )
         self.assertIn(IE, legendary, "Infinity Edge must be a legendary")
         self.assertNotIn(BF_SWORD, legendary, "B.F. Sword is a component")
         # Sanity band per the verify-first probe.
@@ -118,8 +124,13 @@ class LegendaryFilterTests(unittest.TestCase):
             purchases=[(60_000, 1, IE)] * 25 + [(60_000, 1, BF_SWORD)] * 25,
         )
         legendary = item_wpa.load_legendary_ids()
-        if BF_SWORD in legendary:
-            self.skipTest("catalog classifies BF Sword as legendary (unexpected)")
+        # Decidable against the tracked catalog: B.F. Sword is a component and
+        # must never classify as a completed legendary.
+        self.assertNotIn(
+            BF_SWORD, legendary,
+            "tracked catalog classifies B.F. Sword as a legendary - the "
+            "completed-legendary classifier regressed",
+        )
         out = item_wpa.compute_item_wpa(conn, min_n=20)
         ids = {it["item_id"] for it in out["items"]}
         self.assertIn(IE, ids)
@@ -222,8 +233,10 @@ class DecompositionMathTests(unittest.TestCase):
         # Use 3036 (Lord Dominik's) as a second SR legendary.
         other = 3036
         legendary = item_wpa.load_legendary_ids()
-        if other not in legendary or IE not in legendary:
-            self.skipTest("expected legendary ids missing from catalog")
+        # Both ids are SR legendaries in the tracked catalog, so their absence
+        # is a catalog/classifier regression, not a missing capability.
+        self.assertIn(other, legendary, "Lord Dominik's missing from the tracked catalog")
+        self.assertIn(IE, legendary, "Infinity Edge missing from the tracked catalog")
         for i in range(25):
             _add_match(
                 conn, f"H{i}", team100_gold=0, team200_gold=5000, team100_win=1,
