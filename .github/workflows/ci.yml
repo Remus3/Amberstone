@@ -173,6 +173,30 @@ jobs:
             tests/test_git_hook_gate_e2e.py \
             -q --tb=short --timeout=120
 
+      - name: shipped build-order tables asserted, not skipped
+        run: |
+          # MEASURED 2026-07-26 (skip audit): seven guards over the shipped HZ
+          # precompute tables - schema version, comp-archetype taxonomy,
+          # per-champion completeness, canonical-vs-display keyspace, the
+          # anti-tank pivot, ASCII hygiene - were written as
+          # `if not load_...(): skipTest(...)`. Those loaders are fail-soft to
+          # `{}` on ANY missing-or-parse error, so an absent table and a CORRUPT
+          # one were the same value at the skip site, and all seven fell silent
+          # at exactly the moment they matter: a patch bump, when the tables are
+          # regenerated. The tables feed the live dashboard build-order panel.
+          #
+          # Every table is TRACKED (git ls-files data/daemon_slayer/build_orders/
+          # <patch>/), so this runner has them and has no excuse to skip.
+          # RC_REQUIRE_BUILD_ORDER_TABLES=1 turns "not generated yet" from a
+          # skip into a failure here, the same shape as RC_REQUIRE_HOOK_GATE
+          # above. Pure-Python plus pydantic, already installed.
+          RC_REQUIRE_BUILD_ORDER_TABLES=1 pytest \
+            tests/test_build_order_precompute.py \
+            tests/test_build_order_variants.py \
+            tests/test_hz_precompute_canonical_keyspace.py \
+            tests/test_build_order_axis_parity.py \
+            -q --tb=short --timeout=120
+
       - name: smoke + regression tests
         run: |
           pytest tests/phase2_smoke tests/snapshot_regressions tests/phase8_smoke \

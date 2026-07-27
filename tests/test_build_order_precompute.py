@@ -15,6 +15,7 @@ pure re-parameterization of the shipped engine, no new combat math.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -25,6 +26,88 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 import core.build_order_precompute as bop  # noqa: E402
+
+
+# --------------------------------------------------------------------------- #
+# Shipped-table gate - SHARED, imported by the sibling HZ precompute suites
+# (test_build_order_variants, test_hz_precompute_canonical_keyspace,
+# test_build_order_axis_parity). One implementation, not seven copies.
+# --------------------------------------------------------------------------- #
+REQUIRE_TABLES_ENV = "RC_REQUIRE_BUILD_ORDER_TABLES"
+
+
+def build_order_tables_are_required() -> bool:
+    """True when the CALLER has declared the shipped tables must be present.
+
+    Set by the `check` job in .github/workflows/ci.yml, which checks out a tree
+    where every table under data/daemon_slayer/build_orders/ IS tracked. Unset
+    on a working copy sitting in the post-patch-bump regen gap, which is the one
+    situation where "no table yet" is a legitimate reason not to assert.
+    """
+    return os.environ.get(REQUIRE_TABLES_ENV, "").strip().lower() not in (
+        "", "0", "false", "no", "off",
+    )
+
+
+def require_shipped_table(path: Path, label: str) -> Path:
+    """Skip when the table has not been generated - unless the caller SAID it is.
+
+    MEASURED 2026-07-26 (skip audit): seven guards over the shipped build-order
+    tables - schema version, comp-archetype taxonomy, per-champion completeness,
+    canonical-vs-display keyspace, the anti-tank pivot, ASCII hygiene - were all
+    written as `if not load_...(): self.skipTest(...)`. That loader is fail-soft
+    to `{}` on ANY missing-or-parse error (core/build_order_precompute.py:472),
+    so at the skip site an absent table and a CORRUPT one are the same value.
+    Both reported green, and they reported green at exactly the moment the
+    guards matter - a patch bump, when the table is regenerated. The tables feed
+    the live dashboard build-order panel, so a stale or malformed one ships
+    wrong item orders behind a green suite.
+
+    The split is: ABSENCE is a capability question and may skip; anything else
+    the file says is an assertion and must be able to fail. See
+    `load_shipped_table` for the second half.
+
+    Deleting the skip outright is not the fix - a checkout mid-regen genuinely
+    has no current-patch table and would fail forever. The opt-in is the fix:
+    with RC_REQUIRE_BUILD_ORDER_TABLES set, "not generated" stops being an
+    excuse. Copied from RC_REQUIRE_HOOK_GATE in tests/test_drift_guard.py, which
+    closed the identical hole in the git-hook gate the same day.
+    """
+    if path.is_file():
+        return path
+    if build_order_tables_are_required():
+        raise AssertionError(
+            f"{REQUIRE_TABLES_ENV} is set, so the shipped tables were supposed "
+            f"to be PRESENT - but {label} is missing at {path}. Regenerate with "
+            "python -m core.build_order_precompute --champions all"
+        )
+    raise unittest.SkipTest(
+        f"no committed {label} table at {path} (set {REQUIRE_TABLES_ENV}=1 to "
+        "make this a failure)"
+    )
+
+
+def load_shipped_table(path: Path, label: str) -> dict:
+    """`require_shipped_table` plus a read that is deliberately NOT fail-soft.
+
+    The production loader swallows a parse error into `{}` on purpose - the live
+    dashboard must degrade, not crash. A TEST inheriting that swallow is how a
+    corrupt shipped table came to report as "no table yet, skipped". Once the
+    file exists at all, every byte of it is under assertion here.
+    """
+    require_shipped_table(path, label)
+    raw = path.read_text(encoding="utf-8")
+    try:
+        payload = json.loads(raw)
+    except Exception as exc:  # noqa: BLE001 - a corrupt shipped table is a FAIL
+        raise AssertionError(
+            f"{label} exists at {path} but is not valid JSON: {exc}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise AssertionError(
+            f"{label} at {path} parsed to {type(payload).__name__}, not a dict"
+        )
+    return payload
 
 
 # --------------------------------------------------------------------------- #
@@ -299,12 +382,16 @@ class PatchAndPathTests(unittest.TestCase):
 
 class SeedTableTests(unittest.TestCase):
     """The committed SR seed table is present, well-formed, and matches the
-    module's declared schema + taxonomy (guards a stale / hand-edited file)."""
+    module's declared schema + taxonomy (guards a stale / hand-edited file).
+
+    Read through `load_shipped_table`, NOT the fail-soft production loader: a
+    file that exists must be asserted, never skipped past.
+    """
 
     def test_committed_sr_seed_is_wellformed(self):
-        payload = bop.load_build_order_precompute(mode="sr")
-        if not payload:
-            self.skipTest("no committed SR seed table for the current patch")
+        payload = load_shipped_table(
+            bop._db_path("sr", bop.resolve_patch()), "HZ-B1 build_orders/sr",
+        )
         self.assertEqual(payload["schema"], bop.SCHEMA_VERSION)
         self.assertEqual(
             set(payload["dimensions"]["comp_archetypes"]),
@@ -329,11 +416,93 @@ class AsciiHygieneTests(unittest.TestCase):
         self.assertEqual(non_ascii, [], f"non-ASCII in module: {non_ascii[:5]}")
 
     def test_seed_table_is_ascii(self):
-        path = bop._db_path("sr", bop.resolve_patch())
-        if not path.exists():
-            self.skipTest("no committed SR seed table")
+        path = require_shipped_table(
+            bop._db_path("sr", bop.resolve_patch()), "HZ-B1 build_orders/sr",
+        )
         data = path.read_bytes()
         self.assertTrue(all(b < 0x80 for b in data), "non-ASCII in seed table")
+
+
+class ShippedTableGateTests(unittest.TestCase):
+    """Guards the gate itself, both directions.
+
+    The skip this gate replaced was not wrong, it was unfalsifiable - it
+    reported green in precisely the state it existed to catch. A replacement
+    that can only ever skip would be the same bug wearing a new name, so both
+    arms are pinned: absent-and-not-required SKIPS, absent-and-required FAILS,
+    and a file that exists but is corrupt FAILS rather than skipping.
+    """
+
+    def _missing(self) -> Path:
+        return Path(tempfile.mkdtemp()) / "build_orders_sr.json"
+
+    def test_env_unset_is_not_required(self) -> None:
+        from unittest import mock
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(REQUIRE_TABLES_ENV, None)
+            self.assertFalse(build_order_tables_are_required())
+
+    def test_env_set_to_one_is_required(self) -> None:
+        from unittest import mock
+        with mock.patch.dict(os.environ, {REQUIRE_TABLES_ENV: "1"}):
+            self.assertTrue(build_order_tables_are_required())
+
+    def test_falsey_spellings_are_not_required(self) -> None:
+        """`RC_REQUIRE_BUILD_ORDER_TABLES=0` must not arm this by accident."""
+        from unittest import mock
+        for value in ("0", "", "false", "FALSE", "no", "off", "  "):
+            with mock.patch.dict(os.environ, {REQUIRE_TABLES_ENV: value}):
+                self.assertFalse(
+                    build_order_tables_are_required(),
+                    f"{value!r} must read as not-required",
+                )
+
+    def test_absent_table_skips_when_not_required(self) -> None:
+        from unittest import mock
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(REQUIRE_TABLES_ENV, None)
+            with self.assertRaises(unittest.SkipTest):
+                require_shipped_table(self._missing(), "probe")
+
+    def test_absent_table_FAILS_when_required(self) -> None:
+        """The whole point: a declared-present table that is absent is a fail."""
+        from unittest import mock
+        with mock.patch.dict(os.environ, {REQUIRE_TABLES_ENV: "1"}):
+            with self.assertRaises(AssertionError) as ctx:
+                require_shipped_table(self._missing(), "probe")
+        self.assertNotIsInstance(
+            ctx.exception, unittest.SkipTest, "must not degrade back into a skip"
+        )
+
+    def test_present_table_is_returned(self) -> None:
+        p = Path(tempfile.mkdtemp()) / "t.json"
+        p.write_text('{"a": 1}', encoding="utf-8")
+        self.assertEqual(require_shipped_table(p, "probe"), p)
+
+    def test_corrupt_table_FAILS_and_never_skips(self) -> None:
+        """The conflation this whole gate exists to close.
+
+        The production loader returns `{}` for a corrupt file exactly as it does
+        for an absent one, so the old `if not payload: skipTest` could not tell
+        them apart. Here a corrupt file must raise AssertionError - and must do
+        so with the env flag UNSET, because corruption is never a capability
+        question.
+        """
+        from unittest import mock
+        p = Path(tempfile.mkdtemp()) / "t.json"
+        p.write_text("{ this is not json", encoding="utf-8")
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(REQUIRE_TABLES_ENV, None)
+            with self.assertRaises(AssertionError) as ctx:
+                load_shipped_table(p, "probe")
+        self.assertNotIsInstance(ctx.exception, unittest.SkipTest)
+        self.assertIn("not valid JSON", str(ctx.exception))
+
+    def test_non_dict_table_FAILS(self) -> None:
+        p = Path(tempfile.mkdtemp()) / "t.json"
+        p.write_text("[1, 2, 3]", encoding="utf-8")
+        with self.assertRaises(AssertionError):
+            load_shipped_table(p, "probe")
 
 
 if __name__ == "__main__":

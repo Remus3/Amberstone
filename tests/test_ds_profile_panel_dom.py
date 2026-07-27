@@ -142,20 +142,23 @@ class OwnFilesTests(unittest.TestCase):
 
 
 class WiringTests(unittest.TestCase):
-    """Orchestrator-owned shared-file wiring. Skips until the orchestrator
-    lands the WIRING SPEC so this agent's branch is green standalone; turns
-    into a live regression guard once the surface is wired."""
+    """Shared-file wiring, asserted unconditionally - a live regression guard.
+
+    MEASURED 2026-07-26 (skip audit): `setUpClass` recorded `wired = _MOUNT_ID
+    in index` and `setUp` skipped the whole class when it was false, with
+    `test_mount_present` asserting that same mount id one method later. The
+    class could therefore never fail - it either asserted a mount it had
+    already confirmed, or skipped. The scaffold was there so the panel agent's
+    branch stayed green before the orchestrator landed the WIRING SPEC; the
+    orchestrator landed long ago, the mount is present in web/index.html, so
+    the guard is gone and the assertions are real.
+    """
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.index = _read(INDEX_HTML)
         cls.cs = _read(CHAMP_SELECT_JS)
         cls.dashboard_css = _read(DASHBOARD_CSS)
-        cls.wired = _MOUNT_ID in cls.index
-
-    def setUp(self) -> None:
-        if not self.wired:
-            self.skipTest("ds-profile panel not yet wired into shared files")
 
     def test_mount_present(self) -> None:
         self.assertIn(_MOUNT_ID, self.index)

@@ -17,6 +17,11 @@ import pytest
 from core import archetype_picks as ap
 from core import build_order_precompute as bop
 
+# The shipped-table gate lives in the HZ-B1 suite (one implementation, not
+# seven copies). Importing the FUNCTION by name binds only that name, so the
+# sibling module's TestCase classes are not collected a second time here.
+from tests.test_build_order_precompute import load_shipped_table
+
 _ROOT = Path(__file__).resolve().parent.parent
 
 # Every champion the kit-axis correction re-based (see test_archetype_axis_correction).
@@ -57,9 +62,17 @@ def _dominant_axis(order: list, axes: dict[str, str]) -> str | None:
 
 @pytest.fixture(scope="module")
 def table() -> dict:
-    payload = bop.load_build_order_precompute("sr")
-    if not payload.get("build_orders"):
-        pytest.skip("HZ-B1 build_orders SR table absent (run build_order_precompute)")
+    # MEASURED 2026-07-26 (skip audit): this fixture used to call the fail-soft
+    # production loader and `pytest.skip` on a falsey return, which silently
+    # turned all 18 axis-parity assertions off whenever the SR table was absent
+    # OR corrupt - the same empty dict for both. The axis correction this file
+    # guards is re-applied at every patch regeneration, so the guard went quiet
+    # in the one window it exists for. Absence may still skip; a table that is
+    # on disk is now always read and always asserted.
+    payload = load_shipped_table(
+        bop._db_path("sr", bop.resolve_patch()), "HZ-B1 build_orders/sr",
+    )
+    assert payload.get("build_orders"), "HZ-B1 build_orders SR table has no rows"
     return payload
 
 

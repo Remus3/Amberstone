@@ -13,11 +13,16 @@ the readers normalize any display-name input to its canonical DDragon id.
 import unittest
 
 from core.archetype_picks import canonical_champion_id
-from core.build_order_precompute import load_build_order_precompute
-from core.build_order_variants import load_build_order_variants
-from core.laning_scenario_precompute import load_laning_scenarios
+from core import build_order_precompute as bop
+from core import build_order_variants as bov
+from core import laning_scenario_precompute as lsp
 from core import precomputed_build_coach as pbc
 from core import precomputed_laning_coach as plc
+
+# The shipped-table gate lives in the HZ-B1 suite (one implementation, not
+# seven copies). Importing the FUNCTION by name binds only that name, so the
+# sibling module's TestCase classes are not collected a second time here.
+from tests.test_build_order_precompute import load_shipped_table
 
 _MODES = ("sr", "aram", "arena")
 
@@ -26,12 +31,39 @@ def _is_canonical(key: str) -> bool:
     return bool(key) and canonical_champion_id(key) == key
 
 
-class CommittedTableKeyspaceTests(unittest.TestCase):
-    """Every committed HZ precompute table is keyed by canonical DDragon ids."""
+def _laning_path(mode: str):
+    """The path `load_laning_scenarios` would actually serve for ``mode``.
 
-    def _assert_canonical_top_keys(self, payload, top, label):
-        if not payload:
-            self.skipTest(f"no committed {label} table for this patch")
+    Lane A has a documented prior-patch fallback (core/laning_scenario_
+    precompute.py:937): with no current-patch table it serves the newest
+    available one rather than going dark. The capability gate has to ask the
+    same question the loader does, or it would report "absent" for a table that
+    is being served live - which is the situation right now, patch 16.14.1 has
+    no laning table and 16.13.1 is what the reader hands the coach.
+    """
+    path = lsp._db_path(mode, lsp.resolve_patch())
+    if path.is_file():
+        return path
+    fallback = lsp._latest_available_patch(mode)
+    return lsp._db_path(mode, fallback) if fallback else path
+
+
+class CommittedTableKeyspaceTests(unittest.TestCase):
+    """Every committed HZ precompute table is keyed by canonical DDragon ids.
+
+    MEASURED 2026-07-26 (skip audit): this guard used to call the production
+    loader and skip on a falsey return. Those loaders are fail-soft to `{}` on
+    ANY missing-or-parse error, so "the table for this patch has not been
+    generated yet" and "the shipped table is corrupt" arrived here as the same
+    empty dict - and the keyspace guard, which exists to catch a table
+    regenerated with raw DISPLAY-name keys, turned itself off at exactly the
+    moment a regeneration happens. It now reads the file directly: absent may
+    skip (or hard-fail under RC_REQUIRE_BUILD_ORDER_TABLES), present is
+    always asserted.
+    """
+
+    def _assert_canonical_top_keys(self, path, top, label):
+        payload = load_shipped_table(path, label)
         keys = list((payload.get(top) or {}).keys())
         self.assertTrue(keys, f"{label}: empty table")
         bad = [k for k in keys if not _is_canonical(k)]
@@ -44,20 +76,19 @@ class CommittedTableKeyspaceTests(unittest.TestCase):
     def test_build_orders_tables_are_canonical_keyed(self):
         for mode in _MODES:
             self._assert_canonical_top_keys(
-                load_build_order_precompute(mode), "build_orders",
+                bop._db_path(mode, bop.resolve_patch()), "build_orders",
                 f"build_orders/{mode}")
 
     def test_build_order_variants_tables_are_canonical_keyed(self):
         for mode in _MODES:
             self._assert_canonical_top_keys(
-                load_build_order_variants(mode), "build_orders",
+                bov._db_path(mode, bov.resolve_patch()), "build_orders",
                 f"build_order_variants/{mode}")
 
     def test_laning_scenarios_tables_are_canonical_keyed(self):
         for mode in _MODES:
             self._assert_canonical_top_keys(
-                load_laning_scenarios(mode), "scenarios",
-                f"laning_scenarios/{mode}")
+                _laning_path(mode), "scenarios", f"laning_scenarios/{mode}")
 
 
 class ReaderCanonicalizesDisplayInputTests(unittest.TestCase):
