@@ -1,0 +1,46 @@
+{
+  "repo_root": "C:\\Riot Commander",
+  "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
+  "ceiling_usd": 200.0,
+  "_ceiling_note": "ceiling_usd caps the ADJUDICATOR (gemini) spend only. Executor spend is capped per cycle by cycle_budget_usd on the sdk channel.",
+  "max_cycles": 2,
+  "cycle_deadline_sec": 900,
+  "poll_sec": 5,
+  "channel": "sdk",
+  "_channel_note": "MUST be sdk for P5. The ahk channel is a machine-wide singleton keyed on claude_window_title, so a concurrent run on that channel would prove nothing about the thing P5 exists to test.",
+  "executor_model": "claude-opus-5",
+  "executor_cmd": "C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd",
+  "cycle_budget_usd": 10.0,
+  "max_concurrent_lanes": 2,
+  "_lanes_note": "Machine-wide cap on concurrent executor calls across ALL callers (RC + Sibling-A), enforced via C:/ProgramData/lw-loop/slots. Both repos MUST agree on this number.",
+  "dry_run": false,
+  "ignore_no_progress": true,
+  "_ignore_no_progress_note": "true on purpose: the P5 scope is one appended line per cycle, and the same-sha guard is not what is under test here.",
+  "clear_each_cycle": true,
+  "cycle_command": "P5 CONCURRENT-RUN SMOKE, Tier-0 docs only, RC repo. Read ops/loop/control/cycle.txt for cycle number N. Append EXACTLY ONE line to docs/_archive/2026-07-26-p5-concurrent-smoke.md (create with a one-line heading if absent), of the form: \"- RC cycle N: <one sentence on what you observed> (head <8-char sha before your commit>)\". STRICT SCOPE: touch NO other file, and NEVER any path under C:/Sibling-A. No code changes. 7-bit ASCII only, no em-dashes or smart quotes. Then git add that one file, commit with a conventional-commit subject, push to origin main.",
+  "_cycle_command_note": "cycle_command, NOT fixed_directive. fixed_directive skips BOTH the director and the auditor, so no gemini call ever happens and P5 condition 4 (gemini windows never overlap) would pass VACUOUSLY by doing nothing. cycle_command skips only the director and KEEPS the auditor, so every cycle makes a real gemini call through GEMINI_MUTEX - which is the thing condition 4 measures.",
+  "session_jsonl": "",
+  "claude_window_title": "Claude",
+  "gemini_model": "gemini-3-pro-preview",
+  "gemini_cmd": "gemini",
+  "adjudicator": "gemini",
+  "adjudicator_fallback": "claude",
+  "adjudicator_failover": true,
+  "claude_adjudicator": {
+    "cmd": "C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd",
+    "model": "opus",
+    "timeout_sec": 300,
+    "count_against_ceiling": false
+  },
+  "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
+  "gemini_price_per_mtok": {
+    "input": 2.0,
+    "output": 12.0
+  },
+  "price_per_mtok": {
+    "opus": {"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5},
+    "sonnet": {"input": 3.0, "output": 15.0, "cache_write": 3.75, "cache_read": 0.3},
+    "haiku": {"input": 1.0, "output": 5.0, "cache_write": 1.25, "cache_read": 0.1},
+    "default": {"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5}
+  }
+}
