@@ -686,9 +686,12 @@ def sustain_for(
     ``_post_json``'s None collapses); /sustain has no such contract conflict.
 
     Second, having no caller is not this module's bar for existing: ``ehp_for``,
-    ``hybrid_for``, ``ability_dps_for``, ``hps_for`` and ``matchup`` all carry
-    zero non-test call sites and none of them are ledgered. This module is a
-    probe surface as much as a consumer surface.
+    ``hybrid_for``, ``ability_dps_for`` and ``hps_for`` all carry zero non-test
+    call sites and none of them are ledgered. This module is a probe surface as
+    much as a consumer surface. (``matchup`` was named in this list when R197
+    landed and that was wrong - it has two live callers,
+    ``core/laning_verdicts.py:295`` and ``dashboard/routes_ds_matchup.py:170``.
+    The four above verify; the conclusion did not depend on the fifth.)
 
     Be honest about what that buys: this makes the seam EXPRESSIBLE, not live.
     Nothing in RC calls this yet, and the two in-process consumers above call
