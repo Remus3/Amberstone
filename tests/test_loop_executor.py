@@ -285,3 +285,72 @@ def test_unset_hookspath_is_reported_as_ungated(tmp_path: Path):
 def test_a_repo_without_githooks_is_not_this_repos_concern(tmp_path: Path):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, timeout=60)
     assert executor.gate_inactive_reason(tmp_path) is None
+
+
+# ---- FINAL STEP: one source of truth per channel ----------------------------
+
+def test_ahk_final_step_is_the_sentinel_command_and_no_json_instruction():
+    """The ahk controller blocks on control/claude.done - the sentinel IS the signal."""
+    s = executor.final_step_instruction("ahk")
+    assert "ops/loop/done_sentinel.py --tests <PASS_COUNT> --regressions <0_or_1>" in s
+    assert "do NOT run" not in s
+    assert "structured_output" not in s and "output schema" not in s
+
+
+def test_sdk_final_step_is_the_json_instruction_and_no_sentinel_command():
+    s = executor.final_step_instruction("sdk")
+    assert "do NOT run ops/loop/done_sentinel.py" in s
+    assert "output schema" in s
+    assert "--tests <PASS_COUNT>" not in s
+
+
+def test_final_step_defaults_to_ahk_when_the_channel_is_absent():
+    """An older config with no `channel` key must keep the legacy completion step."""
+    assert executor.final_step_instruction(None) == executor.AHK_FINAL_STEP
+    assert executor.final_step_instruction("") == executor.AHK_FINAL_STEP
+
+
+def test_final_step_rejects_an_unknown_channel_like_build_does():
+    with pytest.raises(ValueError, match="unknown executor channel"):
+        executor.final_step_instruction("skd")
+
+
+def test_ahk_final_step_matches_rc_interpreter_path_not_lws():
+    """RC's executor.py is a shape-port, not a byte-copy. Copying LW's string here
+    would break RC's ahk rollback path, which only a live dry cycle catches."""
+    assert r"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" \
+        in executor.AHK_FINAL_STEP
+    assert "Sibling-A" not in executor.AHK_FINAL_STEP
+
+
+def test_sdk_prompt_uses_final_step_instruction_so_it_cannot_drift():
+    """Pins the no-drift property: the body and the appended step share one source."""
+    assert executor.final_step_instruction("sdk") in executor.sdk_prompt(1, "b", "director")
+
+
+def test_director_prompt_hardcodes_no_channel_specific_completion_step():
+    """Regression guard: re-hardcoding the sentinel here re-opens the defect."""
+    text = (ROOT / "ops" / "loop" / "director_prompt.md").read_text(encoding="utf-8")
+    assert "{{FINAL_STEP}}" in text, "the placeholder is what the controller substitutes"
+    assert "done_sentinel.py --tests" not in text
+
+
+def test_directive_suffix_names_no_channel_specific_step():
+    """LW's config re-introduced the contradiction from directive_suffix after the
+    prompt was fixed. RC's must stay channel-neutral."""
+    cfg = json.loads((ROOT / "ops" / "loop" / "config.json").read_text(encoding="utf-8"))
+    suffix = cfg.get("directive_suffix", "")
+    assert "done_sentinel" not in suffix
+    assert "FINAL STEP" not in suffix
+
+
+@pytest.mark.parametrize("channel,present,absent", [
+    ("ahk", "done_sentinel.py --tests", "do NOT run"),
+    ("sdk", "do NOT run ops/loop/done_sentinel.py", "--tests <PASS_COUNT>"),
+])
+def test_template_substitution_leaves_no_placeholder_on_either_channel(channel, present, absent):
+    tmpl = (ROOT / "ops" / "loop" / "director_prompt.md").read_text(encoding="utf-8")
+    out = tmpl.replace("{{FINAL_STEP}}", executor.final_step_instruction(channel))
+    assert "{{FINAL_STEP}}" not in out
+    assert present in out
+    assert absent not in out
