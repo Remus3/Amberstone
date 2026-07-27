@@ -4,7 +4,7 @@
 
 ---
 
-# 2026-07-26m - RM-91 T2 SHIPPED, RM-91 CLOSED both halves (ENGINE 1.259.0). 1 commit.
+# 2026-07-26m - RM-91 T2 SHIPPED + drift guard + 4-phase /done. 2 commits.
 
 **IS a DS session.** ENGINE 1.258.0 -> 1.259.0, Share mirror regenerated, `:8893`
 bounced and live-probed, both build-order keyspaces regenerated at exactly 2 lines
@@ -60,6 +60,58 @@ ID, with a test asserting the deny is non-vacuous.
   tooltip and a node description, guarded by 3 tests in
   `tests/test_hexcore_offline_dust.py`. The dual suite caught it; the ritual
   checklist did not mention it.
+
+## SECOND THEME - the /done ritual, rebuilt on measurements
+Operator: "a future session doesn't need to be ran to correct 10 sessions of
+closures when it could have been done for 30 seconds each session."
+
+**`tools/drift_guard.py` is that 30 seconds** (+ `tests/test_drift_guard.py`, 22
+tests asserting BOTH the breach and the clean path per check). Runs in /done
+Phase 1. **First run found 10 live breaches - more than my hand audit did:
+8 mirrored command docs diverged, not just `done.md`.** Also 6 unindexed
+memories (4 indexed; 2 `_`-prefixed are transient scratch, now exempt) and
+ROADMAP at 96%.
+
+**`tools/done.md` is now FOUR PHASES** and re-mirrored: fast gate + guard ->
+commit/push/**dispatch CI** -> paperwork WHILE CI runs -> collect. The overlap is
+the whole trick.
+
+## The measurements, because two of them reversed my own advice
+- local dual suite **1642s / 23,250**; CI nightly **1007s / 22,749 (97.8%)** -
+  **CI is FASTER than this box** and already runs the same suite.
+- **push CI covers only 941 tests = 4%.** `nightly-full-suite` is gated on
+  `schedule || workflow_dispatch`. Fire it with `gh workflow run ci.yml`.
+  ONCE PER SESSION - private repo, metered minutes, already tripped once.
+- **slowest 40 tests = 176s = 10.7%, mean 71ms.** No slow minority exists, so
+  "fix the slow tests" CANNOT reach 5 min. I recommended that before measuring
+  and was wrong.
+- **`-n 8 --dist loadfile` = 144.65s, an 11.4x speedup**, with 6 failures /
+  23,272 - all shared-state artifacts serial was hiding (5 of 6 are fail-soft
+  "never raises" tests, 1 asyncio event-loop conflict). **Fix those 6 and the
+  wrap collapses to ~2 min. Do NOT adopt by suppressing them.**
+
+## Traps found the hard way this session
+- `schtasks /End` + immediate `/Run` leaves `:8893` DEAD reporting
+  `Last Result: 0` (launcher self-skips on the not-yet-released port). And
+  `schtasks /End` is unusable from the Bash tool - Git Bash rewrites `/End` into
+  a path. Use PowerShell.
+- DS suite from `agents/daemon_slayer/` = **13 FALSE failures** that read like
+  registry regressions. Run from the REPO ROOT.
+- A **4th** ENGINE anchor site exists: `docs/HEXCORE_offline.html` carries the
+  version AND the test count, guarded in `tests/`, so a DS-only run misses it.
+- `CLAUDE.md` topology is STALE: hostname is **DESKTOP-LCA3EBI** (not
+  DESKTOP-JKZECV9) and **Tailscale is not installed** - so the `legion-rc` /
+  100.70.22.55 row is wrong too. `rc_facts.py` echoes the same stale values.
+- PS7 7.6.4 installed MSI-only at `C:\Program Files\PowerShell\7\`. winget
+  ships MSIX-only for this version; `--installer-type msi` returns "no
+  applicable installer". **Claude Code binds its PowerShell binary at SESSION
+  START** - sessions opened after the install get pwsh 7, this one stayed 5.1.
+  Desktop docs: `POWERSHELL_7_MIGRATION.md`, `DONE_RITUAL_OPTIMIZED.md`.
+
+## LEFT OPEN deliberately
+**ROADMAP.md is at 94%** (warn at 90). The clearing move is relocating RM-117
+(26KB, dense with measurement traps). Rushing that at wrap risks losing exactly
+the trap content LEDGER 1063 says a pointer must carry. **Next session's item 1.**
 
 ## Do NOT redo
 - RM-91 is CLOSED, both halves. Do not re-file the health axis, do not re-scan
