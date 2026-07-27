@@ -9,6 +9,7 @@ IPC = files in control_dir, atomic (tmp + os.replace), plain-text where AHK read
 Both gemini and claude are stateless per cycle; continuity lives on disk
 (git history + docs/LEDGER.md + the directive chain). See the Desktop BUILD LOG.
 """
+import hashlib
 import importlib.util
 import json
 import os
@@ -767,6 +768,145 @@ def stall_recovery_directive(cycle):
         f"\"{py}\" ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>"
     )
 
+# ---- the running image vs the source on disk --------------------------------
+# MEASURED 2026-07-27: three consecutive cycles shipped a fix to the director
+# prompt assembler and NONE took effect. Controller pid 18300 started 00:37:50;
+# 6c3851d0 / ff439e14 / d048f96f landed 05:03 / 05:24 / 05:34. Python imports a
+# module ONCE, so the running image predated all three, and the live stdin at
+# 05:45 (control/_gemini_in.txt) still carried the pre-fix ledger section while
+# the identical call measured off disk carried the fixed one. The director then
+# re-emitted a unit closed at 05319608 for the second time - so the loop spent
+# three cycles repairing the de-dup evidence of a process that would never load
+# the repair. That is this repo's "present but does nothing" class, one layer
+# above where R201 looked: not a guard reading the wrong side, but a FIX THAT IS
+# NOT RUNNING. The controller therefore watches its own source and re-execs.
+#
+# director_prompt.md is deliberately EXCLUDED: build_director_body re-reads that
+# template from disk every cycle, so a template edit is already live and
+# re-execing for it would be a restart that buys nothing.
+CODE_FILES = ("loop_controller.py", "executor.py", "adjudicator.py",
+              "slots.py", "winmutex.py")
+
+
+def code_file_digests(src_dir=None) -> dict:
+    """Per-file sha256 of the controller's own imported source.
+
+    Per FILE and not one lump digest, because the log line has to name what
+    moved: "something changed" sends the operator diffing five files, and this
+    check exists precisely for the case where nobody is watching.
+    """
+    base = Path(src_dir) if src_dir is not None else Path(__file__).resolve().parent
+    out = {}
+    for name in CODE_FILES:
+        p = base / name
+        try:
+            out[name] = hashlib.sha256(p.read_bytes()).hexdigest()
+        except OSError:
+            # An absent module is a CHANGED image, not an unknown one. Mapping it
+            # to a sentinel keeps the comparison total - "no digest" must never
+            # read as "no change".
+            out[name] = "-absent-"
+    return out
+
+
+def controller_code_digest(src_dir=None) -> str:
+    d = code_file_digests(src_dir)
+    return hashlib.sha256(
+        "".join(f"{k}:{d[k]}\n" for k in sorted(d)).encode("utf-8")).hexdigest()
+
+
+CODE_DIGESTS_AT_IMPORT = code_file_digests()
+
+
+def stale_code_reason(baseline=None, src_dir=None):
+    """Which of the controller's own source files changed since it started."""
+    base = CODE_DIGESTS_AT_IMPORT if baseline is None else baseline
+    now = code_file_digests(src_dir)
+    moved = [n for n in CODE_FILES if base.get(n) != now.get(n)]
+    if not moved:
+        return None
+    return (f"controller source changed on disk since this process started: "
+            f"{', '.join(moved)} - the running image predates the fix")
+
+
+def resume_cycle(ctl=None, default=1) -> int:
+    """The cycle a re-exec was taken at, consumed once.
+
+    Consume-once is load-bearing: a leftover offset would make the operator's
+    NEXT manual relaunch silently skip cycles it never ran.
+    """
+    p = (Path(ctl) if ctl is not None else CTL) / "resume_cycle.txt"
+    if not p.exists():
+        return default
+    try:
+        n = int((p.read_text(encoding="utf-8", errors="replace") or "").strip())
+    except (OSError, ValueError):
+        n = default
+    p.unlink(missing_ok=True)
+    return n if n >= 1 else default
+
+
+def seed_spend_from_budget(ctl=None, state=None):
+    """Restore gemini spend accounting after a self-restart.
+
+    _ADJ_STATE lives in memory, so EVERY restart path already forgets spend.
+    That was tolerable while a human typed the relaunch; it is not once the
+    controller can relaunch itself on any code edit, because ceiling_usd would
+    then never be reached. Restored spend is a FLOOR - a stale file must not
+    hand back money the run already spent.
+    """
+    st = _ADJ_STATE if state is None else state
+    rec = rjson((Path(ctl) if ctl is not None else CTL) / "budget.json", {}) or {}
+    name = str(rec.get("adjudicator") or "").strip()
+    try:
+        usd = float(rec.get("adjudicator_usd") or 0.0)
+    except (TypeError, ValueError):
+        usd = 0.0
+    if not name or usd <= 0:
+        return st
+    usd_map = st.setdefault("usd", {})
+    if usd > float(usd_map.get(name, 0.0) or 0.0):
+        usd_map[name] = usd
+    return st
+
+
+def restart_for_new_code(cycle, reason, *, execv=None, ctl=None, argv=None) -> bool:
+    """Re-exec this controller so the new code actually runs.
+
+    os.execv REPLACES the image and keeps the PID, which is what makes this safe
+    against claim_repo: the lock holder is compared to os.getpid() and matches,
+    so the fresh image reclaims its own repo instead of refusing to start.
+
+    Called only from a cycle TOP, never mid-handshake - an exec between a typed
+    directive and the claude.done it waits for would abandon a live executor.
+
+    Returns False if the exec failed: a stale image emits duplicate directives,
+    a dead controller emits nothing at all, and the operator is asleep. It never
+    returns on success.
+    """
+    ex = os.execv if execv is None else execv
+    args = list(sys.argv if argv is None else argv)
+    base = Path(ctl) if ctl is not None else CTL
+    log(f"RELOAD: {reason}; re-exec at cycle {cycle}")
+    try:
+        awrite(base / "resume_cycle.txt", str(int(cycle)))
+    except OSError as e:
+        log(f"RELOAD: could not record the resume cycle ({e}) - continuing stale")
+        return False
+    try:
+        ex(sys.executable, [sys.executable, *args])
+    except OSError as e:
+        log(f"RELOAD FAILED: {e} - continuing on the stale image")
+        return False
+    return False
+
+
+def cycle_top_code_guard(cycle):
+    reason = stale_code_reason()
+    if reason:
+        restart_for_new_code(cycle, reason)
+
+
 def claim_repo():
     """One controller per repo. Concurrency ACROSS repos (LW + RC) is the goal;
     two controllers inside THIS repo is corruption, because the control_dir
@@ -798,6 +938,15 @@ def main():
     RUN_ID = claim_repo()
     for f in ("STOP", "gemini.ready", "typed.flag", "claude.done", "cycle.txt"):
         (CTL / f).unlink(missing_ok=True)
+    # A self-restart for new code resumes where it left off: starting over at 1
+    # would let a code edit reset the cycle budget, and max_cycles is the real
+    # limiter of this loop (the gemini ceiling is cents). Spend is restored for
+    # the same reason - see seed_spend_from_budget.
+    start_cycle = resume_cycle()
+    if start_cycle > 1:
+        seed_spend_from_budget()
+        log(f"resumed after a code reload at cycle {start_cycle} "
+            f"(code {controller_code_digest()[:12]})")
     start_ts = time.time()
     # persistent-session model: pin the session active at launch (the executor being
     # driven via /clear) so the meter bills it for the whole run, not whatever is newest.
@@ -828,13 +977,17 @@ def main():
 
     FIXED = CFG.get("fixed_directive")  # fixed-message mode: skip gemini director+auditor entirely
     CYCLE_CMD = CFG.get("cycle_command")  # self-directing slash command typed verbatim; director SKIPPED, auditor KEPT
-    for cycle in range(1, CFG["max_cycles"] + 1):
+    for cycle in range(start_cycle, CFG["max_cycles"] + 1):
         # STOP is otherwise only polled inside wait_for/wait_gone, which never
         # run while the director is erroring - a 2026-07-03 outage spun 20+
         # directive-less cycles where an operator STOP would have been ignored.
         if (CTL / "STOP").exists():
             log("external STOP seen (cycle top)")
             sys.exit(0)
+        # Beside the STOP poll deliberately: this is the only point in the cycle
+        # where no handshake is in flight, so a re-exec cannot abandon an
+        # executor waiting on claude.done.
+        cycle_top_code_guard(cycle)
         override = consume_directive_override()
         src = cycle_source(CFG, override)
         if src == "override":
