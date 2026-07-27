@@ -41,9 +41,16 @@ from pathlib import Path
 class DoneRecord:
     """What one executed cycle produced.
 
-    `raw` is the parsed claude.done payload, carried through untouched because
-    the director prompt is built from it - reshaping it would change directive
-    text and make this refactor a behavior change.
+    `raw` is the parsed claude.done payload, carried through with exactly ONE key
+    stamped - `summary`, and only when a guard deviated from the directive. The
+    rest is untouched because the director prompt is built from it, so reshaping
+    it would change directive text. The one exception is the point: the director
+    reads raw and nothing else about what happened, so a deviation absent from
+    raw is a deviation the director never sees, and it re-issues the same broken
+    shape next cycle.
+
+    `summary` is that same stamped line, carried on the record so a caller does
+    not have to reach into raw to find out whether this cycle was corrected.
 
     cost_usd / session_id are 0.0 / None on the AHK channel: that channel returns
     no receipt, which is why the controller still scrapes transcripts for cost.
@@ -62,6 +69,7 @@ class DoneRecord:
     session_id: str | None = None
     error: str | None = None
     raw: dict = field(default_factory=dict)
+    summary: str = ""
 
 
 DIRECTIVE_OPENER = (
@@ -255,10 +263,65 @@ SERIALIZE_HEADER = "EXECUTOR OVERRIDE - RUN THE NAMED AGENTS SEQUENTIALLY, NOT I
 UNVERIFIED_HEADER = ("EXECUTOR OVERRIDE - PROVE THE FILE SETS ARE DISJOINT, "
                      "OR RUN THE NAMED AGENTS SEQUENTIALLY")
 
+# Kept, but no longer the mechanism. stamp_deviations below is what GUARANTEES
+# the director sees the correction; this ask is only the human-readable half, and
+# a model that explains the deviation in its own words is better context than a
+# marker alone. What it may not be is the only route - see the stamp's docstring.
 _REPORT_IT = (
     "State this deviation in your summary line. The director does not read this file "
     "back, so an unreported correction teaches it nothing and it writes the same "
     "shape again next cycle.\n")
+
+
+# ---- the mechanical deviation stamp (both guards) ---------------------------
+#
+# MEASURED 2026-07-27. Both guards below correct a directive, log the correction
+# to control/controller.log, and then ASK the executing model to repeat it in its
+# summary line. controller.log is not a director input: loop_controller.py:577
+# feeds the model-authored claude.done payload forward as `=== LAST claude.done
+# ===` and that is all the director ever learns about the cycle. So whether the
+# correction reached the component that CAUSED it depended on the model
+# volunteering it in prose, and a model that silently complies teaches the
+# director nothing - the same failure the comment at the top of this section says
+# recording exists to prevent, one layer up.
+
+DEVIATION_STAMP = "executor: DEVIATIONS APPLIED"
+
+
+def stamp_deviations(summary, deviations) -> str:
+    """Pure: the summary the controller reports, with any deviations stamped on.
+
+    A PREFIX, not a suffix, for the same reason the override headers are: the
+    director's context dump is long and gets truncated and skimmed from the top,
+    and the part after the bar is the model's own prose - the half that may be
+    absent, vague, or wrong about what the executor actually did. The guaranteed
+    half goes first.
+
+    Byte-identical passthrough when nothing deviated, which is what keeps every
+    clean cycle's summary and raw payload exactly as the model wrote them.
+    Idempotent because run() must not be able to double-stamp one record.
+    """
+    s = summary or ""
+    if not deviations:
+        return s
+    if s.startswith(DEVIATION_STAMP):
+        return s
+    head = f"{DEVIATION_STAMP}: {'; '.join(deviations)}"
+    return f"{head} | {s}" if s else head
+
+
+def deviation_only_raw(stamped: str) -> dict:
+    """The raw payload a FAILED cycle hands the controller.
+
+    Empty when nothing deviated, which is byte-for-byte the shape every error
+    path had before the stamp existed. When something DID deviate the stamp has
+    to live in raw and not only on the record, because the controller reads
+    `rec.raw` and nothing else off a DoneRecord (loop_controller.py `done =
+    rec.raw` -> `last_done` -> the director's `=== LAST claude.done ===` dump).
+    A stamp carried only on DoneRecord.summary would be invisible on exactly the
+    branch that has no model prose in it at all.
+    """
+    return {"summary": stamped} if stamped else {}
 
 
 def serialize_directive(body: str, plan: ParallelPlan) -> str:
@@ -308,21 +371,27 @@ def serialize_directive(body: str, plan: ParallelPlan) -> str:
         f"first.\n{_REPORT_IT}\n{tail}")
 
 
-def enforce_agent_disjointness(cycle, body, *, log=None, awrite=None, ctl=None):
+def enforce_agent_disjointness(cycle, body, *, log=None, awrite=None, ctl=None,
+                               note=None):
     """Judge the directive, and on a deviation serialize it AND record it.
 
     Returns the body to execute - byte-identical to the input whenever the
     directive is already fine, which is what keeps every non-parallel and every
     genuinely-disjoint cycle untouched.
 
-    The record goes to the controller's own log seam (control/controller.log, the
-    file the operator greps and the judge reads) with a marker distinct from
-    winmutex's UNSERIALIZED, and directive.md is rewritten so the session that
-    actually does the work reads the serialized plan rather than the parallel one.
+    The record goes to two places because they have two different readers. `log`
+    is control/controller.log - the file the operator greps and the judge reads -
+    under a marker distinct from winmutex's UNSERIALIZED. `note` is the executor's
+    per-cycle deviation list, which stamp_deviations puts on the summary the
+    DIRECTOR reads; the director is the component that wrote the bad directive,
+    and it never sees controller.log. directive.md is rewritten either way so the
+    session that does the work reads the serialized plan, not the parallel one.
     """
     plan = parallel_plan(body)
     if not plan.deviates:
         return body
+    if note:
+        note(f"{PARALLEL_MARKER} {plan.detail}")
     if log:
         # The marker is constant so one grep finds every deviation; the tail says
         # which remedy was applied, because the two are not the same event.
@@ -531,7 +600,7 @@ def _git_is_ancestor(repo_root, a, b) -> bool:
 
 
 def enforce_directive_grounding(cycle, body, *, log=None, awrite=None, ctl=None,
-                                repo_root="."):
+                                repo_root=".", note=None):
     """Check the directive's grounding, and on a finding annotate it AND record it.
 
     Sibling of enforce_agent_disjointness and deliberately the same shape: returns
@@ -539,10 +608,11 @@ def enforce_directive_grounding(cycle, body, *, log=None, awrite=None, ctl=None,
     logs to the controller's own log seam under its own grep marker, and rewrites
     control/directive.md so the session that does the work reads the correction.
 
-    Recording is half the point here too. A silent annotation teaches the director
-    nothing, and the director is the component that got this wrong - it emitted
-    the same landed unit twice, so the correction has to be visible in
-    controller.log where the operator and the auditor both read.
+    Recording is half the point here too, and this guard is where the two readers
+    diverge hardest. controller.log serves the operator and the auditor; `note`
+    serves the DIRECTOR, which is the component that got this wrong - it emitted
+    the same landed unit twice - and which reads only the claude.done payload the
+    stamp lands on.
     """
     findings = grounding_findings(
         body,
@@ -551,9 +621,11 @@ def enforce_directive_grounding(cycle, body, *, log=None, awrite=None, ctl=None,
         is_ancestor=lambda a, b: _git_is_ancestor(repo_root, a, b))
     if not findings:
         return body
+    detail = "; ".join(f.detail for f in findings)
+    if note:
+        note(f"{GROUNDING_MARKER} {detail}")
     if log:
-        log(f"cycle {cycle}: {GROUNDING_MARKER} "
-            + "; ".join(f.detail for f in findings))
+        log(f"cycle {cycle}: {GROUNDING_MARKER} " + detail)
     fixed = reground_directive(body, findings)
     if awrite and ctl is not None:
         awrite(Path(ctl) / "directive.md", fixed)
@@ -583,19 +655,27 @@ class AhkExecutor:
         self.rjson = rjson
         self.stall_action = stall_action
         self.stall_recovery_directive = stall_recovery_directive
+        self.deviations: list = []
 
     def run(self, cycle: int, body: str, src: str) -> DoneRecord:
         ctl = self.ctl
+        # Per-CYCLE, not per-executor: the controller builds one executor and
+        # calls run() once per cycle for the life of the run, so without this
+        # reset cycle 1's deviation would stamp every clean cycle after it and
+        # teach the director a fault that is not in the directive it just wrote.
+        self.deviations = []
         # Grounding first: it judges the directive AS AUTHORED, and running it
         # after the disjointness rewrite would make it read that guard's own
         # header as part of the director's text.
         body = enforce_directive_grounding(cycle, body, log=self.log,
                                            awrite=self.awrite, ctl=ctl,
-                                           repo_root=self.cfg.get("repo_root", "."))
+                                           repo_root=self.cfg.get("repo_root", "."),
+                                           note=self.deviations.append)
         # No-op (returns the same string, writes nothing) unless the directive
         # dispatches parallel agents whose file sets are not provably disjoint.
         body = enforce_agent_disjointness(cycle, body, log=self.log,
-                                          awrite=self.awrite, ctl=ctl)
+                                          awrite=self.awrite, ctl=ctl,
+                                          note=self.deviations.append)
         self.awrite(ctl / "gemini.ready",
                     directive_payload(cycle, body, src,
                                       self.cfg.get("clear_each_cycle", True)))
@@ -626,12 +706,25 @@ class AhkExecutor:
 
         done = self.rjson(ctl / "claude.done", {})
         (ctl / "claude.done").unlink(missing_ok=True)
+        # Stamped into raw as well as onto the record: raw IS the director's only
+        # view of this cycle, so a stamp that lived only on the record would be
+        # invisible to the component whose directive was corrected.
+        #
+        # Written back ONLY when something deviated, because on this channel the
+        # payload comes from done_sentinel.py, which has no `summary` key at all -
+        # so an unconditional write would add `"summary": ""` to the director's
+        # context on every clean cycle, which is a shape change to the seam this
+        # guard exists to keep honest rather than a record of anything.
+        stamped = stamp_deviations(str(done.get("summary") or ""), self.deviations)
+        if self.deviations:
+            done["summary"] = stamped
         return DoneRecord(
             cycle=cycle,
             sha=done.get("sha") or "",
             tests_pass=done.get("tests_pass", "?"),
             regressions=bool(done.get("regressions")),
             raw=done,
+            summary=stamped,
         )
 
 
@@ -814,6 +907,7 @@ class SdkExecutor:
         self.stop = stop
         self.awrite = awrite
         self.session_id: str | None = None
+        self.deviations: list = []
 
     def _argv_prefix(self) -> list:
         """`executor_cmd` may be a string or an argv list (tests inject a shim)."""
@@ -854,14 +948,21 @@ class SdkExecutor:
     def run(self, cycle: int, body: str, src: str) -> DoneRecord:
         import json as _json
 
+        # Per-CYCLE, not per-executor: this object outlives the cycle (it even
+        # carries session_id across them), so without the reset cycle 1's
+        # deviation would stamp every clean cycle after it and teach the director
+        # a fault that is not in the directive it just wrote.
+        self.deviations = []
         # Same guards as the ahk channel, in the same order, and they matter MORE
         # here: a `-p` run is unattended, so nobody is watching to refuse a
         # colliding directive or to notice one that re-issues landed work.
         body = enforce_directive_grounding(cycle, body, log=self.log,
                                            awrite=self.awrite, ctl=self.ctl,
-                                           repo_root=self.cfg.get("repo_root", "."))
+                                           repo_root=self.cfg.get("repo_root", "."),
+                                           note=self.deviations.append)
         body = enforce_agent_disjointness(cycle, body, log=self.log,
-                                          awrite=self.awrite, ctl=self.ctl)
+                                          awrite=self.awrite, ctl=self.ctl,
+                                          note=self.deviations.append)
         argv = self.build_argv(cycle)
         prompt = sdk_prompt(cycle, body, src)
         timeout = float(self.cfg.get("cycle_deadline_sec", 5400))
@@ -884,14 +985,24 @@ class SdkExecutor:
                 # Letting this escape IS the measured defect - it converted a
                 # recorded failed cycle into an exception that took the run down.
                 self.log(f"cycle {cycle}: sdk child survived the tree kill - not reaped")
-            return DoneRecord(cycle=cycle, error=f"timeout after {timeout:.0f}s")
+            # Every failure path stamps too, and into raw as well as onto the
+            # record. A cycle that deviated and THEN failed is the case where the
+            # director most needs to know its directive was corrected: it is about
+            # to be handed a dead cycle with no model prose in it at all, and
+            # without the stamp it would read the failure as the whole story and
+            # re-issue the same shape.
+            stamped = stamp_deviations("", self.deviations)
+            return DoneRecord(cycle=cycle, error=f"timeout after {timeout:.0f}s",
+                              summary=stamped, raw=deviation_only_raw(stamped))
 
         try:
             res = _json.loads(out.strip() or "{}")
         except ValueError:
             head = (out or err or "").strip().replace("\n", " ")[:200]
             self.log(f"cycle {cycle}: sdk returned unparseable stdout: {head}")
-            return DoneRecord(cycle=cycle, error=f"unparseable result: {head}")
+            stamped = stamp_deviations("", self.deviations)
+            return DoneRecord(cycle=cycle, error=f"unparseable result: {head}",
+                              summary=stamped, raw=deviation_only_raw(stamped))
 
         cost = float(res.get("total_cost_usd") or 0.0)
         sid = res.get("session_id")
@@ -901,8 +1012,10 @@ class SdkExecutor:
         if res.get("is_error") or proc.returncode != 0:
             detail = str(res.get("result") or err or "").strip().replace("\n", " ")[:200]
             self.log(f"cycle {cycle}: sdk reported error (rc={proc.returncode}): {detail}")
+            stamped = stamp_deviations("", self.deviations)
             return DoneRecord(cycle=cycle, cost_usd=cost, session_id=sid,
-                              error=detail or f"exit {proc.returncode}")
+                              error=detail or f"exit {proc.returncode}",
+                              summary=stamped, raw=deviation_only_raw(stamped))
 
         so = res.get("structured_output")
         if not isinstance(so, dict) or not all(k in so for k in DONE_SCHEMA["required"]):
@@ -911,11 +1024,19 @@ class SdkExecutor:
             # as a failed cycle rather than inventing fields - a fabricated sha
             # would defeat the controller's same-sha no-progress guard.
             self.log(f"cycle {cycle}: sdk returned no valid structured_output")
+            stamped = stamp_deviations("", self.deviations)
             return DoneRecord(cycle=cycle, cost_usd=cost, session_id=sid,
-                              error="missing or incomplete structured_output")
+                              error="missing or incomplete structured_output",
+                              summary=stamped, raw=deviation_only_raw(stamped))
 
         self.log(f"cycle {cycle}: sdk done cost=${round(cost, 4)} "
                  f"sha={str(so.get('sha'))[:8]} tests={so.get('tests_pass')}")
+        # Stamped into raw as well as onto the record, for the reason the ahk
+        # channel spells out: raw is the director's only view of this cycle.
+        stamped = stamp_deviations(str(so.get("summary") or ""), self.deviations)
+        raw = dict(so)
+        if self.deviations:
+            raw["summary"] = stamped
         return DoneRecord(
             cycle=cycle,
             sha=str(so.get("sha") or ""),
@@ -923,7 +1044,8 @@ class SdkExecutor:
             regressions=bool(so.get("regressions")),
             cost_usd=cost,
             session_id=sid,
-            raw=dict(so),
+            raw=raw,
+            summary=stamped,
         )
 
 
