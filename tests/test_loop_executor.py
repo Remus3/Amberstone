@@ -1730,3 +1730,323 @@ def test_a_clean_sdk_failure_leaves_raw_empty_exactly_as_before(tmp_path: Path):
     assert rec.error
     assert rec.raw == {}
     assert rec.summary == ""
+
+
+# ---- the OTHER premise tag: [from-digest] over a path that is on disk --------
+#
+# MEASURED 2026-07-27, cycle 15 of this run. The guard above skips every
+# [from-digest] claim outright (executor.py: `if hit.group(1).lower() != tag`),
+# and as far as R208 goes that is correct - the director stamped those claims
+# KNOWN, and the executor does not judge whether a semantic claim is true.
+#
+# Cycle 15's entire directive rested on one of them, verbatim:
+#   PREMISE-CHECK: [from-digest] LAST AUDIT reports VERDICT: REGRESS for
+#   corrupted uses refs in docs-guards.yml.
+# and it was false. `grep -rn "uses:" .github/workflows/` returns 10 refs, every
+# one a real version tag (actions/checkout@v6, actions/setup-python@v6,
+# actions/cache@v4, CodSpeedHQ/action@v4); zero match the corrupted
+# `@agents\...\test_x.py` shape the digest described; and `gh run list` shows
+# docs-guards run 30289333992 SUCCESS at HEAD 3e6f69b9. The claim came out of a
+# model-authored audit digest, reached the executor with zero friction because of
+# the tag, and burned the whole cycle.
+#
+# The fix is not a verdict - the executor still cannot know whether the claim
+# holds, and it must not pretend to. It is the one mechanical fact available:
+# the claim NAMED A FILE, that file is in this tree, so go and read it. Silence
+# stays the default for every digest claim that names none.
+
+# The cycle-15 directive. The PREMISE-CHECK, VERDICT and dispatch lines are
+# verbatim off ops/loop/control/directive.md as the director emitted them; only
+# the claimed HEAD is swapped to the fixture's, so the finding under test is the
+# only one that fires and this reads as a premise incident rather than a stale
+# one.
+_CYCLE15 = f"""GROUNDED-AGAINST: HEAD={_HEAD[:8]} LEDGER-TOP=1083 CHAIN-LAST=cycle 14
+NOT-A-DUPLICATE-OF: cycle 14 | distinct because this fixes docs-guards.yml corruption
+PREMISE-CHECK: [from-digest] LAST AUDIT reports VERDICT: REGRESS for corrupted uses refs in docs-guards.yml.
+
+ENGINE-IMPACT: NONE - yaml workflow fix only.
+
+VERDICT: REGRESS. LAST AUDIT states .github/workflows/docs-guards.yml has invalid action refs
+(lines 62, 69) like `@agents\\daemon_slayer\\tests\\test_x.py` instead of correct version tags (`@v4`).
+Fix this regression FIRST. Restate the failure. Restore real action tags.
+
+Direct 1 worktree subagent. No fan-out. Agent owns .github/workflows/docs-guards.yml.
+"""
+
+
+class _Paths:
+    """A repo-path resolver over a fixed set of files that exist.
+
+    Injected for the same reason resolve/is_ancestor are, and with the same half
+    of the contract under test: `asked` records which tokens were probed at all,
+    because a guard that hands every prose word to a path lookup is a guard that
+    costs a subprocess per word of a directive.
+
+    Answers a bare basename as well as a fully-spelled path, which is what the
+    live resolver does and what the measured cycle-15 premise needs - that field
+    says `docs-guards.yml` while the file is .github/workflows/docs-guards.yml.
+    """
+
+    def __init__(self, *known: str):
+        self.known = list(known)
+        self.asked: list = []
+
+    def resolve(self, token: str) -> str:
+        self.asked.append(token)
+        t = token.replace("\\", "/").lower()
+        for p in self.known:
+            if p.lower() == t or p.lower().endswith("/" + t):
+                return p
+        return ""
+
+
+def test_the_cycle_15_from_digest_premise_names_the_file_it_is_about():
+    """The regression that would have caught cycle 15. The HEAD is clean, the
+    directive names no landed sha, and every prior guard reads it as perfect."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    found = executor.grounding_findings(_CYCLE15, resolve_path=p.resolve, **_Git().kwargs())
+    assert [f.kind for f in found] == ["digest-premise"]
+    assert found[0].paths == (".github/workflows/docs-guards.yml",)
+    assert ".github/workflows/docs-guards.yml" in found[0].detail
+    assert "LAST AUDIT reports" in found[0].token
+
+
+def test_the_cycle_15_finding_instructs_a_re_read_and_never_calls_the_claim_false():
+    """The R208 line, which this finding may not cross: the executor did not open
+    the file and has no standing to say whether the premise holds. It says where
+    to look. A guard that invents a verdict is the failure the abstention on
+    PREMISE-CHECK was guarding against in the first place."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    found = executor.grounding_findings(_CYCLE15, resolve_path=p.resolve, **_Git().kwargs())
+    detail = found[0].detail.lower()
+    assert "re-read" in detail
+    for verdict in ("is false", "does not hold", "is wrong", "is not true", "stale"):
+        assert verdict not in detail
+
+
+def test_without_a_resolver_the_pure_function_raises_no_digest_finding():
+    """Purity forces this: grounding_findings may not touch the filesystem, so
+    with no probe injected there is no path to name and silence is the only
+    honest output. What keeps that from becoming an always-passing guard is the
+    production-caller test below, not a default buried in here."""
+    assert executor.grounding_findings(_CYCLE15, **_Git().kwargs()) == []
+
+
+def test_a_from_digest_claim_naming_no_path_is_silent():
+    """The common case by a wide margin, and the reason this guard is usable at
+    all: most digest-sourced claims are counts and states, not files."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    for claim in ("13061 tests pass", "the loop is armed", "LAST AUDIT reports VERDICT: PASS"):
+        body = f"PREMISE-CHECK: [from-digest] {claim}\n"
+        assert executor.grounding_findings(
+            body, resolve_path=p.resolve, **_Git().kwargs()) == [], claim
+
+
+def test_a_from_digest_claim_naming_a_path_that_is_not_on_disk_is_silent():
+    """EXISTENCE is the whole false-positive defence. A path-shaped token that is
+    not in the tree gives the session nothing to re-read, so naming it would be a
+    bullet that costs attention and buys nothing."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    body = "PREMISE-CHECK: [from-digest] ops/loop/guard_that_never_existed.py carries the fix\n"
+    assert executor.grounding_findings(body, resolve_path=p.resolve, **_Git().kwargs()) == []
+    assert "ops/loop/guard_that_never_existed.py" in p.asked, (
+        "it must be probed and then rejected, not skipped by shape")
+
+
+def test_prose_words_in_a_digest_claim_are_never_handed_to_the_path_probe():
+    """The other half of the same contract: the probe is a filesystem or index
+    lookup, so a claim's ordinary words must not each become one."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    executor.grounding_findings(
+        "PREMISE-CHECK: [from-digest] the last audit says the workflow is corrupted\n",
+        resolve_path=p.resolve, **_Git().kwargs())
+    assert p.asked == []
+
+
+def test_a_mixed_premise_line_attributes_each_tag_to_its_own_kind():
+    """One line, both tags. They are different findings with different remedies -
+    a self-declared unknown has to be PROVEN before the work runs, a digest claim
+    has to be RE-READ - so folding them into one kind sends half of them the
+    wrong instruction."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    body = ("PREMISE-CHECK: [from-digest] the audit flags .github/workflows/docs-guards.yml. "
+            "[UNVERIFIED] the staged .githooks changes exist\n")
+    found = executor.grounding_findings(body, resolve_path=p.resolve, **_Git().kwargs())
+    assert [f.kind for f in found] == ["unverified-premise", "digest-premise"]
+    assert found[0].token == "the staged .githooks changes exist"
+    assert found[0].paths == ()
+    assert found[1].paths == (".github/workflows/docs-guards.yml",)
+    out = executor.reground_directive(body, found)
+    assert out.startswith(executor.PREMISE_HEADER), (
+        "a self-declared unknown is the stronger claim and keeps the header")
+    assert ".github/workflows/docs-guards.yml" in out
+
+
+def test_the_unverified_premise_scan_is_unchanged_by_the_digest_scan():
+    """Regression pin on the older half. _field_claims is now shared by both
+    tags, and a generalization that shifted a claim boundary by one character
+    would change what every cycle-13-shaped directive reports."""
+    p = _Paths(".github/workflows/docs-guards.yml", "ops/loop/winmutex.py")
+    found = executor.grounding_findings(_CYCLE13, resolve_path=p.resolve, **_Git().kwargs())
+    assert [f.kind for f in found] == ["unverified-premise", "unverified-premise"]
+    assert [f.token for f in found] == ["staged .githooks changes exist",
+                                        "moon_sync_inbox holds winmutex.py.from-lw"]
+    assert executor._unverified_premises(_CYCLE13) == [f.token for f in found]
+
+
+def test_the_digest_override_names_the_path_and_asserts_nothing_about_the_claim():
+    """What the SESSION reads. It has to carry the file to open, and it may not
+    carry a verdict the executor never measured - a correction that overstates
+    what it checked is discounted by the next model that reads one."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    found = executor.grounding_findings(_CYCLE15, resolve_path=p.resolve, **_Git().kwargs())
+    out = executor.reground_directive(_CYCLE15, found)
+    assert out.startswith(executor.DIGEST_HEADER)
+    assert executor.GROUNDING_HEADER not in out and executor.PREMISE_HEADER not in out
+    assert executor.GROUNDING_MARKER in out
+    assert ".github/workflows/docs-guards.yml" in out
+    prose = out.lower().replace(executor.GROUNDING_MARKER.lower(), "")
+    for verdict in ("is false", "does not hold", "is wrong", "is not true", "stale"):
+        assert verdict not in prose, "the executor did not open the file - do not judge it"
+    assert "re-read" in prose
+    assert "--- ORIGINAL DIRECTIVE FOLLOWS, UNCHANGED ---" in out
+    assert _CYCLE15.strip() in out
+
+
+def test_the_digest_kind_is_not_bucketed_with_the_self_declared_unknowns():
+    """Exact kind matches, never a prefix or substring test - the same trap
+    "unverified-premise" already sets next to "unverified". Bucketing a digest
+    claim as an unknown would print "the directive declared these premises
+    UNKNOWN itself" over a claim the director explicitly said it sourced."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    found = executor.grounding_findings(_CYCLE15, resolve_path=p.resolve, **_Git().kwargs())
+    out = executor.reground_directive(_CYCLE15, found)
+    assert "declared these premises UNKNOWN" not in out
+    assert "grounding prefix below is stale" not in out
+
+
+def test_a_stale_head_still_wins_the_header_over_a_digest_premise():
+    """Same precedence rule the unverified premise already follows: the head
+    being wrong is the claim the session must resolve first."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    body = _CYCLE15.replace(_HEAD[:8], "05319608")
+    found = executor.grounding_findings(body, resolve_path=p.resolve,
+                                        **_Git(landed=["05319608"]).kwargs())
+    assert {f.kind for f in found} == {"stale-head", "digest-premise"}
+    assert executor.reground_directive(body, found).startswith(executor.GROUNDING_HEADER)
+
+
+@pytest.mark.parametrize("spelling", [
+    "`.github/workflows/docs-guards.yml`",
+    "(.github/workflows/docs-guards.yml)",
+    "'.github/workflows/docs-guards.yml',",
+    '".github/workflows/docs-guards.yml".',
+    "[.github/workflows/docs-guards.yml]",
+])
+def test_a_quoted_or_bracketed_path_token_is_still_extracted(spelling: str):
+    """Directives spell paths inside backticks, parens and quotes constantly, and
+    the trailing comma or period is sentence punctuation. A leading dot is NOT -
+    .github and .githooks both start with one - so the trim is asymmetric."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    found = executor.grounding_findings(
+        f"PREMISE-CHECK: [from-digest] the audit flags {spelling} at line 62\n",
+        resolve_path=p.resolve, **_Git().kwargs())
+    assert [f.paths for f in found] == [(".github/workflows/docs-guards.yml",)]
+
+
+def test_the_digest_finding_count_is_capped():
+    """Same reason _MAX_SHA_PROBES exists: every finding is a line PREPENDED to
+    the directive, so one pathological premise line must not bury it."""
+    p = _Paths("ops/loop/executor.py")
+    line = " ".join(f"[from-digest] claim {i} about ops/loop/executor.py in cycle {i}."
+                    for i in range(20))
+    found = executor.grounding_findings(f"PREMISE-CHECK: {line}\n",
+                                        resolve_path=p.resolve, **_Git().kwargs())
+    assert len(found) == executor._MAX_PREMISE_FINDINGS < 20
+
+
+def test_the_same_digest_premise_quoted_twice_is_reported_once():
+    """These directives block-quote the prior one routinely; a duplicate bullet is
+    noise the session learns to skim, which is how a correction stops being read."""
+    p = _Paths(".github/workflows/docs-guards.yml")
+    body = ("    PREMISE-CHECK: [from-digest] the audit flags docs-guards.yml\n"
+            "PREMISE-CHECK: [from-digest] the audit flags docs-guards.yml\n")
+    found = executor.grounding_findings(body, resolve_path=p.resolve, **_Git().kwargs())
+    assert [f.token for f in found] == ["the audit flags docs-guards.yml"]
+
+
+def test_the_live_resolver_answers_a_repo_relative_path_and_a_bare_basename():
+    """Against the real tree, because the injected probe is only as good as the
+    implementation the production caller hands it.
+
+    The basename branch is not a convenience: the measured cycle-15 field says
+    `docs-guards.yml` and the file is .github/workflows/docs-guards.yml, so a
+    root-relative-only probe would have been silent on the one incident this
+    guard exists to close.
+    """
+    assert executor._repo_path(str(ROOT), ".github/workflows/docs-guards.yml") == \
+        ".github/workflows/docs-guards.yml"
+    assert executor._repo_path(str(ROOT), "docs-guards.yml") == \
+        ".github/workflows/docs-guards.yml"
+    assert executor._repo_path(str(ROOT), "guard-that-never-existed.yml") == ""
+    assert executor._repo_path(str(ROOT), "") == ""
+    assert executor._repo_path(str(ROOT), "ops/loop") == "", (
+        "a directory is not something to re-read - the finding points at a file")
+
+
+def test_the_production_caller_injects_a_real_path_probe(tmp_path: Path):
+    """The pure function goes silent with no resolver, so the thing that has to be
+    pinned is that the ONE production caller always hands it a real one - against
+    the real tree, end to end, on the real cycle-15 text."""
+    real = executor._git_head(str(ROOT))
+    body = _CYCLE15.replace(_HEAD[:8], real[:8])
+    logs, written = [], {}
+    out = executor.enforce_directive_grounding(
+        15, body, log=logs.append,
+        awrite=lambda p, t: written.__setitem__(Path(p).name, t), ctl=tmp_path,
+        repo_root=str(ROOT))
+    assert out.startswith(executor.DIGEST_HEADER), (
+        "the head is current and no sha has landed - this is a premise finding only")
+    assert ".github/workflows/docs-guards.yml" in out
+    assert written["directive.md"] == out
+    assert logs and "FROM-DIGEST-PREMISE" in logs[0]
+
+
+def test_an_ordinary_live_directive_raises_no_digest_finding_on_the_real_tree(tmp_path: Path):
+    """FALSE-POSITIVE side against real git and the real filesystem. The shape
+    every ordinary cycle has must stay byte-identical, or this guard fires on
+    every cycle and is ignored by the third."""
+    real = executor._git_head(str(ROOT))
+    body = (f"GROUNDED-AGAINST: HEAD={real[:8]} LEDGER-TOP=1083 CHAIN-LAST=cycle 14\n"
+            "PREMISE-CHECK: [from-digest] the suite is green at 13061 tests\n\n"
+            "Edit ops/loop/executor.py and run tests/test_loop_executor.py.\n")
+    logs, written = [], {}
+    out = executor.enforce_directive_grounding(
+        1, body, log=logs.append,
+        awrite=lambda p, t: written.__setitem__(Path(p).name, t), ctl=tmp_path,
+        repo_root=str(ROOT))
+    assert out == body and logs == [] and written == {}
+
+
+def test_a_digest_premise_reaches_the_director_through_the_stamp(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """R206 again: controller.log is not a director input, and the director is the
+    component that wrote the digest-sourced premise. If the correction does not
+    ride the claude.done stamp it writes the same shape again next cycle."""
+    g = _Git()
+    monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
+    monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
+    monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
+    monkeypatch.setattr(executor, "_repo_path",
+                        lambda root, tok: ".github/workflows/docs-guards.yml"
+                        if tok.endswith("docs-guards.yml") else "")
+    r = _Rec(tmp_path, {"sha": "d" * 40, "tests_pass": "13061", "regressions": False,
+                        "summary": "fixed the workflow"})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5, "repo_root": str(tmp_path)},
+                        tmp_path, **r.deps())
+    rec = ex.run(15, _CYCLE15, "director")
+    assert r.stopped == [], "a digest premise must not stop the run"
+    assert executor.GROUNDING_MARKER in rec.raw["summary"]
+    assert "fixed the workflow" in rec.summary
+    assert executor.DIGEST_HEADER in r.written["directive.md"]
+    assert any("FROM-DIGEST-PREMISE" in m for m in r.logs)

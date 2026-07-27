@@ -444,6 +444,12 @@ GROUNDING_HEADER = "EXECUTOR OVERRIDE - RE-GROUND THIS DIRECTIVE AGAINST THE REA
 # a digest that was already right - a guard that misstates what it measured is
 # read as noise by the next model that sees it.
 PREMISE_HEADER = "EXECUTOR OVERRIDE - VERIFY THE PREMISES THIS DIRECTIVE CALLS UNVERIFIED"
+# And a third, for the same reason the second exists. A digest-premise finding
+# leaves the HEAD current, no sha landed, and nothing self-declared unknown - the
+# only thing measured is that a claim the director sourced from an audit names a
+# file that is sitting in the tree. Opening that with either header above would
+# state a fault this function did not find.
+DIGEST_HEADER = "EXECUTOR OVERRIDE - RE-READ THE FILES THESE FROM-DIGEST PREMISES NAME"
 
 _GROUNDED_HEAD_RE = re.compile(
     r"GROUNDED-AGAINST:.*?\bHEAD\s*=\s*([0-9a-fA-F]{4,40})\b", re.IGNORECASE)
@@ -509,18 +515,70 @@ _PREMISE_TRIM = " \t.;,:<>"
 # premise line must not bury the directive under its own correction.
 _MAX_PREMISE_FINDINGS = 8
 
+# The OTHER tag. MEASURED 2026-07-27 cycle 15: _field_claims skips every
+# [from-digest] claim outright, which is exactly right as an R208 matter - the
+# director stamped those KNOWN and the executor does not judge whether a semantic
+# claim is true. Cycle 15's entire directive then rested on one of them, verbatim
+# off control/directive.md:3:
+#
+#   PREMISE-CHECK: [from-digest] LAST AUDIT reports VERDICT: REGRESS for
+#   corrupted uses refs in docs-guards.yml.
+#
+# and it was false. `grep -rn "uses:" .github/workflows/` returns 10 refs, every
+# one a real version tag; zero match the corrupted `@agents\...\test_x.py` shape
+# the digest described; `gh run list` shows docs-guards run 30289333992 SUCCESS
+# at HEAD 3e6f69b9. The tag bought that claim a free pass through the guard and
+# it burned the cycle.
+#
+# What changed is NOT the R208 abstention, which stands: the executor still has
+# no standing to say whether a premise holds, and this raises no verdict on one.
+# What it raises is the single mechanical fact a digest claim can carry - the
+# claim NAMED A FILE and the file is right there - so the finding is an
+# instruction to go and read it before acting, and never an assertion that the
+# claim is wrong. A digest is model-authored prose ABOUT the tree, written at
+# some earlier moment; the tree is on disk and costs one read.
+#
+# EXISTENCE is the entire false-positive defence, and it has to be, because most
+# digest claims are perfectly legitimate. "13061 tests pass", "the loop is armed"
+# and "LAST AUDIT reports VERDICT: PASS" name no file and raise nothing. Silence
+# is the default here in a way it deliberately is not for [UNVERIFIED]: a guard
+# that fires on every digest-sourced claim is a guard the session skims, which is
+# how the premise correction above stops being read at all.
+_PATH_SUFFIXES = (".py", ".md", ".yml", ".yaml", ".json", ".js", ".css", ".ps1")
+# SHAPE first, lookup second. A claim is mostly ordinary words and the lookup is
+# a filesystem or index probe, so a separator or a source suffix is what earns a
+# token the probe at all - the same reason _SHA_TOKEN_RE has a 7-char floor.
+_PATH_SHAPE_HINT = "/"
+# Asymmetric, and that asymmetry is load-bearing. A LEADING dot is part of the
+# path in this repo (.github/, .githooks/) so it is never trimmed off the front;
+# a TRAILING one is sentence punctuation, because no file here ends in a dot.
+# The rest is how directives actually spell a path: backticks, quotes, parens.
+_PATH_LEAD_TRIM = "`'\"([{<"
+_PATH_TRAIL_TRIM = "`'\")]}>.,;:!?"
+# Bounded for the same reason as _MAX_SHA_PROBES, and it bites harder here: the
+# basename branch of the resolver is a git call, so a pathological premise line
+# listing dozens of file-shaped tokens must not turn one cycle into a process
+# storm. Budget is per directive, not per claim.
+_MAX_PATH_PROBES = 16
+
 
 @dataclass
 class GroundingFinding:
     """One checkable grounding claim that did not survive the check."""
 
-    kind: str  # stale-head | already-landed | unverified | unverified-premise
+    kind: str  # stale-head | already-landed | unverified | unverified-premise | digest-premise
     token: str
     detail: str
+    # Appended at the END with a default because every construction of this class
+    # is POSITIONAL: a field inserted mid-class breaks all of them at once (the
+    # item-216 shape). Only digest-premise fills it. The paths ride the finding
+    # rather than being re-derived in the override block, because re-deriving
+    # them would mean parsing the prose this same function just wrote.
+    paths: tuple = ()
 
 
-def _field_claims(field) -> list:
-    """The [UNVERIFIED] claims in ONE PREMISE-CHECK field.
+def _field_claims(field, *, tag="unverified") -> list:
+    """The claims carrying one TAG in ONE PREMISE-CHECK field.
 
     Forward from the tag to the next tag, and backward only when the tag closed a
     sentence or the field ended - one rule for both tag positions, and the only
@@ -528,19 +586,25 @@ def _field_claims(field) -> list:
 
     A claim must carry a letter. That rejects the leftover punctuation a
     malformed field produces without rejecting a real short claim.
+
+    `tag` is a parameter rather than a second copy of this function because the
+    splitting is the hard part and it is identical for both vocabularies - the
+    six abbreviation cases, the trailing-tag fallback and the placeholder reject
+    are all pinned by tests that only ever exercised [UNVERIFIED], and a
+    duplicate would drift out from under every one of them.
     """
     if _PREMISE_PLACEHOLDER_RE.match(field.strip()):
         return []
     tags = list(_PREMISE_TAG_RE.finditer(field))
     out = []
-    for i, tag in enumerate(tags):
-        if tag.group(1).lower() != "unverified":
+    for i, hit in enumerate(tags):
+        if hit.group(1).lower() != tag:
             continue
         end = tags[i + 1].start() if i + 1 < len(tags) else len(field)
-        ahead = field[tag.end():end]
+        ahead = field[hit.end():end]
         claim = "" if _PREMISE_CLOSES_RE.match(ahead) else ahead.strip(_PREMISE_TRIM)
         if not claim:
-            behind = field[tags[i - 1].end() if i else 0:tag.start()]
+            behind = field[tags[i - 1].end() if i else 0:hit.start()]
             sentences = [s for s in _PREMISE_SPLIT_RE.split(behind) if s.strip(_PREMISE_TRIM)]
             claim = sentences[-1].strip(_PREMISE_TRIM) if sentences else ""
         if any(c.isalpha() for c in claim):
@@ -548,26 +612,87 @@ def _field_claims(field) -> list:
     return out
 
 
-def _unverified_premises(text) -> list:
-    """The claims the director tagged [UNVERIFIED] in its own PREMISE-CHECK field.
+def _premise_claims(text, tag):
+    """Every claim carrying TAG across every PREMISE-CHECK field, lazily.
 
     Deduplicated case-insensitively and in first-seen order: the directive is
     read top-down by a session, and the same premise reported twice is noise it
     learns to skim - which is how a correction stops being read at all.
+
+    A generator rather than a capped list because the two consumers cap at
+    DIFFERENT points. The unverified side is a finding per claim, so the cap is
+    the claim count; the digest side filters on whether a claim names a real
+    path, so capping claims first would let eight fileless claims crowd out the
+    one that actually points at something to read.
     """
-    out, seen = [], set()
+    seen = set()
     for m in _PREMISE_LINE_RE.finditer(text or ""):
-        for claim in _field_claims(m.group(1)):
+        for claim in _field_claims(m.group(1), tag=tag):
             if claim.lower() in seen:
                 continue
             seen.add(claim.lower())
-            out.append(claim)
-            if len(out) >= _MAX_PREMISE_FINDINGS:
-                return out
+            yield claim
+
+
+def _unverified_premises(text) -> list:
+    """The claims the director tagged [UNVERIFIED] in its own PREMISE-CHECK field."""
+    out = []
+    for claim in _premise_claims(text, "unverified"):
+        out.append(claim)
+        if len(out) >= _MAX_PREMISE_FINDINGS:
+            break
     return out
 
 
-def grounding_findings(body, *, head, resolve, is_ancestor) -> list:
+def _claim_paths(claim, resolve_path, budget):
+    """The repo paths ONE claim names that resolve, plus the probe budget left.
+
+    Deduped by token before the probe and by answer after it: a claim naming a
+    file twice, or naming it once by path and once by basename, is one file to
+    re-read and one bullet.
+    """
+    out, seen = [], set()
+    for raw in claim.split():
+        tok = raw.lstrip(_PATH_LEAD_TRIM).rstrip(_PATH_TRAIL_TRIM)
+        if not tok or tok.lower() in seen:
+            continue
+        if _PATH_SHAPE_HINT not in tok and not tok.lower().endswith(_PATH_SUFFIXES):
+            continue
+        seen.add(tok.lower())
+        if budget <= 0:
+            break
+        budget -= 1
+        found = (resolve_path(tok) or "").strip()
+        if found and found not in out:
+            out.append(found)
+    return tuple(out), budget
+
+
+def _digest_premises(text, resolve_path) -> list:
+    """(claim, paths) for every [from-digest] claim that names a path on disk.
+
+    Returns nothing at all without a resolver, and that is the only shape a pure
+    function can take here - it may not call the filesystem itself. The hole that
+    leaves (a caller who forgets, and a guard that silently never fires) is
+    closed by a test on the production caller, not by a default in here, because
+    a default that reaches the disk would make this function untestable against
+    anything but whatever tree the machine happened to have.
+    """
+    if not resolve_path:
+        return []
+    out, budget = [], _MAX_PATH_PROBES
+    for claim in _premise_claims(text, "from-digest"):
+        paths, budget = _claim_paths(claim, resolve_path, budget)
+        if paths:
+            out.append((claim, paths))
+            if len(out) >= _MAX_PREMISE_FINDINGS:
+                break
+        if budget <= 0:
+            break
+    return out
+
+
+def grounding_findings(body, *, head, resolve, is_ancestor, resolve_path=None) -> list:
     """Pure: judge a directive's SELF-REPORTED grounding against the repository.
 
     The lookups are injected rather than called directly so this stays a pure
@@ -582,9 +707,15 @@ def grounding_findings(body, *, head, resolve, is_ancestor) -> list:
     already merged. A sha that resolves but is not an ancestor (a sibling repo's
     head, a branch tip) is legitimate context and is left alone.
 
-    The premise findings ask the repository nothing at all - the director already
-    stamped those claims unknown - so they need no lookup and cost no probe, and
-    they are raised even when HEAD is unreadable.
+    The [UNVERIFIED] premise findings ask the repository nothing at all - the
+    director already stamped those claims unknown - so they need no lookup and
+    cost no probe, and they are raised even when HEAD is unreadable.
+
+    The [from-digest] premise findings ask it exactly ONE thing, through
+    resolve_path: does the file this claim names exist. They still raise no
+    verdict on the claim - see the block above _PATH_SUFFIXES for the cycle-15
+    measurement - only the pointer at what to re-read. With no resolver injected
+    they are silent, which is what keeps this function pure.
     """
     text = body or ""
     out = []
@@ -618,6 +749,19 @@ def grounding_findings(body, *, head, resolve, is_ancestor) -> list:
             "unverified-premise", claim,
             f"UNVERIFIED-PREMISE \"{claim}\" - the directive tagged this claim [UNVERIFIED] "
             f"itself, so it is not a fact the work below may assume"))
+
+    # After the self-declared unknowns, because an unknown is the stronger of the
+    # two: it has to be PROVEN before the work runs, where this one has to be
+    # RE-READ. Same prefix discipline on the detail - one grep marker, so the
+    # kind is the first thing an operator sees after it.
+    for claim, paths in _digest_premises(text, resolve_path):
+        named = ", ".join(paths)
+        out.append(GroundingFinding(
+            "digest-premise", claim,
+            f"FROM-DIGEST-PREMISE \"{claim}\" - the directive sourced this claim from an "
+            f"audit digest rather than from the repository, and it names {named}. Re-read "
+            f"that file before acting on the claim",
+            paths))
 
     if not real:
         return out
@@ -664,6 +808,7 @@ def reground_directive(body, findings) -> str:
     stale = [f for f in findings if f.kind in ("stale-head", "unverified")]
     landed = [f.token for f in findings if f.kind == "already-landed"]
     premises = [f.token for f in findings if f.kind == "unverified-premise"]
+    digest = [f for f in findings if f.kind == "digest-premise"]
     bullets = "\n".join(f"- {f.detail}" for f in findings)
     tail = f"--- ORIGINAL DIRECTIVE FOLLOWS, UNCHANGED ---\n{body}"
     steps = ["Re-read the real HEAD and the newest docs/LEDGER.md rows yourself before "
@@ -683,6 +828,21 @@ def reground_directive(body, findings) -> str:
                      "before you edit anything. If they do not hold, the unit of work "
                      "below is a no-op: do NOT run it, pick the next NON-duplicate unit "
                      "and say which.")
+    if digest:
+        # The paths, not the claims, because the paths ARE the instruction. This
+        # step may not say the claim is wrong - the executor never opened the
+        # file - so it says where the file is and what a digest is worth.
+        named = []
+        for f in digest:
+            named.extend(p for p in f.paths if p not in named)
+        steps.append("These premises came from an audit DIGEST rather than from the "
+                     "repository, and each one names a file that is in this tree: "
+                     + ", ".join(named)
+                     + ". Re-read those files yourself before you act on the claims. A "
+                     "digest records what an audit SAID at some earlier moment, never what "
+                     "the tree holds now, and re-reading costs one Read. If a file does not "
+                     "match its claim, the unit of work below is a no-op: do NOT run it, "
+                     "pick the next NON-duplicate unit and say which.")
     # Header and lead follow what actually fired. A premise-only finding leaves the
     # head claim intact and correct, and a correction that opens by contradicting a
     # measurement it did not make teaches the session to discount the next one.
@@ -694,6 +854,16 @@ def reground_directive(body, findings) -> str:
                 "and it tagged its own premises [UNVERIFIED]. A self-declared unknown is "
                 "not a fact:")
         header = PREMISE_HEADER
+    elif digest and not stale and not landed:
+        # Weaker than the two above ON PURPOSE, and the wording is the whole
+        # finding: nothing here has been checked against the repository except
+        # that the named file exists. The session is being sent to read, not
+        # told it was lied to.
+        lead = ("The PREMISE-CHECK in this directive is SELF-REPORTED by the director, and "
+                "it says these claims came from an audit DIGEST. A digest is model-authored "
+                "prose ABOUT the repository, not the repository - and each claim below "
+                "names a file that is sitting in this tree:")
+        header = DIGEST_HEADER
     numbered = "\n".join(f"{i}. {s}" for i, s in enumerate(steps, 1))
     return (
         f"{header}\n"
@@ -753,6 +923,40 @@ def _git_is_ancestor(repo_root, a, b) -> bool:
         return False
 
 
+def _repo_path(repo_root, token) -> str:
+    """The repo-relative path a premise token names, or "" when it names none.
+
+    Two questions, in order. The first is the literal one - is this token a file
+    under the repo root - and it answers the fully-spelled path a directive body
+    usually carries.
+
+    The second is the BASENAME, and it is not a convenience: the measured
+    cycle-15 field says `docs-guards.yml` while the file is
+    .github/workflows/docs-guards.yml, so a root-relative-only probe would have
+    gone silent on the one incident this whole finding exists to close. That
+    question goes to the INDEX rather than to a filesystem walk - one bounded git
+    call, tracked files only, which also means an untracked scratch file with a
+    colliding name can never manufacture a finding.
+
+    A directory is not an answer. The finding is a pointer at something to READ,
+    and "re-read docs/" is not an instruction anyone can act on.
+    """
+    if not token:
+        return ""
+    try:
+        if (Path(repo_root) / token).is_file():
+            return token.replace("\\", "/")
+    except OSError:
+        return ""
+    if "/" in token or "\\" in token:
+        return ""
+    for line in _git_out(repo_root, "ls-files", "--", token, f"*/{token}").splitlines():
+        line = line.strip()
+        if line and line.rsplit("/", 1)[-1].lower() == token.lower():
+            return line
+    return ""
+
+
 def enforce_directive_grounding(cycle, body, *, log=None, awrite=None, ctl=None,
                                 repo_root=".", note=None):
     """Check the directive's grounding, and on a finding annotate it AND record it.
@@ -772,7 +976,13 @@ def enforce_directive_grounding(cycle, body, *, log=None, awrite=None, ctl=None,
         body,
         head=_git_head(repo_root),
         resolve=lambda tok: _git_resolve(repo_root, tok),
-        is_ancestor=lambda a, b: _git_is_ancestor(repo_root, a, b))
+        is_ancestor=lambda a, b: _git_is_ancestor(repo_root, a, b),
+        # Injected HERE and nowhere else. grounding_findings has no default for
+        # this and must not grow one - a filesystem call inside a pure function
+        # would make it answer differently on every machine that ran the tests.
+        # This is the only production caller, so this line is what decides
+        # whether the digest-premise finding can fire at all.
+        resolve_path=lambda tok: _repo_path(repo_root, tok))
     if not findings:
         return body
     detail = "; ".join(f.detail for f in findings)
