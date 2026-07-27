@@ -165,6 +165,41 @@ FINAL_STEP = (
     "if you could not reach green), summary (one line)."
 )
 
+# Byte-verbatim as director_prompt.md spelled it before the placeholder landed,
+# including the double space after "run". This is RC's interpreter path, NOT
+# LW's - the two repos legitimately differ here, and copying LW's string would
+# break the ahk rollback path in a way only a live dry cycle catches.
+AHK_FINAL_STEP = (
+    'FINAL STEP: run  "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" '
+    "ops/loop/done_sentinel.py --tests <PASS_COUNT> --regressions <0_or_1>"
+)
+
+
+def final_step_instruction(channel) -> str:
+    """THE single source of truth for how a cycle signals completion.
+
+    The two channels need OPPOSITE completion steps and both used to be written
+    down independently - director_prompt.md hardcoded the sentinel command while
+    sdk_prompt appended "do NOT run done_sentinel.py". Appending last probably
+    won, but probably is not a contract, and the director path had never been
+    exercised on the sdk channel: every sdk cycle in either repo so far used
+    fixed_directive or cycle_command, both of which bypass the director.
+
+    ahk: the controller blocks on control/claude.done, so the sentinel command
+    IS the completion signal and the directive must carry it.
+    sdk: `claude -p` returns a schema-validated structured_output, so the
+    sentinel is redundant and running it would write a file nothing reads.
+
+    Unknown channels raise, matching build().
+    """
+    ch = str(channel or "ahk").strip().lower()
+    if ch == "ahk":
+        return AHK_FINAL_STEP
+    if ch == "sdk":
+        return FINAL_STEP
+    raise ValueError(
+        f"unknown executor channel {ch!r} (known: 'ahk', 'sdk')")
+
 
 def sdk_prompt(cycle: int, body: str, src: str) -> str:
     """The prompt piped to `claude -p` on stdin.
@@ -175,7 +210,10 @@ def sdk_prompt(cycle: int, body: str, src: str) -> str:
     meaningless and the header would just be prose in the prompt.
     """
     head = body if src in ("cycle_command", "fixed") else DIRECTIVE_OPENER
-    return f"{head}\n\n{FINAL_STEP}\n"
+    # Via final_step_instruction, never FINAL_STEP directly: the directive body
+    # and the appended instruction must come from one place or they drift apart
+    # again, which is the defect this whole seam exists to close.
+    return f"{head}\n\n{final_step_instruction('sdk')}\n"
 
 
 class SdkExecutor:
