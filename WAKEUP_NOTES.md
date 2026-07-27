@@ -6,6 +6,59 @@
 
 ---
 
+## 2026-07-27 - R199 loop console-flash back-port + the lane-count value contract (ENGINE-IMPACT NONE, `756db42a`)
+
+**The directive was stale and measuring that first was the whole first half.** It asked
+to commit staged `.githooks` mode flips and apply `moon_sync_inbox/winmutex.py.from-lw`
+with the item-5a SHA pin. `git status` was clean, `ops/loop/winmutex.py` already hashed
+`f1b4b011...` identical to both the inbox file and the Sibling-A tree, and
+`tests/test_loop_concurrency.py` already carried the UNSERIALIZED-count 3, both POSIX
+monkeypatch tests and `SHARED_SHA256`. It all landed in `e0f4d546`/`fbf744f5`/`2c2877a1`
+and RC had already sent LW a queue-CLOSED ack at 02:10. Nothing was re-applied.
+
+**The one live sub-task was the defect-class enumeration, and it paid for the cycle.**
+Across all 86 same-path file pairs in the two repos the digest pin is SATURATED - the
+only other identical pairs are a 23-byte empty `.mcp.json` and a gitignored gemini stderr
+capture, neither a contract. But two defects a digest pin structurally cannot cover fell
+out of it.
+
+**RC had been flashing a console window on every single loop cycle.** LW's
+`done_sentinel.py` and `claude_stub.py` both carry `creationflags=CREATE_NO_WINDOW` on
+their `git rev-parse`; RC's did not, and `done_sentinel` is the FINAL action of every
+cycle. Sibling sweep: exactly 2 of the 8 spawn sites in `ops/loop/` were affected.
+
+**The guard for that exact bug existed and was green over it, for two independent
+reasons.** `SCHEDULED_SPAWNERS` is a hand-written universe enumerated from the consumer
+side and held zero `ops/loop/*` entries - the loop was invisible to it. And its constant
+test asserted only that the substring `0x08000000` appeared ANYWHERE in the file, which
+passes for a module that never passes the flag to anything, and which the
+`getattr(subprocess, "CREATE_NO_WINDOW", 0)` form every loop module uses does not contain
+at all. Replaced with an AST resolver following `creationflags` through variable
+bindings, `IfExp` guards and `BitOr`, checking the getattr attribute name exactly -
+because `CREATE_NO_WINDW` returns 0, spawns fine and still flashes. Teeth proven by
+mutation (3 good forms True; typo / zero / wrong-value all False).
+
+**One shared surface is a VALUE, not a file.** `max_concurrent_lanes` is the whole-box
+concurrent ceiling across both repos against one shared slot root, but each repo reads
+its own config, so a disagreement silently raises the ceiling to the larger value. RC's
+own config note calls that "theater" and nothing asserted it. Pinned internally (CI
+actually runs that half) plus cross-repo. Green on arrival at 2=2 by design.
+
+**A 3-failure `snapshot_panels` run was chased, not waved through:** serial 33 passed,
+directory-alone `-n 8` 413 passed, and the STASHED baseline gave 64 failed on entirely
+different tests. Parallel resource contention, and the diff touches no render path.
+
+CARRY-FORWARD: LW ack written to `moon_sync_inbox/2026-07-27-0300-from-RC-stale-directive-two-finds.md`
+flagging that LW should grep its own console-flash guard for both shapes (hand-listed
+universe, substring standing in for a value check), and that the lane count must move on
+both sides in the same round. No re-pin owed; neither shared file was touched.
+
+RC `tests/` 13516 passed / 106 skipped / 460 subtests (13504 baseline + exactly 12 new);
+DS 10052 / 1 skipped / 5585, untouched; ruff clean; 0 non-ASCII. Tier-1: no ENGINE bump,
+no DS bounce, no RC restart, no Share sync.
+
+---
+
 ## 2026-07-27 - R198 Arena coach overlay UI audit (ENGINE-IMPACT NONE, `964f3be1`)
 
 **The UI audit found a backend bug, and it was the most valuable thing in the run.**
