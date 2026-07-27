@@ -28,5 +28,19 @@ tmp="$1.rcfilt"
 grep -v -i '^Co-Authored-By: Claude' "$1" > "$tmp" || true
 mv "$tmp" "$1"
 
-# 2. Validate the subject line against Conventional Commits.
+# 2. Banned glyphs in the MESSAGE.
+#
+# This half CANNOT live in pre-commit. Git's order is pre-commit -> prepare the
+# message -> commit-msg, so `.git/COMMIT_EDITMSG` does not exist yet when
+# pre-commit runs and there is nothing to scan. Splitting the gate across the
+# two hooks is therefore required, not stylistic.
+#
+# MEASURED 2026-07-26: while the gate was invoked only from pre-commit (as
+# `echo "git commit" | gate`), the staged-content and ruff halves still fired -
+# so it LOOKED healthy - while a U+2014 em-dash in a commit SUBJECT committed
+# clean. Credit to the parallel Sibling-A session for predicting this
+# exact failure before RC probed it.
+"$PY" "$ROOT/tools/precommit_gate.py" --message-file "$1" || exit 1
+
+# 3. Validate the subject line against Conventional Commits.
 "$PY" "$ROOT/scripts/precommit_msg_check.py" "$1" || exit 1
