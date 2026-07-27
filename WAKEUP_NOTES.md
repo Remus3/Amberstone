@@ -616,7 +616,7 @@ bump, Tier-1 throughout.
 
 The directive ordered a fix-first REGRESS on `.github/workflows/docs-guards.yml:62,69`,
 claiming the `uses:` refs had been corrupted into
-`@agents\daemon_slayer\tests\test_magic_burst_valuation_dsv6.py`. It had not happened. All
+`[at]agents\daemon_slayer\tests\test_magic_burst_valuation_dsv6.py`. It had not happened. All
 10 `uses:` clauses across the 3 workflows are real tags, and `docs-guards` run
 `30289333992` had completed SUCCESS at the very HEAD the directive was grounded against.
 The claim was tagged `[from-digest]`, and `executor.py:537` skipped every tag that was not
