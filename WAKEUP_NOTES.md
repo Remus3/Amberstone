@@ -8,6 +8,54 @@
 
 
 
+# 2026-07-26b - F1 cross-repo concurrency + the headless executor seam. 8 commits.
+
+Paired session with Sibling-A. RC could not run headless at all before this: the
+executor was inlined in the controller and hard-wired to the AHK GUI bridge, a
+machine-wide singleton keyed on a window title. Full narrative in `docs/LEDGER.md` 1069.
+
+SHIPPED
+- `ops/loop/slots.py` + `ops/loop/winmutex.py` - BYTE-IDENTICAL-BY-CONTRACT with
+  Sibling-A (`95077a62...` / `c21bfe4f...`). NEVER edit one repo's copy alone; both
+  loops coordinate through `C:/ProgramData/lw-loop/slots` + the OS mutex namespace.
+- `ops/loop/executor.py` - the channel seam. `channel` config key, sdk is now the DEFAULT.
+- `claude_gui_bridge.ahk` double-Enter - a single `{Enter}` was being swallowed, leaving
+  the directive typed-but-unsent until the deadline with no error.
+- `{{FINAL_STEP}}` substitution - the two channels need OPPOSITE completion steps.
+- Dollar cap REMOVED everywhere (Max 20x is a subscription; TIME is the only real budget).
+- P5 concurrent run PASSED 4/4; phase-6 gate run PASSED 7/7.
+
+DO NOT REDO
+- Do NOT delete `done_sentinel.py`, `meter()`, `claude_gui_bridge.ahk` or the ahk path.
+  Operator HELD the phase-6 deletions. Rollback is the one `channel` key.
+- Do NOT re-derive the shared-file hashes from whatever is on disk later - they were
+  pinned while both trees were provably in sync.
+
+NEXT - an 11-item queue, agreed with LW, UNSTARTED:
+1 `git update-index --chmod=+x .githooks/*` (all five are 100644, so hooks are INERT on
+  any Linux clone) - 2 `gate_inactive_reason` checks the exec bit, not just presence -
+3 log the sdk `session_id` on EVERY executor log path incl. success - 4 `ENGINE-IMPACT:
+BUMP` must require a numbered step naming every anchor site (there are FIVE: the gate run
+found `agents/daemon_slayer/CHANGELOG.md` is a different file from `Share/CHANGELOG.md`) -
+5 `skipif` audit for preconditions that should be FAILURES - 5a pin the shared-file
+sha256s as constants so CI enforces parity without the sibling tree - 6 CI arms the hook
+gate then asserts it end-to-end, replacing the `skipUnless` that blinded RC - 7 directives
+naming N parallel agents must assert disjoint files; the executor serializes AND RECORDS
+the deviation - 9 `winmutex` POSIX branch emits `UNSERIALIZED` (today it is unserialized
+AND untraced, so every guard passes vacuously off Windows) - joint edit, needs LW - 10
+enumerate the defect class WITHIN the file before committing the fix - 11 score-invariance
+claims ship as a test (the 171-champion claim was measured but left no durable artifact).
+
+ALSO OPEN (drift_guard, 2 breaches, both pre-existing at wrap)
+- `ROADMAP.md` at 94 percent of its 81920-byte budget - needs a relocation pass to
+  `docs/ROADMAP_HISTORY.md`. Deliberately NOT grown this session because of it.
+- version-anchor FALSE POSITIVE: the check excludes historical FILES by name but not
+  historical LINES. `ROADMAP.md:98`, `docs/ORCHESTRATION_PLAN.md:649` and
+  `Share/README.md:340,353` all name 1.259.0 as HISTORY, correctly. Fix the CHECK
+  (line-level context) + add a `tests/test_drift_guard.py` case - do NOT loosen it.
+
+---
+
 # 2026-07-27a - R196 anti-tank kit-penetration tails. ENGINE 1.260.0. 3 commits.
 
 **Loop cycle 6 (gemini director).** Closed the three R190 tails filed in `BACKLOG.md`:
@@ -353,201 +401,3 @@ the trap content LEDGER 1063 says a pointer must carry. **Next session's item 1.
   pools). Do not "fix" 4017 into the registry.
 
 - T1's known-limit pin was KEPT, not deleted - it still constrains T1's own flag.
-
----
-
-
-
-# 2026-07-26l - RM-117 cohort bands CLOSED, RM-91 SHIPPED (ENGINE 1.258.0), repo md cleanup. 9 commits.
-
-
-
-**IS a DS session.** ENGINE 1.257.0 -> 1.258.0, Share mirror regenerated, `:8893`
-
-bounced and live-probed, both build-order keyspaces regenerated.
-
-
-
-## The hand-off task closed, but not for the predicted reason
-
-`build_rank_baselines` finished at **30 cohorts, not 31** - MASTER logged
-
-"no accounts resolved - SKIPPED". The file landed and the absent-baselines warning
-
-went away, but all 14 metrics still read "no cohort table". **The real defect was a
-
-producer/consumer shape mismatch, not a missing file:** `cohort_baseline.load()` did
-
-`.get("roles")` at the TOP level (the single-cohort shape) while the renderer defaults
-
-to `rank_baselines.json`, which is `{"tiers": {COHORT: {"roles": ...}}}`. It returned
-
-`{}` and every band was omitted silently. Fixed with `--cohort`; a tiers-shaped file
-
-with no cohort named now RAISES and lists all 30 (`ecf59a29`).
-
-
-
-**Then reading the now-working output found a worse bug.** `rank_of` kept the LAST
-
-threshold a value cleared, so on a metric where p10..p90 are all 0.0 a 0.0 cleared
-
-every band and kept p90 - a TOP laner who healed nobody was told they were 90th
-
-percentile. Three of fourteen live metrics were wrong. Ties now take the LOWEST
-
-percentile sharing the threshold plus a `tied` marker (`ec4d1e15`).
-
-
-
-## RM-91 shipped, and the filed row was wrong about its own size
-
-Population is **11 tank-routed champions, not the 5 filed**. Sett and Sion are
-
-REFUTED - they scale off the TARGET's health. Built by a worktree agent, merged by
-
-Claude, every claim re-verified independently (all 11 seeded values re-derived,
-
-DS suite re-run 9900 passed, seam live-probed on `:8893`). **The double-count trap is
-
-the thing to remember:** most of these kits emit sub-component AND Total blocks for
-
-one ability (Sejuani W 4.0 + 8.0 with a Total of 12.0 that IS their sum), so a naive
-
-sum triple-counts. **KNOWN LIMIT, pinned as a test:** T1 is monotone in `delta_hp`,
-
-so it does NOT fix the Randuin's headline - that needs T2 (the item's own caster-HP
-
-proc), which is unbuilt.
-
-
-
-## RM-118 filed - and "file it as RM-99" would have been a collision
-
-RM-99 was already allocated 2026-07-19 and shipped as `assume_item_health_stacks`.
-
-**TWO id-allocation lines were stale** (ROADMAP said next-free RM-99, the tracker said
-
-RM-105); both corrected to RM-119, and the tracker now says to check ITSELF, never
-
-ROADMAP prose, before taking an id. RM-118 is mana-as-damage on `/rank-tank`,
-
-population exactly 1 (Blitzcrank). Kassadin and Ryze are NOT defects.
-
-
-
-## Repo cleanup - the inventory agent was wrong twice and counting caught both
-
-27 orphans archived by `git mv`, each verified individually. That check saved a
-
-`proposal.md` and a nested `README.md` (basename collision with root README), and
-
-refuted the "archive the P0..P6 set" recommendation - 8 of 9 still carry 2-7 inbound
-
-refs. 11 `.claude/commands/*.md` had ZERO version control and are now tracked.
-
-ROADMAP gained a "WHERE WORK LIVES" table; three rival "single source of truth"
-
-claims scoped.
-
-
-
-## Do NOT redo / traps that cost time this session
-
-- `agents/agent6_auditor/reports/` LOOKS dead but `_supervisor_ephemeral.py:86` writes
-
-  failure stubs there. It is live.
-
-- `docs/_archive` is gitignored yet its ~300 files are TRACKED. Archive with `git mv`
-
-  ONLY - `cp` + `git add` silently fails and can drop a file from version control.
-
-  Now recorded in `.gitignore`.
-
-- DS champion-coverage: count from the nested `champions` key. A flat top-level count
-
-  returns 2. The doc's old "196 entries / 125 champions / 73%" was that mis-parse plus
-
-  block_index's own count mistaken for the distinct total. **True: 132 champions / 167
-
-  entries / 77.2%.**
-
-- **Share has THREE doc sites.** README got the 1.258.0 note, CHANGELOG.md was missed,
-
-  and `ds_share_sync --check` reads GREEN anyway because it deliberately does not
-
-  rewrite changelog history.
-
-- An ENGINE bump REQUIRES regenerating BOTH build-order keyspaces. Diff should be
-
-  exactly 2 lines per file (engine_version, generated_at) - that is the byte-identical
-
-  proof for a DEFAULT-OFF lever.
-
-- The "tracked tools/ copy always wins" mirror rule was WRONG and had preserved the
-
-  ADR-012-decommissioned bridge in `done.md` for a month. Corrected in sync-all-md
-
-  section 9: promote the NEWER side, ASCII-clean it, and normalize glyphs BEFORE
-
-  diffing or the s244 em-dash purge hides whether content actually diverged.
-
-
-
-## Console flash FIXED (`e872d9c9`) - and the diagnosis is the reusable part
-
-Operator reported cmd/PS windows flashing, "3 in a row sequenced". **It was NOT the
-
-task config** - every frequent RC-* task already uses `pythonw.exe`. **`pythonw`
-
-suppresses the console of the process IT hosts, not of any child it spawns.**
-
-`tools/replay_chain_watch.py` calls `_ps()` from THREE sites every 15 min, each
-
-spawning `powershell` with no `creationflags` - exactly 3 windows, 4x an hour.
-
-`tools/ci_watchdog.py:315` already had the guard AND a comment naming this symptom.
-
-Fix = `creationflags=0x08000000` (CREATE_NO_WINDOW). Swept siblings: `rofl_archive`,
-
-`replay_roster`, `cost_health_watchdog`, `replay_roster_pull` spawn nothing.
-
-`tests/test_no_console_flash_scheduled_tools.py` pins it by AST (verified NOT a
-
-tautology - it flags `timeline_ingest.py:119`). **If a flash reappears, look for a
-
-CHILD process, never the task's own executable.**
-
-
-
-## OPEN, not started
-
-- **`ops/rc_dev_runtime.py` spawns unguarded too** but is on the CLAUDE.md FROZEN
-
-  list - needs explicit operator approval before touching. Same one-line fix.
-
-- **Share standalone has 13 REAL failures** (7832 passed / 13 failed). None is an
-
-  engine failure - each opens a CWD-relative path that exists only at the source-repo
-
-  root. They are host-dependent by exactly the `_HOST_DEPENDENT_TESTS` definition and
-
-  were never added to it. Documented in `Share/README.md`, NOT fixed. Fix = anchor on
-
-  `__file__`; excluding them would drop 13 files of real coverage.
-
-- RM-91 **T2** (item's own caster-HP proc) - the half that actually fixes Randuin's.
-
-- RM-118 build (mana axis, population 1).
-
-- `objective_participation` REFUTED verdict is recorded in LEDGER but
-
-  `docs/REPLAY_T2_PARSE_CRITERIA.md:309` still has the sign backwards ("would inflate
-
-  these rows" - measured, it DEFLATES them), plus two ELITE_MONSTER_KILL field-list
-
-  corrections (`assistingParticipantIds` carries ENEMY participants; `monsterSubType`
-
-  is DRAGON-only).
-
-- MASTER cohort missing from `rank_baselines.json`.
