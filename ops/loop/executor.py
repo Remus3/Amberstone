@@ -28,6 +28,7 @@ for AHK that is the gemini.ready typing handshake and the claude.done sentinel.
 """
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import time
@@ -637,6 +638,21 @@ def _hook_index_modes(root, hooks) -> dict:
     return modes
 
 
+def _is_on_disk_executable(path) -> bool:
+    """Whether the WORKING-TREE file carries a POSIX exec bit.
+
+    DOCUMENTED NO-OP ON WINDOWS: `os.access(p, os.X_OK)` is True for every
+    existing file on nt, so this probe can only ever bite on a POSIX clone -
+    which is precisely the clone that loses the gate. Returning True explicitly
+    on nt states that out loud instead of letting the platform decide quietly,
+    and it makes the POSIX branch a seam the tests can monkeypatch, so the case
+    that matters is pinned from Windows rather than skipped there.
+    """
+    if os.name == "nt":
+        return True
+    return os.access(path, os.X_OK)
+
+
 def gate_inactive_reason(repo_root) -> str | None:
     """Why the commit gate is not active, or None if it looks active.
 
@@ -654,14 +670,22 @@ def gate_inactive_reason(repo_root) -> str | None:
     checkout, CI included, and this check called it green. So the index mode is
     read too (see _hook_index_modes for why the index and not the on-disk bit).
 
-    HONEST LIMIT, per the CLAUDE.md hard rule: this is still a PRESENCE check,
-    and a hook's presence is never proof it fires. The index-mode read raises the
-    floor - it now catches the fresh-clone case AND the mode-100644 case, both of
-    which actually bit - but it does not close the gap: a hook can be present,
-    tracked, executable, and still be a no-op (empty body, an early `exit 0`, a
-    shebang pointing at a missing interpreter). The end-to-end test - stage a
-    banned glyph, attempt a real commit, assert HEAD unchanged - stays the only
-    real proof and is not something a loop start can run.
+    The index mode is not the whole story either: it is what a fresh clone
+    MATERIALIZES, not what git consults at commit time. A hook can be tracked
+    100755 and still be 644 in the working tree (a later `chmod -x`, a clone
+    with core.fileMode=false, an export or rsync that dropped modes, a container
+    bind-mount), and git skips it just as silently. So the on-disk bit is probed
+    last (see _is_on_disk_executable - a documented no-op on Windows).
+
+    HONEST LIMIT, per the CLAUDE.md hard rule: presence plus index mode plus the
+    on-disk bit is still not proof a hook FIRES. Each read raises the floor -
+    the fresh-clone case, the mode-100644 case and the cleared-disk-bit case all
+    now fail loud - but the gap does not close: a hook can be present, tracked,
+    executable on disk and still be a no-op (empty body, an early `exit 0`, a
+    shebang pointing at a missing interpreter), and on Windows the disk probe
+    reads nothing at all. The end-to-end test - stage a banned glyph, attempt a
+    real commit, assert HEAD unchanged - stays the only real proof and is not
+    something a loop start can run.
     """
     root = Path(repo_root)
     if not (root / ".githooks").is_dir():
@@ -693,6 +717,18 @@ def gate_inactive_reason(repo_root) -> str | None:
         return (f"hooks tracked non-executable in {hooks} ({', '.join(not_exec)}, want 100755): "
                 "git silently skips a non-executable hook on any POSIX clone, so this gate "
                 "is inert there - fix with `git update-index --chmod=+x`")
+    # Last, because the index mode is the more portable fault and its fix
+    # repairs every future clone; this one is about THIS checkout only. It is
+    # deliberately not scoped to tracked hooks - a `.git/hooks` install has no
+    # index mode to judge, but git skips a non-executable file there just the
+    # same, and scoping to the index would rebuild the hole one layer down.
+    on_disk = [n for n in HOOK_NAMES if not _is_on_disk_executable(hooks / n)]
+    if on_disk:
+        return (f"hooks present but not executable on disk in {hooks} "
+                f"({', '.join(on_disk)}): the tracked mode is right and the working-tree "
+                "file still has no exec bit (a later `chmod -x`, a clone with "
+                "core.fileMode=false, an export or rsync that dropped modes), and git "
+                "skips it silently - fix with `chmod +x`")
     return None
 
 
