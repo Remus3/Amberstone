@@ -336,6 +336,229 @@ def enforce_agent_disjointness(cycle, body, *, log=None, awrite=None, ctl=None):
     return fixed
 
 
+# ---- directive grounding guard ----------------------------------------------
+#
+# MEASURED 2026-07-27, on this loop. director_prompt.md:14-18 makes the director
+# open every directive with three grounding fields - GROUNDED-AGAINST,
+# NOT-A-DUPLICATE-OF and PREMISE-CHECK - and all three are claims the model makes
+# about ITSELF. Nothing read them back: a grep for those three tokens across the
+# .py tree returned zero hits. So the director emitted the same already-landed
+# unit of work twice (the f1-phase6 inbox apply, landed across four commits that
+# were every one an ancestor of HEAD) while self-reporting HEAD=05319608 against
+# a real HEAD of a7b9ac3d, and the executor typed it verbatim both times.
+#
+# Two of the three claims are CHECKABLE against the repo, so the executor checks
+# them: the HEAD it says it grounded against, and any commit it names that is
+# already merged. PREMISE-CHECK is free prose with no machine-readable referent
+# and is deliberately not judged - inventing a verdict for it would be the kind
+# of guess this guard exists to replace.
+
+GROUNDING_MARKER = "executor: STALE-GROUNDING"
+GROUNDING_HEADER = "EXECUTOR OVERRIDE - RE-GROUND THIS DIRECTIVE AGAINST THE REAL HEAD"
+
+_GROUNDED_HEAD_RE = re.compile(
+    r"GROUNDED-AGAINST:.*?\bHEAD\s*=\s*([0-9a-fA-F]{4,40})\b", re.IGNORECASE)
+
+# 7 is git's own default abbreviation length, and the floor is load-bearing: the
+# very line that carries the HEAD claim also carries LEDGER-TOP=1074 and a cycle
+# number, and handing those to `git rev-parse` invites an ambiguous-prefix answer
+# that would manufacture a finding out of a ledger id.
+_SHA_TOKEN_RE = re.compile(r"\b[0-9a-fA-F]{7,40}\b")
+
+# A directive is prose written by a model, and each probe is a git subprocess in
+# an unattended loop, so a pathological directive naming hundreds of hex-looking
+# tokens must not turn one cycle into a process storm. The shas that decide this
+# question are in the grounding prefix, which is the first thing scanned.
+_MAX_SHA_PROBES = 24
+
+
+@dataclass
+class GroundingFinding:
+    """One checkable grounding claim that did not survive the check."""
+
+    kind: str  # stale-head | already-landed | unverified
+    token: str
+    detail: str
+
+
+def grounding_findings(body, *, head, resolve, is_ancestor) -> list:
+    """Pure: judge a directive's SELF-REPORTED grounding against the repository.
+
+    The lookups are injected rather than called directly so this stays a pure
+    function of its inputs - the ancestry question is the whole check, and a
+    version that shells out could only be tested against whatever history the
+    machine happened to have.
+
+    RESOLUTION is the entire false-positive defence on the already-landed side.
+    The hex shape alone matches far too much - a build number, a truncated
+    digest, and English words spelled out of abcdef all fit it - so a token is
+    only ever a finding when git says it is a commit AND says that commit is
+    already merged. A sha that resolves but is not an ancestor (a sibling repo's
+    head, a branch tip) is legitimate context and is left alone.
+    """
+    text = body or ""
+    out = []
+    m = _GROUNDED_HEAD_RE.search(text)
+    claimed = m.group(1).lower() if m else ""
+    real = (head or "").strip().lower()
+
+    if claimed and not real:
+        # The directive asserted something checkable and the check could not be
+        # run. Reporting nothing here is the always-passing degradation this file
+        # keeps re-learning (see ParallelPlan "unverified", gate_inactive_reason):
+        # an unreadable HEAD is an unknown, never a pass.
+        out.append(GroundingFinding(
+            "unverified", claimed,
+            f"the directive claims GROUNDED-AGAINST HEAD={claimed} and the real HEAD "
+            f"could not be read, so the claim is unverified"))
+    elif claimed and not real.startswith(claimed):
+        out.append(GroundingFinding(
+            "stale-head", claimed,
+            f"the directive claims GROUNDED-AGAINST HEAD={claimed} but the real HEAD "
+            f"is {real[:8]}, so it was written against a stale digest"))
+
+    if not real:
+        return out
+
+    seen = set()
+    for tok_m in _SHA_TOKEN_RE.finditer(text):
+        tok = tok_m.group(0).lower()
+        # The claimed HEAD is a grounding assertion, not proposed work, and the
+        # stale-head finding above already names it - counting it again would
+        # report one fault as two and send the session looking for a second one.
+        if tok == claimed or tok in seen:
+            continue
+        seen.add(tok)
+        if len(seen) > _MAX_SHA_PROBES:
+            break
+        full = (resolve(tok) or "").strip().lower()
+        if not full or not is_ancestor(full, real):
+            continue
+        out.append(GroundingFinding(
+            "already-landed", tok,
+            f"{tok} is already an ancestor of HEAD, so the work the directive names "
+            f"around it is already in the history"))
+    return out
+
+
+def reground_directive(body, findings) -> str:
+    """Pure: the directive with the executor's grounding correction on top.
+
+    Prepended for the same reason the serialize override is: on the director path
+    the bridge types only the opener and the session READS control/directive.md,
+    so a correction anywhere but the first line is prose buried under the plan it
+    contradicts.
+
+    ADVISORY, not fatal. Every input here is a heuristic string match over model
+    prose, and a directive that cites a landed commit as CONTEXT looks identical
+    to one that re-issues it. So this states what the repo actually says and hands
+    the judgement to the session, which can read both. Aborting the cycle on a
+    guess would trade a duplicated unit of work for a dead unattended run.
+    """
+    stale = [f for f in findings if f.kind in ("stale-head", "unverified")]
+    landed = [f.token for f in findings if f.kind == "already-landed"]
+    bullets = "\n".join(f"- {f.detail}" for f in findings)
+    tail = f"--- ORIGINAL DIRECTIVE FOLLOWS, UNCHANGED ---\n{body}"
+    steps = ["Re-read the real HEAD and the newest docs/LEDGER.md rows yourself before "
+             "you act on anything below."]
+    if stale:
+        steps.append("The grounding prefix below is stale, so every 'not yet on disk' "
+                     "claim in it was made against a different tree - re-check each one "
+                     "on disk, not against the prefix.")
+    if landed:
+        steps.append(f"These commits are ALREADY MERGED: {', '.join(landed)}. If the unit "
+                     f"of work below is the work they carry, do NOT re-do it - pick the "
+                     f"next NON-duplicate unit and say which.")
+    numbered = "\n".join(f"{i}. {s}" for i, s in enumerate(steps, 1))
+    return (
+        f"{GROUNDING_HEADER}\n"
+        f"{GROUNDING_MARKER} {'; '.join(f.detail for f in findings)}\n\n"
+        f"The grounding prefix in this directive is SELF-REPORTED by the director and "
+        f"the executor checked it against the repository. It does not hold:\n"
+        f"{bullets}\n\n"
+        f"{numbered}\n{_REPORT_IT}\n{tail}")
+
+
+def _git_out(repo_root, *args) -> str:
+    """stdout of a bounded git read, or "" on any failure.
+
+    Bounded and swallowing for the same reason the controller's own git helper
+    is: these run inside an unattended loop with no deadline around them, so a
+    wedged git (a stale index.lock, a hung hook) must not strand the run. An
+    empty answer lands in the unverified branch above, which is RECORDED rather
+    than quietly passed.
+    """
+    try:
+        r = subprocess.run(["git", "-C", str(repo_root), *args],
+                           capture_output=True, text=True, timeout=30,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return (r.stdout or "").strip() if r.returncode == 0 else ""
+
+
+def _git_head(repo_root) -> str:
+    return _git_out(repo_root, "rev-parse", "HEAD").lower()
+
+
+def _git_resolve(repo_root, token) -> str:
+    """The full sha a token names, or "" when it is not a commit.
+
+    `^{commit}` is not decoration: without it a tree, a blob or a branch whose
+    name happens to be hex resolves too, and a blob id counted as a commit would
+    then be asked an ancestry question it cannot answer.
+    """
+    return _git_out(repo_root, "rev-parse", "--verify", "-q",
+                    f"{token}^{{commit}}").lower()
+
+
+def _git_is_ancestor(repo_root, a, b) -> bool:
+    """True iff commit a is an ancestor of (or identical to) commit b.
+
+    A direct call rather than _git_out because the answer is the EXIT CODE and
+    there is no stdout to read.
+    """
+    if not a or not b:
+        return False
+    try:
+        return subprocess.run(
+            ["git", "-C", str(repo_root), "merge-base", "--is-ancestor", a, b],
+            capture_output=True, timeout=30,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def enforce_directive_grounding(cycle, body, *, log=None, awrite=None, ctl=None,
+                                repo_root="."):
+    """Check the directive's grounding, and on a finding annotate it AND record it.
+
+    Sibling of enforce_agent_disjointness and deliberately the same shape: returns
+    the body to execute, byte-identical to the input whenever the grounding holds,
+    logs to the controller's own log seam under its own grep marker, and rewrites
+    control/directive.md so the session that does the work reads the correction.
+
+    Recording is half the point here too. A silent annotation teaches the director
+    nothing, and the director is the component that got this wrong - it emitted
+    the same landed unit twice, so the correction has to be visible in
+    controller.log where the operator and the auditor both read.
+    """
+    findings = grounding_findings(
+        body,
+        head=_git_head(repo_root),
+        resolve=lambda tok: _git_resolve(repo_root, tok),
+        is_ancestor=lambda a, b: _git_is_ancestor(repo_root, a, b))
+    if not findings:
+        return body
+    if log:
+        log(f"cycle {cycle}: {GROUNDING_MARKER} "
+            + "; ".join(f.detail for f in findings))
+    fixed = reground_directive(body, findings)
+    if awrite and ctl is not None:
+        awrite(Path(ctl) / "directive.md", fixed)
+    return fixed
+
+
 class AhkExecutor:
     """The legacy GUI channel: write gemini.ready, wait for AHK to type it, wait
     for the done sentinel. Verbatim lift - see the module docstring.
@@ -362,6 +585,12 @@ class AhkExecutor:
 
     def run(self, cycle: int, body: str, src: str) -> DoneRecord:
         ctl = self.ctl
+        # Grounding first: it judges the directive AS AUTHORED, and running it
+        # after the disjointness rewrite would make it read that guard's own
+        # header as part of the director's text.
+        body = enforce_directive_grounding(cycle, body, log=self.log,
+                                           awrite=self.awrite, ctl=ctl,
+                                           repo_root=self.cfg.get("repo_root", "."))
         # No-op (returns the same string, writes nothing) unless the directive
         # dispatches parallel agents whose file sets are not provably disjoint.
         body = enforce_agent_disjointness(cycle, body, log=self.log,
@@ -535,8 +764,12 @@ class SdkExecutor:
     def run(self, cycle: int, body: str, src: str) -> DoneRecord:
         import json as _json
 
-        # Same guard as the ahk channel, and it matters MORE here: a `-p` run is
-        # unattended, so nobody is watching to refuse a colliding directive.
+        # Same guards as the ahk channel, in the same order, and they matter MORE
+        # here: a `-p` run is unattended, so nobody is watching to refuse a
+        # colliding directive or to notice one that re-issues landed work.
+        body = enforce_directive_grounding(cycle, body, log=self.log,
+                                           awrite=self.awrite, ctl=self.ctl,
+                                           repo_root=self.cfg.get("repo_root", "."))
         body = enforce_agent_disjointness(cycle, body, log=self.log,
                                           awrite=self.awrite, ctl=self.ctl)
         argv = self.build_argv(cycle)
