@@ -289,3 +289,45 @@ def test_mutex_timeout_raises_when_held_elsewhere():
     finally:
         release.set()
         t.join(timeout=10)
+
+
+# ---- f1-phase6 item 5a: pinned parity constants -----------------------------
+#
+# slots.py and winmutex.py are BYTE-IDENTICAL between this repo and
+# Sibling-A by contract. The mirror test at the top of this file compares
+# against the LW tree directly, which is the stronger check - but it SKIPS when
+# the sibling tree is absent, so on a CI runner (one repo checked out, no
+# sibling) parity is enforced by NOBODY. These pins close that hole: each repo's
+# CI can prove parity alone, against a value both sides agreed to.
+#
+# RE-PINNING IS A JOINT ACT. Never regenerate these from whatever the file
+# happens to be locally - that turns the guard into a rubber stamp and would
+# launder a unilateral drift into "agreed". Change the shared file on one side,
+# hand the other side the exact bytes, re-hash BOTH trees, confirm they match,
+# and only then write the new digest here and in LW's copy in the same round.
+#
+# This block is itself byte-identical with the LW copy in
+# C:\Sibling-A\tests\test_loop_concurrency.py, modulo the repo name in the
+# prose above. Keep it that way.
+SHARED_SHA256 = {
+    # unchanged since the 2026-07-26 sync
+    "slots.py": "95077a62527c9764e896e3bd1da9027e5efd2b15631feb725fe6138cee5054f9",
+    # re-pinned 2026-07-26 for f1-phase6 item 9 (POSIX branch now emits
+    # UNSERIALIZED); previous c21bfe4f309c9ed27e68f7cdf0458d001a9942e6a35c61869e6dedd16cc23b79
+    "winmutex.py": "f1b4b011112685efb88616c52752657cf896fbb0993b2d2d264e7b3edde8b4f4",
+}
+
+
+@pytest.mark.parametrize("name", sorted(SHARED_SHA256))
+def test_shared_module_matches_the_pinned_cross_repo_digest(name: str):
+    """Parity provable from ONE checkout, so CI is not blind to cross-repo drift.
+
+    This is the check that would have caught item 9 landing on the LW side
+    alone: the sibling-tree comparison above goes green-by-skip on any runner
+    without both trees, which is every runner.
+    """
+    digest = hashlib.sha256((ROOT / "ops" / "loop" / name).read_bytes()).hexdigest()
+    assert digest == SHARED_SHA256[name], (
+        f"{name} no longer matches the digest agreed with Sibling-A. "
+        f"If this change is intended, re-sync BOTH trees and re-pin on BOTH "
+        f"sides in the same round - do not just update this constant.")
