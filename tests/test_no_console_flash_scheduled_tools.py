@@ -34,6 +34,15 @@ CREATE_NO_WINDOW = 0x08000000
 SCHEDULED_SPAWNERS = (
     "tools/replay_chain_watch.py",
     "tools/ci_watchdog.py",
+    # 2026-07-26: RC-Supervisor is one of only three RC-* tasks that must stay
+    # Interactive (it drives the Electron overlay), so it KEEPS a desktop after
+    # the S4U sweep and its console children would flash. The other 13 tasks are
+    # now S4U and structurally cannot show a window.
+    "ops/rc_supervisor.py",
+    # Already compliant when swept; pinned so it stays that way. The 2026-07-26
+    # hand-off claimed this file was unguarded - it was not, both of its spawn
+    # sites already carried the platform-guarded flag.
+    "ops/rc_dev_runtime.py",
 )
 
 _SPAWN_ATTRS = {"run", "Popen", "check_output", "call", "check_call"}
