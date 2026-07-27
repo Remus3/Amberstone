@@ -15,6 +15,7 @@ import os
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 # The controller is loaded by absolute file path (launcher + tests), so ops/loop
@@ -28,6 +29,26 @@ else:
     adjudicator = importlib.util.module_from_spec(_adj_spec)
     sys.modules[_ADJ_MODNAME] = adjudicator
     _adj_spec.loader.exec_module(adjudicator)
+
+
+def _bind(modname, filename):
+    """Same absolute-path bind as the adjudicator above, for the shared modules."""
+    if modname in sys.modules:
+        return sys.modules[modname]
+    spec = importlib.util.spec_from_file_location(
+        modname, Path(__file__).resolve().parent / filename)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[modname] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# slots.py + winmutex.py are BYTE-IDENTICAL across LW and RC by contract - they
+# coordinate the two repos' runs with each other through ProgramData and the OS
+# mutex namespace, so a divergence is a silent concurrency bug, not a conflict.
+# tests/test_loop_concurrency.py hashes both against the LW copies.
+slots = _bind("rc_loop_slots", "slots.py")
+winmutex = _bind("rc_loop_winmutex", "winmutex.py")
 
 _CFG_ARG = (sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].endswith(".json")
             else r"C:\Riot Commander\ops\loop\config.json")
@@ -44,6 +65,7 @@ CTL = Path(CFG.get("control_dir", Path(__file__).resolve().parent / "control"))
 CTL.mkdir(parents=True, exist_ok=True)
 DRY = bool(CFG.get("dry_run", False))
 GEMINI_USD = 0.0  # cumulative estimated Gemini spend - THIS is the capped budget (not Claude)
+RUN_ID = ""  # minted in main(); namespaces slot payloads across concurrent runs
 # Adjudicator (external-brain) run state: which backend is live, whether the
 # one-way exhaustion failover already fired, and per-backend estimated spend.
 # Caller-owned so gemini() can rebuild the supervisor from the CURRENT module
@@ -364,7 +386,18 @@ def gemini(prompt_body, instruction):
     None-on-empty sentinel - now live in the backend classes; N3 semantics are
     unchanged: EMPTY output is NEVER a usable answer, so a completed-but-empty
     call returns None exactly like a timeout does.
+
+    Serialized machine-wide on GEMINI_MUTEX: Gemini is ONE metered account shared
+    with the Sibling-A loop. Two concurrent director calls burn quota in
+    parallel and can trip RESOURCE_EXHAUSTED, which the failover logic would
+    misread as real credit exhaustion and STICKILY swap the backend for the rest
+    of the run. Director calls are seconds, so the serialization costs nothing.
     """
+    with winmutex.hold(winmutex.GEMINI_MUTEX, log=log):
+        return _gemini_call(prompt_body, instruction)
+
+
+def _gemini_call(prompt_body, instruction):
     global GEMINI_USD
     sup = _supervisor()
     out = sup.ask(cap_stdin(prompt_body), instruction)
@@ -576,7 +609,35 @@ def stall_recovery_directive(cycle):
         f"\"{py}\" ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>"
     )
 
+def claim_repo():
+    """One controller per repo. Concurrency ACROSS repos (LW + RC) is the goal;
+    two controllers inside THIS repo is corruption, because the control_dir
+    handshake files are not namespaced and each would consume the other's
+    gemini.ready and claude.done.
+
+    Returns the run_id. Exits nonzero if another live controller holds the repo.
+    """
+    lock = CTL / "RUNNING.lock"
+    if lock.exists():
+        rec = rjson(lock, {})
+        holder = int(rec.get("pid", 0) or 0)
+        if holder and holder != os.getpid() and slots.pid_alive(holder):
+            sys.stderr.write(
+                f"another controller is already running in this repo "
+                f"(pid={holder} run_id={rec.get('run_id')} since {rec.get('ts')}). "
+                f"Stop it first, or delete {lock} if it is a stale leftover.\n")
+            sys.exit(2)
+        log(f"reclaiming stale RUNNING.lock (pid={holder} not alive)")
+    run_id = uuid.uuid4().hex[:8]
+    awrite(lock, json.dumps({"pid": os.getpid(), "run_id": run_id,
+                             "ts": time.time(), "repo": str(ROOT)}))
+    awrite(CTL / "run_id.txt", run_id)
+    return run_id
+
+
 def main():
+    global RUN_ID
+    RUN_ID = claim_repo()
     for f in ("STOP", "gemini.ready", "typed.flag", "claude.done", "cycle.txt"):
         (CTL / f).unlink(missing_ok=True)
     start_ts = time.time()
@@ -624,41 +685,46 @@ def main():
                 stop("director returned NO_WORK")
         awrite(CTL / "directive.md", body)
         awrite(CTL / "cycle.txt", str(cycle))
-        clear_line = "/clear\n" if CFG.get("clear_each_cycle", True) else ""
-        if src in ("cycle_command", "fixed"):
-            # type the literal task line (single line, no embedded newlines) after /clear
-            awrite(CTL / "gemini.ready", f"CYCLE={cycle}\n{clear_line}{body}")
-        else:
-            awrite(CTL / "gemini.ready",
-                   f"CYCLE={cycle}\n{clear_line}"
-                   "/gemini-headless-upgrade and Read the file ops/loop/control/directive.md and fully execute it now. "
-                   "No questions; auto-pick the recommended option and proceed.")
-        log(f"cycle {cycle}: directive written ({len(body)} chars), gemini.ready set")
+        # Slot held ONLY around the executor call (the AHK type handshake plus
+        # the wait for claude.done) - never around git, the director or the
+        # auditor, so a long merge in this repo cannot starve the other one.
+        with slots.hold(int(CFG.get("max_concurrent_lanes", 2)),
+                        repo=str(ROOT), run_id=RUN_ID, cycle=cycle, log=log):
+            clear_line = "/clear\n" if CFG.get("clear_each_cycle", True) else ""
+            if src in ("cycle_command", "fixed"):
+                # type the literal task line (single line, no embedded newlines) after /clear
+                awrite(CTL / "gemini.ready", f"CYCLE={cycle}\n{clear_line}{body}")
+            else:
+                awrite(CTL / "gemini.ready",
+                       f"CYCLE={cycle}\n{clear_line}"
+                       "/gemini-headless-upgrade and Read the file ops/loop/control/directive.md and fully execute it now. "
+                       "No questions; auto-pick the recommended option and proceed.")
+            log(f"cycle {cycle}: directive written ({len(body)} chars), gemini.ready set")
 
-        # AHK/stub deletes gemini.ready after typing; its disappearance IS the typed signal
-        if not wait_gone(CTL / "gemini.ready", time.time() + 120):
-            stop(f"cycle {cycle}: AHK never typed (gemini.ready not consumed in 120s)")
-        deadline = time.time() + CFG["cycle_deadline_sec"]
-        log(f"cycle {cycle}: typed (ready consumed); deadline in {CFG['cycle_deadline_sec']}s")
-
-        # WP-I3: one-shot stall recovery before a hard STOP. On the FIRST cycle-deadline
-        # breach, inject a /diagnose recovery directive into the existing (stalled) session
-        # and extend the deadline ONCE (decision = stall_action, pure + tested); hard-STOP
-        # only on a SECOND breach. The no-progress and AHK-never-typed guards remain the
-        # runaway backstops so a truly wedged run still stops cleanly after exactly one
-        # recovery attempt.
-        breach = 0
-        while not wait_for(CTL / "claude.done", deadline, watch_bridge=True):
-            breach += 1
-            if stall_action(breach) == "stop":
-                stop(f"cycle {cycle}: claude.done not seen after stall recovery (hard hang)")
-            log(f"cycle {cycle}: deadline breach {breach} - injecting stall recovery, extending once")
-            awrite(CTL / "gemini.ready", stall_recovery_directive(cycle))
+            # AHK/stub deletes gemini.ready after typing; its disappearance IS the typed signal
             if not wait_gone(CTL / "gemini.ready", time.time() + 120):
-                stop(f"cycle {cycle}: AHK never typed the stall-recovery directive")
+                stop(f"cycle {cycle}: AHK never typed (gemini.ready not consumed in 120s)")
             deadline = time.time() + CFG["cycle_deadline_sec"]
-        done = rjson(CTL / "claude.done", {})
-        (CTL / "claude.done").unlink(missing_ok=True)
+            log(f"cycle {cycle}: typed (ready consumed); deadline in {CFG['cycle_deadline_sec']}s")
+
+            # WP-I3: one-shot stall recovery before a hard STOP. On the FIRST cycle-deadline
+            # breach, inject a /diagnose recovery directive into the existing (stalled) session
+            # and extend the deadline ONCE (decision = stall_action, pure + tested); hard-STOP
+            # only on a SECOND breach. The no-progress and AHK-never-typed guards remain the
+            # runaway backstops so a truly wedged run still stops cleanly after exactly one
+            # recovery attempt.
+            breach = 0
+            while not wait_for(CTL / "claude.done", deadline, watch_bridge=True):
+                breach += 1
+                if stall_action(breach) == "stop":
+                    stop(f"cycle {cycle}: claude.done not seen after stall recovery (hard hang)")
+                log(f"cycle {cycle}: deadline breach {breach} - injecting stall recovery, extending once")
+                awrite(CTL / "gemini.ready", stall_recovery_directive(cycle))
+                if not wait_gone(CTL / "gemini.ready", time.time() + 120):
+                    stop(f"cycle {cycle}: AHK never typed the stall-recovery directive")
+                deadline = time.time() + CFG["cycle_deadline_sec"]
+            done = rjson(CTL / "claude.done", {})
+            (CTL / "claude.done").unlink(missing_ok=True)
         last_done = done
         new_sha = done.get("sha") or head()
         log(f"cycle {cycle}: claude.done sha={new_sha[:8]} tests={done.get('tests_pass')} regress={done.get('regressions')}")

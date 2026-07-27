@@ -47,6 +47,9 @@ DRY_TITLE := "RC-LOOP-DRYRUN"
 DEF := Map(
     "line_pause_ms", 1500,          ; was LINE_PAUSE
     "pre_enter_pause_ms", 350,      ; settle between SendText and {Enter}
+    "enter_retry_pause_ms", 250,    ; gap before the second {Enter} - see the double-Enter
+                                    ; scar at the send site (a swallowed Enter leaves the
+                                    ; directive typed-but-unsent until the deadline)
     "clear_pause_ms", 5000,         ; was CLEAR_PAUSE - the TUI session reset takes a
                                     ; moment; typing the next prompt into the resetting
                                     ; window loses keystrokes (operator, 2026-07-16)
@@ -393,6 +396,15 @@ Loop {
                 SendText(lineText)
             }
             Sleep T["pre_enter_pause_ms"]
+            ; DOUBLE ENTER, on purpose. A single {Enter} is swallowed often enough that
+            ; the directive lands in the composer and is NEVER SUBMITTED - the cycle then
+            ; sits typed-but-unsent until the deadline with no error (operator observed
+            ; live 2026-07-26; same failure class as the /clear -> clear/ race and the
+            ; slash palette eating Enter, both scarred above). The retry is safe rather
+            ; than a gamble: if the first Enter DID submit, the composer is now empty and
+            ; Enter on an empty composer is a no-op.
+            Send("{Enter}")
+            Sleep T["enter_retry_pause_ms"]
             Send("{Enter}")
             typed += 1
             g_seq_typed := typed

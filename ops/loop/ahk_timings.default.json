@@ -4,6 +4,7 @@
 
   "line_pause_ms": 1500,
   "pre_enter_pause_ms": 350,
+  "enter_retry_pause_ms": 250,
   "clear_pause_ms": 5000,
   "slash_split_pause_ms": 400,
   "pre_type_settle_ms": 500,
