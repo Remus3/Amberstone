@@ -6,6 +6,67 @@
 
 ---
 
+## 2026-07-27 - R202 the controller never loaded the fixes shipped to it (ENGINE-IMPACT NONE, `d4b1a762`)
+
+**The directive ordered f1-phase6 item 2 for the SECOND time and it was already on disk**
+(`ops/loop/executor.py:874-886` `_is_on_disk_executable`, pinned by
+`tests/test_loop_executor.py:381-465`, shipped `05319608` / LEDGER 1074 at 03:23 the
+same morning). A second refutation of the same row teaches the director nothing, so the
+deliverable was the reason the repetition keeps happening.
+
+**R201 diagnosed it correctly and shipped the fix to a process that could not receive
+it.** `control/RUNNING.lock` pid 18300 started 00:37:50; `6c3851d0` / `ff439e14` /
+`d048f96f` landed 05:03:56 / 05:24:57 / 05:34:14. Python binds a module ONCE at process
+start. Two live artifacts prove it by strings CURRENT code cannot emit:
+`control/_gemini_in.txt` (05:45, written BY that process) carries
+`LEDGER head truncated at 8000 bytes`, the label of the PRE-fix `cap_bytes` call at
+`6c3851d0^:431` (HEAD goes through `ledger_digest`, whose marker says "older items
+omitted"); and `6c3851d0`'s OTHER fix
+(`DIRECTIVE_METADATA_PREFIXES`, so a chain record stops being titled with its grounding
+metadata) is equally inert - the records that process wrote at 05:04:46 and 05:45:58 are
+still titled `GROUNDED-AGAINST: ...`.
+
+**The stdin cap DID also fire at 05:45** - the pre-fix image overflows, so the blind
+60/40 cut ate the plan tail and the ledger digest header, exactly the failure `ff439e14`
+fixed at 05:24 and this process never loaded. **Near-miss worth keeping:** the artifact
+carries `STDIN CAP: middle truncated` TWICE - one real cut, one quoted at
+`docs/LEDGER.md:47` (item 1075 narrating the R201 fix). I found the quoted one first and
+concluded the cap had not fired; the verifier refuted it on occurrence count. Check the
+process start time against the file mtime BEFORE re-diagnosing code, and count marker
+occurrences before attributing one.
+
+**The fix.** `loop_controller` digests its own imported source (itself plus `executor` /
+`adjudicator` / `slots` / `winmutex` - `_bind` puts all four in the same image) and
+`os.execv`s at a cycle TOP when the digest moves. `os.execv` preserves the PID, which is
+what makes it safe against `claim_repo` (holder is compared to `os.getpid()`). The guard
+sits beside the cycle-top STOP poll, the only point with no handshake in flight. The
+cycle counter survives via consume-once `control/resume_cycle.txt` so a code edit cannot
+reset `max_cycles`, and gemini spend re-seeds from `budget.json` as a FLOOR so an
+automatic restart cannot reset `ceiling_usd`. An exec failure logs and continues on the
+stale image - a stale controller emits duplicate directives, a dead one emits nothing.
+`director_prompt.md` is deliberately NOT in the digest (re-read every cycle), pinned by
+test.
+
+**CARRY-FORWARD, and it is the only thing that finishes this item: the running controller
+must be bounced BY HAND once.** The fix cannot install itself - that is the finding.
+`taskkill /F /PID <controller-pid>` then relaunch via
+`ops/loop/launch_loop.ps1 -Mode live`. Until that happens the live loop is still the
+00:37 image and will keep re-emitting closed rows.
+
+**Six sibling gaps FILED not fixed** (BACKLOG "Reliability / hardening"), 39 candidates
+dispositioned. Two were live-stale when measured: `RC-DS-MatchDB-MCP` pid 1940 (07-25
+code, imports `core/build_order.py` edited 07-25 16:02 and `core/daemon_slayer_client.py`
+edited 07-27 01:17) and the vision server pid 10788 (07-05 code, survives a `main.py`
+restart because `dashboard/server.py:207-219` self-heals on PORT LIVENESS only). Memory
+`reference_phase3_supervisor_stale_code` corrected: its "systemic gap" was closed
+2026-05-18 and `rc_supervisor.py:379-386` is now the reference implementation.
+
+RC `tests/` 13584 passed / 106 skipped / 460 subtests; DS 10053 passed / 5585 subtests;
+ruff clean; Share `--check` in sync (1.261.0, 511 files). Tier-1: no ENGINE bump, no DS
+bounce, no RC restart. TDD RED 17/17 -> GREEN 17/17.
+
+---
+
 ## 2026-07-27 - R200 f1-phase6 items 2 + 5: the exec-bit commit gate and the 155-site skip audit (ENGINE-IMPACT NONE, `05319608` + `54bad078`)
 
 **The directive came wrapped in an EXECUTOR OVERRIDE telling me to serialize because it
