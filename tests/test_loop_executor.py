@@ -287,6 +287,82 @@ def test_a_repo_without_githooks_is_not_this_repos_concern(tmp_path: Path):
     assert executor.gate_inactive_reason(tmp_path) is None
 
 
+# ---- commit gate: the index EXEC BIT ----------------------------------------
+#
+# Measured 2026-07-26: all five tracked hooks in .githooks/ were index mode
+# 100644. git silently refuses to run a non-executable hook on any POSIX clone,
+# so the whole gate was inert on every Linux checkout (incl. CI) and the
+# presence-only check reported it green. These pin BOTH directions, because a
+# guard that always fires and a guard that never fires look identical from the
+# one side this repo usually tests.
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(["git", "-C", str(repo), *args], check=True, timeout=60,
+                   capture_output=True)
+
+
+def _tracked_hook_repo(tmp_path: Path, *, executable: bool,
+                       names=("pre-commit", "commit-msg")) -> Path:
+    """A synthetic clone whose hooks are TRACKED, at a chosen index mode."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, timeout=60)
+    hooks = tmp_path / ".githooks"
+    hooks.mkdir(exist_ok=True)
+    rel = []
+    for n in names:
+        (hooks / n).write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        rel.append(f".githooks/{n}")
+    _git(tmp_path, "add", "--", *rel)
+    if executable:
+        _git(tmp_path, "update-index", "--chmod=+x", "--", *rel)
+    _git(tmp_path, "config", "core.hooksPath", ".githooks")
+    return hooks
+
+
+def test_hooks_tracked_100644_are_reported_as_ungated(tmp_path: Path):
+    _tracked_hook_repo(tmp_path, executable=False)
+    reason = executor.gate_inactive_reason(tmp_path)
+    assert reason, "a 100644 hook does not run on a POSIX clone - that is not green"
+    assert "100644" in reason and "100755" in reason
+    assert "pre-commit" in reason and "commit-msg" in reason
+
+
+def test_hooks_tracked_100755_are_clean(tmp_path: Path):
+    """The other direction: the fix must be reachable, not a permanent breach."""
+    _tracked_hook_repo(tmp_path, executable=True)
+    assert executor.gate_inactive_reason(tmp_path) is None
+
+
+def test_only_the_non_executable_hook_is_named(tmp_path: Path):
+    _tracked_hook_repo(tmp_path, executable=True)
+    _git(tmp_path, "update-index", "--chmod=-x", "--", ".githooks/commit-msg")
+    reason = executor.gate_inactive_reason(tmp_path)
+    assert reason and "commit-msg" in reason
+    assert "pre-commit" not in reason, "naming a hook that is fine sends the fix at the wrong file"
+
+
+def test_untracked_hooks_dir_is_not_reported_as_a_mode_breach(tmp_path: Path):
+    """`core.hooksPath=.git/hooks` is a legitimate install - .git is never in the
+    index, so ls-files returns nothing and there is no mode to judge. Reporting a
+    100755 failure here would block the loop on a working configuration."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, timeout=60)
+    (tmp_path / ".githooks").mkdir()
+    real = tmp_path / ".git" / "hooks"
+    real.mkdir(parents=True, exist_ok=True)
+    for n in ("pre-commit", "commit-msg"):
+        (real / n).write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    _git(tmp_path, "config", "core.hooksPath", str(real))
+    assert executor.gate_inactive_reason(tmp_path) is None
+
+
+def test_missing_hook_file_still_wins_over_the_mode_check(tmp_path: Path):
+    """Ordering is load-bearing: a missing hook is the bigger, older finding and
+    its wording is already asserted above - the mode check must not preempt it."""
+    _tracked_hook_repo(tmp_path, executable=False, names=("pre-commit",))
+    reason = executor.gate_inactive_reason(tmp_path)
+    assert reason and reason.startswith("hooks missing from")
+    assert "commit-msg" in reason
+
+
 # ---- FINAL STEP: one source of truth per channel ----------------------------
 
 def test_ahk_final_step_is_the_sentinel_command_and_no_json_instruction():

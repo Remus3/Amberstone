@@ -183,6 +183,17 @@ def check_memory_index(
     return out
 
 
+VERSION_TRANSITION = re.compile(r"\d+\.\d+\.\d+\s*(?:->|to)\s*\d+\.\d+\.\d+")
+CLOSURE_MARKER = re.compile(
+    r"~~|\b(?:shipped|closed|fixed|refuted|done|reverted|superseded)\b", re.I
+)
+
+
+def _line_is_version_history(line: str) -> bool:
+    """True when this LINE names a version as past, not as the one in force."""
+    return bool(VERSION_TRANSITION.search(line) or CLOSURE_MARKER.search(line))
+
+
 def check_version_anchors(
     root: pathlib.Path, old_version: str | None
 ) -> list[Finding]:
@@ -192,6 +203,29 @@ def check_version_anchors(
     ``docs/HEXCORE_offline.html`` anchor was missed on the 1.259.0 bump.
     Changelogs, ledgers and history files legitimately name old versions and are
     excluded by name.
+
+    LINE-LEVEL CONTEXT, added 2026-07-26. Excluding historical FILES was not
+    enough: history and live claims routinely share a doc. The 1.259.0 sweep
+    reported three sites and ALL THREE were correct history - a release list
+    reading ``- 1.259.0 -> 1.260.0 - ...`` in ``Share/README.md``, the same
+    transition inside an ``ORCHESTRATION_PLAN.md`` narrative row, and a ROADMAP
+    fence recording that RM-91 CLOSED at ENGINE 1.258.0 + 1.259.0. A guard that
+    cries wolf on every bump gets waved through on the bump where it is right,
+    so the fix is a SMALLER check, not a looser one, and emphatically not a
+    wider filename exclusion.
+
+    Two markers make a line history, both past-tense by construction:
+      * a release TRANSITION on the line (``N.N.N -> N.N.N``) - the version is
+        being named as a step that was taken;
+      * a CLOSURE keyword on the line (shipped / closed / fixed / refuted /
+        done / reverted, or a struck-through ``~~`` entry) - the version is
+        being named as the one some finished work landed at, which stays true
+        forever.
+
+    KNOWN LIMIT: a line that asserts currency AND carries a closure keyword
+    would be exempted. That shape has never occurred here, and the alternative -
+    exempting the whole file - provably re-opens the hole this check exists to
+    close. Findings name ``file:line`` so the adjudication is one glance.
     """
     if not old_version:
         return []
@@ -201,14 +235,21 @@ def check_version_anchors(
         if HISTORICAL.search(rel):
             continue
         try:
-            if old_version in p.read_text(encoding="utf-8", errors="replace"):
-                hits.append(rel)
+            text = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        if old_version not in text:
+            continue
+        for n, line in enumerate(text.splitlines(), start=1):
+            if old_version not in line:
+                continue
+            if _line_is_version_history(line):
+                continue
+            hits.append(f"{rel}:{n}")
     if hits:
         return [Finding(
             "version-anchor",
-            f"old version {old_version} still present in {hits}",
+            f"old version {old_version} still presented as live in {hits}",
         )]
     return []
 

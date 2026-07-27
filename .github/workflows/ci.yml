@@ -137,6 +137,42 @@ jobs:
             tests/test_u2500_hygiene.py \
             -q --tb=line --timeout=60
 
+      - name: git hook gate armed and firing
+        run: |
+          # MEASURED 2026-07-26: all five tracked hooks in .githooks/ were
+          # committed mode 100644. Git refuses to run a non-executable hook and
+          # reports nothing, so the whole commit-time gate was absent on every
+          # Linux clone - this runner included - while CI stayed green. The same
+          # day a headless `claude -p --permission-mode bypassPermissions` run
+          # committed a banned em-dash through the hole.
+          #
+          # It survived that long because CI could not see it: the live-repo hook
+          # assertions in tests/test_drift_guard.py skip when core.hooksPath is
+          # unset, which it always is on a fresh clone, and a skipped test is a
+          # green tick. So this step ARMS the gate first, then asserts it with
+          # RC_REQUIRE_HOOK_GATE=1, which turns "unconfigured clone" from a skip
+          # into a failure. tests/test_git_hook_gate_e2e.py then makes real
+          # commits into a temp repo, because a hook's PRESENCE has never been
+          # proof that it fires.
+          #
+          # The mode assertion is deliberately direct rather than inferred from a
+          # downstream symptom: 100644 is the specific regression that started
+          # all of this, and it deserves to be named.
+          python scripts/install_hooks.py
+          test "$(git ls-files .githooks/ | wc -l)" -ge 5 || {
+            echo "expected at least 5 tracked hooks in .githooks/"; exit 1; }
+          if git ls-files -s .githooks/ | grep -v '^100755 '; then
+            echo "the hook(s) above are not mode 100755 - git will silently refuse"
+            echo "to run them. Fix with: git update-index --chmod=+x <hook>"
+            exit 1
+          fi
+          RC_REQUIRE_HOOK_GATE=1 pytest \
+            tests/test_drift_guard.py::GitHooksPathTests \
+            tests/test_drift_guard.py::OrphanedHookTests \
+            tests/test_drift_guard.py::HookGateRequirementTests \
+            tests/test_git_hook_gate_e2e.py \
+            -q --tb=short --timeout=120
+
       - name: smoke + regression tests
         run: |
           pytest tests/phase2_smoke tests/snapshot_regressions tests/phase8_smoke \
