@@ -6,6 +6,63 @@
 
 ---
 
+## 2026-07-27a - R204 the executor could prove disjointness, the director was never told how (ENGINE-IMPACT NONE, `7f89cd6c`)
+
+f1-phase6 items 7 and 11 land as durable HARD RULES in `ops/loop/director_prompt.md` - the
+one file the controller re-reads every cycle, deliberately excluded from `CODE_FILES`.
+
+**Item 7 was HALF SHIPPED and the missing half was the expensive one.**
+`ops/loop/executor.py` already carries the entire enforcement side: `parallel_plan()` at
+`:198`, the four-valued `none/disjoint/overlap/unverified` verdict, `SERIALIZE_HEADER`
+`:253`, `UNVERIFIED_HEADER` `:254`, `PARALLEL_MARKER` `:101`. Nothing had ever taught the
+DIRECTOR what shape that parser reads. R200 is the live scar: the directive named 2
+parallel agents, `parallel_plan` could not read labelled file sets, the executor prepended
+a serialize override - and the sets had been disjoint the whole time. The directive had
+just not written them where the parser looks. R203 hit the same override and sidestepped
+it by dropping to one agent.
+
+So the rule does NOT say "assert disjointness". It carries a NORMATIVE exemplar between
+`CANONICAL PARALLEL BLOCK - BEGIN/END` markers that the director copies, with the prose
+explicitly subordinate ("if the two ever disagree, the BLOCK wins and the prose is the
+defect"), plus machine-checkable `PARSES:` / `DOES NOT PARSE:` literal lists carrying the
+`\d{1,2}` id width and the `^`-anchoring claim as EXAMPLES rather than as prose.
+
+**The first build was refuted at the verifier gate, and the refutation is the lesson.**
+Its 9 tests hardcoded `AGENT 1:` in their own bodies, so its docstring's anti-rot claim
+was false. The verifier reworded the rule to prescribe a THREE-digit id (`_BLOCK_HEAD_RE`
+accepts `\d{1,2}`) and separately to allow a mid-line heading (the regex is `^`-anchored) -
+each aims the director at a guaranteed deviation - and all 9 tests stayed GREEN. Only
+deleting one of 6 literal tokens killed anything: a substring pin wearing an anti-rot
+label, the same always-passing class as `SCHEDULED_SPAWNERS` pre-`756db42a`. Rebuilt so
+the shape is read OFF DISK - `_exemplar()` slices the marker block into the real
+`parallel_plan()`, `KEYWORDS` is regexed out of the rule text, the PARSES/REJECTS literals
+are read from their spans.
+
+Second round MERGE: 12 tests, every one with an independent kill. The verifier also
+attacked the marker slicer itself, where an always-passing guard would hide - deleting a
+marker, planting a SECOND identically-marked block, and emptying the block between intact
+markers each go RED, because `_exemplar()` asserts exactly-one before slicing. LIMIT
+RECORDED, not papered over: a prose-only reword contradicting the exemplar stays uncaught,
+because prose is not checkable - which is exactly why the block is normative.
+
+STEP A of the directive was a no-op and measuring that was the first deliverable:
+`git diff --cached` empty, `.githooks/*` already `100755` in the index. THIRD consecutive
+cycle whose stated premise was stale on disk.
+
+**CARRY-FORWARD, four cycles old and unchanged: controller pid 18300 started 00:37:50,
+before `d4b1a762` landed, so the running image still cannot load its own self-reload fix.
+IT MUST BE BOUNCED BY HAND ONCE.** Second carry-forward, newly ENUMERATED rather than
+characterized: nightly `30261946219` is red on exactly 5 ubuntu-only loop-infra tests -
+`test_mutex_serializes_two_threads`, `test_loop_director_context_caps` x2,
+`test_sdk_timeout_kills_the_tree_and_fails_the_cycle`, `test_gate_is_active_in_this_repo`.
+Predates this cycle; push CI green on HEAD.
+
+RC `tests/` 13606 -> 13618 passed / 106 skipped / 460 subtests (+12 exact). DS 10053 / 0
+skipped / 5585, untouched. ruff clean; `drift_guard` 0 breaches; 0 non-ASCII added.
+Tier-1: no ENGINE bump, no DS bounce, no RC restart, no Share sync.
+
+---
+
 ## 2026-07-27 - R202 the controller never loaded the fixes shipped to it (ENGINE-IMPACT NONE, `d4b1a762`)
 
 **The directive ordered f1-phase6 item 2 for the SECOND time and it was already on disk**
