@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import os
 import re
+import signal
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -703,6 +704,95 @@ def sdk_prompt(cycle: int, body: str, src: str) -> str:
     return f"{head}\n\n{final_step_instruction('sdk')}\n"
 
 
+# ---- child-process teardown (platform seam) ---------------------------------
+#
+# MEASURED 2026-07-27 on the nightly ubuntu run. The sdk timeout path was
+# `taskkill /F /T` and nothing else. On POSIX taskkill is a missing executable,
+# so the OSError was swallowed, the child outlived the kill, and the
+# `proc.wait(timeout=30)` that followed re-raised TimeoutExpired straight out of
+# the handler - against an INJECTED deadline of 2s, which is why the failure
+# reads "timed out after 30 seconds" and why it ESCAPED run() instead of being
+# recorded. A loop executor that cannot kill a hung child on Linux is a real
+# defect, not a test artifact.
+
+# The reap is bounded and its expiry is deliberately NOT fatal: by the time it
+# runs the cycle's verdict is already decided, and letting it raise is exactly
+# what turned one wedged child into a dead unattended run.
+_REAP_TIMEOUT_SEC = 30
+
+# Resolved at import, not at the call site: SIGKILL does not exist on Windows,
+# so naming it inside the POSIX branch would make that branch unreachable - and
+# so unpinnable - from the one machine this loop actually runs on. The point of
+# the seam is that the platform NOT under my feet still gets a test.
+_KILL_SIG = getattr(signal, "SIGKILL", signal.SIGTERM)
+
+
+def _spawn_group_kwargs() -> dict:
+    """The POSIX-only Popen kwargs the teardown below depends on.
+
+    start_new_session is load-bearing rather than tidy: it gives the child its
+    own process group, and WITHOUT it os.getpgid(child) answers with the
+    CONTROLLER's group - so the killpg below would kill the loop that is trying
+    to reap, a self-kill dressed as a teardown. It is POSIX-only by definition
+    (Windows _execute_child takes it as `unused_start_new_session`), so passing
+    it on nt would be a silent no-op that reads as protection.
+
+    CREATE_NO_WINDOW is deliberately NOT returned from here, though it is the
+    mirror-image platform kwarg. tests/test_no_console_flash_scheduled_tools.py
+    resolves `creationflags` by AST at every subprocess spawn site, and a
+    `**dict` argument is opaque to that scan: folding the flag in here left this
+    module's only spawn site unprovable and made the console-flash guard report
+    a protection it could no longer see. A console flashing on the operator's
+    desktop is a recurring real defect here, so the flag stays written out
+    LITERALLY at the Popen call. `creationflags=0` is legal on POSIX
+    (subprocess.py:867 raises only when it is non-zero) and the getattr default
+    IS 0 there, so the literal costs that platform nothing.
+    """
+    if os.name == "nt":
+        return {}
+    return {"start_new_session": True}
+
+
+def _kill_process_tree(proc) -> None:
+    """Kill a wedged executor child and its descendants. Never raises.
+
+    A `claude -p` that wedged has child tool processes, so killing the pid alone
+    orphans them still holding the pipes this cycle is blocked on - which is why
+    both branches target the TREE and proc.kill() is only the fallback for when
+    the tree kill could not be attempted.
+
+    NEVER Stop-Process (CLAUDE.md hard rule): on Windows the tree kill is
+    `taskkill /F /T`, byte-unchanged from the path that already works. On POSIX
+    it is os.killpg against the child's own group, guarded by a comparison with
+    the loop's own pgid for the reason _spawn_group_kwargs spells out.
+
+    Split out as a seam for the same reason _is_on_disk_executable is: the
+    branch that only ever runs on the other platform is pinned by monkeypatch
+    from Windows rather than left for a CI run to discover - which is precisely
+    how a Windows-only kill path shipped as the whole teardown.
+    """
+    if os.name == "nt":
+        try:
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                           capture_output=True, timeout=_REAP_TIMEOUT_SEC,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            return
+        except (OSError, subprocess.SubprocessError):
+            pass
+    else:
+        try:
+            pgid = os.getpgid(proc.pid)
+            if pgid != os.getpgid(0):
+                os.killpg(pgid, _KILL_SIG)
+                return
+        except OSError:
+            pass
+    try:
+        proc.kill()
+    except OSError:
+        pass
+
+
 class SdkExecutor:
     """Headless `claude -p` channel. No window, no window title, no typing.
 
@@ -780,20 +870,20 @@ class SdkExecutor:
         proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, text=True, encoding="utf-8",
                                 errors="replace", cwd=str(self.cfg.get("repo_root", ".")),
-                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                                **_spawn_group_kwargs())
         try:
             out, err = proc.communicate(prompt, timeout=timeout)
         except subprocess.TimeoutExpired:
-            # NEVER Stop-Process (CLAUDE.md hard rule); taskkill /T so the whole
-            # tree dies - a `claude -p` that wedged has child tool processes.
-            self.log(f"cycle {cycle}: sdk timeout after {timeout:.0f}s - taskkill /F /T")
+            self.log(f"cycle {cycle}: sdk timeout after {timeout:.0f}s - killing the child tree")
+            _kill_process_tree(proc)
             try:
-                subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-                               capture_output=True, timeout=30,
-                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-            except (OSError, subprocess.SubprocessError):
-                pass
-            proc.wait(timeout=30)
+                proc.wait(timeout=_REAP_TIMEOUT_SEC)
+            except subprocess.TimeoutExpired:
+                # Reaping is a courtesy; the cycle's verdict is already decided.
+                # Letting this escape IS the measured defect - it converted a
+                # recorded failed cycle into an exception that took the run down.
+                self.log(f"cycle {cycle}: sdk child survived the tree kill - not reaped")
             return DoneRecord(cycle=cycle, error=f"timeout after {timeout:.0f}s")
 
         try:
