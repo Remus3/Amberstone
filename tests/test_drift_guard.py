@@ -257,6 +257,24 @@ class GitHooksPathTests(unittest.TestCase):
         root = pathlib.Path(tempfile.mkdtemp())
         self.assertEqual(drift_guard.check_git_hooks_path(root), [])
 
+    def test_fresh_clone_shape_is_a_breach(self) -> None:
+        """core.hooksPath is LOCAL config and is NOT cloned.
+
+        A fresh clone of this repo has NO hooks at all until someone sets the
+        pointer - which defeats the entire purpose of a tracked .githooks dir.
+        The guard must therefore fire on "tracked hooks present, pointer unset",
+        not merely on "pointer aimed somewhere wrong". Raised by the parallel
+        Sibling-A session; neither repo's write-up had caught it.
+        """
+        import drift_guard
+        root = pathlib.Path(tempfile.mkdtemp())
+        (root / ".githooks").mkdir()
+        (root / ".githooks" / "pre-commit").write_text("x", encoding="utf-8")
+        subprocess.run(["git", "init", "-q", str(root)], capture_output=True)
+        out = drift_guard.check_git_hooks_path(root)
+        self.assertTrue(out, "an unset core.hooksPath with tracked hooks must breach")
+        self.assertIn("unset", out[0].message.lower())
+
     def test_live_repo_points_at_the_tracked_dir(self) -> None:
         """This repo must stay pointed at .githooks.
 
