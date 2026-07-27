@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-07-27 - R198 Arena coach overlay UI audit (ENGINE-IMPACT NONE, `964f3be1`)
+
+**The UI audit found a backend bug, and it was the most valuable thing in the run.**
+`core/lead_projection.py` had no ARENA weight profile, so Arena silently inherited SR -
+whose heaviest axis is `cs: 0.40`. Arena has no lane CS, so `cs_sig` sat at a permanent
+`-1.0` and every Arena composite carried a fixed `-0.40` drag. A level-16 12/1/10 player
+was told "Behind: scale, only fight with your team", at the top-centre eye-line anchor,
+in a mode with no team. Fixed by deriving an ARENA row from ARAM (already `cs: 0.0`) and
+adding `_ARENA_LINES` so no SR line naming CS / waves / towers reaches an Arena tick.
+
+**A code comment claimed a check that had never been run.** The overlay WIDGETS registry
+said every default position was "deliberately checked against EVERY other default". It
+had only ever checked the others against `w-arambalance`. The guard found EIGHT
+overlapping pairs plus one widget 58px off the right edge of the viewport. Six defaults
+moved. `_clampXY` could never have caught the off-screen one - it only keeps the
+top-left CORNER on-screen, so a wide widget anchored near the right edge is invisible to
+it. Worth an operator glance: `w-stats` and `w-nextbuy` left the bottom-left quadrant
+because `w-build`'s 412x594 box owns it and cannot share.
+
+**Two guard weaknesses are filed, not fixed** (BACKLOG, from the verifier): the collision
+guard's HEIGHT budgets are 7 measured / 6 estimated, and `w-enemyspells: 210` is an
+unmeasured estimate carrying only 20px of the clearance that keeps the guard green. And
+the hit-target guard honors a `HIT-MIN-EXCEPTION` inline comment, unused today but a
+one-line silencer. Both are ways a green guard stays green over a real regression.
+
+**Honest scope.** The headless Arena capture showed the four visible overlay defects are
+IDENTICAL in the SR capture - shell-wide, not Arena regressions. No Arena-specific widget
+renders on the overlay at all; none of the CHERRY round/placement data reaches it. The
+9px build pips and the 13/12px sub-floor tokens are enumerated and logged FUTURE rather
+than bumped, because raising a 9px pip on a 44px icon is a layout change, not a token fix.
+
+DS 10052 / 1 skipped / 5585 subtests; RC `tests/` 13504 / 106 skipped / 460 subtests;
+ruff clean. CSS auto-reloads via ADR-008 - no RC restart, no DS bounce, no Share sync.
+
+---
+
 ## 2026-07-27 - R197 enchanter Heal/Shield Power sweep (ENGINE 1.261.0, `946da292`)
 
 **What the directive asked vs what was true.** It asked for a DS sweep of enchanter HSP +
