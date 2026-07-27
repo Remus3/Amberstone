@@ -1,0 +1,69 @@
+{
+  "repo_root": "C:\\Riot Commander",
+  "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
+  "ceiling_usd": 200.0,
+  "_ceiling_note": "ceiling_usd caps GEMINI spend only (director+auditor calls). Claude/executor spend is UNCAPPED per operator. DEEP-AUDIT run 2026-06-11: operator set NO spend limit; rail raised to 200 as a runaway backstop only.",
+  "max_cycles": 1,
+  "cycle_deadline_sec": 5400,
+  "poll_sec": 5,
+  "max_concurrent_lanes": 2,
+  "_max_concurrent_lanes_note": "TOTAL concurrent executor calls allowed on this box across ALL callers (RC + Sibling-A), enforced by ops/loop/slots.py against C:\\ProgramData\\lw-loop\\slots. MUST match the LW config value or the governor is theater. 2 is a starting guess; the P5 concurrent run is where it gets evidence.",
+  "dry_run": false,
+  "ignore_no_progress": false,
+  "clear_each_cycle": true,
+  "session_jsonl": "",
+  "directive_suffix": "OPERATOR RUN FOCUS (2026-07-20 standing autonomous grant - SUPERSEDES the 2026-07-03 ORUN focus). Run until the operator halts; this run does NOT stop on a drained plan. WORK SOURCE, in order: (1) ROADMAP.md open items, (2) BACKLOG.md incl. future / nice-to-have / needs-research / needs-planning rows, (3) docs/ORCHESTRATION_PLAN.md open sessions, (4) unfinished goals from PRIOR autonomous directives (read directive_history.jsonl + docs/LEDGER.md), (5) when all drain, SYNTHESIZE via the director_prompt.md REFILL PROTOCOL and keep going. VERIFY-PREMISE FIRST on every unit: grep the cited file:line + live /api/state + ops/runtime/health.json before building. An already-shipped unit records a CLEAN no-commit with evidence - never a redo. STANDING GRANTS: frozen-file edits AUTHORIZED once the executor self-adjudicates and agrees the edit is necessary (say so in the commit body); refactor, reorganization and repo restructure AUTHORIZED; full computer access AUTHORIZED; self-heal and monitor RC / DS / scheduled tasks as required. UI-UX OVERLAY WORK: drive overlay capture from a REPLAY FILE or a SELF-RENDER (?overlay=1 over live or synthetic /api/state) so a UI slice is never blocked on a live game; the Chrome :8888 dashboard stays RETIRED as an audit surface. The 5-phase UI audit remains a hard pre-commit gate. CLEANLINESS IS A DELIVERABLE, not a side effect: audit-and-clean as found across .md content, repo layout and file contents - dead code, stale refs, orphaned docs, duplicated narrative blocks, ASCII hygiene. NAMED UNITS this run: (a) update docs/HEXCORE_offline.html (stats HUD + ENGINE tooltips + DUST leaves for every net-new non-test .py since d584e02e/2026-07-14; keep node --check clean and the file self-contained); (b) read the ENTIRE Share/ folder end to end and update / clean / prune it as a NEW EXTERNAL PRESENTATION, better formatted - Share is public-facing, treat it as a product artifact, keep tools/ds_share_sync.py --check green and credit Riot Data Dragon / CommunityDragon / Meraki. ORCHESTRATION: plan AND act in the SAME cycle where possible; parallel worktree agents on disjoint file sets with the Claude executor as sole merger plus a read-only verifier gate before every merge. truth_gate PROCEED before each multi-slice commit; commit + push origin/main + CI green + /done each cycle. NEVER block on AskUserQuestion - use the PART C gemini escalation channel.",
+  "channel": "sdk",
+  "_channel_note": "EXECUTOR channel: 'sdk' (headless `claude -p`, holds no machine-wide resource, returns a real cost receipt) or 'ahk' (the legacy GUI bridge - a machine-wide singleton keyed on claude_window_title, so it can NEVER run concurrently with another loop). Default flipped to sdk 2026-07-26 after F1 P5 passed all four conditions. ROLLBACK IS THIS ONE KEY: set it back to 'ahk'. The ahk channel and done_sentinel.py are deliberately NOT deleted - operator held the phase-6 deletions until sdk has run a full-length RC cycle, not just the 41s P5 doc append. An unknown value fails loud rather than falling back.",
+  "_channel_posture_note": "ACCEPTED TRADEOFF, state it rather than discover it: the sdk channel runs `claude -p --permission-mode bypassPermissions`, and MEASURED 2026-07-26 the Claude PreToolUse hooks do NOT survive that mode (a banned glyph committed straight through while the git hooks blocked it). On this channel the git hooks are the ONLY commit gate, which is why the controller refuses to start when core.hooksPath is unset (executor.gate_inactive_reason).",
+  "executor_model": "claude-opus-5",
+  "cycle_budget_usd": 25.0,
+  "_cycle_budget_note": "sdk channel only: --max-budget-usd per cycle. Claude spend stays UNCAPPED in aggregate per operator (ceiling_usd is the gemini rail); this is a per-cycle runaway rail, not a policy change.",
+  "executor_cmd": "C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd",
+  "claude_window_title": "Claude",
+  "gemini_model": "gemini-3-pro-preview",
+  "gemini_cmd": "gemini",
+  "adjudicator": "gemini",
+  "adjudicator_fallback": "claude",
+  "adjudicator_failover": true,
+  "_adjudicator_note": "THE MANUAL SWAP IS THIS ONE KEY: set \"adjudicator\" to \"claude\" and relaunch. Everything else (director + auditor prompts, budget accounting, retry semantics) is vendor-neutral. Usually no edit is needed at all: with \"adjudicator_failover\": true the controller swaps to \"adjudicator_fallback\" by itself the first time the live backend returns nothing AND its stderr carries a credit / quota exhaustion signature (quota, exhausted, insufficient credit, out of credit, billing, top up, 429, RESOURCE_EXHAUSTED), logs ADJUDICATOR FAILOVER, records the new backend in control/adjudicator_active.txt, retries the same call on the fallback so the cycle is not lost, and stays sticky for the rest of the run. A transient 503 / overload does NOT failover - the in-backend retry ladder and the cheaper fallback model handle that. Set \"adjudicator_failover\": false to require a manual swap.",
+  "claude_adjudicator": {
+    "cmd": "C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd",
+    "model": "opus",
+    "timeout_sec": 300,
+    "count_against_ceiling": false,
+    "_note": "Read-only by --permission-mode plan (the claude CLI equivalent of the gemini --approval-mode plan guarantee), non-interactive by -p/--print, body on stdin. count_against_ceiling is FALSE on purpose: ceiling_usd is a runaway rail on the METERED vendor, and operator policy is that Claude spend is uncapped, so swapping to the local adjudicator must not inherit the gemini rail and silently stop an otherwise-free run."
+  },
+  "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
+  "gemini_price_per_mtok": {
+    "input": 2.0,
+    "output": 12.0
+  },
+  "price_per_mtok": {
+    "opus": {
+      "input": 15.0,
+      "output": 75.0,
+      "cache_write": 18.75,
+      "cache_read": 1.5
+    },
+    "sonnet": {
+      "input": 3.0,
+      "output": 15.0,
+      "cache_write": 3.75,
+      "cache_read": 0.3
+    },
+    "haiku": {
+      "input": 1.0,
+      "output": 5.0,
+      "cache_write": 1.25,
+      "cache_read": 0.1
+    },
+    "default": {
+      "input": 15.0,
+      "output": 75.0,
+      "cache_write": 18.75,
+      "cache_read": 1.5
+    }
+  },
+  "_gate_note": "F1 phase-6 GATE RUN: one full-length director-authored cycle on the sdk channel. This is the first cycle in either repo where the DIRECTOR writes the directive on sdk, so it is the first real test of the {{FINAL_STEP}} substitution and of a full-size workload on claude -p. Derived from config.json with max_cycles=1; everything else identical."
+}
