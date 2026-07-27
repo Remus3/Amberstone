@@ -791,3 +791,38 @@ No other module in the repo asks a model to self-report machinery's own action.
 The running controller predates its own self-reload fix (`d4b1a762`). It **must be
 bounced by hand once**; no executor cycle can supply it, and it remains the measured
 cause of the stale-premise run above.
+
+## R207 - the exemption covered the future, not just the past (2026-07-27, `829700e1`)
+
+`tests/test_smart_quote_hygiene.py` carried a blanket exemption for
+`agents/agent6_auditor/reports/`, justified as "immutable dated artifacts - em-dash
+drift inside them is operator-gated cleanup, not authored-source drift."
+
+That justification is sound about history and silently wrong about the future. A
+path-prefix exemption written to protect files that already exist also protects every
+file that will ever exist at that prefix. This directory is not a closed archive - a
+cloud scheduled routine appends to it weekly and commits straight to main. The
+exemption therefore did not grandfather 4 old files; it permanently blinded CI to a
+live write path.
+
+Three reports landed carrying 58 non-ASCII bytes over the week before an audit caught
+them by eye. Every automated gate on this repo was in place and none could fire:
+PreToolUse hooks do not see a cloud routine's commits, git hooks on Legion do not
+either, and the one gate that runs on the routine's own push had been told to skip
+that path.
+
+**The generalizable shape:** an exemption keyed on WHERE a file lives is a claim about
+the file's PRODUCER, and producers change. `data/daemon_slayer/` is genuinely external
+data with a stable producer, so its exemption is fine. A reports directory written by
+an agent whose prompt nobody in the repo controls is not the same thing, and reusing
+the same mechanism for both made them look identical in the code.
+
+Worth checking the other prefix exemptions in `_is_external_data` against the same
+question: is this prefix closed, or does something still write to it?
+
+**Unreachable half, logged:** the routine's prompt lives in cloud scheduling config.
+An executor cycle cannot read or edit it (`CronList` is session-scoped to jobs made
+via `CronCreate` in-session). The durable in-repo move is exactly what shipped - let
+CI go red on the next bad write instead of passing in silence - with the failure
+message naming the prompt as the real fix site so the next reader is not left
+guessing.
