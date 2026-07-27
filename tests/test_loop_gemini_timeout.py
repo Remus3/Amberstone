@@ -139,10 +139,15 @@ def test_auditor_maps_gemini_error_to_clean(lc):
 
 
 def test_gemini_robust_to_empty_cfg(lc):
-    # A clean / non-Legion checkout loads CFG = {} (no config.json - see the
-    # import-only fallback at the controller top). gemini() must not KeyError on
-    # the absent gemini_model / gemini_cmd keys; it falls back to the production
-    # defaults. The CI nightly hit exactly this KeyError before the .get() fix.
+    # CFG = {} is patched in deliberately - as of 2026-07-27 it is no longer
+    # what a clean checkout produces. The controller used to default its config
+    # to an absolute Legion path, so every other host silently took the
+    # not-found branch; that default is now module-relative and a fresh clone
+    # reads the same tracked config Legion does. The empty case survives as a
+    # contract, not as a description of CI: a controller vendored without its
+    # config still lands here, so gemini() must not KeyError on an absent
+    # gemini_model / gemini_cmd and must fall back to the production defaults.
+    # The CI nightly hit exactly this KeyError before the .get() fix.
     with mock.patch.object(lc, "CFG", {}), \
             mock.patch.object(lc.subprocess, "run", return_value=mock.Mock(stdout="ok")), \
             mock.patch.object(lc.time, "sleep", lambda *_a, **_k: None), \
