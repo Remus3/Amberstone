@@ -455,6 +455,11 @@ def build_director_context(last_done, last_audit, *, root=None, ctl=None):
 
 def director(last_done, last_audit):
     tmpl = (ROOT / "ops/loop/director_prompt.md").read_text(encoding="utf-8")
+    # The completion step is CHANNEL-SPECIFIC and the director must not invent it:
+    # ahk blocks on control/claude.done (so the directive carries the sentinel
+    # command), sdk returns a schema-validated structured_output (so it must NOT).
+    # Substituted here because only the controller knows which channel is live.
+    tmpl = tmpl.replace("{{FINAL_STEP}}", executor.final_step_instruction(CFG.get("channel")))
     ctx = build_director_context(last_done, last_audit)
     return gemini(tmpl + ctx, "Output ONLY the directive markdown for the next cycle. No preamble.")
 

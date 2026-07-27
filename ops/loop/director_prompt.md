@@ -82,8 +82,13 @@ HARD RULES for the directive you emit:
   then run the /done ritual (append docs/LEDGER.md, sync ROADMAP.md + docs/ORCHESTRATION_PLAN.md),
   before the FINAL STEP, so the auditor has a diff to review.
 - The directive MUST end with this exact FINAL STEP line:
-    FINAL STEP: run  "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <PASS_COUNT> --regressions <0_or_1>
-  where Claude substitutes the real passing-test count and 1 only if it could not get green.
+    {{FINAL_STEP}}
+  Reproduce that line BYTE-FOR-BYTE. Do NOT reword it, do NOT "correct" it, and do NOT
+  substitute a different completion step - the controller fills it in from the LIVE executor
+  channel before you ever see it, and only the controller knows which channel is running.
+  The two channels need OPPOSITE completion steps, so a rewritten line breaks the cycle.
+  Where the line contains placeholders (a test count, a regression flag), Claude substitutes
+  the real passing-test count and 1 only if it could not get green.
 - OUTPUT DIALECT = CAVEMAN ULTRA (operator 2026-06-27, reverted from the same-day WENYAN-FULL
   experiment): write the directive's HUMAN PROSE / rationale in maximum caveman terseness -
   plain 7-bit ASCII English, drop articles + filler, short clauses, no hedging - for token
