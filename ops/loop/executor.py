@@ -419,12 +419,31 @@ def enforce_agent_disjointness(cycle, body, *, log=None, awrite=None, ctl=None,
 #
 # Two of the three claims are CHECKABLE against the repo, so the executor checks
 # them: the HEAD it says it grounded against, and any commit it names that is
-# already merged. PREMISE-CHECK is free prose with no machine-readable referent
-# and is deliberately not judged - inventing a verdict for it would be the kind
-# of guess this guard exists to replace.
+# already merged.
+#
+# The third is checked too, but only for what the director already decided. This
+# guard shipped abstaining on PREMISE-CHECK as "free prose with no machine-
+# readable referent"; MEASURED 2026-07-27 cycle 13, that cost a whole cycle. The
+# directive carried two [UNVERIFIED] premises (staged .githooks changes exist,
+# the inbox holds winmutex.py.from-lw), both false on disk - the index was empty
+# and winmutex.py was already byte-identical and already SHA-pinned - and the
+# cycle was a full no-op, the 6th stale-premise cycle in 7. The referent is the
+# TAG, not the prose: director_prompt.md:18 makes the director tag each claim
+# [from-digest] or [UNVERIFIED], so an [UNVERIFIED] premise is the director
+# stamping its OWN claim an unknown. Reporting that back is propagation, not the
+# invention the abstention was guarding against, and it is the same rule this
+# file already states four times over (:188, :213, :478, :558): an unknown is
+# never a pass. What the executor still does NOT do is judge whether a premise is
+# TRUE - that stays the session's job, on disk.
 
 GROUNDING_MARKER = "executor: STALE-GROUNDING"
 GROUNDING_HEADER = "EXECUTOR OVERRIDE - RE-GROUND THIS DIRECTIVE AGAINST THE REAL HEAD"
+# A separate header because the head is not always the fault. On a premise-only
+# finding the prefix's HEAD matched and no named commit had landed, and opening
+# that correction with "AGAINST THE REAL HEAD" would send the session re-reading
+# a digest that was already right - a guard that misstates what it measured is
+# read as noise by the next model that sees it.
+PREMISE_HEADER = "EXECUTOR OVERRIDE - VERIFY THE PREMISES THIS DIRECTIVE CALLS UNVERIFIED"
 
 _GROUNDED_HEAD_RE = re.compile(
     r"GROUNDED-AGAINST:.*?\bHEAD\s*=\s*([0-9a-fA-F]{4,40})\b", re.IGNORECASE)
@@ -441,14 +460,111 @@ _SHA_TOKEN_RE = re.compile(r"\b[0-9a-fA-F]{7,40}\b")
 # question are in the grounding prefix, which is the first thing scanned.
 _MAX_SHA_PROBES = 24
 
+# FIELD-BOUNDED, and that bound is the entire false-positive defence on this
+# side. This repo's own LEDGER and ORCHESTRATION_PLAN rows carry [UNVERIFIED] in
+# their prose and the director quotes them into directive bodies constantly, so a
+# whole-body scan would fire on nearly every cycle and be ignored by the third.
+# One line, because that is how director_prompt.md:14-18 emits the field - a
+# wrapped premise loses its tail here, which is the safe direction to be wrong.
+#
+# EVERY match, not the first. The line anchor already defeats mid-sentence
+# quoting, but these directives block-quote the PRIOR directive routinely and an
+# indented copy of its prefix sits ABOVE the live field - a first-match scan
+# reads the quote and goes silent on the real one. That is a false negative, the
+# failure this guard exists to close (:478, an unknown is never a pass), so it
+# scans them all. The door that re-opens is narrow and cheap: a quoted premise
+# fires too, costing one extra bullet, and since a re-quote repeats the SAME
+# claim the dedup below collapses the common case to nothing. _MAX_PREMISE_
+# FINDINGS bounds the rest.
+_PREMISE_LINE_RE = re.compile(r"^[ \t]*PREMISE-CHECK:[ \t]*(.*)$", re.MULTILINE)
+_PREMISE_TAG_RE = re.compile(r"\[(UNVERIFIED|from-digest)\]", re.IGNORECASE)
+
+# The sentence split is BACKWARD-ONLY, and that asymmetry is the whole point. The
+# tag's side is not fixed - director_prompt.md:18 fixes the vocabulary and nothing
+# else - so the live cycle-13 line tags each claim in front and the R200 incident
+# line tags it behind. Reading FORWARD, the next tag is a sufficient stop and a
+# sentence rule there costs claims outright: "e.g. " / "i.e. " / "no. " end no
+# sentence, and a forward cut at the first dot-space leaves "e.g", which is not a
+# premise anyone can go and check - the claim then vanishes entirely. Reading
+# BACKWARD is where the sentence edge is load-bearing: "[from-digest] A. B
+# [UNVERIFIED]" needs it or the claim the director already called VERIFIED gets
+# quoted back at the session as work to do. The residual is a truncated QUOTE on
+# a trailing tag whose claim carries an abbreviation - text, not a finding, which
+# is the survivable direction.
+_PREMISE_SPLIT_RE = re.compile(r"[.;]\s+")
+# Text that OPENS with a sentence terminator means the tag before it CLOSED a
+# sentence, so that tag trails its claim. This is the only forward/backward
+# discriminator that never has to guess where a sentence ends.
+_PREMISE_CLOSES_RE = re.compile(r"^[ \t]*[.;]")
+# The prompt's own placeholder, which any directive ABOUT this loop quotes
+# verbatim off director_prompt.md:18. Rejected for what it IS - angle-bracketed
+# template text - and not by length, because a length floor silently drops real
+# terse claims like "[UNVERIFIED] CI" and that is the same dropped-claim failure
+# by another route.
+_PREMISE_PLACEHOLDER_RE = re.compile(r"^<[^<>]*>$")
+_PREMISE_TRIM = " \t.;,:<>"
+
+# Same unattended-loop reason as _MAX_SHA_PROBES, one layer over: every finding
+# becomes a line PREPENDED to the directive the session reads, so a pathological
+# premise line must not bury the directive under its own correction.
+_MAX_PREMISE_FINDINGS = 8
+
 
 @dataclass
 class GroundingFinding:
     """One checkable grounding claim that did not survive the check."""
 
-    kind: str  # stale-head | already-landed | unverified
+    kind: str  # stale-head | already-landed | unverified | unverified-premise
     token: str
     detail: str
+
+
+def _field_claims(field) -> list:
+    """The [UNVERIFIED] claims in ONE PREMISE-CHECK field.
+
+    Forward from the tag to the next tag, and backward only when the tag closed a
+    sentence or the field ended - one rule for both tag positions, and the only
+    one of the two that needs to know where a sentence ends is the fallback.
+
+    A claim must carry a letter. That rejects the leftover punctuation a
+    malformed field produces without rejecting a real short claim.
+    """
+    if _PREMISE_PLACEHOLDER_RE.match(field.strip()):
+        return []
+    tags = list(_PREMISE_TAG_RE.finditer(field))
+    out = []
+    for i, tag in enumerate(tags):
+        if tag.group(1).lower() != "unverified":
+            continue
+        end = tags[i + 1].start() if i + 1 < len(tags) else len(field)
+        ahead = field[tag.end():end]
+        claim = "" if _PREMISE_CLOSES_RE.match(ahead) else ahead.strip(_PREMISE_TRIM)
+        if not claim:
+            behind = field[tags[i - 1].end() if i else 0:tag.start()]
+            sentences = [s for s in _PREMISE_SPLIT_RE.split(behind) if s.strip(_PREMISE_TRIM)]
+            claim = sentences[-1].strip(_PREMISE_TRIM) if sentences else ""
+        if any(c.isalpha() for c in claim):
+            out.append(claim)
+    return out
+
+
+def _unverified_premises(text) -> list:
+    """The claims the director tagged [UNVERIFIED] in its own PREMISE-CHECK field.
+
+    Deduplicated case-insensitively and in first-seen order: the directive is
+    read top-down by a session, and the same premise reported twice is noise it
+    learns to skim - which is how a correction stops being read at all.
+    """
+    out, seen = [], set()
+    for m in _PREMISE_LINE_RE.finditer(text or ""):
+        for claim in _field_claims(m.group(1)):
+            if claim.lower() in seen:
+                continue
+            seen.add(claim.lower())
+            out.append(claim)
+            if len(out) >= _MAX_PREMISE_FINDINGS:
+                return out
+    return out
 
 
 def grounding_findings(body, *, head, resolve, is_ancestor) -> list:
@@ -465,6 +581,10 @@ def grounding_findings(body, *, head, resolve, is_ancestor) -> list:
     only ever a finding when git says it is a commit AND says that commit is
     already merged. A sha that resolves but is not an ancestor (a sibling repo's
     head, a branch tip) is legitimate context and is left alone.
+
+    The premise findings ask the repository nothing at all - the director already
+    stamped those claims unknown - so they need no lookup and cost no probe, and
+    they are raised even when HEAD is unreadable.
     """
     text = body or ""
     out = []
@@ -486,6 +606,18 @@ def grounding_findings(body, *, head, resolve, is_ancestor) -> list:
             "stale-head", claimed,
             f"the directive claims GROUNDED-AGAINST HEAD={claimed} but the real HEAD "
             f"is {real[:8]}, so it was written against a stale digest"))
+
+    # After the HEAD claim, so an unreadable-HEAD run still reports that first:
+    # the head is the claim the session must resolve before anything else.
+    for claim in _unverified_premises(text):
+        # The detail opens with the kind because GROUNDING_MARKER is one fixed
+        # grep token and it says STALE - true of the head findings, false here.
+        # The operator reading controller.log gets no other discriminator, so it
+        # has to be the first thing after the marker.
+        out.append(GroundingFinding(
+            "unverified-premise", claim,
+            f"UNVERIFIED-PREMISE \"{claim}\" - the directive tagged this claim [UNVERIFIED] "
+            f"itself, so it is not a fact the work below may assume"))
 
     if not real:
         return out
@@ -525,8 +657,13 @@ def reground_directive(body, findings) -> str:
     the judgement to the session, which can read both. Aborting the cycle on a
     guess would trade a duplicated unit of work for a dead unattended run.
     """
+    # Exact kind matches, never a prefix or a substring test: "unverified-premise"
+    # sharing six letters with "unverified" is the whole trap here, and bucketing
+    # it as stale would print "the grounding prefix below is stale" over a HEAD
+    # the same function just measured as current.
     stale = [f for f in findings if f.kind in ("stale-head", "unverified")]
     landed = [f.token for f in findings if f.kind == "already-landed"]
+    premises = [f.token for f in findings if f.kind == "unverified-premise"]
     bullets = "\n".join(f"- {f.detail}" for f in findings)
     tail = f"--- ORIGINAL DIRECTIVE FOLLOWS, UNCHANGED ---\n{body}"
     steps = ["Re-read the real HEAD and the newest docs/LEDGER.md rows yourself before "
@@ -539,12 +676,29 @@ def reground_directive(body, findings) -> str:
         steps.append(f"These commits are ALREADY MERGED: {', '.join(landed)}. If the unit "
                      f"of work below is the work they carry, do NOT re-do it - pick the "
                      f"next NON-duplicate unit and say which.")
+    if premises:
+        steps.append("The directive declared these premises UNKNOWN itself: "
+                     + "; ".join(f'"{p}"' for p in premises)
+                     + ". Verify EACH one on disk - the file, the index, the test - "
+                     "before you edit anything. If they do not hold, the unit of work "
+                     "below is a no-op: do NOT run it, pick the next NON-duplicate unit "
+                     "and say which.")
+    # Header and lead follow what actually fired. A premise-only finding leaves the
+    # head claim intact and correct, and a correction that opens by contradicting a
+    # measurement it did not make teaches the session to discount the next one.
+    lead = ("The grounding prefix in this directive is SELF-REPORTED by the director and "
+            "the executor checked it against the repository. It does not hold:")
+    header = GROUNDING_HEADER
+    if premises and not stale and not landed:
+        lead = ("The grounding prefix in this directive is SELF-REPORTED by the director, "
+                "and it tagged its own premises [UNVERIFIED]. A self-declared unknown is "
+                "not a fact:")
+        header = PREMISE_HEADER
     numbered = "\n".join(f"{i}. {s}" for i, s in enumerate(steps, 1))
     return (
-        f"{GROUNDING_HEADER}\n"
+        f"{header}\n"
         f"{GROUNDING_MARKER} {'; '.join(f.detail for f in findings)}\n\n"
-        f"The grounding prefix in this directive is SELF-REPORTED by the director and "
-        f"the executor checked it against the repository. It does not hold:\n"
+        f"{lead}\n"
         f"{bullets}\n\n"
         f"{numbered}\n{_REPORT_IT}\n{tail}")
 
