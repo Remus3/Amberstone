@@ -730,3 +730,64 @@ abandons the `claude.done` handshake it is blocked on, and R202's self-reload gu
 itself inside the code the stale image cannot load. **The fix for stale code is in the
 stale code.** One external bounce breaks the loop; no cycle can supply it. This is the
 most likely cause of the four-cycle run of stale directive premises.
+
+## R206 findings - 2026-07-27 - the guard recorded its correction where the guilty party never looks
+
+**Two of the directive's four steps were no-ops and measuring that was the first
+deliverable.** Fifth consecutive cycle with a stale premise. STEP 1 wanted a staged
+`.githooks` exec-bit commit: `git diff --cached` empty, tree clean, `.githooks/*`
+already `100755` in the index since `19b680cc`. STEP 4 wanted the TEST-NOT-TRANSCRIPT
+rule made durable: it is at `ops/loop/director_prompt.md:147-153` and already pinned by
+`test_prompt_carries_the_test_not_transcript_rule`.
+
+### Item 7 was in three pieces, not two
+
+| Piece | State on arrival |
+|---|---|
+| executor-side parser + serialize override | shipped long before tonight |
+| director-side normative contract (what shape the parser reads) | shipped R204 `7f89cd6c` |
+| **the REPORTING half** | **shipped here** |
+
+Both guards correct a bad directive, log to `control/controller.log`, and prepend
+`_REPORT_IT` (`executor.py:271`): "State this deviation in your summary line."
+
+That ask was the whole reporting mechanism, and **controller.log is not a director
+input**. `loop_controller.py:1047` takes `done = rec.raw`; `:577` dumps it forward as
+`=== LAST claude.done ===`. `rec.raw` is the MODEL-authored payload. So whether the
+director learned its own directive was wrong depended on the model volunteering it in
+prose - and a model that silently complies teaches it nothing. That is verbatim the
+failure `executor.py:96-100` says recording exists to prevent, one layer up.
+
+`stamp_deviations()` now prefixes it mechanically. The model is asked for nothing.
+
+### Two holes at the merge gate, both on the branch the seam is read on
+
+Neither was in the build agent's claim set. Both proven by mutation before landing.
+
+| Hole | Why it hid | Mutation that kills the new test |
+|---|---|---|
+| ahk write-back was unconditional | every test fixture supplied a `summary` key; the REAL producer `done_sentinel.py:45` writes none, so every LIVE cycle took the untested branch and gained `"summary": ""` on every CLEAN cycle | reverting the guard injects exactly `'summary': ''` into raw |
+| 4 sdk failure paths stamped the record but left `raw` empty | the controller reads `rec.raw` and nothing else, so a cycle that deviated and then DIED carried the correction nowhere - the branch with no model prose at all | dropping `deviation_only_raw()` raises `KeyError: 'summary'` |
+
+**The lesson is the first row.** The fixture was shaped to the feature, not to the
+producer. Checking what `done_sentinel.py` actually writes - rather than what the tests
+hand the channel - is what found it.
+
+### Defect-class sweep: machinery that asks a model to report machinery's own action
+
+`grep -rn "your summary line\|State this\|say which" --include=*.py ops/loop/` returns 3
+hits, all in `executor.py`. Fixable population is a measured 1.
+
+| Site | Disposition |
+|---|---|
+| `:271` `_REPORT_IT` (reached from BOTH guards) | **FIXED** - mechanical stamp |
+| `:348` "run that one FIRST and say which" | OUT OF SCOPE - asks WHICH slice is the prerequisite, which the executor cannot compute |
+| `:527` "pick the next NON-duplicate unit and say which" | OUT OF SCOPE - same reason |
+
+No other module in the repo asks a model to self-report machinery's own action.
+
+### CARRY-FORWARD - six cycles old, unchanged
+
+The running controller predates its own self-reload fix (`d4b1a762`). It **must be
+bounced by hand once**; no executor cycle can supply it, and it remains the measured
+cause of the stale-premise run above.
