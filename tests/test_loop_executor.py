@@ -785,3 +785,297 @@ def test_sdk_channel_records_the_deviation_too(tmp_path: Path):
     ex.run(3, _R196, "director")
     assert any(executor.PARALLEL_MARKER in m for m in logs)
     assert "SEQUENTIALLY" in written["directive.md"]
+
+
+# ---- directive grounding guard ----------------------------------------------
+#
+# MEASURED 2026-07-27, on this loop. The director emitted control/directive.md
+# TWICE carrying the same already-landed unit of work (the f1-phase6 inbox
+# apply: chmod the githooks, apply moon_sync_inbox/winmutex.py.from-lw, pin the
+# item-5a SHA, ack Sibling-A) which had landed across four commits that
+# were all ancestors of HEAD. The directive self-reported
+# `GROUNDED-AGAINST: HEAD=05319608 LEDGER-TOP=1074 CHAIN-LAST=cycle 4` while the
+# real HEAD was a7b9ac3d.
+#
+# The three grounding fields director_prompt.md:14-18 mandates are 100 percent
+# self-reported: a grep for GROUNDED-AGAINST / NOT-A-DUPLICATE-OF / PREMISE-CHECK
+# across the .py tree returned ZERO hits, so nothing ever read the claim back and
+# the stale directive was handed to the executor verbatim.
+
+_HEAD = ("a7b9ac3d" * 5)[:40]
+
+
+class _Git:
+    """A fake git, so these tests need no repository and no commits.
+
+    resolve() records what it was asked, because HALF the contract here is which
+    tokens are never probed at all - a ledger id or a test count that reached
+    `git rev-parse` could come back as an ambiguous prefix and manufacture a
+    finding out of a decimal number.
+    """
+
+    def __init__(self, head: str = _HEAD, landed=(), unmerged=()):
+        self.head = head
+        self.probed: list = []
+        self._full = {}
+        self._landed = set()
+        for s in landed:
+            self._full[s.lower()] = self._expand(s)
+            self._landed.add(self._expand(s))
+        for s in unmerged:
+            self._full.setdefault(s.lower(), self._expand(s))
+
+    @staticmethod
+    def _expand(short: str) -> str:
+        return (short.lower() * 6)[:40]
+
+    def kwargs(self) -> dict:
+        return dict(head=self.head, resolve=self.resolve, is_ancestor=self.is_ancestor)
+
+    def resolve(self, token: str) -> str:
+        self.probed.append(token)
+        return self._full.get(token.lower(), "")
+
+    def is_ancestor(self, a: str, b: str) -> bool:
+        return a in self._landed and b == self.head
+
+
+# The measured incident, in the shape the director actually emitted it.
+_R200 = """GROUNDED-AGAINST: HEAD=05319608 LEDGER-TOP=1074 CHAIN-LAST=cycle 4
+NOT-A-DUPLICATE-OF: the inbox apply in 19b680cc | distinct because ops/loop/winmutex.py
+is not yet applied
+PREMISE-CHECK: winmutex.py still carries the old bytes [UNVERIFIED]
+
+# f1-phase6 inbox apply
+Apply moon_sync_inbox/winmutex.py.from-lw over ops/loop/winmutex.py, chmod +x the
+githooks, pin the item-5a SHARED_SHA256, ack Sibling-A.
+"""
+
+_GROUNDED_CLEAN = f"""GROUNDED-AGAINST: HEAD={_HEAD[:8]} LEDGER-TOP=1074 CHAIN-LAST=cycle 5
+NOT-A-DUPLICATE-OF: LEDGER 1074 | distinct because ops/loop/executor.py has no
+grounding check on disk
+PREMISE-CHECK: 13061 tests pass [from-digest]
+
+Add the grounding guard. LW shipped the same shape at deadbeefcafe on its side.
+"""
+
+
+def test_a_stale_grounded_head_is_a_finding():
+    """The claim is checkable and it was wrong - that is the whole defect."""
+    found = executor.grounding_findings(_R200, **_Git(landed=["05319608"]).kwargs())
+    stale = [f for f in found if f.kind == "stale-head"]
+    assert stale, "HEAD=05319608 against a real HEAD of a7b9ac3d is not grounded"
+    assert stale[0].token == "05319608"
+    assert "a7b9ac3d" in stale[0].detail, "the real HEAD has to be named, not just the claim"
+
+
+def test_a_matching_grounded_head_is_not_a_finding():
+    assert executor.grounding_findings(_GROUNDED_CLEAN, **_Git().kwargs()) == []
+
+
+def test_a_sha_already_merged_into_head_is_a_finding():
+    found = executor.grounding_findings(_R200, **_Git(landed=["05319608", "19b680cc"]).kwargs())
+    landed = [f for f in found if f.kind == "already-landed"]
+    assert [f.token for f in landed] == ["19b680cc"]
+    assert "already" in landed[0].detail.lower()
+
+
+def test_a_not_a_duplicate_of_sha_is_scanned_too():
+    """That line is exactly where the director cites the work it claims to be
+    distinct from, so it is the line most likely to name an already-landed
+    commit - excluding it would blind the guard to the measured incident."""
+    body = "NOT-A-DUPLICATE-OF: e0f4d546 | distinct because nothing\n"
+    found = executor.grounding_findings(body, **_Git(landed=["e0f4d546"]).kwargs())
+    assert [f.token for f in found] == ["e0f4d546"]
+
+
+def test_an_unresolvable_hex_token_is_not_a_finding():
+    """FALSE-POSITIVE side. `deadbeefcafe` matches the hex shape and is not a
+    commit; resolution is the only thing that separates the two."""
+    g = _Git()
+    assert executor.grounding_findings(_GROUNDED_CLEAN, **g.kwargs()) == []
+    assert "deadbeefcafe" in g.probed, "it must be probed and then rejected, not skipped"
+
+
+def test_a_future_or_unknown_sha_that_resolves_but_is_not_merged_is_not_a_finding():
+    """A directive may legitimately name a commit that is not in this history (a
+    sibling repo's sha, a branch tip). Resolving is not landing."""
+    body = "Mirror what LW did in 8a7d61a1 on its side.\n"
+    assert executor.grounding_findings(body, **_Git(unmerged=["8a7d61a1"]).kwargs()) == []
+
+
+def test_bare_decimal_and_word_tokens_are_never_probed():
+    """LEDGER-TOP=1074, `cycle 4` and a 13061 test count share a line with the
+    HEAD claim. Anything under git's own 7-char abbreviation is not a sha."""
+    g = _Git()
+    executor.grounding_findings(_GROUNDED_CLEAN, **g.kwargs())
+    assert "1074" not in g.probed
+    assert "13061" not in g.probed
+    assert all(len(t) >= 7 for t in g.probed)
+
+
+def test_the_claimed_head_is_not_double_reported_as_already_landed():
+    """One fault, one finding. The stale HEAD is a grounding assertion, not
+    proposed work, and it is already named by the stale-head finding."""
+    found = executor.grounding_findings(_R200, **_Git(landed=["05319608"]).kwargs())
+    assert [f.token for f in found].count("05319608") == 1
+
+
+def test_an_unverifiable_head_is_recorded_not_silently_passed():
+    """The failure mode this file keeps pinning: a guard that degrades into
+    always-passing on every input it cannot check. The directive asserted a
+    checkable fact and the check could not run - that is not a pass."""
+    found = executor.grounding_findings(_R200, **_Git(head="").kwargs())
+    assert found and found[0].kind == "unverified"
+
+
+def test_a_directive_with_no_grounding_prefix_and_no_shas_is_not_judged():
+    assert executor.grounding_findings(
+        "Edit ops/loop/executor.py. Bump ENGINE_VERSION to 1.261.0.",
+        **_Git().kwargs()) == []
+
+
+def test_the_override_names_the_stale_head_and_the_landed_shas():
+    found = executor.grounding_findings(_R200, **_Git(landed=["05319608", "19b680cc"]).kwargs())
+    out = executor.reground_directive(_R200, found)
+    assert out.startswith(executor.GROUNDING_HEADER)
+    assert executor.GROUNDING_MARKER in out
+    assert "05319608" in out and "19b680cc" in out
+    assert _HEAD[:8] in out, "the session cannot re-ground without the real HEAD"
+    assert _R200.strip() in out, "the original directive text must survive verbatim"
+
+
+def test_the_grounding_marker_is_distinct_from_the_other_two():
+    """winmutex greps UNSERIALIZED and the disjointness guard greps
+    SERIALIZED-DEVIATION; a substring collision would cross the wires."""
+    assert "UNSERIALIZED" not in executor.GROUNDING_MARKER
+    assert executor.PARALLEL_MARKER not in executor.GROUNDING_MARKER
+    assert executor.GROUNDING_MARKER not in executor.PARALLEL_MARKER
+    assert executor.GROUNDING_MARKER.startswith("executor: ")
+
+
+def test_enforce_leaves_a_correctly_grounded_directive_byte_identical(
+        monkeypatch: pytest.MonkeyPatch):
+    g = _Git()
+    monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
+    monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
+    monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
+    logs, written = [], {}
+    out = executor.enforce_directive_grounding(
+        4, _GROUNDED_CLEAN, log=logs.append,
+        awrite=lambda p, t: written.__setitem__(Path(p).name, t), ctl=Path("."))
+    assert out == _GROUNDED_CLEAN
+    assert logs == [] and written == {}
+
+
+def test_enforce_rewrites_directive_md_and_records_the_finding(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    g = _Git(landed=["05319608", "19b680cc"])
+    monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
+    monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
+    monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
+    logs, written = [], {}
+    out = executor.enforce_directive_grounding(
+        7, _R200, log=logs.append,
+        awrite=lambda p, t: written.__setitem__(Path(p).name, t), ctl=tmp_path)
+    assert logs and executor.GROUNDING_MARKER in logs[0]
+    assert written["directive.md"] == out
+    assert out != _R200
+
+
+def test_the_grounding_override_is_advisory_and_does_not_abort_the_cycle(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Same posture as the disjointness precedent: the header is advice on top of
+    a directive that still runs. Deleting it or stopping the cycle would turn a
+    heuristic string match into a run-killer."""
+    g = _Git(landed=["05319608"])
+    monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
+    monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
+    monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
+    r = _Rec(tmp_path, {"sha": "d" * 40, "tests_pass": "1", "regressions": False,
+                        "summary": "s"})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5, "repo_root": str(tmp_path)},
+                        tmp_path, **r.deps())
+    rec = ex.run(8, _R200, "director")
+    assert r.stopped == [], "a grounding finding must not stop the run"
+    assert rec.sha == "d" * 40
+    assert _R200.strip() in r.written["directive.md"]
+
+
+def test_ahk_channel_rewrites_directive_md_on_a_stale_grounding(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Wiring: the director path types only the opener, so the correction has to
+    land in control/directive.md or the session never sees it."""
+    g = _Git(landed=["05319608", "19b680cc"])
+    monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
+    monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
+    monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
+    r = _Rec(tmp_path, {"sha": "d" * 40})
+    ex = executor.build({"channel": "ahk", "cycle_deadline_sec": 5, "repo_root": str(tmp_path)},
+                        tmp_path, **r.deps())
+    ex.run(5, _R200, "director")
+    assert executor.GROUNDING_HEADER in r.written["directive.md"]
+    assert any(executor.GROUNDING_MARKER in m for m in r.logs)
+
+
+def test_sdk_channel_checks_the_grounding_too(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """It matters MORE here: a `-p` run is unattended, so nobody is reading the
+    directive and noticing it re-issues landed work."""
+    g = _Git(landed=["05319608", "19b680cc"])
+    monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
+    monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
+    monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
+    payload = json.dumps({"is_error": False, "total_cost_usd": 0.0,
+                          "structured_output": {"sha": "a" * 40, "tests_pass": "1",
+                                                "regressions": False, "summary": "s"}})
+    logs, written = [], {}
+    ex = executor.build(
+        {"channel": "sdk", "repo_root": str(tmp_path), "cycle_deadline_sec": 60,
+         "executor_cmd": _stub_claude(tmp_path, payload)}, tmp_path,
+        log=logs.append, stop=lambda m: None,
+        awrite=lambda p, t: written.__setitem__(Path(p).name, t))
+    ex.run(3, _R200, "director")
+    assert any(executor.GROUNDING_MARKER in m for m in logs)
+    assert executor.GROUNDING_HEADER in written["directive.md"]
+
+
+def test_a_clean_directive_is_untouched_on_the_live_repo(tmp_path: Path):
+    """FALSE-POSITIVE side against REAL git, not the fake: the default lookups
+    must not invent a finding on a directive that names no commits. This is the
+    shape every ordinary cycle has."""
+    logs, written = [], {}
+    body = "Edit ops/loop/executor.py and run tests/test_loop_executor.py.\n"
+    out = executor.enforce_directive_grounding(
+        1, body, log=logs.append,
+        awrite=lambda p, t: written.__setitem__(Path(p).name, t), ctl=tmp_path,
+        repo_root=str(ROOT))
+    assert out == body and logs == [] and written == {}
+
+
+def test_the_live_directive_suffix_sha256_pins_are_not_read_as_commits():
+    """FALSE-POSITIVE side, measured against real data rather than a fixture.
+
+    ops/loop/config.json's directive_suffix is appended to every directive and
+    carries three SHARED_SHA256 file digests. A 64-char hex run has no word
+    boundary at position 40, so the 7-to-40 token shape skips them whole - which
+    is the difference between this guard being quiet on every live cycle and
+    probing git for three digests that can never be commits.
+    """
+    suffix = json.loads((ROOT / "ops" / "loop" / "config.json").read_text(
+        encoding="utf-8")).get("directive_suffix", "")
+    assert len(suffix) > 500, "the suffix is the live operator brief - it should be long"
+    assert "95077a62527c9764e896e3bd1da9027e5efd2b15631feb725fe6138cee5054f9" in suffix
+    g = _Git()
+    assert executor.grounding_findings(suffix, **g.kwargs()) == []
+    assert g.probed == [], "a 64-char digest must not reach git at all"
+
+
+def test_the_live_head_lookup_resolves_in_this_repo():
+    """The injected lookups are only as good as their real implementations, and a
+    silently-empty HEAD would put every directive in the unverified branch."""
+    head = executor._git_head(str(ROOT))
+    assert len(head) == 40 and all(c in "0123456789abcdef" for c in head)
+    assert executor._git_is_ancestor(str(ROOT), head, head)
+    assert executor._git_resolve(str(ROOT), head[:8]) == head
+    assert executor._git_resolve(str(ROOT), "0" * 12) == ""
