@@ -109,13 +109,20 @@ def _current_patch() -> str | None:
 
 
 def _require_live_sidecar() -> None:
-    """Skip (never silently pass) when the current-patch sidecar is absent."""
+    """Fail (never skip) when the current-patch sidecar is absent.
+
+    Both halves are TRACKED and vendored into the main repo AND Share/src, so
+    absence means a committed artifact was deleted or the patch pointer moved
+    ahead of its extract. See the matching helper in
+    test_cdragon_ratio_matcher.py.
+    """
     patch = _current_patch()
-    if not patch:
-        pytest.skip("no current.txt patch pointer")
+    assert patch, f"tracked patch pointer {_DEFAULT_DATA_ROOT / 'current.txt'} is missing or empty"
     sidecar = _DEFAULT_DATA_ROOT / patch / _CDRAGON_RATIO_SIDECAR
-    if not sidecar.exists():
-        pytest.skip(f"CDragon sidecar absent for patch {patch}: {sidecar}")
+    assert sidecar.exists(), (
+        f"current.txt points at patch {patch!r} but the tracked CDragon sidecar "
+        f"{sidecar} is not committed"
+    )
 
 
 def _pair() -> tuple[AbilitiesSnapshot, AbilitiesSnapshot]:

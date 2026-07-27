@@ -594,8 +594,12 @@ class MaxPriorityComboConsumptionTests(unittest.TestCase):
             target_armor=70.0, target_mr=45.0, target_max_hp=2200.0,
         )
         casts = {c.token: c for c in res.per_cast if c.is_ability}
-        if "R" not in casts or "R2" not in casts:
-            self.skipTest("Akali R/R2 not both present at this level")
+        # Decidable against the TRACKED combo/block registries: at level 16
+        # Akali's combo emits both R and R2 (MEASURED 2026-07-27, tokens
+        # E/Q/Q2/R/R2). Losing either is the precedence regression this test
+        # exists to catch, so it must fail rather than skip.
+        self.assertIn("R", casts, f"Akali combo lost its R cast (got {sorted(casts)})")
+        self.assertIn("R2", casts, f"Akali combo lost its R2 recast (got {sorted(casts)})")
         r1, r2 = casts["R"], casts["R2"]
         self.assertEqual(r1.form_index, r2.form_index,
                          "R and R2 should share the same form")
