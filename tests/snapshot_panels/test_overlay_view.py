@@ -405,7 +405,10 @@ def test_overlay_combat_mode_declutter(mock_server, pw_browser):
 def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browser):
     """RC Overlay Doctrine w-spike: the spike-crossed cue is registered as a
     movable, position-fixed .ovx-widget field mount at its eye-line default
-    (w-spike bottom-left by the champion stats 360,840). It sits as a direct
+    (w-spike 1276,790 - the low strip between the ability bar and the minimap;
+    it moved off the old 360,840 bottom-left anchor on 2026-07-27 because that
+    sat inside w-build's box, see tests/test_overlay_default_layout_collision.py).
+    It sits as a direct
     am-grid child (NOT inside a transformed .ovx-widget pane) so position:fixed is
     viewport-relative, not trapped + clipped by a pane's transform containing block.
     (w-trinket / Ward Cue was removed 2026-07-05: Live Client has no cooldowns, so
@@ -413,7 +416,7 @@ def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browse
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         for sel, wid, left in (
-            ("#am-spike-cue", "w-spike", "360px"),
+            ("#am-spike-cue", "w-spike", "1276px"),
         ):
             assert page.eval_on_selector(
                 sel, "e => e.classList.contains('ovx-widget')"
@@ -428,7 +431,7 @@ def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browse
                 f"{sel} must mount in am-grid, not a transformed pane (got {parent!r})"
             )
         # data-gated (hidden until actionable in the empty-SSE mock): force-show
-        # the spike cue and confirm it lands at its viewport-fixed default x ~= 360
+        # the spike cue and confirm it lands at its viewport-fixed default x ~= 1276
         # (a transform-trapped fixed child would be offset by the pane's position).
         page.evaluate(
             "() => { const s = document.getElementById('am-spike-cue');"
@@ -436,8 +439,8 @@ def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browse
             "  s.innerHTML = '<span class=\"spike-chip\">ULT ONLINE</span>'; }"
         )
         box = page.locator("#am-spike-cue").bounding_box()
-        assert box is not None and abs(box["x"] - 360) < 6, (
-            f"spike cue not viewport-fixed at x~360 (trapped?): {box and box['x']}"
+        assert box is not None and abs(box["x"] - 1276) < 6, (
+            f"spike cue not viewport-fixed at x~1276 (trapped?): {box and box['x']}"
         )
     finally:
         page.close()

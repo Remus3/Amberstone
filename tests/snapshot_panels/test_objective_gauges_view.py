@@ -118,7 +118,9 @@ def test_gauges_render_live_sr_state(mock_server, pw_browser):
         assert page.eval_on_selector(
             "#am-obj-gauges", "e => e.dataset.ovxId") == "w-objgauges"
         assert _css(page, "#am-obj-gauges", "position") == "fixed"
-        assert _css(page, "#am-obj-gauges", "left") == "1690px"
+        # 1632 not the old 1690: at --ovx-w 288 that put the right edge at 1978,
+        # i.e. 58px off a 1920 screen (2026-07-27 default-collision sweep).
+        assert _css(page, "#am-obj-gauges", "left") == "1632px"
         parent = page.eval_on_selector(
             "#am-obj-gauges", "e => e.parentElement.className")
         assert "am-grid" in parent, f"mount not an am-grid child: {parent!r}"

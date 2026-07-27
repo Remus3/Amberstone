@@ -41,6 +41,9 @@ All benchmark numbers are HEURISTIC, operator-tunable constants. Bases:
     ~20 min, matching the standard XP curve closely enough for a coarse verdict.
 ARAM has no last-hit denial and shared XP, so CS-vs-expected is meaningless
 there; the ARAM weighting drops CS to zero and leans on level + KDA + time.
+Arena (2v2v2v2, round-based, fixed partner) has no lane and no minions at all,
+so it rides the same no-CS treatment - see the ARENA row in _WEIGHTS and the
+Arena directive table.
 """
 
 from __future__ import annotations
@@ -52,8 +55,10 @@ from typing import Dict
 
 # Solo-lane CS competence bar (canonical ~8 cs/min good-laner reference).
 _CS_PER_MIN_BENCHMARK_SR: float = 8.0
-# ARAM benchmark is informational only; CS weight is zeroed for ARAM so the
-# exact value never feeds the verdict (kept for symmetry / future modes).
+# No-lane benchmark (ARAM + Arena). Informational only: the CS weight is zeroed
+# for those modes, so the exact value never feeds the verdict. It stays wired to
+# the benchmark selection anyway so a future nonzero CS weight cannot silently
+# inherit the SR bar. See _NO_LANE_CS_MODES.
 _CS_PER_MIN_BENCHMARK_ARAM: float = 0.0
 
 # Expected CURRENT gold benchmark per minute. Coarse - RC reads on-hand gold
@@ -90,9 +95,26 @@ _WEIGHTS: Dict[str, Dict[str, float]] = {
     # level (item/XP tempo), KDA (the dominant ARAM signal - it is a teamfight
     # brawl), and gold.
     "ARAM": {"cs": 0.0, "level": 0.30, "gold": 0.20, "kda": 0.50},
+    # ARENA: DERIVED from the ARAM profile, not invented. ARAM is the closest
+    # analogue RC already models - no lane, no last-hit denial, no wave, and a
+    # verdict that leans on level tempo + a personal kill proxy. Arena adds a
+    # partner but keeps every one of those properties, so the ARAM per-axis
+    # split carries over unchanged; ARAM's cs weight is ALREADY 0.0, so zeroing
+    # CS for Arena needs no redistribution and the weight mass stays 1.00,
+    # identical to SR and ARAM. WHY this row has to exist at all: without it
+    # ARENA fell through to the SR profile, whose heaviest axis is cs=0.40 -
+    # and Arena has no lane CS whatsoever, so every Arena player carried a
+    # permanent -0.40 drag and a fed player was coached as if losing.
+    "ARENA": {"cs": 0.0, "level": 0.30, "gold": 0.20, "kda": 0.50},
 }
 # Modes without a bespoke weight table fall back to the SR profile.
 _DEFAULT_MODE = "SR"
+
+# Modes with no lane CS at all. WHY a set and not an equality test: the CS
+# benchmark and the CS weight have to agree per mode, and a bare
+# `mode != "ARAM"` silently handed every future no-lane mode the SR
+# 8-cs-per-min bar (that is exactly how ARENA broke).
+_NO_LANE_CS_MODES = frozenset({"ARAM", "ARENA"})
 
 # Directive lines, keyed (state, phase). Magnitude selects within the tuple:
 # index 0 = slight, 1 = clear, 2 = large. All lines are <= 10 words, ASCII.
@@ -152,6 +174,70 @@ _LINES: Dict[str, Dict[str, tuple]] = {
         ),
     },
 }
+
+# Arena directives. Same (state, phase) keying and same 3-tuple
+# slight/clear/large shape as _LINES - only the vocabulary changes. WHY a
+# parallel table instead of new keys inside _LINES: every consumer of _LINES
+# reads it as state -> phase -> tuple, so the shape is load-bearing. Arena is
+# 2v2v2v2 round-based combat with a fixed partner: there is no minion to
+# last-hit, no wave to freeze, no tower to farm under, no jungler and no baron,
+# so every SR line that named one of those had no referent here.
+_ARENA_LINES: Dict[str, Dict[str, tuple]] = {
+    "ahead": {
+        "early": (
+            "Slight lead: play with your partner, take even fights.",
+            "Clear lead: pressure them, take fights while ahead.",
+            "Big lead: open every round, snowball your gold.",
+        ),
+        "mid": (
+            "Slight lead: pick the weaker duo, fight together.",
+            "Clear lead: open on their carry with your partner.",
+            "Big lead: burst their carry, close rounds fast.",
+        ),
+        "late": (
+            "Slight lead: hold cooldowns for the final duo.",
+            "Clear lead: engage first, your partner follows up.",
+            "Big lead: end rounds before the ring closes in.",
+        ),
+    },
+    "even": {
+        "early": (
+            "Even: take safe augments, respect their cooldowns.",
+            "Even: trade cooldowns, reset before the ring closes.",
+            "Even: fight beside your partner, never alone.",
+        ),
+        "mid": (
+            "Even: focus one target with your partner.",
+            "Even: save escapes, avoid the closing ring.",
+            "Even: hold ultimates until their engage is spent.",
+        ),
+        "late": (
+            "Even: play the round out, punish their mistake.",
+            "Even: burst the squishier enemy together, then reset.",
+            "Even: do not overextend into the ring.",
+        ),
+    },
+    "behind": {
+        "early": (
+            "Behind: buy defensively, survive the early rounds.",
+            "Behind: peel for your partner, avoid long fights.",
+            "Behind: take the safer augment, stall for scaling.",
+        ),
+        "mid": (
+            "Behind: stay with your partner, never fight alone.",
+            "Behind: scale, only fight beside your partner.",
+            "Behind: kite the ring, stall the round out.",
+        ),
+        "late": (
+            "Behind: disengage, look for one clean pick.",
+            "Behind: defend your partner, do not chase.",
+            "Behind: only fight when they misstep first.",
+        ),
+    },
+}
+
+# Per-mode directive table. A mode absent here reads the shared _LINES.
+_LINES_BY_MODE: Dict[str, Dict[str, Dict[str, tuple]]] = {"ARENA": _ARENA_LINES}
 
 _GENERIC_LINE = "Play to your strengths, farm and scale."
 _SOURCE_TAG = "lead-proj"
@@ -274,8 +360,8 @@ def project_lead(game_state: dict, *, mode: str = "SR") -> dict:
 
     # --- per-axis expected benchmarks at this minute ---
     cs_bench = (
-        _CS_PER_MIN_BENCHMARK_SR if mode_key != "ARAM"
-        else _CS_PER_MIN_BENCHMARK_ARAM
+        _CS_PER_MIN_BENCHMARK_ARAM if mode_key in _NO_LANE_CS_MODES
+        else _CS_PER_MIN_BENCHMARK_SR
     ) * minutes
     gold_bench = _GOLD_PER_MIN_BENCHMARK * minutes
     level_bench = _LEVEL_BASE + (_LEVEL_PER_MIN_BENCHMARK * minutes)
@@ -320,7 +406,8 @@ def project_lead(game_state: dict, *, mode: str = "SR") -> dict:
     # --- directive line (state x phase x magnitude) ---
     phase = _phase(game_time_s)
     mag_idx = {"slight": 0, "clear": 1, "large": 2}[magnitude]
-    line = _LINES.get(state, {}).get(phase, (_GENERIC_LINE,) * 3)[mag_idx]
+    lines = _LINES_BY_MODE.get(mode_key, _LINES)
+    line = lines.get(state, {}).get(phase, (_GENERIC_LINE,) * 3)[mag_idx]
 
     return {
         "state": state,

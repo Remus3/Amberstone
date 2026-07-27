@@ -54,27 +54,54 @@ const WIDGETS = [
   // w-threat (Threat / CDs, .am-pane-cd) removed 2026-07-05 (operator): the enemy
   // CD ledger guessed at cooldowns the Live Client API does not expose - not needed.
   { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient", label: "Build", tall: true },
-  { id: "w-ovds", sel: "#am-pane-ovds", x: 430, y: 80, tier: "ambient", label: "DS Controls" },
+  // 2026-07-27 collision sweep (see the registry recheck note below): 430 put
+  // this 210px column 52px UNDER w-build's 412px box (right edge 482) for 537px
+  // of height, which truncated build text in-game. 490 clears that edge by 8px
+  // and is still left of the centre combat column.
+  { id: "w-ovds", sel: "#am-pane-ovds", x: 490, y: 80, tier: "ambient", label: "DS Controls" },
   // New doctrine cue (OVERLAY_DOCTRINE section 4). Data-gated (its renderer
   // un-hides the mount only when actionable) + coach-core. Mounted as a direct
   // am-grid child (NOT inside a pane) so position:fixed is viewport-relative, not
   // trapped by a transformed pane. (w-trinket / Ward Cue removed 2026-07-05: it
   // could not turn off on ward cooldown - Live Client exposes no cooldowns.)
-  { id: "w-spike", sel: "#am-spike-cue", x: 360, y: 840, tier: "urgent", label: "Spike Cue" },
+  // 2026-07-27 collision sweep: (360,840) sat INSIDE w-build's box (70..482 x,
+  // 470..1064 y - a populated build module fills its whole 594px cap), so the
+  // glyph landed on top of the build rows. The bottom-left is w-build's for as
+  // long as w-build anchors there, so the cue moves to the free strip between
+  // the ability bar and the minimap - still low + near the eye, still out of
+  // the champion / ability-bar lane.
+  { id: "w-spike", sel: "#am-spike-cue", x: 1276, y: 790, tier: "urgent", label: "Spike Cue" },
   // Operator 2026-06-28: the enemy summoner-spell tap-tracker (zone -> tappable
   // mid-game) + the API-backed HP/mana/stats mini-panel. Both overlay-only.
-  { id: "w-enemyspells", sel: "#am-enemyspells", x: 1500, y: 120, tier: "urgent", label: "Enemy Spells", zone: true },
-  { id: "w-stats", sel: "#am-statspanel", x: 40, y: 250, tier: "ambient", label: "Stats" },
+  // 2026-07-27 collision sweep: (1500,120) ran its 280x~210 box into the ARAM
+  // balance grid's top edge (y 290) and into w-objgauges. Moving it up + left
+  // keeps the upper-right urgent anchor while clearing both.
+  { id: "w-enemyspells", sel: "#am-enemyspells", x: 1340, y: 60, tier: "urgent", label: "Enemy Spells", zone: true },
+  // 2026-07-27 collision sweep: (40,250) is unusable. The 240px-wide panel
+  // cannot clear w-call (180..390 x) on either side inside the 482px left
+  // gutter, and its bottom ran into w-build. The peripheral upper-right edge is
+  // the only slot that fits 240x240 without entering the combat column or the
+  // minimap (top ~y 720).
+  { id: "w-stats", sel: "#am-statspanel", x: 1670, y: 220, tier: "ambient", label: "Stats" },
   // OQ16 (OQ3 variant A): peripheral objective gauge cluster (DRAKE/BARON/
   // ELDER ring dials, panels/objective_gauges.js). Display-only + data-gated
   // (SR in-game only); peripheral right-edge default, clear of the minimap
   // (1600,760). (The SUMMS dial was removed 2026-07-05: no Live Client CD data.)
-  { id: "w-objgauges", sel: "#am-obj-gauges", x: 1690, y: 320, tier: "ambient", label: "Objective Gauges" },
+  // 2026-07-27 collision sweep: x 1690 + the 288px widen-to-fit width put the
+  // right edge at 1978, i.e. 58px OFF a 1920 screen (the 3rd dial was clipped
+  // by the viewport, not by the widget). 1632 lands the edge exactly on 1920.
+  // y 400 -> 90 as well: a 288px-wide box cannot sit RIGHT of the ARAM grid
+  // (1670 + 288 > 1920), so it clears that grid by staying ABOVE its y 290 top
+  // instead. Still the peripheral right edge, still well clear of the minimap.
+  { id: "w-objgauges", sel: "#am-obj-gauges", x: 1632, y: 90, tier: "ambient", label: "Objective Gauges" },
   // NEXT BUY rule lines (panels/next_buy.js): gold-to-next-DS-item + the free
   // trinket upgrade. Display-only + data-gated (a live game with a build path).
-  // Sits low-left under the Stats panel, near the in-game gold/shop corner and
-  // clear of the center combat column.
-  { id: "w-nextbuy", sel: "#am-next-buy", x: 40, y: 620, tier: "ambient", label: "Next Buy" },
+  // 2026-07-27 collision sweep: "low-left under the Stats panel" put its
+  // 260x~90 box squarely inside w-build (70..482 x, 470..1064 y), so a
+  // populated build module rendered straight through it. Moved to the free
+  // low-centre-right strip, which is the side the in-game gold / shop readout
+  // actually lives on and is above the ability bar.
+  { id: "w-nextbuy", sel: "#am-next-buy", x: 1010, y: 790, tier: "ambient", label: "Next Buy" },
   // ARAM balance grid (panels/aram_balance.js). Promoted OUT of the BUILD pane
   // to its own widget 2026-07-20 (operator): once the champion-resolution fix
   // made it actually populate, its ~11 rows pushed META BUILD / the DS item row
@@ -84,17 +111,30 @@ const WIDGETS = [
   // Self-gates to ARAM in its own renderer (renderAramBalance hides the mount
   // outside _AB_ARAM_MODES), so it occupies nothing in SR / Arena.
   //
-  // Default anchor: right-of-center playfield, deliberately checked against
-  // EVERY other default in this array (LEDGER 873 (C): w-stats once defaulted
-  // on top of w-call). --ovx-w is 620 (overlay.css - a 3-chip row needs ~615px
-  // or the chips wrap and DOUBLE the height of all 11 rows), and the populated
-  // grid MEASURES 436px tall at 10 rows (headless overlay probe), so budget
-  // ~480 for a full 11-row ARAM lobby: the box is x 1050..1670, y 290..~770.
-  // That clears w-objgauges (anchor x 1690, past our right edge) and
-  // w-enemyspells (x 1500..1780 but y 120..~270, above our top) and w-callouts
-  // (anchor y 780, below our bottom), and every left-side default
-  // (w-call / w-ovds / w-lead / w-stats / w-build / w-spike / w-choices /
-  // w-launcher) is left of x 1050. Drag still overrides + persists.
+  // Default anchor: right-of-center playfield. --ovx-w is 620 (overlay.css - a
+  // 3-chip row needs ~615px or the chips wrap and DOUBLE the height of all 11
+  // rows), and the populated grid MEASURES 436px tall at 10 rows (headless
+  // overlay probe), so budget ~480 for a full 11-row ARAM lobby: the box is
+  // x 1050..1670, y 290..~770. Drag still overrides + persists.
+  //
+  // REGISTRY RECHECK 2026-07-27. The claim that used to sit here - that this
+  // anchor was "deliberately checked against EVERY other default" - was only
+  // ever true one way round: the OTHERS were checked against w-arambalance, and
+  // no default was ever checked against the rest of the left-side cluster.
+  // A headless 1920x1080 render measured w-build (x 70, --ovx-w 412 -> right
+  // edge 482, and a populated build module fills its whole 594px --ovx-maxh cap
+  // so the box is y 470..1064) sitting 52px UNDER w-ovds for 537px of height,
+  // truncating build text in-game. The same sweep found four more:
+  // w-nextbuy + w-spike were both anchored INSIDE w-build's box, w-stats could
+  // not clear w-call in the 482px left gutter, and w-enemyspells clipped the
+  // ARAM grid's top edge. w-objgauges was also 58px off the right of a 1920
+  // screen (1690 + 288). Six defaults moved; the eye-line tiers are unchanged.
+  // tests/test_overlay_default_layout_collision.py is now the machine version
+  // of the promise this comment used to make by hand - it crosses this array
+  // with the overlay.css --ovx-w map and fails on ANY overlapping or
+  // off-screen default pair, so the claim cannot rot again. The one exempt
+  // pair is w-arambalance vs w-objgauges (ARAM-only vs SR-only, so they can
+  // never paint together).
   { id: "w-arambalance", sel: "#aram-balance-panel", x: 1050, y: 290, tier: "ambient", label: "ARAM Balance" },
 ];
 
