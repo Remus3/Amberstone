@@ -6,6 +6,52 @@
 
 ---
 
+## 2026-07-27 - R197 enchanter Heal/Shield Power sweep (ENGINE 1.261.0, `946da292`)
+
+**What the directive asked vs what was true.** It asked for a DS sweep of enchanter HSP +
+mana-regen magnitudes with an Arena/ARAM mirror audit. All 34 curated rows already matched
+DDragon 16.14.1 exactly - zero drift. That is the THIRD consecutive cycle where the stated
+scope was already closed, so measuring it first and re-aiming is now the reliable opening
+move, not a one-off.
+
+**Shipped (4 slices, Claude sole merger, 4 verifier gates).**
+- Derived magnitude drift guard - expectations parsed from `items.json` at test time.
+- `_scaling_hsp.py` DEFAULT-OFF lane: Dawncore First Light off base mana regen, floor steps.
+- Route + client reachability for `assume_hsp_amp`, which was STRANDED (0 hits in server.py).
+- Seam-reachability guard deriving its universe from the ENGINE via `inspect.signature`.
+
+**The find worth remembering.** The headline was NOT in the directive - it came from a recon
+grep. `assume_hsp_amp` had 0 occurrences in `server.py` while its sibling had 4. Enumerating
+the class gave 195 seam-parameter occurrences / 74 names, 23 route-facing stranded. The
+existing reachability guards were GREEN and structurally could not see it, because they
+enumerate the keys server.py already parses - circular by construction.
+
+**What the verifier gates caught that green suites did not.**
+- A mis-transcribed EHP pair in commit prose (6966.71 -> 7440.21, not 7120.49 -> 7607.77).
+  The test asserts direction, not an exact value, so no suite could have caught it.
+- A FALSE CLAIM SHIPPED IN A DOCSTRING - `sustain_for` named `matchup` as a zero-caller
+  function; it has two live callers. Struck at merge.
+- Two overstatements about how "derived" the scaling coefficients are (they are literals
+  pinned by a derived test - a real but different guarantee), and "Meraki has no mirror ids"
+  (it has 6). I would have filed the absolute version as a durable fact and been wrong.
+
+**Three slices refuted my own spec, each correctly:** the four-route wiring was impossible,
+my cited test node IDs were not class-qualified, and "zero callers" is not this module's bar
+for declining a wire. Writing "a REFUTE is an allowed deliverable" into every slice prompt is
+what made that happen - keep doing it.
+
+**Honest scope.** The seam is EXPRESSIBLE, not live. Zero non-test callers; the ranker lanes
+still cannot express it. Do not let this read as a live-path win in a later summary.
+
+**Trap re-confirmed:** BOTH build-order keyspaces need regen. `core.build_order_variants` is
+a SEPARATE entry point from `core.build_order_precompute`; running only the latter leaves 6
+stamp guards red.
+
+DS 10052 / 1 skipped / 5585 subtests. RC 13485 / 106 skipped / 460 subtests.
+
+---
+
+
 
 
 # 2026-07-27b - F1 queue drain, paired with Sibling-A. RC-owned items all closed.
