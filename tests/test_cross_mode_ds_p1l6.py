@@ -228,7 +228,12 @@ class AramModifierAppliedTests(unittest.TestCase):
             v = am.get(key)
             if v is not None and float(v) != 1.0:
                 return cid, float(v)
-        self.skipTest(f"no champion with non-trivial {key} in snapshot")
+        # The snapshot is TRACKED and ARAM balance always carries a large
+        # non-unit cohort (MEASURED 2026-07-27: 101 champions for
+        # aramDamageDealt, 102 for aramDamageTaken). An empty result means the
+        # snapshot lost its aram_modifiers block - a data regression that must
+        # fail, not silently retire both mode-gating tests below.
+        self.fail(f"no champion with non-trivial {key} in the tracked snapshot")
 
     def test_aram_damage_dealt_applied_dps_layer(self):
         from agents.daemon_slayer import dps as dps_mod

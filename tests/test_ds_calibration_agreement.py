@@ -355,8 +355,10 @@ def test_module_never_writes_to_the_database():
 def test_daemon_slayer_never_imports_this_module():
     """Reverse direction of the firewall: DS must not consume the analysis."""
     ds_dir = _ROOT / "agents" / "daemon_slayer"
-    if not ds_dir.is_dir():
-        pytest.skip("agents/daemon_slayer not present in this checkout")
+    # The DS package is TRACKED, so it is in every checkout. Skipping on its
+    # absence would silently disarm the firewall guard exactly when the tree is
+    # broken.
+    assert ds_dir.is_dir(), f"tracked DS package missing at {ds_dir}"
     for py in ds_dir.rglob("*.py"):
         assert "ds_calibration_agreement" not in py.read_text(
             encoding="utf-8", errors="ignore"), f"{py} references the analysis"

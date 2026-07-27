@@ -85,8 +85,11 @@ class TopDuosForBotTests(unittest.TestCase):
 
     def test_returns_sorted_by_smoothed_rate_desc(self):
         recs = S101.top_duos_for_bot("Smolder", top_n=10)
-        if len(recs) < 2:
-            self.skipTest("not enough pairings for sort assertion")
+        # The static seed is TRACKED and the live fetch falls back to it, so
+        # Smolder always resolves a full page (MEASURED 2026-07-27: 10). Fewer
+        # than 2 means the loader or the seed regressed and the sort assertion
+        # below would otherwise pass vacuously.
+        self.assertGreaterEqual(len(recs), 2, "Smolder resolved too few pairings to order")
         rates = [r.smoothed_rate for r in recs]
         self.assertEqual(rates, sorted(rates, reverse=True))
 
@@ -115,8 +118,8 @@ class TopDuosForSupTests(unittest.TestCase):
 
     def test_returns_sorted_by_smoothed_rate_desc(self):
         recs = S101.top_duos_for_sup("Brand", top_n=10)
-        if len(recs) < 2:
-            self.skipTest("not enough pairings")
+        # Tracked seed - see the bot-side sibling above (MEASURED: 10).
+        self.assertGreaterEqual(len(recs), 2, "Brand resolved too few pairings to order")
         rates = [r.smoothed_rate for r in recs]
         self.assertEqual(rates, sorted(rates, reverse=True))
 
@@ -147,8 +150,8 @@ class TopSoloPicksTests(unittest.TestCase):
 
     def test_sorted_by_smoothed_rate_desc(self):
         recs = S101.top_solo_picks("bot", top_n=20)
-        if len(recs) < 2:
-            self.skipTest("need at least 2 to assert order")
+        # Tracked seed - see TopDuosForBotTests (MEASURED: 20 solo bot picks).
+        self.assertGreaterEqual(len(recs), 2, "too few solo bot picks to order")
         rates = [r.smoothed_rate for r in recs]
         self.assertEqual(rates, sorted(rates, reverse=True))
 

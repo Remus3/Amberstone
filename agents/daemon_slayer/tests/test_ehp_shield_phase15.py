@@ -451,11 +451,34 @@ class AramShieldTests(unittest.TestCase):
         # the whole stack (HP + shield). Verify that a champion with
         # non-1.0 aramDamageTaken and Sterak's gets the multiplier
         # applied AFTER adding shield, not before.
-        r = compute_ehp(
-            self.snap, "Aatrox", level=11, item_ids=["3053"], mode="ARAM"
+        #
+        # 2026-07-27 skip audit: this was hardcoded to Aatrox, whose
+        # aramDamageTaken is EXACTLY 1.0 in the shipped snapshot - so the guard
+        # fired on every run and this was the only skip in the whole DS suite.
+        # It had never asserted anything. Select a champion that actually
+        # carries a non-unit multiplier instead (MEASURED: 102 of 173 do).
+        champ = next(
+            (
+                cid
+                for cid, rec in sorted(self.snap.champions.items())
+                if float(
+                    ((rec.get("lolmath") or {}).get("aram_modifiers") or {})
+                    .get("aramDamageTaken", 1.0)
+                ) != 1.0
+            ),
+            None,
         )
-        if r.mode_multiplier == 1.0:
-            self.skipTest("Aatrox has aramDamageTaken == 1.0; pick a different sample")
+        self.assertIsNotNone(
+            champ, "no champion with non-unit aramDamageTaken in the tracked snapshot"
+        )
+        r = compute_ehp(
+            self.snap, champ, level=11, item_ids=["3053"], mode="ARAM"
+        )
+        self.assertNotEqual(
+            r.mode_multiplier, 1.0,
+            f"{champ} was selected for a non-unit aramDamageTaken but the engine "
+            "reported mode_multiplier == 1.0",
+        )
         # Effective HP scaled by 1/mode_mult: a champion in ARAM with
         # aramDamageTaken < 1.0 has MORE effective HP.
         from agents.daemon_slayer.ehp import _armor_factor
