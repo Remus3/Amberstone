@@ -29,6 +29,22 @@ GUARD = REPO / "tools" / "drift_guard.py"
 sys.path.insert(0, str(REPO / "tools"))
 
 
+def _is_configured_clone() -> bool:
+    """True only on a clone whose core.hooksPath has been set locally.
+
+    `core.hooksPath` is LOCAL git config and is NOT cloned, so CI and any fresh
+    checkout legitimately have it unset. An assertion about THIS machine's hook
+    wiring is therefore not a property of the repository and must not run there -
+    it would fail on every clone forever. The local wiring is checked by
+    `tools/drift_guard.py` at each /done, which is the right home for it.
+    """
+    r = subprocess.run(
+        ["git", "-C", str(REPO), "config", "--get", "core.hooksPath"],
+        capture_output=True, text=True,
+    )
+    return r.returncode == 0 and r.stdout.strip() != ""
+
+
 class ModuleShapeTests(unittest.TestCase):
     """The script exists, compiles, and exposes the documented surface."""
 
@@ -275,6 +291,7 @@ class GitHooksPathTests(unittest.TestCase):
         self.assertTrue(out, "an unset core.hooksPath with tracked hooks must breach")
         self.assertIn("unset", out[0].message.lower())
 
+    @unittest.skipUnless(_is_configured_clone(), "hooksPath unset - fresh clone or CI")
     def test_live_repo_points_at_the_tracked_dir(self) -> None:
         """This repo must stay pointed at .githooks.
 
@@ -316,6 +333,7 @@ class OrphanedHookTests(unittest.TestCase):
         root = self._tree(("pre-commit", "pre-push"), ("pre-commit", "pre-push"))
         self.assertEqual(drift_guard.check_orphaned_git_hooks(root), [])
 
+    @unittest.skipUnless(_is_configured_clone(), "hooksPath unset - fresh clone or CI")
     def test_live_repo_has_no_orphans(self) -> None:
         """Pinned: this repo lost LFS checkout AND LFS upload to this exact bug."""
         import drift_guard
