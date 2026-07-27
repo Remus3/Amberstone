@@ -33,6 +33,7 @@ from unittest import mock
 
 from agents.agent2_backend import file_ingest
 from agents.agent2_backend.file_ingest import FileIngest, _PREFLIP_AVAILABLE
+from tests._asyncio_isolation import run_coro as _run_coro
 
 
 class _FakeWS:
@@ -70,9 +71,24 @@ class PreflipAvailableTests(unittest.TestCase):
         )
 
 
-class FileIngestMirrorTests(unittest.IsolatedAsyncioTestCase):
+class FileIngestMirrorTests(unittest.TestCase):
     """Drive _check_one with a temp health.json + a patched _lcu_summary
-    and assert the broadcast health envelope is preflip-mirrored."""
+    and assert the broadcast health envelope is preflip-mirrored.
+
+    PLAIN TestCase, NOT IsolatedAsyncioTestCase, and that is load-bearing.
+    IsolatedAsyncioTestCase drives asyncSetUp through `asyncio.Runner.run()`
+    on the MAIN thread, and Playwright's sync API leaves asyncio's
+    running-loop marker set on that thread for the whole session
+    (tests/_asyncio_isolation.py documents the measurement). So every test in
+    this class raised "Runner.run() cannot be called from a running event
+    loop" whenever it sorted after a snapshot_panels test in the same
+    process - green alone, red in the nightly dual suite, and red under
+    `-n 8` when a worker happened to draw both files.
+
+    The coroutines therefore run through `run_coro`, which drives them on a
+    fresh loop in a dedicated thread; a fresh thread has no running-loop
+    marker, so it is immune. Assertions are unchanged.
+    """
 
     def _write_health(self, tmp: Path) -> Path:
         p = tmp / "health.json"
@@ -95,11 +111,11 @@ class FileIngestMirrorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(env["type"], "health")
         return env["payload"]
 
-    async def test_aram_mayhem_lobby_mirrors_aram_mode(self) -> None:
+    def test_aram_mayhem_lobby_mirrors_aram_mode(self) -> None:
         # queue 2400 = ARAM Mayhem (KIWI) - the exact live repro.
-        payload = await self._broadcast_health(
+        payload = _run_coro(self._broadcast_health(
             {"phase": "Lobby", "lobby": {"queue_id": 2400, "is_custom": False}}
-        )
+        ))
         self.assertIs(
             payload["aram_mode"], True,
             "ARAM Mayhem lobby must mirror aram_mode=True into the health "
@@ -109,47 +125,57 @@ class FileIngestMirrorTests(unittest.IsolatedAsyncioTestCase):
         # checks aram_mode before falling back to .mode).
         self.assertEqual(payload["mode"], "client")
 
-    async def test_arena_lobby_mirrors_arena_mode(self) -> None:
-        payload = await self._broadcast_health(
+    def test_arena_lobby_mirrors_arena_mode(self) -> None:
+        payload = _run_coro(self._broadcast_health(
             {"phase": "Lobby", "lobby": {"queue_id": 1700, "is_custom": False}}
-        )
+        ))
         self.assertIs(payload["arena_mode"], True)
 
-    async def test_champ_select_queue_mirrors(self) -> None:
-        payload = await self._broadcast_health(
+    def test_champ_select_queue_mirrors(self) -> None:
+        payload = _run_coro(self._broadcast_health(
             {"phase": "ChampSelect", "champ_select": {"queue_id": 2400}}
-        )
+        ))
         self.assertIs(payload["aram_mode"], True)
 
-    async def test_no_lobby_does_not_spuriously_mirror(self) -> None:
-        payload = await self._broadcast_health({"phase": "None"})
+    def test_no_lobby_does_not_spuriously_mirror(self) -> None:
+        payload = _run_coro(self._broadcast_health({"phase": "None"}))
         self.assertIs(payload["aram_mode"], False)
         self.assertIs(payload["arena_mode"], False)
         self.assertEqual(payload["mode"], "client")
 
-    async def test_custom_lobby_does_not_mirror(self) -> None:
-        payload = await self._broadcast_health(
+    def test_custom_lobby_does_not_mirror(self) -> None:
+        payload = _run_coro(self._broadcast_health(
             {"phase": "Lobby", "lobby": {"queue_id": 2400, "is_custom": True}}
-        )
+        ))
         self.assertIs(payload["aram_mode"], False)
 
-    async def test_state_envelope_is_never_mirrored(self) -> None:
+    def test_state_envelope_is_never_mirrored(self) -> None:
         # Only health envelopes carry the mirror; a state envelope must
         # pass through untouched even if an ARAM lobby is active.
+        #
+        # The await lives in a nested coroutine driven by _run_coro rather
+        # than in an `async def test_`: on a plain TestCase pytest would not
+        # await an async test at all - it would emit "coroutine was never
+        # awaited" and PASS without executing a single assertion, which is a
+        # worse outcome than the RuntimeError this conversion fixes.
         ws = _FakeWS()
         fi = FileIngest(ws)
-        with TemporaryDirectory() as d:
-            sp = Path(d) / "aram_coaching_data.json"
-            sp.write_text(json.dumps({"action": "x"}), encoding="utf-8")
+
+        async def _drive(state_path: Path) -> None:
             with mock.patch.object(
                 file_ingest, "_lcu_summary",
                 return_value={"phase": "Lobby",
                               "lobby": {"queue_id": 2400, "is_custom": False}},
             ):
                 await fi._check_one(
-                    sp, "aram_coaching_data.json", mode="aram",
+                    state_path, "aram_coaching_data.json", mode="aram",
                     envelope_type="state",
                 )
+
+        with TemporaryDirectory() as d:
+            sp = Path(d) / "aram_coaching_data.json"
+            sp.write_text(json.dumps({"action": "x"}), encoding="utf-8")
+            _run_coro(_drive(sp))
         self.assertEqual(len(ws.sent), 1)
         self.assertEqual(ws.sent[0]["type"], "state")
         self.assertNotIn("aram_mode", ws.sent[0]["payload"])
