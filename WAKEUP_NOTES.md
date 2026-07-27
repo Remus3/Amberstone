@@ -6,6 +6,84 @@
 
 ---
 
+## 2026-07-27b - R205 the nightly was red for a month of cycles and the directive kept aiming elsewhere (ENGINE-IMPACT NONE, `1ce998a0`)
+
+**The directive's four ordered tasks were all already on disk.** Fourth consecutive
+cycle with a stale premise. Checked before writing anything: the winmutex inbox APPLY
+was a no-op (both files hash `f1b4b011...`), the UNSERIALIZED bump / POSIX tests /
+`SHARED_SHA256` pin are at `tests/test_loop_concurrency.py:310` / `:316` / `:336` /
+`:362`, `_is_on_disk_executable` is at `ops/loop/executor.py:874`, and the skip audit
+shipped `f24dea5f` and ran 22/22 green.
+
+**So the work became what the directive was aiming at and had mis-diagnosed.** Nightly
+`30261946219`: `5 failed, 23474 passed`. Every PUSH run green. The whole delta is that
+those five tests assert against the Legion working tree - green here, structurally red
+on any fresh POSIX clone.
+
+**Two were real production defects, not test artifacts.**
+
+- `loop_controller.py` defaulted its config to an absolute drive-letter literal. Off
+  Legion the read raised, the except set `CFG = {}`, and the controller ran configless
+  while reporting nothing. The tracked `config.json` was never the problem - it was
+  never opened. The missing 5273-byte operator brief is one failure directly and the
+  other transitively: overflow repayment only fires above `GEMINI_STDIN_CAP`, the live
+  margin is 6591 bytes but 996 with `CFG={}`, so nothing overflowed and the plan marker
+  stamped the full cap. **It was passing on Legion by 512 bytes of ambient margin.**
+- The executor's teardown was `taskkill` alone. On POSIX that is a missing executable,
+  the error was swallowed, the child survived, and the bounded reap re-raised
+  `TimeoutExpired` outside any handler. That is why CI said 30 seconds against an
+  injected 2s deadline: **the exception came from the reap, not the deadline.** A
+  surviving child holds the mutex the next cycle waits on.
+
+**The vacuous-pass twin is the finding worth carrying.** Fixing
+`test_mutex_serializes_two_threads` (asserts `peak == 1`, which `winmutex` openly
+declines off win32) meant auditing the skip, and the audit found
+`test_mutex_is_reentrant_for_the_same_thread` broken the OTHER way: the POSIX no-op
+nests happily, so it went GREEN on every Linux checkout while proving nothing. **No red
+would ever have surfaced it.** When you skip a test for an absent capability, check
+whether its siblings are passing for the same reason.
+
+Skips must not delete coverage, so the POSIX contract gained the half nobody had pinned:
+both existing no-op tests are single-threaded and only read the log, so "never claims
+ACQUIRED" was covered and "never serializes" was covered by nobody.
+
+**The hardcoded root was a class, not a line.** A sweep found `done_sentinel.py:15` and
+`claude_stub.py:20` with the same literal and strictly worse - no override, no fallback -
+unnoticed because neither mkdirs at import. Worst in `claude_stub.py`: the dry-run stub
+exists to prove the plumbing without spend, so a stub that only runs on Legion cannot
+prove the plumbing anywhere it is in doubt. Shipped `tests/test_loop_module_root_resolution.py`
+(RED first, 5 failed). **Its first run flagged a fourth I had not seen** -
+`adjudicator.py:25` `DEFAULT_CLAUDE_CMD` - which is an external TOOL path with no
+repo-relative answer and an existing config override. Widening to cover it would have
+forced a fake fix, so the scan is scoped by name and the exclusion is written in-file
+with its reason.
+
+**The verifier gate paid for itself twice.** Slice C was REFUTED: it hid the spawn behind
+`**kwargs`, which the console-flash guard resolves BY AST, so the guard went 18 passed ->
+2 failed and went blind to the loop's only spawn site. Runtime behavior was fine - but for
+a defect whose only symptom is a flicker on the operator's desktop, **the static proof IS
+the protection.** Rebuilt with `creationflags=` literal at the `Popen`; the guard itself
+was not touched, because teaching a guard to trust an indirection defeats it for every
+future spawn site. Slice B's verifier independently found the two sibling roots; slice A's
+falsification-probed the new POSIX test; slice C's caught the agent's own arithmetic (87
+baseline, not 95).
+
+**CARRY-FORWARD, five cycles old and now worse - re-verified live, not recited:**
+controller pid 18300 started `00:37:50`, `loop_controller.py` mtime `08:20:22`. This cycle
+edited the very module the running image cannot reload. **It is un-actionable by any
+executor:** bouncing the controller mid-cycle abandons the `claude.done` handshake it is
+blocked on, and R202's self-reload guard is itself in the code the stale image cannot load.
+It needs one external bounce. No cycle can supply it.
+
+Reply written to the Sibling-A inbox with post-apply digests, flagging that both the
+hardcoded-root and the vacuous-reentrancy defects are likely present LW-side. Neither
+shared file was modified and no re-pin is proposed - said out loud, because a re-pin is a
+joint act and silence reads as consent.
+
+RC `tests/` **13639** / 106 skipped / 460 subtests. Loop set 111. Console-flash guard 18
+(matches clean main). ruff clean, 0 non-ASCII, CI green on `f0f3fd32` and `1ce998a0`.
+Tier-1: no ENGINE bump, no DS bounce, no RC restart, no Share sync.
+
 ## 2026-07-27a - R204 the executor could prove disjointness, the director was never told how (ENGINE-IMPACT NONE, `7f89cd6c`)
 
 f1-phase6 items 7 and 11 land as durable HARD RULES in `ops/loop/director_prompt.md` - the
