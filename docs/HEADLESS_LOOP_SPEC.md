@@ -194,10 +194,9 @@ on 2026-07-26).
 
 ## 7. Open questions - answer before building
 
-- **Does `bypassPermissions` respect the repo's PreToolUse hooks?** RC relies on
-  `tools/precommit_gate.py` to block banned glyphs and net-new ruff. If bypass
-  skips hooks, the headless lane loses a real guard and needs `acceptEdits` plus
-  an explicit allowlist instead. **Measure this before step 3** - do not assume.
+- ~~Does `bypassPermissions` respect the repo's PreToolUse hooks?~~
+  **ANSWERED 2026-07-26 - NO. See section 8; this is now a P0 on the migration,
+  not an open question.**
 - **What is the usage-limit signature in `stream-json`?** The existing detector
   reads stderr text. Confirm the shape in JSON output rather than porting a
   regex that silently never matches.
@@ -206,3 +205,92 @@ on 2026-07-26).
 - **Per-project account isolation** is NOT available today (one account, one
   budget). If the two loops routinely starve each other, that is an
   account-level decision for the operator, not something this design can fix.
+
+
+## 8. MEASURED: the headless executor does NOT inherit the PreToolUse gate
+
+This was section 7's load-bearing open question. It is now measured, and the
+answer changes the migration order.
+
+### The experiment
+
+1. **Control.** Staged a file containing a U+2014 em-dash and invoked
+   `tools/precommit_gate.py` directly on a synthetic Bash/`git commit` payload.
+   Result: `precommit_gate BLOCKED commit - banned glyph: em-dash`, **exit 2**.
+   The gate works.
+2. **Test.** Nested `claude -p --permission-mode bypassPermissions --model sonnet`
+   with `cwd` = repo root, instructed to run `git commit`.
+   Result: **the commit LANDED, em-dash and all.** (Reset immediately; the tree
+   returned to `f5ec4089` and nothing was pushed.)
+
+### The discriminator, because the output is misleading
+
+The run printed `Running Share/ mirror sync (precommit-gated)...`, which reads
+like the gate firing. It is not. That line comes from **`.git/hooks/pre-commit`**
+- a GIT hook, which runs no matter what Claude does.
+`grep -c precommit_gate .git/hooks/pre-commit` returns **0**.
+
+**So: git hooks RAN, Claude PreToolUse hooks did NOT.** Anyone re-running this
+who stops at the console output will draw the opposite conclusion.
+
+### What is NOT yet isolated - do not overstate the finding
+
+This does not separate "`bypassPermissions` skips hooks" from "headless `-p`
+does not load project hooks at all". An isolated temp-directory attempt was
+**invalid and discarded**: the settings file never loaded there in ANY permission
+mode, so the hook could not have fired regardless - a test that cannot fail
+proves nothing.
+
+**The actionable conclusion is robust to either cause: the SDK executor does not
+inherit the repo's PreToolUse gate.**
+
+### Consequence
+
+`bypassPermissions` is not merely an authority grant. It is a **silent removal of
+the repository's own guard**, under exactly the conditions where it matters most:
+unattended, no window, no operator watching. The banned-glyph and net-new-ruff
+backstop is simply absent.
+
+### Mitigation - proven by the same experiment
+
+**Move the authoritative gate into the git pre-commit hook.** Git hooks
+demonstrably survive `bypassPermissions`; that is precisely what the Share-sync
+line proves. A git-level gate is channel-independent: AHK, SDK, a human at a
+terminal, and CI all get it. Keep the PreToolUse copy for the fast in-session
+signal, but it must stop being the only line of defence.
+
+### THE TRAP IN THAT MITIGATION - `.git/hooks` is NOT version controlled
+
+Dropping the gate into `.git/hooks/pre-commit` does not propagate to a fresh
+clone, to another machine, or to a sibling project. This repo already has the
+correct pattern and is **not currently using it**:
+
+  * `.githooks/` is TRACKED and holds `pre-commit` + `commit-msg`.
+  * `scripts/install_hooks.py` exists to install them.
+  * But `core.hooksPath` resolves to `C:\Riot Commander\.git\hooks` - the
+    UNTRACKED copy.
+
+**The two have fully diverged.** The tracked `.githooks/pre-commit` runs
+`precommit_pycompile.py`, `gen_archmap.py --check` and
+`gen_state_schema.py --check`. The active `.git/hooks/pre-commit` runs only the
+Share sync. **Three tracked guards are therefore not running on any commit**, and
+that is a pre-existing defect independent of this spec.
+
+So the mitigation is a three-step job, not a one-liner:
+
+  1. Reconcile `.githooks/pre-commit` with whatever the active hook legitimately
+     needs (the Share sync belongs in the tracked copy).
+  2. Add the `precommit_gate.py` invocation to the TRACKED `.githooks/pre-commit`.
+  3. Point `core.hooksPath` at `.githooks` and make `scripts/install_hooks.py`
+     the documented per-clone step.
+
+Step 3 changes which guards run on EVERY commit in this repo, so it needs its own
+verification pass - do not fold it into an unrelated commit.
+
+### Revised migration order
+
+Insert before step 3 of section 6:
+
+  **Step 2b (P0).** Land the git-level gate. The SDK channel must not ship before
+  it, because shipping it first means every headless commit for that window is
+  ungated.
