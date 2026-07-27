@@ -2604,6 +2604,33 @@ class Handler(BaseHTTPRequestHandler):
 # ---------------------------------------------------------------- bootstrap
 
 
+class _RcThreadingHTTPServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer with a listen backlog that survives concurrent load.
+
+    MEASURED 2026-07-27. socketserver defaults ``request_queue_size`` to 5, so
+    past 5 PENDING connects the OS refuses outright - and a refusal is not
+    something a client timeout can rescue. Under 12-way load, 3 of 500
+    sequential POSTs raised ConnectionRefusedError (WinError 10061) even at a
+    30s deadline.
+
+    The damage was silent rather than loud. ``core/daemon_slayer_client.py``
+    maps every transport failure to ``None`` - the right PRODUCTION shape, since
+    a live coach tick must fail fast rather than stall a frame - so callers read
+    a refused socket as "the engine had nothing to say". A dropped connect
+    therefore surfaced as an engine VERDICT: a control champion that "moved"
+    because its baseline call was a hole, and an alias-dedupe check reporting
+    "expected 6 slots, got []". Every DS live-route consumer shares that
+    exposure, so the fix belongs here and not in whichever test caught it.
+
+    ``request_queue_size`` is read by ``server_activate()`` -> ``socket.listen``
+    during __init__, so it MUST live on the class; assigning it to the instance
+    afterwards reads plausibly and does nothing.
+    """
+
+    request_queue_size = 128
+    daemon_threads = True
+
+
 def start_server(
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
@@ -2627,8 +2654,7 @@ def start_server(
     # hot-reload path today (Phase 7), but start_server IS called more than
     # once per process on the test path, sometimes at a different patch.
     _ABIL_CACHE.reset()
-    srv = ThreadingHTTPServer((host, port), Handler)
-    srv.daemon_threads = True
+    srv = _RcThreadingHTTPServer((host, port), Handler)
     return srv
 
 

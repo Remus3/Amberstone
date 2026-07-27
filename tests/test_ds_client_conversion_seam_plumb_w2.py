@@ -43,6 +43,7 @@ Verified against source BEFORE writing (file:line cited above plus):
 from __future__ import annotations
 
 import json
+import time
 import unittest
 from unittest import mock
 
@@ -287,23 +288,147 @@ _LIVE_ARGS = dict(
 )
 
 
+class EngineTransportError(RuntimeError):
+    """A live call returned NO BODY at all - a swallowed HTTP timeout.
+
+    Raised instead of returning None so a transport failure can never be
+    mistaken for a ranking change (see _PatientTransport below).
+    """
+
+
+# --------------------------------------------------------------------------- #
+# xdist root cause (MEASURED 2026-07-26 against the live :8893 engine).
+#
+# ``_post_json`` (``core/daemon_slayer_client.py:95-112``) maps EVERY transport
+# failure to ``None``, and every caller up the stack reads ``None`` as "the
+# engine had nothing to say" rather than "the engine never answered". That is
+# the correct PRODUCTION shape - a live coach tick must fail fast rather than
+# stall a frame - so neither fix below belongs in ``core/``. It is wrong for a
+# test harness, because a hole then gets compared against a real ranking.
+#
+# TWO independent transport faults were measured, not one:
+#
+#   1. DEADLINE. ``core/daemon_slayer_client.py:33`` sets
+#      ``DEFAULT_TIMEOUT = 0.5`` s. Solo POST /rank is 22 - 37 ms, but at
+#      8-way concurrency the tail reaches 513 ms and 3 of 24 calls returned
+#      None. Fixed here by forcing ``_LIVE_TIMEOUT`` on the live calls.
+#
+#   2. LISTEN BACKLOG. ``agents/daemon_slayer/server.py:2630`` builds a stdlib
+#      ``ThreadingHTTPServer`` and never raises ``request_queue_size``, so the
+#      socketserver default of 5 applies. When more than 5 connects are pending
+#      the OS refuses the connection outright: MEASURED 3 of 500 sequential
+#      POSTs failing with ``ConnectionRefusedError [WinError 10061]`` while a
+#      12-way load ran, at a 30 s deadline - so NO timeout can fix this one.
+#      Fixed here by retrying the CONNECT, which is a pure transport retry.
+#
+# Both faults produced exactly the observed SUBFAILED champion='Caitlyn': the
+# control's BASE call failed while its FLAGGED call succeeded, so
+# ``assertEqual`` compared a hole against a ranking and reported "Caitlyn has
+# no _CRIT_CONVERSION entry but moved".
+#
+# What is NOT retried: any assertion. A retry here happens only when the
+# response is ``None``, i.e. when no verdict exists yet. The engine is a pure
+# function of the request body against a fixed snapshot, so a re-connected call
+# returns the same ranking - the comparison is evaluated exactly once, on real
+# data. If every attempt fails, the teardown hook below fails the test LOUDLY
+# rather than letting the hole reach an assertion.
+#
+# Route, body, engine and every assertion are untouched.
+# --------------------------------------------------------------------------- #
+_REAL_POST_JSON = dsc._post_json
+
+# Generous on purpose: the engine is contended by up to 8 xdist workers, and an
+# over-long deadline only costs wall clock on a run that was going to fail.
+_LIVE_TIMEOUT = 30.0
+# 5 attempts x a backoff longer than the measured 1.9 s worst-case service time
+# clears a transient backlog overflow; a genuinely dead engine still fails.
+_TRANSPORT_ATTEMPTS = 5
+_TRANSPORT_BACKOFF = 0.4
+
+
+class _PatientTransport:
+    """Force ``_LIVE_TIMEOUT`` on every live call and re-connect on a None.
+
+    Records the requests that stayed None after every attempt so teardown can
+    tell a transport artefact apart from engine behaviour.
+    """
+
+    def __init__(self) -> None:
+        self.failures: list[tuple[str, dict]] = []
+        self.reconnects = 0
+
+    def __call__(self, path, body, timeout=None):
+        for attempt in range(_TRANSPORT_ATTEMPTS):
+            out = _REAL_POST_JSON(path, body, timeout=_LIVE_TIMEOUT)
+            if out is not None:
+                self.reconnects += attempt
+                return out
+            time.sleep(_TRANSPORT_BACKOFF * (attempt + 1))
+        self.failures.append((path, dict(body)))
+        return None
+
+
 def _signature(champion: str, **kw):
     res = dsc.rank_for_primary_archetype(champion, "carry", **{**_LIVE_ARGS, **kw})
     if res is None:
-        return None
+        # NEVER return None here. A None signature silently satisfies
+        # assertNotEqual and silently breaks assertEqual, so a dead socket
+        # would be reported as a ranking change. Fail loudly instead.
+        raise EngineTransportError(
+            f"live POST /rank returned NO BODY for champion={champion!r} "
+            f"kw={kw!r} (args={_LIVE_ARGS!r}) - this is a TRANSPORT failure at "
+            f"core/daemon_slayer_client.py:107, not a ranking change"
+        )
     return [(r["item_id"], round(float(r["delta"]), 6)) for r in res["ranked"]]
 
 
-@unittest.skipUnless(dsc.is_engine_up(timeout=1.5), "DS engine :8893 is down")
+def _engine_is_up() -> bool:
+    """Engine-up gate, retried for the SAME backlog-overflow reason as above.
+
+    A single refused connect here would silently SKIP this whole class, which
+    is worse than a failure: the seam evidence disappears with no signal. The
+    load spike is real at collection time, when every xdist worker imports
+    every test module at once.
+    """
+    for attempt in range(_TRANSPORT_ATTEMPTS):
+        if dsc.is_engine_up(timeout=5.0):
+            return True
+        time.sleep(_TRANSPORT_BACKOFF * (attempt + 1))
+    return False
+
+
+@unittest.skipUnless(_engine_is_up(), "DS engine :8893 is down")
 class LiveConversionSeamReachabilityTests(unittest.TestCase):
     """Falsifiable acceptance criterion, measured through the CLIENT path."""
 
     def setUp(self) -> None:
+        # Install the patient transport for the whole test (see the block
+        # above). ``_post_json`` is resolved as a module global at call time by
+        # every client entry point, so rebinding it here reaches the entire
+        # nested call chain - the same seam
+        # ``core/build_order_precompute.py:604-638`` uses in production.
+        self.transport = _PatientTransport()
+        patcher = mock.patch.object(dsc, "_post_json", self.transport)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(self._assert_no_swallowed_transport_failure)
+
         self.seeded = _registry_champions()
         self.controls = [c for c in _CONTROL_POOL if c not in self.seeded]
         self.assertGreaterEqual(
             len(self.controls), 3,
             "control pool decayed into the registries - repair the premise",
+        )
+
+    def _assert_no_swallowed_transport_failure(self) -> None:
+        """A None body reaching any assertion in this class is a defect in the
+        MEASUREMENT, not in the engine - surface it rather than let it colour a
+        ranking comparison."""
+        self.assertEqual(
+            self.transport.failures, [],
+            f"{len(self.transport.failures)} live engine call(s) returned no "
+            f"body at a {_LIVE_TIMEOUT}s deadline - the verdict above is a "
+            f"transport artefact, not engine behaviour",
         )
 
     def test_crit_conversion_moves_ashe_and_no_control(self):
