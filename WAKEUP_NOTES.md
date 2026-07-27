@@ -48,6 +48,17 @@ champion moved" and "expected 6 slots, got []". Backlog 128. DS suite `-n 8`
 went 11 failed -> **9963 passed / 1 skipped / 0 failed in 44s**; live re-measure
 500 POSTs at 16-way, zero failures. ENGINE-IMPACT NONE.
 
+**A fourth instance of the same shape, found by CI on my own new guard.** The
+strict table reader I added to close the corrupt-vs-absent conflation went red in
+CI: `actions/checkout` does not fetch LFS objects and the laning_scenarios
+tables are ~64MB LFS blobs, so on a runner the path EXISTS and holds a pointer
+stub, which is legitimately not JSON. An unfetched pointer is a CAPABILITY gap,
+not a corrupt table - it now skips, while a materialized-but-malformed file still
+fails hard. The skip holds even when the require-flag is armed, because that flag
+asserts the tables were GENERATED and LFS FETCH is a different question with a
+different owner and ~190MB of cost. Clean on Legion (LFS smudges locally), broken
+on the machine that never fetched - the same asymmetry as the post-merge hook.
+
 **The ENGINE-IMPACT anchor count is SEVEN, not five.** The queue note omitted the
 `ENGINE_VERSION` literal itself and `CLAUDE.md`; two memory files said four. The
 derived list with file:line evidence now lives in `ops/loop/director_prompt.md`,
