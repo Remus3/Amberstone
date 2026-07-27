@@ -6,6 +6,65 @@
 
 ---
 
+## 2026-07-27 - R200 f1-phase6 items 2 + 5: the exec-bit commit gate and the 155-site skip audit (ENGINE-IMPACT NONE, `05319608` + `54bad078`)
+
+**The directive came wrapped in an EXECUTOR OVERRIDE telling me to serialize because it
+could not verify the two named agents had disjoint file sets.** It was verifiable, and
+proving it before dispatch was the first deliverable: agent 1 owns
+`{ops/loop/executor.py, tests/test_loop_executor.py}`, agent 2 owns `{the skip sites
+under tests/** + agents/**/tests/**, docs/SKIPIF_AUDIT_2026-07-27.md}`, and
+`tests/test_loop_executor.py` has ZERO skip constructs by grep, so the intersection is
+empty and the round ran in PARALLEL as originally specified. Stated here and in the
+LEDGER because the director never reads the override file back.
+
+**Item 2 - the commit gate read the git INDEX mode and never the on-disk exec bit.**
+Yesterday's fix caught the tracked-100644 case; a hook can be tracked 100755 and still
+be 644 in the working tree (`chmod -x`, `core.fileMode=false`, an export or rsync that
+dropped modes), and git skips it silently, so that clone ran ZERO hooks while
+`gate_inactive_reason` said green. Same always-passing class, one layer down. Probe is
+`os.access(p, os.X_OK)` behind `_is_on_disk_executable`, a documented no-op on nt, so
+the POSIX branch is tested on Windows by monkeypatching the helper - NOT by a `skipif`,
+which would have been the exact anti-pattern the sibling slice was removing in the same
+round. Deliberately not scoped to tracked hooks (a `.git/hooks` install has no index
+mode, and scoping to the index would rebuild the hole one level lower). Two PRE-EXISTING
+fixtures needed an explicit on-disk chmod, and that is load-bearing: CI is
+ubuntu-latest and `_tracked_hook_repo` set only the index mode, so its `executable=True`
+repos were 644 on disk and would have gone red on Linux for a fixture reason.
+59 -> 67 tests, RED first at 7 failed.
+
+**Item 5 - 155 dispositions: 75 CAPABILITY-OK, 27 GITIGNORED-DATA-OK, 51 DEFECT-FIXED,
+2 FUTURE, 0 unaudited.** NOTE for the next reader: the `2026-07-27b` entry below records
+item 5 as done via `-> RM-119`. That pass audited CI COVERAGE and filed RM-119; it did
+not convert any misaligned skip, and all 51 defects were still on disk at `e3f765e1`.
+This cycle did the conversion. RM-119 stays OPEN - it is an operator-gated billing call
+about widening push CI, not part of this scope. The rule was mechanical so it is
+auditable: does the condition gate on something TRACKED IN GIT? If yes, the condition can
+only be true when the thing under test is broken, so it must fail. **The headline is that
+the DS suite's only skip had never asserted anything** - `test_ehp_shield_phase15.py` was
+hardcoded to Aatrox, whose `aramDamageTaken` is exactly 1.0 in the shipped snapshot, so
+it skipped every run since it landed. DS is now 10053 passed / **0 skipped**.
+
+**CI safety was proven by clone, not argued** - the real risk of turning 51 skips into
+failures. Three `git clone` clean checkouts (`core.longpaths=true`, else 16
+`docs/_archive` files silently fail to materialize) with `install_hooks.py` run in each:
+parent 13463 passed / 7 failed / 152 skipped vs slice 13464 / 7 / 152, IDENTICAL failure
+SETS, net delta 0. The one first-run delta was chased down and is the known xdist
+asyncio-loop flake, absent from a pristine re-run and a shifted `-n 6` control.
+
+CARRY-FORWARD, stated rather than buried: `test_build_order_boots` now hard-asserts the
+OLD `16.12.1/items.json`, so a future patch-dir prune turns CI red on an unrelated
+cleanup; and several conversions now couple CI to `current.txt` / `latest_pulled`
+pointing at a COMMITTED bundle, which is the intended drift guard but makes a patch bump
+red until the bundle lands in the same commit. Pre-existing and untouched: the suite
+writes `data/fusion_shadow.jsonl` into the checkout, so
+`test_real_fusion_shadow_corpus_invariants` is order-dependent.
+
+Fresh post-merge: RC `tests/` 13525 passed / 106 skipped / 460 subtests (13516 + 8 + 1,
+exact); DS 10053 / 0 skipped / 5585 subtests; ruff clean; Share `--check` in sync at 511
+files; 0 non-ASCII. Tier-1: no ENGINE bump, no DS bounce, no RC restart.
+
+---
+
 ## 2026-07-27 - R199 loop console-flash back-port + the lane-count value contract (ENGINE-IMPACT NONE, `756db42a`)
 
 **The directive was stale and measuring that first was the whole first half.** It asked
