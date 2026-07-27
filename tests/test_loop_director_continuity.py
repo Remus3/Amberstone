@@ -108,6 +108,87 @@ def test_directive_title_extracts_theme_scope(lc):
     assert "aggregator S" in title.lower()
 
 
+# --- the chain is only a de-dup input if its titles NAME WORK ---------------
+#
+# SECOND DEFECT (2026-07-27). ops/loop/director_prompt.md:16-18 mandates a
+# three-line GROUNDING PREFIX as the directive's FIRST lines, and never
+# requires THEME / SCOPE. directive_title fell through to "the first non-empty
+# line", so 181 of the 199 records in the live control/directive_history.jsonl
+# are titled "GROUNDED-AGAINST: HEAD=<sha> LEDGER-TOP=<n> CHAIN-LAST=<n>" -
+# which names no work at all. The chain was fed to the director and carried
+# zero information, so it could not refute a duplicate.
+
+_LIVE_SHAPED_BODY = (
+    "GROUNDED-AGAINST: HEAD=05319608 LEDGER-TOP=1074 CHAIN-LAST=cycle 4\n"
+    "NOT-A-DUPLICATE-OF: LEDGER 1074 | distinct because this is items 1, 9 and 5a\n"
+    "PREMISE-CHECK: [from-digest] items 2 and 5 shipped in 05319608\n"
+    "\n"
+    "ENGINE-IMPACT: NONE\n"
+    "ops sync and tests only, no ds path.\n"
+    "\n"
+    "DIRECTIVE: f1-phase6 inbox apply and githooks mode commit\n"
+    "\n"
+    "1. STEP A: run `git diff --cached`.\n"
+)
+
+
+def test_directive_title_skips_the_grounding_prefix(lc):
+    """The exact live body that produced the duplicate directive. Its title
+    must name the unit, not the grounding line every directive carries."""
+    title = lc.directive_title(_LIVE_SHAPED_BODY)
+    assert not title.upper().startswith("GROUNDED-AGAINST"), (
+        f"title is still the grounding prefix: {title!r}"
+    )
+    assert "f1-phase6" in title, f"title does not name the work: {title!r}"
+
+
+def test_directive_title_skips_every_metadata_prefix(lc):
+    """Class guard over the whole mandated prefix block, not just line 1: a
+    body carrying ONLY metadata plus one prose line must title on the prose."""
+    for prefix in lc.DIRECTIVE_METADATA_PREFIXES:
+        body = f"{prefix} some machine-readable value\nreal work sentence here\n"
+        title = lc.directive_title(body)
+        assert title == "real work sentence here", (
+            f"prefix {prefix!r} was not skipped - got {title!r}"
+        )
+
+
+def test_directive_title_prefers_the_directive_line_over_stray_prose(lc):
+    """`DIRECTIVE:` is the emitted title line; the prose above it ("ops sync
+    and tests only") is an ENGINE-IMPACT qualifier and is the wrong label.
+    Asserted as an EQUALITY - a not-in check passes vacuously while the title
+    is still the untouched grounding prefix."""
+    assert lc.directive_title(_LIVE_SHAPED_BODY) == (
+        "f1-phase6 inbox apply and githooks mode commit"
+    )
+
+
+def test_directive_title_survives_a_metadata_only_body(lc):
+    """A body with nothing but the grounding prefix has no work to name - it
+    must degrade to a label, never to an empty string or an IndexError."""
+    body = "GROUNDED-AGAINST: HEAD=abc12345 LEDGER-TOP=1074 CHAIN-LAST=cycle 4\n"
+    assert lc.directive_title(body).strip(), "empty title for a metadata-only body"
+
+
+def test_chain_digest_names_work_not_grounding(lc, tmp_path):
+    """End to end: record a live-shaped directive, then assert the cycle-N+1
+    context shows the UNIT. This is the whole point of the chain."""
+    _seed_repo(tmp_path)
+    # A marker that cannot appear in the real `git log --oneline` block the
+    # context also embeds - "f1-phase6" is in this repo's history and would
+    # make this assertion pass while the chain stayed empty of work names.
+    body = _LIVE_SHAPED_BODY.replace(
+        "f1-phase6 inbox apply", "QQCHAINUNITMARKER inbox apply")
+    lc.record_directive_outcome(
+        9, body, "1111aaaa", "756db42a",
+        {"tests_pass": 13516, "regressions": False}, "VERDICT: CLEAN", ctl=tmp_path)
+    ctx = lc.build_director_context({}, "", root=tmp_path, ctl=tmp_path)
+    assert "QQCHAINUNITMARKER" in ctx, (
+        "the directive chain must name the unit issued in the prior cycle - "
+        "a chain of GROUNDED-AGAINST lines cannot refute a duplicate"
+    )
+
+
 def test_record_and_read_directive_history_roundtrip(lc, tmp_path):
     assert lc.read_directive_history(5, ctl=tmp_path) == []
     lc.record_directive_outcome(

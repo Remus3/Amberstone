@@ -12,6 +12,7 @@ Both gemini and claude are stateless per cycle; continuity lives on disk
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -277,6 +278,65 @@ PLAN_CTX_CAP = 24_000
 LEDGER_CTX_CAP = 8_000
 ROADMAP_CTX_CAP = 8_000
 
+# 2026-07-27 duplicate-directive fix. The 2026-07-01 cap bounded the SIZE and
+# silently inverted the CONTENT for the plan: closure rows are APPENDED, so the
+# 271,142-byte ORCHESTRATION_PLAN keeps its newest rows in the last ~9KB
+# (measured: R199 at offset 262,042, R200 at 265,191) while a pure-head 24,000
+# cap stopped at 24,000. "f1-phase6" occurred twice in the document and ZERO
+# times in the slice the director received, so cycle 11 re-issued work cycle 9
+# had already closed and recorded. The plan therefore keeps a head slice - the
+# doc's own framing and the curated pick-these-first list live at the top - AND
+# a tail slice. The split is a REALLOCATION inside the unchanged 24,000: the
+# gemini empty-stdout ceiling is why this budget exists, so raising it to buy
+# the tail would trade one starvation mode for the other.
+PLAN_CTX_HEAD = 8_000
+
+# The ledger needs the opposite treatment. It IS newest-first, so head-keeping
+# was already right, but a modern item is one 5-10KB LINE (item 1074 alone is
+# 10,749 bytes), so an 8,000-byte cap over whole items delivered ONE partial id
+# and cut item 1073 - the row naming this very closure. De-dup only needs each
+# item's opening clause, so the budget is spent per ITEM: 300 chars x ~26 items
+# inside the same 8,000 bytes (measured against the live 3MB file).
+LEDGER_ITEM_HEAD = 300
+LEDGER_HEAD_LINES = 240
+
+_LEDGER_ITEM_RE = re.compile(r"^\d{3,4}\. ")
+
+
+def cap_bytes_head_tail(text, limit, label, head):
+    """cap_bytes for a doc whose NEWEST content is appended at the END."""
+    if len(text) <= limit:
+        return text
+    marker = (f"\n...[{label} truncated at {limit} bytes - HEAD + TAIL kept, "
+              "middle cut; full text in the repo file]...\n")
+    keep = max(limit - len(marker), 0)
+    h = min(head, keep)
+    tail = keep - h
+    return text[:h] + marker + (text[len(text) - tail:] if tail else "")
+
+
+def ledger_digest(text, per_item, limit, label):
+    """Newest-first ledger -> as many item HEADLINES as the budget allows."""
+    marker = (f"...[{label} truncated at {limit} bytes - "
+              "older items omitted; full text in the repo file]")
+    out, used = [], 0
+    for line in text.splitlines():
+        if not _LEDGER_ITEM_RE.match(line):
+            continue
+        s = line[:per_item] + (" ..." if len(line) > per_item else "")
+        # The marker is RESERVED before the last item is admitted. Charging it
+        # only on the way out returns limit + len(marker) - measured at 8,020
+        # against LEDGER_CTX_CAP 8,000 - and a cap its own constant does not
+        # bound is the always-green shape this module exists to remove.
+        if used + len(s) + 1 + len(marker) > limit:
+            out.append(marker)
+            break
+        out.append(s)
+        used += len(s) + 1
+    # A ledger that carries no recognisable item lines is a shape change, not an
+    # empty ledger - fall back rather than hand the director nothing at all.
+    return "\n".join(out) if out else cap_bytes(text, limit, label)
+
 # Auditor payload split. 2026-07-19 false-positive REGRESS #6: the whole budget
 # went to the diff BODY, which git emits in path byte order - a commit touching
 # the generated mirror (Share/, 'S' 0x53) and its true source (agents/, 'a'
@@ -303,23 +363,39 @@ def cap_stdin(body, limit=None):
     return body[:head] + marker + body[len(body) - (keep - head):]
 
 # ---- directive-chain continuity (persisted; survives controller restarts) ---
+# director_prompt.md:16-18 mandates these as the directive's FIRST three lines
+# and ENGINE-IMPACT as a mandatory body line. They are machine-readable grounding
+# metadata, never the name of a unit of work, so the first-non-empty-line
+# fallback titled 181 of the 199 live history records "GROUNDED-AGAINST: ..." -
+# a de-dup chain that named nothing and could not refute a duplicate directive.
+DIRECTIVE_METADATA_PREFIXES = (
+    "GROUNDED-AGAINST:", "NOT-A-DUPLICATE-OF:", "PREMISE-CHECK:", "ENGINE-IMPACT:",
+)
+
+
 def directive_title(body):
     """A compact one-line label for an issued directive (for the chain digest)."""
     if not body:
         return "(empty)"
-    theme = scope = ""
+    theme = scope = directive = ""
     for line in body.splitlines():
         s = line.strip()
         u = s.upper()
-        if u.startswith("THEME:") and not theme:
+        # The emitted shape carries the unit on its own `DIRECTIVE:` line, so it
+        # outranks the legacy THEME/SCOPE pair and the surrounding qualifiers.
+        if u.startswith("DIRECTIVE:") and not directive:
+            directive = s.split(":", 1)[1].strip()
+        elif u.startswith("THEME:") and not theme:
             theme = s.split(":", 1)[1].strip()
         elif u.startswith("SCOPE:") and not scope:
             scope = s.split(":", 1)[1].strip()
+    if directive:
+        return directive[:160]
     if theme or scope:
         return (f"{theme} - {scope}".strip(" -"))[:160]
     for line in body.splitlines():
         s = line.strip().lstrip("#").strip()
-        if s:
+        if s and not s.upper().startswith(DIRECTIVE_METADATA_PREFIXES):
             return s[:160]
     return "(empty)"
 
@@ -421,14 +497,14 @@ def build_director_context(last_done, last_audit, *, root=None, ctl=None):
     base = Path(root) if root is not None else ROOT
     plan = base / "docs/ORCHESTRATION_PLAN.md"
     plan_txt = plan.read_text(encoding="utf-8", errors="replace") if plan.exists() else "(no plan file)"
-    plan_txt = cap_bytes(plan_txt, PLAN_CTX_CAP, "ORCHESTRATION_PLAN")
+    plan_txt = cap_bytes_head_tail(plan_txt, PLAN_CTX_CAP, "ORCHESTRATION_PLAN", PLAN_CTX_HEAD)
     chain = _format_directive_chain(read_directive_history(12, ctl=ctl))
     ctx = (
         f"\n\n=== ORCHESTRATION PLAN (PRIMARY work source; pick next OPEN session, skip EXCLUDED) ===\n{plan_txt}"
         "\n\n=== ALREADY-COMPLETED DIGEST - every item below is DONE. BUILD ON it; NEVER re-issue it ==="
         f"\n\n--- RECENT COMMITS (newest first) ---\n{git('log', '--oneline', '-n', '25')}"
         "\n\n--- docs/LEDGER.md NEWEST items (newest-first; each line is a COMPLETED item) ---\n"
-        f"{cap_bytes(head_lines('docs/LEDGER.md', 60, root=root), LEDGER_CTX_CAP, 'LEDGER head')}"
+        f"{ledger_digest(head_lines('docs/LEDGER.md', LEDGER_HEAD_LINES, root=root), LEDGER_ITEM_HEAD, LEDGER_CTX_CAP, 'LEDGER head')}"
         "\n\n--- DIRECTIVES ALREADY ISSUED THIS RUN (do NOT re-issue any unit below) ---\n"
         f"{chain}"
         "\n\nDE-DUP RULE: before emitting the directive, cross-check your chosen unit against the "
