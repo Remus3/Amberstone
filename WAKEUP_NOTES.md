@@ -6,6 +6,64 @@
 
 ---
 
+## 2026-07-27f - R209 docs-only pushes ran no CI while 49 guards read docs off disk (ENGINE-IMPACT NONE, `2719dc2a`)
+
+**Seventh cycle in eight with a premise stale on disk.** The directive was
+f1-phase6 item 5, the codebase-wide `skipif` audit, for the THIRD time. It shipped
+at `54bad078` (R200) and its AST regression guard shipped at `f24dea5f` (R203); the
+13 `pytest.mark.skipif` sites left on disk are the audited CAPABILITY-OK residue
+plus the guard's own fixtures. R202's carry-forward still explains the repetition
+and is now FIVE CYCLES OLD AND UNCHANGED: controller pid 18300 started 00:37:50,
+before the self-reload fix `d4b1a762` landed, so the running image cannot load its
+own fix. **It must be bounced BY HAND once.** Nothing in an executor cycle can do
+it - the fix cannot install itself.
+
+Re-cut to R208's own explicitly-unfixed carry-forward, which is the R207 class one
+more time: a guard exempted from the thing it guards. `ci.yml` has carried
+`paths-ignore` on markdown since the 2026-06-30 MINUTE SAVER, but 49 test modules
+read a tracked `.md` off disk and assert on its content. **It had already fired
+twice, in the two commits immediately before this one.** `6bad3814` was docs-only
+and turned `test_real_orchestration_plan_newest_row_survives` RED; `8d22734b` was
+the docs-only FIX, so the fix's own green was never machine-confirmed either.
+
+Closed with a COMPLEMENT workflow rather than by weakening the filter. The minute
+saver is untouched and now pinned by `test_minute_saver_is_still_in_place`;
+`docs-guards.yml` fires on exactly what `ci.yml` and `codspeed.yml` decline. The
+selected set is DERIVED AT CI TIME by `tools/md_guard_selector.py` against
+`git ls-files`, never hand-listed in YAML - a hand-written universe is the
+`SCHEDULED_SPAWNERS` scar and the R200 scar (51 conversions shipped with no machine
+guard, so nothing stopped #52 and #52 already existed), and such a list stays GREEN
+over its own blind spot.
+
+Two class enumerations. Every paths filter: 6 across 3 workflows - `codspeed.yml`
+was NOT assumed clean because `ci.yml` was the reported site, and it carries the
+identical filter. Md-reading modules: 49. The build agent's first heuristic proved
+its own hole and it said so - requiring disk IO beside the literal dropped
+`test_doc_size_budget.py`, which reads CLAUDE.md through `.stat().st_size`.
+
+**The verifier gate earned its slot on the count discrepancy.** The worktree run
+reported 13644 passed / 146 skipped against a 13677 / 106 baseline. Rather than
+wave that through as worktree noise it diffed the nodeid sets: 39 pass-on-main /
+skip-on-branch, all gitignored-data reasons, and ONE pass-on-main / FAIL-on-branch.
+Arithmetic closes exactly at 13677 + 7 - 39 - 1 = 13644.
+
+**CARRY-FORWARD, pre-existing, NOT fixed here:** the suite writes gitignored
+`data/fusion_shadow.jsonl` itself, so in a pristine checkout run 1 SKIPS
+`test_real_fusion_shadow_corpus_invariants` and run 2 FAILS it, seeded by a single
+238-byte record. Masked on main by a 285-record corpus. Proven by copying main's
+corpus into a branch export and getting 13 passed.
+
+**LIMIT:** the new workflow has never executed on GitHub. It parses with a real
+parser and its filter is correct, but the GitHub-side trigger semantics are
+unproven until the first docs-only push - which is the real acceptance.
+
+RC `tests/` 13677 -> 13684 passed / 106 skipped / 460 subtests (+7 exact); ruff
+clean; 0 non-ASCII. DS untouched. Tier-1. This row recorded as a TABLE ROW in
+`docs/ORCHESTRATION_PLAN.md`, not a prose section, per `8d22734b`; newest row now
+sits 14753 bytes from EOF against the 16000 tail.
+
+---
+
 ## 2026-07-27e - R208 the director stamped its own premises UNVERIFIED and nothing read the stamp (ENGINE-IMPACT NONE, `f4815e16`)
 
 **Sixth cycle in seven with a premise stale on disk.** The directive was the
