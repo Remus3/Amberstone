@@ -37,6 +37,7 @@ is UNCHANGED - this is a reallocation, not a raise.
 from __future__ import annotations
 
 import importlib
+import json
 import re
 from pathlib import Path
 
@@ -48,6 +49,24 @@ _REPO = Path(__file__).resolve().parent.parent
 @pytest.fixture()
 def lc():
     return importlib.import_module("ops.loop.loop_controller")
+
+
+def _seed_directive_chain(ctl: Path, n: int = 12) -> None:
+    """Seed the issued-directive chain the director context embeds.
+
+    build_director_context reads up to 12 records, and a live run carries them
+    from cycle 2 onward (~2KB). The stdin overflow this module now guards is
+    only reproducible with the chain PRESENT, so a fixture that omits it
+    measures a body the director never actually sends.
+    """
+    recs = [
+        {"cycle": i, "title": f"seeded directive unit {i} - {'t' * 90}",
+         "sha_after": f"{i:040x}", "verdict": "CLEAN"}
+        for i in range(1, n + 1)
+    ]
+    ctl.mkdir(parents=True, exist_ok=True)
+    (ctl / "directive_history.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in recs), encoding="utf-8")
 
 
 def _seed(root: Path, plan_bytes: int, ledger_line_bytes: int,
@@ -108,11 +127,22 @@ def test_director_context_fits_gemini_stdin(lc, tmp_path):
     """2026-07-02: gemini CLI returns silent EMPTY stdout above ~80KB stdin
     (80KB delivered, 160KB empty - measured). The assembled context plus the
     prompt template must stay inside the proven-safe stdin budget even when
-    the plan, ledger AND roadmap are all pathologically bloated."""
+    the plan, ledger AND roadmap are all pathologically bloated.
+
+    2026-07-27 RETARGET. This measured the CONTEXT against
+    ``GEMINI_STDIN_CAP - 8_000``, a hardcoded GUESS at the overhead of the two
+    components it excluded - the prompt template and the operator brief. Both
+    outgrew the guess (template 12,726 bytes, brief 5,273), so the real stdin
+    ran 62,919 bytes while this assertion read green at 48,054 <= 52,000. The
+    budget is now DERIVED from the assembled body, so template growth can no
+    longer hide behind a magic number.
+    """
     _seed(tmp_path, plan_bytes=400_000, ledger_line_bytes=3_000, roadmap_bytes=150_000)
-    ctx = lc.build_director_context({}, "", root=tmp_path, ctl=tmp_path)
-    assert len(ctx) <= lc.GEMINI_STDIN_CAP - 8_000, (
-        f"director context is {len(ctx)} bytes - exceeds the gemini stdin budget"
+    _seed_directive_chain(tmp_path)
+    body = lc.build_director_body({}, "", root=tmp_path, ctl=tmp_path)
+    assert len(body) <= lc.GEMINI_STDIN_CAP, (
+        f"assembled director body is {len(body)} bytes - exceeds "
+        f"GEMINI_STDIN_CAP {lc.GEMINI_STDIN_CAP}"
     )
 
 
@@ -275,3 +305,138 @@ def test_real_ledger_newest_items_survive(lc, tmp_path):
     assert not missing, (
         f"the 5 newest ledger items must all reach the director; missing {missing}"
     )
+
+
+# --- 2026-07-27: the WHOLE stdin, not just its components -------------------
+# --- Every cap above bounds one COMPONENT. Nothing bounded their SUM plus the
+# --- prompt template plus the operator brief, so cap_stdin's blind 60/40
+# --- middle cut fired on every live cycle. Measured on the real repo: a
+# --- 62,919-byte body against GEMINI_STDIN_CAP 60,000, and the 2,919 bytes it
+# --- discarded were exactly the ALREADY-COMPLETED DIGEST header and the whole
+# --- RECENT COMMITS block - the literal refutation of the duplicate directive
+# --- the director kept re-emitting. Measured against the REAL docs, which are
+# --- tracked, so a skip guard here could only ever be always-pass.
+
+_COMMITS_MARKER = "--- RECENT COMMITS (newest first) ---"
+_DIGEST_MARKER = "=== ALREADY-COMPLETED DIGEST"
+
+
+def _real_body(lc, ctl: Path) -> str:
+    """The exact stdin a live director cycle sends: real docs, real commits,
+    and a populated directive chain."""
+    _seed_directive_chain(ctl)
+    return lc.build_director_body({}, "", root=_REPO, ctl=ctl)
+
+
+def test_real_director_body_fits_gemini_stdin(lc, tmp_path):
+    """The assembled stdin must fit the cap on its own, so the blind backstop
+    never runs. cap_stdin returns its argument UNCHANGED below the limit, so
+    identity is the assertion that the backstop did not fire."""
+    body = _real_body(lc, tmp_path)
+    assert len(body) <= lc.GEMINI_STDIN_CAP, (
+        f"director stdin is {len(body)} bytes against GEMINI_STDIN_CAP "
+        f"{lc.GEMINI_STDIN_CAP} - cap_stdin will blind-cut the middle"
+    )
+    assert lc.cap_stdin(body) is body, "cap_stdin still fired on a normal body"
+
+
+def test_real_recent_commits_block_survives_the_stdin_cap(lc, tmp_path):
+    """The commit log is the cheapest and most current proof of what already
+    shipped. It sat in the middle of the body, which is precisely the region
+    cap_stdin sacrifices."""
+    capped = lc.cap_stdin(_real_body(lc, tmp_path))
+    assert _COMMITS_MARKER in capped, (
+        "the RECENT COMMITS block was cut from the director stdin - the "
+        "director cannot refute a duplicate it is never shown"
+    )
+
+
+def test_real_completed_digest_header_survives_the_stdin_cap(lc, tmp_path):
+    """The header is what tells the director the block beneath it is DONE
+    work. Losing it silently downgrades the digest to unlabelled prose."""
+    capped = lc.cap_stdin(_real_body(lc, tmp_path))
+    assert _DIGEST_MARKER in capped, (
+        "the ALREADY-COMPLETED DIGEST header was cut from the director stdin"
+    )
+
+
+def test_overflow_is_repaid_out_of_the_plan_slice(lc, tmp_path):
+    """The plan is the ONLY expendable component - it is a work menu, and both
+    its head and tail slices survive a smaller budget. The digest is evidence,
+    so it must never be the thing that shrinks. The stamped truncation marker
+    names the budget actually applied, so it reports which component paid."""
+    body = _real_body(lc, tmp_path)
+    applied = re.search(r"\[ORCHESTRATION_PLAN truncated at (\d+) bytes", body)
+    assert applied, "the plan carries no truncation marker to attribute the cut to"
+    assert int(applied.group(1)) < lc.PLAN_CTX_CAP, (
+        f"plan budget stayed at {applied.group(1)} - the overflow was repaid "
+        "out of some other component"
+    )
+    for marker in (_COMMITS_MARKER, _DIGEST_MARKER,
+                   "--- DIRECTIVES ALREADY ISSUED THIS RUN"):
+        assert marker in body, f"digest component {marker!r} was sacrificed"
+
+
+def test_plan_cap_floor_keeps_head_and_tail(lc):
+    """A floor stops the repayment from starving the plan to nothing, and it
+    must stay above PLAN_CTX_HEAD or the tail slice - where the newest queue
+    rows live - is what the floor silently deletes."""
+    assert lc.PLAN_CTX_MIN > lc.PLAN_CTX_HEAD, (
+        "the floor must leave room for the plan TAIL, not just the head"
+    )
+    assert lc.PLAN_CTX_MIN < lc.PLAN_CTX_CAP
+
+
+def test_explicit_plan_cap_shrinks_only_the_plan(lc, tmp_path):
+    """The injectable plan_cap is the mechanism the overflow path uses."""
+    small = lc.build_director_context({}, "", root=_REPO, ctl=tmp_path,
+                                      plan_cap=lc.PLAN_CTX_MIN)
+    big = lc.build_director_context({}, "", root=_REPO, ctl=tmp_path)
+    assert len(small) < len(big)
+    assert len(big) - len(small) == lc.PLAN_CTX_CAP - lc.PLAN_CTX_MIN
+    for marker in (_COMMITS_MARKER, _DIGEST_MARKER):
+        assert marker in small
+
+
+def test_escalation_survives_a_context_rebuild(lc, tmp_path):
+    """The escalation file is CONSUMED on read. If the overflow rebuild popped
+    it a second time the question would vanish from the very body it was
+    raised for - the failure mode that made the pop the body assembler's job."""
+    _seed_directive_chain(tmp_path)
+    (tmp_path / "gemini_ask.txt").write_text("ESCALATION-MARKER-Q", encoding="utf-8")
+    body = lc.build_director_body({}, "", root=_REPO, ctl=tmp_path)
+    assert "ESCALATION-MARKER-Q" in body, "the rebuild swallowed the escalation"
+    assert not (tmp_path / "gemini_ask.txt").exists(), "escalation not consumed"
+
+
+# --- 2026-07-27 slice 2: the operator brief is STATIC background policy -----
+# --- It was appended after the LAST AUDIT body with a bare blank line and no
+# --- header, so 5,273 bytes of standing prose read as the tail of this
+# --- cycle's audit - i.e. as a work order the director should act on now.
+
+def test_operator_brief_is_labelled_and_not_attributed_to_last_audit(lc, tmp_path):
+    suffix = lc.CFG.get("directive_suffix", "")
+    assert suffix, "config.json lost directive_suffix - this test needs it non-empty"
+    ctx = lc.build_director_context({}, "AUDIT-BODY-MARKER", root=_REPO, ctl=tmp_path)
+
+    assert lc.DIRECTIVE_SUFFIX_HEADER in ctx, "the operator brief carries no header"
+    audit_at = ctx.index("=== LAST AUDIT")
+    hdr_at = ctx.index(lc.DIRECTIVE_SUFFIX_HEADER)
+    assert hdr_at > audit_at, "the brief must follow the LAST AUDIT section"
+
+    between = ctx[audit_at:hdr_at]
+    assert "AUDIT-BODY-MARKER" in between, "the audit body moved out of its section"
+    assert suffix not in between, "the brief still sits INSIDE the LAST AUDIT body"
+    assert ctx.index(suffix, hdr_at) >= hdr_at + len(lc.DIRECTIVE_SUFFIX_HEADER), (
+        "the brief must start after its header, not before it"
+    )
+
+
+def test_operator_brief_header_states_the_digest_overrides_it(lc):
+    """The header has one job: stop STATIC prose outranking the digest."""
+    hdr = lc.DIRECTIVE_SUFFIX_HEADER
+    assert hdr.startswith("=== ") and hdr.endswith(" ==="), "not a section boundary"
+    assert "OPERATOR STANDING BRIEF" in hdr
+    assert "NOT this cycle's work order" in hdr
+    assert "ALREADY-COMPLETED DIGEST OVERRIDES it" in hdr
+    assert hdr.isascii(), "7-bit ASCII only"
