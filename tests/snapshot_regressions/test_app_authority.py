@@ -184,9 +184,11 @@ class TestAppGetSnapshotMutationSafety(unittest.TestCase):
     def test_mutating_ally_details_nested_dict_does_not_affect_internal(self):
         """Mutating a nested dict inside ally_details does not reach internal state."""
         app, payload = self._make_app_with_sr_payload()
-        original_name = payload.ally_details[0]["name"] if payload.ally_details else None
-        if original_name is None:
-            self.skipTest("No ally_details in fixture")
+        # _RICH_SR_STATE is an in-module literal, so the fixture shape is fixed
+        # at author time - an empty ally_details means the fixture or
+        # to_rift_snapshot() regressed, which must fail rather than skip.
+        self.assertTrue(payload.ally_details, "fixture lost its ally_details")
+        original_name = payload.ally_details[0]["name"]
 
         snap = app.get_snapshot()
         self.assertTrue(len(snap.payload.ally_details) > 0)
@@ -197,9 +199,9 @@ class TestAppGetSnapshotMutationSafety(unittest.TestCase):
 
     def test_mutating_enemy_details_nested_dict_does_not_affect_internal(self):
         app, payload = self._make_app_with_sr_payload()
-        original = payload.enemy_details[0]["name"] if payload.enemy_details else None
-        if original is None:
-            self.skipTest("No enemy_details in fixture")
+        # Same in-module-literal fixture as the ally case above.
+        self.assertTrue(payload.enemy_details, "fixture lost its enemy_details")
+        original = payload.enemy_details[0]["name"]
         snap = app.get_snapshot()
         snap.payload.enemy_details[0]["name"] = "MUTATED"
         self.assertEqual(payload.enemy_details[0]["name"], original)

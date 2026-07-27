@@ -247,12 +247,15 @@ class LiveEnginePivotTests(unittest.TestCase):
         # "DS client import failed". Probed the same day: the import succeeds -
         # every transient :8893 timeout for the life of this test was reported
         # to the operator as a broken import, pointing debugging at the wrong
-        # half of the system. The except now covers the import ONLY, so the
-        # reported reason is the real one.
-        try:
-            from core import daemon_slayer_client as dsc
-        except Exception as exc:  # noqa: BLE001 - a genuine import failure
-            self.skipTest(f"DS client import failed: {exc}")
+        # half of the system.
+        #
+        # 2026-07-27 skip audit: the import guard is now GONE entirely.
+        # core/daemon_slayer_client.py is TRACKED, so it imports in every
+        # checkout; a failure there is the thing under test being broken, not an
+        # absent capability. Letting the ImportError propagate makes it a hard
+        # error instead of a green skip. Only the :8893 liveness gate below is a
+        # real capability check.
+        from core import daemon_slayer_client as dsc
         if not dsc.is_engine_up(timeout=1.5):
             self.skipTest("DS engine at 127.0.0.1:8893 is down")
 
