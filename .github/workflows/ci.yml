@@ -89,13 +89,17 @@ jobs:
           # enough to be worth reading, and cheap enough to be a candidate for
           # an actual gate.
           pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
-            -n 8 --dist loadfile
+            -n auto --dist loadfile
 
   check:
     if: github.event_name != 'schedule'
 
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 25, not 10. MEASURED 2026-07-27: adding the DS suite (RM-119) pushed this
+    # job past a 10-minute budget that had been sized for a 6-minute job, and
+    # GitHub CANCELLED it mid-step - which reads as "cancelled", not "failed",
+    # so it is easy to misread as a superseded run rather than a timeout.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
 
@@ -271,7 +275,11 @@ jobs:
           # the tree to leave ungated.
           #
           # It is cheap, which is why this is the first half of RM-119 to land:
-          # 9963 passed / 1 skipped in 44s at `-n 8`, and the package imports
+          # 10053 passed / 5585 subtests in 44s at `-n 8` on an 8-core local
+          # box. `-n auto` HERE, not `-n 8`: a GitHub runner has 2-4 vCPU, so a
+          # hardcoded 8 oversubscribes it and runs SLOWER than the local number
+          # suggests - which is how the first attempt at this step blew the
+          # job's 10-minute budget and was cancelled mid-run. The package imports
           # NOTHING from the runtime stack (no anthropic / PIL / websockets /
           # portalocker / json5 / cv2 / numpy), verified by grep before wiring
           # it here - so the minimal-deps install above is sufficient and this
@@ -287,7 +295,7 @@ jobs:
           # c009efea. Any future "the DS tests are flaky under -n" claim should
           # be re-measured before it is believed.
           pytest agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
-            -n 8 --dist loadfile
+            -n auto --dist loadfile
 
       - name: mypy gradual typing
         continue-on-error: true
