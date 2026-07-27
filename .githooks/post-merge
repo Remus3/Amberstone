@@ -1,0 +1,16 @@
+#!/bin/sh
+# Git LFS. PORTED 2026-07-27, and it was the one LFS hook nobody had ported.
+#
+# git-lfs installs FOUR hooks - post-checkout, post-commit, post-merge and
+# pre-push. When core.hooksPath moved to this tracked directory, three of them
+# came with it and this one did not, so `git lfs post-merge` has been inert on
+# every clone of this repo: a `git pull` (fetch + merge) left LFS pointers
+# unsmudged instead of materializing the 7 LFS-tracked files. post-checkout
+# hides most of it, which is why it went unnoticed.
+#
+# FOUND BY CI, on the first run after the hook gate was finally armed there
+# (f1-phase6 item 6). The runner has this hook because actions/checkout runs
+# `git lfs install`; Legion's clone never did, so the orphan check was clean
+# locally and red on the runner. The local pass was the misleading one.
+command -v git-lfs >/dev/null 2>&1 || { printf >&2 "\n%s\n\n" "This repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting the 'post-merge' file in the hooks directory (set by 'core.hookspath'; usually '.git/hooks')."; exit 2; }
+git lfs post-merge "$@"
