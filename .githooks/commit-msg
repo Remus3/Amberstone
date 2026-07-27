@@ -1,9 +1,15 @@
 #!/bin/sh
-# Riot Commander commit-msg hook (Phase 7).
+# Riot Commander commit-msg hook.
 #
-# Validates the commit subject line against Conventional Commits.
 # Install per-clone with:
+#   python scripts/install_hooks.py        (sets core.hooksPath for you)
+# or directly:
 #   git config core.hooksPath .githooks
+#
+# Two jobs, and BOTH must stay here. Until 2026-07-26 they lived in two different
+# files - the trailer strip only in the untracked `.git/hooks/commit-msg`, the
+# subject validation only in this tracked one - so whichever file `core.hooksPath`
+# resolved to, one of the two silently did not run.
 
 set -e
 
@@ -14,4 +20,13 @@ if ! command -v "$PY" >/dev/null 2>&1; then
     PY=python
 fi
 
+# 1. Operator policy 2026-06-03: never emit the Claude co-author trailer.
+# Strip it rather than reject it, so a session that adds one out of habit still
+# commits cleanly. Runs FIRST so the subject validation below sees the final
+# message. `|| true` because grep exits 1 when it filters every line.
+tmp="$1.rcfilt"
+grep -v -i '^Co-Authored-By: Claude' "$1" > "$tmp" || true
+mv "$tmp" "$1"
+
+# 2. Validate the subject line against Conventional Commits.
 "$PY" "$ROOT/scripts/precommit_msg_check.py" "$1" || exit 1

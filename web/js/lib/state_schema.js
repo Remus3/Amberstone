@@ -10,6 +10,8 @@
  * @typedef {Object} AramPayload
  * @property {string} mode
  * @property {string} action
+ * @property {Object} combat_stats
+ * @property {Array} stat_shards
  * @property {string} champion
  * @property {string} immediate
  * @property {string} fight_rule
@@ -42,6 +44,8 @@
  * @typedef {Object} ArenaPayload
  * @property {string} mode
  * @property {string} action
+ * @property {Object} combat_stats
+ * @property {Array} stat_shards
  * @property {string} champion
  * @property {string} fight_rule
  * @property {string} round_strategy
@@ -73,6 +77,8 @@
  * @typedef {Object} BrawlPayload
  * @property {string} mode
  * @property {string} action
+ * @property {Object} combat_stats
+ * @property {Array} stat_shards
  * @property {string} champion
  * @property {string} immediate
  * @property {string} fight_rule
@@ -97,6 +103,8 @@
  * @typedef {Object} SrPayload
  * @property {string} mode
  * @property {string} action
+ * @property {Object} combat_stats
+ * @property {Array} stat_shards
  * @property {string} immediate
  * @property {string} next
  * @property {string} fight_rule
@@ -125,6 +133,8 @@
  * @typedef {Object} TftPayload
  * @property {string} mode
  * @property {string} action
+ * @property {Object} combat_stats
+ * @property {Array} stat_shards
  * @property {string} board
  * @property {string} econ
  * @property {string} rolldown
