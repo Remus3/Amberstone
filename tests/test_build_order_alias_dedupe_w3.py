@@ -36,6 +36,7 @@ ASCII only - use " - " for a clause break (repo hard rule).
 from __future__ import annotations
 
 import json
+import time
 import unittest
 
 from core.build_order import plan_build_order
@@ -222,6 +223,66 @@ class PlannerRejectsAliasDuplicatesTests(unittest.TestCase):
                          f"{[s.item_id for s in res.order]}")
 
 
+# --------------------------------------------------------------------------- #
+# xdist root cause (MEASURED 2026-07-26) - the same pair of transport faults
+# documented at length in tests/test_ds_client_conversion_seam_plumb_w2.py.
+#
+# ``_post_json`` (``core/daemon_slayer_client.py:95-112``) maps every transport
+# failure to ``None``. ``core/build_order_precompute.py:330-335`` then turns
+# that into ``order=[]``, and ``core/build_order.py:727-731`` swallows a
+# mid-plan failure into a SHORT order. Both are the right production shape - a
+# dead engine must not sink a whole sweep - so the fix does not belong in
+# ``core/`` and this file works around it at the transport seam instead.
+#
+#   1. DEADLINE. ``core/daemon_slayer_client.py:33`` sets
+#      ``DEFAULT_TIMEOUT = 0.5`` s. A solo POST /rank is 22 - 37 ms, but at
+#      8-way concurrency the tail reaches 513 ms and 3 of 24 calls return None.
+#      Reproduced deterministically by squeezing the deadline to 1 ms:
+#      ``compute_cell -> []`` after exactly 1 call, that call returning None,
+#      so ``_assert_distinct`` reported "expected 6 slots, got []" - an
+#      ALIAS-DEDUPE verdict manufactured entirely by a socket timeout.
+#
+#   2. LISTEN BACKLOG. ``agents/daemon_slayer/server.py:2630`` builds a stdlib
+#      ``ThreadingHTTPServer`` and never raises ``request_queue_size``, so the
+#      socketserver default of 5 applies and the OS refuses connects beyond it:
+#      MEASURED 3 of 500 sequential POSTs raising ``ConnectionRefusedError
+#      [WinError 10061]`` under a 12-way load at a 30 s deadline. No timeout
+#      can fix that one, so the CONNECT is retried.
+#
+# What is NOT retried: any assertion. A retry happens only while the response
+# is ``None``, i.e. before any verdict exists. The engine is a pure function of
+# the request body against a fixed snapshot, so a re-connected call returns the
+# same order and every assertion below is evaluated exactly once, on real data.
+# If every attempt fails, the teardown hook fails the test LOUDLY instead.
+#
+# Route, body, engine and every assertion are untouched.
+# --------------------------------------------------------------------------- #
+_LIVE_TIMEOUT = 30.0
+# 5 attempts x a backoff longer than the measured 1.9 s worst-case service time
+# clears a transient backlog overflow; a genuinely dead engine still fails.
+_TRANSPORT_ATTEMPTS = 5
+_TRANSPORT_BACKOFF = 0.4
+
+
+class _PatientTransport:
+    """Force ``_LIVE_TIMEOUT`` on every live call and re-connect on a None."""
+
+    def __init__(self, real) -> None:
+        self._real = real
+        self.failures: list[tuple[str, dict]] = []
+        self.reconnects = 0
+
+    def __call__(self, path, body, timeout=None):
+        for attempt in range(_TRANSPORT_ATTEMPTS):
+            out = self._real(path, body, timeout=_LIVE_TIMEOUT)
+            if out is not None:
+                self.reconnects += attempt
+                return out
+            time.sleep(_TRANSPORT_BACKOFF * (attempt + 1))
+        self.failures.append((path, dict(body)))
+        return None
+
+
 class LiveEngineBothKeyspacesTests(unittest.TestCase):
     """The acceptance criterion, against the real engine - skipped when down.
 
@@ -233,12 +294,49 @@ class LiveEngineBothKeyspacesTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from core import daemon_slayer_client as dsc
-        if not dsc.is_engine_up(timeout=2.0):
-            raise unittest.SkipTest("DS engine 127.0.0.1:8893 is down")
+        # Retried, and 5.0s rather than 2.0s, for the SAME backlog-overflow
+        # reason as above: a single refused connect here would silently SKIP
+        # this class, which is worse than a failure because the acceptance
+        # criterion disappears with no signal.
+        for attempt in range(_TRANSPORT_ATTEMPTS):
+            if dsc.is_engine_up(timeout=5.0):
+                return
+            time.sleep(_TRANSPORT_BACKOFF * (attempt + 1))
+        raise unittest.SkipTest("DS engine 127.0.0.1:8893 is down")
+
+    def setUp(self):
+        # Rebind the single transport function every live caller below funnels
+        # through - ``plan_build_order`` imports ``rank_for_primary_archetype``,
+        # which resolves ``_post_json`` from its own module globals at call
+        # time. This is the same seam production uses at
+        # ``core/build_order_precompute.py:604-638``.
+        from unittest import mock
+
+        from core import daemon_slayer_client as dsc
+        self.transport = _PatientTransport(dsc._post_json)
+        patcher = mock.patch.object(dsc, "_post_json", self.transport)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(self._assert_no_swallowed_transport_failure)
+
+    def _assert_no_swallowed_transport_failure(self):
+        """A None body reaching the assertions below is a defect in the
+        MEASUREMENT, not an alias-dedupe regression - surface it as such."""
+        self.assertEqual(
+            self.transport.failures, [],
+            f"{len(self.transport.failures)} live engine call(s) returned no "
+            f"body at a {_LIVE_TIMEOUT}s deadline - any slot-count verdict "
+            f"above is a transport artefact, not a dedupe result",
+        )
 
     def _assert_distinct(self, ids, label):
         canon = [canonical_item_id(str(i)) for i in ids]
-        self.assertEqual(len(canon), 6, f"{label}: expected 6 slots, got {ids}")
+        self.assertEqual(
+            len(canon), 6,
+            f"{label}: expected 6 slots, got {ids} - a SHORT order means the "
+            f"planner ran out of candidates or an engine call returned no "
+            f"body; a duplicate order is the separate assertion below",
+        )
         self.assertEqual(len(set(canon)), 6,
                          f"{label}: duplicate item in {ids} -> {canon}")
 
