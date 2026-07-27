@@ -245,6 +245,29 @@ class CountedClaimTests(unittest.TestCase):
         self.assertEqual(drift_guard.check_counted_claims(root), [])
 
 
+class GitHooksPathTests(unittest.TestCase):
+    """The tracked-hooks pointer, both directions."""
+
+    def test_exposed(self) -> None:
+        import drift_guard
+        self.assertTrue(hasattr(drift_guard, "check_git_hooks_path"))
+
+    def test_no_githooks_dir_is_a_no_op(self) -> None:
+        import drift_guard
+        root = pathlib.Path(tempfile.mkdtemp())
+        self.assertEqual(drift_guard.check_git_hooks_path(root), [])
+
+    def test_live_repo_points_at_the_tracked_dir(self) -> None:
+        """This repo must stay pointed at .githooks.
+
+        Pinned as a real assertion, not a smoke check: when this pointer moved,
+        three tracked guards stopped running and nothing surfaced it for long
+        enough that two generated artifacts drifted.
+        """
+        import drift_guard
+        self.assertEqual(drift_guard.check_git_hooks_path(REPO), [])
+
+
 class LiveRepoTests(unittest.TestCase):
     """The guard must RUN against this repo without exploding.
 

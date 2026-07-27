@@ -52,17 +52,22 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | File | Role |
 |---|---|
 | `core/game_snapshot.py` | raw JSON -> snapshot dataclass [FROZEN] |
+| `core/hud_settings.py` | parse League game.cfg + PersistedSettings for OCR region + color hardening |
+| `core/screen_grab.py` | full-resolution screen grab for OCR + calibration (no downscale) |
+| `core/vision_profiles.py` | profile-based hot-reloadable OCR region + reference-frame store |
 | `core/vision_tesseract.py` | OCR pipeline (Tesseract) |
 | `game_reader/__init__.py` | GameReader facade - composes poller + normalizer mixins |
 | `game_reader/mode_router.py` | queue/map -> mode-key routing + TFT early-exit |
 | `game_reader/poller.py` | Live Client + LCU + relay IO for game state polling |
 | `game_reader/snapshot_normalizer.py` | raw liveclient JSON -> coaching state dict + derived fields |
 | `moon_vision_server.py` | vision server entrypoint shim - delegates to vision_server.main |
+| `tests/test_silent_except_liveclient_subresource.py` | regression - live-client subresource reads must be falsifiable |
 | `vision_server/__init__.py` | vision_server package facade + entrypoint |
 | `vision_server/_config.py` | vision server config + Anthropic client |
 | `vision_server/_frame.py` | latest-frame cache + upload handler |
 | `vision_server/_http.py` | BaseHTTPRequestHandler routing for :8889 |
 | `vision_server/_inference.py` | Anthropic vision/coach + Tesseract OCR handlers |
+| `vision_server/_reap.py` | reap stale/orphaned :8889 vision-server instances before bind |
 | `vision_server/_relay.py` | LCU + Live Client relays |
 | `vision_server/_stats.py` | vision server stats + log ring |
 
@@ -90,6 +95,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/_cs_retention.py` | champ-select snapshot retention across no-draft transition |
 | `dashboard/_deterministic_coaching.py` | deterministic coaching resolver for /api/state |
 | `dashboard/_dispatch.py` | route registration |
+| `dashboard/_lcu_inprocess.py` | in-process LCU snapshot reader for /api/state |
 | `dashboard/_party_mains.py` | PARTY MAINS lobby enrichment (Legion-side, Riot Champion-Mastery-V4) |
 | `dashboard/_state_builder.py` | builds /api/state payload |
 | `dashboard/_state_cooldowns.py` | adapts Live Client snapshot -> compute_cooldowns input |
@@ -121,6 +127,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/routes_spike_curve.py` | power-curve sparkline backend |
 | `dashboard/routes_spike_markers.py` | live power-spike markers backend |
 | `dashboard/routes_team_context.py` | GET /api/team-context + POST /api/team-context/refresh |
+| `dashboard/routes_vision_calibrator.py` | GET/POST vision-region calibrator (frame proxy + regions read/write + page) |
 | `dashboard/routes_ward_heat.py` | ward-coverage heat strip backend |
 | `web_dashboard.py` | :8888 HTTPS dashboard server entry |
 
@@ -132,14 +139,18 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/aram_deterministic_coach.py` | deterministic ARAM coach block assembler (Stage 2) |
 | `core/archetype_mismatch.py` | first-purchase archetype mismatch nudge |
 | `core/archetype_picks.py` | cs archetype pick storage + DDragon-tag default resolver |
+| `core/arena_deterministic_coach.py` | deterministic Arena coach block assembler (Stage 2) |
 | `core/augment_shadow.py` | arena augment-select shadow writer |
 | `core/build_order_precompute.py` | Lane B build-order precompute (comp-archetype table) |
 | `core/build_order_variants.py` | Lane B build-order VARIANTS (anti-tank / anti-squishy, A3-driven) |
+| `core/cc_threat.py` | deterministic hard-CC threat / tenacity nudge |
 | `core/champ_select_advisor_deterministic.py` | deterministic champ-select pick-advisor |
 | `core/champ_select_shadow.py` | champ-select pick-advisor shadow writer |
 | `core/champion_info_overrides.py` | curated DDragon info.attack/magic overrides for damage-type classification |
 | `core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |
 | `core/defensive_picks.py` | defensive item ranker |
+| `core/district_fusion.py` | API-ground-truth fusion over the CV district presence vector |
+| `core/ds_support_route_overrides.py` | Slice C support-tag route-override loader (RM-84) |
 | `core/enemy_aware_stats.py` | enemy stats from liveclient items |
 | `core/event_callouts.py` | deterministic event-milestone callout table |
 | `core/heal_threat.py` | deterministic heal-threat / anti-heal nudge |
@@ -148,8 +159,13 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/lcu_pool.py` | pooled loopback HTTPS reuse + min-interval guard (RC2 P6.4 port-safety) |
 | `core/lcu_ranked.py` | LCU ranked-stats read for the rank-identity header |
 | `core/log_setup.py` | log init [FROZEN] |
+| `core/macro_context.py` | fog-only macro snapshot for the deterministic decision tree |
+| `core/macro_decision_tree.py` | ordered pure-rule registry for deterministic macro callouts |
 | `core/macro_response.py` | RC2-P5.7 deterministic lost-objective + stagnation response |
+| `core/mia_reachability.py` | MIA reachability rings - SOLE zoi.mia producer (ZOI Wave 3, spec E-2) |
+| `core/mode_capabilities.py` | static per-mode capability truth table (fail-CLOSED) |
 | `core/moon_proxy.py` | vision server proxy [FROZEN] |
+| `core/next_buy_fallback.py` | static DS build-order fallback for the NEXT BUY feed |
 | `core/objective_playbook.py` | RC2-P5.5 deterministic objective playbook callout |
 | `core/pickban_targets.py` | deterministic pick/ban targets reader (matchup-engine DB) |
 | `core/precomputed_anvil_advisor.py` | arena item-anvil deterministic substrate |
@@ -159,9 +175,12 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/queue_modes.py` | queue_id -> dashboard mode_key |
 | `core/riot_api.py` | Riot Web API client + rate limiter + endpoint wrappers |
 | `core/riot_api_cache.py` | SQLite cache for core/riot_api.py |
+| `core/vision_fusion.py` | confidence-weighted partial-read fusion of Live Client + CV reads |
 | `core/ward_cue.py` | ward-readiness extractor over the active player's Live Client items |
 | `core/ward_events.py` | ward-coverage rolling-window backend |
 | `core/ward_producer.py` | ward-placement producer over allPlayers inventory delta |
+| `core/zoi_capability.py` | archetype capability-weight multiplier for ZOI influence bubbles |
+| `core/zoi_field.py` | fluid oil-and-water DMZ frontier from signed influence bubbles |
 | `lcu/lcu_client.py` | LCU auth + command client [FROZEN] |
 | `tests/test_coach_choices_characterization_p2_2.py` | P2.2 structured-output hardening - coach_choices wire golden-master |
 | `tests/test_coach_output_p2_2.py` | P2.2 tail - shared coach-output model parity golden master |
@@ -172,6 +191,8 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `Share/src/tools/daemon_slayer_cdragon_spell_extract.py` | cdragon per-spell stat sidecar extractor (character bins -> cdragon_spell_stats.json) |
 | `Share/src/tools/daemon_slayer_wiki_ability_extract.py` | lolmath-wiki per-ability param sidecar extractor (ChampionData + Template:Data -> wiki_ability_stats.json) |
 | `Share/src/tools/daemon_slayer_wiki_stats_extract.py` | lolmath-wiki + cdragon stat sidecar extractor (ChampionData + bin -> wiki_stats.json) |
+| `tools/aram_shadow_report.py` | ARAM deterministic-vs-Haiku shadow agreement report (flip-readiness gate) |
+| `tools/arena_shadow_report.py` | Arena shadow-validation report over the deterministic-vs-Haiku log |
 | `tools/daemon_slayer_cdragon_ratio_extract.py` | cdragon ability-ratio sidecar extractor (character bins -> cdragon_ability_ratios.json) + Meraki drift |
 | `tools/daemon_slayer_cdragon_spell_extract.py` | cdragon per-spell stat sidecar extractor (character bins -> cdragon_spell_stats.json) |
 | `tools/daemon_slayer_wiki_ability_extract.py` | lolmath-wiki per-ability param sidecar extractor (ChampionData + Template:Data -> wiki_ability_stats.json) |
@@ -184,7 +205,9 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tools/live_benchmark_band_report.py` | LBAND1 validation report over the live-benchmark-band shadow log |
 | `tools/macro_response_shadow_report.py` | RC2-P5.7 (WS4) macro-response register flip-readiness report over the macro shadow log |
 | `tools/objective_playbook_shadow_report.py` | RC2-P5.5 (WS3) objective-playbook flip-readiness report over the objective shadow log |
+| `tools/ocr_shadow_report.py` | OCR-vs-Sonnet shadow agreement report (Lane E OCR-only flip gate) |
 | `tools/rc_facts.py` | live RC health + topology probe |
+| `tools/unresolved_token_scan.py` | RM-108 unresolved-template-token detector over vendored feeds |
 | `tools/upstream_drift_check.py` | daily upstream content-drift detector (ddragon / meraki / cdragon) |
 
 ### Tests
@@ -257,7 +280,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 0.7 | - | `core/metrics_cache.py:329` | supervisor_state added to status.json; tolerate absence in older files |
 | 0.9 | - | `ops/rc_self_monitor.py:338` | _check_health() returns a (state, detail) tuple |
 | 0.9 | - | `ops/rc_self_monitor.py:546` | _check_health() returns 3-value state string instead of plain bool |
-| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1077` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
+| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1214` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
 | 1 step 3 | - | `tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
 | 3 step 1.1 | - | `tft/tft_coach_engine.py:788` | write TFT coaching timestamp only after payload write succeeds |
