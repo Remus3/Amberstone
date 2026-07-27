@@ -354,3 +354,21 @@ def test_template_substitution_leaves_no_placeholder_on_either_channel(channel, 
     assert "{{FINAL_STEP}}" not in out
     assert present in out
     assert absent not in out
+
+
+def test_no_budget_flag_when_cycle_budget_is_absent():
+    """Operator decision 2026-07-26: no --max-budget-usd on a Max 20x SUBSCRIPTION.
+    total_cost_usd is a notional API-equivalent price, not money billed, so a cap
+    truncates a cycle on a number that does not track actual spend. Time
+    (cycle_deadline_sec) is the executor's only real budget."""
+    argv = _sdk(Path("."), executor_cmd="claude.cmd").build_argv(1)
+    assert "--max-budget-usd" not in argv
+
+
+def test_shipped_configs_carry_no_dollar_cap():
+    """Regression guard: re-adding cycle_budget_usd silently re-arms the cap."""
+    import json as _json
+    for name in ("config.json", "config.p5.json", "config.gate.json"):
+        cfg = _json.loads((ROOT / "ops" / "loop" / name).read_text(encoding="utf-8"))
+        assert "cycle_budget_usd" not in cfg, f"{name} re-armed the dollar cap"
+        assert cfg.get("cycle_deadline_sec"), f"{name} must still rail the executor on TIME"
