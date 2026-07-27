@@ -28,6 +28,7 @@ for AHK that is the gemini.ready typing handshake and the claude.done sentinel.
 """
 from __future__ import annotations
 
+import re
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -82,6 +83,258 @@ def directive_payload(cycle: int, body: str, src: str, clear_each_cycle: bool = 
     return f"CYCLE={cycle}\n{clear_line}{DIRECTIVE_OPENER}"
 
 
+# ---- parallel-agent disjointness guard --------------------------------------
+#
+# MEASURED TWICE, on this loop. The director writes "dispatch 3 parallel disjoint
+# worktree agents" and the file sets it names are not actually disjoint: R194's
+# slices collided on a shared _R194_TAIL, and R196's three tails all landed in
+# the same two files with slice 2 a schema lift the other two consumed. Both
+# times the executing session noticed by hand and refused the directive's shape.
+# When nobody notices, the agents clobber each other.
+#
+# So the executor checks it, and when it cannot prove disjointness it SERIALIZES
+# and RECORDS that it deviated. Recording is half the point: a silent correction
+# is nearly as bad as the collision, because the director never learns its
+# directive was wrong and writes the same shape again next cycle.
+
+PARALLEL_MARKER = "executor: SERIALIZED-DEVIATION"
+
+_NUM_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+              "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+
+# A parallel WORD is the trigger. Without one there is nothing to serialize:
+# enumerated slices in a single-session directive are already sequential, and
+# rewriting one of those would be a false positive on a directive that is fine.
+_PARALLEL_RE = re.compile(
+    r"\b(?:in\s+)?parallel\b|\bconcurrent(?:ly)?\b|\bsimultaneous(?:ly)?\b"
+    r"|\bfan[\s-]?out\b", re.IGNORECASE)
+
+_AGENT_NOUN = r"(?:sub-?agents?|agents?|worktrees?|slices?|lanes?)"
+_COUNT_RE = re.compile(
+    r"\b(\d{1,2}|" + "|".join(_NUM_WORDS) + r")\s+(?:[a-z][\w-]*\s+){0,4}?"
+    + _AGENT_NOUN + r"\b", re.IGNORECASE)
+
+# A per-agent heading, e.g. "AGENT 2:", "SLICE B -", "**Lane 3)**". The id must be
+# followed by punctuation or end-of-line so ordinary prose ("agent 1 must run
+# first") does not manufacture a block.
+_BLOCK_HEAD_RE = re.compile(
+    r"^[\s>*#|-]*(?:\*\*)?\s*(agent|slice|lane|worktree)\s*#?\s*(\d{1,2}|[a-z])\b"
+    r"\s*(?=[:.,)\-]|$)", re.IGNORECASE)
+
+_PATH_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./\\-]*\.[A-Za-z0-9]{1,6}")
+# Extension whitelist, not a general path grammar: prose is full of tokens that
+# look like paths ("1.260.1", "e.g", "README.") and a version number counted as a
+# file would make two unrelated slices read as colliding.
+_PATH_EXTS = frozenset((
+    "py", "pyi", "md", "json", "jsonl", "js", "mjs", "ts", "tsx", "css", "html",
+    "ps1", "psm1", "ahk", "txt", "yml", "yaml", "toml", "ini", "cfg", "bat",
+    "cmd", "sh", "sql", "db", "csv", "svg", "png", "log"))
+
+
+def _norm_path(token: str) -> str:
+    t = token.replace("\\", "/").strip().rstrip(".,;:'\")]}")
+    while t.startswith("./"):
+        t = t[2:]
+    return t.lower()
+
+
+def _extract_paths(text: str) -> list:
+    out = []
+    for m in _PATH_RE.finditer(text or ""):
+        t = _norm_path(m.group(0))
+        if t.rsplit(".", 1)[-1] in _PATH_EXTS and t not in out:
+            out.append(t)
+    return out
+
+
+def _same_file(a: str, b: str) -> bool:
+    """Two spellings of one file. The director mixes absolute Windows paths with
+    repo-relative ones inside a single directive, so a plain string compare would
+    call `C:/Riot Commander/ops/loop/executor.py` and `ops/loop/executor.py`
+    disjoint - the exact collision this guard exists to catch."""
+    return a == b or a.endswith("/" + b) or b.endswith("/" + a)
+
+
+def _agent_blocks(body: str) -> list:
+    """[(label, text)] per named agent. Text before the first heading is preamble
+    (the "dispatch 3 parallel agents" sentence, the shared context) and is NOT
+    attributed to any agent - counting its file names would blur every set into
+    every other one."""
+    blocks = []
+    for line in (body or "").splitlines():
+        m = _BLOCK_HEAD_RE.match(line)
+        if m:
+            blocks.append([f"{m.group(1).upper()} {m.group(2).upper()}",
+                           line[m.end():]])
+        elif blocks:
+            blocks[-1][1] += "\n" + line
+    return [(label, text) for label, text in blocks]
+
+
+@dataclass
+class ParallelPlan:
+    """What the executor could work out about a directive's parallel dispatch.
+
+    `verdict` is deliberately four-valued, not a bool. "unverified" is the whole
+    design: an extractor that silently found no file sets would make this guard
+    pass vacuously on every directive it cannot parse, and a guard that degrades
+    into always-passing is the failure mode this repo keeps getting bitten by
+    (see gate_inactive_reason for the same lesson learned the same way). A
+    directive that clearly names N>1 parallel agents whose file sets cannot be
+    read with confidence is a RECORDED deviation, not a pass.
+    """
+
+    agents: int = 0
+    blocks: list = field(default_factory=list)  # [(label, [normalized paths])]
+    verdict: str = "none"  # none | disjoint | overlap | unverified
+    detail: str = ""
+
+    @property
+    def deviates(self) -> bool:
+        return self.verdict in ("overlap", "unverified")
+
+
+def parallel_plan(body: str) -> ParallelPlan:
+    """Pure: read a free-form director directive and judge its parallel dispatch.
+
+    Deliberately NOT an NLP parser - a conservative matcher plus an explicit
+    unknown state is the right size. It answers three questions in order: does
+    this directive dispatch agents in PARALLEL, how MANY does it name, and can
+    each one's file set be read. Any doubt at any step lands in "unverified".
+    """
+    text = body or ""
+    if not _PARALLEL_RE.search(text):
+        return ParallelPlan()
+    # The count is read only from lines that also carry a parallel word, so a
+    # stray "3 slices" in the acceptance criteria does not set N.
+    named = 0
+    for line in text.splitlines():
+        if not _PARALLEL_RE.search(line):
+            continue
+        for m in _COUNT_RE.finditer(line):
+            tok = m.group(1).lower()
+            named = max(named, int(tok) if tok.isdigit() else _NUM_WORDS.get(tok, 0))
+
+    blocks = [(label, _extract_paths(chunk)) for label, chunk in _agent_blocks(text)]
+    agents = max(named, len(blocks))
+    if agents < 2:
+        # One agent (or none named) cannot collide with itself.
+        return ParallelPlan(agents=agents, blocks=blocks)
+
+    if len(blocks) < max(2, named):
+        return ParallelPlan(
+            agents=agents, blocks=blocks, verdict="unverified",
+            detail=(f"could not verify disjointness: the directive names {agents} "
+                    f"parallel agents but only {len(blocks)} labelled file set(s) "
+                    f"could be read"))
+    empty = [label for label, files in blocks if not files]
+    if empty:
+        return ParallelPlan(
+            agents=agents, blocks=blocks, verdict="unverified",
+            detail=(f"could not verify disjointness: {', '.join(empty)} name(s) no "
+                    f"files, so the sets cannot be compared"))
+
+    clashes = []
+    for i in range(len(blocks)):
+        for j in range(i + 1, len(blocks)):
+            shared = sorted({b for a in blocks[i][1] for b in blocks[j][1]
+                             if _same_file(a, b)})
+            if shared:
+                clashes.append(f"{blocks[i][0]} and {blocks[j][0]} both name "
+                               f"{', '.join(shared)}")
+    if clashes:
+        return ParallelPlan(agents=agents, blocks=blocks, verdict="overlap",
+                            detail="file sets are NOT disjoint: " + "; ".join(clashes))
+    return ParallelPlan(agents=agents, blocks=blocks, verdict="disjoint",
+                        detail=f"{agents} parallel agents, file sets disjoint")
+
+
+SERIALIZE_HEADER = "EXECUTOR OVERRIDE - RUN THE NAMED AGENTS SEQUENTIALLY, NOT IN PARALLEL"
+UNVERIFIED_HEADER = ("EXECUTOR OVERRIDE - PROVE THE FILE SETS ARE DISJOINT, "
+                     "OR RUN THE NAMED AGENTS SEQUENTIALLY")
+
+_REPORT_IT = (
+    "State this deviation in your summary line. The director does not read this file "
+    "back, so an unreported correction teaches it nothing and it writes the same "
+    "shape again next cycle.\n")
+
+
+def serialize_directive(body: str, plan: ParallelPlan) -> str:
+    """Pure: the directive as it must actually be executed.
+
+    Prepended, not appended: on the director path the bridge types only the
+    opener and the session READS control/directive.md, so the correction has to
+    be the first thing in that file or it is prose buried under the plan it
+    contradicts.
+
+    The two deviation kinds get DIFFERENT instructions, deliberately. A proven
+    overlap leaves no discretion - those agents demonstrably collide. "Cannot
+    verify" is weaker evidence and deserves a weaker remedy: a real directive on
+    disk (config.fixed.json) fans out 10 scouts across effect CHANNELS and names
+    no files at all, and those ten probably never collide, so forcing them
+    sequential would cost 10x wall clock on a directive that was fine. What it
+    may NOT do is dispatch unexamined - which is exactly what happened before
+    this guard - so the session must first write down each agent's actual file
+    set and prove disjointness, and serialize when it cannot. Either way the
+    deviation is already recorded in controller.log; the difference is only in
+    what the session is told to do next.
+
+    Dependency ORDER is not inferable from prose - R196's prerequisite slice was
+    number 2 of 3 - so this pins the listed order and tells the session to
+    reorder when it can see the prerequisite. That is a real instruction to a
+    capable executor, not a claim this function computed a DAG.
+    """
+    order = " -> ".join(label for label, _ in plan.blocks) or "the order listed below"
+    tail = f"--- ORIGINAL DIRECTIVE FOLLOWS, UNCHANGED ---\n{body}"
+    if plan.verdict == "overlap":
+        return (
+            f"{SERIALIZE_HEADER}\n"
+            f"{PARALLEL_MARKER} {plan.detail}\n\n"
+            f"This directive dispatches {plan.agents} agents in parallel and their file "
+            f"sets COLLIDE, so the executor has refused the parallel shape. Run them ONE "
+            f"AT A TIME: {order}. If one slice is a prerequisite the others consume (a "
+            f"schema lift, a shared helper, a shared test tail), run that one FIRST and "
+            f"say which.\n{_REPORT_IT}\n{tail}")
+    return (
+        f"{UNVERIFIED_HEADER}\n"
+        f"{PARALLEL_MARKER} {plan.detail}\n\n"
+        f"This directive dispatches {plan.agents} agents in parallel and the executor "
+        f"could not read a file set for each one, so it cannot be dispatched as written. "
+        f"BEFORE dispatching anything: write down the exact file set each agent will "
+        f"edit, and check them pairwise. Dispatch in parallel ONLY on file sets you have "
+        f"shown to be disjoint; run the rest SEQUENTIALLY ({order}), prerequisite slice "
+        f"first.\n{_REPORT_IT}\n{tail}")
+
+
+def enforce_agent_disjointness(cycle, body, *, log=None, awrite=None, ctl=None):
+    """Judge the directive, and on a deviation serialize it AND record it.
+
+    Returns the body to execute - byte-identical to the input whenever the
+    directive is already fine, which is what keeps every non-parallel and every
+    genuinely-disjoint cycle untouched.
+
+    The record goes to the controller's own log seam (control/controller.log, the
+    file the operator greps and the judge reads) with a marker distinct from
+    winmutex's UNSERIALIZED, and directive.md is rewritten so the session that
+    actually does the work reads the serialized plan rather than the parallel one.
+    """
+    plan = parallel_plan(body)
+    if not plan.deviates:
+        return body
+    if log:
+        # The marker is constant so one grep finds every deviation; the tail says
+        # which remedy was applied, because the two are not the same event.
+        remedy = ("serializing them instead of dispatching in parallel"
+                  if plan.verdict == "overlap"
+                  else "not dispatchable until the file sets are proven disjoint")
+        log(f"cycle {cycle}: {PARALLEL_MARKER} {plan.detail} - {plan.agents} named "
+            f"parallel agents, {remedy}")
+    fixed = serialize_directive(body, plan)
+    if awrite and ctl is not None:
+        awrite(Path(ctl) / "directive.md", fixed)
+    return fixed
+
+
 class AhkExecutor:
     """The legacy GUI channel: write gemini.ready, wait for AHK to type it, wait
     for the done sentinel. Verbatim lift - see the module docstring.
@@ -108,6 +361,10 @@ class AhkExecutor:
 
     def run(self, cycle: int, body: str, src: str) -> DoneRecord:
         ctl = self.ctl
+        # No-op (returns the same string, writes nothing) unless the directive
+        # dispatches parallel agents whose file sets are not provably disjoint.
+        body = enforce_agent_disjointness(cycle, body, log=self.log,
+                                          awrite=self.awrite, ctl=ctl)
         self.awrite(ctl / "gemini.ready",
                     directive_payload(cycle, body, src,
                                       self.cfg.get("clear_each_cycle", True)))
@@ -277,6 +534,10 @@ class SdkExecutor:
     def run(self, cycle: int, body: str, src: str) -> DoneRecord:
         import json as _json
 
+        # Same guard as the ahk channel, and it matters MORE here: a `-p` run is
+        # unattended, so nobody is watching to refuse a colliding directive.
+        body = enforce_agent_disjointness(cycle, body, log=self.log,
+                                          awrite=self.awrite, ctl=self.ctl)
         argv = self.build_argv(cycle)
         prompt = sdk_prompt(cycle, body, src)
         timeout = float(self.cfg.get("cycle_deadline_sec", 5400))

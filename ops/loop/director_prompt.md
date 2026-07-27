@@ -25,6 +25,37 @@ HARD RULES for the directive you emit:
   / scorer change a test or served path consumes is BUMP. NEVER pair a bump instruction with a
   "byte-identical when unconsumed" instruction in the same directive - that pairing is the R19
   contradiction and forces a wasted adjudicator round-trip to resolve.
+- ON `ENGINE-IMPACT: BUMP` the directive MUST carry a NUMBERED ANCHOR-SITE STEP naming all
+  SEVEN sites by path. Never "sync the docs" / "update the anchors" - seven numbered lines,
+  each a real path, because a session that does not know the list is seven long stops at the
+  one it remembers. Derived + verified on disk 2026-07-27 against the 1.259.0 -> 1.260.0 bump
+  (commit `6f42c75f`). Reproduce this block inside the directive:
+    1. `agents/daemon_slayer/__init__.py:18` - the quoted `ENGINE_VERSION = "X.Y.Z"` literal.
+       Source of truth. Bump the LITERAL only (memory feedback_engine_bump_quoted_literal_only).
+    2. `agents/daemon_slayer/CHANGELOG.md:1334` - PREPEND one paragraph keyed `X.Y.Z (` after a
+       blank line. Guard: `agents/daemon_slayer/tests/test_changelog_tracks_engine_version.py`.
+    3. `docs/DAEMON_SLAYER.md:5` - the status banner: version + DS test count + patch.
+       Guard: `tests/test_docs_daemon_slayer_drift.py`.
+    4. `Share/CHANGELOG.md:79` - a NEW `## <prev> -> <new> (YYYY-MM-DD)` heading at the top of
+       the release history, neutral external voice. THIS IS A DIFFERENT FILE FROM (2). The DS
+       guard reads the paragraph form in `agents/daemon_slayer/CHANGELOG.md`; this one carries
+       release notes under `##` headers. Editing only one leaves exactly one test red.
+       Guard: `tests/test_ds_share_changelog_freshness.py`.
+    5. `Share/README.md:340` - the "Release history" bullet list. The `:3` header anchor is
+       MECHANICAL (`tools/ds_share_sync.py` restamps it), the bullet list is NOT, and
+       `ds_share_sync --check` reads GREEN while it rots. Same guard file as (4).
+    6. `docs/HEXCORE_offline.html:144` (TWO anchors on that one line - the `title=` tooltip and
+       the `engine: DS X / patch Y` HUD row) plus `:291` (the `daemonslayer` node `desc`). Also
+       carries the DS test count, which must equal the number written at (3). It is HTML, so a
+       `*.md`-only grep misses it entirely. Guard: `tests/test_hexcore_offline_dust.py`, 3 tests.
+    7. `CLAUDE.md:6` - the Deep-references `ENGINE_VERSION` + patch anchor. No pytest pins it;
+       `python tools/drift_guard.py` does (`check_version_anchors`, sweeps .md AND .html).
+  DELIBERATELY NOT in the list, because they are MECHANICAL and hand-typing them is its own
+  defect: `Share/src/**`, `Share/MANIFEST.md`, `Share/docs/*.md` and `Share/lolmath_ingest/*`
+  are restamped by `tools/ds_share_sync.py`; the `data/daemon_slayer/build_orders/**` engine
+  stamps come from the regen. Ritual ORDER is fixed and the doc sites come late (memory
+  feedback_engine_bump_ritual_order): bump the literal, bounce DS `:8893`, regen the tables,
+  run the Share sync, THEN these seven, THEN ONE dual suite.
 - BUILD ON, NEVER REPEAT (continuity is on disk, not in your memory). The context below
   carries an "ALREADY-COMPLETED DIGEST": the recent commits (newest first), the NEWEST
   docs/LEDGER.md items (each line is a DONE item), and "DIRECTIVES ALREADY ISSUED THIS RUN"
@@ -69,6 +100,15 @@ HARD RULES for the directive you emit:
   may use a single agent (no fan-out).
 - The directive MUST instruct Claude to: follow TDD (failing test first), run py_compile
   before any restart, and run the full test suite at the end.
+- DEFECT-CLASS ENUMERATION - the directive MUST instruct Claude that no fix commits until the
+  defect CLASS is enumerated, first WITHIN the file being edited, then across the codebase.
+  Fixes here land narrow by default: one champion patched while four shared the root cause, one
+  item deny-listed while its whole family shared it. Required in the commit message / findings
+  entry: the exact grep or probe run, the FULL instance count it returned, and a disposition
+  for every instance (FIXED, or OUT-OF-SCOPE with the reason). "I fixed the reported one" is
+  not a fix, and a population of 1 is a measured result that must be SHOWN, never assumed.
+  Cross-check the class against sibling modes / duplicate build paths / alias ids before
+  declaring it closed. See the `root-cause-fix` skill and CLAUDE.md "Engine / Build Conventions".
 - The directive MUST instruct Claude: do NOT call AskUserQuestion; if a choice arises,
   auto-pick the recommended/safest option and proceed. Full authority, no user gating.
 - The directive MUST instruct Claude to update docs/ORCHESTRATION_PLAN.md: flip the picked
