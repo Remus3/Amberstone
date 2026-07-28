@@ -58,6 +58,20 @@ Per-event payloads, verified:
   physicalDamage, magicDamage, trueDamage, type}`.
 - `ELITE_MONSTER_KILL`: `killerId killerTeamId monsterType monsterSubType
   position bounty assistingParticipantIds`
+  Two traps in this payload, both measured 2026-07-28 over all 3005 timelines
+  in `~/Documents/RC_ROFL_Archive/timelines` (25450 elite-monster kills), not
+  taken from documentation:
+  - **`assistingParticipantIds` carries ENEMY participants.** 3167 of 25450
+    kills (12.44 pct) list at least one assistant whose participant id sits on
+    the opposite side from `killerTeamId`. Reading the array as "my team
+    helped" without filtering by team over-credits by about an eighth.
+    `core/event_patterns.py:143` `objective_participation` is safe only
+    because it filters `killerTeamId == team` FIRST and then tests one fixed
+    `pid`; a team-level assist count built the obvious way is not.
+  - **`monsterSubType` is DRAGON-only.** Present on 10833 of 10833 `DRAGON`
+    kills and on 0 of `HORDE` 8864, `BARON_NASHOR` 3034, `RIFTHERALD` 2719.
+    Do not branch on it to discriminate herald from baron - it is absent
+    there, not empty, so a `.get()` returns `None` for both.
 - `TURRET_PLATE_DESTROYED`: `killerId teamId laneType position`
 - `BUILDING_KILL`: `killerId teamId laneType towerType buildingType position
   bounty assistingParticipantIds`
@@ -308,53 +322,63 @@ BOT and MID `objective_participation` now clear the gate and the holdout (0.38
 and 0.22) but still carry `absent 6/422`. That is the 4b exposure artefact
 unchanged.
 
-**SIGN CORRECTED 2026-07-28 - this passage previously said the survivorship
-bias would INFLATE these rows. Measured, it DEFLATES them.** The mechanism is
-`core/event_patterns.py:160` - `if not took: return []`, so a player whose team
-killed zero elite monsters emits no row at all. Losing teams take zero
-objectives far more often, which is the whole of the 6/422 asymmetry. Excluding
-them does not trim the weak tail off the loss side; it removes the losers who
-contributed to nothing, which can only hold the loss mean UP.
+**SIGN CORRECTED 2026-07-28. This passage previously read "it is exactly the
+bias that would inflate these rows: the loss mean is taken over survivors".
+That is backwards. Taking the loss mean over survivors DEFLATES the
+separation.** The direction follows from the mechanism plus one line of
+arithmetic, so it is worth writing out rather than asserting.
 
-Measured over `data/event_pattern_rates.json` (3005-match corpus), imputing the
-natural 0 for the absent rows - a player on a team that took no objectives
-participated in none - and comparing the win-loss delta:
+The mechanism is `core/event_patterns.py:160` - `if not took: return []`. A
+player whose team killed zero elite monsters emits no row at all, so the
+dropped rows are not a random slice of the loss side: they are exactly the
+players who participated in nothing. Their natural value is 0 - you cannot
+participate in a share of zero objectives - and 0 is the MINIMUM of the range.
+Deleting minimum-valued rows from the loss side can only raise the loss mean.
+The win mean barely moves because almost nothing is dropped there (3 rows
+against 281). Raising the subtrahend shrinks `win_mean - loss_mean`. The bias
+therefore hides separation; it cannot manufacture it, and the measured 0.38 /
+0.22 are a FLOOR rather than an inflated ceiling.
 
-| role | delta as measured | delta with absent rows at 0 | direction |
+Quantified over `data/event_pattern_rates.json` (3005-match corpus) by
+imputing the natural 0 for every dropped row. Per role the train split holds
+2094 rows per side - that is what every criterion with `absent 0/0` reports -
+of which `objective_participation` emits 2091 win and 1813 loss, so the
+imputed mean is `mean * n / 2094` on each side:
+
+| role | delta as measured | delta with dropped rows at 0 | direction |
 |---|---|---|---|
-| BOT | 0.1085 | 0.1640 | deflated 1.51x |
-| MID | 0.0593 | 0.1074 | deflated 1.81x |
-| TOP | 0.0644 | 0.1045 | deflated 1.62x |
-| SUPPORT | 0.0615 | 0.1373 | deflated 2.23x |
-| JUNGLE | -0.0068 | 0.2173 | **sign flips** |
+| BOT | +0.1085 | +0.1406 | deflated 1.30x |
+| MID | +0.0594 | +0.0871 | deflated 1.47x |
+| TOP | +0.0644 | +0.0876 | deflated 1.36x |
+| SUPPORT | +0.0615 | +0.1053 | deflated 1.71x |
+| JUNGLE | -0.0068 | +0.1226 | **sign flips** |
 
-Every role deflates, and JUNGLE inverts outright - it reads NO SEPARATION only
-because the exclusion is doing the work.
+Every role deflates and JUNGLE inverts outright - it reads NO SEPARATION only
+because the exclusion is doing the work. Note the unit trap when reproducing
+this: `n_win`/`n_loss` in that file are TRAIN-split counts
+(`tools/mine_event_patterns.py:311`) while `absent_win`/`absent_loss` are
+counted over the WHOLE corpus (`:296`), so `absent_loss 422` must not be
+subtracted from `n_loss 1813` directly. Use the 2094 train population instead.
+The direction is the same either way; only the magnitudes move.
 
-**This does NOT make the rows promotable, and the conclusion is unchanged:**
-`objective_participation` is REFUTED (LEDGER 1064) - do not re-promote it. The
-correction matters because a bias recorded with the wrong sign invites exactly
-the wrong repair. The fix is still a criterion that does not vanish on teams
-that took zero objectives; note that the 0-imputation used above IS that
-criterion, so anyone building it should expect these larger deltas and must not
-read them as new signal.
+**The row is still NOT promotable, and the justification changes with the
+sign.** It can no longer rest on "the bias inflates it", because the bias runs
+in the row's FAVOUR - the honest reading is that `objective_participation`
+separates somewhat better than the table shows and is still not worth
+promoting. Two reasons stand on their own:
 
-### Two field notes on the ELITE_MONSTER_KILL shape (verified 2026-07-28)
+1. `objective_participation` is REFUTED (LEDGER 1064). That verdict was not
+   reached on the strength of this delta and does not move with it. Do not
+   re-promote it.
+2. The structural defect is unchanged: a criterion that vanishes on teams that
+   took zero objectives is not measuring the player. The fix is still a
+   criterion that does not vanish there. The 0-imputation above IS that
+   criterion in its crudest form, which is why its deltas are larger - anyone
+   building it should expect those numbers and must not read them as new
+   signal.
 
-Measured directly over 400 timelines / 3381 elite-monster kills from the corpus
-at `RC_ROFL_Archive/timelines`, not taken from documentation:
-
-- **`assistingParticipantIds` carries ENEMY participants.** 427 of 3381 kills
-  (12.63 pct) list at least one assistant whose participant id falls on the
-  opposite side from `killerTeamId`. Any code that reads that array as "my
-  team helped" without filtering by team is wrong. `objective_participation`
-  itself is safe only because it filters `killerTeamId == team` first and then
-  tests one fixed `pid`; a team-level assist count built the obvious way would
-  over-count by roughly an eighth.
-- **`monsterSubType` is DRAGON-only.** Across `DRAGON` 1430, `HORDE` 1176,
-  `RIFTHERALD` 356 and `BARON_NASHOR` 419, the field appears on `DRAGON` and
-  nothing else. Do not branch on it for herald or baron - it is absent, not
-  empty.
+The invariant behind the direction is regression-tested in
+`tests/test_survivorship_deflates_separation.py`.
 
 The standing constraint in 4b applies here without change: ten rows per match
 are not independent, so `n` bounds information rather than sampling it.
@@ -399,7 +423,7 @@ Status is MEASURABLE unless stated.
 | Camp throughput | T1 | `jungleMinionsKilled` slope | BOTH |
 | First-clear efficiency | T1 | jungle cs and level at 3:30 frame | BOTH |
 | Objective trade (took X while enemy took Y) | T2 | two `ELITE_MONSTER_KILL` within a window, opposite `killerTeamId` | PGR |
-| Gank conversion | T2 | `CHAMPION_KILL` with jungler as killer or assist, by lane from `position` | PGR |
+| Gank conversion | T2 | `CHAMPION_KILL` with jungler as killer or assist, by lane from `position` - filter `assistingParticipantIds` by team first, it carries enemies (see the T2 event payload notes) | PGR |
 | Counter-jungle | T1 | `jungleMinionsKilled` rising while positioned in enemy half (needs T3 for the position half) | PGR |
 
 ### 5.4 MID
@@ -492,7 +516,7 @@ convenient. Counts: **14 measurable headless today, 7 need T3, 1 partial,
 |---|---|---|---|
 | 1 | Starting item | T2 | `ITEM_PURCHASED` at t<=0; verified two entries at t=0.0 |
 | 4 | Timing (spikes, objective windows) | T2 | event timestamps, sub-second |
-| 7 | Objectives | T2 | `ELITE_MONSTER_KILL` - verified types DRAGON (+`monsterSubType` FIRE/HEXTECH/CHEMTECH), HORDE, RIFTHERALD, BARON_NASHOR, with `killerTeamId`, `position`, `bounty` |
+| 7 | Objectives | T2 | `ELITE_MONSTER_KILL` - verified types DRAGON (+`monsterSubType` FIRE/HEXTECH/CHEMTECH, DRAGON-only - the field is absent on the other three, so discriminate on `monsterType`), HORDE, RIFTHERALD, BARON_NASHOR, with `killerTeamId`, `position`, `bounty` |
 | 8 | Post fight aggression | T2 | events in the window after a kill cluster: plates, buildings, monsters, further kills |
 | 9 | Shop intervals | T2 | `ITEM_PURCHASED` clustering; a cluster IS a shop visit. Recall itself has no event - infer from the cluster plus a gold drop |
 | 10 | Item builds | T0+T2 | sidecar ITEM0-6; full purchase history |
