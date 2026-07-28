@@ -29,7 +29,8 @@ absence is noted in ``_note``.
 ACCESS (verified live 2026-05-30):
   * Host ``https://wiki.leagueoflegends.com`` (the Riot vanity alias for the
     wiki.gg backend). The bare ``leagueoflegends.wiki.gg`` host edge-blocks
-    Legion's egress (HTTP 401 host-wide); the alias is reachable (HTTP 200).
+    this development host's egress (HTTP 401 host-wide); the alias is
+    reachable (HTTP 200).
   * User-Agent MUST be NON-browser (e.g. ``RiotCommander-DaemonSlayer/1.0``). A
     ``Mozilla/5.0`` UA trips a Cloudflare challenge -> 403. stdlib urllib only.
 
@@ -59,7 +60,7 @@ The DS engine reads the committed sidecar JSON, never the network. Absent sideca
 -> current behavior. INERT until a consumer opts in (no wiring this run - data
 only, no ENGINE bump, no DS restart).
 
-Run from Legion (the alias is reachable) or any host that reaches it:
+Run from any host that reaches the alias:
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py            # current.txt patch
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py --patch 16.11.1
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py --limit 3  # first 3 champs (~1 batch)
@@ -103,7 +104,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 DATA_DIR = PROJECT_ROOT / "data" / "daemon_slayer"
 
-# The .wiki.gg host edge-blocks Legion (HTTP 401 host-wide). The Riot vanity
+# The .wiki.gg host edge-blocks this host (HTTP 401 host-wide). The Riot vanity
 # alias is the SAME wiki.gg backend and is reachable. See module docstring.
 WIKI_HOST = "https://wiki.leagueoflegends.com"
 WIKI_API = WIKI_HOST + "/en-us/api.php"

@@ -42,7 +42,7 @@ buckets of structured spell metadata the Meraki abilities dump does NOT carry:
                          bulk-trust it) + mLineWidth / mMissileSpec.mMissileWidth
                          (line width) when present.
 
-SOURCE (verified live this session, reachable from Legion via stdlib urllib + a
+SOURCE (verified live this session, reachable via stdlib urllib + a
 browser UA): the character bin at
 ``https://raw.communitydragon.org/<MAJOR.MINOR>/game/data/characters/<slug>/<slug>.bin.json``
 where <slug> = lowercased DDragon id. CRITICAL: CDragon patch is 2-SEGMENT -
@@ -62,7 +62,7 @@ as ``daemon_slayer_abilities_extract.py`` + ``daemon_slayer_wiki_stats_extract.p
 The DS engine reads the committed sidecar JSON, never the network. No consumer
 wires it yet (DATA-ONLY this session); it is INERT until a consumer opts in.
 
-Run from Legion (or any host that reaches raw.communitydragon.org):
+Run from any host that reaches raw.communitydragon.org:
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_cdragon_spell_extract.py             # current.txt patch
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_cdragon_spell_extract.py --patch 16.11.1
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_cdragon_spell_extract.py --limit 4   # smoke a subset
