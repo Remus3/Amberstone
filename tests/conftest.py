@@ -132,6 +132,43 @@ def _prod_artifact_sizes() -> dict:
     return out
 
 
+@pytest.fixture(autouse=True)
+def _no_live_tft_ocr(monkeypatch):
+    """No test may start the live TFT OCR capture thread.
+
+    ``tft/tft_state_reader.py:60-68`` starts a daemon thread in
+    ``TftStateReader.__init__`` whenever ``TftOcrReader().available`` is true,
+    and that thread does REAL screen capture plus REAL HTTP to ``:8889`` every
+    2 seconds, forever - nothing joins it, so it outlives the test that made
+    it. ``available`` is true on any host with pytesseract, i.e. Legion, and
+    false on the CI runner, which is why this never showed up on push.
+
+    MEASURED 2026-07-28: a full dual suite under ``-n 8 --dist loadfile`` hung
+    for 2h29m rather than the noted 145s - worker ``gw6`` went down and the
+    controller then wedged in ``pytest_sessionfinish`` with ``OSError: cannot
+    send (already closed?)``. ``--timeout=600`` never fired because the hang is
+    outside any test. That the thread caused the crash is SUSPECTED, not
+    proven; that the suite spawns unjoined real-capture threads is proven, and
+    is a hermeticity defect regardless.
+
+    Gating on the class property rather than on each construction site is
+    deliberate: patching the three known callers in
+    ``tests/phase2_smoke/test_snapshot_translation.py`` would leave the next
+    one to reintroduce it silently. Pinned by
+    ``tests/test_no_live_ocr_thread_in_suite.py``, which also asserts this
+    fixture is in force so the pin cannot pass vacuously.
+
+    A test that genuinely needs the real reader must undo this itself AND stop
+    what it starts.
+    """
+    try:
+        from tft.tft_ocr_reader import TftOcrReader
+    except Exception:  # noqa: BLE001 - no TFT stack present is not a failure
+        return
+    monkeypatch.setattr(
+        TftOcrReader, "available", property(lambda self: False), raising=False)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def assert_prod_artifacts_unchanged():
     before = _prod_artifact_sizes()
