@@ -88,7 +88,7 @@ def main() -> int:
                          scores[best]))
 
     rows.sort(key=lambda r: -float(r[2].split("x")[0]) if "x" in str(r[2]) else 0)
-    print(f"max_priority candidates (best≠QWE, >{args.margin}x): {len(rows)}")
+    print(f"max_priority candidates (best != QWE, >{args.margin}x): {len(rows)}")
     for champ, best, ratio, _ in rows:
         order = "-".join(best)
         print(f"  {champ}: max {order}  ({ratio} vs default Q-W-E)")

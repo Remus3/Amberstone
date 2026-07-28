@@ -820,7 +820,7 @@ def main() -> int:
 
     coverage = _coverage_summary(data_out)
     log.info(
-        "coverage: %d forms · ok=%d partial=%d unparsed=%d no_damage=%d (ok_rate=%.1f%% parsed_rate=%.1f%%)",
+        "coverage: %d forms - ok=%d partial=%d unparsed=%d no_damage=%d (ok_rate=%.1f%% parsed_rate=%.1f%%)",
         coverage["total_forms"],
         coverage["status_counts"]["ok"],
         coverage["status_counts"]["partial"],
@@ -842,7 +842,7 @@ def main() -> int:
     }
 
     _atomic_write_json(out_path, snapshot)
-    log.info("✓ wrote %s (%d champions, %d forms)",
+    log.info("wrote %s (%d champions, %d forms)",
              out_path, len(data_out), coverage["total_forms"])
     return 0
 
