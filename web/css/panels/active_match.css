@@ -48,6 +48,40 @@
 #view-active-match .am-pane-call  { grid-area: call; }
 #view-active-match .am-pane-build { grid-area: build; }
 #view-active-match .am-pane-map   { grid-area: map; }
+
+/* R213: the ARAM balance grid was the ONLY direct .am-grid child that both
+ * renders on the dashboard and carried no placement, so the browser auto-placed
+ * it into an IMPLICIT third row. index.html has claimed since 2026-07-20 that
+ * "active_match.css pins it to the left column under BUILD"; it never did.
+ *
+ * MEASURED, not reasoned (ui_mock ARAM, 1920x1080, computed gridTemplateRows):
+ * before `1537.98px 1537.98px 456px`, after `1537.98px 1537.98px 320px`. The
+ * two 1fr rows are IDENTICAL either way - the grid is content-sized by the MAP
+ * pane that spans every row, so the implicit row never stole pane height (an
+ * earlier reading of this defect said it did; it does not). What the implicit
+ * row DID cost is a placement no stylesheet declared and an unbounded panel
+ * height that grows with the roster. Hence: name the row, and cap it.
+ *
+ * The row only exists while the panel is live (:has), so the default two-row
+ * template is untouched outside an ARAM game and no other mode pays a phantom
+ * row + gap. The overlay shell is excluded: there overlay_layout.js lifts the
+ * panel to position:fixed, which leaves grid flow entirely and would strand an
+ * empty area behind it. */
+body:not([data-shell="overlay"]) #view-active-match
+  .am-grid:has(> #aram-balance-panel[data-ab-state="live"]) {
+  grid-template-rows: 1fr 1fr auto;
+  grid-template-areas:
+    "call  map"
+    "build map"
+    "aram  map";
+}
+#view-active-match #aram-balance-panel {
+  grid-area: aram;
+  min-height: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
 /* Visual-only hide (operator 2026-06-10): the CDS pane stays in the DOM
  * and keeps its render wiring; the overlay threat panelset re-shows it
  * (display: block !important in overlay.css). The .am-grid hop outranks

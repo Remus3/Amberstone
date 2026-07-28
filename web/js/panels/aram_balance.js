@@ -23,13 +23,22 @@ import { _resolveChampId } from '../lib/items_index.js';
 const _AB_CONTAINER_ID = "aram-balance-panel";
 
 // Cached champions map from /api/aram-balance: { champId: {field: value} }.
-// null = not yet fetched; {} = fetched-empty (fail-soft). The patch is
-// cached alongside for the head caption.
+// null = not resolved (never fetched, or the last attempt failed); {} = the
+// route answered and no champion carries a modifier this patch. The patch is
+// cached alongside for the head caption. `failedAt` is the epoch-ms stamp of
+// the last failed attempt and is what separates "not yet" from "tried and
+// could not" - a failure must never masquerade as a resolved empty map, or
+// every row renders the positive claim "no ARAM changes" off a dead route.
 const _AB = {
   champions: null,
   patch: "",
   fetching: false,
+  failedAt: 0,
 };
+
+// Cooldown between failed attempts. The render tick runs ~every 2s, so an
+// ungated retry would turn one dead route into a fetch storm.
+const _AB_RETRY_MS = 30000;
 
 // Field -> short label + whether it is a flat-additive (AH) vs multiplier.
 // Order here is the render order within a row.
@@ -55,10 +64,13 @@ function _abIsAram(ctx) {
 }
 
 // One-shot fetch of the balance map. Returns immediately; the next render
-// tick picks up the populated cache. Re-fetches only if a prior attempt
-// failed (champions stayed null) and none is in flight.
+// tick picks up the populated cache. Re-fetches if a prior attempt failed
+// (champions stays null) once the retry cooldown has expired and none is in
+// flight. Every terminal branch calls onLand so the panel repaints - the
+// failure branch has a state of its own to show.
 function _abEnsureFetched(onLand) {
   if (_AB.champions !== null || _AB.fetching) return;
+  if (_AB.failedAt && (Date.now() - _AB.failedAt) < _AB_RETRY_MS) return;
   _AB.fetching = true;
   fetch("/api/aram-balance", { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : null))
@@ -67,14 +79,16 @@ function _abEnsureFetched(onLand) {
       if (j && j.ok && j.champions && typeof j.champions === "object") {
         _AB.champions = j.champions;
         _AB.patch = String(j.patch || "");
+        _AB.failedAt = 0;
       } else {
-        _AB.champions = {};
+        _AB.failedAt = Date.now();
       }
       if (typeof onLand === "function") onLand();
     })
     .catch(() => {
       _AB.fetching = false;
-      _AB.champions = {};
+      _AB.failedAt = Date.now();
+      if (typeof onLand === "function") onLand();
     });
 }
 
@@ -223,10 +237,18 @@ export function renderAramBalance(p, ctx) {
   // Fetch the map once; replay this render when it lands.
   _abEnsureFetched(() => renderAramBalance(p, ctx));
   if (_AB.champions === null) {
-    if (host.dataset.abSig !== "__loading__") {
-      host.dataset.abSig = "__loading__";
-      host.replaceChildren(_abHead("loading ARAM balance..."),
-        _abEmpty("Fetching per-champion ARAM modifiers..."));
+    // Unresolved splits two ways and the operator must be able to tell them
+    // apart: still landing, versus tried and could not. Neither may render a
+    // grid, because an empty grid reads as "no champion is adjusted".
+    const down = _AB.failedAt !== 0;
+    const sig = down ? "__unavailable__" : "__loading__";
+    if (host.dataset.abSig !== sig) {
+      host.dataset.abSig = sig;
+      host.replaceChildren(
+        _abHead(down ? "ARAM balance unavailable" : "loading ARAM balance..."),
+        _abEmpty(down
+          ? "Balance data did not load - retrying."
+          : "Fetching per-champion ARAM modifiers..."));
     }
     return;
   }
@@ -318,3 +340,8 @@ function _abRow(row) {
   el.appendChild(deltas);
   return el;
 }
+
+// Test seam: the fetch state machine is driven directly by
+// tests/test_aram_balance_fetch_failure.py with a stubbed globalThis.fetch,
+// so the failure branches are exercised rather than read.
+export const __test = { _AB, _AB_RETRY_MS, _abEnsureFetched };

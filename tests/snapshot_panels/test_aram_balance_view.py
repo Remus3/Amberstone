@@ -141,6 +141,71 @@ def test_aram_balance_panel_populated(mock_server, pw_browser):
     assert not errors, f"JS errors: {errors[:3]}"
 
 
+def test_aram_balance_panel_is_placed_in_the_am_grid(mock_server, pw_browser):
+    """R213: the panel must occupy a NAMED third row under BUILD, not an
+    implicit auto-placed one.
+
+    Before R213 `#aram-balance-panel` was the only visible direct .am-grid
+    child with no `grid-area`, so the browser invented row 3 and the panel grew
+    unbounded with the roster (measured 456px). The 1fr panes were NOT squeezed
+    by it - see the active_match.css note - so what is pinned here is the named
+    placement and the cap, not a height recovery. This drives the real page and
+    reads COMPUTED style, so a mis-parsed `:has()` selector (which would
+    silently drop the whole rule) fails here rather than in a live game.
+    """
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    page.route("**/api/aram-balance", lambda route: route.fulfill(
+        status=200, content_type="application/json",
+        body=json.dumps(_BALANCE_MAP)))
+    try:
+        page.goto(mock_server.url + "/?ui_mock=1&mode=aram#active-match",
+                  wait_until="domcontentloaded", timeout=15_000)
+        page.wait_for_function(
+            "document.querySelector('#aram-balance-panel .ab-row-self')",
+            timeout=10_000,
+        )
+        geom = page.evaluate(
+            "() => {"
+            " const p = document.querySelector('#aram-balance-panel');"
+            " const g = p.closest('.am-grid');"
+            " const cs = getComputedStyle(g);"
+            " return {rows: cs.gridTemplateRows.split(' ').length,"
+            "         areas: cs.gridTemplateAreas,"
+            "         rowStart: getComputedStyle(p).gridRowStart,"
+            "         panelTop: p.getBoundingClientRect().top,"
+            "         buildTop: g.querySelector('.am-pane-build')"
+            "                    .getBoundingClientRect().top};"
+            "}"
+        )
+        assert "aram" in geom["areas"], (
+            "the live .am-grid carries no named aram area - the :has() rule "
+            f"did not apply (areas={geom['areas']!r})"
+        )
+        assert geom["rows"] == 3, f"expected 3 explicit rows, got {geom['rows']}"
+        assert geom["rowStart"] == "aram", (
+            f"panel not placed in the named row (gridRowStart={geom['rowStart']!r})"
+        )
+        assert geom["panelTop"] > geom["buildTop"], "panel must sit under BUILD"
+
+        # Visual proof at the 1920x1080 baseline. The active-match section is
+        # content-sized by the MAP pane and already scrolls well past one
+        # viewport, so scroll the placed row into view rather than capturing
+        # the top of the page and calling it a capture of this panel.
+        page.locator("#aram-balance-panel").scroll_into_view_if_needed()
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.screenshot(path=str(SCREENSHOTS / "aram-balance_grid_1920.png"))
+    finally:
+        page.close()
+        ctx.close()
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F."""
     raw = Path(__file__).read_bytes()
