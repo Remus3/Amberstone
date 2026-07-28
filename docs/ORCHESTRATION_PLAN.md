@@ -665,176 +665,20 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 | R215 | rm121-item3-master-cohort-clobber | DIRECTOR REFILL 2026-07-27, cycle 20. **The directive tagged its own premise `[UNVERIFIED]` and the premise was TRUE** - `random.txt` does exist on the desktop (4852 bytes), so unlike cycles 13-19 the unit was not a no-op; the executor-override still applied, because `replay continue.txt` was NOT fully done and the queue's own ordering put its sub-item 3 ahead of `random.txt`. Unit taken: RM-121 item 3 sub-item 3, the MASTER cohort absent from `data/rank_baselines.json`. **THE FINDING: this was never a data problem, it was four defects in `tools/build_rank_baselines.py`, and the reason it had gone unfixed for weeks is that the obvious remedy was destructive.** `--tiers MASTER` would have written a file containing ONLY MASTER and deleted the other 30 cohorts (D1: `main()` built the payload from scratch and replaced the whole file). D2 the summary printed `f"{name:14}"` where `name` was the leaked last value of the earlier `for name, tier, division in plan` loop, so every row carried the same label. D3 the summary iterated bare tier names against `PLATINUM_I..IV` keys, so all 28 divisional cohorts were silently omitted and only the three apex rows ever printed - mislabelled by D2. D4 a skipped cohort printed a line and returned exit 0 with no machine-detectable signal, **which is precisely why MASTER's absence went unnoticed in the first place**; skips now land in a `skipped` key and force a non-zero exit after the partial result is written. **BACKFILL, per the Data-Fixes rule that a guard which only prevents future loss leaves the missing row missing.** The `masterleagues` endpoint was re-probed live and returns 10000 entries with puuids - the original "no accounts resolved" was TRANSIENT, not permanent, so the row was recoverable all along. Live run: 107 matches kept, 5 dropped, 0 failed, 1070 player rows across all five roles. **D1 proven live, not only in a unit test:** diffed against a pre-run backup, 30 -> 31 cohorts, MASTER added, nothing lost, and all 30 prior cohorts byte-identical. TDD 7 tests RED (5 failing, one per defect plus the D1 provenance half) -> GREEN; the real `corpus_hygiene.judge()` runs unpatched in every test, only the network seams and the rate pacer are patched, so the suite is fully offline at 0.20s. **DEFECT-CLASS ENUMERATION - the sweep found far more than the slice fixed.** Class (b) leaked loop variable in a later f-string: 2550 .py files AST-parsed (not grepped), this was the ONLY live instance repo-wide, 5 of 6 candidates refuted as correctly rebound or comprehension-scoped. Class (a) whole-file JSON rewrite driven by a partially-selected work plan: 78 files carrying both an argparse parser and a whole-file write read at the argparse block and the write site, **16 CONFIRMED beyond this one**. Highest severity `tools/daemon_slayer_build_orders_generate.py:359` (`--champion Ahri` destroys the other 172 champions' tables in a live DS build-reco consumer); worse in kind `core/build_order_precompute.py:722` + `core/build_order_variants.py:592`, whose `--champions` default is a SEED sample rather than the roster, so **even a bare rerun truncates**; most deceptive `tools/mine_event_patterns.py:330`, which records no role filter in its metadata, making a `--role`-narrowed result indistinguishable from a full run that found nothing. Filed as follow-up, deliberately not fixed here - a 17-file blast radius is its own slice. ENGINE-IMPACT NONE. Verifier CONFIRM 9/9 incl. an independent byte-scan and an offline-guarantee source audit. RC `tests/` **13749 passed** / 106 skipped / 460 subtests, DS **10100 passed** / 5701 subtests, 23849 total, 0 failed; ruff clean; drift_guard 0 breaches; hygiene trio 14 passed. Tier-1 - no ENGINE bump, no DS path, no RC restart. | DONE | `baecb54b` |
 | R216 | rm121-item3-xdist-subtest-gate | DIRECTOR REFILL 2026-07-28, cycle 21. **THE DIRECTIVE'S UNIT WAS ALREADY DONE ON DISK, AND THE EXECUTOR-OVERRIDE HEADER WAS AIMED AT THE WRONG HALF.** The override told me to re-read ROADMAP.md before trusting the from-digest premise that RM-121 item 3 sub-item 4 is NEXT. I did, and the premise was TRUE - ROADMAP.md line 42 says exactly that. The stale thing was not the digest, it was ROADMAP.md itself. Ordered work: reproduce and fix 6 xdist shared-state failures. Measured `pytest tests/ agents/daemon_slayer/tests/ -n 8 --dist loadfile`: **23849 passed, 106 skipped, 6161 subtests, 0 failed in 132.49s.** Five of the six were fixed by `cd0f115d` (2026-07-27) and the sixth, the preflip asyncio one, by the RM-100 `tests/_asyncio_isolation.run_coro` consolidation. Nothing to reproduce. **WHAT SHIPPED INSTEAD IS THE GATE `cd0f115d` DID NOT LEAVE.** Its own commit body says it "swept every other subTest call site in both suites" by eye - prose about a moment, over 463 call sites in 100 files, in a defect class that is invisible to a serial run by construction. A repo-root `conftest.py` now validates every `subTest` kwarg against execnet's OWN serializer at call time, so the `-n`-only failure fails serially too, at the call site, naming the kwarg. Also corrected a measured-wrong claim in `test_aram_action_rule.py` (`set()` does NOT raise DumpError; only `object()` does) and pinned the real grammar in a test instead of restating it in a docstring. ENGINE-IMPACT NONE - test infrastructure only. | DONE | `981f138c` |
 
-## R205 findings - 2026-07-27 - the nightly-CI loop-infra red, and what it taught
+## Older findings - relocated 2026-07-28
 
-**Directive premise was stale for the fourth cycle running.** All four ordered tasks
-(winmutex inbox APPLY, the UNSERIALIZED bump, the `SHARED_SHA256` pin, item 2's POSIX
-exec bit, item 5's skip audit) were already on disk and were verified there by digest
-and file:line before any code was written. Recording it here because the pattern now
-has a measured cause - see the carry-forward at the bottom.
+R205 / R206 / R207 findings now live in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
 
-### The finding the directive was aiming at but mis-diagnosed
-
-Push CI has been green on every commit. The SCHEDULED nightly (`30261946219`) was red:
-`5 failed, 23474 passed, 254 skipped`. One property explains all five: **they assert
-against the Legion working tree**, so they pass on this box and can only fail on a fresh
-POSIX clone. A suite that is green where it runs and red where it does not is not a
-flake - it is a test that encoded the developer's machine as a fact.
-
-| # | Test | Class | Real defect? |
-|---|------|-------|--------------|
-| 1 | `test_mutex_serializes_two_threads` | asserts a Win32-only capability | no - test-side |
-| 2 | `test_overflow_is_repaid_out_of_the_plan_slice` | depends on ambient repo size | yes, transitively |
-| 3 | `test_operator_brief_is_labelled...` | reads a config that never loaded | **yes** |
-| 4 | `test_sdk_timeout_kills_the_tree...` | POSIX teardown never worked | **yes** |
-| 5 | `test_gate_is_active_in_this_repo` | asserts operator-local git config | no - test-side |
-
-### Three lessons worth reusing
-
-**1. A skip for an absent capability should trigger an audit of its siblings.** Fixing
-(1) meant justifying a `skipif`, and that audit found
-`test_mutex_is_reentrant_for_the_same_thread` carrying the identical defect in the
-opposite direction: the POSIX no-op nests happily, so it went GREEN on every Linux run
-while proving nothing. **A red eventually gets fixed; a vacuous pass never surfaces.**
-Where one test asserts an absent primitive, look for the sibling that trivially succeeds
-against the same absence.
-
-**2. A skip must not silently delete coverage - check what it was carrying.** Both
-existing POSIX no-op tests are single-threaded and only inspect the log, so
-"never claims ACQUIRED" was pinned and "never serializes" - the substantive half, and
-exactly what the new skips stop covering on Linux - was pinned by nobody.
-
-**3. Static provability can be the whole protection.** Slice C was REFUTED for moving
-`creationflags` behind `**kwargs`. Runtime Windows behavior stayed correct, but
-`tests/test_no_console_flash_scheduled_tools.py` resolves it BY AST and went blind to
-the loop's only spawn site (18 passed -> 2 failed). For a defect whose only symptom is a
-flicker on the operator's desktop, nobody is watching at runtime - the static proof IS
-the guard. **The fix restored the literal; the guard file was not edited.** Teaching a
-guard to trust an indirection defeats it for every future call site.
-
-### Defect-class sweep: the hardcoded repo root
-
-`loop_controller.py`'s absolute config literal turned out to be one of three. Full
-disposition of every module-level drive-letter constant under `ops/loop/`:
-
-| Module | Constant | Disposition |
-|---|---|---|
-| `loop_controller.py` | config default | FIXED (slice B) - module-relative + `is_absolute()` guard |
-| `done_sentinel.py:15` | `ROOT` | FIXED - no override and no fallback, strictly worse |
-| `claude_stub.py:20` | `ROOT` | FIXED - worst case: a dry-run stub that only runs on Legion cannot prove the plumbing anywhere it is in doubt |
-| `adjudicator.py:25` | `DEFAULT_CLAUDE_CMD` | **OUT OF SCOPE, with reason** - an external TOOL path with no repo-relative answer, already overridable at `adjudicator.py:188`. Widening the guard to cover it would force a fake fix. |
-
-Guarded by `tests/test_loop_module_root_resolution.py`, written RED first (5 failed / 6
-passed). The guard asserts its own REACH as well as its rule, because a scan that
-silently matches nothing is this shape's real failure mode.
-
-### CARRY-FORWARD - five cycles old, and this cycle made it worse
-
-Controller pid 18300 started `2026-07-27 00:37:50`. `ops/loop/loop_controller.py` now
-has mtime `08:20:22` - **this cycle edited the very module the running image cannot
-reload.** Re-verified live, not carried forward on recollection.
-
-It is structurally un-actionable by an executor cycle: bouncing the controller mid-cycle
-abandons the `claude.done` handshake it is blocked on, and R202's self-reload guard is
-itself inside the code the stale image cannot load. **The fix for stale code is in the
-stale code.** One external bounce breaks the loop; no cycle can supply it. This is the
-most likely cause of the four-cycle run of stale directive premises.
-
-## R206 findings - 2026-07-27 - the guard recorded its correction where the guilty party never looks
-
-**Two of the directive's four steps were no-ops and measuring that was the first
-deliverable.** Fifth consecutive cycle with a stale premise. STEP 1 wanted a staged
-`.githooks` exec-bit commit: `git diff --cached` empty, tree clean, `.githooks/*`
-already `100755` in the index since `19b680cc`. STEP 4 wanted the TEST-NOT-TRANSCRIPT
-rule made durable: it is at `ops/loop/director_prompt.md:147-153` and already pinned by
-`test_prompt_carries_the_test_not_transcript_rule`.
-
-### Item 7 was in three pieces, not two
-
-| Piece | State on arrival |
-|---|---|
-| executor-side parser + serialize override | shipped long before tonight |
-| director-side normative contract (what shape the parser reads) | shipped R204 `7f89cd6c` |
-| **the REPORTING half** | **shipped here** |
-
-Both guards correct a bad directive, log to `control/controller.log`, and prepend
-`_REPORT_IT` (`executor.py:271`): "State this deviation in your summary line."
-
-That ask was the whole reporting mechanism, and **controller.log is not a director
-input**. `loop_controller.py:1047` takes `done = rec.raw`; `:577` dumps it forward as
-`=== LAST claude.done ===`. `rec.raw` is the MODEL-authored payload. So whether the
-director learned its own directive was wrong depended on the model volunteering it in
-prose - and a model that silently complies teaches it nothing. That is verbatim the
-failure `executor.py:96-100` says recording exists to prevent, one layer up.
-
-`stamp_deviations()` now prefixes it mechanically. The model is asked for nothing.
-
-### Two holes at the merge gate, both on the branch the seam is read on
-
-Neither was in the build agent's claim set. Both proven by mutation before landing.
-
-| Hole | Why it hid | Mutation that kills the new test |
-|---|---|---|
-| ahk write-back was unconditional | every test fixture supplied a `summary` key; the REAL producer `done_sentinel.py:45` writes none, so every LIVE cycle took the untested branch and gained `"summary": ""` on every CLEAN cycle | reverting the guard injects exactly `'summary': ''` into raw |
-| 4 sdk failure paths stamped the record but left `raw` empty | the controller reads `rec.raw` and nothing else, so a cycle that deviated and then DIED carried the correction nowhere - the branch with no model prose at all | dropping `deviation_only_raw()` raises `KeyError: 'summary'` |
-
-**The lesson is the first row.** The fixture was shaped to the feature, not to the
-producer. Checking what `done_sentinel.py` actually writes - rather than what the tests
-hand the channel - is what found it.
-
-### Defect-class sweep: machinery that asks a model to report machinery's own action
-
-`grep -rn "your summary line\|State this\|say which" --include=*.py ops/loop/` returns 3
-hits, all in `executor.py`. Fixable population is a measured 1.
-
-| Site | Disposition |
-|---|---|
-| `:271` `_REPORT_IT` (reached from BOTH guards) | **FIXED** - mechanical stamp |
-| `:348` "run that one FIRST and say which" | OUT OF SCOPE - asks WHICH slice is the prerequisite, which the executor cannot compute |
-| `:527` "pick the next NON-duplicate unit and say which" | OUT OF SCOPE - same reason |
-
-No other module in the repo asks a model to self-report machinery's own action.
-
-### CARRY-FORWARD - six cycles old, unchanged
-
-The running controller predates its own self-reload fix (`d4b1a762`). It **must be
-bounced by hand once**; no executor cycle can supply it, and it remains the measured
-cause of the stale-premise run above.
-
-## R207 - the exemption covered the future, not just the past (2026-07-27, `829700e1`)
-
-`tests/test_smart_quote_hygiene.py` carried a blanket exemption for
-`agents/agent6_auditor/reports/`, justified as "immutable dated artifacts - em-dash
-drift inside them is operator-gated cleanup, not authored-source drift."
-
-That justification is sound about history and silently wrong about the future. A
-path-prefix exemption written to protect files that already exist also protects every
-file that will ever exist at that prefix. This directory is not a closed archive - a
-cloud scheduled routine appends to it weekly and commits straight to main. The
-exemption therefore did not grandfather 4 old files; it permanently blinded CI to a
-live write path.
-
-Three reports landed carrying 58 non-ASCII bytes over the week before an audit caught
-them by eye. Every automated gate on this repo was in place and none could fire:
-PreToolUse hooks do not see a cloud routine's commits, git hooks on Legion do not
-either, and the one gate that runs on the routine's own push had been told to skip
-that path.
-
-**The generalizable shape:** an exemption keyed on WHERE a file lives is a claim about
-the file's PRODUCER, and producers change. `data/daemon_slayer/` is genuinely external
-data with a stable producer, so its exemption is fine. A reports directory written by
-an agent whose prompt nobody in the repo controls is not the same thing, and reusing
-the same mechanism for both made them look identical in the code.
-
-Worth checking the other prefix exemptions in `_is_external_data` against the same
-question: is this prefix closed, or does something still write to it?
-
-**Unreachable half, logged:** the routine's prompt lives in cloud scheduling config.
-An executor cycle cannot read or edit it (`CronList` is session-scoped to jobs made
-via `CronCreate` in-session). The durable in-repo move is exactly what shipped - let
-CI go red on the next bad write instead of passing in silence - with the failure
-message naming the prompt as the real fix site so the next reader is not left
-guessing.
+**Why, because this WILL recur:** the director context caps this file with
+`cap_bytes_head_tail(..., PLAN_CTX_CAP=24000, PLAN_CTX_HEAD=8000)`, so only the
+first 8000 and the LAST 16000 bytes reach the director, and
+`tests/test_loop_director_context_caps.py::test_real_orchestration_plan_newest_row_survives`
+fails when the newest `| R<n> |` row falls outside that tail window. Every cycle
+appends a row AND a findings block, but the findings land AFTER the rows - so each
+cycle pushes the newest row roughly one findings-block further from EOF while the
+row itself barely moves. R216 crossed the line at 16087 bytes from EOF, missing the
+window by 87 bytes. **The fix is to relocate old findings blocks, never to shrink the
+new row or trim the guard.** Budget about two to three cycles per relocation.
 
 ## R216 findings - 2026-07-28 - the override looked for drift in the wrong place
 
@@ -907,3 +751,28 @@ radius. Schedule it before someone runs a narrowed regen by hand.
 `ROADMAP.md` is at 91 percent of its 81920-byte doc budget and was ALREADY breaching at
 HEAD (73178 bytes) - reported, not silenced. This session's ROADMAP edit was compressed
 and the detail carried in LEDGER 1093, which is where CLAUDE.md says it belongs.
+
+### The docs-guards red this cycle caused, and why it is structural
+
+Pushing R216's row turned `docs-guards` RED on
+`test_real_orchestration_plan_newest_row_survives`. Not a flake and not the test
+being wrong - a real regression, caught exactly where it should be.
+
+The director reads this file through
+`cap_bytes_head_tail(..., PLAN_CTX_CAP=24000, PLAN_CTX_HEAD=8000)`, so it sees the
+first 8000 bytes and the LAST 16000. R216's row landed **16087 bytes from EOF - it
+missed the window by 87 bytes.**
+
+The mechanism is arithmetic, not bad luck. Every cycle appends a row in the middle
+and a findings block at the END, so the newest row is pushed roughly one
+findings-block further from EOF each time while barely moving itself. R215 sat at
+about 13500; R216 at 16087; R217 would have been near 20000. **It was going to fail
+every cycle from here, and it happened to break on the cycle whose whole subject is
+gates that fire late.**
+
+Fixed by relocating R205 / R206 / R207 findings to
+`docs/ORCHESTRATION_PLAN_HISTORY.md` (verbatim, nothing edited), which puts the
+newest row at 6632 from EOF. **The correct lever is relocating old findings - never
+shrinking the new row and never relaxing the guard.** Budget two to three cycles per
+relocation. `tools/md_guard_selector.py` reproduces the CI job locally; note its
+output is CRLF, so pipe through `tr -d '\r'` before `xargs`.
