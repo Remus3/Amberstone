@@ -1,4 +1,4 @@
-/* ───── 2×3 panel grid ─────────────────────────────────────────── */
+/* ----- 2x3 panel grid ------------------------------------------- */
 /* (2026-04-25) Layout swap: NEXT+STATS moved from right column to left,
  * MAP STATE moved from left to right. (2026-04-26) MAP STATE column
  * widened to 1fr per user - matches the NEXT/STATS column on the left
@@ -129,7 +129,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   gap: 1px;
 }
 /* Gold diff bar - horizontal track, centered at 50%, fill extends right
- * (we're ahead / mint) or left (we're behind / coral). Clamped ±10k. */
+ * (we're ahead / mint) or left (we're behind / coral). Clamped +/-10k. */
 .gold-diff {
   margin-bottom: 10px;
 }
@@ -204,9 +204,9 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
 .mm-canvas-stack {
   position: relative;
   width: 100%;
-  /* 2026-04-24: bumped 320 → 460 so the minimap fills more of the left
-   * column (≈415px inner at iPad 1536, ≈530px at 1920). The map asset is
-   * 512×512 so upscaling to 460 is still within source resolution. */
+  /* 2026-04-24: bumped 320 -> 460 so the minimap fills more of the left
+   * column (~415px inner at iPad 1536, ~530px at 1920). The map asset is
+   * 512x512 so upscaling to 460 is still within source resolution. */
   max-width: 460px;
   margin: 0 auto;
   aspect-ratio: 1;
@@ -289,10 +289,10 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   image-rendering: pixelated;
   border-radius: var(--radius-sm);
 }
-/* (2026-04-26) After bumping ARAM/Brawl max-width 460→580 the live
+/* (2026-04-26) After bumping ARAM/Brawl max-width 460->580 the live
  * screenshot crop started looking blocky under image-rendering:
  * pixelated. Use bilinear (auto) for ARAM/Brawl where the upscale
- * factor exceeds 1.0; SR keeps pixelated since 460 ≤ source size. */
+ * factor exceeds 1.0; SR keeps pixelated since 460 <= source size. */
 body[data-mode="aram"]  #mm-img,
 body[data-mode="brawl"] #mm-img { image-rendering: auto; }
 .minimap-img-caption {

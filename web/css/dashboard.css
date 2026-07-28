@@ -4,8 +4,8 @@
  * accent, lavender secondary accent, generous corner radius, soft
  * shadows in place of borders. Lato sans-serif (mono preserved for
  * code, task IDs, activity ticker).
- * Authoring canvas: 1920×1080 in Chrome windowed (titlebar + URL bar +
- * bookmarks bar visible - usable viewport ≈ 1920×~920). F11 fullscreen
+ * Authoring canvas: 1920x1080 in Chrome windowed (titlebar + URL bar +
+ * bookmarks bar visible - usable viewport ~ 1920x~920). F11 fullscreen
  * recovers the browser chrome; `main` flex-grows into the extra height.
  */
 
