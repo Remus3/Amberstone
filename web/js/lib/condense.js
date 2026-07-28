@@ -1,6 +1,6 @@
 // condense.js - RC2 Phase 3.6 dashboard primary-panel condensation.
 //
-// Spec lineage: docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md gave the OVERLAY
+// Spec lineage: docs/_archive/2026-07-28-research-consolidation/RC2_OVERLAY_CONDENSATION_SPEC.md gave the OVERLAY
 // its slot budget + 2-row callout clamp. 3.6 is the DASHBOARD counterpart: the
 // full :8888 view keeps its density (it is NOT the 460px HUD), but the PRIMARY
 // coaching panels (RIGHT NOW, NEXT) render fixed supporting KV rows that paint

@@ -2,7 +2,7 @@
 """Deterministic lost-objective + stagnation macro response (RC2 P5.7, WS4).
 
 PURPOSE
-    docs/research/RC2_COACHING_SPEC.md Workstream 4. P5.5/P5.6 (WS3) coach the
+    docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md Workstream 4. P5.5/P5.6 (WS3) coach the
     objective SCHEDULE proactively (drake/baron is spawning, here is the setup).
     WS4 is the REACTIVE half: you just LOST an objective, or the game has
     STALLED, so here is the recovery directive. Two trigger families, both off

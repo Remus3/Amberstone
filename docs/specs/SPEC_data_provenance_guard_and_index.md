@@ -418,7 +418,7 @@ Revision 1's section 7.2 declared "Both halves are wrong and the spec should not
 about the brief's claim that Meraki's `latest` endpoint is mutable with no versioned history.
 **That refutation overreaches and would delete a true statement.** The repo already carries a
 more careful reconciliation the spec neither cited nor retired, verbatim at
-`agents/daemon_slayer/CHANGELOG.md:3247` and `docs/research/DS_ABILITY_SHAPING_NOTES.md:629`:
+`agents/daemon_slayer/CHANGELOG.md:3247` and `docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:629`:
 
 > The Meraki `latest` champions endpoint is mutable but its CONTENT is frozen at a
 > [pinned patch]

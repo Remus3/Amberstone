@@ -1271,7 +1271,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
     `docs/_archive/2026-07-18-agent6-auditor-reports/` in the same pass. The one live citation
     (`docs/specs/2026-07-16-ds-onhit-ap-combined-dps-scorer-design.md` -> `Kayle.md`) was
     repointed. STILL OPEN from this row: the
-    `docs/research/RC2_RESEARCH_*` cohort (2026-06-19). EXCLUDE
+    `docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_*` cohort (2026-06-19). EXCLUDE
     `ops/audit/ds_perm_swarm/report/live_flip_eyeball.md` (ongoing).
 
 ---

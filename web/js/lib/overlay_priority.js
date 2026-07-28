@@ -1,6 +1,6 @@
 // overlay_priority.js - RC2 Phase 3.2 in-match overlay S0 arbitration.
 //
-// Spec: docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md sections 4
+// Spec: docs/_archive/2026-07-28-research-consolidation/RC2_OVERLAY_CONDENSATION_SPEC.md sections 4
 // (primary-slot arbitration) and 5 (motion rationing). Pure vanilla JS,
 // no deps; consumed by right_now.js / callouts.js as an ES module.
 //

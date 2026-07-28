@@ -114,18 +114,18 @@ so the operator sees gray/blue progress live.
 
 ## STAGES
 
-### Phase 1 - RESEARCH (exhaustive; output -> docs/research/RC2_*.md)
+### Phase 1 - RESEARCH (exhaustive; output -> docs/_archive/2026-07-28-research-consolidation/RC2_*.md)
 | # | Stage | Status | Out |
 |---|-------|--------|-----|
-| 1.1 | Electron/overlay sizing + DPI + click-through: how Overlay App E/Overlay App F/Aggregator C/aggregator A/Aggregator B overlays, OBS, RTSS, Discord overlay size + place an in-game HUD | DONE | docs/research/RC2_RESEARCH_overlay_sizing.md |
-| 1.2 | League home/profile dashboard landscape sweep | DONE | docs/research/RC2_RESEARCH_home_profile.md |
-| 1.3 | Pregame lobby UX references | DONE | docs/research/RC2_RESEARCH_lobby.md |
-| 1.4 | Champ-select UX references (all modes) | DONE | docs/research/RC2_RESEARCH_champ_select.md |
-| 1.5 | In-match overlay references: density, glanceability, what-to-show | DONE | docs/research/RC2_RESEARCH_in_match_overlay.md |
-| 1.6 | PGR / post-game-review references (aggregator G / league-of-graphs class) | DONE | docs/research/RC2_RESEARCH_pgr.md |
-| 1.7 | History / match-list references | DONE | docs/research/RC2_RESEARCH_history.md |
-| 1.8 | Timeline-breakdown references (gold graphs, teamfight timelines) | DONE | docs/research/RC2_RESEARCH_timeline.md |
-| 1.9 | Non-League UI/UX + visual-effects/design-language refs (glanceable HUDs, dark telemetry dashboards) | DONE | docs/research/RC2_RESEARCH_nonleague_uiux.md |
+| 1.1 | Electron/overlay sizing + DPI + click-through: how Overlay App E/Overlay App F/Aggregator C/aggregator A/Aggregator B overlays, OBS, RTSS, Discord overlay size + place an in-game HUD | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_overlay_sizing.md |
+| 1.2 | League home/profile dashboard landscape sweep | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_home_profile.md |
+| 1.3 | Pregame lobby UX references | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_lobby.md |
+| 1.4 | Champ-select UX references (all modes) | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_champ_select.md |
+| 1.5 | In-match overlay references: density, glanceability, what-to-show | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_in_match_overlay.md |
+| 1.6 | PGR / post-game-review references (aggregator G / league-of-graphs class) | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_pgr.md |
+| 1.7 | History / match-list references | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_history.md |
+| 1.8 | Timeline-breakdown references (gold graphs, teamfight timelines) | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_timeline.md |
+| 1.9 | Non-League UI/UX + visual-effects/design-language refs (glanceable HUDs, dark telemetry dashboards) | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_nonleague_uiux.md |
 
 ### Phase 2 - DESIGN SYNTHESIS (the greenlight gate)
 | # | Stage | Status | Out |
@@ -139,7 +139,7 @@ so the operator sees gray/blue progress live.
 ### Phase 3 - OVERLAY + DASHBOARD QUICK-GLANCE (multi UI-agent)
 | # | Stage | Status | Out |
 |---|-------|--------|-----|
-| 3.1 | In-game priority-info condensation spec (glance test) | DONE | docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md |
+| 3.1 | In-game priority-info condensation spec (glance test) | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_OVERLAY_CONDENSATION_SPEC.md |
 | 3.2 | Overlay UI-agent pass 1 (structure/density) | DONE | web/js/lib/overlay_priority.js (`39303acb`) + callout 2-row clamp (`db6f77d4`) |
 | 3.3 | Overlay UI-agent pass 2 (typography/hit-targets/hierarchy) + wire right_now.js/overlay_pulse.js to shouldPulse (spec-flagged behavior change; shadow + 5-phase audit + operator eyeball) | LIVE | `87f41baf` shadow-wire (signalFromState + data-s0-* stamp) + 44px choice hit-target; pulse flip owed -> LIVE_GAME_GATED_SYNC.md |
 | 3.4 | Dashboard STAYS when overlay active (currently disappears) - fix | DONE | `183f1969` (E1 `a61703ef` shell mechanism + web keepCompanion/pin toggles) |
@@ -170,20 +170,20 @@ so the operator sees gray/blue progress live.
 ### Phase 6 - RESPONSIVENESS (without blowing out ports)
 | # | Stage | Status | Out |
 |---|-------|--------|-----|
-| 6.1 | LCU/LiveClient push/pull function + timing map (document RC<->League I/O cadences) | DONE | docs/research/RC2_RESEARCH_io_timing_map.md |
+| 6.1 | LCU/LiveClient push/pull function + timing map (document RC<->League I/O cadences) | DONE | docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_io_timing_map.md |
 | 6.2 | Faster champ-select LCU polling (all modes), port-safe | DONE | RuneWriter 2.0s->1.0s env-tunable; tests/test_runewriter_poll_interval_rc2.py |
 | 6.3 | UI responsiveness (render cadence, debounce, no-store idempotency) | DONE | `e9b1a5d0` routes_state `_STATE_CADENCE_S` env-tunable shared SSE-tick+TTL (default 0.5s, L4) + `idempotent_render.makeStreamGate` SSE dedup wired in main.js + no-store regression guard |
-| 6.4 | Port-safety audit (connection reuse, no fan-out storms) | DONE | `3263dc40` core/lcu_pool.py HttpsConnectionPool (L6 keep-alive reuse) + MinIntervalGuard (L7 floor) + pool_enabled RC_LCU_POOL default-OFF; poller `_lcu_get` opt-in pilot; docs/research/RC2_PORT_SAFETY_AUDIT.md; L8 :2999 >=1.5s floor regression-locked |
+| 6.4 | Port-safety audit (connection reuse, no fan-out storms) | DONE | `3263dc40` core/lcu_pool.py HttpsConnectionPool (L6 keep-alive reuse) + MinIntervalGuard (L7 floor) + pool_enabled RC_LCU_POOL default-OFF; poller `_lcu_get` opt-in pilot; docs/_archive/2026-07-28-research-consolidation/RC2_PORT_SAFETY_AUDIT.md; L8 :2999 >=1.5s floor regression-locked |
 | 6.5 | State-pipeline latency reduction | DONE | `74e9cf1b` build_state overlaps the independent liveclient relay round-trip (`_RELAY_POOL` ThreadPoolExecutor submit before lcu/coach reads, join before first use) - removes one localhost round-trip from the serial /api/state path + bounds a hung relay at max() not sum() of the two 1s timeouts; port-safe; tests/test_state_builder_latency_rc2.py (start/end ordering proof) |
-| 6.6 | Verify no port/CPU footprint regression | DONE | `92ca2279` consolidated footprint guard `tests/test_port_cpu_footprint_rc2.py` (13) re-asserting every Phase 6 lever in one gate + `docs/research/RC2_PORT_CPU_FOOTPRINT_VERIFICATION.md` (per-lever socket/CPU delta table + live loopback baseline) |
+| 6.6 | Verify no port/CPU footprint regression | DONE | `92ca2279` consolidated footprint guard `tests/test_port_cpu_footprint_rc2.py` (13) re-asserting every Phase 6 lever in one gate + `docs/_archive/2026-07-28-research-consolidation/RC2_PORT_CPU_FOOTPRINT_VERIFICATION.md` (per-lever socket/CPU delta table + live loopback baseline) |
 
 ### Phase 7 - HYGIENE
 | # | Stage | Status | Out |
 |---|-------|--------|-----|
-| 7.1 | ASCII-violation full sweep of old files (kill the startup warning) | DONE | `dbbd7a8d` tree provably banned-glyph clean (only immutable _archive retains em-dashes); p3 comment+docstring sweep 0 residual across 546 .py; test_smart_quote_hygiene now INCLUDES frozen (operator "frozen INCLUDED") + test_frozen_files_clean_of_banned_glyphs lock; docs/research/RC2_ASCII_SWEEP_VERIFICATION.md |
-| 7.2 | Stale-file census: .md/scripts unused >1 week of iterations | DONE | `29fa1750` 998 stale (no-commit >1wk), 254 removable-class examined by 3 disjoint census agents; 0 REMOVE / ~96 ARCHIVE-CANDIDATE / rest KEEP; ~744 live-code KEEP-out-of-scope (dead-code -> 7.3); cross-ref-breaker caveats logged (routes_static _AGENT_ALLOWED, BACKLOG/ROADMAP back-refs, no-rm dated artifacts, P0/P1 hold-til-phase-close); docs/research/RC2_STALE_FILE_CENSUS.md |
+| 7.1 | ASCII-violation full sweep of old files (kill the startup warning) | DONE | `dbbd7a8d` tree provably banned-glyph clean (only immutable _archive retains em-dashes); p3 comment+docstring sweep 0 residual across 546 .py; test_smart_quote_hygiene now INCLUDES frozen (operator "frozen INCLUDED") + test_frozen_files_clean_of_banned_glyphs lock; docs/_archive/2026-07-28-research-consolidation/RC2_ASCII_SWEEP_VERIFICATION.md |
+| 7.2 | Stale-file census: .md/scripts unused >1 week of iterations | DONE | `29fa1750` 998 stale (no-commit >1wk), 254 removable-class examined by 3 disjoint census agents; 0 REMOVE / ~96 ARCHIVE-CANDIDATE / rest KEEP; ~744 live-code KEEP-out-of-scope (dead-code -> 7.3); cross-ref-breaker caveats logged (routes_static _AGENT_ALLOWED, BACKLOG/ROADMAP back-refs, no-rm dated artifacts, P0/P1 hold-til-phase-close); docs/_archive/2026-07-28-research-consolidation/RC2_STALE_FILE_CENSUS.md |
 | 7.3 | Dead-code / unused-asset removal (safety-verified) | DONE | `5f3391c8` safety-verify of the 7.2 census: bulk archive-candidates re-probed COUPLED (live regression tests / living docs / routes_static _AGENT_ALLOWED / immutable agent history / P0-P1 hold-til-phase-close) -> RETAINED, correcting the census labels; only 8 provably-orphan one-shot tools quarantined to `_archive/2026-06-20-rc2-p73/` (git mv, history preserved as renames): hotfix_sr_adc_loadouts_item167 / hotfix_arena_mage_mislabel_item273 / migrate_abilities_units_2026_05_30 / caveman_default / champion_loadout_handcurate(+_merge) / migrate_carry_summoners_flash_barrier / champion_loadout_backfill_item208_carry; NEW tests/test_rc2_p73_quarantine.py (4: gone-from-tools + in-archive + siblings-retained + no-live-import static guard); 2288 passed across loadout/champion/tools risk surface, 0 broken; 5 tools/*.md skill-dups DEFERRED (noisy substring refs) |
-| 7.4 | Repo folder reorg | DONE | `386d5e2c` structure verified-canonical (3-agent census + independent re-verify): archived the spent one-shot repo-audit prompt+output pair -> `docs/_archive/2026-06-17-repo-audit/` (history-preserving renames), only live ROADMAP ref repathed, LEDGER/history_notes left append-only; verified KEEP-AT-ROOT set documented - advisor cluster (`composition_advisor`/`item_advisor`/`performance_tracker`) eager-imported by FROZEN `app/__init__.py`+`app/_game_lifecycle.py`, `docs io RC peer` rename hits frozen CLAUDE.md + 10 `.gitignore` secret globs (un-ignore hazard), `start_claude.ps1` is a LIVE session launcher (not an artifact), tooling-anchored configs + portable `.bat` set; root files 35->33; docs/research/RC2_FOLDER_REORG.md |
+| 7.4 | Repo folder reorg | DONE | `386d5e2c` structure verified-canonical (3-agent census + independent re-verify): archived the spent one-shot repo-audit prompt+output pair -> `docs/_archive/2026-06-17-repo-audit/` (history-preserving renames), only live ROADMAP ref repathed, LEDGER/history_notes left append-only; verified KEEP-AT-ROOT set documented - advisor cluster (`composition_advisor`/`item_advisor`/`performance_tracker`) eager-imported by FROZEN `app/__init__.py`+`app/_game_lifecycle.py`, `docs io RC peer` rename hits frozen CLAUDE.md + 10 `.gitignore` secret globs (un-ignore hazard), `start_claude.ps1` is a LIVE session launcher (not an artifact), tooling-anchored configs + portable `.bat` set; root files 35->33; docs/_archive/2026-07-28-research-consolidation/RC2_FOLDER_REORG.md |
 | 7.5 | Verify dual suite green post-cleanup | DONE | `afa07330` full dual suite GREEN: 17151 passed / 7 skipped / 2052 subtests / 0 failed (root pytest, Share excluded per pytest.ini norecursedirs). Root-caused 5 agent3 round tests (round16/24/25/28/29) asserting stale unicode arrows that production correctly emits as ASCII `^`/`v`/`\|` per the no-unicode rule - fixed the 4 failing asserts + 2 tautology/dead siblings; + ROADMAP.md 88772->65096 bytes (3 shipped mega-bullets relocated to docs/ROADMAP_HISTORY.md) restoring the 80KB doc-size-budget guard. Tier-1 test+doc, no engine/DS/Share/frozen. Phase 7 HYGIENE COMPLETE (7.1-7.5) |
 
 ### Phase 8 - TODO/FUTURE + DS-COMPLETENESS
@@ -215,7 +215,7 @@ TOTAL_stages = 50.
 
 ## DELIVERABLE INDEX
 
-- Research: `docs/research/RC2_RESEARCH_*.md`
+- Research: `docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_*.md`
 - Design HTML (greenlight): `docs/design/RC2_DESIGN.html`
 - Operator Q/A TODO: `docs/_archive/RC2_TODO_QA.md`
 - DS completeness gap: `docs/DS_COMPLETENESS_GAP.md`

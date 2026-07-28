@@ -21,7 +21,7 @@ Closes: BACKLOG.md:13 OQ24 residual tail (4) [Zeri AP-on-AD class] + docs/ORCHES
   (OQ24-Step1b Kai'Sa Eclipse#6 light-dock) + docs/ORCHESTRATION_PLAN.md:360 (OQ25 NOW bucket:
   fight_length allow-map extension to Varus/MF).
 Predecessor context: docs/specs/2026-07-13-ds-build-coherence-refactor.md (the coherence dock,
-  Step-1a/1b = LEDGER 874/885), docs/research/OQ25_meta_divergence_report.md (OQ25 findings),
+  Step-1a/1b = LEDGER 874/885), docs/_archive/2026-07-28-research-consolidation/OQ25_meta_divergence_report.md (OQ25 findings),
   LEAP-04-build-order-precompute-backfill.md (the shared regen chokepoint proof, sibling spec).
 
 ---

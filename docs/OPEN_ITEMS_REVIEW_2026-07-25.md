@@ -459,7 +459,7 @@ slice for BOTH A-12 and A-20, and it is why those two cannot be proven end-to-en
 ### Re-scoping notes for the four survivors
 
 - **A-03 / RM-81.** The 6 champions are already on disk at
-  `docs/research/DS_ABILITY_SHAPING_NOTES.md:445-620` (Mordekaiser, Naafiri, Heimerdinger,
+  `docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:445-620` (Mordekaiser, Naafiri, Heimerdinger,
   Azir, Malzahar, Ahri); Ahri R and Naafiri R re-verified stale in
   `data/daemon_slayer/16.14.1/champion_abilities.json`. But
   `tools/daemon_slayer_abilities_extract.py:761-774` is `--force`/`--patch` only, all-or-

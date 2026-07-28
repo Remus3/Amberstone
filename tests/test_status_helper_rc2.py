@@ -10,7 +10,7 @@ Skips cleanly when node is unavailable so it never hard-fails CI on a
 runner without a JS toolchain (the dashboard itself needs node only at
 author time; the helper ships as static JS).
 
-Research: docs/research/RC2_RESEARCH_nonleague_uiux.md section B1.
+Research: docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_nonleague_uiux.md section B1.
 """
 from __future__ import annotations
 

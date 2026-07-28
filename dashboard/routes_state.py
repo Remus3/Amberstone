@@ -63,7 +63,7 @@ log = logging.getLogger("rc.web_dashboard")
 
 # RC2 6.3 (L4): the dashboard update cadence is ONE tunable shared by the
 # /api/state TTL cache AND the SSE re-build tick. The IO timing map
-# (docs/research/RC2_RESEARCH_io_timing_map.md) flagged that these two MUST
+# (docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_io_timing_map.md) flagged that these two MUST
 # match (a TTL shorter than the tick wastes builds; longer stalls the stream)
 # yet they were two independent 1.0s literals that could silently drift.
 # Folding them into one constant makes the invariant structural. Default

@@ -1,7 +1,7 @@
 """A-03 / RM-81 - stale ability base-damage override registry.
 
 Pins the six champions characterized at
-``docs/research/DS_ABILITY_SHAPING_NOTES.md:562-571`` (the shape-corrected
+``docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:562-571`` (the shape-corrected
 re-run table), the DEFAULT-OFF contract, and the negative control that every
 champion NOT in the registry is byte-identical with the flag ON.
 

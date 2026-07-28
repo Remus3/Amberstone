@@ -6,7 +6,7 @@ whether the change-pulse may fire. This characterization suite drives node to
 require() the CommonJS export and pins the priority ladder + pulse-rationing
 contract that right_now.js / callouts.js consume.
 
-Spec: docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md sections 4 (arbitration)
+Spec: docs/_archive/2026-07-28-research-consolidation/RC2_OVERLAY_CONDENSATION_SPEC.md sections 4 (arbitration)
 and 5 (motion rationing). Acceptance A2 (exactly one pop-out) + A5 (pulse only
 on Emergency / one-shot-Urgent cross).
 
