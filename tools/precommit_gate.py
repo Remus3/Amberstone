@@ -119,8 +119,54 @@ def _staged_added(root: str) -> dict[str, dict]:
     return files
 
 
-def _glyph_hits(text: str) -> list[str]:
-    return sorted({name for ch, name in _BANNED.items() if ch in text})
+# Surfaces CLAUDE.md's retroactive purge deliberately did NOT sweep (immutable
+# history / non-source), plus upstream DATA mirrors. DDragon and Meraki ship
+# champion and item names RC does not author and cannot fix - gating them would
+# block correct commits, and a gate that blocks correct work is one people learn
+# to bypass.
+_ASCII_EXEMPT_PARTS = ("logs/", "docs/_archive/", "__pycache__/", ".git/")
+_ASCII_EXEMPT_SUFFIXES = (".jsonl", ".log", ".pyc", ".png", ".jpg", ".ico", ".zip")
+_ASCII_EXEMPT_PREFIXES = ("data/",)
+
+
+def _ascii_exempt(path: str) -> bool:
+    p = (path or "").replace("\\", "/")
+    if any(part in p for part in _ASCII_EXEMPT_PARTS):
+        return True
+    if p.endswith(_ASCII_EXEMPT_SUFFIXES):
+        return True
+    return p.startswith(_ASCII_EXEMPT_PREFIXES)
+
+
+def _glyph_hits(text: str, path: str = "") -> list[str]:
+    """Named diagnostics for the six historical glyphs, then a CATCH-ALL.
+
+    WIDENED 2026-07-28. ``_BANNED`` held exactly six characters, so every other
+    non-ASCII codepoint passed this gate unremarked. That is how U+00D7 reached
+    the repo the same day: ``scripts/db_size_monitor.py`` used it as a
+    missing-file marker, its output is captured verbatim into the COMMITTED
+    weekly agent6 health report, and ``tests/test_smart_quote_hygiene.py``
+    asserts that report is byte-ASCII - so a scheduled task turned the suite red
+    through a gate working exactly as written.
+
+    The real defect was that two rules enforcing the same CLAUDE.md hard rule
+    ("7-bit ASCII authored content") disagreed about what it means, and the
+    looser one ran first. The catch-all closes that, and reports the codepoint
+    so the hit is actionable rather than just refused.
+    """
+    if _ascii_exempt(path):
+        # Exempt surfaces are exempt from ALL of it, the six included. A
+        # DDragon champion name like Cho'Gath carries U+2019 upstream; RC did
+        # not author it and cannot fix it, so flagging it would block a correct
+        # mirror refresh. The authored-content rule does not reach these.
+        return []
+    hits = {name for ch, name in _BANNED.items() if ch in text}
+    hits |= {
+        "non-ascii U+%04X (%s)" % (ord(c), c.encode("unicode_escape").decode())
+        for c in text
+        if ord(c) > 127 and c not in _BANNED
+    }
+    return sorted(hits)
 
 
 def _compile_errors(pyfiles: list[str], root: str) -> list[str]:
@@ -210,12 +256,12 @@ def main() -> int:
     # 1. banned glyphs on added lines
     for path, info in staged.items():
         for lineno, text in info["lines"]:
-            hits = _glyph_hits(text)
+            hits = _glyph_hits(text, path)
             if hits:
                 violations.append(f"  {path}:{lineno}  banned glyph: {', '.join(hits)}")
 
     # 2. commit-message glyphs (the -m text lives in the command string)
-    msg_hits = _glyph_hits(command)
+    msg_hits = _glyph_hits(command, "<commit-message>")
     if msg_hits:
         violations.append(f"  commit message  banned glyph: {', '.join(msg_hits)}")
 
