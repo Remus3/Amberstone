@@ -64,8 +64,18 @@ jobs:
         run: |
           # Runs the exhaustive 23k+ test suite.
           #
-          # PARALLEL as of 2026-07-27: 20m37s serial -> 2m20s, measured twice
-          # at 23769 passed / 106 skipped / 6045 subtests / ZERO failures.
+          # PARALLEL as of 2026-07-27, and the speedup is REAL LOCALLY AND
+          # NEARLY ZERO HERE - measured, because the first version of this
+          # comment quoted the local number as if it were the runner's.
+          #   local 8-core, -n 8:  20m37s -> 2m20s   (23769 passed, twice)
+          #   ubuntu runner, -n auto:  20m37s -> 19m42s   (23607 passed,
+          #                            258 skipped, 6032 subtests, 0 failed,
+          #                            workflow_dispatch run 30315178736)
+          # 55 seconds, about 4 percent. A GitHub runner has 2-4 vCPU, so
+          # `-n auto` gets 2-4 workers against 8 locally, and the suite is
+          # largely I/O and Playwright bound rather than CPU bound. Keeping the
+          # parallel form because it is free and correct, NOT because it made
+          # this job fast. Do not quote the 2m20s figure as a CI cost.
           #
           # The blocker that held this back for one commit is fixed, not waived.
           # `-n` used to produce SEVEN failures that did not exist serially, all
@@ -85,9 +95,13 @@ jobs:
           # cross-FILE isolation is newly assumed.
           #
           # A 20-minute job nobody reads is how four real failures sat red here
-          # while push CI stayed green (RM-119). At 2m20s this is now fast
-          # enough to be worth reading, and cheap enough to be a candidate for
-          # an actual gate.
+          # while push CI stayed green (RM-119). It is still a 20-minute job, so
+          # the fix for that is NOT the parallel flag - it is that the job is
+          # green again and someone has to look at it. And it prices RM-119's
+          # remaining half honestly: promoting the full RC tests/ into the push
+          # `check` job would cost roughly this, taking that job from ~8m30s to
+          # ~20min per push. That is an operator call on minutes, not a free
+          # coverage win, and the estimate to beat is measured, not local.
           pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
             -n auto --dist loadfile
 
