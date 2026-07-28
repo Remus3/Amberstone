@@ -139,7 +139,12 @@ def main() -> int:
         print(f"DB / log sizes ({datetime.now().strftime('%Y-%m-%d %H:%M')})")
         print("-" * 60)
         for r in report["rows"]:
-            mark = "  " if r["exists"] else "× "
+            # ASCII only - this output is captured verbatim into the weekly
+            # agent6 health report, which is committed and is asserted
+            # byte-ASCII by tests/test_smart_quote_hygiene.py. A U+00D7 here
+            # (the original marker) reached the repo on 2026-07-28 and turned
+            # a scheduled task into a red suite.
+            mark = "  " if r["exists"] else "x "
             print(f"  {mark}{r['label']:<28} {_fmt(r['bytes'])}")
         if breaches:
             print()
