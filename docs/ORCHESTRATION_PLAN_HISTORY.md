@@ -329,3 +329,66 @@ test files are collected on push, and `ci.yml:322` has run the DS suite in the
 `check:` job since. Corrected this cycle. Worth noticing that the stale clause and
 the note asking for the follow-on work were both written by people who were right at
 the time; the row aged, the note did not know it had.
+
+---
+
+## R217-U1 findings - 2026-07-28 - the directive named three edits, and the fourth one was the defect
+
+**The premise held and the unit was real.** `check:` (job at `ci.yml:108`) ran
+`pytest agents/daemon_slayer/tests/` and nothing else, and `pip install -r
+requirements.txt` existed only inside `nightly-full-suite:`. Both were re-read on disk
+before any edit, and both were exactly as R217 filed them. Two real cycles in a row.
+
+### The defect the directive did not name was the timeout, and it would have failed the first push
+
+The row carried `timeout-minutes: 25` forward from the DS-only promotion with the note
+"no raise needed, but under 6 minutes of slack". That arithmetic only works if the
+19m42s dispatch price were the whole job. It is not: the dispatch run measures pytest
+inside a job that does nothing else, while `check:` also installs, caches and installs
+Playwright, sweeps py_compile over the tree, runs ruff, re-derives the Share mirror,
+and runs four named-file guard steps - the DS-only shape of this job measured **9m1s
+end to end** (run `30342574878`) against a DS pytest step of about 2m47s. Same
+subtraction on the new shape prices the job at **about 26 minutes**, which is OVER the
+ceiling, and GitHub reports a blown ceiling as **cancelled**, not failed - the exact
+misread that cost a cycle on 2026-07-27. Raised to 40. Not to 27: a ceiling one minute
+above the estimate converts ordinary runner variance into a fake red, and a timeout
+here exists to catch a HANG, not to police minutes.
+
+### The remaining named-file pytest steps were enumerated, and none of the four is redundant
+
+The directive said to drop the two that become pure subsets and keep the two
+special-env steps. Enumerated the rest rather than assuming that was the whole list.
+Four named-file steps survive. `RC_REQUIRE_HOOK_GATE` and
+`RC_REQUIRE_BUILD_ORDER_TABLES` turn a skip into a failure, so the full run cannot
+replace them - the promoted `pytest tests/` collects those same files and they skip.
+The hygiene trio and the docs-guard step ARE strict subsets, and they stay anyway,
+because a 20-minute suite that reports an ASCII break in minute 20 is worse than a
+10-second step that reports it in minute 1. **That rationale is now written IN
+`ci.yml`**, because the next reader will otherwise delete them as duplicates and be
+right by every argument except the one that matters.
+
+### The install line is what makes the promotion mean anything
+
+`pip install -r requirements.txt` is not bookkeeping. The RC tree imports anthropic /
+PIL / websockets / portalocker / psutil, and an ImportError-guarded test that cannot
+import is a **skip**, which is a green tick - so promoting the suite without the
+runtime stack would have bought a longer job and almost no new assertions. The two
+ad-hoc pins that requirements.txt already carries (`json5==0.14.0`, `pydantic>=2.0`)
+were dropped so a version lives in one place; `pyyaml` stays pinned in the workflow
+because it is test-only and `tests/test_ci_docs_guard_coverage.py::
+test_ci_installs_the_yaml_parser_it_needs` asserts the literal `pip install ... pyyaml`
+in any workflow that names that module.
+
+### Carry-forward
+
+RM-119 is CLOSED, both halves, and its narrative was relocated to
+`docs/ROADMAP_HISTORY.md` in the same pass - `ROADMAP.md` had **1569 bytes** of headroom
+against its 81920 budget, so this row could not have been updated in place. The skip
+audit's B2 / B4 / B5 classes stay in `ROADMAP.md`: they are open work, not shipped
+narrative. **The real acceptance is the runner, not this file** - a green local suite
+proves the command, and only the push proves the price. It was paid and it was
+CHEAPER than the estimate: run `30345614564` green, 23703 passed / 254 skipped /
+6165 subtests / 0 failed, 19m10s of pytest inside a 20m54s job. The number that
+matters more than the minutes: this job passes 96 MORE tests than the nightly
+dispatch (23607), because it installs pyyaml and arms the git hooks before it runs,
+so fewer guards degrade to skips. Push CI is now strictly stronger than the nightly.
