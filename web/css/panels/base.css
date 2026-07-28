@@ -59,7 +59,7 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ───── App-wide custom tooltip ──────────────────────────────────
+/* ----- App-wide custom tooltip ----------------------------------
  * Replaces browser-native `title` tooltips across the dashboard. Larger
  * readable font, muted aesthetic that matches the "Mode does not support
  * Augments" placeholder. Positioned by JS (tooltip-system.js) so it flips
@@ -96,7 +96,7 @@
   opacity: 0;
   transition: opacity 120ms ease;
   /* pre-wrap renders JS-inserted \n line breaks without further wrapping
-   * inside a line (since each line is already ≤ 6 words). */
+   * inside a line (since each line is already <= 6 words). */
   white-space: pre-wrap;
 }
 .app-tooltip.show { opacity: 1; }

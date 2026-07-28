@@ -2,7 +2,7 @@
  *
  * Renders the post-game review for the most-recent non-TFT match
  * captured in data/match_history.db. Wired into main.js via
- * applyView("last-match") → wireLastMatchOnce() + fetchAndRenderLastMatch().
+ * applyView("last-match") -> wireLastMatchOnce() + fetchAndRenderLastMatch().
  *
  * Data shape from /api/last-match (see dashboard/builders._build_last_match):
  *   {
@@ -54,7 +54,7 @@ import { renderPgrLoadout } from './pgr_loadout.js';
 // payload already fetched by _setHeroRoleGrade - no new fetch.
 import { renderPlayerSnapshot } from './player_snapshot.js';
 
-// Numeric summoner-spell id → DDragon filename. Covers SR + ARAM common
+// Numeric summoner-spell id -> DDragon filename. Covers SR + ARAM common
 // set; Arena (CHERRY) spell ids are not in this map and fall back to a
 // blank slot. Source: DDragon summoner.json. Extend if a new spell ships.
 const SUMMONER_SPELL_BY_ID = {
@@ -601,9 +601,9 @@ function _setTakeaway(qr) {
 }
 
 function _setMeta(m, historyCount, _enriched) {
-  // s219 v4: trimmed to mode · "X ago" · baseline-count. Duration
+  // s219 v4: trimmed to mode - "X ago" - baseline-count. Duration
   // already lives in the hero stats inline; the "LCU detail ingested"
-  // debug callout was operator-noise. The N in "baseline · N prior
+  // debug callout was operator-noise. The N in "baseline - N prior
   // games" will become operator-configurable from the Settings page
   // (window currently fixed at 20 via _build_last_match's LIMIT 20
   // SQL clause; once Settings ships a knob it'll propagate here).
@@ -715,7 +715,7 @@ function _setTeamComp(enriched) {
   const teamWin = {};
   (enriched.teams || []).forEach((t) => { teamWin[t.team_id] = !!t.win; });
 
-  // s220: per-player overall score → per-SIDE rank (1..N within each
+  // s220: per-player overall score -> per-SIDE rank (1..N within each
   // team). The best on each side shows MVP (that side won) / SVP (lost);
   // the rest show #2..#N. Ranking is per-side, not lobby-wide, so the
   // visible numbers stay contiguous (no gaps where the badge slots are).
@@ -768,7 +768,7 @@ function _setTeamComp(enriched) {
 }
 
 function _renderTcRow(r, sm, showAug) {
-  // Resolve championId → name via CHAMPS.byId (async-hydrated by items_index.js)
+  // Resolve championId -> name via CHAMPS.byId (async-hydrated by items_index.js)
   const slug = (CHAMPS && CHAMPS.byId && CHAMPS.byId[String(r.champion_id)]) || "";
   const portrait = slug ? `/icons/champions/${slug}.png` : "";
   const name = _escHtml(r.game_name || "-");
@@ -1143,7 +1143,7 @@ function _renderMvpCard(cardId, top, sm) {
   card.dataset.kind = kind;
 }
 
-// s220: per-player overall score → { participant_id: score } map.
+// s220: per-player overall score -> { participant_id: score } map.
 // _setTeamComp turns this into a per-side 1..N rank + MVP/SVP badge.
 // Transparent heuristic (surfaced in each row's hover tooltip): a
 // weighted blend of KDA, damage to champs, gold, CS, vision, and
@@ -1349,9 +1349,9 @@ function _fmtThousands(n) {
 
 // s220 Item E (phase 1): Timeline tab - per-minute gold/XP/CS
 // differential sparklines + an objective-event ribbon. Diffs are
-// ally − enemy (positive = operator's team ahead). Data comes from
+// ally - enemy (positive = operator's team ahead). Data comes from
 // enriched.timeline (dashboard.builders._enrich_timeline_from_lcu);
-// absent until a game completes post-agent-redeploy → placeholder.
+// absent until a game completes post-agent-redeploy -> placeholder.
 function _setTimeline(enriched) {
   const wrap    = document.getElementById("lm-tl-wrap");
   const charts  = document.getElementById("lm-tl-charts");

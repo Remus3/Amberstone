@@ -8,13 +8,17 @@ the roster rows exempt as pointer-events:none readouts, and the four core
 surface files carry ZERO non-ASCII bytes. This guard locks that clean state so
 a future edit cannot slip an em/en dash or a smart quote into the surface.
 
-The adjacent champ-select team_context.css keeps 20 U+2500 box-drawing rules in
-its comment header (operator-allowed globally per test_u2500_hygiene.py scope
-note) plus a single U+00D7 in a "5x5 grid" comment. Neither is a CLAUDE.md
-hard-rule glyph (the ban is em/en dash + the four smart quotes), so they are
-NOT swept here; this guard PINS that residual so no banned glyph can hide behind
-the allowed set, and the U+00D7 stays flagged as the only shrinkable byte for a
-future ASCII-purity pass.
+The adjacent champ-select team_context.css USED to keep 20 U+2500 box-drawing
+rules in its comment header plus a single U+00D7 in a "5x5 grid" comment. Neither
+was a CLAUDE.md hard-rule glyph (the ban is em/en dash + the four smart quotes),
+so this guard pinned them as an allowed residual and flagged the U+00D7 as the
+only shrinkable byte for a future ASCII-purity pass.
+
+RM-125 (2026-07-28) was that pass: tools/web_ascii_sweep.py swept the COMMENT
+half of web/ to ASCII, and all 21 of team_context.css's residual bytes sat in
+comments. The file is pure ASCII now, so per this guard's own standing
+instruction ("if it shrinks to just U+2500, tighten this assertion") the pin
+below is tightened the whole way to empty.
 """
 import pathlib
 
@@ -51,8 +55,9 @@ def test_no_banned_glyph_anywhere_in_surface_including_team_context():
 
 
 def test_team_context_residual_is_only_allowed_glyphs():
-    # Pin the adjacent-file residual: exactly U+2500 (allowed rule) + U+00D7
-    # (flagged FUTURE). If it shrinks to just U+2500, tighten this assertion.
+    # Post-RM-125 the adjacent-file residual is EMPTY - its 20 U+2500 + 1 U+00D7
+    # all sat in comment spans and were swept. Widen this only with evidence
+    # that a new glyph belongs on a LIVE span.
     txt = (ROOT / "web/css/panels/team_context.css").read_text(encoding="utf-8")
     residual = sorted({ord(c) for c in txt if ord(c) > 127})
-    assert residual == [0x00D7, 0x2500], [hex(c) for c in residual]
+    assert residual == [], [hex(c) for c in residual]

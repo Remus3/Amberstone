@@ -11,7 +11,7 @@ export const state = {
     item_build: 0,
     minimap: 0,
   },
-  latest: {},          // mode → latest coaching payload cache
+  latest: {},          // mode -> latest coaching payload cache
   lastSseTs: 0,        // ms timestamp of last SSE event (dedup vs. HTTP fallback)
   // /api/state.mode_key is the canonical preflip/in-game resolver
   // (resolve_mode_key + cs_retention). onState records it here so
@@ -19,10 +19,10 @@ export const state = {
   // its own health source isn't preflip-mirrored. See onHealth in main.js.
   lastStateMode: "",   // last env.mode (mode_key) seen by onState
   lastStateModeTs: 0,  // ms timestamp of that observation
-  spellCds: {},        // champion|spell → {remaining, anchor} cooldown state
+  spellCds: {},        // champion|spell -> {remaining, anchor} cooldown state
 };
 
-// Staleness thresholds per panel (seconds from spec §5).
+// Staleness thresholds per panel (seconds from spec S5).
 export const CADENCE = {
   right_now:  { stale: 4,   severe: 12 },
   next:       { stale: 16,  severe: 48 },
@@ -61,7 +61,7 @@ export const VIEW_LABELS = {
 // s171 added ``gameStarted`` - a sticky "highest game-state we've seen
 // this session" flag (champ-select | game-start | in-progress | null).
 // Used by _viewAutoDerive to ride through transient LCU phase=null /
-// phase=Lobby blips during the CS→loading→game flip without flushing
+// phase=Lobby blips during the CS->loading->game flip without flushing
 // the view back to home/lobby. Cleared on stable post-game phases.
 export const _VIEW = {
   current: null,

@@ -78,7 +78,7 @@ export function escHtml(s) {
     .replace(/'/g, "&#39;");
 }
 
-// Shrink font-size until content fits the element. ≤0.5ms per call.
+// Shrink font-size until content fits the element. <=0.5ms per call.
 // Idempotent: skips if text + params haven't changed since last call.
 export function fitText(elm, text, { max = 48, min = 16, step = 2, lines = null } = {}) {
   if (!elm) return;
