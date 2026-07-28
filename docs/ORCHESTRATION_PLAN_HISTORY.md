@@ -178,3 +178,101 @@ CI go red on the next bad write instead of passing in silence - with the failure
 message naming the prompt as the real fix site so the next reader is not left
 guessing.
 
+---
+
+## R216 findings - 2026-07-28 - the override looked for drift in the wrong place
+
+The directive came wrapped in a STALE-GROUNDING executor override: re-read ROADMAP.md
+before trusting the from-digest premise that RM-121 item 3 sub-item 4 is NEXT. I did.
+**The premise was TRUE** - `ROADMAP.md:42` said it verbatim.
+
+**The stale artifact was not the digest. It was ROADMAP.md.**
+
+The override is built on the assumption that a digest drifts away from the tree, so it
+asks exactly one question: does the file still say what the digest claims? It has no
+question for the case where the file agrees and both are wrong. Two sources agreeing is
+one premise, not two.
+
+The cheapest possible check closed it: **run the thing the row says is broken, before
+fixing it.** `pytest tests/ agents/daemon_slayer/tests/ -n 8 --dist loadfile` -
+23849 passed, 0 failed, 132s. Five of the six failures died in `cd0f115d` three hours
+AFTER the desktop note that seeded the row was written; the sixth went with the RM-100
+asyncio consolidation. The row was obsolete before it was ever scheduled.
+
+### The unit that was actually available
+
+`cd0f115d`'s own commit body:
+
+> Swept every other subTest call site in both suites: the remaining ones pass only
+> primitives and need no change, but any future hostile-input matrix is one
+> non-primitive away from the same `-n`-only failure.
+
+That diagnoses the residual risk correctly and then answers it with prose - across 463
+call sites in 100 files, in a defect class **a serial run cannot observe by
+construction** (no execnet channel serially, so the failure does not exist to be seen).
+An eye-sweep is the weakest available instrument for a defect whose defining property is
+invisibility in the default run.
+
+Shipped: a repo-root `conftest.py` that validates every `subTest` kwarg against
+execnet's OWN `dumps` at call time. Repo-root because `tests/conftest.py` cannot reach
+`agents/daemon_slayer/tests/`, which has no conftest and held one of the five instances.
+
+### Enumeration, mechanized rather than asserted
+
+The guard IS the probe. Installed, full dual suite re-run: **23861 passed, 0 failed** -
+exactly +12 tests / +17 subtests over baseline, which is the new file to the unit, so
+**0 additional instances repo-wide**. Disposition: 5 FIXED (`cd0f115d`), 458 CLEAN and
+now machine-proven instead of eye-proven, 0 OUT-OF-SCOPE. `cd0f115d`'s sweep was
+CORRECT; the value delivered is that it is no longer a claim.
+
+### Two things the build turned up that the directive did not ask for
+
+- `tests/test_aram_action_rule.py` asserted in a docstring that `object()` "(or a
+  `set()`)" raises `DumpError`. Probed directly: **sets and frozensets serialize fine**;
+  the containers recurse, so `[object()]` fails and `{1, 2}` does not. Never
+  load-bearing - no test passed a set - but exactly the remembered-not-measured detail
+  that sends the next reader rewriting working code. The grammar is now pinned by a test
+  instead of restated in a docstring. **If a fact matters enough to write down twice,
+  assert it.**
+- **Reach limit, recorded not papered over:** a rootdir conftest only loads when pytest
+  runs from the repo root, so a DS-dir invocation bypasses the guard. NOT closed with a
+  second conftest under `agents/daemon_slayer/tests/` - that path mirrors into
+  `Share/src/`, and `Share/` runs standalone (RM-112) where `tests._subtest_channel_guard`
+  does not exist, so the mirror would import a missing module and break a clean package.
+  Already fenced by an unrelated rule (DS-dir runs produce 13 CWD failures). Written into
+  the module docstring so nobody "fixes" it into a Share breakage.
+
+### Carry-forward
+
+Unchanged from LEDGER 1092 and still unclaimed: the **16-instance
+whole-file-rewrite-under-a-narrowed-work-plan class**, with a live DS-consumer blast
+radius. Schedule it before someone runs a narrowed regen by hand.
+
+`ROADMAP.md` is at 91 percent of its 81920-byte doc budget and was ALREADY breaching at
+HEAD (73178 bytes) - reported, not silenced. This session's ROADMAP edit was compressed
+and the detail carried in LEDGER 1093, which is where CLAUDE.md says it belongs.
+
+### The docs-guards red this cycle caused, and why it is structural
+
+Pushing R216's row turned `docs-guards` RED on
+`test_real_orchestration_plan_newest_row_survives`. Not a flake and not the test
+being wrong - a real regression, caught exactly where it should be.
+
+The director reads this file through
+`cap_bytes_head_tail(..., PLAN_CTX_CAP=24000, PLAN_CTX_HEAD=8000)`, so it sees the
+first 8000 bytes and the LAST 16000. R216's row landed **16087 bytes from EOF - it
+missed the window by 87 bytes.**
+
+The mechanism is arithmetic, not bad luck. Every cycle appends a row in the middle
+and a findings block at the END, so the newest row is pushed roughly one
+findings-block further from EOF each time while barely moving itself. R215 sat at
+about 13500; R216 at 16087; R217 would have been near 20000. **It was going to fail
+every cycle from here, and it happened to break on the cycle whose whole subject is
+gates that fire late.**
+
+Fixed by relocating R205 / R206 / R207 findings to
+`docs/ORCHESTRATION_PLAN_HISTORY.md` (verbatim, nothing edited), which puts the
+newest row at 6632 from EOF. **The correct lever is relocating old findings - never
+shrinking the new row and never relaxing the guard.** Budget two to three cycles per
+relocation. `tools/md_guard_selector.py` reproduces the CI job locally; note its
+output is CRLF, so pipe through `tr -d '\r'` before `xargs`.

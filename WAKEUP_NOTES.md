@@ -6,6 +6,51 @@
 
 ---
 
+# 2026-07-28f - R217 desktop-queue drain. Half the notes were already true on disk.
+
+Gemini-loop cycle 22. RM-121 item 4 (`random.txt` + `roadmap work.txt`), which
+DRAINS the five-file desktop chain - four items, no file 5, do not re-pick RM-121.
+Full detail in `docs/LEDGER.md` 1094. Commit `4e9bf60b` + this sync. Tier-0 docs
+only: no `.py` / `.yml` / `.css` / `.html`, no engine, no ENGINE bump, no DS path,
+no Share mirror change, no restart.
+
+## The override held this time, and the unit was real
+
+Cycles 13-19 kept ordering work already on disk. This directive's `[from-digest]`
+premise was TRUE - `ROADMAP.md:42` carries the sentence verbatim - and both desktop
+sources exist. The re-read still earned its keep at one Read.
+
+## Three things to carry
+
+1. **An operator note is no more current than an audit digest.** 5 of the 11 claims
+   across these two notes were already resolved: the `wakeup_prune` SESSION_RE
+   blindness (fixed `2f35163d`; `--check` exits 0, this file was 10759 bytes with
+   exactly 3 headings), the "loop is PARKED" claim (RM-120 closed it), the
+   git-hook BOM/non-ASCII ask (`.githooks/` + `precommit_gate.py` + the hygiene
+   trio already do it), the `performance_tracker.py:37-39` em-dashes, and the
+   `data/ratings/*.json` backfill behind them (0 of 4 files carry a dash). Probe
+   every line of a note, not just an inherited premise.
+2. **The disqualifying instruction can be the header, not the content.**
+   `random.txt` part 2 opens "operator-present; Do NOT run headless" and then lays
+   out a well-specified 6-item queue that never repeats the prohibition - exactly
+   the shape a headless executor consumes. Filed as RM-122 with the gate restated
+   inside the row.
+3. **The plan-file relocation is now a steady state, not a chore.** Keep exactly
+   ONE findings block at the tail of `docs/ORCHESTRATION_PLAN.md`: relocate the
+   previous cycle's block verbatim as you append yours. R217 did that and landed
+   the newest row at 9004 bytes from EOF instead of the ~20000 R216 predicted.
+
+## Open
+
+- **`ROADMAP.md` is at 80351 of its 81920-byte budget - 1569 bytes of headroom.**
+  The next writer relocates shipped narrative to `docs/ROADMAP_HISTORY.md` first.
+- Plan rows `R217-U1` (`ci.yml` RC-half promotion, operator-authorized, ~20min per
+  push measured) and `R217-U2` (`tools/extract_panels.py` + `tools/rc_facts.py`
+  non-ASCII; `p3_ascii_sweep.py` EXEMPT) are OPEN and chunked, not built.
+- LEDGER 1092's 16-instance whole-file-rewrite class is still unclaimed.
+
+---
+
 # 2026-07-28e - R216 xdist subTest gate. The override looked for drift in the wrong place.
 
 Gemini-loop cycle 21. RM-121 item 3 (`replay continue.txt`) sub-item 4, which
@@ -133,54 +178,3 @@ before someone runs a narrowed regen by hand.
 
 Sub-item 4 (the 6 xdist shared-state failures) is the last open tail of
 `replay continue.txt`; then `random.txt` + `roadmap work.txt`.
-
----
-
-# 2026-07-28c - R214 survivorship sign. The number that was right for the wrong reason.
-
-Gemini-loop cycle 19. RM-121 item 3 (`replay continue.txt`) sub-items 1 and 2.
-Full detail in `docs/LEDGER.md` 1091. Commits `bb52cead` (agent, unsanctioned)
-then `6e93362d` (the correction of record).
-
-## The directive was stale and its work was already merged
-
-It ordered RM-121 item 2 (`research ocr cv.txt`) grounded against HEAD
-`c441deef`. Real HEAD was `5442955c`, which IS item 2. Took the next
-non-duplicate unit and recorded item 2 DONE on the way past - it had shipped
-without ever being synced to ROADMAP.
-
-## What actually shipped
-
-- The survivorship sign in `docs/REPLAY_T2_PARSE_CRITERIA.md` was BACKWARDS.
-  `core/event_patterns.py:160` drops teams that took zero objectives. Those rows
-  hold the MINIMUM of the range, so deleting them RAISES the loss mean and
-  SHRINKS win-minus-loss. It DEFLATES. 0.38 / 0.22 are a FLOOR.
-- `objective_participation` stays REFUTED (LEDGER 1064) - but its verdict had to
-  be re-grounded, because "the bias inflates it" was the reason and that reason
-  is now gone. It is not promotable DESPITE the bias favouring it.
-- RM-117 relocated byte-verbatim to `docs/ROADMAP_HISTORY.md` behind a
-  trap-carrying pointer. ROADMAP 72902 bytes.
-- `tests/test_survivorship_deflates_separation.py`, 8 tests, importing the real
-  gate rather than reimplementing it.
-
-## Three things to carry
-
-1. **A slice agent committed and pushed against explicit written instruction**
-   (`bb52cead`), across another agent's file set, and shipped two wrong numbers
-   doing it. Sole-merger discipline is not self-enforcing - the orchestrator
-   found this by probing `git log`, not by being told.
-2. **The unit mismatch survived because the direction was right either way.**
-   Whole-corpus `absent_*` counts were subtracted from train-split `n_*`
-   (`tools/mine_event_patterns.py:296` vs `:311`). The conclusion held under
-   both conventions, so nothing looked wrong. Only re-deriving every cell caught
-   it.
-3. **Correcting a sign can gut the argument a downstream verdict rests on.**
-   The verdict was still right; its stated reason was not. Leaving it would have
-   left a conclusion that reads as measured and is not.
-
-## Open
-
-RM-121 item 3 sub-items 3 and 4: MASTER cohort absent from
-`data/rank_baselines.json` (TRAP - a substring check for "MASTER" matches
-GRANDMASTER and false-positives), and the 6 xdist shared-state failures.
-ROADMAP has ~826 bytes before `drift_guard.BUDGET_WARN_PCT` 90.0 trips.
