@@ -371,6 +371,35 @@ def liveclient_summary() -> dict:
         except Exception:  # noqa: BLE001
             objective_events = []
         out["objective_events"] = objective_events
+        # R221: wave-clock anchor. Minion waves are the only fully deterministic
+        # timer in the game, but nothing else in the frame reports one - allPlayers
+        # carries a cumulative creepScore, never a per-wave boundary, so a consumer
+        # asking "how long until the next wave" or "did I miss the last one" has no
+        # source. MinionsSpawning is that source: the Live Client emits it once per
+        # wave with the authoritative EventTime, which beats deriving waves from
+        # gameTime arithmetic (spawn cadence shifts by mode and by the 15:00 SR
+        # inflection). Bare marker - it carries NO payload key beyond the stream's
+        # own EventID, so there is nothing to surface but the clock and the ordinal;
+        # event_id degrades to None rather than dropping the row, since the wave
+        # time is the useful half. Same TOP-LEVEL `d.get("events")` read as the
+        # three extracts above (see the inhib_events note) and the same isolated
+        # try so a malformed events block degrades to [].
+        minion_spawn_events: list = []
+        try:
+            for ev in (d.get("events") or {}).get("Events") or []:
+                if not isinstance(ev, dict) or ev.get("EventName") != "MinionsSpawning":
+                    continue
+                t = ev.get("EventTime")
+                if not isinstance(t, (int, float)) or isinstance(t, bool):
+                    continue
+                eid = ev.get("EventID")
+                if not isinstance(eid, int) or isinstance(eid, bool):
+                    eid = None
+                minion_spawn_events.append({"spawn_at_s": float(t),
+                                            "event_id": eid})
+        except Exception:  # noqa: BLE001
+            minion_spawn_events = []
+        out["minion_spawn_events"] = minion_spawn_events
         # s184 - surface liveclient's gameId for per-game dedup tokens
         # (archetype-nudge state). Live Client doesn't always expose this
         # at gameData root; fall back to "" so callers detect absence.
