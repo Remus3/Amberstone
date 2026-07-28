@@ -671,6 +671,12 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 | R219 | ds-sweep-champion-base-stats | DIRECTOR REFILL 2026-07-28, cycle 26. Section 8, DS audit iteration. **The directive's literal thesis was not executable and the reason is a measurement, not an opinion: the local Meraki bulk carries no champion data and no stat lines at all.** `data/daemon_slayer/16.14.1/items_meraki.json` is 320 ITEMS whose key census is exactly `name/id/tier/rank/removed/simpleDescription/passives/active/shop/noEffects` on all 320 entries - no `stats` block, no champion half - so 'sweep champion base stats vs Meraki bulk truth' has no Meraki side to sweep against offline. The offline champion-stat truth source is the DDragon mirror, and that is what both slices were re-aimed at. **ENGINE-IMPACT premise corrected BUMP -> NONE, on precedent, not preference:** both owned modules live in `core/`, neither imports DS, no DS path reads either, and R135 (LEDGER 962) already made this exact correction for `core/champion_movespeed.py`. The 7 bump sites the directive enumerated were therefore not touched; the pre-commit gate independently agreed (`no mirrored DS source staged - skipping Share sync`). **SLICE A - the population was already saturated, so what shipped is the guard that proves it.** All 9 DDragon-zeroed champions were enumerated off disk: Akshan/Rell/Seraphine/Vex (0/0) and Qiyana (0/4) carry overrides, Ambessa/Naafiri/Yunara (9/0) and Lillia (0/10) classify correctly without one. No behavior bug exists. The defect was that nothing pinned this in either direction - a newly released champion entering the mirror mis-classifies silently, which is precisely the 2026-06-30 'Seraphine reads AD SUPPORT' symptom that created the module. `tests/test_champion_info_overrides.py` now derives its universe by PARSING THE MIRROR, never from `CHAMPION_INFO_OVERRIDES.keys()` - consumer-side enumeration would be circular and would catch nothing - and runs every champion through the three REAL consumers rather than a re-implementation. Non-vacuity is proven, not asserted: 4 injection tests feed synthetic champions through the same `_coverage_failures` helper the real-data test uses, and the verifier independently fabricated an unpinned 0/0 champion and watched the guard name it. **The slice also found a genuine divergence it deliberately did not paper over:** the three consumers disagree on the AD/AP TIE, and `dashboard/routes_dictionary.py:101` is the only one that manufactures a confident answer from no signal (`attack >= magic` -> 'AD'), while `routes_pickban.py:255-260` returns 'EVEN' and `fed_threat.py:147-151` returns ''. Harmless today because all 9 resolve strictly post-merge; it is the latent re-entry point for the original bug, and it is pinned rather than fixed. **SLICE B - a live math constant was justified by a claim about disk data that is false.** `core/champion_movespeed.py` justified `_FALLBACK_MS = 345.0` as 'the most common base MS'. Measured across all 173 champions: `{315:1, 325:19, 330:38, 335:42, 340:37, 345:28, 350:7, 355:1}` - the mode is **335** at 42; 345 is FOURTH at 28. The agent took disposition (a), prose only, and its refusal of the seam is the better half of the answer: the prose conflated two claims and only one was false, since 'conservative for reachability' IS true and measurable (345 is at or above 165 of 173, 95.4pct), so deriving the constant from the mode would drop it to 335 and actively contradict its own purpose. Zero executable lines changed; the sole consumer `core/mia_reachability.py:165` computes identical values. The 173-champion coverage test monkeypatches `_FALLBACK_MS` to a `-1.0` sentinel first, because the 28 champions whose real MS IS 345 would otherwise mask a fallthrough and make the test vacuous - 0 fell through, across id, `id` field and display name, including 'Nunu & Willump' / 'Kha'Zix' / 'Wukong'/'MonkeyKing'. **DEFECT-CLASS ENUMERATION - the class is 'a hardcoded constant whose comment justifies it with a checkable claim about data on disk', and the sweep found one the slice could not fix.** 62 candidates by AST over `core/` + `agents/`, 2 CONFIRMED by opening the file and checking the claim against the data. The second is NEW and is filed as RM-123: `agents/daemon_slayer/burst.py:124-127` `_RANGED_ATTACK_RANGE = 350.0` under 'No champion sits between melee (~125-175) and ranged (~450+)' - **8 champions do** (Irelia 200, Viego 200, Nilah 225, Rakan 300, Lillia 325, Urgot 350 exactly on the strict-`>` boundary at `:1032`, Graves 425, Yuumi 425), and it contradicts the engine's own canonical split at `ehp.py:254` `_RANGED_ATTACKRANGE_THRESHOLD = 250.0`, so Rakan/Lillia/Urgot take melee Lethal Tempo scaling (9-30) instead of ranged (6-24) in the burst lane. Tier-2 DS, out of scope here, verifier-confirmed by an independent count. **The full-suite gate then caught a defect BOTH the slice agent and its verifier missed, and it was mine:** the Slice A brief told the agent to `skipTest` when the mirror is absent, but `data/meta/ddragon_champions.json` is TRACKED, so `tests/test_skip_condition_hygiene.py::test_every_skip_gates_on_an_environment_capability` failed it as a B5 masking skip - the exact class the RM-119 audit catalogued, where a guard reports green by not running precisely when the data it guards goes missing. Replaced with an assert. This is why the scoped per-slice run is not the gate: 100 passed across both slice files in isolation, and the tree-level guard is the only thing that saw it. 3 candidates refuted by checking the data (`heal_threat.py:94` ids all match, `_rune_offense_grants.py:347` is already machine-checked by a real property test, `_LEVEL_COUNT = 18` is trivially true); ~55 fell outside the class as tuning judgments; 1 (`_item_caster_hp_proc.py:131`) is recorded UNRESOLVED rather than counted, which is the honest disposition. **Verifier CONFIRM on both slices before either merge - 7/7 and 9/9** - each re-running the suites fresh in the worktree, re-deriving the histogram independently, and empirically demonstrating both guards' teeth. | DONE | `a77e1cee` |
 | R220 | competitor-lift-wave-economy | DIRECTOR REFILL 2026-07-28, cycle 27. Section 7b competitor lift. **The directive named "Overlay App F or Aggregator B live-game overlay" and both are a recorded do-not-redo, so the TARGET was rotated and the INTENT was kept.** `ROADMAP.md` RM-01 says verbatim "COMPETITOR-LIFT ROTATION RETIRED ... the director should NOT re-pick it; rotate ... or a genuinely un-torn-down category instead", the R100 and 2026-07-16 blocks in `COMPETITOR_LIFT_INDEX.md` both declare the live-overlay family DRAINED (5x), and Overlay App F already has two teardowns on disk. Rotation picked by measurement, not taste: zero hits for `wave manage` / `wave simulator` / `cs trainer` / `minion wave` / `freeze` / `slow push` across every prior `COMPETITOR_LIFT_*.md`, so LANE / WAVE-MANAGEMENT / MINION-ECONOMY is the one category never torn down. Two agents on disjoint scopes (external teardown, RC-side HAVE column), every cited claim re-read from source by the merger before it was written. **Three premise corrections, all verified: (1) the laning `hold` band ALREADY SHIPPED** - `core/precomputed_laning_coach.py:71` carries it and `laning_band()` at `:271-309` implements the 5-band precedence off `_HOLD_LOW`/`_BACK_OFF`/`_TRADE` (`:79-81`); only the raw engine is still 4-band (`agents/daemon_slayer/matchup.py:184-206`), so the open work is the FLIP, not the band. **(2) the Live Client DOES emit `MinionsSpawning`** - `dashboard/_state_cooldowns.py:18` names it and `:20-21` then passes an EMPTY event list, and a repo-wide grep returns that one comment; RC has the transport and has never read this event class. **(3) the corpus is 2966 matches, not 3005.** DELIVERABLE `docs/COMPETITOR_LIFT_2026-07-28.md`: 7 findings, F1 HIGH/NOW (deterministic wave+cannon clock anchored on the live event, structurally `core/decision_detector.py:158-176` with a piecewise cadence; Tier-1, no new data source, no key, no Claude, no schema lift, no ENGINE bump) filed as **RM-124**; F2 MED-HIGH gated behind it; F4 CLOSED data-blocked three ways; F5 REFUTED. **The best result was RC-internal, not competitive: `web/js/panels/next.js:16-83` renders a complete 3-lane FREEZE/TRADE/CRASH/DISENGAGE wave readout whose only writers repo-wide are test fixtures**, plus four more labelled STATS rows (`wave_state_now`/`wave_control`/`wave_freezes`/`cannon_cs_summary`) and `gd_at_15` with zero producers, and an ARAM tier-shift rule that is dead because its live call site passes `wave_pct=None`. ENGINE-IMPACT NONE. In-run ship NONE by directive ("Do not implement code changes this cycle"). DS 10100 passed / 5701 subtests; RC suite green. | DONE | `<this commit>` |
 
+## Sessions - DIRECTOR REFILL 2026-07-28
+
+| Item | Slug | Scope | Status | Commit |
+|---|---|---|---|---|
+| R221 | live-wave-clock | MinionsSpawning extract + dashboard/_wave_timing.py deterministic wave-timing compute + tests. RM-124 F1 backend slice 1; panel wiring deferred. ENGINE-IMPACT NONE. | WIP | - |
+
 ## Older findings - relocated 2026-07-28
 
 R205 / R206 / R207 / R216 / R217 / R217-U1 findings now live in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
@@ -696,86 +702,9 @@ same every cycle: relocate the previous cycle's findings block verbatim as you a
 yours. The newest row then never drifts, and the director keeps seeing the most
 recent findings because the block it can read is always the newest one.
 
-## R220 findings - 2026-07-28 - the category was thin, and the best finding was ours
+## R220 findings - relocated 2026-07-28
 
-### Rotating the target is not dodging the directive
-
-The directive named Overlay App F or Aggregator B. Three places on disk say do not. RM-01 in
-`ROADMAP.md` retires the whole rotation by name and tells the director what to do
-instead; the R100 block and the 2026-07-16 block in the competitor index both
-declare the live-overlay family drained, the second one counting five passes; and
-Overlay App F has two completed teardowns sitting in `docs/_archive/`. Re-running it
-would have produced a third document agreeing with the first two, which is the
-failure mode the drain notes exist to prevent.
-
-The rotation was chosen by search, not by preference. Six keyword probes across
-every prior `COMPETITOR_LIFT_*.md` returned zero hits for wave management, wave
-simulators, CS trainers, minion waves, freezing and slow pushing. That is a real
-empty result over the actual corpus, so the lane / wave / minion-economy category
-is the one thing in this space nobody here has looked at.
-
-### The category is thin and I am recording that rather than padding it
-
-There is no standalone wave-simulator product. Six distinct search angles returned
-SEO guide articles, unrelated combat simulators, and two calculators. Three targets
-were torn down properly instead of eight skimmed. If a later cycle is tempted to
-re-enter this category expecting depth, the honest expectation is two findings and
-two useful negatives, which is what it produced.
-
-The two negatives are worth as much as the findings. A live wave STATE machine -
-telling freeze from slow-push from fast-push - is data-blocked three independent
-ways: `:2999` exposes no minion entities, the Overlay Platform M GEP contract that bounds
-every competitor in this category gives minion KILL COUNTS only, and Match-V5 has
-no minion event type at all, so nothing wave-shaped is backfillable from the 2966
-stored matches. That also refutes the category's own marketing: a product running
-inside that contract cannot be observing wave state, so its "wave state" is a
-clock, a CS-rate inference, or prose. RC can compute the deterministic subset
-honestly, which is F1.
-
-### The enabling fact had been sitting in a comment
-
-`dashboard/_state_cooldowns.py:18` lists `MinionsSpawning` among the events the
-Live Client actually emits, and two lines later the module passes an empty event
-list downstream because it wanted summoner-spell events that do not exist. A
-repo-wide grep for `MinionsSpawning` returns that comment and nothing else. So the
-one anchor a wave clock needs has been documented in this repo, unread, for as
-long as that comment has existed. `dashboard/_liveclient.py` already extracts
-three other event classes out of the same top-level block, which means the
-transport is built and the missing piece is a fourth extract in the same shape.
-
-That is why F1 is NOW rather than FUTURE, and it is also the answer to the finding's
-only real risk. Three prose sources disagree on when the first wave spawns (0:30,
-1:05, 1:30) and on where the cannon cadence breaks (14:00, 15:00), and a 2025
-change moved first-cannon arrival from 2:05 to 2:35. A hardcoded spawn constant
-would have been wrong by construction. Anchoring on the live event's own
-`EventTime` makes the disagreement irrelevant for the anchor and confines it to the
-cadence table, which one real game validates.
-
-### The best finding was not a lift
-
-The HAVE column was supposed to be bookkeeping. It found that RC renders a wave
-feature nobody built. `web/js/panels/next.js:16-83` is a finished 3-lane readout
-with a documented band table, per-lane colouring and the player's own lane marked,
-reading `wave_top` / `wave_mid` / `wave_bot`. The only writers of those keys in the
-entire repo are test fixtures in `scripts/rebuild_sim_fixtures.py`. In a live game
-it renders the no-data sentinel on all three lines and always has.
-
-It is not alone. `wave_state_now`, `wave_control`, `wave_freezes` and
-`cannon_cs_summary` are labelled STATS rows wired from `core/match_metrics.py`
-through `right_now.js` with zero producers, `gd_at_15` is the same shape, and the
-ARAM wave tier-shift rule in `core/aram_action_rule.py:36-39` is dead because the
-live call site passes `wave_pct=None` with a comment saying so. Six identifiers
-that read as shipped in any grep and are inert in production.
-
-The lesson generalises past waves: a rendered surface with a plausible name is not
-evidence of a producer, and the fixtures that make it look alive in tests are
-exactly what hides that. The cheap check is to grep for writers outside
-`scripts/` and `tests/` before believing any panel field exists.
-
-### One thing this finding will not do
-
-`tools/hz_shadow_report.py:196-201` excludes crash, freeze, push, split and roam
-from the laning agreement sample as non-laning macro actions. So a wave clock will
-not move the Lane A agreement number, and the RM-124 row says so explicitly. It was
-worth writing down because the adjacency is tempting and wrong: the wave work is
-its own capability, not a fix for the laning gate.
+R220's findings block now lives in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
+Relocated by R221 under the steady-state rule above - keep exactly ONE
+findings block at the tail so the newest `| R<n> |` row never drifts out
+of the director's 16000-byte tail window.
