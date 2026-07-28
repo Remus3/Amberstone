@@ -109,11 +109,22 @@ jobs:
     if: github.event_name != 'schedule'
 
     runs-on: ubuntu-latest
-    # 25, not 10. MEASURED 2026-07-27: adding the DS suite (RM-119) pushed this
-    # job past a 10-minute budget that had been sized for a 6-minute job, and
-    # GitHub CANCELLED it mid-step - which reads as "cancelled", not "failed",
-    # so it is easy to misread as a superseded run rather than a timeout.
-    timeout-minutes: 25
+    # 40, not 25, and 25 was not 10. MEASURED 2026-07-27: adding the DS suite
+    # (RM-119) pushed this job past a 10-minute budget that had been sized for a
+    # 6-minute job, and GitHub CANCELLED it mid-step - which reads as
+    # "cancelled", not "failed", so it is easy to misread as a superseded run
+    # rather than a timeout.
+    #
+    # 2026-07-28 (R217-U1, RM-119 second half): this job now runs the FULL dual
+    # suite, so the same arithmetic has to be redone rather than inherited. The
+    # DS-only shape measured 9m1s end to end (push run 30342574878) and the full
+    # dual measured 19m42s of pytest on this runner class (dispatch run
+    # 30315178736), so the expected job is ~26 minutes - OVER the old 25 and it
+    # would have been cancelled on the first push. 40 is deliberately not 27: a
+    # ceiling that sits a minute above the estimate converts ordinary runner
+    # variance into a fake red, and the point of a timeout here is to catch a
+    # HANG, not to police minutes.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6
 
@@ -122,21 +133,25 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install minimal test deps
+      - name: Install runtime + test deps
         run: |
           python -m pip install --upgrade pip
-          # Test runner + linter only - RC's runtime stack (anthropic/PIL/pytesseract)
-          # is intentionally not installed; tests that import it must guard
-          # for ImportError or be marked phase2_smoke / snapshot_regressions
-          # which are pure-Python.
+          # requirements.txt, as of 2026-07-28 (R217-U1). This job used to install
+          # a deliberately minimal set, on the reasoning that the only tests it
+          # ran were pure-Python subsets. That reasoning expired the moment the
+          # full RC tests/ tree was promoted onto push below: the tree imports
+          # anthropic / PIL / websockets / portalocker / psutil, and an
+          # ImportError-guarded test that cannot import is a SKIP, which is a
+          # green tick. Installing the real stack is what makes the promotion
+          # mean anything - the nightly job has installed it for this exact
+          # reason since it was written.
+          pip install -r requirements.txt
           # pyyaml parses .github/workflows/*.yml for the docs-guard contract
-          # test below. Without it those assertions degrade to skips, and a
-          # skipped test is a green tick.
-          # json5 (pinned to the requirements.txt version) is here for the DS
-          # suite step, NOT for RC's runtime stack. The DS tests import
-          # tools/daemon_slayer_{extract,abilities_extract}.py, which import
-          # json5 - so the package is pure-stdlib but its TESTS are not.
-          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff pydantic>=2.0 playwright mypy pyyaml json5==0.14.0
+          # test below, and is NOT in requirements.txt (it is test-only).
+          # Without it those assertions degrade to skips.
+          # json5 and pydantic ARE in requirements.txt now, so they are no
+          # longer pinned here - one source of truth for a version, not two.
+          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright mypy pyyaml
 
       # MINUTE SAVER (2026-06-30): cache the Chromium browser binary so only
       # the (fast) --with-deps apt step runs on a hit; the ~120MB download is
@@ -271,18 +286,37 @@ jobs:
             tests/test_build_order_axis_parity.py \
             -q --tb=short --timeout=120
 
-      - name: smoke + regression tests
+      - name: "full dual suite (RM-119 - push CI now gates the whole tree)"
         run: |
-          pytest tests/phase2_smoke tests/snapshot_regressions tests/phase8_smoke \
-            tests/fu02_team_context \
-            -q --tb=line --timeout=60
-
-      - name: panel snapshot tests
-        run: |
-          pytest tests/snapshot_panels/ -q --tb=short --timeout=60
-
-      - name: "DS suite (RM-119 - this was ZERO coverage on push)"
-        run: |
+          # 2026-07-28 (R217-U1) completes RM-119. Until this step, push CI ran
+          # four hand-picked subsets of tests/ - phase2_smoke,
+          # snapshot_regressions, phase8_smoke, fu02_team_context,
+          # snapshot_panels - plus the DS tree. Everything else in tests/ was
+          # ungated on push and gated only by nightly-full-suite, which is
+          # `schedule || workflow_dispatch` and therefore blocks NOTHING. That
+          # is how four real failures sat red in the nightly while push CI
+          # stayed green. The subset steps are gone rather than kept alongside
+          # this one: they are pure subsets of `tests/` now, and a second run of
+          # the same file buys minutes, not signal.
+          #
+          # PRICE, measured on this runner class and not on the 8-core local box:
+          # 19m42s / 23607 passed / 258 skipped / 6032 subtests / 0 failed
+          # (workflow_dispatch run 30315178736). `-n auto` buys about 4 percent
+          # here - a runner has 2-4 vCPU and the suite is I/O and Playwright
+          # bound - so do NOT quote the ~2m20s local `-n 8` number as a CI cost.
+          # timeout-minutes at the top of this job was raised to match.
+          #
+          # --dist loadfile keeps every test in a file on ONE worker, so
+          # within-file ordering and file-scoped fixtures still hold; only
+          # cross-FILE isolation is newly assumed.
+          #
+          # The steps ABOVE that still name individual test files are not
+          # redundant with this one and must not be folded into it: two of them
+          # set RC_REQUIRE_HOOK_GATE / RC_REQUIRE_BUILD_ORDER_TABLES, which turn
+          # a skip into a failure, and the rest are seconds-long fast-fail
+          # guards that report an ASCII or docs-guard break in the first minute
+          # instead of the twentieth.
+          #
           # MEASURED 2026-07-27 (RM-119). This repo has 397 Daemon Slayer test
           # files and NOT ONE of them ran on a push or a pull request. They ran
           # only under nightly-full-suite, which is gated on `schedule ||
@@ -308,7 +342,8 @@ jobs:
           # `agents/daemon_slayer/*.py`, which does NOT recurse and does not see
           # what the tests import - enumerate the transitive set, not the glob.
           # Re-checked exhaustively: across all 6 of those modules json5 is the
-          # only third-party import, so the deps above are now complete.
+          # only third-party import - and as of R217-U1 that install comes from
+          # requirements.txt rather than a second pin in this file.
           #
           # It was NOT cheap a day ago, and the reason is worth recording: the
           # identical command returned 11 failures that morning. They were not
@@ -319,7 +354,7 @@ jobs:
           # None, which callers read as an engine verdict. Fixed at source in
           # c009efea. Any future "the DS tests are flaky under -n" claim should
           # be re-measured before it is believed.
-          pytest agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
+          pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
             -n auto --dist loadfile
 
       - name: mypy gradual typing
