@@ -171,6 +171,7 @@ __all__ = [
     "_port_available",
     "_redact_secrets",
     "_run",
+    "_should_emit_game_summary",
     "_verify_decisions_version",
     "acquire_lock",
     "log",
@@ -182,6 +183,47 @@ __all__ = [
     "start_web_server",
     "subprocess",
 ]
+
+
+_UNKNOWN_CHAMPION = ("", "Unknown", None)
+
+
+def _should_emit_game_summary(payload: dict[str, Any]) -> bool:
+    """False when the ingester is GUARANTEED to refuse this summary.
+
+    Measured 2026-07-28 over ``agents/state/task_queue.jsonl``: of 583
+    filed ``game-summary`` rows, 91 came back ``unknown game_mode`` and
+    79 ``missing champion`` - 170 rows (29 pct) that round-tripped the
+    scheduler only to hit a hardcoded early return in
+    ``agents.agent2_backend.game_ingest.ingest`` (lines 203-216). Both
+    refusals are decidable from the payload alone, so decide them here.
+
+    Checked in the INGESTER'S order so the logged reason matches the one
+    ingest would have recorded. ``_select_mode_db`` stays the single
+    source of truth for the mode mapping - do not mirror the KIWI->aram
+    table on this side. Ingest-side refusal remains the belt-and-braces
+    net; this only stops the pointless enqueue.
+    """
+    try:
+        from agents.agent2_backend.game_ingest import _select_mode_db
+    except ImportError as e:
+        # Precheck unavailable is not a reason to drop a summary - the
+        # ingester still gets to refuse it.
+        log.debug("game-summary mode-db precheck unavailable: %s", e)
+    else:
+        game_mode_raw = (payload.get("game_mode")
+                         or payload.get("mode_category") or "")
+        if _select_mode_db(game_mode_raw) is None:
+            log.info("game-summary skip: unknown game_mode=%r (source=%s)",
+                     game_mode_raw, payload.get("source"))
+            return False
+    # The wire payload OMITS champion when the coaching JSON had none;
+    # the literal "Unknown" is the ingest-side normalisation of that.
+    if payload.get("champion") in _UNKNOWN_CHAMPION:
+        log.info("game-summary skip: no champion (source=%s game_mode=%s)",
+                 payload.get("source"), payload.get("game_mode"))
+        return False
+    return True
 
 
 class Supervisor:
@@ -757,6 +799,10 @@ class Supervisor:
                     summary_payload["game_mode"] = rating_data["game_mode"]
         except (OSError, json.JSONDecodeError) as e:
             log.debug("rating file read failed: %s", e)
+
+        # M-02: do not enqueue work the ingester will refuse outright.
+        if not _should_emit_game_summary(summary_payload):
+            return
 
         try:
             self._scheduler.file_task(

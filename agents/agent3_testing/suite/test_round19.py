@@ -123,8 +123,15 @@ def test_post_game_summary_files_task(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_post_game_summary_survives_missing_json(tmp_path: Path, monkeypatch) -> None:
-    """If no coaching JSON exists (edge case), task still files but with
-    minimal payload - should not crash."""
+    """If no coaching JSON exists (edge case), the handler must not crash.
+
+    Behaviour CHANGED 2026-07-28 (M-02): it used to file a minimal
+    champion-less payload, which the ingester refuses outright at
+    ``game_ingest.py:203-216``. 170 of the 583 game-summary rows in
+    ``agents/state/task_queue.jsonl`` were exactly that no-op. The
+    emit-side guard now suppresses it, so the assertion here inverts:
+    no crash, and no task.
+    """
     from agents.supervisor import Supervisor
     import agents.supervisor as sup_mod
     monkeypatch.setattr(sup_mod, "_PROJECT_ROOT", tmp_path)
@@ -135,9 +142,7 @@ def test_post_game_summary_survives_missing_json(tmp_path: Path, monkeypatch) ->
 
     tasks = sup._scheduler.list_by_status("ready") + sup._scheduler.list_by_status("completed")
     matches = [t for t in tasks if t.op == "game-summary"]
-    assert len(matches) == 1
-    # Without coaching JSON, payload has no 'source' or 'champion'.
-    p = matches[0].payload
-    assert "source" not in p
-    assert "champion" not in p
-    assert p["prev_mode"] == "game"
+    assert matches == [], (
+        "a champion-less, mode-less summary is a guaranteed ingest refusal "
+        "and must not be enqueued"
+    )

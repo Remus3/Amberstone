@@ -21,8 +21,29 @@ import logging
 
 import pytest
 
+import json
+
 import performance_tracker
+import agents.supervisor as sup_mod
 from agents.supervisor import Supervisor
+
+
+@pytest.fixture(autouse=True)
+def _emittable_coaching_json(tmp_path, monkeypatch):
+    """Seed a summary payload the M-02 emit guard accepts.
+
+    These tests are about the LOGGING of the filing path, not about the
+    emit gate. Before M-02 they read whatever mode file happened to be
+    newest in the live repo, which is a champion-less ``client`` state
+    most of the time - so the guard would suppress the very file_task
+    they assert on. Pin the source instead of depending on live disk.
+    """
+    monkeypatch.setattr(sup_mod, "_PROJECT_ROOT", tmp_path)
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "aram_coaching_data.json").write_text(
+        json.dumps({"mode": "game", "game_mode": "ARAM", "champion": "Ahri"}),
+        encoding="utf-8",
+    )
 
 
 class _RecordingScheduler:
