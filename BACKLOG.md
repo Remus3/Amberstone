@@ -3,7 +3,7 @@
 _Aspirational / longer-term items. Extracted from ROADMAP.md "Future" section 2026-05-08._
 _When an item moves to active work, migrate it to ROADMAP.md "Open items" and REMOVE it here._
 _This file holds ONLY work that is not yet done. Shipped / closed / superseded items do not belong here: they live in git log + `docs/LEDGER.md` (items 325+), `docs/history_notes.md` (items 1-324 + relocated narratives), and `docs/ROADMAP_HISTORY.md`. A residual that is purely "owed live capture" or "flip after a real game" belongs in `docs/LIVE_GAME_GATED_SYNC.md`, not here._
-_Competitor-lift teardown RECORDS (what was already shipped, what is closed, do-not-re-pitch fences) live in `docs/research/COMPETITOR_LIFT_INDEX.md` + the dated artifacts in `docs/_archive/`. Only the still-open candidates are listed below._
+_Competitor-lift teardown RECORDS (what was already shipped, what is closed, do-not-re-pitch fences) live in `docs/_archive/2026-07-28-research-consolidation/COMPETITOR_LIFT_INDEX.md` + the dated artifacts in `docs/_archive/`. Only the still-open candidates are listed below._
 
 ---
 
@@ -25,7 +25,7 @@ _Competitor-lift teardown RECORDS (what was already shipped, what is closed, do-
 
 ## Coaching depth
 
-- **(FUTURE) Per-enemy ult power-spike readout (R125 Aggregator C lift, 2026-07-14, `docs/research/COMPETITOR_LIFT_AGGREGATOR_C.md`).** Aggregator C' desktop overlay flags when an ENEMY crosses a level spike (6/11/16 -> R / R2 / R3 unlocked). RC has the exact edge-trigger mechanism SELF-only (`web/js/panels/spike_cue.js:45` `crossedSpike` reads only the active player's `lc.level` via normSpikeLevel; `core/event_callouts.py:355` `_level_spike_callouts`; self level pill `web/js/main.js:1048-1052`). Blocker: per-enemy champion level is NOT in the Live Client envelope today - `dashboard/_liveclient.py:101` sets `out["level"]` from the ACTIVE player only, and the emitted `out["players"]` list (`_liveclient.py:177-186`) carries ONLY position/team/creep_score/is_active (verifier-confirmed R125). A per-enemy spike cue therefore needs a one-field backend extract (`"level": p.get("level")` into the players builder) + a new stateful panel (`web/js/panels/enemy_spike_cue.js`) = NOT presentation-only, so NOT headless-blind-shippable. MED effort, no new Riot/Claude dep, no ENGINE bump. Do-not-build-blind: verify against a live enemy roster first. Distinct from + more feasible than the R100 F1 manual enemy-CD tracker (this is a deterministic level-unlock edge, no manual input).
+- **(FUTURE) Per-enemy ult power-spike readout (R125 Aggregator C lift, 2026-07-14, `docs/_archive/2026-07-28-research-consolidation/COMPETITOR_LIFT_AGGREGATOR_C.md`).** Aggregator C' desktop overlay flags when an ENEMY crosses a level spike (6/11/16 -> R / R2 / R3 unlocked). RC has the exact edge-trigger mechanism SELF-only (`web/js/panels/spike_cue.js:45` `crossedSpike` reads only the active player's `lc.level` via normSpikeLevel; `core/event_callouts.py:355` `_level_spike_callouts`; self level pill `web/js/main.js:1048-1052`). Blocker: per-enemy champion level is NOT in the Live Client envelope today - `dashboard/_liveclient.py:101` sets `out["level"]` from the ACTIVE player only, and the emitted `out["players"]` list (`_liveclient.py:177-186`) carries ONLY position/team/creep_score/is_active (verifier-confirmed R125). A per-enemy spike cue therefore needs a one-field backend extract (`"level": p.get("level")` into the players builder) + a new stateful panel (`web/js/panels/enemy_spike_cue.js`) = NOT presentation-only, so NOT headless-blind-shippable. MED effort, no new Riot/Claude dep, no ENGINE bump. Do-not-build-blind: verify against a live enemy roster first. Distinct from + more feasible than the R100 F1 manual enemy-CD tracker (this is a deterministic level-unlock edge, no manual input).
 - **rewind_history.db SR records with game_id**: post-live SR game; wired in code (d66d14b) but blocked on new records.
 - **LCU deeper integration**: Pengu Loader Discord/GitHub research for endpoints RC doesn't use yet (richer pre/post-game data). Research-first, no code scheduled. **Reference catalog identified 2026-05-17:** `KebsCS/lcu-and-riotclient-api` (lcu.kebs.dev) is a current (client 26.05), exhaustive (2839 ops) endpoint map - the authoritative source for the richer endpoints (mastery-by-puuid, `match-history .../games/{gameId}` + `game-timelines`, `loadouts/v4`, `signed-ranked-stats`). No LICENSE -> reference only, don't vendor; optionally diff its `data.json` per patch. This supersedes the Discord crawl as the primary endpoint-discovery method.
 - ~~**deterministic champ-select brief FLIP (Haiku-elim)**~~ **CLOSED 2026-07-25 as STALE - the flip already happened 2026-06-06, do NOT re-dispatch.** `dashboard/_champ_select.py:26` `brief_via_coach` already returns `brief_deterministic(...)` with ZERO Anthropic call, and `dashboard/_champ_select_deterministic.py:23-25` states in-source that "the earlier shadow-validate lane is retired - no live Haiku brief is left to shadow". `logs/champ_select_brief_shadow.jsonl` does not exist and never will; the only repo reference to that name is `tests/test_champ_select_deterministic.py`. Gated row `G7-03` was already marked CLOSED-as-stale on 2026-07-18 - this bullet, the ROADMAP RM-12 clause, and the ORCHESTRATION_PLAN EXCLUDED bullet were the three surviving copies. Verified by reading both files, 2026-07-25 review.
@@ -66,7 +66,7 @@ _Competitor-lift teardown RECORDS (what was already shipped, what is closed, do-
 
 ## LCU integration lifts
 
-_(From the 2026-07-05 open-source LCU-toolkit teardown, R81 companion. GPL-class copyleft on the source toolkit -> never vendor; re-implement in RC's own code. Full record: `docs/research/COMPETITOR_LIFT_INDEX.md`.)_
+_(From the 2026-07-05 open-source LCU-toolkit teardown, R81 companion. GPL-class copyleft on the source toolkit -> never vendor; re-implement in RC's own code. Full record: `docs/_archive/2026-07-28-research-consolidation/COMPETITOR_LIFT_INDEX.md`.)_
 
 - **(NOW, in-transport LCU, no ToS) Legal-move champ-select getters** - `/lol-champ-select/v1/{pickable,bannable,disabled}-champion-ids` (RC does not call these; improves pick-card legality). New getters in `lcu/lcu_pregame.py` + surface in `dashboard/_champ_select.py`. Existing Basic-auth transport, no new dep.
 - **(NOW, in-transport LCU) Riot recommended-runes read as a degrade fallback** - `/lol-perks/v1/recommended-pages/champion/{id}` when RC's own DS-driven rune plan is thin (`lcu/lcu_rune_writer.py` WRITES runes today but never READS Riot's recommendation). Cheap; RC's DS runes stay primary.
@@ -94,7 +94,7 @@ _(From the 2026-07-05 open-source LCU-toolkit teardown, R81 companion. GPL-class
 
 ## Research / inspiration
 
-_Teardown RECORDS, CLOSED verdicts, and do-not-re-pitch fences moved to `docs/research/COMPETITOR_LIFT_INDEX.md` (dated artifacts stay in `docs/_archive/`). Only still-open candidates remain below._
+_Teardown RECORDS, CLOSED verdicts, and do-not-re-pitch fences moved to `docs/_archive/2026-07-28-research-consolidation/COMPETITOR_LIFT_INDEX.md` (dated artifacts stay in `docs/_archive/`). Only still-open candidates remain below._
 
 ### Conditional-trigger watch items
 
@@ -117,7 +117,7 @@ _Teardown RECORDS, CLOSED verdicts, and do-not-re-pitch fences moved to `docs/re
 
 ### Competitor-lift open candidates
 
-_One line per still-open candidate. Full teardown context + every CLOSED verdict: `docs/research/COMPETITOR_LIFT_INDEX.md`._
+_One line per still-open candidate. Full teardown context + every CLOSED verdict: `docs/_archive/2026-07-28-research-consolidation/COMPETITOR_LIFT_INDEX.md`._
 
 - **F3 per-opponent matchup delta-stats table (TOP candidate, MED)** _(Aggregator D R34)_ - new aggregator over `core/match_metrics.py` `csd_at_15`/`team_gold_diff_trend`/`matchup_history` + `rewind_history.db`, surfacing "vs champ X over my corpus: avg gold/CS/kill diff @15" + route + Build Insights tab. Raw fields are RECORDED but only surfaced as a single live value (`dashboard/_adaptation_latch.py:177`); `/api/personal-vs` returns W/L + threat only. Needs fixtures (gitignored DB, clean-checkout-probe risk) - do not build blind.
 - **F3 snowball elasticity: WR by (K-D)@10/@20 (TOP candidate, MED)** _(Aggregator H R71)_ - quantifies lead conversion per champion. Raw data fully local (`data/rewind_history.db` `timeline_events`: event_type/timestamp_ms/killer_id/victim_id, 2954 matches); NO aggregator exists. Build = new `core/` aggregator mirroring `core/duration_winrate.py` (conn-injection seam, MIN_BUCKET_N gate, coarse bins <=-2..>=+2, Laplace shrink) + thin route + Build Insights row. Descriptive only - never fed into DS rank.

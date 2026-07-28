@@ -735,7 +735,7 @@ test("mergeOverlaySettingsPatch: non-boolean keepCompanion / companionAlwaysOnTo
 });
 
 // --- RC2 Stage 4.1: DPI + resolution-aware overlay sizing --------------------
-// LIFT-C (docs/research/RC2_RESEARCH_overlay_sizing.md): size the overlay box
+// LIFT-C (docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_overlay_sizing.md): size the overlay box
 // against the measured display so a non-1920 borderless res (operator now runs
 // 2560x1440) or a 125%/150% Windows scale does not clip/shrink the HUD. Pure
 // logic here; main.js wires it from screen.getPrimaryDisplay().

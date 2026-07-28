@@ -150,7 +150,7 @@ markers alone (sha-level unverified) permit RELOCATE-not-delete but never hard P
   - ops/loop/prompts/lane_ui_prompt.md cites docs/specs/2026-07-16-ui-worktree-handoff.md which
     does not exist - it is the EXPECTED OUTPUT of an unfinished FORWARD_LEAP lane, not a broken
     link; left as-is.
-  - docs/research/COMPETITOR_LIFT_AGGREGATOR_C.md left in place (research/ cohort, not the docs/
+  - docs/_archive/2026-07-28-research-consolidation/COMPETITOR_LIFT_AGGREGATOR_C.md left in place (research/ cohort, not the docs/
     dated set; no citation for archiving research/).
 - Cross-ref fixes: tools/sync-all-md.md dropped deleted docs/BRIDGE.md from both sync-target
   lists (ADR-012:34 records deletion; Test-Path 0); docs/ELECTRON_OVERLAY.md stale "Status:

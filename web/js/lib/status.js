@@ -1,6 +1,6 @@
 // status.js - Grafana-style threshold -> status helper (RC2 B1).
 //
-// Research: docs/research/RC2_RESEARCH_nonleague_uiux.md section B1
+// Research: docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_nonleague_uiux.md section B1
 // (Grafana threshold model + the 5-second rule). Replaces scattered
 // per-panel JS magic numbers with ONE shared mapping so the status
 // system is consistent and auditable. Pure vanilla JS, no deps.
