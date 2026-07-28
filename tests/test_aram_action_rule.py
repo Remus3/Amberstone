@@ -30,12 +30,19 @@ def _label(value):
     kwargs into ``SubtestContext(msg=..., kwargs=dict(test.params))``
     and emits a report for EVERY subtest, passing ones included. Under
     xdist that report crosses the execnet channel, and execnet's
-    serializer only handles builtin primitives - a bare ``object()`` (or
-    a ``set()``) raises ``execnet.gateway_base.DumpError: can't
-    serialize <class 'object'>`` from inside ``subTest.__exit__``,
-    failing the parent test. Serially there is no channel, so the same
-    matrix passes. Labelling by repr keeps the hostile inputs below
-    byte-identical - only the reported label changes.
+    serializer only handles builtin primitives - a bare ``object()``
+    raises ``execnet.gateway_base.DumpError: can't serialize <class
+    'object'>`` from inside ``subTest.__exit__``, failing the parent
+    test. Serially there is no channel, so the same matrix passes.
+    Labelling by repr keeps the hostile inputs below byte-identical -
+    only the reported label changes.
+
+    CORRECTED 2026-07-28: this note used to name ``set()`` alongside
+    ``object()``. Measured - execnet serializes a ``set`` fine, and
+    ``object()`` is the only unserializable value in the matrix below.
+    The grammar is now PINNED by ``tests/test_subtest_channel_guard.py``
+    instead of restated from memory here, and the repo-root
+    ``conftest.py`` gate fails any future instance serially too.
     """
     return repr(value)
 
