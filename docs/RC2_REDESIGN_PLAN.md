@@ -5,7 +5,7 @@
 > redesign directive + page inventory. Open work is tracked in `ROADMAP.md` (RM-03), not here.
 
 Operator directive 2026-06-22: redesign ALL pages (in-game + out-of-game), Gemini-directed,
-grounded in `docs/design/RC2_DESIGN.html` (greenlit Hextech) + `docs/research/RC2_RESEARCH_*`,
+grounded in `docs/design/RC2_DESIGN.html` (greenlit Hextech) + `docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_*`,
 using mocks + screen captures, looped exhaustively. The 2026-06-21 dashboard-retirement is
 LIFTED - the out-of-game 1920 dashboard is back in scope.
 

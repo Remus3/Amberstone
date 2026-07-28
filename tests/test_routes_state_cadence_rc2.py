@@ -1,6 +1,6 @@
 """RC2 P6.3 - UI responsiveness: render cadence + no-store idempotency.
 
-The IO timing map (docs/research/RC2_RESEARCH_io_timing_map.md, lever L4)
+The IO timing map (docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_io_timing_map.md, lever L4)
 found the dashboard update latency is governed by two cadences that MUST move
 together: the SSE re-build tick (_SSE_TICK_S) and the shared /api/state TTL
 cache (dashboard/routes_state.py). At 1.0s they doubled the operator's

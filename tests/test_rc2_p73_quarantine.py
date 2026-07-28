@@ -14,7 +14,7 @@ enable_lanes, test_probe_101qq_script), living how-to docs
 (docs/_archive/CAPTURE_101QQ_INSTRUCTIONS.md), the runtime allowlist
 (dashboard/routes_static._AGENT_ALLOWED), immutable agent history, or the
 P0/P1 audit baseline (hold til Phase 7 closes). See
-docs/research/RC2_STALE_FILE_CENSUS.md.
+docs/_archive/2026-07-28-research-consolidation/RC2_STALE_FILE_CENSUS.md.
 """
 from __future__ import annotations
 
