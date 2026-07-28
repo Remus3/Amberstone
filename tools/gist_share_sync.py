@@ -58,56 +58,38 @@ _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)  # fixed -> deterministic zip bytes
 
 _README_TEMPLATE = """# Daemon Slayer - external review handoff
 
-Daemon Slayer is an offline, deterministic League of Legends math engine. It
-scores item builds for a champion at a given level and game mode against a
-target's defensive profile - auto-attack DPS, ability DPS, burst, effective HP,
-heal/shield throughput, and crowd-control pressure - and ranks builds across six
-archetypes (carry, tank, bruiser, mage, assassin, enchanter). Pure Python, no
-third-party runtime dependencies, served over a local HTTP endpoint.
+Daemon Slayer is an offline, deterministic League of Legends build-math
+engine, packaged for external technical review. It scores item builds for a
+champion against a target's defensive profile and ranks every purchasable
+item per champion through role-specific archetype scorers. Pure Python
+standard library: no third-party dependencies, no network at request time,
+no keys, and every number reproducible by hand.
 
-This gist is the low-friction handoff:
+## Files in this gist
 
-- **Share.zip** - the full self-contained review package: the engine source and
-  tests, the data tooling, the versioned reference-data snapshot, and five
-  authored docs under `docs/`. Unzip and start at `docs/01_OVERVIEW.md`.
-- The two wiki-extraction scripts below, inline for a quick read.
+- **Share.zip** - the full self-contained review package: the engine source
+  and tests, the versioned data snapshot for the patch stamped in the footer
+  below, and five authored review docs. Unzip it and start at its
+  `README.md`.
+- **daemon_slayer_wiki_stats_extract.py** - standalone wiki data-alignment
+  tool (per-champion scalar sidecar), included for provenance.
+- **daemon_slayer_wiki_ability_extract.py** - standalone wiki data-alignment
+  tool (per-ability param sidecar), included for provenance.
+- This README.
 
-## The wiki extraction (the alignment starting point)
+## Quick start
 
-Both scripts pull from the League community wiki's Lua data via the MediaWiki
-API - no HTML scraping.
-
-- **daemon_slayer_wiki_stats_extract.py** - per-champion scalar sidecar
-  (auto-attack cast time, missile speed, per-mode modifiers). PRIMARY fetch is
-  ONE request: `action=raw` on `Module:ChampionData/data` (a ~380 KB Lua
-  `return {...}` table), brace-scanned and keyed by each block's `apiname`
-  (== the Riot / Data Dragon champion id). The raw table stores explicit stat
-  scalars for only ~49 of 171 champions; a CommunityDragon character-bin
-  backfill fills the rest (the wiki value wins where present; each scalar
-  carries a `*_src` provenance tag).
-- **daemon_slayer_wiki_ability_extract.py** - per-ability param sidecar
-  (static-cooldown flag, recharge time, typed CC-class booleans, geometry).
-  Built from the SAME `Module:ChampionData/data` raw module (it reuses the
-  brace parse to resolve each ability's display name), then BATCHED via
-  `action=query&prop=revisions` over `Template:Data <Champion>/<Ability>`
-  titles - up to 50 titles per request (~22 requests for the whole roster, not
-  ~1080 one-at-a-time).
-
-## Access notes (verified live)
-
-- Host is `https://wiki.leagueoflegends.com` (the Riot vanity alias for the
-  wiki.gg backend). The bare `leagueoflegends.wiki.gg` host edge-blocks some
-  egress (HTTP 401, host-wide); the alias is reachable.
-- The User-Agent MUST be non-browser (a `Mozilla/5.0` UA trips a Cloudflare
-  challenge -> 403). stdlib `urllib` only.
-- CC duration in SECONDS is NOT a queryable wiki param - it lives only in the
-  free-text leveling / description lines. These tools do not extract it.
+Download and unzip `Share.zip`, open its `README.md`, and run the test suite
+per its Start here section. Expected test outcome and known limitations are
+documented in the package README.
 
 ## A note on the inline code comments
 
-Both scripts (and the source inside Share.zip) carry internal development tags -
-version anchors and incremental change markers. They are historical development
-notes, not part of any public contract or external dependency.
+The scripts and the source inside Share.zip carry internal development tags -
+version anchors and incremental change markers. They are historical
+development notes, not part of any public contract or external dependency.
+
+Review-only: all rights reserved - see `LICENSE.md` inside the package.
 
 ---
 ENGINE_VERSION __EV__ - data patch __PATCH__
