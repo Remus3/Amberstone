@@ -46,6 +46,19 @@ function _leadStateClass(state) {
   return "rc-lead-even";
 }
 
+// Every class this module owns on the lead mount. overlay_layout.js writes its
+// OWN classes onto that same node - ovx-widget (the position:fixed Hextech
+// frame), ovx-hidden (the operator's per-widget hide), ovx-dragging - so a
+// wholesale `className =` here drops the frame and un-hides a hidden widget
+// until the debounced re-place pass repairs it up to 150ms later. Add + remove
+// only what we own.
+const LEAD_CLASSES = ["rc-lead", "rc-lead-ahead", "rc-lead-behind", "rc-lead-even"];
+
+function _applyLeadClasses(mount, stateClass) {
+  for (const c of LEAD_CLASSES) mount.classList.remove(c);
+  if (stateClass) mount.classList.add("rc-lead", stateClass);
+}
+
 function _leadHtml(lead) {
   const line = (lead.line || "").slice(0, 120);
   const state = (lead.state || "even").slice(0, 16);
@@ -117,7 +130,7 @@ export function renderLead(state) {
     if (_lastLeadSig !== "") {
       mount.innerHTML = "";
       mount.hidden = true;
-      mount.className = "";
+      _applyLeadClasses(mount, "");
       _lastLeadSig = "";
     }
     return;
@@ -125,7 +138,7 @@ export function renderLead(state) {
   if (sig === _lastLeadSig) return;
   _lastLeadSig = sig;
   mount.hidden = false;
-  mount.className = `rc-lead ${_leadStateClass(lead.state)}`;
+  _applyLeadClasses(mount, _leadStateClass(lead.state));
   mount.innerHTML = _leadHtml(lead);
 }
 
