@@ -21,7 +21,7 @@
   outline: 1px solid var(--info);
   outline-offset: 1px;
 }
-/* ───── Header bar ─────────────────────────────────────────────── */
+/* ----- Header bar ----------------------------------------------- */
 /* 2-row layout is permanent: row 1 = identity + instantaneous state, row 2
  * = bars + session-level info. Explicit rows (flex-column with row flex
  * containers) instead of flex-wrap overflow, so layout is deterministic
@@ -83,7 +83,7 @@ body[data-mode="client"] header .win-pill {
 /* (2026-05-03) Hide remaining in-game-only top-bar pills in CLIENT mode
  * (lobby / matchmaking / champ-select / aftergame). s33 followup to
  * baee8c7: that JS-side classList.add("hidden") was defeated by the
- * static-pill rule above (.hidden → faded but visible), so cs/vs/gold
+ * static-pill rule above (.hidden -> faded but visible), so cs/vs/gold
  * stayed on screen with stale values + the champion-pill ("Zoi") had
  * no gate at all. Higher specificity (0,3,1) + !important wins over
  * static-pill (0,2,1). game-time is a fixed-width element that would
@@ -169,7 +169,7 @@ footer .mode-pill {
   width: auto !important;
   font-weight: 700;
 }
-/* DEV ⌃ + VOICE buttons + voice-picker reduced to in-footer scale per
+/* DEV ^ + VOICE buttons + voice-picker reduced to in-footer scale per
  * user 2026-04-29 - they were standing taller than the surrounding
  * pills (advisory / digest / mode / gold). Parent-selector overrides
  * the base .footer-btn padding without touching the .footer-btn class
@@ -194,7 +194,7 @@ footer .prefs-chip {
 }
 footer .prefs-chip:hover { color: var(--text); }
 
-/* ───── Static widths + heights ─────────────────────────────────────
+/* ----- Static widths + heights -------------------------------------
  * Every header pill gets a fixed width sized for its *widest anticipated*
  * content (e.g. "CLIENT" for mode-pill, "Renata Glasc" for champion,
  * "DEEP ENEMY" for zone, "XX/XX/XX" for KDA). Shorter content centers in
@@ -284,7 +284,7 @@ footer .prefs-chip:hover { color: var(--text); }
   border-left: 1px solid var(--border-soft); padding-left: 10px;
   /* s218: pinned width so the title-dropdown is STATIC across all views
    * (operator hard rule). Sized to fit the widest realistic label -
-   * "AUTO · PRE-GAME LOBBY" (21 chars at 13px / 0.16em letter-spacing).
+   * "AUTO - PRE-GAME LOBBY" (21 chars at 13px / 0.16em letter-spacing).
    * Any manual pick is shorter and comfortably fits. */
   display: inline-block;
   width: 230px;
@@ -302,7 +302,7 @@ footer .prefs-chip:hover { color: var(--text); }
 }
 
 /* s162: .title-auto-pill rules removed. The header pill was deleted in
- * favor of the dropdown's "↻ Auto (clear manual)" item - single source
+ * favor of the dropdown's "(R) Auto (clear manual)" item - single source
  * of truth for clearing manual mode. */
 
 .view-menu {
@@ -424,12 +424,12 @@ footer .prefs-chip:hover { color: var(--text); }
  * current-match in game mode) keep main visible. */
 .view-content { display: contents; }
 .view-section {
-  /* s162 v4: top margin/padding tightened so the LOBBY · live header
+  /* s162 v4: top margin/padding tightened so the LOBBY - live header
    * sits closer to the top panel border. Was 12/16, now 4/8.
-   * s162 v6: bottom padding 16→4 to eliminate the last bit of overflow
+   * s162 v6: bottom padding 16->4 to eliminate the last bit of overflow
    * causing the page to scroll.
-   * s162 v11: tightened further - top padding 8→4 + bottom 4→2 +
-   * top margin 4→2 to claw back ~10px of vertical so lobby fits in
+   * s162 v11: tightened further - top padding 8->4 + bottom 4->2 +
+   * top margin 4->2 to claw back ~10px of vertical so lobby fits in
    * 1080-viewport without the auto-scrollbar. */
   margin: 2px 18px 0; padding: 4px 18px 2px;
   background: var(--surface); border: 1px solid var(--border-soft);
@@ -442,7 +442,7 @@ footer .prefs-chip:hover { color: var(--text); }
   display: flex; align-items: baseline; gap: 12px;
   /* s162 v4: tightened vertical buffer per operator - was 14/10, now
    * 8/6 to make room for 5 party-mains cards in the lobby grid.
-   * s162 v11: 8/6 → 4/4 to recover another 6px of vertical for the
+   * s162 v11: 8/6 -> 4/4 to recover another 6px of vertical for the
    * lobby grid without losing the divider line. */
   margin-bottom: 4px;
   border-bottom: 1px solid var(--border-soft); padding-bottom: 4px;
@@ -620,7 +620,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * party card 1 col, tips + recent below. Wraps to 1-col at smaller
  * widths. */
 .lobby-view-grid {
-  /* s162 v4: row gap reduced 14→4 (−75%) per operator to claw back
+  /* s162 v4: row gap reduced 14->4 (-75%) per operator to claw back
    * vertical space between top-row (Queue+Party) and bottom-row
    * (Mains+Recently Played) so the lobby fits without scroll.
    * Column gap stays at 14px. */
@@ -686,7 +686,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * panels use .lv-panel-title). */
 .lobby-view-queue-block {
   /* s162 v4: justify-content space-evenly distributes equal vertical
-   * space between top→buttons, buttons→CLM, CLM→bottom. Buttons end
+   * space between top->buttons, buttons->CLM, CLM->bottom. Buttons end
    * up centered in the upper half, CLM in the lower half, mirroring
    * each other. */
   display: flex; flex-direction: column; gap: 0; flex: 1;
@@ -705,7 +705,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 
 /* ---- Common button class for the action strip ----
  * Static size - secondary lane button is the guide; everything
- * matches that footprint (110px × 64px). Two-line content centered
+ * matches that footprint (110px x 64px). Two-line content centered
  * vertically + horizontally. Font size +2pts above the previous
  * 10/11px treatment so labels are readable at a glance. */
 .lq-btn {
@@ -1102,8 +1102,8 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * sits inside the .lv-top8-rank cell as a nested span so the cell's
  * text-align:center keeps the pill horizontally centered under the
  * "My Top 8" title.
- * s162 v14: 10px → 13px to clear the 13px tertiary floor. Padding
- * tightened (2/6 → 1/4) and letter-spacing dropped to 0 so the
+ * s162 v14: 10px -> 13px to clear the 13px tertiary floor. Padding
+ * tightened (2/6 -> 1/4) and letter-spacing dropped to 0 so the
  * widest rank ("Diamond IV 30 LP") still fits the col-4 1.2fr
  * width without ellipsis truncation. */
 .lv-top8-rank-pip {
@@ -1263,7 +1263,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lobby-view-card-party .lobby-members-list {
   display: flex;
   flex-direction: column;
-  /* s162 v4: tightened 3→1 to fit 5 stacked party rows comfortably. */
+  /* s162 v4: tightened 3->1 to fit 5 stacked party rows comfortably. */
   gap: 1px;
 }
 /* s162 v4: leader crown pip - non-interactive but sized like the
@@ -1284,7 +1284,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   object-fit: contain;
 }
 /* s162 v15: Phosphor copy-simple SVG - sized to fit inside the
- * 26×26 .lv-member-action button. currentColor inherits the button's
+ * 26x26 .lv-member-action button. currentColor inherits the button's
  * text color so hover/focus transitions still work via the existing
  * `.lv-member-action:hover` color rule. */
 .lv-copy-svg {
@@ -1304,7 +1304,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
    * ratios so the Role + Rank columns line up vertically across both
    * panels. (Top 8: 1.4fr 0.6fr 0.5fr 1.2fr ... ; col 2 here is the
    * empty icon-spacer that aligns with Top 8's games cell.)
-   * s162 v8: actions col fixed at 120px (4×26 buttons + 3×4 gaps =
+   * s162 v8: actions col fixed at 120px (4x26 buttons + 3x4 gaps =
    * 116, padded to 120) so the .lv-panel-title grid template can
    * mirror this row template exactly and place the PARTY title in
    * the rank column. */
@@ -1438,7 +1438,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * - plain dim uppercase text, no pill background. Drops padding +
  * background + border-radius from the .lobby-member-pip base so the
  * value sits at the same visual weight as the Top 8 role column.
- * s162 v14: 11px → 13px for the 13px floor. */
+ * s162 v14: 11px -> 13px for the 13px floor. */
 .lobby-member-pip-role {
   background: transparent;
   color: var(--text-dim);
@@ -1744,7 +1744,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-variant-numeric: tabular-nums;  /* E11 audit: align KP%/CS-M/DMG digits */
 }
 .lv-mc-avg-lbl {
-  /* s162 v14: 9px → 11px (zoom:1.33 → ~14.6px effective). Sub-labels
+  /* s162 v14: 9px -> 11px (zoom:1.33 -> ~14.6px effective). Sub-labels
    * inside an info-dense data cell don't need to clear the 13px
    * tertiary floor exactly - the value above them carries the
    * primary signal - but 9px was hard to read at distance. */
@@ -1755,7 +1755,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 /* s162 v10: KP% color bands - established 5-tier convention from
  * aggregator B / aggregator A / aggregator D.
- *   ≥70 S - gold   60-69 A - info/lavender   50-59 B - good/green
+ *   >=70 S - gold   60-69 A - info/lavender   50-59 B - good/green
  *   40-49 C - clock/amber   <40 D - bad/red
  * Applied to .lv-mc-avg-val so the number itself is colored. */
 .lv-mc-kp-s { color: var(--gold); }
@@ -3050,7 +3050,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .self-spells {
   display: inline-flex;
   gap: 3px;
-  /* Static width for the 2-cell pair (2 × 32px + 3px gap). Prevents the
+  /* Static width for the 2-cell pair (2 x 32px + 3px gap). Prevents the
    * slot from collapsing when data is missing and placeholder D/F cells
    * render - adjacent pills never shift. */
   width: 67px;
@@ -3189,7 +3189,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .vis-pill .obj-ico { width: 18px; height: 18px; color: var(--info); flex-shrink: 0; }
 .cs-pill b { font-size: 21px; }
 
-/* Ultimate readiness pill - "R · UP" in mint when ready, "R · 42s" in
+/* Ultimate readiness pill - "R - UP" in mint when ready, "R - 42s" in
  * gold when on cooldown. Pulses briefly on transition to ready. */
 .ult-pill {
   display: inline-flex;
@@ -3359,7 +3359,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   margin-left: auto;
   display: inline-flex;
   align-items: center;
-  /* (2026-04-25) Horizontal-center the {value · WIN} pair inside the
+  /* (2026-04-25) Horizontal-center the {value - WIN} pair inside the
    * fixed 125 px pill so a 2-digit (50%) and 3-digit (100%) read both
    * sit visually centered rather than left-pushed. */
   justify-content: center;

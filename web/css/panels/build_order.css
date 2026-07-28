@@ -1,4 +1,4 @@
-/* Build Order card (2026-05-17, plan §6b option B; density pass).
+/* Build Order card (2026-05-17, plan S6b option B; density pass).
  *
  * Nested inside the champ-select My Pick card, directly under the build
  * chooser. NOT a top-level .csv-card (no grid surgery on the locked
@@ -6,7 +6,7 @@
  *
  * The My Pick card is documented-tight (s214: portrait + lock + arch
  * picker + 4 build rows already fill it at the 1920x1080 baseline). So
- * the DEFAULT is a single dense line - tag · ordered-name chain · chip ·
+ * the DEFAULT is a single dense line - tag - ordered-name chain - chip -
  * expander - with the full numbered order + per-slot math in the hover
  * tooltip. One click expands to the full vertical list. This trims
  * content rather than shrinking fonts (feedback_font_size_viewing_
@@ -55,7 +55,7 @@
   cursor: help;
 }
 
-/* Expanded-header context line ("vs 105 armor · 69 MR · 2430 HP"). */
+/* Expanded-header context line ("vs 105 armor - 69 MR - 2430 HP"). */
 .bo-ctx {
   flex: 1 1 auto;
   min-width: 0;
@@ -92,7 +92,7 @@
   border: 1px solid rgba(240, 126, 139, 0.4);
 }
 
-/* Expander - glyph button (▾ / ▴). Generous hit area (the operator
+/* Expander - glyph button (v / ^). Generous hit area (the operator
  * flags small tap targets in audits) without taking layout height. */
 .bo-expander {
   flex: 0 0 auto;

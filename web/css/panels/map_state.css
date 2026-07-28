@@ -108,7 +108,7 @@ body[data-view="home"] header .vis-pill.hidden {
   color: var(--text-dim);
 }
 .trend-pill.hidden  { display: none; }
-/* Trend pill content like "30d 45% ↑" must stay on one line - in narrow
+/* Trend pill content like "30d 45% ^" must stay on one line - in narrow
  * pill widths, it was wrapping to two visual rows. */
 .trend-pill { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trend-pill.up      { color: var(--good); background: var(--good-soft); }
@@ -191,7 +191,7 @@ body[data-zen="1"] .mm-canvas-stack,
 body[data-zen="1"] #mm-img {
   max-width: 480px;
 }
-/* Zen headline can go to 90px; 2 lines at 90 × 1.1 ≈ 198. */
+/* Zen headline can go to 90px; 2 lines at 90 x 1.1 ~ 198. */
 body[data-zen="1"] .panel-right-now .action { max-height: 210px; }
 /* (2026-04-24) DEV PREVIEW banner keeps identical dimensions across zen
  * on/off so Z-spamming doesn't introduce layout shifts that complicate
@@ -405,8 +405,8 @@ body[data-mode="tft"] #adapt-view   { display: none; }
 body[data-mode="aram"]  #mm-objectives-view,
 body[data-mode="brawl"] #mm-objectives-view { display: none; }
 /* Reclaim the freed-up vertical space: bump the minimap canvas/img cap
- * in ARAM/Brawl since the objectives row is gone. Non-zen 460→580,
- * zen 480→640. The canvas keeps aspect-ratio: 1 so width drives height
+ * in ARAM/Brawl since the objectives row is gone. Non-zen 460->580,
+ * zen 480->640. The canvas keeps aspect-ratio: 1 so width drives height
  * - the panel-minimap container already provides the column space. */
 body[data-mode="aram"]  .mm-canvas-stack,
 body[data-mode="aram"]  #mm-img,
