@@ -32,6 +32,39 @@ def lc():
     return mod
 
 
+@pytest.fixture(autouse=True)
+def _no_global_mutex(lc):
+    """Never let a unit test contend the MACHINE-WIDE gemini mutex.
+
+    MEASURED 2026-07-28: this module's tests hung for minutes and failed under
+    ``-n 8``. It is NOT an xdist artefact. ``gemini()`` now wraps its call in
+    ``winmutex.hold(winmutex.GEMINI_MUTEX)`` (``ops/loop/winmutex.py:37``,
+    ``Global\\LWRC_GEMINI``), and the LIVE loop controller acquires that same
+    named mutex around every director and auditor call - 85 ACQUIRED lines in
+    ``ops/loop/control/controller.log`` on the day this was found. So the test
+    blocked on a PRODUCTION process, and its result depended on whether the
+    loop happened to be running and mid-call. Serially it looks slow; under
+    xdist it times out and reads as flake.
+
+    Patching the controller's reference rather than ``ops/loop/winmutex.py``
+    is deliberate and non-negotiable: that file is BYTE-IDENTICAL-BY-CONTRACT
+    with the Sibling-A sibling repo and pinned by ``SHARED_SHA256`` -
+    editing it to suit a test would break a cross-repo contract.
+
+    The mutex is not what these tests are about. They assert the retry ladder's
+    return sentinel; serialisation against the sibling loop is a separate
+    concern with its own coverage.
+    """
+    import contextlib
+
+    @contextlib.contextmanager
+    def _no_op(_name, *_a, **_k):
+        yield
+
+    with mock.patch.object(lc.winmutex, "hold", _no_op):
+        yield
+
+
 def test_gemini_returns_none_when_all_retries_error(lc):
     # Every attempt raises (the 300s timeout class) -> the distinct None sentinel,
     # NOT "" (which main() would treat as NO_WORK and terminate the run on).
@@ -68,16 +101,29 @@ def test_gemini_logs_stderr_head_on_empty(lc, tmp_path):
     # instead of a bare "NO_WORK / empty" stop.
     (tmp_path / "_gemini_err.txt").write_text(
         "Error: 429 RESOURCE_EXHAUSTED quota exceeded", encoding="utf-8")
+    # RE-POINTED 2026-07-28. The vendor mechanics moved out of
+    # loop_controller into ops/loop/adjudicator.py: the errfile is
+    # `self.ctl / "_gemini_err.txt"` on the BACKEND (adjudicator.py:130) and
+    # the subprocess call is `adjudicator.subprocess.run` (:149). Patching
+    # `lc.CTL` and `lc.subprocess` therefore intercepted nothing - the real
+    # backend read the real control dir. This test could not have passed on
+    # this box in either direction; it was MASKED by the GEMINI_MUTEX hang
+    # (see the _no_global_mutex fixture), which is why a stale assertion
+    # survived the refactor unnoticed.
     lines = []
     fake = mock.Mock(stdout="")
-    with mock.patch.object(lc, "CTL", tmp_path), \
-            mock.patch.object(lc.subprocess, "run", return_value=fake), \
-            mock.patch.object(lc.time, "sleep", lambda *_a, **_k: None), \
-            mock.patch.object(lc, "log", lambda m: lines.append(m)), \
-            mock.patch.object(lc, "awrite", lambda *_a, **_k: None):
-        out = lc.gemini("body", "inst")
-    assert out is None
-    assert any("RESOURCE_EXHAUSTED" in ln for ln in lines)
+    backend = lc.adjudicator.GeminiAdjudicator(
+        cfg={}, ctl=tmp_path, log=lambda m: lines.append(m))
+    with mock.patch.object(lc.adjudicator.subprocess, "run", return_value=fake), \
+            mock.patch.object(lc.adjudicator.time, "sleep", lambda *_a, **_k: None):
+        out = backend.ask("body", "inst")
+
+    assert out is None, "empty stdout must still map to the None sentinel"
+    assert any("RESOURCE_EXHAUSTED" in ln for ln in lines), (
+        "the decoded stderr head must reach the log so the operator sees WHY "
+        "(429 quota, model overload) instead of a bare empty/NO_WORK stop; "
+        f"captured lines: {lines}"
+    )
 
 
 def test_gemini_falls_back_to_flash_on_primary_exhaustion(lc, tmp_path):
