@@ -6,6 +6,56 @@
 
 ---
 
+## 2026-07-27i - R212 the Meraki half of the premise did not exist, the defect did (ENGINE 1.261.0 -> 1.262.0, `3811d2aa`)
+
+**Ninth cycle in ten with a premise false on disk - but this one split cleanly
+in half, and only one half was wrong.** The directive ordered a DS sweep of
+Yasuo / Yone / Jhin / Senna innate crit modifiers "vs Meraki bulk truth" and
+tagged that premise `[UNVERIFIED]` itself. Verified before any code:
+
+- `data/daemon_slayer/16.14.1/` holds `items_meraki.json` and NO champion-level
+  Meraki file at all. There is no Meraki bulk truth for a champion innate.
+- `_passive_as_lock_overrides.py:12` already says so verbatim - "DDragon /
+  Meraki strip Whisper's numbers (Jhin's champion record is prose-only)".
+- `_crit_conversion_overrides.py:32-39` says no structured Meraki / DDragon
+  field encodes a champion's crit rule, which is precisely why that sibling
+  registry is hand-authored from cited prose.
+
+So the METHODOLOGY was false. The SUBSTANCE was true, and re-grounding it on the
+source the sibling registries already use - the on-disk `champion_abilities.json`
+passive prose - turned a no-op directive into a real three-axis gap.
+
+**The gap.** `dps.py:893` resolves every champion as `ad * (1 + crit * crit_bonus)`.
+RM-46 overrides exactly one axis of that expression, the additive crit-damage
+bonus, and only for Ashe. Nothing anywhere reached a crit-CHANCE multiplier
+(Yasuo / Yone x2.0), the above-100-percent overflow conversion (0.5 bonus AD per
+excess point; Senna 0.35 percent life steal), or a crit-damage MULTIPLIER on the
+whole `(1 + crit_bonus)` product (Jhin 0.86) - the last of which is not
+expressible as RM-46's additive term at all.
+
+**Test-Not-Transcript.** Jhin's own note states the order of operations verbatim,
+`(100 + 75) x 0.86` rather than `100 + (75 x 0.86)`, and both that and the
+crit-damage-item form are pytest assertions rather than prose. A drift guard
+opens the ability JSON at test time and asserts each quoted fragment still
+exists, so a Riot rewrite goes RED instead of leaving a stale rule.
+
+**Known limit stated, not hidden.** Senna's row is a ground-truth record with no
+live term: `dps.py` clamps resolved crit at 1.0 before the registry is consulted
+and her multiplier is 1.0, so her excess is always zero. No consumer was invented
+for it. Yasuo / Yone overflow AD IS live.
+
+DS 10053 -> **10100 passed** / 5701 subtests. RC `tests/` **13715 passed** /
+106 skipped / 460 subtests. ruff clean, drift_guard 0 breaches, verifier CONFIRM
+7/7. Tier-2: ENGINE bump across all 7 anchors, 146 pins over 125 DS test files,
+both stamped build-order keyspaces regenerated, DS `:8893` bounced and re-probed
+at 1.262.0, Share mirror `--check` green.
+
+**CARRY-FORWARD, eighth cycle:** controller pid 18300 started `00:37:50` and
+still cannot load its own self-reload fix. MUST BE BOUNCED BY HAND ONCE; it
+cannot be done from inside a cycle it would kill.
+
+---
+
 ## 2026-07-27h - R211 the incident writeup was the next incident (ENGINE-IMPACT NONE, `61401222`)
 
 **Eighth cycle in nine with a premise false on disk, and this time the premise
