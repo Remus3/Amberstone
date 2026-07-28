@@ -45,15 +45,37 @@ hexcore + gist tests 18 passed (`node --check` really ran), `ds_share_sync.py
 docs-guards selection (50 modules) 1398 passed / 6 skipped, ruff + py_compile
 clean.
 
+## Then two operator-directed follow-ups, both shipped in the same session
+
+- **Machine codename scrubbed from the shipped extractors** (`fd67d819`). The
+  wiki stats + ability extractors and their sibling `cdragon_spell_extract` named
+  the development machine in module docstrings that ship inside Share.zip and,
+  for the two wiki tools, as standalone gist files. Every access fact is kept -
+  the vanity-alias vs `.wiki.gg` 401 block, the non-browser-UA Cloudflare 403 -
+  phrased against "this development host" / "any host that reaches X", which is
+  the more useful instruction anyway. Live gist copies refetched: 0 hits.
+- **The last non-ASCII glyphs purged from the shipped tools** (`de04ef44`).
+  Middot, three check marks, an arrow, a not-equal sign, all display strings.
+  `Share/src/**/*.py` now scans byte-clean.
+
+## The thing worth remembering from the second one
+
+**The precommit gate scans STAGED LINES.** A glyph already on disk in a file
+nobody edits is never in a diff and is never seen - which is exactly how five of
+them survived the 2026-05-18 repo-wide purge with a green gate on every commit in
+between. A retro purge is a whole-file byte scan, never something the hook
+converges to on its own. Written into
+`reference_git_hooks_authoritative_and_traps` as a scope limit (it is NOT a fifth
+"hook does nothing" trap - the hook fires and is correct).
+
 ## Open for the operator
 
 - **Sign-off requested:** the Share Notation section (20 lines that named
   internal id families in the most external doc) is now a three-line generic
   disclaimer. Revert is one section if that reads as too little.
-- **Separate scrub worth doing:** both wiki extractors ship inside Share.zip and
-  as standalone gist files, and their module docstrings name the operator's
-  machine. Internal codename in an external artifact; out of scope for a README
-  slice.
+- **Left deliberately:** three host-only `tools/*.py` still carry non-ASCII -
+  `p3_ascii_sweep.py` (its own glyph inventory, correct as-is), `extract_panels.py`,
+  `rc_facts.py`. None ship in Share.zip. Say the word on the latter two.
 
 ---
 
