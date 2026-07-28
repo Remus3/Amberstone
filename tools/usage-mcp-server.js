@@ -57,7 +57,7 @@ async function queryUsage(startDate, endDate) {
 
   const headers = { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
 
-  // ── Usage report (tokens by model) ──────────────────────────────────────────
+  // -- Usage report (tokens by model) ------------------------------------------
   const uParams = new URLSearchParams({
     starting_at: startTs,
     ending_at:   endTs,
@@ -70,7 +70,7 @@ async function queryUsage(startDate, endDate) {
     headers
   );
 
-  // ── Cost report (actual USD by model via description) ───────────────────────
+  // -- Cost report (actual USD by model via description) -----------------------
   const cParams = new URLSearchParams({
     starting_at: startTs,
     ending_at:   endTs,
@@ -85,7 +85,7 @@ async function queryUsage(startDate, endDate) {
 
   const lines = [`Anthropic spend  ${startDate} → ${endDate}\n`];
 
-  // ── Cost section (amounts in cents → divide by 100 for USD) ──────────────────
+  // -- Cost section (amounts in cents -> divide by 100 for USD) ------------------
   if (cRes.status === 200) {
     const results = (cRes.body.data?.[0]?.results) ?? [];
     const byCost = {};
@@ -105,7 +105,7 @@ async function queryUsage(startDate, endDate) {
     lines.push(`Cost API: HTTP ${cRes.status} - ${JSON.stringify(cRes.body)}\n`);
   }
 
-  // ── Token section ─────────────────────────────────────────────────────────────
+  // -- Token section -------------------------------------------------------------
   if (uRes.status === 200) {
     const results = (uRes.body.data?.[0]?.results) ?? [];
     lines.push('── Tokens ──');
@@ -122,7 +122,7 @@ async function queryUsage(startDate, endDate) {
   return lines.join('\n');
 }
 
-// ── MCP stdio transport ──────────────────────────────────────────────────────
+// -- MCP stdio transport ------------------------------------------------------
 
 const TOOLS = [{
   name: 'query_usage',

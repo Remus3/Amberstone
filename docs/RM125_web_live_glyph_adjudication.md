@@ -75,8 +75,13 @@ Both subtractions were measured, not estimated:
 - The 59 are all `U+2500 BOX DRAWINGS LIGHT HORIZONTAL` in a single banner
   comment at `web/js/panels/last_match.js:1569`. Measured by re-running
   `comment_spans()` with a corrected `_scan_template_subst` and diffing against
-  the shipped one.
-- The 26 sit in CSS comments inside `web/legacy_index.html`'s inline `<style>`.
+  the shipped one. **This half is now CLOSED:** the desync was root-caused and
+  fixed in the same cycle (`38c232d5`), and those 59 are swept, which is why the
+  tool-reported residue now reads **261**, not 320. The rendered census below is
+  unchanged by that fix - the 59 were never part of the rendered set.
+- The 26 sit in comments inside `web/legacy_index.html`'s inline blocks - 20 in
+  CSS comments inside `<style>` and 6 in JS comments inside `<script>` (lines
+  1975, 1979, 2047 twice, 2642, 2667).
   `_scan_html` handles only `<!-- -->` and deliberately leaves embedded
   `<script>` / `<style>` comments LIVE; its docstring records that
   `web/index.html`'s inline scripts are clean, but does not cover
@@ -173,7 +178,6 @@ No live glyph sits in an HTML attribute value or in bare JS code.
 | U+1F33F | HERB | 1 |
 | U+2728 | SPARKLES | 1 |
 | U+1F4DD | MEMO | 1 |
-| U+2194 | LEFT RIGHT ARROW | 1 |
 
 ---
 
