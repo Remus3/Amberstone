@@ -37,8 +37,10 @@ live-gated (a wrong deterministic read is worse than an LLM call; do-not-flip-bl
   (`RC_ZOI_NATIVE_GRAB` default ON), `core/zoi_influence.py` (dots -> bubbles/map-control).
   Wired at `dashboard/_state_builder.py:454-480` (sr/aram gated, TTL-cached, fail-soft).
 - **Runtime baseline:** DWM/GDI BitBlt + PIL ImageGrab capture (Vanguard-safe, no DXGI /
-  injection). opencv is NOT installed in the Python314 runtime. pytesseract + Tesseract.exe
-  are both present and live.
+  injection). **STALE, corrected 2026-07-28: opencv IS installed** - `cv2` 5.0.0 and `scipy`
+  both import in the Python314 runtime; what is genuinely ABSENT is `onnxruntime` and `torch`,
+  so any neural detector is a 300MB+ new dependency on a box already running League +
+  Vanguard + OBS. pytesseract + Tesseract.exe are both present and live.
 - **Real gaps:** (a) OBS is text-push only (no frame source, no scene/replay control); (b)
   deterministic CV parsers exist but are not wired into coach field lists (Sonnet still fires);
   (c) minimap is presence-not-identity; (d) no objective/recall icon CV.
@@ -54,9 +56,25 @@ Vanguard-irrelevant throughout.
 - **O1 - POC: request/response + `GetSourceScreenshot` (1 session).** Add `_request(ws, type,
   data)` awaiting the matching `requestId` in `op=7`. Call `GetSourceScreenshot` (imageFormat
   jpg, width 1280) on the League Game-Capture source -> base64 JPEG. Prove a frame round-trips.
-- **O2 - frame-source swap into `:8889` (1-2 sessions).** OBS Game Capture is OCCLUSION-PROOF
-  (captures the game surface even when the RC overlay sits on top) - RC gets the per-window
-  Windows.Graphics.Capture technique for free via OBS instead of vendoring a GPL capture tool.
+- **O2 - frame-source swap into `:8889` (1-2 sessions).** **CORRECTED 2026-07-28 - this row
+  named a BANNED mechanism and contradicted RC's own ADR.** OBS **Game** Capture is the source
+  that injects `graphics-hook64.dll` into the game, which is exactly the technique Vanguard
+  bars - and `docs/adr/ADR-011-one-pc-consolidation.md:43-44` already decided this
+  ("OBS records locally on Legion via Display Capture (WGC), not Game Capture (hook injection
+  trips Vanguard)"). The occlusion-proof property is real but it belongs to **Window / Display
+  Capture (the WGC-backed sources)**, not Game Capture. The conclusion this row wanted stands;
+  the named mechanism does not. Preferred path is now to take **Windows.Graphics.Capture
+  directly** (e.g. `windows-capture`, MIT) and skip OBS for frames entirely - going through
+  OBS buys nothing once the source has to be the WGC one anyway. **Blocking prerequisite,
+  measured 2026-07-28:** `game.cfg` reads `WindowMode=2` at 2560x1440, and RC's own history
+  records that value as three different things (Windowed at `history_notes.md:15826`,
+  borderless at `:16484`, EXCLUSIVE fullscreen at `:21044`). The `:21044` incident - an
+  always-on-top overlay occluded in-game - is the strongest evidence it means exclusive
+  fullscreen, under which Microsoft does not guarantee WGC. Confirm the in-client Window Mode
+  dropdown before building on this row. Original text follows: OBS Game Capture is
+  OCCLUSION-PROOF (captures the game surface even when the RC overlay sits on top) - RC gets
+  the per-window Windows.Graphics.Capture technique for free via OBS instead of vendoring a
+  GPL capture tool.
   Add an alternate frame provider in `vision_server/_frame.py` / `_relay.py` that pulls
   `GetSourceScreenshot` when `obs.frame_source=true`, so `modes/shared_vision._capture_screen`
   (`:8889/latest-frame`) transparently gets OBS frames. Reuses the token-gated `:8889` cache,
@@ -78,7 +96,7 @@ unless NEW). Ranked by value x determinism x low-risk.
 | # | Call / utilization | CV technique | Region | RC integration point | Replaces Sonnet |
 |---|---|---|---|---|---|
 | 1 | Self HP / mana | OCR + `_bar_fill_pct` (built) | hp, mana (exist) | base coach state + low-HP fight guard | Partial |
-| 2 | Timer / gold / level / CS / KDA | OCR (built) | exist | extend to all coaches' TIERED_FIELDS | Yes |
+| 2 | ~~Timer / gold / level / CS / KDA~~ **STRUCK 2026-07-28** | OCR (built) | exist | **Do NOT extend.** `:2999` serves game time, gold, level, CS and KDA exactly and free at any poll rate - OCRing them from pixels is strictly worse on accuracy, latency and cost. Same mistake row 6 already fixed for death timers on 2026-07-05. CV's job is ONLY the `:2999` gap | No |
 | 3 | Ally HP bars (party frames) | `_bar_fill_pct` green (built) | ally_1..4_hp (exist) | ZOI ally-strength + peel/dive cues (unconsumed today) | Yes |
 | 4 | Summoner-spell up/down | `_ocr_cooldown` + text-signal gate (built) | NEW summ1_cd, summ2_cd | `core/summoner_cooldowns.py` consumer exists; drives "enemy Flash down -> all-in" | Yes (no current source; :2999 has no CDs) |
 | 5 | Ult ready (self + ally) | `_ult_pct` / `_ally_ults_strip` (built) | ally_ults (exists) + NEW self_ult | spike / all-in cue | Yes |
@@ -124,7 +142,7 @@ source).
 | Capability | New dep | Vanguard | Effort | Risk |
 |---|---|---|---|---|
 | O1 OBS req/resp + screenshot | none (websockets present) | N/A (talks to OBS) | 1 sess | Low |
-| O2 OBS frame -> :8889 | none | Safe (OBS Game Capture, runs today) | 1-2 sess | Low-Med |
+| O2 OBS frame -> :8889 | none | **BANNED as written** - Game Capture injects a graphics hook (ADR-011:43). Use WGC Window/Display Capture, or `windows-capture` (MIT) direct | 1-2 sess | Low-Med |
 | O3 OBS scene/replay ctrl | none | N/A | 1 sess | Low |
 | CV wiring #1-6 (built parsers) | none (pytesseract present) | Safe (captured pixels) | 1-2 sess | Low |
 | CV new modules #7-10 | none (numpy/PIL) or opencv for template ones | Safe | 2-3 sess | Med (calibration) |
