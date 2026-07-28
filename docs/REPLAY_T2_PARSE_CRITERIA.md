@@ -306,9 +306,55 @@ Two rows are new at this size and both die on inspection:
 
 BOT and MID `objective_participation` now clear the gate and the holdout (0.38
 and 0.22) but still carry `absent 6/422`. That is the 4b exposure artefact
-unchanged and it is exactly the bias that would inflate these rows: the loss
-mean is taken over survivors. Not promotable at this `n` or any other - the fix
-is a criterion that does not vanish on teams that took zero objectives.
+unchanged.
+
+**SIGN CORRECTED 2026-07-28 - this passage previously said the survivorship
+bias would INFLATE these rows. Measured, it DEFLATES them.** The mechanism is
+`core/event_patterns.py:160` - `if not took: return []`, so a player whose team
+killed zero elite monsters emits no row at all. Losing teams take zero
+objectives far more often, which is the whole of the 6/422 asymmetry. Excluding
+them does not trim the weak tail off the loss side; it removes the losers who
+contributed to nothing, which can only hold the loss mean UP.
+
+Measured over `data/event_pattern_rates.json` (3005-match corpus), imputing the
+natural 0 for the absent rows - a player on a team that took no objectives
+participated in none - and comparing the win-loss delta:
+
+| role | delta as measured | delta with absent rows at 0 | direction |
+|---|---|---|---|
+| BOT | 0.1085 | 0.1640 | deflated 1.51x |
+| MID | 0.0593 | 0.1074 | deflated 1.81x |
+| TOP | 0.0644 | 0.1045 | deflated 1.62x |
+| SUPPORT | 0.0615 | 0.1373 | deflated 2.23x |
+| JUNGLE | -0.0068 | 0.2173 | **sign flips** |
+
+Every role deflates, and JUNGLE inverts outright - it reads NO SEPARATION only
+because the exclusion is doing the work.
+
+**This does NOT make the rows promotable, and the conclusion is unchanged:**
+`objective_participation` is REFUTED (LEDGER 1064) - do not re-promote it. The
+correction matters because a bias recorded with the wrong sign invites exactly
+the wrong repair. The fix is still a criterion that does not vanish on teams
+that took zero objectives; note that the 0-imputation used above IS that
+criterion, so anyone building it should expect these larger deltas and must not
+read them as new signal.
+
+### Two field notes on the ELITE_MONSTER_KILL shape (verified 2026-07-28)
+
+Measured directly over 400 timelines / 3381 elite-monster kills from the corpus
+at `RC_ROFL_Archive/timelines`, not taken from documentation:
+
+- **`assistingParticipantIds` carries ENEMY participants.** 427 of 3381 kills
+  (12.63 pct) list at least one assistant whose participant id falls on the
+  opposite side from `killerTeamId`. Any code that reads that array as "my
+  team helped" without filtering by team is wrong. `objective_participation`
+  itself is safe only because it filters `killerTeamId == team` first and then
+  tests one fixed `pid`; a team-level assist count built the obvious way would
+  over-count by roughly an eighth.
+- **`monsterSubType` is DRAGON-only.** Across `DRAGON` 1430, `HORDE` 1176,
+  `RIFTHERALD` 356 and `BARON_NASHOR` 419, the field appears on `DRAGON` and
+  nothing else. Do not branch on it for herald or baron - it is absent, not
+  empty.
 
 The standing constraint in 4b applies here without change: ten rows per match
 are not independent, so `n` bounds information rather than sampling it.
