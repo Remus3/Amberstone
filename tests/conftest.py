@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -107,8 +108,16 @@ def redirect_prod_write_paths_to_tmp(monkeypatch, tmp_path_factory):
 # Scoped to artifacts the idle-client daemon never touches - health.json,
 # logs/, lessons_*, and bridge_monitor are excluded because the live supervisor
 # + cross-Claude bridge legitimately tick those during a run.
+# NOTE 2026-07-28: `ops/loop/control/controller.log` was REMOVED from this
+# tuple. It is not written by tests - it is written by the LIVE loop
+# controller, a long-running production process that is up whenever the loop
+# is running, which on Legion is most of the time. The guard cannot tell "a
+# test wrote a prod path" from "a daemon appended to its own log", so it fired
+# on a clean run (520607 -> 521318 bytes during a 191s suite) and reported a
+# hermeticity regression that no test caused. A guard that fires on correct
+# behaviour is one people learn to ignore, which costs more than the coverage
+# it provided over a file no test should be touching anyway.
 _PROD_ARTIFACT_GUARD = (
-    "ops/loop/control/controller.log",
     "data/det_coach_shadow.jsonl",
     "data/hz_choice_shadow.jsonl",
     "data/hz_build_shadow.jsonl",
@@ -132,9 +141,16 @@ def _prod_artifact_sizes() -> dict:
     return out
 
 
-@pytest.fixture(autouse=True)
-def _no_live_tft_ocr(monkeypatch):
+@pytest.fixture(scope="session", autouse=True)
+def _no_live_tft_ocr():
     """No test may start the live TFT OCR capture thread.
+
+    SESSION-scoped deliberately. The first version of this fixture was
+    function-scoped, and a TftOcr thread still leaked - caught by
+    ``tests/test_no_live_ocr_thread_in_suite.py`` on the very next run. A
+    function-scoped patch is not in force while MODULE- or SESSION-scoped
+    fixtures build their objects, so any reader constructed in a broader-scoped
+    fixture slipped straight past it. Session scope closes that window.
 
     ``tft/tft_state_reader.py:60-68`` starts a daemon thread in
     ``TftStateReader.__init__`` whenever ``TftOcrReader().available`` is true,
@@ -164,9 +180,17 @@ def _no_live_tft_ocr(monkeypatch):
     try:
         from tft.tft_ocr_reader import TftOcrReader
     except Exception:  # noqa: BLE001 - no TFT stack present is not a failure
+        yield
         return
-    monkeypatch.setattr(
-        TftOcrReader, "available", property(lambda self: False), raising=False)
+    # mock.patch rather than monkeypatch: monkeypatch is function-scoped and
+    # pytest refuses to use it from a session-scoped fixture.
+    patcher = mock.patch.object(
+        TftOcrReader, "available", property(lambda self: False))
+    patcher.start()
+    try:
+        yield
+    finally:
+        patcher.stop()
 
 
 @pytest.fixture(scope="session", autouse=True)
