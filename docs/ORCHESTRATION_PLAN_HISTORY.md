@@ -276,3 +276,56 @@ newest row at 6632 from EOF. **The correct lever is relocating old findings - ne
 shrinking the new row and never relaxing the guard.** Budget two to three cycles per
 relocation. `tools/md_guard_selector.py` reproduces the CI job locally; note its
 output is CRLF, so pipe through `tr -d '\r'` before `xargs`.
+
+---
+
+## R217 findings - 2026-07-28 - the notes were half already-done, and the trap was a header
+
+**The override fired correctly and the premise held.** Cycles 13 through 19 kept
+ordering units that were already on disk; this one did not. `ROADMAP.md:42` carries
+the sentence the digest attributed to it, word for word, and both desktop sources
+exist. The re-read still earned its keep - it is one Read, and it is the only thing
+standing between a stale digest and a wasted cycle.
+
+### The deliverable was the QA, not the extraction
+
+RM-121's own row warns that "a row marked STILL OPEN without a cited empty search
+manufactures work that is already done", and these two notes proved it: **5 of 11
+claims were dead on arrival.** The `wakeup_prune` claim is the sharpest example - the
+note says 12 sessions are invisible, `--check` wrongly reports compliant, and the
+file has bloated to 61KB. Measured: `--check` exits 0, `WAKEUP_NOTES.md` is 10759
+bytes, and it holds exactly three session headings, which is the keep-3 prune having
+visibly run. `2f35163d` fixed SESSION_RE by giving it a `\d{4}-\d{2}-\d{2}`
+alternative. Same shape for the `GRADE_LABEL` em-dashes (already spaced hyphens) and
+the `data/ratings/*.json` backfill queued behind them - 0 of 4 files carry a dash to
+backfill, so that unit was never work at all. **A note is a snapshot of a moment, and
+an operator note is no more current than an audit digest.** Every line of one gets
+the same re-probe an inherited premise gets.
+
+### The trap was a header, and it was one line above the work
+
+`random.txt`'s second half opens "UI/UX pass - session 2 (operator-present; continues
+2026-07-22b). Do NOT run headless." Directly beneath it sits a well-specified 6-item
+queue with named files, a priority order and a read-first list - which is exactly the
+shape a headless executor is built to consume. **The disqualifying instruction was
+the header, not the content, and nothing in the content repeats it.** It is filed as
+an operator-present lane with the prohibition restated inside the row, so the next
+director reads the fence rather than the queue.
+
+### What was chunked out rather than built
+
+The directive scoped this cycle to docs, roadmap and backlog. Two code units fell
+out and are filed as OPEN rows on disjoint file sets: R217-U1 (`ci.yml`, the RM-119
+RC-half promotion the operator has explicitly authorized, with its measured 19m42s
+runner price) and R217-U2 (`tools/extract_panels.py` + `tools/rc_facts.py`, with
+`tools/p3_ascii_sweep.py` carved out by the operator's own exemption). Both carry
+their acceptance criteria and their traps in the row, so neither needs the notes
+re-read to execute.
+
+### Carry-forward
+
+The RM-119 ROADMAP row was measurably stale in one clause - it still says ZERO DS
+test files are collected on push, and `ci.yml:322` has run the DS suite in the
+`check:` job since. Corrected this cycle. Worth noticing that the stale clause and
+the note asking for the follow-on work were both written by people who were right at
+the time; the row aged, the note did not know it had.
