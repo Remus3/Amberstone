@@ -119,6 +119,51 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-28f - R217 desktop-queue drain. Half the notes were already true on disk.
+
+Gemini-loop cycle 22. RM-121 item 4 (`random.txt` + `roadmap work.txt`), which
+DRAINS the five-file desktop chain - four items, no file 5, do not re-pick RM-121.
+Full detail in `docs/LEDGER.md` 1094. Commit `4e9bf60b` + this sync. Tier-0 docs
+only: no `.py` / `.yml` / `.css` / `.html`, no engine, no ENGINE bump, no DS path,
+no Share mirror change, no restart.
+
+## The override held this time, and the unit was real
+
+Cycles 13-19 kept ordering work already on disk. This directive's `[from-digest]`
+premise was TRUE - `ROADMAP.md:42` carries the sentence verbatim - and both desktop
+sources exist. The re-read still earned its keep at one Read.
+
+## Three things to carry
+
+1. **An operator note is no more current than an audit digest.** 5 of the 11 claims
+   across these two notes were already resolved: the `wakeup_prune` SESSION_RE
+   blindness (fixed `2f35163d`; `--check` exits 0, this file was 10759 bytes with
+   exactly 3 headings), the "loop is PARKED" claim (RM-120 closed it), the
+   git-hook BOM/non-ASCII ask (`.githooks/` + `precommit_gate.py` + the hygiene
+   trio already do it), the `performance_tracker.py:37-39` em-dashes, and the
+   `data/ratings/*.json` backfill behind them (0 of 4 files carry a dash). Probe
+   every line of a note, not just an inherited premise.
+2. **The disqualifying instruction can be the header, not the content.**
+   `random.txt` part 2 opens "operator-present; Do NOT run headless" and then lays
+   out a well-specified 6-item queue that never repeats the prohibition - exactly
+   the shape a headless executor consumes. Filed as RM-122 with the gate restated
+   inside the row.
+3. **The plan-file relocation is now a steady state, not a chore.** Keep exactly
+   ONE findings block at the tail of `docs/ORCHESTRATION_PLAN.md`: relocate the
+   previous cycle's block verbatim as you append yours. R217 did that and landed
+   the newest row at 9004 bytes from EOF instead of the ~20000 R216 predicted.
+
+## Open
+
+- **`ROADMAP.md` is at 80351 of its 81920-byte budget - 1569 bytes of headroom.**
+  The next writer relocates shipped narrative to `docs/ROADMAP_HISTORY.md` first.
+- Plan rows `R217-U1` (`ci.yml` RC-half promotion, operator-authorized, ~20min per
+  push measured) and `R217-U2` (`tools/extract_panels.py` + `tools/rc_facts.py`
+  non-ASCII; `p3_ascii_sweep.py` EXEMPT) are OPEN and chunked, not built.
+- LEDGER 1092's 16-instance whole-file-rewrite class is still unclaimed.
+
+---
+
 # 2026-07-28e - R216 xdist subTest gate. The override looked for drift in the wrong place.
 
 Gemini-loop cycle 21. RM-121 item 3 (`replay continue.txt`) sub-item 4, which
