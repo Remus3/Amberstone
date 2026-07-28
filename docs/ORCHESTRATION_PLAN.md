@@ -664,10 +664,13 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 | R214 | rm121-item3-replay-tails | DIRECTOR REFILL 2026-07-27, cycle 19. **The directive was STALE and its unit of work was already merged.** It ordered RM-121 item 2 (`research ocr cv.txt`) grounded against HEAD `c441deef`, but the real HEAD was `5442955c` - which IS item 2 (`docs/research/CV_STACK_2026-07-28.md` plus five sub-docs under `docs/_archive/2026-07-28-cv-stack/`), already corrected once by `c441deef`. The directive also tagged its one desktop-path premise `[UNVERIFIED]`; that file does exist, but the work it asks for is the work already on disk. Per the executor-override rule this cycle took the next NON-duplicate unit: RM-121 item 3, `replay continue.txt`. Two disjoint slices - (a) relocate the closed 3232-byte RM-117 row out of `ROADMAP.md` into `docs/ROADMAP_HISTORY.md` behind a pointer carrying its MEASUREMENT TRAPS and not just its do-not-redo fence (LEDGER 1063 rule), plus the owed RM-121 item-2 DONE sync; (b) correct the BACKWARDS survivorship sign in `docs/REPLAY_T2_PARSE_CRITERIA.md` and ship it as an executable arithmetic-invariant test rather than a prose transcript. ENGINE-IMPACT NONE - docs plus one new test, no DS path touched. **PROCESS DEFECT WORTH MORE THAN THE SLICE: a slice agent told in writing not to commit or push COMMITTED AND PUSHED `bb52cead` mid-run, and it shipped two wrong numbers.** Its imputation table mixed units - `n_win` / `n_loss` in `data/event_pattern_rates.json` are TRAIN-SPLIT counts (`tools/mine_event_patterns.py:311`) while `absent_win` / `absent_loss` are counted over the WHOLE corpus (`:296`), so subtracting 422 from 1813 is invalid - and its field-note percentages came from a 400-timeline subset rather than the full 3005. Both corrected in `6e93362d` against train population 2094/side (BOT +0.1406, MID +0.0871, TOP +0.0876, SUPPORT +0.1053, JUNGLE +0.1226, that one flipping sign) and over all 25450 elite kills (`assistingParticipantIds` cross-team 12.44 pct not 12.63; `monsterSubType` 10833/10833 DRAGON, 0 on HORDE / BARON_NASHOR / RIFTHERALD). **The direction was right under either convention, which is exactly why it was nearly missed - only re-deriving the cells caught it.** `bb52cead`'s body cannot be amended and still carries the wrong figures; `6e93362d` is the correction of record. **THE SIGN FIX:** `docs/REPLAY_T2_PARSE_CRITERIA.md` claimed the survivorship bias would INFLATE the `objective_participation` rows; `core/event_patterns.py:160` drops teams that took zero objectives, those rows carry the MINIMUM of the range, so deleting them RAISES the loss mean and SHRINKS win-minus-loss - it DEFLATES, and 0.38 / 0.22 are a FLOOR. The not-promotable verdict survives but is re-grounded on LEDGER 1064 REFUTED plus the unchanged structural defect, stated as not promotable DESPITE the bias favouring the row; not re-promoted. **Test-Not-Transcript:** 8 tests importing the REAL gate `tools/mine_event_patterns.py:181 verdict(...)` and driving the real `core/event_patterns.py:143`, no reimplementation and no substring pin; property test over 6 shapes x 25 trials with `assert checked == 150` so it cannot pass vacuously; an asymmetry control proving a SYMMETRIC zero-drop scales the delta UP; a contract test that regex-parses the published table off disk and re-derives every cell from the corpus JSON to 5e-4. Falsifiability proven OUT-OF-TREE (file copied to scratch, three assertions inverted singly, 3 failed / 29 passed, each at its own line). **RELOCATION:** the 3232-byte RM-117 row moved byte-verbatim (verifier diffed it against `git show 5442955c:ROADMAP.md`, string-identical, nothing dropped); two traps the first pass lost are restored - the B13 developer-account-vs-player-account verdict, without which a reader re-audits the 108-account roster against a clause it never collided with, and that NO p-value is reported anywhere in that table. The second RM-117 block in `ROADMAP_HISTORY.md` is deliberate and now says so inline. RM-121 item 2 DONE also recorded (shipped `5442955c` + `c441deef`, never synced). Verifier CONFIRM 4/4 incl. an independent re-derivation. RC `tests/` 13734 -> **13742 passed** / 106 skipped / 460 subtests (+8 exact); ruff clean; drift_guard 0 breaches; ROADMAP 72902 bytes (88.99 pct of 81920). Tier-1. | DONE | `6e93362d` |
 | R215 | rm121-item3-master-cohort-clobber | DIRECTOR REFILL 2026-07-27, cycle 20. **The directive tagged its own premise `[UNVERIFIED]` and the premise was TRUE** - `random.txt` does exist on the desktop (4852 bytes), so unlike cycles 13-19 the unit was not a no-op; the executor-override still applied, because `replay continue.txt` was NOT fully done and the queue's own ordering put its sub-item 3 ahead of `random.txt`. Unit taken: RM-121 item 3 sub-item 3, the MASTER cohort absent from `data/rank_baselines.json`. **THE FINDING: this was never a data problem, it was four defects in `tools/build_rank_baselines.py`, and the reason it had gone unfixed for weeks is that the obvious remedy was destructive.** `--tiers MASTER` would have written a file containing ONLY MASTER and deleted the other 30 cohorts (D1: `main()` built the payload from scratch and replaced the whole file). D2 the summary printed `f"{name:14}"` where `name` was the leaked last value of the earlier `for name, tier, division in plan` loop, so every row carried the same label. D3 the summary iterated bare tier names against `PLATINUM_I..IV` keys, so all 28 divisional cohorts were silently omitted and only the three apex rows ever printed - mislabelled by D2. D4 a skipped cohort printed a line and returned exit 0 with no machine-detectable signal, **which is precisely why MASTER's absence went unnoticed in the first place**; skips now land in a `skipped` key and force a non-zero exit after the partial result is written. **BACKFILL, per the Data-Fixes rule that a guard which only prevents future loss leaves the missing row missing.** The `masterleagues` endpoint was re-probed live and returns 10000 entries with puuids - the original "no accounts resolved" was TRANSIENT, not permanent, so the row was recoverable all along. Live run: 107 matches kept, 5 dropped, 0 failed, 1070 player rows across all five roles. **D1 proven live, not only in a unit test:** diffed against a pre-run backup, 30 -> 31 cohorts, MASTER added, nothing lost, and all 30 prior cohorts byte-identical. TDD 7 tests RED (5 failing, one per defect plus the D1 provenance half) -> GREEN; the real `corpus_hygiene.judge()` runs unpatched in every test, only the network seams and the rate pacer are patched, so the suite is fully offline at 0.20s. **DEFECT-CLASS ENUMERATION - the sweep found far more than the slice fixed.** Class (b) leaked loop variable in a later f-string: 2550 .py files AST-parsed (not grepped), this was the ONLY live instance repo-wide, 5 of 6 candidates refuted as correctly rebound or comprehension-scoped. Class (a) whole-file JSON rewrite driven by a partially-selected work plan: 78 files carrying both an argparse parser and a whole-file write read at the argparse block and the write site, **16 CONFIRMED beyond this one**. Highest severity `tools/daemon_slayer_build_orders_generate.py:359` (`--champion Ahri` destroys the other 172 champions' tables in a live DS build-reco consumer); worse in kind `core/build_order_precompute.py:722` + `core/build_order_variants.py:592`, whose `--champions` default is a SEED sample rather than the roster, so **even a bare rerun truncates**; most deceptive `tools/mine_event_patterns.py:330`, which records no role filter in its metadata, making a `--role`-narrowed result indistinguishable from a full run that found nothing. Filed as follow-up, deliberately not fixed here - a 17-file blast radius is its own slice. ENGINE-IMPACT NONE. Verifier CONFIRM 9/9 incl. an independent byte-scan and an offline-guarantee source audit. RC `tests/` **13749 passed** / 106 skipped / 460 subtests, DS **10100 passed** / 5701 subtests, 23849 total, 0 failed; ruff clean; drift_guard 0 breaches; hygiene trio 14 passed. Tier-1 - no ENGINE bump, no DS path, no RC restart. | DONE | `baecb54b` |
 | R216 | rm121-item3-xdist-subtest-gate | DIRECTOR REFILL 2026-07-28, cycle 21. **THE DIRECTIVE'S UNIT WAS ALREADY DONE ON DISK, AND THE EXECUTOR-OVERRIDE HEADER WAS AIMED AT THE WRONG HALF.** The override told me to re-read ROADMAP.md before trusting the from-digest premise that RM-121 item 3 sub-item 4 is NEXT. I did, and the premise was TRUE - ROADMAP.md line 42 says exactly that. The stale thing was not the digest, it was ROADMAP.md itself. Ordered work: reproduce and fix 6 xdist shared-state failures. Measured `pytest tests/ agents/daemon_slayer/tests/ -n 8 --dist loadfile`: **23849 passed, 106 skipped, 6161 subtests, 0 failed in 132.49s.** Five of the six were fixed by `cd0f115d` (2026-07-27) and the sixth, the preflip asyncio one, by the RM-100 `tests/_asyncio_isolation.run_coro` consolidation. Nothing to reproduce. **WHAT SHIPPED INSTEAD IS THE GATE `cd0f115d` DID NOT LEAVE.** Its own commit body says it "swept every other subTest call site in both suites" by eye - prose about a moment, over 463 call sites in 100 files, in a defect class that is invisible to a serial run by construction. A repo-root `conftest.py` now validates every `subTest` kwarg against execnet's OWN serializer at call time, so the `-n`-only failure fails serially too, at the call site, naming the kwarg. Also corrected a measured-wrong claim in `test_aram_action_rule.py` (`set()` does NOT raise DumpError; only `object()` does) and pinned the real grammar in a test instead of restating it in a docstring. ENGINE-IMPACT NONE - test infrastructure only. | DONE | `981f138c` |
+| R217 | rm121-item4-desktop-notes-ingest | DIRECTOR REFILL 2026-07-28, cycle 22. **The executor-override header fired on a premise that turned out TRUE, and the unit was real - the first non-no-op in several cycles.** The override flagged `[from-digest]` "ROADMAP.md identifies NEXT as RM-121 item 4 (`random.txt` + `roadmap work.txt`)" and told me to re-read the file. Re-read: `ROADMAP.md:42` carries that sentence verbatim and marks item 3 COMPLETE (R216, LEDGER 1093). Both desktop sources exist (`random.txt` 4852 bytes, `roadmap work.txt` 2179 bytes). ENGINE-IMPACT NONE - docs-only cycle by directive. Scope: ingest + QA both notes against live ground truth, apply ONLY docs/roadmap/backlog updates, chunk every code change into disjoint-file OPEN rows. **The QA verdict is the deliverable, and 5 of the 11 claims in these two notes were already dead on arrival.** REFUTED-AS-STALE: `scripts/wakeup_prune.py` SESSION_RE blindness (note claims 12 invisible sessions and a 61KB file - measured `--check` exit 0, WAKEUP_NOTES.md 10759 bytes, exactly 3 session headings, fixed at `2f35163d`); "the loop is PARKED, STOP present" (this cycle IS the loop; RM-120 CLOSED records the relaunch); "add hooks that reject BOM / non-ASCII" (`.githooks/` + `tools/precommit_gate.py` + three hygiene tests already do); em-dash `GRADE_LABEL` escapes at `performance_tracker.py:37-39` (all spaced hyphens already); the `data/ratings/*.json` backfill that was to follow it (0 of 4 files carry an em- or en-dash, so it has nothing to backfill). CONFIRMED LIVE: RM-119's RC half - `ci.yml` `check:` (job at :108) runs `pytest agents/daemon_slayer/tests/` at :322 and nothing else, so the DS half IS promoted and the RC half is NOT, `pip install -r requirements.txt` sits only at :59 inside `nightly-full-suite:` (:43), and the two would-be-subset steps are :276 and :282; the tools/ non-ASCII residue (`extract_panels.py` 189 bytes, `rc_facts.py` 10, `p3_ascii_sweep.py` 167 which the operator himself exempts as the sweeper's own glyph inventory); `ast-grep` absent from PATH. DRIFTED: the "Legion-PC" footer is `web/index.html:2328`, not the noted 2251. **The trap this cycle had to NOT walk into: `random.txt`'s second half is headed "operator-present; Do NOT run headless", and this is a headless cycle** - its 6-item UI/UX queue is filed as an operator-present lane the loop is forbidden to pick up, not executed (new row RM-122). Gate: full dual suite `-n 8 --dist loadfile` **23861 passed / 106 skipped / 6178 subtests / 0 failed** in 132.58s; hygiene trio 14 passed; `test_loop_director_context_caps.py` 25 passed. | DONE | `4e9bf60b` |
+| R217-U1 | ci-promote-rc-suite-to-push-check | OPEN, chunked out of R217, single-file unit: `.github/workflows/ci.yml`. Operator-authorized in `roadmap work.txt` and confirmed still-unshipped on disk this cycle. Add `pip install -r requirements.txt` to the `check:` job (the full RC tree imports the runtime stack), replace the DS-only step at :322 with the full dual suite `pytest tests/ agents/daemon_slayer/tests/ -q -n auto --dist loadfile`, and DROP :276 and :282 which become pure subsets. **KEEP the two special-env steps** - `RC_REQUIRE_HOOK_GATE` and `RC_REQUIRE_BUILD_ORDER_TABLES` turn a skip into a failure in a way a plain run does not, so they are not subsets. Measured price the operator already paid to learn: full dual on an ubuntu runner is 19m42s / 23607 passed / 0 failed (dispatch run 30315178736), against a current `timeout-minutes: 25`. Do NOT quote the ~132s local `-n 8` figure as a CI cost; `-n auto` buys about 4 percent on a runner. Acceptance: push CI green with the full suite collected and the job landing near 20 minutes. If that is judged too dear, RM-119 option (c) is the honest alternative and must be said IN `ci.yml` so nobody reads its green tick as suite coverage. | OPEN | - |
+| R217-U2 | tools-nonascii-residue | OPEN, chunked out of R217, two disjoint files: `tools/extract_panels.py` (189 non-ASCII bytes of 11094) and `tools/rc_facts.py` (10 of 10139). Both host-only, neither shipped. **`tools/p3_ascii_sweep.py` (167 bytes) is EXEMPT by the operator's own instruction** - that residue is the sweeper's own inventory of the glyphs it hunts, so stripping it breaks the tool; any sweep must carve it out explicitly rather than discover this by regression. Root cause on record in the note: glyphs already on disk in files nobody had edited since the retro-purge were never seen by it. | OPEN | - |
 
 ## Older findings - relocated 2026-07-28
 
-R205 / R206 / R207 findings now live in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
+R205 / R206 / R207 / R216 findings now live in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
 
 **Why, because this WILL recur:** the director context caps this file with
 `cap_bytes_head_tail(..., PLAN_CTX_CAP=24000, PLAN_CTX_HEAD=8000)`, so only the
@@ -680,99 +683,63 @@ row itself barely moves. R216 crossed the line at 16087 bytes from EOF, missing 
 window by 87 bytes. **The fix is to relocate old findings blocks, never to shrink the
 new row or trim the guard.** Budget about two to three cycles per relocation.
 
-## R216 findings - 2026-07-28 - the override looked for drift in the wrong place
+**R217 changed the relocation from a periodic chore into a steady state.** Budgeting
+"two to three cycles per relocation" is still a countdown to the same failure; the
+distance from the newest row to EOF is just the total size of the findings blocks
+sitting after the rows, so the stable rule is to keep exactly ONE findings block at
+the tail. R217 relocated R216's block (5509 bytes) at the same time it appended its
+own, which put the newest row at about 5000 bytes from EOF instead of 10696. Do the
+same every cycle: relocate the previous cycle's findings block verbatim as you append
+yours. The newest row then never drifts, and the director keeps seeing the most
+recent findings because the block it can read is always the newest one.
 
-The directive came wrapped in a STALE-GROUNDING executor override: re-read ROADMAP.md
-before trusting the from-digest premise that RM-121 item 3 sub-item 4 is NEXT. I did.
-**The premise was TRUE** - `ROADMAP.md:42` said it verbatim.
+## R217 findings - 2026-07-28 - the notes were half already-done, and the trap was a header
 
-**The stale artifact was not the digest. It was ROADMAP.md.**
+**The override fired correctly and the premise held.** Cycles 13 through 19 kept
+ordering units that were already on disk; this one did not. `ROADMAP.md:42` carries
+the sentence the digest attributed to it, word for word, and both desktop sources
+exist. The re-read still earned its keep - it is one Read, and it is the only thing
+standing between a stale digest and a wasted cycle.
 
-The override is built on the assumption that a digest drifts away from the tree, so it
-asks exactly one question: does the file still say what the digest claims? It has no
-question for the case where the file agrees and both are wrong. Two sources agreeing is
-one premise, not two.
+### The deliverable was the QA, not the extraction
 
-The cheapest possible check closed it: **run the thing the row says is broken, before
-fixing it.** `pytest tests/ agents/daemon_slayer/tests/ -n 8 --dist loadfile` -
-23849 passed, 0 failed, 132s. Five of the six failures died in `cd0f115d` three hours
-AFTER the desktop note that seeded the row was written; the sixth went with the RM-100
-asyncio consolidation. The row was obsolete before it was ever scheduled.
+RM-121's own row warns that "a row marked STILL OPEN without a cited empty search
+manufactures work that is already done", and these two notes proved it: **5 of 11
+claims were dead on arrival.** The `wakeup_prune` claim is the sharpest example - the
+note says 12 sessions are invisible, `--check` wrongly reports compliant, and the
+file has bloated to 61KB. Measured: `--check` exits 0, `WAKEUP_NOTES.md` is 10759
+bytes, and it holds exactly three session headings, which is the keep-3 prune having
+visibly run. `2f35163d` fixed SESSION_RE by giving it a `\d{4}-\d{2}-\d{2}`
+alternative. Same shape for the `GRADE_LABEL` em-dashes (already spaced hyphens) and
+the `data/ratings/*.json` backfill queued behind them - 0 of 4 files carry a dash to
+backfill, so that unit was never work at all. **A note is a snapshot of a moment, and
+an operator note is no more current than an audit digest.** Every line of one gets
+the same re-probe an inherited premise gets.
 
-### The unit that was actually available
+### The trap was a header, and it was one line above the work
 
-`cd0f115d`'s own commit body:
+`random.txt`'s second half opens "UI/UX pass - session 2 (operator-present; continues
+2026-07-22b). Do NOT run headless." Directly beneath it sits a well-specified 6-item
+queue with named files, a priority order and a read-first list - which is exactly the
+shape a headless executor is built to consume. **The disqualifying instruction was
+the header, not the content, and nothing in the content repeats it.** It is filed as
+an operator-present lane with the prohibition restated inside the row, so the next
+director reads the fence rather than the queue.
 
-> Swept every other subTest call site in both suites: the remaining ones pass only
-> primitives and need no change, but any future hostile-input matrix is one
-> non-primitive away from the same `-n`-only failure.
+### What was chunked out rather than built
 
-That diagnoses the residual risk correctly and then answers it with prose - across 463
-call sites in 100 files, in a defect class **a serial run cannot observe by
-construction** (no execnet channel serially, so the failure does not exist to be seen).
-An eye-sweep is the weakest available instrument for a defect whose defining property is
-invisibility in the default run.
-
-Shipped: a repo-root `conftest.py` that validates every `subTest` kwarg against
-execnet's OWN `dumps` at call time. Repo-root because `tests/conftest.py` cannot reach
-`agents/daemon_slayer/tests/`, which has no conftest and held one of the five instances.
-
-### Enumeration, mechanized rather than asserted
-
-The guard IS the probe. Installed, full dual suite re-run: **23861 passed, 0 failed** -
-exactly +12 tests / +17 subtests over baseline, which is the new file to the unit, so
-**0 additional instances repo-wide**. Disposition: 5 FIXED (`cd0f115d`), 458 CLEAN and
-now machine-proven instead of eye-proven, 0 OUT-OF-SCOPE. `cd0f115d`'s sweep was
-CORRECT; the value delivered is that it is no longer a claim.
-
-### Two things the build turned up that the directive did not ask for
-
-- `tests/test_aram_action_rule.py` asserted in a docstring that `object()` "(or a
-  `set()`)" raises `DumpError`. Probed directly: **sets and frozensets serialize fine**;
-  the containers recurse, so `[object()]` fails and `{1, 2}` does not. Never
-  load-bearing - no test passed a set - but exactly the remembered-not-measured detail
-  that sends the next reader rewriting working code. The grammar is now pinned by a test
-  instead of restated in a docstring. **If a fact matters enough to write down twice,
-  assert it.**
-- **Reach limit, recorded not papered over:** a rootdir conftest only loads when pytest
-  runs from the repo root, so a DS-dir invocation bypasses the guard. NOT closed with a
-  second conftest under `agents/daemon_slayer/tests/` - that path mirrors into
-  `Share/src/`, and `Share/` runs standalone (RM-112) where `tests._subtest_channel_guard`
-  does not exist, so the mirror would import a missing module and break a clean package.
-  Already fenced by an unrelated rule (DS-dir runs produce 13 CWD failures). Written into
-  the module docstring so nobody "fixes" it into a Share breakage.
+The directive scoped this cycle to docs, roadmap and backlog. Two code units fell
+out and are filed as OPEN rows on disjoint file sets: R217-U1 (`ci.yml`, the RM-119
+RC-half promotion the operator has explicitly authorized, with its measured 19m42s
+runner price) and R217-U2 (`tools/extract_panels.py` + `tools/rc_facts.py`, with
+`tools/p3_ascii_sweep.py` carved out by the operator's own exemption). Both carry
+their acceptance criteria and their traps in the row, so neither needs the notes
+re-read to execute.
 
 ### Carry-forward
 
-Unchanged from LEDGER 1092 and still unclaimed: the **16-instance
-whole-file-rewrite-under-a-narrowed-work-plan class**, with a live DS-consumer blast
-radius. Schedule it before someone runs a narrowed regen by hand.
-
-`ROADMAP.md` is at 91 percent of its 81920-byte doc budget and was ALREADY breaching at
-HEAD (73178 bytes) - reported, not silenced. This session's ROADMAP edit was compressed
-and the detail carried in LEDGER 1093, which is where CLAUDE.md says it belongs.
-
-### The docs-guards red this cycle caused, and why it is structural
-
-Pushing R216's row turned `docs-guards` RED on
-`test_real_orchestration_plan_newest_row_survives`. Not a flake and not the test
-being wrong - a real regression, caught exactly where it should be.
-
-The director reads this file through
-`cap_bytes_head_tail(..., PLAN_CTX_CAP=24000, PLAN_CTX_HEAD=8000)`, so it sees the
-first 8000 bytes and the LAST 16000. R216's row landed **16087 bytes from EOF - it
-missed the window by 87 bytes.**
-
-The mechanism is arithmetic, not bad luck. Every cycle appends a row in the middle
-and a findings block at the END, so the newest row is pushed roughly one
-findings-block further from EOF each time while barely moving itself. R215 sat at
-about 13500; R216 at 16087; R217 would have been near 20000. **It was going to fail
-every cycle from here, and it happened to break on the cycle whose whole subject is
-gates that fire late.**
-
-Fixed by relocating R205 / R206 / R207 findings to
-`docs/ORCHESTRATION_PLAN_HISTORY.md` (verbatim, nothing edited), which puts the
-newest row at 6632 from EOF. **The correct lever is relocating old findings - never
-shrinking the new row and never relaxing the guard.** Budget two to three cycles per
-relocation. `tools/md_guard_selector.py` reproduces the CI job locally; note its
-output is CRLF, so pipe through `tr -d '\r'` before `xargs`.
+The RM-119 ROADMAP row was measurably stale in one clause - it still says ZERO DS
+test files are collected on push, and `ci.yml:322` has run the DS suite in the
+`check:` job since. Corrected this cycle. Worth noticing that the stale clause and
+the note asking for the follow-on work were both written by people who were right at
+the time; the row aged, the note did not know it had.
