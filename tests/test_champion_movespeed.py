@@ -17,7 +17,10 @@ ASCII only (repo hard rule). No em-dashes.
 """
 from __future__ import annotations
 
+import json
 import math
+from collections import Counter
+from pathlib import Path
 
 import pytest
 
@@ -237,3 +240,216 @@ class TestDistanceFracPerS:
         assert cms.distance_frac_per_s(345.0, map_extent=0.0) == 0.0
         assert cms.distance_frac_per_s(345.0, map_extent=-5.0) == 0.0
         assert cms.distance_frac_per_s(345.0, map_extent=None) == 0.0
+
+
+# -- roster distribution, read OFF DISK ---------------------------------------
+#
+# The mirror's shape used to be asserted only in prose (the module docstring
+# claimed _FALLBACK_MS was "the most common base MS", which was FALSE - 335 is
+# the mode with 42 champions; 345 is only fourth with 28). These helpers read
+# the same file the module reads, so the shape is machine-checked instead.
+# Never hardcode a roster dict here - read the contract off disk.
+
+def _roster_rows():
+    """(ddragon_key, entry) rows from the champion mirror the module reads."""
+    raw = json.loads(cms._CHAMPS_PATH.read_text(encoding="utf-8"))
+    data = raw.get("data", raw)
+    return sorted(data.items())
+
+
+def _roster_movespeeds():
+    return [float(e["stats"]["movespeed"]) for _k, e in _roster_rows()]
+
+
+def _movespeed_histogram():
+    return Counter(_roster_movespeeds())
+
+
+def _modal_movespeed():
+    """The single most common base MS. Asserts uniqueness so a future patch
+    that creates a tie fails loudly rather than picking an arbitrary winner."""
+    hist = _movespeed_histogram()
+    ranked = hist.most_common()
+    assert len(ranked) > 1, "degenerate roster: only one distinct movespeed"
+    assert ranked[0][1] > ranked[1][1], f"modal base MS is tied: {ranked[:3]}"
+    return ranked[0][0]
+
+
+class TestRosterDistributionCharacterization:
+    """Characterization pins on data/meta/ddragon_champions.json. A DDragon
+    patch refresh may legitimately move these numbers - update them from the
+    mirror, do not delete the pin."""
+
+    def test_roster_size(self):
+        rows = _roster_rows()
+        assert len(rows) == 173
+
+    def test_every_champion_has_a_positive_movespeed(self):
+        offenders = []
+        for key, entry in _roster_rows():
+            ms = (entry.get("stats") or {}).get("movespeed")
+            if not isinstance(ms, (int, float)) or isinstance(ms, bool) or ms <= 0:
+                offenders.append((key, ms))
+        assert offenders == [], f"champions with missing/non-positive MS: {offenders}"
+
+    def test_observed_range(self):
+        speeds = _roster_movespeeds()
+        assert min(speeds) == 315.0  # Rell
+        assert max(speeds) == 355.0  # Master Yi
+
+    def test_modal_movespeed_is_335_not_the_fallback(self):
+        hist = _movespeed_histogram()
+        assert _modal_movespeed() == 335.0
+        assert hist[335.0] == 42
+        # The claim the module docstring used to make, pinned as false:
+        assert hist[cms._FALLBACK_MS] < hist[335.0]
+
+    def test_full_histogram(self):
+        assert dict(_movespeed_histogram()) == {
+            315.0: 1,
+            325.0: 19,
+            330.0: 38,
+            335.0: 42,
+            340.0: 37,
+            345.0: 28,
+            350.0: 7,
+            355.0: 1,
+        }
+
+
+class TestFallbackConsistentWithTheRoster:
+    """_FALLBACK_MS is a live constant (core/mia_reachability.py:165 reaches it
+    whenever a track carries no champion). Every factual claim the module makes
+    about it must be checkable against the mirror."""
+
+    def test_fallback_lies_inside_the_observed_range(self):
+        speeds = _roster_movespeeds()
+        assert min(speeds) <= cms._FALLBACK_MS <= max(speeds)
+
+    def test_fallback_is_conservative_not_modal(self):
+        # "Conservative for reachability" means the ring must not UNDER-reach:
+        # the fallback should sit at or above most of the roster. Measured
+        # 2026-07-28: 165 of 173 champions (95.4 pct) are at or below 345.
+        speeds = _roster_movespeeds()
+        covered = sum(1 for s in speeds if s <= cms._FALLBACK_MS)
+        assert covered / len(speeds) >= 0.90, (
+            f"_FALLBACK_MS {cms._FALLBACK_MS} covers only {covered}/{len(speeds)} "
+            "of the roster - it is no longer conservative for reachability"
+        )
+        assert cms._FALLBACK_MS >= _modal_movespeed()
+
+    def test_module_text_makes_no_unchecked_modality_claim(self):
+        """THE DEFECT CLASS: a hardcoded live constant whose comment justifies
+        it with a factual claim about data on disk that nobody checks. If the
+        module says the fallback is the most common base MS, it must BE the
+        most common base MS."""
+        src = Path(cms.__file__).read_text(encoding="utf-8")
+        phrases = ("most common", "most frequent", "commonest", "modal ")
+        claims = [
+            ln.strip()
+            for ln in src.splitlines()
+            if any(p in ln.casefold() for p in phrases)
+        ]
+        if not claims:
+            return  # corrected prose makes no modality claim - nothing to check
+        assert cms._FALLBACK_MS == _modal_movespeed(), (
+            "module text claims the fallback is the most common base MS, but "
+            f"the mirror's mode is {_modal_movespeed()} and _FALLBACK_MS is "
+            f"{cms._FALLBACK_MS}. Offending lines: {claims}"
+        )
+
+
+class TestRosterTotalCoverage:
+    """Every champion in the mirror must resolve from BOTH the DDragon id key
+    and the display name, to the same value, without touching the fallback.
+    This is the test that catches a mirror regression or a name-normalization
+    break ("Nunu & Willump", "Kha'Zix", "Wukong"/"MonkeyKing", "Renata Glasc").
+    """
+
+    def test_all_champions_resolve_from_id_and_name_without_fallback(
+        self, monkeypatch
+    ):
+        # Sentinel fallback: a champion whose real base MS is 345.0 would be
+        # indistinguishable from a fallthrough under the shipped constant.
+        sentinel = -1.0
+        monkeypatch.setattr(cms, "_FALLBACK_MS", sentinel)
+        cms._reset_caches()
+
+        failures = []
+        for key, entry in _roster_rows():
+            want = float(entry["stats"]["movespeed"])
+            for form in (key, entry.get("id"), entry.get("name")):
+                if not isinstance(form, str):
+                    failures.append((key, form, "non-string form in mirror"))
+                    continue
+                got = cms.base_ms(form)
+                if got == sentinel:
+                    failures.append((key, form, "FELL THROUGH to _FALLBACK_MS"))
+                elif got != want:
+                    failures.append((key, form, f"got {got}, want {want}"))
+        assert failures == [], f"{len(failures)} champion lookups broke: {failures[:20]}"
+
+    def test_tricky_display_names_resolve_to_the_mirror_value(self):
+        by_name = {e["name"]: float(e["stats"]["movespeed"]) for _k, e in _roster_rows()}
+        for name in (
+            "Nunu & Willump",
+            "Kha'Zix",
+            "Wukong",
+            "Renata Glasc",
+            "Cho'Gath",
+            "Dr. Mundo",
+            "Bel'Veth",
+        ):
+            assert name in by_name, f"mirror no longer carries {name!r}"
+            assert cms.base_ms(name) == by_name[name]
+
+    def test_display_name_and_ddragon_key_agree(self):
+        # Wukong is the canonical key/name divergence (key MonkeyKing).
+        assert cms.base_ms("Wukong") == cms.base_ms("MonkeyKing")
+        assert cms.base_ms("Nunu & Willump") == cms.base_ms("Nunu")
+
+
+class TestRosterPathNeverRaises:
+    """Fail-soft contract: nothing added above may make the module raise."""
+
+    def test_mangled_roster_forms_never_raise(self):
+        for _key, entry in _roster_rows():
+            name = entry["name"]
+            for form in (
+                name,
+                name.upper(),
+                name.lower(),
+                f"  {name}  ",
+                name.replace(" ", ""),
+                name + "\x00",
+                name * 3,
+            ):
+                out = cms.base_ms(form)
+                assert isinstance(out, float)
+                assert out > 0.0
+
+    def test_adversarial_inputs_never_raise(self):
+        class _Explosive:
+            def __str__(self):
+                raise RuntimeError("boom")
+
+            def __repr__(self):
+                raise RuntimeError("boom")
+
+        def _bad_gen():
+            yield 1001
+            raise RuntimeError("boom")
+
+        for bad in (None, 0, -1, 3.5, b"Aatrox", object(), _Explosive(), [[]], {1: 2}):
+            assert isinstance(cms.base_ms(bad), float)
+            assert isinstance(cms.item_ms(bad), dict)
+            assert isinstance(cms.est_ms(bad, bad), float)
+            assert isinstance(cms.distance_frac_per_s(bad), float)
+
+        assert cms.item_ms(_bad_gen()) == {"flat": 0.0, "pct": 0.0}
+        assert cms.est_ms("Aatrox", _bad_gen()) > 0.0
+
+    def test_fallback_still_reachable_and_positive(self):
+        # The shipped constant is unchanged by this slice.
+        assert cms._FALLBACK_MS == 345.0
+        assert cms.base_ms("DefinitelyNotAChampion") == 345.0
