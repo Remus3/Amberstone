@@ -22,9 +22,11 @@ Full detail in `docs/LEDGER.md` 1090. Commit `3015bb79`.
   (`:has()`-scoped, overlay shell excluded) and a 320px cap, replacing the
   implicit auto-placed row that `web/index.html:2211` had wrongly claimed was
   already pinned by this stylesheet.
-- 9 tests, all RED first: 5 driving the real module in node with a stubbed
-  `globalThis.fetch`, 3 static class guards, 1 reading COMPUTED style off the
-  real page so a mis-parsed `:has()` fails in CI, not in a live game.
+- 9 tests, 6 RED before the fix (the verifier caught me writing "all 9" in the
+  commit body - the other three are pins and proofs, green by construction):
+  5 driving the real module in node with a stubbed `globalThis.fetch`, 3 static
+  class guards, 1 reading COMPUTED style off the real page so a mis-parsed
+  `:has()` fails in CI, not in a live game.
 
 ## The thing worth carrying forward
 
