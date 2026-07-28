@@ -63,6 +63,17 @@ Operator has asked for it; it was deferred only to wrap this session cleanly.
   `powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\loop\launch_loop.ps1" -Mode live`
   gemini recovered from a Google-side 503; if it 503s again the loop stops on
   its own and the relaunch is the whole fix.
+- **NEW FLAKE IN THE PUSH GATE: `tests/snapshot_panels/test_home_view.py::
+  test_home_week_pool_rows`.** Failed once on CI with
+  `playwright TimeoutError: Page.wait_for_function: Timeout 10000ms exceeded`
+  (412 passed, 1 failed), and PASSED on an immediate re-run of the same commit,
+  so it is timing and not a regression. Suspicion worth testing rather than
+  assuming: the `check` job got ~3 minutes heavier when the DS suite landed, and
+  a 10s Playwright wait is the first thing that starves under load. The DDragon
+  `FileNotFoundError` lines in that step are unrelated noise - those assets are
+  a gitignored local mirror and never exist on a runner. If it recurs, raise the
+  wait or make it wait on a condition rather than a fixed 10s.
+
 - **Cloud scheduled routines commit to main ungated** - no local hook sees them
   and a `.md`-only commit skips CI. R207 removed the reports-dir hygiene
   exemption, so that one class is now caught; the general shape is not.
