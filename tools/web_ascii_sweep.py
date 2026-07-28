@@ -205,6 +205,26 @@ def _scan_string(text: str, i: int, quote: str) -> int:
     return n
 
 
+def _scan_comment(text: str, i: int) -> Optional[int]:
+    """Index just past the JS comment opening at `i`, or None if `i` opens none.
+
+    Shared by the top-level scanner (which records the span) and the `${}`
+    scanner (which only needs to step over it), so the two can never drift on
+    what counts as a comment open.
+    """
+    nxt = text[i + 1:i + 2]
+    if nxt == "/":
+        n = len(text)
+        j = i + 2
+        while j < n and text[j] not in "\n\r":
+            j += 1
+        return j
+    if nxt == "*":
+        end = text.find("*/", i + 2)
+        return len(text) if end < 0 else end + 2
+    return None
+
+
 def _scan_template(text: str, i: int) -> int:
     n = len(text)
     j = i + 1
@@ -223,20 +243,40 @@ def _scan_template(text: str, i: int) -> int:
 
 
 def _scan_template_subst(text: str, i: int) -> int:
-    """Index just past the `}` closing the `${` substitution opening at `i`."""
+    """Index just past the `}` closing the `${` substitution opening at `i`.
+
+    The interior is JS CODE, not template text, so a quote character can sit
+    outside any string - inside a regex literal or inside a comment. Stepping
+    over those as units is not a nicety: miss one and the quote reads as a
+    string open, the substitution never finds its `}`, the enclosing template
+    swallows the rest of the file, and every comment past that point classifies
+    LIVE and is silently never swept. `/"/g` in an attribute-escaping
+    `.replace()` blinded three panels that way.
+    """
     n = len(text)
     j = i + 1
     depth = 1
+    prev = ""
+    prev_word = ""
     while j < n:
         ch = text[j]
+        if ch == "/":
+            end = _scan_comment(text, j)
+            if end is None and _regex_may_start(prev, prev_word):
+                end = _scan_regex(text, j)
+            j = j + 1 if end is None else end
+            prev, prev_word = "/", ""
+            continue
         if ch == "\\":
             j += 2
             continue
         if ch in "\"'":
             j = _scan_string(text, j, ch)
+            prev, prev_word = ch, ""
             continue
         if ch == "`":
             j = _scan_template(text, j)
+            prev, prev_word = "`", ""
             continue
         if ch == "{":
             depth += 1
@@ -244,6 +284,9 @@ def _scan_template_subst(text: str, i: int) -> int:
             depth -= 1
             if depth == 0:
                 return j + 1
+        if not ch.isspace():
+            prev = ch
+            prev_word = (prev_word + ch) if _is_ident(ch) else ""
         j += 1
     return n
 
@@ -301,23 +344,13 @@ def _scan_js(text: str) -> list[Span]:
     prev_word = ""
     while i < n:
         ch = text[i]
-        nxt = text[i + 1] if i + 1 < n else ""
-        if ch == "/" and nxt == "/":
-            j = i + 2
-            while j < n and text[j] not in "\n\r":
-                j += 1
-            spans.append(Span(live_start, i, LIVE))
-            spans.append(Span(i, j, COMMENT))
-            live_start = i = j
-            continue
-        if ch == "/" and nxt == "*":
-            end = text.find("*/", i + 2)
-            j = n if end < 0 else end + 2
-            spans.append(Span(live_start, i, LIVE))
-            spans.append(Span(i, j, COMMENT))
-            live_start = i = j
-            continue
         if ch == "/":
+            j = _scan_comment(text, i)
+            if j is not None:
+                spans.append(Span(live_start, i, LIVE))
+                spans.append(Span(i, j, COMMENT))
+                live_start = i = j
+                continue
             if _regex_may_start(prev, prev_word):
                 j = _scan_regex(text, i)
                 if j is not None:

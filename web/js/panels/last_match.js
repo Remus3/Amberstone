@@ -1566,7 +1566,7 @@ function _setEmptyState(errMsg) {
   });
 }
 
-/* ── helpers ───────────────────────────────────────────────────────── */
+/* -- helpers --------------------------------------------------------- */
 
 function _fmtDuration(s) {
   const t = Number(s) || 0;
