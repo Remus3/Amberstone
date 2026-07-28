@@ -345,6 +345,18 @@ imputing the natural 0 for every dropped row. Per role the train split holds
 of which `objective_participation` emits 2091 win and 1813 loss, so the
 imputed mean is `mean * n / 2094` on each side:
 
+> **The DENOMINATOR is unsettled; the DIRECTION is not.** Two independent
+> passes on 2026-07-28 derived the universe differently and got different
+> magnitudes. This table takes 2094 per side from the `absent 0/0` criteria,
+> implying 3 win / 281 loss dropped. The row's own `absent_win` / `absent_loss`
+> fields say **6 / 422**, which implies a universe of 2097 and gives larger
+> factors (BOT 1.51x, MID 1.81x, TOP 1.62x, SUPPORT 2.23x). One of the two
+> readings misinterprets a field - most likely whether `absent_*` counts the
+> train split only or train plus holdout. **Do not quote either magnitude as
+> settled** until that is resolved against `tools/mine_event_patterns.py`.
+> Every reading agrees on the sign, on JUNGLE flipping, and on the measured
+> values being a floor - which is all the correction needed to be right about.
+
 | role | delta as measured | delta with dropped rows at 0 | direction |
 |---|---|---|---|
 | BOT | +0.1085 | +0.1406 | deflated 1.30x |
