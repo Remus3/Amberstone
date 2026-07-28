@@ -19,8 +19,14 @@ Data sources (local mirrors, read lazily on first call, cached):
     PercentMovementSpeedMod (unit-fraction, 0.04 == +4%).
 
 Fallbacks (documented, conservative):
-  - Unknown / None / non-string champion -> 345.0 (the most common base MS;
-    conservative for reachability - most roaming champs are 335-355).
+  - Unknown / None / non-string champion -> 345.0. Conservative for
+    reachability means the ring must not UNDER-reach, so the fallback sits
+    high in the roster, not at its centre: measured against the mirror
+    2026-07-28, 165 of 173 champions (95.4 pct) have a base MS at or below
+    345, and only 8 are faster. The roster spans 315 (Rell) to 355 (Master
+    Yi) and its MODE is 335 (42 champions) - 345 is deliberately NOT the
+    mode. Machine-checked by tests/test_champion_movespeed.py
+    TestFallbackConsistentWithTheRoster, which reads the mirror off disk.
   - Unknown item / missing or corrupt data file -> zero MS contribution.
   - distance_frac_per_s on bad input -> 0.0 (an MIA ring that never grows is
     the safe degrade; SR map extent ~14800 units per core/vision_tracker.py:55).
@@ -42,6 +48,8 @@ _CHAMPS_PATH = _META_DIR / "ddragon_champions.json"
 _ITEMS_PATH = _META_DIR / "ddragon_items.json"
 
 # Conservative default when the champion is unknown (see module docstring).
+# High-in-roster on purpose: covers 165 of 173 champions, so an MIA ring built
+# on it over-reaches rather than under-reaches. Not the roster mode (335).
 _FALLBACK_MS = 345.0
 
 # SR map extent in game units (core/vision_tracker.py:55).
@@ -164,7 +172,8 @@ def base_ms(champion) -> float:
     """Base movement speed for a champion. Accepts the DDragon id
     ("MissFortune"), the display name ("Miss Fortune"), apostrophe variants
     ("Kha'Zix" / "Khazix") and any casing. Unknown / None / non-string ->
-    345.0 conservative fallback. Never raises."""
+    the 345.0 conservative fallback (covers 165 of 173 champions; see the
+    module docstring). Never raises."""
     try:
         if not isinstance(champion, str):
             return _FALLBACK_MS
