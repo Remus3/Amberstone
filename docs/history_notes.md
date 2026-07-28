@@ -119,6 +119,47 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-28i - R218 champ-select shadow flip gate. RM-12 named a gate that was never built.
+
+Gemini-loop cycle 25. Full detail in `docs/LEDGER.md` 1097. Commits `bb746286` (work)
++ `678d4659` (sync). Section 4b Lane C. One new read-only host tool + its test: no
+engine, no ENGINE bump, no DS path, no Share mirror, no restart, no route or panel.
+
+- **The defect class was structural, not a bug.** A shadow lane writes BOTH the native
+  and the deterministic column so the two can be compared later. Ten lanes do that.
+  Eight have a `tools/*report*.py`; `augment_shadow` and `anvil_shadow` carry an
+  in-module `summarize_agreement`. `core/champ_select_shadow.py` had neither, which
+  made it the one live-wired lane whose flip readiness could not be measured at all.
+- **`ROADMAP.md:146` had been citing an instrument that did not exist.** RM-12's clause
+  "the champ-select brief Haiku flip after shadow-log accrual" reads as though someone
+  need only check the number. There was no number. LEDGER item 500 shipped the writer
+  in 2026-06 and its own NEXT jumped straight to the FLIP, so the intermediate gate was
+  never filed anywhere - not ROADMAP, not BACKLOG, not the plan. It took a `grep` for
+  `champ_select_shadow` across all four to establish that: zero hits.
+- **Non-ARAM rows are gated out of the `swap` column, and that is the whole point.**
+  Off-bench, both the native and the deterministic side say nothing. Scoring that
+  silence banks a free KEEP/KEEP agreement on a row carrying no signal, and enough of
+  them walk the rate to the 0.70 flip gate without a single real agreement underneath.
+  Pinned by a tested invariant: `coverage.non_aram == swap.gated_out_non_aram`.
+- **The ARAM sibling's substring matcher is wrong and I did not copy it.**
+  `tools/aram_shadow_report.py` classifies by raw substring, so "ban" matches inside
+  "banner" and "lock" inside "locked". The degraded marker here is literally
+  `no champion locked`. Token-boundary matching instead. Not swept into the sibling -
+  that is its own slice with its own evidence, and this one had no failing case to cite.
+- **`_FIELDS` imports `core.champ_select_shadow._ADVICE_KEYS` rather than restating it.**
+  A restated tuple survives a writer-side rename and silently zeroes a column; an
+  import fails loudly. Same reasoning as the contract-test-reads-the-contract rule.
+- The directive tagged its own premise `[UNVERIFIED]` and both halves held - plan has
+  zero WIP rows, Section 4b is genuinely unfinished. Third real unit in a row.
+- Verifier CONFIRM 9/9 before merge. RC 13801 passed / 106 skipped / 477 subtests
+  (13766 baseline + 35 new). CI green on both SHAs.
+- **NEXT / owed:** the gate exists, the log does not. `data/champ_select_shadow.jsonl`
+  is empty and the report reads `state=awaiting_accrual` below MIN_SAMPLE 20. Nothing
+  further to build on this lane until real champ-select rounds accrue - the RM-12 clause
+  cannot be argued in either direction before then. Do NOT re-pitch the report.
+
+---
+
 # 2026-07-28h - R217-U2 tools ASCII sweep. The decorative glyphs were fine; two of them were data.
 
 Gemini-loop cycle 24. Full detail in `docs/LEDGER.md` 1096. Commits `84535bdf` (work)

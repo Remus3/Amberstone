@@ -6,6 +6,32 @@
 
 ---
 
+# 2026-07-28m - R222 RM-125. The tool I shipped in slice A had a bug, and slice B found it.
+
+**Cycle 29, gemini-loop. Tier-1. ENGINE-IMPACT NONE - no DS math, no schema, no served path, no `ENGINE_VERSION`, no `:8893` bounce, no RC restart.** HEAD `c7900b8c` -> `4ef1a805`. RC 13935 passed / 106 skipped / 1342 subtests, fresh.
+
+**The premise held for once, and I checked before dispatching.** The directive tagged its own headline claim `[UNVERIFIED]`. A whole-file byte scan read **3153** non-ASCII chars across **31** `.js`/`.css`/`.html` files against the 3154 filed in ROADMAP prose - off by one, substantially correct - so the unit was real rather than a no-op. `tools/p3_ascii_sweep.py` re-read and confirmed `ast`-based Python-only, which is why it has never once looked at `web/`.
+
+**The directive's 4-agent parallel block was REFUSED and the cycle ran SERIALIZED.** The executor override flagged colliding write sets. It was right for a second reason it did not give: slice A is a genuine PREREQUISITE, not a peer - its tokeniser DEFINES the comment/live partition that slice B censuses, so B could not have run first or concurrently and produced a correct answer.
+
+**Slice A** shipped `tools/web_ascii_sweep.py` (JS `//` + `/* */` with string/template/regex awareness, CSS `/* */`, HTML `<!-- -->` only), TDD RED 2 failed / 34 passed -> GREEN 36, sweeping 2833 comment chars for 3153 -> 320. The false-positive side was MEASURED, not claimed: the verifier built two deliberately broken copies of the sweeper and watched the escaped-quote pin and the CSS-string pin each go red. The live half was proven untouched two independent ways - the verifier wrote its OWN tokeniser before reading the slice's, sentinel-replaced every comment span in both trees (0 of 28 files differed outside a comment), then eyeballed all 253 changed lines.
+
+**Slice B is a docs slice that found a code bug, which is the shape worth remembering.** Its census showed the tool's 320 over-counts the RENDERED set - 59 were unreachable JS comment glyphs and 26 sit in `legacy_index.html`'s inline blocks - leaving **235** rendered chars across 16 files: STRIP-candidate-deferred 152, KEEP-deliberate-UI-glyph 52, **LOAD-BEARING 31**. Tracing why those 59 were unreachable is what exposed the defect.
+
+**Slice C, unplanned: `_scan_template_subst` had no regex-literal case.** The `.replace(/"/g, "&quot;")` attribute-escaping idiom inside a `${...}` opened a phantom string that ate the closing brace and backtick, and three template literals ran away. Failure direction is UNDER-sweep and that was measured, not assumed (shipped-only comment territory was 0 bytes in every file, so no live byte could ever have been stripped) - but `tests/test_web_comment_lines_ascii.py` was passing VACUOUSLY over those regions, which is the guard-reports-green-by-not-looking class. Repro RED 4 failed / 1 passed first; the fix extracts `_scan_comment` and reuses the existing `_regex_may_start` predicate rather than copying the regex-vs-division heuristic, and caught a second instance of the same blindness the audit missed. Residue 320 -> 261.
+
+**`_LIVE_HALF_DIGEST` is CIRCULAR across a tokeniser change and was not re-stamped blind.** The partition delta was proven gains-only (114 spans gained, 0 lost), the corrected classifier was run over BOTH trees to show byte-identical live halves for all 168 sources, and only then was the constant re-captured with its provenance comment rewritten to say what it now actually pins.
+
+**Two things that must survive into the next session:**
+1. **31 glyphs are LOAD-BEARING - a strip breaks BEHAVIOR, not looks.** `web/js/lib/items_index.js:62` carries `U+2192` as an alternation branch in the build-string split regex, and `web/js/panels/right_now.js:563-566` is a producer/matcher COUPLING where the three emitted glyphs are exactly the char class the next line's regex tests; the file's own comment at `:562` names the failure ("double DEFEAT"). Read `docs/RM125_web_live_glyph_adjudication.md` before touching one.
+2. **`web/legacy_index.html` is NOT dead** - the opposite of the brief's hypothesis. `dashboard/routes_static.py:23-41` serves it at `?ui=legacy` AND as the automatic fallback when `index.html` throws. Its glyphs are live pixels. It also holds a raw `U+0081` C1 control char in a `content:` value at `:951` - mojibake, not design.
+
+**Defect class closed, not just the directory.** Class = "non-ASCII in authored `.js`/`.css`/`.html`". Repo-wide byte scan found exactly ONE authored file outside `web/`: `tools/usage-mcp-server.js`, 218 -> 9, swept with the live-span text asserted byte-identical pre/post, and the guard widened to cover it. Everything else that scanned dirty is third-party (`data/meta_build` scraped pages, `.obsidian` vendored plugin) and is OUT-OF-SCOPE with reason in the commit body.
+
+**NEXT:** RM-125 stays OPEN for the 235 rendered chars ONLY, routed to RM-122 (operator-present, rendered-pixel judgement, headless-forbidden). Do NOT let a future directive re-open the comment half - it is done and machine-guarded.
+
+---
+
 # 2026-07-28k - R220 competitor lift. The directive's target was fenced, and the best find was ours.
 
 **Cycle 27, gemini-loop. Tier-0 docs-only. ENGINE-IMPACT NONE (repo + live DS both 1.262.0, no bounce, no Share sync).**
@@ -91,44 +117,3 @@ path, no Share mirror, no restart, no route or panel.
   relocated the RM-119 skip audit and compressed RM-113, landing at 77229 - below
   where it started, still over the 90 pct threshold. ~3500 bytes of relocation left,
   its own unit.
-
----
-
-# 2026-07-28i - R218 champ-select shadow flip gate. RM-12 named a gate that was never built.
-
-Gemini-loop cycle 25. Full detail in `docs/LEDGER.md` 1097. Commits `bb746286` (work)
-+ `678d4659` (sync). Section 4b Lane C. One new read-only host tool + its test: no
-engine, no ENGINE bump, no DS path, no Share mirror, no restart, no route or panel.
-
-- **The defect class was structural, not a bug.** A shadow lane writes BOTH the native
-  and the deterministic column so the two can be compared later. Ten lanes do that.
-  Eight have a `tools/*report*.py`; `augment_shadow` and `anvil_shadow` carry an
-  in-module `summarize_agreement`. `core/champ_select_shadow.py` had neither, which
-  made it the one live-wired lane whose flip readiness could not be measured at all.
-- **`ROADMAP.md:146` had been citing an instrument that did not exist.** RM-12's clause
-  "the champ-select brief Haiku flip after shadow-log accrual" reads as though someone
-  need only check the number. There was no number. LEDGER item 500 shipped the writer
-  in 2026-06 and its own NEXT jumped straight to the FLIP, so the intermediate gate was
-  never filed anywhere - not ROADMAP, not BACKLOG, not the plan. It took a `grep` for
-  `champ_select_shadow` across all four to establish that: zero hits.
-- **Non-ARAM rows are gated out of the `swap` column, and that is the whole point.**
-  Off-bench, both the native and the deterministic side say nothing. Scoring that
-  silence banks a free KEEP/KEEP agreement on a row carrying no signal, and enough of
-  them walk the rate to the 0.70 flip gate without a single real agreement underneath.
-  Pinned by a tested invariant: `coverage.non_aram == swap.gated_out_non_aram`.
-- **The ARAM sibling's substring matcher is wrong and I did not copy it.**
-  `tools/aram_shadow_report.py` classifies by raw substring, so "ban" matches inside
-  "banner" and "lock" inside "locked". The degraded marker here is literally
-  `no champion locked`. Token-boundary matching instead. Not swept into the sibling -
-  that is its own slice with its own evidence, and this one had no failing case to cite.
-- **`_FIELDS` imports `core.champ_select_shadow._ADVICE_KEYS` rather than restating it.**
-  A restated tuple survives a writer-side rename and silently zeroes a column; an
-  import fails loudly. Same reasoning as the contract-test-reads-the-contract rule.
-- The directive tagged its own premise `[UNVERIFIED]` and both halves held - plan has
-  zero WIP rows, Section 4b is genuinely unfinished. Third real unit in a row.
-- Verifier CONFIRM 9/9 before merge. RC 13801 passed / 106 skipped / 477 subtests
-  (13766 baseline + 35 new). CI green on both SHAs.
-- **NEXT / owed:** the gate exists, the log does not. `data/champ_select_shadow.jsonl`
-  is empty and the report reads `state=awaiting_accrual` below MIN_SAMPLE 20. Nothing
-  further to build on this lane until real champ-select rounds accrue - the RM-12 clause
-  cannot be argued in either direction before then. Do NOT re-pitch the report.
