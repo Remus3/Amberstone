@@ -2,7 +2,7 @@
 """RC2 Phase 5.1 - local-CV laning overrides over the fog model.
 
 PURPOSE
-    Workstream 1 step 2 of docs/research/RC2_COACHING_SPEC.md. The precomputed
+    Workstream 1 step 2 of docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md. The precomputed
     laning band (``core.precomputed_laning_coach.laning_band``) answers the
     STATIC "trade / hold / back off" matchup question, but the single most
     common REAL laning decision is dynamic and fully observable from local CV

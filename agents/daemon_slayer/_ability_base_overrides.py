@@ -1,11 +1,11 @@
 """A-03 / RM-81 - hand-authored corrections for STALE ability base damage.
 
 Context. The 2026-07-18 RM-81 characterization
-(``docs/research/DS_ABILITY_SHAPING_NOTES.md:445-621``) measured 75 stale
+(``docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:445-621``) measured 75 stale
 champions / 123 findings against the live wiki, then asked the only question
 that matters for a build engine: how many of them CHANGE A RANKED ITEM ORDER.
 The answer is six, tabulated verbatim at
-``docs/research/DS_ABILITY_SHAPING_NOTES.md:562-571``. This registry carries
+``docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:562-571``. This registry carries
 exactly those six and nothing else.
 
 Why a REGISTRY and not a re-extract. Every automated route reproduces the stale
@@ -135,7 +135,7 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             attribute="Magic Damage",
             stale=(80.0, 117.647059, 155.294118, 192.941176, 230.588235),
             corrected=_ramp(80.0, 220.0, 5),
-            source="docs/research/DS_ABILITY_SHAPING_NOTES.md:566",
+            source="docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:566",
             note="Obliterate: base 80 : 230.6 -> 80 : 220 (5 ranks); 4.6 pct drift, moves ranked item 2",
         ),
     ),
@@ -148,7 +148,7 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             attribute="Physical Damage",
             stale=(150.0, 250.0, 350.0),
             corrected=_ramp(150.0, 300.0, 3),
-            source="docs/research/DS_ABILITY_SHAPING_NOTES.md:567",
+            source="docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:567",
             note="The Call of the Pack: base 150 : 350 -> 150 : 300 (3 ranks); 14.3 pct drift, moves ranked item 3",
         ),
     ),
@@ -164,7 +164,7 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             attribute="Initial Rocket Magic Damage",
             stale=(40.0, 65.0, 90.0, 115.0, 140.0),
             corrected=_ramp(50.0, 150.0, 5),
-            source="docs/research/DS_ABILITY_SHAPING_NOTES.md:568",
+            source="docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:568",
             note="Hextech Micro-Rockets initial: base 40 : 140 -> 50 : 150 (5 ranks); 25.0 pct drift, moves ranked item 8; matches the CDragon W Damage block head",
         ),
     ),
@@ -177,7 +177,7 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             attribute="Magic Damage",
             stale=(50.0, 67.647059, 85.294118, 102.941176, 120.588235),
             corrected=_ramp(50.0, 110.0, 5),
-            source="docs/research/DS_ABILITY_SHAPING_NOTES.md:569",
+            source="docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:569",
             note="Arise!: base 50 : 120.6 -> 50 : 110 (5 ranks); 8.8 pct drift, moves ranked item 19",
         ),
     ),
@@ -190,7 +190,7 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             attribute="Magic Damage",
             stale=(17.0, 22.5, 28.0, 33.5, 39.0),
             corrected=_ramp(12.0, 20.0, 5),
-            source="docs/research/DS_ABILITY_SHAPING_NOTES.md:570",
+            source="docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:570",
             note="Void Swarm: base 17 : 39 -> 12 : 20 (5 ranks); 48.7 pct drift, moves ranked item 25",
         ),
     ),
@@ -203,7 +203,7 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             attribute="Magic Damage",
             stale=(60.0, 90.0, 120.0),
             corrected=_ramp(75.0, 175.0, 3),
-            source="docs/research/DS_ABILITY_SHAPING_NOTES.md:571",
+            source="docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:571",
             note="Spirit Rush: base 60 : 120 -> 75 : 175 (3 ranks); 45.8 pct drift, moves ranked item 37",
         ),
     ),

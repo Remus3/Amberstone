@@ -1,7 +1,7 @@
 # arch: pooled loopback HTTPS reuse + min-interval guard (RC2 P6.4 port-safety) | section=core | frozen=no
 """core/lcu_pool.py - port-safety primitives for loopback LCU + Live Client reads.
 
-RC2 Phase 6.4 (port-safety audit; docs/research/RC2_PORT_SAFETY_AUDIT.md).
+RC2 Phase 6.4 (port-safety audit; docs/_archive/2026-07-28-research-consolidation/RC2_PORT_SAFETY_AUDIT.md).
 Every LCU/:2999 reader today opens a NEW urllib connection per call with no
 keep-alive (IO timing map Findings B), so tightening any poll cadence
 multiplies ephemeral TCP+TLS handshakes and TIME_WAIT churn on loopback.

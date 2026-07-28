@@ -15,7 +15,7 @@ TASKS (fan out subagents; web research via WebSearch/WebFetch):
    C:\Users\Administrator\Desktop\research-20260716.md - NEVER into the repo (name-scrub
    rule; no competitor names in repo content or commit messages).
 
-OUTPUT: NEW files only, under docs/research/2026-07-16-*.md (one per task 1 and 2),
+OUTPUT: NEW files only, under docs/_archive/2026-07-28-research-consolidation/2026-07-16-*.md (one per task 1 and 2),
 cited (URL + access date), 7-bit ASCII, no em/en dashes. NO edits to existing files,
 NO engine/code changes, NO restarts, NO test-suite runs (Tier-0).
 

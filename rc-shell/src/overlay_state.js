@@ -330,7 +330,7 @@ function overlayStateFrom(saved) {
 }
 
 // --- RC2 Stage 4.1: DPI + resolution-aware overlay sizing --------------------
-// LIFT-C (docs/research/RC2_RESEARCH_overlay_sizing.md): a family-#2 compositor
+// LIFT-C (docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_overlay_sizing.md): a family-#2 compositor
 // overlay must SIZE itself against the measured display, not a hard 1920/100%
 // baseline, or it clips/shrinks at a non-1920 borderless res (the operator now
 // runs 2560x1440) or under 125%/150% Windows scaling (Overlay App F's documented

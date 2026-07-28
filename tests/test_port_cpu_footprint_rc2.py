@@ -8,7 +8,7 @@ drifts. The per-stage tests lock each lever in isolation; THIS file is the
 single consolidated guard that re-asserts every footprint invariant
 together so a future edit to any one lever cannot silently regress the
 aggregate footprint. Deliverable companion:
-docs/research/RC2_PORT_CPU_FOOTPRINT_VERIFICATION.md.
+docs/_archive/2026-07-28-research-consolidation/RC2_PORT_CPU_FOOTPRINT_VERIFICATION.md.
 
 Pure introspection - no sockets, no sleeps, no game required.
 """

@@ -246,7 +246,7 @@ def test_resolve_enemy_empty_inputs():
 # RC2 WS1 step 1 - hold/farm verdict band + even relabel (calibration)
 #
 # Grounded in ops/audit/HZ_HAIKU_CALL_INVENTORY.md:49-108 and
-# docs/research/RC2_COACHING_SPEC.md WS1 1.3 / 1.3a. The precompute verdict
+# docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md WS1 1.3 / 1.3a. The precompute verdict
 # vocabulary had NO hold/farm band and was back_off-biased; Haiku said "hold"
 # on 28% of ticks. These tests pin the new 5-band classifier and the even->hold
 # A-chip relabel BEFORE the implementation (TDD failing-first).
@@ -353,7 +353,7 @@ def test_hold_verdict_emits_hold_classifying_choice_a():
 # RC2 5.3 - ABC choices specificity uplift: the trigger field
 #
 # Each chip now names the live CONDITION the option assumes (the lookup key),
-# stamped onto CoachChoice.trigger. docs/research/RC2_COACHING_SPEC.md WS2 2.3:
+# stamped onto CoachChoice.trigger. docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md WS2 2.3:
 # "The trigger is already KNOWN at cell-resolution time - it is the lookup key.
 # Stamp it instead of discarding it." Rich (shadow precompute): enemy + mana +
 # cd + lvl. Pure + fail-soft (never raises on the coach hot path).
@@ -412,7 +412,7 @@ def test_precomputed_choices_trigger_reflects_no_ult():
 
 # --------------------------------------------------------------------------- #
 # RC2 5.4 - condition-change branching (WS2 second half): rebranch_when /
-# rebranch_to. docs/research/RC2_COACHING_SPEC.md WS2 2.2/2.3: each chip can
+# rebranch_to. docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md WS2 2.2/2.3: each chip can
 # pre-state "if this observable changes, switch to chip <key>". The pure
 # ``laning_rebranch`` is a truth table; ``precomputed_choices`` probes the
 # adjacent (ult-up / full-mana) cell from the SAME loaded payload (no engine

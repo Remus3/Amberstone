@@ -13,8 +13,8 @@ dashboard retirement - the 1920 Chrome dashboard at `:8888` is back in scope and
 fully redesigned onto the Hextech foundation; see `docs/RC2_REDESIGN_PLAN.md`. This
 doctrine remains authoritative for the IN-GAME overlay specifically.)
 
-Grounded in `docs/research/RC2_RESEARCH_in_match_overlay.md` (the 10 rules) +
-`docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md` (tiers / slot budget / arbitration)
+Grounded in `docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_in_match_overlay.md` (the 10 rules) +
+`docs/_archive/2026-07-28-research-consolidation/RC2_OVERLAY_CONDENSATION_SPEC.md` (tiers / slot budget / arbitration)
 + the greenlit Hextech palette + the 2026-06-21 design-director (Gemini) pass.
 
 ASCII only (repo hard rule). No em-dashes, en-dashes, or smart quotes. Functional

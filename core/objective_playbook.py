@@ -2,7 +2,7 @@
 """Deterministic mid/late-game objective playbook callout (RC2 P5.5, WS3).
 
 PURPOSE
-    docs/research/RC2_COACHING_SPEC.md Workstream 3. RC already has the objective
+    docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md Workstream 3. RC already has the objective
     SCHEDULE (``core.event_callouts.next_callouts`` - drake 5:00, herald 14:00,
     baron 20:00, elder) and the macro lead read (``core.lead_projection.
     project_lead`` - ahead / even / behind). The GAP is the deterministic
