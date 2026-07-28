@@ -6,6 +6,51 @@
 
 ---
 
+# 2026-07-28d - R215 MASTER cohort. The fix was blocked by a second defect nobody looked for.
+
+Gemini-loop cycle 20. RM-121 item 3 (`replay continue.txt`) sub-item 3.
+Full detail in `docs/LEDGER.md` 1092. Commits `baecb54b` (fix + live backfill) +
+`1f9b0f5e` (docs). Tier-1: no engine, no ENGINE bump, no DS path, no RC restart.
+
+The desktop note said MASTER was missing from `data/rank_baselines.json` and gave
+the logged root cause ("no accounts resolved - SKIPPED"). Both accurate. It was
+still not actionable, because the obvious remedy - rerun `--tiers MASTER` - would
+have written a file containing ONLY MASTER and deleted the other 30 cohorts. The
+tool rebuilt its payload from scratch and replaced the whole file, and gave no
+warning that a narrowed run was destructive.
+
+Three more defects fell out of the same read. The summary printed a leaked loop
+variable, so every row carried the same label. It also iterated bare tier names
+against `PLATINUM_I..IV` keys, so all 28 divisional cohorts were silently omitted
+and only the three apex rows ever printed. And a skipped cohort printed a line
+then returned exit 0 with no machine-detectable signal - **that one is why the gap
+was invisible, which is a different thing from why it happened.** Nothing
+downstream could distinguish a 31-cohort file from a 30-cohort one.
+
+The `masterleagues` endpoint was re-probed before assuming anything: 10000 entries
+with puuids. The original failure was transient, so the row had been recoverable
+the whole time. Backfilled live - 107 matches, 1070 rows - and the merge fix is
+proven against a pre-run backup rather than only by unit test: 30 -> 31 cohorts,
+nothing lost, all 30 prior cohorts byte-identical.
+
+CARRY-FORWARD, and it is the bigger half. The defect-class sweep AST-parsed 2550
+files for the leaked-loop-variable class (this was the only live instance repo-wide)
+and read 78 argparse-plus-whole-file-write tools at both sites for the clobber class.
+**16 confirmed instances beyond this one, deliberately not fixed here.** Worst is
+`tools/daemon_slayer_build_orders_generate.py:359`, where `--champion Ahri` destroys
+the other 172 champions' tables in a live DS build-reco consumer. Worse in kind are
+`core/build_order_precompute.py:722` and `core/build_order_variants.py:592`, whose
+`--champions` default is a SEED sample, so even a bare rerun with no flags truncates.
+Most deceptive is `tools/mine_event_patterns.py:330`, which records no role filter in
+its metadata - a `--role`-narrowed result is indistinguishable from a full run that
+found nothing, the same undetectability class as the skip defect above. Schedule this
+before someone runs a narrowed regen by hand.
+
+Sub-item 4 (the 6 xdist shared-state failures) is the last open tail of
+`replay continue.txt`; then `random.txt` + `roadmap work.txt`.
+
+---
+
 # 2026-07-28c - R214 survivorship sign. The number that was right for the wrong reason.
 
 Gemini-loop cycle 19. RM-121 item 3 (`replay continue.txt`) sub-items 1 and 2.
@@ -99,77 +144,3 @@ measurement so the stronger claim cannot be re-derived from them later.
 - Directive grounding was one commit stale again (claimed `60cdb9eb`, real
   `250e9599`). Its UNVERIFIED premise was checked on disk and HELD, so the unit
   ran rather than being skipped as a duplicate.
-
----
-
-# 2026-07-27k - README redesign shipped across all four surfaces. Implementation-only session.
-
-The drafting and auditing happened earlier; this session applied the staged
-package and verified it. Full detail in `docs/LEDGER.md` 1088. Commit `c7a36f14`.
-
-## Shipped
-
-- **All four README surfaces rebuilt in one commit** so the post-commit gist
-  sync published once: root `README.md`, the `docs/HEXCORE_offline.html` overlay,
-  `Share/README.md` (517 -> 201 lines), and `_README_TEMPLATE` in
-  `tools/gist_share_sync.py`.
-- **The Share test-posture contradiction is gone.** One file told it three
-  incompatible ways; the two stale statements are deleted, not reconciled. One
-  dated block survives: measured 2026-07-27 on a clean unzip, 8044 passed,
-  1 known standalone failure, 15 skipped, 4157 subtests, about 83 seconds.
-- **The overlay can no longer fork-lag the root README** - it is a 221-word
-  pointer card with no fact that changes, spliced by element id and measured in
-  a browser at one screen, no scroll.
-- **The gist "six archetypes" claim was removed, not corrected to seven.** The
-  template has no restamp mechanism for a count, so it must never carry one.
-
-## The rule worth keeping
-
-A fact may appear in hand prose only if it is durable, machine-restamped on that
-surface, or dated and owned by exactly ONE surface. Everything else is a pointer
-to the live source. Consequence, and the reason this was worth a session: **an
-ENGINE bump now touches zero hand prose on any of the four surfaces**, and a
-test-count change touches one line in one file.
-
-## Verified live, not assumed
-
-`ops/runtime/gist_sync_status.json` ok=true / 0 unpushed at a fresh timestamp,
-AND the live gist README refetched from its raw URL showing the new body with
-`ENGINE_VERSION 1.262.0 - data patch 16.14.1` substituted. The gate set:
-hexcore + gist tests 18 passed (`node --check` really ran), `ds_share_sync.py
---check` green, Share guards + drift guard 77 passed, the full live-derived
-docs-guards selection (50 modules) 1398 passed / 6 skipped, ruff + py_compile
-clean.
-
-## Then two operator-directed follow-ups, both shipped in the same session
-
-- **Machine codename scrubbed from the shipped extractors** (`fd67d819`). The
-  wiki stats + ability extractors and their sibling `cdragon_spell_extract` named
-  the development machine in module docstrings that ship inside Share.zip and,
-  for the two wiki tools, as standalone gist files. Every access fact is kept -
-  the vanity-alias vs `.wiki.gg` 401 block, the non-browser-UA Cloudflare 403 -
-  phrased against "this development host" / "any host that reaches X", which is
-  the more useful instruction anyway. Live gist copies refetched: 0 hits.
-- **The last non-ASCII glyphs purged from the shipped tools** (`de04ef44`).
-  Middot, three check marks, an arrow, a not-equal sign, all display strings.
-  `Share/src/**/*.py` now scans byte-clean.
-
-## The thing worth remembering from the second one
-
-**The precommit gate scans STAGED LINES.** A glyph already on disk in a file
-nobody edits is never in a diff and is never seen - which is exactly how five of
-them survived the 2026-05-18 repo-wide purge with a green gate on every commit in
-between. A retro purge is a whole-file byte scan, never something the hook
-converges to on its own. Written into
-`reference_git_hooks_authoritative_and_traps` as a scope limit (it is NOT a fifth
-"hook does nothing" trap - the hook fires and is correct).
-
-## Open for the operator
-
-- **Sign-off GRANTED 2026-07-28 (operator):** the shortened Share Notation
-  section stands as shipped - 20 lines that named internal id families in the
-  most external doc, now a three-line generic disclaimer. No revert. This line
-  is closed; do not re-raise it.
-- **Left deliberately:** three host-only `tools/*.py` still carry non-ASCII -
-  `p3_ascii_sweep.py` (its own glyph inventory, correct as-is), `extract_panels.py`,
-  `rc_facts.py`. None ship in Share.zip. Say the word on the latter two.
