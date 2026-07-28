@@ -668,6 +668,7 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 | R217-U1 | ci-promote-rc-suite-to-push-check | DIRECTOR REFILL 2026-07-28, cycle 23. Chunked out of R217; single-file unit `.github/workflows/ci.yml`, ENGINE-IMPACT NONE. **The premise held on disk and the unit was real work - two real cycles in a row after seven no-ops.** `check:` (job at `:108`) ran `pytest agents/daemon_slayer/tests/` and nothing else, and `pip install -r requirements.txt` existed only inside `nightly-full-suite:`. SHIPPED, all three ordered edits plus one the directive did not name: the install step now runs `pip install -r requirements.txt` (renamed `Install runtime + test deps`; `json5==0.14.0` and `pydantic>=2.0` dropped from the ad-hoc pin list because requirements.txt carries both, `pyyaml` KEPT because it is test-only and `tests/test_ci_docs_guard_coverage.py::test_ci_installs_the_yaml_parser_it_needs` asserts that literal install line in any workflow naming the module); the DS-only step became `pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 -n auto --dist loadfile`; the two pure-subset steps (`smoke + regression tests`, `panel snapshot tests`) are DELETED. **THE UNNAMED DEFECT: `timeout-minutes: 25` would have CANCELLED the first push.** The row's "no raise needed, but under 6 minutes of slack" treated the 19m42s dispatch price (run `30315178736`) as the whole job, but that run measures pytest in a job that does nothing else; the DS-only shape of THIS job measured **9m1s end to end** (run `30342574878`) against a ~2m47s pytest step, so the new shape prices at **~26m**. Raised to **40**, not 27 - a ceiling one minute over the estimate turns runner variance into a fake red, and GitHub reports a blown ceiling as *cancelled*, not failed, which is the exact misread that cost a cycle on 2026-07-27. **Defect enumeration (the directive asked for it): 4 named-file pytest steps survive and NONE is redundant** - `RC_REQUIRE_HOOK_GATE` + `RC_REQUIRE_BUILD_ORDER_TABLES` turn a skip into a failure so the promoted run cannot replace them, and the hygiene trio + docs-guard steps are strict subsets kept deliberately as seconds-long fast-fail guards; **the rationale is written IN `ci.yml`** so the next reader does not delete them as duplicates. RM-119 CLOSED both halves and its narrative relocated to `docs/ROADMAP_HISTORY.md` (`ROADMAP.md` had 1569 bytes of headroom; now 76662 of 81920). Gate: full dual `-n 8 --dist loadfile` **23861 passed / 106 skipped / 6178 subtests / 0 failed** in 131.49s, verifier subagent CONFIRM on an independent re-run (23861 / 0 failed, exit 0); ruff clean; `yaml.safe_load` parses `check:` to 14 steps (was 16); 0 non-ASCII; hygiene trio + `test_loop_director_context_caps.py` 39 passed. Push CI green on the runner at the promoted shape. **MEASURED ON THE RUNNER, and it came in UNDER the estimate: run `30345614564` is GREEN at 23703 passed / 254 skipped / 6165 subtests / 0 failed in 1150.57s (19m10s of pytest), with the `check` job at 20m54s end to end (09:12:36Z -> 09:33:30Z) against the new 40-minute ceiling - so ~26m was conservative and 25 would still have been too tight. Two numbers worth keeping: the runner passes 158 FEWER tests than the local 23861 (platform skips, 254 vs 106), and it passes 96 MORE than the nightly full-suite dispatch (23607) - because this job also installs pyyaml and arms the git hooks first, so fewer guards degrade to skips here than in the nightly. **Push CI is now strictly stronger than the nightly, not merely equal to it.** | DONE | `9e7b70d1` |
 | R217-U2 | tools-nonascii-residue | DONE 2026-07-28. Two disjoint files, swept 1:1 (item-176 doctrine, width preserved): `tools/extract_panels.py` 189 non-ASCII bytes of 11094 -> 0 (U+2500 x59, U+25B6 x2, U+2022 x2) and `tools/rc_facts.py` 10 of 10139 -> 0 (U+00B7 x2, U+26A0 x2). Both byte counts re-measured on disk before the edit and both matched the filed figure exactly. **`tools/p3_ascii_sweep.py` (167 bytes) stays EXEMPT and is now MACHINE-PINNED in the other direction** - `tests/test_tools_ascii_hygiene.py::test_p3_ascii_sweep_exemption_is_intact` fails if a later sweep strips the sweeper's own inventory of the glyphs it hunts, which is the carve-out this row asked for rather than discovering it by regression. The directive's 2-agent parallel block was refused: two files and one test is under the R9 subagent floor, so it ran inline with the executor as sole author. | DONE | `84535bdf` |
 | R218 | champ-select-shadow-flip-gate | DIRECTOR REFILL 2026-07-28, cycle 25. Section 4b Lane C. **The directive tagged its own premise `[UNVERIFIED]` and this time BOTH halves held, so the unit was real.** Premise was "plan drained, refill rotation lands on Haiku-to-ZERO": the plan carries zero WIP rows below the template line, and Section 4b is genuinely unfinished, so the directive was executable as written rather than a no-op. Scoped by a read-only scout against the don't-redo set before any dispatch, which is what kept it off the three closed attractors - the ARAM/Arena det-choices templater (code-complete), any det-choices FLIP (live-gated on accrual plus operator auth), and Lane E (excluded by the directive). **The defect class is a shadow lane wired to write both columns with no agreement reader, so its flip readiness is unmeasurable.** Enumerated across all 10 lanes / 11 writer files: 8 have a `tools/*report*.py`, `augment_shadow` and `anvil_shadow` carry an in-module `summarize_agreement`, `replay_narrative_shadow` is OUT-OF-SCOPE because its native side is dormant and returns `None` (`:51-53`) so there is nothing to agree with, and `core/champ_select_shadow.py` was the sole live-wired lane with neither. That left `ROADMAP.md:146` RM-12's clause "the champ-select brief Haiku flip after shadow-log accrual" with no instrument to read; LEDGER item 500 shipped the writer in 2026-06 and its own NEXT named the FLIP, so the intermediate gate was never filed. New `tools/champ_select_shadow_report.py` scores four columns native-vs-deterministic - `summoners` by exact spell-pair set equality, `watchout` by champion-name overlap against the record's `their_team`, `swap` by SWAP/KEEP/target class, and `advice` as the headline axis by ordered keyword class plus `field_presence`. Three decisions are load-bearing rather than stylistic: (1) non-ARAM rows go to `gated_out_non_aram` instead of being scored, because both sides are silent off-bench and a free KEEP/KEEP would inflate the rate toward the 0.70 gate on rows carrying no signal - held by the tested invariant `coverage.non_aram == swap.gated_out_non_aram`; (2) token-boundary matching replaces the raw substring the ARAM sibling uses, which classifies "ban" inside "banner" and "lock" inside "locked" - and the degraded marker `no champion locked` is exactly the string that breaks under substring; (3) `_FIELDS` is pinned by a test that IMPORTS `core.champ_select_shadow._ADVICE_KEYS` rather than restating it, so a writer-side rename fails loudly instead of silently zeroing a column. TDD RED 32 failed / 3 passed against a skeleton, GREEN 35. Fail-soft proven on missing path, empty file, malformed line and null/non-dict sides, exit 0 in both output modes; the log does not exist on disk yet, which is precedented - `arena_shadow_report` shipped at 0/20 rounds. Verifier CONFIRM 9/9 before merge. `tools/gen_archmap.py` was required by the pre-commit hook for the net-new tool and is in the same commit. ENGINE-IMPACT NONE, no restart - read-only tool, no route, no served output. RC 13801 passed / 106 skipped / 477 subtests. | DONE | `bb746286` |
+| R219 | ds-sweep-champion-base-stats | DIRECTOR REFILL 2026-07-28, cycle 26. Section 8, DS audit iteration. **The directive's literal thesis was not executable and the reason is a measurement, not an opinion: the local Meraki bulk carries no champion data and no stat lines at all.** `data/daemon_slayer/16.14.1/items_meraki.json` is 320 ITEMS whose key census is exactly `name/id/tier/rank/removed/simpleDescription/passives/active/shop/noEffects` on all 320 entries - no `stats` block, no champion half - so 'sweep champion base stats vs Meraki bulk truth' has no Meraki side to sweep against offline. The offline champion-stat truth source is the DDragon mirror, and that is what both slices were re-aimed at. **ENGINE-IMPACT premise corrected BUMP -> NONE, on precedent, not preference:** both owned modules live in `core/`, neither imports DS, no DS path reads either, and R135 (LEDGER 962) already made this exact correction for `core/champion_movespeed.py`. The 7 bump sites the directive enumerated were therefore not touched; the pre-commit gate independently agreed (`no mirrored DS source staged - skipping Share sync`). **SLICE A - the population was already saturated, so what shipped is the guard that proves it.** All 9 DDragon-zeroed champions were enumerated off disk: Akshan/Rell/Seraphine/Vex (0/0) and Qiyana (0/4) carry overrides, Ambessa/Naafiri/Yunara (9/0) and Lillia (0/10) classify correctly without one. No behavior bug exists. The defect was that nothing pinned this in either direction - a newly released champion entering the mirror mis-classifies silently, which is precisely the 2026-06-30 'Seraphine reads AD SUPPORT' symptom that created the module. `tests/test_champion_info_overrides.py` now derives its universe by PARSING THE MIRROR, never from `CHAMPION_INFO_OVERRIDES.keys()` - consumer-side enumeration would be circular and would catch nothing - and runs every champion through the three REAL consumers rather than a re-implementation. Non-vacuity is proven, not asserted: 4 injection tests feed synthetic champions through the same `_coverage_failures` helper the real-data test uses, and the verifier independently fabricated an unpinned 0/0 champion and watched the guard name it. **The slice also found a genuine divergence it deliberately did not paper over:** the three consumers disagree on the AD/AP TIE, and `dashboard/routes_dictionary.py:101` is the only one that manufactures a confident answer from no signal (`attack >= magic` -> 'AD'), while `routes_pickban.py:255-260` returns 'EVEN' and `fed_threat.py:147-151` returns ''. Harmless today because all 9 resolve strictly post-merge; it is the latent re-entry point for the original bug, and it is pinned rather than fixed. **SLICE B - a live math constant was justified by a claim about disk data that is false.** `core/champion_movespeed.py` justified `_FALLBACK_MS = 345.0` as 'the most common base MS'. Measured across all 173 champions: `{315:1, 325:19, 330:38, 335:42, 340:37, 345:28, 350:7, 355:1}` - the mode is **335** at 42; 345 is FOURTH at 28. The agent took disposition (a), prose only, and its refusal of the seam is the better half of the answer: the prose conflated two claims and only one was false, since 'conservative for reachability' IS true and measurable (345 is at or above 165 of 173, 95.4pct), so deriving the constant from the mode would drop it to 335 and actively contradict its own purpose. Zero executable lines changed; the sole consumer `core/mia_reachability.py:165` computes identical values. The 173-champion coverage test monkeypatches `_FALLBACK_MS` to a `-1.0` sentinel first, because the 28 champions whose real MS IS 345 would otherwise mask a fallthrough and make the test vacuous - 0 fell through, across id, `id` field and display name, including 'Nunu & Willump' / 'Kha'Zix' / 'Wukong'/'MonkeyKing'. **DEFECT-CLASS ENUMERATION - the class is 'a hardcoded constant whose comment justifies it with a checkable claim about data on disk', and the sweep found one the slice could not fix.** 62 candidates by AST over `core/` + `agents/`, 2 CONFIRMED by opening the file and checking the claim against the data. The second is NEW and is filed as RM-123: `agents/daemon_slayer/burst.py:124-127` `_RANGED_ATTACK_RANGE = 350.0` under 'No champion sits between melee (~125-175) and ranged (~450+)' - **8 champions do** (Irelia 200, Viego 200, Nilah 225, Rakan 300, Lillia 325, Urgot 350 exactly on the strict-`>` boundary at `:1032`, Graves 425, Yuumi 425), and it contradicts the engine's own canonical split at `ehp.py:254` `_RANGED_ATTACKRANGE_THRESHOLD = 250.0`, so Rakan/Lillia/Urgot take melee Lethal Tempo scaling (9-30) instead of ranged (6-24) in the burst lane. Tier-2 DS, out of scope here, verifier-confirmed by an independent count. **The full-suite gate then caught a defect BOTH the slice agent and its verifier missed, and it was mine:** the Slice A brief told the agent to `skipTest` when the mirror is absent, but `data/meta/ddragon_champions.json` is TRACKED, so `tests/test_skip_condition_hygiene.py::test_every_skip_gates_on_an_environment_capability` failed it as a B5 masking skip - the exact class the RM-119 audit catalogued, where a guard reports green by not running precisely when the data it guards goes missing. Replaced with an assert. This is why the scoped per-slice run is not the gate: 100 passed across both slice files in isolation, and the tree-level guard is the only thing that saw it. 3 candidates refuted by checking the data (`heal_threat.py:94` ids all match, `_rune_offense_grants.py:347` is already machine-checked by a real property test, `_LEVEL_COUNT = 18` is trivially true); ~55 fell outside the class as tuning judgments; 1 (`_item_caster_hp_proc.py:131`) is recorded UNRESOLVED rather than counted, which is the honest disposition. **Verifier CONFIRM on both slices before either merge - 7/7 and 9/9** - each re-running the suites fresh in the worktree, re-deriving the histogram independently, and empirically demonstrating both guards' teeth. | DONE | `a77e1cee` |
 
 ## Older findings - relocated 2026-07-28
 
@@ -694,83 +695,98 @@ same every cycle: relocate the previous cycle's findings block verbatim as you a
 yours. The newest row then never drifts, and the director keeps seeing the most
 recent findings because the block it can read is always the newest one.
 
-## R217-U2 findings - 2026-07-28 - the two glyphs the directive did not flag were the load-bearing ones
+## R219 findings - 2026-07-28 - the directive's data source does not contain the data
 
-**Both premises were re-read on disk and both held.** `docs/ORCHESTRATION_PLAN.md`
-carried R217-U2 as OPEN, and `tools/p3_ascii_sweep.py` really does hold 167
-non-ASCII bytes with its exemption rationale written into the row itself. The
-byte counts matched the filed figures exactly - 189 of 11094 and 10 of 10139 -
-which is worth saying out loud after seven no-op cycles: a from-digest premise
-is not automatically stale, it is just unverified.
+### The Meraki premise, measured
 
-### The parallel block was refused, and the override header refused it for the wrong reason
+The directive ordered a champion-base-stat sweep "vs Meraki bulk truth". The local
+Meraki mirror cannot answer that question, and the reason is structural rather than
+stale. `data/daemon_slayer/16.14.1/items_meraki.json` holds 320 entries under an
+`items` key, and a key census across all 320 returns exactly ten field names:
+`name`, `id`, `tier`, `rank`, `removed`, `simpleDescription`, `passives`, `active`,
+`shop`, `noEffects`. There is no `stats` block on any entry and there is no champion
+half of the file at all. The mirror was fetched with an effects-shaped projection,
+which is correct for what DS uses it for - the standing memory is that a Meraki
+clause lives in the effects PROSE field - but it means an offline stat comparison
+has no Meraki side.
 
-The directive dispatched AGENT 1 on `tools/extract_panels.py` and AGENT 2 on
-`tools/rc_facts.py`. The executor-override header claims those two file sets
-COLLIDE because "AGENT 1 and AGENT 2 both name extract_panels.py". They do not -
-the block names one distinct file per agent and the sets are disjoint. **The
-collision detector misfired**, and a false collision report is worse than no
-report, because the next reader learns to discount it. The shape was refused
-anyway on the real ground: two mechanical file edits plus one guard test is
-under the R9 subagent floor, so worktree isolation would have cost more than the
-edit. Ran inline, sole author.
+A first pass at a prose-based substitute produced 178 apparent hits for items whose
+description mentions Move Speed while DDragon reports no movespeed stat. That number
+is an artifact: the regex was matching inside the `str()` repr of the `passives`
+structure, so `Doran's Shield` and `Recurve Bow` scored. It is recorded here so the
+next cycle does not rediscover it as a finding. Prose is a source for CLAUSES, not
+for a stat census.
 
-### The hazard the directive did not name
+The consequence for Section 8: a champion-stat sweep against Meraki needs a mirror
+refresh that requests the champion endpoint and the full stat projection. That is a
+data-plumbing slice, not a math slice, and it was not in this cycle's two-file grant.
 
-The `U+25B6` and `U+2022` bytes in `extract_panels.py` are not decoration - they
-sit inside `.replace()` MATCH patterns at `:158-162`. That is the same
-load-bearing-data class that makes `p3_ascii_sweep.py` exempt, and it is the
-reason a blind sweep of this file is not obviously safe. Resolved by checking
-the tree instead of reasoning about it:
+### Two slices, one shipped guard each, and neither needed a behavior change
 
-- `web/js/panels/champ_select.js:195` already reads `"> "` and `:200` already
-  reads `"  *  "`. The repo-wide retro-purge swept the JS half; the extractor's
-  glyph patterns had already stopped matching the shipped output.
-- The extractor's own input is gone in the shape it addresses. `SRC =
-  web/js/main.js` is **7565 lines** today, and every `L(start, end)` range in
-  the tool slices the **6223-line pre-split** file. Re-running it would not
-  re-extract anything; it would destroy `main.js`.
+Both slices went looking for a wrong number and both found the population already
+correct. That is a real outcome, not a no-op, because in both cases the correctness
+was undefended. Slice A's override set covers exactly the 5 of 9 DDragon-zeroed
+champions that need covering, and the other 4 classify correctly on their own - but
+nothing on disk said so, and the module exists because a champion silently
+mis-classifying is a shipped user-visible bug. Slice B's `_FALLBACK_MS` is a
+defensible value, but the sentence justifying it was factually false against the
+mirror it describes.
 
-So the patterns match nothing on disk in either form, the file is a spent
-one-shot, and the sweep is cosmetic - but the ASCII forms now at least agree
-with what the tree actually holds rather than preserving a dead pre-purge
-pattern. **This is why the file was worth reading before sweeping it**, and why
-the p3 exemption is a class rather than a one-off.
+The pattern worth carrying forward: when a sweep finds the data already right, the
+deliverable is the guard that makes the next drift loud, and the guard is only worth
+shipping if its teeth are demonstrated. Both slices did that by injection rather than
+by assertion - Slice A fabricates a zeroed champion and watches the universe grow,
+Slice B swaps the fallback for a `-1.0` sentinel so that the 28 champions whose real
+movespeed happens to BE 345 cannot mask a fallthrough. Without that sentinel the
+coverage test would have passed while measuring nothing.
 
-### The guard cannot import the file it guards
+### The orchestrator's own brief carried the defect, and only the tree-level gate saw it
 
-`tools/extract_panels.py` opens and rewrites `web/js/main.js` at MODULE SCOPE.
-Any test that imports it destroys the file. `tests/test_tools_ascii_hygiene.py`
-parses it with `ast` and pulls `PANEL_IMPORTS` out of the tree, then compares
-the emitted rule against the real `// -- Panel modules` line in `main.js` on
-disk and asserts equal WIDTH - which is what proves the substitution was 1:1
-rather than a re-flow. Reading the contract off disk beats pinning a literal.
+Slice A shipped with a `skipTest` on an absent DDragon mirror, because the brief I
+wrote told it to - "it is a data mirror, not source". That reasoning is wrong, and
+the repo already knows it is wrong: `data/meta/ddragon_champions.json` is tracked, so
+a checkout always has it, and an absent one is a broken tree rather than an absent
+capability. `tests/test_skip_condition_hygiene.py` failed it as a B5 masking skip,
+the class the RM-119 skip audit catalogued as "reports green by not running". A
+completeness guard that skips when its own data disappears is the worst possible
+shape for this particular test, since a vanished mirror is one of the two ways the
+thing it guards can break.
 
-### The exemption is now pinned in the direction that can actually break
+Both the slice agent and its verifier passed it. They were scoped to the slice, and
+in isolation the two files run 100 passed. The tree-level guard is the only thing in
+the chain that could have seen it, which is the argument for running the full suite
+even when the tier rules say a two-file `core/` change does not need one. Recorded
+here as an orchestrator error, not an agent error.
 
-`test_p3_ascii_sweep_exemption_is_intact` asserts the sweeper still HAS
-non-ASCII bytes. A guard that only bans glyphs would let the next well-meaning
-sweep disarm the tool and stay green. The plan row asked for the carve-out to be
-explicit rather than discovered by regression; a test is the only form of that
-which survives the next agent who has not read this file.
+### The tie rule, and why it was pinned rather than fixed
 
-### Scope, kept narrow on purpose
+Three consumers merge the same curated info block and then disagree about what a tie
+means. `dashboard/routes_dictionary.py:101` answers `attack >= magic` and so returns
+a confident "AD" when it has no signal at all; `dashboard/routes_pickban.py:255-260`
+returns "EVEN"; `core/build_planner/fed_threat.py:147-151` returns "". The `>=` site
+is the same shape as the original defect - Seraphine rendered "AD SUPPORT" out of a
+0 versus 0 comparison - and it is one unpinned newcomer away from doing it again.
 
-This is a per-file pin, not a repo-wide ASCII ban, and the docstring says so.
-`U+2500` is not a banned codepoint here - `web/js/main.js` alone carries **1310**
-of them, and `tests/test_u2500_hygiene.py` has made the same scope note since
-item 176. Extend the pin only alongside an actual sweep.
+It was not fixed here because it is outside the two-file grant and because the right
+answer is a product call: whether the champ-select chip should be allowed to show a
+neutral state. The guard demands strict polarity, which is the intersection where all
+three agree, so it holds the line without choosing. Filed in the row, not deferred to
+memory.
 
-`tools/rc_facts.py` is LIVE - a `SessionStart` hook in `.claude/settings.json` -
-so its strings are user-visible text, not comments. Re-ran it after the sweep:
-the probe is unchanged and the output is ASCII.
+### The constant that was found by sweeping for the constant
 
-### Verification
+The defect class was defined narrowly on purpose: a hardcoded constant in live code
+whose attached comment makes a checkable factual claim about data on disk. That
+definition is what let the sweep score itself honestly - 62 candidates, 2 confirmed
+by opening the file and checking, 3 refuted by checking, ~55 outside the class as
+tuning judgments, and 1 recorded UNRESOLVED because the extraction did not match the
+registry's shape. The unresolved one is not counted as a find.
 
-TDD RED first: 3 failed / 2 passed on the new guard before the edit (both byte
-counts, plus the emitted-rule width). After: py_compile + ruff clean, the
-hygiene set (new guard + mojibake + smart-quote + u2500 + rc_facts port probe)
-**24 passed**, and the full RC suite **13766 passed / 106 skipped / 477 subtests
-/ 0 failed** in 104.97s at `-n 8`. DS suite not run and not needed:
-ENGINE-IMPACT NONE, no path under `agents/daemon_slayer/` touched, no
-ENGINE_VERSION, no Share mirror, no restart.
+The second confirmed instance is worth more than the assigned one.
+`agents/daemon_slayer/burst.py:124-127` claims no champion sits between melee and
+ranged attack range and picks 350 on that basis; eight do, Urgot sits exactly on the
+strict-greater-than boundary, and the DS engine already has a canonical split at 250
+in `ehp.py:254` that `rank.py` documents as authoritative. Two thresholds for one
+concept, disagreeing on three champions, in a live rune-scaling branch. Filed as
+RM-123 with ENGINE-IMPACT BUMP, because reconciling it moves numbers and belongs in
+its own Tier-2 slice with a re-baseline, not in a `core/` docs cycle.

@@ -119,6 +119,38 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-28g - R217-U1 full RC suite on push. The named edits were fine; the budget was the bug.
+
+Gemini-loop cycle 23. RM-119 second half, the RC-half CI promotion the operator
+authorized in `roadmap work.txt`. Full detail in `docs/LEDGER.md` 1095. Commit
+`9e7b70d1` + this sync. CI config only: no engine, no ENGINE bump, no DS path, no
+Share mirror, no restart, no runtime `.py`.
+
+- `.github/workflows/ci.yml` `check:` now installs `requirements.txt` and runs
+  `pytest tests/ agents/daemon_slayer/tests/ -q -n auto --dist loadfile`. The two
+  subset steps (`smoke + regression tests`, `panel snapshot tests`) are deleted.
+- **The install line is the point, not bookkeeping.** An ImportError-guarded test
+  that cannot import is a SKIP, and a skip is a green tick - promoting the suite
+  without the runtime stack buys minutes and almost no assertions.
+- **The defect nobody named: `timeout-minutes: 25` would have CANCELLED it.** The
+  19m42s dispatch price is pytest in a job that does nothing else; `check:` also
+  installs Playwright, sweeps py_compile, runs ruff and the Share mirror check
+  (DS-only shape = 9m1s end to end, run `30342574878`). New shape prices at ~26m.
+  Raised to 40. A blown ceiling reports as *cancelled*, not failed.
+- 4 named-file steps kept, all justified IN the file: two turn a skip into a
+  failure (`RC_REQUIRE_*`), two are 10-second fast-fail guards. Otherwise the next
+  reader deletes them as duplicates and is right by every argument but the useful one.
+- RM-119 CLOSED both halves; narrative relocated to `docs/ROADMAP_HISTORY.md`
+  (`ROADMAP.md` 80351 -> 76662 of 81920). Skip-audit B2/B4/B5 stay - open work.
+- Gate: full dual `-n 8` **23861 passed / 106 skipped / 6178 subtests / 0 failed**
+  in 131.49s; verifier CONFIRM on an independent re-run; ruff clean; 14 `check:`
+  steps parse.
+- **Carry-forward: every push now costs ~26 CI minutes.** That makes the docs-only
+  `paths-ignore` skip and `concurrency: cancel-in-progress` load-bearing, not
+  cleanup targets. R217-U2 (tools non-ASCII residue) is still OPEN.
+
+---
+
 # 2026-07-28f - R217 desktop-queue drain. Half the notes were already true on disk.
 
 Gemini-loop cycle 22. RM-121 item 4 (`random.txt` + `roadmap work.txt`), which

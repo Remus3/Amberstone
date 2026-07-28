@@ -234,9 +234,13 @@ class ZeroedChampionCoverageTests(unittest.TestCase):
     polarity rules and the tie-rule divergence between them."""
 
     def setUp(self):
-        if not _MIRROR_PATH.is_file():
-            self.skipTest(
-                f"DDragon mirror absent: {_MIRROR_PATH} (data mirror, not source)")
+        # No skip here on purpose. The mirror is TRACKED, so a checkout always
+        # has it and an absent one is a broken tree, not an absent capability -
+        # skipping would make this whole guard always-pass exactly when the data
+        # it guards went missing (the B5 masking class, ROADMAP RM-119 audit).
+        self.assertTrue(
+            _MIRROR_PATH.is_file(),
+            f"tracked DDragon mirror missing: {_MIRROR_PATH}")
         self.entries = _load_mirror_entries()
         self.universe = _zeroed_universe(self.entries)
 
