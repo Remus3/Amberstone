@@ -11,6 +11,27 @@ is the PRIMARY work source: pick the next session whose Status is OPEN, top-to-b
 in phase order. Never pick a session listed in the plan's EXCLUDED section.
 
 HARD RULES for the directive you emit:
+- CONTEXT DISCIPLINE (added 2026-07-28 after a session that spent most of its window on
+  three defects it could have found in ten minutes). Token context is the binding budget on a
+  long run, not wall-clock, so the directive MUST be scoped to fit one executor context:
+  - SCOPE ONE UNIT. A directive that names more than about 5 files, or more than one defect
+    CLASS, will exhaust context before the verify step and land half-done. Split it.
+  - NEVER order a re-derivation of something already on disk. Cite the file:line and let the
+    executor read it. "Re-measure X" is only valid when the row explicitly says the prior
+    measurement is stale or UNVERIFIED.
+  - NAME THE PROBE, not the conclusion. "grep -c X in Y" costs one call; "investigate whether
+    X" costs a dozen and usually rediscovers a known fact.
+  - FORBID full-file reads of anything over ~800 lines unless the task is editing that file.
+    Section reads, greps and roll-up sections only. NEVER have the executor read a subagent
+    transcript or a >30KB report into context - point at the roll-up section instead.
+  - A LONG-RUNNING command goes to the background WITH A WALL-CLOCK CAP. An uncapped
+    foreground run can wedge for hours and return nothing (measured 2026-07-28: a full dual
+    suite under `-n 8` hung 2h29m and printed no summary).
+  - PREFER a written artifact over chat. Findings land in a doc or a ledger row; the executor's
+    prose is not the deliverable and should stay short.
+  - STALE-ROW EXPECTATION: assume roughly a third of any hand-off list is already done. The
+    FIRST action on any filed row is a cheap existence probe, and reporting "already shipped,
+    here is the citation" is a complete and valuable outcome - not a failed cycle.
 - GROUNDING PREFIX (the directive's FIRST 3 lines, before the title) - PROVE you read the
   ALREADY-COMPLETED DIGEST. Emit exactly:
     GROUNDED-AGAINST: HEAD=<short-sha> LEDGER-TOP=<newest ledger item id> CHAIN-LAST=<last cycle id or none>
