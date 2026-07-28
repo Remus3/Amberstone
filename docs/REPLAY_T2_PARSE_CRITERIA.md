@@ -345,17 +345,17 @@ imputing the natural 0 for every dropped row. Per role the train split holds
 of which `objective_participation` emits 2091 win and 1813 loss, so the
 imputed mean is `mean * n / 2094` on each side:
 
-> **The DENOMINATOR is unsettled; the DIRECTION is not.** Two independent
-> passes on 2026-07-28 derived the universe differently and got different
-> magnitudes. This table takes 2094 per side from the `absent 0/0` criteria,
-> implying 3 win / 281 loss dropped. The row's own `absent_win` / `absent_loss`
-> fields say **6 / 422**, which implies a universe of 2097 and gives larger
-> factors (BOT 1.51x, MID 1.81x, TOP 1.62x, SUPPORT 2.23x). One of the two
-> readings misinterprets a field - most likely whether `absent_*` counts the
-> train split only or train plus holdout. **Do not quote either magnitude as
-> settled** until that is resolved against `tools/mine_event_patterns.py`.
-> Every reading agrees on the sign, on JUNGLE flipping, and on the measured
-> values being a floor - which is all the correction needed to be right about.
+> **UNIT TRAP, and it is RESOLVED - read this before recomputing the table.**
+> An earlier pass this same day produced larger factors (BOT 1.51x, MID 1.81x,
+> TOP 1.62x, SUPPORT 2.23x) by subtracting `absent_win` / `absent_loss` from
+> `n_win` / `n_loss`. Those are **two different populations**:
+> `absent_*` is counted over the WHOLE corpus (`tools/mine_event_patterns.py:296`)
+> while `n_*` is the TRAIN SPLIT (`:311`), so `1813 - 422` is not a quantity.
+> The table above uses the train population of 2094 per side, which is what
+> every criterion reporting `absent 0/0` shows, and is the correct convention.
+> **The conclusion is identical under either arithmetic - which is precisely
+> why the mismatch nearly shipped as fact.** Only re-deriving every cell caught
+> it. If you recompute, use the train split on both sides.
 
 | role | delta as measured | delta with dropped rows at 0 | direction |
 |---|---|---|---|
