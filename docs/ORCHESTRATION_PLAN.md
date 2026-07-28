@@ -780,9 +780,26 @@ gameTime-projection fallback, and the cannon-cadence table is unvalidated by
 construction (sources disagree 14:00 vs 15:00; a 2025 change moved first-cannon arrival
 2:05 -> 2:35). Do not wire the panel before that row closes.
 
-**Suite noise, so it is not re-diagnosed as a regression:** the full RC run under
-`-n 8` showed 2 failures - `tests/test_loop_gemini_timeout.py::test_gemini_logs_stderr_head_on_empty`
-and `tests/snapshot_panels/test_overlay_view.py::test_ovx_hidden_suppresses_a_panel`.
-Both PASS serially, neither touches the extractor (the overlay test feeds a hardcoded
-`"liveclient"` mock dict, not `dashboard/_liveclient.py`), and the loop controller was
-making live gemini calls during the run. xdist/Playwright contention, not this change.
+**Suite noise, diagnosed properly so it is not re-investigated as a regression.** Two
+tests failed locally and NEITHER is a regression - CI ran the full suite on 73d7b49e and
+went GREEN on all three workflows, which is the fact that settles it. They fail for two
+DIFFERENT reasons, and the distinction is the useful part:
+- `tests/snapshot_panels/test_overlay_view.py::test_ovx_hidden_suppresses_a_panel` -
+  genuine xdist/Playwright contention. Failed under `-n 8` on one run, passed under
+  `-n 8` on the next, passes serially. Feeds a hardcoded `"liveclient"` mock dict, so it
+  never touches `dashboard/_liveclient.py`.
+- `tests/test_loop_gemini_timeout.py::test_gemini_logs_stderr_head_on_empty` - **NOT
+  xdist.** It fails SERIALLY on Legion and still passes in CI. The difference is that
+  Legion was running the live loop controller during the run - this session IS the loop
+  executor - so the test is not isolated from a live controller process touching the same
+  module state. Expect this test to fail on Legion any time the loop is running and to be
+  green in CI and on a quiet box. Do not "fix" it by chasing the assertion; the test file
+  is byte-identical to baseline `1bbc377c` and this run touched zero files under
+  `ops/loop/`.
+
+**A tool-pipe warning, because it cost real time here.** An early serial re-run reported
+both tests PASSING; a later identical serial run failed one of them. That is the
+stale-tool-result replay CLAUDE.md documents, and the slice-2 agent independently hit the
+same thing (`ls` / `Glob` / `git status` all reporting a file missing while it was on
+disk). Treat a single green re-run as weak evidence when the pipe has already misbehaved
+in a session - CI on a pushed SHA is the ground truth that actually settled this.
