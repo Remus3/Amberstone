@@ -708,3 +708,70 @@ R220's findings block now lives in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
 Relocated by R221 under the steady-state rule above - keep exactly ONE
 findings block at the tail so the newest `| R<n> |` row never drifts out
 of the director's 16000-byte tail window.
+
+## R221 findings - 2026-07-28 - slice 1 shipped, slice 2 is OWED with a corrected scope
+
+**SHIPPED (commit 7121ca85):** the 4th Live Client event extract. `MinionsSpawning`
+now reaches `liveclient_summary` as `minion_spawn_events` -> `[{"spawn_at_s": float,
+"event_id": int | None}]` (`dashboard/_liveclient.py:387-402`), purely additive, the
+3 sibling extracts byte-unchanged, 11 TDD tests including the anti-regression pin
+that events nested under `gameData` are NOT read. Verifier CONFIRMED 7/7 claims.
+
+**SLICE 2 IS OWED - do not assume it exists.** `dashboard/_wave_timing.py` and
+`tests/test_wave_timing.py` were written as an explicit TDD RED stub
+(`return dict.fromkeys(_KEYS)`) and the cycle ended before the GREEN half. Both were
+REMOVED from the tree rather than committed, because a red test file in `tests/`
+silently poisons the next cycle's baseline (it collected 787 failures). Suite is back
+to 13946 collected. Re-issue slice 2 from the corrected scope below.
+
+**THE SCOPE CORRECTION, which is the load-bearing finding of this cycle.** The R221
+directive said to key the compute to `wave_top` / `wave_mid` / `wave_bot`. **Refuse
+that.** Those three keys are lane wave-PUSH PERCENTAGES driving the
+FREEZE/TRADE/CRASH/DISENGAGE readout at `web/js/panels/next.js:27-47` - they ARE the
+live wave STATE machine that this feature's own parent, ROADMAP RM-124, declares
+data-blocked three ways (`:2999` exposes no minion entities, Overlay Platform M GEP gives
+`minionKills` counts only, Match-V5 has no minion event type). A spawn clock cannot
+know where a wave sits in a lane, so emitting those keys from it would be fabrication,
+and RC's standing rule is that a wrong precompute is worse than no precompute. Slice 2
+computes the TIMING subset ONLY: `wave_number`, `last_spawn_s`, `next_spawn_s`,
+`next_spawn_in_s`, `next_is_cannon`, `cannon_every_n_waves` - all honest-None on no
+data - and must carry an anti-fabrication test asserting the returned dict holds no
+`wave_top`/`wave_mid`/`wave_bot` key.
+
+**Two more directive defects worth teaching back.** (1) The instruction to append the
+new row "ABOVE the EXCLUDED section" would have BROKEN the guard the relocation exists
+to satisfy: `## EXCLUDED` sits at line ~104 near the HEAD, while
+`test_real_orchestration_plan_newest_row_survives` takes `rows[-1]` in FILE order, so
+a row placed there can never reach the tail window. The row went after R220's instead.
+(2) The serialization override claimed AGENT 1 and AGENT 2 shared files; measured, the
+two file sets were genuinely DISJOINT. Serializing anyway cost wall-clock and is what
+left slice 2 half-built when the cycle was cut.
+
+**Census - "documented-but-unread LiveClient event" (the defect class).** Emitted names
+per `dashboard/_state_cooldowns.py:14-18` plus the published Live Client list, checked
+against every name RC actually extracts (`grep -rn '"<Name>"' dashboard/ core/ --include=*.py`,
+test files excluded). READ after this cycle (7): `TurretKilled`, `InhibKilled`,
+`DragonKill`, `BaronKill`, `HeraldKill`, `ChampionKill`, and now `MinionsSpawning`.
+STILL UNREAD (8), all OUT-OF-SCOPE this slice with reasons: `GameStart` (the 3 repo
+hits are LCU gameflow PHASE strings at `dashboard/view_router_state.py:102,162,174`,
+NOT the Live Client event - the event itself is genuinely unread; low value, RC already
+has `gameTime`), `FirstBrick`, `Multikill`, `Ace`, `FirstBlood` (all tempo//morale
+signals with no current consumer), `InhibRespawningSoon` / `InhibRespawned` (partially
+subsumed - `core.event_callouts` already computes the 300s respawn ETA from
+`InhibKilled`, so reading these would be a cross-check, not new information), `GameEnd`
+(post-game path is Match-V5 / SGP, not `:2999`). The sibling producer-less RM-124 panel
+fields - `wave_state_now` / `wave_control` / `wave_freezes` / `cannon_cs_summary` /
+`gd_at_15` - remain OUT-OF-SCOPE and are NOT unblocked by this slice.
+
+**Live-gated: G2-45 filed.** Nobody has ever seen real `MinionsSpawning` bytes. Whether
+it REPEATS per wave or fires ONCE at first spawn decides whether slice 2 needs a
+gameTime-projection fallback, and the cannon-cadence table is unvalidated by
+construction (sources disagree 14:00 vs 15:00; a 2025 change moved first-cannon arrival
+2:05 -> 2:35). Do not wire the panel before that row closes.
+
+**Suite noise, so it is not re-diagnosed as a regression:** the full RC run under
+`-n 8` showed 2 failures - `tests/test_loop_gemini_timeout.py::test_gemini_logs_stderr_head_on_empty`
+and `tests/snapshot_panels/test_overlay_view.py::test_ovx_hidden_suppresses_a_panel`.
+Both PASS serially, neither touches the extractor (the overlay test feeds a hardcoded
+`"liveclient"` mock dict, not `dashboard/_liveclient.py`), and the loop controller was
+making live gemini calls during the run. xdist/Playwright contention, not this change.
