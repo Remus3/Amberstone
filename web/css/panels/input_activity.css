@@ -1,4 +1,4 @@
-/* ───── Adaptation panel - round 44: no-scroll, glanceable ────── */
+/* ----- Adaptation panel - round 44: no-scroll, glanceable ------ */
 .adapt-section-head {
   margin-top: 10px;
   font-size: 15px;
@@ -71,7 +71,7 @@
 .adapt-footer b       { color: var(--gold); }
 .adapt-footer b.on    { color: var(--good); }
 
-/* ───── Input bar - round 44: compact for glanceable layout ─────
+/* ----- Input bar - round 44: compact for glanceable layout -----
  * (2026-04-25) Hidden globally per user request - "Ask Agent 7" wasn't
  * working as intended. Per the static-layout / visual-only-remove rule,
  * the form, input element, send button, and all JS event handlers stay
@@ -283,7 +283,7 @@
  * grid - so the grid doesn't need to reserve for it. */
 /* Round 44 height calc removed - main is flex-grow now. See top of file. */
 
-/* ───── Task detail modal ──────────────────────────────────────── */
+/* ----- Task detail modal ---------------------------------------- */
 .task-modal {
   position: fixed;
   inset: 0;
@@ -356,7 +356,7 @@
 .activity-event { cursor: pointer; }
 .activity-event:hover { filter: brightness(1.2); }
 
-/* ───── Activity ticker strip ──────────────────────────────────── */
+/* ----- Activity ticker strip ------------------------------------ */
 /* User request 2026-04-29: visually hidden - supervisor task tracking
  * (refreshActivity / activity-line / activity-count = "165/193") still
  * runs server-side and the JS still polls; only the strip is hidden so
@@ -431,9 +431,9 @@
 .activity-event.op-advisory .ev-kind { color: var(--advisory); }
 .tm-event-row[data-op*="advisory"] { border-left-color: var(--advisory); }
 
-/* ───── Footer ─────────────────────────────────────────────────── */
+/* ----- Footer --------------------------------------------------- */
 footer {
-  /* s218: shrunk 44 → 36, color text-faint → text-dim for legibility
+  /* s218: shrunk 44 -> 36, color text-faint -> text-dim for legibility
    * without dominating, all children inline-flex/center so they sit
    * on the same baseline regardless of intrinsic size. */
   height: 36px;
@@ -469,7 +469,7 @@ footer .prefs-chip {
 }
 footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
 
-/* ───── Reduced motion - respect OS preference ─────────────────── */
+/* ----- Reduced motion - respect OS preference ------------------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -479,7 +479,7 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
   /* Keep essential transitions for interactive states, just instant. */
 }
 
-/* ───── iPad narrow viewport fallback ──────────────────────────── */
+/* ----- iPad narrow viewport fallback ---------------------------- */
 @media (max-width: 1600px) {
   .action     { font-size: 30px; }
   .action-mid { font-size: 22px; }
@@ -490,7 +490,7 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
   .panel-body  { padding: 4px 14px 10px 14px; }
   .item-tile   { width: 68px; }
   .item-icon   { width: 56px; height: 56px; }
-  /* Narrow viewport: icon 56 → tag sits at 46px pinned to icon bottom. */
+  /* Narrow viewport: icon 56 -> tag sits at 46px pinned to icon bottom. */
   .item-tile.next-up .item-cost { top: 46px; }
 }
 

@@ -1,8 +1,8 @@
-/* ───── Right Now panel ────────────────────────────────────────── */
+/* ----- Right Now panel ------------------------------------------ */
 /* Round 44: responsive headline - scales with panel width so it can't
  * push the immediate/risk/fight lines below the panel clip.
- * Size history (2026-04-24): 48 → 40 (headline "still very large"),
- * then 40 → 20 to match the new Next headline size. The hero-scale look
+ * Size history (2026-04-24): 48 -> 40 (headline "still very large"),
+ * then 40 -> 20 to match the new Next headline size. The hero-scale look
  * was drowning the immediate/risk rows underneath; weight+color still
  * differentiate the headline from the 20px body copy below. */
 .action {

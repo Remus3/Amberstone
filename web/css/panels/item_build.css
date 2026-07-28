@@ -1,4 +1,4 @@
-/* ───── Item Build panel ───────────────────────────────────────── */
+/* ----- Item Build panel ----------------------------------------- */
 .build-section {
   padding: 6px 0 10px 0;
   border-bottom: 1px solid var(--border-soft);
@@ -89,8 +89,8 @@
 .item-tiles::-webkit-scrollbar { height: 6px; }
 .item-tiles::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .item-tile {
-  /* 2026-04-25: 76 → 70 so 6 owned tiles + 5 gaps fit inside the
-   * Item Build panel's column-2 width (~483 CSS px inner at 1920×1080
+  /* 2026-04-25: 76 -> 70 so 6 owned tiles + 5 gaps fit inside the
+   * Item Build panel's column-2 width (~483 CSS px inner at 1920x1080
    * non-zen with body-zoom 1.33). Was clipping the 6th tile at 76. */
   width: 70px;
   flex-shrink: 0;
@@ -134,7 +134,7 @@
    * `word-break: normal` + `overflow-wrap: break-word` so multi-word
    * names break at the space first; only single tokens longer than
    * the tile width fall through to a mid-word break.
-   * (2026-04-25) Font 12 → 13 + no artificial max-width cap. The
+   * (2026-04-25) Font 12 -> 13 + no artificial max-width cap. The
    * 13px bump alone is enough to push "Doran's Ring", "Mortal
    * Reminder", "Refillable Potion" etc. to natural 2-line wraps
    * within the 70px tile width - earlier 56px cap was too narrow
@@ -173,7 +173,7 @@
   /* (2026-04-25) Moved ABOVE the icon (was overlaying its bottom-edge).
    * The user couldn't read "need 1240" cleanly when it was sat on top
    * of the icon art. `.item-tiles:has(.next-up) { padding-top: 22px }`
-   * rule below reserves space so the pill doesn't clip. Font 10 → 13
+   * rule below reserves space so the pill doesn't clip. Font 10 -> 13
    * for legibility (one bump up after the user moved it above-icon). */
   top: -22px;
   transform: translateX(-50%);
@@ -279,7 +279,7 @@
   font-weight: 900;
 }
 
-/* ───── KV pairs ───────────────────────────────────────────────── */
+/* ----- KV pairs ------------------------------------------------- */
 .kv {
   display: grid;
   grid-template-columns: 170px 1fr;
@@ -307,9 +307,9 @@
 }
 /* (2026-04-25) Next panel - fixed label column so OBJECTIVE / POSITION /
  * WAVE STATE values all start at the same X. Width = "WAVE STATE" at
- * 13 px caps + 0.1em letter-spacing ≈ 90 px. Trade-off vs Right Now:
+ * 13 px caps + 0.1em letter-spacing ~ 90 px. Trade-off vs Right Now:
  * here vertical alignment beats max-tightness because the eye scans
- * Objective → Position → Wave state down a single column. */
+ * Objective -> Position -> Wave state down a single column. */
 .panel-next .kv {
   grid-template-columns: 92px 1fr;
   gap: 10px;
@@ -319,18 +319,18 @@
  * trigger thresholds so the visual reads the same as the advice the
  * coach would emit at that wave position. Used by `_renderWaveState`
  * in the Next panel for SR (per-lane TOP/MID/BOT lines) and ARAM/
- * Brawl (single percentage). The ▶ marker on the player's own lane
+ * Brawl (single percentage). The > marker on the player's own lane
  * is plain text (no color class), keeping the eye on the value. */
 /* Wave-line blocks (one lane per line, no wrap, no extra rows). The
  * marker is a fixed-width slot so TOP/MID/BOT labels align by column
- * whether or not the ▶ is shown. Font + weight inherit from .kv body
+ * whether or not the > is shown. Font + weight inherit from .kv body
  * so all three lines (and the colored .wave-pct value) render at the
  * exact same size - earlier some lines looked smaller because the
  * inline rendering allowed sub-pixel rendering quirks.
  * #nx-wave override below disables the parent .panel-next .kv
  * span:last-child's `-webkit-box-orient: vertical` because that flex-
  * box-style stacking was forcing the value text inside each .wave-line
- * to wrap (TOP: → newline → 28%) instead of honoring white-space:
+ * to wrap (TOP: -> newline -> 28%) instead of honoring white-space:
  * nowrap. With normal block layout each wave-line stays one tight row. */
 /* `all: unset` to escape the parent .kv span:last-child rules
  * (display: -webkit-box, white-space: pre-wrap, word-break: break-word,
@@ -387,7 +387,7 @@
  * text-transform reset because the global `.kv span:first-child` label
  * rule unintentionally matches the FIRST .wave-line (which is also a
  * span first-child of its #nx-wave parent), pushing TOP down 5px and
- * making the TOP→MID gap shorter than MID→BOT. */
+ * making the TOP->MID gap shorter than MID->BOT. */
 #nx-wave .wave-line {
   min-height: calc(19px * 1.4);
   padding: 0;
@@ -426,16 +426,16 @@
  * stays white. */
 #nx-wave .wave-pct.wave-our,
 #nx-wave .wave-arrow.wave-our,
-#nx-wave .wave-verb.wave-our  { color: #5BC0F8 !important; }   /* <= 30 %  icy blue       → FREEZE    */
+#nx-wave .wave-verb.wave-our  { color: #5BC0F8 !important; }   /* <= 30 %  icy blue       -> FREEZE    */
 #nx-wave .wave-pct.wave-mid,
 #nx-wave .wave-arrow.wave-mid,
-#nx-wave .wave-verb.wave-mid  { color: #4DD0A8 !important; }   /* 30 - 65 %  potion green → TRADE     */
+#nx-wave .wave-verb.wave-mid  { color: #4DD0A8 !important; }   /* 30 - 65 %  potion green -> TRADE     */
 #nx-wave .wave-pct.wave-warn,
 #nx-wave .wave-arrow.wave-warn,
-#nx-wave .wave-verb.wave-warn { color: var(--gold) !important; } /* 65 - 80 %  gold       → CRASH     */
+#nx-wave .wave-verb.wave-warn { color: var(--gold) !important; } /* 65 - 80 %  gold       -> CRASH     */
 #nx-wave .wave-pct.wave-bad,
 #nx-wave .wave-arrow.wave-bad,
-#nx-wave .wave-verb.wave-bad  { color: #FF4646 !important; }   /* >= 80 %  vibrant red    → DISENGAGE */
+#nx-wave .wave-verb.wave-bad  { color: #FF4646 !important; }   /* >= 80 %  vibrant red    -> DISENGAGE */
 #nx-wave .wave-pct.wave-dim,
 #nx-wave .wave-arrow.wave-dim,
 #nx-wave .wave-verb.wave-dim  { color: var(--text-faint); }
@@ -474,7 +474,7 @@
 .minimap-grid .kv {
   position: relative;
   /* Labels here are short (Dragon/Baron/Herald/Atakhan) - reclaim the slack
-   * from the default 170px column so "1-0 (Cloud taken 12:04) · in 1:44
+   * from the default 170px column so "1-0 (Cloud taken 12:04) - in 1:44
    * Infernal" lays out on two lines instead of spilling to a clipped third. */
   grid-template-columns: 110px 1fr;
   gap: 10px;
