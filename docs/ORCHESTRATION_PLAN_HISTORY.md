@@ -392,3 +392,84 @@ CHEAPER than the estimate: run `30345614564` green, 23703 passed / 254 skipped /
 matters more than the minutes: this job passes 96 MORE tests than the nightly
 dispatch (23607), because it installs pyyaml and arms the git hooks before it runs,
 so fewer guards degrade to skips. Push CI is now strictly stronger than the nightly.
+
+## R217-U2 findings - 2026-07-28 - the two glyphs the directive did not flag were the load-bearing ones
+
+**Both premises were re-read on disk and both held.** `docs/ORCHESTRATION_PLAN.md`
+carried R217-U2 as OPEN, and `tools/p3_ascii_sweep.py` really does hold 167
+non-ASCII bytes with its exemption rationale written into the row itself. The
+byte counts matched the filed figures exactly - 189 of 11094 and 10 of 10139 -
+which is worth saying out loud after seven no-op cycles: a from-digest premise
+is not automatically stale, it is just unverified.
+
+### The parallel block was refused, and the override header refused it for the wrong reason
+
+The directive dispatched AGENT 1 on `tools/extract_panels.py` and AGENT 2 on
+`tools/rc_facts.py`. The executor-override header claims those two file sets
+COLLIDE because "AGENT 1 and AGENT 2 both name extract_panels.py". They do not -
+the block names one distinct file per agent and the sets are disjoint. **The
+collision detector misfired**, and a false collision report is worse than no
+report, because the next reader learns to discount it. The shape was refused
+anyway on the real ground: two mechanical file edits plus one guard test is
+under the R9 subagent floor, so worktree isolation would have cost more than the
+edit. Ran inline, sole author.
+
+### The hazard the directive did not name
+
+The `U+25B6` and `U+2022` bytes in `extract_panels.py` are not decoration - they
+sit inside `.replace()` MATCH patterns at `:158-162`. That is the same
+load-bearing-data class that makes `p3_ascii_sweep.py` exempt, and it is the
+reason a blind sweep of this file is not obviously safe. Resolved by checking
+the tree instead of reasoning about it:
+
+- `web/js/panels/champ_select.js:195` already reads `"> "` and `:200` already
+  reads `"  *  "`. The repo-wide retro-purge swept the JS half; the extractor's
+  glyph patterns had already stopped matching the shipped output.
+- The extractor's own input is gone in the shape it addresses. `SRC =
+  web/js/main.js` is **7565 lines** today, and every `L(start, end)` range in
+  the tool slices the **6223-line pre-split** file. Re-running it would not
+  re-extract anything; it would destroy `main.js`.
+
+So the patterns match nothing on disk in either form, the file is a spent
+one-shot, and the sweep is cosmetic - but the ASCII forms now at least agree
+with what the tree actually holds rather than preserving a dead pre-purge
+pattern. **This is why the file was worth reading before sweeping it**, and why
+the p3 exemption is a class rather than a one-off.
+
+### The guard cannot import the file it guards
+
+`tools/extract_panels.py` opens and rewrites `web/js/main.js` at MODULE SCOPE.
+Any test that imports it destroys the file. `tests/test_tools_ascii_hygiene.py`
+parses it with `ast` and pulls `PANEL_IMPORTS` out of the tree, then compares
+the emitted rule against the real `// -- Panel modules` line in `main.js` on
+disk and asserts equal WIDTH - which is what proves the substitution was 1:1
+rather than a re-flow. Reading the contract off disk beats pinning a literal.
+
+### The exemption is now pinned in the direction that can actually break
+
+`test_p3_ascii_sweep_exemption_is_intact` asserts the sweeper still HAS
+non-ASCII bytes. A guard that only bans glyphs would let the next well-meaning
+sweep disarm the tool and stay green. The plan row asked for the carve-out to be
+explicit rather than discovered by regression; a test is the only form of that
+which survives the next agent who has not read this file.
+
+### Scope, kept narrow on purpose
+
+This is a per-file pin, not a repo-wide ASCII ban, and the docstring says so.
+`U+2500` is not a banned codepoint here - `web/js/main.js` alone carries **1310**
+of them, and `tests/test_u2500_hygiene.py` has made the same scope note since
+item 176. Extend the pin only alongside an actual sweep.
+
+`tools/rc_facts.py` is LIVE - a `SessionStart` hook in `.claude/settings.json` -
+so its strings are user-visible text, not comments. Re-ran it after the sweep:
+the probe is unchanged and the output is ASCII.
+
+### Verification
+
+TDD RED first: 3 failed / 2 passed on the new guard before the edit (both byte
+counts, plus the emitted-rule width). After: py_compile + ruff clean, the
+hygiene set (new guard + mojibake + smart-quote + u2500 + rc_facts port probe)
+**24 passed**, and the full RC suite **13766 passed / 106 skipped / 477 subtests
+/ 0 failed** in 104.97s at `-n 8`. DS suite not run and not needed:
+ENGINE-IMPACT NONE, no path under `agents/daemon_slayer/` touched, no
+ENGINE_VERSION, no Share mirror, no restart.
