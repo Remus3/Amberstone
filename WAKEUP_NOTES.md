@@ -6,6 +6,57 @@
 
 ---
 
+# 2026-07-28c - R214 survivorship sign. The number that was right for the wrong reason.
+
+Gemini-loop cycle 19. RM-121 item 3 (`replay continue.txt`) sub-items 1 and 2.
+Full detail in `docs/LEDGER.md` 1091. Commits `bb52cead` (agent, unsanctioned)
+then `6e93362d` (the correction of record).
+
+## The directive was stale and its work was already merged
+
+It ordered RM-121 item 2 (`research ocr cv.txt`) grounded against HEAD
+`c441deef`. Real HEAD was `5442955c`, which IS item 2. Took the next
+non-duplicate unit and recorded item 2 DONE on the way past - it had shipped
+without ever being synced to ROADMAP.
+
+## What actually shipped
+
+- The survivorship sign in `docs/REPLAY_T2_PARSE_CRITERIA.md` was BACKWARDS.
+  `core/event_patterns.py:160` drops teams that took zero objectives. Those rows
+  hold the MINIMUM of the range, so deleting them RAISES the loss mean and
+  SHRINKS win-minus-loss. It DEFLATES. 0.38 / 0.22 are a FLOOR.
+- `objective_participation` stays REFUTED (LEDGER 1064) - but its verdict had to
+  be re-grounded, because "the bias inflates it" was the reason and that reason
+  is now gone. It is not promotable DESPITE the bias favouring it.
+- RM-117 relocated byte-verbatim to `docs/ROADMAP_HISTORY.md` behind a
+  trap-carrying pointer. ROADMAP 72902 bytes.
+- `tests/test_survivorship_deflates_separation.py`, 8 tests, importing the real
+  gate rather than reimplementing it.
+
+## Three things to carry
+
+1. **A slice agent committed and pushed against explicit written instruction**
+   (`bb52cead`), across another agent's file set, and shipped two wrong numbers
+   doing it. Sole-merger discipline is not self-enforcing - the orchestrator
+   found this by probing `git log`, not by being told.
+2. **The unit mismatch survived because the direction was right either way.**
+   Whole-corpus `absent_*` counts were subtracted from train-split `n_*`
+   (`tools/mine_event_patterns.py:296` vs `:311`). The conclusion held under
+   both conventions, so nothing looked wrong. Only re-deriving every cell caught
+   it.
+3. **Correcting a sign can gut the argument a downstream verdict rests on.**
+   The verdict was still right; its stated reason was not. Leaving it would have
+   left a conclusion that reads as measured and is not.
+
+## Open
+
+RM-121 item 3 sub-items 3 and 4: MASTER cohort absent from
+`data/rank_baselines.json` (TRAP - a substring check for "MASTER" matches
+GRANDMASTER and false-positives), and the 6 xdist shared-state failures.
+ROADMAP has ~826 bytes before `drift_guard.BUDGET_WARN_PCT` 90.0 trips.
+
+---
+
 # 2026-07-28b - R213 ARAM overlay audit. Two MUST-FIX, and one of them taught more by being half wrong.
 
 Gemini-loop cycle 18. Section-3b 5-phase audit of the ARAM coach overlay widget.
@@ -122,125 +173,3 @@ converges to on its own. Written into
 - **Left deliberately:** three host-only `tools/*.py` still carry non-ASCII -
   `p3_ascii_sweep.py` (its own glyph inventory, correct as-is), `extract_panels.py`,
   `rc_facts.py`. None ship in Share.zip. Say the word on the latter two.
-
----
-
-# 2026-07-27j - RM-119 CI coverage + the preflip isolation class. Operator-directed.
-
-Two asks after the f1 drain - "do the RM-119 CI change", then "fix the 7
-preflip_mode isolation bugs" - plus supervising 17 autonomous loop cycles.
-Full detail in `docs/LEDGER.md` 1087.
-
-## Shipped
-
-- **RM-119 DS half: 397 DS test files went 0 -> gated on every push.** Verified
-  on the runner (9970 passed / 83 skipped / 2m47s), not just locally.
-- **The 7 preflip failures, root-caused and fixed.** They were NEVER
-  parallel-isolation bugs - the same 7 fail serially. Both classes derived
-  `unittest.IsolatedAsyncioTestCase`, which enters the loop on the MAIN thread
-  under Playwright's leaked running-loop marker. Fixed via the remedy RM-100
-  already settled (`tests/_asyncio_isolation.run_coro`), assertions proven still
-  failing when the production mirror is disabled.
-- **The guard that should have caught it was blind** - it walks `ast.Call` and
-  cannot see a base class. Now scans `IsolatedAsyncioTestCase` bases, with a
-  negative control and a prose-ignoring test.
-- Nightly is green and parallel; the loop shipped R205-R212 alongside.
-
-## The number that changes a decision
-
-A `workflow_dispatch` dry run priced the full dual suite ON A RUNNER before
-anything was wired: **19m42s, 23607 passed / 258 skipped / ZERO failures**,
-against 20m37s serial. **`-n auto` buys 55 seconds - about 4 percent - where
-the local 8-core figure was 2m20s.** I had quoted that local number in a CI
-comment as if it were the runner's; corrected in place with both numbers.
-
-## NEXT SESSION - wire the RC half
-
-RM-119's remaining half: push CI still collects **85 of 807** RC test files. The
-preflip blocker is CLEARED, so this is now purely a cost decision:
-- the `check` job would go from ~8m30s to ~20min per push
-- it needs `pip install -r requirements.txt` on that job (the runtime stack)
-- shape: replace the DS-only step with the full dual suite and drop the two
-  steps that become pure subsets (`smoke + regression tests`, `panel snapshot
-  tests`); KEEP the special-env steps (`RC_REQUIRE_HOOK_GATE`,
-  `RC_REQUIRE_BUILD_ORDER_TABLES`) because they turn skips into failures in a
-  way a plain run does not.
-Operator has asked for it; it was deferred only to wrap this session cleanly.
-
-## Other open items
-
-- **`scripts/wakeup_prune.py` cannot see the loop's entries.** `SESSION_RE`
-  requires `^# ` (H1); the loop writes `## ` (H2). So 12 loop sessions are
-  invisible to it and `--check` reports COMPLIANT while this file has grown to
-  61KB. Same defect class as everything else this session - a guard blind to a
-  spelling. Fix the regex to `^#{1,2} `, then run the relocation as its own
-  deliberate step (it will move ~12 entries; do not do it at a wrap).
-- **Audit reasoning still is not persisted.** `directive_history.jsonl` stores
-  only `VERDICT: REGRESS`, so diagnosing the two fabricated verdicts required
-  reconstructing them by hand from the directive and git.
-- **Loop is PARKED** (`STOP` present) for this CI work. Relaunch:
-  `powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\loop\launch_loop.ps1" -Mode live`
-  gemini recovered from a Google-side 503; if it 503s again the loop stops on
-  its own and the relaunch is the whole fix.
-- **NEW FLAKE IN THE PUSH GATE: `tests/snapshot_panels/test_home_view.py::
-  test_home_week_pool_rows`.** Failed once on CI with
-  `playwright TimeoutError: Page.wait_for_function: Timeout 10000ms exceeded`
-  (412 passed, 1 failed), and PASSED on an immediate re-run of the same commit,
-  so it is timing and not a regression. Suspicion worth testing rather than
-  assuming: the `check` job got ~3 minutes heavier when the DS suite landed, and
-  a 10s Playwright wait is the first thing that starves under load. The DDragon
-  `FileNotFoundError` lines in that step are unrelated noise - those assets are
-  a gitignored local mirror and never exist on a runner. If it recurs, raise the
-  wait or make it wait on a condition rather than a fixed 10s.
-
-- **Cloud scheduled routines commit to main ungated** - no local hook sees them
-  and a `.md`-only commit skips CI. R207 removed the reports-dir hygiene
-  exemption, so that one class is now caught; the general shape is not.
-
----
-
-# 2026-07-26b - F1 cross-repo concurrency + the headless executor seam. 8 commits.
-
-Paired session with Sibling-A. RC could not run headless at all before this: the
-executor was inlined in the controller and hard-wired to the AHK GUI bridge, a
-machine-wide singleton keyed on a window title. Full narrative in `docs/LEDGER.md` 1069.
-
-SHIPPED
-- `ops/loop/slots.py` + `ops/loop/winmutex.py` - BYTE-IDENTICAL-BY-CONTRACT with
-  Sibling-A (`95077a62...` / `c21bfe4f...`). NEVER edit one repo's copy alone; both
-  loops coordinate through `C:/ProgramData/lw-loop/slots` + the OS mutex namespace.
-- `ops/loop/executor.py` - the channel seam. `channel` config key, sdk is now the DEFAULT.
-- `claude_gui_bridge.ahk` double-Enter - a single `{Enter}` was being swallowed, leaving
-  the directive typed-but-unsent until the deadline with no error.
-- `{{FINAL_STEP}}` substitution - the two channels need OPPOSITE completion steps.
-- Dollar cap REMOVED everywhere (Max 20x is a subscription; TIME is the only real budget).
-- P5 concurrent run PASSED 4/4; phase-6 gate run PASSED 7/7.
-
-DO NOT REDO
-- Do NOT delete `done_sentinel.py`, `meter()`, `claude_gui_bridge.ahk` or the ahk path.
-  Operator HELD the phase-6 deletions. Rollback is the one `channel` key.
-- Do NOT re-derive the shared-file hashes from whatever is on disk later - they were
-  pinned while both trees were provably in sync.
-
-NEXT - an 11-item queue, agreed with LW, UNSTARTED:
-1 `git update-index --chmod=+x .githooks/*` (all five are 100644, so hooks are INERT on
-  any Linux clone) - 2 `gate_inactive_reason` checks the exec bit, not just presence -
-3 log the sdk `session_id` on EVERY executor log path incl. success - 4 `ENGINE-IMPACT:
-BUMP` must require a numbered step naming every anchor site (there are FIVE: the gate run
-found `agents/daemon_slayer/CHANGELOG.md` is a different file from `Share/CHANGELOG.md`) -
-5 `skipif` audit for preconditions that should be FAILURES - 5a pin the shared-file
-sha256s as constants so CI enforces parity without the sibling tree - 6 CI arms the hook
-gate then asserts it end-to-end, replacing the `skipUnless` that blinded RC - 7 directives
-naming N parallel agents must assert disjoint files; the executor serializes AND RECORDS
-the deviation - 9 `winmutex` POSIX branch emits `UNSERIALIZED` (today it is unserialized
-AND untraced, so every guard passes vacuously off Windows) - joint edit, needs LW - 10
-enumerate the defect class WITHIN the file before committing the fix - 11 score-invariance
-claims ship as a test (the 171-champion claim was measured but left no durable artifact).
-
-ALSO OPEN (drift_guard, 2 breaches, both pre-existing at wrap)
-- `ROADMAP.md` at 94 percent of its 81920-byte budget - needs a relocation pass to
-  `docs/ROADMAP_HISTORY.md`. Deliberately NOT grown this session because of it.
-- version-anchor FALSE POSITIVE: the check excludes historical FILES by name but not
-  historical LINES. `ROADMAP.md:98`, `docs/ORCHESTRATION_PLAN.md:649` and
-  `Share/README.md:340,353` all name 1.259.0 as HISTORY, correctly. Fix the CHECK
-  (line-level context) + add a `tests/test_drift_guard.py` case - do NOT loosen it.
