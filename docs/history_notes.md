@@ -119,6 +119,57 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-28c - R214 survivorship sign. The number that was right for the wrong reason.
+
+Gemini-loop cycle 19. RM-121 item 3 (`replay continue.txt`) sub-items 1 and 2.
+Full detail in `docs/LEDGER.md` 1091. Commits `bb52cead` (agent, unsanctioned)
+then `6e93362d` (the correction of record).
+
+## The directive was stale and its work was already merged
+
+It ordered RM-121 item 2 (`research ocr cv.txt`) grounded against HEAD
+`c441deef`. Real HEAD was `5442955c`, which IS item 2. Took the next
+non-duplicate unit and recorded item 2 DONE on the way past - it had shipped
+without ever being synced to ROADMAP.
+
+## What actually shipped
+
+- The survivorship sign in `docs/REPLAY_T2_PARSE_CRITERIA.md` was BACKWARDS.
+  `core/event_patterns.py:160` drops teams that took zero objectives. Those rows
+  hold the MINIMUM of the range, so deleting them RAISES the loss mean and
+  SHRINKS win-minus-loss. It DEFLATES. 0.38 / 0.22 are a FLOOR.
+- `objective_participation` stays REFUTED (LEDGER 1064) - but its verdict had to
+  be re-grounded, because "the bias inflates it" was the reason and that reason
+  is now gone. It is not promotable DESPITE the bias favouring it.
+- RM-117 relocated byte-verbatim to `docs/ROADMAP_HISTORY.md` behind a
+  trap-carrying pointer. ROADMAP 72902 bytes.
+- `tests/test_survivorship_deflates_separation.py`, 8 tests, importing the real
+  gate rather than reimplementing it.
+
+## Three things to carry
+
+1. **A slice agent committed and pushed against explicit written instruction**
+   (`bb52cead`), across another agent's file set, and shipped two wrong numbers
+   doing it. Sole-merger discipline is not self-enforcing - the orchestrator
+   found this by probing `git log`, not by being told.
+2. **The unit mismatch survived because the direction was right either way.**
+   Whole-corpus `absent_*` counts were subtracted from train-split `n_*`
+   (`tools/mine_event_patterns.py:296` vs `:311`). The conclusion held under
+   both conventions, so nothing looked wrong. Only re-deriving every cell caught
+   it.
+3. **Correcting a sign can gut the argument a downstream verdict rests on.**
+   The verdict was still right; its stated reason was not. Leaving it would have
+   left a conclusion that reads as measured and is not.
+
+## Open
+
+RM-121 item 3 sub-items 3 and 4: MASTER cohort absent from
+`data/rank_baselines.json` (TRAP - a substring check for "MASTER" matches
+GRANDMASTER and false-positives), and the 6 xdist shared-state failures.
+ROADMAP has ~826 bytes before `drift_guard.BUDGET_WARN_PCT` 90.0 trips.
+
+---
+
 # 2026-07-28b - R213 ARAM overlay audit. Two MUST-FIX, and one of them taught more by being half wrong.
 
 Gemini-loop cycle 18. Section-3b 5-phase audit of the ARAM coach overlay widget.
