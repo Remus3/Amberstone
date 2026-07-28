@@ -1331,6 +1331,26 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.262.0 (2026-07-27) - R212 per-champion CRIT CHANCE / CRIT DAMAGE MULTIPLIER
+registry. New DEFAULT-OFF `_crit_chance_overrides.py` seam on `compute_dps`
+(`apply_crit_chance_overrides`), covering three axes the RM-46 crit-conversion
+registry does not reach: a crit-CHANCE multiplier (Yasuo / Yone x2.0, capped at
+100 percent), the >100 percent OVERFLOW conversion (Yasuo / Yone 0.5 bonus AD per
+excess point, Senna 0.35 percent life steal per excess point), and a crit-DAMAGE
+MULTIPLIER applied to the whole `(1 + crit_bonus)` product (Jhin 0.86), which is
+not expressible as RM-46's additive term. Ground truth is the on-disk 16.14.1
+`champion_abilities.json` passive prose, quoted verbatim per row, with a drift
+guard asserting each fragment still exists. The directive's premise that Meraki
+bulk carries these numbers was REFUTED: there is no champion-level Meraki file in
+`data/daemon_slayer/16.14.1/` (only `items_meraki.json`), and
+`_passive_as_lock_overrides.py` already records that DDragon and Meraki strip
+these fields. Jhin's own bonus-AD-from-crit-chance ratio is Every Moment Matters,
+an AD-scaling term, and is deliberately OUT-OF-SCOPE. Senna's overflow row is a
+ground-truth record with no live term: `dps.py` clamps resolved crit at 1.0
+before the registry is consulted and her multiplier is 1.0, so her excess is
+always zero. OFF is byte-identical for all 173 champions. New tests:
+`test_crit_chance_overrides_r212.py` (47 tests / 116 subtests).
+
 1.261.0 (2026-07-27) - R197 enchanter Heal/Shield Power sweep. Adds the DEFAULT-OFF
 `assume_scaling_hsp_grants` lane in `_scaling_hsp.py`, crediting Dawncore's First Light
 HSP earned from base mana regen (2%/3%/2% per 100% on SR/Arena/ARAM, floor steps) through
