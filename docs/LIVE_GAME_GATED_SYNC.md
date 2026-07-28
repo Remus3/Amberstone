@@ -582,6 +582,20 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   question as G2-43 - play a crit ADC with a short fight_length mapped (Jhin / Jinx / Caitlyn /
   Twitch) and confirm no legitimate hybrid or defensive buy vanished from the served list. **Do NOT
   flip blind** - a strip is invisible in the UI. SOURCE: ROADMAP RM-35 + CHANGELOG 1.247.0.
+- **G2-45** (filed R221 2026-07-28) `MinionsSpawning` live payload + the cannon-cadence table.
+  R221 shipped the extract (`dashboard/_liveclient.py:387-402` -> `minion_spawn_events`) and the pure
+  clock (`dashboard/_wave_timing.py`), both green against fixtures. TWO things fixtures cannot settle,
+  and BOTH are one practice-tool game: **(1) the payload** - confirm the live `:2999` top-level
+  `events.Events` stream actually carries `EventName == "MinionsSpawning"` with a numeric `EventTime`,
+  and confirm it REPEATS per wave rather than firing once at first spawn. The name is documented at
+  `dashboard/_state_cooldowns.py:18` and sits in the published Live Client event list, but RC has
+  never read it, so nobody here has seen the real bytes. If it fires ONCE, `wave_number` and the
+  derived interval are both wrong and the module needs a gameTime-projection fallback. **(2) the
+  cadence table** - `_CANNON_CADENCE` in `dashboard/_wave_timing.py` is UNVALIDATED by construction:
+  three prose sources disagree on the breakpoint (14:00 vs 15:00) and a 2025 change moved first-cannon
+  arrival 2:05 -> 2:35. Watch one game to ~16:00, log every spawn time and which waves carried a
+  cannon, and pin the real breakpoint. **Do NOT wire the panel before this row closes** - the
+  consuming panel slice is deliberately deferred for exactly this reason. SOURCE: ROADMAP RM-124 F1.
 
 ---
 

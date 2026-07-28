@@ -569,3 +569,87 @@ in `ehp.py:254` that `rank.py` documents as authoritative. Two thresholds for on
 concept, disagreeing on three champions, in a live rune-scaling branch. Filed as
 RM-123 with ENGINE-IMPACT BUMP, because reconciling it moves numbers and belongs in
 its own Tier-2 slice with a re-baseline, not in a `core/` docs cycle.
+
+## R220 findings - 2026-07-28 - the category was thin, and the best finding was ours
+
+### Rotating the target is not dodging the directive
+
+The directive named Overlay App F or Aggregator B. Three places on disk say do not. RM-01 in
+`ROADMAP.md` retires the whole rotation by name and tells the director what to do
+instead; the R100 block and the 2026-07-16 block in the competitor index both
+declare the live-overlay family drained, the second one counting five passes; and
+Overlay App F has two completed teardowns sitting in `docs/_archive/`. Re-running it
+would have produced a third document agreeing with the first two, which is the
+failure mode the drain notes exist to prevent.
+
+The rotation was chosen by search, not by preference. Six keyword probes across
+every prior `COMPETITOR_LIFT_*.md` returned zero hits for wave management, wave
+simulators, CS trainers, minion waves, freezing and slow pushing. That is a real
+empty result over the actual corpus, so the lane / wave / minion-economy category
+is the one thing in this space nobody here has looked at.
+
+### The category is thin and I am recording that rather than padding it
+
+There is no standalone wave-simulator product. Six distinct search angles returned
+SEO guide articles, unrelated combat simulators, and two calculators. Three targets
+were torn down properly instead of eight skimmed. If a later cycle is tempted to
+re-enter this category expecting depth, the honest expectation is two findings and
+two useful negatives, which is what it produced.
+
+The two negatives are worth as much as the findings. A live wave STATE machine -
+telling freeze from slow-push from fast-push - is data-blocked three independent
+ways: `:2999` exposes no minion entities, the Overlay Platform M GEP contract that bounds
+every competitor in this category gives minion KILL COUNTS only, and Match-V5 has
+no minion event type at all, so nothing wave-shaped is backfillable from the 2966
+stored matches. That also refutes the category's own marketing: a product running
+inside that contract cannot be observing wave state, so its "wave state" is a
+clock, a CS-rate inference, or prose. RC can compute the deterministic subset
+honestly, which is F1.
+
+### The enabling fact had been sitting in a comment
+
+`dashboard/_state_cooldowns.py:18` lists `MinionsSpawning` among the events the
+Live Client actually emits, and two lines later the module passes an empty event
+list downstream because it wanted summoner-spell events that do not exist. A
+repo-wide grep for `MinionsSpawning` returns that comment and nothing else. So the
+one anchor a wave clock needs has been documented in this repo, unread, for as
+long as that comment has existed. `dashboard/_liveclient.py` already extracts
+three other event classes out of the same top-level block, which means the
+transport is built and the missing piece is a fourth extract in the same shape.
+
+That is why F1 is NOW rather than FUTURE, and it is also the answer to the finding's
+only real risk. Three prose sources disagree on when the first wave spawns (0:30,
+1:05, 1:30) and on where the cannon cadence breaks (14:00, 15:00), and a 2025
+change moved first-cannon arrival from 2:05 to 2:35. A hardcoded spawn constant
+would have been wrong by construction. Anchoring on the live event's own
+`EventTime` makes the disagreement irrelevant for the anchor and confines it to the
+cadence table, which one real game validates.
+
+### The best finding was not a lift
+
+The HAVE column was supposed to be bookkeeping. It found that RC renders a wave
+feature nobody built. `web/js/panels/next.js:16-83` is a finished 3-lane readout
+with a documented band table, per-lane colouring and the player's own lane marked,
+reading `wave_top` / `wave_mid` / `wave_bot`. The only writers of those keys in the
+entire repo are test fixtures in `scripts/rebuild_sim_fixtures.py`. In a live game
+it renders the no-data sentinel on all three lines and always has.
+
+It is not alone. `wave_state_now`, `wave_control`, `wave_freezes` and
+`cannon_cs_summary` are labelled STATS rows wired from `core/match_metrics.py`
+through `right_now.js` with zero producers, `gd_at_15` is the same shape, and the
+ARAM wave tier-shift rule in `core/aram_action_rule.py:36-39` is dead because the
+live call site passes `wave_pct=None` with a comment saying so. Six identifiers
+that read as shipped in any grep and are inert in production.
+
+The lesson generalises past waves: a rendered surface with a plausible name is not
+evidence of a producer, and the fixtures that make it look alive in tests are
+exactly what hides that. The cheap check is to grep for writers outside
+`scripts/` and `tests/` before believing any panel field exists.
+
+### One thing this finding will not do
+
+`tools/hz_shadow_report.py:196-201` excludes crash, freeze, push, split and roam
+from the laning agreement sample as non-laning macro actions. So a wave clock will
+not move the Lane A agreement number, and the RM-124 row says so explicitly. It was
+worth writing down because the adjacency is tempting and wrong: the wave work is
+its own capability, not a fix for the laning gate.
