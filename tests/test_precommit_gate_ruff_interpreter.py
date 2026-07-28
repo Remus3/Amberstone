@@ -3,10 +3,10 @@
 MEASURED 2026-07-28. afcbcf79 introduced a net-new ruff UP031 in the gate's OWN
 source, the gate passed it, and CI went red (fixed in 425fbb75). Diagnosis:
 
-  .githooks/pre-commit launches the gate as `py tools/precommit_gate.py`, and on
-  Legion the `py` launcher resolves to a bare pythoncore build with NO ruff. The
-  gate then shelled out to `sys.executable -m ruff`, i.e. that same ruff-less
-  interpreter, got rc=1 with an empty stdout, parsed [] findings, and passed.
+  .githooks/pre-commit launches the gate through the `py` launcher, which on
+  Legion resolves to a bare pythoncore build with NO ruff. The gate then shelled
+  out to `sys.executable -m ruff`, i.e. that same ruff-less interpreter, got
+  rc=1 with an empty stdout, parsed [] findings, and passed.
 
   It failed OPEN and it failed SILENTLY. ceb2f584 (2026-07-07) had switched the
   invocation from the `py` launcher to sys.executable to fix the OTHER channel
@@ -20,6 +20,7 @@ These tests pin both halves of that: a dead first candidate must be stepped
 over, and a genuinely ruff-less machine must SAY SO rather than pass in silence.
 """
 
+import importlib.util
 import io
 import os
 import shutil
@@ -38,24 +39,22 @@ import precommit_gate as G  # noqa: E402
 # ruff-less interpreter does. Spelled as a constant so the intent is readable.
 _MISSING = "ruff_absent_on_this_interpreter"
 _BAD = [sys.executable, "-m", _MISSING]
-_GOOD = [sys.executable, "-m", "ruff"]
+
+# Environment capability, resolved the way tests/test_skip_condition_hygiene.py
+# can SEE (find_spec / shutil.which), not behind a subprocess probe it has to
+# take on faith. Both forms matter: ruff can be importable by this interpreter,
+# on PATH as a standalone binary, or both - and the candidate the resolution
+# tests expect to win has to match whichever is actually true here.
+_RUFF_IMPORTABLE = importlib.util.find_spec("ruff") is not None
+_RUFF_ON_PATH = shutil.which("ruff") is not None
+_GOOD = [sys.executable, "-m", "ruff"] if _RUFF_IMPORTABLE else ["ruff"]
 
 # UP031: percent-format. The exact rule afcbcf79 shipped and the gate missed.
 _UP031_SOURCE = 'a = 1\nmsg = "U+%04X" % (a,)\n'
 
-
-def _has_ruff() -> bool:
-    try:
-        p = subprocess.run(
-            [*_GOOD, "--version"], capture_output=True, text=True, timeout=30
-        )
-    except (OSError, subprocess.SubprocessError):
-        return False
-    return p.returncode == 0
-
-
 requires_ruff = pytest.mark.skipif(
-    not _has_ruff(), reason="ruff not installed for the test interpreter"
+    not (_RUFF_IMPORTABLE or _RUFF_ON_PATH),
+    reason="ruff is installed in neither this interpreter nor PATH",
 )
 
 
