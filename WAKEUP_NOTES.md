@@ -6,6 +6,69 @@
 
 ---
 
+# 2026-07-27j - RM-119 CI coverage + the preflip isolation class. Operator-directed.
+
+Two asks after the f1 drain - "do the RM-119 CI change", then "fix the 7
+preflip_mode isolation bugs" - plus supervising 17 autonomous loop cycles.
+Full detail in `docs/LEDGER.md` 1087.
+
+## Shipped
+
+- **RM-119 DS half: 397 DS test files went 0 -> gated on every push.** Verified
+  on the runner (9970 passed / 83 skipped / 2m47s), not just locally.
+- **The 7 preflip failures, root-caused and fixed.** They were NEVER
+  parallel-isolation bugs - the same 7 fail serially. Both classes derived
+  `unittest.IsolatedAsyncioTestCase`, which enters the loop on the MAIN thread
+  under Playwright's leaked running-loop marker. Fixed via the remedy RM-100
+  already settled (`tests/_asyncio_isolation.run_coro`), assertions proven still
+  failing when the production mirror is disabled.
+- **The guard that should have caught it was blind** - it walks `ast.Call` and
+  cannot see a base class. Now scans `IsolatedAsyncioTestCase` bases, with a
+  negative control and a prose-ignoring test.
+- Nightly is green and parallel; the loop shipped R205-R212 alongside.
+
+## The number that changes a decision
+
+A `workflow_dispatch` dry run priced the full dual suite ON A RUNNER before
+anything was wired: **19m42s, 23607 passed / 258 skipped / ZERO failures**,
+against 20m37s serial. **`-n auto` buys 55 seconds - about 4 percent - where
+the local 8-core figure was 2m20s.** I had quoted that local number in a CI
+comment as if it were the runner's; corrected in place with both numbers.
+
+## NEXT SESSION - wire the RC half
+
+RM-119's remaining half: push CI still collects **85 of 807** RC test files. The
+preflip blocker is CLEARED, so this is now purely a cost decision:
+- the `check` job would go from ~8m30s to ~20min per push
+- it needs `pip install -r requirements.txt` on that job (the runtime stack)
+- shape: replace the DS-only step with the full dual suite and drop the two
+  steps that become pure subsets (`smoke + regression tests`, `panel snapshot
+  tests`); KEEP the special-env steps (`RC_REQUIRE_HOOK_GATE`,
+  `RC_REQUIRE_BUILD_ORDER_TABLES`) because they turn skips into failures in a
+  way a plain run does not.
+Operator has asked for it; it was deferred only to wrap this session cleanly.
+
+## Other open items
+
+- **`scripts/wakeup_prune.py` cannot see the loop's entries.** `SESSION_RE`
+  requires `^# ` (H1); the loop writes `## ` (H2). So 12 loop sessions are
+  invisible to it and `--check` reports COMPLIANT while this file has grown to
+  61KB. Same defect class as everything else this session - a guard blind to a
+  spelling. Fix the regex to `^#{1,2} `, then run the relocation as its own
+  deliberate step (it will move ~12 entries; do not do it at a wrap).
+- **Audit reasoning still is not persisted.** `directive_history.jsonl` stores
+  only `VERDICT: REGRESS`, so diagnosing the two fabricated verdicts required
+  reconstructing them by hand from the directive and git.
+- **Loop is PARKED** (`STOP` present) for this CI work. Relaunch:
+  `powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\loop\launch_loop.ps1" -Mode live`
+  gemini recovered from a Google-side 503; if it 503s again the loop stops on
+  its own and the relaunch is the whole fix.
+- **Cloud scheduled routines commit to main ungated** - no local hook sees them
+  and a `.md`-only commit skips CI. R207 removed the reports-dir hygiene
+  exemption, so that one class is now caught; the general shape is not.
+
+---
+
 ## 2026-07-27i - R212 the Meraki half of the premise did not exist, the defect did (ENGINE 1.261.0 -> 1.262.0, `3811d2aa`)
 
 **Ninth cycle in ten with a premise false on disk - but this one split cleanly
