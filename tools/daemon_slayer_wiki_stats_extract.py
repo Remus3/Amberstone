@@ -32,11 +32,11 @@ What it pulls:
     backfill, no default fill, no <field>_src). No DS consumer yet.
 
 HOW (item 221 deep-dive, 2026-05-30 - the working method, verified live):
-  * The ``leagueoflegends.wiki.gg`` host edge-blocks Legion's egress (HTTP 401
-    "Not authorized - wiki.gg", host-wide, not api.php-specific; persists hours
-    after the item-217/221 probe burst). The block is HOSTNAME-SPECIFIC: the
+  * The ``leagueoflegends.wiki.gg`` host edge-blocks this development host's
+    egress (HTTP 401 "Not authorized - wiki.gg", host-wide, not api.php-specific;
+    persists hours after a probe burst). The block is HOSTNAME-SPECIFIC: the
     Riot vanity alias ``wiki.leagueoflegends.com`` (SAME wiki.gg backend) is
-    reachable from Legion (HTTP 200). WebFetch (Anthropic egress) is ALSO
+    reachable from the same host (HTTP 200). A hosted-agent fetch is ALSO
     blocked on the .wiki.gg host, so the alias is the path that works.
   * WIKI PRIMARY = ONE request: ``action=raw`` on ``Module:ChampionData/data``
     over the alias (~380 KB Lua ``return {...}`` table). A brace-scan parser
@@ -54,7 +54,7 @@ as ``daemon_slayer_abilities_extract.py``. The DS engine reads the committed
 sidecar JSON, never the network. Absent sidecar -> current behavior (the flat
 windup fallback). It is INERT until a consumer (combo.py AA-windup wire) opts in.
 
-Run from Legion (the alias + CDragon are reachable) or any host that reaches them:
+Run from any host that reaches the alias + CDragon:
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py            # current.txt patch
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --patch 16.11.1
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --limit 5  # smoke a subset
@@ -129,7 +129,7 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 DATA_DIR = PROJECT_ROOT / "data" / "daemon_slayer"
 META_DDRAGON_DIR = PROJECT_ROOT / "data" / "meta_build" / "ddragon"
 
-# The .wiki.gg host edge-blocks Legion (HTTP 401 host-wide). The Riot vanity
+# The .wiki.gg host edge-blocks this host (HTTP 401 host-wide). The Riot vanity
 # alias is the SAME wiki.gg backend and is reachable. See module docstring.
 WIKI_HOST = "https://wiki.leagueoflegends.com"
 WIKI_API = WIKI_HOST + "/api.php"
