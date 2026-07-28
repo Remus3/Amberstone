@@ -56,7 +56,15 @@ _WEB = _REPO_ROOT / "web"
 #   python -c "import tests.test_web_ascii_sweep as t; print(t._live_half_digest())"
 # A tokeniser change lands here too - re-run the two-tree diff above before
 # trusting a fresh capture.
-_LIVE_HALF_DIGEST = "f8d91eb717293ea8c88c2833f6c24001b23b9e00fa958f2c83b317880ab030fc"
+#
+# RE-CAPTURED at R223 (the overlay callouts 5-phase audit), superseding the
+# tokeniser-fix capture. This is the ordinary case the note above reserves: a
+# LIVE web edit, not a tokeniser change, so the classifier is fixed and the
+# two-tree diff is a straight answer. Run over 15d07d3c and the post-merge tree
+# with the SAME tokeniser, exactly two of 168 web/ sources differ in their live
+# half - web/js/panels/callouts.js and web/css/panels/callouts.css - which is
+# the audit's own file set and nothing else.
+_LIVE_HALF_DIGEST = "65ac5288559d2608e65add452cec8695f9c1002c51b5383491dee7e4279724e5"
 
 
 def _web_sources() -> list[Path]:
