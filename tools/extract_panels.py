@@ -155,11 +155,11 @@ cs_panel    = L(5816, 6223)   # renderChampSelectPanel, handleChampSelect, rende
 # renderChampSelectCoach uses RN.action / RN.immediate - rewrite to el() to
 # avoid importing RN from right_now.js (creates unnecessary cross-panel dep).
 cs_panel_fixed = cs_panel.replace(
-    "if (!RN.action || !RN.immediate) return;\n    const head = data.advice || \"(no advice)\";\n    RN.action.innerHTML = \"▶ \" + head;\n",
-    "const _rnAction = el(\"rn-action\"), _rnImmediate = el(\"rn-immediate\");\n    if (!_rnAction || !_rnImmediate) return;\n    const head = data.advice || \"(no advice)\";\n    _rnAction.innerHTML = \"▶ \" + head;\n"
+    "if (!RN.action || !RN.immediate) return;\n    const head = data.advice || \"(no advice)\";\n    RN.action.innerHTML = \"> \" + head;\n",
+    "const _rnAction = el(\"rn-action\"), _rnImmediate = el(\"rn-immediate\");\n    if (!_rnAction || !_rnImmediate) return;\n    const head = data.advice || \"(no advice)\";\n    _rnAction.innerHTML = \"> \" + head;\n"
 ).replace(
-    "RN.immediate.textContent = lines.join(\"  •  \");",
-    "_rnImmediate.textContent = lines.join(\"  •  \");"
+    "RN.immediate.textContent = lines.join(\"  *  \");",
+    "_rnImmediate.textContent = lines.join(\"  *  \");"
 )
 
 with open(f"{PANELS_DIR}/champ_select.js", "w", encoding="utf-8") as f:
@@ -191,7 +191,7 @@ print("ok dev.js")
 # -- 8. main.js - generate import block addition ------------------------------
 # Print the 7 import lines to prepend after the existing lib imports.
 PANEL_IMPORTS = """
-// ── Panel modules ─────────────────────────────────────────────────────────
+// -- Panel modules ---------------------------------------------------------
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';

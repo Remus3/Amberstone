@@ -127,7 +127,7 @@ def main() -> int:
     anomalies: list[str] = []
 
     # -- Legion ----------------------------------------------------------
-    out.append("## Legion (legion-rc · 100.70.22.55 · 192.168.8.230)\n")
+    out.append("## Legion (legion-rc - 100.70.22.55 - 192.168.8.230)\n")
     health = {}
     try:
         health = json.loads(_HEALTH.read_text(encoding="utf-8"))
@@ -192,7 +192,7 @@ def main() -> int:
             suppress = (n == "RC-DaemonSlayer" and r == 1 and ds_alive) or (
                 r == 2147946720 and running_now
             ) or (n == "RC-CostHealthWatchdog" and r == 1) or (str(s) == "Disabled")
-            mark = "" if r in (0, 267009, 267011, 267014) or suppress else f"  ⚠ result={r}"
+            mark = "" if r in (0, 267009, 267011, 267014) or suppress else f"  ! result={r}"
             out.append(f"  - {n}: state={s}{mark}")
             if r not in (0, 267009, 267011, 267014, None) and not suppress:
                 anomalies.append(
@@ -240,7 +240,7 @@ def main() -> int:
 
     # -- Anomaly summary first if any ------------------------------------
     if anomalies:
-        head = "## ⚠ Anomalies\n\n" + "\n".join(f"- {a}" for a in anomalies) + "\n\n"
+        head = "## ! Anomalies\n\n" + "\n".join(f"- {a}" for a in anomalies) + "\n\n"
         sys.stdout.write(head)
     sys.stdout.write("\n".join(out) + "\n")
     return 0
