@@ -1726,3 +1726,57 @@ for the measurements, this one for what ROADMAP used to say.
 ## RM-119 skip audit - relocated verbatim from ROADMAP.md on 2026-07-28 (R219 size-budget pass)
 
 - **The skip audit behind it, for whoever picks this up.** 162 real skip control points (127 RC + 35 DS); **A 78 legitimate-capability / B 75 masking / C 9 ambiguous**. B means *skips because the thing under test is absent* - i.e. reports green by not running. **Ranked B classes:** B1 precompute seed tables (7 sites - the ONLY guards on shipped-table schema, taxonomy, keyspace, ASCII, and they all flip to skip at a patch bump, which is exactly when they matter; the loader is fail-soft to `{}` so corrupt and never-generated are indistinguishable); B2 DS live-route family (19 sites skipping because the operator's long-running `:8893` daemon is down, though `test_server_routes_p1l8.py:41` already proves `start_server(port=0)` works on any runner - so the DS HTTP route layer every RC consumer talks to is exercised in CI **never**); B3 five tautological scaffolds that assert a mount exists and skip when it does not, so they cannot fail; B4 ~22 sites that skip when the DATA contradicts the test's own premise; B5 ~22 sites gating on files that are TRACKED AND PRESENT and cannot legitimately be absent. **Two traps for a re-run:** the obvious pattern set misses the `self.skipTest(...)` idiom entirely and under-counts by a third; and 90 of the 108 runtime skips come from two env gates (`RC_BUILD_ORDER_LIVE_PARITY`, `RC_BUILD_ORDER_FULL_REGEN`) that **are set nowhere in the repo** - 90 tests that have never run in any automated context, on any machine, ever. B1/B3 plus a real skip-relabelling bug (`test_build_order_variants.py:237` - `SkipTest` subclasses `Exception`, so the next line's `except Exception` catches its own skip and reports every transient `:8893` timeout as "DS client import failed") are being fixed in the same session; B2/B4/B5 are filed here.
+
+
+## 2026-07-28 - budget relocation pass 2 (ROADMAP back at 94 pct)
+
+Eight SHIPPED/CLOSED RM rows relocated VERBATIM, each leaving a one-line
+pointer in ROADMAP.md carrying only its do-not-rebuild fence. No RM id
+dropped, no open work moved.
+
+- **RM-109 SHIPPED + CLOSED 2026-07-20 (`533d70fb`)** - played-with-pro corpus: **26 matches**, recovered by a LOCAL SQL join at zero Riot API calls. Roster expansion, the post-2025-09 gap, and the blank-name risk are all operator-CLOSED. Detail: `docs/ROADMAP_HISTORY.md` + LEDGER 972.
+
+- **RM-111 SHIPPED + CLOSED 2026-07-20** (`core/aram_item_interaction.py`) - ARAM comp-conditioned item-interaction aggregator plus the owed coach cue. **Descriptive only, firewalled from `agents/daemon_slayer` rank and pinned by test**; `MIN_BUCKET_N=15` is a hard drop. Nothing left open. Narrative: `docs/ROADMAP_HISTORY.md`.
+
+- **RM-101 IS CLOSED for every buildable rune.** Bone Plating 8473 (`apply_rune_flat_mitigation`), Second Wind 8444 (`apply_rune_self_heal`) and Guardian 8465 (`apply_rune_shield_grants`) all SHIPPED DEFAULT-OFF. **Guardian ships AP-OMITTED on purpose** - `ehp.py` carries ZERO wielder ability power, so the +20% AP term is unrepresentable and its absence is a deliberate undercount; a mutation-tested regression class fails RED if a future edit fabricates an AP value. **Font of Life 8463 stays DATA-BLOCKED on the unresolved `@BaseHeal@` token - do NOT invent a number.** The ROADMAP's ~154 prevented HP was an UN-AMORTIZED upper bound, not a coefficient; the shipped seed is 0.25. Detail: `docs/ROADMAP_HISTORY.md`.
+
+- **RM-102 SHIPPED 2026-07-19** - Warmog's Arena mirror 443083 was credited a passive it does not have (132.0 phantom EHP on a Sion L13 Arena build). **Verified BY ID, never by name** - base and mirror share the display name. **A full 12-mirror base-nominal sweep came back CLEAN: 443083 is the ONLY instance - do not re-run it.** Narrative: `docs/ROADMAP_HISTORY.md`.
+
+- **RM-103 SHIPPED 2026-07-19** - Unending Despair 2502 + Arena mirror 222502 Anguish SELF-heal (`assume_item_proc_heal`, DEFAULT-OFF). The no-schema-lift claim was HALF FALSE: the heal is 250% of POST-mitigation damage and `ehp.py` has ZERO `target_mr` references, resolved with an explicit `_ASSUMED_TARGET_MR_FOR_PROC_HEAL = 60.0`. Narrative: `docs/ROADMAP_HISTORY.md`.
+
+- **RM-104 SHIPPED 2026-07-19: four Arena mirrors credited ZERO shield EHP, not one.** Kaenic 222504 (latent) plus the always-on and therefore LIVE Immortal Shieldbow 226673 / Sterak's 223053 / Maw 223156. **Population is provably exactly four** and is pinned by `MirrorShieldClassGuardTests`, because this was a CLASS (mirrors authored by copying an SR entry's prose and dropping its `shield=`), not four typos. The obvious stat-retune objection was tested and REFUTED. **The regen was NOT stamp-only** - 68 of 173 ARENA entries changed, SR + ARAM untouched. Detail: `docs/ROADMAP_HISTORY.md` + CHANGELOG.
+
+- **RM-105 SHIPPED 2026-07-19: `effective_ehp_with_sustain` omitted the entire PERMANENT-HP family.** `_blend_with_heal` now carries `passive_health_hp` + `rune_perm_hp` + `item_health_stack_hp`, and the contract test asserts the blend equality with EACH seam ARMED rather than only at defaults - which is why it went unseen. Narrative: `docs/ROADMAP_HISTORY.md`.
+
+- **RM-108 unresolved-template-token detector - SHIPPED 2026-07-19. Do NOT rebuild.** Delivered as `tools/unresolved_token_scan.py` + `tools/data/unresolved_template_tokens.json` + the RM-108 test. **The premise was measured FALSE:** all 56,896 occurrences across 874 files land in display-prose keys, ZERO in a numerically-read key, so the real product is the `documented_instances` registry for human registry authors, not a numeric tripwire. Detail: `docs/ROADMAP_HISTORY.md`.
+
+
+
+### 2026-07-28 relocation pass 2, continued - the RM-106 family
+
+- **RM-106 SHIPPED 2026-07-19** - the sanctioned Match-V5 `/replays` pull is built, live-proven and on the 15-minute schedule. Bodies are GZIP-framed; 404 = Riot no longer retains the file (expected, not a failure); `/replays` needs the PRODUCT key, not the dev key. **ROTATION ANSWERED 2026-07-26 - do not re-open:** the window DOES rotate and the cadence captures it (`rotated=True over 592 observations, new=4 dropped=4`; 9 distinct ids served through a 5-wide window, all 9 archived, 0 lost). **Trap: a dead account reports `rotated=False` forever**, so read the rotation line only on an account actually being played. Full record: `docs/ROADMAP_HISTORY.md` + memories `reference_riot_replays_endpoint` / `reference_riot_puuid_rotation`.
+
+  - **RM-106a CLOSED 2026-07-19** - event-mode timelines ARE obtainable over the local LCU (`/lol-match-history/v1/game-timelines/{gameId}`, HTTP 200 on a KIWI queue-2400 match) with a permanently reduced event set (no item or skill order) and a hard 20-entry history cap, so this route can NEVER backfill. Full record: `docs/ROADMAP_HISTORY.md`.
+
+  - **RM-107 SHIPPED** (`556662a7`). Full record: `docs/ROADMAP_HISTORY.md` (the 2026-07-19 RM-107 block).
+
+
+
+### 2026-07-28 relocation pass 2, continued - RM-118 narrative + RM-119
+
+RM-118 keeps ALL its open work in the ROADMAP pointer (the three forward-drops,
+the 22 ledgered seams, and the expressible-not-live caveat). Only the long-form
+narrative moved.
+
+- **RM-118** 🟢 **DS STRANDED-SEAM CLASS - the reachability guards were structurally blind, now they are not (2026-07-27, ENGINE 1.261.0, R197).** `assume_hsp_amp` was accepted by `ehp.compute_ehp` + `sustain.compute_sustain` and parsed by NO route, so the entire item-side wielder-HSP lane could not be armed by any table, tick, or probe - while both RM-115 reachability guards read GREEN, because they enumerate the keys `server.py` already parses and are therefore circular by construction. The new guard derives its universe from the ENGINE via `inspect.signature`. **Class enumerated by AST walk: 195 seam-parameter occurrences / 74 distinct names; 23 route-facing stranded, 1 FIXED, 22 carried in a commented debt ledger that can only shrink.** **A THIRD stranded shape is now on record and is NOT fixed: parsed but never forwarded** - `assume_item_crit_dr`, `assume_item_aa_dr`, `assume_item_enemy_as_slow` (server.py:832/836/840). **OPEN / OWED:** (a) those three forward-drops; (b) the 22 ledgered seams; (c) `assume_hsp_amp` still cannot be expressed by `rank_items_by_ehp` / `compute_hybrid` / `rank_items_by_hybrid`, which is where item choice is actually decided - the route+client wire made it EXPRESSIBLE, not LIVE, and `ehp_for` / `sustain_for` have zero non-test callers. Do not let a later summary read this as a live-path win. Narrative: `docs/ORCHESTRATION_PLAN.md` R197 + `agents/daemon_slayer/CHANGELOG.md` 1.261.0.
+
+- **RM-119 CLOSED 2026-07-28 (R217-U1, `9e7b70d1`) - push CI gates the WHOLE tree, both halves.** `check:` installs `requirements.txt` and runs `pytest tests/ agents/daemon_slayer/tests/`; the two subset steps are deleted; `timeout-minutes` 25 -> **40** (a blown ceiling reports as *cancelled*, not failed - the misread that cost a cycle). Runner-green at run `30345614564`: 23703 passed / 254 skipped / 6165 subtests / 0 failed in a 20m54s job, **96 MORE tests than the nightly**, so push CI is strictly stronger than it. Full narrative in `docs/ROADMAP_HISTORY.md` (fence re-compressed on the R219 size-budget pass).
+
+
+
+### 2026-07-28 relocation pass 2, continued - RM-113 sample-level detail
+
+The OPEN TRINKET row and its one unrecorded fact stay in the ROADMAP pointer.
+
+- **RM-113 w-nextbuy live-frame acceptance: 2 PASS, 1 FAIL-upstream (RM-114, CLOSED), 1 OPEN (2026-07-23, session k).** OQ16 cadence and the `#am-next-buy` no-reflow both PASSED on a real SR game (Kai'Sa, 22m30s, ~300 CDP samples); sample-level evidence in `docs/ROADMAP_HISTORY.md`. **OPEN** TRINKET: never activated in 260 samples, but `stageFor` returns `mid` on the clock arm alone at `c >= 600` (`web/js/lib/next_buy_model.js:68-72`), so stage was provably `mid`/`late` for the final 12.5 min and the stage gate cannot explain the silence. Reduces to ONE unrecorded fact: whether `owned_items` still held `stealth ward`. `tools/overlay_live_frame_probe.py` now records it per sample and flushes each row (load-bearing - redirected stdout is block-buffered), so the next SR game closes this line with no new analysis.
+
