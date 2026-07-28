@@ -186,6 +186,49 @@ def _compile_errors(pyfiles: list[str], root: str) -> list[str]:
     return out
 
 
+def _ruff_candidates() -> list[list[str]]:
+    """Ruff invocations to try, in order, until one answers `--version`.
+
+    This gate runs on TWO channels with DIFFERENT interpreters, and each one
+    used to be hardcoded wrong for the other:
+
+      * Claude PreToolUse - .claude/settings.json launches Python314's
+        pythonw.exe, and that interpreter owns ruff, so sys.executable works.
+      * .githooks/pre-commit - launches `py tools/precommit_gate.py`, and on
+        Legion the `py` launcher resolves to a bare pythoncore build with NO
+        ruff, so sys.executable is exactly the interpreter that cannot run it.
+
+    The original code used `py`; ceb2f584 switched it to sys.executable to fix
+    the PreToolUse channel and thereby broke the git-hook one - which is the
+    AUTHORITATIVE channel (CLAUDE.md), and the one a headless run gets. Measured
+    2026-07-28: the ruff half had been dead there for three weeks, and passed a
+    net-new UP031 in this file's own source straight to CI (afcbcf79).
+
+    Resolving at call time is the fix: no channel has to be guessed.
+    """
+    return [
+        [sys.executable, "-m", "ruff"],
+        ["ruff"],
+        ["py", "-m", "ruff"],
+        ["python", "-m", "ruff"],
+    ]
+
+
+def _resolve_ruff() -> list[str] | None:
+    """First candidate whose `--version` succeeds, or None if ruff is absent."""
+    for cmd in _ruff_candidates():
+        try:
+            probe = subprocess.run(
+                [*cmd, "--version"], capture_output=True, text=True,
+                timeout=30, creationflags=_NO_WINDOW,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if probe.returncode == 0 and (probe.stdout or "").strip().startswith("ruff"):
+            return list(cmd)
+    return None
+
+
 def _check_message_file(path: str) -> int:
     """commit-msg entry point: scan the prepared commit message for glyphs.
 
@@ -270,12 +313,22 @@ def main() -> int:
         p for p in staged if p.endswith(".py") and os.path.isfile(os.path.join(root, p))
     ]
     violations.extend(_compile_errors(pyfiles, root))
-    if pyfiles:
-        # Use the `py` launcher (not sys.executable): under the hook the running
-        # interpreter is a bare pythoncore build with no ruff installed; the
-        # launcher resolves the project Python that has ruff (mirrors edit_lint_check.py).
+    ruff = _resolve_ruff() if pyfiles else None
+    if pyfiles and ruff is None:
+        # Fail OPEN, but never fail SILENT. Blocking every commit on a machine
+        # without ruff would wedge the headless loop and a fresh clone; passing
+        # without a word is what let afcbcf79 reach CI. CI's `ruff check .` is
+        # the backstop, so say the half did not run and let the commit through.
+        sys.stderr.write(
+            "precommit_gate WARNING: no working ruff found - the net-new ruff "
+            "half did NOT run on this commit.\n  Tried: "
+            + " | ".join(" ".join(c) for c in _ruff_candidates())
+            + "\n  Install it (python -m pip install ruff) or CI is your only "
+            "lint gate.\n"
+        )
+    if pyfiles and ruff is not None:
         proc = subprocess.run(
-            [sys.executable, "-m", "ruff", "check", "--output-format=json", *pyfiles],
+            [*ruff, "check", "--output-format=json", *pyfiles],
             cwd=root,
             capture_output=True,
             text=True,
@@ -285,7 +338,15 @@ def main() -> int:
         try:
             findings = json.loads(proc.stdout) if proc.stdout.strip() else []
         except ValueError:
+            # ruff answered --version but could not lint (bad config, crash).
+            # Same rule as above: pass, but never in silence.
             findings = []
+            sys.stderr.write(
+                "precommit_gate WARNING: ruff produced no parseable JSON - the "
+                "net-new ruff half did NOT run.\n  "
+                + (proc.stderr or "").strip()[:400]
+                + "\n"
+            )
         for f in findings:
             fn = (f.get("filename") or "").replace("\\", "/")
             rel = fn[len(root.replace("\\", "/")) + 1 :] if fn.startswith(root.replace("\\", "/")) else fn
