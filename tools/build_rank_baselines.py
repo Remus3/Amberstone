@@ -25,6 +25,12 @@ is paid deliberately.
 Apex tiers are paged from their own league-v4 endpoints; every other cohort
 comes from league-exp-v4 for that exact tier and division.
 
+A run MERGES into the existing --out file: only the cohorts this run actually
+sampled are rewritten, so backfilling a single cohort cannot destroy the other
+30. A cohort that resolves no accounts is listed under `skipped` and makes the
+process exit non-zero - the file is still written, because a partial result is
+worth keeping and a silent skip is how MASTER stayed missing for weeks.
+
 DO NOT RUN CONCURRENTLY with another RC ingest; --wait-for-idle blocks until
 the others are done.
 """
@@ -105,6 +111,21 @@ def match_ids(puuid: str, count: int) -> list:
                  f"by-puuid/{puuid}/ids?queue=420&start=0&count={count}") or []
 
 
+def _existing_cohorts(dest: Path) -> dict:
+    """Cohorts already on disk, so a targeted rerun adds instead of replaces.
+
+    A rerun narrowed to one cohort (--tiers MASTER, to backfill the one the
+    apex endpoint missed) used to rebuild the payload from its own one-cohort
+    plan and replace the whole file, silently destroying the other 30.
+    """
+    try:
+        blob = json.loads(dest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    tiers = blob.get("tiers")
+    return dict(tiers) if isinstance(tiers, dict) else {}
+
+
 def _others_running() -> bool:
     try:
         out = subprocess.run(
@@ -143,11 +164,13 @@ def main(argv=None) -> int:
 
     tiers = [t.strip().upper() for t in args.tiers.split(",") if t.strip()]
     t0 = time.time()
+    dest = Path(args.out)
     out = {"source": "match_v5", "tier": "T0", "queue": QUEUE,
            "accounts_per_cohort": args.accounts_per_cohort,
            "matches_per_account": args.matches_per_account,
            "divisions_merged": False,
-           "undetectable_afk_rate": ch.UNDETECTABLE_AFK_RATE, "tiers": {}}
+           "undetectable_afk_rate": ch.UNDETECTABLE_AFK_RATE,
+           "tiers": _existing_cohorts(dest), "skipped": []}
 
     plan = cohorts(tiers)
     print(f"{len(plan)} cohorts to sample", flush=True)
@@ -155,6 +178,7 @@ def main(argv=None) -> int:
         puuids = accounts_for_cohort(tier, division, args.accounts_per_cohort)
         if not puuids:
             print(f"  {name}: no accounts resolved - SKIPPED", flush=True)
+            out["skipped"].append(name)
             continue
         wanted, seen = [], set()
         for pu in puuids:
@@ -178,14 +202,18 @@ def main(argv=None) -> int:
                 metrics = cb.participant_metrics(p)
                 if role and metrics:
                     rows.append((role, metrics))
+        # Params live per-cohort because a merged file can hold cohorts from
+        # runs sampled at different depths; the top-level pair only ever
+        # describes the run that wrote it.
         out["tiers"][name] = {
             "tier": tier, "division": division,
+            "accounts_per_cohort": args.accounts_per_cohort,
+            "matches_per_account": args.matches_per_account,
             "matches": kept, "dropped": dropped, "failed": failed,
             "player_rows": len(rows), "roles": cb.build(rows)}
         print(f"  {name}: matches={kept} dropped={dropped} failed={failed} "
               f"rows={len(rows)} elapsed={time.time() - t0:.0f}s", flush=True)
 
-    dest = Path(args.out)
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(".tmp")
     tmp.write_text(json.dumps(out, indent=2), encoding="utf-8")
@@ -194,16 +222,21 @@ def main(argv=None) -> int:
 
     print(f"\n{'tier':14} {'rows':>6} " + " ".join(
         f"{r:>9}" for r in ("TOP", "JUNGLE", "MID", "BOT", "SUPPORT")))
-    for tier in tiers:
-        t = out["tiers"].get(tier)
+    for cohort, _tier, _division in plan:
+        t = out["tiers"].get(cohort)
         if not t:
             continue
         med = []
         for role in ("TOP", "JUNGLE", "MID", "BOT", "SUPPORT"):
             tbl = (t["roles"].get(role) or {}).get("cs_per_min")
             med.append(f"{tbl['p50']:>9.2f}" if tbl else f"{'-':>9}")
-        print(f"{name:14} {t['player_rows']:>6} " + " ".join(med), flush=True)
+        print(f"{cohort:14} {t['player_rows']:>6} " + " ".join(med), flush=True)
     print("(median cs_per_min by role)", flush=True)
+
+    if out["skipped"]:
+        print(f"SKIPPED {len(out['skipped'])} cohorts: "
+              f"{', '.join(out['skipped'])}", flush=True)
+        return 1
     return 0
 
 
