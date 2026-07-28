@@ -6,6 +6,47 @@
 
 ---
 
+# 2026-07-28i - R218 champ-select shadow flip gate. RM-12 named a gate that was never built.
+
+Gemini-loop cycle 25. Full detail in `docs/LEDGER.md` 1097. Commits `bb746286` (work)
++ `678d4659` (sync). Section 4b Lane C. One new read-only host tool + its test: no
+engine, no ENGINE bump, no DS path, no Share mirror, no restart, no route or panel.
+
+- **The defect class was structural, not a bug.** A shadow lane writes BOTH the native
+  and the deterministic column so the two can be compared later. Ten lanes do that.
+  Eight have a `tools/*report*.py`; `augment_shadow` and `anvil_shadow` carry an
+  in-module `summarize_agreement`. `core/champ_select_shadow.py` had neither, which
+  made it the one live-wired lane whose flip readiness could not be measured at all.
+- **`ROADMAP.md:146` had been citing an instrument that did not exist.** RM-12's clause
+  "the champ-select brief Haiku flip after shadow-log accrual" reads as though someone
+  need only check the number. There was no number. LEDGER item 500 shipped the writer
+  in 2026-06 and its own NEXT jumped straight to the FLIP, so the intermediate gate was
+  never filed anywhere - not ROADMAP, not BACKLOG, not the plan. It took a `grep` for
+  `champ_select_shadow` across all four to establish that: zero hits.
+- **Non-ARAM rows are gated out of the `swap` column, and that is the whole point.**
+  Off-bench, both the native and the deterministic side say nothing. Scoring that
+  silence banks a free KEEP/KEEP agreement on a row carrying no signal, and enough of
+  them walk the rate to the 0.70 flip gate without a single real agreement underneath.
+  Pinned by a tested invariant: `coverage.non_aram == swap.gated_out_non_aram`.
+- **The ARAM sibling's substring matcher is wrong and I did not copy it.**
+  `tools/aram_shadow_report.py` classifies by raw substring, so "ban" matches inside
+  "banner" and "lock" inside "locked". The degraded marker here is literally
+  `no champion locked`. Token-boundary matching instead. Not swept into the sibling -
+  that is its own slice with its own evidence, and this one had no failing case to cite.
+- **`_FIELDS` imports `core.champ_select_shadow._ADVICE_KEYS` rather than restating it.**
+  A restated tuple survives a writer-side rename and silently zeroes a column; an
+  import fails loudly. Same reasoning as the contract-test-reads-the-contract rule.
+- The directive tagged its own premise `[UNVERIFIED]` and both halves held - plan has
+  zero WIP rows, Section 4b is genuinely unfinished. Third real unit in a row.
+- Verifier CONFIRM 9/9 before merge. RC 13801 passed / 106 skipped / 477 subtests
+  (13766 baseline + 35 new). CI green on both SHAs.
+- **NEXT / owed:** the gate exists, the log does not. `data/champ_select_shadow.jsonl`
+  is empty and the report reads `state=awaiting_accrual` below MIN_SAMPLE 20. Nothing
+  further to build on this lane until real champ-select rounds accrue - the RM-12 clause
+  cannot be argued in either direction before then. Do NOT re-pitch the report.
+
+---
+
 # 2026-07-28h - R217-U2 tools ASCII sweep. The decorative glyphs were fine; two of them were data.
 
 Gemini-loop cycle 24. Full detail in `docs/LEDGER.md` 1096. Commits `84535bdf` (work)
@@ -71,48 +112,3 @@ Share mirror, no restart, no runtime `.py`.
 - **Carry-forward: every push now costs ~26 CI minutes.** That makes the docs-only
   `paths-ignore` skip and `concurrency: cancel-in-progress` load-bearing, not
   cleanup targets. R217-U2 (tools non-ASCII residue) is still OPEN.
-
----
-
-# 2026-07-28f - R217 desktop-queue drain. Half the notes were already true on disk.
-
-Gemini-loop cycle 22. RM-121 item 4 (`random.txt` + `roadmap work.txt`), which
-DRAINS the five-file desktop chain - four items, no file 5, do not re-pick RM-121.
-Full detail in `docs/LEDGER.md` 1094. Commit `4e9bf60b` + this sync. Tier-0 docs
-only: no `.py` / `.yml` / `.css` / `.html`, no engine, no ENGINE bump, no DS path,
-no Share mirror change, no restart.
-
-## The override held this time, and the unit was real
-
-Cycles 13-19 kept ordering work already on disk. This directive's `[from-digest]`
-premise was TRUE - `ROADMAP.md:42` carries the sentence verbatim - and both desktop
-sources exist. The re-read still earned its keep at one Read.
-
-## Three things to carry
-
-1. **An operator note is no more current than an audit digest.** 5 of the 11 claims
-   across these two notes were already resolved: the `wakeup_prune` SESSION_RE
-   blindness (fixed `2f35163d`; `--check` exits 0, this file was 10759 bytes with
-   exactly 3 headings), the "loop is PARKED" claim (RM-120 closed it), the
-   git-hook BOM/non-ASCII ask (`.githooks/` + `precommit_gate.py` + the hygiene
-   trio already do it), the `performance_tracker.py:37-39` em-dashes, and the
-   `data/ratings/*.json` backfill behind them (0 of 4 files carry a dash). Probe
-   every line of a note, not just an inherited premise.
-2. **The disqualifying instruction can be the header, not the content.**
-   `random.txt` part 2 opens "operator-present; Do NOT run headless" and then lays
-   out a well-specified 6-item queue that never repeats the prohibition - exactly
-   the shape a headless executor consumes. Filed as RM-122 with the gate restated
-   inside the row.
-3. **The plan-file relocation is now a steady state, not a chore.** Keep exactly
-   ONE findings block at the tail of `docs/ORCHESTRATION_PLAN.md`: relocate the
-   previous cycle's block verbatim as you append yours. R217 did that and landed
-   the newest row at 9004 bytes from EOF instead of the ~20000 R216 predicted.
-
-## Open
-
-- **`ROADMAP.md` is at 80351 of its 81920-byte budget - 1569 bytes of headroom.**
-  The next writer relocates shipped narrative to `docs/ROADMAP_HISTORY.md` first.
-- Plan rows `R217-U1` (`ci.yml` RC-half promotion, operator-authorized, ~20min per
-  push measured) and `R217-U2` (`tools/extract_panels.py` + `tools/rc_facts.py`
-  non-ASCII; `p3_ascii_sweep.py` EXEMPT) are OPEN and chunked, not built.
-- LEDGER 1092's 16-instance whole-file-rewrite class is still unclaimed.
