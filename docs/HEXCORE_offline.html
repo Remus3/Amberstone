@@ -166,54 +166,23 @@
       </div>
       <div style="flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:16px 20px;font-family:'Rajdhani',system-ui,sans-serif;font-size:13px;line-height:1.55;color:#d8cdb0;overflow-wrap:anywhere;">
         <h1 style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:700;color:#ffe6a8;margin:0 0 10px;letter-spacing:.6px;">Riot Commander</h1>
-        <p style="margin:0 0 14px;color:#c9bd9c;">A live coaching companion for League of Legends and Teamfight Tactics. Reads the game's local data feed, watches the screen, and serves a second-screen dashboard with real-time advice: what to build, when to fight, who to ban in champ select. Personal project, private repo.</p>
+        <p style="margin:0 0 14px;color:#c9bd9c;">A local, real-time coaching companion for League of Legends and Teamfight Tactics.</p>
 
-        <h2 style="font-size:14px;font-weight:700;color:#ffd9a0;margin:16px 0 7px;letter-spacing:.5px;border-bottom:1px solid rgba(255,180,60,.14);padding-bottom:3px;">What it does</h2>
-        <ul style="margin:0 0 14px;padding-left:18px;color:#c9bd9c;">
-          <li style="margin-bottom:5px;">In-game coaching. Tracks gold, level, KDA, items, enemy build, and minimap from Riot's local feed, then turns it into short, situation-specific tips. Visual calls (wave state, fog inference, item-spike timing) go to an AI model; most ticks stay cheap and local.</li>
-          <li style="margin-bottom:5px;">Real math, not tier lists. A local build engine ("Daemon Slayer") computes true DPS, effective HP, ability burst, and healing for any champion x item x enemy. The AI coach reads those numbers so item advice fits your matchup.</li>
-          <li style="margin-bottom:5px;">Champion select. Suggests bans and picks from your own history, the enemy team, and patch trends, then writes runes into the client automatically.</li>
-          <li style="margin-bottom:5px;">Match history you own. ~3,000 of your matches with full timelines kept locally - no third-party scraping.</li>
-          <li style="margin-bottom:5px;">Modes: Summoner's Rift, ARAM, Arena, Brawl, and TFT.</li>
-        </ul>
+        <h2 style="font-size:14px;font-weight:700;color:#ffd9a0;margin:16px 0 7px;letter-spacing:.5px;border-bottom:1px solid rgba(255,180,60,.14);padding-bottom:3px;">About this artifact</h2>
+        <p style="margin:0 0 14px;color:#c9bd9c;">This file is a self-contained, offline map of the Riot Commander repository. Nodes are the project's components - modules, docs, tools, agents, and upstream services; the surrounding dust field is the rest of the source tree. Hover a node for its summary, click to focus; controls are listed along the bottom edge. Nothing here loads from the network.</p>
 
-        <h2 style="font-size:14px;font-weight:700;color:#ffd9a0;margin:16px 0 7px;letter-spacing:.5px;border-bottom:1px solid rgba(255,180,60,.14);padding-bottom:3px;">How it works</h2>
-        <p style="margin:0 0 14px;color:#c9bd9c;">A local Python service polls the game several times a second and decides whether the next tip comes from a quick local calculation or an AI call. The dashboard is a local web page opened in Chrome on a second monitor. The build engine runs as a separate local service: when the coach is about to suggest an item, it asks the engine for a ranked list with real damage numbers and drops that into its prompt. No cloud calls for the math.</p>
+        <h2 style="font-size:14px;font-weight:700;color:#ffd9a0;margin:16px 0 7px;letter-spacing:.5px;border-bottom:1px solid rgba(255,180,60,.14);padding-bottom:3px;">The project in one paragraph</h2>
+        <p style="margin:0 0 14px;color:#c9bd9c;">Riot Commander watches a live game through the client's local data feed and the screen, then serves short, situation-specific advice - what to build, when to fight - to a local dashboard. A local math engine, Daemon Slayer, ranks items with real damage and durability numbers for the matchup at hand, and an AI coach turns those numbers into the on-screen advice; screen reading is OCR first, with an AI model as the escalation for what OCR misses. Everything runs on one PC. The live engine version and patch are stamped in the HUD readout, never here.</p>
 
-        <h2 style="font-size:14px;font-weight:700;color:#ffd9a0;margin:16px 0 7px;letter-spacing:.5px;border-bottom:1px solid rgba(255,180,60,.14);padding-bottom:3px;">Daemon Slayer build engine</h2>
-        <p style="margin:0 0 10px;color:#c9bd9c;">Scores any champion x item x enemy combo with real game math, auto-picking one of six modes by role:</p>
-        <table style="width:100%;border-collapse:collapse;margin:0 0 12px;font-size:12.5px;">
-          <thead>
-            <tr>
-              <th style="text-align:left;padding:5px 8px;border:1px solid rgba(255,180,60,.20);background:rgba(40,26,10,.45);color:#ffd9a0;font-weight:700;">Role</th>
-              <th style="text-align:left;padding:5px 8px;border:1px solid rgba(255,180,60,.20);background:rgba(40,26,10,.45);color:#ffd9a0;font-weight:700;">Scores</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#d8cdb0;">Carry (ADC)</td><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#c9bd9c;">Auto-attack DPS</td></tr>
-            <tr><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#d8cdb0;">Tank</td><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#c9bd9c;">Effective HP vs enemy damage mix</td></tr>
-            <tr><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#d8cdb0;">Bruiser</td><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#c9bd9c;">Per-champion blend of DPS and EHP</td></tr>
-            <tr><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#d8cdb0;">Mage</td><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#c9bd9c;">Per-spell ability damage at cast cadence</td></tr>
-            <tr><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#d8cdb0;">Assassin</td><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#c9bd9c;">Burst inside a combo window</td></tr>
-            <tr><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#d8cdb0;">Enchanter</td><td style="padding:5px 8px;border:1px solid rgba(255,180,60,.14);color:#c9bd9c;">Healing and shielding throughput</td></tr>
-          </tbody>
-        </table>
-        <p style="margin:0 0 14px;color:#c9bd9c;">A per-champion override registry handles unusual mechanics (Nidalee cougar form, Akali R recast, Zed shadow Q, Renekton Fury, and more). Roughly three-quarters of the roster is covered, growing in small batches. Coverage spans every purchasable item across all modes (706 items) on the current patch, backed by 23,321 tests.</p>
-
-        <h2 style="font-size:14px;font-weight:700;color:#ffd9a0;margin:16px 0 7px;letter-spacing:.5px;border-bottom:1px solid rgba(255,180,60,.14);padding-bottom:3px;">Where it runs</h2>
-        <p style="margin:0 0 14px;color:#c9bd9c;">Single-machine setup ("Legion"): coach, dashboard, build engine, vision, and the game all run on one host on a small private network. The dashboard is served locally over HTTPS and viewed in Chrome.</p>
-
-        <h2 style="font-size:14px;font-weight:700;color:#ffd9a0;margin:16px 0 7px;letter-spacing:.5px;border-bottom:1px solid rgba(255,180,60,.14);padding-bottom:3px;">Status</h2>
-        <p style="margin:0 0 14px;color:#c9bd9c;">In active development for over a year. The in-game loop is functionally complete across all five modes - vision, build engine, dashboard, champ select, and AI coaching are live and stable. Current work is polish: OCR-vs-AI region calibration, validating engine scores against match outcomes, filling the override registry, and iterating on the champ-select page.</p>
-
-        <h2 style="font-size:14px;font-weight:700;color:#ffd9a0;margin:16px 0 7px;letter-spacing:.5px;border-bottom:1px solid rgba(255,180,60,.14);padding-bottom:3px;">Links</h2>
+        <h2 style="font-size:14px;font-weight:700;color:#ffd9a0;margin:16px 0 7px;letter-spacing:.5px;border-bottom:1px solid rgba(255,180,60,.14);padding-bottom:3px;">Where the real docs are</h2>
         <ul style="margin:0 0 10px;padding-left:18px;color:#c9bd9c;">
-          <li style="margin-bottom:4px;">CLAUDE.md - operational context (paths, restart, priorities)</li>
-          <li style="margin-bottom:4px;">ROADMAP.md - milestone ledger</li>
-          <li style="margin-bottom:4px;">docs/DAEMON_SLAYER.md - build engine deep reference</li>
-          <li style="margin-bottom:4px;">docs/ARCHITECTURE.md - module map</li>
-          <li style="margin-bottom:4px;">docs/adr/ - architectural decisions</li>
+          <li style="margin-bottom:4px;">README.md - the project front page</li>
+          <li style="margin-bottom:4px;">docs/ARCHITECTURE.md - component map</li>
+          <li style="margin-bottom:4px;">docs/DAEMON_SLAYER.md - the build engine</li>
+          <li style="margin-bottom:4px;">ROADMAP.md - open work</li>
         </ul>
+        <p style="margin:0 0 14px;color:#c9bd9c;">These paths resolve next to a repository checkout; this file travels alone.</p>
+
         <p style="margin:8px 0 0;font-size:11px;color:#8f815f;">All rights reserved. Personal use only.</p>
       </div>
     </div>

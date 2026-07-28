@@ -1,87 +1,128 @@
 # Riot Commander
 
-[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/Remus3/riot-commander?utm_source=badge)
+A local, real-time coaching companion for League of Legends and Teamfight Tactics.
 
-A live coaching companion for League of Legends and Teamfight Tactics. RC reads the game's local data feed, watches the screen, and shows a second-screen dashboard with real-time advice - what to build next, when to fight, who to ban during the picking phase before a match.
+[![CI](https://github.com/Remus3/riot-commander/actions/workflows/ci.yml/badge.svg)](https://github.com/Remus3/riot-commander/actions/workflows/ci.yml) [![Docs guards](https://github.com/Remus3/riot-commander/actions/workflows/docs-guards.yml/badge.svg)](https://github.com/Remus3/riot-commander/actions/workflows/docs-guards.yml)
 
-Personal project. Private repo. Not packaged for general use.
+Personal project. Private repo.
+Not packaged for general use.
 
 ---
 
 ## What it does
 
-Coaching during a match. RC keeps a running picture of the game from Riot's local data feed (your gold, level, KDA, items, the enemy team's items, where champions are on the minimap) and turns that into short, situation-specific tips on the dashboard. When a decision needs visual judgment - minion wave state, fog-of-war inference, an item-spike timing - it sends a screenshot to an AI model for interpretation. Most decisions don't need that, so most ticks are cheap.
+- Keeps a running picture of the match from Riot's local data feed - gold, level,
+  KDA, items on both teams - polled about once a second, and turns it into short,
+  situation-specific tips on a dashboard.
+- Reads the screen with OCR first; an AI vision model is escalated only for what
+  OCR misses.
+- Grounds build and fight advice in a local math engine, so an item suggestion
+  reflects your actual matchup - real math, not tier lists.
+- Suggests picks in champion select from your own match history filtered by the
+  enemy team's composition; ban and counter hints come from the local matchup
+  engine's deterministic 1v1 math.
+- Writes runes into the client automatically.
+- Keeps a local SQLite archive of your own matches - a few thousand games with
+  full timeline data - so the coach reads history you own instead of scraping a
+  third-party tracker.
 
-Real math, not tier lists. RC ships with a local build engine ("Daemon Slayer") that computes actual damage-per-second, effective HP, ability burst, and healing throughput for any champion x item x enemy combination. The AI coach reads those numbers when it suggests an item, so the recommendation matches *your* matchup rather than a static "best build" guide.
-
-Champion select advice. Suggests bans and picks based on what you've actually played well historically, what the enemy team has, and what the patch favors. Writes runes into the client for you automatically.
-
-Match history that you own. Roughly 3,000 of your matches with full timeline data are kept locally; the coach reads from that instead of scraping a third-party tracker.
-
-Modes covered. Summoner's Rift (the standard 5v5), ARAM, Arena, and Teamfight Tactics - all wired into the coaching pipeline.
+Modes: Summoner's Rift, ARAM (including its event variants), Arena, and Teamfight Tactics.
 
 ---
 
 ## How it works
 
-The dashboard is a regular web page served locally; you open it in Chrome on a second monitor. Behind it, a small Python service watches the game several times a second and decides whether the next tip should come from a quick local calculation or from an AI call. AI is reserved for nuance - wave state, contested objectives, end-screen reads - so most of what you see arrives in well under a second and the API bill stays small.
+A Python service polls the game client's local data feed about once a second.
+The build engine answers first with local math, and its output is injected into
+every AI coaching call; the coach fires on a cadence - about every 8 seconds,
+or immediately on kill and health swings. Results render on a locally served
+web dashboard and an in-game overlay. A vision server sits to the side, turning
+screen captures into data through tiered OCR with AI-vision escalation.
 
-The build engine runs as a separate local service on a different port. When the coach is about to suggest an item, it asks the engine: given this champion at this level facing this enemy comp, what's the best item to buy next? The engine returns a ranked list with real damage numbers, and the coach drops that into its prompt. No cloud calls, no per-query cost.
+```
+game client
+    |
+    v
+local reader (polls about once a second)
+    |
+    v
+Daemon Slayer math first -> AI coach reasons over the math's output
+    |
+    v
+dashboard + in-game overlay
+
+vision server on the side: screen capture -> OCR -> AI vision only on a miss
+```
+
+| Port | Service |
+|---|---|
+| :8888 | Web dashboard (HTTPS) |
+| :8889 | Vision server |
+| :8893 | Daemon Slayer build engine |
+| :2999 | Riot Live Client API (the game client's own feed) |
 
 ---
 
 ## Daemon Slayer build engine
 
-The technical centerpiece. A local service that scores any champion x item x enemy combination using real game math, with one of seven scoring modes picked automatically based on your champion's role:
+The technical centerpiece. A local service that scores champion x item x target
+combinations with real game math: damage per second, effective HP, ability
+burst, and healing throughput. It runs offline at request time - no network
+calls, no per-query cost - and covers every purchasable item in the modes it
+coaches. One of seven scoring modes is picked automatically from the champion's
+role:
 
-| Role | What it scores |
+| Role | What it optimizes |
 |---|---|
-| Carry (ADC) | Auto-attack damage-per-second |
+| Carry (ADC) | Auto-attack damage per second |
 | Tank | Effective HP against the enemy team's damage mix |
-| Bruiser | A blend of DPS and EHP, weighted per champion |
-| Mage | Per-spell ability damage at your cast cadence |
+| Bruiser | A per-champion blend of damage and durability |
+| Mage | Ability damage at the champion's cast cadence |
 | Assassin | Total burst inside a combo window |
 | Enchanter | Healing and shielding throughput |
-| On-hit (AP) | Ability damage plus on-hit auto damage, summed in one DPS frame |
+| On-hit (AP) | Ability damage plus on-hit auto damage combined into one score |
 
-A registry of per-champion overrides handles the unusual mechanics - Nidalee's cougar form, Akali's R recast window, Zed's shadow Q, Renekton's Fury bar, Riven's Wind Slash, and so on. About three-quarters of the roster is covered today, with new entries added in regular small batches.
+A registry of per-champion mechanic overrides handles unusual kits - form
+swaps, recast windows, resource bars - and covers most of the roster.
 
-Coverage today: every purchasable item across all five modes (706 items), 23,321 tests, current League patch.
+Depth: [`docs/DAEMON_SLAYER.md`](./docs/DAEMON_SLAYER.md) (internal reference).
+The engine also ships separately as a self-contained package for external
+review: [`Share/README.md`](./Share/README.md).
 
 ---
 
 ## Where it runs
 
-RC runs on a single machine: the same PC plays the game and runs the brain (the coach, the dashboard, the build engine), reading the game's local data feed and an in-process screen grab directly. An earlier two-machine split (one for the game, one for the brain, joined by a small bridge service) was consolidated into this single setup, which is the shape the rest of the docs assume.
+One Windows PC runs the game and the coach together. A Python service runs
+under a supervisor and serves the dashboard over local HTTPS to a browser,
+plus an Electron overlay for in-game display. Operational procedures live in
+[`docs/OPERATIONS.md`](./docs/OPERATIONS.md).
+
+## Status
+
+The coaching loop is functionally complete across all four modes; the build
+engine and champion-select advice cover the three League modes, and TFT uses
+the vision and coaching paths. Open work is tracked in
+[`ROADMAP.md`](./ROADMAP.md).
 
 ---
 
-## Project status
+## Documentation map
 
-RC has been in active development for over a year. The in-game coaching loop is functionally complete across all four modes: vision, build engine, dashboard, champion-select advice, and AI coaching are all live and stable.
+For readers:
 
-Active work right now is mostly polish and validation:
-
-- Calibrating which screen regions a cheap OCR pass can read versus when an AI vision call is needed.
-- Validating the build engine's score against actual match outcomes.
-- Filling in the per-champion override registry for the long tail of unusual ability mechanics.
-- Iterating on the champion-select page of the dashboard.
-
-Long-term direction is packaging the single-machine install so RC can eventually be run by someone other than the author.
-
----
-
-## More
-
-- [`CLAUDE.md`](./CLAUDE.md) - operational context (paths, restart workflow, current priorities)
-- [`ROADMAP.md`](./ROADMAP.md) - open work (NOW / NEXT / LATER)
-- [`docs/LEDGER.md`](./docs/LEDGER.md) - per-item completion ledger
+- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) - component map and data flow
 - [`docs/DAEMON_SLAYER.md`](./docs/DAEMON_SLAYER.md) - build engine deep reference
-- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) - module map
-- [`docs/adr/`](./docs/adr/) - architectural decisions
+- [`docs/API.md`](./docs/API.md) - dashboard HTTP API
+- [`docs/adr/`](./docs/adr/) - architectural decision index
+- [`Share/README.md`](./Share/README.md) - the engine's external review package
+- [`ROADMAP.md`](./ROADMAP.md) - open work
+
+For the operator and coding agents:
+
+- [`CLAUDE.md`](./CLAUDE.md) - agent operating context
+- [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) - run, restart, and maintenance procedures
 
 ---
-
-## License
 
 All rights reserved. Personal use only.
