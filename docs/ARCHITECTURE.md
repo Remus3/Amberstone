@@ -193,6 +193,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `Share/src/tools/daemon_slayer_wiki_stats_extract.py` | lolmath-wiki + cdragon stat sidecar extractor (ChampionData + bin -> wiki_stats.json) |
 | `tools/aram_shadow_report.py` | ARAM deterministic-vs-Haiku shadow agreement report (flip-readiness gate) |
 | `tools/arena_shadow_report.py` | Arena shadow-validation report over the deterministic-vs-Haiku log |
+| `tools/champ_select_shadow_report.py` | champ-select pick-advisor shadow agreement report (flip-readiness gate) |
 | `tools/daemon_slayer_cdragon_ratio_extract.py` | cdragon ability-ratio sidecar extractor (character bins -> cdragon_ability_ratios.json) + Meraki drift |
 | `tools/daemon_slayer_cdragon_spell_extract.py` | cdragon per-spell stat sidecar extractor (character bins -> cdragon_spell_stats.json) |
 | `tools/daemon_slayer_wiki_ability_extract.py` | lolmath-wiki per-ability param sidecar extractor (ChampionData + Template:Data -> wiki_ability_stats.json) |
