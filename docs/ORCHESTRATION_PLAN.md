@@ -675,7 +675,7 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 
 | Item | Slug | Scope | Status | Commit |
 |---|---|---|---|---|
-| R221 | live-wave-clock | MinionsSpawning extract + dashboard/_wave_timing.py deterministic wave-timing compute + tests. RM-124 F1 backend slice 1; panel wiring deferred. ENGINE-IMPACT NONE. | WIP | - |
+| R221 | live-wave-clock | MinionsSpawning extract (`dashboard/_liveclient.py:387-402`, 11 tests) + `dashboard/_wave_timing.py` pure spawn clock (42 tests / 801 subtests). RM-124 F1 backend, BOTH slices shipped, verifier CONFIRM 7/7 then 9/9. **The directive's wave_top/wave_mid/wave_bot target was REFUSED as fabrication** - those are the lane push-percentage state machine RM-124 declares data-blocked; the module ships the TIMING subset only, with an anti-fabrication test pinning the key set. Panel wiring still deferred behind live-gate G2-45 (nobody has seen real MinionsSpawning bytes; the cannon-cadence table is unvalidated). ENGINE-IMPACT NONE. | WIP | 7121ca85 + `<this commit>` |
 
 ## Older findings - relocated 2026-07-28
 
@@ -709,7 +709,7 @@ Relocated by R221 under the steady-state rule above - keep exactly ONE
 findings block at the tail so the newest `| R<n> |` row never drifts out
 of the director's 16000-byte tail window.
 
-## R221 findings - 2026-07-28 - slice 1 shipped, slice 2 is OWED with a corrected scope
+## R221 findings - 2026-07-28 - both backend slices shipped, panel wiring still deferred
 
 **SHIPPED (commit 7121ca85):** the 4th Live Client event extract. `MinionsSpawning`
 now reaches `liveclient_summary` as `minion_spawn_events` -> `[{"spawn_at_s": float,
@@ -717,12 +717,23 @@ now reaches `liveclient_summary` as `minion_spawn_events` -> `[{"spawn_at_s": fl
 3 sibling extracts byte-unchanged, 11 TDD tests including the anti-regression pin
 that events nested under `gameData` are NOT read. Verifier CONFIRMED 7/7 claims.
 
-**SLICE 2 IS OWED - do not assume it exists.** `dashboard/_wave_timing.py` and
-`tests/test_wave_timing.py` were written as an explicit TDD RED stub
-(`return dict.fromkeys(_KEYS)`) and the cycle ended before the GREEN half. Both were
-REMOVED from the tree rather than committed, because a red test file in `tests/`
-silently poisons the next cycle's baseline (it collected 787 failures). Suite is back
-to 13946 collected. Re-issue slice 2 from the corrected scope below.
+**SLICE 2 ALSO SHIPPED, late in the cycle.** `dashboard/_wave_timing.py` (pure spawn
+clock) + `tests/test_wave_timing.py` (42 tests / 801 subtests). Verifier CONFIRMED 9/9.
+The clock is fully observational: the interval is the MEDIAN of observed gaps, so one
+dropped event leaving a doubled gap is harmless, and `_DEFAULT_WAVE_INTERVAL_S` is
+reachable ONLY when no gap is measurable at all. No first-spawn constant exists in the
+module - which is the whole point, since three sources disagree on first wave
+(0:30 / 1:05 / 1:30).
+
+**A process scar worth keeping.** The orchestrator briefly deleted this slice's files
+mid-flight: the agent was still working, the module on disk was a self-labelled TDD RED
+stub, and a red `tests/test_wave_timing.py` collected 787 failures - which WOULD have
+poisoned the next cycle's baseline had it been committed. Deleting was right for a red
+stub and wrong for a live agent's workspace. The agent then reported that `ls`, `Glob`,
+and `git status` each showed the file missing while it was on disk; that was partly the
+documented stale-tool-result replay and partly the orchestrator genuinely removing it
+underneath. Two rules fall out: do not garbage-collect a slice's files until its agent
+has REPORTED, and confirm a file's absence with a real probe before acting on it.
 
 **THE SCOPE CORRECTION, which is the load-bearing finding of this cycle.** The R221
 directive said to key the compute to `wave_top` / `wave_mid` / `wave_bot`. **Refuse
