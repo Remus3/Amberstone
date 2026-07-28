@@ -186,6 +186,11 @@ def _compile_errors(pyfiles: list[str], root: str) -> list[str]:
     return out
 
 
+_CANONICAL_PY = (
+    "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe"
+)
+
+
 def _ruff_candidates() -> list[list[str]]:
     """Ruff invocations to try, in order, until one answers `--version`.
 
@@ -194,22 +199,27 @@ def _ruff_candidates() -> list[list[str]]:
 
       * Claude PreToolUse - .claude/settings.json launches Python314's
         pythonw.exe, and that interpreter owns ruff, so sys.executable works.
-      * .githooks/pre-commit - launches `py tools/precommit_gate.py`, and on
-        Legion the `py` launcher resolves to a bare pythoncore build with NO
-        ruff, so sys.executable is exactly the interpreter that cannot run it.
+      * .githooks/pre-commit - launches the gate through the `py` launcher,
+        which on Legion resolves to a bare pythoncore build with NO ruff, so
+        sys.executable is exactly the interpreter that cannot run it. This is
+        the same dep-less runtime tests/test_bare_py_ban.py exists to keep out
+        of tracked invocations.
 
-    The original code used `py`; ceb2f584 switched it to sys.executable to fix
-    the PreToolUse channel and thereby broke the git-hook one - which is the
-    AUTHORITATIVE channel (CLAUDE.md), and the one a headless run gets. Measured
-    2026-07-28: the ruff half had been dead there for three weeks, and passed a
-    net-new UP031 in this file's own source straight to CI (afcbcf79).
+    The original code used the launcher; ceb2f584 switched it to sys.executable
+    to fix the PreToolUse channel and thereby broke the git-hook one - which is
+    the AUTHORITATIVE channel (CLAUDE.md), and the one a headless run gets.
+    Measured 2026-07-28: the ruff half had been dead there for three weeks, and
+    passed a net-new UP031 in this file's own source straight to CI (afcbcf79).
 
-    Resolving at call time is the fix: no channel has to be guessed.
+    Resolving at call time is the fix: no channel has to be guessed. The
+    launcher is deliberately NOT a candidate - it is the dep-less runtime that
+    caused this - so the Legion fallback is the canonical absolute interpreter
+    that docs/OPERATIONS.md pins.
     """
     return [
         [sys.executable, "-m", "ruff"],
         ["ruff"],
-        ["py", "-m", "ruff"],
+        [_CANONICAL_PY, "-m", "ruff"],
         ["python", "-m", "ruff"],
     ]
 
