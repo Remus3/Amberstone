@@ -288,10 +288,117 @@ simulation.
 
 ---
 
-## Part (c) - build data at scale, stratified
+## Part (c) - build data at scale, stratified by champion x role x region x rank
 
-_Pending: the source-table research pass is still running. This section is
-appended when it lands._
+Full 1328-line report with every citation:
+`docs/_archive/2026-07-28-research-consolidation/research_E_build_data_sources.md`.
+It carries a 38-item explicit UNVERIFIED list; nothing there should be read as
+fact. What follows is the decision content.
+
+### The four answers that change the plan
+
+1. **SGP is reachable from external Python - the token question is CLOSED.**
+   `/entitlements/v1/token` is an **LCU route**, not a client-CEF-only surface,
+   so RC's existing lockfile client (`lcu/lcu_client.py:71`) already has
+   everything it needs. Two independent out-of-client implementations prove it
+   (LeagueAkari, a standalone Electron app, and `Tian-Yuanxin/lol-match-stats-local`,
+   Python). Refresh needs **no polling** - the LCU pushes a replacement over
+   websocket before expiry. The numeric TTL stays UNVERIFIED; decode the JWT
+   `exp` to close it.
+2. **Queue 2400 / `gameMode: KIWI` is a first-class supported queue** in a
+   shipping SGP client, and `SUMMARY` is **PER-MATCH**, not a rollup. `DETAILS`
+   returns the full timeline, which is where skill order lives. This is the
+   event-mode reach gap closed.
+3. **The VOD computer-vision premise is FALSE. Do not build it.** League never
+   renders a full rune page passively, and **stat shards are never shown for
+   other players at all**. Killed three independent ways. The brief's own
+   alternative wins by default: resolve the match id from video title and
+   description metadata (YouTube Data API -> riotId -> ACCOUNT-V1 -> MATCH-V5).
+   **Trap: `search.list` is capped at 100 CALLS/day** - route through
+   channels -> playlistItems -> videos instead.
+4. **Retention is a hard constraint nobody had flagged: matches 2 years, but
+   TIMELINES ONLY 1 YEAR.** Skill order therefore **cannot be backfilled** - it
+   has to be harvested continuously or it is gone. This is the single most
+   schedule-sensitive fact in the report.
+
+### Corrections to RC's own filings
+
+- **`BACKLOG.md` said SGP is on port `:21019`. That is TENCENT-ONLY.** Riot's
+  hosts are plain 443: `usw2-red.pp.sgp.pvp.net` (match history) and
+  `na-red.lol.sgp.pvp.net` (ledge). Fixed in `BACKLOG.md` in this pass - it
+  would have cost a wasted probe.
+- **The dev/personal rate limit is 0.833 req/s, not 20/s.** The 100-per-2-minute
+  window binds, not the per-second one - **a 24x sizing error** if taken from
+  the wrong number. Enforced per region, and Match-V5 has only **4 regional
+  buckets** against 15 platform buckets, so it is a permanent bottleneck for
+  cross-region breadth.
+- **Match-V5 carries no rank/tier field at all.** Rank stratification always
+  costs a per-puuid join - it is never free, on any route.
+
+### Licensing reality
+
+Only **two** sources in the entire table carry an affirmative redistribution
+licence: **Leaguepedia Cargo** (CC BY-SA 3.0, and it has per-pro-game runes)
+and **Meraki** (MIT). Everything else is silence, a disclaimer, or a
+prohibition.
+
+- **aggregator A publishes an official MIT-licensed MCP server** (`mcp-api.aggregator A/mcp`).
+  That makes the cheapest consensus prior also the cleanest - it displaces the
+  whole "should we scrape an aggregator" question, since the MCP path avoids the
+  ToS scraping conflict entirely. No redistribution right to aggregator A's data.
+- **aggregator B and aggregator D both set ClaudeBot `Disallow: /`** with an express EU
+  DSM Art.4 TDM reservation; **Aggregator C' ToS bars crawlers verbatim.** Their
+  endpoints were deliberately NOT probed, and that is recorded rather than
+  quietly skipped. RC's existing Overlay App E precedent (runtime feed, never
+  redistributed) should govern any aggregator use.
+- **Every aggregator is PRE-AGGREGATED and structurally cannot answer a
+  per-match question**, however good its stratification looks. aggregator B's
+  `stats2` CDN is objectively the richest stratification anywhere
+  (18 regions x 17 rank brackets x 5 roles in one file) and it still cannot.
+
+### SGP terms, recorded factually
+
+Riot's terms are **SILENT on SGP, not permissive**, and the enforcement surface
+is the operator's **account**, not an API key. **OPERATOR RULING 2026-07-28:
+sanctioned, NON-BLOCKING.** That is a risk acceptance and does not change what
+the terms say; both facts are kept side by side on purpose.
+
+### Static data: nobody ships numeric rune values
+
+DDragon, CommunityDragon, the LCU and Meraki all give rune **prose** only. The
+wiki `Template:Rune_data_*` is the least-bad route (`cooldown` / `range` are
+structured, damage and ratios are in ordinary wiki markup) and its licence is
+**CC BY-SA, UNVERIFIED by direct read**. Manual extraction is unavoidable -
+stop looking for a source and build the parser.
+
+### One flag that needs an RC-side probe before it is believed
+
+The report calls Meraki **~15 months stale** (frozen near patch 25.07; Yunara
+404s) and reads that as a possible live DS correctness gap. **Partially
+confirmed and partially over-stated - measured here, not taken on report:**
+
+- `data/daemon_slayer/16.14.1/items.json` is **DDragon**-shaped
+  (`colloq`/`image`/`into`/`maps`/`plaintext`/`tags`), 706 items, `version`
+  field `16.14.1`. The main item table is NOT Meraki and is current.
+- A separate `data/daemon_slayer/16.14.1/items_meraki.json` exists: 320 items,
+  `source` = the Meraki `latest` CDN endpoint, `fetched_at` 2026-07-16, and
+  `patch` stamped **`16.14.1` - which is RC's OWN label, not Meraki's content
+  patch.** That stamp is the trap: it asserts currency the upstream may not have.
+- RC already knows this for the ABILITIES half - `tools/daemon_slayer_abilities_extract.py:128`
+  pins `_EXPECTED_MERAKI_CONTENT_PATCH = "25.15"`, and
+  `agents/daemon_slayer/_ability_base_overrides.py` exists precisely because
+  re-running the extract reproduces stale numbers.
+
+**Open question, not a finding: does the ITEMS half carry the same staleness,
+and does anything downstream read a wrong number because of it?** Nobody has
+checked. Probe `items_meraki.json` against live DDragon stats before asserting
+a correctness gap either way.
+
+### Cheapest next action
+
+A **single live SGP probe from Legion** closes four UNVERIFIED items at once
+(reachability, rate behaviour, payload shape in situ, token TTL). Nobody has
+sent a packet yet. Everything else in the work order sequences behind it.
 
 ---
 
