@@ -16,8 +16,16 @@
 
 /* --- Lead projection pill ------------------------------------------------- */
 
+/* flex-wrap: the overlay mount is a FIXED 210px .ovx-widget, and the uppercase
+ * state tag is nowrap at ~140px of a 226px interior. On one row the directive
+ * line - the hero - collapses to its min-content width (measured 61.8px, 27
+ * pct) and the row still overflows into the widget's overflow-x:hidden, which
+ * silently clips the tag. Wrapping gives the line a full-width row and drops
+ * the pill from 216.5px tall to 87px. On the wide dashboard nothing wraps, so
+ * that geometry is unchanged. */
 .rc-lead {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -41,7 +49,10 @@
   color: inherit;
 }
 
+/* margin-left: auto keeps the tag right-aligned once it wraps onto its own
+ * row - justify-content: space-between only spreads a row holding two items. */
 .rc-lead-tag {
+  margin-left: auto;
   font-size: var(--fs-xs, 16px);
   font-weight: 600;
   letter-spacing: 0.5px;
