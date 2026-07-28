@@ -2,8 +2,8 @@
 //
 // Loads /data/meta/ddragon_items.json + /data/meta/ddragon_runes.json
 // once on demand, builds lookup maps, exposes:
-//   itemTooltipHtml(itemId)   → cleaned HTML for the app-wide tooltip
-//   keystoneTooltipHtml(name) → cleaned HTML for keystone rune
+//   itemTooltipHtml(itemId)   -> cleaned HTML for the app-wide tooltip
+//   keystoneTooltipHtml(name) -> cleaned HTML for keystone rune
 //
 // Cleaning rules:
 //   - Strip <mainText> / <rarityMythic> / <rarityLegendary> / <attention>
@@ -14,7 +14,7 @@
 //     <flavorText>, <consumable> - render as line breaks or styled spans.
 //   - Strip <stats>...</stats> wrapper but keep its content (one stat
 //     per line).
-//   - <attention>X</attention> → bold "X" so numbers pop.
+//   - <attention>X</attention> -> bold "X" so numbers pop.
 
 const _ITEMS_CACHE = { ready: false, loading: null, byId: {} };
 const _RUNES_CACHE = { ready: false, loading: null, byKey: {}, byId: {} };
@@ -23,7 +23,7 @@ function _normKey(s) {
   return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-// LoL HTML → safe-ish HTML for our tooltip surface. The app-tooltip
+// LoL HTML -> safe-ish HTML for our tooltip surface. The app-tooltip
 // system renders innerHTML so we want the cleaned output to be
 // pre-styled by our own CSS classes, not LoL's.
 function _cleanLolHtml(raw) {
@@ -37,9 +37,9 @@ function _cleanLolHtml(raw) {
   s = s.replace(/<lol-uikit-tooltipped-keyword[^>]*>([^<]*)<\/lol-uikit-tooltipped-keyword>/gi, "$1");
   // <font color='#X'>...</font> - drop the font tag but keep text.
   s = s.replace(/<\/?font[^>]*>/gi, "");
-  // <attention>N</attention> → bold "N".
+  // <attention>N</attention> -> bold "N".
   s = s.replace(/<attention>(.*?)<\/attention>/gi, "<b>$1</b>");
-  // <passive>NAME</passive> → bold "NAME".
+  // <passive>NAME</passive> -> bold "NAME".
   s = s.replace(/<passive>(.*?)<\/passive>/gi, "<b>$1</b>");
   s = s.replace(/<active>(.*?)<\/active>/gi, "<b>$1</b>");
   s = s.replace(/<unique>(.*?)<\/unique>/gi, "<b>$1</b>");

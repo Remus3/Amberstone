@@ -138,7 +138,7 @@ function renderItemTiles(container, names, opts) {
         if (pct >= 1) tile.classList.add("can-afford");
         // Gold caption: "need N" = remaining gold to complete the buy.
         // TODO: subtract owned sub-item values once items_recipes.json is
-        // generated - for now N = cost − currentGold, clamped to 0 for
+        // generated - for now N = cost - currentGold, clamped to 0 for
         // the can-afford case.
         const need = Math.max(0, Math.round(cost - opts.currentGold));
         const cap = document.createElement("div");
@@ -167,8 +167,8 @@ function renderItemTiles(container, names, opts) {
 }
 
 // 2026-04-26: Track the active loadout label per (champion+mode) so the
-// ITEM BUILD header can show "<Champion> · <Variant Label>" instead of
-// the static "Recommended · next to buy". Cache + lazy-fetch from
+// ITEM BUILD header can show "<Champion> - <Variant Label>" instead of
+// the static "Recommended - next to buy". Cache + lazy-fetch from
 // /api/loadout/list so we don't hammer the endpoint on every render.
 const _itemBuildLabelCache = {};
 function _updateItemBuildHeader(champion, mode) {
@@ -293,7 +293,7 @@ function renderItemBuild(p) {
     : _srItemPath;
   // Defensive dedup: a coach payload occasionally leaves an already-owned
   // item at the front of the build-path array (e.g. Zhonya's appears in
-  // both Owned and Recommended → "next to buy" highlights a completed
+  // both Owned and Recommended -> "next to buy" highlights a completed
   // item). Strip anything already owned from the Recommended path so the
   // UI can never surface that logic error.
   // Matching is substring-both-ways because the coach uses short forms
@@ -307,7 +307,7 @@ function renderItemBuild(p) {
     return !ownedNorm.some(o => o.includes(pn) || pn.includes(o));
   });
   // Coach can emit per-item reasons via p.item_build_reasons (a map from
-  // item name → short one-liner). Passed to the Recommended tiles so
+  // item name -> short one-liner). Passed to the Recommended tiles so
   // hover shows the "why this next" coaching note. Owned tiles just
   // show name + cost (no reason - it's already bought).
   const itemReasons = (p && p.item_build_reasons) || {};

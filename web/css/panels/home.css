@@ -32,7 +32,7 @@
    * a view-section view (lobby/history/etc., which all flex: 1).
    * The trailing min-height: 0 lets the overlay shrink below its
    * intrinsic content if the viewport is short.
-   * 2026-04-30: gaps + padding tightened (14→10) to recover the
+   * 2026-04-30: gaps + padding tightened (14->10) to recover the
    * vertical space the alerts/services were overflowing into. */
   flex: 1 1 auto;
   min-height: 0;
@@ -328,14 +328,14 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-mode-tab:focus-visible { outline: 2px solid var(--accent-2); }
 
-/* ── V1 body: 2-column row (recent cards | week list) ─────────────── */
+/* -- V1 body: 2-column row (recent cards | week list) --------------- */
 .home-body {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
   gap: var(--space-3);
 }
 
-/* ── V1 recent matches as visual cards ────────────────────────────── */
+/* -- V1 recent matches as visual cards ------------------------------ */
 #home-recent-list.home-recent-list {
   display: flex; flex-direction: column; gap: var(--space-2);
   list-style: none; margin: 0; padding: 0;
@@ -455,7 +455,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-recent-grade-badge.D { color: var(--advisory); border-color: var(--advisory-soft); }
 .home-recent-grade-badge.F { color: var(--bad);      border-color: var(--bad-soft); }
 
-/* ── V3 combo row (2026-04-30 v2): only Tonight's Pick now (sparklines
+/* -- V3 combo row (2026-04-30 v2): only Tonight's Pick now (sparklines
  * moved into hero chips). Single column = full-width Tonight's Pick. */
 .home-combo {
   display: grid;
@@ -567,7 +567,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 
 /* s218 v6: deep-link focus from Recent 5 click. The history match
- * row briefly glows when the operator navigates from Home → History
+ * row briefly glows when the operator navigates from Home -> History
  * via clicking a Recent 5 card, so they can spot which row they
  * jumped to inside a long session. Class is added on scroll-into-view
  * and auto-removed ~3.5s later. */
@@ -728,7 +728,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   margin-top: var(--space-1);
 }
 
-/* ── V2 this-week mini-chart (suggestion #5) ──────────────────────── */
+/* -- V2 this-week mini-chart (suggestion #5) ------------------------ */
 .home-week-chart {
   display: flex; flex-direction: column; gap: var(--space-2);
   list-style: none; margin: 0; padding: 0;
@@ -790,7 +790,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   background-position: left bottom;
 }
 .home-week-bar-games {
-  /* s218: bumped from text-faint → text-dim + weight 700 for legibility. */
+  /* s218: bumped from text-faint -> text-dim + weight 700 for legibility. */
   font-size: var(--fs-sm); color: var(--text-dim); font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
@@ -814,7 +814,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-weight: 800;
 }
 .home-week-bar-kda-raw {
-  /* s218 v7: bumped 13→14px to separate it clearly from the 15px
+  /* s218 v7: bumped 13->14px to separate it clearly from the 15px
    * ratio pill - was sitting at the tertiary floor next to a primary
    * value and reading ambiguous in the hierarchy. */
   font-size: var(--fs-xs);

@@ -24,7 +24,7 @@ const RN = {
   staleness: document.querySelector('.staleness[data-for="right-now"]'),
 };
 
-// ── Panel renderers ─────────────────────────────────────────────────
+// -- Panel renderers -------------------------------------------------
 
 // One-time bind: click the action headline to copy to clipboard.
 if (RN.action && !RN.action.dataset.bound) {
@@ -80,7 +80,7 @@ function renderWhatWent(p) {
   fill(badList, bad);
 }
 
-// ── Digest icon + popout ──────────────────────────────────────────
+// -- Digest icon + popout ------------------------------------------
 // Queue #5: cross-session digest warning icon in the header. Replaces
 // the in-panel trend surfaces that were removed. Click opens a modal-
 // style popout with cold-streak / slump / trend data.
@@ -90,12 +90,12 @@ function renderDigest(p) {
   const label = el("digest-label");
   if (!icon || !label) return;
   // Severity: "alert" > "warn" > neutral.  Coach emits p.digest_state
-  // ∈ {none, ok, warn, alert}; icon class reflects it.
+  // in {none, ok, warn, alert}; icon class reflects it.
   const state = (safe(p.digest_state) || "none").toLowerCase();
   icon.classList.remove("warn", "alert");
   if (state === "alert") icon.classList.add("alert");
   else if (state === "warn") icon.classList.add("warn");
-  // Label: short glyph + optional count ("⟳", "⟳ 3L", "⟳ SLUMP")
+  // Label: short glyph + optional count ("(R)", "(R) 3L", "(R) SLUMP")
   const tag = safe(p.digest_label) || (state === "none" ? "-" : state.toUpperCase());
   label.textContent = tag;
   icon.title = safe(p.digest_tooltip) || "cross-session digest";
@@ -175,7 +175,7 @@ function renderDigest(p) {
   });
 })();
 
-// ── GAME SENSE panel renderer ─────────────────────────────────────
+// -- GAME SENSE panel renderer -------------------------------------
 // Client/aftergame mode populates the 3-row Game Sense block with the
 // Early/Mid/Late phase descriptors emitted by the coach. Vocabulary is
 // the 12 approved words (see coaches docs). Each word is valence-
@@ -230,7 +230,7 @@ function renderGameSense(p) {
   }
 }
 
-// ── STATS panel renderer ─────────────────────────────────────────
+// -- STATS panel renderer -----------------------------------------
 // Populates the in-game STATS view (replaces Adaptation for in-game
 // modes). Each field reads a specific payload key; when the coach hasn't
 // emitted that field yet, the placeholder "-" stays. Coach-side work
@@ -431,7 +431,7 @@ function renderStats(p) {
   setv("st-benchmark",    p.rank_benchmark);
   setv("st-improve",      p.improvement_target);
   setv("st-chat-tone",    p.chat_tone);
-  // Perf row collapsed - strength (+) and weakness (−) of the game
+  // Perf row collapsed - strength (+) and weakness (-) of the game
   // in one line, sign-prefixed so the eye reads both as a unit.
   {
     const sg = safe(p.strength_of_game) || "";
@@ -557,9 +557,9 @@ function renderRightNow(p) {
     }
   }
   // Priority glyph prefix - a quick shape-read for peripheral vision.
-  // Skip the glyph when we have no action text to avoid a lonely "►".
+  // Skip the glyph when we have no action text to avoid a lonely ">".
   // Also skip if the fixture/coach already starts the string with a
-  // matching glyph, to avoid double "⚠ ⚠ DEFEAT".
+  // matching glyph, to avoid double "! ! DEFEAT".
   const glyph = klass === "urgent" ? "⚠ "
               : klass === "good"   ? "✓ "
               :                      "► ";

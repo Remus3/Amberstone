@@ -7,7 +7,7 @@ import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } fro
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
 import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './replay_events.js';
 
-// ── Settings view (2026-04-26) ───────────────────────────────────
+// -- Settings view (2026-04-26) -----------------------------------
 function _settingsRefresh() {
   if (window.__settingsWired) return;
   window.__settingsWired = true;
@@ -203,7 +203,7 @@ function renderSpendGates() {
     .catch(() => {});
 }
 
-// ── Diagnostics view (2026-04-26) ────────────────────────────────
+// -- Diagnostics view (2026-04-26) --------------------------------
 function _diagFetchAndRender() {
   fetch("/api/diagnostics", { cache: "no-store" })
     .then((r) => (r && r.ok ? r.json() : null))
@@ -336,7 +336,7 @@ function _diagWireOnce() {
   });
 }
 
-// ── Headless loop status (2026-06-07) ────────────────────────────
+// -- Headless loop status (2026-06-07) ----------------------------
 // Read-only, mobile-friendly surface over /api/loop-status (which reads the
 // ops/loop/control/* files + last commit). Rendered on each Settings show so
 // a Gemini-directed loop is watchable from the phone over Tailscale.
@@ -468,7 +468,7 @@ function renderLoopStatus(ctlMsg) {
     });
 }
 
-// ── Replay scrubber (audit suggestion 2.3, 2026-04-28) ────────────
+// -- Replay scrubber (audit suggestion 2.3, 2026-04-28) ------------
 // Loads recent matches from /api/replay/matches; clicking one fetches
 // /api/replay/match/<id> and lets the user scrub through per-minute
 // snapshots. Items, level, gold, CS reflect the slider position.
@@ -511,7 +511,7 @@ function _replayChampIconUrl(name) {
   // Use _resolveChampId so display names like "Kai'Sa" / "Wukong" / "Renata
   // Glasc" map to their on-disk DDragon ids ("Kaisa" / "MonkeyKing" /
   // "Renata"). The bare /[^A-Za-z]/ strip preserved capital letters
-  // (Kai'Sa → KaiSa) which never matched the lower-cased file (Kaisa.png).
+  // (Kai'Sa -> KaiSa) which never matched the lower-cased file (Kaisa.png).
   const cid = _resolveChampId(name) || String(name).replace(/[^A-Za-z]/g, "");
   return "/icons/champions/" + encodeURIComponent(cid) + ".png";
 }

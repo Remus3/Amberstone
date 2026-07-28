@@ -1,4 +1,4 @@
-// Summoner spell ID → DDragon slug + friendly name. Shared by the
+// Summoner spell ID -> DDragon slug + friendly name. Shared by the
 // champ-select build chooser (rune+spell strip), the active-match
 // minimap legend, and any other surface that renders summoner-spell
 // icons keyed by Riot's numeric spell IDs.
@@ -7,7 +7,7 @@
 // Resurrected from the s209-deleted loading.js panel; live at
 // `web/js/lib/summoner_spells.js` so callers don't reach across panels.
 // Local files live at data/icons/spells/<slug>.png (served by
-// dashboard/routes_static.py:191 → /icons/spells/<slug>.png).
+// dashboard/routes_static.py:191 -> /icons/spells/<slug>.png).
 
 export const SUM_SPELLS = {
   1:  "SummonerBoost",        // Cleanse
