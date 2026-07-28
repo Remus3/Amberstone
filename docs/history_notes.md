@@ -119,6 +119,42 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-28h - R217-U2 tools ASCII sweep. The decorative glyphs were fine; two of them were data.
+
+Gemini-loop cycle 24. Full detail in `docs/LEDGER.md` 1096. Commits `84535bdf` (work)
++ `7cfebcce` (sync). Host tools only: no engine, no ENGINE bump, no DS path, no Share
+mirror, no restart, no route or panel.
+
+- `tools/extract_panels.py` 189 non-ASCII bytes of 11094 -> 0, `tools/rc_facts.py`
+  10 of 10139 -> 0. Item-176 doctrine: 1:1 substitution, character count identical
+  before and after (10968 / 10133), so nothing re-flowed.
+- **Both from-digest premises held on disk.** After seven no-op cycles it is worth
+  saying plainly: unverified is not the same as stale. Re-read cost one Read each.
+- **The hazard the directive did not name.** The `U+25B6` / `U+2022` bytes sit inside
+  `.replace()` MATCH patterns at `extract_panels.py:158-162` - the same load-bearing
+  data class that makes `tools/p3_ascii_sweep.py` EXEMPT. Resolved by reading the
+  tree: `web/js/panels/champ_select.js:195` already reads `"> "` and `:200` reads
+  `"  *  "`, and the extractor's input is gone in the shape it slices (`main.js` is
+  7565 lines; every `L(start,end)` addresses the 6223-line pre-split file). A re-run
+  would destroy `main.js`, not re-extract it. Spent one-shot; the sweep is cosmetic.
+- **The exemption is now pinned in the direction that can break.**
+  `tests/test_tools_ascii_hygiene.py::test_p3_ascii_sweep_exemption_is_intact` fails
+  if a later sweep strips the sweeper's own glyph inventory. A guard that only bans
+  glyphs would let the next well-meaning sweep disarm the tool and stay green.
+- The guard parses the extractor with `ast` rather than importing it - that module
+  rewrites `web/js/main.js` at module scope, so an import destroys the file the test
+  reads. Its width assertion reads the real `main.js` line off disk.
+- **The executor-override's collision claim was FALSE:** it refused the 2-agent block
+  saying both agents name `extract_panels.py`. They do not; the sets are disjoint.
+  Refused anyway on the real ground - R9's subagent floor, two files and one test.
+  A false collision report is worse than none, because the next reader discounts it.
+- Scope stays narrow: per-file pin, not a repo-wide ASCII ban. `U+2500` is not banned
+  and `web/js/main.js` alone carries 1310.
+- Verified: TDD RED 3 failed / 2 passed first; ruff + py_compile clean; RC suite
+  13766 passed / 106 skipped / 477 subtests / 0 failed at `-n 8`.
+
+---
+
 # 2026-07-28g - R217-U1 full RC suite on push. The named edits were fine; the budget was the bug.
 
 Gemini-loop cycle 23. RM-119 second half, the RC-half CI promotion the operator

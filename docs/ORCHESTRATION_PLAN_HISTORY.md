@@ -473,3 +473,99 @@ hygiene set (new guard + mojibake + smart-quote + u2500 + rc_facts port probe)
 / 0 failed** in 104.97s at `-n 8`. DS suite not run and not needed:
 ENGINE-IMPACT NONE, no path under `agents/daemon_slayer/` touched, no
 ENGINE_VERSION, no Share mirror, no restart.
+
+## R219 findings - 2026-07-28 - the directive's data source does not contain the data
+
+### The Meraki premise, measured
+
+The directive ordered a champion-base-stat sweep "vs Meraki bulk truth". The local
+Meraki mirror cannot answer that question, and the reason is structural rather than
+stale. `data/daemon_slayer/16.14.1/items_meraki.json` holds 320 entries under an
+`items` key, and a key census across all 320 returns exactly ten field names:
+`name`, `id`, `tier`, `rank`, `removed`, `simpleDescription`, `passives`, `active`,
+`shop`, `noEffects`. There is no `stats` block on any entry and there is no champion
+half of the file at all. The mirror was fetched with an effects-shaped projection,
+which is correct for what DS uses it for - the standing memory is that a Meraki
+clause lives in the effects PROSE field - but it means an offline stat comparison
+has no Meraki side.
+
+A first pass at a prose-based substitute produced 178 apparent hits for items whose
+description mentions Move Speed while DDragon reports no movespeed stat. That number
+is an artifact: the regex was matching inside the `str()` repr of the `passives`
+structure, so `Doran's Shield` and `Recurve Bow` scored. It is recorded here so the
+next cycle does not rediscover it as a finding. Prose is a source for CLAUSES, not
+for a stat census.
+
+The consequence for Section 8: a champion-stat sweep against Meraki needs a mirror
+refresh that requests the champion endpoint and the full stat projection. That is a
+data-plumbing slice, not a math slice, and it was not in this cycle's two-file grant.
+
+### Two slices, one shipped guard each, and neither needed a behavior change
+
+Both slices went looking for a wrong number and both found the population already
+correct. That is a real outcome, not a no-op, because in both cases the correctness
+was undefended. Slice A's override set covers exactly the 5 of 9 DDragon-zeroed
+champions that need covering, and the other 4 classify correctly on their own - but
+nothing on disk said so, and the module exists because a champion silently
+mis-classifying is a shipped user-visible bug. Slice B's `_FALLBACK_MS` is a
+defensible value, but the sentence justifying it was factually false against the
+mirror it describes.
+
+The pattern worth carrying forward: when a sweep finds the data already right, the
+deliverable is the guard that makes the next drift loud, and the guard is only worth
+shipping if its teeth are demonstrated. Both slices did that by injection rather than
+by assertion - Slice A fabricates a zeroed champion and watches the universe grow,
+Slice B swaps the fallback for a `-1.0` sentinel so that the 28 champions whose real
+movespeed happens to BE 345 cannot mask a fallthrough. Without that sentinel the
+coverage test would have passed while measuring nothing.
+
+### The orchestrator's own brief carried the defect, and only the tree-level gate saw it
+
+Slice A shipped with a `skipTest` on an absent DDragon mirror, because the brief I
+wrote told it to - "it is a data mirror, not source". That reasoning is wrong, and
+the repo already knows it is wrong: `data/meta/ddragon_champions.json` is tracked, so
+a checkout always has it, and an absent one is a broken tree rather than an absent
+capability. `tests/test_skip_condition_hygiene.py` failed it as a B5 masking skip,
+the class the RM-119 skip audit catalogued as "reports green by not running". A
+completeness guard that skips when its own data disappears is the worst possible
+shape for this particular test, since a vanished mirror is one of the two ways the
+thing it guards can break.
+
+Both the slice agent and its verifier passed it. They were scoped to the slice, and
+in isolation the two files run 100 passed. The tree-level guard is the only thing in
+the chain that could have seen it, which is the argument for running the full suite
+even when the tier rules say a two-file `core/` change does not need one. Recorded
+here as an orchestrator error, not an agent error.
+
+### The tie rule, and why it was pinned rather than fixed
+
+Three consumers merge the same curated info block and then disagree about what a tie
+means. `dashboard/routes_dictionary.py:101` answers `attack >= magic` and so returns
+a confident "AD" when it has no signal at all; `dashboard/routes_pickban.py:255-260`
+returns "EVEN"; `core/build_planner/fed_threat.py:147-151` returns "". The `>=` site
+is the same shape as the original defect - Seraphine rendered "AD SUPPORT" out of a
+0 versus 0 comparison - and it is one unpinned newcomer away from doing it again.
+
+It was not fixed here because it is outside the two-file grant and because the right
+answer is a product call: whether the champ-select chip should be allowed to show a
+neutral state. The guard demands strict polarity, which is the intersection where all
+three agree, so it holds the line without choosing. Filed in the row, not deferred to
+memory.
+
+### The constant that was found by sweeping for the constant
+
+The defect class was defined narrowly on purpose: a hardcoded constant in live code
+whose attached comment makes a checkable factual claim about data on disk. That
+definition is what let the sweep score itself honestly - 62 candidates, 2 confirmed
+by opening the file and checking, 3 refuted by checking, ~55 outside the class as
+tuning judgments, and 1 recorded UNRESOLVED because the extraction did not match the
+registry's shape. The unresolved one is not counted as a find.
+
+The second confirmed instance is worth more than the assigned one.
+`agents/daemon_slayer/burst.py:124-127` claims no champion sits between melee and
+ranged attack range and picks 350 on that basis; eight do, Urgot sits exactly on the
+strict-greater-than boundary, and the DS engine already has a canonical split at 250
+in `ehp.py:254` that `rank.py` documents as authoritative. Two thresholds for one
+concept, disagreeing on three champions, in a live rune-scaling branch. Filed as
+RM-123 with ENGINE-IMPACT BUMP, because reconciling it moves numbers and belongs in
+its own Tier-2 slice with a re-baseline, not in a `core/` docs cycle.
