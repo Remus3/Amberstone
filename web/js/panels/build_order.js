@@ -1,4 +1,4 @@
-// DS vs Enemy Comp panel (2026-05-17, OVERNIGHT RUN-1 follow-up; plan §6b B+C).
+// DS vs Enemy Comp panel (2026-05-17, OVERNIGHT RUN-1 follow-up; plan S6b B+C).
 //
 // Renders the contextual, match-specific DS-backed item BUILD ORDER from
 // POST /api/build-order (core/build_order.py plan_build_order). Surface:

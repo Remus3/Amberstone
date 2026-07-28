@@ -13,16 +13,16 @@ const NX = {
   staleness: document.querySelector('.staleness[data-for="next"]'),
 };
 
-// ── Wave state (Next panel) ──────────────────────────────────────
+// -- Wave state (Next panel) --------------------------------------
 // SR has 3 lanes; we show all three on separate lines with the
-// player's own lane marked ▶. Each percentage is colored AND
+// player's own lane marked >. Each percentage is colored AND
 // suffixed with the action verb so the eye reads value + intent
 // in one glance.
 //
-//   <= 30 %       wave-our   (icy blue)      → FREEZE
-//   30 - 65 %     wave-mid   (potion green)  → TRADE
-//   65 - 80 %     wave-warn  (gold)          → CRASH
-//   >= 80 %       wave-bad   (vibrant red)   → DISENGAGE
+//   <= 30 %       wave-our   (icy blue)      -> FREEZE
+//   30 - 65 %     wave-mid   (potion green)  -> TRADE
+//   65 - 80 %     wave-warn  (gold)          -> CRASH
+//   >= 80 %       wave-bad   (vibrant red)   -> DISENGAGE
 //   null / -      wave-dim   (faint)         (no suffix)
 function _classifyWavePct(pct) {
   if (pct == null || isNaN(pct)) return "wave-dim";
@@ -51,7 +51,7 @@ function _waveLineHtml(lane, pct, isMine) {
   // <br>-separated inline form let BOT's "50%" wrap to a 4th line
   // when the inline span sat at a sub-pixel-tight width. Marker is
   // a fixed-width slot so the lane labels TOP/MID/BOT line up by
-  // column whether or not the ▶ is present.
+  // column whether or not the > is present.
   const cls    = _classifyWavePct(pct);
   const pctTxt = (pct == null || isNaN(pct)) ? "-" : `${Math.round(pct)}%`;
   const verb   = _waveVerb(pct);
@@ -122,7 +122,7 @@ function renderNext(p) {
     let _head = _resetTxt;
     if (!_head || _head === _action) _head = safe(p.next) || _action || "";
     NX.next.textContent = _head || "-";
-    // Objective row → item rationale (item_extra) - long-form per-item
+    // Objective row -> item rationale (item_extra) - long-form per-item
     // build context. Truncated by CSS line-clamp.
     // (2026-05-09) DS top pick fallback: when the coach hasn't emitted
     // item_extra/objective yet, surface the engine's top recommendation
@@ -142,7 +142,7 @@ function renderNext(p) {
         NX.objective.textContent = "-";
       }
     }
-    // Positioning row → HP pack status (TOP / BOT availability). Coach
+    // Positioning row -> HP pack status (TOP / BOT availability). Coach
     // emits hp_packs as [top:bool, bot:bool].
     const hpPacks = Array.isArray(p.hp_packs) ? p.hp_packs : null;
     let hpLine = "-";
@@ -153,7 +153,7 @@ function renderNext(p) {
       hpLine = safe(p.positioning);
     }
     NX.positioning.textContent = hpLine;
-    // Wave row → wave_pct (int 0-100) - minion wave progress.
+    // Wave row -> wave_pct (int 0-100) - minion wave progress.
     const wp = p.wave_pct;
     NX.wave.textContent = (typeof wp === "number")
       ? `${wp}% to next wave` : (safe(p.wave) || "-");
@@ -172,11 +172,11 @@ function renderNext(p) {
     const rk = p.rank != null && p.rank !== "?" ? `#${p.rank}/${p.alive_teams || 8}` : "";
     const head = [rd, rk].filter(Boolean).join(" · ") || safe(p.action) || "-";
     NX.next.textContent = head;
-    // Objective → anvil advice (what to buy/take between rounds)
+    // Objective -> anvil advice (what to buy/take between rounds)
     NX.objective.textContent   = safe(p.anvil_advice) || "-";
-    // Positioning → partner name + synergy one-liner
+    // Positioning -> partner name + synergy one-liner
     NX.positioning.textContent = arenaPartnerLine(p);
-    // Wave → camp-phase or next-opponent hint
+    // Wave -> camp-phase or next-opponent hint
     NX.wave.textContent        = arenaWaveLine(p);
     // Relabel KV keys for arena context
     const rows = NX.root.querySelectorAll(".kv span:first-child");
@@ -202,7 +202,7 @@ function renderNext(p) {
     NX.objective.textContent   = safe(p.objective)   || "-";
     NX.positioning.textContent = safe(p.positioning) || "-";
     // (2026-04-25) Wave state: SR shows all-three-lanes per row with a
-    // ▶ marker on the player's lane and color-coded percentages
+    // > marker on the player's lane and color-coded percentages
     // matching coach-prompt thresholds. Other modes (ARAM single-lane,
     // Brawl, Arena, TFT) keep the simple "wave NN%" or fall through.
     _renderWaveState(p);
@@ -219,7 +219,7 @@ function renderNext(p) {
   state.lastTouch.next = Date.now() / 1000;
 }
 
-// ── Arena helpers ───────────────────────────────────────────────────
+// -- Arena helpers ---------------------------------------------------
 // Partner synergy one-liners for the Caitlyn Arena build. Keyed on the
 // partner champion detected from the teams payload; falls back to a
 // generic line if we don't have a canned combo for this matchup.

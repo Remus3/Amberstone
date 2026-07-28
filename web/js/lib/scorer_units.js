@@ -1,4 +1,4 @@
-// scorer_units.js - DS pick row → display unit mapping.
+// scorer_units.js - DS pick row -> display unit mapping.
 //
 // Source of truth: coach_integration/archetype_dispatch.py:_UNIT_SUFFIX (s182).
 // Per-archetype DS scorers produce different deltas (DPS / EHP / hybrid %

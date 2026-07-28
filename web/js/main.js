@@ -8,10 +8,10 @@
 //   {type: "health",    source: "health",              payload: <health.json>}
 //   {type: "state",     source: "<name>.json", mode: "<tag>", payload: {...}}
 //
-// Staleness policy per spec §5:
-//   Right Now / Next: refresh 1-2s → stale at ~4s → severe at ~12s.
-//   Next             ~8s refresh                  → ~16s / ~48s.
-//   Item Build:      event-driven                 → 90s / 5min.
+// Staleness policy per spec S5:
+//   Right Now / Next: refresh 1-2s -> stale at ~4s -> severe at ~12s.
+//   Next             ~8s refresh                  -> ~16s / ~48s.
+//   Item Build:      event-driven                 -> 90s / 5min.
 
 import { _to12, el, fmtList, safe, fitText, logLine, isArenaPayload, classifyAction, _opGlyph, _formatRelativeAge } from './lib/helpers.js';
 import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
@@ -19,7 +19,7 @@ import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResol
 import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
 import { applyTheme, resolveBootTheme } from './lib/theme.js';
 
-// ── Panel modules ─────────────────────────────────────────────────────────
+// -- Panel modules ---------------------------------------------------------
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
 import { renderCoachChoices } from './panels/coach_choices.js';
 import { renderCallouts, renderLead } from './panels/callouts.js';
@@ -160,7 +160,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       .replace(/'/g, "&#39;");
   }
 
-  // ── LCU helper (s171 restore) ──────────────────────────────────────
+  // -- LCU helper (s171 restore) --------------------------------------
   // ``lcuCmd`` / ``lcuPollResult`` were referenced 22 times in main.js
   // (Find Match / Cancel / Change Lobby Mode / queue switcher / etc.)
   // but never declared in this module - the function existed only in
@@ -209,7 +209,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     console.warn("[lobby]", msg);
   }
 
-  // ── DOM refs ────────────────────────────────────────────────────────
+  // -- DOM refs --------------------------------------------------------
   // el() imported from lib/helpers.js; _to12 likewise.
   const statusPill = el("status-pill");
   const modePill = el("mode-pill");
@@ -239,7 +239,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     count: el("activity-count"),
   };
 
-  // ── Activity ticker (queue events) ──────────────────────────────────
+  // -- Activity ticker (queue events) ----------------------------------
   // Pulls /api/activity every 10s + after each /api/input response, so
   // the autonomous framework's work stays visible to the operator.
   async function refreshActivity() {
@@ -297,7 +297,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   refreshActivity();
   setInterval(refreshActivity, 10000);
 
-  // ── Task detail modal ──────────────────────────────────────────────
+  // -- Task detail modal ----------------------------------------------
   const TMODAL = {
     root: el("task-modal"),
     closeBtn: el("task-modal-close"),
@@ -369,7 +369,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (e.key === "Escape") closeTaskModal();
   });
 
-  // ── Insight-card COPY button ────────────────────────────────────────
+  // -- Insight-card COPY button ----------------------------------------
   const ADAPT_COPY_BTN = el("adapt-copy");
   if (ADAPT_COPY_BTN) {
     ADAPT_COPY_BTN.addEventListener("click", async () => {
@@ -468,7 +468,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // state, CADENCE imported from lib/state.js
   // (spellCds is added to state at runtime below)
 
-  // ── Helpers ─────────────────────────────────────────────────────────
+  // -- Helpers ---------------------------------------------------------
   // The visible connection state now lives in the heartbeat pill's color:
   // green when connected, muted gray when offline/pending.
   function setStatus(label, cls) {
@@ -489,7 +489,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     statusPill.classList.add("pill-pulse");
   }
 
-  // ── Transition log (s158) ─────────────────────────────────────────
+  // -- Transition log (s158) -----------------------------------------
   // Capture every mode/view change so flicker is debuggable from the
   // dashboard itself without opening DevTools. Three sinks:
   //   1. console.log (always) - visible in F12.
@@ -560,7 +560,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // champion + game_time after the operator returns to lobby
     // (renderHeader, which authors the enriched title, bails on
     // !driveNow for client/sr-without-coach-data). Coach ticks for
-    // in-game modes overwrite this with "RC · <champ> · <MODE> · <t>".
+    // in-game modes overwrite this with "RC - <champ> - <MODE> - <t>".
     try { document.title = "RC · " + (tag || "client").toUpperCase(); } catch (_) {}
     // Mode-aware CSS hook for minimap panel (SR underlay only on SR).
     const mmPanel = document.querySelector(".panel-minimap");
@@ -587,7 +587,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     try { applyPanelVisibility(); } catch (_) {}
   }
 
-  // ── View router (2026-04-26) ──────────────────────────────────────
+  // -- View router (2026-04-26) --------------------------------------
   // VIEW_IDS, VIEW_LABELS, _VIEW imported from lib/state.js.
   function _viewFromHash() {
     const h = (location.hash || "").replace(/^#/, "").trim();
@@ -626,12 +626,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // s171 post-CS sticky guard: once we've entered ChampSelect, the
     // dashboard should never drop back to home/lobby until the game has
     // cleanly resolved. LCU briefly emits phase=null or stale phase=Lobby
-    // during the CS→GameStart→InProgress flip; track the highest
+    // during the CS->GameStart->InProgress flip; track the highest
     // game-state we've observed so transient blips don't flush the view.
     //
     // s209: dropped the "game-start" sticky tier - loading view retired,
     // GameStart is treated as in-progress (advances sticky directly).
-    // CS→null inference now advances to "in-progress" so the gap renders
+    // CS->null inference now advances to "in-progress" so the gap renders
     // active-match instead of the now-deleted loading screen.
     if (phase === "ChampSelect")                _VIEW.gameStarted = "champ-select";
     else if (phase === "GameStart")             _VIEW.gameStarted = "in-progress";
@@ -672,7 +672,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           }, 10000);
         } catch (_) {}
       }
-      // s171.8: dodge handling - ChampSelect → Lobby/Matchmaking/etc.
+      // s171.8: dodge handling - ChampSelect -> Lobby/Matchmaking/etc.
       // means user backed out before game start. Clear the sticky guard
       // so the auto-derive doesn't keep them on the now-stale CS view.
       else if (_VIEW.gameStarted === "champ-select"
@@ -745,14 +745,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // item 281: no live game + a stale in-game mode flag falls back to home,
     // not the in-game last-match grid (mirror: `or not live` in the Python).
     if (mode === "client" || mode === "lobby" || !mode || !live) return "home";
-    return "last-match";  // in-game default → main panels
+    return "last-match";  // in-game default -> main panels
   }
   // Should we auto-promote past a manual selection? Only for urgent
   // game-state events where missing the actual view is harmful.
   function _viewIsUrgent(targetView) {
     return targetView === "lobby"   // pre-queue lobby
         || targetView === "champ-select"  // s164: full-page CS
-        || targetView === "active-match"  // s209: in-game (was loading→active)
+        || targetView === "active-match"  // s209: in-game (was loading->active)
         || targetView === "last-match";  // game InProgress fallback
   }
   function applyView(viewId) {
@@ -845,8 +845,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");
     if (el) el.textContent = (_VIEW.manual ? "" : "AUTO · ") + (VIEW_LABELS[viewId] || viewId).toUpperCase();
-    // s162: ↻ AUTO header pill removed. Operator clears manual via the
-    // "↻ Auto (clear manual)" entry in the title dropdown menu.
+    // s162: (R) AUTO header pill removed. Operator clears manual via the
+    // "(R) Auto (clear manual)" entry in the title dropdown menu.
   }
   function _viewUpdateMenuActive(viewId) {
     document.querySelectorAll(".view-menu-item").forEach((b) => {
@@ -914,7 +914,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         _viewResolveAndApply();
       });
     });
-    // s162: prominent ↻ AUTO pill removed. The dropdown's "↻ Auto
+    // s162: prominent (R) AUTO pill removed. The dropdown's "(R) Auto
      // (clear manual)" item already triggers the same path through the
     // view-menu-item click handler above (data-view="auto" branch).
     window.addEventListener("hashchange", _viewResolveAndApply);
@@ -950,7 +950,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const b = document.getElementById("view-banner");
     if (b) b.classList.add("hidden");
   }
-  // Resolve current view from hash → manual → auto, then apply.
+  // Resolve current view from hash -> manual -> auto, then apply.
   // Also handle the auto-promote banner when manual blocks an urgent
   // auto target.
   function _viewResolveAndApply(latestLcu) {
@@ -991,7 +991,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // lobby) is itself stale once the live game advances to a DIFFERENT
     // game-state surface. The s209 stale-manual clear used to bail
     // whenever ANY hash was present (`!hashView`), which froze the
-    // operator on #lobby through the whole lobby→champ-select→active-
+    // operator on #lobby through the whole lobby->champ-select->active-
     // match flow - the urgent-promote banner showed but it never auto-
     // switched. Treat a stale game-state hash like a stale manual: clear
     // it AND the URL hash so the flow auto-advances. Non-game-state
@@ -1030,7 +1030,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // fmtList, safe, fitText, logLine, isArenaPayload, classifyAction imported from lib/helpers.js
 
 
-  // ── WHAT WENT view (aftergame Map State replacement) ──────────────
+  // -- WHAT WENT view (aftergame Map State replacement) --------------
 
 
 
@@ -1267,7 +1267,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
 
   // Round 45: champion-pill fallback. When live-client isn't populating
   // p.champion, the Phase 3 supervisor's /api/locked-champion endpoint
-  // probes LCU → match_db → recent user-notes. Poll every 15s.
+  // probes LCU -> match_db -> recent user-notes. Poll every 15s.
   const champPill = el("champion-pill");
   let championPillState = { name: null, source: null };
 
@@ -1296,9 +1296,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     const label = document.createElement("span");
     label.className = "champ-name";
-    // Display-name sanitiser: strip apostrophes (K'Sante → KSante, Kai'Sa
-    // → KaiSa) and keep only the first token of " & " compounds
-    // (Nunu & Willump → Nunu). Internal `name` is unchanged; only the
+    // Display-name sanitiser: strip apostrophes (K'Sante -> KSante, Kai'Sa
+    // -> KaiSa) and keep only the first token of " & " compounds
+    // (Nunu & Willump -> Nunu). Internal `name` is unchanged; only the
     // rendered label shortens so the pill width can be sized for a more
     // reasonable max like "Renata Glasc" / "Twisted Fate" (12 chars).
     label.textContent = String(name)
@@ -1326,7 +1326,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   setInterval(refreshChampionFallback, 15000);
   refreshChampionFallback();     // kick one immediately
 
-  // ── State dispatcher ────────────────────────────────────────────────
+  // -- State dispatcher ------------------------------------------------
   function onState(env) {
     const p = env.payload || {};
     state.latest[env.mode] = p;
@@ -1515,7 +1515,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // supervisor and /api/health is never preflip-mirrored, so during
     // ARAM/Arena-lobby + champ-select preflip onHealth computes "client"
     // while onState correctly carries the preflip mode_key. Both write
-    // body[data-mode] on independent cadences → it flaps aram↔client and
+    // body[data-mode] on independent cadences -> it flaps aram<->client and
     // every mode-gated surface (the mode pill + the panel titles;
     // formerly also the row-2 header pills) flickered on/off every
     // cycle, on all views (shared header). /api/state.mode_key is the canonical
@@ -1534,7 +1534,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     logLine("health", `pid=${p.pid} alive=${p.alive} mode=${tag} reload_ok=${p.last_reload_ok}`);
   }
 
-  // ── Staleness sweep ─────────────────────────────────────────────────
+  // -- Staleness sweep -------------------------------------------------
   function applyStaleness() {
     const now = Date.now() / 1000;
     for (const [panelKey, elm, rootElm] of [
@@ -1562,7 +1562,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
   setInterval(applyStaleness, 500);
 
-  // ── Adaptation panel (fetches /api/adaptation on state change) ──────
+  // -- Adaptation panel (fetches /api/adaptation on state change) ------
   const ADAPT = {
     lastKey: "",             // dedupe requests when the same (champ, mode) repeats
     inflight: false,
@@ -1660,7 +1660,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     AD.recent.textContent = recentPart + arrow;
     AD.recent.className = cls;
 
-    // Typical KDA - shown once we have ≥5 samples; otherwise placeholder.
+    // Typical KDA - shown once we have >=5 samples; otherwise placeholder.
     if (AD.kda) {
       const kda = data.avg_kda;
       if (kda && (kda.sample || 0) >= 5) {
@@ -1794,7 +1794,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
 
 
-  // ── Session view fetchers (2026-04-26) ───────────────────────────
+  // -- Session view fetchers (2026-04-26) ---------------------------
   // UI scale v2.1 page #5 audit ritual step 5 state-coverage mock fixture
   // (2026-05-23). When body.dataset.uiMock === "1" the fetch short-
   // circuits to /data/ui_mock/session.json instead of /api/session/summary.
@@ -1949,7 +1949,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     wrap.hidden = false;
   }
 
-  // ── History view fetchers (2026-04-26) ───────────────────────────
+  // -- History view fetchers (2026-04-26) ---------------------------
   // UI scale v2.1 page #4 audit ritual step 5 state-coverage mock fixture
   // (2026-05-23). When body.dataset.uiMock === "1" the fetch short-
   // circuits to /data/ui_mock/history.json instead of /api/history.
@@ -2361,7 +2361,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     });
   }
 
-  // ── Loadouts view (2026-04-26) ───────────────────────────────────
+  // -- Loadouts view (2026-04-26) -----------------------------------
   function _loadoutsFetchAndRender() {
     const mode = (document.getElementById("loadouts-mode-filter") || {}).value || "aram";
     const filter = ((document.getElementById("loadouts-filter") || {}).value || "").toLowerCase();
@@ -2399,7 +2399,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (m) m.addEventListener("change", _loadoutsFetchAndRender);
   }
 
-  // ── User Builds view (Phase 8 step 6 - 2026-05-04) ───────────────
+  // -- User Builds view (Phase 8 step 6 - 2026-05-04) ---------------
   // CRUD over data/daemon_slayer/user_builds.json via
   // /api/sr-draft/user-builds (action-keyed POST: list/add/update/delete).
   // Builds saved here APPEND to the engine-generated SR-draft profiles
@@ -2610,7 +2610,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         list.innerHTML = '<li class="home-empty">failed to load builds.</li>';
       });
   }
-  // ── Summoner-spell chooser (icon grid) ─────────────────────────────
+  // -- Summoner-spell chooser (icon grid) -----------------------------
   function _spellById(id) {
     const n = parseInt(id, 10);
     return _UB_SPELLS.find((s) => s.id === n) || null;
@@ -2679,7 +2679,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     _ubSpellRenderCurrent();
   }
 
-  // ── Rune Page builder (5-tree tabs + keystone + minor picker) ─────
+  // -- Rune Page builder (5-tree tabs + keystone + minor picker) -----
   function _runeIconUrl(rel) {
     return rel ? (_RP_DDRAGON_BASE + rel) : "";
   }
@@ -3077,7 +3077,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
 
 
-  // ── Home / lobby landing view (2026-04-26) ───────────────────────────
+  // -- Home / lobby landing view (2026-04-26) ---------------------------
   // Shown when the user is sitting in client mode with no game/champ-
   // select active (i.e. between matches or just after RC boot). Pulls
   // /api/home/summary every 20s. Hides during ChampSelect / InProgress
@@ -3217,7 +3217,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       grade.textContent = gradeRaw;
       card.append(stripe, img, main, itemStrip, kda, grade);
 
-      // s218 v6: click → History view focused on this match.
+      // s218 v6: click -> History view focused on this match.
       // Saves the timestamp to sessionStorage so _historyFetchAndRender
       // can auto-select the matching session + scroll the match row
       // into view + highlight it briefly. Was previously gated on
@@ -3857,7 +3857,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const overlay = document.getElementById("home-overlay");
     if (!overlay || overlay._wiredV3) return;
     overlay._wiredV3 = true;
-    // Action tiles → save as manual override + navigate (same flow the
+    // Action tiles -> save as manual override + navigate (same flow the
      // dropdown menu uses). Without _viewSaveManual the next LCU poll's
      // _viewResolveAndApply auto-derives back to "home" within 2s.
     overlay.querySelectorAll(".home-action-tile[data-target]").forEach((tile) => {
@@ -3963,7 +3963,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     _homeWireStartup();
   }
 
-  // ── Lobby view (2026-04-26 v2) ──────────────────────────────────
+  // -- Lobby view (2026-04-26 v2) ----------------------------------
   // Full-grid lobby surface (QUEUE / PARTY / TIPS / RECENT IN QUEUE)
   // that replaces the post-match-duped 5-panel layout. Reuses the
   // same lcu.lobby data feed as the inline #lobby-overlay; this view
@@ -3974,7 +3974,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     activeSlot: null,    // "primary" | "secondary" | null - which lane-pref slot the popup is anchored to
     prefPrimary:   "UNSELECTED",
     prefSecondary: "UNSELECTED",
-    needsPick:     false,    // true when primary just changed FROM fill → role; secondary needs re-pick
+    needsPick:     false,    // true when primary just changed FROM fill -> role; secondary needs re-pick
     partyOpen:     true,     // operator default per s162 spec
     partyToggleInflight: false,  // s209: gate refresh from clobbering optimistic click
     lastLcuPartyType: null,      // s209: track external LCU changes vs operator clicks
@@ -4198,7 +4198,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     return Math.round((num / den) * 100) + "%";
   }
   function _mainsTabState() {
-    // Default tab driven by party composition. Solo → YOUR. Party → PARTY.
+    // Default tab driven by party composition. Solo -> YOUR. Party -> PARTY.
     const lcu = (state.latest && state.latest.lcu) || {};
     const lobby = lcu.lobby || null;
     const partySize = (lobby && lobby.party_size) | 0;
@@ -4322,7 +4322,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   function _mcGamesCellHtml(ov) {
     // s162 v9: games count = sum of all PVP modes (rift + aram + arena).
     // Falls back to ov.games when no per-mode breakdown is wired yet.
-    // Tooltip shows a 3×3 mode breakdown (titles / counts / WR%).
+    // Tooltip shows a 3x3 mode breakdown (titles / counts / WR%).
     const modes = ov.modes || null;
     let total = ov.games | 0;
     if (modes) {
@@ -4369,7 +4369,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // s162 v10: 5-tier KP% color bands. Numbers reflect what aggregator B /
   // aggregator A / aggregator D consensus on what's a "carry-engaged" vs
   // "passive" kill-participation rate at solo-queue ranked play.
-  //   ≥70%  S - elite; almost always a carry/jungler stat
+  //   >=70%  S - elite; almost always a carry/jungler stat
   //   60-69 A - strong; reliable on objectives + skirmishes
   //   50-59 B - average for laners
   //   40-49 C - fades; missing skirmishes / over-farm
@@ -4568,8 +4568,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // s162 v15: Primary-lane conflict detection - pre-pass before the
     // render loop. For each pair of members (incl. self) where their
     // resolved Primary == another's Primary AND it's not FILL/UNSELECTED,
-    // mark BOTH as conflicting. Self-involvement → 'self' (red); two
-    // other members conflicting (no self) → 'other' (orange).
+    // mark BOTH as conflicting. Self-involvement -> 'self' (red); two
+    // other members conflicting (no self) -> 'other' (orange).
     const conflictMap = new Map();
     let selfHasConflict = false;
     {
@@ -4646,7 +4646,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         li.dataset.colorIdx = String(otherIdx + 1);
         otherIdx++;
       } else {
-        li.dataset.colorIdx = "0";  // self → lavender
+        li.dataset.colorIdx = "0";  // self -> lavender
       }
       const ign = _resolvePartyMember(m);
       // s162 v4: Section 1 is just the name. YOU pip removed; the
@@ -4753,7 +4753,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const section4 = `<span class="lobby-member-actions">${actions.join("")}</span>`;
       // s162 v5: 6-col layout - name (1) | icon-spacer (2) | role (3)
       // | rank (4) | top-2-champs-for-role (5) | actions (6).
-      // s162 v7: 3 → 2 champs so the topchamps cell narrows and Role
+      // s162 v7: 3 -> 2 champs so the topchamps cell narrows and Role
       // + Rank columns line up vertically with the Top 8 panel.
       const champs = Array.isArray(m.top_role_champs) ? m.top_role_champs : [];
       const shortChamps = champs.slice(0, 2)
@@ -4766,7 +4766,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       ul.appendChild(li);
       })(m);   // close v13 real-member IIFE - invokes with current m
     }
-    // s162 v4: click party row → highlight matching PARTY MAINS card
+    // s162 v4: click party row -> highlight matching PARTY MAINS card
     // (and the row itself). Clicks on action buttons are ignored.
     ul.querySelectorAll(".lobby-member-row[data-member-idx]").forEach((row) => {
       row.addEventListener("click", (e) => {
@@ -4876,7 +4876,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           } catch (_) { /* ignore */ }
         });
       } else {
-        // No data → dashed placeholder (E11: 4-cell PARTY structure).
+        // No data -> dashed placeholder (E11: 4-cell PARTY structure).
         li.className = "lv-mc-row is-placeholder";
         li.dataset.rank = String(rank);
         li.innerHTML = (
@@ -4901,7 +4901,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       }
       list.appendChild(li);
     }
-    // s162 v4: PARTY MAINS card click → cross-highlight matching party
+    // s162 v4: PARTY MAINS card click -> cross-highlight matching party
     // row. Clicks on the copy button (if not disabled) bubble through
     // before this; we ignore action-button targets.
     list.querySelectorAll(".lv-mc-row[data-member-idx]").forEach((card) => {
@@ -4989,11 +4989,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       } else {
         _LV.prefPrimary = pref;
         if (wasFill && pref !== "FILL") {
-          // FILL → specific role: secondary becomes "needs-pick"
+          // FILL -> specific role: secondary becomes "needs-pick"
           _LV.prefSecondary = "UNSELECTED";
           _LV.needsPick = true;
         } else if (pref === "FILL") {
-          // Primary FILL → secondary auto-pinned to FILL
+          // Primary FILL -> secondary auto-pinned to FILL
           _LV.prefSecondary = "FILL";
           _LV.needsPick = false;
         } else {
@@ -5139,7 +5139,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       if (autoAccept.disabled) return;
       _setAutoAccept(!_LV.autoAccept);
     });
-    // ---- Lane pref slot clicks → open popup ----
+    // ---- Lane pref slot clicks -> open popup ----
     const primary   = document.getElementById("lv-lane-primary");
     const secondary = document.getElementById("lv-lane-secondary");
     if (primary) primary.addEventListener("click", (e) => {
@@ -5677,20 +5677,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // /api/state fallback, FakeSocket lcu replay in sim mode) calls this
   // instead of handleChampSelect directly. Reason: handleChampSelect
   // lives in panels/champ_select.js where renderLobbyPanel / etc. are
-  // out of scope. Calling them from there throws ReferenceError →
-  // silently caught by upstream try/catch → lobby view never refreshes.
+  // out of scope. Calling them from there throws ReferenceError ->
+  // silently caught by upstream try/catch -> lobby view never refreshes.
   // This wrapper runs in main.js's module scope where all the cross-
   // cutting renders ARE defined.
   function handleLcuEnvelope(lcu) {
     handleChampSelect(lcu);     // champ-select overlay + state.latest.lcu cache
-    _syncAutoAcceptFromConfig(lcu);  // reflect agent CONFIG → both controls
+    _syncAutoAcceptFromConfig(lcu);  // reflect agent CONFIG -> both controls
     renderHomePanel(lcu);       // home-view phase chip
     _viewResolveAndApply(lcu);  // re-derive view based on new phase
     _maybeRefreshLobbyView();   // re-render view-lobby if it's the active surface
     if (_VIEW.current === "champ-select") renderChampSelectView(_csResolveLcu(lcu));  // s164
   }
 
-  // ── Auto Accept (agent-CONFIG-backed, lobby ↔ settings synced) ──────
+  // -- Auto Accept (agent-CONFIG-backed, lobby <-> settings synced) ------
   // Source of truth is the LCU agent CONFIG - it's what actually
   // accepts the ready-check - surfaced live at state.lcu.config.auto_accept
   // and written via the set_config command. The lobby Auto Accept toggle
@@ -5782,7 +5782,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (sc) sc.addEventListener("change", () => { _setAutoAccept(!!sc.checked); });
   }
 
-  // ── Lobby overlay (2026-04-26) - REMOVED E11 ────────────────────────
+  // -- Lobby overlay (2026-04-26) - REMOVED E11 ------------------------
   // The superseded inline #lobby-overlay "current lobby" card (and its
   // renderLobbyPanel / _renderLobbyMembers / _setLobbyStatus /
   // _wireLobbyButtonsOnce cluster) was deleted in the E11 lobby QA slice.
@@ -5872,7 +5872,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   refreshEnv();
   setInterval(refreshEnv, 15000);
 
-  // ── Minimap image polling ──────────────────────────────────────────
+  // -- Minimap image polling ------------------------------------------
   // Polls /api/minimap-crop on a fast cadence when the dedicated Legion
   // minimap stream is live (5-10Hz pre-cropped JPEGs on source=minimap),
   // otherwise the supervisor falls back to crop-from-full-frame which is
@@ -5941,7 +5941,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   minimapTimer = setInterval(refreshMinimap, minimapInterval);
   refreshMinimap();   // fire once on load
 
-  // ── Vision-tracker overlay on the live minimap ─────────────────────
+  // -- Vision-tracker overlay on the live minimap ---------------------
   // Reads /api/vision-state (written by core/vision_tracker), projects
   // game coords onto the rendered minimap image, draws dots:
   //   - bright dot at current position when visible
@@ -6023,7 +6023,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
 
     const mapSize = VT_MAP_SIZE[(vs.game_mode || "").toUpperCase()] || 14800;
     function project(x, z) {
-      // Game origin = bottom-left, z grows up. Canvas y grows down → flip.
+      // Game origin = bottom-left, z grows up. Canvas y grows down -> flip.
       const px = (x / mapSize) * w;
       const py = h - (z / mapSize) * h;
       return [px, py];
@@ -6248,7 +6248,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
   });
 
-  // ── Connection ──────────────────────────────────────────────────────
+  // -- Connection ------------------------------------------------------
   // Audit P-audit3-l01: exponential backoff with jitter.
   const BACKOFF_MS = [1500, 3000, 6000, 12000, 30000];
   let backoffIdx = 0;
@@ -6300,7 +6300,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     };
   }
 
-  // ── Advisory badge ───────────────────────────────────────────────
+  // -- Advisory badge -----------------------------------------------
   // Polls /api/advisories every 20s. When there are ready (un-completed)
   // advisories the badge lights with a count + pulses. Tap to cycle
   // through messages as a dismissible toast.
@@ -6376,7 +6376,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     try {
       // Zen is OFF by default (2026-04-24). Only enabled when the user
       // has explicitly opted in (stored as "1" via the Z hotkey). First
-      // visit + null storage → all four panels visible.
+      // visit + null storage -> all four panels visible.
       // One-time migration: browsers carrying the previous zen-on-by-
       // default preference get their cached "1" wiped so they see the
       // new default on the next load. After this, Z-toggles persist
@@ -6461,7 +6461,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     if (!chip) {
       // Insert immediately before the mode-pill so the footer order is
-      // VOICE → ZEN → CLIENT (per user 2026-04-29). Falls back to the
+      // VOICE -> ZEN -> CLIENT (per user 2026-04-29). Falls back to the
       // legacy spacer position if the mode-pill isn't in the DOM.
       const anchor = document.getElementById("mode-pill")
                   || document.querySelector("footer .spacer");
@@ -6558,7 +6558,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
   })();
 
-  // ── Keyboard shortcuts ───────────────────────────────────────────
+  // -- Keyboard shortcuts -------------------------------------------
   document.addEventListener("keydown", (e) => {
     // Shift+R resets saved preferences (zen) + reloads. The zoom key
     // was retired in UI scale v2 (2026-05-23); body { zoom } is gone
@@ -6603,7 +6603,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       e.preventDefault();
       return;
     }
-    // Esc: close modal → dismiss reply toast → exit Zen mode (in order).
+    // Esc: close modal -> dismiss reply toast -> exit Zen mode (in order).
     if (e.key === "Escape") {
       const modal = el("task-modal");
       if (modal && !modal.classList.contains("hidden")) {
@@ -6669,7 +6669,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
   });
 
-  // ── Auto-hide cursor after idle ─────────────────────────────────
+  // -- Auto-hide cursor after idle ---------------------------------
   // For monitor-2 fullscreen display the cursor is distracting. Hide it
   // after 2s of no mousemove; show it back on any movement or keypress.
   (function setupCursorHide() {
@@ -6708,7 +6708,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     console.warn("ws connect failed at boot; using HTTP poll fallback:", e);
   }
 
-  // ── HTTP fallback polling ─────────────────────────────────────────
+  // -- HTTP fallback polling -----------------------------------------
   // If the WebSocket stays disconnected for more than a few seconds,
   // poll /api/state and /api/health directly so the panels keep
   // showing live info. This covers WS drops (iPad WiFi hiccup, server
@@ -6786,7 +6786,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     setInterval(pollIfStale, 2000);
   })();
 
-  // ── /api/state-stream SSE subscription (Tier 4 #16, 2026-05-01) ──
+  // -- /api/state-stream SSE subscription (Tier 4 #16, 2026-05-01) --
   // Server-pushes /api/state on every change + a 15s heartbeat, so the
   // dashboard doesn't need to schedule its own /api/state polls. When
   // a fresh SSE event lands we update state.lastSseTs; the LCU poller
@@ -6845,7 +6845,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     connectSse();
   })();
 
-  // ── Independent LCU / champ-select poller (2026-04-26) ────────────
+  // -- Independent LCU / champ-select poller (2026-04-26) ------------
   // Fallback path: SSE (above) normally pushes /api/state including
   // `lcu`, so this polling loop short-circuits while SSE is fresh.
   // Still needed when SSE is unavailable (browser without EventSource,
@@ -6884,7 +6884,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     pollLcu();   // fire once on load
   })();
 
-  // ── Dedicated minimap (ZOI) poller (2026-06-29) ──────────────────
+  // -- Dedicated minimap (ZOI) poller (2026-06-29) ------------------
   // The w-mmrect outline + ZOI fill + dots are /api/state TOP-LEVEL
   // siblings computed in build_state - they are NOT carried by the :8891
   // WS push (the raw coaching file) that drives the live overlay. The
@@ -6993,7 +6993,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     pollMinimap();   // fire once on load
   })();
 
-  // ── Voice TTS toggle ─────────────────────────────────────────────
+  // -- Voice TTS toggle ---------------------------------------------
   // (2026-04-25, revised same-day) Speech now uses the browser's
   // window.speechSynthesis (Web Speech API) so audio plays on the
   // device viewing the dashboard - iPad, Legion, whatever -
@@ -7130,13 +7130,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }).observe(actionEl, { childList: true, subtree: true, characterData: true });
   })();
 
-  // ── Console error pipe ───────────────────────────────────────────
+  // -- Console error pipe -------------------------------------------
   // (2026-04-25) Wires `window.onerror`, `unhandledrejection`, and
   // `console.error` to a server POST so JS exceptions in the live
   // dashboard land in RC's daily log without the user having to open
   // DevTools. Most "the panel went blank / nothing's updating" bugs
   // leave a JS trace; this makes them visible from the Legion side.
-  // Throttled to ≤2 posts/sec so a render-loop crash can't flood RC's
+  // Throttled to <=2 posts/sec so a render-loop crash can't flood RC's
   // log file. The original console.error is preserved (DevTools still
   // shows it) - we just tee a copy server-side.
   (function setupConsoleErrorPipe() {
@@ -7203,9 +7203,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
               body: JSON.stringify({ ...entry, _replay: true }),
             }).then((r) => {
               if (r && r.ok) _dropQueuedEntry(entry);
-              // Non-2xx → leave queued; next flush will retry.
+              // Non-2xx -> leave queued; next flush will retry.
             }).catch(() => {
-              // Network failure → leave queued; next flush will retry.
+              // Network failure -> leave queued; next flush will retry.
             });
           } catch (_) {}
         }, i * 100);  // 10 Hz max replay so we don't trip the server throttle
@@ -7265,7 +7265,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         stack:   (isErr && r.stack) || "",
       });
     });
-    // Tee console.error → pipe. We don't tee console.warn/log - too
+    // Tee console.error -> pipe. We don't tee console.warn/log - too
     // noisy and most real bugs surface as either thrown errors or
     // explicit console.error calls in our own code.
     const origErr = console.error.bind(console);
@@ -7283,7 +7283,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     };
   })();
 
-  // ── Auto-reload on CSS/JS changes ─────────────────────────────────
+  // -- Auto-reload on CSS/JS changes ---------------------------------
   // Polls /api/ui-version; when the hash changes, reload the page.
   // Keeps iPad in sync with Legion edits without needing manual refresh.
   (function autoReload() {
@@ -7332,7 +7332,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     check();
   })();
 
-  // ── App-wide tooltip system ───────────────────────────────────────
+  // -- App-wide tooltip system ---------------------------------------
   // Replaces browser-native `title` tooltips across the whole UI:
   //   - larger readable font matching the muted-augments pill aesthetic
   //   - thin white border for pop-off-panel contrast
@@ -7351,7 +7351,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     let activeEl = null;
     let hideTimer = null;
     const MARGIN = 6;        // viewport-edge breathing room
-    const OFFSET = 6;        // gap between cursor and tip (small → "just beneath cursor")
+    const OFFSET = 6;        // gap between cursor and tip (small -> "just beneath cursor")
     let cursorX = 0, cursorY = 0;
 
     function capture(el) {
@@ -7458,7 +7458,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     document.body.addEventListener("click", hide, true);
   })();
 
-  // ───── AUDIT 2026-04-28 - proposals 3.3, 3.6 + 4.4, 2.1 ─────
+  // ----- AUDIT 2026-04-28 - proposals 3.3, 3.6 + 4.4, 2.1 -----
   // Sticky-header compression on scroll + skeleton loaders + health
   // rollup dot + cost-tile poll. All passive - no-ops if the target
   // elements are absent.
@@ -7487,7 +7487,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           const footer = document.querySelector("footer");
           const modePill = document.getElementById("mode-pill");
           if (modePill && modePill.parentNode === footer) {
-            // Insert right after mode-pill (so order is mode → dot → next pill).
+            // Insert right after mode-pill (so order is mode -> dot -> next pill).
             modePill.parentNode.insertBefore(dot, modePill.nextSibling);
           } else if (footer) {
             footer.appendChild(dot);
