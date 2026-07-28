@@ -1141,8 +1141,8 @@ def main() -> int:
     _atomic_write_json(patch_dir / "manifest.json", manifest)
     _atomic_write_text(DATA_ROOT / "current.txt", patch)
 
-    log.info("✓ wrote %s/{champions,items,scenarios,arena_augments,items_meraki,manifest}.json", patch_dir)
-    log.info("✓ current.txt → %s", patch)
+    log.info("wrote %s/{champions,items,scenarios,arena_augments,items_meraki,manifest}.json", patch_dir)
+    log.info("current.txt -> %s", patch)
     return 0
 
 
