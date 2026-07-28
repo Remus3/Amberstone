@@ -162,7 +162,7 @@ def _glyph_hits(text: str, path: str = "") -> list[str]:
         return []
     hits = {name for ch, name in _BANNED.items() if ch in text}
     hits |= {
-        "non-ascii U+%04X (%s)" % (ord(c), c.encode("unicode_escape").decode())
+        f"non-ascii U+{ord(c):04X} ({c.encode('unicode_escape').decode()})"
         for c in text
         if ord(c) > 127 and c not in _BANNED
     }
