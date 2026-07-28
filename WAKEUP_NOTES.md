@@ -70,9 +70,10 @@ converges to on its own. Written into
 
 ## Open for the operator
 
-- **Sign-off requested:** the Share Notation section (20 lines that named
-  internal id families in the most external doc) is now a three-line generic
-  disclaimer. Revert is one section if that reads as too little.
+- **Sign-off GRANTED 2026-07-28 (operator):** the shortened Share Notation
+  section stands as shipped - 20 lines that named internal id families in the
+  most external doc, now a three-line generic disclaimer. No revert. This line
+  is closed; do not re-raise it.
 - **Left deliberately:** three host-only `tools/*.py` still carry non-ASCII -
   `p3_ascii_sweep.py` (its own glyph inventory, correct as-is), `extract_panels.py`,
   `rc_facts.py`. None ship in Share.zip. Say the word on the latter two.
