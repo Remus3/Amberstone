@@ -126,7 +126,7 @@ function _kindOf(elm) {
 }
 // Minimap canvas renderer - Zone of Influence (ZOI) + position dots.
 //
-// ZOI: for each pixel, compute net "pressure" = Σ ally_pressure − Σ enemy_pressure.
+// ZOI: for each pixel, compute net "pressure" = sum ally_pressure - sum enemy_pressure.
 // Each champion contributes a compact-support "bubble" of influence - peaks
 // at 1 at the champ, falls smoothly to exactly 0 at radius R. Beyond R the
 // champion contributes nothing, so the DMZ (the low-|net| band) visibly
@@ -135,12 +135,12 @@ function _kindOf(elm) {
 // enemy color.
 //
 // Pressure math (Wendland-style, quadratic compact support):
-//   d² = (dist / RADIUS)²
-//   contribution = (1 - d²)²   when d < R,   else 0
+//   d^2 = (dist / RADIUS)^2
+//   contribution = (1 - d^2)^2   when d < R,   else 0
 //   Multiple same-team champs in proximity stack (sum).
 //   Opposing team subtracts.
 //
-// Performance: render at 80×80 then upscale to canvas intrinsic size.
+// Performance: render at 80x80 then upscale to canvas intrinsic size.
 // Re-runs on every state envelope (~3s in sim, whenever coach emits live).
 const ZOI = (() => {
   const q = new URLSearchParams(location.search);
@@ -169,7 +169,7 @@ function _zoiRadius(gtS) {
   if (gtS < 1800) return 0.34;   // 20-30 - rotations
   return 0.40;                    // 30+ - pure teamfight / split
 }
-// Compact-support influence bubble. d2 is (dist/R)² - already normalized
+// Compact-support influence bubble. d2 is (dist/R)^2 - already normalized
 // by the caller. Outside the bubble (d2 >= 1) the champion contributes
 // nothing, so the DMZ forms naturally in gaps and is pushed/pulled by
 // wherever bubbles actually reach.
@@ -212,7 +212,7 @@ function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
     const ny = (py + 0.5) / lo;
     for (let px = 0; px < lo; px++) {
       const nx = (px + 0.5) / lo;
-      // Baseline: (ny - nx) ∈ [-1, 1]; times sign+strength.
+      // Baseline: (ny - nx) in [-1, 1]; times sign+strength.
       let baseline = (ny - nx) * BL * baselineSign;
       let allyP = 0, enemyP = 0;
       for (let i = 0; i < A.length; i++) {
@@ -244,7 +244,7 @@ function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
       let r, g, b, a;
       // Smooth exponential ramp: light pressure = subtle tint, heavy
       // concentration (3+ champs stacked) = near-cap saturation.
-      // Scale chosen so 1 champion at influence radius ≈ half-cap.
+      // Scale chosen so 1 champion at influence radius ~ half-cap.
       // Opacity caps tuned for SR underlay - 0.42/0.22 lets the map
       // read through the tint while still clearly team-coded.
       if (net > DB) {
@@ -298,7 +298,7 @@ function renderMinimapCanvases(p) {
   const enemyColor = myTeam === "red" ? "#8A8CF0" : "#F07E8B";
 
   // Drop positions for dead champions - they're not exerting pressure.
-  // *_respawns keys → remaining seconds; >0 = dead, skip contribution.
+  // *_respawns keys -> remaining seconds; >0 = dead, skip contribution.
   const deadE = new Set(Object.entries(p.enemy_respawns || {})
       .filter(([, s]) => typeof s === "number" && s > 0)
       .map(([n]) => n));
@@ -349,7 +349,7 @@ function renderMinimapCanvases(p) {
     const cx = Math.round(x * W), cy = Math.round(y * H);
     if (isSelf) {
       // Champion sight-range halo - ~1200 units on a 15000-unit SR map
-      // ≈ 0.08 normalized. Thin gold stroke + soft glow. Gives the user
+      // ~ 0.08 normalized. Thin gold stroke + soft glow. Gives the user
       // a "what can I actually see" read without flipping to the minimap.
       const vR = 0.085 * W;
       ctx.save();
@@ -471,7 +471,7 @@ function renderMinimapCanvases(p) {
   // dot hasn't moved in a few seconds, fade it and ring it with a
   // clock-face age sweep so the user can read at-a-glance "this enemy
   // is roaming / missing, not actually here." Positions are floats
-  // 0-1; we treat <0.005 movement (≈3.6px on the 720-canvas) as
+  // 0-1; we treat <0.005 movement (~3.6px on the 720-canvas) as
   // "stationary." Entries are dropped when the enemy leaves the frame.
   state.lastEnemyPos ||= {};
   for (const k of Object.keys(state.lastEnemyPos)) {
@@ -493,7 +493,7 @@ function renderMinimapCanvases(p) {
     if (age > _ghostStart) {
       const fadeT = (age - _ghostStart) / (_ghostEnd - _ghostStart);
       ctx.save();
-      ctx.globalAlpha = 1 - fadeT * 0.7;  // 1.0 → 0.3
+      ctx.globalAlpha = 1 - fadeT * 0.7;  // 1.0 -> 0.3
       drawDot(pos.x, pos.y, enemyColor, false);
       const cx = Math.round(pos.x * W), cy = Math.round(pos.y * H);
       ctx.beginPath();
@@ -524,7 +524,7 @@ function renderItemValueDiff(p) {
     return;
   }
   wrap.classList.remove("hidden");
-  // Clamp to ±10k for the fill bar scale.
+  // Clamp to +/-10k for the fill bar scale.
   const clamp = Math.max(-10000, Math.min(10000, diff));
   const pct = Math.abs(clamp) / 10000;
   // Left edge is 50% (center). Fill extends right (ahead) or left (behind).
@@ -686,7 +686,7 @@ function renderMinimap(p) {
   state.lastTouch.minimap = Date.now() / 1000;
 }
 
-// Heartbeat-styled live state line. Builds a ♥-pulse + counts +
+// Heartbeat-styled live state line. Builds a <3-pulse + counts +
 // self-aging "Xs ago" suffix so the user reads "this is live" without
 // having to compare numbers across renders. The pulse re-fires every
 // call by removing then re-adding the .pulse class on the next frame.

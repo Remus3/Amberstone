@@ -28,7 +28,7 @@ export function _normItemName(s) {
 }
 
 // Tiered resolver: (1) exact, (2) prefix match (shortest wins), (3) 6-char stem.
-// Handles casual names like "Rabadon's" → Rabadon's Deathcap.
+// Handles casual names like "Rabadon's" -> Rabadon's Deathcap.
 export function _resolveItemId(name) {
   const n = _normItemName(name);
   if (!n) return null;
@@ -85,7 +85,7 @@ export function diffVariantItemIds(variants) {
 
 // DDragon name-rename overrides: champions whose live display name doesn't
 // normalize cleanly to their DDragon file. The champions_index.json byName
-// map handles apostrophes/spaces (Kai'Sa → kaisa → 'Kaisa'), but a handful
+// map handles apostrophes/spaces (Kai'Sa -> kaisa -> 'Kaisa'), but a handful
 // of champs were renamed by Riot post-release and the display name no
 // longer matches the on-disk filename. Keys are lowercase-alphanumeric of
 // the display name; values are the DDragon canonical id.
@@ -119,7 +119,7 @@ export function _resolveSpell(name) {
   return SPELLS.byName[k] || null;
 }
 
-// ── Async loaders ────────────────────────────────────────────────────────────
+// -- Async loaders ------------------------------------------------------------
 // Populate in-place; dispatch custom events so consumers can re-render.
 
 (async () => {
