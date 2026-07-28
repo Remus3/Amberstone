@@ -6,6 +6,38 @@
 
 ---
 
+# 2026-07-28g - R217-U1 full RC suite on push. The named edits were fine; the budget was the bug.
+
+Gemini-loop cycle 23. RM-119 second half, the RC-half CI promotion the operator
+authorized in `roadmap work.txt`. Full detail in `docs/LEDGER.md` 1095. Commit
+`9e7b70d1` + this sync. CI config only: no engine, no ENGINE bump, no DS path, no
+Share mirror, no restart, no runtime `.py`.
+
+- `.github/workflows/ci.yml` `check:` now installs `requirements.txt` and runs
+  `pytest tests/ agents/daemon_slayer/tests/ -q -n auto --dist loadfile`. The two
+  subset steps (`smoke + regression tests`, `panel snapshot tests`) are deleted.
+- **The install line is the point, not bookkeeping.** An ImportError-guarded test
+  that cannot import is a SKIP, and a skip is a green tick - promoting the suite
+  without the runtime stack buys minutes and almost no assertions.
+- **The defect nobody named: `timeout-minutes: 25` would have CANCELLED it.** The
+  19m42s dispatch price is pytest in a job that does nothing else; `check:` also
+  installs Playwright, sweeps py_compile, runs ruff and the Share mirror check
+  (DS-only shape = 9m1s end to end, run `30342574878`). New shape prices at ~26m.
+  Raised to 40. A blown ceiling reports as *cancelled*, not failed.
+- 4 named-file steps kept, all justified IN the file: two turn a skip into a
+  failure (`RC_REQUIRE_*`), two are 10-second fast-fail guards. Otherwise the next
+  reader deletes them as duplicates and is right by every argument but the useful one.
+- RM-119 CLOSED both halves; narrative relocated to `docs/ROADMAP_HISTORY.md`
+  (`ROADMAP.md` 80351 -> 76662 of 81920). Skip-audit B2/B4/B5 stay - open work.
+- Gate: full dual `-n 8` **23861 passed / 106 skipped / 6178 subtests / 0 failed**
+  in 131.49s; verifier CONFIRM on an independent re-run; ruff clean; 14 `check:`
+  steps parse.
+- **Carry-forward: every push now costs ~26 CI minutes.** That makes the docs-only
+  `paths-ignore` skip and `concurrency: cancel-in-progress` load-bearing, not
+  cleanup targets. R217-U2 (tools non-ASCII residue) is still OPEN.
+
+---
+
 # 2026-07-28f - R217 desktop-queue drain. Half the notes were already true on disk.
 
 Gemini-loop cycle 22. RM-121 item 4 (`random.txt` + `roadmap work.txt`), which
@@ -133,48 +165,3 @@ value delivered is that it is no longer a claim.
   whole-file-rewrite-under-a-narrowed-work-plan class, live DS-consumer blast
   radius. Schedule it before someone runs a narrowed regen by hand.
 - **NEXT in the operator queue:** RM-121 item 4, `random.txt` + `roadmap work.txt`.
-
----
-
-# 2026-07-28d - R215 MASTER cohort. The fix was blocked by a second defect nobody looked for.
-
-Gemini-loop cycle 20. RM-121 item 3 (`replay continue.txt`) sub-item 3.
-Full detail in `docs/LEDGER.md` 1092. Commits `baecb54b` (fix + live backfill) +
-`1f9b0f5e` (docs). Tier-1: no engine, no ENGINE bump, no DS path, no RC restart.
-
-The desktop note said MASTER was missing from `data/rank_baselines.json` and gave
-the logged root cause ("no accounts resolved - SKIPPED"). Both accurate. It was
-still not actionable, because the obvious remedy - rerun `--tiers MASTER` - would
-have written a file containing ONLY MASTER and deleted the other 30 cohorts. The
-tool rebuilt its payload from scratch and replaced the whole file, and gave no
-warning that a narrowed run was destructive.
-
-Three more defects fell out of the same read. The summary printed a leaked loop
-variable, so every row carried the same label. It also iterated bare tier names
-against `PLATINUM_I..IV` keys, so all 28 divisional cohorts were silently omitted
-and only the three apex rows ever printed. And a skipped cohort printed a line
-then returned exit 0 with no machine-detectable signal - **that one is why the gap
-was invisible, which is a different thing from why it happened.** Nothing
-downstream could distinguish a 31-cohort file from a 30-cohort one.
-
-The `masterleagues` endpoint was re-probed before assuming anything: 10000 entries
-with puuids. The original failure was transient, so the row had been recoverable
-the whole time. Backfilled live - 107 matches, 1070 rows - and the merge fix is
-proven against a pre-run backup rather than only by unit test: 30 -> 31 cohorts,
-nothing lost, all 30 prior cohorts byte-identical.
-
-CARRY-FORWARD, and it is the bigger half. The defect-class sweep AST-parsed 2550
-files for the leaked-loop-variable class (this was the only live instance repo-wide)
-and read 78 argparse-plus-whole-file-write tools at both sites for the clobber class.
-**16 confirmed instances beyond this one, deliberately not fixed here.** Worst is
-`tools/daemon_slayer_build_orders_generate.py:359`, where `--champion Ahri` destroys
-the other 172 champions' tables in a live DS build-reco consumer. Worse in kind are
-`core/build_order_precompute.py:722` and `core/build_order_variants.py:592`, whose
-`--champions` default is a SEED sample, so even a bare rerun with no flags truncates.
-Most deceptive is `tools/mine_event_patterns.py:330`, which records no role filter in
-its metadata - a `--role`-narrowed result is indistinguishable from a full run that
-found nothing, the same undetectability class as the skip defect above. Schedule this
-before someone runs a narrowed regen by hand.
-
-Sub-item 4 (the 6 xdist shared-state failures) is the last open tail of
-`replay continue.txt`; then `random.txt` + `roadmap work.txt`.
