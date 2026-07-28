@@ -33,16 +33,30 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _WEB = _REPO_ROOT / "web"
 
 # SHA-256 over "<relpath>\n<live-span text>\n" for every web/ source, newlines
-# folded to LF. CAPTURED AT c7900b8c, the commit immediately BEFORE the RM-125
-# sweep, and re-measured identical on the swept tree - that equality is the
-# proof the sweep touched zero rendered bytes.
+# folded to LF.
+#
+# RE-CAPTURED at the `${}` regex/comment tokeniser fix, superseding the
+# c7900b8c capture. It HAD to move: the digest is computed with the tokeniser's
+# own classifier, and that fix corrected the comment/live partition (114 spans
+# across 3 panels stopped being mis-read as LIVE). So the old value could not
+# survive, and re-stamping it proves nothing on its own - the digest cannot
+# police a change to the thing that computes it.
+#
+# What was measured instead, at the moment of the re-stamp: run the CORRECTED
+# tokeniser over both the 525354ee tree and the swept tree and diff the live
+# halves. They are byte-identical for all 168 web/ sources - one fixed
+# classifier, two trees, so the comparison is not circular. The same diff under
+# the OLD tokeniser flags web/js/panels/last_match.js, which is exactly the bug
+# (it read a `/* */` banner as LIVE) and not a regression.
 #
 # It is pinned as a digest rather than read back out of git so the guard needs
 # no history depth and can never degrade into a skip. If a later change
 # legitimately edits a LIVE glyph in web/ this goes red on purpose: confirm the
 # edit was intended, then re-capture with
 #   python -c "import tests.test_web_ascii_sweep as t; print(t._live_half_digest())"
-_LIVE_HALF_DIGEST = "4f1914193ee16fb73e4a821cb5c2517ee8b1cdfd9ff2e06d7b1f604ab2dd4bd3"
+# A tokeniser change lands here too - re-run the two-tree diff above before
+# trusting a fresh capture.
+_LIVE_HALF_DIGEST = "f8d91eb717293ea8c88c2833f6c24001b23b9e00fa958f2c83b317880ab030fc"
 
 
 def _web_sources() -> list[Path]:
@@ -144,6 +158,57 @@ class JsFalsePositivePins(unittest.TestCase):
         text = 'const s = "<!-- \u2500 -->";\n'
         self.assertEqual(_kind_at(text, "js", "\u2500"), LIVE)
         self.assertEqual(sweep_text(text, "js").changes, [])
+
+
+class TemplateSubstitutionResync(unittest.TestCase):
+    """A `${}` interior is JS CODE, so a bare quote can sit outside a string.
+
+    Regex literals and comments both carry quotes that open nothing. Reading one
+    as a string open desyncs the scanner, the template never closes, and every
+    comment after it silently classifies LIVE - a guard that reports green by
+    not looking. These pins measure the RESYNC point, not the interior: the
+    substitution itself stays LIVE either way (that choice is pinned above by
+    test_glyph_in_template_substitution_is_live), so the only observable is
+    whether the code AFTER the template is tokenised at all.
+    """
+
+    def test_regex_literal_holding_quotes_does_not_run_the_template_away(self) -> None:
+        text = ("const a = `x${s.replace(/['\"]/g, \"\")}y`;\n"
+                "// banner \u2500\u2500\n")
+        self.assertEqual(_kind_at(text, "js", "// banner"), COMMENT)
+        self.assertEqual(sweep_text(text, "js").text,
+                         "const a = `x${s.replace(/['\"]/g, \"\")}y`;\n// banner --\n")
+
+    def test_the_shape_that_actually_shipped_in_web(self) -> None:
+        # web/js/panels/last_match.js, champ_select.js and historical_pgr.js all
+        # build attribute markup this way; the `/"/g` is what blinded the sweep.
+        text = ('const li = `<li data-tt="${w.replace(/"/g, "&quot;")}">${t}</li>`;\n'
+                "// tail \u2192 note\n")
+        self.assertEqual(_kind_at(text, "js", "// tail"), COMMENT)
+        self.assertEqual(_kind_at(text, "js", "data-tt"), LIVE)
+        self.assertEqual(sweep_text(text, "js").text,
+                         'const li = `<li data-tt="${w.replace(/"/g, "&quot;")}">${t}</li>`;\n'
+                         "// tail -> note\n")
+
+    def test_division_inside_a_substitution_is_not_read_as_a_regex(self) -> None:
+        # The false-positive side of the same predicate: `/` after an identifier
+        # is division, so it must not swallow the rest of the substitution.
+        text = "const a = `${w / h} ratio`;\n// tail \u2500\n"
+        self.assertEqual(_kind_at(text, "js", "\u2500"), COMMENT)
+        self.assertEqual(_kind_at(text, "js", "ratio"), LIVE)
+        self.assertEqual(sweep_text(text, "js").text,
+                         "const a = `${w / h} ratio`;\n// tail -\n")
+
+    def test_comment_holding_a_quote_does_not_run_the_template_away(self) -> None:
+        text = "const a = `p${ f(/* don't */ x) }e`;\n// tail \u2500\n"
+        self.assertEqual(_kind_at(text, "js", "// tail"), COMMENT)
+        self.assertEqual(sweep_text(text, "js").text,
+                         "const a = `p${ f(/* don't */ x) }e`;\n// tail -\n")
+
+    def test_line_comment_holding_a_backtick_does_not_run_the_template_away(self) -> None:
+        text = "const a = `p${ f(x) // a ` tick\n) }e`;\n// tail \u2500\n"
+        self.assertEqual(_kind_at(text, "js", "// tail"), COMMENT)
+        self.assertEqual(sweep_text(text, "js").changes[0].original, "\u2500")
 
 
 class JsTruePositivePins(unittest.TestCase):
