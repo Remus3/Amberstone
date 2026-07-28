@@ -6,6 +6,91 @@
 
 ---
 
+# 2026-07-28e - R216 xdist subTest gate. The override looked for drift in the wrong place.
+
+Gemini-loop cycle 21. RM-121 item 3 (`replay continue.txt`) sub-item 4, which
+completes item 3. Full detail in `docs/LEDGER.md` 1093. Commits `981f138c` (gate)
++ `3b7b20d4` (plan sha). Tier-1 test infrastructure: no engine, no ENGINE bump, no
+DS path, no Share mirror change, no restart.
+
+The directive ordered a fix for "the 6 xdist shared-state failures" and arrived
+wrapped in a stale-grounding override: re-read ROADMAP.md before trusting the
+from-digest premise. I re-read it. **The premise was true** - `ROADMAP.md:42` said
+it verbatim.
+
+**The stale artifact was not the digest. It was ROADMAP.md.** The override is
+built to catch a digest drifting away from the tree, so it asks one question: does
+the file still say what the digest claims? It has no question for the case where
+the file agrees and both are wrong. Two sources agreeing is one premise, not two.
+
+What closed it was the cheapest check available - run the thing the row says is
+broken, before fixing it. 132 seconds:
+
+    pytest tests/ agents/daemon_slayer/tests/ -n 8 --dist loadfile
+    23849 passed, 106 skipped, 6161 subtests, 0 failed
+
+Five of the six died in `cd0f115d` on 2026-07-27, three hours AFTER the desktop
+note that seeded the queue row was written. The sixth went with the RM-100
+`tests/_asyncio_isolation.run_coro` consolidation. The row was obsolete before it
+was ever scheduled.
+
+## What shipped instead
+
+`cd0f115d`'s own commit body says it "swept every other subTest call site in both
+suites" and warns that "any future hostile-input matrix is one non-primitive away
+from the same `-n`-only failure". It diagnoses the residual risk correctly and
+then answers it with prose - over 463 call sites in 100 files, in a defect class
+**a serial run cannot observe by construction**. There is no execnet channel
+serially, so the failure mode does not exist to be seen. An eye-sweep is the
+weakest available instrument for a defect whose defining property is invisibility
+in the default run.
+
+A repo-root `conftest.py` now validates every `subTest` kwarg against execnet's
+OWN `dumps` at call time - not a hand-written type whitelist, which would be the
+same guessing that produced the bug. Repo-root because `tests/conftest.py` cannot
+reach `agents/daemon_slayer/tests/`, which has no conftest and held one of the
+five instances.
+
+The guard is also the enumeration probe. Installed, full dual suite re-run:
+**23861 passed, 0 failed** - exactly +12 tests / +17 subtests, the new file to the
+unit, so **0 additional instances repo-wide**. `cd0f115d`'s sweep was correct. The
+value delivered is that it is no longer a claim.
+
+## Three things to carry
+
+- **A queue row is a claim with a timestamp, not a fact.** Check the row's age
+  against the tree before building on it. Cycles 13-19 were no-ops for adjacent
+  reasons; this is the same family seen from a new angle.
+- **If a fact matters enough to write down twice, assert it.** A shipped docstring
+  claimed `set()` raises `DumpError` alongside `object()`. Measured: sets and
+  frozensets serialize fine, the containers recurse so `[object()]` fails and
+  `{1, 2}` does not. Never load-bearing, but it is exactly the
+  remembered-not-measured detail that sends the next reader rewriting working
+  code. The grammar is now pinned by a test.
+- **The verifier earned its slot on the check I could not self-certify.** It wrote
+  a throwaway `subTest(bad=object())` test INTO the DS suite, watched it fail with
+  the guard's TypeError, deleted it and proved no residue. Being importable is not
+  the same as reaching.
+
+## Open
+
+- **Do NOT re-open "the 6 xdist failures". There are none.** Measured twice this
+  session.
+- **Reach limit, deliberate:** a rootdir conftest only loads when pytest runs from
+  the repo root, so a DS-dir invocation bypasses the guard. Do NOT close it with a
+  conftest under `agents/daemon_slayer/tests/` - that path mirrors into
+  `Share/src/`, and `Share/` runs standalone (RM-112) where the helper does not
+  exist, so the mirror would import a missing module and break a clean package.
+- **`ROADMAP.md` is at 91 percent of its 81920-byte budget and was already
+  breaching at HEAD.** Reported, not silenced. It needs a relocation pass; RM-117
+  was moved out for this reason and the pressure is back.
+- **Unclaimed, from LEDGER 1092:** the 16-instance
+  whole-file-rewrite-under-a-narrowed-work-plan class, live DS-consumer blast
+  radius. Schedule it before someone runs a narrowed regen by hand.
+- **NEXT in the operator queue:** RM-121 item 4, `random.txt` + `roadmap work.txt`.
+
+---
+
 # 2026-07-28d - R215 MASTER cohort. The fix was blocked by a second defect nobody looked for.
 
 Gemini-loop cycle 20. RM-121 item 3 (`replay continue.txt`) sub-item 3.
@@ -99,48 +184,3 @@ RM-121 item 3 sub-items 3 and 4: MASTER cohort absent from
 `data/rank_baselines.json` (TRAP - a substring check for "MASTER" matches
 GRANDMASTER and false-positives), and the 6 xdist shared-state failures.
 ROADMAP has ~826 bytes before `drift_guard.BUDGET_WARN_PCT` 90.0 trips.
-
----
-
-# 2026-07-28b - R213 ARAM overlay audit. Two MUST-FIX, and one of them taught more by being half wrong.
-
-Gemini-loop cycle 18. Section-3b 5-phase audit of the ARAM coach overlay widget.
-Full detail in `docs/LEDGER.md` 1090. Commit `3015bb79`.
-
-## Shipped
-
-- `aram_balance.js` - a failed `/api/aram-balance` fetch no longer poisons the
-  cache. It used to write `{}`, which is not `null`, so the one-shot fetch never
-  retried and every row rendered `no ARAM changes` off a dead route for the rest
-  of the page lifetime. Now: null cache + `failedAt` stamp + 30s cooldown, every
-  terminal branch repaints, unresolved paints an honest degraded line.
-- `active_match.css` - `#aram-balance-panel` gets a NAMED third grid row
-  (`:has()`-scoped, overlay shell excluded) and a 320px cap, replacing the
-  implicit auto-placed row that `web/index.html:2211` had wrongly claimed was
-  already pinned by this stylesheet.
-- 9 tests, 6 RED before the fix (the verifier caught me writing "all 9" in the
-  commit body - the other three are pins and proofs, green by construction):
-  5 driving the real module in node with a stubbed `globalThis.fetch`, 3 static
-  class guards, 1 reading COMPUTED style off the real page so a mis-parsed
-  `:has()` fails in CI, not in a live game.
-
-## The thing worth carrying forward
-
-The audit agent found both defects and got the SECOND one's mechanism wrong. It
-reasoned that the implicit row steals height from the `1fr` panes and clips
-coach text. Reverting the CSS in place and re-reading computed style says
-otherwise: `1537.98px 1537.98px 456px` before, `1537.98px 1537.98px 320px`
-after - the `1fr` rows are identical, because the grid is content-sized by the
-MAP pane and the section already scrolls 3610px into 1003px either way. The
-symptom was real, the mechanism was invented, and it would have landed in the
-ledger as fact. **An audit finding's REASON needs its own measurement, not just
-its symptom.** Both CSS comments and both test docstrings now carry the
-measurement so the stronger claim cannot be re-derived from them later.
-
-## Owed / next
-
-- OWED: live Electron overlay capture of this widget. Mode was `client` with no
-  ARAM game; the ui_recon Playwright capture at `?ui_mock=1&mode=aram` stands in.
-- Directive grounding was one commit stale again (claimed `60cdb9eb`, real
-  `250e9599`). Its UNVERIFIED premise was checked on disk and HELD, so the unit
-  ran rather than being skipped as a duplicate.

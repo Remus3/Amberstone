@@ -119,6 +119,51 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-28b - R213 ARAM overlay audit. Two MUST-FIX, and one of them taught more by being half wrong.
+
+Gemini-loop cycle 18. Section-3b 5-phase audit of the ARAM coach overlay widget.
+Full detail in `docs/LEDGER.md` 1090. Commit `3015bb79`.
+
+## Shipped
+
+- `aram_balance.js` - a failed `/api/aram-balance` fetch no longer poisons the
+  cache. It used to write `{}`, which is not `null`, so the one-shot fetch never
+  retried and every row rendered `no ARAM changes` off a dead route for the rest
+  of the page lifetime. Now: null cache + `failedAt` stamp + 30s cooldown, every
+  terminal branch repaints, unresolved paints an honest degraded line.
+- `active_match.css` - `#aram-balance-panel` gets a NAMED third grid row
+  (`:has()`-scoped, overlay shell excluded) and a 320px cap, replacing the
+  implicit auto-placed row that `web/index.html:2211` had wrongly claimed was
+  already pinned by this stylesheet.
+- 9 tests, 6 RED before the fix (the verifier caught me writing "all 9" in the
+  commit body - the other three are pins and proofs, green by construction):
+  5 driving the real module in node with a stubbed `globalThis.fetch`, 3 static
+  class guards, 1 reading COMPUTED style off the real page so a mis-parsed
+  `:has()` fails in CI, not in a live game.
+
+## The thing worth carrying forward
+
+The audit agent found both defects and got the SECOND one's mechanism wrong. It
+reasoned that the implicit row steals height from the `1fr` panes and clips
+coach text. Reverting the CSS in place and re-reading computed style says
+otherwise: `1537.98px 1537.98px 456px` before, `1537.98px 1537.98px 320px`
+after - the `1fr` rows are identical, because the grid is content-sized by the
+MAP pane and the section already scrolls 3610px into 1003px either way. The
+symptom was real, the mechanism was invented, and it would have landed in the
+ledger as fact. **An audit finding's REASON needs its own measurement, not just
+its symptom.** Both CSS comments and both test docstrings now carry the
+measurement so the stronger claim cannot be re-derived from them later.
+
+## Owed / next
+
+- OWED: live Electron overlay capture of this widget. Mode was `client` with no
+  ARAM game; the ui_recon Playwright capture at `?ui_mock=1&mode=aram` stands in.
+- Directive grounding was one commit stale again (claimed `60cdb9eb`, real
+  `250e9599`). Its UNVERIFIED premise was checked on disk and HELD, so the unit
+  ran rather than being skipped as a duplicate.
+
+---
+
 # 2026-07-27k - README redesign shipped across all four surfaces. Implementation-only session.
 
 The drafting and auditing happened earlier; this session applied the staged
