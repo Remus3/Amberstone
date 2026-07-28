@@ -119,6 +119,80 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-27k - README redesign shipped across all four surfaces. Implementation-only session.
+
+The drafting and auditing happened earlier; this session applied the staged
+package and verified it. Full detail in `docs/LEDGER.md` 1088. Commit `c7a36f14`.
+
+## Shipped
+
+- **All four README surfaces rebuilt in one commit** so the post-commit gist
+  sync published once: root `README.md`, the `docs/HEXCORE_offline.html` overlay,
+  `Share/README.md` (517 -> 201 lines), and `_README_TEMPLATE` in
+  `tools/gist_share_sync.py`.
+- **The Share test-posture contradiction is gone.** One file told it three
+  incompatible ways; the two stale statements are deleted, not reconciled. One
+  dated block survives: measured 2026-07-27 on a clean unzip, 8044 passed,
+  1 known standalone failure, 15 skipped, 4157 subtests, about 83 seconds.
+- **The overlay can no longer fork-lag the root README** - it is a 221-word
+  pointer card with no fact that changes, spliced by element id and measured in
+  a browser at one screen, no scroll.
+- **The gist "six archetypes" claim was removed, not corrected to seven.** The
+  template has no restamp mechanism for a count, so it must never carry one.
+
+## The rule worth keeping
+
+A fact may appear in hand prose only if it is durable, machine-restamped on that
+surface, or dated and owned by exactly ONE surface. Everything else is a pointer
+to the live source. Consequence, and the reason this was worth a session: **an
+ENGINE bump now touches zero hand prose on any of the four surfaces**, and a
+test-count change touches one line in one file.
+
+## Verified live, not assumed
+
+`ops/runtime/gist_sync_status.json` ok=true / 0 unpushed at a fresh timestamp,
+AND the live gist README refetched from its raw URL showing the new body with
+`ENGINE_VERSION 1.262.0 - data patch 16.14.1` substituted. The gate set:
+hexcore + gist tests 18 passed (`node --check` really ran), `ds_share_sync.py
+--check` green, Share guards + drift guard 77 passed, the full live-derived
+docs-guards selection (50 modules) 1398 passed / 6 skipped, ruff + py_compile
+clean.
+
+## Then two operator-directed follow-ups, both shipped in the same session
+
+- **Machine codename scrubbed from the shipped extractors** (`fd67d819`). The
+  wiki stats + ability extractors and their sibling `cdragon_spell_extract` named
+  the development machine in module docstrings that ship inside Share.zip and,
+  for the two wiki tools, as standalone gist files. Every access fact is kept -
+  the vanity-alias vs `.wiki.gg` 401 block, the non-browser-UA Cloudflare 403 -
+  phrased against "this development host" / "any host that reaches X", which is
+  the more useful instruction anyway. Live gist copies refetched: 0 hits.
+- **The last non-ASCII glyphs purged from the shipped tools** (`de04ef44`).
+  Middot, three check marks, an arrow, a not-equal sign, all display strings.
+  `Share/src/**/*.py` now scans byte-clean.
+
+## The thing worth remembering from the second one
+
+**The precommit gate scans STAGED LINES.** A glyph already on disk in a file
+nobody edits is never in a diff and is never seen - which is exactly how five of
+them survived the 2026-05-18 repo-wide purge with a green gate on every commit in
+between. A retro purge is a whole-file byte scan, never something the hook
+converges to on its own. Written into
+`reference_git_hooks_authoritative_and_traps` as a scope limit (it is NOT a fifth
+"hook does nothing" trap - the hook fires and is correct).
+
+## Open for the operator
+
+- **Sign-off GRANTED 2026-07-28 (operator):** the shortened Share Notation
+  section stands as shipped - 20 lines that named internal id families in the
+  most external doc, now a three-line generic disclaimer. No revert. This line
+  is closed; do not re-raise it.
+- **Left deliberately:** three host-only `tools/*.py` still carry non-ASCII -
+  `p3_ascii_sweep.py` (its own glyph inventory, correct as-is), `extract_panels.py`,
+  `rc_facts.py`. None ship in Share.zip. Say the word on the latter two.
+
+---
+
 # 2026-07-27j - RM-119 CI coverage + the preflip isolation class. Operator-directed.
 
 Two asks after the f1 drain - "do the RM-119 CI change", then "fix the 7
