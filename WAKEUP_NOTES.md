@@ -6,6 +6,26 @@
 
 ---
 
+# 2026-07-28n - The commit gate's ruff half was dead on the channel that matters, for three weeks.
+
+**Operator session (not a loop cycle). Tier-1, ENGINE-IMPACT NONE.** `15d07d3c` + `569dd364`. The filed question from `425fbb75`: why did `tools/precommit_gate.py` not block the net-new ruff UP031 that `afcbcf79` put in its OWN source.
+
+**The filed hypothesis was wrong and cheap to refute.** It was not "local ruff differs from the runner's" - local ruff 0.15.12 flags that exact line under the project `ruff.toml`, measured. The gate never asked it. It shelled to `sys.executable -m ruff`, and `.githooks/pre-commit` launches the gate through the `py` launcher, which on Legion resolves to the dep-less pythoncore runtime with NO ruff. rc=1, empty stdout, `findings = []`, pass. **Fail-open AND fail-silent.**
+
+**The gate runs on two channels with two different interpreters and the invocation was hardcoded for one at a time.** PreToolUse gets Python314 pythonw (owns ruff); the git hook gets the launcher. `ceb2f584` (2026-07-07) flipped launcher -> `sys.executable` to fix the first and silently broke the second - the AUTHORITATIVE one per CLAUDE.md, and the only one a headless bypass run gets. The stale comment above the call still described pre-`ceb2f584` behaviour, which is why it read as correct on every review since.
+
+**Fix:** `_ruff_candidates` / `_resolve_ruff` probe `--version` and take the first that answers. No ruff anywhere still exits 0 (blocking a fresh clone would wedge the loop; CI is the backstop) but now WRITES THE WARNING. Phase-1 repro went EXIT=0 -> EXIT=2.
+
+**Then CI went red on my fix, and both failures were mine and both were right.** `test_skip_condition_hygiene.py` classified my `requires_ruff` mark UNRESOLVED because it gated on a subprocess probe the resolver cannot see - re-gated on `find_spec` + `shutil.which`. `test_bare_py_ban.py` caught the launcher spelled before a script path in prose. **That second one paid for itself:** the launcher was in my candidate list as a fallback, and the launcher is precisely the dep-less runtime that caused the bug. Dropped; the Legion fallback is now the canonical absolute interpreter.
+
+**For next time:** neither guard is reachable from the /done section-0 gate (ruff + touched module + 3 hygiene suites). They are repo-wide tracked-surface guards in `tests/` that only the full run reaches. A tools/ or tests/ change with prose about interpreters should run `tests/test_bare_py_ban.py tests/test_skip_condition_hygiene.py` locally before pushing.
+
+**Do NOT redo:** the diagnosis is closed - do not re-open "local ruff differs from the runner". `tools/edit_lint_check.py` carries the same `sys.executable` assumption and was deliberately LEFT: it is PostToolUse-only under Python314 (correct there) and advisory, not blocking.
+
+**Live at wrap:** the gemini loop (pid 9380, run `eadf15e3`) is mid-cycle on R223 - its `docs/ORCHESTRATION_PLAN.md` row is unstaged and says `(fill sha)`. I pushed its two R223 commits along with mine; leave the plan row to it.
+
+---
+
 # 2026-07-28m - R222 RM-125. The tool I shipped in slice A had a bug, and slice B found it.
 
 **Cycle 29, gemini-loop. Tier-1. ENGINE-IMPACT NONE - no DS math, no schema, no served path, no `ENGINE_VERSION`, no `:8893` bounce, no RC restart.** HEAD `c7900b8c` -> `4ef1a805`. RC 13935 passed / 106 skipped / 1342 subtests, fresh.
@@ -54,66 +74,3 @@
 **Gates (fresh, `-n 8 --dist loadfile`): DS 10100 passed / 5701 subtests; RC 13829 passed / 106 skipped / 522 subtests; 23929 total, 0 failed** - byte-identical to the R219 baseline, expected for docs-only. 0 non-ASCII across all touched docs. Plan tail-window protocol honored (R219 block relocated verbatim to `docs/ORCHESTRATION_PLAN_HISTORY.md`; newest row 9439 bytes from EOF vs the 16000 cap). ROADMAP 76513 / 81920.
 
 **NEXT:** RM-124 is a clean Tier-1 slice - the event extract, the pure callout, and one live game to validate the cadence before any flip.
-
----
-
-# 2026-07-28j - R219 DS sweep. The directive's truth source does not contain the truth.
-
-Gemini-loop cycle 26. Full detail in `docs/LEDGER.md` 1098. Commits `1fb60109` +
-`a77e1cee` (work) + this sync. Two `core/` slices: no engine, no ENGINE bump, no DS
-path, no Share mirror, no restart, no route or panel.
-
-- **The ordered sweep had no data to sweep against, and that is measured.** The
-  directive said "champion base stats vs Meraki bulk truth".
-  `data/daemon_slayer/16.14.1/items_meraki.json` is 320 ITEMS whose key census across
-  all 320 entries is exactly `name/id/tier/rank/removed/simpleDescription/passives/
-  active/shop/noEffects` - no `stats` block anywhere and no champion half. The mirror
-  was fetched with an effects-shaped projection, which is right for how DS uses it (a
-  Meraki clause lives in the effects PROSE field), but it means the Meraki side of a
-  stat comparison does not exist offline. Re-aimed both slices at the DDragon mirror.
-  A real Meraki champion sweep needs a mirror refresh with the champion endpoint and
-  the full stat projection - data plumbing, its own slice.
-- **A prose-based substitute produced a fake 178 and is recorded so nobody rediscovers
-  it.** Matching `move ?speed` against `str()` of the `passives` structure scored
-  Doran's Shield and Recurve Bow. Prose is a source for CLAUSES, not a stat census.
-- **ENGINE-IMPACT corrected BUMP -> NONE, on precedent.** Both modules are in `core/`,
-  import no DS, and no DS path reads them. R135 (LEDGER 962) already made this exact
-  correction for `core/champion_movespeed.py`. The 7 bump sites went untouched and the
-  pre-commit gate agreed on its own: "no mirrored DS source staged - skipping Share
-  sync".
-- **Neither slice found a wrong number. Both found a correct population with nothing
-  defending it.** That is the outcome worth carrying forward: when a sweep finds the
-  data already right, the deliverable is the guard that makes the next drift loud -
-  and the guard is only worth shipping if its teeth are demonstrated rather than
-  claimed. Slice A fabricates a zeroed champion and watches the universe grow; Slice B
-  swaps `_FALLBACK_MS` for a `-1.0` sentinel so the 28 champions whose real movespeed
-  IS 345 cannot mask a fallthrough. Without that sentinel the coverage test would have
-  passed while measuring nothing.
-- **Slice A**: all 9 DDragon-zeroed champions enumerated off disk. 5 have overrides, 4
-  (Ambessa/Naafiri/Yunara/Lillia) are correct without one. The guard parses the mirror
-  for its universe and never reads `CHAMPION_INFO_OVERRIDES.keys()`, which would be
-  circular; every champion goes through the three REAL consumers.
-- **Slice B**: `_FALLBACK_MS = 345.0` was justified as "the most common base MS".
-  Measured: the mode is 335 (42 of 173), 345 is fourth (28). Prose fixed, constant
-  KEPT - "conservative for reachability" is separately true (345 is at or above 165 of
-  173), so moving it to the mode would contradict its own purpose. Zero executable
-  lines changed.
-- **The best thing this cycle produced is filed, not built - RM-123.**
-  `agents/daemon_slayer/burst.py:124-127` claims no champion sits between melee and
-  ranged and picks 350 on that basis. Eight do; Urgot sits exactly on the strict-`>`
-  boundary; and the engine already has a canonical split at 250 in `ehp.py:254` that
-  `rank.py` documents as authoritative. Two thresholds for one concept, disagreeing on
-  Rakan/Lillia/Urgot in a live rune-scaling branch. Tier-2, ENGINE-IMPACT BUMP.
-- **The orchestrator's own brief carried a defect and only the tree-level gate saw
-  it.** I told Slice A to `skipTest` when the mirror is absent. The mirror is TRACKED,
-  so an absent one is a broken tree, not an absent capability, and
-  `tests/test_skip_condition_hygiene.py` failed it as a B5 masking skip - the RM-119
-  class that "reports green by not running". The slice agent passed it and so did its
-  verifier, because both were scoped to the slice, where the two files run 100 passed.
-  Run the full suite even when the tier rules say a two-file `core/` change is exempt.
-- Gates: full dual `-n 8 --dist loadfile` **23929 passed / 106 skipped / 6223 subtests
-  / 0 failed** in 130.89s, ruff clean, 0 non-ASCII in the touched files. ROADMAP
-  doc-budget warn is PRE-EXISTING (77489 bytes / 94.6 pct before this cycle); R219
-  relocated the RM-119 skip audit and compressed RM-113, landing at 77229 - below
-  where it started, still over the 90 pct threshold. ~3500 bytes of relocation left,
-  its own unit.
