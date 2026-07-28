@@ -64,5 +64,35 @@ class WebCommentSpansAreAscii(unittest.TestCase):
             )
 
 
+# The defect class is "non-ASCII in authored .js/.css/.html", and web/ is where
+# it concentrates, not where it ends. A whole-repo enumeration found exactly one
+# authored file outside web/ carrying the class; everything else that scanned
+# dirty is third-party (data/meta_build scraped pages, .obsidian vendored
+# plugins, node_modules), which the repo rule does not govern.
+_NON_WEB_AUTHORED = ("tools/usage-mcp-server.js",)
+
+
+class NonWebAuthoredSourcesAreAscii(unittest.TestCase):
+    def test_the_enumerated_files_still_exist(self) -> None:
+        # A renamed or deleted file would silently drop out of the guard below.
+        for rel in _NON_WEB_AUTHORED:
+            self.assertTrue((_REPO_ROOT / rel).is_file(), f"missing {rel}")
+
+    def test_every_comment_char_is_ascii(self) -> None:
+        offenders: list[str] = []
+        for rel in _NON_WEB_AUTHORED:
+            path = _REPO_ROOT / rel
+            text = read_source(path)
+            lang = lang_for_path(path)
+            self.assertIsNotNone(lang, f"{rel} is not a language this tokeniser knows")
+            for start, end in comment_spans(text, lang):
+                for offset in range(start, end):
+                    codepoint = ord(text[offset])
+                    if codepoint > 127:
+                        line = text.count("\n", 0, offset) + 1
+                        offenders.append(f"{rel}:{line} offset={offset} U+{codepoint:04X}")
+        self.assertEqual(offenders, [], f"{len(offenders)} non-ASCII comment chars:\n" + "\n".join(offenders[:20]))
+
+
 if __name__ == "__main__":
     unittest.main()
