@@ -666,11 +666,11 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 | R216 | rm121-item3-xdist-subtest-gate | DIRECTOR REFILL 2026-07-28, cycle 21. **THE DIRECTIVE'S UNIT WAS ALREADY DONE ON DISK, AND THE EXECUTOR-OVERRIDE HEADER WAS AIMED AT THE WRONG HALF.** The override told me to re-read ROADMAP.md before trusting the from-digest premise that RM-121 item 3 sub-item 4 is NEXT. I did, and the premise was TRUE - ROADMAP.md line 42 says exactly that. The stale thing was not the digest, it was ROADMAP.md itself. Ordered work: reproduce and fix 6 xdist shared-state failures. Measured `pytest tests/ agents/daemon_slayer/tests/ -n 8 --dist loadfile`: **23849 passed, 106 skipped, 6161 subtests, 0 failed in 132.49s.** Five of the six were fixed by `cd0f115d` (2026-07-27) and the sixth, the preflip asyncio one, by the RM-100 `tests/_asyncio_isolation.run_coro` consolidation. Nothing to reproduce. **WHAT SHIPPED INSTEAD IS THE GATE `cd0f115d` DID NOT LEAVE.** Its own commit body says it "swept every other subTest call site in both suites" by eye - prose about a moment, over 463 call sites in 100 files, in a defect class that is invisible to a serial run by construction. A repo-root `conftest.py` now validates every `subTest` kwarg against execnet's OWN serializer at call time, so the `-n`-only failure fails serially too, at the call site, naming the kwarg. Also corrected a measured-wrong claim in `test_aram_action_rule.py` (`set()` does NOT raise DumpError; only `object()` does) and pinned the real grammar in a test instead of restating it in a docstring. ENGINE-IMPACT NONE - test infrastructure only. | DONE | `981f138c` |
 | R217 | rm121-item4-desktop-notes-ingest | DIRECTOR REFILL 2026-07-28, cycle 22. **The executor-override header fired on a premise that turned out TRUE, and the unit was real - the first non-no-op in several cycles.** The override flagged `[from-digest]` "ROADMAP.md identifies NEXT as RM-121 item 4 (`random.txt` + `roadmap work.txt`)" and told me to re-read the file. Re-read: `ROADMAP.md:42` carries that sentence verbatim and marks item 3 COMPLETE (R216, LEDGER 1093). Both desktop sources exist (`random.txt` 4852 bytes, `roadmap work.txt` 2179 bytes). ENGINE-IMPACT NONE - docs-only cycle by directive. Scope: ingest + QA both notes against live ground truth, apply ONLY docs/roadmap/backlog updates, chunk every code change into disjoint-file OPEN rows. **The QA verdict is the deliverable, and 5 of the 11 claims in these two notes were already dead on arrival.** REFUTED-AS-STALE: `scripts/wakeup_prune.py` SESSION_RE blindness (note claims 12 invisible sessions and a 61KB file - measured `--check` exit 0, WAKEUP_NOTES.md 10759 bytes, exactly 3 session headings, fixed at `2f35163d`); "the loop is PARKED, STOP present" (this cycle IS the loop; RM-120 CLOSED records the relaunch); "add hooks that reject BOM / non-ASCII" (`.githooks/` + `tools/precommit_gate.py` + three hygiene tests already do); em-dash `GRADE_LABEL` escapes at `performance_tracker.py:37-39` (all spaced hyphens already); the `data/ratings/*.json` backfill that was to follow it (0 of 4 files carry an em- or en-dash, so it has nothing to backfill). CONFIRMED LIVE: RM-119's RC half - `ci.yml` `check:` (job at :108) runs `pytest agents/daemon_slayer/tests/` at :322 and nothing else, so the DS half IS promoted and the RC half is NOT, `pip install -r requirements.txt` sits only at :59 inside `nightly-full-suite:` (:43), and the two would-be-subset steps are :276 and :282; the tools/ non-ASCII residue (`extract_panels.py` 189 bytes, `rc_facts.py` 10, `p3_ascii_sweep.py` 167 which the operator himself exempts as the sweeper's own glyph inventory); `ast-grep` absent from PATH. DRIFTED: the "Legion-PC" footer is `web/index.html:2328`, not the noted 2251. **The trap this cycle had to NOT walk into: `random.txt`'s second half is headed "operator-present; Do NOT run headless", and this is a headless cycle** - its 6-item UI/UX queue is filed as an operator-present lane the loop is forbidden to pick up, not executed (new row RM-122). Gate: full dual suite `-n 8 --dist loadfile` **23861 passed / 106 skipped / 6178 subtests / 0 failed** in 132.58s; hygiene trio 14 passed; `test_loop_director_context_caps.py` 25 passed. | DONE | `4e9bf60b` |
 | R217-U1 | ci-promote-rc-suite-to-push-check | DIRECTOR REFILL 2026-07-28, cycle 23. Chunked out of R217; single-file unit `.github/workflows/ci.yml`, ENGINE-IMPACT NONE. **The premise held on disk and the unit was real work - two real cycles in a row after seven no-ops.** `check:` (job at `:108`) ran `pytest agents/daemon_slayer/tests/` and nothing else, and `pip install -r requirements.txt` existed only inside `nightly-full-suite:`. SHIPPED, all three ordered edits plus one the directive did not name: the install step now runs `pip install -r requirements.txt` (renamed `Install runtime + test deps`; `json5==0.14.0` and `pydantic>=2.0` dropped from the ad-hoc pin list because requirements.txt carries both, `pyyaml` KEPT because it is test-only and `tests/test_ci_docs_guard_coverage.py::test_ci_installs_the_yaml_parser_it_needs` asserts that literal install line in any workflow naming the module); the DS-only step became `pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 -n auto --dist loadfile`; the two pure-subset steps (`smoke + regression tests`, `panel snapshot tests`) are DELETED. **THE UNNAMED DEFECT: `timeout-minutes: 25` would have CANCELLED the first push.** The row's "no raise needed, but under 6 minutes of slack" treated the 19m42s dispatch price (run `30315178736`) as the whole job, but that run measures pytest in a job that does nothing else; the DS-only shape of THIS job measured **9m1s end to end** (run `30342574878`) against a ~2m47s pytest step, so the new shape prices at **~26m**. Raised to **40**, not 27 - a ceiling one minute over the estimate turns runner variance into a fake red, and GitHub reports a blown ceiling as *cancelled*, not failed, which is the exact misread that cost a cycle on 2026-07-27. **Defect enumeration (the directive asked for it): 4 named-file pytest steps survive and NONE is redundant** - `RC_REQUIRE_HOOK_GATE` + `RC_REQUIRE_BUILD_ORDER_TABLES` turn a skip into a failure so the promoted run cannot replace them, and the hygiene trio + docs-guard steps are strict subsets kept deliberately as seconds-long fast-fail guards; **the rationale is written IN `ci.yml`** so the next reader does not delete them as duplicates. RM-119 CLOSED both halves and its narrative relocated to `docs/ROADMAP_HISTORY.md` (`ROADMAP.md` had 1569 bytes of headroom; now 76662 of 81920). Gate: full dual `-n 8 --dist loadfile` **23861 passed / 106 skipped / 6178 subtests / 0 failed** in 131.49s, verifier subagent CONFIRM on an independent re-run (23861 / 0 failed, exit 0); ruff clean; `yaml.safe_load` parses `check:` to 14 steps (was 16); 0 non-ASCII; hygiene trio + `test_loop_director_context_caps.py` 39 passed. Push CI green on the runner at the promoted shape. **MEASURED ON THE RUNNER, and it came in UNDER the estimate: run `30345614564` is GREEN at 23703 passed / 254 skipped / 6165 subtests / 0 failed in 1150.57s (19m10s of pytest), with the `check` job at 20m54s end to end (09:12:36Z -> 09:33:30Z) against the new 40-minute ceiling - so ~26m was conservative and 25 would still have been too tight. Two numbers worth keeping: the runner passes 158 FEWER tests than the local 23861 (platform skips, 254 vs 106), and it passes 96 MORE than the nightly full-suite dispatch (23607) - because this job also installs pyyaml and arms the git hooks first, so fewer guards degrade to skips here than in the nightly. **Push CI is now strictly stronger than the nightly, not merely equal to it.** | DONE | `9e7b70d1` |
-| R217-U2 | tools-nonascii-residue | OPEN, chunked out of R217, two disjoint files: `tools/extract_panels.py` (189 non-ASCII bytes of 11094) and `tools/rc_facts.py` (10 of 10139). Both host-only, neither shipped. **`tools/p3_ascii_sweep.py` (167 bytes) is EXEMPT by the operator's own instruction** - that residue is the sweeper's own inventory of the glyphs it hunts, so stripping it breaks the tool; any sweep must carve it out explicitly rather than discover this by regression. Root cause on record in the note: glyphs already on disk in files nobody had edited since the retro-purge were never seen by it. | OPEN | - |
+| R217-U2 | tools-nonascii-residue | DONE 2026-07-28. Two disjoint files, swept 1:1 (item-176 doctrine, width preserved): `tools/extract_panels.py` 189 non-ASCII bytes of 11094 -> 0 (U+2500 x59, U+25B6 x2, U+2022 x2) and `tools/rc_facts.py` 10 of 10139 -> 0 (U+00B7 x2, U+26A0 x2). Both byte counts re-measured on disk before the edit and both matched the filed figure exactly. **`tools/p3_ascii_sweep.py` (167 bytes) stays EXEMPT and is now MACHINE-PINNED in the other direction** - `tests/test_tools_ascii_hygiene.py::test_p3_ascii_sweep_exemption_is_intact` fails if a later sweep strips the sweeper's own inventory of the glyphs it hunts, which is the carve-out this row asked for rather than discovering it by regression. The directive's 2-agent parallel block was refused: two files and one test is under the R9 subagent floor, so it ran inline with the executor as sole author. | DONE | `84535bdf` |
 
 ## Older findings - relocated 2026-07-28
 
-R205 / R206 / R207 / R216 / R217 findings now live in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
+R205 / R206 / R207 / R216 / R217 / R217-U1 findings now live in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
 
 **Why, because this WILL recur:** the director context caps this file with
 `cap_bytes_head_tail(..., PLAN_CTX_CAP=24000, PLAN_CTX_HEAD=8000)`, so only the
@@ -693,63 +693,83 @@ same every cycle: relocate the previous cycle's findings block verbatim as you a
 yours. The newest row then never drifts, and the director keeps seeing the most
 recent findings because the block it can read is always the newest one.
 
-## R217-U1 findings - 2026-07-28 - the directive named three edits, and the fourth one was the defect
+## R217-U2 findings - 2026-07-28 - the two glyphs the directive did not flag were the load-bearing ones
 
-**The premise held and the unit was real.** `check:` (job at `ci.yml:108`) ran
-`pytest agents/daemon_slayer/tests/` and nothing else, and `pip install -r
-requirements.txt` existed only inside `nightly-full-suite:`. Both were re-read on disk
-before any edit, and both were exactly as R217 filed them. Two real cycles in a row.
+**Both premises were re-read on disk and both held.** `docs/ORCHESTRATION_PLAN.md`
+carried R217-U2 as OPEN, and `tools/p3_ascii_sweep.py` really does hold 167
+non-ASCII bytes with its exemption rationale written into the row itself. The
+byte counts matched the filed figures exactly - 189 of 11094 and 10 of 10139 -
+which is worth saying out loud after seven no-op cycles: a from-digest premise
+is not automatically stale, it is just unverified.
 
-### The defect the directive did not name was the timeout, and it would have failed the first push
+### The parallel block was refused, and the override header refused it for the wrong reason
 
-The row carried `timeout-minutes: 25` forward from the DS-only promotion with the note
-"no raise needed, but under 6 minutes of slack". That arithmetic only works if the
-19m42s dispatch price were the whole job. It is not: the dispatch run measures pytest
-inside a job that does nothing else, while `check:` also installs, caches and installs
-Playwright, sweeps py_compile over the tree, runs ruff, re-derives the Share mirror,
-and runs four named-file guard steps - the DS-only shape of this job measured **9m1s
-end to end** (run `30342574878`) against a DS pytest step of about 2m47s. Same
-subtraction on the new shape prices the job at **about 26 minutes**, which is OVER the
-ceiling, and GitHub reports a blown ceiling as **cancelled**, not failed - the exact
-misread that cost a cycle on 2026-07-27. Raised to 40. Not to 27: a ceiling one minute
-above the estimate converts ordinary runner variance into a fake red, and a timeout
-here exists to catch a HANG, not to police minutes.
+The directive dispatched AGENT 1 on `tools/extract_panels.py` and AGENT 2 on
+`tools/rc_facts.py`. The executor-override header claims those two file sets
+COLLIDE because "AGENT 1 and AGENT 2 both name extract_panels.py". They do not -
+the block names one distinct file per agent and the sets are disjoint. **The
+collision detector misfired**, and a false collision report is worse than no
+report, because the next reader learns to discount it. The shape was refused
+anyway on the real ground: two mechanical file edits plus one guard test is
+under the R9 subagent floor, so worktree isolation would have cost more than the
+edit. Ran inline, sole author.
 
-### The remaining named-file pytest steps were enumerated, and none of the four is redundant
+### The hazard the directive did not name
 
-The directive said to drop the two that become pure subsets and keep the two
-special-env steps. Enumerated the rest rather than assuming that was the whole list.
-Four named-file steps survive. `RC_REQUIRE_HOOK_GATE` and
-`RC_REQUIRE_BUILD_ORDER_TABLES` turn a skip into a failure, so the full run cannot
-replace them - the promoted `pytest tests/` collects those same files and they skip.
-The hygiene trio and the docs-guard step ARE strict subsets, and they stay anyway,
-because a 20-minute suite that reports an ASCII break in minute 20 is worse than a
-10-second step that reports it in minute 1. **That rationale is now written IN
-`ci.yml`**, because the next reader will otherwise delete them as duplicates and be
-right by every argument except the one that matters.
+The `U+25B6` and `U+2022` bytes in `extract_panels.py` are not decoration - they
+sit inside `.replace()` MATCH patterns at `:158-162`. That is the same
+load-bearing-data class that makes `p3_ascii_sweep.py` exempt, and it is the
+reason a blind sweep of this file is not obviously safe. Resolved by checking
+the tree instead of reasoning about it:
 
-### The install line is what makes the promotion mean anything
+- `web/js/panels/champ_select.js:195` already reads `"> "` and `:200` already
+  reads `"  *  "`. The repo-wide retro-purge swept the JS half; the extractor's
+  glyph patterns had already stopped matching the shipped output.
+- The extractor's own input is gone in the shape it addresses. `SRC =
+  web/js/main.js` is **7565 lines** today, and every `L(start, end)` range in
+  the tool slices the **6223-line pre-split** file. Re-running it would not
+  re-extract anything; it would destroy `main.js`.
 
-`pip install -r requirements.txt` is not bookkeeping. The RC tree imports anthropic /
-PIL / websockets / portalocker / psutil, and an ImportError-guarded test that cannot
-import is a **skip**, which is a green tick - so promoting the suite without the
-runtime stack would have bought a longer job and almost no new assertions. The two
-ad-hoc pins that requirements.txt already carries (`json5==0.14.0`, `pydantic>=2.0`)
-were dropped so a version lives in one place; `pyyaml` stays pinned in the workflow
-because it is test-only and `tests/test_ci_docs_guard_coverage.py::
-test_ci_installs_the_yaml_parser_it_needs` asserts the literal `pip install ... pyyaml`
-in any workflow that names that module.
+So the patterns match nothing on disk in either form, the file is a spent
+one-shot, and the sweep is cosmetic - but the ASCII forms now at least agree
+with what the tree actually holds rather than preserving a dead pre-purge
+pattern. **This is why the file was worth reading before sweeping it**, and why
+the p3 exemption is a class rather than a one-off.
 
-### Carry-forward
+### The guard cannot import the file it guards
 
-RM-119 is CLOSED, both halves, and its narrative was relocated to
-`docs/ROADMAP_HISTORY.md` in the same pass - `ROADMAP.md` had **1569 bytes** of headroom
-against its 81920 budget, so this row could not have been updated in place. The skip
-audit's B2 / B4 / B5 classes stay in `ROADMAP.md`: they are open work, not shipped
-narrative. **The real acceptance is the runner, not this file** - a green local suite
-proves the command, and only the push proves the price. It was paid and it was
-CHEAPER than the estimate: run `30345614564` green, 23703 passed / 254 skipped /
-6165 subtests / 0 failed, 19m10s of pytest inside a 20m54s job. The number that
-matters more than the minutes: this job passes 96 MORE tests than the nightly
-dispatch (23607), because it installs pyyaml and arms the git hooks before it runs,
-so fewer guards degrade to skips. Push CI is now strictly stronger than the nightly.
+`tools/extract_panels.py` opens and rewrites `web/js/main.js` at MODULE SCOPE.
+Any test that imports it destroys the file. `tests/test_tools_ascii_hygiene.py`
+parses it with `ast` and pulls `PANEL_IMPORTS` out of the tree, then compares
+the emitted rule against the real `// -- Panel modules` line in `main.js` on
+disk and asserts equal WIDTH - which is what proves the substitution was 1:1
+rather than a re-flow. Reading the contract off disk beats pinning a literal.
+
+### The exemption is now pinned in the direction that can actually break
+
+`test_p3_ascii_sweep_exemption_is_intact` asserts the sweeper still HAS
+non-ASCII bytes. A guard that only bans glyphs would let the next well-meaning
+sweep disarm the tool and stay green. The plan row asked for the carve-out to be
+explicit rather than discovered by regression; a test is the only form of that
+which survives the next agent who has not read this file.
+
+### Scope, kept narrow on purpose
+
+This is a per-file pin, not a repo-wide ASCII ban, and the docstring says so.
+`U+2500` is not a banned codepoint here - `web/js/main.js` alone carries **1310**
+of them, and `tests/test_u2500_hygiene.py` has made the same scope note since
+item 176. Extend the pin only alongside an actual sweep.
+
+`tools/rc_facts.py` is LIVE - a `SessionStart` hook in `.claude/settings.json` -
+so its strings are user-visible text, not comments. Re-ran it after the sweep:
+the probe is unchanged and the output is ASCII.
+
+### Verification
+
+TDD RED first: 3 failed / 2 passed on the new guard before the edit (both byte
+counts, plus the emitted-rule width). After: py_compile + ruff clean, the
+hygiene set (new guard + mojibake + smart-quote + u2500 + rc_facts port probe)
+**24 passed**, and the full RC suite **13766 passed / 106 skipped / 477 subtests
+/ 0 failed** in 104.97s at `-n 8`. DS suite not run and not needed:
+ENGINE-IMPACT NONE, no path under `agents/daemon_slayer/` touched, no
+ENGINE_VERSION, no Share mirror, no restart.
