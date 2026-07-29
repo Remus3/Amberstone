@@ -85,10 +85,16 @@ wrong `.md`. Grep plus judgment does not catch those; paraphrase-tolerant recall
   `.claude/settings.json` hooks, and the vault itself are all LOCAL and gitignored;
   only `tools/perseus_sync.py` is tracked. Re-wire with
   `perseus-vault connect --client claude-code --hooks`, then run the sync.
-- **BEFORE starting any non-trivial item, recall first.** Call
-  `perseus_vault_recall` with the task in your own words. If a `settled` or `ledger`
-  hit says the work is CLOSED, REFUTED, or already shipped, stop and report that
-  instead of building. This is the whole point of the store.
+- **BEFORE starting any non-trivial item, recall first.** Use
+  `python tools/perseus_recall.py "<the task in your own words>"`. If a `settled`
+  or `ledger` hit says the work is CLOSED, REFUTED, or already shipped, stop and
+  report that instead of building. This is the whole point of the store.
+- **Recall through that tool, not the raw MCP call.** Raw
+  `perseus_vault_recall` returns each hit's full body TWICE; MEASURED 2026-07-28,
+  one 4-hit query was 53497 chars (~13.4k tokens) against 893 chars (~223) for
+  the projection - 98.3 percent smaller with the same answer. A mandatory step
+  that costs 13k tokens is a step that gets skipped, which defeats the store.
+  Take a `key` from the listing and fetch that ONE entity when you need a body.
 - **It is a MIRROR, never the source of truth.** Source of truth stays CLAUDE.md,
   the `memory/*.md` files, `docs/LEDGER.md`, `ROADMAP.md`, `BACKLOG.md`. Never
   "fix" a fact only in the vault.
