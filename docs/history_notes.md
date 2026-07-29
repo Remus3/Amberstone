@@ -119,6 +119,52 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-28o - RM-126 fixed, and the obvious fix would have been wrong.
+
+**Headless loop cycle 31 (R224). Tier-1, ENGINE-IMPACT NONE.** `65beb575`. The
+pointer-listener leak R223 filed but did not fix.
+
+**The bug was exactly as filed.** `_placeAll` re-runs `_makeHandle` every repaint;
+its only guard asked "does a `.ovx-handle` child exist"; every renderer that
+rebuilds its mount destroys that child; so both el-level binds re-ran on the same
+surviving element, forever.
+
+**The ROADMAP row prescribed "attach once per element" and that alone is a trap.**
+`_installDrag` returns a `begin` closure that gets bound to the `.ovx-handle`
+child, and that child is LEGITIMATELY recreated each repaint. Early-return before
+the binds but hand back a FRESH `begin` and you get code that passes any "bound
+exactly once" assertion and is broken - the surviving el-level listeners close
+over the FIRST call's drag state while the new handle drives a second, unobserved
+copy. Leak traded for silent desync. Shipped fix stores `begin` on the element and
+returns the STORED one, plus a separate `el.dataset.ovxBodyDrag` latch for the body
+`pointerdown`, placed AFTER the handle bind so the fresh handle keeps rebinding.
+
+**The named UI harness did not exist, so I measured instead of skipping.** The
+directive routed validation through "the ui_recon Playwright harness + :8810
+static preview" - neither is on disk. But node v24.15.0 is installed,
+`overlay_layout.js` has ZERO imports and exports `_makeHandle` through
+`_internals`, so it loads under a stubbed DOM. Three passes with the handle child
+dropped between them: **12 el-level binds on baseline `08c8aade`, 4 on the fixed
+tree**, handle rebinding 3x on both sides. The leak measured and the fix measured.
+Worth remembering that a "no harness" directive step is often a 20-line node
+script away from a real answer.
+
+**The reusable lesson from the enumeration.** 19 `addEventListener` sites, 4
+defective, 15 clean, 0 new. `_ensureLauncher` is re-entered by the same observer
+and by `resetOverlayLayout` yet never leaked, because it early-returns on
+`querySelector("#w-launcher")` - it asks whether the HOST exists, not whether a
+CHILD of the host exists. **The defect class is not "unguarded listener attach",
+it is "guarded on a child's existence when the listener's host is the parent".**
+That is the grep for next time.
+
+**Gates:** DS 10100 / 5701 subtests. RC 13968 / 106 skipped / 1342 subtests. First
+RC run was 1 failed - the `_LIVE_HALF_DIGEST` pin firing by design on a LIVE web
+byte; re-stamped after the two-tree diff showed 1 of 165 web/ sources changed, then
+re-run clean. **OWED:** overlay visual PNG (zero markup/CSS bytes changed), same
+standing debt as R223.
+
+---
+
 # 2026-07-28n - The commit gate's ruff half was dead on the channel that matters, for three weeks.
 
 **Operator session (not a loop cycle). Tier-1, ENGINE-IMPACT NONE.** `15d07d3c` + `569dd364`. The filed question from `425fbb75`: why did `tools/precommit_gate.py` not block the net-new ruff UP031 that `afcbcf79` put in its OWN source.
