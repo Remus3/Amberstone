@@ -176,7 +176,7 @@ class EhpExternalFlatHpSeamTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.262.0")
+        self.assertEqual(ENGINE_VERSION, "1.263.0")
 
 
 if __name__ == "__main__":

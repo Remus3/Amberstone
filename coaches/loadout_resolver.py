@@ -24,6 +24,11 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from agents.daemon_slayer._melee_ranged import (
+    MELEE_RANGED_ATTACKRANGE_SPLIT,
+    attackrange_is_ranged,
+)
+
 # These are private constants in the frozen lcu_rune_writer, but we
 # need them to translate variant rune names into LCU perk IDs. We're
 # not modifying the file - only importing constants.
@@ -54,10 +59,12 @@ _RANGED_ONLY_ITEM_IDS: frozenset[str] = frozenset({
     "223085",   # Runaan's Hurricane - Arena-mirror alias (map 30)
 })
 
-# Melee = base attackrange at or below this ceiling (mirrors rank.MELEE_
-# ATTACKRANGE_CEILING and ehp._is_ranged's > 250 split). Graves (425) and
-# Kindred (500) are ranged and correctly excluded from the gate.
-_MELEE_ATTACKRANGE_CEILING: float = 250.0
+# Melee = base attackrange BELOW the shared canonical split (350, RM-123 -
+# mirrors rank.MELEE_ATTACKRANGE_CEILING / ehp._is_ranged / _melee_ranged).
+# The split is STRICT: Urgot (350) is ranged (keeps Runaan's); Rakan (300) and
+# Lillia (325) are melee (Runaan's stripped); Graves (425) / Kindred (500) stay
+# ranged. Classify via ``attackrange_is_ranged`` so the boundary matches.
+_MELEE_ATTACKRANGE_CEILING: float = MELEE_RANGED_ATTACKRANGE_SPLIT
 
 
 def _norm(name: str) -> str:
@@ -164,8 +171,9 @@ def _load_champ_range_by_name() -> dict[str, float]:
 
 
 def _champion_is_melee(champion: str) -> bool:
-    """True iff the champion's base attackrange <= the melee ceiling. Unknown
-    champion -> False (fail-open: never over-filter a champ we cannot classify)."""
+    """True iff the champion's base attackrange is below the canonical split
+    (melee iff ar < 350, RM-123). Unknown champion -> False (fail-open: never
+    over-filter a champ we cannot classify)."""
     ranges = _load_champ_range_by_name()
     rng = ranges.get(champion)
     if rng is None:
@@ -177,7 +185,7 @@ def _champion_is_melee(champion: str) -> bool:
                     break
     if rng is None:
         return False
-    return rng <= _MELEE_ATTACKRANGE_CEILING
+    return not attackrange_is_ranged(rng)
 
 
 def _strip_ranged_only(names: list[str], is_melee: bool) -> list[str]:
