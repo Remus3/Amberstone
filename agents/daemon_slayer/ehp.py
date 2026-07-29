@@ -125,6 +125,10 @@ from ._passive_resist_overrides import resist_grants
 from ._passive_revive_overrides import revive_multiplier, revive_egg_resist
 from ._champion_cc_mitigation_overrides import champion_cc_tenacity_fraction
 from ._champion_spell_shield_overrides import champion_spell_shield_fraction
+from ._melee_ranged import (
+    MELEE_RANGED_ATTACKRANGE_SPLIT,
+    attackrange_is_ranged,
+)
 from ._passive_survival_window_overrides import survival_window_multiplier
 from .rank import (
     DEFAULT_SLOT_COUNT,
@@ -251,7 +255,10 @@ def _effective_resist_after_pen(
     return max(0.0, r)                    # penetration cannot go below zero
 
 
-_RANGED_ATTACKRANGE_THRESHOLD = 250.0
+# RM-123: the melee/ranged split is now the shared canonical constant
+# (``_melee_ranged.MELEE_RANGED_ATTACKRANGE_SPLIT`` = 350.0). Alias kept for the
+# back-compat symbol name imported by test_ehp_shield_phase15.
+_RANGED_ATTACKRANGE_THRESHOLD = MELEE_RANGED_ATTACKRANGE_SPLIT
 
 
 def _is_ranged(base_stats: dict) -> bool:
@@ -260,14 +267,13 @@ def _is_ranged(base_stats: dict) -> bool:
     ENGINE 1.27.0 (2026-05-21): used by the shield-throughput scorer to
     pick the ``ItemShield.ranged_modifier`` (Maw / Shieldbow / Hexdrinker
     have ranged shields at 75-80% of melee values per Meraki 16.10.1).
-    Threshold 250 separates melee (Yasuo 175 / Aatrox 175 / Sett 125)
-    from ranged (Caitlyn 650 / Ezreal 550 / Lux 550). Aphelios and
-    similar shifting-form champs default to their base attackrange.
+    RM-123 (2026-07-29): split raised 250 -> 350 to match real League - the
+    250 value wrongly classified Rakan (300) and Lillia (325), both MELEE, as
+    ranged. Ranged now = base attackrange >= 350 (Urgot 350 / Caitlyn 650 /
+    Lux 550); melee = below 350 (Yasuo 175 / Rakan 300 / Lillia 325). Aphelios
+    and similar shifting-form champs default to their base attackrange.
     """
-    try:
-        return float(base_stats.get("attackrange", 0.0)) > _RANGED_ATTACKRANGE_THRESHOLD
-    except (TypeError, ValueError):
-        return False
+    return attackrange_is_ranged(base_stats.get("attackrange", 0.0))
 
 
 def _collect_shields(

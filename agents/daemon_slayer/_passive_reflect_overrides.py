@@ -89,12 +89,13 @@ def reflect_exposure_factor(is_melee: bool) -> float:
     exposure to incoming basic attacks is a fraction of the melee case.
 
     The caller supplies the predicate it already owns: ``dps.compute_dps``
-    passes ``CallContext.is_melee`` (``dps.MELEE_RANGE_CEILING`` 350) and
-    ``burst.compute_burst_damage`` passes ``rank._champion_is_melee``
-    (``MELEE_ATTACKRANGE_CEILING`` 250, the DSV9 shield-cut convention right
-    above it). The two thresholds agree on every 16.14.1 champion - the range
-    histogram is empty between Nilah 225 and Xayah 525 (``dps.py`` line 78) -
-    so no champion is classified differently by the two consumers.
+    passes ``CallContext.is_melee`` and ``burst.compute_burst_damage`` passes
+    ``rank._champion_is_melee``. Since RM-123 both route through the ONE shared
+    canonical split (``_melee_ranged.attackrange_is_ranged`` - ranged iff base
+    attackrange >= 350), so the two consumers agree on every champion by
+    construction. That reconciliation replaced two divergent thresholds (250 in
+    rank/ehp, 350 in dps/burst) that DID disagree on Rakan (300) / Lillia (325)
+    / Urgot (350) - the band the old "empty histogram" note wrongly assumed away.
     """
     return 1.0 if is_melee else _REFLECT_RANGED_EXPOSURE
 
