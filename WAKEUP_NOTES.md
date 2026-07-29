@@ -6,6 +6,31 @@
 
 ---
 
+# 2026-07-29e - RM-124 deterministic wave/cannon clock BUILT + GATED-OFF (Tier-1, no engine bump).
+
+**Commits `266c1fac` (feature) + `965d829d` (tracker sync), both pushed + CI-green.**
+Pure `wave_callout()` beside `recall_callout` in `core/event_callouts.py`: anchors on the live
+`MinionsSpawning` EventTime, walks the wave cadence to the next cannon, returns a
+`{tag,line,eta_s,kind=wave}` callout. Transport mirrors `inhib_events` - a 4th `minion_events`
+extract in `dashboard/_liveclient.py` + gs pass-through in `dashboard/_deterministic_coaching.py`.
+Renders on the GENERIC `web/js/panels/callouts.js` sink -> ZERO JS change.
+
+Key decisions:
+- Corrected the wakeup/teardown: it renders on `callouts.js` NOT `objective_chips.js`, and it does
+  NOT light the `next.js:16-83` 3-lane per-lane % UI (that is the data-blocked STATE machine).
+- Gated OFF (`enable_wave` default False, env `RC_WAVE_CALLOUT`) because cadence constants are
+  provisional and NO live SR game was available to validate. `/api/state` byte-identical today.
+- No backfill possible (pure live-compute). RED-first TDD: `tests/test_event_callouts_wave_rm124.py`
+  8 cases. Verify this run: event_callouts 88, det_coaching/next_callout 80, targeted slice 147 green.
+
+NEXT / do-NOT-redo:
+- RM-124 is BUILT - do NOT rebuild it. The ONLY remaining task is gated item **G2-39** in
+  `docs/LIVE_GAME_GATED_SYNC.md`: validate the cadence against one real SR game, correct the
+  provisional constants if they miss the observed cannon arrivals, THEN flip `RC_WAVE_CALLOUT=1`.
+- Follow-on F2 (CS efficiency curve, `core/lead_projection.py:57` flat 8.0) is unblocked once F1 flips.
+
+---
+
 # 2026-07-29d - RM-123 melee/ranged split reconciliation SHIPPED (ENGINE 1.263.0).
 
 **Tier-2 DS: engine EHP-math change, ENGINE 1.262.0 -> 1.263.0, 7 doc anchors, build-table
@@ -55,25 +80,3 @@ base-id mirror trap + ID-SUFFIX-not-name lessons.
 
 **Decision logged:** RM-106b left in place - labelled OPEN, not relocated without operator
 call. CI docs-guards green. Do NOT re-relocate: ROADMAP was already pruned 4x, near its floor.
-
----
-
-# 2026-07-29b - Ability-haste reopen RE-CLOSED by gating experiment; link-ingest Phase 1 kicked off.
-
-**Read-only / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `e8c67f4b`.
-
-**Ability-haste class RE-CLOSED.** Operator reopened RM-39/RM-43 2026-07-29 (authored
-per-spell-coeff design, existing ids). Ran the mandated amplification gating experiment
-first. Since RM-39's L0 "0 calls" result, L1 shipped (ENGINE 1.222.0): with
-`apply_ad_axis_ability_damage` ON the first-order ability path IS now reachable (compute
-x1e6 -> item 3143 #1 for Aatrox + Ambessa). BUT driving the haste cooldown to ~0 under
-the same flag is BYTE-IDENTICAL - their spells score on the `measured>0` cast-rate branch,
-so `theoretical=1/cooldown` never fires. **Haste inert no matter how authored; both options
-moot; class closed.** Audit `ops/audit/RM39_RM43_haste_gating_2026-07-29.md`. Do NOT re-open
-without a NEW mechanism that changes which cast-rate branch these champs take.
-
-**Link-ingest Phase 1 (of 7) started** per `RC maybe.txt`. 119 MCP-marketplace links ->
-CCR-01..CCR-119, triaged by 8 parallel agents, scored 1-10. `First-Pass.md` on desktop =
-all 119 + ranked index. **NEXT: operator leaves `**!= =!**` notes in First-Pass.md, THEN
-Phase 2 (cull) runs.** Do NOT re-triage - Phase 1 is done. Continuity: memory
-`project_ccr_link_ingest`.
