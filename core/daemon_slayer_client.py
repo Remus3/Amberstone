@@ -826,6 +826,10 @@ def rank_bruiser_for(
     # and the engine defaults it ON for cc_blended, so None = inherit and
     # False = explicitly disable. A plain bool could not express the OFF.
     apply_build_tenacity: Optional[bool] = None,
+    # RM-118 (2026-07-29): the wielder HSP ITEM-amp seam (R60). Sibling of the
+    # rank_tank_for wire (e075a221). Appended LAST; a plain EHP-family bool,
+    # emitted via _emit_ehp_family_seams only when True -> byte-identical off.
+    assume_hsp_amp: bool = False,
 ) -> Optional[list[BruiserRankedItem]]:
     """Call POST /rank-bruiser and return the parsed top-N rows. None on engine failure.
 
@@ -899,6 +903,7 @@ def rank_bruiser_for(
         assume_item_health_stacks=assume_item_health_stacks,
         assume_item_proc_heal=assume_item_proc_heal,
         apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
+        assume_hsp_amp=assume_hsp_amp,
     )
     # Tri-state, same contract as rank_tank_for: None omits the key and
     # inherits the engine's default-ON for cc_blended.

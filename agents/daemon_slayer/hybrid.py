@@ -491,6 +491,10 @@ def compute_hybrid(
     # same no-mid-signature-insert convention. Touches ONLY the ability half of
     # the damage axis (both branches); the EHP half and compute_dps are untouched.
     apply_cast_rate_propensity_prior: bool = False,
+    # RM-118 (2026-07-29): the wielder HSP ITEM-amp seam (R60, ENGINE 1.171.0),
+    # forwarded verbatim to compute_ehp. Appended at END per the same
+    # no-mid-signature-insert convention. DEFAULT-OFF -> byte-identical.
+    assume_hsp_amp: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -650,6 +654,7 @@ def compute_hybrid(
         rune_ids=rune_ids,
         apply_rune_health_grants=apply_rune_health_grants,
         apply_rune_hsp_amp=apply_rune_hsp_amp,
+        assume_hsp_amp=assume_hsp_amp,
         assume_item_health_stacks=assume_item_health_stacks,
         apply_rune_flat_mitigation=apply_rune_flat_mitigation,
         assume_item_proc_heal=assume_item_proc_heal,
@@ -1041,6 +1046,10 @@ def rank_items_by_hybrid(
     # RM-115 p4 (RM-86 L1): the kit-conversion sort gate reaches the BRUISER
     # scorer. Appended at END per the same no-mid-signature-insert convention.
     kit_conversion_strength: float = 0.0,
+    # RM-118 (2026-07-29): ranker mirror of the compute_hybrid seam - the
+    # wielder HSP ITEM-amp reaches the bruiser build DECISION, not just the
+    # scalar. Appended at END. DEFAULT-OFF -> byte-identical.
+    assume_hsp_amp: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -1223,6 +1232,7 @@ def rank_items_by_hybrid(
         rune_ids=rune_ids,
         apply_rune_health_grants=apply_rune_health_grants,
         apply_rune_hsp_amp=apply_rune_hsp_amp,
+        assume_hsp_amp=assume_hsp_amp,
         assume_item_health_stacks=assume_item_health_stacks,
         apply_rune_flat_mitigation=apply_rune_flat_mitigation,
         assume_item_proc_heal=assume_item_proc_heal,
@@ -1379,6 +1389,7 @@ def rank_items_by_hybrid(
                 rune_ids=rune_ids,
                 apply_rune_health_grants=apply_rune_health_grants,
                 apply_rune_hsp_amp=apply_rune_hsp_amp,
+        assume_hsp_amp=assume_hsp_amp,
                 assume_item_health_stacks=assume_item_health_stacks,
                 apply_rune_flat_mitigation=apply_rune_flat_mitigation,
                 assume_item_proc_heal=assume_item_proc_heal,
