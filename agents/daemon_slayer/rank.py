@@ -21,6 +21,10 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from ._burst_off_axis import champion_burst_axis, is_off_axis_candidate
+from ._melee_ranged import (
+    MELEE_RANGED_ATTACKRANGE_SPLIT,
+    attackrange_is_ranged,
+)
 from .data_loader import DataSnapshot
 from .dps import _select_phase, compute_dps
 from .effects import ITEM_EFFECTS
@@ -297,13 +301,15 @@ RANGED_ONLY_ITEM_IDS: frozenset[str] = frozenset({
 })
 
 # Melee/ranged purchasability split. A champion is MELEE (and therefore blocked
-# from the ranged-only items above) when its base attackrange is at or below
-# this threshold. Mirrors the engine's own predicate ``ehp._is_ranged`` (which
-# treats attackrange > 250 as ranged). Deliberately the 250 split, NOT the 500
-# RANGED_MARKSMAN_RANGE_FLOOR: Graves (attackrange 425) and Kindred (500) are
-# ranged marksmen the in-game shop lets buy Runaan's, so they must classify as
-# ranged. Melee at 16.13.1: Irelia 200, Yasuo/Yone/Kayle 175, Jax/Camille 125.
-MELEE_ATTACKRANGE_CEILING: float = 250.0
+# from the ranged-only items above) when its base attackrange is BELOW the shared
+# canonical split (``_melee_ranged.MELEE_RANGED_ATTACKRANGE_SPLIT`` = 350). RM-123
+# (2026-07-29) raised this from 250 -> 350: the old 250 value wrongly classified
+# Rakan (300) and Lillia (325) - both MELEE, both shop-blocked from Runaan's - as
+# ranged and offered them ranged-only items. 350 still classifies Graves (425) /
+# Kindred (500) as ranged marksmen (shop lets them buy Runaan's) while correctly
+# blocking Rakan/Lillia. Urgot (350) is ranged (>= split). Melee at 16.14.1:
+# Irelia 200, Yasuo/Yone/Kayle 175, Jax/Camille 125, Rakan 300, Lillia 325.
+MELEE_ATTACKRANGE_CEILING: float = MELEE_RANGED_ATTACKRANGE_SPLIT
 
 
 def _is_ranged_marksman(champ_rec: dict) -> bool:
@@ -388,11 +394,11 @@ def _champion_is_melee(
     """True iff this champion is MELEE - blocked by the in-game shop from the
     ranged-only items in ``RANGED_ONLY_ITEM_IDS``.
 
-    Data-driven: base attackrange at or below ``MELEE_ATTACKRANGE_CEILING``
-    (250, the engine's own melee/ranged split - see ``ehp._is_ranged``). An
-    unknown / malformed record fails CLOSED to False (treated as ranged), so a
-    missing champ record never over-filters a real ranged carry's pool; the
-    live bug (a known melee champ, real record) is still caught.
+    Data-driven: base attackrange BELOW the shared canonical split
+    (350, ``ehp._is_ranged`` - see ``_melee_ranged``). An unknown / malformed
+    record fails CLOSED to False (treated as ranged), so a missing champ record
+    never over-filters a real ranged carry's pool; the live bug (a known melee
+    champ, real record) is still caught.
 
     ALSO melee when an active Arena/Cherry augment converts the wielder to melee
     (``_augment_forces_melee``; currently only "Draw Your Sword" / id 134). The
@@ -405,10 +411,7 @@ def _champion_is_melee(
     if not isinstance(champ_rec, dict):
         return False
     rng = (champ_rec.get("stats") or {}).get("attackrange", 0) or 0
-    try:
-        return float(rng) <= MELEE_ATTACKRANGE_CEILING
-    except (TypeError, ValueError):
-        return False
+    return not attackrange_is_ranged(rng)
 
 
 # DSP2 Cluster-B off-class WIN-exemption seam (DEFAULT-OFF, 2026-06-17).

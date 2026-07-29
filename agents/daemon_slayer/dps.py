@@ -75,6 +75,7 @@ from .effects import (
     total_takedown_bonus_ad,
     total_target_bonus_hp_amp_multiplier,
 )
+from ._melee_ranged import MELEE_RANGED_ATTACKRANGE_SPLIT
 from ._rune_offense_grants import jack_of_all_trades_stacks, rune_offense_grants
 from .engine import build_champion
 from .stats import clamp_level
@@ -85,12 +86,14 @@ from .ult_rates import get_ult_casts_per_sec
 DEFAULT_CRIT_BONUS = 0.75
 
 # B1 melee-applicability gate (DS Tier-2 cross-eval nomination B, 1.141.0):
-# a champion is melee when its base attackrange is below this ceiling. The big
-# data gap sits between the longest short-melee (Nilah 225) and the shortest
-# ranged carry (Xayah 525), so 350 separates them with no champion in between.
-# Consumed only when compute_dps(apply_melee_aa_gate=True); default-OFF the
-# value is never read. See ops/audit/ds_cross_eval/TIER2_REPORT.md (B1).
-MELEE_RANGE_CEILING = 350
+# a champion is melee when its base attackrange is below this ceiling. This is
+# the shared canonical split (``_melee_ranged.MELEE_RANGED_ATTACKRANGE_SPLIT``);
+# dps already carried the correct value (350) before RM-123 unified the four
+# sites onto it. Champions in the 250 < ar <= 350 band are Rakan (300, melee),
+# Lillia (325, melee), Urgot (350, ranged). Consumed only when
+# compute_dps(apply_melee_aa_gate=True); default-OFF the value is never read.
+# See ops/audit/ds_cross_eval/TIER2_REPORT.md (B1).
+MELEE_RANGE_CEILING = MELEE_RANGED_ATTACKRANGE_SPLIT
 
 EARLY_LEVEL_MAX = 6
 MID_LEVEL_MAX = 12

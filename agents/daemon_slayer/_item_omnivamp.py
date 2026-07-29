@@ -25,8 +25,8 @@ granted only at that max-stack strength). Source magnitude:
 ``data/daemon_slayer/16.13.1/items_meraki.json`` item 4633 "Void Corruption":
 "At maximum stacks, gain {{as|{{rd|10%|6%}} omnivamp}}" -> 10% melee / 6%
 ranged. The ``(melee_frac, ranged_frac)`` tuple lets the consumer pick the
-branch by the wielder's ``is_ranged`` (base attackrange > 250, per
-``ehp._is_ranged``).
+branch by the wielder's ``is_ranged`` (base attackrange >= 350, per
+``ehp._is_ranged`` / ``_melee_ranged``; RM-123).
 
 Registered ids (each confirmed present in ``data/daemon_slayer/16.13.1/
 items.json`` before adding):

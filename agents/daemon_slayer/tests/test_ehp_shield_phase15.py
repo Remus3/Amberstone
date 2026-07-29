@@ -139,13 +139,18 @@ class ItemShieldSchemaTests(unittest.TestCase):
 
 
 class IsRangedTests(unittest.TestCase):
+    # RM-123 (2026-07-29): split raised 250 -> 350 so Rakan (300) and Lillia
+    # (325) - both MELEE - classify correctly. See test_melee_ranged_split_rm123.
     def test_melee_below_threshold(self) -> None:
         self.assertFalse(_is_ranged({"attackrange": 125.0}))   # Sett
         self.assertFalse(_is_ranged({"attackrange": 175.0}))   # Yasuo / Aatrox
-        self.assertFalse(_is_ranged({"attackrange": 250.0}))   # exactly at threshold
+        self.assertFalse(_is_ranged({"attackrange": 300.0}))   # Rakan (melee)
+        self.assertFalse(_is_ranged({"attackrange": 325.0}))   # Lillia (melee)
+        self.assertFalse(_is_ranged({"attackrange": 349.0}))   # just below split
 
     def test_ranged_above_threshold(self) -> None:
-        self.assertTrue(_is_ranged({"attackrange": 251.0}))
+        self.assertTrue(_is_ranged({"attackrange": 350.0}))    # Urgot (ranged, at split)
+        self.assertTrue(_is_ranged({"attackrange": 425.0}))    # Graves
         self.assertTrue(_is_ranged({"attackrange": 550.0}))    # Lux / Ezreal
         self.assertTrue(_is_ranged({"attackrange": 650.0}))    # Caitlyn
 
@@ -154,8 +159,8 @@ class IsRangedTests(unittest.TestCase):
 
     def test_threshold_constant_pinned(self) -> None:
         # Pin the threshold so future audits catch an accidental change
-        # that would re-classify Yasuo / Aatrox as ranged or Sivir as melee.
-        self.assertEqual(_RANGED_ATTACKRANGE_THRESHOLD, 250.0)
+        # that would re-classify Rakan / Lillia as ranged or Urgot as melee.
+        self.assertEqual(_RANGED_ATTACKRANGE_THRESHOLD, 350.0)
 
 
 class CollectShieldsTests(unittest.TestCase):
@@ -492,7 +497,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
         import agents.daemon_slayer as ds
         # 1.27.0 closes the Phase 1.5 shield-throughput omission;
         # confirmed by the live tests above.
-        self.assertEqual(ds.ENGINE_VERSION, "1.262.0")
+        self.assertEqual(ds.ENGINE_VERSION, "1.263.0")
 
 
 if __name__ == "__main__":

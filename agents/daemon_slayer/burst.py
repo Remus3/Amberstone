@@ -109,6 +109,10 @@ from .effects import (
     total_takedown_eruption_damage,
     total_target_bonus_hp_amp_multiplier,
 )
+from ._melee_ranged import (
+    MELEE_RANGED_ATTACKRANGE_SPLIT,
+    attackrange_is_ranged,
+)
 from .engine import build_champion
 from .geometry import spell_aoe_multiplier
 from ._burst_off_axis import champion_burst_axis, is_off_axis_candidate
@@ -122,9 +126,11 @@ from .rune_procs import (
 )
 
 # item 233 - melee/ranged split for per_attack rune scaling (Lethal Tempo melee
-# 9-30 vs ranged 6-24). No champion sits between melee (~125-175) and ranged
-# (~450+), so 350 cleanly separates the two.
-_RANGED_ATTACK_RANGE = 350.0
+# 9-30 vs ranged 6-24). Shared canonical split (``_melee_ranged``); RM-123
+# unified the four engine sites onto it. Classify via ``attackrange_is_ranged``
+# (ranged iff ar >= 350) so the boundary champion Urgot (350) is ranged - the
+# prior strict ``> 350.0`` here wrongly called Urgot melee.
+_RANGED_ATTACK_RANGE = MELEE_RANGED_ATTACKRANGE_SPLIT
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -1029,7 +1035,7 @@ def compute_burst_damage(
         _attack_range = float(
             snapshot.champion(champion_id).get("stats", {}).get("attackrange", 0.0)
         )
-        _caster_role = "ranged" if _attack_range > _RANGED_ATTACK_RANGE else "melee"
+        _caster_role = "ranged" if attackrange_is_ranged(_attack_range) else "melee"
         for _rid in _scored_runes:
             proc = RUNE_PROCS.get(_rid)
             if proc is None or proc.proc_type == "adaptive":
