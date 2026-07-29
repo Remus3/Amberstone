@@ -52,6 +52,37 @@ echo restart > restart_trigger.txt
 Verify: read `ops/runtime/health.json`, confirm new `pid`, `alive=true`, `last_reload_ok=true`.
 Hard fallback: `taskkill /F /PID <pid>` then `restart.bat`.
 
+## Memory recall (Perseus Vault)
+
+Local semantic-recall store over RC's own institutional knowledge. Exists because
+the recurring failure is not ignorance, it is REDISCOVERY: redoing closed work,
+re-pitching a refuted idea, acting on a stale doc, or writing a finding into the
+wrong `.md`. Grep plus judgment does not catch those; paraphrase-tolerant recall does.
+
+- **Local, no cloud, no API key.** One binary + one SQLite file at
+  `~/.perseus-vault/`. Wired as MCP server `perseus-vault` in `.mcp.json`, so the
+  `mcp__perseus-vault__*` tools are available in-session.
+- **A fresh clone has NO wiring** - same trap as the git hooks. `.mcp.json`, the
+  `.claude/settings.json` hooks, and the vault itself are all LOCAL and gitignored;
+  only `tools/perseus_sync.py` is tracked. Re-wire with
+  `perseus-vault connect --client claude-code --hooks`, then run the sync.
+- **BEFORE starting any non-trivial item, recall first.** Call
+  `perseus_vault_recall` with the task in your own words. If a `settled` or `ledger`
+  hit says the work is CLOSED, REFUTED, or already shipped, stop and report that
+  instead of building. This is the whole point of the store.
+- **It is a MIRROR, never the source of truth.** Source of truth stays CLAUDE.md,
+  the `memory/*.md` files, `docs/LEDGER.md`, `ROADMAP.md`, `BACKLOG.md`. Never
+  "fix" a fact only in the vault.
+- **Re-sync after changing any of those:** `python tools/perseus_sync.py`
+  (idempotent - category+key updates in place, never duplicates). Coverage check
+  only: `python tools/perseus_sync.py --verify`.
+- **`status: healthy` is NOT proof recall works.** Perseus reports
+  `semantic_recall: available` with zero warnings even when most rows have no
+  embedding, and recall then silently degrades to keyword. Only
+  `embedded == active` proves coverage - that is exactly what `--verify` asserts.
+  MEASURED 2026-07-28: a fresh ingest of 1197 entities left 91 embedded and still
+  reported healthy.
+
 ## Session workflow
 
 Scoped sessions - each focused task is one session.
