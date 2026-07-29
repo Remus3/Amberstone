@@ -430,6 +430,13 @@ function _winOff(type, fn) {
 // - the same death the operator hit whenever capture failed and the cursor left
 // the 3px handle (RM-05 round-2 symptom b).
 function _installDrag(el, w) {
+  // One drag closure per mount, forever (RM-126). _placeAll re-runs _makeHandle
+  // on the SAME persistent el after every renderer rebuild, so an unguarded
+  // re-entry stacked another el-level move/up/cancel set per repaint. Reusing
+  // the stored `begin` is what makes that safe: the listeners below close over
+  // THIS call's drag state, so handing a later caller a fresh closure would
+  // leave the surviving listeners reading state nobody writes.
+  if (el._ovxDragBegin) return el._ovxDragBegin;
   let dragging = false;
   let startX = 0;
   let startY = 0;
@@ -547,6 +554,7 @@ function _installDrag(el, w) {
   el.addEventListener("pointermove", onMove);
   el.addEventListener("pointerup", end);
   el.addEventListener("pointercancel", end);
+  el._ovxDragBegin = begin;
   return begin;
 }
 
@@ -571,6 +579,12 @@ function _makeHandle(el, w) {
   const begin = _installDrag(el, w);
   // Handle: always grabbable (the passive quick-drag target).
   h.addEventListener("pointerdown", begin);
+  // The body bind needs its OWN latch (RM-126). The guard at the top only sees
+  // the handle CHILD, which a renderer rebuild drops - so this el-level bind
+  // re-ran on the surviving el every repaint. Same dataset idiom as
+  // _makeHideMenu: a fresh mount carries no flag and wires normally.
+  if (el.dataset.ovxBodyDrag === "1") return;
+  el.dataset.ovxBodyDrag = "1";
   // Body: grabbable ONLY in ACTIVE mode, and never on an interactive control or
   // the handle (operator 2026-06-27: once you have explicitly entered ACTIVE,
   // drag the whole panel instead of hunting the small grip).
