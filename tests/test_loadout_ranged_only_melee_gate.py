@@ -72,7 +72,10 @@ def _is_melee(champ_key: str, ranges: dict[str, float]) -> bool:
                 break
     if rng is None:
         return False
-    return rng <= MELEE_ATTACKRANGE_CEILING
+    # RM-123: canonical strict split (melee iff ar < 350). Route through the
+    # same predicate production uses so the boundary champion Urgot (350) is
+    # ranged, not melee - a `<=` here would wrongly flag Urgot's Runaan's.
+    return not loadout_resolver.attackrange_is_ranged(rng)
 
 
 def _served_item_ids(row: dict) -> set[str]:
@@ -94,12 +97,20 @@ def _served_item_names(row: dict) -> set[str]:
 class GroundTruthSanityTests(unittest.TestCase):
     def test_runaan_is_the_ranged_only_id(self) -> None:
         self.assertIn(_RUNAAN_ID, RANGED_ONLY_ITEM_IDS)
-        self.assertEqual(MELEE_ATTACKRANGE_CEILING, 250.0)
+        # RM-123: split reconciled 250 -> 350 across every classifier.
+        self.assertEqual(MELEE_ATTACKRANGE_CEILING, 350.0)
 
     def test_xin_zhao_is_melee(self) -> None:
         ranges = _attackrange_by_key()
         self.assertTrue(_is_melee("Xin Zhao", ranges))
         self.assertTrue(_is_melee("XinZhao", ranges))
+
+    def test_rm123_band_champions_classified_correctly(self) -> None:
+        # The three champions in the 250 < ar <= 350 band the old split broke.
+        ranges = _attackrange_by_key()
+        self.assertTrue(_is_melee("Rakan", ranges))    # 300 melee
+        self.assertTrue(_is_melee("Lillia", ranges))   # 325 melee
+        self.assertFalse(_is_melee("Urgot", ranges))   # 350 ranged (keeps Runaan's)
 
     def test_varus_is_ranged(self) -> None:
         ranges = _attackrange_by_key()

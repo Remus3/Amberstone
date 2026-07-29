@@ -1331,6 +1331,21 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.263.0 (2026-07-29) - RM-123 melee/ranged split reconciliation. One boolean
+fact (melee vs ranged) had been encoded as a magic base-attackrange threshold in
+four engine sites with two different values (250 in `ehp._is_ranged` /
+`rank._champion_is_melee`, 350 in `burst`/`dps`) and three operators. The 250
+value wrongly classified the only three champions whose base attackrange sits in
+the 250 < ar <= 350 band: Rakan (300) and Lillia (325), both MELEE, and Urgot
+(350), RANGED (a strict `> 350` in burst also mis-called Urgot melee). A full
+173-roster scan confirms the rule "ranged iff attackrange >= 350.0" classifies
+every champion correctly and matches real League. All four sites now route
+through a single canonical predicate (`_melee_ranged.attackrange_is_ranged`).
+Net effect: Rakan/Lillia now get full melee item-shield / omnivamp / Grasp
+values (not the reduced ranged modifier) and are correctly blocked from the
+ranged-only Runaan's; Urgot gets ranged Lethal Tempo. No precomputed build
+changed (neither champion ever surfaced a ranged-only item).
+
 1.262.0 (2026-07-27) - R212 per-champion CRIT CHANCE / CRIT DAMAGE MULTIPLIER
 registry. New DEFAULT-OFF `_crit_chance_overrides.py` seam on `compute_dps`
 (`apply_crit_chance_overrides`), covering three axes the RM-46 crit-conversion

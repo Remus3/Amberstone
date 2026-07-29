@@ -108,7 +108,7 @@ clause at all, so its ``ranged_factor`` stays 1.0. A blanket "scale every rune b
 0.40 when ranged" bug is caught by ``test_overgrowth_has_no_ranged_penalty`` and
 by ``test_combined_page_is_reduced_but_not_by_40_percent``. The caller supplies
 ``is_ranged``; ``compute_ehp`` already computes it at ``ehp.py:1411`` via
-``_is_ranged(base)`` (base attackrange > 250, ``ehp.py:246-262``), so no champion
+``_is_ranged(base)`` (base attackrange >= 350, ``ehp._is_ranged`` / RM-123), so no champion
 lookup is needed here and this module stays import-pure.
 
 PERCENT-OF-MAX-HP IS TAKEN ON THE CALLER'S RESOLVED POOL. Overgrowth's 3.5% reads
