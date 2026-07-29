@@ -203,6 +203,10 @@ _RM91_TAIL = ("apply_health_damage_coupling", "health_coupling_strength")
 # pool - so one merged flag would arm a credit the other never earned. Ordered
 # gate-then-magnitude, matching both siblings.
 _RM91T2_TAIL = ("apply_item_caster_hp_proc", "item_caster_hp_proc_strength")
+# RM-118 (2026-07-29): the wielder HSP item amp reaches the EHP ranker, appended
+# after the RM-91 T2 pair on rank_items_by_ehp ONLY (compute_ehp already carried
+# it since R60, in its own earlier position).
+_RM118_TAIL = ("assume_hsp_amp",)
 
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
@@ -233,7 +237,7 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
             (
                 (rank_items_by_ehp,),
                 shared + _RM87_TAIL + _A1250_TAIL + _R194A_TAIL + _RM91_TAIL
-                + _RM91T2_TAIL,
+                + _RM91T2_TAIL + _RM118_TAIL,
             ),
             ((compute_hybrid,), hybrid_shared),
             ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL),

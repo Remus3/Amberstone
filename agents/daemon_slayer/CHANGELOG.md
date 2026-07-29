@@ -1331,6 +1331,28 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.264.0 (2026-07-29) - RM-118 the wielder Heal-and-Shield-Power ITEM amp reaches
+the EHP RANKER. `assume_hsp_amp` shipped in 1.171.0 (R60) and R197 wired it onto
+the SCALAR lanes (`compute_ehp` / `/ehp` and `compute_sustain` / `/sustain`) plus
+their two client functions - a read-only report of "what is my EHP with these
+items". The RANKER lane - `rank_items_by_ehp` -> `POST /rank-tank` ->
+`core.daemon_slayer_client.rank_tank_for`, where a tank item CHOICE is actually
+decided - never accepted the kwarg, so RM-118 recorded the seam as "expressible,
+not LIVE". This threads the flag through all three gates, appended at END per the
+no-mid-signature-insert convention, forwarded verbatim to BOTH the baseline and
+every candidate `compute_ehp` call. DEFAULT-OFF and byte-identical OFF. Even ON
+it is INERT unless a self-shield item (Sterak's Gage 3053, Immortal Shieldbow
+6673, Maw of Malmortius 3156) is in the baseline or a candidate build - the amp
+multiplies the ItemShield POOL, empty on the HSP pair alone (the honest R197
+finding) - so it moves ordering only for a shield-carrying candidate, the R194
+per-candidate shape and not the RM-115 uniform-multiplier inert shape. No data
+table, no Riot key, no Claude. Same three-gate remedy as R194 slice A. Pinned by
+`tests/test_rank_ehp_hsp_amp_rm118.py` (11 tests, Sett L13 + Redemption/Mikael
+prefix). The stranded-seam ledger `test_stranded_hsp_seam_r197.py` is unchanged -
+`assume_hsp_amp` was already OFF that ledger via the scalar routes. The hybrid
+ranker (`compute_hybrid` / `rank_items_by_hybrid`) is a SEPARATE module and stays
+a documented RM-118 residual, not wired here.
+
 1.263.0 (2026-07-29) - RM-123 melee/ranged split reconciliation. One boolean
 fact (melee vs ranged) had been encoded as a magic base-attackrange threshold in
 four engine sites with two different values (250 in `ehp._is_ranged` /

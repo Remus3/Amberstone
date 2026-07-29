@@ -15,4 +15,4 @@ bumps PREPEND a new entry to that file's changelog section, never extend a prior
 version's line.
 """
 
-ENGINE_VERSION = "1.263.0"
+ENGINE_VERSION = "1.264.0"

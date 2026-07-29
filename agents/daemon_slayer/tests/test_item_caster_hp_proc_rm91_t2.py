@@ -351,15 +351,20 @@ class SignatureConventionTests(unittest.TestCase):
     def test_kwargs_are_appended_last_with_defaults_off(self) -> None:
         params = inspect.signature(rank_items_by_ehp).parameters
         names = list(params)
+        # RM-118 (2026-07-29) appended ``assume_hsp_amp`` after this pair, so the
+        # T2 pair is now the second-and-third-from-last, not the last two. The
+        # pair must stay CONTIGUOUS and correctly defaulted - that is the actual
+        # convention this guard protects, not a claim to be the literal tail.
+        self.assertEqual(names[-1], "assume_hsp_amp")
         self.assertEqual(
-            tuple(names[-2:]),
+            tuple(names[-3:-1]),
             ("apply_item_caster_hp_proc", "item_caster_hp_proc_strength"),
         )
         self.assertIs(params["apply_item_caster_hp_proc"].default, False)
         self.assertEqual(params["item_caster_hp_proc_strength"].default, 0.0)
         # T1's pair must still be present, immediately ahead of T2's.
         self.assertEqual(
-            tuple(names[-4:-2]),
+            tuple(names[-5:-3]),
             ("apply_health_damage_coupling", "health_coupling_strength"),
         )
 

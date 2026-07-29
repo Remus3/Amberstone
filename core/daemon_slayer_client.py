@@ -438,6 +438,11 @@ def rank_tank_for(
     # -> key omitted -> the engine's DEFAULT-OFF path, byte-identical.
     apply_item_caster_hp_proc: Optional[bool] = None,
     item_caster_hp_proc_strength: Optional[float] = None,
+    # RM-118: the wielder HSP ITEM-amp on the RANKER lane, mirroring ``ehp_for``
+    # (the scalar lane wired at R197). Plain DEFAULT-OFF bool, emitted only when
+    # True so a flagless call is byte-identical. Appended at END per the
+    # no-mid-signature-insert convention.
+    assume_hsp_amp: bool = False,
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -526,6 +531,9 @@ def rank_tank_for(
     # cc_blended; an explicit False is the only way to turn it OFF.
     if apply_build_tenacity is not None:
         body["apply_build_tenacity"] = bool(apply_build_tenacity)
+    # RM-118: emit only when armed so a flagless call is byte-identical.
+    if assume_hsp_amp:
+        body["assume_hsp_amp"] = True
     data = _post_json("/rank-tank", body, timeout=timeout)
     if data is None:
         return None
