@@ -6,6 +6,34 @@
 
 ---
 
+# 2026-07-29d - RM-123 melee/ranged split reconciliation SHIPPED (ENGINE 1.263.0).
+
+**Tier-2 DS: engine EHP-math change, ENGINE 1.262.0 -> 1.263.0, 7 doc anchors, build-table
+regen, Share resync (516 files), DS :8893 restarted -> 1.263.0. Commits `8f67f810` (fix) +
+docs sync. Full dual suite green: 24246 passed / 106 skipped / 7071 subtests. LEDGER 1109.**
+
+Picked the NOW-lane RM-123 (first strong candidate). Root cause was WIDER than the filing
+(named 2 sites): one boolean fact (melee vs ranged) was a magic base-attackrange threshold in
+SEVEN classifier sites across three packages - two values (250 in `ehp._is_ranged`,
+`rank._champion_is_melee`, `coaches/loadout_resolver`, `tools/hotfix_ranged_only_melee_loadouts`;
+350 in `burst`/`dps`) and three operators (`>`, `<`, `<=`). 173-roster scan: the ONLY champs
+in the 250 < ar <= 350 band are Rakan 300 + Lillia 325 (melee, wrongly ranged at 250) and Urgot
+350 (ranged, wrongly melee under burst strict `>`). Canonical rule, correct for all 173:
+**ranged iff base attackrange >= 350.0**. New leaf `agents/daemon_slayer/_melee_ranged.py`
+single-sources it; all 7 sites route through `attackrange_is_ranged()`.
+
+**Process win:** the dual suite caught 3 cross-package siblings (loadout_resolver, hotfix tool,
+gate test) the engine-package grep missed - the `<=` operator + ceiling-bump-to-350 made Urgot
+read melee. Fixed to the strict predicate. TDD: failing repro first; corrected two tests that
+pinned the old 250. No build/loadout backfill needed (no melee champ ever carried Runaan's).
+
+**Do NOT redo:** RM-123 is CLOSED. The split is now single-sourced - never re-introduce a
+second threshold or a `<=` boundary (it breaks Urgot at exactly 350). Upstream still do-not-refresh
+(ddragon 16.15.1 but meraki/cdragon 16.14). Next candidate: RM-124 (deterministic wave/cannon
+clock, Tier-1, no ENGINE bump; full teardown `docs/COMPETITOR_LIFT_2026-07-28.md`).
+
+---
+
 # 2026-07-29c - ROADMAP + BACKLOG reconciliation: relocated done/shipped items, kept fences.
 
 **Read-only-ish / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `50e621a7`.
@@ -49,49 +77,3 @@ CCR-01..CCR-119, triaged by 8 parallel agents, scored 1-10. `First-Pass.md` on d
 all 119 + ranked index. **NEXT: operator leaves `**!= =!**` notes in First-Pass.md, THEN
 Phase 2 (cull) runs.** Do NOT re-triage - Phase 1 is done. Continuity: memory
 `project_ccr_link_ingest`.
-
----
-
-# 2026-07-29a - Perseus Vault adopted; 5 new core modules lifted from cleared client plugins.
-
-**Operator session. Tier-1 throughout; NO engine, no ENGINE bump, no DS bounce, no Share.**
-`dc2b4e7a` `a454f76b` `543ed57c` `d0c5237f` `9a119161` `5b6bdbf2` `7bb033fd` `df92ffb7`.
-
-**Perseus Vault is LIVE** (`~/.perseus-vault/`, local, no key). 1202 entities, **1202
-embedded**. Wired via `.mcp.json` + SessionStart/SessionEnd hooks - all LOCAL and
-gitignored, so a fresh clone has NO wiring (same trap as the git hooks). Re-sync with
-`python tools/perseus_sync.py`. **mnemoverse and pathmode both REMOVED** (pathmode was
-registered at two sites, which is why its tools appeared twice).
-
-**Three traps measured during install - do not rediscover:** `status: healthy` is a LIE
-about coverage (a fresh ingest left 91 of 1197 embedded and still reported
-`semantic_recall: available` with zero warnings - only `embedded == active` proves it,
-which `--verify` asserts); `init` reports encryption while `entities.body_json` stays
-PLAINTEXT on disk, so encryption was dropped; `connect --hooks` writes a bash-ism
-(`$(basename "$PWD")`) on Windows.
-
-**Five new modules, 158 tests, all green:** `core/lcu_events.py` (WAMP push replacing
-poll), `core/sgp_client.py`, `core/meta_crawl.py`, `core/lcu_mastery.py`,
-`core/provider_cascade.py`, plus `tools/perseus_recall.py`. All re-implemented from
-protocol facts - NOTHING vendored.
-
-**A filed puzzle closed itself:** the 2026-07-05 probe recording
-`na-red.lol.sgp.pvp.net` 404 on match-history-query was hitting the COMMON host. SGP
-splits match-history from common; NA1 match-history is `usw2-red.pp.sgp.pvp.net`. A test
-pins them apart.
-
-**RECALL BEFORE BUILDING - I violated my own new rule and paid for it.** I "discovered"
-the ability-haste inertness mechanism by grep; `project_ds_ability_haste_measured_inert`
-already had it in more detail, and Perseus returns that memory at RANK 1. That is why
-`tools/perseus_recall.py` exists: raw recall is ~13.4k tokens per query, the projection
-is ~223 (98.3 pct smaller), because a mandatory step that expensive gets skipped.
-
-**Do NOT redo:** Perseus install/ingest is DONE. mnemoverse + pathmode are GONE (revoke
-the PATHMODE_API_KEY operator-side; removing config does not invalidate it). The license
-gate + third-party lift rule is in CLAUDE.md. newDodgeTracker was reviewed and NOT built
-from - GPL-3 with three credited contributors.
-
-**Next:** the ability-haste class is REOPENED against RM-39/RM-43 (operator decision) -
-**run the amplification gating experiment FIRST**; both candidate designs are moot if the
-ability path is still unreachable. DDragon moved to 16.15.1 but Meraki/cdragon have NOT,
-so a patch refresh now would pull a half-landed patch - wait.
