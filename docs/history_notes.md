@@ -119,6 +119,26 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-28n - The commit gate's ruff half was dead on the channel that matters, for three weeks.
+
+**Operator session (not a loop cycle). Tier-1, ENGINE-IMPACT NONE.** `15d07d3c` + `569dd364`. The filed question from `425fbb75`: why did `tools/precommit_gate.py` not block the net-new ruff UP031 that `afcbcf79` put in its OWN source.
+
+**The filed hypothesis was wrong and cheap to refute.** It was not "local ruff differs from the runner's" - local ruff 0.15.12 flags that exact line under the project `ruff.toml`, measured. The gate never asked it. It shelled to `sys.executable -m ruff`, and `.githooks/pre-commit` launches the gate through the `py` launcher, which on Legion resolves to the dep-less pythoncore runtime with NO ruff. rc=1, empty stdout, `findings = []`, pass. **Fail-open AND fail-silent.**
+
+**The gate runs on two channels with two different interpreters and the invocation was hardcoded for one at a time.** PreToolUse gets Python314 pythonw (owns ruff); the git hook gets the launcher. `ceb2f584` (2026-07-07) flipped launcher -> `sys.executable` to fix the first and silently broke the second - the AUTHORITATIVE one per CLAUDE.md, and the only one a headless bypass run gets. The stale comment above the call still described pre-`ceb2f584` behaviour, which is why it read as correct on every review since.
+
+**Fix:** `_ruff_candidates` / `_resolve_ruff` probe `--version` and take the first that answers. No ruff anywhere still exits 0 (blocking a fresh clone would wedge the loop; CI is the backstop) but now WRITES THE WARNING. Phase-1 repro went EXIT=0 -> EXIT=2.
+
+**Then CI went red on my fix, and both failures were mine and both were right.** `test_skip_condition_hygiene.py` classified my `requires_ruff` mark UNRESOLVED because it gated on a subprocess probe the resolver cannot see - re-gated on `find_spec` + `shutil.which`. `test_bare_py_ban.py` caught the launcher spelled before a script path in prose. **That second one paid for itself:** the launcher was in my candidate list as a fallback, and the launcher is precisely the dep-less runtime that caused the bug. Dropped; the Legion fallback is now the canonical absolute interpreter.
+
+**For next time:** neither guard is reachable from the /done section-0 gate (ruff + touched module + 3 hygiene suites). They are repo-wide tracked-surface guards in `tests/` that only the full run reaches. A tools/ or tests/ change with prose about interpreters should run `tests/test_bare_py_ban.py tests/test_skip_condition_hygiene.py` locally before pushing.
+
+**Do NOT redo:** the diagnosis is closed - do not re-open "local ruff differs from the runner". `tools/edit_lint_check.py` carries the same `sys.executable` assumption and was deliberately LEFT: it is PostToolUse-only under Python314 (correct there) and advisory, not blocking.
+
+**Live at wrap:** the gemini loop (pid 9380, run `eadf15e3`) is mid-cycle on R223 - its `docs/ORCHESTRATION_PLAN.md` row is unstaged and says `(fill sha)`. I pushed its two R223 commits along with mine; leave the plan row to it.
+
+---
+
 # 2026-07-28m - R222 RM-125. The tool I shipped in slice A had a bug, and slice B found it.
 
 **Cycle 29, gemini-loop. Tier-1. ENGINE-IMPACT NONE - no DS math, no schema, no served path, no `ENGINE_VERSION`, no `:8893` bounce, no RC restart.** HEAD `c7900b8c` -> `4ef1a805`. RC 13935 passed / 106 skipped / 1342 subtests, fresh.
