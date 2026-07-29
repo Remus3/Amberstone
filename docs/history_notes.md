@@ -119,6 +119,28 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-29b - Ability-haste reopen RE-CLOSED by gating experiment; link-ingest Phase 1 kicked off.
+
+**Read-only / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `e8c67f4b`.
+
+**Ability-haste class RE-CLOSED.** Operator reopened RM-39/RM-43 2026-07-29 (authored
+per-spell-coeff design, existing ids). Ran the mandated amplification gating experiment
+first. Since RM-39's L0 "0 calls" result, L1 shipped (ENGINE 1.222.0): with
+`apply_ad_axis_ability_damage` ON the first-order ability path IS now reachable (compute
+x1e6 -> item 3143 #1 for Aatrox + Ambessa). BUT driving the haste cooldown to ~0 under
+the same flag is BYTE-IDENTICAL - their spells score on the `measured>0` cast-rate branch,
+so `theoretical=1/cooldown` never fires. **Haste inert no matter how authored; both options
+moot; class closed.** Audit `ops/audit/RM39_RM43_haste_gating_2026-07-29.md`. Do NOT re-open
+without a NEW mechanism that changes which cast-rate branch these champs take.
+
+**Link-ingest Phase 1 (of 7) started** per `RC maybe.txt`. 119 MCP-marketplace links ->
+CCR-01..CCR-119, triaged by 8 parallel agents, scored 1-10. `First-Pass.md` on desktop =
+all 119 + ranked index. **NEXT: operator leaves `**!= =!**` notes in First-Pass.md, THEN
+Phase 2 (cull) runs.** Do NOT re-triage - Phase 1 is done. Continuity: memory
+`project_ccr_link_ingest`.
+
+---
+
 # 2026-07-29a - Perseus Vault adopted; 5 new core modules lifted from cleared client plugins.
 
 **Operator session. Tier-1 throughout; NO engine, no ENGINE bump, no DS bounce, no Share.**
