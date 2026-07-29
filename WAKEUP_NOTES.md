@@ -6,6 +6,30 @@
 
 ---
 
+# 2026-07-29c - ROADMAP + BACKLOG reconciliation: relocated done/shipped items, kept fences.
+
+**Read-only-ish / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `50e621a7`.
+
+Operator ask: check upstream, then move done/completed/shipped items out of the two live
+trackers. Upstream re-checked at start - NO drift (ddragon 16.15.1, meraki 25.15, cdragon
+16.14 ok, sentinel advanced). Two read-only Explore agents built a ground-truth-verified
+relocation plan (all cited SHAs/LEDGER numbers resolve; 0 UNVERIFIED).
+
+**BACKLOG.md 71350 -> 59699B:** removed 9 fully-shipped rows already in LEDGER (R129 XOR +
+superseded original, R67 Terminus SR + superseded original, draft-score, session-hygiene,
+playstyle-labels, overlay-HUD-microlifts, patch-impact); trimmed 3 KEEP-RESIDUAL rows to
+their open tails (boot-utility kite/poke, radar CHI-bands, R190 kit-pen d/e); trimmed 2
+do-not-re-pitch fences (champ-select brief FLIP, F1/F5) to thin pointers.
+
+**ROADMAP.md 73097 -> 72143B (under 80KB budget):** relocated the 2 remaining full-narrative
+closed RM-04 sub-bullets (RC-2 follow-on, A-27b Golden Spatula) to fences, keeping the
+base-id mirror trap + ID-SUFFIX-not-name lessons.
+
+**Decision logged:** RM-106b left in place - labelled OPEN, not relocated without operator
+call. CI docs-guards green. Do NOT re-relocate: ROADMAP was already pruned 4x, near its floor.
+
+---
+
 # 2026-07-29b - Ability-haste reopen RE-CLOSED by gating experiment; link-ingest Phase 1 kicked off.
 
 **Read-only / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `e8c67f4b`.
@@ -71,56 +95,3 @@ from - GPL-3 with three credited contributors.
 **run the amplification gating experiment FIRST**; both candidate designs are moot if the
 ability path is still unreachable. DDragon moved to 16.15.1 but Meraki/cdragon have NOT,
 so a patch refresh now would pull a half-landed patch - wait.
-
----
-
-# 2026-07-28p - RM-97 probed: the gap is real, "scores zero" was two-thirds wrong.
-
-**Headless loop cycle 32 (R225). Tier-1, ENGINE-IMPACT NONE.** `99af7bab`.
-A characterization pin over a filed-but-never-probed DS gap.
-
-**The spec held; two of its three clauses did not.** RM-97 says persistent pet
-damage is structurally unmodelled and that `ds.ability` "prices them at exactly
-zero". The first half is true. The second is true of the DAMAGE NUMERATOR only -
-`objdamage.py:79-83` credits SUMMON_DPS at 0.55 and `zonecontrol.py:73-77`
-credits SUMMON at 0.60, and both enumerate the identical champion list by name.
-The class is already credited on two non-damage axes.
-
-**And the class is not uniform.** 7 pet-bearing forms carry ZERO
-`attribute_kind == "damage"` blocks (Zyra P + W, Heimerdinger Q **both** turret
-forms - the brief assumed one, Ivern R, Yorick P, Yorick R). But 3 summon forms
-carry exactly one damage block and ARE credited: Malzahar W Void Swarm, Annie R
-Summon: Tibbers (the summon burst only), Elise W Volatile Spiderling (a one-shot
-explosion). **So the honest sentence is "no PERSISTENT-ENTITY uptime model", not
-"no summon ever scores"** - the second reads as an unbuilt feature, the first
-names the missing schema and explains why no scorer tweak reaches it.
-
-**The near-miss is the reusable half.** Yorick R's ONLY block is a mist-walker
-COUNT at `damage_blocks[0]`, and Malzahar W's index-0 block is a DURATION in
-seconds. Both are harmless for exactly one reason: `_select_blocks`
-(`ability_dps.py:459`) filters on `attribute_kind` BEFORE taking index 0. Drop
-that filter and a unit count and a duration score as magic damage.
-
-**Grep was 472 instances and 470 of them were prose.** The `summon` half is
-almost all SUMMONER-SPELL traffic; every pet-name hit is a docstring, comment or
-`source_quote`. The only two scoring sites in the entire 472 are the two
-registries above. A big grep count is not a big surface.
-
-**Pinned, not fixed:** `agents/daemon_slayer/tests/test_pet_summon_damage_uncredited_rm97.py`,
-12 tests / 27 subtests. Zyra L11/SR/30/30/no items: W dps 0.0 at rank 2
-(unlocked - the zero is the filter, not a lock), Q 9.147609147609147, E
-1.2968849332485697, R 1.0865999671969822; the P row is ABSENT not zero
-(`SPELL_KEYS` excludes it), so the pin asserts what was observed rather than
-what the plan expected. RM-97 stays SPEC-ONLY / OPEN; a fix is still a schema
-lift, deliberately not built.
-
-**Process lesson, and it cost the first full-suite run:** a test-only,
-ENGINE-IMPACT-NONE cycle STILL owes the DS Share sync. A new file under
-`agents/daemon_slayer/tests/` is a mirrored DS source, so
-`test_ds_share_sync_determinism.py` went red with `DRIFT (missing from
-Share/src)`. **The mirror obligation attaches to the PATH, not to whether any
-engine math moved.**
-
-**Gates:** 24082 passed / 106 skipped / 7070 subtests in 143.03s (`-n 8`, repo
-root). Verifier CONFIRM, adversarial - it mutation-checked two assertions for
-tautology and both survived.
