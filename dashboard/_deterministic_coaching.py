@@ -362,6 +362,13 @@ def _build_game_state(coach: dict, lc: dict | None, mode_key: str) -> dict:
     if isinstance(turret_events, list) and turret_events:
         gs["turret_events"] = turret_events
 
+    # RM-124: MinionsSpawning anchor for the deterministic wave/cannon clock
+    # (SR live event). Liveclient-only; absent -> omitted, wave_callout returns
+    # None so no callout is synthesized without a real anchor.
+    minion_events = lc.get("minion_events")
+    if isinstance(minion_events, list) and minion_events:
+        gs["minion_events"] = minion_events
+
     # RC2 P5.7 (WS4): neutral-objective kill events for the lost-objective macro
     # response. Liveclient-only (SR live events); absent -> omitted, the pure
     # macro_response handles the gap.
@@ -602,12 +609,18 @@ def _compute_uncached(gs: dict, mode_key: str, zoi: dict | None = None) -> dict:
     nxt = _next_build_item(gs.get("my_champion"), lower, item_count)
     next_name = nxt[0] if nxt else None
     next_cost = nxt[1] if nxt else None
+    # RM-124: the wave/cannon clock stays gated OFF (do-not-flip-blind) until
+    # the provisional cadence table is validated against one real game. Flip
+    # RC_WAVE_CALLOUT=1 to emit it live once validated.
+    _enable_wave = os.environ.get("RC_WAVE_CALLOUT", "0") == "1"
     callouts = next_callouts(
         lower, gt, lvl, item_count, max_n=3,
         gold=gold, next_item_name=next_name, next_item_cost=next_cost,
         inhib_events=gs.get("inhib_events"),
         turret_events=gs.get("turret_events"),
         objective_events=gs.get("objective_events"),
+        minion_events=gs.get("minion_events"),
+        enable_wave=_enable_wave,
     )
     if not isinstance(callouts, list):
         callouts = []

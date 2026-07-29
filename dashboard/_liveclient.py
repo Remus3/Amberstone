@@ -311,6 +311,24 @@ def liveclient_summary() -> dict:
         except Exception:  # noqa: BLE001
             inhib_events = []
         out["inhib_events"] = inhib_events
+        # RM-124: MinionsSpawning anchor for the deterministic wave/cannon clock.
+        # Live Client emits a single MinionsSpawning event at first-wave spawn
+        # with EventTime (s); we surface {at_s} and let core.event_callouts walk
+        # the wave cadence forward from it (never a hardcoded spawn time). Same
+        # top-level `events` block as inhib_events (see the :298-302 trap). One
+        # anchor is enough, but we keep every valid one; wave_callout takes the
+        # earliest. Isolated try so a malformed block degrades to [].
+        minion_events: list = []
+        try:
+            for ev in (d.get("events") or {}).get("Events") or []:
+                if not isinstance(ev, dict) or ev.get("EventName") != "MinionsSpawning":
+                    continue
+                t = ev.get("EventTime")
+                if isinstance(t, (int, float)) and not isinstance(t, bool):
+                    minion_events.append({"at_s": float(t)})
+        except Exception:  # noqa: BLE001
+            minion_events = []
+        out["minion_events"] = minion_events
         # Turret-down events for the instant base-siege callout
         # (core.event_callouts.structure_siege_callout). Same Live Client shape
         # as inhib_events: TurretKilled carries EventTime (s) + the structure
