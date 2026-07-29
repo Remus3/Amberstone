@@ -52,6 +52,25 @@ echo restart > restart_trigger.txt
 Verify: read `ops/runtime/health.json`, confirm new `pid`, `alive=true`, `last_reload_ok=true`.
 Hard fallback: `taskkill /F /PID <pid>` then `restart.bat`.
 
+## Third-party lift: license gate
+
+Before lifting ANYTHING from an external repo, check the license and say what
+it is. Two traps, both hit on 2026-07-28:
+
+- **A repo can contradict itself.** One reviewed plugin ships an MIT `LICENSE`
+  file while its `package.json` says `"license": "UNLICENSED", "private": true`.
+  Another ships GPL-3 in `LICENSE` and `"ISC"` in `package.json`. A single
+  glance at either source alone gives the wrong answer.
+- **The person who cleared it may not own it.** A repo crediting prior authors
+  ("first version by X", a per-file "BY @Y" header) has multiple copyright
+  holders, so its current maintainer cannot unilaterally relicense it.
+  Operator clearance from ONE party is not clearance for the work.
+
+GPL/copyleft stays DO-NOT-VENDOR regardless of verbal clearance - vendoring it
+would relicense RC itself. The always-legal path is the one RC already uses:
+re-implement the mechanic in RC's own code from the observed behaviour.
+Techniques and protocol facts are not copyrightable; source is.
+
 ## Memory recall (Perseus Vault)
 
 Local semantic-recall store over RC's own institutional knowledge. Exists because
@@ -244,7 +263,7 @@ Per-item completion ledger relocated to `docs/LEDGER.md` (append-only, newest-fi
 - **Keystone fixed + live-proven (item 87): ARAM Mayhem reports queueId 2400** (not 920). The phase-driven view-router was proven correct - do NOT re-pitch a router change. The `cs.is_aram` rendering path is item-87-preserved.
 - **The augment LCU/:2999 API is a confirmed dead-end** (no capture-free augment API mid-game). Augment-OCR into the coach is the proven path. Do NOT re-pitch an LCU augment API.
 - **`core/build_order.py` no-double-unique rule is engine-authoritative** - do NOT add a family map (a guard test fails on any family literal); the engine has 6 unique-passive families, not 3.
-- **Research-list triage CLOSED negatives (do NOT re-research):** every LCU client/codegen repo is inferior to RC's lockfile client; KebsCS is the reference catalog only (no license - do not vendor); the corpus has ZERO Arena/Cherry/Mayhem lobby-create payloads (a bespoke payload must come from live LCU capture); `.rofl` full packet-parse stays out of scope as a shipping feature (per-patch Layer-2 obfuscation re-RE cost; a patch-stable Layer-1 header/chunk spike is logged in BACKLOG - the old "subset of Match-V5" reason was corrected 2026-06-03 since the format does carry per-cast/windup telemetry); ML win-predictors / CV-minimap / voice / `riot-offline-mode` are all CLOSED; Pengu `league-client-mcp` = NO (thinner than RC's client).
+- **Research-list triage CLOSED negatives (do NOT re-research):** every LCU client/codegen repo is inferior to RC's lockfile client; the LCU/Riot-Client endpoint catalog is reference-only, and its use was operator-cleared VERBALLY on 2026-07-28 (the upstream repo still ships NO LICENSE file, so the clearance is not in writing - do not treat absence of a LICENSE as permission for any OTHER repo); the corpus has ZERO Arena/Cherry/Mayhem lobby-create payloads (a bespoke payload must come from live LCU capture); `.rofl` full packet-parse stays out of scope as a shipping feature (per-patch Layer-2 obfuscation re-RE cost; a patch-stable Layer-1 header/chunk spike is logged in BACKLOG - the old "subset of Match-V5" reason was corrected 2026-06-03 since the format does carry per-cast/windup telemetry); ML win-predictors / CV-minimap / voice / `riot-offline-mode` are all CLOSED; Pengu `league-client-mcp` = NO (thinner than RC's client).
 - **`core/smoothed_rates.py` is the shared Laplace/shrink primitive**; the s220 PGR 0-100 score is deferred to ROADMAP-S3 - do NOT pre-build it.
 - **Brawl mode is retired from champ-select** (s214); legacy brawl backend is left as deadcode for a separate cleanup pass.
 - **The Riot Personal key is valid and in-scope.** Match-V5 403/empty on event modes (ARAM Mayhem `gameMode=KIWI`, queue 2400) is EXPECTED, not a key fault; event-mode Match-V5 timeline placeholders are correct and permanent. **But Match-V5 is not the only route (MEASURED 2026-07-19, RM-106):** SGP, the client's own LCU-session-authenticated match-history backend, DOES return KIWI / queue-2400 games in Match-V5 shape. The statement above still stands; its CONSEQUENCE - that event-mode match data is unobtainable - does not.
