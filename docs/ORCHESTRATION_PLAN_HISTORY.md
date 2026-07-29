@@ -653,3 +653,98 @@ from the laning agreement sample as non-laning macro actions. So a wave clock wi
 not move the Lane A agreement number, and the RM-124 row says so explicitly. It was
 worth writing down because the adjacency is tempting and wrong: the wave work is
 its own capability, not a fix for the laning gate.
+
+## R221 findings - 2026-07-28 - both backend slices shipped, panel wiring still deferred
+
+**SHIPPED (commit 7121ca85):** the 4th Live Client event extract. `MinionsSpawning`
+now reaches `liveclient_summary` as `minion_spawn_events` -> `[{"spawn_at_s": float,
+"event_id": int | None}]` (`dashboard/_liveclient.py:387-402`), purely additive, the
+3 sibling extracts byte-unchanged, 11 TDD tests including the anti-regression pin
+that events nested under `gameData` are NOT read. Verifier CONFIRMED 7/7 claims.
+
+**SLICE 2 ALSO SHIPPED, late in the cycle.** `dashboard/_wave_timing.py` (pure spawn
+clock) + `tests/test_wave_timing.py` (42 tests / 801 subtests). Verifier CONFIRMED 9/9.
+The clock is fully observational: the interval is the MEDIAN of observed gaps, so one
+dropped event leaving a doubled gap is harmless, and `_DEFAULT_WAVE_INTERVAL_S` is
+reachable ONLY when no gap is measurable at all. No first-spawn constant exists in the
+module - which is the whole point, since three sources disagree on first wave
+(0:30 / 1:05 / 1:30).
+
+**A process scar worth keeping.** The orchestrator briefly deleted this slice's files
+mid-flight: the agent was still working, the module on disk was a self-labelled TDD RED
+stub, and a red `tests/test_wave_timing.py` collected 787 failures - which WOULD have
+poisoned the next cycle's baseline had it been committed. Deleting was right for a red
+stub and wrong for a live agent's workspace. The agent then reported that `ls`, `Glob`,
+and `git status` each showed the file missing while it was on disk; that was partly the
+documented stale-tool-result replay and partly the orchestrator genuinely removing it
+underneath. Two rules fall out: do not garbage-collect a slice's files until its agent
+has REPORTED, and confirm a file's absence with a real probe before acting on it.
+
+**THE SCOPE CORRECTION, which is the load-bearing finding of this cycle.** The R221
+directive said to key the compute to `wave_top` / `wave_mid` / `wave_bot`. **Refuse
+that.** Those three keys are lane wave-PUSH PERCENTAGES driving the
+FREEZE/TRADE/CRASH/DISENGAGE readout at `web/js/panels/next.js:27-47` - they ARE the
+live wave STATE machine that this feature's own parent, ROADMAP RM-124, declares
+data-blocked three ways (`:2999` exposes no minion entities, Overlay Platform M GEP gives
+`minionKills` counts only, Match-V5 has no minion event type). A spawn clock cannot
+know where a wave sits in a lane, so emitting those keys from it would be fabrication,
+and RC's standing rule is that a wrong precompute is worse than no precompute. Slice 2
+computes the TIMING subset ONLY: `wave_number`, `last_spawn_s`, `next_spawn_s`,
+`next_spawn_in_s`, `next_is_cannon`, `cannon_every_n_waves` - all honest-None on no
+data - and must carry an anti-fabrication test asserting the returned dict holds no
+`wave_top`/`wave_mid`/`wave_bot` key.
+
+**Two more directive defects worth teaching back.** (1) The instruction to append the
+new row "ABOVE the EXCLUDED section" would have BROKEN the guard the relocation exists
+to satisfy: `## EXCLUDED` sits at line ~104 near the HEAD, while
+`test_real_orchestration_plan_newest_row_survives` takes `rows[-1]` in FILE order, so
+a row placed there can never reach the tail window. The row went after R220's instead.
+(2) The serialization override claimed AGENT 1 and AGENT 2 shared files; measured, the
+two file sets were genuinely DISJOINT. Serializing anyway cost wall-clock and is what
+left slice 2 half-built when the cycle was cut.
+
+**Census - "documented-but-unread LiveClient event" (the defect class).** Emitted names
+per `dashboard/_state_cooldowns.py:14-18` plus the published Live Client list, checked
+against every name RC actually extracts (`grep -rn '"<Name>"' dashboard/ core/ --include=*.py`,
+test files excluded). READ after this cycle (7): `TurretKilled`, `InhibKilled`,
+`DragonKill`, `BaronKill`, `HeraldKill`, `ChampionKill`, and now `MinionsSpawning`.
+STILL UNREAD (8), all OUT-OF-SCOPE this slice with reasons: `GameStart` (the 3 repo
+hits are LCU gameflow PHASE strings at `dashboard/view_router_state.py:102,162,174`,
+NOT the Live Client event - the event itself is genuinely unread; low value, RC already
+has `gameTime`), `FirstBrick`, `Multikill`, `Ace`, `FirstBlood` (all tempo//morale
+signals with no current consumer), `InhibRespawningSoon` / `InhibRespawned` (partially
+subsumed - `core.event_callouts` already computes the 300s respawn ETA from
+`InhibKilled`, so reading these would be a cross-check, not new information), `GameEnd`
+(post-game path is Match-V5 / SGP, not `:2999`). The sibling producer-less RM-124 panel
+fields - `wave_state_now` / `wave_control` / `wave_freezes` / `cannon_cs_summary` /
+`gd_at_15` - remain OUT-OF-SCOPE and are NOT unblocked by this slice.
+
+**Live-gated: G2-45 filed.** Nobody has ever seen real `MinionsSpawning` bytes. Whether
+it REPEATS per wave or fires ONCE at first spawn decides whether slice 2 needs a
+gameTime-projection fallback, and the cannon-cadence table is unvalidated by
+construction (sources disagree 14:00 vs 15:00; a 2025 change moved first-cannon arrival
+2:05 -> 2:35). Do not wire the panel before that row closes.
+
+**Suite noise, diagnosed properly so it is not re-investigated as a regression.** Two
+tests failed locally and NEITHER is a regression - CI ran the full suite on 73d7b49e and
+went GREEN on all three workflows, which is the fact that settles it. They fail for two
+DIFFERENT reasons, and the distinction is the useful part:
+- `tests/snapshot_panels/test_overlay_view.py::test_ovx_hidden_suppresses_a_panel` -
+  genuine xdist/Playwright contention. Failed under `-n 8` on one run, passed under
+  `-n 8` on the next, passes serially. Feeds a hardcoded `"liveclient"` mock dict, so it
+  never touches `dashboard/_liveclient.py`.
+- `tests/test_loop_gemini_timeout.py::test_gemini_logs_stderr_head_on_empty` - **NOT
+  xdist.** It fails SERIALLY on Legion and still passes in CI. The difference is that
+  Legion was running the live loop controller during the run - this session IS the loop
+  executor - so the test is not isolated from a live controller process touching the same
+  module state. Expect this test to fail on Legion any time the loop is running and to be
+  green in CI and on a quiet box. Do not "fix" it by chasing the assertion; the test file
+  is byte-identical to baseline `1bbc377c` and this run touched zero files under
+  `ops/loop/`.
+
+**A tool-pipe warning, because it cost real time here.** An early serial re-run reported
+both tests PASSING; a later identical serial run failed one of them. That is the
+stale-tool-result replay CLAUDE.md documents, and the slice-2 agent independently hit the
+same thing (`ls` / `Glob` / `git status` all reporting a file missing while it was on
+disk). Treat a single green re-run as weak evidence when the pipe has already misbehaved
+in a session - CI on a pushed SHA is the ground truth that actually settled this.

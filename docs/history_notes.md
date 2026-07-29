@@ -119,6 +119,31 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-28k - R220 competitor lift. The directive's target was fenced, and the best find was ours.
+
+**Cycle 27, gemini-loop. Tier-0 docs-only. ENGINE-IMPACT NONE (repo + live DS both 1.262.0, no bounce, no Share sync).**
+
+**The directive named "Overlay App F or Aggregator B live-game overlay" and three places on disk say do not.** `ROADMAP.md` RM-01 retires the rotation by name; the R100 and 2026-07-16 blocks in `COMPETITOR_LIFT_INDEX.md` both declare the live-overlay family DRAINED (the second counting five passes); Overlay App F already has two teardowns in `docs/_archive/`. So the INTENT was kept and the TARGET rotated, which is what the drain notes themselves instruct. Replacement picked by search, not preference: six keyword probes across every prior `COMPETITOR_LIFT_*.md` returned zero hits for wave management, wave simulators, CS trainers, minion waves, freezing, slow pushing. Lane / wave / minion-economy had never been looked at.
+
+**Three premise corrections, all verified against files, and the first one matters beyond this cycle:**
+1. **The laning `hold` band ALREADY SHIPPED.** `core/precomputed_laning_coach.py:68-74` carries five labels, `laning_band()` at `:271-309` implements the precedence off `_HOLD_LOW`/`_BACK_OFF`/`_TRADE` (`:79-81`). Only the raw engine is still 4-band (`agents/daemon_slayer/matchup.py:184-206`). **The open Lane-A work is the FLIP, not the band.** Any brief still saying "the vocabulary lacks a hold band" is stale.
+2. **The Live Client emits `MinionsSpawning` and RC has never read it.** `dashboard/_state_cooldowns.py:18` names it; `:20-21` then passes an EMPTY event list because it wanted summoner-spell events that do not exist. Repo-wide grep returns that one comment.
+3. Corpus is 2966 matches, not 3005.
+
+**Deliverable `docs/COMPETITOR_LIFT_2026-07-28.md`, 7 findings. F1 filed as ROADMAP RM-124 (new, unbuilt):** a deterministic wave + cannon clock anchored on the live event - structurally `core/decision_detector.py:158-176` with a piecewise cadence - as a 4th event extract beside `dashboard/_liveclient.py:302-313` plus a pure `wave_callout()` beside `core/event_callouts.py:414`. Tier-1, no new data source, no key, no Claude, no schema lift, no ENGINE bump. **Its risk is real and is written into the row: three sources disagree on first-wave time (0:30 / 1:05 / 1:30) and the cannon breakpoint (14:00 / 15:00), and a 2025 change moved first-cannon arrival 2:05 -> 2:35** - anchor on the live `EventTime`, validate the cadence table in one real game before any flip. F4 CLOSED, data-blocked three ways (no minion entities on `:2999`, GEP gives kill counts only, Match-V5 has no minion event type) - do not re-pitch a live wave state machine.
+
+**The best finding was RC-internal and the HAVE column found it by accident: RC renders a complete wave feature nobody built.** `web/js/panels/next.js:16-83` is a finished 3-lane FREEZE/TRADE/CRASH/DISENGAGE readout whose only writers repo-wide are test fixtures (`scripts/rebuild_sim_fixtures.py:166,191,229`) - it has rendered the "-" sentinel in every live game ever played. Five more producer-less identifiers beside it (`wave_state_now`/`wave_control`/`wave_freezes`/`cannon_cs_summary`/`gd_at_15`), plus an ARAM tier-shift rule that is dead because its live call site passes `wave_pct=None`. **Durable lesson: a rendered surface with a plausible name is not evidence of a producer, and the fixtures that make it look alive in tests are exactly what hides that.**
+
+**Tempering note, in the RM-124 row so nobody oversells it:** `tools/hz_shadow_report.py:196-201` excludes crash/freeze/push from the laning agreement sample, so a wave clock will NOT move the Lane A number.
+
+**Honest negative:** there is no standalone wave-simulator product. Six search angles, three targets torn down properly instead of eight skimmed. Realistic yield of this category is two findings plus two negatives.
+
+**Gates (fresh, `-n 8 --dist loadfile`): DS 10100 passed / 5701 subtests; RC 13829 passed / 106 skipped / 522 subtests; 23929 total, 0 failed** - byte-identical to the R219 baseline, expected for docs-only. 0 non-ASCII across all touched docs. Plan tail-window protocol honored (R219 block relocated verbatim to `docs/ORCHESTRATION_PLAN_HISTORY.md`; newest row 9439 bytes from EOF vs the 16000 cap). ROADMAP 76513 / 81920.
+
+**NEXT:** RM-124 is a clean Tier-1 slice - the event extract, the pure callout, and one live game to validate the cadence before any flip.
+
+---
+
 # 2026-07-28j - R219 DS sweep. The directive's truth source does not contain the truth.
 
 Gemini-loop cycle 26. Full detail in `docs/LEDGER.md` 1098. Commits `1fb60109` +
