@@ -778,3 +778,24 @@ and zero CSS bytes, the ASCII phase is measured clean (0 non-ASCII in all three
 touched files) and the HIT-TARGETS question - does drag still actuate - is
 answered by the behavioural harness rather than by pixels. STRUCTURE, TYPOGRAPHY
 and HIERARCHY are confirm-unchanged by construction. Same standing debt as R223.
+
+**SELF-CORRECTION appended before wrap - the harness probe was wrong.** STEP 1 of
+the directive said to prefer a BEHAVIOURAL test if a JS-execution harness exists,
+falling back to a source-parsing guard only if none does. The probe grep returned
+`tests/snapshot_panels/*.py`; those hits were dismissed as unrelated and they were
+not. The repo HAS a node-subprocess harness, used in at least 5 tests
+(`tests/test_coach_choices_trigger_render.py`, `tests/snapshot_panels/test_xss_escaping.py`
+and siblings), which shell to `node --input-type=module -e` and import a web
+module's `_internals`. So the ad-hoc node probe this cycle improvised to measure
+the 12-vs-4 number was the repo's own committed idiom, and it belonged in the
+suite. Corrected in-run: `tests/test_overlay_drag_listener_leak_behavior.py` pins
+the bind count (RED 12 / GREEN 4), the handle's per-pass rebind (green both sides
+by design, so an over-broad latch that killed dragging is caught), and that
+`_installDrag` returns the SAME `begin` object across passes - the anti-desync
+property a bind-count assertion cannot see, measuring `beginIdentical: False` on
+the unfixed tree. The source-parsing guard is kept alongside it; it needs no node.
+
+**The carryable lesson is not about this file.** A NEGATIVE harness probe deserves
+the same verification as a positive claim. "The grep returned files I did not
+recognise" is not "no harness exists", and the error is comfortable to make
+precisely because the fallback is cheaper than the thing it replaces.
