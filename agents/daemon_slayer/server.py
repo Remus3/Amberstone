@@ -1119,6 +1119,9 @@ def _route_rank_bruiser(body: dict) -> dict:
     # the registry ONLY when the strength is > 0.0, so 0.0 does no lookup and
     # no arithmetic and is byte-identical to omitting the key.
     kit_conversion_strength = _opt_float(body, "kit_conversion_strength", 0.0)
+    # RM-118 (2026-07-29): the wielder HSP ITEM-amp seam (R60) reaches the
+    # bruiser ranker. Sibling of the /rank-tank wire (e075a221). DEFAULT-OFF.
+    assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -1162,6 +1165,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             target_current_hp_pct=target_current_hp_pct,
             apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
             kit_conversion_strength=kit_conversion_strength,
+            assume_hsp_amp=assume_hsp_amp,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))

@@ -25,7 +25,7 @@ def _mf_r_damage_block(snap):
 
 
 def test_engine_version_pinned():
-    assert ENGINE_VERSION == "1.264.0"
+    assert ENGINE_VERSION == "1.265.0"
 
 
 def test_guard_off_is_current_live_per_wave():

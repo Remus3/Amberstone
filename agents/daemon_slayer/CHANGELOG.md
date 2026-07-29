@@ -1331,6 +1331,28 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.265.0 (2026-07-29) - RM-118 the wielder HSP ITEM amp reaches the HYBRID
+(bruiser) RANKER - the remaining open half after the EHP-ranker wire in 1.264.0.
+`compute_hybrid` and `rank_items_by_hybrid` (`agents/daemon_slayer/hybrid.py`, a
+SEPARATE module from the EHP ranker) blend a DPS delta with an EHP delta from
+`compute_ehp`, and already forwarded the sibling shield seams (`apply_rune_hsp_amp`,
+`apply_spell_shield`, `apply_rune_shield_grants`) but not `assume_hsp_amp`. Threaded
+through all three gates: engine `compute_hybrid` + `rank_items_by_hybrid` (kwarg at
+END, forwarded to the baseline AND every candidate `compute_ehp`), route
+`_route_rank_bruiser` -> `POST /rank-bruiser` (parse + forward), client
+`core.daemon_slayer_client.rank_bruiser_for` (sig at END, emitted via
+`_emit_ehp_family_seams` only when True). DEFAULT-OFF and byte-identical OFF. As
+with the EHP half it is INERT unless a self-shield item (Sterak's Gage 3053,
+Immortal Shieldbow 6673) is in the build - the amp multiplies the ItemShield POOL,
+empty on the HSP pair alone - so it moves the bruiser `delta_ehp` (and thus the
+beta-weighted hybrid score / order) only for a shield-carrying candidate, the R194
+per-candidate shape not the RM-115 uniform-multiplier inert shape. No data table, no
+Riot key, no Claude. Same three-gate remedy as R194 slice A / the 1.264.0 EHP half.
+Pinned by `tests/test_rank_hybrid_hsp_amp_rm118.py` (11 tests, Sett L13 +
+Redemption/Mikael prefix). The 22 ledgered seams in
+`test_stranded_hsp_seam_r197.py::STRANDED_TODAY` remain the documented RM-118
+residual, not wired here.
+
 1.264.0 (2026-07-29) - RM-118 the wielder Heal-and-Shield-Power ITEM amp reaches
 the EHP RANKER. `assume_hsp_amp` shipped in 1.171.0 (R60) and R197 wired it onto
 the SCALAR lanes (`compute_ehp` / `/ehp` and `compute_sustain` / `/sustain`) plus
