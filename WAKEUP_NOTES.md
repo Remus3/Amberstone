@@ -6,6 +6,38 @@
 
 ---
 
+# 2026-07-29f - RM-118 wielder HSP item-amp reaches the EHP RANKER (ENGINE 1.263.0 -> 1.264.0).
+
+**Commit `e075a221`, pushed. Tier-2: engine ranker-signature change, ENGINE bump, Share resync, DS :8893 restarted -> 1.264.0.**
+Picked as the next headless-safe NOW item because RM-124 live validation (G2-39) was blocked - no SR
+game (LCU Offline, relay empty). Probe live state first every session.
+
+What shipped:
+- `assume_hsp_amp` (Redemption 3107 = 0.10 + Mikael 3222 = 0.12 wielder HSP amp) reached only the
+  SCALAR lanes (`/ehp`, `/sustain`) after R197. `rank_items_by_ehp` - where a tank item CHOICE is
+  decided - never accepted it. Threaded through all THREE gates (R194 slice A precedent): engine
+  `rank_items_by_ehp`, route `_route_rank_tank`, client `rank_tank_for`. DEFAULT-OFF, byte-identical
+  OFF. INERT unless a self-shield item (Sterak's 3053 / Shieldbow 6673 / Maw 3156) is in the build -
+  the amp scales the ItemShield pool, empty on the HSP pair alone (honest R197 finding).
+- TDD RED-first `tests/test_rank_ehp_hsp_amp_rm118.py` (11 tests). DS suite 10127 passed (10116 + 11).
+
+Two things worth not re-learning:
+- **RM-118's "three assumed-share seams parsed but never forwarded" sub-claim was STALE AT FILING** -
+  they were wired 2026-07-25 (`e6b7b238`), two days before the R197 filing said they were not. Verify
+  filed rows on disk; do not rebuild a filing's prose. (ROADMAP RM-118 UPDATE + LEDGER 1111.)
+- **A new DS test importing `core.daemon_slayer_client` MUST be added to `ds_share_sync.py`'s
+  exclusion list** or the pre-commit hook mirrors a collection-error into Share and breaks its
+  standalone suite. Bit me this session; caught + fixed in the amend. Memory
+  `reference_ds_share_sync_exclude_client_tests`.
+
+STILL OPEN in RM-118: the HYBRID ranker half (`compute_hybrid`/`rank_items_by_hybrid`, separate
+module - narrow-then-widen), + the 22 ledgered seams in `test_stranded_hsp_seam_r197.py::STRANDED_TODAY`.
+PRE-EXISTING (not mine, do not chase in an RM-118 context): the Share standalone
+`test_antitank_axis_score_invariance_r196` fails because `_REPO_ROOT=parents[3]=Share/src` has 5
+antitank consumers < the 15 the repo-wide scan expects - a mirror-subset structural failure at HEAD.
+
+---
+
 # 2026-07-29e - RM-124 deterministic wave/cannon clock BUILT + GATED-OFF (Tier-1, no engine bump).
 
 **Commits `266c1fac` (feature) + `965d829d` (tracker sync), both pushed + CI-green.**
@@ -56,27 +88,3 @@ pinned the old 250. No build/loadout backfill needed (no melee champ ever carrie
 second threshold or a `<=` boundary (it breaks Urgot at exactly 350). Upstream still do-not-refresh
 (ddragon 16.15.1 but meraki/cdragon 16.14). Next candidate: RM-124 (deterministic wave/cannon
 clock, Tier-1, no ENGINE bump; full teardown `docs/COMPETITOR_LIFT_2026-07-28.md`).
-
----
-
-# 2026-07-29c - ROADMAP + BACKLOG reconciliation: relocated done/shipped items, kept fences.
-
-**Read-only-ish / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `50e621a7`.
-
-Operator ask: check upstream, then move done/completed/shipped items out of the two live
-trackers. Upstream re-checked at start - NO drift (ddragon 16.15.1, meraki 25.15, cdragon
-16.14 ok, sentinel advanced). Two read-only Explore agents built a ground-truth-verified
-relocation plan (all cited SHAs/LEDGER numbers resolve; 0 UNVERIFIED).
-
-**BACKLOG.md 71350 -> 59699B:** removed 9 fully-shipped rows already in LEDGER (R129 XOR +
-superseded original, R67 Terminus SR + superseded original, draft-score, session-hygiene,
-playstyle-labels, overlay-HUD-microlifts, patch-impact); trimmed 3 KEEP-RESIDUAL rows to
-their open tails (boot-utility kite/poke, radar CHI-bands, R190 kit-pen d/e); trimmed 2
-do-not-re-pitch fences (champ-select brief FLIP, F1/F5) to thin pointers.
-
-**ROADMAP.md 73097 -> 72143B (under 80KB budget):** relocated the 2 remaining full-narrative
-closed RM-04 sub-bullets (RC-2 follow-on, A-27b Golden Spatula) to fences, keeping the
-base-id mirror trap + ID-SUFFIX-not-name lessons.
-
-**Decision logged:** RM-106b left in place - labelled OPEN, not relocated without operator
-call. CI docs-guards green. Do NOT re-relocate: ROADMAP was already pruned 4x, near its floor.
