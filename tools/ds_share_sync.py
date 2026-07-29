@@ -188,6 +188,13 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # the (route, seam) pair is expressible through the HOST client, so the
     # core.daemon_slayer_client import is its subject, not an accident.
     "test_r194_sustain_ranker_seam.py",
+    # -- RM-118 (ENGINE 1.264.0, 2026-07-29): the RANKER lane of the wielder HSP
+    # item amp. Exact same class as the R194 sibling above - it asserts the
+    # ('/rank-tank', 'assume_hsp_amp') pair is expressible through the HOST client
+    # (rank_tank_for) and imports core.daemon_slayer_client plus the per-route
+    # reachability helper at module level, so the import is its subject, not an
+    # accident. Host-only; the shipped package is the engine, not RC's client.
+    "test_rank_ehp_hsp_amp_rm118.py",
     # The behavioural half of the same drain: it drives the HOST client against
     # the live engine to prove each EHP-family seam actually does something.
     # Host-only for the same reason as its two siblings - the shipped package is
