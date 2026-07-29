@@ -442,6 +442,119 @@ def recall_callout(
     }
 
 
+# ---------------------------------------------------------------------------
+# RM-124 deterministic wave / cannon clock.
+# ---------------------------------------------------------------------------
+# The clock is arithmetic over the wave cadence, ANCHORED on the live
+# MinionsSpawning EventTime (the first-wave spawn) - never a hardcoded spawn
+# time. Sources disagree on the exact first-wave time (0:30 / 1:05 / 1:30) and
+# on the cannon-cadence breakpoint (14:00 vs 15:00), and a 2025 change moved
+# first-cannon arrival 2:05 -> 2:35; anchoring on the observed event sidesteps
+# the first-wave disagreement entirely. The breakpoint + interval constants
+# below are the wiki.leagueoflegends.com/en-us/Minion values and remain
+# PROVISIONAL until validated against one real game - which is exactly why the
+# live flip is gated OFF (next_callouts enable_wave defaults False).
+_WAVE_KIND = "wave"
+
+# Modes with a laning wave cadence. Summoner's Rift only (ARAM is a single
+# perpetual shove, Arena has no minions).
+_WAVE_MODES: frozenset[str] = frozenset({"sr"})
+
+# Wave spawn interval by the wave's own spawn time (game seconds). 30s until
+# 14:00, 25s until 30:00, 20s after.
+_WAVE_BRK1_S = 840.0    # 14:00 - interval tightens 30 -> 25
+_WAVE_BRK2_S = 1800.0   # 30:00 - interval tightens 25 -> 20
+_WAVE_INTERVAL_1_S = 30.0
+_WAVE_INTERVAL_2_S = 25.0
+_WAVE_INTERVAL_3_S = 20.0
+
+# Cannon (siege) minion cadence by the spawning wave's time. Before 14:00 the
+# cannon rides every 3rd wave (first cannon = wave index 3); 14:00-25:00 every
+# 2nd wave; after 25:00 every wave. Index is 1-based from the anchor wave.
+_CANNON_BRK_EVERY2_S = 840.0    # 14:00 - every 3rd -> every 2nd
+_CANNON_BRK_EVERY1_S = 1500.0   # 25:00 - every 2nd -> every wave
+
+# Bounded forward scan so the pure function can never loop unbounded on a
+# malformed clock. 400 waves is well past any real game length.
+_WAVE_SCAN_MAX = 400
+
+
+def _wave_interval_s(spawn_time_s: float) -> float:
+    """Seconds to the next wave, keyed on THIS wave's spawn time."""
+    if spawn_time_s < _WAVE_BRK1_S:
+        return _WAVE_INTERVAL_1_S
+    if spawn_time_s < _WAVE_BRK2_S:
+        return _WAVE_INTERVAL_2_S
+    return _WAVE_INTERVAL_3_S
+
+
+def _is_cannon_wave(index: int, spawn_time_s: float) -> bool:
+    """Whether the 1-based wave ``index`` spawning at ``spawn_time_s`` carries
+    a cannon (siege) minion. Provisional cadence - see the module note."""
+    if spawn_time_s >= _CANNON_BRK_EVERY1_S:
+        return True
+    if spawn_time_s >= _CANNON_BRK_EVERY2_S:
+        return index % 2 == 0
+    return index % 3 == 0
+
+
+def _wave_anchor_s(minion_events: object) -> Optional[float]:
+    """Earliest MinionsSpawning EventTime from the slim envelope, or None.
+
+    Each event is ``{"at_s": <EventTime seconds>}``. Fail-soft: any non-numeric
+    / bool / missing value is skipped; an empty or garbage list yields None so
+    no callout is ever synthesized without a real anchor.
+    """
+    if not isinstance(minion_events, list):
+        return None
+    best: Optional[float] = None
+    for ev in minion_events:
+        if not isinstance(ev, dict):
+            continue
+        t = ev.get("at_s")
+        if isinstance(t, bool) or not isinstance(t, (int, float)):
+            continue
+        ft = float(t)
+        if best is None or ft < best:
+            best = ft
+    return best
+
+
+def wave_callout(
+    game_time_s: object,
+    minion_events: object,
+) -> Optional[dict]:
+    """Return a 'next cannon wave' callout, or None.
+
+    Pure + fail-soft. Anchors on the earliest MinionsSpawning EventTime in
+    ``minion_events`` and walks the wave cadence forward to the next cannon
+    (siege) wave at or after ``game_time_s``, returning ``{tag, line, eta_s,
+    kind}`` shaped like recall_callout. Returns None when there is no valid
+    anchor or the clock inputs are non-numeric - a wave time is NEVER
+    synthesized from a constant.
+    """
+    if isinstance(game_time_s, bool) or not isinstance(game_time_s, (int, float)):
+        return None
+    anchor = _wave_anchor_s(minion_events)
+    if anchor is None:
+        return None
+    gt = float(game_time_s)
+
+    # Walk waves forward from the anchor; first cannon wave whose spawn time is
+    # at/after now is the answer.
+    spawn = anchor
+    for index in range(1, _WAVE_SCAN_MAX + 1):
+        if spawn >= gt and _is_cannon_wave(index, spawn):
+            return {
+                "tag": _WAVE_KIND,
+                "line": "Cannon wave incoming - match the push",
+                "eta_s": round(spawn - gt, 3),
+                "kind": _WAVE_KIND,
+            }
+        spawn += _wave_interval_s(spawn)
+    return None
+
+
 def _inhib_lane(name: object) -> str:
     """Parse the lane from a Live Client inhibitor structure name.
 
@@ -779,6 +892,8 @@ def next_callouts(
     inhib_events: object = None,
     turret_events: object = None,
     objective_events: object = None,
+    minion_events: object = None,
+    enable_wave: bool = False,
 ) -> list[dict]:
     """Return up to ``max_n`` upcoming/active milestone callouts.
 
@@ -804,7 +919,7 @@ def next_callouts(
 
     Returns:
         list of dicts ``{tag, line, eta_s, kind}`` where:
-          - kind in {objective, level_spike, item_spike, recall, epic_buff}
+          - kind in {objective, level_spike, item_spike, recall, epic_buff, wave}
           - eta_s is seconds-to-event; <= 0 means active/just-happened;
             None means the ETA is not deterministic (level/item spikes).
         Sorted active-first, then ascending ETA, None-ETA last.
@@ -835,6 +950,13 @@ def next_callouts(
         callouts.extend(inhibitor_callouts(inhib_events, gt))
         # Epic-buff (Baron/Elder) expiry countdowns - SR-only neutral objectives.
         callouts.extend(epic_buff_callouts(objective_events, gt))
+        # RM-124 deterministic wave / cannon clock. SR-only, and additionally
+        # gated OFF by default (enable_wave) until the provisional cadence table
+        # is validated against one real game - a do-not-flip-blind live number.
+        if enable_wave and m in _WAVE_MODES:
+            wave = wave_callout(gt, minion_events)
+            if wave is not None:
+                callouts.append(wave)
     # Instant base-siege callout (active, eta_s=0) - SR + ARAM, both have lane
     # structures. Fires for ~_SIEGE_RECENCY_S after a turret/inhib falls so the
     # no-LLM bridge is on-screen before the Haiku coach tick lands.
