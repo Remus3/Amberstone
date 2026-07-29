@@ -212,6 +212,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tools/macro_response_shadow_report.py` | RC2-P5.7 (WS4) macro-response register flip-readiness report over the macro shadow log |
 | `tools/objective_playbook_shadow_report.py` | RC2-P5.5 (WS3) objective-playbook flip-readiness report over the objective shadow log |
 | `tools/ocr_shadow_report.py` | OCR-vs-Sonnet shadow agreement report (Lane E OCR-only flip gate) |
+| `tools/perseus_recall.py` | compact projection over Perseus Vault recall |
 | `tools/rc_facts.py` | live RC health + topology probe |
 | `tools/unresolved_token_scan.py` | RM-108 unresolved-template-token detector over vendored feeds |
 | `tools/upstream_drift_check.py` | daily upstream content-drift detector (ddragon / meraki / cdragon) |
