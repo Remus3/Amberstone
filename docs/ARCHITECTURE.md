@@ -157,6 +157,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/laning_cv_overrides.py` | RC2-P5.1 CV-driven laning verdict overrides (vision_state) |
 | `core/laning_scenario_precompute.py` | Lane A laning-scenario precompute (matchup-engine table) |
 | `core/lcu_events.py` | LCU WAMP event subscription - push replacement for endpoint polling |
+| `core/lcu_mastery.py` | key-free champion mastery for any PUUID via the LCU |
 | `core/lcu_pool.py` | pooled loopback HTTPS reuse + min-interval guard (RC2 P6.4 port-safety) |
 | `core/lcu_ranked.py` | LCU ranked-stats read for the rank-identity header |
 | `core/log_setup.py` | log init [FROZEN] |
