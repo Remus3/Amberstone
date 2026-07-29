@@ -119,6 +119,30 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-29c - ROADMAP + BACKLOG reconciliation: relocated done/shipped items, kept fences.
+
+**Read-only-ish / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `50e621a7`.
+
+Operator ask: check upstream, then move done/completed/shipped items out of the two live
+trackers. Upstream re-checked at start - NO drift (ddragon 16.15.1, meraki 25.15, cdragon
+16.14 ok, sentinel advanced). Two read-only Explore agents built a ground-truth-verified
+relocation plan (all cited SHAs/LEDGER numbers resolve; 0 UNVERIFIED).
+
+**BACKLOG.md 71350 -> 59699B:** removed 9 fully-shipped rows already in LEDGER (R129 XOR +
+superseded original, R67 Terminus SR + superseded original, draft-score, session-hygiene,
+playstyle-labels, overlay-HUD-microlifts, patch-impact); trimmed 3 KEEP-RESIDUAL rows to
+their open tails (boot-utility kite/poke, radar CHI-bands, R190 kit-pen d/e); trimmed 2
+do-not-re-pitch fences (champ-select brief FLIP, F1/F5) to thin pointers.
+
+**ROADMAP.md 73097 -> 72143B (under 80KB budget):** relocated the 2 remaining full-narrative
+closed RM-04 sub-bullets (RC-2 follow-on, A-27b Golden Spatula) to fences, keeping the
+base-id mirror trap + ID-SUFFIX-not-name lessons.
+
+**Decision logged:** RM-106b left in place - labelled OPEN, not relocated without operator
+call. CI docs-guards green. Do NOT re-relocate: ROADMAP was already pruned 4x, near its floor.
+
+---
+
 # 2026-07-29b - Ability-haste reopen RE-CLOSED by gating experiment; link-ingest Phase 1 kicked off.
 
 **Read-only / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `e8c67f4b`.
