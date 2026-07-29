@@ -195,6 +195,13 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # reachability helper at module level, so the import is its subject, not an
     # accident. Host-only; the shipped package is the engine, not RC's client.
     "test_rank_ehp_hsp_amp_rm118.py",
+    # -- RM-118 (ENGINE 1.265.0, 2026-07-29): the HYBRID (bruiser) ranker half of
+    # the same wielder HSP item-amp wire. Asserts the ('/rank-bruiser',
+    # 'assume_hsp_amp') pair is expressible through the HOST client
+    # (rank_bruiser_for) and imports core.daemon_slayer_client plus the per-route
+    # reachability helper at module level - the import is its subject, not an
+    # accident. Host-only, same reason as its EHP-ranker sibling above.
+    "test_rank_hybrid_hsp_amp_rm118.py",
     # The behavioural half of the same drain: it drives the HOST client against
     # the live engine to prove each EHP-family seam actually does something.
     # Host-only for the same reason as its two siblings - the shipped package is
