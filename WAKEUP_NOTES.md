@@ -6,6 +6,28 @@
 
 ---
 
+# 2026-07-29b - Ability-haste reopen RE-CLOSED by gating experiment; link-ingest Phase 1 kicked off.
+
+**Read-only / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `e8c67f4b`.
+
+**Ability-haste class RE-CLOSED.** Operator reopened RM-39/RM-43 2026-07-29 (authored
+per-spell-coeff design, existing ids). Ran the mandated amplification gating experiment
+first. Since RM-39's L0 "0 calls" result, L1 shipped (ENGINE 1.222.0): with
+`apply_ad_axis_ability_damage` ON the first-order ability path IS now reachable (compute
+x1e6 -> item 3143 #1 for Aatrox + Ambessa). BUT driving the haste cooldown to ~0 under
+the same flag is BYTE-IDENTICAL - their spells score on the `measured>0` cast-rate branch,
+so `theoretical=1/cooldown` never fires. **Haste inert no matter how authored; both options
+moot; class closed.** Audit `ops/audit/RM39_RM43_haste_gating_2026-07-29.md`. Do NOT re-open
+without a NEW mechanism that changes which cast-rate branch these champs take.
+
+**Link-ingest Phase 1 (of 7) started** per `RC maybe.txt`. 119 MCP-marketplace links ->
+CCR-01..CCR-119, triaged by 8 parallel agents, scored 1-10. `First-Pass.md` on desktop =
+all 119 + ranked index. **NEXT: operator leaves `**!= =!**` notes in First-Pass.md, THEN
+Phase 2 (cull) runs.** Do NOT re-triage - Phase 1 is done. Continuity: memory
+`project_ccr_link_ingest`.
+
+---
+
 # 2026-07-29a - Perseus Vault adopted; 5 new core modules lifted from cleared client plugins.
 
 **Operator session. Tier-1 throughout; NO engine, no ENGINE bump, no DS bounce, no Share.**
@@ -102,49 +124,3 @@ engine math moved.**
 **Gates:** 24082 passed / 106 skipped / 7070 subtests in 143.03s (`-n 8`, repo
 root). Verifier CONFIRM, adversarial - it mutation-checked two assertions for
 tautology and both survived.
-
----
-
-# 2026-07-28o - RM-126 fixed, and the obvious fix would have been wrong.
-
-**Headless loop cycle 31 (R224). Tier-1, ENGINE-IMPACT NONE.** `65beb575`. The
-pointer-listener leak R223 filed but did not fix.
-
-**The bug was exactly as filed.** `_placeAll` re-runs `_makeHandle` every repaint;
-its only guard asked "does a `.ovx-handle` child exist"; every renderer that
-rebuilds its mount destroys that child; so both el-level binds re-ran on the same
-surviving element, forever.
-
-**The ROADMAP row prescribed "attach once per element" and that alone is a trap.**
-`_installDrag` returns a `begin` closure that gets bound to the `.ovx-handle`
-child, and that child is LEGITIMATELY recreated each repaint. Early-return before
-the binds but hand back a FRESH `begin` and you get code that passes any "bound
-exactly once" assertion and is broken - the surviving el-level listeners close
-over the FIRST call's drag state while the new handle drives a second, unobserved
-copy. Leak traded for silent desync. Shipped fix stores `begin` on the element and
-returns the STORED one, plus a separate `el.dataset.ovxBodyDrag` latch for the body
-`pointerdown`, placed AFTER the handle bind so the fresh handle keeps rebinding.
-
-**The named UI harness did not exist, so I measured instead of skipping.** The
-directive routed validation through "the ui_recon Playwright harness + :8810
-static preview" - neither is on disk. But node v24.15.0 is installed,
-`overlay_layout.js` has ZERO imports and exports `_makeHandle` through
-`_internals`, so it loads under a stubbed DOM. Three passes with the handle child
-dropped between them: **12 el-level binds on baseline `08c8aade`, 4 on the fixed
-tree**, handle rebinding 3x on both sides. The leak measured and the fix measured.
-Worth remembering that a "no harness" directive step is often a 20-line node
-script away from a real answer.
-
-**The reusable lesson from the enumeration.** 19 `addEventListener` sites, 4
-defective, 15 clean, 0 new. `_ensureLauncher` is re-entered by the same observer
-and by `resetOverlayLayout` yet never leaked, because it early-returns on
-`querySelector("#w-launcher")` - it asks whether the HOST exists, not whether a
-CHILD of the host exists. **The defect class is not "unguarded listener attach",
-it is "guarded on a child's existence when the listener's host is the parent".**
-That is the grep for next time.
-
-**Gates:** DS 10100 / 5701 subtests. RC 13968 / 106 skipped / 1342 subtests. First
-RC run was 1 failed - the `_LIVE_HALF_DIGEST` pin firing by design on a LIVE web
-byte; re-stamped after the two-tree diff showed 1 of 165 web/ sources changed, then
-re-run clean. **OWED:** overlay visual PNG (zero markup/CSS bytes changed), same
-standing debt as R223.
