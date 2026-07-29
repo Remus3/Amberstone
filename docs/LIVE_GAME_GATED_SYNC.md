@@ -526,6 +526,15 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 
 ### GATE 2 singles
 
+- **G2-39** (RM-124, built 2026-07-29 `266c1fac`, gated OFF) Validate the deterministic wave/cannon
+  clock cadence before the flip. The code ships (`core.event_callouts.wave_callout` + `minion_events`
+  transport) but `enable_wave` defaults False; the dashboard flips it only on env `RC_WAVE_CALLOUT=1`.
+  The interval + cannon-cadence constants are PROVISIONAL (sources disagree on the 14:00 vs 15:00
+  breakpoint; 2025 moved first cannon 2:05 -> 2:35). CHECK: in one practice/real SR game, confirm (a)
+  `liveclient.minion_events` carries a single `{at_s}` at first-wave spawn, and (b) with
+  `RC_WAVE_CALLOUT=1` the "Cannon wave incoming" chip ETA counts down to the ACTUAL observed cannon
+  arrivals (first cannon ~wave 3, then the every-2nd/every-1 tightening past 14/25 min). Correct the
+  constants against reality if they miss, THEN flip the env on by default. SOURCE: ROADMAP RM-124.
 - **G2-36** (was B1) Build-chooser pushes correct runes/items/spells MID-GAME to LCU (3-variant +
   Experimental row). RENDER + generic-build path confirmed 2026-07-04 (Zilean support); the mid-game
   LCU PUSH LOG LINE is still owed - no push line captured in any drain. SOURCE: LEDGER 779.
