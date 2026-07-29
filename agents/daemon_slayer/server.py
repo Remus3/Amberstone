@@ -833,6 +833,11 @@ def _route_rank_tank(body: dict) -> dict:
             "item_caster_hp_proc_strength: must be >= 0.0, got "
             f"{item_caster_hp_proc_strength!r}",
         )
+    # RM-118 (2026-07-29): the wielder HSP ITEM-amp on the RANKER lane. The
+    # scalar /ehp + /sustain routes have parsed this since R197; this is where it
+    # can change an item CHOICE. Plain DEFAULT-OFF (the engine ranker defaults it
+    # False too), so an absent key is byte-identical.
+    assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
     # 2026-07-25: the three ASSUMED-INCOMING-SHARE seams. UNLIKE every other seam
     # on this route these ship DEFAULT-ON in ``compute_ehp`` (a champion-blind 0.5
     # incoming crit / basic-attack share), so the route needs an OFF switch, not
@@ -896,6 +901,7 @@ def _route_rank_tank(body: dict) -> dict:
             health_coupling_strength=health_coupling_strength,
             apply_item_caster_hp_proc=apply_item_caster_hp_proc,
             item_caster_hp_proc_strength=item_caster_hp_proc_strength,
+            assume_hsp_amp=assume_hsp_amp,
             **assumed_share_kwargs,
         )
     except KeyError as e:
