@@ -462,7 +462,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """
 
     def test_engine_version_pin(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.263.0")
+        self.assertEqual(ENGINE_VERSION, "1.264.0")
 
 
 # ---------------- 5. AsciiHygieneTests ----------------

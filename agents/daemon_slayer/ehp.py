@@ -3221,6 +3221,18 @@ def rank_items_by_ehp(
     # no-op.
     apply_item_caster_hp_proc: bool = False,
     item_caster_hp_proc_strength: float = 0.0,
+    # RM-118 (2026-07-29): the wielder Heal-and-Shield-Power ITEM amp, forwarded
+    # verbatim to BOTH the baseline and every candidate ``compute_ehp`` call.
+    # Appended at END per the no-mid-signature-insert convention. ``compute_ehp``
+    # has carried it since ENGINE 1.171.0 (R60) and R197 wired it onto the SCALAR
+    # /ehp + /sustain lanes; this is the RANKER lane, where item choice is
+    # actually decided. DEFAULT-OFF and byte-identical OFF. Even ON it is INERT
+    # unless a self-shield item (Sterak's / Shieldbow / Maw) is in the baseline or
+    # a candidate build - the amp multiplies the ItemShield POOL, which is empty
+    # on the HSP pair alone (the honest R197 finding). So it moves ordering only
+    # for a candidate that carries its own shield, which is the R194 per-candidate
+    # shape, not the RM-115 uniform-multiplier inert shape.
+    assume_hsp_amp: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -3435,6 +3447,7 @@ def rank_items_by_ehp(
         # Forwarding only the candidate side would compare an armed candidate
         # against a disarmed baseline and manufacture the whole delta.
         assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
+        assume_hsp_amp=assume_hsp_amp,
     )
 
     # RM-87 / row A-18 (2026-07-25): resolve the resist -> damage coupling ONCE.
@@ -3615,6 +3628,7 @@ def rank_items_by_ehp(
                 assume_item_aa_dr=assume_item_aa_dr,
                 assume_item_enemy_as_slow=assume_item_enemy_as_slow,
                 assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
+                assume_hsp_amp=assume_hsp_amp,
             )
         except (KeyError, ValueError):
             continue
