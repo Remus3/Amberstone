@@ -239,8 +239,8 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
                 shared + _RM87_TAIL + _A1250_TAIL + _R194A_TAIL + _RM91_TAIL
                 + _RM91T2_TAIL + _RM118_TAIL,
             ),
-            ((compute_hybrid,), hybrid_shared),
-            ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL),
+            ((compute_hybrid,), hybrid_shared + _RM118_TAIL),
+            ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL + _RM118_TAIL),
         )
         for fns, expected in cases:
             for fn in fns:
