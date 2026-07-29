@@ -151,6 +151,28 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   the RM-86 L2 plan: a pet-damage term is a numerator the scorer does not have, so
   no monotone-lowering L1 gate can reach it** - same structural verdict already
   recorded for RM-91 and RM-92.
+  **PROBED ON DISK 2026-07-28 (R225) - the spec HOLDS, with one correction and one
+  measured nuance.** Correction: the "prices them at exactly ZERO" phrasing is right
+  for the numerator but wrong as a blanket claim - two NON-damage axes DO credit the
+  class today, `objdamage.py:79-83` SUMMON_DPS 0.55 and `zonecontrol.py:73-77`
+  SUMMON 0.60, both of which name Zyra plants / Heimerdinger turrets / Yorick ghouls
+  + Maiden / Malzahar voidlings / Annie Tibbers / Elise spiders / Ivern Daisy
+  explicitly. The hole is the DAMAGE numerator only. Nuance: the class splits in two.
+  Pet-bearing forms with ZERO `attribute_kind == "damage"` blocks (measured, 7 forms):
+  Zyra P Garden of Thorns, Zyra W Rampant Growth, Heimerdinger Q both forms
+  (H-28G Evolution Turret + H-28Q Apex Turret), Ivern R Daisy!, Yorick P Shepherd of
+  Souls, and Yorick R Eulogy of the Isles whose single block is `("Mist Walkers",
+  "other")` - a COUNT, correctly excluded by the `attribute_kind` filter at
+  `abilities.py:274` / `ability_dps.py:459`. Against that, three summon forms DO carry
+  exactly one damage block and are credited: Malzahar W Void Swarm, Annie R Summon:
+  Tibbers (the summon burst only), Elise W Volatile Spiderling (a one-shot explosion).
+  So the accurate statement is "no PERSISTENT-ENTITY uptime model", NOT "no summon
+  ever scores". Engine measurement, Zyra level 11 / SR / armor 30 / MR 30 / no items:
+  per_spell W dps 0.0, Q 9.147609147609147, E 1.2968849332485697, R 1.0865999671969822,
+  total 11.5310940480547; the P row is ABSENT rather than zero because `SPELL_KEYS`
+  (`ability_dps.py:209`) is `("Q","W","E","R")`. Pinned by
+  `agents/daemon_slayer/tests/test_pet_summon_damage_uncredited_rm97.py` (12 tests /
+  27 subtests). Still SPEC-ONLY - no engine math shipped; a fix remains a schema lift.
 - **RM-98 (ALLOCATED 2026-07-19, NOT a champion GAP) - the AD-axis ability term
   sums two rates that are on DIFFERENT TIME BASES.** Surfaced by the RM-39/RM-43
   L2 build (ENGINE 1.223.0), not by the alphabetical sweep, so it carries no
