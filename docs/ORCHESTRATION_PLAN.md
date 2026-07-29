@@ -679,6 +679,7 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 | R221 | live-wave-clock | MinionsSpawning extract (`dashboard/_liveclient.py:387-402`, 11 tests) + `dashboard/_wave_timing.py` pure spawn clock (42 tests / 801 subtests). RM-124 F1 backend, BOTH slices shipped, verifier CONFIRM 7/7 then 9/9. **The directive's wave_top/wave_mid/wave_bot target was REFUSED as fabrication** - those are the lane push-percentage state machine RM-124 declares data-blocked; the module ships the TIMING subset only, with an anti-fabrication test pinning the key set. Panel wiring still deferred behind live-gate G2-45 (nobody has seen real MinionsSpawning bytes; the cannon-cadence table is unvalidated). ENGINE-IMPACT NONE. | WIP | 7121ca85 + `<this commit>` |
 | R222 | web-ascii-comment-tokeniser | DIRECTOR REFILL 2026-07-28, cycle 29. RM-125 web/ comment-line non-ASCII residue. ENGINE-IMPACT NONE - no DS math, no served path, no ENGINE_VERSION, no restart. **The directive's own `[UNVERIFIED]` premise was re-measured on disk before any dispatch and it HELD**: 3153 non-ASCII chars across 31 `.js`/`.css`/`.html` files (ROADMAP prose said 3154 - off by one), `web/js/main.js` 1471, `input_activity.css` 224, `right_now.js` 216; census `U+2500` x2662, `U+2192` x167, `U+00B7` x135. `tools/p3_ascii_sweep.py` re-read and confirmed `ast`-based Python-only, so it has never looked at web/. **The directive's 4-agent parallel block was REFUSED and the cycle ran SERIALIZED** - the executor override flagged colliding write sets, and slice A is a genuine prerequisite rather than a peer: its tokeniser DEFINES the comment/live partition that slice B censuses. **SLICE A** - `tools/web_ascii_sweep.py`, a non-`ast` comment tokeniser for the three web languages (JS `//` + `/* */` string/template/regex aware, CSS `/* */`, HTML `<!-- -->` only), TDD RED 2 failed / 34 passed then GREEN 36. Correct on its FALSE-POSITIVE side by measurement, not assertion: the verifier built two deliberately broken copies of the sweeper and watched the escaped-quote pin and the CSS-string pin each go red, so the pins are not vacuous. Swept 2833 comment chars across 28 files; residue 3153 -> 320. **The live half was proven untouched by two independent methods** - the verifier wrote its own tokeniser before reading the slice's, sentinel-replaced every comment span in both the base blob and the swept tree (0 of 28 files differed outside a comment), then eyeballed all 253 changed lines. **SLICE B** - `docs/RM125_web_live_glyph_adjudication.md`, a read-only census routing the whole rendered residue to RM-122. It found that the tool's 320 over-counts the RENDERED set: 59 are unreachable JS comment glyphs and 26 sit in `legacy_index.html`'s inline `<style>`/`<script>` comments, so the true rendered residue is **235** across 16 files / 51 codepoints - STRIP-candidate-deferred 152, KEEP-deliberate-UI-glyph 52, **LOAD-BEARING 31**. The load-bearing set is the highest-value output because a naive future sweep breaks behavior, not looks: `items_index.js:62` carries `U+2192` as an alternation branch in the build-string split regex, and `right_now.js:563-566` is a producer/matcher COUPLING where the three emitted glyphs are exactly the char class the next line's regex tests - the file's own comment names the failure mode ("double DEFEAT"). It also REFUTED the brief's hypothesis that `web/legacy_index.html` is dead: `dashboard/routes_static.py:23-41` serves it at `?ui=legacy` AND as the automatic fallback when `index.html` throws, so its glyphs are live pixels. **SLICE C was not in the directive - slice B found a real defect in slice A's shipped tool and it was root-caused the same cycle.** `_scan_template_subst` had no regex-literal case, so the `.replace(/"/g, "&quot;")` attribute-escaping idiom inside a `${...}` opened a phantom string that ate the closing brace and backtick, and three template literals ran away (`historical_pgr.js:57`, `champ_select.js:2951`, `last_match.js:1497`). The failure direction is UNDER-sweep, measured not assumed - shipped-only comment territory was 0 bytes in every file, so no live byte could ever have been stripped - but it meant `test_web_comment_lines_ascii.py` passed VACUOUSLY over those regions, which is the guard-reports-green-by-not-looking class. Repro RED 4 failed / 1 passed first; the fix extracts `_scan_comment` and reuses the existing `_regex_may_start` predicate rather than copying the regex-vs-division heuristic, and it caught a second instance of the same blindness (a comment inside a substitution) that the audit missed. Residue 320 -> 261. **The `_LIVE_HALF_DIGEST` pin is circular ACROSS a tokeniser change and was not re-stamped blind**: the partition delta was proven gains-only (114 spans gained, 0 lost) and the corrected classifier was run over BOTH trees to show byte-identical live halves for all 168 sources, and only then was the constant re-captured with its provenance rewritten. Verifier CONFIRM 10/10 then 8/8 before each merge; the doc's two internal arithmetic defects (a spurious `U+2194` row making the codepoint table sum 236, and the 26 mis-attributed wholly to CSS) were caught by the verifier and corrected by the merger. RM-125 stays OPEN for the 235 deferred rendered chars only. | DONE | `<this commit>` |
 | R223 | ui-audit-overlay-callouts | DIRECTOR REFILL 2026-07-28, cycle 30. Section 3b 5-phase UI audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY) of an in-game OVERLAY panel vs `docs/UI_SCALE_SPEC_V2.md`. **The directive's PRIMARY target `web/js/panels/next.js` was auto-rejected on its own `[UNVERIFIED]` premise**: `web/index.html:546` mounts `#next` as a direct child of `<main>` and `web/css/overlay.css:124` hides `body[data-shell="overlay"] main > .panel` outright, so next.js paints ZERO overlay pixels. Step-1 ordered fallback applied: `right_now.js` also fails (its `#rn-action` / `#rn-immediate` / `.kv` mounts are excluded by the `overlay.css:127` allow-list of `#rn-lead` / `#rn-choices` / `#rn-callouts`), `spike_cue.js` + `objective_chips.js` are already audited (`ui-audit-spike-cue`, `ui-audit-objectives`), leaving **`web/js/panels/callouts.js` + `web/css/panels/callouts.css`** - it owns BOTH `#rn-lead` (w-lead) and `#rn-callouts` (w-callouts) in `web/js/lib/overlay_layout.js:50,53` and carries no prior audit unit. **2 MUST-FIX, both shipped in-slice, TDD RED 9/23 then GREEN 23.** (1) `renderLead` wrote `mount.className` wholesale and destroyed the `ovx-widget` / `ovx-hidden` classes `overlay_layout.js` owns on the same node, so the pill lost `position:fixed` and a hidden widget flashed back until the debounced observer repaired it up to 150ms later; fixed with a `classList` remove/add over the four `rc-lead*` classes this module owns. (2) The lead pill overflowed the 210px widget and inverted its own hierarchy - measured in headless Chromium, scrollWidth 228 > clientWidth 226, directive line 61.8px of 226 (27 pct) against a 140.4px nowrap tag, pill 216.5px tall; fixed with `flex-wrap: wrap` + `margin-left: auto`, with wide-dashboard geometry byte-identical before and after. Defect-class enumeration ran first and 2 of 3 classes came back DO-NOT-FIX: class A 2 instances (both here, both fixed), class B 16 across 7 files all out-of-scope by the `overlay_layout.js:932-948` contract, class C 4 candidates all NO-DEFECT by measurement (`overflow: hidden` zeroes the flex minimum size so the ellipsis engages). Guards proven non-vacuous by mutation. `_LIVE_HALF_DIGEST` re-stamped only after a two-tree diff showed exactly the audit's own 2 of 168 web/ sources changed. Overlay visual PNG OWED (a pre-existing harness property - the three `#right-now` mounts do not paint headless including one this slice never touched; live-page geometry stands in). ENGINE-IMPACT NONE. | DONE | `dd35080c` + `c4bdb8f8` |
+| R224 | overlay-listener-leak | DIRECTOR REFILL 2026-07-28, cycle 31. RM-126 fix: `_placeAll` re-runs `_makeHandle` on every repaint and its only guard asked "does a `.ovx-handle` child exist", which every renderer that rebuilds its mount destroys - so both el-level binds re-ran on the SAME persistent element. **Two distinct latches, because the two hosts have different lifetimes:** `_installDrag` stores its `begin` closure on the element and returns the STORED one on re-entry; `_makeHandle` latches the ACTIVE-mode body `pointerdown` on `el.dataset.ovxBodyDrag`, the idiom `_makeHideMenu` already used, placed AFTER the handle bind so the fresh `.ovx-handle` child keeps rebinding. Returning the STORED closure is load-bearing, not tidiness - a fresh closure would leave the surviving el-level listeners reading drag state nobody writes, trading the leak for a silent desync. **Proven behaviourally, not only by source-parse:** a node harness (stub DOM, three `_makeHandle` passes, handle child dropped between them) measures 12 el-level binds on baseline `08c8aade` (4 per pass, linear) vs 4 on the fixed tree, handle rebinding 3x on both sides. Defect-class enumeration over all 19 `addEventListener` sites in `overlay_layout.js` + `overlay_idle.js`: 4 FIXED, 15 OUT-OF-SCOPE with reasons, 0 new instances - `_ensureLauncher` was already immune for exactly the reason `_makeHandle` was not, it queries the HOST itself rather than a child. TDD RED (2 failed / 2 passed) against the unmodified tree before the fix, verifier reproduced that RED independently. `_LIVE_HALF_DIGEST` re-stamped after a two-tree diff showed exactly 1 of 165 web/ sources changed its live half. ENGINE-IMPACT NONE; ADR-008 asset-hash auto-reload, no RC restart, no `:8893` bounce. Overlay visual PNG OWED (behaviour-only change, zero markup/CSS bytes; the directive's named `ui_recon` harness and `:8810` preview do not exist on disk). | DONE | `65beb575` |
 
 ## Older findings - relocated 2026-07-28
 
@@ -712,97 +713,68 @@ Relocated by R221 under the steady-state rule above - keep exactly ONE
 findings block at the tail so the newest `| R<n> |` row never drifts out
 of the director's 16000-byte tail window.
 
-## R221 findings - 2026-07-28 - both backend slices shipped, panel wiring still deferred
+## R221 findings - relocated 2026-07-28
 
-**SHIPPED (commit 7121ca85):** the 4th Live Client event extract. `MinionsSpawning`
-now reaches `liveclient_summary` as `minion_spawn_events` -> `[{"spawn_at_s": float,
-"event_id": int | None}]` (`dashboard/_liveclient.py:387-402`), purely additive, the
-3 sibling extracts byte-unchanged, 11 TDD tests including the anti-regression pin
-that events nested under `gameData` are NOT read. Verifier CONFIRMED 7/7 claims.
+R221's findings block now lives in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
+Relocated by R224 under the steady-state rule above - keep exactly ONE
+findings block at the tail so the newest `| R<n> |` row never drifts out
+of the director's 16000-byte tail window.
 
-**SLICE 2 ALSO SHIPPED, late in the cycle.** `dashboard/_wave_timing.py` (pure spawn
-clock) + `tests/test_wave_timing.py` (42 tests / 801 subtests). Verifier CONFIRMED 9/9.
-The clock is fully observational: the interval is the MEDIAN of observed gaps, so one
-dropped event leaving a doubled gap is harmless, and `_DEFAULT_WAVE_INTERVAL_S` is
-reachable ONLY when no gap is measurable at all. No first-spawn constant exists in the
-module - which is the whole point, since three sources disagree on first wave
-(0:30 / 1:05 / 1:30).
+## R224 findings - 2026-07-28 - the guard was right about the leak and wrong about the fix shape
 
-**A process scar worth keeping.** The orchestrator briefly deleted this slice's files
-mid-flight: the agent was still working, the module on disk was a self-labelled TDD RED
-stub, and a red `tests/test_wave_timing.py` collected 787 failures - which WOULD have
-poisoned the next cycle's baseline had it been committed. Deleting was right for a red
-stub and wrong for a live agent's workspace. The agent then reported that `ls`, `Glob`,
-and `git status` each showed the file missing while it was on disk; that was partly the
-documented stale-tool-result replay and partly the orchestrator genuinely removing it
-underneath. Two rules fall out: do not garbage-collect a slice's files until its agent
-has REPORTED, and confirm a file's absence with a real probe before acting on it.
+RM-126 was filed by R223 with an unusually complete diagnosis, and it held up on
+disk without amendment. The interesting part of this cycle is what the filing did
+NOT say.
 
-**THE SCOPE CORRECTION, which is the load-bearing finding of this cycle.** The R221
-directive said to key the compute to `wave_top` / `wave_mid` / `wave_bot`. **Refuse
-that.** Those three keys are lane wave-PUSH PERCENTAGES driving the
-FREEZE/TRADE/CRASH/DISENGAGE readout at `web/js/panels/next.js:27-47` - they ARE the
-live wave STATE machine that this feature's own parent, ROADMAP RM-124, declares
-data-blocked three ways (`:2999` exposes no minion entities, Overlay Platform M GEP gives
-`minionKills` counts only, Match-V5 has no minion event type). A spawn clock cannot
-know where a wave sits in a lane, so emitting those keys from it would be fabrication,
-and RC's standing rule is that a wrong precompute is worse than no precompute. Slice 2
-computes the TIMING subset ONLY: `wave_number`, `last_spawn_s`, `next_spawn_s`,
-`next_spawn_in_s`, `next_is_cannon`, `cannon_every_n_waves` - all honest-None on no
-data - and must carry an anti-fabrication test asserting the returned dict holds no
-`wave_top`/`wave_mid`/`wave_bot` key.
+**The obvious fix is the wrong fix.** The row prescribed "attach once per element,
+or tear down before re-attaching". Attach-once alone is a trap. `_installDrag`
+returns a `begin` closure that `_makeHandle` binds to the `.ovx-handle` child, and
+that child is LEGITIMATELY recreated on every repaint - it has to be, the renderer
+destroyed it. So an implementation that early-returns before the binds but still
+builds and returns a FRESH `begin` looks correct, passes any "listeners bound
+once" test, and is broken: the el-level `pointermove`/`pointerup` listeners that
+survived from the first call close over the FIRST call's `dragging`/`startX` state,
+while the new handle drives a second, unobserved copy. The leak becomes a desync.
+The fix stores `begin` on the element and hands back the stored one, so there is
+exactly one closure and one listener set for the life of the mount. This was
+called out to the build agent up front and re-verified by the verifier as a
+gating claim, because it is invisible in a bind-count assertion.
 
-**Two more directive defects worth teaching back.** (1) The instruction to append the
-new row "ABOVE the EXCLUDED section" would have BROKEN the guard the relocation exists
-to satisfy: `## EXCLUDED` sits at line ~104 near the HEAD, while
-`test_real_orchestration_plan_newest_row_survives` takes `rows[-1]` in FILE order, so
-a row placed there can never reach the tail window. The row went after R220's instead.
-(2) The serialization override claimed AGENT 1 and AGENT 2 shared files; measured, the
-two file sets were genuinely DISJOINT. Serializing anyway cost wall-clock and is what
-left slice 2 half-built when the cycle was cut.
+**A population of 1 is still a measured result.** The enumeration covered 19
+`addEventListener` sites (17 in `overlay_layout.js`, 2 in `overlay_idle.js`) and
+found 4 defective instances, all in one defect class, all in the reported
+function pair. Nothing else. The load-bearing negative is `_ensureLauncher`
+(sites 674/715/749/750): it is re-entered by the same MutationObserver and by
+`resetOverlayLayout`, but it early-returns on
+`document.querySelector("#w-launcher")` - it asks whether the HOST still exists,
+not whether some CHILD of the host still exists. That single word is the entire
+difference between the launcher being immune and `_makeHandle` leaking for
+months. The defect class is not "unguarded listener attach", it is **"guarded on
+a child's existence when the listener's host is the parent"**, and that is the
+shape to grep for next time.
 
-**Census - "documented-but-unread LiveClient event" (the defect class).** Emitted names
-per `dashboard/_state_cooldowns.py:14-18` plus the published Live Client list, checked
-against every name RC actually extracts (`grep -rn '"<Name>"' dashboard/ core/ --include=*.py`,
-test files excluded). READ after this cycle (7): `TurretKilled`, `InhibKilled`,
-`DragonKill`, `BaronKill`, `HeraldKill`, `ChampionKill`, and now `MinionsSpawning`.
-STILL UNREAD (8), all OUT-OF-SCOPE this slice with reasons: `GameStart` (the 3 repo
-hits are LCU gameflow PHASE strings at `dashboard/view_router_state.py:102,162,174`,
-NOT the Live Client event - the event itself is genuinely unread; low value, RC already
-has `gameTime`), `FirstBrick`, `Multikill`, `Ace`, `FirstBlood` (all tempo//morale
-signals with no current consumer), `InhibRespawningSoon` / `InhibRespawned` (partially
-subsumed - `core.event_callouts` already computes the 300s respawn ETA from
-`InhibKilled`, so reading these would be a cross-check, not new information), `GameEnd`
-(post-game path is Match-V5 / SGP, not `:2999`). The sibling producer-less RM-124 panel
-fields - `wave_state_now` / `wave_control` / `wave_freezes` / `cannon_cs_summary` /
-`gd_at_15` - remain OUT-OF-SCOPE and are NOT unblocked by this slice.
+**Two corrections to the directive's own premises, both minor, both worth
+recording.** (1) The stale-grounding override at the top of the file was right
+that `9def3898` is already an ancestor of HEAD, but it was reasoning about the
+wrong thing: `9def3898` is the docs-only FILING of RM-126, not its fix, so the
+unit was not a duplicate and was executed as written. (2) The directive routed
+STEP 4 through "the ui_recon Playwright harness + :8810 static preview". Neither
+exists on disk - `ls tools/ | grep -i recon` is empty and `8810` appears in no
+tracked `.py` or `.ps1`. Rather than log a skip, the cycle substituted something
+strictly stronger for a behaviour fix: node v24.15.0 IS present, `overlay_layout.js`
+has ZERO imports and exports `_makeHandle` through `_internals`, so the module
+loads under a stubbed DOM and the leak can be MEASURED instead of inferred. That
+harness is what produced the 12-vs-4 number above, and it is the reason this
+slice did not have to trust its own source-parsing guard.
 
-**Live-gated: G2-45 filed.** Nobody has ever seen real `MinionsSpawning` bytes. Whether
-it REPEATS per wave or fires ONCE at first spawn decides whether slice 2 needs a
-gameTime-projection fallback, and the cannon-cadence table is unvalidated by
-construction (sources disagree 14:00 vs 15:00; a 2025 change moved first-cannon arrival
-2:05 -> 2:35). Do not wire the panel before that row closes.
+**The digest pin fired again, as designed.** `_LIVE_HALF_DIGEST` went red on the
+one-line-plus-comments edit to a LIVE web source. Re-stamped only after running
+the same tokeniser over `08c8aade` and the post-fix tree: 1 of 165 web/ sources
+changed its live half, `overlay_layout.js`, which is this slice's whole file set.
+Second consecutive cycle where this guard did its job on the first try.
 
-**Suite noise, diagnosed properly so it is not re-investigated as a regression.** Two
-tests failed locally and NEITHER is a regression - CI ran the full suite on 73d7b49e and
-went GREEN on all three workflows, which is the fact that settles it. They fail for two
-DIFFERENT reasons, and the distinction is the useful part:
-- `tests/snapshot_panels/test_overlay_view.py::test_ovx_hidden_suppresses_a_panel` -
-  genuine xdist/Playwright contention. Failed under `-n 8` on one run, passed under
-  `-n 8` on the next, passes serially. Feeds a hardcoded `"liveclient"` mock dict, so it
-  never touches `dashboard/_liveclient.py`.
-- `tests/test_loop_gemini_timeout.py::test_gemini_logs_stderr_head_on_empty` - **NOT
-  xdist.** It fails SERIALLY on Legion and still passes in CI. The difference is that
-  Legion was running the live loop controller during the run - this session IS the loop
-  executor - so the test is not isolated from a live controller process touching the same
-  module state. Expect this test to fail on Legion any time the loop is running and to be
-  green in CI and on a quiet box. Do not "fix" it by chasing the assertion; the test file
-  is byte-identical to baseline `1bbc377c` and this run touched zero files under
-  `ops/loop/`.
-
-**A tool-pipe warning, because it cost real time here.** An early serial re-run reported
-both tests PASSING; a later identical serial run failed one of them. That is the
-stale-tool-result replay CLAUDE.md documents, and the slice-2 agent independently hit the
-same thing (`ls` / `Glob` / `git status` all reporting a file missing while it was on
-disk). Treat a single green re-run as weak evidence when the pipe has already misbehaved
-in a session - CI on a pushed SHA is the ground truth that actually settled this.
+**OWED, carried forward:** the overlay visual PNG. This change alters zero markup
+and zero CSS bytes, the ASCII phase is measured clean (0 non-ASCII in all three
+touched files) and the HIT-TARGETS question - does drag still actuate - is
+answered by the behavioural harness rather than by pixels. STRUCTURE, TYPOGRAPHY
+and HIERARCHY are confirm-unchanged by construction. Same standing debt as R223.
