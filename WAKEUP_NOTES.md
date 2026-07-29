@@ -6,6 +6,59 @@
 
 ---
 
+# 2026-07-28p - RM-97 probed: the gap is real, "scores zero" was two-thirds wrong.
+
+**Headless loop cycle 32 (R225). Tier-1, ENGINE-IMPACT NONE.** `99af7bab`.
+A characterization pin over a filed-but-never-probed DS gap.
+
+**The spec held; two of its three clauses did not.** RM-97 says persistent pet
+damage is structurally unmodelled and that `ds.ability` "prices them at exactly
+zero". The first half is true. The second is true of the DAMAGE NUMERATOR only -
+`objdamage.py:79-83` credits SUMMON_DPS at 0.55 and `zonecontrol.py:73-77`
+credits SUMMON at 0.60, and both enumerate the identical champion list by name.
+The class is already credited on two non-damage axes.
+
+**And the class is not uniform.** 7 pet-bearing forms carry ZERO
+`attribute_kind == "damage"` blocks (Zyra P + W, Heimerdinger Q **both** turret
+forms - the brief assumed one, Ivern R, Yorick P, Yorick R). But 3 summon forms
+carry exactly one damage block and ARE credited: Malzahar W Void Swarm, Annie R
+Summon: Tibbers (the summon burst only), Elise W Volatile Spiderling (a one-shot
+explosion). **So the honest sentence is "no PERSISTENT-ENTITY uptime model", not
+"no summon ever scores"** - the second reads as an unbuilt feature, the first
+names the missing schema and explains why no scorer tweak reaches it.
+
+**The near-miss is the reusable half.** Yorick R's ONLY block is a mist-walker
+COUNT at `damage_blocks[0]`, and Malzahar W's index-0 block is a DURATION in
+seconds. Both are harmless for exactly one reason: `_select_blocks`
+(`ability_dps.py:459`) filters on `attribute_kind` BEFORE taking index 0. Drop
+that filter and a unit count and a duration score as magic damage.
+
+**Grep was 472 instances and 470 of them were prose.** The `summon` half is
+almost all SUMMONER-SPELL traffic; every pet-name hit is a docstring, comment or
+`source_quote`. The only two scoring sites in the entire 472 are the two
+registries above. A big grep count is not a big surface.
+
+**Pinned, not fixed:** `agents/daemon_slayer/tests/test_pet_summon_damage_uncredited_rm97.py`,
+12 tests / 27 subtests. Zyra L11/SR/30/30/no items: W dps 0.0 at rank 2
+(unlocked - the zero is the filter, not a lock), Q 9.147609147609147, E
+1.2968849332485697, R 1.0865999671969822; the P row is ABSENT not zero
+(`SPELL_KEYS` excludes it), so the pin asserts what was observed rather than
+what the plan expected. RM-97 stays SPEC-ONLY / OPEN; a fix is still a schema
+lift, deliberately not built.
+
+**Process lesson, and it cost the first full-suite run:** a test-only,
+ENGINE-IMPACT-NONE cycle STILL owes the DS Share sync. A new file under
+`agents/daemon_slayer/tests/` is a mirrored DS source, so
+`test_ds_share_sync_determinism.py` went red with `DRIFT (missing from
+Share/src)`. **The mirror obligation attaches to the PATH, not to whether any
+engine math moved.**
+
+**Gates:** 24082 passed / 106 skipped / 7070 subtests in 143.03s (`-n 8`, repo
+root). Verifier CONFIRM, adversarial - it mutation-checked two assertions for
+tautology and both survived.
+
+---
+
 # 2026-07-28o - RM-126 fixed, and the obvious fix would have been wrong.
 
 **Headless loop cycle 31 (R224). Tier-1, ENGINE-IMPACT NONE.** `65beb575`. The
@@ -69,29 +122,3 @@ standing debt as R223.
 **Do NOT redo:** the diagnosis is closed - do not re-open "local ruff differs from the runner". `tools/edit_lint_check.py` carries the same `sys.executable` assumption and was deliberately LEFT: it is PostToolUse-only under Python314 (correct there) and advisory, not blocking.
 
 **Live at wrap:** the gemini loop (pid 9380, run `eadf15e3`) is mid-cycle on R223 - its `docs/ORCHESTRATION_PLAN.md` row is unstaged and says `(fill sha)`. I pushed its two R223 commits along with mine; leave the plan row to it.
-
----
-
-# 2026-07-28m - R222 RM-125. The tool I shipped in slice A had a bug, and slice B found it.
-
-**Cycle 29, gemini-loop. Tier-1. ENGINE-IMPACT NONE - no DS math, no schema, no served path, no `ENGINE_VERSION`, no `:8893` bounce, no RC restart.** HEAD `c7900b8c` -> `4ef1a805`. RC 13935 passed / 106 skipped / 1342 subtests, fresh.
-
-**The premise held for once, and I checked before dispatching.** The directive tagged its own headline claim `[UNVERIFIED]`. A whole-file byte scan read **3153** non-ASCII chars across **31** `.js`/`.css`/`.html` files against the 3154 filed in ROADMAP prose - off by one, substantially correct - so the unit was real rather than a no-op. `tools/p3_ascii_sweep.py` re-read and confirmed `ast`-based Python-only, which is why it has never once looked at `web/`.
-
-**The directive's 4-agent parallel block was REFUSED and the cycle ran SERIALIZED.** The executor override flagged colliding write sets. It was right for a second reason it did not give: slice A is a genuine PREREQUISITE, not a peer - its tokeniser DEFINES the comment/live partition that slice B censuses, so B could not have run first or concurrently and produced a correct answer.
-
-**Slice A** shipped `tools/web_ascii_sweep.py` (JS `//` + `/* */` with string/template/regex awareness, CSS `/* */`, HTML `<!-- -->` only), TDD RED 2 failed / 34 passed -> GREEN 36, sweeping 2833 comment chars for 3153 -> 320. The false-positive side was MEASURED, not claimed: the verifier built two deliberately broken copies of the sweeper and watched the escaped-quote pin and the CSS-string pin each go red. The live half was proven untouched two independent ways - the verifier wrote its OWN tokeniser before reading the slice's, sentinel-replaced every comment span in both trees (0 of 28 files differed outside a comment), then eyeballed all 253 changed lines.
-
-**Slice B is a docs slice that found a code bug, which is the shape worth remembering.** Its census showed the tool's 320 over-counts the RENDERED set - 59 were unreachable JS comment glyphs and 26 sit in `legacy_index.html`'s inline blocks - leaving **235** rendered chars across 16 files: STRIP-candidate-deferred 152, KEEP-deliberate-UI-glyph 52, **LOAD-BEARING 31**. Tracing why those 59 were unreachable is what exposed the defect.
-
-**Slice C, unplanned: `_scan_template_subst` had no regex-literal case.** The `.replace(/"/g, "&quot;")` attribute-escaping idiom inside a `${...}` opened a phantom string that ate the closing brace and backtick, and three template literals ran away. Failure direction is UNDER-sweep and that was measured, not assumed (shipped-only comment territory was 0 bytes in every file, so no live byte could ever have been stripped) - but `tests/test_web_comment_lines_ascii.py` was passing VACUOUSLY over those regions, which is the guard-reports-green-by-not-looking class. Repro RED 4 failed / 1 passed first; the fix extracts `_scan_comment` and reuses the existing `_regex_may_start` predicate rather than copying the regex-vs-division heuristic, and caught a second instance of the same blindness the audit missed. Residue 320 -> 261.
-
-**`_LIVE_HALF_DIGEST` is CIRCULAR across a tokeniser change and was not re-stamped blind.** The partition delta was proven gains-only (114 spans gained, 0 lost), the corrected classifier was run over BOTH trees to show byte-identical live halves for all 168 sources, and only then was the constant re-captured with its provenance comment rewritten to say what it now actually pins.
-
-**Two things that must survive into the next session:**
-1. **31 glyphs are LOAD-BEARING - a strip breaks BEHAVIOR, not looks.** `web/js/lib/items_index.js:62` carries `U+2192` as an alternation branch in the build-string split regex, and `web/js/panels/right_now.js:563-566` is a producer/matcher COUPLING where the three emitted glyphs are exactly the char class the next line's regex tests; the file's own comment at `:562` names the failure ("double DEFEAT"). Read `docs/RM125_web_live_glyph_adjudication.md` before touching one.
-2. **`web/legacy_index.html` is NOT dead** - the opposite of the brief's hypothesis. `dashboard/routes_static.py:23-41` serves it at `?ui=legacy` AND as the automatic fallback when `index.html` throws. Its glyphs are live pixels. It also holds a raw `U+0081` C1 control char in a `content:` value at `:951` - mojibake, not design.
-
-**Defect class closed, not just the directory.** Class = "non-ASCII in authored `.js`/`.css`/`.html`". Repo-wide byte scan found exactly ONE authored file outside `web/`: `tools/usage-mcp-server.js`, 218 -> 9, swept with the live-span text asserted byte-identical pre/post, and the guard widened to cover it. Everything else that scanned dirty is third-party (`data/meta_build` scraped pages, `.obsidian` vendored plugin) and is OUT-OF-SCOPE with reason in the commit body.
-
-**NEXT:** RM-125 stays OPEN for the 235 rendered chars ONLY, routed to RM-122 (operator-present, rendered-pixel judgement, headless-forbidden). Do NOT let a future directive re-open the comment half - it is done and machine-guarded.
