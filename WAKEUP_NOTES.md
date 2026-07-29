@@ -6,6 +6,34 @@
 
 ---
 
+# 2026-07-29g - RM-118 wielder HSP item-amp reaches the HYBRID (bruiser) RANKER (ENGINE 1.264.0 -> 1.265.0).
+
+**Commit `fb72d0f9`, pushed. Tier-2: engine-signature change + new route seam, ENGINE bump, Share resync, DS :8893 restarted -> 1.265.0.**
+The remaining open half after 2026-07-29f (which did the EHP/tank ranker). RM-124 live validation
+(G2-39) still blocked - no SR game (mode=client, LCU Offline, relay empty). Probe live state first.
+
+What shipped:
+- `assume_hsp_amp` now reaches the HYBRID ranker (`compute_hybrid`/`rank_items_by_hybrid`, a SEPARATE
+  module from the EHP ranker). Three gates: engine (kwarg at END -> baseline + candidate `compute_ehp`,
+  3 call sites), route `_route_rank_bruiser` -> `/rank-bruiser`, client `rank_bruiser_for` (emitted via
+  `_emit_ehp_family_seams`). DEFAULT-OFF, byte-identical OFF; INERT unless a self-shield item
+  (Sterak's 3053 / Shieldbow 6673) is in the build.
+- TDD RED-first `tests/test_rank_hybrid_hsp_amp_rm118.py` (11 tests). DS suite CLEAN 10138 passed / 0 failed.
+- `test_rune_resist_signature_convention_r134.py` gained `_RM118_TAIL` on the two hybrid fns (expected END-shift).
+
+Two things worth not re-learning:
+- **The dirty 16.15.1 ddragon working-tree data poisons any build-table regen.** First regen showed a
+  958-line CONTENT diff (item 6653 added) that was NOT my DEFAULT-OFF seam - it was the dirty ddragon
+  data. Fix: `git stash push` the `data/meta/ddragon_*.json` + `web/data/*_index.json`, regen against
+  clean HEAD (tables then diff ONLY the version stamp + timestamp), `git stash pop` to restore.
+  Those data files stay do-not-refresh.
+- **The 3 magic-pen `773020` (Sorcerer's Shoes) DS failures are PRE-EXISTING** and dirty-ddragon driven,
+  not any code change - confirmed by re-running that file with the ddragon data stashed (9 passed / 0 failed).
+
+STILL OPEN in RM-118: the 22 ledgered seams in `test_stranded_hsp_seam_r197.py::STRANDED_TODAY`.
+
+---
+
 # 2026-07-29f - RM-118 wielder HSP item-amp reaches the EHP RANKER (ENGINE 1.263.0 -> 1.264.0).
 
 **Commit `e075a221`, pushed. Tier-2: engine ranker-signature change, ENGINE bump, Share resync, DS :8893 restarted -> 1.264.0.**
@@ -60,31 +88,3 @@ NEXT / do-NOT-redo:
   `docs/LIVE_GAME_GATED_SYNC.md`: validate the cadence against one real SR game, correct the
   provisional constants if they miss the observed cannon arrivals, THEN flip `RC_WAVE_CALLOUT=1`.
 - Follow-on F2 (CS efficiency curve, `core/lead_projection.py:57` flat 8.0) is unblocked once F1 flips.
-
----
-
-# 2026-07-29d - RM-123 melee/ranged split reconciliation SHIPPED (ENGINE 1.263.0).
-
-**Tier-2 DS: engine EHP-math change, ENGINE 1.262.0 -> 1.263.0, 7 doc anchors, build-table
-regen, Share resync (516 files), DS :8893 restarted -> 1.263.0. Commits `8f67f810` (fix) +
-docs sync. Full dual suite green: 24246 passed / 106 skipped / 7071 subtests. LEDGER 1109.**
-
-Picked the NOW-lane RM-123 (first strong candidate). Root cause was WIDER than the filing
-(named 2 sites): one boolean fact (melee vs ranged) was a magic base-attackrange threshold in
-SEVEN classifier sites across three packages - two values (250 in `ehp._is_ranged`,
-`rank._champion_is_melee`, `coaches/loadout_resolver`, `tools/hotfix_ranged_only_melee_loadouts`;
-350 in `burst`/`dps`) and three operators (`>`, `<`, `<=`). 173-roster scan: the ONLY champs
-in the 250 < ar <= 350 band are Rakan 300 + Lillia 325 (melee, wrongly ranged at 250) and Urgot
-350 (ranged, wrongly melee under burst strict `>`). Canonical rule, correct for all 173:
-**ranged iff base attackrange >= 350.0**. New leaf `agents/daemon_slayer/_melee_ranged.py`
-single-sources it; all 7 sites route through `attackrange_is_ranged()`.
-
-**Process win:** the dual suite caught 3 cross-package siblings (loadout_resolver, hotfix tool,
-gate test) the engine-package grep missed - the `<=` operator + ceiling-bump-to-350 made Urgot
-read melee. Fixed to the strict predicate. TDD: failing repro first; corrected two tests that
-pinned the old 250. No build/loadout backfill needed (no melee champ ever carried Runaan's).
-
-**Do NOT redo:** RM-123 is CLOSED. The split is now single-sourced - never re-introduce a
-second threshold or a `<=` boundary (it breaks Urgot at exactly 350). Upstream still do-not-refresh
-(ddragon 16.15.1 but meraki/cdragon 16.14). Next candidate: RM-124 (deterministic wave/cannon
-clock, Tier-1, no ENGINE bump; full teardown `docs/COMPETITOR_LIFT_2026-07-28.md`).
