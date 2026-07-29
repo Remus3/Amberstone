@@ -175,6 +175,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/precomputed_build_coach.py` | HZ-C2 precomputed BUILD A/B choice-coach over the HZ-B2 variants table |
 | `core/precomputed_laning_coach.py` | HZ-C1 precomputed A/B choice-coach over the laning + build tables |
 | `core/prom_metrics.py` | zero-dep Counter/Gauge/Histogram |
+| `core/provider_cascade.py` | multi-source provider cascade with provenance stamping |
 | `core/queue_modes.py` | queue_id -> dashboard mode_key |
 | `core/riot_api.py` | Riot Web API client + rate limiter + endpoint wrappers |
 | `core/riot_api_cache.py` | SQLite cache for core/riot_api.py |
