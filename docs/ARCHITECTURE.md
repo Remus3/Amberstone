@@ -156,12 +156,14 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/heal_threat.py` | deterministic heal-threat / anti-heal nudge |
 | `core/laning_cv_overrides.py` | RC2-P5.1 CV-driven laning verdict overrides (vision_state) |
 | `core/laning_scenario_precompute.py` | Lane A laning-scenario precompute (matchup-engine table) |
+| `core/lcu_events.py` | LCU WAMP event subscription - push replacement for endpoint polling |
 | `core/lcu_pool.py` | pooled loopback HTTPS reuse + min-interval guard (RC2 P6.4 port-safety) |
 | `core/lcu_ranked.py` | LCU ranked-stats read for the rank-identity header |
 | `core/log_setup.py` | log init [FROZEN] |
 | `core/macro_context.py` | fog-only macro snapshot for the deterministic decision tree |
 | `core/macro_decision_tree.py` | ordered pure-rule registry for deterministic macro callouts |
 | `core/macro_response.py` | RC2-P5.7 deterministic lost-objective + stagnation response |
+| `core/meta_crawl.py` | participant-graph crawler for event-mode champion stats |
 | `core/mia_reachability.py` | MIA reachability rings - SOLE zoi.mia producer (ZOI Wave 3, spec E-2) |
 | `core/mode_capabilities.py` | static per-mode capability truth table (fail-CLOSED) |
 | `core/moon_proxy.py` | vision server proxy [FROZEN] |
@@ -175,6 +177,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/queue_modes.py` | queue_id -> dashboard mode_key |
 | `core/riot_api.py` | Riot Web API client + rate limiter + endpoint wrappers |
 | `core/riot_api_cache.py` | SQLite cache for core/riot_api.py |
+| `core/sgp_client.py` | service-gateway match-history client - serves event modes Match-V5 refuses |
 | `core/vision_fusion.py` | confidence-weighted partial-read fusion of Live Client + CV reads |
 | `core/ward_cue.py` | ward-readiness extractor over the active player's Live Client items |
 | `core/ward_events.py` | ward-coverage rolling-window backend |
