@@ -5,7 +5,7 @@ PURPOSE
     Precomputed objective / spike timing callouts so live coaching can
     surface "next drake 5:00 / your lvl-6 spike / 3-item powerspike /
     baron 20:00" WITHOUT a Claude Haiku call. Pure: every output is a
-    function of (mode, game_time_s, level, item_count).
+    function of (mode, game_time_s, level, legendary_count).
 
 WHY a static table and not the live timer
     RC already reads live objective timers (`obj_timers_dict`) from the
@@ -382,24 +382,29 @@ def _level_spike_callouts(level: int) -> list[dict]:
     return out
 
 
-def _item_spike_callouts(item_count: int) -> list[dict]:
+def _item_spike_callouts(legendary_count: int) -> list[dict]:
     """Build item-powerspike callouts.
 
     AT a spike item count -> active callout (eta_s 0). Below a spike
     count -> next item-spike with eta_s None (item timing depends on
     gold income, not deterministic from inputs). Passed counts drop.
+
+    ``legendary_count`` is COMPLETED LEGENDARIES owned. Named that way because
+    the parameter was called item_count and the caller fed it an inventory slot
+    length, which counts the trinket and potions and told a player who had bought
+    nothing that they were at a 2-item spike.
     """
     out: list[dict] = []
     for n in _SPIKE_ITEMS:
-        if item_count == n:
+        if legendary_count == n:
             out.append({
                 "tag": f"item{n}",
                 "line": _SPIKE_ITEM_LINES[n],
                 "eta_s": 0.0,
                 "kind": "item_spike",
             })
-        elif item_count < n:
-            away = n - item_count
+        elif legendary_count < n:
+            away = n - legendary_count
             word = "item" if away == 1 else "items"
             out.append({
                 "tag": f"item{n}",
@@ -407,7 +412,7 @@ def _item_spike_callouts(item_count: int) -> list[dict]:
                 "eta_s": None,
                 "kind": "item_spike",
             })
-        # item_count > n: passed, drop.
+        # legendary_count > n: passed, drop.
     return out
 
 
@@ -883,7 +888,7 @@ def next_callouts(
     mode: str,
     game_time_s: float,
     level: int,
-    item_count: int,
+    legendary_count: int,
     *,
     max_n: int = 3,
     gold: object = None,
@@ -903,7 +908,11 @@ def next_callouts(
         mode: dashboard mode_key (sr / aram / arena). Unknown -> [].
         game_time_s: in-game clock in seconds.
         level: champion level (1-18).
-        item_count: number of completed items owned (len(items)).
+        legendary_count: number of COMPLETED LEGENDARIES owned. NOT the
+            inventory slot count - a slot list carries the trinket and potions,
+            and boots are not a power spike. The caller classifies (see
+            dashboard/_deterministic_coaching._owned_legendary_count); this
+            module stays pure.
         max_n: cap on returned list length.
         gold: current gold on-hand (for the recall-affordability callout).
         next_item_name: display name of the next item in the build order.
@@ -939,9 +948,9 @@ def next_callouts(
     except (TypeError, ValueError):
         lvl = 1
     try:
-        items = int(item_count)
+        legs = int(legendary_count)
     except (TypeError, ValueError):
-        items = 0
+        legs = 0
 
     callouts: list[dict] = []
     if m in _OBJECTIVE_MODES:
@@ -963,7 +972,7 @@ def next_callouts(
     if m in _SIEGE_MODES:
         callouts.extend(structure_siege_callout(turret_events, inhib_events, gt))
     callouts.extend(_level_spike_callouts(lvl))
-    callouts.extend(_item_spike_callouts(items))
+    callouts.extend(_item_spike_callouts(legs))
 
     # Recall is SR-only (ARAM has no fountain recall; Arena/Brawl are death-buy).
     if m in _RECALL_MODES:
