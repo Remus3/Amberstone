@@ -94,6 +94,8 @@ first resort.
 
 Check state: `Get-ScheduledTask -TaskName "RC-*" | Select TaskName, State`
 
+Failover CLI: type `cf` (= `teamclaude run --no-mitm --auto-fallback`, shim at `C:\Users\Administrator\AppData\Roaming\npm\cf.cmd`) to launch an interactive Claude Code CLI routed through the failover proxy. Scoped to that one invocation - never touches RC's python coaches or the headless RC-* Claude tasks. Do NOT set `ANTHROPIC_BASE_URL` globally: RC coaches build `anthropic.Anthropic(api_key=...)` with no explicit base_url, so a user-wide var would silently redirect all coaching into the subscription proxy on the next RC restart.
+
 ---
 
 ## Data pipeline (patch day)
