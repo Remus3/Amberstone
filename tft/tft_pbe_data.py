@@ -5,6 +5,14 @@ round structure (Realm of the Gods replaces carousel).
 Last updated: patch 17.3 (2026-05-13) - Morgana cost drop, Anima/Stargazer reworks, Primordian nerfed.
 """
 
+# -- Set declaration ----------------------------------------------------------
+# See tft/tft_data.py for what these two mean and which guard reads them.
+CONSTANTS_SET = 17
+# NOT in-client verified: the tables below are byte-identical to the Set 14
+# tables in tft/tft_data.py, which is evidence they were copied rather than
+# re-derived for Set 17. Operator verifies in client; live-gated.
+CONSTANTS_SET_VERIFIED = False
+
 # -- Tier probability tables (standard Set 17) -------------------------------
 TIER_ODDS = {
     1:  {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
