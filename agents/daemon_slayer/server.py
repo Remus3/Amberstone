@@ -634,6 +634,29 @@ def _route_ehp(body: dict) -> dict:
     # from the keys server.py already parses. Absent key -> False -> hsp_pct 0.0
     # -> shield_amp_mult unchanged -> byte-identical response.
     assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
+    # RM-118 residual (2026-07-29): four EHP survivability seams whose ENGINE
+    # half shipped complete - registry, consumer and all - while no route ever
+    # parsed them, so the R197 stranded-seam guard ledgered them as debt. Same
+    # defect class as assume_hsp_amp above. Every one is DEFAULT-OFF, so an
+    # absent key leaves compute_ehp on its shipped path and the response is
+    # byte-identical. Each already has its TRANSPORT on this route, so none is
+    # reachable-and-dead: the two champion-keyed registries read only
+    # ``champion`` + ``level``, and the two item-keyed ones read only ``items``.
+    #   assume_passive_flat_mitigation (1.148.0 R9) - the per-instance FLAT
+    #     damage block the PERCENT registry excluded (Fizz P, Amumu E, Leona W).
+    #   assume_passive_health_stacks (R46) - permanent bonus max HP from a
+    #     stacking passive (Sion W, Cho'Gath R, Swain P).
+    #   assume_item_revive (1.195.0) - Guardian Angel 3026 Rebirth.
+    #   assume_item_stasis (1.196.0) - Zhonya's 3157 / Seeker's 2420 /
+    #     Wooglet's 228002 Time Stop.
+    assume_passive_flat_mitigation = _opt_bool(
+        body, "assume_passive_flat_mitigation", False
+    )
+    assume_passive_health_stacks = _opt_bool(
+        body, "assume_passive_health_stacks", False
+    )
+    assume_item_revive = _opt_bool(body, "assume_item_revive", False)
+    assume_item_stasis = _opt_bool(body, "assume_item_stasis", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -663,6 +686,10 @@ def _route_ehp(body: dict) -> dict:
             assume_item_general_dr=assume_item_general_dr,
             assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
             assume_hsp_amp=assume_hsp_amp,
+            assume_passive_flat_mitigation=assume_passive_flat_mitigation,
+            assume_passive_health_stacks=assume_passive_health_stacks,
+            assume_item_revive=assume_item_revive,
+            assume_item_stasis=assume_item_stasis,
             apply_survival_window=apply_survival_window,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,
@@ -838,6 +865,20 @@ def _route_rank_tank(body: dict) -> dict:
     # can change an item CHOICE. Plain DEFAULT-OFF (the engine ranker defaults it
     # False too), so an absent key is byte-identical.
     assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
+    # RM-118 residual (2026-07-29): the per-instance FLAT damage-block credit
+    # (Fizz P, Amumu E, Leona W) on the RANKER lane. Of the four EHP
+    # survivability seams wired in this slice, this is the ONLY one
+    # ``rank_items_by_ehp`` accepts (ehp.py:3127) - the other three
+    # (assume_passive_health_stacks / assume_item_revive / assume_item_stasis)
+    # exist on ``compute_ehp`` alone, so they stay scalar-only on ``/ehp`` and
+    # parsing them here would read a key that dies before the engine call.
+    # DEFAULT-OFF, so an absent key is byte-identical. Unlike the scalar lane the
+    # credit is a real sort input: it lifts the PHYSICAL numerator only (Amumu's
+    # block is physical-only), so armor candidates gain more from it than
+    # pure-MR candidates and the order moves.
+    assume_passive_flat_mitigation = _opt_bool(
+        body, "assume_passive_flat_mitigation", False
+    )
     # 2026-07-25: the three ASSUMED-INCOMING-SHARE seams. UNLIKE every other seam
     # on this route these ship DEFAULT-ON in ``compute_ehp`` (a champion-blind 0.5
     # incoming crit / basic-attack share), so the route needs an OFF switch, not
@@ -902,6 +943,7 @@ def _route_rank_tank(body: dict) -> dict:
             apply_item_caster_hp_proc=apply_item_caster_hp_proc,
             item_caster_hp_proc_strength=item_caster_hp_proc_strength,
             assume_hsp_amp=assume_hsp_amp,
+            assume_passive_flat_mitigation=assume_passive_flat_mitigation,
             **assumed_share_kwargs,
         )
     except KeyError as e:
