@@ -5,6 +5,20 @@ Set-agnostic structure: update UNITS / TRAITS / ITEMS dicts each set patch.
 Currently seeded for TFT Set 14 (patch 15.x baseline).
 """
 
+# -- Set declaration ----------------------------------------------------------
+# CONSTANTS_SET is the TFT set the tables below were transcribed for. The set
+# the rest of the TFT lane is actually running is read off disk from
+# data/meta/tft_set17_meta.json ("_set"). When these two disagree, everything
+# below is STALE. tests/test_tft_constants_staleness.py is the guard; it fails
+# the moment this declaration, the lane's set, or the known discrepancies move
+# without someone updating the expectation.
+CONSTANTS_SET = 14
+# True only once the tables below were read off the IN-CLIENT display for
+# CONSTANTS_SET. Third-party aggregator tables are NOT sufficient - two
+# reviewed sources disagreed on the L7-L9 rows - so this stays False until an
+# operator verifies in client. Live-gated; no headless run can flip it.
+CONSTANTS_SET_VERIFIED = False
+
 # -- Tier probability tables (standard) --------------------------------------
 # {player_level: {cost: probability}}
 TIER_ODDS = {

@@ -12,6 +12,16 @@ reads fine in prose. Smart quotes / arrows / math symbols are NOT in
 scope (the hard rule names dashes + smart-quotes; smart-quote sweep is
 a separate operator-gated decision; arrows/x/~= are out of scope).
 
+MOJIBAKE (added 2026-07-30): a dash can already be CORRUPTED on disk -
+its UTF-8 bytes re-decoded as latin-1 and re-saved, one or more times.
+An em-dash mangled once is 3 chars (U+00E2 U+0080 U+0094), mangled twice
+is 6 chars (U+00C3 U+00A2 U+00C2 U+0080 U+00C2 U+0094). Neither contains
+the raw E2 80 94 byte run, so the naive scan walked straight past them:
+MEASURED on data/meta/tft_set17_meta.json, which carried 17 twice-mangled
+and 4 once-mangled em-dashes while this tool reported the file clean.
+The ladder is now generated programmatically (see _mojibake_ladder) to
+_MOJIBAKE_DEPTH levels and each rung is stripped like a real dash.
+
 This script keeps itself 7-bit ASCII (codepoints via chr(), not the
 literal glyphs) so it does not need to be its own exclusion for that
 reason - it is still skipped to avoid self-mutation mid-walk.
@@ -39,9 +49,39 @@ from pathlib import Path
 
 EM = chr(0x2014)   # em-dash
 EN = chr(0x2013)   # en-dash
-DASHES = (EM, EN)
-_DASH_BYTES = (b"\xe2\x80\x94", b"\xe2\x80\x93")  # UTF-8 for U+2014/U+2013
 REPL = "-"
+
+# How many rounds of latin-1 re-decoding to unwind. Two is what has
+# actually been observed on disk; three is cheap insurance.
+_MOJIBAKE_DEPTH = 3
+
+
+def _mojibake_ladder(ch: str, depth: int = _MOJIBAKE_DEPTH) -> list[str]:
+    """Successive latin-1 mis-decodings of ch's UTF-8 bytes.
+
+    Level 1 is the classic "encoded UTF-8, read as latin-1, saved again"
+    corruption; level 2 is that same accident applied twice; and so on.
+    Stops early if a rung is not latin-1 decodable.
+    """
+    out: list[str] = []
+    cur = ch
+    for _ in range(depth):
+        try:
+            cur = cur.encode("utf-8").decode("latin-1")
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            break
+        out.append(cur)
+    return out
+
+
+# Longest first so a deeper rung is consumed before a shallower one that
+# might share a prefix; real dashes are last and are single chars anyway.
+DASHES: tuple[str, ...] = tuple(sorted(
+    {EM, EN, *_mojibake_ladder(EM), *_mojibake_ladder(EN)},
+    key=len, reverse=True,
+))
+# Cheap byte prefilter: every form's UTF-8 encoding.
+_DASH_BYTES = tuple(d.encode("utf-8") for d in DASHES)
 ROOT = Path(__file__).resolve().parent.parent
 
 # git-tracked enumeration already excludes everything gitignored
@@ -75,6 +115,22 @@ def _skip(path: Path) -> bool:
     if path.suffix.lower() in _SKIP_EXT:
         return True
     return False
+
+
+def strip_dashes(text: str) -> tuple[str, int]:
+    """Replace every dash form (real + mojibake) with REPL.
+
+    Returns (new_text, occurrences_replaced). Forms are applied
+    longest-first so a deeply mangled rung is not shredded by a shallower
+    partial match.
+    """
+    n = 0
+    for d in DASHES:
+        c = text.count(d)
+        if c:
+            n += c
+            text = text.replace(d, REPL)
+    return text, n
 
 
 def _tracked_files() -> list[Path]:
@@ -114,7 +170,7 @@ def main() -> int:
         except UnicodeDecodeError:
             skipped_binary += 1
             continue
-        n = sum(text.count(d) for d in DASHES)
+        new, n = strip_dashes(text)
         if not n:
             continue
         total_occ += n
@@ -122,9 +178,6 @@ def main() -> int:
         by_ext[p.suffix.lower() or "<none>"] += n
         per_file.append((n, str(p.relative_to(ROOT))))
         if args.apply:
-            new = text
-            for d in DASHES:
-                new = new.replace(d, REPL)
             tmp = p.with_suffix(p.suffix + ".emtmp")
             tmp.write_text(new, encoding="utf-8", newline="")
             os.replace(tmp, p)
