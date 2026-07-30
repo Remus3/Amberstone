@@ -1,5 +1,5 @@
 {
-  "_source": "aggregator C Apr 9 2026 + TFT guide author X + TFT guide site W Ã¢ÂÂ Set 17 PBE Patch 17.1",
+  "_source": "aggregator C Apr 9 2026 + TFT guide author X + TFT guide site W - Set 17 PBE Patch 17.1",
   "_updated": "2026-05-08",
   "_set": 17,
   "_set_name": "Space Gods",
@@ -190,12 +190,12 @@
   "trait_augments": {
     "_note": "Heart=Silver(+1 trait count), Crest=Gold(emblem item), Crown=Prismatic(emblem+strong bonus). Impact: 1=minor flex, 2=notable upgrade, 3=forces comp pivot, 4=win-condition defining.",
     "_categories": {
-      "emblem": "Grants a trait emblem item Ã¢ÂÂ equip on a unit to give them the trait. Changes unit slot math.",
+      "emblem": "Grants a trait emblem item - equip on a unit to give them the trait. Changes unit slot math.",
       "heart": "Counts as +1 unit of that trait without an emblem. Frees a unit slot.",
-      "combat_boost": "Directly amplifies the trait's combat stats Ã¢ÂÂ damage, healing, shields, shred.",
+      "combat_boost": "Directly amplifies the trait's combat stats - damage, healing, shields, shred.",
       "econ_boost": "Grants gold, XP, or item generation tied to activating the trait.",
-      "utility": "Provides non-combat utility Ã¢ÂÂ CC uptime, AS, positioning effects.",
-      "scaling": "Trait bonus scales harder the more units you stack Ã¢ÂÂ rewards going deep."
+      "utility": "Provides non-combat utility - CC uptime, AS, positioning effects.",
+      "scaling": "Trait bonus scales harder the more units you stack - rewards going deep."
     },
     "N.O.V.A.": {
       "Heart": {
@@ -311,7 +311,7 @@
         "category": "emblem",
         "effect": "Vanguard emblem. Any unit becomes a Vanguard.",
         "impact": 3,
-        "decision_note": "Best on LeBlanc or Karma Ã¢ÂÂ gives them Vanguard HP/shield synergy without replacing a frontliner.",
+        "decision_note": "Best on LeBlanc or Karma - gives them Vanguard HP/shield synergy without replacing a frontliner.",
         "best_holders": [
           "LeBlanc",
           "Karma",
@@ -345,7 +345,7 @@
         "category": "econ_boost",
         "effect": "+1 Conduit count. Conduit synergy: each Conduit unit generates bonus gold per PvP win.",
         "impact": 2,
-        "decision_note": "Econ trait Ã¢ÂÂ extra gold generation accelerates item/level timing. Strong with Conduit Reroll.",
+        "decision_note": "Econ trait - extra gold generation accelerates item/level timing. Strong with Conduit Reroll.",
         "comp_synergy": [
           "Conduit Reroll"
         ],
@@ -462,7 +462,7 @@
         "category": "scaling",
         "effect": "Redeemer emblem + stacking bonus doubled, max stacks increased.",
         "impact": 4,
-        "decision_note": "MF becomes hyperscaling late-game. Needs to reach late rounds Ã¢ÂÂ HP management critical.",
+        "decision_note": "MF becomes hyperscaling late-game. Needs to reach late rounds - HP management critical.",
         "best_holders": [
           "Miss Fortune",
           "Rhaast"
@@ -647,7 +647,7 @@
         "category": "scaling",
         "effect": "Psionic emblem + Psionic AP stacks persist between rounds.",
         "impact": 4,
-        "decision_note": "Viktor/Sona snowball each round. Win-condition if game goes to stage 5+. Play for late game Ã¢ÂÂ avoid early loss streaks.",
+        "decision_note": "Viktor/Sona snowball each round. Win-condition if game goes to stage 5+. Play for late game - avoid early loss streaks.",
         "best_holders": [
           "Viktor",
           "Sona"
@@ -695,7 +695,7 @@
         "category": "scaling",
         "effect": "Dark Star emblem + kill stacks are permanent (survive round end).",
         "impact": 4,
-        "decision_note": "Jhin becomes game-winning carry by stage 5. Every kill compounds. Play for late game stacking Ã¢ÂÂ avoid dying early.",
+        "decision_note": "Jhin becomes game-winning carry by stage 5. Every kill compounds. Play for late game stacking - avoid dying early.",
         "best_holders": [
           "Jhin"
         ],
@@ -811,7 +811,7 @@
         "category": "emblem",
         "effect": "Brawler emblem. Gives any melee unit Brawler trait bonus HP.",
         "impact": 1,
-        "decision_note": "Frontline durability. Niche Ã¢ÂÂ not a comp-defining augment.",
+        "decision_note": "Frontline durability. Niche - not a comp-defining augment.",
         "best_holders": [
           "Maokai",
           "Gragas",
@@ -1112,17 +1112,17 @@
       "unit_passing": "Donated units arrive next round. Plan 1 round ahead.",
       "shared_hp": "Teams share HP pool. Both boards fight simultaneously.",
       "coordination": "One player builds frontline, one builds carry. Avoid contested 3-stars.",
-      "augment_sharing": "Augments are individual Ã¢ÂÂ not shared. Coordinate augment paths verbally.",
+      "augment_sharing": "Augments are individual - not shared. Coordinate augment paths verbally.",
       "item_passing": "Components and full items can be donated (not equipped items).",
-      "round_sync": "Both players fight simultaneously Ã¢ÂÂ board strength consistency matters more than spiking one board."
+      "round_sync": "Both players fight simultaneously - board strength consistency matters more than spiking one board."
     },
     "decision_priorities": [
-      "Avoid contesting partner's reroll targets Ã¢ÂÂ check in before committing to a unit",
+      "Avoid contesting partner's reroll targets - check in before committing to a unit",
       "Donate overflow 1-cost duplicates to partner if they are rerolling that unit",
       "If your frontline is weak and partner has a strong tank, request a tank unit donation",
-      "Coordinate rolldown timing Ã¢ÂÂ both players ideally spike at the same round",
+      "Coordinate rolldown timing - both players ideally spike at the same round",
       "One player takes econ augments, one takes combat augments for optimal split",
-      "Split item components across boards Ã¢ÂÂ don't double-build same component type",
+      "Split item components across boards - don't double-build same component type",
       "If partner is loss-streaking, donate your strongest tank to stabilize their HP"
     ],
     "coordination_signals": {
@@ -1130,7 +1130,7 @@
       "donate_carry": "Send overflow carry duplicates to help partner 3-star",
       "coordinate_rolldown": "Signal partner before rolling to avoid sharing pool at same time",
       "augment_split": "Partner takes econ aug if you take combat aug and vice versa",
-      "item_split": "Avoid both building BF Sword items Ã¢ÂÂ split AD/AP item paths"
+      "item_split": "Avoid both building BF Sword items - split AD/AP item paths"
     },
     "pbe_notes": {
       "instability": "PBE server may DC mid-game. Ops protocol: relaunch via LCU auto-accept. Monitor health.json.",
@@ -4048,7 +4048,7 @@
             "Giant Slayer",
             "Runaans Hurricane"
           ],
-          "note": "Ez permanently gains a drone per takedown â kill units early. Scales hard late."
+          "note": "Ez permanently gains a drone per takedown - kill units early. Scales hard late."
         },
         "Cho'Gath": {
           "bis": [
@@ -4147,12 +4147,12 @@
         "Pantheon": 2
       },
       "level_plan": "reroll_1cost",
-      "gameplan": "Loss streak S1-2. Roll at 3-1 for Ezreal+Cho'Gath 3*. Stay low level â do NOT buy XP. Once Ezreal 3* hit, win streak and use Temporal Core XP to fast level 8. Cap with Xayah or Jhin.",
+      "gameplan": "Loss streak S1-2. Roll at 3-1 for Ezreal+Cho'Gath 3*. Stay low level - do NOT buy XP. Once Ezreal 3* hit, win streak and use Temporal Core XP to fast level 8. Cap with Xayah or Jhin.",
       "stage_plan": {
         "1-2": "Loss streak for free rerolls from Timebreaker. Hold Ezreal, Cho'Gath, Milio, Pantheon copies. Do not level.",
         "2-1": "Roll to 25-35g picking up Ezreals and Cho'Gaths. Stop rolling when 8 Ezreals or gold hits 25.",
         "3-1": "Send it down for Ezreal 3* and Cho'Gath 3*. Stay level 5.",
-        "3-5": "Save back to 50g after hitting. Start winning â Temporal Core stores XP on wins.",
+        "3-5": "Save back to 50g after hitting. Start winning - Temporal Core stores XP on wins.",
         "4-1": "Level 7 if Cho'Gath 3* done. Sell Temporal Core if maxed, buy XP. Push to 8.",
         "5+": "Level 8-9 for Xayah/Jhin cap. Lissandra flex for Dark Star. Riven flex for 4 Timebreaker if emblem found."
       },
@@ -4181,7 +4181,7 @@
       },
       "when_to_play": "Open with many Ezreals early. Must NOT be heavily contested. Works best with econ/reroll augment at 2-1.",
       "avoid_when": "3+ players going Ezreal or low-cost reroll. Avoid if no items for Ezreal after PvE.",
-      "risk": "Low sample size â Set 17 day 1. Tier will shift. Variations without Ezreal (Yi/Urgot) exist if not hitting.",
+      "risk": "Low sample size - Set 17 day 1. Tier will shift. Variations without Ezreal (Yi/Urgot) exist if not hitting.",
       "source": "TFT guide site W + TFT guide site Y + aggregator C set17 patch 17.1",
       "top4_pct": 48,
       "avg_placement": 4.1,
@@ -9920,27 +9920,27 @@
             "Kraken Slayer",
             "Bloodthirster"
           ],
-          "note": "Mid-game CARRY. Rageblade → AS converts to stacks, Giant Slayer destroys tanks. Give items early - she carries Stage 4-5 while waiting for Karma. When Karma arrives at Lv8, keep Rageblade on Kai'Sa, move JG/Rabadon to Karma."
+          "note": "Mid-game CARRY. Rageblade -> AS converts to stacks, Giant Slayer destroys tanks. Give items early - she carries Stage 4-5 while waiting for Karma. When Karma arrives at Lv8, keep Rageblade on Kai'Sa, move JG/Rabadon to Karma."
         }
       },
       "level_plan": "reroll_1cost",
-      "gameplan": "TWO-STAGE carry plan. Stage 1: Kai'Sa 3★ carry. Stage 2: Karma upgrade. EARLY: Reroll at 3-2 on 50g+ for Cho 3★ + Lissandra 3★. Fill frontline with Maokai. MID: After 3-stars hit, level to 5 → slot Kai'Sa + Vex for DS4. Give Rageblade + Giant Slayer to Kai'Sa immediately - she IS your carry now. Level 6 at 3-5/4-1 → add Morgana (DS5 + Fateweaver 3 = shop roll bonus). OPTIONAL: If Kai'Sa is at 2+ copies at Lv6, slow-roll for Kai'Sa 3★ before pushing to Lv7. Level 7 at 4-2 → add Shen (DS still 5 or 6 if Karma in hand). Level 8 ONLY when Karma 2★ is in shop or bench - slot her and give JG/Rabadon. DS6 Karma Supermassive is the power ceiling but NOT required. Kai'Sa 3★ + DS5 + Fateweaver 3 wins fights on its own through Stage 5.",
+      "gameplan": "TWO-STAGE carry plan. Stage 1: Kai'Sa 3* carry. Stage 2: Karma upgrade. EARLY: Reroll at 3-2 on 50g+ for Cho 3* + Lissandra 3*. Fill frontline with Maokai. MID: After 3-stars hit, level to 5 -> slot Kai'Sa + Vex for DS4. Give Rageblade + Giant Slayer to Kai'Sa immediately - she IS your carry now. Level 6 at 3-5/4-1 -> add Morgana (DS5 + Fateweaver 3 = shop roll bonus). OPTIONAL: If Kai'Sa is at 2+ copies at Lv6, slow-roll for Kai'Sa 3* before pushing to Lv7. Level 7 at 4-2 -> add Shen (DS still 5 or 6 if Karma in hand). Level 8 ONLY when Karma 2* is in shop or bench - slot her and give JG/Rabadon. DS6 Karma Supermassive is the power ceiling but NOT required. Kai'Sa 3* + DS5 + Fateweaver 3 wins fights on its own through Stage 5.",
       "rolldown": {
-        "3-2": "Main rolldown - 50g+. Cho 3★ first (HP engine), then Lissandra 3★.",
+        "3-2": "Main rolldown - 50g+. Cho 3* first (HP engine), then Lissandra 3*.",
         "4-1": "Secondary roll if 3-stars not hit yet. Do NOT level 6 until Cho + Liss locked.",
-        "lv5/6 optional": "If Kai'Sa at 2 copies after 3-stars, slow-roll lv6 for Kai'Sa 3★ before pushing Lv7.",
-        "lv7": "4-2 - after Cho 3★ + Lissandra 3★ confirmed. Shen slot in.",
-        "lv8": "Push lv8 ONLY when Karma 2★ is available. Roll for Karma 2★ here.",
+        "lv5/6 optional": "If Kai'Sa at 2 copies after 3-stars, slow-roll lv6 for Kai'Sa 3* before pushing Lv7.",
+        "lv7": "4-2 - after Cho 3* + Lissandra 3* confirmed. Shen slot in.",
+        "lv8": "Push lv8 ONLY when Karma 2* is available. Roll for Karma 2* here.",
         "lv9": "Only if healthy HP (45+) and Jhin available. Not mandatory."
       },
       "level_ups": {
         "2-1": "Level 4",
         "3-1": "Level 5",
-        "3-2": "ROLL - Cho 3★ + Lissandra 3★ at 50g+",
+        "3-2": "ROLL - Cho 3* + Lissandra 3* at 50g+",
         "3-5 or 4-1": "Level 6 - add Vex + Kai'Sa (DS4 online)",
         "4-1 optional": "Slow-roll lv6 if Kai'Sa at 2 copies",
         "4-2 post 3-stars": "Level 7 - add Shen",
-        "4-5 / 5-1": "Level 8 - ONLY when Karma 2★ ready",
+        "4-5 / 5-1": "Level 8 - ONLY when Karma 2* ready",
         "5-3+": "Level 9 if 70g+ and healthy - Jhin cap"
       },
       "augment_advice": {
@@ -9971,7 +9971,7 @@
       "top4_pct": 58,
       "avg_placement": 4.1,
       "play_rate": 8,
-      "heuristic_note": "Kai'Sa 3★ is the MID-GAME CARRY. Give her Rageblade + Giant Slayer at stage 3-4. DS5 + Fateweaver 3 (Liss + Vex + Morgana) is the stable mid-game board. Karma is an UPGRADE at Lv8, not a requirement. Vex and Morgana are interchangeable - both are DS + Fateweaver. Do NOT leave items on bench waiting for Karma - Kai'Sa uses them productively until then. Top-4 path: Cho3 + Liss3 + KaiSa3 rerolled, DS5 + FW3 stable board. Top-1 path: same + Karma 2★ at Lv8 for DS6 Supermassive.",
+      "heuristic_note": "Kai'Sa 3* is the MID-GAME CARRY. Give her Rageblade + Giant Slayer at stage 3-4. DS5 + Fateweaver 3 (Liss + Vex + Morgana) is the stable mid-game board. Karma is an UPGRADE at Lv8, not a requirement. Vex and Morgana are interchangeable - both are DS + Fateweaver. Do NOT leave items on bench waiting for Karma - Kai'Sa uses them productively until then. Top-4 path: Cho3 + Liss3 + KaiSa3 rerolled, DS5 + FW3 stable board. Top-1 path: same + Karma 2* at Lv8 for DS6 Supermassive.",
       "board_placement": [
         {
           "champion": "Cho'Gath",
