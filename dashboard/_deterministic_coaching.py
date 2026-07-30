@@ -1300,9 +1300,12 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
         # where Haiku produced a full map.
         # A cue the corpus does not carry renders CUE_SENTINEL ("-"); recording
         # that would manufacture fake coverage in the very report this is meant
-        # to make honest, so sentinels are dropped. The corpus lives in a
-        # gitignored local artifact, so an absent corpus degrades to {} and the
-        # hint-derived reasons still ride through build_block.
+        # to make honest, so sentinels are dropped. The corpus is a TRACKED
+        # artifact as of 2026-07-30 - it used to be gitignored, which made this
+        # whole reason source machine-local and silently empty everywhere else
+        # (the except below degrades to {} without a log line). It is now pinned
+        # by tests/test_aram_item_interaction_snapshot_tracked.py; the fail-soft
+        # path stays because a corrupt file must still not kill a tick.
         cue_reasons: dict = {}
         try:
             from core.aram_item_interaction_context import (  # lazy

@@ -10,6 +10,16 @@ WHAT
     a module-level memoised index over that snapshot plus a render-side cue
     function.
 
+    The snapshot is a TRACKED artifact (2026-07-30). It used to be gitignored,
+    which meant the deterministic ``item_build_reasons`` coverage in
+    ``dashboard/_deterministic_coaching.py`` existed only on the machine that
+    ran the precompute, and the absence degraded to ``{}`` at three stacked
+    fail-soft layers without a single log line. Tracking it is the only option
+    that survives a clean checkout: the precompute's sole input,
+    ``data/rewind_history.db``, is 1.87 GB and permanently gitignored, so
+    regeneration from tracked inputs is impossible.
+    ``tests/test_aram_item_interaction_snapshot_tracked.py`` pins this.
+
 PRECEDENT
     Mirrors ``core/aram_balance_context.py`` (snapshot read once at import,
     render-side mode-gated function, fail-soft to empty, ``_ARAM_MODES``
