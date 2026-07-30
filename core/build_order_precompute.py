@@ -526,6 +526,21 @@ def _parse_csv(value: str) -> list[str]:
 # resolve against.
 _ALL_CHAMPIONS_TOKEN = "all"
 
+# Exit codes for the loud producer refusals. Distinct from the pre-existing
+# engine-down 2 so an operator (or a scheduled regen) can tell WHICH refusal
+# fired from the exit status alone.
+EXIT_NO_ROSTER = 2
+EXIT_EMPTY_TABLE = 3
+
+
+class RosterUnavailableError(RuntimeError):
+    """The canonical champion roster could not be resolved.
+
+    Shared by both producers (this module and
+    ``tools/daemon_slayer_build_orders_generate``) so an unresolvable roster has
+    exactly ONE exception type to catch, whichever registry failed.
+    """
+
 
 def full_roster() -> list[str]:
     """Return the FULL canonical champion roster (sorted DDragon ids).
@@ -538,30 +553,39 @@ def full_roster() -> list[str]:
     diff. This is the ``--champions all`` roster: run a regen over the WHOLE
     roster with one flag, no hand-maintained 173-name CSV.
 
-    Fail-soft to ``list(SEED_CHAMPIONS)`` (with a loud WARNING) when the registry
-    is missing / unreadable / empty - only a fresh checkout with no DS data hits
-    that path, and a 10-champ seed sweep is safer than a crash. The warning makes
-    the fall-through visible so it is never a silent seed-clobber.
+    Raises :class:`RosterUnavailableError` when the registry is missing /
+    unreadable / empty. It deliberately does NOT fall back to
+    ``SEED_CHAMPIONS``: a caller that asked for the full roster and silently
+    received the 10-name seed would overwrite a complete table with a
+    6-percent stub, and every consumer of a missing cell degrades silently
+    (precomputed_build_coach / next_buy_fallback return ``[]``,
+    _deterministic_coaching / laning_verdicts return ``None``), so the producer
+    is the ONLY place that truncation can still be caught.
     """
     path = _DS_DIR / resolve_patch() / "champions.json"
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-        data = raw.get("data", raw) if isinstance(raw, dict) else {}
-        ids = sorted(
-            str(entry["id"])
-            for entry in data.values()
-            if isinstance(entry, dict) and entry.get("id")
+    except Exception as exc:  # noqa: BLE001 - re-raised as the loud domain error
+        raise RosterUnavailableError(
+            f"champion registry {path} is missing or unreadable ({exc}); "
+            "refusing to substitute the SEED sample for a full-roster request"
+        ) from exc
+    data = raw.get("data", raw) if isinstance(raw, dict) else {}
+    # set() before sort: DDragon-derived registries carry alias entries that can
+    # resolve to an id already present (the 16.15.1 drop adds 60 Jade_<Champion>
+    # rows). Deduping here makes "sorted and deduped" true by construction
+    # instead of an accident of today's data.
+    ids = sorted({
+        str(entry["id"])
+        for entry in (data.values() if isinstance(data, dict) else ())
+        if isinstance(entry, dict) and entry.get("id")
+    })
+    if not ids:
+        raise RosterUnavailableError(
+            f"champion registry {path} yielded no champion ids; "
+            "refusing to substitute the SEED sample for a full-roster request"
         )
-        if ids:
-            return ids
-    except Exception:  # noqa: BLE001 - fail-soft to the committed seed sample
-        pass
-    logger.warning(
-        "full_roster: DS champion registry %s unreadable/empty - falling back "
-        "to the %d-champ SEED sample (a --champions all regen will NOT cover "
-        "the full roster)", path, len(SEED_CHAMPIONS),
-    )
-    return list(SEED_CHAMPIONS)
+    return ids
 
 
 def resolve_champions(value: str) -> list[str]:
@@ -685,7 +709,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = _build_arg_parser()
     args = ap.parse_args(argv)
 
-    champions = resolve_champions(args.champions)
+    try:
+        champions = resolve_champions(args.champions)
+    except RosterUnavailableError as exc:
+        logger.error("%s", exc)
+        return EXIT_NO_ROSTER
 
     # Static mode computes in-process via the DS server handlers (no :8893).
     # Otherwise a non-dry run requires the live engine (the planner makes :8893
@@ -717,6 +745,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.dry_run:
             logger.info(f"  [dry-run] {mode_key:5s}: {champs} champions, "
                   f"{cells} non-empty orders (not written)")
+        elif cells == 0:
+            # _engine_up() only catches an engine that was dead BEFORE the
+            # sweep; one that dies mid-sweep is swallowed per-cell ("one bad
+            # cell never sinks the sweep") and would otherwise write a
+            # full-size table of empty orders over a good one, exit 0, and
+            # surface nowhere downstream.
+            logger.error(
+                "%s: sweep produced 0 non-empty orders across %d champions - "
+                "refusing to write %s (engine failure mid-sweep?)",
+                mode_key, champs, out_dir / f"build_orders_{mode_key}.json",
+            )
+            return EXIT_EMPTY_TABLE
         else:
             out_path = out_dir / f"build_orders_{mode_key}.json"
             atomic_write(payload, out_path)
