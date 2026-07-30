@@ -5,7 +5,9 @@ coaches/aram_coach.py  - v3  (ARCH-002 BaseCoach inheritance)
 ARAM / ARAM Mayhem full coaching engine.
 Inherits lifecycle from coaches.BaseCoach.
 Self-polls Riot API every 1.5s.
-Vision fires every 15s (Sonnet): tower HP, health packs, fight state, augments.
+Vision fires every 25s (Sonnet): tower HP, health packs, fight state, augments,
+dropping to 6s inside the Mayhem game-start augment window (bounded, see
+_select_vision_interval).
 Claude Haiku coaches every ~8s or on kill/HP events.
 Writes: data/aram_coaching_data.json
 """
@@ -555,6 +557,15 @@ class Coach(BaseCoach):
     _FAST_PATH_MIN_S    = 5.0
     _HP_DROP_THRESHOLD  = 20.0
 
+    # Mayhem augment-window fast poll. The augment panel is on screen for only
+    # ~10-15s at game start, so a single 25s-cadence tick usually lands outside
+    # it and the reco never fires (live-eyeballed 2026-07-12). These bound the
+    # fast cadence three independent ways - clock ceiling, catch latch, scan cap
+    # - so no single one failing can leave the coach fast-polling all game.
+    _AUGMENT_WINDOW_S       = 45.0
+    _FAST_VISION_INTERVAL   = 6.0
+    _AUGMENT_FAST_MAX_SCANS = 6
+
     # Tiered vision-reader config lifted from _run_vision to class level so it is
     # introspectable without an Anthropic key. The trailing block is the Lane E
     # CV OCR shadow-only numerics - registered for R101-A OCR-vs-Sonnet logging,
@@ -599,6 +610,66 @@ class Coach(BaseCoach):
         "kda":             lambda v: isinstance(v, str) and v.count("/") == 2,
     }
 
+    # -- BaseCoach hooks -------------------------------------------------------
+
+    def _init_extra(self) -> None:
+        """Seed the augment fast-poll counters before the loops start."""
+        self._augment_resolved   = False
+        self._augment_fast_scans = 0
+        self._fast_mode          = False
+
+    def _reset_extra(self) -> None:
+        # Fires per new game (coaches/_base_coach.py:361). The interval is reset
+        # alongside the counters because it is an INSTANCE attr the vision loop
+        # reads every tick - leaving a previous game's fast value on the
+        # instance would fast-poll the whole next game.
+        self._init_extra()
+        self._VISION_INTERVAL = type(self)._VISION_INTERVAL
+
+    def _select_vision_interval(
+        self, state: dict, *, augment_resolved: bool, fast_scans: int
+    ) -> float:
+        """Effective seconds between vision scans for this tick.
+
+        Reads `type(self)._VISION_INTERVAL` rather than the instance attr for
+        the default: `_update_vision_cadence` mutates the instance attr, so
+        reading it here would feed the fast value back into itself and latch
+        fast forever. Same trick as the `type(self)._DEBOUNCE_S` read below.
+        """
+        # Plain ARAM has no augments, so a fast poll there is pure Sonnet spend
+        # for a panel that can never appear.
+        if not is_mayhem(state):
+            return type(self)._VISION_INTERVAL
+        try:
+            gs = float(state.get("game_seconds"))
+        except (TypeError, ValueError):
+            return type(self)._VISION_INTERVAL
+        in_window = (
+            gs < self._AUGMENT_WINDOW_S
+            and not augment_resolved
+            and fast_scans < self._AUGMENT_FAST_MAX_SCANS
+        )
+        return (
+            self._FAST_VISION_INTERVAL if in_window
+            else type(self)._VISION_INTERVAL
+        )
+
+    def _update_vision_cadence(self, state: dict) -> None:
+        """Publish the effective interval to the vision loop.
+
+        The loop re-reads `self._VISION_INTERVAL` on every 3s iteration
+        (coaches/_base_coach.py:462), so a plain float assignment from the poll
+        thread is the whole mechanism - GIL-atomic, no lock, identical to the
+        already-shipped `self._DEBOUNCE_S` mutation.
+        """
+        interval = self._select_vision_interval(
+            state,
+            augment_resolved=self._augment_resolved,
+            fast_scans=self._augment_fast_scans,
+        )
+        self._VISION_INTERVAL = interval
+        self._fast_mode = (interval == self._FAST_VISION_INTERVAL)
+
     def _blank_artifact_data(self) -> dict:
         return {
             "mode": "aram", "action": "", "immediate": "", "fight_rule": "",
@@ -638,10 +709,16 @@ class Coach(BaseCoach):
             self._DEBOUNCE_S = (
                 type(self)._DEBOUNCE_S if changed else self._STABLE_DEBOUNCE_S
             )
+        self._update_vision_cadence(state)
 
     def _run_vision(self) -> None:
         if self._fetch_game_data() is None:
             return
+        # Counted here rather than in the loop gate so a scan the spend-gate
+        # skipped never burns cap budget - the cap exists to bound real Sonnet
+        # calls, not loop ticks.
+        if self._fast_mode:
+            self._augment_fast_scans += 1
         try:
             from core.feature_policy import is_allowed as _fp_ok
             if not _fp_ok("aram", "live_coaching"):
@@ -692,6 +769,12 @@ class Coach(BaseCoach):
             if state.get("augments"):
                 cur["augments"] = ", ".join(state["augments"])
             if state.get("augment_select") and state.get("augment_choices"):
+                # Latch BEFORE the reco call: the fast poll's contract is "land
+                # a scan inside the window", and a landed scan fulfils it.
+                # _handle_augment_select re-raises on API failure, so gating the
+                # cadence latch on its success would couple vision spend to an
+                # unrelated Haiku outcome.
+                self._augment_resolved = True
                 self._handle_augment_select(state)
             # (2026-04-25) Always-on champion + self-spell write - pulls
             # from self._last_state (live-client snapshot, refreshed every
