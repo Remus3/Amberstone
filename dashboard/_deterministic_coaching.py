@@ -658,7 +658,17 @@ def _compute_uncached(gs: dict, mode_key: str, zoi: dict | None = None) -> dict:
     items = gs.get("items")
     item_count = len(items) if isinstance(items, list) else 0
     gold = gs.get("gold")
-    nxt = _next_build_item(gs.get("my_champion"), lower, item_count)
+    # Index the build order by BUILD PROGRESS, not by inventory slots. The
+    # liveclient slot list carries the trinket + potions, so a raw len() names
+    # the wrong item as soon as a potion is held and resolves to nothing once
+    # six slots are used - which blanked the served recall callout for every
+    # player, since every player carries a trinket. item_count itself stays the
+    # raw slot count: next_callouts reads it for the item-spike rows, a
+    # different question with its own axis.
+    build_progress = _owned_build_item_count(
+        gs.get("my_champion"), lower, gs.get("my_item_ids"), items,
+    )
+    nxt = _next_build_item(gs.get("my_champion"), lower, build_progress)
     next_name = nxt[0] if nxt else None
     next_cost = nxt[1] if nxt else None
     # RM-124: the wave/cannon clock stays gated OFF (do-not-flip-blind) until
@@ -1544,7 +1554,15 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
         cv = None
         verdict_blocks = None
         if enemy:
-            next_item = _next_build_item(champ, lower, item_count)
+            # Same split as the served path: the ORDER is indexed by build
+            # progress (slot counts include the trinket + potions and run off
+            # the end of a 6-entry order), while the recorded item_count stays
+            # the raw slot count because it is the item_state lookup axis the
+            # seed table was generated against.
+            build_progress = _owned_build_item_count(
+                champ, lower, gs.get("my_item_ids"), gs.get("items"),
+            )
+            next_item = _next_build_item(champ, lower, build_progress)
             cc = plc.precomputed_choices(
                 str(champ), enemy, level,
                 mana_fraction=mana_fraction, ult_up=ult_up,
