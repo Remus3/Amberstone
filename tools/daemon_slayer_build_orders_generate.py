@@ -91,6 +91,12 @@ from core.build_order import (
     SCORE_BY_VALUES,
     plan_build_order,
 )
+# One shared exception type for an unresolvable roster across BOTH producers.
+from core.build_order_precompute import (
+    EXIT_EMPTY_TABLE,
+    EXIT_NO_ROSTER,
+    RosterUnavailableError,
+)
 
 _DATA_DIR = _ROOT / "data"
 _DS_DIR = _DATA_DIR / "daemon_slayer"
@@ -154,16 +160,28 @@ def out_dir_for(patch: str, override: Optional[str]) -> Path:
 
 
 def load_champions() -> list[str]:
-    """Return ``[display_name, ...]`` for the full DDragon roster, sorted."""
+    """Return ``[display_name, ...]`` for the full DDragon roster, sorted.
+
+    Raises :class:`RosterUnavailableError` when the registry resolves to zero
+    champions. It previously returned ``[]`` for a wrong-shaped or empty
+    registry, and main() then wrote a ZERO-champion table over a complete one
+    and exited 0 - invisible downstream, because every consumer of a missing
+    cell degrades silently.
+    """
     raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
-    data = raw.get("data", raw) or {}
+    data = raw.get("data", raw) if isinstance(raw, dict) else {}
     names: list[str] = []
-    for entry in data.values():
+    for entry in (data.values() if isinstance(data, dict) else ()):
         if not isinstance(entry, dict):
             continue
         nm = entry.get("name") or entry.get("id")
         if nm:
             names.append(str(nm))
+    if not names:
+        raise RosterUnavailableError(
+            f"DDragon champion registry {_CHAMPS_PATH} yielded no champions; "
+            "refusing to generate a zero-champion table"
+        )
     names.sort(key=str.lower)
     return names
 
@@ -336,7 +354,11 @@ def main() -> int:
     out_dir = out_dir_for(patch, args.out or None)
     target_modes: tuple[str, ...] = MODES if args.mode == "all" else (args.mode,)
 
-    champions = load_champions()
+    try:
+        champions = load_champions()
+    except RosterUnavailableError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return EXIT_NO_ROSTER
     if args.champion:
         champions = [c for c in champions if c == args.champion]
         if not champions:
@@ -354,6 +376,15 @@ def main() -> int:
         if args.dry_run:
             print(f"  [dry-run] {mode:5s}: {champs} champions, "
                   f"{cells} non-empty cells (file not written)")
+        elif cells == 0:
+            # is_engine_up() only catches an engine that was dead BEFORE the
+            # run; one that dies mid-run is swallowed per-cell, so without
+            # this an all-empty table would overwrite a good one and exit 0.
+            print(f"ERROR: {mode}: run produced 0 non-empty cells across "
+                  f"{champs} champions - refusing to write "
+                  f"build_orders_{mode}.json (engine failure mid-run?)",
+                  file=sys.stderr)
+            return EXIT_EMPTY_TABLE
         else:
             out_path = out_dir / f"build_orders_{mode}.json"
             atomic_write(payload, out_path)
