@@ -81,7 +81,15 @@ data/placement_heatmap.json
 data/tft_live_data.json
 data/rewind_catchup.state.json
 data/coaching/death_patterns.json
-data/coaching/aram_item_interaction.json
+# data/coaching/aram_item_interaction.json is deliberately TRACKED (2026-07-30).
+# It is the ONLY source of deterministic item_build_reasons
+# (dashboard/_deterministic_coaching.py cue_reasons), the loader degrades to {}
+# in total silence when it is absent, and its sole regen input
+# (data/rewind_history.db, 1.87 GB, ignored above) can never be in a clean
+# checkout. Refresh with tools/aram_item_interaction_precompute.py; the payload
+# carries no wall-clock field, so a re-run over an unchanged corpus is
+# byte-identical. Guarded by tests/test_aram_item_interaction_snapshot_tracked.py
+# - do not re-add an ignore line for it.
 data/post_game_rubric_weights.json
 data/cc_conditional_calibration.json
 data/decisions_heartbeat.json
