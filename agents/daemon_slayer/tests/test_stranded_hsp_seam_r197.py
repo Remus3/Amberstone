@@ -199,14 +199,13 @@ STRANDED_TODAY: dict[str, str] = {
     "assume_fimbulwinter_shield": "per-item shield opt-in - live flip operator-gated",
     "assume_kaenic_shield": "per-item shield opt-in - live flip operator-gated",
     "assume_seraphs_shield": "per-item shield opt-in - live flip operator-gated",
-    # Vamp / survivability lanes whose engine half shipped in R193/R194 and
-    # whose route wire was never added.
-    "assume_cleave_lifesteal": "R194 cleave vamp - engine-only",
+    # Vamp lanes whose engine half shipped in R193/R194 and whose route wire was
+    # never added. Both live on ``compute_ehp`` ONLY (ehp.py:1594 / 1609), so
+    # their wire is a /ehp-scalar pass; ``assume_cleave_lifesteal`` additionally
+    # needs the non-boolean ``targets_in_rotation`` transport, which /ehp does not
+    # parse today, so it is not a pure flag wire.
+    "assume_cleave_lifesteal": "R194 cleave vamp - engine-only, needs targets_in_rotation transport",
     "assume_crit_weighted_vamp": "R193 crit-weighted vamp - engine-only",
-    "assume_item_revive": "item revive multiplier - engine-only",
-    "assume_item_stasis": "item stasis window - engine-only",
-    "assume_passive_flat_mitigation": "flat passive mitigation - engine-only",
-    "assume_passive_health_stacks": "passive HP-per-stack - engine-only",
     # Movement-speed utility term on the hybrid axis - never route-exposed.
     "assume_ms_utility": "hybrid MS utility term - never route-exposed",
 }

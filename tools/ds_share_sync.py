@@ -202,6 +202,15 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # reachability helper at module level - the import is its subject, not an
     # accident. Host-only, same reason as its EHP-ranker sibling above.
     "test_rank_hybrid_hsp_amp_rm118.py",
+    # -- RM-118 residual (ENGINE 1.266.0, 2026-07-29): the four EHP survivability
+    # seams (assume_passive_flat_mitigation / assume_passive_health_stacks /
+    # assume_item_revive / assume_item_stasis). Same class as the two RM-118
+    # siblings above - it asserts each (route, seam) pair is expressible through
+    # the HOST client (ehp_for / rank_tank_for) and, just as load-bearing, that
+    # rank_tank_for does NOT express the three scalar-only seams; it imports
+    # core.daemon_slayer_client plus the per-route reachability helper at module
+    # level, so the host import is its subject, not an accident.
+    "test_ehp_survivability_route_seams_rm118.py",
     # The behavioural half of the same drain: it drives the HOST client against
     # the live engine to prove each EHP-family seam actually does something.
     # Host-only for the same reason as its two siblings - the shipped package is
