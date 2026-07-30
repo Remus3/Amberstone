@@ -46,7 +46,15 @@ CONSTRUCT_FILES = [
 _CTOR_LINE = re.compile(r"=\s*anthropic\.Anthropic\s*\(")
 # File-level scan (bare) for the exhaustiveness guard.
 _CTOR_FILE = re.compile(r"anthropic\.Anthropic\s*\(")
-_SKIP_DIRS = {"tests", "docs", "Share", "_archive", ".git", "node_modules"}
+# `.claude` holds the orchestrator's transient worktrees, each a FULL copy of
+# this tree. Without it the exhaustiveness scan reports every coach in every
+# live worktree as a net-new unpinned site, so the guard goes red during any
+# multi-agent run - a false red loud enough (14 paths per worktree) that a real
+# net-new site hiding in the list would be dismissed with it. Same rationale as
+# `.git` and `node_modules`: a copy of our own source is not a new call site.
+_SKIP_DIRS = {
+    "tests", "docs", "Share", "_archive", ".git", "node_modules", ".claude",
+}
 
 
 def test_no_unpinned_anthropic_construction():
@@ -77,6 +85,33 @@ def test_construction_files_list_is_exhaustive():
         "new Anthropic() site(s) outside CONSTRUCT_FILES - pin base_url and add "
         "here:\n" + "\n".join(str(x) for x in sorted(new))
     )
+
+
+def test_exhaustiveness_scan_still_flags_a_net_new_site(tmp_path):
+    """Negative control for the `.claude` skip.
+
+    Widening _SKIP_DIRS is only safe if the scan still catches a real net-new
+    construction, so this drives the same matcher over a synthetic tree: a file
+    outside CONSTRUCT_FILES must be found, and its copy under `.claude` must not.
+    Without this, a future skip entry could quietly hollow the guard out.
+    """
+    (tmp_path / "coaches").mkdir()
+    new_site = tmp_path / "coaches" / "brand_new_coach.py"
+    new_site.write_text("c = anthropic.Anthropic(api_key=k)\n", encoding="utf-8")
+
+    shadow = tmp_path / ".claude" / "worktrees" / "agent-x" / "coaches"
+    shadow.mkdir(parents=True)
+    (shadow / "brand_new_coach.py").write_text(
+        "c = anthropic.Anthropic(api_key=k)\n", encoding="utf-8"
+    )
+
+    found = {
+        p.resolve()
+        for p in tmp_path.rglob("*.py")
+        if not any(part in _SKIP_DIRS for part in p.parts)
+        and _CTOR_FILE.search(p.read_text(encoding="utf-8"))
+    }
+    assert found == {new_site.resolve()}
 
 
 def test_tracked_anthropic_ignores_env_base_url(monkeypatch):

@@ -193,8 +193,11 @@ class TftVisionReader:
                 ]}])
             # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
             # local-fallback path. moon_proxy primary records via vision_server.
-            # tft_vision_reader is SONNET tier - the most expensive
-            # untracked cadence in the audit (polling vision local fallback).
+            # Tier note corrected 2026-07-29: this reader is NOT Sonnet. Its
+            # only construction site is tft/tft_live_analysis.py:143, which
+            # forwards a model defaulting to claude-haiku-4-5 (:139), so the
+            # old "SONNET tier - the most expensive untracked cadence" comment
+            # sent every cost auditor chasing a surface that does not exist.
             try:
                 from core.cost_tracker import record_anthropic_response
                 record_anthropic_response(response, model=self._model, purpose="tft_vision")
