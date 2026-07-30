@@ -162,6 +162,13 @@ def out_dir_for(patch: str, override: Optional[str]) -> Path:
 def load_champions() -> list[str]:
     """Return ``[display_name, ...]`` for the full DDragon roster, sorted.
 
+    Names are DISTINCT (first occurrence wins). DDragon ships alias entries that
+    resolve to a champion already in the registry - the 16.15.1 drop adds 60
+    ``Jade_<Champion>`` entries whose ``name`` is the base champion, taking the
+    file from 173 to 233 entries that still describe 173 champions. Appending
+    one name per entry would silently inflate the display-name keyspace by 60
+    phantom duplicates and make the generator sweep each of them twice.
+
     Raises :class:`RosterUnavailableError` when the registry resolves to zero
     champions. It previously returned ``[]`` for a wrong-shaped or empty
     registry, and main() then wrote a ZERO-champion table over a complete one
@@ -170,13 +177,14 @@ def load_champions() -> list[str]:
     """
     raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
     data = raw.get("data", raw) if isinstance(raw, dict) else {}
-    names: list[str] = []
+    seen: dict[str, None] = {}
     for entry in (data.values() if isinstance(data, dict) else ()):
         if not isinstance(entry, dict):
             continue
         nm = entry.get("name") or entry.get("id")
         if nm:
-            names.append(str(nm))
+            seen.setdefault(str(nm), None)  # insertion-ordered distinct names
+    names = list(seen)
     if not names:
         raise RosterUnavailableError(
             f"DDragon champion registry {_CHAMPS_PATH} yielded no champions; "
