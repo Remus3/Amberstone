@@ -571,11 +571,15 @@ def full_roster() -> list[str]:
             "refusing to substitute the SEED sample for a full-roster request"
         ) from exc
     data = raw.get("data", raw) if isinstance(raw, dict) else {}
-    ids = sorted(
+    # set() before sort: DDragon-derived registries carry alias entries that can
+    # resolve to an id already present (the 16.15.1 drop adds 60 Jade_<Champion>
+    # rows). Deduping here makes "sorted and deduped" true by construction
+    # instead of an accident of today's data.
+    ids = sorted({
         str(entry["id"])
         for entry in (data.values() if isinstance(data, dict) else ())
         if isinstance(entry, dict) and entry.get("id")
-    )
+    })
     if not ids:
         raise RosterUnavailableError(
             f"champion registry {path} yielded no champion ids; "
