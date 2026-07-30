@@ -176,8 +176,9 @@ class TrackedAnthropicShimTests(unittest.TestCase):
         fake_messages.create = original_create
 
         class FakeClient:
-            def __init__(self, api_key=None):
+            def __init__(self, api_key=None, base_url=None):
                 self.api_key = api_key
+                self.base_url = base_url
                 self.messages = fake_messages
 
         fake_anthropic = types.ModuleType("anthropic")

@@ -246,7 +246,7 @@ class GameVisionReader:
 
     def __init__(self, api_key: str):
         import anthropic
-        self._client = anthropic.Anthropic(api_key=api_key)
+        self._client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com")
         self._model  = SONNET_MODEL
         self._last   = {}
         # Cache of (last successful state_summary, last result) for the

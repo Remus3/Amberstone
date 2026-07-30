@@ -316,7 +316,7 @@ class BaseCoach(abc.ABC):
         self._client = None
         if self._api_key:
             import anthropic
-            self._client = anthropic.Anthropic(api_key=self._api_key)
+            self._client = anthropic.Anthropic(api_key=self._api_key, base_url="https://api.anthropic.com")
 
         self._running = True
         _mn = self._MODE_NAME.capitalize()

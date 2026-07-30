@@ -587,7 +587,7 @@ class TftCoachEngine:
             __import__("os").environ.get("ANTHROPIC_API_KEY", "") or
             self._read_key_file()
         )
-        self._client = anthropic.Anthropic(api_key=api_key) if api_key else None
+        self._client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com") if api_key else None
 
         cfg_path = Path(__file__).parent.parent / "config" / "coach_settings.json"
         self._model      = "claude-haiku-4-5-20251001"

@@ -210,7 +210,7 @@ def _call_haiku(champion: str, history: list[dict], api_key: str) -> dict | None
             f"Prior attempts:\n{_build_history_block(history)}\n\n"
             f"Design the next experimental build."
         )
-        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com")
         resp = client.messages.create(
             model=_MODEL, max_tokens=_MAX_TOKENS,
             system=[

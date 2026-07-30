@@ -120,7 +120,7 @@ def coach_pick(state: dict, api_key: str | None) -> dict[str, Any]:
     t0 = time.time()
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com")
         # Mark the static system prompt with cache_control=ephemeral so
         # subsequent champ-select ticks reuse the cached prefix at ~10% of
         # input-token cost. Per-tick coaches (aram/arena/brawl/sr) have

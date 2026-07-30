@@ -214,7 +214,7 @@ def analyze_match(match_id: str, *, api_key: str | None) -> dict[str, Any]:
     t0 = time.time()
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com")
         resp = client.messages.create(
             model=_MODEL, max_tokens=_MAX_TOKENS,
             system=[

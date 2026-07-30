@@ -68,7 +68,7 @@ def tracked_anthropic(
         successful response.
     """
     import anthropic  # imported lazily so tests can monkeypatch
-    client = anthropic.Anthropic(api_key=api_key)
+    client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com")
     original_create = client.messages.create
 
     def wrapped_create(*args: Any, **kwargs: Any) -> Any:

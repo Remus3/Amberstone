@@ -669,7 +669,7 @@ class Coach(BaseCoach):
             import anthropic
             from modes.shared_vision import GameVisionReader
             r = GameVisionReader.__new__(GameVisionReader)
-            r._client = anthropic.Anthropic(api_key=self._api_key)
+            r._client = anthropic.Anthropic(api_key=self._api_key, base_url="https://api.anthropic.com")
             r._model  = "claude-sonnet-4-6"
             r._last   = {}
             r.PROMPT  = _VISION_PROMPT
