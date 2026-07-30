@@ -70,6 +70,22 @@ _ITEM_COST_CACHE: dict[str, tuple[str, int]] = {}
 # optimal item pick, so the balanced order is the honest default.
 _RECALL_BUCKET = "balanced"
 
+# Gold floor for "this is a completed legendary". The repo already carries two
+# floors for the same notion - core.item_wpa._LEGENDARY_MIN_GOLD (2200) and
+# core.personal_build_wr.LEGENDARY_GOLD_FLOOR (2000) - and MEASURED on the live
+# 16.14.1 catalog both select the identical 324-item set, so the stricter value
+# is used and nothing is given up by not importing either private constant.
+_LEGENDARY_GOLD_FLOOR = 2200
+
+# Tags that disqualify an owned item from being a power spike even when it clears
+# the gold floor. Same three as core.item_wpa._EXCLUDE_TAGS. Boots carry the most
+# weight: 171 of 173 champions hold boots at index 1 of their balanced build
+# order, so any count that credits them calls shoes a power spike.
+_NON_SPIKE_TAGS = frozenset({"Boots", "Consumable", "Trinket"})
+
+# (ids, lowercased names) of every completed legendary; built once on demand.
+_LEGENDARY_CATALOG_CACHE: tuple[frozenset[str], frozenset[str]] | None = None
+
 
 def _current_patch() -> str:
     try:
@@ -114,6 +130,86 @@ def _load_item_costs() -> dict[str, tuple[str, int]]:
         except (OSError, ValueError):
             pass
     return _ITEM_COST_CACHE
+
+
+def _legendary_catalog() -> tuple[frozenset[str], frozenset[str]]:
+    """(item ids, lowercased display names) of every completed legendary.
+
+    WHY not core.item_wpa.load_legendary_ids, which IS the repo's existing
+    completed-legendary classifier (core/item_wpa.py:109): it gates on DDragon
+    ``maps["<map_id>"]`` and additionally demands a component list or a depth.
+    Arena's purchasable ids are flat 22-/44-prefixed aliases (223031 Infinity
+    Edge, 226655 Luden's Echo, 443069 Hamstringer) that carry neither, so
+    MEASURED on 16.14.1 ``load_legendary_ids(map_id=30)`` returns ZERO items -
+    it cannot see an Arena inventory at all, and item-spike callouts are served
+    for Arena. Map-gating is also the wrong question for an OWNED item: the shop
+    already refuses to sell a map-illegal item, so a map filter here can only
+    drop something the player provably holds.
+
+    Same catalog + memoisation discipline as _load_item_costs. Fail-soft: an
+    unreadable catalog yields empty sets, which reads as "nothing completed".
+    """
+    global _LEGENDARY_CATALOG_CACHE
+    if _LEGENDARY_CATALOG_CACHE is not None:
+        return _LEGENDARY_CATALOG_CACHE
+    ids: set[str] = set()
+    names: set[str] = set()
+    patch = _current_patch()
+    if patch:
+        path = _DS_DATA / patch / "items.json"
+        try:
+            data = (json.loads(path.read_text(encoding="utf-8")).get("data") or {})
+        except (OSError, ValueError):
+            data = {}
+        for iid, it in data.items():
+            if not isinstance(it, dict):
+                continue
+            gold = it.get("gold")
+            if not isinstance(gold, dict) or not gold.get("purchasable"):
+                continue
+            total = gold.get("total")
+            if isinstance(total, bool) or not isinstance(total, (int, float)):
+                continue
+            if total < _LEGENDARY_GOLD_FLOOR:
+                continue
+            # A non-empty "into" means the item builds onward, so it is a
+            # component and holding it is mid-purchase, not a completed spike.
+            if it.get("into"):
+                continue
+            if set(it.get("tags") or ()) & _NON_SPIKE_TAGS:
+                continue
+            ids.add(str(iid))
+            name = str(it.get("name") or "").strip().lower()
+            if name:
+                names.add(name)
+    _LEGENDARY_CATALOG_CACHE = (frozenset(ids), frozenset(names))
+    return _LEGENDARY_CATALOG_CACHE
+
+
+def _owned_legendary_count(owned_item_ids: object,
+                           owned_item_names: object) -> int:
+    """How many COMPLETED LEGENDARIES the player owns - the power-spike count.
+
+    WHY this is not _owned_build_item_count, the build-progress primitive the
+    recall index uses: the two questions genuinely differ even though the same
+    raw slot count broke both. A power spike is a fact about the player's combat
+    stats, so a legendary bought OFF the recommended order still spikes and must
+    count; and the build orders carry boots, which do not spike. Scoping this to
+    the recommended build would both undercount off-order buys and call
+    Berserker's Greaves a 1-item spike.
+
+    Ids are authoritative (an id is unambiguous, a display name is not), with a
+    name fallback for coach payloads that carry names only. Fail-soft: no usable
+    signal -> 0, which reads as "nothing completed yet".
+    """
+    ids, names = _legendary_catalog()
+    if isinstance(owned_item_ids, list) and owned_item_ids:
+        return sum(1 for i in owned_item_ids
+                   if i is not None and str(i).strip() in ids)
+    if isinstance(owned_item_names, list) and owned_item_names:
+        return sum(1 for n in owned_item_names
+                   if isinstance(n, str) and n.strip().lower() in names)
+    return 0
 
 
 def _next_build_item(champ: object, mode_lower: str, owned_count: int):
@@ -656,27 +752,29 @@ def _compute_uncached(gs: dict, mode_key: str, zoi: dict | None = None) -> dict:
     except (TypeError, ValueError):
         lvl = 1
     items = gs.get("items")
-    item_count = len(items) if isinstance(items, list) else 0
     gold = gs.get("gold")
-    # Index the build order by BUILD PROGRESS, not by inventory slots. The
-    # liveclient slot list carries the trinket + potions, so a raw len() names
-    # the wrong item as soon as a potion is held and resolves to nothing once
-    # six slots are used - which blanked the served recall callout for every
-    # player, since every player carries a trinket. item_count itself stays the
-    # raw slot count: next_callouts reads it for the item-spike rows, a
-    # different question with its own axis.
+    # Two DIFFERENT item counts, because the two consumers ask different
+    # questions. Neither may be the raw inventory slot count: the liveclient slot
+    # list carries the trinket + potions, so a raw len() named the wrong build
+    # item once a potion was held and told a player holding nothing but a trinket
+    # and a potion they had hit a 2-item power spike.
+    #
+    # Build order -> BUILD PROGRESS (which of my own core items do I already own).
+    # Item spike  -> COMPLETED LEGENDARIES (a fact about my combat stats, so an
+    #                off-order legendary counts and boots do not).
     build_progress = _owned_build_item_count(
         gs.get("my_champion"), lower, gs.get("my_item_ids"), items,
     )
     nxt = _next_build_item(gs.get("my_champion"), lower, build_progress)
     next_name = nxt[0] if nxt else None
     next_cost = nxt[1] if nxt else None
+    legendary_count = _owned_legendary_count(gs.get("my_item_ids"), items)
     # RM-124: the wave/cannon clock stays gated OFF (do-not-flip-blind) until
     # the provisional cadence table is validated against one real game. Flip
     # RC_WAVE_CALLOUT=1 to emit it live once validated.
     _enable_wave = os.environ.get("RC_WAVE_CALLOUT", "0") == "1"
     callouts = next_callouts(
-        lower, gt, lvl, item_count, max_n=3,
+        lower, gt, lvl, legendary_count, max_n=3,
         gold=gold, next_item_name=next_name, next_item_cost=next_cost,
         inhib_events=gs.get("inhib_events"),
         turret_events=gs.get("turret_events"),
