@@ -94,7 +94,9 @@ first resort.
 
 Check state: `Get-ScheduledTask -TaskName "RC-*" | Select TaskName, State`
 
-Failover CLI: type `cf` (= `teamclaude run --no-mitm --auto-fallback`, shim at `C:\Users\Administrator\AppData\Roaming\npm\cf.cmd`) to launch an interactive Claude Code CLI routed through the failover proxy. Scoped to that one invocation - never touches RC's python coaches or the headless RC-* Claude tasks. Do NOT set `ANTHROPIC_BASE_URL` globally: RC coaches build `anthropic.Anthropic(api_key=...)` with no explicit base_url, so a user-wide var would silently redirect all coaching into the subscription proxy on the next RC restart.
+Subscription failover routing: a USER-scope `ANTHROPIC_BASE_URL=http://localhost:3456` is set (HKCU\Environment) so the Claude subscription GUI (MSIX desktop app) + any `claude` CLI + the headless RC-* Claude tasks all route through the teamclaude failover proxy and rotate across the two subscription accounts. This is deliberate - those are subscription surfaces. The `cf` shim (`C:\Users\Administrator\AppData\Roaming\npm\cf.cmd`) still exists as an explicit CLI entry but is now largely redundant given the user-wide var.
+
+RC coaching is CARVED OUT and must stay on the direct API: it uses the Console API key (`API-Key-Claude.txt`), not the subscription, so routing it through the proxy would break auth / burn subscription quota. Every production `anthropic.Anthropic(...)` pins `base_url="https://api.anthropic.com"` to ignore the env var; `tests/test_anthropic_base_url_pin.py` is the guard (fails on any unpinned or new construction site). Do NOT remove those pins while the user-wide var is set.
 
 ---
 
