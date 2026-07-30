@@ -140,6 +140,58 @@ def _next_build_item(champ: object, mode_lower: str, owned_count: int):
     return entry
 
 
+def _owned_build_item_count(champ: object, mode_lower: str,
+                            owned_item_ids: object,
+                            owned_item_names: object) -> int:
+    """How many of ``champ``'s OWN build-order items the player already owns.
+
+    WHY this exists rather than len(inventory): dashboard/_liveclient.py builds
+    ``owned_items`` from EVERY inventory slot displayName - trinket, Health
+    Potions, Refillable, biscuits included - so a raw len() is a slot count, not
+    build progress. Indexing a curated 6-entry legendary order by that count
+    names the wrong item as soon as a potion is held and falls off the end of the
+    order entirely once six slots are used, which is what blanked the ARAM
+    shadow ``reset_item`` column.
+
+    Counts by item ID (an id is unambiguous; a display name is not), falling
+    back to name membership when only names are available. The count is a
+    MEMBERSHIP count, so an off-order ARAM purchase still advances the pointer
+    instead of mis-indexing. Fail-soft: no usable signal -> 0 (nothing bought
+    yet), which points the caller at the first item rather than at nothing.
+    """
+    orders = _load_build_orders(mode_lower)
+    if not isinstance(champ, str) or not champ.strip():
+        return 0
+    champ_orders = orders.get(champ.strip())
+    if not isinstance(champ_orders, dict):
+        return 0
+    order = champ_orders.get(_RECALL_BUCKET)
+    if not isinstance(order, list):
+        order = next((v for v in champ_orders.values() if isinstance(v, list)), None)
+    if not isinstance(order, list) or not order:
+        return 0
+
+    if isinstance(owned_item_ids, list) and owned_item_ids:
+        owned_ids = {str(i).strip() for i in owned_item_ids if i is not None}
+        return sum(1 for iid in order if str(iid).strip() in owned_ids)
+
+    # Name fallback: resolve the order's ids to display names via the same
+    # memoised catalog, then match case-insensitively against the slot names.
+    if isinstance(owned_item_names, list) and owned_item_names:
+        costs = _load_item_costs()
+        owned_names = {
+            str(n).strip().lower() for n in owned_item_names
+            if isinstance(n, str) and n.strip()
+        }
+        count = 0
+        for iid in order:
+            entry = costs.get(str(iid))
+            if entry and entry[0] and entry[0].strip().lower() in owned_names:
+                count += 1
+        return count
+    return 0
+
+
 def _full_build_order(champ: object, mode_lower: str) -> list[str]:
     """Return the FULL ordered list of completed-item NAMES for ``champ``.
 
@@ -950,13 +1002,33 @@ def shadow_log_det(coach: dict, lc: dict | None, det: dict, mode_key: str,
         return
 
 
-def _live_aram_block(path: Path | None = None) -> dict:
-    """Read the live ARAM Haiku block (the six coach fields) from the artifact.
+def _shadow_schema_keys(module, fallback: tuple[str, ...]) -> tuple[str, ...]:
+    """The comparison columns a shadow module records, read from that module.
 
-    Returns just the six comparison fields from data/aram_coaching_data.json
-    (the live coach writes many more). Fail-soft: a missing / unreadable /
-    malformed artifact -> {} (then log_aram_coach normalizes to all-empty).
-    Never raises. ``path`` overrides the artifact location (test seam)."""
+    WHY: the two live-artifact readers below each used to hardcode their own key
+    tuple, and both silently drifted behind the shadow modules that define the
+    row schema - the ARAM reader never read choices / item_extra / objective and
+    the Arena reader never read choices. A column the reader refuses to read can
+    NEVER appear on the live side, which made the shadow report show a
+    structurally impossible "Haiku never emits choices" (both=0, live_only=0)
+    when the coach emits it just fine. Deriving the reader from the WRITER's
+    schema is the direction that cannot rot: a key added to the shadow row is
+    captured on both sides at once.
+    """
+    keys = getattr(module, "_BLOCK_KEYS", None)
+    if isinstance(keys, (tuple, list)) and keys:
+        return tuple(str(k) for k in keys)
+    return fallback
+
+
+def _live_aram_block(path: Path | None = None) -> dict:
+    """Read the live ARAM Haiku block from the artifact.
+
+    Returns the comparison columns core.aram_coach_shadow records, read from
+    data/aram_coaching_data.json (the live coach writes many more fields).
+    Fail-soft: a missing / unreadable / malformed artifact -> {} (then
+    log_aram_coach normalizes to all-empty). Never raises. ``path`` overrides
+    the artifact location (test seam)."""
     target = path if path is not None else (
         Path(__file__).resolve().parent.parent / "data" / "aram_coaching_data.json"
     )
@@ -966,10 +1038,12 @@ def _live_aram_block(path: Path | None = None) -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
-    keys = (
+    from core import aram_coach_shadow  # lazy
+    keys = _shadow_schema_keys(aram_coach_shadow, (
         "action", "fight_rule", "risk", "reset_item",
-        "item_build", "item_build_reasons",
-    )
+        "item_build", "item_build_reasons", "choices",
+        "item_extra", "objective",
+    ))
     return {k: data.get(k) for k in keys if k in data}
 
 
@@ -977,10 +1051,11 @@ def _live_arena_block(path: Path | None = None) -> dict:
     """Read the live Arena Haiku block (the seven coach fields) from the
     artifact.
 
-    Returns just the seven comparison fields from data/arena_coaching_data.json
-    (the live coach writes many more). Fail-soft: a missing / unreadable /
-    malformed artifact -> {} (then log_arena_coach normalizes to all-empty).
-    Never raises. ``path`` overrides the artifact location (test seam)."""
+    Returns the comparison columns core.arena_coach_shadow records, read from
+    data/arena_coaching_data.json (the live coach writes many more fields).
+    Fail-soft: a missing / unreadable / malformed artifact -> {} (then
+    log_arena_coach normalizes to all-empty). Never raises. ``path`` overrides
+    the artifact location (test seam)."""
     target = path if path is not None else (
         Path(__file__).resolve().parent.parent / "data" / "arena_coaching_data.json"
     )
@@ -990,10 +1065,11 @@ def _live_arena_block(path: Path | None = None) -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
-    keys = (
+    from core import arena_coach_shadow  # lazy
+    keys = _shadow_schema_keys(arena_coach_shadow, (
         "action", "round_strategy", "fight_rule", "augment_advice",
-        "anvil_advice", "target_priority", "risk",
-    )
+        "anvil_advice", "target_priority", "risk", "choices",
+    ))
     return {k: data.get(k) for k in keys if k in data}
 
 
@@ -1059,7 +1135,15 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
         # balanced-order reader the recall callout uses; None when unknown.
         items = gs.get("items")
         item_count = len(items) if isinstance(items, list) else 0
-        nxt = _next_build_item(champ, "aram", item_count)
+        # Index the build order by BUILD PROGRESS, not by inventory slots: the
+        # liveclient slot list carries the trinket + potions, so a raw len()
+        # over-indexes a 6-entry order and blanks reset_item outright once six
+        # slots are in use. item_count stays the raw slot count because
+        # item_extra is a 7th-SLOT question, not a build-progress one.
+        build_progress = _owned_build_item_count(
+            champ, "aram", gs.get("my_item_ids"), items,
+        )
+        nxt = _next_build_item(champ, "aram", build_progress)
         next_name = nxt[0] if nxt else None
         next_cost = nxt[1] if nxt else None
 
@@ -1097,6 +1181,37 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
             build_order = _full_build_order(champ, "aram")
         except Exception:  # noqa: BLE001
             build_order = []
+
+        # Per-item build reasons. The deterministic source is the ARAM
+        # item-interaction cue corpus - the SAME comp-shape + purchase-timing
+        # snapshot the live coach folds in as additive context
+        # (coaches/aram_coach.py:281), so reading it here is non-circular: it is
+        # a precomputed corpus, not a Haiku output. Without this the ONLY reason
+        # source was the anti-tank / anti-heal hints, which is why the shadow
+        # report showed an empty deterministic item_build_reasons on ~1050 ticks
+        # where Haiku produced a full map.
+        # A cue the corpus does not carry renders CUE_SENTINEL ("-"); recording
+        # that would manufacture fake coverage in the very report this is meant
+        # to make honest, so sentinels are dropped. The corpus lives in a
+        # gitignored local artifact, so an absent corpus degrades to {} and the
+        # hint-derived reasons still ride through build_block.
+        cue_reasons: dict = {}
+        try:
+            from core.aram_item_interaction_context import (  # lazy
+                CUE_SENTINEL,
+                item_interaction_cues,
+            )
+            raw_cues = item_interaction_cues(
+                enemy_comp, gs.get("game_time_s"), build_order, game_mode="ARAM",
+            )
+            if isinstance(raw_cues, dict):
+                cue_reasons = {
+                    str(k): v for k, v in raw_cues.items()
+                    if isinstance(v, str) and v.strip()
+                    and v.strip() != CUE_SENTINEL
+                }
+        except Exception:  # noqa: BLE001
+            cue_reasons = {}
         # Tower HP drives the deterministic objective; owned-item count drives
         # item_extra. Tower HP is vision-only INPUT state echoed on the coach
         # dict (NOT a Haiku output field, so reading it is non-circular) and is
@@ -1111,7 +1226,7 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
             low_enemy_count=None,
             cc_threat_line=cc_line,
             build_order=build_order,
-            item_build_reasons={},
+            item_build_reasons=cue_reasons,
             next_item_name=next_name,
             next_item_remaining_gold=next_cost,
             antitank_hint=antitank_hint,
