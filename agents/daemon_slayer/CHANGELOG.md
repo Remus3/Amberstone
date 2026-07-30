@@ -1331,6 +1331,55 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.267.0 (2026-07-30) - RM-118 residual: the THREE RUNE lanes reach their routes.
+The other route family the 1.266.0 slice deferred. Same defect class: the ENGINE
+half shipped complete - registry, consumer, tests - and the route wire was never
+added, so no coach tick, no operator curl and no Python client could arm
+`apply_rune_offense_grants` (1.223.0, extended R155 / R159 - a rune-granted
+`(bonus AD, AP, attack-speed fraction)` triple into the DPS stat block:
+Gathering Storm 8236, Absolute Focus 8233, Conqueror 8010, Legend: Alacrity 9104,
+Jack Of All Trades 8316), `apply_rune_self_heal` (R142 - Second Wind 8444's
+4-percent-of-missing-health heal into the EHP numerator) or
+`apply_rune_shield_grants` (R142-S2 - Guardian 8465's SELF shield only; the ally
+half stays excluded by design, that is `hps.py`'s lane).
+Route ownership is PER-SEAM and was read off `inspect.signature` over every
+module in the package, not assumed from the family name. The 1.266.0 write-up
+recorded these three as reaching `compute_dps` / `compute_hybrid` /
+`rank_items_by_hybrid`; that is right for the offense lane and INCOMPLETE for the
+other two - `ehp.py` names both on `compute_ehp` AND on `rank_items_by_ehp`, so
+`/ehp` and `/rank-tank` own them too and are wired here. Measured table:
+`apply_rune_offense_grants` -> `/dps` + `/hybrid` + `/rank-bruiser`;
+`apply_rune_self_heal` and `apply_rune_shield_grants` -> `/ehp` + `/rank-tank` +
+`/hybrid` + `/rank-bruiser`. The EHP frames do NOT name the offense lane (no
+damage axis to credit into), so `/ehp` and `/rank-tank` must not grow that key -
+asserted against rather than left to convention.
+TRANSPORT: unlike the 1.266.0 four, these are keyed by Riot perk id, so the flag
+is inert without a `rune_ids` roster. `/ehp`, `/rank-tank`, `/hybrid` and
+`/rank-bruiser` have parsed `rune_ids` since R136; `/dps` did NOT - `compute_dps`
+grew its own `rune_ids` parameter with the seam (`dps.py:758`) and the route
+carried neither, so wiring the flag alone would have been reachable-and-dead (the
+RM-115 failure mode). The transport is wired into `_route_dps` and `dps_for` in
+the same slice. `apply_rune_self_heal` / `apply_rune_shield_grants` DO go through
+`_emit_ehp_family_seams` (unlike the 1.266.0 four): all four of that helper's
+callers now post to a route that parses both, so there is no route to leak onto.
+DEFAULT-OFF and byte-identical when unset - and stronger, a body carrying a FULL
+`rune_ids` roster with the flags off is byte-identical too, because each consumer
+(`dps.py:1058`, `ehp.py:1763`, `ehp.py:1888`) touches its registry only inside the
+`if` the flag opens. Measured: Jinx L13 SR (IE + boots + Rageblade, 100/100
+target resists) Conqueror 8010 moves weighted DPS 53.218435 -> 59.845188 and the
+bruiser order over the full 139-row pool moves; Leona L13 SR (Sunfire +
+Warmog's) Second Wind and Guardian each raise blended EHP, are additive rather
+than aliases, are each inert with only the OTHER lane's rune in the roster, and
+move the tank order over the full 137-row pool. Legend: Alacrity 9104 and Jack Of
+All Trades 8316 are in the registry but conditional (an attack-speed-locked
+champion, and a distinct-item-stat census threshold), so they correctly read as
+no change on a build that does not meet the condition and are not asserted as
+movers. A perk id in no registry is wholly invariant on every route.
+No data table, no Riot key, no Claude. Pinned by
+`tests/test_rune_lane_route_seams_rm118.py` (42 tests), which includes a
+package-wide `inspect.signature` sweep so the route table cannot silently grow.
+STRANDED_TODAY shrinks 19 -> 16.
+
 1.266.0 (2026-07-29) - RM-118 residual: FOUR EHP SURVIVABILITY seams reach their
 routes. The R197 stranded-seam guard
 (`tests/test_stranded_hsp_seam_r197.py::STRANDED_TODAY`) ledgered 22 engine seams
