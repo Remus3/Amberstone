@@ -8,7 +8,8 @@
 
 # 2026-07-29h - HEADLESS ORCHESTRATOR RUN 2026-07-29-01: 6 slices, CI repaired, ENGINE 1.266.0.
 
-**6 commits pushed: `f69a15c7` `1ec67d0c` `f6e8c11c` `0dffb844` `b4919236` `cff8d678`. LEDGER 1113-1118.
+**9 commits pushed: `f69a15c7` `1ec67d0c` `f6e8c11c` `0dffb844` `b4919236` `cff8d678` `85e7fb67`
+`a5fe1ea7` `635f8f3f`. LEDGER 1113-1119. CI GREEN - full dual suite success on `cff8d678`.
 Every merge passed a read-only verifier gate; 3 of the 5 gates corrected a claim the slice got wrong.**
 
 ## Start here next session
@@ -57,6 +58,14 @@ Two things are load-bearing and neither is code:
 - **`cff8d678` ARAM Mayhem augment cadence.** An OPEN bug closed in code. Bounded four ways because
   it makes a PAID vision call fire more often; worst case +4 scans/game against a hard +6 ceiling,
   and plain ARAM pays zero. **LIVE ON-SCREEN CONFIRM IS OWED - not verified fixed.**
+- **`a5fe1ea7` context management folded into the headless-upgrade skill** (operator-directed): new
+  section 10c plus four ritual wire-ins, so every future run carries the discipline instead of
+  rediscovering it. Both the tracked `tools/headless-upgrade.md` and the gitignored live copy under
+  `.claude/commands/` were patched to byte-identical; NO parity guard was added on purpose, because
+  the live copy is absent in CI so a guard would have to skip when missing - the exact masking-skip
+  pattern this repo audited out.
+- **`635f8f3f` item-spike legendary count** - the third and last consumer of the slot-count root
+  cause, and the run's largest served-output change (all three modes). See LEDGER 1119.
 
 ## Verification state at wrap
 
@@ -77,8 +86,12 @@ Two things are load-bearing and neither is code:
 ## Owed / FUTURE, in priority order
 
 1. **ARAM Mayhem augment on-screen confirm** (G3-13). The RM-25 hold-25s workaround is retired.
-2. **The item-spike twin**: `next_callouts` still gets the raw slot count, so "2-item spike" fires for
-   a player holding only a trinket and a potion. Primitive already in place.
+2. **The item-spike twin - DONE at wrap, `635f8f3f` (LEDGER 1119).** It also fixed a SECOND bug: at 6
+   used slots the old count passed every threshold, so the active spike row was silently DELETED late
+   game. It counts completed LEGENDARIES, not build-order progress - 171 of 173 champions carry boots
+   at build index 1, so a build-order count would have called Berserker's Greaves a 1-item spike. NOT
+   mode-gated, so SR + ARAM + Arena all change. Residual FUTURE: the restored rows now compete in the
+   existing `max_n=3` advisory cap, which is pre-existing priority policy, not a new defect.
 3. **`data/coaching/aram_item_interaction.json` is gitignored** - deterministic `item_build_reasons`
    coverage is machine-local and absent in CI. Must be tracked or regenerable before any Haiku flip.
 4. **RM-118 next batch**: the 3 rune lanes across `/dps` + `/hybrid` + `/rank-bruiser` (one server.py
