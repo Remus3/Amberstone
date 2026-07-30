@@ -127,7 +127,10 @@ from core.archetype_picks import canonical_champion_id
 from core.build_order import DEFAULT_SLOTS, plan_build_order
 from core.build_order_precompute import (
     DS_MODE_BY_KEY,
+    EXIT_EMPTY_TABLE,
+    EXIT_NO_ROSTER,
     SEED_CHAMPIONS,  # re-exported for parity + tests (bov.SEED_CHAMPIONS)
+    RosterUnavailableError,
     archetype_for,
     engine_version,
     resolve_champions,
@@ -555,7 +558,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                          "path by construction.")
     args = ap.parse_args(argv)
 
-    champions = resolve_champions(args.champions)
+    try:
+        champions = resolve_champions(args.champions)
+    except RosterUnavailableError as exc:
+        logger.error("%s", exc)
+        return EXIT_NO_ROSTER
 
     # Static mode computes in-process via the DS server handlers (no :8893).
     # Otherwise a non-dry run requires the live engine (the planner makes :8893
@@ -587,6 +594,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.dry_run:
             logger.info(f"  [dry-run] {mode_key:5s}: {champs} champions, "
                   f"{cells} non-empty orders (not written)")
+        elif cells == 0:
+            # Mirrors the HZ-B1 guard: a mid-sweep engine death is swallowed
+            # per-cell, so without this an all-empty variants table would
+            # overwrite a good one and exit 0.
+            logger.error(
+                "%s: sweep produced 0 non-empty orders across %d champions - "
+                "refusing to write %s (engine failure mid-sweep?)",
+                mode_key, champs,
+                out_dir / f"{_FILE_PREFIX}_{mode_key}.json",
+            )
+            return EXIT_EMPTY_TABLE
         else:
             out_path = out_dir / f"{_FILE_PREFIX}_{mode_key}.json"
             atomic_write(payload, out_path)
