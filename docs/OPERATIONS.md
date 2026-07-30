@@ -90,6 +90,7 @@ first resort.
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
 | `RC-Phase3-Supervisor` | At logon | Administrator | Phase 3 agent supervisor |
 | `RC-Phase3-PeriodicAudit` | Scheduled | Administrator | Phase 3 periodic audit |
+| `RC-TeamClaudeProxy` | At logon | Administrator / HIGHEST | Operator utility, NOT RC infra: headless `teamclaude` multi-account Claude-subscription failover proxy on `:3456`, launched hidden via `C:\Users\Administrator\teamclaude_proxy_hidden.vbs` -> `teamclaude_proxy.bat`. Inert until a client sets `ANTHROPIC_BASE_URL=http://localhost:3456` (`teamclaude run --no-mitm`); does not touch RC or the dashboard. Config + live OAuth tokens live in `C:\Users\Administrator\.config\teamclaude.json` (non-repo, do NOT commit). Activity log: same dir, `teamclaude_activity.log` |
 
 Check state: `Get-ScheduledTask -TaskName "RC-*" | Select TaskName, State`
 
