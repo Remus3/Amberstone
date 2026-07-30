@@ -1331,6 +1331,43 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.266.0 (2026-07-29) - RM-118 residual: FOUR EHP SURVIVABILITY seams reach their
+routes. The R197 stranded-seam guard
+(`tests/test_stranded_hsp_seam_r197.py::STRANDED_TODAY`) ledgered 22 engine seams
+that `server.py` neither parsed nor forwarded. Four are the same defect class
+1.264.0 / 1.265.0 fixed for `assume_hsp_amp` - engine half complete (registry +
+consumer + tests), route wire simply never added, so no coach tick, no operator
+curl and no Python client could arm them: `assume_passive_flat_mitigation`
+(1.148.0 R9 - the per-instance FLAT damage block the PERCENT registry excluded:
+Fizz P, Amumu E, Leona W), `assume_passive_health_stacks` (R46 - permanent bonus
+max HP from a stacking passive: Sion W, Cho'Gath R, Swain P), `assume_item_revive`
+(1.195.0 - Guardian Angel 3026 Rebirth) and `assume_item_stasis` (1.196.0 -
+Zhonya's 3157 / Seeker's Armguard 2420 / Wooglet's Witchcap 228002 Time Stop).
+Route ownership is PER-SEAM and was read off `inspect.signature`, not assumed:
+`assume_passive_flat_mitigation` is on `compute_ehp` AND `rank_items_by_ehp` so it
+reaches BOTH `POST /ehp` and `POST /rank-tank`, while the other three exist on
+`compute_ehp` alone and stay scalar-only on `/ehp` - emitting them from
+`rank_tank_for` would send keys `_route_rank_tank` does not parse, which is
+asserted against rather than left to convention. Gates: route `_route_ehp`
+(parse + forward all four), route `_route_rank_tank` (parse + forward the
+flat-mitigation one), client `core.daemon_slayer_client.ehp_for` (four kwargs at
+END, emitted only when True) and `rank_tank_for` (one kwarg at END). Deliberately
+NOT folded into `_emit_ehp_family_seams` - that helper serves four functions and
+three of these are parsed by `/ehp` alone, so folding them in would let a later
+edit leak a key onto `/hybrid` or `/rank-bruiser`. No engine signature changed;
+all four already shipped DEFAULT-OFF and every one already had its TRANSPORT on
+the route (`champion` + `level` for the two champion-keyed registries, `items` for
+the two item-keyed ones), so nothing is reachable-and-dead. DEFAULT-OFF and
+byte-identical when unset. On `/rank-tank` the flat-mitigation credit is a REAL
+sort input rather than a uniform multiplier: it lifts the PHYSICAL numerator only
+(Amumu's block is physical-only), so armor candidates gain more than pure-MR ones
+and the order moves - measured Leona L13 SR over the full 137-row pool, while Sett
+(in neither registry) is wholly invariant. No data table, no Riot key, no Claude.
+Pinned by `tests/test_ehp_survivability_route_seams_rm118.py` (25 tests). The
+ledger shrinks 22 -> 18; the 10 remaining DECLINED-BY-DESIGN entries (five
+operator-CLOSED s232 target/caster-state assumptions, five operator-gated per-item
+shield opt-ins) are documented as such in the ledger and are not debt.
+
 1.265.0 (2026-07-29) - RM-118 the wielder HSP ITEM amp reaches the HYBRID
 (bruiser) RANKER - the remaining open half after the EHP-ranker wire in 1.264.0.
 `compute_hybrid` and `rank_items_by_hybrid` (`agents/daemon_slayer/hybrid.py`, a
