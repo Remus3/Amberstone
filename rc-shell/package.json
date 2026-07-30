@@ -6,7 +6,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/config.test.js test/store.test.js test/overlay_state.test.js test/overlay_state_contract.test.js test/overlay_settings_ipc.test.js test/clickthrough_zones.test.js test/drag_region.test.js test/window_controls.test.js test/active_indicator.test.js test/update_channel.test.js test/crash_guard.test.js test/overlay_layout_hide.test.js test/overlay_layout_drag.test.js test/overlay_launcher.test.js test/enemy_spells_tracker.test.js test/overlay_flash.test.js"
+    "test": "node --test test/config.test.js test/store.test.js test/overlay_state.test.js test/overlay_state_contract.test.js test/overlay_settings_ipc.test.js test/clickthrough_zones.test.js test/drag_region.test.js test/window_controls.test.js test/active_indicator.test.js test/update_channel.test.js test/crash_guard.test.js test/overlay_layout_hide.test.js test/overlay_layout_drag.test.js test/overlay_launcher.test.js test/enemy_spells_tracker.test.js test/overlay_flash.test.js ../web/js/panels/enemy_spells_timer.test.mjs"
   },
   "engines": {
     "node": ">=18"
