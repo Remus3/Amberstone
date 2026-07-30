@@ -32,6 +32,7 @@ This skill is the durable record of how to run that loop cleanly. Run sections i
   - Delete stale remote branches that are fully merged: a branch is safe to drop when `git log origin/main..origin/<branch>` is empty. `git push origin --delete <branch>`.
   - Clean stale local worktrees left by prior orchestrator runs (they accrete and bloat disk - one run reached 7.3G across 49 locked worktrees). Verify 0 unmerged first (`git branch --no-merged main`), then `git worktree unlock` + `git worktree remove --force` each, `git worktree prune`, and `git branch -D` the merged worktree/slice branches.
 - Write the initial synopsis to `C:/Users/Administrator/Desktop/RC_HEADLESS_SYNOPSIS_<YYYY-MM-DD>.md` (atomic Write). Header carries: HEAD sha, ENGINE_VERSION, DS test count, RC test count, CI status, item count, scope, stop rules, phase log table.
+- Read the operator's own Desktop continue-notes (`RC RC Continue - N.txt` and siblings) before choosing the run's scope - they carry the operator's stated next task and its do-not-redo set, and they are frequently a better pick than a ROADMAP row. **Adjudicate them against ground truth rather than obeying them:** several have been measured STALE (their task already shipped), and a stale note that is executed manufactures work. Say in the synopsis which you probed and what you found.
 - TaskCreate for each phase in the run so progress is visible.
 - Init the resumable slice manifest so a crash (API 400 / socket drop / cascade-cancel) never wipes the run: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/slice_orchestrator.py init --run-id <YYYY-MM-DD-NN> --head <sha>`, then `add` one entry per planned slice. The manifest at `ops/runtime/slice_manifest.json` is the durable checkpoint; on a relaunch `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/slice_orchestrator.py resume` lists only the non-committed slices to redo. The wrapper `tools/headless_run.ps1` automates relaunch-on-crash + this resume handoff.
 - If a prior manifest already exists with non-committed slices, this is a RESUME: skip the committed ones, re-verify the rest against ground truth, continue from there - do NOT re-init over it.
@@ -216,9 +217,99 @@ Reorient the coach output from prose-block to A/B choice format:
 - **Improve**: each phase leaves a real, shippable improvement; no half-finished implementations.
 - **New tech**: each run sweeps for upstream changes (Riot patch notes, claude API model bumps, browser API additions, repo deps).
 
+### 10c. Context management is a first-class run constraint (not a courtesy)
+
+The binding budget on a headless run is CONTEXT, not wall-clock and not tokens spent.
+A run that blows its window mid-slice loses the merge state it was holding, and the
+next session pays to rediscover it. Treat the context window the way you treat CI:
+a gate that must stay green, checked continuously, never at the end.
+
+**Push work OUT of the main thread by default.** This is the real reason the
+orchestrator-merge pattern (section 2) exists, over and above parallelism:
+
+- A worktree subagent's file reads, greps, and full test output NEVER enter the
+  merger's context - only its roll-up does. A slice that would cost the merger 100k
+  costs it the length of one report.
+- The same applies to the read-only `verifier` gate. Do not re-run a slice's suite
+  yourself to check it; dispatch the verifier and read its verdict.
+- NEVER Read a subagent's `output_file` - it is the full JSONL transcript and reading
+  it can end the run on the spot. If you need more from an agent, `SendMessage` it.
+- Probe with a targeted grep before reading a file. `wc -l` / a `grep -n` for the
+  anchor beats reading 2000 lines to find one constant.
+- Ask agents for roll-ups, not transcripts. A report that states file:line, the
+  numbers observed, and the decisions taken is worth more than a narration.
+
+**Durable state lives on DISK, not in the conversation.** Everything that must
+survive a `/clear` or a crash is already file-backed - use it deliberately:
+
+| what | where | when written |
+|---|---|---|
+| slice checkpoints | `ops/runtime/slice_manifest.json` | as each slice advances (section 1) |
+| the run record | the Desktop synopsis | every phase complete |
+| per-item history | `docs/LEDGER.md` | run end |
+| session continuity | `WAKEUP_NOTES.md` | run end |
+| durable lessons | `memory/*.md` + the `MEMORY.md` index | as they surface (10b) |
+| the next session's brief | a Desktop `RC RC Continue - N.txt` | see below |
+
+If all six are current, losing the conversation costs nothing but the in-flight slice.
+That is the actual test of whether context management is working - not how long the
+window lasted.
+
+**Write the next-session prompt BEFORE the banner, not after.** The hand-off is the
+one artifact whose absence blocks the next session, so it must not be the last thing
+attempted on a nearly-full window. Write it to the Desktop as soon as the work queue
+is essentially settled, in the operator's own continue-note format:
+
+```
+NEXT SESSION
+------------
+Task: <a LIVE-STATE FORK, so the next session cannot pick a blocked item -
+  "probe first; if a Mayhem game is playable do X, if SR do Y, if neither do Z">
+Context: <ENGINE / patch / last run's commits / the probe commands>
+READ THIS FIRST: <any trap that would otherwise burn the session - e.g. a working
+  tree whose suite signal is unusable, with the measured numbers>
+Acceptance: <per fork, concretely>
+Do NOT redo: <the closed set relevant to those forks, with reasons>
+Also owed: <the FUTURE items in priority order>
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
+```
+
+Rules for it: a bare "continue the work" is a failure. Name the fork on live state,
+front-load the traps, and carry the do-not-redo set - a next session that re-derives a
+closed finding is the exact waste this file exists to prevent. If the run measured
+something that makes the obvious reading of the repo WRONG, that goes in READ THIS
+FIRST with its numbers.
+
+**Session boundaries.** One focused unit per session (CLAUDE.md "Session workflow").
+`/clear` between Tier items, between coding and reviewing modes, and between
+focus-area switches - a stale window costs more than a cold bootstrap, because
+bootstrapping is cheap (CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log) and a
+half-remembered decision is expensive. `/done` (section 11) then ends the session,
+and it is what makes the next `/clear` safe.
+
+**When the window gets tight mid-run:** finish the in-flight slice to a committed
+state, checkpoint the manifest, sync the synopsis, write the next-session prompt, then
+`/done`. Do NOT start another slice hoping to fit it, and do NOT leave a half-merged
+tree - a merge abandoned mid-way is the one failure mode that costs the next session
+more than it saves this one.
+
+**Do not spend context on cleanup that needs judgement.** If a hook or a threshold
+asks for a trim (the `MEMORY.md` index is the recurring one), MEASURE first and check
+whether a mechanical pass actually helps. If reaching the threshold means dropping
+information rather than reformatting it, that is curation and it wants its own
+session - log it as a FUTURE item with the measurement and move on. Degrading the file
+that bootstraps every session, in a hurry, at the end of a long run, is worse than
+sitting over a soft limit.
+
 ### 11. The /done ritual at run end
 
 Run `/done` (existing skill). It handles the local check gate, auto-commit + push, GitHub CI verification, background-task stop, bridge-loop liveness, WAKEUP_NOTES update + prune, living-doc sync, incoming-lessons drain, session-size check, and the final banner. DO NOT skip; the WAKEUP_NOTES update is what unblocks the next session's bootstrap.
+
+Two things `/done` does NOT do, so do them first (section 10c): the Desktop
+next-session prompt must already be written, and the working tree must be back the way
+the operator left it - if the run stashed anything to get a clean measurement, pop it
+and confirm `git stash list` is empty. A run that ends with the operator's data sitting
+in a stash has silently changed their machine.
 
 ### 12. Anti-patterns (caught from past runs - do NOT repeat)
 
@@ -234,6 +325,9 @@ Run `/done` (existing skill). It handles the local check gate, auto-commit + pus
 - Do NOT add a feature flag or backwards-compat shim for changes that should just BE the new behavior (CLAUDE.md: no feature flags).
 - Do NOT add comments that say WHAT the code does. Comments are for WHY only.
 - Do NOT block on AskUserQuestion mid-run; the operator is away.
+- Do NOT Read a subagent's `output_file` - it is the full JSONL transcript and it can end the run (section 10c).
+- Do NOT leave the next-session prompt until after the banner; write it while there is still window to write it well (section 10c).
+- Do NOT end a run with the operator's files still stashed. `git stash list` must be empty.
 - Do NOT mark a frontend slice done without a visual capture + UI-audit (or an explicit OWED carry-forward when the Legion capture path is unavailable).
 
 ### 13. Final banner
@@ -251,6 +345,7 @@ HEADLESS UPGRADE WRAP
   ui proof: <N pages captured + audited, M owed | n/a>
   worktrees: <cleaned N | none>
   Synopsis: C:/Users/Administrator/Desktop/RC_HEADLESS_SYNOPSIS_<date>.md
+  Next session: C:/Users/Administrator/Desktop/RC RC Continue - <N>.txt
   Ready for /done.
 ```
 
