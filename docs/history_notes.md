@@ -119,6 +119,38 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-29f - RM-118 wielder HSP item-amp reaches the EHP RANKER (ENGINE 1.263.0 -> 1.264.0).
+
+**Commit `e075a221`, pushed. Tier-2: engine ranker-signature change, ENGINE bump, Share resync, DS :8893 restarted -> 1.264.0.**
+Picked as the next headless-safe NOW item because RM-124 live validation (G2-39) was blocked - no SR
+game (LCU Offline, relay empty). Probe live state first every session.
+
+What shipped:
+- `assume_hsp_amp` (Redemption 3107 = 0.10 + Mikael 3222 = 0.12 wielder HSP amp) reached only the
+  SCALAR lanes (`/ehp`, `/sustain`) after R197. `rank_items_by_ehp` - where a tank item CHOICE is
+  decided - never accepted it. Threaded through all THREE gates (R194 slice A precedent): engine
+  `rank_items_by_ehp`, route `_route_rank_tank`, client `rank_tank_for`. DEFAULT-OFF, byte-identical
+  OFF. INERT unless a self-shield item (Sterak's 3053 / Shieldbow 6673 / Maw 3156) is in the build -
+  the amp scales the ItemShield pool, empty on the HSP pair alone (honest R197 finding).
+- TDD RED-first `tests/test_rank_ehp_hsp_amp_rm118.py` (11 tests). DS suite 10127 passed (10116 + 11).
+
+Two things worth not re-learning:
+- **RM-118's "three assumed-share seams parsed but never forwarded" sub-claim was STALE AT FILING** -
+  they were wired 2026-07-25 (`e6b7b238`), two days before the R197 filing said they were not. Verify
+  filed rows on disk; do not rebuild a filing's prose. (ROADMAP RM-118 UPDATE + LEDGER 1111.)
+- **A new DS test importing `core.daemon_slayer_client` MUST be added to `ds_share_sync.py`'s
+  exclusion list** or the pre-commit hook mirrors a collection-error into Share and breaks its
+  standalone suite. Bit me this session; caught + fixed in the amend. Memory
+  `reference_ds_share_sync_exclude_client_tests`.
+
+STILL OPEN in RM-118: the HYBRID ranker half (`compute_hybrid`/`rank_items_by_hybrid`, separate
+module - narrow-then-widen), + the 22 ledgered seams in `test_stranded_hsp_seam_r197.py::STRANDED_TODAY`.
+PRE-EXISTING (not mine, do not chase in an RM-118 context): the Share standalone
+`test_antitank_axis_score_invariance_r196` fails because `_REPO_ROOT=parents[3]=Share/src` has 5
+antitank consumers < the 15 the repo-wide scan expects - a mirror-subset structural failure at HEAD.
+
+---
+
 # 2026-07-29e - RM-124 deterministic wave/cannon clock BUILT + GATED-OFF (Tier-1, no engine bump).
 
 **Commits `266c1fac` (feature) + `965d829d` (tracker sync), both pushed + CI-green.**
