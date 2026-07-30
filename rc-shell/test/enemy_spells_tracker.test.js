@@ -51,12 +51,24 @@ test("per-slot independence: tapping one spell does not touch the other", () => 
   assert.strictEqual(I._remaining("Lux", "1", "Barrier"), null, "slot 1 still UP");
 });
 
-test("unknown spell (no CD entry) -> resolves to UP, never a stuck timer", () => {
+test("unknown spell (no CD entry) -> sticky burned marker, cleared only by a re-tap", () => {
   const I = mod._esInternals;
   I._load("game-c");
   I._toggle("Yuumi", "0");
-  // CD 0 -> remaining computes <= 0 -> auto-clears to UP (null).
-  assert.strictEqual(I._remaining("Yuumi", "0", "Mystery"), null);
+  // This case asserted null until 2026-07-30, which pinned the exact defect
+  // aaa505ed fixed: at cd=0 the old code computed ceil(t + 0 - now) <= 0, took
+  // the expiry branch, and DELETED the entry the operator had just tapped, so
+  // an unrecognised spell name made the tap a silent no-op (RM-05 round-2).
+  // Infinity is the deliberate contract: a "burned" marker with no countdown,
+  // so a future Riot rename or a non-English locale degrades VISIBLY.
+  const rem = I._remaining("Yuumi", "0", "Mystery");
+  assert.strictEqual(rem, Infinity, "unknown spell marks USED, not UP");
+  assert.ok(!Number.isFinite(rem), "must not fake a finite countdown");
+  // Stickiness is the half that actually regressed: _updateTimers re-reads
+  // every chip each tick, so the marker has to survive repeated reads.
+  assert.strictEqual(I._remaining("Yuumi", "0", "Mystery"), Infinity, "survives re-read");
+  I._toggle("Yuumi", "0");
+  assert.strictEqual(I._remaining("Yuumi", "0", "Mystery"), null, "re-tap returns it to UP");
 });
 
 test("game-scoped: a new game_id starts a fresh tracker (no stale timers)", () => {
