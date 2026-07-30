@@ -139,7 +139,7 @@ class TftLiveAnalysis:
     def __init__(self, api_key: str, data_file, model: str = "claude-haiku-4-5-20251001") -> None:
         import anthropic
         from tft.tft_vision_reader import TftVisionReader
-        self._client=anthropic.Anthropic(api_key=api_key); self._model=model; self._data_file=data_file
+        self._client=anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com"); self._model=model; self._data_file=data_file
         self._vision=TftVisionReader(api_key,model)
         self._lock=threading.Lock(); self._running=False; self._thread=None
         self._last_round=(0,0); self._last_vision=0.0; self._last_write={}; self._coach_state={}

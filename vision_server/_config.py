@@ -72,7 +72,7 @@ def _get_client():
                 import anthropic
                 if not _API_KEY:
                     _API_KEY = _load_key()
-                _client = anthropic.Anthropic(api_key=_API_KEY)
+                _client = anthropic.Anthropic(api_key=_API_KEY, base_url="https://api.anthropic.com")
     return _client
 
 

@@ -88,7 +88,7 @@ class TftVisionReader:
 
     def __init__(self, api_key: str, model: str = "claude-haiku-4-5-20251001") -> None:
         import anthropic
-        self._client = anthropic.Anthropic(api_key=api_key)
+        self._client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com")
         self._model  = model   # haiku by default - use sonnet only if haiku quality is poor
         self._last_state: Optional[dict] = None
         self._last_capture = 0.0

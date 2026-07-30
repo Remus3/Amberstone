@@ -100,7 +100,7 @@ class WarmAgent7Session:
             import anthropic
         except ImportError as e:
             raise WarmSessionError(f"anthropic SDK not importable: {e}") from e
-        self._client = anthropic.Anthropic(api_key=self._api_key)
+        self._client = anthropic.Anthropic(api_key=self._api_key, base_url="https://api.anthropic.com")
         logger.info("warm session opened (model=%s)", self._model)
 
     def _trim_history(self) -> None:

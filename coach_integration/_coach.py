@@ -50,7 +50,7 @@ class CoachIntegration:
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
         if not api_key:
             logger.warning("ANTHROPIC_API_KEY not set - auto-coaching disabled")
-        self._client = anthropic.Anthropic(api_key=api_key) if (api_key and anthropic) else None
+        self._client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com") if (api_key and anthropic) else None
 
         db_path = Path(__file__).parent.parent / "data" / "decisions.db"
         from modules.cache_engine import CacheEngine
