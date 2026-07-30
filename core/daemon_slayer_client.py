@@ -443,6 +443,13 @@ def rank_tank_for(
     # True so a flagless call is byte-identical. Appended at END per the
     # no-mid-signature-insert convention.
     assume_hsp_amp: bool = False,
+    # RM-118 residual: the per-instance FLAT damage-block credit (Fizz P, Amumu E,
+    # Leona W) on the RANKER lane. The ONLY one of the four survivability seams
+    # ``ehp_for`` gained that ``rank_items_by_ehp`` accepts - the other three are
+    # scalar-only, so this function must NOT grow them or it would send keys
+    # ``_route_rank_tank`` does not parse. Plain DEFAULT-OFF bool, emitted only
+    # when True. Appended at END per the no-mid-signature-insert convention.
+    assume_passive_flat_mitigation: bool = False,
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -534,6 +541,9 @@ def rank_tank_for(
     # RM-118: emit only when armed so a flagless call is byte-identical.
     if assume_hsp_amp:
         body["assume_hsp_amp"] = True
+    # RM-118 residual: emit only when armed so a flagless call is byte-identical.
+    if assume_passive_flat_mitigation:
+        body["assume_passive_flat_mitigation"] = True
     data = _post_json("/rank-tank", body, timeout=timeout)
     if data is None:
         return None
@@ -599,6 +609,23 @@ def ehp_for(
     # /hybrid, none of which parse it. Appended at END per the
     # no-mid-signature-insert convention.
     assume_hsp_amp: bool = False,
+    # RM-118 residual: four EHP survivability seams whose ENGINE half shipped
+    # complete while no route parsed them, so the R197 stranded-seam guard
+    # ledgered them as debt. Deliberately NOT routed through
+    # ``_emit_ehp_family_seams`` for the same reason as ``assume_hsp_amp`` above:
+    # that helper is called by four functions and only ``/ehp`` parses three of
+    # these, so folding them in would let a later edit leak a key onto
+    # /rank-bruiser or /hybrid, neither of which parses any of them.
+    # ``assume_passive_flat_mitigation`` is the one exception - it also reaches
+    # ``/rank-tank``, where ``rank_tank_for`` carries it separately. Plain
+    # DEFAULT-OFF bools, emitted only when True, appended at END per the
+    # no-mid-signature-insert convention. Their transports are already here:
+    # ``champion`` + ``level`` for the two champion-keyed registries, ``item_ids``
+    # for the two item-keyed ones (Guardian Angel 3026 / Zhonya's 3157).
+    assume_passive_flat_mitigation: bool = False,
+    assume_passive_health_stacks: bool = False,
+    assume_item_revive: bool = False,
+    assume_item_stasis: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
@@ -653,6 +680,17 @@ def ehp_for(
     # that does not name the seam is byte-identical on the wire to a pre-R197 one.
     if assume_hsp_amp:
         body["assume_hsp_amp"] = True
+    # RM-118 residual: same emit-when-True contract - each key absent leaves
+    # _route_ehp's _opt_bool on its engine default, so a call that names none of
+    # them is byte-identical on the wire to a pre-wire one.
+    for _seam, _armed in (
+        ("assume_passive_flat_mitigation", assume_passive_flat_mitigation),
+        ("assume_passive_health_stacks", assume_passive_health_stacks),
+        ("assume_item_revive", assume_item_revive),
+        ("assume_item_stasis", assume_item_stasis),
+    ):
+        if _armed:
+            body[_seam] = True
     return _post_json("/ehp", body, timeout=timeout)
 
 
