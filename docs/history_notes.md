@@ -119,6 +119,31 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-29e - RM-124 deterministic wave/cannon clock BUILT + GATED-OFF (Tier-1, no engine bump).
+
+**Commits `266c1fac` (feature) + `965d829d` (tracker sync), both pushed + CI-green.**
+Pure `wave_callout()` beside `recall_callout` in `core/event_callouts.py`: anchors on the live
+`MinionsSpawning` EventTime, walks the wave cadence to the next cannon, returns a
+`{tag,line,eta_s,kind=wave}` callout. Transport mirrors `inhib_events` - a 4th `minion_events`
+extract in `dashboard/_liveclient.py` + gs pass-through in `dashboard/_deterministic_coaching.py`.
+Renders on the GENERIC `web/js/panels/callouts.js` sink -> ZERO JS change.
+
+Key decisions:
+- Corrected the wakeup/teardown: it renders on `callouts.js` NOT `objective_chips.js`, and it does
+  NOT light the `next.js:16-83` 3-lane per-lane % UI (that is the data-blocked STATE machine).
+- Gated OFF (`enable_wave` default False, env `RC_WAVE_CALLOUT`) because cadence constants are
+  provisional and NO live SR game was available to validate. `/api/state` byte-identical today.
+- No backfill possible (pure live-compute). RED-first TDD: `tests/test_event_callouts_wave_rm124.py`
+  8 cases. Verify this run: event_callouts 88, det_coaching/next_callout 80, targeted slice 147 green.
+
+NEXT / do-NOT-redo:
+- RM-124 is BUILT - do NOT rebuild it. The ONLY remaining task is gated item **G2-39** in
+  `docs/LIVE_GAME_GATED_SYNC.md`: validate the cadence against one real SR game, correct the
+  provisional constants if they miss the observed cannon arrivals, THEN flip `RC_WAVE_CALLOUT=1`.
+- Follow-on F2 (CS efficiency curve, `core/lead_projection.py:57` flat 8.0) is unblocked once F1 flips.
+
+---
+
 # 2026-07-29d - RM-123 melee/ranged split reconciliation SHIPPED (ENGINE 1.263.0).
 
 **Tier-2 DS: engine EHP-math change, ENGINE 1.262.0 -> 1.263.0, 7 doc anchors, build-table
