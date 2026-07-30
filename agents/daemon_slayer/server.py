@@ -435,6 +435,23 @@ def _route_dps(body: dict) -> dict:
     # omitted; /dps-scoped like R7/R12 (rank_items does NOT forward it). The live
     # default-ON flip stays EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md).
     apply_melee_aa_gate = _opt_bool(body, "apply_melee_aa_gate", False)
+    # RM-118 residual (2026-07-30): the RUNE OFFENSE lane, engine-only since
+    # ENGINE 1.223.0 and ledgered as stranded by the R197 guard ever since.
+    # ``_rune_offense_grants.rune_offense_grants`` credits a rune-granted
+    # (bonus AD, AP, attack-speed fraction) triple into the DPS stat block
+    # (Gathering Storm 8236, Absolute Focus 8233, Conqueror 8010, Legend:
+    # Alacrity 9104, Jack Of All Trades 8316), and no route ever parsed the
+    # flag, so no client could arm it.
+    #
+    # ``rune_ids`` is the TRANSPORT and this route did not carry it either -
+    # wiring the flag alone would have made the seam reachable and dead (the
+    # RM-115 failure mode). Its four siblings (/ehp, /rank-tank, /hybrid,
+    # /rank-bruiser) have parsed ``rune_ids`` since R136; /dps is the last
+    # compute route to get it. dps.py:1058 consults the registry ONLY when the
+    # flag is True, so an omitted key leaves an empty roster AND a False flag
+    # and the response is byte-identical.
+    rune_ids = _coerce_str_list(body.get("rune_ids"), "rune_ids")
+    apply_rune_offense_grants = _opt_bool(body, "apply_rune_offense_grants", False)
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
     try:
@@ -449,7 +466,9 @@ def _route_dps(body: dict) -> dict:
                              apply_passive_damage=apply_passive_damage,
                              assume_passive_as_stacks=assume_passive_as_stacks,
                              apply_target_vuln=apply_target_vuln,
-                             apply_melee_aa_gate=apply_melee_aa_gate)
+                             apply_melee_aa_gate=apply_melee_aa_gate,
+                             rune_ids=rune_ids,
+                             apply_rune_offense_grants=apply_rune_offense_grants)
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
@@ -657,6 +676,22 @@ def _route_ehp(body: dict) -> dict:
     )
     assume_item_revive = _opt_bool(body, "assume_item_revive", False)
     assume_item_stasis = _opt_bool(body, "assume_item_stasis", False)
+    # RM-118 residual (2026-07-30): the two SELF-side rune survivability lanes,
+    # engine-only since R142 and stranded by the R197 guard ever since. Both ride
+    # the ``rune_ids`` transport this route has parsed since R136, so neither is
+    # reachable-and-dead, and both are DEFAULT-OFF -> byte-identical when the
+    # body omits them.
+    #   apply_rune_self_heal (_rune_health_grants) - Second Wind 8444's
+    #     4-percent-of-missing-health heal, into the EHP numerator.
+    #   apply_rune_shield_grants (_rune_shield_grants) - Guardian 8465's SELF
+    #     shield only; the ally half is deliberately excluded (that is hps.py's
+    #     lane, not a wielder-EHP term).
+    # The route-family split is measured off inspect.signature, not assumed:
+    # these two are on ``compute_ehp`` AND ``rank_items_by_ehp`` (so /ehp and
+    # /rank-tank) AND on ``compute_hybrid`` / ``rank_items_by_hybrid`` (so
+    # /hybrid and /rank-bruiser). All four are wired in this slice.
+    apply_rune_self_heal = _opt_bool(body, "apply_rune_self_heal", False)
+    apply_rune_shield_grants = _opt_bool(body, "apply_rune_shield_grants", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -690,6 +725,8 @@ def _route_ehp(body: dict) -> dict:
             assume_passive_health_stacks=assume_passive_health_stacks,
             assume_item_revive=assume_item_revive,
             assume_item_stasis=assume_item_stasis,
+            apply_rune_self_heal=apply_rune_self_heal,
+            apply_rune_shield_grants=apply_rune_shield_grants,
             apply_survival_window=apply_survival_window,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,
@@ -879,6 +916,15 @@ def _route_rank_tank(body: dict) -> dict:
     assume_passive_flat_mitigation = _opt_bool(
         body, "assume_passive_flat_mitigation", False
     )
+    # RM-118 residual (2026-07-30): the two SELF-side rune survivability lanes on
+    # the RANKER. ``rank_items_by_ehp`` names BOTH (ehp.py:3161-3162) and forwards
+    # them per candidate (ehp.py:3422 / 3618), so unlike
+    # assume_passive_flat_mitigation's three scalar-only siblings above these are
+    # a real sort input here, not a reporting-only value: measured over the full
+    # 137-row pool for Leona at level 13 the order moves under every score_by
+    # this route accepts. DEFAULT-OFF -> byte-identical when omitted.
+    apply_rune_self_heal = _opt_bool(body, "apply_rune_self_heal", False)
+    apply_rune_shield_grants = _opt_bool(body, "apply_rune_shield_grants", False)
     # 2026-07-25: the three ASSUMED-INCOMING-SHARE seams. UNLIKE every other seam
     # on this route these ship DEFAULT-ON in ``compute_ehp`` (a champion-blind 0.5
     # incoming crit / basic-attack share), so the route needs an OFF switch, not
@@ -933,6 +979,8 @@ def _route_rank_tank(body: dict) -> dict:
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
+            apply_rune_self_heal=apply_rune_self_heal,
+            apply_rune_shield_grants=apply_rune_shield_grants,
             assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
@@ -1023,6 +1071,16 @@ def _route_hybrid(body: dict) -> dict:
     # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
     # / Elise E / Fizz E / Mel W). Default off -> byte-identical.
     apply_survival_window = _opt_bool(body, "apply_survival_window", False)
+    # RM-118 residual (2026-07-30): all THREE stranded rune lanes land on this
+    # route, because ``compute_hybrid`` is the one engine entry point that names
+    # every one of them (hybrid.py:484-489). The offense grant moves the DPS
+    # axis, the self-heal and the self-shield move the EHP axis, and the blended
+    # ``hybrid_score`` therefore moves for either half. All three ride the
+    # ``rune_ids`` transport already parsed above; all three DEFAULT-OFF ->
+    # byte-identical when omitted.
+    apply_rune_self_heal = _opt_bool(body, "apply_rune_self_heal", False)
+    apply_rune_shield_grants = _opt_bool(body, "apply_rune_shield_grants", False)
+    apply_rune_offense_grants = _opt_bool(body, "apply_rune_offense_grants", False)
     try:
         result = compute_hybrid(
             snap, champion_id=champion, level=level,
@@ -1053,6 +1111,9 @@ def _route_hybrid(body: dict) -> dict:
             apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             assume_item_general_dr=assume_item_general_dr,
             apply_survival_window=apply_survival_window,
+            apply_rune_self_heal=apply_rune_self_heal,
+            apply_rune_shield_grants=apply_rune_shield_grants,
+            apply_rune_offense_grants=apply_rune_offense_grants,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -1164,6 +1225,16 @@ def _route_rank_bruiser(body: dict) -> dict:
     # RM-118 (2026-07-29): the wielder HSP ITEM-amp seam (R60) reaches the
     # bruiser ranker. Sibling of the /rank-tank wire (e075a221). DEFAULT-OFF.
     assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
+    # RM-118 residual (2026-07-30): all three stranded rune lanes on the BRUISER
+    # ranker. ``rank_items_by_hybrid`` names every one (hybrid.py:1037-1042) and
+    # forwards them per candidate (hybrid.py:1344 / 1396-1397), so each one can
+    # change an item CHOICE here rather than only a reported number: measured for
+    # Jinx at level 13 over the full 139-row pool, the order moves for the
+    # offense lane and for the heal/shield pair independently. DEFAULT-OFF ->
+    # byte-identical when omitted.
+    apply_rune_self_heal = _opt_bool(body, "apply_rune_self_heal", False)
+    apply_rune_shield_grants = _opt_bool(body, "apply_rune_shield_grants", False)
+    apply_rune_offense_grants = _opt_bool(body, "apply_rune_offense_grants", False)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -1208,6 +1279,9 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
             kit_conversion_strength=kit_conversion_strength,
             assume_hsp_amp=assume_hsp_amp,
+            apply_rune_self_heal=apply_rune_self_heal,
+            apply_rune_shield_grants=apply_rune_shield_grants,
+            apply_rune_offense_grants=apply_rune_offense_grants,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))

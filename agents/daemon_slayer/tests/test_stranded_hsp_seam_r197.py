@@ -180,10 +180,10 @@ STRANDED_TODAY: dict[str, str] = {
     # slice to reach rank.py + POST /rank, and wiring this one in the same slice
     # would ship an unmeasured second live flip on the same auto-attack term.
     "apply_crit_chance_overrides": "R212 crit chance/damage multiplier - engine-only, live flip unmeasured",
-    # Rune lanes whose ENGINE side shipped but whose route wire did not.
-    "apply_rune_offense_grants": "rune offense grants - engine-only since 1.223.0",
-    "apply_rune_self_heal": "rune self-heal lane - engine-only",
-    "apply_rune_shield_grants": "rune shield grants - engine-only",
+    # (The three rune lanes - apply_rune_offense_grants / apply_rune_self_heal /
+    # apply_rune_shield_grants - were wired at ENGINE 1.267.0 and are therefore
+    # gone from this ledger. See
+    # test_rune_lane_route_seams_rm118.py for the measured per-seam route table.)
     # Target/caster STATE assumptions. The conditional-target-state arc is
     # operator-CLOSED (s232), so these are deliberately not client-facing.
     "assume_ally_detonation": "target-state arc operator-CLOSED s232",

@@ -450,6 +450,13 @@ def rank_tank_for(
     # ``_route_rank_tank`` does not parse. Plain DEFAULT-OFF bool, emitted only
     # when True. Appended at END per the no-mid-signature-insert convention.
     assume_passive_flat_mitigation: bool = False,
+    # RM-118 residual (2026-07-30): the two SELF-side rune survivability lanes on
+    # the RANKER lane. ``rank_items_by_ehp`` names BOTH (ehp.py:3161-3162), so
+    # unlike the three scalar-only seams noted above these are a real sort input
+    # here. Routed through ``_emit_ehp_family_seams`` because all four of that
+    # helper's callers now post to a route that parses them.
+    apply_rune_self_heal: bool = False,
+    apply_rune_shield_grants: bool = False,
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -533,6 +540,8 @@ def rank_tank_for(
         assume_item_health_stacks=assume_item_health_stacks,
         assume_item_proc_heal=assume_item_proc_heal,
         assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
+        apply_rune_self_heal=apply_rune_self_heal,
+        apply_rune_shield_grants=apply_rune_shield_grants,
     )
     # Tri-state: None omits the key and inherits the engine's default-ON for
     # cc_blended; an explicit False is the only way to turn it OFF.
@@ -626,6 +635,14 @@ def ehp_for(
     assume_passive_health_stacks: bool = False,
     assume_item_revive: bool = False,
     assume_item_stasis: bool = False,
+    # RM-118 residual (2026-07-30): the two SELF-side rune survivability lanes.
+    # These DO go through ``_emit_ehp_family_seams`` - unlike the four above,
+    # every one of that helper's four callers now posts to a route that parses
+    # them (``compute_ehp`` / ``rank_items_by_ehp`` / ``compute_hybrid`` /
+    # ``rank_items_by_hybrid`` all name both), so there is no route to leak onto.
+    # ``rune_ids`` above is the transport.
+    apply_rune_self_heal: bool = False,
+    apply_rune_shield_grants: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
@@ -674,6 +691,8 @@ def ehp_for(
         assume_item_health_stacks=assume_item_health_stacks,
         assume_item_proc_heal=assume_item_proc_heal,
         assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
+        apply_rune_self_heal=apply_rune_self_heal,
+        apply_rune_shield_grants=apply_rune_shield_grants,
     )
     # DEFAULT-OFF, emit-when-True: an omitted key leaves _route_ehp's
     # _opt_bool(body, "assume_hsp_amp", False) on its engine default, so a call
@@ -868,6 +887,12 @@ def rank_bruiser_for(
     # rank_tank_for wire (e075a221). Appended LAST; a plain EHP-family bool,
     # emitted via _emit_ehp_family_seams only when True -> byte-identical off.
     assume_hsp_amp: bool = False,
+    # RM-118 residual (2026-07-30): all three stranded rune lanes on the BRUISER
+    # ranker. ``rank_items_by_hybrid`` names every one (hybrid.py:1037-1042), so
+    # each can change an item CHOICE here. ``rune_ids`` above is the transport.
+    apply_rune_self_heal: bool = False,
+    apply_rune_shield_grants: bool = False,
+    apply_rune_offense_grants: bool = False,
 ) -> Optional[list[BruiserRankedItem]]:
     """Call POST /rank-bruiser and return the parsed top-N rows. None on engine failure.
 
@@ -942,6 +967,9 @@ def rank_bruiser_for(
         assume_item_proc_heal=assume_item_proc_heal,
         apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
         assume_hsp_amp=assume_hsp_amp,
+        apply_rune_self_heal=apply_rune_self_heal,
+        apply_rune_shield_grants=apply_rune_shield_grants,
+        apply_rune_offense_grants=apply_rune_offense_grants,
     )
     # Tri-state, same contract as rank_tank_for: None omits the key and
     # inherits the engine's default-ON for cc_blended.
@@ -1471,11 +1499,23 @@ def hybrid_for(
     assume_item_general_dr: bool = False,
     assume_item_health_stacks: bool = False,
     assume_item_proc_heal: bool = False,
+    # RM-118 residual (2026-07-30): the three stranded rune lanes. ``compute_hybrid``
+    # is the only engine entry point that names all three, so /hybrid is the one
+    # route where a single call can arm both axes at once. They ride the
+    # ``rune_ids`` transport already declared above.
+    apply_rune_self_heal: bool = False,
+    apply_rune_shield_grants: bool = False,
+    apply_rune_offense_grants: bool = False,
 ) -> Optional[dict]:
     """Call POST /hybrid and return the raw result dict. None on failure.
 
     Phase 2 sibling of ``dps_for`` and ``ehp_for``. See ``rank_bruiser_for``
     for alpha/beta semantics.
+
+    RM-118 residual rune seams, all DEFAULT-OFF and all needing ``rune_ids``:
+    ``apply_rune_offense_grants`` moves the DPS axis, ``apply_rune_self_heal``
+    (Second Wind 8444) and ``apply_rune_shield_grants`` (Guardian 8465, SELF
+    shield only) move the EHP axis, and either half moves ``hybrid_score``.
     """
     _resolved_ad_share, _resolved_ap_share = _resolve_enemy_shares(
         enemy_ad_share, enemy_ap_share
@@ -1523,6 +1563,9 @@ def hybrid_for(
         assume_item_general_dr=assume_item_general_dr,
         assume_item_health_stacks=assume_item_health_stacks,
         assume_item_proc_heal=assume_item_proc_heal,
+        apply_rune_self_heal=apply_rune_self_heal,
+        apply_rune_shield_grants=apply_rune_shield_grants,
+        apply_rune_offense_grants=apply_rune_offense_grants,
     )
     return _post_json("/hybrid", body, timeout=timeout)
 
@@ -2665,6 +2708,13 @@ def dps_for(
     apply_passive_damage: bool = False,
     apply_target_vuln: bool = False,
     assume_passive_as_stacks: bool = False,
+    # RM-118 residual (2026-07-30): the RUNE OFFENSE lane, plus the ``rune_ids``
+    # TRANSPORT it rides. Unlike the six RM-115 seams above this one DOES need
+    # extra transport - the registry is keyed by Riot perk id - so the flag is
+    # useless without the roster and both are wired together. Emitted only when
+    # armed, so a pre-seam call is byte-identical.
+    rune_ids: Optional[Iterable[str]] = None,
+    apply_rune_offense_grants: bool = False,
 ) -> Optional[dict]:
     """Call POST /dps and return the raw result dict. None on failure.
 
@@ -2683,6 +2733,16 @@ def dps_for(
         caster, so the delta is NEGATIVE (Runaan's 3085 on Fiora).
       * ``apply_passive_damage`` / ``assume_passive_as_stacks`` /
         ``apply_target_vuln`` - champion-keyed registry lanes.
+
+    RM-118 residual seam, also DEFAULT-OFF:
+
+      * ``apply_rune_offense_grants`` - credit a rune-granted (bonus AD, AP,
+        attack-speed fraction) triple into the stat block. ``rune_ids`` is the
+        transport; measured movers at level 13 are Conqueror 8010, Absolute
+        Focus 8233 and Gathering Storm 8236. Legend: Alacrity 9104 and Jack Of
+        All Trades 8316 are conditional (an attack-speed-locked champion and a
+        distinct-item-stat census threshold respectively), so a build that does
+        not meet the condition correctly reads as no change.
     """
     body = {
         "champion": champion,
@@ -2709,6 +2769,10 @@ def dps_for(
         body["apply_target_vuln"] = True
     if assume_passive_as_stacks:
         body["assume_passive_as_stacks"] = True
+    if rune_ids:
+        body["rune_ids"] = [str(r) for r in rune_ids if r]
+    if apply_rune_offense_grants:
+        body["apply_rune_offense_grants"] = True
     return _post_json("/dps", body, timeout=timeout)
 
 
