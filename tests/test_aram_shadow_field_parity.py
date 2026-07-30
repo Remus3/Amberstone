@@ -204,9 +204,11 @@ def test_reset_item_counts_owned_build_items_out_of_order(tmp_path):
 def test_item_build_reasons_carries_deterministic_cues(tmp_path, monkeypatch):
     """The assembler must pass a real per-item reason map, not a hardcoded {}.
 
-    The cue corpus (data/coaching/aram_item_interaction.json) is a gitignored
-    local artifact, so the cue producer is patched at its lazy-import site here;
-    what this proves is that the ASSEMBLER forwards the primitive it is given.
+    The cue producer is patched at its lazy-import site so the assertion does
+    not depend on which cells the real corpus happens to carry; what this proves
+    is that the ASSEMBLER forwards the primitive it is given. Real-corpus
+    coverage is asserted separately in
+    tests/test_aram_item_interaction_snapshot_tracked.py.
     """
     import core.aram_item_interaction_context as cues_mod
 
@@ -252,15 +254,16 @@ def test_item_build_reasons_carries_deterministic_cues(tmp_path, monkeypatch):
 
 
 def test_item_build_reasons_absent_cue_corpus_degrades_without_raising(tmp_path):
-    """The REAL cue path over an ABSENT corpus: empty reasons, no raise.
+    """The REAL cue path: whatever the corpus says, the block still assembles.
 
     Deliberately UNPATCHED - this exercises the genuine
     core.aram_item_interaction_context call. The corpus
-    (data/coaching/aram_item_interaction.json) is a gitignored local artifact,
-    so on a fresh checkout and in CI the producer returns {} and the cue-derived
-    reasons are simply absent. Paired with the patched-producer test above so
-    BOTH branches are covered: that one proves the assembler forwards a real
-    map, this one proves the corpus-absent path is inert rather than fatal.
+    (data/coaching/aram_item_interaction.json) is TRACKED as of 2026-07-30, so
+    the normal outcome here is corpus-PRESENT; the corpus-absent branch is kept
+    because the loader must stay inert rather than fatal on a damaged file.
+    Paired with the patched-producer test above so BOTH branches are covered.
+    Whether the tracked corpus actually yields coverage is asserted in
+    tests/test_aram_item_interaction_snapshot_tracked.py, not here.
     """
     from core.aram_item_interaction_context import item_interaction_cues
 
