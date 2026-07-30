@@ -692,6 +692,29 @@ def _route_ehp(body: dict) -> dict:
     # /hybrid and /rank-bruiser). All four are wired in this slice.
     apply_rune_self_heal = _opt_bool(body, "apply_rune_self_heal", False)
     apply_rune_shield_grants = _opt_bool(body, "apply_rune_shield_grants", False)
+    # RM-118 residual (2026-07-30): the two VAMP lanes, engine-only since
+    # R193 slice B / R194 slice C and ledgered as debt by the R197 guard ever
+    # since. MEASURED off inspect.signature over every module in the package:
+    # both live on ``compute_ehp`` ONLY - NOT on ``rank_items_by_ehp``, not on
+    # the hybrid pair - so ``/ehp`` is the whole route table and no other route
+    # may grow either key.
+    #   assume_crit_weighted_vamp - crit-weights the vamp heal pool, which is
+    #     priced off the UNCRIT AD*AS*window throughput. TRANSPORT is ``items``
+    #     (crit + lifesteal both come out of the resolved stat block), which
+    #     this route has always parsed, so the flag alone is enough.
+    #   assume_cleave_lifesteal - credits the build's lifesteal on Ravenous
+    #     Hydra's Cleave + Ravenous Crescent. TRANSPORT is ``items`` PLUS
+    #     ``targets_in_rotation``, the enemy count the AoE lands on. The route
+    #     did NOT carry that float, so the target-count half of the seam was
+    #     unreachable; it is added here in the same slice rather than shipping a
+    #     flag that can only ever express the single-target case.
+    # ``targets_in_rotation`` defaults to the engine's own 1.0 and is read ONLY
+    # inside the ``if`` that flag opens (ehp.py ``_cleave_vamp_damage`` returns
+    # 0.0 up front when the flag is False), so sending the count with the flag
+    # OFF is byte-identical - measured in test_vamp_lane_route_seams_rm118.py.
+    targets_in_rotation = _opt_float(body, "targets_in_rotation", 1.0)
+    assume_crit_weighted_vamp = _opt_bool(body, "assume_crit_weighted_vamp", False)
+    assume_cleave_lifesteal = _opt_bool(body, "assume_cleave_lifesteal", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -727,6 +750,9 @@ def _route_ehp(body: dict) -> dict:
             assume_item_stasis=assume_item_stasis,
             apply_rune_self_heal=apply_rune_self_heal,
             apply_rune_shield_grants=apply_rune_shield_grants,
+            assume_crit_weighted_vamp=assume_crit_weighted_vamp,
+            targets_in_rotation=targets_in_rotation,
+            assume_cleave_lifesteal=assume_cleave_lifesteal,
             apply_survival_window=apply_survival_window,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,

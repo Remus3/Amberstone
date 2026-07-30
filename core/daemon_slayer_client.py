@@ -643,6 +643,23 @@ def ehp_for(
     # ``rune_ids`` above is the transport.
     apply_rune_self_heal: bool = False,
     apply_rune_shield_grants: bool = False,
+    # RM-118 residual (2026-07-30): the two VAMP lanes. MEASURED off
+    # inspect.signature - both name ``compute_ehp`` and NOTHING else, so /ehp is
+    # the entire route table and these are deliberately NOT routed through
+    # ``_emit_ehp_family_seams`` (that helper has four callers, three of which
+    # post to routes that do not parse either key - folding them in would leak a
+    # key that dies on the wire). ``item_ids`` is the transport for both: crit
+    # and lifesteal come out of the resolved stat block, and the cleave lane
+    # additionally needs Ravenous Hydra 3074 (or its Arena mirror 223074) in the
+    # build. ``targets_in_rotation`` is the SECOND transport the cleave lane
+    # needs - the enemy count its AoE lands on - and /ehp had no such float
+    # before this slice, so the flag alone could only ever express the
+    # single-target case. Sent only when given; the engine default is 1.0 and it
+    # is read only inside the flag's ``if``, so an unarmed call is unchanged.
+    # Appended at END per the no-mid-signature-insert convention.
+    targets_in_rotation: Optional[float] = None,
+    assume_crit_weighted_vamp: bool = False,
+    assume_cleave_lifesteal: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
@@ -707,9 +724,16 @@ def ehp_for(
         ("assume_passive_health_stacks", assume_passive_health_stacks),
         ("assume_item_revive", assume_item_revive),
         ("assume_item_stasis", assume_item_stasis),
+        ("assume_crit_weighted_vamp", assume_crit_weighted_vamp),
+        ("assume_cleave_lifesteal", assume_cleave_lifesteal),
     ):
         if _armed:
             body[_seam] = True
+    # The cleave lane's non-boolean transport. Emitted only when the caller
+    # names it, so an omitted count leaves _route_ehp's _opt_float on the
+    # engine's own 1.0 default and the request is byte-identical on the wire.
+    if targets_in_rotation is not None:
+        body["targets_in_rotation"] = float(targets_in_rotation)
     return _post_json("/ehp", body, timeout=timeout)
 
 
