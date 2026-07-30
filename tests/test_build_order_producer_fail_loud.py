@@ -18,6 +18,7 @@ to a tmp ``--out`` override.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -228,6 +229,118 @@ class GeneratorRosterTests(unittest.TestCase):
                 rc = gen.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(list(Path(td).glob("*.json")), [])
+
+
+def _real_registries() -> list[Path]:
+    """Every REAL DDragon champion registry reachable from this machine.
+
+    Always this checkout's own committed registry, plus:
+    * ``RC_TEST_DDRAGON_CHAMPIONS`` when set (an out-of-tree copy - how a
+      not-yet-committed DDragon drop is exercised without importing it into
+      ``data/``), and
+    * the MAIN worktree's registry when this checkout is a git worktree
+      (``<main>/.claude/worktrees/<name>``), so a pending drop staged in the
+      main tree is covered from here too.
+
+    Deliberately real files, not a synthetic fixture: the duplicate SHAPE is the
+    thing under test, and a hand-built fixture would only re-assert whatever
+    shape the author imagined.
+    """
+    candidates = [_ROOT / "data" / "meta" / "ddragon_champions.json"]
+    env = os.environ.get("RC_TEST_DDRAGON_CHAMPIONS", "").strip()
+    if env:
+        candidates.append(Path(env))
+    parts = _ROOT.resolve().parts
+    if len(parts) >= 3 and parts[-3:-1] == (".claude", "worktrees"):
+        main_root = _ROOT.resolve().parents[2]
+        candidates.append(main_root / "data" / "meta" / "ddragon_champions.json")
+    out: list[Path] = []
+    for path in candidates:
+        if path.is_file() and path.resolve() not in {p.resolve() for p in out}:
+            out.append(path)
+    return out
+
+
+class RosterDedupeTests(unittest.TestCase):
+    """``load_champions`` must return DISTINCT names.
+
+    DDragon 16.15.1 adds 60 ``Jade_<Champion>`` alias entries whose ``name`` is
+    the base champion, taking the registry from 173 to 233 entries that still
+    describe 173 champions. The pre-fix loader appended one name per entry, so
+    the day that drop is committed the display-name roster silently inflates to
+    233 - 60 phantom duplicates, each swept twice, with nothing failing.
+    """
+
+    def test_names_are_distinct_on_every_real_registry(self):
+        registries = _real_registries()
+        self.assertTrue(registries, "no real DDragon registry found")
+        for path in registries:
+            with self.subTest(registry=str(path)):
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                data = raw.get("data", raw)
+                with mock.patch.object(gen, "_CHAMPS_PATH", path):
+                    names = gen.load_champions()
+                self.assertEqual(
+                    len(names), len(set(names)),
+                    f"{path} produced duplicate champion names",
+                )
+                expected = {
+                    str(e.get("name") or e.get("id"))
+                    for e in data.values()
+                    if isinstance(e, dict) and (e.get("name") or e.get("id"))
+                }
+                self.assertEqual(set(names), expected)
+                self.assertEqual(names, sorted(names, key=str.lower))
+
+    def test_alias_heavy_registry_collapses_to_the_base_roster(self):
+        """The exact 233-entry -> 173-name regression, on real data."""
+        alias_heavy = [
+            p for p in _real_registries()
+            if len(json.loads(p.read_text(encoding="utf-8")).get("data", {}))
+            > len({
+                str(e.get("name") or e.get("id"))
+                for e in json.loads(
+                    p.read_text(encoding="utf-8")).get("data", {}).values()
+                if isinstance(e, dict)
+            })
+        ]
+        if not alias_heavy:
+            self.skipTest(
+                "no alias-carrying DDragon registry reachable (set "
+                "RC_TEST_DDRAGON_CHAMPIONS to a 16.15.1+ copy to exercise it)")
+        for path in alias_heavy:
+            with self.subTest(registry=str(path)):
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                entries = len(raw.get("data", raw))
+                with mock.patch.object(gen, "_CHAMPS_PATH", path):
+                    names = gen.load_champions()
+                self.assertLess(
+                    len(names), entries,
+                    "alias entries were not collapsed",
+                )
+                self.assertEqual(len(names), len(set(names)))
+                # The aliases are name-equal to a champion already present, so
+                # nothing may be LOST by deduping.
+                for entry in raw.get("data", raw).values():
+                    nm = entry.get("name") or entry.get("id")
+                    if nm:
+                        self.assertIn(str(nm), names)
+
+    def test_full_roster_is_deduped_by_construction(self):
+        """Sibling shape: full_roster() sorted a generator, not a set, so its
+        'deduped' guarantee held only by accident of today's clean registry."""
+        with TemporaryDirectory() as td:
+            tmp = Path(td)
+            patch_dir = tmp / bop.resolve_patch()
+            patch_dir.mkdir(parents=True)
+            (patch_dir / "champions.json").write_text(json.dumps({"data": {
+                "Ahri": {"id": "Ahri"},
+                "Ahri_dup": {"id": "Ahri"},
+                "Zed": {"id": "Zed"},
+            }}), encoding="utf-8")
+            with mock.patch.object(bop, "_DS_DIR", tmp):
+                roster = bop.full_roster()
+            self.assertEqual(roster, ["Ahri", "Zed"])
 
 
 if __name__ == "__main__":
