@@ -1331,6 +1331,45 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.268.0 (2026-07-30) - RM-118 residual: the TWO VAMP lanes reach their route.
+The next batch after the rune lanes, same defect class: the ENGINE half shipped
+complete - registry, consumer, curated item set, tests - and no route in
+`server.py` ever parsed the flag, so no coach tick, no generated build table, no
+operator curl and no Python client could arm `assume_crit_weighted_vamp`
+(R193 slice B - crit-weights the vamp heal pool, which prices lifesteal off the
+UNCRIT `AD * AS * window` throughput even though an auto-attack lands
+`AD * (1 + crit * crit_damage_bonus)` and lifesteal heals off THAT hit) or
+`assume_cleave_lifesteal` (R194 slice C / RM-116c - credits the build's lifesteal
+on Ravenous Hydra's Cleave rider and its Ravenous Crescent active, the two damage
+sources Meraki 16.14.1 labels lifesteal-eligible at 100 percent and that the
+auto-attack-only pool cannot see).
+Route ownership is PER-SEAM and was read off `inspect.signature` over every
+module in the package rather than inherited from the prior slice's write-up,
+which placed both in the dps / hybrid family. That is WRONG for both: neither
+name appears on `compute_dps`, `compute_hybrid`, `rank_items_by_hybrid` OR
+`rank_items_by_ehp`. `compute_ehp` is the SOLE owner, so `/ehp` is the entire
+route table, and the three sibling EHP-family routes are asserted NOT to grow
+either key (a parsed-then-dropped key is the R194 failure shape).
+TRANSPORT: `items` carries both lanes (crit and lifesteal come out of the
+resolved stat block; the cleave lane additionally needs Ravenous Hydra 3074 or
+its Arena mirror 223074), and the cleave lane needs a SECOND, non-boolean one -
+`targets_in_rotation`, the enemy count its AoE lands on. `/ehp` did not parse
+that float and no client function sent one, so the target-count half of the seam
+was unreachable; it is wired in this release on the engine's own 1.0 default.
+Both seams stay DEFAULT-OFF (`_crit_weighted_vamp_multiplier` returns 1.0,
+`_cleave_vamp_damage` returns 0.0 before reading anything), and a body carrying a
+full `targets_in_rotation` count with the flags OFF is pinned byte-identical.
+Measured, level 13, SR: Jinx with Infinity Edge + Bloodthirster + Rageblade +
+Zeal (crit 0.75, lifesteal 0.15) reads blended EHP 3552.368806877279 OFF and
+3845.3720653400114 with the crit lane armed; Sett with Ravenous Hydra +
+Bloodthirster + Plated Steelcaps (lifesteal 0.27, crit 0.0) reads 4552.839179173092
+OFF, 4652.511427749934 armed at one target (Crescent only) and 5104.774255667356
+at three. A zero-crit build is an exact no-op for the crit lane and a
+lifesteal-silent hydra sibling (Titanic 3748) is an exact no-op for the cleave
+lane; both pinned.
+`test_stranded_hsp_seam_r197.py::STRANDED_TODAY` falls 16 -> 14. New guard:
+`test_vamp_lane_route_seams_rm118.py`.
+
 1.267.0 (2026-07-30) - RM-118 residual: the THREE RUNE lanes reach their routes.
 The other route family the 1.266.0 slice deferred. Same defect class: the ENGINE
 half shipped complete - registry, consumer, tests - and the route wire was never
