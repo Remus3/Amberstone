@@ -211,6 +211,16 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # core.daemon_slayer_client plus the per-route reachability helper at module
     # level, so the host import is its subject, not an accident.
     "test_ehp_survivability_route_seams_rm118.py",
+    # -- RM-118 residual (ENGINE 1.267.0, 2026-07-30): the three RUNE lanes
+    # (apply_rune_offense_grants / apply_rune_self_heal / apply_rune_shield_grants)
+    # across /dps, /ehp, /rank-tank, /hybrid and /rank-bruiser. Same class as the
+    # RM-118 sibling above - it asserts each (route, seam) pair is expressible
+    # through the HOST client (dps_for / ehp_for / rank_tank_for / hybrid_for /
+    # rank_bruiser_for) and, just as load-bearing, that the two EHP-family clients
+    # do NOT express the damage-axis offense lane; it imports
+    # core.daemon_slayer_client plus the per-route reachability helper at module
+    # level, so the host import is its subject, not an accident.
+    "test_rune_lane_route_seams_rm118.py",
     # The behavioural half of the same drain: it drives the HOST client against
     # the live engine to prove each EHP-family seam actually does something.
     # Host-only for the same reason as its two siblings - the shipped package is
