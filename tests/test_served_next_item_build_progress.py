@@ -134,18 +134,27 @@ def test_served_next_item_survives_trinket_and_potions(monkeypatch):
     dc._compute_uncached(_gs(4), "sr")
     assert seen["next_item_name"] == "Kraken Slayer"
     assert seen["next_item_cost"] == _KRAKEN_COST
-    # The raw slot count still reaches next_callouts for the item-spike rows -
-    # only the build-order INDEX changed.
-    assert seen["item_count"] == 6
+    # The count reaching next_callouts is the item-spike axis, a separate
+    # question with its own primitive (see test_item_spike_legendary_count.py).
+    # 3, not 6: the 4 held order items include Berserker's Greaves, and boots are
+    # not a power spike.
+    assert seen["item_count"] == 3
 
 
 def test_served_recall_line_names_the_right_item(monkeypatch):
-    """End-to-end: the rendered callout a user reads names Kraken Slayer."""
+    """End-to-end: the rendered callout a user reads names the right item.
+
+    Held at 5 order items (4 legendaries + boots) rather than 4 because of the
+    max_n=3 cap this module's docstring already flags. Correcting the item-spike
+    count restored the ACTIVE spike rows that the inflated slot count had been
+    deleting, and at 3 legendaries that row ties with the drake + lvl-16 rows and
+    fills the third slot. Above the 3-item spike no spike row exists, so the
+    recall row renders and the assertion still pins a NAME."""
     _stub_laning(monkeypatch)
-    out = dc._compute_uncached(_gs(4), "sr")
+    out = dc._compute_uncached(_gs(5), "sr")
     lines = _recall_lines(out)
     assert lines, "no served recall callout - the next item resolved to None"
-    assert any("Kraken Slayer" in ln for ln in lines), lines
+    assert any("Lord Dominik's Regards" in ln for ln in lines), lines
 
 
 def test_served_next_item_uses_name_fallback_when_ids_absent(monkeypatch):

@@ -67,7 +67,7 @@ def test_custom_recency_window():
 
 def test_next_callouts_surfaces_siege_for_aram():
     out = next_callouts(
-        "aram", 1010.0, level=11, item_count=3,
+        "aram", 1010.0, level=11, legendary_count=3,
         turret_events=[{"down_at_s": 1000.0}],
     )
     assert _siege(out), "ARAM recent turret should surface a siege callout"
@@ -75,7 +75,7 @@ def test_next_callouts_surfaces_siege_for_aram():
 
 def test_next_callouts_surfaces_siege_for_sr():
     out = next_callouts(
-        "sr", 1010.0, level=11, item_count=3,
+        "sr", 1010.0, level=11, legendary_count=3,
         inhib_events=[{"down_at_s": 1000.0}],
     )
     tags = {c["tag"] for c in _siege(out)}
@@ -85,7 +85,7 @@ def test_next_callouts_surfaces_siege_for_sr():
 def test_next_callouts_no_siege_for_arena():
     # Arena has no lane structures -> gate excludes it even with a fresh event.
     out = next_callouts(
-        "arena", 1010.0, level=11, item_count=3,
+        "arena", 1010.0, level=11, legendary_count=3,
         turret_events=[{"down_at_s": 1000.0}],
     )
     assert _siege(out) == []
@@ -93,7 +93,7 @@ def test_next_callouts_no_siege_for_arena():
 
 def test_next_callouts_no_siege_when_no_recent_structure():
     out = next_callouts(
-        "aram", 1200.0, level=11, item_count=3,
+        "aram", 1200.0, level=11, legendary_count=3,
         turret_events=[{"down_at_s": 1000.0}],  # 200s old
     )
     assert _siege(out) == []
