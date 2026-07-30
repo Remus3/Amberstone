@@ -56,6 +56,13 @@ class LcuClient(_PGMixin):
         # an RC restart.
         self._lockfile_path = None
         self._lockfile_mtime = None
+        # 2026-07-29: the not-found notice is a TRANSITION, not a heartbeat.
+        # _auto_accept_tick calls connect() at 1 Hz whenever _port is falsy, so
+        # an unconditional INFO here reached 20144 of 21082 log lines (95.6
+        # percent) on a day League never launched. Repeat 20144 carries no
+        # information repeat 1 did not, and it buried every other line the
+        # cost/health watchdog reads.
+        self._lockfile_missing_logged = False
 
     def connect(self):
         for lf in _LOCKFILE_PATHS:
@@ -75,10 +82,17 @@ class LcuClient(_PGMixin):
                     except OSError:
                         self._lockfile_mtime = None
                     _log.info("LCU connected: port %d (from %s)", self._port, lf)
+                    self._lockfile_missing_logged = False
                     return True
                 except (OSError, IndexError, ValueError, UnicodeDecodeError) as e:
                     _log.warning("LCU lockfile parse (%s): %s", type(e).__name__, e)
-        _log.info("LCU lockfile not found - client may not be running")
+        # Repeats stay on disk: core/log_setup.py sends DEBUG to file
+        # unconditionally, so nothing is lost for diagnosis.
+        if self._lockfile_missing_logged:
+            _log.debug("LCU lockfile not found - client may not be running")
+        else:
+            _log.info("LCU lockfile not found - client may not be running")
+            self._lockfile_missing_logged = True
         return False
 
     def _refresh_conn_if_changed(self) -> None:
