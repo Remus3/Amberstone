@@ -729,10 +729,14 @@ survivability flips below cannot roll otherwise.
   live-verified" but its body records the OFF case only. The DEFAULT-ON flip is still un-validated. A
   replayed-game feed is an allowed alternative - try headless first. SOURCE: BACKLOG.md:64.
 - **G3-13** (was C15+C16) Augment OCR rank-vs-pick + live on-screen render validation. The alias fix
-  SHIPPED (`67519018`, LEDGER 867). **DRAINABLE TODAY with the RM-25 workaround: hold an augment ~25s
-  so a vision tick lands.** The underlying cadence defect is a HEADLESS fix, not a gate:
-  `coaches/aram_coach.py:495 _VISION_INTERVAL = 25.0` (re-verified still 25.0 on 2026-07-18) skips the
-  ~10-15s augment window; the fast early-game poll is listed under "Not actually live-gated". Memory
+  SHIPPED (`67519018`, LEDGER 867). **The cadence defect behind it is now FIXED IN CODE (`cff8d678`,
+  2026-07-29) and the RM-25 hold-an-augment-25s workaround is NO LONGER NEEDED** - a bounded fast
+  vision poll runs during the Mayhem augment window (6.0s interval, capped at 6 extra scans, latched
+  off once the augment is seen, gated on `is_mayhem` so plain ARAM pays zero). Worst case is +4 scans
+  per game against a hard +6 ceiling. **THIS ROW STAYS OPEN**: the fix is unverified on screen, which
+  is exactly the class an agent cannot self-adjudicate, so play one ARAM Mayhem game and confirm the
+  reco actually renders during the ~10-15s panel. A wrong reco is worse than a dark one. Note the
+  filed line cite `aram_coach.py:495` had DRIFTED - `_VISION_INTERVAL` was at 552 pre-fix. Memory
   `open_bug_aram_augment_reco_cadence_miss`.
 - **G3-14** (was C17) R78 ARAM deterministic tail item_extra + objective Haiku->deterministic flip
   (`c82b2446`): SHIPPED SHADOW-only. Needs ARAM shadow accrual + operator OK before flipping the ARAM
@@ -1210,10 +1214,12 @@ Do not drain these. They are listed so nobody re-adds them.
 This section exists specifically to keep non-gated work OFF the drain list. If an item can be proven
 by fixture, harness, dev-preview, replay corpus, unit test, or synthetic liveclient, it belongs here.
 
-- **ARAM augment-reco CADENCE fix (fast early-game poll).** `coaches/aram_coach.py:495
-  `_VISION_INTERVAL = 25.0`` (re-verified still 25.0 on 2026-07-18) skips the ~10-15s augment window.
-  The FIX is pure code and is headless-testable; only the on-screen result (G3-13) is gated - and even
-  that has the RM-25 hold-an-augment-25s workaround. Memory `open_bug_aram_augment_reco_cadence_miss`.
+- **ARAM augment-reco CADENCE fix (fast early-game poll) - SHIPPED HEADLESS 2026-07-29 (`cff8d678`).**
+  Exactly as this section predicted: the fix was pure code and headless-testable (19 tests pinning the
+  SCHEDULE, including a control asserting the coverage property FAILS on the old 25s cadence). Only the
+  on-screen result remains gated, as G3-13. Two premises in the original filing were WRONG and are
+  corrected there: Brawl has ZERO augment references so it never shared the mechanism, and Arena's
+  augments are mid-game rounds {2, 5, 8, 11}, so a game-start clock ceiling does not apply to it.
 - **R14 `apply_cc_floor` consumer-chain threading.** compute_ehp / compute_hybrid / the cc-blended-EHP
   surface do not thread the flag. Threading it (default-OFF preserved) is headless work; only the
   resulting eyeball (G2-06) is gated.
@@ -1384,7 +1390,8 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   RE-PROBED ON DISK 2026-07-18: data/anvil_shadow.jsonl is STILL ABSENT (G5-01 stays the one open live
   bug); data/augment_shadow.jsonl still 966 bytes; data/arena_coach_shadow.jsonl has grown to ~952 KB
   (G7-17 may now be readable - re-run tools/arena_shadow_report.py);
-  coaches/aram_coach.py:495 _VISION_INTERVAL is still 25.0.
+  coaches/aram_coach.py _VISION_INTERVAL was still 25.0 at that probe - SUPERSEDED 2026-07-29 by
+  `cff8d678`, which adds the bounded fast poll; G3-13 now needs only the on-screen confirm.
   COUNT NOW = 124 rows = 105 one-shot (GATE 1-6) + 19 accrual (GATE 7); 9 carry a PARKED/HOLD tag and
   1 (G3-15) is a cross-reference adding no new work. Per gate: G1 6 / G2 42 / G3 15 / G4 29 / G5 10 /
   G6 3 / G7 19. The prior 112 / 109 / 108 / 95 tallies below are frozen append-only history

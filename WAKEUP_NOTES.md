@@ -6,6 +6,90 @@
 
 ---
 
+# 2026-07-29h - HEADLESS ORCHESTRATOR RUN 2026-07-29-01: 6 slices, CI repaired, ENGINE 1.266.0.
+
+**6 commits pushed: `f69a15c7` `1ec67d0c` `f6e8c11c` `0dffb844` `b4919236` `cff8d678`. LEDGER 1113-1118.
+Every merge passed a read-only verifier gate; 3 of the 5 gates corrected a claim the slice got wrong.**
+
+## Start here next session
+
+Two things are load-bearing and neither is code:
+
+1. **THE MAIN WORKING TREE CANNOT PRODUCE A USABLE SUITE SIGNAL.** Full RC suite here: **53 failed**.
+   With the 8 dirty 16.15.1 ddragon files stashed: **4 failed**. So **49 failures are uncommitted-DATA
+   artifacts**, and they masquerade as real regressions (build-order routes, seam forwarding,
+   AP-assassin override, precomputed laning coach). 3 of the remaining 4 are the **76 untracked
+   `Jade_*.png` icons** inflating the champion catalog to 233 against the atlas's 173. The prior
+   hand-off recorded this as "the 3 magic-pen failures are pre-existing"; the real number is 52.
+   A worktree is unaffected (it inherits neither the dirty tracked files nor the untracked icons),
+   which is why slice baselines read 2 failed while the main tree read 53. When main-tree and
+   worktree counts disagree by tens, suspect this FIRST. Memory
+   `reference_dirty_ddragon_tree_fakes_49_failures`. The data was stashed for the measurement and
+   RESTORED - the tree is as the operator left it.
+2. **A full patch refresh to DDragon 16.15.1 is owed and is its own session.** Upstream is 16.15.1 /
+   meraki 25.15 / cdragon 16.15.7996036 (`ops/runtime/upstream_drift.json`, 2026-07-29T08:45Z) while
+   `current.txt` and live `:8893` are pinned 16.14.1. The chain is 4 steps + 3 hand-curated
+   copy-forward artifacts (skipping any breaks ~100 DS tests) + full table regen + DS restart, so it
+   does not belong inside a multi-slice run. Memory `reference_patch_refresh_workflow`.
+
+## What shipped
+
+- **`f69a15c7` pre-flight CI repair.** `docs-guards` was RED on FOUR consecutive pushes: the 1.265.0
+  bump restamped the Share README header but never prepended the public release entry.
+  **`ds_share_sync --check` cannot catch this by design**, so it read green throughout. This pin site
+  is the standing ENGINE-bump trap - `Share/CHANGELOG.md` AND `Share/README.md` both need touching.
+- **`1ec67d0c` cost/latency sweep, 3 SHIP / 4 CLEAN.** Headline: `lcu/lcu_client.py` logged
+  "LCU lockfile not found" at 1 Hz - **20144 of 21082 lines, 95.6 percent, 2.4 MB** of one day's log.
+  Fixed as a transition latch (frozen-file edit under the run's grant, which does NOT carry forward).
+  Also `tests/test_anthropic_base_url_pin.py` was worktree-blind and goes red during ANY orchestrator
+  run; only SET-EQUALITY guards break that way, verified by sweep (memory
+  `reference_repo_root_guard_worktree_blind`).
+- **`f6e8c11c` ARAM deterministic shadow field gaps (Haiku-to-ZERO Lane C).** Three root causes, none
+  where the filed row pointed. Best finding: `choices` both=0 was NOT a coach gap but a shadow READER
+  carrying a hardcoded 6-key tuple that had drifted behind the writer's 9 keys - a column the reader
+  never reads can never appear. Both readers now derive from the writer.
+- **`0dffb844` RM-118 residual, ENGINE 1.265.0 -> 1.266.0.** 4 EHP survivability seams wired
+  engine->route->client. `STRANDED_TODAY` **23 -> 19** (the ROADMAP's "22" was never right at either
+  endpoint). 10 of the remaining 19 are declined by design, not debt.
+- **`b4919236` served next-item callout.** Same raw-slot-count root cause as `f6e8c11c`, served side.
+  Kalista with 4 legendaries + trinket + potion: old index 6 -> None, corrected 4 -> Kraken Slayer.
+  **SR-ONLY** user-visible change (`_RECALL_MODES == frozenset({"sr"})`).
+- **`cff8d678` ARAM Mayhem augment cadence.** An OPEN bug closed in code. Bounded four ways because
+  it makes a PAID vision call fire more often; worst case +4 scans/game against a hard +6 ceiling,
+  and plain ARAM pays zero. **LIVE ON-SCREEN CONFIRM IS OWED - not verified fixed.**
+
+## Verification state at wrap
+
+- DS suite from repo root: **10162 passed / 0 failed / 5776 subtests**.
+- RC suite: **14187 passed**, 3 failed - all three are the untracked-Jade-icon artifacts above.
+- DS `:8893` live at **1.266.0** (patch 16.14.1, 173 champs / 706 items). RC pid 21244, reload_ok.
+- `ds_share_sync --check` green at 1.266.0 / 516 files.
+
+## Three filed rows probed and found STALE - no work was manufactured
+
+- **`roadmap work.txt`** (the last RM-121 desktop item): its task is RM-119's RC half, CLOSED
+  2026-07-28. Its "also open" `wakeup_prune.py` note (blind to `## ` headers, 12 sessions invisible,
+  61KB) is stale too - this file is 6.5KB, 3 sessions, all `# ` headers, `--check` clean.
+- **ROADMAP skip-audit class B5** ("~22 sites remain OPEN"): machine-closed.
+  `tests/test_skip_condition_hygiene.py` passes 22/22 with exactly ONE reviewed exemption.
+- **RM-122** was correctly NOT picked up - it is operator-present by its own gate.
+
+## Owed / FUTURE, in priority order
+
+1. **ARAM Mayhem augment on-screen confirm** (G3-13). The RM-25 hold-25s workaround is retired.
+2. **The item-spike twin**: `next_callouts` still gets the raw slot count, so "2-item spike" fires for
+   a player holding only a trinket and a potion. Primitive already in place.
+3. **`data/coaching/aram_item_interaction.json` is gitignored** - deterministic `item_build_reasons`
+   coverage is machine-local and absent in CI. Must be tracked or regenerable before any Haiku flip.
+4. **RM-118 next batch**: the 3 rune lanes across `/dps` + `/hybrid` + `/rank-bruiser` (one server.py
+   pass), then `assume_crit_weighted_vamp`, then `assume_ms_utility`.
+5. **Mayhem multi-stage augments**: a `game_seconds` ceiling covers stage 1 only. Wait for item 1.
+6. **MEMORY.md compaction** declined deliberately: 20129 bytes over 120 lines, and a mechanical
+   hook-strip saves ZERO because the bytes are all pointers. Reaching the threshold means dropping
+   pointers, which is curation. Wants a dedicated pass, not a hasty mid-run trim.
+
+---
+
 # 2026-07-29g - RM-118 wielder HSP item-amp reaches the HYBRID (bruiser) RANKER (ENGINE 1.264.0 -> 1.265.0).
 
 **Commit `fb72d0f9`, pushed. Tier-2: engine-signature change + new route seam, ENGINE bump, Share resync, DS :8893 restarted -> 1.265.0.**
@@ -63,28 +147,3 @@ module - narrow-then-widen), + the 22 ledgered seams in `test_stranded_hsp_seam_
 PRE-EXISTING (not mine, do not chase in an RM-118 context): the Share standalone
 `test_antitank_axis_score_invariance_r196` fails because `_REPO_ROOT=parents[3]=Share/src` has 5
 antitank consumers < the 15 the repo-wide scan expects - a mirror-subset structural failure at HEAD.
-
----
-
-# 2026-07-29e - RM-124 deterministic wave/cannon clock BUILT + GATED-OFF (Tier-1, no engine bump).
-
-**Commits `266c1fac` (feature) + `965d829d` (tracker sync), both pushed + CI-green.**
-Pure `wave_callout()` beside `recall_callout` in `core/event_callouts.py`: anchors on the live
-`MinionsSpawning` EventTime, walks the wave cadence to the next cannon, returns a
-`{tag,line,eta_s,kind=wave}` callout. Transport mirrors `inhib_events` - a 4th `minion_events`
-extract in `dashboard/_liveclient.py` + gs pass-through in `dashboard/_deterministic_coaching.py`.
-Renders on the GENERIC `web/js/panels/callouts.js` sink -> ZERO JS change.
-
-Key decisions:
-- Corrected the wakeup/teardown: it renders on `callouts.js` NOT `objective_chips.js`, and it does
-  NOT light the `next.js:16-83` 3-lane per-lane % UI (that is the data-blocked STATE machine).
-- Gated OFF (`enable_wave` default False, env `RC_WAVE_CALLOUT`) because cadence constants are
-  provisional and NO live SR game was available to validate. `/api/state` byte-identical today.
-- No backfill possible (pure live-compute). RED-first TDD: `tests/test_event_callouts_wave_rm124.py`
-  8 cases. Verify this run: event_callouts 88, det_coaching/next_callout 80, targeted slice 147 green.
-
-NEXT / do-NOT-redo:
-- RM-124 is BUILT - do NOT rebuild it. The ONLY remaining task is gated item **G2-39** in
-  `docs/LIVE_GAME_GATED_SYNC.md`: validate the cadence against one real SR game, correct the
-  provisional constants if they miss the observed cannon arrivals, THEN flip `RC_WAVE_CALLOUT=1`.
-- Follow-on F2 (CS efficiency curve, `core/lead_projection.py:57` flat 8.0) is unblocked once F1 flips.
