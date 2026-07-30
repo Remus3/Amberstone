@@ -131,22 +131,62 @@ the API for the client's origin (one header, see sec 6).
 Poll `RC_ORIGIN/api/state` (already exists; the game-monitor skill uses it) and
 react to `mode_key` + LCU phase:
 
+This table is a MACHINE-READ CONTRACT, not prose: `rc-shell/test/overlay_state_contract.test.js`
+parses these rows off disk and drives `rc-shell/src/overlay_state.js` with a
+per-phase `/api/state` fixture, so the doc and the state machine cannot drift
+apart in either direction. Cells are canonical tokens (`show` / `hidden` /
+`hide` / `passive` / `-`); keep them that way and put nuance in the notes below.
+
 ```
-phase/mode_key                       companion        overlay
-----------------------------------   --------------   --------------------
-League not running                   show (if open)   hidden
-client idle / lobby                  show             hidden
-champ-select                         show             hidden (or C panel)
-in match (mode_key in {sr,arena,     auto-hide        SHOW (passive)
-  aram,tft,brawl} + liveclient)
-post-game                            show             fade out
+phase/mode_key         companion   overlay   interaction
+--------------------   ---------   -------   -----------
+League not running     show        hidden    -
+client idle / lobby    show        hidden    -
+champ-select           show        hidden    -
+in match               hide        show      passive
+post-game              show        hidden    -
+
+game mode_key set: {sr, arena, aram, tft, brawl}
 ```
+
+Measured notes (these are the reasons the rows above read the way they do):
+
+- **`liveclient` is the gate, not `mode_key`.** The shell reads NO LCU phase at
+  all. RC pre-flips `mode_key` to the game mode during lobby / champ-select, so
+  rows 2, 3 and 5 land on the companion because `liveGameFromState` is false (a
+  missing / empty / null `liveclient` object), not because of any phase handling
+  (`overlay_state.js:87` `surfaceForMode(modeKey, inGame)` + `:104`
+  `liveGameFromState`). "in match" therefore means a game `mode_key` AND a
+  non-empty `liveclient`; "post-game" is the same `mode_key` with `liveclient`
+  gone. `GAME_MODES` also accepts a generic `game` alias beyond the five above.
+- **`show` never CREATES the companion.** `applySurface` (`main.js:982`) calls
+  `showInactive()` on the existing window; a destroyed / never-built companion
+  stays absent. That is what the old "show (if open)" cell meant.
+- **The in-match companion `hide` is the DEFAULT, not the only option.**
+  `keepCompanion` (`overlay_state.js:455`, default FALSE per operator
+  2026-06-27) is an opt-in that keeps the dashboard shown BESIDE the HUD
+  (`windowActionsWithPolicy`, `overlay_state.js:276`). Flipping that default
+  fails the contract test until this table is updated with it.
+- **`passive` = click-through.** `OVERLAY_DEFAULTS.clickThrough` is true
+  (`overlay_state.js:50`), so the HUD passes clicks to the game until the ACTIVE
+  hotkey flips it.
+- **There is no fade.** The old "fade out" cell was aspirational. Hiding either
+  surface is an immediate `BrowserWindow.hide()` (`main.js:994` / `:1011`);
+  `windowActions` only ever returns `show` / `hide`.
+- **Surface C is not an overlay state.** The old "hidden (or C panel)" cell
+  conflated the deferred Pengu plugin (sec 4C, a separate process injecting into
+  the client CEF) with the rc-shell overlay window. The shell's champ-select
+  overlay state is plain `hidden`.
+- **The hotkey force-hide beats every row.** `resolveSurface(mode, true, inGame)`
+  returns HIDDEN and hides BOTH windows, `keepCompanion` included.
 
 Hotkeys override auto-behavior:
 - `Alt+Shift+O` - toggle overlay show/hide
 - `Alt+Shift+A` / `Ctrl+Shift+A` - toggle overlay PASSIVE <-> ACTIVE
 - `Alt+Shift+C` (out-of-game) / `Ctrl+Shift+B` (in-game) - cycle overlay panel
   set (coach / build / threat)
+- `Alt+Shift+R` - reset the movable widget field to its default positions
+  (`OVERLAY_DEFAULTS.hotkeyReset`, `main.js:1234`)
 - In-game vs out-of-game: the `Alt+Shift+*` binds use Electron `globalShortcut`,
   which does NOT deliver while League holds foreground focus. The `Ctrl+Shift+*`
   binds are owned by the Win32 `tools/hotkey_listener.py` (RegisterHotKey), which
