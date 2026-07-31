@@ -92,7 +92,21 @@ _WEB = _REPO_ROOT / "web"
 # web/js/panels/dev.js (the interrupt preview/arm/fire block and its victim
 # list) and web/css/panels/header.css (the .loop-irq-* rules) - which is the
 # slice's whole web file set and nothing else.
-_LIVE_HALF_DIGEST = "0c70ea746992617a166e393987217d54966c185c635a1146c60e15b45ee69009"
+# RE-CAPTURED at Mission Control S10 (arm_confirm.js and its test relocated out
+# of web/js/lib/ into a new standalone web/mc/ tree, with web/mc/index.html,
+# web/mc/mc.css and web/mc/mc.js added beside them), superseding the S9
+# capture. Not quite the ordinary case: a file MOVE plus LIVE web edits, still
+# no tokeniser change, so the classifier is fixed and the two-tree diff is
+# still a straight answer, just over a set of paths that is not the same set on
+# both sides. Run over 97c74550 (the S9 capture commit) and HEAD with the SAME
+# tokeniser: 169 web/ sources rather than 166 - web/js/lib/arm_confirm.js is
+# gone from that path and four are new (web/mc/arm_confirm.js,
+# web/mc/index.html, web/mc/mc.css, web/mc/mc.js) - and of the sources present
+# at an unchanged path on both sides, exactly one differs in its live half:
+# web/js/panels/dev.js, whose one-line import path (kept transitionally until
+# Task 9 deletes it) is the whole of its S10 edit. Which is the slice's whole
+# web file set and nothing else.
+_LIVE_HALF_DIGEST = "8e5d82d0bbc45b583efc82c12053bf3452dc2b084b7266feaca2f952943d2f93"
 
 
 def _web_sources() -> list[Path]:
