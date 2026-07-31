@@ -6,6 +6,66 @@
 
 ---
 
+# 2026-07-30b - DDRAGON PATCH REFRESH 16.14.1 -> 16.15.1 + the throwback-mode partition.
+
+**1 commit pushed, `f9f134a4` -> HEAD `9df58480`. LEDGER 1130. ENGINE 1.268.0 UNCHANGED
+(patch is not an engine version). DS `:8893` live at `patch 16.15.1, champions 173,
+items 706`. Suites: DS 10234 / 5913 subtests, RC 17441 / 1370 subtests, 0 failed.**
+
+## Start here next session
+
+1. **The dirty-tree suite trap is GONE.** The 8 dirty `data/meta/ddragon_*` files were a
+   half-finished 16.15.1 pipeline run; this session consumed them. The 76 untracked
+   `Jade_*.png` icons were throwback-mode icons the pipeline no longer requests - deleted.
+   `git status` is clean and the MAIN tree gives a usable suite signal again. The standing
+   "do not touch those files" instruction is RETIRED, and so is memory
+   `reference_dirty_ddragon_tree_fakes_49_failures` (verify before trusting it).
+2. **16.15.1 shipped a THROWBACK-MODE registry and RC now partitions it.** Read
+   `agents/daemon_slayer/mode_variants.py` before touching any roster or item derivation.
+   The prior session's read that these are `Jade_<Champion>` ALIASES was WRONG in a way
+   that mattered: they carry their own older-patch stat line, and the same drop added 162
+   items in `[770000, 780000)` plus 16 `modes:["JADE"]` spells. The dedupe guard that
+   landed last run defused champion inflation but could not have caught the item half.
+3. **When a JADE mode appears in mode detection, revisit the partition rather than extend
+   it.** The live Flash row already advertises a `KIWI_JADE` mode, so an ARAM-Mayhem-Jade
+   variant on the Howling Abyss is the likely first contact - that is exactly why 151 of
+   the 162 throwback items claim `maps["12"]`.
+
+## What shipped
+
+- **Full refresh chain**: DDragon meta + mirror, DS extract, abilities extract, FRESH
+  CDragon spell + ratio sidecars, curated/wiki copy-forward with patch restamps, Lane B
+  build orders (173 champs x 3 modes, 519 cells each), HZ precompute + variants, pickban
+  targets, Share mirror (517 files), 20-file parity with 16.14.1.
+- **The partition** at every PRODUCER - `data_pipeline` on download, `daemon_slayer_extract`
+  for the snapshot and its manifest counts, three further raw-snapshot roster derivations,
+  and `DataSnapshot.load` + `full_roster` again at load. Champions test on the KEY, items on
+  a CLOSED id band, never a name prefix; both predicates fail SAFE (unparseable = KEPT).
+- **Two real defects, not pin churn.** The ARAM resolver handed the coach the Arena
+  Heartsteel stat line (700 HP instead of 900) once Riot flagged mirror `223084` map-12
+  legal, because collisions resolved first-write-wins = lexicographic; now
+  lowest-numeric-id-wins. That same fix CLOSED the reachability half of R144. And the
+  CDragon stale-copy guard fired as designed on a copied-forward ratio sidecar, after both
+  table families had already been built with ratios DROPPED.
+
+## Lessons worth keeping
+
+- **A "duplicate row" reading is not a partition policy.** The champion half looked like
+  aliases and got a dedupe; the item half had no display-name collision at all and would
+  have sailed straight into the ARAM pool. Measure every axis a drop touches, not the one
+  that surfaced first.
+- **The stale-copy guard paid for itself.** Its docstring predicted the exact failure
+  ("only bites if a future patch-refresh copies a sidecar forward again") and it caught two
+  silently-degraded table families. Copy-forward is safe ONLY for artifacts nothing gates.
+- **Digest controls need a fixed substrate.** 26 rm91 controls broke on pure upstream drift.
+  Recomputing them against 16.14.1 - all 13 byte-exact - is what separated drift from
+  regression BEFORE anything was re-pinned. Pin the data, not the code.
+- **The `--force` ban was honored.** The snapshot was made canonical by applying the same
+  predicate in place, with no Meraki re-fetch, rather than re-extracting against a mutable
+  `latest`.
+
+---
+
 # 2026-07-30a - HEADLESS ORCHESTRATOR RUN 2026-07-30-01: 9 slices, ENGINE 1.268.0, rc-shell green.
 
 **10 commits pushed, base `31a7e722` -> HEAD `aef8a159`: `1a70f313` `69404dcc` `71df01fb`
@@ -200,31 +260,3 @@ Two things are load-bearing and neither is code:
 6. **MEMORY.md compaction** declined deliberately: 20129 bytes over 120 lines, and a mechanical
    hook-strip saves ZERO because the bytes are all pointers. Reaching the threshold means dropping
    pointers, which is curation. Wants a dedicated pass, not a hasty mid-run trim.
-
----
-
-# 2026-07-29g - RM-118 wielder HSP item-amp reaches the HYBRID (bruiser) RANKER (ENGINE 1.264.0 -> 1.265.0).
-
-**Commit `fb72d0f9`, pushed. Tier-2: engine-signature change + new route seam, ENGINE bump, Share resync, DS :8893 restarted -> 1.265.0.**
-The remaining open half after 2026-07-29f (which did the EHP/tank ranker). RM-124 live validation
-(G2-39) still blocked - no SR game (mode=client, LCU Offline, relay empty). Probe live state first.
-
-What shipped:
-- `assume_hsp_amp` now reaches the HYBRID ranker (`compute_hybrid`/`rank_items_by_hybrid`, a SEPARATE
-  module from the EHP ranker). Three gates: engine (kwarg at END -> baseline + candidate `compute_ehp`,
-  3 call sites), route `_route_rank_bruiser` -> `/rank-bruiser`, client `rank_bruiser_for` (emitted via
-  `_emit_ehp_family_seams`). DEFAULT-OFF, byte-identical OFF; INERT unless a self-shield item
-  (Sterak's 3053 / Shieldbow 6673) is in the build.
-- TDD RED-first `tests/test_rank_hybrid_hsp_amp_rm118.py` (11 tests). DS suite CLEAN 10138 passed / 0 failed.
-- `test_rune_resist_signature_convention_r134.py` gained `_RM118_TAIL` on the two hybrid fns (expected END-shift).
-
-Two things worth not re-learning:
-- **The dirty 16.15.1 ddragon working-tree data poisons any build-table regen.** First regen showed a
-  958-line CONTENT diff (item 6653 added) that was NOT my DEFAULT-OFF seam - it was the dirty ddragon
-  data. Fix: `git stash push` the `data/meta/ddragon_*.json` + `web/data/*_index.json`, regen against
-  clean HEAD (tables then diff ONLY the version stamp + timestamp), `git stash pop` to restore.
-  Those data files stay do-not-refresh.
-- **The 3 magic-pen `773020` (Sorcerer's Shoes) DS failures are PRE-EXISTING** and dirty-ddragon driven,
-  not any code change - confirmed by re-running that file with the ddragon data stashed (9 passed / 0 failed).
-
-STILL OPEN in RM-118: the 22 ledgered seams in `test_stranded_hsp_seam_r197.py::STRANDED_TODAY`.
