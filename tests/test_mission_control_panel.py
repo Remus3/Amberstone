@@ -2,9 +2,9 @@
 """Mission Control S4 - the dashboard panel wired to GET /api/loop-status.
 
 The pure arm-then-confirm logic is covered by `node --test
-web/js/lib/arm_confirm.test.mjs`. What CANNOT be covered there is the wiring
+web/mc/arm_confirm.test.mjs`. What CANNOT be covered there is the wiring
 between three files that only meet in a browser: the host element in
-index.html, the renderer in dev.js, and the classes in header.css. Those are
+index.html, the renderer in mc.js, and the classes in mc.css. Those are
 pinned here at source level, the same way tests/test_panel_visibility_permode.py
 pins its DOM/CSS contract.
 
@@ -19,13 +19,13 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-INDEX = ROOT / "web" / "index.html"
-DEV_JS = ROOT / "web" / "js" / "panels" / "dev.js"
-ARM_JS = ROOT / "web" / "js" / "lib" / "arm_confirm.js"
-CSS = ROOT / "web" / "css" / "panels" / "header.css"
+INDEX = ROOT / "web" / "mc" / "index.html"
+MC_JS = ROOT / "web" / "mc" / "mc.js"
+ARM_JS = ROOT / "web" / "mc" / "arm_confirm.js"
+CSS = ROOT / "web" / "mc" / "mc.css"
 
 _INDEX = INDEX.read_text(encoding="utf-8")
-_DEV = DEV_JS.read_text(encoding="utf-8")
+_MC = MC_JS.read_text(encoding="utf-8")
 _ARM = ARM_JS.read_text(encoding="utf-8")
 _CSS = CSS.read_text(encoding="utf-8")
 
@@ -39,21 +39,28 @@ def test_loop_status_host_element_exists_in_the_markup():
 
 def test_every_getelementbyid_the_loop_panel_needs_is_in_the_markup():
     # The renderer creates #loop-ctl-msg itself; #loop-status-body must pre-exist.
-    assert 'getElementById("loop-status-body")' in _DEV
+    assert 'getElementById("loop-status-body")' in _MC
     assert 'class="loop-status-body"' in _INDEX
 
 
-def test_the_host_sits_in_a_settings_card_with_a_head():
+def test_the_host_sits_below_a_visible_page_heading():
+    """Renamed from ...with_a_settings_card_head (S10).
+
+    web/mc/index.html is a standalone page, not a panel embedded in the shared
+    dashboard's `.settings-card` widget, so there is no `settings-card-head` to
+    find. `.mc-head` is the standalone page's equivalent: the heading a reader
+    sees before the host, same protective intent as before.
+    """
     idx = _INDEX.index('id="loop-status-body"')
     before = _INDEX[max(0, idx - 600):idx]
-    assert "settings-card-head" in before, "the card needs a visible heading"
+    assert "mc-head" in before, "the page needs a visible heading before the host"
     assert "MISSION CONTROL" in before
 
 
 # --------------------------------------------------------------------------- three lock states
 def test_renderer_knows_all_three_lock_states():
     for state in ("FREE", "RUNNING", "RECLAIMABLE"):
-        assert state in _DEV, f"{state} is never referenced by the renderer"
+        assert state in _MC, f"{state} is never referenced by the renderer"
 
 
 def test_reclaimable_is_styled_apart_from_running():
@@ -74,25 +81,25 @@ def test_reclaimable_is_styled_apart_from_running():
 
 
 def test_reclaimable_carries_an_explanatory_note():
-    assert 'st === "RECLAIMABLE"' in _DEV
-    assert "holder is gone" in _DEV
+    assert 'st === "RECLAIMABLE"' in _MC
+    assert "holder is gone" in _MC
 
 
 def test_an_absent_lock_block_still_renders_a_row():
     # feedback_no_reflow_on_data_absence: a vanishing row shifts everything below it.
-    assert "UNAVAILABLE" in _DEV
+    assert "UNAVAILABLE" in _MC
     assert ".loop-lock-meta" in _CSS and "min-height" in _CSS
 
 
 def test_both_locks_are_rendered_separately():
-    assert '_loopLockRow(mk, "LANE", d.lanes)' in _DEV
-    assert '_loopLockRow(mk, "LOOP", d.controller_lock)' in _DEV
+    assert '_loopLockRow(mk, "LANE", d.lanes)' in _MC
+    assert '_loopLockRow(mk, "LOOP", d.controller_lock)' in _MC
 
 
 # --------------------------------------------------------------------------- arm-then-confirm
 def test_panel_uses_the_arm_controller():
-    assert "from '../lib/arm_confirm.js'" in _DEV
-    assert "createArmController(" in _DEV
+    assert "from './arm_confirm.js'" in _MC
+    assert "createArmController(" in _MC
 
 
 def test_the_idempotency_key_comes_from_the_confirm_result():
@@ -101,13 +108,13 @@ def test_the_idempotency_key_comes_from_the_confirm_result():
     MEASURED (docs/MISSION_CONTROL_PLAN.md): a refusal is remembered like any
     settled 200, so one key reused across arms replays "refused" forever.
     """
-    assert "idempotency_key: key" in _DEV
-    fire = _DEV[_DEV.index("function _mcFire("):]
+    assert "idempotency_key: key" in _MC
+    fire = _MC[_MC.index("function _mcFire("):]
     fire = fire[:fire.index("\n}\n")]
     assert "key" in fire.split("(", 1)[1].split(")", 1)[0], (
         "_mcFire must take the key as an argument, not read a module-scope one")
-    assert "_mcArm.confirm(sc.id)" in _DEV
-    assert "if (res.fired) _mcFire(sc, res.key);" in _DEV
+    assert "_mcArm.confirm(sc.id)" in _MC
+    assert "if (res.fired) _mcFire(sc, res.key);" in _MC
 
 
 def test_disarm_discards_the_key():
@@ -119,7 +126,7 @@ def test_disarm_discards_the_key():
 
 
 def test_the_queued_shortcuts_are_wired():
-    assert '"halt_save"' in _DEV and '"done_continue"' in _DEV
+    assert '"halt_save"' in _MC and '"done_continue"' in _MC
 
 
 def test_a_lane_fire_goes_through_arm_then_confirm_like_everything_else():
@@ -128,10 +135,10 @@ def test_a_lane_fire_goes_through_arm_then_confirm_like_everything_else():
     A lane fire starts a real headless run, so if any control in this panel
     deserves the confirm window it is this one.
     """
-    assert 'action: "fire_lane"' in _DEV
-    assert "_mcArm.confirm(id)" in _DEV
-    assert "if (res.fired) _mcFireLane(lane, res.key);" in _DEV
-    assert "idempotency_key: key" in _DEV
+    assert 'action: "fire_lane"' in _MC
+    assert "_mcArm.confirm(id)" in _MC
+    assert "if (res.fired) _mcFireLane(lane, res.key);" in _MC
+    assert "idempotency_key: key" in _MC
 
 
 def test_the_client_never_sends_a_worktree_path():
@@ -141,7 +148,7 @@ def test_the_client_never_sends_a_worktree_path():
     never run - and the main-tree ban is the one thing that cannot be allowed
     to depend on a string in a browser.
     """
-    fire = _DEV[_DEV.index("function _mcFireLane("):]
+    fire = _MC[_MC.index("function _mcFireLane("):]
     fire = fire[:fire.index("\n}\n")]
     assert "worktree" not in fire
 
@@ -168,13 +175,13 @@ def test_every_armable_action_still_offers_cancel():
     the cancel affordance and the countdown timer.
     """
     import re
-    cancel = re.search(r"if \(([^)]*Armed[^)]*)\) \{", _DEV)
+    cancel = re.search(r"if \(([^)]*Armed[^)]*)\) \{", _MC)
     assert cancel, "no armed-gated cancel block found at all"
     for flag in ("anyArmed", "laneArmed", "irqArmed"):
         assert flag in cancel.group(1), (
             f"{flag} can arm but has no visible abort - the heavier the act, "
             "the more it needs one")
-        assert flag in _DEV[_DEV.index("_mcSetTimer(anyArmed"):], (
+        assert flag in _MC[_MC.index("_mcSetTimer(anyArmed"):], (
             f"{flag} arms without starting the countdown, so its 3s "
             "auto-disarm never fires and the arm is effectively permanent")
 
@@ -185,8 +192,8 @@ def test_the_lane_sub_head_states_the_contract_and_the_wired_count():
     "REFUSED IF HELD" alone is a transient reason for a permanent state, and
     the real one lived only in a title a disabled button does not announce.
     """
-    assert "ARM, THEN CONFIRM" in _DEV
-    assert '" of "' in _DEV and "wired" in _DEV
+    assert "ARM, THEN CONFIRM" in _MC
+    assert '" of "' in _MC and "wired" in _MC
 
 
 def test_the_steer_row_offers_note_and_steer_but_not_interrupt():
@@ -195,19 +202,19 @@ def test_the_steer_row_offers_note_and_steer_but_not_interrupt():
     A button that looked like it worked would be worse than no button - the
     whole point of the tier ladder is that escalating is a decision.
     """
-    assert 'action: "steer"' in _DEV
-    assert '_sendSteer("note")' in _DEV and '_sendSteer("steer")' in _DEV
-    assert "loop-btn-interrupt" not in _DEV
-    assert '_sendSteer("interrupt")' not in _DEV
+    assert 'action: "steer"' in _MC
+    assert '_sendSteer("note")' in _MC and '_sendSteer("steer")' in _MC
+    assert "loop-btn-interrupt" not in _MC
+    assert '_sendSteer("interrupt")' not in _MC
 
 
 def test_a_steer_mints_its_own_idempotency_key_per_send():
     """Same rule as the arm path: one key per operator INTENT, never per page."""
-    assert "idempotency_key: _mcSteerKey()" in _DEV
+    assert "idempotency_key: _mcSteerKey()" in _MC
 
 
 def test_an_empty_steer_is_refused_client_side_too():
-    assert "steer: type something first" in _DEV
+    assert "steer: type something first" in _MC
 
 
 def test_send_steer_does_not_wear_the_lane_or_shortcut_colour():
@@ -226,14 +233,14 @@ def test_send_steer_does_not_wear_the_lane_or_shortcut_colour():
     assert not re.search(r"\.loop-btn-note\s*[,:{]", css), (
         ".loop-btn already sets color: var(--text) - the rule was a no-op "
         "pretending to be a decision")
-    assert 'btn("Send STEER", ""' in _DEV
-    assert 'btn("Send NOTE", ""' in _DEV
+    assert 'btn("Send STEER", ""' in _MC
+    assert 'btn("Send NOTE", ""' in _MC
 
 
 def test_both_textareas_have_an_accessible_name():
     """A placeholder is not a name - it vanishes on the first keystroke."""
     for tid in ("loop-steer-input", "loop-directive-input"):
-        seg = _DEV[_DEV.index(f'"{tid}"'):]
+        seg = _MC[_MC.index(f'"{tid}"'):]
         seg = seg[:600]
         assert "aria-label" in seg, f"#{tid} has no accessible name"
 
@@ -242,26 +249,26 @@ def test_every_group_in_the_card_is_headed():
     """The directive block became the only unheaded group when S7 landed above
     it, so both textareas read as one STEER control."""
     for head in ("SHORTCUTS", "LANES", "STEER", "DIRECTIVE OVERRIDE"):
-        assert head in _DEV, f"missing sub-head: {head}"
+        assert head in _MC, f"missing sub-head: {head}"
 
 
 def test_the_steer_row_is_not_gated_behind_arm_then_confirm():
     """Deliberate: a steer executes nothing and kills nothing, and the text has
     to be typed first, which IS the deliberate act. The confirm window is for
     things that cannot be taken back."""
-    send = _DEV[_DEV.index("const _sendSteer ="):]
+    send = _MC[_MC.index("const _sendSteer ="):]
     send = send[:send.index("\n      };")]
     assert "_mcArm" not in send
 
 
 def test_the_wired_lane_list_comes_from_the_server():
     """A client-side list drifts the moment a later stage wires a lane."""
-    assert "d.lanes_available" in _DEV
-    assert ".wired" in _DEV
+    assert "d.lanes_available" in _MC
+    assert ".wired" in _MC
 
 
 def test_shortcuts_post_queue_intent():
-    assert 'action: "queue_intent"' in _DEV
+    assert 'action: "queue_intent"' in _MC
 
 
 def test_arm_window_is_short_enough_to_decay():
@@ -290,8 +297,13 @@ def test_every_custom_property_the_s4_css_uses_is_actually_defined():
     amber at 1.9:1, because `--bg` is defined in no stylesheet at all. It looked
     styled, it passed every source grep for the token name, and it was wrong on
     the one state where misreading the button costs the most.
+
+    web/mc/mc.css carries no S4-only marker (S10 made it a standalone file that
+    is entirely Mission Control), so this now checks the whole file rather than
+    a sliced region - a widening, not a narrowing: it catches an undefined
+    custom property anywhere in mc.css, not only in what used to be the S4 slice.
     """
-    block = _slice(_CSS, "/* Mission Control S4", ".mode-pill")
+    block = _CSS
     block = re.sub(r"/\*.*?\*/", "", block, flags=re.S)   # comments cite the bug
     used = set(re.findall(r"var\(\s*(--[a-z0-9-]+)", block))
     defined = set()
@@ -323,7 +335,7 @@ def test_no_class_the_panel_emits_relies_on_a_bare_dim_rule():
     rendered BRIGHTER than the note explaining the RECLAIMABLE state next to it.
     """
     assert not re.search(r"^\s*\.dim\s*[,{]", _CSS, re.M)
-    assert '"loop-lock-meta dim"' not in _DEV
+    assert '"loop-lock-meta dim"' not in _MC
     meta = re.search(r"\.loop-lock-meta\s*\{([^}]*)\}", _CSS)
     assert meta and "color:" in meta.group(1), (
         ".loop-lock-meta must own its colour since `dim` does nothing")
@@ -344,7 +356,7 @@ def test_the_countdown_repaint_preserves_keyboard_focus():
     Without this, arming from the keyboard threw focus to <body> and the confirm
     click inside the 3s window was unreachable - the flow was mouse-only.
     """
-    paint = _DEV[_DEV.index("function _mcPaint("):]
+    paint = _MC[_MC.index("function _mcPaint("):]
     paint = paint[:paint.index("\n}\n")]
     assert "document.activeElement" in paint
     assert "refocus.focus()" in paint
@@ -352,7 +364,7 @@ def test_the_countdown_repaint_preserves_keyboard_focus():
 
 
 def test_the_status_line_is_a_live_region():
-    assert 'aria-live", "polite"' in _DEV
+    assert 'aria-live", "polite"' in _MC
 
 
 def test_hit_targets_meet_the_minimum():
@@ -363,28 +375,24 @@ def test_hit_targets_meet_the_minimum():
 
 # --------------------------------------------------------------------------- hygiene
 def test_the_js_sources_are_ascii_only():
-    for path, text in ((ARM_JS, _ARM), (DEV_JS, _DEV)):
+    for path, text in ((ARM_JS, _ARM), (MC_JS, _MC)):
         bad = sorted({ch for ch in text if ord(ch) > 127})
         assert not bad, f"{path.name} carries non-ASCII: {bad!r}"
 
 
-def _slice(text, start_marker, end_marker):
-    i = text.index(start_marker)
-    j = text.index(end_marker, i)
-    return text[i:j]
-
-
 def test_the_s4_markup_and_css_are_ascii_only():
-    """Scoped to what S4 authored.
+    """Both files are entirely Mission Control now (S10 standalone move).
 
-    index.html and header.css both carry PRE-EXISTING icon glyphs (arrows, a
-    times, a mute speaker) that render as UI affordances. Those are outside this
-    change and sweeping them would silently break icons, so this asserts over
-    the S4 regions rather than the whole files.
+    Historically this sliced a marked S4 region out of the shared web/index.html
+    and web/css/panels/header.css, because those files also carried PRE-EXISTING
+    icon glyphs (arrows, a times, a mute speaker) unrelated to this change -
+    sweeping the whole file would have silently broken icons. web/mc/index.html
+    and web/mc/mc.css carry no other content and no S4 marker, so the whole file
+    is the region now.
     """
     regions = {
-        "index.html card": _slice(_INDEX, "<!-- Mission Control S4", "</section>"),
-        "header.css block": _slice(_CSS, "/* Mission Control S4", ".mode-pill"),
+        "index.html card": _INDEX,
+        "mc.css block": _CSS,
     }
     for name, text in regions.items():
         bad = sorted({ch for ch in text if ord(ch) > 127})

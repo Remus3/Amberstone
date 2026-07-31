@@ -1,5 +1,5 @@
-# arch: every web/js module must actually PARSE as an ES module | section=tests | frozen=no
-"""Repo-wide guard: parse every `web/js/**/*.js` as a real ES module.
+# arch: every web/js and web/mc module must actually PARSE as an ES module | section=tests | frozen=no
+"""Repo-wide guard: parse every `web/js/**/*.js` and `web/mc/*.js` as a real ES module.
 
 WHY THIS EXISTS, AND WHY `node --check` IS NOT ENOUGH. MEASURED 2026-07-31: a
 duplicate `const st` in one scope of `web/js/panels/dev.js` killed the entire
@@ -42,14 +42,24 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB_JS = ROOT / "web" / "js"
+# Mission Control (S10): a standalone page tree outside web/js/, with its own
+# module (mc.js) that carries zero automated syntax coverage unless it is
+# swept here too. arm_confirm.js is also under web/mc/, and arm_confirm.js
+# was already covered before the S10 move (it lived under web/js/lib/) - this
+# is what keeps it covered now that it has moved.
+WEB_MC = ROOT / "web" / "mc"
 
 # Test doubles live beside their modules and are already run by `node --test`.
 _SKIP_SUFFIXES = (".test.mjs",)
 
 
 def _modules() -> list[Path]:
-    return sorted(p for p in WEB_JS.rglob("*.js")
-                  if not p.name.endswith(_SKIP_SUFFIXES))
+    return sorted(
+        p
+        for tree in (WEB_JS, WEB_MC)
+        for p in tree.rglob("*.js")
+        if not p.name.endswith(_SKIP_SUFFIXES)
+    )
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
@@ -61,7 +71,7 @@ def test_every_web_js_module_parses_as_an_es_module():
     side effects - a parse error rejects the promise, which is what is caught.
     """
     files = _modules()
-    assert files, "no web/js modules found - the glob is wrong, not the tree"
+    assert files, "no web/js or web/mc modules found - the glob is wrong, not the tree"
 
     script = r"""
 const files = JSON.parse(process.argv[1]);
@@ -86,7 +96,7 @@ const bad = [];
     assert out.returncode == 0, f"node harness failed: {out.stderr[-800:]}"
     tail = (out.stdout or "").strip().splitlines()
     bad = json.loads(tail[-1]) if tail else []
-    assert not bad, "web/js modules with SYNTAX errors:\n" + "\n".join(
+    assert not bad, "web/js or web/mc modules with SYNTAX errors:\n" + "\n".join(
         f"  {b['file']}: {b['msg']}" for b in bad)
 
 
