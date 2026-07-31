@@ -144,6 +144,68 @@ Source: Cloud Four, "Truth, Lies and Progress Bars"; AI UX Design Guide,
 | S7 | Steer channel - NOTE and STEER tiers only | medium | SHIPPED 2026-07-31 `992a5a6c` |
 | S8 | Commands 7, 8 - highest blast radius, worktree-first, frozen-file adjudicator | HIGH | SHIPPED 2026-07-31 - see "S8-S9 as shipped" |
 | S9 | INTERRUPT tier | HIGH | SHIPPED 2026-07-31 - see "S8-S9 as shipped" |
+| S10 | DECOUPLE - Mission Control off the RC dashboard, own process + port, reachable by IP | HIGH | OPEN - operator-requested 2026-07-31, see "S10" |
+
+## S10 - decouple Mission Control from the RC dashboard (OPEN)
+
+**Operator requirement, verbatim 2026-07-31:** "i want to have this mission
+control to be separate away from the RC game overlay : and accessible remotely
+via ip or something . that way when someone is changes on the rc game overlay
+and dashboard - the mission control is not affected."
+
+### Why this is not a preference - the coupling is already proven harmful
+
+Mission Control today is not a separate surface in any sense. It is a settings
+card inside the RC game dashboard:
+
+| Coupling | Where | Consequence |
+|---|---|---|
+| Same process | `web_dashboard.py` `:8888`, supervisor-managed | an RC restart for an overlay change bounces Mission Control too |
+| Same routes module set | `dashboard/_dispatch.py:147` + `:210` wire `routes_loop_status` / `routes_loop_control` beside every game route | a fault anywhere in dispatch takes the control plane with it |
+| Same JS bundle | the panel lives in `web/js/panels/dev.js`, the SHARED dev/settings panel | one syntax or scope error anywhere in that file kills Mission Control |
+| Same page | `#loop-status-body` inside `web/index.html` | the control plane is only reachable by loading the whole game dashboard |
+
+**S9 demonstrated the third row for real.** A single `mk` ReferenceError in
+`dev.js` - a file whose other 900 lines are game-dashboard concerns - left the
+INTERRUPT victim list unrendered while the armed kill button still displayed.
+The control plane's most safety-critical element was broken by its proximity to
+unrelated UI code. That is the argument for S10 stated as a measurement rather
+than a principle.
+
+The reverse direction is just as real: Mission Control is the surface you reach
+for WHEN the dashboard is misbehaving, and today it dies with it. A control
+plane that shares a failure domain with the thing it controls is not a control
+plane.
+
+### What S10 has to answer (design questions, NOT yet decided)
+
+1. **Own process and port**, with its own supervisor entry, so an RC restart and
+   a Mission Control restart are independent acts. Port to be chosen; `:8888`
+   stays the game dashboard.
+2. **Own asset tree** - not `web/js/panels/dev.js`. The INTERRUPT block, the
+   lane row, the lock rows and `arm_confirm.js` move to a page that imports no
+   game code. `arm_confirm.js` is already pure and portable.
+3. **Reachable by IP over the tailnet.** Legion is `legion-rc` / `100.70.22.55`.
+   Note `web_dashboard.py` serves HTTPS with a mkcert cert whose SAN list
+   decides which hostnames/IPs validate - `tools/regen_rc_cert.ps1` is the
+   generator, and a new host or bare IP needs regenerating, not just a firewall
+   rule. Do not assume `-k` is acceptable for a control plane that can kill.
+4. **Auth is now load-bearing.** The current trust model is "the `:8888` surface
+   is local / tailnet only, single-operator" (`routes_loop_control.py` header).
+   S9 added an action that KILLS PROCESSES. Widening reachability without
+   revisiting that model is the one part of S10 that must not be done casually.
+5. **Shared modules, not duplicated ones.** `ops/loop/*` (lanes, launcher,
+   steer, interrupt, intents) are the real control plane and stay put; S10 moves
+   the SERVING layer, not the logic. Resist forking a second copy of anything -
+   the repo already carries one byte-identical-by-contract pair and does not
+   need a second class of them.
+
+Sequencing note: this is a relocation of a surface that now has 65 tests across
+`tests/test_interrupt_{tier,route,panel}.py`, `test_mission_control_panel.py`,
+`test_loop_status_route.py` and `test_lane_launcher.py`. Those tests pin the
+CURRENT file paths in several places (the panel tests read `dev.js` and
+`header.css` off disk by path), so S10 is partly a test-relocation exercise and
+should expect to touch them deliberately rather than discover it mid-move.
 
 S1 and S2 are pure backend with tests and no ability to launch anything. They are
 the correct first session.
