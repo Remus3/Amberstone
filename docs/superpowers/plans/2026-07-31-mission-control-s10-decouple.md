@@ -82,7 +82,7 @@ surface is proven live.
 | `web/js/panels/dev.js` | Delete lines 9-10 (the arm_confirm import) and 341-1019 (the Mission Control block). |
 | `web/js/main.js:843` | Remove the `renderLoopStatus()` call. |
 | `web/index.html:1625-1637` | Delete the Mission Control card. |
-| `web/css/panels/header.css:3017-3178` | Delete the Mission Control CSS block. |
+| `web/css/panels/header.css:2956-3178` | Delete the Mission Control CSS. TWO blocks, not one - see Task 9 Step 6. |
 | `tests/test_mission_control_panel.py` | Re-point four path constants and one literal-string assertion. |
 | `tests/test_interrupt_panel.py` | Re-point two path constants. |
 | `tests/test_web_ascii_sweep.py:79` | Re-point the `arm_confirm.js` path. |
@@ -1255,9 +1255,21 @@ setInterval(() => renderLoopStatus(), 5000);
 
 - [ ] **Step 5: Create `web/mc/mc.css`**
 
-Copy `web/css/panels/header.css` lines **3018 through 3178** verbatim into
-`web/mc/mc.css`, then prepend the design tokens the block references. Find which
-tokens are actually used rather than copying the dashboard's whole token file:
+Copy `web/css/panels/header.css` lines **2957 through 3178** verbatim into
+`web/mc/mc.css`.
+
+**This is TWO blocks and the obvious grep finds only one of them.** Searching
+for "Mission Control" matches the S4 sub-block comment at 3018 (lock rows and
+arm/confirm) and nothing else. The FOUNDATION - `.loop-status-body`,
+`.loop-state-row`, `.loop-dot`, `.loop-mode`, `.loop-line`, `.loop-log`,
+`.loop-btn`, `.loop-ta`, `.loop-controls`, `.loop-dir-row`, `.loop-ctl-msg` -
+sits above it from 2957, under a comment reading
+`/* Headless loop status card (Settings; reads /api/loop-status)`. Copy only
+3018+ and the page renders with its rows unstyled. Start at 2957, the comment
+line, and take everything through 3178 (the line before `.mode-pill` at 3179).
+
+Then prepend the design tokens the block references. Find which tokens are
+actually used rather than copying the dashboard's whole token file:
 
 ```bash
 grep -o "var(--[a-z0-9-]*)" web/mc/mc.css | sort -u
@@ -1684,9 +1696,22 @@ settings view body.
 
 - [ ] **Step 6: Delete the header.css block**
 
-Delete `web/css/panels/header.css` lines **3017-3178**: the blank line, the
-`/* Mission Control S4 ... */` comment and every rule through the line before
-`.mode-pill` at 3179.
+Delete `web/css/panels/header.css` lines **2956-3178**: the blank line at 2956,
+the `/* Headless loop status card ... */` comment at 2957, and every rule
+through the line before `.mode-pill` at 3179.
+
+**Do not stop at 3018.** That is where the `/* Mission Control S4` comment sits
+and it is the middle of the region, not its start. Deleting only 3017-3178
+leaves roughly 60 lines of orphaned `.loop-*` rules that style nothing - and the
+residue guard in Step 1 will fail on `loop-status-body`, correctly.
+
+Verified while planning: no non-Mission-Control code uses any `loop-*` class, so
+this deletion is safe in full. One loose end to fix in the same edit - the
+comment at `web/css/panels/header.css:2836` describes `.set-action-btn` as
+"Mirrors `.loop-btn` chrome". `.set-action-btn` duplicates those properties
+rather than depending on them, so nothing breaks visually, but the comment would
+point at a rule that no longer exists. Reword it to describe the chrome directly
+instead of naming `.loop-btn`.
 
 - [ ] **Step 7: De-register the routes**
 

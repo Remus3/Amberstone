@@ -271,7 +271,7 @@ its own interrupt preview.
 |---|---|
 | `web/js/panels/dev.js` | delete the Mission Control block, approx lines 342-1020 (~680 lines): `_loopControl`, `_LOCK_STATES`, `_loopAge`, `_loopLockRow`, `_MC_SHORTCUTS`, `_mcSetTimer`, `_mcMsg`, `_mcFire`, `_LANE_LABELS`, `_mcSteerKey`, `_mcRunId`, `_mcFireLane`, `_mcPaintLanes`, `_MC_IRQ_ID`, `_mcIrqForget`, `_mcVictimLine`, `_mcIrqPreview`, `_mcIrqFire`, `_mcPaintInterrupt`, `_mcPaint`, `renderLoopStatus` |
 | `web/index.html` | delete the Mission Control S4 card at 1626 including `#loop-status-body` |
-| `web/css/panels/header.css` | delete the `/* Mission Control S4` block at 3018 (162 lines, ends before `.mode-pill`) |
+| `web/css/panels/header.css` | delete lines **2956-3178** (223 lines, ends before `.mode-pill` at 3179). NOTE: this is TWO blocks, not one. Grepping "Mission Control" finds only the S4 sub-block at 3018; the 2026-06-07 base card CSS above it is titled `/* Headless loop status card` and carries `.loop-status-body`, `.loop-dot`, `.loop-btn`, `.loop-line` and the rest of the foundation. Taking only 3018+ leaves dead CSS behind and gives the new page half its styling. Verified no non-Mission-Control code uses any `loop-*` class. |
 | `web/js/lib/arm_confirm.js` | move to `web/mc/` |
 | `dashboard/_dispatch.py` | drop `routes_loop_status.GET_ROUTES` (`:147`) and `routes_loop_control.POST_ROUTES` (`:210`); add the `_matchers` re-export |
 | `dashboard/routes_loop_*.py` | stay in place, imported by `mc/` only. Header trust-model docstrings updated to describe the new bearer gate. |
