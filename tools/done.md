@@ -54,6 +54,14 @@ python tools/session_intent.py --peek
 
 `{"pending": null}` - nothing queued, run the ritual as normal. A pending `halt_save` or `done_continue` means the operator fired the dashboard button while this session was mid-turn: finish the current step, run the whole ritual, and consume it in section 10. Never abandon work to service an intent - a queued intent never kills anything.
 
+**Then drain the steer channel** (S7). The done ritual is the SAFE BOUNDARY a NOTE waits for, so this is where queued guidance gets read:
+
+```
+python tools/session_steer.py --drain --format text
+```
+
+`(no steers pending)` and exit 1 - nothing queued, carry on. Otherwise each line is free-text guidance the operator sent while this session was running. A steer is GUIDANCE, NOT A COMMAND: it executes nothing, it never killed anything, and it is not an instruction you must obey blindly - read it, say in the wrap what it said and what you did about it, and fold anything still open into the next-session prompt in section 10. Draining advances a cursor; the log itself is append-only and stays as the audit trail.
+
 Versioning is cheap; lost work is not. The operator never passes up a commit + push. So the DEFAULT is: always commit + push when local checks are green. Do NOT leave authored work uncommitted at session end just because a change feels small or unfinished - if it passes its checks, it ships.
 
 - Identify the files authored this session: `git -C "C:/Riot Commander" status -s`.

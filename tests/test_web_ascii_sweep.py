@@ -79,12 +79,12 @@ _WEB = _REPO_ROOT / "web"
 # middots swept to " - " per the ASCII hard rule) and web/js/lib/arm_confirm.js
 # (new file, hence 166 sources rather than 165) - which is the slice's whole
 # file set and nothing else.
-# RE-CAPTURED at Mission Control S5 (the lane row + the first real lane fire),
-# superseding the S4 capture. Ordinary case again: LIVE web edits, no tokeniser
+# RE-CAPTURED at Mission Control S6+S7 (lanes 4-6 wired, steer channel),
+# superseding the S5 capture. Ordinary case: LIVE web edits, no tokeniser
 # change. Two-tree diff over HEAD: exactly 2 of 166 web/ sources differ in their
-# live half - web/js/panels/dev.js (the lane buttons) and
-# web/css/panels/header.css (the lane rules) - the slice's whole web file set.
-_LIVE_HALF_DIGEST = "fb210fdaff9c56334ff15a25f2d66c8b82aacf33b1871f0b3159af7bdffb012a"
+# live half - web/js/panels/dev.js (the steer row) and
+# web/css/panels/header.css (the steer rules) - the slice's whole web file set.
+_LIVE_HALF_DIGEST = "2bcf98c0a6a8fba653e149b5e590e3db8848e02175406cf8fa778c36f1c597d6"
 
 
 def _web_sources() -> list[Path]:

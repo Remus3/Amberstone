@@ -101,12 +101,15 @@ _INTENT_FILES = {
 }
 
 _VALID_ACTIONS = ("stop", "resume", "set_directive", "clear_directive",
-                  "fire_lane", "queue_intent")
+                  "fire_lane", "queue_intent", "steer")
+
+# S7 owns the steer channel. Late-bound for the same reason as the other two.
+_STEER_MODULE = "ops.loop.steer"
 
 # Actions that carry a non-repeatable operator intent and therefore require an
 # idempotency_key. The four legacy actions are naturally idempotent (writing the
 # same STOP twice is the same world) and keep their key-free contract.
-_IDEMPOTENT_ACTIONS = ("fire_lane", "queue_intent")
+_IDEMPOTENT_ACTIONS = ("fire_lane", "queue_intent", "steer")
 
 
 def _awrite(path: Path, text: str) -> None:
@@ -253,6 +256,43 @@ def _queue_intent(body: dict, key: str) -> tuple[int, dict]:
                  "detail": detail, "intent": intent, "file": name, "key": key}
 
 
+def _steer(body: dict, key: str) -> tuple[int, dict]:
+    """Append one free-text steer for the running session to pick up.
+
+    GUIDANCE, NOT A COMMAND. Nothing here executes anything and nothing is
+    signalled or killed - the consumer reads the text at its own boundary and
+    decides. That is what makes NOTE and STEER safe to fire on a single click;
+    the arm-then-confirm window exists for acts that cannot be taken back, and
+    INTERRUPT (stage S9) is the one that will need it.
+
+    Idempotency-keyed like the other intent-carrying actions: a phone retrying
+    over Tailscale must not append the same steer twice.
+    """
+    try:
+        steer = sys.modules.get(_STEER_MODULE) or \
+            importlib.import_module(_STEER_MODULE)
+    except ModuleNotFoundError as exc:
+        log.warning("api/loop-control steer: %s", exc)
+        return 503, {"ok": False, "action": "steer",
+                     "error": "steer channel unavailable: "
+                              "ops/loop/steer.py is not installed"}
+    tier = str(body.get("tier") or "note").strip().lower()
+    if tier not in getattr(steer, "TIERS", ("note", "steer")):
+        return 400, {"ok": False, "action": "steer",
+                     "error": f"unknown tier: {tier!r}",
+                     "valid": list(getattr(steer, "TIERS", ()))}
+    try:
+        rec = steer.append(body.get("text"), tier=tier, key=key)
+    except ValueError as exc:
+        return 400, {"ok": False, "action": "steer", "error": str(exc)}
+    except OSError as exc:
+        log.warning("api/loop-control steer: %s", exc)
+        return 503, {"ok": False, "action": "steer", "error": str(exc)}
+    return 200, {"ok": True, "action": "steer", "state": _state(),
+                 "detail": f"{tier} queued (#{rec['id']})",
+                 "tier": tier, "id": rec["id"], "key": key}
+
+
 def _apply_idempotent(action: str, body: dict) -> tuple[int, dict]:
     """Gate an intent-carrying action on its idempotency key.
 
@@ -274,6 +314,8 @@ def _apply_idempotent(action: str, body: dict) -> tuple[int, dict]:
 
     if action == "fire_lane":
         status, payload = _fire_lane(body)
+    elif action == "steer":
+        status, payload = _steer(body, key)
     else:
         status, payload = _queue_intent(body, key)
     if status == 200:

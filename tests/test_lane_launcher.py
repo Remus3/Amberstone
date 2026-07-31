@@ -71,9 +71,19 @@ def test_an_unwired_lane_raises_rather_than_launching_nothing():
 
 def test_unwired_lanes_are_still_valid_lock_lanes():
     """The lock knows all six; only the launcher gates which can start."""
-    for lane in lanes.LANES:
+    assert set(launcher.LANE_COMMANDS) <= set(lanes.LANES), (
+        "the launcher must never wire a lane the lock does not know")
+
+
+def test_the_two_highest_blast_radius_lanes_stay_unwired():
+    """repo and true-audit ship LAST, behind their own stage and sign-off.
+
+    Wiring them early would put a file-by-file rewrite and a security audit one
+    confirmed click away, which is exactly the ordering the plan forbids.
+    """
+    for lane in ("repo", "true-audit"):
         assert lane in lanes.LANES
-    assert set(launcher.LANE_COMMANDS) <= set(lanes.LANES)
+        assert lane not in launcher.LANE_COMMANDS
 
 
 # --------------------------------------------------------------------------- worktree
@@ -162,9 +172,13 @@ def test_a_dead_worker_makes_the_lane_reclaimable(lane_root, monkeypatch):
 
 # --------------------------------------------------------------------------- failure frees the lane
 def test_a_missing_command_doc_releases_the_lane(lane_root):
-    claim = _claim(lane="ds")
+    # "true-audit" is deliberately UNWIRED until its stage lands, which makes it
+    # the honest fixture for this path - no stub required.
+    assert "true-audit" not in launcher.LANE_COMMANDS
+    claim = _claim(lane="true-audit")
     with pytest.raises(launcher.LaneLaunchError):
-        launcher.launch_lane("ds", run_id="run0002", token=claim["token"],
+        launcher.launch_lane("true-audit", run_id="run0002",
+                             token=claim["token"],
                              spawn=lambda *a, **k: FakeProc())
     assert lanes.lane_state(lane_root)["state"] == "FREE", (
         "a lane that never started must not stay locked")

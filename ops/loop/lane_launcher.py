@@ -90,6 +90,12 @@ WORKTREE_BASE = Path(os.environ.get("RC_LANE_WORKTREE_BASE", r"C:\rc-worktrees")
 # as the git hooks and the Perseus vault.
 LANE_COMMANDS = {
     "upgrade": "tools/headless-upgrade.md",
+    "uiux": "tools/headless-uiux.md",
+    "research": "tools/headless-research.md",
+    "ds": "tools/headless-ds.md",
+    # "repo" and "true-audit" are the two highest-blast-radius lanes and stay
+    # UNWIRED until their stage lands. The panel lists them and greys them out,
+    # so the roster stays honest about what exists versus what can start.
 }
 
 # Branch per lane, stable across fires so a lane resumes its own history rather

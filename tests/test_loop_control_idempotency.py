@@ -357,6 +357,86 @@ def test_queue_intent_unknown_intent_is_400_and_not_remembered(ctldir):
     assert not list(ctldir.glob("INTENT_*.json"))
 
 
+# ======================================================================= S7 steer
+@pytest.fixture
+def steerchan(tmp_path, monkeypatch):
+    """Point the real steer module at a tmp log - the route is NOT stubbed here.
+
+    Stubbing it would leave the route's own tier validation and error mapping
+    untested, which is the half that decides what the operator sees.
+    """
+    import importlib
+    steer = importlib.import_module("ops.loop.steer")
+    # `ctldir` already owns tmp_path/"control", so the steer channel gets its
+    # own dir - two fixtures racing one mkdir is a FileExistsError, not a test.
+    ctl = tmp_path / "steer_control"
+    ctl.mkdir()
+    monkeypatch.setattr(steer, "CONTROL_DIR", ctl)
+    monkeypatch.setattr(steer, "STEER_LOG", ctl / "STEER.jsonl")
+    monkeypatch.setattr(steer, "STEER_CURSOR", ctl / "STEER.cursor")
+    return steer
+
+
+def test_steer_appends_and_reports_the_id(ctldir, steerchan):
+    status, payload, _ = _post({"action": "steer", "tier": "note",
+                                "text": "focus the overlay, not the dashboard",
+                                "idempotency_key": KEY_A})
+    assert status == 200 and payload["ok"] is True
+    assert payload["tier"] == "note" and payload["id"] == 1
+    assert [r["text"] for r in steerchan.pending()] == [
+        "focus the overlay, not the dashboard"]
+
+
+def test_a_replayed_steer_does_not_append_twice(ctldir, steerchan):
+    """The layer that survives a phone retrying over Tailscale."""
+    _post({"action": "steer", "text": "once", "idempotency_key": KEY_A})
+    status, payload, _ = _post({"action": "steer", "text": "once",
+                                "idempotency_key": KEY_A})
+    assert status == 200 and payload["replayed"] is True
+    assert len(steerchan.pending()) == 1, "the replay appended a second steer"
+
+
+def test_an_empty_steer_is_400_and_not_remembered(ctldir, steerchan):
+    status, payload, _ = _post({"action": "steer", "text": "   ",
+                                "idempotency_key": KEY_A})
+    assert status == 400 and payload["ok"] is False
+    assert steerchan.pending() == []
+    assert idem.seen(KEY_A) is None
+
+
+def test_an_unknown_steer_tier_is_400(ctldir, steerchan):
+    """INTERRUPT must be REJECTED here, not silently downgraded to a note.
+
+    Stage S9 owns it, it needs operator sign-off, and a route that quietly
+    accepted the word would make the panel look like it already worked.
+    """
+    status, payload, _ = _post({"action": "steer", "tier": "interrupt",
+                                "text": "stop everything",
+                                "idempotency_key": KEY_A})
+    assert status == 400
+    assert "interrupt" in payload["error"]
+    assert steerchan.pending() == []
+    assert idem.seen(KEY_A) is None
+
+
+def test_steer_requires_an_idempotency_key(ctldir, steerchan):
+    status, payload, _ = _post({"action": "steer", "text": "no key"})
+    assert status == 400 and payload["ok"] is False
+    assert steerchan.pending() == []
+
+
+def test_a_missing_steer_module_is_503(ctldir, monkeypatch):
+    import sys as _sys
+    monkeypatch.setitem(_sys.modules, "ops.loop.steer", None)
+    monkeypatch.setattr(mod.importlib, "import_module",
+                        lambda name: (_ for _ in ()).throw(
+                            ModuleNotFoundError(name)))
+    status, payload, _ = _post({"action": "steer", "text": "x",
+                                "idempotency_key": KEY_A})
+    assert status == 503
+    assert "steer channel unavailable" in payload["error"]
+
+
 # ======================================================================= S5 launch
 def test_a_successful_claim_launches_the_lane(ctldir, lanes, monkeypatch):
     FakeLauncher.calls = []
