@@ -298,6 +298,66 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
             "worktree": payload["worktree"], "token": str(token)}
 
 
+def repoint_lane_pid(token, pid, root=None) -> bool:
+    """Re-point a held lock at the process that ACTUALLY runs the lane.
+
+    `try_acquire_lane` records the pid of whoever CLAIMED the lane, which for a
+    dashboard fire is the long-lived RC server. Left that way, `lane_state`
+    probes a pid that is always alive, so the lane would read RUNNING forever
+    after its worker died - the exact stale-lock failure the three states exist
+    to prevent. The launcher therefore re-points the lock the moment it has a
+    worker pid.
+
+    `_OWNED` is updated in the same breath, or the ABA guard in `release_lane`
+    would refuse to release a lock this process legitimately owns.
+
+    tmp + os.replace, not an in-place rewrite: `replace` is atomic and never
+    leaves the path absent, so the O_EXCL exclusivity another acquirer relies on
+    holds throughout. Returns False rather than raising - a launcher failing to
+    re-point must fall back to releasing the lane, not crash mid-spawn.
+    """
+    if token is None or not str(token).strip():
+        return False
+    lock = Path(str(token).strip())
+    if not lock.is_absolute():
+        lock = _resolve_root(root) / lock.name
+    rec = _read_payload(lock)
+    if not rec:
+        return False
+    try:
+        new_pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+
+    key = _key(lock)
+    owned = _OWNED.get(key)
+    identity = (_str_or_none(rec.get("run_id")),
+                _float_or_none(rec.get("ts")),
+                _int_or_none(rec.get("pid")))
+    if owned is not None and identity != tuple(owned):
+        return False  # someone else holds the lane now
+    if owned is None and identity[2] != os.getpid():
+        return False
+
+    rec["pid"] = new_pid
+    rec["claimed_by_pid"] = identity[2]
+    tmp = Path(str(lock) + ".tmp")
+    try:
+        tmp.write_text(json.dumps(rec), encoding="utf-8")
+        os.replace(tmp, lock)
+    except OSError:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        return False
+    if owned is not None:
+        _OWNED[key] = (owned[0], owned[1], new_pid)
+    else:
+        _OWNED[key] = (identity[0], identity[1], new_pid)
+    return True
+
+
 def release_lane(token, root=None) -> bool:
     """Release a lock handed out by `try_acquire_lane`. Idempotent.
 

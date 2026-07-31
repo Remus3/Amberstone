@@ -118,10 +118,65 @@ def test_disarm_discards_the_key():
         "already-settled key")
 
 
-def test_only_the_two_queued_shortcuts_are_wired_in_s4():
-    """S4 ships shortcuts 1 and 2. Firing a lane is S5, behind its own gate."""
+def test_the_queued_shortcuts_are_wired():
     assert '"halt_save"' in _DEV and '"done_continue"' in _DEV
-    assert "fire_lane" not in _DEV, "S4 must not be able to spawn a lane"
+
+
+def test_a_lane_fire_goes_through_arm_then_confirm_like_everything_else():
+    """S5 wires fire_lane. It must NOT get a cheaper path than the shortcuts.
+
+    A lane fire starts a real headless run, so if any control in this panel
+    deserves the confirm window it is this one.
+    """
+    assert 'action: "fire_lane"' in _DEV
+    assert "_mcArm.confirm(id)" in _DEV
+    assert "if (res.fired) _mcFireLane(lane, res.key);" in _DEV
+    assert "idempotency_key: key" in _DEV
+
+
+def test_the_client_never_sends_a_worktree_path():
+    """Filesystem layout is the server's business.
+
+    A hardcoded client path is how a lane ends up pointed somewhere it must
+    never run - and the main-tree ban is the one thing that cannot be allowed
+    to depend on a string in a browser.
+    """
+    fire = _DEV[_DEV.index("function _mcFireLane("):]
+    fire = fire[:fire.index("\n}\n")]
+    assert "worktree" not in fire
+
+
+def test_the_armed_state_wins_over_the_lane_colour():
+    """`.loop-lane-btn` sits AFTER `.loop-btn-armed` at equal specificity.
+
+    Unscoped, source order handed it the colour and the armed lane rendered
+    --warn on --warn: 1.00:1, invisible, on the 3s window before a REAL
+    headless run starts. Measured in Chrome.
+    """
+    assert ".loop-lane-btn:not(.loop-btn-armed)" in _CSS
+    assert not re.search(r"^\.loop-lane-btn\s*\{", _CSS, re.M), (
+        "an unscoped .loop-lane-btn rule would clobber the armed ink again")
+
+
+def test_an_armed_lane_still_offers_cancel():
+    """The heavier action must not have the weaker abort affordance."""
+    assert "if (anyArmed || laneArmed)" in _DEV
+
+
+def test_the_lane_sub_head_states_the_contract_and_the_wired_count():
+    """Five permanently-dim buttons need a permanent explanation.
+
+    "REFUSED IF HELD" alone is a transient reason for a permanent state, and
+    the real one lived only in a title a disabled button does not announce.
+    """
+    assert "ARM, THEN CONFIRM" in _DEV
+    assert '" of "' in _DEV and "wired" in _DEV
+
+
+def test_the_wired_lane_list_comes_from_the_server():
+    """A client-side list drifts the moment a later stage wires a lane."""
+    assert "d.lanes_available" in _DEV
+    assert ".wired" in _DEV
 
 
 def test_shortcuts_post_queue_intent():

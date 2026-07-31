@@ -79,6 +79,10 @@ MAX_DIRECTIVE = 8000
 # with it.
 _LANES_MODULE = "ops.loop.lanes"
 
+# S5 owns the launcher. Same late-bind, same reason: a missing launcher must not
+# take the other five actions down with it.
+_LAUNCHER_MODULE = "ops.loop.lane_launcher"
+
 # OVERWRITE-on-write, single well-known path, no timestamp suffix (operator
 # decision 2026-07-30). S2 only RECORDS it in the queued intent; S3
 # (ops/loop/intents.py) is what writes the file when a session consumes.
@@ -136,6 +140,14 @@ def _lanes():
     return importlib.import_module(_LANES_MODULE)
 
 
+def _launcher():
+    """Import ops/loop/lane_launcher.py (S5) at CALL time. See _lanes."""
+    cached = sys.modules.get(_LAUNCHER_MODULE)
+    if cached is not None:
+        return cached
+    return importlib.import_module(_LAUNCHER_MODULE)
+
+
 def _fire_lane(body: dict) -> tuple[int, dict]:
     """Claim one of the six mutually exclusive headless lanes.
 
@@ -154,12 +166,25 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
     if lane not in known:
         return 400, {"ok": False, "action": "fire_lane",
                      "error": f"unknown lane: {lane!r}", "valid": list(known)}
-    for field in ("run_id", "worktree"):
-        if not str(body.get(field) or "").strip():
-            return 400, {"ok": False, "action": "fire_lane",
-                         "error": f"fire_lane requires non-empty {field!r}"}
+    if not str(body.get("run_id") or "").strip():
+        return 400, {"ok": False, "action": "fire_lane",
+                     "error": "fire_lane requires non-empty 'run_id'"}
     run_id = str(body["run_id"]).strip()
-    worktree = str(body["worktree"]).strip()
+
+    # `worktree` stays MANDATORY at the lock (a lane may never run against the
+    # main tree), but the dashboard must not have to know filesystem layout, so
+    # an omitted worktree is filled from the launcher's own answer rather than
+    # rejected. An explicitly-supplied one still wins - that is the path a
+    # script or a test uses.
+    worktree = str(body.get("worktree") or "").strip()
+    if not worktree:
+        try:
+            worktree = str(_launcher().worktree_path(lane))
+        except Exception as exc:  # noqa: BLE001 - fall through to the 400 below
+            log.warning("api/loop-control fire_lane: no default worktree: %s", exc)
+    if not worktree:
+        return 400, {"ok": False, "action": "fire_lane",
+                     "error": "fire_lane requires non-empty 'worktree'"}
 
     try:
         # No `root` override: the contract's default IS ops/loop/control/lanes.
@@ -171,9 +196,35 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
     payload = {"ok": bool(result.get("ok")), "action": "fire_lane",
                "state": _state()}
     payload.update(result)
-    payload["detail"] = (f"lane {lane} acquired" if payload["ok"]
-                         else f"lane held by {result.get('holder')} (pid {result.get('pid')})")
-    # A refusal is a normal answer - 200 with ok=false, never 4xx/5xx.
+    if not payload["ok"]:
+        payload["detail"] = (
+            f"lane held by {result.get('holder')} (pid {result.get('pid')})")
+        # A refusal is a normal answer - 200 with ok=false, never 4xx/5xx.
+        return 200, payload
+
+    # S5: the claim is only half the act. Launch the worker, and hand the lane
+    # back if anything in the spawn path fails - a lock with no process behind
+    # it wedges the lane until someone reclaims it by hand.
+    try:
+        launcher = _launcher()
+    except ModuleNotFoundError as exc:
+        lanes.release_lane(result.get("token"))
+        log.warning("api/loop-control fire_lane: launcher missing: %s", exc)
+        return 503, {"ok": False, "action": "fire_lane",
+                     "error": "lane launcher unavailable: "
+                              "ops/loop/lane_launcher.py is not installed"}
+    try:
+        run = launcher.launch_lane(lane, run_id=run_id,
+                                   token=result.get("token"))
+    except Exception as exc:  # noqa: BLE001 - launch_lane already released the lane
+        log.warning("api/loop-control fire_lane: launch failed: %s", exc)
+        # 503, NOT 200: only settled answers are remembered by the idempotency
+        # table, and remembering a launch fault would replay it forever.
+        return 503, {"ok": False, "action": "fire_lane",
+                     "error": f"launch failed: {exc}", "released": True}
+
+    payload.update(run)
+    payload["detail"] = f"lane {lane} running (pid {run['pid']})"
     return 200, payload
 
 
