@@ -212,9 +212,13 @@ The decisions, one line each:
    `mc/`.
 6. **Lifecycle: own scheduled task `RC-MissionControl`** (ONLOGON, HIGHEST,
    `pythonw.exe`), NOT an `ops/rc_supervisor.py` entry - that file is frozen,
-   and a shared watchdog would re-couple the two processes. `core.hot_reload`
-   is deliberately not started: a control plane must not restart itself because
-   an unrelated `.py` changed.
+   and a shared watchdog would re-couple the two processes. Because that trade
+   gives up the supervisor's auto-restart and ONLOGON fires only once, the task
+   carries **`RestartCount=3` / `RestartInterval=1 minute`**; Task Scheduler is
+   the watchdog. A bind failure **exits non-zero** rather than warning and
+   idling, so the failure is visible in Last Result. `core.hot_reload` is
+   deliberately not started: a control plane must not restart itself because an
+   unrelated `.py` changed. Its own log file, not the shared daily log.
 7. **The dashboard card is removed with no link left behind** (operator call).
 
 Sequencing note: this is a relocation of a surface that now has **159 tests**
