@@ -43,6 +43,11 @@ config/coach_settings.json
 # endpoint + keys; committed template is config/rank_tier_source.example.json.
 config/rank_tier_source.json
 
+# Mission Control bearer-token secret (S10 decouple). A generated hex token
+# consumed by mc/auth.py (env RC_MC_TOKEN takes precedence over this file);
+# a live control-plane credential that can kill processes - no template needed.
+config/mission_control_token.txt
+
 # Live coaching state (mutates per game - written by main.py atomically)
 coaching_data.json
 data/aram_coaching_data.json
