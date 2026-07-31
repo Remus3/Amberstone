@@ -138,7 +138,7 @@ Source: Cloud Four, "Truth, Lies and Progress Bars"; AI UX Design Guide,
 | S1 | Lane-lock module over `slots.py` (new file, no edits to the pinned pair) + 3-state pid-probed status + tests | low | unit tests |
 | S2 | `/api/loop-control` extended with idempotency keys + `fire_lane` / `queue_intent` actions; refuse-not-queue semantics; tests | low | unit tests, no UI yet |
 | S3 | Shortcuts 1 + 2 end to end - the two that cannot spawn a lane | medium | SHIPPED 2026-07-30 - live-confirmed STOP + Desktop prompt file |
-| S4 | Dashboard panel wired to real `/api/loop-status`, read-only first | low | UI fixture ritual |
+| S4 | Dashboard panel wired to real `/api/loop-status`, read-only first | low | SHIPPED 2026-07-31 - see "S4 as shipped" |
 | S5 | Shortcut 3 - existing headless command, first real lane fire | medium | one supervised run |
 | S6 | Commands 4, 5, 6 authored + wired | medium | one supervised run each |
 | S7 | Steer channel - NOTE and STEER tiers only | medium | live |
@@ -232,6 +232,61 @@ guard ran - a mutation removing it left the suite green. The real sequence is
 peek -> (someone consumes) -> `consume(peeked_doc)`, which without the re-read
 clobbers a fresh hand-off with a stale prompt. Found by the adversarial pass,
 now pinned by `test_a_stale_peeked_doc_cannot_clobber_a_fresh_handoff`.
+
+## S4 as shipped (2026-07-31) - the panel
+
+| Piece | File | Note |
+|---|---|---|
+| Host element | `web/index.html` | `#loop-status-body`, a new MISSION CONTROL settings card |
+| Lock blocks on the status route | `dashboard/routes_loop_status.py` | `lanes` + `controller_lock`, three-state, pid-probed, read-only |
+| Renderer | `web/js/panels/dev.js` | lock rows + the two shortcut buttons |
+| Arm-then-confirm | `web/js/lib/arm_confirm.js` | pure; key minted at arm, discarded on disarm |
+| Tests | `tests/test_mission_control_panel.py`, `tests/test_loop_status_route.py`, `web/js/lib/arm_confirm.test.mjs` | 50 py (25 + 25) + 14 node |
+
+**The panel had never rendered.** `#loop-status-body` existed only as a CSS class
+and a `getElementById` call - it was in no markup anywhere - so
+`renderLoopStatus` returned on its first line and the card shipped 2026-06-07
+was dead from the day it landed. Nothing reported this, because every test that
+touched it tested the renderer's inputs rather than its host.
+
+**Constraint 2 above is RESOLVED.** `root=None` resolves to
+`lanes.DEFAULT_ROOT` = `ops/loop/control/lanes`, and both sides take that
+default. Pinned by `test_status_and_control_share_one_lane_root`, which fires
+through the real `POST /api/loop-control` and reads back through the real
+`build_loop_status()` with only `DEFAULT_ROOT` redirected - so a divergence
+fails rather than passing on two sets of stubs.
+
+**Two locks, not one.** `lane_state` reads `control/lanes/0.lock`, and that dir
+does not exist until the first lane fires. The dead-holder case live on this
+machine is `control/RUNNING.lock` (pid 9380), the loop controller's OWN
+single-flight lock - a different file with a different owner and lifetime.
+Reporting only the lane lock would have rendered FREE and hidden the exact
+state the third state exists for, so both are probed and reported side by side.
+
+Four defects the 5-phase UI audit caught before the commit, each of them a rule
+worth keeping:
+
+**A `var()` naming an undefined property fails SILENTLY.** `color: var(--bg)` on
+the armed button was invalid at computed-value time and fell back to inherited
+near-white: 1.9:1 on amber, on the one state where misreading the button costs
+the most. `--bg` is defined in NO stylesheet in `web/css`. It passed every
+source grep for the token name. Now `var(--canvas)`, measured 9.03:1 live, and
+`test_every_custom_property_the_s4_css_uses_is_actually_defined` fails on the
+whole class.
+
+**A 4Hz repaint made the flow mouse-only.** `_mcPaint` rebuilds the row via
+`innerHTML` while the countdown runs, so arming from the keyboard threw focus to
+`<body>` and the confirm click inside the 3s window could not be reached. Focus
+is now carried across the repaint.
+
+**`dim` is inert.** `web/css` defines no bare `.dim` rule - every one is
+descendant-scoped - so the incidental pid/run metadata rendered at full
+brightness, LOUDER than the `--fs-xs` note explaining the RECLAIMABLE state
+beside it. The least important text in the row was the brightest.
+
+**Two tokens fail AA on `--surface-alt`.** `--text-faint` measures 3.94:1 and
+`--bad` 3.66:1 there; `base.css` documents `--text-faint` as AA-raised "on
+--surface", and the lighter alt surface loses that guarantee.
 
 ## Out-of-repo footprint - MEASURED 2026-07-30
 

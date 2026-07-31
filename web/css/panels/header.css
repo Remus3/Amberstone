@@ -3014,6 +3014,83 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-size: var(--fs-sm); color: var(--text-dim);
   min-height: 1.2em; margin-top: var(--space-2);
 }
+
+/* Mission Control S4 - lock rows + arm-then-confirm shortcuts.
+   RECLAIMABLE is amber and carries its own note. It must never read as
+   RUNNING: the two differ only by a pid probe, and collapsing them reports a
+   dead loop as live. */
+.loop-locks {
+  display: flex; flex-direction: column; gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-alt); border-radius: 4px;
+}
+.loop-lock-row {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2);
+  font-size: var(--fs-sm); line-height: 1.4;
+}
+/* --text-dim, not --text-faint: base.css documents --text-faint as AA-raised
+   "on --surface", and these rows sit on the lighter --surface-alt, where it
+   measures 3.94:1 - under the 4.5:1 bar at this size and weight. */
+.loop-lock-label {
+  min-width: 4.5em; font-weight: 800; letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.loop-lock-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--text-faint); flex-shrink: 0; align-self: center;
+}
+.loop-lock-dot.running { background: var(--good); }
+.loop-lock-dot.reclaimable { background: var(--warn); }
+.loop-lock-dot.free { background: var(--text-faint); }
+.loop-lock-dot.unavailable { background: var(--bad); }
+.loop-lock-state { font-weight: 800; letter-spacing: 0.04em; }
+.loop-lock-state.running { color: var(--good); }
+.loop-lock-state.reclaimable { color: var(--warn); }
+.loop-lock-state.free { color: var(--text-dim); }
+/* The RED DOT carries "this is a fault"; the word itself stays --text because
+   --bad measures 3.66:1 on --surface-alt. A non-text dot only owes 3:1. */
+.loop-lock-state.unavailable { color: var(--text); }
+/* Reserved so a lock gaining or losing its metadata does not reflow the row.
+   Dimmed HERE rather than with a `dim` class - web/css defines no bare `.dim`
+   rule (every one is descendant-scoped), so the class was inert and the
+   incidental pid/run metadata rendered BRIGHTER than the RECLAIMABLE note it
+   sits beside. That is the hierarchy exactly inverted. */
+.loop-lock-meta { min-height: 1.2em; color: var(--text-dim); }
+.loop-lock-note {
+  font-size: var(--fs-xs); color: var(--warn); font-style: italic;
+}
+.loop-sub-head {
+  margin-top: var(--space-3);
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+.loop-shortcuts {
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.loop-shortcut { color: var(--accent); border-color: var(--accent); }
+/* .loop-btn:hover is (0,2,0) and would otherwise grey the accent border out
+   exactly when the operator points at it. */
+.loop-shortcut:hover { border-color: var(--accent); }
+/* The buttons had no focus affordance at all, so a keyboard operator could not
+   see what they were about to fire. */
+.loop-btn:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+/* Armed is a deliberately loud state - it is the 3s window in which a second
+   click fires for real.
+   The ink is --canvas, and the token choice is load-bearing. MEASURED in the
+   live dashboard: the first attempt used var(--bg), which NO stylesheet in
+   web/css defines - so it was invalid at computed-value time, fell back to
+   inherited near-white and rendered 1.9:1 against the amber, on the one state
+   where misreading the button costs the most. --canvas is defined in base.css
+   and overridden by every theme, and it measures 8.15:1 to 9.45:1 against both
+   --warn values across all six themes. */
+.loop-btn-armed {
+  color: var(--canvas); background: var(--warn); border-color: var(--warn);
+}
+.loop-btn-armed:hover { border-color: var(--warn); }
+.loop-btn-cancel { color: var(--text-dim); }
 .mode-pill {
   padding: 5px 14px;
   border: 1px solid transparent;
