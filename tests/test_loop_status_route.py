@@ -394,6 +394,20 @@ def test_status_and_control_share_one_lane_root(tmp_path, monkeypatch):
     monkeypatch.setattr(mod, "LANES_ROOT", None)      # production value
     monkeypatch.setattr(mod, "_last_commit", lambda: None)
 
+    # S5 made a successful claim LAUNCH. This test is about the lock root, so
+    # the launcher is stubbed - it must not build a worktree or spawn anything.
+    class _StubLauncher:
+        @staticmethod
+        def worktree_path(lane):
+            return tmp_path / "wt" / lane
+
+        @staticmethod
+        def launch_lane(lane, *, run_id, token, **kw):
+            return {"pid": os.getpid(), "worktree": str(tmp_path / "wt" / lane),
+                    "log": str(tmp_path / "lane.log")}
+
+    monkeypatch.setattr(ctlmod, "_launcher", lambda: _StubLauncher)
+
     status, payload = ctlmod.apply_action("fire_lane", {
         "lane": "uiux",
         "run_id": "seam-test",
