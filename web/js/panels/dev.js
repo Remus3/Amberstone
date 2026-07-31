@@ -458,9 +458,114 @@ function _mcFire(shortcut, key) {
     .catch(() => _mcMsg(shortcut.label + ": request failed"));
 }
 
+// S5: the headless lanes. Mutually exclusive - one lock - and a fire against a
+// held lane is REFUSED, never queued. The wired list comes from the SERVER
+// (lanes_available.wired, derived from the launcher's own map) so the panel
+// cannot drift as S6 and S8 wire the rest.
+const _LANE_LABELS = {
+  "upgrade": "Headless-Upgrade",
+  "uiux": "Headless-UIUX",
+  "research": "Headless-Research",
+  "ds": "Headless-DS",
+  "repo": "Headless-Repo",
+  "true-audit": "Headless-True-Audit",
+};
+
+let _mcLanes = { all: [], wired: [] };
+let _mcLaneHost = null;
+
+function _mcRunId() {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID().slice(0, 8);
+  return Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+}
+
+function _mcFireLane(lane, key) {
+  const label = _LANE_LABELS[lane] || lane;
+  _mcMsg(label + ": starting...");
+  fetch("/api/loop-control", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
+    body: JSON.stringify({
+      action: "fire_lane", lane: lane,
+      run_id: _mcRunId(), idempotency_key: key,
+    }),
+  })
+    .then((r) => (r ? r.json() : null))
+    .then((d) => {
+      if (d && d.ok) {
+        _mcMsg(label + ": " + (d.detail || "running")
+          + (d.replayed ? " (replayed)" : ""));
+      } else if (d && d.refused) {
+        _mcMsg(label + " REFUSED - " + (d.detail || d.refused));
+      } else {
+        _mcMsg(label + " failed: " + ((d && d.error) || "request failed"));
+      }
+      renderLoopStatus();
+    })
+    .catch(() => _mcMsg(label + ": request failed"));
+}
+
+function _mcPaintLanes() {
+  const host = _mcLaneHost;
+  if (!host || !host.isConnected) return false;
+  const focusedId = (document.activeElement && host.contains(document.activeElement))
+    ? document.activeElement.dataset.mcId : null;
+  let refocus = null;
+  host.innerHTML = "";
+  const wired = _mcLanes.wired || [];
+  const all = (_mcLanes.all && _mcLanes.all.length) ? _mcLanes.all
+    : Object.keys(_LANE_LABELS);
+  let anyArmed = false;
+  all.forEach((lane) => {
+    const id = "lane:" + lane;
+    const isWired = wired.indexOf(lane) >= 0;
+    const armed = _mcArm.isArmed(id);
+    if (armed) anyArmed = true;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "loop-btn loop-lane-btn" + (armed ? " loop-btn-armed" : "")
+      + (isWired ? "" : " loop-lane-unwired");
+    b.dataset.mcId = id;
+    if (focusedId === id) refocus = b;
+    b.setAttribute("aria-pressed", armed ? "true" : "false");
+    const label = _LANE_LABELS[lane] || lane;
+    if (!isWired) {
+      b.disabled = true;
+      b.textContent = label;
+      b.title = "no command doc wired yet - a later stage lands this lane";
+      b.setAttribute("aria-disabled", "true");
+    } else if (armed) {
+      b.textContent = "Confirm " + label + " ("
+        + Math.ceil(_mcArm.remainingMs() / 1000) + "s)";
+      b.title = "fires a real headless run in its own git worktree";
+    } else {
+      b.textContent = label;
+      b.title = "fires a real headless run in its own git worktree";
+    }
+    b.addEventListener("click", () => {
+      if (b.disabled) return;
+      if (_mcArm.isArmed(id)) {
+        const res = _mcArm.confirm(id);
+        if (res.fired) _mcFireLane(lane, res.key);
+        return;
+      }
+      _mcArm.arm(id);
+      _mcMsg("armed: click again within 3s to start " + label);
+    });
+    host.append(b);
+  });
+  if (refocus) refocus.focus();
+  return anyArmed;
+}
+
 function _mcPaint() {
+  // Lanes first, and its armed flag is folded into the timer decision below -
+  // otherwise a lane armed on its own would have its countdown cancelled by
+  // the shortcut row reporting nothing armed.
+  const laneArmed = _mcPaintLanes();
   const host = _mcHost;
-  if (!host || !host.isConnected) { _mcSetTimer(false); return; }
+  if (!host || !host.isConnected) { _mcSetTimer(!!laneArmed); return; }
   // The countdown repaints 4x/second while armed, and innerHTML="" destroys the
   // node the operator is standing on. Without this, tabbing to a shortcut and
   // pressing Enter armed it and threw focus to <body> - so the confirm click
@@ -497,7 +602,9 @@ function _mcPaint() {
     });
     host.append(b);
   });
-  if (anyArmed) {
+  // laneArmed too: the arm controller is global, so an armed LANE - the heavier
+  // action of the two - would otherwise be the one with no visible abort.
+  if (anyArmed || laneArmed) {
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "loop-btn loop-btn-cancel";
@@ -511,7 +618,7 @@ function _mcPaint() {
     host.append(cancel);
   }
   if (refocus) refocus.focus();
-  _mcSetTimer(anyArmed);
+  _mcSetTimer(anyArmed || !!laneArmed);
 }
 
 function renderLoopStatus(ctlMsg) {
@@ -610,6 +717,21 @@ function renderLoopStatus(ctlMsg) {
       host.append(mk("div", "loop-sub-head", "SHORTCUTS - ARM, THEN CONFIRM"));
       _mcHost = mk("div", "loop-shortcuts");
       host.append(_mcHost);
+
+      // Lanes (S5). Mutually exclusive; a fire against a held lane is refused.
+      _mcLanes = d.lanes_available || { all: [], wired: [] };
+      // The count is in VISIBLE text on purpose. Five permanently-dim buttons
+      // under a heading that only says "refused if held" read as "currently
+      // held" - a transient explanation for a permanent state - and the real
+      // reason lived only in a hover title, which a disabled button does not
+      // reliably announce.
+      const nWired = (_mcLanes.wired || []).length;
+      const nAll = (_mcLanes.all || []).length || Object.keys(_LANE_LABELS).length;
+      host.append(mk("div", "loop-sub-head",
+        "LANES - ARM, THEN CONFIRM - ONE AT A TIME, REFUSED IF HELD - "
+        + nWired + " of " + nAll + " wired"));
+      _mcLaneHost = mk("div", "loop-shortcuts loop-lanes-row");
+      host.append(_mcLaneHost);
       _mcPaint();
 
       const ta = mk("textarea", "loop-ta");

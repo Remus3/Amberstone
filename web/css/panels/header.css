@@ -3091,6 +3091,31 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .loop-btn-armed:hover { border-color: var(--warn); }
 .loop-btn-cancel { color: var(--text-dim); }
+/* Lanes (S5). A lane fire starts a REAL headless run in its own worktree, so
+   the buttons read hotter than the queued shortcuts. */
+.loop-lanes-row { margin-top: var(--space-3); }
+/* :not(.loop-btn-armed) is load-bearing, not defensive noise. This rule sits
+   AFTER .loop-btn-armed at equal specificity (0,1,0), so without the exclusion
+   source order hands it the `color` and the armed lane renders --warn ON
+   --warn: 1.00:1, literally invisible, on the 3s window before a REAL headless
+   run starts. Measured in Chrome. Scoping beats reordering here because it
+   survives someone moving these rules later. */
+.loop-lane-btn:not(.loop-btn-armed) {
+  color: var(--warn); border-color: var(--warn);
+}
+.loop-lane-btn:not(.loop-btn-armed):hover { border-color: var(--warn); }
+/* Not yet wired: still LISTED, so the roster is honest about what exists and
+   what can start. Dimmed and non-interactive rather than hidden.
+   opacity 0.75, not 0.55: opacity composites the WHOLE button - ink and its
+   --surface-alt background - over the card, so 0.55 measured 2.13:1 across the
+   themes. WCAG exempts inactive controls, so that was legal, but a roster whose
+   point is to be readable about what exists should not be barely readable.
+   0.75 keeps "clearly inactive" and restores roughly 3:1. */
+.loop-lane-unwired,
+.loop-lane-unwired:hover {
+  color: var(--text-faint); border-color: var(--text-faint);
+  cursor: not-allowed; opacity: 0.75;
+}
 .mode-pill {
   padding: 5px 14px;
   border: 1px solid transparent;

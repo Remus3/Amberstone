@@ -216,6 +216,32 @@ def _lanes():
     return importlib.import_module(_LANES_MODULE)
 
 
+_LAUNCHER_MODULE = "ops.loop.lane_launcher"
+
+
+def _lanes_available() -> dict | None:
+    """Which lanes exist, and which can actually START (S5).
+
+    The panel renders a button per lane and must grey out the ones with no
+    command doc yet. Deriving that list HERE, from the launcher's own map, is
+    what keeps the UI honest as S6 and S8 wire the remaining lanes - a
+    hardcoded client-side list would drift the moment a lane lands.
+    """
+    try:
+        lanes = _lanes()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("loop-status: lanes import failed: %s", exc)
+        return None
+    wired: list = []
+    try:
+        launcher = sys.modules.get(_LAUNCHER_MODULE) or \
+            importlib.import_module(_LAUNCHER_MODULE)
+        wired = sorted(getattr(launcher, "LANE_COMMANDS", {}))
+    except Exception as exc:  # noqa: BLE001 - an absent launcher means none wired
+        log.warning("loop-status: launcher unavailable: %s", exc)
+    return {"all": list(getattr(lanes, "LANES", ())), "wired": wired}
+
+
 def _lane_lock() -> dict | None:
     """`lane_state()` for the six-lane mutex, or None when S1 is unavailable.
 
@@ -324,6 +350,7 @@ def build_loop_status() -> dict:
         "budget": budget,
         "last_commit": last_commit,
         "lanes": _lane_lock(),
+        "lanes_available": _lanes_available(),
         "controller_lock": _controller_lock(),
         "log_tail": log_tail,
         "updated_at": _now_iso(),
