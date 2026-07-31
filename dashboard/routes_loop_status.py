@@ -242,6 +242,20 @@ def _lanes_available() -> dict | None:
     return {"all": list(getattr(lanes, "LANES", ())), "wired": wired}
 
 
+_STEER_MODULE = "ops.loop.steer"
+
+
+def _steer_summary() -> dict | None:
+    """Pending steer counts (S7). Read-only - `pending` never writes."""
+    try:
+        steer = sys.modules.get(_STEER_MODULE) or \
+            importlib.import_module(_STEER_MODULE)
+        return dict(steer.summary())
+    except Exception as exc:  # noqa: BLE001 - an absent channel is not an error
+        log.warning("loop-status: steer summary unavailable: %s", exc)
+        return None
+
+
 def _lane_lock() -> dict | None:
     """`lane_state()` for the six-lane mutex, or None when S1 is unavailable.
 
@@ -351,6 +365,7 @@ def build_loop_status() -> dict:
         "last_commit": last_commit,
         "lanes": _lane_lock(),
         "lanes_available": _lanes_available(),
+        "steer": _steer_summary(),
         "controller_lock": _controller_lock(),
         "log_tail": log_tail,
         "updated_at": _now_iso(),
