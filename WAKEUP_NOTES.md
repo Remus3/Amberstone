@@ -6,6 +6,57 @@
 
 ---
 
+# 2026-07-31c - MISSION CONTROL S8 + S9 (lanes 7-8 wired; the INTERRUPT tier).
+
+## Start here next session
+
+**S10 - DECOUPLE Mission Control from the RC dashboard** (operator directive, 2026-07-31):
+own process + port + asset tree, reachable by IP, so a game-overlay or dashboard change
+cannot affect the control plane. Full design-question list in `docs/MISSION_CONTROL_PLAN.md`
+"S10"; ROADMAP carries it as the top `[!]`. Two things NOT to do casually: **auth becomes
+load-bearing** (the trust model is still "local / tailnet only, single-operator" and S9 added
+an action that KILLS PROCESSES), and **move the serving layer, not the logic** (`ops/loop/*`
+stays put - do not fork a second copy). The mkcert SAN list decides which IPs validate
+(`tools/regen_rc_cert.ps1`), so a bare IP needs a cert regen, not just a firewall rule.
+
+**Owed first:** `MEMORY.md` is 21.4 KB against a 24.4 KB read limit and a hook is asking for
+compaction (`anthropic-skills:consolidate-memory`). Deferred twice now; it should lead.
+
+## What shipped
+
+- **S8 `97c74550`** - `tools/headless-repo.md` (BREADTH: restructure/clean/modularize) and
+  `tools/headless-true-audit.md` (DEPTH: one file at a time, rewrite + harden), authored by
+  parallel agents, mirrored to `.claude/commands/`, wired into `LANE_COMMANDS`. All six lanes
+  startable; the panel derives `wired` from that map so it lit them up with no client change.
+- **S9 `97c74550`** - `ops/loop/interrupt.py` + `interrupt_preview` / `interrupt` route
+  actions + the panel block. `preview` fingerprints the exact victim set (pid AND process
+  START TIME) and `execute` re-probes and REFUSES on mismatch. Descendants are victims too,
+  reaped deepest-first; `taskkill` runs WITHOUT `/T`.
+- **`79cdd590`** - an INTERRUPT audit row is no longer counted as pending guidance.
+
+## The finding worth carrying forward
+
+**Two defects passed the whole suite, my own mutation tests, and the source-contract tests -
+and died on the first real click.** `mk` is a function-LOCAL const, so at module scope it is
+a ReferenceError: the victim list never rendered while the armed button still read
+"Confirm INTERRUPT - kill 3". Then `_mcArm.confirm()` notifies SYNCHRONOUSLY, the repaint
+clears the fingerprint, and the POST went out fingerprint-less (failed SAFE, but could never
+kill). Both are about a BINDING'S LIFETIME, which a source-literal test cannot see. Mutation
+testing gave false confidence because every mutant of the WRITTEN property was caught - the
+written property was not the broken one. Keep the live-audit ritual mandatory.
+
+## Do NOT redo
+
+- S1-S9 are shipped and CI-green. Do not rebuild the lock, idempotency table, intent
+  consumer, panel, launcher, lane docs, steer channel, or the INTERRUPT tier.
+- **Lanes 7 and 8 have never been FIRED.** That is deliberate - the plan gates both on
+  operator sign-off and a fire starts a real autonomous worker against the repo. The launch
+  path is proven structurally (worktree + branch + prompt-inside-checkout, verified with real
+  `git worktree add`), so do not "fix" it; just ask before firing.
+- Never edit `ops/loop/slots.py` or `ops/loop/winmutex.py` (byte-identical-by-contract).
+
+---
+
 # 2026-07-31b - MISSION CONTROL S5 + S6 + S7 (lanes fire for real; the steer channel).
 
 ## Start here next session
@@ -94,51 +145,3 @@ command, the FIRST real lane fire. One supervised run, worktree-mandatory
   two-tree diff verified) - a red there next session is NEW drift, not this.
 - The pre-existing icon glyphs in `web/index.html` + `web/css/panels/header.css` (arrows,
   times, mute speaker) are LEFT ALONE on purpose - sweeping them breaks icons.
-
----
-
-# 2026-07-30d - MISSION CONTROL S3 (intent consumer) + the stale-worktree glyph sweep.
-
-## Start here next session
-
-**S4 of the Mission Control control plane** - the dashboard panel wired to the real
-`GET /api/loop-status`, read-only first, then the ARM/CONFIRM affordances for shortcuts 1-2.
-Spec + staging in `docs/MISSION_CONTROL_PLAN.md`; S1/S2/S3 backend is all in place.
-Render the lane lock as RUNNING / RECLAIMABLE / FREE and never collapse RECLAIMABLE into RUNNING.
-
-## What shipped
-
-- `b74b58e3` S3 consumer half: `ops/loop/intents.py` (`pending()` never writes; `consume()` writes
-  the prompt FIRST then the consumed marker, both atomic) + `tools/session_intent.py` CLI + the
-  done-ritual wiring. Live-verified end to end through the real `:8888` endpoint.
-- **RC- NAMESPACE (operator, mid-session).** `Desktop/RC-NEXT-SESSION.txt`. The Desktop is SHARED
-  and this design is meant to be lifted into Sibling-A and RM, so all three may run
-  concurrently. The consumer ENFORCES the prefix - a doc pointing at `LW-NEXT-SESSION.txt` falls
-  back to our own file. Lifting to LW/RM is one line: `REPO_PREFIX`.
-- `2eef4d8b` glyph sweep (`-> x - approx` for U+2192 / U+00D7 / U+00B7 / U+2248), 17 files.
-- `d01b01a4` mirrored the S3 wiring into the TRACKED `tools/done.md`.
-- LEDGER 1132 + 1133; ROADMAP head moved S3 -> S4.
-
-## Lessons worth keeping
-
-1. **`Path.write_text` corrupted a byte count.** The first live consume reported 1375 bytes while
-   the Desktop file held 1395 - Windows text mode rewrites LF as CRLF, and a `read_text` round-trip
-   translates it back, so a string-equality test passes while the status line lies. Assert RAW BYTES.
-2. **A guard reachable only off the non-default call path is invisible to a suite that always uses
-   the default.** All 16 `consume()` tests passed `doc=None`, so `pending()` filtered the consumed
-   intent out before the already-consumed guard ever ran, and a mutation removing it left the suite
-   GREEN. The vacuous-test class again, second session running.
-3. **A stale worktree is not automatically garbage.** `.claude/worktrees/clever-bardeen-9bcee0` held
-   an uncommitted 17-file glyph sweep. `git worktree remove --force` WIPED the directory contents
-   before failing on a lock - landing the work first is the only reason it survived.
-4. **`drift_guard` earned its keep at wrap:** the S3 ritual edits went only into the gitignored
-   `.claude/commands/done.md`, so a fresh clone would have got the ritual without them.
-
-## Do NOT redo
-
-- S1, S2, S3 are shipped and verified. Do not rebuild the lane lock, the idempotency table, or the
-  intent consumer.
-- The CLAUDE.md glyph-sweep constraint from `2026-07-30c` is DISCHARGED - that sweep was landed
-  from the abandoned worktree this session. CLAUDE.md is safe to edit again.
-- `ops/loop/slots.py` + `winmutex.py` stay pinned across two repos - consume, never edit.
-- Ability-haste stays CLOSED.
