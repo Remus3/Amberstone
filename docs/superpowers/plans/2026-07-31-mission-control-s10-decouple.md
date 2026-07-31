@@ -1358,14 +1358,23 @@ Replace with:
 
 ```python
 INDEX = ROOT / "web" / "mc" / "index.html"
-DEV_JS = ROOT / "web" / "mc" / "mc.js"
+MC_JS = ROOT / "web" / "mc" / "mc.js"
 ARM_JS = ROOT / "web" / "mc" / "arm_confirm.js"
 CSS = ROOT / "web" / "mc" / "mc.css"
 ```
 
-Leave the `DEV_JS` name alone. Renaming it is churn that touches every
-assertion in the file for no behavioural gain; the constant now points at
-`mc.js` and the docstring says so.
+**Rename `DEV_JS` to `MC_JS` throughout** (operator ruling 2026-07-31). A
+constant named after a file it no longer points to misleads every future reader
+of these tests. This is a mechanical rename - find every reference, including
+any derived module-level reader such as `_DEV`, and rename consistently:
+
+```bash
+grep -n "DEV_JS\|_DEV\b" tests/test_mission_control_panel.py tests/test_interrupt_panel.py
+```
+
+Rename the derived reader to match (`_DEV` -> `_MC`). Do not leave a mixed
+pair - a `MC_JS` constant feeding a `_DEV` variable is the same defect one level
+down.
 
 - [ ] **Step 2: Fix the literal-string assertion**
 
@@ -1411,9 +1420,11 @@ CSS = ROOT / "web" / "css" / "panels" / "header.css"
 become:
 
 ```python
-DEV_JS = ROOT / "web" / "mc" / "mc.js"
+MC_JS = ROOT / "web" / "mc" / "mc.js"
 CSS = ROOT / "web" / "mc" / "mc.css"
 ```
+
+Apply the same `DEV_JS` -> `MC_JS` rename here, derived readers included.
 
 Also update the docstrings at `test_mission_control_panel.py:4-5` and
 `test_interrupt_panel.py:5` that cite `web/js/lib/arm_confirm.test.mjs`, and the
