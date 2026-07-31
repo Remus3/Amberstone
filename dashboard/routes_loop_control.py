@@ -26,15 +26,43 @@ Actions (POST JSON {"action": ...}):
 Response (HTTP 200 on a handled action; 400 on a bad / missing / empty action;
 500 only on an unexpected top-level error):
   {"ok": true, "action": <str>, "state": "stopped|running|idle", "detail": <str>}
+
+S2 adds two IDEMPOTENT actions. They differ from the four above in that they
+carry a real, non-repeatable operator intent, so each one requires a
+client-minted `idempotency_key`:
+
+  fire_lane     {lane, run_id, worktree, idempotency_key} - claim one of the six
+                mutually exclusive headless lanes via ops/loop/lanes.py (S1).
+                A lane already held by a LIVE pid is a REFUSAL, which is a
+                normal answer, not an error: HTTP 200 with
+                {"ok": false, "refused": "lane_held", "holder":..., "pid":...}.
+                Refusing with 4xx/5xx would push the dashboard into an error
+                path for what is simply "someone else is running".
+  queue_intent  {intent, idempotency_key}, intent in halt_save|done_continue -
+                write control/INTENT_HALT_SAVE.json or INTENT_DONE_CONTINUE.json
+                atomically. halt_save ALSO raises the existing STOP flag.
+                A queued intent NEVER kills anything; the running session
+                notices the file and winds itself down.
+
+Idempotency is the layer that survives a frozen UI: a disabled button does not
+stop a request already in flight, nor a phone retrying over Tailscale. A repeat
+key returns the ORIGINAL stored result with `"replayed": true` and performs no
+second side effect. See dashboard/_idempotency.py.
+
+This module still executes nothing - it writes files and takes a file lock.
 """
 from __future__ import annotations
 
+import importlib
 import json
 from dashboard._errors import send_error
 import logging
 import os
+import sys
+import time
 from pathlib import Path
 
+from dashboard import _idempotency as idem
 from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
@@ -46,7 +74,28 @@ CONTROL_DIR = ROOT / "ops" / "loop" / "control"
 MAX_REASON = 200
 MAX_DIRECTIVE = 8000
 
-_VALID_ACTIONS = ("stop", "resume", "set_directive", "clear_directive")
+# S1 owns this module. Imported lazily (see _lanes) so this route module stays
+# importable when lanes.py is absent - the other five actions must not go down
+# with it.
+_LANES_MODULE = "ops.loop.lanes"
+
+# OVERWRITE-on-write, single well-known path, no timestamp suffix (operator
+# decision 2026-07-30). S2 only RECORDS it in the queued intent; the file is
+# written when a session consumes the intent, in a later stage.
+NEXT_SESSION_PATH = "Desktop/NEXT-SESSION.txt"
+
+_INTENT_FILES = {
+    "halt_save": "INTENT_HALT_SAVE.json",
+    "done_continue": "INTENT_DONE_CONTINUE.json",
+}
+
+_VALID_ACTIONS = ("stop", "resume", "set_directive", "clear_directive",
+                  "fire_lane", "queue_intent")
+
+# Actions that carry a non-repeatable operator intent and therefore require an
+# idempotency_key. The four legacy actions are naturally idempotent (writing the
+# same STOP twice is the same world) and keep their key-free contract.
+_IDEMPOTENT_ACTIONS = ("fire_lane", "queue_intent")
 
 
 def _awrite(path: Path, text: str) -> None:
@@ -65,6 +114,115 @@ def _state() -> str:
     return "idle"
 
 
+def _lanes():
+    """Import ops/loop/lanes.py (S1) at CALL time, never at module import.
+
+    Two reasons it is late-bound: this route module must stay importable if
+    lanes.py is absent (the other five actions are unrelated to it), and tests
+    replace this seam wholesale rather than reaching into the real lock dir.
+    sys.modules is consulted first so an injected stub wins without touching the
+    import machinery.
+    """
+    cached = sys.modules.get(_LANES_MODULE)
+    if cached is not None:
+        return cached
+    return importlib.import_module(_LANES_MODULE)
+
+
+def _fire_lane(body: dict) -> tuple[int, dict]:
+    """Claim one of the six mutually exclusive headless lanes.
+
+    Never spawns anything - it takes a lock and reports the outcome. Actually
+    launching the lane arrives in a later stage.
+    """
+    try:
+        lanes = _lanes()
+    except ModuleNotFoundError as exc:
+        log.warning("api/loop-control fire_lane: %s", exc)
+        return 503, {"ok": False, "action": "fire_lane",
+                     "error": "lane control unavailable: ops/loop/lanes.py is not installed"}
+
+    lane = str(body.get("lane") or "").strip()
+    known = tuple(getattr(lanes, "LANES", ()))
+    if lane not in known:
+        return 400, {"ok": False, "action": "fire_lane",
+                     "error": f"unknown lane: {lane!r}", "valid": list(known)}
+    for field in ("run_id", "worktree"):
+        if not str(body.get(field) or "").strip():
+            return 400, {"ok": False, "action": "fire_lane",
+                         "error": f"fire_lane requires non-empty {field!r}"}
+    run_id = str(body["run_id"]).strip()
+    worktree = str(body["worktree"]).strip()
+
+    try:
+        # No `root` override: the contract's default IS ops/loop/control/lanes.
+        result = lanes.try_acquire_lane(lane, run_id=run_id, worktree=worktree)
+    except ValueError as exc:
+        # A rejected worktree (empty, or the main tree) - operator error, 400.
+        return 400, {"ok": False, "action": "fire_lane", "error": str(exc)}
+
+    payload = {"ok": bool(result.get("ok")), "action": "fire_lane",
+               "state": _state()}
+    payload.update(result)
+    payload["detail"] = (f"lane {lane} acquired" if payload["ok"]
+                         else f"lane held by {result.get('holder')} (pid {result.get('pid')})")
+    # A refusal is a normal answer - 200 with ok=false, never 4xx/5xx.
+    return 200, payload
+
+
+def _queue_intent(body: dict, key: str) -> tuple[int, dict]:
+    """Record a halt_save / done_continue intent for the running session.
+
+    Writes a marker file only. Queued intents NEVER kill anything - the session
+    polls, finishes what it is doing, and winds itself down.
+    """
+    intent = str(body.get("intent") or "").strip()
+    if intent not in _INTENT_FILES:
+        return 400, {"ok": False, "action": "queue_intent",
+                     "error": f"unknown intent: {intent!r}",
+                     "valid": list(_INTENT_FILES)}
+    name = _INTENT_FILES[intent]
+    doc = {"intent": intent, "key": key, "ts": time.time(), "consumed": False,
+           "next_session_path": NEXT_SESSION_PATH}
+    _awrite(CONTROL_DIR / name, json.dumps(doc, indent=2) + "\n")
+    detail = f"{intent} queued"
+    if intent == "halt_save":
+        # Reuse the existing halt path so a controller that only knows about
+        # STOP still stands down.
+        _awrite(CONTROL_DIR / "STOP", "halt_save queued from dashboard")
+        detail = "halt_save queued; STOP raised"
+    return 200, {"ok": True, "action": "queue_intent", "state": _state(),
+                 "detail": detail, "intent": intent, "file": name, "key": key}
+
+
+def _apply_idempotent(action: str, body: dict) -> tuple[int, dict]:
+    """Gate an intent-carrying action on its idempotency key.
+
+    A replay short-circuits BEFORE the side effect and returns the original
+    stored payload. Only settled answers (HTTP 200 - including a lane refusal)
+    are remembered; a 400/503 is not an answer to replay, it is a request that
+    never happened.
+    """
+    key = body.get("idempotency_key")
+    if not idem.is_valid_key(key):
+        return 400, {"ok": False, "action": action,
+                     "error": f"{action} requires 'idempotency_key' "
+                              "(hex/dash, 1-64 chars)"}
+    prior = idem.seen(key)
+    if prior is not None:
+        payload = dict(prior)
+        payload["replayed"] = True
+        return 200, payload
+
+    if action == "fire_lane":
+        status, payload = _fire_lane(body)
+    else:
+        status, payload = _queue_intent(body, key)
+    if status == 200:
+        idem.remember(key, payload)
+    return status, payload
+
+
 def apply_action(action: str, body: dict) -> tuple[int, dict]:
     """Perform the file side-effect; return (http_status, payload).
 
@@ -74,6 +232,8 @@ def apply_action(action: str, body: dict) -> tuple[int, dict]:
         return 400, {"ok": False, "error": f"unknown action: {action!r}",
                      "valid": list(_VALID_ACTIONS)}
     CONTROL_DIR.mkdir(parents=True, exist_ok=True)
+    if action in _IDEMPOTENT_ACTIONS:
+        return _apply_idempotent(action, body)
     detail = ""
     if action == "stop":
         reason = (str(body.get("reason") or "stopped from dashboard").strip()
