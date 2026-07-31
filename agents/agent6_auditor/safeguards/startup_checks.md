@@ -40,7 +40,7 @@ audit pass:
 2. **Never `Stop-Process`** - all process termination must use `taskkill
    /F /PID`. Any proposal containing `Stop-Process` is rejected.
 3. **Atomic writes for every JSON/config touched**. Any PR touching
-   `data/` or `agents/state/` without `.tmp → os.replace` is rejected.
+   `data/` or `agents/state/` without `.tmp -> os.replace` is rejected.
 4. **Every `subprocess.run` with variable args must be argv-list,
    never shell=True**. Injection is a dead-letter category.
 5. **Never widen `allowed_ops.json`** without a corresponding audit entry

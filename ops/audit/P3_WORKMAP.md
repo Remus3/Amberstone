@@ -294,7 +294,7 @@ TOOL = tools/p3_ascii_sweep.py (comment-token + docstring-token + log/print-stri
     next / dragon_state values = the SAME wire arrow scripts/audit_ddragon_items.py:86
     re.split consumes; change fixtures + splitter together.
   - role_profiles.py: DONE cycle 31 (item 428) - 39 U+2022 leading bullets -> `- ` + 5
-    U+2192 combo arrows -> `->` (raw bytes). The aram_item_context `→` ESCAPES remain
+    U+2192 combo arrows -> `->` (raw bytes). The aram_item_context `->` ESCAPES remain
     (ASCII source, emitted-glyph deferred sub-slice). See above.
   - coaches/adaptation_hint_{champion,cli}.py: DONE cycle 29 (item 426) - arrows/marker -> ^/v/-,
     separator + the line-342 rsplit boundary -> " | " (Discord-safe, not GLYPH_MAP "*"). See above.

@@ -13,7 +13,7 @@ Alternative: scheduled task + headless `claude --print` call on each poll cycle.
 
 ## Decision
 
-`tools/bridge_watcher.py` + `RC-BridgeWatcher` scheduled task (on each machine) provides always-on daemon polling. On each cycle it: pulls tasks → classifies → acts (headless `claude --print`) → posts result. No active Claude session required. The `/loop /process-bridge-tasks` skill still exists for manual override but is no longer the normal path.
+`tools/bridge_watcher.py` + `RC-BridgeWatcher` scheduled task (on each machine) provides always-on daemon polling. On each cycle it: pulls tasks -> classifies -> acts (headless `claude --print`) -> posts result. No active Claude session required. The `/loop /process-bridge-tasks` skill still exists for manual override but is no longer the normal path.
 
 ## Consequences
 
