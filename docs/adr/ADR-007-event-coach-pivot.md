@@ -14,7 +14,7 @@ happening, actively harmful when the player is mid-fight and the warning
 
 Three concrete pain points the operator cited (s169 discussion):
 
-1. **Reactive warnings the player already knows.** "Don't tell me 3× I'm
+1. **Reactive warnings the player already knows.** "Don't tell me 3x I'm
    low HP mid-fight when by the time I look at the UI I'm already dead."
 2. **Wasted tokens on non-actionable narration** - the coach spends Sonnet
    budget describing the situation rather than surfacing a decision.
@@ -92,7 +92,7 @@ calls (higher quality at the moment when it matters).
   in isolation, no coupling to the loop or store.
 - The postmortem pipeline (deferred) lets us inject *personalized*
   context into the live coach - the difference between "you're low
-  HP" and "this is the exact situation you died to 14× last season."
+  HP" and "this is the exact situation you died to 14x last season."
 
 **Trade-off:**
 - The "always-on companion" feel goes away. Some sessions will surface

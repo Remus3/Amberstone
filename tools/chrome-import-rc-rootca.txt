@@ -17,7 +17,7 @@ On Legion, in Chrome:
 ------------------------------------------------------------
 
 1. Address bar:   chrome://settings/certificates
-                  (or chrome://settings/security → "Manage
+                  (or chrome://settings/security -> "Manage
                   certificates" if your Chrome version moved it)
 
 2. Click the "Authorities" tab (NOT "Your certificates").
@@ -72,12 +72,12 @@ a single entry like:
    org-mkcert development CA
        mkcert LEGION-RC\Administrator@LEGION-RC
 
-Right-click → Edit → all three checkboxes ticked.
+Right-click -> Edit -> all three checkboxes ticked.
 
 ------------------------------------------------------------
 Edge users
 ------------------------------------------------------------
 
-Edge uses a similar UI: edge://settings/privacy → Security →
-"Manage certificates" → Authorities tab → Import. Same .pem
+Edge uses a similar UI: edge://settings/privacy -> Security ->
+"Manage certificates" -> Authorities tab -> Import. Same .pem
 file, same checkboxes.

@@ -61,8 +61,8 @@ Any new Phase 1 keys in this file may only be read by non-frozen code.
 
 Note on `max_restart_attempts`: this key also exists in `ops/rc_config.json`.
 They are read by different subsystems independently:
-- ops/rc_config.json value → supervisor circuit breaker
-- self_monitor_profile.json value → SelfMonitor circuit breaker
+- ops/rc_config.json value -> supervisor circuit breaker
+- self_monitor_profile.json value -> SelfMonitor circuit breaker
 They may legitimately differ. Both values are documented here for audit purposes.
 
 ### config/coach_settings.json - AI Coaching Authority
@@ -113,12 +113,12 @@ Runtime consumers via feature_policy.is_allowed() - final gate locations:
     `core/tft_worker._init_components()` - startup gate
 
 Artifact paths affected by policy-disabled output:
-- sr.live_coaching disabled → `coaching_data.json` (project root)
-- aram.live_coaching disabled → `data/aram_coaching_data.json`
-- arena.live_coaching disabled → `data/arena_coaching_data.json`
-- brawl.live_coaching disabled → `data/brawl_coaching_data.json`
-- tft.live_coaching disabled → `data/tft_coaching_data.json` ONLY
-- tft.tft_vision_analysis disabled → `data/tft_live_data.json` ONLY
+- sr.live_coaching disabled -> `coaching_data.json` (project root)
+- aram.live_coaching disabled -> `data/aram_coaching_data.json`
+- arena.live_coaching disabled -> `data/arena_coaching_data.json`
+- brawl.live_coaching disabled -> `data/brawl_coaching_data.json`
+- tft.live_coaching disabled -> `data/tft_coaching_data.json` ONLY
+- tft.tft_vision_analysis disabled -> `data/tft_live_data.json` ONLY
 
 No remaining gate debt: all modes have full per-poll live_coaching gate coverage.
 (ARAM and Arena/Brawl per-poll gates closed in Phase 4 Steps 2/2.1.)
@@ -148,7 +148,7 @@ which is not permitted in Phase 1.
 |---|---|---|---|---|
 | `max_heartbeat_age_seconds` (default 15) | ops/rc_config.json | `max_heartbeat_age` (default 15.0) | rc_supervisor.py (reads from config) | must match; supervisor reads from rc_config.json directly - no separate agreement needed |
 | `startup_heartbeat_timeout_s` (default 30) | rc_supervisor.py (reads from rc_config.json) | `_startup_grace_s` (hardcoded 30.0) | rc_self_monitor.py | must match; _startup_grace_s is frozen hardcoded; rc_config.json value drives supervisor only |
-| `_BOOTSTRAP_GRACE_S` (hardcoded 60.0) | rc_self_monitor.py | no config key exists | - | bootstrap grace is 2× startup grace by design; document only |
+| `_BOOTSTRAP_GRACE_S` (hardcoded 60.0) | rc_self_monitor.py | no config key exists | - | bootstrap grace is 2x startup grace by design; document only |
 | `max_restart_attempts` | ops/rc_config.json | `max_restart_attempts` | self_monitor_profile.json | different subsystems; may intentionally differ; document disagreements |
 
 ---

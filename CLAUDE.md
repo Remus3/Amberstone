@@ -2,7 +2,7 @@
 
 Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC since 2026-05-29; ADR-011). RC is tkinter-free (scheduler is asyncio AppLoop; 13 residual .after() files); Daemon Slayer (`:8893`) computes real DPS math per champion.
 
-> **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `ROADMAP.md` · `docs/API.md`
+> **Living docs (read at session start):** `docs/ARCHITECTURE.md` - `docs/OPERATIONS.md` - `ROADMAP.md` - `docs/API.md`
 > **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine - 706 items / 173 champs - ENGINE_VERSION 1.268.0 (patch 16.15.1) - Arena mirrors credit their OWN DDragon stat line, not the SR twin's (R161 doctrine B) - rune offense registry carries an attack-speed column (Legend: Alacrity 9104) plus a distinct-item-stat census (Jack Of All Trades 8316, ds.dps apply_rune_offense_grants, DEFAULT-OFF, zero for AS-locked champions) - all 7 archetype scorers wired (Slice B on-hit AP ds.onhit) + Term A ally-granted EHP (ds.ehp score_by=team_blended, DEFAULT-OFF) + canonical cast-rate keys (ult_rates apply_canonical_cast_rate_keys, DEFAULT-OFF) + RM-39/RM-43 AD-axis ability term (ds.hybrid apply_ad_axis_ability_damage, DEFAULT-OFF; L2 1.223.0 credits PHYSICAL+TRUE, MIXED held, MAGIC permanently excluded) + per-spell CC consumer + cc_blended_ehp ecosystem COMPLETE 4 consumers + per-spell CC wave 9 108/89 + cc_conditional ecosystem COMPLETE 5 consumers wave 6 36/32 + survivability axes heal/shield/DR/resist-grant COMPLETE across both EHP scorers incl flat + rank-scaled-block + percent-of-resist + unlabeled-multi-stat-block + form-occupancy + per-stack-unbounded modes + revive/second-life EHP-numerator multiplier Anivia/Zac) - `docs/AGENTS.md` (Phase 3 framework) - `BACKLOG.md` (aspirational)
 > **Architectural decisions:** [`docs/adr/README.md`](docs/adr/README.md) (indexed, 12 ADRs) - before re-litigating a past choice, check here first.
 > **Dated artifacts** in `docs/_archive/` (excluded from ripgrep searches).
@@ -158,7 +158,7 @@ Enforcement (hooks in `.claude/settings.json`): PostToolUse `tools/pytest_guard.
 
 ## Web dashboard
 
-`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Legion at `https://legion-rc:8888/` - design baseline is **standard 1920×1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport ≈ 1920×~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-peer`).
+`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Legion at `https://legion-rc:8888/` - design baseline is **standard 1920x1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport approx 1920x~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-peer`).
 
 ## Scheduled tasks (Legion)
 
@@ -166,11 +166,11 @@ Key: `RC-Supervisor` (logon, Administrator, HIGHEST). Vision has NO scheduled ta
 
 ## Vision pipeline
 
-The `screen_agent.py` agent (Legion-local) POSTs frames every 2s to `:8889/upload-frame`. Coaches call `modes.shared_vision._capture_screen()` → GET `:8889/latest-frame`. **`_run_vision()` gates on `_fetch_game_data() is not None`** - vision never fires during lobby/idle. Tiered: OCR first, Sonnet escalation for misses. Calibrate `data/vision_regions.json` to expand OCR coverage. The sibling Live Client relay (`:8889/upload-liveclient` <- RC-LiveClientRelay agent; `/latest-liveclient` -> poller + `core/liveclient_cache`) self-heals: `vision_server/_relay.get_latest_liveclient()` reads `:2999` in-process when the relayed snapshot is stale + `GAME_HOST` is local, so the relay agent is non-integral to DS/RC (1-PC, ADR-011 update 2026-06-02).
+The `screen_agent.py` agent (Legion-local) POSTs frames every 2s to `:8889/upload-frame`. Coaches call `modes.shared_vision._capture_screen()` -> GET `:8889/latest-frame`. **`_run_vision()` gates on `_fetch_game_data() is not None`** - vision never fires during lobby/idle. Tiered: OCR first, Sonnet escalation for misses. Calibrate `data/vision_regions.json` to expand OCR coverage. The sibling Live Client relay (`:8889/upload-liveclient` <- RC-LiveClientRelay agent; `/latest-liveclient` -> poller + `core/liveclient_cache`) self-heals: `vision_server/_relay.get_latest_liveclient()` reads `:2999` in-process when the relayed snapshot is stale + `GAME_HOST` is local, so the relay agent is non-integral to DS/RC (1-PC, ADR-011 update 2026-06-02).
 
 ## Mode detection
 
-`game_reader.py._process_game()` → `core/game_snapshot.py` → mode strings. ARAM Mayhem (`KIWI`) → `MODE_ARAM`.
+`game_reader.py._process_game()` -> `core/game_snapshot.py` -> mode strings. ARAM Mayhem (`KIWI`) -> `MODE_ARAM`.
 
 ## Where to find current state
 
@@ -179,7 +179,7 @@ The `screen_agent.py` agent (Legion-local) POSTs frames every 2s to `:8889/uploa
 - Recent activity: `logs/YYYY-MM-DD.log`
 - Architecture / module map: `docs/ARCHITECTURE.md`
 - Ops commands + restart: `docs/OPERATIONS.md`
-- Open work: `ROADMAP.md` · Aspirational: `BACKLOG.md` · History: `docs/history_notes.md`
+- Open work: `ROADMAP.md` - Aspirational: `BACKLOG.md` - History: `docs/history_notes.md`
 
 ## Useful commands
 

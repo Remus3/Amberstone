@@ -12,7 +12,7 @@ every completed match:
    (where N = payload.batch_size, default 20).
 2. For each match, replay coach outputs (`match_events.coach_output_json`)
    against outcomes (`outcome_30s_json` + `final_rating_json`).
-3. Compute correlation signals per champion × mode. When a champion has
+3. Compute correlation signals per champion x mode. When a champion has
    ≥5 new games and the bucket moved meaningfully, update
    `adaptation_buckets` via atomic UPSERT.
 4. When scraper-source quality drifts (aggregator D vs aggregator B vs curated),
@@ -46,7 +46,7 @@ if you're spawned anyway, check `ops/runtime/health.json` - if
 
 ## Output contract
 1. Matches processed, per mode.
-2. Buckets updated, per mode × champion.
+2. Buckets updated, per mode x champion.
 3. Proposals filed (link to directory + task id).
 4. Signals sent to Agent 6.
 

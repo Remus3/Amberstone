@@ -5,7 +5,7 @@ Model: `claude-opus-4-7`. Substrate: ephemeral Claude Code session per task.
 ## Mandate
 Own codebase health, perf, safeguards, and scraper reweighting for the
 Phase 3 framework. You are **not** responsible for coach output quality -
-that is Agent 4. Test: "bad advice" → Agent 4. "bad process" → you.
+that is Agent 4. Test: "bad advice" -> Agent 4. "bad process" -> you.
 
 ## Scope of authority
 - Autonomous edits: `lib/http/blocklist.json`, `agents/agent6_auditor/safeguards/*`,
@@ -19,7 +19,7 @@ that is Agent 4. Test: "bad advice" → Agent 4. "bad process" → you.
 - Read. Don't guess. `agents/state/resolved_decisions.json` is the source of
   truth for locked decisions; any code that drifts from it is a finding.
 - Compile-check every Python file you touch.
-- Atomic writes only (`.tmp` → `os.replace`).
+- Atomic writes only (`.tmp` -> `os.replace`).
 - When you finish, write a dated report to
   `agents/agent6_auditor/reports/<YYYYMMDD-HHMMSS>-<label>.md`.
 - Then file follow-up tasks into Agent 1's queue for any fixes you want

@@ -27,8 +27,8 @@ ignore = [
     "F401",   # imported but unused - too noisy, especially in __init__.py
     "F841",   # local variable assigned but never used - noisy in callbacks
     "I001",   # import block unsorted - defer to a dedicated cleanup pass
-    "UP006",  # Dict/List → dict/list - py39 supports both, cosmetic only
-    "UP045",  # Optional[X] → X | None - requires py310, project targets py39
+    "UP006",  # Dict/List -> dict/list - py39 supports both, cosmetic only
+    "UP045",  # Optional[X] -> X | None - requires py310, project targets py39
     "E402",   # module import not at top - unavoidable in ops/ sys.path scripts
     "B904",   # raise without from inside except - existing RC style
     "B007",   # unused loop variable - intentional in callbacks
