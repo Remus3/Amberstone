@@ -1,4 +1,4 @@
-# arch: POST /api/loop-control (headless-loop remote control) | section=dashboard | frozen=no
+# arch: POST /api/loop-control route table - S10 Task 9 de-registered it from the :8888 dispatch table; only mc/routes.py imports it now (:8895) | section=dashboard | frozen=no
 """POST /api/loop-control - write the headless-loop control files from the dashboard.
 
 The CONTROL complement to the read-only GET /api/loop-status (item 346). Lets the

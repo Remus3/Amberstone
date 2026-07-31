@@ -425,3 +425,45 @@ def test_no_hot_reload_watcher():
     for mod in ("mc.server", "mission_control"):
         rc, out = _import_probe(mod, ["core.hot_reload"])
         assert rc == 0, f"{mod}: {out}"
+
+
+# --------------------------------------------------------------------------- task 9 (remove MC from the RC dashboard)
+
+_MC_IDENTIFIERS = [
+    "_loopControl", "_LOCK_STATES", "_loopAge", "_loopLockRow",
+    "_MC_SHORTCUTS", "_mcSetTimer", "_mcMsg", "_mcFire", "_LANE_LABELS",
+    "_mcSteerKey", "_mcRunId", "_mcFireLane", "_mcPaintLanes", "_MC_IRQ_ID",
+    "_mcIrqForget", "_mcVictimLine", "_mcIrqPreview", "_mcIrqFire",
+    "_mcPaintInterrupt", "_mcPaint", "renderLoopStatus",
+    "loop-status-body", "api/loop-status", "api/loop-control",
+    "arm_confirm",
+]
+
+
+def test_dashboard_carries_no_mission_control_residue():
+    """Set-equality style so a PARTIAL deletion fails. A half-removed panel
+    is worse than either end state: the card renders and does nothing."""
+    targets = [
+        ROOT / "web" / "js" / "panels" / "dev.js",
+        ROOT / "web" / "js" / "main.js",
+        ROOT / "web" / "index.html",
+        ROOT / "web" / "css" / "panels" / "header.css",
+    ]
+    found = {}
+    for path in targets:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        hits = [ident for ident in _MC_IDENTIFIERS if ident in text]
+        if hits:
+            found[path.name] = hits
+    assert found == {}, f"Mission Control residue left behind: {found}"
+
+
+def test_dashboard_no_longer_registers_the_loop_routes():
+    """dispatch's public accessors are _gather_get/_gather_post (confirmed
+    2026-07-31 by grepping dashboard/_dispatch.py directly - the plan draft
+    guessed get_routes/post_routes, which do not exist in this file)."""
+    from dashboard import _dispatch
+    for matcher, _ in _dispatch._gather_get():
+        assert not matcher("/api/loop-status")
+    for matcher, _ in _dispatch._gather_post():
+        assert not matcher("/api/loop-control")

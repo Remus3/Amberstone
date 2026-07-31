@@ -77,7 +77,7 @@ def _gather_get() -> list:
                                routes_skill_wpa,
                                routes_rune_wpa,
                                routes_summspell_wpa,
-                               routes_loadout, routes_loop_status,
+                               routes_loadout,
                                routes_loop_monitor,
                                routes_lobby_aux, routes_metrics,
                                routes_pickban, routes_adaptive_summoners,
@@ -139,7 +139,6 @@ def _gather_get() -> list:
                       + list(routes_rune_wpa.GET_ROUTES)
                       + list(routes_summspell_wpa.GET_ROUTES)
                       + list(routes_loadout.GET_ROUTES)
-                      + list(routes_loop_status.GET_ROUTES)
                       + list(routes_loop_monitor.GET_ROUTES)
                       + list(routes_lobby_aux.GET_ROUTES)
                       + list(routes_metrics.GET_ROUTES)
@@ -186,7 +185,7 @@ def _gather_post() -> list:
                                routes_auto_accept,
                                routes_build_plan,
                                routes_coach_choice,
-                               routes_loadout, routes_loop_control,
+                               routes_loadout,
                                routes_lobby_aux, routes_metrics,
                                routes_scouting,
                                routes_sr_draft, routes_sr_user_builds,
@@ -202,7 +201,6 @@ def _gather_post() -> list:
                        + list(routes_build_plan.POST_ROUTES)
                        + list(routes_coach_choice.POST_ROUTES)
                        + list(routes_loadout.POST_ROUTES)
-                       + list(routes_loop_control.POST_ROUTES)
                        + list(routes_lobby_aux.POST_ROUTES)
                        + list(routes_metrics.POST_ROUTES)
                        + list(routes_scouting.POST_ROUTES)

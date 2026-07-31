@@ -106,7 +106,20 @@ _WEB = _REPO_ROOT / "web"
 # web/js/panels/dev.js, whose one-line import path (kept transitionally until
 # Task 9 deletes it) is the whole of its S10 edit. Which is the slice's whole
 # web file set and nothing else.
-_LIVE_HALF_DIGEST = "8e5d82d0bbc45b583efc82c12053bf3452dc2b084b7266feaca2f952943d2f93"
+# RE-CAPTURED at Mission Control S10 Task 9 (Mission Control removed from the
+# RC dashboard - it is now served standalone on :8895 and shares nothing with
+# web_dashboard), superseding the prior S10 capture. Ordinary case: LIVE web
+# edits, no tokeniser change, no file added or removed (169 web/ sources on
+# both sides), so the classifier is fixed and the two-tree diff is a straight
+# answer. Run over c0432e11 (the prior capture commit) and HEAD with the SAME
+# tokeniser: exactly 4 of 169 web/ sources differ in their live half -
+# web/index.html (the MISSION CONTROL settings-card removed), web/css/panels/
+# header.css (the loop-status-body through loop-irq-victim block removed),
+# web/js/panels/dev.js (the whole Headless-loop-status section, its export-list
+# entry, and the S10 transitional arm_confirm.js import all removed) and
+# web/js/main.js (the renderLoopStatus call and its import name removed) -
+# which is the slice's whole web file set and nothing else.
+_LIVE_HALF_DIGEST = "638fdf4ca359f46471df21c240569f85ad47f0955739d79d473888dfcbf018b9"
 
 
 def _web_sources() -> list[Path]:
