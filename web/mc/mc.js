@@ -498,7 +498,12 @@ function _mcPaint() {
   _mcSetTimer(anyArmed || !!laneArmed || !!irqArmed);
 }
 
-function renderLoopStatus(ctlMsg) {
+function renderLoopStatus(ctlMsg, preserve) {
+  // Fix round 2: any call - timer, action-triggered, ceiling-forced, the
+  // initial load - means a real refresh is imminent, so the staleness
+  // clock resets here rather than in each individual caller.
+  _mcDeferredTicks = 0;
+  _mcSetStale(false);
   const host = document.getElementById("loop-status-body");
   if (!host) return;
   const mk = (tag, cls, txt) => {
@@ -526,6 +531,19 @@ function renderLoopStatus(ctlMsg) {
       }
       if (d.mode) stateRow.append(mk("span", "loop-mode", d.mode));
       host.append(stateRow);
+
+      // Fix round 2 (VISIBLE STALENESS). Persistent across repaints only in
+      // the sense that this exact id is recreated fresh (and therefore
+      // blank) on every real rebuild; _mcSetStale mutates it directly,
+      // without a rebuild, while a tick is being deferred. Reusing the
+      // already-legible, already-contrast-checked .loop-line class rather
+      // than inventing a new one - see the RC2 header.css block this card's
+      // CSS is copied from.
+      const staleNote = mk("div", "loop-line", "");
+      staleNote.id = "loop-stale-note";
+      staleNote.setAttribute("role", "status");
+      staleNote.setAttribute("aria-live", "polite");
+      host.append(staleNote);
 
       if (d.stop_reason) host.append(mk("div", "loop-line dim", "stop: " + d.stop_reason));
 
@@ -574,18 +592,26 @@ function renderLoopStatus(ctlMsg) {
 
       // -- Control row (CONTROL half): stop / resume + one-shot directive
       // override. Each writes ops/loop/control/* via POST /api/loop-control.
-      const btn = (label, cls, fn) => {
+      // Fix round 2: `id` (5th arg, optional) sets dataset.mcId so a
+      // ceiling-forced repaint can find and refocus THIS SPECIFIC button
+      // after the rebuild - see _mcFindByMcId. Every btn() call site below
+      // now passes one; before this, only the shortcut/lane/interrupt
+      // buttons had a stable identity, so a click that left focus on
+      // Send NOTE/Send STEER/Queue directive/Clear/Stop/Resume with
+      // nothing else to restore it to.
+      const btn = (label, cls, fn, id) => {
         const b = mk("button", "loop-btn " + (cls || ""), label);
         b.type = "button";
+        if (id) b.dataset.mcId = id;
         b.addEventListener("click", fn);
         return b;
       };
       const ctl = mk("div", "loop-controls");
       if (st === "stopped") {
-        ctl.append(btn("Resume", "loop-btn-resume", () => _loopControl("resume")));
+        ctl.append(btn("Resume", "loop-btn-resume", () => _loopControl("resume"), "resume"));
       } else {
         ctl.append(btn("Stop loop", "loop-btn-stop",
-          () => _loopControl("stop", { reason: "stopped from dashboard" })));
+          () => _loopControl("stop", { reason: "stopped from dashboard" }), "stop"));
       }
       host.append(ctl);
 
@@ -652,6 +678,19 @@ function renderLoopStatus(ctlMsg) {
               if (node) node.value = "";
               renderLoopStatus(txt);
             } else {
+              // Fix round 2: deliberately RETAINED, not cleared. An
+              // operator who just typed a real note does not want to
+              // retype it because one send attempt failed (transient
+              // network blip, a momentary 401 before a re-prompt, etc.) -
+              // clearing on failure punishes exactly the case where the
+              // text is most valuable. This is safe specifically BECAUSE
+              // the fix round 2 ceiling now exists: retaining used to mean
+              // _mcSafeToRepaint blocked every future tick forever (this
+              // was mainline path (a) in the ceiling defect report); now it
+              // means at most _MC_DEFER_CEILING_TICKS * _MC_POLL_MS of
+              // deferred refreshes before a forced repaint that preserves
+              // the same text and refocuses the box. The .catch below
+              // retains for the same reason and is not a separate choice.
               _mcMsg(tier.toUpperCase() + " failed: "
                 + ((dd && dd.error) || "request failed"));
             }
@@ -660,8 +699,8 @@ function renderLoopStatus(ctlMsg) {
             + ((e && e.message) || "request failed")));
       };
       // No accent on either: see the .loop-steer-row comment in header.css.
-      steerRow.append(btn("Send NOTE", "", () => _sendSteer("note")));
-      steerRow.append(btn("Send STEER", "", () => _sendSteer("steer")));
+      steerRow.append(btn("Send NOTE", "", () => _sendSteer("note"), "send_note"));
+      steerRow.append(btn("Send STEER", "", () => _sendSteer("steer"), "send_steer"));
       host.append(steerRow);
       if (steerInfo && steerInfo.newest) {
         // No `dim` class - web/css has no bare `.dim` rule, and .loop-line
@@ -705,8 +744,8 @@ function renderLoopStatus(ctlMsg) {
         const node = document.getElementById("loop-directive-input");
         const t = node && node.value ? node.value : "";
         if (t.trim()) _loopControl("set_directive", { text: t });
-      }));
-      dirRow.append(btn("Clear", "loop-btn-clear", () => _loopControl("clear_directive")));
+      }, "queue_directive"));
+      dirRow.append(btn("Clear", "loop-btn-clear", () => _loopControl("clear_directive"), "clear_directive"));
       host.append(dirRow);
 
       const msg = mk("div", "loop-ctl-msg");
@@ -717,6 +756,35 @@ function renderLoopStatus(ctlMsg) {
       msg.setAttribute("aria-live", "polite");
       if (ctlMsg) msg.textContent = ctlMsg;
       host.append(msg);
+
+      // Fix round 2 (property 2: the ceiling must not reintroduce round 1's
+      // findings 3+4). Applied LAST, after every element above exists, so
+      // there is always something live to restore onto. sta/ta are the
+      // FRESH textareas just created above - a forced repaint always makes
+      // new ones, so restoring their value/selection here is what makes the
+      // operator's in-progress edit survive it. focusKey identifies which
+      // control had focus before the wipe: "steer"/"directive" for the two
+      // textareas (stable ids), or a dataset.mcId for any button (every
+      // btn() call site above now passes one, and the shortcut/lane/
+      // interrupt buttons always have - see _mcFindByMcId).
+      if (preserve) {
+        if (preserve.steerValue) {
+          sta.value = preserve.steerValue;
+          if (preserve.steerSel && typeof sta.setSelectionRange === "function") {
+            sta.setSelectionRange(preserve.steerSel.start, preserve.steerSel.end);
+          }
+        }
+        if (preserve.directiveValue) {
+          ta.value = preserve.directiveValue;
+          if (preserve.directiveSel && typeof ta.setSelectionRange === "function") {
+            ta.setSelectionRange(preserve.directiveSel.start, preserve.directiveSel.end);
+          }
+        }
+        const target = preserve.focusKey === "steer" ? sta
+          : preserve.focusKey === "directive" ? ta
+          : _mcFindByMcId(host, preserve.focusKey);
+        if (target) target.focus();
+      }
     })
     .catch(() => {
       host.innerHTML = '<div class="home-empty">loop status error</div>';
@@ -751,8 +819,94 @@ function _mcSafeToRepaint() {
   return true;
 }
 
+// Fix round 2 (2026-07-31, the ceiling). Measured: the round-1 guard above
+// has no upper bound, so two MAINLINE paths freeze the card forever -
+// (a) a FAILED steer send (see the comment on _sendSteer's failure branch:
+// the text is deliberately retained, not cleared, so a failure alone blocks
+// every future tick), and (b) clicking Send NOTE / Send STEER / Queue
+// directive with an EMPTY box, which does nothing but leaves focus inside
+// #loop-status-body. Either way the LANE/LOOP lock rows, the RUNNING/
+// STOPPED dot, budget and log tail silently stop refreshing - the "armed
+// button beside stale data" defect shape, one level up from S9's.
+//
+// _mcCapturePreserve/_mcFindByMcId exist so a ceiling-forced repaint can
+// restore exactly what it is about to destroy, which is what makes forcing
+// it SAFE rather than just moving round 1's bug to a 30s timescale instead
+// of a 5s one.
+const _MC_POLL_MS = 5000;
+const _MC_DEFER_CEILING_TICKS = 6; // 6 * 5s = 30s, per the coordinator's figure
+let _mcDeferredTicks = 0;
+
+function _mcSetStale(on) {
+  const node = document.getElementById("loop-stale-note");
+  if (node) {
+    node.textContent = on
+      ? "updates paused while editing - will refresh within "
+        + (_MC_DEFER_CEILING_TICKS * _MC_POLL_MS / 1000) + "s"
+      : "";
+  }
+}
+
+// Depth-first search for the first descendant (or root) whose dataset.mcId
+// equals `key`. Generalises the refocus-by-dataset-mcId pattern already
+// used inside _mcPaintLanes/_mcPaintInterrupt/_mcPaint (each of which only
+// searches its OWN sub-host) to the whole card, which is what a repaint
+// forced from OUTSIDE all three of those needs.
+function _mcFindByMcId(root, key) {
+  if (!root || !key) return null;
+  if (root.dataset && root.dataset.mcId === key) return root;
+  const kids = root.children || [];
+  for (let i = 0; i < kids.length; i += 1) {
+    const found = _mcFindByMcId(kids[i], key);
+    if (found) return found;
+  }
+  return null;
+}
+
+// Snapshot of everything a ceiling-forced repaint would otherwise destroy:
+// both textarea values (+ selection, where the element supports it - real
+// textareas always do), and which control had keyboard focus, identified by
+// a key stable across a rebuild (the two textareas have fixed ids; every
+// other focusable control in this card carries dataset.mcId - see the btn()
+// helper inside renderLoopStatus).
+function _mcCapturePreserve() {
+  const host = document.getElementById("loop-status-body");
+  const steer = document.getElementById("loop-steer-input");
+  const directive = document.getElementById("loop-directive-input");
+  const active = document.activeElement;
+  let focusKey = null;
+  if (active && host && host.contains(active)) {
+    if (active === steer) focusKey = "steer";
+    else if (active === directive) focusKey = "directive";
+    else if (active.dataset && active.dataset.mcId) focusKey = active.dataset.mcId;
+  }
+  const sel = (el) => (el && typeof el.selectionStart === "number"
+    ? { start: el.selectionStart, end: el.selectionEnd } : null);
+  return {
+    steerValue: steer ? steer.value : "",
+    steerSel: sel(steer),
+    directiveValue: directive ? directive.value : "",
+    directiveSel: sel(directive),
+    focusKey: focusKey,
+  };
+}
+
 // No view router in this page - it IS the view. Render on load, then poll.
 renderLoopStatus();
 setInterval(() => {
-  if (_mcSafeToRepaint()) renderLoopStatus();
-}, 5000);
+  if (_mcSafeToRepaint()) {
+    renderLoopStatus();
+    return;
+  }
+  _mcDeferredTicks += 1;
+  if (_mcDeferredTicks >= _MC_DEFER_CEILING_TICKS) {
+    // The ceiling. Capture what the operator is doing FIRST - the capture
+    // must run before renderLoopStatus touches any DOM - then force the
+    // repaint anyway and hand the snapshot through to be restored onto the
+    // freshly rebuilt nodes. renderLoopStatus itself resets
+    // _mcDeferredTicks to 0 as its first line, so this does not need to.
+    renderLoopStatus(null, _mcCapturePreserve());
+    return;
+  }
+  _mcSetStale(true);
+}, _MC_POLL_MS);
