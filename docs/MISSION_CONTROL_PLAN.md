@@ -139,9 +139,9 @@ Source: Cloud Four, "Truth, Lies and Progress Bars"; AI UX Design Guide,
 | S2 | `/api/loop-control` extended with idempotency keys + `fire_lane` / `queue_intent` actions; refuse-not-queue semantics; tests | low | unit tests, no UI yet |
 | S3 | Shortcuts 1 + 2 end to end - the two that cannot spawn a lane | medium | SHIPPED 2026-07-30 - live-confirmed STOP + Desktop prompt file |
 | S4 | Dashboard panel wired to real `/api/loop-status`, read-only first | low | SHIPPED 2026-07-31 - see "S4 as shipped" |
-| S5 | Shortcut 3 - existing headless command, first real lane fire | medium | one supervised run |
-| S6 | Commands 4, 5, 6 authored + wired | medium | one supervised run each |
-| S7 | Steer channel - NOTE and STEER tiers only | medium | live |
+| S5 | Shortcut 3 - existing headless command, first real lane fire | medium | SHIPPED 2026-07-31 `6003b244` |
+| S6 | Commands 4, 5, 6 authored + wired | medium | SHIPPED 2026-07-31 `992a5a6c` |
+| S7 | Steer channel - NOTE and STEER tiers only | medium | SHIPPED 2026-07-31 `992a5a6c` |
 | S8 | Commands 7, 8 - highest blast radius, worktree-first, frozen-file adjudicator | HIGH | operator sign-off |
 | S9 | INTERRUPT tier | HIGH | operator sign-off |
 
@@ -287,6 +287,51 @@ beside it. The least important text in the row was the brightest.
 **Two tokens fail AA on `--surface-alt`.** `--text-faint` measures 3.94:1 and
 `--bad` 3.66:1 there; `base.css` documents `--text-faint` as AA-raised "on
 --surface", and the lighter alt surface loses that guarantee.
+
+## S5-S7 as shipped (2026-07-31)
+
+| Piece | File | Note |
+|---|---|---|
+| Lane launcher | `ops/loop/lane_launcher.py` | worktree + spawn + pid re-point; releases the lane on ANY failure |
+| Lock re-point | `ops/loop/lanes.repoint_lane_pid` | rewrites the holder pid AND `_OWNED` together |
+| Lane docs | `tools/headless-{uiux,research,ds}.md` | wired; `repo` + `true-audit` deliberately NOT |
+| Steer channel | `ops/loop/steer.py` + `tools/session_steer.py` | append-only JSONL + a separate cursor |
+| Tests | `tests/test_lane_launcher.py`, `tests/test_steer_channel.py`, `tests/test_web_js_esm_parse.py` | 21 + 17 + 2 |
+
+**The steer transport in this document was WRONG in both halves, and the
+correction is the finding.** It said "the existing AHK bridge writing
+`control/_claude_in.txt`". That file is the ADJUDICATOR's stdin
+(`ops/loop/adjudicator.py`); the bridge polls `control/gemini.ready`, which is
+the loop controller's own directive channel and would collide with a live
+directive. On top of that the bridge was not running and `target_hwnd.txt` held
+hwnd 66248, which `IsWindow` reports dead. The decisive fact is structural
+rather than incidental: a headless lane worker spawned by S5 has NO window, so a
+GUI transport can never steer the lanes this plan exists to create. The channel
+is a file.
+
+**Tier honesty.** The tier does not change the transport, only when the consumer
+looks and how urgently it is told to act. Latency is the consumer's poll
+cadence, not magic - a consumer that only peeks at its done ritual sees a STEER
+there and nowhere earlier. INTERRUPT is a different act (it stops a turn and
+kills agents) and is REJECTED with a 400 until S9, never downgraded to a note.
+
+**`DETACHED_PROCESS` makes a spawned worker a silent no-op.** Three spawns of
+one script differing only in creationflags: `NO_WINDOW|DETACHED` gave a pid,
+rc=0 and NO log; `NO_WINDOW` alone worked; `DETACHED` alone gave a pid, rc=0 and
+no log. powershell.exe cannot initialise its host without a console. A lane
+would have flipped RUNNING then RECLAIMABLE right on schedule having done
+nothing - a failure indistinguishable from a healthy short run.
+
+**`node --check` is not a syntax gate for this tree.** Measured on node
+v24.15.0: it catches a duplicate `const` in a file leading with `export`, and in
+plain CommonJS, but goes blind on a file leading with `import` - which is every
+module in `web/js`. One duplicate `const` killed the whole panel while
+`node --check` and 35 source-contract tests stayed green.
+
+**`core.hooksPath` is absolute and worktrees share `.git/config`.** Hooks fire
+inside a lane worktree but execute the MAIN tree's hook bodies, so a hook change
+made on a lane branch is inert until merged. Lane 7 must not run
+`scripts/install_hooks.py` from a worktree - it rewrites shared config.
 
 ## Out-of-repo footprint - MEASURED 2026-07-30
 
