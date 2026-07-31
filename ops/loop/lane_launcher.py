@@ -93,9 +93,14 @@ LANE_COMMANDS = {
     "uiux": "tools/headless-uiux.md",
     "research": "tools/headless-research.md",
     "ds": "tools/headless-ds.md",
-    # "repo" and "true-audit" are the two highest-blast-radius lanes and stay
-    # UNWIRED until their stage lands. The panel lists them and greys them out,
-    # so the roster stays honest about what exists versus what can start.
+    # S8. `repo` and `true-audit` are the two highest-blast-radius lanes and
+    # were held back on purpose until the rest of the control plane was proven
+    # - wiring them earlier would have put a file-by-file rewrite and a
+    # security audit one confirmed click away. Both are worktree-mandatory like
+    # every other lane, which matters most here: these are the two that
+    # restructure and rewrite files rather than adding to them.
+    "repo": "tools/headless-repo.md",
+    "true-audit": "tools/headless-true-audit.md",
 }
 
 # Branch per lane, stable across fires so a lane resumes its own history rather

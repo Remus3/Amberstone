@@ -56,10 +56,23 @@ def test_append_rejects_empty_text(chan):
 
 
 def test_an_unknown_tier_falls_back_to_note(chan):
-    rec = steer.append("x", tier="INTERRUPT")
+    rec = steer.append("x", tier="shout")
     assert rec["tier"] == "note", (
         "an unrecognised tier must degrade to the SAFEST one, never to the "
-        "loudest - INTERRUPT is a different act and is not in this module")
+        "loudest")
+
+
+def test_the_interrupt_tier_is_refused_rather_than_degraded(chan):
+    """S9 changed this case, deliberately.
+
+    While INTERRUPT existed only as a 400 at the route, degrading it here was
+    the safe answer. Now that S9 makes it a real act, a silent degrade is the
+    hazard: a caller asking to stop the agents would get a note that executes
+    nothing, and the UI would report an interrupt that never happened. The
+    guidance channel refuses to carry it - ops/loop/interrupt.py owns the act.
+    """
+    with pytest.raises(ValueError):
+        steer.append("x", tier="interrupt")
 
 
 def test_text_is_capped(chan):
