@@ -7,19 +7,19 @@
 // answer, so keep this file's import list at exactly one entry.
 import { createArmController } from './arm_confirm.js';
 
-// Was an enclosing-scope helper in dev.js. Defined here so it is impossible
-// for this file to reference a binding it does not own - the exact defect
-// class S9 hit. Behaviour verified against the real one in dev.js
-// (grep -n "function mk\|const mk\|mk =" web/js/panels/dev.js, the
-// renderLoopStatus local): the txt guard is `!= null`, which skips BOTH
-// null and undefined - `!== undefined` alone would stamp the literal string
-// "null" into the node for a null third argument.
-function mk(tag, cls, txt) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (txt != null) n.textContent = txt;
-  return n;
-}
+// Fix round 1 (2026-07-31, MINOR 7): there is NO module-level `mk` here on
+// purpose. A prior version of this file defined one "for structural parity"
+// with dev.js, but the reviewer proved it dead by replacing its body with a
+// `throw` - every flow behaved identically, because the real `mk` this file
+// uses is the function-LOCAL `const mk` inside `renderLoopStatus` below
+// (verified: grep -n "function mk\|const mk\|mk =" web/js/panels/dev.js).
+// A module-scope `mk` is worse than neutral: the comment inside
+// `_mcPaintInterrupt` below states plainly that calling `mk` at module scope
+// is a ReferenceError, and that statement is exactly what makes it safe for
+// a future module-scope paint function to call `document.createElement`
+// directly instead - a module-level `mk` would silently make that statement
+// false, turning a loud failure into a wrong-scope success. If you add one
+// back, you must correct that comment in the same edit.
 
 // Bearer token. Prompted once, kept in localStorage. A 401 clears it and
 // re-prompts; a 503 means the SERVER has no token configured, which is a
@@ -71,7 +71,7 @@ function _loopControl(action, extra) {
         : "error: " + (d && d.error ? d.error : "failed");
       renderLoopStatus(txt);
     })
-    .catch(() => renderLoopStatus("request failed"));
+    .catch((e) => renderLoopStatus((e && e.message) || "request failed"));
 }
 
 // -- Mission Control S4: lock rows + shortcuts 1 and 2 ------------
@@ -127,7 +127,7 @@ const _MC_SHORTCUTS = [
     hint: "done ritual, then auto-clear and re-run the prompt it just emitted" },
 ];
 
-// The key is minted at ARM and discarded on disarm - see web/js/lib/arm_confirm.js.
+// The key is minted at ARM and discarded on disarm - see web/mc/arm_confirm.js.
 // A key reused across arms replays the first refusal forever, so the button
 // looks alive and is permanently inert. MEASURED against the real S2 route.
 const _mcArm = createArmController({ onChange: () => _mcPaint() });
@@ -162,7 +162,7 @@ function _mcFire(shortcut, key) {
         _mcMsg(shortcut.label + " refused: " + why);
       }
     })
-    .catch(() => _mcMsg(shortcut.label + ": request failed"));
+    .catch((e) => _mcMsg(shortcut.label + ": " + ((e && e.message) || "request failed")));
 }
 
 // S5: the headless lanes. Mutually exclusive - one lock - and a fire against a
@@ -206,17 +206,24 @@ function _mcFireLane(lane, key) {
     run_id: _mcRunId(), idempotency_key: key,
   })
     .then((d) => {
+      let txt;
       if (d && d.ok) {
-        _mcMsg(label + ": " + (d.detail || "running")
-          + (d.replayed ? " (replayed)" : ""));
+        txt = label + ": " + (d.detail || "running")
+          + (d.replayed ? " (replayed)" : "");
       } else if (d && d.refused) {
-        _mcMsg(label + " REFUSED - " + (d.detail || d.refused));
+        txt = label + " REFUSED - " + (d.detail || d.refused);
       } else {
-        _mcMsg(label + " failed: " + ((d && d.error) || "request failed"));
+        txt = label + " failed: " + ((d && d.error) || "request failed");
       }
-      renderLoopStatus();
+      // Fix round 1 (IMPORTANT 6): renderLoopStatus() bare (no argument)
+      // rebuilds #loop-ctl-msg EMPTY - _mcMsg's write above would show for
+      // a moment then be clobbered the instant this rebuild lands. Thread
+      // the same text through so it survives the rebuild, matching the
+      // pattern _loopControl already used.
+      _mcMsg(txt);
+      renderLoopStatus(txt);
     })
-    .catch(() => _mcMsg(label + ": request failed"));
+    .catch((e) => _mcMsg(label + ": " + ((e && e.message) || "request failed")));
 }
 
 function _mcPaintLanes() {
@@ -320,7 +327,7 @@ function _mcIrqPreview() {
       _mcMsg("INTERRUPT armed: " + d.count
         + " process(es) named below - click again within 3s to KILL them");
     })
-    .catch(() => _mcMsg("INTERRUPT preview: request failed"));
+    .catch((e) => _mcMsg("INTERRUPT preview: " + ((e && e.message) || "request failed")));
 }
 
 function _mcIrqFire(key, fp) {
@@ -336,24 +343,30 @@ function _mcIrqFire(key, fp) {
   mcPost({ action: "interrupt", fingerprint: fp,
            idempotency_key: key })
     .then((d) => {
+      let txt;
       if (d && d.ok) {
-        _mcMsg("INTERRUPT: " + (d.detail || "done")
-          + (d.replayed ? " (replayed)" : ""));
+        txt = "INTERRUPT: " + (d.detail || "done")
+          + (d.replayed ? " (replayed)" : "");
       } else if (d && d.refused === "victims_changed") {
         // The honest failure: what the operator approved is no longer what is
         // running, so nothing was killed. Say that plainly and make them look
         // again rather than silently re-targeting.
-        _mcMsg("INTERRUPT REFUSED - the running processes changed since the "
+        txt = "INTERRUPT REFUSED - the running processes changed since the "
           + "preview. Nothing was killed. Preview again to see the current "
-          + (d.count || 0) + ".");
+          + (d.count || 0) + ".";
       } else if (d && d.refused) {
-        _mcMsg("INTERRUPT REFUSED - " + d.refused);
+        txt = "INTERRUPT REFUSED - " + d.refused;
       } else {
-        _mcMsg("INTERRUPT failed: " + ((d && d.error) || "request failed"));
+        txt = "INTERRUPT failed: " + ((d && d.error) || "request failed");
       }
-      renderLoopStatus();
+      // Fix round 1 (IMPORTANT 6). Measured: renderLoopStatus() bare
+      // rebuilds #loop-ctl-msg empty, so "INTERRUPT REFUSED - the running
+      // processes changed..." - the single most important message on the
+      // kill path - never reached the screen. Thread it through.
+      _mcMsg(txt);
+      renderLoopStatus(txt);
     })
-    .catch(() => _mcMsg("INTERRUPT: request failed"));
+    .catch((e) => _mcMsg("INTERRUPT: " + ((e && e.message) || "request failed")));
 }
 
 function _mcPaintInterrupt() {
@@ -630,15 +643,21 @@ function renderLoopStatus(ctlMsg) {
         })
           .then((dd) => {
             if (dd && dd.ok) {
-              _mcMsg(tier.toUpperCase() + ": " + (dd.detail || "queued"));
+              // Fix round 1 (IMPORTANT 6): thread the same text through the
+              // rebuild instead of a bare renderLoopStatus() - the bare call
+              // rebuilds #loop-ctl-msg empty and clobbers the _mcMsg write
+              // above the instant the rebuild lands.
+              const txt = tier.toUpperCase() + ": " + (dd.detail || "queued");
+              _mcMsg(txt);
               if (node) node.value = "";
-              renderLoopStatus();
+              renderLoopStatus(txt);
             } else {
               _mcMsg(tier.toUpperCase() + " failed: "
                 + ((dd && dd.error) || "request failed"));
             }
           })
-          .catch(() => _mcMsg(tier.toUpperCase() + ": request failed"));
+          .catch((e) => _mcMsg(tier.toUpperCase() + ": "
+            + ((e && e.message) || "request failed")));
       };
       // No accent on either: see the .loop-steer-row comment in header.css.
       steerRow.append(btn("Send NOTE", "", () => _sendSteer("note")));
@@ -704,6 +723,36 @@ function renderLoopStatus(ctlMsg) {
     });
 }
 
+// Fix round 1 (2026-07-31, IMPORTANT 3 + 4). Measured: the 5s poll called
+// renderLoopStatus() unconditionally, which does host.innerHTML = "" and
+// rebuilds both textareas from scratch - a typed-but-unsent steer note or
+// directive became "" after one tick, and the same wipe orphans keyboard
+// focus (host.contains(activeElement) is already false by the time
+// renderLoopStatus's own focus-preservation logic could run, because the
+// host it would check was already replaced). With a 3s arm window against a
+// 5s poll, a tick usually lands mid-arm, which made the confirm button
+// keyboard-unreachable - the exact mouse-only defect a comment elsewhere in
+// this file says was already fixed once.
+//
+// Scoped to ONLY the recurring timer call, not the initial load and not any
+// action-triggered call (Stop/Resume, a lane firing, INTERRUPT, a steer
+// send) - those must always repaint so their result is visible immediately
+// (see the IMPORTANT 6 fixes above), and none of them run every 5s
+// regardless of what the operator is doing, so they carry none of the
+// runaway-timer risk this guard exists for.
+function _mcSafeToRepaint() {
+  const host = document.getElementById("loop-status-body");
+  if (!host) return true;
+  const steer = document.getElementById("loop-steer-input");
+  if (steer && steer.value) return false;
+  const directive = document.getElementById("loop-directive-input");
+  if (directive && directive.value) return false;
+  if (document.activeElement && host.contains(document.activeElement)) return false;
+  return true;
+}
+
 // No view router in this page - it IS the view. Render on load, then poll.
 renderLoopStatus();
-setInterval(() => renderLoopStatus(), 5000);
+setInterval(() => {
+  if (_mcSafeToRepaint()) renderLoopStatus();
+}, 5000);
