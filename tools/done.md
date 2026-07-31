@@ -46,6 +46,14 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 
 ### 0. Local check gate - commit only when green
 
+**First, peek for a queued Mission Control intent** (shortcuts 1 + 2, S3). The done ritual IS the safe boundary a queued intent waits for:
+
+```
+python tools/session_intent.py --peek
+```
+
+`{"pending": null}` - nothing queued, run the ritual as normal. A pending `halt_save` or `done_continue` means the operator fired the dashboard button while this session was mid-turn: finish the current step, run the whole ritual, and consume it in section 10. Never abandon work to service an intent - a queued intent never kills anything.
+
 Versioning is cheap; lost work is not. The operator never passes up a commit + push. So the DEFAULT is: always commit + push when local checks are green. Do NOT leave authored work uncommitted at session end just because a change feels small or unfinished - if it passes its checks, it ships.
 
 - Identify the files authored this session: `git -C "C:/Riot Commander" status -s`.
@@ -280,6 +288,19 @@ Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + g
 ```
 
 This is mandatory. Never end /done without it - even when the only next task is "pick the next ROADMAP item".
+
+#### 10b. Consume a queued intent (only when section 0 found one pending)
+
+Write the exact prompt block you just printed to a temp file, then hand it over. This is the only writer of `Desktop/RC-NEXT-SESSION.txt` (RC- namespaced: LW and RM own their own prefixes on the shared Desktop):
+
+```
+python tools/session_intent.py --consume --prompt-file <tmp>
+```
+
+- `{"ok": true, ...}` - the prompt is on the Desktop and the intent is marked `consumed`. Say so above the banner, with the byte count.
+- `already_consumed` / `no_pending_intent` - a refusal, not an error. Nothing was written twice; report it and move on.
+- **halt_save**: `control/STOP` stays raised on purpose. Do not clear it - the operator is parking the work and will change topic. End the session.
+- **done_continue**: same line of work. After the banner, the operator (or the bridge) `/clear`s and re-feeds `Desktop/RC-NEXT-SESSION.txt` verbatim. Emit no directive of your own - the consumed prompt is the whole hand-off.
 
 ### Safety rails
 
