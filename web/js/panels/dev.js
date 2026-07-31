@@ -6,6 +6,8 @@ import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } fro
 // s220 PGR S5: Match-V5 timeline event ribbon for the Replay view.
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
 import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './replay_events.js';
+// Mission Control S4: arm-then-confirm for the two queued shortcuts.
+import { createArmController } from '../lib/arm_confirm.js';
 
 // -- Settings view (2026-04-26) -----------------------------------
 function _settingsRefresh() {
@@ -300,8 +302,8 @@ function _diagFetchTrace() {
         const meta = document.createElement("div");
         meta.className = "trace-meta";
         const tsStr = _to12(new Date((rec.ts || 0) * 1000));
-        meta.textContent = `${tsStr} · ${rec.mode || "?"} · ${rec.model || ""} · ${rec.latency_ms || 0}ms · in ${rec.tokens_in || 0} / out ${rec.tokens_out || 0}` +
-          ((rec.cache_read || rec.cache_write) ? ` · cache r ${rec.cache_read || 0} w ${rec.cache_write || 0}` : "");
+        meta.textContent = `${tsStr} - ${rec.mode || "?"} - ${rec.model || ""} - ${rec.latency_ms || 0}ms - in ${rec.tokens_in || 0} / out ${rec.tokens_out || 0}` +
+          ((rec.cache_read || rec.cache_write) ? ` - cache r ${rec.cache_read || 0} w ${rec.cache_write || 0}` : "");
         const resp = document.createElement("pre");
         resp.textContent = (rec.response || "").slice(0, 600);
         item.append(meta, resp);
@@ -360,6 +362,158 @@ function _loopControl(action, extra) {
     .catch(() => renderLoopStatus("request failed"));
 }
 
+// -- Mission Control S4: lock rows + shortcuts 1 and 2 ------------
+// Three lock states, never two. A lock file whose pid is DEAD reads exactly
+// like a live one from the file alone, so RECLAIMABLE gets its own colour and
+// its own note and is NEVER collapsed into RUNNING - collapsing them is what
+// made a dead loop report as live (docs/MISSION_CONTROL_PLAN.md).
+const _LOCK_STATES = ["FREE", "RUNNING", "RECLAIMABLE"];
+
+function _loopAge(secs) {
+  if (typeof secs !== "number" || !isFinite(secs) || secs < 0) return null;
+  if (secs < 90) return Math.round(secs) + "s";
+  if (secs < 5400) return Math.round(secs / 60) + "m";
+  if (secs < 172800) return Math.round(secs / 3600) + "h";
+  return Math.round(secs / 86400) + "d";
+}
+
+function _loopLockRow(mk, label, block) {
+  // An absent block means S1 is not installed. It still renders a row: a
+  // vanishing row reflows everything under it (feedback_no_reflow_on_data_absence).
+  const known = block && _LOCK_STATES.indexOf(block.state) >= 0;
+  const st = known ? block.state : "UNAVAILABLE";
+  const cls = st.toLowerCase();
+  const row = mk("div", "loop-lock-row");
+  row.append(mk("span", "loop-lock-label", label));
+  row.append(mk("span", "loop-lock-dot " + cls));
+  row.append(mk("b", "loop-lock-state " + cls, st));
+
+  const bits = [];
+  if (known) {
+    if (block.lane) bits.push("lane " + block.lane);
+    if (block.pid != null) bits.push("pid " + block.pid);
+    if (block.run_id) bits.push("run " + block.run_id);
+    const age = _loopAge(block.age_s);
+    if (age) bits.push("held " + age);
+  }
+  // No `dim` class here: web/css has no bare `.dim` rule, only descendant-scoped
+  // ones, so it is inert. .loop-lock-meta owns its own colour.
+  row.append(mk("span", "loop-lock-meta", bits.join("  -  ")));
+  if (st === "RECLAIMABLE") {
+    row.append(mk("span", "loop-lock-note", "holder is gone - free to claim"));
+  }
+  return row;
+}
+
+// The two shortcuts that cannot spawn a lane. Both only WRITE an intent file
+// the running session consumes at its next safe boundary - nothing is killed
+// and nothing is signalled.
+const _MC_SHORTCUTS = [
+  { id: "halt_save", label: "Halt and Save",
+    hint: "finish the step, run the done ritual, write the next-session prompt to the Desktop" },
+  { id: "done_continue", label: "/done Continue",
+    hint: "done ritual, then auto-clear and re-run the prompt it just emitted" },
+];
+
+// The key is minted at ARM and discarded on disarm - see web/js/lib/arm_confirm.js.
+// A key reused across arms replays the first refusal forever, so the button
+// looks alive and is permanently inert. MEASURED against the real S2 route.
+const _mcArm = createArmController({ onChange: () => _mcPaint() });
+let _mcHost = null;
+let _mcTimer = null;
+
+function _mcSetTimer(on) {
+  if (on && _mcTimer == null) {
+    _mcTimer = setInterval(() => { _mcArm.tick(); _mcPaint(); }, 250);
+  } else if (!on && _mcTimer != null) {
+    clearInterval(_mcTimer);
+    _mcTimer = null;
+  }
+}
+
+function _mcMsg(text) {
+  const node = document.getElementById("loop-ctl-msg");
+  if (node) node.textContent = text;
+}
+
+function _mcFire(shortcut, key) {
+  _mcMsg(shortcut.label + ": sending...");
+  fetch("/api/loop-control", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
+    body: JSON.stringify({
+      action: "queue_intent", intent: shortcut.id, idempotency_key: key,
+    }),
+  })
+    .then((r) => (r ? r.json() : null))
+    .then((d) => {
+      if (d && d.ok) {
+        _mcMsg(shortcut.label + ": " + (d.detail || "queued")
+          + (d.replayed ? " (replayed)" : ""));
+      } else {
+        const why = d && (d.refused || d.error) ? (d.refused || d.error) : "failed";
+        _mcMsg(shortcut.label + " refused: " + why);
+      }
+    })
+    .catch(() => _mcMsg(shortcut.label + ": request failed"));
+}
+
+function _mcPaint() {
+  const host = _mcHost;
+  if (!host || !host.isConnected) { _mcSetTimer(false); return; }
+  // The countdown repaints 4x/second while armed, and innerHTML="" destroys the
+  // node the operator is standing on. Without this, tabbing to a shortcut and
+  // pressing Enter armed it and threw focus to <body> - so the confirm click
+  // could never be reached from the keyboard and the whole flow was mouse-only.
+  const focusedId = (document.activeElement && host.contains(document.activeElement))
+    ? document.activeElement.dataset.mcId : null;
+  host.innerHTML = "";
+  let anyArmed = false;
+  let refocus = null;
+  _MC_SHORTCUTS.forEach((sc) => {
+    const armed = _mcArm.isArmed(sc.id);
+    if (armed) anyArmed = true;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "loop-btn loop-shortcut" + (armed ? " loop-btn-armed" : "");
+    b.setAttribute("aria-pressed", armed ? "true" : "false");
+    b.dataset.mcId = sc.id;
+    if (focusedId === sc.id) refocus = b;
+    b.title = sc.hint;
+    if (armed) {
+      const left = Math.ceil(_mcArm.remainingMs() / 1000);
+      b.textContent = "Confirm " + sc.label + " (" + left + "s)";
+    } else {
+      b.textContent = sc.label;
+    }
+    b.addEventListener("click", () => {
+      if (_mcArm.isArmed(sc.id)) {
+        const res = _mcArm.confirm(sc.id);
+        if (res.fired) _mcFire(sc, res.key);
+        return;
+      }
+      _mcArm.arm(sc.id);
+      _mcMsg("armed: click again within 3s to " + sc.label.toLowerCase());
+    });
+    host.append(b);
+  });
+  if (anyArmed) {
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "loop-btn loop-btn-cancel";
+    cancel.dataset.mcId = "cancel";
+    if (focusedId === "cancel") refocus = cancel;
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => {
+      _mcArm.disarm();
+      _mcMsg("disarmed");
+    });
+    host.append(cancel);
+  }
+  if (refocus) refocus.focus();
+  _mcSetTimer(anyArmed);
+}
+
 function renderLoopStatus(ctlMsg) {
   const host = document.getElementById("loop-status-body");
   if (!host) return;
@@ -390,6 +544,14 @@ function renderLoopStatus(ctlMsg) {
       host.append(stateRow);
 
       if (d.stop_reason) host.append(mk("div", "loop-line dim", "stop: " + d.stop_reason));
+
+      // Lock states. Two separate locks with two separate lifetimes: the lane
+      // mutex (control/lanes/0.lock) and the loop controller's own single-flight
+      // lock (control/RUNNING.lock). Reported side by side, never merged.
+      const locks = mk("div", "loop-locks");
+      locks.append(_loopLockRow(mk, "LANE", d.lanes));
+      locks.append(_loopLockRow(mk, "LOOP", d.controller_lock));
+      host.append(locks);
 
       if (d.last_done) {
         const ld = d.last_done;
@@ -443,6 +605,13 @@ function renderLoopStatus(ctlMsg) {
       }
       host.append(ctl);
 
+      // Shortcuts 1 and 2 - queued intents, safe alongside a running lane.
+      // Arm-then-confirm: a stray single click decays after 3s and fires nothing.
+      host.append(mk("div", "loop-sub-head", "SHORTCUTS - ARM, THEN CONFIRM"));
+      _mcHost = mk("div", "loop-shortcuts");
+      host.append(_mcHost);
+      _mcPaint();
+
       const ta = mk("textarea", "loop-ta");
       ta.id = "loop-directive-input";
       ta.rows = 3;
@@ -460,6 +629,10 @@ function renderLoopStatus(ctlMsg) {
 
       const msg = mk("div", "loop-ctl-msg");
       msg.id = "loop-ctl-msg";
+      // The arm transition is announced here; without a live region a screen
+      // reader never hears that a 3s confirm window just opened.
+      msg.setAttribute("role", "status");
+      msg.setAttribute("aria-live", "polite");
       if (ctlMsg) msg.textContent = ctlMsg;
       host.append(msg);
     })
@@ -572,7 +745,7 @@ function _replayViewRefresh() {
         top.append(span1, span2, span3);
         const bot = document.createElement("div");
         bot.className = "replay-match-bot";
-        bot.textContent = `${_replayDateStr(m.game_creation_ts)} · ${_replayDurStr(m.duration_s)} · patch ${m.patch || "?"}`;
+        bot.textContent = `${_replayDateStr(m.game_creation_ts)} - ${_replayDurStr(m.duration_s)} - patch ${m.patch || "?"}`;
         li.append(top, bot);
         li.addEventListener("click", () => _replayLoadMatch(m.match_id, li));
         ul.appendChild(li);
@@ -625,7 +798,7 @@ function _replayLoadMatch(matchId, rowEl) {
                 ? " (L)"
                 : "")
           : "";
-        m.textContent = `${d.match_id} · ${_replayQueueLabel(d.queue_id)} · ${_replayDurStr(d.duration_s)} · patch ${d.patch || "?"}${v}`;
+        m.textContent = `${d.match_id} - ${_replayQueueLabel(d.queue_id)} - ${_replayDurStr(d.duration_s)} - patch ${d.patch || "?"}${v}`;
       }
       _replayRenderSnapshot(0);
     })
