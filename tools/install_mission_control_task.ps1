@@ -24,41 +24,59 @@
 # third field does not default correctly when inherited this way. Set all
 # three explicitly and read them back after registering; do not trust the
 # assignment silently stuck.
+#
+# Fix round 3 (2026-07-31): round 2's repetition fields were all correct
+# (Interval PT1M, Duration empty, StopAtDurationEnd False) but NextRunTime
+# stayed blank and the watchdog was STILL inert. Root cause: the trigger
+# TYPE. A LogonTrigger has no StartBoundary, so Task Scheduler has no anchor
+# to compute a next-repeat time from, and `schtasks /Run` executes the
+# ACTION directly without ever firing the TRIGGER - so the repetition clock
+# never starts. That can only be proven by an actual logoff/logon cycle,
+# which nobody will ever re-run to re-verify this, so we route around it
+# instead of depending on it: a SECOND trigger is added, a -Once trigger
+# with a real StartBoundary (near "now") and its own 1-minute indefinite
+# repetition. The AtLogOn trigger stays - it is still the fast boot-time
+# start - but the -Once trigger is what actually gives Task Scheduler a
+# computable NextRunTime, independent of logon state. MultipleInstances=
+# IgnoreNew is what makes the once-a-minute firing a no-op while the
+# process is alive; RestartCount/RestartInterval are unchanged.
 $python  = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
 $script  = 'C:\Riot Commander\mission_control.py'
 $workdir = 'C:\Riot Commander'
 
-$action  = New-ScheduledTaskAction -Execute $python -Argument "`"$script`"" -WorkingDirectory $workdir
-$trigger = New-ScheduledTaskTrigger -AtLogOn
-# Borrow the Repetition object from a throwaway -Once trigger - this is the
-# standard idiom for attaching a repetition pattern to a non-Once trigger.
-$repeatSource = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1)
-$trigger.Repetition = $repeatSource.Repetition
-# Explicitly force an INDEFINITE repetition. Duration unset + StopAtDurationEnd
-# false is what "repeat forever" actually means in Task Scheduler; the
-# borrowed object's StopAtDurationEnd=True (round 1's bug) is overridden here.
-$trigger.Repetition.Duration = $null
-$trigger.Repetition.StopAtDurationEnd = $false
+$action = New-ScheduledTaskAction -Execute $python -Argument "`"$script`"" -WorkingDirectory $workdir
+
+# Trigger 1: AtLogOn, unchanged - fast start at boot/logon.
+$logonTrigger = New-ScheduledTaskTrigger -AtLogOn
+
+# Trigger 2: -Once with a real StartBoundary (near "now") plus a 1-minute
+# indefinite repetition. This is the one Task Scheduler can actually
+# compute a NextRunTime from, so it is the one that makes the watchdog
+# self-healing regardless of logon state.
+$onceTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1)
+$onceTrigger.Repetition.Duration = $null
+$onceTrigger.Repetition.StopAtDurationEnd = $false
 
 $principal = New-ScheduledTaskPrincipal -UserId 'Administrator' -RunLevel Highest
 $settings  = New-ScheduledTaskSettingsSet -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 
-Register-ScheduledTask -TaskName 'RC-MissionControl' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
+Register-ScheduledTask -TaskName 'RC-MissionControl' -Action $action -Trigger @($logonTrigger, $onceTrigger) -Principal $principal -Settings $settings -Force
 Write-Host 'RC-MissionControl registered. Start it with: schtasks /Run /TN RC-MissionControl'
 
-# Verify the repetition actually took - a silent no-op assignment is the
-# likely failure mode for the borrow-the-Repetition-object idiom above.
-# All three fields matter: Interval must be set, StopAtDurationEnd must be
-# False (round 2's bug was exactly this field silently staying True).
+# Verify both triggers actually took as intended - a silent no-op assignment
+# is the likely failure mode, as it was in round 2.
 $check = Get-ScheduledTask -TaskName 'RC-MissionControl'
-$rep = $check.Triggers[0].Repetition
-Write-Host "Repetition.Interval = $($rep.Interval)"
-Write-Host "Repetition.Duration = '$($rep.Duration)'"
-Write-Host "Repetition.StopAtDurationEnd = $($rep.StopAtDurationEnd)"
-if ([string]::IsNullOrEmpty($rep.Interval)) {
-    Write-Host 'WARNING: registered trigger has an EMPTY repetition interval - the fix did not take.'
-} elseif ($rep.StopAtDurationEnd -eq $true) {
-    Write-Host 'WARNING: StopAtDurationEnd is still True - the watchdog will stay inert.'
+foreach ($t in $check.Triggers) {
+    Write-Host "--- Trigger: $($t.CimClass.CimClassName) ---"
+    Write-Host "  StartBoundary = '$($t.StartBoundary)'"
+    Write-Host "  Repetition.Interval = '$($t.Repetition.Interval)'"
+    Write-Host "  Repetition.Duration = '$($t.Repetition.Duration)'"
+    Write-Host "  Repetition.StopAtDurationEnd = $($t.Repetition.StopAtDurationEnd)"
+}
+$info = Get-ScheduledTaskInfo -TaskName 'RC-MissionControl'
+Write-Host "NextRunTime = '$($info.NextRunTime)'"
+if ([string]::IsNullOrEmpty($info.NextRunTime)) {
+    Write-Host 'WARNING: NextRunTime is still blank - the watchdog will stay inert.'
 } else {
-    Write-Host 'Confirmed: repetition interval set and StopAtDurationEnd is False.'
+    Write-Host 'Confirmed: NextRunTime is non-blank.'
 }
