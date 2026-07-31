@@ -176,3 +176,116 @@ def test_handler_send_signature_matches_route_expectations():
     from mc.handler import Handler
     params = list(inspect.signature(Handler._send).parameters)
     assert params[:4] == ["self", "code", "body", "ctype"]
+
+
+# --------------------------------------------------------------------------- fix round 1 (reviewer findings)
+
+def test_static_guard_blocks_sibling_directory_prefix_collision(tmp_path, monkeypatch):
+    """FINDING 1. A plain str(target).startswith(str(WEB_DIR)) is a STRING
+    prefix check, not a path-component check: a sibling directory whose
+    name merely starts with the same characters (web/mc-evil/ beside
+    web/mc/) passes it, because the string "..../mc-evil/secret.txt"
+    starts with the string "..../mc". Live-verified: pointing WEB_DIR at a
+    real web/mc/ and requesting /../mc-evil/secret.txt served the sibling
+    file with HTTP 200. A correct guard must reject this even though plain
+    '..' escapes (covered implicitly here too) already passed before this
+    fix - the sibling-prefix case is the one that did not."""
+    from mc import handler
+    web_root = tmp_path / "fakeweb2"
+    real_dir = web_root / "mc"
+    real_dir.mkdir(parents=True)
+    evil_dir = web_root / "mc-evil"
+    evil_dir.mkdir()
+    (evil_dir / "secret.txt").write_text("TOP SECRET", encoding="utf-8")
+    monkeypatch.setattr(handler, "WEB_DIR", real_dir)
+
+    class Fake:
+        path = "/../mc-evil/secret.txt"
+
+        def __init__(self):
+            self.sent = None
+
+        def _send(self, code, body, ctype, cache_control=None):
+            self.sent = (code, body, ctype)
+
+    f = Fake()
+    served = handler.Handler._serve_static(f)
+    assert served is False, "sibling directory mc-evil/ must not be reachable via .."
+    assert f.sent is None, f"secret content must never be sent, got {f.sent!r}"
+
+
+def test_post_rejects_negative_content_length_without_reading_body(monkeypatch):
+    """FINDING 2. n = int(Content-Length) accepts negative values, and
+    `n > _MAX_POST_BYTES` is never true for a negative n, so the size cap
+    is skipped and rfile.read(n) runs with n unmodified. On a real
+    socket-backed rfile, read(-1) reads until EOF - unbounded, defeating
+    the exact cap this line exists to enforce. Live-verified: a mocked
+    rfile receives n=-1 for Content-Length: -1. The fix must reject a
+    negative Content-Length before rfile.read is ever called - checked
+    here directly by recording every call the route layer makes to
+    rfile.read, independent of whatever status code downstream route
+    logic happens to produce from whatever bytes it is handed."""
+    from mc import handler
+    monkeypatch.setenv("RC_MC_TOKEN", "s3cret")
+
+    class RecordingRfile:
+        def __init__(self):
+            self.calls = []
+
+        def read(self, n):
+            self.calls.append(n)
+            return b"{}"
+
+    class Fake:
+        path = "/api/loop-control"
+        headers = {"Authorization": "Bearer s3cret", "Content-Length": "-1"}
+
+        def __init__(self):
+            self.sent = None
+            self.rfile = RecordingRfile()
+
+        def _send(self, code, body, ctype, cache_control=None):
+            self.sent = (code, body, ctype)
+
+        def _send_json(self, code, payload):
+            self._send(code, json.dumps(payload).encode("utf-8"), "application/json")
+
+    f = Fake()
+    handler.Handler.do_POST(f)
+    assert f.rfile.calls == [], (
+        f"rfile.read was called with {f.rfile.calls} for a negative "
+        "Content-Length - the cap was bypassed"
+    )
+    assert f.sent is not None
+    code, raw_body, _ctype = f.sent
+    assert code == 400
+    assert json.loads(raw_body)["error"] == "invalid content-length"
+
+
+def test_post_non_numeric_content_length_is_400_not_500(monkeypatch):
+    """FINDING 3 (minor). A non-numeric Content-Length currently raises
+    inside int() and is caught only by do_POST's generic except Exception,
+    producing a 500 where a 400 is correct - the request is malformed, not
+    an internal server fault. No data leak, just an imprecise status."""
+    from mc import handler
+    monkeypatch.setenv("RC_MC_TOKEN", "s3cret")
+
+    class Fake:
+        path = "/api/loop-control"
+        headers = {"Authorization": "Bearer s3cret", "Content-Length": "not-a-number"}
+
+        def __init__(self):
+            self.sent = None
+
+        def _send(self, code, body, ctype, cache_control=None):
+            self.sent = (code, body, ctype)
+
+        def _send_json(self, code, payload):
+            self._send(code, json.dumps(payload).encode("utf-8"), "application/json")
+
+    f = Fake()
+    handler.Handler.do_POST(f)
+    assert f.sent is not None
+    code, raw_body, _ctype = f.sent
+    assert code == 400
+    assert json.loads(raw_body)["error"] == "invalid content-length"
