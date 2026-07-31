@@ -93,6 +93,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from agents.daemon_slayer.matchup import DataSnapshot, compute_matchup
+from agents.daemon_slayer.mode_variants import canonical_champions
 
 _DATA_DIR = _ROOT / "data"
 _DS_DIR = _DATA_DIR / "daemon_slayer"
@@ -141,12 +142,19 @@ def load_roster(patch: str) -> list[str]:
     """Return the sorted DDragon-id roster the engine accepts.
 
     Keys of ``data/daemon_slayer/<patch>/champions.json`` ``data`` dict - the
-    exact id form ``compute_matchup`` takes (e.g. ``Kaisa``, ``MonkeyKing``).
+    exact id form ``compute_matchup`` takes (e.g. ``Kaisa``, ``MonkeyKing``) -
+    minus the DDragon THROWBACK-MODE rows.
+
+    The snapshot on disk is extracted verbatim, so from 16.15.1 it carries 60
+    ``Jade_<Champion>`` rows that ``DataSnapshot.load`` partitions out. Reading
+    the file raw put them in the roster and every one of their 233 x 233 pairs
+    then failed with "Unknown champion id" - a matrix the engine cannot score.
+    Partition here with the same predicate the engine uses.
     """
     champs_path = _DS_DIR / patch / "champions.json"
     raw = json.loads(champs_path.read_text(encoding="utf-8"))
     data = raw.get("data", raw) or {}
-    return sorted(str(k) for k in data.keys())
+    return sorted(str(k) for k in canonical_champions(data))
 
 
 def _swing(snapshot: DataSnapshot, champ_a: str, champ_b: str) -> Optional[float]:

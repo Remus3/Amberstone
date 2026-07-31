@@ -254,16 +254,31 @@ def _load_hp_if_stale() -> None:
         maps = rec.get("maps") or {}
         for mode, ddragon_map_id in _MODE_TO_DDRAGON_MAP_ID.items():
             if maps.get(ddragon_map_id) is True:
-                # First-write-wins per mode. DDragon should not have name+map
-                # collisions for real legendaries; if it ever does, the first
-                # entry alphabetically wins. Logged at debug if we hit one.
-                if norm not in new_byname[mode]:
+                # LOWEST-NUMERIC-ID-WINS per mode. DDragon does ship name+map
+                # collisions for real legendaries: at 16.15.1 the Arena mirror
+                # 223084 (Heartsteel, 700 HP) gained maps["12"] beside the SR
+                # base 3084 (900 HP), which ARAM must use. Mode mirrors are
+                # always base_id + an offset (Arena +220000), so the smallest id
+                # for a name IS the canonical row. The previous rule was
+                # first-write-wins, which resolved lexicographically and handed
+                # ARAM the Arena stat line. Arena itself never collides - the
+                # base row is not map-30 legal - so this only fires where a
+                # mirror has leaked onto another mode's map.
+                prev = new_byname[mode].get(norm)
+                if prev is None:
                     new_byname[mode][norm] = str(iid)
-                else:
-                    logger.debug(
-                        "byName mode collision: %s on %s already=%s, skipping %s",
-                        norm, mode, new_byname[mode][norm], iid,
-                    )
+                    continue
+                try:
+                    replace = int(iid) < int(prev)
+                except (TypeError, ValueError):
+                    replace = False
+                logger.debug(
+                    "byName mode collision: %s on %s had=%s, candidate=%s, %s",
+                    norm, mode, prev, iid,
+                    "replacing" if replace else "keeping",
+                )
+                if replace:
+                    new_byname[mode][norm] = str(iid)
     with _hp_lock:
         _hp_cache = new_hp
         _hp_cache_mtime = mtime

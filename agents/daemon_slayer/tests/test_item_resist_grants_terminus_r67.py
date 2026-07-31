@@ -268,8 +268,11 @@ class ArenaMirrorIsDoctrineBAbsentTests(unittest.TestCase):
         self.assertEqual(ids, ["223302", "3302"])
         # Map coverage: the SR row serves SR (11) + ARAM (12) + Brawl (35);
         # map 21 (Nexus Blitz) is not wired. 223302 is Arena-only (30).
+        # 16.15.1 added map 453, the throwback mode, to 265 of the 706 canonical
+        # items - a real upstream flag on the LIVE row, not a mirror. RC does not
+        # model 453, so it is inert here; the pin records it rather than hides it.
         sr_maps = {m for m, on in (_snap().items["3302"].get("maps") or {}).items() if on}
-        self.assertEqual(sr_maps, {"11", "12", "21", "35"})
+        self.assertEqual(sr_maps, {"11", "12", "21", "35", "453"})
         arena_maps = {
             m for m, on in (_snap().items["223302"].get("maps") or {}).items() if on
         }
