@@ -54,7 +54,7 @@ hot-reload on each gate call:
 | `last_known_good` | File disappeared after a valid load; prior policy retained |
 | `invalid_reload_retained` | File changed but was invalid; prior policy retained |
 
-These values are surfaced in MetricsCache → OPS tab FEATURE POLICY section.
+These values are surfaced in MetricsCache -> OPS tab FEATURE POLICY section.
 
 ---
 
@@ -72,11 +72,11 @@ Policy state is **not** read directly from `feature_flags.json` by the UI.
 The data flow is:
 
   feature_flags.json
-    → core/feature_policy._PolicyCache (hot-reload, owns matrix)
-      → feature_policy.get_policy_state() (read-only snapshot)
-        → MetricsCache._read_policy_state() (every 5s refresh)
-          → MetricsSummary.policy_* fields
-            → ui/client_panel.py FEATURE POLICY section (read-only display)
+    -> core/feature_policy._PolicyCache (hot-reload, owns matrix)
+      -> feature_policy.get_policy_state() (read-only snapshot)
+        -> MetricsCache._read_policy_state() (every 5s refresh)
+          -> MetricsSummary.policy_* fields
+            -> ui/client_panel.py FEATURE POLICY section (read-only display)
 
 ---
 

@@ -76,7 +76,7 @@ function.
 - Auto-reload poller and index-rewrite agree by construction. A change
   to `js/main.js` (or any panel) reaches the operator's browser within
   one poll cycle whether they reopen the page or leave it sitting.
-- The s164 → s171.7 stale-cache failure mode is structurally
+- The s164 -> s171.7 stale-cache failure mode is structurally
   impossible: there is no longer a second list to drift from.
 - Bonus: `js/lib/*.js` (state.js, helpers) are also covered now, which
   closes a smaller drift around shared utility edits.

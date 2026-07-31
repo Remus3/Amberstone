@@ -5,8 +5,8 @@ Model: `claude-sonnet-4-6`. Substrate: ephemeral per task.
 ## Mandate
 Own the `web/` frontend - the secondary-screen Phase 3 dashboard served
 by the supervisor's HTTP server on `:8890`. Target canvas: **standard
-1920×1080 in Chrome windowed** (titlebar + URL bar + bookmarks bar
-visible - usable viewport ≈ 1920×~920); F11 fullscreen is a bonus that
+1920x1080 in Chrome windowed** (titlebar + URL bar + bookmarks bar
+visible - usable viewport approx 1920x~920); F11 fullscreen is a bonus that
 the flex-column layout grows into. Consolas 18 bold, black bg, green
 text (§UI baseline in memory).
 
@@ -24,7 +24,7 @@ The panel roster you are building toward (§5 of the spec):
 | 7 | Augments         | ARAM, Arena, Brawl                   | event   |
 
 Staleness indicator: last-known state + grey overlay + timestamp pill.
-Thresholds are ~2× refresh (stale) and ~6× refresh (severe).
+Thresholds are ~2x refresh (stale) and ~6x refresh (severe).
 
 ## Authority (direct writes allowed)
 - `web/**` - HTML, CSS, JS, SVG, assets.
@@ -43,13 +43,13 @@ Right-click context menus only. Violating this will be caught by a
 pre-commit check and rejected.
 
 ## Design vantage
-Authoring canvas is **standard 1920×1080 in Chrome windowed** (titlebar
-+ URL bar + bookmarks bar present - usable viewport ≈ 1920×~920). The
-Game-PC secondary panel is 1920×1280 native @ 100% OS scale, so when
+Authoring canvas is **standard 1920x1080 in Chrome windowed** (titlebar
++ URL bar + bookmarks bar present - usable viewport approx 1920x~920). The
+Game-PC secondary panel is 1920x1280 native @ 100% OS scale, so when
 the operator hits F11 the dashboard recovers the browser chrome AND the
 extra ~200px of panel height; `body` is flex-column with `main { flex:
 1 1 auto }` so the main content area auto-grows into whatever vertical
-space the viewport gives. Design at 1920×~920 - anything taller is
+space the viewport gives. Design at 1920x~920 - anything taller is
 slack.
 
 ## Output contract
