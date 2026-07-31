@@ -136,3 +136,43 @@ def test_auth_uses_constant_time_compare():
     import inspect
     from mc import auth
     assert "compare_digest" in inspect.getsource(auth.check)
+
+
+def test_mc_routes_expose_both_endpoints():
+    from mc import routes
+    get_paths = [m for m, _ in routes.GET_ROUTES]
+    post_paths = [m for m, _ in routes.POST_ROUTES]
+    assert any(m("/api/loop-status") for m in get_paths)
+    assert any(m("/api/loop-control") for m in post_paths)
+    assert not any(m("/api/state") for m in get_paths)
+
+
+def test_mc_package_imports_no_game_code():
+    """The whole point of S10. mc.routes must not reach pydantic, the
+    dashboard Handler, or any dashboard route module other than the two
+    loop ones."""
+    rc, out = _import_probe(
+        "mc.routes",
+        [
+            "pydantic",
+            "dashboard.api_schema",
+            "dashboard._dispatch",
+            "dashboard._handler",
+            "dashboard._context",
+            "dashboard.builders",
+            "dashboard._state_builder",
+            "dashboard.routes_state",
+            "web_dashboard",
+        ],
+    )
+    assert rc == 0, out
+
+
+def test_handler_send_signature_matches_route_expectations():
+    """Routes call h._send(status, bytes, ctype) positionally. If the
+    signature drifts, every route 500s at runtime and no unit test on the
+    routes themselves would notice."""
+    import inspect
+    from mc.handler import Handler
+    params = list(inspect.signature(Handler._send).parameters)
+    assert params[:4] == ["self", "code", "body", "ctype"]
