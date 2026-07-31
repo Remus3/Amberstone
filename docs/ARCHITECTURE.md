@@ -120,9 +120,9 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/routes_ds_sweep.py` | DS stat-sweep graph backend |
 | `dashboard/routes_duo_synergy.py` | 101.qq duo-synergy backend |
 | `dashboard/routes_lobby_aux.py` | top8 + mains backend |
-| `dashboard/routes_loop_control.py` | POST /api/loop-control (headless-loop remote control) |
+| `dashboard/routes_loop_control.py` | POST /api/loop-control route table - S10 Task 9 de-registered it from the :8888 dispatch table; only mc/routes.py imports it now (:8895) |
 | `dashboard/routes_loop_monitor.py` | GET /api/loop-monitor (per-tool-call timeline) |
-| `dashboard/routes_loop_status.py` | GET /api/loop-status (headless-loop progress surface) |
+| `dashboard/routes_loop_status.py` | GET /api/loop-status route table - S10 Task 9 de-registered it from the :8888 dispatch table; only mc/routes.py imports it now (:8895) |
 | `dashboard/routes_metrics.py` | /metrics Prometheus endpoint |
 | `dashboard/routes_peel_priority.py` | peel-target verdict backend (item 304 Phase D) |
 | `dashboard/routes_scouting.py` | player-scouting backend (rank fan-out) |

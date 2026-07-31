@@ -1,4 +1,4 @@
-# arch: GET /api/loop-status (headless-loop progress surface) | section=dashboard | frozen=no
+# arch: GET /api/loop-status route table - S10 Task 9 de-registered it from the :8888 dispatch table; only mc/routes.py imports it now (:8895) | section=dashboard | frozen=no
 """GET /api/loop-status - at-a-glance headless-loop progress for mobile.
 
 A thin, additive, read-only aggregator over the headless-loop control files

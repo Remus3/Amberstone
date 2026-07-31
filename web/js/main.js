@@ -58,7 +58,7 @@ import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.
 // clobbers the live PGR.
 import { wireHistoricalPgrOnce, renderHistoricalPgr } from './panels/historical_pgr.js';
 import { renderCoachDecisions, renderRecentCoachCalls } from './panels/coach_decisions.js';
-import { _settingsRefresh, renderSpendGates, renderLoopStatus, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
+import { _settingsRefresh, renderSpendGates, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 import { renderBuildInsights } from './panels/build_insights.js';
 // HZ-D1: overlay-shell change-pulse hook (inert unless ?overlay=1).
 import { initOverlayPulse } from './overlay_pulse.js';
@@ -840,7 +840,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       } catch (_) {}
     }
     if (viewId === "build-insights") { renderBuildInsights(); }
-    if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); renderSpendGates(); renderLoopStatus(); _settingsFilterWireOnce(); }
+    if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); renderSpendGates(); _settingsFilterWireOnce(); }
   }
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");
