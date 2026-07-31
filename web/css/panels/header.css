@@ -3128,6 +3128,54 @@ body[data-view="lobby"]          #home-overlay { display: none; }
    looks like. There is no .loop-btn-note rule either - .loop-btn already sets
    color: var(--text), so it was a no-op pretending to be a decision. */
 .loop-steer-row { margin-top: var(--space-2); }
+/* INTERRUPT (S9). The one control here that kills, so it takes the DANGER
+   vocabulary rather than the --warn gold every other hot control shares. That
+   separation is the point: measured across the six themes, --accent and --warn
+   are the same gold in five of them, so an amber INTERRUPT would have been
+   indistinguishable from a lane fire sitting inches above it - two buttons that
+   look identical and have opposite consequences.
+   :not(.loop-btn-armed) for the same source-order reason as .loop-lane-btn. */
+.loop-irq-row { margin-top: var(--space-2); flex-direction: column; align-items: flex-start; }
+/* The BORDER carries "this one kills"; the label itself stays --text. Measured
+   at the rendered 18px/700 - which is below the 18.66px bold WCAG large-text
+   threshold, so the 4.5:1 normal-text bar applies - --bad on --surface-alt
+   fails in five of six themes: arcane (live) 3.28, moonlit 3.31, hextech 3.66,
+   ember 3.79, bloodmoon 3.79, terminal 4.59. A border is a non-text element and
+   only owes 3:1, so it keeps the danger colour. Exactly the precedent
+   .loop-lock-state.unavailable above already set in this card. */
+.loop-irq-btn:not(.loop-btn-armed) {
+  color: var(--text); border-color: var(--bad);
+}
+.loop-irq-btn:not(.loop-btn-armed):hover { border-color: var(--bad); }
+/* (0,2,0) beats the (0,1,0) .loop-btn-armed above on specificity, not on source
+   order, so it survives someone moving these rules later. The armed INTERRUPT
+   must not share the amber fill with an armed lane - the fill IS the signal
+   that a second click is live, and the two acts are not interchangeable. */
+.loop-irq-btn.loop-btn-armed {
+  color: var(--canvas); background: var(--bad); border-color: var(--bad);
+}
+.loop-irq-btn.loop-btn-armed:hover { border-color: var(--bad); }
+/* The named victims. This list is the whole safety property of the tier, so it
+   is deliberately NOT the faintest text in the card - --text-faint here would
+   repeat the S4 mistake of rendering the load-bearing line quieter than the
+   incidental metadata beside it. */
+.loop-irq-victims {
+  margin: var(--space-2) 0 0; padding: 0; list-style: none;
+  width: 100%;
+}
+.loop-irq-victim {
+  /* Literal stack, not var(--font-mono, ...): that token is defined in NO
+     stylesheet in web/css, so the var() is dead weight that resolves to its
+     fallback every time while reading like a themeable choice. Two other rules
+     in this tree still carry it. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* --fs-sm, not --fs-xs. At xs the safety-critical victim rows rendered 16px
+     while the incidental prose above them rendered 18px, so the size hierarchy
+     was inverted against the one list the operator must actually read. */
+  font-size: var(--fs-sm); color: var(--text);
+  padding: 2px 0 2px var(--space-2);
+  border-left: 3px solid var(--bad);
+}
 .mode-pill {
   padding: 5px 14px;
   border: 1px solid transparent;

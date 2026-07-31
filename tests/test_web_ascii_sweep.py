@@ -84,7 +84,15 @@ _WEB = _REPO_ROOT / "web"
 # change. Two-tree diff over HEAD: exactly 2 of 166 web/ sources differ in their
 # live half - web/js/panels/dev.js (the steer row) and
 # web/css/panels/header.css (the steer rules) - the slice's whole web file set.
-_LIVE_HALF_DIGEST = "2bcf98c0a6a8fba653e149b5e590e3db8848e02175406cf8fa778c36f1c597d6"
+# RE-CAPTURED at Mission Control S9 (the INTERRUPT tier), superseding the S6+S7
+# capture. Ordinary case again: LIVE web edits, no tokeniser change, so the
+# classifier is fixed and the two-tree diff is a straight answer. Run over HEAD
+# and the S9 tree with the SAME tokeniser: 166 sources on both sides, none
+# added and none removed, and exactly 2 differ in their live half -
+# web/js/panels/dev.js (the interrupt preview/arm/fire block and its victim
+# list) and web/css/panels/header.css (the .loop-irq-* rules) - which is the
+# slice's whole web file set and nothing else.
+_LIVE_HALF_DIGEST = "0c70ea746992617a166e393987217d54966c185c635a1146c60e15b45ee69009"
 
 
 def _web_sources() -> list[Path]:

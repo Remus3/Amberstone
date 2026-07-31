@@ -54,6 +54,21 @@ STEER_CURSOR = CONTROL_DIR / "STEER.cursor"
 TIERS = ("note", "steer")
 DEFAULT_TIER = "note"
 
+# S9. INTERRUPT is an ACT, not guidance, and it is deliberately not in TIERS -
+# `ops/loop/interrupt.py` owns it. It appears here only because the log is the
+# single safety ledger and an interrupt has to be auditable beside the steers
+# that preceded it.
+#
+# The distinction is load-bearing rather than tidy. `normalize_tier` maps every
+# unrecognised tier to the default, which was the SAFE answer while INTERRUPT
+# existed only as a 400 at the route: an unknown tier degraded to a note that
+# executes nothing. Once S9 made INTERRUPT real, that same degrade became the
+# hazard - a caller asking to stop the agents would get a note, and the UI
+# would report an interrupt that never happened. `append` therefore REFUSES an
+# audit-only tier instead of degrading it, and `record` is the only door in.
+AUDIT_ONLY_TIERS = ("interrupt",)
+LOG_TIERS = TIERS + AUDIT_ONLY_TIERS
+
 # A steer is guidance, not a payload. The cap is generous for a sentence or two
 # and small enough that a stray POST cannot grow the log without bound.
 MAX_TEXT = 2000
@@ -92,19 +107,36 @@ def normalize_tier(tier) -> str:
 
 
 def append(text, *, tier=DEFAULT_TIER, key=None, source="dashboard") -> dict:
-    """Append one steer. Returns the stored record.
+    """Append one GUIDANCE steer (note / steer). Returns the stored record.
 
     Raises ValueError on empty text - a blank steer is a mis-click, and storing
-    it would make the next consumer act on nothing.
+    it would make the next consumer act on nothing - and on an audit-only tier,
+    which must never be silently demoted to a note (see AUDIT_ONLY_TIERS).
+    """
+    if str(tier or "").strip().lower() in AUDIT_ONLY_TIERS:
+        raise ValueError(
+            f"tier {tier!r} is an act, not guidance - use ops/loop/interrupt.py; "
+            "this channel executes nothing and must not claim otherwise")
+    return record(text, tier=normalize_tier(tier), key=key, source=source)
+
+
+def record(text, *, tier=DEFAULT_TIER, key=None, source="dashboard") -> dict:
+    """Append any LOG_TIERS entry, including audit-only ones. Returns the record.
+
+    The low-level door. `append` is the guidance-only face of it; the interrupt
+    module calls this directly so its act lands in the same ledger.
     """
     body = str(text or "").strip()
     if not body:
         raise ValueError("steer text is empty")
     body = body[:MAX_TEXT]
+    tier = str(tier or DEFAULT_TIER).strip().lower()
+    if tier not in LOG_TIERS:
+        tier = DEFAULT_TIER
     CONTROL_DIR.mkdir(parents=True, exist_ok=True)
     rec = {
         "id": None,                       # filled under the mutex
-        "tier": normalize_tier(tier),
+        "tier": tier,
         "text": body,
         "key": (None if key is None else str(key)),
         "source": str(source),
