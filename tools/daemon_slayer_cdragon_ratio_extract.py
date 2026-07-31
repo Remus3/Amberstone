@@ -102,6 +102,11 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 DATA_DIR = PROJECT_ROOT / "data" / "daemon_slayer"
 
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from agents.daemon_slayer.mode_variants import canonical_champions  # noqa: E402
+
 # Reuse the proven live helpers from the sibling spell extractor when importable
 # (same host, same bin, same 2-segment patch contract). Fall back to a minimal
 # local replication so the resolver core + tests never hard-depend on the import.
@@ -748,7 +753,9 @@ def _load_roster_champion_ids(patch: str) -> list[str]:
     champs = raw.get("data") or {}
     if not champs:
         raise SystemExit(f"roster file {roster} has no 'data' champion container")
-    return sorted(champs.keys())
+    # The snapshot is extracted verbatim and carries DDragon THROWBACK-MODE rows
+    # from 16.15.1 (60 Jade_<Champion>); they are not live champions.
+    return sorted(canonical_champions(champs))
 
 
 def _load_champion_ids(patch: str) -> list[str]:

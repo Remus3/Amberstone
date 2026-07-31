@@ -355,17 +355,17 @@
         "stamp_field": "patch"
       },
       "build_orders_aram.json": {
-        "body_md5": "c111787b",
+        "body_md5": "eb680358",
         "declared_patch": "16.14.1",
         "stamp_field": "version"
       },
       "build_orders_arena.json": {
-        "body_md5": "adcbb5ed",
+        "body_md5": "7184e31a",
         "declared_patch": "16.14.1",
         "stamp_field": "version"
       },
       "build_orders_sr.json": {
-        "body_md5": "4634dcd9",
+        "body_md5": "57f930c9",
         "declared_patch": "16.14.1",
         "stamp_field": "version"
       },
@@ -444,9 +444,111 @@
         "declared_patch": "16.14.1",
         "stamp_field": "_patch"
       }
+    },
+    "16.15.1": {
+      "ability_staleness.json": {
+        "body_md5": "2ad50954",
+        "declared_patch": "16.15.1",
+        "stamp_field": "_patch"
+      },
+      "arena_augments.json": {
+        "body_md5": "d42c3f41",
+        "declared_patch": "16.15.1",
+        "stamp_field": "patch"
+      },
+      "build_orders_aram.json": {
+        "body_md5": "d71180be",
+        "declared_patch": "16.15.1",
+        "stamp_field": "version"
+      },
+      "build_orders_arena.json": {
+        "body_md5": "8819c384",
+        "declared_patch": "16.15.1",
+        "stamp_field": "version"
+      },
+      "build_orders_sr.json": {
+        "body_md5": "f9a2d898",
+        "declared_patch": "16.15.1",
+        "stamp_field": "version"
+      },
+      "cdragon_ability_ratios.json": {
+        "body_md5": "5cbd2463",
+        "declared_patch": "16.15.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_ratio_drift.json": {
+        "body_md5": "7a13aebb",
+        "declared_patch": "16.15.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_spell_stats.json": {
+        "body_md5": "49e9722a",
+        "declared_patch": "16.15.1",
+        "stamp_field": "_patch"
+      },
+      "champion_abilities.json": {
+        "body_md5": "96da30d8",
+        "declared_patch": "16.15.1",
+        "stamp_field": "version"
+      },
+      "champions.json": {
+        "body_md5": "0dc2dd94",
+        "declared_patch": "16.15.1",
+        "stamp_field": "version"
+      },
+      "cherry_augments.json": {
+        "body_md5": "3b34505a",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "enchanter_items.json": {
+        "body_md5": "cb9a02c0",
+        "declared_patch": "16.15.1",
+        "stamp_field": "_meta.patch"
+      },
+      "items.json": {
+        "body_md5": "85634272",
+        "declared_patch": "16.15.1",
+        "stamp_field": "version"
+      },
+      "items_meraki.json": {
+        "body_md5": "73446cf8",
+        "declared_patch": "16.15.1",
+        "stamp_field": "patch"
+      },
+      "manifest.json": {
+        "body_md5": "531abb32",
+        "declared_patch": "16.15.1",
+        "stamp_field": "ddragon_version"
+      },
+      "mayhem_augment_stats.json": {
+        "body_md5": "e1e07c87",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "pickban_targets.json": {
+        "body_md5": "9b8bc07c",
+        "declared_patch": "16.15.1",
+        "stamp_field": "patch"
+      },
+      "scenarios.json": {
+        "body_md5": "6a7a2c65",
+        "declared_patch": "16.15.1",
+        "stamp_field": "version"
+      },
+      "wiki_ability_stats.json": {
+        "body_md5": "f536c0f9",
+        "declared_patch": "16.15.1",
+        "stamp_field": "_patch"
+      },
+      "wiki_stats.json": {
+        "body_md5": "bef0ae84",
+        "declared_patch": "16.15.1",
+        "stamp_field": "_patch"
+      }
     }
   },
-  "generated_from_current_txt": "16.14.1",
+  "generated_from_current_txt": "16.15.1",
   "known_stamp_lag": {
     "cherry_augments.json": "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged since 16.10.1; authored feed, body has not moved",
     "mayhem_augment_stats.json": "declares rc_patch 16.10.1 - Mayhem augment stats sourced at 16.10 and carried forward; event-mode feed with no newer upstream"

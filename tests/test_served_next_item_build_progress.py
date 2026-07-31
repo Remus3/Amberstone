@@ -17,7 +17,7 @@ the SERVED fixtures here are SR. The measured shape is the same one f6e8c11c
 recorded on ARAM: Kalista's balanced order is
 ['3153', '3006', '3085', '3302', '6672', '3036'] in BOTH tables, so a player
 holding 4 legendaries plus a trinket plus a Health Potion indexes at 6
-(off the end -> None) where the honest index is 4 (Kraken Slayer).
+(off the end -> None) where the honest index is 4 (Yun Tal Wildarrows).
 
 Most assertions read the value the served callout generator actually receives
 (a ``next_callouts`` spy) rather than the rendered callout list, because
@@ -38,13 +38,13 @@ from dashboard import _deterministic_coaching as dc  # noqa: E402
 
 # Kalista's balanced order, in order. Ids and names both, because the helper
 # matches on ids with a name fallback and both paths are exercised here.
-_ORDER_IDS = ["3153", "3006", "3085", "3302", "6672", "3036"]
+_ORDER_IDS = ["3153", "3006", "3085", "3302", "3032", "3036"]
 _ORDER_NAMES = [
     "Blade of The Ruined King",
     "Berserker's Greaves",
     "Runaan's Hurricane",
     "Terminus",
-    "Kraken Slayer",
+    "Yun Tal Wildarrows",
     "Lord Dominik's Regards",
 ]
 _TRINKET_ID = "3363"        # Farsight Alteration
@@ -52,8 +52,11 @@ _TRINKET_NAME = "Farsight Alteration"
 _POTION_ID = "2003"         # Health Potion
 _POTION_NAME = "Health Potion"
 
-# Kraken Slayer total gold, pinned so the fixture cannot drift silently.
-_KRAKEN_COST = 3000
+# Yun Tal Wildarrows total gold, pinned so the fixture cannot drift silently.
+# 16.15.1 reranked Kalista slot 5 from Kraken Slayer (6672) to Yun Tal (3032) -
+# a DATA-driven flip (engine 1.268.0 unchanged; the CDragon ratio sidecar went
+# from 838 to 858 mechanical blocks). Both cost 3000.
+_NEXT_ITEM_COST = 3000
 
 
 def _stub_laning(monkeypatch):
@@ -108,13 +111,13 @@ def test_raw_slot_count_over_indexes_and_correct_index_resolves():
     """Pins the exact before/after the served fix turns on.
 
     6 = the raw slot count (4 legendaries + trinket + potion) -> off the end of
-    a 6-entry order -> None. 4 = the honest build progress -> Kraken Slayer.
+    a 6-entry order -> None. 4 = the honest build progress -> Yun Tal Wildarrows.
     """
     assert dc._next_build_item("Kalista", "sr", 6) is None
     resolved = dc._next_build_item("Kalista", "sr", 4)
     assert resolved is not None
-    assert resolved[0] == "Kraken Slayer"
-    assert resolved[1] == _KRAKEN_COST
+    assert resolved[0] == "Yun Tal Wildarrows"
+    assert resolved[1] == _NEXT_ITEM_COST
 
 
 def test_owned_build_item_count_ignores_trinket_and_potion():
@@ -132,8 +135,8 @@ def test_served_next_item_survives_trinket_and_potions(monkeypatch):
     _stub_laning(monkeypatch)
     seen = _spy_next_callouts(monkeypatch)
     dc._compute_uncached(_gs(4), "sr")
-    assert seen["next_item_name"] == "Kraken Slayer"
-    assert seen["next_item_cost"] == _KRAKEN_COST
+    assert seen["next_item_name"] == "Yun Tal Wildarrows"
+    assert seen["next_item_cost"] == _NEXT_ITEM_COST
     # The count reaching next_callouts is the item-spike axis, a separate
     # question with its own primitive (see test_item_spike_legendary_count.py).
     # 3, not 6: the 4 held order items include Berserker's Greaves, and boots are
@@ -162,7 +165,7 @@ def test_served_next_item_uses_name_fallback_when_ids_absent(monkeypatch):
     _stub_laning(monkeypatch)
     seen = _spy_next_callouts(monkeypatch)
     dc._compute_uncached(_gs(4, ids=False), "sr")
-    assert seen["next_item_name"] == "Kraken Slayer"
+    assert seen["next_item_name"] == "Yun Tal Wildarrows"
 
 
 def test_served_next_item_does_not_skip_an_unowned_item(monkeypatch):
@@ -279,7 +282,7 @@ def test_shadow_choice_logger_passes_build_progress_next_item(tmp_path, monkeypa
 
     assert seen, "precomputed_choices was never reached"
     assert seen["next_item"] is not None, "next_item fell off the end of the order"
-    assert seen["next_item"][0] == "Kraken Slayer"
+    assert seen["next_item"][0] == "Yun Tal Wildarrows"
     # The recorded item_count axis stays the raw slot count - it is the
     # item_state lookup axis the seed table was generated against, not a
     # build-progress pointer.

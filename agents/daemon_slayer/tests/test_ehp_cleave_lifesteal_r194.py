@@ -61,6 +61,7 @@ from pathlib import Path
 
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.effects import ITEM_EFFECTS
+from agents.daemon_slayer.mode_variants import canonical_items
 from agents.daemon_slayer.engine import build_champion
 from agents.daemon_slayer.ehp import (
     _FIGHT_WINDOW_S,
@@ -70,10 +71,17 @@ from agents.daemon_slayer.ehp import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+# Resolve the LIVE patch. A hardcoded dir goes stale on every refresh, and the
+# Share mirror ships only the current snapshot, so the pin breaks the
+# self-contained guard. The Meraki clause text this seam reads is content-stable
+# across a DDragon minor (both patches carry Meraki content 25.15).
+_PATCH = (
+    _REPO_ROOT / "data" / "daemon_slayer" / "current.txt"
+).read_text(encoding="utf-8").strip()
 _MERAKI_PATH = (
-    _REPO_ROOT / "data" / "daemon_slayer" / "16.14.1" / "items_meraki.json"
+    _REPO_ROOT / "data" / "daemon_slayer" / _PATCH / "items_meraki.json"
 )
-_ITEMS_PATH = _REPO_ROOT / "data" / "daemon_slayer" / "16.14.1" / "items.json"
+_ITEMS_PATH = _REPO_ROOT / "data" / "daemon_slayer" / _PATCH / "items.json"
 
 _LIFESTEAL_CLAUSE = "{{as|{{sti|life steal}}}} at 100% effectiveness"
 
@@ -169,6 +177,10 @@ class SuffixSweepTests(unittest.TestCase):
     def test_set_matches_the_index_suffix_sweep(self):
         data = json.loads(_ITEMS_PATH.read_text(encoding="utf-8"))
         data = data.get("data", data)
+        # Sweep the CANONICAL set, which is what the engine scores. The snapshot
+        # on disk is extracted verbatim and from 16.15.1 carries the throwback
+        # band, so a raw sweep also matches 773074 - an item no live mode sells.
+        data = canonical_items(data)
         by_suffix = {k for k in data if k.endswith("3074")}
         self.assertEqual(by_suffix, {"3074", "223074"})
         self.assertEqual(VAMP_ELIGIBLE_CLEAVE_ITEM_IDS, by_suffix)
