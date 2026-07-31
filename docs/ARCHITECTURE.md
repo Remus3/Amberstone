@@ -97,6 +97,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/_dispatch.py` | route registration |
 | `dashboard/_idempotency.py` | in-process idempotency (replay) table for operator intents |
 | `dashboard/_lcu_inprocess.py` | in-process LCU snapshot reader for /api/state |
+| `dashboard/_matchers.py` | path-matcher factories (stdlib-only, importable without pydantic) |
 | `dashboard/_party_mains.py` | PARTY MAINS lobby enrichment (Legion-side, Riot Champion-Mastery-V4) |
 | `dashboard/_state_builder.py` | builds /api/state payload |
 | `dashboard/_state_cooldowns.py` | adapts Live Client snapshot -> compute_cooldowns input |
