@@ -14,7 +14,8 @@
 //
 // Pure logic, no DOM and no fetch, so `node --test` can drive the whole
 // lifecycle (see arm_confirm.test.mjs). The DOM wrapper lives in
-// web/js/panels/dev.js.
+// web/mc/mc.js (and, transitionally until Task 9 deletes the import,
+// also web/js/panels/dev.js).
 
 // A stray click must decay faster than an operator can forget they made it.
 export const ARM_WINDOW_MS = 3000;

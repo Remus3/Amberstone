@@ -1,4 +1,4 @@
-// web/js/lib/arm_confirm.test.mjs
+// web/mc/arm_confirm.test.mjs
 //
 // Mission Control S4. Pins the arm-then-confirm lifecycle, and specifically the
 // MEASURED constraint from docs/MISSION_CONTROL_PLAN.md: the idempotency key is
@@ -6,7 +6,7 @@
 // NEW key. Reusing one key across arms replays the refusal forever - the button
 // then looks alive and is permanently inert.
 //
-// Run with `node --test web/js/lib/arm_confirm.test.mjs`.
+// Run with `node --test web/mc/arm_confirm.test.mjs`.
 
 import test from "node:test";
 import assert from "node:assert";
