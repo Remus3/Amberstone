@@ -39,15 +39,10 @@ from dashboard.api_schema import (
 log = logging.getLogger("rc.dispatch")
 
 # -- matcher factories ------------------------------------------------
-
-def equals(path: str) -> Callable[[str], bool]:
-    """Match exactly `path`, or `path?...` (path with a query string)."""
-    return lambda p: p == path or p.startswith(path + "?")
-
-
-def prefix(p: str) -> Callable[[str], bool]:
-    """Match anything starting with prefix `p`."""
-    return lambda x: x.startswith(p)
+# Bodies live in dashboard/_matchers.py (2026-07-31, Mission Control S10) so
+# they can be imported without pulling in api_schema + pydantic. Re-exported
+# here because 40-plus route modules already import them from this module.
+from dashboard._matchers import equals, prefix  # noqa: E402,F401
 
 
 # -- registry (cached so each request doesn't rebuild the list) -------

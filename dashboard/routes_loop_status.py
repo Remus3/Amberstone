@@ -77,7 +77,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from dashboard._dispatch import equals
+from dashboard._matchers import equals
 
 log = logging.getLogger("rc.web_dashboard")
 
