@@ -474,6 +474,17 @@ const _LANE_LABELS = {
 let _mcLanes = { all: [], wired: [] };
 let _mcLaneHost = null;
 
+function _mcSteerKey() {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  let out = "";
+  for (let i = 0; i < 8; i += 1) {
+    out += Math.floor(Math.random() * 0x10000).toString(16).padStart(4, "0");
+    if (i === 1 || i === 3 || i === 5) out += "-";
+  }
+  return out;
+}
+
 function _mcRunId() {
   const c = globalThis.crypto;
   if (c && typeof c.randomUUID === "function") return c.randomUUID().slice(0, 8);
@@ -734,10 +745,75 @@ function renderLoopStatus(ctlMsg) {
       host.append(_mcLaneHost);
       _mcPaint();
 
+      // Steer channel (S7). NOTE and STEER only - INTERRUPT is S9 and is a
+      // different act entirely. Single click on purpose: a steer is GUIDANCE,
+      // it executes nothing and kills nothing, and the text has to be typed
+      // first, which is itself the deliberate act. The arm-then-confirm window
+      // is for things that cannot be taken back.
+      const steerInfo = d.steer || null;
+      host.append(mk("div", "loop-sub-head",
+        "STEER - GUIDANCE, NEVER AN INTERRUPT"
+        + (steerInfo && steerInfo.pending
+           ? " - " + steerInfo.pending + " PENDING" : "")));
+      const sta = mk("textarea", "loop-ta");
+      sta.id = "loop-steer-input";
+      sta.rows = 2;
+      sta.placeholder = "note for the running session...";
+      // A placeholder is NOT an accessible name - it disappears on the first
+      // keystroke, so a screen reader loses the label exactly when the field
+      // has content. The visible sub-head above is not programmatically
+      // associated with the field, so name it explicitly.
+      sta.setAttribute("aria-label", "steer text for the running session");
+      host.append(sta);
+      const steerRow = mk("div", "loop-dir-row loop-steer-row");
+      const _sendSteer = (tier) => {
+        const node = document.getElementById("loop-steer-input");
+        const text = node && node.value ? node.value.trim() : "";
+        if (!text) { _mcMsg("steer: type something first"); return; }
+        fetch("/api/loop-control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
+          body: JSON.stringify({
+            action: "steer", tier: tier, text: text,
+            // One key per SEND, minted here - the same rule as the arm path.
+            idempotency_key: _mcSteerKey(),
+          }),
+        })
+          .then((r) => (r ? r.json() : null))
+          .then((dd) => {
+            if (dd && dd.ok) {
+              _mcMsg(tier.toUpperCase() + ": " + (dd.detail || "queued"));
+              if (node) node.value = "";
+              renderLoopStatus();
+            } else {
+              _mcMsg(tier.toUpperCase() + " failed: "
+                + ((dd && dd.error) || "request failed"));
+            }
+          })
+          .catch(() => _mcMsg(tier.toUpperCase() + ": request failed"));
+      };
+      // No accent on either: see the .loop-steer-row comment in header.css.
+      steerRow.append(btn("Send NOTE", "", () => _sendSteer("note")));
+      steerRow.append(btn("Send STEER", "", () => _sendSteer("steer")));
+      host.append(steerRow);
+      if (steerInfo && steerInfo.newest) {
+        // No `dim` class - web/css has no bare `.dim` rule, and .loop-line
+        // already carries --text-dim. Same inert-class trap as S4.
+        host.append(mk("div", "loop-line",
+          "newest pending: " + steerInfo.newest));
+      }
+
+      // Its own sub-head. Before S7 this was the trailing block and read as a
+      // group; once the steer row landed above it, it became the only unheaded
+      // group in the card and both textareas read as one STEER control.
+      host.append(mk("div", "loop-sub-head",
+        "DIRECTIVE OVERRIDE - ONE SHOT, NEXT CYCLE"));
       const ta = mk("textarea", "loop-ta");
       ta.id = "loop-directive-input";
       ta.rows = 3;
       ta.placeholder = "one-shot directive override for the next cycle...";
+      ta.setAttribute("aria-label",
+        "one-shot directive override for the next loop cycle");
       host.append(ta);
 
       const dirRow = mk("div", "loop-dir-row");

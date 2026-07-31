@@ -173,6 +173,71 @@ def test_the_lane_sub_head_states_the_contract_and_the_wired_count():
     assert '" of "' in _DEV and "wired" in _DEV
 
 
+def test_the_steer_row_offers_note_and_steer_but_not_interrupt():
+    """INTERRUPT is stage S9 and needs operator sign-off.
+
+    A button that looked like it worked would be worse than no button - the
+    whole point of the tier ladder is that escalating is a decision.
+    """
+    assert 'action: "steer"' in _DEV
+    assert '_sendSteer("note")' in _DEV and '_sendSteer("steer")' in _DEV
+    assert "loop-btn-interrupt" not in _DEV
+    assert '_sendSteer("interrupt")' not in _DEV
+
+
+def test_a_steer_mints_its_own_idempotency_key_per_send():
+    """Same rule as the arm path: one key per operator INTENT, never per page."""
+    assert "idempotency_key: _mcSteerKey()" in _DEV
+
+
+def test_an_empty_steer_is_refused_client_side_too():
+    assert "steer: type something first" in _DEV
+
+
+def test_send_steer_does_not_wear_the_lane_or_shortcut_colour():
+    """MEASURED: --accent and --warn are the same gold in 5 of 6 themes.
+
+    An accented Send STEER rendered identically to a lane button that starts a
+    real headless worker, and declaration-for-declaration identical to
+    .loop-shortcut, whose single click only ARMS. Two identical-looking buttons
+    with opposite click contracts is the confusion arm-then-confirm prevents.
+    """
+    # Match a RULE, not a mention - the comment above these deletions names
+    # both classes to explain why they are gone. Third time this trap has bitten
+    # in this file; scan comment-stripped CSS.
+    css = re.sub(r"/\*.*?\*/", "", _CSS, flags=re.S)
+    assert not re.search(r"\.loop-btn-steer\s*[,:{]", css)
+    assert not re.search(r"\.loop-btn-note\s*[,:{]", css), (
+        ".loop-btn already sets color: var(--text) - the rule was a no-op "
+        "pretending to be a decision")
+    assert 'btn("Send STEER", ""' in _DEV
+    assert 'btn("Send NOTE", ""' in _DEV
+
+
+def test_both_textareas_have_an_accessible_name():
+    """A placeholder is not a name - it vanishes on the first keystroke."""
+    for tid in ("loop-steer-input", "loop-directive-input"):
+        seg = _DEV[_DEV.index(f'"{tid}"'):]
+        seg = seg[:600]
+        assert "aria-label" in seg, f"#{tid} has no accessible name"
+
+
+def test_every_group_in_the_card_is_headed():
+    """The directive block became the only unheaded group when S7 landed above
+    it, so both textareas read as one STEER control."""
+    for head in ("SHORTCUTS", "LANES", "STEER", "DIRECTIVE OVERRIDE"):
+        assert head in _DEV, f"missing sub-head: {head}"
+
+
+def test_the_steer_row_is_not_gated_behind_arm_then_confirm():
+    """Deliberate: a steer executes nothing and kills nothing, and the text has
+    to be typed first, which IS the deliberate act. The confirm window is for
+    things that cannot be taken back."""
+    send = _DEV[_DEV.index("const _sendSteer ="):]
+    send = send[:send.index("\n      };")]
+    assert "_mcArm" not in send
+
+
 def test_the_wired_lane_list_comes_from_the_server():
     """A client-side list drifts the moment a later stage wires a lane."""
     assert "d.lanes_available" in _DEV
