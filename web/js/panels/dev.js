@@ -570,13 +570,173 @@ function _mcPaintLanes() {
   return anyArmed;
 }
 
+// S9 - INTERRUPT. The only Mission Control action that kills a process, so it
+// is the only one whose ARM does a round trip first: the plan requires the
+// button to NAME the agents it will kill BEFORE the confirm, and the names can
+// only come from the server.
+//
+// The fingerprint lives here beside the victims and is dropped by the same
+// paint that observes the arm has lapsed - deliberately the same lifecycle as
+// the idempotency key in arm_confirm.js. A fingerprint that outlived its arm
+// would let a later confirm fire against a list the operator is no longer
+// looking at, which is precisely what the fingerprint exists to prevent.
+const _MC_IRQ_ID = "interrupt";
+let _mcIrq = { fp: null, victims: [], host: null };
+
+function _mcIrqForget() {
+  _mcIrq.fp = null;
+  _mcIrq.victims = [];
+}
+
+function _mcVictimLine(v) {
+  const bits = [String(v.pid), v.name || "?"];
+  if (v.lane) bits.push("lane " + v.lane);
+  else if (v.kind === "controller") bits.push("loop controller");
+  else if (v.kind === "child") bits.push("child of " + v.ppid);
+  return bits.join("  -  ");
+}
+
+function _mcIrqPreview() {
+  _mcMsg("INTERRUPT: probing what is running...");
+  fetch("/api/loop-control", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
+    body: JSON.stringify({ action: "interrupt_preview" }),
+  })
+    .then((r) => (r ? r.json() : null))
+    .then((d) => {
+      if (!d || !d.ok) {
+        _mcMsg("INTERRUPT preview failed: " + ((d && d.error) || "request failed"));
+        return;
+      }
+      if (!d.count) {
+        // Nothing to kill, so nothing to name - arming here would offer a
+        // confirm whose victim list is empty, and the server refuses it anyway.
+        _mcIrqForget();
+        _mcMsg("INTERRUPT: nothing is running - nothing to interrupt");
+        _mcPaint();
+        return;
+      }
+      _mcIrq.fp = d.fingerprint;
+      _mcIrq.victims = d.victims || [];
+      _mcArm.arm(_MC_IRQ_ID);
+      _mcMsg("INTERRUPT armed: " + d.count
+        + " process(es) named below - click again within 3s to KILL them");
+    })
+    .catch(() => _mcMsg("INTERRUPT preview: request failed"));
+}
+
+function _mcIrqFire(key, fp) {
+  // `fp` is passed IN, never read from _mcIrq here. MEASURED live 2026-07-31:
+  // _mcArm.confirm() disarms and notifies SYNCHRONOUSLY, that notify repaints,
+  // and the repaint sees armed === false and calls _mcIrqForget() - so by the
+  // time this function ran, the fingerprint it needed was already null and the
+  // server answered 400 "requires 'fingerprint'". The tier failed safe (nothing
+  // died) but could never kill anything. The caller reads the fingerprint
+  // BEFORE confirm() and hands it over.
+  _mcIrqForget();
+  _mcMsg("INTERRUPT: killing...");
+  fetch("/api/loop-control", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
+    body: JSON.stringify({ action: "interrupt", fingerprint: fp,
+                           idempotency_key: key }),
+  })
+    .then((r) => (r ? r.json() : null))
+    .then((d) => {
+      if (d && d.ok) {
+        _mcMsg("INTERRUPT: " + (d.detail || "done")
+          + (d.replayed ? " (replayed)" : ""));
+      } else if (d && d.refused === "victims_changed") {
+        // The honest failure: what the operator approved is no longer what is
+        // running, so nothing was killed. Say that plainly and make them look
+        // again rather than silently re-targeting.
+        _mcMsg("INTERRUPT REFUSED - the running processes changed since the "
+          + "preview. Nothing was killed. Preview again to see the current "
+          + (d.count || 0) + ".");
+      } else if (d && d.refused) {
+        _mcMsg("INTERRUPT REFUSED - " + d.refused);
+      } else {
+        _mcMsg("INTERRUPT failed: " + ((d && d.error) || "request failed"));
+      }
+      renderLoopStatus();
+    })
+    .catch(() => _mcMsg("INTERRUPT: request failed"));
+}
+
+function _mcPaintInterrupt() {
+  const host = _mcIrq.host;
+  if (!host || !host.isConnected) return false;
+  const armed = _mcArm.isArmed(_MC_IRQ_ID);
+  // The arm lapsing is what expires the fingerprint. Handled on the paint that
+  // notices, so a countdown running out is indistinguishable from a Cancel.
+  if (!armed && _mcIrq.fp) _mcIrqForget();
+  const focused = (document.activeElement && host.contains(document.activeElement))
+    ? document.activeElement.dataset.mcId : null;
+  let refocus = null;
+  host.innerHTML = "";
+
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "loop-btn loop-irq-btn" + (armed ? " loop-btn-armed" : "");
+  b.dataset.mcId = _MC_IRQ_ID;
+  b.setAttribute("aria-pressed", armed ? "true" : "false");
+  if (focused === _MC_IRQ_ID) refocus = b;
+  if (armed) {
+    b.textContent = "Confirm INTERRUPT - kill " + _mcIrq.victims.length
+      + " (" + Math.ceil(_mcArm.remainingMs() / 1000) + "s)";
+    b.title = "kills exactly the processes listed below, and nothing else";
+  } else {
+    b.textContent = "INTERRUPT - show what dies";
+    b.title = "probes what is running and names it before anything is killed";
+  }
+  b.addEventListener("click", () => {
+    if (_mcArm.isArmed(_MC_IRQ_ID)) {
+      // Read the fingerprint FIRST: confirm() notifies synchronously, the
+      // notify repaints, and the repaint clears it. See _mcIrqFire.
+      const fp = _mcIrq.fp;
+      const res = _mcArm.confirm(_MC_IRQ_ID);
+      if (res.fired) _mcIrqFire(res.key, fp);
+      return;
+    }
+    _mcIrqPreview();
+  });
+  host.append(b);
+
+  if (armed && _mcIrq.victims.length) {
+    // The named victims. This list IS the safety property - it must be on
+    // screen before the confirm is reachable, not behind a disclosure.
+    //
+    // document.createElement, NOT the `mk` helper. `mk` is a function-LOCAL
+    // const inside renderLoopStatus, so at module scope it is a ReferenceError
+    // - and one thrown here is swallowed by the preview's .catch, which
+    // reported it as "request failed". The armed button still rendered
+    // "Confirm INTERRUPT - kill 3" with NO list beneath it, which is precisely
+    // the blind kill this tier exists to prevent. Every other module-scope
+    // paint function here already uses createElement for the same reason.
+    const list = document.createElement("ul");
+    list.className = "loop-irq-victims";
+    list.setAttribute("aria-label", "processes this interrupt will kill");
+    _mcIrq.victims.forEach((v) => {
+      const li = document.createElement("li");
+      li.className = "loop-irq-victim";
+      li.textContent = _mcVictimLine(v);
+      list.append(li);
+    });
+    host.append(list);
+  }
+  if (refocus) refocus.focus();
+  return armed;
+}
+
 function _mcPaint() {
   // Lanes first, and its armed flag is folded into the timer decision below -
   // otherwise a lane armed on its own would have its countdown cancelled by
   // the shortcut row reporting nothing armed.
   const laneArmed = _mcPaintLanes();
+  const irqArmed = _mcPaintInterrupt();
   const host = _mcHost;
-  if (!host || !host.isConnected) { _mcSetTimer(!!laneArmed); return; }
+  if (!host || !host.isConnected) { _mcSetTimer(!!laneArmed || !!irqArmed); return; }
   // The countdown repaints 4x/second while armed, and innerHTML="" destroys the
   // node the operator is standing on. Without this, tabbing to a shortcut and
   // pressing Enter armed it and threw focus to <body> - so the confirm click
@@ -613,9 +773,10 @@ function _mcPaint() {
     });
     host.append(b);
   });
-  // laneArmed too: the arm controller is global, so an armed LANE - the heavier
-  // action of the two - would otherwise be the one with no visible abort.
-  if (anyArmed || laneArmed) {
+  // laneArmed and irqArmed too: the arm controller is global, so an armed LANE
+  // or INTERRUPT - the heavier actions - would otherwise be the ones with no
+  // visible abort.
+  if (anyArmed || laneArmed || irqArmed) {
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "loop-btn loop-btn-cancel";
@@ -629,7 +790,7 @@ function _mcPaint() {
     host.append(cancel);
   }
   if (refocus) refocus.focus();
-  _mcSetTimer(anyArmed || !!laneArmed);
+  _mcSetTimer(anyArmed || !!laneArmed || !!irqArmed);
 }
 
 function renderLoopStatus(ctlMsg) {
@@ -802,6 +963,23 @@ function renderLoopStatus(ctlMsg) {
         host.append(mk("div", "loop-line",
           "newest pending: " + steerInfo.newest));
       }
+
+      // INTERRUPT (S9). Its own sub-head, below STEER, because it is a
+      // different ACT and not a louder tier of the same one - the two share a
+      // heading only in the plan's prose, never on screen.
+      host.append(mk("div", "loop-sub-head",
+        "INTERRUPT - STOPS THE TURN AND KILLS AGENTS"));
+      host.append(mk("div", "loop-line",
+        "names every process first - the confirm can only kill what the "
+        + "preview listed"));
+      _mcIrq.host = mk("div", "loop-shortcuts loop-irq-row");
+      host.append(_mcIrq.host);
+      // Paint again now that the interrupt host exists. The earlier call sits
+      // above this block and painted into a host that was still null, so
+      // without this the button is missing until the next 5s poll - the same
+      // class of bug as the S4 card that rendered into markup that did not
+      // exist.
+      _mcPaint();
 
       // Its own sub-head. Before S7 this was the trailing block and read as a
       // group; once the steer row landed above it, it became the only unheaded

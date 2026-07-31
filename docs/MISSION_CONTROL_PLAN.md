@@ -142,8 +142,8 @@ Source: Cloud Four, "Truth, Lies and Progress Bars"; AI UX Design Guide,
 | S5 | Shortcut 3 - existing headless command, first real lane fire | medium | SHIPPED 2026-07-31 `6003b244` |
 | S6 | Commands 4, 5, 6 authored + wired | medium | SHIPPED 2026-07-31 `992a5a6c` |
 | S7 | Steer channel - NOTE and STEER tiers only | medium | SHIPPED 2026-07-31 `992a5a6c` |
-| S8 | Commands 7, 8 - highest blast radius, worktree-first, frozen-file adjudicator | HIGH | operator sign-off |
-| S9 | INTERRUPT tier | HIGH | operator sign-off |
+| S8 | Commands 7, 8 - highest blast radius, worktree-first, frozen-file adjudicator | HIGH | SHIPPED 2026-07-31 - see "S8-S9 as shipped" |
+| S9 | INTERRUPT tier | HIGH | SHIPPED 2026-07-31 - see "S8-S9 as shipped" |
 
 S1 and S2 are pure backend with tests and no ability to launch anything. They are
 the correct first session.
@@ -359,3 +359,112 @@ archive them; it may not delete them.
 `Temp\claude\C--Sibling-A` at 35.5 GB is the single largest item and it
 belongs to the SIBLING repo. Touching it is a cross-repo act under the same
 joint-action rule as `slots.py`. Propose to the operator; never auto-clean.
+
+## S8-S9 as shipped (2026-07-31)
+
+| Piece | File | Note |
+|---|---|---|
+| Lane 7 doc | `tools/headless-repo.md` | BREADTH - restructure, clean, modularize |
+| Lane 8 doc | `tools/headless-true-audit.md` | DEPTH - one file at a time, rewrite + harden |
+| Wiring | `ops/loop/lane_launcher.py` LANE_COMMANDS | all six lanes wired; the panel derives its greyed-out set from this map |
+| INTERRUPT | `ops/loop/interrupt.py` | preview / fingerprint / execute |
+| Route | `dashboard/routes_loop_control.py` | `interrupt_preview` (read, unkeyed) + `interrupt` (keyed, fingerprint-gated) |
+| Panel | `web/js/panels/dev.js` + `web/css/panels/header.css` | arm goes through the preview, never the raw click |
+| Tests | `tests/test_interrupt_{tier,route,panel}.py` | 17 + 13 + 16 |
+
+**Naming the victims is the easy half; the fingerprint is the half that makes it
+true.** The plan asked that the button "NAME the agents it will kill before you
+confirm". A list rendered at preview time is a claim about a moment that has
+already passed - between the preview and the confirm a worker exits, a lane is
+reclaimed, another fires, and Windows recycles the pid. A confirm that simply
+re-enumerates would kill processes the operator never saw while the UI had
+honestly named the ones it did: the list would be true and the kill still
+wrong. So `preview` mints a digest over the exact victim set, `execute`
+re-probes and compares, and a mismatch is a REFUSAL carrying the fresh list.
+The digest covers process START TIME, not just pid, because a pid alone cannot
+tell a live worker from its recycled number.
+
+**Descendants are victims, and order matters.** The lock records the pid of the
+`run_lane.ps1` powershell runner; the process doing the work is the `claude -p`
+child under it. Naming only the holder would let the operator confirm a kill
+that leaves the actual agent running. They are reaped deepest-first - killing
+a parent first re-parents its live children away, and the next enumeration no
+longer links them. `taskkill` is called WITHOUT `/T` for the same reason the
+fingerprint exists: letting taskkill walk the tree itself would kill
+descendants that appeared after the preview, which are by definition unnamed.
+
+**An unknown tier degrading to NOTE was the safe answer until it wasn't.**
+`steer.normalize_tier` maps anything unrecognised to the default, and while
+INTERRUPT existed only as a 400 at the route that was correct - an unknown tier
+became a note that executes nothing. The moment S9 made INTERRUPT real the same
+degrade became the hazard: a caller asking to stop the agents would get a note,
+and the UI would report an interrupt that never happened. `append` now REFUSES
+an audit-only tier instead of degrading it, and `record` is the only door into
+the log for one. An S7 test asserted the old behaviour using "INTERRUPT" as its
+literal example, so shipping S9 required changing a test that was right when it
+was written.
+
+**Two S5 tests were hostages to the roster.** `test_the_two_highest_blast_radius_lanes_stay_unwired`
+and the missing-doc test both used "true-audit" as a fixture BECAUSE it was
+unwired. Wiring it in S8 did not just break them - it would have silently
+emptied them: a test whose subject is "an unwired lane raises" measures nothing
+once no lane is unwired. The first is now the S8 acceptance (all six wired) and
+the second builds its fixture explicitly.
+
+**TWO defects were invisible to every source-level test and died only under a
+live click.** Both were in the panel, both left the whole suite green, and both
+were found by driving the real dashboard against a real staged victim set.
+
+1. **`mk` is a function-LOCAL const, so at module scope it is a ReferenceError.**
+   `_mcPaintInterrupt` built the victim list with `mk(...)`, copying the idiom
+   from inside `renderLoopStatus` where `mk` is in scope. The throw was
+   swallowed by the preview's own `.catch` and surfaced as "request failed",
+   while the armed button still read `Confirm INTERRUPT - kill 3` with NO list
+   beneath it. A blind kill wearing the safety feature's clothes. The existing
+   code already solved this twice - define a local, or take `mk` as a parameter
+   the way `_loopLockRow(mk, ...)` does - and a guard now fails on any
+   module-scope function that reaches for it.
+
+2. **`_mcArm.confirm()` notifies SYNCHRONOUSLY, and the repaint ate the
+   fingerprint.** The confirm handler read `_mcIrq.fp` after calling
+   `confirm()`; that call disarms, notifies, repaints, and the repaint sees
+   `armed === false` and clears the fingerprint by design. So the POST went out
+   with no fingerprint and the server correctly answered 400. The tier failed
+   SAFE - nothing was killed - but it could never kill anything either, and it
+   looked identical to a network error. The handler now captures the
+   fingerprint before `confirm()` and passes it in.
+
+The shared lesson is that both bugs were about a binding's lifetime, and a
+source-literal test cannot see a lifetime. Mutation testing did not help
+either: every mutant of the WRITTEN property was caught, because the written
+property was not the broken one.
+
+**End-to-end, measured.** With three real staged processes (a powershell
+parent, its conhost, and a sleeping worker child), preview named all three,
+the confirm killed all three, and the ledger recorded
+`killed [23884, 27572, 5960]` - children before the parent, which is the
+ordering the docstring claims and `taskkill` without `/T` requires.
+
+**The no-`/T` property was documented and pinned by nothing.** Adding `/T` to
+the argv left all 124 tests green. It is now pinned as exact argv, the way
+`tests/test_loop_executor.py` already pins the executor's.
+
+**The psutil fallback silently voided two of the three safety properties.** An
+ImportError degraded to naming seed pids with `started=None`, which drops every
+descendant from the victim list AND collapses the fingerprint to pid-only,
+behind one log line. It now raises: a tier that cannot enumerate honestly must
+refuse to run.
+
+**`--bad` fails AA as button ink in five of six themes.** Measured live at the
+rendered 18px/700 - below the 18.66px bold large-text threshold, so the 4.5:1
+bar applies: arcane 3.28, moonlit 3.31, hextech 3.66, ember 3.79, bloodmoon
+3.79, terminal 4.59. The border keeps the danger colour (a non-text element
+owes 3:1) and the label is `--text`, measured 10.83:1 - the same split
+`.loop-lock-state.unavailable` already made in this card.
+
+**The mirror drifted against a moving target.** `tools/*.md` and
+`.claude/commands/*.md` were byte-equal and `drift_guard` reported clean, then
+diverged minutes later: the authoring agents were still editing the tracked
+side after the mirror was taken. The mirror is only meaningful once every
+writer has stopped - the same rule as never committing while agents are live.
+CRLF is the usual suspect here and was not the cause; both sides were pure LF.

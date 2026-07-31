@@ -64,26 +64,42 @@ def test_every_wired_command_doc_exists_on_disk():
 
 
 def test_an_unwired_lane_raises_rather_than_launching_nothing():
+    """The example is a lane that does not exist, on purpose.
+
+    Until S8 this test used "true-audit". That made it a hostage to the roster:
+    the moment the lane was legitimately wired, a test whose subject is "an
+    UNWIRED lane raises" started measuring nothing at all. It now names a lane
+    that can never be wired, so the behaviour stays covered for good.
+    """
     with pytest.raises(launcher.LaneLaunchError) as exc:
-        launcher.command_path("true-audit")
+        launcher.command_path("no-such-lane")
     assert "no command doc wired" in str(exc.value)
 
 
-def test_unwired_lanes_are_still_valid_lock_lanes():
-    """The lock knows all six; only the launcher gates which can start."""
-    assert set(launcher.LANE_COMMANDS) <= set(lanes.LANES), (
-        "the launcher must never wire a lane the lock does not know")
+def test_the_launcher_never_wires_a_lane_the_lock_does_not_know():
+    assert set(launcher.LANE_COMMANDS) <= set(lanes.LANES)
 
 
-def test_the_two_highest_blast_radius_lanes_stay_unwired():
-    """repo and true-audit ship LAST, behind their own stage and sign-off.
+def test_all_six_lanes_are_wired():
+    """S8 - repo and true-audit land last, and this is the acceptance.
 
-    Wiring them early would put a file-by-file rewrite and a security audit one
-    confirmed click away, which is exactly the ordering the plan forbids.
+    They were held back on purpose while the rest of the control plane was
+    proven, because wiring them early would have put a file-by-file rewrite and
+    a security audit one confirmed click away. The panel derives its greyed-out
+    set from this map (routes_loop_status._lanes_available), so this is also
+    what turns the last two buttons live.
     """
+    assert set(launcher.LANE_COMMANDS) == set(lanes.LANES), (
+        "every lane in the lock roster must now be startable")
+
+
+def test_the_highest_blast_radius_lanes_run_in_their_own_worktrees():
+    """Never the main tree - the plan's worktree-mandatory rule matters most
+    for the two lanes that restructure files and rewrite them."""
     for lane in ("repo", "true-audit"):
-        assert lane in lanes.LANES
-        assert lane not in launcher.LANE_COMMANDS
+        wt = launcher.worktree_path(lane)
+        assert wt != launcher.REPO_ROOT
+        assert launcher.branch_name(lane) == f"lane/{lane}"
 
 
 # --------------------------------------------------------------------------- worktree
@@ -171,10 +187,13 @@ def test_a_dead_worker_makes_the_lane_reclaimable(lane_root, monkeypatch):
 
 
 # --------------------------------------------------------------------------- failure frees the lane
-def test_a_missing_command_doc_releases_the_lane(lane_root):
-    # "true-audit" is deliberately UNWIRED until its stage lands, which makes it
-    # the honest fixture for this path - no stub required.
-    assert "true-audit" not in launcher.LANE_COMMANDS
+def test_a_missing_command_doc_releases_the_lane(lane_root, monkeypatch):
+    # Until S8 this used "true-audit", which was genuinely unwired and needed no
+    # stub. Now that all six lanes are wired the fixture has to be made: point a
+    # real lane at a doc that is not on disk. Keeping the old spelling would
+    # have left this path silently untested the moment the lane shipped.
+    monkeypatch.setitem(launcher.LANE_COMMANDS, "true-audit",
+                        "tools/does-not-exist.md")
     claim = _claim(lane="true-audit")
     with pytest.raises(launcher.LaneLaunchError):
         launcher.launch_lane("true-audit", run_id="run0002",
