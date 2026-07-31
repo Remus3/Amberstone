@@ -16,9 +16,13 @@
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
   --fs-xs: 16px;
   --fs-sm: 18px;
   --fs-md: 22px;
+  --fs-xl: 37px;
   --hit-min: 42px;
 
   /* web/css/panels/base.css :root - default (hextech) palette */
@@ -27,10 +31,58 @@
   --text: #ECF2FF;
   --text-dim: #8FA3BF;
   --text-faint: #74879F;
+  --dim: #8FA3BF;
   --accent: #C8AA6E;
   --good: #37D08A;
   --bad: #E84057;
   --warn: #E8A33D;
+}
+
+/* Fix round 1 (2026-07-31, CRITICAL 2). This stylesheet has never been
+   loaded with the dashboard's base.css painting the page first - it is the
+   ENTIRE stylesheet for a standalone page - so without an explicit body
+   rule the page is browser-default WHITE, and every card rule below that
+   assumes a dark canvas (e.g. `.loop-state-row { color: var(--text) }`,
+   #ECF2FF) renders at roughly 1.1:1 contrast on it: the primary
+   RUNNING/STOPPED line, the lock states, everything. Measured live. */
+body {
+  margin: 0;
+  padding: var(--space-6);
+  background: var(--canvas);
+  color: var(--text);
+  font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.mc-head {
+  margin-bottom: var(--space-5);
+}
+.mc-head h1 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.mc-sub {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+/* web/css/panels/home.css:867 verbatim. mc.js's loading state and both its
+   error states (loop status unavailable / loop status error) render as
+   this exact class with no other rule anywhere in this file, so it was
+   entirely unstyled - the loading/error text inherited the same invisible
+   default as everything else above. */
+.home-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--dim);
+  text-align: center;
+  list-style: none;
 }
 
 /* Headless loop status card (Settings; reads /api/loop-status). Mobile

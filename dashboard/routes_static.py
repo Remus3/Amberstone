@@ -183,6 +183,15 @@ GET_ROUTES = [
     # overlay-widget variant set). Same _serve_web_asset guard (".." + null-byte
     # + relative_to containment); .html renders as text/html (ctype map above).
     (prefix("/mock/"),                          _serve_web_asset),
+    # /mc/ - TRANSITIONAL (S10 fix round 1, 2026-07-31). web/js/panels/dev.js
+    # imports '../../mc/arm_confirm.js', which resolves in-browser to
+    # /mc/arm_confirm.js; with no route for that prefix the request 404s, the
+    # static import throws, and since main.js statically imports dev.js that
+    # aborts the whole module graph - the dashboard rendered BLANK, not
+    # degraded (measured live). Same _serve_web_asset guard as every other
+    # prefix here. REMOVE this route in Task 9, which deletes the dev.js
+    # import that is the only reason it exists.
+    (prefix("/mc/"),                            _serve_web_asset),
     (equals("/manifest.json"),                  _serve_manifest),
     (equals("/icon.svg"),                       _serve_icon),
     (prefix("/icons/champions/"),               _make_icon_handler("champions")),
