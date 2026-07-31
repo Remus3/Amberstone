@@ -167,16 +167,29 @@ control - it does not retry.
 New, self-contained, importing no game code:
 
 ```
-web/mc/index.html      the whole control plane page
-web/mc/mc.css          lock rows, lane rows, arm/confirm, INTERRUPT block
-web/mc/mc.js           the renderer - moved from dev.js
-web/mc/arm_confirm.js  moved from web/js/lib/ (already pure and portable)
+web/mc/index.html           the whole control plane page
+web/mc/mc.css               lock rows, lane rows, arm/confirm, INTERRUPT block
+web/mc/mc.js                the renderer - moved from dev.js
+web/mc/arm_confirm.js       moved from web/js/lib/ (already pure and portable)
+web/mc/arm_confirm.test.mjs moved WITH it - the `node --test` suite for the
+                            pure arm/confirm logic. Leaving it behind would
+                            orphan the only real coverage of that module.
 ```
 
 No `main.js`, no `header.css`, no design-token file shared with the dashboard.
 Tokens the page needs are inlined in `mc.css`. This is the one place a small
 amount of CSS duplication is accepted on purpose: sharing a stylesheet with the
 dashboard would restore the failure domain S10 exists to break.
+
+**Cache policy.** `dashboard/_static.compute_asset_hash` walks `web/` for the
+`:8888` process only, so `web/mc/` gets no cache-busting hash and an edited
+`mc.js` would serve stale from the browser cache. `mc/handler.py` therefore
+sends `Cache-Control: no-store` on its own assets. A control plane is not a
+high-traffic surface; correctness beats a cached byte.
+
+**Syntax checking.** `node --check` returns exit 0 on a duplicate `const` in an
+import-leading file, which `mc.js` will be. It must be validated through the
+ESM sweep at `tests/test_web_js_esm_parse.py`, never a bare `node --check`.
 
 ### Lifecycle
 
@@ -186,12 +199,58 @@ Scheduled task `RC-MissionControl`:
 - `pythonw.exe mission_control.py` (no console flash). The child-process flash
   caveat is already handled downstream: the only thing this process ever spawns
   is a lane, and `lane_launcher` already uses `CREATE_NO_WINDOW`.
+- **restart on failure: `RestartCount=3`, `RestartInterval=1 minute`** (operator
+  decision 2026-07-31). Choosing a scheduled task over a `rc_supervisor.py`
+  entry bought independence at the cost of the supervisor's auto-restart, and an
+  ONLOGON trigger fires exactly once. Without this setting a crashed control
+  plane stays dead until noticed. Task Scheduler is the watchdog; no new process
+  and no new code.
 - **no hot-reload watcher.** `core.hot_reload` is deliberately NOT started. A
   control plane must not restart itself because an unrelated `.py` changed.
   Restarting Mission Control is an explicit act: end and re-run the task.
+- **its own log file**, `logs/mission_control-YYYY-MM-DD.log`. Two processes
+  appending to the shared `logs/YYYY-MM-DD.log` is a Windows file-lock hazard,
+  and a control plane whose log is interleaved with game-dashboard chatter is
+  harder to read at exactly the moment it matters.
+
+**Bind failure must be loud.** `dashboard/server.py:195` logs a warning and
+keeps going when the port is unavailable. Copying that pattern yields a control
+plane that is silently absent. `mc/server.py` instead logs and **exits
+non-zero**, so the task's Last Result reports the failure and the restart policy
+above engages.
 
 An RC restart via `restart_trigger.txt` cannot touch this process. That is the
 acceptance criterion, and it holds structurally rather than by convention.
+
+### Properties that do not survive a restart - stated, not fixed
+
+`dashboard/_idempotency.py:55` is a plain in-memory `OrderedDict` with no
+persistence. A Mission Control restart therefore **wipes every stored
+idempotency key**, so a request retried across a restart RE-EXECUTES rather than
+replaying its original result. For `interrupt` that means a second kill attempt
+against a re-probed victim set.
+
+This is not a regression - the dashboard behaves identically today - but S10
+makes the control plane independently restartable, so the window is entered far
+more often. It is recorded here rather than fixed because the S9 design already
+covers the dangerous case: `interrupt` re-probes and REFUSES on fingerprint
+mismatch instead of killing what it now finds. Persisting the table is a
+candidate follow-up, not S10 scope.
+
+### Repo-wide guards a new module auto-enrolls in
+
+New `.py` files are swept by guards that scan the whole tree, so `mc/` must
+comply from the first commit rather than be retrofitted:
+
+- every module carries a `# arch: ... | section=... | frozen=no` header line
+- `tests/test_skip_condition_hygiene.py:884` and
+  `tests/test_dead_endpoint_cleanup_item186.py:199` `rglob` every `.py`
+- `tests/test_drift_guard.py` must report 0
+- ruff clean on all new files
+
+Verified so it is not re-derived: there is **no set-equality guard on root
+`*.py`**, so adding `mission_control.py` beside the existing 11 root modules
+breaks nothing.
 
 ### Lanes and INTERRUPT semantics - unchanged, verified
 
@@ -223,18 +282,24 @@ correct loud failure.
 
 ## Test plan
 
-Current surface: **159 tests** across 7 files (the parent plan says 65 - stale,
-corrected here).
+Current surface: **159 tests** across **8 files** (the parent plan says 65 across
+7 - both stale, corrected here).
 
 | File | Tests | Disposition |
 |---|---|---|
-| `tests/test_mission_control_panel.py` | 38 | re-point `INDEX`/`DEV_JS`/`CSS` to `web/mc/index.html`, `web/mc/mc.js`, `web/mc/mc.css`; the slice markers move with the code |
+| `tests/test_mission_control_panel.py` | 38 | re-point `INDEX`/`DEV_JS`/`CSS`/`ARM_JS` to `web/mc/*`. Note `:94` asserts the LITERAL string `from '../lib/arm_confirm.js'`, which becomes a same-dir import - a string edit, not just a path constant |
 | `tests/test_interrupt_panel.py` | 19 | same re-point |
+| `tests/test_web_ascii_sweep.py` | n/a | names `web/js/lib/arm_confirm.js` at `:79`; update to the new path or the sweep silently stops covering it |
 | `tests/test_interrupt_route.py` | 12 | unchanged (route-level, path-agnostic) |
 | `tests/test_interrupt_tier.py` | 19 | unchanged (`ops/loop/interrupt.py`) |
 | `tests/test_loop_status_route.py` | 25 | unchanged |
 | `tests/test_lane_launcher.py` | 23 | unchanged |
 | `tests/test_steer_channel.py` | 23 | unchanged |
+
+Plus the JS-side suite: `web/js/lib/arm_confirm.test.mjs` moves to `web/mc/` and
+its `node --test` invocation path updates. Two docstrings that cite the old
+location (`test_mission_control_panel.py:4`, `test_interrupt_panel.py:5`) update
+with it.
 
 New tests (`tests/test_mission_control_server.py`):
 
@@ -264,6 +329,25 @@ click found the two S9 defects. The 5-phase UI audit therefore stays mandatory
 for `web/mc/index.html`, and the arm-then-confirm path is clicked live before
 this is called done.
 
+## Deploy order
+
+Order matters; two of these are easy to leave until after the task is armed,
+and both fail in a confusing way if you do.
+
+1. **Write the token FIRST** - `config/mission_control_token.txt` (or set
+   `RC_MC_TOKEN`) before `RC-MissionControl` is registered. A running task with
+   no token serves a perfectly readable status page whose every button returns
+   503. That is correct fail-closed behavior, not a bug, but it reads like one.
+   Generate with `python -c "import secrets; print(secrets.token_hex(16))"`.
+2. **Confirm inbound reachability for `:8895`.** No explicit Windows Firewall
+   rule for `:8888` was found while designing, which means `:8888` is reachable
+   over the Tailscale interface by some other mechanism (interface profile or an
+   app-scoped rule). Verify how, rather than assume `:8895` inherits it - and if
+   a rule is needed, scope it to the Tailscale interface, never to Any.
+3. Register the task, start it, then run the acceptance criteria below.
+4. Only then remove the dashboard card and de-register the routes. Landing the
+   removal first would leave a window with no working control plane at all.
+
 ## Acceptance criteria
 
 1. Mission Control answers on `https://100.70.22.55:8895/` **with `:8888`
@@ -274,9 +358,17 @@ this is called done.
 4. POST without a bearer token is 401; with the token, a `stop` action lands and
    `ops/loop/control/STOP` appears.
 5. `:8888` returns 404 for `/api/loop-status` and `/api/loop-control`.
-6. Full suite green **run from the repo root**, ruff clean, `drift_guard` 0.
-7. 5-phase UI audit complete on the new page with every MUST-FIX resolved in the
-   same slice.
+6. **`taskkill /F` the Mission Control pid; the task restarts it within about a
+   minute and it serves again.** Proves the restart policy, which is the only
+   thing standing in for the supervisor that was deliberately not used.
+7. Port already in use: the process exits non-zero and the task's Last Result
+   shows it, rather than logging a warning and idling.
+8. Full suite green **run from the repo root**, ruff clean, `drift_guard` 0.
+9. ESM sweep green over `web/mc/*.js`, and `node --test` green on
+   `arm_confirm.test.mjs` at its new path.
+10. 5-phase UI audit complete on the new page with every MUST-FIX resolved in
+    the same slice, plus a live browser click through arm-then-confirm - the
+    binding-lifetime defects S9 hit are invisible to every test above.
 
 ## Non-goals and explicit do-nots
 
