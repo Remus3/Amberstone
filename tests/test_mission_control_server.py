@@ -405,10 +405,23 @@ def test_bind_failure_exits_non_zero(monkeypatch):
 
 
 def test_no_hot_reload_watcher():
-    """A control plane must not restart itself because an unrelated .py
-    changed. Guarding the absence, because adding it back would look like
-    a helpful consistency fix."""
-    import inspect
-    from mc import server
-    src = inspect.getsource(server)
-    assert "hot_reload" not in src
+    """core.hot_reload must never be imported by either Mission Control
+    entry point. Checked with _import_probe (clean subprocess), the same
+    technique test_loop_routes_do_not_import_dispatch uses above, so an
+    earlier test having already imported hot_reload elsewhere in this
+    process cannot mask a real leak here.
+
+    A substring scan over inspect.getsource() was tried first and
+    rejected: it is defeated by anything that assembles the module name
+    at runtime (e.g. "core." + "hot_" + "reload") or by a
+    differently-named watcher doing the same job, and it never looked at
+    mission_control.py at all - the actual process entry point.
+
+    Scope, stated honestly: this is an IMPORT-TIME guard. It proves
+    mc.server and mission_control do not import core.hot_reload, directly
+    or transitively, merely by being imported. It does NOT prove main()
+    never constructs an equivalent watcher lazily at runtime - that needs
+    a runtime/behavioral check, not an import-time one."""
+    for mod in ("mc.server", "mission_control"):
+        rc, out = _import_probe(mod, ["core.hot_reload"])
+        assert rc == 0, f"{mod}: {out}"
