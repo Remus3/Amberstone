@@ -11,11 +11,9 @@ Three deliberate differences from dashboard/server.py, each with a reason:
      silently absent. For a control plane that is the worst shape a failure
      can take, so this exits and lets the scheduled task's restart policy
      (RestartCount=3, RestartInterval=1min) engage and record it.
-  3. NO HOT-RELOAD WATCHER. The file-change watcher used elsewhere in RC to
-     restart a process on an unrelated edit is deliberately not started
-     here. A guard test in tests/test_mission_control_server.py asserts
-     this module never spells out that watcher's dotted module name, not
-     even in prose, so this paragraph avoids it on purpose.
+  3. NO HOT-RELOAD WATCHER. core.hot_reload is deliberately not started -
+     a control plane must not restart itself when an unrelated .py
+     changes.
 
 TLS reuses the existing mkcert material at ops/tls/rc.pem. A SAN is
 host-scoped, not port-scoped, and tools/regen_rc_cert.ps1 already lists
@@ -25,7 +23,6 @@ with NO cert regen. -k is not acceptable on a surface that can kill.
 from __future__ import annotations
 
 import logging
-import socket
 import ssl
 import threading
 from http.server import ThreadingHTTPServer
