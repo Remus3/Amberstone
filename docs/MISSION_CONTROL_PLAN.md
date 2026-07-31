@@ -177,35 +177,58 @@ for WHEN the dashboard is misbehaving, and today it dies with it. A control
 plane that shares a failure domain with the thing it controls is not a control
 plane.
 
-### What S10 has to answer (design questions, NOT yet decided)
+### S10 design questions - RESOLVED by operator 2026-07-31
 
-1. **Own process and port**, with its own supervisor entry, so an RC restart and
-   a Mission Control restart are independent acts. Port to be chosen; `:8888`
-   stays the game dashboard.
-2. **Own asset tree** - not `web/js/panels/dev.js`. The INTERRUPT block, the
-   lane row, the lock rows and `arm_confirm.js` move to a page that imports no
-   game code. `arm_confirm.js` is already pure and portable.
-3. **Reachable by IP over the tailnet.** Legion is `legion-rc` / `100.70.22.55`.
-   Note `web_dashboard.py` serves HTTPS with a mkcert cert whose SAN list
-   decides which hostnames/IPs validate - `tools/regen_rc_cert.ps1` is the
-   generator, and a new host or bare IP needs regenerating, not just a firewall
-   rule. Do not assume `-k` is acceptable for a control plane that can kill.
-4. **Auth is now load-bearing.** The current trust model is "the `:8888` surface
-   is local / tailnet only, single-operator" (`routes_loop_control.py` header).
-   S9 added an action that KILLS PROCESSES. Widening reachability without
-   revisiting that model is the one part of S10 that must not be done casually.
-5. **Shared modules, not duplicated ones.** `ops/loop/*` (lanes, launcher,
-   steer, interrupt, intents) are the real control plane and stay put; S10 moves
-   the SERVING layer, not the logic. Resist forking a second copy of anything -
-   the repo already carries one byte-identical-by-contract pair and does not
-   need a second class of them.
+Full implementation-grade spec:
+`docs/superpowers/specs/2026-07-31-mission-control-s10-decouple-design.md`.
+The decisions, one line each:
 
-Sequencing note: this is a relocation of a surface that now has 65 tests across
-`tests/test_interrupt_{tier,route,panel}.py`, `test_mission_control_panel.py`,
-`test_loop_status_route.py` and `test_lane_launcher.py`. Those tests pin the
-CURRENT file paths in several places (the panel tests read `dev.js` and
-`header.css` off disk by path), so S10 is partly a test-relocation exercise and
-should expect to touch them deliberately rather than discover it mid-move.
+1. **Port 8895**, own process (`mission_control.py` + `mc/`). Measured free;
+   in use are 8888, 8889, 8890, 8891, 8893, 8894, 8901. `:8888` stays the game
+   dashboard and loses both loop routes entirely (404, not a redirect).
+2. **Own asset tree** `web/mc/{index.html,mc.css,mc.js}` plus `arm_confirm.js`
+   moved out of `web/js/lib/`. Imports no game JS and no shared stylesheet -
+   the small CSS duplication is accepted on purpose, because sharing
+   `header.css` would restore the failure domain S10 exists to break.
+3. **Reachable by IP, no cert regen needed.** A SAN is host-scoped, not
+   port-scoped, and `tools/regen_rc_cert.ps1` already carries `legion-rc`,
+   `legion-rc.tailc150de.ts.net` and `100.70.22.55`, so
+   `https://100.70.22.55:8895/` validates against the cert Legion already
+   trusts. `-k` is not used. Bind is **tailnet + loopback only**
+   (`100.70.22.55` + `127.0.0.1`), never a wildcard - LAN `192.168.8.x` cannot
+   reach the control plane at all.
+4. **Auth: bearer token, POST-only**, resolved from `RC_MC_TOKEN` then
+   `config/mission_control_token.txt`, mirroring `core/vision_token.py`. No
+   hardcoded fallback and **no fail-open**: a server with no token configured
+   refuses every POST with 503. GET stays open behind the bind scope.
+   Comparison via `hmac.compare_digest`; the token is never logged or echoed.
+5. **Shared modules, not duplicated ones.** `mc/` imports
+   `dashboard.routes_loop_{status,control}` directly; `ops/loop/*` stays put.
+   The one enabling edit is extracting `equals` / `prefix` into a stdlib-only
+   `dashboard/_matchers.py` that `_dispatch.py` re-exports - without it, an
+   `mc/` import would drag in `api_schema` + pydantic and quietly re-couple the
+   two surfaces. Verified: `_dispatch.py` imports the game routes LAZILY inside
+   the cache builders, so nothing in the game route tree is reachable from
+   `mc/`.
+6. **Lifecycle: own scheduled task `RC-MissionControl`** (ONLOGON, HIGHEST,
+   `pythonw.exe`), NOT an `ops/rc_supervisor.py` entry - that file is frozen,
+   and a shared watchdog would re-couple the two processes. `core.hot_reload`
+   is deliberately not started: a control plane must not restart itself because
+   an unrelated `.py` changed.
+7. **The dashboard card is removed with no link left behind** (operator call).
+
+Sequencing note: this is a relocation of a surface that now has **159 tests**
+across `tests/test_interrupt_{tier,route,panel}.py`,
+`test_mission_control_panel.py`, `test_loop_status_route.py`,
+`test_lane_launcher.py` and `test_steer_channel.py`. Only the two panel files
+pin file paths (they read `dev.js` and `header.css` off disk); the other five
+are path-agnostic and move unchanged. Corrects the earlier "65 tests" estimate.
+
+Verified while designing, so it does not need re-deriving: lanes outlive the
+process that fired them (`lane_launcher` uses `CREATE_NO_WINDOW` with no job
+object), and S9's INTERRUPT walks descendants of the LOCK HOLDER rather than of
+the serving process - so moving the serving layer leaves the victim set
+unchanged and Mission Control never appears in its own preview.
 
 S1 and S2 are pure backend with tests and no ability to launch anything. They are
 the correct first session.
