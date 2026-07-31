@@ -7,7 +7,10 @@ import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } fro
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
 import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './replay_events.js';
 // Mission Control S4: arm-then-confirm for the two queued shortcuts.
-import { createArmController } from '../lib/arm_confirm.js';
+// S10: relocated to web/mc/ (the standalone Mission Control page). This
+// import is temporary - it exists only so the dashboard keeps working
+// between here and Task 9, which deletes this whole block from dev.js.
+import { createArmController } from '../../mc/arm_confirm.js';
 
 // -- Settings view (2026-04-26) -----------------------------------
 function _settingsRefresh() {
