@@ -2,8 +2,8 @@
 """Mission Control S9 - the panel half of the tier that kills.
 
 The pure arm-then-confirm lifecycle is covered by
-`node --test web/js/lib/arm_confirm.test.mjs`. What cannot be covered there is
-the property S9 exists for and that lives only in dev.js: **a confirm may only
+`node --test web/mc/arm_confirm.test.mjs`. What cannot be covered there is
+the property S9 exists for and that lives only in mc.js: **a confirm may only
 be reached through a preview that named the victims.**
 
 That is a wiring fact, not a logic fact. `_mcArm.arm()` for the interrupt is
@@ -14,7 +14,7 @@ arm_confirm test green, keep the route tests green, and quietly turn the
 button into a blind kill. This file is what catches that.
 
 Source-level, same technique as tests/test_mission_control_panel.py: the three
-files involved (dev.js, header.css, and the arm controller) only meet in a
+files involved (mc.js, mc.css, and the arm controller) only meet in a
 browser.
 """
 from __future__ import annotations
@@ -23,18 +23,18 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DEV_JS = ROOT / "web" / "js" / "panels" / "dev.js"
-CSS = ROOT / "web" / "css" / "panels" / "header.css"
+MC_JS = ROOT / "web" / "mc" / "mc.js"
+CSS = ROOT / "web" / "mc" / "mc.css"
 
-_DEV = DEV_JS.read_text(encoding="utf-8")
+_MC = MC_JS.read_text(encoding="utf-8")
 _CSS = CSS.read_text(encoding="utf-8")
 
 
 def _fn(name: str) -> str:
-    """The body of one top-level function in dev.js."""
-    start = _DEV.index(f"function {name}(")
-    nxt = _DEV.find("\nfunction ", start + 1)
-    return _DEV[start:nxt if nxt > 0 else len(_DEV)]
+    """The body of one top-level function in mc.js."""
+    start = _MC.index(f"function {name}(")
+    nxt = _MC.find("\nfunction ", start + 1)
+    return _MC[start:nxt if nxt > 0 else len(_MC)]
 
 
 # --------------------------------------------------------------------------- name before kill
@@ -94,8 +94,11 @@ def test_a_lapsed_arm_discards_the_fingerprint():
 
 
 def test_firing_consumes_the_fingerprint():
+    # mc.js (S10) posts through mcPost(), a bearer-token wrapper around fetch -
+    # the standalone page needs auth headers a raw fetch() call would not
+    # carry. mcPost() IS the request going out, same as the raw fetch() was.
     body = _fn("_mcIrqFire")
-    assert body.index("_mcIrqForget()") < body.index("fetch("), (
+    assert body.index("_mcIrqForget()") < body.index("mcPost("), (
         "the fingerprint must be spent before the request goes out, so a "
         "double-fire cannot reuse it")
 
@@ -186,8 +189,11 @@ def test_the_victim_list_is_not_the_faintest_text_in_the_card():
 def test_the_interrupt_css_defines_every_property_it_uses():
     """The S4 lesson: var(--bg) named nothing, failed silently, and fell back to
     inherited near-white on the highest-stakes state in the panel."""
+    # .loop-irq-row through EOF: mc.css is standalone (S10) and the INTERRUPT
+    # rules are its last block, so there is no ".mode-pill" marker to end on
+    # anymore - the old end marker was borrowed from unrelated content further
+    # down the shared header.css, not from anything Mission Control owns.
     block = _CSS[_CSS.index(".loop-irq-row"):]
-    block = block[:block.index(".mode-pill")]
     block = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
     used = set(re.findall(r"var\(\s*(--[a-z0-9-]+)", block))
     defined = set()
@@ -210,19 +216,19 @@ def test_no_module_scope_function_calls_the_local_mk_helper():
     wearing the safety feature's clothes.
 
     Generalised past the one call site on purpose. `mk` is defined only at
-    dev.js:168 and dev.js:778, both inside enclosing functions, so ANY
+    mc.js:509, inside its enclosing function (renderLoopStatus), so ANY
     module-scope function reaching for it has the same bug.
     """
-    defs = [m for m in re.finditer(r"^const mk = |^function mk\(", _DEV, re.M)]
+    defs = [m for m in re.finditer(r"^const mk = |^function mk\(", _MC, re.M)]
     assert not defs, (
         "mk is now module-scope - this guard is obsolete, delete it rather "
         "than letting it pass vacuously")
 
     offenders = []
-    for m in re.finditer(r"^function (\w+)\(([^)]*)\)", _DEV, re.M):
+    for m in re.finditer(r"^function (\w+)\(([^)]*)\)", _MC, re.M):
         name, params = m.group(1), m.group(2)
-        nxt = _DEV.find("\nfunction ", m.end())
-        body = _DEV[m.start():nxt if nxt > 0 else len(_DEV)]
+        nxt = _MC.find("\nfunction ", m.end())
+        body = _MC[m.start():nxt if nxt > 0 else len(_MC)]
         # Strip comments - the fix note deliberately mentions mk by name.
         body = re.sub(r"//[^\n]*", "", body)
         body = re.sub(r"/\*.*?\*/", "", body, flags=re.S)
@@ -247,13 +253,13 @@ def test_the_interrupt_host_is_painted_after_it_is_mounted():
     `_mcPaint()` runs once above this block while `_mcIrq.host` is still null,
     so without a second call the button is absent until the next poll.
     """
-    mount = _DEV.index("_mcIrq.host = mk(")
-    tail = _DEV[mount:mount + 900]
+    mount = _MC.index("_mcIrq.host = mk(")
+    tail = _MC[mount:mount + 900]
     assert "_mcPaint();" in tail
 
 
 def test_the_interrupt_has_its_own_sub_head_not_a_steer_tier():
     """INTERRUPT is a different ACT, not a louder tier of guidance. Sharing the
     STEER heading would present it as one."""
-    assert "INTERRUPT - STOPS THE TURN AND KILLS AGENTS" in _DEV
-    assert "STEER - GUIDANCE, NEVER AN INTERRUPT" in _DEV
+    assert "INTERRUPT - STOPS THE TURN AND KILLS AGENTS" in _MC
+    assert "STEER - GUIDANCE, NEVER AN INTERRUPT" in _MC
