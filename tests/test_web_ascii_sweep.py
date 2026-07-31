@@ -69,7 +69,17 @@ _WEB = _REPO_ROOT / "web"
 # and the refreshed tree with the SAME tokeniser, exactly one of 165 web/
 # sources differs in its live half - web/js/lib/items_index.js, whose
 # DDRAGON_FALLBACK_VERSION const is the slice's only web edit and nothing else.
-_LIVE_HALF_DIGEST = "02edd9aabdf6f74220454742acf5e5afd00f9d00e7a5c057b8992a6c68f2c691"
+# RE-CAPTURED at Mission Control S4 (the dashboard panel wired to
+# /api/loop-status), superseding the 16.15.1 capture. Ordinary case: LIVE web
+# edits, no tokeniser change, so the classifier is fixed and the two-tree diff
+# is a straight answer. Run over HEAD and the S4 tree with the SAME tokeniser,
+# exactly 4 of 166 web/ sources differ in their live half - web/index.html (the
+# new MISSION CONTROL card), web/css/panels/header.css (the S4 block),
+# web/js/panels/dev.js (the lock rows + shortcuts, plus 10 pre-existing U+00B7
+# middots swept to " - " per the ASCII hard rule) and web/js/lib/arm_confirm.js
+# (new file, hence 166 sources rather than 165) - which is the slice's whole
+# file set and nothing else.
+_LIVE_HALF_DIGEST = "c34515fbed615dc7e8c5bf383ac145dddb5dd1abedb8805ab260aaa9a4befe06"
 
 
 def _web_sources() -> list[Path]:
