@@ -27,6 +27,25 @@ State (derived, never trusted from a single field):
   running  no STOP and cycle.txt is present.
   idle     neither (never started or cleaned).
 
+Mission Control S4 adds two LOCK blocks. Both answer FREE / RUNNING /
+RECLAIMABLE and both decide by PROBING the pid, never by stat-ing the file - a
+lock whose holder is dead is indistinguishable from a live one by file
+inspection alone (measured: control/RUNNING.lock carried pid 9380, long gone).
+RECLAIMABLE must never render as RUNNING.
+
+  lanes            ops/loop/lanes.lane_state() over control/lanes/0.lock - the
+                   mutual-exclusion lock for the six headless lanes (S1).
+  controller_lock  the same three-state probe over control/RUNNING.lock, the
+                   loop controller's own single-flight lock. Separate file,
+                   separate lifetime; it is what makes the stale-lock case
+                   visible today, since the lanes dir does not exist until the
+                   first lane fires.
+
+READS DO NOT WRITE. This is the dashboard poll path (every 4s). Nothing here
+creates the lanes dir, clears a stale lock or touches control/ in any way -
+reclaiming is a deliberate act inside try_acquire_lane, never a side effect of
+rendering. Pinned by test_poll_path_writes_nothing.
+
 Response (always HTTP 200 unless an unexpected top-level error -> 500):
   {
     "ok": true,
@@ -38,18 +57,23 @@ Response (always HTTP 200 unless an unexpected top-level error -> 500):
     "last_done": {"cycle","sha"(8),"tests_pass","regressions","ts","source"} | null,
     "budget": {<budget.json dict>} | null,
     "last_commit": {"sha","subject","iso"} | null,
+    "lanes": {"state","lane","pid","run_id","worktree","age_s"} | null,
+    "controller_lock": {"state","pid","run_id","age_s"} | null,
     "log_tail": [<str>, ...],
     "updated_at": <iso8601 Z>
   }
 """
 from __future__ import annotations
 
+import importlib
 import json
 from dashboard._errors import send_error
 import logging
 import os
 import re
 import subprocess
+import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -160,6 +184,103 @@ def _last_done() -> dict | None:
     }
 
 
+# --------------------------------------------------------------------------- lock states (S4)
+# S1 owns ops/loop/lanes.py. Late-bound exactly as routes_loop_control does, so
+# this read-only route stays importable when lanes.py is absent - the loop
+# status must not go down with the lane lock.
+_LANES_MODULE = "ops.loop.lanes"
+
+# None means "take the lanes.py contract default" - see _lane_lock. Tests
+# redirect it at a tmp dir; production never sets it.
+LANES_ROOT = None
+
+# The loop controller's own single-flight lock. Different file, different owner
+# and different lifetime from the lane lock; both are reported, never merged.
+CONTROLLER_LOCK_NAME = "RUNNING.lock"
+
+
+def controller_lock_path() -> Path:
+    """Resolved at CALL time off CONTROL_DIR, never bound at import.
+
+    A module-level `CONTROL_DIR / name` constant would ignore a monkeypatched
+    CONTROL_DIR, so the test sandbox would silently read the operator's real
+    control dir and the suite would pass while measuring the wrong file.
+    """
+    return CONTROL_DIR / CONTROLLER_LOCK_NAME
+
+
+def _lanes():
+    cached = sys.modules.get(_LANES_MODULE)
+    if cached is not None:
+        return cached
+    return importlib.import_module(_LANES_MODULE)
+
+
+def _lane_lock() -> dict | None:
+    """`lane_state()` for the six-lane mutex, or None when S1 is unavailable.
+
+    Reads only. `lane_state` is documented never to mutate, and `lock_path`
+    creates nothing, so polling this leaves control/ byte-identical.
+
+    LANES_ROOT stays None in production: the contract default IS
+    ops/loop/control/lanes, and passing it explicitly here would let this route
+    and POST /api/loop-control drift onto two different lock dirs. That seam was
+    flagged as unpinned in the plan; it is pinned by
+    test_status_and_control_share_one_lane_root.
+    """
+    try:
+        return dict(_lanes().lane_state(root=LANES_ROOT))
+    except Exception as exc:  # noqa: BLE001 - a missing/broken S1 must not 500 the poll
+        log.warning("loop-status: lane_state failed: %s", exc)
+        return None
+
+
+def _controller_lock() -> dict | None:
+    """FREE / RUNNING / RECLAIMABLE for control/RUNNING.lock.
+
+    Same rule as the lane lock: the verdict comes from probing the recorded pid.
+    A lock whose holder is gone reads RECLAIMABLE, never RUNNING - collapsing
+    the two is what made a dead loop report as live.
+    """
+    try:
+        lanes = _lanes()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("loop-status: lanes import failed: %s", exc)
+        return None
+    lock = controller_lock_path()
+    free = {"state": lanes.FREE, "pid": None, "run_id": None, "age_s": None}
+    if not lock.exists():
+        return free
+    rec = _read_json(lock)
+    rec = rec if isinstance(rec, dict) else {}
+    try:
+        pid = int(rec.get("pid"))
+    except (TypeError, ValueError):
+        pid = None
+    ts = rec.get("ts")
+    try:
+        ts = float(ts)
+    except (TypeError, ValueError):
+        try:
+            ts = lock.stat().st_mtime
+        except OSError:
+            ts = None
+    out = {
+        "state": lanes.RUNNING,
+        "pid": pid,
+        "run_id": (None if rec.get("run_id") is None else str(rec["run_id"])),
+        "age_s": None if ts is None else max(0.0, time.time() - ts),
+    }
+    if pid is None:
+        # Unreadable holder: presumed live only inside the write grace window,
+        # the same tolerance lanes.py applies to a half-written lock.
+        if out["age_s"] is not None and out["age_s"] > lanes.WRITE_GRACE_S:
+            out["state"] = lanes.RECLAIMABLE
+    elif not lanes.slots.pid_alive(pid):
+        out["state"] = lanes.RECLAIMABLE
+    return out
+
+
 # --------------------------------------------------------------------------- builder
 def build_loop_status() -> dict:
     stop_exists = (CONTROL_DIR / "STOP").exists()
@@ -202,6 +323,8 @@ def build_loop_status() -> dict:
         "last_done": _last_done(),
         "budget": budget,
         "last_commit": last_commit,
+        "lanes": _lane_lock(),
+        "controller_lock": _controller_lock(),
         "log_tail": log_tail,
         "updated_at": _now_iso(),
     }
