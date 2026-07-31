@@ -140,9 +140,15 @@ class RegistryMetadataTests(unittest.TestCase):
         from pathlib import Path
 
         root = Path(__file__).resolve().parents[3]
-        path = root / "data" / "daemon_slayer" / "16.14.1" / "enchanter_items.json"
+        # Resolve the LIVE patch: a hardcoded dir goes stale on every refresh,
+        # and the Share mirror only ships the current snapshot, so the pin then
+        # breaks the self-contained guard rather than this assertion.
+        patch = (root / "data" / "daemon_slayer" / "current.txt").read_text(
+            encoding="utf-8"
+        ).strip()
+        path = root / "data" / "daemon_slayer" / patch / "enchanter_items.json"
         payload = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(payload["_meta"]["patch"], "16.14.1")
+        self.assertEqual(payload["_meta"]["patch"], patch)
 
 
 if __name__ == "__main__":

@@ -66,7 +66,7 @@ _REPO = Path(__file__).resolve().parents[1]
 _SHARE = _REPO / "Share"
 _SRC = _SHARE / "src"
 _INGEST = _SHARE / "lolmath_ingest"
-_PATCH = "16.14.1"
+_PATCH = "16.15.1"
 
 # Authored docs whose mechanical version/patch anchors must track the live
 # engine. The CHANGELOG (release history, legitimately full of OLD versions) and

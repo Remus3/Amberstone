@@ -35,6 +35,11 @@ import urllib.error
 from pathlib import Path
 
 ROOT     = Path(__file__).parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from agents.daemon_slayer import mode_variants  # noqa: E402
+
 DATA     = ROOT / "data"
 META     = DATA / "meta"
 ICONS    = DATA / "icons"
@@ -83,6 +88,49 @@ def _write_json(path: Path, data) -> None:
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     tmp.replace(path)
+
+
+def _drop_throwback_rows(filename: str, doc):
+    """Strip DDragon THROWBACK-MODE rows from a freshly fetched meta doc.
+
+    16.15.1 shipped a parallel legacy registry beside the live one: 60
+    ``Jade_<Champion>`` rows at ``base_key + 60000``, 162 items in
+    ``[770000, 780000)`` (retired gear - Sightstone, Zz'Rot Portal, Hex Core),
+    and 16 summoner spells whose ``modes`` list is exactly ``["JADE"]``.
+
+    ``data/meta/*`` is not an upstream mirror - it is RC's LIVE-ROSTER cache,
+    read by ~15 modules that treat it as "the champions/items in play" and
+    frequently key by display NAME, which the throwback rows duplicate (they
+    diverge on armor and hp for all 60, attack damage for 58, movespeed for 21).
+    The faithful upstream copy is kept separately under
+    ``data/meta_build/ddragon/<patch>/``, so nothing is lost here.
+
+    Revisit when a JADE mode is wired into mode detection - note the live Flash
+    row already advertises a ``KIWI_JADE`` mode, so an ARAM-Mayhem-Jade variant
+    is the likely first contact.
+    """
+    if not isinstance(doc, dict) or not isinstance(doc.get("data"), dict):
+        return doc
+    rows = doc["data"]
+    if filename == "ddragon_champions.json":
+        kept = mode_variants.canonical_champions(rows)
+    elif filename == "ddragon_items.json":
+        kept = mode_variants.canonical_items(rows)
+    elif filename == "ddragon_summoner_spells.json":
+        kept = {
+            sid: entry
+            for sid, entry in rows.items()
+            if not (
+                isinstance(entry, dict)
+                and list(entry.get("modes") or []) == ["JADE"]
+            )
+        }
+    else:
+        return doc
+    dropped = len(rows) - len(kept)
+    if dropped:
+        log.info("  %s: dropped %d throwback-mode row(s)", filename, dropped)
+    return {**doc, "data": kept}
 
 
 def _write_bytes(path: Path, data: bytes) -> None:
@@ -406,6 +454,7 @@ def cmd_ddragon(force: bool = False):
         try:
             log.info("  Fetching %s...", filename)
             data = _fetch_json(url)
+            data = _drop_throwback_rows(filename, data)
             _write_json(dest, data)
             log.info("  OK: %s (%d bytes)", filename, dest.stat().st_size)
         except Exception as e:  # noqa: BLE001

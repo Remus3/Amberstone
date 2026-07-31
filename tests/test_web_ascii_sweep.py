@@ -63,7 +63,13 @@ _WEB = _REPO_ROOT / "web"
 # over 08c8aade and the post-fix tree with the SAME tokeniser, exactly one of
 # 165 web/ sources differs in its live half - web/js/lib/overlay_layout.js -
 # which is the slice's whole file set and nothing else.
-_LIVE_HALF_DIGEST = "00d8e20587c910f316bc515900b7e8cce755c3b1c3cc6318e26b6d765c49909b"
+# RE-CAPTURED at the 16.14.1 -> 16.15.1 DDragon patch refresh, superseding the
+# R224 capture. Ordinary case: a LIVE web edit, no tokeniser change, so the
+# classifier is fixed and the two-tree diff is a straight answer. Run over HEAD
+# and the refreshed tree with the SAME tokeniser, exactly one of 165 web/
+# sources differs in its live half - web/js/lib/items_index.js, whose
+# DDRAGON_FALLBACK_VERSION const is the slice's only web edit and nothing else.
+_LIVE_HALF_DIGEST = "02edd9aabdf6f74220454742acf5e5afd00f9d00e7a5c057b8992a6c68f2c691"
 
 
 def _web_sources() -> list[Path]:

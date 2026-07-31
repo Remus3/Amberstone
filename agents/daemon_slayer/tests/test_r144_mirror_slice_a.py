@@ -80,11 +80,24 @@ _HELD_ARENA_MIRRORS = ("223107", "223190", "223222", "226620")
 class AllyGrantMirrorCoverageTests(unittest.TestCase):
     """The R144 headline gap: SR-mode mirror ids priced 0.0."""
 
-    def test_name_to_id_sr_really_hands_back_a_mirror(self):
-        """The defect is live-reachable, not theoretical."""
+    def test_name_to_id_sr_now_hands_back_the_base_not_a_mirror(self):
+        """The reachability half of R144 is CLOSED at the resolver.
+
+        Both 6620 and its 326620 mirror are map-11 legal, so the resolver's old
+        first-write-wins rule resolved lexicographically and handed SR the
+        mirror - that was the live-reachable defect this slice was filed on. The
+        rule is now lowest-numeric-id-wins (mirrors are always base + an offset),
+        so the canonical row wins. Fixed 2026-07-30 alongside the 16.15.1 refresh,
+        where the same bug reached ARAM once Riot flagged the Arena mirror
+        223084 map-12 legal beside the 900 HP Heartsteel base.
+
+        The pricing guards below are deliberately KEPT: they are defense in depth
+        for any other route that puts a mirror id in front of the pricer, which
+        the resolver fix does not cover.
+        """
         from core.daemon_slayer_resolver import name_to_id
 
-        self.assertEqual(name_to_id("Echoes of Helia", mode="sr"), "326620")
+        self.assertEqual(name_to_id("Echoes of Helia", mode="sr"), "6620")
 
     def test_sr_mirrors_price_equal_to_their_base(self):
         for mirror, base in sorted(_ALLY_GRANT_MIRROR_SOURCE.items()):
