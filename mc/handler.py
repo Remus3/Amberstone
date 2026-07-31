@@ -72,7 +72,12 @@ class Handler(BaseHTTPRequestHandler):
         rel = rel.split("?", 1)[0]
         target = (WEB_DIR / rel).resolve()
         # Path traversal guard: the resolved path must stay inside WEB_DIR.
-        if not str(target).startswith(str(WEB_DIR.resolve())):
+        # is_relative_to is a real path-component check. A plain
+        # str(target).startswith(str(WEB_DIR)) has a sibling-prefix bypass:
+        # web/mc-evil/ starts with the same characters as web/mc/, so a
+        # string prefix check lets ../mc-evil/secret.txt through even
+        # though mc-evil is a sibling directory, not a subpath of mc.
+        if not target.is_relative_to(WEB_DIR.resolve()):
             return False
         if not target.is_file():
             return False
@@ -101,7 +106,21 @@ class Handler(BaseHTTPRequestHandler):
             if not ok:
                 self._send_json(status, body)
                 return
-            n = int(self.headers.get("Content-Length", "0"))
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                # Malformed header (e.g. "not-a-number") - a 400, not the
+                # generic 500 the bare int() used to fall through to.
+                self._send_json(400, {"ok": False, "error": "invalid content-length"})
+                return
+            if n < 0:
+                # A negative Content-Length is malformed, not "too large" -
+                # `n > _MAX_POST_BYTES` is never true for a negative n, so
+                # without this check rfile.read(n) runs with n unmodified,
+                # and on a real socket-backed rfile a negative size reads
+                # until EOF: unbounded, defeating the cap below entirely.
+                self._send_json(400, {"ok": False, "error": "invalid content-length"})
+                return
             if n > _MAX_POST_BYTES:
                 self._send_json(413, {"ok": False, "error": "payload too large"})
                 return
