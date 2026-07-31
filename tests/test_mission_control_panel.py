@@ -158,9 +158,25 @@ def test_the_armed_state_wins_over_the_lane_colour():
         "an unscoped .loop-lane-btn rule would clobber the armed ink again")
 
 
-def test_an_armed_lane_still_offers_cancel():
-    """The heavier action must not have the weaker abort affordance."""
-    assert "if (anyArmed || laneArmed)" in _DEV
+def test_every_armable_action_still_offers_cancel():
+    """The heavier actions must not have the weaker abort affordance.
+
+    Widened for S9. The literal `if (anyArmed || laneArmed)` this used to match
+    was true and brittle: adding a THIRD armable action (INTERRUPT, the only
+    one that kills) broke the assertion without breaking the property, which is
+    the wrong way round. Assert the property - every armable flag reaches both
+    the cancel affordance and the countdown timer.
+    """
+    import re
+    cancel = re.search(r"if \(([^)]*Armed[^)]*)\) \{", _DEV)
+    assert cancel, "no armed-gated cancel block found at all"
+    for flag in ("anyArmed", "laneArmed", "irqArmed"):
+        assert flag in cancel.group(1), (
+            f"{flag} can arm but has no visible abort - the heavier the act, "
+            "the more it needs one")
+        assert flag in _DEV[_DEV.index("_mcSetTimer(anyArmed"):], (
+            f"{flag} arms without starting the countdown, so its 3s "
+            "auto-disarm never fires and the arm is effectively permanent")
 
 
 def test_the_lane_sub_head_states_the_contract_and_the_wired_count():

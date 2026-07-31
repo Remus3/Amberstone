@@ -49,7 +49,29 @@ stop a request already in flight, nor a phone retrying over Tailscale. A repeat
 key returns the ORIGINAL stored result with `"replayed": true` and performs no
 second side effect. See dashboard/_idempotency.py.
 
-This module still executes nothing - it writes files and takes a file lock.
+S9 adds the two INTERRUPT actions - the only ones here that touch a process:
+
+  interrupt_preview  no body, no key. NAMES every process an interrupt would
+                     kill (lane lock holder, controller lock holder, and their
+                     descendants) plus a `fingerprint` pinning that exact set.
+                     Read-only, so it is deliberately NOT idempotency-keyed:
+                     remembering a preview would freeze one stale victim list
+                     into every subsequent arm.
+  interrupt          {fingerprint, idempotency_key}. Kills the previewed
+                     victims and only those. The fingerprint is re-probed, not
+                     trusted, so a set that changed between the preview and the
+                     confirm is a 200 refusal (`victims_changed`) carrying the
+                     FRESH list - never a kill of processes the operator did
+                     not see. A missing fingerprint is a 400: no preview means
+                     nothing was ever named.
+
+The guidance action (`steer`) still rejects tier "interrupt" with a 400. That
+is not an oversight - the plan requires the act never be downgraded to a note,
+and there is deliberately no path through this route that does so.
+
+Everything except `interrupt` writes files and takes file locks; `interrupt`
+is the single exception and carries the arm-then-confirm plus fingerprint
+machinery because of it.
 """
 from __future__ import annotations
 
@@ -101,15 +123,25 @@ _INTENT_FILES = {
 }
 
 _VALID_ACTIONS = ("stop", "resume", "set_directive", "clear_directive",
-                  "fire_lane", "queue_intent", "steer")
+                  "fire_lane", "queue_intent", "steer",
+                  "interrupt_preview", "interrupt")
 
 # S7 owns the steer channel. Late-bound for the same reason as the other two.
 _STEER_MODULE = "ops.loop.steer"
 
+# S9 owns the INTERRUPT tier - the only action here that kills a process.
+_INTERRUPT_MODULE = "ops.loop.interrupt"
+
 # Actions that carry a non-repeatable operator intent and therefore require an
 # idempotency_key. The four legacy actions are naturally idempotent (writing the
 # same STOP twice is the same world) and keep their key-free contract.
-_IDEMPOTENT_ACTIONS = ("fire_lane", "queue_intent", "steer")
+#
+# `interrupt_preview` is deliberately NOT here. It is a read: it takes no lock,
+# writes nothing and kills nothing, so there is nothing to replay - and
+# remembering it would be actively harmful, freezing one stale victim list into
+# every subsequent arm. `interrupt` itself is the most important entry in the
+# list, because a phone retrying over Tailscale must not kill twice.
+_IDEMPOTENT_ACTIONS = ("fire_lane", "queue_intent", "steer", "interrupt")
 
 
 def _awrite(path: Path, text: str) -> None:
@@ -293,6 +325,82 @@ def _steer(body: dict, key: str) -> tuple[int, dict]:
                  "tier": tier, "id": rec["id"], "key": key}
 
 
+def _interrupt():
+    """Import ops/loop/interrupt.py (S9) at CALL time. See _lanes."""
+    cached = sys.modules.get(_INTERRUPT_MODULE)
+    if cached is not None:
+        return cached
+    return importlib.import_module(_INTERRUPT_MODULE)
+
+
+def _interrupt_preview() -> tuple[int, dict]:
+    """Name the processes an interrupt would kill. Kills nothing, writes nothing.
+
+    This is the half that makes the tier honest: the plan requires the button
+    to NAME the agents before the confirm, and this is where the names come
+    from. It also hands back the fingerprint that pins this exact answer, which
+    the confirm must carry so a set that moved in between is refused rather
+    than killed blind.
+    """
+    try:
+        mod_i = _interrupt()
+    except ModuleNotFoundError as exc:
+        log.warning("api/loop-control interrupt_preview: %s", exc)
+        return 503, {"ok": False, "action": "interrupt_preview",
+                     "error": "interrupt unavailable: "
+                              "ops/loop/interrupt.py is not installed"}
+    try:
+        out = dict(mod_i.preview())
+    except Exception as exc:  # noqa: BLE001 - a probe fault must not 500
+        log.warning("api/loop-control interrupt_preview: %s", exc)
+        return 503, {"ok": False, "action": "interrupt_preview",
+                     "error": f"preview failed: {exc}"}
+    out["action"] = "interrupt_preview"
+    out["state"] = _state()
+    return 200, out
+
+
+def _do_interrupt(body: dict, key: str) -> tuple[int, dict]:
+    """Kill the previewed victims - and ONLY those.
+
+    `fingerprint` is mandatory and unforgeable in the sense that matters: the
+    module re-probes and compares rather than trusting it, so a client that
+    invents one gets a `victims_changed` refusal instead of a kill. Its absence
+    means no preview was ever shown, which means nothing was ever named - a 400
+    rather than a kill of whatever happens to be running.
+    """
+    fp = str(body.get("fingerprint") or "").strip()
+    if not fp:
+        return 400, {"ok": False, "action": "interrupt",
+                     "error": "interrupt requires 'fingerprint' from "
+                              "interrupt_preview - a confirm may only kill "
+                              "what a preview named"}
+    try:
+        mod_i = _interrupt()
+    except ModuleNotFoundError as exc:
+        log.warning("api/loop-control interrupt: %s", exc)
+        return 503, {"ok": False, "action": "interrupt",
+                     "error": "interrupt unavailable: "
+                              "ops/loop/interrupt.py is not installed"}
+    try:
+        out = dict(mod_i.execute(fp, key=key))
+    except Exception as exc:  # noqa: BLE001 - never 500 the server on a kill path
+        log.warning("api/loop-control interrupt: %s", exc)
+        # 503, not 200: only settled answers are remembered, and remembering a
+        # fault would replay it forever against a machine that has moved on.
+        return 503, {"ok": False, "action": "interrupt",
+                     "error": f"interrupt failed: {exc}"}
+    out["action"] = "interrupt"
+    out["state"] = _state()
+    out["key"] = key
+    if out.get("refused"):
+        out["detail"] = f"refused: {out['refused']}"
+    else:
+        out["detail"] = f"killed {len(out.get('killed') or [])} process(es)"
+    # A refusal is a normal answer - 200 with ok=false, same as a held lane.
+    return 200, out
+
+
 def _apply_idempotent(action: str, body: dict) -> tuple[int, dict]:
     """Gate an intent-carrying action on its idempotency key.
 
@@ -316,6 +424,8 @@ def _apply_idempotent(action: str, body: dict) -> tuple[int, dict]:
         status, payload = _fire_lane(body)
     elif action == "steer":
         status, payload = _steer(body, key)
+    elif action == "interrupt":
+        status, payload = _do_interrupt(body, key)
     else:
         status, payload = _queue_intent(body, key)
     if status == 200:
@@ -332,6 +442,8 @@ def apply_action(action: str, body: dict) -> tuple[int, dict]:
         return 400, {"ok": False, "error": f"unknown action: {action!r}",
                      "valid": list(_VALID_ACTIONS)}
     CONTROL_DIR.mkdir(parents=True, exist_ok=True)
+    if action == "interrupt_preview":
+        return _interrupt_preview()
     if action in _IDEMPOTENT_ACTIONS:
         return _apply_idempotent(action, body)
     detail = ""
