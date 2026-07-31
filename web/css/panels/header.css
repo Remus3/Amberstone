@@ -3116,6 +3116,18 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   color: var(--text-faint); border-color: var(--text-faint);
   cursor: not-allowed; opacity: 0.75;
 }
+/* Steer channel (S7). It carries NO accent on purpose, and that absence is the
+   design. Measured across all six themes: --accent and --warn are the same gold
+   in five of them (OKLab dE 0.010 to 0.067; only arcane, the live theme,
+   separates them at 0.177) - so an accented Send STEER rendered in the SAME
+   colour as a lane button that starts a real headless worker, and
+   declaration-for-declaration identical to .loop-shortcut, whose single click
+   only ARMS. Two identical-looking buttons a few inches apart with opposite
+   click contracts is the affordance confusion arm-then-confirm exists to
+   prevent. Base .loop-btn weight is what "lighter than a lane fire" actually
+   looks like. There is no .loop-btn-note rule either - .loop-btn already sets
+   color: var(--text), so it was a no-op pretending to be a decision. */
+.loop-steer-row { margin-top: var(--space-2); }
 .mode-pill {
   padding: 5px 14px;
   border: 1px solid transparent;
