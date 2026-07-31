@@ -80,9 +80,16 @@ MAX_DIRECTIVE = 8000
 _LANES_MODULE = "ops.loop.lanes"
 
 # OVERWRITE-on-write, single well-known path, no timestamp suffix (operator
-# decision 2026-07-30). S2 only RECORDS it in the queued intent; the file is
-# written when a session consumes the intent, in a later stage.
-NEXT_SESSION_PATH = "Desktop/NEXT-SESSION.txt"
+# decision 2026-07-30). S2 only RECORDS it in the queued intent; S3
+# (ops/loop/intents.py) is what writes the file when a session consumes.
+#
+# RC- prefixed because the Desktop is SHARED with the sibling repos (operator
+# 2026-07-30): Sibling-A and RM run this same design and must never
+# overwrite each other's hand-off when they run concurrently. The consumer
+# ENFORCES the prefix rather than trusting this string - see
+# ops.loop.intents.resolve_next_session_path. Pinned equal by
+# tests/test_session_intents.py::test_default_next_session_path_matches_the_route.
+NEXT_SESSION_PATH = "Desktop/RC-NEXT-SESSION.txt"
 
 _INTENT_FILES = {
     "halt_save": "INTENT_HALT_SAVE.json",
