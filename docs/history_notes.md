@@ -119,6 +119,34 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-29g - RM-118 wielder HSP item-amp reaches the HYBRID (bruiser) RANKER (ENGINE 1.264.0 -> 1.265.0).
+
+**Commit `fb72d0f9`, pushed. Tier-2: engine-signature change + new route seam, ENGINE bump, Share resync, DS :8893 restarted -> 1.265.0.**
+The remaining open half after 2026-07-29f (which did the EHP/tank ranker). RM-124 live validation
+(G2-39) still blocked - no SR game (mode=client, LCU Offline, relay empty). Probe live state first.
+
+What shipped:
+- `assume_hsp_amp` now reaches the HYBRID ranker (`compute_hybrid`/`rank_items_by_hybrid`, a SEPARATE
+  module from the EHP ranker). Three gates: engine (kwarg at END -> baseline + candidate `compute_ehp`,
+  3 call sites), route `_route_rank_bruiser` -> `/rank-bruiser`, client `rank_bruiser_for` (emitted via
+  `_emit_ehp_family_seams`). DEFAULT-OFF, byte-identical OFF; INERT unless a self-shield item
+  (Sterak's 3053 / Shieldbow 6673) is in the build.
+- TDD RED-first `tests/test_rank_hybrid_hsp_amp_rm118.py` (11 tests). DS suite CLEAN 10138 passed / 0 failed.
+- `test_rune_resist_signature_convention_r134.py` gained `_RM118_TAIL` on the two hybrid fns (expected END-shift).
+
+Two things worth not re-learning:
+- **The dirty 16.15.1 ddragon working-tree data poisons any build-table regen.** First regen showed a
+  958-line CONTENT diff (item 6653 added) that was NOT my DEFAULT-OFF seam - it was the dirty ddragon
+  data. Fix: `git stash push` the `data/meta/ddragon_*.json` + `web/data/*_index.json`, regen against
+  clean HEAD (tables then diff ONLY the version stamp + timestamp), `git stash pop` to restore.
+  Those data files stay do-not-refresh.
+- **The 3 magic-pen `773020` (Sorcerer's Shoes) DS failures are PRE-EXISTING** and dirty-ddragon driven,
+  not any code change - confirmed by re-running that file with the ddragon data stashed (9 passed / 0 failed).
+
+STILL OPEN in RM-118: the 22 ledgered seams in `test_stranded_hsp_seam_r197.py::STRANDED_TODAY`.
+
+---
+
 # 2026-07-29f - RM-118 wielder HSP item-amp reaches the EHP RANKER (ENGINE 1.263.0 -> 1.264.0).
 
 **Commit `e075a221`, pushed. Tier-2: engine ranker-signature change, ENGINE bump, Share resync, DS :8893 restarted -> 1.264.0.**
