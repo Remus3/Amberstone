@@ -557,3 +557,59 @@ diverged minutes later: the authoring agents were still editing the tracked
 side after the mirror was taken. The mirror is only meaningful once every
 writer has stopped - the same rule as never committing while agents are live.
 CRLF is the usual suspect here and was not the cause; both sides were pure LF.
+
+## S10 as shipped (2026-07-31, complete)
+
+Nine tasks. Tasks 1-8 built and proved the standalone control plane; task 9
+deleted the dashboard's own copy. Both halves shipped the same day.
+
+| Piece | Where | Note |
+|---|---|---|
+| Standalone package | `mc/__init__.py`, `mc/auth.py`, `mc/handler.py`, `mc/routes.py`, `mc/server.py`, `mission_control.py` | imports the existing `dashboard/routes_loop_status.py` + `routes_loop_control.py` - never forks the loop logic |
+| Standalone page | `web/mc/index.html`, `mc.css`, `mc.js`, `arm_confirm.js` (+ `arm_confirm.test.mjs`) | moved out of `web/js/lib/`; imports NO game-dashboard code, checked by `mc.js`'s own header comment and `test_mc_package_imports_no_game_code` |
+| Bind + auth | `mc/server.py` | :8895, loopback + tailnet only (`127.0.0.1`, `100.70.22.55`) - no LAN, no wildcard; bearer token, fails closed on an unconfigured server (503, never open) |
+| Scheduled task | `tools/install_mission_control_task.ps1` -> `RC-MissionControl` | its OWN task, not an `rc_supervisor` entry - an RC restart for a game-overlay change must never touch the control plane. AtLogOn (fast boot start) + a `-Once` trigger with a 1-min indefinite repeat (the AtLogOn-only first attempt never got a computable `NextRunTime`, so the repeat trigger IS the watchdog: alive -> `MultipleInstances=IgnoreNew` no-ops the tick, dead -> the tick starts it) |
+| Dashboard removal | `web/js/panels/dev.js`, `main.js`, `index.html`, `web/css/panels/header.css`, `dashboard/_dispatch.py`, `dashboard/routes_static.py` | task 9 - the Headless-loop-status panel, its router call, its settings-card, its CSS block, its two route registrations, and the fix-round-1 transitional `/mc/` static route are all gone. `:8888/api/loop-status` and `/api/loop-control` are 404 by design |
+| Residue guard | `tests/test_mission_control_server.py` | set-equality over 25 identifiers across the four edited dashboard files - a partial deletion fails loudly instead of shipping a card that renders and does nothing |
+
+**Six acceptance criteria, all live-verified before task 9 started:** the
+standalone process serves both routes on :8895 independent of `web_dashboard.py`
+being up or down; auth gates POST and fails closed; the scheduled task
+self-heals a killed process (measured: dead with no hand-start, back on a new
+pid within the observation window); the page renders and arm-then-confirm
+works against the real server; the cert covers both bind addresses; and
+`ops/loop/*` was never forked - `mc/routes.py` imports the same two dashboard
+route modules the old dashboard dispatch table used to register.
+
+**The failure domain S10 exists to sever, closed from both directions.**
+S9 proved the forward case live: a single `mk` ReferenceError in
+`web/js/panels/dev.js` - dashboard code, not Mission Control code - left the
+INTERRUPT victim list unrendered while the armed kill button still displayed.
+Task 9 proved the reverse would have been just as real: `dev.js` had a
+bottom-of-file `export { ... renderLoopStatus ... }` statement neither the
+plan nor its corrections named. Deleting the function without also removing
+it from that export list is a static SyntaxError - exporting an undefined
+name - which aborts the whole ES module graph and blanks the ENTIRE dashboard,
+not just the panel. `tests/test_web_js_esm_parse.py` (extended over `web/mc/`
+in task 7) is what would have caught it in CI; here TDD order caught it before
+that mattered. Same lesson, opposite file, opposite direction - which is the
+actual argument for two failure domains instead of one.
+
+**Verification a source-level test cannot do: two live clicks.** Armed
+"Halt and Save" and let the 3s window expire - the `.loop-btn-armed` class,
+the "Confirm ... (3s)" label and a same-tick `Cancel` button all appeared on
+arm and fully reverted on timeout, no stuck state. Armed "/done Continue" and
+confirmed it within the window, which fires the real `_mcFire`-equivalent
+code path including a real `fetch` to the real server - safe by construction
+(auth runs before dispatch, proven by this repo's own
+`test_live_post_without_token_never_reaches_the_route`, and no MC token was
+cached in the audit browser) and confirmed after the fact two ways: the
+network log shows a genuine `401 Unauthorized`, and `ops/loop/control/STOP`
+- the untouchable operator halt - is byte-identical before and after, same 30
+files in the directory, same 39 bytes. This is the same defect class S9 found
+twice (a function-local `mk` referenced at module scope; a confirm that ate
+its own fingerprint on repaint) and the class the S9 section above says
+plainly: mutation testing did not catch either one, because every mutant of
+the WRITTEN property was caught - the written property was not the broken
+one. Only a live click has ever found this class of bug in Mission Control,
+and it is now 2 for 2 confirming a clean state rather than finding a third.
