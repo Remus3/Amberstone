@@ -187,35 +187,65 @@ def cursor() -> int:
         return 0
 
 
-def pending(tier=None) -> list:
-    """Unconsumed steers, oldest first. NEVER writes - this is the poll path.
-
-    `tier` filters, so a consumer that only honours NOTE at a safe boundary can
-    ask for exactly that without draining the STEER entries it is not ready for.
-    """
+def _unconsumed() -> list:
+    """Every record past the cursor, ANY tier. The raw window."""
     at = cursor()
+    return [r for r in _read_all() if int(r.get("id", 0)) > at]
+
+
+def pending(tier=None) -> list:
+    """Unconsumed GUIDANCE, oldest first. NEVER writes - this is the poll path.
+
+    Audit-only tiers are excluded. An INTERRUPT record shares this log so a
+    mis-fire is auditable, but it is a record of something that already
+    happened, not a work item - and the two consumers of `pending` both treat
+    what they get as work. Found by the /done ritual draining a session's own
+    INTERRUPT rows as though the operator had sent them, and by the dashboard
+    badge (fed by `summary`) claiming guidance was waiting under a sub-head
+    that reads "STEER - GUIDANCE, NEVER AN INTERRUPT".
+
+    `tier` narrows further, so a consumer that only honours NOTE at a safe
+    boundary can ask for exactly that.
+    """
     want = None if tier is None else normalize_tier(tier)
-    return [r for r in _read_all()
-            if int(r.get("id", 0)) > at and (want is None or r.get("tier") == want)]
+    return [r for r in _unconsumed()
+            if r.get("tier") not in AUDIT_ONLY_TIERS
+            and (want is None or r.get("tier") == want)]
+
+
+def audit_trail(limit=None) -> list:
+    """The whole ledger, every tier, ignoring the cursor. Read-only.
+
+    The counterpart to `pending`: filtering audit rows out of the WORK path
+    must not hide them from the RECORD, since the ledger is the only way to
+    audit a mis-fire after the fact.
+    """
+    rows = _read_all()
+    return rows if not limit else rows[-int(limit):]
 
 
 def drain() -> list:
-    """Return the pending steers AND advance the cursor past them.
+    """Return pending GUIDANCE and advance the cursor past everything read.
 
-    The cursor moves to the highest id RETURNED, so an entry appended between
-    the read and the write is not skipped - it simply stays pending for the next
-    drain. Advancing to `_next_id()` instead would silently swallow it.
+    Two separate things, deliberately. The cursor advances past audit rows too
+    even though they are not returned: it is a consumption cursor, and if it
+    stalled behind an INTERRUPT record every later drain would re-walk it and
+    the dashboard badge would climb without bound.
+
+    It moves to the highest id in the window this call READ, so an entry
+    appended between the read and the write is not skipped - it simply stays
+    pending for the next drain. Advancing to `_next_id()` would swallow it.
     """
-    items = pending()
-    if not items:
+    window = _unconsumed()
+    if not window:
         return []
-    highest = max(int(r["id"]) for r in items)
+    highest = max(int(r["id"]) for r in window)
     _awrite(STEER_CURSOR, f"{highest}\n".encode("ascii"))
-    return items
+    return [r for r in window if r.get("tier") not in AUDIT_ONLY_TIERS]
 
 
 def summary() -> dict:
-    """Counts for the dashboard. Read-only."""
+    """Counts for the dashboard. Read-only. Guidance only - see `pending`."""
     items = pending()
     return {
         "pending": len(items),

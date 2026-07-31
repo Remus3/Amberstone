@@ -75,6 +75,67 @@ def test_the_interrupt_tier_is_refused_rather_than_degraded(chan):
         steer.append("x", tier="interrupt")
 
 
+def test_an_audit_row_is_not_pending_guidance(chan):
+    """An INTERRUPT record shares the ledger but is NOT a work item.
+
+    Found by the /done ritual itself: draining the channel at wrap returned
+    this session's own INTERRUPT audit rows as though the operator had sent
+    them. The dashboard has the same bug from the other end - `summary()` feeds
+    the "N PENDING" badge under a sub-head that reads "STEER - GUIDANCE, NEVER
+    AN INTERRUPT", so a machine-written audit row makes the panel claim
+    guidance is waiting when the operator sent none.
+    """
+    steer.record("INTERRUPT killed: 123 x.exe", tier="interrupt")
+
+    assert steer.pending() == []
+    assert steer.summary()["pending"] == 0
+
+
+def test_draining_returns_guidance_only(chan):
+    steer.append("real guidance", tier="note")
+    steer.record("INTERRUPT refused: no_victims", tier="interrupt")
+
+    got = steer.drain()
+
+    assert [r["text"] for r in got] == ["real guidance"]
+
+
+def test_draining_still_advances_past_an_audit_row(chan):
+    """Skipping them in the RETURN must not leave them unconsumed forever.
+
+    The cursor is a guidance-consumption cursor. If it stalled behind an audit
+    row, every later drain would re-walk it and the badge would climb without
+    bound.
+    """
+    steer.append("g1", tier="note")
+    steer.record("INTERRUPT killed: 1 a.exe", tier="interrupt")
+    steer.drain()
+
+    steer.append("g2", tier="note")
+    assert [r["text"] for r in steer.drain()] == ["g2"]
+
+
+def test_an_audit_only_log_still_advances_the_cursor(chan):
+    steer.record("INTERRUPT refused: no_victims", tier="interrupt")
+
+    assert steer.drain() == []
+    assert steer.cursor() == 1, (
+        "an audit-only round left the cursor at 0, so the row stays pending "
+        "and is re-walked on every future drain")
+
+
+def test_the_audit_trail_is_still_readable(chan):
+    """Filtering them out of the WORK path must not hide them from the record -
+    the ledger is the only way to audit a mis-fire after the fact."""
+    steer.record("INTERRUPT killed: 123 x.exe", tier="interrupt")
+    steer.drain()
+
+    rows = steer.audit_trail()
+
+    assert len(rows) == 1
+    assert rows[0]["tier"] == "interrupt"
+
+
 def test_text_is_capped(chan):
     rec = steer.append("y" * (steer.MAX_TEXT + 500))
     assert len(rec["text"]) == steer.MAX_TEXT
@@ -159,22 +220,26 @@ def test_a_steer_appended_during_a_drain_is_not_swallowed(chan):
     seen = steer.pending()                 # what a caller has in hand
 
     # Simulate the race directly: an entry lands between the read and the write.
-    real_pending = steer.pending
+    # The seam is `_unconsumed`, which is what drain reads through - it used to
+    # be `pending`, and moved when audit-only tiers were filtered out of the
+    # guidance path. The PROPERTY under test did not change, only where drain
+    # reads. Patching the stale seam would leave this passing vacuously.
+    real_unconsumed = steer._unconsumed
     monkeypatched = {"done": False}
 
-    def once(tier=None):
+    def once():
         if not monkeypatched["done"]:
             monkeypatched["done"] = True
-            out = real_pending(tier)
+            out = real_unconsumed()
             steer.append("b")              # arrives AFTER drain's own read
             return out
-        return real_pending(tier)
+        return real_unconsumed()
 
-    steer.pending = once
+    steer._unconsumed = once
     try:
         got = steer.drain()
     finally:
-        steer.pending = real_pending
+        steer._unconsumed = real_unconsumed
 
     assert [r["text"] for r in got] == ["a"]
     assert steer.cursor() == 1, "the cursor must not run ahead of what it returned"
