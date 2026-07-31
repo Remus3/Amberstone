@@ -103,6 +103,58 @@ RC coaching stays on the direct API regardless: it uses the Console API key (`AP
 
 ---
 
+## Mission Control (:8895)
+
+Standalone control-plane process (`mission_control.py` + `mc/`), decoupled
+from RC by design (S10, 2026-07-31) so an RC restart can never touch it. It
+exposes an action that KILLS PROCESSES - the auth and TLS notes below are
+load-bearing, not boilerplate. Scheduled-task row: see `RC-MissionControl`
+in the table above.
+
+**Token provisioning.** `mc/auth.py` resolves the bearer token from env
+`RC_MC_TOKEN`, else the first line of `config/mission_control_token.txt`.
+There is no other fallback and it fails CLOSED: with no token configured the
+page still loads and every GET still reads fine, but every POST returns 503.
+That is correct designed behavior and it looks exactly like a bug - check
+this first before debugging anything else. Generate and install one:
+```powershell
+python -c "import secrets; print(secrets.token_hex(16))"
+```
+Save the output as the sole line of `config/mission_control_token.txt`. The
+file is gitignored (`.gitignore:49`) - never commit it.
+
+**TLS: use `--ssl-no-revoke`, never `-k`.** RC's mkcert CA publishes no CRL
+and no OCSP responder, and Windows Schannel treats a missing revocation
+source as a hard failure, so a bare `curl` against :8895 fails with
+`CRYPT_E_NO_REVOCATION_CHECK`. This is repo-wide (the existing :8888
+dashboard has the identical gap), not a Mission Control defect - it just has
+to be documented somewhere first. `--ssl-no-revoke` keeps hostname, chain
+and expiry verification fully enabled and skips only the unsatisfiable
+revocation lookup:
+```powershell
+curl --ssl-no-revoke https://legion-rc:8895/api/loop-status
+```
+POST routes additionally need `-H "Authorization: Bearer <token>"` (the
+token from `config/mission_control_token.txt` above). Do NOT use
+`-k`/`--insecure` here: it disables all four checks (hostname, chain,
+expiry, revocation) and would admit a MITM against an endpoint that can
+kill processes.
+
+**Restart.** Mission Control is deliberately NOT supervisor-managed and does
+NOT watch `restart_trigger.txt` - that independence from RC is the entire
+point of S10. Stop/start its own scheduled task instead:
+```powershell
+schtasks /End /TN "RC-MissionControl"
+schtasks /Run /TN "RC-MissionControl"
+```
+**Known trap:** `/End` then `/Run` can race and leave the process dead with
+`Last Result 0` (a false-green exit code) - do not trust the exit code
+alone. **Verify a live pid** with the GET probe above instead: if
+`/api/loop-status` answers, the restart worked; if it does not, re-run
+`schtasks /Run /TN "RC-MissionControl"`.
+
+---
+
 ## Data pipeline (patch day)
 
 ```powershell
