@@ -61,8 +61,8 @@ ledger with its key, so a mis-fire is visible after the fact.
 **1. Halt and Save.** Writes `control/STOP` (existing, proven path) plus
 `control/INTENT_HALT_SAVE.json`. The session finishes its current step, runs the
 done ritual, and writes the next-session bootstrap prompt to
-`Desktop/NEXT-SESSION.txt` instead of only emitting it inline. Purpose: park the
-work and change topic later. Does not interrupt agents.
+`Desktop/RC-NEXT-SESSION.txt` instead of only emitting it inline. Purpose: park
+the work and change topic later. Does not interrupt agents.
 
 **2. /done Continue.** Writes `control/INTENT_DONE_CONTINUE.json`. Loop is
 done ritual -> auto `/clear` -> auto-run the prompt the ritual just emitted.
@@ -137,7 +137,7 @@ Source: Cloud Four, "Truth, Lies and Progress Bars"; AI UX Design Guide,
 |---|---|---|---|
 | S1 | Lane-lock module over `slots.py` (new file, no edits to the pinned pair) + 3-state pid-probed status + tests | low | unit tests |
 | S2 | `/api/loop-control` extended with idempotency keys + `fire_lane` / `queue_intent` actions; refuse-not-queue semantics; tests | low | unit tests, no UI yet |
-| S3 | Shortcuts 1 + 2 end to end - the two that cannot spawn a lane | medium | live: confirm STOP + Desktop prompt file |
+| S3 | Shortcuts 1 + 2 end to end - the two that cannot spawn a lane | medium | SHIPPED 2026-07-30 - live-confirmed STOP + Desktop prompt file |
 | S4 | Dashboard panel wired to real `/api/loop-status`, read-only first | low | UI fixture ritual |
 | S5 | Shortcut 3 - existing headless command, first real lane fire | medium | one supervised run |
 | S6 | Commands 4, 5, 6 authored + wired | medium | one supervised run each |
@@ -159,9 +159,17 @@ the correct first session.
    corruption class (`reference_gist_hook_worktree_index_corruption`) cannot
    arise. `try_acquire_lane` therefore REQUIRES a worktree argument and raises
    on empty, None, or a path resolving to the repo root.
-2. **`Desktop/NEXT-SESSION.txt`** - **OVERWRITE** each time. Single well-known
-   path, no timestamp suffix, no accumulating pile on the Desktop. The prior
-   contents are recoverable from the session transcript if ever needed.
+2. **`Desktop/RC-NEXT-SESSION.txt`** - **OVERWRITE** each time. Single
+   well-known path, no timestamp suffix, no accumulating pile on the Desktop.
+   The prior contents are recoverable from the session transcript if ever
+   needed. **RC- namespaced (operator, S3):** the Desktop is SHARED, and this
+   design is meant to be lifted into Sibling-A and RM, so all three may
+   run concurrently. Each repo owns its own prefix (`RC-` / `LW-` / `RM-`) and
+   the consumer ENFORCES it - `resolve_next_session_path` falls back to its own
+   default rather than honour a doc pointing at a sibling's file. Same rule as
+   never cleaning another repo's file system without direct operator
+   instruction. The intent files need no prefix: they already live under each
+   repo's own `ops/loop/control/`.
 3. **Lane 7 out-of-repo paths** - **ADJUDICATOR PER PATH.** No up-front
    allowlist. Every path outside the repo is proposed with a rationale and
    adjudicated individually before anything is touched.
@@ -196,6 +204,34 @@ because both sides individually pass their own stubs.
 never has. S2 correctly followed the existing pattern rather than inventing one.
 If schema validation is wanted it is a separate, deliberate change covering all
 six actions, not a side effect of adding two.
+
+## S3 as shipped (2026-07-30) - the consumer half
+
+| Piece | File | Note |
+|---|---|---|
+| Intent reader / consumer | `ops/loop/intents.py` | `pending()` (never writes) + `consume()` + `resolve_next_session_path()` |
+| CLI the ritual calls | `tools/session_intent.py` | `--peek` (always exit 0) / `--consume --prompt-file` (exit 1 on refusal) |
+| Safe boundary | `.claude/commands/done.md` sections 0 + 10b | the done ritual IS the boundary; peek at the top, consume after the prompt is printed |
+| Tests | `tests/test_session_intents.py` | 40 tests, incl. the seam pinned against the route module itself |
+
+Three findings worth keeping, all of them measured rather than reasoned:
+
+**Write order is prompt-first, marker-second.** A crash between the two leaves
+`consumed: false`, so the retry rewrites the same bytes. The reverse order
+strands the intent as done with no prompt on disk.
+
+**`Path.write_text` corrupted the byte count.** The first live consume reported
+1375 bytes while the Desktop file held 1395: text mode rewrites every LF as
+CRLF on Windows, and a `read_text` round-trip translates it back, so a
+string-equality test passes while the status line lies. `_awrite` writes bytes;
+the guard test asserts raw bytes and that `result["bytes"] == st_size`.
+
+**The already-consumed guard was unreachable in-suite.** Every test called
+`consume(doc=None)`, so `pending()` filtered the consumed intent out before the
+guard ran - a mutation removing it left the suite green. The real sequence is
+peek -> (someone consumes) -> `consume(peeked_doc)`, which without the re-read
+clobbers a fresh hand-off with a stale prompt. Found by the adversarial pass,
+now pinned by `test_a_stale_peeked_doc_cannot_clobber_a_fresh_handoff`.
 
 ## Out-of-repo footprint - MEASURED 2026-07-30
 
