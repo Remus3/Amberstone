@@ -84,6 +84,7 @@ class FakeLanes:
 
     def __init__(self, result=None):
         self.calls: list[dict] = []
+        self.released: list = []
         self._result = result
 
     def try_acquire_lane(self, lane, *, run_id, worktree, root=None):
@@ -98,12 +99,41 @@ class FakeLanes:
         return {"state": "FREE", "lane": None, "pid": None, "run_id": None,
                 "worktree": None, "age_s": None}
 
+    def release_lane(self, token, root=None):
+        # S5: the route hands the lane straight back when the launcher is
+        # missing, so the stub has to record it or that path goes untested.
+        self.released.append(token)
+        return True
+
 
 @pytest.fixture
 def lanes(monkeypatch):
     fake = FakeLanes()
     monkeypatch.setattr(mod, "_lanes", lambda: fake)
+    # S5: a successful claim now LAUNCHES. Stub the launcher alongside the lock
+    # so these tests keep measuring the idempotency contract and never spawn a
+    # process. Refusal tests do not reach it.
+    monkeypatch.setattr(mod, "_launcher", lambda: FakeLauncher())
     return fake
+
+
+class FakeLauncher:
+    """Stand-in for ops.loop.lane_launcher - records, never spawns."""
+
+    calls: list = []
+
+    def __init__(self, exc=None):
+        self.exc = exc
+
+    def launch_lane(self, lane, *, run_id, token, **kw):
+        FakeLauncher.calls.append({"lane": lane, "run_id": run_id, "token": token})
+        if self.exc is not None:
+            raise self.exc
+        return {"lane": lane, "run_id": run_id, "pid": 4242,
+                "worktree": rf"C:\rc-worktrees\rc-lane-{lane}",
+                "log": rf"C:\Riot Commander\ops\loop\reports\lane_{lane}.log",
+                "prompt": r"C:\Riot Commander\tools\headless-upgrade.md",
+                "started_at": 1.0}
 
 
 def _snapshot(d):
@@ -325,6 +355,95 @@ def test_queue_intent_unknown_intent_is_400_and_not_remembered(ctldir):
     assert "valid" in payload
     assert idem.seen(KEY_A) is None
     assert not list(ctldir.glob("INTENT_*.json"))
+
+
+# ======================================================================= S5 launch
+def test_a_successful_claim_launches_the_lane(ctldir, lanes, monkeypatch):
+    FakeLauncher.calls = []
+    monkeypatch.setattr(mod, "_launcher", lambda: FakeLauncher())
+    status, payload, _ = _post({"action": "fire_lane", "lane": "upgrade",
+                                "run_id": "abc12345",
+                                "worktree": "C:/wt/upgrade",
+                                "idempotency_key": KEY_A})
+    assert status == 200 and payload["ok"] is True
+    assert payload["pid"] == 4242
+    assert "running" in payload["detail"]
+    assert FakeLauncher.calls == [{"lane": "upgrade", "run_id": "abc12345",
+                                   "token": "C:/tmp/lanes/slot0.json"}]
+
+
+def test_a_launch_failure_is_503_and_is_NOT_remembered(ctldir, lanes, monkeypatch):
+    """The idempotency table only remembers SETTLED answers.
+
+    Remembering a launch fault would replay it forever, so the operator's next
+    arm - which mints a fresh key anyway - must be able to actually retry.
+    """
+    boom = FakeLauncher(exc=RuntimeError("git worktree add failed"))
+    monkeypatch.setattr(mod, "_launcher", lambda: boom)
+    status, payload, _ = _post({"action": "fire_lane", "lane": "upgrade",
+                                "run_id": "abc12345",
+                                "worktree": "C:/wt/upgrade",
+                                "idempotency_key": KEY_A})
+    assert status == 503
+    assert payload["ok"] is False
+    assert "launch failed" in payload["error"]
+    assert idem.seen(KEY_A) is None, "a fault must not be replayable"
+
+
+def test_a_missing_launcher_is_503_and_releases_the_lane(ctldir, monkeypatch):
+    fake = FakeLanes()
+    monkeypatch.setattr(mod, "_lanes", lambda: fake)
+
+    def _boom():
+        raise ModuleNotFoundError("ops.loop.lane_launcher")
+
+    monkeypatch.setattr(mod, "_launcher", _boom)
+    status, payload, _ = _post({"action": "fire_lane", "lane": "upgrade",
+                                "run_id": "abc12345",
+                                "worktree": "C:/wt/upgrade",
+                                "idempotency_key": KEY_A})
+    assert status == 503
+    assert "launcher unavailable" in payload["error"]
+    assert fake.released == ["C:/tmp/lanes/slot0.json"], (
+        "a lane that cannot launch must be handed straight back")
+    assert idem.seen(KEY_A) is None
+
+
+def test_an_omitted_worktree_is_filled_by_the_server(ctldir, lanes, monkeypatch):
+    """The browser must never carry filesystem layout.
+
+    The lock keeps its worktree-mandatory contract; the DEFAULT just comes from
+    the launcher instead of from a string in the page.
+    """
+    FakeLauncher.calls = []
+    monkeypatch.setattr(mod, "_launcher", lambda: FakeLauncher())
+    monkeypatch.setattr(FakeLauncher, "worktree_path",
+                        staticmethod(lambda lane: rf"C:\rc-worktrees\rc-lane-{lane}"),
+                        raising=False)
+    status, payload, _ = _post({"action": "fire_lane", "lane": "upgrade",
+                                "run_id": "abc12345",
+                                "idempotency_key": KEY_A})
+    assert status == 200 and payload["ok"] is True
+    assert fake_worktree_seen(lanes) == r"C:\rc-worktrees\rc-lane-upgrade"
+
+
+def fake_worktree_seen(lanes):
+    return lanes.calls[-1]["worktree"]
+
+
+def test_an_unresolvable_worktree_is_still_a_400(ctldir, lanes, monkeypatch):
+    class NoPath:
+        @staticmethod
+        def worktree_path(lane):
+            raise RuntimeError("no base configured")
+
+    monkeypatch.setattr(mod, "_launcher", lambda: NoPath)
+    status, payload, _ = _post({"action": "fire_lane", "lane": "upgrade",
+                                "run_id": "abc12345",
+                                "idempotency_key": KEY_A})
+    assert status == 400
+    assert "worktree" in payload["error"]
+    assert idem.seen(KEY_A) is None
 
 
 # ======================================================================= fire_lane
