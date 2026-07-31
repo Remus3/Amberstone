@@ -95,6 +95,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/_cs_retention.py` | champ-select snapshot retention across no-draft transition |
 | `dashboard/_deterministic_coaching.py` | deterministic coaching resolver for /api/state |
 | `dashboard/_dispatch.py` | route registration |
+| `dashboard/_idempotency.py` | in-process idempotency (replay) table for operator intents |
 | `dashboard/_lcu_inprocess.py` | in-process LCU snapshot reader for /api/state |
 | `dashboard/_party_mains.py` | PARTY MAINS lobby enrichment (Legion-side, Riot Champion-Mastery-V4) |
 | `dashboard/_state_builder.py` | builds /api/state payload |
