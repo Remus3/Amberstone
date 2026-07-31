@@ -6,6 +6,50 @@
 
 ---
 
+# 2026-07-31a - MISSION CONTROL S4 (the dashboard panel) + the audit that paid for itself.
+
+## Start here next session
+
+**S5 of the Mission Control control plane** - shortcut 3, the existing headless-upgrade
+command, the FIRST real lane fire. One supervised run, worktree-mandatory
+(`try_acquire_lane` raises on the main tree by design). Spec + staging in
+`docs/MISSION_CONTROL_PLAN.md`; S1-S4 are all in place and live.
+
+## What shipped
+
+- `ed5191b2` S4: the MISSION CONTROL settings card + `lanes` / `controller_lock` three-state
+  blocks on `GET /api/loop-status` (read-only) + ARM/CONFIRM for shortcuts 1-2 over the new
+  `web/js/lib/arm_confirm.js`. Live: `lanes FREE`, `controller_lock RECLAIMABLE pid 9380`.
+- Plan constraint 2 RESOLVED - `root=None` is `lanes.DEFAULT_ROOT` on both sides of the
+  S1/S2 seam, pinned by a test firing through the REAL route pair.
+- 50 py + 14 node new; full `tests/` from the repo root 17601 passed / exit 0.
+
+## Lessons worth keeping
+
+1. **The panel had never rendered.** `#loop-status-body` was a CSS class and a
+   `getElementById` and nothing else - no markup, anywhere. The 2026-06-07 card was dead
+   from the day it landed, and every test that touched it tested the renderer's INPUTS.
+   A rendered field is not evidence of a host either.
+2. **`var(--x)` naming an undefined property fails SILENTLY.** `color: var(--bg)` fell back
+   to inherited near-white at 1.9:1 on amber - on the ARMED button, the one state where
+   misreading costs the most. `--bg` is defined in NO stylesheet in `web/css`; it passed
+   every grep for the token name. Only reading the COMPUTED style in a live browser found it.
+3. **A repaint can make a flow unreachable.** `innerHTML` at 4Hz threw keyboard focus to
+   `<body>` on arm, so the confirm click could never be reached. Mouse-only, invisibly.
+4. **`dim` is inert repo-wide** - every `.dim` rule in `web/css` is descendant-scoped.
+
+## Do NOT redo
+
+- S1, S2, S3, S4 are shipped and verified. Do not rebuild the lane lock, the idempotency
+  table, the intent consumer, or the panel.
+- Do not edit `ops/loop/slots.py` / `ops/loop/winmutex.py` (byte-identical-by-contract).
+- The `test_web_ascii_sweep` live-half digest was re-captured this session (4 web files,
+  two-tree diff verified) - a red there next session is NEW drift, not this.
+- The pre-existing icon glyphs in `web/index.html` + `web/css/panels/header.css` (arrows,
+  times, mute speaker) are LEFT ALONE on purpose - sweeping them breaks icons.
+
+---
+
 # 2026-07-30d - MISSION CONTROL S3 (intent consumer) + the stale-worktree glyph sweep.
 
 ## Start here next session
@@ -96,63 +140,3 @@ Spec + staging + all resolved decisions live in the plan (see below). Backend is
 - CCR-01..119 are the operator's own review pass - do not re-score them.
 - Ability-haste stays CLOSED. Three specs, one answer.
 - `ops/loop/slots.py` + `winmutex.py` are pinned across two repos - consume, never edit.
-
----
-
-# 2026-07-30b - DDRAGON PATCH REFRESH 16.14.1 -> 16.15.1 + the throwback-mode partition.
-
-**1 commit pushed, `f9f134a4` -> HEAD `9df58480`. LEDGER 1130. ENGINE 1.268.0 UNCHANGED
-(patch is not an engine version). DS `:8893` live at `patch 16.15.1, champions 173,
-items 706`. Suites: DS 10234 / 5913 subtests, RC 17441 / 1370 subtests, 0 failed.**
-
-## Start here next session
-
-1. **The dirty-tree suite trap is GONE.** The 8 dirty `data/meta/ddragon_*` files were a
-   half-finished 16.15.1 pipeline run; this session consumed them. The 76 untracked
-   `Jade_*.png` icons were throwback-mode icons the pipeline no longer requests - deleted.
-   `git status` is clean and the MAIN tree gives a usable suite signal again. The standing
-   "do not touch those files" instruction is RETIRED, and so is memory
-   `reference_dirty_ddragon_tree_fakes_49_failures` (verify before trusting it).
-2. **16.15.1 shipped a THROWBACK-MODE registry and RC now partitions it.** Read
-   `agents/daemon_slayer/mode_variants.py` before touching any roster or item derivation.
-   The prior session's read that these are `Jade_<Champion>` ALIASES was WRONG in a way
-   that mattered: they carry their own older-patch stat line, and the same drop added 162
-   items in `[770000, 780000)` plus 16 `modes:["JADE"]` spells. The dedupe guard that
-   landed last run defused champion inflation but could not have caught the item half.
-3. **When a JADE mode appears in mode detection, revisit the partition rather than extend
-   it.** The live Flash row already advertises a `KIWI_JADE` mode, so an ARAM-Mayhem-Jade
-   variant on the Howling Abyss is the likely first contact - that is exactly why 151 of
-   the 162 throwback items claim `maps["12"]`.
-
-## What shipped
-
-- **Full refresh chain**: DDragon meta + mirror, DS extract, abilities extract, FRESH
-  CDragon spell + ratio sidecars, curated/wiki copy-forward with patch restamps, Lane B
-  build orders (173 champs x 3 modes, 519 cells each), HZ precompute + variants, pickban
-  targets, Share mirror (517 files), 20-file parity with 16.14.1.
-- **The partition** at every PRODUCER - `data_pipeline` on download, `daemon_slayer_extract`
-  for the snapshot and its manifest counts, three further raw-snapshot roster derivations,
-  and `DataSnapshot.load` + `full_roster` again at load. Champions test on the KEY, items on
-  a CLOSED id band, never a name prefix; both predicates fail SAFE (unparseable = KEPT).
-- **Two real defects, not pin churn.** The ARAM resolver handed the coach the Arena
-  Heartsteel stat line (700 HP instead of 900) once Riot flagged mirror `223084` map-12
-  legal, because collisions resolved first-write-wins = lexicographic; now
-  lowest-numeric-id-wins. That same fix CLOSED the reachability half of R144. And the
-  CDragon stale-copy guard fired as designed on a copied-forward ratio sidecar, after both
-  table families had already been built with ratios DROPPED.
-
-## Lessons worth keeping
-
-- **A "duplicate row" reading is not a partition policy.** The champion half looked like
-  aliases and got a dedupe; the item half had no display-name collision at all and would
-  have sailed straight into the ARAM pool. Measure every axis a drop touches, not the one
-  that surfaced first.
-- **The stale-copy guard paid for itself.** Its docstring predicted the exact failure
-  ("only bites if a future patch-refresh copies a sidecar forward again") and it caught two
-  silently-degraded table families. Copy-forward is safe ONLY for artifacts nothing gates.
-- **Digest controls need a fixed substrate.** 26 rm91 controls broke on pure upstream drift.
-  Recomputing them against 16.14.1 - all 13 byte-exact - is what separated drift from
-  regression BEFORE anything was re-pinned. Pin the data, not the code.
-- **The `--force` ban was honored.** The snapshot was made canonical by applying the same
-  predicate in place, with no Meraki re-fetch, rather than re-extracting against a mutable
-  `latest`.
