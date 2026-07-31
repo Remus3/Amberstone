@@ -119,6 +119,54 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-30d - MISSION CONTROL S3 (intent consumer) + the stale-worktree glyph sweep.
+
+## Start here next session
+
+**S4 of the Mission Control control plane** - the dashboard panel wired to the real
+`GET /api/loop-status`, read-only first, then the ARM/CONFIRM affordances for shortcuts 1-2.
+Spec + staging in `docs/MISSION_CONTROL_PLAN.md`; S1/S2/S3 backend is all in place.
+Render the lane lock as RUNNING / RECLAIMABLE / FREE and never collapse RECLAIMABLE into RUNNING.
+
+## What shipped
+
+- `b74b58e3` S3 consumer half: `ops/loop/intents.py` (`pending()` never writes; `consume()` writes
+  the prompt FIRST then the consumed marker, both atomic) + `tools/session_intent.py` CLI + the
+  done-ritual wiring. Live-verified end to end through the real `:8888` endpoint.
+- **RC- NAMESPACE (operator, mid-session).** `Desktop/RC-NEXT-SESSION.txt`. The Desktop is SHARED
+  and this design is meant to be lifted into Sibling-A and RM, so all three may run
+  concurrently. The consumer ENFORCES the prefix - a doc pointing at `LW-NEXT-SESSION.txt` falls
+  back to our own file. Lifting to LW/RM is one line: `REPO_PREFIX`.
+- `2eef4d8b` glyph sweep (`-> x - approx` for U+2192 / U+00D7 / U+00B7 / U+2248), 17 files.
+- `d01b01a4` mirrored the S3 wiring into the TRACKED `tools/done.md`.
+- LEDGER 1132 + 1133; ROADMAP head moved S3 -> S4.
+
+## Lessons worth keeping
+
+1. **`Path.write_text` corrupted a byte count.** The first live consume reported 1375 bytes while
+   the Desktop file held 1395 - Windows text mode rewrites LF as CRLF, and a `read_text` round-trip
+   translates it back, so a string-equality test passes while the status line lies. Assert RAW BYTES.
+2. **A guard reachable only off the non-default call path is invisible to a suite that always uses
+   the default.** All 16 `consume()` tests passed `doc=None`, so `pending()` filtered the consumed
+   intent out before the already-consumed guard ever ran, and a mutation removing it left the suite
+   GREEN. The vacuous-test class again, second session running.
+3. **A stale worktree is not automatically garbage.** `.claude/worktrees/clever-bardeen-9bcee0` held
+   an uncommitted 17-file glyph sweep. `git worktree remove --force` WIPED the directory contents
+   before failing on a lock - landing the work first is the only reason it survived.
+4. **`drift_guard` earned its keep at wrap:** the S3 ritual edits went only into the gitignored
+   `.claude/commands/done.md`, so a fresh clone would have got the ritual without them.
+
+## Do NOT redo
+
+- S1, S2, S3 are shipped and verified. Do not rebuild the lane lock, the idempotency table, or the
+  intent consumer.
+- The CLAUDE.md glyph-sweep constraint from `2026-07-30c` is DISCHARGED - that sweep was landed
+  from the abandoned worktree this session. CLAUDE.md is safe to edit again.
+- `ops/loop/slots.py` + `winmutex.py` stay pinned across two repos - consume, never edit.
+- Ability-haste stays CLOSED.
+
+---
+
 # 2026-07-30c - MISSION CONTROL S1+S2 (lane lock + idempotent control plane).
 
 ## Start here next session
