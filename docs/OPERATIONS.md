@@ -70,6 +70,7 @@ first resort.
 | Task | Trigger | Context | Description |
 |---|---|---|---|
 | `RC-Supervisor` | At logon | Administrator / HIGHEST | Runs `pythonw.exe ops/rc_supervisor.py` |
+| `RC-MissionControl` | At logon + a `-Once` trigger with a 1-min indefinite repeat (`tools/install_mission_control_task.ps1`) | Administrator / Highest | Runs `pythonw.exe mission_control.py` - the :8895 control plane. Deliberately its OWN scheduled task, not an `rc_supervisor` entry: RestartCount 3 / RestartInterval 1 min gives self-restart on crash, and the repeat trigger makes Task Scheduler itself the watchdog (`MultipleInstances=IgnoreNew` no-ops while alive; process dead -> next tick starts it). An RC restart for a game-overlay change must never touch the control plane (S10, decoupled 2026-07-31) |
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8894) |
 | `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
