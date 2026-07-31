@@ -377,3 +377,38 @@ def test_live_static_traversal_is_refused(live_mc):
     resp.read()
     conn.close()
     assert resp.status == 404
+
+
+# --------------------------------------------------------------------------- task 5 (bind, TLS, process entry)
+
+def test_bind_scope_is_loopback_and_tailnet_only():
+    """A wildcard bind would silently expose the control plane on the LAN.
+    Operator decision 2026-07-31: tailnet + loopback only."""
+    from mc import server
+    assert server.PORT == 8895
+    assert set(server.BIND_ADDRESSES) == {"127.0.0.1", "100.70.22.55"}
+    for addr in server.BIND_ADDRESSES:
+        assert addr not in ("0.0.0.0", "::", ""), "wildcard bind"
+    assert "192.168.8.230" not in server.BIND_ADDRESSES, "LAN bind"
+
+
+def test_bind_failure_exits_non_zero(monkeypatch):
+    """dashboard/server.py:195 warns and keeps going when the port is taken.
+    Copied here that yields a control plane that is silently absent."""
+    from mc import server
+
+    def _boom(*a, **kw):
+        raise OSError(10048, "address in use")
+
+    monkeypatch.setattr(server, "_make_server", _boom)
+    assert server.main() != 0
+
+
+def test_no_hot_reload_watcher():
+    """A control plane must not restart itself because an unrelated .py
+    changed. Guarding the absence, because adding it back would look like
+    a helpful consistency fix."""
+    import inspect
+    from mc import server
+    src = inspect.getsource(server)
+    assert "hot_reload" not in src

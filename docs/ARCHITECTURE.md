@@ -133,6 +133,16 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/routes_ward_heat.py` | ward-coverage heat strip backend |
 | `web_dashboard.py` | :8888 HTTPS dashboard server entry |
 
+### Mission Control (:8895 control plane)
+| File | Role |
+|---|---|
+| `mc/__init__.py` | Mission Control standalone serving layer (S10) |
+| `mc/auth.py` | Mission Control bearer-token gate (POST only, fails closed) |
+| `mc/handler.py` | Mission Control HTTP handler (minimal, no dashboard Handler) |
+| `mc/routes.py` | Mission Control route tables (imports, never forks, the loop routes) |
+| `mc/server.py` | Mission Control HTTPS server (:8895, tailnet + loopback only) |
+| `mission_control.py` | Mission Control process entry (:8895) |
+
 ### Core utilities
 | File | Role |
 |---|---|
