@@ -6,6 +6,53 @@
 
 ---
 
+# 2026-07-31b - MISSION CONTROL S5 + S6 + S7 (lanes fire for real; the steer channel).
+
+## Start here next session
+
+**S8 + S9** - the two highest-blast-radius lanes (Headless-Repo, Headless-True-Audit) and
+the INTERRUPT tier. Worktree-first; a frozen-file edit needs an adjudicating agent's
+approval. Lane 7 MUST encode the carve-out: `~/.claude/projects` holds the session
+transcripts that make retroactive verification possible (compress or archive, NEVER delete),
+and the 35.5 GB `Temp\claude\C--Sibling-A` belongs to the SIBLING repo - propose, never
+auto-clean. Then the Desktop dashboard shortcut, then the First-Pass.md program.
+
+## What shipped
+
+- `6003b244` S5 lane launcher: one long-lived worktree per lane at `C:\rc-worktrees\rc-lane-<lane>`,
+  spawn via the proven `run_lane.ps1`, lock re-pointed at the WORKER pid, lane RELEASED on any
+  launch failure. Verified end to end: worktree on branch `lane/upgrade`, worker ran inside it,
+  RUNNING -> RECLAIMABLE on exit, release -> FREE.
+- `992a5a6c` S6 lanes 4-6 (`tools/headless-{uiux,research,ds}.md`, authored by parallel agents,
+  every cited path verified) + S7 steer channel (`ops/loop/steer.py`, append-only JSONL + cursor).
+- LEDGER 1135 + 1136. Full suite 17668 passed / exit 0; ruff clean; drift_guard 0.
+
+## Lessons worth keeping
+
+1. **`node --check` returns exit 0 on a duplicate `const`** in any file that leads with `import` -
+   which is every module in `web/js`. One duplicate killed the ENTIRE panel while `node --check`
+   and 35 source tests passed. `tests/test_web_js_esm_parse.py` now parses the tree as real ESM.
+2. **`DETACHED_PROCESS` makes a spawned PowerShell worker a silent no-op** - real pid, rc=0, zero
+   work. The lane flips RUNNING then RECLAIMABLE on schedule and looks like a healthy short run.
+3. **A file-path module bind creates a SECOND copy with its own globals.** The launcher's private
+   bind of `lanes.py` split `_OWNED`, so a repoint in one copy left the other unable to release.
+4. **The plan's steer transport was wrong in both halves** - and a headless worker has no window
+   at all, so no GUI transport could ever have worked. Probe the transport, not just the flag.
+5. **`--accent` and `--warn` are the same gold in 5 of 6 themes.** Only arcane (the live one)
+   separates them, so eyeballing the running dashboard cannot catch a colour collision.
+
+## Do NOT redo
+
+- S1-S7 are shipped and verified. Do not rebuild the lock, idempotency table, intent consumer,
+  panel, launcher, lane docs, or steer channel.
+- `repo` and `true-audit` are UNWIRED ON PURPOSE - that is S8, not an oversight.
+- Do not edit `ops/loop/slots.py` / `ops/loop/winmutex.py` (byte-identical-by-contract).
+- RM-122 is fenced verbatim against the headless loop; lane 4 may PREPARE it, never mark it DONE.
+- The `test_web_ascii_sweep` live-half digest was re-captured twice this session - a red there
+  next session is NEW drift.
+
+---
+
 # 2026-07-31a - MISSION CONTROL S4 (the dashboard panel) + the audit that paid for itself.
 
 ## Start here next session
@@ -95,48 +142,3 @@ Render the lane lock as RUNNING / RECLAIMABLE / FREE and never collapse RECLAIMA
   from the abandoned worktree this session. CLAUDE.md is safe to edit again.
 - `ops/loop/slots.py` + `winmutex.py` stay pinned across two repos - consume, never edit.
 - Ability-haste stays CLOSED.
-
----
-
-# 2026-07-30c - MISSION CONTROL S1+S2 (lane lock + idempotent control plane).
-
-## Start here next session
-
-**S3 of the Mission Control control plane.** S1+S2 shipped (`ef82bad0`); S3 is shortcuts 1 and 2
-end to end - "Halt and Save" and "/done Continue" - the only two that cannot spawn a lane.
-Spec + staging + all resolved decisions live in the plan (see below). Backend is already in place:
-`ops/loop/lanes.py`, `dashboard/_idempotency.py`, and the two new `/api/loop-control` actions.
-
-## What shipped
-
-- `9b0784f9` docs(claude): session default is orchestrated + multi-agent + self-adjudicating +
-  self-adversarial. R7 and R9 rewritten - they contradicted Subagent-First on the SHAPE of a
-  session. File-count threshold REVOKED as the deciding test; substance decides.
-- `ef82bad0` feat(mission-control): S1 lane lock + S2 idempotent control-plane actions.
-  137 tests + 21 guards green from the repo root.
-- Desktop/First-Pass.md gained CCR-120..CCR-146 (27 links scored) plus ADDENDUM A, the six
-  RC-wide dashboard concepts. Two mockups rendered (Adjudication Inbox, Mission Control arcane).
-
-## Lessons worth keeping
-
-1. **Two agreeing stubs prove nothing.** Both slices passed their own suites carrying a live
-   `REPO_ROOT` inversion. Only an integration probe against the REAL pair caught it. Any parallel
-   split across an interface needs one test that exercises both sides for real.
-2. **A regression test can be vacuous and still be green.** The first `REPO_ROOT` tests sourced
-   their base from `REPO_ROOT` itself, so they passed whatever it pointed at - a mutation run
-   restoring the bug went 23/23 green. Assert a PROPERTY of the value, not the value against
-   itself. Mutation-test every regression test that guards a subtle defect.
-3. **`git show --stat` after every commit is not ceremony.** The first S1+S2 commit was BLOCKED
-   by the archmap hook and HEAD never moved; the push then said "Everything up-to-date", which
-   reads exactly like success.
-4. **Reddit is blocked to every default fetch path** - WebFetch, browser pane, curl on both
-   hosts, r.jina.ai. Only the Apify actor works. See memory
-   `reference_reddit_capture_transport_ladder`; do not re-walk the ladder.
-5. **CLAUDE.md was NOT touched at wrap** - a background glyph-sweep task owns it in another
-   session. Do not commit that file until that task reports.
-
-## Do NOT redo
-
-- CCR-01..119 are the operator's own review pass - do not re-score them.
-- Ability-haste stays CLOSED. Three specs, one answer.
-- `ops/loop/slots.py` + `winmutex.py` are pinned across two repos - consume, never edit.
