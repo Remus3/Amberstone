@@ -9,10 +9,15 @@ an earlier test having already imported pydantic.
 """
 from __future__ import annotations
 
+import http.client
 import json
 import subprocess
 import sys
+import threading
+from http.server import ThreadingHTTPServer
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -289,3 +294,86 @@ def test_post_non_numeric_content_length_is_400_not_500(monkeypatch):
     code, raw_body, _ctype = f.sent
     assert code == 400
     assert json.loads(raw_body)["error"] == "invalid content-length"
+
+
+# --------------------------------------------------------------------------- task 4 (real socket, auth-before-dispatch)
+
+@pytest.fixture
+def live_mc(monkeypatch, tmp_path):
+    """A real Mission Control handler on a loopback socket, plain HTTP.
+
+    TLS is not exercised here - it is a stdlib concern and the acceptance
+    run covers it live. What matters is that auth sits in front of dispatch.
+    """
+    from mc import auth, handler as mc_handler
+    monkeypatch.setenv("RC_MC_TOKEN", "test-token")
+    monkeypatch.setattr(auth, "TOKEN_FILE", tmp_path / "absent.txt")
+
+    fired: list = []
+
+    def _spy(h, body):
+        fired.append(body)
+        h._send(200, b'{"ok": true, "spied": true}', "application/json")
+
+    monkeypatch.setattr(
+        mc_handler.routes, "POST_ROUTES",
+        [(lambda p: p == "/api/loop-control", _spy)],
+    )
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), mc_handler.Handler)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        yield srv.server_address, fired
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def _post(addr, path, body, token=None):
+    conn = http.client.HTTPConnection(addr[0], addr[1], timeout=10)
+    headers = {"Content-Type": "application/json"}
+    if token is not None:
+        headers["Authorization"] = f"Bearer {token}"
+    conn.request("POST", path, json.dumps(body), headers)
+    resp = conn.getresponse()
+    out = (resp.status, json.loads(resp.read().decode("utf-8")))
+    conn.close()
+    return out
+
+
+def test_live_post_without_token_never_reaches_the_route(live_mc):
+    """The property a unit test cannot prove: auth runs BEFORE dispatch."""
+    addr, fired = live_mc
+    status, body = _post(addr, "/api/loop-control", {"action": "stop"})
+    assert status == 401
+    assert body["error"] == "unauthorized"
+    assert fired == [], "route executed despite a rejected request"
+
+
+def test_live_post_with_token_reaches_the_route(live_mc):
+    addr, fired = live_mc
+    status, body = _post(addr, "/api/loop-control", {"action": "stop"}, token="test-token")
+    assert status == 200
+    assert body["spied"] is True
+    assert fired == [{"action": "stop"}]
+
+
+def test_live_get_is_open(live_mc):
+    """Status must be readable with no token - bind scope is its perimeter."""
+    addr, _ = live_mc
+    conn = http.client.HTTPConnection(addr[0], addr[1], timeout=10)
+    conn.request("GET", "/api/loop-status")
+    resp = conn.getresponse()
+    resp.read()
+    conn.close()
+    assert resp.status == 200
+
+
+def test_live_static_traversal_is_refused(live_mc):
+    addr, _ = live_mc
+    conn = http.client.HTTPConnection(addr[0], addr[1], timeout=10)
+    conn.request("GET", "/../../CLAUDE.md")
+    resp = conn.getresponse()
+    resp.read()
+    conn.close()
+    assert resp.status == 404
