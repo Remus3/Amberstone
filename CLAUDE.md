@@ -132,6 +132,8 @@ Keep individual responses under 500 output tokens to avoid API errors. Break lon
 
 Operator-agreed 2026-06-13 to cut per-edit + audit wall-clock. Default to fast, direct, text-based tools; scale verification to blast radius. SCOPES "Testing Discipline" + "Verification Discipline" below (those apply at Tier-2). Memory: `feedback_execution_efficiency_rules`.
 
+> **PRECEDENCE (operator 2026-07-30):** these rules govern HOW a step is executed - which tool, how much verification. They do NOT govern the SHAPE of the work. Shape is set by "Session Default" below, and where the two disagree, Session Default wins. R7 and R9 were rewritten on 2026-07-30 to remove exactly that conflict; do not restore the old wording.
+
 Text-first (R1-R4) - never default to visual / computer-use for text, code, or state:
 - **R1** Files = Read / Edit / Write / Grep / Glob ONLY. NEVER computer-use / Windows-MCP to read or change a file.
 - **R2** Runtime / dashboard state via `curl -k https://127.0.0.1:8888/api/...` or Read `ops/runtime/health.json`. NEVER screenshot to read a number, version, or STATE.
@@ -144,11 +146,11 @@ Tiered verification (R5-R7) - Tier-0/1 do NOT pay the Tier-2 tax (operator-accep
 - **Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite (DS dir + `tests/`) + DS `:8893` restart + Share mirror.
 - **R5** Classify every change into a tier; run only that tier's verification.
 - **R6** Run the relevant suite ONCE; trust exit code + result file. Re-run only if I edited since, or the pipe demonstrably glitched - not prophylactically.
-- **R7** `verifier` subagent ONLY for parallel-slice / subagent claims or a real stale-pipe event - not my own single-thread edits.
+- **R7** Adversarial verification is the DEFAULT, not the exception (operator 2026-07-30). Every substantive claim gets an independent `verifier` / refutation pass before it is called done - including my own single-thread edits. The old "verifier ONLY for parallel-slice or stale-pipe" carve-out is REVOKED: it made self-checking opt-in, and the standing failure class is exactly a confident unbacked claim. Tier-0 cosmetic edits remain exempt.
 
 Overhead (R8-R11):
 - **R8** Never re-Read a file I just Edited to confirm (Edit fails loudly).
-- **R9** No subagents / worktrees under ~3 files. Inline.
+- **R9** Orchestrated multi-agent is the DEFAULT shape for substantive work (operator 2026-07-30) - see "Session Default" below, which governs. Inline solo is the EXCEPTION, reserved for truly trivial edits (a one-line cosmetic change, a doc typo, a single string). The former "no subagents under ~3 files" file-count threshold is REVOKED as the deciding test: substance decides, not file count. A 1-file engine change is substantive; a 5-file rename is not.
 - **R10** Batch independent reads / greps in one message.
 - **R11** Skip the screenshot ritual for backend / version / doc changes (scoped to web/* visual changes).
 
@@ -197,9 +199,19 @@ All feature work and bug fixes follow TDD: write failing characterization/regres
 
 When spawning subagents to generate files (especially tests), require them to run ruff/lint before reporting done. Subagent-generated test files have broken CI in the past.
 
-## Subagent-First Protocol
+## Session Default (was: Subagent-First Protocol)
 
-Standing operator directive (2026-06-20): ALWAYS use subagents for substantive design / build / research work - do not build solo in the main thread. Refines R9 (truly trivial one-line cosmetic edits may still inline).
+**Standing operator directive (2026-07-30). The default shape of EVERY session is orchestrated + multi-agent + self-adjudicating + self-adversarial.** This is the baseline, not an escalation reserved for big items - choosing it needs no justification; departing from it does. It GOVERNS the Execution Efficiency rules above wherever the two disagree.
+
+The four properties, each load-bearing:
+- **Orchestrated** - one merger holds the plan and the merge; work is decomposed into disjoint slices before any of it starts.
+- **Multi-agent** - slices run in parallel on non-overlapping files, worktree-isolated where they write.
+- **Self-adjudicating** - a distinct agent decides between competing outputs against stated criteria. The agent that produced a thing never grades it.
+- **Self-adversarial** - findings and "done" claims get an independent pass that is trying to REFUTE them, defaulting to refuted when uncertain. Agreement between two agents is not evidence (`feedback_row_agreement_is_not_evidence`).
+
+**The only exception is genuinely trivial work:** a one-line cosmetic edit, a doc typo, a single string, a conversational answer. Substance decides, not file count.
+
+Prior wording (2026-06-20, "ALWAYS use subagents for substantive design / build / research work - do not build solo in the main thread") is SUPERSEDED by the above - same intent, but it left adjudication and adversarial review implicit, and R7/R9 read as competing rules. They no longer do.
 - **Spec first, then act:** a Plan/design subagent (or the Gemini director) emits the spec/plan BEFORE any code; verify it against ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
 - **New session:** interview the Gemini director (or the operator if Gemini is down) for intent + acceptance criteria, re-probe live state, THEN build. Verify before building.
 - **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done" claim.
