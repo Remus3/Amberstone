@@ -260,3 +260,44 @@ Two things are load-bearing and neither is code:
 6. **MEMORY.md compaction** declined deliberately: 20129 bytes over 120 lines, and a mechanical
    hook-strip saves ZERO because the bytes are all pointers. Reaching the threshold means dropping
    pointers, which is curation. Wants a dedicated pass, not a hasty mid-run trim.
+
+## Start here next session
+
+**S3 of the Mission Control control plane.** S1+S2 shipped (`ef82bad0`); S3 is shortcuts 1 and 2
+end to end - "Halt and Save" and "/done Continue" - the only two that cannot spawn a lane.
+Spec + staging + all resolved decisions live in the plan (see below). Backend is already in place:
+`ops/loop/lanes.py`, `dashboard/_idempotency.py`, and the two new `/api/loop-control` actions.
+
+## What shipped
+
+- `9b0784f9` docs(claude): session default is orchestrated + multi-agent + self-adjudicating +
+  self-adversarial. R7 and R9 rewritten - they contradicted Subagent-First on the SHAPE of a
+  session. File-count threshold REVOKED as the deciding test; substance decides.
+- `ef82bad0` feat(mission-control): S1 lane lock + S2 idempotent control-plane actions.
+  137 tests + 21 guards green from the repo root.
+- Desktop/First-Pass.md gained CCR-120..CCR-146 (27 links scored) plus ADDENDUM A, the six
+  RC-wide dashboard concepts. Two mockups rendered (Adjudication Inbox, Mission Control arcane).
+
+## Lessons worth keeping
+
+1. **Two agreeing stubs prove nothing.** Both slices passed their own suites carrying a live
+   `REPO_ROOT` inversion. Only an integration probe against the REAL pair caught it. Any parallel
+   split across an interface needs one test that exercises both sides for real.
+2. **A regression test can be vacuous and still be green.** The first `REPO_ROOT` tests sourced
+   their base from `REPO_ROOT` itself, so they passed whatever it pointed at - a mutation run
+   restoring the bug went 23/23 green. Assert a PROPERTY of the value, not the value against
+   itself. Mutation-test every regression test that guards a subtle defect.
+3. **`git show --stat` after every commit is not ceremony.** The first S1+S2 commit was BLOCKED
+   by the archmap hook and HEAD never moved; the push then said "Everything up-to-date", which
+   reads exactly like success.
+4. **Reddit is blocked to every default fetch path** - WebFetch, browser pane, curl on both
+   hosts, r.jina.ai. Only the Apify actor works. See memory
+   `reference_reddit_capture_transport_ladder`; do not re-walk the ladder.
+5. **CLAUDE.md was NOT touched at wrap** - a background glyph-sweep task owns it in another
+   session. Do not commit that file until that task reports.
+
+## Do NOT redo
+
+- CCR-01..119 are the operator's own review pass - do not re-score them.
+- Ability-haste stays CLOSED. Three specs, one answer.
+- `ops/loop/slots.py` + `winmutex.py` are pinned across two repos - consume, never edit.
