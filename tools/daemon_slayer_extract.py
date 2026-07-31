@@ -51,6 +51,14 @@ from typing import Any
 import json5  # third-party; pure-Python JSON5 parser
 
 ROOT = Path(__file__).parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from agents.daemon_slayer.mode_variants import (  # noqa: E402
+    canonical_champions,
+    canonical_items,
+)
+
 DATA_ROOT = ROOT / "data" / "daemon_slayer"
 LOG_FILE = ROOT / "logs" / "daemon_slayer_extract.log"
 
@@ -928,11 +936,16 @@ def build_champions_payload(
     untouched.
     """
     out: dict[str, Any] = {"version": dd.version, "data": {}}
-    ddids = set(dd.champions.keys())
+    # DDragon ships a THROWBACK-MODE registry beside the live one (16.15.1 adds
+    # 60 Jade_<Champion> rows at base_key + 60000). Nothing downstream can cover
+    # them - Meraki 404s all 60 - so they never enter the snapshot. See
+    # agents.daemon_slayer.mode_variants.
+    dd_champions = canonical_champions(dd.champions)
+    ddids = set(dd_champions.keys())
 
     # Start with lolmath's PascalCase champion key set (it's the canonical set the
     # engine cares about). For each, find the DDragon id if any.
-    for champ_id, dd_record in dd.champions.items():
+    for champ_id, dd_record in dd_champions.items():
         cooldown = lolmath.cooldowns.get(champ_id)
         roles = lolmath.roles.get(champ_id)
         ratings = lolmath.ratings.get(champ_id, {}).get("ratings") if isinstance(lolmath.ratings.get(champ_id), dict) else None
@@ -971,7 +984,10 @@ def build_champions_payload(
 
 
 def build_items_payload(dd: DDragonSnapshot) -> dict:
-    return {"version": dd.version, "data": dd.items}
+    # Same partition on the item axis: 16.15.1 adds 162 throwback rows in
+    # [770000, 780000) - retired gear (Sightstone, Zz'Rot Portal, Hex Core) most
+    # of which is flagged map-12 legal, which would pollute the ARAM pool.
+    return {"version": dd.version, "data": canonical_items(dd.items)}
 
 
 def build_scenarios_payload(lolmath: LolmathExtract, dd: DDragonSnapshot) -> dict:
@@ -1032,8 +1048,12 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
         "phase": 1.5,
         "extracted_at": time.strftime("%Y-%m-%dT%H:%M:%S%z") or time.strftime("%Y-%m-%dT%H:%M:%S"),
         "ddragon_version": dd.version,
-        "ddragon_champion_count": len(dd.champions),
-        "ddragon_item_count": len(dd.items),
+        # Counts describe what the SNAPSHOT ships, so they follow the same
+        # throwback partition the payload builders apply. A raw len() here
+        # records 233/868 beside a 173/706 file and breaks the manifest-vs-file
+        # integrity check.
+        "ddragon_champion_count": len(canonical_champions(dd.champions)),
+        "ddragon_item_count": len(canonical_items(dd.items)),
         "sources": {
             "ddragon_versions": f"{DDRAGON_BASE}/api/versions.json",
             "ddragon_champions": f"{DDRAGON_BASE}/cdn/{dd.version}/data/en_US/champion.json",

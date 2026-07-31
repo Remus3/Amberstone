@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .abilities import AbilitiesSnapshot
+from .mode_variants import canonical_champions, canonical_items
 from .modifier_blocks import classify_modifier_kind
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -162,7 +163,15 @@ class DataSnapshot:
         champions_data = _require_nonempty(
             champions_doc, "data", "champions.json"
         )
-        items_data = _require_nonempty(items_doc, "data", "items.json")
+        # DDragon ships a THROWBACK-MODE registry beside the live one (16.15.1
+        # added 60 Jade_<Champion> rows at base_key + 60000 and 162 items in
+        # [770000, 780000), most of them flagged map-12 legal). They are
+        # partitioned out here rather than at extract time - the snapshot on
+        # disk stays a faithful record of the patch. See mode_variants.
+        champions_data = canonical_champions(champions_data)
+        items_data = canonical_items(
+            _require_nonempty(items_doc, "data", "items.json")
+        )
         scenarios_by_id = _require_nonempty(
             scenarios_doc, "byDDragonId", "scenarios.json"
         )

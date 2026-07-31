@@ -66,11 +66,22 @@ from agents.daemon_slayer.ehp import compute_ehp, rank_items_by_ehp
 
 _SNAP = None
 
+# PIN THE DATA, NOT THE CODE. _PRE_CHANGE_DIGESTS below are SHA-256 of a full
+# ranking payload, so they are only meaningful against the snapshot they were
+# captured on. Following the live patch would re-break all 26 controls on every
+# DDragon refresh for reasons that have nothing to do with this feature - at
+# 16.15.1 they moved purely from upstream item/champion stat drift plus a
+# fresher CDragon ratio sidecar (VERIFIED 2026-07-30: all 13 reproduce
+# byte-exactly when recomputed against 16.14.1). What these controls exist to
+# prove is that _health_damage_coupling is INERT when off, and that proof needs
+# a fixed substrate.
+_DIGEST_PATCH = "16.14.1"
+
 
 def _snap() -> DataSnapshot:
     global _SNAP
     if _SNAP is None:
-        _SNAP = DataSnapshot.load()
+        _SNAP = DataSnapshot.load(patch=_DIGEST_PATCH)
     return _SNAP
 
 

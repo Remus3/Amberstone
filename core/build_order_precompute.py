@@ -117,6 +117,7 @@ from core.build_order import (
     plan_build_order,
 )
 from core import archetype_picks
+from agents.daemon_slayer.mode_variants import canonical_champions
 
 # Project root: core/ -> C:\Riot Commander\
 _ROOT = Path(__file__).resolve().parent.parent
@@ -571,10 +572,15 @@ def full_roster() -> list[str]:
             "refusing to substitute the SEED sample for a full-roster request"
         ) from exc
     data = raw.get("data", raw) if isinstance(raw, dict) else {}
-    # set() before sort: DDragon-derived registries carry alias entries that can
-    # resolve to an id already present (the 16.15.1 drop adds 60 Jade_<Champion>
-    # rows). Deduping here makes "sorted and deduped" true by construction
-    # instead of an accident of today's data.
+    # DDragon ships THROWBACK-MODE rows beside the canonical roster - the
+    # 16.15.1 drop adds 60 Jade_<Champion> entries at base_key + 60000. They are
+    # NOT aliases (own stat line, own id), so a dedup does not absorb them; they
+    # are partitioned out, because nothing downstream can cover them (Meraki
+    # 404s all 60 -> no abilities, no archetype, no build order). See
+    # agents.daemon_slayer.mode_variants.
+    data = canonical_champions(data) if isinstance(data, dict) else {}
+    # set() before sort: keeps "sorted and deduped" true by construction rather
+    # than an accident of today's registry shape.
     ids = sorted({
         str(entry["id"])
         for entry in (data.values() if isinstance(data, dict) else ())
