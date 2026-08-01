@@ -6,6 +6,46 @@
 
 ---
 
+# 2026-08-01a - LANE-RESEARCH REFILL (headless lane 5): 5 rows filed RM-129..RM-133, one NEW drift-guard gap.
+
+## Start here next session
+
+REFILL pass on `lane/research` (Mission Control lane 5), docs-only, no live game
+(`/api/state` `mode_key=client`, `liveclient` empty). Branch is READY TO MERGE (Tier-0
+docs; no engine, no Share, no restart) - leave the merge to the merger, do not merge from
+the worktree. Full detail in LEDGER 1142.
+
+## What shipped (all docs, all PROBED this run)
+
+- **RM-130 filed (NEW gap, flagship)** - 101.qq.com duo-synergy has NO drift guard while
+  ddragon / meraki / cdragon / wiki all do. `tools/upstream_drift_check.py` tracks exactly 3
+  signals and carries zero qq reference; `core/synergy_external_source.py:33` fetches the
+  Tencent endpoint and fails SILENTLY back to the frozen May-25 seed. Acceptance = a 4th
+  `probe_qq_synergy()` + `test_upstream_drift_qq_synergy_probe`. Lane 6/7, Tier-1. Companion
+  to RM-128.
+- **RM-129 / RM-131 / RM-132 / RM-133** - promoted thin BACKLOG cites to well-formed,
+  id-carrying, acceptance-bearing rows; each re-grepped live. Corrected one STALE cite
+  (RM-132 Arena chip: `_csvArenaPaneHtml` is now at `web/js/panels/champ_select.js:3512`,
+  not the filed `:931`).
+- Registered RM-129..RM-133 in `docs/DS_SWEEP_TRACKER.md`; next free is now **RM-134**.
+
+## Do NOT redo
+
+- Drift-guard coverage for ddragon / meraki / cdragon / wiki is CLOSED-COMPLETE (all
+  GUARDED with cited guards) - do NOT re-audit those four. Only 101.qq.com (RM-130) is open.
+- SGP / Match-V5 drift guard was CONSIDERED and DECLINED (live-gated reachability, no
+  hand-maintained mirror, official versioned API) - do NOT file it.
+- Competitor-lift research stays RETIRED / drained 4x - not re-opened this run.
+- Before taking a new RM id run the grep recipe in `DS_SWEEP_TRACKER.md` (next free RM-134).
+
+## Next
+
+Lanes have well-formed work waiting: RM-130 (lane 6/7, the drift probe), RM-129 + RM-131
+(lane 7 ASCII / token hygiene), RM-132 (lane 4 Arena chip), RM-133 (lane 8 MC error scrub),
+plus still-open RM-128 (lane 6/7) and the DS RM-118 4 wireable seams (lane 6).
+
+---
+
 # 2026-07-31e - LANE-RESEARCH REFILL (headless lane 5): 2 stale strikes, id-registry fix, cdragon catalog torn down.
 
 ## Start here next session
