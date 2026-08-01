@@ -217,7 +217,27 @@ class ClaudeAdjudicator(_Backend):
 
 BACKENDS = {GeminiAdjudicator.name: GeminiAdjudicator,
             ClaudeAdjudicator.name: ClaudeAdjudicator}
-DEFAULT_BACKEND = GeminiAdjudicator.name
+
+# CLAUDE IS THE DEFAULT AND THE ONLY VENDOR THE LOOP IS MEANT TO USE
+# (operator decision 2026-08-01). The loop self-adjudicates: the same vendor
+# that executes a cycle also directs and audits it, with the read-only
+# guarantee coming from `--permission-mode plan` rather than from vendor
+# diversity.
+#
+# WHY THE GEMINI BACKEND IS STILL IN THIS FILE. Flipping the default is a
+# one-line, instantly reversible change; deleting the backend is a decommission
+# sweep across the controller's stdin cap, the ceiling accounting, the failover
+# ladder, a scheduled task and a shared-by-contract mutex name that cannot be
+# edited unilaterally. Those are separate acts and the second one is filed, not
+# forgotten. Leaving a reachable-but-unselected backend here is deliberate: it
+# is what makes this flip reversible while the sweep is planned.
+#
+# The practical point of the change is that a second vendor cost real overhead
+# for no adjudication benefit - quota checks, exhaustion-signature matching, a
+# sticky failover that could misread a parallel-call RESOURCE_EXHAUSTED as
+# genuine credit exhaustion, a metered-spend ceiling, and a CLI stdin limit the
+# controller had to cap every call against.
+DEFAULT_BACKEND = ClaudeAdjudicator.name
 
 
 def backend_name(cfg):

@@ -125,5 +125,48 @@ class BlockReservationTests(unittest.TestCase):
         self.assertIsNone(ports.block_for(8896))
 
 
+class NextFreeTests(unittest.TestCase):
+    """`next_free` must never invent a number RC has no standing to assign."""
+
+    def test_next_free_rc_skips_every_allocated_port(self):
+        got = ports.next_free("rc")
+        self.assertIn(got, ports.RC_BLOCK)
+        self.assertNotIn(got, ports.ALL)
+        self.assertEqual(got, min(set(ports.RC_BLOCK) - ports.ALL))
+
+    def test_next_free_ds_block_is_wide_open(self):
+        """The DS block is reserved and unoccupied, so its floor is free."""
+        self.assertEqual(ports.next_free("ds"), min(ports.DS_BLOCK))
+
+    def test_sibling_blocks_refuse_to_answer_without_their_allocations(self):
+        """RC does not know what LW and RM have allocated and must not guess.
+
+        This is the whole point of the guard: a confident wrong number here
+        would be handed to a sibling as "your next free port" and collide.
+        """
+        for block in ("lw", "rm"):
+            with self.assertRaises(ValueError):
+                ports.next_free(block)
+
+    def test_sibling_blocks_answer_when_told_what_is_taken(self):
+        """Lowest free in the BLOCK - which is not the same as lowest free
+        next to the neighbours, and the difference bit on the first run.
+
+        RM's five named ports are 8777 8778 8779 8780 8783 and RM described
+        8781/8782 as "the free ones". Mechanically the lowest free port in
+        8770-8789 is 8770, because the block floor is empty. Both statements
+        are true about different questions, and a number handed to a sibling
+        has to be the one THAT SIBLING would agree with - so RC states the
+        arithmetic here and lets RM pick, rather than quietly redefining it.
+        """
+        taken = {8777, 8778, 8779, 8780, 8783}
+        self.assertEqual(ports.next_free("rm", taken=taken), 8770)
+        self.assertEqual(ports.next_free("rm", taken=taken | set(range(8770, 8777))), 8781)
+
+    def test_unknown_block_raises(self):
+        with self.assertRaises(KeyError):
+            ports.next_free("nope")
+
+
 if __name__ == "__main__":
     unittest.main()
