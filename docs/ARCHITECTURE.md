@@ -183,6 +183,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/next_buy_fallback.py` | static DS build-order fallback for the NEXT BUY feed |
 | `core/objective_playbook.py` | RC2-P5.5 deterministic objective playbook callout |
 | `core/pickban_targets.py` | deterministic pick/ban targets reader (matchup-engine DB) |
+| `core/ports.py` | canonical TCP port registry for RC + Daemon Slayer, and the cross-project block reservations |
 | `core/precomputed_anvil_advisor.py` | arena item-anvil deterministic substrate |
 | `core/precomputed_build_coach.py` | HZ-C2 precomputed BUILD A/B choice-coach over the HZ-B2 variants table |
 | `core/precomputed_laning_coach.py` | HZ-C1 precomputed A/B choice-coach over the laning + build tables |
