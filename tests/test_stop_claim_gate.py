@@ -399,3 +399,102 @@ def test_history_failure_never_breaks_the_gate(tmp_path):
                           cwd=str(ROOT), check=False)
     assert proc.returncode == 2, "the gate still blocks even with no history"
     assert json.loads(report.read_text(encoding="utf-8"))["findings"]
+
+
+# ------------------------------------- backgrounded runs defer their summary
+# Measured 2026-08-01: the gate blocked a Stop on a claim that WAS backed. A
+# pytest run started with run_in_background gets a launcher handoff as its
+# paired tool_result ("Command running in background with ID: ..."), so the real
+# summary - which arrives later when the output file is read - was never
+# collected, and every count in it read as unobserved. The evidence collector
+# was blind to a transport, which is the shape of
+# reference_ds_route_seam_transport_vs_flag. Widening EVIDENCE, never the claim.
+
+BG_HANDOFF = ("Command running in background with ID: bsw0jw8f5. Output is being "
+              "written to: C:\tmp\tasks\bsw0jw8f5.output")
+BIG_SUMMARY = "17784 passed, 108 skipped, 1370 subtests passed in 170.67s (0:02:50)"
+
+
+def _backgrounded_suite(claim, summary=BIG_SUMMARY):
+    """The MEASURED shape, and the leading foreground run is load-bearing.
+
+    With no counts collected at all, check 2 is inert - `observed_counts` is
+    empty and nothing can mismatch. The real session had small foreground runs
+    (26, 29, 30, 52) that filled it, and THAT is what made the big deferred
+    number read as unobserved. A fixture without them tests nothing.
+    """
+    return [
+        _assistant(_tool_use("Bash", command="python -m pytest tests/test_x.py -q")),
+        _tool_result("==== 30 passed in 2.68s ===="),
+        _assistant(_tool_use("Bash", command="python -m pytest tests/ -q -n 8")),
+        _tool_result(BG_HANDOFF),
+        _assistant(_tool_use("Bash", command="tail -4 C:/tmp/tasks/bsw0jw8f5.output")),
+        _tool_result(summary),
+        _assistant(_text(claim)),
+    ]
+
+
+def test_background_run_summary_read_later_is_credited(tmp_path):
+    report = _run_gate(tmp_path, _backgrounded_suite(
+        "Full suite fresh: 17784 passed, 108 skipped, 0 failed."))
+    assert report["findings"] == [], report["findings"]
+
+
+def test_background_run_still_catches_a_wrong_count(tmp_path):
+    """Crediting the deferred summary must not stop the check working."""
+    report = _run_gate(tmp_path, _backgrounded_suite("Full suite fresh: 99999 passed."))
+    finding = next(f for f in report["findings"] if f["check"] == "count_mismatch")
+    assert finding["claimed"] == "99999"
+    assert "17784" in finding["observed"]
+
+
+def test_a_floating_count_is_not_a_summary_even_after_a_background_run(tmp_path):
+    """The load-bearing negative. Only pytest TERMINAL-SUMMARY shape counts; a
+    bare 'N passed' anywhere in a tool result is what poisoned the first armed
+    gate and must stay uncredited."""
+    rows = _backgrounded_suite("The suite is green at 99999 passed.",
+                               summary="the log mentions 99999 passed items earlier")
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
+def test_no_background_run_means_no_deferred_crediting(tmp_path):
+    """Without a backgrounded run there is nothing to defer, so a summary-shaped
+    string in an unrelated tool result must NOT become evidence."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest tests/ -q")),
+        _tool_result("==== 12 passed in 1.00s ===="),
+        _assistant(_tool_use("Read", file_path="notes.md")),
+        _tool_result("an old note says 17784 passed in 170.67s"),
+        _assistant(_text("The suite is green at 17784 passed.")),
+    ]
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
+# ------------------------------------ prose ordinals are not pytest counts
+# Second false positive measured 2026-08-01, from replaying this session's own
+# transcript: "Test 1 passed for the wrong reason" was read as a claim of a
+# 1-test suite. "Test <n> passed" is an ordinal reference to one named case,
+# never a summary count. Narrowing the CLAIM parser, not the check.
+
+@pytest.mark.parametrize("sentence", [
+    "Test 1 passed for the wrong reason - the check was inert.",
+    "Mutant 2 passed, so that guard is untested.",
+    "Step 3 passed and the rest were skipped.",
+])
+def test_prose_ordinals_are_not_read_as_suite_counts(tmp_path, sentence):
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text(sentence)),
+    ]
+    assert "count_mismatch" not in _checks(_run_gate(tmp_path, rows))
+
+
+def test_a_real_count_claim_next_to_a_noun_still_flags(tmp_path):
+    """The narrowing must not swallow a genuine miscount."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text("The suite reports 1500 passed.")),
+    ]
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
