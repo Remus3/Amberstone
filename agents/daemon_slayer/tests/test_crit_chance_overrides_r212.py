@@ -23,7 +23,7 @@ here rather than silently rotting the hand-authored numbers.
 DEFAULT-OFF: ``compute_dps`` with the flag omitted is byte-identical for EVERY
 champion including the four registered ones.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

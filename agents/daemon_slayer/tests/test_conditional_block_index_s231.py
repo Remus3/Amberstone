@@ -5,7 +5,7 @@ vocab change (s227 "don't over-build" - both entries reuse the existing
 
 2 CONVERSIONS of already-shipped unconditional entries - both provable
 Part-1 no-op (``"default"`` branch == the prior int 1, byte-identical),
-verified per-rank vs Meraki 16.10.1 + live A/B :8893.
+verified per-rank vs Meraki 16.10.1 + live A/B :8860.
 
   * Evelynn R "Last Caress" int 1 -> {"default": 1, "target_full_hp":
         0} - block 1 = EXACTLY 2.4x block 0 (the bonus-vs-sub-30%-max-HP

@@ -385,7 +385,7 @@ class _Phase3Watcher:
     )
     _WATCHED_CODE_DIRS = ("agents",)
     # agents/daemon_slayer is the standalone Daemon Slayer engine - it
-    # runs as its own process on :8893 (supervised independently) and is
+    # runs as its own process on :8860 (supervised independently) and is
     # NOT imported by the Phase 3 supervisor. Edits there (the active DS
     # work cadence) must not bounce Phase 3, so prune it from the
     # recursive agents/ scan.

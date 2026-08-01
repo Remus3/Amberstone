@@ -132,7 +132,7 @@ def _dps_rank_fn(champion, archetype, **kw):
     """In-process mirror of ``rank_for_primary_archetype``'s default route.
 
     ``plan_build_order``'s stock ``rank_fn`` is the HTTP client for the local
-    :8893 engine, so leaving it unset makes this test require a live server:
+    :8860 engine, so leaving it unset makes this test require a live server:
     it passes on a dev box that happens to be running one and returns None
     (engine unreachable at engine call 1) everywhere else. CI can never
     satisfy it - ``ensure_running`` spawns with Windows-only ``creationflags``

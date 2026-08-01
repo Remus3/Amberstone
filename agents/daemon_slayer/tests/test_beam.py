@@ -183,7 +183,7 @@ class BeamSearchConstraintTests(unittest.TestCase):
 
     # RETIRED 2026-07-09 (LEDGER 826): the boots_unique=False branch is still
     # live (beam.py:280-360, exposed via cli.py --no-boots-unique + the
-    # server.py :8893 body param), but a BEHAVIORAL test of it is no longer
+    # server.py :8860 body param), but a BEHAVIORAL test of it is no longer
     # constructible. It only ever passed because the pool held stat-dense T3
     # quest-reward boots (3170-3175) that beam WANTED two of; commit 19a76d8b
     # added those to _SR_EXCLUDED_ITEM_IDS, and no buyable-boot pool reproduces

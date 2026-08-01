@@ -13,7 +13,7 @@ These tests pin the DSP2 ``exempt_offclass_by_win`` contract for the new flag:
      byte-identical to the pre-seam request.
   b) True emits ``widen_carry_pool: True`` in the POST body.
 
-The HTTP layer (``_post_json``) is mocked, so DS :8893 does not need to be up.
+The HTTP layer (``_post_json``) is mocked, so DS :8860 does not need to be up.
 """
 
 from __future__ import annotations

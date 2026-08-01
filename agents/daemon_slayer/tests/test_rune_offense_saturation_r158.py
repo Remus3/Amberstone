@@ -34,7 +34,7 @@ NO BEHAVIOR MAY CHANGE. R159 adds ZERO math - only records. The invariance tests
 pin that: the mapping credits nothing, so ranking the full 62-rune five-tree id
 list returns exactly what ranking the REGISTERED ids alone returns.
 
-OFFLINE ONLY: no live :8893, no network. Skips cleanly when the vendored feed is
+OFFLINE ONLY: no live :8860, no network. Skips cleanly when the vendored feed is
 absent so a data-less checkout does not red the suite.
 """
 from __future__ import annotations

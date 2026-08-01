@@ -31,7 +31,7 @@ if ($sup) {
 # 2. Vision server has NO scheduled task (removed 2026-06-11, deep-audit P2):
 #    dashboard/server.py self-heals :8889 in-process; step 7 probes it.
 
-# 3. RC-DaemonSlayer (Daemon Slayer build engine :8893)
+# 3. RC-DaemonSlayer (Daemon Slayer build engine :8860)
 $ds = Get-ScheduledTask -TaskName "RC-DaemonSlayer" -ErrorAction SilentlyContinue
 if ($ds) {
     if ($ds.State -ne "Running") {
@@ -78,13 +78,13 @@ try {
     Write-Host "  RC dashboard :8888 not yet responding (may still be booting)" -ForegroundColor Yellow
 }
 
-# 9. Probe Daemon Slayer :8893
+# 9. Probe Daemon Slayer :8860
 try {
-    $r = Invoke-WebRequest -Uri "http://127.0.0.1:8893/health" -TimeoutSec 3 -UseBasicParsing
+    $r = Invoke-WebRequest -Uri "http://127.0.0.1:8860/health" -TimeoutSec 3 -UseBasicParsing
     $ds_info = ($r.Content | ConvertFrom-Json)
-    Write-Host ("  Daemon Slayer :8893 alive  engine={0}  patch={1}" -f $ds_info.engine_version, $ds_info.patch) -ForegroundColor Green
+    Write-Host ("  Daemon Slayer :8860 alive  engine={0}  patch={1}" -f $ds_info.engine_version, $ds_info.patch) -ForegroundColor Green
 } catch {
-    Write-Host "  Daemon Slayer :8893 NOT responding" -ForegroundColor Red
+    Write-Host "  Daemon Slayer :8860 NOT responding" -ForegroundColor Red
 }
 
 # 10. Probe Phase 3 supervisor :8890

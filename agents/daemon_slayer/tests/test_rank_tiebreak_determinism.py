@@ -3,7 +3,7 @@
 PD -> Kraken instability (2026-07-06 spec): the rank sort key was a float
 tuple with NO stable tiebreak, so two items with an EXACT-tie metric ordered by
 whatever order the candidate dict happened to iterate - which varies across a
-:8893 / process restart (dict iteration order). This flipped the top build
+:8860 / process restart (dict iteration order). This flipped the top build
 suggestion between byte-identical runs.
 
 Fix: _rank_sort_key appends the item_id as a STABLE final tiebreak on every

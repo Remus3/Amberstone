@@ -208,7 +208,7 @@ def main() -> int:
     if ds_health:
         ds_status = ds_health.get("status", "?")
         ds_patch = ds_health.get("patch", "?")
-        out.append(f"- DS server :8893: {ds_status} patch={ds_patch} alive={ds_alive}")
+        out.append(f"- DS server :8860: {ds_status} patch={ds_patch} alive={ds_alive}")
         if not ds_alive or ds_status != "ok":
             anomalies.append(f"Legion: DS server not healthy (status={ds_status})")
 

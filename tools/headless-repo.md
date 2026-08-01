@@ -48,7 +48,7 @@ Discipline", "Verification Discipline", and all of "Settled - do not re-litigate
 `.gitignore` end to end. That last is not boilerplate: at least three of its prose paragraphs record a measured incident.
 
 **1e. Live state, text-first (R2).** `ops/runtime/health.json` (pid, alive, last_reload_ok); `curl -k https://127.0.0.1:8888/api/health/all` (mkcert self-signed, `-k`
-mandatory); `curl -s http://127.0.0.1:8893/health` (HTTP, not HTTPS) for Daemon Slayer. Never screenshot to read a number, version or state. Note the HEAD sha you
+mandatory); `curl -s http://127.0.0.1:8860/health` (HTTP, not HTTPS) for Daemon Slayer. Never screenshot to read a number, version or state. Note the HEAD sha you
 started from and confirm `gh run list --limit 6` is a green baseline - without one you cannot attribute a red to your slice.
 
 ### 2. THE OUT-OF-REPO CARVE-OUTS - non-negotiable
@@ -177,7 +177,7 @@ Miss Fortune's SR build order" when `3600` is Kalista's Black Spear and SR carri
 
 `CLAUDE.md` "Execution Efficiency & Tooling Rules" R5-R7 governs, and this lane pays the tax honestly rather than prophylactically. **Tier-0** cosmetic (doc, comment,
 string, non-runtime constant): Edit plus `py_compile` if `.py`; no suite, no restart. **Tier-1** local logic, one module: `py_compile` plus that module's tests only.
-**Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite (`agents/daemon_slayer/tests` then `tests/`) plus a DS `:8893` restart plus the
+**Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite (`agents/daemon_slayer/tests` then `tests/`) plus a DS `:8860` restart plus the
 Share mirror sync in the SAME commit. R6: run the suite ONCE and trust the exit code, re-running only if you edited since or the pipe demonstrably glitched. R8: never
 re-Read a file you just Edited to confirm - Edit fails loudly.
 
@@ -228,13 +228,13 @@ registry-count or ASCII-hygiene failure, and never "fix" a data file on the stre
    run.
 7. **`Path.write_text` rewrites LF as CRLF on Windows and corrupts byte counts.** `read_text` hides it, so a round-trip looks clean while the file on disk grew. Write
    BYTES whenever a count matters - a size budget, a hash, a byte-identity assertion. Memory `reference_windows_write_text_crlf_byte_count`.
-8. **`schtasks /End` then an immediate `/Run` leaves the target DEAD while every status signal says success.** For DS `:8893`: `/End` kills the process, `/Run` fires a
-   second later, `tools/start_daemon_slayer.py:85` sees the port still bound by the dying process, logs "port 8893 already bound - skipping (exit 0)" and exits cleanly;
+8. **`schtasks /End` then an immediate `/Run` leaves the target DEAD while every status signal says success.** For DS `:8860`: `/End` kills the process, `/Run` fires a
+   second later, `tools/start_daemon_slayer.py:85` sees the port still bound by the dying process, logs "port 8860 already bound - skipping (exit 0)" and exits cleanly;
    the old process finishes dying, the port frees, no server was started - while `schtasks /Query /V` reports `Status: Ready`, `Last Result: 0`. The fix is a SECOND
    `/Run` once the port is free, and **the only honest check is an HTTP probe**, never the task's exit code. `schtasks /End|/Run` also cannot be issued from the Bash
    tool (Git Bash rewrites the switches as paths) - use the PowerShell tool. This lane owns "health and supervisors", so it will meet this.
 9. **RC restart is `echo restart > restart_trigger.txt`** (supervisor clears and restarts within ~5s); verify by reading `ops/runtime/health.json` for a NEW `pid`,
-   `alive=true`, `last_reload_ok=true`. DS `:8893` is NOT supervisor-watched and ignores that trigger. Editing `web/{js,css}/panels/*` needs no RC restart at all
+   `alive=true`, `last_reload_ok=true`. DS `:8860` is NOT supervisor-watched and ignores that trigger. Editing `web/{js,css}/panels/*` needs no RC restart at all
    (ADR-008 unified asset-hash, `compute_asset_hash`) - say so rather than bouncing RC for an asset-only change.
 10. **`SCRIPT_DIR` in `app/__init__.py` MUST stay `Path(__file__).parent.parent`** (package layout). A frozen file and a restructure magnet; do not "simplify" it.
 11. **Do NOT append to `CLAUDE.md`** - CI size-budgeted under 60 KB, reserved for rule / frozen-list / Settled changes. The per-item ledger lives in `docs/LEDGER.md`,

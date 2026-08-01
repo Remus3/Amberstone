@@ -28,7 +28,7 @@ WHAT IS PROVEN
     when True.
 
 IN-PROCESS ONLY: route handlers take a body dict and read the module ``_CACHE``
-(the ``test_oq17_route_seam_transport.py`` idiom). No :8893, no network.
+(the ``test_oq17_route_seam_transport.py`` idiom). No :8860, no network.
 
 NO ENGINE_VERSION assertion here - exposing an existing engine seam on a route
 is transport, and the bump is stamped separately.

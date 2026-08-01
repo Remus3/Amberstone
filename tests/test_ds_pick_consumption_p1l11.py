@@ -35,7 +35,7 @@ sentinel leaking into a populated prompt) is caught.
 No hardcoded magic numbers for engine outputs: the expected prompt
 substring is derived from the dispatch helper's OWN ``picks_str`` /
 ``_build_display_rows`` output, never recomputed by hand. Dispatcher is
-mocked at the ``rank_for_primary_archetype`` boundary - no live :8893.
+mocked at the ``rank_for_primary_archetype`` boundary - no live :8860.
 The JS group shells out to ``node`` against the real
 ``scorer_units.js``; it is skipped (not failed) if node is absent.
 """

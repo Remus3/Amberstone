@@ -1,6 +1,6 @@
 """R136-S1: characterization tests for the SELF-side rune max-HP / heal registry.
 
-OFFLINE ONLY - no network, no live :8893, no game. Every assertion is an
+OFFLINE ONLY - no network, no live :8860, no game. Every assertion is an
 INVARIANT (monotonicity, ranged-vs-melee ordering, zero-when-off, the 120-absorb
 threshold binding point, additivity) or an EXACT reproduction of a verbatim
 DDragon 16.14.1 coefficient. No cross-item / cross-champion comparison

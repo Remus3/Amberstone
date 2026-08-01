@@ -61,7 +61,7 @@ DEFAULT-OFF. Mirrors the ``apply_passive_damage`` seam exactly: the hook in
 ``abilities.AbilitiesSnapshot.load`` runs only under
 ``apply_ability_base_overrides=True``. With the flag OFF (the default) NOT ONE
 form is touched and the whole snapshot is byte-identical, so no shipped build
-table, no ``:8893`` response and no existing test moves. Flipping it default-on
+table, no ``:8860`` response and no existing test moves. Flipping it default-on
 is a separate, measured decision - the notes' own bottom line is that all six
 are ADJACENT-PAIR reorders inside an already-recommended core
 (``DS_ABILITY_SHAPING_NOTES.md:577-588``), i.e. worth correcting for

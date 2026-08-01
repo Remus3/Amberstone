@@ -46,10 +46,10 @@ foreach ($a in $agents) {
   }
 }
 
-# 2. DS server :8893 - not supervisor-watched per memory; launch manually if absent
-$dsListening = Get-NetTCPConnection -LocalPort 8893 -State Listen -ErrorAction SilentlyContinue
+# 2. DS server :8860 - not supervisor-watched per memory; launch manually if absent
+$dsListening = Get-NetTCPConnection -LocalPort 8860 -State Listen -ErrorAction SilentlyContinue
 if ($dsListening) {
-  Write-Host "[on] DS server :8893 already listening (pid $($dsListening[0].OwningProcess))"
+  Write-Host "[on] DS server :8860 already listening (pid $($dsListening[0].OwningProcess))"
 } else {
   $py = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
   $ds = 'C:\Riot Commander\tools\start_daemon_slayer.py'
@@ -57,9 +57,9 @@ if ($dsListening) {
     Start-Process -FilePath $py -ArgumentList "`"$ds`"" -WorkingDirectory 'C:\Riot Commander' -WindowStyle Hidden
     Write-Host "[on] DS server launching (start_daemon_slayer.py)"
     Start-Sleep -Seconds 5
-    $dsListening = Get-NetTCPConnection -LocalPort 8893 -State Listen -ErrorAction SilentlyContinue
-    if ($dsListening) { Write-Host "[on] DS server :8893 up (pid $($dsListening[0].OwningProcess))" }
-    else { Write-Host "[on] WARN: DS server did not bind :8893 within 5s" }
+    $dsListening = Get-NetTCPConnection -LocalPort 8860 -State Listen -ErrorAction SilentlyContinue
+    if ($dsListening) { Write-Host "[on] DS server :8860 up (pid $($dsListening[0].OwningProcess))" }
+    else { Write-Host "[on] WARN: DS server did not bind :8860 within 5s" }
   } else {
     Write-Host "[on] WARN: DS launcher or python not found"
   }
@@ -71,7 +71,7 @@ Write-Host "[on] Claude Desktop launched"
 
 # 3b. rc-shell Electron overlay. The app already holds requestSingleInstanceLock so a
 # 2nd launch is a no-op (focuses the existing window); we singleton-check first anyway
-# to avoid spawning a doomed helper - mirrors the DS :8893 check above. Matched ONLY by
+# to avoid spawning a doomed helper - mirrors the DS :8860 check above. Matched ONLY by
 # the rc-shell path so other Electron apps (Claude Desktop) are never confused for it.
 $rcShell = Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
   Where-Object { $_.CommandLine -and $_.CommandLine -match 'rc-shell' }
@@ -94,7 +94,7 @@ if ($rcShell) {
 
 # 4. Status snapshot
 Start-Sleep -Seconds 1
-$ports = @{8888='dashboard'; 8889='vision'; 8890='phase3-prod'; 8891='phase3-dev'; 8893='ds'; 8894='ds-matchdb-mcp'}
+$ports = @{8888='dashboard'; 8889='vision'; 8890='phase3-prod'; 8891='phase3-dev'; 8860='ds'; 8861='ds-matchdb-mcp'}
 foreach ($p in ($ports.Keys | Sort-Object)) {
   $c = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue
   if ($c) { Write-Host "[on] :$p ($($ports[$p])) listening pid=$($c[0].OwningProcess)" }

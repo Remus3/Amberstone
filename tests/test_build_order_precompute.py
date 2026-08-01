@@ -7,7 +7,7 @@ reader round-trip tests need no engine.
 
 The build planner is exercised headless: ``plan_build_order`` accepts an
 injectable ``rank_fn`` (the DS dispatcher), so a deterministic fake ranker
-stands in for the live :8893 server. The characterization asserts the
+stands in for the live :8860 server. The characterization asserts the
 precompute module's cell is byte-identical to a direct ``plan_build_order``
 call threaded with the SAME comp-archetype bias - i.e. the precompute is a
 pure re-parameterization of the shipped engine, no new combat math.

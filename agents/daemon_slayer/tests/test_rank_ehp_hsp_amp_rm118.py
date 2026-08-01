@@ -37,7 +37,7 @@ DEFAULT-OFF
 assumed-share seams which the engine arms DEFAULT-ON). An omitted key is a
 byte-identical response - measured below, not assumed.
 
-OFFLINE ONLY: no live :8893, no network. Direct handler + engine + client calls.
+OFFLINE ONLY: no live :8860, no network. Direct handler + engine + client calls.
 """
 from __future__ import annotations
 

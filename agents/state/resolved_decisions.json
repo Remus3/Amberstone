@@ -118,7 +118,7 @@
       "id": "phase3-d015",
       "title": "Daemon Slayer engine version is authoritative via /health + current.txt",
       "decided_at": "2026-05-04",
-      "summary": "Live DS truth = data/daemon_slayer/current.txt + agents/daemon_slayer/__init__.py ENGINE_VERSION + DS :8893 /health endpoint. Do NOT trust ledger recollection of patch/ENGINE. DS coverage %/match-row prose is a DS-batch docs-sync job, never recomputed in a general sync (nested registry schema; flat count mis-parses). After ENGINE_VERSION bump, DS server is NOT supervisor-watched; taskkill the pid + relaunch via schtasks /Run /TN RC-DaemonSlayer per reference_ds_server_not_supervisor_watched.",
+      "summary": "Live DS truth = data/daemon_slayer/current.txt + agents/daemon_slayer/__init__.py ENGINE_VERSION + DS :8860 /health endpoint. Do NOT trust ledger recollection of patch/ENGINE. DS coverage %/match-row prose is a DS-batch docs-sync job, never recomputed in a general sync (nested registry schema; flat count mis-parses). After ENGINE_VERSION bump, DS server is NOT supervisor-watched; taskkill the pid + relaunch via schtasks /Run /TN RC-DaemonSlayer per reference_ds_server_not_supervisor_watched.",
       "source": "CLAUDE.md / Settled + reference_ds_server_not_supervisor_watched.md + feedback_ds_coverage_prose_recompute.md",
       "authority": "operator"
     },
@@ -182,7 +182,7 @@
       "id": "phase3-d023",
       "title": "DS live truth = data/daemon_slayer/current.txt + /health, NOT recomputed",
       "decided_at": "2026-06-01",
-      "summary": "Daemon Slayer coverage %, match-row prose, patch, and ENGINE_VERSION must be read from data/daemon_slayer/current.txt + agents/daemon_slayer/__init__.py + DS :8893 /health. The registry is nested - a flat count mis-parses. DS coverage prose recompute is a DS-batch docs-sync job, never executed in a general sync. After ENGINE_VERSION bump DS is NOT supervisor-watched; taskkill the pid + relaunch via schtasks /Run /TN RC-DaemonSlayer. memory: feedback_ds_coverage_prose_recompute + reference_ds_server_not_supervisor_watched.",
+      "summary": "Daemon Slayer coverage %, match-row prose, patch, and ENGINE_VERSION must be read from data/daemon_slayer/current.txt + agents/daemon_slayer/__init__.py + DS :8860 /health. The registry is nested - a flat count mis-parses. DS coverage prose recompute is a DS-batch docs-sync job, never executed in a general sync. After ENGINE_VERSION bump DS is NOT supervisor-watched; taskkill the pid + relaunch via schtasks /Run /TN RC-DaemonSlayer. memory: feedback_ds_coverage_prose_recompute + reference_ds_server_not_supervisor_watched.",
       "source": "CLAUDE.md / Settled / DS live truth",
       "authority": "operator"
     },

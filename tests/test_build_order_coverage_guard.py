@@ -146,7 +146,7 @@ class LiveCoverageTests(unittest.TestCase):
                     f"{t['family']}/{t['mode']}: {len(t['empty_cells'])} cells "
                     f"have an empty order, e.g. {t['empty_cells'][:5]}. An empty "
                     "order is what the producers emit when the DS engine is "
-                    "down - the table was generated against a dead :8893.",
+                    "down - the table was generated against a dead :8860.",
                 )
                 self.assertEqual(
                     t["short_cells"], [],

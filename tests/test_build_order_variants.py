@@ -14,10 +14,10 @@ Characterization, not prediction: each variant cell is the SHIPPED
 ``core.build_order.plan_build_order`` output under that variant's enemy-stat
 bias - the precompute is a pure re-parameterization of the engine. The build
 planner is exercised headless where a fixed order suffices (an injected fake
-``rank_fn`` standing in for the live :8893 dispatcher); the ITEM-PIVOT assertion
+``rank_fn`` standing in for the live :8860 dispatcher); the ITEM-PIVOT assertion
 (anti_tank surfaces a penetration / %max-HP item the anti_squishy variant drops)
 runs against the LIVE engine and skips when it is down, so CI never depends on
-:8893.
+:8860.
 
 Distinct from HZ-B1: HZ-B1's ``frontline_heavy`` is one of four comp-SHAPE
 classes (a fixed enemy stat block); HZ-B2 is a champion-DECISION axis - the
@@ -221,7 +221,7 @@ class LiveEnginePivotTests(unittest.TestCase):
     """The defining HZ-B2 assertion: for a champion that CAN, the anti_tank
     variant actually pivots toward an anti-tank ITEM (a penetration / %max-HP
     item) that the anti_squishy variant drops. Runs against the LIVE engine -
-    skips when :8893 is down so CI never depends on it."""
+    skips when :8860 is down so CI never depends on it."""
 
     # Engine anti-tank items: %armor/%MR penetration, flat lethality-agnostic
     # armor-pen, %max-HP shred, antiheal. A non-fragile SET membership check
@@ -245,7 +245,7 @@ class LiveEnginePivotTests(unittest.TestCase):
         # skipTest below it. `unittest.SkipTest` subclasses `Exception`, so the
         # "engine is down" skip was caught by its own handler and re-raised as
         # "DS client import failed". Probed the same day: the import succeeds -
-        # every transient :8893 timeout for the life of this test was reported
+        # every transient :8860 timeout for the life of this test was reported
         # to the operator as a broken import, pointing debugging at the wrong
         # half of the system.
         #
@@ -253,11 +253,11 @@ class LiveEnginePivotTests(unittest.TestCase):
         # core/daemon_slayer_client.py is TRACKED, so it imports in every
         # checkout; a failure there is the thing under test being broken, not an
         # absent capability. Letting the ImportError propagate makes it a hard
-        # error instead of a green skip. Only the :8893 liveness gate below is a
+        # error instead of a green skip. Only the :8860 liveness gate below is a
         # real capability check.
         from core import daemon_slayer_client as dsc
         if not dsc.is_engine_up(timeout=1.5):
-            self.skipTest("DS engine at 127.0.0.1:8893 is down")
+            self.skipTest("DS engine at 127.0.0.1:8860 is down")
 
     def test_anti_tank_surfaces_a_penetration_or_hp_item(self):
         cell = bov.compute_variant_cell(

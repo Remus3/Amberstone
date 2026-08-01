@@ -7,7 +7,7 @@ in docs/DS_COMPLETENESS_GAP.md):
 
   * the status banner (the ``Status: FUNCTIONALLY COMPLETE`` line) restates
     ``ENGINE_VERSION`` + ``patch``;
-  * the ``server.py`` module-map row lists the :8893 HTTP route surface.
+  * the ``server.py`` module-map row lists the :8860 HTTP route surface.
 
 This guard pins those two STABLE identifiers to their source of truth
 (``agents/daemon_slayer/__init__.py`` ENGINE_VERSION + ``current.txt`` patch)

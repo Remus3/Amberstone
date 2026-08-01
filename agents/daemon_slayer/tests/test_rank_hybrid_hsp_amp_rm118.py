@@ -35,7 +35,7 @@ DEFAULT-OFF
 ``rank_items_by_hybrid`` defaults ``assume_hsp_amp=False``. An omitted key is a
 byte-identical response - measured below, not assumed.
 
-OFFLINE ONLY: no live :8893, no network. Direct handler + engine + client calls.
+OFFLINE ONLY: no live :8860, no network. Direct handler + engine + client calls.
 """
 from __future__ import annotations
 

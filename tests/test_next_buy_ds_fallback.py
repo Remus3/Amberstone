@@ -9,7 +9,7 @@ for the GOLD and TRINKET rows. The widget was faithful; the FEED was empty.
 
 The fix re-sources the missing builds from the STATIC precomputed Daemon
 Slayer build-order tables (``data/daemon_slayer/<patch>/build_orders_<mode>.json``)
-as a FALLBACK ONLY - no live HTTP call to :8893, so nothing can stall the
+as a FALLBACK ONLY - no live HTTP call to :8860, so nothing can stall the
 liveclient path. The 6 curated builds keep PRIORITY: the DS table is
 consulted only when ``resolve_build`` returns an empty list.
 

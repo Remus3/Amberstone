@@ -336,7 +336,7 @@ def _serve_health_all(h) -> None:
         except Exception as e:  # noqa: BLE001
             rollup["vision"] = {"alive": False, "error": str(e)[:120]}
         try:
-            with urllib.request.urlopen("http://127.0.0.1:8893/health", timeout=2) as r:
+            with urllib.request.urlopen("http://127.0.0.1:8860/health", timeout=2) as r:
                 ds_data = json.loads(r.read())
                 rollup["daemon_slayer"] = {**ds_data, "alive": ds_data.get("status") == "ok"}
         except Exception as e:  # noqa: BLE001
@@ -518,7 +518,7 @@ _CE_DROPPED: int   = 0
 
 # Max filled item slots = a complete build (mirrors agents.daemon_slayer.rank
 # DEFAULT_SLOT_COUNT=6). Hardcoded, NOT imported: routes_state.py must not pull
-# the in-process DS engine (split-brain guard vs the live :8893 server).
+# the in-process DS engine (split-brain guard vs the live :8860 server).
 _MAX_BUILD_SLOTS = 6
 
 # A1 (QA 2026-07-03 champ-select QA): tolerated aliases -> canonical mode.

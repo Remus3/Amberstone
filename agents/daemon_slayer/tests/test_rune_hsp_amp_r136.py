@@ -13,7 +13,7 @@ invariance, no double-credit). Three magnitudes ARE pinned exactly because they
 are the contract: Revitalize 0.05, the item pair 0.22, and the additive
 composition 0.27.
 
-OFFLINE ONLY: no network, no live :8893. The tree-wide sweep reads the
+OFFLINE ONLY: no network, no live :8860. The tree-wide sweep reads the
 already-vendored DDragon ``runesReforged.json`` snapshots from disk.
 """
 from __future__ import annotations

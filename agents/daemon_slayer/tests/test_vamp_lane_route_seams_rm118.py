@@ -67,7 +67,7 @@ False. So an omitted body key is a byte-identical route response, and - stronger
 - a body carrying a full ``targets_in_rotation`` count with the flags OFF is
 byte-identical too. Both measured below.
 
-OFFLINE ONLY: no live :8893, no network. Direct handler + engine + client calls.
+OFFLINE ONLY: no live :8860, no network. Direct handler + engine + client calls.
 """
 from __future__ import annotations
 

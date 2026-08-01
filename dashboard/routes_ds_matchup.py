@@ -2,7 +2,7 @@
 """GET /api/ds-matchup - a 1v1 head-to-head trade verdict over two champions.
 
 Thin, additive, read-only dashboard wire that surfaces the EXISTING 1v1
-matchup engine (POST /v2/matchup on the DS server :8893) through the
+matchup engine (POST /v2/matchup on the DS server :8860) through the
 already-shipped ``core.daemon_slayer_client.matchup`` client. NO engine math
 change, NO ENGINE_VERSION bump, NO new dependency, NO schema lift; the client
 returns a raw MatchupResult dict (or None when the engine is down) and this

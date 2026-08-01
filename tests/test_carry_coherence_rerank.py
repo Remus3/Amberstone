@@ -12,7 +12,7 @@ The fix is a METRIC (not win-rate, not blacklist) soft coherence re-rank applied
 at the carry chokepoint: dock off-axis / wasted-stat items and nudge on-axis fit,
 computed from core.build_planner.kit_synergy primitives. This test drives the
 pure re-rank helper directly with REAL engine rows (rank_items in-process, no
-live :8893), so it is server-free and deterministic. The control asserts the
+live :8860), so it is server-free and deterministic. The control asserts the
 artifact IS in the raw top-6 (proving the defect + that the re-rank is the lever).
 """
 from __future__ import annotations

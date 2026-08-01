@@ -9,7 +9,7 @@ path credited a single point of the up-to-101 AD or 168 AP those runes grant.
 This module pins the new ``_rune_offense_grants`` registry, the DEFAULT-OFF
 ``apply_rune_offense_grants`` seam, and the byte-identity contract.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

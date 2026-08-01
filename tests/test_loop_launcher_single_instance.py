@@ -10,7 +10,7 @@ breached its stale deadline at 10:13:25 and injected a stall-recovery directive
 into the 08:43:51 controller's healthy cycle 2.
 
 The kill MUST stay scoped by command line. A bare "kill python.exe" would take
-out RC itself, the Daemon Slayer server on :8893 and every RC-* scheduled task,
+out RC itself, the Daemon Slayer server on :8860 and every RC-* scheduled task,
 which is why the sibling AutoHotkey kill is cmdline-scoped too.
 """
 from __future__ import annotations
@@ -57,7 +57,7 @@ def test_controller_kill_is_cmdline_scoped_to_this_repo(script: str) -> None:
 
 
 def test_controller_kill_does_not_target_bare_python(script: str) -> None:
-    """No unfiltered python kill - that would take out RC, DS :8893 and the tasks."""
+    """No unfiltered python kill - that would take out RC, DS :8860 and the tasks."""
     for line in script.splitlines():
         stripped = line.strip()
         if stripped.startswith("#"):

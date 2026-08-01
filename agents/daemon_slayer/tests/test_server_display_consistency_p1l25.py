@@ -1,4 +1,4 @@
-"""P1-L25 - Daemon Slayer :8893 served-number display/precision/consistency.
+"""P1-L25 - Daemon Slayer :8860 served-number display/precision/consistency.
 
 Lane: is the DISPLAYED number (the JSON the server emits) consistent with
 the engine's INTERNAL value, and is the per-hit / per-second / delta
@@ -18,7 +18,7 @@ No hardcoded engine magic numbers. Every expected value is either
 recomputed from the SAME response's other fields via the documented
 ``dps.py`` formula, or compared against a fresh in-process engine call /
 the loaded snapshot. Server is bound on an ephemeral port in-process
-(port=0, injected snapshot) - the live :8893 daemon is never touched.
+(port=0, injected snapshot) - the live :8860 daemon is never touched.
 """
 from __future__ import annotations
 

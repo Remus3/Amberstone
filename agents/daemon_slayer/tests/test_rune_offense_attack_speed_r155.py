@@ -23,7 +23,7 @@ Three ways to get this wrong, each pinned below:
     A rune AS fold in ``dps.py`` happens DOWNSTREAM of that zeroing, so without
     a gate it would hand an AS-locked champion attack speed they cannot have.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

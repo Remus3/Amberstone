@@ -1,5 +1,5 @@
 ---
-description: Mission Control lane 6 (Headless-DS). Detached headless worker prompt for Daemon Slayer engine expand / lift / audit / bugfix / default-flip with adjudication, plus creative tests that need no operator present. Runs in the lane/ds worktree with full authority and no mid-run gating. Carries the live-ground-truth probe, the repo-root suite rule, the four ENGINE doc anchor sites, the Share sync contract, the DS :8893 bounce, the measured probe traps, and the CLOSED set that must never be re-opened.
+description: Mission Control lane 6 (Headless-DS). Detached headless worker prompt for Daemon Slayer engine expand / lift / audit / bugfix / default-flip with adjudication, plus creative tests that need no operator present. Runs in the lane/ds worktree with full authority and no mid-run gating. Carries the live-ground-truth probe, the repo-root suite rule, the four ENGINE doc anchor sites, the Share sync contract, the DS :8860 bounce, the measured probe traps, and the CLOSED set that must never be re-opened.
 ---
 
 > **SUBAGENT-FIRST (standing protocol, operator 2026-06-20).** Always use subagents for substantive work; do not build solo in the main thread.
@@ -26,7 +26,7 @@ Docs, ledger entries and your memory of the last bump are all UNTRUSTWORTHY for 
 |---|---|---|
 | patch | `data/daemon_slayer/current.txt` | `16.15.1` |
 | engine constant | `agents/daemon_slayer/__init__.py` `ENGINE_VERSION` | `1.268.0` |
-| live server | `curl -s http://127.0.0.1:8893/health` (HTTP, not HTTPS) | `engine_version 1.268.0, patch 16.15.1, champions 173, items 706` |
+| live server | `curl -s http://127.0.0.1:8860/health` (HTTP, not HTTPS) | `engine_version 1.268.0, patch 16.15.1, champions 173, items 706` |
 
 If the served version lags the repo constant the server is stale - bounce it (section 8) BEFORE measuring anything. The build-order generators compute over live
 HTTP, so a stale server returns a confident, well-formed, wrong answer.
@@ -150,11 +150,11 @@ run, zero real regressions. It RECURRED on the next bump, then again silently on
 changed`; after the bounce the same regen changed 82 of 173).
 
 1. Bump the quoted literal in `agents/daemon_slayer/__init__.py` (`ENGINE_VERSION = "1.268.0"` today). Minor for a feature batch, patch for a correctness fix.
-2. **Bounce DS :8893** (section 8) and confirm `/health` serves the NEW version. This is a CORRECTNESS step, not stamp hygiene.
+2. **Bounce DS :8860** (section 8) and confirm `/health` serves the NEW version. This is a CORRECTNESS step, not stamp hygiene.
 3. Regenerate the precompute tables. Verified live: `data/daemon_slayer/build_orders/16.15.1/` holds 6 files - `build_orders_{sr,aram,arena}.json` +
    `build_order_variants_{sr,aram,arena}.json`. `core/build_order_precompute.py` and `core/build_order_variants.py` both need an explicit `--champions all`
    ("all" is the ONLY full-roster path; the default is a seed sample and silently shrinks a shipped 173-champion table).
-   `tools/daemon_slayer_build_orders_generate.py` differs - its `--champion` (singular) defaults to all and it REQUIRES live :8893. **The stamp is independent
+   `tools/daemon_slayer_build_orders_generate.py` differs - its `--champion` (singular) defaults to all and it REQUIRES live :8860. **The stamp is independent
    of the content**: byte-identical output still needs the regen, because the tables carry an ENGINE stamp the tests assert against `ENGINE_VERSION`. "Nothing
    changed" is never a reason to skip this.
 4. Sweep every pinned `ENGINE_VERSION == "<old>"` assertion in `agents/daemon_slayer/tests/` in one pass - the pin IS the guard, so a stale pin failing proves
@@ -181,16 +181,16 @@ semantic prose (shipped-vs-staged, test counts) - which is how `Share/README.md`
 the sync, grep the newest version out of `Share/CHANGELOG.md` and the README list and confirm both name what you shipped. **The Share sync ships in the SAME
 commit as the engine change**, never as a trailing afterthought.
 
-### 8. DS server restart - :8893 is NOT supervisor-watched
+### 8. DS server restart - :8860 is NOT supervisor-watched
 
 DS runs under the `RC-DaemonSlayer` scheduled task (`pythonw.exe tools/start_daemon_slayer.py`; verified `Status: Running`). It ignores `restart_trigger.txt`
 and the RC supervisor does not bounce it.
 
-**Restart: `taskkill /F /PID <ds-pid>` then `schtasks /Run /TN RC-DaemonSlayer`.** Find the pid via `Get-NetTCPConnection -LocalPort 8893 -State Listen`
+**Restart: `taskkill /F /PID <ds-pid>` then `schtasks /Run /TN RC-DaemonSlayer`.** Find the pid via `Get-NetTCPConnection -LocalPort 8860 -State Listen`
 (verified pid 16988 at authoring). **NEVER `Stop-Process`** - CLAUDE.md hard rule, it hangs the MCP pipe.
 
-**Trap: `schtasks /End` then an immediate `/Run` leaves :8893 DEAD while every status signal says success.** `/End` kills the process; `/Run` fires a second
-later and `tools/start_daemon_slayer.py:85` sees the port still bound by the dying process, logs `port 8893 already bound - skipping (exit 0)` to
+**Trap: `schtasks /End` then an immediate `/Run` leaves :8860 DEAD while every status signal says success.** `/End` kills the process; `/Run` fires a second
+later and `tools/start_daemon_slayer.py:85` sees the port still bound by the dying process, logs `port 8860 already bound - skipping (exit 0)` to
 `logs/daemon_slayer_startup.log`, and exits cleanly. The old process then finishes dying, the port frees, and no server was ever started - while `schtasks
 /Query /V` reports `Status: Ready`, `Last Result: 0`, because the launcher genuinely succeeded at its job of declining a taken port. The fix is a SECOND `/Run`
 once the port is free. **The only honest check is an HTTP probe**, never the task's exit code. Separately, `schtasks /End|/Run` cannot be issued from the Bash
@@ -231,7 +231,7 @@ HEADLESS-DS WRAP
   HEAD: <short-sha> (<N> commits this run)
   ENGINE: <old> -> <new> | unchanged
   patch: <data/daemon_slayer/current.txt>
-  :8893 /health: <served engine_version> (probed, not assumed)
+  :8860 /health: <served engine_version> (probed, not assumed)
   DS: <N> passed (repo root) | RC tests/: <N> passed
   anchors: <4/4 synced | n/a> - share sync: <in-commit | n/a>
   adjudication: <N flips, M CONFIRM / K REFUTE | none>

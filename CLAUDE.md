@@ -1,6 +1,6 @@
 # Riot Commander - Agent Context
 
-Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC since 2026-05-29; ADR-011). RC is tkinter-free (scheduler is asyncio AppLoop; 13 residual .after() files); Daemon Slayer (`:8893`) computes real DPS math per champion.
+Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC since 2026-05-29; ADR-011). RC is tkinter-free (scheduler is asyncio AppLoop; 13 residual .after() files); Daemon Slayer (`:8860`) computes real DPS math per champion.
 
 > **Living docs (read at session start):** `docs/ARCHITECTURE.md` - `docs/OPERATIONS.md` - `ROADMAP.md` - `docs/API.md`
 > **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine - 706 items / 173 champs - ENGINE_VERSION 1.268.0 (patch 16.15.1) - Arena mirrors credit their OWN DDragon stat line, not the SR twin's (R161 doctrine B) - rune offense registry carries an attack-speed column (Legend: Alacrity 9104) plus a distinct-item-stat census (Jack Of All Trades 8316, ds.dps apply_rune_offense_grants, DEFAULT-OFF, zero for AS-locked champions) - all 7 archetype scorers wired (Slice B on-hit AP ds.onhit) + Term A ally-granted EHP (ds.ehp score_by=team_blended, DEFAULT-OFF) + canonical cast-rate keys (ult_rates apply_canonical_cast_rate_keys, DEFAULT-OFF) + RM-39/RM-43 AD-axis ability term (ds.hybrid apply_ad_axis_ability_damage, DEFAULT-OFF; L2 1.223.0 credits PHYSICAL+TRUE, MIXED held, MAGIC permanently excluded) + per-spell CC consumer + cc_blended_ehp ecosystem COMPLETE 4 consumers + per-spell CC wave 9 108/89 + cc_conditional ecosystem COMPLETE 5 consumers wave 6 36/32 + survivability axes heal/shield/DR/resist-grant COMPLETE across both EHP scorers incl flat + rank-scaled-block + percent-of-resist + unlabeled-multi-stat-block + form-occupancy + per-stack-unbounded modes + revive/second-life EHP-numerator multiplier Anivia/Zac) - `docs/AGENTS.md` (Phase 3 framework) - `BACKLOG.md` (aspirational)
@@ -154,7 +154,7 @@ Text-first (R1-R4) - never default to visual / computer-use for text, code, or s
 Tiered verification (R5-R7) - Tier-0/1 do NOT pay the Tier-2 tax (operator-accepted tradeoff):
 - **Tier-0** cosmetic (doc / comment / string / non-runtime constant): Edit + `py_compile` if .py. No suite, no restart.
 - **Tier-1** local logic (one module): `py_compile` + that module's tests only.
-- **Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite (DS dir + `tests/`) + DS `:8893` restart + Share mirror.
+- **Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite (DS dir + `tests/`) + DS `:8860` restart + Share mirror.
 - **R5** Classify every change into a tier; run only that tier's verification.
 - **R6** Run the relevant suite ONCE; trust exit code + result file. Re-run only if I edited since, or the pipe demonstrably glitched - not prophylactically.
 - **R7** Adversarial verification is the DEFAULT, not the exception (operator 2026-07-30). Every substantive claim gets an independent `verifier` / refutation pass before it is called done - including my own single-thread edits. The old "verifier ONLY for parallel-slice or stale-pipe" carve-out is REVOKED: it made self-checking opt-in, and the standing failure class is exactly a confident unbacked claim. Tier-0 cosmetic edits remain exempt.
@@ -268,7 +268,7 @@ Claude Desktop on Windows may be installed via the Microsoft Store (check `%LOCA
 
 When continuing Daemon Slayer work: pick the next batch from ROADMAP, implement schema/engine changes, add tests (target green before commit), bump engine version, commit + push, verify live, update hand-off notes.
 
-Before launching a background RC or test suite right after a DS change, wait for the Share mirror sync + DS `:8893` restart to settle; a mid-suite DS bounce produces false anchor-mismatch / live-integration failures that then cost a re-run to confirm they were transient.
+Before launching a background RC or test suite right after a DS change, wait for the Share mirror sync + DS `:8860` restart to settle; a mid-suite DS bounce produces false anchor-mismatch / live-integration failures that then cost a re-run to confirm they were transient.
 
 ## Session Wrap-up
 

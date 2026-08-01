@@ -75,7 +75,7 @@ HARD RULES for the directive you emit:
   defect: `Share/src/**`, `Share/MANIFEST.md`, `Share/docs/*.md` and `Share/lolmath_ingest/*`
   are restamped by `tools/ds_share_sync.py`; the `data/daemon_slayer/build_orders/**` engine
   stamps come from the regen. Ritual ORDER is fixed and the doc sites come late (memory
-  feedback_engine_bump_ritual_order): bump the literal, bounce DS `:8893`, regen the tables,
+  feedback_engine_bump_ritual_order): bump the literal, bounce DS `:8860`, regen the tables,
   run the Share sync, THEN these seven, THEN ONE dual suite.
 - BUILD ON, NEVER REPEAT (continuity is on disk, not in your memory). The context below
   carries an "ALREADY-COMPLETED DIGEST": the recent commits (newest first), the NEWEST
@@ -101,7 +101,7 @@ HARD RULES for the directive you emit:
   work sources, skipping any unit that would duplicate a DONE row / recent commit / LEDGER entry:
     1. DS sweep / audit iteration (CLAUDE.md "Daemon Slayer Batch" + headless-upgrade Section 8):
        ONE new math lane / extractor-key / scorer-refinement vs Meraki bulk truth, default-OFF
-       seam, offline characterization tests, ENGINE_VERSION bump + DS :8893 restart + Share sync
+       seam, offline characterization tests, ENGINE_VERSION bump + DS :8860 restart + Share sync
        in the SAME commit. Skip the EXCLUDED Cluster A AP-in-ARAM set (Zilean/Shaco/Kayle/Seraphine).
     2. Research + competitor lift (Section 7b 6-point depth checklist): ONE heavyweight deep-dive
        target -> docs/COMPETITOR_LIFT_<date>.md; a HIGH-lift low-risk presentation-over-DS-math

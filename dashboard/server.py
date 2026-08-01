@@ -228,7 +228,7 @@ def start_dashboard(app_dir: Path) -> None:
     except Exception as exc:  # noqa: BLE001
         _log.warning("vision server startup check failed: %s", exc)
 
-    # Daemon Slayer: ensure the local DPS engine on :8893 is running.
+    # Daemon Slayer: ensure the local DPS engine on :8860 is running.
     # No-op if already up; spawns tools/start_daemon_slayer.py otherwise.
     try:
         from core.daemon_slayer_client import ensure_running as _ds_ensure

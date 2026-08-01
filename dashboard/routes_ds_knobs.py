@@ -12,10 +12,10 @@ The operator overrides the enemy resist curve + gold cap and the build
 re-ranks for that chosen fight model, instead of accepting the single
 auto-resolved enemy curve that ``/api/ds-preview`` threads in. Where
 ``/api/ds-preview`` resolves target stats from LIVE enemy items (or a
-mode/level curve) and routes per-archetype through the :8893 DS engine
+mode/level curve) and routes per-archetype through the :8860 DS engine
 server, THIS route runs the DPS ranker IN-PROCESS (no network) with the
 operator-supplied knobs - the simplest path that exposes ``budget`` cleanly
-(the :8893 dispatcher ``rank_for_primary_archetype`` does not take a budget
+(the :8860 dispatcher ``rank_for_primary_archetype`` does not take a budget
 arg; see the "deviations" note in the ship report).
 
 Exposes FOUR knobs (item 219 C follow-up shipped the 4th):
@@ -29,7 +29,7 @@ Exposes FOUR knobs (item 219 C follow-up shipped the 4th):
                  reweight (pure delta-DPS ranking, byte-identical default).
 The fight-length-reweight knob does NOT need an ENGINE_VERSION bump: it threads
 an OPTIONAL arg into ``rank_items`` which reweights IN-PROCESS and is
-byte-identical when omitted, and the :8893 DS dispatcher never serves
+byte-identical when omitted, and the :8860 DS dispatcher never serves
 ``rank_items`` (it uses ``rank_for_primary_archetype``, which has no
 budget/fight_length args).
 
@@ -86,7 +86,7 @@ routes_cooldown_watch cache discipline.
 
 Don't-redo:
   * This route uses ``rank_items`` (in-process DPS scorer) NOT
-    ``rank_for_primary_archetype`` (:8893 HTTP, per-archetype, no budget
+    ``rank_for_primary_archetype`` (:8860 HTTP, per-archetype, no budget
     arg). The DPS lens is the right one for "re-rank by fight model" - it
     is the surface that visibly shifts toward armor-pen weighting when the
     operator raises target_armor (proven in the test suite).
@@ -94,7 +94,7 @@ Don't-redo:
     threads an OPTIONAL ``fight_length`` into ``rank_items`` which re-ranks by
     ``burst_delta + delta_dps * fight_length`` (burst from
     ``compute_burst_damage``). NO ENGINE bump: ``rank_items`` is byte-identical
-    when ``fight_length`` is omitted and the :8893 dispatcher never serves it.
+    when ``fight_length`` is omitted and the :8860 dispatcher never serves it.
   * The DataSnapshot is loaded once + memoized at module scope (immutable
     per patch). A patch bump re-points current.txt; call _reset_caches()
     (test-only) or restart RC to pick up a new patch snapshot.

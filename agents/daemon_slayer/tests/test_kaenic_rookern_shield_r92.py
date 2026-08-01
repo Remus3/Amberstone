@@ -28,7 +28,7 @@ Two additive ItemShield fields make this exact + byte-identical:
 
 DEFAULT-OFF is BYTE-IDENTICAL: ``assume_kaenic_shield=False`` (the default) drops
 2504's shield from the pool and every other shield's magnitude is unmoved (their
-``max_hp_scaling`` is 0.0). No live :8893 default scorer flips it on.
+``max_hp_scaling`` is 0.0). No live :8860 default scorer flips it on.
 """
 from __future__ import annotations
 

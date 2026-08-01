@@ -160,7 +160,7 @@ SAFE. Hard ground-truth evidence (NOT a blind re-pin):
   for the new default (explicit `prefer_cdragon_ratios=False` is now the legacy Meraki path).
 
 - SHIPPED: default ON, ENGINE 1.118.0 -> 1.119.0, 64 test-assertion files re-pinned, CHANGELOG
-  prepended, Share mirror + doc anchors synced (`ds_share_sync.py`), DS :8893 restarted -> 1.119.0
+  prepended, Share mirror + doc anchors synced (`ds_share_sync.py`), DS :8860 restarted -> 1.119.0
   (pid verified, `/health` engine_version=1.119.0). Final suite: DS `agents/daemon_slayer/tests/`
   **6699 passed / 1 skip / 1 xfail / 1936 subtests / 0 failed**; root DS-anchor + preview +
   phase8 live-integration tests green post-restart. The directive's premise held: with the

@@ -32,7 +32,7 @@ DEFAULT-OFF: ``compute_dps(apply_crit_conversion=False)`` (the default) is
 byte-identical for EVERY champion including Ashe - pinned below against goldens
 captured from the pre-seam engine at HEAD 2d3ddcba.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

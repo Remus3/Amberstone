@@ -50,7 +50,7 @@ COMPANION GATES - EACH ONE READS AS A FALSE NEGATIVE IF MISSED
                                 route parses target_max_hp / target_bonus_hp,
                                 NOT target_hp.
 
-LIVE: these hit the running DS server on :8893 through the real client, which
+LIVE: these hit the running DS server on :8860 through the real client, which
 is the whole point - an in-process engine call would prove nothing about gate 3.
 Skipped when the engine is down. Host-dependent (imports ``core.*``), so it is
 registered in ``tools/ds_share_sync._HOST_DEPENDENT_TESTS``.
@@ -85,7 +85,7 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         if not dsc.is_engine_up(timeout=2.0):
-            raise unittest.SkipTest("DS engine :8893 is down")
+            raise unittest.SkipTest("DS engine :8860 is down")
 
     # ------------------------------------------------------------ item lane
     def test_item_resist_grants_reorders_and_control_holds(self) -> None:

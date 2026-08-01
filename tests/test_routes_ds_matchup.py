@@ -8,7 +8,7 @@ param validation, payload shape, computed-field relationships, numeric key
 resolution, engine-down + malformed branches, mode normalization, cache.
 
 Hermetic: core.daemon_slayer_client.matchup is monkeypatched to a canned
-dict - NO live :8893 dependency. Assertions are STRUCTURAL (types / shape /
+dict - NO live :8860 dependency. Assertions are STRUCTURAL (types / shape /
 enums / computed-quantity relationships) rather than brittle exact magnitudes,
 per the project rule preferring assertions on computed quantities.
 
@@ -81,7 +81,7 @@ def _do(path: str) -> StubHandler:
 
 class _Base(unittest.TestCase):
     """Resets the response cache and installs a canned matchup() stub so no
-    test reaches the live :8893 engine."""
+    test reaches the live :8860 engine."""
 
     def setUp(self) -> None:
         rt._reset_caches()

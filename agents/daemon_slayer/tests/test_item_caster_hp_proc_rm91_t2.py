@@ -56,7 +56,7 @@ THE GUARDS HERE
 8.  A non-proc candidate (Randuin's 3143, Frozen Heart 3110) takes exactly no
     credit.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

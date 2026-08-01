@@ -3,7 +3,7 @@
 ## CONTEXT (do not re-derive)
 
 - ENGINE **1.253.0**, patch 16.14.1. Tree clean and pushed at `a7d54103`.
-  DS `:8893` scheduled task is **Running** and `/health` reads 1.253.0.
+  DS `:8860` scheduled task is **Running** and `/health` reads 1.253.0.
 - Suites measured fresh 2026-07-25 AFTER the last edit: DS **9721 passed / 1
   skipped / 4653 subtests**; RC `tests/` **13110 passed / 106 skipped / 460
   subtests**.

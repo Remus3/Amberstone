@@ -217,7 +217,7 @@ class BurstRankerSeamTests(unittest.TestCase):
 class RankAssassinRouteTests(unittest.TestCase):
     """The seam is reachable over /rank-assassin, DEFAULT-OFF when omitted."""
 
-    BASE_URL = "http://127.0.0.1:8893"
+    BASE_URL = "http://127.0.0.1:8860"
 
     @classmethod
     def setUpClass(cls) -> None:

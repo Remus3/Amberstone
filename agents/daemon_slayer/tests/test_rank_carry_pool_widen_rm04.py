@@ -1,7 +1,7 @@
 """RM-04 A-01 - carry candidate-pool widen seam (DEFAULT-OFF).
 
 PREMISE (measured 2026-07-24 against ENGINE 1.241.0 / patch 16.14.1, live
-:8893 and in-process ``rank._filter_candidates``):
+:8860 and in-process ``rank._filter_candidates``):
 
   * The SR carry candidate pool is 108 items (NOT the 111 the filing quotes)
     and is SET-IDENTICAL across Caitlyn / Jinx / Ashe / Sivir / Senna /

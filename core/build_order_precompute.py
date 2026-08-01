@@ -6,7 +6,7 @@ PURPOSE
     Precompute, offline + deterministically, the optimal ordered item build for
     a grid of ``(my_champ x mode x enemy-comp-archetype)`` so a FUTURE coach can
     read a dict at request time INSTEAD of round-tripping the "what do I build
-    into this enemy comp" question through Claude Haiku (or a live :8893 call).
+    into this enemy comp" question through Claude Haiku (or a live :8860 call).
     The order is the SHIPPED, deterministic Daemon Slayer build planner's
     (``core.build_order.plan_build_order``) - this module is the bias-map + sweep
     + persist + read layer around it, NO new build / combat math.
@@ -49,7 +49,7 @@ THE AXIS - enemy COMP ARCHETYPE (distinct from the damage-profile table)
 WHAT v1 IS (honest scope)
     BUILD + PERSIST + READ only. The live coach flip is EXCLUDED (charter 4b
     "do not flip blind" - the table is read by a FUTURE consumer, HZ-C1, after
-    real-game validation + operator OK; Haiku / the live :8893 path stays the
+    real-game validation + operator OK; Haiku / the live :8860 path stays the
     interim floor). The committed table seeds a documented archetype-diverse
     champion sample (``SEED_CHAMPIONS`` - a SAMPLE, not a tier list).
     ``--champions all`` expands the sweep to the full canonical roster (every
@@ -633,13 +633,13 @@ def _engine_up() -> bool:
 
 def _install_static_transport() -> None:
     """Compute build orders in-process via the DS server's POST-route handlers,
-    with no :8893 HTTP and no running server.
+    with no :8860 HTTP and no running server.
 
     ``rank_for_primary_archetype`` (the default rank_fn) reaches the engine
     through ``daemon_slayer_client._post_json``; rebinding that one function to
     call ``server._POST_ROUTES[path](body)`` directly makes regen self-contained
     for a patch-refresh (reference_hz_precompute_patch_regen: the tables go dark
-    on a bump unless regenerated, and the live path needs :8893 up). The handlers
+    on a bump unless regenerated, and the live path needs :8860 up). The handlers
     are the exact callables ``do_POST`` invokes, so the build orders are
     identical to the live path by construction - only the transport changes.
     """
@@ -696,7 +696,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
                          "data/daemon_slayer/build_orders/<patch>).")
     ap.add_argument("--static", action="store_true",
                     help="Compute in-process via the DS server handlers (no "
-                         ":8893 HTTP / no running server). Self-contained regen "
+                         ":8860 HTTP / no running server). Self-contained regen "
                          "for patch-refresh; output is identical to the live "
                          "path by construction.")
     ap.add_argument("--score-by", default=SCORE_BY_DEFAULT,
@@ -721,13 +721,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         logger.error("%s", exc)
         return EXIT_NO_ROSTER
 
-    # Static mode computes in-process via the DS server handlers (no :8893).
-    # Otherwise a non-dry run requires the live engine (the planner makes :8893
+    # Static mode computes in-process via the DS server handlers (no :8860).
+    # Otherwise a non-dry run requires the live engine (the planner makes :8860
     # calls when rank_fn is None). A dry run never queries it.
     if args.static:
         _install_static_transport()
     elif not args.dry_run and not _engine_up():
-        logger.info("DS engine at 127.0.0.1:8893 is not responding. Start it via "
+        logger.info("DS engine at 127.0.0.1:8860 is not responding. Start it via "
               '`"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" tools/start_daemon_slayer.py` and re-run (a non-dry run '
               "refuses to write tables against a dead engine).", file=sys.stderr)
         return 2

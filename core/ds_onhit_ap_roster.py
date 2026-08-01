@@ -2,7 +2,7 @@
 
 Loads ``core/ds_onhit_ap_roster.json`` (nested ``{"champions": {<id>:
 {"coherence": <float>}, ...}}``, hand-authored + live-calibrated by
-``tools/ds_onhit_ap_prefilter.py`` against :8893/rank-onhit - see
+``tools/ds_onhit_ap_prefilter.py`` against :8860/rank-onhit - see
 ``.superpowers/sdd/task-9-report.md``) and FLATTENS it to
 ``{canonical_champ_id: coherence}``.
 

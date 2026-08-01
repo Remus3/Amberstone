@@ -1,7 +1,7 @@
 """Seam-flag forwarding tests for core.daemon_slayer_client.
 
 Tier-2 DS build (Client Agent B). These tests mock the HTTP transport
-(``_post_json``) so they never touch the live :8893 server. They assert
+(``_post_json``) so they never touch the live :8860 server. They assert
 two properties for every rank_* helper plus rank_for_primary_archetype:
 
   1. BEHAVIOR-PRESERVING: a call that passes no seam flags produces a

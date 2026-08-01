@@ -9,7 +9,7 @@ that expands the sweep to the FULL canonical roster, while every other path
 (explicit CSV, empty default) is byte-for-byte unchanged.
 
 Hermetic: the roster resolver reads the committed DS champion registry
-(``data/daemon_slayer/<patch>/champions.json``) off disk - no :8893, no network,
+(``data/daemon_slayer/<patch>/champions.json``) off disk - no :8860, no network,
 no table generation. The resolver is imported + called directly.
 """
 from __future__ import annotations

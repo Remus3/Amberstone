@@ -60,7 +60,7 @@ iteration (Gemini-gated to make headless). This becomes RC 2.0.
 - **Full computer usage AUTHORIZED:** download / install / run applications as needed (operator turned off the 2nd monitor to fix default app placement).
 - **Swarm:** orchestrate up to 100 parallel agents (worktree-isolated on disjoint file sets, sole merger, verifier-gate before merge). No session cap - report `Phase X of 9, Stage Y of N, ~Z%` each cycle.
 - **Per-stage ritual:** TDD (failing test first where logic) -> py_compile before restart -> tiered verification (R5-R7) -> UI stages also run the 5-phase fixture audit + Claude_Preview vs /api/state -> commit + push + CI green -> `/done` ritual (append `docs/LEDGER.md`, sync this file + ROADMAP).
-- **DS seams** ship DEFAULT-OFF, Meraki + rewind WIN anchored, ENGINE bump + DS :8893 restart + Share sync in the same commit; live default-ON flip is EXCLUDED -> `docs/LIVE_GAME_GATED_SYNC.md`.
+- **DS seams** ship DEFAULT-OFF, Meraki + rewind WIN anchored, ENGINE bump + DS :8860 restart + Share sync in the same commit; live default-ON flip is EXCLUDED -> `docs/LIVE_GAME_GATED_SYNC.md`.
 - **Cadence:** use AHK / Gemini / commit+push+CI / `**/done` / `**/clear` / `**/continue` appropriately across cycles.
 - **Greenlight gate:** the P2 design HTML is the ONE operator-review artifact. Everything else proceeds without mid-run gating. The full redesign cutover (P3+ replacing the current layout) is gated on that greenlight; if not yet given, P3+ build the NEW design behind a flag and keep the current design live.
 

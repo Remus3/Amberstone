@@ -3,7 +3,7 @@
 The A-12 build slice landed the seam in ``dps.compute_dps`` only, so the crit
 conversion was Python-API-only: ``rank.py`` held no parameter and
 ``tools/daemon_slayer_build_orders_generate.py`` drives the shipped build tables
-through ``:8893``. That is the same blocker PART 7 named for RM-86
+through ``:8860``. That is the same blocker PART 7 named for RM-86
 (docs/OPEN_ITEMS_REVIEW_2026-07-25.md:451-457), and the A-12 agent's own ordering
 measurement had to monkeypatch ``rank.compute_dps`` to work around it.
 
