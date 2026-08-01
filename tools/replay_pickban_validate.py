@@ -45,7 +45,6 @@ the coin-flip. CONCLUSION: do NOT flip champ-select pick/ban onto this DB; it
 stays a SECONDARY hint. (2646/3064 pairs were no_claim - the top_k DB only
 opines on a small fraction of random lane matchups, which is expected.)
 
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 """
 from __future__ import annotations
 

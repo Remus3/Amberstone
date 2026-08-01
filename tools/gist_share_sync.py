@@ -285,10 +285,12 @@ def sync() -> int:
         print(f"gist up to date (no change) - {url}")
         return 0
 
-    msg = (
-        f"sync Share -> gist (ENGINE {ev}, patch {patch}, {n} files)\n\n"
-        "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
-    )
+    # No Co-Authored-By trailer: operator policy 2026-06-03, this repo never
+    # emits one. `.githooks/commit-msg` strips it in THIS repo - but the gist is
+    # a SEPARATE repo with no hooks installed, so the hook is not a backstop for
+    # this call site. It has to not be written in the first place, which is why
+    # this was the only surviving emitter in the tree.
+    msg = f"sync Share -> gist (ENGINE {ev}, patch {patch}, {n} files)"
     if status:
         _git("commit", "-m", msg)
     # Roll the entire gist into a single rolling commit BEFORE pushing so its
