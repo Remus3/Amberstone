@@ -139,8 +139,11 @@ def test_gemini_falls_back_to_flash_on_primary_exhaustion(lc, tmp_path):
         # empty for the 3 primary tries; the fallback try answers
         return mock.Mock(stdout="" if len(cmds) <= 3 else "flash-directive")
 
+    # `adjudicator` named explicitly since 2026-08-01: the loop's default
+    # backend is now claude, and this test is about the gemini retry ladder.
     cfg = {"gemini_model": "gemini-3-pro-preview",
-           "gemini_fallback_model": "gemini-2.5-flash"}
+           "gemini_fallback_model": "gemini-2.5-flash",
+           "adjudicator": "gemini"}
     with mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "CFG", cfg), \
             mock.patch.object(lc.subprocess, "run", side_effect=fake_run), \
@@ -163,6 +166,7 @@ def test_gemini_stderr_utf16_decoded_and_error_line_surfaced(lc, tmp_path):
     (tmp_path / "_gemini_err.txt").write_bytes(b"\xff\xfe" + body.encode("utf-16-le"))
     lines = []
     with mock.patch.object(lc, "CTL", tmp_path), \
+            mock.patch.object(lc, "CFG", {"adjudicator": "gemini"}), \
             mock.patch.object(lc.subprocess, "run", return_value=mock.Mock(stdout="")), \
             mock.patch.object(lc.time, "sleep", lambda *_a, **_k: None), \
             mock.patch.object(lc, "log", lambda m: lines.append(m)), \
