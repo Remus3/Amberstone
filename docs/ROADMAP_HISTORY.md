@@ -1899,3 +1899,20 @@ pointer in ROADMAP and all their open work and fences live on here.
 
 - **RM-34 Standing fences (do-not-redo; originals in `docs/ROADMAP_HISTORY.md`).** AD-assassin Zed/Talon/Qiyana pure-lethality weighting DATA-REFUTED on both mechanisms (R114 sim-incoherent weight; R115 win-table = buried losers; LEDGER 889). Arena canonical queue is 1750 (1700/1710 legacy aliases); a Practice Tool body MUST carry explicit queueId:3140; the live LCU `/lol-game-queues/v1/queues` catalog is the authoritative queue-ID source (OQ20 D1). Event-driven captures must gate on a phase that settles AFTER the 1920x1080 <-> 1440p resolution swap (item 209b - the swap co-fires with a bound DXGI surface). Active Match CSS: the 21 operator-exceptions across the 5 EXCLUSIVE files carry inline rationale - do NOT bump without operator approval; no bulk sweep of the ~583 hardcoded font-size declarations (swept incrementally, saturation reached); `right_now.css` + `next.css` are SHARED and stay untouched; a live in-game capture for Active Match pages #11-13 is operator-optional (ui_mock renders headless). ARAM Mayhem bench visual reassurance is operator-optional (data path proven, item 87). **Arena mirror stat lines follow DOCTRINE B** (director call, R161 2026-07-21, ENGINE 1.238.0): when a mirror states its OWN explicit DDragon stat line it WINS over the SR twin's, so mirrors do NOT inherit SR base stat magnitudes; inheritance of passive COEFFICIENTS where Meraki has no mirror entry is unchanged. 12 penetration rows were re-credited from the Arena feed (7 lethality, 2 flat magic pen, 2 percent armor pen, plus Terminus `223302` 0.30 -> 0.24 on both axes). `226693` Prowler's Claw is an exact 22/22 match and was never a divergence. Doctrine A (inherit everything) is dead - do not re-litigate.
 
+## 2026-08-01 - relocated the fully-shipped DS scorer/item rows (RM-99..RM-114)
+
+Moved VERBATIM out of `ROADMAP.md` to buy budget headroom for RM-129, per the LEDGER 1093
+lever (relocate old content; never shrink the new row, never relax the guard). **Every one of
+these is SHIPPED and closed, but several carry a do-not-redo FENCE that is the whole reason
+the line still existed** - the RM-99 coefficient correction especially. Read them as fences,
+not as history.
+
+- **RM-99 SHIPPED** (ENGINE 1.226.0, DEFAULT-OFF `assume_item_health_stacks`) - **the coefficient is 10 percent, not the spec's 8; do NOT re-inherit the 8.**
+- **RM-99b SHIPPED** (ENGINE 1.245.0) - SR Heartsteel 3084 cadence corrected to 30.0 DEFAULT-ON; **Arena mirror 223084 HELD at 3.5** per doctrine B. The `3131` Sword of the Divine residual was STALE and is also shipped (ENGINE 1.246.0).
+- **RM-101 CLOSED** - every buildable rune covered (Bone Plating 8473, Second Wind, etc.).
+- **RM-102 SHIPPED** - Warmog's Arena mirror 443083 was credited a passive it does not have; do NOT re-credit it.
+- **RM-103 SHIPPED** - Unending Despair 2502 + Arena mirror 222502 Anguish SELF-heal.
+- **RM-104 SHIPPED** - **four** Arena mirrors credited ZERO shield EHP; do not re-file it as a single-item fix.
+- **RM-105 SHIPPED** - `effective_ehp_with_sustain` omitted the entire PERMANENT-HP family.
+- **RM-108 SHIPPED** - unresolved-template-token detector; do NOT rebuild it.
+- **RM-114 CLOSED 2026-07-25** - the DS NEXT BUY fallback is SHIPPED and DEFAULT-ON (`core/next_buy_fallback.py`, kill switch `RC_NEXTBUY_DS_FALLBACK=0`), 173/173 champions. Do NOT re-open.
