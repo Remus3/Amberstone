@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from agents._supervisor_common import _atomic_write_json, _reap_orphan_lockfile_tmps
+from tests._sleep_probe import record_sleeps, thread_scoped
 
 
 class TestAtomicWriteJsonRetry:
@@ -33,21 +34,35 @@ class TestAtomicWriteJsonRetry:
                 raise PermissionError("transient")
             real_replace(src, dst)
 
-        with patch("agents._supervisor_common.time.sleep") as mock_sleep, \
-             patch("os.replace", side_effect=flaky_replace):
+        with record_sleeps() as sleeps, \
+             patch("os.replace",
+                   side_effect=thread_scoped(flaky_replace, real_replace)):
             _atomic_write_json(target, {"pid": 3})
 
         assert len(calls) == 3
-        assert mock_sleep.call_count == 2
+        # Assert the VALUES, not a bare call_count. `patch("mod.time.sleep")`
+        # is process-wide (mod.time IS the global time module), so a bare count
+        # tallies every thread's sleeps - that is how this read 21378 on CI
+        # against an implementation hard-bounded at 2. See tests/_sleep_probe.py.
+        assert sleeps == [0.06, 0.06]
         assert target.exists()
         tmps = list(tmp_path.glob("lockfile.*.tmp"))
         assert tmps == [], "tmp must be cleaned up even after retries"
 
     def test_final_failure_raises_and_cleans_tmp(self, tmp_path):
         target = tmp_path / "lockfile"
+        real_replace = os.replace
 
-        with patch("os.replace", side_effect=PermissionError("always")), \
-             patch("agents._supervisor_common.time.sleep"):
+        def always_fail(src, dst):
+            raise PermissionError("always")
+
+        # thread_scoped matters more here than in the retry test: an unscoped
+        # `patch("os.replace", side_effect=PermissionError)` raises in EVERY
+        # thread for the duration, so a concurrent atomic write anywhere else in
+        # the worker process fails for a reason that has nothing to do with it.
+        with record_sleeps(), \
+             patch("os.replace",
+                   side_effect=thread_scoped(always_fail, real_replace)):
             with pytest.raises(PermissionError):
                 _atomic_write_json(target, {"pid": 4})
 
