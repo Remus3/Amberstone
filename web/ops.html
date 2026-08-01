@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RC Ops - seam map / drift / gated queue</title>
+<!--
+  ADDENDUM A concepts 3, 4 and 5 as REAL panels, fed by /api/ops/*.
+
+  A dedicated page rather than cards bolted onto index.html: the dashboard's
+  main view is the in-game surface and these are between-game ops panels, so
+  mounting them there would cost live screen space and would owe the full
+  5-phase fixture ritual against a page that already passed it. Served by the
+  existing web/ static handler, so it needs no new route.
+
+  Reached at https://legion-rc:8888/ops.html
+-->
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/themes.css">
+<link rel="stylesheet" href="/css/panels/ops_panels.css">
+<style>
+  body {
+    margin: 0;
+    padding: 28px;
+    background: var(--canvas);
+    color: var(--text);
+    font: var(--fs-xs, 16px)/1.5 "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: var(--fs-lg, 28px); margin: 0 0 4px; letter-spacing: .5px; }
+  h1 .sub { display: block; color: var(--text-faint); font-size: var(--fs-xs, 16px); letter-spacing: 0; }
+  .stamp { color: var(--text-faint); margin: 0 0 22px; }
+</style>
+</head>
+<body>
+
+<h1>RC Ops
+  <span class="sub">Seam map, drift strip and gated queue - live from /api/ops/*</span>
+</h1>
+<p class="stamp" id="stamp">loading...</p>
+
+<div class="ops-page">
+  <section class="ops-panel wide" id="seam-map-panel">
+    <header><h2>Seam Map</h2><span class="cat">engine</span></header>
+  </section>
+
+  <section class="ops-panel wide" id="drift-strip-panel">
+    <header><h2>Drift Strip</h2><span class="cat">docs and data</span></header>
+  </section>
+
+  <section class="ops-panel wide" id="gated-queue-panel">
+    <header><h2>Gated Queue</h2><span class="cat">work in flight</span></header>
+  </section>
+</div>
+
+<script type="module">
+  import { renderOpsPanels } from '/js/panels/ops_panels.js';
+
+  async function tick() {
+    await renderOpsPanels();
+    // Local time only; no timezone claim is made because none is verified.
+    document.getElementById('stamp').textContent =
+      'refreshed ' + new Date().toLocaleTimeString();
+  }
+  tick();
+  // These read files on disk, so a slow cadence is correct; the route caches
+  // for 15s and a tighter poll would only re-serve the same cached payload.
+  setInterval(tick, 30000);
+</script>
+
+</body>
+</html>

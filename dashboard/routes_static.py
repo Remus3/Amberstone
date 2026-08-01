@@ -183,6 +183,10 @@ GET_ROUTES = [
     # overlay-widget variant set). Same _serve_web_asset guard (".." + null-byte
     # + relative_to containment); .html renders as text/html (ctype map above).
     (prefix("/mock/"),                          _serve_web_asset),
+    # /ops.html - the between-game ops panels (ADDENDUM A concepts 3/4/5).
+    # Deliberately its own page rather than cards on index.html: that view is
+    # the in-game surface, and these are read between games.
+    (equals("/ops.html"),                       _serve_web_asset),
     (equals("/manifest.json"),                  _serve_manifest),
     (equals("/icon.svg"),                       _serve_icon),
     (prefix("/icons/champions/"),               _make_icon_handler("champions")),

@@ -129,7 +129,25 @@ _WEB = _REPO_ROOT / "web"
 # printing "/ $200" would state a limit that is not enforced anywhere. The
 # sibling render site (dashboard/routes_loop_monitor.py) changed in the same
 # commit but is Python, not web/, so it is outside this digest by construction.
-_LIVE_HALF_DIGEST = "e465fc1a229a42c856bccbf976c4026b8c3cccb5ad32f57cea57667839a62fe4"
+# RE-CAPTURED 2026-08-01 (ADDENDUM A concepts 3/4/5 wired as real panels),
+# superseding the second-vendor-decommission capture above. NOT the ordinary
+# case: this slice ADDS web/ sources, so the file set differs on the two sides
+# and the digest necessarily moves. MEASURED with the same tokeniser: 170 web/
+# sources at HEAD before this slice, 173 with it applied (+3 new; the rename
+# below moves no count), and the delta is exactly this slice's file set:
+#   + web/js/panels/ops_panels.js    (new - renders the three ops panels)
+#   + web/css/panels/ops_panels.css  (new - their stylesheet)
+#   + web/ops.html                   (new - the page that hosts them)
+#   M web/css/dashboard.css          (one @import line for the panel CSS, which
+#                                     tests/test_dashboard_css_panel_imports_parity
+#                                     requires of every panel stylesheet)
+#   R web/mockups/addendum_a_concepts.html -> web/mock/addendum_a_concepts.html
+#     (a RENAME, not an edit: the file was authored under web/mockups/, which no
+#     static matcher serves, so it 404'd. web/mock/ is the served prefix. Its
+#     bytes are unchanged, but its PATH is part of the digest input, so a pure
+#     move still moves the hash.)
+# No tokeniser change, and no pre-existing file's live half was edited.
+_LIVE_HALF_DIGEST = "b7472e1e1a756cef635f54ae7d5ed739e80ed62a7505306daa37796ab33a7606"
 
 
 def _web_sources() -> list[Path]:
