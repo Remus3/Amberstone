@@ -6,6 +6,43 @@
 
 ---
 
+# 2026-07-31e - LANE-RESEARCH REFILL (headless lane 5): 2 stale strikes, id-registry fix, cdragon catalog torn down.
+
+## Start here next session
+
+This was a REFILL pass on `lane/research` (Mission Control lane 5), docs-only, no live game.
+The branch is READY TO MERGE (Tier-0 docs; no engine, no Share, no restart) - leave the merge
+to the merger, do not merge from the worktree. Full detail in LEDGER 1141.
+
+## What shipped (all docs)
+
+- **RM-128 filed** (cdragon `queues.json` grounds the hand-maintained `core/queue_modes.py:28`
+  map + a drift guard; ITEM-87 SAFE - `core/game_snapshot.py` detects by gameMode-STRING, never
+  queueId). Acceptance: a test asserting every `QUEUE_ID_TO_MODE_KEY` id still exists in a fresh
+  `queues.json` with a consistent `gameSelectModeGroup`. Lane 6 or 7, Tier-1.
+- cdragon `lol-game-data` 7-file teardown filed in `BACKLOG.md` (F2/F3 trigger-gated, F4/F5
+  deferred, F6/F7 REJECT-recorded). License cleared (Riot data, no copyleft).
+- Struck the STALE DDragon 16.15.1 patch-refresh row (shipped 2026-07-30, item-1130 / `9df58480`;
+  live `/health` = 16.15.1, worktree clean).
+- Fixed the `docs/DS_SWEEP_TRACKER.md` "next free" pointer: was RM-119 (stale), now RM-129.
+- Decided the `tft/` U+2192 ASCII row: 24 arrows, all display-only, STRIP-SAFE, acceptance-bearing.
+
+## Do NOT redo
+
+- Do NOT re-run the DDragon 16.15.1 patch refresh - it is DONE (item-1130). If you see fake
+  ddragon suite failures, that is a NEW dirty MAIN tree per `reference_dirty_ddragon_tree_fakes_49_failures`,
+  not this row.
+- Competitor-lift research is RETIRED/drained 4x (ROADMAP RM-01) - the cdragon teardown was Riot
+  DATA, not a competitor; do not treat it as re-opening that lane.
+- Before taking a new RM id, run the grep recipe in `DS_SWEEP_TRACKER.md` - do NOT trust ROADMAP prose.
+
+## Next
+
+Lanes have well-formed work waiting: RM-128 (lane 6/7), the tft-arrow strip (lane 7), the six
+stale-process restart-owner gaps (`BACKLOG.md`, lane 7), the DS RM-118 4 wireable seams (lane 6).
+
+---
+
 # 2026-07-31d - MISSION CONTROL S10 SHIPPED + MERGED (decoupled from the dashboard).
 
 ## Start here next session
@@ -94,50 +131,3 @@ written property was not the broken one. Keep the live-audit ritual mandatory.
   path is proven structurally (worktree + branch + prompt-inside-checkout, verified with real
   `git worktree add`), so do not "fix" it; just ask before firing.
 - Never edit `ops/loop/slots.py` or `ops/loop/winmutex.py` (byte-identical-by-contract).
-
----
-
-# 2026-07-31b - MISSION CONTROL S5 + S6 + S7 (lanes fire for real; the steer channel).
-
-## Start here next session
-
-**S8 + S9** - the two highest-blast-radius lanes (Headless-Repo, Headless-True-Audit) and
-the INTERRUPT tier. Worktree-first; a frozen-file edit needs an adjudicating agent's
-approval. Lane 7 MUST encode the carve-out: `~/.claude/projects` holds the session
-transcripts that make retroactive verification possible (compress or archive, NEVER delete),
-and the 35.5 GB `Temp\claude\C--Sibling-A` belongs to the SIBLING repo - propose, never
-auto-clean. Then the Desktop dashboard shortcut, then the First-Pass.md program.
-
-## What shipped
-
-- `6003b244` S5 lane launcher: one long-lived worktree per lane at `C:\rc-worktrees\rc-lane-<lane>`,
-  spawn via the proven `run_lane.ps1`, lock re-pointed at the WORKER pid, lane RELEASED on any
-  launch failure. Verified end to end: worktree on branch `lane/upgrade`, worker ran inside it,
-  RUNNING -> RECLAIMABLE on exit, release -> FREE.
-- `992a5a6c` S6 lanes 4-6 (`tools/headless-{uiux,research,ds}.md`, authored by parallel agents,
-  every cited path verified) + S7 steer channel (`ops/loop/steer.py`, append-only JSONL + cursor).
-- LEDGER 1135 + 1136. Full suite 17668 passed / exit 0; ruff clean; drift_guard 0.
-
-## Lessons worth keeping
-
-1. **`node --check` returns exit 0 on a duplicate `const`** in any file that leads with `import` -
-   which is every module in `web/js`. One duplicate killed the ENTIRE panel while `node --check`
-   and 35 source tests passed. `tests/test_web_js_esm_parse.py` now parses the tree as real ESM.
-2. **`DETACHED_PROCESS` makes a spawned PowerShell worker a silent no-op** - real pid, rc=0, zero
-   work. The lane flips RUNNING then RECLAIMABLE on schedule and looks like a healthy short run.
-3. **A file-path module bind creates a SECOND copy with its own globals.** The launcher's private
-   bind of `lanes.py` split `_OWNED`, so a repoint in one copy left the other unable to release.
-4. **The plan's steer transport was wrong in both halves** - and a headless worker has no window
-   at all, so no GUI transport could ever have worked. Probe the transport, not just the flag.
-5. **`--accent` and `--warn` are the same gold in 5 of 6 themes.** Only arcane (the live one)
-   separates them, so eyeballing the running dashboard cannot catch a colour collision.
-
-## Do NOT redo
-
-- S1-S7 are shipped and verified. Do not rebuild the lock, idempotency table, intent consumer,
-  panel, launcher, lane docs, or steer channel.
-- `repo` and `true-audit` are UNWIRED ON PURPOSE - that is S8, not an oversight.
-- Do not edit `ops/loop/slots.py` / `ops/loop/winmutex.py` (byte-identical-by-contract).
-- RM-122 is fenced verbatim against the headless loop; lane 4 may PREPARE it, never mark it DONE.
-- The `test_web_ascii_sweep` live-half digest was re-captured twice this session - a red there
-  next session is NEW drift.
