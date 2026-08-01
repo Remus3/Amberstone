@@ -6,6 +6,46 @@
 
 ---
 
+# 2026-07-31d - MISSION CONTROL S10 SHIPPED + MERGED (decoupled from the dashboard).
+
+## Start here next session
+
+S10 is DONE and on `main`. Mission Control is its own process on `:8895` under the
+`RC-MissionControl` scheduled task; the dashboard's copy is deleted, so
+`/api/loop-status` and `/api/loop-control` 404 on `:8888` by design.
+
+Shipped (9 tasks, 20 commits, merged fast-forward): `mc/` package + `mission_control.py`,
+bearer-token auth that FAILS CLOSED, bind restricted to loopback + tailnet only,
+`web/mc/` standalone asset tree, `dashboard/_matchers.py` (the split that keeps pydantic
+out of the control plane), and the dashboard-side removal. Post-merge: token ACL locked
+to SYSTEM + Administrators, plus two guard fixes (`ab3d8b0b`, `2a55f40f`).
+Detail in LEDGER 1139 + 1140. Design history in `docs/MISSION_CONTROL_PLAN.md` "S10 as shipped".
+
+## Do NOT redo
+
+- **S10 is complete and merged.** Do not re-plan it, re-pitch a `/healthz` watcher, or
+  "fix" the two scheduled-task triggers - the logon trigger plus a time-based repeating
+  trigger is the working combination, proven by a real reboot AND a taskkill recovery at t+49s.
+- **The SDD execution workspace under `.superpowers/sdd/` is deleted on purpose.** Git
+  history + LEDGER 1139/1140 + the BACKLOG entries are the record. Do not hunt for it.
+- **Tailscale IS installed and running** (`legion-rc` / `100.70.22.55`). A mid-session claim
+  that it was absent was WRONG - three guessed `Test-Path` checks against a machine where
+  `Get-Process` would have settled it in one call. Lesson appended to memory
+  `feedback_verify_before_declare_broken`.
+- **`ops/loop/control/STOP` holds a REAL operator halt** ("operator halt via LW session
+  2026-07-28"). It survived the whole build untouched. Do not clear it as a test artifact.
+- Lanes 7 and 8 have still never been fired. Deliberate; ask before firing.
+
+## Next
+
+Top open item is whatever `ROADMAP.md` carries as the next `[!]`. The highest-value S10
+follow-up in `BACKLOG.md` is `dashboard/_errors.send_error` leaking `str(exc)[:200]` to
+`:8895` via the imported loop routes - pre-existing on `:8888`, so not urgent, but it
+collides with the CLAUDE.md no-raw-error-strings rule. An owed pixel-screenshot pass on
+`https://legion-rc:8895/` is also logged (Browser pane would not composite frames this session).
+
+---
+
 # 2026-07-31c - MISSION CONTROL S8 + S9 (lanes 7-8 wired; the INTERRUPT tier).
 
 ## Start here next session
@@ -101,47 +141,3 @@ auto-clean. Then the Desktop dashboard shortcut, then the First-Pass.md program.
 - RM-122 is fenced verbatim against the headless loop; lane 4 may PREPARE it, never mark it DONE.
 - The `test_web_ascii_sweep` live-half digest was re-captured twice this session - a red there
   next session is NEW drift.
-
----
-
-# 2026-07-31a - MISSION CONTROL S4 (the dashboard panel) + the audit that paid for itself.
-
-## Start here next session
-
-**S5 of the Mission Control control plane** - shortcut 3, the existing headless-upgrade
-command, the FIRST real lane fire. One supervised run, worktree-mandatory
-(`try_acquire_lane` raises on the main tree by design). Spec + staging in
-`docs/MISSION_CONTROL_PLAN.md`; S1-S4 are all in place and live.
-
-## What shipped
-
-- `ed5191b2` S4: the MISSION CONTROL settings card + `lanes` / `controller_lock` three-state
-  blocks on `GET /api/loop-status` (read-only) + ARM/CONFIRM for shortcuts 1-2 over the new
-  `web/js/lib/arm_confirm.js`. Live: `lanes FREE`, `controller_lock RECLAIMABLE pid 9380`.
-- Plan constraint 2 RESOLVED - `root=None` is `lanes.DEFAULT_ROOT` on both sides of the
-  S1/S2 seam, pinned by a test firing through the REAL route pair.
-- 50 py + 14 node new; full `tests/` from the repo root 17601 passed / exit 0.
-
-## Lessons worth keeping
-
-1. **The panel had never rendered.** `#loop-status-body` was a CSS class and a
-   `getElementById` and nothing else - no markup, anywhere. The 2026-06-07 card was dead
-   from the day it landed, and every test that touched it tested the renderer's INPUTS.
-   A rendered field is not evidence of a host either.
-2. **`var(--x)` naming an undefined property fails SILENTLY.** `color: var(--bg)` fell back
-   to inherited near-white at 1.9:1 on amber - on the ARMED button, the one state where
-   misreading costs the most. `--bg` is defined in NO stylesheet in `web/css`; it passed
-   every grep for the token name. Only reading the COMPUTED style in a live browser found it.
-3. **A repaint can make a flow unreachable.** `innerHTML` at 4Hz threw keyboard focus to
-   `<body>` on arm, so the confirm click could never be reached. Mouse-only, invisibly.
-4. **`dim` is inert repo-wide** - every `.dim` rule in `web/css` is descendant-scoped.
-
-## Do NOT redo
-
-- S1, S2, S3, S4 are shipped and verified. Do not rebuild the lane lock, the idempotency
-  table, the intent consumer, or the panel.
-- Do not edit `ops/loop/slots.py` / `ops/loop/winmutex.py` (byte-identical-by-contract).
-- The `test_web_ascii_sweep` live-half digest was re-captured this session (4 web files,
-  two-tree diff verified) - a red there next session is NEW drift, not this.
-- The pre-existing icon glyphs in `web/index.html` + `web/css/panels/header.css` (arrows,
-  times, mute speaker) are LEFT ALONE on purpose - sweeping them breaks icons.
