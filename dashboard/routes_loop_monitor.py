@@ -400,7 +400,7 @@ function rStatus(s){
  el.innerHTML='<div class="row">'
   +kv('state','<span class="pill '+st+'">'+st.toUpperCase()+'</span>')
   +kv('cycle',cyc)
-  +kv('gemini',b.gemini_usd!=null?('$'+b.gemini_usd+' / '+b.gemini_ceiling):'-')
+  +kv('adjudicator',b.adjudicator_usd!=null?('$'+b.adjudicator_usd+(b.adjudicator?(' ('+b.adjudicator+')'):'')):'-')
   +kv('claude',b.claude_usd_info!=null?('$'+b.claude_usd_info):'-')
   +'</div>'
   +(lc.sha?('<div class="commit">HEAD '+esc(lc.sha)+'  '+esc(lc.subject)+'</div>'):'')

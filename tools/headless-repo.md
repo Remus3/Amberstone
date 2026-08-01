@@ -3,8 +3,8 @@ description: Mission Control lane 7 (Headless-Repo). Detached headless worker pr
 ---
 
 > **SUBAGENT-FIRST (standing protocol, operator 2026-06-20).** Always use subagents for substantive work; do not build solo in the main thread.
-> 1. **Spec first:** a Plan/design subagent (or the Gemini director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
-> 2. **New session:** interview the Gemini director (or the operator if Gemini is down) for intent + acceptance criteria, re-probe live state, THEN build.
+> 1. **Spec first:** a Plan/design subagent (or the loop director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
+> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build.
 > 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done".
 > 4. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Subagent-First Protocol" + memory `feedback_subagent_first_protocol`.
 
@@ -66,7 +66,7 @@ are a 2026-07-30 measurement and must be re-measured, never carried forward.
 | `%USERPROFILE%\.claude\projects` | 6,707 | 1.9 GB | **EVIDENCE, NOT GARBAGE - never delete** |
 | `%USERPROFILE%\.claude\plugins` | 116,872 | 1.5 GB | Plugin installs. Prune only unreferenced marketplaces |
 | `%APPDATA%\npm` | 1,830 | 0.9 GB | Global npm. Out of scope |
-| `%USERPROFILE%\.gemini` | 1,314 | 151 MB | Director state. RETAIN |
+| `%USERPROFILE%\.gemini` | 1,314 | 151 MB | Retired-vendor state. PURGEABLE since 2026-08-01 - the vendor is decommissioned and nothing reads this. Confirm no live reference before deleting. |
 | `%USERPROFILE%\.perseus-vault` | 4 | 99 MB | Recall store. RETAIN - never prune |
 
 **1. `~/.claude/projects` holds the SESSION TRANSCRIPTS. They are evidence.** They are the exact input a retroactive audit reads to verify a "tests passed" claim against
