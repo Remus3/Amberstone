@@ -6,6 +6,51 @@
 
 ---
 
+# 2026-08-01 - Gemini decommissioned, tri-project headless contract, N=3 round closed
+
+6 commits `15ddff90..8450dd2b`, all pushed. RC-side only; DS untouched (no Share sync).
+
+**Shipped**
+- `c926470a` port blocks folded - LW 8900-8919 and RM 8770-8789 both CONFIRMED in writing.
+  Adopted LW's `next_free()` with a guard LW's version lacks: RC may only answer for its OWN
+  blocks - a confident wrong number handed to a sibling is worse than no answer.
+- `aee3bb96` + `13350e43` GEMINI FULLY DECOMMISSIONED (operator directive). Backend, failover,
+  exhaustion matcher, ceiling accounting, 2 ps1 wrappers, 3 docs, the scheduled task: gone.
+  `gemini()` -> `adjudicate()`, `/gemini-headless-upgrade` -> `/directed-headless-upgrade`.
+- `666d2547` + `8b292a98` N=3 coordinated round with LW and RM; all three trees hash equal on
+  `slots.py` (`5297f2d0...1cb0a6`).
+- `8450dd2b` Claude co-author trailer swept - `gist_share_sync.py` was still EMITTING it into a
+  SEPARATE repo the commit-msg hook does not cover.
+- NEW: `docs/CONCURRENT_HEADLESS_CONTRACT.md` - portable 3-project headless contract.
+
+**Decisions worth keeping**
+- Removing `ceiling_usd` was REQUIRED, not tidy: with the metered vendor gone the only spend
+  left was Claude's, so the check would have inverted into a cap on exactly the spend policy
+  says is uncapped.
+- A cross-repo equality guard makes an atomic change IMPOSSIBLE - whoever moves first is red.
+  Rule 4.2a in the contract. Deciding rule: whoever is red should be the party NOT shipping.
+- Contract section 10 was WRONG about the cause of the hooks finding: it is settings DISCOVERY
+  (cwd), not headlessness. Verified locally - `.claude/` is gitignored, so every lane worktree
+  has no settings.json and runs with ZERO agent hooks.
+- Removed dangling machine-wide `"model": "rc-main"` from user settings (backup kept). It broke
+  headless for EVERY project, and RC's earlier "Not logged in" reading was wrong - `claude -p`
+  works now. A headless launch has several independent preconditions that all fail as "the run
+  did nothing"; do not accept the first plausible cause.
+
+**Do NOT redo**
+- Gemini is gone; a decommission-guard test fails if any of the 8 deleted names return.
+- N=3 and the slots re-pin are APPLIED on all three trees. Do not re-negotiate.
+- `winmutex.py` GEMINI_MUTEX constant STAYS - shared byte-identical, LW has a live consumer.
+- LW owns the hook probe. Do not duplicate it.
+
+**Next:** link-ingest Phase 2. `Desktop/First-Pass.md` has 147 scored rows and 155 operator
+`**!=` notes ALREADY PRESENT - the gate the memory calls "awaiting operator notes" is CLEARED.
+
+**Loose end (not blocking):** `NIMBLE_API_KEY` sits in plaintext in user-level
+`.claude/settings.json` env. Worth relocating; not touched this session.
+
+---
+
 # 2026-08-01a - LANE-RESEARCH REFILL (headless lane 5): 5 rows filed RM-130..RM-134, one NEW drift-guard gap.
 
 **MERGE NOTE (added by the merger, 2026-08-01):** the five rows this run filed were authored
@@ -97,66 +142,3 @@ was the 05:57 reboot clearing pid 14692, NOT a crash - the work was committed an
 
 Lanes have well-formed work waiting: RM-128 (lane 6/7), the tft-arrow strip (lane 7), the six
 stale-process restart-owner gaps (`BACKLOG.md`, lane 7), the DS RM-118 4 wireable seams (lane 6).
-
----
-
-# 2026-07-31e - DESKTOP INGEST PHASE 1 (12 files classified) + research lane FIRED.
-
-## Start here next session
-
-The research lane this session fired has since COMPLETED (run_id `ingest-580bb7d6`, exit 0,
-~15 min) and its branch is MERGED - see the 2026-07-31f entry above. The lane lock reads
-RECLAIMABLE only because the 05:57 reboot cleared its pid; release it before firing another.
-Status: `curl -s --ssl-no-revoke https://legion-rc:8895/api/loop-status` (NEVER `-k`; mkcert
-CA has no CRL/OCSP).
-
-**The remaining ingest work is RM-127**, and its two input files were deliberately LEFT on
-the Desktop because the row cites them as its working input: `First-Pass.md` (105 KB, 155
-operator note pairs) and `First-Pass-Addendum.md` (13 KB). Everything else is in
-`Desktop/_ingested/` (10 files, reversible - the operator deletes that folder themselves).
-
-## What shipped (`7cd9a812`, Tier-0 docs only)
-
-All 12 Desktop planning files classified against ground truth; **zero duplicates filed**.
-
-- **RM-121 CLOSED + relocated.** It read "items 1-3 DONE, two files left" for three days
-  after LEDGER 1094 closed item 4 - the exact stale-ROADMAP class LEDGER 1093 named
-  ("the stale artifact was not the digest, it was ROADMAP.md"). BOTH stale copies fixed
-  (ROADMAP.md pointer + the `ROADMAP_HISTORY.md:28` copy), and the authoritative R217
-  narrative retagged off `[WIP]`. That relocation also cleared a live drift_guard breach:
-  the RM-127 addition took ROADMAP to 91 pct of budget, relocation brought it to 88.8.
-- **RM-127 FILED - CCR link-ingest Phase 2 is UNBLOCKED.** Phase 1 (LEDGER 1108) ended
-  awaiting operator notes; they have landed. RM-127b covers the build-calculator parity
-  report (export ingest path already solved; 220 KB JSON, only 7 objects vary per champion).
-- **BACKLOG: TFT F8 + F1** from `docs/COMPETITOR_LIFT_2026-07-30.md`, both rated HIGH in
-  that teardown's own verdict table and never carried into any tracker.
-- Verified-and-left-alone (no duplicate): G3-13 / G2-39 (gated sync), RM-124, RM-118,
-  RM-122 (already absorbs `pending ui ux.txt`, with corrected line numbers), TFT Set 17
-  constants + `tft_roll_odds` wiring + `tft_pbe_data` arrows, MEMORY.md compaction.
-  CI run 30592954426 confirmed green LIVE rather than assumed.
-
-## Lessons worth keeping
-
-1. **Two grep patterns lied in the same session, both by near-miss.** `!= =!` returned 0
-   because the CCR marker wraps the note TEXT (`**!= note =!**`) - that nearly closed
-   RM-127 as "no operator notes yet" when 155 had landed. Then `MEMORY.md compact` missed
-   the real row through its surrounding backticks, and nearly produced a duplicate BACKLOG
-   row. **An empty grep is a claim about your pattern, not about the repo.**
-2. **A ROADMAP row is a claim with a timestamp.** LEDGER 1093 wrote that lesson about this
-   very row and the row went stale again anyway, because closing a ledger entry and closing
-   the tracker row are two separate acts and only one of them is anybody's habit.
-3. **`fire_lane`'s own docstring says it "never spawns anything" - that is STALE**, S5 added
-   the launch directly below it. Read past a docstring to the code under it.
-4. A live lane pid proves nothing (DETACHED_PROCESS no-op). The real probe is a `claude.exe`
-   CHILD of the worker shell - confirmed here at pid 18400 / 382 MB.
-
-## Do NOT redo
-
-- RM-121 is CLOSED. The five-file queue is drained, there is no file 5.
-- Do not re-move `First-Pass.md` / `First-Pass-Addendum.md` - RM-127 cites their Desktop paths.
-- `logins.txt`, `LW continue.txt`, `RM continue.txt` were correctly left untouched (credentials
-  + sibling-repo prefixes). Verified present and unmodified at wrap.
-- `ops/loop/control/STOP` holds a REAL operator halt from 2026-07-28 and is UNTOUCHED. It gates
-  the gemini CONTROLLER, not the lanes - the lane lock was FREE and fired normally with STOP in
-  place. Do not clear it.
-- Lanes 7 (repo) and 8 (true-audit) still have NEVER been fired and remain operator-gated.
