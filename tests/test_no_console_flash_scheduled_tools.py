@@ -63,7 +63,36 @@ SCHEDULED_SPAWNERS = (
     "ops/loop/loop_controller.py",
     "ops/loop/executor.py",
     "ops/loop/adjudicator.py",
+    # 2026-08-01: the perseus tools spawn perseus-vault.exe, which is a
+    # CONSOLE-subsystem binary (PE Subsystem=3 - measured, not assumed), so a
+    # parent with no console of its own gets a window allocated for the child.
+    # LATENT rather than observed: both run from a console-bearing parent today.
+    # Pinned so that scheduling either one under pythonw cannot reintroduce the
+    # flash silently.
+    "tools/perseus_recall.py",
+    "tools/perseus_sync.py",
+    # 2026-08-01: THE measured flash. Ran under pythonw from the INTERACTIVE
+    # RC-ClaudeQuotaWatch task every PT2H and spawned a .cmd shim with no
+    # flag, so a CUI child got a fresh console. It lived OUTSIDE the repo at
+    # C:/Users/Administrator/ and was therefore unguardable; moved into tools/
+    # in the same session precisely so this list can see it, and the scheduled
+    # task was repointed at the new path.
+    "tools/claude_quota_watch.py",
 )
+
+# ---------------------------------------------------------------------------
+# THE BLIND SPOT, stated so it is not mistaken for coverage. SCHEDULED_SPAWNERS
+# is a hand-list of IN-REPO paths, so any scheduled task whose target lives
+# outside the tree is invisible here by construction. That is not hypothetical:
+# the 2026-08-01 flash was exactly that shape, and the fix required MOVING the
+# file into the repo before any test could hold it.
+#
+# The measurement, for whoever hits this next: a 250ms EnumWindows poll came
+# back CLEAN and the flash was real - polling had to drop to 8ms to catch it.
+# "I watched and saw nothing" is not evidence of absence at this timescale.
+# The decisive probe is to spawn the same command from pythonw twice, once
+# unflagged and once flagged, and diff the visible ConsoleWindowClass set.
+# ---------------------------------------------------------------------------
 
 _SPAWN_ATTRS = {"run", "Popen", "check_output", "call", "check_call"}
 
