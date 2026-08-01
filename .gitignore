@@ -323,3 +323,7 @@ Share/src.old/
 # Session 2026-07-26: pre-dedupe rewind backup (1.7 GB) + forward growth samples
 data/*.db.bak_*
 data/rofl_archive_growth.jsonl
+
+# Headless lane worker logs - runtime churn, one per lane run (S5 lane_launcher).
+# The mdclean-*.md reports in the same dir ARE deliberate artifacts and stay tracked.
+ops/loop/reports/lane_*.log
