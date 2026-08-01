@@ -12,17 +12,40 @@ registry silently goes stale, and `tests/test_ports.py` fails when a live
 definition site disagrees with the value here - so this file is checked, not
 merely descriptive.
 
-**Block reservations (operator-assigned 2026-08-01).** The blocks are wider
-than current use on purpose: the point is that a new service can be added to
-any project without first re-auditing the other two.
+**Block reservations (operator-assigned 2026-08-01, and CONFIRMED IN WRITING by
+both siblings the same day).** The blocks are wider than current use on purpose:
+the point is that a new service can be added to any project without first
+re-auditing the other two.
 
-    8770-8789   Sibling-C        (in use: 8777 8778 8779 8780 8783)
+    8770-8789   Sibling-C        (named: 8777 8778 8779 8780 8783; bound today: 8777 8780)
     8860-8879   Daemon Slayer   (RESERVED - see MIGRATION below)
-    8888-8895   Riot Commander  (in use: 8888 8889 8890 8891 8895)
-    8900-8919   Sibling-A (in use: 8901)
+    8888-8895   Riot Commander  (in use: 8888 8889 8890 8891 8893 8894 8895)
+    8900-8919   Sibling-A (named: 8901; bound only while the operator runs it)
 
 RC keeps 8888-8895 because moving a live control plane is churn with no payoff;
 the block is stated so the other two projects can route around it.
+
+Provenance, so a later session does not re-open a closed negotiation. Sibling-C
+accepted 8770-8789 unchanged and Sibling-A accepted 8900-8919 unchanged;
+both replies are in `moon_sync_inbox/` dated 2026-08-01. Neither asked RC to
+move anything, and neither owes RC a renumber.
+
+**AUDIT BY SOURCE, NEVER BY NETSTAT.** This is the durable lesson from the
+confirmation round, and it inverts the obvious method. LW's monitor is an
+operator-launched GUI that is idle most of the time, so a live listener scan on
+any ordinary morning finds ZERO Sibling-A ports - LW would read as
+portless and the collision would still be waiting. Sibling-C is the same shape
+from the other direction: three of its five named ports (8778 8779 8783) are
+reserved-and-unbound pending later cycles, so a port scan says "free" about
+numbers that are already spoken for. A reservation is a claim about the future;
+only source and the owner's own registry can answer it.
+
+**Third-party stock defaults are the next collision, and each project pins its
+own.** LW flagged two tools on its roadmap whose stock ports sit outside every
+block here. The agreed rule: whoever wires a third-party listener passes it an
+explicit port from that project's own block rather than letting it take its
+default. Otherwise the defaults quietly become a fourth, unowned, undocumented
+block that appears in nobody's tree until it collides.
 
 **MIGRATION, deliberately not done yet.** Daemon Slayer today binds 8893 and
 8894, which sit INSIDE the RC block rather than the DS block. Renumbering is
@@ -104,8 +127,14 @@ BLOCKS = {
 """Every project's reserved range, keyed by short name.
 
 LW and RM are listed so RC can prove disjointness without reading their trees.
-Sibling-C's own guard test greps its source for foreign port numbers, so do NOT
-paste RC's literals into that repo - cite the block, not the port.
+
+RC carrying all four blocks is an RC-side choice, not a shared convention. Red
+Moon deliberately does the opposite: it names only its own ports and proves
+disjointness from the negative side, with a guard that fails on any FORBIDDEN
+foreign literal (8888, 8889 and 8893 among them) appearing in its source. So do
+NOT paste RC's literals into that repo - cite the block, not the port. RM
+excluded `moon_sync_inbox/` from that scan on 2026-08-01, which makes prose
+notes safe in any file type; the rule above still governs anything TRACKED.
 """
 
 ALL = frozenset({
@@ -126,3 +155,30 @@ def block_for(port: int) -> str | None:
         if port in block:
             return name
     return None
+
+
+def next_free(block: str = "rc", taken=None) -> int:
+    """Lowest unallocated port in `block`, so wiring a new service is mechanical.
+
+    Adopted from Sibling-A's `tools/lw_ports.py` (offered back 2026-08-01).
+    The value is that adding a service becomes "take this number, name it, pin
+    it" instead of a hand-scan of bind sites - and a hand-scan is the exact
+    method that nearly handed 8901 to Daemon Slayer.
+
+    Only the RC block can be answered from this repo. `taken` exists for the
+    sibling blocks: RC does not know what LW or RM have allocated and must not
+    guess, so asking for one of those without passing their allocations raises
+    rather than returning a number that would be a fabrication.
+    """
+    if block not in BLOCKS:
+        raise KeyError(f"unknown block {block!r} - known: {', '.join(sorted(BLOCKS))}")
+    if taken is None:
+        if block not in ("rc", "ds"):
+            raise ValueError(
+                f"cannot compute a free port in the {block!r} block from this repo - "
+                f"pass taken=<that project's allocations>, or ask its owner")
+        taken = ALL
+    free = sorted(set(BLOCKS[block]) - set(taken))
+    if not free:
+        raise ValueError(f"the {block!r} block is fully allocated")
+    return free[0]
