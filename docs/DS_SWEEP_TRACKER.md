@@ -41,7 +41,14 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - Next up (strict alphabetical): NONE - roster closed at Zyra 2026-07-18.
   **RM-128 allocated 2026-07-31** to the cdragon `queues.json` queue-map grounding + drift
   guard (BACKLOG "Data pipeline"; lane 6/7; ITEM/AXIS gap, no roster checkbox, no Summary
-  count change). Next free GAP spec = **RM-129**.
+  count change). **RM-129..RM-133 allocated 2026-08-01** (lane-research refill; all
+  ITEM / AXIS / UI gaps, no roster checkbox, no Summary count change):
+  RM-129 tft `U+2192` display-arrow strip (BACKLOG "Reliability/hardening"; lane 7);
+  RM-130 101.qq.com duo-synergy drift-guard gap (BACKLOG "Data pipeline"; lane 6/7);
+  RM-131 overlay `font-size:13px` token-bypass (BACKLOG "Reliability/hardening"; lane 7);
+  RM-132 Arena My Pick archetype-chip parity (BACKLOG "Competitor-lift open candidates"; lane 4);
+  RM-133 MC raw-error-string leak to :8895 (BACKLOG "Reliability/hardening"; lane 8).
+  Next free GAP spec = **RM-134**.
   (lane-research corrected 2026-07-31: the prior "= RM-119"
   pointer was ITSELF stale - RM-119..RM-127 were all consumed by ROADMAP/BACKLOG rows whose
   tracker registration was owed-and-never-done, exactly the "tracker registration is owed"
