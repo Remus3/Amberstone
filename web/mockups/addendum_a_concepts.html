@@ -1,11 +1,13 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>ADDENDUM A - RC dashboard concepts 1 / 2 / 6 (static mockup)</title>
+<title>ADDENDUM A - RC dashboard concepts, all six (static mockup)</title>
 <!--
   RM-127 ADDENDUM A - static mockup, operator-authorized 2026-08-01.
 
-  Concepts 1 (Fleet Board), 2 (Verification Wall) and 6 (Adjudication Inbox):
-  the three the addendum names as having NO existing RC surface.
+  All six concepts. 1 (Fleet Board), 2 (Verification Wall) and 6 (Adjudication
+  Inbox) are the three the addendum names as having NO existing RC surface;
+  3 (Seam Map), 4 (Drift Strip) and 5 (Gated Queue) each render a data source
+  that already exists but is surfaced nowhere.
 
   Deliberately NOT wired into web/index.html and referenced by no route, so it
   cannot affect the running dashboard. Token values are INLINED rather than
@@ -103,10 +105,50 @@
   .actions button.reject { border-color:var(--bad);  color:var(--bad); }
   .actions button:hover  { background:var(--surface); }
   .actions button:focus-visible { outline:2px solid var(--accent-2); outline-offset:2px; }
+
+  /* 3. Seam Map */
+  .seams { width:100%; border-collapse:collapse; }
+  .seams th.gate { text-align:center; width:150px; }
+  .seams td.gate { text-align:center; font-weight:600; }
+  .seams td.seam { font-family:Consolas, monospace; color:var(--text); }
+  .g-yes  { color:var(--good); }
+  .g-no   { color:var(--bad); }
+  .g-na   { color:var(--faint); }
+  .seams tr.inert { background:var(--bad-soft); }
+  .seams tr.inert td.seam { color:var(--bad); }
+  .legend { color:var(--faint); margin-top:12px; }
+
+  /* 4. Drift Strip */
+  .strip { display:flex; flex-wrap:wrap; gap:10px; }
+  .pill {
+    display:flex; flex-direction:column; gap:2px; min-height:var(--hit-min);
+    justify-content:center; padding:8px 14px; border-radius:999px;
+    border:1px solid var(--good); background:var(--good-soft); color:var(--good);
+  }
+  .pill .k { font-size:var(--fs-xs); letter-spacing:.5px; opacity:.85; }
+  .pill .v { font-size:var(--fs-xs); font-weight:600; font-variant-numeric:tabular-nums; }
+  .pill.amber { border-color:var(--warn); background:var(--warn-soft); color:var(--warn); }
+  .pill.red   { border-color:var(--bad);  background:var(--bad-soft);  color:var(--bad); }
+
+  /* 5. Gated Queue */
+  .q { display:grid; grid-template-columns:auto 1fr auto; gap:10px 14px; align-items:center; }
+  .q .mode {
+    font-size:var(--fs-xs); font-weight:600; text-align:center; min-width:104px;
+    padding:5px 10px; border-radius:6px; border:1px solid var(--accent-2); color:var(--accent-2);
+  }
+  .q .mode.aram  { border-color:var(--accent); color:var(--accent); }
+  .q .mode.arena { border-color:var(--good);   color:var(--good); }
+  .q .what { color:var(--dim); }
+  .q .n { color:var(--faint); font-variant-numeric:tabular-nums; text-align:right; }
+  .countdown {
+    margin-top:14px; padding-top:12px; border-top:1px solid var(--border-soft);
+    display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+  }
+  .countdown .big { font-size:var(--fs-lg); color:var(--accent); font-variant-numeric:tabular-nums; }
 </style>
 
 <h1>ADDENDUM A - RC-wide dashboard concepts
-  <div class="sub">Static mockup of concepts 1, 2 and 6 - the three with no existing RC surface. Mock data throughout.</div>
+  <div class="sub">Static mockup of all six concepts, categorized. Mock data throughout.</div>
 </h1>
 
 <div class="mock-note">
@@ -253,6 +295,133 @@
     <p style="color:var(--faint);margin:4px 0 0">
       The audit already runs. Only this output surface is missing, so today its
       findings appear in chat and die there.
+    </p>
+  </section>
+
+  <!-- ============ CONCEPT 3 ============ -->
+  <section class="panel" style="grid-column:1 / -1">
+    <header>
+      <h2>Seam Map</h2>
+      <span class="cat">engine</span>
+    </header>
+
+    <table class="seams">
+      <thead>
+        <tr>
+          <th>DS seam</th>
+          <th class="gate">flag set</th>
+          <th class="gate">transport carries</th>
+          <th class="gate">route consumes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="seam">apply_rune_offense_grants</td>
+          <td class="gate g-yes">yes</td>
+          <td class="gate g-yes">yes</td>
+          <td class="gate g-yes">yes</td>
+        </tr>
+        <tr class="inert">
+          <td class="seam">apply_crit_chance_overrides</td>
+          <td class="gate g-yes">yes</td>
+          <td class="gate g-yes">yes</td>
+          <td class="gate g-no">NO</td>
+        </tr>
+        <tr class="inert">
+          <td class="seam">apply_cast_rate_propensity_prior</td>
+          <td class="gate g-yes">yes</td>
+          <td class="gate g-no">NO</td>
+          <td class="gate g-no">NO</td>
+        </tr>
+        <tr>
+          <td class="seam">apply_ability_hsp_amp</td>
+          <td class="gate g-yes">yes</td>
+          <td class="gate g-yes">yes</td>
+          <td class="gate g-na">unmeasured</td>
+        </tr>
+        <tr class="inert">
+          <td class="seam">assume_ms_utility</td>
+          <td class="gate g-yes">yes</td>
+          <td class="gate g-no">NO</td>
+          <td class="gate g-no">NO</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="legend">
+      Two greens and a red is the exact shape of a seam that is settable,
+      guard-green and arithmetically INERT - the failure
+      <code>reference_ds_route_seam_transport_vs_flag</code> records. The middle
+      column is the one usually assumed rather than measured; owners come from an
+      <code>inspect.signature</code> sweep, never from a docstring.
+    </p>
+  </section>
+
+  <!-- ============ CONCEPT 4 ============ -->
+  <section class="panel" style="grid-column:1 / -1">
+    <header>
+      <h2>Drift Strip</h2>
+      <span class="cat">docs and data</span>
+    </header>
+
+    <div class="strip">
+      <div class="pill"><span class="k">DDragon</span><span class="v">16.15.1</span></div>
+      <div class="pill"><span class="k">DS patch</span><span class="v">16.15.1</span></div>
+      <div class="pill amber"><span class="k">Meraki</span><span class="v">16.14.1</span></div>
+      <div class="pill"><span class="k">cdragon</span><span class="v">16.15.1</span></div>
+      <div class="pill"><span class="k">ENGINE</span><span class="v">1.268.0</span></div>
+      <div class="pill"><span class="k">doc anchors</span><span class="v">4 / 4</span></div>
+      <div class="pill"><span class="k">Perseus</span><span class="v">1267 = 1267</span></div>
+      <div class="pill red"><span class="k">Share mirror</span><span class="v">stale 2h</span></div>
+    </div>
+
+    <p class="legend">
+      One pill per freshness fact, amber the moment any two disagree. Every one
+      of these has burned a session, and each is a single probe. Perseus is shown
+      as <code>embedded = active</code> because a bare "healthy" is not proof -
+      coverage is what degrades silently.
+    </p>
+  </section>
+
+  <!-- ============ CONCEPT 5 ============ -->
+  <section class="panel" style="grid-column:1 / -1">
+    <header>
+      <h2>Gated Queue</h2>
+      <span class="cat">work in flight</span>
+    </header>
+
+    <div class="q">
+      <span class="mode arena">ARENA</span>
+      <span class="what">E2 DS 3-game live flip - build reco eyeball across a full lobby</span>
+      <span class="n">3 games</span>
+
+      <span class="mode aram">ARAM</span>
+      <span class="what">augment-select OCR path, RC_VISION_MERGE_STRICT still default-off</span>
+      <span class="n">1 game</span>
+
+      <span class="mode">CHAMP-SEL</span>
+      <span class="what">G1-00 flag ON in live champ select, byte-compare lcu.champ_select</span>
+      <span class="n">1 session</span>
+
+      <span class="mode arena">ARENA</span>
+      <span class="what">RM-02 counter-hint chips - antiheal / tenacity / fed / roster</span>
+      <span class="n">2 games</span>
+
+      <span class="mode">SR</span>
+      <span class="what">item 215 OBS DXGI match-end capture, one locked resolution</span>
+      <span class="n">1 game</span>
+    </div>
+
+    <div class="countdown">
+      <span style="color:var(--faint)">Realistically drainable next session</span>
+      <span><span class="big">4</span> <span style="color:var(--faint)">of 8 open</span></span>
+    </div>
+
+    <p class="legend">
+      Turns the gated document into a countdown: what can only close in a real
+      game, which mode each one needs, and how far a single play session gets.
+      Grouping by MODE is the point - it is what makes two rows closeable in one
+      queue instead of two sessions.
     </p>
   </section>
 
