@@ -1,0 +1,259 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ADDENDUM A - RC dashboard concepts 1 / 2 / 6 (static mockup)</title>
+<!--
+  RM-127 ADDENDUM A - static mockup, operator-authorized 2026-08-01.
+
+  Concepts 1 (Fleet Board), 2 (Verification Wall) and 6 (Adjudication Inbox):
+  the three the addendum names as having NO existing RC surface.
+
+  Deliberately NOT wired into web/index.html and referenced by no route, so it
+  cannot affect the running dashboard. Token values are INLINED rather than
+  imported from web/css/themes.css, because a mockup that silently inherits on
+  an undefined var teaches the wrong thing about the design
+  (reference_css_undefined_var_fails_silently: --bg is defined nowhere, and a
+  var() miss fails silently rather than loudly).
+
+  Data below is MOCK, shaped from real RC facts (lane names from
+  ops/loop/lane_launcher.py, seam names from test_stranded_hsp_seam_r197.py).
+  Nothing here reads a live endpoint.
+
+  Authored at the 1920x1080 baseline with Chrome chrome present
+  (project_dashboard_ui_baseline). No 100vh anywhere.
+-->
+<style>
+  :root {
+    --canvas:#03050A; --surface:#0A0E15; --surface-2:#10161F; --surface-3:#171F2B;
+    --text:#F2F6FF; --dim:#9AB0CC; --faint:#7688A2;
+    --border:rgba(130,160,205,.34); --border-soft:rgba(130,160,205,.20);
+    --accent:#C8AA6E; --accent-2:#2ED3E0;
+    --good:#46B989; --good-soft:rgba(70,185,137,.18);
+    --warn:#D9A24A; --warn-soft:rgba(217,162,74,.18);
+    --bad:#E0596B;  --bad-soft:rgba(224,89,107,.18);
+    --fs-xs:16px; --fs-sm:18px; --fs-md:22px; --fs-lg:28px;
+    --panel-padding:20px; --panel-radius:18px; --panel-gap:18px; --hit-min:42px;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; padding:28px; background:var(--canvas); color:var(--text);
+    font:var(--fs-xs)/1.5 "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size:var(--fs-lg); margin:0 0 4px; letter-spacing:.5px; }
+  h1 .sub { color:var(--faint); font-size:var(--fs-xs); letter-spacing:0; }
+  .mock-note {
+    border:1px solid var(--border-soft); border-left:3px solid var(--accent);
+    background:var(--surface); padding:12px 16px; border-radius:8px;
+    color:var(--dim); margin:16px 0 24px; max-width:1200px;
+  }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(540px,1fr)); gap:var(--panel-gap); }
+  .panel {
+    background:var(--surface); border:1px solid var(--border-soft);
+    border-radius:var(--panel-radius); padding:var(--panel-padding);
+  }
+  .panel > header {
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:12px; border-bottom:1px solid var(--border-soft);
+    padding-bottom:10px; margin-bottom:14px;
+  }
+  .panel h2 { font-size:var(--fs-md); margin:0; color:var(--accent); letter-spacing:.4px; }
+  .panel .cat { font-size:var(--fs-xs); color:var(--faint); text-transform:uppercase; letter-spacing:1px; }
+
+  /* 1. Fleet Board */
+  .agent { display:grid; grid-template-columns:1fr auto; gap:4px 12px;
+           background:var(--surface-2); border:1px solid var(--border-soft);
+           border-left:3px solid var(--dim); border-radius:10px;
+           padding:12px 14px; margin-bottom:10px; }
+  .agent.run  { border-left-color:var(--good); }
+  .agent.idle { border-left-color:var(--warn); }
+  .agent.stuck{ border-left-color:var(--bad); background:var(--bad-soft); }
+  .agent .name { font-size:var(--fs-sm); font-weight:600; }
+  .agent .files { color:var(--faint); grid-column:1; }
+  .agent .stat { text-align:right; color:var(--dim); font-variant-numeric:tabular-nums; }
+  .blink { animation:pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.35; } }
+  @media (prefers-reduced-motion:reduce) { .blink { animation:none; text-decoration:underline; } }
+
+  /* 2. Verification Wall */
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--border-soft); }
+  th { color:var(--faint); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:1px; font-weight:600; }
+  td.claim { color:var(--text); }
+  .tag { display:inline-block; min-width:104px; text-align:center;
+         padding:4px 10px; border-radius:6px; font-size:var(--fs-xs); font-weight:600; }
+  .tag.ok    { background:var(--good-soft); color:var(--good); border:1px solid var(--good); }
+  .tag.unbk  { background:var(--bad-soft);  color:var(--bad);  border:1px solid var(--bad); }
+  .tag.stale { background:var(--warn-soft); color:var(--warn); border:1px solid var(--warn); }
+  td.src { color:var(--faint); }
+
+  /* 6. Adjudication Inbox */
+  .card { background:var(--surface-2); border:1px solid var(--border-soft);
+          border-radius:10px; padding:14px; margin-bottom:12px; }
+  .card .phase { display:inline-block; font-size:var(--fs-xs); letter-spacing:1px;
+                 color:var(--accent-2); border:1px solid var(--accent-2);
+                 border-radius:5px; padding:2px 8px; margin-bottom:8px; }
+  .card p { margin:0 0 10px; color:var(--dim); }
+  .card .where { color:var(--faint); font-family:Consolas, monospace; }
+  .actions { display:flex; gap:10px; flex-wrap:wrap; }
+  .actions button {
+    min-height:var(--hit-min); min-width:112px; padding:0 18px; cursor:pointer;
+    font-size:var(--fs-xs); font-family:inherit; border-radius:8px;
+    background:var(--surface-3); color:var(--text); border:1px solid var(--border);
+  }
+  .actions button.accept { border-color:var(--good); color:var(--good); }
+  .actions button.reject { border-color:var(--bad);  color:var(--bad); }
+  .actions button:hover  { background:var(--surface); }
+  .actions button:focus-visible { outline:2px solid var(--accent-2); outline-offset:2px; }
+</style>
+
+<h1>ADDENDUM A - RC-wide dashboard concepts
+  <div class="sub">Static mockup of concepts 1, 2 and 6 - the three with no existing RC surface. Mock data throughout.</div>
+</h1>
+
+<div class="mock-note">
+  <strong>This is a mockup, not a wired panel.</strong> No route serves it, no
+  script fetches anything, and <code>web/index.html</code> does not reference it,
+  so it cannot affect the running dashboard. Every number below is invented to
+  exercise the layout, including the deliberately alarming ones.
+</div>
+
+<div class="grid">
+
+  <!-- ============ CONCEPT 1 ============ -->
+  <section class="panel">
+    <header>
+      <h2>Fleet Board</h2>
+      <span class="cat">agent orchestration</span>
+    </header>
+
+    <div class="agent run">
+      <span class="name">lane/ds</span>
+      <span class="stat">running 04:12</span>
+      <span class="files">agents/daemon_slayer/ - 7 files</span>
+      <span class="stat">38.4k tok</span>
+    </div>
+
+    <div class="agent run">
+      <span class="name">lane/repo</span>
+      <span class="stat">running 11:38</span>
+      <span class="files">tools/, ops/ - 23 files</span>
+      <span class="stat">96.1k tok</span>
+    </div>
+
+    <div class="agent idle">
+      <span class="name">lane/uiux</span>
+      <span class="stat">idle 06:02</span>
+      <span class="files">web/css/panels/ - 4 files</span>
+      <span class="stat">12.7k tok</span>
+    </div>
+
+    <div class="agent stuck">
+      <span class="name blink">lane/true-audit</span>
+      <span class="stat blink">no output 18:44</span>
+      <span class="files">core/build_order.py - 1 file</span>
+      <span class="stat">51.3k tok</span>
+    </div>
+
+    <p style="color:var(--faint);margin:14px 0 0">
+      The stuck row is the whole point: the merger currently has no view of who
+      has stalled. Blink is paired with an underline under
+      <code>prefers-reduced-motion</code>, so the signal is never colour-and-motion only.
+    </p>
+  </section>
+
+  <!-- ============ CONCEPT 2 ============ -->
+  <section class="panel">
+    <header>
+      <h2>Verification Wall</h2>
+      <span class="cat">trust</span>
+    </header>
+
+    <table>
+      <thead>
+        <tr><th>Claim made this session</th><th>State</th><th>Evidence</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="claim">DS suite green from repo root</td>
+          <td><span class="tag ok">CONFIRMED</span></td>
+          <td class="src">27959 passed, 31:28, this session</td>
+        </tr>
+        <tr>
+          <td class="claim">:8860 serves the live patch</td>
+          <td><span class="tag ok">CONFIRMED</span></td>
+          <td class="src">/health 200, engine 1.268.0</td>
+        </tr>
+        <tr>
+          <td class="claim">Share mirror in sync</td>
+          <td><span class="tag ok">CONFIRMED</span></td>
+          <td class="src">ds_share_sync --check, 517 files</td>
+        </tr>
+        <tr>
+          <td class="claim">overlay chips render correctly in game</td>
+          <td><span class="tag unbk">UNBACKED</span></td>
+          <td class="src">no run behind this claim</td>
+        </tr>
+        <tr>
+          <td class="claim">fusion shadow corpus is sufficient</td>
+          <td><span class="tag stale">STALE</span></td>
+          <td class="src">last measured 7 days ago</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="color:var(--faint);margin:14px 0 0">
+      Not a test-count readout. One row per assertion, and a red cell means the
+      claim was made with no run behind it - the failure this repo documents
+      more than any other.
+    </p>
+  </section>
+
+  <!-- ============ CONCEPT 6 ============ -->
+  <section class="panel" style="grid-column:1 / -1">
+    <header>
+      <h2>Adjudication Inbox</h2>
+      <span class="cat">UI-agent adjudicated</span>
+    </header>
+
+    <div class="card">
+      <span class="phase">HIT-TARGETS</span>
+      <p>Rune row buttons are 28px tall against the 42px minimum, so they are
+         hard to hit and fail the ritual outright.</p>
+      <p class="where">web/css/panels/runes.css:112</p>
+      <div class="actions">
+        <button class="accept">Accept</button>
+        <button class="reject">Reject</button>
+        <button>Defer</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="phase">HIERARCHY</span>
+      <p>Two competing primary accents in the same panel - gold and cyan at
+         equal weight, so neither reads as the call to action.</p>
+      <p class="where">web/js/panels/right_now.js:204</p>
+      <div class="actions">
+        <button class="accept">Accept</button>
+        <button class="reject">Reject</button>
+        <button>Defer</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="phase">ASCII</span>
+      <p>Load-bearing U+2192 used as an alternation branch in a split regex.
+         Flagged, NOT auto-strippable: removing it changes behaviour.</p>
+      <p class="where">web/js/lib/items_index.js:62</p>
+      <div class="actions">
+        <button class="accept">Accept</button>
+        <button class="reject">Reject</button>
+        <button>Defer</button>
+      </div>
+    </div>
+
+    <p style="color:var(--faint);margin:4px 0 0">
+      The audit already runs. Only this output surface is missing, so today its
+      findings appear in chat and die there.
+    </p>
+  </section>
+
+</div>
