@@ -498,3 +498,48 @@ def test_a_real_count_claim_next_to_a_noun_still_flags(tmp_path):
         _assistant(_text("The suite reports 1500 passed.")),
     ]
     assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
+# ---------------------------------- gh invoked by absolute path via a variable
+# Third false positive, measured 2026-08-01 during /done. EV_CI required `gh`
+# ADJACENT to its subcommand, but OPERATIONS/the done ritual mandate the
+# absolute path (`GH="C:/Program Files/GitHub CLI/gh.exe"; "$GH" run list`), so
+# the literal "gh run" never appears and a real, repeated CI probe read as none.
+# The gate's own house style guaranteed this fires on every wrap.
+
+GH_ABS = 'GH="C:/Program Files/GitHub CLI/gh.exe"; "$GH" run list --branch main --limit 3'
+
+
+def test_gh_invoked_by_absolute_path_counts_as_a_ci_probe(tmp_path):
+    rows = [
+        _assistant(_tool_use("Bash", command=GH_ABS)),
+        _tool_result("completed success ci 30722182355"),
+        _assistant(_text("All CI settled green.")),
+    ]
+    assert "ci_claim_without_probe" not in _checks(_run_gate(tmp_path, rows))
+
+
+def test_plain_gh_run_still_counts(tmp_path):
+    rows = [
+        _assistant(_tool_use("Bash", command="gh run list --limit 3")),
+        _tool_result("completed success"),
+        _assistant(_text("CI is green.")),
+    ]
+    assert "ci_claim_without_probe" not in _checks(_run_gate(tmp_path, rows))
+
+
+def test_a_ci_claim_with_no_gh_probe_at_all_still_flags(tmp_path):
+    """The load-bearing negative: widening the BINARY form must not turn the
+    check off. A bare claim with no probe remains the whole point of check 4."""
+    rows = [_assistant(_text("CI is green on that commit."))]
+    assert "ci_claim_without_probe" in _checks(_run_gate(tmp_path, rows))
+
+
+def test_an_unrelated_run_word_is_not_a_ci_probe(tmp_path):
+    """`run` is a common word. Without a gh binary it proves nothing."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest tests/ -q  # full run")),
+        _tool_result("==== 12 passed in 1.00s ===="),
+        _assistant(_text("CI is green.")),
+    ]
+    assert "ci_claim_without_probe" in _checks(_run_gate(tmp_path, rows))
