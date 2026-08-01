@@ -10,6 +10,15 @@
 
 ## Start here next session
 
+**A RESEARCH LANE IS RUNNING RIGHT NOW - it is real work, not a test artifact.** Its run_id is
+the unhelpful string `probe` because the merger session fired it BY ACCIDENT while trying to
+read the lane lock: `fire_lane` is the only lock-state call exposed, and it does not merely
+read - it reclaims a stale lock and launches. It was left running deliberately (the standing
+operator directive is to keep a lane running) rather than killed. Treat its output exactly like
+this entry's: merge `lane/research` when it lands, never merge from the worktree. Probe with
+`curl -s --ssl-no-revoke https://legion-rc:8895/api/loop-status` (NEVER `-k`). **Do NOT call
+`fire_lane` just to read lane state** - that is exactly what caused this.
+
 This was a REFILL pass on `lane/research` (Mission Control lane 5), docs-only, no live game.
 MERGED to main 2026-08-01 by the merger session (the 2026-07-31e entry below, which fired
 this lane and then wrapped). Tier-0 docs; no engine, no Share, no restart. Detail in LEDGER 1141.
