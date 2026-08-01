@@ -42,8 +42,23 @@ def nosleep(adj):
 
 
 def _cfg(**over):
+    """A config for the FAILOVER-MECHANISM tests, which name their vendor.
+
+    `"adjudicator": "gemini"` is explicit here on purpose. These tests exercise
+    the primary-to-fallback ladder, and before 2026-08-01 they got their primary
+    from the module default - so flipping that default to claude broke twenty of
+    them at once, for a reason that had nothing to do with the ladder they test.
+    A test of the mechanism must not depend on which vendor happens to be
+    default; it must say which vendor it is exercising.
+
+    The ladder itself is still worth covering. Claude-only is a config flip, not
+    a deletion, and the gemini backend stays reachable as the rollback path (see
+    `adjudicator.DEFAULT_BACKEND`). The day it is genuinely decommissioned,
+    these tests go with it in the same commit.
+    """
     cfg = {"gemini_model": "g-pro", "gemini_fallback_model": "g-flash",
-           "gemini_cmd": "gemini", "adjudicator_fallback": "claude",
+           "gemini_cmd": "gemini", "adjudicator": "gemini",
+           "adjudicator_fallback": "claude",
            "claude_adjudicator": {"cmd": "claude.cmd", "model": "opus"}}
     cfg.update(over)
     return cfg
@@ -69,12 +84,20 @@ def _run_returning(*stdouts):
 # --- backend resolution --------------------------------------------------
 
 
-def test_resolve_defaults_to_gemini(adj):
-    # Today's live config has no "adjudicator" key at all; the default must be
-    # the metered vendor so adding this seam changes nothing about the running loop.
-    assert adj.resolve({}).name == "gemini"
+def test_resolve_defaults_to_claude(adj):
+    """The default backend is CLAUDE (operator decision 2026-08-01).
+
+    This assertion inverted on that date. It used to pin gemini, on the
+    reasoning that the seam must change nothing about the running loop. The
+    loop now self-adjudicates - the same vendor executes, directs and audits a
+    cycle - so a config that names no backend must get claude, and an absent
+    key can never silently re-enable the metered vendor.
+
+    Naming gemini explicitly still resolves, because the flip is reversible.
+    """
+    assert adj.resolve({}).name == "claude"
+    assert adj.backend_name(None) == "claude"
     assert adj.resolve({"adjudicator": "gemini"}).name == "gemini"
-    assert adj.backend_name(None) == "gemini"
 
 
 def test_resolve_honours_the_claude_flip(adj):
@@ -85,7 +108,7 @@ def test_resolve_honours_the_claude_flip(adj):
 def test_resolve_falls_back_on_an_unknown_backend_name(adj):
     lines = []
     b = adj.resolve({"adjudicator": "bard"}, log=lines.append)
-    assert b.name == "gemini"
+    assert b.name == "claude"
     assert any("bard" in ln for ln in lines)
 
 
@@ -273,7 +296,10 @@ def test_sticky_state_is_ignored_when_cfg_arms_no_fallback(adj, tmp_path, noslee
     made under another.
     """
     sticky = {"active": "claude", "failed_over": True, "usd": {}}
-    unarmed = {"gemini_model": "g-pro", "gemini_fallback_model": "g-flash"}
+    # "unarmed" means no resolvable FALLBACK. The primary is named explicitly so
+    # the test keeps testing that, rather than the module default (2026-08-01).
+    unarmed = {"gemini_model": "g-pro", "gemini_fallback_model": "g-flash",
+               "adjudicator": "gemini"}
     sup = adj.FailoverAdjudicator(unarmed, tmp_path, state=sticky)
     assert not sup.failover_armed()
     assert sup.active_name == "gemini"
@@ -325,7 +351,8 @@ def test_controller_sticky_state_does_not_leak_across_configs(lc, tmp_path):
         return mock.Mock(stdout="" if len(seen) <= 3 else "flash-directive")
 
     unarmed = {"gemini_model": "gemini-3-pro-preview",
-               "gemini_fallback_model": "gemini-2.5-flash"}
+               "gemini_fallback_model": "gemini-2.5-flash",
+               "adjudicator": "gemini"}
     with mock.patch.object(lc, "CFG", unarmed), \
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", state), \
@@ -349,13 +376,19 @@ def test_failover_can_be_disabled(adj, tmp_path, nosleep):
 
 
 def test_a_pre_seam_config_never_swaps_vendor(adj, tmp_path, nosleep):
-    # BEHAVIOUR PRESERVATION: a loop relaunched against today's config.json (no
-    # adjudicator keys at all) must run byte-identically to today - so an absent
-    # adjudicator_fallback means no failover, not a silent swap to claude.
+    # An absent adjudicator_fallback means NO FAILOVER, not a silent swap to
+    # claude. That is the whole subject of this test and it is unchanged.
+    #
+    # The premise it used to rest on is not: "today's config.json has no
+    # adjudicator keys" stopped being true on 2026-08-01, when the loop went
+    # claude-only and the keys were written in. So the vendor is named here
+    # rather than inherited from the module default - otherwise this test
+    # silently becomes "claude never swaps to claude", which is vacuous.
     _stderr(tmp_path, "_gemini_err.txt", "Error: 429 RESOURCE_EXHAUSTED quota")
     fake, _seen = _run_returning()
     lines = []
-    pre_seam = {"gemini_model": "g-pro", "gemini_cmd": "gemini"}
+    pre_seam = {"gemini_model": "g-pro", "gemini_cmd": "gemini",
+                "adjudicator": "gemini"}
     sup = adj.FailoverAdjudicator(pre_seam, tmp_path, log=lines.append)
     with mock.patch.object(adj.subprocess, "run", side_effect=fake):
         assert sup.ask("a", "i") is None
@@ -468,24 +501,34 @@ def test_controller_shim_routes_through_the_active_backend(lc, tmp_path):
     assert state["active"] == "claude"
 
 
-def test_controller_default_config_still_speaks_gemini(lc, tmp_path):
-    # Behaviour preservation: the live config has no adjudicator key, so nothing
-    # about today's running loop changes.
+def test_controller_default_config_speaks_claude(lc, tmp_path):
+    """A config naming no backend must reach the CLAUDE CLI, read-only.
+
+    Inverted 2026-08-01 with `test_resolve_defaults_to_claude`. The assertion
+    that carries the safety weight is the flag check: whichever vendor the
+    delegate reaches, the adjudicator is a READ-ONLY call. For claude that
+    guarantee is `--permission-mode plan` and non-interactivity is `-p`; the
+    gemini equivalent was `--approval-mode plan`. Losing vendor diversity must
+    not quietly lose the read-only property with it, so it is asserted here
+    rather than assumed from the backend class.
+    """
     state = {"active": "", "failed_over": False, "usd": {}}
     seen = []
 
     def fake(args, **_k):
-        seen.append(args[-1])
+        seen.append(" ".join(str(a) for a in args))
         return mock.Mock(stdout="directive")
 
-    with mock.patch.object(lc, "CFG", {"gemini_model": "g", "gemini_cmd": "gemini"}), \
+    with mock.patch.object(lc, "CFG", {"claude_adjudicator": {"cmd": "claude.cmd",
+                                                              "model": "opus"}}), \
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", state), \
             mock.patch.object(lc, "log", lambda *_a, **_k: None), \
             mock.patch.object(lc.subprocess, "run", side_effect=fake):
         assert lc.gemini("body", "inst") == "directive"
-    assert "--approval-mode plan" in seen[0] and "--skip-trust" in seen[0]
-    assert lc.GEMINI_USD >= 0.0
+    assert "claude.cmd" in seen[0], f"did not reach the claude CLI: {seen[0]}"
+    assert "plan" in seen[0], f"adjudicator call was not read-only: {seen[0]}"
+    assert "gemini" not in seen[0].lower()
 
 
 # --- AHK bridge liveness (read side of the sibling slice's contract) -----
