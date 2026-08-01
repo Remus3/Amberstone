@@ -138,3 +138,39 @@ the worktree. Full detail in LEDGER 1142.
 Lanes have well-formed work waiting: RM-131 (lane 6/7, the drift probe), RM-130 + RM-132
 (lane 7 ASCII / token hygiene), RM-133 (lane 4 Arena chip), RM-134 (lane 8 MC error scrub),
 plus still-open RM-128 (lane 6/7) and the DS RM-118 4 wireable seams (lane 6).
+
+## 2026-08-01 - RM-127 CCR link-ingest phases 5-7 + the Stop claim gate (armed)
+
+Commits: `5a1bb91a` (phases 5+6), `00cc596d` (RM-136 gate), `8e1cd06e` (RM-137 subagent
+prompt), `c767c808` (RM-138 residuals), `53c42e25` (arm), `7a66bd5d` (false-positive fix).
+
+- **RM-127 CLOSED end to end.** Phases 5+6 authored (`Desktop/RC-Prep.md`,
+  `Last-01/02/03.md`), then all three Phase 7 sessions shipped the same day.
+  Narrative relocated verbatim to `docs/ROADMAP_HISTORY.md`; ROADMAP back under budget.
+- **Phase 5's headline: the 4 adoptions collapse into ONE build.** CCR-127 + CCR-143 are
+  two halves of a single Stop-hook claim gate; CCR-136 is a memory edit; CCR-146 is config.
+- **RM-136 `tools/stop_claim_gate.py`** - 9 deterministic checks over the session transcript.
+  Step 1 measured first: the Stop payload DOES carry `transcript_path` (CLI 2.1.220).
+- **RM-137** - `--append-subagent-system-prompt` wired in `ops/loop/executor.build_argv`
+  via config key `subagent_prompt`; canary re-run with the ACTUAL payload + negative control.
+- **RM-138** - CCR-139 mapping RESOLVED (not void); CCR-136 protocol facts folded into
+  `reference_reddit_capture_transport_ladder`; concept rows filed with CCR ids.
+- **The gate was ARMED by operator decision, then blocked its first real session on 9
+  findings - ALL 9 FALSE POSITIVES.** Fixed three defect classes (quotation read as
+  assertion, session-global vacuity, bypass flag named inside a heredoc). Regression anchor
+  is the real transcript; non-vacuity proven by re-poisoning it. Gate STAYS ARMED.
+
+## Do NOT redo
+
+- Do NOT re-run any CCR pass or re-score the roster. Phases 1-7 are done (LEDGER 1108,
+  1145, 1147, 1149-1154). The program artifacts live on the Desktop.
+- Do NOT "fix" the gate by loosening it - non-vacuity is asserted by a test that appends a
+  synthetic false claim to the real transcript and requires 2 findings.
+- The notes gate was WAIVED, never met. If operator notes ever land, Phase 4 re-runs.
+
+## Next
+
+Two open decisions, both operator: **CCR-123** (declared `<3.14` ceiling - leave HOLD /
+measure in a throwaway venv / pin a 3.11 external process), and whether to keep the Stop
+gate armed after living with it. Otherwise the lanes still hold RM-128 / RM-130 / RM-131 /
+RM-132 / RM-133 / RM-134, plus the DS RM-118 wireable seams.
