@@ -32,6 +32,13 @@ PERSEUS_HOME = os.path.join(os.path.expanduser("~"), ".perseus-vault")
 PV = os.path.join(PERSEUS_HOME, "bin", "perseus-vault.exe")
 DB = os.path.join(PERSEUS_HOME, "data", "perseus-vault.db")
 
+# perseus-vault.exe is a CONSOLE-subsystem binary (PE Subsystem=3), so a
+# parent WITHOUT a console of its own gets a new console window allocated
+# for it. Latent today - these tools run from a console-bearing parent - but
+# scheduling any of them under pythonw would surface the flash measured in
+# claude_quota_watch.py on 2026-08-01. Flagged now so that never happens.
+CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
 DEFAULT_CHARS = 220
 NO_HITS = "(no hits)"
 
@@ -105,6 +112,7 @@ def recall(
         [PV, "serve", "--db", DB],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, encoding="utf-8", errors="replace", bufsize=1,
+        creationflags=CREATE_NO_WINDOW,
     )
     counter = [0]
 

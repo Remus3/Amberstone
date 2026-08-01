@@ -81,4 +81,9 @@
 @import './panels/callouts.css';
 @import './panels/personal_context.css';
 @import './panels/build_insights.css';
+/* Ops panels (ADDENDUM A 3/4/5). Imported here for parity with every other
+   panel stylesheet even though they render on /ops.html rather than the main
+   view - tests/test_dashboard_css_panel_imports_parity.py requires it, and an
+   unimported panel file is how a stylesheet silently stops shipping. */
+@import './panels/ops_panels.css';
 @import './panels/panel_visibility.css';
