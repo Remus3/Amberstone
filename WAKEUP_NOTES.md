@@ -11,9 +11,7 @@
 ## Start here next session
 
 The research lane is RUNNING headless (pid 14692 shell / claude.exe 18400, run_id
-`ingest-580bb7d6`, worktree `C:
-c-worktrees
-c-lane-research`, log
+`ingest-580bb7d6`, worktree `C:/rc-worktrees/rc-lane-research`, log
 `ops/loop/reports/lane_research_ingest-580bb7d6.log`). Check it before firing anything -
 lanes are mutually exclusive on one lock. Status: `curl -s --ssl-no-revoke
 https://legion-rc:8895/api/loop-status` (NEVER `-k`; mkcert CA has no CRL/OCSP).
