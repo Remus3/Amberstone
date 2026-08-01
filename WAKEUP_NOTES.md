@@ -17,6 +17,12 @@
 - **`997157f1` corrected a CLAUDE.md HARD RULE against measurement.** Hooks DO fire under
   headless `bypassPermissions` on CLI 2.1.220 - SessionStart, PreToolUse, PostToolUse AND Stop.
 - `e47ce29a` filed **RM-135**: no backup of irreplaceable single-copy data.
+- **`c1ad4ddc` killed the `assert 21378 == 2` CI flake at its root.** `mod.time IS`
+  the global time module, so `patch("mod.time.sleep")` is PROCESS-WIDE and tallied
+  every thread; the mock also made those threads busy-spin. New `tests/_sleep_probe.py`
+  (`record_sleeps` / `thread_scoped`) records only the calling thread and passes other
+  threads through to the real sleep. **5 tests across 2 files shared the root cause**,
+  not just the reported one. Mutation-tested; no production code touched.
 
 **Do NOT redo**
 - Do NOT re-run Phase 1 or Phase 2 triage, and do NOT trust "119 rows / no 8-10" - First-Pass
@@ -32,6 +38,15 @@
   the only note of 155 authorizing a build, covering 6 dashboard concepts. SEPARATE Tier-2 row.
 - CCR-124/136/139 unverified-at-source (reddit 403s every default path).
 - Session file hit 25 MB - `/clear` was overdue.
+- **STALE DOC, worth acting on: the `/done` skill claims `-n 8` yields 6 failures and
+  is therefore "not trustworthy as a gate".** MEASURED 2026-08-01 after `c1ad4ddc`:
+  `pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile` = **27964 passed,
+  108 skipped, 7283 subtests, 0 FAILED in 166s**. None of the 6 named failures
+  reproduced. If that holds on a second run, the skill's own precondition for
+  replacing the ~17-min CI dispatch with a ~3-min local gate is MET - but the skill
+  text lives in BOTH `tools/done.md` and `.claude/commands/done.md` (drift_guard
+  enforces mirror parity), so edit them together. Not done: it changes the wrap
+  ritual and that is an operator call.
 
 ---
 
