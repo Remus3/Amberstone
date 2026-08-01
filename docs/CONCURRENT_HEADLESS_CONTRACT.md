@@ -210,6 +210,36 @@ project is always blocked and the throttle becomes a queue with unbounded
 latency. Lower it together if the account rate-limits, and record the
 measurement.
 
+**Rule 4.2a - the equality guard makes an atomic change IMPOSSIBLE, so design
+the transition, not just the steady state.** Learned the hard way on 2026-08-01,
+by two projects independently, in the same hour.
+
+Both guards compare against a sibling's working tree on disk: one asserts
+set-equality of the declared values, the other asserts a subset relation. Either
+shape means **whoever changes the number FIRST goes red until the others
+follow.** There is no ordering in which nobody is red - "change it in the same
+round" is not implementable, only approximable.
+
+That is not an argument against the guard, which is the only thing standing
+between three configs and a governor that is theatre. It is an argument that a
+guard asserting "all participants agree" needs a way to express "a coordinated
+change is in flight". Options, none of them free:
+
+- read the agreed value from ONE shared file rather than from each sibling's
+  config, moving the coordination into a single write;
+- let a config declare a PENDING value alongside the current one, and accept
+  either during a change window;
+- or accept that one party is red for minutes, and **write down who goes first
+  and why** before anyone edits.
+
+The third is what the three projects actually did, and the deciding rule was
+sound: **whoever is red should be the party not currently shipping.** An idle
+project can afford a red suite; one landing commits through a gate cannot.
+
+Whatever you pick, record the ordering in the config note next to the number, so
+the next session reads a temporary disagreement as a planned transition rather
+than as drift to be "fixed" by raising one side alone.
+
 **Rule 4.3 - hold the slot ONLY around the executor call.** Never around git,
 never around a merge, never around an adjudication call. A long merge in one
 project must not starve another.
