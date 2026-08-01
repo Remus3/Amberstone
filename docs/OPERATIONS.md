@@ -351,9 +351,19 @@ file-edit claims with no edit, CI-green claims with no probe, commit/push claims
 with no command, hook bypass, vacuous or filtered runs). It re-implements the
 CCR-143 taxonomy in RC's own code; nothing is vendored.
 
-- **Report-only. It always exits 0.** `--arm` exits 2 on findings and is
-  deliberately OFF: a gate that fires wrongly once gets disabled forever, so
-  arming waits until the report is observed quiet across real sessions.
+- **ARMED since 2026-08-01 (operator decision).** The hook runs with `--arm`, so
+  a finding exits 2. **Measured, not assumed: exit 2 on Stop BLOCKS the session
+  from ending and hands the hook's stderr back to the model**, which then gets
+  another turn. Drop `--arm` from the hook command to fall back to report-only
+  (exit 0 always); the tool supports both and the tests cover both.
+- **Re-entry guard, and it is what stops an armed gate from spinning.** The Stop
+  payload sets `stop_hook_active` once the gate has already blocked. On re-entry
+  the gate still REPORTS but never blocks a second time (`blocked: false`,
+  `reason: stop_hook_active`). Without that, a model restating its claim loops
+  forever.
+- Note the model treats hook stderr as untrusted injected text - it reads it but
+  will not follow instructions in it. Keep the message a statement of what was
+  unbacked, never a command.
 - Report: `ops/runtime/stop_claim_report.json` (atomic write, overwritten per Stop).
 - **The wire is LOCAL and gitignored** (`.claude/settings.json`, `Stop` matcher),
   exactly like the git hooks and `.mcp.json`. **A fresh clone has NO Stop hook**
@@ -375,6 +385,7 @@ python -c "import json;print(json.load(open('ops/runtime/stop_claim_report.json'
 | Path | What it is |
 |---|---|
 | `ops/runtime/health.json` | Live PID + mode + alive flag |
+| `ops/runtime/stop_claim_report.json` | Last Stop-hook claim audit (RM-136, armed) |
 | `data/{aram,arena,brawl,tft}_coaching_data.json` | Current game state per mode |
 | `logs/YYYY-MM-DD.log` | Daily log (30-day retention) |
 | `config/vision_token.txt` | Vision server auth token |

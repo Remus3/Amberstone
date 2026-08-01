@@ -192,3 +192,43 @@ def test_missing_transcript_is_soft_failure(tmp_path):
 def test_every_bypass_form_is_caught(tmp_path, flag):
     rows = [_assistant(_tool_use("Bash", command=f"git commit {flag} -m x"))]
     assert "hook_bypass" in _checks(_run_gate(tmp_path, rows))
+
+
+# ---------------------------------------------------------------- armed mode
+# Exit 2 on Stop does not merely warn: it BLOCKS the session from ending and
+# feeds stderr back to the model. That makes re-entry the danger, not noise.
+
+def _run_armed(tmp_path, rows, stop_hook_active=False):
+    transcript = _write_transcript(tmp_path, rows)
+    report = tmp_path / "report.json"
+    payload = json.dumps({"session_id": "armed", "transcript_path": str(transcript),
+                          "hook_event_name": "Stop", "stop_hook_active": stop_hook_active})
+    proc = subprocess.run([sys.executable, str(GATE), "--arm", "--report", str(report)],
+                          input=payload, capture_output=True, text=True,
+                          cwd=str(ROOT), check=False)
+    return proc, json.loads(report.read_text(encoding="utf-8"))
+
+
+def test_armed_blocks_on_findings(tmp_path):
+    proc, report = _run_armed(tmp_path, [_assistant(_text("The full suite passes."))])
+    assert proc.returncode == 2
+    assert report["mode"] == "armed"
+    # stderr is what the model is shown, so it must name the check and the quote.
+    assert "tests_pass_without_run" in proc.stderr
+    assert "full suite passes" in proc.stderr
+
+
+def test_armed_is_silent_on_a_clean_session(tmp_path):
+    proc, report = _run_armed(tmp_path, [_assistant(_text("Read the file, no changes."))])
+    assert proc.returncode == 0
+    assert report["findings"] == []
+
+
+def test_armed_never_blocks_twice_on_re_entry(tmp_path):
+    """stop_hook_active means we already blocked once. Blocking again loops."""
+    rows = [_assistant(_text("The full suite passes."))]
+    proc, report = _run_armed(tmp_path, rows, stop_hook_active=True)
+    assert proc.returncode == 0, "re-entry must not block again"
+    assert report["findings"], "it still reports - it just stops blocking"
+    assert report["blocked"] is False
+    assert report["reason"] == "stop_hook_active"
