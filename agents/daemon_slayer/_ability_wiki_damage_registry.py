@@ -14,7 +14,7 @@ DEGENERATE zero:
   (``rank.py:1118-1131``), so every one of the 706 candidates scores
   ``delta_burst 0.0`` - the entire ranked table is degenerate.
 
-Measured on a live ``:8893`` at ``items=["3142","6691","3814"], level=13,
+Measured on a live ``:8860`` at ``items=["3142","6691","3814"], level=13,
 target_armor=140, target_mr=90, target_hp=2800``: ``POST /rank-assassin``
 Locke ``baseline_burst 0.0`` against Zed's ``807.3862433862435``; a
 173-champion ``/burst`` sweep found exactly two degenerate rows (Locke 0.0,

@@ -43,7 +43,7 @@ THE GUARDS HERE
    being re-discovered later as a bug. Crediting an ITEM's own caster-HP proc is
    a separate follow-on (T2) and is out of scope for this slice.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

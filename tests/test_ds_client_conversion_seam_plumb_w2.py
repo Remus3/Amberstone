@@ -266,7 +266,7 @@ class DispatcherConversionSeamForwardingTests(unittest.TestCase):
 
 
 # ===========================================================================
-# LIVE gate - :8893. Controls are DERIVED from the registries at runtime.
+# LIVE gate - :8860. Controls are DERIVED from the registries at runtime.
 # ===========================================================================
 def _registry_champions() -> set[str]:
     from agents.daemon_slayer._crit_conversion_overrides import _CRIT_CONVERSION
@@ -297,7 +297,7 @@ class EngineTransportError(RuntimeError):
 
 
 # --------------------------------------------------------------------------- #
-# xdist root cause (MEASURED 2026-07-26 against the live :8893 engine).
+# xdist root cause (MEASURED 2026-07-26 against the live :8860 engine).
 #
 # ``_post_json`` (``core/daemon_slayer_client.py:95-112``) maps EVERY transport
 # failure to ``None``, and every caller up the stack reads ``None`` as "the
@@ -397,7 +397,7 @@ def _engine_is_up() -> bool:
     return False
 
 
-@unittest.skipUnless(_engine_is_up(), "DS engine :8893 is down")
+@unittest.skipUnless(_engine_is_up(), "DS engine :8860 is down")
 class LiveConversionSeamReachabilityTests(unittest.TestCase):
     """Falsifiable acceptance criterion, measured through the CLIENT path."""
 

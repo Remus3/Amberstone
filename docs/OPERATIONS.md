@@ -72,7 +72,7 @@ first resort.
 | `RC-Supervisor` | At logon | Administrator / HIGHEST | Runs `pythonw.exe ops/rc_supervisor.py` |
 | `RC-MissionControl` | At logon + a `-Once` trigger with a 1-min indefinite repeat (`tools/install_mission_control_task.ps1`) | Administrator / Highest | Runs `pythonw.exe mission_control.py` - the :8895 control plane. Deliberately its OWN scheduled task, not an `rc_supervisor` entry: RestartCount 3 / RestartInterval 1 min gives self-restart on crash, and the repeat trigger makes Task Scheduler itself the watchdog (`MultipleInstances=IgnoreNew` no-ops while alive; process dead -> next tick starts it). An RC restart for a game-overlay change must never touch the control plane (S10, decoupled 2026-07-31) |
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
-| `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8894) |
+| `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8861) |
 | `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
 | `RC-CIWatchdog` | At startup + periodic (PT2M) | Administrator / armed | Unattended headless-claude red-main CI auto-fixer; self-gates the merge on the ci-fix PR's OWN green CI (`tools/ci_watchdog.py`, isolated worktree `C:\RC-CIWatchdog`; item 622). Kill: create `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask RC-CIWatchdog` |
 | `RC-HotkeyListener` | At logon | Administrator | Global hotkey listener (`tools/hotkey_listener.py`) |
@@ -224,10 +224,10 @@ Vision token is in `config/vision_token.txt` (Legion). Rotate quarterly - next r
 
 ---
 
-## Local DS + match-DB MCP (:8894)
+## Local DS + match-DB MCP (:8861)
 
 Localhost-only MCP server (`tools/ds_matchdb_mcp_server.py`) that wraps the
-Daemon Slayer engine (:8893) and `data/match_history.db` as MCP tools for a
+Daemon Slayer engine (:8860) and `data/match_history.db` as MCP tools for a
 local Claude / agent: `ds_health`, `ds_rank_items`, `ds_build_order`,
 `ds_archetype_for`, `match_recent`, `match_mode_stats`, `match_tft_comps`,
 `match_tft_streak`. Read-only w.r.t. RC state (it never writes the match DB);
@@ -236,7 +236,7 @@ DS-down and match-DB-missing both degrade to an error dict, never crash.
 ```powershell
 "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ds_matchdb_mcp_server.py --show-token        # token for client config
 "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\start_ds_matchdb_mcp.py                       # launch (boot wrapper)
-curl http://127.0.0.1:8894/health -H "Authorization: Bearer <token>"
+curl http://127.0.0.1:8861/health -H "Authorization: Bearer <token>"
 ```
 
 Persistence: REGISTERED and running as `RC-DS-MatchDB-MCP` (ONLOGON; see the
@@ -249,7 +249,7 @@ schtasks /Create /TN "RC-DS-MatchDB-MCP" /SC ONLOGON /RL HIGHEST /F ^
 
 Client wiring (also operator-gated - editing `.mcp.json` changes a live
 Claude session's own tool surface): add an `mcpServers` entry with
-`"type": "http"`, `"url": "http://127.0.0.1:8894/mcp"`, and the bearer
+`"type": "http"`, `"url": "http://127.0.0.1:8861/mcp"`, and the bearer
 token from `--show-token`. Full snippet in the server-file docstring.
 Token resolution chain (env `RC_MCP_TOKEN` ->
 `tools/mcp_token.txt` -> `tools/vision_token.txt` -> dev fallback) so one

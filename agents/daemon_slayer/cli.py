@@ -5,7 +5,7 @@ Subcommands:
   dps     auto-attack DPS over lolmath rotation scenarios
   rank    score every legal purchasable item by DPS contribution
   beam    beam-search top-N complete builds (Phase 2 step 4)
-  serve   start the local HTTP engine on :8893
+  serve   start the local HTTP engine on :8860
 
 Usage:
   python -m agents.daemon_slayer stats Aatrox --level 11 --items 6692,3006
@@ -15,7 +15,7 @@ Usage:
   python -m agents.daemon_slayer rank Aatrox --level 11 --items 3006 --budget 3500 --top 10
   python -m agents.daemon_slayer beam Aatrox --level 11 --target-armor 80 --beam-width 10 --top 5
   python -m agents.daemon_slayer beam MissFortune --level 13 --mode ARAM --total-budget 14000
-  python -m agents.daemon_slayer serve --host 0.0.0.0 --port 8893
+  python -m agents.daemon_slayer serve --host 0.0.0.0 --port 8860
 """
 
 from __future__ import annotations
@@ -310,7 +310,7 @@ def build_parser() -> argparse.ArgumentParser:
     beam.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     beam.set_defaults(func=_cmd_beam)
 
-    serve = sub.add_parser("serve", help="start the local HTTP engine on :8893")
+    serve = sub.add_parser("serve", help="start the local HTTP engine on :8860")
     serve.add_argument("--host", default=DEFAULT_HOST,
                        help=f"bind host (default {DEFAULT_HOST}; use 0.0.0.0 to expose on LAN)")
     serve.add_argument("--port", type=int, default=DEFAULT_PORT,

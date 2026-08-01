@@ -16,7 +16,7 @@ PURPOSE
     alongside live Haiku (``core.hz_choice_shadow``) for offline validation
     against real games; NO live coach is flipped off its Haiku call in this
     slice. Unlike the item-265 ``dashboard._deterministic_coaching`` path (which
-    calls the DS matchup engine LIVE over :8893 per request), this reader is a
+    calls the DS matchup engine LIVE over :8860 per request), this reader is a
     PURE static table read - no network, no engine import on the hot path.
 
 KEY MAPPING (live game state -> the table's discrete keys)

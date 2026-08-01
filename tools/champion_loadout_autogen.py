@@ -474,7 +474,7 @@ def main() -> int:
     args = ap.parse_args()
 
     if not dsc.is_engine_up(timeout=1.0):
-        print("DS engine at 127.0.0.1:8893 is not responding. Start it via "
+        print("DS engine at 127.0.0.1:8860 is not responding. Start it via "
               "`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py` and re-run.", file=sys.stderr)
         return 2
 

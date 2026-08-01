@@ -11,9 +11,9 @@ SPLIT-BRAIN (routes_state.py:548-549, planner.py:12-15): this route reaches DS
 ONLY over HTTP. It never imports ``agents.daemon_slayer``. The seed boundary is
 a ``seed_fn(champion, owned_ids, mode=...)`` that calls the EXISTING ds-preview
 + build-order route handlers in-process - those handlers are themselves the
-HTTP boundary (they POST to core.daemon_slayer_client :8893), so composing them
+HTTP boundary (they POST to core.daemon_slayer_client :8860), so composing them
 introduces no second engine. The factory is swappable (``_seed_fn_factory``)
-so the contract test injects a fake without a live :8893 or a live game.
+so the contract test injects a fake without a live :8860 or a live game.
 
 P1L4 (tests/test_target_state_caller_p1l4.py:178): live target-stats is routed
 THROUGH the module (the seed envelope's ``target_stats``, computed by the
@@ -71,7 +71,7 @@ def _make_route_seed_fn(*, level: int, archetype: str, enemies: list,
     EXISTING /api/ds-preview + /api/build-order route handlers in-process and
     merges their envelopes into the {ranked[], order[], target_stats, scorer,
     threat, defensive} shape the planner consumes. Those handlers are the only
-    DS touch-point and they POST to :8893 - no engine import here.
+    DS touch-point and they POST to :8860 - no engine import here.
 
     A handler-level error (DS unreachable -> 503, or a 5xx) degrades that half
     to empty; if BOTH halves are empty the planner gets a seedless envelope and
@@ -162,7 +162,7 @@ def _make_route_seed_fn(*, level: int, archetype: str, enemies: list,
 
 
 # Swappable factory seam - the contract test replaces this to inject a fake
-# seed_fn without a live :8893 / live game. Production path builds the
+# seed_fn without a live :8860 / live game. Production path builds the
 # route-composing boundary above.
 _seed_fn_factory = _make_route_seed_fn
 

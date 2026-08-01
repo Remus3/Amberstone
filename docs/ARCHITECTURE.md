@@ -272,7 +272,7 @@ to `docs/history_notes.md` (mdclean C5).
 
 ---
 
-## Daemon Slayer (`:8893`)
+## Daemon Slayer (`:8860`)
 
 `agents/daemon_slayer/` - 7 archetype scorers + 6 standalone scored axes (offensive CC-output / mobility / sustain / scaling / wave-clear / threat-range, each its own additive `/`-route) + 1v1 matchup engine (`matchup.py` / `/v2/matchup`). All 4 coach modes DS-before-Haiku; deterministic-coaching lanes (laning verdicts / build-order tables / event callouts / lead projection) target zero live Haiku. Live engine identity (ENGINE_VERSION / item-effect count / patch / test count) lives in the drift-guarded `docs/DAEMON_SLAYER.md` status banner - this doc does not restate it (WP-F6a: a hardcoded recital here drifted silently since CI runs no pytest).
 

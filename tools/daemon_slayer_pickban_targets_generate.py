@@ -75,7 +75,7 @@ Usage
 * ``--top-k`` overrides the per-list slice length (default 8).
 * ``--out`` overrides the output directory (default resolves from current.txt).
 
-The matchup engine reads only local data files (NOT the :8893 server), so this
+The matchup engine reads only local data files (NOT the :8860 server), so this
 runs offline. The ~172x171 ~= 29k calls take a few minutes at most.
 """
 from __future__ import annotations

@@ -16,7 +16,7 @@ A row-delta check cannot catch this: a kit-less champion's auto-DPS and EHP
 terms are still non-zero, so the ranking looks healthy. It needs a
 champion-level "has ability data" signal, which is what these tests cover.
 
-Scorer calls are mocked - no live DS server on :8893.
+Scorer calls are mocked - no live DS server on :8860.
 """
 from __future__ import annotations
 

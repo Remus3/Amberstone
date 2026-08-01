@@ -20,7 +20,7 @@ it must never raise (it is protecting the server it runs inside of).
 
 Note: the sibling Daemon Slayer launcher (tools/start_daemon_slayer.py) is NOT
 affected - it guards with a real bind() probe (no SO_REUSEADDR), so a held
-:8893 makes the fresh bind fail and it exits cleanly instead of co-binding.
+:8860 makes the fresh bind fail and it exits cleanly instead of co-binding.
 """
 from __future__ import annotations
 

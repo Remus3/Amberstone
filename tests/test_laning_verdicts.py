@@ -1,7 +1,7 @@
 """Tests for core.laning_verdicts - the deterministic laning verdict -> A/B
 coach-choice adapter (Lane C, matchup-driven, no LLM).
 
-The matchup() client call is monkeypatched so no live :8893 engine is required.
+The matchup() client call is monkeypatched so no live :8860 engine is required.
 We patch ``core.laning_verdicts.matchup`` (the name the module binds at import)
 so the adapter logic is exercised in isolation.
 """

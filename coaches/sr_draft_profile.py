@@ -20,7 +20,7 @@ cached for `_PROFILE_TTL_S`. Champ-select sessions run ~30-60s; the
 TTL is generous enough to avoid 3 engine round-trips per dashboard
 poll, tight enough that a re-query still fires on a comp change.
 
-Engine connection: HTTP POST to `127.0.0.1:8893/beam`. Engine downtime
+Engine connection: HTTP POST to `127.0.0.1:8860/beam`. Engine downtime
 or HTTP error => `profiles=[]`, `engine_version=None`, `notes` records
 the failure. Caller handles graceful degradation (UI shows "engine
 unreachable" hint).
@@ -45,7 +45,7 @@ SR_DRAFT_QUEUE_IDS = frozenset({
     440,  # Ranked Flex
 })
 
-_ENGINE_URL = "http://127.0.0.1:8893"
+_ENGINE_URL = "http://127.0.0.1:8860"
 _ENGINE_TIMEOUT_S = 4.0  # /beam ~1s warm; 4s covers cold start
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent

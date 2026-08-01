@@ -41,7 +41,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - Next up (strict alphabetical): NONE - roster closed at Zyra 2026-07-18.
   **RM-128 allocated 2026-07-31** to the cdragon `queues.json` queue-map grounding + drift
   guard (BACKLOG "Data pipeline"; lane 6/7; ITEM/AXIS gap, no roster checkbox, no Summary
-  count change). **RM-129 allocated 2026-08-01** to the DS port-block migration (8893/8894 ->
+  count change). **RM-129 allocated 2026-08-01** to the DS port-block migration (8860/8861 ->
   the reserved 8860-8879 block; registry + guard shipped as `core/ports.py` + `tests/test_ports.py`).
   **RM-130..RM-134 allocated 2026-08-01** (lane-research refill; all ITEM / AXIS / UI gaps, no
   roster checkbox, no Summary count change). **These five were authored as RM-129..RM-133 on the

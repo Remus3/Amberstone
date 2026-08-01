@@ -33,7 +33,7 @@ HP fraction) and the trigger (cast vs death) differ, so they stay separate
 registries under separate flags.
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: ``apply_survival_window`` defaults False;
-with it OFF the multiplier is 1.0 and the EHP math is unchanged. No live :8893
+with it OFF the multiplier is 1.0 and the EHP math is unchanged. No live :8860
 default scorer flips it on; it is opt-in everywhere (mirrors
 ``apply_passive_revive`` / ``apply_spell_shield`` / ``apply_champion_tenacity``).
 

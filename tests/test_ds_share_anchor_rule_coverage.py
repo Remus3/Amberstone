@@ -94,7 +94,7 @@ _CARVE_OUTS: tuple[tuple[str, str, str], ...] = (
     ),
     (
         "loopback address",
-        "python tools/start_daemon_slayer.py                # serves http://127.0.0.1:8893\n",
+        "python tools/start_daemon_slayer.py                # serves http://127.0.0.1:8860\n",
         "Share/README.md:71",
     ),
     (

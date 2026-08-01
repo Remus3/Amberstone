@@ -70,7 +70,7 @@ All three default False on every engine entry point, and ``dps.py:1058`` /
 response, and - stronger - a body that carries a full ``rune_ids`` roster with
 the flags OFF is byte-identical too. Both measured below.
 
-OFFLINE ONLY: no live :8893, no network. Direct handler + engine + client calls.
+OFFLINE ONLY: no live :8860, no network. Direct handler + engine + client calls.
 """
 from __future__ import annotations
 

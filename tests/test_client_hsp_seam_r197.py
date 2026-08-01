@@ -25,7 +25,7 @@ the omitted-key cases below are pinned against a full literal body, not just a
 ``not in`` check, which would pass even if the wiring corrupted a sibling key.
 
 OFFLINE ONLY: ``_post_json`` is monkeypatched, so no socket is opened and the
-engine at :8893 is never contacted. Nothing here starts a server.
+engine at :8860 is never contacted. Nothing here starts a server.
 """
 from __future__ import annotations
 

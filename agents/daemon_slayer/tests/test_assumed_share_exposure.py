@@ -44,7 +44,7 @@ WHAT THIS FILE GUARDS
    moves like Randuin's (+49.7 pct) the wiring landed on the wrong denominator,
    so the assertion is deliberately a tight 3.5 pct tripwire, not a loose bound.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

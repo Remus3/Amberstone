@@ -13,7 +13,7 @@ be deterministic (same degenerate input N times -> identical output).
 
 Public in-process engine entrypoints under test (the 7 pure-math scorers; the
 HTTP-client dispatcher ``core.daemon_slayer_client.rank_for_primary_archetype``
-needs a running :8893 server and is out of scope for a unit fuzz):
+needs a running :8860 server and is out of scope for a unit fuzz):
 
   * ``engine.build_champion``        - stat resolver feeding every scorer
   * ``stats.clamp_level``            - shared level validator (raises, not clamps)

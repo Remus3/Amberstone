@@ -37,10 +37,10 @@ if ($Start) {
     schtasks /Run /TN $TaskName | Out-Null
     Start-Sleep -Seconds 3
     try {
-        $resp = Invoke-WebRequest -Uri 'http://127.0.0.1:8893/health' -UseBasicParsing -TimeoutSec 4
-        Write-Host "[install] :8893/health -> $($resp.StatusCode) $($resp.Content)"
+        $resp = Invoke-WebRequest -Uri 'http://127.0.0.1:8860/health' -UseBasicParsing -TimeoutSec 4
+        Write-Host "[install] :8860/health -> $($resp.StatusCode) $($resp.Content)"
     } catch {
-        Write-Warning "[install] :8893 not responding yet: $($_.Exception.Message)"
+        Write-Warning "[install] :8860 not responding yet: $($_.Exception.Message)"
         Write-Warning "[install] Check logs and run: schtasks /Query /TN $TaskName"
     }
 }

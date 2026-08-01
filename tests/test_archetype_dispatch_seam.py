@@ -2,7 +2,7 @@
 
 Tier-2 DS build (Client Agent B). These tests mock the engine call
 (``core.daemon_slayer_client.rank_for_primary_archetype``) so they never
-touch the live :8893 server. They assert dispatch_for_coach:
+touch the live :8860 server. They assert dispatch_for_coach:
 
   1. forwards each seam flag verbatim to rank_for_primary_archetype,
   2. converts caster HP -> caster_missing_hp_pct = max(0, min(1, 1 - hp/hp_max)),

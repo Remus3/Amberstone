@@ -2,7 +2,7 @@
 
 Generates a lookup table the coach reads at request time INSTEAD of invoking
 the Daemon Slayer engine live each tick. Advances migrating coaching off live
-:8893 calls: a champion x mode x enemy-comp-class build-order is computed once
+:8860 calls: a champion x mode x enemy-comp-class build-order is computed once
 (offline, against the engine) and serialized to
 ``data/daemon_slayer/<patch>/build_orders_<mode>.json``. At coach time the
 recommendation is a dict lookup, not an HTTP round-trip.
@@ -65,7 +65,7 @@ Usage
   ``data/daemon_slayer/current.txt``).
 
 Like ``champion_loadout_autogen.py`` the non-dry path refuses to run when the
-DS engine on :8893 is not responding (an offline engine would silently
+DS engine on :8860 is not responding (an offline engine would silently
 produce empty / wrong tables). Run it with the engine up; the coach reads
 the committed JSON with no engine dependency.
 """
@@ -353,7 +353,7 @@ def main() -> int:
     args = ap.parse_args()
 
     if not args.dry_run and not dsc.is_engine_up(timeout=1.0):
-        print("DS engine at 127.0.0.1:8893 is not responding. Start it via "
+        print("DS engine at 127.0.0.1:8860 is not responding. Start it via "
               "`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py` and re-run (a non-dry run "
               "refuses to write tables against a dead engine).", file=sys.stderr)
         return 2

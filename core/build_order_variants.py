@@ -6,7 +6,7 @@ PURPOSE
     Precompute, offline + deterministically, an explicit ``anti_tank`` (vs a
     high-HP / frontline wall) vs ``anti_squishy`` (vs a burst / low-HP comp)
     build-order PAIR per ``(my_champ x mode)`` so a FUTURE coach can read a dict
-    at request time INSTEAD of asking Claude Haiku (or the live :8893 path) "do
+    at request time INSTEAD of asking Claude Haiku (or the live :8860 path) "do
     I pivot anti-tank into this enemy comp, and what do I buy". The order is the
     SHIPPED, deterministic build planner's (``core.build_order.plan_build_order``)
     output under each variant's enemy-stat bias - this module is the bias-map +
@@ -59,7 +59,7 @@ A3 INTEGRATION (the axis the directive names)
 WHAT v1 IS (honest scope)
     BUILD + PERSIST + READ only. The live coach flip is EXCLUDED (charter 4b
     "do not flip blind" - the table is read by a FUTURE consumer, HZ-C1, after
-    real-game validation + operator OK; Haiku / the live :8893 path stays the
+    real-game validation + operator OK; Haiku / the live :8860 path stays the
     interim floor). The committed table seeds the SAME archetype-diverse champion
     sample HZ-B1 used (``SEED_CHAMPIONS`` imported from HZ-B1 so the two tables
     line up champ-for-champ). ``--champions all`` expands the sweep to the full
@@ -553,7 +553,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                          "data/daemon_slayer/build_orders/<patch>).")
     ap.add_argument("--static", action="store_true",
                     help="Compute in-process via the DS server handlers (no "
-                         ":8893 HTTP / no running server). Self-contained regen "
+                         ":8860 HTTP / no running server). Self-contained regen "
                          "for patch-refresh; output is identical to the live "
                          "path by construction.")
     args = ap.parse_args(argv)
@@ -564,14 +564,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         logger.error("%s", exc)
         return EXIT_NO_ROSTER
 
-    # Static mode computes in-process via the DS server handlers (no :8893).
-    # Otherwise a non-dry run requires the live engine (the planner makes :8893
+    # Static mode computes in-process via the DS server handlers (no :8860).
+    # Otherwise a non-dry run requires the live engine (the planner makes :8860
     # calls when rank_fn is None). A dry run never queries it.
     if args.static:
         from core.build_order_precompute import _install_static_transport
         _install_static_transport()
     elif not args.dry_run and not _engine_up():
-        logger.info("DS engine at 127.0.0.1:8893 is not responding. Start it via "
+        logger.info("DS engine at 127.0.0.1:8860 is not responding. Start it via "
               '`"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" tools/start_daemon_slayer.py` and re-run (a non-dry run '
               "refuses to write tables against a dead engine).", file=sys.stderr)
         return 2

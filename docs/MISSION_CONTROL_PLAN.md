@@ -184,7 +184,7 @@ Full implementation-grade spec:
 The decisions, one line each:
 
 1. **Port 8895**, own process (`mission_control.py` + `mc/`). Measured free;
-   in use are 8888, 8889, 8890, 8891, 8893, 8894, 8901. `:8888` stays the game
+   in use are 8888, 8889, 8890, 8891, 8860, 8861, 8901. `:8888` stays the game
    dashboard and loses both loop routes entirely (404, not a redirect).
 2. **Own asset tree** `web/mc/{index.html,mc.css,mc.js}` plus `arm_confirm.js`
    moved out of `web/js/lib/`. Imports no game JS and no shared stylesheet -

@@ -1,7 +1,7 @@
 """Phase 3 (s176, 2026-05-12) - rank_for_primary_archetype dispatcher tests.
 
 Covers the 6-archetype routing matrix. Underlying scorer calls are
-mocked so the test doesn't touch the live DS server on :8893.
+mocked so the test doesn't touch the live DS server on :8860.
 """
 from __future__ import annotations
 

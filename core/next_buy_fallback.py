@@ -9,7 +9,7 @@ rendered "-" for 97 percent of the roster.
 
 This module re-sources the missing builds from the STATIC precomputed Daemon
 Slayer build-order tables, as a FALLBACK ONLY. Deliberately NOT a live HTTP
-call to :8893 - the static tables are the same data the champ-select Build
+call to :8860 - the static tables are the same data the champ-select Build
 Order card already serves, they carry no runtime dependency on the DS server
 being up, and they cannot stall the liveclient path.
 

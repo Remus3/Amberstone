@@ -30,7 +30,7 @@ Why this is rule one: the recurring failure here is not ignorance, it is REDISCO
 
 **1b. Ground truth to read** (all VERIFIED present): `CLAUDE.md` (Active priorities plus the entire "Settled - do not re-litigate" section), `ROADMAP.md:1-40` (the one-tracker table), `BACKLOG.md` headings, `docs/DS_SWEEP_TRACKER.md` (id registry), `WAKEUP_NOTES.md`, `docs/adr/README.md` (12 ADRs - check before re-litigating any past choice), and the last 15 commits.
 
-**1c. Live state, never doc recollection.** `ops/runtime/health.json`, `https://127.0.0.1:8888/api/state` (curl `-k`, self-signed), `http://127.0.0.1:8893/health` (HTTP, not HTTPS) - all three answered 200 on 2026-07-31. DS patch/ENGINE truth is `data/daemon_slayer/current.txt` + `agents/daemon_slayer/__init__.py` + `/health`, never a ledger recollection.
+**1c. Live state, never doc recollection.** `ops/runtime/health.json`, `https://127.0.0.1:8888/api/state` (curl `-k`, self-signed), `http://127.0.0.1:8860/health` (HTTP, not HTTPS) - all three answered 200 on 2026-07-31. DS patch/ENGINE truth is `data/daemon_slayer/current.txt` + `agents/daemon_slayer/__init__.py` + `/health`, never a ledger recollection.
 
 **1d. Two worktree traps, both measured 2026-07-31.**
 

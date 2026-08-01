@@ -40,7 +40,7 @@ Buckets per dimension:
 2. Default-OFF, byte-identical when off (the DSV1-4 precedent). NEW `ItemEffect`/scorer-kwarg seam.
 3. Offline validation: Meraki bulk (`/items.json`, `aram_modifiers`) for magnitudes; `data/rewind_history.db`
    WIN data for direction. NEVER aggregator D/aggregator A for magnitudes.
-4. `ENGINE_VERSION` bump (quoted-literal only, `feedback_engine_bump_quoted_literal_only`) + DS `:8893`
+4. `ENGINE_VERSION` bump (quoted-literal only, `feedback_engine_bump_quoted_literal_only`) + DS `:8860`
    taskkill+`schtasks /Run /TN RC-DaemonSlayer` + `ds_share_sync.py` + `--check` in the SAME commit.
 5. The live default-ON flip is EXCLUDED (do-not-flip-blind) -> append it to `docs/LIVE_GAME_GATED_SYNC.md`.
 

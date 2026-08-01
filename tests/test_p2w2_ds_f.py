@@ -1,6 +1,6 @@
 """P2-W2 DS-F slice - regression tests for the Daemon Slayer engine audit.
 
-Cycle 11, wave W2 (DS combat-math engine + :8893 HTTP server). Each test
+Cycle 11, wave W2 (DS combat-math engine + :8860 HTTP server). Each test
 pins a behavior FIXED in this slice; it FAILS on the pre-fix code and PASSES
 on the post-fix code.
 

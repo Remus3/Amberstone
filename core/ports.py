@@ -18,8 +18,8 @@ the point is that a new service can be added to any project without first
 re-auditing the other two.
 
     8770-8789   Sibling-C        (named: 8777 8778 8779 8780 8783; bound today: 8777 8780)
-    8860-8879   Daemon Slayer   (RESERVED - see MIGRATION below)
-    8888-8895   Riot Commander  (in use: 8888 8889 8890 8891 8893 8894 8895)
+    8860-8879   Daemon Slayer   (in use: 8860 8861 - see MIGRATION below)
+    8888-8895   Riot Commander  (in use: 8888 8889 8890 8891 8895)
     8900-8919   Sibling-A (named: 8901; bound only while the operator runs it)
 
 RC keeps 8888-8895 because moving a live control plane is churn with no payoff;
@@ -47,13 +47,25 @@ explicit port from that project's own block rather than letting it take its
 default. Otherwise the defaults quietly become a fourth, unowned, undocumented
 block that appears in nobody's tree until it collides.
 
-**MIGRATION, deliberately not done yet.** Daemon Slayer today binds 8893 and
-8894, which sit INSIDE the RC block rather than the DS block. Renumbering is
-Tier-2, not cosmetic: 8893 appears in ~186 places, `agents/daemon_slayer/` is
-mirrored into `Share/src`, and the move needs a Share sync plus a `:8893`
-bounce plus the ENGINE doc anchors. So the block is reserved now and the move
-happens on its own ticket. `DS_ENGINE` / `DS_MATCH_DB_MCP` below are the values
-that are TRUE TODAY; `DS_BLOCK` is where they are going.
+**MIGRATION, DONE 2026-08-01 (RM-129).** Daemon Slayer bound 8893 and 8894 -
+inside the RC block rather than its own - until this move. It now binds 8860
+and 8861. `DS_ENGINE` / `DS_MATCH_DB_MCP` below are both TRUE TODAY and inside
+`DS_BLOCK`, and `tests/test_ports.py` asserts exactly that.
+
+Two things about the move worth keeping, because both would be re-derived
+wrongly. First, the "~186 places" this ticket was filed with was SUBSTRING
+noise - `8893` matches inside longer numbers, and `data/daemon_slayer/
+spell_cast_rates.json` scored four hits that were all fragments of floats. The
+real count was 499 standalone occurrences across 190 files, measured with a
+digit-bounded pattern and, for `.py`, an AST pass that ignores docstrings.
+
+Second, the old numbers deliberately SURVIVE in one class of file: anything
+recording a measurement taken against the old port. `champion_block_index.json`
+and `core/ds_support_route_overrides.json` carry live-A/B provenance ("measured
+on live :8893"), and the append-only history (LEDGER, history_notes,
+ROADMAP_HISTORY, CHANGELOG, dated specs and audits) says where things were at
+the time. Rewriting those would falsify evidence, so a residual `8893` there is
+correct and must not be swept.
 
 Do not renumber 8895. Mission Control shipped 2026-07-31 as its own process
 with its own scheduled task; it is the one port whose move would take the
@@ -93,14 +105,14 @@ control plane with it.
 
 # --- Daemon Slayer (currently inside the RC block; block 8860-8879 reserved)
 
-DS_ENGINE = 8893
+DS_ENGINE = 8860
 """Daemon Slayer combat-math engine, HTTP (not HTTPS).
 
 Defined at `agents/daemon_slayer/server.py:98` and `core/daemon_slayer_client.py:32`.
 Mirrored into `Share/src`, which is why renumbering is Tier-2.
 """
 
-DS_MATCH_DB_MCP = 8894
+DS_MATCH_DB_MCP = 8861
 """Local DS + match-DB MCP, scheduled task `RC-DS-MatchDB-MCP`."""
 
 # --- Third-party, not ours to assign ---------------------------------------
@@ -131,7 +143,7 @@ LW and RM are listed so RC can prove disjointness without reading their trees.
 RC carrying all four blocks is an RC-side choice, not a shared convention. Red
 Moon deliberately does the opposite: it names only its own ports and proves
 disjointness from the negative side, with a guard that fails on any FORBIDDEN
-foreign literal (8888, 8889 and 8893 among them) appearing in its source. So do
+foreign literal (8888, 8889 and 8860 among them) appearing in its source. So do
 NOT paste RC's literals into that repo - cite the block, not the port. RM
 excluded `moon_sync_inbox/` from that scan on 2026-08-01, which makes prose
 notes safe in any file type; the rule above still governs anything TRACKED.

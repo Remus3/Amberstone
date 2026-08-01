@@ -58,7 +58,7 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
 - Read CLAUDE.md Active priorities + the "Settled - do not re-litigate" section + MEMORY.md
   index + ROADMAP.md top 80 + BACKLOG.md headings + recent 15 commits.
 - Probe live state: `ops/runtime/health.json`, `https://127.0.0.1:8888/api/state`,
-  `http://127.0.0.1:8893/health` (DS engine_version; HTTP not HTTPS).
+  `http://127.0.0.1:8860/health` (DS engine_version; HTTP not HTTPS).
 - DS stale vs repo `agents/daemon_slayer/__init__.py` ENGINE_VERSION -> bounce DS:
   `taskkill /F /PID <ds-pid>` then `schtasks /Run /TN RC-DaemonSlayer` (DS not supervisor-watched;
   NEVER Stop-Process).

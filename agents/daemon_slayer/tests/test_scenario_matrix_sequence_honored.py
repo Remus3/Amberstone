@@ -20,7 +20,7 @@ Contract after the fix:
   * a caller-supplied sequence CHANGES the value vs the default rotation
     (so ``seq=["R"]`` != ``seq=["Q","AA","W","R"]`` for combo).
   * ``sequence=None`` stays BYTE-IDENTICAL to today's default-rotation path
-    (live :8893 / beam / rank never pass a sequence -> unaffected).
+    (live :8860 / beam / rank never pass a sequence -> unaffected).
   * ``dps`` stays sequence-agnostic (the AA scorer has no sequence concept).
 """
 

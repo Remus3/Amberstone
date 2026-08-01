@@ -78,7 +78,7 @@ League + Vanguard + RC + OBS all run on Legion. Concretely:
 
 ## Update 2026-06-02: relay self-heal (DS & RC are non-integral to Game-PC)
 
-DS was already 1-PC: `agents/daemon_slayer/server.py` binds 127.0.0.1:8893,
+DS was already 1-PC: `agents/daemon_slayer/server.py` binds 127.0.0.1:8860,
 pure compute over `data/daemon_slayer/`, zero Game-PC/network coupling.
 
 The one remaining structural dependency was the :8889 liveclient relay: both

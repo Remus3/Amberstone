@@ -1,4 +1,4 @@
-"""Thin HTTP client for the local Daemon Slayer engine on :8893.
+"""Thin HTTP client for the local Daemon Slayer engine on :8860.
 
 Phase 7 wire-in. Coach ticks need a non-blocking call into the engine
 that fails silently when the server isn't up - the engine is opt-in
@@ -29,7 +29,7 @@ from core.ds_champion_fight_length import champion_fight_length
 logger = logging.getLogger("rc.core.daemon_slayer_client")
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8893
+DEFAULT_PORT = 8860
 DEFAULT_TIMEOUT = 0.5  # seconds, applied to connect+read combined
 
 
@@ -124,7 +124,7 @@ def is_engine_up(timeout: float = 0.25) -> bool:
 def ensure_running() -> None:
     """Start the Daemon Slayer server if it is not already responding.
 
-    Called once at RC dashboard startup. No-op if :8893 is healthy.
+    Called once at RC dashboard startup. No-op if :8860 is healthy.
     Spawns tools/start_daemon_slayer.py as a detached background process
     using the same interpreter as the current process.
     """

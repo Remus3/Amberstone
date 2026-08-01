@@ -206,7 +206,7 @@ sets, NO allies, customs NEVER appear in Match-V5, no ranked queue.
 
 | Batch | The single action that clears the whole batch |
 |---|---|
-| `[DS-SEAM]` | ONE `:8893` restart with the flags armed, then `ops/audit/ds_perm_swarm/live_flip_eyeball.py` dumps OFF-vs-ON top-6 per (champ, seam). Most seam eyeballs need NO mid-game DS bounce. |
+| `[DS-SEAM]` | ONE `:8860` restart with the flags armed, then `ops/audit/ds_perm_swarm/live_flip_eyeball.py` dumps OFF-vs-ON top-6 per (champ, seam). Most seam eyeballs need NO mid-game DS bounce. |
 | `[OVERLAY-PIXEL]` | Overlay up over a live game, ONE screenshot pass across every named widget. |
 | `[OVERLAY-INTERACT]` | Overlay up, ONE pass of click / drag / hover round-trips. |
 | `[CS-CAPTURE]` | ONE champ-select, screenshot every named panel before lock-in expires. |
@@ -220,7 +220,7 @@ sets, NO allies, customs NEVER appear in Match-V5, no ranked queue.
    operator-gated and is a separate line in the ledger.
 3. **Never close an accrual row on one game.** GATE 7 rows re-run a rail; the rail decides.
 4. **RC auto-serves UI via ADR-008** (no restart for web/asset changes). ENGINE flips need a DS
-   `:8893` restart. `tools/live_flip_watcher.py` (RC-LiveFlipWatcher, armed) auto-toasts seam verdicts
+   `:8860` restart. `tools/live_flip_watcher.py` (RC-LiveFlipWatcher, armed) auto-toasts seam verdicts
    during real games.
 
 **SEAM GROUND TRUTH (source-verified 2026-07-18, `agents/daemon_slayer/ehp.py`).** Only THREE item
@@ -321,7 +321,7 @@ The workhorse gate: own build / own HP / own level / own stacks / rendered overl
 here is ALSO clearable inside a GATE 4 real SR game (and the own-build subset inside GATE 3 / GATE 5).
 **Relaunch rc-shell (G6-01) BEFORE starting.**
 
-### `[BATCH DS-SEAM]` - one DS `:8893` restart clears this entire block
+### `[BATCH DS-SEAM]` - one DS `:8860` restart clears this entire block
 
 Arm the flags, restart once, dump OFF-vs-ON with `live_flip_eyeball.py`, eyeball the batch. Do NOT
 bounce DS mid-game. Each row's default-ON flip stays operator-gated after its eyeball passes.
@@ -427,7 +427,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 - **G2-23** `[NEW ROW 2026-07-18 - 12 seam obligations that had NO checklist row]` Item-side
   survivability/burst seam BATTERY. All twelve shipped default-OFF between 2026-07-10 and 2026-07-14
   with an OWED operator flip-eyeball recorded ONLY in the live-flip ledger below. They share one
-  action: arm, restart `:8893` once, eyeball each carrier's EHP/burst rank vs its natural rivals.
+  action: arm, restart `:8860` once, eyeball each carrier's EHP/burst rank vs its natural rivals.
   Defaults source-verified 2026-07-18 in `agents/daemon_slayer/ehp.py`.
 
   | Flag | Items | Ref | Line |
@@ -655,7 +655,7 @@ survivability flips below cannot roll otherwise.
   caller default: `coaches/aram_coach.py:784` -> `coach_integration/archetype_dispatch.py:219,284` ->
   `core/daemon_slayer_client.py:403,442` -> `agents/daemon_slayer/server.py:850` ->
   `hybrid.rank_items_by_hybrid`.
-  REMAINS (not a gate): the operator-gated default-ON flip + DS `:8893` restart, per FOUR RULES rule 2.
+  REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
 - **G3-06** (was C6) RF2 enchanter survivability flip - **EYEBALL CLOSED 2026-07-18.** MEASURED at
   `[3853,3504,6617]`, L13, **pool=8 exact**, and all three of the row's own predictions reproduce
   INCLUDING the negative: **Rakan DIFFERS** - ON floats `2051` Guardian's Horn + `3083` Warmog's Armor
@@ -664,7 +664,7 @@ survivability flips below cannot roll otherwise.
   identical partition and identical floated ids. The row's SIBLING-FUTURE negative also reproduces:
   `3121` Fimbulwinter is NOT surfaced on the hps lane, and the row itself scopes that `inject_ids`
   work as a headless slice, not a gate.
-  REMAINS (not a gate): the operator-gated default-ON flip + DS `:8893` restart, per FOUR RULES rule 2.
+  REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
 - **G3-07** (was C7) RF3+RF6 tank survivability flip - **EYEBALL CLOSED 2026-07-18, on the EMPTY-DEPTH
   run and ONLY on that run.** THE RUN THAT CLOSES THIS ROW: depth `[]`, **pool=121**, KSante ON top-6 =
   `['6662','3075','3143','3083','6665','2504']` - Iceborn Gauntlet 6662 **and** Thornmail 3075 - so the
@@ -673,7 +673,7 @@ survivability flips below cannot roll otherwise.
   Malphite / Ornn / Sion / Zac byte-identical - but that depth ALREADY OWNS Thornmail 3075, which made
   3075 structurally unrankable and left half the row's own prediction unobservable. **That first
   evidence was INSUFFICIENT as filed and must not be cited alone.** RF6 rides the SAME flip as RF3.
-  REMAINS (not a gate): the operator-gated default-ON flip + DS `:8893` restart, per FOUR RULES rule 2.
+  REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
 - **G3-08** (was C8) F2 `cost_ceiling` flip - **PREMISE DEAD 2026-07-18: re-file as
   CLOSED-STALE-PREMISE, explicitly NOT as a validated flip.** SETTLED HEADLESS, and stronger than the
   row assumed: 223069 Void Immolation is 6000g with `maps {'11':False,'12':True,'21':False,'22':False,
@@ -1253,7 +1253,7 @@ by fixture, harness, dev-preview, replay corpus, unit test, or synthetic livecli
 - DS cross-eval A/B/F2 rewind-WIN validations (`ops/audit/ds_cross_eval/` harness over
   rewind_history.db; residual gate = operator decision).
 - HZ-B build-order table regen to the live engine (deterministic `--static` path; byte-identical, no
-  `:8893`) - the headless PREREQ for rail G7-02.
+  `:8860`) - the headless PREREQ for rail G7-02.
 - R2 carry-efficiency grade fold default-ON re-baseline (computable over the existing corpus; operator
   decision).
 - WP-F4a ward-stack keep-vs-retire (operator decision; Match-V5 carries NO ward positions so KEEP is
@@ -1344,7 +1344,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
 - 2026-07-18 (REORG, docs-only - NO engine / flag / code change) The checklist above was
   RESTRUCTURED BY GATE. Prior structure was A-H, half gate / half topic, which drained badly: section
   H mixed a PRACTICE-SR row (H4) with five REAL-SR rows; B and B-cont split one physical act (start a
-  game) by whether real enemies matter; ~35 DS seam rows sharing ONE action (arm flags, restart :8893
+  game) by whether real enemies matter; ~35 DS seam rows sharing ONE action (arm flags, restart :8860
   once, dump OFF-vs-ON) were scattered across B / C / D; and four competing "authoritative open set"
   statements (the 2026-07-12 DRAIN RESULT block, the 2026-07-12 DOC-ONLY RESYNC block, the R103
   addendum, the Slice B addendum) contradicted the 112-row body - the header claimed ~16 open while
@@ -1401,7 +1401,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
 - UNDATED (SYNC) full-repo gated-item resync #2 (11 living docs + repo sweep + git-closure audit +
   done-claim verdict pass + a live seam-flag ground-truth probe, folding in docs/LEDGER.md 799 =
   the newest ledger, 2026-07-06). REMOVED as confirmed-done this cycle: NONE net-new beyond the
-  prior resync - the B45 R77 crit-DR + B46 R80 AA-DR ENGINE-default flips landed ON + live on :8893
+  prior resync - the B45 R77 crit-DR + B46 R80 AA-DR ENGINE-default flips landed ON + live on :8860
   (LEDGER 799, 90a74972), so B45/B46 are RE-SCOPED (not removed) from "flip owed" to the practice /
   real-SR eyeball + 0.5 share-midpoint CALIBRATION tail ONLY. KEPT-OPEN partially-done: A1/A2/A13
   (regression re-validate owed), B5 (eyeball done, flip gated), B20 (accrual 3/3, flip
@@ -1468,7 +1468,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   at the shared `_filter_candidates` chokepoint across all 7 ranker lanes; melee = attackrange<=250
   (fails CLOSED so a missing record never over-filters a real carry); 15 RED->GREEN tests; ruff
   clean; no frozen files; backfill correctly none (ephemeral live compute). PENDING at game-end:
-  merge -> ENGINE 1.171.0 -> 1.172.0 -> HZ-B regen -> Share sync -> DS :8893 restart -> full dual
+  merge -> ENGINE 1.171.0 -> 1.172.0 -> HZ-B regen -> Share sync -> DS :8860 restart -> full dual
   suite -> live-verify Viego /rank excludes 3085 keeps 3087. (Deferred mid-game to avoid a coach
   blip + CPU contention with the live ARAM game - no mid-game DS bounce.)
   FINDING 2 (needs settled-state confirm, not yet filed): `cs_archetype_pick` looked STALE in ARAM
@@ -1479,7 +1479,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
 - 2026-07-02 (PREP-AUDIT, no engine/flag/code change) live-gated-drain PREP ground-truth pass:
   orchestrated 4-slice read-only audit (route-verify / prep-status / doc-currency / phase-d-spec).
   VERDICT: the HEADLESS prep surface for the drain is FULLY EXHAUSTED (HEADLESS_ACTIONABLE_NOW = []).
-  All 7 OQ17/OQ18 DS :8893 POST routes LIVE-VERIFIED WIRED-OK @ENGINE 1.171.0 via differential POST
+  All 7 OQ17/OQ18 DS :8860 POST routes LIVE-VERIFIED WIRED-OK @ENGINE 1.171.0 via differential POST
   probes (handler file:line cited in the audit): /rank-assassin (DSV2/3/4 + DSP8 target_preset; an
   invalid preset -> HTTP 422 enumerating valid presets, a valid preset shifts target resists
   0/0 -> 22/30 and baseline_burst 186.0 -> 154.68), /burst (gate_target_hp_amp 200.88 -> 186.0,
@@ -1563,7 +1563,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   do-not-flip-blind): wire a per-instant scenario / fight_report consumer to pass `gate_caster_hp_amp=True`
   with the caster's real current-HP fraction (or a per-timestep HP band), then confirm the gated burst reads
   sane vs a real game. Gating a whole burst on a single caster-HP snapshot is a scenario/stepped-eval use,
-  NOT a blind flip of the burst scorer. No DS math change on flip (seam already live); DS `:8893` needs no
+  NOT a blind flip of the burst scorer. No DS math change on flip (seam already live); DS `:8860` needs no
   restart for the flip itself. Does NOT block any further stage.
 
 - 2026-07-01 (R51, LOOP) target_hp gate seam for Cut Down 8017 / Coup de Grace 8014 - ENGINE 1.162.0 ->
@@ -1581,7 +1581,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   actually in-band, then confirm the gated burst reads sane vs a real game. Gating a whole burst on a single HP
   snapshot is LESS accurate than the unconditional window approximation for a full burst, so the honest use is
   a per-instant / stepped eval, NOT a blind flip of the burst scorer. No DS math change on flip (seam already
-  live); DS `:8893` needs no restart for the flip itself. Does NOT block any further stage.
+  live); DS `:8860` needs no restart for the flip itself. Does NOT block any further stage.
 
 - 2026-07-01 (R50, LOOP) K'Sante P "All Out Bonus" bilinear caster-resist seam - ENGINE 1.161.0 -> 1.162.0,
   DEFAULT-OFF, live default-ON flip EXCLUDED. New registry `_ALL_OUT_BONUS_OVERRIDES` + new
@@ -1595,7 +1595,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   `apply_all_out_bonus=True` (ideally only while K'Sante's R "All Out" is active) and confirm his in-All-Out
   empowered-mark value reads sane vs a real game; (2) tune `conditional_probability` 0.5 against real All-Out uptime
   (or feed a live All-Out-state gate so the full in-form value is credited only during R). A WRONG precompute is
-  worse than none, so do NOT default-ON until validated in an actual All Out fight. DS `:8893` restart on flip.
+  worse than none, so do NOT default-ON until validated in an actual All Out fight. DS `:8860` restart on flip.
   Does NOT block any further stage.
 
 - 2026-07-01 RuneWriter silent-after-League-restart PERMANENT FIX (`lcu/lcu_client.py`, frozen-grant).
@@ -1668,7 +1668,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   flat curve when ON; a REAL all-squishy comp (>=1 classifiable champ, 0 tanky) still earns the
   intended 0.90 discount, and a tank comp still earns the uplift. This RESOLVES the preview-route
   safety blocker on the RC_COMP_HP_LEAN default-ON flip below. Tier-1 (NO ENGINE bump / Share sync /
-  DS :8893 restart - coach-integration heuristic). RED-first +4 tests (the bug-shaped
+  DS :8860 restart - coach-integration heuristic). RED-first +4 tests (the bug-shaped
   `test_no_comp_info_on_is_neutral` assertion corrected to 1.0 to match its own name + the docstring,
   plus blank-comp, no-info-vs-known-squishy contrast, and an env-ON-no-comp byte-identical guard);
   43/43 enemy-stats tests green. The default-ON FLIP itself stays operator-gated (gemini ruling:
@@ -1676,7 +1676,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
 
 - 2026-06-22 DSV5 comp-conditioned enemy max-HP seam (ledger 592, `coach_integration/enemy_stats.py`).
   DEFAULT-OFF env gate **`RC_COMP_HP_LEAN`** (set `=1` in the RC runtime env; the read is per-call so no
-  restart is needed - it is a coach-integration heuristic, NOT a DS `:8893` engine flip, so do NOT restart
+  restart is needed - it is a coach-integration heuristic, NOT a DS `:8860` engine flip, so do NOT restart
   DS for it). When ON, a tank-heavy enemy comp scales `target_max_hp` up (1 + 0.10*(tanky_count - 1),
   clamped [0.85, 1.30]) so DSV1's ability-burn / %max-HP valuation tilts the live item ranking toward DoT
   (Liandry's/Blackfire/Demonic) vs tanks, matching the rewind WIN-anchored signal (winning AP carries vs
@@ -1756,7 +1756,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   (Caitlyn) + any operator pick are byte-identical. The assumed stack count
   (`_ASSUMED_PASSIVE_AS_STACK_FRACTION`) is operator-tunable; dial it below 1.0 if full-stack steady state
   over-credits a poke kit (Ezreal). Re-anchor the registry from the live patch's `champion_abilities.json`
-  effects_descriptions each patch (re-scan for new per-stack self-AS passive lines). Needs a DS `:8893`
+  effects_descriptions each patch (re-scan for new per-stack self-AS passive lines). Needs a DS `:8860`
   restart on flip. Do NOT flip blind (charter 4b; CLAUDE-Settled "per-stack assumed_stacks").
 - 2026-06-19 R5 missing-HP heal-amp (ENGINE 1.146.0): the missing-HP heal-AMPLIFICATION seam shipped
   DEFAULT-OFF on the ability-HPS scorer. NEW `assume_missing_hp_heal_amp` on
@@ -1771,7 +1771,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   Sylas/Master Yi/Lissandra/Briar shows a sanely higher ability-heal throughput and a full-HP cast +
   any non-tabled champ are byte-identical. Re-anchor `_MISSING_HP_HEAL_AMP` from the live patch's
   `champion_abilities.json` effects_descriptions each patch (re-scan for new 0%:X%-based-on-missing-
-  health heal lines). Needs a DS `:8893` restart on flip. Do NOT flip blind (charter 4b).
+  health heal lines). Needs a DS `:8860` restart on flip. Do NOT flip blind (charter 4b).
 - 2026-06-18 PM7 Arena boots mirror (ENGINE 1.144.0): NOT a default-OFF seam - a DATA-correctness
   fix shipped LIVE (item 499). `core.build_order._select_boots` remaps Arena/CHERRY tier-2 boots to
   their `22`-prefixed map30-legal mirror; all 3 Arena build tables regenerated (boots-only). No flip
@@ -1798,7 +1798,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   for a from-ReadyCheck poll) + per-champ `live_flip_eyeball.py` OFF-vs-ON re-rank.
   RESULTS:
   * DSP11 kit-axis = LIVE-VALIDATED both sub-cases + negative control -> FLIP-READY pending operator
-    decision + DS :8893 restart. Senna (lethality) ON surfaces +Black Cleaver; Quinn (crit) ON
+    decision + DS :8860 restart. Senna (lethality) ON surfaces +Black Cleaver; Quinn (crit) ON
     surfaces +Infinity Edge(top)/The Collector/Statikk Shiv/Lord Dominik's; Caitlyn (the documented
     non-tabled control) shows ZERO DSP11 movement (byte-identical). Seam correctly scoped.
   * Comp-verdict (section C) renders correctly on SWAP (Senna->Lux HIGH, Lissandra->Hecarim MEDIUM,
@@ -1830,7 +1830,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   live-client summoner/rune/ally set INTO the consumer + eyeballing the adjusted readout (NOT
   building a consumer). Each is byte-identical on an EMPTY context. DSP7's `ally_protected_ehp` ALSO
   covers the item-321 ehp ally-resist producer (Orianna E / Braum W / Taric W via `ally_resist_grant`
-  -> `external_resist_armor/mr`). +10 tests; DS 7334 / RC 8333 green; Share 364; DS :8893 restarted
+  -> `external_resist_armor/mr`). +10 tests; DS 7334 / RC 8333 green; Share 364; DS :8860 restarted
   -> 1.140.0. NOT flipped (do-not-flip-blind).
 
 - 2026-06-17 RF6 (ENGINE 1.139.0): tank-template survivability INJECT seam shipped DEFAULT-OFF -
@@ -1844,7 +1844,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   `rank_items_by_ehp` passes `inject_ids=surv_ids` only when the seam is ON. The LIVE flip is the SAME
   one tracked in section B above (wire `server.py` `rank_items_by_ehp` ~L557 / `rank_tank_for` to pass
   `prefer_survivability_by_win=True`) - flipping it now ALSO surfaces Rell's Fimbulwinter, not just
-  KSante's already-pooled winners. NOT flipped (do-not-flip-blind); needs a real ARAM + a DS `:8893`
+  KSante's already-pooled winners. NOT flipped (do-not-flip-blind); needs a real ARAM + a DS `:8860`
   restart. KNOWN SIBLING (FUTURE): RF2's hps `only_ids |= surv_ids` union likewise cannot surface
   Rakan's tabled 3121 (same purchasable gate) - the `inject_ids` mechanism now exists to fix it if a
   future RF wires the hps lane through it; not done here (RF2 is a DONE seam).
@@ -1859,7 +1859,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   hybrid lane already pools them and only floats). NOT flipped (do-not-flip-blind) - validate the
   re-rank in a real ARAM (Rakan-as-tank-support surfaces Warmog's/Heartsteel; non-tabled Soraka/Janna
   byte-identical). Cluster A (Zilean/Seraphine AP-in-ARAM) NOT tabled. Re-anchor the table each patch
-  via `ops/audit/ds_perm_swarm/build_survivability_item_credit_enchanter.py`. Needs a DS `:8893`
+  via `ops/audit/ds_perm_swarm/build_survivability_item_credit_enchanter.py`. Needs a DS `:8860`
   restart on flip.
 - 2026-06-17 RF1 (ENGINE 1.136.0): generic-bruiser-template survivability item-credit seam shipped
   DEFAULT-OFF. NEW `prefer_survivability_by_win` on `hybrid.rank_items_by_hybrid` (the hybrid/bruiser
@@ -1870,7 +1870,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   (do-not-flip-blind) - validate the re-rank in a real ARAM. Distinct from the DSP11 DPS/burst kit-axis
   flip (which gates on `delta_dps>0`); survivability items add EHP not DPS so RF1 floats by WIN-table
   membership. Re-anchor the table each patch via `ops/audit/ds_perm_swarm/build_survivability_item_credit.py`.
-  Needs a DS `:8893` restart on flip.
+  Needs a DS `:8860` restart on flip.
 - 2026-06-17 LGS1 (no ENGINE bump - pure docs audit): live-sync list audited authoritative. (1) CORRECTED
   the DSV seam-flip row's location - `assume_takedown`/`assume_squishy_target`/`assume_ability_amp` flip the
   BURST scorer `agents/daemon_slayer/burst.py rank_items_by_burst` (+ `compute_burst_damage`), NOT `rank.py`
@@ -2105,7 +2105,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   fully-marked target at full magnitude (the assume_takedown / assume_ability_amp developed-fight doctrine);
   uptime gating (Vlad R cooldown, Evenshroud's 5s post-immobilize window) is a live-consumer concern not baked
   here. Imperial Mandate (4005) is EXCLUDED as a non-fit (current-HP detonation, not an all-source %amp). A
-  WRONG precompute is worse than no credit, so do NOT default-ON until validated. DS `:8893` restart on flip.
+  WRONG precompute is worse than no credit, so do NOT default-ON until validated. DS `:8860` restart on flip.
   Does NOT block any further stage.
 - 2026-06-30 R43 Imperial Mandate target-vulnerability mark SEEDED (ENGINE 1.158.0, default-OFF) - SUPERSEDES
   the R12 bullet's "Imperial Mandate (4005) is EXCLUDED" note above. DDragon 16.13.1 `item.json` reworked
@@ -2118,7 +2118,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   `apply_target_vuln=True` for a marked wielder). OWED (operator/Gemini-gated, NOT headless): when the R12 seam
   is validated in a real game, also confirm an Imperial Mandate build's marked-target effective DPS / item
   ranking reads sanely higher, and an unmarked wielder stays byte-identical. A WRONG precompute is worse than no
-  credit, so do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+  credit, so do NOT default-ON until validated. DS `:8860` restart on flip. Does NOT block any further stage.
 - 2026-06-22 R14 cc_conditional durations_floor_s CC-floor seam (`apply_cc_floor`, ENGINE 1.150.0, default-OFF).
   The NEW guaranteed-minimum floor band on distance / channel-scaled conditional CC
   (`agents/daemon_slayer/cc_conditional.py` ConditionalCcEntry.durations_floor_s: Maokai R 0.75 / Hecarim R 0.75 /
@@ -2133,7 +2133,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   than the prior max*prob for a close-range Maokai/Ashe/Hecarim R or a short-channel KSante/Sion vs a real game -
   e.g. Ashe R OFF credits 3.5*0.4=1.4s (< unconditional 1.5s, the flat baseline wins) but ON credits
   1.0+0.4*(3.5-1.0)=2.0s (the floor-aware credit wins the coexistence MAX). A WRONG precompute is worse than no
-  credit, so do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+  credit, so do NOT default-ON until validated. DS `:8860` restart on flip. Does NOT block any further stage.
 - 2026-06-22 R17 anti-tank level-ramp %max-HP seam (`compute_antitank(level=)`, ENGINE 1.151.0, default-OFF).
   A real subset of antitank %max-HP rows scale their percentage with the CASTER's champion level
   (`agents/daemon_slayer/antitank.py` AntiTankEntry.ramp_lo/ramp_hi: Aatrox P 4:8, Brand P 8:12, KSante P 1:2,
@@ -2145,7 +2145,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   call compute_antitank with the live champion level (the /anti-tank route still passes no level, byte-identical),
   and confirm the early-vs-late level-discounted anti-tank scores read sane vs a real game (e.g. a level-3 Aatrox
   ranks below a level-16 Aatrox on the same tank). A WRONG ramp is worse than the flat magnitude, so do NOT
-  default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+  default-ON until validated. DS `:8860` restart on flip. Does NOT block any further stage.
 - 2026-06-30 R39 anti-tank current-HP level-ramp %current-HP seam (`compute_antitank(level=)`, ENGINE 1.155.0,
   default-OFF). The CURRENT_HP sibling of R17: a real subset of antitank %current-HP rows scale their percentage
   with the CASTER's champion level (`agents/daemon_slayer/antitank.py`
@@ -2159,7 +2159,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   call compute_antitank with the live champion level (the /anti-tank route still passes no level, byte-identical),
   and confirm the early-vs-late level-discounted Senna anti-tank score reads sane vs a real game (a level-3 Senna
   ranks below a level-16 Senna on the same target). A WRONG ramp is worse than the flat magnitude, so do NOT
-  default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+  default-ON until validated. DS `:8860` restart on flip. Does NOT block any further stage.
 - 2026-06-27 R30 / DSV6 on-cast magic-burst seam (`compute_burst_damage(assume_magic_burst=)`, ENGINE 1.152.0,
   default-OFF). Item on-cast magic procs the per-cast burst combo loop never credited
   (`agents/daemon_slayer/_effects_data.py` magic_burst_base/magic_burst_ap_ratio: Luden's Echo 6655 75+5%AP,
@@ -2175,7 +2175,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   burst-scoring / rank consumer (burst.rank_items_by_burst, /rank-assassin, the offense-burst surface) to call
   compute_burst_damage with assume_magic_burst=True, and confirm an AP/magic burst build (Veigar/Syndra/Annie with
   Luden's or Stormsurge) ranks its on-cast magic item ABOVE where the seam-OFF engine placed it, vs a real game.
-  A WRONG burst credit is worse than no credit, so do NOT default-ON until validated. DS `:8893` restart on flip.
+  A WRONG burst credit is worse than no credit, so do NOT default-ON until validated. DS `:8860` restart on flip.
   Does NOT block any further stage.
 - 2026-06-27 R35 survivability percent-DR LIVE consumer (`mitigation_multipliers(snapshot=)` /
   `compute_ehp(apply_passive_mitigation=)`, ENGINE 1.153.0, default-OFF). The R19 forward-marker accessor
@@ -2191,7 +2191,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   `apply_passive_mitigation=True` + the live snapshot, and confirm a percent-DR champ (Galio / Garen / MasterYi
   mid-fight) ranks its EHP / defensive items ABOVE where the seam-OFF engine placed it, vs a real game - and that the
   rank-4 + 0.3-uptime assumption reads sane (a Galio with W up survives the magic burst the OFF engine under-credited).
-  A WRONG DR credit is worse than none, so do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT
+  A WRONG DR credit is worse than none, so do NOT default-ON until validated. DS `:8860` restart on flip. Does NOT
   block any further stage.
 - 2026-06-30 R41 ally mark-detonation seam (`compute_dps(assume_ally_detonation=)` /
   `compute_burst_damage(assume_ally_detonation=)`, ENGINE 1.156.0, default-OFF). A champion whose MARK an ALLY
@@ -2209,7 +2209,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   do-not-flip-blind): wire a DPS / burst / rank consumer (compute_dps / compute_burst_damage / a rank surface) to
   call with `assume_ally_detonation=True` and confirm Leona's mark-enabling team value ranks ABOVE the seam-OFF
   placement vs a real game, and that the 2.5s Sunlight cadence + 0.5 proc-rate assumptions read sane. A WRONG
-  detonation credit is worse than none, so do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT
+  detonation credit is worse than none, so do NOT default-ON until validated. DS `:8860` restart on flip. Does NOT
   block any further stage.
 - 2026-06-30 R45 Poppy W low-HP doubled percent-of-resist tier (`resist_grants(caster_current_hp_pct=)` /
   `compute_ehp(caster_current_hp_pct=)` / `compute_hybrid(caster_current_hp_pct=)`, ENGINE 1.159.0, default-OFF).
@@ -2220,7 +2220,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   1.0 (full HP) so the low-HP branch is dormant (1.0 not < 0.40) -> identical to 1.158.0. OWED (operator/Gemini-gated,
   NOT headless - charter 4b do-not-flip-blind): wire a live EHP / survivability consumer to pass Poppy's real
   current-HP fraction (the scorer today never reads caster HP) and confirm her sub-40%-HP EHP ranking reads sane vs a
-  real game. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8893` restart on flip.
+  real game. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8860` restart on flip.
   Does NOT block any further stage.
 - 2026-06-30 R46 stacking permanent max-HP passive registry (`compute_ehp(assume_passive_health_stacks=)`, ENGINE
   1.160.0, default-OFF). A NEW survivability axis + the SECOND EHP-NUMERATOR term: champion passives that grant
@@ -2234,7 +2234,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   `assume_passive_health_stacks=True` for Sion/Cho'Gath/Swain and confirm their stacked EHP ranks ABOVE the seam-OFF
   placement vs a real game; (2) ideally replace the conservative assumed-stack curve with the LIVE stack count (the
   in-game buff/stack reading from the Live Client buff list, if/when that surfaces) so the credit tracks the real
-  game state, not a midpoint. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8893`
+  game state, not a midpoint. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8860`
   restart on flip. Does NOT block any further stage.
 - 2026-06-30 R49 on-being-hit reflect damage seam (`compute_dps(assume_passive_reflect=)` /
   `compute_burst_damage(assume_passive_reflect=)`, ENGINE 1.161.0, default-OFF). Rammus W Defensive Ball Curl reflects
@@ -2252,7 +2252,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   seam-OFF placement vs a real game, and that the `reflect_cadence_s` 1.0s incoming-attack + 3.0s burst-window
   assumptions read sane; (2) ideally feed the W-ACTIVE buffed total armor/MR (so the % terms match League's
   recalculate-over-duration) instead of the resting build resists. A WRONG precompute is worse than none, so do NOT
-  default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+  default-ON until validated. DS `:8860` restart on flip. Does NOT block any further stage.
 - 2026-07-01 R55 archetype-aware DEFAULT for the `target_current_hp_pct` seam
   (`rank_for_primary_archetype(assume_archetype_hp_pct=)`, ENGINE 1.165.0, default-OFF). The seam (item 374) scales
   ONLY the three genuine %-current-HP procs (BotRK 3153 / Hellfire 4017 / Fulmination 443055). R55 plumbs it into the
@@ -2267,7 +2267,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   the archetype-resolved current-HP ranks read sane vs the flat-1.0 placement (especially that a bruiser/marksman
   building BotRK does not over/under-rank it); (2) CALIBRATE the exact sustained fraction from a real
   average-current-HP-over-fight measurement (replace the 0.5 midpoint) - the seam is linear in the fraction so the
-  value is a single tunable. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8893`
+  value is a single tunable. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8860`
   restart on flip. Does NOT block any further stage.
 - 2026-07-03 R74 / DSV8 physical on-cast burst seam (`compute_burst_damage(assume_physical_burst=)`, ENGINE
   1.178.0, default-OFF). Physical analogue of DSV6: an item on-cast PHYSICAL active the per-cast burst combo loop
@@ -2282,7 +2282,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   NOT headless - charter 4b do-not-flip-blind): wire a burst-scoring consumer with `assume_physical_burst=True`
   and confirm a Goredrinker-holding bruiser's burst rank reads sane vs a real ARENA game (226630 is Arena-only),
   assuming the active fires inside the burst window. A WRONG burst credit is worse than no credit, so do NOT
-  default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+  default-ON until validated. DS `:8860` restart on flip. Does NOT block any further stage.
 - 2026-07-03 R75 / DSV9 anti-shield cut seam (`compute_burst_damage(assume_shielded_target=)`, ENGINE 1.179.0,
   default-OFF). Serpent's Fang Shield Reaver (SR 6695 + Arena 226695; Meraki 16.13.1 "{{rd|50%|35%}}" = melee
   0.50 / ranged 0.35; 226695 ABSENT from the Meraki bulk snapshot - pin grounded on the DDragon 226695 text +
@@ -2296,7 +2296,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   OWED (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): flip per B41 - a Serpent's Fang
   holder's burst rank reads sane, the assumed-pool credit does not dominate real-damage item swaps, strongest
   eyeball vs a shield-heavy comp. A WRONG credit is worse than none - do NOT default-ON until validated. DS
-  `:8893` restart on flip. Does NOT block any further stage.
+  `:8860` restart on flip. Does NOT block any further stage.
 - 2026-07-10 R92 / Kaenic Rookern (2504) Magebane magic-shield EHP seam
   (`compute_ehp(assume_kaenic_shield=)` / `ehp._collect_shields(assume_kaenic_shield=)`, ENGINE 1.189.0,
   default-OFF). `ITEM_EFFECTS['2504']` now carries a `default_off` magic `ItemShield` (`max_hp_scaling=0.15`),
@@ -2307,7 +2307,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   shield would matter. OWED (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): wire an
   EHP-scoring consumer to pass `assume_kaenic_shield=True` and eyeball across ~2 real games that Kaenic's
   magical EHP ranks sensibly vs other MR-tank items (Force of Nature / Spirit Visage), given the
-  anti-correlated uptime. A WRONG credit is worse than none - do NOT default-ON until validated. DS `:8893`
+  anti-correlated uptime. A WRONG credit is worse than none - do NOT default-ON until validated. DS `:8860`
   restart on flip. Does NOT block any further stage.
 - 2026-07-10 R97 / Eclipse (item 6692 SR + 226692 Arena) Ever Rising Moon self-shield EHP seam
   (`compute_ehp(assume_eclipse_shield=)` / `ehp._collect_shields(assume_eclipse_shield=)`, ENGINE 1.191.0,
@@ -2323,7 +2323,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   real games (PRACTICE-SR or Arena) that an Eclipse holder's physical/blended EHP ranks sensibly vs other
   lethality/bruiser items, and that the burst-window shield is not over-credited on a sustained-fight clock (a
   6s/target proc CD - the ItemShield credit is a full-magnitude one-instance shield, not uptime-amortized). A
-  WRONG credit is worse than none - do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT
+  WRONG credit is worse than none - do NOT default-ON until validated. DS `:8860` restart on flip. Does NOT
   block any further stage.
 - 2026-07-14 Fimbulwinter (3121 SR + 223121 Arena + 323121 ARAM) "Everlasting" max-mana-shield EHP seam
   (`compute_ehp(assume_fimbulwinter_shield=)` / `ehp._collect_shields(assume_fimbulwinter_shield=)`, ENGINE
@@ -2352,7 +2352,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   across ~2 real games that a Seraph's holder's blended EHP ranks sensibly vs other mana/AP survivability
   items, and that the low-HP-triggered per-fight shield is not over-credited on a sustained clock (the
   ItemShield credit is a full-magnitude one-instance shield, not uptime-amortized). A WRONG credit is worse
-  than none - do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+  than none - do NOT default-ON until validated. DS `:8860` restart on flip. Does NOT block any further stage.
 - 2026-07-10 Riftmaker (4633 SR + 224633 Arena) max-stacks omnivamp EHP-SUSTAIN seam
   (`compute_ehp(assume_max_stacks_omnivamp=)`, ENGINE 1.194.0, default-OFF; R100). NEW `_item_omnivamp`
   registry (`item_id -> (melee_frac, ranged_frac)`, mirroring `_item_tenacity`): 4633 + Arena mirror 224633
@@ -2368,7 +2368,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   to pass `assume_max_stacks_omnivamp=True` and eyeball across ~2 real games that a Riftmaker holder's
   sustain-EHP ranks sensibly vs other sustain items, and that the max-stacks best-case is not over-credited
   on a short-fight clock (the omnivamp needs full Void Corruption ramp). A WRONG credit is worse than none -
-  do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+  do NOT default-ON until validated. DS `:8860` restart on flip. Does NOT block any further stage.
 - 2026-07-10 Guardian Angel item-revive EHP-NUMERATOR seam (`compute_ehp(assume_item_revive=)`, ENGINE
   1.195.0, default-OFF; R102). NEW `_item_revive` registry (3026 + Arena 223026 = 0.50 base-HP fraction).
   When armed, folds `item_revive_mult = 1 + 0.5*(base_hp/total_hp)*0.4` into `common_revive` (through NORMAL
@@ -2376,7 +2376,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   sustain) - Garen L13 + GA 3331.93 -> 3998.31 (x1.20). OWED (operator-gated, do-not-flip-blind): wire an EHP
   consumer to pass `assume_item_revive=True`, eyeball a GA holder's blended-EHP ranks across ~2 real games
   (50%-base second life amortized at 0.4, not over-credited on a short-fight clock; build-dependent re-rank if
-  armed in a ranker). DS `:8893` restart on flip. Does NOT block any further stage.
+  armed in a ranker). DS `:8860` restart on flip. Does NOT block any further stage.
 - 2026-07-10 item self-STASIS EHP-NUMERATOR seam (`compute_ehp(assume_item_stasis=)`, ENGINE 1.196.0,
   default-OFF; R103). NEW `_item_survival_window` registry (Zhonya 3157 + Arena 223157, Seeker 2420, Wooglet
   228002 = 2.5s stasis each), the ITEM-side lane of the champion-keyed `_passive_survival_window_overrides`.
@@ -2385,7 +2385,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   RAISES blended_ehp - Garen L13 3157 3376.01 -> 3868.34 (x1.1458). OWED (operator-gated, do-not-flip-blind):
   wire an EHP consumer to pass `assume_item_stasis=True`, eyeball a Zhonya/Seeker/Wooglet holder's blended-EHP
   ranks across ~2 real games (2.5s stasis amortized at the 0.35 item-active midpoint, not over-credited on a
-  short-fight clock; build-dependent re-rank if armed in a ranker). DS `:8893` restart on flip. Does NOT block
+  short-fight clock; build-dependent re-rank if armed in a ranker). DS `:8860` restart on flip. Does NOT block
   any further stage.
 - 2026-07-11 item-side MANA->MAX-HP "Awe" EHP-NUMERATOR seam (`compute_ehp(apply_item_mana_health=)`, ENGINE
   1.198.0, default-OFF; R105). NEW `_item_mana_health` registry (Winter's Approach 3119 + Fimbulwinter 3121 +
@@ -2397,7 +2397,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   (item_mana_health_hp 150.0). OWED (operator-gated, do-not-flip-blind): wire an EHP consumer to pass
   `apply_item_mana_health=True`, eyeball a Fimbulwinter/Winter's-Approach holder's blended-EHP ranks across ~2
   real games (deterministic credit, no midpoint - but a build-dependent re-rank if armed in a ranker). DS
-  `:8893` restart on flip. Does NOT block any further stage.
+  `:8860` restart on flip. Does NOT block any further stage.
 - 2026-07-11 item-side conditional RESIST-GRANT EHP-DENOMINATOR seam (`compute_ehp(apply_item_resist_grants=)`,
   ENGINE 1.199.0, default-OFF; R106). NEW `_item_resist_grants` registry (Jak'Sho 6665 + Arena 226665 = +30% of
   BONUS armor+MR at 5 combat stacks, percent-of-bonus mode; Force of Nature 4401 + Arena 224401 = +70 flat bonus
@@ -2411,13 +2411,13 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   (operator-gated, do-not-flip-blind): wire an EHP consumer to pass `apply_item_resist_grants=True`, eyeball a
   Jak'Sho/FoN holder's blended-EHP ranks across ~2 real games (the 0.5 ramp midpoint is conservative, not
   over-credited on a short-fight clock; build-dependent re-rank if armed in a ranker - Voidborn's %-of-bonus
-  scales with the rest of the build). DS `:8893` restart on flip. Does NOT block any further stage.
+  scales with the rest of the build). DS `:8860` restart on flip. Does NOT block any further stage.
   R124 (2026-07-14, ENGINE 1.212.0) extends the SAME flag with its first ALWAYS-ON entries (conditional_probability
   1.0, no ramp, EXACT): Shield of Molten Stone (443058 / mirror 663058) +20% of TOTAL armor + Cloak of Starry Night
   (443059 / mirror 663059) +20% of TOTAL MR (prismatic Arena items, DDragon 16.13.1, Meraki-absent), family-deduped
   base+mirror. When armed these raise an Arena Molten Stone / Starry Night holder's physical (armor) / magical (MR)
   EHP EXACTLY (no amortization). The operator flip-eyeball for `apply_item_resist_grants` now also covers these
-  prismatic ids; same flag, same DS `:8893` restart on flip.
+  prismatic ids; same flag, same DS `:8860` restart on flip.
 - 2026-07-11 item-side BONUS-HP-AMP "Warmog's Vitality" EHP-NUMERATOR seam (`compute_ehp(apply_item_bonus_hp_amp=)`,
   ENGINE 1.200.0, default-OFF; R107). NEW `_item_bonus_hp_amp` registry (Warmog's Armor 3083 + Arena mirror 443083
   = 0.12 of bonus-health-from-items each; MAX over the equipped family, a UNIQUE passive over a shared bonus-HP
@@ -2429,7 +2429,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   (item_bonus_hp_amp_hp 270.0); other HP items with no Warmog stay byte-identical (no leak). OWED (operator-gated,
   do-not-flip-blind): wire an EHP consumer to pass `apply_item_bonus_hp_amp=True`, eyeball a Warmog's holder's
   blended-EHP ranks across ~2 real games (PRACTICE-SR own-build suffices - buildable vs dummies; deterministic
-  credit, no midpoint - but a build-dependent re-rank if armed in a ranker). DS `:8893` restart on flip. Does NOT
+  credit, no midpoint - but a build-dependent re-rank if armed in a ranker). DS `:8860` restart on flip. Does NOT
   block any further stage.
 - 2026-07-11 item-side LOW-HP MAGIC/TRUE amp "Cinderbloom" BURST seam (`compute_burst_damage(assume_item_lowhp_magic_crit=)`,
   ENGINE 1.203.0, default-OFF; R110). NEW `_item_lowhp_magic_crit` registry (Shadowflame 4645 = +0.20 / Arena mirror
@@ -2445,6 +2445,6 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   either). OWED (operator-gated, do-not-flip-blind): wire a burst/assassin consumer to pass
   `assume_item_lowhp_magic_crit=True` + a live `target_current_hp_pct`, eyeball a Shadowflame carry's burst ranks vs
   a sub-40% target across ~2 real games (PRACTICE-SR own-build suffices - deterministic gate, no midpoint;
-  build-dependent re-rank if armed in a ranker). DS `:8893` restart on flip. Does NOT block any further stage.
+  build-dependent re-rank if armed in a ranker). DS `:8860` restart on flip. Does NOT block any further stage.
 
 - 2026-07-14 CDragon per-instance resource guard for MissFortune R full-channel total (`AbilitiesSnapshot.load(apply_cdragon_resource_guard=True)`, ENGINE 1.213.0, default-OFF; R127). The prefer_cdragon_ratios cutover undercounts MF R ~17.7x by overwriting the Meraki 1050% total with the CDragon 60% per-wave atomic (MF total_ability_dps 14.9 -> 27.4 when guarded). FLIP = set the guard True at the default abilities loader (RC-side coach caller / `abilities.load_default`) + reload; VALIDATE in a live or replayed MissFortune game (R DPS should ~13x, build reco unaffected for other champs) before default-ON.

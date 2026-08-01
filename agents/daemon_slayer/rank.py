@@ -134,7 +134,7 @@ OFFCLASS_MARKSMAN_ITEM_NAMES: frozenset[str] = frozenset({
 
 # RM-04 A-01 (2026-07-24) - CARRY CANDIDATE-POOL WIDEN set (DEFAULT-OFF seam).
 #
-# MEASURED premise, in-process + live :8893 at ENGINE 1.241.0 / patch 16.14.1:
+# MEASURED premise, in-process + live :8860 at ENGINE 1.241.0 / patch 16.14.1:
 # the SR carry pool is 108 items (the ROADMAP filing's "111" does not
 # reproduce) and is SET-IDENTICAL across Caitlyn / Jinx / Ashe / Sivir /
 # Senna / Smolder / Ezreal, because the deny above is class-wide by NAME with
@@ -873,7 +873,7 @@ def _rank_sort_key(
     The metric branch matches the active knob (fight-length reweight / gold
     efficiency / bounded-mana valuation / the default DPS-delta). ``item_id`` is
     appended as a STABLE final tiebreak so two rows with an EXACT-tie metric
-    order deterministically and can never flip across a process / :8893 restart
+    order deterministically and can never flip across a process / :8860 restart
     (dict iteration order was the only tiebreak before - PD -> Kraken build
     instability, 2026-07-06). Byte-identical to the pre-tiebreak ordering for any
     non-tied pair: item_id is consulted only when the metric tuple is equal.

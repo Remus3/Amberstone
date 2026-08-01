@@ -1,4 +1,4 @@
-"""Boot launcher for the local DS + match-DB MCP server on :8894.
+"""Boot launcher for the local DS + match-DB MCP server on :8861.
 
 Wrapper around ``tools.ds_matchdb_mcp_server.serve_forever`` that pins
 ``cwd`` to the project root before importing - scheduled tasks invoke us
@@ -78,11 +78,11 @@ if __name__ == "__main__":
     # exit 0 so the scheduled task doesn't record a failure.
     s = socket.socket()
     try:
-        s.bind(("127.0.0.1", 8894))
+        s.bind(("127.0.0.1", 8861))
         s.close()
     except OSError:
         s.close()
-        _log_startup("port 8894 already bound - skipping (exit 0)")
+        _log_startup("port 8861 already bound - skipping (exit 0)")
         sys.exit(0)
 
     _log_startup("starting serve_forever()")

@@ -11,12 +11,12 @@ Lane (distinct from prior passes):
 
 THIS file pins the FULL SERVED PATH: HTTP POST -> ``_serve_ds_preview_post``
 -> ``_resolve_ds_target_stats`` -> ``core.enemy_aware_stats`` -> the
-:8893 HTTP client -> the JSON the dashboard JS consumes. It hunts the
+:8860 HTTP client -> the JSON the dashboard JS consumes. It hunts the
 four risks called out in the audit brief:
 
   1. Engine-version split-brain - the dashboard must reach the engine
-     ONLY via the :8893 HTTP client, never an in-process engine import
-     (which could run a different ENGINE_VERSION than the live :8893
+     ONLY via the :8860 HTTP client, never an in-process engine import
+     (which could run a different ENGINE_VERSION than the live :8860
      server). A structural guard, not a value pin (the value lives in
      ``agents/daemon_slayer`` and is owned by the engine, not the route).
 
@@ -39,7 +39,7 @@ four risks called out in the audit brief:
 
 Ground truth is derived from the same data files the production code
 reads - no hardcoded magic numbers, no fragile cross-item comparisons.
-The engine boundary (the :8893 HTTP client) is mocked so no live server
+The engine boundary (the :8860 HTTP client) is mocked so no live server
 is needed; the liveclient cache is mocked with a faithful Snapshot.
 """
 from __future__ import annotations
@@ -183,10 +183,10 @@ def _dispatcher_echo(captured: dict):
 # 1. Engine-version: NO in-process engine import on the served path.
 # ===========================================================================
 class TestNoEngineSplitBrain(unittest.TestCase):
-    """The dashboard must call the engine over :8893 only. An in-process
+    """The dashboard must call the engine over :8860 only. An in-process
     ``import agents.daemon_slayer`` in the route layer would let the
     dashboard compute with a DIFFERENT ENGINE_VERSION than the live
-    :8893 server (split-brain). Guard structurally."""
+    :8860 server (split-brain). Guard structurally."""
 
     def test_routes_state_has_no_in_process_engine_import(self):
         src = (_ROOT / "dashboard" / "routes_state.py").read_text(encoding="utf-8")
@@ -203,15 +203,15 @@ class TestNoEngineSplitBrain(unittest.TestCase):
         self.assertEqual(
             offenders, [],
             f"routes_state.py imports the engine in-process {offenders!r} - "
-            "split-brain risk vs the live :8893 server. Route MUST go via "
+            "split-brain risk vs the live :8860 server. Route MUST go via "
             "core.daemon_slayer_client (HTTP).",
         )
 
-    def test_ds_client_targets_8893_http_not_inprocess(self):
+    def test_ds_client_targets_8860_http_not_inprocess(self):
         """The only sanctioned engine path: the HTTP client points at
-        :8893 and never imports the engine package."""
+        :8860 and never imports the engine package."""
         src = (_ROOT / "core" / "daemon_slayer_client.py").read_text(encoding="utf-8")
-        self.assertIn("8893", src)
+        self.assertIn("8860", src)
         tree = ast.parse(src)
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):

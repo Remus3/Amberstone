@@ -32,7 +32,7 @@ RM-114 / item A-27 (2026-07-24): `resolve_build` covers only the 6
 curated champions in `item_advisor.CHAMPION_BUILDS`, so the other 167
 emitted no next-buy row. `core.next_buy_fallback` re-sources those from
 the STATIC precomputed Daemon Slayer build-order tables (mode-aware
-sr/aram/arena, no live :8893 call, kill switch
+sr/aram/arena, no live :8860 call, kill switch
 `RC_NEXTBUY_DS_FALLBACK=0`). It is consulted ONLY when `resolve_build`
 returns [], so the curated 6 keep priority and are byte-identical.
 """
@@ -436,7 +436,7 @@ def liveclient_summary() -> dict:
                 # rendered "-". Re-source the missing builds from the STATIC
                 # precomputed DS build-order tables - FALLBACK ONLY, so the 6
                 # curated builds keep priority and come through byte-identical.
-                # Static file read, never a live :8893 call, so it cannot stall
+                # Static file read, never a live :8860 call, so it cannot stall
                 # this path; fail-soft to [] on any error (kill switch
                 # RC_NEXTBUY_DS_FALLBACK=0). The result feeds the SAME
                 # boots-phase / is_redundant pipeline below, not around it.

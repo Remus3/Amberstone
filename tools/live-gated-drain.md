@@ -27,7 +27,7 @@ line says YES - call it out before the operator queues.
   (PHYSICAL)/(ACCRUAL)), the "ARENA NEEDED" line, "ESTIMATED SESSIONS" line.
 - Read `WAKEUP_NOTES.md` (last session) + `git log --oneline -15`.
 - Probe live: `ops/runtime/health.json`, `curl -k https://127.0.0.1:8888/api/state`,
-  DS `curl http://127.0.0.1:8893/health`. Confirm git tree state; flag dirt.
+  DS `curl http://127.0.0.1:8860/health`. Confirm git tree state; flag dirt.
 - Memory `feedback_preflight_cron_loop` applies: cite doc lines before executing.
 
 ### 2. One framed question to the operator
@@ -66,7 +66,7 @@ headless-executable prep (consumer wiring, flip PRs, harness runs):
   (`:8889/latest-liveclient`), and `:8889/latest-frame` for pixel checks. Tick a
   row ONLY with recorded evidence (value seen, timestamp, screenshot path).
 - **Seam flips validated live:** a default-ON flip = flag-default change ->
-  Tier-2: full dual suite (DS dir + tests/) + DS `:8893` restart + Share mirror
+  Tier-2: full dual suite (DS dir + tests/) + DS `:8860` restart + Share mirror
   staged in the SAME commit (memories `feedback_ds_bump_run_tests_dir`,
   `feedback_ds_commit_share_test_mirror`). RC-side env flips route via Machine
   env + RC-Supervisor task restart (memory `reference_scheduled_task_env_injection`).

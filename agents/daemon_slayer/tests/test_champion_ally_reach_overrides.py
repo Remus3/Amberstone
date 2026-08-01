@@ -121,7 +121,7 @@ class TestAllyReachPositiveOverrides(unittest.TestCase):
         )
 
     def test_the_four_now_move_locket_under_team_blended(self):
-        """S2 acceptance, measured on the real scorer (in-process, no :8893).
+        """S2 acceptance, measured on the real scorer (in-process, no :8860).
 
         Locket of the Iron Solari is the ONE real support core item that
         ``_item_ally_grant`` prices today (Knight's Vow / Zeke's / Bandlepipes /

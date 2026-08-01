@@ -17,7 +17,7 @@ This module adds two layers over the six committed tables
 2. A SLOW full-roster regen-vs-committed content diff, env-gated OFF by default
    (``RC_BUILD_ORDER_FULL_REGEN``) so it never taxes per-commit CI. That is the
    layer that actually catches scorer-drift staleness; it runs nightly / on
-   demand via the deterministic in-process static path (no :8893 required).
+   demand via the deterministic in-process static path (no :8860 required).
 
 Both table families use the same top-level content key ``build_orders`` (verified
 by grep - the variants payload does NOT use a "variants"/"build_order_variants"

@@ -11,7 +11,7 @@ PURPOSE
     classifies the LIVE enemy comp's durability and turns the recommended
     variant into two grounded BUILD A/B ``CoachChoice`` objects (A = the
     lean-matched variant, B = the other extreme), each carrying the next item +
-    the A3 anti-tank provenance. PURE static table read - no Haiku, no :8893
+    the A3 anti-tank provenance. PURE static table read - no Haiku, no :8860
     network.
 
     v1 is SHADOW ONLY (charter 4b "do not flip blind"): recorded alongside live

@@ -3,7 +3,7 @@
 Verifies the 3-variant fill policy, hand-curated preservation, mode
 isolation, key-stability semantics, and the archetype-triplet
 resolver. DS engine calls are stubbed end-to-end via
-``unittest.mock.patch`` so tests don't require a running :8893.
+``unittest.mock.patch`` so tests don't require a running :8860.
 
 Pinning these behaviors keeps the generator stable even if the
 underlying DS scorer rankings shift patch-to-patch.

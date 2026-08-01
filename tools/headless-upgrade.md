@@ -24,7 +24,7 @@ This skill is the durable record of how to run that loop cleanly. Run sections i
 ### 1. Pre-flight baseline (do this FIRST, every time)
 
 - Read `CLAUDE.md` Active priorities + the "Settled - do not re-litigate" section + `MEMORY.md` index + `ROADMAP.md` top 80 lines + `BACKLOG.md` headings + recent 15 commits.
-- Probe live state: `ops/runtime/health.json` (pid, alive, last_reload_ok), `https://127.0.0.1:8888/api/state` (RC), `http://127.0.0.1:8893/health` (DS engine_version; note it is HTTP not HTTPS).
+- Probe live state: `ops/runtime/health.json` (pid, alive, last_reload_ok), `https://127.0.0.1:8888/api/state` (RC), `http://127.0.0.1:8860/health` (DS engine_version; note it is HTTP not HTTPS).
 - If DS engine_version is stale vs the repo `agents/daemon_slayer/__init__.py` ENGINE_VERSION constant, bounce DS: `taskkill /F /PID <ds-pid>` then `schtasks /Run /TN RC-DaemonSlayer`. DS is NOT supervisor-watched (per reference_ds_server_not_supervisor_watched). NEVER `Stop-Process` (CLAUDE.md hard rule).
 - Git hygiene before any new work:
   - `gh run list --limit 6` - baseline must be green; if a recent push is red, fix the red FIRST.

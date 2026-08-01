@@ -414,7 +414,7 @@ class BurstLightshieldIntegrationTests(unittest.TestCase):
 
 
 class ServerBurstRouteLightshieldTests(unittest.TestCase):
-    BASE_URL = "http://127.0.0.1:8893"
+    BASE_URL = "http://127.0.0.1:8860"
 
     @classmethod
     def setUpClass(cls) -> None:

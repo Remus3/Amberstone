@@ -16,7 +16,7 @@ PURPOSE
     these three surfaces no longer need a Claude call.
 
 WHY A TTL CACHE
-    ``laning_choices`` makes ONE network call to the DS engine (:8893) per
+    ``laning_choices`` makes ONE network call to the DS engine (:8860) per
     invocation. The dashboard polls /api/state every ~500ms. Without a cache
     that would hammer matchup() ~2x/sec. The cache keys on a COARSE signature
     (champ, enemy comp, level, item count, mode, game_time bucketed to 5s) so
