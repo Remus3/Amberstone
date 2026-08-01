@@ -6,6 +6,52 @@
 
 ---
 
+# 2026-08-01a - LANE-RESEARCH REFILL (headless lane 5): 5 rows filed RM-130..RM-134, one NEW drift-guard gap.
+
+**MERGE NOTE (added by the merger, 2026-08-01):** the five rows this run filed were authored
+as RM-129..RM-133 and were RENUMBERED +1 to **RM-130..RM-134** at merge, because a DS
+port-block-migration RM-129 landed on `main` while this lane was running - the lane branched
+before it existed. Its LEDGER entry likewise moved 1142 -> **1143**. Whichever lands second
+renumbers. The ids above are already corrected; `docs/DS_SWEEP_TRACKER.md` records the shift.
+
+## Start here next session
+
+REFILL pass on `lane/research` (Mission Control lane 5), docs-only, no live game
+(`/api/state` `mode_key=client`, `liveclient` empty). Branch is READY TO MERGE (Tier-0
+docs; no engine, no Share, no restart) - leave the merge to the merger, do not merge from
+the worktree. Full detail in LEDGER 1142.
+
+## What shipped (all docs, all PROBED this run)
+
+- **RM-131 filed (NEW gap, flagship)** - 101.qq.com duo-synergy has NO drift guard while
+  ddragon / meraki / cdragon / wiki all do. `tools/upstream_drift_check.py` tracks exactly 3
+  signals and carries zero qq reference; `core/synergy_external_source.py:33` fetches the
+  Tencent endpoint and fails SILENTLY back to the frozen May-25 seed. Acceptance = a 4th
+  `probe_qq_synergy()` + `test_upstream_drift_qq_synergy_probe`. Lane 6/7, Tier-1. Companion
+  to RM-128.
+- **RM-130 / RM-132 / RM-133 / RM-134** - promoted thin BACKLOG cites to well-formed,
+  id-carrying, acceptance-bearing rows; each re-grepped live. Corrected one STALE cite
+  (RM-133 Arena chip: `_csvArenaPaneHtml` is now at `web/js/panels/champ_select.js:3512`,
+  not the filed `:931`).
+- Registered RM-130..RM-134 in `docs/DS_SWEEP_TRACKER.md`; next free is now **RM-134**.
+
+## Do NOT redo
+
+- Drift-guard coverage for ddragon / meraki / cdragon / wiki is CLOSED-COMPLETE (all
+  GUARDED with cited guards) - do NOT re-audit those four. Only 101.qq.com (RM-131) is open.
+- SGP / Match-V5 drift guard was CONSIDERED and DECLINED (live-gated reachability, no
+  hand-maintained mirror, official versioned API) - do NOT file it.
+- Competitor-lift research stays RETIRED / drained 4x - not re-opened this run.
+- Before taking a new RM id run the grep recipe in `DS_SWEEP_TRACKER.md` (next free RM-134).
+
+## Next
+
+Lanes have well-formed work waiting: RM-131 (lane 6/7, the drift probe), RM-130 + RM-132
+(lane 7 ASCII / token hygiene), RM-133 (lane 4 Arena chip), RM-134 (lane 8 MC error scrub),
+plus still-open RM-128 (lane 6/7) and the DS RM-118 4 wireable seams (lane 6).
+
+---
+
 # 2026-07-31f - LANE-RESEARCH REFILL (headless lane 5): 2 stale strikes, id-registry fix, cdragon catalog torn down.
 
 ## Start here next session
@@ -114,43 +160,3 @@ All 12 Desktop planning files classified against ground truth; **zero duplicates
   the gemini CONTROLLER, not the lanes - the lane lock was FREE and fired normally with STOP in
   place. Do not clear it.
 - Lanes 7 (repo) and 8 (true-audit) still have NEVER been fired and remain operator-gated.
-
----
-
-# 2026-07-31d - MISSION CONTROL S10 SHIPPED + MERGED (decoupled from the dashboard).
-
-## Start here next session
-
-S10 is DONE and on `main`. Mission Control is its own process on `:8895` under the
-`RC-MissionControl` scheduled task; the dashboard's copy is deleted, so
-`/api/loop-status` and `/api/loop-control` 404 on `:8888` by design.
-
-Shipped (9 tasks, 20 commits, merged fast-forward): `mc/` package + `mission_control.py`,
-bearer-token auth that FAILS CLOSED, bind restricted to loopback + tailnet only,
-`web/mc/` standalone asset tree, `dashboard/_matchers.py` (the split that keeps pydantic
-out of the control plane), and the dashboard-side removal. Post-merge: token ACL locked
-to SYSTEM + Administrators, plus two guard fixes (`ab3d8b0b`, `2a55f40f`).
-Detail in LEDGER 1139 + 1140. Design history in `docs/MISSION_CONTROL_PLAN.md` "S10 as shipped".
-
-## Do NOT redo
-
-- **S10 is complete and merged.** Do not re-plan it, re-pitch a `/healthz` watcher, or
-  "fix" the two scheduled-task triggers - the logon trigger plus a time-based repeating
-  trigger is the working combination, proven by a real reboot AND a taskkill recovery at t+49s.
-- **The SDD execution workspace under `.superpowers/sdd/` is deleted on purpose.** Git
-  history + LEDGER 1139/1140 + the BACKLOG entries are the record. Do not hunt for it.
-- **Tailscale IS installed and running** (`legion-rc` / `100.70.22.55`). A mid-session claim
-  that it was absent was WRONG - three guessed `Test-Path` checks against a machine where
-  `Get-Process` would have settled it in one call. Lesson appended to memory
-  `feedback_verify_before_declare_broken`.
-- **`ops/loop/control/STOP` holds a REAL operator halt** ("operator halt via LW session
-  2026-07-28"). It survived the whole build untouched. Do not clear it as a test artifact.
-- Lanes 7 and 8 have still never been fired. Deliberate; ask before firing.
-
-## Next
-
-Top open item is whatever `ROADMAP.md` carries as the next `[!]`. The highest-value S10
-follow-up in `BACKLOG.md` is `dashboard/_errors.send_error` leaking `str(exc)[:200]` to
-`:8895` via the imported loop routes - pre-existing on `:8888`, so not urgent, but it
-collides with the CLAUDE.md no-raw-error-strings rule. An owed pixel-screenshot pass on
-`https://legion-rc:8895/` is also logged (Browser pane would not composite frames this session).

@@ -119,6 +119,46 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-31d - MISSION CONTROL S10 SHIPPED + MERGED (decoupled from the dashboard).
+
+## Start here next session
+
+S10 is DONE and on `main`. Mission Control is its own process on `:8895` under the
+`RC-MissionControl` scheduled task; the dashboard's copy is deleted, so
+`/api/loop-status` and `/api/loop-control` 404 on `:8888` by design.
+
+Shipped (9 tasks, 20 commits, merged fast-forward): `mc/` package + `mission_control.py`,
+bearer-token auth that FAILS CLOSED, bind restricted to loopback + tailnet only,
+`web/mc/` standalone asset tree, `dashboard/_matchers.py` (the split that keeps pydantic
+out of the control plane), and the dashboard-side removal. Post-merge: token ACL locked
+to SYSTEM + Administrators, plus two guard fixes (`ab3d8b0b`, `2a55f40f`).
+Detail in LEDGER 1139 + 1140. Design history in `docs/MISSION_CONTROL_PLAN.md` "S10 as shipped".
+
+## Do NOT redo
+
+- **S10 is complete and merged.** Do not re-plan it, re-pitch a `/healthz` watcher, or
+  "fix" the two scheduled-task triggers - the logon trigger plus a time-based repeating
+  trigger is the working combination, proven by a real reboot AND a taskkill recovery at t+49s.
+- **The SDD execution workspace under `.superpowers/sdd/` is deleted on purpose.** Git
+  history + LEDGER 1139/1140 + the BACKLOG entries are the record. Do not hunt for it.
+- **Tailscale IS installed and running** (`legion-rc` / `100.70.22.55`). A mid-session claim
+  that it was absent was WRONG - three guessed `Test-Path` checks against a machine where
+  `Get-Process` would have settled it in one call. Lesson appended to memory
+  `feedback_verify_before_declare_broken`.
+- **`ops/loop/control/STOP` holds a REAL operator halt** ("operator halt via LW session
+  2026-07-28"). It survived the whole build untouched. Do not clear it as a test artifact.
+- Lanes 7 and 8 have still never been fired. Deliberate; ask before firing.
+
+## Next
+
+Top open item is whatever `ROADMAP.md` carries as the next `[!]`. The highest-value S10
+follow-up in `BACKLOG.md` is `dashboard/_errors.send_error` leaking `str(exc)[:200]` to
+`:8895` via the imported loop routes - pre-existing on `:8888`, so not urgent, but it
+collides with the CLAUDE.md no-raw-error-strings rule. An owed pixel-screenshot pass on
+`https://legion-rc:8895/` is also logged (Browser pane would not composite frames this session).
+
+---
+
 # 2026-07-31c - MISSION CONTROL S8 + S9 (lanes 7-8 wired; the INTERRUPT tier).
 
 ## Start here next session
