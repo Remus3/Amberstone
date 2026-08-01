@@ -41,7 +41,9 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - Next up (strict alphabetical): NONE - roster closed at Zyra 2026-07-18.
   **RM-128 allocated 2026-07-31** to the cdragon `queues.json` queue-map grounding + drift
   guard (BACKLOG "Data pipeline"; lane 6/7; ITEM/AXIS gap, no roster checkbox, no Summary
-  count change). Next free GAP spec = **RM-129**.
+  count change). **RM-129 allocated 2026-08-01** to the DS port-block migration (8893/8894 -> the reserved
+  8860-8879 block; registry + guard shipped as `core/ports.py` + `tests/test_ports.py`).
+  Next free GAP spec = **RM-130**.
   (lane-research corrected 2026-07-31: the prior "= RM-119"
   pointer was ITSELF stale - RM-119..RM-127 were all consumed by ROADMAP/BACKLOG rows whose
   tracker registration was owed-and-never-done, exactly the "tracker registration is owed"
