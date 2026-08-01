@@ -19,7 +19,7 @@ Three layers, all here:
    for the seven Step-1b flipped crit-ADCs. This is the red-first signal that a
    future table regressed to pre-dock content.
 2. LAYER 2 - slow, env-gated behind ``RC_BUILD_ORDER_LIVE_PARITY=1``, needs the
-   DS engine on :8893. Re-derives the generator's exact cell in-process with the
+   DS engine on :8860. Re-derives the generator's exact cell in-process with the
    coherence dock ON and asserts the live result still equals the committed
    first three ids. Skips cleanly (never fails) when the env var is unset or the
    engine is down.
@@ -383,13 +383,13 @@ def test_ranked_item_from_dict_parses_effective_score() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# LAYER 2 - live dock parity (slow, env-gated, needs :8893)
+# LAYER 2 - live dock parity (slow, env-gated, needs :8860)
 # --------------------------------------------------------------------------- #
 def _require_live_engine() -> None:
-    """Skip - never fail - when the DS engine is not answering on :8893."""
+    """Skip - never fail - when the DS engine is not answering on :8860."""
     if not dsc.is_engine_up(timeout=2.0):
         pytest.skip(
-            "DS engine on 127.0.0.1:8893 is not responding - the live parity "
+            "DS engine on 127.0.0.1:8860 is not responding - the live parity "
             "layer needs it up and settled; a missing engine is a skip, not a "
             "failure"
         )
@@ -422,7 +422,7 @@ def _generator_cell_kwargs(comp_class: str, mode_key: str) -> dict:
 @pytest.mark.skipif(
     not _LIVE_PARITY,
     reason="RC_BUILD_ORDER_LIVE_PARITY not set - the live dock-parity layer "
-           "needs the DS engine on :8893 and is too slow for per-commit CI",
+           "needs the DS engine on :8860 and is too slow for per-commit CI",
 )
 @pytest.mark.parametrize("comp_class", gen.ENEMY_COMP_CLASSES)
 @pytest.mark.parametrize("champion", _FLIPPED_CRIT_ADCS)
@@ -472,7 +472,7 @@ def test_live_dock_parity_slot_one(
 @pytest.mark.skipif(
     not _LIVE_PARITY,
     reason="RC_BUILD_ORDER_LIVE_PARITY not set - the live dock-parity layer "
-           "needs the DS engine on :8893 and is too slow for per-commit CI",
+           "needs the DS engine on :8860 and is too slow for per-commit CI",
 )
 @pytest.mark.parametrize("comp_class", gen.ENEMY_COMP_CLASSES)
 @pytest.mark.parametrize("champion", _FLIPPED_CRIT_ADCS)

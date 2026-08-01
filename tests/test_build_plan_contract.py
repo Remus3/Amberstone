@@ -8,7 +8,7 @@ panel. This file pins:
      enum (owned | next | swap | partial | future).
   2. The route COMPOSES the ds-preview ``ranked`` + build-order ``order`` +
      module output - proven by injecting a fake seed at the HTTP boundary
-     (the route's ``_seed_fn_factory`` is monkeypatched so no live :8893 / no
+     (the route's ``_seed_fn_factory`` is monkeypatched so no live :8860 / no
      live game is needed) and asserting owned ids land as ``owned`` while
      ranked/order ids flow into the planned tail.
   3. Fail-soft: a blank champion -> ok=false; a seedless boundary -> ok=true

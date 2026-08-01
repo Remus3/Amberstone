@@ -32,7 +32,7 @@ which is asserted here as a measured coincidence rather than assumed by
 construction.
 
 Offline only - reads the on-disk patch directory via ``DataSnapshot.load()``.
-No live ``:8893``, no network.
+No live ``:8860``, no network.
 """
 from __future__ import annotations
 

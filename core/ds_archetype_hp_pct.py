@@ -1,7 +1,7 @@
 """Archetype-aware DEFAULT for the ``target_current_hp_pct`` seam (R55).
 
 Pure leaf module - ZERO imports so it can be imported from
-``core.daemon_slayer_client`` (the :8893 HTTP boundary) WITHOUT importing the
+``core.daemon_slayer_client`` (the :8860 HTTP boundary) WITHOUT importing the
 ``agents.daemon_slayer`` engine package in-process. That import is structurally
 forbidden by the split-brain guard (tests/test_ds_preview_e2e_p1l21.py
 TestNoEngineSplitBrain): the client must reach the engine only over HTTP, never

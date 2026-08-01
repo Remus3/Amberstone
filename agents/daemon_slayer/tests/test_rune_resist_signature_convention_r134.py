@@ -41,7 +41,7 @@ champion ``resist_grants`` and the item ``item_resist_grants`` receive". Guard 2
 asserts exactly that same-values clause, so applying the proposed change turns this
 test RED instead of silently over-crediting the tank cohort the feed exists for.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

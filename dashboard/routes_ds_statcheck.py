@@ -6,7 +6,7 @@ resolved CHAMPION stat block (AD / attack speed / crit / AP / HP / armor / MR
 from the build) plus the engine DPS number computed against that what-if target.
 This is the in-process sibling of ``routes_ds_knobs`` / ``routes_ds_sweep`` /
 ``routes_ds_combo``: it READS the existing engine math (no ENGINE_VERSION bump,
-no DS :8893 restart) and serves on the same :8888 dashboard.
+no DS :8860 restart) and serves on the same :8888 dashboard.
 
 It wraps ``agents.daemon_slayer.dps.compute_dps`` for the champ's current build
 (the item list passed by the panel; itemless if none) at the operator-set target

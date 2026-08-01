@@ -25,7 +25,7 @@ The guard: each row's expected magnitude is parsed from THAT id's own
 "base nominal" copy structurally impossible to land silently - the mirror's own
 tooltip is the oracle, so copying the base value fails the moment the two
 differ. Offline only (``DataSnapshot.load()`` reads the on-disk patch
-directory); no live ``:8893``, no network.
+directory); no live ``:8860``, no network.
 
 Scope note: only the resist MAGNITUDE is corrected. The Arena Force of Nature
 mirror is a DIFFERENT passive shape (Absorb / Dissipate, max 10 stacks,

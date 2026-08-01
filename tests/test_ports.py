@@ -91,20 +91,19 @@ class BlockReservationTests(unittest.TestCase):
         ):
             self.assertEqual(ports.block_for(port), "rc", f"port {port} left the RC block")
 
-    def test_ds_ports_are_knowingly_still_in_the_rc_block(self):
-        """The DS block is RESERVED, not yet occupied.
+    def test_ds_ports_live_in_the_ds_block(self):
+        """Flipped 2026-08-01 (RM-129) when the migration actually landed.
 
-        This asserts the migration's CURRENT state rather than its target, so
-        the suite stays honest about where the ports really are. When the move
-        happens, this test flips to expect "ds" and the docstring in
-        core/ports.py loses its MIGRATION note in the same commit.
+        Until then this asserted "rc" on purpose, so the suite stayed honest
+        about where the ports really were rather than about where they were
+        going. It is kept pointing at CURRENT state for the same reason: if
+        anything drags DS back inside the RC block, this fails loudly.
         """
-        self.assertEqual(ports.block_for(ports.DS_ENGINE), "rc")
-        self.assertEqual(ports.block_for(ports.DS_MATCH_DB_MCP), "rc")
+        self.assertEqual(ports.block_for(ports.DS_ENGINE), "ds")
+        self.assertEqual(ports.block_for(ports.DS_MATCH_DB_MCP), "ds")
         self.assertTrue(
-            set(ports.DS_BLOCK).isdisjoint(ports.ALL),
-            "the reserved DS block is occupied - if the migration happened, "
-            "update this test and the MIGRATION note together",
+            set(ports.RC_BLOCK).isdisjoint({ports.DS_ENGINE, ports.DS_MATCH_DB_MCP}),
+            "a DS port is back inside the RC block - RM-129 moved them out",
         )
 
     def test_live_client_is_not_claimed_by_any_block(self):
@@ -134,9 +133,17 @@ class NextFreeTests(unittest.TestCase):
         self.assertNotIn(got, ports.ALL)
         self.assertEqual(got, min(set(ports.RC_BLOCK) - ports.ALL))
 
-    def test_next_free_ds_block_is_wide_open(self):
-        """The DS block is reserved and unoccupied, so its floor is free."""
-        self.assertEqual(ports.next_free("ds"), min(ports.DS_BLOCK))
+    def test_next_free_ds_skips_the_two_migrated_ports(self):
+        """Post-RM-129 the DS block floor is taken, so the answer moves up.
+
+        Asserted against the allocation rather than the literal 8862: if a
+        third DS service is added, this keeps telling the truth instead of
+        pinning a number that quietly went stale.
+        """
+        got = ports.next_free("ds")
+        self.assertIn(got, ports.DS_BLOCK)
+        self.assertNotIn(got, ports.ALL)
+        self.assertEqual(got, min(set(ports.DS_BLOCK) - ports.ALL))
 
     def test_sibling_blocks_refuse_to_answer_without_their_allocations(self):
         """RC does not know what LW and RM have allocated and must not guess.

@@ -58,7 +58,7 @@ vision server on the side: screen capture -> OCR -> AI vision only on a miss
 |---|---|
 | :8888 | Web dashboard (HTTPS) |
 | :8889 | Vision server |
-| :8893 | Daemon Slayer build engine |
+| :8860 | Daemon Slayer build engine |
 | :2999 | Riot Live Client API (the game client's own feed) |
 
 ---

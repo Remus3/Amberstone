@@ -55,7 +55,7 @@ thing does NOT transfer:** the charter's authorization 1 granted blanket frozen-
 
 **1e. Live state, text-first, never a doc recollection** (R2 - never screenshot to read a number, a version or a state): `curl -k
 https://127.0.0.1:8888/api/state` and `/api/health/all` (mkcert self-signed, `-k` mandatory); Read `ops/runtime/health.json` (verified keys: `pid`, `alive`,
-`last_reload_ok`, `last_reload_error`, `booting`, `updated_at`); `curl -s http://127.0.0.1:8893/health` for Daemon Slayer (HTTP, not HTTPS). Note the HEAD sha
+`last_reload_ok`, `last_reload_error`, `booting`, `updated_at`); `curl -s http://127.0.0.1:8860/health` for Daemon Slayer (HTTP, not HTTPS). Note the HEAD sha
 you started from and confirm `gh run list --limit 6` is green - you cannot tell your own regression from an inherited red one if you never looked.
 
 ### 2. Lane 8 is DEPTH. Lane 7 is BREADTH. Do not collide.
@@ -167,7 +167,7 @@ production if the ledger records one.
 
 - **Scheduled tasks: there are 24 `RC-*` tasks** (measured), and `docs/OPERATIONS.md` carries the full list. If your file is launched by one, verify the task's
   real definition - interpreter path, working directory, account - and read no meaning into `Last Result: 0`. A launcher that declines a taken port exits 0
-  having done nothing (`reference_schtasks_end_run_race_ds_8893`). **The only honest check is probing the thing itself.**
+  having done nothing (`reference_schtasks_end_run_race_ds_8860`). **The only honest check is probing the thing itself.**
 - **Supervisors:** there are two, and one previously ran stale code for hours. Compare the running process START TIME against the file mtime - a process older
   than the code it claims to run is executing something else (`project_loop_controller_stale_code`).
 - **Listeners:** confirm the port is bound by the process you think it is (`Get-NetTCPConnection -LocalPort <n> -State Listen`), and bound to loopback unless
@@ -196,7 +196,7 @@ the suite. A test written after the fix proves the fix ran, not that the bug exi
 5. **Harden.** Every weakness is closed in the SAME slice or filed as an explicit FUTURE row with an id. A deferred finding that is not written down did not
    happen.
 6. **Tier the verification** (R5-R7). Tier-0 cosmetic (doc, comment, string, non-runtime constant): Edit plus `py_compile`. Tier-1 local logic in one module:
-   `py_compile` plus that module's tests. Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite plus the DS `:8893` restart plus the
+   `py_compile` plus that module's tests. Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite plus the DS `:8860` restart plus the
    Share mirror. **A lane-8 rewrite of a `core/` or `dashboard/` module is usually Tier-1 with a Tier-2 tail if it changes a shape any other module reads.** Say
    which tier you paid.
 7. **Verifier gate.** An independent read-only `verifier` subagent (`.claude/agents/verifier.md`, no Edit or Write) re-runs the suite fresh, confirms every

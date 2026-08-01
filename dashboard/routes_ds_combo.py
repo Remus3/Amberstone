@@ -78,7 +78,7 @@ Don't-redo:
     delay model without a recast-window policy.
   * combo.py is a READ-ONLY COMPOSE over compute_burst_damage + the
     cast/cooldown JSON. Do NOT bump ENGINE_VERSION for this route (no
-    scoring math moved) and do NOT restart DS :8893 (the engine server
+    scoring math moved) and do NOT restart DS :8860 (the engine server
     does not consume this module; the route imports combo in-process on
     the :8888 dashboard, same as routes_cooldown_watch imports
     cooldown_watch).

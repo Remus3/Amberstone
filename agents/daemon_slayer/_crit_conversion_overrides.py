@@ -27,7 +27,7 @@ champion, Ashe included, is byte-identical to the pre-seam engine. The live
 default-ON flip stays validation-gated (do-not-flip-blind), same posture as the
 sibling ``apply_melee_aa_gate`` / ``assume_passive_as_stacks`` seams; the shipped
 build tables are additionally unreachable today because ``rank.py`` has no
-crit-conversion parameter and the table generator drives ``:8893``.
+crit-conversion parameter and the table generator drives ``:8860``.
 
 WHY AN EXPLICIT DICT, not a parsed rule: the DDragon innate prose that carries
 the numbers ("(75% + 40%) critical strike chance") is free text that is rewritten

@@ -39,9 +39,9 @@ BOTH:
 
 Usage:
   python tools/ds_onhit_ap_prefilter.py                # scan only, print candidates
-  python tools/ds_onhit_ap_prefilter.py --calibrate     # + probe live :8893/rank-onhit
+  python tools/ds_onhit_ap_prefilter.py --calibrate     # + probe live :8860/rank-onhit
 
---calibrate requires the DS engine running at http://127.0.0.1:8893 (plain
+--calibrate requires the DS engine running at http://127.0.0.1:8860 (plain
 HTTP). Uses stdlib urllib only - no requests/curl dependency.
 """
 from __future__ import annotations
@@ -60,7 +60,7 @@ from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.onhit_dps import _onhit_ap_axis
 from core.archetype_picks import _AP_ASSASSIN_IDS
 
-DS_URL = "http://127.0.0.1:8893"
+DS_URL = "http://127.0.0.1:8860"
 
 # Calibration target context - lifted VERBATIM from the already-green,
 # already-committed Task 5 regression

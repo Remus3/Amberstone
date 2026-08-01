@@ -31,7 +31,7 @@ every assertion is on a computed quantity or a structural invariant):
 The adapter below is the in-process equivalent of
 ``core.daemon_slayer_client.rank_for_primary_archetype`` - same routing
 table, same response envelope - so the planner is exercised against the
-genuine engine math with no live :8893 server.
+genuine engine math with no live :8860 server.
 """
 from __future__ import annotations
 

@@ -742,7 +742,7 @@ form, from this folder:
 cd src
 set PYTHONPATH=.                       # Windows;  export PYTHONPATH=. on POSIX
 python -m pytest agents/daemon_slayer/tests -q
-python tools/start_daemon_slayer.py    # serves the engine on http://127.0.0.1:8893
+python tools/start_daemon_slayer.py    # serves the engine on http://127.0.0.1:8860
 ```
 
 Inline source comments reference the engine's internal incremental-development

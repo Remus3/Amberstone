@@ -16,7 +16,7 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
   priority, or the explicit "continue ds" target). Live DS truth, never the ledger:
   - `agents/daemon_slayer/__init__.py` ENGINE_VERSION (authoritative; NOT pyproject)
   - `data/daemon_slayer/current.txt` (patch)
-  - `curl -sk http://127.0.0.1:8893/health` (engine_version / patch / champions / items)
+  - `curl -sk http://127.0.0.1:8860/health` (engine_version / patch / champions / items)
 - State the batch scope + assumptions explicitly before editing.
 
 ## 1. Implement
@@ -56,15 +56,15 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
   `feat(daemon-slayer): <batch> (ENGINE x.y.z -> x.(y+1).0)`.
 - `git push origin main`. Confirm the pre-commit hook reports py_compile OK.
 
-## 5. Verify live (:8893 is NOT supervisor-watched)
+## 5. Verify live (:8860 is NOT supervisor-watched)
 
 - The DS server runs under the `RC-DaemonSlayer` scheduled task
-  (`pythonw.exe tools/start_daemon_slayer.py`, :8893). It does not honor
+  (`pythonw.exe tools/start_daemon_slayer.py`, :8860). It does not honor
   restart_trigger.txt and the supervisor does not bounce it.
 - Restart it: `schtasks /End /TN RC-DaemonSlayer` then
-  `schtasks /Run /TN RC-DaemonSlayer` (hard fallback: `taskkill /F /PID <:8893 pid>`
+  `schtasks /Run /TN RC-DaemonSlayer` (hard fallback: `taskkill /F /PID <:8860 pid>`
   then `schtasks /Run /TN RC-DaemonSlayer`). Never `Stop-Process`.
-- Verify `curl -sk http://127.0.0.1:8893/health` reports the new engine_version
+- Verify `curl -sk http://127.0.0.1:8860/health` reports the new engine_version
   and a known champion's DPS/EHP is unchanged where it should be.
 - If RC itself was touched: `echo restart > restart_trigger.txt`, then confirm
   `ops/runtime/health.json` shows a new pid, `alive=true`, `last_reload_ok=true`.

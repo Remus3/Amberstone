@@ -4,7 +4,7 @@ schema->pure-data cadence; NO vocab change (s227's "don't over-expand"
 lesson - both new entries reuse the existing ``target_no_setup`` term).
 
 1 NEW key (a real correctness fix, NOT a no-op) + 1 CONVERSION (provable
-Part-1 no-op). Verified per-rank vs Meraki 16.10.1 + live A/B :8893.
+Part-1 no-op). Verified per-rank vs Meraki 16.10.1 + live A/B :8860.
 
   * Fiddlesticks Q "Terrify" = {"default": [2, 3], "target_no_setup":
         [0, 1]} - the FIRST registry conditional whose branches are

@@ -5,7 +5,7 @@ VERDICT: REFUTED. Master Yi stays on ``ds.hybrid`` (the bruiser route), and so
 does every on-hit-flavoured sibling swept alongside him. These tests PIN that
 adjudication so the next roster sweep does not re-litigate it.
 
-MEASURED at ENGINE 1.245.0 / patch 16.14.1 against live ``:8893``, comparing
+MEASURED at ENGINE 1.245.0 / patch 16.14.1 against live ``:8860``, comparing
 ``/rank-bruiser`` against ``/rank-onhit`` for each champion's OWN real build
 (``data/meta_build/sr_champion_builds.json``, aggregator-A-sourced 2026-05-02):
 

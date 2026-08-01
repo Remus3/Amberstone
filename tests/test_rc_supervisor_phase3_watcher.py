@@ -329,7 +329,7 @@ class StaleCodeDetectionTests(unittest.TestCase):
 
     def test_daemon_slayer_edit_does_not_trigger_stale_code(self) -> None:
         # agents/daemon_slayer is the standalone DS engine (its own
-        # process on :8893); it is excluded from the Phase 3 watch so
+        # process on :8860); it is excluded from the Phase 3 watch so
         # the active DS work cadence does not bounce the supervisor.
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

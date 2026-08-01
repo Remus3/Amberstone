@@ -65,8 +65,8 @@ already have and proves it with derived tests before a line of impl exists.
   Confirm the pre-commit reports py_compile OK.
 - Verify live: `RC-DaemonSlayer` task is NOT supervisor-watched - restart it
   (`schtasks /End /TN RC-DaemonSlayer` then `/Run`; hard fallback
-  `taskkill /F /PID <:8893 pid>` then `/Run`; never `Stop-Process`) and
-  confirm `curl -sk http://127.0.0.1:8893/health` serves the new
+  `taskkill /F /PID <:8860 pid>` then `/Run`; never `Stop-Process`) and
+  confirm `curl -sk http://127.0.0.1:8860/health` serves the new
   engine_version. If RC core changed: `echo restart > restart_trigger.txt`
   then verify `ops/runtime/health.json` (new pid, alive, last_reload_ok).
 - Sync living docs on the ENGINE bump (CLAUDE.md / docs/DAEMON_SLAYER.md /

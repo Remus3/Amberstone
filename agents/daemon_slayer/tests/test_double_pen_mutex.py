@@ -17,7 +17,7 @@ to double-count because the ITEM_EFFECTS entries had an empty
 plan_build_order does NO dedup of its own - it delegates to the engine via
 ``filter_shared_uniques=True``. This test drives it through an in-process
 adapter that mirrors ``rank_for_primary_archetype`` (same routing + envelope)
-so the genuine engine math is exercised with no live :8893 server. The pen
+so the genuine engine math is exercised with no live :8860 server. The pen
 only matters at resist>0, so both cases pass a non-zero enemy resist.
 """
 from __future__ import annotations

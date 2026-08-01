@@ -1,4 +1,4 @@
-"""Boot launcher for the Daemon Slayer engine on :8893.
+"""Boot launcher for the Daemon Slayer engine on :8860.
 
 Wrapper around ``agents.daemon_slayer.cli serve`` that pins ``cwd`` to the
 project root before importing - scheduled tasks invoke us with whatever
@@ -78,11 +78,11 @@ if __name__ == "__main__":
     # exit 0 so the scheduled task doesn't record a failure.
     s = socket.socket()
     try:
-        s.bind(("127.0.0.1", 8893))
+        s.bind(("127.0.0.1", 8860))
         s.close()
     except OSError:
         s.close()
-        _log_startup("port 8893 already bound - skipping (exit 0)")
+        _log_startup("port 8860 already bound - skipping (exit 0)")
         sys.exit(0)
 
     _log_startup("starting serve_forever()")

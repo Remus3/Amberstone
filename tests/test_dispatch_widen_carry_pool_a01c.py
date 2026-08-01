@@ -11,7 +11,7 @@ on. These tests pin the dispatcher half of the seam:
   2. opt-in: ``widen_carry_pool=True`` forwards the key verbatim,
   3. the flag composes with the neighbouring carry seams.
 
-The engine call is mocked - these never touch the live DS :8893 server.
+The engine call is mocked - these never touch the live DS :8860 server.
 """
 
 from __future__ import annotations

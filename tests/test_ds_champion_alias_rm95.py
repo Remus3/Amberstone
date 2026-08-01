@@ -19,7 +19,7 @@ returns - see memory reference_liveclient_name_vs_ddragon_id) therefore got
 False/stale for those three even though the data was present.
 
 MEASURED IMPACT - this does NOT change any ranking. rank(Wukong) and
-rank(MonkeyKing) at :8893 are byte-identical across the whole response body. The
+rank(MonkeyKing) at :8860 are byte-identical across the whole response body. The
 real defect is STALENESS MASKING: ``champion_ability_data_is_current`` returns
 ``not _champ_stale_index.get(key, False)``, so an unresolved key returns the
 default False and the champion is certified CURRENT - a champion with drifted

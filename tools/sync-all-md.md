@@ -29,7 +29,7 @@ Read these authoritative sources and write the values down. Every doc must match
 | Fact | Canonical source (read at runtime - never trust a doc) |
 |---|---|
 | League / DDragon patch | `data/daemon_slayer/current.txt` (single line, e.g. `16.10.1`) |
-| `ENGINE_VERSION` | the `ENGINE_VERSION = "x.y.z"` assignment in `agents/daemon_slayer/__init__.py`; cross-check `curl -k https://127.0.0.1:8893/health` (`engine_version` field) if DS is up |
+| `ENGINE_VERSION` | the `ENGINE_VERSION = "x.y.z"` assignment in `agents/daemon_slayer/__init__.py`; cross-check `curl -k https://127.0.0.1:8860/health` (`engine_version` field) if DS is up |
 | DS test count | `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest agents/daemon_slayer/ -q --co 2>$null` > count collected; **collect, don't trust the doc** |
 | Wider RC test count | `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/ -q --co 2>$null` > count collected |
 | Purchasable item count | DS `/health` `item_count`, else the `effects.py` registry length (historically 547) |
@@ -37,7 +37,7 @@ Read these authoritative sources and write the values down. Every doc must match
 | Match-history rows | `rewind_history.db` row count (sqlite) - memory historically cites ~2,8xx |
 | Latest session + commits | `git -C "C:/Riot Commander" log --oneline -15` + the top block of `WAKEUP_NOTES.md` + the highest-numbered item in `docs/LEDGER.md` |
 
-Produce a **Canonical Facts table** in your working notes. This is the contract for section 3-section 5. If DS `:8893` is down, derive `ENGINE_VERSION`/items from source files and note "DS offline - values from source, not /health" in the report.
+Produce a **Canonical Facts table** in your working notes. This is the contract for section 3-section 5. If DS `:8860` is down, derive `ENGINE_VERSION`/items from source files and note "DS offline - values from source, not /health" in the report.
 
 ### 2. Inventory the .md ecosystem
 

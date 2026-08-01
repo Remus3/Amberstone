@@ -39,7 +39,7 @@ buff list, when that surfaces) replaces the curve without re-authoring the math.
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: ``assume_passive_health_stacks`` defaults
 False; with it OFF ``passive_health_stack_hp`` returns 0.0 and every EHP numerator
-is unchanged. No live :8893 default scorer flips it on; it is opt-in everywhere
+is unchanged. No live :8860 default scorer flips it on; it is opt-in everywhere
 (mirrors ``apply_passive_revive`` / ``assume_passive_flat_mitigation``). The live
 default-ON flip is EXCLUDED (no live stack feed) -> ``docs/LIVE_GAME_GATED_SYNC.md``.
 

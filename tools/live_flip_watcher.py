@@ -12,7 +12,7 @@ compact verdict file. It NEVER flips a seam (charter 4b do-not-flip-blind); it o
 tells the operator which seams to authorize after the game.
 
 Read-only: polls the dashboard + reads baked reports + credit tables. No engine
-call, no :8893 restart, no env change.
+call, no :8860 restart, no env change.
 
 Run (background):   python tools/live_flip_watcher.py
 Abort:              drop ops/audit/ds_perm_swarm/report/WATCHER_STOP  (or Ctrl-C)

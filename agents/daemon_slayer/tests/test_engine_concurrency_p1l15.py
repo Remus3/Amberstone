@@ -1,6 +1,6 @@
 """P1-L15 audit hardening: engine + server CONCURRENCY and state isolation.
 
-Lane scope: the DS engine is consumed by 4 mode coaches AND the :8893
+Lane scope: the DS engine is consumed by 4 mode coaches AND the :8860
 HTTP server, potentially concurrently (coach ticks + dashboard
 /api/ds-preview + direct server requests). The ThreadingHTTPServer hands
 the SAME shared ``DataSnapshot`` (and the same module-level effect /
@@ -409,7 +409,7 @@ class ConcurrencyDeterminismTests(unittest.TestCase):
 class InProcessServerConcurrencyTests(unittest.TestCase):
     """Sub-area 3 (server): drive the real ThreadingHTTPServer request
     handler concurrently. In-process, ephemeral port - never touches the
-    live :8893 server."""
+    live :8860 server."""
 
     @classmethod
     def setUpClass(cls) -> None:

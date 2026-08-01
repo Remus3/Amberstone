@@ -842,7 +842,7 @@ def compute_antitank_live(
     ``compute_antitank(champion, mode=mode)``; a naked / zero-AP-AD build is too.
     This is the live-input producer the section-B anti-tank P3.2 row in
     docs/LIVE_GAME_GATED_SYNC.md asks for - additive (no engine-math change, no
-    :8893 restart); the live default-ON wire (a survivability scorer calling this
+    :8860 restart); the live default-ON wire (a survivability scorer calling this
     with the live build) + the eyeball check stay operator-gated. Fail-soft: a
     build-resolution error falls back to the static score. ASCII only.
     """

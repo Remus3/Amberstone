@@ -2,7 +2,7 @@
 
 NO live engine: ``plan_build_order`` is monkeypatched to a deterministic fake
 so the schema / enemy-class mapping / atomic-write / filter / dry-run
-behavior is exercised without :8893.
+behavior is exercised without :8860.
 """
 from __future__ import annotations
 

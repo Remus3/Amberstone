@@ -1,7 +1,7 @@
 """Phase 3 - local HTTP server for the Daemon Slayer engine.
 
 Wraps `stats`, `dps`, `rank` (and snapshot metadata) in plain-HTTP routes
-on `:8893`. Stdlib ``ThreadingHTTPServer`` to match the rest of RC; no
+on `:8860`. Stdlib ``ThreadingHTTPServer`` to match the rest of RC; no
 FastAPI/aiohttp dependency. Snapshot is loaded once at startup and held
 in memory - patch hot-reload lands in Phase 7 alongside the supervisor
 entry.
@@ -95,7 +95,7 @@ from .rank import SORT_KEYS, rank_items
 _log = logging.getLogger("daemon_slayer.server")
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8893
+DEFAULT_PORT = 8860
 
 _INDEX_HTML = """<!doctype html>
 <meta charset=utf-8>
@@ -535,14 +535,14 @@ def _route_rank(body: dict) -> dict:
     # no lookup and no arithmetic and is byte-identical to omitting the key.
     # Until this landed the lever was Python-API-only, and
     # tools/daemon_slayer_build_orders_generate.py drives the shipped build
-    # tables through :8893 - so no kit-conversion fix could reach an artifact.
+    # tables through :8860 - so no kit-conversion fix could reach an artifact.
     kit_conversion_strength = _opt_float(body, "kit_conversion_strength", 0.0)
     # A-12 / RM-46 crit conversion (Ashe Frost Shot: ad * (1 + 1.15c), and
     # Infinity Edge's bonus crit damage REPLACED rather than added, because her
     # passive states critical strikes deal no additional damage). Registry is
     # _crit_conversion_overrides.py, gate at dps.py:890. Route-exposed for the
     # same reason as kit_conversion_strength above: the shipped build tables are
-    # generated through :8893, so a Python-API-only seam cannot reach them.
+    # generated through :8860, so a Python-API-only seam cannot reach them.
     apply_crit_conversion = _opt_bool(body, "apply_crit_conversion", False)
     try:
         result = rank_items(
@@ -1237,7 +1237,7 @@ def _route_rank_bruiser(body: dict) -> dict:
     # branch, which is auto-attack-only by design (dps.py:34) for 92 of 173
     # champions. Routed here so the mandatory cohort-wide golden diff (ON vs
     # OFF across every AD-axis champion) is measurable over HTTP; without the
-    # surface the ON path is unreachable from :8893. Default body =
+    # surface the ON path is unreachable from :8860. Default body =
     # byte-identical.
     apply_ad_axis_ability_damage = _opt_bool(
         body, "apply_ad_axis_ability_damage", False

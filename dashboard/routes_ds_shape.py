@@ -5,7 +5,7 @@ Read-only, pure. Threads the ALREADY-SHIPPED primitive
 ``core.shaper.apply_shaper`` over a per-champion baseline emphasis triple
 (damage / survivability / utility) to show how the three operator knobs
 re-weight the mix. NO engine math, NO ENGINE_VERSION bump, NO DS engine
-:8893 call, NO DataSnapshot - just the shaper transform on a weight dict.
+:8860 call, NO DataSnapshot - just the shaper transform on a weight dict.
 
 The BASELINE triple comes from the REAL per-champion archetype table
 ``agents/daemon_slayer/archetype_weights.json`` (the same alpha/beta pairs
