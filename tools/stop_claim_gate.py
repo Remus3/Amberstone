@@ -52,6 +52,27 @@ EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
 EV_VACUOUS = re.compile(r"no tests ran|collected 0 items", re.I)
 
 EDIT_TOOLS = {"edit", "write", "multiedit", "notebookedit"}
+
+# Everything below exists because the ARMED gate's first real session produced 9
+# findings and 9 false positives (LEDGER 1154). Every one was the gate reading a
+# DESCRIPTION of a thing as the thing itself: a bypass flag named inside a
+# heredoc that was writing documentation, the phrase "no tests ran" appearing in
+# prose, and a claim quoted as an example. Stripping quotation before matching is
+# the fix; matching inside it is the bug.
+_HEREDOC = re.compile(r"<<-?\s*'?(\w+)'?.*?^\1\s*$", re.S | re.M)
+_QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"", re.S)
+_FENCED = re.compile(r"```.*?```", re.S)
+_INLINE_CODE = re.compile(r"`[^`]*`")
+
+
+def strip_command_noise(command):
+    """A command's heredoc body and quoted literals are DATA, not the command."""
+    return _QUOTED.sub(" ", _HEREDOC.sub(" ", command))
+
+
+def strip_prose_noise(text):
+    """Fenced blocks, inline code and quoted spans are quotation, not assertion."""
+    return _QUOTED.sub(" ", _INLINE_CODE.sub(" ", _FENCED.sub(" ", text)))
 # Split on sentence boundaries only, never on the dot inside `core/ports.py` -
 # a naive [.;\n] split severs every filename and silently kills check 3.
 _SENTENCE = re.compile(r"(?<=[.;!?])\s+|\n")
@@ -78,8 +99,15 @@ def _result_text(block):
 
 
 def collect_evidence(rows):
-    """Split a transcript into the assistant's claims and the session's evidence."""
-    ev = {"texts": [], "bash": [], "edited": [], "results": []}
+    """Split a transcript into the assistant's claims and the session's evidence.
+
+    Test runs are PAIRED with the result that followed them. A count or a
+    "no tests ran" marker floating anywhere in the session is not an observation
+    of a suite run - reading it as one is what poisoned every claim in the first
+    armed session.
+    """
+    ev = {"texts": [], "bash": [], "edited": [], "runs": []}
+    pending = None
     for row in rows:
         role = row.get("type")
         for block in _blocks(row):
@@ -91,14 +119,20 @@ def collect_evidence(rows):
             elif kind == "tool_use":
                 name = str(block.get("name", "")).lower()
                 data = block.get("input") or {}
-                if name == "bash" or name == "powershell":
-                    ev["bash"].append(str(data.get("command", "")))
+                if name in ("bash", "powershell"):
+                    command = str(data.get("command", ""))
+                    ev["bash"].append(command)
+                    if EV_PYTEST.search(strip_command_noise(command)):
+                        pending = {"cmd": command, "output": ""}
+                        ev["runs"].append(pending)
                 if name in EDIT_TOOLS:
                     target = data.get("file_path") or data.get("path") or ""
                     if target:
                         ev["edited"].append(str(target))
             elif kind == "tool_result":
-                ev["results"].append(_result_text(block))
+                if pending is not None:
+                    pending["output"] = _result_text(block)
+                    pending = None
     return ev
 
 
@@ -127,23 +161,25 @@ def audit(ev):
         findings.append({"check": check, "quote": quote[:300],
                          "claimed": str(claimed), "observed": str(observed)})
 
-    bash = ev["bash"]
-    pytest_cmds = [c for c in bash if EV_PYTEST.search(c)]
-    ran_pytest = bool(pytest_cmds)
-    filtered_only = ran_pytest and all(EV_FILTERED.search(c) for c in pytest_cmds)
-    observed_counts = {m for text in ev["results"] for m in EV_PASSED.findall(text)}
-    observed_counts = {c.replace(",", "") for c in observed_counts}
-    vacuous = any(EV_VACUOUS.search(text) for text in ev["results"])
+    bash = [strip_command_noise(c) for c in ev["bash"]]
+    runs = ev["runs"]
+    ran_pytest = bool(runs)
+    filtered_only = ran_pytest and all(EV_FILTERED.search(r["cmd"]) for r in runs)
+    observed_counts = {m.replace(",", "") for r in runs
+                       for m in EV_PASSED.findall(r["output"])}
+    # Vacuous only if EVERY run was vacuous. One real green run answers the claim.
+    vacuous = ran_pytest and all(EV_VACUOUS.search(r["output"]) for r in runs)
     did_commit = any(EV_COMMIT.search(c) for c in bash)
     did_push = any(EV_PUSH.search(c) for c in bash)
     probed_ci = any(EV_CI.search(c) for c in bash)
 
-    # 5 - evidence-only check, needs no claim to fire.
+    # 5 - evidence-only check. Requires an actual git invocation: a bypass flag
+    # NAMED in prose or a heredoc body is documentation, not a bypass.
     for command in bash:
-        if EV_BYPASS.search(command):
+        if EV_BYPASS.search(command) and re.search(r"\bgit\b", command):
             flag("hook_bypass", command, observed=command)
 
-    for sentence in _sentences(ev["texts"]):
+    for sentence in _sentences(strip_prose_noise(t) for t in ev["texts"]):
         claims_pass = bool(CLAIM_TESTS_PASS.search(sentence))
         if claims_pass and not ran_pytest:
             flag("tests_pass_without_run", sentence)                       # 1
@@ -151,7 +187,7 @@ def audit(ev):
             flag("vacuous_run", sentence, observed="no tests ran")         # 8
         if claims_pass and CLAIM_FULL_SUITE.search(sentence) and filtered_only:
             flag("full_suite_claim_over_filtered_run", sentence,           # 7
-                 observed="; ".join(pytest_cmds))
+                 observed="; ".join(r["cmd"] for r in runs))
         for count in CLAIM_COUNT.findall(sentence):
             bare = count.replace(",", "")
             if observed_counts and bare not in observed_counts:
