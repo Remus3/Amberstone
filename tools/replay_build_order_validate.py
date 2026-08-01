@@ -60,7 +60,6 @@ Output
 Fail-soft: a malformed match / participant / cell never aborts the run - it is
 skipped and counted. ASCII-only by hard rule.
 
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 """
 
 from __future__ import annotations
