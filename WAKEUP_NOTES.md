@@ -6,6 +6,35 @@
 
 ---
 
+# 2026-08-01b - RM-127 link-ingest Phases 2+3, and the hook hard rule was WRONG
+
+3 commits `997157f1`, `ba4ff0fe`, `e47ce29a`, all pushed. Tier-0 throughout. DS untouched.
+
+**Shipped**
+- **RM-127 Phases 2 AND 3 both done.** `Desktop/Second-Pass.md` + `Desktop/Third-Pass.md`,
+  24 KB each. Threshold **cull below 5**, INFERRED from the operator-label cross-tab (at 5+
+  they kept 50/51, at 4- culled 83/93). 146 -> 60 survive -> **6 LIFT, 26 concept, 28 DROP**.
+- **`997157f1` corrected a CLAUDE.md HARD RULE against measurement.** Hooks DO fire under
+  headless `bypassPermissions` on CLI 2.1.220 - SessionStart, PreToolUse, PostToolUse AND Stop.
+- `e47ce29a` filed **RM-135**: no backup of irreplaceable single-copy data.
+
+**Do NOT redo**
+- Do NOT re-run Phase 1 or Phase 2 triage, and do NOT trust "119 rows / no 8-10" - First-Pass
+  holds **146 rows topping out at 9**. ROADMAP + LEDGER 1108 both carried the stale count.
+- Do NOT re-measure the hook rule; it is measured and corrected in CLAUDE.md + the memory.
+- Do NOT re-derive Phase 2/3 detail into ROADMAP - it lives in LEDGER 1145 on purpose. ROADMAP
+  breached its doc budget this session (91%, was 89%) and was trimmed back to 89% / guard clean.
+
+**Open / next**
+- **Phase 4 is GATED on operator notes on `Desktop/Third-Pass.md`** - same gate that held
+  Phase 1 for two days. Read Third-Pass section 7 (six named traps) before starting it.
+- **BURIED OPERATOR GO:** ADDENDUM A in First-Pass ends `after review - build and implement` -
+  the only note of 155 authorizing a build, covering 6 dashboard concepts. SEPARATE Tier-2 row.
+- CCR-124/136/139 unverified-at-source (reddit 403s every default path).
+- Session file hit 25 MB - `/clear` was overdue.
+
+---
+
 # 2026-08-01 - Gemini decommissioned, tri-project headless contract, N=3 round closed
 
 6 commits `15ddff90..8450dd2b`, all pushed. RC-side only; DS untouched (no Share sync).
@@ -94,51 +123,3 @@ the worktree. Full detail in LEDGER 1142.
 Lanes have well-formed work waiting: RM-131 (lane 6/7, the drift probe), RM-130 + RM-132
 (lane 7 ASCII / token hygiene), RM-133 (lane 4 Arena chip), RM-134 (lane 8 MC error scrub),
 plus still-open RM-128 (lane 6/7) and the DS RM-118 4 wireable seams (lane 6).
-
----
-
-# 2026-07-31f - LANE-RESEARCH REFILL (headless lane 5): 2 stale strikes, id-registry fix, cdragon catalog torn down.
-
-## Start here next session
-
-**A RESEARCH LANE IS RUNNING RIGHT NOW - it is real work, not a test artifact.** Its run_id is
-the unhelpful string `probe` because the merger session fired it BY ACCIDENT while trying to
-read the lane lock: `fire_lane` is the only lock-state call exposed, and it does not merely
-read - it reclaims a stale lock and launches. It was left running deliberately (the standing
-operator directive is to keep a lane running) rather than killed. Treat its output exactly like
-this entry's: merge `lane/research` when it lands, never merge from the worktree. Probe with
-`curl -s --ssl-no-revoke https://legion-rc:8895/api/loop-status` (NEVER `-k`). **Do NOT call
-`fire_lane` just to read lane state** - that is exactly what caused this.
-
-This was a REFILL pass on `lane/research` (Mission Control lane 5), docs-only, no live game.
-MERGED to main 2026-08-01 by the merger session (the 2026-07-31e entry below, which fired
-this lane and then wrapped). Tier-0 docs; no engine, no Share, no restart. Detail in LEDGER 1141.
-The lane exited code=0 at 23:58 after a ~15 min run; the RECLAIMABLE lock seen the next morning
-was the 05:57 reboot clearing pid 14692, NOT a crash - the work was committed and pushed first.
-
-## What shipped (all docs)
-
-- **RM-128 filed** (cdragon `queues.json` grounds the hand-maintained `core/queue_modes.py:28`
-  map + a drift guard; ITEM-87 SAFE - `core/game_snapshot.py` detects by gameMode-STRING, never
-  queueId). Acceptance: a test asserting every `QUEUE_ID_TO_MODE_KEY` id still exists in a fresh
-  `queues.json` with a consistent `gameSelectModeGroup`. Lane 6 or 7, Tier-1.
-- cdragon `lol-game-data` 7-file teardown filed in `BACKLOG.md` (F2/F3 trigger-gated, F4/F5
-  deferred, F6/F7 REJECT-recorded). License cleared (Riot data, no copyleft).
-- Struck the STALE DDragon 16.15.1 patch-refresh row (shipped 2026-07-30, item-1130 / `9df58480`;
-  live `/health` = 16.15.1, worktree clean).
-- Fixed the `docs/DS_SWEEP_TRACKER.md` "next free" pointer: was RM-119 (stale), now RM-129.
-- Decided the `tft/` U+2192 ASCII row: 24 arrows, all display-only, STRIP-SAFE, acceptance-bearing.
-
-## Do NOT redo
-
-- Do NOT re-run the DDragon 16.15.1 patch refresh - it is DONE (item-1130). If you see fake
-  ddragon suite failures, that is a NEW dirty MAIN tree per `reference_dirty_ddragon_tree_fakes_49_failures`,
-  not this row.
-- Competitor-lift research is RETIRED/drained 4x (ROADMAP RM-01) - the cdragon teardown was Riot
-  DATA, not a competitor; do not treat it as re-opening that lane.
-- Before taking a new RM id, run the grep recipe in `DS_SWEEP_TRACKER.md` - do NOT trust ROADMAP prose.
-
-## Next
-
-Lanes have well-formed work waiting: RM-128 (lane 6/7), the tft-arrow strip (lane 7), the six
-stale-process restart-owner gaps (`BACKLOG.md`, lane 7), the DS RM-118 4 wireable seams (lane 6).

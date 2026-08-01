@@ -65,6 +65,17 @@ it is. Two traps, both hit on 2026-07-28:
   ("first version by X", a per-file "BY @Y" header) has multiple copyright
   holders, so its current maintainer cannot unilaterally relicense it.
   Operator clearance from ONE party is not clearance for the work.
+- **A LICENSE file can name NOBODY.** Measured 2026-08-01 (RM-127 Phase 3): one
+  reviewed repo ships an MIT `LICENSE` that is an unrendered template, reading
+  literally `Copyright (c) {{ year }} {{ organization }}`. It is a grant with no
+  grantor. This is not the contradiction case above - both files "agree on MIT"
+  and a grep for the SPDX id passes. **Read the copyright LINE, not just the
+  license name.** Same pass found a truncated MIT (warranty clause cut, which is
+  why the host reported NOASSERTION), a manifest with its license declaration
+  COMMENTED OUT while `LICENSE` looked clean, and a repo with a valid MIT whose
+  `NOTICE` named three adapted upstreams - clean license, still not vendor-safe.
+  **Also note BUSL-1.1**: source-available, not copyleft, DO-NOT-VENDOR anyway,
+  though its Additional Use Grant may permit running it internally.
 
 GPL/copyleft stays DO-NOT-VENDOR regardless of verbal clearance - vendoring it
 would relicense RC itself. The always-legal path is the one RC already uses:
