@@ -119,7 +119,17 @@ _WEB = _REPO_ROOT / "web"
 # entry, and the S10 transitional arm_confirm.js import all removed) and
 # web/js/main.js (the renderLoopStatus call and its import name removed) -
 # which is the slice's whole web file set and nothing else.
-_LIVE_HALF_DIGEST = "638fdf4ca359f46471df21c240569f85ad47f0955739d79d473888dfcbf018b9"
+# RE-CAPTURED 2026-08-01 (second-vendor decommission), superseding the S10 Task 9
+# capture above. Ordinary case: a LIVE web edit, no tokeniser change, no file
+# added or removed. Exactly ONE of the web/ sources differs in its live half -
+# web/mc/mc.js, whose budget line stopped rendering the retired vendor's spend
+# and ceiling (`b.gemini_usd` / `b.gemini_ceiling`) and now renders
+# `b.adjudicator_usd` with no ceiling at all. The ceiling is deliberately absent
+# rather than zeroed: it railed a metered vendor that no longer exists, so
+# printing "/ $200" would state a limit that is not enforced anywhere. The
+# sibling render site (dashboard/routes_loop_monitor.py) changed in the same
+# commit but is Python, not web/, so it is outside this digest by construction.
+_LIVE_HALF_DIGEST = "e465fc1a229a42c856bccbf976c4026b8c3cccb5ad32f57cea57667839a62fe4"
 
 
 def _web_sources() -> list[Path]:

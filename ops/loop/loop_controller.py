@@ -1,13 +1,25 @@
 #!/usr/bin/env python
-"""gemini-headless-upgrade loop controller (the BRAIN).
+"""Headless upgrade-loop controller (the BRAIN).
 
 Headless. Never touches the GUI. Drives the cycle:
-  gemini-director -> directive.md + gemini.ready -> (AHK types) -> claude.done
-  -> meter budget -> gemini-auditor -> clean:advance | regress:FIX-first -> repeat
+  director -> directive.md + gemini.ready -> (bridge types) -> claude.done
+  -> meter -> auditor -> clean:advance | regress:FIX-first -> repeat
 
-IPC = files in control_dir, atomic (tmp + os.replace), plain-text where AHK reads.
-Both gemini and claude are stateless per cycle; continuity lives on disk
-(git history + docs/LEDGER.md + the directive chain). See the Desktop BUILD LOG.
+The `gemini.ready` handshake file KEEPS its name after the vendor removal, and
+that is deliberate rather than an oversight. It is polled by the legacy AHK GUI
+bridge, which the operator held back from deletion as the rollback channel;
+renaming the file in one of the two places is how a rollback silently stops
+working. It is now just a filename - nothing behind it is Gemini.
+
+The director and the auditor are read-only adjudicator calls; the executor is
+the only writer. All three are Claude since 2026-08-01 - the loop
+self-adjudicates and the read-only guarantee is `--permission-mode plan`, not a
+different vendor. See ops/loop/adjudicator.py and
+docs/CONCURRENT_HEADLESS_CONTRACT.md section 9.
+
+IPC = files in control_dir, atomic (tmp + os.replace), plain-text where the
+bridge reads. Every stage is stateless per cycle; continuity lives on disk
+(git history + docs/LEDGER.md + the directive chain).
 """
 import hashlib
 import importlib.util
@@ -96,13 +108,13 @@ ROOT = _cfg_path("repo_root", _HERE.parents[1])
 CTL = _cfg_path("control_dir", _HERE / "control")
 CTL.mkdir(parents=True, exist_ok=True)
 DRY = bool(CFG.get("dry_run", False))
-GEMINI_USD = 0.0  # cumulative estimated Gemini spend - THIS is the capped budget (not Claude)
+ADJ_USD = 0.0  # cumulative ESTIMATED adjudicator spend - a workload signal, NOT a cap
 RUN_ID = ""  # minted in main(); namespaces slot payloads across concurrent runs
-# Adjudicator (external-brain) run state: which backend is live, whether the
-# one-way exhaustion failover already fired, and per-backend estimated spend.
-# Caller-owned so gemini() can rebuild the supervisor from the CURRENT module
-# globals every call without resetting the sticky decision or the spend.
-_ADJ_STATE = {"active": "", "failed_over": False, "usd": {}}
+# Adjudicator (external-brain) run state: the live backend name and its
+# estimated spend. Caller-owned so adjudicate() can rebuild the wrapper from the
+# CURRENT module globals every call without resetting the accumulated spend.
+# `failed_over` was dropped with the vendor failover on 2026-08-01.
+_ADJ_STATE = {"active": "", "usd": {}}
 
 def log(m):
     line = f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {m}"
@@ -134,11 +146,11 @@ def consume_directive_override(ctl=None):
 
 def cycle_source(cfg, override):
     """Pure: which directive source feeds this cycle. Precedence:
-    operator override > cycle_command > fixed_directive > gemini director.
+    operator override > cycle_command > fixed_directive > director.
 
     cycle_command (e.g. a self-directing slash command like /RC2-Continue) is
-    typed VERBATIM after /clear and SKIPS the gemini director - the command
-    self-directs from its own living plan - but KEEPS the gemini auditor each
+    typed VERBATIM after /clear and SKIPS the director - the command
+    self-directs from its own living plan - but KEEPS the auditor each
     cycle. fixed_directive skips BOTH director and auditor. Default-absent both
     => 'director' (byte-identical to the historical loop)."""
     if override:
@@ -230,7 +242,7 @@ def _audit_floor(new_sha):
     return floor
 
 def audit_range(clean_sha, new_sha):
-    """base..new_sha the gemini auditor scores each cycle (R61).
+    """base..new_sha the auditor scores each cycle (R61).
 
     ROOT CAUSE (false-positive REGRESS recursion): the old window was the single
     cycle's commits (prev_sha..new_sha). A /done docs-sync commit that lands in
@@ -280,7 +292,7 @@ def head_lines(rel, n, root=None):
 def cap_bytes(text, limit, label):
     # 2026-07-01 NO_WORK-starvation fix: the director prompt went out at 572KB
     # (ORCHESTRATION_PLAN grew a 289KB findings log; modern LEDGER items are
-    # multi-KB single lines, so head-60 was 93KB) and gemini completed with an
+    # multi-KB single lines, so head-60 was 93KB) and the adjudicator completed with an
     # EMPTY body -> misread as NO_WORK -> STOP with 5 OPEN queue rows. Doc
     # growth must never starve the director again: keep the HEAD (queue tables
     # / newest entries live at the top of both docs) and stamp a visible cut.
@@ -289,11 +301,12 @@ def cap_bytes(text, limit, label):
     return text[:limit] + f"\n...[{label} truncated at {limit} bytes - full text in the repo file]"
 
 # Hard byte budgets for the unbounded director-context components.
-# 2026-07-02 re-tighten: gemini CLI silently returns EMPTY stdout above
+# 2026-07-02 re-tighten (gemini-era, kept as the rail's provenance): that CLI
+# silently returned EMPTY stdout above
 # ~80KB stdin (80KB delivered fine, 160KB empty, no stderr error - measured
 # live; the 01:56 outage killed cycles 9-100 of the prior run). The 2026-07-01
 # caps (140K plan alone) still allowed a >160KB total, so every component cap
-# now fits the WHOLE prompt inside GEMINI_STDIN_CAP with headroom.
+# now fits the WHOLE prompt inside ADJ_STDIN_CAP with headroom.
 # 2026-07-03 re-tighten AGAIN: the threshold DRIFTS - a 79,911-byte director
 # payload (cap_stdin-trimmed to the old 80,000 ceiling) returned silent EMPTY
 # every try (both pro + flash), burning cycles 10-32 directive-less; the SAME
@@ -314,13 +327,13 @@ ROADMAP_CTX_CAP = 8_000
 # had already closed and recorded. The plan therefore keeps a head slice - the
 # doc's own framing and the curated pick-these-first list live at the top - AND
 # a tail slice. The split is a REALLOCATION inside the unchanged 24,000: the
-# gemini empty-stdout ceiling is why this budget exists, so raising it to buy
+# The empty-stdout ceiling is why this budget exists, so raising it to buy
 # the tail would trade one starvation mode for the other.
 PLAN_CTX_HEAD = 8_000
 
 # 2026-07-27 digest-starvation fix. Every cap above bounds one COMPONENT, and
 # nothing bounded their SUM plus the prompt template plus the operator brief.
-# Measured live: a 63,192-byte body against GEMINI_STDIN_CAP 60,000, so
+# Measured live: a 63,192-byte body against ADJ_STDIN_CAP 60,000, so
 # cap_stdin's blind 60/40 middle cut fired on EVERY cycle - and the bytes it
 # discarded were exactly the ALREADY-COMPLETED DIGEST header and the whole
 # RECENT COMMITS block, i.e. the literal refutation of the duplicate directive
@@ -329,7 +342,7 @@ PLAN_CTX_HEAD = 8_000
 # degrades gracefully, while the digest is the de-dup EVIDENCE and degrades
 # into the exact failure this loop keeps hitting. The floor sits above
 # PLAN_CTX_HEAD so repayment can never silently delete the plan's TAIL, where
-# the newest queue rows live. Raising GEMINI_STDIN_CAP is not the alternative:
+# the newest queue rows live. Raising ADJ_STDIN_CAP is not the alternative:
 # a 79,911-byte payload returns silent EMPTY from the CLI (measured).
 PLAN_CTX_MIN = 12_000
 # Repay slightly more than the overflow: the rebuilt context is re-measured by
@@ -401,21 +414,33 @@ def ledger_digest(text, per_item, limit, label):
 # 0x61) spent every byte on mirror padding, so the auditor never saw the true
 # source and called a complete, CI-green commit a regression. A complete file
 # manifest is worth far more per byte than deeper diff context, so the body
-# yields 15K to guarantee the manifest always fits under GEMINI_STDIN_CAP.
+# yields 15K to guarantee the manifest always fits under ADJ_STDIN_CAP.
 AUDIT_DIFF_CAP = 40_000
 AUDIT_MANIFEST_CAP = 12_000
 
-# Proven-safe gemini stdin ceiling (see above). cap_stdin() backstops EVERY
-# gemini() call (director / auditor / stall) at this size.
-GEMINI_STDIN_CAP = 60_000
+# The prompt-size backstop. cap_stdin() applies it to EVERY adjudicate() call
+# (director / auditor / stall).
+#
+# HONEST PROVENANCE, because the number outlived its evidence. 60,000 was
+# MEASURED against the gemini CLI, which silently returned empty stdout above
+# roughly that size - see the 2026-07-02 notes above. That vendor is gone as of
+# 2026-08-01 and NO equivalent limit has been measured for the claude CLI, so
+# this is no longer a proven-safe ceiling; it is an unproven-but-conservative
+# rail retained deliberately. Removing a size guard because its original
+# justification lapsed would be trading a known-safe behaviour for an unmeasured
+# one, and an oversized prompt fails in the worst way here (a silent empty
+# answer reads as NO_WORK). Re-measure against the current CLI before raising
+# it, and do not raise it merely to fit more context - the callers above already
+# budget their sections against this constant.
+ADJ_STDIN_CAP = 60_000
 
 def cap_stdin(body, limit=None):
     """Backstop: keep the HEAD (prompt template + instructions) and the TAIL
     (directive_suffix / escalation / final rules); cut the expendable middle."""
-    lim = GEMINI_STDIN_CAP if limit is None else limit
+    lim = ADJ_STDIN_CAP if limit is None else limit
     if len(body) <= lim:
         return body
-    marker = "\n...[STDIN CAP: middle truncated to fit the gemini CLI stdin limit - head + tail preserved]...\n"
+    marker = "\n...[STDIN CAP: middle truncated to fit the adjudicator stdin cap - head + tail preserved]...\n"
     keep = lim - len(marker)
     head = int(keep * 0.6)
     return body[:head] + marker + body[len(body) - (keep - head):]
@@ -502,45 +527,40 @@ def _format_directive_chain(recs):
                    f"-> {r.get('sha_after', '')} [{r.get('verdict', '')}]")
     return "\n".join(out)
 
-# ---- external brain (backends + failover live in ops/loop/adjudicator.py) ----
+# ---- external brain (the adjudicator lives in ops/loop/adjudicator.py) ----
 def _supervisor():
-    """The failover supervisor, built from the CURRENT module globals.
+    """The adjudicator wrapper, built from the CURRENT module globals.
 
     Rebuilt per call because CFG / CTL / log / awrite are module-scope and are
     swapped by the loop test-suite and by an operator hot-editing config.json;
-    _ADJ_STATE carries the sticky failover decision and the accumulated
-    per-backend spend across every rebuild.
+    _ADJ_STATE carries the accumulated spend across every rebuild.
     """
-    return adjudicator.FailoverAdjudicator(CFG, CTL, log, awrite, state=_ADJ_STATE)
+    return adjudicator.Adjudicator(CFG, CTL, log, awrite, state=_ADJ_STATE)
 
-def gemini(prompt_body, instruction):
-    """The loop's single external-brain call site, routed to the resolved
-    adjudicator backend (gemini today; claude after a config flip or after the
-    automatic credit-exhaustion failover fires).
+def adjudicate(prompt_body, instruction):
+    """The loop's single external-brain call site (director + auditor).
 
-    Kept under the historical name because director()/auditor() call it and it is
-    the monkeypatch seam every existing loop test binds to. All vendor mechanics -
-    the PowerShell invocation, the retry ladder, the UTF-16 stderr decode and the
-    None-on-empty sentinel - now live in the backend classes; N3 semantics are
-    unchanged: EMPTY output is NEVER a usable answer, so a completed-but-empty
+    N3 semantics: EMPTY output is NEVER a usable answer, so a completed-but-empty
     call returns None exactly like a timeout does.
 
-    Serialized machine-wide on GEMINI_MUTEX: Gemini is ONE metered account shared
-    with the Sibling-A loop. Two concurrent director calls burn quota in
-    parallel and can trip RESOURCE_EXHAUSTED, which the failover logic would
-    misread as real credit exhaustion and STICKILY swap the backend for the rest
-    of the run. Director calls are seconds, so the serialization costs nothing.
+    NO MUTEX. This call used to be serialized machine-wide on GEMINI_MUTEX
+    because Gemini was ONE metered account shared with the sibling loop, and two
+    concurrent director calls could trip RESOURCE_EXHAUSTED that the failover
+    logic would misread as real credit exhaustion. With one unmetered vendor
+    there is no quota to burn in parallel and nothing to misread, so serializing
+    here would only make two sibling loops wait on each other for no benefit.
+    Total concurrent executor calls are still governed - by ops/loop/slots.py,
+    which is the right layer for it.
     """
-    with winmutex.hold(winmutex.GEMINI_MUTEX, log=log):
-        return _gemini_call(prompt_body, instruction)
+    return _adjudicate_call(prompt_body, instruction)
 
 
-def _gemini_call(prompt_body, instruction):
-    global GEMINI_USD
+def _adjudicate_call(prompt_body, instruction):
+    global ADJ_USD
     sup = _supervisor()
     out = sup.ask(cap_stdin(prompt_body), instruction)
     sup.save_state(_ADJ_STATE)
-    GEMINI_USD = _ADJ_STATE["usd"].get(adjudicator.GeminiAdjudicator.name, 0.0)
+    ADJ_USD = sup.total_usd()
     return out
 
 # ---- adjudicator roles -------------------------------------------------
@@ -627,7 +647,7 @@ def build_director_body(last_done, last_audit, *, root=None, ctl=None):
     escalation = pop_executor_escalation(ctl)
     ctx = build_director_context(last_done, last_audit, root=root, ctl=ctl,
                                  escalation=escalation)
-    overflow = len(tmpl) + len(ctx) - GEMINI_STDIN_CAP
+    overflow = len(tmpl) + len(ctx) - ADJ_STDIN_CAP
     if overflow > 0:
         plan_cap = max(PLAN_CTX_CAP - overflow - PLAN_CTX_SLACK, PLAN_CTX_MIN)
         ctx = build_director_context(last_done, last_audit, root=root, ctl=ctl,
@@ -636,7 +656,7 @@ def build_director_body(last_done, last_audit, *, root=None, ctl=None):
 
 
 def director(last_done, last_audit):
-    return gemini(build_director_body(last_done, last_audit),
+    return adjudicate(build_director_body(last_done, last_audit),
                   "Output ONLY the directive markdown for the next cycle. No preamble.")
 
 def auditor(prev_sha, new_sha, clean_sha=None):
@@ -659,7 +679,7 @@ def auditor(prev_sha, new_sha, clean_sha=None):
     body = (f"{tmpl}\n\n=== RANGE {rng} ===\n{git('log','--oneline',rng)}"
             f"\n\n=== FILES CHANGED ({len(names)} total; complete + authoritative) ===\n{manifest}"
             f"\n\n=== DIFF (may be truncated; see manifest above for the full file list) ===\n{diff}")
-    verdict = gemini(body, "Audit. First line MUST be 'VERDICT: CLEAN' or 'VERDICT: REGRESS', then the reason.")
+    verdict = adjudicate(body, "Audit. First line MUST be 'VERDICT: CLEAN' or 'VERDICT: REGRESS', then the reason.")
     if verdict is None:
         # N3: the adjudicator errored (timeout / CLI) - an un-auditable cycle is NOT a
         # regression. Return a safe CLEAN so the controller's string ops never hit the
@@ -799,7 +819,7 @@ def stall_recovery_directive(cycle):
 # prompt assembler and NONE took effect. Controller pid 18300 started 00:37:50;
 # 6c3851d0 / ff439e14 / d048f96f landed 05:03 / 05:24 / 05:34. Python imports a
 # module ONCE, so the running image predated all three, and the live stdin at
-# 05:45 (control/_gemini_in.txt) still carried the pre-fix ledger section while
+# 05:45 (the control-dir prompt file) still carried the pre-fix ledger section while
 # the identical call measured off disk carried the fixed one. The director then
 # re-emitted a unit closed at 05319608 for the second time - so the loop spent
 # three cycles repairing the de-dup evidence of a process that would never load
@@ -873,7 +893,7 @@ def resume_cycle(ctl=None, default=1) -> int:
 
 
 def seed_spend_from_budget(ctl=None, state=None):
-    """Restore gemini spend accounting after a self-restart.
+    """Restore adjudicator spend accounting after a self-restart.
 
     _ADJ_STATE lives in memory, so EVERY restart path already forgets spend.
     That was tolerable while a human typed the relaunch; it is not once the
@@ -966,7 +986,7 @@ def main():
         (CTL / f).unlink(missing_ok=True)
     # A self-restart for new code resumes where it left off: starting over at 1
     # would let a code edit reset the cycle budget, and max_cycles is the real
-    # limiter of this loop (the gemini ceiling is cents). Spend is restored for
+    # limiter of this loop - there is no spend ceiling. Spend is restored for
     # the same reason - see seed_spend_from_budget.
     start_cycle = resume_cycle()
     if start_cycle > 1:
@@ -986,7 +1006,7 @@ def main():
     last_clean_sha = prev_sha  # R61: auditor diff base = last known-good sha (loop start is clean)
     last_done, last_audit = {}, ""
     same_sha_streak = 0
-    log(f"loop start dry_run={DRY} ceiling={CFG['ceiling_usd']} head={prev_sha[:8]}")
+    log(f"loop start dry_run={DRY} max_cycles={CFG.get('max_cycles')} head={prev_sha[:8]}")
 
     # core.hooksPath is LOCAL config and is not cloned, so a fresh clone runs with
     # NO commit gate while the tracked .githooks sits there looking installed. An
@@ -1001,7 +1021,7 @@ def main():
         wait_gone=wait_gone, rjson=rjson, stall_action=stall_action,
         stall_recovery_directive=stall_recovery_directive)
 
-    FIXED = CFG.get("fixed_directive")  # fixed-message mode: skip gemini director+auditor entirely
+    FIXED = CFG.get("fixed_directive")  # fixed-message mode: skip director+auditor entirely
     CYCLE_CMD = CFG.get("cycle_command")  # self-directing slash command typed verbatim; director SKIPPED, auditor KEPT
     for cycle in range(start_cycle, CFG["max_cycles"] + 1):
         # STOP is otherwise only polled inside wait_for/wait_gone, which never
@@ -1050,11 +1070,9 @@ def main():
         log(f"cycle {cycle}: claude.done sha={new_sha[:8]} tests={done.get('tests_pass')} regress={done.get('regressions')}")
 
         claude_info = meter(start_ts)  # informational only - NO cap on Claude (operator directive)
-        brain = _ADJ_STATE.get("active") or adjudicator.backend_name(CFG)
+        brain = _ADJ_STATE.get("active") or adjudicator.ClaudeAdjudicator.name
         brain_usd = sum(float(v or 0.0) for v in (_ADJ_STATE.get("usd") or {}).values())
-        # gemini_usd stays for backward compatibility (dashboards + prior runs read it).
-        budget_rec = {"gemini_usd": round(GEMINI_USD, 4), "gemini_ceiling": CFG["ceiling_usd"],
-                      "adjudicator": brain, "adjudicator_usd": round(brain_usd, 4),
+        budget_rec = {"adjudicator": brain, "adjudicator_usd": round(brain_usd, 4),
                       "claude_usd_info": claude_info, "cycle": cycle}
         # The sdk channel returns an authoritative per-cycle receipt (the CLI's own
         # total_cost_usd). Recorded ONLY when the channel actually produced one, so
@@ -1066,23 +1084,24 @@ def main():
         if rec.cost_usd:
             budget_rec["executor_usd"] = round(rec.cost_usd, 4)
         awrite(CTL / "budget.json", json.dumps(budget_rec))
-        # ceiling_usd is a runaway rail on the METERED vendor. claude adjudicator
-        # spend is EXCLUDED unless claude_adjudicator.count_against_ceiling is
-        # true, because operator policy is that Claude spend is uncapped - a swap
-        # to the local adjudicator must not inherit the $200 gemini rail and then
-        # silently stop an otherwise-free run.
-        capped_usd = adjudicator.ceiling_spend(CFG, _ADJ_STATE.get("usd"))
-        log(f"cycle {cycle}: adjudicator={brain} capped=${round(capped_usd, 4)}/{CFG['ceiling_usd']} "
-            f"total=${round(brain_usd, 4)} claude_info(uncapped)=${claude_info}")
-        if capped_usd >= CFG["ceiling_usd"]:
-            stop(f"adjudicator budget ceiling hit: ${round(capped_usd, 4)} >= ${CFG['ceiling_usd']}")
+        # NO SPEND CEILING, and removing it was REQUIRED rather than tidy.
+        # ceiling_usd was a runaway rail on the METERED vendor, and the claude
+        # adjudicator was explicitly EXCLUDED from it because operator policy is
+        # that Claude spend is uncapped. Once gemini went away on 2026-08-01 the
+        # only spend left in _ADJ_STATE was claude's - so leaving the check in
+        # place would have inverted it into a $200 cap on exactly the vendor
+        # policy says must never be capped, and stopped a long run partway on a
+        # notional subscription price that is not money billed.
+        # max_cycles and cycle_deadline_sec are this loop's real limiters.
+        log(f"cycle {cycle}: adjudicator={brain} est=${round(brain_usd, 4)} "
+            f"executor_info=${claude_info} (both estimates, uncapped)")
 
         if not CFG.get("ignore_no_progress"):
             same_sha_streak = same_sha_streak + 1 if new_sha == prev_sha else 0
             if same_sha_streak >= 2:
                 stop("no progress: same sha 2 cycles")
 
-        verdict = "VERDICT: CLEAN\n(fixed-directive mode: gemini auditor disabled)" if src == "fixed" else auditor(prev_sha, new_sha, last_clean_sha)
+        verdict = "VERDICT: CLEAN\n(fixed-directive mode: auditor disabled)" if src == "fixed" else auditor(prev_sha, new_sha, last_clean_sha)
         if done.get("regressions"):
             verdict = ("VERDICT: REGRESS\nClaude self-reported it could NOT reach green this "
                        "cycle (regressions flag). Fix this before any new work.\n\n" + verdict)
