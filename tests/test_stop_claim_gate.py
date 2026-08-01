@@ -53,7 +53,8 @@ def _run_gate(tmp_path, rows):
         "stop_hook_active": False,
     })
     proc = subprocess.run(
-        [sys.executable, str(GATE), "--report", str(report)],
+        [sys.executable, str(GATE), "--report", str(report),
+         "--history", str(tmp_path / "history.jsonl")],
         input=payload, capture_output=True, text=True, cwd=str(ROOT), check=False)
     assert proc.returncode == 0, f"report-only mode must exit 0: {proc.stderr}"
     return json.loads(report.read_text(encoding="utf-8"))
@@ -181,7 +182,8 @@ def test_missing_transcript_is_soft_failure(tmp_path):
     payload = json.dumps({"session_id": "s", "transcript_path": str(tmp_path / "nope.jsonl"),
                           "hook_event_name": "Stop"})
     out = tmp_path / "r.json"
-    proc = subprocess.run([sys.executable, str(GATE), "--report", str(out)],
+    proc = subprocess.run([sys.executable, str(GATE), "--report", str(out),
+                           "--history", str(tmp_path / "history.jsonl")],
                           input=payload, capture_output=True, text=True,
                           cwd=str(ROOT), check=False)
     assert proc.returncode == 0
@@ -245,13 +247,17 @@ def test_counts_come_only_from_a_paired_pytest_run(tmp_path):
 
 def test_the_real_transcript_that_produced_nine_false_positives_is_clean(tmp_path):
     """Regression anchor: the actual 2026-08-01 session, replayed."""
+    # The fixture is TRACKED, so a checkout always has it and skipping on its
+    # absence is an always-passing guard - the exact class
+    # test_skip_condition_hygiene bans. If it goes missing, that is the
+    # regression anchor being deleted, and it must FAIL loudly.
     fixture = Path(__file__).parent / "fixtures" / "stop_claim_gate_false_positives.jsonl"
-    if not fixture.exists():
-        pytest.skip("captured transcript fixture not present")
+    assert fixture.exists(), f"tracked regression anchor is missing: {fixture}"
     out = tmp_path / "r.json"
     payload = json.dumps({"session_id": "replay", "transcript_path": str(fixture),
                           "hook_event_name": "Stop", "stop_hook_active": False})
-    proc = subprocess.run([sys.executable, str(GATE), "--report", str(out)],
+    proc = subprocess.run([sys.executable, str(GATE), "--report", str(out),
+                           "--history", str(tmp_path / "history.jsonl")],
                           input=payload, capture_output=True, text=True,
                           cwd=str(ROOT), check=False)
     assert proc.returncode == 0
@@ -268,7 +274,8 @@ def _run_armed(tmp_path, rows, stop_hook_active=False):
     report = tmp_path / "report.json"
     payload = json.dumps({"session_id": "armed", "transcript_path": str(transcript),
                           "hook_event_name": "Stop", "stop_hook_active": stop_hook_active})
-    proc = subprocess.run([sys.executable, str(GATE), "--arm", "--report", str(report)],
+    proc = subprocess.run([sys.executable, str(GATE), "--arm", "--report", str(report),
+                           "--history", str(tmp_path / "history.jsonl")],
                           input=payload, capture_output=True, text=True,
                           cwd=str(ROOT), check=False)
     return proc, json.loads(report.read_text(encoding="utf-8"))
@@ -297,3 +304,98 @@ def test_armed_never_blocks_twice_on_re_entry(tmp_path):
     assert report["findings"], "it still reports - it just stops blocking"
     assert report["blocked"] is False
     assert report["reason"] == "stop_hook_active"
+
+
+# ------------------------------------------------------- rolling history
+# The report is overwritten on every Stop, so it can only ever say "the LAST
+# session was clean". The arm/disarm call needs "quiet ACROSS sessions", which
+# is an n greater than 1 - and n=1 is exactly what the first arm decision had.
+
+def _run_with_history(tmp_path, rows, history, extra=(), armed=False, name="s"):
+    transcript = _write_transcript(tmp_path, rows)
+    payload = json.dumps({"session_id": name, "transcript_path": str(transcript),
+                          "hook_event_name": "Stop", "stop_hook_active": False})
+    cmd = [sys.executable, str(GATE), "--report", str(tmp_path / f"{name}.json"),
+           "--history", str(history), *extra]
+    if armed:
+        cmd.insert(2, "--arm")
+    return subprocess.run(cmd, input=payload, capture_output=True, text=True,
+                          cwd=str(ROOT), check=False)
+
+
+def _history(path):
+    return [json.loads(ln) for ln in path.read_text(encoding="utf-8").splitlines() if ln]
+
+
+def test_history_appends_one_line_per_run(tmp_path):
+    hist = tmp_path / "h.jsonl"
+    for i in range(3):
+        _run_with_history(tmp_path, [_assistant(_text("Read the file."))], hist, name=f"s{i}")
+    rows = _history(hist)
+    assert len(rows) == 3
+    assert [r["session_id"] for r in rows] == ["s0", "s1", "s2"]
+
+
+def test_history_records_a_clean_session_too(tmp_path):
+    """A quiet run MUST leave a line. Logging only findings cannot prove quiet."""
+    hist = tmp_path / "h.jsonl"
+    _run_with_history(tmp_path, [_assistant(_text("Read the file, no changes."))], hist)
+    row, = _history(hist)
+    assert row["findings"] == 0
+    assert row["checks"] == []
+    assert row["blocked"] is False
+
+
+def test_history_line_carries_the_decision_fields(tmp_path):
+    hist = tmp_path / "h.jsonl"
+    proc = _run_with_history(tmp_path, [_assistant(_text("The full suite passes."))],
+                             hist, armed=True, name="armed")
+    assert proc.returncode == 2
+    row, = _history(hist)
+    assert row["armed"] is True and row["mode"] == "armed"
+    assert row["blocked"] is True
+    assert row["findings"] == 1
+    assert row["checks"] == ["tests_pass_without_run"]
+    assert row["ts"].startswith("20") and row["ts"].endswith("+00:00")
+
+
+def test_history_records_the_soft_failure_path(tmp_path):
+    """transcript-unreadable is signal, not silence - a run that audited nothing."""
+    hist = tmp_path / "h.jsonl"
+    payload = json.dumps({"session_id": "bad", "hook_event_name": "Stop",
+                          "transcript_path": str(tmp_path / "nope.jsonl")})
+    proc = subprocess.run([sys.executable, str(GATE), "--report", str(tmp_path / "r.json"),
+                           "--history", str(hist)],
+                          input=payload, capture_output=True, text=True,
+                          cwd=str(ROOT), check=False)
+    assert proc.returncode == 0
+    row, = _history(hist)
+    assert row["reason"] == "transcript-unreadable"
+
+
+def test_history_rolls_to_the_cap_keeping_the_newest(tmp_path):
+    hist = tmp_path / "h.jsonl"
+    for i in range(6):
+        _run_with_history(tmp_path, [_assistant(_text("Read it."))], hist,
+                          extra=["--history-max", "3"], name=f"n{i}")
+    rows = _history(hist)
+    assert len(rows) == 3
+    assert [r["session_id"] for r in rows] == ["n3", "n4", "n5"]
+
+
+def test_history_failure_never_breaks_the_gate(tmp_path):
+    """Bookkeeping is not the gate. An unwritable history must not change the
+    exit code or lose the report - a Stop hook that raises is worse than one
+    that keeps no history."""
+    blocked_path = tmp_path / "adir"
+    blocked_path.mkdir()  # a directory where a file is expected
+    report = tmp_path / "r.json"
+    transcript = _write_transcript(tmp_path, [_assistant(_text("The full suite passes."))])
+    payload = json.dumps({"session_id": "x", "transcript_path": str(transcript),
+                          "hook_event_name": "Stop", "stop_hook_active": False})
+    proc = subprocess.run([sys.executable, str(GATE), "--arm", "--report", str(report),
+                           "--history", str(blocked_path)],
+                          input=payload, capture_output=True, text=True,
+                          cwd=str(ROOT), check=False)
+    assert proc.returncode == 2, "the gate still blocks even with no history"
+    assert json.loads(report.read_text(encoding="utf-8"))["findings"]
