@@ -13,6 +13,7 @@ from unittest import mock
 
 import pytest
 
+from tests._sleep_probe import record_sleeps
 from tools import ddragon_mirror_refresh as ddr
 
 
@@ -494,11 +495,14 @@ def test_http_retries_on_url_error_then_succeeds(monkeypatch):
             raise ue.URLError("timed out")
         return _FakeResp()
 
-    sleeps = []
     monkeypatch.setattr(ddr.urllib_request, "urlopen", fake_open)
-    monkeypatch.setattr(ddr.time, "sleep", lambda s: sleeps.append(s))
 
-    res = ddr._http("GET", "https://example/asset.png")
+    # record_sleeps, not a raw setattr on ddr.time: ddr.time IS the global time
+    # module, so the patch is process-wide and any other thread's sleep would
+    # land in this list. See tests/_sleep_probe.py.
+    with record_sleeps() as sleeps:
+        res = ddr._http("GET", "https://example/asset.png")
+
     assert res.status == 200
     assert res.body == b"BODY"
     assert len(calls) == 2
@@ -514,10 +518,10 @@ def test_http_gives_up_after_max_retries(monkeypatch):
         raise ue.URLError("timed out")
 
     monkeypatch.setattr(ddr.urllib_request, "urlopen", always_fail)
-    monkeypatch.setattr(ddr.time, "sleep", lambda s: None)
 
-    with pytest.raises(ue.URLError):
-        ddr._http("GET", "https://example/dead.png")
+    with record_sleeps():
+        with pytest.raises(ue.URLError):
+            ddr._http("GET", "https://example/dead.png")
     assert len(calls) == len(ddr.RETRY_BACKOFFS) + 1
 
 
@@ -538,11 +542,11 @@ def test_http_retries_on_5xx_then_succeeds(monkeypatch):
             raise ue.HTTPError(req.full_url, 503, "down", {}, None)
         return _FakeResp()
 
-    sleeps = []
     monkeypatch.setattr(ddr.urllib_request, "urlopen", flaky)
-    monkeypatch.setattr(ddr.time, "sleep", lambda s: sleeps.append(s))
 
-    res = ddr._http("GET", "https://example/asset.png")
+    with record_sleeps() as sleeps:
+        res = ddr._http("GET", "https://example/asset.png")
+
     assert res.status == 200
     assert res.body == b"OK"
     assert len(calls) == 2
@@ -558,10 +562,12 @@ def test_http_does_not_retry_on_404(monkeypatch):
         raise ue.HTTPError(req.full_url, 404, "gone", {}, None)
 
     monkeypatch.setattr(ddr.urllib_request, "urlopen", four_oh_four)
-    sleeps = []
-    monkeypatch.setattr(ddr.time, "sleep", lambda s: sleeps.append(s))
 
-    res = ddr._http("GET", "https://example/missing.png")
+    # `sleeps == []` is the most contamination-prone assertion in the file:
+    # ANY background thread sleeping during the window would break it.
+    with record_sleeps() as sleeps:
+        res = ddr._http("GET", "https://example/missing.png")
+
     assert res.status == 404
     assert len(calls) == 1
     assert sleeps == []
