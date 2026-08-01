@@ -119,6 +119,88 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-08-01a - LANE-RESEARCH REFILL (headless lane 5): 5 rows filed RM-130..RM-134, one NEW drift-guard gap.
+
+**MERGE NOTE (added by the merger, 2026-08-01):** the five rows this run filed were authored
+as RM-129..RM-133 and were RENUMBERED +1 to **RM-130..RM-134** at merge, because a DS
+port-block-migration RM-129 landed on `main` while this lane was running - the lane branched
+before it existed. Its LEDGER entry likewise moved 1142 -> **1143**. Whichever lands second
+renumbers. The ids above are already corrected; `docs/DS_SWEEP_TRACKER.md` records the shift.
+
+## Start here next session
+
+REFILL pass on `lane/research` (Mission Control lane 5), docs-only, no live game
+(`/api/state` `mode_key=client`, `liveclient` empty). Branch is READY TO MERGE (Tier-0
+docs; no engine, no Share, no restart) - leave the merge to the merger, do not merge from
+the worktree. Full detail in LEDGER 1142.
+
+## What shipped (all docs, all PROBED this run)
+
+- **RM-131 filed (NEW gap, flagship)** - 101.qq.com duo-synergy has NO drift guard while
+  ddragon / meraki / cdragon / wiki all do. `tools/upstream_drift_check.py` tracks exactly 3
+  signals and carries zero qq reference; `core/synergy_external_source.py:33` fetches the
+  Tencent endpoint and fails SILENTLY back to the frozen May-25 seed. Acceptance = a 4th
+  `probe_qq_synergy()` + `test_upstream_drift_qq_synergy_probe`. Lane 6/7, Tier-1. Companion
+  to RM-128.
+- **RM-130 / RM-132 / RM-133 / RM-134** - promoted thin BACKLOG cites to well-formed,
+  id-carrying, acceptance-bearing rows; each re-grepped live. Corrected one STALE cite
+  (RM-133 Arena chip: `_csvArenaPaneHtml` is now at `web/js/panels/champ_select.js:3512`,
+  not the filed `:931`).
+- Registered RM-130..RM-134 in `docs/DS_SWEEP_TRACKER.md`; next free is now **RM-134**.
+
+## Do NOT redo
+
+- Drift-guard coverage for ddragon / meraki / cdragon / wiki is CLOSED-COMPLETE (all
+  GUARDED with cited guards) - do NOT re-audit those four. Only 101.qq.com (RM-131) is open.
+- SGP / Match-V5 drift guard was CONSIDERED and DECLINED (live-gated reachability, no
+  hand-maintained mirror, official versioned API) - do NOT file it.
+- Competitor-lift research stays RETIRED / drained 4x - not re-opened this run.
+- Before taking a new RM id run the grep recipe in `DS_SWEEP_TRACKER.md` (next free RM-134).
+
+## Next
+
+Lanes have well-formed work waiting: RM-131 (lane 6/7, the drift probe), RM-130 + RM-132
+(lane 7 ASCII / token hygiene), RM-133 (lane 4 Arena chip), RM-134 (lane 8 MC error scrub),
+plus still-open RM-128 (lane 6/7) and the DS RM-118 4 wireable seams (lane 6).
+
+## 2026-08-01 - RM-127 CCR link-ingest phases 5-7 + the Stop claim gate (armed)
+
+Commits: `5a1bb91a` (phases 5+6), `00cc596d` (RM-136 gate), `8e1cd06e` (RM-137 subagent
+prompt), `c767c808` (RM-138 residuals), `53c42e25` (arm), `7a66bd5d` (false-positive fix).
+
+- **RM-127 CLOSED end to end.** Phases 5+6 authored (`Desktop/RC-Prep.md`,
+  `Last-01/02/03.md`), then all three Phase 7 sessions shipped the same day.
+  Narrative relocated verbatim to `docs/ROADMAP_HISTORY.md`; ROADMAP back under budget.
+- **Phase 5's headline: the 4 adoptions collapse into ONE build.** CCR-127 + CCR-143 are
+  two halves of a single Stop-hook claim gate; CCR-136 is a memory edit; CCR-146 is config.
+- **RM-136 `tools/stop_claim_gate.py`** - 9 deterministic checks over the session transcript.
+  Step 1 measured first: the Stop payload DOES carry `transcript_path` (CLI 2.1.220).
+- **RM-137** - `--append-subagent-system-prompt` wired in `ops/loop/executor.build_argv`
+  via config key `subagent_prompt`; canary re-run with the ACTUAL payload + negative control.
+- **RM-138** - CCR-139 mapping RESOLVED (not void); CCR-136 protocol facts folded into
+  `reference_reddit_capture_transport_ladder`; concept rows filed with CCR ids.
+- **The gate was ARMED by operator decision, then blocked its first real session on 9
+  findings - ALL 9 FALSE POSITIVES.** Fixed three defect classes (quotation read as
+  assertion, session-global vacuity, bypass flag named inside a heredoc). Regression anchor
+  is the real transcript; non-vacuity proven by re-poisoning it. Gate STAYS ARMED.
+
+## Do NOT redo
+
+- Do NOT re-run any CCR pass or re-score the roster. Phases 1-7 are done (LEDGER 1108,
+  1145, 1147, 1149-1154). The program artifacts live on the Desktop.
+- Do NOT "fix" the gate by loosening it - non-vacuity is asserted by a test that appends a
+  synthetic false claim to the real transcript and requires 2 findings.
+- The notes gate was WAIVED, never met. If operator notes ever land, Phase 4 re-runs.
+
+## Next
+
+Two open decisions, both operator: **CCR-123** (declared `<3.14` ceiling - leave HOLD /
+measure in a throwaway venv / pin a 3.11 external process), and whether to keep the Stop
+gate armed after living with it. Otherwise the lanes still hold RM-128 / RM-130 / RM-131 /
+RM-132 / RM-133 / RM-134, plus the DS RM-118 wireable seams.
+
+---
+
 # 2026-07-31f - LANE-RESEARCH REFILL (headless lane 5): 2 stale strikes, id-registry fix, cdragon catalog torn down.
 
 ## Start here next session
