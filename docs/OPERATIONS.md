@@ -343,6 +343,33 @@ python -m py_compile <file.py>
 
 ---
 
+## Stop-hook claim gate (RM-136)
+
+`tools/stop_claim_gate.py` audits a finished session's own claims against the
+evidence in its transcript (tests-pass claims with no test run, count mismatches,
+file-edit claims with no edit, CI-green claims with no probe, commit/push claims
+with no command, hook bypass, vacuous or filtered runs). It re-implements the
+CCR-143 taxonomy in RC's own code; nothing is vendored.
+
+- **Report-only. It always exits 0.** `--arm` exits 2 on findings and is
+  deliberately OFF: a gate that fires wrongly once gets disabled forever, so
+  arming waits until the report is observed quiet across real sessions.
+- Report: `ops/runtime/stop_claim_report.json` (atomic write, overwritten per Stop).
+- **The wire is LOCAL and gitignored** (`.claude/settings.json`, `Stop` matcher),
+  exactly like the git hooks and `.mcp.json`. **A fresh clone has NO Stop hook**
+  and nothing warns you. Re-add it with the quoted `pythonw.exe` + absolute
+  script path, double-backslashed, then assert the file still parses as JSON.
+- Measured 2026-08-01 on **CLI 2.1.220**: the Stop payload carries
+  `transcript_path`. That is the whole basis of the tool. Re-measure on upgrade;
+  hook findings are version-specific and expire.
+- Presence is not proof it fires. The end-to-end check is a headless session that
+  makes a deliberately false claim, then reading the report.
+
+```
+claude -p "Reply with exactly: The full suite passes, 9999 passed." --permission-mode bypassPermissions
+python -c "import json;print(json.load(open('ops/runtime/stop_claim_report.json'))['findings'])"
+```
+
 ## Useful file locations
 
 | Path | What it is |
