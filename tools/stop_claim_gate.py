@@ -35,7 +35,15 @@ HISTORY_MAX = 500
 CLAIM_TESTS_PASS = re.compile(
     r"\b(?:suite|tests?)\b[^.\n]{0,40}?\b(?:pass(?:es|ed|ing)?|green)\b"
     r"|\bgreen\b[^.\n]{0,20}?\b(?:suite|tests?)\b", re.I)
-CLAIM_COUNT = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
+CLAIM_COUNT = re.compile(r"(?:(\w+)\s+)?\b(\d[\d,]{0,9})\s+passed\b", re.I)
+# "Test 1 passed" names ONE case; "1397 passed" counts a suite. Same three
+# tokens, opposite meanings, and reading the first as the second flagged a
+# backed claim on 2026-08-01. A variable-width lookbehind is not available in
+# `re`, so the preceding word is captured and filtered here instead.
+CLAIM_COUNT_ORDINAL = frozenset({
+    "test", "case", "step", "phase", "mutant", "option", "slice", "agent",
+    "check", "round", "attempt", "item", "fixture", "run", "batch", "lane",
+})
 CLAIM_FILE = re.compile(
     r"\b(?:updated|edited|created|added|wrote|written|modified|fixed|patched)\b"
     r"[^.\n]{0,40}?([\w./\\-]+\.(?:py|md|js|css|json|html|ps1|txt|ya?ml))\b", re.I)
@@ -53,6 +61,15 @@ EV_CI = re.compile(r"\bgh\s+(?:run|pr|api|workflow)\b|actions/runs", re.I)
 EV_BYPASS = re.compile(r"--no-verify\b|--no-gpg-sign\b|core\.hooksPath\s*=", re.I)
 EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
 EV_VACUOUS = re.compile(r"no tests ran|collected 0 items", re.I)
+# A backgrounded run answers with a launcher handoff, not a summary. The real
+# output lands later, when the output file is read by some unrelated command.
+EV_BACKGROUND = re.compile(r"running in background with ID|Output is being written to",
+                           re.I)
+# Deliberately the TERMINAL-SUMMARY shape, not a bare "N passed". Crediting any
+# floating count is what poisoned the first armed gate; requiring the trailing
+# duration is what keeps this a widening of evidence and not of belief.
+EV_SUMMARY_LINE = re.compile(
+    r"\d[\d,]*\s+(?:passed|failed|error)\b[^\n]*?\bin\s+[\d.]+\s*s", re.I)
 
 EDIT_TOOLS = {"edit", "write", "multiedit", "notebookedit"}
 
@@ -111,6 +128,7 @@ def collect_evidence(rows):
     """
     ev = {"texts": [], "bash": [], "edited": [], "runs": []}
     pending = None
+    deferred = None
     for row in rows:
         role = row.get("type")
         for block in _blocks(row):
@@ -133,9 +151,18 @@ def collect_evidence(rows):
                     if target:
                         ev["edited"].append(str(target))
             elif kind == "tool_result":
+                text = _result_text(block)
                 if pending is not None:
-                    pending["output"] = _result_text(block)
+                    pending["output"] = text
+                    # A backgrounded run has not reported yet. Keep it open so
+                    # the summary can be attached when the output file is read.
+                    deferred = pending if EV_BACKGROUND.search(text) else deferred
                     pending = None
+                elif deferred is not None and EV_SUMMARY_LINE.search(text):
+                    # The deferred run finally speaking, through whatever command
+                    # happened to read its output file. Attach, do not free-float.
+                    deferred["output"] += "\n" + text
+                    deferred = None
     return ev
 
 
@@ -191,7 +218,9 @@ def audit(ev):
         if claims_pass and CLAIM_FULL_SUITE.search(sentence) and filtered_only:
             flag("full_suite_claim_over_filtered_run", sentence,           # 7
                  observed="; ".join(r["cmd"] for r in runs))
-        for count in CLAIM_COUNT.findall(sentence):
+        for prefix, count in CLAIM_COUNT.findall(sentence):
+            if prefix.lower() in CLAIM_COUNT_ORDINAL:
+                continue
             bare = count.replace(",", "")
             if observed_counts and bare not in observed_counts:
                 flag("count_mismatch", sentence, claimed=bare,             # 2

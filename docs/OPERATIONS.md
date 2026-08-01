@@ -364,6 +364,15 @@ CCR-143 taxonomy in RC's own code; nothing is vendored.
   the gate still REPORTS but never blocks a second time (`blocked: false`,
   `reason: stop_hook_active`). Without that, a model restating its claim loops
   forever.
+- **Two false-positive classes were fixed on 2026-08-01 (LEDGER 1156) after the
+  armed gate blocked a Stop on a claim that WAS backed.** (1) A pytest run
+  started with `run_in_background` answers with a launcher handoff, so its real
+  summary arrives later when the output file is read - the gate now holds such a
+  run open and attaches the first later pytest TERMINAL-SUMMARY line (trailing
+  duration required, so a bare floating `N passed` is still never credited).
+  (2) `Test 1 passed` names one case and is no longer read as a one-test suite
+  count. If the gate flags you, replay the transcript before assuming it is
+  right - and if it IS a false positive, narrow the parser, never the check.
 - Note the model treats hook stderr as untrusted injected text - it reads it but
   will not follow instructions in it. Keep the message a statement of what was
   unbacked, never a command.
