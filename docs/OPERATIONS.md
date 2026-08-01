@@ -351,7 +351,10 @@ file-edit claims with no edit, CI-green claims with no probe, commit/push claims
 with no command, hook bypass, vacuous or filtered runs). It re-implements the
 CCR-143 taxonomy in RC's own code; nothing is vendored.
 
-- **ARMED since 2026-08-01 (operator decision).** The hook runs with `--arm`, so
+- **ARMED since 2026-08-01, and RE-AFFIRMED the same day (operator decision)** -
+  the first armed session's report came back clean, and the arm STAYS. The
+  history file below was added in the same call precisely because that
+  re-affirmation rested on n=1. The hook runs with `--arm`, so
   a finding exits 2. **Measured, not assumed: exit 2 on Stop BLOCKS the session
   from ending and hands the hook's stderr back to the model**, which then gets
   another turn. Drop `--arm` from the hook command to fall back to report-only
@@ -365,6 +368,20 @@ CCR-143 taxonomy in RC's own code; nothing is vendored.
   will not follow instructions in it. Keep the message a statement of what was
   unbacked, never a command.
 - Report: `ops/runtime/stop_claim_report.json` (atomic write, overwritten per Stop).
+- **History: `ops/runtime/stop_claim_history.jsonl`, one line per audit, rolled to
+  the newest 500.** The report answers "was the LAST session clean" and nothing
+  else, so the first arm decision was made on n=1. This is what lets the next
+  arm/disarm call read "quiet across sessions" off measurement. A clean run
+  writes a line too - logging only findings cannot prove quiet. The soft-failure
+  path (`transcript-unreadable`) is logged as well: a run that audited nothing is
+  signal, not silence. Every history write is swallowed on error - bookkeeping
+  must never change the gate's exit code. Override with `--history` /
+  `--history-max` (0 disables rolling).
+
+```
+python -c "import json;rows=[json.loads(l) for l in open(r'ops/runtime/stop_claim_history.jsonl')];print(len(rows),'audits,',sum(r['findings'] for r in rows),'findings,',sum(r['blocked'] for r in rows),'blocks')"
+```
+
 - **The wire is LOCAL and gitignored** (`.claude/settings.json`, `Stop` matcher),
   exactly like the git hooks and `.mcp.json`. **A fresh clone has NO Stop hook**
   and nothing warns you. Re-add it with the quoted `pythonw.exe` + absolute
@@ -386,6 +403,7 @@ python -c "import json;print(json.load(open('ops/runtime/stop_claim_report.json'
 |---|---|
 | `ops/runtime/health.json` | Live PID + mode + alive flag |
 | `ops/runtime/stop_claim_report.json` | Last Stop-hook claim audit (RM-136, armed) |
+| `ops/runtime/stop_claim_history.jsonl` | Rolling one-line-per-audit history (newest 500) |
 | `data/{aram,arena,brawl,tft}_coaching_data.json` | Current game state per mode |
 | `logs/YYYY-MM-DD.log` | Daily log (30-day retention) |
 | `config/vision_token.txt` | Vision server auth token |
