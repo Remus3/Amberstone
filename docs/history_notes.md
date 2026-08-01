@@ -119,6 +119,50 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-31a - MISSION CONTROL S4 (the dashboard panel) + the audit that paid for itself.
+
+## Start here next session
+
+**S5 of the Mission Control control plane** - shortcut 3, the existing headless-upgrade
+command, the FIRST real lane fire. One supervised run, worktree-mandatory
+(`try_acquire_lane` raises on the main tree by design). Spec + staging in
+`docs/MISSION_CONTROL_PLAN.md`; S1-S4 are all in place and live.
+
+## What shipped
+
+- `ed5191b2` S4: the MISSION CONTROL settings card + `lanes` / `controller_lock` three-state
+  blocks on `GET /api/loop-status` (read-only) + ARM/CONFIRM for shortcuts 1-2 over the new
+  `web/js/lib/arm_confirm.js`. Live: `lanes FREE`, `controller_lock RECLAIMABLE pid 9380`.
+- Plan constraint 2 RESOLVED - `root=None` is `lanes.DEFAULT_ROOT` on both sides of the
+  S1/S2 seam, pinned by a test firing through the REAL route pair.
+- 50 py + 14 node new; full `tests/` from the repo root 17601 passed / exit 0.
+
+## Lessons worth keeping
+
+1. **The panel had never rendered.** `#loop-status-body` was a CSS class and a
+   `getElementById` and nothing else - no markup, anywhere. The 2026-06-07 card was dead
+   from the day it landed, and every test that touched it tested the renderer's INPUTS.
+   A rendered field is not evidence of a host either.
+2. **`var(--x)` naming an undefined property fails SILENTLY.** `color: var(--bg)` fell back
+   to inherited near-white at 1.9:1 on amber - on the ARMED button, the one state where
+   misreading costs the most. `--bg` is defined in NO stylesheet in `web/css`; it passed
+   every grep for the token name. Only reading the COMPUTED style in a live browser found it.
+3. **A repaint can make a flow unreachable.** `innerHTML` at 4Hz threw keyboard focus to
+   `<body>` on arm, so the confirm click could never be reached. Mouse-only, invisibly.
+4. **`dim` is inert repo-wide** - every `.dim` rule in `web/css` is descendant-scoped.
+
+## Do NOT redo
+
+- S1, S2, S3, S4 are shipped and verified. Do not rebuild the lane lock, the idempotency
+  table, the intent consumer, or the panel.
+- Do not edit `ops/loop/slots.py` / `ops/loop/winmutex.py` (byte-identical-by-contract).
+- The `test_web_ascii_sweep` live-half digest was re-captured this session (4 web files,
+  two-tree diff verified) - a red there next session is NEW drift, not this.
+- The pre-existing icon glyphs in `web/index.html` + `web/css/panels/header.css` (arrows,
+  times, mute speaker) are LEFT ALONE on purpose - sweeping them breaks icons.
+
+---
+
 # 2026-07-30d - MISSION CONTROL S3 (intent consumer) + the stale-worktree glyph sweep.
 
 ## Start here next session
