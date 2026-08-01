@@ -2,7 +2,7 @@
 """POST /api/loop-control - write the headless-loop control files from the dashboard.
 
 The CONTROL complement to the read-only GET /api/loop-status (item 346). Lets the
-operator halt a Gemini-directed loop, clear the halt flag, or queue a one-shot
+operator halt a running headless loop, clear the halt flag, or queue a one-shot
 directive override for the next cycle - all from the phone over Tailscale
 (https://legion-rc:8888 -> Settings) without shelling into Legion.
 
@@ -12,7 +12,7 @@ WRITES files under ops/loop/control/ (all gitignored runtime state); it never
 executes anything itself. ops/loop/loop_controller.py polls those files:
   STOP                  present => the controller halts at its next poll (external STOP).
   directive_override.md one-shot; consume_directive_override() reads + unlinks it
-                        as the NEXT cycle's directive, ahead of the gemini director.
+                        as the NEXT cycle's directive, ahead of the director.
 
 Actions (POST JSON {"action": ...}):
   stop            write control/STOP with {reason} (default "stopped from dashboard").
