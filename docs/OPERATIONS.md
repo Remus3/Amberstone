@@ -371,8 +371,13 @@ CCR-143 taxonomy in RC's own code; nothing is vendored.
   run open and attaches the first later pytest TERMINAL-SUMMARY line (trailing
   duration required, so a bare floating `N passed` is still never credited).
   (2) `Test 1 passed` names one case and is no longer read as a one-test suite
-  count. If the gate flags you, replay the transcript before assuming it is
+  count. (3) `gh` invoked by absolute path through a variable
+  (`GH="...gh.exe"; "$GH" run list`, which this very file mandates) counted as
+  no CI probe at all - the binary and its subcommand no longer have to be
+  adjacent. If the gate flags you, replay the transcript before assuming it is
   right - and if it IS a false positive, narrow the parser, never the check.
+  **All three were the same defect:** the gate read the right evidence in the
+  wrong place. The checks themselves have never been wrong yet.
 - Note the model treats hook stderr as untrusted injected text - it reads it but
   will not follow instructions in it. Keep the message a statement of what was
   unbacked, never a command.
