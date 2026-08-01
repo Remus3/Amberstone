@@ -423,8 +423,14 @@ def test_posix_no_op_lets_a_second_caller_in_while_the_first_holds(monkeypatch):
 # C:\Sibling-A\tests\test_loop_concurrency.py, modulo the repo name in the
 # prose above. Keep it that way.
 SHARED_SHA256 = {
-    # unchanged since the 2026-07-26 sync
-    "slots.py": "95077a62527c9764e896e3bd1da9027e5efd2b15631feb725fe6138cee5054f9",
+    # re-pinned 2026-08-01: the module docstring named TWO repos and there are
+    # now three (Sibling-C joined the bucket and vendored this file byte-identical
+    # the same day). Docstring only - no code, no protocol, no behaviour.
+    # RC authored the bytes, LW applied them first and carried the red window,
+    # RC and RM followed; all three re-hashed from their OWN disk rather than
+    # trusting the digest in the hand-off note.
+    # previous 95077a62527c9764e896e3bd1da9027e5efd2b15631feb725fe6138cee5054f9
+    "slots.py": "5297f2d041030398a9ba240aad527b2b01a86d6e7f57a196719af8f0a91cb0a6",
     # re-pinned 2026-07-26 for f1-phase6 item 9 (POSIX branch now emits
     # UNSERIALIZED); previous c21bfe4f309c9ed27e68f7cdf0458d001a9942e6a35c61869e6dedd16cc23b79
     "winmutex.py": "f1b4b011112685efb88616c52752657cf896fbb0993b2d2d264e7b3edde8b4f4",

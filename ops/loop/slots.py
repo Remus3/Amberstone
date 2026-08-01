@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 r"""Machine-wide concurrency governor for headless loop runs.
 
-SHARED FILE - this must stay BYTE-IDENTICAL between the Legion Wallpaper and
-Riot Commander repos. The two loops coordinate with each other THROUGH this
-file's on-disk protocol, so a divergence is not a merge conflict you notice, it
-is a silent concurrency bug. Nothing here may reference either repo: every
-project-specific value arrives as an argument.
+SHARED FILE - this must stay BYTE-IDENTICAL across the Legion Wallpaper, Riot
+Commander and Red Moon repos. The three loops coordinate with each other
+THROUGH this file's on-disk protocol, so a divergence is not a merge conflict
+you notice, it is a silent concurrency bug. Nothing here may reference ANY of
+them: every project-specific value arrives as an argument.
 
 WHY A GOVERNOR AT ALL. Once the executor stops being the AHK GUI bridge (a
 machine-wide singleton keyed on a window title), two loops CAN run at once - so
