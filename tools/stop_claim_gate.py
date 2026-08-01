@@ -22,10 +22,13 @@ import argparse
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REPORT = ROOT / "ops" / "runtime" / "stop_claim_report.json"
+DEFAULT_HISTORY = ROOT / "ops" / "runtime" / "stop_claim_history.jsonl"
+HISTORY_MAX = 500
 
 # Claim patterns. Deliberately narrow: a false positive costs more than a miss,
 # because the first wrong flag is what gets the hook turned off.
@@ -219,6 +222,49 @@ def read_transcript(path):
     return rows
 
 
+def history_row(report):
+    """One flat line per audit.
+
+    The report is overwritten on every Stop, so it can only ever answer "was the
+    last session clean". The arm/disarm decision needs "has the armed gate been
+    quiet across sessions", which is an n greater than 1 - that is what this is.
+    """
+    findings = report.get("findings", [])
+    return {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "session_id": report.get("session_id", ""),
+        "mode": report.get("mode", ""),
+        "armed": bool(report.get("armed", False)),
+        "findings": len(findings),
+        "checks": sorted({f["check"] for f in findings}),
+        "blocked": bool(report.get("blocked", False)),
+        "reason": report.get("reason", report.get("error", "")),
+    }
+
+
+def append_history(report, target, cap=HISTORY_MAX):
+    """Append then roll to the last `cap` lines.
+
+    Bookkeeping must never break the gate: a Stop hook that raises on a full
+    disk or a locked file is worse than one that keeps no history, so every
+    failure here is swallowed deliberately.
+    """
+    try:
+        target = Path(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with open(target, "a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(history_row(report)) + "\n")
+        if cap > 0:
+            lines = [ln for ln in target.read_text(encoding="utf-8").splitlines() if ln]
+            if len(lines) > cap:
+                tmp = target.with_suffix(target.suffix + ".tmp")
+                tmp.write_text("\n".join(lines[-cap:]) + "\n",
+                               encoding="utf-8", newline="\n")
+                tmp.replace(target)
+    except (OSError, ValueError):
+        pass
+
+
 def write_report(report, target):
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -230,6 +276,12 @@ def write_report(report, target):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", default=str(DEFAULT_REPORT))
+    parser.add_argument("--history", default=str(DEFAULT_HISTORY),
+                        help="rolling JSONL of every audit; the report is "
+                             "overwritten per Stop and cannot answer 'quiet "
+                             "across sessions' on its own")
+    parser.add_argument("--history-max", type=int, default=HISTORY_MAX,
+                        help="keep only the newest N lines; 0 disables rolling")
     parser.add_argument("--arm", action="store_true",
                         help="exit 2 on findings; OFF by default and stays off "
                              "until the report is observed quiet on clean sessions")
@@ -253,6 +305,7 @@ def main(argv=None):
     if not transcript or not Path(transcript).exists():
         report["error"] = "transcript-unreadable"
         write_report(report, args.report)
+        append_history(report, args.history, args.history_max)
         return 0
 
     findings = audit(collect_evidence(read_transcript(transcript)))
@@ -268,6 +321,7 @@ def main(argv=None):
     if args.arm and findings and reentry:
         report["reason"] = "stop_hook_active"
     write_report(report, args.report)
+    append_history(report, args.history, args.history_max)
 
     if should_block:
         lines = [f"stop_claim_gate: {len(findings)} claim(s) not backed by this "
