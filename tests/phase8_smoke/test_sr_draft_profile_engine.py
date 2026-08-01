@@ -1,6 +1,6 @@
 """Phase 8 step 2 - engine-backed 3-profile generator.
 
-The integration test against a live engine on :8893 lives at the bottom
+The integration test against a live engine on :8860 lives at the bottom
 and skips when the engine isn't reachable (mirrors phase2_smoke
 patterns). The unit tests stub urllib so they're fast and deterministic.
 """
@@ -258,15 +258,15 @@ class TestBuildProfileWithStubbedEngine(unittest.TestCase):
 
 
 class TestLiveEngineIntegration(unittest.TestCase):
-    """Integration with the engine on :8893. Skips if engine is down."""
+    """Integration with the engine on :8860. Skips if engine is down."""
 
     def setUp(self):
         clear_cache()
         try:
-            with urllib.request.urlopen("http://127.0.0.1:8893/health", timeout=1) as r:
+            with urllib.request.urlopen("http://127.0.0.1:8860/health", timeout=1) as r:
                 json.loads(r.read())
         except Exception:  # noqa: BLE001
-            self.skipTest("engine on :8893 unreachable - skipping live integration")
+            self.skipTest("engine on :8860 unreachable - skipping live integration")
 
     def test_live_three_profiles(self):
         from agents.daemon_slayer import ENGINE_VERSION

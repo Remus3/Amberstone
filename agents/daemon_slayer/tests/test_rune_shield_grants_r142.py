@@ -1,6 +1,6 @@
 """R142-S2: characterization tests for the SELF-side rune SHIELD registry.
 
-OFFLINE ONLY - no network, no live :8893, no game state. Every assertion is
+OFFLINE ONLY - no network, no live :8860, no game state. Every assertion is
 either an INVARIANT (monotonicity, clamping, additivity, zero-when-off,
 fail-soft) or an EXACT reproduction of a verbatim DDragon 16.14.1 coefficient.
 No cross-item / cross-champion comparison assertions (data-fragile, banned by

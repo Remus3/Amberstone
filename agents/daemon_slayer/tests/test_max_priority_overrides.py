@@ -347,10 +347,10 @@ class ToDictSerializationTests(unittest.TestCase):
 
 
 class ServerRouteSourceTests(unittest.TestCase):
-    """Hits the live :8893 server. Skips if unavailable so the test
+    """Hits the live :8860 server. Skips if unavailable so the test
     suite remains hermetic when the DS daemon isn't running."""
 
-    BASE_URL = "http://127.0.0.1:8893"
+    BASE_URL = "http://127.0.0.1:8860"
 
     @classmethod
     def setUpClass(cls) -> None:

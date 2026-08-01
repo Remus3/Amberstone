@@ -48,7 +48,7 @@ Contract:
     contributes 0.0 with the flag ON - the registry is a seeded allowlist, not a
     tree-wide sweep.
 
-OFFLINE ONLY: no live :8893, no network. Every assertion runs against the
+OFFLINE ONLY: no live :8860, no network. Every assertion runs against the
 committed data snapshot and the pure registry function.
 """
 from __future__ import annotations

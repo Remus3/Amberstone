@@ -1,7 +1,7 @@
 """Slice B Task 7 (2026-07-16) - rank_onhit_for client + onhit dispatcher
 branch tests. Mirrors tests/test_archetype_dispatcher.py style: the
 underlying scorer call is mocked so the test doesn't touch the live DS
-server on :8893.
+server on :8860.
 
 Task 9/10 append more tests to this same file (roster seed/disjoint +
 default_for_champion routing) once core/ds_onhit_ap_roster.py lands.
@@ -64,7 +64,7 @@ def test_onhit_coherence_fail_soft_for_non_roster_champ():
 # Broad-scan classifier (tools/ds_onhit_ap_prefilter.py) scanned all 173
 # champions for (AP-axis via agents.daemon_slayer.onhit_dps._onhit_ap_axis)
 # AND (AS/on-hit-reliant); live-calibrated all 21 flagged candidates against
-# :8893/rank-onhit at coherence 0.0/0.3/0.6/1.0. Only the seed 3 survived the
+# :8860/rank-onhit at coherence 0.0/0.3/0.6/1.0. Only the seed 3 survived the
 # conservative keep bar - see .superpowers/sdd/task-9-report.md for the full
 # per-candidate evidence and drop reasons.
 import json

@@ -320,7 +320,7 @@ class ToDictSerializationTests(unittest.TestCase):
 
 
 class ServerRouteSourceTests(unittest.TestCase):
-    BASE_URL = "http://127.0.0.1:8893"
+    BASE_URL = "http://127.0.0.1:8860"
 
     @classmethod
     def setUpClass(cls) -> None:

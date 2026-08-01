@@ -17,7 +17,7 @@ quotes; use ' - ' for clause breaks.
   or ENGINE_VERSION. DS `/api/ds-preview` + `/api/build-order` outputs are read-only ground truth.
 - Tier classification per RC R5: Tier-0 cosmetic (Edit + py_compile if .py); Tier-1 local logic
   (py_compile + that module's tests); Tier-2 schema/engine/scorer/ENGINE bump (full dual suite +
-  DS :8893 restart + Share mirror). Most overlay JS/CSS is Tier-1 (own module tests + UI-audit).
+  DS :8860 restart + Share mirror). Most overlay JS/CSS is Tier-1 (own module tests + UI-audit).
 - TDD: write the failing characterization/regression test FIRST.
 - ADR-008 asset hash: editing `web/{js,css}/panels/*` auto-reloads, no RC restart.
 

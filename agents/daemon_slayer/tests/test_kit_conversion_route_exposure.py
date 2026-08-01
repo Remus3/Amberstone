@@ -4,7 +4,7 @@ PART 7 of docs/OPEN_ITEMS_REVIEW_2026-07-25.md measured the cross-cutting blocke
 ``agents/daemon_slayer/server.py`` carried ZERO ``kit_conversion`` /
 ``conversion_strength`` references, so the RM-86 L1 lever was Python-API-only.
 ``tools/daemon_slayer_build_orders_generate.py`` drives the shipped build tables
-through ``:8893``, so no kit-conversion fix could reach a shipped artifact.
+through ``:8860``, so no kit-conversion fix could reach a shipped artifact.
 
 Confirmed API surface before scaffolding:
   * ``rank_items(..., kit_conversion_strength: float = 0.0)`` - rank.py:918.

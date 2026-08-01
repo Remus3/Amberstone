@@ -55,7 +55,7 @@ if ($null -eq $rcShell -or $rcShell.Count -eq 0) {
 
 # 3. Verify ports cleared (informational - if still listening, something is alive that we missed)
 Start-Sleep -Seconds 1
-$ports = 8888, 8889, 8890, 8891, 8893, 8894
+$ports = 8888, 8889, 8890, 8891, 8860, 8861
 $stillUp = @()
 foreach ($port in $ports) {
   $c = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
@@ -64,7 +64,7 @@ foreach ($port in $ports) {
 if ($stillUp.Count -gt 0) {
   Write-Host "[off] WARN: ports still listening: $($stillUp -join ', ')"
 } else {
-  Write-Host "[off] all RC ports cleared (8888 8889 8890 8891 8893 8894)"
+  Write-Host "[off] all RC ports cleared (8888 8889 8890 8891 8860 8861)"
 }
 
 Write-Host "=== Legion OFF complete ==="

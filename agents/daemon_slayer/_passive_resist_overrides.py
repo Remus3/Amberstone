@@ -22,7 +22,7 @@ them). ZERO synthetic block - this is a pure EHP-denominator addend, so there is
 no ``to_X_block`` here (mirrors the DR registry).
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: ``apply_passive_resist`` defaults False; with
-it OFF both grants are 0.0 and the EHP math is unchanged. No live :8893 default
+it OFF both grants are 0.0 and the EHP math is unchanged. No live :8860 default
 scorer flips it on; it is opt-in everywhere (mirrors ``apply_passive_mitigation``
 / ``apply_passive_shield`` / ``apply_build_tenacity``).
 

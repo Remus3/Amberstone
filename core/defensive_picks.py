@@ -311,7 +311,7 @@ def recommend_defensive_items(threat: dict,
 
 # Phase 1 (s174, 2026-05-12) - EHP-driven defensive picks. Option B layering:
 # curated catalog is the whitelist, math drives order. Soft dep on the DS
-# engine (HTTP :8893) - falls back to ``recommend_defensive_items`` heuristic
+# engine (HTTP :8860) - falls back to ``recommend_defensive_items`` heuristic
 # when the engine is unreachable so the dashboard never goes dark.
 
 def _threat_to_damage_shares(threat: dict) -> tuple[float, float]:

@@ -11,7 +11,7 @@ Alternative: run a separate heavier model (Sonnet) for item evaluation. Cost wou
 
 ## Decision
 
-Daemon Slayer (`:8893`, pure-Python DPS math engine) evaluates all purchasable items for the current champion before the Haiku call. It ranks items by computed DPS contribution and injects a `top_items` list into the coaching prompt. Haiku sees pre-ranked items and focuses on game-state advice, not item math.
+Daemon Slayer (`:8860`, pure-Python DPS math engine) evaluates all purchasable items for the current champion before the Haiku call. It ranks items by computed DPS contribution and injects a `top_items` list into the coaching prompt. Haiku sees pre-ranked items and focuses on game-state advice, not item math.
 
 All four coach modes (ARAM, Arena, Brawl, SR-preview) are DS-before-Haiku.
 
@@ -19,4 +19,4 @@ All four coach modes (ARAM, Arena, Brawl, SR-preview) are DS-before-Haiku.
 
 **Good:** Coaching quality improved dramatically for itemization. DS runs locally with no API cost. Haiku token usage dropped because prompts are more focused.  
 **Trade-off:** DS must be kept current with every patch (item stat changes, new items). Batch workflow exists for this (see `ROADMAP.md`).  
-**Watch for:** DS `ENGINE_VERSION` must match the live patch. Stale DS = stale item recommendations. The `DS server :8893` line in `rc_facts.py` surfaces staleness.
+**Watch for:** DS `ENGINE_VERSION` must match the live patch. Stale DS = stale item recommendations. The `DS server :8860` line in `rc_facts.py` surfaces staleness.

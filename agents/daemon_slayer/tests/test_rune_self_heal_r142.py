@@ -1,6 +1,6 @@
 """R142-S1 characterization tests for the RUNE-side SELF-HEAL registry.
 
-OFFLINE ONLY - no DS :8893 call, no network, no live game state. Every number
+OFFLINE ONLY - no DS :8860 call, no network, no live game state. Every number
 here is either an EXACT DDragon 16.14.1 magnitude or an engine constant this
 file pins against its source module, so a drift on either side goes RED.
 """

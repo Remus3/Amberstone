@@ -23,7 +23,7 @@ modifier, so there is no ``to_X_block`` here (unlike the heal/shield registries)
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: ``apply_passive_mitigation`` defaults False;
 with it OFF every multiplier is 1.0 and the EHP math is unchanged. No live
-:8893 default scorer flips it on; it is opt-in everywhere (mirrors
+:8860 default scorer flips it on; it is opt-in everywhere (mirrors
 ``apply_passive_shield`` / ``apply_build_tenacity``).
 
 Why HAND-AUTHORED, not parsed: identical reasoning to the heal/damage/shield

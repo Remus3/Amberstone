@@ -59,7 +59,7 @@ DEFAULT-OFF
 All four default False on every engine entry point, so an omitted body key is a
 byte-identical route response. Measured below, not asserted in prose.
 
-OFFLINE ONLY: no live :8893, no network. Direct handler + engine + client calls.
+OFFLINE ONLY: no live :8860, no network. Direct handler + engine + client calls.
 """
 from __future__ import annotations
 

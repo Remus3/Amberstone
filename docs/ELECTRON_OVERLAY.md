@@ -73,7 +73,7 @@ Legion
     +-- Pengu plugin (Surface C)       fetches RC_ORIGIN/api/... , renders panel
 
   RC backend  (Legion now / localhost later)  -- UNCHANGED
-    :8888 dashboard/api   :8889 vision   :8893 daemon slayer   ws /push
+    :8888 dashboard/api   :8889 vision   :8860 daemon slayer   ws /push
 ```
 
 Nothing in the Python backend changes for A or B. C needs only CORS allowance on

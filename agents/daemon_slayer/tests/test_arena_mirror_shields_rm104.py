@@ -50,7 +50,7 @@ conservative for the mirror than for the item it was written for.
 
 LATENCY: this is a LATENT fix, not a live behaviour change. ``assume_kaenic_shield``
 exists only on ``compute_ehp`` - it is not a parameter of ``rank_items_by_ehp`` and
-is not surfaced on any :8893 route - so no live scorer can reach the 222504 half.
+is not surfaced on any :8860 route - so no live scorer can reach the 222504 half.
 The three lifeline mirrors ARE always-on and DO reach live EHP, so their half is a
 real live correction on Arena builds.
 """

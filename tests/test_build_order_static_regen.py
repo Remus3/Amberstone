@@ -2,7 +2,7 @@
 
 build_order_precompute._install_static_transport rebinds the DS client's
 _post_json to the server's POST-route handlers in-process, so a patch-refresh
-regen needs no :8893 and no running server. Output is identical to the live path
+regen needs no :8860 and no running server. Output is identical to the live path
 by construction (same handlers; verified by a static-vs-live diff at ship time).
 These pin that the in-process path resolves real rankings without a server, and
 that re-install is idempotent (snapshot already loaded). The global _post_json
@@ -20,7 +20,7 @@ def test_static_transport_ranks_without_server():
     orig = dsc._post_json
     try:
         bop._install_static_transport()
-        # in-process /rank-mage for a real champ -> non-empty rows, no :8893.
+        # in-process /rank-mage for a real champ -> non-empty rows, no :8860.
         # None would mean "engine unreachable" - which must not happen in-process.
         rows = dsc.rank_mage_for("Ahri", level=11, item_ids=[], mode="SR", top=5)
         assert rows is not None

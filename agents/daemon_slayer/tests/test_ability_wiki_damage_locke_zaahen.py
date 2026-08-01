@@ -26,7 +26,7 @@ the snapshot's ``data`` container KEYS-NOT-PRESENT-ONLY. This file pins:
 * ANTI-VACUITY - the registry is non-empty and every champion it claims
   actually lands in the snapshot with at least one evaluable damage block.
 
-The probe params are the ones the live ``:8893`` defect was measured with:
+The probe params are the ones the live ``:8860`` defect was measured with:
 ``items=["3142","6691","3814"], level=13, target_armor=140, target_mr=90,
 target_hp=2800``.
 
@@ -49,7 +49,7 @@ from agents.daemon_slayer.data_loader import DataSnapshot
 # The two champions the Meraki snapshot never shipped.
 _MISSING = ("Locke", "Zaahen")
 
-# Live-measured probe params (:8893 POST /rank-assassin + POST /burst).
+# Live-measured probe params (:8860 POST /rank-assassin + POST /burst).
 _PROBE = dict(
     level=13,
     item_ids=("3142", "6691", "3814"),

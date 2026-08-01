@@ -29,7 +29,7 @@ Three groups:
 
 Engine-touching tests use the real patch-current snapshot (same as the
 DS suite). Dispatcher-shape tests mock at the
-``rank_for_primary_archetype`` boundary - no live :8893 server.
+``rank_for_primary_archetype`` boundary - no live :8860 server.
 
 No hardcoded magic numbers for engine outputs; no fragile cross-item
 comparison assertions. ARAM-multiplier assertions read the modifier the

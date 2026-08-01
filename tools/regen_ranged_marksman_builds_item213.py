@@ -23,7 +23,7 @@ marksman (e.g. an AP / mage / bruiser flavor path) are left as-is EXCEPT
 that any deny-set item is stripped in-place (defense-in-depth).
 
 The engine is reached via plan_build_order -> the HTTP DS client. Since
-the LIVE :8893 server runs the OLD engine, this script spins up the
+the LIVE :8860 server runs the OLD engine, this script spins up the
 worktree's FIXED engine on a temp port in a background thread and
 monkeypatches the client port for the duration of the run.
 

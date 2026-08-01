@@ -7,13 +7,13 @@ non-damage / unknown -> 1.0). The dispatcher
 ``core.daemon_slayer_client.rank_for_primary_archetype`` opts in via
 ``assume_archetype_hp_pct=True`` (DEFAULT-OFF -> byte-identical when off).
 
-The resolver lives in ``core`` (not ``agents.daemon_slayer``) so the :8893 HTTP
+The resolver lives in ``core`` (not ``agents.daemon_slayer``) so the :8860 HTTP
 client never imports the engine package in-process - see the split-brain guard
 tests/test_ds_preview_e2e_p1l21.py TestNoEngineSplitBrain. This test therefore
 lives in the RC suite (tests/), not the DS engine suite.
 
 Branch fns are mocked (mirrors tests/test_archetype_dispatcher.py) so nothing
-hits the live :8893 server.
+hits the live :8860 server.
 """
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ class ResolverUnitTests(unittest.TestCase):
 
 
 class DispatcherArchetypeHpPctTests(unittest.TestCase):
-    """assume_archetype_hp_pct flag routing (mocks, no :8893)."""
+    """assume_archetype_hp_pct flag routing (mocks, no :8860)."""
 
     def _make_dps_rows(self, n=1):
         return [

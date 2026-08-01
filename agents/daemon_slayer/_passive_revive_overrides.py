@@ -27,7 +27,7 @@ runs through the SAME armor/MR the first life did, so its EHP is exactly
 EHP is correct). ZERO synthetic block.
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: ``apply_passive_revive`` defaults False;
-with it OFF the multiplier is 1.0 and the EHP math is unchanged. No live :8893
+with it OFF the multiplier is 1.0 and the EHP math is unchanged. No live :8860
 default scorer flips it on; it is opt-in everywhere (mirrors
 ``apply_passive_mitigation`` / ``apply_passive_resist`` / ``apply_build_tenacity``).
 

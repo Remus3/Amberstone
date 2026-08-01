@@ -38,7 +38,7 @@ THE FIVE GUARDS HERE
 5. A mutation check perturbs the registry magnitude and asserts the order
    actually moves, so guard 2's pins are not vacuous.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

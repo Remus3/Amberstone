@@ -1,8 +1,8 @@
 """ds_matchdb_mcp_server.py - local MCP server exposing the Daemon Slayer
 build engine and the match-history database to a local Claude / agent.
 
-Speaks the MCP JSON-RPC protocol over HTTP on port 8894. Localhost-only by
-default (127.0.0.1): it proxies the local Daemon Slayer engine on :8893 and
+Speaks the MCP JSON-RPC protocol over HTTP on port 8861. Localhost-only by
+default (127.0.0.1): it proxies the local Daemon Slayer engine on :8860 and
 reads the local data/match_history.db - no cross-machine surface, unlike
 the legacy cross-machine MCP server (retired with the 1-PC consolidation,
 ADR-011) which bound 0.0.0.0 for a cross-host LAN.
@@ -11,7 +11,7 @@ RC_MCP_TOKEN covers both RC MCP servers).
 
 Why this server exists
 ----------------------
-The DS engine (:8893) and the match DB are RC-internal infrastructure
+The DS engine (:8860) and the match DB are RC-internal infrastructure
 reachable today only from inside the running dashboard process. A local
 agent doing build research, calibration, or post-game analysis had no
 first-class way to ask "rank items for Vayne in this matchup" or "what is
@@ -20,7 +20,7 @@ wraps the already-tested core helpers as MCP tools so the agent can.
 
 Tools exposed:
   ds_health()
-      Is the Daemon Slayer engine reachable on :8893; returns its /health
+      Is the Daemon Slayer engine reachable on :8860; returns its /health
       payload (engine_version, patch, champion/item counts) when up.
 
   ds_rank_items(champion, archetype="", level=11, owned_item_ids=[],
@@ -69,7 +69,7 @@ Configure local Claude Code .mcp.json (or settings.json mcpServers):
     "mcpServers": {
       "ds-matchdb": {
         "type": "http",
-        "url": "http://127.0.0.1:8894/mcp",
+        "url": "http://127.0.0.1:8861/mcp",
         "headers": { "Authorization": "Bearer <token-from --show-token>" }
       }
     }
@@ -109,7 +109,7 @@ from core.daemon_slayer_client import (  # noqa: E402
 from core.match_db import MatchDB  # noqa: E402
 
 HOST = "127.0.0.1"
-PORT = 8894
+PORT = 8861
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "ds-matchdb-mcp"
 SERVER_VERSION = "0.1.0"
@@ -140,7 +140,7 @@ TOOL_TIMEOUT_OVERRIDES: dict[str, float] = {}
 _DISPATCH_POOL = concurrent.futures.ThreadPoolExecutor(
     max_workers=8, thread_name_prefix="mcp-dispatch")
 
-DS_HEALTH_URL = "http://127.0.0.1:8893/health"
+DS_HEALTH_URL = "http://127.0.0.1:8860/health"
 _MATCH_DB_PATH = _PROJECT_ROOT / "data" / "match_history.db"
 
 logging.basicConfig(level=logging.INFO,
@@ -251,7 +251,7 @@ def tool_ds_health() -> dict:
     up = bool(_is_engine_up(timeout=1.0))
     out: dict = {"engine_up": up, "url": DS_HEALTH_URL}
     if not up:
-        out["error"] = "daemon slayer engine unreachable on :8893"
+        out["error"] = "daemon slayer engine unreachable on :8860"
         return out
     try:
         with urlopen(DS_HEALTH_URL, timeout=1.5) as resp:
@@ -281,7 +281,7 @@ def tool_ds_rank_items(champion: str, archetype: str = "", level: int = 11,
         top=int(top),
     )
     if out is None:
-        return {"error": "daemon slayer engine unreachable on :8893",
+        return {"error": "daemon slayer engine unreachable on :8860",
                 "engine_up": False, "champion": str(champion),
                 "archetype": arch}
     return out
@@ -308,7 +308,7 @@ def tool_ds_build_order(champion: str, archetype: str = "", level: int = 11,
         slots=int(slots),
     )
     if res is None:
-        return {"error": "daemon slayer engine unreachable on :8893",
+        return {"error": "daemon slayer engine unreachable on :8860",
                 "engine_up": False, "champion": str(champion),
                 "archetype": arch}
     return res.to_dict()
@@ -400,7 +400,7 @@ _TBHP = {"type": "number", "default": 0,
 TOOLS_SCHEMA = [
     {
         "name": "ds_health",
-        "description": ("Check whether the Daemon Slayer engine (:8893) is "
+        "description": ("Check whether the Daemon Slayer engine (:8860) is "
                         "reachable; returns its /health payload when up."),
         "inputSchema": {"type": "object", "properties": {}},
     },

@@ -31,7 +31,7 @@ Four ways to get this wrong, each pinned below:
     Only the Adaptive Force half is credited here, and only the adaptive
     columns move - the R155 attack-speed column stays at zero.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

@@ -9,7 +9,7 @@ auto-regenerated - reference_hz_precompute_patch_regen), so a consumer would rea
 build orders computed under stale scorer math.
 
 This guard fails whenever the committed current-patch tables drift from the
-engine. The fix is a deterministic, engine-less regen (no :8893 required):
+engine. The fix is a deterministic, engine-less regen (no :8860 required):
 
     C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m core.build_order_precompute --static --mode all --champions all
     C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m core.build_order_variants   --static --mode all --champions all

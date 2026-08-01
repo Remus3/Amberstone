@@ -46,7 +46,7 @@ score_by="sustain" produces the byte-identical blended ORDER - measured below,
 not assumed. The mode is therefore the ``cc_blended`` shape: an identity until
 its feeding seam is armed, never a silent behavior change.
 
-OFFLINE ONLY: no live :8893, no network.
+OFFLINE ONLY: no live :8860, no network.
 """
 from __future__ import annotations
 

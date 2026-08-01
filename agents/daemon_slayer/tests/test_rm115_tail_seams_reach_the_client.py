@@ -4,7 +4,7 @@ Sibling of ``test_ehp_family_seams_reach_the_client_rm115.py`` (the 1.253.0
 EHP-family block). Same contract: the structural half proves REACHABILITY by
 introspection, and this file proves each newly wired seam actually MOVES A
 NUMBER when driven through ``core/daemon_slayer_client.py`` against the live
-engine on :8893. The routes covered here are ``/dps``, ``/ability-dps``,
+engine on :8860. The routes covered here are ``/dps``, ``/ability-dps``,
 ``/burst``, ``/rank``, ``/rank-mage`` and ``/rank-assassin``.
 
 WHY EACH CONTROL IS A CONTROL
@@ -58,7 +58,7 @@ so the assertions below pin the rows that actually move:
     ``6653`` (10 -> 8, a genuine delta gap of 6.03 -> 10.56 against Luden's
     6.17 -> 10.37, not a ULP tie) and Abyssal Mask ``8020`` (20 -> 16).
 
-LIVE: these hit the running DS server on :8893 through the real client, which
+LIVE: these hit the running DS server on :8860 through the real client, which
 is the whole point - an in-process engine call would prove nothing about gate 3.
 Skipped when the engine is down. Host-dependent (imports ``core.*``), so it is
 registered in ``tools/ds_share_sync._HOST_DEPENDENT_TESTS``.
@@ -114,7 +114,7 @@ class Rm115TailSeamsReachTheClientTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         if not dsc.is_engine_up(timeout=2.0):
-            raise unittest.SkipTest("DS engine :8893 is down")
+            raise unittest.SkipTest("DS engine :8860 is down")
 
     # ----------------------------------------------------------------- /dps
     def test_dps_mode_modifiers_moves_on_urf_and_is_inert_on_aram_and_sr(self) -> None:

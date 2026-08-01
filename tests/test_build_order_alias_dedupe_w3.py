@@ -302,7 +302,7 @@ class LiveEngineBothKeyspacesTests(unittest.TestCase):
             if dsc.is_engine_up(timeout=5.0):
                 return
             time.sleep(_TRANSPORT_BACKOFF * (attempt + 1))
-        raise unittest.SkipTest("DS engine 127.0.0.1:8893 is down")
+        raise unittest.SkipTest("DS engine 127.0.0.1:8860 is down")
 
     def setUp(self):
         # Rebind the single transport function every live caller below funnels
