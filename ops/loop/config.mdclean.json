@@ -1,8 +1,6 @@
 {
   "repo_root": "C:\\Riot Commander",
   "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
-  "ceiling_usd": 25.0,
-  "_ceiling_note": "gemini director spend cap for the md-cleanup run only; executor spend uncapped per operator standing rule.",
   "max_cycles": 8,
   "cycle_deadline_sec": 2700,
   "poll_sec": 5,
@@ -12,14 +10,33 @@
   "session_jsonl": "",
   "directive_suffix": "OPERATOR RUN FOCUS (2026-07-16 md-cleanup, Tier-0 docs-only): docs/specs/2026-07-16-md-cleanup-headless-directive.md is the SOLE work source - follow its cycle plan C1-C8 top-down, one cluster per cycle. Executor window model MUST be opus-4.8 (operator sets /model before launch; never fable). Citation-or-skip on every prune (LEDGER id / commit SHA / live probe, 2-probe cap then UNVERIFIED-SKIP to ops/loop/reports/mdclean-findings.md). NEVER edit docs/LEDGER.md, docs/history_notes.md (append-only relocations allowed), docs/_archive, frozen files, .claude, memory. CLAUDE.md is propose-only -> ops/loop/reports/mdclean-claudemd-proposal.md. No suite runs, no RC restart, no verifier subagent (Tier-0 / R5). ASCII 7-bit, no em/en dashes, strip_em_dashes check on touched files. Commit per cluster (git commit -F tmpfile) + push + CI green; /done on C8. STOP on frozen/LEDGER edit attempt or 3 consecutive UNVERIFIED-SKIP clusters.",
   "claude_window_title": "Claude",
-  "gemini_model": "gemini-3-pro-preview",
-  "gemini_cmd": "gemini",
   "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
-  "gemini_price_per_mtok": {"input": 2.0, "output": 12.0},
   "price_per_mtok": {
-    "opus":   {"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5},
-    "sonnet": {"input": 3.0,  "output": 15.0, "cache_write": 3.75,  "cache_read": 0.3},
-    "haiku":  {"input": 1.0,  "output": 5.0,  "cache_write": 1.25,  "cache_read": 0.1},
-    "default":{"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5}
-  }
+    "opus": {
+      "input": 15.0,
+      "output": 75.0,
+      "cache_write": 18.75,
+      "cache_read": 1.5
+    },
+    "sonnet": {
+      "input": 3.0,
+      "output": 15.0,
+      "cache_write": 3.75,
+      "cache_read": 0.3
+    },
+    "haiku": {
+      "input": 1.0,
+      "output": 5.0,
+      "cache_write": 1.25,
+      "cache_read": 0.1
+    },
+    "default": {
+      "input": 15.0,
+      "output": 75.0,
+      "cache_write": 18.75,
+      "cache_read": 1.5
+    }
+  },
+  "adjudicator": "claude",
+  "_adjudicator_vendor_note": "CLAUDE-ONLY since 2026-08-01 (operator). The loop self-adjudicates: the same vendor executes, directs and audits a cycle, and the read-only guarantee is --permission-mode plan, not vendor diversity. The second vendor and ALL of its machinery are DELETED, not merely unselected - backend registry, exhaustion-signature matching, the sticky failover and the spend ceiling are gone from ops/loop/adjudicator.py. There is therefore NO one-key rollback any more; restoring a second vendor means restoring the code, and the reasons not to are in docs/CONCURRENT_HEADLESS_CONTRACT.md section 9. An 'adjudicator' key naming anything but claude is ignored with a log line rather than honoured."
 }

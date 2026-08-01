@@ -1,8 +1,8 @@
 # /RC2-Continue
 
 > **SUBAGENT-FIRST (standing protocol, operator 2026-06-20).** Always use subagents for substantive work; do not build solo in the main thread.
-> 1. **Spec first:** a Plan/design subagent (or the Gemini director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
-> 2. **New session:** interview the Gemini director (or the operator if Gemini is down) for intent + acceptance criteria, re-probe live state, THEN build.
+> 1. **Spec first:** a Plan/design subagent (or the loop director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
+> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build.
 > 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done".
 > 4. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Subagent-First Protocol" + memory `feedback_subagent_first_protocol`.
 
@@ -44,7 +44,7 @@ For the selected stage, run the per-stage ritual from `docs/RC2_PLAN.md`:
 
 - No budget; Gemini-credit fallback = best judgment, never default to operator.
 - Frozen-file edits AUTHORIZED. Full computer usage AUTHORIZED (download/install/run).
-- If Gemini director is unavailable, the executor self-directs from `docs/RC2_PLAN.md`.
+- If loop director is unavailable, the executor self-directs from `docs/RC2_PLAN.md`.
 
 ## DRAIN
 

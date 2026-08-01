@@ -1,8 +1,6 @@
 {
   "repo_root": "C:\\Riot Commander",
   "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
-  "ceiling_usd": 200.0,
-  "_ceiling_note": "ceiling_usd rails the ADJUDICATOR (gemini) spend only - that is metered money. Executor spend is NOT capped; see _cycle_budget_note.",
   "max_cycles": 2,
   "cycle_deadline_sec": 900,
   "poll_sec": 5,
@@ -20,22 +18,13 @@
   "_cycle_command_note": "cycle_command, NOT fixed_directive. fixed_directive skips BOTH the director and the auditor, so no gemini call ever happens and P5 condition 4 (gemini windows never overlap) would pass VACUOUSLY by doing nothing. cycle_command skips only the director and KEEPS the auditor, so every cycle makes a real gemini call through GEMINI_MUTEX - which is the thing condition 4 measures.",
   "session_jsonl": "",
   "claude_window_title": "Claude",
-  "gemini_model": "gemini-3-pro-preview",
-  "gemini_cmd": "gemini",
-  "adjudicator": "gemini",
-  "adjudicator_fallback": "claude",
-  "adjudicator_failover": true,
+  "adjudicator": "claude",
   "claude_adjudicator": {
     "cmd": "C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd",
     "model": "opus",
-    "timeout_sec": 300,
-    "count_against_ceiling": false
+    "timeout_sec": 300
   },
   "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
-  "gemini_price_per_mtok": {
-    "input": 2.0,
-    "output": 12.0
-  },
   "price_per_mtok": {
     "opus": {
       "input": 15.0,
@@ -62,5 +51,7 @@
       "cache_read": 1.5
     }
   },
-  "_cycle_budget_note": "REMOVED 2026-07-26 (operator): no --max-budget-usd on the sdk channel. The Claude Code Max 20x plan is a SUBSCRIPTION - the CLI's total_cost_usd is a notional API-equivalent price, not money being billed, so a dollar cap truncates a cycle on a number that does not correspond to actual spend. The gate run read $22.01 of a $25 cap and would have been cut off by a slightly larger scope, for no real saving. ceiling_usd still rails the METERED vendor (gemini), which is real money. executor_usd is still recorded per cycle as a workload-size signal - read it as relative effort, never as spend."
+  "_cycle_budget_note": "REMOVED 2026-07-26 (operator): no --max-budget-usd on the sdk channel. The Claude Code Max 20x plan is a SUBSCRIPTION - the CLI's total_cost_usd is a notional API-equivalent price, not money being billed, so a dollar cap truncates a cycle on a number that does not correspond to actual spend. The gate run read $22.01 of a $25 cap and would have been cut off by a slightly larger scope, for no real saving. UPDATED 2026-08-01: ceiling_usd is GONE too - it railed the metered vendor, and with that vendor retired the only spend left was Claude's, so leaving the check would have inverted it into a cap on exactly the spend policy says must never be capped. executor_usd is still recorded per cycle as a workload-size signal - read it as relative effort, never as spend.",
+  "_adjudicator_vendor_note": "CLAUDE-ONLY since 2026-08-01 (operator). The loop self-adjudicates: the same vendor executes, directs and audits a cycle, and the read-only guarantee is --permission-mode plan, not vendor diversity. The second vendor and ALL of its machinery are DELETED, not merely unselected - backend registry, exhaustion-signature matching, the sticky failover and the spend ceiling are gone from ops/loop/adjudicator.py. There is therefore NO one-key rollback any more; restoring a second vendor means restoring the code, and the reasons not to are in docs/CONCURRENT_HEADLESS_CONTRACT.md section 9. An 'adjudicator' key naming anything but claude is ignored with a log line rather than honoured.",
+  "_historical_note": "ARCHIVED EXPERIMENT CONFIG (F1 P5, 2026-07-26). The directive prose below names the retired second vendor on purpose: it records what that run actually measured, and rewriting it would falsify the record. Nothing here is a live instruction - do not launch from this file expecting current behaviour."
 }

@@ -4,7 +4,7 @@
 # headless (tools/weekly_hygiene_run.ps1). Mirrors the
 # install_RC_LegionBridgeDaemon.ps1 registration shape. Idempotent: -Force
 # replaces a stale def. 04:17 is after the nightly DDragon mirror (03:30) +
-# Gemini audit (03:00) so the anomaly-triage step sees fresh scheduled-task
+# the nightly mirror so the anomaly-triage step sees fresh scheduled-task
 # results, and off the :00/:30 marks per fleet cadence policy.
 
 $ErrorActionPreference = 'Stop'

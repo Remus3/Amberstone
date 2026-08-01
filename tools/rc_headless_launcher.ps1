@@ -1,17 +1,17 @@
 # tools/rc_headless_launcher.ps1
 # One-click idempotent launcher for the headless-upgrade run.
-# Operator config (2026-06-05): Claude started by AHK desktop-app send; Gemini auditor always-run-now.
+# Operator config: Claude started by AHK desktop-app send. The second-vendor
+# auditor step was removed 2026-08-01 when that vendor was retired.
 #
 # Per click:
-#   1. Trigger RC-GeminiAudit now (schtasks /Run). The task is single-instance, so a mid-audit
-#      re-click is a no-op (exit 267009 already-running) - that is the Gemini-side idempotency.
+#   1. (removed 2026-08-01 - was a nightly second-vendor audit kick.)
 #   2. Send the headless-upgrade command into the Claude desktop window via claude_send.ahk.
 #      Guarded by ops/runtime/headless_launcher.lock so a double-click does NOT inject the
 #      prompt twice into the same session. The lock self-heals: cleared when the Claude desktop
 #      app is not running (run ended / closed) or when the lock is older than -StaleHours.
 #
 # -Force    send regardless of the lock.
-# -DryRun   no side effects: skip the Gemini run; call AHK in its own dry-run mode (verify only).
+# -DryRun   no side effects: call AHK in its own dry-run mode (verify only).
 
 param(
   [switch]$Force,
@@ -49,18 +49,8 @@ function Invoke-Ahk([bool]$live) {
 
 $summary = @()
 
-# 1. Gemini auditor - always run now (operator choice).
-if ($DryRun) {
-  Log "DRYRUN gemini: would schtasks /Run RC-GeminiAudit"
-  $summary += "Gemini: (dry-run)"
-} else {
-  schtasks /Run /TN "RC-GeminiAudit" 2>$null | Out-Null
-  $gc = $LASTEXITCODE
-  Log "gemini: schtasks /Run RC-GeminiAudit exit=$gc"
-  if ($gc -eq 0)           { $summary += "Gemini: started" }
-  elseif ($gc -eq 267009)  { $summary += "Gemini: already running" }
-  else                     { $summary += "Gemini: schtasks exit $gc" }
-}
+# 1. (was: kick the second-vendor nightly auditor. Removed 2026-08-01 with the
+#     vendor - the loop self-adjudicates and RC-GeminiAudit no longer exists.)
 
 # 2. Claude desktop app presence (self-heal lock if absent).
 $running = [bool](Get-Process -Name claude -ErrorAction SilentlyContinue)

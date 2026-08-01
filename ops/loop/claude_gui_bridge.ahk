@@ -1,7 +1,7 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 SetTitleMatchMode 2
-; gemini-headless-upgrade GUI bridge (the HANDS). The ONLY GUI actor.
+; directed-headless-upgrade GUI bridge (the HANDS). The ONLY GUI actor.
 ; Polls control\gemini.ready; types its lines into the TARGET window; acks by DELETING
 ; gemini.ready. That deletion IS the "typed" signal loop_controller waits on (wait_gone,
 ; 120s), so NOTHING else may delete it - a partial or unfocused type must leave it in

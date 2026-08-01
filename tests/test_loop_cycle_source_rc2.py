@@ -2,9 +2,9 @@
 """The loop controller's cycle_source() picks the per-cycle directive source.
 
 RC2 adds a `cycle_command` mode: a self-directing slash command (e.g.
-/RC2-Continue) typed VERBATIM after /clear each cycle, skipping the gemini
-director but KEEPING the gemini auditor. Precedence: operator override >
-cycle_command > fixed_directive > gemini director. Default-absent both keys =>
+/RC2-Continue) typed VERBATIM after /clear each cycle, skipping the
+director but KEEPING the auditor. Precedence: operator override >
+cycle_command > fixed_directive > director. Default-absent both keys =>
 'director' (byte-identical to the historical loop). Loaded by file path so the
 module's argv-driven CFG load does not need a real launch.
 """
@@ -53,14 +53,15 @@ def test_fixed_when_no_cycle_command(lc):
 
 def test_rc2_config_is_valid_and_self_directing():
     """The shipped RC2 loop config drives /clear + /RC2-Continue with the
-    done-sentinel final step, and keeps the gemini auditor (no fixed_directive)."""
+    done-sentinel final step, and keeps the auditor (no fixed_directive)."""
     cfg = json.loads(_RC2_CFG.read_text(encoding="utf-8"))
     cc = cfg.get("cycle_command", "")
     assert cc.startswith("/RC2-Continue"), "cycle_command must lead with the slash command"
     assert "done_sentinel.py" in cc, "cycle_command must include the FINAL done-sentinel step"
     assert cfg.get("clear_each_cycle") is True, "RC2 loop must /clear each cycle"
-    assert "fixed_directive" not in cfg, "fixed_directive would disable the gemini auditor"
-    assert cfg.get("gemini_model"), "gemini auditor needs a model"
+    assert "fixed_directive" not in cfg, "fixed_directive would disable the auditor"
+    assert cfg.get("adjudicator") == "claude", "the loop is claude-only since 2026-08-01"
+    assert "gemini_model" not in cfg, "retired vendor key must not come back"
     # ASCII hard rule: no banned glyphs in the typed command.
     banned = {0x2014, 0x2013, 0x2018, 0x2019, 0x201C, 0x201D}
     assert not [c for c in cc if ord(c) in banned], "cycle_command must be ASCII-clean"

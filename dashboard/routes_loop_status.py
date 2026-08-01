@@ -18,7 +18,11 @@ Sources (each read is individually fail-soft -> None / [] on any error):
                   unlinks it after consuming, so it is usually ABSENT at rest.
   controller.log  append log; the "claude.done sha=..." lines are the durable
                   per-cycle summary fallback when the sentinel is gone.
-  budget.json     {gemini_usd, gemini_ceiling, claude_usd_info, cycle}.
+  budget.json     {adjudicator, adjudicator_usd, claude_usd_info, cycle} and
+                  executor_usd on the sdk channel. The gemini_usd /
+                  gemini_ceiling pair was dropped 2026-08-01 with the vendor;
+                  a budget.json written by an older run still carries them and
+                  readers must treat both as optional.
   ahk_mode.txt    live | dry.
   config.json     max_cycles (the run ceiling, for "cycle N / max").
 
