@@ -39,7 +39,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   ASSERT the replacement count is 1. Both traps were caught only because the counts
   were re-verified AFTER writing rather than inferred from the write succeeding.
 - Next up (strict alphabetical): NONE - roster closed at Zyra 2026-07-18.
-  Next free GAP spec = RM-119 (the earlier "RM-105" reading was STALE - ids
+  **RM-128 allocated 2026-07-31** to the cdragon `queues.json` queue-map grounding + drift
+  guard (BACKLOG "Data pipeline"; lane 6/7; ITEM/AXIS gap, no roster checkbox, no Summary
+  count change). Next free GAP spec = **RM-129**.
+  (lane-research corrected 2026-07-31: the prior "= RM-119"
+  pointer was ITSELF stale - RM-119..RM-127 were all consumed by ROADMAP/BACKLOG rows whose
+  tracker registration was owed-and-never-done, exactly the "tracker registration is owed"
+  note each carries. Roughly: RM-119 skip-audit laning gap, RM-120..RM-122 UI/CCR lanes,
+  RM-123/RM-124 shipped/gated, RM-125 web-glyph, RM-126 relocated, RM-127 CCR link-ingest.
+  Verify the true max before taking an id:
+  `grep -rhoE "RM-[0-9]+" ROADMAP.md BACKLOG.md docs/ | sort -t- -k2 -n | tail -1`.)
+  Historical note: the earlier "RM-105" reading was STALE - ids
   RM-105..RM-117 were consumed after it was written, and RM-118 was allocated
   2026-07-26 to the mana-as-damage `ds.ehp` blindness, population 1
   (Blitzcrank), the third instance of the RM-87 / RM-91 lever - ITEM / AXIS

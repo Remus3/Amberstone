@@ -6,15 +6,54 @@
 
 ---
 
+# 2026-07-31f - LANE-RESEARCH REFILL (headless lane 5): 2 stale strikes, id-registry fix, cdragon catalog torn down.
+
+## Start here next session
+
+This was a REFILL pass on `lane/research` (Mission Control lane 5), docs-only, no live game.
+MERGED to main 2026-08-01 by the merger session (the 2026-07-31e entry below, which fired
+this lane and then wrapped). Tier-0 docs; no engine, no Share, no restart. Detail in LEDGER 1141.
+The lane exited code=0 at 23:58 after a ~15 min run; the RECLAIMABLE lock seen the next morning
+was the 05:57 reboot clearing pid 14692, NOT a crash - the work was committed and pushed first.
+
+## What shipped (all docs)
+
+- **RM-128 filed** (cdragon `queues.json` grounds the hand-maintained `core/queue_modes.py:28`
+  map + a drift guard; ITEM-87 SAFE - `core/game_snapshot.py` detects by gameMode-STRING, never
+  queueId). Acceptance: a test asserting every `QUEUE_ID_TO_MODE_KEY` id still exists in a fresh
+  `queues.json` with a consistent `gameSelectModeGroup`. Lane 6 or 7, Tier-1.
+- cdragon `lol-game-data` 7-file teardown filed in `BACKLOG.md` (F2/F3 trigger-gated, F4/F5
+  deferred, F6/F7 REJECT-recorded). License cleared (Riot data, no copyleft).
+- Struck the STALE DDragon 16.15.1 patch-refresh row (shipped 2026-07-30, item-1130 / `9df58480`;
+  live `/health` = 16.15.1, worktree clean).
+- Fixed the `docs/DS_SWEEP_TRACKER.md` "next free" pointer: was RM-119 (stale), now RM-129.
+- Decided the `tft/` U+2192 ASCII row: 24 arrows, all display-only, STRIP-SAFE, acceptance-bearing.
+
+## Do NOT redo
+
+- Do NOT re-run the DDragon 16.15.1 patch refresh - it is DONE (item-1130). If you see fake
+  ddragon suite failures, that is a NEW dirty MAIN tree per `reference_dirty_ddragon_tree_fakes_49_failures`,
+  not this row.
+- Competitor-lift research is RETIRED/drained 4x (ROADMAP RM-01) - the cdragon teardown was Riot
+  DATA, not a competitor; do not treat it as re-opening that lane.
+- Before taking a new RM id, run the grep recipe in `DS_SWEEP_TRACKER.md` - do NOT trust ROADMAP prose.
+
+## Next
+
+Lanes have well-formed work waiting: RM-128 (lane 6/7), the tft-arrow strip (lane 7), the six
+stale-process restart-owner gaps (`BACKLOG.md`, lane 7), the DS RM-118 4 wireable seams (lane 6).
+
+---
+
 # 2026-07-31e - DESKTOP INGEST PHASE 1 (12 files classified) + research lane FIRED.
 
 ## Start here next session
 
-The research lane is RUNNING headless (pid 14692 shell / claude.exe 18400, run_id
-`ingest-580bb7d6`, worktree `C:/rc-worktrees/rc-lane-research`, log
-`ops/loop/reports/lane_research_ingest-580bb7d6.log`). Check it before firing anything -
-lanes are mutually exclusive on one lock. Status: `curl -s --ssl-no-revoke
-https://legion-rc:8895/api/loop-status` (NEVER `-k`; mkcert CA has no CRL/OCSP).
+The research lane this session fired has since COMPLETED (run_id `ingest-580bb7d6`, exit 0,
+~15 min) and its branch is MERGED - see the 2026-07-31f entry above. The lane lock reads
+RECLAIMABLE only because the 05:57 reboot cleared its pid; release it before firing another.
+Status: `curl -s --ssl-no-revoke https://legion-rc:8895/api/loop-status` (NEVER `-k`; mkcert
+CA has no CRL/OCSP).
 
 **The remaining ingest work is RM-127**, and its two input files were deliberately LEFT on
 the Desktop because the row cites them as its working input: `First-Pass.md` (105 KB, 155
@@ -106,54 +145,3 @@ follow-up in `BACKLOG.md` is `dashboard/_errors.send_error` leaking `str(exc)[:2
 `:8895` via the imported loop routes - pre-existing on `:8888`, so not urgent, but it
 collides with the CLAUDE.md no-raw-error-strings rule. An owed pixel-screenshot pass on
 `https://legion-rc:8895/` is also logged (Browser pane would not composite frames this session).
-
----
-
-# 2026-07-31c - MISSION CONTROL S8 + S9 (lanes 7-8 wired; the INTERRUPT tier).
-
-## Start here next session
-
-**S10 - DECOUPLE Mission Control from the RC dashboard** (operator directive, 2026-07-31):
-own process + port + asset tree, reachable by IP, so a game-overlay or dashboard change
-cannot affect the control plane. Full design-question list in `docs/MISSION_CONTROL_PLAN.md`
-"S10"; ROADMAP carries it as the top `[!]`. Two things NOT to do casually: **auth becomes
-load-bearing** (the trust model is still "local / tailnet only, single-operator" and S9 added
-an action that KILLS PROCESSES), and **move the serving layer, not the logic** (`ops/loop/*`
-stays put - do not fork a second copy). The mkcert SAN list decides which IPs validate
-(`tools/regen_rc_cert.ps1`), so a bare IP needs a cert regen, not just a firewall rule.
-
-**Owed first:** `MEMORY.md` is 21.4 KB against a 24.4 KB read limit and a hook is asking for
-compaction (`anthropic-skills:consolidate-memory`). Deferred twice now; it should lead.
-
-## What shipped
-
-- **S8 `97c74550`** - `tools/headless-repo.md` (BREADTH: restructure/clean/modularize) and
-  `tools/headless-true-audit.md` (DEPTH: one file at a time, rewrite + harden), authored by
-  parallel agents, mirrored to `.claude/commands/`, wired into `LANE_COMMANDS`. All six lanes
-  startable; the panel derives `wired` from that map so it lit them up with no client change.
-- **S9 `97c74550`** - `ops/loop/interrupt.py` + `interrupt_preview` / `interrupt` route
-  actions + the panel block. `preview` fingerprints the exact victim set (pid AND process
-  START TIME) and `execute` re-probes and REFUSES on mismatch. Descendants are victims too,
-  reaped deepest-first; `taskkill` runs WITHOUT `/T`.
-- **`79cdd590`** - an INTERRUPT audit row is no longer counted as pending guidance.
-
-## The finding worth carrying forward
-
-**Two defects passed the whole suite, my own mutation tests, and the source-contract tests -
-and died on the first real click.** `mk` is a function-LOCAL const, so at module scope it is
-a ReferenceError: the victim list never rendered while the armed button still read
-"Confirm INTERRUPT - kill 3". Then `_mcArm.confirm()` notifies SYNCHRONOUSLY, the repaint
-clears the fingerprint, and the POST went out fingerprint-less (failed SAFE, but could never
-kill). Both are about a BINDING'S LIFETIME, which a source-literal test cannot see. Mutation
-testing gave false confidence because every mutant of the WRITTEN property was caught - the
-written property was not the broken one. Keep the live-audit ritual mandatory.
-
-## Do NOT redo
-
-- S1-S9 are shipped and CI-green. Do not rebuild the lock, idempotency table, intent
-  consumer, panel, launcher, lane docs, steer channel, or the INTERRUPT tier.
-- **Lanes 7 and 8 have never been FIRED.** That is deliberate - the plan gates both on
-  operator sign-off and a fire starts a real autonomous worker against the repo. The launch
-  path is proven structurally (worktree + branch + prompt-inside-checkout, verified with real
-  `git worktree add`), so do not "fix" it; just ask before firing.
-- Never edit `ops/loop/slots.py` or `ops/loop/winmutex.py` (byte-identical-by-contract).
