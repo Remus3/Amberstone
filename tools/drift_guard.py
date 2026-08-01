@@ -165,6 +165,28 @@ def check_memory_index(
     text = index.read_text(encoding="utf-8", errors="replace")
     files = {p.stem for p in memory_dir.glob("*.md") if p.name != MEMORY_INDEX}
     linked = set(re.findall(r"\]\(([A-Za-z0-9_\-]+)\.md\)", text))
+    # MEMORY.md may delegate a whole section to a sub-index instead of linking
+    # every memory individually (e.g. INDEX_ds.md carries the 73-entry Daemon
+    # Slayer section - see MEMORY.md's own pointer line). Follow ONLY links
+    # whose stem starts with "INDEX_", and only ONE level deep:
+    #   - restricted to the INDEX_ prefix on purpose - ordinary memory bodies
+    #     use [[wikilink]] syntax, not markdown ](name.md) links, so recursing
+    #     into every linked file would find nothing there while risking
+    #     treating an arbitrary memory as an index. Do not "simplify" this
+    #     into a full recursion.
+    #   - one level only - a sub-index linking a sub-sub-index is not a shape
+    #     this repo has; do not build for it. Iterating a snapshot of
+    #     `linked` taken BEFORE this loop starts (rather than the live set)
+    #     is what keeps this to one level: a name added to `linked` by
+    #     following one sub-index is never itself visited by this same loop.
+    for name in sorted(linked):
+        if not name.startswith("INDEX_"):
+            continue
+        sub = memory_dir / f"{name}.md"
+        if not sub.is_file():
+            continue
+        sub_text = sub.read_text(encoding="utf-8", errors="replace")
+        linked |= set(re.findall(r"\]\(([A-Za-z0-9_\-]+)\.md\)", sub_text))
     dead = sorted(linked - files)
     if dead:
         out.append(Finding(

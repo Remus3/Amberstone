@@ -245,6 +245,50 @@ class MemoryIndexTests(unittest.TestCase):
         d = self._mem("- [a](alpha.md)\n- [b](beta.md)\n", ("alpha", "beta"))
         self.assertEqual(drift_guard.check_memory_index(d, ()), [])
 
+    def test_memory_linked_only_from_a_subindex_is_not_a_breach(self) -> None:
+        """MEMORY.md may delegate a section to an INDEX_*.md sub-index (the
+        real-world shape: INDEX_ds.md carries the DS section) instead of
+        linking every memory directly - the clean path this fix creates."""
+        import drift_guard
+
+        d = self._mem(
+            "- [a](alpha.md)\n"
+            "- **DS: 1 entry in [INDEX_ds.md](INDEX_ds.md)**\n",
+            ("alpha", "INDEX_ds", "ds_topic"),
+        )
+        (d / "INDEX_ds.md").write_text("- [t](ds_topic.md)\n", encoding="utf-8")
+        self.assertEqual(drift_guard.check_memory_index(d, ()), [])
+
+    def test_memory_absent_from_index_and_subindex_is_a_breach(self) -> None:
+        """The breach path must survive the sub-index follow: a memory that
+        is in NEITHER MEMORY.md nor any linked sub-index is still reported."""
+        import drift_guard
+
+        d = self._mem(
+            "- [a](alpha.md)\n"
+            "- **DS: 1 entry in [INDEX_ds.md](INDEX_ds.md)**\n",
+            ("alpha", "INDEX_ds", "ds_topic", "orphan_ds_topic"),
+        )
+        (d / "INDEX_ds.md").write_text("- [t](ds_topic.md)\n", encoding="utf-8")
+        out = drift_guard.check_memory_index(d, ())
+        self.assertTrue(out)
+        self.assertIn("orphan_ds_topic", out[0].message)
+
+    def test_subindex_of_a_subindex_is_not_followed(self) -> None:
+        """One level only - a sub-index linking a sub-sub-index is not a
+        shape this repo has, so a memory buried two levels deep still
+        reports (proves the follow does not silently grow into recursion)."""
+        import drift_guard
+
+        d = self._mem(
+            "- [a](alpha.md)\n- [d](INDEX_ds.md)\n",
+            ("alpha", "INDEX_ds", "INDEX_sub", "buried"),
+        )
+        (d / "INDEX_ds.md").write_text("- [s](INDEX_sub.md)\n", encoding="utf-8")
+        (d / "INDEX_sub.md").write_text("- [b](buried.md)\n", encoding="utf-8")
+        out = drift_guard.check_memory_index(d, ())
+        self.assertTrue(any("buried" in f.message for f in out))
+
 
 class VersionAnchorTests(unittest.TestCase):
     """The hexcore-anchor class: a version site no checklist names."""
