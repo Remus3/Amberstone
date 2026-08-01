@@ -52,5 +52,7 @@
       "cache_write": 18.75,
       "cache_read": 1.5
     }
-  }
+  },
+  "subagent_prompt": "RC standing rules. (1) 7-bit ASCII only: no em-dash, en-dash or smart quotes. (2) Verify before claiming: cite file:line, and never report a test count you did not observe in this run. (3) Read a file before editing it; use the file tools for files and state, never screenshots.",
+  "_subagent_prompt_note": "RM-137 / CCR-146. Appended to every spawned subagent via the UNDOCUMENTED --append-subagent-system-prompt (absent from --help, accepted, propagation proven by canary + negative control on CLI 2.1.220). Must stay byte-equal to ops/loop/executor.SUBAGENT_STANDING_RULES; tests/test_subagent_prompt_flag.py asserts that and pins the CLI version. Kill switch: delete this key."
 }

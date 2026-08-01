@@ -36,6 +36,20 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# RM-137 (CCR-146). Appended to the system prompt of EVERY subagent a headless
+# cycle spawns via --append-subagent-system-prompt, which is something no hook
+# can do. The flag is UNDOCUMENTED (absent from `claude --help` on the pinned CLI
+# version, accepted by the binary, propagation proven by canary with a negative
+# control - LEDGER 1147). It is a per-spawn token cost on every lane, so it stays
+# short: standing rules only, never a paste of CLAUDE.md.
+# Guarded by tests/test_subagent_prompt_flag.py - that file also owns the CLI pin.
+SUBAGENT_STANDING_RULES = (
+    "RC standing rules. (1) 7-bit ASCII only: no em-dash, en-dash or smart "
+    "quotes. (2) Verify before claiming: cite file:line, and never report a "
+    "test count you did not observe in this run. (3) Read a file before "
+    "editing it; use the file tools for files and state, never screenshots."
+)
+
 
 @dataclass
 class DoneRecord:
@@ -1293,6 +1307,12 @@ class SdkExecutor:
             "--json-schema", _json.dumps(DONE_SCHEMA),
             "--add-dir", str(self.cfg.get("repo_root", ".")),
         ]
+        # RM-137: push RC's standing rules into every subagent this cycle spawns.
+        # Config-driven on purpose - if a CLI upgrade ever rejects the flag, the
+        # kill is deleting one key, not editing code mid-incident.
+        subagent_prompt = str(self.cfg.get("subagent_prompt", "") or "").strip()
+        if subagent_prompt:
+            argv += ["--append-subagent-system-prompt", subagent_prompt]
         model = self.cfg.get("executor_model")
         if model:
             argv += ["--model", str(model)]
