@@ -1,16 +1,16 @@
 ---
-description: Gemini-directed autonomous headless-upgrade loop, merged with the full 13-section orchestrator framework. gemini-3-pro-preview (read-only) is DIRECTOR + AUDITOR; a Python controller (ops/loop/loop_controller.py) is the brain; an AutoHotkey v2 bridge types into THIS Claude window. Invoking this turns the CURRENT session into the ephemeral executor - AHK /clears it and feeds one gemini-authored directive per cycle. Continuity lives on disk (git history + docs/LEDGER.md + the directive chain). Each executor cycle natively runs the orchestrator-merge pattern (1 Claude merger + up to 100 parallel worktree agents on disjoint file sets + read-only verifier gate before merge), the section 3b UI-audit ritual, the section 4/4b cost + Haiku-to-ZERO program, the section 5/6 frozen-file grant + ASCII hygiene, section 7/7b multi-agent + deep-dive competitor research (6-point depth checklist), section 8-13 DS audit loop / interrupt / cadence / anti-patterns / done / banner, the DS Share package commit ritual, and the two-way Gemini escalation channel. Ceiling + model + cycle cap in ops/loop/config.json. Proven end-to-end 2026-06-05.
+description: Self-directed autonomous headless-upgrade loop, merged with the full 13-section orchestrator framework. Claude (read-only, --permission-mode plan) is DIRECTOR + AUDITOR; a Python controller (ops/loop/loop_controller.py) is the brain; an AutoHotkey v2 bridge types into THIS Claude window. Invoking this turns the CURRENT session into the ephemeral executor - AHK /clears it and feeds one director-authored directive per cycle. Continuity lives on disk (git history + docs/LEDGER.md + the directive chain). Each executor cycle natively runs the orchestrator-merge pattern (1 Claude merger + up to 100 parallel worktree agents on disjoint file sets + read-only verifier gate before merge), the section 3b UI-audit ritual, the section 4/4b cost + Haiku-to-ZERO program, the section 5/6 frozen-file grant + ASCII hygiene, section 7/7b multi-agent + deep-dive competitor research (6-point depth checklist), section 8-13 DS audit loop / interrupt / cadence / anti-patterns / done / banner, the DS Share package commit ritual, and the two-way escalation channel. Model + cycle cap in ops/loop/config.json. Proven end-to-end 2026-06-05.
 ---
 
 > **SUBAGENT-FIRST (standing protocol, operator 2026-06-20).** Always use subagents for substantive work; do not build solo in the main thread.
-> 1. **Spec first:** a Plan/design subagent (or the Gemini director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
-> 2. **New session:** interview the Gemini director (or the operator if Gemini is down) for intent + acceptance criteria, re-probe live state, THEN build.
+> 1. **Spec first:** a Plan/design subagent (or the loop director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
+> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build.
 > 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done".
 > 4. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Subagent-First Protocol" + memory `feedback_subagent_first_protocol`.
 
 Invoking this command hands THIS Claude session over to the autonomous loop. After launch,
-AHK will `/clear` this session and type one gemini-authored directive per cycle into it; the
-loop's brains are the external Gemini + Python + AHK processes, not a Claude session. The
+AHK will `/clear` this session and type one director-authored directive per cycle into it; the
+loop's brains are the external Python + AHK processes plus read-only Claude calls, not this session. The
 executor (each cleared cycle) reads `ops/loop/control/directive.md` and runs it under the full
 framework in PART B + C below. Run PART A now, then STOP and end the turn.
 
@@ -21,17 +21,17 @@ PART A - LAUNCH SEQUENCE (this session, ONE time)
 ### A1. Pre-flight (abort if any check fails)
 Run this and confirm all four are OK:
 ```powershell
-"GEMINI_API_KEY=$([bool][Environment]::GetEnvironmentVariable('GEMINI_API_KEY','User'))"
-"gemini=$([bool](Get-Command gemini -ErrorAction SilentlyContinue))"
+"claude=$([bool](Get-Command claude -ErrorAction SilentlyContinue))"
 "ahk=$(Test-Path 'C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe')"
 $w=Get-Process claude -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle}
 "claude_windows=$(@($w).Count) (expect exactly 1 - this session)"
 ```
 If `claude_windows` is not 1, tell the operator to close extra Claude windows first (AHK
 targets the single window). If any check is false, report it and stop - do NOT launch. A live
-gemini liveness signal already exists when `ops/loop/control/controller.log` shows a recent
-`gemini=$<n>/<ceiling>` line (the loop made paid gemini calls successfully); the failing
-RC-GeminiAudit scheduled task is a SEPARATE nightly task, not the loop's interactive path.
+adjudicator signal exists when `ops/loop/control/controller.log` shows a recent
+`adjudicator=claude est=$<n>` line. There is no API key to check and no second vendor: since
+2026-08-01 the director, the executor and the auditor are all Claude, authenticated from the
+operator's own session.
 
 ### A2. Launch the loop (detached)
 ```powershell
@@ -44,7 +44,7 @@ stale STOP from a prior `max_cycles reached`).
 ### A3. Confirm + yield
 - Read `ops/loop/control/controller.log` tail; confirm a fresh `loop start dry_run=False` line.
 - Print a one-line banner: ceiling, max_cycles, and the abort path (drop `ops/loop/control/STOP`).
-- Then STOP. Take no further actions. Within ~45s the controller finishes the first gemini
+- Then STOP. Take no further actions. Within ~45s the controller finishes the first
   director call, AHK types `/clear` + the directive into THIS window, and the loop runs.
 
 ================================================================================
@@ -273,25 +273,27 @@ HEADLESS UPGRADE WRAP
 ```
 
 ================================================================================
-PART C - TWO-WAY GEMINI ESCALATION (replaces a blocking AskUserQuestion)
+PART C - ESCALATION CHANNEL (replaces a blocking AskUserQuestion)
 ================================================================================
 The operator is away; NEVER block on AskUserQuestion. When you need a scope decision, hit an
-architectural roadblock, or need ROADMAP/BACKLOG reshaped mid-run, use ONE of two channels. Gemini is
-READ-ONLY - it DECIDES and DIRECTS; the next Claude cycle does every file write. Do not claim Gemini
-"physically implements" anything.
+architectural roadblock, or need ROADMAP/BACKLOG reshaped mid-run, escalate to the DIRECTOR. The
+director is READ-ONLY - it DECIDES and DIRECTS; the next executor cycle does every file write. Do
+not claim the director "physically implements" anything.
 
-1. SYNCHRONOUS advice (preferred for a question you can resolve mid-cycle without ending it):
-   `powershell -NoProfile -File "C:\Riot Commander\tools\gemini_ask.ps1" -Question "<terse grounded question>"`
-   Read-only Gemini answers on stdout (also saved to `gemini_io/answer_<id>.md`). Take its recommendation,
-   log the choice in the synopsis + WAKEUP_NOTES, and PROCEED. Do not wait/block.
+The synchronous side-channel that used to sit here was a second-vendor wrapper script, deleted
+2026-08-01 with that vendor, and deliberately NOT replaced. Asking the same model you already are,
+in a separate one-shot with no repo context, is not a second opinion - it is a slower way to ask
+yourself. Resolve what you can mid-cycle on your own judgement, log the choice in the synopsis +
+WAKEUP_NOTES, and PROCEED. Escalate only a TRUE blocker, below.
 
-2. DURABLE hand-off (for a TRUE blocker that should end the cycle and reshape the next directive):
+DURABLE hand-off (for a TRUE blocker that should end the cycle and reshape the next directive):
    - Atomic-write the findings + context + the explicit question to `ops/loop/control/gemini_ask.txt`
      (tmp + os.replace; plain ASCII).
    - Finish the in-flight slice (never a half-merged state), then run the FINAL STEP
      `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <N> --regressions <0|1>` to end the cycle cleanly.
    - The controller consumes `gemini_ask.txt` into the NEXT director call under an `EXECUTOR ESCALATION`
-     header (consume-once); the Gemini DIRECTOR resolves it and emits the next directive that encodes the
+     header (consume-once). That filename is legacy and keeps its name on purpose - renaming a control
+     file that appears across append-only history buys nothing. The DIRECTOR resolves it and emits the next directive that encodes the
      decision + instructs the scaffolding + any ROADMAP.md / BACKLOG.md reshape. The per-cycle `/done` +
      `/clear` already run automatically, so continuity is preserved on disk.
    - If you cannot safely proceed AND cannot end the cycle, default to the safest reversible option, log
@@ -303,23 +305,24 @@ PART D - LOOP BEHAVIOR / STOP CONDITIONS / TUNING (controller-driven, automatic)
 ================================================================================
 
 ### Per cycle (all automatic)
-- gemini DIRECTOR reads git log + docs/LEDGER.md + ROADMAP + last result (+ any EXECUTOR ESCALATION) ->
+- The DIRECTOR reads git log + docs/LEDGER.md + ROADMAP + last result (+ any EXECUTOR ESCALATION) ->
   writes one orchestrator-pattern directive (TDD, parallel disjoint slices, Claude sole merger,
   verifier-gate each slice, commit-local, no AskUserQuestion, ends with the done_sentinel FINAL STEP).
 - AHK types `/clear` + "read+execute ops/loop/control/directive.md" into this window.
 - The executor (this session) runs PART B + C, commits locally, runs
   `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <N> --regressions <0|1>` -> writes control/claude.done.
-- Controller meters spend from the pinned executor JSONL, then gemini AUDITS the diff. CLEAN -> next
+- Controller meters spend from the pinned executor JSONL, then the AUDITOR scores the diff. CLEAN -> next
   item; REGRESS (or self-reported regressions) -> next directive is FIX-FIRST.
 
 ### Stop conditions (any one writes control/STOP; AHK + controller exit)
-- GEMINI spend >= ceiling_usd (config.json, default $15) - caps GEMINI ONLY; Claude/executor spend is
-  UNCAPPED per operator. Gemini runs ~cents/cycle, so max_cycles is the real limiter.
-- directive absent / gemini returns NO_WORK; claude.done not seen within cycle_deadline_sec (hang);
+- NO spend stop condition. The ceiling was a rail on the retired metered vendor and was removed
+  2026-08-01 with it; all spend is now Claude spend, which operator policy leaves UNCAPPED, so
+  max_cycles and cycle_deadline_sec are the only limiters.
+- directive absent / the director returns NO_WORK; claude.done not seen within cycle_deadline_sec (hang);
   2 consecutive cycles with the same git sha (no progress); max_cycles reached; operator drops
   `ops/loop/control/STOP` by hand (instant abort).
 
 ### Tuning (operator edits ops/loop/config.json)
-`ceiling_usd`, `max_cycles`, `cycle_deadline_sec`, `gemini_model`, `clear_each_cycle`, `directive_suffix`
+`max_cycles`, `cycle_deadline_sec`, `claude_adjudicator`, `clear_each_cycle`, `directive_suffix`
 (e.g. allow push). Dry-test the plumbing with no spend:
 `launch_loop.ps1 -Mode dry` (uses config.dry.json + claude_stub.py).

@@ -33,11 +33,26 @@ _spec.loader.exec_module(executor)
 # ---- byte-equality with the pre-seam inline strings -------------------------
 
 def test_director_payload_is_byte_identical_to_the_inline_original():
+    """The typed payload is pinned byte-for-byte, deliberately blunt.
+
+    The command name changed on 2026-08-01 (`/gemini-headless-upgrade` ->
+    `/directed-headless-upgrade`) when the second vendor was decommissioned and
+    the command stopped being named after it. This pin caught that, which is
+    exactly its job: the payload is TYPED into a live session, so a drifted
+    string is a directive that silently does nothing.
+
+    Updating the expected value here is only correct alongside the matching
+    rename of the command doc itself - `tools/directed-headless-upgrade.md` and
+    the gitignored `.claude/commands/` mirror. If this test fails and that file
+    does not exist under the name below, the payload is wrong, not the pin.
+    """
     assert executor.directive_payload(3, "ignored body", "director") == (
         "CYCLE=3\n/clear\n"
-        "/gemini-headless-upgrade and Read the file ops/loop/control/directive.md and fully execute it now. "
+        "/directed-headless-upgrade and Read the file ops/loop/control/directive.md and fully execute it now. "
         "No questions; auto-pick the recommended option and proceed."
     )
+    assert (ROOT / "tools" / "directed-headless-upgrade.md").is_file(), \
+        "the payload types a command whose doc does not exist - the loop would no-op"
 
 
 def test_cycle_command_and_fixed_type_the_body_verbatim():
@@ -450,7 +465,7 @@ def test_sdk_prompt_drops_the_clear_and_the_cycle_header(tmp_path: Path):
     """`-p` is already a fresh process; /clear is meaningless and the header is prose."""
     p = executor.sdk_prompt(3, "body", "director")
     assert "/clear" not in p and "CYCLE=" not in p
-    assert p.startswith("/gemini-headless-upgrade")
+    assert p.startswith("/directed-headless-upgrade")
     assert "done_sentinel.py" in p, "the sdk channel returns JSON instead of the sentinel"
 
 

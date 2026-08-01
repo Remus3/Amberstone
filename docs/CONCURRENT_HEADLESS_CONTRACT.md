@@ -471,16 +471,64 @@ leaving a now-unused constant in place is zero.
 
 ## 10. Hooks - what does NOT survive headless
 
-**MEASURED. This is the single most dangerous gap in a headless design, because
-the guard appears to be present and does nothing.**
+**This is the single most dangerous gap in a headless design, because the guard
+appears to be present and does nothing. The SYMPTOM below is measured. The CAUSE
+stated in the first version of this document was wrong, and the correction
+matters more than the original finding.**
 
-A headless run invoked as `claude -p --permission-mode bypassPermissions` **does
-not fire the agent's own PreToolUse / PostToolUse / SessionStart hooks.** A
-banned glyph committed straight through the agent hook while the git hook blocked
-it.
+**What was observed (Legion, 2026-07-26, CLI 2.1.205):** a run invoked as
+`claude -p --permission-mode bypassPermissions` did not fire the agent's own
+PreToolUse hooks - a banned glyph committed straight through the agent hook while
+the git hook blocked it. That observation stands.
+
+**What it was blamed on, wrongly: headlessness.** A third project (Peer-VIP) ran a
+three-arm probe on CLI 2.1.220 and reported that PreToolUse hooks DO fire under
+both `--permission-mode bypassPermissions` and `--dangerously-skip-permissions`
+when the process runs with its **cwd inside the project**, and do NOT fire when
+cwd is elsewhere - the arm that wrote into the project by absolute path from an
+outside cwd produced no hook at all. Their reference runner passed no cwd and its
+scheduled task set no WorkingDirectory, which reproduces the reported symptom by
+a mechanism that has nothing to do with headlessness.
+
+**The variable is settings DISCOVERY, not headlessness.** Hooks come from the
+project's `.claude/settings.json`, which is found relative to cwd. No cwd in the
+project means no settings file, means no hooks exist to fire.
+
+**Status of this correction, stated honestly rather than rounded up.** It is NOT
+independently reproduced on Legion: the headless CLI there is not authenticated
+(`Not logged in`), so the probe could not run, and there are two uncontrolled
+variables between the machines - cwd AND CLI version (2.1.205 vs 2.1.220). Treat
+the cause as strongly-evidenced-but-unconfirmed-here.
+
+**What IS verified on Legion, and it is the consequential half.** RC's
+`.claude/` directory is gitignored (`.gitignore:116`) and untracked, so a git
+worktree does not carry it. Checked directly: the main tree has
+`.claude/settings.json`; both live lane worktrees do NOT. **So every lane worker
+runs with zero agent hooks regardless of which cause is right** - and the reason
+is settings discovery, exactly as Peer describes, not headlessness. This is the
+same fresh-checkout-has-no-wiring trap as Rule 6.13, applied to hooks instead of
+prompts.
+
+**Why the corrected cause is better news.** "Headless cannot have hooks" is a
+hard limit you design around. "Hooks follow cwd and a gitignored settings file"
+is a bug you FIX: pass cwd explicitly, set WorkingDirectory on the scheduled
+task, and materialize the settings file into the worktree. The practical floor
+below is unchanged either way, so a design that obeys it is safe under both
+explanations - but only one of them is worth trying to repair.
 
 **Rule 10.1 - git hooks are the authoritative gate. Agent hooks are a fast
-in-session signal only.**
+in-session signal only, and their presence in the main tree says nothing about
+whether a worker has them.**
+
+**Rule 10.1a - pass cwd explicitly to every spawned worker, and set
+WorkingDirectory on every scheduled task that launches one.** After this
+correction, cwd is load-bearing: it is the difference between a worker the
+guards can see and one they cannot.
+
+**Rule 10.1b - if a worker runs in a worktree, materialize the gitignored agent
+config into it, or accept that it has no agent hooks and say so out loud.**
+Silently inheriting nothing is what made this look like a headless limitation for
+a month.
 
 **Rule 10.2 - a fresh clone has NO hooks.** `core.hooksPath` is LOCAL config and
 is not cloned. A tracked hooks directory runs zero hooks until someone wires it.
@@ -582,7 +630,7 @@ is worth more than its rules.
 | 2 | A dead pid in a lockfile reads as RUNNING | file inspection cannot tell live from dead |
 | 3 | The main-tree resolver INVERTS when imported from a worktree | the guard rejects the safe path and accepts the forbidden one |
 | 4 | A gitignored prompt path is empty in a worktree | the worker starts with no prompt and invents scope |
-| 5 | Agent hooks do not survive `bypassPermissions` | the hook is configured, present, and silent |
+| 5 | Agent hooks silently absent in a spawned worker (cause: cwd / gitignored settings, NOT headlessness - see section 10) | the hook is configured, present in the main tree, and never loaded by the worker |
 | 6 | A netstat audit finds zero ports for an idle service | the project reads as portless |
 | 7 | Reserved-but-unbound ports scan as free | a reservation is a claim about the future |
 | 8 | A text scan for port literals flags dates | four-digit years are everywhere in prose |

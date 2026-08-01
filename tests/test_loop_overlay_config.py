@@ -2,8 +2,8 @@
 """config.overlay.json drives the headless overlay + adaptive-build program in
 cycle_command mode. The per-cycle typed sequence is: /clear (controller-prefixed) ->
 'go' (1-token activation) -> /remote-control (operator requirement every new session) ->
-/overlay-build-continue, ending in the done-sentinel final step. The gemini director is
-skipped (self-directing from docs/OVERLAY_BUILD_MASTER_PLAN.md Section J); the gemini
+/overlay-build-continue, ending in the done-sentinel final step. The director is
+skipped (self-directing from docs/OVERLAY_BUILD_MASTER_PLAN.md Section J); the
 auditor still reviews every commit."""
 from __future__ import annotations
 
@@ -30,9 +30,10 @@ def test_cycle_command_sequence_and_final_step():
 def test_self_directing_keeps_auditor():
     cfg = json.loads(_CFG.read_text(encoding="utf-8"))
     assert cfg.get("clear_each_cycle") is True, "overlay loop must /clear each cycle"
-    assert "fixed_directive" not in cfg, "fixed_directive would disable the gemini auditor"
-    assert "director_prompt" not in cfg, "self-directing: no gemini director"
-    assert cfg.get("gemini_model"), "gemini auditor needs a model"
+    assert "fixed_directive" not in cfg, "fixed_directive would disable the auditor"
+    assert "director_prompt" not in cfg, "self-directing: no director"
+    assert cfg.get("adjudicator") == "claude", "the loop is claude-only since 2026-08-01"
+    assert "gemini_model" not in cfg, "retired vendor key must not come back"
 
 
 def test_cycle_command_is_ascii_clean():

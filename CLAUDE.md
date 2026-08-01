@@ -212,8 +212,8 @@ The four properties, each load-bearing:
 **The only exception is genuinely trivial work:** a one-line cosmetic edit, a doc typo, a single string, a conversational answer. Substance decides, not file count.
 
 Prior wording (2026-06-20, "ALWAYS use subagents for substantive design / build / research work - do not build solo in the main thread") is SUPERSEDED by the above - same intent, but it left adjudication and adversarial review implicit, and R7/R9 read as competing rules. They no longer do.
-- **Spec first, then act:** a Plan/design subagent (or the Gemini director) emits the spec/plan BEFORE any code; verify it against ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
-- **New session:** interview the Gemini director (or the operator if Gemini is down) for intent + acceptance criteria, re-probe live state, THEN build. Verify before building.
+- **Spec first, then act:** a Plan/design subagent (or the loop director) emits the spec/plan BEFORE any code; verify it against ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
+- **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build. Verify before building. The loop is single-vendor since 2026-08-01 - director, executor and auditor are all Claude, and there is no second vendor to be 'down'.
 - **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done" claim.
 - Every `.claude/commands/*.md` carries the SUBAGENT-FIRST block (local, gitignored). See memory `feedback_subagent_first_protocol` + `feedback_parallel_batch_agents`.
 

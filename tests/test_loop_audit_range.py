@@ -144,7 +144,7 @@ def test_young_repo_single_commit_does_not_raise(lc, tmp_path, monkeypatch):
 
 def test_auditor_signature_backward_compatible(lc):
     import unittest.mock as mock
-    with mock.patch.object(lc, "gemini", return_value=None), \
+    with mock.patch.object(lc, "adjudicate", return_value=None), \
             mock.patch.object(lc, "git", return_value="someoutput"):
         verdict = lc.auditor("aaaaaa", "bbbbbb")   # legacy 2-arg call
     assert verdict.startswith("VERDICT: CLEAN")
@@ -227,7 +227,7 @@ def test_truncated_diff_still_lists_late_sorting_true_source(lc, tmp_path, monke
         captured["body"] = body
         return "VERDICT: CLEAN"
 
-    monkeypatch.setattr(lc, "gemini", _fake_gemini)
+    monkeypatch.setattr(lc, "adjudicate", _fake_gemini)
     lc.auditor(r["c0"], r["head"])
     body = captured["body"]
     # precondition: the mirror really does overrun the budget on its own

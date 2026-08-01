@@ -96,8 +96,8 @@ def test_stdin_cap_below_measured_cli_threshold(lc):
     60,000 bytes both delivered - measured live). Every director call was
     hitting cap_stdin's 80,000 ceiling, so cycles 10-32 burned directive-less.
     Pin the backstop under the worst measured ceiling with margin."""
-    assert lc.GEMINI_STDIN_CAP <= 60_000, (
-        f"GEMINI_STDIN_CAP={lc.GEMINI_STDIN_CAP} exceeds the 2026-07-03 "
+    assert lc.ADJ_STDIN_CAP <= 60_000, (
+        f"ADJ_STDIN_CAP={lc.ADJ_STDIN_CAP} exceeds the 2026-07-03 "
         "measured-safe ceiling (79,911 bytes -> empty stdout)"
     )
 
@@ -109,8 +109,8 @@ def test_component_caps_fit_inside_stdin_cap(lc):
     middle-cut marker instead of clean component truncation."""
     overhead = 16_000
     total = lc.PLAN_CTX_CAP + lc.LEDGER_CTX_CAP + lc.ROADMAP_CTX_CAP + overhead
-    assert total <= lc.GEMINI_STDIN_CAP, (
-        f"component caps + overhead = {total} > GEMINI_STDIN_CAP {lc.GEMINI_STDIN_CAP}"
+    assert total <= lc.ADJ_STDIN_CAP, (
+        f"component caps + overhead = {total} > ADJ_STDIN_CAP {lc.ADJ_STDIN_CAP}"
     )
 
 
@@ -123,14 +123,14 @@ def test_plan_head_and_tail_reallocate_the_same_total_budget(lc):
     assert lc.PLAN_CTX_HEAD > 0, "the plan's own instructions live at the head"
 
 
-def test_director_context_fits_gemini_stdin(lc, tmp_path):
+def test_director_context_fits_adjudicator_stdin(lc, tmp_path):
     """2026-07-02: gemini CLI returns silent EMPTY stdout above ~80KB stdin
     (80KB delivered, 160KB empty - measured). The assembled context plus the
     prompt template must stay inside the proven-safe stdin budget even when
     the plan, ledger AND roadmap are all pathologically bloated.
 
     2026-07-27 RETARGET. This measured the CONTEXT against
-    ``GEMINI_STDIN_CAP - 8_000``, a hardcoded GUESS at the overhead of the two
+    ``ADJ_STDIN_CAP - 8_000``, a hardcoded GUESS at the overhead of the two
     components it excluded - the prompt template and the operator brief. Both
     outgrew the guess (template 12,726 bytes, brief 5,273), so the real stdin
     ran 62,919 bytes while this assertion read green at 48,054 <= 52,000. The
@@ -140,9 +140,9 @@ def test_director_context_fits_gemini_stdin(lc, tmp_path):
     _seed(tmp_path, plan_bytes=400_000, ledger_line_bytes=3_000, roadmap_bytes=150_000)
     _seed_directive_chain(tmp_path)
     body = lc.build_director_body({}, "", root=tmp_path, ctl=tmp_path)
-    assert len(body) <= lc.GEMINI_STDIN_CAP, (
+    assert len(body) <= lc.ADJ_STDIN_CAP, (
         f"assembled director body is {len(body)} bytes - exceeds "
-        f"GEMINI_STDIN_CAP {lc.GEMINI_STDIN_CAP}"
+        f"ADJ_STDIN_CAP {lc.ADJ_STDIN_CAP}"
     )
 
 
@@ -311,7 +311,7 @@ def test_real_ledger_newest_items_survive(lc, tmp_path):
 # --- Every cap above bounds one COMPONENT. Nothing bounded their SUM plus the
 # --- prompt template plus the operator brief, so cap_stdin's blind 60/40
 # --- middle cut fired on every live cycle. Measured on the real repo: a
-# --- 62,919-byte body against GEMINI_STDIN_CAP 60,000, and the 2,919 bytes it
+# --- 62,919-byte body against ADJ_STDIN_CAP 60,000, and the 2,919 bytes it
 # --- discarded were exactly the ALREADY-COMPLETED DIGEST header and the whole
 # --- RECENT COMMITS block - the literal refutation of the duplicate directive
 # --- the director kept re-emitting. Measured against the REAL docs, which are
@@ -328,14 +328,14 @@ def _real_body(lc, ctl: Path) -> str:
     return lc.build_director_body({}, "", root=_REPO, ctl=ctl)
 
 
-def test_real_director_body_fits_gemini_stdin(lc, tmp_path):
+def test_real_director_body_fits_adjudicator_stdin(lc, tmp_path):
     """The assembled stdin must fit the cap on its own, so the blind backstop
     never runs. cap_stdin returns its argument UNCHANGED below the limit, so
     identity is the assertion that the backstop did not fire."""
     body = _real_body(lc, tmp_path)
-    assert len(body) <= lc.GEMINI_STDIN_CAP, (
-        f"director stdin is {len(body)} bytes against GEMINI_STDIN_CAP "
-        f"{lc.GEMINI_STDIN_CAP} - cap_stdin will blind-cut the middle"
+    assert len(body) <= lc.ADJ_STDIN_CAP, (
+        f"director stdin is {len(body)} bytes against ADJ_STDIN_CAP "
+        f"{lc.ADJ_STDIN_CAP} - cap_stdin will blind-cut the middle"
     )
     assert lc.cap_stdin(body) is body, "cap_stdin still fired on a normal body"
 
@@ -382,7 +382,7 @@ def test_overflow_is_repaid_out_of_the_plan_slice(lc, tmp_path):
     literal that stops overflowing when the docs shrink."""
     _seed_directive_chain(tmp_path)
     baseline = lc.build_director_body({}, "", root=_REPO, ctl=tmp_path)
-    pad = max(lc.GEMINI_STDIN_CAP - len(baseline), 0) + 4_096
+    pad = max(lc.ADJ_STDIN_CAP - len(baseline), 0) + 4_096
     audit = "AUDIT-PAD-MARKER " + "p" * pad
     body = lc.build_director_body({}, audit, root=_REPO, ctl=tmp_path)
     assert "AUDIT-PAD-MARKER" in body, "the driven overflow never reached the body"

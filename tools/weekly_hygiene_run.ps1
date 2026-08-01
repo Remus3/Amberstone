@@ -1,7 +1,7 @@
 # weekly_hygiene_run.ps1 - unattended weekly /weekly-hygiene pass on Legion.
 #
 # Registered as the RC-WeeklyHygiene scheduled task (Sunday 04:17, after the
-# nightly DDragon mirror 03:30 + Gemini audit 03:00 so the anomaly-triage step
+# nightly DDragon mirror 03:30 so the anomaly-triage step
 # sees fresh scheduled-task results). Runs Claude Code headless against the
 # repo: the /weekly-hygiene skill does its relocate-only doc trims + memory
 # staleness scan + session-start anomaly triage, then appends a dated entry to
@@ -45,7 +45,8 @@ Write-Host "[weekly_hygiene] exit=$code log=$log"
 # 529 overloaded) is not a repo fault. Leaving the task red on that condition
 # fires a false anomaly at every session-start probe until the next weekly run.
 # Detect the transient class, log it loudly, and exit 0 (it self-resolves).
-# Mirrors item 438's gemini-wrapper credit-depletion hardening. The detection
+# Mirrors item 438's credit-depletion hardening (originally built for the
+# retired second-vendor wrapper; the detection generalizes). The detection
 # scans the captured in-memory stream (not the on-disk log) to dodge the
 # UTF-16/BOM re-read encoding pitfall.
 if ($code -ne 0) {

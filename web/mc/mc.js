@@ -571,11 +571,13 @@ function renderLoopStatus(ctlMsg, preserve) {
       if (d.budget) {
         const b = d.budget;
         const num = (v) => (typeof v === "number" ? v : null);
-        const g = num(b.gemini_usd), gc = num(b.gemini_ceiling), c = num(b.claude_usd_info);
+        // No ceiling is rendered: since 2026-08-01 the loop is single-vendor and
+        // nothing caps spend, so a "/ $200" would state a rail that does not
+        // exist. Both figures are ESTIMATES and read as workload size.
+        const a = num(b.adjudicator_usd), c = num(b.claude_usd_info);
         host.append(mk("div", "loop-line dim",
-          "spend: gemini $" + (g != null ? g.toFixed(2) : "?") +
-          " / $" + (gc != null ? gc.toFixed(0) : "?") +
-          "  -  claude(info) $" + (c != null ? c.toFixed(2) : "?")));
+          "spend: adjudicator $" + (a != null ? a.toFixed(2) : "?") +
+          "  -  executor(info) $" + (c != null ? c.toFixed(2) : "?")));
       }
 
       if (d.last_commit) {

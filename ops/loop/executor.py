@@ -73,7 +73,7 @@ class DoneRecord:
 
 
 DIRECTIVE_OPENER = (
-    "/gemini-headless-upgrade and Read the file ops/loop/control/directive.md and fully execute it now. "
+    "/directed-headless-upgrade and Read the file ops/loop/control/directive.md and fully execute it now. "
     "No questions; auto-pick the recommended option and proceed."
 )
 
