@@ -57,7 +57,13 @@ EV_PYTEST = re.compile(r"(?:^|\s|-m\s)pytest\b", re.I)
 EV_FILTERED = re.compile(r"\s-k\s|::|\btests?[\w/\\.-]*\.py\b", re.I)
 EV_COMMIT = re.compile(r"\bgit\b[^|;&]*\bcommit\b", re.I)
 EV_PUSH = re.compile(r"\bgit\b[^|;&]*\bpush\b", re.I)
-EV_CI = re.compile(r"\bgh\s+(?:run|pr|api|workflow)\b|actions/runs", re.I)
+# The binary and its subcommand need not be ADJACENT: RC's own convention is to
+# invoke gh by absolute path through a variable (`GH="...gh.exe"; "$GH" run
+# list`), so requiring "gh run" made a real probe invisible on every wrap. The
+# span stops at | and & so a pipeline into an unrelated command cannot borrow
+# the match, and a bare `run` with no gh binary anywhere still proves nothing.
+EV_CI = re.compile(r"\bgh(?:\.exe)?\b[^|&\n]*?\b(?:run|pr|api|workflow)\b"
+                   r"|actions/runs", re.I)
 EV_BYPASS = re.compile(r"--no-verify\b|--no-gpg-sign\b|core\.hooksPath\s*=", re.I)
 EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
 EV_VACUOUS = re.compile(r"no tests ran|collected 0 items", re.I)
