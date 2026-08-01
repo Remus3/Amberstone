@@ -370,9 +370,16 @@ def test_live_get_is_open(live_mc):
 
 
 def test_live_static_traversal_is_refused(live_mc):
+    """Escape target is main.py, not a doc: a real tracked file at the repo
+    root, so the resolved path exists and the guard has something to refuse.
+    (Deliberately not a .md path - the docs-guard test selector treats any
+    single-line whitespace-free `*.md` string literal as "this module reads
+    a tracked doc", which would drag this security test's whole import graph
+    into the lightweight docs-guards CI job. See tools/md_guard_selector.py.)
+    """
     addr, _ = live_mc
     conn = http.client.HTTPConnection(addr[0], addr[1], timeout=10)
-    conn.request("GET", "/../../CLAUDE.md")
+    conn.request("GET", "/../../main.py")
     resp = conn.getresponse()
     resp.read()
     conn.close()
