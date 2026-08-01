@@ -119,6 +119,57 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-07-31c - MISSION CONTROL S8 + S9 (lanes 7-8 wired; the INTERRUPT tier).
+
+## Start here next session
+
+**S10 - DECOUPLE Mission Control from the RC dashboard** (operator directive, 2026-07-31):
+own process + port + asset tree, reachable by IP, so a game-overlay or dashboard change
+cannot affect the control plane. Full design-question list in `docs/MISSION_CONTROL_PLAN.md`
+"S10"; ROADMAP carries it as the top `[!]`. Two things NOT to do casually: **auth becomes
+load-bearing** (the trust model is still "local / tailnet only, single-operator" and S9 added
+an action that KILLS PROCESSES), and **move the serving layer, not the logic** (`ops/loop/*`
+stays put - do not fork a second copy). The mkcert SAN list decides which IPs validate
+(`tools/regen_rc_cert.ps1`), so a bare IP needs a cert regen, not just a firewall rule.
+
+**Owed first:** `MEMORY.md` is 21.4 KB against a 24.4 KB read limit and a hook is asking for
+compaction (`anthropic-skills:consolidate-memory`). Deferred twice now; it should lead.
+
+## What shipped
+
+- **S8 `97c74550`** - `tools/headless-repo.md` (BREADTH: restructure/clean/modularize) and
+  `tools/headless-true-audit.md` (DEPTH: one file at a time, rewrite + harden), authored by
+  parallel agents, mirrored to `.claude/commands/`, wired into `LANE_COMMANDS`. All six lanes
+  startable; the panel derives `wired` from that map so it lit them up with no client change.
+- **S9 `97c74550`** - `ops/loop/interrupt.py` + `interrupt_preview` / `interrupt` route
+  actions + the panel block. `preview` fingerprints the exact victim set (pid AND process
+  START TIME) and `execute` re-probes and REFUSES on mismatch. Descendants are victims too,
+  reaped deepest-first; `taskkill` runs WITHOUT `/T`.
+- **`79cdd590`** - an INTERRUPT audit row is no longer counted as pending guidance.
+
+## The finding worth carrying forward
+
+**Two defects passed the whole suite, my own mutation tests, and the source-contract tests -
+and died on the first real click.** `mk` is a function-LOCAL const, so at module scope it is
+a ReferenceError: the victim list never rendered while the armed button still read
+"Confirm INTERRUPT - kill 3". Then `_mcArm.confirm()` notifies SYNCHRONOUSLY, the repaint
+clears the fingerprint, and the POST went out fingerprint-less (failed SAFE, but could never
+kill). Both are about a BINDING'S LIFETIME, which a source-literal test cannot see. Mutation
+testing gave false confidence because every mutant of the WRITTEN property was caught - the
+written property was not the broken one. Keep the live-audit ritual mandatory.
+
+## Do NOT redo
+
+- S1-S9 are shipped and CI-green. Do not rebuild the lock, idempotency table, intent
+  consumer, panel, launcher, lane docs, steer channel, or the INTERRUPT tier.
+- **Lanes 7 and 8 have never been FIRED.** That is deliberate - the plan gates both on
+  operator sign-off and a fire starts a real autonomous worker against the repo. The launch
+  path is proven structurally (worktree + branch + prompt-inside-checkout, verified with real
+  `git worktree add`), so do not "fix" it; just ask before firing.
+- Never edit `ops/loop/slots.py` or `ops/loop/winmutex.py` (byte-identical-by-contract).
+
+---
+
 # 2026-07-31b - MISSION CONTROL S5 + S6 + S7 (lanes fire for real; the steer channel).
 
 ## Start here next session
