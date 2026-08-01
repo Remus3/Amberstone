@@ -124,6 +124,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/routes_loop_monitor.py` | GET /api/loop-monitor (per-tool-call timeline) |
 | `dashboard/routes_loop_status.py` | GET /api/loop-status route table - S10 Task 9 de-registered it from the :8888 dispatch table; only mc/routes.py imports it now (:8895) |
 | `dashboard/routes_metrics.py` | /metrics Prometheus endpoint |
+| `dashboard/routes_ops_panels.py` | ops panels backend (seam map / drift strip / gated queue) |
 | `dashboard/routes_peel_priority.py` | peel-target verdict backend (item 304 Phase D) |
 | `dashboard/routes_scouting.py` | player-scouting backend (rank fan-out) |
 | `dashboard/routes_spike_curve.py` | power-curve sparkline backend |
@@ -182,6 +183,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/moon_proxy.py` | vision server proxy [FROZEN] |
 | `core/next_buy_fallback.py` | static DS build-order fallback for the NEXT BUY feed |
 | `core/objective_playbook.py` | RC2-P5.5 deterministic objective playbook callout |
+| `core/ops_panels.py` | data layer for the three ops dashboard panels |
 | `core/pickban_targets.py` | deterministic pick/ban targets reader (matchup-engine DB) |
 | `core/ports.py` | canonical TCP port registry for RC + Daemon Slayer, and the cross-project block reservations |
 | `core/precomputed_anvil_advisor.py` | arena item-anvil deterministic substrate |

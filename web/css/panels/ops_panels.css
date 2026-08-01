@@ -1,0 +1,136 @@
+/* Ops panels - ADDENDUM A concepts 3 / 4 / 5.
+ *
+ * Only theme tokens are used, never a raw hex, so the panels follow the
+ * dashboard theme rather than pinning one look. Every var referenced here is
+ * defined in web/css/themes.css - an undefined var() fails SILENTLY and
+ * inherits instead (reference_css_undefined_var_fails_silently), so adding a
+ * token here means adding it there first.
+ *
+ * No state is encoded by colour alone: the seam grid writes the literal "NO"
+ * into inert cells, so the grid is readable in monochrome and to a screen
+ * reader.
+ */
+
+.ops-page {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
+  gap: var(--panel-gap, 18px);
+}
+
+.ops-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius, 18px);
+  padding: var(--panel-padding, 20px);
+}
+.ops-panel.wide { grid-column: 1 / -1; }
+
+.ops-panel > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.ops-panel h2 {
+  font-size: var(--fs-md, 22px);
+  margin: 0;
+  color: var(--accent);
+  letter-spacing: .4px;
+}
+.ops-panel .cat {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.ops-cap { color: var(--text-faint); margin: 12px 0 0; font-size: var(--fs-xs, 16px); }
+.ops-fail {
+  color: var(--bad);
+  background: var(--bad-soft);
+  border: 1px solid var(--bad);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0;
+  font-size: var(--fs-xs, 16px);
+}
+
+/* --- 3. Seam map ------------------------------------------------------- */
+table.seams { width: 100%; border-collapse: collapse; }
+table.seams th,
+table.seams td {
+  text-align: left;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--fs-xs, 16px);
+}
+table.seams th {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+table.seams th.gate,
+table.seams td.gate { text-align: center; width: 160px; font-weight: 600; }
+table.seams td.seam { font-family: Consolas, "Cascadia Mono", monospace; color: var(--text); }
+table.seams tr.inert { background: var(--bad-soft); }
+table.seams tr.inert td.seam { color: var(--bad); }
+.g-yes { color: var(--good); }
+.g-no  { color: var(--bad); }
+.g-na  { color: var(--text-faint); }
+
+/* --- 4. Drift strip ---------------------------------------------------- */
+.strip { display: flex; flex-wrap: wrap; gap: 10px; }
+.strip .pill {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--hit-min, 42px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--good);
+  background: var(--good-soft);
+  color: var(--good);
+}
+.strip .pill .k { font-size: var(--fs-xs, 16px); letter-spacing: .5px; opacity: .85; }
+.strip .pill .v { font-size: var(--fs-xs, 16px); font-weight: 600; font-variant-numeric: tabular-nums; }
+.strip .pill.amber   { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+.strip .pill.red     { border-color: var(--bad);  background: var(--bad-soft);  color: var(--bad); }
+.strip .pill.unknown { border-color: var(--border); background: var(--surface-2); color: var(--text-dim); }
+
+/* --- 5. Gated queue ---------------------------------------------------- */
+.q { display: grid; grid-template-columns: auto 1fr auto; gap: 10px 14px; align-items: center; }
+.q .mode {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 600;
+  text-align: center;
+  min-width: 112px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--accent-2);
+  color: var(--accent-2);
+}
+.q .mode.aram     { border-color: var(--accent); color: var(--accent); }
+.q .mode.arena    { border-color: var(--good);   color: var(--good); }
+.q .mode.practice { border-color: var(--warn);   color: var(--warn); }
+.q .what { color: var(--text-dim); font-size: var(--fs-xs, 16px); }
+.q .n { color: var(--text-faint); font-variant-numeric: tabular-nums; text-align: right; font-size: var(--fs-xs, 16px); }
+
+.countdown {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.countdown .big {
+  font-size: var(--fs-lg, 28px);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.countdown .cd-label { color: var(--text-faint); font-size: var(--fs-xs, 16px); }
