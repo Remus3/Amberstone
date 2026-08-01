@@ -219,12 +219,36 @@ def main(argv=None):
         write_report(report, args.report)
         return 0
 
-    report["findings"] = audit(collect_evidence(read_transcript(transcript)))
+    findings = audit(collect_evidence(read_transcript(transcript)))
+    report["findings"] = findings
+
+    # Exit 2 on Stop BLOCKS the session from ending and hands stderr back to the
+    # model. So re-entry is the hazard: if the model restates the claim, a second
+    # block loops forever. `stop_hook_active` is true once we have already
+    # blocked, and it is the only thing standing between armed mode and a spin.
+    reentry = bool(payload.get("stop_hook_active"))
+    should_block = bool(args.arm and findings and not reentry)
+    report["blocked"] = should_block
+    if args.arm and findings and reentry:
+        report["reason"] = "stop_hook_active"
     write_report(report, args.report)
 
-    if args.arm and report["findings"]:
-        print(f"stop_claim_gate: {len(report['findings'])} unbacked claim(s); "
-              f"see {args.report}", file=sys.stderr)
+    if should_block:
+        lines = [f"stop_claim_gate: {len(findings)} claim(s) not backed by this "
+                 f"session's own evidence. Fix or retract, then finish."]
+        for finding in findings:
+            detail = ""
+            if finding["claimed"] or finding["observed"]:
+                detail = f" (claimed {finding['claimed']!r} / observed {finding['observed']!r})"
+            lines.append(f"  - {finding['check']}{detail}: {finding['quote']}")
+        lines.append(f"  full report: {args.report}")
+        # Under pythonw.exe sys.stderr can be None. Blocking with no reason is
+        # worse than not blocking, so never let the emit itself raise.
+        try:
+            if sys.stderr is not None:
+                print("\n".join(lines), file=sys.stderr)
+        except (OSError, ValueError):
+            pass
         return 2
     return 0
 
