@@ -34,6 +34,9 @@ Probe those three, never infer them from a green drift check.
   95 percent gate has no meter anywhere, and `OVERLAY_BUILD_MASTER_PLAN.md:169` had already
   recorded it as an EXPLICIT PARK. ROADMAP just never caught up.
 - **NEXT-5 triage banner** in the NOW section, each blocker probed rather than inherited.
+- **Doc-budget repair** `85488a9f`. This session's own additions pushed ROADMAP to 96 percent
+  of its 81920-byte budget and `drift_guard` breached. Relocated VERBATIM to
+  `docs/ROADMAP_HISTORY.md` rather than loosening the check: 96 -> 90 percent, guard clean.
 
 **RM-141 is ANSWERED, not built - and that distinction is deliberate.**
 The same probe surfaced a `kJade` group (17 client-visible "Classic" queues) the row's three
@@ -157,37 +160,3 @@ subagent-first / parallel as standing protocol requires.
    before acting on any row. Tier-2: ENGINE bump, four doc anchor sites, Share mirror, dual
    suite. Root-cause-first, validated PER CHAMPION (Engine/Build Conventions hard rule - a
    single generic ADC-crit shape is exactly how the last two build fixes shipped incomplete).
-
----
-
-# 2026-08-01e - RM-127's last two operator calls, then the armed gate blocked a TRUE claim
-
-2 commits `039b3393`, `f4878fd2`, both pushed. Tier-1. DS untouched.
-
-**Shipped**
-- **CCR-123: operator chose B, and the `<3.14` ceiling is DECLARED-ONLY.** `talkthrough-mcp
-  0.2.5` installs (72 packages, real wheels for `ctranslate2` + `onnxruntime`), imports, and
-  serves a full MCP stdio handshake on **Python 3.14.4** with all 7 tools. Why nobody had an
-  answer for three sessions: **pip filters on `requires_python` BEFORE attempting a build**, so
-  `pip index versions` reports "No matching distribution found" - gated reads as unavailable.
-  543 MB throwaway venv, deleted. Nothing in RC's env, no second interpreter, nothing vendored.
-  Option C is dead. Row moves HOLD -> FUTURE lift candidate. **Not adopted** - measuring was
-  the whole scope. Still untested: real media through Whisper/OCR/ffmpeg.
-- **The Stop claim gate STAYS ARMED, plus `ops/runtime/stop_claim_history.jsonl`** (one line
-  per audit, rolled to 500). The per-Stop report is overwritten, so it can only say "was the
-  LAST session clean" - the re-affirm rested on n=1, and that is why the same call shipped code.
-- **Then the armed gate blocked THIS session's Stop on `17784 passed` - and the claim was TRUE.**
-  Two distinct false-positive classes, both fixed by NARROWING: (1) a `run_in_background` pytest
-  run answers with a launcher handoff, so its real summary arrives later via an unrelated `tail`
-  and was never collected - the collector was blind to a TRANSPORT; (2) `Test 1 passed` was read
-  as a one-test suite count. **This session's own transcript now replays to `findings 0`.**
-- Fixed a red suite RM-136 shipped 2026-08-01 (`pytest.skip` on a TRACKED fixture - an
-  always-passing guard). Confirmed pre-existing by stashing only my two files.
-
-**Do NOT redo**
-- Do NOT re-open CCR-123 compatibility. It is MEASURED on 3.14.4. The open question is FIT.
-- Do NOT disarm the gate or loosen a check to quiet it. If it flags you, REPLAY the transcript
-  first; if it is a false positive, narrow the PARSER. Its must-not-fire negatives are now 6.
-- Do NOT re-run any RM-127 CCR pass. RM-127 has ZERO residue.
-
-**Next:** RM-131, RM-128, RM-130, RM-132, RM-133, RM-134, RM-135, or the DS RM-118 seams.
