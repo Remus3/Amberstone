@@ -264,11 +264,20 @@ def _real_registries() -> list[Path]:
 class RosterDedupeTests(unittest.TestCase):
     """``load_champions`` must return DISTINCT names.
 
-    DDragon 16.15.1 adds 60 ``Jade_<Champion>`` alias entries whose ``name`` is
-    the base champion, taking the registry from 173 to 233 entries that still
-    describe 173 champions. The pre-fix loader appended one name per entry, so
-    the day that drop is committed the display-name roster silently inflates to
-    233 - 60 phantom duplicates, each swept twice, with nothing failing.
+    DDragon 16.15.1 adds 60 ``Jade_<Champion>`` THROWBACK-MODE VARIANT entries
+    at ``base_key + 60000``. They are NOT aliases: each carries its own
+    older-patch stat line (``Jade_Ahri`` key 60103 hp 460 against ``Ahri`` key
+    103 hp 590) and only the display ``name`` collides with the base champion.
+    That takes the registry from 173 to 233 entries which still describe 173
+    champions. The pre-fix loader appended one name per entry, so the day that
+    drop is committed the display-name roster silently inflates to 233 - 60
+    phantom duplicates, each swept twice, with nothing failing.
+
+    The dedupe below is therefore a DISPLAY-NAME collapse for the generator's
+    own sweep, not a claim that the two rows are the same champion row. The
+    engine classifies by the key floor, never by the ``Jade_`` name prefix -
+    see ``agents/daemon_slayer/mode_variants.py`` and
+    ``tests/test_champion_mode_variants.py``.
     """
 
     def test_names_are_distinct_on_every_real_registry(self):
