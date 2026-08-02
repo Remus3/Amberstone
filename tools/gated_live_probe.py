@@ -46,6 +46,7 @@ import json
 import ssl
 import sys
 import urllib.request
+from pathlib import Path
 
 _DASH_BASE = "https://127.0.0.1:8888"
 # The vision server on :8889 is plain HTTP and token-gated - NOT https.
@@ -64,10 +65,31 @@ _SENTINEL = object()
 
 
 def _relay_token() -> str:
-    """Canonical vision-relay token (env -> config file -> legacy default)."""
-    from core.vision_token import get_vision_token
+    """Canonical vision-relay token (env -> config file -> legacy default).
 
-    return get_vision_token()
+    Fail-soft by contract (see module docstring: "never an exception"). Run as
+    `python tools/gated_live_probe.py` the repo root is NOT on sys.path, so the
+    `core.vision_token` import raises ModuleNotFoundError - which crashed the
+    tool once already. Put the repo root on the path, and if the import still
+    fails return "" so the caller simply sends no header and reports a reachable
+    error instead of dying.
+    """
+    try:
+        from core.vision_token import get_vision_token
+    except ModuleNotFoundError:
+        root = str(Path(__file__).resolve().parent.parent)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        try:
+            from core.vision_token import get_vision_token
+        except Exception:  # noqa: BLE001 - fail-soft probe
+            return ""
+    except Exception:  # noqa: BLE001 - fail-soft probe
+        return ""
+    try:
+        return get_vision_token() or ""
+    except Exception:  # noqa: BLE001 - fail-soft probe
+        return ""
 _TIMEOUT = 3.0
 
 # The dashboard cert is mkcert self-signed; skip verification like every other
