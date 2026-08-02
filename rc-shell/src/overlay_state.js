@@ -392,6 +392,37 @@ function resolveOverlayMetrics(display) {
   });
 }
 
+// RM-145: decide what a display change requires of the overlay window. Compares
+// the geometry the overlay was last BUILT for against the geometry live now.
+// Both inputs are {scale, x, y, width, height}; the result splits deliberately:
+//
+//   reposition - the box moved or resized -> setBounds is enough, no flash.
+//   reload     - the resolved scale changed -> the renderer's body zoom rides
+//                the `ovscale` URL PARAM, baked in at loadURL, so ONLY a reload
+//                can move it.
+//
+// Keeping them apart matters in-game: display-metrics-changed also fires for
+// work-area and color-profile changes that leave overlay geometry alone, and
+// reloading the HUD on a taskbar auto-hide toggle mid-fight is a visible flash
+// for nothing. A garbage or absent side counts as CHANGED so one apply runs and
+// the stored snapshot self-heals - the alternative wedges the overlay at a stale
+// scale forever, which is the RM-145 symptom itself.
+function _sameNum(a, b) {
+  return Number.isFinite(a) && Number.isFinite(b) && a === b;
+}
+
+function resolveOverlayDisplayChange(prev, next) {
+  const p = prev && typeof prev === "object" && !Array.isArray(prev) ? prev : {};
+  const n = next && typeof next === "object" && !Array.isArray(next) ? next : {};
+  const reposition = !(
+    _sameNum(p.x, n.x) &&
+    _sameNum(p.y, n.y) &&
+    _sameNum(p.width, n.width) &&
+    _sameNum(p.height, n.height)
+  );
+  return { reposition, reload: !_sameNum(p.scale, n.scale) };
+}
+
 // Where the overlay window goes at create time. Size is the OVERLAY_DEFAULTS box
 // scaled by an optional metrics {width,height} (resolveOverlayMetrics) - garbage
 // or absent metrics fall back to the fixed default box (backward compatible).
@@ -771,6 +802,7 @@ module.exports = {
   normScaleFactor,
   resolveOverlayScale,
   resolveOverlayMetrics,
+  resolveOverlayDisplayChange,
   OVERLAY_SIZE_BASELINE,
   mergeOverlayPatch,
   overlaySettingsFrom,

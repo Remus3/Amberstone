@@ -104,6 +104,8 @@ let lastMode = ""; // last mode_key seen by the poll (for hotkey re-apply).
 let lastInGame = false; // last live-game presence (liveclient non-empty) from the poll; gates overlay HUD vs companion.
 let panelSet = null; // current overlay panel set; null = plain overlay=1.
 let overlayScale = 1; // RC2 4.1: resolution scale for the overlay box + renderer zoom.
+let overlayDisplaySnap = null; // RM-145: {scale,x,y,width,height} the overlay window was last BUILT for.
+let overlayDisplayTimer = null; // RM-145: debounce for the display-change re-apply burst.
 let activeRevertTimer = null; // setTimeout wakeup for the ACTIVE auto-revert.
 let overlaySettings = ov.overlaySettingsFrom({}); // operator overlay settings (OVL1); loaded from saved at boot.
 let activeRevert = ov.makeActiveRevert({ delayMs: overlaySettings.activeRevertSec * 1000 }); // pure deadline state.
@@ -588,6 +590,9 @@ function createOverlayWindow() {
   // covers it). Companion mode keeps the work area (createWindow, unchanged).
   const _wa = primary.bounds;
   const bounds = { x: _wa.x, y: _wa.y, width: _wa.width, height: _wa.height };
+  // RM-145: remember the geometry this window is built for, so a later display
+  // change can tell what actually moved (see applyOverlayDisplayMetrics).
+  overlayDisplaySnap = { scale: overlayScale, ...bounds };
   overlayWindow = new BrowserWindow({
     width: bounds.width,
     height: bounds.height,
@@ -677,6 +682,77 @@ function createOverlayWindow() {
     overlayReady = false; // a recreated window must re-gate its first show.
   });
   return overlayWindow;
+}
+
+// --- RM-145: follow a display-mode change -------------------------------------
+// Before this, resolveOverlayMetrics ran exactly ONCE per overlay window and
+// main.js registered no display listener at all, so the scale captured at build
+// time was the scale the process kept forever. Operator symptom: the game client
+// flipped video modes, the overlay followed the display DOWN to 1920x1080, and
+// putting the in-game settings back to borderless 1440 did not bring it back -
+// restarting rc-shell was the only recovery.
+//
+// The re-apply deliberately re-runs the SAME computation create time runs, off
+// the SAME source (primary.bounds, NOT the taskbar-excluded work area - item 567
+// at the top of createOverlayWindow explains why: work-area sizing makes ovscale
+// 1.296 instead of 1.333 and lands every design-px widget ~3% off the game
+// minimap). Substituting a different source here would fix the tracking and
+// break the alignment.
+function applyOverlayDisplayMetrics() {
+  if (!overlayWindow || overlayWindow.isDestroyed()) {
+    return { reposition: false, reload: false };
+  }
+  const primary = screen.getPrimaryDisplay();
+  const metrics = ov.resolveOverlayMetrics({
+    workArea: primary.bounds,
+    scaleFactor: primary.scaleFactor,
+  });
+  const b = primary.bounds;
+  const next = { scale: metrics.scale, x: b.x, y: b.y, width: b.width, height: b.height };
+  const change = ov.resolveOverlayDisplayChange(overlayDisplaySnap, next);
+  if (!change.reposition && !change.reload) {
+    return change; // metrics event for something that is not our geometry.
+  }
+  overlayScale = next.scale;
+  overlayDisplaySnap = next;
+  if (change.reposition) {
+    // Same reason as create time: setBounds is not work-area-clamped the way the
+    // constructor is, so this reclaims the taskbar strip on the new mode too.
+    overlayWindow.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height });
+  }
+  if (change.reload) {
+    // ovscale is a URL param baked in at loadURL - only a reload moves the
+    // renderer's body zoom. Reload is second so the page lays out into the box
+    // it will actually live in.
+    overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet, overlayScale));
+  }
+  return change;
+}
+
+// Windows emits a BURST of display-metrics-changed during a mode switch (and the
+// game client itself flips modes more than once on launch). Coalesce them so the
+// HUD reloads at most once per settle, and re-apply off the LAST event rather
+// than the first - mid-switch Electron can still report the outgoing geometry.
+const OVERLAY_DISPLAY_SETTLE_MS = 600;
+
+function scheduleOverlayDisplayReapply() {
+  if (overlayDisplayTimer) {
+    clearTimeout(overlayDisplayTimer);
+  }
+  overlayDisplayTimer = setTimeout(() => {
+    overlayDisplayTimer = null;
+    try {
+      applyOverlayDisplayMetrics();
+    } catch (_e) {
+      // A display race must never take down the shell; the next event retries.
+    }
+  }, OVERLAY_DISPLAY_SETTLE_MS);
+}
+
+function watchDisplayChanges() {
+  for (const evt of ["display-metrics-changed", "display-added", "display-removed"]) {
+    screen.on(evt, scheduleOverlayDisplayReapply);
+  }
 }
 
 // Inject the RC2 4.2 click-through-zones hover detector (overlay-only). The
@@ -1298,6 +1374,7 @@ if (!gotLock) {
     applyCompanionAlwaysOnTop();
     setupAutoUpdater();
     registerHotkeys();
+    watchDisplayChanges(); // RM-145: overlay must track a display-mode change.
     startActiveToggleWatch();
     startPanelCycleWatch();
     startPoll();
@@ -1321,6 +1398,10 @@ if (!gotLock) {
     if (overlaySaveTimer) {
       clearTimeout(overlaySaveTimer);
       overlaySaveTimer = null;
+    }
+    if (overlayDisplayTimer) {
+      clearTimeout(overlayDisplayTimer);
+      overlayDisplayTimer = null;
     }
     if (updateInitialTimer) {
       clearTimeout(updateInitialTimer);
