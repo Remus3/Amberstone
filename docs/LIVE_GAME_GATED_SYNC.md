@@ -140,7 +140,9 @@ independent gates preventing that, so a visible Home surface proves the stamp wa
 
 ---
 
-**OPEN: 112 rows** (was 118; six CLOSED 2026-07-20 in the drain block above; was 124 before 2026-07-18).
+**OPEN: 111 rows** (was 112; **G6-03 CLOSED 2026-08-02**, the third GATE 6 row ever closed. Was 118; six
+CLOSED 2026-07-20 in the drain block above; was 124 before 2026-07-18. G6-04 is NOT subtracted here - it
+was filed AND closed after the 112 count without ever entering it, per LEDGER 1169.)
 G6-04 was filed AND closed after that count without ever entering it - the commit that filed it
 (`47ae39eb`, 2026-08-02) did not touch this line, so 112 is still correct and G6-04 must not be
 subtracted from it. Check this line's history before adjusting the tally for any row filed after
@@ -1095,8 +1097,28 @@ Rides on top of whatever gate is already running. No separate game needed.
   presses came in bursts 0.5-2s apart, which reads equally as deliberate toggling or as mashing because
   nothing visibly happened - so ONE deliberate press with eyes on the overlay IS the test. Requires
   G6-01 (rc-shell MAIN up) FIRST. SOURCE: LEDGER 598; memory `reference_overlay_ingame_hotkey_win32`.
-- **G6-03** (was E4) OBS DXGI match-end capture watch: lock one resolution + League Borderless while
-  recording; observe a real match end. SOURCE: ROADMAP.md:78(c).
+- **G6-03** (was E4) **CLOSED 2026-08-02 - PASS, but read the scope fence before citing it.** Live ARAM on
+  Legion, real match end, OBS 32.1.2 / obs-websocket 5.7.3 driven entirely over `127.0.0.1:4455` (the
+  scene JSON was never edited - it is stale since 2026-05-29 and OBS rewrites it on exit). **RECEIPT:**
+  `StartRecord` 20:13:43 on game detect, `liveclient` dropped 20:37:13, recording HELD 92s past that and
+  stopped 20:38:45, so the match-end transition sits INSIDE the file rather than at its edge. Output
+  `C:\RC-Recordings\2026-08-02_15-13-40.mkv`, 6.35 GB, ffprobe parses clean: h264 2560x1440 @60 + AAC,
+  duration 1504.767s. **ZERO capture stalls** - `outputDuration` advanced 10133-10167 ms on every one of
+  140 ten-second polls, and there is not a single zero-delta sample during recording (the 16 zero rows
+  are all pre-`StartRecord` waiting, verified by filtering on phase, not by eyeballing).
+  **THE SCOPE FENCE, and it is the whole point:** League ran **Borderless at 2560x1440 on a 2560x1440
+  desktop**, so **NO resolution swap occurred at match end**. Item-209b's actual failure mode - a bound
+  DXGI grab across a 1920x1080 <-> 1440p swap - was therefore NEVER EXERCISED. This row proves
+  continuous WGC display capture survives a match end AT A LOCKED RESOLUTION. It does NOT prove the
+  original hazard is gone; in the current single-resolution config that hazard cannot occur at all. Do
+  not cite G6-03 as clearance for a resolution-swapping setup.
+  **Setup that made it runnable is RM-147** (ROADMAP.md): a SECOND `monitor_capture` source added
+  disabled-by-default beside the existing `window_capture`, enabled for this match only and
+  auto-disabled after, so OBS is back to its pre-G6-03 state. **Two traps measured here:** a freshly
+  enabled `monitor_capture` renders a BLANK frame for the first few seconds, so a screenshot taken
+  immediately after `SetSceneItemEnabled` reads as a dead source (994-byte uniform PNG) - settle ~3s
+  before judging it; and all three `method` values (0 Auto / 1 DXGI / 2 WGC) render identically once
+  settled, so a blank frame is never evidence about the method. SOURCE: ROADMAP.md RM-147; LEDGER 1170.
 - **G6-04** (RM-145) **CLOSED 2026-08-02 - PASS, BOTH DIRECTIONS.** Live ARAM on Legion, rc-shell pid
   4140 (relaunched 11:26 on the fixed code, so G6-01 held). Overlay window confirmed present and
   visible BEFORE the flips by Win32 window enumeration (`Chrome_WidgetWin_1 vis=True 2560x1440 @ 0,0`;
