@@ -546,12 +546,30 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     _rcDbgPaint();
   }
 
+  // Has setMode stamped the DOM at least once this page life? state.mode is
+  // SEEDED to "client" (lib/state.js), so a fresh render that resolves to
+  // "client" - the normal out-of-game case - hit the tag===state.mode early
+  // return and never stamped anything: document.title stayed on index.html's
+  // static "Riot Commander - Phase 3", and the mode pill + body[data-mode]
+  // kept their markup defaults. It only looked correct on a long-lived page
+  // because some earlier real mode flip had stamped it. Observed 2026-08-02 on
+  // a freshly relaunched rc-shell companion.
+  let _modeStamped = false;
+
   function setMode(tag) {
-    if (!tag || tag === state.mode) return;
+    if (!tag) return;
+    const changed = tag !== state.mode;
+    // The first call always stamps, even when it agrees with the seed; after
+    // that, an unchanged tag is still a no-op (the health + state envelopes
+    // both call this on their own cadence and must not repaint every tick).
+    if (!changed && _modeStamped) return;
     // s158: transition log so flicker is observable without DevTools tracing.
-    // Stamps every actual mode change (early-return-guarded above) into a
-    // ring buffer + console.log + (when ?dbg=1) the floating overlay.
-    _rcLogTransition("mode", state.mode, tag);
+    // Stamps every actual mode change into a ring buffer + console.log + (when
+    // ?dbg=1) the floating overlay. Deliberately still gated on `changed` - the
+    // first-render stamp is not a transition, and logging a client->client
+    // entry would put noise in the buffer that exists to make flicker visible.
+    if (changed) _rcLogTransition("mode", state.mode, tag);
+    _modeStamped = true;
     state.mode = tag;
     modePill.textContent = (tag || "client").toUpperCase();
     modePill.className = `mode-pill ${tag}`;
