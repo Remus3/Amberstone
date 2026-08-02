@@ -28,8 +28,9 @@ re-grounds both. Editing this dict WITHOUT re-running that command
 turns the suite red on purpose.
 
 Brawl IDs (2300-2305) stay unmapped: Brawl was retired from champ-select
-in s214 and its backend is deadcode pending a cleanup pass. The kJade
-"Classic" group is unmapped pending RM-141.
+in s214 and its backend is deadcode pending a cleanup pass. RM-141
+(2026-08-02) mapped the kJade "Classic" throwback group to the new "jade"
+mode_key; only its kCustom members stay unmapped.
 """
 from __future__ import annotations
 
@@ -88,6 +89,34 @@ QUEUE_ID_TO_MODE_KEY: dict[int, str] = {
     1090: "tft",  # TFT Normal
     1100: "tft",  # TFT Ranked
     1130: "tft",  # TFT Hyper Roll
+    # Jade ("League Classic" throwback) - RM-141, 2026-08-02. Ids enumerated
+    # from the refreshed CDragon catalog: every kJade row whose
+    # gameSelectCategory is kPvP or kVersusAI. The whole group is genuinely
+    # one mode, which is the discriminator COVERAGE_GROUPS documents, so the
+    # census in tools/upstream_drift_check.py watches kJade from now on.
+    4300: "jade",  # 5v5 Jade
+    4301: "jade",  # 1v1 Jade
+    4302: "jade",  # 2v2 Jade
+    4303: "jade",  # 3v3 Jade
+    4304: "jade",  # 4v4 Jade
+    4305: "jade",  # 5v5 Jade Sydney
+    4306: "jade",  # 1v1 Jade Sydney
+    4307: "jade",  # 2v2 Jade Sydney
+    4308: "jade",  # 3v3 Jade Sydney
+    4309: "jade",  # 4v4 Jade Sydney
+    4310: "jade",  # kPvP, blank display name upstream - mapped anyway so a
+                   # rotation onto it cannot silently lose the pre-game flip.
+    4311: "jade",  # 1v1 Jade Ranked. gameSelectPriority is 0 today, so the
+                   # client does not show it and the coverage census skips it
+                   # by design - mapped for the same fail-safe reason as 4310.
+    4320: "jade",  # Jade (Co-op vs AI)
+    4321: "jade",  # Jade (Co-op vs AI)
+    # 3260 "Classic Rift", 3261 "Jade Sydney" and 3262 "Classic Rift" are the
+    # kJade rows whose gameSelectCategory is kCustom, and they are
+    # DELIBERATELY unmapped. Same precedent as 3280 directly above: RC treats
+    # custom lobbies as no-coach, which is why mode_key_from_queue_id returns
+    # None for queue_id=0. Do not "fix" these - mapping them would pre-flip a
+    # custom lobby at a coach payload that is never produced.
 }
 
 

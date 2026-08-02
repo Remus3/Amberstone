@@ -184,6 +184,43 @@ class CoverageCensusTests(unittest.TestCase):
                                  QUEUE_ID_TO_MODE_KEY.get(int(qid)))
 
 
+class CoverageGroupMembershipTests(unittest.TestCase):
+    """What COVERAGE_GROUPS may and may not contain.
+
+    The discriminator the tool documents is "every member of the group really
+    is that mode". kJade satisfies it; kAlternativeLeagueGameModes provably
+    does not, and RM-128 measured why. Pinning both directions means a later
+    widening has to argue with a test rather than with a comment.
+    """
+
+    def test_jade_group_is_covered(self):
+        # RM-141: the kJade throwback group now has its own mode_key, so its
+        # client-visible ids are a real coverage obligation.
+        self.assertIn("kJade", udc.COVERAGE_GROUPS)
+
+    def test_alternative_league_game_modes_stays_out(self):
+        # RM-128 refutation, pinned. Eight already-mapped ids live in this
+        # group under THREE different mode_keys, so "every member is that
+        # mode" is false for it and the census would be forever red.
+        self.assertNotIn("kAlternativeLeagueGameModes", udc.COVERAGE_GROUPS)
+
+    def test_custom_category_stays_excluded(self):
+        # The kJade kCustom ids (3260/3261/3262) self-exclude through this.
+        self.assertIn("kCustom", udc.COVERAGE_EXCLUDED_CATEGORIES)
+
+    def test_client_visible_jade_ids_are_grounded_and_mapped(self):
+        mapped = _snapshot()["mapped_queues"]
+        for qid in (4300, 4310, 4320, 4321):
+            with self.subTest(queue_id=qid):
+                rec = mapped.get(str(qid))
+                self.assertIsNotNone(
+                    rec, f"{qid} absent from the snapshot - re-run "
+                         "tools/upstream_drift_check.py "
+                         "--refresh-queue-snapshot")
+                self.assertTrue(rec["present"])
+                self.assertEqual(rec["mode_key"], "jade")
+
+
 class CoverageCensusFilterTests(unittest.TestCase):
     """The census builder itself, over synthetic catalogs (no network)."""
 

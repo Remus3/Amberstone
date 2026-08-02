@@ -45,9 +45,32 @@ class TestModeKeyFromQueueId(unittest.TestCase):
             self.assertEqual(mode_key_from_queue_id(qid), "tft",
                              f"queue_id={qid} should map to tft")
 
+    def test_jade_pvp_and_versusai_queues_return_jade(self):
+        # RM-141: the kJade "Classic" throwback group. Ids enumerated from
+        # data/queue_catalog_snapshot.json (refreshed 2026-08-02) - every
+        # kJade row whose gameSelectCategory is kPvP or kVersusAI.
+        for qid in (4300, 4301, 4302, 4303, 4304, 4305, 4306, 4307, 4308,
+                    4309, 4310, 4311, 4320, 4321):
+            self.assertEqual(mode_key_from_queue_id(qid), "jade",
+                             f"queue_id={qid} should map to jade")
+
+    def test_jade_custom_queues_stay_unmapped(self):
+        # 3260/3261/3262 are the kJade rows whose gameSelectCategory is
+        # kCustom. RC treats custom lobbies as no-coach, which is why
+        # mode_key_from_queue_id returns None for queue_id 0 and why the
+        # kARAM id 3280 is left unmapped for the same reason. Mapping these
+        # would route a custom lobby at a coach payload it never produces.
+        for qid in (3260, 3261, 3262):
+            self.assertIsNone(mode_key_from_queue_id(qid),
+                              f"queue_id={qid} is kCustom and must stay "
+                              f"unmapped")
+
     def test_unknown_queue_returns_none(self):
-        # kJade "Classic" - deliberately unmapped pending RM-141.
-        self.assertIsNone(mode_key_from_queue_id(4300))
+        # kJade "Classic" - RM-141 MAPPED the kPvP + kVersusAI ids (4300 is
+        # one of them, pinned in test_jade_pvp_and_versusai_queues_return_jade).
+        # The kCustom kJade ids are the exception and stay unmapped, so 3260
+        # is what carries this pin now.
+        self.assertIsNone(mode_key_from_queue_id(3260))
         # Brawl - retired from champ-select in s214.
         self.assertIsNone(mode_key_from_queue_id(2300))
         # Random unknown id.
