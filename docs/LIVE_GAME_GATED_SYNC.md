@@ -1200,10 +1200,11 @@ other gate and none of them is a build - each can only CONFIRM or CORRECT what S
 and every one of them is cheap once a JADE queue is actually playable. If Riot never ships the queue
 to NA, this whole section stays open forever and that is the honest state, not a defect.
 
-The whole section drains in ONE game plus one lobby, in this order: L4 (lobby), then L1 / L3 / L5 / L6
-in the game itself. L2 needs a SECOND game (ARAM Mayhem Jade), if that crossover ever exists.
+The whole section drains in ONE game plus one lobby, in this order: G8-04 (lobby), then G8-01 / G8-03 /
+G8-05 / G8-06 in the game itself. G8-02 needs a SECOND game (ARAM Mayhem Jade), if that crossover ever
+exists.
 
-- **L1** `[JADE]` **gameMode string - HIGHEST-VALUE row in this section, and the one that can invalidate
+- **G8-01** `[JADE]` **gameMode string - HIGHEST-VALUE row in this section, and the one that can invalidate
   shipped code.** S2 added an EXACT-MATCH branch on `"JADE"` to `core/game_snapshot.py`, sourced from
   16 spell rows in `data/meta_build/ddragon/16.15.1/summoner.json` carrying `modes:["JADE"]`. That is
   DDragon evidence about spells, NOT a measurement of what the Live Client reports.
@@ -1217,31 +1218,31 @@ in the game itself. L2 needs a SECOND game (ARAM Mayhem Jade), if that crossover
   re-scope is a real design decision, not a patch: do not bolt queueId into the frozen file without
   its own row. A third outcome is possible and must be recorded verbatim rather than rounded off -
   anything that is neither `JADE` nor `CLASSIC`.
-- **L2** `[JADE]` **KIWI_JADE string.** Same check inside an ARAM Mayhem Jade game, if that crossover
+- **G8-02** `[JADE]` **KIWI_JADE string.** Same check inside an ARAM Mayhem Jade game, if that crossover
   exists live. S2 pinned `KIWI_JADE` to `MODE_ARAM` (not to JADE) because 151 of the 162 throwback
   items claim `maps["12"]` (Howling Abyss), so the ARAM coach surface is the correct one.
   **CHECK:** confirm `gameMode` reads `KIWI_JADE` and that RC coaches it as ARAM (`/api/state`
   `mode_key` == `aram`). This confirms the routing is EXERCISED rather than theoretical - today it is
   pinned only by a synthetic test.
-- **L3** `[JADE]` **championName shape.** Does the Live Client report `"Ahri"` or `"Jade_Ahri"`?
+- **G8-03** `[JADE]` **championName shape.** Does the Live Client report `"Ahri"` or `"Jade_Ahri"`?
   S1-S4 ASSUME the former throughout. **CHECK:** read `activePlayer.championName` and the
   `allPlayers[].championName` list in a live JADE game.
   If it reports `Jade_Ahri`, EVERY champion lookup in the SR coach path misses (DS registry, build
   order, rune page, matchup panel) and the row grows a normalisation layer. Record the exact strings;
   do not paraphrase them.
-- **L4** `[JADE]` **queueId in a real JADE lobby.** S3 mapped the `kJade` PvP / VersusAI ids to the
+- **G8-04** `[JADE]` **queueId in a real JADE lobby.** S3 mapped the `kJade` PvP / VersusAI ids to the
   `jade` mode_key and deliberately left the three `kCustom` ids (3260 / 3261 / 3262) unmapped.
   **CHECK:** in a JADE lobby, read the queueId off `/api/state` (`lcu.*` / champ-select payload) and
   confirm it is one of the ids S3 actually maps. Closes on ONE lobby - no game needed, which makes
   this the cheapest row here and the one to do first.
-- **L5** `[JADE]` **map 453 geometry.** Unblocks `core/mode_capabilities.py`, where S2 set
+- **G8-05** `[JADE]` **map 453 geometry.** Unblocks `core/mode_capabilities.py`, where S2 set
   `has_wards: False` and `district_config: None` for JADE as a DELIBERATE fail-closed choice, not a
   placeholder. **CHECK:** with a JADE game up, eyeball the minimap rect against the SR one, confirm
   whether wards are legal in the mode at all, and judge whether the SR district grid is even
   approximately right on map 453. Also re-check the two `dashboard/_state_builder.py` gates that S1
   pinned `jade` OUT of. Any of the three answers coming back "yes, SR-like" is a follow-on row, not
   an edit made during the game.
-- **L6** `[JADE]` **shop contents.** Does the JADE shop actually offer the 151 throwback band items in
+- **G8-06** `[JADE]` **shop contents.** Does the JADE shop actually offer the 151 throwback band items in
   `[770000, 780000)`, or does it sell the ordinary SR pool? **CHECK:** open the shop in a live JADE
   game and eyeball the item pool against the current SR pool. This is the gate on the whole
   item-advice question (spec section 2.3 / follow-on F1): DS ingests NONE of the throwback registry
