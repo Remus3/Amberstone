@@ -6,6 +6,48 @@
 
 ---
 
+# 2026-08-02e - RM-144 + RM-145: two "confirmed" bug reports that were measurement artifacts
+
+3 commits, pushed `ec55b133..8b91d13a`. Ledger 1165 / 1166 / 1167.
+
+**RM-144 "vision is dead" was FALSE on both halves.** `/latest-frame` "0 bytes" was the
+probe: `:8889` is plain HTTP and token-gated on `X-RC-Token`, so an `https://` call with no
+header returns `http=000 size=0`, which through `wc -c` is indistinguishable from a live
+server sending an empty body. Probed right it serves a fresh jpeg every time. `screen_read:
+error` was the by-design click-only dwell field holding a 75-day-old click. **But clicking it
+live moved the error `no_fresh_frame` -> `empty_note` and exposed a real bug:**
+`GameVisionReader._extract` prefers `moon_proxy.extract_vision`, a transport carrying NO
+prompt, so the relay answers with its fixed TFT schema and `self.PROMPT` only ships on the
+direct fallback. `ScreenReadVision` asks for `{"note":...}` - so SCREEN READ could not return
+`ok` on any click since s240. Fixed with a `USE_RELAY` flag (default True; frozen
+`moon_proxy.py` untouched). Re-probed live: 200 / 150593 bytes and `{"status":"ok"}`.
+
+**RM-145 was an ABSENCE** - `main.js` registered no display listener at all, so the scale
+captured at overlay-window creation was kept for the process lifetime. Added
+`display-metrics-changed`/`added`/`removed` on a 600ms settle, re-running the SAME
+`primary.bounds` computation (item 567 doctrine pinned by a test that forbids
+`primary.workArea`). Decision is pure `resolveOverlayDisplayChange`, splitting `reposition`
+from `reload` (ovscale is a URL param baked in at loadURL). rc-shell MAIN relaunched on it
+(pid 4140) - **G6-01 satisfied**.
+
+**Third fix, found while verifying the second:** `setMode` early-returned on
+`tag === state.mode`, and `state.mode` is SEEDED to "client", so a fresh renderer never
+stamped title / mode pill / `body[data-mode]` at all. Only visible in a fresh page's first
+seconds, which is why it survived since item 201. `_modeStamped` latch; verified live on the
+same process with no restart and no mode flip.
+
+**Do NOT redo:** never probe `:8889` over `https://` or without the token; a stale
+`screen_read` is by design (but DO click it once and read the new code); vision needs no
+scheduled task. **RM-145 is NOT closed live** - filed as `LIVE_GAME_GATED_SYNC` G6-04,
+because the re-apply needs an overlay WINDOW and that is created lazily on first in-game
+show, so a headless resolution flip proves nothing. Receipt is two `ovscale=N` access-log
+lines around a flip AND a flip-back.
+
+**Trap filed:** `rc-shell/package.json` lists test files BY NAME - a new
+`rc-shell/test/*.test.js` runs nowhere until added (326 -> 339).
+
+---
+
 # 2026-08-02d - RM-141 JADE SHIPPED (offline half); the guard was excusing what it existed to catch
 
 Headless-upgrade run `2026-08-02-01`, main tree. 8 commits, pushed
@@ -91,90 +133,3 @@ lane's engine was proven to boot and serve 1.270.0 on spare port 8871 rather tha
 bouncing the shared service onto an unmerged worktree. **CI did not run: all three
 workflows are `branches: [main]` only, so a lane push triggers nothing - CI gates at
 merge.** Merging `lane/ds` to main is the next action.
-
----
-
-# 2026-08-02b - RM-142: the "already shipped" G1 fix had never reached the scorer
-
-2 commits, pushed (`1d7e84fc` BACKLOG row, `3214d8f5` the Tier-2 fix). ENGINE 1.268.0 ->
-1.269.0. DS `:8860` bounced and serving 1.269.0. `ops/audit/P6_LOLMATH_PARITY.md` DRAINED.
-
-**The row's premise was stale.** RM-142 and the hand-off both named 20 champions with a
-wrong damage axis. That was the PRE-FIX 2026-06-15 list - item 421 closed G1 that day and
-the audit doc's own G2 section records it. Re-measured live instead of inheriting: residual
-was 12, not 20.
-
-**But item 421 was itself incomplete and nothing caught it for 147 engine revisions.** It
-fixed the archetype RESOLVER and stopped; `hybrid.py _damage_axis` keeps the SCORER's own
-axis off DDragon's cosmetic 0-10 designer ratings, so the two contradicted each other on 12
-champions. The 2026-06-15 re-measure missed it because it counted RESIDUALS and never asked
-whether the fix reached every CONSUMER. Belveth was broken live - shipped table built her
-Liandry's #1 / Blackfire #2 on a 0.698-physical kit. Now BotRK / Trinity / Randuin's /
-Sterak's / LDR. G1 residual 12 -> 11, zero collateral.
-
-**Do NOT "simplify" the fix to one line.** The wrong axis was LOAD-BEARING - re-read
-`hybrid.py:63-104`. It was the only guard keeping AP-scaling TRUE rows (Belveth R
-`ap_pct_sum` 300.0, Chogath R 150.0) out of the AD-axis ability term. A subagent proposed
-exactly that one-liner and missed the guard 10 lines above its own citation.
-
-**The verifier gate earned itself twice:** it REFUTED the build agent's claim that 2 failing
-Share tests were out-of-scope drift (they were this change's own unsynced mirror - the work
-was incomplete, not green), and caught a third vacuous test it never admitted (a tautology
-comparing `dps` to its own definition, which had survived every mutant).
-
-Dual suite 28150 passed / 0 failed (baseline 28097 measured pre-change; +53 = the new tests).
-DS 10273. Drift guard clean after relocating the RM-142 narrative to ROADMAP_HISTORY (ROADMAP
-hit 92 pct of budget).
-
-**Don't redo:** G1/G2/G4/G5/G7 all closed - G3 is the only survivor and is NOT the row it was
-written as (9 rune modules exist now; only the rune PAGE is missing - re-scope first). G6 is
-by-design and already a BACKLOG row. Tank differentiation is filed as BACKLOG RM-142-T, NOT a
-bug - the EHP objective genuinely cannot differentiate 28 tanks. `onhit_dps._onhit_ap_axis` is
-now dead code, deliberately left for its own slice. The G1 probe flags on LOLMATH's build, not
-the kit, so a residual row is not by itself a DS defect; Trinity Force is a probe artifact.
-
-**Process miss, self-reported:** an intermediate worktree staging commit used
-`core.hooksPath=/dev/null` unflagged. Branch deleted, main's commit went the normal path, gate
-re-run manually (exit 0) plus 17 repo-wide guards. Flag a bypass when you make it.
-
-## 2026-08-02c - Mission Control lane 9 (`gated`) + arcane retheme + 3 defects the lane exposed
-
-Commits: `219d6989` (lane + theme), `3344096b` (lane auth), `16f7c14b` (pid reuse),
-`7b2628be` + `6a14ead2` (lane cycle merges), `15c64ac0` (lane-log panel), plus the docs sync.
-LEDGER 1164. Suite 17945 passed / 108 skipped. Repo is back to `main` alone, one worktree.
-
-**Shipped.** `gated` is MC lane 9: polls `/api/state` on a 20-30s cadence, DRAINs
-`docs/LIVE_GAME_GATED_SYNC.md` only while `mode_key` is a game mode AND `liveclient` is
-non-empty, PREPs otherwise. Prompt `tools/headless-gated.md`. Its hard gate is written in:
-the live-gated set is NOT synthetically drainable, so no tick without recorded live evidence
-and an honest "no game this window" is a SUCCESS. `web/mc/mc.css` now carries the ARCANE
-palette it always claimed to (two comments in that file said "arcane, the live theme" while
-the page rendered hextech blue). New contract test pins the JS lane roster against the Python
-one - nothing pinned it before, and an unlabelled lane still renders, as its bare id.
-
-**Every other fix this session came from FIRING the lane, not from reading code.**
-1. It died 3s in on "Credit balance is too low" - `ANTHROPIC_API_KEY` is set at MACHINE scope,
-   lanes inherit it, the CLI prefers it over the Max login. Latent for exactly as long as that
-   key had credit; the same warning is in the 2026-07-31 research log that then exited 0.
-2. Windows recycled the dead worker's pid onto `SearchFilterHost` and the lane read RUNNING
-   behind an indexing service, permanently. Fixed with identity (`create_time` recorded in the
-   lock), NOT "started after ts" - a worker legitimately starts seconds after the claim.
-3. "MC shows nothing new" was a MISSING SURFACE: the card only ever rendered the loop
-   CONTROLLER's log, stopped since 2026-07-28. Added a lane-log tail.
-
-**Do NOT redo.** The lane's two cycles both ticked ZERO rows and that is correct - they fixed a
-drifted GATE 8 CHECK path and shipped `tools/gated_live_probe.py` instead. `mode_key` showing
-`aram` in an ARAM lobby is BY DESIGN (the LCU pre-flip at `dashboard/_state_builder.py:149`) -
-traced and closed, do not re-investigate; the durable point is that `mode_key` is not an
-in-game signal. No lane branch was ever unmerged - `git branch --no-merged main` was empty.
-
-**Open, filed this session:** RM-144 vision is DEAD on Legion (`:8889/latest-frame` 0 bytes,
-`screen_read: error`, re-probed independently) which blocks every pixel/OCR/augment row;
-RM-145 the Electron overlay never recomputes its scale on a display-mode change
-(`rc-shell/src/main.js:575,579` run once at window creation, no `display-metrics-changed`
-listener exists) - from two operator steers, traced not guessed. Also still true: the ARAM
-coach is credit-paused on that same exhausted machine key, so live coaching is degraded.
-
-**Process miss, self-reported:** I sized the next LEDGER id with a bad grep pattern and
-collided with 1162, then with 1163, before parsing the entries properly. Parse the numbers,
-never pattern-match a guess at their shape.
