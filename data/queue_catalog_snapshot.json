@@ -1,6 +1,6 @@
 {
   "source": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/queues.json",
-  "fetched_at": "2026-08-02T00:02:39Z",
+  "fetched_at": "2026-08-02T03:16:56Z",
   "fingerprint": "8039fde2e98fc392",
   "entry_count": 408,
   "group_counts": {
@@ -59,6 +59,12 @@
       "name": "Clash",
       "present": true
     },
+    "710": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Ranked 5s",
+      "present": true
+    },
     "720": {
       "mode_key": "aram",
       "group": "kARAM",
@@ -83,6 +89,30 @@
       "name": "Intermediate",
       "present": true
     },
+    "870": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Intro",
+      "present": true
+    },
+    "880": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Beginner",
+      "present": true
+    },
+    "890": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Intermediate",
+      "present": true
+    },
+    "893": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Bots Easy 1v1",
+      "present": true
+    },
     "900": {
       "mode_key": "sr",
       "group": "kAlternativeLeagueGameModes",
@@ -99,6 +129,24 @@
       "mode_key": "sr",
       "group": "kAlternativeLeagueGameModes",
       "name": "One For All",
+      "present": true
+    },
+    "1090": {
+      "mode_key": "tft",
+      "group": "kTeamfightTactics",
+      "name": "Teamfight Tactics (Normal)",
+      "present": true
+    },
+    "1100": {
+      "mode_key": "tft",
+      "group": "kTeamfightTactics",
+      "name": "Teamfight Tactics (Ranked)",
+      "present": true
+    },
+    "1130": {
+      "mode_key": "tft",
+      "group": "kTeamfightTactics",
+      "name": "Teamfight Tactics (Hyper Roll)",
       "present": true
     },
     "1400": {
@@ -136,6 +184,185 @@
       "group": "kARAM",
       "name": "ARAM: Mayhem",
       "present": true
+    },
+    "2401": {
+      "mode_key": "aram",
+      "group": "kARAM",
+      "name": "ARAM: Mayhem",
+      "present": true
+    },
+    "2403": {
+      "mode_key": "aram",
+      "group": "kARAM",
+      "name": "ARAM: Mayhem",
+      "present": true
+    },
+    "2405": {
+      "mode_key": "aram",
+      "group": "kARAM",
+      "name": "ARAM: Mayhem",
+      "present": true
+    },
+    "2410": {
+      "mode_key": "aram",
+      "group": "kARAM",
+      "name": "ARAM: Mayhem Tournament",
+      "present": true
+    },
+    "2450": {
+      "mode_key": "aram",
+      "group": "kARAM",
+      "name": "ARAM: Mayhem Classic-ish",
+      "present": true
+    }
+  },
+  "coverage_candidates": {
+    "400": {
+      "group": "kSummonersRift",
+      "category": "kPvP",
+      "priority": 30,
+      "name": "Normal",
+      "mapped_to": "sr"
+    },
+    "420": {
+      "group": "kSummonersRift",
+      "category": "kPvP",
+      "priority": 20,
+      "name": "Ranked Solo/Duo",
+      "mapped_to": "sr"
+    },
+    "430": {
+      "group": "kSummonersRift",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "Normal",
+      "mapped_to": "sr"
+    },
+    "440": {
+      "group": "kSummonersRift",
+      "category": "kPvP",
+      "priority": 10,
+      "name": "Ranked Flex",
+      "mapped_to": "sr"
+    },
+    "450": {
+      "group": "kARAM",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "ARAM",
+      "mapped_to": "aram"
+    },
+    "480": {
+      "group": "kSummonersRift",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "Swiftplay",
+      "mapped_to": "sr"
+    },
+    "490": {
+      "group": "kSummonersRift",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "Quickplay",
+      "mapped_to": "sr"
+    },
+    "710": {
+      "group": "kSummonersRift",
+      "category": "kPvP",
+      "priority": 20,
+      "name": "Ranked 5s",
+      "mapped_to": "sr"
+    },
+    "830": {
+      "group": "kSummonersRift",
+      "category": "kVersusAI",
+      "priority": 40,
+      "name": "Intro",
+      "mapped_to": "sr"
+    },
+    "840": {
+      "group": "kSummonersRift",
+      "category": "kVersusAI",
+      "priority": 30,
+      "name": "Beginner",
+      "mapped_to": "sr"
+    },
+    "850": {
+      "group": "kSummonersRift",
+      "category": "kVersusAI",
+      "priority": 20,
+      "name": "Intermediate",
+      "mapped_to": "sr"
+    },
+    "870": {
+      "group": "kSummonersRift",
+      "category": "kVersusAI",
+      "priority": 70,
+      "name": "Intro",
+      "mapped_to": "sr"
+    },
+    "880": {
+      "group": "kSummonersRift",
+      "category": "kVersusAI",
+      "priority": 60,
+      "name": "Beginner",
+      "mapped_to": "sr"
+    },
+    "890": {
+      "group": "kSummonersRift",
+      "category": "kVersusAI",
+      "priority": 50,
+      "name": "Intermediate",
+      "mapped_to": "sr"
+    },
+    "893": {
+      "group": "kSummonersRift",
+      "category": "kVersusAI",
+      "priority": 50,
+      "name": "Bots Easy 1v1",
+      "mapped_to": "sr"
+    },
+    "2400": {
+      "group": "kARAM",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "ARAM: Mayhem",
+      "mapped_to": "aram"
+    },
+    "2401": {
+      "group": "kARAM",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "ARAM: Mayhem",
+      "mapped_to": "aram"
+    },
+    "2403": {
+      "group": "kARAM",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "ARAM: Mayhem",
+      "mapped_to": "aram"
+    },
+    "2405": {
+      "group": "kARAM",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "ARAM: Mayhem",
+      "mapped_to": "aram"
+    },
+    "2410": {
+      "group": "kARAM",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "ARAM: Mayhem Tournament",
+      "mapped_to": "aram"
+    },
+    "2450": {
+      "group": "kARAM",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "ARAM: Mayhem Classic-ish",
+      "mapped_to": "aram"
     }
   }
 }
