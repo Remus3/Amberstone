@@ -67,6 +67,19 @@ subagent-first / parallel as standing protocol requires.
 3. **Then the next 5 open items** as usual: RM-135 (backup of irreplaceable single-copy data -
    big enough to own a session), RM-139 (overlay tokens unreachable from documentElement),
    RM-133, RM-122 residue, or the DS RM-118 wireable seams (exactly 4).
+4. **AFTER 1-3 are done AND cleared, a WHOLE SESSION dedicated to nothing but
+   `ops/audit/P6_LOLMATH_PARITY.md`** (184 lines, operator-appended 2026-06-15). Own session,
+   not a slice appended to this batch - the operator asked for it explicitly. Highest-priority
+   slice in the doc is **G1: DS builds the WRONG damage axis on 20 champions** (18 AD-on-AP
+   kits incl. Gwen / Teemo / Rumble / Diana, plus Pyke / Taric inverse), which is a
+   correctness bug, not a tuning gap. Inputs are in-repo: `ops/audit/LOLMATH_VS_DS_SWEEP.md`
+   + `ops/audit/lolmath_ds_sweep/` (reproducer; `npm install` to re-scrape, `node_modules`
+   gitignored). **The doc's own numbers are STALE by design and it says so** - it cites engine
+   1.120.0 / patch 16.12.1 against today's 1.268.0 / 16.15.1, so RE-DERIVE off live
+   `data/daemon_slayer/current.txt` + `:8860` `/health` + the current `build_orders_sr.json`
+   before acting on any row. Tier-2: ENGINE bump, four doc anchor sites, Share mirror, dual
+   suite. Root-cause-first, validated PER CHAMPION (Engine/Build Conventions hard rule - a
+   single generic ADC-crit shape is exactly how the last two build fixes shipped incomplete).
 
 ---
 
