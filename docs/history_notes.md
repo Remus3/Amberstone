@@ -223,6 +223,48 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-02e - RM-144 + RM-145: two "confirmed" bug reports that were measurement artifacts
+
+3 commits, pushed `ec55b133..8b91d13a`. Ledger 1165 / 1166 / 1167.
+
+**RM-144 "vision is dead" was FALSE on both halves.** `/latest-frame` "0 bytes" was the
+probe: `:8889` is plain HTTP and token-gated on `X-RC-Token`, so an `https://` call with no
+header returns `http=000 size=0`, which through `wc -c` is indistinguishable from a live
+server sending an empty body. Probed right it serves a fresh jpeg every time. `screen_read:
+error` was the by-design click-only dwell field holding a 75-day-old click. **But clicking it
+live moved the error `no_fresh_frame` -> `empty_note` and exposed a real bug:**
+`GameVisionReader._extract` prefers `moon_proxy.extract_vision`, a transport carrying NO
+prompt, so the relay answers with its fixed TFT schema and `self.PROMPT` only ships on the
+direct fallback. `ScreenReadVision` asks for `{"note":...}` - so SCREEN READ could not return
+`ok` on any click since s240. Fixed with a `USE_RELAY` flag (default True; frozen
+`moon_proxy.py` untouched). Re-probed live: 200 / 150593 bytes and `{"status":"ok"}`.
+
+**RM-145 was an ABSENCE** - `main.js` registered no display listener at all, so the scale
+captured at overlay-window creation was kept for the process lifetime. Added
+`display-metrics-changed`/`added`/`removed` on a 600ms settle, re-running the SAME
+`primary.bounds` computation (item 567 doctrine pinned by a test that forbids
+`primary.workArea`). Decision is pure `resolveOverlayDisplayChange`, splitting `reposition`
+from `reload` (ovscale is a URL param baked in at loadURL). rc-shell MAIN relaunched on it
+(pid 4140) - **G6-01 satisfied**.
+
+**Third fix, found while verifying the second:** `setMode` early-returned on
+`tag === state.mode`, and `state.mode` is SEEDED to "client", so a fresh renderer never
+stamped title / mode pill / `body[data-mode]` at all. Only visible in a fresh page's first
+seconds, which is why it survived since item 201. `_modeStamped` latch; verified live on the
+same process with no restart and no mode flip.
+
+**Do NOT redo:** never probe `:8889` over `https://` or without the token; a stale
+`screen_read` is by design (but DO click it once and read the new code); vision needs no
+scheduled task. **RM-145 is NOT closed live** - filed as `LIVE_GAME_GATED_SYNC` G6-04,
+because the re-apply needs an overlay WINDOW and that is created lazily on first in-game
+show, so a headless resolution flip proves nothing. Receipt is two `ovscale=N` access-log
+lines around a flip AND a flip-back.
+
+**Trap filed:** `rc-shell/package.json` lists test files BY NAME - a new
+`rc-shell/test/*.test.js` runs nowhere until added (326 -> 339).
+
+---
+
 # 2026-08-02c - RM-118 mana-as-damage SHIPPED; the seam was nearly shipped STRANDED
 
 Lane `lane/ds` (worktree `C:/rc-worktrees/rc-lane-ds`, created this run - it did not
