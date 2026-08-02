@@ -66,9 +66,10 @@ MODE_ARAM   = "ARAM"
 MODE_TFT    = "TFT"
 MODE_ARENA  = "ARENA"
 MODE_BRAWL  = "BRAWL"
+MODE_JADE   = "JADE"
 
 # All valid mode strings
-ALL_MODES = (MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL)
+ALL_MODES = (MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL, MODE_JADE)
 
 
 def mode_from_game_mode_string(game_mode: str) -> str:
@@ -83,8 +84,13 @@ def mode_from_game_mode_string(game_mode: str) -> str:
     if "TFT" in gm:
         return MODE_TFT
     # KIWI = ARAM Mayhem (Riot internal code name), ODIN = Dominion-era ARAM variant
-    if gm in ("ARAM", "ARAM_UNRANKED_5X5", "KIWI", "ODIN") or gm.startswith("ARAM"):
+    if gm in ("ARAM", "ARAM_UNRANKED_5X5", "KIWI", "KIWI_JADE", "ODIN") or gm.startswith("ARAM"):
         return MODE_ARAM
+    # Exact match, and AFTER the ARAM branch: Riot ships JADE and KIWI_JADE as
+    # two distinct tokens, and the KIWI_JADE crossover is played on the Howling
+    # Abyss, so a substring test here would steal it from the ARAM surface.
+    if gm == "JADE":
+        return MODE_JADE
     if gm in ("ARENA", "CHERRY") or gm.startswith("ARENA"):
         return MODE_ARENA
     if any(gm.startswith(p) for p in (
