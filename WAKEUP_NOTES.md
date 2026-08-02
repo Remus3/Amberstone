@@ -33,6 +33,17 @@ the principal. Only `LW-WeeklyHygiene` was really exposed and is now S4U.
 (`c645271e`), not by updating it - operator: the Windows name changes from time to time, so
 pinning a value only resets the drift clock. `legion-rc` / `100.70.22.55` is canonical.
 
+**MAIN WAS RED ON ARRIVAL and it was NOT this session's doing.** The previous session's
+`8b91d13a` edited a LIVE span in `web/js/main.js` (the `setMode` first-render stamp) and the
+RM-125 `_LIVE_HALF_DIGEST` guard is built to go red on exactly that and demand a deliberate
+re-capture. That session wrapped while its push run was still in flight, so the red landed
+after its banner and nobody collected it - main sat red from 16:34. Re-captured by the
+documented two-tree diff (`ec55b133` vs now, one fixed tokeniser, 173 sources both sides,
+exactly one file differs and it is `web/js/main.js`), `289c244e`. **Process lesson now
+written into the guard's own note: if a push run is still in flight at wrap, COLLECT IT.**
+I also briefly misattributed the red to my own footer-comment edit - wrong, a comment-only
+change cannot move that digest, and the two-tree diff is what settled it.
+
 **Next:** RM-145 still needs the live in-game confirmation (LIVE_GAME_GATED_SYNC G6-04) -
 game up with overlay showing, flip the video mode AND flip it back, receipt is two access-log
 lines with different `ovscale=N`. Needs the operator playing; nothing else blocks it.
