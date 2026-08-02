@@ -4,29 +4,49 @@ A local, real-time coaching companion for League of Legends and Teamfight Tactic
 
 [![CI](https://github.com/Remus3/riot-commander/actions/workflows/ci.yml/badge.svg)](https://github.com/Remus3/riot-commander/actions/workflows/ci.yml) [![Docs guards](https://github.com/Remus3/riot-commander/actions/workflows/docs-guards.yml/badge.svg)](https://github.com/Remus3/riot-commander/actions/workflows/docs-guards.yml)
 
-Personal project. Private repo.
-Not packaged for general use.
+It watches the game you are actually in, does the item and damage math locally,
+and turns that into short, situation-specific advice on a dashboard and an
+in-game overlay.
+
+Personal project, private repo, not packaged for general use. It is readable as
+a reference, not installable as a product - see [Limitations](#limitations).
+
+---
+
+## What makes it different
+
+Most build advice is a popularity contest: an item is recommended because many
+players bought it in many games. This project takes the other route.
+
+- **The math runs first, locally.** A build engine scores champion x item x
+  target combinations from real game numbers - damage per second, effective HP,
+  ability burst, healing throughput - and the AI coach reasons *over that
+  output* rather than guessing. An item suggestion reflects your actual matchup,
+  not a tier list.
+- **No win-rate scraping.** Nothing here aggregates other players' win rates.
+  Recommendations come from computed quantities, which is also why the engine
+  can answer for matchups too rare to have a sample size.
+- **Your own history, not a tracker's.** Matches land in a local SQLite archive
+  with full timeline data, so champion-select advice reads history you own.
+- **Offline at request time.** The engine makes no network calls and has no
+  per-query cost, so it can be asked thousands of questions per game.
 
 ---
 
 ## What it does
 
-- Keeps a running picture of the match from Riot's local data feed - gold, level,
-  KDA, items on both teams - polled about once a second, and turns it into short,
-  situation-specific tips on a dashboard.
+- Keeps a running picture of the match from Riot's local data feed - gold,
+  level, KDA, items on both teams - polled about once a second, and turns it
+  into situation-specific tips.
 - Reads the screen with OCR first; an AI vision model is escalated only for what
   OCR misses.
-- Grounds build and fight advice in a local math engine, so an item suggestion
-  reflects your actual matchup - real math, not tier lists.
 - Suggests picks in champion select from your own match history filtered by the
-  enemy team's composition; ban and counter hints come from the local matchup
-  engine's deterministic 1v1 math.
+  enemy team's composition; ban and counter hints come from the engine's
+  deterministic 1v1 math.
 - Writes runes into the client automatically.
-- Keeps a local SQLite archive of your own matches - a few thousand games with
-  full timeline data - so the coach reads history you own instead of scraping a
-  third-party tracker.
 
-Modes: Summoner's Rift, ARAM (including its event variants), Arena, and Teamfight Tactics.
+Modes: Summoner's Rift, ARAM (including its event variants), Arena, and
+Teamfight Tactics.
 
 ---
 
@@ -34,9 +54,9 @@ Modes: Summoner's Rift, ARAM (including its event variants), Arena, and Teamfigh
 
 A Python service polls the game client's local data feed about once a second.
 The build engine answers first with local math, and its output is injected into
-every AI coaching call; the coach fires on a cadence - about every 8 seconds,
-or immediately on kill and health swings. Results render on a locally served
-web dashboard and an in-game overlay. A vision server sits to the side, turning
+every AI coaching call; the coach fires on a cadence - about every 8 seconds, or
+immediately on kill and health swings. Results render on a locally served web
+dashboard and an in-game overlay. A vision server sits to the side, turning
 screen captures into data through tiered OCR with AI-vision escalation.
 
 ```
@@ -46,7 +66,7 @@ game client
 local reader (polls about once a second)
     |
     v
-Daemon Slayer math first -> AI coach reasons over the math's output
+build engine math first -> AI coach reasons over the math's output
     |
     v
 dashboard + in-game overlay
@@ -65,12 +85,9 @@ vision server on the side: screen capture -> OCR -> AI vision only on a miss
 
 ## Daemon Slayer build engine
 
-The technical centerpiece. A local service that scores champion x item x target
-combinations with real game math: damage per second, effective HP, ability
-burst, and healing throughput. It runs offline at request time - no network
-calls, no per-query cost - and covers every purchasable item in the modes it
-coaches. One of seven scoring modes is picked automatically from the champion's
-role:
+The technical centerpiece, and the part most worth reading. It covers every
+purchasable item and the full champion roster on the modes it coaches, and picks
+one of seven scoring modes automatically from the champion's role:
 
 | Role | What it optimizes |
 |---|---|
@@ -82,28 +99,57 @@ role:
 | Enchanter | Healing and shielding throughput |
 | On-hit (AP) | Ability damage plus on-hit auto damage combined into one score |
 
-A registry of per-champion mechanic overrides handles unusual kits - form
-swaps, recast windows, resource bars - and covers most of the roster.
+Champions do not fit one formula, so a registry of per-champion mechanic
+overrides handles the unusual kits - form swaps, recast windows, resource bars,
+revives - and covers most of the roster.
 
-Depth: [`docs/DAEMON_SLAYER.md`](./docs/DAEMON_SLAYER.md) (internal reference).
-The engine also ships separately as a self-contained package for external
-review: [`Share/README.md`](./Share/README.md).
+The engine also ships as a self-contained package for external review, with its
+own documentation and test suite: [`Share/README.md`](./Share/README.md). Depth
+reference: [`docs/DAEMON_SLAYER.md`](./docs/DAEMON_SLAYER.md).
 
 ---
 
+## Limitations
+
+Worth stating plainly before you read further:
+
+- **Windows only, one machine.** The game, the coach, the dashboard and the
+  overlay all run on the same PC. There is no hosted version and no installer.
+- **Bring your own API key.** The AI coaching and vision paths call a
+  third-party model API; without a key those paths stay off and the local math
+  still works.
+- **Riot's API limits what is knowable.** Some event modes return no match
+  history through the public API, and some in-game state has no API at all -
+  which is exactly why the vision path exists.
+- **Not affiliated with Riot Games.** See the disclaimer below.
+
 ## Where it runs
 
-One Windows PC runs the game and the coach together. A Python service runs
-under a supervisor and serves the dashboard over local HTTPS to a browser,
-plus an Electron overlay for in-game display. Operational procedures live in
+One Windows PC runs the game and the coach together. A Python service runs under
+a supervisor and serves the dashboard over local HTTPS to a browser, plus an
+Electron overlay for in-game display. Operational procedures live in
 [`docs/OPERATIONS.md`](./docs/OPERATIONS.md).
 
 ## Status
 
 The coaching loop is functionally complete across all four modes; the build
-engine and champion-select advice cover the three League modes, and TFT uses
-the vision and coaching paths. Open work is tracked in
+engine and champion-select advice cover the three League modes, and TFT uses the
+vision and coaching paths. Open work is tracked in
 [`ROADMAP.md`](./ROADMAP.md).
+
+---
+
+## Data sources and credits
+
+Game data comes from public sources, and they deserve naming:
+
+- **Riot Data Dragon** - champion, item and rune data
+- **CommunityDragon** - supplementary and pre-release game data
+- **Meraki Analytics** - structured item and champion stat extracts
+- **The League of Legends Wiki** - mechanic reference for kits the structured
+  data does not describe
+- **Riot APIs** - Match-V5 for match history, and the Live Client API the game
+  client serves locally during a match
 
 ---
 
@@ -118,11 +164,16 @@ For readers:
 - [`Share/README.md`](./Share/README.md) - the engine's external review package
 - [`ROADMAP.md`](./ROADMAP.md) - open work
 
-For the operator and coding agents:
+For maintenance and coding agents:
 
 - [`CLAUDE.md`](./CLAUDE.md) - agent operating context
 - [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) - run, restart, and maintenance procedures
 
 ---
+
+Riot Commander is not endorsed by Riot Games and does not reflect the views or
+opinions of Riot Games or anyone officially involved in producing or managing
+Riot Games properties. League of Legends and Riot Games are trademarks or
+registered trademarks of Riot Games, Inc.
 
 All rights reserved. Personal use only.
