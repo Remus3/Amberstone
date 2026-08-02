@@ -1,6 +1,6 @@
 {
   "source": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/queues.json",
-  "fetched_at": "2026-08-02T03:16:56Z",
+  "fetched_at": "2026-08-02T12:20:56Z",
   "fingerprint": "8039fde2e98fc392",
   "entry_count": 408,
   "group_counts": {
@@ -214,6 +214,90 @@
       "group": "kARAM",
       "name": "ARAM: Mayhem Classic-ish",
       "present": true
+    },
+    "4300": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "5v5 Jade",
+      "present": true
+    },
+    "4301": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "1v1 Jade",
+      "present": true
+    },
+    "4302": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "2v2 Jade",
+      "present": true
+    },
+    "4303": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "3v3 Jade",
+      "present": true
+    },
+    "4304": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "4v4 Jade",
+      "present": true
+    },
+    "4305": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "5v5 Jade Sydney",
+      "present": true
+    },
+    "4306": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "1v1 Jade Sydney",
+      "present": true
+    },
+    "4307": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "2v2 Jade Sydney",
+      "present": true
+    },
+    "4308": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "3v3 Jade Sydney",
+      "present": true
+    },
+    "4309": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "4v4 Jade Sydney",
+      "present": true
+    },
+    "4310": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "",
+      "present": true
+    },
+    "4311": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "1v1 Jade Ranked",
+      "present": true
+    },
+    "4320": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "Jade",
+      "present": true
+    },
+    "4321": {
+      "mode_key": "jade",
+      "group": "kJade",
+      "name": "Jade",
+      "present": true
     }
   },
   "coverage_candidates": {
@@ -363,6 +447,97 @@
       "priority": 40,
       "name": "ARAM: Mayhem Classic-ish",
       "mapped_to": "aram"
+    },
+    "4300": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "5v5 Jade",
+      "mapped_to": "jade"
+    },
+    "4301": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "1v1 Jade",
+      "mapped_to": "jade"
+    },
+    "4302": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "2v2 Jade",
+      "mapped_to": "jade"
+    },
+    "4303": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "3v3 Jade",
+      "mapped_to": "jade"
+    },
+    "4304": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "4v4 Jade",
+      "mapped_to": "jade"
+    },
+    "4305": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "5v5 Jade Sydney",
+      "mapped_to": "jade"
+    },
+    "4306": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "1v1 Jade Sydney",
+      "mapped_to": "jade"
+    },
+    "4307": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "2v2 Jade Sydney",
+      "mapped_to": "jade"
+    },
+    "4308": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "3v3 Jade Sydney",
+      "mapped_to": "jade"
+    },
+    "4309": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "4v4 Jade Sydney",
+      "mapped_to": "jade"
+    },
+    "4310": {
+      "group": "kJade",
+      "category": "kPvP",
+      "priority": 40,
+      "name": "",
+      "mapped_to": "jade"
+    },
+    "4320": {
+      "group": "kJade",
+      "category": "kVersusAI",
+      "priority": 60,
+      "name": "Jade",
+      "mapped_to": "jade"
+    },
+    "4321": {
+      "group": "kJade",
+      "category": "kVersusAI",
+      "priority": 60,
+      "name": "Jade",
+      "mapped_to": "jade"
     }
   }
 }
