@@ -457,6 +457,15 @@ def rank_tank_for(
     # helper's callers now post to a route that parses them.
     apply_rune_self_heal: bool = False,
     apply_rune_shield_grants: bool = False,
+    # RM-118 mana lane: the champion MANA -> DAMAGE coupling lever (/rank-tank
+    # only, sort-only), the MANA-axis twin of the RM-87 resist pair and the
+    # RM-91 T1 health pair above. A SEPARATE flag from both because the three
+    # registries are disjoint - a merged flag would arm a mana credit on a
+    # resist converter. Both default None -> key omitted -> the engine's
+    # DEFAULT-OFF path, byte-identical. Appended at END per the
+    # no-mid-signature-insert convention.
+    apply_mana_damage_coupling: Optional[bool] = None,
+    mana_coupling_strength: Optional[float] = None,
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -506,6 +515,8 @@ def rank_tank_for(
         ("apply_health_damage_coupling", apply_health_damage_coupling),
         # RM-91 T2: the ITEM-keyed half, same contract again.
         ("apply_item_caster_hp_proc", apply_item_caster_hp_proc),
+        # RM-118 mana lane: the mana-axis twin, same None-means-inherit contract.
+        ("apply_mana_damage_coupling", apply_mana_damage_coupling),
     ):
         if _val is not None:
             body[_key] = bool(_val)
@@ -515,6 +526,8 @@ def rank_tank_for(
         body["health_coupling_strength"] = float(health_coupling_strength)
     if item_caster_hp_proc_strength is not None:
         body["item_caster_hp_proc_strength"] = float(item_caster_hp_proc_strength)
+    if mana_coupling_strength is not None:
+        body["mana_coupling_strength"] = float(mana_coupling_strength)
     if enemies:
         body["enemies"] = [str(e) for e in enemies if e]
     if rune_ids:
