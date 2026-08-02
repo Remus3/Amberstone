@@ -6,6 +6,52 @@
 
 ---
 
+# 2026-08-02a - RM-140 was a no-op ingest and a ten-gap reconcile; RM-141 answered as JADE
+
+2 commits, pushed (`d59bad88`, `50f8b35a`). Tier-1, NOT the Tier-2 the row assumed.
+Zero ENGINE bump, zero Share sync, zero DS bounce. RC + RC-LCUAgent both restarted and
+both process start times verified to POSTDATE the edited files (pid 18636 / pid 116).
+
+**The finding worth carrying: a green `upstream_drift_check` proves less than it looks.**
+It compares upstream-now against upstream-LAST-RECORDED. It says NOTHING about whether RC
+actually ingested what it recorded. All 5 signals read `ok`, so the ingest half was a
+genuine no-op - but that was only establishable by probing the on-disk half separately:
+mirror `--check-changed` = 7365 assets `new=0 chg=0 fail=0`, the DS extract manifest at
+`data/daemon_slayer/16.15.1/manifest.json` (173 champs / 706 items), and `:8860` `/health`.
+Probe those three, never infer them from a green drift check.
+
+**Shipped**
+- **RM-140** (LEDGER 1160). All the value was in reconciling the queue map BACKWARDS.
+  RM-128 grounded it one way (every mapped id still exists upstream) and refuted the
+  converse for whole GROUPS - correctly. But `gameSelectPriority > 0` (the client's own
+  menu-placement field), restricted to `kARAM` + `kSummonersRift` and excluding `kCustom`,
+  makes the narrow converse implementable, and it found **ten real gaps**: the ARAM Mayhem
+  family beyond 2400 (`2401/2403/2405/2410/2450`) and SR `870/880/890/893` + `710`.
+  870/880/890 OUTRANK the legacy 830/840/850 RC had mapped - RC was on the superseded bot
+  ids. Guarded by a `coverage_candidates` census + `CoverageCensusTests`, mutation-proved
+  RED at exactly those ten. Map 21 -> 34. Operator also directed TFT `1090/1100/1130`.
+- **RM-33 CLOSED-STALE** - `auto_ops_verbs` exists in NO code or config (prose only), the
+  95 percent gate has no meter anywhere, and `OVERLAY_BUILD_MASTER_PLAN.md:169` had already
+  recorded it as an EXPLICIT PARK. ROADMAP just never caught up.
+- **NEXT-5 triage banner** in the NOW section, each blocker probed rather than inherited.
+
+**RM-141 is ANSWERED, not built - and that distinction is deliberate.**
+The same probe surfaced a `kJade` group (17 client-visible "Classic" queues) the row's three
+readings did not have; put to the operator, who picked it. "League Classic" = Riot's JADE
+throwback mode. JADE is upstream-present on four surfaces and `docs/history_notes.md:701`
+predicted this exact moment. It is a large build and gets its own session AFTER RM-142.
+
+**Do NOT redo**
+- Do not widen the coverage census to `kAlternativeLeagueGameModes` - RM-128 refuted that by
+  measurement and eight already-mapped ids sit there under three different mode_keys.
+- Do not re-ask what "League Classic" means. Do not re-open RM-33.
+- `3280` (kCustom), `1101`/`1102`, Brawl `2300`-`2305` and all of `kJade` are DELIBERATELY
+  unmapped, each with the reason written at the site. None is an oversight.
+- `BACKLOG.md:47` still carries the REFUTED "Jade_ rows are aliases" wording; the correction
+  is `docs/history_notes.md:697`. Re-derive from `agents/daemon_slayer/mode_variants.py`.
+
+---
+
 # 2026-08-01g - /insights triage: two of three "ambitious workflows" were already shipped, the third became RM-143
 
 6 commits, pushed. Tier-0/1. DS engine untouched (server.py was mutated twice for proofs and
