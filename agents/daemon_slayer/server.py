@@ -923,6 +923,36 @@ def _route_rank_tank(body: dict) -> dict:
             "item_caster_hp_proc_strength: must be >= 0.0, got "
             f"{item_caster_hp_proc_strength!r}",
         )
+    # RM-118 mana lane (2026-08-02): the champion MANA -> DAMAGE coupling lever,
+    # the MANA-axis twin of the RM-87 resist pair and the RM-91 T1 health pair
+    # above. Blitzcrank R "Static Field" spends 2 percent of his MAXIMUM mana as
+    # magic damage, and ehp.py prices it nowhere. Sort-only + DEFAULT-OFF:
+    # omitting both keys (or sending a zero strength) is byte-identical.
+    #
+    # /rank-tank ONLY, on exactly the reasoning that scopes its two siblings -
+    # ehp.py is the only scorer with zero references to the damage model, so it
+    # is the only route where a kit's mana-scaling block is priced nowhere. The
+    # two documented rejects both route elsewhere and are already paid there:
+    #   * Kassadin (Assassin-primary) -> ds.burst, whose AbilityContext carries
+    #     caster_max_mp (ability_dps.py:299-300).
+    #   * Ryze (Mage-primary) -> ds.ability, whose AbilityContext carries
+    #     caster_bonus_mp (same pair of lines).
+    # Wiring this key onto those routes would double-count the same block.
+    #
+    # A SEPARATE flag from BOTH shipped coupling levers: the three registries are
+    # disjoint at 16.15.1, so a merged flag would arm a mana credit on a resist
+    # converter (Rammus, who carries no mana term) and a resist credit on the
+    # mana converter (Blitzcrank). Arming one lever must never arm another.
+    apply_mana_damage_coupling = _opt_bool(
+        body, "apply_mana_damage_coupling", False
+    )
+    mana_coupling_strength = _opt_float(body, "mana_coupling_strength", 0.0)
+    if mana_coupling_strength < 0.0:
+        raise _ApiError(
+            400,
+            "mana_coupling_strength: must be >= 0.0, got "
+            f"{mana_coupling_strength!r}",
+        )
     # RM-118 (2026-07-29): the wielder HSP ITEM-amp on the RANKER lane. The
     # scalar /ehp + /sustain routes have parsed this since R197; this is where it
     # can change an item CHOICE. Plain DEFAULT-OFF (the engine ranker defaults it
@@ -1016,6 +1046,8 @@ def _route_rank_tank(body: dict) -> dict:
             health_coupling_strength=health_coupling_strength,
             apply_item_caster_hp_proc=apply_item_caster_hp_proc,
             item_caster_hp_proc_strength=item_caster_hp_proc_strength,
+            apply_mana_damage_coupling=apply_mana_damage_coupling,
+            mana_coupling_strength=mana_coupling_strength,
             assume_hsp_amp=assume_hsp_amp,
             assume_passive_flat_mitigation=assume_passive_flat_mitigation,
             **assumed_share_kwargs,
