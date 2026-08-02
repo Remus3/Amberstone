@@ -180,7 +180,16 @@ _WEB = _REPO_ROOT / "web"
 #                    half of the seventh lane.
 # Both are Mission Control only. web/mc/ is served by mc/handler.py, never by
 # the dashboard, so nothing on :8888 renders a byte differently.
-_LIVE_HALF_DIGEST = "33ec5b03fbdd04f39b651c3ad3c572264c1fb0ae4a9d2cd551c828d478eb632c"
+# RE-CAPTURED 2026-08-02 (the Mission Control lane-log panel), superseding the
+# capture immediately above. Ordinary case again: 173 web/ sources on BOTH
+# sides, no tokeniser change, and exactly ONE file differs in its live half:
+#   M web/mc/mc.js   renders the new /api/loop-status `lane_log` field as its
+#                    own LANE LOG block, and labels the pre-existing tail
+#                    LOOP CONTROLLER LOG. Before this the card showed only the
+#                    controller's log, which has been stopped since
+#                    2026-07-28, so a running lane had no surface at all.
+# Mission Control only; nothing on :8888 renders a byte differently.
+_LIVE_HALF_DIGEST = "52be65f373047379a2cb78839dc3e3af6e37cb900e8f6bb8ddc37b1ff82235b3"
 
 
 def _web_sources() -> list[Path]:

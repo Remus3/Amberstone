@@ -25,5 +25,19 @@ $env:ANTHROPIC_API_KEY = $null
 $claude = (Get-Command claude -ErrorAction Stop).Source
 Set-Location $Cwd
 "lane start $(Get-Date -Format s) cwd=$Cwd prompt=$PromptFile" | Out-File $Log -Encoding utf8
-Get-Content $PromptFile -Raw | & $claude -p --model claude-opus-4-8 --dangerously-skip-permissions *>> $Log
+# `*>> $Log` wrote the worker's output as UTF-16LE: on Windows PowerShell 5.1
+# the redirection operators use the shell's default Unicode encoding, while the
+# header line above is UTF-8. MEASURED 2026-08-02 on a real 4298-byte lane log:
+# UTF-8 BOM plus a UTF-8 header for 119 bytes, then UTF-16LE for the remaining
+# 4179 - 2066 NUL bytes in one file. Anything reading it as one encoding got
+# "C\0y\0c\0l\0e" for the half that matters, which is what Mission Control
+# would have rendered into its lane-log panel.
+# `*>&1 |` merges every stream into the pipeline so Out-File can set the
+# encoding, keeping the "native stderr must not kill the lane" property above:
+# the streams are still folded into the same file, they are just written as
+# UTF-8 now. The reader stays tolerant of the old shape for logs already on
+# disk (dashboard/routes_loop_status._decode_lane_log).
+Get-Content $PromptFile -Raw |
+  & $claude -p --model claude-opus-4-8 --dangerously-skip-permissions *>&1 |
+  Out-File $Log -Append -Encoding utf8
 "lane exit $(Get-Date -Format s) code=$LASTEXITCODE" | Out-File $Log -Append -Encoding utf8
