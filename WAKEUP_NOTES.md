@@ -6,6 +6,60 @@
 
 ---
 
+# 2026-08-01f - five non-gated rows, and the verifier caught three of my own defects
+
+1 commit, pushed. Tier-1. DS untouched. Full `tests/` 17831 passed / 108 skipped / 0 failed.
+
+**Shipped** - RM-128, RM-130, RM-131, RM-132, RM-134 (LEDGER 1157).
+- **RM-134** `dashboard/_errors.send_error` stops leaking `str(exc)[:200]`; one back-compatible
+  edit covers 21 call sites and BOTH surfaces (`mc/routes.py` splices the same handlers into
+  `:8895`). Leak proven end-to-end through the MC route first, then fixed. 7 of 8 tests kill
+  the old body.
+- **RM-131 + RM-128** take `tools/upstream_drift_check.py` from 3 signals to 5. Both
+  fingerprints are SHAPE-only - a value-sensitive signal would report drift every single run,
+  which is the same as reporting nothing.
+- **RM-130** 24 `U+2192` in `tft/` -> `->`, byte-level so the mixed CRLF/LF survived.
+- **RM-132** met its acceptance and is still INERT - see below.
+
+**Three defects the adversarial verifier found in my own work**
+- **RM-132's token reference can never resolve.** `--fs-ov-chip` is on
+  `body[data-shell="overlay"]`; both widgets `documentElement.appendChild(...)`, so they are
+  SIBLINGS of `<body>` and custom props inherit downward only. Renders fine (the 13px fallback
+  is load-bearing), tracks nothing. I reasoned about the scope and still got it half wrong.
+  Filed **RM-139** with three costed routes and a computed-style acceptance.
+- **A tautological test.** The qq carry-forward case re-implemented
+  `upstream_drift_check.py:387` in its own body. Rewritten to exercise `advance_sentinel`
+  against a tmp sentinel; mutation-proven red, plus a negative control.
+- **An overclaiming docstring.** RM-128's offline half does NOT catch a regroup between two
+  known groups (mutant M2 survives); only the live fingerprint does. Docstring says so now.
+
+**RM-128's filed acceptance was REFUTED in two places** - implementing it as written would
+have shipped a forever-red test. (a) 16 kARAM / 256 kAlt records vs a 21-entry map, so
+"every live kARAM/kAlt id must be mapped" is impossible. (b) 8 ids (900/920/1020/1400/1700/
+1710/1750/1900) sit in `kAlternativeLeagueGameModes` while mapping to sr/aram/arena -
+`gameSelectModeGroup` is a client MENU grouping, not a mode classifier.
+
+**Two process notes**
+- The LEDGER-1155 lesson repeated the same day: the first full run went RED on
+  `test_web_ascii_sweep.py` (RM-132 moved the web LIVE-half digest), invisible from any
+  touched-module scoping. Re-captured per the file's ritual after measuring 173 sources on
+  both sides. **Run the repo-wide guards whenever a web/ byte or a test FILE changes.**
+- The Stop gate flagged my wrap summary and was RIGHT: I called the queue snapshot
+  "committed" while it was `??` and HEAD was unchanged. Retracted the wording, parser untouched.
+
+**Do NOT redo**
+- Do NOT reinstate either refuted half of RM-128's acceptance. Both are measured.
+- Do NOT "fix" RM-132 by adding the overlay type tokens to `:root` without reading RM-139 -
+  the body-scoping is deliberate (the `tokens.css` >=16px floor is relaxed only in overlay).
+- A bash ANSI-C quoted grep for the arrow (a raw U+2192 inside `$'...'`) does NOT expand the
+  escape - it reports a false 0. Count with ripgrep `-o`; ripgrep `--count` gives LINES,
+  not occurrences (14 vs 24 here).
+
+**Next:** RM-135 (backup of irreplaceable single-copy data - its own session), RM-139,
+RM-133, or the DS RM-118 seams.
+
+---
+
 # 2026-08-01e - RM-127's last two operator calls, then the armed gate blocked a TRUE claim
 
 2 commits `039b3393`, `f4878fd2`, both pushed. Tier-1. DS untouched.

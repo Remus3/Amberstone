@@ -93,7 +93,7 @@ ORIGINS = {
     "Anima":       {"breakpoints": [2, 4, 6], "type": "loss-streak", "note": "Gain Tech on loss, prototype Anima Weapons at 100 Tech. 17.3: (6) loot after EVERY combat (was: wins only)."},
     "Arbiter":     {"breakpoints": [2, 4], "type": "utility", "note": "Subscribe to divine law, choose effect for Arbiters"},
     "Dark Star":   {"breakpoints": [2, 4, 6, 9], "type": "execute", "note": "Black holes consume enemies below 10% HP. Vertical carry with Jhin."},
-    "Meeple":      {"breakpoints": [3, 5, 7, 10], "type": "scaling", "note": "Meeps empower abilities. (7) Cloning Slot. 17.2: Clone gold nerfed (1c:3→2g, 5c:5→2g)."},
+    "Meeple":      {"breakpoints": [3, 5, 7, 10], "type": "scaling", "note": "Meeps empower abilities. (7) Cloning Slot. 17.2: Clone gold nerfed (1c:3->2g, 5c:5->2g)."},
     "Mecha":       {"breakpoints": [2, 4, 6], "type": "transform", "note": "Transform to Ultimate Form: +60% HP, 2 slots, counts twice. (6) +1 team size"},
     "N.O.V.A.":    {"breakpoints": [2, 3, 5], "type": "burst", "note": "Power surges in combat. (5) Striker selector."},
     "Primordian":  {"breakpoints": [2, 4, 6], "type": "swarm", "note": "Spawn Swarmlings. (3+) free 1-2 cost champ each round."},
@@ -104,7 +104,7 @@ ORIGINS = {
     "Replicator":  {"breakpoints": [2, 4], "type": "echo", "note": "Abilities fire a second time at reduced effectiveness."},
     "Conduit":     {"breakpoints": [2, 4], "type": "mana", "note": "Innate: +20% mana from all sources. Team mana regen."},
     "Fateweaver":  {"breakpoints": [2, 4], "type": "crit", "note": "Innate: Precision (abilities can crit). Lucky chance effects."},
-    "Marauder":    {"breakpoints": [2, 4, 6], "type": "sustain", "note": "Omnivamp + AD. Overhealing converts to Shield. 17.3 NERF: omnivamp reduced all tiers (20→18%, 40→35%, 60→55%)."},
+    "Marauder":    {"breakpoints": [2, 4, 6], "type": "sustain", "note": "Omnivamp + AD. Overhealing converts to Shield. 17.3 NERF: omnivamp reduced all tiers (20->18%, 40->35%, 60->55%)."},
     "Rogue":       {"breakpoints": [2, 4], "type": "ad/ap", "note": "AD and AP scaling."},
     "Factory New":  {"breakpoints": [2, 4], "type": "items", "note": "Item-related bonuses."},
     "Timebreaker": {"breakpoints": [2, 3, 4], "type": "as/econ/reroll",
@@ -204,7 +204,7 @@ GOD_BLESSINGS = {
     "Kayle": [
         {"name": "Divine Refund",       "effect": "2 gold + component copy on next item crafted"},
         {"name": "Craftsmanship",       "effect": "2 Reforgers now + 1 each stage; 2g per Reforger use"},
-        {"name": "Anvil Transformation","effect": "All component drops → Component Anvils; +2 gold"},
+        {"name": "Anvil Transformation","effect": "All component drops -> Component Anvils; +2 gold"},
     ],
     "Evelynn": [
         {"name": "Finalist Gambit",     "effect": "3 gold now; +30 gold bonus for finishing top 4"},
