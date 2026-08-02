@@ -66,33 +66,91 @@ from .survivability_credit import survivability_item_ids
 # archetype request or the /rank-bruiser route) scales its power off ABILITY
 # damage, not auto-attacks; without this the scorer valued only
 # compute_dps().weighted_dps (auto-attack) and built AP champs full AD -
-# identical to an AD bruiser (zero AP items). We classify AD vs AP from the
-# DDragon info.attack / info.magic ratings on the snapshot champ record
-# (magic > attack -> AP). Self-contained (no `core` import) so the Share mirror
-# stays standalone. FOUR champions still carry a fully zeroed DDragon info block
-# (attack 0 / magic 0): Seraphine / Akshan / Rell / Vex. They resolve to "ad"
-# through the `0 <= 0` tie rather than through real data - verified against
-# data/meta_build/ddragon/16.14.1/champion.json. (Qiyana was in this list and no
-# longer belongs: she reads attack 0 / magic 4 and routes AP correctly.)
-# They are all non-bruiser archetypes, so raw info suffices for every champion
-# that actually reaches this scorer via its normal route. The tie DOES matter to
-# the RM-39 AD-axis ability term below, which keys off this same "ad" branch:
-# three of the four (Seraphine / Rell / Vex) are really AP champions, and the
-# term's damage-type guard is what makes that safe - their spells are MAGIC,
-# which is excluded permanently, so they receive zero credit rather than a wrong
-# one. Akshan is genuinely AD and is credited legitimately.
-# The protection runs the OTHER way too, and that direction is load-bearing
-# after the L2 TRUE widen: Belveth R and Chogath R are AP-SCALING TRUE rows, and
-# nothing in the damage-type filter would stop them. They are safe only because
-# this function routes both to "ap" (magic 7 > attack 4 / 3). Weakening the axis
-# split would expose them.
+# identical to an AD bruiser (zero AP items).
+#
+# PRIMARY SOURCE = the kit's own ``lolmath.damage_distribution`` on the snapshot
+# champion record. The DDragon ``info.attack`` / ``info.magic`` 0-10 designer
+# ratings this function used to read ALONE are cosmetic class flavor that
+# reflects base stat GROWTH, not build reality - the exact complaint
+# ``onhit_dps.py:315-324`` already had to write down when it bolted on a local
+# ``_onhit_ap_axis`` workaround for Gwen and KogMaw. Measured against the live
+# snapshot the ratings disagree with the kit for 12 of 173 champions: Alistar
+# Gwen KogMaw Leona Locke Ornn Rell Seraphine TwistedFate Vex all read "ad" and
+# are really AP, while Belveth and Qiyana read "ap" and are really AD. Belveth
+# was the broken and unmitigated one - the "ap" branch below drops
+# ``weighted_dps`` entirely, so a 0.698-physical kit was served Liandry's
+# Torment #1 and Blackfire Torch #2.
+#
+# DECISIVENESS GATES mirror ``core.archetype_picks._axis_from_distribution``
+# (dominant share >= 0.55 AND margin >= 0.20) so the two resolvers agree by
+# construction. A genuine hybrid (measured at this patch: DrMundo Jax Kaisa
+# Sejuani Shaco Shen Shyvana Udyr Volibear Warwick) clears neither gate and
+# FALLS BACK to the rating split rather than flipping on noise - as does any
+# champion with a missing or malformed distribution block.
+#
+# The constants are LOCAL LITERALS, not an import. This function is deliberately
+# self-contained (no ``core`` import) so the Share mirror stays standalone -
+# ``_burst_off_axis.py`` mirrors the same two numbers for the same reason.
+# ``tests/test_kit_axis_ap_scaling_guard.py`` pins the two files' literals equal
+# by reading both off disk.
+#
+# THE AXIS SPLIT NO LONGER GUARDS THE AD-AXIS ABILITY TERM - that guard is now
+# explicit and lives in ``_physical_ability_damage`` below. The measured
+# evidence that made the old accidental protection load-bearing still stands and
+# is why the explicit guard exists: Belveth R (dAP +1.2153, ap_pct_sum 300.0)
+# and Chogath R (dAP +0.6076, ap_pct_sum 150.0) are AP-SCALING TRUE rows, and
+# nothing in the damage-type filter stops them after the L2 TRUE widen. They
+# used to be out of reach only because this function routed both to "ap". It now
+# routes Belveth to "ad", so the term's own AP-scaling exclusion is what keeps
+# her R out. Do NOT reintroduce a rating-based split as a damage-term guard.
+_AXIS_DOMINANT_MIN = 0.55
+_AXIS_MARGIN_MIN = 0.20
+
+
 def _damage_axis(snapshot: DataSnapshot, champion_id: str) -> str:
-    """Return ``"ap"`` when the champion is magic-primary, else ``"ad"``."""
+    """Return ``"ap"`` when the champion is magic-primary, else ``"ad"``.
+
+    Reads the kit's own ``lolmath.damage_distribution`` first; falls back to
+    the DDragon ``info.attack`` / ``info.magic`` comparison when that block is
+    missing, malformed, or not decisive under the dominance / margin gates.
+    """
     rec = snapshot.champions.get(str(champion_id)) or {}
+    kit = _kit_axis_from_distribution(rec)
+    if kit is not None:
+        return kit
     info = rec.get("info") or {}
     attack = int(info.get("attack", 0) or 0)
     magic = int(info.get("magic", 0) or 0)
     return "ap" if magic > attack else "ad"
+
+
+def _kit_axis_from_distribution(champ_rec) -> Optional[str]:
+    """``"ad"`` / ``"ap"`` for a DECISIVE kit damage split, else ``None``.
+
+    Fail-soft by design: a missing record, a missing or non-dict block, a
+    non-numeric entry, or a split that clears neither gate all return ``None``,
+    which hands the decision back to the rating-split fallback.
+    """
+    if not isinstance(champ_rec, dict):
+        return None
+    lolmath = champ_rec.get("lolmath") or {}
+    if not isinstance(lolmath, dict):
+        return None
+    dist = lolmath.get("damage_distribution") or {}
+    if not isinstance(dist, dict):
+        return None
+    try:
+        magical = float(dist.get("magical") or 0.0)
+        physical = float(dist.get("physical") or 0.0)
+    except (TypeError, ValueError):
+        return None
+    dominant, other, label = (
+        (magical, physical, "ap") if magical >= physical
+        else (physical, magical, "ad")
+    )
+    if dominant >= _AXIS_DOMINANT_MIN and (dominant - other) >= _AXIS_MARGIN_MIN:
+        return label
+    return None
 
 
 def _ability_damage(
@@ -161,10 +219,17 @@ def _physical_ability_damage(
     """Credited-type ability-DPS scalar - the AD-axis analogue of
     ``_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF seam).
 
-    Same call as ``_ability_damage``; the ONLY difference is that it SUMS THE
-    PER-SPELL ROWS whose ``damage_type`` normalizes into
-    ``_AD_AXIS_CREDITED_DAMAGE_TYPES``, instead of returning
-    ``total_ability_dps``.
+    Same call as ``_ability_damage``; the ONLY difference is that it SUMS A
+    FILTERED SET OF PER-SPELL ROWS instead of returning ``total_ability_dps``.
+    A row is credited when BOTH gates pass:
+
+    * its ``damage_type`` normalizes into ``_AD_AXIS_CREDITED_DAMAGE_TYPES``,
+      and
+    * its ``ap_pct_sum`` is zero - the row does not scale with AP AT ALL.
+
+    The second gate is the AP-SCALING EXCLUSION and it is independent of damage
+    type on purpose. This is the AD-axis term; an AP-scaling row never belongs
+    in it, whatever its damage type says.
 
     THE SUM IS NOT DIMENSIONALLY ADDITIVE WITH ``weighted_dps`` (RM-98,
     corrected 2026-07-24). This docstring previously asserted that rows being
@@ -183,10 +248,10 @@ def _physical_ability_damage(
 
     ``apply_cast_rate_propensity_prior`` (RM-98, DEFAULT-OFF) re-bases the
     measured rows onto ``availability * propensity_prior`` before summing - see
-    ``cast_propensity``. The delta is filtered by the SAME
-    ``_AD_AXIS_CREDITED_DAMAGE_TYPES`` set as the sum itself, so the
-    damage-type guard below is not weakened. Default False never calls the
-    helper (byte-identical).
+    ``cast_propensity``. The delta is computed over the ALREADY-FILTERED row
+    list, not over ``result.per_spell``, so BOTH gates apply to it and it can
+    never re-admit a row the sum excluded. Default False never calls the helper
+    (byte-identical).
 
     The filter reuses the canonical normalization idiom from
     ``ability_dps.py:371`` verbatim - ``(damage_type or "MAGIC").upper()`` - so
@@ -215,13 +280,25 @@ def _physical_ability_damage(
     crediting them imports neither AP nor magic-pen valuation. It is flat
     post-mitigation damage the AD branch was simply dropping.
 
-    THE AXIS SPLIT IS WHAT MAKES THAT SAFE, NOT THE DAMAGE TYPE. Roster-wide
-    there are 7 TRUE rows and 2 of them DO scale with AP: Belveth R
-    (dAP +1.2153) and Chogath R (dAP +0.6076). They are out of reach only
-    because ``_damage_axis`` routes them to "ap" (Belveth attack 4 / magic 7,
-    Chogath attack 3 / magic 7), so they take the AP branch above and never
-    hit this term. Do NOT widen on the assumption that TRUE is AP-inert
-    roster-wide - it is not.
+    THE AP-SCALING EXCLUSION IS WHAT MAKES THAT SAFE, NOT THE DAMAGE TYPE.
+    Roster-wide there are 7 TRUE rows and 2 of them DO scale with AP: Belveth R
+    Endless Banquet (dAP +1.2153, ``ap_pct_sum`` 300.0) and Chogath R Feast
+    (dAP +0.6076, ``ap_pct_sum`` 150.0). Nothing in the damage-type filter
+    stops them. Until the kit-axis fix they were out of reach only ACCIDENTALLY,
+    because ``_damage_axis`` read the DDragon ratings and routed both to "ap"
+    (Belveth attack 4 / magic 7, Chogath attack 3 / magic 7) - which was wrong
+    about Belveth for every OTHER purpose, since her kit is 0.698 physical.
+    ``_damage_axis`` now reads the kit distribution and routes Belveth to "ad",
+    so this term meets her R directly and the ``ap_pct_sum`` gate is what keeps
+    it out. Do NOT widen on the assumption that TRUE is AP-inert roster-wide -
+    it is not, and the axis split no longer covers for that.
+
+    MEASURED COLLATERAL of the exclusion, recorded so it reads as a decision:
+    Vayne Q Tumble is PHYSICAL and carries BOTH ``total_ad_pct`` (75..115) and
+    a nonzero ``ap_pct`` (50.0 per rank), so the gate drops a genuinely
+    dual-scaling row. That is the stated contract - an AD-axis term must not
+    become an AP-pricing channel - and her TRUE W Silver Bolts row, the one the
+    L2 widen exists for, is unaffected.
 
     WHY MIXED IS STILL HELD (a decision, not an oversight): the whole
     in-cohort MIXED population is Yone (W Spirit Cleave, R Fate Sealed).
@@ -245,15 +322,19 @@ def _physical_ability_damage(
         target_current_hp_pct=target_current_hp_pct,
         augments=augments,
     )
-    credited = sum(
-        row.dps
+    credited_rows = [
+        row
         for row in result.per_spell
         if (row.damage_type or "MAGIC").upper() in _AD_AXIS_CREDITED_DAMAGE_TYPES
-    )
+        and float(getattr(row, "ap_pct_sum", 0.0) or 0.0) <= 0.0
+    ]
+    credited = sum(row.dps for row in credited_rows)
     if not apply_cast_rate_propensity_prior:
         return credited
+    # The propensity DELTA rides the SAME filtered rows, not ``per_spell`` -
+    # otherwise the RM-98 path would re-admit exactly what the sum excluded.
     return credited + propensity_adjusted_dps_delta(
-        result.per_spell,
+        credited_rows,
         credited_damage_types=_AD_AXIS_CREDITED_DAMAGE_TYPES,
     )
 
@@ -558,7 +639,8 @@ def compute_hybrid(
     ``apply_ad_axis_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF) adds the
     PHYSICAL-only ability term to the AD branch of the damage axis, which is
     otherwise scored on auto-attack DPS ALONE (``dps.py:34`` - "Ability damage
-    is not included"). 92 of 173 champions resolve ``_damage_axis`` to "ad",
+    is not included"). 84 of 173 champions resolve ``_damage_axis`` to "ad"
+    (92 before the kit-axis fix; the 12 flips are listed above _damage_axis),
     so their real ability DPS is computed nowhere today; this is the defect
     RM-39 and RM-43 actually describe (spec section 2.2 - the ability-HASTE
     mechanism they originally named is inert precisely BECAUSE there is no
@@ -681,11 +763,11 @@ def compute_hybrid(
     # only. OFF path binds the SAME raw value (a name bind, not a float op)
     # so the score line below is byte-identical at the default; ON path with
     # no bonus MS resolves to the exact identity 1.0 and skips the rescale.
-    # Damage-axis awareness: an AP-primary champion (info.magic > info.attack)
-    # is scored on ABILITY damage so AP items surface; AD champions keep
-    # compute_dps().weighted_dps -> byte-identical.
+    # Damage-axis awareness: an AP-primary champion (kit damage_distribution
+    # magic-dominant, ratings as fallback) is scored on ABILITY damage so AP
+    # items surface; AD champions keep compute_dps().weighted_dps.
     # RM-39/RM-43 (DEFAULT-OFF): the AD branch is auto-attack-only by design
-    # (dps.py:34), so 92 of 173 champions never price their ability damage.
+    # (dps.py:34), so 84 of 173 champions never price their ability damage.
     # ON adds the PHYSICAL-only term; OFF binds the SAME raw value (a name
     # bind, not a float op) so this line is byte-identical at the default.
     # RM-98 (DEFAULT-OFF): the cast-rate propensity prior rides BOTH ability

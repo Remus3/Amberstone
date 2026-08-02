@@ -1331,6 +1331,57 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.269.0 (2026-08-02) - RM-142: the bruiser/onhit scorer read the WRONG damage
+axis, plus an explicit AP-scaling guard on the AD-axis ability term.
+`_damage_axis` classified a champion from the DDragon `info.attack` /
+`info.magic` ratings - a cosmetic 0-10 designer rating, not kit math. That
+disagreed with the real kit axis (`lolmath.damage_distribution`) for 12 of 173
+champions. Only three reach the function at all, since its only consumers are
+`hybrid.py` (bruiser) and `onhit_dps.py` (onhit). Bel'Veth was the one broken
+unmitigated: rated magic 7 / attack 4 against a kit that is 0.698 PHYSICAL, she
+took the "ap" branch where the score becomes `_ability_damage` alone and
+`compute_dps().weighted_dps` is dropped outright, so the shipped SR table built
+her Liandry's Torment first and Blackfire Torch second. She now builds Blade of
+The Ruined King / Trinity Force / Randuin's Omen / Sterak's Gage / Lord
+Dominik's Regards. Gwen and Kog'Maw hit the same chokepoint but were already
+rescued by the local `_onhit_ap_axis` fallback in the onhit lane, which is now
+redundant (probed across all 173 - zero remaining overrides) and left in place
+for a separate slice. The other nine route to tank / mage / assassin /
+enchanter and never call the function.
+
+This corrects item 421 (ENGINE 1.122.0), which fixed the ARCHETYPE RESOLVER
+against the same ground truth and stopped there - the scorer kept its own
+private axis, so the two resolvers contradicted each other on the same data for
+147 engine revisions.
+
+THE TRAP, and why this is two coupled changes rather than one line. The
+`_damage_axis` split was load-bearing for something else: it was the ONLY thing
+keeping AP-SCALING TRUE rows out of the RM-39/RM-43 AD-axis ability term, whose
+L2 widen (1.223.0) credits PHYSICAL+TRUE. Bel'Veth R measures `ap_pct_sum`
+300.0 and Cho'Gath R 150.0, and no damage-type filter stops either. Correcting
+the axis alone would have routed Bel'Veth onto the AD branch and credited an
+AP-scaling ultimate on an AD build - trading one defect for another. So the
+guard is now EXPLICIT and local instead of accidental: `AbilitySpellDps` carries
+`ap_pct_sum` (END-appended, defaulted), summed from the form's `attribute_kind
+== "damage"` blocks, and `_physical_ability_damage` filters AP-scaling rows out
+alongside the damage-type filter. The RM-98 propensity delta rides the SAME
+filtered list, or it would re-admit exactly what the sum excluded.
+
+All five in-cohort TRUE rows that SHOULD keep their credit measure `ap_pct_sum`
+0.0 and are untouched: Olaf E, Vayne W, Darius R, MasterYi E, Garen R. Vayne Q
+Tumble is deliberately EXCLUDED and pinned as a decision, not an accident: it is
+PHYSICAL but dual-scaling (75-115% total AD AND 50% AP), and crediting it would
+import AP valuation onto the AD axis. That mirrors how MIXED is already HELD
+rather than credited - partial credit for dual-scaling rows is a separate
+design, not a filter widen.
+
+`apply_ad_axis_ability_damage` remains DEFAULT-OFF, so the guard half is inert
+at the default; the axis half is NOT inert and deliberately changes Bel'Veth's
+default output. `_damage_axis` stays free of any `core` import so the Share
+mirror remains standalone; the 0.55 dominance / 0.20 margin gates are local
+literals mirroring `core/archetype_picks.py` and are guarded by a cross-package
+parity test.
+
 1.268.0 (2026-07-30) - RM-118 residual: the TWO VAMP lanes reach their route.
 The next batch after the rune lanes, same defect class: the ENGINE half shipped
 complete - registry, consumer, curated item set, tests - and no route in
