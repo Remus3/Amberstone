@@ -119,6 +119,52 @@ champion/build data and land it for live usage.
 
 ---
 
+---
+
+# 2026-08-01b - RM-127 link-ingest Phases 2+3, and the hook hard rule was WRONG
+
+3 commits `997157f1`, `ba4ff0fe`, `e47ce29a`, all pushed. Tier-0 throughout. DS untouched.
+
+**Shipped**
+- **RM-127 Phases 2 AND 3 both done.** `Desktop/Second-Pass.md` + `Desktop/Third-Pass.md`,
+  24 KB each. Threshold **cull below 5**, INFERRED from the operator-label cross-tab (at 5+
+  they kept 50/51, at 4- culled 83/93). 146 -> 60 survive -> **6 LIFT, 26 concept, 28 DROP**.
+- **`997157f1` corrected a CLAUDE.md HARD RULE against measurement.** Hooks DO fire under
+  headless `bypassPermissions` on CLI 2.1.220 - SessionStart, PreToolUse, PostToolUse AND Stop.
+- `e47ce29a` filed **RM-135**: no backup of irreplaceable single-copy data.
+- **`c1ad4ddc` killed the `assert 21378 == 2` CI flake at its root.** `mod.time IS`
+  the global time module, so `patch("mod.time.sleep")` is PROCESS-WIDE and tallied
+  every thread; the mock also made those threads busy-spin. New `tests/_sleep_probe.py`
+  (`record_sleeps` / `thread_scoped`) records only the calling thread and passes other
+  threads through to the real sleep. **5 tests across 2 files shared the root cause**,
+  not just the reported one. Mutation-tested; no production code touched.
+
+**Do NOT redo**
+- Do NOT re-run Phase 1 or Phase 2 triage, and do NOT trust "119 rows / no 8-10" - First-Pass
+  holds **146 rows topping out at 9**. ROADMAP + LEDGER 1108 both carried the stale count.
+- Do NOT re-measure the hook rule; it is measured and corrected in CLAUDE.md + the memory.
+- Do NOT re-derive Phase 2/3 detail into ROADMAP - it lives in LEDGER 1145 on purpose. ROADMAP
+  breached its doc budget this session (91%, was 89%) and was trimmed back to 89% / guard clean.
+
+**Open / next**
+- **Phase 4 is GATED on operator notes on `Desktop/Third-Pass.md`** - same gate that held
+  Phase 1 for two days. Read Third-Pass section 7 (six named traps) before starting it.
+- **BURIED OPERATOR GO:** ADDENDUM A in First-Pass ends `after review - build and implement` -
+  the only note of 155 authorizing a build, covering 6 dashboard concepts. SEPARATE Tier-2 row.
+- CCR-124/136/139 unverified-at-source (reddit 403s every default path).
+- Session file hit 25 MB - `/clear` was overdue.
+- **STALE DOC, worth acting on: the `/done` skill claims `-n 8` yields 6 failures and
+  is therefore "not trustworthy as a gate".** MEASURED 2026-08-01 after `c1ad4ddc`:
+  `pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile` = **27964 passed,
+  108 skipped, 7283 subtests, 0 FAILED in 166s**. None of the 6 named failures
+  reproduced. If that holds on a second run, the skill's own precondition for
+  replacing the ~17-min CI dispatch with a ~3-min local gate is MET - but the skill
+  text lives in BOTH `tools/done.md` and `.claude/commands/done.md` (drift_guard
+  enforces mirror parity), so edit them together. Not done: it changes the wrap
+  ritual and that is an operator call.
+
+---
+
 # 2026-08-01a - LANE-RESEARCH REFILL (headless lane 5): 5 rows filed RM-130..RM-134, one NEW drift-guard gap.
 
 **MERGE NOTE (added by the merger, 2026-08-01):** the five rows this run filed were authored
