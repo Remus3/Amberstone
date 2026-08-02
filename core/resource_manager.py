@@ -43,8 +43,24 @@ from typing import Callable
 _log = logging.getLogger("rc.resources")
 
 _MB = 1024 * 1024
-_WARN_MB  = 300
-_LIMIT_MB = 500
+# RM-146 (raised 2026-08-02 from 300 / 500 on a measured basis; do NOT walk
+# these back without re-measuring). One clean from-boot run plus two full
+# back-to-back ARAM matches on the SAME process measured RC's normal in-game
+# working set at 530-548 MB RSS (both matches agreed on the roof within
+# 0.3 MB) against ~1.03 GB committed. At the old 500 MB limit, simply PLAYING
+# was a permanent breach: the watchdog logged at ERROR every 60s for the whole
+# of every match and the restart-loop guard correctly declined to act on it
+# forever, so the guard protected a bad steady state instead of fixing it.
+# Nothing leaks - the +392 MB taken at the first game start is a ONE-TIME lazy
+# warm-up that is REUSED (the second match's start cost only +55 MB RSS and
+# +24 MB committed, not another +392/+835). _WARN_MB clears the measured
+# working set so normal play is quiet; _LIMIT_MB additionally clears the
+# highest RSS ever observed on this box (810 MB, on the aged pre-restart
+# process - cause not explained by either measured match), so remediation
+# fires only on a genuine runaway. Pinned by
+# tests/test_resource_manager_ceiling_rm146.py. Full record: LEDGER 1170.
+_WARN_MB  = 700
+_LIMIT_MB = 1200
 
 # Sustained-breach gate: how many CONSECUTIVE watchdog checks must report
 # RSS > _LIMIT_MB before a remediation is triggered. A single transient
