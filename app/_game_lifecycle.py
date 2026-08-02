@@ -26,7 +26,7 @@ from pathlib import Path
 
 from core.game_snapshot import (
     GameEnvelope, ClientSnapshot, RiftSnapshot, AramSnapshot, TftSnapshot,
-    MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL,
+    MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL, MODE_JADE,
     mode_from_game_mode_string,
 )
 from core.theme import EXCLUDED_MODES
@@ -372,7 +372,7 @@ class GameLifecycleManager:
                 env_mode = app.state.envelope.mode
                 if env_mode == MODE_ARAM and app.reader:
                     payload = app.reader.to_aram_snapshot(state)
-                elif env_mode in (MODE_SR, MODE_ARENA, MODE_BRAWL) and app.reader:
+                elif env_mode in (MODE_SR, MODE_ARENA, MODE_BRAWL, MODE_JADE) and app.reader:
                     payload = app.reader.to_rift_snapshot(state)
                 else:
                     if env_mode == MODE_TFT:
@@ -386,7 +386,7 @@ class GameLifecycleManager:
                             except Exception: payload = None
                     else:
                         payload = None
-                if payload is None and env_mode in (MODE_SR, MODE_ARENA, MODE_BRAWL):
+                if payload is None and env_mode in (MODE_SR, MODE_ARENA, MODE_BRAWL, MODE_JADE):
                     try:
                         payload = RiftSnapshot(); payload.raw_state = state
                     except Exception:
