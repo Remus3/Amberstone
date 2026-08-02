@@ -165,6 +165,83 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-08-01f - five non-gated rows, and the verifier caught three of my own defects
+
+1 commit, pushed. Tier-1. DS untouched. Full `tests/` 17831 passed / 108 skipped / 0 failed.
+
+**Shipped** - RM-128, RM-130, RM-131, RM-132, RM-134 (LEDGER 1157).
+- **RM-134** `dashboard/_errors.send_error` stops leaking `str(exc)[:200]`; one back-compatible
+  edit covers 21 call sites and BOTH surfaces (`mc/routes.py` splices the same handlers into
+  `:8895`). Leak proven end-to-end through the MC route first, then fixed. 7 of 8 tests kill
+  the old body.
+- **RM-131 + RM-128** take `tools/upstream_drift_check.py` from 3 signals to 5. Both
+  fingerprints are SHAPE-only - a value-sensitive signal would report drift every single run,
+  which is the same as reporting nothing.
+- **RM-130** 24 `U+2192` in `tft/` -> `->`, byte-level so the mixed CRLF/LF survived.
+- **RM-132** met its acceptance and is still INERT - see below.
+
+**Three defects the adversarial verifier found in my own work**
+- **RM-132's token reference can never resolve.** `--fs-ov-chip` is on
+  `body[data-shell="overlay"]`; both widgets `documentElement.appendChild(...)`, so they are
+  SIBLINGS of `<body>` and custom props inherit downward only. Renders fine (the 13px fallback
+  is load-bearing), tracks nothing. I reasoned about the scope and still got it half wrong.
+  Filed **RM-139** with three costed routes and a computed-style acceptance.
+- **A tautological test.** The qq carry-forward case re-implemented
+  `upstream_drift_check.py:387` in its own body. Rewritten to exercise `advance_sentinel`
+  against a tmp sentinel; mutation-proven red, plus a negative control.
+- **An overclaiming docstring.** RM-128's offline half does NOT catch a regroup between two
+  known groups (mutant M2 survives); only the live fingerprint does. Docstring says so now.
+
+**RM-128's filed acceptance was REFUTED in two places** - implementing it as written would
+have shipped a forever-red test. (a) 16 kARAM / 256 kAlt records vs a 21-entry map, so
+"every live kARAM/kAlt id must be mapped" is impossible. (b) 8 ids (900/920/1020/1400/1700/
+1710/1750/1900) sit in `kAlternativeLeagueGameModes` while mapping to sr/aram/arena -
+`gameSelectModeGroup` is a client MENU grouping, not a mode classifier.
+
+**Two process notes**
+- The LEDGER-1155 lesson repeated the same day: the first full run went RED on
+  `test_web_ascii_sweep.py` (RM-132 moved the web LIVE-half digest), invisible from any
+  touched-module scoping. Re-captured per the file's ritual after measuring 173 sources on
+  both sides. **Run the repo-wide guards whenever a web/ byte or a test FILE changes.**
+- The Stop gate flagged my wrap summary and was RIGHT: I called the queue snapshot
+  "committed" while it was `??` and HEAD was unchanged. Retracted the wording, parser untouched.
+
+**Do NOT redo**
+- Do NOT reinstate either refuted half of RM-128's acceptance. Both are measured.
+- Do NOT "fix" RM-132 by adding the overlay type tokens to `:root` without reading RM-139 -
+  the body-scoping is deliberate (the `tokens.css` >=16px floor is relaxed only in overlay).
+- A bash ANSI-C quoted grep for the arrow (a raw U+2192 inside `$'...'`) does NOT expand the
+  escape - it reports a false 0. Count with ripgrep `-o`; ripgrep `--count` gives LINES,
+  not occurrences (14 vs 24 here).
+
+**Next (operator-directed at wrap 2026-08-01):** THREE things in one session, orchestrated
+subagent-first / parallel as standing protocol requires.
+1. **RM-140** - a COMPLETE upstream patch + data check / ingest / coverage-expand pass. This
+   is the INGEST half; RM-128/RM-131 shipped only the DETECT half. Probe `current.txt` +
+   ENGINE_VERSION + DS `:8860` `/health` + the now-5-signal `ops/runtime/upstream_drift.json`
+   before anything else. Never `--force` a Meraki re-extract.
+2. **RM-141** - QA THE OPERATOR on "League Classic" before scoping it. Three readings are on
+   the table (the `CLASSIC` gameMode / SR depth, a distinct legacy-client offering, or the
+   retired-mode class). Ask, do not guess.
+3. **Then the next 5 open items** as usual: RM-135 (backup of irreplaceable single-copy data -
+   big enough to own a session), RM-139 (overlay tokens unreachable from documentElement),
+   RM-133, RM-122 residue, or the DS RM-118 wireable seams (exactly 4).
+4. **AFTER 1-3 are done AND cleared, a WHOLE SESSION dedicated to nothing but
+   `ops/audit/P6_LOLMATH_PARITY.md`** (184 lines, operator-appended 2026-06-15). Own session,
+   not a slice appended to this batch - the operator asked for it explicitly. Highest-priority
+   slice in the doc is **G1: DS builds the WRONG damage axis on 20 champions** (18 AD-on-AP
+   kits incl. Gwen / Teemo / Rumble / Diana, plus Pyke / Taric inverse), which is a
+   correctness bug, not a tuning gap. Inputs are in-repo: `ops/audit/LOLMATH_VS_DS_SWEEP.md`
+   + `ops/audit/lolmath_ds_sweep/` (reproducer; `npm install` to re-scrape, `node_modules`
+   gitignored). **The doc's own numbers are STALE by design and it says so** - it cites engine
+   1.120.0 / patch 16.12.1 against today's 1.268.0 / 16.15.1, so RE-DERIVE off live
+   `data/daemon_slayer/current.txt` + `:8860` `/health` + the current `build_orders_sr.json`
+   before acting on any row. Tier-2: ENGINE bump, four doc anchor sites, Share mirror, dual
+   suite. Root-cause-first, validated PER CHAMPION (Engine/Build Conventions hard rule - a
+   single generic ADC-crit shape is exactly how the last two build fixes shipped incomplete).
+
+---
+
 # 2026-08-01e - RM-127's last two operator calls, then the armed gate blocked a TRUE claim
 
 2 commits `039b3393`, `f4878fd2`, both pushed. Tier-1. DS untouched.
