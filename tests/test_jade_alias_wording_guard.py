@@ -164,14 +164,21 @@ class JadeAliasWordingGuard(unittest.TestCase):
             "Sites still repeating the refuted read:\n" + "\n".join(offenders))
 
     def test_jade_variant_row_is_not_an_alias_of_the_base_row(self):
-        """The MEASUREMENT that refutes the alias read. Skips if the mirror is absent."""
-        if not _CHAMPIONS.is_file():
-            self.skipTest(f"DDragon mirror not present: {_CHAMPIONS}")
+        """The MEASUREMENT that refutes the alias read.
+
+        Deliberately does NOT skip when the mirror is missing. The file is
+        TRACKED, so its absence is a repo defect and must fail loudly - a skip
+        here would be an always-passing guard, which is the whole point of
+        tests/test_skip_condition_hygiene.py.
+        """
+        self.assertTrue(
+            _CHAMPIONS.is_file(),
+            f"tracked DDragon mirror is missing: {_CHAMPIONS}")
         data = json.loads(_CHAMPIONS.read_text(encoding="utf-8")).get("data", {})
         jade = data.get("Jade_Ahri")
         base = data.get("Ahri")
-        if not isinstance(jade, dict) or not isinstance(base, dict):
-            self.skipTest("16.15.1 mirror carries no Jade_Ahri / Ahri pair")
+        self.assertIsInstance(jade, dict, "16.15.1 mirror carries no Jade_Ahri row")
+        self.assertIsInstance(base, dict, "16.15.1 mirror carries no Ahri row")
 
         self.assertEqual(str(jade.get("key")), "60103")
         self.assertEqual(str(base.get("key")), "103")
