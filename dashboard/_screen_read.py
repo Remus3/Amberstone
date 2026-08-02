@@ -74,6 +74,13 @@ class ScreenReadVision(GameVisionReader):
 
     PROMPT = _PROMPT
 
+    # RM-144: this reader's PROMPT is the whole feature - it asks for
+    # {"note": "..."}, which is NOT in the relay's fixed TFT extraction
+    # schema. The relay transport carries no prompt, so routing through it
+    # returned a valid dict with no "note" and the pill reported empty_note
+    # on every click. Go direct so PROMPT actually reaches the model.
+    USE_RELAY = False
+
 
 def _build_reader() -> GameVisionReader:
     """Construct the reader with the operator's Anthropic key (same key
