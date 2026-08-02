@@ -755,6 +755,16 @@ class AbilitySpellDps:
     cc_duration_post_tenacity: tuple[float, ...] = ()    # cc_duration_s x aram_tenacity_mult (ENGINE 1.29.0)
     notes: tuple[str, ...] = field(default_factory=tuple)
     static_cd: bool = False             # haste-immune cooldown gate (ENGINE 1.166.0, OQ11)
+    # Sum of ``ap_pct`` across this form's ``attribute_kind == "damage"``
+    # blocks - the row's OWN AP scaling, read the same way
+    # ``_classify_primary_scaling`` reads those blocks. END-appended and
+    # defaulted per the repo dataclass rule, and NOT consumed by any DPS
+    # arithmetic: it exists so a consumer can decide whether a row belongs on
+    # the AD axis. Its first consumer is the RM-39 / RM-43 AD-axis ability term
+    # in ``hybrid._physical_ability_damage``, which must not credit an
+    # AP-scaling row (Belveth R 300.0 and Chogath R 150.0 are AP-scaling TRUE
+    # rows the damage-type filter alone cannot stop).
+    ap_pct_sum: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -779,6 +789,7 @@ class AbilitySpellDps:
             "cc_duration_post_tenacity": list(self.cc_duration_post_tenacity),
             "notes": list(self.notes),
             "static_cd": self.static_cd,
+            "ap_pct_sum": self.ap_pct_sum,
         }
 
 
@@ -929,6 +940,24 @@ def _classify_primary_scaling(per_spell: Sequence[AbilitySpellDps],
     if scores[top] < 1.5 * sum(v for k, v in scores.items() if k != top):
         return "MIXED"
     return top
+
+
+def _form_ap_pct_sum(form: AbilityForm) -> float:
+    """Sum ``ap_pct`` across a form's ``damage`` blocks.
+
+    Reads the SAME blocks ``_classify_primary_scaling`` reads (the
+    un-evaluated ratios, so the answer is stable across builds and levels)
+    and answers a narrower question: does this spell scale with AP AT ALL.
+    Non-``damage`` blocks (heal / shield / modifier / duration) are skipped -
+    an AP-scaling heal block does not make the spell's DAMAGE AP-scaling.
+    """
+    total = 0.0
+    for block in form.damage_blocks:
+        if block.attribute_kind != "damage":
+            continue
+        if block.ap_pct:
+            total += sum(block.ap_pct)
+    return total
 
 
 # --- top-level compute -------------------------------------------------------
@@ -1322,6 +1351,7 @@ def compute_ability_dps(
             cc_duration_s=cc_base,
             cc_duration_post_tenacity=cc_post_ten,
             static_cd=static_cd,
+            ap_pct_sum=_form_ap_pct_sum(form),
         ))
 
     total_dps = sum(s.dps for s in per_spell)
