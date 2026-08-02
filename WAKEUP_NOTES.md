@@ -128,3 +128,28 @@ suggested is already in CLAUDE.md. Only the parity harness was real work.
   non-zero on SKEW.
 
 **Next:** P4 when the observation window is satisfied; otherwise the top open ROADMAP row.
+
+---
+
+# 2026-08-02 weekly-hygiene (scheduled unattended)
+
+## Relocated / committed
+- Nothing relocated: WAKEUP_NOTES at exactly 3 sessions (separators at lines 7/52/101) - no trim needed.
+- CLAUDE.md at 38KB (< 60KB budget), no stray ledger entries found.
+- No doc moves this pass.
+
+## Memory update (outside repo, not committed)
+- **UPDATED** `feedback_caveman_default_fleet.md`: removed "Game-PC" from description + body (Game-PC retired ADR-011 2026-05-29, bridge decommissioned ADR-012 2026-06-24). HIGH confidence, low blast radius.
+
+## Judgment calls flagged for operator
+1. **`feedback_gamepc_league_fullscreen_lockup.md`** (59 days old): entirely about Game-PC hardware (Parsec + Duet virtual displays). Game-PC is retired. Consider moving to `_retired/` if the machine is gone permanently.
+2. **`feedback_no_em_dashes.md`** (76 days old): description + body still say "Legion/Game-PC/Peer". Rule is still correct and enforced via CLAUDE.md. Low-priority cosmetic stale - update description to "Legion/Peer" when convenient.
+3. **`feedback_no_multipane_terminal.md`** (93 days old): Why section mentions "`:8888` dashboard on Game-PC's secondary monitor." Since 1-PC, dashboard is on Legion. Rule (no multi-pane WT) is still valid. Minor stale.
+4. **`feedback_no_preview_panel_callouts.md`** (76 days old): How-to-apply still mentions `mcp__gamepc__capture_monitor`. `feedback_screenshot_after_ui_changes.md` already records the correct retired-path note. Minor stale - rule itself is correct.
+
+## Anomaly triage (rc_facts.py)
+- All 24 scheduled tasks: Ready or Running - EXPECTED.
+- RC pid=19488 alive, DS :8860 alive patch=16.15.1 - EXPECTED.
+- LCU phase=Offline, liveclient empty - EXPECTED (no game in progress).
+- `version=?` in rc_facts output - noted, likely cosmetic (version field not populated at client mode). Not actionable.
+- No ACTIONABLE anomalies this pass.
