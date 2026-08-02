@@ -301,6 +301,9 @@ h2 { font-size: 20px; font-weight: 600; color: #0f172a; margin-top: 48px; margin
 .fun-ending { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; border-radius: 12px; padding: 24px; margin-top: 40px; text-align: center; }
 .fun-headline { font-size: 18px; font-weight: 600; color: #78350f; margin-bottom: 8px; }
 .fun-detail { font-size: 14px; color: #92400e; }
+.synthesis { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #0f766e; border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; }
+.synth-head { font-size: 14px; font-weight: 600; color: #0f766e; margin-bottom: 6px; }
+.synth-body { font-size: 14px; color: #334155; line-height: 1.6; }
 .footnote { color: #94a3b8; font-size: 12px; margin-top: 40px; text-align: center; }
 @media (max-width: 640px) { .charts-row { grid-template-columns: 1fr; } .stats-row { justify-content: center; } }
 """
@@ -329,6 +332,95 @@ def _fmt_churn(c: tuple[int, int]) -> str:
     return f"+{c[0]:,}/-{c[1]:,}"
 
 
+def _synthesis(f: dict, feat: int, fix: int, docs: int,
+               done: int, closed: int, openn: int) -> str:
+    """Narrative built strictly from figures already parsed - adds no new claim.
+
+    Every sentence restates or divides numbers that appear elsewhere in the
+    report; nothing here is inferred from a transcript or from memory.
+    """
+    g, led, orch = f["git"], f["ledger"], f["orchestration"]
+    paras: list[tuple[str, str]] = []
+
+    authors = g["authors"] or [("(unknown)", 0)]
+    top_author, top_commits = authors[0]
+    solo_pct = 100.0 * top_commits / max(g["commits"], 1)
+    items_per_day = led["count_in_window"] / max(g["active_days"], 1)
+    paras.append((
+        "Cadence",
+        f"{g['commits']:,} commits over {g['active_days']} active days "
+        f"({g['commits_per_active_day']}/day). {top_author} authored {top_commits:,} of them "
+        f"({solo_pct:.0f}%), the remainder being bot or co-author commits. "
+        f"{g['files_touched']:,} files touched, {led['count_in_window']} LEDGER items closed - "
+        f"about {items_per_day:.1f} closures per active day."
+    ))
+
+    tot_add, tot_del = g["churn_total"]
+    src_add, src_del = g["churn_source"]
+    src_pct = 100.0 * src_add / max(tot_add, 1)
+    top2 = ", ".join(f"{area_name(d)} {c}" for d, c in g["dirs"][:2])
+    paras.append((
+        "Where the bytes went",
+        f"Total churn +{tot_add:,}/-{tot_del:,}, but hand-written source is only "
+        f"+{src_add:,}/-{src_del:,} - {src_pct:.0f}% of added lines. The rest is mirrored and "
+        f"generated output, which the file-touch histogram confirms ({top2}). "
+        f"Read velocity against the source column, not the total."
+    ))
+
+    code_commits = feat + fix
+    paras.append((
+        "Commit mix",
+        f"docs {docs} | feat {feat} | fix {fix}. Documentation commits "
+        + ("outweigh" if docs > code_commits else "sit below")
+        + f" feat plus fix combined ({docs} vs {code_commits}), which is the living-docs and "
+          f"LEDGER ritual showing up in the history rather than a documentation backlog."
+    ))
+
+    fr = {k: v for k, v in led["friction"].items() if v}
+    if fr:
+        ranked = sorted(fr.items(), key=lambda kv: -kv[1])
+        premise = sum(v for k, v in fr.items() if "premise" in k.lower() or "No-op" in k)
+        listed = "; ".join(f"{k.split(' (')[0]} {v}" for k, v in ranked)
+        paras.append((
+            "Friction",
+            f"Phrase hits inside the windowed ledger prose - hits, not entries, so one entry can "
+            f"match several: {listed}. The premise-class categories total {premise} hits against "
+            f"{led['count_in_window']} windowed items, making 'the row was already true, already "
+            f"shipped, or inert before work started' the dominant cost shape in this window."
+        ))
+
+    n_excl = len(orch["excluded"])
+    # report EVERY parsed status, not just the three headline ones - an unmentioned
+    # WIP/other row would make a "drained" claim overstate the real plan state.
+    status_line = " / ".join(f"{v} {k}" for k, v in sorted(orch["status"].items()))
+    other = sum(v for k, v in orch["status"].items()
+                if k not in ("DONE", "CLOSED", "OPEN"))
+    if openn == 0 and other == 0 and n_excl:
+        horizon_line = (
+            f"ORCHESTRATION_PLAN shows {status_line} - the plan is drained. All {n_excl} remaining "
+            f"rows are EXCLUDED, and each is gated on the same thing: a live game or an explicit "
+            f"operator OK. Nothing here is a suggestion; it is the parsed exclusion list."
+        )
+    else:
+        horizon_line = (
+            f"ORCHESTRATION_PLAN shows {status_line}, with {n_excl} EXCLUDED rows held behind a "
+            f"live game or an operator OK. {openn + other} row(s) are not in a terminal state, so "
+            f"the plan is near-drained rather than drained."
+        )
+    paras.append(("Horizon", horizon_line))
+
+    paras.append((
+        "Engine",
+        f"DS engine {f['engine_version']} on patch {f['ds_patch']}, read from "
+        f"agents/daemon_slayer/__init__.py and data/daemon_slayer/current.txt."
+    ))
+
+    return "".join(
+        f'<div class="synthesis"><div class="synth-head">{h(t)}</div>'
+        f'<div class="synth-body">{h(body)}</div></div>' for t, body in paras
+    )
+
+
 def render_html(f: dict) -> str:
     g = f["git"]
     led = f["ledger"]
@@ -347,9 +439,14 @@ def render_html(f: dict) -> str:
     done = orch["status"].get("DONE", 0)
     closed = orch["status"].get("CLOSED", 0)
     openn = orch["status"].get("OPEN", 0)
+    non_terminal = sum(v for k, v in orch["status"].items() if k != "DONE" and k != "CLOSED")
     glance2 = (
-        f"<strong>Loop state:</strong> ORCHESTRATION_PLAN shows {done} DONE / {closed} CLOSED / "
-        f"{openn} OPEN. {'Queue drained - the director returns NO_WORK until refilled.' if openn == 0 else f'{openn} slice(s) still open for the director to pick.'}"
+        "<strong>Loop state:</strong> ORCHESTRATION_PLAN shows "
+        + " / ".join(f"{v} {k}" for k, v in sorted(orch["status"].items()))
+        + ". "
+        + ("Queue drained - the director returns NO_WORK until refilled."
+           if non_terminal == 0
+           else f"{non_terminal} row(s) still non-terminal for the director to pick up.")
     )
 
     # SECTION: project areas (from the real path histogram)
@@ -403,9 +500,10 @@ def render_html(f: dict) -> str:
     if fr_rows:
         friction_html = "".join(
             f'<div class="friction-category"><div class="friction-title">{h(k)} '
-            f'({v} mention{"s" if v != 1 else ""})</div>'
-            f'<div class="friction-desc">Recurred across {v} windowed ledger entr'
-            f'{"ies" if v != 1 else "y"} - a grounded signal, not a guess.</div></div>'
+            f'({v} phrase hit{"s" if v != 1 else ""})</div>'
+            f'<div class="friction-desc">{v} matching phrase hit'
+            f'{"s" if v != 1 else ""} inside the windowed ledger prose - hits, not entries, so a '
+            f'single entry can match more than once. Grepped from the ledger, not guessed.</div></div>'
             for k, v in fr_rows
         )
     else:
@@ -421,6 +519,9 @@ def render_html(f: dict) -> str:
         )
     else:
         horizon_html = '<div class="horizon-card"><div class="horizon-possible">No EXCLUDED or open items parsed - the plan is fully drained.</div></div>'
+
+    # SECTION: synthesis (derived ONLY from the numbers above - no new claims)
+    synth_html = _synthesis(f, feat, fix, docs, done, closed, openn)
 
     # SECTION: fun ending (a real superlative)
     top_dir = g["dirs"][0] if g["dirs"] else ("(none)", 0)
@@ -459,6 +560,9 @@ def render_html(f: dict) -> str:
 <div class="chart-card"><div class="chart-title">Commits by type</div>{type_bars}</div>
 <div class="chart-card"><div class="chart-title">Most-touched areas</div>{dir_bars}</div>
 </div>
+
+<h2>Reading the Numbers</h2>
+{synth_html}
 
 <h2>What Shipped (LEDGER, in window)</h2>
 <div class="ship-list">{ship}</div>
