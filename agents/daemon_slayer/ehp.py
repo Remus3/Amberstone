@@ -144,6 +144,7 @@ from .survivability_credit import survivability_item_ids_tank
 from .kit_conversion import conversion_factor, kit_conversion
 from ._resist_damage_coupling import coupled_resist_points, resist_damage_coupling
 from ._health_damage_coupling import coupled_health_points, health_damage_coupling
+from ._mana_damage_coupling import coupled_mana_points, mana_damage_coupling
 from ._item_caster_hp_proc import (
     _MAX_CONVERTED_FRACTION,
     _REFERENCE_FIGHT_SECONDS,
@@ -1200,6 +1201,14 @@ class EhpResult:
     # flag -> every existing field byte-identical. Appended at END per the
     # dataclass field-append convention.
     heal_cleave_lifesteal: float = 0.0
+    # RM-118 (2026-08-02): the resolved build's TOTAL maximum mana, the pool the
+    # champion MANA -> DAMAGE coupling credit normalizes against. Already computed
+    # inside ``compute_ehp`` for the Seraph's Embrace Lifeline shield
+    # (``ehp.py:1725``, ``float(stats.get("mp", 0.0))``) and merely forwarded here
+    # rather than recomputed. OBSERVABILITY ONLY - no EHP field reads it, so the
+    # value is byte-identical whatever the mana lever does. Appended at END per the
+    # dataclass field-append convention.
+    max_mana: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -2729,6 +2738,7 @@ def compute_ehp(
         passive_flat_mit_phys=flat_mit_phys,
         passive_flat_mit_mag=flat_mit_mag,
         passive_flat_mit_true=flat_mit_true,
+        max_mana=max_mana,
         stats=dict(stats),
         notes=tuple(notes),
     )
@@ -2988,6 +2998,23 @@ class EhpRankedItem:
     # kept so a future non-item caller (a rune / augment lane that grants base
     # health) can distinguish them without a signature change.
     delta_max_hp: float = 0.0
+    # RM-118 (2026-08-02): OBSERVABILITY ONLY - the candidate's MAXIMUM MANA gain
+    # over the baseline build, which is the quantity the mana -> damage coupling
+    # credit reads. Appended at the VERY END with a default per the Python
+    # dataclass convention (a mid-class required field breaks every positional
+    # construction). Populated ONLY when the mana coupling lever is engaged; 0.0
+    # otherwise, so the default row stays at identity and the OFF path is
+    # byte-identical.
+    #
+    # ONE field, not two, for the identical reason ``delta_max_hp`` above is one
+    # field: for an ITEM delta the bonus-mana gain and the maximum-mana gain are
+    # the SAME number - both builds resolve at the same level, so the champion's
+    # base mana block is identical on both sides and cancels out of the
+    # subtraction. The ranker passes this one value for both arguments of
+    # ``coupled_mana_points``, whose two-argument shape is kept so a future
+    # non-item caller (a rune / augment lane granting base mana) can distinguish
+    # them without a signature change.
+    delta_max_mp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -3012,6 +3039,7 @@ class EhpRankedItem:
             "sustain_ehp": self.sustain_ehp,
             "delta_sustain_ehp": self.delta_sustain_ehp,
             "delta_max_hp": self.delta_max_hp,
+            "delta_max_mp": self.delta_max_mp,
         }
 
 
@@ -3233,6 +3261,21 @@ def rank_items_by_ehp(
     # for a candidate that carries its own shield, which is the R194 per-candidate
     # shape, not the RM-115 uniform-multiplier inert shape.
     assume_hsp_amp: bool = False,
+    # RM-118 (2026-08-02): the champion MANA -> DAMAGE coupling lever, the
+    # MANA-axis twin of the RM-87 resist pair and the RM-91 T1 health pair above,
+    # appended at END per the no-mid-signature-insert convention. A sort-ONLY
+    # credit folded into ``_base_key`` (the ``_conv_key`` precedent), never into a
+    # row value. Inert unless the flag is True AND the strength is > 0.0 AND the
+    # champion is seeded in ``_mana_damage_coupling`` - any one of those failing
+    # is an exact no-op.
+    #
+    # DELIBERATELY a SEPARATE flag from BOTH the RM-87 pair and the RM-91 T1 pair:
+    # the three registries are disjoint (zero champion overlap at 16.15.1), so a
+    # merged flag would arm a mana credit on a resist converter (Rammus, who
+    # converts resists and carries no mana term) and a resist credit on the mana
+    # converter (Blitzcrank). Arming one lever must never silently arm another.
+    apply_mana_damage_coupling: bool = False,
+    mana_coupling_strength: float = 0.0,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -3310,6 +3353,14 @@ def rank_items_by_ehp(
     if health_coupling_strength < 0.0:
         raise ValueError(
             f"health_coupling_strength must be >= 0.0, got {health_coupling_strength}"
+        )
+    # RM-118: same boundary, same reason - a negative strength would invert the
+    # sort key rather than disarm the lever. Ranker-ONLY like its RM-91 sibling
+    # (nothing in the EHP math reads it), so it is checked here and forwarded
+    # nowhere.
+    if mana_coupling_strength < 0.0:
+        raise ValueError(
+            f"mana_coupling_strength must be >= 0.0, got {mana_coupling_strength}"
         )
     # RM-91 T2: same boundary, same reason - a negative strength would invert the
     # sort key rather than disarm the lever.
@@ -3529,6 +3580,44 @@ def rank_items_by_ehp(
         if _health_pool <= 0.0:
             _health_coupling = None
 
+    # RM-118 (2026-08-02): resolve the MANA -> damage coupling ONCE, the exact
+    # mirror of the RM-87 and RM-91 T1 blocks above on the mana axis. Consulted
+    # ONLY when the flag is engaged AND the strength is positive, so a default
+    # call never touches the registry.
+    #
+    # ``_mana_pool`` is the BASELINE build's RAW mana on the basis the entry
+    # names, percent-FREE - the denominator that turns a candidate's coupled mana
+    # points into a dimensionless percent-delta. Percent-FREE is load-bearing for
+    # the same reason it is on the resist and health levers: normalizing by a
+    # percent-weighted pool would cancel the percents and hand a 2-percent
+    # converter the same credit as a 6-percent one. A non-positive pool (a
+    # manaless champion resolves ``mp`` to 0.0) disarms the lane rather than
+    # dividing by zero.
+    _mana_coupling = (
+        mana_damage_coupling(str(champion_id))
+        if (apply_mana_damage_coupling and mana_coupling_strength > 0.0)
+        else None
+    )
+    _mana_pool = 0.0
+    if _mana_coupling is not None:
+        if _mana_coupling.pct_base == "bonus":
+            # BONUS basis: subtract the champion's own base mana block at THIS
+            # level off the SAME resolved build, exactly how the health lane
+            # derives its bonus pool. Reuse the RM-91 resolve when some earlier
+            # lane already built it rather than resolving the champion twice.
+            if _hcpl_resolved is None:
+                _hcpl_resolved = build_champion(
+                    snapshot, champion_id, level, item_ids=current_ids, mode=mode,
+                    augments=augments, apply_mode_modifiers=apply_mode_modifiers,
+                )
+            _mana_pool = max(
+                0.0, baseline.max_mana - float(_hcpl_resolved.base_stats.get("mp", 0.0))
+            )
+        else:
+            _mana_pool = baseline.max_mana
+        if _mana_pool <= 0.0:
+            _mana_coupling = None
+
     # RM-91 T2 (2026-07-26): resolve the ITEM-proc pools ONCE. Unlike T1 this
     # lever is CHAMPION-BLIND - an item's proc pays out for whoever wields it -
     # so there is no registry lookup here, only the two health pools every
@@ -3686,6 +3775,14 @@ def rank_items_by_ehp(
         # 0.0 unless the lane is armed -> the default row (and to_dict) stays at
         # identity.
         hcpl_d_hp = (scored.hp - baseline.hp) if _health_coupling is not None else 0.0
+        # RM-118 observability: the candidate's maximum-mana gain, which is the
+        # quantity the mana-coupling credit reads. Both builds resolve at the same
+        # level, so the champion's base mana block cancels and this ALSO equals the
+        # bonus-mana gain - which is why one field covers both bases. 0.0 unless
+        # the lane is armed -> the default row (and to_dict) stays at identity.
+        mcpl_d_mp = (
+            (scored.max_mana - baseline.max_mana) if _mana_coupling is not None else 0.0
+        )
         ranked.append(EhpRankedItem(
             item_id=item_id,
             item_name=str(rec.get("name", item_id)),
@@ -3708,6 +3805,7 @@ def rank_items_by_ehp(
             sustain_ehp=scored.effective_ehp_with_sustain,
             delta_sustain_ehp=sustain_delta,
             delta_max_hp=hcpl_d_hp,
+            delta_max_mp=mcpl_d_mp,
         ))
 
     # Item 236: the sort key tracks score_by. Default "blended" sorts on
@@ -3833,6 +3931,50 @@ def rank_items_by_ehp(
         )
         return value * (1.0 + credit)
 
+    def _mana_key(value: float, r: EhpRankedItem) -> float:
+        """RM-118 sort-only view of ``value`` - never mutates the row itself.
+
+        The champion's kit re-spends a fraction of its MANA as damage
+        (``_mana_damage_coupling``), and this module credits that payment
+        nowhere: ``ehp.py`` reads zero damage_blocks. Same shape as
+        ``_coupling_key`` / ``_health_key``, one axis over:
+
+            points = max_mp_pct/100 * delta_max_mp + bonus_mp_pct/100 * delta_bonus_mp
+            credit = strength * conditional_probability * points / pool
+
+        where ``pool`` is the BASELINE build's RAW mana on the basis the entry
+        names (total or bonus per ``pct_base``), percent-FREE. Both halves are
+        mana points, so ``points / pool`` is dimensionless and the lever stays
+        unit-free - no EHP-vs-damage unit mixing enters the sort key - and
+        because the pool carries no percents the credit scales with the
+        conversion MAGNITUDE.
+
+        For an ITEM delta the maximum-mana and bonus-mana gains are the same
+        number (the base block cancels), so ``r.delta_max_mp`` is passed for
+        both - see the field's note on ``EhpRankedItem``.
+
+        Only ever RAISES, and only for a candidate that actually grants mana.
+        A non-positive value is returned unchanged (the ``_conv_key`` guard,
+        mirrored).
+
+        KNOWN LIMIT, inherited from the RM-91 T1 sibling: this factor is MONOTONE
+        in ``delta_max_mp``, so it can raise mana-granting candidates above
+        mana-free ones but can never re-order WITHIN the mana axis.
+        """
+        if _mana_coupling is None or value <= 0.0:
+            return value
+        points = coupled_mana_points(
+            _mana_coupling, r.delta_max_mp, r.delta_max_mp
+        )
+        if points <= 0.0:
+            return value
+        credit = (
+            mana_coupling_strength
+            * _mana_coupling.conditional_probability
+            * (points / _mana_pool)
+        )
+        return value * (1.0 + credit)
+
     def _hp_proc_key(value: float, r: EhpRankedItem) -> float:
         """RM-91 T2 sort-only view of ``value`` - never mutates the row itself.
 
@@ -3878,12 +4020,12 @@ def rank_items_by_ehp(
     def _base_key(r: EhpRankedItem) -> tuple:
         if sort_by == "efficiency":
             return (
-                _hp_proc_key(_health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r), r),
-                _hp_proc_key(_health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r), r),
+                _mana_key(_hp_proc_key(_health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r), r), r),
+                _mana_key(_hp_proc_key(_health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r), r), r),
             )
         return (
-            _hp_proc_key(_health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r), r),
-            _hp_proc_key(_health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r), r),
+            _mana_key(_hp_proc_key(_health_key(_coupling_key(_conv_key(_active(r), r.item_id), r), r), r), r),
+            _mana_key(_hp_proc_key(_health_key(_coupling_key(_conv_key(r.ehp_per_1k_gold, r.item_id), r), r), r), r),
         )
 
     if surv_active:
@@ -3976,6 +4118,21 @@ def rank_items_by_ehp(
         notes.append(
             "apply_health_damage_coupling=ON but inert - champion has no seeded "
             "health->damage conversion (or a zero baseline health pool)"
+        )
+    if _mana_coupling is not None:
+        _mc_pct = _mana_coupling.max_mp_pct + _mana_coupling.bonus_mp_pct
+        notes.append(
+            f"apply_mana_damage_coupling=ON ({_mana_coupling.attribute}) - "
+            f"sort-only credit for {_mc_pct:.1f}% {_mana_coupling.pct_base} "
+            f"mana re-spent as damage, strength={mana_coupling_strength:.2f}, "
+            f"amortized at {_mana_coupling.conditional_probability:.2f}, "
+            f"normalized against a {_mana_pool:.1f}-point baseline "
+            f"{_mana_coupling.pct_base} mana pool"
+        )
+    elif apply_mana_damage_coupling and mana_coupling_strength > 0.0:
+        notes.append(
+            "apply_mana_damage_coupling=ON but inert - champion has no seeded "
+            "mana->damage conversion (or a zero baseline mana pool)"
         )
     if _hp_proc_armed:
         # Count the credited candidates from the POOL, not from the census: what
