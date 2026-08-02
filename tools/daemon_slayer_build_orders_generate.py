@@ -162,12 +162,18 @@ def out_dir_for(patch: str, override: Optional[str]) -> Path:
 def load_champions() -> list[str]:
     """Return ``[display_name, ...]`` for the full DDragon roster, sorted.
 
-    Names are DISTINCT (first occurrence wins). DDragon ships alias entries that
-    resolve to a champion already in the registry - the 16.15.1 drop adds 60
-    ``Jade_<Champion>`` entries whose ``name`` is the base champion, taking the
-    file from 173 to 233 entries that still describe 173 champions. Appending
-    one name per entry would silently inflate the display-name keyspace by 60
-    phantom duplicates and make the generator sweep each of them twice.
+    Names are DISTINCT (first occurrence wins). DDragon ships NAME-COLLIDING
+    entries that are NOT aliases of a champion already in the registry: the
+    16.15.1 drop adds 60 ``Jade_<Champion>`` THROWBACK-MODE VARIANT rows at
+    ``base_key + 60000``, each carrying its own older-patch stat line
+    (``Jade_Ahri`` key 60103 hp 460 against ``Ahri`` key 103 hp 590), taking
+    the file from 173 to 233 entries that still describe 173 champions.
+    Appending one name per entry would silently inflate the display-name
+    keyspace by 60 phantom duplicates and make the generator sweep each of
+    them twice - and deduping by NAME instead of by KEY would absorb one row
+    into the other and serve an older patch's stats. Classify by the key
+    floor, never by the ``Jade_`` name prefix (see
+    ``agents/daemon_slayer/mode_variants.py``).
 
     Raises :class:`RosterUnavailableError` when the registry resolves to zero
     champions. It previously returned ``[]`` for a wrong-shaped or empty
