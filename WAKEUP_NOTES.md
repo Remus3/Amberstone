@@ -6,6 +6,50 @@
 
 ---
 
+# 2026-08-02d - RM-141 JADE SHIPPED (offline half); the guard was excusing what it existed to catch
+
+Headless-upgrade run `2026-08-02-01`, main tree. 8 commits, pushed
+`0a9240b9..3f4e2ab8`. Full ledger entry: `docs/LEDGER.md` item 1163.
+Spec: `docs/specs/RM-141_JADE_MODE.md`.
+
+**TIER-1, and the continue-note said Tier-2.** Second run running where the
+row's own tier guess was wrong. The 60 `Jade_*` champion rows and the 162-item
+`[770000,780000)` band live ONLY in `data/meta_build/ddragon/16.15.1/`; they
+reach `data/daemon_slayer/16.15.1/` zero times. Mirrored, ingested by nothing.
+No ENGINE bump, no Share sync, no `:8860` bounce were owed and none were done.
+
+**The bug fixed was WRONG output, not absent output.** A JADE game fell through
+the SR catch-all, was rejected by `is_sr_mode`, fired no coach, built no
+snapshot - and the dashboard kept serving the LAST SR game's advice.
+
+**Do NOT redo:** what "League Classic" means is settled (JADE, three sessions
+now). The three kCustom kJade ids are unmapped on purpose. `4311` is mapped at
+`gameSelectPriority` 0 on purpose - the queue map is a designed SUPERSET of the
+census and no guard asserts the converse. `history_notes.md` and `LEDGER.md`
+keep their "alias" wording by design (append-only). Ingesting the throwback
+registry is BLOCKED-UPSTREAM, not deferred - Meraki 404s all 60.
+
+**Two process lessons worth more than the feature:**
+1. The full repo-root suite caught a defect that FIVE verifier gates and every
+   per-slice run missed - and the defect was mine, from a bad slice brief ("skip
+   if the file is absent" on a TRACKED file, which
+   `tests/test_skip_condition_hygiene.py` correctly calls an always-passing
+   guard). Per-slice greens do not compose into a suite green.
+2. The alias guard shipped green while excusing exactly what it existed to
+   catch. The verifier found one cause (`variant` was a refutation marker);
+   removing it did NOT close the hole, because the marker was searched across a
+   2-line window, so one legitimate correction excused every re-introduction in
+   the same paragraph. Fixed by requiring the marker on the SAME line. A guard
+   is not proven by its own green.
+
+**Next:** the remaining half of RM-141 is LIVE-GATED as
+`docs/LIVE_GAME_GATED_SYNC.md` GATE 8, rows G8-01..G8-06. G8-01 can invalidate
+the rest: if liveclient `gameMode` reads `CLASSIC` rather than `JADE`, the
+exact-match branch is dead code and the row re-scopes. Desktop
+`RC-NEXT-SESSION.txt` carries the live-state fork.
+
+---
+
 # 2026-08-02c - RM-118 mana-as-damage SHIPPED; the seam was nearly shipped STRANDED
 
 Lane `lane/ds` (worktree `C:/rc-worktrees/rc-lane-ds`, created this run - it did not
@@ -92,52 +136,3 @@ the kit, so a residual row is not by itself a DS defect; Trinity Force is a prob
 **Process miss, self-reported:** an intermediate worktree staging commit used
 `core.hooksPath=/dev/null` unflagged. Branch deleted, main's commit went the normal path, gate
 re-run manually (exit 0) plus 17 repo-wide guards. Flag a bypass when you make it.
-
----
-
-# 2026-08-02a - RM-140 was a no-op ingest and a ten-gap reconcile; RM-141 answered as JADE
-
-2 commits, pushed (`d59bad88`, `50f8b35a`). Tier-1, NOT the Tier-2 the row assumed.
-Zero ENGINE bump, zero Share sync, zero DS bounce. RC + RC-LCUAgent both restarted and
-both process start times verified to POSTDATE the edited files (pid 18636 / pid 116).
-
-**The finding worth carrying: a green `upstream_drift_check` proves less than it looks.**
-It compares upstream-now against upstream-LAST-RECORDED. It says NOTHING about whether RC
-actually ingested what it recorded. All 5 signals read `ok`, so the ingest half was a
-genuine no-op - but that was only establishable by probing the on-disk half separately:
-mirror `--check-changed` = 7365 assets `new=0 chg=0 fail=0`, the DS extract manifest at
-`data/daemon_slayer/16.15.1/manifest.json` (173 champs / 706 items), and `:8860` `/health`.
-Probe those three, never infer them from a green drift check.
-
-**Shipped**
-- **RM-140** (LEDGER 1160). All the value was in reconciling the queue map BACKWARDS.
-  RM-128 grounded it one way (every mapped id still exists upstream) and refuted the
-  converse for whole GROUPS - correctly. But `gameSelectPriority > 0` (the client's own
-  menu-placement field), restricted to `kARAM` + `kSummonersRift` and excluding `kCustom`,
-  makes the narrow converse implementable, and it found **ten real gaps**: the ARAM Mayhem
-  family beyond 2400 (`2401/2403/2405/2410/2450`) and SR `870/880/890/893` + `710`.
-  870/880/890 OUTRANK the legacy 830/840/850 RC had mapped - RC was on the superseded bot
-  ids. Guarded by a `coverage_candidates` census + `CoverageCensusTests`, mutation-proved
-  RED at exactly those ten. Map 21 -> 34. Operator also directed TFT `1090/1100/1130`.
-- **RM-33 CLOSED-STALE** - `auto_ops_verbs` exists in NO code or config (prose only), the
-  95 percent gate has no meter anywhere, and `OVERLAY_BUILD_MASTER_PLAN.md:169` had already
-  recorded it as an EXPLICIT PARK. ROADMAP just never caught up.
-- **NEXT-5 triage banner** in the NOW section, each blocker probed rather than inherited.
-- **Doc-budget repair** `85488a9f`. This session's own additions pushed ROADMAP to 96 percent
-  of its 81920-byte budget and `drift_guard` breached. Relocated VERBATIM to
-  `docs/ROADMAP_HISTORY.md` rather than loosening the check: 96 -> 90 percent, guard clean.
-
-**RM-141 is ANSWERED, not built - and that distinction is deliberate.**
-The same probe surfaced a `kJade` group (17 client-visible "Classic" queues) the row's three
-readings did not have; put to the operator, who picked it. "League Classic" = Riot's JADE
-throwback mode. JADE is upstream-present on four surfaces and `docs/history_notes.md:701`
-predicted this exact moment. It is a large build and gets its own session AFTER RM-142.
-
-**Do NOT redo**
-- Do not widen the coverage census to `kAlternativeLeagueGameModes` - RM-128 refuted that by
-  measurement and eight already-mapped ids sit there under three different mode_keys.
-- Do not re-ask what "League Classic" means. Do not re-open RM-33.
-- `3280` (kCustom), `1101`/`1102`, Brawl `2300`-`2305` and all of `kJade` are DELIBERATELY
-  unmapped, each with the reason written at the site. None is an oversight.
-- `BACKLOG.md:47` still carries the REFUTED "Jade_ rows are aliases" wording; the correction
-  is `docs/history_notes.md:697`. Re-derive from `agents/daemon_slayer/mode_variants.py`.
