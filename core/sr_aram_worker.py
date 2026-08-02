@@ -165,7 +165,11 @@ class SrAramWorker(BaseCoachWorker):
                     # Fire SR coach for live PvP + Practice Tool. PRACTICETOOL
                     # re-enabled 2026-06-20 so the in-game overlay is usable and
                     # testable in practice (panels populate live, incl vs bots).
-                    is_sr_mode = gm_upper in ("CLASSIC", "RANKED", "PRACTICETOOL")
+                    # JADE is the throwback Rift - same lanes, waves and
+                    # objectives - so it shares the SR coach rather than forking
+                    # one. Membership is EXACT on purpose: KIWI_JADE is the
+                    # Howling Abyss crossover and belongs to the ARAM coach.
+                    is_sr_mode = gm_upper in ("CLASSIC", "RANKED", "PRACTICETOOL", "JADE")
                     if self._coach is not None and is_sr_mode:
                         self._submit_coaching(state)
 
