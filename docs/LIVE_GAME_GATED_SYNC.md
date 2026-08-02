@@ -1106,8 +1106,20 @@ Rides on top of whatever gate is already running. No separate game needed.
   re-lays onto the new resolution, then set it BACK to borderless 1440 and confirm it returns - the
   reverse direction is the half that was broken and the half a one-way check would miss. Evidence:
   the overlay's own request line in the RC access log carries the computed value
-  (`GET /?overlay=1&panelset=...&ovscale=N`), so two entries with DIFFERENT `ovscale` around the two
-  flips is the receipt. SOURCE: LEDGER 1166; ROADMAP.md RM-145.
+  (`GET /?overlay=1&panelset=...&ovscale=N`), so two entries with a DIFFERENT resolved scale around
+  the two flips is the receipt.
+  **READ THE ABSENT PARAM AS 1.0 - measured 2026-08-02, prep half.** `overlayUrl`
+  (`rc-shell/src/overlay_state.js:171`) only appends `ovscale` when `|scale - 1| > 0.001`, and
+  `createOverlayWindow` (`rc-shell/src/main.js:577`) resolves against `primary.bounds`, so the
+  operator's exact trigger produces an ASYMMETRIC pair: 2560x1440 -> `ovscale=1.33`, 1920x1080 ->
+  scale exactly 1.00 and **NO `ovscale` param at all**. A literal "two lines both carrying
+  `ovscale=N`" check therefore FAILS on correct behavior. Expected receipt for this box is
+  `...&panelset=X&ovscale=1.33` -> `...&panelset=X` (no ovscale) -> `...&panelset=X&ovscale=1.33`.
+  Grep for it with `grep 'overlay=1' logs/YYYY-MM-DD.log` - the request trace logs at DEBUG under
+  logger `rc.web_dashboard` and the file handler is always DEBUG, `/?overlay=1` is NOT in
+  `_SUPPRESS_LOG_PATHS` (`dashboard/_handler.py:125`), and the line reads
+  `HTTP "GET /?overlay=1... HTTP/1.1" 200 -` (note the quote - `grep "HTTP GET"` matches nothing).
+  SOURCE: LEDGER 1166; ROADMAP.md RM-145.
 
 ---
 
