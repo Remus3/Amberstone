@@ -1093,6 +1093,21 @@ Rides on top of whatever gate is already running. No separate game needed.
   G6-01 (rc-shell MAIN up) FIRST. SOURCE: LEDGER 598; memory `reference_overlay_ingame_hotkey_win32`.
 - **G6-03** (was E4) OBS DXGI match-end capture watch: lock one resolution + League Borderless while
   recording; observe a real match end. SOURCE: ROADMAP.md:78(c).
+- **G6-04** (RM-145, filed 2026-08-02 with the FIX already shipped) overlay follows a display-mode
+  change in BOTH directions. The code half is done and tested headless (`resolveOverlayDisplayChange`
+  + the `display-metrics-changed` / `display-added` / `display-removed` wiring, 13 tests incl. a
+  mutation-checked wiring assertion). What disk cannot witness: the re-apply is gated on an overlay
+  WINDOW existing, and that window is created lazily on first in-game show - so with no game up
+  `applyOverlayDisplayMetrics` early-returns and a headless resolution flip proves nothing. This is a
+  SUBSTITUTION trap of exactly the kind this file exists to refuse: "the pure function returns
+  {reload:true}" is not "the HUD tracked the display". LIVE STEPS: requires **G6-01 (rc-shell MAIN
+  relaunched on the new code)** FIRST, then with the overlay UP in a game, change the game's video
+  mode (the operator's original trigger was the client flipping to 1920x1080), confirm the HUD
+  re-lays onto the new resolution, then set it BACK to borderless 1440 and confirm it returns - the
+  reverse direction is the half that was broken and the half a one-way check would miss. Evidence:
+  the overlay's own request line in the RC access log carries the computed value
+  (`GET /?overlay=1&panelset=...&ovscale=N`), so two entries with DIFFERENT `ovscale` around the two
+  flips is the receipt. SOURCE: LEDGER 1166; ROADMAP.md RM-145.
 
 ---
 
