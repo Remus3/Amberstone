@@ -48,7 +48,26 @@ import sys
 import urllib.request
 
 _DASH_BASE = "https://127.0.0.1:8888"
-_RELAY_BASE = "https://127.0.0.1:8889"
+# The vision server on :8889 is plain HTTP and token-gated - NOT https.
+# This was `https://` and sent no token, so every vision probe failed at the
+# TLS layer (or 401'd over http) and the tool reported `frame_dead=True`
+# unconditionally. That false negative reached
+# `docs/LIVE_GAME_GATED_SYNC.md` as a PRECONDITION and blocked G3-13.
+# Measured 2026-08-02 mid-game: this method returned 0 bytes while an
+# authenticated HTTP GET to the same endpoint returned 243396 bytes aged
+# 0.9s. Ground truth for both facts is `modes/shared_vision.py:25` +
+# `_capture_screen`. Pinned by tests/test_gated_live_probe_relay_auth.py.
+_RELAY_BASE = "http://127.0.0.1:8889"
+
+
+_SENTINEL = object()
+
+
+def _relay_token() -> str:
+    """Canonical vision-relay token (env -> config file -> legacy default)."""
+    from core.vision_token import get_vision_token
+
+    return get_vision_token()
 _TIMEOUT = 3.0
 
 # The dashboard cert is mkcert self-signed; skip verification like every other
@@ -72,17 +91,29 @@ _MODE_TO_GATE = {
 }
 
 
-def _get_json(url: str) -> tuple[dict | None, str | None]:
+def _request(url: str, token: str | None) -> urllib.request.Request:
+    """Build the GET. The :8889 relay endpoints are token-gated (401 without)."""
+    headers = {"X-RC-Token": token} if token else {}
+    return urllib.request.Request(url, headers=headers)
+
+
+def _get_json(url: str, token: str | None = _SENTINEL) -> tuple[dict | None, str | None]:
+    if token is _SENTINEL:
+        token = _relay_token()
     try:
-        with urllib.request.urlopen(url, timeout=_TIMEOUT, context=_SSL) as r:
+        with urllib.request.urlopen(_request(url, token), timeout=_TIMEOUT,
+                                    context=_SSL) as r:
             return json.loads(r.read().decode("utf-8")), None
     except Exception as exc:  # noqa: BLE001 - fail-soft probe
         return None, f"{type(exc).__name__}: {exc}"
 
 
-def _get_nbytes(url: str) -> tuple[int | None, str | None]:
+def _get_nbytes(url: str, token: str | None = _SENTINEL) -> tuple[int | None, str | None]:
+    if token is _SENTINEL:
+        token = _relay_token()
     try:
-        with urllib.request.urlopen(url, timeout=_TIMEOUT, context=_SSL) as r:
+        with urllib.request.urlopen(_request(url, token), timeout=_TIMEOUT,
+                                    context=_SSL) as r:
             return len(r.read()), None
     except Exception as exc:  # noqa: BLE001 - fail-soft probe
         return None, f"{type(exc).__name__}: {exc}"
