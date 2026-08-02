@@ -28,6 +28,7 @@ from core.game_snapshot import (
     MODE_ARAM,
     MODE_ARENA,
     MODE_BRAWL,
+    MODE_JADE,
     MODE_SR,
     MODE_TFT,
     mode_from_game_mode_string,
@@ -44,6 +45,12 @@ MODE_CAPABILITIES = {
     MODE_ARENA: {"has_wards": False, "district_config": "arena"},
     MODE_BRAWL: {"has_wards": False, "district_config": "brawl"},
     MODE_TFT:   {"has_wards": False, "district_config": None},
+    # Fail-CLOSED on purpose, not placeholders: no map-453 minimap grid has
+    # ever been observed, so config/minimap_grids/ has no jade stem to point
+    # at, and ward availability on that map is unmeasured. Both values become
+    # live-gated rows and must be re-measured in a real JADE game, never
+    # guessed from the SR twin.
+    MODE_JADE:  {"has_wards": False, "district_config": None},
 }
 
 
