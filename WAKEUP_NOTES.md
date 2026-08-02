@@ -48,6 +48,20 @@ lines around a flip AND a flip-back.
 
 ---
 
+**Operator note at wrap - console flash hunt, LEAD ALREADY NARROWED (do not re-scan from
+zero).** Every one of the 6 `subprocess.run` call sites in the four hook scripts
+(`ci_watchdog`, `pytest_guard`, `edit_lint_check`, `precommit_gate` x3) ALREADY passes
+`creationflags` - audited per CALL SITE, not per file, so "the file contains CREATE_NO_WINDOW"
+was not accepted as the answer. The flash is elsewhere. **Prime suspect: the `Stop` hook is the
+ONLY hook in `.claude/settings.json` launched with `python.exe` instead of `pythonw.exe`** -
+`tools/stop_claim_gate.py --arm` - and it fires at EVERY turn end, which matches "briefly,
+repeatedly". It is also the CI-probe gate, matching the operator's own hunch that it sits in the
+CI monitoring. Secondary: the two `perseus-vault.exe` hooks (SessionStart + SessionEnd) are
+native binaries, but fire once per session, not per turn. **Confirm before changing anything** -
+per `reference_pythonw_child_console_flash` the flash can also come from a CHILD of a pythonw
+parent, and per CLAUDE.md a `settings.json` with single-backslash Windows paths is INVALID JSON
+that silently registers no hooks at all, so assert it parses after any edit.
+
 # 2026-08-02d - RM-141 JADE SHIPPED (offline half); the guard was excusing what it existed to catch
 
 Headless-upgrade run `2026-08-02-01`, main tree. 8 commits, pushed
