@@ -6,6 +6,46 @@
 
 ---
 
+# 2026-08-02h - RM-147 decided, G6-03 closed, RM-146 measured + closed; a probe bug was blocking a gated row
+
+5 commits, pushed `abd2d073..19197022`. Ledger 1170 + 1171 + 1172. Two live ARAM Mayhem games.
+
+**G6-03 CLOSED (3rd GATE 6 row ever).** 25.08 min recorded across a real match end, zero
+capture stalls (`outputDuration` +10133-10167 ms on all 140 polls), 6.35 GB mkv, ffprobe
+clean. **Read the scope fence:** League was Borderless 2560x1440 on a 2560x1440 desktop, so
+NO resolution swap occurred and item-209b's actual failure mode was never exercised. Open
+tally 112 -> 111.
+
+**RM-147 CLOSED.** Second `monitor_capture` added disabled-by-default beside the untouched
+`window_capture`, used for one match, auto-disabled. **Its risk paragraph was REFUTED** - it
+cited a memory deleted in the 2026-06-03 BSOD purge. Operator also corrected the WindowMode
+encoding: **0=Fullscreen, 1=Windowed, 2=Borderless** (the memory had it backwards; fixed).
+
+**RM-146 CLOSED - ceiling was wrong, nothing leaks.** 300/500 -> 700/1200, TDD, tests red
+first. Two ARAMs on one process agreed on a 548 MB roof within 0.3 MB; second match added
+~24 MB committed, not ~835. The 810 MB peak is POST-GAME work, not the resolution flips I
+hypothesised - a restart measured 804.9 MB at 77s uptime because it booted post-match.
+
+**`tools/gated_live_probe.py` was lying.** `https` against a plain-HTTP token-gated relay,
+no `X-RC-Token` -> `frame_dead=True` unconditionally. That false negative had been written
+into G3-13 as a blocking precondition. Live proof: `frame_bytes` 0 -> 249983,
+`relay_present` False -> True. `_RELAY_BASE` also feeds `/latest-liveclient`, so **any older
+gated note citing `frame_dead`/`relay_present` is suspect.**
+
+**Do NOT redo:** RM-146/147/G6-03 are closed. Do not restore RM-147's BSOD framing. Do not
+re-hypothesise resolution flips for the 810 MB peak. RM-148 is CONFIRMED (BACKLOG) - the
+hermeticity guard false-fires on live-RC `data/` writes, duration-sensitive, so a batch run
+showing 1 teardown error while every test passes alone is that, not a real failure.
+
+**Owed:** G3-13 still OPEN - 278 samples over ~13 min of Mayhem produced ZERO augment keys
+on either surface, but my watchers started ~200s in so an early window could have been
+missed. `/api/state` `screen_read` was 6.1 HOURS stale while vision ran fine via
+`moon_proxy` - that is the better suspect for a dark panel than the `cff8d678` cadence fix.
+Start the augment watcher BEFORE queueing next time. Also on disk: 6.35 GB
+`C:\RC-Recordings\2026-08-02_15-13-40.mkv`, operator's call to delete.
+
+---
+
 # 2026-08-02g - RM-145 live-confirmed, G6-04 closed; the prep half found the bug in the acceptance criterion
 
 6 commits, pushed `07ddfae6..<this>`. Ledger 1169.
@@ -87,45 +127,3 @@ change cannot move that digest, and the two-tree diff is what settled it.
 **Next:** RM-145 still needs the live in-game confirmation (LIVE_GAME_GATED_SYNC G6-04) -
 game up with overlay showing, flip the video mode AND flip it back, receipt is two access-log
 lines with different `ovscale=N`. Needs the operator playing; nothing else blocks it.
-
----
-
-# 2026-08-02e - RM-144 + RM-145: two "confirmed" bug reports that were measurement artifacts
-
-3 commits, pushed `ec55b133..8b91d13a`. Ledger 1165 / 1166 / 1167.
-
-**RM-144 "vision is dead" was FALSE on both halves.** `/latest-frame` "0 bytes" was the
-probe: `:8889` is plain HTTP and token-gated on `X-RC-Token`, so an `https://` call with no
-header returns `http=000 size=0`, which through `wc -c` is indistinguishable from a live
-server sending an empty body. Probed right it serves a fresh jpeg every time. `screen_read:
-error` was the by-design click-only dwell field holding a 75-day-old click. **But clicking it
-live moved the error `no_fresh_frame` -> `empty_note` and exposed a real bug:**
-`GameVisionReader._extract` prefers `moon_proxy.extract_vision`, a transport carrying NO
-prompt, so the relay answers with its fixed TFT schema and `self.PROMPT` only ships on the
-direct fallback. `ScreenReadVision` asks for `{"note":...}` - so SCREEN READ could not return
-`ok` on any click since s240. Fixed with a `USE_RELAY` flag (default True; frozen
-`moon_proxy.py` untouched). Re-probed live: 200 / 150593 bytes and `{"status":"ok"}`.
-
-**RM-145 was an ABSENCE** - `main.js` registered no display listener at all, so the scale
-captured at overlay-window creation was kept for the process lifetime. Added
-`display-metrics-changed`/`added`/`removed` on a 600ms settle, re-running the SAME
-`primary.bounds` computation (item 567 doctrine pinned by a test that forbids
-`primary.workArea`). Decision is pure `resolveOverlayDisplayChange`, splitting `reposition`
-from `reload` (ovscale is a URL param baked in at loadURL). rc-shell MAIN relaunched on it
-(pid 4140) - **G6-01 satisfied**.
-
-**Third fix, found while verifying the second:** `setMode` early-returned on
-`tag === state.mode`, and `state.mode` is SEEDED to "client", so a fresh renderer never
-stamped title / mode pill / `body[data-mode]` at all. Only visible in a fresh page's first
-seconds, which is why it survived since item 201. `_modeStamped` latch; verified live on the
-same process with no restart and no mode flip.
-
-**Do NOT redo:** never probe `:8889` over `https://` or without the token; a stale
-`screen_read` is by design (but DO click it once and read the new code); vision needs no
-scheduled task. **RM-145 is NOT closed live** - filed as `LIVE_GAME_GATED_SYNC` G6-04,
-because the re-apply needs an overlay WINDOW and that is created lazily on first in-game
-show, so a headless resolution flip proves nothing. Receipt is two `ovscale=N` access-log
-lines around a flip AND a flip-back.
-
-**Trap filed:** `rc-shell/package.json` lists test files BY NAME - a new
-`rc-shell/test/*.test.js` runs nowhere until added (326 -> 339).
