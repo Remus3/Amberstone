@@ -193,6 +193,8 @@ and the batch beneath it comes free.
    GATE 3  ARAM MAYHEM (q2400 KIWI)  -> clears GATE 1 + any own-build GATE 2 row + ARAM-only rows
    GATE 5  ARENA / CHERRY (q1750)    -> clears GATE 1 + any own-build GATE 2 row + Arena-only rows
    GATE 7  ACCRUAL - rides EVERY gate; never closes on one game
+
+   GATE 8  LEAGUE CLASSIC / JADE (RM-141) -> NOT PLAYABLE YET; blocks nothing, subsumes nothing
 ```
 
 ARAM and Arena are SIBLINGS of SR, not supersets: they give real comps but a different map/item pool,
@@ -1187,6 +1189,65 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   raise, never lower)**.
 - **G7-19** `[PARKED]` (was G16) Aggregator N F2 per-slot item win-rate ladder - defer until a richer corpus
   exists. SOURCE: BACKLOG.md:15.
+
+---
+
+## GATE 8 - LEAGUE CLASSIC / JADE THROWBACK (RM-141) - the mode is not live yet
+
+Filed 2026-08-02 by RM-141 S5. **RM-141 SHIPPED without a single live JADE game existing**, so every
+assumption the build rests on is an EYEBALL owed against the first real one. None of these blocks any
+other gate and none of them is a build - each can only CONFIRM or CORRECT what S1-S4 already assume,
+and every one of them is cheap once a JADE queue is actually playable. If Riot never ships the queue
+to NA, this whole section stays open forever and that is the honest state, not a defect.
+
+The whole section drains in ONE game plus one lobby, in this order: L4 (lobby), then L1 / L3 / L5 / L6
+in the game itself. L2 needs a SECOND game (ARAM Mayhem Jade), if that crossover ever exists.
+
+- **L1** `[JADE]` **gameMode string - HIGHEST-VALUE row in this section, and the one that can invalidate
+  shipped code.** S2 added an EXACT-MATCH branch on `"JADE"` to `core/game_snapshot.py`, sourced from
+  16 spell rows in `data/meta_build/ddragon/16.15.1/summoner.json` carrying `modes:["JADE"]`. That is
+  DDragon evidence about spells, NOT a measurement of what the Live Client reports.
+  **CHECK:** in a live JADE game, `curl -k http://127.0.0.1:2999/liveclientdata/allgamedata` (or read
+  `liveclient.game_mode` off `curl -k https://127.0.0.1:8888/api/state`) and confirm `gameMode` reads
+  **literally `JADE`**.
+  **SAY IT PLAINLY: if it reads `CLASSIC` instead, the exact-match JADE branch shipped in S2 is DEAD
+  CODE** - it can never fire, a JADE game would be coached as ordinary SR (which is not a wrong coach
+  surface, just not a distinct one), and the row RE-SCOPES to queueId-based detection, which
+  `core/game_snapshot.py` deliberately does not do (it is gameMode-STRING only, by design). That
+  re-scope is a real design decision, not a patch: do not bolt queueId into the frozen file without
+  its own row. A third outcome is possible and must be recorded verbatim rather than rounded off -
+  anything that is neither `JADE` nor `CLASSIC`.
+- **L2** `[JADE]` **KIWI_JADE string.** Same check inside an ARAM Mayhem Jade game, if that crossover
+  exists live. S2 pinned `KIWI_JADE` to `MODE_ARAM` (not to JADE) because 151 of the 162 throwback
+  items claim `maps["12"]` (Howling Abyss), so the ARAM coach surface is the correct one.
+  **CHECK:** confirm `gameMode` reads `KIWI_JADE` and that RC coaches it as ARAM (`/api/state`
+  `mode_key` == `aram`). This confirms the routing is EXERCISED rather than theoretical - today it is
+  pinned only by a synthetic test.
+- **L3** `[JADE]` **championName shape.** Does the Live Client report `"Ahri"` or `"Jade_Ahri"`?
+  S1-S4 ASSUME the former throughout. **CHECK:** read `activePlayer.championName` and the
+  `allPlayers[].championName` list in a live JADE game.
+  If it reports `Jade_Ahri`, EVERY champion lookup in the SR coach path misses (DS registry, build
+  order, rune page, matchup panel) and the row grows a normalisation layer. Record the exact strings;
+  do not paraphrase them.
+- **L4** `[JADE]` **queueId in a real JADE lobby.** S3 mapped the `kJade` PvP / VersusAI ids to the
+  `jade` mode_key and deliberately left the three `kCustom` ids (3260 / 3261 / 3262) unmapped.
+  **CHECK:** in a JADE lobby, read the queueId off `/api/state` (`lcu.*` / champ-select payload) and
+  confirm it is one of the ids S3 actually maps. Closes on ONE lobby - no game needed, which makes
+  this the cheapest row here and the one to do first.
+- **L5** `[JADE]` **map 453 geometry.** Unblocks `core/mode_capabilities.py`, where S2 set
+  `has_wards: False` and `district_config: None` for JADE as a DELIBERATE fail-closed choice, not a
+  placeholder. **CHECK:** with a JADE game up, eyeball the minimap rect against the SR one, confirm
+  whether wards are legal in the mode at all, and judge whether the SR district grid is even
+  approximately right on map 453. Also re-check the two `dashboard/_state_builder.py` gates that S1
+  pinned `jade` OUT of. Any of the three answers coming back "yes, SR-like" is a follow-on row, not
+  an edit made during the game.
+- **L6** `[JADE]` **shop contents.** Does the JADE shop actually offer the 151 throwback band items in
+  `[770000, 780000)`, or does it sell the ordinary SR pool? **CHECK:** open the shop in a live JADE
+  game and eyeball the item pool against the current SR pool. This is the gate on the whole
+  item-advice question (spec section 2.3 / follow-on F1): DS ingests NONE of the throwback registry
+  today (Meraki 404s all 60 champion rows), so if the shop DOES serve the band, RC's item advice in
+  JADE is advising on items the player cannot buy. Do not attempt an ingest off the back of this -
+  it is BLOCKED-UPSTREAM, and this row only tells us how badly it matters.
 
 ---
 
