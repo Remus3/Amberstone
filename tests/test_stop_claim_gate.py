@@ -543,3 +543,81 @@ def test_an_unrelated_run_word_is_not_a_ci_probe(tmp_path):
         _assistant(_text("CI is green.")),
     ]
     assert "ci_claim_without_probe" in _checks(_run_gate(tmp_path, rows))
+
+
+# Fourth false positive, measured 2026-08-01 on the NEXT wrap after the third.
+# Same family again - the right evidence in a place the parser could not look.
+# EV_CI's span is `[^|&\n]`, single-line and &-terminated by construction, so the
+# class-3 fix only reaches the SEMICOLON form. Two shapes used repeatedly in one
+# wrap still read as "no CI probe": the binary bound to a variable and used after
+# an `&&`, and the same binding used from a multi-line `python -c` argv list.
+# Fixed by binding the SAME NAME (EV_CI_VAR), never by widening EV_CI's span -
+# widening it would credit any later `run` after any gh mention, which is the
+# looseness that produced the first armed session's 9 false positives.
+
+GH_AMP = ('cd "C:/Riot Commander" && GH="C:/Program Files/GitHub CLI/gh.exe" '
+          '&& "$GH" run list --limit 3')
+GH_SUBPROCESS = (
+    'cd "C:/Riot Commander" && python -c "\n'
+    "import json,subprocess\n"
+    "GH=r'C:/Program Files/GitHub CLI/gh.exe'\n"
+    "out=subprocess.run([GH,'run','list','--json','status,conclusion'])\n"
+    '"'
+)
+
+
+def test_gh_bound_to_a_variable_across_an_ampersand_is_a_ci_probe(tmp_path):
+    rows = [
+        _assistant(_tool_use("Bash", command=GH_AMP)),
+        _tool_result("completed success ci 30725437519"),
+        _assistant(_text("CI green.")),
+    ]
+    assert "ci_claim_without_probe" not in _checks(_run_gate(tmp_path, rows))
+
+
+def test_gh_used_from_a_multiline_subprocess_argv_is_a_ci_probe(tmp_path):
+    rows = [
+        _assistant(_tool_use("Bash", command=GH_SUBPROCESS)),
+        _tool_result("full-suite completed success"),
+        _assistant(_text("Working tree clean, all four commits pushed, CI green.")),
+    ]
+    assert "ci_claim_without_probe" not in _checks(_run_gate(tmp_path, rows))
+
+
+def test_assigning_a_gh_path_without_ever_using_it_is_not_a_probe(tmp_path):
+    """Load-bearing negative. The binding alone is setup, not evidence - a
+    variable that is assigned and never invoked probed nothing."""
+    rows = [
+        _assistant(_tool_use("Bash", command='GH="C:/Program Files/GitHub CLI/gh.exe"\necho ready')),
+        _tool_result("ready"),
+        _assistant(_text("CI is green.")),
+    ]
+    assert "ci_claim_without_probe" in _checks(_run_gate(tmp_path, rows))
+
+
+def test_a_heredoc_documenting_a_gh_invocation_is_not_a_probe(tmp_path):
+    """Load-bearing negative, and the reason EV_CI_VAR strips heredocs even
+    though it deliberately keeps quoted literals. Writing the recipe into a doc
+    is documentation; running it is a probe. Without this the /done ritual doc
+    itself would credit every session that merely quotes the command."""
+    rows = [
+        _assistant(_tool_use("Bash", command=(
+            "cat > docs/note.md <<'EOF'\n"
+            'Check CI with GH="C:/Program Files/GitHub CLI/gh.exe" then "$GH" run list\n'
+            "EOF"))),
+        _tool_result(""),
+        _assistant(_text("CI is green.")),
+    ]
+    assert "ci_claim_without_probe" in _checks(_run_gate(tmp_path, rows))
+
+
+def test_a_different_variable_cannot_borrow_the_gh_binding(tmp_path):
+    """Load-bearing negative. The name is captured and back-referenced on
+    purpose: some OTHER variable in front of `run` is not a gh invocation."""
+    rows = [
+        _assistant(_tool_use("Bash", command=(
+            'GH="C:/x/gh.exe"\nsubprocess.run([PYTHON, "run", "the_thing"])'))),
+        _tool_result("done"),
+        _assistant(_text("CI is green.")),
+    ]
+    assert "ci_claim_without_probe" in _checks(_run_gate(tmp_path, rows))
