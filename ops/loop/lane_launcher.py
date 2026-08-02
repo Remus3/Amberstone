@@ -101,6 +101,13 @@ LANE_COMMANDS = {
     # restructure and rewrite files rather than adding to them.
     "repo": "tools/headless-repo.md",
     "true-audit": "tools/headless-true-audit.md",
+    # 2026-08-02. The only lane whose work is gated on something outside the
+    # repo: a REAL game running on Legion. It is still worktree-mandatory and
+    # still detached, but it MONITORS - it polls live state and does the drain
+    # half only while a game is actually up, and the prep half otherwise. It
+    # must never close a row synthetically; that was measured and closed
+    # (CLAUDE.md Settled, "the live-gated set is NOT synthetically drainable").
+    "gated": "tools/headless-gated.md",
 }
 
 # Branch per lane, stable across fires so a lane resumes its own history rather

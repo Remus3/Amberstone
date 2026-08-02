@@ -176,6 +176,13 @@ const _LANE_LABELS = {
   "ds": "Headless-DS",
   "repo": "Headless-Repo",
   "true-audit": "Headless-True-Audit",
+  // Lane 9 (2026-08-02). Labelled for what it WAITS on, not for the file it
+  // edits: it is the one lane whose drain half only runs while a real game is
+  // up on Legion, and it polls for that itself. tests/
+  // test_mc_lane_roster_contract.py pins this map against ops/loop/lanes.py -
+  // an unlabelled lane still renders here, as its bare id, which is why the
+  // contract is a test and not a convention.
+  "gated": "Headless-Gated (live)",
 };
 
 let _mcLanes = { all: [], wired: [] };

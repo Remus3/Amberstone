@@ -302,30 +302,55 @@ def test_every_custom_property_the_s4_css_uses_is_actually_defined():
     is entirely Mission Control), so this now checks the whole file rather than
     a sliced region - a widening, not a narrowing: it catches an undefined
     custom property anywhere in mc.css, not only in what used to be the S4 slice.
+
+    THE AUTHORITY IS mc.css ITSELF (corrected 2026-08-02). Until now this
+    resolved names against `web/css/**.css` - the game dashboard's token stack -
+    which is a sheet the Mission Control page does not load. That was wrong in
+    BOTH directions and only passed by coincidence, because the inlined palette
+    happened to reuse dashboard token names:
+
+      - false PASS: a name defined only in web/css/ and NOT inlined here reads
+        as "defined" while resolving to nothing in the browser. That is the
+        exact --bg failure above, and this test would have missed it.
+      - false FAIL: a name this file legitimately defines for itself, like the
+        arcane --pop, is reported missing because the dashboard has never heard
+        of it.
+
+    index.html links exactly one stylesheet, so mc.css defining every property
+    mc.css uses IS the property under test. Resolving against anything else
+    measures a page that does not exist.
     """
     block = _CSS
     block = re.sub(r"/\*.*?\*/", "", block, flags=re.S)   # comments cite the bug
     used = set(re.findall(r"var\(\s*(--[a-z0-9-]+)", block))
-    defined = set()
-    for sheet in sorted((ROOT / "web" / "css").rglob("*.css")):
-        defined |= set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", sheet.read_text(encoding="utf-8"), re.M))
+    defined = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", block, re.M))
     missing = sorted(used - defined)
-    assert not missing, f"S4 CSS references undefined custom properties: {missing}"
+    assert not missing, (
+        "mc.css references custom properties it does not define, and it is the "
+        f"only stylesheet the page loads: {missing}")
 
 
 def test_the_armed_ink_token_is_defined_in_the_default_layer():
-    """Not merely defined SOMEWHERE - defined in base.css.
+    """Not merely defined SOMEWHERE - defined in THIS page's default layer.
 
     A token that only a theme defines still resolves to nothing when that theme
-    is not active, which is the same silent failure as an undefined one.
+    is not active, which is the same silent failure as an undefined one. For a
+    standalone page the default layer is its own unconditional `:root` block,
+    NOT the dashboard's base.css - see the authority note on
+    test_every_custom_property_the_s4_css_uses_is_actually_defined. This
+    assertion was pointed at base.css and passed only because the armed ink
+    token happens to share a name with a dashboard token; it would have gone on
+    passing if mc.css had stopped defining it entirely.
     """
     m = re.search(r"\.loop-btn-armed\s*\{([^}]*)\}", _CSS)
     assert m, "missing .loop-btn-armed rule"
     ink = re.search(r"color:\s*var\(\s*(--[a-z0-9-]+)", m.group(1))
     assert ink, "the armed ink should come from a token, not a hardcoded literal"
-    base = (ROOT / "web" / "css" / "panels" / "base.css").read_text(encoding="utf-8")
-    assert re.search(rf"^\s*{ink.group(1)}\s*:", base, re.M), (
-        f"{ink.group(1)} is not defined in base.css, the default layer")
+    root = re.search(r"^:root\s*\{(.*?)^\}", _CSS, re.M | re.S)
+    assert root, "mc.css no longer carries an unconditional :root block"
+    assert re.search(rf"^\s*{ink.group(1)}\s*:", root.group(1), re.M), (
+        f"{ink.group(1)} is not defined in mc.css's own :root, this page's "
+        "only default layer")
 
 
 def test_no_class_the_panel_emits_relies_on_a_bare_dim_rule():
