@@ -121,7 +121,7 @@ def gather_git(days: int, author: str | None) -> dict:
 # repo-file parsers (the grounding that /insights cannot see)
 # --------------------------------------------------------------------------
 _LEDGER_ITEM = re.compile(
-    r"^(\d+)\.\s+\S+\s+\*\*(\d{4}-\d{2}-\d{2})\s*-\s*(.+?)\*\*", re.MULTILINE
+    r"^(\d+)\.\s+\S+\s+\*\*(\d{4}-\d{2}-\d{2})\s*[-(]\s*(.+?)\*\*", re.MULTILINE
 )
 
 # recurring-friction phrases that actually appear in the ledger prose; each is a
