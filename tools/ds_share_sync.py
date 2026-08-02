@@ -195,6 +195,14 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # reachability helper at module level, so the import is its subject, not an
     # accident. Host-only; the shipped package is the engine, not RC's client.
     "test_rank_ehp_hsp_amp_rm118.py",
+    # -- RM-118 (ENGINE 1.270.0, 2026-08-02): the TRANSPORT half of the mana ->
+    # damage coupling lever. Same class as every entry above it - it asserts the
+    # ('/rank-tank', 'apply_mana_damage_coupling') pair is reachable end to end
+    # through the HOST client (rank_tank_for) as well as the route, so importing
+    # core.daemon_slayer_client is its subject rather than an accident. The
+    # registry + engine half (test_mana_damage_coupling_rm118.py) imports no host
+    # package and DOES ship in the mirror.
+    "test_mana_coupling_transport_rm118.py",
     # -- RM-118 (ENGINE 1.265.0, 2026-07-29): the HYBRID (bruiser) ranker half of
     # the same wielder HSP item-amp wire. Asserts the ('/rank-bruiser',
     # 'assume_hsp_amp') pair is expressible through the HOST client

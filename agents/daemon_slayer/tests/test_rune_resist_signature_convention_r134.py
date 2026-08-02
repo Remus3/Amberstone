@@ -207,6 +207,14 @@ _RM91T2_TAIL = ("apply_item_caster_hp_proc", "item_caster_hp_proc_strength")
 # after the RM-91 T2 pair on rank_items_by_ehp ONLY (compute_ehp already carried
 # it since R60, in its own earlier position).
 _RM118_TAIL = ("assume_hsp_amp",)
+# RM-118 mana lane (2026-08-02): the champion MANA -> DAMAGE coupling pair, the
+# MANA-axis twin of _RM87_TAIL and _RM91_TAIL, appended after ``assume_hsp_amp``
+# on ``rank_items_by_ehp`` ONLY - nothing in the EHP math reads it, so mirroring
+# it onto ``compute_ehp`` would be a signature-tidy pretending to be a
+# capability. A SEPARATE pair from the resist and health pairs because the three
+# registries are disjoint, so a merged flag would arm a mana credit on a resist
+# converter. Ordered gate-then-magnitude, matching all three siblings.
+_RM118_MANA_TAIL = ("apply_mana_damage_coupling", "mana_coupling_strength")
 
 _EHP_ENTRY_POINTS = (compute_ehp, rank_items_by_ehp)
 _HYBRID_ENTRY_POINTS = (compute_hybrid, rank_items_by_hybrid)
@@ -237,7 +245,7 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
             (
                 (rank_items_by_ehp,),
                 shared + _RM87_TAIL + _A1250_TAIL + _R194A_TAIL + _RM91_TAIL
-                + _RM91T2_TAIL + _RM118_TAIL,
+                + _RM91T2_TAIL + _RM118_TAIL + _RM118_MANA_TAIL,
             ),
             ((compute_hybrid,), hybrid_shared + _RM118_TAIL),
             ((rank_items_by_hybrid,), hybrid_shared + _RM115P4_TAIL + _RM118_TAIL),
