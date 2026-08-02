@@ -104,11 +104,15 @@ QUEUE_ID_TO_MODE_KEY: dict[int, str] = {
     4307: "jade",  # 2v2 Jade Sydney
     4308: "jade",  # 3v3 Jade Sydney
     4309: "jade",  # 4v4 Jade Sydney
-    4310: "jade",  # kPvP, blank display name upstream - mapped anyway so a
-                   # rotation onto it cannot silently lose the pre-game flip.
+    4310: "jade",  # kPvP, blank display name upstream, but gameSelectPriority
+                   # is 40, so it IS client-visible and the census REQUIRES it
+                   # to be mapped. Not a judgment call.
     4311: "jade",  # 1v1 Jade Ranked. gameSelectPriority is 0 today, so the
                    # client does not show it and the coverage census skips it
-                   # by design - mapped for the same fail-safe reason as 4310.
+                   # by design. Mapped anyway, and this one IS a judgment call:
+                   # the map is a deliberate superset of the census (no guard
+                   # asserts the converse), so if Riot raises this priority in
+                   # a rotation the pre-game flip cannot silently go missing.
     4320: "jade",  # Jade (Co-op vs AI)
     4321: "jade",  # Jade (Co-op vs AI)
     # 3260 "Classic Rift", 3261 "Jade Sydney" and 3262 "Classic Rift" are the
