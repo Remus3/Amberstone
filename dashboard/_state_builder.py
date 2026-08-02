@@ -58,10 +58,15 @@ MODE_TO_FILE = {
     "arena":  "data/arena_coaching_data.json",
     "brawl":  "data/brawl_coaching_data.json",
     "tft":    "data/tft_coaching_data.json",
-    # SR + client share the root coaching_data.json
+    # SR + client share the root coaching_data.json. RM-141: jade (League
+    # Classic throwback, map 453) joins them because it reuses the SR coach
+    # path and adds no writer of its own. The entry is explicit rather than
+    # left to the :348 fallback so the queue-map grounding tests, which
+    # assert every mapped mode_key is a KEY here, stay green.
     "game":   "coaching_data.json",
     "client": "coaching_data.json",
     "sr":     "coaching_data.json",
+    "jade":   "coaching_data.json",
 }
 
 # Deduped list of artifact paths the modes resolve to (preserves
