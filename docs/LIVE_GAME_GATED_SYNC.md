@@ -1204,6 +1204,14 @@ The whole section drains in ONE game plus one lobby, in this order: G8-04 (lobby
 G8-05 / G8-06 in the game itself. G8-02 needs a SECOND game (ARAM Mayhem Jade), if that crossover ever
 exists.
 
+**READY (headless 2026-08-02, no game up - lane 9 PREP pass).** Every CHECK field path below was
+verified against source so the eventual in-game pass is copy-paste, not a mid-game re-derivation. Two
+were DRIFTED at filing and are corrected inline: G8-03 (`activePlayer.championName` does not exist on
+`/api/state` OR raw `:2999` - use `liveclient.champion` + `allPlayers[].rawChampionName`) and G8-04
+(`queueId` is surfaced as `lcu.champ_select.queue_id`, and the mapped ids are `4300`-`4311` / `4320` /
+`4321`). G8-01 (`liveclient.game_mode`, `_liveclient.py:264`), G8-05 and G8-06 anchors were all CONFIRMED
+present. NO row is drained here - the mode is still not live; this only makes the paths correct.
+
 - **G8-01** `[JADE]` **gameMode string - HIGHEST-VALUE row in this section, and the one that can invalidate
   shipped code.** S2 added an EXACT-MATCH branch on `"JADE"` to `core/game_snapshot.py`, sourced from
   16 spell rows in `data/meta_build/ddragon/16.15.1/summoner.json` carrying `modes:["JADE"]`. That is
@@ -1225,16 +1233,25 @@ exists.
   `mode_key` == `aram`). This confirms the routing is EXERCISED rather than theoretical - today it is
   pinned only by a synthetic test.
 - **G8-03** `[JADE]` **championName shape.** Does the Live Client report `"Ahri"` or `"Jade_Ahri"`?
-  S1-S4 ASSUME the former throughout. **CHECK:** read `activePlayer.championName` and the
-  `allPlayers[].championName` list in a live JADE game.
+  S1-S4 ASSUME the former throughout. **CHECK (field path corrected 2026-08-02):** the `activePlayer`
+  block carries NO `championName` - neither on `/api/state` (`_liveclient.py:289-292` emits only
+  `summonerName` / `riotIdGameName`) nor on raw `:2999` (RC must match `activePlayer.summonerName` into
+  `allPlayers[]` to get it, `_liveclient.py:147-151`). So read the operator's champ off `/api/state`
+  `liveclient.champion` (`_liveclient.py:186`) and the full roster off `liveclient.allPlayers[]`, taking
+  BOTH `championName` and `rawChampionName` (`_lean_roster`, `_liveclient.py:87-100,288`).
+  **`rawChampionName` is the field a `Jade_`-prefixed string would surface in** - `championName` may
+  already be display-normalised, so it alone could hide the very drift this row exists to catch.
   If it reports `Jade_Ahri`, EVERY champion lookup in the SR coach path misses (DS registry, build
   order, rune page, matchup panel) and the row grows a normalisation layer. Record the exact strings;
   do not paraphrase them.
 - **G8-04** `[JADE]` **queueId in a real JADE lobby.** S3 mapped the `kJade` PvP / VersusAI ids to the
   `jade` mode_key and deliberately left the three `kCustom` ids (3260 / 3261 / 3262) unmapped.
-  **CHECK:** in a JADE lobby, read the queueId off `/api/state` (`lcu.*` / champ-select payload) and
-  confirm it is one of the ids S3 actually maps. Closes on ONE lobby - no game needed, which makes
-  this the cheapest row here and the one to do first.
+  **CHECK (field path corrected 2026-08-02):** in a JADE lobby, read the queue id off `/api/state` at
+  `lcu.champ_select.queue_id` (champ-select, wins) or `lcu.lobby.queue_id` (lobby fallback) - the raw
+  LCU key `queueId` is renamed snake_case at `dashboard/_state_builder.py:112-119` - and confirm it is
+  one S3 maps: `4300`-`4311` (kJade PvP) or `4320` / `4321` (kJade VersusAI), per `core/queue_modes.py:97-117`.
+  A `3260` / `3261` / `3262` means a JADE CUSTOM, which S3 left unmapped by design (`queue_modes.py:118-123`).
+  Closes on ONE lobby - no game needed, which makes this the cheapest row here and the one to do first.
 - **G8-05** `[JADE]` **map 453 geometry.** Unblocks `core/mode_capabilities.py`, where S2 set
   `has_wards: False` and `district_config: None` for JADE as a DELIBERATE fail-closed choice, not a
   placeholder. **CHECK:** with a JADE game up, eyeball the minimap rect against the SR one, confirm
@@ -1242,8 +1259,9 @@ exists.
   approximately right on map 453. Also re-check the two `dashboard/_state_builder.py` gates that S1
   pinned `jade` OUT of. Any of the three answers coming back "yes, SR-like" is a follow-on row, not
   an edit made during the game.
-- **G8-06** `[JADE]` **shop contents.** Does the JADE shop actually offer the 151 throwback band items in
-  `[770000, 780000)`, or does it sell the ordinary SR pool? **CHECK:** open the shop in a live JADE
+- **G8-06** `[JADE]` **shop contents.** Does the JADE shop actually offer the throwback band items in
+  `[770000, 780000)` (162 rows in the band, of which 151 are map-12-legal per G8-02;
+  `agents/daemon_slayer/mode_variants.py:9,49`), or does it sell the ordinary SR pool? **CHECK:** open the shop in a live JADE
   game and eyeball the item pool against the current SR pool. This is the gate on the whole
   item-advice question (spec section 2.3 / follow-on F1): DS ingests NONE of the throwback registry
   today (Meraki 404s all 60 champion rows), so if the shop DOES serve the band, RC's item advice in
