@@ -165,6 +165,64 @@ champion/build data and land it for live usage.
 
 ---
 
+**Operator note at wrap - console flash hunt, LEAD ALREADY NARROWED (do not re-scan from
+zero).** Every one of the 6 `subprocess.run` call sites in the four hook scripts
+(`ci_watchdog`, `pytest_guard`, `edit_lint_check`, `precommit_gate` x3) ALREADY passes
+`creationflags` - audited per CALL SITE, not per file, so "the file contains CREATE_NO_WINDOW"
+was not accepted as the answer. The flash is elsewhere. **Prime suspect: the `Stop` hook is the
+ONLY hook in `.claude/settings.json` launched with `python.exe` instead of `pythonw.exe`** -
+`tools/stop_claim_gate.py --arm` - and it fires at EVERY turn end, which matches "briefly,
+repeatedly". It is also the CI-probe gate, matching the operator's own hunch that it sits in the
+CI monitoring. Secondary: the two `perseus-vault.exe` hooks (SessionStart + SessionEnd) are
+native binaries, but fire once per session, not per turn. **Confirm before changing anything** -
+per `reference_pythonw_child_console_flash` the flash can also come from a CHILD of a pythonw
+parent, and per CLAUDE.md a `settings.json` with single-backslash Windows paths is INVALID JSON
+that silently registers no hooks at all, so assert it parses after any edit.
+
+# 2026-08-02d - RM-141 JADE SHIPPED (offline half); the guard was excusing what it existed to catch
+
+Headless-upgrade run `2026-08-02-01`, main tree. 8 commits, pushed
+`0a9240b9..3f4e2ab8`. Full ledger entry: `docs/LEDGER.md` item 1163.
+Spec: `docs/specs/RM-141_JADE_MODE.md`.
+
+**TIER-1, and the continue-note said Tier-2.** Second run running where the
+row's own tier guess was wrong. The 60 `Jade_*` champion rows and the 162-item
+`[770000,780000)` band live ONLY in `data/meta_build/ddragon/16.15.1/`; they
+reach `data/daemon_slayer/16.15.1/` zero times. Mirrored, ingested by nothing.
+No ENGINE bump, no Share sync, no `:8860` bounce were owed and none were done.
+
+**The bug fixed was WRONG output, not absent output.** A JADE game fell through
+the SR catch-all, was rejected by `is_sr_mode`, fired no coach, built no
+snapshot - and the dashboard kept serving the LAST SR game's advice.
+
+**Do NOT redo:** what "League Classic" means is settled (JADE, three sessions
+now). The three kCustom kJade ids are unmapped on purpose. `4311` is mapped at
+`gameSelectPriority` 0 on purpose - the queue map is a designed SUPERSET of the
+census and no guard asserts the converse. `history_notes.md` and `LEDGER.md`
+keep their "alias" wording by design (append-only). Ingesting the throwback
+registry is BLOCKED-UPSTREAM, not deferred - Meraki 404s all 60.
+
+**Two process lessons worth more than the feature:**
+1. The full repo-root suite caught a defect that FIVE verifier gates and every
+   per-slice run missed - and the defect was mine, from a bad slice brief ("skip
+   if the file is absent" on a TRACKED file, which
+   `tests/test_skip_condition_hygiene.py` correctly calls an always-passing
+   guard). Per-slice greens do not compose into a suite green.
+2. The alias guard shipped green while excusing exactly what it existed to
+   catch. The verifier found one cause (`variant` was a refutation marker);
+   removing it did NOT close the hole, because the marker was searched across a
+   2-line window, so one legitimate correction excused every re-introduction in
+   the same paragraph. Fixed by requiring the marker on the SAME line. A guard
+   is not proven by its own green.
+
+**Next:** the remaining half of RM-141 is LIVE-GATED as
+`docs/LIVE_GAME_GATED_SYNC.md` GATE 8, rows G8-01..G8-06. G8-01 can invalidate
+the rest: if liveclient `gameMode` reads `CLASSIC` rather than `JADE`, the
+exact-match branch is dead code and the row re-scopes. Desktop
+`RC-NEXT-SESSION.txt` carries the live-state fork.
+
+---
+
 # 2026-08-02b - RM-142: the "already shipped" G1 fix had never reached the scorer
 
 2 commits, pushed (`1d7e84fc` BACKLOG row, `3214d8f5` the Tier-2 fix). ENGINE 1.268.0 ->
