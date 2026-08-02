@@ -129,6 +129,94 @@ class QueueMapGroundingTests(unittest.TestCase):
                 self.assertEqual(rec["mode_key"], expect_mode)
 
 
+class CoverageCensusTests(unittest.TestCase):
+    """RM-140: the reconcile the OTHER way - catalog ids RC does not map.
+
+    RM-128 refuted "every id in kARAM / kAlternativeLeagueGameModes must be
+    mapped" by measurement, and that refutation stands. This asks a narrower
+    question it did not: of the queues the League client will actually SHOW in
+    its play menu (``gameSelectPriority > 0``), in the two groups whose every
+    member really is that mode, excluding custom-game categories - is any
+    unmapped? On 2026-08-02 ten were, all of them siblings of ids RC already
+    maps (the ARAM Mayhem family beyond 2400, and the current SR Co-op vs AI
+    ids 870/880/890 whose menu priority OUTRANKS the legacy 830/840/850 RC had).
+
+    A red here means REVIEW the map, not the test. It cannot flake - the census
+    is read from the committed snapshot, never the network - and it only moves
+    when a human runs ``--refresh-queue-snapshot``.
+    """
+
+    def setUp(self):
+        self.snap = _snapshot()
+        self.census = self.snap.get("coverage_candidates")
+
+    def test_snapshot_carries_the_coverage_census(self):
+        self.assertIsNotNone(
+            self.census,
+            "snapshot predates RM-140 - re-run "
+            "tools/upstream_drift_check.py --refresh-queue-snapshot")
+        self.assertGreater(len(self.census), 20)
+
+    def test_no_client_visible_sr_or_aram_queue_is_unmapped(self):
+        unmapped = {
+            qid: rec for qid, rec in sorted(self.census.items())
+            if rec["mapped_to"] is None
+        }
+        self.assertEqual(
+            unmapped, {},
+            "client-visible queues in a group RC covers are absent from "
+            "core/queue_modes.QUEUE_ID_TO_MODE_KEY - map them or, if the id "
+            f"is genuinely out of scope, say why in that module: {unmapped}")
+
+    def test_the_census_filter_matches_the_tool(self):
+        """The committed census must obey the filter the tool documents."""
+        for qid, rec in sorted(self.census.items()):
+            with self.subTest(queue_id=qid):
+                self.assertIn(rec["group"], udc.COVERAGE_GROUPS)
+                self.assertNotIn(rec["category"],
+                                 udc.COVERAGE_EXCLUDED_CATEGORIES)
+                self.assertGreater(rec["priority"], 0)
+
+    def test_census_mode_keys_agree_with_the_live_map(self):
+        for qid, rec in sorted(self.census.items()):
+            with self.subTest(queue_id=qid):
+                self.assertEqual(rec["mapped_to"],
+                                 QUEUE_ID_TO_MODE_KEY.get(int(qid)))
+
+
+class CoverageCensusFilterTests(unittest.TestCase):
+    """The census builder itself, over synthetic catalogs (no network)."""
+
+    def _entry(self, qid, group, prio, cat="kPvP"):
+        return {"id": qid, "gameSelectModeGroup": group,
+                "gameSelectPriority": prio, "gameSelectCategory": cat,
+                "name": f"q{qid}"}
+
+    def test_zero_priority_queue_is_not_a_candidate(self):
+        by_id = {900: self._entry(900, "kSummonersRift", 0)}
+        self.assertEqual(udc._coverage_candidates(by_id, {}), {})
+
+    def test_custom_category_is_excluded(self):
+        by_id = {3280: self._entry(3280, "kARAM", 40, cat="kCustom")}
+        self.assertEqual(udc._coverage_candidates(by_id, {}), {})
+
+    def test_alternative_modes_group_is_out_of_scope(self):
+        """RM-128 refuted this group; the census must not reinstate it."""
+        by_id = {1750: self._entry(1750, "kAlternativeLeagueGameModes", 40)}
+        self.assertEqual(udc._coverage_candidates(by_id, {}), {})
+
+    def test_unmapped_visible_queue_is_reported_with_a_null_mode_key(self):
+        by_id = {2401: self._entry(2401, "kARAM", 40)}
+        out = udc._coverage_candidates(by_id, {450: "aram"})
+        self.assertEqual(list(out), ["2401"])
+        self.assertIsNone(out["2401"]["mapped_to"])
+
+    def test_mapped_visible_queue_carries_its_mode_key(self):
+        by_id = {450: self._entry(450, "kARAM", 40)}
+        out = udc._coverage_candidates(by_id, {450: "aram"})
+        self.assertEqual(out["450"]["mapped_to"], "aram")
+
+
 class CatalogProbeTests(unittest.TestCase):
     """The daily signal itself - offline, over synthetic catalogs."""
 
