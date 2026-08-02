@@ -17,6 +17,7 @@ from core.game_snapshot import (
     MODE_ARAM,
     MODE_ARENA,
     MODE_BRAWL,
+    MODE_JADE,
     MODE_SR,
     MODE_TFT,
 )
@@ -120,7 +121,7 @@ def test_district_config_fails_soft_none(mode):
 
 def test_table_keyed_by_canonical_constants():
     assert set(MODE_CAPABILITIES) == {
-        MODE_SR, MODE_ARAM, MODE_ARENA, MODE_BRAWL, MODE_TFT,
+        MODE_SR, MODE_ARAM, MODE_ARENA, MODE_BRAWL, MODE_TFT, MODE_JADE,
     }
     for caps in MODE_CAPABILITIES.values():
         assert isinstance(caps, dict)
