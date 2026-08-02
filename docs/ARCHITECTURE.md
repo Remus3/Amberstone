@@ -221,6 +221,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tools/daemon_slayer_wiki_ability_extract.py` | lolmath-wiki per-ability param sidecar extractor (ChampionData + Template:Data -> wiki_ability_stats.json) |
 | `tools/daemon_slayer_wiki_stats_extract.py` | lolmath-wiki + cdragon stat sidecar extractor (ChampionData + bin -> wiki_stats.json) |
 | `tools/det_coach_shadow_report.py` | B1 deterministic-coaching flip-readiness report over the det shadow log |
+| `tools/gated_live_probe.py` | one-shot live-game evidence probe for the gated-drain lane |
 | `tools/gen_state_schema.py` | generates web/js/lib/state_schema.js JSDoc typedefs from pydantic models |
 | `tools/gist_share_sync.py` | secret-gist mirror of the Share/ review package |
 | `tools/hz_mismatch_diagnose.py` | HZ mismatch root-cause diagnosis over the laning-combat shadow log |
