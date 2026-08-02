@@ -95,6 +95,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/_cs_retention.py` | champ-select snapshot retention across no-draft transition |
 | `dashboard/_deterministic_coaching.py` | deterministic coaching resolver for /api/state |
 | `dashboard/_dispatch.py` | route registration |
+| `dashboard/_errors.py` | shared JSON error envelope for the :8888 dashboard + :8895 Mission Control |
 | `dashboard/_idempotency.py` | in-process idempotency (replay) table for operator intents |
 | `dashboard/_lcu_inprocess.py` | in-process LCU snapshot reader for /api/state |
 | `dashboard/_matchers.py` | path-matcher factories (stdlib-only, importable without pydantic) |
@@ -231,7 +232,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tools/perseus_recall.py` | compact projection over Perseus Vault recall |
 | `tools/rc_facts.py` | live RC health + topology probe |
 | `tools/unresolved_token_scan.py` | RM-108 unresolved-template-token detector over vendored feeds |
-| `tools/upstream_drift_check.py` | daily upstream content-drift detector (ddragon / meraki / cdragon) |
+| `tools/upstream_drift_check.py` | daily upstream content-drift detector (ddragon / meraki / cdragon / qq / queues) |
 
 ### Tests
 | File | Role |

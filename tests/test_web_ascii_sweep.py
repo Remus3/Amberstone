@@ -147,7 +147,26 @@ _WEB = _REPO_ROOT / "web"
 #     bytes are unchanged, but its PATH is part of the digest input, so a pure
 #     move still moves the hash.)
 # No tokeniser change, and no pre-existing file's live half was edited.
-_LIVE_HALF_DIGEST = "b7472e1e1a756cef635f54ae7d5ed739e80ed62a7505306daa37796ab33a7606"
+# RE-CAPTURED 2026-08-01 (RM-132 overlay font-size token bypass), superseding
+# the ADDENDUM A capture above. Ordinary case: a LIVE web edit, no tokeniser
+# change, no file added or removed - 173 web/ sources on BOTH sides, and exactly
+# TWO differ in their live half:
+#   M web/js/lib/overlay_tooltip.js      (:67, :78)
+#   M web/js/lib/overlay_item_radial.js  (:65, :74)
+# Each replaced a hardcoded `font-size:13px` cssText literal with
+# `var(--fs-ov-chip,13px)`. Renders byte-identical today, and the 13px FALLBACK
+# is the ONLY thing that ever applies - measured, not assumed:
+#   - `--fs-ov-chip: 13px` is declared on `body[data-shell="overlay"]`
+#     (web/css/overlay.css:33), deliberately never on :root;
+#   - but BOTH widgets mount to `document.documentElement`
+#     (overlay_tooltip.js:52, overlay_item_radial.js:118), so they are SIBLINGS
+#     of <body>, and custom properties inherit DOWNWARD only.
+# So the var does not resolve in the overlay shell either, not just on the plain
+# :8888 dashboard - the reference cannot track the token until the mount point
+# or the token scope changes (filed as RM-139). Without the fallback this would
+# fail SILENTLY to the inherited size, which is the whole reason it is there
+# (memory reference_css_undefined_var_fails_silently).
+_LIVE_HALF_DIGEST = "2c9ba04d11e74de2e9c0045559b2cdc79e54eabd86d6fecb65e3708b87e6ae3e"
 
 
 def _web_sources() -> list[Path]:
