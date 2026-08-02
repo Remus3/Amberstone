@@ -151,6 +151,65 @@ def _str_or_none(value):
     return None if value is None else str(value)
 
 
+def proc_started(pid) -> float | None:
+    """The process's creation time, or None when it cannot be established.
+
+    A pid alone does not name a process - the OS reissues it. `(pid, start
+    time)` does, and this is the second half of that pair. MEASURED 2026-08-02:
+    the gated lane's worker died, Windows handed its pid 8820 to
+    SearchFilterHost three minutes later, and the lane read RUNNING behind an
+    indexing service until the lock was deleted by hand.
+
+    TOTAL BY CONSTRUCTION. Returns None for a dead pid, a pid we may not query,
+    a psutil that is not installed, and anything else that goes wrong. Every
+    caller treats None as "cannot prove reuse" and falls back to the pid probe
+    alone, so an unavailable source degrades to the previous behaviour instead
+    of freeing a live lane.
+
+    NOT in slots.py, which is BYTE-IDENTICAL-BY-CONTRACT with the
+    Sibling-A copy (SHARED_SHA256 in tests/test_loop_concurrency.py).
+    That file is consumed here, never edited.
+    """
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return None
+    if pid <= 0:
+        return None
+    try:
+        import psutil
+    except ImportError:
+        return None
+    try:
+        return float(psutil.Process(pid).create_time())
+    except Exception:  # noqa: BLE001 - NoSuchProcess, AccessDenied, anything
+        return None
+
+
+# Two reads of the same process's create_time are the same float, so this is a
+# guard against clock representation drift, not a tolerance to tune. A real pid
+# reuse is separated by whole seconds at minimum (the OS does not reissue a pid
+# it just freed within the same tick), so nothing legitimate lands inside it.
+_PID_IDENTITY_EPS_S = 1.0
+
+
+def _holder_is_a_stranger(pid, recorded) -> bool:
+    """True only when the live pid is PROVABLY not the process that claimed it.
+
+    Every uncertain case answers False - no recorded value (a lock written
+    before this landed), an unparseable one, or no readable start time for the
+    live pid. Freeing a lane on a guess double-books a running worker, which is
+    strictly worse than the wedge this function exists to prevent.
+    """
+    recorded = _float_or_none(recorded)
+    if recorded is None:
+        return False
+    actual = proc_started(pid)
+    if actual is None:
+        return False
+    return abs(actual - recorded) > _PID_IDENTITY_EPS_S
+
+
 def _resolve_root(root) -> Path:
     return DEFAULT_ROOT if root is None else Path(root)
 
@@ -212,6 +271,11 @@ def lane_state(root=None, now=None) -> dict:
             out["state"] = RECLAIMABLE
         return out
     if not slots.pid_alive(pid):
+        out["state"] = RECLAIMABLE
+    elif _holder_is_a_stranger(pid, rec.get("pid_started")):
+        # Alive, but it is not the same process: the holder died and the OS
+        # reissued its pid. Without this the lane reads RUNNING forever - see
+        # proc_started and tests/test_lane_pid_reuse.py.
         out["state"] = RECLAIMABLE
     return out
 
@@ -286,7 +350,13 @@ def try_acquire_lane(lane, *, run_id, worktree, root=None) -> dict:
         _reclaim(root)
 
     payload = {"pid": os.getpid(), "lane": lane, "run_id": str(run_id),
-               "worktree": str(wt), "ts": time.time(), "repo": str(REPO_ROOT)}
+               "worktree": str(wt), "ts": time.time(), "repo": str(REPO_ROOT),
+               # The other half of the holder's identity. `ts` is when the lane
+               # was CLAIMED and is not a substitute: a worker legitimately
+               # starts seconds after the claim (git worktree add is not
+               # instant), so comparing a start time against ts needs a
+               # tolerance and is wrong in both directions.
+               "pid_started": proc_started(os.getpid())}
     token = slots.try_acquire(root, MAX_SLOTS, payload)
     if token is None:
         # Lost a race between the read and the exclusive create.
@@ -341,6 +411,11 @@ def repoint_lane_pid(token, pid, root=None) -> bool:
 
     rec["pid"] = new_pid
     rec["claimed_by_pid"] = identity[2]
+    # Re-record for the pid we are INSTALLING, never leave the claimer's behind:
+    # the claimer is the long-lived RC server and its start time is hours old,
+    # so a stale value here would make every repointed lock - which is every
+    # real lane fire - read as a pid reuse and free itself under a live worker.
+    rec["pid_started"] = proc_started(new_pid)
     tmp = Path(str(lock) + ".tmp")
     try:
         tmp.write_text(json.dumps(rec), encoding="utf-8")
