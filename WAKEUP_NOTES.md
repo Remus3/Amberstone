@@ -136,3 +136,45 @@ the kit, so a residual row is not by itself a DS defect; Trinity Force is a prob
 **Process miss, self-reported:** an intermediate worktree staging commit used
 `core.hooksPath=/dev/null` unflagged. Branch deleted, main's commit went the normal path, gate
 re-run manually (exit 0) plus 17 repo-wide guards. Flag a bypass when you make it.
+
+## 2026-08-02c - Mission Control lane 9 (`gated`) + arcane retheme + 3 defects the lane exposed
+
+Commits: `219d6989` (lane + theme), `3344096b` (lane auth), `16f7c14b` (pid reuse),
+`7b2628be` + `6a14ead2` (lane cycle merges), `15c64ac0` (lane-log panel), plus the docs sync.
+LEDGER 1164. Suite 17945 passed / 108 skipped. Repo is back to `main` alone, one worktree.
+
+**Shipped.** `gated` is MC lane 9: polls `/api/state` on a 20-30s cadence, DRAINs
+`docs/LIVE_GAME_GATED_SYNC.md` only while `mode_key` is a game mode AND `liveclient` is
+non-empty, PREPs otherwise. Prompt `tools/headless-gated.md`. Its hard gate is written in:
+the live-gated set is NOT synthetically drainable, so no tick without recorded live evidence
+and an honest "no game this window" is a SUCCESS. `web/mc/mc.css` now carries the ARCANE
+palette it always claimed to (two comments in that file said "arcane, the live theme" while
+the page rendered hextech blue). New contract test pins the JS lane roster against the Python
+one - nothing pinned it before, and an unlabelled lane still renders, as its bare id.
+
+**Every other fix this session came from FIRING the lane, not from reading code.**
+1. It died 3s in on "Credit balance is too low" - `ANTHROPIC_API_KEY` is set at MACHINE scope,
+   lanes inherit it, the CLI prefers it over the Max login. Latent for exactly as long as that
+   key had credit; the same warning is in the 2026-07-31 research log that then exited 0.
+2. Windows recycled the dead worker's pid onto `SearchFilterHost` and the lane read RUNNING
+   behind an indexing service, permanently. Fixed with identity (`create_time` recorded in the
+   lock), NOT "started after ts" - a worker legitimately starts seconds after the claim.
+3. "MC shows nothing new" was a MISSING SURFACE: the card only ever rendered the loop
+   CONTROLLER's log, stopped since 2026-07-28. Added a lane-log tail.
+
+**Do NOT redo.** The lane's two cycles both ticked ZERO rows and that is correct - they fixed a
+drifted GATE 8 CHECK path and shipped `tools/gated_live_probe.py` instead. `mode_key` showing
+`aram` in an ARAM lobby is BY DESIGN (the LCU pre-flip at `dashboard/_state_builder.py:149`) -
+traced and closed, do not re-investigate; the durable point is that `mode_key` is not an
+in-game signal. No lane branch was ever unmerged - `git branch --no-merged main` was empty.
+
+**Open, filed this session:** RM-144 vision is DEAD on Legion (`:8889/latest-frame` 0 bytes,
+`screen_read: error`, re-probed independently) which blocks every pixel/OCR/augment row;
+RM-145 the Electron overlay never recomputes its scale on a display-mode change
+(`rc-shell/src/main.js:575,579` run once at window creation, no `display-metrics-changed`
+listener exists) - from two operator steers, traced not guessed. Also still true: the ARAM
+coach is credit-paused on that same exhausted machine key, so live coaching is degraded.
+
+**Process miss, self-reported:** I sized the next LEDGER id with a bad grep pattern and
+collided with 1162, then with 1163, before parsing the entries properly. Parse the numbers,
+never pattern-match a guess at their shape.
