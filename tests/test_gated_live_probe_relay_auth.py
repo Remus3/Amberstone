@@ -24,7 +24,9 @@ the whole time.
 from __future__ import annotations
 
 import http.server
+import sys
 import threading
+from pathlib import Path
 
 import pytest
 
@@ -62,6 +64,35 @@ def relay():
     yield f"http://127.0.0.1:{srv.server_address[1]}"
     srv.shutdown()
     srv.server_close()
+
+
+def test_script_entrypoint_does_not_crash():
+    """The regression my package-import tests could not see.
+
+    Every other test here does `from tools import gated_live_probe`, which runs
+    with the repo root already on sys.path. The REAL invocation is
+    `python tools/gated_live_probe.py`, where it is NOT - and the first version
+    of the `core.vision_token` import raised ModuleNotFoundError and killed the
+    tool, violating its own documented "never an exception" contract. Exercise
+    the actual entry point as a subprocess.
+    """
+    import subprocess
+
+    root = Path(__file__).resolve().parent.parent
+    r = subprocess.run(
+        [sys.executable, str(root / "tools" / "gated_live_probe.py"), "--json"],
+        capture_output=True, text=True, timeout=120, cwd=str(root),
+    )
+
+    assert "ModuleNotFoundError" not in r.stderr
+    assert "Traceback" not in r.stderr, r.stderr[-800:]
+
+
+def test_relay_token_is_fail_soft(monkeypatch):
+    """A broken token source must degrade to "", never raise."""
+    monkeypatch.setitem(__import__("sys").modules, "core.vision_token", None)
+
+    assert isinstance(glp._relay_token(), str)
 
 
 def test_relay_base_is_http_not_https():
