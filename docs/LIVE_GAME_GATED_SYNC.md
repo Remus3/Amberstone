@@ -1212,6 +1212,15 @@ were DRIFTED at filing and are corrected inline: G8-03 (`activePlayer.championNa
 `4321`). G8-01 (`liveclient.game_mode`, `_liveclient.py:264`), G8-05 and G8-06 anchors were all CONFIRMED
 present. NO row is drained here - the mode is still not live; this only makes the paths correct.
 
+**LIVE-CONFIRMED against a running client (ARAM/KIWI proxy, 2026-08-02T15:18Z, Lee Sin L8, game_time
+6:06).** The corrected paths resolve live: `liveclient.game_mode`==`KIWI`, `liveclient.champion`==`Lee Sin`,
+`allPlayers[0].championName`==`Swain` with `rawChampionName`==`game_character_displayname_Swain`, and
+`activePlayer` carried ONLY `summonerName` / `riotIdGameName` - **NO `championName`** - which live-proves
+the original G8-03 field path was dead, not just source-dead. This does NOT tick any G8 row: the
+JADE-specific VALUES (`JADE`, `Jade_Ahri`) still need a real JADE game. NB the raw field is a
+`game_character_displayname_<X>` form, so in JADE read BOTH `championName` and `rawChampionName` - a
+`Jade_` prefix could land on either.
+
 - **G8-01** `[JADE]` **gameMode string - HIGHEST-VALUE row in this section, and the one that can invalidate
   shipped code.** S2 added an EXACT-MATCH branch on `"JADE"` to `core/game_snapshot.py`, sourced from
   16 spell rows in `data/meta_build/ddragon/16.15.1/summoner.json` carrying `modes:["JADE"]`. That is
