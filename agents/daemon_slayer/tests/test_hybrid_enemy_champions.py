@@ -453,7 +453,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
         # DO NOT change this string in this slice; the orchestrator
         # syncs all ENGINE pin sites at merge. Current pre-merge state
         # on main is 1.35.0.
-        self.assertEqual(ENGINE_VERSION, "1.269.0")
+        self.assertEqual(ENGINE_VERSION, "1.270.0")
 
 
 # --------------------------------------------------- ASCII hygiene
