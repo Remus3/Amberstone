@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-r"""Lane lock - the six headless lanes are mutually exclusive, one holder max.
+r"""Lane lock - the seven headless lanes are mutually exclusive, one holder max.
 
-    LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit")
+    LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated")
 
 WHY THREE STATES, NOT TWO. A lock file whose pid is DEAD is indistinguishable
 from a live one by file inspection alone. Measured 2026-07-30: the live
@@ -102,7 +102,7 @@ def _bind(modname: str, filename: str):
 
 slots = _bind("rc_loop_slots", "slots.py")
 
-LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit")
+LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated")
 MAX_SLOTS = 1
 DEFAULT_ROOT = _HERE / "control" / "lanes"
 # slots.try_acquire names slot i "<i>.lock"; at max_slots=1 there is only slot 0.

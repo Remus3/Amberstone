@@ -15,7 +15,7 @@ every weakness found, security, machine environment." **And the fence at `:100-1
 both should run against a worktree first."
 
 cwd is the lane worktree `C:\rc-worktrees\rc-lane-true-audit` on branch `lane/true-audit`. The convention is code, not lore: `ops/loop/lanes.py:105` carries
-`LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit")`; `ops/loop/lane_launcher.py:84` sets `WORKTREE_BASE = C:\rc-worktrees` (overridable via
+`LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated")`; `ops/loop/lane_launcher.py:84` sets `WORKTREE_BASE = C:\rc-worktrees` (overridable via
 `RC_LANE_WORKTREE_BASE`), `:131` `worktree_path` builds `rc-lane-<lane>`, `:135` `branch_name` builds `lane/<lane>`; `ops/loop/lanes.py:221` `_require_worktree`
 raises on an absent one.
 

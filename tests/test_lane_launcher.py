@@ -80,7 +80,7 @@ def test_the_launcher_never_wires_a_lane_the_lock_does_not_know():
     assert set(launcher.LANE_COMMANDS) <= set(lanes.LANES)
 
 
-def test_all_six_lanes_are_wired():
+def test_every_lane_in_the_roster_is_wired():
     """S8 - repo and true-audit land last, and this is the acceptance.
 
     They were held back on purpose while the rest of the control plane was
@@ -88,6 +88,10 @@ def test_all_six_lanes_are_wired():
     a security audit one confirmed click away. The panel derives its greyed-out
     set from this map (routes_loop_status._lanes_available), so this is also
     what turns the last two buttons live.
+
+    Deliberately NOT named for a count. The old name said "six" and the roster
+    is now seven; a count in the name has to be edited by every lane that lands
+    and says nothing the assertion does not already say.
     """
     assert set(launcher.LANE_COMMANDS) == set(lanes.LANES), (
         "every lane in the lock roster must now be startable")
