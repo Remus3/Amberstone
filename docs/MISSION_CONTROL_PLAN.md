@@ -100,6 +100,27 @@ rewrite, test, harden every weakness found, security, machine environment.
 Lanes 7 and 8 carry the highest blast radius. Both should ship LAST and both
 should run against a worktree first.
 
+**9. Headless-Gated (live).** Added 2026-08-02 on operator request, after S10.
+`tools/headless-gated.md`. The WATCHER lane, and the only one whose work is
+gated on something outside the repo: a real game running on Legion. It polls
+`/api/state` on a 20s to 30s cadence and runs the DRAIN half of
+`docs/LIVE_GAME_GATED_SYNC.md` only while `mode_key` is a game mode AND
+`liveclient` is non-empty; otherwise it runs the PREP half (ready the next
+drain, kill mis-filed rows, build the evidence plumbing, doc hygiene).
+
+Its hard gate is a Settled finding, not a style preference: **the live-gated set
+is NOT synthetically drainable** (measured 2026-07-18, 14 agents over 124 rows,
+6 closed; the dominant kill was SUBSTITUTION - answering the compute half of a
+question that asks whether something RENDERED). So the lane may never tick a row
+without recorded live evidence (value + source + timestamp + a predicate stated
+BEFORE looking), may never re-pitch synthetic drainage, and reports an honest
+"no game this window" as a SUCCESS. It is the headless sibling of
+`tools/live-gated-drain.md`, which is the operator-present version and is the
+one that asks framed questions, names a lobby to queue, and runs `/done`.
+
+Blast radius is LOW by construction - most of what it commits is Tier-0 doc
+edits to one checklist - but it is worktree-mandatory like every other lane.
+
 ---
 
 ## Steer channel (added on operator request)
