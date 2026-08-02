@@ -6,6 +6,37 @@
 
 ---
 
+# 2026-08-01g - /insights triage: two of three "ambitious workflows" were already shipped, the third became RM-143
+
+6 commits, pushed. Tier-0/1. DS engine untouched (server.py was mutated twice for proofs and
+reverted both times; `git status` clean each time).
+
+**Shipped**
+- **RM-143 P1+P2+P3** (LEDGER 1159). Spec `ca7e194c`, map `dda07d08`, runner `3e2fd192`.
+  REPORT-ONLY, nothing armed. Live parity 8/8 at ENGINE 1.268.0.
+- **`tools/repo_insights.py`** `ca6a0799` + `2a47480e` - ledger regex missed the paren-form
+  header (0 items -> 419), plus a generated synthesis section and two label fixes.
+- **README** `15dfe4e1` rewritten for an outward reader: why-it-is-different, a Limitations
+  section, upstream source credits, and the Riot non-affiliation disclaimer it never had.
+
+**The useful finding: /insights re-pitches shipped work, because it reads transcripts not the repo.**
+Of its three "ambitious workflows", the refute-executor is R7 + Session Default + the director's
+PREMISE-CHECK + `verifier.md` + `truth_gate.py`, and its one novel delta was ALREADY MEASURED
+(14 agents over 124 gated rows, 2026-07-18, closed 6). The nightly fleet is `RC-CIWatchdog` +
+`RC-UpstreamDriftCheck` + `RC-WeeklyHygiene` + `lanes.py`. Every `claude_md_additions` item it
+suggested is already in CLAUDE.md. Only the parity harness was real work.
+
+**Do NOT redo**
+- Do not re-spec the parity harness or add a third client-reachability guard: two exist
+  (`test_route_seams_reach_the_client*.py`) and P1 deliberately asks the server-vs-ENGINE
+  question they cannot ask, because their `_SEAM_PREFIXES` filter hides transports.
+- Do not arm P4 yet. It waits on several quiet real DS batches, and `--arm` must never exit
+  non-zero on SKEW.
+
+**Next:** P4 when the observation window is satisfied; otherwise the top open ROADMAP row.
+
+---
+
 # 2026-08-01f - five non-gated rows, and the verifier caught three of my own defects
 
 1 commit, pushed. Tier-1. DS untouched. Full `tests/` 17831 passed / 108 skipped / 0 failed.
@@ -114,48 +145,3 @@ subagent-first / parallel as standing protocol requires.
 - Do NOT re-run any RM-127 CCR pass. RM-127 has ZERO residue.
 
 **Next:** RM-131, RM-128, RM-130, RM-132, RM-133, RM-134, RM-135, or the DS RM-118 seams.
-
----
-
-# 2026-08-01 - Gemini decommissioned, tri-project headless contract, N=3 round closed
-
-6 commits `15ddff90..8450dd2b`, all pushed. RC-side only; DS untouched (no Share sync).
-
-**Shipped**
-- `c926470a` port blocks folded - LW 8900-8919 and RM 8770-8789 both CONFIRMED in writing.
-  Adopted LW's `next_free()` with a guard LW's version lacks: RC may only answer for its OWN
-  blocks - a confident wrong number handed to a sibling is worse than no answer.
-- `aee3bb96` + `13350e43` GEMINI FULLY DECOMMISSIONED (operator directive). Backend, failover,
-  exhaustion matcher, ceiling accounting, 2 ps1 wrappers, 3 docs, the scheduled task: gone.
-  `gemini()` -> `adjudicate()`, `/gemini-headless-upgrade` -> `/directed-headless-upgrade`.
-- `666d2547` + `8b292a98` N=3 coordinated round with LW and RM; all three trees hash equal on
-  `slots.py` (`5297f2d0...1cb0a6`).
-- `8450dd2b` Claude co-author trailer swept - `gist_share_sync.py` was still EMITTING it into a
-  SEPARATE repo the commit-msg hook does not cover.
-- NEW: `docs/CONCURRENT_HEADLESS_CONTRACT.md` - portable 3-project headless contract.
-
-**Decisions worth keeping**
-- Removing `ceiling_usd` was REQUIRED, not tidy: with the metered vendor gone the only spend
-  left was Claude's, so the check would have inverted into a cap on exactly the spend policy
-  says is uncapped.
-- A cross-repo equality guard makes an atomic change IMPOSSIBLE - whoever moves first is red.
-  Rule 4.2a in the contract. Deciding rule: whoever is red should be the party NOT shipping.
-- Contract section 10 was WRONG about the cause of the hooks finding: it is settings DISCOVERY
-  (cwd), not headlessness. Verified locally - `.claude/` is gitignored, so every lane worktree
-  has no settings.json and runs with ZERO agent hooks.
-- Removed dangling machine-wide `"model": "rc-main"` from user settings (backup kept). It broke
-  headless for EVERY project, and RC's earlier "Not logged in" reading was wrong - `claude -p`
-  works now. A headless launch has several independent preconditions that all fail as "the run
-  did nothing"; do not accept the first plausible cause.
-
-**Do NOT redo**
-- Gemini is gone; a decommission-guard test fails if any of the 8 deleted names return.
-- N=3 and the slots re-pin are APPLIED on all three trees. Do not re-negotiate.
-- `winmutex.py` GEMINI_MUTEX constant STAYS - shared byte-identical, LW has a live consumer.
-- LW owns the hook probe. Do not duplicate it.
-
-**Next:** link-ingest Phase 2. `Desktop/First-Pass.md` has 147 scored rows and 155 operator
-`**!=` notes ALREADY PRESENT - the gate the memory calls "awaiting operator notes" is CLEARED.
-
-**Loose end (not blocking):** `NIMBLE_API_KEY` sits in plaintext in user-level
-`.claude/settings.json` env. Worth relocating; not touched this session.

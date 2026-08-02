@@ -165,6 +165,51 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-08-01 - Gemini decommissioned, tri-project headless contract, N=3 round closed
+
+6 commits `15ddff90..8450dd2b`, all pushed. RC-side only; DS untouched (no Share sync).
+
+**Shipped**
+- `c926470a` port blocks folded - LW 8900-8919 and RM 8770-8789 both CONFIRMED in writing.
+  Adopted LW's `next_free()` with a guard LW's version lacks: RC may only answer for its OWN
+  blocks - a confident wrong number handed to a sibling is worse than no answer.
+- `aee3bb96` + `13350e43` GEMINI FULLY DECOMMISSIONED (operator directive). Backend, failover,
+  exhaustion matcher, ceiling accounting, 2 ps1 wrappers, 3 docs, the scheduled task: gone.
+  `gemini()` -> `adjudicate()`, `/gemini-headless-upgrade` -> `/directed-headless-upgrade`.
+- `666d2547` + `8b292a98` N=3 coordinated round with LW and RM; all three trees hash equal on
+  `slots.py` (`5297f2d0...1cb0a6`).
+- `8450dd2b` Claude co-author trailer swept - `gist_share_sync.py` was still EMITTING it into a
+  SEPARATE repo the commit-msg hook does not cover.
+- NEW: `docs/CONCURRENT_HEADLESS_CONTRACT.md` - portable 3-project headless contract.
+
+**Decisions worth keeping**
+- Removing `ceiling_usd` was REQUIRED, not tidy: with the metered vendor gone the only spend
+  left was Claude's, so the check would have inverted into a cap on exactly the spend policy
+  says is uncapped.
+- A cross-repo equality guard makes an atomic change IMPOSSIBLE - whoever moves first is red.
+  Rule 4.2a in the contract. Deciding rule: whoever is red should be the party NOT shipping.
+- Contract section 10 was WRONG about the cause of the hooks finding: it is settings DISCOVERY
+  (cwd), not headlessness. Verified locally - `.claude/` is gitignored, so every lane worktree
+  has no settings.json and runs with ZERO agent hooks.
+- Removed dangling machine-wide `"model": "rc-main"` from user settings (backup kept). It broke
+  headless for EVERY project, and RC's earlier "Not logged in" reading was wrong - `claude -p`
+  works now. A headless launch has several independent preconditions that all fail as "the run
+  did nothing"; do not accept the first plausible cause.
+
+**Do NOT redo**
+- Gemini is gone; a decommission-guard test fails if any of the 8 deleted names return.
+- N=3 and the slots re-pin are APPLIED on all three trees. Do not re-negotiate.
+- `winmutex.py` GEMINI_MUTEX constant STAYS - shared byte-identical, LW has a live consumer.
+- LW owns the hook probe. Do not duplicate it.
+
+**Next:** link-ingest Phase 2. `Desktop/First-Pass.md` has 147 scored rows and 155 operator
+`**!=` notes ALREADY PRESENT - the gate the memory calls "awaiting operator notes" is CLEARED.
+
+**Loose end (not blocking):** `NIMBLE_API_KEY` sits in plaintext in user-level
+`.claude/settings.json` env. Worth relocating; not touched this session.
+
+---
+
 # 2026-08-01a - LANE-RESEARCH REFILL (headless lane 5): 5 rows filed RM-130..RM-134, one NEW drift-guard gap.
 
 **MERGE NOTE (added by the merger, 2026-08-01):** the five rows this run filed were authored
