@@ -6,6 +6,46 @@
 
 ---
 
+# 2026-08-02g - RM-145 live-confirmed, G6-04 closed; the prep half found the bug in the acceptance criterion
+
+6 commits, pushed `07ddfae6..<this>`. Ledger 1169.
+
+**G6-04 CLOSED - PASS both directions.** Live ARAM, rc-shell pid 4140. Desktop
+2560x1440 -> 1920x1080 -> 2560x1440; overlay window tracked it exactly; access log carried
+`?overlay=1` (scale 1.00) -> `?overlay=1&ovscale=1.33` on the return leg, which was the half
+that was broken. Second GATE 6 row ever closed.
+
+**The prep half was worth more than the run.** Before the game started, measured that the
+row's OWN acceptance criterion was unsatisfiable: `overlay_state.js:171` appends `ovscale`
+only when `|scale - 1| > 0.001`, so 1920x1080 gives scale exactly 1.00 and NO param. A
+literal "two lines both carrying ovscale=N" check fails on correct behavior. Fixed the row
+first (`12934b47`), then ran the game against a criterion that could actually pass.
+
+**Three of my own claims were wrong, all caught by probing rather than reasoning:**
+(1) "zero overlay requests today" read only the un-rotated log - the daily log rotates at
+3MB and had rotated four times; the lines were in `.log.1` and `.log.3`. (2) I flagged
+`health.json` `overlay_visible: false` as evidence the HUD was down - that field is DEAD,
+set False at construction and never written again. (3) The first live attempt fired nothing
+because Borderless does not resize the desktop; reading that as "the fix failed" was
+available and wrong.
+
+**Filed, not fixed:** RM-146 (RC permanently over its 500 MB ceiling, remediation
+permanently suppressed by the restart-loop guard - the guard is correct, the steady state
+it protects is not), RM-147 (G6-03 blocked: live OBS runs a window_capture, not the
+continuous display capture the row is about; converting it re-introduces the BSOD surface,
+so it is the operator's call), RM-148 (the hermeticity guard cannot tell a test from the
+live daemon and intermittently reds the /done gate).
+
+**OBS: set up as far as is safe.** `C:\RC-Recordings` created (the configured path did not
+exist) and the record path proven end to end over obs-websocket. Capture METHOD deliberately
+left alone - see RM-147.
+
+Relocated RM-143/144/145 to `docs/ROADMAP_HISTORY.md`; ROADMAP was at 95% of budget, now 88%.
+
+**Next:** G6-03 needs the RM-147 decision first. Otherwise pick from ROADMAP.
+
+---
+
 # 2026-08-02f - console flash named by measurement; three of my own suspects refuted
 
 4 commits, pushed `a632cead..2d296991`. Ledger 1168.
