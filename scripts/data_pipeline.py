@@ -56,13 +56,19 @@ META.mkdir(parents=True, exist_ok=True)
 ICONS.mkdir(parents=True, exist_ok=True)
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
+# RC-PatchRefresh runs this under pythonw.exe (a console interpreter flashes a
+# window on the operator's desktop - see the LW-CIWatchdog case, 2026-08-02), and
+# under pythonw BOTH sys.stdout and sys.stderr are None. A StreamHandler built on
+# them would then raise on every single record and have the error swallowed by
+# logging.handleError, so the handler is only attached when a real stream exists.
+_handlers = [logging.FileHandler(str(LOG_FILE), encoding="utf-8")]
+if sys.stdout is not None:
+    _handlers.insert(0, logging.StreamHandler(sys.stdout))
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(str(LOG_FILE), encoding="utf-8"),
-    ],
+    handlers=_handlers,
 )
 log = logging.getLogger("data_pipeline")
 
