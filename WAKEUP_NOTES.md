@@ -6,6 +6,39 @@
 
 ---
 
+# 2026-08-02f - console flash named by measurement; three of my own suspects refuted
+
+4 commits, pushed `a632cead..2d296991`. Ledger 1168.
+
+**The flash is `LW-CIWatchdog`** - the SIBLING repo's task running
+`python.exe C:\Sibling-A\tools\ci_watchdog.py` on a PT2M repeat. Named in one pass by
+polling top-level windows for `ConsoleWindowClass` at 40ms and resolving each PID through
+CIM: three visible windows in 7 minutes, all that command line. Free A/B in the same
+capture - RC's twin `RC-CIWatchdog` fired on the same cadence under `pythonw` with zero
+windows. Live task repointed to `pythonw.exe`, verified over a second capture (three fires,
+no windows, `watchdog.log` still writing). Source fix (installer builds the task XML from
+`sys.executable`) filed to the sibling via `moon_sync_inbox/`.
+
+**The hand-off's prime suspect was WRONG.** The `Stop` hook ran at 12:04:39 inside the
+capture window (`ops/runtime/stop_claim_history.jsonl`) and produced no console. Children
+were already clean. Do not re-audit either.
+
+**Two measured reversals of my own claims, both recorded:** `-WindowStyle Hidden` does NOT
+suppress the flash (probe task: no flag -> visible, with flag -> STILL visible, S4U -> none);
+and `RC-PatchRefresh` / `RC-PostmortemAnalyze` / `RC-WeeklyHygiene` were already S4U so none
+of them could ever have flashed - I had flagged them off their command line without checking
+the principal. Only `LW-WeeklyHygiene` was really exposed and is now S4U.
+
+**Operator-directed second half:** CLAUDE.md's hostname drift. Fixed by DELETING the field
+(`c645271e`), not by updating it - operator: the Windows name changes from time to time, so
+pinning a value only resets the drift clock. `legion-rc` / `100.70.22.55` is canonical.
+
+**Next:** RM-145 still needs the live in-game confirmation (LIVE_GAME_GATED_SYNC G6-04) -
+game up with overlay showing, flip the video mode AND flip it back, receipt is two access-log
+lines with different `ovscale=N`. Needs the operator playing; nothing else blocks it.
+
+---
+
 # 2026-08-02e - RM-144 + RM-145: two "confirmed" bug reports that were measurement artifacts
 
 3 commits, pushed `ec55b133..8b91d13a`. Ledger 1165 / 1166 / 1167.
@@ -45,64 +78,6 @@ lines around a flip AND a flip-back.
 
 **Trap filed:** `rc-shell/package.json` lists test files BY NAME - a new
 `rc-shell/test/*.test.js` runs nowhere until added (326 -> 339).
-
----
-
-**Operator note at wrap - console flash hunt, LEAD ALREADY NARROWED (do not re-scan from
-zero).** Every one of the 6 `subprocess.run` call sites in the four hook scripts
-(`ci_watchdog`, `pytest_guard`, `edit_lint_check`, `precommit_gate` x3) ALREADY passes
-`creationflags` - audited per CALL SITE, not per file, so "the file contains CREATE_NO_WINDOW"
-was not accepted as the answer. The flash is elsewhere. **Prime suspect: the `Stop` hook is the
-ONLY hook in `.claude/settings.json` launched with `python.exe` instead of `pythonw.exe`** -
-`tools/stop_claim_gate.py --arm` - and it fires at EVERY turn end, which matches "briefly,
-repeatedly". It is also the CI-probe gate, matching the operator's own hunch that it sits in the
-CI monitoring. Secondary: the two `perseus-vault.exe` hooks (SessionStart + SessionEnd) are
-native binaries, but fire once per session, not per turn. **Confirm before changing anything** -
-per `reference_pythonw_child_console_flash` the flash can also come from a CHILD of a pythonw
-parent, and per CLAUDE.md a `settings.json` with single-backslash Windows paths is INVALID JSON
-that silently registers no hooks at all, so assert it parses after any edit.
-
-# 2026-08-02d - RM-141 JADE SHIPPED (offline half); the guard was excusing what it existed to catch
-
-Headless-upgrade run `2026-08-02-01`, main tree. 8 commits, pushed
-`0a9240b9..3f4e2ab8`. Full ledger entry: `docs/LEDGER.md` item 1163.
-Spec: `docs/specs/RM-141_JADE_MODE.md`.
-
-**TIER-1, and the continue-note said Tier-2.** Second run running where the
-row's own tier guess was wrong. The 60 `Jade_*` champion rows and the 162-item
-`[770000,780000)` band live ONLY in `data/meta_build/ddragon/16.15.1/`; they
-reach `data/daemon_slayer/16.15.1/` zero times. Mirrored, ingested by nothing.
-No ENGINE bump, no Share sync, no `:8860` bounce were owed and none were done.
-
-**The bug fixed was WRONG output, not absent output.** A JADE game fell through
-the SR catch-all, was rejected by `is_sr_mode`, fired no coach, built no
-snapshot - and the dashboard kept serving the LAST SR game's advice.
-
-**Do NOT redo:** what "League Classic" means is settled (JADE, three sessions
-now). The three kCustom kJade ids are unmapped on purpose. `4311` is mapped at
-`gameSelectPriority` 0 on purpose - the queue map is a designed SUPERSET of the
-census and no guard asserts the converse. `history_notes.md` and `LEDGER.md`
-keep their "alias" wording by design (append-only). Ingesting the throwback
-registry is BLOCKED-UPSTREAM, not deferred - Meraki 404s all 60.
-
-**Two process lessons worth more than the feature:**
-1. The full repo-root suite caught a defect that FIVE verifier gates and every
-   per-slice run missed - and the defect was mine, from a bad slice brief ("skip
-   if the file is absent" on a TRACKED file, which
-   `tests/test_skip_condition_hygiene.py` correctly calls an always-passing
-   guard). Per-slice greens do not compose into a suite green.
-2. The alias guard shipped green while excusing exactly what it existed to
-   catch. The verifier found one cause (`variant` was a refutation marker);
-   removing it did NOT close the hole, because the marker was searched across a
-   2-line window, so one legitimate correction excused every re-introduction in
-   the same paragraph. Fixed by requiring the marker on the SAME line. A guard
-   is not proven by its own green.
-
-**Next:** the remaining half of RM-141 is LIVE-GATED as
-`docs/LIVE_GAME_GATED_SYNC.md` GATE 8, rows G8-01..G8-06. G8-01 can invalidate
-the rest: if liveclient `gameMode` reads `CLASSIC` rather than `JADE`, the
-exact-match branch is dead code and the row re-scopes. Desktop
-`RC-NEXT-SESSION.txt` carries the live-state fork.
 
 ---
 
