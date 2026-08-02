@@ -62,7 +62,7 @@ function _wedgeCss(pos, center) {
     base.push(
       "width:44px", "height:44px", "padding:0", "box-sizing:border-box",
       "display:flex", "align-items:center", "justify-content:center",
-      "border-radius:50%", "font-size:13px",
+      "border-radius:50%", "font-size:var(--fs-ov-chip,13px)",
     );
   } else {
     // Cardinal wedges: flex-center the label in a >=44px-tall pill so each clears
@@ -71,7 +71,7 @@ function _wedgeCss(pos, center) {
     base.push(
       "min-width:52px", "min-height:44px", "padding:4px 9px", "box-sizing:border-box",
       "display:flex", "align-items:center", "justify-content:center",
-      "font-size:13px",
+      "font-size:var(--fs-ov-chip,13px)",
     );
   }
   return base.join(";") + ";";

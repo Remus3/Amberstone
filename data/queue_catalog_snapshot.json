@@ -1,0 +1,141 @@
+{
+  "source": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/queues.json",
+  "fetched_at": "2026-08-02T00:02:39Z",
+  "fingerprint": "8039fde2e98fc392",
+  "entry_count": 408,
+  "group_counts": {
+    "kARAM": 16,
+    "kAlternativeLeagueGameModes": 256,
+    "kJade": 17,
+    "kSummonersRift": 36,
+    "kTeamfightTactics": 83
+  },
+  "mapped_queues": {
+    "400": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Normal",
+      "present": true
+    },
+    "420": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Ranked Solo/Duo",
+      "present": true
+    },
+    "430": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Normal",
+      "present": true
+    },
+    "440": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Ranked Flex",
+      "present": true
+    },
+    "450": {
+      "mode_key": "aram",
+      "group": "kARAM",
+      "name": "ARAM",
+      "present": true
+    },
+    "480": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Swiftplay",
+      "present": true
+    },
+    "490": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Quickplay",
+      "present": true
+    },
+    "700": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Clash",
+      "present": true
+    },
+    "720": {
+      "mode_key": "aram",
+      "group": "kARAM",
+      "name": "Clash",
+      "present": true
+    },
+    "830": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Intro",
+      "present": true
+    },
+    "840": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Beginner",
+      "present": true
+    },
+    "850": {
+      "mode_key": "sr",
+      "group": "kSummonersRift",
+      "name": "Intermediate",
+      "present": true
+    },
+    "900": {
+      "mode_key": "sr",
+      "group": "kAlternativeLeagueGameModes",
+      "name": "AR Ultra Rapid Fire",
+      "present": true
+    },
+    "920": {
+      "mode_key": "aram",
+      "group": "kAlternativeLeagueGameModes",
+      "name": "Legend of the Poro King",
+      "present": true
+    },
+    "1020": {
+      "mode_key": "sr",
+      "group": "kAlternativeLeagueGameModes",
+      "name": "One For All",
+      "present": true
+    },
+    "1400": {
+      "mode_key": "sr",
+      "group": "kAlternativeLeagueGameModes",
+      "name": "Ultimate Spellbook",
+      "present": true
+    },
+    "1700": {
+      "mode_key": "arena",
+      "group": "kAlternativeLeagueGameModes",
+      "name": "Arena",
+      "present": true
+    },
+    "1710": {
+      "mode_key": "arena",
+      "group": "kAlternativeLeagueGameModes",
+      "name": "Arena",
+      "present": true
+    },
+    "1750": {
+      "mode_key": "arena",
+      "group": "kAlternativeLeagueGameModes",
+      "name": "Arena 3x6",
+      "present": true
+    },
+    "1900": {
+      "mode_key": "sr",
+      "group": "kAlternativeLeagueGameModes",
+      "name": "Ultra Rapid Fire",
+      "present": true
+    },
+    "2400": {
+      "mode_key": "aram",
+      "group": "kARAM",
+      "name": "ARAM: Mayhem",
+      "present": true
+    }
+  }
+}

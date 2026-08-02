@@ -1,12 +1,12 @@
-# arch: daily upstream content-drift detector (ddragon / meraki / cdragon) | section=tools | frozen=no
+# arch: daily upstream content-drift detector (ddragon / meraki / cdragon / qq / queues) | section=tools | frozen=no
 """Daily upstream content-drift detector.
 
-Probes three upstream sources for ACTUAL content changes (not fetch-time),
+Probes five upstream sources for ACTUAL content changes (not fetch-time),
 compares each signal against a persisted per-machine sentinel, advances the
 sentinel, and on drift can optionally send a cross-Claude bridge note and/or
 auto-trigger the DDragon mirror refresh.
 
-The three signals (each probe is individually fail-soft -> None + error str):
+The five signals (each probe is individually fail-soft -> None + error str):
 
 1. DDragon live patch version
    GET https://ddragon.leagueoflegends.com/api/versions.json
@@ -21,6 +21,22 @@ The three signals (each probe is individually fail-soft -> None + error str):
    GET https://raw.communitydragon.org/latest/content-metadata.json
    {"version": "16.11.7829736+branch...content.release"}; signal = the FULL
    ``version`` string verbatim (the build number is what changes on a rebuild).
+
+4. 101.qq duo-synergy envelope SHAPE (RM-131)
+   core.synergy_external_source.fetch_rows() against a canary lane pair.
+   Signal = row-count BUCKET + a hash of the first row's key set - deliberately
+   NOT the win-rate values, which move daily and would make this a noise
+   generator instead of a drift alarm. Exists because that source fails SILENT:
+   on any HTTP error or envelope-shape change `_validate_rows` drops RC back to
+   the frozen May-25 static seed and nothing anywhere says so, so RC can serve
+   stale duo-synergy forever. An unreachable endpoint shows here as ERR.
+
+5. CDragon queue catalog SHAPE (RM-128)
+   GET .../rcp-be-lol-game-data/global/default/v1/queues.json
+   A LIST (not a dict) of queue records. Signal = a hash over the sorted
+   ``id:gameSelectModeGroup`` pairs, so it moves when Riot adds, removes or
+   re-groups a queue - which is the event that can silently strand RC's
+   hand-maintained ``core/queue_modes.QUEUE_ID_TO_MODE_KEY``.
 
 A field is ``changed`` ONLY when current is not None AND previous is not None
 AND current != previous. A first-ever run (previous null) is baseline seeding,
@@ -42,6 +58,7 @@ Structured so collection is import-safe: all network lives under functions,
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -62,6 +79,24 @@ MERAKI_CHAMPIONS_URL = (
     "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json"
 )
 CDRAGON_METADATA_URL = "https://raw.communitydragon.org/latest/content-metadata.json"
+CDRAGON_QUEUES_URL = (
+    "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data"
+    "/global/default/v1/queues.json"
+)
+
+# Canary lane pair for the duo-synergy shape probe. bot/support is the pair the
+# champ-select grid actually consumes, so a shape change here is the one that
+# would break a live surface rather than a hypothetical one.
+QQ_CANARY_LANES = ("bottom", "support")
+# Row counts wobble day to day; bucket them so only a structural collapse (or a
+# pagesize change) moves the signal.
+QQ_ROWCOUNT_BUCKET = 25
+
+# On-disk grounding snapshot for the queue catalog (RM-128). The daily probe
+# detects that the catalog moved; this file is what the offline test compares
+# core/queue_modes.QUEUE_ID_TO_MODE_KEY against, so the suite never needs the
+# network. Refresh with --refresh-queue-snapshot after reviewing a drift.
+QUEUE_SNAPSHOT_PATH = ROOT / "data" / "queue_catalog_snapshot.json"
 
 USER_AGENT = "RiotCommander/upstream-drift-check/1.0"
 DEFAULT_TIMEOUT = 20.0
@@ -70,8 +105,16 @@ DEFAULT_TIMEOUT = 20.0
 RETRY_BACKOFFS = (1.0, 2.0)
 TRANSIENT_HTTP_CODES = frozenset({429, 500, 502, 503, 504})
 
-# The 3 signal keys, in display order.
-FIELD_NAMES = ("ddragon_version", "meraki_content_patch", "cdragon_content_version")
+# The signal keys, in display order. Appending is safe: a sentinel written
+# before a key existed simply reads that key as None, which is baseline seeding
+# and never drift.
+FIELD_NAMES = (
+    "ddragon_version",
+    "meraki_content_patch",
+    "cdragon_content_version",
+    "qq_synergy_shape",
+    "cdragon_queue_catalog",
+)
 
 logger = logging.getLogger("upstream_drift_check")
 
@@ -180,19 +223,130 @@ def probe_cdragon_content_version() -> str | None:
         return None
 
 
+def _short_hash(parts) -> str:
+    h = hashlib.sha256("|".join(parts).encode("utf-8"))
+    return h.hexdigest()[:16]
+
+
+def probe_qq_synergy_shape() -> str | None:
+    """RM-131: envelope-shape fingerprint for the 101.qq duo-synergy source.
+
+    Returns ``n<bucket>+<keyhash>`` or None. Values are deliberately excluded -
+    win rates move daily and a value-sensitive signal would report drift every
+    single run, which is the same as reporting nothing.
+    """
+    field = "qq_synergy_shape"
+    try:
+        root = str(ROOT)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        from core import synergy_external_source as ses
+
+        rows = ses.fetch_rows(*QQ_CANARY_LANES, force_refresh=True)
+        if not rows:
+            raise ValueError(
+                f"no rows for lanes {QQ_CANARY_LANES} - endpoint unreachable or "
+                "envelope rejected (RC is silently serving the static seed)")
+        first = rows[0]
+        if not isinstance(first, dict):
+            raise ValueError(f"row 0 is {type(first).__name__}, want dict")
+        bucket = (len(rows) // QQ_ROWCOUNT_BUCKET) * QQ_ROWCOUNT_BUCKET
+        return f"n{bucket}+{_short_hash(sorted(str(k) for k in first))}"
+    except Exception as e:  # noqa: BLE001 - fail-soft per source
+        _set_error(field, e)
+        return None
+
+
+def _queue_catalog_pairs(catalog) -> list[str]:
+    """Sorted ``id:gameSelectModeGroup`` pairs - the queue-catalog signal body."""
+    if not isinstance(catalog, list) or not catalog:
+        raise ValueError("queues.json not a non-empty list")
+    pairs = [
+        f"{e['id']}:{e.get('gameSelectModeGroup') or '-'}"
+        for e in catalog
+        if isinstance(e, dict) and isinstance(e.get("id"), int)
+    ]
+    if not pairs:
+        raise ValueError("queues.json carried zero int-id records")
+    return sorted(pairs)
+
+
+def fetch_queue_catalog() -> list:
+    """GET the CDragon queue catalog. Raises - callers decide fail-soft."""
+    body = _http_get(CDRAGON_QUEUES_URL)
+    return json.loads(body.decode("utf-8"))
+
+
+def probe_cdragon_queue_catalog() -> str | None:
+    """RM-128: fingerprint the queueId -> gameSelectModeGroup catalog.
+
+    Moves when Riot adds, removes or re-groups a queue - the event that can
+    strand ``core/queue_modes.QUEUE_ID_TO_MODE_KEY``, which is hand-maintained
+    from a stashed LCU payload and has no upstream tie today.
+    """
+    field = "cdragon_queue_catalog"
+    try:
+        return _short_hash(_queue_catalog_pairs(fetch_queue_catalog()))
+    except Exception as e:  # noqa: BLE001 - fail-soft per source
+        _set_error(field, e)
+        return None
+
+
+def write_queue_snapshot(catalog=None) -> dict:
+    """Refresh ``data/queue_catalog_snapshot.json`` from the live catalog.
+
+    Records ONLY what the offline grounding test needs: the fingerprint, the
+    group census, and the per-id group/name for the ids RC actually maps. The
+    full 352 KB catalog is not committed - the map is 21 entries and the rest
+    is noise the test would never read.
+    """
+    root = str(ROOT)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from core.queue_modes import QUEUE_ID_TO_MODE_KEY
+
+    cat = fetch_queue_catalog() if catalog is None else catalog
+    pairs = _queue_catalog_pairs(cat)
+    by_id = {e["id"]: e for e in cat if isinstance(e, dict) and isinstance(e.get("id"), int)}
+    groups: dict[str, int] = {}
+    for e in by_id.values():
+        g = e.get("gameSelectModeGroup") or "-"
+        groups[g] = groups.get(g, 0) + 1
+    snap = {
+        "source": CDRAGON_QUEUES_URL,
+        "fetched_at": _now_iso(),
+        "fingerprint": _short_hash(pairs),
+        "entry_count": len(by_id),
+        "group_counts": dict(sorted(groups.items())),
+        "mapped_queues": {
+            str(qid): {
+                "mode_key": mode_key,
+                "group": (by_id.get(qid) or {}).get("gameSelectModeGroup"),
+                "name": (by_id.get(qid) or {}).get("name"),
+                "present": qid in by_id,
+            }
+            for qid, mode_key in sorted(QUEUE_ID_TO_MODE_KEY.items())
+        },
+    }
+    QUEUE_SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = QUEUE_SNAPSHOT_PATH.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(snap, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, QUEUE_SNAPSHOT_PATH)
+    return snap
+
+
 # --------------------------------------------------------------------------- sentinel
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _null_sentinel() -> dict:
-    return {
-        "ddragon_version": None,
-        "meraki_content_patch": None,
-        "cdragon_content_version": None,
-        "updated_at": None,
-        "last_drift_at": None,
-    }
+    # Derived from FIELD_NAMES so adding a signal cannot leave the baseline and
+    # the probe list out of step (they were two hand-kept lists before RM-131).
+    base: dict = {name: None for name in FIELD_NAMES}
+    base["updated_at"] = None
+    base["last_drift_at"] = None
+    return base
 
 
 def load_sentinel() -> dict:
@@ -376,6 +530,11 @@ def main(argv: list[str] | None = None) -> int:
                         "Runs regardless of drift; never affects the exit code.")
     p.add_argument("--staleness-days", type=int, default=7, metavar="N",
                    help="lookback window for --staleness-recent (default 7)")
+    p.add_argument("--refresh-queue-snapshot", action="store_true",
+                   help="RM-128: re-fetch queues.json and rewrite "
+                        "data/queue_catalog_snapshot.json, then exit. Run this "
+                        "only after REVIEWING a cdragon_queue_catalog drift - "
+                        "it is the human step that re-grounds the queue map.")
     p.add_argument("--json", default=None, metavar="PATH",
                    help="also dump the full structured report to PATH")
     p.add_argument("--patch", default=None, metavar="PIN",
@@ -394,17 +553,27 @@ def main(argv: list[str] | None = None) -> int:
         for k in FIELD_NAMES:
             _LAST_ERRORS[k] = None
 
+        if args.refresh_queue_snapshot:
+            snap = write_queue_snapshot()
+            print(f"queue snapshot -> {QUEUE_SNAPSHOT_PATH} "
+                  f"({snap['entry_count']} queues, fp {snap['fingerprint']})")
+            return 0
+
         if args.patch:
             ddragon = args.patch
         else:
             ddragon = probe_ddragon_version()
         meraki = probe_meraki_content_patch()
         cdragon = probe_cdragon_content_version()
+        qq_shape = probe_qq_synergy_shape()
+        queue_catalog = probe_cdragon_queue_catalog()
 
         current = {
             "ddragon_version": ddragon,
             "meraki_content_patch": meraki,
             "cdragon_content_version": cdragon,
+            "qq_synergy_shape": qq_shape,
+            "cdragon_queue_catalog": queue_catalog,
         }
         previous = load_sentinel()
         errors = {k: _LAST_ERRORS.get(k) for k in FIELD_NAMES}
