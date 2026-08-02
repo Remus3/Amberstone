@@ -64,6 +64,24 @@ EV_PUSH = re.compile(r"\bgit\b[^|;&]*\bpush\b", re.I)
 # the match, and a bare `run` with no gh binary anywhere still proves nothing.
 EV_CI = re.compile(r"\bgh(?:\.exe)?\b[^|&\n]*?\b(?:run|pr|api|workflow)\b"
                    r"|actions/runs", re.I)
+# FOURTH transport, same family, measured 2026-08-01: the span above is
+# single-line and &-terminated by construction, so it cannot see a probe whose
+# binary and subcommand are bound through a VARIABLE and then used on another
+# line or after an `&&`. Both shapes are RC's own house style and both were used
+# repeatedly in one wrap while the gate reported "no CI probe":
+#   GH="C:/.../gh.exe" && "$GH" run list        (crosses the &)
+#   GH=r'C:/.../gh.exe'\n ... subprocess.run([GH,'run','list'])   (crosses the \n)
+# Widening EV_CI's span to cover them would credit ANY later `run` after ANY gh
+# mention, which is exactly the looseness that produced the first armed session's
+# 9 false positives. So this binds the SAME NAME instead: capture the identifier
+# that was assigned a gh binary path, then require THAT identifier immediately
+# ahead of a gh subcommand. An assignment alone is not evidence, and a `run` with
+# no gh-bound variable in front of it is not evidence.
+EV_CI_VAR = re.compile(
+    r"(?P<name>\b\w+)\s*=\s*r?[\"'][^\"'\n]*\bgh(?:\.exe)?[\"']"
+    r"[\s\S]*?"
+    r"[\$\{\"'\[,\s](?P=name)[\}\"']?\s*[,\s]\s*[\"']?(?:run|pr|api|workflow)\b",
+    re.I)
 EV_BYPASS = re.compile(r"--no-verify\b|--no-gpg-sign\b|core\.hooksPath\s*=", re.I)
 EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
 EV_VACUOUS = re.compile(r"no tests ran|collected 0 items", re.I)
@@ -207,7 +225,14 @@ def audit(ev):
     vacuous = ran_pytest and all(EV_VACUOUS.search(r["output"]) for r in runs)
     did_commit = any(EV_COMMIT.search(c) for c in bash)
     did_push = any(EV_PUSH.search(c) for c in bash)
-    probed_ci = any(EV_CI.search(c) for c in bash)
+    # EV_CI runs on the noise-stripped command; EV_CI_VAR must NOT, because
+    # strip_command_noise deletes quoted literals and a `python -c "<script>"`
+    # probe is ENTIRELY inside one quoted literal - stripped, it reduces to
+    # `python -c` and no pattern could ever see it. Heredocs are still removed
+    # for EV_CI_VAR, so a heredoc that DOCUMENTS a gh invocation stays data.
+    raw_bash = [_HEREDOC.sub(" ", c) for c in ev["bash"]]
+    probed_ci = (any(EV_CI.search(c) for c in bash)
+                 or any(EV_CI_VAR.search(c) for c in raw_bash))
 
     # 5 - evidence-only check. Requires an actual git invocation: a bypass flag
     # NAMED in prose or a heredoc body is documentation, not a bypass.
