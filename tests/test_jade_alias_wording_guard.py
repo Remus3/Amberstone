@@ -62,14 +62,28 @@ _JADE = re.compile(r"Jade_")
 # A mention is CORRECTING the refuted read rather than repeating it when the
 # text immediately around it carries one of these. Checked over a joined
 # window so a "They are NOT / aliases" line wrap still reads as a refutation.
+# "variant" is deliberately NOT a marker. It is the CORRECT replacement word
+# for these rows, so it is the term most likely to co-occur with a re-introduced
+# alias claim - accepting it as a refutation is exactly the hole a verifier
+# measured on 2026-08-02 ("The Jade_ variant rows are simply aliases of the base
+# champion" passed). A real refutation has to say so, not merely say "variant".
 _REFUTATION = re.compile(
-    r"(refut|wrong|\bnot\b\s+(an\s+)?alias|never\s+alias|variant)", re.I)
+    r"(refut|wrong|\bnot\b\s+(an\s+)?alias|never\s+alias)", re.I)
 
 # How far an alias word may sit from a Jade_ mention and still be about it.
 _WINDOW = 3
-# How much context counts when looking for a refutation marker.
-_MARKER_BEFORE = 2
-_MARKER_AFTER = 1
+# How much context counts when looking for a refutation marker. Both are 0 on
+# purpose: the refutation must sit on the SAME line as the alias word, so each
+# occurrence carries its own. Allowing neighbouring lines let one legitimate
+# correction excuse every re-introduction in the same paragraph - measured
+# 2026-08-02, an injected "the Jade_ variant rows are simply aliases" passed
+# because a corrected sentence two lines above said "NOT aliases".
+_MARKER_BEFORE = 1
+_MARKER_AFTER = 0
+# ...but the previous line only counts when the alias word sits at the START of
+# its own line, i.e. the sentence genuinely wrapped ("They are NOT / aliases").
+# An alias word in mid-line is a fresh claim and must carry its own refutation.
+_WRAP_COL = 30
 # The marker must sit within this many CHARACTERS of the alias word, not just
 # somewhere on the same line. BACKLOG.md rows run to 1400+ characters and an
 # unrelated "Refuting cite:" elsewhere on the row would otherwise excuse the
@@ -120,13 +134,15 @@ def _alias_claims(lines):
             continue
         if not any(abs(i - j) <= _WINDOW for j in jade_lines):
             continue
-        head = " ".join(lines[max(0, i - _MARKER_BEFORE):i])
-        window = (head + " " + line) if head else line
+        prev = " ".join(lines[max(0, i - _MARKER_BEFORE):i])
         tail = " ".join(lines[i + 1:i + 1 + _MARKER_AFTER])
-        if tail:
-            window = window + " " + tail
-        offset = len(head) + 1 if head else 0
         for hit in _ALIAS.finditer(line):
+            wrapped = bool(prev) and hit.start() <= _WRAP_COL
+            head = prev if wrapped else ""
+            window = (head + " " + line) if head else line
+            if tail:
+                window = window + " " + tail
+            offset = len(head) + 1 if head else 0
             lo = max(0, offset + hit.start() - _MARKER_CHARS)
             hi = offset + hit.end() + _MARKER_CHARS
             if not _REFUTATION.search(window[lo:hi]):
@@ -179,8 +195,8 @@ class JadeAliasWordingGuard(unittest.TestCase):
             # assertTrue, not assertIn: assertIn would dump the whole 2400-line
             # doc into the failure message.
             self.assertTrue(
-                f"**L{n}**" in doc,
-                f"RM-141 live-gated row L{n} is not filed in "
+                f"**G8-{n:02d}**" in doc,
+                f"RM-141 live-gated row G8-{n:02d} is not filed in "
                 "docs/LIVE_GAME_GATED_SYNC.md")
 
     def test_slice_files_are_seven_bit_ascii(self):
