@@ -206,6 +206,13 @@ STRANDED_TODAY: dict[str, str] = {
     # measured per-seam route table.)
     # Movement-speed utility term on the hybrid axis - never route-exposed.
     "assume_ms_utility": "hybrid MS utility term - never route-exposed",
+    # (The RM-118 mana lane - apply_mana_damage_coupling - was wired to
+    # /rank-tank and to ``core.daemon_slayer_client.rank_tank_for`` in its own
+    # follow-up slice, exactly as its two shipped siblings
+    # (apply_resist_damage_coupling / apply_health_damage_coupling) were, and is
+    # therefore gone from this ledger. See
+    # test_mana_coupling_transport_rm118.py for the measured route table and the
+    # end-to-end reachability proof.)
 }
 
 

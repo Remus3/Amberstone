@@ -1331,6 +1331,37 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.270.0 (2026-08-02) - RM-118: the MANA -> DAMAGE coupling lever on the tank
+route, the third instance of a lever already shipped on the resist axis (RM-87)
+and the health axis (RM-91 T1). `ehp.py` imports no abilities module and reads
+zero `damage_blocks`, so a champion whose own kit spends MANA as damage gets
+that second, genuinely-real payment credited nowhere, and `/rank-tank` prices a
+mana item on the health axis alone. A full census of the caster-stat damage
+axes at 16.15.1 returns 8 blocks / 3 champions for mana
+(`caster_max_mp_pct` / `caster_bonus_mp_pct`), and exactly ONE of the three is a
+defect: Blitzcrank R "Static Field" spends 2 percent of maximum mana as magic
+damage, he is Tank-primary so he routes here, and he genuinely buys mana
+(Winter's Approach / Fimbulwinter). Kassadin and Ryze are documented rejects,
+NOT seeded - Kassadin is Assassin-primary (`ds.burst`) and Ryze is Mage-primary
+(`ds.ability`), and both scorers consume `AbilityContext`, which already carries
+`caster_max_mp` / `caster_bonus_mp`, so seeding either would double-count.
+
+New `_mana_damage_coupling.py` mirrors its two siblings: a percent-free baseline
+pool, a cadence-amortized `conditional_probability`, and a sort-ONLY credit
+folded into `_base_key` that never mutates a row value. The three registries are
+disjoint (zero champion overlap) and ride separate flags on purpose, so arming
+one can never silently arm another. DEFAULT-OFF behind
+`apply_mana_damage_coupling` + `mana_coupling_strength`, and byte-identical when
+off - proven against the genuinely pre-change tree, not against the new OFF
+branch. `EhpResult.max_mana` and `EhpRankedItem.delta_max_mp` are appended at
+the END of their dataclasses with defaults, per the no-mid-class-insert rule.
+
+The lever is also route-exposed rather than stranded: `/rank-tank` parses both
+keys and `core/daemon_slayer_client.rank_tank_for` forwards them, giving the
+mana pair exactly the same route set as the health pair. Wiring the flag without
+the transport would have shipped a seam that is settable, guard-green and
+arithmetically inert.
+
 1.269.0 (2026-08-02) - RM-142: the bruiser/onhit scorer read the WRONG damage
 axis, plus an explicit AP-scaling guard on the AD-axis ability term.
 `_damage_axis` classified a champion from the DDragon `info.attack` /

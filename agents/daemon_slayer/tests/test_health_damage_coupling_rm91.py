@@ -189,6 +189,11 @@ def _digest(result, drop_notes: bool = False) -> str:
     payload = result.to_dict()
     for row in payload["ranked"]:
         row.pop("delta_max_hp", None)
+        # RM-118 mana lane (2026-08-02): the same exclusion, same reason - a
+        # to_dict key introduced AFTER this digest was captured cannot by
+        # construction appear in the pre-change capture. Its OFF value is pinned
+        # at 0.0 in the mana lane's own test module, so nothing is hidden.
+        row.pop("delta_max_mp", None)
     if drop_notes:
         # For an ARMED-but-inert run the ONLY legitimate payload difference is
         # the operator-facing "ON but inert" note, which is positive evidence
@@ -334,8 +339,16 @@ class SignatureConventionTests(unittest.TestCase):
     def test_delta_max_hp_is_appended_at_the_very_end_with_a_default(self) -> None:
         fields = list(dataclasses.fields(ehp_mod.EhpRankedItem))
         names = [f.name for f in fields]
-        self.assertEqual(names[-1], "delta_max_hp")
+        # The RM-118 mana lane (2026-08-02) appended ``delta_max_mp`` after this
+        # field, so ``delta_max_hp`` is no longer the literal tail. What this
+        # guard protects is that it was APPENDED with a default and never
+        # re-inserted mid-class (the item-216 rule), which the index-from-the-end
+        # assertion plus the defaults sweep below both still prove. A new row
+        # field appends AFTER these and re-offsets this guard.
+        self.assertEqual(names[-1], "delta_max_mp")
+        self.assertEqual(names[-2], "delta_max_hp")
         self.assertEqual(fields[-1].default, 0.0)
+        self.assertEqual(fields[-2].default, 0.0)
         # Everything from the first defaulted field onward must keep a default -
         # a required field appearing after one is what breaks every existing
         # positional construction (the item-216 rule).
