@@ -93,6 +93,14 @@ CONTROLLER_LOG = CONTROL_DIR / "controller.log"
 # Tail length for the controller.log preview (newest LOG_TAIL_LINES lines).
 LOG_TAIL_LINES = 12
 
+# Where lane_launcher._log_path writes one log per lane run.
+LANE_LOG_DIR = ROOT / "ops" / "loop" / "reports"
+LANE_LOG_TAIL_LINES = 12
+# lane_<lane>_<run_id>.log - the lane id may itself contain a hyphen
+# ("true-audit"), so the run id is taken as the LAST underscore-separated part
+# rather than the second.
+_LANE_LOG_RE = re.compile(r"^lane_(?P<rest>.+)_(?P<run>[^_]+)\.log$")
+
 # "... cycle 10: claude.done sha=38158e1d tests=7024 regress=False"
 _DONE_LOG_RE = re.compile(
     r"cycle\s+(\d+):\s+claude\.done\s+sha=(\w+)\s+tests=(\S+)\s+regress=(\w+)"
@@ -104,6 +112,117 @@ def _read_text(path: Path) -> str | None:
     try:
         return path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _decode_lane_log(raw: bytes) -> str:
+    """Decode a lane log, which is legitimately TWO encodings in one file.
+
+    MEASURED on the real file 2026-08-02: `run_lane.ps1` writes its header with
+    `Out-File -Encoding utf8` (UTF-8, with a BOM) and the worker's own output
+    then arrives through `*>>`, whose default on Windows PowerShell 5.1 is
+    UTF-16LE. So a 4298-byte log was UTF-8 for 119 bytes and UTF-16LE for the
+    remaining 4179 - 2066 of them NUL. Decoding the whole thing as UTF-8 yields
+    "C\\x00y\\x00c\\x00l\\x00e" and puts that in front of the operator.
+
+    The runner has since been fixed to write UTF-8 throughout, but every log
+    from before that change still exists and is exactly the one someone reads
+    when asking what the last run did, so this stays.
+
+    STRATEGY: drop NUL bytes, then decode the rest as UTF-8 with replacement.
+
+    This looks blunt and is deliberately chosen over splitting the file at its
+    encoding boundary. MEASURED against the real log: the boundary approach
+    handled the header and the body correctly and then mangled the LAST line
+    into CJK (the ASCII byte pairs re-read as CJK code points), because the
+    file switches encoding THREE times,
+    not once - `Out-File -Encoding utf8` header, `*>>` UTF-16LE body, then an
+    `Out-File -Append -Encoding utf8` footer carrying the exit code. Any
+    fixed number of segments is a guess about a file whose shape is decided by
+    which cmdlet wrote last.
+
+    Stripping NULs has no such assumption. UTF-16LE ASCII is exactly
+    "ASCII byte, 0x00" pairs, so removing the NULs yields the original text for
+    any number of switches, in any order; UTF-8 regions contain no NULs and are
+    passed through untouched.
+
+    The tradeoff, stated rather than hidden: a genuinely non-ASCII character
+    inside a UTF-16 region loses its high byte and lands as a replacement
+    character. That is acceptable here and nowhere near the common case - the
+    repo is 7-bit ASCII by hard rule and lane logs are CLI output - and a
+    mangled box-drawing glyph is a far smaller cost than a mangled final line,
+    which is the line carrying the exit code.
+    """
+    if not raw:
+        return ""
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    if raw.count(0):
+        raw = raw.replace(b"\x00", b"")
+    return raw.decode("utf-8", "replace")
+
+
+def _lane_log() -> dict | None:
+    """The tail of the log the operator is most likely asking about.
+
+    Answers the "MC shows nothing new" report: the only log this route exposed
+    was the loop CONTROLLER's, which has been stopped since 2026-07-28, so a
+    running lane had no surface at all. A lane's own log is the one that moves.
+
+    Selection is HELD-FIRST, newest-by-mtime second. A held lane is what the
+    operator is watching; newest is only a fallback for when nothing is running.
+
+    Returns None - never raises - when there is no reports dir, no lane log in
+    it, or anything else goes wrong. This is inside a 5s poll.
+    """
+    try:
+        d = LANE_LOG_DIR
+        if not d.is_dir():
+            return None
+        cands = []
+        for p in d.iterdir():
+            m = _LANE_LOG_RE.match(p.name)
+            if not m or not p.is_file():
+                continue
+            cands.append((p, m.group("rest"), m.group("run")))
+        if not cands:
+            return None
+
+        held_lane = held_run = None
+        lock = _lane_lock()
+        if isinstance(lock, dict) and lock.get("state") == "RUNNING":
+            held_lane, held_run = lock.get("lane"), lock.get("run_id")
+
+        def rank(item):
+            p, lane, run = item
+            is_held = (held_lane is not None
+                       and lane == held_lane and run == held_run)
+            try:
+                mtime = p.stat().st_mtime
+            except OSError:
+                mtime = 0.0
+            return (1 if is_held else 0, mtime)
+
+        path, lane, run = max(cands, key=rank)
+        try:
+            raw = path.read_bytes()
+            mtime = path.stat().st_mtime
+        except OSError:
+            return None
+        lines = _decode_lane_log(raw).splitlines()
+        tail = lines[-LANE_LOG_TAIL_LINES:]
+        return {
+            "name": path.name,
+            "lane": lane,
+            "run_id": run,
+            "lines": tail,
+            "truncated": len(lines) > len(tail),
+            "age_s": max(0.0, time.time() - mtime),
+            "held": bool(held_lane is not None and lane == held_lane
+                         and run == held_run),
+        }
+    except Exception as exc:  # noqa: BLE001 - a log preview must never 500 the poll
+        log.warning("loop-status: lane_log failed: %s", exc)
         return None
 
 
@@ -372,6 +491,10 @@ def build_loop_status() -> dict:
         "steer": _steer_summary(),
         "controller_lock": _controller_lock(),
         "log_tail": log_tail,
+        # The lane's OWN log. log_tail above is the loop controller's, and the
+        # controller has been stopped since 2026-07-28 - so before this field
+        # existed a running lane had no surface in Mission Control at all.
+        "lane_log": _lane_log(),
         "updated_at": _now_iso(),
     }
 

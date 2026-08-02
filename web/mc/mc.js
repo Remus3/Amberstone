@@ -595,7 +595,47 @@ function renderLoopStatus(ctlMsg, preserve) {
         host.append(row);
       }
 
+      // The LANE's own log (2026-08-02). Reported live: "the lane is still
+      // held but the output window is not showing anything new" - the worker
+      // was fine, but the only log this card rendered was the loop
+      // CONTROLLER's (below), and that controller has been stopped since
+      // 2026-07-28, so a running lane had no surface here at all.
+      //
+      // Rendered ABOVE the controller tail on purpose: when something is
+      // running, it is the only one of the two that is moving.
+      //
+      // The block is emitted even when there is no lane log, with its own
+      // placeholder line, because a section that vanishes reflows everything
+      // under it on the 5s poll (feedback_no_reflow_on_data_absence) - and
+      // this one appears and disappears every time a lane starts and ends.
+      const ll = d.lane_log || null;
+      const llHead = mk("div", "loop-sub-head", "LANE LOG"
+        + (ll ? " - " + ll.name + (ll.held ? " - LIVE" : "") : ""));
+      host.append(llHead);
+      if (ll && Array.isArray(ll.lines) && ll.lines.length) {
+        if (ll.truncated) {
+          host.append(mk("div", "loop-line", "newest "
+            + ll.lines.length + " lines"));
+        }
+        host.append(mk("pre", "loop-log", ll.lines.join("\n")));
+        // A held lane whose log has not moved is the NORMAL case, not a
+        // stall: `claude -p` buffers its entire output and writes it at exit.
+        // Measured - a 17-minute run sat at 118 bytes the whole way, then
+        // wrote 4298 at the end. Saying so here is the whole point of the
+        // panel, because the silence is what looked like a hang.
+        if (ll.held) {
+          host.append(mk("div", "loop-line", "a live worker writes its output "
+            + "when it EXITS - silence here is expected, not a stall"));
+        }
+      } else {
+        host.append(mk("div", "loop-line", ll
+          ? "lane log is empty" : "no lane has run yet"));
+      }
+
       if (Array.isArray(d.log_tail) && d.log_tail.length) {
+        // Labelled, because it is NOT the lane's log and reading it as one is
+        // exactly the confusion this block above was added to end.
+        host.append(mk("div", "loop-sub-head", "LOOP CONTROLLER LOG"));
         host.append(mk("pre", "loop-log", d.log_tail.join("\n")));
       }
 
