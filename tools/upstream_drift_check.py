@@ -299,12 +299,14 @@ def probe_cdragon_queue_catalog() -> str | None:
 # own menu ordering: `gameSelectPriority > 0` is what the League client uses to
 # place a queue in the play menu, so a positive priority means a human can
 # actually queue into it today. Narrowed further to the two groups whose every
-# member is genuinely that mode (kSummonersRift, kARAM) and to non-custom
-# categories, the "unmapped" list is a real coverage gap rather than a
-# forever-red rule. Do NOT widen this to kAlternativeLeagueGameModes: RM-128
-# refuted that, and eight already-mapped ids live there under three different
-# mode_keys.
-COVERAGE_GROUPS = ("kARAM", "kSummonersRift")
+# member is genuinely that mode (kSummonersRift, kARAM, and kJade since
+# RM-141) and to non-custom categories, the "unmapped" list is a real coverage
+# gap rather than a forever-red rule. Do NOT widen this to
+# kAlternativeLeagueGameModes: RM-128 refuted that, and eight already-mapped
+# ids live there under three different mode_keys. kJade is admissible for the
+# opposite reason - every one of its members is the throwback Rift mode, and
+# its kCustom rows self-exclude through COVERAGE_EXCLUDED_CATEGORIES below.
+COVERAGE_GROUPS = ("kARAM", "kJade", "kSummonersRift")
 COVERAGE_EXCLUDED_CATEGORIES = ("kCustom",)
 
 
