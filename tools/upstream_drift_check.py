@@ -292,12 +292,49 @@ def probe_cdragon_queue_catalog() -> str | None:
         return None
 
 
+# RM-140 coverage census. RM-128 measured that "every id in these groups must
+# be mapped" is unimplementable - 16 kARAM and 256 kAlternativeLeagueGameModes
+# records against 21 mapped ids, the remainder being retired and cosmetic
+# content. The discriminator that DOES make it implementable is the client's
+# own menu ordering: `gameSelectPriority > 0` is what the League client uses to
+# place a queue in the play menu, so a positive priority means a human can
+# actually queue into it today. Narrowed further to the two groups whose every
+# member is genuinely that mode (kSummonersRift, kARAM) and to non-custom
+# categories, the "unmapped" list is a real coverage gap rather than a
+# forever-red rule. Do NOT widen this to kAlternativeLeagueGameModes: RM-128
+# refuted that, and eight already-mapped ids live there under three different
+# mode_keys.
+COVERAGE_GROUPS = ("kARAM", "kSummonersRift")
+COVERAGE_EXCLUDED_CATEGORIES = ("kCustom",)
+
+
+def _coverage_candidates(by_id: dict, mapped: dict) -> dict:
+    """Client-visible queues in the groups RC claims to cover, mapped or not."""
+    out = {}
+    for qid, e in sorted(by_id.items()):
+        if (e.get("gameSelectPriority") or 0) <= 0:
+            continue
+        if e.get("gameSelectModeGroup") not in COVERAGE_GROUPS:
+            continue
+        if e.get("gameSelectCategory") in COVERAGE_EXCLUDED_CATEGORIES:
+            continue
+        out[str(qid)] = {
+            "group": e.get("gameSelectModeGroup"),
+            "category": e.get("gameSelectCategory"),
+            "priority": e.get("gameSelectPriority"),
+            "name": e.get("name"),
+            "mapped_to": mapped.get(qid),
+        }
+    return out
+
+
 def write_queue_snapshot(catalog=None) -> dict:
     """Refresh ``data/queue_catalog_snapshot.json`` from the live catalog.
 
     Records ONLY what the offline grounding test needs: the fingerprint, the
-    group census, and the per-id group/name for the ids RC actually maps. The
-    full 352 KB catalog is not committed - the map is 21 entries and the rest
+    group census, the per-id group/name for the ids RC actually maps, and the
+    RM-140 coverage census (client-visible ids in the groups RC claims to
+    cover, mapped or not). The full 352 KB catalog is not committed - the rest
     is noise the test would never read.
     """
     root = str(ROOT)
@@ -327,6 +364,7 @@ def write_queue_snapshot(catalog=None) -> dict:
             }
             for qid, mode_key in sorted(QUEUE_ID_TO_MODE_KEY.items())
         },
+        "coverage_candidates": _coverage_candidates(by_id, QUEUE_ID_TO_MODE_KEY),
     }
     QUEUE_SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = QUEUE_SNAPSHOT_PATH.with_suffix(".json.tmp")

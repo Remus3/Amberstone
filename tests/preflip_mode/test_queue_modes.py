@@ -37,10 +37,19 @@ class TestModeKeyFromQueueId(unittest.TestCase):
             self.assertEqual(mode_key_from_queue_id(qid), "sr",
                              f"queue_id={qid} should map to sr")
 
+    def test_client_visible_tft_queues_return_tft(self):
+        # RM-140, operator-directed 2026-08-02: the three TFT queues the
+        # client actually shows now pre-flip the dashboard to the TFT panel.
+        # Before this they fell through to "client".
+        for qid in (1090, 1100, 1130):
+            self.assertEqual(mode_key_from_queue_id(qid), "tft",
+                             f"queue_id={qid} should map to tft")
+
     def test_unknown_queue_returns_none(self):
-        # TFT queue id (intentionally unmapped today; falls through to
-        # client until TFT pre-flip lands).
-        self.assertIsNone(mode_key_from_queue_id(1100))
+        # kJade "Classic" - deliberately unmapped pending RM-141.
+        self.assertIsNone(mode_key_from_queue_id(4300))
+        # Brawl - retired from champ-select in s214.
+        self.assertIsNone(mode_key_from_queue_id(2300))
         # Random unknown id.
         self.assertIsNone(mode_key_from_queue_id(99999))
 

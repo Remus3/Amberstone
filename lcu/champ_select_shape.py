@@ -45,7 +45,10 @@ CHAMP_SELECT_PHASES = ("ChampSelect", "GameStart", "InProgress")
 # here is why is_aram was False for Mayhem -> the dashboard's
 # _csvDetectMode fell through to "sr" and the bench / quick-swap UI
 # never rendered (KNOWN BUG 2026-05-17).
-ARAM_QUEUE_IDS = frozenset({450, 720, 920, 2400})
+# RM-140 (2026-08-02) added the rest of the client-visible Mayhem family
+# (2401/2403/2405 variants, 2410 Tournament, 2450 Classic-ish) for exactly
+# the reason above: an unmapped Mayhem id reproduces the 2026-05-17 bug.
+ARAM_QUEUE_IDS = frozenset({450, 720, 920, 2400, 2401, 2403, 2405, 2410, 2450})
 
 # 1750 = live Arena 3x6 (CHERRY); 1700/1710 retained as legacy aliases for
 # replay/history match data.
