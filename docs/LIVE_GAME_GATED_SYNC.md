@@ -141,6 +141,10 @@ independent gates preventing that, so a visible Home surface proves the stamp wa
 ---
 
 **OPEN: 112 rows** (was 118; six CLOSED 2026-07-20 in the drain block above; was 124 before 2026-07-18).
+G6-04 was filed AND closed after that count without ever entering it - the commit that filed it
+(`47ae39eb`, 2026-08-02) did not touch this line, so 112 is still correct and G6-04 must not be
+subtracted from it. Check this line's history before adjusting the tally for any row filed after
+2026-07-20.
 Per gate: G1 6 / G2 41 / G3 12 / G4 28 / G5 10 / G6 3 / G7 18. Of these, 9 carry a PARKED/HOLD
 tag (3 inline at G5-10 / G7-16 / G7-19, 6 in the PARKED section) and 1 (G3-15) is a cross-reference
 that adds no new work.
@@ -1093,8 +1097,29 @@ Rides on top of whatever gate is already running. No separate game needed.
   G6-01 (rc-shell MAIN up) FIRST. SOURCE: LEDGER 598; memory `reference_overlay_ingame_hotkey_win32`.
 - **G6-03** (was E4) OBS DXGI match-end capture watch: lock one resolution + League Borderless while
   recording; observe a real match end. SOURCE: ROADMAP.md:78(c).
-- **G6-04** (RM-145, filed 2026-08-02 with the FIX already shipped) overlay follows a display-mode
-  change in BOTH directions. The code half is done and tested headless (`resolveOverlayDisplayChange`
+- **G6-04** (RM-145) **CLOSED 2026-08-02 - PASS, BOTH DIRECTIONS.** Live ARAM on Legion, rc-shell pid
+  4140 (relaunched 11:26 on the fixed code, so G6-01 held). Overlay window confirmed present and
+  visible BEFORE the flips by Win32 window enumeration (`Chrome_WidgetWin_1 vis=True 2560x1440 @ 0,0`;
+  the 920x1281 companion was hidden), so the lazy-window gate was genuinely satisfied rather than
+  assumed. Desktop metrics were read at every step, so the trigger provably reached Windows:
+  ```
+  14:00:11  ?overlay=1               desktop 2560x1440 -> 1920x1080   scale 1.33 -> 1.00
+  14:00:18  ?overlay=1               settle 1.00
+  14:00:50  ?overlay=1&ovscale=1.33  desktop 1920x1080 -> 2560x1440   RETURN LEG
+  14:01:04  ?overlay=1&ovscale=1.33  settle 1.33
+  ```
+  The overlay WINDOW tracked with it: 2560x1440 -> 1920x1080 -> 2560x1440, `vis=True` throughout, so
+  `reposition` and `reload` both fired and the HUD never wedged at a stale scale (the RM-145 symptom).
+  Two method notes for any re-run: (1) **Borderless is not a trigger.** A first attempt changing the
+  in-game resolution while staying Borderless left the desktop at 2560x1440, fired no
+  `display-metrics-changed`, and produced ZERO reload lines - inconclusive, not a failure. The
+  transition must change the DESKTOP resolution, i.e. exclusive Fullscreen. The return leg here came
+  from EXITING fullscreen to Borderless 1080, which restores the desktop to native 1440 - same event.
+  (2) A mode change emits a brief bounce (an intermediate reload at the old scale ~1s in); the handler
+  followed it in both directions instead of latching, which is extra evidence, not noise. Read the
+  SETTLED line, not the first one.
+- **G6-04 (original row text, kept for the criterion correction it carries)** overlay follows a
+  display-mode change in BOTH directions. The code half is done and tested headless (`resolveOverlayDisplayChange`
   + the `display-metrics-changed` / `display-added` / `display-removed` wiring, 13 tests incl. a
   mutation-checked wiring assertion). What disk cannot witness: the re-apply is gated on an overlay
   WINDOW existing, and that window is created lazily on first in-game show - so with no game up
