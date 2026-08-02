@@ -5,12 +5,32 @@
  * S5/S7/S9 sub-blocks that build on it). This file does not @import the
  * dashboard's token/theme stack - that would reattach the very game-
  * dashboard surface area S10 exists to detach from. Instead, every custom
- * property the copied rules reference is inlined here as a flat value,
- * taken from the dashboard's own default (unattributed :root, "hextech")
- * palette in web/css/panels/base.css and the additive scale in
- * web/css/tokens.css. Verified with:
+ * property the copied rules reference is inlined here as a flat value.
+ * Verified with:
  *   grep -o "var(--[a-z0-9-]*)" web/mc/mc.css | sort -u
- * every name below is one that grep reported as referenced by the block. */
+ * every name below is one that grep reported as referenced by the block.
+ *
+ * THEME: ARCANE (operator, 2026-08-02). Until now the inlined values were
+ * the dashboard's DEFAULT (unattributed :root, "hextech") palette, which is
+ * not the palette the dashboard actually runs - arcane is, and has been for
+ * long enough that two comments further down in this very file already say
+ * "arcane, the live theme" while the page above them rendered hextech blue.
+ * The values below are the flat sRGB half of :root[data-theme="arcane"] in
+ * web/css/themes.css:401-473 (that block authors every colour twice - a hex
+ * line then an oklch() override - and the hex line is the one taken here, so
+ * these are its own sRGB-clamped equivalents, not a re-derivation).
+ *
+ * Inlined, still NOT imported. Copying the arcane VALUES keeps this page one
+ * self-contained stylesheet; importing themes.css would drag base.css, the
+ * data-theme attribute plumbing and the game dashboard's token stack back in,
+ * which is the coupling S10 exists to prevent.
+ *
+ * STATUS COLOURS ARE UNCHANGED ON PURPOSE. themes.css:395-396 states it
+ * outright: arcane does not override good/warn/bad, because its purple ->
+ * magenta -> cyan run does not collide with the semantic green/amber/red. The
+ * three values below are therefore still the base semantics, and every
+ * contrast note further down that reasons about --bad or --warn on
+ * --surface-alt was re-measured against the ARCANE surface (see each). */
 :root {
   /* web/css/tokens.css :root - 8px spacing grid + font scale + hit target */
   --space-1: 4px;
@@ -25,14 +45,34 @@
   --fs-xl: 37px;
   --hit-min: 42px;
 
-  /* web/css/panels/base.css :root - default (hextech) palette */
-  --canvas: #0A0E14;
-  --surface-alt: #1C2A3D;
-  --text: #ECF2FF;
-  --text-dim: #8FA3BF;
-  --text-faint: #74879F;
-  --dim: #8FA3BF;
-  --accent: #C8AA6E;
+  /* Surfaces - arcane's twilight violet stack (themes.css:403-414). */
+  --canvas: #17101f;
+  --surface-alt: #3b2853;
+
+  /* Ink - bright cool near-white down to the AA-checked faint
+     (themes.css:418-427). --text-faint measures 5.98:1 on --canvas, which is
+     where .loop-sub-head actually sits. */
+  --text: #F3ECFF;
+  --text-dim: #B7A6D0;
+  --text-faint: #9C8ABA;
+  --dim: #B7A6D0;
+
+  /* Structural metal. Arcane replaces gold with LAVENDER-SILVER as the frame
+     and hero metal (themes.css:431-438) - 7.37:1 on --canvas, 5.16:1 on
+     --surface-alt, so it stays legible as the .loop-shortcut ink it is. */
+  --accent: #ad9dbd;
+
+  /* Arcane's scarce cyan POP, budgeted at <=3% of the surface
+     (themes.css:450-453). Here it buys exactly two things: the keyboard focus
+     ring and the END of the header rule. Nothing else may spend it.
+     There is deliberately no --accent-2 token: arcane's purple appears once,
+     as the START of the gradient below, and a token with a single literal
+     consumer is the dead-weight-that-reads-like-a-choice trap this file
+     already calls out for var(--font-mono). */
+  --pop: #35d9d2;
+  --hextech-fill: linear-gradient(90deg, #9646d9, #e5449a, #35d9d2);
+
+  /* Status stays base-semantic - arcane overrides none of these. */
   --good: #37D08A;
   --bad: #E84057;
   --warn: #E8A33D;
@@ -52,8 +92,18 @@ body {
   color: var(--text);
   font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
+/* The one place this page carries arcane's multi-hue signature: the
+   purple -> magenta -> cyan sweep, as a 3px rule under the title. On the
+   dashboard that gradient is the .hx-card top strip; there is no hx-card
+   here, and inventing one would mean copying the whole hextech.css card
+   chrome for a page that is a single card. A hero rule states the theme in
+   one declaration and spends the scarce cyan on its END, which is exactly
+   where themes.css:455-458 puts it. */
 .mc-head {
   margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 3px solid transparent;
+  border-image: var(--hextech-fill) 1;
 }
 .mc-head h1 {
   margin: 0;
@@ -204,9 +254,16 @@ body {
    exactly when the operator points at it. */
 .loop-shortcut:hover { border-color: var(--accent); }
 /* The buttons had no focus affordance at all, so a keyboard operator could not
-   see what they were about to fire. */
+   see what they were about to fire.
+   CYAN, not --accent (2026-08-02, arcane). Two reasons, and the second is the
+   load-bearing one. (1) It is what the theme does: --focus-ring is arcane's
+   named home for the scarce cyan pop (themes.css:450-453). (2) --accent is the
+   ink AND the border of every .loop-shortcut, so an accent-coloured ring on an
+   accent-coloured button was a 2px band of the same hue 2px outside it - the
+   affordance was technically present and practically invisible. The pop hue
+   appears nowhere else on this page as a stroke, so focus is unambiguous. */
 .loop-btn:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 2px;
+  outline: 2px solid var(--pop); outline-offset: 2px;
 }
 /* Armed is a deliberately loud state - it is the 3s window in which a second
    click fires for real.
@@ -214,9 +271,9 @@ body {
    live dashboard: the first attempt used var(--bg), which NO stylesheet in
    web/css defines - so it was invalid at computed-value time, fell back to
    inherited near-white and rendered 1.9:1 against the amber, on the one state
-   where misreading the button costs the most. --canvas is defined in base.css
-   and overridden by every theme, and it measures 8.15:1 to 9.45:1 against both
-   --warn values across all six themes. */
+   where misreading the button costs the most. --canvas is defined at the top of
+   this file and measures 8.61:1 against --warn on the arcane canvas #17101f
+   (it was 9.45:1 on the hextech one, so the theme swap costs nothing here). */
 .loop-btn-armed {
   color: var(--canvas); background: var(--warn); border-color: var(--warn);
 }
@@ -238,8 +295,9 @@ body {
 /* Not yet wired: still LISTED, so the roster is honest about what exists and
    what can start. Dimmed and non-interactive rather than hidden.
    opacity 0.75, not 0.55: opacity composites the WHOLE button - ink and its
-   --surface-alt background - over the card, so 0.55 measured 2.13:1 across the
-   themes. WCAG exempts inactive controls, so that was legal, but a roster whose
+   --surface-alt background - over the card, so 0.55 measured about 2.1:1 on
+   every theme tried. WCAG exempts inactive controls, so that was legal, but a
+   roster whose
    point is to be readable about what exists should not be barely readable.
    0.75 keeps "clearly inactive" and restores roughly 3:1. */
 .loop-lane-unwired,
@@ -248,12 +306,14 @@ body {
   cursor: not-allowed; opacity: 0.75;
 }
 /* Steer channel (S7). It carries NO accent on purpose, and that absence is the
-   design. Measured across all six themes: --accent and --warn are the same gold
-   in five of them (OKLab dE 0.010 to 0.067; only arcane, the live theme,
-   separates them at 0.177) - so an accented Send STEER rendered in the SAME
-   colour as a lane button that starts a real headless worker, and
-   declaration-for-declaration identical to .loop-shortcut, whose single click
-   only ARMS. Two identical-looking buttons a few inches apart with opposite
+   design. The original measurement: --accent and --warn are the same gold in
+   five of the six dashboard themes (OKLab dE 0.010 to 0.067), so an accented
+   Send STEER rendered in the SAME colour as a lane button that starts a real
+   headless worker. Arcane - now this page's only theme (2026-08-02) - is the
+   one that separates them, at dE 0.177, so THAT half of the argument no longer
+   binds here. The decision stands on the half that does: an accented Send STEER
+   would be declaration-for-declaration identical to .loop-shortcut, whose
+   single click only ARMS. Two identical-looking buttons a few inches apart with opposite
    click contracts is the affordance confusion arm-then-confirm exists to
    prevent. Base .loop-btn weight is what "lighter than a lane fire" actually
    looks like. There is no .loop-btn-note rule either - .loop-btn already sets
@@ -270,10 +330,11 @@ body {
 /* The BORDER carries "this one kills"; the label itself stays --text. Measured
    at the rendered 18px/700 - which is below the 18.66px bold WCAG large-text
    threshold, so the 4.5:1 normal-text bar applies - --bad on --surface-alt
-   fails in five of six themes: arcane (live) 3.28, moonlit 3.31, hextech 3.66,
-   ember 3.79, bloodmoon 3.79, terminal 4.59. A border is a non-text element and
-   only owes 3:1, so it keeps the danger colour. Exactly the precedent
-   .loop-lock-state.unavailable above already set in this card. */
+   fails: 3.28:1 on arcane's #3b2853 (re-measured 2026-08-02; it was 3.66 on the
+   hextech surface this page used to inline, so the finding survives the theme
+   swap unchanged). A border is a non-text element and only owes 3:1, so it
+   keeps the danger colour. Exactly the precedent .loop-lock-state.unavailable
+   above already set in this card. */
 .loop-irq-btn:not(.loop-btn-armed) {
   color: var(--text); border-color: var(--bad);
 }

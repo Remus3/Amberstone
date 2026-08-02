@@ -11,7 +11,7 @@ description: Mission Control lane 4 (uiux). Headless UI/UX queue plus usability 
 This is the lane-4 command doc, fed verbatim to a detached headless `claude -p` worker with full authority
 and NO operator present. Lane 3 is `tools/headless-upgrade.md`; the lane roster and the single
 mutual-exclusion lock live in `ops/loop/lanes.py:105` (`LANES = ("upgrade", "uiux", "research", "ds",
-"repo", "true-audit")`). Run sections in order.
+"repo", "true-audit", "gated")`). Run sections in order.
 
 ### 1. Pre-flight baseline (do this FIRST, every time)
 

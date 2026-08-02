@@ -166,7 +166,21 @@ _WEB = _REPO_ROOT / "web"
 # or the token scope changes (filed as RM-139). Without the fallback this would
 # fail SILENTLY to the inherited size, which is the whole reason it is there
 # (memory reference_css_undefined_var_fails_silently).
-_LIVE_HALF_DIGEST = "2c9ba04d11e74de2e9c0045559b2cdc79e54eabd86d6fecb65e3708b87e6ae3e"
+# RE-CAPTURED 2026-08-02 (Mission Control: the `gated` lane + the arcane theme),
+# superseding the RM-132 capture above. Ordinary case: LIVE web edits, no
+# tokeniser change, no file added or removed - 173 web/ sources on BOTH sides,
+# and exactly TWO differ in their live half (verified per-file against
+# HEAD with this module's own comment_spans, not by eye):
+#   M web/mc/mc.css  the inlined palette swapped from the dashboard's DEFAULT
+#                    (hextech) values to the ARCANE ones it actually runs, plus
+#                    a 3px gradient rule under .mc-head and a cyan
+#                    :focus-visible outline. Colour-only; no rule was added or
+#                    removed for a state that did not already have one.
+#   M web/mc/mc.js   one new _LANE_LABELS entry ("gated"), which is the panel
+#                    half of the seventh lane.
+# Both are Mission Control only. web/mc/ is served by mc/handler.py, never by
+# the dashboard, so nothing on :8888 renders a byte differently.
+_LIVE_HALF_DIGEST = "33ec5b03fbdd04f39b651c3ad3c572264c1fb0ae4a9d2cd551c828d478eb632c"
 
 
 def _web_sources() -> list[Path]:
