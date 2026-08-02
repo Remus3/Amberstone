@@ -80,7 +80,7 @@ first resort.
 | `RC-LiveClientRelay` | At logon | Administrator | Live Client `:2999` relay agent (`tools/liveclient_relay.py`) |
 | `RC-LiveFlipWatcher` | At logon | Administrator | DS live-flip seam watcher + toast (`tools/live_flip_watcher.py`) |
 | `RC-PostmortemAnalyze` | Weekly | Administrator | Postmortem analyze + restart (`ops/run_postmortem_with_restart.ps1`) |
-| `RC-UpstreamDriftCheck` | Daily | Administrator | Upstream content-drift detector ddragon/meraki/cdragon (`tools/upstream_drift_check.py`) |
+| `RC-UpstreamDriftCheck` | Daily | Administrator | Upstream content-drift detector, 5 signals: ddragon / meraki / cdragon / 101.qq duo-synergy shape (RM-131) / cdragon queue catalog (RM-128) (`tools/upstream_drift_check.py`) |
 | `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
 | `RC-RewindCatchup` | Weekly Sunday 04:00 | Administrator | `scripts/rewind_catchup.py` (pull new Match-V5 records into rewind_history.db) |
 | `RC-RoflArchive` | Every 15 min | Administrator / HIGHEST | The OPERATOR's own replays: `tools/rofl_archiver.py --pull --lcu-path --extract --highlights --quiet` |

@@ -64,7 +64,7 @@ function _renderInto(tip, detail) {
   tip.appendChild(nm);
   if (t.stats.length) {
     const st = document.createElement("div");
-    st.style.cssText = "font-size:13px;line-height:1.35;color:#cfe8ff;";
+    st.style.cssText = "font-size:var(--fs-ov-chip,13px);line-height:1.35;color:#cfe8ff;";
     t.stats.forEach((line) => {
       const row = document.createElement("div");
       row.textContent = line;
@@ -75,7 +75,7 @@ function _renderInto(tip, detail) {
   if (t.passive) {
     const ps = document.createElement("div");
     ps.textContent = t.passive;
-    ps.style.cssText = "font-size:13px;line-height:1.4;color:#b9bdc7;margin-top:6px;white-space:pre-line;";
+    ps.style.cssText = "font-size:var(--fs-ov-chip,13px);line-height:1.4;color:#b9bdc7;margin-top:6px;white-space:pre-line;";
     tip.appendChild(ps);
   }
 }
