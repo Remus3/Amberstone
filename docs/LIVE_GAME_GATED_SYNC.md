@@ -235,6 +235,14 @@ signature. Two seams are wired ON at the live CALL site: DSP11 `prefer_kit_axis_
 their live callers still omit the flags. DSP5/6/7 + anti-tank P3.2 are producer-only orphans (route
 + test imports only, no live feeder). Env gates `RC_COMP_HP_LEAN` / `RC_LANING_CV_SERVED` are cold.
 
+**IN-GAME FIRST STEP (lane 9).** Run `python tools/gated_live_probe.py` the moment a game is up. It
+dumps the evidence-contract inputs (mode + gate, real ally/enemy comp, coach_source + Haiku-credit-paused,
+vision `frame_bytes`, the cc-panel / st-* serving-surface scans, minimap dots, zoi) in ONE shot, so the
+in-game pass is copy-paste, not a mid-game re-derivation. Two verdicts it hands you directly: a zero
+`frame_bytes` means every pixel / OCR / augment row is BLOCKED this session; an empty `cc_panel_in_state`
+or `adapt_fields_in_state` means that value has no live serving surface, so it is the SUBSTITUTION trap -
+do NOT tick it from the compute half. `--json` for machine output. READ-ONLY; it never ticks a row.
+
 ---
 
 ## GATE 1 - ANY LOBBY / CHAMP-SELECT (no game ever starts)
@@ -725,6 +733,14 @@ survivability flips below cannot roll otherwise.
   (DS /ehp cc_blended 5776 -> 2888 vs a real CC comp, 9 consumer surfaces grep-confirmed) but it is
   served only on the tank/bruiser scorer - a full close needs a **TANK/BRUISER PICK against a real CC
   comp**, or the cc panel wired into `/api/state`. SOURCE: LEDGER 769 + 779.
+  PREP 2026-08-02 (lane 9, live ARAM Mayhem KIWI). The ideal comp condition OCCURRED live - Lee Sin
+  (bruiser) vs a real CC comp `[Swain, Fizz, Miss Fortune, Anivia, Caitlyn]` (deterministic `fight_rule`
+  even surfaced it: "Caitlyn 1.5s CC (W), Anivia 1.2s stun (Q)"). YET `/api/state` carried NO cc field
+  (`tools/gated_live_probe.py` serving-surface scan = NONE). So the TANK/BRUISER-vs-CC-comp path alone is
+  INERT: the engine computes cc_blended but no live surface serves it, which is exactly the SUBSTITUTION
+  trap. This row can therefore be closed ONLY by wiring the cc panel into `/api/state` (headless code),
+  NOT by playing the right game. Re-file consequence: the "TANK/BRUISER PICK" closing path is dead on its
+  own; keep only the "wire the cc panel" path.
 - **G3-12** (was C14) `RC_ARAM_STATE_DEBOUNCE` DEFAULT-ON flip validation. **DO NOT close on the OFF
   observation.** The coach refreshed coherently with the flag OFF twice (2026-07-04 6+ min; LEDGER 820
   2026-07-08 "debounce OFF, coach refreshes coherently") - the LEDGER 820 headline reads "C14
@@ -740,6 +756,11 @@ survivability flips below cannot roll otherwise.
   reco actually renders during the ~10-15s panel. A wrong reco is worse than a dark one. Note the
   filed line cite `aram_coach.py:495` had DRIFTED - `_VISION_INTERVAL` was at 552 pre-fix. Memory
   `open_bug_aram_augment_reco_cadence_miss`.
+  PREP 2026-08-02 (lane 9). PRECONDITION: this validation needs a LIVE vision frame. Measured this
+  session `:8889/latest-frame` = 0 bytes and `/api/state` `screen_read` = `no_fresh_frame`, which BLOCKS
+  the OCR / on-screen render path entirely, regardless of whether the augment window is open. Before
+  waiting for the ~10-15s panel next time, run `tools/gated_live_probe.py` and confirm `vision frame_bytes`
+  is non-zero FIRST - a dead frame makes this row unobservable no matter how well-timed the game is.
 - **G3-14** (was C17) R78 ARAM deterministic tail item_extra + objective Haiku->deterministic flip
   (`c82b2446`): SHIPPED SHADOW-only. Needs ARAM shadow accrual + operator OK before flipping the ARAM
   coach tail off Haiku. SOURCE: docs/ORCHESTRATION_PLAN.md:296.
