@@ -189,7 +189,20 @@ _WEB = _REPO_ROOT / "web"
 #                    controller's log, which has been stopped since
 #                    2026-07-28, so a running lane had no surface at all.
 # Mission Control only; nothing on :8888 renders a byte differently.
-_LIVE_HALF_DIGEST = "52be65f373047379a2cb78839dc3e3af6e37cb900e8f6bb8ddc37b1ff82235b3"
+# RE-CAPTURED 2026-08-02 (the first-render mode stamp), superseding the capture
+# immediately above. Ordinary case again: 173 web/ sources on BOTH sides, no
+# tokeniser change, no file added or removed, and exactly ONE file differs in
+# its live half:
+#   M web/js/main.js  `setMode` no longer early-returns when the resolved mode
+#                     equals the seed, so a FIRST render stamps title, mode
+#                     pill and body[data-mode] instead of only a later flip.
+#                     The `_modeStamped` latch keeps the repeat call a no-op.
+# THIS GUARD WENT RED ON THAT COMMIT (8b91d13a) AND THE RE-CAPTURE WAS MISSED,
+# so main sat red from 16:34 until this stamp - the guard worked exactly as
+# designed and the session that tripped it wrapped before its CI landed. If a
+# push run is still in flight at wrap, collect it; a red that arrives after the
+# banner is still a red main.
+_LIVE_HALF_DIGEST = "b0e4d5ed256f7d0236a23927d3e80bdebfb71ef47bc6b6d568b5d6a75bcbe239"
 
 
 def _web_sources() -> list[Path]:
