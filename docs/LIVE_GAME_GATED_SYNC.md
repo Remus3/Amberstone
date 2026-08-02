@@ -762,11 +762,27 @@ survivability flips below cannot roll otherwise.
   reco actually renders during the ~10-15s panel. A wrong reco is worse than a dark one. Note the
   filed line cite `aram_coach.py:495` had DRIFTED - `_VISION_INTERVAL` was at 552 pre-fix. Memory
   `open_bug_aram_augment_reco_cadence_miss`.
-  PREP 2026-08-02 (lane 9). PRECONDITION: this validation needs a LIVE vision frame. Measured this
-  session `:8889/latest-frame` = 0 bytes and `/api/state` `screen_read` = `no_fresh_frame`, which BLOCKS
-  the OCR / on-screen render path entirely, regardless of whether the augment window is open. Before
-  waiting for the ~10-15s panel next time, run `tools/gated_live_probe.py` and confirm `vision frame_bytes`
-  is non-zero FIRST - a dead frame makes this row unobservable no matter how well-timed the game is.
+  ~~PREP 2026-08-02 (lane 9). PRECONDITION: this validation needs a LIVE vision frame. Measured this
+  session `:8889/latest-frame` = 0 bytes ... a dead frame makes this row unobservable.~~
+  **THAT PRECONDITION IS STRUCK 2026-08-02 - IT WAS A PROBE BUG, NOT A DEAD RELAY, AND IT BLOCKED THIS
+  ROW FOR NOTHING.** `tools/gated_live_probe.py` had `_RELAY_BASE = "https://127.0.0.1:8889"`, but the
+  vision server is plain **HTTP** (`modes/shared_vision.py:25`) and every relay endpoint is gated on an
+  `X-RC-Token` header (`_capture_screen`), which the probe never sent. So it could only ever report
+  `frame_bytes=0` / `frame_dead=True`, on a perfectly healthy relay. **Measured side by side during a
+  live ARAM Mayhem game:** the probe's own method returned 0 bytes while an authenticated HTTP GET to
+  the SAME endpoint at the SAME moment returned a **243396-byte frame aged 0.9s**. FIXED (`_relay_token()`
+  + correct scheme + token on both `_get_json` and `_get_nbytes`), pinned by
+  `tests/test_gated_live_probe_relay_auth.py` (6 tests, all red first). Note `_RELAY_BASE` also feeds
+  `/latest-liveclient`, so the tool's `relay_present` was wrong the same way - **re-read any earlier
+  gated-row note that cited `frame_dead` or `relay_present`, they are suspect.**
+  **The real open question for this row is elsewhere, and is NOT yet answered:** during a live Mayhem
+  game (8+ min observed) NO augment key ever appeared on either surface - not `/api/state`
+  (`augment_choices` / `augment_select` / `is_augment_select`) and not `data/aram_coaching_data.json`
+  (whose `mayhem` key is a bare `true` boolean, not an augment payload). Separately, `/api/state`
+  `screen_read` was **6.1 HOURS STALE** (frozen on an out-of-game read) while vision itself was live via
+  `moon_proxy` every ~26s - so a frozen `screen_read` is a CANDIDATE blocker for the on-screen half and
+  should be checked before blaming the `cff8d678` cadence fix. Do NOT close this row on the data half
+  alone; the operator eyeball on the ~10-15s panel is still the acceptance.
 - **G3-14** (was C17) R78 ARAM deterministic tail item_extra + objective Haiku->deterministic flip
   (`c82b2446`): SHIPPED SHADOW-only. Needs ARAM shadow accrual + operator OK before flipping the ARAM
   coach tail off Haiku. SOURCE: docs/ORCHESTRATION_PLAN.md:296.
