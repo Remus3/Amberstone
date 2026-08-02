@@ -230,6 +230,18 @@ class GameVisionReader:
     # Subclasses MUST override
     PROMPT: str = ""
 
+    # RM-144: does this reader accept the shared relay transport?
+    # `_extract()` prefers core.moon_proxy.extract_vision(img, model), whose
+    # wire format carries NO prompt - vision_server/_inference.py runs its own
+    # fixed _VISION_PROMPT (the TFT extraction schema) for every caller. Only
+    # the direct-Anthropic fallback below actually sends self.PROMPT.
+    # So a reader whose PROMPT asks for a field outside that schema gets a
+    # well-formed dict back that silently never contains the field it asked
+    # for (SCREEN READ wedged on empty_note this way while every layer beneath
+    # it was healthy). Such readers set USE_RELAY = False and go direct.
+    # Default stays True: the mode coaches want the shared relay + its dedupe.
+    USE_RELAY: bool = True
+
     # Tiered-routing configuration - set per-instance or per-subclass.
     # TIERED_FIELDS: all fields the mode needs (OCR-able + semantic).
     # TIERED_VALIDATORS: {field: callable(value) -> bool} overrides on top
@@ -348,17 +360,18 @@ class GameVisionReader:
                 return None
         except Exception:  # noqa: BLE001
             pass
-        try:
-            from core.moon_proxy import moon_proxy as _mp
-            t0 = time.time()
-            result = _mp.extract_vision(img_b64, self._model)
-            if result is not None:
-                ms = int((time.time() - t0) * 1000)
-                logger.debug("Vision via Moon-PC (moon_proxy) in %dms", ms)
-                # moon_proxy returns a dict directly; no JSON string to strip
-                return result if isinstance(result, dict) else None
-        except Exception as _e:  # noqa: BLE001
-            logger.debug("moon_proxy vision routing failed, falling back: %s", _e)
+        if self.USE_RELAY:
+            try:
+                from core.moon_proxy import moon_proxy as _mp
+                t0 = time.time()
+                result = _mp.extract_vision(img_b64, self._model)
+                if result is not None:
+                    ms = int((time.time() - t0) * 1000)
+                    logger.debug("Vision via Moon-PC (moon_proxy) in %dms", ms)
+                    # moon_proxy returns a dict directly; no JSON string to strip
+                    return result if isinstance(result, dict) else None
+            except Exception as _e:  # noqa: BLE001
+                logger.debug("moon_proxy vision routing failed, falling back: %s", _e)
         # Fallback: call Anthropic directly
         try:
             t0 = time.time()
