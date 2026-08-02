@@ -1233,8 +1233,8 @@ def _route_rank_bruiser(body: dict) -> dict:
     # R55: the target_current_hp_pct seam now reaches the bruiser (hybrid)
     # scorer's DPS axis. Default 1.0 -> byte-identical when the body omits it.
     target_current_hp_pct = _opt_float(body, "target_current_hp_pct", 1.0)
-    # RM-39/RM-43 (DEFAULT-OFF): add the PHYSICAL-only ability term to the AD
-    # branch, which is auto-attack-only by design (dps.py:34) for 92 of 173
+    # RM-39/RM-43 (DEFAULT-OFF): add the credited-type ability term to the AD
+    # branch, which is auto-attack-only by design (dps.py:34) for 84 of 173
     # champions. Routed here so the mandatory cohort-wide golden diff (ON vs
     # OFF across every AD-axis champion) is measurable over HTTP; without the
     # surface the ON path is unreachable from :8860. Default body =

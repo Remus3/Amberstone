@@ -7,6 +7,41 @@ the real DS build-engine correctness gaps it surfaced. The Gemini director picks
 bounded slice per cycle, root-cause-first (see the `root-cause-fix` skill), validated
 per-champion (not one generic shape - Engine/Build Conventions hard rule).
 
+## DRAIN STATUS - RM-142, 2026-08-02 (read this FIRST; the slice bodies below are original 2026-06-15 text)
+
+Every version number in the original text is STALE. Live at drain time: ENGINE
+**1.269.0**, patch **16.15.1**, DS on **:8860** (the doc's `:8893` was retired,
+RM-129). Re-derive from `data/daemon_slayer/current.txt` +
+`agents/daemon_slayer/__init__.py` + `/health`, never from this doc.
+
+| Slice | State |
+|---|---|
+| G1 wrong damage axis | **CLOSED 2026-08-02** - two waves, item 421 then RM-142. See the G1 section. |
+| G2 low overlap | **CLOSED 2026-06-15** (item 425) - not a separate bug, routed. |
+| G3 runes | **OPEN, but overtaken by events** - see below. |
+| G4 boots pool | **SHIPPED 2026-06-15** (item 423, ENGINE 1.122.0 -> 1.123.0). |
+| G5 item-pool gaps | **CLOSED 2026-06-15** (item 424) - premise falsified, there is no pool to fix. |
+| G6 cost model | **CLOSED as by-design** - already filed as a BACKLOG row; do not re-file. |
+| G7 comp harness | **BUILT + ANSWERED** - `g7_comp_harness.py` + `g7_comp_parity.json`. |
+
+**G3 is not the row it was written as.** It says "DS models no runes"; that is no
+longer true - `agents/daemon_slayer/` now carries 9 rune modules
+(`_rune_offense_grants`, `_rune_resist_grants`, `_rune_self_heal`,
+`_rune_shield_grants`, `_rune_flat_mitigation`, `_rune_health_grants`,
+`_rune_hsp_amp`, `enemy_runes`, `rune_procs`) plus `core/rune_wpa.py`. What
+remains true is narrower: `build_orders_*.json` has no rune PAGE (the per-entry
+schema is `bias` / `comp_archetype` / `order` only). Re-scope before building.
+
+**G7's answer was never written back into this doc.** `g7_comp_parity.json`
+records that comp-matching does NOT recover parity: feeding lolmath's own comp
+bucket (`burst_heavy`) scored mean overlap **1.488** against the blind `mixed`
+baseline **1.837**, a delta of **-0.349**. `frontline_heavy` (2.0) tracks lolmath
+best. So the G7 premise - that a like-for-like comp would close the gap - is
+REFUTED by its own harness. Do not rebuild it.
+
+**The "Gemini-consult" gate on G3 and G6 is DEAD** (Gemini retired 2026-08-01;
+Claude self-adjudicates). Do not wait on a vendor that no longer exists.
+
 ## Inputs (in-repo, director-readable)
 
 - `ops/audit/LOLMATH_VS_DS_SWEEP.md` - the full 172-champ table + appendix (the deliverable).
@@ -27,7 +62,61 @@ per-champion (not one generic shape - Engine/Build Conventions hard rule).
 
 ## Slices (priority order)
 
-### G1 - DS builds the WRONG damage axis (HIGHEST PRIORITY, correctness bug; 20 champs)
+### G1 - DS builds the WRONG damage axis - CLOSED 2026-08-02 in TWO waves (do NOT re-open on the 20-champ list below)
+
+**WAVE 1, item 421 (2026-06-15, ENGINE 1.121.0 -> 1.122.0):** fixed the ARCHETYPE
+RESOLVER (`core/archetype_picks.axis_correct_archetype`) against
+`lolmath.damage_distribution`. Dropped the residual 20 -> 8, all 8 verified
+by-design (see the G2 re-measure below).
+
+**WAVE 2, RM-142 (2026-08-02, ENGINE 1.268.0 -> 1.269.0):** wave 1 was INCOMPLETE
+and nothing caught it for 147 engine revisions, because the re-measure only
+counted residuals and never asked whether the fix reached every CONSUMER. The
+bruiser/onhit scorer keeps its own private axis, `agents/daemon_slayer/hybrid.py
+_damage_axis`, which read the DDragon `info.attack`/`info.magic` cosmetic 0-10
+designer ratings. The two resolvers contradicted each other on the same data for
+12 of 173 champions. Only 3 reach `_damage_axis` (its only consumers are
+`hybrid.py` = bruiser and `onhit_dps.py` = onhit): **Belveth** was broken
+unmitigated (rated magic 7 / attack 4 against a 0.698-PHYSICAL kit -> took the
+"ap" branch where `weighted_dps` is dropped outright -> shipped table built her
+Liandry's #1 / Blackfire #2); **Gwen** and **KogMaw** were already rescued by the
+local `_onhit_ap_axis` fallback. The other 9 (Alistar, Leona, Locke, Ornn,
+Qiyana, Rell, Seraphine, TwistedFate, Vex) route to tank/mage/assassin/enchanter
+and never call it.
+
+**THE TRAP - re-read `hybrid.py:63-104` before touching this again.** The axis
+split was LOAD-BEARING: it was the only thing keeping AP-SCALING TRUE rows out of
+the RM-39/RM-43 AD-axis ability term (whose L2 widen credits PHYSICAL+TRUE).
+Belveth R measures `ap_pct_sum` 300.0, Chogath R 150.0, and no damage-type filter
+stops either. Correcting the axis ALONE would have traded one defect for another.
+The guard is now EXPLICIT: `AbilitySpellDps.ap_pct_sum` + an AP-scaling filter in
+`_physical_ability_damage`, with the RM-98 propensity delta riding the SAME
+filtered list. Vayne Q (PHYSICAL but dual-scaling 75-115 pct AD AND 50 pct AP) is
+deliberately EXCLUDED and pinned as a decision, mirroring how MIXED is HELD -
+partial credit for dual-scaling rows is a SEPARATE design, not a filter widen.
+
+**Measured result:** G1 residual 12 -> 11, `ok` 108 -> 109, zero collateral.
+Belveth now builds BotRK / Trinity Force / Randuin's / Sterak's / LDR. Dual suite
+28150 passed / 0 failed. **`onhit_dps._onhit_ap_axis` is now fully redundant**
+(probed all 173 - zero remaining overrides) and was deliberately left in place;
+removing it is a separate slice.
+
+**The 11 remaining G1 residuals are ALL by-design or lolmath quirks - verified
+per-champion, do NOT "fix" them.** 8 are tank-archetype and axis-neutral by
+design (`_ARCHETYPE_AXIS["tank"]=None`): Amumu, Bard, Blitzcrank, Galio, Nunu,
+Rakan, Singed, TahmKench. Udyr's kit is a genuine hybrid (0.565/0.380) that
+clears neither decisiveness gate. Sett (0.006/0.736) and Zeri (0.224/0.731) build
+correct AD and it is LOLMATH building the opposite axis. Note the probe flags G1
+as `lm_ap>=2 and ds_ap==0` - measured against LOLMATH's build, NOT the kit - so a
+residual row is not by itself evidence of a DS defect. Trinity Force is a probe
+ARTIFACT (DDragon-tagged SpellDamage, 35 champions carry it correctly).
+
+Related row filed this session: **BACKLOG RM-142-T** (tank + enchanter build
+output carries zero champion differentiation - a coverage gap, NOT a defect).
+
+ORIGINAL 2026-06-15 problem statement, kept for provenance:
+
+### G1 (original) - DS builds the WRONG damage axis (20 champs)
 
 DS_AD_vs_LM_AP (DS builds AD on an AP-scaling kit): Amumu, Blitzcrank, Diana, Elise, Galio,
 Gragas, Gwen, KogMaw, Lillia, Lulu, Mordekaiser, Nidalee, Nunu, Rumble, Singed, TahmKench,
