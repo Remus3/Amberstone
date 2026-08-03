@@ -6,6 +6,39 @@
 
 ---
 
+# 2026-08-03a - Mission Control lane 8 (Headless-True-Audit), first fire: one wrong-shape .rofl crashed the whole extraction pass
+
+2 commits on `lane/true-audit` (fix `1819c8e2` + this docs entry). NOT merged - lane 8 ships LAST
+and the merge is the merger's to make once main is verifiably idle. Tier-1: ENGINE untouched at
+1.270.0, so no Share sync, no DS bounce, no RC restart owed (backend library edit, not runtime).
+
+Worktree-first, pre-flight clean: toplevel `C:/rc-worktrees/rc-lane-true-audit`, branch
+`lane/true-audit`, `core.hooksPath` the shared ABSOLUTE `C:\Riot Commander\.githooks` so
+`install_hooks.py` was NOT run. Recall first (perseus, no CLOSED/REFUTED hit). Live state probed:
+RC pid 16516 alive, DS :8860 ok 1.270.0 patch 16.15.1.
+
+**Audited `core/rofl_archive.py` (888 lines), the `.rofl` byte parser.** Criterion 1 (untrusted
+Riot-CDN bytes via `download_replays`) + criterion 5 (repeat offender). Finding, MEASURED live not
+read: `extract_stats` took `len(players[0])` for field_count while validating ONLY that `players`
+was a list. A valid-JSON but wrong-shape statsJson (`[1,2,3]` / `[None]` / `[True]`) raised an
+UNCAUGHT TypeError, and `extract_archive` calls it with no try/except -> one corrupt replay aborted
+the entire loop and dropped every later replay, violating the module's own "Failures are COUNTED,
+not dropped" contract. A list-of-strings entry silently produced a garbage sidecar. Fix: one
+dict-shape guard returning None (logged); valid + empty-list cases unchanged. 2 regression tests,
+both mutation-tested red-then-green. 7 dimensions: correctness/input-validation/error-handling
+HARDENED, rest CLEAN or N/A, 0 bare `except Exception`. Backfill (6e): live archive 17 sidecars,
+0 already-bad - the silent path never fired on real data, verified not assumed. Independent
+verifier reproduced the crash on a scratch copy and returned CONFIRM. Ledger 1176.
+
+Suites from repo root: rofl + consumers 130 passed / 25 skipped; ruff clean; ASCII clean. Minor
+noted-not-filed (trusted source, low value): `_http_get_bytes` unbounded read, `_maybe_gunzip` no
+decompression-bomb cap, `_atomic_write_json` missing the `finally` tmp-cleanup its siblings carry.
+
+Next lane-8 target (unstarted): another externally-reachable parser - the LCU response path or a
+`dashboard/routes_*.py` input surface - one file, all 7 dimensions, TDD + mutation + verifier.
+
+---
+
 # 2026-08-02j - Mission Control lane 7 (Headless-Repo), first fire: the frozen list had an unguarded mirror, and 70 GB of out-of-repo scratch was mostly hardlinks
 
 5 commits, **MERGED into main 2026-08-03 on operator instruction** as `c164dfef..99f14682`
