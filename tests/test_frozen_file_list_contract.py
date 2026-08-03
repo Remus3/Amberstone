@@ -28,11 +28,10 @@ would reproduce the exact drift class it is meant to close. The only hardcoded
 number is the COUNT, because a change in the count is precisely the event that
 should force a human to look.
 """
+import ast
 import os
 import pathlib
 import re
-
-from tools import ci_watchdog as cw
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -71,7 +70,72 @@ HEADER_SCAN_SKIP_DIRS = frozenset({
 # counts as a header.
 _HEADER_WINDOW = 8
 
+# The hand-maintained mirrors that MUST equal the authority exactly, as
+# (module path, symbol name). Each is a literal frozenset of the same paths,
+# kept in sync by hand, and each was unguarded until this module existed.
+# Adding a sixth mirror without adding it here is the only way this drift class
+# can recur - so add the row in the same commit that adds the mirror.
+PARITY_MIRRORS = (
+    ("tools/ci_watchdog.py", "FROZEN_FILES"),
+    ("tools/strip_smart_quotes.py", "_FROZEN"),
+    ("tools/repair_mojibake.py", "_FROZEN"),
+    ("agents/agent1_lead/scheduler.py", "FROZEN_FILES"),
+)
+
+# core/hot_reload.py::_FROZEN_PATHS is a DELIBERATE SUBSET, not a parity mirror,
+# and must never be forced to equality. It watches non-frozen `.py` files only
+# (module docstring line 1; the watch dirs "only contain editable .py"), so a
+# `.md` entry cannot be watched and therefore cannot be left unprotected by its
+# absence. It gets a subset assertion plus a pin on which omissions are allowed.
+SUBSET_MIRROR = ("core/hot_reload.py", "_FROZEN_PATHS")
+
 _BACKTICKED = re.compile(r"`([^`]+)`")
+
+
+def _literal_frozen_set(rel, symbol):
+    """Return the string entries of a module-level frozenset/set literal.
+
+    Parsed with `ast` rather than imported: these modules are mirrors of a hard
+    rule, and a guard over them should not depend on any of them being safely
+    importable. `tools/ci_watchdog.py` is import-clean today, but that is a
+    property of one mirror and not of the class.
+    """
+    tree = ast.parse(_read(rel))
+    for node in ast.walk(tree):
+        # AnnAssign as well as Assign: core/hot_reload.py declares its set as
+        # `_FROZEN_PATHS: set[str] = {...}`, and an Assign-only match skips it
+        # entirely - which surfaces as "mirror not found" rather than a wrong
+        # answer, but only because the not-found case raises instead of
+        # returning an empty set.
+        if isinstance(node, ast.Assign):
+            names = [t.id for t in node.targets if isinstance(t, ast.Name)]
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            names = [node.target.id]
+        else:
+            continue
+        if symbol not in names or node.value is None:
+            continue
+        value = node.value
+        # frozenset({...}) / set({...}) wrap the literal in a call.
+        if isinstance(value, ast.Call) and value.args:
+            value = value.args[0]
+        # Each element is walked rather than matched as a bare Constant: the
+        # mirrors are not written the same way. core/hot_reload.py wraps every
+        # entry as Path("x").as_posix() for cross-platform separators, so a
+        # Constant-only match silently yields an EMPTY set - a pattern bug that
+        # reads as "the mirror is empty" rather than "my parser missed".
+        out = set()
+        for el in getattr(value, "elts", []):
+            for sub in ast.walk(el):
+                if isinstance(sub, ast.Constant) and isinstance(sub.value, str):
+                    out.add(sub.value)
+        return out
+    raise AssertionError(
+        "no module-level '" + symbol + "' literal found in " + rel
+        + ". If the mirror was renamed or removed, update PARITY_MIRRORS in this "
+        "guard in the same commit - a mirror this test cannot find is a mirror "
+        "nobody is checking."
+    )
 
 
 def _read(rel):
@@ -167,26 +231,77 @@ def test_every_frozen_entry_exists_on_disk():
     )
 
 
-def test_ci_watchdog_mirror_equals_claude_md_authority():
-    """tools/ci_watchdog.py FROZEN_FILES must equal the CLAUDE.md list exactly.
+def test_every_parity_mirror_equals_claude_md_authority():
+    """Each hand-maintained mirror in PARITY_MIRRORS must equal the authority.
 
-    A plain import is used rather than an ast parse of the frozenset literal:
-    ci_watchdog.py's own module docstring states nothing runs at import time, and
-    tests/test_ci_watchdog.py already imports it the same way - so there are no
-    import side effects to route around, and importing checks the real consumed
-    value instead of a source-text lookalike.
+    Checking only ONE mirror is what let this drift survive. Measured 2026-08-02:
+    tools/ci_watchdog.py, tools/strip_smart_quotes.py and tools/repair_mojibake.py
+    all held 16 and agreed, while agents/agent1_lead/scheduler.py held 13 - missing
+    app/_loop.py, tools/diagnose.md and tools/caveman.md - and had been unchanged
+    since the initial commit while the authority moved underneath it. Its own
+    comment claims it is "Synced with CLAUDE.md", so the drift was invisible to a
+    reader and to every test.
+
+    The consequences differ per mirror and none of them fails loudly:
+      ci_watchdog  - touches_frozen() stops the CI watchdog auto-merging a fix
+                     into a frozen file. A missing entry means it merges.
+      scheduler    - Scheduler.file_task() appends category 1, which maps to
+                     NEEDS_APPROVAL and withholds the task from the ready heap.
+                     A missing entry means an agent edits a frozen file with no
+                     approval stop.
+      strip_smart_quotes / repair_mojibake
+                   - both skip frozen files when rewriting bytes repo-wide. A
+                     missing entry means an unattended rewrite of a frozen file.
     """
     authority = set(_parse_frozen_authority())
-    mirror = set(cw.FROZEN_FILES)
-    missing_from_mirror = sorted(authority - mirror)
-    extra_in_mirror = sorted(mirror - authority)
-    assert authority == mirror, (
-        "tools/ci_watchdog.py FROZEN_FILES has drifted from the CLAUDE.md frozen "
-        "list. In CLAUDE.md but NOT in the mirror: " + repr(missing_from_mirror)
-        + ". In the mirror but NOT in CLAUDE.md: " + repr(extra_in_mirror)
-        + ". Fix tools/ci_watchdog.py to match CLAUDE.md, never the reverse - "
-        "CLAUDE.md is the authority. While they disagree, touches_frozen() lets "
-        "the CI watchdog auto-merge a fix into a file the operator froze."
+    drifted = {}
+    for rel, symbol in PARITY_MIRRORS:
+        mirror = _literal_frozen_set(rel, symbol)
+        if mirror != authority:
+            drifted[rel + "::" + symbol] = {
+                "in_claude_md_but_not_the_mirror": sorted(authority - mirror),
+                "in_the_mirror_but_not_claude_md": sorted(mirror - authority),
+            }
+    assert not drifted, (
+        "hand-maintained frozen-file mirror(s) have drifted from the CLAUDE.md "
+        "frozen list: " + repr(drifted) + ". Fix the MIRROR to match CLAUDE.md, "
+        "never the reverse - CLAUDE.md is the authority. Do not add a mirror to "
+        "PARITY_MIRRORS-with-an-exception to make this pass; if a mirror is a "
+        "deliberate subset, it belongs with core/hot_reload.py under the subset "
+        "test below, with the reason written down."
+    )
+
+
+def test_hot_reload_subset_mirror_omits_only_non_python_entries():
+    """core/hot_reload.py::_FROZEN_PATHS is a SUBSET on purpose - keep it one.
+
+    It is not a parity mirror and must never be forced to equality. hot_reload
+    watches non-frozen `.py` files only, and its watch dirs contain nothing else,
+    so a `.md` on the authority list cannot be watched and therefore cannot be
+    left unprotected by its absence. Forcing equality would be a wrong change
+    made to satisfy a test.
+
+    What IS checked: it may never contain anything absent from the authority, and
+    the only entries it is allowed to omit are the non-`.py` ones. That catches
+    the real risk - a frozen `.py` quietly dropping out of the watcher's skip set
+    and becoming hot-reloadable.
+    """
+    authority = set(_parse_frozen_authority())
+    rel, symbol = SUBSET_MIRROR
+    mirror = _literal_frozen_set(rel, symbol)
+    extra = sorted(mirror - authority)
+    assert not extra, (
+        rel + "::" + symbol + " names paths that are NOT on the CLAUDE.md frozen "
+        "list: " + repr(extra) + ". Either add them to the CLAUDE.md bullet or "
+        "drop them here."
+    )
+    omitted = sorted(authority - mirror)
+    non_py = sorted(e for e in authority if not e.endswith(".py"))
+    assert omitted == non_py, (
+        rel + "::" + symbol + " omits " + repr(omitted) + " but the only omissions "
+        "allowed are the non-.py authority entries " + repr(non_py) + ". A frozen "
+        ".py missing from this set is hot-reloadable, which is exactly what the "
+        "frozen rule forbids - add it back rather than widening this assertion."
     )
 
 
