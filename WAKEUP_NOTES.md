@@ -31,8 +31,13 @@ while CLAUDE.md moved underneath it. Its own comment says "Synced with CLAUDE.md
 consumer `Scheduler.file_task()` appends category 1 -> `NEEDS_APPROVAL`, withheld from the ready
 heap until `approve()`; with the entry missing, a task naming `app/_loop.py` went straight to
 READY - an agent could edit an operator-frozen file with NO approval stop. Demonstrated against
-the real scheduler, not argued. Fixed; 0 of 5811 live queue records newly gated; **inert until the
-Phase 3 supervisor restarts** (PID 21304 holds the old set in memory). The guard now checks a
+the real scheduler, not argued. Fixed; 0 of 5811 live queue records newly gated. It was
+**inert until the Phase 3 supervisor restarted - and that CLOSED ITSELF one second after the
+merge**: RC's own phase3 stale-code watchdog re-ran the task, `ops/runtime/logs/supervisor.log`
+`[2026-08-03T06:49:13Z] phase3 stale_code -- schtasks /Run RC-Phase3-Supervisor OK`. The fix was
+live ~4h before anyone asked for a restart. **Never cite a PID from a doc** - the one this note
+used to name (21304) was dead before it was read. Re-probe with
+`Get-NetTCPConnection -LocalPort 8890 -State Listen`. The guard now checks a
 `PARITY_MIRRORS` list, with `core/hot_reload.py` deliberately held to a SUBSET rule instead - it
 watches `.py` only, so equality there would go RED and pressure a WRONG fix. **Do not "fix" it.**
 Census: authority 16 / ci_watchdog 16 / strip_smart_quotes 16 / repair_mojibake 16 / scheduler
