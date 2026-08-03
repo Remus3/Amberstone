@@ -185,10 +185,28 @@ def liveclient_summary() -> dict:
             out["cs"]  = s.get("creepScore", 0)
             out["champion"] = me_pl.get("championName")
             owned_items = [it.get("displayName", "") for it in (me_pl.get("items") or [])]
-            # s184 - parallel item-id list so server-side consumers
-            # (archetype_mismatch nudge) don't need a name -> id resolver
-            # for the operator's own inventory. Same order as owned_items.
-            owned_item_ids = [str(it.get("itemID", "")) for it in (me_pl.get("items") or [])]
+            # s184 - item-id list so server-side consumers (archetype_mismatch
+            # nudge, DS relscore / knobs build context) don't need a name -> id
+            # resolver for the operator's own inventory.
+            #
+            # Trinkets + consumables are dropped because they occupy no
+            # inventory slot: the Live Client serializes them inline with shop
+            # items, so an unfiltered list reports a five-item build as six and
+            # sends every length-vs-six-slots consumer into "build complete"
+            # one item early, hiding last-item advice exactly where it matters
+            # most. NON_INVENTORY_IDS is the single shared definition of that
+            # set (s156 defect); never fork a private copy here.
+            #
+            # NB this makes the list NO LONGER positionally parallel to
+            # ``owned_items`` below, which stays a raw slot dump on purpose -
+            # the next-buy TRINKET nudge and the ward cue both require the
+            # trinket to still be present in the name list.
+            from core.daemon_slayer_resolver import NON_INVENTORY_IDS
+            owned_item_ids = [
+                iid for iid in
+                (str(it.get("itemID", "")) for it in (me_pl.get("items") or []))
+                if iid and iid not in NON_INVENTORY_IDS
+            ]
             my_team = me_pl.get("team")
             all_players = d.get("allPlayers") or []
             enemy_team = [p.get("championName", "") for p in all_players
