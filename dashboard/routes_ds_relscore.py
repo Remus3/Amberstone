@@ -23,7 +23,8 @@ Request shape:
   mode     : SR / ARAM / ARENA / BRAWL (default SR). Drives the per-mode
              item-legality filter + the auto resist curve.
   items    : comma-separated owned-item ids (the build-so-far). Blank
-             entries skipped; ranker scores the next slot on top.
+             entries skipped; trinkets + consumables dropped (they hold no
+             inventory slot); ranker scores the next slot on top.
   level    : optional int 1..18 (default 11). Clamped.
 
 Response shape:
@@ -57,6 +58,9 @@ Response shape:
 Failure modes:
   - 400  champion param literally missing OR present-but-blank.
   - 200  ok=false reason=no_rows when the ranker returns zero candidates.
+  - 200  ok=false reason=build_full when six inventory slots are occupied,
+         so there is no next slot to rank. An expected terminal state, NOT
+         an error - it is cached like any success (see Don't-redo below).
   - 503  rank_items / DataSnapshot import or compute fails.
 
 5-min TTL in-process cache keyed on (champion, mode, sorted items, level).
@@ -71,6 +75,21 @@ Don't-redo:
   * score_pct is a percent of the BEST row's delta_dps (relative power),
     NOT an absolute 0-100 score - row 0 is always 100.0 (or 0.0 when the
     top delta is non-positive).
+  * A full six-slot inventory answers 200 / reason=build_full and is NOT
+    routed through the 503 branch. It used to be: the engine precondition
+    ValueError landed on the catch-all, which logs WARNING and never caches,
+    and the browser discards a non-ok response, so a deterministic outcome
+    recomputed and re-logged on every poll. Measured 2026-08-02: that single
+    line was 765 of 823 WARNINGs (93.0 pct) in one day's log. Do NOT restore
+    the 503, and do NOT add a negative cache instead - the terminal answer
+    belongs in the normal success cache, whose key already carries the item
+    list, so a sold item is a different key and cannot be served stale.
+  * The catch-all 503 + WARNING is deliberately kept for GENUINE faults, and
+    those are still uncached so recovery is immediate rather than pinned for
+    the TTL. Do not widen the demotion to cover it.
+  * Trinkets + consumables are dropped from ``items`` before the cache key is
+    built (s156, core/daemon_slayer_resolver.py:144-151). Callers pass the raw
+    Live-Client inventory, which lists them inline with shop items.
   * The DataSnapshot is loaded once + memoized at module scope (immutable
     per patch). A patch bump re-points current.txt; call _reset_caches()
     (test-only) or restart RC to pick up a new patch snapshot.
@@ -99,6 +118,11 @@ _SNAPSHOT_LOCK = threading.Lock()
 _DEFAULT_LEVEL = 11
 _DEFAULT_TOP_N = 12
 
+# The DS engine ranks the NEXT of six inventory slots, so a build holding six
+# of them has no slot left to score. Mirrors the engine-side precondition
+# (agents/daemon_slayer/onhit_dps.py:434 and its per-scorer twins).
+_INVENTORY_SLOTS = 6
+
 
 def _get_snapshot():
     """Lazy-load + memoize the DS DataSnapshot (current.txt patch)."""
@@ -120,6 +144,23 @@ def _parse_item_list(raw: str) -> list[str]:
         if s:
             out.append(s)
     return out
+
+
+def _drop_non_inventory(items: list[str]) -> list[str]:
+    """Drop trinkets + consumables, which occupy no inventory slot.
+
+    The caller feeds the raw Live-Client inventory, which serializes the
+    trinket and consumable rows inline with shop items (see
+    dashboard/_liveclient.py owned_item_ids, which applies no filter). Left
+    unfiltered they inflate the count past the six rankable slots, so a build
+    of five items plus a ward trinket read as full and the panel went dark in
+    the slot where last-item advice matters most. This is the s156 defect
+    documented at core/daemon_slayer_resolver.py:144-151; reuse that canonical
+    id set rather than forking a second copy of it.
+    """
+    from core.daemon_slayer_resolver import NON_INVENTORY_IDS
+
+    return [i for i in items if i not in NON_INVENTORY_IDS]
 
 
 def _parse_level(raw: str) -> int:
@@ -160,6 +201,23 @@ def _compute(champion, mode, items, level) -> dict:
     from agents.daemon_slayer.rank import rank_items
 
     target = _resolve_target(mode, level)
+
+    # A full inventory is an EXPECTED terminal answer, not an engine fault.
+    # Answering it here keeps the ranker's precondition ValueError off the
+    # error path, so it flows through the normal success cache below and the
+    # 300 s TTL actually applies. Safe against a mid-TTL sell: the cache key
+    # carries this same filtered item list, so a changed inventory is a
+    # different key and this answer can never be served as live advice.
+    if len(items) >= _INVENTORY_SLOTS:
+        return {
+            "ok":       False,
+            "reason":   "build_full",
+            "champion": champion,
+            "target":   target,
+            "rows":     [],
+            "count":    0,
+        }
+
     snapshot = _get_snapshot()
     result = rank_items(
         snapshot,
@@ -225,7 +283,8 @@ def _serve_ds_relscore(h) -> None:
             return
 
         mode = (qs.get("mode") or ["SR"])[0].strip().upper() or "SR"
-        items = _parse_item_list((qs.get("items") or [""])[0].strip())
+        items = _drop_non_inventory(
+            _parse_item_list((qs.get("items") or [""])[0].strip()))
         level = _parse_level((qs.get("level") or [""])[0].strip())
 
         key = _cache_key(champion, mode, items, level)
