@@ -6,6 +6,54 @@
 
 ---
 
+# 2026-08-03e - lane 8 cycle 5: a cache that dies silently forever, and 3.33 GB nobody could see
+
+Audited `core/riot_api_cache.py` - **zero LEDGER mentions across 1181 entries**, never audited,
+sitting on the API-key path and persisting external Riot bodies.
+
+**My headline expectation was REFUTED and the design was right.** I went in expecting the API key
+in a cache key or a log line. Keys carry `_key_fingerprint()` - a real `sha256[:12]`, verified as
+actually hashing, not a docstring promise. The verifier scanned all 3.3 GB of payloads, not just
+keys: zero `RGAPI` anywhere. Recorded as a negative so nobody re-spends on it.
+
+**FINDING 1 - a deleted DB file killed the cache for the life of the process.** `_ensure_schema`
+short-circuits on `self._initialized`, which is PROCESS state, not FILE state. Lose the file and
+SQLite makes a new empty one, the schema never re-runs, and every call fails "no such table" -
+caught, logged, returning None/False. **Callers cannot tell that from a cache miss**, so RC
+re-fetches from the Riot API forever, burning rate limit, silently, until restart. Fixed by
+clearing the flag on that specific error. The call that NOTICES still soft-fails and only the next
+one heals - documented that way rather than oversold, and the verifier was pointed at that claim
+specifically.
+
+**FINDING 2 - three docstring claims untrue of the code**, incl. a promised `BEGIN IMMEDIATE` that
+appears exactly once in the file: inside the sentence promising it. The concurrency is actually
+fine (autocommit + single-statement atomicity). Third cycle running where a module's prose was the
+defect.
+
+**RM-153 - the operationally important one.** `cache_immutable` never expires by design and the
+live DB is **3.33 GB / 12,305 rows, freelist 0** - all real data, a VACUUM reclaims nothing.
+Nothing caps it, nothing watches it, and the only introspection reported ROW COUNTS and had no
+production callers. `stats()` now reports bytes; picking an eviction policy is an operator call.
+Check first whether `rewind_history.db` + the `.rofl` archive already duplicate this retention.
+
+**The verifier found two defects in my own work, and the second one matters.** (a) I wrote "no
+callers anywhere in the tree" - literally false, tests call both; now "no production callers".
+(b) **My BEGIN IMMEDIATE guard accepted a docstring MENTION as proof of executable code** - it
+scanned everything after the module docstring, including method docstrings, so re-adding the false
+promise plus a decoy mention stayed green (measured: 11 passed). Rebuilt to strip docstrings via
+`ast`; the demonstrated evasion is now RED. A guard that accepts prose as proof of code is the
+`feedback_guard_on_nondefault_call_path_is_untested` shape wearing a different hat.
+
+Also worth keeping: **one mutation silently failed to apply** - a shell heredoc mangled a line-
+continuation backslash, the anchor assert fired, and the suite trivially passed 11. Caught and
+re-run from a file-based script, which produced the real 3-test RED. A mutation that does not
+apply looks exactly like a guard that works.
+
+11 tests, 5 mutations RED. Suites: RC `tests/` 18114 passed / 154 skipped; DS 10341 passed.
+Deployed + verified live (RC pid 1880; `stats()` now surfaces the 3.33 GB). LEDGER 1182.
+
+---
+
 # 2026-08-03d - lane 8 cycle 4: the verifier attacked a claim that made a finding sound smaller, and found a real hole behind it
 
 Audited `dashboard/api_schema.py` - the DECLARED validation boundary for every dashboard POST
