@@ -1,6 +1,15 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
 
+## 2026-08-03 - RM-129 body relocated from ROADMAP (row already CLOSED 2026-08-01)
+
+Relocated VERBATIM when adding RM-150 tipped ROADMAP.md past 90 percent of its 81920-byte
+budget and `tools/drift_guard.py` flagged it. The row was already closed; a compact fence
+carrying the three durable warnings remains in ROADMAP.md.
+
+- **RM-129 CLOSED 2026-08-01 - DS PORT-BLOCK MIGRATION SHIPPED** (`2872c1a7`). Daemon Slayer binds **8860** (engine) + **8861** (match-DB MCP), inside its own 8860-8879 block; 8893/8894 retired and refusing. 499 standalone occurrences across 190 files; `tests/test_ports.py` flipped to expect `"ds"` in the same commit as the `core/ports.py` MIGRATION-note rewrite. **Two durable corrections live in `core/ports.py` and LEDGER 1146: the filed "~186 places" was SUBSTRING noise (never size a port move with a bare `grep -c`), and the old numbers deliberately SURVIVE in measurement-provenance and append-only history files - a residual 8893 there is CORRECT.** Full narrative: `docs/ROADMAP_HISTORY.md` (2026-08-01). **DO NOT renumber 8895** (Mission Control). Cross-project blocks: Sibling-C 8770-8789, Sibling-A 8900-8919 (binds 8901 - the near-collision that filed this row); cite the block, never paste RC literals into a sibling repo.
+
+
 ## 2026-08-02 - RM-146 + RM-147 CLOSED (relocated from ROADMAP 2026-08-02)
 
 Relocated VERBATIM the same session both rows CLOSED, when ROADMAP.md hit 97 percent of its
