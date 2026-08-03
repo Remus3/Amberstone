@@ -8,9 +8,13 @@
 
 # 2026-08-02j - Mission Control lane 7 (Headless-Repo), first fire: the frozen list had an unguarded mirror, and 70 GB of out-of-repo scratch was mostly hardlinks
 
-2 commits on `lane/repo`, `1b277a90` + `6d3f7e6c`. Ledger 1174. Worktree-first. **NOT merged** -
-the merge is the merger's call and the main tree was not verified idle. ENGINE untouched at
-1.270.0, so no Share sync, no DS bounce, no RC restart owed.
+5 commits, **MERGED into main 2026-08-03 on operator instruction** as `c164dfef..99f14682`
+(fast-forward, so every hash survives and the ledger citations resolve). Ledger 1174.
+Worktree-first; lane worktree removed and `lane/repo` deleted local + remote after proving
+`main..lane/repo` = 0. ENGINE untouched at 1.270.0, so no Share sync, no DS bounce, no RC
+restart owed. **Idleness was VERIFIED before merging, not assumed:** main still sat at
+`c164dfef` untouched for the whole run, clean, 0/0 vs origin, no `index.lock`, no git process,
+no `RUNNING.lock`. `--ff-only` on purpose so a non-ff would error rather than surprise-merge.
 
 **The lane worktree did not exist.** `git worktree list` showed only `main`, so it was created
 from the repo root rather than working in main - two writers in one working directory is the
