@@ -18,7 +18,23 @@ unrecoverable index-corruption class. `core.hooksPath` re-confirmed ABSOLUTE
 (`C:\Riot Commander\.githooks`); worktrees share `.git/config`, so `install_hooks.py` was NOT
 run and nothing about the hook config was changed.
 
-**The frozen-file rule had four representations and one shallow guard.** `tools/ci_watchdog.py:79`
+**CORRECTION, and it is the run's best finding: the rule has SIX representations, not four, and
+the mirror this run first missed was the ONLY one that had drifted.** The stop-claim gate refused
+an unbacked count, the re-grep surfaced a `FROZEN_FILES` nobody had looked at, and it turned out
+`agents/agent1_lead/scheduler.py::FROZEN_FILES` held **13 against the authority's 16** - missing
+`app/_loop.py`, `tools/diagnose.md`, `tools/caveman.md` - **unchanged since the initial commit**
+while CLAUDE.md moved underneath it. Its own comment says "Synced with CLAUDE.md". Its sole
+consumer `Scheduler.file_task()` appends category 1 -> `NEEDS_APPROVAL`, withheld from the ready
+heap until `approve()`; with the entry missing, a task naming `app/_loop.py` went straight to
+READY - an agent could edit an operator-frozen file with NO approval stop. Demonstrated against
+the real scheduler, not argued. Fixed; 0 of 5811 live queue records newly gated; **inert until the
+Phase 3 supervisor restarts** (PID 21304 holds the old set in memory). The guard now checks a
+`PARITY_MIRRORS` list, with `core/hot_reload.py` deliberately held to a SUBSET rule instead - it
+watches `.py` only, so equality there would go RED and pressure a WRONG fix. **Do not "fix" it.**
+Census: authority 16 / ci_watchdog 16 / strip_smart_quotes 16 / repair_mojibake 16 / scheduler
+was 13 now 16 / hot_reload 14 by design.
+
+**The original framing, still true of the other mirror.** `tools/ci_watchdog.py:79`
 `FROZEN_FILES` is a hand-maintained MIRROR of `CLAUDE.md:40-45`, consumed by `touches_frozen()`
 at `:204-207` - the thing that stops the CI watchdog auto-merging a fix INTO a frozen file. Nothing
 asserted the two still matched, so adding an entry to CLAUDE.md alone would leave the watchdog
