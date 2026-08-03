@@ -6,6 +6,59 @@
 
 ---
 
+# 2026-08-02j - Mission Control lane 7 (Headless-Repo), first fire: the frozen list had an unguarded mirror, and 70 GB of out-of-repo scratch was mostly hardlinks
+
+2 commits on `lane/repo`, `1b277a90` + `6d3f7e6c`. Ledger 1174. Worktree-first. **NOT merged** -
+the merge is the merger's call and the main tree was not verified idle. ENGINE untouched at
+1.270.0, so no Share sync, no DS bounce, no RC restart owed.
+
+**The lane worktree did not exist.** `git worktree list` showed only `main`, so it was created
+from the repo root rather than working in main - two writers in one working directory is the
+unrecoverable index-corruption class. `core.hooksPath` re-confirmed ABSOLUTE
+(`C:\Riot Commander\.githooks`); worktrees share `.git/config`, so `install_hooks.py` was NOT
+run and nothing about the hook config was changed.
+
+**The frozen-file rule had four representations and one shallow guard.** `tools/ci_watchdog.py:79`
+`FROZEN_FILES` is a hand-maintained MIRROR of `CLAUDE.md:40-45`, consumed by `touches_frozen()`
+at `:204-207` - the thing that stops the CI watchdog auto-merging a fix INTO a frozen file. Nothing
+asserted the two still matched, so adding an entry to CLAUDE.md alone would leave the watchdog
+silently auto-merging into a newly-frozen file. Same drift class as `tools/*.md` vs
+`.claude/commands/*.md`, which ran a month. The pre-existing
+`tests/test_constraint_single_source.py:18` only checks three anchor substrings appear - it never
+parses the list. New `tests/test_frozen_file_list_contract.py` reads the contract off disk and
+ties all four representations. **T4's direction is load-bearing:** a `frozen=yes` header on a file
+absent from CLAUDE.md FAILS; an authority entry with no header does NOT. 12 headers vs 16 entries
+is CORRECT and expected - `gen_archmap.py:22-23` says why. Never compute the frozen set from
+headers. T3 was independently re-mutated both ways after the build agent's own pass: RED both times.
+
+**The out-of-repo half returned nothing to reclaim, and that IS the finding.** 3 proposed, 0
+approved, 0 executed, 0 bytes. The age-prune of `Temp\claude\C--Riot-Commander` was rejected on
+measurement: the tree is full of NTFS HARDLINKS into the main repo's own `.git\lfs\objects`, so
+`Get-ChildItem` counted one physical extent three and four times - `fsutil hardlink list` over the
+400 largest delete-set files found 132 files / 1735 MB that reclaim ZERO bytes. The 2.78 GB
+headline was ~62 percent air. The discriminator fails too: mtime inside a hardlinked clone is the
+ORIGINAL object's mtime, so a 7-day cut strips ~583 MB out of the MIDDLE of each of three RC
+clones. A second proposal cleared ~1.9 GB on a "HEAD confirmed in the main repo" check that
+cannot exist - `base59`, `mut1`, `mut2` have no `.git` at all. `.claude/projects` and
+`Temp\claude\C--Sibling-A` untouched by rule.
+
+**The `_archive` silent-fail trap fired live.** A `git reset` between staging and commit dropped
+both archive destinations from the index; because `_archive/` is gitignored they became
+untracked-and-ignored on disk while `git add -A docs/` staged only the two DELETIONS - exactly the
+"remove the file from version control entirely" failure `.gitignore:19-21` warns about. Caught
+only because the `git ls-files` gate was run BEFORE committing, not after. Recovered with
+`git add -f`. **Run that gate every time; `git status` alone looked fine.**
+
+Verified: RC **18050 passed / 154 skipped / 1635 subtests** from the repo root, drift_guard 0
+breaches, archmap + state_schema clean, ruff clean, named guards 45 passed. Verifier CONFIRM 11/11.
+`test_loop_concurrency` ran 28 passed / **0 skipped** - `C:\Sibling-A` is present, so the
+sibling byte comparison and the `SHARED_SHA256` pin genuinely executed.
+
+Open: `%USERPROFILE%\.gemini` needs an operator ruling - `tools/headless-repo.md` contradicts
+itself (table says PURGEABLE, section 2 says RETAIN). Held as RETAIN, untouched.
+
+---
+
 # 2026-08-02i - headless run 02: the ARAM Haiku blocker was a PARSER bug, and one trinket bug spanned four layers
 
 5 commits, pushed `f818d718..bae4d0e0`. Ledger 1173. 13 slices, 8 verifier gates, no game
@@ -86,43 +139,3 @@ missed. `/api/state` `screen_read` was 6.1 HOURS stale while vision ran fine via
 `moon_proxy` - that is the better suspect for a dark panel than the `cff8d678` cadence fix.
 Start the augment watcher BEFORE queueing next time. Also on disk: 6.35 GB
 `C:\RC-Recordings\2026-08-02_15-13-40.mkv`, operator's call to delete.
-
----
-
-# 2026-08-02g - RM-145 live-confirmed, G6-04 closed; the prep half found the bug in the acceptance criterion
-
-6 commits, pushed `07ddfae6..<this>`. Ledger 1169.
-
-**G6-04 CLOSED - PASS both directions.** Live ARAM, rc-shell pid 4140. Desktop
-2560x1440 -> 1920x1080 -> 2560x1440; overlay window tracked it exactly; access log carried
-`?overlay=1` (scale 1.00) -> `?overlay=1&ovscale=1.33` on the return leg, which was the half
-that was broken. Second GATE 6 row ever closed.
-
-**The prep half was worth more than the run.** Before the game started, measured that the
-row's OWN acceptance criterion was unsatisfiable: `overlay_state.js:171` appends `ovscale`
-only when `|scale - 1| > 0.001`, so 1920x1080 gives scale exactly 1.00 and NO param. A
-literal "two lines both carrying ovscale=N" check fails on correct behavior. Fixed the row
-first (`12934b47`), then ran the game against a criterion that could actually pass.
-
-**Three of my own claims were wrong, all caught by probing rather than reasoning:**
-(1) "zero overlay requests today" read only the un-rotated log - the daily log rotates at
-3MB and had rotated four times; the lines were in `.log.1` and `.log.3`. (2) I flagged
-`health.json` `overlay_visible: false` as evidence the HUD was down - that field is DEAD,
-set False at construction and never written again. (3) The first live attempt fired nothing
-because Borderless does not resize the desktop; reading that as "the fix failed" was
-available and wrong.
-
-**Filed, not fixed:** RM-146 (RC permanently over its 500 MB ceiling, remediation
-permanently suppressed by the restart-loop guard - the guard is correct, the steady state
-it protects is not), RM-147 (G6-03 blocked: live OBS runs a window_capture, not the
-continuous display capture the row is about; converting it re-introduces the BSOD surface,
-so it is the operator's call), RM-148 (the hermeticity guard cannot tell a test from the
-live daemon and intermittently reds the /done gate).
-
-**OBS: set up as far as is safe.** `C:\RC-Recordings` created (the configured path did not
-exist) and the record path proven end to end over obs-websocket. Capture METHOD deliberately
-left alone - see RM-147.
-
-Relocated RM-143/144/145 to `docs/ROADMAP_HISTORY.md`; ROADMAP was at 95% of budget, now 88%.
-
-**Next:** G6-03 needs the RM-147 decision first. Otherwise pick from ROADMAP.
