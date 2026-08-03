@@ -312,6 +312,20 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             n = int(self.headers.get("Content-Length", "0"))
+            # Lane 8, 2026-08-03: the `n > _MAX_POST_BYTES` cap above does not
+            # bound a NEGATIVE length - int("-1") is -1, which passes the cap,
+            # and `self.rfile.read(n) if n else b""` then treats -1 as truthy
+            # and reads to EOF. Measured against the real Handler on an
+            # ephemeral port: the request hung with no response and completed
+            # in 0.00s the instant the client shut down its write side. The
+            # server binds HOST "::" on a ThreadingHTTPServer, so the cost is
+            # one pinned thread per request, from anywhere on the LAN or
+            # tailnet. Identical defect to the one closed in
+            # vision_server/_http.py the same day (LEDGER 1177) - that sweep
+            # did not look across files, so the wider surface kept it.
+            if n < 0:
+                self._send(400, b'{"error":"bad_body"}', "application/json")
+                return
             if n > _MAX_POST_BYTES:
                 self._send(413, b'{"error":"payload_too_large"}', "application/json")
                 return
@@ -319,6 +333,23 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(body.decode("utf-8", errors="replace")) if body else {}
         except Exception as exc:  # noqa: BLE001
             log.debug("do_POST bad_body: %s", exc)
+            self._send(400, b'{"error":"bad_body"}', "application/json")
+            return
+
+        # Lane 8, 2026-08-03: a syntactically valid but NON-DICT body (`[1,2,3]`,
+        # `"hello"`, `7`) reached the routes, which all call `payload.get(...)`.
+        # Measured on the real handler: POST /api/command with `[1,2,3]` raised
+        # an UNCAUGHT AttributeError at routes_state.py:516 - traceback to
+        # stderr and the connection closed with NO HTTP RESPONSE AT ALL. Same
+        # for /api/input; ds-preview, build-order and speak turned it into a
+        # 500. `_dispatch._validate_request_body` already NOTICES this ("expected
+        # dict, got list") and then returns without acting, because it is
+        # soft-warn by design. Fixed here, at the single trust boundary, rather
+        # than in ~40 route handlers: verified that zero POST routes consume a
+        # positional/list body, so dict-or-400 costs nothing. Same root-cause
+        # family as LEDGER 1180 - a payload shape assumed rather than asserted.
+        if not isinstance(payload, dict):
+            log.debug("do_POST non_dict_body: %s", type(payload).__name__)
             self._send(400, b'{"error":"bad_body"}', "application/json")
             return
 
