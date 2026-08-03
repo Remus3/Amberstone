@@ -138,6 +138,29 @@ def parse_field(text: str, key: str) -> str:
     return ""
 
 
+# Every extracted value stays length-bounded: prose fields are served straight
+# into dashboard panels, so a runaway response (a model repetition loop) must
+# never land there verbatim.
+#
+# The bound is per CONTENT CLASS rather than one number, because two of the
+# declared keys are not prose at all - they are a serialized payload handed to
+# a decoder ("choices" is a JSON array read by core.coach_output; "item reasons"
+# is a "Name=reason; Name=reason" pair list). Clipping those mid-value does not
+# shorten a panel, it destroys the value: a clipped array decodes to [] and a
+# clipped pair list silently loses its tail entries. So they keep a bound, just
+# one sized to the whole payload the prompts ask for.
+_PROSE_FIELD_LIMIT = 220
+_STRUCTURED_FIELD_LIMIT = 2000
+_STRUCTURED_FIELD_KEYS = frozenset({"choices", "item reasons"})
+
+
+def _clip_field(key: str, val: str) -> str:
+    """Bound one extracted value at its content class's limit."""
+    if key in _STRUCTURED_FIELD_KEYS:
+        return val[:_STRUCTURED_FIELD_LIMIT]
+    return val[:_PROSE_FIELD_LIMIT]
+
+
 def parse_fields(text: str, keys: list) -> dict:
     """
     Extract multiple labeled fields from coach response text.
@@ -157,12 +180,13 @@ def parse_fields(text: str, keys: list) -> dict:
         for key in keys:
             if line.lower().startswith(key + ":"):
                 val = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', line[len(key) + 1:].strip())
-                fields[key] = val[:220]
+                fields[key] = _clip_field(key, val)
                 break
     if not fields and len(raw_lines) >= max(2, len(keys) // 2):
         # Positional fallback: map lines to keys in declared order.
         for key, line in zip(keys, raw_lines):
-            fields[key] = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', line)[:220]
+            fields[key] = _clip_field(
+                key, re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', line))
     return fields
 
 

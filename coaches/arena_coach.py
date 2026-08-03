@@ -31,7 +31,7 @@ from coaches._base_coach import (
 )
 from coaches._arena_item_advisor import recompute_arena_build
 from core import live_metrics
-from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+from core.daemon_slayer_resolver import resolve_inventory as _ds_resolve_inventory
 from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
 from core.cc_conditional_impact_context import (
     cc_conditional_impact_line,
@@ -671,7 +671,11 @@ class Coach(BaseCoach):
                     dispatch_for_coach as _ds_dispatch_for_coach,
                     display_label as _ds_display_label,
                 )
-                owned_ids = _ds_resolve_many(state.get("items", []), mode="arena")
+                # Trinkets + consumables share the Live Client inventory array
+                # with shop items, so the raw list charges the engine's 6-slot
+                # budget for a slot no build item occupies - and the same list
+                # is persisted as the calibration row's owned_items below.
+                owned_ids = _ds_resolve_inventory(state.get("items", []), mode="arena")
                 target_bonus_hp = self._estimate_target_bonus_hp(state)
                 _lvl = int(state.get("level", 1)) or 1
                 # s170: replaces hardcoded target_armor=80.0 with level-aware
