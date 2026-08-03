@@ -47,6 +47,24 @@ CLAIM_COUNT_ORDINAL = frozenset({
 CLAIM_FILE = re.compile(
     r"\b(?:updated|edited|created|added|wrote|written|modified|fixed|patched)\b"
     r"[^.\n]{0,40}?([\w./\\-]+\.(?:py|md|js|css|json|html|ps1|txt|ya?ml))\b", re.I)
+# A file "claim" in a COUNTERFACTUAL is not a claim. CLAIM_FILE matches a
+# claim-verb within 40 chars of a filename, which cannot tell the indicative
+# ("added a line to CLAUDE.md") from the conditional ("an entry ADDED to
+# CLAUDE.md WOULD leave the watchdog auto-merging") - the second describes a
+# hypothetical edit by someone else, at some future time, and asserts nothing
+# about what this session did. MEASURED 2026-08-03: that exact sentence blocked
+# four consecutive Stops on a session that had edited no such file and had in
+# fact MEASURED the behaviour it was describing.
+# The discriminator is a modality-of-unreality marker ANYWHERE in the sentence,
+# vetoed by a first-person completed-action marker - so "I edited CLAUDE.md,
+# which would break X" still flags (the claim is real; the modal is incidental),
+# while a pure hypothetical does not.
+CLAIM_HYPOTHETICAL = re.compile(
+    r"\b(?:would|could|might|should|if|unless|whenever|were\s+\w+\s+to|"
+    r"hypothetical(?:ly)?|suppose|imagine)\b", re.I)
+CLAIM_FIRST_PERSON_DID = re.compile(
+    r"\b(?:I|we)\s+(?:have\s+|just\s+|already\s+)*"
+    r"(?:updated|edited|created|added|wrote|written|modified|fixed|patched)\b", re.I)
 CLAIM_CI = re.compile(r"\bCI\b[^.\n]{0,30}?\b(?:green|passing|passed|clean)\b", re.I)
 CLAIM_COMMIT = re.compile(r"\bcommitted\b|\bcommit(?:ted)?\s+(?:and pushed|is in|landed)\b", re.I)
 CLAIM_PUSH = re.compile(r"\bpushed\b", re.I)
@@ -256,7 +274,13 @@ def audit(ev):
             if observed_counts and bare not in observed_counts:
                 flag("count_mismatch", sentence, claimed=bare,             # 2
                      observed=", ".join(sorted(observed_counts)))
+        # A counterfactual asserts nothing about this session - see
+        # CLAIM_HYPOTHETICAL. Computed once per sentence, not per path.
+        hypothetical = (bool(CLAIM_HYPOTHETICAL.search(sentence))
+                        and not CLAIM_FIRST_PERSON_DID.search(sentence))
         for path in CLAIM_FILE.findall(sentence):
+            if hypothetical:
+                continue
             if not _same_file(path, ev["edited"]):
                 flag("file_claim_without_edit", sentence, claimed=path)    # 3
         if CLAIM_CI.search(sentence) and not probed_ci:
