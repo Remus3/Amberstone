@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -75,6 +76,47 @@ def _norm_block(block: object) -> dict:
     return out
 
 
+def _norm_number(value: object) -> float | None:
+    """Return a real finite float, else None. Never raises.
+
+    Strict on purpose: this mirrors the assembler's own numeric gate, so a
+    column here reads exactly as the rule read it. A bool is rejected because
+    it is an int in Python and would turn a flag into a measurement, and a
+    non-finite float is rejected because json.dumps writes NaN / Infinity as
+    bare tokens that are not valid JSON - one garbage tick would otherwise
+    poison the whole corpus for every reader but json.loads.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    out = float(value)
+    return out if math.isfinite(out) else None
+
+
+def _norm_count(value: object) -> int | None:
+    """Return a whole-number count as an int, else None. Never raises."""
+    num = _norm_number(value)
+    if num is None or num != int(num):
+        return None
+    return int(num)
+
+
+def _lc_hp_pct(lc: dict) -> float | None:
+    """Self HP percent 0..100 off the liveclient tick, or None. Never raises.
+
+    Kept DISTINCT from the recorded ``hp_pct`` column: the assembler prefers the
+    coach artifact's own hp_pct and only falls back to this ratio, so the two
+    have different provenance and can disagree. Recording an lc-derived percent
+    under the name of the value the rule actually consumed would silently
+    manufacture the attribution this instrumentation exists to make honest.
+    """
+    cur = _norm_number(lc.get("hp"))
+    mx = _norm_number(lc.get("hp_max"))
+    if mx is None or mx <= 0 or cur is None:
+        return None
+    pct = 100.0 * cur / mx
+    return pct if 0.0 <= pct <= 150.0 else None
+
+
 def log_aram_coach(
     det_block: object,
     live_block: object,
@@ -83,6 +125,9 @@ def log_aram_coach(
     *,
     path: Path | None = None,
     now_iso: str | None = None,
+    hp_pct: object = None,
+    wave_pct: object = None,
+    low_enemy_count: object = None,
 ) -> dict | None:
     """Append one deterministic-vs-Haiku ARAM record to the shadow jsonl.
 
@@ -99,6 +144,17 @@ def log_aram_coach(
         mode_key: dashboard mode_key (expected "aram"; recorded verbatim).
         path: jsonl target override (test seam).
         now_iso: ISO timestamp override (test seam).
+        hp_pct: the self-HP percent decide_action was given, 0..100.
+        wave_pct: the minion-wave position decide_action was given, 0..100.
+        low_enemy_count: the low-HP enemy count decide_action was given.
+
+    The three rule inputs are recorded, never consumed: they do not enter the
+    dedup signature and they change no verdict. They exist because the agreement
+    residual between the two columns is quantised to exactly one ladder tier -
+    the shape of the single wave_pct shift operator - and no mismatch in this
+    log could be attributed to the state that produced it while the raw
+    decide_action inputs were absent from every row. Each degrades to null
+    independently, so a partial read still yields an attributable row.
     """
     try:
         # Live-game gate (item-386): only a real in-game liveclient tick carries
@@ -140,6 +196,10 @@ def log_aram_coach(
             "enemy_comp": enemy_comp,
             "deterministic": det,
             "live_haiku": live,
+            "hp_pct": _norm_number(hp_pct),
+            "wave_pct": _norm_number(wave_pct),
+            "low_enemy_count": _norm_count(low_enemy_count),
+            "lc_hp_pct": _lc_hp_pct(lc),
         }
 
         target.parent.mkdir(parents=True, exist_ok=True)
