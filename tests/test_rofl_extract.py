@@ -106,6 +106,26 @@ def test_corrupt_blob_returns_none_with_a_record(tmp_path, caplog):
     assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
 
+def test_stats_json_list_of_non_dicts_returns_none_not_a_crash(tmp_path, caplog):
+    """A statsJson that is valid JSON but the WRONG shape - a list whose entries
+    are not player objects - must be rejected like any other corrupt blob, never
+    crash. field_count derives len(players[0]); on a non-dict first entry that
+    raised an uncaught TypeError which propagated out of extract_stats and aborted
+    the whole extract_archive loop, dropping every later replay in the pass.
+
+    Covers both observed variants: a non-sized entry (int/None/bool) that RAISED,
+    and a string entry that silently produced a garbage dict (field_count read the
+    string length while downstream sidecar consumers index each player as a dict).
+    """
+    for payload in ([1, 2, 3], [None], [True], ["not-a-player"]):
+        p = tmp_path / "NA1-7.rofl"
+        p.write_bytes(_fake_rofl(payload))
+        with caplog.at_level(logging.WARNING, logger=ra.logger.name):
+            out = ra.extract_stats(p)
+        assert out is None, f"expected None for statsJson={payload!r}, got {out!r}"
+    assert any(r.levelno >= logging.WARNING for r in caplog.records)
+
+
 # ---------------------------------------------------------------------------
 # bulk extraction over an archive dir
 # ---------------------------------------------------------------------------
@@ -156,6 +176,23 @@ def test_extract_archive_counts_failures_rather_than_dropping_them(tmp_path):
 
     assert res.extracted == ["NA1_111"]
     assert res.failed == ["NA1_999"]
+
+
+def test_extract_archive_survives_a_non_dict_statsjson_replay(tmp_path):
+    """One replay whose statsJson is a list of non-dicts must be COUNTED as
+    failed, not crash the pass. Before the fix extract_stats raised TypeError on
+    the bad file and extract_archive had no guard, so the good sibling that sorted
+    after it (NA1-999) was never extracted - one corrupt .rofl dropped the rest."""
+    arc = tmp_path / "arc"
+    arc.mkdir()
+    # NA1-111 sorts before NA1-999; the bad file must not prevent the good one.
+    (arc / "NA1-111.rofl").write_bytes(_fake_rofl([1, 2, 3]))
+    (arc / "NA1-999.rofl").write_bytes(_fake_rofl(_PLAYERS))
+
+    res = ra.extract_archive(arc)
+
+    assert res.extracted == ["NA1_999"]
+    assert res.failed == ["NA1_111"]
 
 
 def test_extract_archive_on_missing_dir_is_not_an_error(tmp_path):
