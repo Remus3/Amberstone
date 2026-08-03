@@ -141,6 +141,102 @@ def test_plain_hypothetical_without_modal_still_flags(tmp_path):
     assert "file_claim_without_edit" in _checks(report)
 
 
+def test_a_file_cited_as_a_precedent_is_not_an_edit_claim(tmp_path):
+    """Naming the file you COPIED FROM is a pointer, not a claim of authorship.
+
+    MEASURED 2026-08-03, lane 8: this exact sentence blocked the Stop on a
+    session whose whole point was that it copied an existing containment pattern
+    rather than inventing one. CLAIM_FILE matches a claim-verb within 40 chars of
+    a filename and cannot tell "fixed X" from "fixed it the way X does".
+
+    Same unfixable-by-the-model shape as the counterfactual above: the sentence
+    is already in the transcript and cannot be retracted, so every later Stop
+    blocks too. Worse, the pressure it creates is backwards - the cheapest way to
+    satisfy the gate would be to stop citing precedent, and citing precedent is
+    the behaviour the repo wants.
+    """
+    rows = [_assistant(_text(
+        "Fixed with the in-tree precedent at dashboard/routes_static.py:64-67 - "
+        "resolve the root, resolve the candidate, assert relative_to."))]
+    report = _run_gate(tmp_path, rows)
+    assert "file_claim_without_edit" not in _checks(report)
+
+
+@pytest.mark.parametrize("sentence", [
+    "Fixed per core/polled_json.py, which owns the atomic writer.",
+    "Hardened it, see tools/truth_gate.py for the deeper check.",
+    "Added the guard following the example in tests/test_ports.py.",
+])
+def test_every_citation_marker_form_suppresses(tmp_path, sentence):
+    report = _run_gate(tmp_path, [_assistant(_text(sentence))])
+    assert "file_claim_without_edit" not in _checks(report), sentence
+
+
+@pytest.mark.parametrize("sentence", [
+    "I fixed it per the precedent in dashboard/routes_static.py.",
+    "We added the guard following the example in tests/test_ports.py.",
+    "I patched it as in tools/truth_gate.py.",
+])
+def test_a_citation_marker_cannot_launder_a_first_person_edit(tmp_path, sentence):
+    """The suppression must not become an evasion hatch.
+
+    A first-person completed-action marker VETOES it, exactly as it vetoes the
+    counterfactual suppression. Without this, wrapping any real claim in "per
+    the precedent in X" would silence the check.
+
+    Every sentence here puts the citation marker BETWEEN the verb and the path,
+    which is the only position that triggers the suppression at all - an earlier
+    draft of this test used trailing markers, so it passed with the veto deleted
+    and proved nothing. Mutation testing caught that; contrast the second case
+    with its marker-identical, first-person-free twin above, which must suppress.
+    """
+    report = _run_gate(tmp_path, [_assistant(_text(sentence))])
+    assert "file_claim_without_edit" in _checks(report), sentence
+
+
+def test_a_citation_marker_after_the_filename_does_not_suppress(tmp_path):
+    """Only a marker BETWEEN the verb and the path puts the path in a citation
+    role. One trailing "per the precedent" must not retro-license the claim."""
+    rows = [_assistant(_text(
+        "Updated core/ports.py per the precedent."))]
+    report = _run_gate(tmp_path, rows)
+    assert "file_claim_without_edit" in _checks(report)
+
+
+def test_a_negated_commit_statement_is_not_a_commit_claim(tmp_path):
+    """"Nothing is committed yet" asserts the OPPOSITE of having committed.
+
+    MEASURED 2026-08-03, lane 8: reporting honestly that no commit had happened
+    was itself flagged as an unbacked commit claim. CLAIM_COMMIT matches the word
+    and cannot see the negation governing it - the same assertion-versus-denial
+    blindness the counterfactual fix addressed for CLAIM_FILE.
+    """
+    for text in ("Nothing is committed yet.",
+                 "I have not committed this.",
+                 "No part of it is committed."):
+        report = _run_gate(tmp_path, [_assistant(_text(text))])
+        assert "commit_claim_without_commit" not in _checks(report), text
+
+
+def test_a_negated_push_statement_is_not_a_push_claim(tmp_path):
+    """Same shape, the sibling check - fixed together, not one at a time."""
+    for text in ("Nothing is pushed yet.", "The branch is not pushed."):
+        report = _run_gate(tmp_path, [_assistant(_text(text))])
+        assert "push_claim_without_push" not in _checks(report), text
+
+
+@pytest.mark.parametrize("sentence", [
+    "I committed the fix, but not the docs.",
+    "The branch is pushed, not merged.",
+])
+def test_a_trailing_negation_does_not_launder_a_real_claim(tmp_path, sentence):
+    """The negation must GOVERN the claim word, not merely share the sentence."""
+    report = _run_gate(tmp_path, [_assistant(_text(sentence))])
+    checks = _checks(report)
+    assert ("commit_claim_without_commit" in checks
+            or "push_claim_without_push" in checks), sentence
+
+
 def test_ci_green_claim_without_probe_is_flagged(tmp_path):
     rows = [_assistant(_text("CI is green on that commit."))]
     report = _run_gate(tmp_path, rows)
