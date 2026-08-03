@@ -6,6 +6,49 @@
 
 ---
 
+# 2026-08-02i - headless run 02: the ARAM Haiku blocker was a PARSER bug, and one trinket bug spanned four layers
+
+5 commits, pushed `f818d718..bae4d0e0`. Ledger 1173. 13 slices, 8 verifier gates, no game
+available (continue-note FORK C). ENGINE unchanged 1.270.0 - no engine math touched, so no
+Share sync and no DS bounce were owed. RC restarted, pid 24412.
+
+**The Haiku-to-ZERO blocker was never a coaching gap.** `parse_fields` clipped every value
+to 220 chars; a 2-entry `choices` array is ~315, so it decoded to `[]` every time. The LIVE
+side had emitted `choices` **zero** times across the entire ARAM shadow log and the entire
+Arena log - `both=0`, so the flip could never be validated on its primary surface. Not stale
+data. SR alone was clean (own uncapped parser). Fix splits the bound by CONTENT CLASS
+(prose 220 / structured 2000, both still enforced): a structured value goes to a decoder, so
+a mid-value clip does not shorten output, it DESTROYS it. Same cap was also serving
+`item_build_reasons` cut mid-word - 809 rows sat at exactly 220 with zero above.
+**`reference_coach_choices_native_emit` was corrected in place** - it said the emit was live
+for all 4 coaches, which was true of the wiring and false of the effect for 3.
+
+**A log-spam finding turned out to be a live product bug, at four layers.** 765 of 857
+warnings came from one line; 116 read "has 7 items", and seven cannot fit six slots - a ward
+trinket was occupying an inventory slot, so builds with a free slot got NO advice, exactly
+where last-item guidance matters. Fixed at the route, its silent sibling, the source, the
+three non-SR coaches (which fed the DS dispatcher a phantom slot), and finally the id set.
+**"0 bad rows" is only true against a SET:** the first backfill cleaned 468 and reported 0 -
+against the old 9-member set. Against the corrected 58-member set: **1658** bad rows, incl.
+945 Poro-Snax and 699 Arena trinkets nobody had listed. A pure `consumed:true` derivation is
+REFUTED both ways (loses 4 trinkets, over-filters 2 Wardstones that carry real stats).
+
+**ARAM agreement gap is a wiring asymmetry, not noise.** 98.6 pct of mismatches are exactly
+one tier apart and the rule's only one-tier operator (`wave_pct`) is hardcoded off while
+Haiku gets the value. Noise + timing skew both refuted by measurement. Counter-intuitive:
+the DETERMINISTIC side is the volatile one (0.904 vs Haiku 0.998). Only Step 0 shipped.
+
+**The verifier gate earned its keep.** 2 of 8 returned REFUTE. Three slices mis-reported
+their own test counts while their code was correct; one claimed "0 non-ASCII" for a file
+with 225 pre-existing non-ASCII bytes. **One slice found the regression its own fix
+introduced** - and `tests/test_archetype_mismatch.py` stayed FULLY GREEN through it, because
+its fixtures build the two lists parallel BY CONSTRUCTION. Filed as the top FUTURE item.
+
+**Verified:** RC 17677 passed / 108 skipped / 1635 subtests; DS 10341 passed from repo root;
+ruff clean repo-wide. **Owed:** `both=0` can only leave 0 after one live ARAM.
+
+---
+
 # 2026-08-02h - RM-147 decided, G6-03 closed, RM-146 measured + closed; a probe bug was blocking a gated row
 
 5 commits, pushed `abd2d073..19197022`. Ledger 1170 + 1171 + 1172. Two live ARAM Mayhem games.
@@ -83,47 +126,3 @@ left alone - see RM-147.
 Relocated RM-143/144/145 to `docs/ROADMAP_HISTORY.md`; ROADMAP was at 95% of budget, now 88%.
 
 **Next:** G6-03 needs the RM-147 decision first. Otherwise pick from ROADMAP.
-
----
-
-# 2026-08-02f - console flash named by measurement; three of my own suspects refuted
-
-4 commits, pushed `a632cead..2d296991`. Ledger 1168.
-
-**The flash is `LW-CIWatchdog`** - the SIBLING repo's task running
-`python.exe C:\Sibling-A\tools\ci_watchdog.py` on a PT2M repeat. Named in one pass by
-polling top-level windows for `ConsoleWindowClass` at 40ms and resolving each PID through
-CIM: three visible windows in 7 minutes, all that command line. Free A/B in the same
-capture - RC's twin `RC-CIWatchdog` fired on the same cadence under `pythonw` with zero
-windows. Live task repointed to `pythonw.exe`, verified over a second capture (three fires,
-no windows, `watchdog.log` still writing). Source fix (installer builds the task XML from
-`sys.executable`) filed to the sibling via `moon_sync_inbox/`.
-
-**The hand-off's prime suspect was WRONG.** The `Stop` hook ran at 12:04:39 inside the
-capture window (`ops/runtime/stop_claim_history.jsonl`) and produced no console. Children
-were already clean. Do not re-audit either.
-
-**Two measured reversals of my own claims, both recorded:** `-WindowStyle Hidden` does NOT
-suppress the flash (probe task: no flag -> visible, with flag -> STILL visible, S4U -> none);
-and `RC-PatchRefresh` / `RC-PostmortemAnalyze` / `RC-WeeklyHygiene` were already S4U so none
-of them could ever have flashed - I had flagged them off their command line without checking
-the principal. Only `LW-WeeklyHygiene` was really exposed and is now S4U.
-
-**Operator-directed second half:** CLAUDE.md's hostname drift. Fixed by DELETING the field
-(`c645271e`), not by updating it - operator: the Windows name changes from time to time, so
-pinning a value only resets the drift clock. `legion-rc` / `100.70.22.55` is canonical.
-
-**MAIN WAS RED ON ARRIVAL and it was NOT this session's doing.** The previous session's
-`8b91d13a` edited a LIVE span in `web/js/main.js` (the `setMode` first-render stamp) and the
-RM-125 `_LIVE_HALF_DIGEST` guard is built to go red on exactly that and demand a deliberate
-re-capture. That session wrapped while its push run was still in flight, so the red landed
-after its banner and nobody collected it - main sat red from 16:34. Re-captured by the
-documented two-tree diff (`ec55b133` vs now, one fixed tokeniser, 173 sources both sides,
-exactly one file differs and it is `web/js/main.js`), `289c244e`. **Process lesson now
-written into the guard's own note: if a push run is still in flight at wrap, COLLECT IT.**
-I also briefly misattributed the red to my own footer-comment edit - wrong, a comment-only
-change cannot move that digest, and the two-tree diff is what settled it.
-
-**Next:** RM-145 still needs the live in-game confirmation (LIVE_GAME_GATED_SYNC G6-04) -
-game up with overlay showing, flip the video mode AND flip it back, receipt is two access-log
-lines with different `ovscale=N`. Needs the operator playing; nothing else blocks it.

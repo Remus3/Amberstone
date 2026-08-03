@@ -223,6 +223,50 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-02f - console flash named by measurement; three of my own suspects refuted
+
+4 commits, pushed `a632cead..2d296991`. Ledger 1168.
+
+**The flash is `LW-CIWatchdog`** - the SIBLING repo's task running
+`python.exe C:\Sibling-A\tools\ci_watchdog.py` on a PT2M repeat. Named in one pass by
+polling top-level windows for `ConsoleWindowClass` at 40ms and resolving each PID through
+CIM: three visible windows in 7 minutes, all that command line. Free A/B in the same
+capture - RC's twin `RC-CIWatchdog` fired on the same cadence under `pythonw` with zero
+windows. Live task repointed to `pythonw.exe`, verified over a second capture (three fires,
+no windows, `watchdog.log` still writing). Source fix (installer builds the task XML from
+`sys.executable`) filed to the sibling via `moon_sync_inbox/`.
+
+**The hand-off's prime suspect was WRONG.** The `Stop` hook ran at 12:04:39 inside the
+capture window (`ops/runtime/stop_claim_history.jsonl`) and produced no console. Children
+were already clean. Do not re-audit either.
+
+**Two measured reversals of my own claims, both recorded:** `-WindowStyle Hidden` does NOT
+suppress the flash (probe task: no flag -> visible, with flag -> STILL visible, S4U -> none);
+and `RC-PatchRefresh` / `RC-PostmortemAnalyze` / `RC-WeeklyHygiene` were already S4U so none
+of them could ever have flashed - I had flagged them off their command line without checking
+the principal. Only `LW-WeeklyHygiene` was really exposed and is now S4U.
+
+**Operator-directed second half:** CLAUDE.md's hostname drift. Fixed by DELETING the field
+(`c645271e`), not by updating it - operator: the Windows name changes from time to time, so
+pinning a value only resets the drift clock. `legion-rc` / `100.70.22.55` is canonical.
+
+**MAIN WAS RED ON ARRIVAL and it was NOT this session's doing.** The previous session's
+`8b91d13a` edited a LIVE span in `web/js/main.js` (the `setMode` first-render stamp) and the
+RM-125 `_LIVE_HALF_DIGEST` guard is built to go red on exactly that and demand a deliberate
+re-capture. That session wrapped while its push run was still in flight, so the red landed
+after its banner and nobody collected it - main sat red from 16:34. Re-captured by the
+documented two-tree diff (`ec55b133` vs now, one fixed tokeniser, 173 sources both sides,
+exactly one file differs and it is `web/js/main.js`), `289c244e`. **Process lesson now
+written into the guard's own note: if a push run is still in flight at wrap, COLLECT IT.**
+I also briefly misattributed the red to my own footer-comment edit - wrong, a comment-only
+change cannot move that digest, and the two-tree diff is what settled it.
+
+**Next:** RM-145 still needs the live in-game confirmation (LIVE_GAME_GATED_SYNC G6-04) -
+game up with overlay showing, flip the video mode AND flip it back, receipt is two access-log
+lines with different `ovscale=N`. Needs the operator playing; nothing else blocks it.
+
+---
+
 # 2026-08-02e - RM-144 + RM-145: two "confirmed" bug reports that were measurement artifacts
 
 3 commits, pushed `ec55b133..8b91d13a`. Ledger 1165 / 1166 / 1167.
