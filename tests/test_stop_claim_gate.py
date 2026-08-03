@@ -98,6 +98,49 @@ def test_file_edited_claim_with_no_edit_is_flagged(tmp_path):
     assert "file_claim_without_edit" in _checks(report)
 
 
+def test_counterfactual_file_mention_is_not_a_claim(tmp_path):
+    """A hypothetical edit asserts nothing about what this session did.
+
+    MEASURED 2026-08-03: this exact sentence blocked four consecutive Stops on a
+    session that had edited no such file. CLAIM_FILE sees `added ... CLAUDE.md`
+    and cannot tell the indicative from the conditional, but "an entry ADDED to
+    CLAUDE.md WOULD leave the watchdog auto-merging" describes a hypothetical
+    future edit by someone else. There is no way to retract a sentence already in
+    the transcript, so a false positive here is unfixable by the model and blocks
+    the session forever - which is why this is a check fix, not a prose fix.
+    """
+    rows = [_assistant(_text(
+        "Nothing asserted the two still matched, so an entry added to CLAUDE.md "
+        "alone would leave the watchdog silently auto-merging into a "
+        "newly-frozen file."))]
+    report = _run_gate(tmp_path, rows)
+    assert "file_claim_without_edit" not in _checks(report)
+
+
+def test_conditional_phrasings_do_not_launder_a_real_edit_claim(tmp_path):
+    """The suppression must not become an evasion hatch.
+
+    A first-person completed-action marker VETOES the hypothetical suppression,
+    so a real claim carrying an incidental modal still flags. Without this the
+    fix would be a loosening rather than a precision gain - the exact failure the
+    drift-guard rule warns about.
+    """
+    for text in (
+        "I edited CLAUDE.md, which would break the watchdog.",
+        "We added a row to core/ports.py so it could be reused later.",
+        "I have modified tools/foo.py, if that matters.",
+    ):
+        report = _run_gate(tmp_path, [_assistant(_text(text))])
+        assert "file_claim_without_edit" in _checks(report), text
+
+
+def test_plain_hypothetical_without_modal_still_flags(tmp_path):
+    """Suppression needs an unreality marker - absence of one is still a claim."""
+    rows = [_assistant(_text("An entry added to CLAUDE.md leaves it stale."))]
+    report = _run_gate(tmp_path, rows)
+    assert "file_claim_without_edit" in _checks(report)
+
+
 def test_ci_green_claim_without_probe_is_flagged(tmp_path):
     rows = [_assistant(_text("CI is green on that commit."))]
     report = _run_gate(tmp_path, rows)
