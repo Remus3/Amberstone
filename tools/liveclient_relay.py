@@ -143,13 +143,43 @@ def fetch_live() -> bytes | None:
     for url in LIVE_URLS:
         payload, status = _try_one(url)
         if payload is not None:
+            _note_fetch_recovered()
             return payload
         if status == "404":
             log.debug("skip %s -> 404 (not in game)", url)
             return None
         last_err = f"{url[:8]} -> {status}"
-    log.warning("tried both schemes, last: %s", last_err)
+    _log_fetch_failure(last_err)
     return None
+
+
+_last_fetch_failure: str | None = None
+
+
+def _log_fetch_failure(detail: str) -> None:
+    """WARNING on a CHANGE of failure mode, DEBUG while it repeats.
+
+    Caught immediately after deploying the FileHandler, by reading the log
+    the old code could never write: with no game running, :2999 is not
+    listening, so every poll fails and the first version logged a WARNING
+    every ~6 seconds forever - roughly 2 MB/day of identical lines, which
+    would bury the one line that matters (the 401 this audit exists to make
+    visible). Giving the module a real output channel is only half the job;
+    the other half is not flooding it. The transition is the signal.
+    """
+    global _last_fetch_failure
+    if detail != _last_fetch_failure:
+        log.warning("liveclient fetch failing: %s", detail)
+        _last_fetch_failure = detail
+    else:
+        log.debug("liveclient fetch still failing: %s", detail)
+
+
+def _note_fetch_recovered() -> None:
+    global _last_fetch_failure
+    if _last_fetch_failure is not None:
+        log.info("liveclient fetch recovered")
+        _last_fetch_failure = None
 
 
 def upload(data: bytes) -> None:
