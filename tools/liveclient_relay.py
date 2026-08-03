@@ -16,40 +16,87 @@ Run (one time):
 When in champ select / not in game, /liveclientdata returns 404 - relay
 backs off and retries.
 """
-import json
+import logging
+import os
 import ssl
 import sys
 import time
 import urllib.request
 import urllib.error
+from pathlib import Path
 
 LIVE_URLS = [
     "https://127.0.0.1:2999/liveclientdata/allgamedata",
     "http://127.0.0.1:2999/liveclientdata/allgamedata",
 ]
-LEGION_URL = "http://192.168.8.230:8889/upload-liveclient"
 
-# AUDIT (2026-04-22): token resolver - env -> config file -> fallback.
-import os as _os_tok
-from pathlib import Path as _Path_tok
+_ROOT = Path(__file__).resolve().parent.parent
+
+# Lane 8 audit 2026-08-03. The scheduled task runs this under pythonw.exe
+# (read from the RC-LiveClientRelay task XML), which has NO CONSOLE, so every
+# print() this module used to emit went nowhere - including the errors. The
+# module even documented that exact failure ("401s ... silently (pythonw, no
+# console) -> coach dead") and then reported through print() anyway. Log to a
+# file, on the in-tree precedent at tools/daemon_slayer_extract.py:98-105.
+_LOG_FILE = _ROOT / "logs" / "liveclient_relay.log"
+_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(str(_LOG_FILE), encoding="utf-8"),
+    ],
+)
+log = logging.getLogger("liveclient_relay")
+
+
+def _upload_url() -> str:
+    """Where to POST the snapshot.
+
+    Defaults to LOOPBACK. This used to be a hardcoded `192.168.8.230`, which
+    still resolves on this box but is wrong on both counts post-ADR-011: both
+    ends are the same machine, so the X-RC-Token crossed the LAN interface in
+    cleartext for nothing, and a DHCP change would have killed the relay
+    silently (see the logging note above). Overridable for the same reason
+    `core/game_host.py` is - the host is config, not code.
+    """
+    return os.environ.get(
+        "RC_VISION_UPLOAD_URL", "http://127.0.0.1:8889/upload-liveclient")
+
+
+def _token_candidates() -> list[Path]:
+    """Config files searched for the vision token, in priority order."""
+    return [_ROOT / "config" / "vision_token.txt",
+            Path(__file__).resolve().parent / "vision_token.txt"]
+
+
 def _resolve_auth_token() -> str:
-    env = _os_tok.environ.get("RC_VISION_TOKEN")
-    if env: return env.strip()
-    # Canonical source (item 242): repo config/vision_token.txt. The legacy
-    # sibling vision_token.txt + the hardcode below are DEAD fallbacks - a
-    # stale token 401s every /upload-liveclient silently (pythonw, no console)
-    # -> relay cache empty -> the app never sees the live game -> coach dead.
-    # Never reintroduce a token hardcode as the live path.
-    _root = _Path_tok(__file__).resolve().parent.parent
-    for cand in (_root / "config" / "vision_token.txt",
-                 _Path_tok(__file__).resolve().parent / "vision_token.txt"):
+    """env -> config file -> "" (NEVER a hardcoded token).
+
+    Canonical source (item 242) is repo config/vision_token.txt. There used to
+    be a hardcoded 32-hex fallback here, directly beneath a comment saying
+    "Never reintroduce a token hardcode as the live path". It was dead (it did
+    not match the live token) but it was actively harmful in two ways: a
+    missing config silently produced a WRONG token, so every upload 401'd with
+    no report; and `dashboard/routes_static.py` serves this file's SOURCE at
+    /agent/liveclient_relay.py with no auth check, on a `::` bind - so the
+    literal was published to the LAN and tailnet. Returning "" instead lets
+    the caller fail loudly.
+    """
+    env = os.environ.get("RC_VISION_TOKEN")
+    if env:
+        return env.strip()
+    for cand in _token_candidates():
         try:
             if cand.exists():
                 line = cand.read_text(encoding="utf-8").splitlines()[0].strip()
-                if line: return line
+                if line:
+                    return line
         except OSError:
             pass
-    return "8e8f131e212b329438218eca27372dde"
+    return ""
+
 
 TOKEN = _resolve_auth_token()
 INTERVAL = 1.0   # seconds between polls when in-game
@@ -98,23 +145,24 @@ def fetch_live() -> bytes | None:
         if payload is not None:
             return payload
         if status == "404":
-            print(f"  [skip] {url} -> 404 (not in game)", flush=True)
+            log.debug("skip %s -> 404 (not in game)", url)
             return None
         last_err = f"{url[:8]} -> {status}"
-    print(f"  [err] tried both schemes, last: {last_err}", flush=True)
+    log.warning("tried both schemes, last: %s", last_err)
     return None
 
 
 def upload(data: bytes) -> None:
     req = urllib.request.Request(
-        LEGION_URL, data=data, method="POST",
+        _upload_url(), data=data, method="POST",
         headers={"X-RC-Token": TOKEN, "Content-Type": "application/json"},
     )
     urllib.request.urlopen(req, timeout=3).read()
 
 
 def loop() -> None:
-    print(f"liveclient relay -> {LEGION_URL} every {INTERVAL}s")
+    target = _upload_url()
+    log.info("liveclient relay -> %s every %ss", target, INTERVAL)
     while True:
         t0 = time.time()
         try:
@@ -123,15 +171,27 @@ def loop() -> None:
                 time.sleep(BACKOFF)
                 continue
             upload(payload)
-            ms = int((time.time() - t0) * 1000)
-            print(f"ok {len(payload)}B in {ms}ms", flush=True)
+            log.debug("ok %dB in %dms", len(payload),
+                      int((time.time() - t0) * 1000))
+        except urllib.error.HTTPError as exc:
+            # 401 here is the documented killer: a stale or missing token
+            # means the relay cache stays empty and the coach never sees the
+            # live game. It must be loud in the LOG, which is the only channel
+            # that survives pythonw.
+            log.error("upload failed: HTTP %s %s", exc.code, exc.reason)
         except Exception as exc:  # noqa: BLE001
-            print(f"err {exc}", flush=True)
+            log.error("relay tick failed: %s", exc)
         sleep_for = max(0.1, INTERVAL - (time.time() - t0))
         time.sleep(sleep_for)
 
 
 if __name__ == "__main__":
+    if not TOKEN:
+        # Exit non-zero so the scheduled task's Last Result is not a
+        # reassuring 0 while the relay does nothing.
+        log.error("no vision token: set RC_VISION_TOKEN or create %s",
+                  _token_candidates()[0])
+        sys.exit(2)
     try:
         loop()
     except KeyboardInterrupt:

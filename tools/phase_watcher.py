@@ -60,7 +60,14 @@ def _resolve_auth_token() -> str:
                 return line
     except OSError:
         pass
-    return "8e8f131e212b329438218eca27372dde"
+    # Lane 8 audit 2026-08-03: a hardcoded 32-hex token used to be
+    # returned here. It was DEAD (it did not match the live token) but
+    # dashboard/routes_static.py serves this file's SOURCE at
+    # /agent/phase_watcher.py with no auth on a "::" bind, so the literal was
+    # published to the LAN and tailnet - and a missing config silently
+    # produced a WRONG token, 401ing every request with no report.
+    # Return "" so the caller can fail loudly. Never reintroduce it.
+    return ""
 
 
 AUTH_TOKEN = _resolve_auth_token()
