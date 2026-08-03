@@ -15,7 +15,7 @@ Single-writer rules (enforced by convention, not runtime locks):
                         (via RiftSnapshot.from_state_dict / AramSnapshot.from_state_dict
                         and the three-tier factory helpers to_rift_snapshot /
                         to_aram_snapshot).
-  app.py              - final emergency writer for SR/ARAM/Arena/Brawl payloads
+  app.py              - final emergency writer for SR/ARAM/Arena/Brawl/Jade payloads
                         when factory construction catastrophically fails (all three
                         factory tiers exhausted).  Calls
                         RiftSnapshot.emergency_raw_state_only() /
@@ -77,7 +77,9 @@ def mode_from_game_mode_string(game_mode: str) -> str:
     Derive the canonical mode string from a Riot game_mode string.
     Used by app.py when transitioning from client -> in-game.
 
-    Returns one of: MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL.
+    Returns one of: MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL,
+    MODE_JADE. MODE_CLIENT is a member of ALL_MODES but is never returned
+    here - it is the not-in-game state, not a Riot game_mode string.
     Defaults to MODE_SR for any unrecognised value.
     """
     gm = (game_mode or "").upper()
@@ -281,8 +283,8 @@ class RiftSnapshot:
 
         Returns None ONLY if Python's allocator cannot produce ANY instance of
         this class - which is a fatal runtime condition, not a handled failure.
-        After this method, payload=None for SR/ARAM/Arena/Brawl is impossible
-        through any handled software failure path.
+        After this method, payload=None for SR/ARAM/Arena/Brawl/Jade is
+        impossible through any handled software failure path.
         """
         # AUDIT 2026-04-28 (deferred-frozen): copy here too - the
         # emergency path is rare, but if we ever take it the snapshot
@@ -646,7 +648,7 @@ class GameEnvelope:
     Authoritative mode container for Riot Commander.
 
     mode     - one of MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT,
-                      MODE_ARENA, MODE_BRAWL.
+                      MODE_ARENA, MODE_BRAWL, MODE_JADE (i.e. ALL_MODES).
     payload  - the mode-specific snapshot (ClientSnapshot, RiftSnapshot,
                 AramSnapshot, TftSnapshot, or None during transitions).
     timestamp - monotonic time of last envelope update.
