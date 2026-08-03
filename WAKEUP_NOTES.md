@@ -6,6 +6,51 @@
 
 ---
 
+# 2026-08-03d - lane 8 cycle 4: the verifier attacked a claim that made a finding sound smaller, and found a real hole behind it
+
+Audited `dashboard/api_schema.py` - the DECLARED validation boundary for every dashboard POST
+(criterion 1 + criterion 4: zero LEDGER mentions across 1180 entries, no dedicated test module).
+
+**Three findings, one refuted hypothesis, and one honest non-fix.**
+
+1. **The module's central claim was false.** `api_schema.py:5` said POST models use `extra="forbid"`
+   (strict input gates). Measured: 4 of the 6 wired models use `extra="allow"`, AND
+   `_dispatch._validate_request_body` never raises - it logs and returns, then `dispatch_post`
+   calls the route regardless. The models are a logging decoration, not a gate. The soft-warn
+   design is deliberate; the docstring advertising otherwise is the defect.
+2. **A negative `Content-Length` pinned a handler thread.** `int("-1")` passes the `> 1 MiB` cap,
+   then `rfile.read(-1)` reads to EOF. Hung 4.01s, released 0.13s after client SHUT_WR. Binds
+   `HOST "::"` on a ThreadingHTTPServer, and the body read runs BEFORE the token check. **Same bug
+   as `vision_server/_http.py` (LEDGER 1177) - that sweep never looked across files.** This time
+   the sweep was done: 3 readers already safe, `mc/handler.py` already carried the exact fix, and
+   `tools/ds_matchdb_mcp_server.py` had it too (loopback + authed, lower severity) - fixed.
+3. **A non-dict body raised out of the route with NO response at all** - and this one is the
+   lesson. I claimed "the routes defend themselves, so nothing is exploitable". **The verifier
+   REFUTED it using the very route I cited:** `_serve_command_post` whitelists the command STRING
+   but never checked the body was a dict, so `[1,2,3]` gave an uncaught `AttributeError` at
+   `routes_state.py:516` and a closed connection. Fixed once at the boundary after verifying zero
+   POST routes consume a positional body.
+
+**REFUTED and pinned:** the `= []` / `= {}` field defaults are NOT shared-mutable-default bugs -
+pydantic v2 deep-copies per instance. The dataclass intuition is wrong here.
+
+**NOT fixed, filed as RM-152, and stated plainly because an unqualified "fixed" would be false:**
+this closes one TRIGGER, not the class. A legal `Content-Length: 1048575` with no body sent pins a
+thread identically - measured against the FIXED handler. The real fix is a read timeout, which
+changes behaviour for the 500 ms poll and the streaming supervisor proxy. Two non-production
+residuals filed with it, including a vulnerable line sitting in an UNIMPLEMENTED MC-S10 spec.
+
+14 tests, 5 mutations all RED. Deployed and verified LIVE on both services separately, per the
+1179 lesson: RC restart for the dashboard (400 on both vectors, 0.00s, no hang), and a
+kill-then-`schtasks /Run` for `RC-DS-MatchDB-MCP` (`-32600 Invalid Content-Length`). Suites:
+RC `tests/` 18103 passed / 154 skipped; DS 10341 passed. LEDGER 1181.
+
+**Three cycles running, the adversarial pass has found something the diff did not.** Cycles 2 and 3
+it was prose overclaims. Cycle 4 it was a real code hole, reached by attacking the sentence that
+made the finding sound smaller. Attack the limiting claims, not just the alarming ones.
+
+---
+
 # 2026-08-03c - lane 8 cycle 3: a green test that was an artifact of the worktree path, and a fix that a restart did not deploy
 
 Three things happened, and the first two are process findings worth more than the code.
