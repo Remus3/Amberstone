@@ -6,6 +6,76 @@
 
 ---
 
+# 2026-08-03b - lane 8 cycle 2: :8889 served ARBITRARY FILES, and the verifier caught three overclaims in my own write-up
+
+Operator-present cycle (invoked in-session, not detached). Lane 8 merged its cycle-1 branch into
+`main` first (fast-forward `9cb8b623 -> 76cb0821`, pushed, LEDGER 1176), then started this one from
+that HEAD. Worktree + branch deliberately KEPT for the next cycle, per operator.
+
+**Audited `vision_server/_http.py` (245 lines), the `:8889` HTTP trust boundary.** Criterion 1
+(externally-reachable untrusted input) + 2 (secret-adjacent - `_config.py:50-59` resolves
+`API-Key-Claude.txt` in the same package) + 4 (two `test_vision_server_*` modules existed, NEITHER
+touched the handler). Recorded expectation before starting: sloppy query parsing, unbounded reads.
+Both present. The headline finding was NOT expected.
+
+**`GET /sync/get/` was an arbitrary file read.** `fp = SYNC_DIR / self.path[10:]`, zero containment,
+measured live against the real `Handler` on an ephemeral port - not inferred. Two independent
+escapes: `..` walks out (this is the one that reaches the API key, 200 plus body), and an ABSOLUTE
+component replaces the base entirely under `pathlib`, so a `".."`-filter-only fix would have left
+half the hole open. Amplifier: `vision_server/__init__.py:88` binds `0.0.0.0`, so it is LAN and
+tailnet reachable behind only `X-RC-Token`. The sibling `do_PUT` in the SAME file was already
+correct (`Path(...).name`) - the careful neighbour is what made the GET side easy to miss.
+
+Fixed with the in-tree precedent (`dashboard/routes_static.py:64-67`, resolve + `relative_to`,
+404 on refusal so it is not a file-existence oracle). Three more closed in the same slice: a
+NEGATIVE `Content-Length` passed the size check and reached `rfile.read(-1)` = read-to-EOF, wedging
+the handler thread; `do_PUT` parsed `Content-Length` outside its `try` (connection reset, not 400);
+`do_PUT` had no size cap while POST capped at 10 MiB. Both now share one `_body_length()` gate.
+`_auth` moved to `hmac.compare_digest` - stated as NOT mutation-provable, and the verifier confirmed
+that mutation stays green.
+
+**12 tests, 4 mutations all RED, and then the gate refuted my prose.** The verifier reproduced every
+code claim on scratch copies (never the tracked file) and CONFIRMED 1-5, then REFUTED claim 6 - the
+first draft of LEDGER 1177 carried three overclaims: (1) it cited
+`GET /sync/get/C:/Riot Commander/API-Key-Claude.txt -> 200`, which CANNOT work - the path has a
+SPACE, `BaseHTTPRequestHandler` splits the request line on whitespace (400), and the handler never
+`unquote`s so `%20` just 404s; the key is reachable by the `..` form instead. (2) It said
+`routes_static` replaced BOTH a prefix check and a `".."` filter - ground truth is the prefix check
+was replaced and the `".."` filter was normalized and RETAINED. (3) It called a whole-file 12-test
+duration a single test's hang (real delta 5.7s). All three corrected in place, in the ledger, the
+source comment and the test docstring. **The reusable lesson: the diff was right and the write-up
+was not.** Only an adversarial reader hunting unsupported statements finds that class.
+
+**Filed, not fixed: RM-150** - the `0.0.0.0` bind (legacy from the pre-ADR-011 2-PC era; every
+client is Legion-local now) plus the raw `str(e)` in 500 bodies. Left alone deliberately because
+`tests/test_vision_server_threading_s7.py:35-36` PINS the `("0.0.0.0", PORT)` literal by regex, so
+narrowing the bind is a 2-file change with its own guard update, not a one-liner.
+
+**Then the stop gate blocked the wrap on two false positives, and fixing the CHECK was the only
+legitimate move (LEDGER 1178).** Same unrecoverable family as LEDGER 1175: the gate scans the
+transcript, so an emitted sentence cannot be retracted and one wrong flag blocks every later Stop.
+(a) It read "Fixed with the in-tree precedent at `dashboard/routes_static.py:64-67`" as a claim to
+have edited that file - naming the file you COPIED FROM. The incentive is what makes it worth
+fixing: the cheapest way to satisfy that check is to STOP CITING PRECEDENT. (b) It read "Nothing is
+committed yet" as an unbacked commit claim - punishing accurate self-reporting. Discriminators:
+citation marker BETWEEN the verb and the path (vetoed by first-person), and a negation in the 40
+chars GOVERNING the claim word. `CLAIM_PUSH` fixed in the same commit as the sibling. 9 tests,
+4 mutations RED both directions - and **one veto test was VACUOUS as first written**, passing with
+the veto deleted because its markers sat after the path where the suppression never fires; only
+mutation testing caught it. Fixed gate against this session's real transcript: 0 findings, exit 0.
+**It does NOT unblock this session** - the hook runs the MAIN TREE's copy while the repair sits on
+`lane/true-audit`, the same shared-hook trap the skill documents for `core.hooksPath`. Editing main
+from a lane worktree to silence a gate is worse than wearing the false positive, so the block was
+reported and left standing. Clears on merge.
+
+**Backfill (6e), stated precisely:** a read-only disclosure writes nothing, so there are no corrupt
+rows. Whether it was USED cannot be answered - `log_message` logs at DEBUG and `_config.py:25-30`
+sets `basicConfig(level=INFO)`, so per-request lines were never recorded; `grep -c "sync/get"` = 0
+is NOT an all-clear and is reported as such. **The other half IS owed and is NOT done: the running
+:8889 keeps serving the vulnerable code until this branch merges and RC restarts.**
+
+---
+
 # 2026-08-03a - Mission Control lane 8 (Headless-True-Audit), first fire: one wrong-shape .rofl crashed the whole extraction pass
 
 2 commits on `lane/true-audit` (fix `1819c8e2` + this docs entry). NOT merged - lane 8 ships LAST
