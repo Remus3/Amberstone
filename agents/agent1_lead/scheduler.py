@@ -102,11 +102,14 @@ FROZEN_FILES = frozenset({
     "ops/rc_dev_runtime.py",
     "ops/rc_supervisor.py",
     "app/__init__.py",
+    "app/_loop.py",
     "app/_health_monitor.py",
     "app/_remediation.py",
     "app/_state_authority.py",
     "app/_overlay_manager.py",
     "app/_game_lifecycle.py",
+    "tools/diagnose.md",
+    "tools/caveman.md",
 })
 
 
