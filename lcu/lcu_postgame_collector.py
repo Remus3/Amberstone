@@ -74,7 +74,7 @@ _MODES_SQL = {}
 for _m in _VALID_MODES:
     _tbl = _m.lower()
     _MODES_SQL[_m] = f"""
-    -- ── {_m} ──────────────────────────────────────────────────────────────────
+    -- -- {_m} ------------------------------------------------------------------
     CREATE TABLE IF NOT EXISTS {_tbl}_matches (
         match_id        TEXT PRIMARY KEY,
         game_mode       TEXT NOT NULL CHECK(game_mode = '{_m}'),
@@ -457,6 +457,28 @@ def _parse_player(player: dict, team_result: str,
     }
 
 
+def _as_list(v) -> list:
+    """``v`` when it is a list, else an empty list.
+
+    A dict where a list was expected iterates to its string KEYS, which is how
+    a wrong-shape payload field reaches ``.get`` on a ``str``.
+    """
+    return v if isinstance(v, list) else []
+
+
+def _dict_players(team: dict) -> list:
+    """The dict-shaped entries of a team's ``players``, and nothing else.
+
+    ``players`` is payload data. A non-list value (a dict iterates to its
+    string KEYS) and non-dict members both used to reach ``p.get(...)`` and
+    raise ``AttributeError`` - see the note in ``_save_eog``.
+    """
+    raw = team.get("players")
+    if not isinstance(raw, list):
+        return []
+    return [p for p in raw if isinstance(p, dict)]
+
+
 def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None:
     """Parse and save a full EOG stats block to the appropriate mode tables."""
     mode      = _norm_mode(game_mode)
@@ -483,6 +505,25 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None
         _log.warning("postgame: no teams data in EOG block for match %s", match_id)
         return
 
+    # A wrong-shape entry must cost that ENTRY, never the whole match (lane 8
+    # deep audit, 2026-08-03). This block sits OUTSIDE the try that guards the
+    # database work below, and LCU payloads are not RC-authored, so a single
+    # non-dict entry in `teams` - or in any team's `players` - raised
+    # AttributeError out of _save_eog entirely and, on the sync collector
+    # path, killed the collector thread with it. Measured pre-fix:
+    # teams=["x"], teams=[{"players": ["x"]}] and teams=[{"players": {}}] all
+    # raised. Same root cause as LEDGER 1176 (core/rofl_archive.py crashed its
+    # whole extract loop on ONE wrong-shape statsJson): a per-entry shape
+    # assumption inside a loop over payload data.
+    malformed = len(teams) - len([t for t in teams if isinstance(t, dict)])
+    teams = [t for t in teams if isinstance(t, dict)]
+    if malformed:
+        _log.warning("postgame: skipped %d non-dict team entries for match %s",
+                     malformed, match_id)
+    if not teams:
+        _log.warning("postgame: no well-formed team entries for match %s", match_id)
+        return
+
     # Build team comps
     team_champs = {}  # teamId -> [champion names]
     for team in teams:
@@ -490,7 +531,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None
         champs = [p.get("championName") or p.get("champion", {}).get("name", "?")
                   if isinstance(p.get("champion"), dict) else
                   p.get("championName") or "?"
-                  for p in (team.get("players") or [])]
+                  for p in _dict_players(team)]
         team_champs[tid] = champs
 
     all_team_ids = list(team_champs.keys())
@@ -517,7 +558,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None
                 tid     = _int(team.get("teamId", 100), 100)
                 win_str = str(team.get("win", "")).lower()
                 result  = "WIN" if win_str in ("win", "1", "true") else "LOSS"
-                players = team.get("players") or []
+                players = _dict_players(team)
 
                 enemy_ids = [t for t in all_team_ids if t != tid]
                 enemy_comp = []
@@ -542,7 +583,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None
                     )
 
             conn.commit()
-            player_count = sum(len(t.get("players") or []) for t in teams)
+            player_count = sum(len(_dict_players(t)) for t in teams)
             _log.info(
                 "postgame: saved match %s  mode=%s  players=%d  duration=%ds",
                 match_id, mode, player_count, game_len
@@ -694,7 +735,20 @@ class PostgameCollector:
             if not triggered:
                 continue
             self._trigger.clear()
-            self._capture_after_trigger(self._game_mode_hint)
+            # Lane 8 deep audit 2026-08-03: this call was UNGUARDED while the
+            # async twin below wrapped the identical one. Measured: one raising
+            # capture killed this thread outright and a second trigger() never
+            # reached _capture_after_trigger, so every later game in the
+            # process recorded nothing, silently. Nothing revives it: start()
+            # WOULD build a fresh thread (its guard is .is_alive(), not mere
+            # existence - measured), but nothing calls it a second time.
+            # init_collector is one-shot behind `if _collector is None`, and
+            # the per-game path at app/_game_lifecycle.py:146 only calls
+            # trigger(). One bad payload must cost one game, not the collector.
+            try:
+                self._capture_after_trigger(self._game_mode_hint)
+            except Exception as exc:  # noqa: BLE001
+                _log.error("PostgameCollector tick failed: %s", exc, exc_info=True)
 
     async def _run_async(self) -> None:
         """Async equivalent of _run - wraps the blocking trigger.wait + the
@@ -852,15 +906,22 @@ class PostgameCollector:
         map_id    = game.get("mapId") or 0
         version   = game.get("gameVersion") or ""
 
-        participants = game.get("participants") or []
-        identities   = game.get("participantIdentities") or []
-        teams_raw    = game.get("teams") or []
+        # Same root cause as the _save_eog note: these three are loops over
+        # payload lists whose members were assumed dict-shaped. Here the
+        # AttributeError was CONTAINED (the caller _capture_via_history wraps
+        # the call) but it aborted the entire history fallback for one bad
+        # member and logged only at DEBUG. Filter per entry instead.
+        participants = [p for p in _as_list(game.get("participants")) if isinstance(p, dict)]
+        identities   = [i for i in _as_list(game.get("participantIdentities")) if isinstance(i, dict)]
+        teams_raw    = [t for t in _as_list(game.get("teams")) if isinstance(t, dict)]
 
         # Build puuid/name map from identities
         id_map = {}
         for ident in identities:
             pid   = ident.get("participantId") or 0
-            pinfo = ident.get("player") or {}
+            pinfo = ident.get("player")
+            if not isinstance(pinfo, dict):
+                pinfo = {}
             id_map[pid] = {
                 "summonerName": pinfo.get("summonerName") or pinfo.get("riotIdGameName") or "",
                 "gameName":     pinfo.get("gameName") or "",
