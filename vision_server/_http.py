@@ -6,6 +6,7 @@ Split out of moon_vision_server.py during Phase 2.4.
 """
 from __future__ import annotations
 
+import hmac
 import json
 import time
 from http.server import BaseHTTPRequestHandler
@@ -24,10 +25,16 @@ from ._stats import get_stats
 
 MONITOR_HTML_PATH = Path(__file__).parent.parent / "moon_monitor.html"
 
+# Cap the request body BEFORE reading it. Well above the 7 MiB frame cap
+# inside handle_upload_frame.
+MAX_BODY_BYTES = 10 * 1024 * 1024
+
 
 class Handler(BaseHTTPRequestHandler):
     def _auth(self) -> bool:
-        return self.headers.get(AUTH_HEADER, "") == AUTH_TOKEN
+        # compare_digest, not ==: the token is compared against a header an
+        # unauthenticated LAN client controls, and :8889 binds 0.0.0.0.
+        return hmac.compare_digest(self.headers.get(AUTH_HEADER, ""), AUTH_TOKEN)
 
     # -- GET ----------------------------------------------------------------
     def do_GET(self) -> None:
@@ -142,8 +149,30 @@ class Handler(BaseHTTPRequestHandler):
             if not self._auth():
                 self._j(401, {"error": "unauthorized"})
                 return
-            fp = SYNC_DIR / self.path[10:]
-            if fp.exists():
+            # SECURITY (lane 8, 2026-08-03): this was `SYNC_DIR / self.path[10:]`
+            # with no containment - an arbitrary file read, measured live on the
+            # real handler, and :8889 binds 0.0.0.0. TWO distinct escapes:
+            # ".." walks out, and an ABSOLUTE component replaces the base
+            # entirely under pathlib semantics, which a ".." filter alone does
+            # NOT catch. Containment copied from dashboard/routes_static.py:64-67
+            # (resolve root, resolve candidate, assert relative_to) - that
+            # comment records a bypassable str.startswith PREFIX check being
+            # deliberately replaced by relative_to, with its ".." filter
+            # normalized and RETAINED alongside as defense in depth.
+            # A refusal is a plain 404 so the route is not a file-existence
+            # oracle for paths outside the inbox.
+            rel = self.path[len("/sync/get/"):].split("?", 1)[0]
+            if "\x00" in rel:
+                self._j(400, {"error": "bad path"})
+                return
+            try:
+                root = SYNC_DIR.resolve()
+                fp = (root / rel).resolve()
+                fp.relative_to(root)
+            except (ValueError, OSError):
+                self._j(404, {"error": "not found"})
+                return
+            if fp.is_file():
                 data = fp.read_bytes()
                 self.send_response(200)
                 self.send_header("Content-Length", str(len(data)))
@@ -162,13 +191,8 @@ class Handler(BaseHTTPRequestHandler):
         # SAFETY: cap body size BEFORE rfile.read so a bad Content-Length can't
         # OOM us. 10 MiB is well above the 7 MiB frame cap inside
         # handle_upload_frame.
-        try:
-            cl = int(self.headers.get("Content-Length", 0))
-        except (TypeError, ValueError):
-            self._j(400, {"error": "bad content-length"})
-            return
-        if cl > 10 * 1024 * 1024:
-            self._j(413, {"error": "payload too large"})
+        cl = self._body_length()
+        if cl is None:
             return
         body = self.rfile.read(cl)
         try:
@@ -198,7 +222,14 @@ class Handler(BaseHTTPRequestHandler):
         if not self._auth():
             self._j(401, {"error": "unauthorized"})
             return
-        data = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        # Same body gate as do_POST. This used to parse Content-Length OUTSIDE
+        # the try, so a malformed value raised through the handler and the
+        # client got a connection reset instead of a 400 - and PUT carried no
+        # size cap at all while POST capped at 10 MiB.
+        cl = self._body_length()
+        if cl is None:
+            return
+        data = self.rfile.read(cl)
         try:
             fname = Path(self.path.split("/")[-1]).name
             # Write monitor files to both cwd AND sync inbox for discoverability
@@ -209,6 +240,29 @@ class Handler(BaseHTTPRequestHandler):
             self._j(200, {"ok": True})
         except Exception as e:  # noqa: BLE001
             self._j(500, {"error": str(e)})
+
+    def _body_length(self) -> int | None:
+        """Validated Content-Length, or None after already sending the error.
+
+        SAFETY: cap the body BEFORE rfile.read so a bad Content-Length cannot
+        OOM us. 10 MiB is well above the 7 MiB frame cap inside
+        handle_upload_frame. A NEGATIVE value is rejected too: it passed the
+        oversize check and reached rfile.read(-1), which reads to EOF, so a
+        client that never closes wedged the handler thread for as long as it
+        liked (measured, lane 8 2026-08-03).
+        """
+        try:
+            cl = int(self.headers.get("Content-Length", 0))
+        except (TypeError, ValueError):
+            self._j(400, {"error": "bad content-length"})
+            return None
+        if cl < 0:
+            self._j(400, {"error": "bad content-length"})
+            return None
+        if cl > MAX_BODY_BYTES:
+            self._j(413, {"error": "payload too large"})
+            return None
+        return cl
 
     def _cors(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
