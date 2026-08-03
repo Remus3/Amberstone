@@ -928,13 +928,17 @@ class Coach(BaseCoach):
             _ds_picks_str = "unavailable"
             _ds_label = "DPS"
             try:
-                from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+                from core.daemon_slayer_resolver import resolve_inventory as _ds_resolve_inventory
                 from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
                 from coach_integration.archetype_dispatch import (
                     dispatch_for_coach as _ds_dispatch_for_coach,
                     display_label as _ds_display_label,
                 )
-                _owned_ids = _ds_resolve_many(state.get("items", []), mode="aram")
+                # Trinkets + consumables share the Live Client inventory array
+                # with shop items, so the raw list charges the engine's 6-slot
+                # budget for a slot no build item occupies - and the same list
+                # is persisted as the calibration row's owned_items below.
+                _owned_ids = _ds_resolve_inventory(state.get("items", []), mode="aram")
                 _target_bhp = self._estimate_target_bonus_hp(state)
                 _lvl = int(state.get("level", 1)) or 1
                 # s170: target_armor was hardcoded 80.0; now scales with
@@ -1150,14 +1154,12 @@ class Coach(BaseCoach):
                 )
             # Passthrough for the optional native-emit `choices` JSON array.
             # The model returns a single-line JSON list (per the OUTPUT FORMAT
-            # block); parse_fields stores it as a string. We read the decoded
-            # list off the shared validated CoachOutput model (one seam) and
-            # write a real Python list into the artifact so the dashboard's
-            # state builder picks it up via core.coach_choices.parse_choices.
-            # from_fields routes `choices` through the model's before-validator,
-            # which silently swallows malformed/non-list input and returns []
-            # so the synthesizer fallback in _state_builder covers the tick.
-            # The choices field is OPTIONAL by contract.
+            # block); parse_fields stores it as a string. from_fields routes it
+            # through the model's before-validator and hands back a real Python
+            # list, so the dashboard state builder picks it up via
+            # core.coach_choices.parse_choices. Malformed / absent input
+            # decodes to [] and the synthesizer fallback in _state_builder
+            # covers the tick; the choices field is OPTIONAL by contract.
             from core.coach_output import CoachOutput
             _choices_list = CoachOutput.from_fields(flds).choices
 
