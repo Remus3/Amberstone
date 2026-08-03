@@ -189,6 +189,55 @@ def _first_completed_item_id(owned_item_ids: Iterable) -> str:
     return ""
 
 
+def _resolve_item_name(
+    owned_names: Iterable,
+    owned_item_ids: Iterable,
+    first_item_id: str,
+    mode_engine: str,
+) -> str:
+    """Return the display name for ``first_item_id``, or ``""`` if unknown.
+
+    Two lists, two different shapes: ``owned_names`` is liveclient's raw
+    inventory dump while ``owned_item_ids`` has non-inventory ids
+    (trinkets, consumables - ``NON_INVENTORY_IDS``) stripped by the state
+    builder. They are positionally parallel ONLY when the operator holds
+    neither, so a bare zip blanks the name the moment a ward trinket sits
+    in the tray - which is always, past minute zero.
+
+    Positional first because when the lengths do match the pairing is
+    exact by construction and needs no DDragon read. Otherwise resolve
+    each display name back to an id, which is both order- and
+    length-independent.
+    """
+    names = list(owned_names or ())
+    ids = list(owned_item_ids or ())
+
+    if len(names) == len(ids):
+        for raw_id, name in zip(ids, names):
+            if str(raw_id).strip() == first_item_id:
+                return str(name)
+
+    try:
+        from core.daemon_slayer_resolver import name_to_id
+
+        for name in names:
+            text = str(name).strip()
+            if not text:
+                continue
+            if str(name_to_id(text, mode=mode_engine) or "") == first_item_id:
+                return text
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("resolve_item_name(%s) resolver failed: %s", first_item_id, exc)
+        return ""
+
+    # Name genuinely unknown (off-patch item, mode the index lacks). Say
+    # so in the log rather than leaving an unexplained hole - the caller
+    # substitutes the raw id into the operator-facing message.
+    logger.debug("resolve_item_name: no display name for id %s (mode=%s, names=%d)",
+                 first_item_id, mode_engine, len(names))
+    return ""
+
+
 def _session_token(lc: dict | None, champion: str) -> str:
     """Resolve a per-game dedup token.
 
@@ -350,22 +399,18 @@ def compute_nudge_payload(
             return dict(existing)
         # Stale entry (different session) -> fall through to re-evaluate.
 
-    # Resolve item name for the message + payload. liveclient owned_items
-    # is a list of display names parallel to owned_item_ids; if absent,
-    # we'll leave name blank - message still readable.
-    owned_names = lc.get("owned_items") or []
-    first_item_name = ""
-    try:
-        if len(owned_names) == len(owned_item_ids):
-            for raw_id, name in zip(owned_item_ids, owned_names):
-                if str(raw_id).strip() == first_item_id:
-                    first_item_name = str(name)
-                    break
-    except Exception:  # noqa: BLE001
-        first_item_name = ""
-
     level = int(lc.get("level") or 1)
     mode_engine = _engine_mode(lc)
+
+    # Resolve item name for the message + payload. Blank is tolerated: the
+    # message below falls back to the raw id so the nudge never renders a
+    # hole where the item should be.
+    first_item_name = _resolve_item_name(
+        lc.get("owned_items") or [],
+        owned_item_ids,
+        first_item_id,
+        mode_engine,
+    )
 
     verdict = _evaluate_dispatcher(
         champion=champion,
