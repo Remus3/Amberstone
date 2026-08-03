@@ -301,9 +301,9 @@ class RosterDedupeTests(unittest.TestCase):
                 self.assertEqual(set(names), expected)
                 self.assertEqual(names, sorted(names, key=str.lower))
 
-    def test_alias_heavy_registry_collapses_to_the_base_roster(self):
+    def test_duplicate_name_registry_collapses_to_the_base_roster(self):
         """The exact 233-entry -> 173-name regression, on real data."""
-        alias_heavy = [
+        duplicate_name = [
             p for p in _real_registries()
             if len(json.loads(p.read_text(encoding="utf-8")).get("data", {}))
             > len({
@@ -313,11 +313,11 @@ class RosterDedupeTests(unittest.TestCase):
                 if isinstance(e, dict)
             })
         ]
-        if not alias_heavy:
+        if not duplicate_name:
             self.skipTest(
-                "no alias-carrying DDragon registry reachable (set "
+                "no duplicate-name DDragon registry reachable (set "
                 "RC_TEST_DDRAGON_CHAMPIONS to a 16.15.1+ copy to exercise it)")
-        for path in alias_heavy:
+        for path in duplicate_name:
             with self.subTest(registry=str(path)):
                 raw = json.loads(path.read_text(encoding="utf-8"))
                 entries = len(raw.get("data", raw))
@@ -325,11 +325,11 @@ class RosterDedupeTests(unittest.TestCase):
                     names = gen.load_champions()
                 self.assertLess(
                     len(names), entries,
-                    "alias entries were not collapsed",
+                    "duplicate-name entries were not collapsed",
                 )
                 self.assertEqual(len(names), len(set(names)))
-                # The aliases are name-equal to a champion already present, so
-                # nothing may be LOST by deduping.
+                # Every collapsed row is name-equal to a champion already
+                # present, so nothing may be LOST by deduping.
                 for entry in raw.get("data", raw).values():
                     nm = entry.get("name") or entry.get("id")
                     if nm:
