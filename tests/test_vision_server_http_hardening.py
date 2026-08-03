@@ -44,7 +44,9 @@ Also pinned here, same audit pass:
 """
 from __future__ import annotations
 
+import shutil
 import socket
+import tempfile
 import threading
 import unittest
 import urllib.error
@@ -107,8 +109,22 @@ class SyncGetPathTraversal(unittest.TestCase):
         self.addCleanup(lambda: self.secret.unlink(missing_ok=True))
 
     def test_absolute_path_injection_is_refused(self) -> None:
+        # The probe target CANNOT live beside SYNC_DIR: the repo root is
+        # `C:\Riot Commander`, and a literal space in the request line is
+        # rejected by http.client before it is ever sent (and would be a 400
+        # server-side anyway - see the module docstring). The lane worktree
+        # path happened to be space-free, which is why this passed there and
+        # only failed once merged. A temp dir is space-free on Windows and
+        # POSIX alike; assert it rather than skipping, so a machine that
+        # breaks the assumption fails loudly instead of quietly passing.
+        probe_dir = Path(tempfile.mkdtemp(prefix="rc_audit_"))
+        self.addCleanup(lambda: shutil.rmtree(probe_dir, ignore_errors=True))
+        self.assertNotIn(" ", str(probe_dir),
+                         "probe path must be space-free to reach the handler")
+        probe = probe_dir / "rc_audit_probe_secret.txt"
+        probe.write_text(SECRET, encoding="utf-8")
         with _Server() as srv:
-            code, body = srv.get("/sync/get/" + str(self.secret).replace("\\", "/"))
+            code, body = srv.get("/sync/get/" + str(probe).replace("\\", "/"))
         self.assertNotIn(SECRET.encode(), body,
                          "absolute-path injection served a file outside SYNC_DIR")
         self.assertEqual(code, 404)
