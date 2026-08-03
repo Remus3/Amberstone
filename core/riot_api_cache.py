@@ -15,16 +15,27 @@ Two tables, one SQLite file at `data/riot_api_cache.db`:
     operator cycling lobbies sees fresh ranks every game.
 
 Concurrency: the connection is opened per-call with `check_same_thread=False`
-and a `BEGIN IMMEDIATE` transaction to avoid the dashboard request thread
-racing the priority-2 background scheduler. The hot path is a single
-SELECT or INSERT OR REPLACE; SQLite's WAL mode keeps both readers and
-writers from blocking.
+in AUTOCOMMIT mode (`isolation_level=None`). There is no explicit transaction
+- an earlier version of this docstring described an immediate-mode one that
+the code has never opened (lane 8 audit, 2026-08-03). It needs none: every
+write is a single-statement `INSERT OR REPLACE`, which SQLite executes
+atomically on its own, and writes are additionally serialized through the
+instance lock. Reads take no lock; WAL keeps them from blocking the writer.
 
 Soft-fail invariants:
   - Any DB error is caught + logged at WARNING; callers get None back
     so the rate limiter / fan-out treats the cache as cold.
   - File creation is lazy - first call to `get` or `set` opens the
     connection, runs the schema, and commits. No bootstrapping needed.
+  - If the DB FILE disappears under a running process, the next call
+    soft-fails and clears the schema flag, so the call after that rebuilds
+    the schema. See `_heal_if_schema_vanished` - before that existed, the
+    cache became a permanent no-op for the process lifetime.
+
+SIZE: `cache_immutable` never expires BY DESIGN, so this file grows without
+bound - measured at 3.33 GB / 12,305 rows on 2026-08-03, all live data. There
+is no cap and no eviction; an eviction policy is filed as RM-153. `stats()`
+reports bytes as well as rows so the growth is at least observable.
 """
 from __future__ import annotations
 
@@ -94,6 +105,31 @@ class RiotApiCache:
             conn.executescript(_SCHEMA)
             self._initialized = True
 
+    def _heal_if_schema_vanished(self, exc: BaseException) -> None:
+        """Clear the init flag when the error says our tables are gone.
+
+        ``_initialized`` is PROCESS state, not FILE state. If the DB file goes
+        away under a long-lived process - rotation, a cleanup pass, disk
+        trouble - SQLite recreates an EMPTY file on the next connect, and
+        because the flag is still True the schema is never re-run. Every
+        operation then fails "no such table", gets caught, logs a WARNING and
+        returns None/False, which callers cannot distinguish from a cache
+        miss. RC re-fetches from the Riot API forever, burning rate limit,
+        until the process restarts. Measured before this fix: set -> False and
+        get -> None permanently, with ``_initialized`` still True.
+
+        Clearing the flag here costs the CALL that noticed (it still soft-
+        fails, which is the established contract) and lets the very next call
+        rebuild the schema. A same-call retry was considered and rejected as
+        more control flow than the failure justifies - the caller's next
+        attempt heals it, and pretending a lost write succeeded would be
+        worse than reporting it.
+        """
+        if isinstance(exc, sqlite3.OperationalError) and \
+                "no such table" in str(exc).lower():
+            with self._lock:
+                self._initialized = False
+
     # -- immutable cache (Match-V5 details/timeline, Account-V1) ---------
 
     def get_immutable(self, key: str) -> Optional[dict]:
@@ -111,6 +147,7 @@ class RiotApiCache:
             finally:
                 conn.close()
         except (sqlite3.Error, OSError, ValueError) as exc:
+            self._heal_if_schema_vanished(exc)
             log.warning("cache.get_immutable(%s) failed: %s", key, exc)
             return None
 
@@ -136,6 +173,7 @@ class RiotApiCache:
                 finally:
                     conn.close()
         except (sqlite3.Error, OSError, TypeError, ValueError) as exc:
+            self._heal_if_schema_vanished(exc)
             log.warning("cache.set_immutable(%s) failed: %s", key, exc)
             return False
 
@@ -161,6 +199,7 @@ class RiotApiCache:
             finally:
                 conn.close()
         except (sqlite3.Error, OSError, ValueError) as exc:
+            self._heal_if_schema_vanished(exc)
             log.warning("cache.get_ttl(%s) failed: %s", key, exc)
             return None
 
@@ -183,15 +222,22 @@ class RiotApiCache:
                 finally:
                     conn.close()
         except (sqlite3.Error, OSError, TypeError, ValueError) as exc:
+            self._heal_if_schema_vanished(exc)
             log.warning("cache.set_ttl(%s) failed: %s", key, exc)
             return False
 
     # -- housekeeping -----------------------------------------------------
 
     def purge_expired_ttl(self) -> int:
-        """Drop expired TTL rows. Returns count purged. Best-effort -
-        called opportunistically by the rate-limit prune; not required
-        for correctness because get_ttl() filters on expires_at."""
+        """Drop expired TTL rows. Returns count purged.
+
+        NOTE (lane 8, 2026-08-03): this has no PRODUCTION callers - only
+        tests call it. The previous docstring named a caller inside the
+        rate-limit prune; no such caller exists. Kept because it is
+        correct and cheap, and because expired rows otherwise accumulate
+        forever - it is simply not required for correctness, since get_ttl()
+        filters on expires_at. Wire it or drop it deliberately; do not
+        re-add a claim that something calls it."""
         try:
             now = int(time.time())
             conn = self._connect()
@@ -204,28 +250,49 @@ class RiotApiCache:
             finally:
                 conn.close()
         except (sqlite3.Error, OSError) as exc:
+            self._heal_if_schema_vanished(exc)
             log.debug("cache.purge_expired_ttl failed: %s", exc)
             return 0
 
     def stats(self) -> dict:
-        """Read-only counters for the dashboard / metrics endpoint."""
+        """Read-only counters. No PRODUCTION callers as of 2026-08-03 (lane
+        8) - only tests call it.
+
+        The previous docstring named a dashboard metrics consumer; no such
+        consumer exists. It also reported ROW COUNTS only, which is
+        the wrong dimension for this cache: `cache_immutable` never expires,
+        and the live DB reached 3.33 GB across 12,305 rows with nothing
+        anywhere surfacing that. `immutable_bytes` and `db_file_bytes` are
+        reported so a future consumer can see growth, not just cardinality.
+        The row keys are preserved for any caller that appears later.
+        """
+        out = {"immutable_rows": 0, "ttl_live_rows": 0,
+               "immutable_bytes": 0, "db_file_bytes": 0}
+        try:
+            out["db_file_bytes"] = self._db_path.stat().st_size
+        except OSError:
+            pass
         try:
             conn = self._connect()
             try:
                 self._ensure_schema(conn)
-                imm = conn.execute(
-                    "SELECT COUNT(*) FROM cache_immutable"
-                ).fetchone()[0]
+                imm, imm_bytes = conn.execute(
+                    "SELECT COUNT(*), COALESCE(SUM(LENGTH(response_json)), 0) "
+                    "FROM cache_immutable"
+                ).fetchone()
                 ttl = conn.execute(
                     "SELECT COUNT(*) FROM cache_ttl WHERE expires_at > ?",
                     (int(time.time()),),
                 ).fetchone()[0]
-                return {"immutable_rows": int(imm), "ttl_live_rows": int(ttl)}
+                out.update(immutable_rows=int(imm), ttl_live_rows=int(ttl),
+                           immutable_bytes=int(imm_bytes))
+                return out
             finally:
                 conn.close()
         except (sqlite3.Error, OSError) as exc:
+            self._heal_if_schema_vanished(exc)
             log.debug("cache.stats failed: %s", exc)
-            return {"immutable_rows": 0, "ttl_live_rows": 0}
+            return out
 
 
 # -- module-level singleton ----------------------------------------------
