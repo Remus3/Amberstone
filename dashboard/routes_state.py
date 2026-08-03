@@ -25,13 +25,45 @@ from dashboard._writers import (
     set_pregame,
 )
 
+# Cost sweep 2026-08-02 (S6): /api/health/all calls _agent6_audit_outcomes once
+# per request and the scan below read + json.loads EVERY line of a file measured
+# at 4,645,089 bytes / 5,813 lines - 33.5-47.0 ms of a 41.6-53.6 ms route, at a
+# measured 0.134 req/s, growing monotonically because the file only appends.
+#
+# Keyed on the source file's identity rather than a clock: a TTL would trade
+# health freshness for speed, and stale health is precisely the thing that must
+# never be stale. A stat key invalidates on the very next request after a write,
+# so the served body is byte-identical to the unmemoized scan at every moment.
+#
+# st_size is in the key because st_mtime_ns alone cannot carry the discrimination
+# here: measured on both the repo and temp volumes, mtime advances in ~1 ms steps,
+# so two writes in the same millisecond share a timestamp. Every mutation path
+# changes the size - appends grow it, and Scheduler.compact rewrites only when the
+# line count strictly drops (agents/agent1_lead/scheduler.py:315-321).
+_A6_MEMO: tuple | None = None
+
+
 def _agent6_audit_outcomes(max_count: int = 3) -> list:
     """Return the last ``max_count`` agent6-full-audit-pass final events from
     agents/state/task_queue.jsonl, oldest-first. Returns [] on any error."""
+    global _A6_MEMO
     q = APP_DIR / "agents" / "state" / "task_queue.jsonl"
     if not q.exists():
         return []
+    try:
+        st = q.stat()
+        sig = (st.st_mtime_ns, st.st_size, max_count)
+    except OSError:
+        sig = None
+    memo = _A6_MEMO
+    if sig is not None and memo is not None and memo[0] == sig:
+        # Copied out so a caller mutating the list cannot corrupt the memo.
+        return list(memo[1])
     outcomes: list = []
+    # A read that blew up mid-scan yields a TRUNCATED list, and memoizing that
+    # would pin a wrong answer until the file next changes. Only a scan that ran
+    # to completion is cacheable.
+    scanned_clean = True
     try:
         for raw in q.read_text(encoding="utf-8", errors="replace").splitlines():
             raw = raw.strip()
@@ -54,8 +86,11 @@ def _agent6_audit_outcomes(max_count: int = 3) -> list:
                 "last_error": task.get("last_error"),
             })
     except Exception:  # noqa: BLE001
-        pass
-    return outcomes[-max_count:]
+        scanned_clean = False
+    result = outcomes[-max_count:]
+    if sig is not None and scanned_clean:
+        _A6_MEMO = (sig, list(result))
+    return result
 
 
 log = logging.getLogger("rc.web_dashboard")
