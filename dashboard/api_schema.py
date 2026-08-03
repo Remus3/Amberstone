@@ -2,7 +2,25 @@
 """Pydantic v2 models for RC dashboard HTTP API request/response shapes.
 
 GETs use extra="allow" (forward-compat - new fields never break validation).
-POST body models use extra="forbid" (strict input gates).
+
+POST body models are NOT input gates, and this file used to claim they were.
+Read this before trusting one of them (lane 8 audit, 2026-08-03):
+
+  * The only consumer is ``dashboard._dispatch._validate_request_body``,
+    which is SOFT-WARN by design - it logs a WARNING per field error and
+    never raises. ``dispatch_post`` then calls the route with the unchanged
+    body whatever the result. A model here documents and observes a shape;
+    it does not enforce one.
+  * The policy is also mixed, not uniform: of the 6 POST paths wired into
+    ``_REQUEST_MODELS``, only ``/api/input`` and ``/api/command`` forbid
+    extra fields; ds-preview, build-order, speak and team-context/refresh
+    all allow them.
+
+So a route may not assume its body was validated. The routes that matter do
+their own checking - ``_serve_command_post`` whitelists the command and 400s
+on anything else - and any new POST route must do the same.
+``tests/test_dashboard_post_trust_boundary.py`` pins both facts so a change
+to either is deliberate.
 
 The coaching payload inside StateResponse.coach is validated separately by
 core.coaching_payload.validate_coaching_payload(), which handles per-mode
