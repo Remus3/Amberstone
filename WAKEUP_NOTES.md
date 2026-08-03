@@ -6,6 +6,49 @@
 
 ---
 
+# 2026-08-03c - lane 8 cycle 3: a green test that was an artifact of the worktree path, and a fix that a restart did not deploy
+
+Three things happened, and the first two are process findings worth more than the code.
+
+**1. Merging cycle 2 turned its green suite red.** `lane/true-audit` fast-forwarded into `main`
+clean (3 commits), and `tests/test_vision_server_http_hardening.py` immediately failed - 73 passed,
+1 failed. The traversal probe wrote its file beside `SYNC_DIR`, i.e. under the repo root, then put
+that absolute path in a request line. The lane worktree is `C:/rc-worktrees/rc-lane-true-audit`
+(space-free, request legal, test green); `main` is `C:\Riot Commander`, and `http.client` raises
+`InvalidURL` on the space before anything is sent. **The green was a property of the worktree path,
+not of the fix.** Probe moved to a temp dir with the requirement ASSERTED rather than skipped.
+Mutation-verified it still catches the real defect. Commit `77077775`.
+
+**2. The security fix was NOT live after a restart, and every signal said it was.** New RC pid,
+`last_reload_ok=true`, and `GET /sync/get/../CLAUDE.md` still returned **200 with the file body**.
+`:8889` is not in-process despite what ADR-003 and the CLAUDE.md topology line imply - it is a
+detached `moon_vision_server.py` child, spawned by `dashboard/server.py:207-227` only when the port
+is NOT already listening. The old child outlives the restart, the port stays bound, the self-heal
+branch is skipped, nothing respawns. Correct order is **kill the port owner, THEN restart**
+(`taskkill /F /PID` from PowerShell - Git Bash mangles `/F`). Verified live after: `/sync/list` 200
+(positive control), traversal 404. New memory `reference_vision_server_restart_does_not_redeploy`.
+LEDGER 1179.
+
+**3. Cycle 3 audited `lcu/lcu_postgame_collector.py`** (criteria 1 + 3 + 5 - items 348/404/965/971
+all landed here). `_save_eog` built its team-comp map OUTSIDE the try guarding the DB block, so one
+non-dict entry in `teams` or `players` raised `AttributeError` out of the whole function - the same
+root cause as item 1176 the same day. What made it matter: `_run` called `_capture_after_trigger`
+with no try while its async twin wrapped the identical call. **The asymmetry was the tell.** One
+raising capture killed the collector thread outright; a second trigger never reached capture.
+Sibling sweep found the class three more times in `_adapt_match_history`. 9 tests, 5 mutations all
+RED. Seven dimensions: 3 HARDENED, 4 CLEAN (SQL identifier interpolation is fenced by `_norm_mode`
+- NOT an injection, do not "fix" it). LEDGER 1180, commits `708ae415` + `2f6f79aa`.
+
+**The verifier REFUTED a statement in my own comment text for the second cycle running.** I wrote
+that `start()` "returns early while a thread object exists"; the guard is `.is_alive()`, so it would
+build a fresh thread. The consequence holds for a different reason (nothing calls `start()` twice).
+Corrected before commit. Cycle 2 had three such prose overclaims. The pattern is now explicit: the
+adversarial pass earns its keep on the WRITE-UP at least as often as on the diff.
+
+Suites this run, repo root: RC `tests/` 18089 passed / 154 skipped; DS 10341 passed. Worktree kept.
+
+---
+
 # 2026-08-03b - lane 8 cycle 2: :8889 served ARBITRARY FILES, and the verifier caught three overclaims in my own write-up
 
 Operator-present cycle (invoked in-session, not detached). Lane 8 merged its cycle-1 branch into
