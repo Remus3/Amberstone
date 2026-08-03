@@ -141,6 +141,21 @@ def resolve_many(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
     return out
 
 
+def _current_patch() -> Optional[str]:
+    try:
+        return _PATCH_FILE.read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None
+
+
+def _items_json_path() -> Optional[Path]:
+    patch = _current_patch()
+    if not patch:
+        return None
+    candidate = _DS_DATA_DIR / patch / "items.json"
+    return candidate if candidate.exists() else None
+
+
 # 2026-05-09 (s156): items that occupy non-inventory slots (trinket/consumable
 # row) and therefore must NOT count against the 6-slot DS engine budget.
 # Live-Client API serializes them inline with shop items, so resolvers see
@@ -149,7 +164,13 @@ def resolve_many(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
 #   "current_item_ids has 6 items; slot_count=6 leaves no room for a new item"
 # and the SR coach silently drops daemon_slayer_picks -> dashboard #ds-pill
 # stays hidden mid-game.
-NON_INVENTORY_IDS = frozenset({
+#
+# These nine were typed by hand from the SR shop, so they covered the SR
+# trinket row and the SR potion row and nothing else. They stay as the hard
+# FLOOR of the derived set below: a missing or unreadable items.json must
+# degrade to the behaviour that shipped, never to an empty set - an empty set
+# silently restores the s156 defect on every mode at once.
+_NON_INVENTORY_BASE_IDS = frozenset({
     # Trinkets (yellow/blue/red row, 1 slot reserved separately by client)
     "3340",  # Stealth Ward (default)
     "3363",  # Farsight Alteration (blue)
@@ -162,6 +183,65 @@ NON_INVENTORY_IDS = frozenset({
     "2139",  # Elixir of Sorcery
     "2140",  # Elixir of Wrath
 })
+
+
+def _derive_non_inventory_ids(path: Optional[Path]) -> frozenset[str]:
+    """Widen the audited floor with every non-rankable row DDragon declares.
+
+    Three predicates, and all three are load-bearing because DDragon is not
+    self-consistent here:
+
+    * ``Consumable`` / ``Trinket`` tag - the primary signal. Needed on its own
+      because DDragon does NOT mark trinkets ``consumed`` (3340 / 3363 / 3364
+      all carry ``consumed: None``) and does not mark 2031 Refillable Potion
+      either, so a ``consumed``-only rule drops four of the audited nine.
+    * ``consumed`` with ``inStore: False`` - the untagged snack rows. 2052
+      Poro-Snax and 2010 Total Biscuit ship an EMPTY tag list, so nothing but
+      the consumed flag identifies them, and they are the two ids that
+      polluted the ARAM calibration log.
+    * an EMPTY stat block - the veto, and the reason this is not simply
+      ``consumed: true``. DDragon marks 4638 Watchful Wardstone (1100g,
+      150 HP / 15 MR / 10 armor) and 4641 Stirring Wardstone (350g) as
+      consumed, and filtering those deletes a genuinely occupied slot and
+      makes the engine recommend an item the operator already owns. An item
+      the engine can rank contributes stats; anything that contributes stats
+      is rankable and must keep its slot.
+
+    Fail-soft by contract: any missing file, OS error or malformed document
+    returns the floor unchanged rather than raising, because this runs at
+    import time and a throw here would take every coach down with it.
+    """
+    if path is None:
+        return _NON_INVENTORY_BASE_IDS
+    try:
+        data = json.loads(path.read_text(encoding="utf-8")).get("data") or {}
+    except (OSError, json.JSONDecodeError, AttributeError) as e:
+        logger.warning("non-inventory derivation fell back to base set: %s", e)
+        return _NON_INVENTORY_BASE_IDS
+    # A well-formed document whose "data" is truthy but not a mapping parses
+    # fine and only fails on the walk below, which is outside the guard above.
+    if not isinstance(data, dict):
+        logger.warning(
+            "non-inventory derivation fell back to base set: data is %s, not a mapping",
+            type(data).__name__)
+        return _NON_INVENTORY_BASE_IDS
+    derived = set(_NON_INVENTORY_BASE_IDS)
+    for iid, rec in data.items():
+        if not isinstance(rec, dict):
+            continue
+        if any(v for v in (rec.get("stats") or {}).values()):
+            continue
+        tags = rec.get("tags") or []
+        if ("Consumable" in tags or "Trinket" in tags
+                or (rec.get("consumed") is True and rec.get("inStore") is False)):
+            derived.add(str(iid))
+    return frozenset(derived)
+
+
+# Resolved once per process. A patch bump takes effect on the next start,
+# which is acceptable precisely because the floor above guarantees the worst
+# case is the previously shipped behaviour, not a regression.
+NON_INVENTORY_IDS = _derive_non_inventory_ids(_items_json_path())
 
 
 def resolve_inventory(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
@@ -179,21 +259,6 @@ def resolve_inventory(names: Iterable[str], mode: Optional[str] = None) -> list[
         if iid and iid not in NON_INVENTORY_IDS:
             out.append(iid)
     return out
-
-
-def _current_patch() -> Optional[str]:
-    try:
-        return _PATCH_FILE.read_text(encoding="utf-8").strip() or None
-    except OSError:
-        return None
-
-
-def _items_json_path() -> Optional[Path]:
-    patch = _current_patch()
-    if not patch:
-        return None
-    candidate = _DS_DATA_DIR / patch / "items.json"
-    return candidate if candidate.exists() else None
 
 
 def _load_hp_if_stale() -> None:
