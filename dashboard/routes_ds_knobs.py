@@ -136,13 +136,25 @@ def _get_snapshot():
 
 
 def _parse_item_list(raw: str) -> list[str]:
-    """Split a comma-separated item-id list, strip blanks."""
+    """Split a comma-separated item-id list; strip blanks and non-inventory ids.
+
+    The panel (``web/js/panels/ds_knobs.js``) feeds the operator's raw Live
+    Client inventory, which serializes the trinket and the consumable rows
+    inline with shop items. Counted against the six rankable slots they make a
+    five-item build read as full, so the caller below answers ``build_complete``
+    and the panel goes dark while a real slot is still open. Same s156 defect
+    the resolver documents; NON_INVENTORY_IDS is its single shared definition.
+
+    Filtering here rather than at the call site keeps the build-complete gate,
+    the cache key and the ranker call reading one identical list.
+    """
     if not raw:
         return []
+    from core.daemon_slayer_resolver import NON_INVENTORY_IDS
     out: list[str] = []
     for part in raw.split(","):
         s = part.strip()
-        if s:
+        if s and s not in NON_INVENTORY_IDS:
             out.append(s)
     return out
 

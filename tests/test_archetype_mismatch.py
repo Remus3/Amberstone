@@ -295,6 +295,127 @@ class ComputeNudgeFiredTests(unittest.TestCase):
         self.assertEqual(result, {})
 
 
+class FirstItemNameResolutionTests(unittest.TestCase):
+    """``first_item_name`` must survive the filtered-ids / raw-names split.
+
+    ``lc["owned_item_ids"]`` has trinkets + consumables stripped
+    (``NON_INVENTORY_IDS``) while ``lc["owned_items"]`` stays a raw slot
+    dump, so the two lists are positionally parallel only when the
+    operator holds neither. Every case below uses real DDragon display
+    names because the non-parallel path resolves names back to ids.
+    """
+
+    def setUp(self):
+        am.reset_nudge_state()
+
+    def _lc(self, names: list[str], ids: list[str], token: str) -> dict:
+        return {
+            "champion":       "Nasus",
+            "game_id":        token,
+            "owned_item_ids": ids,
+            "owned_items":    names,
+            "level":          11,
+            "game_mode":      "CLASSIC",
+        }
+
+    def _pick(self) -> dict:
+        return {"champion": "Nasus", "primary": "carry", "source": "user_cs"}
+
+    def _fire(self, lc: dict) -> dict:
+        with mock.patch.object(
+            am, "_evaluate_dispatcher",
+            return_value=(True, ["Warmog's Armor", "Heartsteel"]),
+        ):
+            return am.compute_nudge_payload({}, lc, {}, self._pick())
+
+    def test_name_resolved_when_trinket_breaks_positional_parity(self):
+        # Stealth Ward (3340) is in NON_INVENTORY_IDS, so it survives in
+        # the name list and is absent from the id list: 3 names, 2 ids.
+        lc = self._lc(
+            ["Berserker's Greaves", "Stealth Ward", "Infinity Edge"],
+            ["3006", "3031"],
+            "NA1_TRINKET",
+        )
+        result = self._fire(lc)
+        self.assertEqual(result.get("first_item_id"), "3031")
+        self.assertEqual(result.get("first_item_name"), "Infinity Edge")
+        self.assertIn("Infinity Edge", result.get("message", ""))
+        self.assertNotIn("3031", result.get("message", ""))
+
+    def test_name_resolved_when_consumable_breaks_parity(self):
+        # Two stripped entries at once (Health Potion + trinket).
+        lc = self._lc(
+            ["Health Potion", "Farsight Alteration", "Trinity Force"],
+            ["3078"],
+            "NA1_CONSUMABLE",
+        )
+        result = self._fire(lc)
+        self.assertEqual(result.get("first_item_id"), "3078")
+        self.assertEqual(result.get("first_item_name"), "Trinity Force")
+
+    def test_parity_equal_case_still_resolves(self):
+        # No trinket held: the lists ARE parallel and must keep working.
+        lc = self._lc(
+            ["Berserker's Greaves", "Infinity Edge"],
+            ["3006", "3031"],
+            "NA1_PARITY",
+        )
+        result = self._fire(lc)
+        self.assertEqual(result.get("first_item_name"), "Infinity Edge")
+
+    def test_parity_equal_beats_an_unresolvable_name(self):
+        # Pins the positional branch: parity holds, so the pairing is
+        # exact even for a name no DDragon index carries. Resolver-only
+        # would blank this.
+        lc = self._lc(["Boots", "IE"], ["1001", "3031"], "NA1_POSITIONAL")
+        result = self._fire(lc)
+        self.assertEqual(result.get("first_item_id"), "3031")
+        self.assertEqual(result.get("first_item_name"), "IE")
+
+    def test_unresolvable_name_leaves_blank_and_message_falls_back_to_id(self):
+        # Names that no resolver knows: the name field is honestly blank
+        # and the operator-facing message shows the id rather than a hole.
+        lc = self._lc(
+            ["zzz_not_an_item", "yyy_not_an_item", "xxx_not_an_item"],
+            ["3006", "3031"],
+            "NA1_UNRESOLVABLE",
+        )
+        result = self._fire(lc)
+        self.assertEqual(result.get("first_item_id"), "3031")
+        self.assertEqual(result.get("first_item_name"), "")
+        self.assertIn("3031", result.get("message", ""))
+
+    def test_empty_id_list_is_pending_regardless_of_names(self):
+        # Names present, every id stripped: no completed item to name.
+        lc = self._lc(["Stealth Ward", "Health Potion"], [], "NA1_EMPTYIDS")
+        with mock.patch.object(am, "_evaluate_dispatcher") as mock_eval:
+            result = am.compute_nudge_payload({}, lc, {}, self._pick())
+        self.assertEqual(result.get("phase"), "pending")
+        self.assertFalse(result.get("fired"))
+        self.assertEqual(mock_eval.call_count, 0)
+
+    def test_missing_name_list_does_not_raise(self):
+        lc = self._lc([], ["3006", "3031"], "NA1_NONAMES")
+        del lc["owned_items"]
+        result = self._fire(lc)
+        self.assertEqual(result.get("first_item_id"), "3031")
+        self.assertEqual(result.get("first_item_name"), "")
+
+    def test_resolver_failure_does_not_raise(self):
+        lc = self._lc(
+            ["Berserker's Greaves", "Stealth Ward", "Infinity Edge"],
+            ["3006", "3031"],
+            "NA1_RESOLVERDOWN",
+        )
+        with mock.patch(
+            "core.daemon_slayer_resolver.name_to_id",
+            side_effect=RuntimeError("ddragon index unreadable"),
+        ):
+            result = self._fire(lc)
+        self.assertEqual(result.get("first_item_id"), "3031")
+        self.assertEqual(result.get("first_item_name"), "")
+
+
 class DismissNudgeTests(unittest.TestCase):
 
     def setUp(self):
