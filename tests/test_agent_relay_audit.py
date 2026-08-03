@@ -208,3 +208,51 @@ class TestUploadTargetIsConfigurable:
         import tools.liveclient_relay as relay
         monkeypatch.setenv("RC_VISION_UPLOAD_URL", "http://10.0.0.9:8889/x")
         assert relay._upload_url() == "http://10.0.0.9:8889/x"
+
+
+class TestFetchFailureLoggingIsNotSpam:
+    """Giving the module an output channel is only half the job.
+
+    Measured right after deploying the FileHandler: with no game running,
+    :2999 is not listening, so every poll failed and the first version wrote
+    a WARNING every ~6 seconds - about 2 MB/day of identical lines, which
+    would bury the 401 this audit exists to surface.
+    """
+
+    def test_repeated_identical_failure_warns_once(self, caplog):
+        import logging
+
+        import tools.liveclient_relay as relay
+        relay._last_fetch_failure = None
+        with caplog.at_level(logging.DEBUG, logger=relay.log.name):
+            for _ in range(5):
+                relay._log_fetch_failure("http://1 -> url timed out")
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1, (
+            f"{len(warnings)} warnings for one unchanged failure mode - the "
+            "idle relay would flood its own log")
+
+    def test_a_changed_failure_mode_warns_again(self, caplog):
+        import logging
+
+        import tools.liveclient_relay as relay
+        relay._last_fetch_failure = None
+        with caplog.at_level(logging.DEBUG, logger=relay.log.name):
+            relay._log_fetch_failure("http://1 -> url timed out")
+            relay._log_fetch_failure("http://1 -> http 500 Server Error")
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 2, "a NEW failure mode must be reported"
+
+    def test_recovery_is_reported_and_rearms(self, caplog):
+        import logging
+
+        import tools.liveclient_relay as relay
+        relay._last_fetch_failure = None
+        with caplog.at_level(logging.DEBUG, logger=relay.log.name):
+            relay._log_fetch_failure("boom")
+            relay._note_fetch_recovered()
+            relay._log_fetch_failure("boom")
+        levels = [r.levelno for r in caplog.records]
+        assert levels.count(logging.WARNING) == 2, \
+            "after a recovery the same failure must warn again, not stay quiet"
+        assert logging.INFO in levels, "recovery itself must be recorded"
