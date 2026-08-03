@@ -651,6 +651,19 @@ def extract_stats(rofl_path):
                        rofl_path.name, type(players).__name__)
         return None
 
+    # Layer-1 player entries are objects (10 dicts of ~367 engine fields each) and
+    # downstream sidecar consumers index each one as a dict. A valid-JSON-but-
+    # wrong-shape statsJson - a list of non-dicts from a truncated or corrupt body
+    # - must be rejected like any other corrupt blob, not crash: field_count reads
+    # len(players[0]), which on a non-sized first entry (int/None/bool) raised an
+    # uncaught TypeError that propagated out of extract_stats and aborted the whole
+    # extract_archive loop, so one bad .rofl dropped every later replay in the pass
+    # (a string first entry was worse - it silently produced a garbage sidecar).
+    if not all(isinstance(p, dict) for p in players):
+        logger.warning("statsJson in %s held non-object player entries - corrupt",
+                       rofl_path.name)
+        return None
+
     return {
         "match_id": match_id,
         "file": rofl_path.name,
