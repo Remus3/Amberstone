@@ -654,6 +654,17 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             n = int(self.headers.get("Content-Length", "0"))
         except Exception:  # noqa: BLE001
             n = 0
+        # Lane 8, 2026-08-03: a NEGATIVE Content-Length makes
+        # `self.rfile.read(n) if n else b""` read to EOF, pinning a
+        # ThreadingHTTPServer worker until the client goes away. Third
+        # instance of this defect in the tree - see vision_server/_http.py
+        # (LEDGER 1177) and dashboard/_handler.py. Lower severity here (this
+        # binds loopback at :8861 and _check_auth runs first) but the same
+        # bug, so it is closed in the same sweep rather than left as the one
+        # that got away.
+        if n < 0:
+            self._send_jsonrpc(None, error=(-32600, "Invalid Content-Length"))
+            return
         raw = self.rfile.read(n) if n else b""
         try:
             req = json.loads(raw.decode("utf-8")) if raw else {}
