@@ -563,6 +563,42 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
     # crit context on a passive damage block - belongs in the AA/headshot
     # crit seam, not here) and the 110/115/120% vs non-champions is omitted.
     # 3-tier step -> _step_per_level, even-thirds breakpoints (verify Phase D).
+    # Akshan P Dirty Fighting, second shot (RM-42, 2026-08-04). DDragon
+    # 16.15.1 verbatim: "Whenever Akshan uses a basic attack, he fires an
+    # additional shot after a delay that deals 50% AD physical damage,
+    # increased to 100% AD against minions." FLAT at every level - no lerp and
+    # no step, so the tuple is 50.0 eighteen times rather than an invented
+    # curve. The 100 pct MINION variant is deliberately not used: the engine
+    # scores a champion target.
+    #
+    # TWO HALVES OF THIS PASSIVE ARE OUT OF THIS REGISTRY'S RANGE, and both
+    # matter for RM-42's prescription. DDragon: "The additional shot applies
+    # on-hit effects, triggers on-attack effects, and can critically strike".
+    # This registry carries a damage MAGNITUDE on a cadence - it has no channel
+    # for "applies on-hit N times per auto" and none for a per-passive crit
+    # multiplier (Caitlyn's entry below records the same crit limit verbatim).
+    # THE FILING PREDICTED THE WRONG DIRECTION BECAUSE OF THIS: RM-42 says
+    # modelling the passive drops BotRK / Runaan's out of the lead, but the
+    # second shot APPLYING on-hit means a faithful model raises on-hit value.
+    # Do not "fix" that by tuning this number; the missing piece is the
+    # aa-empower double-application seam, which is a different build.
+    #
+    # The 60 pct AP in his innate belongs to the THIRD-STACK magic proc - a
+    # separate effect on a separate cadence - and is NOT folded in here.
+    ("Akshan", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        total_ad_pct=tuple([50.0] * _LEVEL_COUNT),
+        damage_type="PHYSICAL",
+        cadence="on_hit",
+        note=(
+            "Dirty Fighting second shot: flat 50% total AD bonus physical per "
+            "basic attack (100% vs minions, not credited - champion target). "
+            "The shot ALSO applies on-hit effects and can crit independently; "
+            "neither is representable here (no on-hit-application channel, and "
+            "the AA-crit seam is the same one omitted for Caitlyn Headshot)."
+        ),
+        attribute="Dirty Fighting",
+    ),
     ("Caitlyn", "P", 0): PassiveDamageEntry(
         base=(0.0,),
         total_ad_pct=_step_per_level((60.0, 90.0, 120.0)),
@@ -1156,6 +1192,9 @@ def to_damage_block(entry: PassiveDamageEntry):
 #   * Warwick Eternal Hunger  - bonus magic on every basic attack.
 #   * Orianna Clockwork Winding - bonus magic on every on-target basic attack
 #     (the assumed_stacks=1.0 ramp midpoint is already folded into the block).
+#   * Akshan Dirty Fighting - a second shot on EVERY basic attack, 50 pct
+#     total AD physical (RM-42). Its on-hit APPLICATION and its independent
+#     crit are NOT modelled by this registry - see the entry note.
 # The mark-consume (Lux Illumination), internal-cooldown (Ziggs Short Fuse),
 # and empowered-first-hit (Akali / Kha'Zix) on_hit entries are NOT routed in
 # v1: their cadence is not every-AA, so a correct attribution needs the
@@ -1168,6 +1207,14 @@ _AA_ROUTED_ON_HIT_KEYS: frozenset[tuple[str, str, int]] = frozenset(
         ("Gwen", "P", 0),  # Slice B: A Thousand Cuts on-hit magic (AS-scaling)
         ("Kayle", "E", 0),  # Slice B t4: Starfire Spellblade passive on-hit magic
         ("KogMaw", "W", 0),  # Slice B t4: Bio-Arcane Barrage on-hit magic (toggle)
+        # RM-42 (2026-08-04): Akshan Dirty Fighting second shot. It meets the
+        # v1 every-AA bar VERBATIM - DDragon 16.15.1 reads "WHENEVER Akshan
+        # uses a basic attack, he fires an additional shot", with no internal
+        # cooldown, no mark to consume and no empowered-first-hit gate - so the
+        # steady-state per-hit attribution is exact, which is the whole reason
+        # this allowlist exists. He is NOT the Caitlyn class: Headshot is every
+        # Nth attack and stays off this list.
+        ("Akshan", "P", 0),
     }
 )
 

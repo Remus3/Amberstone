@@ -923,6 +923,7 @@ def rank_items(
     exclude_off_axis_items: bool = False,
     apply_crit_conversion: bool = False,
     apply_ad_axis_ability_damage: bool = False,
+    apply_passive_damage: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -1094,6 +1095,17 @@ def rank_items(
     # convolutions. weighted_dps for the selected phase is byte-identical.
     _selected_phase = phase or _select_phase(level)
 
+    # RM-42 (DEFAULT-OFF): the kit-passive damage registry finally reaches the
+    # CARRY ranker. ``_passive_damage_overrides`` holds 33 entries and
+    # ``apply_passive_damage`` already reached ``compute_dps`` (/dps) and
+    # ``rank_items_by_onhit`` (/rank-onhit, default True) - but NOT here, which
+    # is the route every marksman build table and coach tick passes through, so
+    # Caitlyn Headshot / Jhin Whisper / Kai'Sa Plasma were priced nowhere the
+    # item RANKING could see them. Like every other seam on this function it
+    # must reach BOTH compute_dps calls: feeding only one would subtract a
+    # credited score from an uncredited baseline and manufacture a delta out of
+    # the seam itself.
+
     # RM-36 / RM-38 (DEFAULT-OFF): the AD-axis ability term, the same one the
     # bruiser scorer has priced since RM-39 / RM-43. ``compute_dps`` is
     # auto-attack-only by design (dps.py:34), so an AD-CASTER whose damage
@@ -1142,6 +1154,7 @@ def rank_items(
         apply_mode_modifiers=apply_mode_modifiers,
         only_phase=_selected_phase,
         apply_crit_conversion=apply_crit_conversion,
+        apply_passive_damage=apply_passive_damage,
     )
 
     # RM-36 / RM-38: the scored quantity. OFF binds the SAME raw float (a name
@@ -1266,6 +1279,7 @@ def rank_items(
                 apply_mode_modifiers=apply_mode_modifiers,
                 only_phase=_selected_phase,
                 apply_crit_conversion=apply_crit_conversion,
+        apply_passive_damage=apply_passive_damage,
             )
         except (KeyError, ValueError):
             continue
