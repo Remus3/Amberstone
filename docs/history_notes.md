@@ -223,6 +223,43 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-04c - RM-157 CLOSED: the invoice finally read, and it validated the reconstruction
+
+Commits: `4cc862d0` (reconstruction + re-price), `027d1031` (invoice + BACKLOG filing),
+`5adef80f` (doc-budget relocation). LEDGER 1188 + 1189.
+
+Both routes to the billed number were shut at session start and were RE-PROBED, not
+inherited: no `user` scope (billing 404), `list_connected_browsers` empty, repo PRIVATE.
+Rather than stall, rebuilt the billing FORMULA from `runs/{id}/jobs` - GitHub bills
+private Actions per JOB, ceil to the minute, 1x on ubuntu-latest, and the `repo` scope
+already reads every input. Mid-session the operator granted `user`, so the invoice
+became readable and CONFIRMED the derivation to ~6 percent (derived 2682 billed min for
+Aug 1-4 vs the invoice's 2846 month-to-date). That validation is the durable result and
+is written into memory as a general technique.
+
+Numbers that settle earlier guesses: rate is **0.006/min** (not the 0.008 list figure I
+first estimated with), allotment is **~3000/mo**, and the old
+`settings/billing/{actions,shared-storage}` endpoints are now **410 Gone** - only
+`users/{u}/settings/billing/usage` works. Actions Linux billed min: Apr 26 / May 1467 /
+Jun 3003 / **Jul 6030 (first real bill, NET 18.13 USD)** / Aug 1-4 alone 2846. Doubling
+month over month.
+
+Call: **KEEP the per-push full suite.** ~64 USD/mo, and it buys the only pre-merge gate
+on a repo with ZERO pull_request runs and a ~11 percent catch rate (4 of the 37 push
+checks that completed FAILED). Every cheap narrowing was already taken, so further cuts
+cut coverage.
+
+Do NOT redo: RM-157 is CLOSED and its row is relocated to `docs/ROADMAP_HISTORY.md`
+(2026-08-04) with a pointer left in ROADMAP. Do not restore the `/done` dispatch. Do not
+re-pitch deleting the per-push suite on cost share - cite a catch rate. The push-volume
+lever (branch-plus-PR for the headless loop) is FILED in `BACKLOG.md` under Platform /
+observability, not open work in ROADMAP.
+
+Next: pick the top open ROADMAP item. Watch the monthly `usage` row rather than the
+cadence projection - July's 6030 is the last full-month fact.
+
+---
+
 # 2026-08-04b - RM-157 first half: the wrap summoned a suite the push already ran
 
 The `/done` ritual's section 2c dispatch is RETIRED in both halves of the mirror pair
