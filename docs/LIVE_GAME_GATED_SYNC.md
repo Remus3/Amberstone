@@ -586,6 +586,20 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   drake, (b) district vector on `/api/state.zoi.districts`, (c) OBS frames matching the GDI baseline,
   (d) MIA rings + fluid DMZ + weighted bubbles render. Practice suffices (fog/presence/CV/OBS
   round-trip, no enemy-comp/rune dependency). SOURCE: ZOI_DISTRICT_ORCHESTRATION_PLAN.md:107-109.
+- **G2-47** RM-42 `apply_passive_damage` on the CARRY ranker (ENGINE 1.273.0, `rank.rank_items` +
+  `/rank` + `core/daemon_slayer_client.rank_for`). Route exposure is SHIPPED and default-OFF. Headless
+  is DONE and is not the question: Akshan's weighted DPS goes 142.06 -> 212.19 at depth (+49.4 pct,
+  +48.9 per hit), verified over HTTP after the :8860 bounce, Sivir control byte-identical, all six
+  build tables stamp-only. What headless CANNOT settle is the MAGNITUDE question this seam raises for
+  every one of the 33 registry entries at once: a +49 pct swing on one champion is either a real
+  correction to a champion the engine was under-modelling, or evidence the every-AA attribution is
+  too generous. Play Akshan and one other registered every-AA champion (Warwick / Gwen / Kog'Maw) and
+  confirm the served list is not dominated by raw attack-speed once the flag is on. **Do NOT flip
+  default-ON from this row alone** - the flag would arm all 33 entries simultaneously, and only 6 of
+  them have ever been eyeballed. **Separately, this row does NOT close RM-42:** its ordering claim
+  needs the second shot's on-hit APPLICATION + independent crit, which is a different build, and
+  `test_rm42_ordering_claim_is_NOT_closed_by_this_slice` holds that open.
+
 - **G2-46** RM-36 / RM-38 `apply_ad_axis_ability_damage` on the CARRY ranker (ENGINE 1.272.0,
   `rank.rank_items` + `/rank` + `core/daemon_slayer_client.rank_for`). Route exposure is SHIPPED and
   default-OFF; this row is the EYEBALL, and it is deliberately not a default-flip request. Headless
