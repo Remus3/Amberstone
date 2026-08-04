@@ -30,6 +30,12 @@ Do NOT re-tune RM-156 (closed, CI-verified). Do NOT restore the dispatch - the t
 run no `ci` (docs-only push, non-main branch with no PR) were both checked and neither
 justifies it. ROADMAP.md is at 71.5 KB against its 80 KB budget - tight, watch it.
 
+**Fixed forward at wrap (LEDGER 1187, `89ca2314`).** `RC-WeeklyHygiene` pushed `cf1c49b9`
+mid-session with 24 U+2713 glyphs in its report's Status column and turned `docs-guards` RED;
+the red arrived attached to MY doc-sync push, not to the commit that caused it. Check blame
+before diff when a wrap goes red. Root cause was `agents/agent6_auditor/charter.md` never
+naming the ASCII rule that `test_agent6_reports_are_ascii` enforces - now named there.
+
 ---
 
 # 2026-08-04a - RM-156: a timed-out job and a superseded one say the same word
