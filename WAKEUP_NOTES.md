@@ -6,6 +6,49 @@
 
 ---
 
+# 2026-08-04f - RM-38 SHIPPED, RM-36 blocked-with-a-measured-reason (ENGINE 1.272.0)
+
+LEDGER 1192. Picked from the RM-35..RM-48 GAP set as the prior note directed. The
+set is much smaller than "14 UNBUILT" reads: RM-37 / RM-44 / RM-46 / RM-48 are
+CLOSED, RM-39 / RM-41 / RM-43 SHIPPED, RM-35's two clauses split shipped +
+blocked, RM-40 / RM-45 / RM-47 blocked on mage champion-sensitivity. Genuinely
+open and headless-actionable: RM-36 + RM-38 (batched) and RM-42.
+
+**Shipped.** `apply_ad_axis_ability_damage` now reaches `rank.rank_items`,
+`POST /rank` and `core.daemon_slayer_client.rank_for` - the same term the bruiser
+scorer has used since 1.222.0, RELOCATED to `agents/daemon_slayer/_ad_axis_ability.py`
+so there is one definition and not two (`hybrid` imports `rank`, so `rank` could
+not import `hybrid`; `hybrid` re-binds). DEFAULT-OFF, byte-identical omitted, all
+six build-order tables stamp-only, live-verified on `:8860`.
+
+**The finding that decided the session, and it is worth more than the code.**
+Ezreal's only PHYSICAL per-spell row is Q Mystic Shot with `ap_pct_sum` 200.0, so
+the term's AP-scaling exclusion drops it and his credited sum is EXACTLY 0.0. The
+seam is a provable no-op for him. RM-36 therefore is NOT closed by porting the
+term - it needs a SPLIT credit for the AD portion of a dual-scaling row, which is
+a new design and NOT a widen of that gate. Corki does reorder, so RM-38 is served.
+Memory `reference_ad_axis_term_cannot_price_a_dual_scaling_spell`.
+
+**Two stale filings corrected rather than inherited.** The pool half of RM-36 /
+RM-38 was already shipped - `exempt_offclass_by_win` and `widen_carry_pool` are
+DISJOINT, neither alone admits both Trinity Force and Spear of Shojin, and they
+COMPOSE (Ezreal both flags = pool 113, Trinity #4, Shojin #42). And the ROADMAP
+row's "all UNBUILT" header was wrong for most of its own table.
+
+**A relocation hazard worth remembering.** Two existing suites stubbed
+`hybrid.compute_ability_dps`; after the move that stub no longer bound the live
+call target. It failed loudly here, but the same move with a tolerant stub would
+have left every row-level assertion passing vacuously.
+
+**Not claimed:** the live eyeball is filed as `G2-46` in
+`docs/LIVE_GAME_GATED_SYNC.md`. A default-ON flip stays blocked on RM-98 (whole-game
+cast rate summed onto a combat-window auto rate), same as for the bruiser scorer.
+
+Suites at final state, repo root: DS 10378 passed / 6520 subtests; RC `tests/`
+18225 passed / 108 skipped. Ruff clean, ASCII clean, drift guard clean.
+
+---
+
 # 2026-08-04e - RM-118 stranded-seam ledger DRAINED to its declined floor (ENGINE 1.271.0)
 
 LEDGER 1191. Picked the top open row in ROADMAP NOW, exactly as the prior note said.
@@ -110,40 +153,3 @@ two. Re-indexed rather than adding an `open_bug_` exemption - adding an exemptio
 accommodate your own tidying is the "loosen the check" move the ritual forbids. The
 only exempt prefixes are `project_ds_sweep_` and `_`, and that is now stated in the
 index footer so the next pass does not retry it.
-
----
-
-# 2026-08-04c - RM-157 CLOSED: the invoice finally read, and it validated the reconstruction
-
-Commits: `4cc862d0` (reconstruction + re-price), `027d1031` (invoice + BACKLOG filing),
-`5adef80f` (doc-budget relocation). LEDGER 1188 + 1189.
-
-Both routes to the billed number were shut at session start and were RE-PROBED, not
-inherited: no `user` scope (billing 404), `list_connected_browsers` empty, repo PRIVATE.
-Rather than stall, rebuilt the billing FORMULA from `runs/{id}/jobs` - GitHub bills
-private Actions per JOB, ceil to the minute, 1x on ubuntu-latest, and the `repo` scope
-already reads every input. Mid-session the operator granted `user`, so the invoice
-became readable and CONFIRMED the derivation to ~6 percent (derived 2682 billed min for
-Aug 1-4 vs the invoice's 2846 month-to-date). That validation is the durable result and
-is written into memory as a general technique.
-
-Numbers that settle earlier guesses: rate is **0.006/min** (not the 0.008 list figure I
-first estimated with), allotment is **~3000/mo**, and the old
-`settings/billing/{actions,shared-storage}` endpoints are now **410 Gone** - only
-`users/{u}/settings/billing/usage` works. Actions Linux billed min: Apr 26 / May 1467 /
-Jun 3003 / **Jul 6030 (first real bill, NET 18.13 USD)** / Aug 1-4 alone 2846. Doubling
-month over month.
-
-Call: **KEEP the per-push full suite.** ~64 USD/mo, and it buys the only pre-merge gate
-on a repo with ZERO pull_request runs and a ~11 percent catch rate (4 of the 37 push
-checks that completed FAILED). Every cheap narrowing was already taken, so further cuts
-cut coverage.
-
-Do NOT redo: RM-157 is CLOSED and its row is relocated to `docs/ROADMAP_HISTORY.md`
-(2026-08-04) with a pointer left in ROADMAP. Do not restore the `/done` dispatch. Do not
-re-pitch deleting the per-push suite on cost share - cite a catch rate. The push-volume
-lever (branch-plus-PR for the headless loop) is FILED in `BACKLOG.md` under Platform /
-observability, not open work in ROADMAP.
-
-Next: pick the top open ROADMAP item. Watch the monthly `usage` row rather than the
-cadence projection - July's 6030 is the last full-month fact.
