@@ -32,8 +32,14 @@ class VisionServerThreadingSourceGuard(unittest.TestCase):
     def test_binds_threading_http_server(self) -> None:
         src = VS_INIT.read_text(encoding="utf-8")
         self.assertIn("from http.server import ThreadingHTTPServer", src)
+        # RM-150 moved the address out of the literal: the bind is now
+        # (host, PORT) where host comes from _bind_host() - loopback by
+        # default, RC_VISION_BIND to widen it. What S7 guards is the
+        # ThreadingHTTPServer class, not the address, so the pin follows the
+        # class. The address itself is pinned by
+        # tests/test_vision_server_bind_rm150.py.
         self.assertRegex(src, re.compile(
-            r"ThreadingHTTPServer\(\(\"0\.0\.0\.0\", PORT\), Handler\)"))
+            r"ThreadingHTTPServer\(\(host, PORT\), Handler\)"))
         self.assertIn("daemon_threads = True", src)
         self.assertNotRegex(
             src, re.compile(r"(?<!Threading)HTTPServer\(\("),
