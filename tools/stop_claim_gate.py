@@ -151,8 +151,26 @@ _FENCED = re.compile(r"```.*?```", re.S)
 _INLINE_CODE = re.compile(r"`[^`]*`")
 
 
+# A quoted token that is an EXECUTABLE PATH is the command, not data. Windows
+# forces the quotes - `C:\Program Files\GitHub CLI\gh.exe` cannot be written
+# unquoted - so deleting it with the rest of the quoted literals made every CI
+# probe on this machine invisible to EV_CI. MEASURED 2026-08-04: a session that
+# ran `"C:/Program Files/GitHub CLI/gh.exe" run view <id>` seven times was still
+# flagged ci_claim_without_probe, because after stripping, the command read
+# ` run view <id>` with no `gh` token left for any pattern to see. The repo's
+# own /done instructions mandate that absolute quoted path, so this was not an
+# unusual way to invoke it - it was the prescribed one.
+_QUOTED_EXE = re.compile(r"""["']([^"']*?[\/])?([\w.-]+\.exe)["']""", re.I)
+
+
 def strip_command_noise(command):
-    """A command's heredoc body and quoted literals are DATA, not the command."""
+    """A command's heredoc body and quoted literals are DATA, not the command.
+
+    A quoted EXECUTABLE PATH is the exception: it collapses to its basename
+    rather than vanishing, so the invoked binary survives for the evidence
+    patterns while the surrounding prose-stripping is unchanged.
+    """
+    command = _QUOTED_EXE.sub(lambda m: " " + m.group(2) + " ", command)
     return _QUOTED.sub(" ", _HEREDOC.sub(" ", command))
 
 
