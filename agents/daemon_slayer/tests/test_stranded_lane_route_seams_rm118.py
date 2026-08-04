@@ -133,7 +133,7 @@ _HSP_ITEMS = ("3504", "3107", "3222")       # Ardent + Redemption + Mikael's
 _AP_ITEMS = ("3020", "6653", "3089")        # Sorcs + Liandry's + Deathcap
 _AP_PARTIAL = ("3020", "6653")
 
-# MEASURED movers (this file's probe, ENGINE 1.271.0). Yasuo / Yone carry the
+# MEASURED movers (this file's probe, ENGINE 1.272.0). Yasuo / Yone carry the
 # crit-chance doubling + overflow AD; Jhin carries the 0.86 crit-damage penalty,
 # so his DPS moves DOWN. Senna is registered but her lane is overflow LIFE STEAL,
 # which this DPS build does not surface - deliberately not asserted as a mover.
@@ -241,6 +241,24 @@ def _engine_owners(seam: str) -> set[str]:
     return owners
 
 
+class PrivateHelperOwnershipIsMeasured(unittest.TestCase):
+    """The private-module filter above must not make a real owner invisible.
+
+    ``_ad_axis_ability.physical_ability_damage`` is the ONE definition of the
+    AD-axis ability term (RM-39 / RM-43, relocated by RM-36 / RM-38) and it
+    genuinely carries the RM-98 propensity prior. It is excluded from the
+    PUBLIC entry-point table because it is not a route; it is asserted here so
+    the exclusion is a classification, not a hole.
+    """
+
+    def test_the_relocated_ad_axis_term_still_carries_the_prior(self):
+        from agents.daemon_slayer import _ad_axis_ability
+
+        params = inspect.signature(_ad_axis_ability.physical_ability_damage).parameters
+        self.assertIn(_PRIOR, params)
+        self.assertIs(params[_PRIOR].default, False)
+
+
 class RouteOwnershipIsMeasured(unittest.TestCase):
     """The table in the docstring is re-derived here, never trusted."""
 
@@ -253,9 +271,16 @@ class RouteOwnershipIsMeasured(unittest.TestCase):
         }
         for seam, expected in expected_entry_points.items():
             with self.subTest(seam=seam):
+                # "Public" means BOTH halves of the dotted name. The
+                # function-name half was always filtered; RM-36 / RM-38 added
+                # ``_ad_axis_ability.physical_ability_damage`` - a public
+                # function inside a PRIVATE module - and a module-blind filter
+                # counted it as a route entry point, which it is not (routes
+                # live in server.py). Same privacy rule, applied consistently.
                 public = {
                     o for o in _engine_owners(seam)
                     if not o.split(".", 1)[1].startswith("_")
+                    and not o.split(".", 1)[0].startswith("_")
                 }
                 self.assertEqual(
                     public, expected,

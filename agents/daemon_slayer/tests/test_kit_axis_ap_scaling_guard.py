@@ -64,7 +64,7 @@ from pathlib import Path
 from unittest import mock
 
 from agents.daemon_slayer import ability_dps as ability_dps_mod
-from agents.daemon_slayer import hybrid
+from agents.daemon_slayer import _ad_axis_ability, hybrid
 from agents.daemon_slayer.abilities import DamageBlock
 from agents.daemon_slayer.ability_dps import (
     AbilityDpsResult,
@@ -324,12 +324,12 @@ class ApScalingExclusionTests(unittest.TestCase):
     """Part 1b - the AD-axis term excludes AP-scaling rows on their own merits."""
 
     def setUp(self):
-        self._orig = hybrid.compute_ability_dps
-        self.addCleanup(setattr, hybrid, "compute_ability_dps", self._orig)
+        self._orig = _ad_axis_ability.compute_ability_dps
+        self.addCleanup(setattr, _ad_axis_ability, "compute_ability_dps", self._orig)
 
     def _credited(self, rows, **kw) -> float:
-        hybrid.compute_ability_dps = lambda *a, **k: _result(rows)
-        return hybrid._physical_ability_damage(
+        _ad_axis_ability.compute_ability_dps = lambda *a, **k: _result(rows)
+        return _ad_axis_ability.physical_ability_damage(
             None, "0", _LEVEL, (), "SR", 0.0, 0.0, 0.0, 0.0, (), **kw
         )
 
@@ -512,7 +512,7 @@ class BelvethIntegrationTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def _credited(self, champ: str) -> float:
-        return hybrid._physical_ability_damage(
+        return _ad_axis_ability.physical_ability_damage(
             self.snap, champ, _LEVEL, (), "SR",
             _TARGET_KW["target_armor"], _TARGET_KW["target_mr"],
             _TARGET_KW["target_max_hp"], _TARGET_KW["target_bonus_hp"], (),
@@ -641,15 +641,15 @@ class DefaultPostureTests(unittest.TestCase):
 
     def test_default_never_calls_the_ad_axis_term(self):
         """Hard proof: poison the helper and run the default path anyway."""
-        orig = hybrid._physical_ability_damage
+        orig = _ad_axis_ability.physical_ability_damage
 
         def _boom(*a, **k):
             raise AssertionError(
                 "_physical_ability_damage called at the default posture"
             )
 
-        hybrid._physical_ability_damage = _boom
-        self.addCleanup(setattr, hybrid, "_physical_ability_damage", orig)
+        _ad_axis_ability.physical_ability_damage = _boom
+        self.addCleanup(setattr, _ad_axis_ability, "physical_ability_damage", orig)
         for champ in ("Aatrox", "Darius", "Olaf", "Garen", "Belveth"):
             with self.subTest(champion=champ):
                 compute_hybrid(
