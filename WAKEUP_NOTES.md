@@ -37,9 +37,28 @@ One honest weakness recorded in the ledger: `test_repointed_agents_expose_an_env
 is a source pin and did NOT fire on the agent mutation (the explanatory comment
 leaves the env-var name in the file). The LAN-IP sweep is the load-bearing guard.
 
-**Owed, not done:** `MEMORY.md` is 20.3 KB against a 24.4 KB read limit and the hook
-now warns on every write. It is not broken, but a `/consolidate-memory` pass is its
-own session - I did not prune a 250-entry recall index as a side effect of this one.
+**Memory consolidation ran second, on operator request (`/consolidate-memory`).**
+`MEMORY.md` 20.3 KB / 132 lines -> 17.2 / 116. Nothing deleted. Four STALE FACTS
+corrected, each wrong against the repo, not merely verbose: the Perseus memory said
+"NOT yet adopted" three lines above its own ADOPTED section (adopted since
+2026-07-29, LEDGER 1107); the index said CCR link-ingest was at "Phases 1-6" when
+RM-127 is CLOSED with all 7 shipped; it said "remove pathmode once Perseus runs"
+when pathmode was removed 2026-07-28; and `user_operator_profile.md` still described
+delegating to a Game-PC Claude, retired 2026-05-29. Retired `feedback_wenyan_output_default`
+(dialect reverted 2026-06-27, merged into `feedback_caveman_default_fleet`) and
+`project_atx_financial` (separate repo, bridge decommissioned 2026-06-24).
+
+The index bulk was FILENAMES, not prose, so rewording could not reach budget -
+delegated two domain clusters onto the existing `INDEX_ds.md` pattern:
+`INDEX_overlay_ui.md` (30) + `INDEX_riot_api.md` (19). `drift_guard.py` follows
+`INDEX_*` one level deep, so those are honored.
+
+**The lesson worth keeping:** the drift guard CAUGHT this pass mid-cleanup. I had
+unindexed two FIXED-bug memories to save bytes; the guard breached on exactly those
+two. Re-indexed rather than adding an `open_bug_` exemption - adding an exemption to
+accommodate your own tidying is the "loosen the check" move the ritual forbids. The
+only exempt prefixes are `project_ds_sweep_` and `_`, and that is now stated in the
+index footer so the next pass does not retry it.
 
 ---
 
