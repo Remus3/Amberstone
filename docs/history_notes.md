@@ -223,6 +223,50 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-04a - RM-156: a timed-out job and a superseded one say the same word
+
+Closed RM-156 (commit `c8199a96`). The filing said the push CI job had "13 minutes of
+headroom and already blew it". **The 13 was wrong - measured over 40 runs it was about 3.**
+The filing sampled the four runs around the failure, which is the middle of the
+distribution and blind to the tail: successful `check` wall clock spans 22m17s to **36m49s**.
+
+**One ceiling was bounding two independent tails.** The killed run (`30866367283`, 40m16s)
+was slow in the SUITE - its dual-suite step had burned 38m41s against a 20m47s-27m40s norm.
+The 36m49s run (`30820229244`), the slowest SUCCESS on record, was slow in SETUP: a 10m33s
+`Install Playwright Chromium` cache miss on an otherwise normal suite. The 2026-07-28
+arithmetic that produced the 40 modelled only the suite tail.
+
+**Fix:** step-level `timeout-minutes: 45` on each dual-suite step, because a step killed by
+its own timeout is marked FAILED (job concludes `failure`) while a job killed by the job
+ceiling concludes `cancelled` - the same word as a concurrency supersede. Job ceilings become
+backstops: `check` 40 -> 65, `nightly-full-suite` 30 -> 60. **The ordering is the invariant**
+and is pinned by `tests/test_ci_job_timeout_headroom_rm156.py` (job >= step + 12): if a later
+edit leaves job <= step, the job dies first and every overrun is silently `cancelled` again.
+
+**`nightly-full-suite` had LESS headroom than the job that failed** (24m13s-28m08s against 30)
+and was never mentioned in the filing. Both jobs got both halves.
+
+**The premise is not in GitHub's docs.** They document only the job -> `cancelled` half. The
+step -> FAILED half comes from `actions/runner` `src/Runner.Worker/StepsRunner.cs`. Recorded
+as source-not-docs in the test docstring, so it gets re-measured if behaviour ever differs.
+
+**Verifier refuted two of my claims, both real.** (1) I read the step-duration max off an
+aggregate: it is 27m40s, not 25m29s. (2) `pyyaml` is installed only in `check`, so every
+assertion in my new module AND in `test_ci_docs_guard_coverage.py` silently SKIPPED in the
+nightly job - and my docstring had claimed an existing sibling covered that. It does not; it
+keys on its own filename and is per-file, not per-job. Fixed with pyyaml on the nightly pip
+line plus a per-JOB assertion. 8-mutation matrix: no mutation escapes all five tests.
+
+**NEW, operator-raised at wrap: Actions minutes are blown out.** 255 workflow runs in the
+first 4 days of August, and every push runs the full ~27-minute dual suite. Filed as RM-157.
+**Do not confuse it with RM-156** - raising a timeout ceiling costs nothing unless it is hit;
+the minute burn is the per-push full suite (RM-119's second half), which is a deliberate
+coverage choice that now needs re-pricing.
+
+Suite: 28554 passed / 108 skipped / 8102 subtests / 0 failed. ruff clean.
+
+---
+
 # 2026-08-03g - lane 8 cycle 7: stale relay data that called itself perfectly fresh
 
 Audited `core/liveclient_cache.py` (criterion 1 - it parses the `:8889` relay envelope, which a
