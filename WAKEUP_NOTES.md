@@ -6,6 +6,51 @@
 
 ---
 
+# 2026-08-03g - lane 8 cycle 7: stale relay data that called itself perfectly fresh
+
+Audited `core/liveclient_cache.py` (criterion 1 - it parses the `:8889` relay envelope, which a
+separate process authors on its own release cadence). EXPECTATION recorded before reading:
+unvalidated dict access, a broad `except Exception` masking a shape change, staleness math
+trusting an upstream timestamp, maybe a non-atomic write. Scored honestly: the staleness-math
+prediction was RIGHT and worse than predicted; the non-atomic-write prediction was REFUTED - the
+module writes nothing, it is a read-through cache.
+
+**Method was empirical, not by reading.** `_fetch_once` was driven with nine adversarial bodies
+through a mocked `urlopen` BEFORE any edit. That is what turned a hunch into three measured
+defects, and it also killed one hypothesis I would otherwise have "confirmed" by reading.
+
+**FINDING 1 - `age_s` failed OPEN three different ways.** Missing/null `ts` with data present
+returned `0.0` ("perfectly fresh") forever; a FUTURE `ts` was clamped to `0.0` by
+`max(0.0, ...)`; a non-numeric `ts` raised from a `float()` sited OUTSIDE the `try/except`,
+escaping into the poll loop which logged it at DEBUG and left `_snapshot` frozen. **Eight**
+consumers gate on that number, so one timestamp-less envelope defeated every freshness gate at
+once. Now fail-closed AND total: unestablishable age reports `_UNKNOWN_AGE_S` (86400.0, kept
+FINITE because two consumers pass the value outward and `json.dumps(inf)` is not valid JSON).
+
+**FINDING 2 (sibling grep, same root cause)** - `modes/shared_vision.py:66` clamped a future
+frame stamp the same way, letting an untrustworthy frame through the 90s cap that exists to stop
+exactly that. The other seven `float(... or 0)` sites are fail-CLOSED already - recorded as
+measured negatives, not changed.
+
+**RM-155 CLOSED.** Root fix is an autouse `RC_FUSION_SHADOW_PATH` redirect in `tests/conftest.py`
+(the path resolves through the env var at CALL time, so the existing module-global redirects
+could never reach it). Backfill was real, not hypothetical: this worktree's corpus was ALREADY
+polluted and the invariants test was ALREADY FAILING when the cycle began - an inherited red, not
+one I caused. Removed it, then ran the full suite TWICE with identical counts and the production
+path never recreated.
+
+**Two process lessons worth keeping.** (1) A mutation caught my own test being VACUOUS - it
+asserted `age_s > 12.0`, which a 1970 stamp also satisfies, so deleting the guard stayed GREEN.
+Tightened to assert the sentinel exactly. (2) The verifier returned CONFIRM on all 9 claims and
+STILL found a residual I had missed - `age_s` raised `TypeError` for a directly-built `Snapshot`
+because `_coerce_ts` only guarded the fetch path. A CONFIRM verdict is not the same as "nothing
+left"; read the residuals.
+
+Suites from repo root: `tests/` 18162 passed / 154 skipped; DS 10341 passed. ruff clean.
+Commit `b529ca89`, LEDGER 1184. Deployed to the live tree and re-probed.
+
+---
+
 # 2026-08-03f - lane 8 cycle 6: a relay that reported only to a console it does not have, and a token literal the dashboard hands out
 
 Audited `tools/liveclient_relay.py` - zero dedicated tests, running live as `RC-LiveClientRelay`.
