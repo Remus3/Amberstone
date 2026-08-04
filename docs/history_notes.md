@@ -223,6 +223,38 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-04b - RM-157 first half: the wrap summoned a suite the push already ran
+
+The `/done` ritual's section 2c dispatch is RETIRED in both halves of the mirror pair
+(`tools/done.md` + `.claude/commands/done.md`, copied byte-for-byte; drift guard exit 0).
+Re-measured over `created>=2026-08-01`: 256 runs / 2126.6 min runner wall clock, of which
+`ci` workflow_dispatch was 18 runs / 485.8 min - every one section 2c, every one a duplicate
+of the push `check` run since RM-119's second half. 22.8 percent of all runner time for zero
+signal. Sections 2b/8c now collect ONE run; the SHAPE note says Phase 2 fires CI by pushing.
+
+**The measure-first instruction is what paid.** By run COUNT docs-guards (109) looks like the
+problem; by MINUTES it is 8.4 percent, the smallest job in the repo, and the only watcher of
+a docs-only push. CodSpeed is 3.7 percent. Both deliberately untouched - a triage done on run
+count would have cut the cheap job and kept the expensive duplicate.
+
+**Still OPEN and now an OPERATOR action: the billed number.** Every billing endpoint 404s
+because the `gh` token carries `delete_repo, gist, read:org, repo, workflow` and NOT `user`.
+Unlock is `gh auth refresh -h github.com -s user`, a device-code flow that cannot run
+non-interactively. `/timing` still reports `billable.UBUNTU.total_ms = 0` with a correct
+`run_duration_ms` on the same payload. Every figure above is WALL CLOCK, not billed.
+
+Do NOT re-tune RM-156 (closed, CI-verified). Do NOT restore the dispatch - the two cases that
+run no `ci` (docs-only push, non-main branch with no PR) were both checked and neither
+justifies it. ROADMAP.md is at 71.5 KB against its 80 KB budget - tight, watch it.
+
+**Fixed forward at wrap (LEDGER 1187, `89ca2314`).** `RC-WeeklyHygiene` pushed `cf1c49b9`
+mid-session with 24 U+2713 glyphs in its report's Status column and turned `docs-guards` RED;
+the red arrived attached to MY doc-sync push, not to the commit that caused it. Check blame
+before diff when a wrap goes red. Root cause was `agents/agent6_auditor/charter.md` never
+naming the ASCII rule that `test_agent6_reports_are_ascii` enforces - now named there.
+
+---
+
 # 2026-08-04a - RM-156: a timed-out job and a superseded one say the same word
 
 Closed RM-156 (commit `c8199a96`). The filing said the push CI job had "13 minutes of
