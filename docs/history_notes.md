@@ -223,6 +223,57 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-04e - RM-118 stranded-seam ledger DRAINED to its declined floor (ENGINE 1.271.0)
+
+LEDGER 1191. Picked the top open row in ROADMAP NOW, exactly as the prior note said.
+
+The ledger held 14. Ten are DECLINED BY DESIGN and stay - the 5 target/caster-state
+seams (arc operator-CLOSED s232) and the 5 per-item shield opt-ins (operator-gated
+live flip pending). The 4 that were real debt now reach their routes AND
+`core/daemon_slayer_client.py` in the same slice: `apply_crit_chance_overrides` ->
+`/dps`, `apply_ability_hsp_amp` -> `/hps`, `apply_cast_rate_propensity_prior` +
+`assume_ms_utility` -> `/hybrid` and `/rank-bruiser`.
+
+**The row was easier than it looked, and the reason is the durable finding.** Three
+of the four carried a decline reason that read as a blocker - "needs a measurement
+first", "engine-only by design", "an unmeasured second live flip on the same
+auto-attack term". All three were about a DEFAULT FLIP. This slice ships route
+EXPOSURE, default-off and byte-identical. The counts were right; the reasons were
+answering a question nobody asked. Filed as memory
+`feedback_decline_reason_goes_stale_before_the_count`: a row's count gets
+re-measured every session, its reason never does.
+
+Both prior durables held and both were exercised. Route ownership came from
+`inspect.signature` over the whole package, never from a sibling docstring. The
+TRANSPORT question was asked separately from the flag - and here the answer was
+"none needed", all four being pure booleans over inputs the owning routes already
+parse. That is the opposite of the rune and vamp lanes; the CHECK is what
+distinguishes them, not the outcome.
+
+Asymmetries are asserted, not assumed: `/rank-enchanter` must never carry the HSP
+ability flag, `/rank` must never carry the crit overrides, `/dps` must never carry
+either hybrid seam. Emitting any of those manufactures reachability with no reader.
+
+DEFAULT-OFF proven three ways, the third being the useful one: a full regen of all
+six committed build-order tables (3 modes x 2 families, 173 champions) whose only
+diff is the version stamp. **Note the trap that cost 151 seconds:** the tracked
+tables come from `core/build_order_precompute.py` + `core/build_order_variants.py`
+(`--mode all --champions all --static`), NOT from
+`tools/daemon_slayer_build_orders_generate.py`, which writes a gitignored path and
+leaves `git status` clean while printing success. Memory
+`reference_build_order_regen_wrong_generator`.
+
+Ledger drains: `STRANDED_TODAY` 14 -> 10; `_UNREACHABLE_OK` 65 pairs / 16 routes ->
+59 / 15, the `/rank-bruiser` row emptying entirely. New
+`test_stranded_lane_route_seams_rm118.py`, 25 tests / 56 subtests, with a negative
+control per seam. Suites fresh from the REPO ROOT: DS 10366 passed / 6520 subtests,
+RC 18225 passed / 108 skipped / 0 failed. Ruff clean. Share mirror re-synced at 520
+files with its own outward-voice CHANGELOG + README entry. Live on `:8860` after
+`taskkill /F /PID` then `schtasks /Run /TN RC-DaemonSlayer`: `/health` 1.271.0 and
+all six (route, seam) pairs answer over HTTP with every ON path moving.
+
+---
+
 # 2026-08-04d - RM-150 CLOSED: narrowing a listener turned out to be a client sweep
 
 LEDGER 1190. Picked the top open row in ROADMAP NOW.
