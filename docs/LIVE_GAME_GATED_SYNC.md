@@ -586,6 +586,22 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   drake, (b) district vector on `/api/state.zoi.districts`, (c) OBS frames matching the GDI baseline,
   (d) MIA rings + fluid DMZ + weighted bubbles render. Practice suffices (fog/presence/CV/OBS
   round-trip, no enemy-comp/rune dependency). SOURCE: ZOI_DISTRICT_ORCHESTRATION_PLAN.md:107-109.
+- **G2-46** RM-36 / RM-38 `apply_ad_axis_ability_damage` on the CARRY ranker (ENGINE 1.272.0,
+  `rank.rank_items` + `/rank` + `core/daemon_slayer_client.rank_for`). Route exposure is SHIPPED and
+  default-OFF; this row is the EYEBALL, and it is deliberately not a default-flip request. Headless
+  is DONE and is not the question: Corki reorders with the seam armed (verified over HTTP after the
+  :8860 bounce, head 3153/6672/3085/6692 -> 3153/6672/6692/3085), Caitlyn moves too, Ezreal is
+  provably byte-identical because his only PHYSICAL row carries `ap_pct_sum` 200.0 and the term's
+  AP-scaling exclusion drops it, and all six build-order tables are stamp-only. What headless CANNOT
+  settle is whether the ON list reads SANE to a player on a caster-marksman: play Corki (and ideally
+  Ezreal as the null control) and confirm the served build does not start recommending an ability
+  item a marksman never actually buys. **The specific risk to look for** is the mixed time-base the
+  term inherits from RM-98 - the ability rows are a WHOLE-GAME cast rate summed onto a COMBAT-WINDOW
+  auto rate, sized at ~7x distortion per spell in `docs/specs/SPEC_rm98_cast_rate_time_base.md` - so
+  an ON list that over-weights ability items is the EXPECTED failure, not a surprise. A default-ON
+  flip stays blocked on RM-98 exactly as it does for the bruiser scorer; do not read this row as
+  proposing one.
+
 - **G2-43** RM-41 `exclude_off_axis_items` default-ON flip (ENGINE 1.240.0, `ds.burst`). The seam
   strips a burst candidate whose offense sits entirely on the champion's OFF damage axis. Headless
   is DONE and is not the question: pool 140 -> 88 on the seven-champion AP-assassin cohort, 6 of 7

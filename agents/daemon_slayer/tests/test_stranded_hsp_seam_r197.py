@@ -168,17 +168,17 @@ def stranded_seams(src: str) -> dict[str, list[str]]:
 # ---------------------------------------------------------------------------
 STRANDED_TODAY: dict[str, str] = {
     # (The HSP ABILITY lane - apply_ability_hsp_amp - was wired to /hps at
-    # ENGINE 1.271.0 and is therefore gone from this ledger. The "own slice, not
+    # ENGINE 1.272.0 and is therefore gone from this ledger. The "own slice, not
     # measured here" reason it carried was discharged by measurement: it is a
     # pure boolean over the amp_factor this route already derives from
     # ``item_ids``, and ``rank_items_by_hps`` cannot read it, so /hps is the
     # sole owner and /rank-enchanter must never carry the key.)
     # (The RM-98 cast-rate propensity PRIOR - apply_cast_rate_propensity_prior -
     # and the R58 hybrid MS utility term - assume_ms_utility - were wired to
-    # /hybrid and /rank-bruiser at the same ENGINE 1.271.0 and are likewise
+    # /hybrid and /rank-bruiser at the same ENGINE 1.272.0 and are likewise
     # gone.)
     # (The R212 crit CHANCE / crit DAMAGE MULTIPLIER lane -
-    # apply_crit_chance_overrides - was wired to /dps at ENGINE 1.271.0. Its
+    # apply_crit_chance_overrides - was wired to /dps at ENGINE 1.272.0. Its
     # "unmeasured live flip" reason confused two questions: this slice exposes
     # the seam DEFAULT-OFF, which is byte-identical, and does NOT flip a live
     # default. The default flip remains unshipped and unclaimed.)
