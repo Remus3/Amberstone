@@ -6,6 +6,54 @@
 
 ---
 
+# 2026-08-04h - RM-42 CLOSED: the follow-on REFUTED the row it was built for (ENGINE 1.274.0)
+
+LEDGER 1194. The aa-empower follow-on LEDGER 1193 filed as owed.
+
+**Shipped.** New `agents/daemon_slayer/_extra_shot_overrides.py` - the extra
+shot's ON-HIT APPLICATION and its own CRIT, the two halves a damage registry
+cannot express. DEFAULT-OFF `apply_extra_shot_procs`, reachable from
+`compute_dps` / `rank_items` / `/dps` / `/rank` / both client functions.
+
+**The answer refutes RM-42.** Both flags armed at depth: weighted DPS
+142.06 -> 257.05 (+80.9 pct), and ON-HIT ITEMS RISE while crit does not -
+Guinsoo's #7 -> #6, Terminus #7 -> #5, Yun Tal DOWN #6 -> #7, Hexoptics C44
+only #19 -> #17, Runaan's/BotRK keep #1/#2. The row predicted the opposite.
+It could never have been right: DDragon says the shot APPLIES ON-HIT, so a
+faithful model necessarily makes on-hit items better, and the more completely
+it is modelled the more on-hit wins. RM-42 is CLOSED - damage half shipped,
+ordering half refuted. Do NOT re-file it as "the model is still incomplete".
+
+**A process point worth keeping.** The 1.273.0 non-closure marker was authored
+predicting it would GO RED when this shipped. It did not. That survival is
+EVIDENCE about the claim, so the test was rewritten to pin the refutation
+rather than quietly deleted. A marker that predicts its own death and lives
+should be read, not removed.
+
+**Placement was the whole correctness argument** and is worth re-reading before
+touching `_periodic_proc_dps`: the multiplier is bound INSIDE the
+`every_n_attacks` branch, so a time-driven proc cannot be accelerated (pinned by
+a Sunfire-only difference test), and it deliberately does NOT touch `base_dps`
+because the shot's own damage is owned by `_passive_damage_overrides` - folding
+it in both places double-counts one hit.
+
+**Refusal recorded:** no bespoke crit multiplier was authored. DDragon ships two
+bracketed variants of the crit bonus in one string, so neither is quotable; the
+shot gets the engine's standard crit expectation instead of an invented number.
+
+**A guard earned its keep:** `test_route_seams_reach_the_client_per_route`
+caught `/dps` parsing the seam while `dps_for` could not express it, and its
+message says fix the client rather than widen the exclusion list. Done that way.
+
+Suites at final state, repo root: DS 10413 passed / 6520 subtests; RC `tests/`
+18225 passed / 108 skipped. Tables stamp-only. Ruff, ASCII, drift guard clean.
+`G2-47` widened to cover BOTH flags - two halves of one event, flip together.
+
+Three ENGINE bumps this session (1.272.0 / 1.273.0 / 1.274.0) across RM-36/38
+and RM-42.
+
+---
+
 # 2026-08-04g - RM-42 Akshan: the passive modelled, the ordering claim NOT closed (ENGINE 1.273.0)
 
 LEDGER 1193. Second Tier-2 slice of the day, same RM-35..RM-48 set.
@@ -91,54 +139,3 @@ cast rate summed onto a combat-window auto rate), same as for the bruiser scorer
 
 Suites at final state, repo root: DS 10378 passed / 6520 subtests; RC `tests/`
 18225 passed / 108 skipped. Ruff clean, ASCII clean, drift guard clean.
-
----
-
-# 2026-08-04e - RM-118 stranded-seam ledger DRAINED to its declined floor (ENGINE 1.271.0)
-
-LEDGER 1191. Picked the top open row in ROADMAP NOW, exactly as the prior note said.
-
-The ledger held 14. Ten are DECLINED BY DESIGN and stay - the 5 target/caster-state
-seams (arc operator-CLOSED s232) and the 5 per-item shield opt-ins (operator-gated
-live flip pending). The 4 that were real debt now reach their routes AND
-`core/daemon_slayer_client.py` in the same slice: `apply_crit_chance_overrides` ->
-`/dps`, `apply_ability_hsp_amp` -> `/hps`, `apply_cast_rate_propensity_prior` +
-`assume_ms_utility` -> `/hybrid` and `/rank-bruiser`.
-
-**The row was easier than it looked, and the reason is the durable finding.** Three
-of the four carried a decline reason that read as a blocker - "needs a measurement
-first", "engine-only by design", "an unmeasured second live flip on the same
-auto-attack term". All three were about a DEFAULT FLIP. This slice ships route
-EXPOSURE, default-off and byte-identical. The counts were right; the reasons were
-answering a question nobody asked. Filed as memory
-`feedback_decline_reason_goes_stale_before_the_count`: a row's count gets
-re-measured every session, its reason never does.
-
-Both prior durables held and both were exercised. Route ownership came from
-`inspect.signature` over the whole package, never from a sibling docstring. The
-TRANSPORT question was asked separately from the flag - and here the answer was
-"none needed", all four being pure booleans over inputs the owning routes already
-parse. That is the opposite of the rune and vamp lanes; the CHECK is what
-distinguishes them, not the outcome.
-
-Asymmetries are asserted, not assumed: `/rank-enchanter` must never carry the HSP
-ability flag, `/rank` must never carry the crit overrides, `/dps` must never carry
-either hybrid seam. Emitting any of those manufactures reachability with no reader.
-
-DEFAULT-OFF proven three ways, the third being the useful one: a full regen of all
-six committed build-order tables (3 modes x 2 families, 173 champions) whose only
-diff is the version stamp. **Note the trap that cost 151 seconds:** the tracked
-tables come from `core/build_order_precompute.py` + `core/build_order_variants.py`
-(`--mode all --champions all --static`), NOT from
-`tools/daemon_slayer_build_orders_generate.py`, which writes a gitignored path and
-leaves `git status` clean while printing success. Memory
-`reference_build_order_regen_wrong_generator`.
-
-Ledger drains: `STRANDED_TODAY` 14 -> 10; `_UNREACHABLE_OK` 65 pairs / 16 routes ->
-59 / 15, the `/rank-bruiser` row emptying entirely. New
-`test_stranded_lane_route_seams_rm118.py`, 25 tests / 56 subtests, with a negative
-control per seam. Suites fresh from the REPO ROOT: DS 10366 passed / 6520 subtests,
-RC 18225 passed / 108 skipped / 0 failed. Ruff clean. Share mirror re-synced at 520
-files with its own outward-voice CHANGELOG + README entry. Live on `:8860` after
-`taskkill /F /PID` then `schtasks /Run /TN RC-DaemonSlayer`: `/health` 1.271.0 and
-all six (route, seam) pairs answer over HTTP with every ON path moving.
