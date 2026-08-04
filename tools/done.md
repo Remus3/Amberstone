@@ -10,10 +10,10 @@ description: End-of-session ritual - auto-commit any pending changes, push, do t
 
 The user wants to end the session cleanly so the next one starts with a fresh context window. This is /wrap, but with auto-commit instead of "stop and ask". Run all sections in order; surface a tight final banner.
 
-> **SHAPE (measured 2026-07-26, LEDGER 1065).** This ritual is FOUR PHASES, and
-> the ordering is load-bearing rather than cosmetic:
+> **SHAPE (measured 2026-07-26, LEDGER 1065; section 2c retired 2026-08-04, RM-157).**
+> This ritual is FOUR PHASES, and the ordering is load-bearing rather than cosmetic:
 > **Phase 1** the fast local gate (section 0-0c, target 60-90s) -
-> **Phase 2** commit + push + FIRE the full suite at CI (sections 1-2) -
+> **Phase 2** commit + push, which FIRES the full suite at CI by itself (sections 1-2) -
 > **Phase 3** all the paperwork WHILE CI runs (sections 3-7) -
 > **Phase 4** collect CI, banner, next-session prompt (sections 8-10).
 >
@@ -21,14 +21,23 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 > CI watch, with ~15 minutes of doc writing after that. Measured: the local dual
 > suite is **1642s / 23,250 tests**, while the SAME suite on CI's ubuntu runner
 > is **16m47s / 22,749 tests (97.8% of local)** - CI is FASTER than this machine
-> and it is off the box. Dispatching CI at Phase 2 makes the ~15 minutes of
-> paperwork overlap the ~17-minute CI run, so the wrap costs the LONGER of the
-> two instead of their sum.
+> and it is off the box. Pushing at Phase 2 makes the ~15 minutes of paperwork
+> overlap the ~20-minute CI run, so the wrap costs the LONGER of the two instead
+> of their sum.
+>
+> **That overlap no longer needs a manual dispatch, and must not get one back.**
+> Until 2026-08-04, section 2c fired `gh workflow run ci.yml` here. RM-119's
+> second half (2026-07-28) put the identical `pytest tests/
+> agents/daemon_slayer/tests/ ...` onto the `check` job of every push, so from
+> that day the dispatch only re-ran what the push run was already running.
+> MEASURED over 2026-08-01..04: 18 such dispatches, **485.8 minutes of runner
+> wall clock in four days for zero added signal**, 22.8% of all runner time in
+> the window. The push IS the full suite. Wait for it; never summon a second one.
 >
 > **Do NOT reintroduce a full local dual suite into Phase 1.** It was measured
 > and it does not have a slow minority to trim: the slowest 40 tests are only
 > **10.7%** of wall clock and the mean is 71ms across 23,250 tests, so the cost
-> is broad, not concentrated. The targeted slice plus the CI dispatch is the
+> is broad, not concentrated. The targeted slice plus the push CI run is the
 > replacement, not a shortcut.
 
 > **MEASURED 2026-07-26 - pytest-xdist is an 11.4x win and is NOT yet adopted.**
@@ -140,7 +149,7 @@ Do NOT silence a breach by loosening the check. If a finding is genuinely a fals
 
 ### 2b. GitHub CI verification
 
-- **Do NOT block here.** This is Phase 2; both CI runs are collected in section 8c after the
+- **Do NOT block here.** This is Phase 2; the CI run is collected in section 8c after the
   paperwork is done. Just capture the run id so 8c can find it.
 - Note the push-triggered `check` run for the pushed SHA:
   - `gh run list --branch <branch> --limit 1` to find the run id (gh = `C:/Program Files/GitHub CLI/gh.exe`; use the absolute path in older shells).
@@ -148,20 +157,21 @@ Do NOT silence a breach by loosening the check. If a finding is genuinely a fals
 - If CI goes RED on a real test/lint failure: surface the failing job ABOVE the banner and add "resolve CI <job> before /clear" to the bottom line. The local gate (section 0) should have caught it, so a red here usually means an env-only delta - investigate before declaring the session cleanly wrapped.
 - Do NOT block /clear on flaky-infra red, but do NOT silently ignore a genuine failure either.
 
-### 2c. Dispatch the FULL suite to CI, then walk away from it
+### 2c. The full suite is ALREADY running - do NOT dispatch a second one
 
-The full dual suite does NOT run locally at wrap (see the SHAPE note at the top). Fire it off-machine the moment the push lands, so it runs while you do the paperwork in sections 3-7:
+RETIRED 2026-08-04 (RM-157). This section used to run `gh workflow run ci.yml --ref main`. Do not restore it. Since RM-119's second half (2026-07-28), the `check` job on every push runs the identical command that dispatch triggers:
 
 ```
-gh workflow run ci.yml --ref main
+pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 -n auto --dist loadfile
 ```
 
-This triggers the `nightly-full-suite` job through its existing `workflow_dispatch` gate - no workflow edit is needed. On the ubuntu runner it is **16m47s for 22,749 tests (97.8% of the local 23,250)**, which is FASTER than running it here.
+So the push in section 2a has already fired the full dual suite. Note its run id in 2b, go straight to section 3, and collect it in 8c.
 
-- Note the dispatched run id now (`gh run list --workflow=ci.yml --limit 1`); section 8c collects it.
-- Do NOT block here. Go straight to section 3.
-- **Once per SESSION, never per push.** The repo is PRIVATE, so Actions minutes are metered and this repo has already tripped its spending limit once. A billing block looks exactly like a red CI - a 2-3 second "failure" carrying a "job was not started" annotation - so do not provoke it by wiring the full suite into every push. See memory `reference_ci_billing_fastfail`.
+- **MEASURED 2026-08-01..04, four days:** 256 runs / 2126.6 minutes of runner wall clock. `ci` on `workflow_dispatch` was **18 runs / 485.8 min (avg 27.0)** - every one of them this section, every one a duplicate of the `check` run over the same tree. 22.8% of all runner time in the window, for zero added signal.
+- **The other two workflows were measured in the same pass, and the answer for both is LEAVE THEM ALONE.** `docs-guards` has the largest run COUNT (109 push runs) but is the smallest job: **178.8 min, avg 1.6** - 8.4% of the total, and it is the only thing watching a docs-only push. `CodSpeed` is **62 runs / 77.7 min, avg 1.3** - 3.7%. Neither is where the minutes go; do not "optimise" either on run count.
+- **Two cases genuinely run no `ci` at all, and neither is a reason to dispatch.** A docs-only push is skipped by `ci.yml`'s `paths-ignore: '**/*.md'`, and `docs-guards.yml` is its purpose-built complement (selector-derived, pinned by `tests/test_ci_docs_guard_coverage.py`) - a full suite adds nothing that a .md-only commit could have broken. A push to a NON-main branch with no PR matches neither `ci.yml` trigger, and a `--ref main` dispatch there would test main rather than your branch, so it is worse than useless. Open the PR instead.
 - The ~142 tests that SKIP on Linux (Windows paths, PowerShell, scheduled tasks) are the residue CI cannot cover. If this session's work was in that surface, run those locally rather than trusting the CI green.
+- **The billing trap still applies to the run you DO get.** The repo is PRIVATE, so Actions minutes are metered and it has already tripped its spending limit once. A billing block looks exactly like a red CI - a 2-3 second "failure" carrying a "job was not started" annotation. See memory `reference_ci_billing_fastfail`.
 
 ### 3. Background tasks started this session
 
@@ -235,16 +245,15 @@ Manual follow-ups (only if needed):
 - > 10 MB: add "session file > 10 MB - /clear overdue" to the banner.
 - > 20 MB: escalate ABOVE the banner - at this size compaction is lossy and the model is already degraded.
 
-### 8c. Collect BOTH CI runs (Phase 4)
+### 8c. Collect the CI run (Phase 4)
 
-By now the paperwork has overlapped most of the ~17-minute full run. Collect both:
+By now the paperwork has overlapped most of the ~20-minute push run. There is exactly ONE run to collect - summoning a second is the RM-157 regression (section 2c):
 
 ```
 gh run watch <check-run-id> --exit-status
-gh run watch <full-suite-run-id> --exit-status
 ```
 
-- Report each in the banner as `green | red | pending`.
+- Report it in the banner as `green | red | pending`.
 - A RED full run means fixing FORWARD on main - that is the accepted trade for not paying 27 minutes locally before every commit. Surface the failing job ABOVE the banner and add "resolve CI <job> before /clear" to the bottom line.
 - Distinguish a real failure from a BILLING block: a 2-3 second "failure" with a "job was not started" annotation is the spending limit, not your code (memory `reference_ci_billing_fastfail`).
 - Do NOT block /clear on flaky-infra red, but never silently ignore a genuine failure.
