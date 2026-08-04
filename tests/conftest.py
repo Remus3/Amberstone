@@ -100,6 +100,27 @@ def redirect_prod_write_paths_to_tmp(monkeypatch, tmp_path_factory):
             monkeypatch.setattr(mod, attr, base / fname)
 
 
+@pytest.fixture(autouse=True)
+def redirect_fusion_shadow_to_tmp(monkeypatch, tmp_path_factory):
+    """RM-155: keep the suite from writing `data/fusion_shadow.jsonl`.
+
+    `modes.shared_vision._fusion_shadow_path()` resolves its target through the
+    `RC_FUSION_SHADOW_PATH` env var at CALL time and falls back to the
+    production path, so the module-global redirects above cannot reach it - it
+    is a function, not a `SHADOW_PATH` constant. Individual tests set the env
+    var, but any test that drives `read_tiered()` without doing so appended a
+    real record to the production corpus.
+
+    That made the suite NON-IDEMPOTENT in a fresh tree: the corpus is
+    gitignored, so run 1 skipped `test_real_fusion_shadow_corpus_invariants`
+    and passed while writing one record; run 2 then found a 1-record corpus,
+    no longer skipped, and failed `assert narrowed > 0`. Setting the env var
+    for EVERY test closes it at the root rather than per-test.
+    """
+    base = tmp_path_factory.mktemp("fusionshadow")
+    monkeypatch.setenv("RC_FUSION_SHADOW_PATH", str(base / "fusion_shadow.jsonl"))
+
+
 # RF5 suite-wide regression assert: no test may mutate a production
 # coaching / loop / in-game artifact across the whole session. These paths are
 # written ONLY by a live coach, the headless loop, or an in-game detector, so
