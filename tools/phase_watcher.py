@@ -44,7 +44,11 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-LEGION_VISION = "http://192.168.8.230:8889"
+# Vision-relay base. LOOPBACK by default (RM-150) - same reasoning as
+# tools/lcu_agent.py and the tools/liveclient_relay._upload_url precedent:
+# post-ADR-011 both ends are this machine, so the LAN hop bought nothing and a
+# DHCP change would have killed the watcher silently under pythonw.
+LEGION_VISION = os.environ.get("RC_VISION_BASE", "http://127.0.0.1:8889")
 DEFAULT_TIMEOUT = 4.0
 
 

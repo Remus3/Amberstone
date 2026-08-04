@@ -32,8 +32,10 @@ MAX_BODY_BYTES = 10 * 1024 * 1024
 
 class Handler(BaseHTTPRequestHandler):
     def _auth(self) -> bool:
-        # compare_digest, not ==: the token is compared against a header an
-        # unauthenticated LAN client controls, and :8889 binds 0.0.0.0.
+        # compare_digest, not ==: the token is compared against a header the
+        # caller controls. RM-150 narrowed the bind to loopback, which makes
+        # that caller local rather than anything on the LAN - it does not make
+        # the comparison safe to relax.
         return hmac.compare_digest(self.headers.get(AUTH_HEADER, ""), AUTH_TOKEN)
 
     # -- GET ----------------------------------------------------------------
@@ -47,8 +49,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 self._j(200, get_stats())
             except Exception as e:  # noqa: BLE001
-                log.error("Stats error: %s", e)
-                self._j(500, {"error": str(e)})
+                self._err500("Stats error", e)
         elif self.path in ("/monitor", "/monitor.html"):
             try:
                 # Look next to server script AND in same dir as working directory
@@ -70,11 +71,16 @@ class Handler(BaseHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(html)
                 else:
-                    self._j(404, {"error": "moon_monitor.html not found",
-                                  "searched": [str(p) for p in candidates]})
+                    # RM-150: the 404 used to return `searched` - every
+                    # candidate as an absolute path, including Path.home().
+                    # That handed the install layout and the account name to
+                    # anything that could reach the port. The list is a
+                    # developer aid, so it goes to the log instead.
+                    log.warning("moon_monitor.html not found; searched %s",
+                                [str(p) for p in candidates])
+                    self._j(404, {"error": "moon_monitor.html not found"})
             except Exception as e:  # noqa: BLE001
-                log.error("Monitor serve error: %s", e)
-                self._j(500, {"error": str(e)})
+                self._err500("Monitor serve error", e)
         elif self.path == "/latest-frame" or self.path.startswith("/latest-frame?"):
             if not self._auth():
                 self._j(401, {"error": "unauthorized"})
@@ -151,7 +157,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
             # SECURITY (lane 8, 2026-08-03): this was `SYNC_DIR / self.path[10:]`
             # with no containment - an arbitrary file read, measured live on the
-            # real handler, and :8889 binds 0.0.0.0. TWO distinct escapes:
+            # real handler, and :8889 bound 0.0.0.0 at the time (RM-150 has
+            # since narrowed that to loopback). TWO distinct escapes:
             # ".." walks out, and an ABSOLUTE component replaces the base
             # entirely under pathlib semantics, which a ".." filter alone does
             # NOT catch. Containment copied from dashboard/routes_static.py:64-67
@@ -214,8 +221,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._j(404, {"error": "unknown"})
         except Exception as e:  # noqa: BLE001
-            log.error("%s: %s", self.path, e)
-            self._j(500, {"error": str(e)})
+            self._err500(self.path, e)
 
     # -- PUT ----------------------------------------------------------------
     def do_PUT(self) -> None:
@@ -239,7 +245,9 @@ class Handler(BaseHTTPRequestHandler):
             fp.write_bytes(data)
             self._j(200, {"ok": True})
         except Exception as e:  # noqa: BLE001
-            self._j(500, {"error": str(e)})
+            # This site had no log call at all before RM-150, so a failed PUT
+            # was both leaked to the client and lost to the operator.
+            self._err500(f"PUT {self.path}", e)
 
     def _body_length(self) -> int | None:
         """Validated Content-Length, or None after already sending the error.
@@ -282,6 +290,24 @@ class Handler(BaseHTTPRequestHandler):
             if kv.startswith("source="):
                 return unquote(kv[len("source="):])
         return None
+
+    def _err500(self, where: str, exc: BaseException) -> None:
+        """Log the real cause, tell the client only that it failed (RM-150).
+
+        Every 5xx here used to answer ``{"error": str(e)}``. LEDGER 1177
+        classed that as hardening rather than an Error-Handling breach - :8889
+        is a machine-local JSON API, not a coach UI or a dashboard panel, so
+        the CLAUDE.md rule about user-facing error strings does not bind it -
+        and filed it here rather than changing it on the way past. It is still
+        a free disclosure of module paths, filesystem layout and exception
+        internals to anything that can reach the port, so it is closed now.
+
+        Redaction must not become suppression: the detail is not dropped, it
+        moves to ``logs/moon_vision_server.log``, which is the channel that
+        survives ``pythonw`` (LEDGER 1183).
+        """
+        log.error("%s: %s: %s", where, type(exc).__name__, exc)
+        self._j(500, {"error": "internal error"})
 
     def _j(self, code: int, obj: dict) -> None:
         try:

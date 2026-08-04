@@ -50,13 +50,23 @@ import ctypes
 import io
 import json
 import logging
+import os
 import sys
 import time
 import urllib.error
 import urllib.request
 from ctypes import wintypes
 
-LEGION_URL = "http://192.168.8.230:8889/upload-frame"
+# Frame upload target. LOOPBACK by default (RM-150). This was a hardcoded
+# 192.168.8.230, which still resolves on this box but is wrong on both counts
+# post-ADR-011: both ends are the same machine, so the X-RC-Token crossed the
+# LAN interface in cleartext for nothing, and a DHCP change would have killed
+# the agent silently (it runs under pythonw - see the logging note in
+# tools/liveclient_relay.py, whose _upload_url is the precedent this copies).
+# Overridable for the same reason core/game_host.py is: host is config, not
+# code.
+LEGION_URL = os.environ.get(
+    "RC_VISION_UPLOAD_URL", "http://127.0.0.1:8889/upload-frame")
 
 # AUDIT (2026-04-22): self-contained token resolver - env var ->
 # local config file -> hardcoded fallback. This standalone agent does not

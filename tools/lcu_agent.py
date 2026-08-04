@@ -9,9 +9,12 @@ swap, summoner-spell change, lock pick, reroll) and executes them via LCU.
 Registered as the RC-LCUAgent ONLOGON task (Legion-neutral task name).
 
 Endpoints used (all Legion-local now):
-  POST http://192.168.8.230:8889/upload-lcu        - push state snapshot
-  GET  http://192.168.8.230:8889/lcu-cmd-pending   - drain command queue
-  POST http://192.168.8.230:8889/lcu-cmd-done      - report results
+  POST http://127.0.0.1:8889/upload-lcu        - push state snapshot
+  GET  http://127.0.0.1:8889/lcu-cmd-pending   - drain command queue
+  POST http://127.0.0.1:8889/lcu-cmd-done      - report results
+
+(Loopback since RM-150; these were a hardcoded 192.168.8.230, and the base is
+RC_VISION_BASE-overridable - see the LEGION constant below.)
 
 The agent maintains a local config (auto_accept on/off, summoner override,
 etc.) that's mirrored from dashboard via 'set_config' command. Default is
@@ -59,7 +62,13 @@ from lcu.snapshot_shape import (  # noqa: E402,F401
     shape_snapshot,
 )
 
-LEGION = "http://192.168.8.230:8889"
+# Vision-relay base. LOOPBACK by default (RM-150). This was a hardcoded
+# 192.168.8.230, which still resolves on this box but is wrong on both counts
+# post-ADR-011: both ends are the same machine, so the X-RC-Token crossed the
+# LAN interface in cleartext for nothing, and a DHCP change would have killed
+# this agent silently - it runs as RC-LCUAgent under pythonw, where a dead
+# upload is invisible. Precedent: tools/liveclient_relay._upload_url.
+LEGION = os.environ.get("RC_VISION_BASE", "http://127.0.0.1:8889")
 # Legion's HTTPS dashboard. Distinct from LEGION (vision relay :8889);
 # carries the FU02 team-context refresh route + bearer-auth peer surfaces.
 LEGION_DASHBOARD = "https://192.168.8.230:8888"

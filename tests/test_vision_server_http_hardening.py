@@ -1,9 +1,13 @@
 """Lane 8 deep audit of ``vision_server/_http.py`` - the :8889 trust boundary.
 
-The handler is the widest untrusted-input surface the vision pipeline owns:
-``vision_server/__init__.py:88`` binds it on ``0.0.0.0``, so every route here
-is reachable from the LAN and the tailnet, gated only by the ``X-RC-Token``
-header.
+The handler is the widest untrusted-input surface the vision pipeline owns.
+At the time of this audit ``vision_server/__init__.py`` bound it on
+``0.0.0.0``, so every route here was reachable from the LAN and the tailnet,
+gated only by the ``X-RC-Token`` header - the amplifier that made the
+traversal below a live disclosure rather than a local one. RM-150 has since
+narrowed the bind to loopback (``_bind_host``), which shrinks the blast radius
+but does NOT close any of the defects pinned in this file: the containment,
+body-gate and auth checks are the fix, and the bind is defense in depth.
 
 Measured 2026-08-03 against the real ``Handler`` on an ephemeral port:
 

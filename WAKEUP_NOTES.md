@@ -6,6 +6,43 @@
 
 ---
 
+# 2026-08-04d - RM-150 CLOSED: narrowing a listener turned out to be a client sweep
+
+LEDGER 1190. Picked the top open row in ROADMAP NOW.
+
+Both LEDGER 1177 leftovers shipped. `:8889` binds `127.0.0.1` via
+`vision_server._bind_host()` (`RC_VISION_BIND`, blank treated as unset so an empty
+env export cannot re-open the wildcard), and the four `_j(500, {"error": str(e)})`
+sites plus the `/monitor` 404's `Path.home()` candidate list fold into one `_err500`
+that logs the cause and answers `{"error": "internal error"}`.
+
+**The row's own live-gate trap fired and the answer was NO.** It warned the row
+would be live-gated if any ONLOGON agent was pinned to the LAN IP. Three were -
+`lcu_agent`, `screen_agent`, `phase_watcher`, all `192.168.8.230:8889` - but that is
+a code sweep, not a game. All three repointed to loopback with an env override on
+the `liveclient_relay._upload_url` precedent, and the sweep is now an
+allowlist-driven test reading `_AGENT_ALLOWED` off disk, because a hand-listed
+version missed `phase_watcher` the first time. The generalization is in memory
+`reference_wildcard_bind_hides_its_clients`: a wildcard bind HIDES its clients, so
+narrowing one is a client sweep before it is a bind change.
+
+Deploy needed the LEDGER 1179 order and it mattered - the live port owner was pid
+6764 started 8/3, i.e. still pre-1177 code. `taskkill /F /PID` FIRST, then
+`restart_trigger.txt`. Live after: `:8889` on `127.0.0.1` only, LAN IP actively
+refused, `/health` `/stats` `/sync/list` 200 as positive controls, traversal still
+404, `/monitor` body path-free, `RC-LCUAgent` re-run and posting at `age 0.0s`.
+Suite 18225 passed / 108 skipped / 0 failed; 4 mutations all RED.
+
+One honest weakness recorded in the ledger: `test_repointed_agents_expose_an_env_override`
+is a source pin and did NOT fire on the agent mutation (the explanatory comment
+leaves the env-var name in the file). The LAN-IP sweep is the load-bearing guard.
+
+**Owed, not done:** `MEMORY.md` is 20.3 KB against a 24.4 KB read limit and the hook
+now warns on every write. It is not broken, but a `/consolidate-memory` pass is its
+own session - I did not prune a 250-entry recall index as a side effect of this one.
+
+---
+
 # 2026-08-04c - RM-157 CLOSED: the invoice finally read, and it validated the reconstruction
 
 Commits: `4cc862d0` (reconstruction + re-price), `027d1031` (invoice + BACKLOG filing),
@@ -72,47 +109,3 @@ mid-session with 24 U+2713 glyphs in its report's Status column and turned `docs
 the red arrived attached to MY doc-sync push, not to the commit that caused it. Check blame
 before diff when a wrap goes red. Root cause was `agents/agent6_auditor/charter.md` never
 naming the ASCII rule that `test_agent6_reports_are_ascii` enforces - now named there.
-
----
-
-# 2026-08-04a - RM-156: a timed-out job and a superseded one say the same word
-
-Closed RM-156 (commit `c8199a96`). The filing said the push CI job had "13 minutes of
-headroom and already blew it". **The 13 was wrong - measured over 40 runs it was about 3.**
-The filing sampled the four runs around the failure, which is the middle of the
-distribution and blind to the tail: successful `check` wall clock spans 22m17s to **36m49s**.
-
-**One ceiling was bounding two independent tails.** The killed run (`30866367283`, 40m16s)
-was slow in the SUITE - its dual-suite step had burned 38m41s against a 20m47s-27m40s norm.
-The 36m49s run (`30820229244`), the slowest SUCCESS on record, was slow in SETUP: a 10m33s
-`Install Playwright Chromium` cache miss on an otherwise normal suite. The 2026-07-28
-arithmetic that produced the 40 modelled only the suite tail.
-
-**Fix:** step-level `timeout-minutes: 45` on each dual-suite step, because a step killed by
-its own timeout is marked FAILED (job concludes `failure`) while a job killed by the job
-ceiling concludes `cancelled` - the same word as a concurrency supersede. Job ceilings become
-backstops: `check` 40 -> 65, `nightly-full-suite` 30 -> 60. **The ordering is the invariant**
-and is pinned by `tests/test_ci_job_timeout_headroom_rm156.py` (job >= step + 12): if a later
-edit leaves job <= step, the job dies first and every overrun is silently `cancelled` again.
-
-**`nightly-full-suite` had LESS headroom than the job that failed** (24m13s-28m08s against 30)
-and was never mentioned in the filing. Both jobs got both halves.
-
-**The premise is not in GitHub's docs.** They document only the job -> `cancelled` half. The
-step -> FAILED half comes from `actions/runner` `src/Runner.Worker/StepsRunner.cs`. Recorded
-as source-not-docs in the test docstring, so it gets re-measured if behaviour ever differs.
-
-**Verifier refuted two of my claims, both real.** (1) I read the step-duration max off an
-aggregate: it is 27m40s, not 25m29s. (2) `pyyaml` is installed only in `check`, so every
-assertion in my new module AND in `test_ci_docs_guard_coverage.py` silently SKIPPED in the
-nightly job - and my docstring had claimed an existing sibling covered that. It does not; it
-keys on its own filename and is per-file, not per-job. Fixed with pyyaml on the nightly pip
-line plus a per-JOB assertion. 8-mutation matrix: no mutation escapes all five tests.
-
-**NEW, operator-raised at wrap: Actions minutes are blown out.** 255 workflow runs in the
-first 4 days of August, and every push runs the full ~27-minute dual suite. Filed as RM-157.
-**Do not confuse it with RM-156** - raising a timeout ceiling costs nothing unless it is hit;
-the minute burn is the per-push full suite (RM-119's second half), which is a deliberate
-coverage choice that now needs re-pricing.
-
-Suite: 28554 passed / 108 skipped / 8102 subtests / 0 failed. ruff clean.

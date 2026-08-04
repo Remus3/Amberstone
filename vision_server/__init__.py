@@ -17,6 +17,7 @@ scheduled task was removed (2026-06-11, deep-audit P2).
 """
 from __future__ import annotations
 
+import os
 import socket
 import sys
 from http.server import ThreadingHTTPServer
@@ -50,6 +51,23 @@ __all__ = [
 ]
 
 
+def _bind_host() -> str:
+    """Listener address for :8889. Loopback by default (RM-150).
+
+    This bound ``0.0.0.0`` from the pre-ADR-011 2-PC era, when the frame and
+    LCU agents ran on a second machine. Every client is Legion-local now
+    (``core/liveclient_cache``, ``dashboard/*``, and the three ``tools/*``
+    agents repointed alongside this change), so the wildcard only bought LAN
+    and tailnet reachability for a route family gated by one ``X-RC-Token``
+    header - the amplifier LEDGER 1177 named on the ``/sync/get/`` traversal.
+
+    Overridable for the same reason ``core/game_host.py`` is: the host is
+    config, not code. A blank value is treated as unset, so a scheduled task
+    that exports an empty variable cannot silently re-open the wildcard.
+    """
+    return (os.environ.get("RC_VISION_BIND") or "").strip() or "127.0.0.1"
+
+
 def main() -> int:
     """Entry point used by the ``moon_vision_server.py`` shim and ``python -m
     vision_server``. Returns process exit code."""
@@ -76,7 +94,8 @@ def main() -> int:
                     len(reaped), reaped)
 
     _get_client()
-    log.info("Moon Vision Server on 0.0.0.0:%d  python=%s", PORT, sys.executable)
+    host = _bind_host()
+    log.info("Moon Vision Server on %s:%d  python=%s", host, PORT, sys.executable)
     # ThreadingHTTPServer (S7, 2026-06-10): the plain HTTPServer serialized
     # EVERY request behind the slowest in-flight handler - an in-process
     # self-grab (GDI BitBlt + JPEG encode, 100-400ms) or a Sonnet/OCR
@@ -85,7 +104,7 @@ def main() -> int:
     # slow champ-select updates + slow build/rune pushes. All shared state
     # in _frame/_relay/_stats was already lock-guarded, so per-request
     # threads are safe.
-    s = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    s = ThreadingHTTPServer((host, PORT), Handler)
     s.daemon_threads = True
     try:
         s.serve_forever()
