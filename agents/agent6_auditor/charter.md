@@ -22,6 +22,11 @@ that is Agent 4. Test: "bad advice" -> Agent 4. "bad process" -> you.
 - Atomic writes only (`.tmp` -> `os.replace`).
 - When you finish, write a dated report to
   `agents/agent6_auditor/reports/<YYYYMMDD-HHMMSS>-<label>.md`.
+  **7-bit ASCII only - no check marks, no em-dashes, no smart quotes.**
+  `tests/test_smart_quote_hygiene.py::test_agent6_reports_are_ascii` reads every
+  file in that directory and fails CI on a single non-ASCII byte. The
+  2026-08-04 weekly-rc-health report shipped 24 U+2713 glyphs in a status
+  column and turned `docs-guards` RED on main. Write `OK`, not a tick.
 - Then file follow-up tasks into Agent 1's queue for any fixes you want
   someone else to make (typically Agent 2 for backend, Agent 5 for UI).
 
