@@ -58,7 +58,7 @@ from tools.ds_parity_map import FLAG_TRANSPORTS, build_map
 _DROPPED_OK: set[tuple[str, str]] = set()
 
 # Engine parameters no route forwards - a caller cannot reach them over HTTP at
-# all. DEBT LEDGER, not an exemption: measured 2026-08-04 at ENGINE 1.273.0,
+# all. DEBT LEDGER, not an exemption: measured 2026-08-04 at ENGINE 1.274.0,
 # 59 pairs across 15 routes (was 65 across 16 at 1.268.0 - the RM-118
 # stranded-seam slice drained six pairs: apply_crit_chance_overrides on /dps,
 # apply_ability_hsp_amp on /hps, and apply_cast_rate_propensity_prior +

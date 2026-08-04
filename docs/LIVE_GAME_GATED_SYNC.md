@@ -586,7 +586,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   drake, (b) district vector on `/api/state.zoi.districts`, (c) OBS frames matching the GDI baseline,
   (d) MIA rings + fluid DMZ + weighted bubbles render. Practice suffices (fog/presence/CV/OBS
   round-trip, no enemy-comp/rune dependency). SOURCE: ZOI_DISTRICT_ORCHESTRATION_PLAN.md:107-109.
-- **G2-47** RM-42 `apply_passive_damage` on the CARRY ranker (ENGINE 1.273.0, `rank.rank_items` +
+- **G2-47** RM-42 `apply_passive_damage` **+ `apply_extra_shot_procs`** on the CARRY ranker (ENGINE 1.273.0 / 1.274.0). **THE TWO FLAGS MODEL TWO HALVES OF ONE EVENT AND MUST BE FLIPPED TOGETHER, NEVER SINGLY** - `apply_extra_shot_procs` alone credits the shot's PROCS while its damage stays uncredited, a coherent but partial model. Full model measured: Akshan 142.06 -> 257.05 (+80.9 pct). Original text follows. (ENGINE 1.273.0, `rank.rank_items` +
   `/rank` + `core/daemon_slayer_client.rank_for`). Route exposure is SHIPPED and default-OFF. Headless
   is DONE and is not the question: Akshan's weighted DPS goes 142.06 -> 212.19 at depth (+49.4 pct,
   +48.9 per hit), verified over HTTP after the :8860 bounce, Sivir control byte-identical, all six

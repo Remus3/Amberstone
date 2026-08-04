@@ -924,6 +924,7 @@ def rank_items(
     apply_crit_conversion: bool = False,
     apply_ad_axis_ability_damage: bool = False,
     apply_passive_damage: bool = False,
+    apply_extra_shot_procs: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -1155,6 +1156,7 @@ def rank_items(
         only_phase=_selected_phase,
         apply_crit_conversion=apply_crit_conversion,
         apply_passive_damage=apply_passive_damage,
+        apply_extra_shot_procs=apply_extra_shot_procs,
     )
 
     # RM-36 / RM-38: the scored quantity. OFF binds the SAME raw float (a name
@@ -1280,6 +1282,7 @@ def rank_items(
                 only_phase=_selected_phase,
                 apply_crit_conversion=apply_crit_conversion,
         apply_passive_damage=apply_passive_damage,
+        apply_extra_shot_procs=apply_extra_shot_procs,
             )
         except (KeyError, ValueError):
             continue

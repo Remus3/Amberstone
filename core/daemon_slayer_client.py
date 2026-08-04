@@ -180,6 +180,7 @@ def rank_for(
     apply_crit_conversion: bool = False,     # A-12 / RM-46 (Ashe Frost Shot)
     apply_ad_axis_ability_damage: bool = False,  # RM-36 / RM-38 (AD-caster)
     apply_passive_damage: bool = False,       # RM-42 (kit-passive registry)
+    apply_extra_shot_procs: bool = False,     # RM-42 follow-on (extra shot)
     # RM-115 tail (1.254.0) - the two seams /rank parses that no client
     # function could express. DEFAULT-OFF; omitted key == byte-identical.
     apply_mode_modifiers: bool = False,
@@ -284,6 +285,8 @@ def rank_for(
         body["apply_ad_axis_ability_damage"] = True
     if apply_passive_damage:
         body["apply_passive_damage"] = True
+    if apply_extra_shot_procs:
+        body["apply_extra_shot_procs"] = True
     # RM-115 tail: bool seams, engine default False - emit only when ON.
     #
     # apply_mode_modifiers has TWO lanes and only one can reorder. The
@@ -2311,6 +2314,7 @@ def rank_for_primary_archetype(
     apply_crit_conversion: bool = False,         # carry (A-12 / RM-46)
     apply_ad_axis_ability_damage: bool = False,  # carry (RM-36 / RM-38)
     apply_passive_damage: bool = False,          # carry (RM-42)
+    apply_extra_shot_procs: bool = False,        # carry (RM-42 follow-on)
     # RM-115 gate-3 seam, MAGE-ONLY: /rank-mage is the sole route that parses
     # apply_passive_aura_damage (server.py:1265), so it is forwarded to the
     # ds.ability branch alone. Forwarding it elsewhere would be inert.
@@ -2728,6 +2732,7 @@ def rank_for_primary_archetype(
         apply_crit_conversion=apply_crit_conversion,
         apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
         apply_passive_damage=apply_passive_damage,
+        apply_extra_shot_procs=apply_extra_shot_procs,
         **_carry_hp_kwargs,
     )
     if rows is None:
@@ -2796,6 +2801,7 @@ def dps_for(
     apply_melee_aa_gate: bool = False,
     apply_mode_modifiers: bool = False,
     apply_passive_damage: bool = False,
+    apply_extra_shot_procs: bool = False,
     apply_target_vuln: bool = False,
     assume_passive_as_stacks: bool = False,
     # RM-118 residual (2026-07-30): the RUNE OFFENSE lane, plus the ``rune_ids``
@@ -2866,6 +2872,8 @@ def dps_for(
         body["apply_mode_modifiers"] = True
     if apply_passive_damage:
         body["apply_passive_damage"] = True
+    if apply_extra_shot_procs:
+        body["apply_extra_shot_procs"] = True
     if apply_target_vuln:
         body["apply_target_vuln"] = True
     if assume_passive_as_stacks:

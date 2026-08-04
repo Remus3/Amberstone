@@ -421,6 +421,7 @@ def _route_dps(body: dict) -> dict:
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     apply_ability_amps = _opt_bool(body, "apply_ability_amps", False)
     apply_passive_damage = _opt_bool(body, "apply_passive_damage", False)
+    apply_extra_shot_procs = _opt_bool(body, "apply_extra_shot_procs", False)
     # R7 / R12 seam flags (DEFAULT-OFF -> byte-identical when the body omits them).
     # Scoped to /dps: rank_items() does NOT forward these to compute_dps, so the
     # clean wiring point is the direct compute_dps route. compute_dps accepts both
@@ -479,6 +480,7 @@ def _route_dps(body: dict) -> dict:
                              apply_mode_modifiers=apply_mode_modifiers,
                              apply_ability_amps=apply_ability_amps,
                              apply_passive_damage=apply_passive_damage,
+                             apply_extra_shot_procs=apply_extra_shot_procs,
                              assume_passive_as_stacks=assume_passive_as_stacks,
                              apply_target_vuln=apply_target_vuln,
                              apply_melee_aa_gate=apply_melee_aa_gate,
@@ -572,6 +574,7 @@ def _route_rank(body: dict) -> dict:
     # the kit-passive registry, this one was not, so arming it by default would
     # silently move every committed carry build table.
     apply_passive_damage = _opt_bool(body, "apply_passive_damage", False)
+    apply_extra_shot_procs = _opt_bool(body, "apply_extra_shot_procs", False)
     try:
         result = rank_items(
             snap,
@@ -598,6 +601,7 @@ def _route_rank(body: dict) -> dict:
             apply_crit_conversion=apply_crit_conversion,
             apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
             apply_passive_damage=apply_passive_damage,
+            apply_extra_shot_procs=apply_extra_shot_procs,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
