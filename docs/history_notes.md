@@ -223,6 +223,67 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-03f - lane 8 cycle 6: a relay that reported only to a console it does not have, and a token literal the dashboard hands out
+
+Audited `tools/liveclient_relay.py` - zero dedicated tests, running live as `RC-LiveClientRelay`.
+Picked deliberately for a different SHAPE than cycles 4-5: an agent loop, not a server or a store.
+
+**FINDING 1 - every diagnostic went nowhere.** The task's `<Command>` is `pythonw.exe` (no
+console) and the module reported only via `print()`. It already KNEW - its own comment warns a
+stale token "401s ... silently (pythonw, no console) -> coach dead" - and kept printing anyway.
+
+**FINDING 2 - a dead token literal in FOUR files the dashboard SERVES UNAUTHENTICATED.**
+`_serve_agent_file` has no auth at all and the dashboard binds `::`, so `GET /agent/<name>`
+returns the source to anyone on LAN or tailnet (verifier confirmed reachable on both, not just
+loopback). The literal is dead - proven by POSTing it to :8889 and getting 401 while the live
+token 200s. **The fourth file was found by the test, not by me:** my hand grep checked the names I
+happened to eyeball; the test reads `_AGENT_ALLOWED` off disk via `ast` and parametrizes over it,
+and caught `phase_watcher.py`.
+
+**FINDING 3** - upload target was a hardcoded LAN IP, sending the token in cleartext across the
+LAN when both ends are the same machine. Now loopback, env-overridable. Verified :8889 accepts the
+loopback POST *before* trusting the change.
+
+**REFUTED:** no timeout-less call exists here (2s/3s already). My expectation was wrong.
+
+**The logging test took THREE attempts to become non-vacuous, by two different mechanisms.** v1
+read pytest's own root-logger handlers (`basicConfig` is a no-op when handlers already exist), v2
+used a fixed marker that a stale log file already contained. Only mutation testing ever said so.
+
+**The verifier REFUTED a measurement of mine.** I had recorded `screen_agent`/`phase_watcher` as
+"already file-logging, the template to copy". They call `basicConfig` with no `filename=`/
+`handlers=` - stderr only, discarded under pythonw exactly like a print. **My grep counted the
+string `basicConfig` as evidence of file logging** - the function name, not the argument that
+matters. RM-154 rewritten; it was pointing the next implementer at a broken template.
+
+**Then the deploy caught a regression the diff could not.** With the FileHandler live and no game
+running, the relay wrote a WARNING every ~6s: ~2 MB/day burying the one line that matters. Giving
+a silent module a channel is only half the job. Now WARN-on-change / DEBUG-on-repeat / INFO-on-
+recovery. Measured live: old process ~50 warnings in 5 idle minutes, new one logged once and grew
+**0 lines in 45 idle seconds**.
+
+**RM-155, found by accident and worth more than it cost: the RC suite is NOT IDEMPOTENT in a fresh
+tree.** `data/fusion_shadow.jsonl` is gitignored; run 1 SKIPS the invariants test and passes -
+and the suite itself writes 1 record to that production path. Run 2 reads the 1-record corpus,
+stops skipping, and fails. Measured end to end. Never bites a dev box (main tree has 565 records).
+NOT caused by this slice - main tree at HEAD passes.
+
+Also self-inflicted and owned: my first RM-154 draft blew the ROADMAP 80 KiB CI budget; fixed by
+compressing rows and leaving narrative in the LEDGER where it belongs.
+
+22 tests, 5 mutations RED. RC `tests/` 18136 passed / 154 skipped; DS 10341 passed.
+LEDGER 1183 (+ post-deploy addendum). Deployed + verified live on the relay task.
+
+**Session wrap (cycles 3-6, one session).** Four files audited end to end, all 7 dimensions each:
+`lcu/lcu_postgame_collector.py` (1180), `dashboard/api_schema.py` + `_handler.py` (1181),
+`core/riot_api_cache.py` (1182), `tools/liveclient_relay.py` + 3 sibling agents (1183). Plus the
+cycle-2 merge and its two process findings (1179). **Filed, not fixed: RM-151..RM-155.** At wrap,
+`drift_guard` flagged ROADMAP at 100 percent of its 81920-byte budget - relocated the CLOSED
+RM-04 roster sweep (13589 bytes, zero open markers) verbatim to `docs/ROADMAP_HISTORY.md`,
+leaving a fence that keeps the two probe hazards. ROADMAP now 68892 bytes / 84 percent.
+
+---
+
 # 2026-08-03e - lane 8 cycle 5: a cache that dies silently forever, and 3.33 GB nobody could see
 
 Audited `core/riot_api_cache.py` - **zero LEDGER mentions across 1181 entries**, never audited,
