@@ -32,6 +32,8 @@ _FRAME_TIMEOUT = 3.0
 _FRAME_MAX_AGE_S = 8.0   # warn if cached frame older than this
 _FRAME_HARD_AGE_S = 90.0 # skip clearly stale frames so a wedged relay does not
                          # feed minutes-old game state into vision
+_FRAME_MAX_SKEW_S = 5.0  # tolerated future-stamp jitter (same-host relay)
+_FRAME_UNKNOWN_AGE_S = 86400.0  # reported age for an untrustworthy timestamp
 
 # AUDIT (2026-04-22): track consecutive failures so we escalate from
 # DEBUG to WARNING after the issue persists - a silent debug-only log
@@ -63,7 +65,16 @@ def _capture_screen() -> Optional[str]:
         if not b64:
             logger.debug("latest-frame: empty payload")
             return None
-        age = max(0.0, time.time() - float(data.get("ts", 0)))
+        raw_age = time.time() - float(data.get("ts", 0))
+        if raw_age < -_FRAME_MAX_SKEW_S:
+            # Frame stamped in the FUTURE by more than clock jitter allows.
+            # The previous max(0.0, ...) clamped this to zero age, so an
+            # untrustworthy frame read as perfectly fresh and sailed through
+            # the hard cap below - fail-open, the exact case the cap exists to
+            # stop. Report it as unusably stale instead. Same root cause as the
+            # core/liveclient_cache.Snapshot.age_s fix in this slice.
+            raw_age = _FRAME_UNKNOWN_AGE_S
+        age = max(0.0, raw_age)
         if age > _FRAME_HARD_AGE_S:
             # Skip a clearly stale frame; coach loops skip the vision tick
             # this turn rather than analyze minutes-old game state.
