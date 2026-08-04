@@ -36,6 +36,19 @@ _RELAY_URL = "http://127.0.0.1:8889/latest-liveclient"
 _RELAY_TIMEOUT = 2.0
 _DEFAULT_POLL_S = 0.5
 
+# Reported age for a snapshot carrying data whose timestamp could not be
+# established (absent, null, non-numeric, or implausibly far in the future).
+# FAIL-CLOSED: an unknown age reads as stale, never as fresh. A finite value
+# rather than float("inf") because core/decision_detector.py:830 and
+# core/vision_tracker.py:279 hand age_s back to callers and json.dumps emits a
+# bare `Infinity`, which is not valid JSON. One day exceeds every consumer gate
+# (the loosest is 12.0s at coaches/_base_coach.py:689).
+_UNKNOWN_AGE_S = 86400.0
+
+# Tolerance for ordinary clock jitter before a future timestamp is treated as
+# unusable. The relay is same-host (1-PC, ADR-011), so real skew is sub-second.
+_MAX_CLOCK_SKEW_S = 5.0
+
 
 @dataclass(frozen=True)
 class Snapshot:
@@ -57,8 +70,34 @@ class Snapshot:
 
     @property
     def age_s(self) -> float:
-        """Seconds since the relay's reported data timestamp."""
-        return max(0.0, time.time() - self.ts) if self.ts else 0.0
+        """Seconds since the relay's reported data timestamp.
+
+        FAIL-CLOSED. If `data` is present but `ts` could not be established
+        (absent, null, non-numeric, or implausibly far in the future) this
+        returns `_UNKNOWN_AGE_S`, not 0.0. Returning 0.0 for an unknown
+        timestamp reported unusable data as PERFECTLY FRESH to all eight
+        consumers that gate on this number, which is the opposite of what a
+        freshness check is for.
+
+        `data is None` still reports 0.0: every consumer tests `snap.data is
+        None` first, and the empty snapshot has no age to report.
+        """
+        if self.data is None:
+            return 0.0
+        ts = _coerce_ts(self.ts)
+        if ts is None:
+            # Nothing enforces the `ts: float` annotation - a Snapshot built
+            # directly (not via _fetch_once) can carry any object, and a bare
+            # subtraction raised TypeError straight into the caller. age_s is
+            # read on every consumer's hot path, so it must be TOTAL: an
+            # untrustworthy timestamp reports stale, it does not raise.
+            return _UNKNOWN_AGE_S
+        age = time.time() - ts
+        if age < -_MAX_CLOCK_SKEW_S:
+            # Timestamp is from the future by more than clock jitter allows:
+            # the envelope is not trustworthy, so do not report it as fresh.
+            return _UNKNOWN_AGE_S
+        return max(0.0, age)
 
 
 _EMPTY = Snapshot()
@@ -134,6 +173,25 @@ def _auth_headers() -> dict:
         return {"X-RC-Token": ""}
 
 
+def _coerce_ts(raw: Any) -> Optional[float]:
+    """Coerce a relay-supplied `ts` to a float, or None if it is unusable.
+
+    Strict on purpose. `bool` is rejected explicitly because it is a subclass
+    of `int`, so `float(True)` is 1.0 - a 1970 timestamp, which would read as
+    an enormous but PLAUSIBLE age rather than as the malformed field it is.
+    """
+    if raw is None or isinstance(raw, bool):
+        return None
+    if not isinstance(raw, (int, float)):
+        return None
+    value = float(raw)
+    if value != value or value in (float("inf"), float("-inf")):  # NaN / inf
+        return None
+    if value <= 0.0:
+        return None
+    return value
+
+
 def _fetch_once() -> Snapshot:
     """One relay round-trip. Returns a Snapshot reflecting whatever happened."""
     fetched_at = time.time()
@@ -150,7 +208,19 @@ def _fetch_once() -> Snapshot:
     if not isinstance(wrap, dict) or "error" in wrap:
         return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False)
     data = wrap.get("data")
-    ts = float(wrap.get("ts") or 0)
+    ts = _coerce_ts(wrap.get("ts"))
+    if ts is None:
+        # The relay is a separate process on its own release cadence, so a
+        # renamed or retyped `ts` is a contract change, not an impossibility.
+        # Logged at WARNING (not debug) so it is visible in logs/ - the
+        # previous code raised here, OUTSIDE the try above, and the poll loop
+        # swallowed it at debug level while _snapshot silently froze.
+        _log.warning(
+            "liveclient_cache: relay envelope carried an unusable ts (%r); "
+            "snapshot will be reported stale",
+            wrap.get("ts"),
+        )
+        ts = 0.0
     if not isinstance(data, dict):
         return Snapshot(data=None, ts=ts, fetched_at=fetched_at, no_game=False)
     return Snapshot(data=data, ts=ts, fetched_at=fetched_at, no_game=False)

@@ -254,6 +254,18 @@ def test_real_fusion_shadow_corpus_invariants():
             / "data" / "fusion_shadow.jsonl")
     if not path.exists():
         pytest.skip("data/fusion_shadow.jsonl not present")
+    # RM-155: mere EXISTENCE is not enough. The invariants below need a real
+    # corpus - `narrowed > 0` cannot hold on a handful of records, and a tiny
+    # corpus is the signature of pollution (a test that wrote the production
+    # path) rather than of production traffic. Skip honestly instead of
+    # failing, so the suite stays idempotent in a fresh tree.
+    _MIN_CORPUS_RECORDS = 50
+    if sum(1 for ln in path.read_text(encoding="utf-8", errors="replace")
+           .splitlines() if ln.strip()) < _MIN_CORPUS_RECORDS:
+        pytest.skip(
+            f"data/fusion_shadow.jsonl has fewer than {_MIN_CORPUS_RECORDS} "
+            "records - too small to assert corpus invariants"
+        )
 
     tiered = [
         set(ARAMCoach._ARAM_TIERED_FIELDS),
