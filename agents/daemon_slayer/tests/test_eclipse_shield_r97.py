@@ -213,7 +213,7 @@ class EclipseVersionPinTests(unittest.TestCase):
     """R97 bumps ENGINE_VERSION to 1.191.0."""
 
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.271.0")
+        self.assertEqual(ENGINE_VERSION, "1.272.0")
 
 
 if __name__ == "__main__":
