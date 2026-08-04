@@ -6,6 +6,57 @@
 
 ---
 
+# 2026-08-04e - RM-118 stranded-seam ledger DRAINED to its declined floor (ENGINE 1.271.0)
+
+LEDGER 1191. Picked the top open row in ROADMAP NOW, exactly as the prior note said.
+
+The ledger held 14. Ten are DECLINED BY DESIGN and stay - the 5 target/caster-state
+seams (arc operator-CLOSED s232) and the 5 per-item shield opt-ins (operator-gated
+live flip pending). The 4 that were real debt now reach their routes AND
+`core/daemon_slayer_client.py` in the same slice: `apply_crit_chance_overrides` ->
+`/dps`, `apply_ability_hsp_amp` -> `/hps`, `apply_cast_rate_propensity_prior` +
+`assume_ms_utility` -> `/hybrid` and `/rank-bruiser`.
+
+**The row was easier than it looked, and the reason is the durable finding.** Three
+of the four carried a decline reason that read as a blocker - "needs a measurement
+first", "engine-only by design", "an unmeasured second live flip on the same
+auto-attack term". All three were about a DEFAULT FLIP. This slice ships route
+EXPOSURE, default-off and byte-identical. The counts were right; the reasons were
+answering a question nobody asked. Filed as memory
+`feedback_decline_reason_goes_stale_before_the_count`: a row's count gets
+re-measured every session, its reason never does.
+
+Both prior durables held and both were exercised. Route ownership came from
+`inspect.signature` over the whole package, never from a sibling docstring. The
+TRANSPORT question was asked separately from the flag - and here the answer was
+"none needed", all four being pure booleans over inputs the owning routes already
+parse. That is the opposite of the rune and vamp lanes; the CHECK is what
+distinguishes them, not the outcome.
+
+Asymmetries are asserted, not assumed: `/rank-enchanter` must never carry the HSP
+ability flag, `/rank` must never carry the crit overrides, `/dps` must never carry
+either hybrid seam. Emitting any of those manufactures reachability with no reader.
+
+DEFAULT-OFF proven three ways, the third being the useful one: a full regen of all
+six committed build-order tables (3 modes x 2 families, 173 champions) whose only
+diff is the version stamp. **Note the trap that cost 151 seconds:** the tracked
+tables come from `core/build_order_precompute.py` + `core/build_order_variants.py`
+(`--mode all --champions all --static`), NOT from
+`tools/daemon_slayer_build_orders_generate.py`, which writes a gitignored path and
+leaves `git status` clean while printing success. Memory
+`reference_build_order_regen_wrong_generator`.
+
+Ledger drains: `STRANDED_TODAY` 14 -> 10; `_UNREACHABLE_OK` 65 pairs / 16 routes ->
+59 / 15, the `/rank-bruiser` row emptying entirely. New
+`test_stranded_lane_route_seams_rm118.py`, 25 tests / 56 subtests, with a negative
+control per seam. Suites fresh from the REPO ROOT: DS 10366 passed / 6520 subtests,
+RC 18225 passed / 108 skipped / 0 failed. Ruff clean. Share mirror re-synced at 520
+files with its own outward-voice CHANGELOG + README entry. Live on `:8860` after
+`taskkill /F /PID` then `schtasks /Run /TN RC-DaemonSlayer`: `/health` 1.271.0 and
+all six (route, seam) pairs answer over HTTP with every ON path moving.
+
+---
+
 # 2026-08-04d - RM-150 CLOSED: narrowing a listener turned out to be a client sweep
 
 LEDGER 1190. Picked the top open row in ROADMAP NOW.
@@ -96,35 +147,3 @@ observability, not open work in ROADMAP.
 
 Next: pick the top open ROADMAP item. Watch the monthly `usage` row rather than the
 cadence projection - July's 6030 is the last full-month fact.
-
----
-
-# 2026-08-04b - RM-157 first half: the wrap summoned a suite the push already ran
-
-The `/done` ritual's section 2c dispatch is RETIRED in both halves of the mirror pair
-(`tools/done.md` + `.claude/commands/done.md`, copied byte-for-byte; drift guard exit 0).
-Re-measured over `created>=2026-08-01`: 256 runs / 2126.6 min runner wall clock, of which
-`ci` workflow_dispatch was 18 runs / 485.8 min - every one section 2c, every one a duplicate
-of the push `check` run since RM-119's second half. 22.8 percent of all runner time for zero
-signal. Sections 2b/8c now collect ONE run; the SHAPE note says Phase 2 fires CI by pushing.
-
-**The measure-first instruction is what paid.** By run COUNT docs-guards (109) looks like the
-problem; by MINUTES it is 8.4 percent, the smallest job in the repo, and the only watcher of
-a docs-only push. CodSpeed is 3.7 percent. Both deliberately untouched - a triage done on run
-count would have cut the cheap job and kept the expensive duplicate.
-
-**Still OPEN and now an OPERATOR action: the billed number.** Every billing endpoint 404s
-because the `gh` token carries `delete_repo, gist, read:org, repo, workflow` and NOT `user`.
-Unlock is `gh auth refresh -h github.com -s user`, a device-code flow that cannot run
-non-interactively. `/timing` still reports `billable.UBUNTU.total_ms = 0` with a correct
-`run_duration_ms` on the same payload. Every figure above is WALL CLOCK, not billed.
-
-Do NOT re-tune RM-156 (closed, CI-verified). Do NOT restore the dispatch - the two cases that
-run no `ci` (docs-only push, non-main branch with no PR) were both checked and neither
-justifies it. ROADMAP.md is at 71.5 KB against its 80 KB budget - tight, watch it.
-
-**Fixed forward at wrap (LEDGER 1187, `89ca2314`).** `RC-WeeklyHygiene` pushed `cf1c49b9`
-mid-session with 24 U+2713 glyphs in its report's Status column and turned `docs-guards` RED;
-the red arrived attached to MY doc-sync push, not to the commit that caused it. Check blame
-before diff when a wrap goes red. Root cause was `agents/agent6_auditor/charter.md` never
-naming the ASCII rule that `test_agent6_reports_are_ascii` enforces - now named there.
