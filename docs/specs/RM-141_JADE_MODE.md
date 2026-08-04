@@ -1,6 +1,8 @@
 # RM-141 - League Classic / JADE mode detection + coach surface (SPEC)
 
-Author: SPEC agent, 2026-08-02. HEAD 0a9240b9. ENGINE 1.270.0. Patch 16.15.1.
+Author: SPEC agent, 2026-08-02. HEAD 0a9240b9. Patch 16.15.1.
+Engine at authoring was ENGINE 1.270.0, superseded by 1.271.0 on 2026-08-04;
+nothing in this spec depends on the engine revision - see A4.
 Status: SPEC ONLY. No code written by the spec pass. TDD mandatory: failing
 test first.
 
@@ -223,8 +225,8 @@ data to re-target to (section 3). Section 6 files it as a follow-on.
   data/meta_build/ddragon/16.15.1/champion.json 233 rows, 60 jade
   data/meta_build/ddragon/16.15.1/item.json     868 rows, 162 band
   data/meta_build/ddragon/16.15.1/summoner.json  34 rows, 16 JADE, 8 KIWI_JADE
-  :8860 /health -> engine 1.270.0, patch 16.15.1, champions 173, items 706
-  agents/daemon_slayer/__init__.py:18 ENGINE_VERSION = "1.270.0"
+  :8860 /health -> patch 16.15.1, champions 173, items 706 (engine read
+                   1.270.0 at authoring, since superseded - not load-bearing)
 
 The filtering happens at TWO independent places and BOTH already ship:
   - scripts/data_pipeline.py:95-131 filters at MIRROR time. data/meta/* is
@@ -515,8 +517,11 @@ suite rule, per-slice runs prove the slice; only the root run proves the merge.
   A3. mode_key_from_queue_id returns "jade" for the kJade PvP/VersusAI ids and
       None for the three kCustom ids.
   A4. Nothing under agents/daemon_slayer/ or data/daemon_slayer/ changed.
-      ENGINE_VERSION is still 1.270.0. :8860 /health still reports 173
-      champions / 706 items. Share mirror untouched.
+      ENGINE_VERSION is UNCHANGED BY THIS ROW - compare it against the value
+      at the start of the implementing session, never against a literal
+      pinned here, which goes stale on the next unrelated engine bump.
+      :8860 /health still reports 173 champions / 706 items. Share mirror
+      untouched.
   A5. No tracked file calls the Jade_ rows aliases (subject to the
       history_notes scope decision in 4.3).
   A6. docs/LIVE_GAME_GATED_SYNC.md carries L1..L6.
