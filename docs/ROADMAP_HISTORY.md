@@ -1,6 +1,19 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
 
+## 2026-08-03 - RM-155 CLOSED (suite idempotency) - lane 8 cycle 7, LEDGER 1184
+
+Closed by the autouse `RC_FUSION_SHADOW_PATH` redirect in `tests/conftest.py` plus a
+minimum-corpus skip in `test_real_fusion_shadow_corpus_invariants`. Acceptance was met
+empirically: the full suite ran TWICE end to end with identical counts (18161 passed /
+154 skipped) and `data/fusion_shadow.jsonl` was never recreated. The already-polluted
+1-record corpus in the lane worktree was removed as the rule-6e backfill.
+
+Original row, verbatim:
+
+- **RM-155 OPEN (filed 2026-08-03, lane 8 / LEDGER 1183) - the RC suite is NOT IDEMPOTENT in a fresh tree: run it twice and `test_real_fusion_shadow_corpus_invariants` fails.** Measured in a clean worktree: `data/fusion_shadow.jsonl` is gitignored, so run 1 SKIPS the test (`if not path.exists(): pytest.skip`) and passes 18133 - **and the suite itself writes 1 record to that production path.** Run 2 then finds a 1-record corpus, no longer skips, and fails `assert narrowed > 0` (the invariant needs a real corpus; the main tree's 565 records satisfy it, which is why it never bites a developer box). A test writing production-path state that another test reads. **Acceptance:** redirect the shadow write to tmp in tests (the same file already has `_redirect_logs(monkeypatch, tmp_path)` for other cases - use it), and make the invariants test require a MINIMUM corpus size rather than mere existence, so a tiny corpus skips honestly instead of failing. Cross-check `feedback_clean_checkout_probe`.
+
+
 ## 2026-08-03 - RM-04 body relocated from ROADMAP (roster CLOSED 173/173)
 
 Relocated VERBATIM when `tools/drift_guard.py` flagged ROADMAP.md at 100 percent of its
