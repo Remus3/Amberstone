@@ -760,3 +760,56 @@ def test_a_different_variable_cannot_borrow_the_gh_binding(tmp_path):
         _assistant(_text("CI is green.")),
     ]
     assert "ci_claim_without_probe" in _checks(_run_gate(tmp_path, rows))
+
+
+# FIFTH false positive, measured 2026-08-04 during /done - and this one is the
+# ROOT of the whole family rather than another shape of it. The three fixes
+# above all widened where EV_CI could LOOK; none noticed that
+# strip_command_noise DELETES quoted literals, and Windows forces the gh path to
+# be quoted because of the space in "Program Files". So the single most obvious
+# invocation - the absolute quoted path the /done ritual itself prescribes -
+# reduced to " run view <id>" with no `gh` token left for any pattern to match.
+# A session that ran it SEVEN times was still flagged ci_claim_without_probe.
+#
+# Fixed in strip_command_noise, not in EV_CI: a quoted token that is an
+# EXECUTABLE PATH collapses to its basename instead of vanishing. The
+# prose-stripping the deletion exists for is unchanged, which the negative
+# cases below are what pin.
+
+GH_QUOTED_ABS = ('cd "C:/Riot Commander" && "C:/Program Files/GitHub CLI/gh.exe" '
+                 "run view 30957597488 --json status,conclusion")
+
+
+def test_gh_quoted_absolute_path_counts_as_a_ci_probe(tmp_path):
+    rows = [
+        _assistant(_tool_use("Bash", command=GH_QUOTED_ABS)),
+        _tool_result("completed success"),
+        _assistant(_text("CI collected - green.")),
+    ]
+    assert "ci_claim_without_probe" not in _checks(_run_gate(tmp_path, rows))
+
+
+def test_a_gh_invocation_quoted_in_PROSE_is_still_not_evidence(tmp_path):
+    """The load-bearing negative. Only an .exe PATH is spared; a quoted
+    SENTENCE that happens to name gh is documentation, and crediting it would
+    trade this false negative for the false positive the stripping was added to
+    stop."""
+    rows = [
+        _assistant(_tool_use("Bash", command='echo "gh run list is how you check CI"')),
+        _tool_result("gh run list is how you check CI"),
+        _assistant(_text("CI is green.")),
+    ]
+    assert "ci_claim_without_probe" in _checks(_run_gate(tmp_path, rows))
+
+
+def test_quoted_python_path_still_reads_as_a_pytest_run(tmp_path):
+    """Same deletion hurt the pytest evidence path for the same reason - the
+    interpreter is always invoked by quoted absolute path on this machine."""
+    cmd = ('"C:/Users/Administrator/AppData/Local/Programs/Python/Python314/'
+           'python.exe" -m pytest tests/test_x.py -q')
+    rows = [
+        _assistant(_tool_use("Bash", command=cmd)),
+        _tool_result("==== 12 passed in 1.00s ===="),
+        _assistant(_text("The suite is green.")),
+    ]
+    assert "suite_claim_without_run" not in _checks(_run_gate(tmp_path, rows))
