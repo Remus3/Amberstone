@@ -930,6 +930,12 @@ def rank_bruiser_for(
     apply_rune_self_heal: bool = False,
     apply_rune_shield_grants: bool = False,
     apply_rune_offense_grants: bool = False,
+    # RM-118 residual (2026-08-04): the same two stranded hybrid-axis seams on
+    # the BRUISER ranker. ``rank_items_by_hybrid`` names both and forwards them
+    # per candidate, so each can change an item CHOICE - measured for Ahri at
+    # level 13 over the full 140-row pool, the order moves for each seam alone.
+    apply_cast_rate_propensity_prior: bool = False,
+    assume_ms_utility: bool = False,
 ) -> Optional[list[BruiserRankedItem]]:
     """Call POST /rank-bruiser and return the parsed top-N rows. None on engine failure.
 
@@ -1007,6 +1013,8 @@ def rank_bruiser_for(
         apply_rune_self_heal=apply_rune_self_heal,
         apply_rune_shield_grants=apply_rune_shield_grants,
         apply_rune_offense_grants=apply_rune_offense_grants,
+        apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
+        assume_ms_utility=assume_ms_utility,
     )
     # Tri-state, same contract as rank_tank_for: None omits the key and
     # inherits the engine's default-ON for cc_blended.
@@ -1543,6 +1551,13 @@ def hybrid_for(
     apply_rune_self_heal: bool = False,
     apply_rune_shield_grants: bool = False,
     apply_rune_offense_grants: bool = False,
+    # RM-118 residual (2026-08-04): the last two stranded hybrid-axis seams.
+    # NEITHER needs extra transport - the propensity prior rides the in-engine
+    # per-spell rows and the MS multiplier reads the resolved stat block against
+    # the champion's base movespeed. ``compute_dps`` names neither, so
+    # ``dps_for`` does NOT get them.
+    apply_cast_rate_propensity_prior: bool = False,
+    assume_ms_utility: bool = False,
 ) -> Optional[dict]:
     """Call POST /hybrid and return the raw result dict. None on failure.
 
@@ -1553,6 +1568,16 @@ def hybrid_for(
     ``apply_rune_offense_grants`` moves the DPS axis, ``apply_rune_self_heal``
     (Second Wind 8444) and ``apply_rune_shield_grants`` (Guardian 8465, SELF
     shield only) move the EHP axis, and either half moves ``hybrid_score``.
+
+    RM-118 residual hybrid-axis seams, both DEFAULT-OFF and neither needing a
+    transport:
+
+      * ``apply_cast_rate_propensity_prior`` - the RM-98 propensity PRIOR half
+        (RM-98 shipped the cast-rate TIME BASE). It rides both ability branches,
+        so it moves the score with or without
+        ``apply_ad_axis_ability_damage``.
+      * ``assume_ms_utility`` - credit bonus movement speed as a utility
+        multiplier on the blended score. Identity on a build with no bonus MS.
     """
     _resolved_ad_share, _resolved_ap_share = _resolve_enemy_shares(
         enemy_ad_share, enemy_ap_share
@@ -1603,6 +1628,8 @@ def hybrid_for(
         apply_rune_self_heal=apply_rune_self_heal,
         apply_rune_shield_grants=apply_rune_shield_grants,
         apply_rune_offense_grants=apply_rune_offense_grants,
+        apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
+        assume_ms_utility=assume_ms_utility,
     )
     return _post_json("/hybrid", body, timeout=timeout)
 
@@ -1705,12 +1732,26 @@ def hps_for(
     augments: Optional[Iterable[str]] = None,
     targets_per_proc_override: Optional[float] = None,
     timeout: float = DEFAULT_TIMEOUT,
+    # RM-118 residual (2026-08-04): the ABILITY lane of the wielder HSP amp.
+    # NO extra transport - ``amp_factor`` comes from ``item_ids``, already on
+    # the wire below. /hps is the sole owner; ``rank_enchanter_for`` does NOT
+    # get it, because ``rank_items_by_hps`` cannot read it.
+    apply_ability_hsp_amp: bool = False,
 ) -> Optional[dict]:
     """Call POST /hps and return the raw result dict. None on failure.
 
     Phase 6 sibling of ``dps_for`` / ``ehp_for`` / ``hybrid_for`` /
     ``ability_dps_for`` / ``burst_for``. See ``rank_enchanter_for`` for
     ``targets_per_proc_override`` semantics.
+
+    RM-118 residual seam, DEFAULT-OFF:
+
+      * ``apply_ability_hsp_amp`` - amp the CHAMPION-ABILITY heal/shield fold
+        by the wielder's own item Heal/Shield-Power factor, the lane the item
+        half has had since R60. Identity when the build carries no HSP item or
+        the champion has no ability heal block; measured mover at level 13 with
+        Ardent 3504 + Redemption 3107 + Mikael's 3222 on every enchanter probed
+        (Soraka / Sona / Nami / Janna / Yuumi / Seraphine).
     """
     body: dict = {
         "champion": champion,
@@ -1722,6 +1763,8 @@ def hps_for(
         body["targets_per_proc_override"] = float(targets_per_proc_override)
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    if apply_ability_hsp_amp:
+        body["apply_ability_hsp_amp"] = True
     return _post_json("/hps", body, timeout=timeout)
 
 
@@ -2752,6 +2795,10 @@ def dps_for(
     # armed, so a pre-seam call is byte-identical.
     rune_ids: Optional[Iterable[str]] = None,
     apply_rune_offense_grants: bool = False,
+    # RM-118 residual (2026-08-04): the R212 crit-chance / crit-damage override
+    # lane. NO extra transport - the registry is keyed by champion id, already
+    # on the wire below. /dps is the sole owner; ``rank_for`` does not get it.
+    apply_crit_chance_overrides: bool = False,
 ) -> Optional[dict]:
     """Call POST /dps and return the raw result dict. None on failure.
 
@@ -2780,6 +2827,13 @@ def dps_for(
         All Trades 8316 are conditional (an attack-speed-locked champion and a
         distinct-item-stat census threshold respectively), so a build that does
         not meet the condition correctly reads as no change.
+      * ``apply_crit_chance_overrides`` - apply the per-champion crit-chance
+        multiplier and the overflow conversion. Only 4 of 173 champions carry a
+        registry row, so this is identity for everyone else even when ON.
+        Measured movers at level 13 on an IE build: Yasuo and Yone (chance
+        doubling plus overflow AD, DPS up) and Jhin (the 0.86 crit-damage
+        penalty, DPS DOWN). Senna is registered but her lane is overflow LIFE
+        STEAL, which a weighted-DPS read does not surface.
     """
     body = {
         "champion": champion,
@@ -2810,6 +2864,8 @@ def dps_for(
         body["rune_ids"] = [str(r) for r in rune_ids if r]
     if apply_rune_offense_grants:
         body["apply_rune_offense_grants"] = True
+    if apply_crit_chance_overrides:
+        body["apply_crit_chance_overrides"] = True
     return _post_json("/dps", body, timeout=timeout)
 
 

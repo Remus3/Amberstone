@@ -239,6 +239,17 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # it imports core.daemon_slayer_client plus the per-route reachability helper
     # at module level, so the host import is its subject, not an accident.
     "test_vamp_lane_route_seams_rm118.py",
+    # -- RM-118 residual (ENGINE 1.271.0, 2026-08-04): the four genuinely
+    # wireable stranded seams (apply_crit_chance_overrides on /dps,
+    # apply_ability_hsp_amp on /hps, apply_cast_rate_propensity_prior +
+    # assume_ms_utility on /hybrid and /rank-bruiser). Same class as every
+    # entry above - it asserts each (route, seam) pair is expressible through
+    # the HOST client (dps_for / hps_for / hybrid_for / rank_bruiser_for) and,
+    # just as load-bearing, that the non-owning routes do NOT carry the keys;
+    # it imports core.daemon_slayer_client plus the per-route reachability
+    # helper at module level, so the host import is its subject, not an
+    # accident.
+    "test_stranded_lane_route_seams_rm118.py",
     # The behavioural half of the same drain: it drives the HOST client against
     # the live engine to prove each EHP-family seam actually does something.
     # Host-only for the same reason as its two siblings - the shipped package is
