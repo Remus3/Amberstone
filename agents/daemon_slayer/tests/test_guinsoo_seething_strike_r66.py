@@ -42,8 +42,8 @@ _MERAKI_PATH = (
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_pinned(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.270.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.270.0")
+        self.assertEqual(ENGINE_VERSION, "1.271.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.271.0")
 
 
 class SeethingStrikeRegistryPins(unittest.TestCase):
