@@ -40,11 +40,19 @@ nightly job - and my docstring had claimed an existing sibling covered that. It 
 keys on its own filename and is per-file, not per-job. Fixed with pyyaml on the nightly pip
 line plus a per-JOB assertion. 8-mutation matrix: no mutation escapes all five tests.
 
-**NEW, operator-raised at wrap and NOT yet fixed: Actions minutes are blown out.** 255
-workflow runs in the first 4 days of August, and every push runs the full ~27-minute dual
-suite. Filed as RM-157. **Do not confuse it with RM-156** - raising a timeout ceiling costs
-nothing unless it is hit; the minute burn is the per-push full suite (RM-119's second half),
-which is a deliberate coverage choice that now needs re-pricing.
+**NEW, operator-raised at wrap: Actions minutes are blown out.** 255 workflow runs in the
+first 4 days of August, and every push runs the full ~27-minute dual suite. Filed as RM-157.
+**Do not confuse it with RM-156** - raising a timeout ceiling costs nothing unless it is hit;
+the minute burn is the per-push full suite (RM-119's second half), which is a deliberate
+coverage choice that now needs re-pricing.
+
+**RM-157 half-shipped 2026-08-04.** The `/done` ritual's section 2c dispatch is retired in
+both halves of the mirror pair (drift guard clean) - re-measured at 18 dispatches / 485.8
+minutes over the same 4 days, 22.8 percent of all runner wall clock, and every one a
+duplicate of the push `check` run. CodSpeed (3.7 percent) and docs-guards (8.4 percent, the
+biggest COUNT but the smallest job) were measured and deliberately LEFT ALONE. The BILLED
+number is still unread: the `gh` token has no `user` scope, so every billing endpoint 404s,
+and `gh auth refresh -h github.com -s user` is a device-code flow only the operator can run.
 
 Suite: 28554 passed / 108 skipped / 8102 subtests / 0 failed. ruff clean.
 
