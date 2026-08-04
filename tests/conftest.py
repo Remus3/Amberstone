@@ -100,8 +100,22 @@ def redirect_prod_write_paths_to_tmp(monkeypatch, tmp_path_factory):
             monkeypatch.setattr(mod, attr, base / fname)
 
 
+@pytest.fixture(scope="session")
+def _fusion_shadow_base(tmp_path_factory):
+    """One temp dir per worker for the fusion-shadow redirect below.
+
+    Session-scoped on purpose: the redirect is autouse, so a function-scoped
+    `mktemp` would create a directory for every one of the ~18k tests. Measured
+    at 1.4s for bare mkdirs locally, but it is pure waste on a slower CI disk
+    and the push job runs against a 40-minute ceiling it has already touched.
+    Tests that assert on shadow CONTENT set their own `RC_FUSION_SHADOW_PATH`
+    to a per-test tmp_path, so sharing this directory is safe for the net.
+    """
+    return tmp_path_factory.mktemp("fusionshadow")
+
+
 @pytest.fixture(autouse=True)
-def redirect_fusion_shadow_to_tmp(monkeypatch, tmp_path_factory):
+def redirect_fusion_shadow_to_tmp(monkeypatch, _fusion_shadow_base):
     """RM-155: keep the suite from writing `data/fusion_shadow.jsonl`.
 
     `modes.shared_vision._fusion_shadow_path()` resolves its target through the
@@ -117,8 +131,10 @@ def redirect_fusion_shadow_to_tmp(monkeypatch, tmp_path_factory):
     no longer skipped, and failed `assert narrowed > 0`. Setting the env var
     for EVERY test closes it at the root rather than per-test.
     """
-    base = tmp_path_factory.mktemp("fusionshadow")
-    monkeypatch.setenv("RC_FUSION_SHADOW_PATH", str(base / "fusion_shadow.jsonl"))
+    monkeypatch.setenv(
+        "RC_FUSION_SHADOW_PATH",
+        str(_fusion_shadow_base / "fusion_shadow.jsonl"),
+    )
 
 
 # RF5 suite-wide regression assert: no test may mutate a production
