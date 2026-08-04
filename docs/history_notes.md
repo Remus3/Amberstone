@@ -223,6 +223,62 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-04d - RM-150 CLOSED: narrowing a listener turned out to be a client sweep
+
+LEDGER 1190. Picked the top open row in ROADMAP NOW.
+
+Both LEDGER 1177 leftovers shipped. `:8889` binds `127.0.0.1` via
+`vision_server._bind_host()` (`RC_VISION_BIND`, blank treated as unset so an empty
+env export cannot re-open the wildcard), and the four `_j(500, {"error": str(e)})`
+sites plus the `/monitor` 404's `Path.home()` candidate list fold into one `_err500`
+that logs the cause and answers `{"error": "internal error"}`.
+
+**The row's own live-gate trap fired and the answer was NO.** It warned the row
+would be live-gated if any ONLOGON agent was pinned to the LAN IP. Three were -
+`lcu_agent`, `screen_agent`, `phase_watcher`, all `192.168.8.230:8889` - but that is
+a code sweep, not a game. All three repointed to loopback with an env override on
+the `liveclient_relay._upload_url` precedent, and the sweep is now an
+allowlist-driven test reading `_AGENT_ALLOWED` off disk, because a hand-listed
+version missed `phase_watcher` the first time. The generalization is in memory
+`reference_wildcard_bind_hides_its_clients`: a wildcard bind HIDES its clients, so
+narrowing one is a client sweep before it is a bind change.
+
+Deploy needed the LEDGER 1179 order and it mattered - the live port owner was pid
+6764 started 8/3, i.e. still pre-1177 code. `taskkill /F /PID` FIRST, then
+`restart_trigger.txt`. Live after: `:8889` on `127.0.0.1` only, LAN IP actively
+refused, `/health` `/stats` `/sync/list` 200 as positive controls, traversal still
+404, `/monitor` body path-free, `RC-LCUAgent` re-run and posting at `age 0.0s`.
+Suite 18225 passed / 108 skipped / 0 failed; 4 mutations all RED.
+
+One honest weakness recorded in the ledger: `test_repointed_agents_expose_an_env_override`
+is a source pin and did NOT fire on the agent mutation (the explanatory comment
+leaves the env-var name in the file). The LAN-IP sweep is the load-bearing guard.
+
+**Memory consolidation ran second, on operator request (`/consolidate-memory`).**
+`MEMORY.md` 20.3 KB / 132 lines -> 17.2 / 116. Nothing deleted. Four STALE FACTS
+corrected, each wrong against the repo, not merely verbose: the Perseus memory said
+"NOT yet adopted" three lines above its own ADOPTED section (adopted since
+2026-07-29, LEDGER 1107); the index said CCR link-ingest was at "Phases 1-6" when
+RM-127 is CLOSED with all 7 shipped; it said "remove pathmode once Perseus runs"
+when pathmode was removed 2026-07-28; and `user_operator_profile.md` still described
+delegating to a Game-PC Claude, retired 2026-05-29. Retired `feedback_wenyan_output_default`
+(dialect reverted 2026-06-27, merged into `feedback_caveman_default_fleet`) and
+`project_atx_financial` (separate repo, bridge decommissioned 2026-06-24).
+
+The index bulk was FILENAMES, not prose, so rewording could not reach budget -
+delegated two domain clusters onto the existing `INDEX_ds.md` pattern:
+`INDEX_overlay_ui.md` (30) + `INDEX_riot_api.md` (19). `drift_guard.py` follows
+`INDEX_*` one level deep, so those are honored.
+
+**The lesson worth keeping:** the drift guard CAUGHT this pass mid-cleanup. I had
+unindexed two FIXED-bug memories to save bytes; the guard breached on exactly those
+two. Re-indexed rather than adding an `open_bug_` exemption - adding an exemption to
+accommodate your own tidying is the "loosen the check" move the ritual forbids. The
+only exempt prefixes are `project_ds_sweep_` and `_`, and that is now stated in the
+index footer so the next pass does not retry it.
+
+---
+
 # 2026-08-04c - RM-157 CLOSED: the invoice finally read, and it validated the reconstruction
 
 Commits: `4cc862d0` (reconstruction + re-price), `027d1031` (invoice + BACKLOG filing),

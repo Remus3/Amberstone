@@ -6,6 +6,51 @@
 
 ---
 
+# 2026-08-04g - RM-42 Akshan: the passive modelled, the ordering claim NOT closed (ENGINE 1.273.0)
+
+LEDGER 1193. Second Tier-2 slice of the day, same RM-35..RM-48 set.
+
+**The lesson of the session is the same one as the last: a sweep filing can be
+built on a mis-read of the ability text.** RM-42 describes Dirty Fighting as a
+"200% crit double-shot" and prescribes a fix on that basis. DDragon 16.15.1 says
+the second shot is a flat 50 pct AD PHYSICAL hit that APPLIES ON-HIT EFFECTS. So
+a faithful model raises on-hit value on Akshan, which is the opposite of the
+filed prescription. Read the shipped ability text before building to a filing -
+this is now twice in one day (RM-36's AP-scaling gate was the other).
+
+**Shipped.** The second shot is modelled (`_PASSIVE_DAMAGE_OVERRIDES` +
+`_AA_ROUTED_ON_HIT_KEYS`) and `apply_passive_damage` now reaches the CARRY
+ranker (`rank.rank_items` + `/rank` + client), DEFAULT-OFF. It is a large
+correction - +48.9 per hit, weighted DPS 142.06 -> 212.19 at depth, +49.4 pct.
+Before this, 33 registry entries were priced nowhere the item RANKING could see
+them.
+
+**A trap worth keeping.** The registry entry ALONE is inert - the consumer reads
+a 5-member EVERY-AA allowlist, not the registry at large. Entry added and
+nothing else: `compute_dps` byte-identical flag-ON, no note. Both edits needed.
+
+**NOT closed, and deliberately so.** Armed, BotRK/Runaan's still take #1/#2 at
+depth and Hexoptics C44 moves only #19 -> #18. Mechanism: the registry credits
+the shot as flat damage on the AA cadence (`per_hit * effective_AS`), so it
+raises ATTACK SPEED, which is what the on-hit items carry. The crit lift needs
+the shot's on-hit APPLICATION + independent crit - the aa-empower machinery.
+`test_rm42_ordering_claim_is_NOT_closed_by_this_slice` is designed to GO RED
+when that ships; delete it then.
+
+**Context measurement, taken before any code:** of 14 ranged marksmen at L16 on
+the tanky target, THIRTEEN return a BotRK/Runaan's-led head; only Aphelios leads
+crit. The on-hit lead is near-universal in `ds.dps`, so no champion-specific fix
+can do more than move one champion relative to that floor. That is the real
+shape behind the whole crit-marksman GAP family (RM-42 / RM-46 / RM-50 / RM-53 /
+RM-60 / RM-68).
+
+Suites at final state, repo root: DS 10396 passed / 6520 subtests; RC `tests/`
+18225 passed / 108 skipped. Tables stamp-only. Ruff, ASCII, drift guard clean.
+Live eyeball filed as `G2-47` - a default-ON flip would arm all 33 entries at
+once and only 6 have ever been eyeballed.
+
+---
+
 # 2026-08-04f - RM-38 SHIPPED, RM-36 blocked-with-a-measured-reason (ENGINE 1.272.0)
 
 LEDGER 1192. Picked from the RM-35..RM-48 GAP set as the prior note directed. The
@@ -97,59 +142,3 @@ RC 18225 passed / 108 skipped / 0 failed. Ruff clean. Share mirror re-synced at 
 files with its own outward-voice CHANGELOG + README entry. Live on `:8860` after
 `taskkill /F /PID` then `schtasks /Run /TN RC-DaemonSlayer`: `/health` 1.271.0 and
 all six (route, seam) pairs answer over HTTP with every ON path moving.
-
----
-
-# 2026-08-04d - RM-150 CLOSED: narrowing a listener turned out to be a client sweep
-
-LEDGER 1190. Picked the top open row in ROADMAP NOW.
-
-Both LEDGER 1177 leftovers shipped. `:8889` binds `127.0.0.1` via
-`vision_server._bind_host()` (`RC_VISION_BIND`, blank treated as unset so an empty
-env export cannot re-open the wildcard), and the four `_j(500, {"error": str(e)})`
-sites plus the `/monitor` 404's `Path.home()` candidate list fold into one `_err500`
-that logs the cause and answers `{"error": "internal error"}`.
-
-**The row's own live-gate trap fired and the answer was NO.** It warned the row
-would be live-gated if any ONLOGON agent was pinned to the LAN IP. Three were -
-`lcu_agent`, `screen_agent`, `phase_watcher`, all `192.168.8.230:8889` - but that is
-a code sweep, not a game. All three repointed to loopback with an env override on
-the `liveclient_relay._upload_url` precedent, and the sweep is now an
-allowlist-driven test reading `_AGENT_ALLOWED` off disk, because a hand-listed
-version missed `phase_watcher` the first time. The generalization is in memory
-`reference_wildcard_bind_hides_its_clients`: a wildcard bind HIDES its clients, so
-narrowing one is a client sweep before it is a bind change.
-
-Deploy needed the LEDGER 1179 order and it mattered - the live port owner was pid
-6764 started 8/3, i.e. still pre-1177 code. `taskkill /F /PID` FIRST, then
-`restart_trigger.txt`. Live after: `:8889` on `127.0.0.1` only, LAN IP actively
-refused, `/health` `/stats` `/sync/list` 200 as positive controls, traversal still
-404, `/monitor` body path-free, `RC-LCUAgent` re-run and posting at `age 0.0s`.
-Suite 18225 passed / 108 skipped / 0 failed; 4 mutations all RED.
-
-One honest weakness recorded in the ledger: `test_repointed_agents_expose_an_env_override`
-is a source pin and did NOT fire on the agent mutation (the explanatory comment
-leaves the env-var name in the file). The LAN-IP sweep is the load-bearing guard.
-
-**Memory consolidation ran second, on operator request (`/consolidate-memory`).**
-`MEMORY.md` 20.3 KB / 132 lines -> 17.2 / 116. Nothing deleted. Four STALE FACTS
-corrected, each wrong against the repo, not merely verbose: the Perseus memory said
-"NOT yet adopted" three lines above its own ADOPTED section (adopted since
-2026-07-29, LEDGER 1107); the index said CCR link-ingest was at "Phases 1-6" when
-RM-127 is CLOSED with all 7 shipped; it said "remove pathmode once Perseus runs"
-when pathmode was removed 2026-07-28; and `user_operator_profile.md` still described
-delegating to a Game-PC Claude, retired 2026-05-29. Retired `feedback_wenyan_output_default`
-(dialect reverted 2026-06-27, merged into `feedback_caveman_default_fleet`) and
-`project_atx_financial` (separate repo, bridge decommissioned 2026-06-24).
-
-The index bulk was FILENAMES, not prose, so rewording could not reach budget -
-delegated two domain clusters onto the existing `INDEX_ds.md` pattern:
-`INDEX_overlay_ui.md` (30) + `INDEX_riot_api.md` (19). `drift_guard.py` follows
-`INDEX_*` one level deep, so those are honored.
-
-**The lesson worth keeping:** the drift guard CAUGHT this pass mid-cleanup. I had
-unindexed two FIXED-bug memories to save bytes; the guard breached on exactly those
-two. Re-indexed rather than adding an `open_bug_` exemption - adding an exemption to
-accommodate your own tidying is the "loosen the check" move the ritual forbids. The
-only exempt prefixes are `project_ds_sweep_` and `_`, and that is now stated in the
-index footer so the next pass does not retry it.
