@@ -60,7 +60,7 @@ import inspect
 import unittest
 from pathlib import Path
 
-from agents.daemon_slayer import burst, dps, ehp, hybrid, rank, server
+from agents.daemon_slayer import _ad_axis_ability, burst, dps, ehp, hybrid, rank, server
 from agents.daemon_slayer.ability_dps import (
     AbilityDpsResult,
     AbilitySpellDps,
@@ -157,7 +157,8 @@ def _result(rows) -> AbilityDpsResult:
 class HelperFilterTests(unittest.TestCase):
     """_physical_ability_damage sums PHYSICAL + TRUE rows ONLY.
 
-    Stubs ``hybrid.compute_ability_dps`` (bound by name at hybrid.py:43, so
+    Stubs ``_ad_axis_ability.compute_ability_dps`` - the term MOVED there for RM-36 /
+    RM-38 and resolves the name in ITS module, so
     the module attribute is the live call target) and asserts on rows the
     test constructs itself - a real assertion about the filter, not a
     data-shaped coincidence. This class is where the per-damage-type contract
@@ -165,12 +166,12 @@ class HelperFilterTests(unittest.TestCase):
     """
 
     def setUp(self):
-        self._orig = hybrid.compute_ability_dps
-        self.addCleanup(setattr, hybrid, "compute_ability_dps", self._orig)
+        self._orig = _ad_axis_ability.compute_ability_dps
+        self.addCleanup(setattr, _ad_axis_ability, "compute_ability_dps", self._orig)
 
     def _phys(self, rows) -> float:
-        hybrid.compute_ability_dps = lambda *a, **kw: _result(rows)
-        return hybrid._physical_ability_damage(
+        _ad_axis_ability.compute_ability_dps = lambda *a, **kw: _result(rows)
+        return _ad_axis_ability.physical_ability_damage(
             None, "0", _LEVEL, (), "SR", 0.0, 0.0, 0.0, 0.0, (),
         )
 
@@ -263,7 +264,7 @@ class AxisCharacterizationTests(unittest.TestCase):
     def _helper(self, champ, item_ids=()):
         """The REAL engine helper, so a widen shows up here and not just in
         this file's own re-implementation of the filter."""
-        return hybrid._physical_ability_damage(
+        return _ad_axis_ability.physical_ability_damage(
             self.snap, champ, _LEVEL, list(item_ids), "SR",
             _TARGET_KW["target_armor"], _TARGET_KW["target_mr"],
             _TARGET_KW["target_max_hp"], _TARGET_KW["target_bonus_hp"], (),
@@ -454,14 +455,14 @@ class MagicRowGuardTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def setUp(self):
-        self._orig = hybrid.compute_ability_dps
-        self.addCleanup(setattr, hybrid, "compute_ability_dps", self._orig)
+        self._orig = _ad_axis_ability.compute_ability_dps
+        self.addCleanup(setattr, _ad_axis_ability, "compute_ability_dps", self._orig)
 
     def test_all_magic_kit_yields_identical_on_and_off(self):
         # The TRUE row this stub carried at L1 was DROPPED at L2 - TRUE is now
         # credited, so it no longer belongs in the MAGIC guard. MAGIC and a
         # None damage_type (which normalizes to MAGIC) are the whole set.
-        hybrid.compute_ability_dps = lambda *a, **kw: _result(
+        _ad_axis_ability.compute_ability_dps = lambda *a, **kw: _result(
             [_spell("Q", "MAGIC", 5000.0), _spell("W", None, 5000.0)]
         )
         off = compute_hybrid(
@@ -475,7 +476,7 @@ class MagicRowGuardTests(unittest.TestCase):
         self.assertEqual(on.hybrid_score, off.hybrid_score)
 
     def test_single_physical_row_is_the_only_credit(self):
-        hybrid.compute_ability_dps = lambda *a, **kw: _result(
+        _ad_axis_ability.compute_ability_dps = lambda *a, **kw: _result(
             [_spell("Q", "PHYSICAL", 42.0), _spell("W", "MAGIC", 5000.0)]
         )
         off = compute_hybrid(
@@ -596,20 +597,28 @@ class ScopeGuardTests(unittest.TestCase):
     _PRE_RM39_TAIL = "assume_ms_utility"
 
     def test_seam_scope_and_end_append(self):
-        for fn in (compute_hybrid, rank_items_by_hybrid):
+        # RM-36 / RM-38 (2026-08-04) WIDENED this scope by exactly one entry:
+        # ``rank.rank_items`` (the CARRY ranker) now carries the same flag,
+        # because ``compute_dps`` is auto-attack-only and an AD-CASTER
+        # marksman was being scored as a sustained-auto one. It moved from the
+        # deny list below to the carry list here. The other three stay denied.
+        # ``rank_items`` has no ``assume_ms_utility`` (that is a bruiser-only
+        # seam), so its end-append is measured against its OWN prior tail.
+        for fn, tail in (
+            (compute_hybrid, self._PRE_RM39_TAIL),
+            (rank_items_by_hybrid, self._PRE_RM39_TAIL),
+            (rank.rank_items, "apply_crit_conversion"),
+        ):
             params = inspect.signature(fn).parameters
             names = list(params)
             self.assertIn(_FLAG, names, fn.__name__)
             # END-APPENDED after every parameter that existed before it
             # (CLAUDE.md Python Conventions - a mid-signature insert breaks
             # positional construction).
-            self.assertIn(self._PRE_RM39_TAIL, names, fn.__name__)
-            self.assertGreater(
-                names.index(_FLAG), names.index(self._PRE_RM39_TAIL), fn.__name__,
-            )
+            self.assertIn(tail, names, fn.__name__)
+            self.assertGreater(names.index(_FLAG), names.index(tail), fn.__name__)
             self.assertIs(params[_FLAG].default, False, fn.__name__)
         for fn in (
-            rank.rank_items,
             dps.compute_dps,
             ehp.compute_ehp,
             burst.compute_burst_damage,

@@ -560,6 +560,13 @@ def _route_rank(body: dict) -> dict:
     # same reason as kit_conversion_strength above: the shipped build tables are
     # generated through :8860, so a Python-API-only seam cannot reach them.
     apply_crit_conversion = _opt_bool(body, "apply_crit_conversion", False)
+    # RM-36 / RM-38 (DEFAULT-OFF): the AD-axis ability term on the CARRY
+    # ranker. Same body key and same meaning as the /rank-bruiser flag - one
+    # definition, in ``_ad_axis_ability`` - so a caller does not have to learn
+    # a second name for the same seam.
+    apply_ad_axis_ability_damage = _opt_bool(
+        body, "apply_ad_axis_ability_damage", False
+    )
     try:
         result = rank_items(
             snap,
@@ -584,6 +591,7 @@ def _route_rank(body: dict) -> dict:
             exclude_off_axis_items=exclude_off_axis_items,
             kit_conversion_strength=kit_conversion_strength,
             apply_crit_conversion=apply_crit_conversion,
+            apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))

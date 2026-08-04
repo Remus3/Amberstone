@@ -1331,6 +1331,68 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.272.0 (2026-08-04) - RM-36 / RM-38: the AD-axis ability term reaches the
+CARRY ranker. DEFAULT-OFF ``apply_ad_axis_ability_damage`` on
+``rank.rank_items``, POST /rank and ``core.daemon_slayer_client.rank_for`` -
+the same flag name and the same single definition the bruiser scorer has used
+since 1.222.0 / 1.223.0, NOT a second implementation.
+
+WHY. ``compute_dps`` is auto-attack-only by design (dps.py:34), so the carry
+scorer prices an AD-CASTER marksman as though he were a sustained-auto one.
+That is the modelling half of RM-36 (Ezreal) and RM-38 (Corki). The pool half
+of both rows was already shipped and is untouched here: measured live at
+1.271.0 on 2026-08-04, ``exempt_offclass_by_win`` and ``widen_carry_pool``
+COMPOSE - Ezreal at both flags returns pool 113 with Trinity Force 3078 at #4
+and Spear of Shojin 3161 at #42 (neither flag alone admits both items; the
+exemption table carries Trinity, the widen set carries Shojin).
+
+RELOCATION, and it is the reason this is one definition and not two. The term
+moved from ``hybrid`` to the new ``agents/daemon_slayer/_ad_axis_ability.py``.
+``hybrid`` imports ``rank`` (hybrid.py:50) so ``rank`` could not import
+``hybrid``; ``hybrid`` now re-binds ``_physical_ability_damage`` and
+``_AD_AXIS_CREDITED_DAMAGE_TYPES`` to the relocated names. ``ability_dps``
+imports ``rank`` at module level (ability_dps.py:148), so ``rank`` imports the
+new module LAZILY inside the helper - the same deferred idiom as dps.py:911.
+Two existing suites stubbed ``hybrid.compute_ability_dps``; after the move that
+stub no longer bound the live call target, so both were repointed at
+``_ad_axis_ability`` - had they been left alone every row-level assertion in
+them would have passed VACUOUSLY.
+
+RM-38 IS SERVED. RM-36 IS NOT, AND THE REASON IS MEASURED - DO NOT RE-FILE IT
+AS "PORT THE TERM TO CARRY". At level 16 against the sweep-standard tanky
+target (armor 100 / mr 60 / hp 2500 / bonus 1200), Corki carries two PHYSICAL
+per-spell rows at ``ap_pct_sum`` 0.0 (dps 2.738 and 5.551), so his credited sum
+is nonzero and his order REORDERS with the seam armed. Ezreal has exactly ONE
+PHYSICAL row - Q Mystic Shot, dps 18.447 - and its ``ap_pct_sum`` is 200.0, so
+the term's AP-SCALING EXCLUSION drops it and his credited sum is exactly 0.0.
+Arming the seam is a provable NO-OP for him. That exclusion is the deliberate
+RM-39 contract (an AD-axis term must not become an AP-pricing channel) and
+Ezreal's signature spell is precisely the dual-scaling shape it excludes - the
+same collateral the term's docstring already records for Vayne Q Tumble.
+Closing RM-36 needs a SPLIT credit for the AD PORTION of a dual-scaling row, a
+new design mirroring the honest 50 pct treatment the MIXED note describes. It
+is NOT a widen of this gate.
+
+Ezreal is therefore kept as the seam's zero-term CONTROL: his term is zero for
+a MECHANICAL reason rather than for want of abilities, so a future widen of the
+gate fails ``test_the_term_is_champion_sensitive_not_a_blanket_rescale`` loudly
+instead of turning it vacuous. The term is champion-SENSITIVE by construction -
+it sums that champion's own credited rows - so it is not the archetype-template
+rescale that made RM-40 / RM-44 / RM-48 unfalsifiable.
+
+Scope widened by exactly one entry: ``rank.rank_items`` moved from the RM-39
+scope guard's deny list to its carry list. ``compute_dps`` / ``compute_ehp`` /
+``compute_burst_damage`` stay denied. The RM-118 public-entry-point sweep now
+filters private MODULES the same way it already filtered private FUNCTIONS -
+``_ad_axis_ability.physical_ability_damage`` is a helper, not a route - and a
+new test asserts that helper still carries the RM-98 propensity prior so the
+exclusion is a classification, not a hole.
+
+Tests: ``agents/daemon_slayer/tests/test_ad_axis_carry_rm36.py`` (11 cases -
+relocation identity, default-OFF byte-identity, Corki reorder, Ezreal no-op,
+delta/new_dps/baseline_dps consistency, and all THREE seam gates).
+Build-order tables regenerated: stamp-only.
+
 1.271.0 (2026-08-04) - RM-118 stranded-seam ledger: the FOUR genuinely wireable
 seams reach their routes, draining the ledger from 14 to 10. The remaining ten
 are DECLINED BY DESIGN, not debt - the five target/caster-STATE seams belong to

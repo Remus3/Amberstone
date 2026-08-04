@@ -922,6 +922,7 @@ def rank_items(
     widen_carry_pool: bool = False,
     exclude_off_axis_items: bool = False,
     apply_crit_conversion: bool = False,
+    apply_ad_axis_ability_damage: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -1092,6 +1093,34 @@ def rank_items(
     # pass it as only_phase so each compute_dps skips the 2 unused phase
     # convolutions. weighted_dps for the selected phase is byte-identical.
     _selected_phase = phase or _select_phase(level)
+
+    # RM-36 / RM-38 (DEFAULT-OFF): the AD-axis ability term, the same one the
+    # bruiser scorer has priced since RM-39 / RM-43. ``compute_dps`` is
+    # auto-attack-only by design (dps.py:34), so an AD-CASTER whose damage
+    # rides an ability - Ezreal's Q, Corki's package of them - is scored here
+    # as though he were a sustained-auto marksman. The term is champion-
+    # SENSITIVE by construction: it sums that champion's own credited
+    # per-spell rows, so it cannot be the archetype-template rescale that made
+    # RM-40 / RM-44 / RM-48 unfalsifiable.
+    #
+    # NO AXIS GATE HERE, unlike ``hybrid`` (deliberate). ``hybrid`` serves both
+    # axes off one entry point and must branch; ``rank_items`` IS the AD-axis
+    # scorer. The term's own two gates already do the work - a row is credited
+    # only when its damage type is PHYSICAL or TRUE and its ``ap_pct_sum`` is
+    # zero - so an AP champion routed here contributes nothing through it.
+    #
+    # DEFERRED IMPORT: ``ability_dps`` imports ``rank`` at module level
+    # (ability_dps.py:148), so the module-level import that ``hybrid`` uses
+    # would be circular here. Same idiom as ``dps.py:911``.
+    def _ad_axis_term(item_ids: tuple[str, ...]) -> float:
+        from ._ad_axis_ability import physical_ability_damage
+
+        return physical_ability_damage(
+            snapshot, champion_id, level, item_ids, mode,
+            target_armor, target_mr, target_max_hp, target_bonus_hp,
+            augments, target_current_hp_pct,
+        )
+
     # A-12 / RM-46: the crit-conversion flag must reach BOTH compute_dps calls
     # (this baseline and the per-candidate score below). Feeding only one would
     # subtract a converted score from an unconverted baseline and manufacture a
@@ -1114,6 +1143,14 @@ def rank_items(
         only_phase=_selected_phase,
         apply_crit_conversion=apply_crit_conversion,
     )
+
+    # RM-36 / RM-38: the scored quantity. OFF binds the SAME raw float (a name
+    # bind, not a float op), so every delta, ``new_dps`` and ``baseline_dps``
+    # below is byte-identical at the default.
+    if apply_ad_axis_ability_damage:
+        baseline_score = baseline.weighted_dps + _ad_axis_term(current_ids)
+    else:
+        baseline_score = baseline.weighted_dps
 
     # Baseline burst with the current build (item 219 C). Computed ONCE and
     # ONLY when the fight-length knob is engaged - the default path never pays
@@ -1233,7 +1270,15 @@ def rank_items(
         except (KeyError, ValueError):
             continue
         gold = int((rec.get("gold") or {}).get("total", 0) or 0)
-        delta = scored.weighted_dps - baseline.weighted_dps
+        # RM-36 / RM-38: the candidate's scored quantity, matching the baseline
+        # above. The term is re-evaluated per candidate on purpose - an item
+        # that buffs ability damage (AD, penetration, on-ability procs) moves
+        # it, and that movement IS the signal a caster-marksman was missing.
+        if apply_ad_axis_ability_damage:
+            scored_score = scored.weighted_dps + _ad_axis_term(new_build)
+        else:
+            scored_score = scored.weighted_dps
+        delta = scored_score - baseline_score
         # Efficiency in DPS per 1000 gold so the column stays in a readable range.
         # Negative or zero deltas zero-out - they're not "efficient", they're regressions.
         eff = (delta / (gold / 1000.0)) if (gold > 0 and delta > 0) else 0.0
@@ -1284,7 +1329,7 @@ def rank_items(
                 item_name=str(rec.get("name", item_id)),
                 gold=gold,
                 delta_dps=delta,
-                new_dps=scored.weighted_dps,
+                new_dps=scored_score,
                 dps_per_1k_gold=eff,
                 is_terminal=_is_terminal(rec),
                 tags=tuple(rec.get("tags") or ()),
@@ -1375,7 +1420,7 @@ def rank_items(
         level=level,
         mode=mode,
         current_item_ids=current_ids,
-        baseline_dps=baseline.weighted_dps,
+        baseline_dps=baseline_score,
         target_armor=target_armor,
         target_mr=target_mr,
         target_max_hp=target_max_hp,
