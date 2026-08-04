@@ -452,6 +452,21 @@ def _route_dps(body: dict) -> dict:
     # and the response is byte-identical.
     rune_ids = _coerce_str_list(body.get("rune_ids"), "rune_ids")
     apply_rune_offense_grants = _opt_bool(body, "apply_rune_offense_grants", False)
+    # RM-118 residual (2026-08-04): the R212 CRIT-CHANCE / CRIT-DAMAGE override
+    # lane, engine-only since ENGINE 1.253.0 and ledgered stranded by the R197
+    # guard ever since. ``_crit_chance_overrides.resolve_crit`` applies the
+    # per-champion crit-chance multiplier and ``overflow_bonus_ad`` converts the
+    # excess (Yasuo / Yone doubling + overflow AD, Senna overflow life steal,
+    # Jhin's 0.86 crit-damage penalty).
+    #
+    # NO extra transport: the registry is keyed by champion id, which this route
+    # already requires - so unlike the rune lanes there is no roster to carry.
+    # /dps is the SOLE owner (dps.py:765); ``rank_items()`` does not name it, so
+    # /rank must NOT grow this key. Only 4 of 173 champions have a registry row
+    # and dps.py:1124 consults it ONLY when the flag is True, so an omitted key
+    # is byte-identical for everyone, and an ON flag is byte-identical for the
+    # other 169.
+    apply_crit_chance_overrides = _opt_bool(body, "apply_crit_chance_overrides", False)
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
     try:
@@ -468,6 +483,7 @@ def _route_dps(body: dict) -> dict:
                              apply_target_vuln=apply_target_vuln,
                              apply_melee_aa_gate=apply_melee_aa_gate,
                              rune_ids=rune_ids,
+                             apply_crit_chance_overrides=apply_crit_chance_overrides,
                              apply_rune_offense_grants=apply_rune_offense_grants)
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1139,6 +1155,21 @@ def _route_hybrid(body: dict) -> dict:
     apply_rune_self_heal = _opt_bool(body, "apply_rune_self_heal", False)
     apply_rune_shield_grants = _opt_bool(body, "apply_rune_shield_grants", False)
     apply_rune_offense_grants = _opt_bool(body, "apply_rune_offense_grants", False)
+    # RM-118 residual (2026-08-04): the last two stranded HYBRID-axis seams.
+    #   apply_cast_rate_propensity_prior (RM-98) - RM-98 adjudicated and shipped
+    #     the cast-rate TIME BASE; the propensity PRIOR is the separate half that
+    #     was never route-exposed. It rides ``result.per_spell`` on BOTH ability
+    #     branches (hybrid.py:193 AP, hybrid.py:332 AD-axis), so it moves the
+    #     score with or without ``apply_ad_axis_ability_damage``.
+    #   assume_ms_utility (R58, ENGINE 1.167.0) - the bonus-movement-speed
+    #     utility multiplier on the blended score (hybrid.py:792).
+    # NO extra transport for either: the prior is computed in-engine off the
+    # per-spell rows, and the MS multiplier reads ``dps_result.stats["ms"]``
+    # against the champion's base movespeed out of the snapshot. Both DEFAULT-OFF
+    # and both sit inside the ``if`` their flag opens -> byte-identical when the
+    # body omits them. ``compute_dps`` names neither, so /dps must NOT grow them.
+    apply_cast_rate_propensity_prior = _opt_bool(body, "apply_cast_rate_propensity_prior", False)
+    assume_ms_utility = _opt_bool(body, "assume_ms_utility", False)
     try:
         result = compute_hybrid(
             snap, champion_id=champion, level=level,
@@ -1172,6 +1203,8 @@ def _route_hybrid(body: dict) -> dict:
             apply_rune_self_heal=apply_rune_self_heal,
             apply_rune_shield_grants=apply_rune_shield_grants,
             apply_rune_offense_grants=apply_rune_offense_grants,
+            apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
+            assume_ms_utility=assume_ms_utility,
             alpha=alpha, beta=beta,
         )
     except KeyError as e:
@@ -1293,6 +1326,14 @@ def _route_rank_bruiser(body: dict) -> dict:
     apply_rune_self_heal = _opt_bool(body, "apply_rune_self_heal", False)
     apply_rune_shield_grants = _opt_bool(body, "apply_rune_shield_grants", False)
     apply_rune_offense_grants = _opt_bool(body, "apply_rune_offense_grants", False)
+    # RM-118 residual (2026-08-04): the same two stranded hybrid-axis seams on
+    # the BRUISER ranker. ``rank_items_by_hybrid`` names both (hybrid.py:1099 /
+    # 1127) and forwards them per candidate, so each can change an item CHOICE
+    # here rather than only a reported number - measured for Ahri at level 13
+    # over the full 140-row pool, the order moves for each seam independently.
+    # DEFAULT-OFF -> byte-identical when omitted.
+    apply_cast_rate_propensity_prior = _opt_bool(body, "apply_cast_rate_propensity_prior", False)
+    assume_ms_utility = _opt_bool(body, "assume_ms_utility", False)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -1340,6 +1381,8 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_rune_self_heal=apply_rune_self_heal,
             apply_rune_shield_grants=apply_rune_shield_grants,
             apply_rune_offense_grants=apply_rune_offense_grants,
+            apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
+            assume_ms_utility=assume_ms_utility,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -2417,12 +2460,26 @@ def _route_hps(body: dict) -> dict:
     mode = _opt_str(body, "mode", "SR") or "SR"
     augments = _coerce_str_list(body.get("augments"), "augments")
     targets_override = _opt_targets_override(body)
+    # RM-118 residual (2026-08-04): the ABILITY lane of the wielder HSP amp,
+    # engine-only since ENGINE 1.202.0 and ledgered stranded by the R197 guard
+    # ever since. The ITEM lane has been amped by ``amp_factor`` since R60;
+    # ``ability_hps_total`` was folded RAW, so a wielder's Heal/Shield-Power
+    # items amped her item heals but not her ability heals (hps.py:685).
+    #
+    # NO extra transport: ``amp_factor`` is derived from ``item_ids``, already
+    # parsed above. /hps is the SOLE owner (hps.py:520) - ``rank_items_by_hps``
+    # (hps.py:863) does not name it, so /rank-enchanter must NOT grow this key.
+    # DEFAULT-OFF -> the ability fold stays RAW -> byte-identical; and even ON
+    # it is identity when the build carries no HSP item (amp_factor == 1.0) or
+    # the champion has no ability heal block (ability_hps_total == 0.0).
+    apply_ability_hsp_amp = _opt_bool(body, "apply_ability_hsp_amp", False)
     try:
         result = compute_hps(
             snap, champion_id=champion, level=level,
             item_ids=items, mode=mode,
             augments=augments,
             targets_per_proc_override=targets_override,
+            apply_ability_hsp_amp=apply_ability_hsp_amp,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))

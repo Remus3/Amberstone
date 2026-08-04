@@ -1331,6 +1331,60 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.271.0 (2026-08-04) - RM-118 stranded-seam ledger: the FOUR genuinely wireable
+seams reach their routes, draining the ledger from 14 to 10. The remaining ten
+are DECLINED BY DESIGN, not debt - the five target/caster-STATE seams belong to
+the conditional-target-state arc that is operator-CLOSED (s232), and the five
+per-item shield opt-ins each carry an operator-gated live flip that is still
+pending. The four wired here were debt in the strict sense: the ENGINE half
+shipped complete, and no route in `server.py` parsed the flag, so no coach tick,
+no operator curl and no Python client function could arm them.
+
+  * `apply_crit_chance_overrides` (R212, engine-only since 1.253.0) -> `/dps`.
+    Per-champion crit-chance multiplier plus the overflow conversion: Yasuo /
+    Yone doubling and overflow AD, Senna overflow life steal, Jhin's 0.86
+    crit-damage penalty. 4 registered rows of 173.
+  * `apply_ability_hsp_amp` (engine-only since 1.202.0) -> `/hps`. Amps the
+    CHAMPION-ABILITY heal/shield fold by the wielder's own item Heal/Shield-Power
+    factor, the lane the item-throughput half has had since R60.
+  * `apply_cast_rate_propensity_prior` (RM-98) -> `/hybrid` + `/rank-bruiser`.
+    RM-98 adjudicated and shipped the cast-rate TIME BASE; the propensity PRIOR
+    was the separate half that was never route-exposed.
+  * `assume_ms_utility` (R58, engine-only since 1.167.0) -> `/hybrid` +
+    `/rank-bruiser`. The bonus-movement-speed utility multiplier on the blended
+    score.
+
+Route ownership was MEASURED off `inspect.signature` over every module in the
+package, never inherited from a sibling slice's prose - that prose was wrong in
+BOTH directions on 2026-07-30. The asymmetries are asserted, not left to
+convention: `rank_items_by_hps` cannot read the HSP ability flag so
+`/rank-enchanter` must not carry it; `rank_items()` cannot read the crit
+overrides so `/rank` must not carry them; `compute_dps` names neither hybrid
+seam so `/dps` must not carry those.
+
+TRANSPORT was checked separately from the flag, because a flag-only wire on a
+seam that needs data ships something settable, guard-green and arithmetically
+INERT. All four are pure booleans over inputs the owning routes already parse -
+the crit registry is keyed by champion id, the HSP amp factor comes from
+`item_ids`, the propensity prior rides the in-engine per-spell rows, and the MS
+multiplier reads the resolved stat block against the champion's base movespeed.
+So the ON-path movement is the proof, and every lane is measured: Yasuo / Yone /
+Jhin move weighted DPS (Jhin DOWN, the penalty), every enchanter probed moves
+total throughput, and on the bruiser ranker each hybrid seam changes the item
+ORDER independently over the full 140-row pool - a changed CHOICE, not just a
+changed number.
+
+DEFAULT-OFF and byte-identical when omitted, proven three ways: route response
+equality against an explicit `False`, identity even when ON for the 169
+unregistered champions and for a build with no HSP item, and a full regen of all
+six committed build-order tables (3 modes x 2 families, 173 champions) whose only
+diff is the `engine_version` / `generated_at` stamp.
+
+All four seams also reach `core/daemon_slayer_client.py` in the same slice
+(`dps_for`, `hps_for`, `hybrid_for`, `rank_bruiser_for`), so the per-route client
+reachability guard stays green rather than trading one stranded shape for
+another.
+
 1.270.0 (2026-08-02) - RM-118: the MANA -> DAMAGE coupling lever on the tank
 route, the third instance of a lever already shipped on the resist axis (RM-87)
 and the health axis (RM-91 T1). `ehp.py` imports no abilities module and reads
