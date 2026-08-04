@@ -567,6 +567,11 @@ def _route_rank(body: dict) -> dict:
     apply_ad_axis_ability_damage = _opt_bool(
         body, "apply_ad_axis_ability_damage", False
     )
+    # RM-42 (DEFAULT-OFF here). NOTE the asymmetry with /rank-onhit, which
+    # parses the same key at default TRUE: that route's scorer was built around
+    # the kit-passive registry, this one was not, so arming it by default would
+    # silently move every committed carry build table.
+    apply_passive_damage = _opt_bool(body, "apply_passive_damage", False)
     try:
         result = rank_items(
             snap,
@@ -592,6 +597,7 @@ def _route_rank(body: dict) -> dict:
             kit_conversion_strength=kit_conversion_strength,
             apply_crit_conversion=apply_crit_conversion,
             apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
+            apply_passive_damage=apply_passive_damage,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1606,8 +1612,11 @@ def _route_rank_mage(body: dict) -> dict:
     ``apply_passive_aura_damage`` (A-07 / RM-82 TERM 2, default False) opts
     into crediting a ``per_second``-cadence passive aura - Mordekaiser P
     Darkness Rise is the only registered one - on the ability clock. This is
-    NOT the ``apply_passive_damage`` flag that ``/rank`` and ``/rank-onhit``
-    parse; that one routes on_hit passives onto the AUTO-ATTACK cadence.
+    NOT the ``apply_passive_damage`` flag; that one routes on_hit passives
+    onto the AUTO-ATTACK cadence. (Parsed by ``/dps``, by ``/rank-onhit``
+    at default True, and - since RM-42 - by ``/rank`` at default False.
+    Before RM-42 this sentence named ``/rank`` anyway, which was simply
+    false: measure route ownership, never inherit it from prose.)
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))

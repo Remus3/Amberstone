@@ -179,6 +179,7 @@ def rank_for(
     kit_conversion_strength: float = 0.0,    # RM-86 L1 lever
     apply_crit_conversion: bool = False,     # A-12 / RM-46 (Ashe Frost Shot)
     apply_ad_axis_ability_damage: bool = False,  # RM-36 / RM-38 (AD-caster)
+    apply_passive_damage: bool = False,       # RM-42 (kit-passive registry)
     # RM-115 tail (1.254.0) - the two seams /rank parses that no client
     # function could express. DEFAULT-OFF; omitted key == byte-identical.
     apply_mode_modifiers: bool = False,
@@ -281,6 +282,8 @@ def rank_for(
         body["apply_crit_conversion"] = True
     if apply_ad_axis_ability_damage:
         body["apply_ad_axis_ability_damage"] = True
+    if apply_passive_damage:
+        body["apply_passive_damage"] = True
     # RM-115 tail: bool seams, engine default False - emit only when ON.
     #
     # apply_mode_modifiers has TWO lanes and only one can reorder. The
@@ -2307,6 +2310,7 @@ def rank_for_primary_archetype(
     kit_conversion_strength: float = 0.0,        # carry + assassin + bruiser (RM-86 L1)
     apply_crit_conversion: bool = False,         # carry (A-12 / RM-46)
     apply_ad_axis_ability_damage: bool = False,  # carry (RM-36 / RM-38)
+    apply_passive_damage: bool = False,          # carry (RM-42)
     # RM-115 gate-3 seam, MAGE-ONLY: /rank-mage is the sole route that parses
     # apply_passive_aura_damage (server.py:1265), so it is forwarded to the
     # ds.ability branch alone. Forwarding it elsewhere would be inert.
@@ -2723,6 +2727,7 @@ def rank_for_primary_archetype(
         kit_conversion_strength=kit_conversion_strength,
         apply_crit_conversion=apply_crit_conversion,
         apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
+        apply_passive_damage=apply_passive_damage,
         **_carry_hp_kwargs,
     )
     if rows is None:

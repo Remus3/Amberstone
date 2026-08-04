@@ -1331,6 +1331,70 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.273.0 (2026-08-04) - RM-42: Akshan's Dirty Fighting is modelled, and the
+kit-passive registry becomes visible to the CARRY ranker. Two DEFAULT-OFF
+edits, one slice. RM-42's ORDERING claim is NOT closed and a test says so.
+
+SEAM. ``apply_passive_damage`` now reaches ``rank.rank_items``, ``POST /rank``
+and ``core.daemon_slayer_client.rank_for`` (default False). It already reached
+``compute_dps`` (/dps) and ``rank_items_by_onhit`` (/rank-onhit, default TRUE)
+but NOT the carry ranker - the route every marksman build table and coach tick
+passes through - so all 33 registry entries (Caitlyn Headshot, Jhin Whisper,
+Kai'Sa Plasma, ...) were priced nowhere the item RANKING could see them.
+Default here is False, not True as on /rank-onhit: that scorer was built around
+the registry, this one was not, so arming it by default would silently move
+every committed carry table.
+
+STALE PROSE CORRECTED IN-SLICE. ``server.py`` asserted that ``/rank`` parses
+``apply_passive_damage`` while a grep of ``rank.py`` returned ZERO. Measure
+route ownership; never inherit it from a docstring.
+
+ENTRY. Akshan P Dirty Fighting, second shot, from DDragon 16.15.1 verbatim:
+"Whenever Akshan uses a basic attack, he fires an additional shot after a delay
+that deals 50% AD physical damage, increased to 100% AD against minions." So
+``total_ad_pct`` is a FLAT 50.0 at all 18 levels - no lerp, no step - and the
+100 pct MINION variant is not credited, because the engine scores a champion
+target. The 60 pct AP in his innate belongs to the third-stack magic proc, a
+different effect on a different cadence, and is not folded in.
+
+THE REGISTRY ENTRY ALONE IS INERT - this cost a measurement to learn. The
+consumer reads ``_AA_ROUTED_ON_HIT_KEYS``, a 5-member EVERY-AA allowlist, not
+the registry at large; with the entry added and nothing else, ``compute_dps``
+was byte-identical flag-ON and emitted no note. Akshan meets the allowlist's
+bar verbatim ("WHENEVER Akshan uses a basic attack", no internal cooldown, no
+mark to consume, no empowered-first-hit gate), so he is added to it. Caitlyn is
+explicitly NOT: Headshot is every Nth, and a test pins her off the list so this
+addition cannot be read as licence to widen.
+
+MEASURED ON-PATH EFFECT (L16, sweep-standard tanky target). The term is large:
++48.9 per hit PHYSICAL, +70.1 DPS, weighted DPS 142.06 -> 212.19 at depth
+(Kraken + Hexoptics C44 + Berserker's), a +49.4 pct correction to a champion
+the engine had been under-modelling outright.
+
+THE FILING'S ORDERING PREDICTION DOES NOT FOLLOW, AND THE FILING WAS WRONG
+ABOUT THE ABILITY. ``project_ds_sweep_akshan_crit_passive`` and the ROADMAP row
+describe a "200% crit double-shot" and predict that modelling it drops BotRK /
+Runaan's out of the lead while Hexoptics C44 rises to his top-4. The shipped
+text says the second shot is a flat 50 pct AD physical hit that ALSO APPLIES
+ON-HIT EFFECTS. Armed: at depth BotRK and Runaan's still take #1 / #2 and
+Hexoptics moves #19 -> #18; only the empty-build probe shows the predicted
+direction at all, where Runaan's falls #2 -> #6 (Kraken #3 -> #2, Terminus
+#7 -> #4, Yun Tal #9 -> #5). The reason is mechanical: this registry credits
+the shot as flat damage folded onto the AA cadence (per_hit * effective_AS), so
+it raises the value of ATTACK SPEED - which is what the on-hit items carry.
+
+WHAT WOULD MOVE CRIT is the pair this registry cannot express: the second
+shot's on-hit APPLICATION (no channel for "applies on-hit N times per auto")
+and its INDEPENDENT crit (the same AA-crit seam Caitlyn's entry has recorded as
+omitted since it was authored). That is the aa-empower machinery RM-42 actually
+needs. ``test_rm42_ordering_claim_is_NOT_closed_by_this_slice`` is a
+deliberate non-closure marker that SHOULD go red when it ships.
+
+Build-order tables regenerated: stamp-only, which also proves Akshan does not
+route through ds.onhit in any committed table despite that route defaulting the
+flag to True. Tests:
+``agents/daemon_slayer/tests/test_akshan_passive_carry_rm42.py`` (18 cases).
+
 1.272.0 (2026-08-04) - RM-36 / RM-38: the AD-axis ability term reaches the
 CARRY ranker. DEFAULT-OFF ``apply_ad_axis_ability_damage`` on
 ``rank.rank_items``, POST /rank and ``core.daemon_slayer_client.rank_for`` -
