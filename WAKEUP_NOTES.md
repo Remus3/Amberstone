@@ -6,6 +6,50 @@
 
 ---
 
+# 2026-08-04a - RM-156: a timed-out job and a superseded one say the same word
+
+Closed RM-156 (commit `c8199a96`). The filing said the push CI job had "13 minutes of
+headroom and already blew it". **The 13 was wrong - measured over 40 runs it was about 3.**
+The filing sampled the four runs around the failure, which is the middle of the
+distribution and blind to the tail: successful `check` wall clock spans 22m17s to **36m49s**.
+
+**One ceiling was bounding two independent tails.** The killed run (`30866367283`, 40m16s)
+was slow in the SUITE - its dual-suite step had burned 38m41s against a 20m47s-27m40s norm.
+The 36m49s run (`30820229244`), the slowest SUCCESS on record, was slow in SETUP: a 10m33s
+`Install Playwright Chromium` cache miss on an otherwise normal suite. The 2026-07-28
+arithmetic that produced the 40 modelled only the suite tail.
+
+**Fix:** step-level `timeout-minutes: 45` on each dual-suite step, because a step killed by
+its own timeout is marked FAILED (job concludes `failure`) while a job killed by the job
+ceiling concludes `cancelled` - the same word as a concurrency supersede. Job ceilings become
+backstops: `check` 40 -> 65, `nightly-full-suite` 30 -> 60. **The ordering is the invariant**
+and is pinned by `tests/test_ci_job_timeout_headroom_rm156.py` (job >= step + 12): if a later
+edit leaves job <= step, the job dies first and every overrun is silently `cancelled` again.
+
+**`nightly-full-suite` had LESS headroom than the job that failed** (24m13s-28m08s against 30)
+and was never mentioned in the filing. Both jobs got both halves.
+
+**The premise is not in GitHub's docs.** They document only the job -> `cancelled` half. The
+step -> FAILED half comes from `actions/runner` `src/Runner.Worker/StepsRunner.cs`. Recorded
+as source-not-docs in the test docstring, so it gets re-measured if behaviour ever differs.
+
+**Verifier refuted two of my claims, both real.** (1) I read the step-duration max off an
+aggregate: it is 27m40s, not 25m29s. (2) `pyyaml` is installed only in `check`, so every
+assertion in my new module AND in `test_ci_docs_guard_coverage.py` silently SKIPPED in the
+nightly job - and my docstring had claimed an existing sibling covered that. It does not; it
+keys on its own filename and is per-file, not per-job. Fixed with pyyaml on the nightly pip
+line plus a per-JOB assertion. 8-mutation matrix: no mutation escapes all five tests.
+
+**NEW, operator-raised at wrap and NOT yet fixed: Actions minutes are blown out.** 255
+workflow runs in the first 4 days of August, and every push runs the full ~27-minute dual
+suite. Filed as RM-157. **Do not confuse it with RM-156** - raising a timeout ceiling costs
+nothing unless it is hit; the minute burn is the per-push full suite (RM-119's second half),
+which is a deliberate coverage choice that now needs re-pricing.
+
+Suite: 28554 passed / 108 skipped / 8102 subtests / 0 failed. ruff clean.
+
+---
+
 # 2026-08-03g - lane 8 cycle 7: stale relay data that called itself perfectly fresh
 
 Audited `core/liveclient_cache.py` (criterion 1 - it parses the `:8889` relay envelope, which a
@@ -109,96 +153,3 @@ cycle-2 merge and its two process findings (1179). **Filed, not fixed: RM-151..R
 `drift_guard` flagged ROADMAP at 100 percent of its 81920-byte budget - relocated the CLOSED
 RM-04 roster sweep (13589 bytes, zero open markers) verbatim to `docs/ROADMAP_HISTORY.md`,
 leaving a fence that keeps the two probe hazards. ROADMAP now 68892 bytes / 84 percent.
-
----
-
-# 2026-08-03e - lane 8 cycle 5: a cache that dies silently forever, and 3.33 GB nobody could see
-
-Audited `core/riot_api_cache.py` - **zero LEDGER mentions across 1181 entries**, never audited,
-sitting on the API-key path and persisting external Riot bodies.
-
-**My headline expectation was REFUTED and the design was right.** I went in expecting the API key
-in a cache key or a log line. Keys carry `_key_fingerprint()` - a real `sha256[:12]`, verified as
-actually hashing, not a docstring promise. The verifier scanned all 3.3 GB of payloads, not just
-keys: zero `RGAPI` anywhere. Recorded as a negative so nobody re-spends on it.
-
-**FINDING 1 - a deleted DB file killed the cache for the life of the process.** `_ensure_schema`
-short-circuits on `self._initialized`, which is PROCESS state, not FILE state. Lose the file and
-SQLite makes a new empty one, the schema never re-runs, and every call fails "no such table" -
-caught, logged, returning None/False. **Callers cannot tell that from a cache miss**, so RC
-re-fetches from the Riot API forever, burning rate limit, silently, until restart. Fixed by
-clearing the flag on that specific error. The call that NOTICES still soft-fails and only the next
-one heals - documented that way rather than oversold, and the verifier was pointed at that claim
-specifically.
-
-**FINDING 2 - three docstring claims untrue of the code**, incl. a promised `BEGIN IMMEDIATE` that
-appears exactly once in the file: inside the sentence promising it. The concurrency is actually
-fine (autocommit + single-statement atomicity). Third cycle running where a module's prose was the
-defect.
-
-**RM-153 - the operationally important one.** `cache_immutable` never expires by design and the
-live DB is **3.33 GB / 12,305 rows, freelist 0** - all real data, a VACUUM reclaims nothing.
-Nothing caps it, nothing watches it, and the only introspection reported ROW COUNTS and had no
-production callers. `stats()` now reports bytes; picking an eviction policy is an operator call.
-Check first whether `rewind_history.db` + the `.rofl` archive already duplicate this retention.
-
-**The verifier found two defects in my own work, and the second one matters.** (a) I wrote "no
-callers anywhere in the tree" - literally false, tests call both; now "no production callers".
-(b) **My BEGIN IMMEDIATE guard accepted a docstring MENTION as proof of executable code** - it
-scanned everything after the module docstring, including method docstrings, so re-adding the false
-promise plus a decoy mention stayed green (measured: 11 passed). Rebuilt to strip docstrings via
-`ast`; the demonstrated evasion is now RED. A guard that accepts prose as proof of code is the
-`feedback_guard_on_nondefault_call_path_is_untested` shape wearing a different hat.
-
-Also worth keeping: **one mutation silently failed to apply** - a shell heredoc mangled a line-
-continuation backslash, the anchor assert fired, and the suite trivially passed 11. Caught and
-re-run from a file-based script, which produced the real 3-test RED. A mutation that does not
-apply looks exactly like a guard that works.
-
-11 tests, 5 mutations RED. Suites: RC `tests/` 18114 passed / 154 skipped; DS 10341 passed.
-Deployed + verified live (RC pid 1880; `stats()` now surfaces the 3.33 GB). LEDGER 1182.
-
----
-
-# 2026-08-03d - lane 8 cycle 4: the verifier attacked a claim that made a finding sound smaller, and found a real hole behind it
-
-Audited `dashboard/api_schema.py` - the DECLARED validation boundary for every dashboard POST
-(criterion 1 + criterion 4: zero LEDGER mentions across 1180 entries, no dedicated test module).
-
-**Three findings, one refuted hypothesis, and one honest non-fix.**
-
-1. **The module's central claim was false.** `api_schema.py:5` said POST models use `extra="forbid"`
-   (strict input gates). Measured: 4 of the 6 wired models use `extra="allow"`, AND
-   `_dispatch._validate_request_body` never raises - it logs and returns, then `dispatch_post`
-   calls the route regardless. The models are a logging decoration, not a gate. The soft-warn
-   design is deliberate; the docstring advertising otherwise is the defect.
-2. **A negative `Content-Length` pinned a handler thread.** `int("-1")` passes the `> 1 MiB` cap,
-   then `rfile.read(-1)` reads to EOF. Hung 4.01s, released 0.13s after client SHUT_WR. Binds
-   `HOST "::"` on a ThreadingHTTPServer, and the body read runs BEFORE the token check. **Same bug
-   as `vision_server/_http.py` (LEDGER 1177) - that sweep never looked across files.** This time
-   the sweep was done: 3 readers already safe, `mc/handler.py` already carried the exact fix, and
-   `tools/ds_matchdb_mcp_server.py` had it too (loopback + authed, lower severity) - fixed.
-3. **A non-dict body raised out of the route with NO response at all** - and this one is the
-   lesson. I claimed "the routes defend themselves, so nothing is exploitable". **The verifier
-   REFUTED it using the very route I cited:** `_serve_command_post` whitelists the command STRING
-   but never checked the body was a dict, so `[1,2,3]` gave an uncaught `AttributeError` at
-   `routes_state.py:516` and a closed connection. Fixed once at the boundary after verifying zero
-   POST routes consume a positional body.
-
-**REFUTED and pinned:** the `= []` / `= {}` field defaults are NOT shared-mutable-default bugs -
-pydantic v2 deep-copies per instance. The dataclass intuition is wrong here.
-
-**NOT fixed, filed as RM-152, and stated plainly because an unqualified "fixed" would be false:**
-this closes one TRIGGER, not the class. A legal `Content-Length: 1048575` with no body sent pins a
-thread identically - measured against the FIXED handler. The real fix is a read timeout, which
-changes behaviour for the 500 ms poll and the streaming supervisor proxy. Two non-production
-residuals filed with it, including a vulnerable line sitting in an UNIMPLEMENTED MC-S10 spec.
-
-14 tests, 5 mutations all RED. Deployed and verified LIVE on both services separately, per the
-1179 lesson: RC restart for the dashboard (400 on both vectors, 0.00s, no hang), and a
-kill-then-`schtasks /Run` for `RC-DS-MatchDB-MCP` (`-32600 Invalid Content-Length`). Suites:
-RC `tests/` 18103 passed / 154 skipped; DS 10341 passed. LEDGER 1181.
-
-**Three cycles running, the adversarial pass has found something the diff did not.** Cycles 2 and 3
-it was prose overclaims. Cycle 4 it was a real code hole, reached by attacking the sentence that
-made the finding sound smaller. Attack the limiting claims, not just the alarming ones.
