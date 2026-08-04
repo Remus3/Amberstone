@@ -43,7 +43,14 @@ jobs:
   nightly-full-suite:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # RM-156 (2026-08-04): 60, not 30, and the real ceiling that bites is the
+    # step-level one on Full Dual Suite below. This job was NOT the one that
+    # blew up - `check` was - but it was measurably closer to its ceiling than
+    # `check` was to the 40 that failed: over the last 40 runs its successful
+    # wall clock ran 24m13s .. 28m08s against 30, i.e. under two minutes of
+    # headroom. Fixing only the job that happened to fail first would have left
+    # the identical defect one job up in the same file.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -57,10 +64,23 @@ jobs:
           # / json5 / anthropic), so the nightly installs requirements.txt - unlike
           # the pure-Python `check` job which runs a minimal ImportError-guarded subset.
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright
+          # pyyaml is test-only (not in requirements.txt) and parses
+          # .github/workflows/*.yml for the workflow-contract guards. MEASURED
+          # 2026-08-04 (RM-156): without it, tests/test_ci_docs_guard_coverage.py
+          # AND tests/test_ci_job_timeout_headroom_rm156.py both degrade to
+          # skips in THIS job while the `check` job below runs them for real -
+          # so the nightly reported a green tick over assertions it never made.
+          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright pyyaml
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
       - name: Full Dual Suite
+        # RM-156: the step ceiling, not the job ceiling, is what should stop a
+        # hang here. A step killed by its own timeout is marked FAILED, so the
+        # job reports `failure`; a job killed by the job ceiling reports
+        # `cancelled`, which is the same word GitHub uses for a run superseded
+        # by the concurrency group above. Pinned by
+        # tests/test_ci_job_timeout_headroom_rm156.py.
+        timeout-minutes: 45
         run: |
           # Runs the exhaustive 23k+ test suite.
           #
@@ -124,7 +144,31 @@ jobs:
     # ceiling that sits a minute above the estimate converts ordinary runner
     # variance into a fake red, and the point of a timeout here is to catch a
     # HANG, not to police minutes.
-    timeout-minutes: 40
+    #
+    # RM-156 (2026-08-04): 40 was still too thin, and it was hit - run
+    # 30866367283 was killed at 40m16s. The reasoning above was right and the
+    # arithmetic under it was wrong, because it sized ONE ceiling against TWO
+    # independent tails:
+    #   * the SUITE tail. Complete runs of the dual-suite step measured
+    #     20m47s .. 27m40s over the last 40 runs. On the killed run that step
+    #     had already burned 38m41s when GitHub stopped it, so its true value
+    #     is unknown and above that.
+    #   * the SETUP tail, which the job ceiling also has to cover and which the
+    #     2026-07-28 estimate did not model at all. `Install Playwright
+    #     Chromium` took 10m33s on run 30820229244 (cache miss) against 27s on
+    #     the runs either side. That run finished in 36m49s - the slowest
+    #     SUCCESS on record, and it got there on a normal-length suite.
+    # So the job ceiling is now sized as: step ceiling (45) + the worst observed
+    # setup (about 11m) + slack. It is not the number that should normally fire.
+    #
+    # The one that should fire is the step-level `timeout-minutes: 45` on the
+    # dual-suite step below, because a step timeout reports `failure` while a
+    # job timeout reports `cancelled` - the same conclusion as a concurrency
+    # supersede (run 30863180947, 5m19s), so a timed-out branch reads as
+    # neither pass nor fail. The ORDERING is the invariant: job must exceed
+    # step, or the job dies first and the conclusion is silent again.
+    # tests/test_ci_job_timeout_headroom_rm156.py pins all of it.
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v6
 
@@ -287,6 +331,12 @@ jobs:
             -q --tb=short --timeout=120
 
       - name: "full dual suite (RM-119 - push CI now gates the whole tree)"
+        # RM-156: this is the ceiling that should fire, not the job's. See the
+        # block above `timeout-minutes: 65` for the measurement; the short
+        # version is that a step timeout reports `failure` and a job timeout
+        # reports `cancelled`, and `cancelled` is unreadable because a
+        # superseded run says the same thing.
+        timeout-minutes: 45
         run: |
           # 2026-07-28 (R217-U1) completes RM-119. Until this step, push CI ran
           # four hand-picked subsets of tests/ - phase2_smoke,
