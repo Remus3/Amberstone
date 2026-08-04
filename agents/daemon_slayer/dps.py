@@ -291,6 +291,7 @@ def _periodic_proc_dps(
     ability_dot_only: bool = False,
     apply_melee_aa_gate: bool = False,
     crit_denied_item_ids: frozenset[str] = frozenset(),
+    on_hit_attack_multiplier: float = 1.0,
 ) -> float:
     """Sum DPS contribution from every conditional proc in the build.
 
@@ -309,6 +310,15 @@ def _periodic_proc_dps(
     ``total_magic_amp_multiplier``) is applied only to magical procs -
     models target-debuff auras (Abyssal Mask Unmake) that increase magic
     damage taken without affecting physical auto-attack damage.
+
+    RM-42 follow-on (2026-08-04): ``on_hit_attack_multiplier`` credits an
+    every-AA EXTRA SHOT that applies on-hit effects (Akshan Dirty Fighting) by
+    scaling the attack count that drives ``every_n_attacks`` procs - 2.0 means
+    each basic attack lands two on-hit applications. It is applied ONLY inside
+    that branch: a second shot does not make a time-interval proc (Sunfire
+    Immolate) tick faster, so the ``every_n_seconds`` arm reads ``duration``
+    untouched. Default 1.0 is the exact identity and skips the arithmetic
+    entirely, so every unregistered champion is byte-identical.
 
     A-12 / RM-46 (2026-07-25): ``crit_denied_item_ids`` is the crit-conversion
     proc deny. Procs belonging to a listed item resolve against a
@@ -335,6 +345,15 @@ def _periodic_proc_dps(
             if proc.every_n_attacks > 0:
                 if total_attacks <= 0:
                     continue
+                # RM-42: an every-AA extra shot that APPLIES ON-HIT multiplies
+                # the applications this branch counts. Bound here rather than
+                # at the caller so the every_n_seconds arm below provably
+                # cannot see it. The identity skips the multiply so the OFF
+                # path binds the same float rather than an equal one.
+                if on_hit_attack_multiplier != 1.0:
+                    proc_attacks = total_attacks * on_hit_attack_multiplier
+                else:
+                    proc_attacks = total_attacks
                 # ENGINE 1.26.0 (2026-05-21): stack-ramp-gated procs (Dead
                 # Man's Plate Shipwrecker, future stack-discharge items).
                 # When stack_ramp_seconds > 0, the effective period is
@@ -343,14 +362,14 @@ def _periodic_proc_dps(
                 # to discharge. Default stack_ramp_seconds=0.0 leaves
                 # existing every_n_attacks procs unchanged (max(a, 0)=a).
                 if proc.stack_ramp_seconds > 0:
-                    attack_period_s = duration / total_attacks
+                    attack_period_s = duration / proc_attacks
                     eff_period_s = max(
                         proc.stack_ramp_seconds,
                         attack_period_s * proc.every_n_attacks,
                     )
                     procs = duration / eff_period_s
                 else:
-                    procs = total_attacks / proc.every_n_attacks
+                    procs = proc_attacks / proc.every_n_attacks
             else:  # every_n_seconds > 0 enforced by PeriodicProc.__post_init__
                 procs = duration / proc.every_n_seconds
             # DSV1: the ability/AP scorer (compute_ability_dps) passes
@@ -559,6 +578,7 @@ def _rotation_attack_dps(
     aa_empower_amp: float = 1.0,
     apply_melee_aa_gate: bool = False,
     crit_denied_item_ids: frozenset[str] = frozenset(),
+    on_hit_attack_multiplier: float = 1.0,
 ) -> float:
     """DPS contribution from basic attacks during a single rotation.
 
@@ -626,7 +646,12 @@ def _rotation_attack_dps(
         target_armor_for_physical, target_mr, mode_dmg_mult, rotation_ctx,
         magic_amp=magic_amp, apply_melee_aa_gate=apply_melee_aa_gate,
         crit_denied_item_ids=crit_denied_item_ids,
+        on_hit_attack_multiplier=on_hit_attack_multiplier,
     )
+    # RM-42: the multiplier reaches proc_dps ONLY. base_dps is the shot's
+    # wielder's own auto damage; the EXTRA shot's own damage is a separate
+    # concern owned by _passive_damage_overrides, so folding it in here too
+    # would double-count the same hit.
     return (base_dps * aa_empower_amp + proc_dps) * damage_amp
 
 
@@ -644,6 +669,7 @@ def _phase_weighted_dps(
     aa_empower_amp: float = 1.0,
     apply_melee_aa_gate: bool = False,
     crit_denied_item_ids: frozenset[str] = frozenset(),
+    on_hit_attack_multiplier: float = 1.0,
 ) -> float:
     """Weighted average of rotation DPS within a phase (weights from lolmath)."""
     if not rotations:
@@ -660,6 +686,7 @@ def _phase_weighted_dps(
             magic_amp=magic_amp, aa_empower_amp=aa_empower_amp,
             apply_melee_aa_gate=apply_melee_aa_gate,
             crit_denied_item_ids=crit_denied_item_ids,
+            on_hit_attack_multiplier=on_hit_attack_multiplier,
         )
         total_weight += w
     if total_weight <= 0:
@@ -741,6 +768,7 @@ def compute_dps(
     apply_mode_modifiers: bool = False,
     apply_ability_amps: bool = False,
     apply_passive_damage: bool = False,
+    apply_extra_shot_procs: bool = False,
     assume_takedown: bool = False,
     assume_caster_lowhp: bool = False,
     apply_melee_aa_gate: bool = False,
@@ -913,6 +941,18 @@ def compute_dps(
         aa_empower_amp = _aa_amp_multiplier(
             resolved.champion_id, lambda k: rank_at_level(k, level)
         )
+
+    # RM-42 follow-on (DEFAULT-OFF): an every-AA extra shot that APPLIES
+    # ON-HIT. Resolved ONCE - the registry lookup is a dict get, but the
+    # identity below is what keeps every unregistered champion on the exact
+    # same float path rather than a merely-equal one.
+    extra_shot_on_hit_mult = 1.0
+    extra_shot_entry_ = None
+    if apply_extra_shot_procs:
+        from ._extra_shot_overrides import extra_shot_entry, on_hit_attack_multiplier
+
+        extra_shot_entry_ = extra_shot_entry(resolved.champion_id)
+        extra_shot_on_hit_mult = on_hit_attack_multiplier(resolved.champion_id)
 
     item_effects = collect_effects(resolved.item_ids)
     crit_bonus = DEFAULT_CRIT_BONUS + total_crit_damage_bonus(item_effects)
@@ -1322,6 +1362,7 @@ def compute_dps(
             magic_amp=magic_amp, aa_empower_amp=aa_empower_amp,
             apply_melee_aa_gate=apply_melee_aa_gate,
             crit_denied_item_ids=crit_denied_item_ids,
+            on_hit_attack_multiplier=extra_shot_on_hit_mult,
         )
 
     if only_phase is not None:
@@ -1526,6 +1567,17 @@ def compute_dps(
                 else:  # MAGIC - same resistance curve, plus magic-debuff amp
                     _pmit = _armor_factor(target_mr_eff) * magic_amp
                 passive_aa_per_hit = _praw * _pmit * mode_mult * damage_amp
+                # RM-42 follow-on: the extra shot "can critically strike" on
+                # its own roll, so it carries the build's crit expectation
+                # instead of being flat. Same (1 + crit * crit_bonus) the base
+                # auto uses - see _extra_shot_overrides for why no bespoke
+                # multiplier is authored. Guarded on the entry, so an every-AA
+                # passive that does NOT crit (Warwick Eternal Hunger is
+                # on-hit magic, not a second attack) is never scaled.
+                if extra_shot_entry_ is not None and extra_shot_entry_.can_crit:
+                    _shot_crit = min(float(stats.get("crit", 0.0)), 1.0)
+                    if _shot_crit > 0.0:
+                        passive_aa_per_hit *= 1.0 + _shot_crit * crit_bonus
                 _passive_dps = passive_aa_per_hit * eff_as
                 weighted_dps += _passive_dps
                 phase_dps = {p: v + _passive_dps for p, v in phase_dps.items()}
@@ -1732,6 +1784,15 @@ def compute_dps(
         notes.append(
             f"magic damage amp x{magic_amp:.4f} (Abyssal Mask Unmake "
             f"+{(magic_amp - 1.0) * 100:.0f}% magic damage to target)"
+        )
+    if extra_shot_entry_ is not None:
+        notes.append(
+            f"extra shot {extra_shot_entry_.attribute}: "
+            f"+{extra_shot_entry_.on_hit_applications:.0f} on-hit application "
+            f"per attack (x{extra_shot_on_hit_mult:.1f} on attack-counted "
+            f"procs)"
+            + (", shot crits on its own roll" if extra_shot_entry_.can_crit else "")
+            + " (apply_extra_shot_procs)"
         )
     if crit_from_effects > 0:
         # Phase 4 batch 26 (2026-05-04): surface item-effect-contributed

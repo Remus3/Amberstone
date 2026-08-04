@@ -36,9 +36,9 @@ what the model DOES, and deliberately does NOT assert the filing's predicted
 direction - see `test_onhit_lead_is_not_asserted_away` for why that is a
 refusal rather than an omission.
 
-WHAT THIS SLICE DOES NOT MODEL (recorded so the gap is not re-discovered as a
-surprise): the second shot's **on-hit application** and its **independent
-crit** are both outside this registry's expressive range. The registry carries
+WHAT THIS SLICE DOES NOT MODEL - **SHIPPED SEPARATELY 2026-08-04, see
+`test_extra_shot_procs_rm42.py`**: the second shot's **on-hit application** and
+its **independent crit** are both outside this registry's expressive range. The registry carries
 a damage magnitude on a cadence; it has no channel for "this champion applies
 on-hit N times per auto" and none for per-passive crit. Caitlyn's own entry
 already records the crit half of that limit verbatim ("+crit-chance AD
@@ -188,32 +188,33 @@ class AkshanOrderingIsMeasuredNotAssertedTest(unittest.TestCase):
         res = _rank("Akshan")
         self.assertIn(_HEXOPTICS, _ids(res))
 
-    def test_rm42_ordering_claim_is_NOT_closed_by_this_slice(self):
-        """The non-closure marker. THIS TEST IS MEANT TO FAIL LATER.
+    def test_rm42_ordering_claim_is_REFUTED_by_the_completed_model(self):
+        """RESOLVED 2026-08-04 by the follow-on. This test was authored as a
+        non-closure marker that "SHOULD go red when the aa-empower follow-on
+        ships". It did not go red, and that is the answer.
 
-        RM-42's ordering claim is that crediting Dirty Fighting lifts his crit
-        core - Hexoptics C44 to "his top-4" - and drops generic on-hit out of
-        the lead. Measured 2026-08-04 with the seam ARMED, it does neither at
-        depth: Hexoptics moves #19 -> #18 (empty build) and BotRK / Runaan's
-        still take #1 / #2 at depth. Only the empty-build probe shows the
-        filing's direction at all, where Runaan's falls #2 -> #6.
+        The follow-on shipped the two halves this registry could not express -
+        the second shot's on-hit APPLICATION and its independent CRIT
+        (`_extra_shot_overrides`, ENGINE 1.274.0). With BOTH flags armed the
+        model is +80.9 pct weighted DPS at depth, and on-hit items rise while
+        crit items barely move: Guinsoo's #7 -> #6, Terminus #7 -> #5, Yun Tal
+        #6 -> #7 DOWN, Hexoptics C44 #19 -> #17, and Runaan's / BotRK still
+        take #1 / #2 at depth.
 
-        The reason is mechanical, not a tuning miss. This registry credits the
-        second shot as flat physical damage folded onto the AA cadence
-        (per_hit * effective_AS), so it makes ATTACK SPEED more valuable - and
-        AS is exactly what the on-hit items carry. The two halves that would
-        move crit are the ones the registry cannot express: the shot's on-hit
-        APPLICATION and its INDEPENDENT crit.
+        So RM-42's prediction - that modelling Dirty Fighting drops generic
+        on-hit out of the lead and lifts Hexoptics to his top-4 - is REFUTED by
+        the completed model, not merely unproven by a partial one. It was an
+        artifact of the filing's "200% crit double-shot" mis-read; the shipped
+        text says the shot APPLIES ON-HIT, so a faithful model necessarily
+        raises on-hit value.
 
-        When that follow-on ships, this test SHOULD go red. Delete it then and
-        assert the real ordering. Until then it stops RM-42 from being recorded
-        as closed on the strength of a large DPS number that did not buy the
-        ordering the row was filed for.
+        This assertion is kept, with its meaning inverted: it now pins the
+        REFUTATION. If a future change makes crit lead here, that is a real
+        finding about some other seam and this should be re-opened
+        deliberately - not quietly deleted.
         """
         on = _rank("Akshan", DEPTH, apply_passive_damage=True)
-        ids = _ids(on)
-        self.assertIn(ids[0], (_BOTRK, _RUNAANS),
-                      "on-hit no longer leads at depth - RM-42 may now be closable")
+        self.assertIn(_ids(on)[0], (_BOTRK, _RUNAANS))
 
     def test_onhit_lead_is_not_asserted_away(self):
         """A REFUSAL, recorded on purpose.
