@@ -1331,6 +1331,69 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.274.0 (2026-08-04) - RM-42 follow-on: the extra shot's ON-HIT APPLICATION
+and its own CRIT. DEFAULT-OFF ``apply_extra_shot_procs``. It REFUTES RM-42's
+ordering claim rather than confirming it, which is the result the row was
+waiting on.
+
+WHAT 1.273.0 LEFT OPEN. That release modelled Akshan's second shot as DAMAGE
+and recorded why the ordering did not move: a flat physical addend folded onto
+the attack clock raises the value of ATTACK SPEED, which is what the on-hit
+items already carried. The two halves a damage registry cannot express are the
+ones that decide the question, and both ship here.
+
+NEW ``agents/daemon_slayer/_extra_shot_overrides.py``. One entry, Akshan
+Dirty Fighting, ``on_hit_applications=1.0`` and ``can_crit=True``, authored off
+the DDragon 16.15.1 text: "The additional shot applies on-hit effects, triggers
+on-attack effects, and can critically strike".
+
+MECHANISM, and the placement is the whole correctness argument. The on-hit half
+scales the attack count that drives ``every_n_attacks`` procs, bound INSIDE
+that branch of ``_periodic_proc_dps`` - so a time-driven proc (Sunfire
+Immolate) provably cannot be accelerated by it, pinned by a difference test on
+a Sunfire-only build. It does NOT touch ``base_dps``: the extra shot's own
+damage belongs to ``_passive_damage_overrides`` and folding it in twice would
+double-count one hit. The crit half multiplies the REGISTERED passive magnitude
+by the same ``(1 + crit * crit_bonus)`` the base auto uses, guarded on the
+entry so an every-AA passive that is not a second attack (Warwick Eternal
+Hunger is on-hit magic) is never scaled.
+
+NO BESPOKE CRIT MULTIPLIER IS AUTHORED, deliberately. The crit clause ships TWO
+bracketed variants in one string - "(22.5% + 12%) bonus damage" and "100% base
+damage + 30% bonus critical damage" - which are alternate tooltip renderings,
+not a quotable number. The shot gets the engine's own standard crit
+expectation, the least-invention reading of "can critically strike". A
+wiki-verified bespoke value would be a NEW FIELD here, never a tuned fudge on
+the damage magnitude.
+
+SCOPE IS ENFORCED, NOT DOCUMENTED. ``on_hit_applications`` is a steady-state
+multiplier on the attack count, so a periodic shot would be over-credited by
+it. A test asserts every entry in this registry is ALSO on
+``_AA_ROUTED_ON_HIT_KEYS`` - the same every-AA bar - so Caitlyn Headshot
+(every Nth) can never be added here without failing loudly.
+
+THE MEASURED ANSWER, AND IT REFUTES THE ROW. Both flags armed, L16 vs the
+sweep-standard tanky target at depth (Kraken + Hexoptics C44 + Berserker's):
+weighted DPS 142.06 -> 257.05, **+80.9 pct**. ON-HIT ITEMS RISE AND CRIT ITEMS
+DO NOT - Guinsoo's #7 -> #6, Terminus #7 -> #5, Yun Tal DOWN #6 -> #7,
+Hexoptics C44 #19 -> #17, and Runaan's / BotRK keep #1 / #2. RM-42 predicted
+the opposite: that modelling Dirty Fighting drops generic on-hit out of the
+lead and lifts Hexoptics into his top-4.
+
+That prediction was an artifact of the filing's "200% crit double-shot"
+mis-read. The shipped text says the shot APPLIES ON-HIT, so a faithful model
+MUST raise on-hit value - the more completely it is modelled, the more on-hit
+wins. **RM-42's ordering claim is therefore REFUTED, not unproven.** The
+1.273.0 non-closure marker was authored expecting to go red here; it did not,
+and it is rewritten to pin the refutation instead of being deleted.
+
+A per-route reachability guard caught a genuine gap mid-slice: ``/dps`` parsed
+the seam while ``dps_for`` could not express it. Fixed at the client, as that
+guard's message instructs, rather than by widening its exclusion list.
+
+Build-order tables regenerated: stamp-only. Tests:
+``agents/daemon_slayer/tests/test_extra_shot_procs_rm42.py`` (17 cases).
+
 1.273.0 (2026-08-04) - RM-42: Akshan's Dirty Fighting is modelled, and the
 kit-passive registry becomes visible to the CARRY ranker. Two DEFAULT-OFF
 edits, one slice. RM-42's ORDERING claim is NOT closed and a test says so.

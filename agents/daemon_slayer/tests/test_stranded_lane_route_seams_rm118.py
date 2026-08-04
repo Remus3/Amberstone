@@ -133,7 +133,7 @@ _HSP_ITEMS = ("3504", "3107", "3222")       # Ardent + Redemption + Mikael's
 _AP_ITEMS = ("3020", "6653", "3089")        # Sorcs + Liandry's + Deathcap
 _AP_PARTIAL = ("3020", "6653")
 
-# MEASURED movers (this file's probe, ENGINE 1.273.0). Yasuo / Yone carry the
+# MEASURED movers (this file's probe, ENGINE 1.274.0). Yasuo / Yone carry the
 # crit-chance doubling + overflow AD; Jhin carries the 0.86 crit-damage penalty,
 # so his DPS moves DOWN. Senna is registered but her lane is overflow LIFE STEAL,
 # which this DPS build does not surface - deliberately not asserted as a mover.
