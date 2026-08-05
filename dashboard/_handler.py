@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from http.server import BaseHTTPRequestHandler
 
 from dashboard import _dispatch
@@ -116,6 +117,16 @@ SUPERVISOR_ORIGIN = "http://127.0.0.1:8890"
 
 _MAX_POST_BYTES = 1 << 20
 
+# RM-152: wall-clock budget for reading a POST body off the socket. The cap
+# above bounds SIZE, which does nothing about a client that declares a legal
+# length and then sends nothing - that pins a ThreadingHTTPServer thread until
+# the client goes away, reachable from anywhere the "::" bind reaches, and it
+# happens before the RC_DASH_TOKEN check so no token gates it.
+#
+# 10s is roughly three orders of magnitude more than a real 1 MiB body needs
+# over loopback or the LAN, which is the only place RC's clients live.
+_BODY_READ_TIMEOUT_S = 10.0
+
 # High-frequency dashboard pollers - the dashboard hits these at 2Hz across
 # every open tab and they make up ~90% of log_message volume (~7100 lines/hr
 # in a 2.5h sample). Suppress at the BaseHTTPRequestHandler request-trace
@@ -148,6 +159,64 @@ class Handler(BaseHTTPRequestHandler):
     def _minimap_no_frame(self) -> None:
         """Send 204 No Content for a minimap-crop with no frame to serve."""
         self._send(204, b"", "application/octet-stream")
+
+    def _read_body_deadlined(self, n: int) -> bytes:
+        """Read exactly ``n`` body bytes or raise ``TimeoutError``.
+
+        The deadline is armed on the socket immediately before the read and
+        restored in the ``finally``, so it is scoped to the request BODY and
+        nothing else. The simpler alternative - a class-level ``timeout``,
+        which socketserver arms on the connection in ``setup()`` - is wrong,
+        though MEASURED 2026-08-04 not for the reason RM-152 assumed. It does
+        NOT truncate the long responses on this socket: with it armed, an
+        8 MiB ``_proxy_to_supervisor`` payload still arrived byte-complete at
+        a reader stalled 3s mid-stream, and ``/api/state-stream`` still
+        delivered frames. What it does break is the READ side, because it
+        also deadlines the request line and headers: a client slow to speak,
+        or one whose headers arrive in two packets with a gap, is aborted
+        outright. Every 2 Hz poller opens a fresh connection (this handler
+        answers HTTP/1.0, so there is no keep-alive) and would be exposed.
+
+        The budget is absolute, not per-chunk: a trickle client that sends
+        one byte every second must not be able to re-arm it forever, so the
+        remaining time is recomputed on each pass rather than reset.
+
+        With no socket to arm, the read is performed plainly. That is the
+        correct semantics rather than a concession: the thing being defended
+        against is a peer holding a socket open, so where there is no socket
+        there is nothing to defend. It also matters for correctness of the
+        REPLY, because this read runs ahead of the RC_DASH_TOKEN gate below
+        and ``do_POST`` funnels every exception raised here into a 400 - so
+        an unhandled failure to arm would answer bad_body to a caller who is
+        owed 401.
+        """
+        sock = getattr(self, "connection", None)
+        if not callable(getattr(sock, "settimeout", None)):
+            return self.rfile.read(n)
+        try:
+            prior = sock.gettimeout()
+        except OSError:
+            prior = None
+        deadline = time.monotonic() + _BODY_READ_TIMEOUT_S
+        chunks: list[bytes] = []
+        remaining = n
+        try:
+            while remaining > 0:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    raise TimeoutError("body read exceeded the deadline")
+                sock.settimeout(left)
+                chunk = self.rfile.read(min(remaining, 65536))
+                if not chunk:
+                    break  # client closed early - caller sees a short body
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            return b"".join(chunks)
+        finally:
+            try:
+                sock.settimeout(prior)
+            except OSError:
+                pass
 
     def _proxy_to_supervisor(self):
         """Forward the current GET to 127.0.0.1:8890 and stream the
@@ -329,7 +398,19 @@ class Handler(BaseHTTPRequestHandler):
             if n > _MAX_POST_BYTES:
                 self._send(413, b'{"error":"payload_too_large"}', "application/json")
                 return
-            body = self.rfile.read(n) if n else b""
+            # RM-152: the size cap above is not a bound on TIME. A legal
+            # Content-Length with a body that never arrives pinned a handler
+            # thread for as long as the client cared to hold the socket -
+            # measured 4.01s with no response, released 0.18s after SHUT_WR.
+            try:
+                body = self._read_body_deadlined(n) if n else b""
+            except TimeoutError:
+                log.warning("do_POST body read timed out path=%s declared=%d",
+                            self.path, n)
+                self.close_connection = True
+                self._send(408, b'{"error":"body_read_timeout"}',
+                           "application/json")
+                return
             payload = json.loads(body.decode("utf-8", errors="replace")) if body else {}
         except Exception as exc:  # noqa: BLE001
             log.debug("do_POST bad_body: %s", exc)
