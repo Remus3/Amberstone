@@ -59,7 +59,8 @@ _DROPPED_OK: set[tuple[str, str]] = set()
 
 # Engine parameters no route forwards - a caller cannot reach them over HTTP at
 # all. DEBT LEDGER, not an exemption: measured 2026-08-04 at ENGINE 1.274.0,
-# 59 pairs across 15 routes (was 65 across 16 at 1.268.0 - the RM-118
+# 60 pairs across 15 routes (59 before the RM-36 split modifier; see the
+# /hybrid note below - it was 65 across 16 at 1.268.0, and the RM-118
 # stranded-seam slice drained six pairs: apply_crit_chance_overrides on /dps,
 # apply_ability_hsp_amp on /hps, and apply_cast_rate_propensity_prior +
 # assume_ms_utility on both /hybrid and /rank-bruiser, which emptied the
@@ -76,7 +77,14 @@ _UNREACHABLE_OK: dict[str, set[str]] = {
     '/dps':                {'apply_crit_conversion', 'assume_ally_detonation', 'assume_caster_lowhp', 'assume_lifeline_shield', 'assume_passive_reflect', 'assume_takedown', 'only_phase', 'target_current_hp_pct'},
     '/ehp':                {'apply_build_tenacity', 'apply_egg_resist', 'apply_resist_damage_coupling', 'assume_chainlaced_shield', 'assume_eclipse_shield', 'assume_fimbulwinter_shield', 'assume_item_aa_dr', 'assume_item_crit_dr', 'assume_item_enemy_as_slow', 'assume_kaenic_shield', 'assume_seraphs_shield', 'caster_current_hp_pct', 'enemy_armor_pen_pct', 'enemy_lethality', 'enemy_magic_pen_flat', 'enemy_magic_pen_pct', 'enemy_shred_pct', 'external_flat_hp', 'resist_coupling_strength'},
     '/hps':                {'assume_missing_hp_heal_amp', 'caster_missing_hp_pct', 'formulas'},
-    '/hybrid':             {'apply_ad_axis_ability_damage', 'apply_melee_aa_gate', 'assume_hsp_amp', 'caster_current_hp_pct'},
+    # ``apply_ad_axis_dual_scaling_split`` (RM-36, 2026-08-04) joins its PARENT
+    # here rather than being wired: it is a modifier of
+    # ``apply_ad_axis_ability_damage``, which /hybrid does not parse either, so
+    # parsing the modifier alone would ship a settable-but-inert seam - exactly
+    # the RM-118 failure this file exists to catch. Both are reachable on the
+    # two RANKER routes (/rank, /rank-bruiser), which is where they can change
+    # an item choice.
+    '/hybrid':             {'apply_ad_axis_ability_damage', 'apply_ad_axis_dual_scaling_split', 'apply_melee_aa_gate', 'assume_hsp_amp', 'caster_current_hp_pct'},
     '/rank':               {'mana_value_per_point'},
     '/rank-enchanter':     {'formulas'},
     '/rank-mage':          {'kit_conversion_strength'},

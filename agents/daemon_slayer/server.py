@@ -569,6 +569,14 @@ def _route_rank(body: dict) -> dict:
     apply_ad_axis_ability_damage = _opt_bool(
         body, "apply_ad_axis_ability_damage", False
     )
+    # RM-36 (DEFAULT-OFF): the dual-scaling SPLIT credit - a MODIFIER of the
+    # flag above, inert on its own. Routed here for the same reason the parent
+    # is: the shipped build tables are generated through :8860, so a
+    # Python-API-only seam could not reach an artifact. Ezreal is the row it
+    # exists for - his credited term is exactly 0.0 without it.
+    apply_ad_axis_dual_scaling_split = _opt_bool(
+        body, "apply_ad_axis_dual_scaling_split", False
+    )
     # RM-42 (DEFAULT-OFF here). NOTE the asymmetry with /rank-onhit, which
     # parses the same key at default TRUE: that route's scorer was built around
     # the kit-passive registry, this one was not, so arming it by default would
@@ -600,6 +608,7 @@ def _route_rank(body: dict) -> dict:
             kit_conversion_strength=kit_conversion_strength,
             apply_crit_conversion=apply_crit_conversion,
             apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
+            apply_ad_axis_dual_scaling_split=apply_ad_axis_dual_scaling_split,
             apply_passive_damage=apply_passive_damage,
             apply_extra_shot_procs=apply_extra_shot_procs,
         )
@@ -1325,6 +1334,15 @@ def _route_rank_bruiser(body: dict) -> dict:
     apply_ad_axis_ability_damage = _opt_bool(
         body, "apply_ad_axis_ability_damage", False
     )
+    # RM-36 (DEFAULT-OFF): the dual-scaling SPLIT credit, the same body key
+    # and the same meaning as on /rank. Routed on BOTH ranker surfaces because
+    # the term has one definition (``_ad_axis_ability``) and the bruiser
+    # scorer is its original consumer - wiring only /rank would strand the
+    # modifier on the branch that owns the term. Pantheon Q is the largest
+    # affected row here (share 0.7931).
+    apply_ad_axis_dual_scaling_split = _opt_bool(
+        body, "apply_ad_axis_dual_scaling_split", False
+    )
     # RM-115 p4 / RM-86 L1: the kit-conversion gate, extended from the CARRY
     # route (server.py:518) to the bruiser ranker - the gate-2 half of the
     # plumb that strands Olaf / Pantheon / RekSai / Riven. hybrid.py consults
@@ -1394,6 +1412,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             cost_ceiling=cost_ceiling,
             target_current_hp_pct=target_current_hp_pct,
             apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
+            apply_ad_axis_dual_scaling_split=apply_ad_axis_dual_scaling_split,
             kit_conversion_strength=kit_conversion_strength,
             assume_hsp_amp=assume_hsp_amp,
             apply_rune_self_heal=apply_rune_self_heal,

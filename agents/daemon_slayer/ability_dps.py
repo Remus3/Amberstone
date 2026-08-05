@@ -765,6 +765,17 @@ class AbilitySpellDps:
     # AP-scaling row (Belveth R 300.0 and Chogath R 150.0 are AP-scaling TRUE
     # rows the damage-type filter alone cannot stop).
     ap_pct_sum: float = 0.0
+    # Sum of ``total_ad_pct`` + ``bonus_ad_pct`` across this form's
+    # ``attribute_kind == "damage"`` blocks - the exact mirror of
+    # ``ap_pct_sum`` above, read the same way ``_classify_primary_scaling``
+    # reads those blocks (ability_dps.py:926-929). END-appended and defaulted
+    # per the repo dataclass rule, and NOT consumed by any DPS arithmetic.
+    # Its only consumer is the RM-36 dual-scaling SPLIT credit in
+    # ``_ad_axis_ability``: a row carrying BOTH sums is credited on the AD axis
+    # at ``ad_pct_sum / (ad_pct_sum + ap_pct_sum)`` of its dps instead of being
+    # dropped whole. Ezreal Q Mystic Shot is the motivating row (650.0 AD
+    # against 200.0 AP).
+    ad_pct_sum: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -790,6 +801,7 @@ class AbilitySpellDps:
             "notes": list(self.notes),
             "static_cd": self.static_cd,
             "ap_pct_sum": self.ap_pct_sum,
+            "ad_pct_sum": self.ad_pct_sum,
         }
 
 
@@ -957,6 +969,30 @@ def _form_ap_pct_sum(form: AbilityForm) -> float:
             continue
         if block.ap_pct:
             total += sum(block.ap_pct)
+    return total
+
+
+def _form_ad_pct_sum(form: AbilityForm) -> float:
+    """Sum ``total_ad_pct`` + ``bonus_ad_pct`` across a form's ``damage`` blocks.
+
+    The exact mirror of ``_form_ap_pct_sum`` above, over the two AD ratio
+    columns ``_classify_primary_scaling`` already folds together
+    (ability_dps.py:926-929). Same ``damage``-blocks-only gate, and for the
+    same reason: an AD-scaling heal block does not make the spell's DAMAGE
+    AD-scaling.
+
+    Consumed ONLY by the RM-36 dual-scaling split credit, which needs both
+    sides of a row's scaling ratio to decide what fraction of it belongs on
+    the AD axis.
+    """
+    total = 0.0
+    for block in form.damage_blocks:
+        if block.attribute_kind != "damage":
+            continue
+        if block.total_ad_pct:
+            total += sum(block.total_ad_pct)
+        if block.bonus_ad_pct:
+            total += sum(block.bonus_ad_pct)
     return total
 
 
@@ -1352,6 +1388,7 @@ def compute_ability_dps(
             cc_duration_post_tenacity=cc_post_ten,
             static_cd=static_cd,
             ap_pct_sum=_form_ap_pct_sum(form),
+            ad_pct_sum=_form_ad_pct_sum(form),
         ))
 
     total_dps = sum(s.dps for s in per_spell)
