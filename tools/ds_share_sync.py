@@ -239,6 +239,16 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # it imports core.daemon_slayer_client plus the per-route reachability helper
     # at module level, so the host import is its subject, not an accident.
     "test_vamp_lane_route_seams_rm118.py",
+    # -- RM-118 residual: the FIVE per-item shield opt-ins (assume_kaenic_shield
+    # / assume_eclipse_shield / assume_chainlaced_shield / assume_seraphs_shield
+    # / assume_fimbulwinter_shield) on /ehp alone. Same class as the RM-118
+    # sibling above - it asserts each (route, seam) pair is expressible through
+    # the HOST client (ehp_for) and, just as load-bearing, that rank_tank_for /
+    # hybrid_for / rank_bruiser_for / dps_for / sustain_for do NOT express any of
+    # the five, since compute_ehp is their sole engine owner; it imports
+    # core.daemon_slayer_client plus the per-route reachability helper at module
+    # level, so the host import is its subject, not an accident.
+    "test_per_item_shield_route_seams_rm118.py",
     # -- RM-118 residual (ENGINE 1.271.0, 2026-08-04): the four genuinely
     # wireable stranded seams (apply_crit_chance_overrides on /dps,
     # apply_ability_hsp_amp on /hps, apply_cast_rate_propensity_prior +

@@ -682,6 +682,24 @@ def ehp_for(
     targets_in_rotation: Optional[float] = None,
     assume_crit_weighted_vamp: bool = False,
     assume_cleave_lifesteal: bool = False,
+    # RM-118 residual (2026-08-04): the FIVE per-item shield opt-ins into the EHP
+    # ItemShield pool (Kaenic Rookern 2504, Eclipse 6692, Chainlaced Crushers
+    # 3173, Seraph's Embrace 3040, Fimbulwinter 3121, each plus its mode
+    # mirrors). MEASURED off inspect.signature - all five name ``compute_ehp``
+    # and NOTHING else, so /ehp is the entire route table and they are
+    # deliberately NOT routed through ``_emit_ehp_family_seams`` (that helper has
+    # four callers, three of which post to routes that parse none of these keys -
+    # folding them in would leak a key that dies on the wire). ``item_ids`` is
+    # the whole transport: the engine arms per item id off the equipped
+    # inventory and resolves the magnitude from ``level`` plus the resolved
+    # max-HP / max-mana / bonus-AD stat block. Plain DEFAULT-OFF bools, emitted
+    # only when True, appended at END per the no-mid-signature-insert
+    # convention. This exposes the seams; it does NOT flip any live default.
+    assume_kaenic_shield: bool = False,
+    assume_eclipse_shield: bool = False,
+    assume_chainlaced_shield: bool = False,
+    assume_seraphs_shield: bool = False,
+    assume_fimbulwinter_shield: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
@@ -748,6 +766,15 @@ def ehp_for(
         ("assume_item_stasis", assume_item_stasis),
         ("assume_crit_weighted_vamp", assume_crit_weighted_vamp),
         ("assume_cleave_lifesteal", assume_cleave_lifesteal),
+        # RM-118 residual: the five per-item shield opt-ins, same
+        # emit-when-True contract - each key absent leaves _route_ehp's
+        # _opt_bool on its engine default, so a call that names none of them is
+        # byte-identical on the wire to a pre-wire one.
+        ("assume_kaenic_shield", assume_kaenic_shield),
+        ("assume_eclipse_shield", assume_eclipse_shield),
+        ("assume_chainlaced_shield", assume_chainlaced_shield),
+        ("assume_seraphs_shield", assume_seraphs_shield),
+        ("assume_fimbulwinter_shield", assume_fimbulwinter_shield),
     ):
         if _armed:
             body[_seam] = True

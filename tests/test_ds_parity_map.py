@@ -59,11 +59,12 @@ _DROPPED_OK: set[tuple[str, str]] = set()
 
 # Engine parameters no route forwards - a caller cannot reach them over HTTP at
 # all. DEBT LEDGER, not an exemption: measured 2026-08-04 at ENGINE 1.274.0,
-# 59 pairs across 15 routes (was 65 across 16 at 1.268.0 - the RM-118
+# 54 pairs across 15 routes (was 65 across 16 at 1.268.0 - the RM-118
 # stranded-seam slice drained six pairs: apply_crit_chance_overrides on /dps,
 # apply_ability_hsp_amp on /hps, and apply_cast_rate_propensity_prior +
 # assume_ms_utility on both /hybrid and /rank-bruiser, which emptied the
-# /rank-bruiser row entirely). Equality (not subset) makes it self-cleaning in
+# /rank-bruiser row entirely; the per-item shield slice then drained the five
+# assume_*_shield pairs off /ehp). Equality (not subset) makes it self-cleaning in
 # both directions - a NEW unreachable param turns this RED, and wiring one up
 # turns it RED until the line is deleted here. Sampled and confirmed against
 # source: /v2/matchup parses a single body and never ``sequence_a``/
@@ -74,7 +75,7 @@ _UNREACHABLE_OK: dict[str, set[str]] = {
     '/anti-tank':          {'stats'},
     '/burst':              {'assume_ally_detonation', 'assume_caster_lowhp', 'assume_item_lowhp_magic_crit', 'assume_lifeline_shield', 'assume_passive_reflect', 'caster_hp_pct', 'game_time_s'},
     '/dps':                {'apply_crit_conversion', 'assume_ally_detonation', 'assume_caster_lowhp', 'assume_lifeline_shield', 'assume_passive_reflect', 'assume_takedown', 'only_phase', 'target_current_hp_pct'},
-    '/ehp':                {'apply_build_tenacity', 'apply_egg_resist', 'apply_resist_damage_coupling', 'assume_chainlaced_shield', 'assume_eclipse_shield', 'assume_fimbulwinter_shield', 'assume_item_aa_dr', 'assume_item_crit_dr', 'assume_item_enemy_as_slow', 'assume_kaenic_shield', 'assume_seraphs_shield', 'caster_current_hp_pct', 'enemy_armor_pen_pct', 'enemy_lethality', 'enemy_magic_pen_flat', 'enemy_magic_pen_pct', 'enemy_shred_pct', 'external_flat_hp', 'resist_coupling_strength'},
+    '/ehp':                {'apply_build_tenacity', 'apply_egg_resist', 'apply_resist_damage_coupling', 'assume_item_aa_dr', 'assume_item_crit_dr', 'assume_item_enemy_as_slow', 'caster_current_hp_pct', 'enemy_armor_pen_pct', 'enemy_lethality', 'enemy_magic_pen_flat', 'enemy_magic_pen_pct', 'enemy_shred_pct', 'external_flat_hp', 'resist_coupling_strength'},
     '/hps':                {'assume_missing_hp_heal_amp', 'caster_missing_hp_pct', 'formulas'},
     '/hybrid':             {'apply_ad_axis_ability_damage', 'apply_melee_aa_gate', 'assume_hsp_amp', 'caster_current_hp_pct'},
     '/rank':               {'mana_value_per_point'},

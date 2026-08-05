@@ -749,6 +749,36 @@ def _route_ehp(body: dict) -> dict:
     targets_in_rotation = _opt_float(body, "targets_in_rotation", 1.0)
     assume_crit_weighted_vamp = _opt_bool(body, "assume_crit_weighted_vamp", False)
     assume_cleave_lifesteal = _opt_bool(body, "assume_cleave_lifesteal", False)
+    # RM-118 residual (2026-08-04): the FIVE per-item shield opt-ins into the EHP
+    # ItemShield pool, engine-complete since R92/R97/R99/R129 and ledgered as
+    # stranded by the R197 guard ever since. ``ehp._collect_shields`` drops a
+    # ``default_off`` shield before resolving its magnitude unless the caller arms
+    # THAT item's own seam, so arming is per-item and never leaks between them:
+    #   assume_kaenic_shield       - Kaenic Rookern 2504 / Arena 222504.
+    #   assume_eclipse_shield      - Eclipse 6692 / Arena 226692.
+    #   assume_chainlaced_shield   - Chainlaced Crushers 3173.
+    #   assume_seraphs_shield      - Seraph's Embrace 3040 / 223040 / 323040.
+    #   assume_fimbulwinter_shield - Fimbulwinter 3121 / 223121 / 323121.
+    #
+    # This slice ships route EXPOSURE only. The ledger reason these five carried
+    # ("live flip operator-gated") conflates exposure with a DEFAULT FLIP, the
+    # same confusion the crit-chance lane's reason carried before ENGINE 1.274.0:
+    # every seam stays bool=False on ``compute_ehp``, every key is optional, and
+    # the live default flip remains unshipped and operator-gated.
+    #
+    # NO extra transport: ``_collect_shields`` arms off the equipped inventory and
+    # resolves magnitudes from ``level`` plus the ``champion`` + ``items`` stat
+    # block, all of which this route has parsed since Phase 1. MEASURED off
+    # inspect.signature over every module in the package: all five live on
+    # ``compute_ehp`` ONLY - NOT on ``rank_items_by_ehp``, not on the hybrid pair,
+    # not on ``compute_dps`` - so ``/ehp`` is the whole route table and no other
+    # route may grow any of these keys. An omitted key leaves compute_ehp on its
+    # shipped path and the response is byte-identical.
+    assume_kaenic_shield = _opt_bool(body, "assume_kaenic_shield", False)
+    assume_eclipse_shield = _opt_bool(body, "assume_eclipse_shield", False)
+    assume_chainlaced_shield = _opt_bool(body, "assume_chainlaced_shield", False)
+    assume_seraphs_shield = _opt_bool(body, "assume_seraphs_shield", False)
+    assume_fimbulwinter_shield = _opt_bool(body, "assume_fimbulwinter_shield", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -787,6 +817,11 @@ def _route_ehp(body: dict) -> dict:
             assume_crit_weighted_vamp=assume_crit_weighted_vamp,
             targets_in_rotation=targets_in_rotation,
             assume_cleave_lifesteal=assume_cleave_lifesteal,
+            assume_kaenic_shield=assume_kaenic_shield,
+            assume_eclipse_shield=assume_eclipse_shield,
+            assume_chainlaced_shield=assume_chainlaced_shield,
+            assume_seraphs_shield=assume_seraphs_shield,
+            assume_fimbulwinter_shield=assume_fimbulwinter_shield,
             apply_survival_window=apply_survival_window,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,
