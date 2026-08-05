@@ -162,6 +162,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/champ_select_shadow.py` | champ-select pick-advisor shadow writer |
 | `core/champion_info_overrides.py` | curated DDragon info.attack/magic overrides for damage-type classification |
 | `core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |
+| `core/data_retention.py` | retention policy + report over data/ |
 | `core/defensive_picks.py` | defensive item ranker |
 | `core/district_fusion.py` | API-ground-truth fusion over the CV district presence vector |
 | `core/ds_support_route_overrides.py` | Slice C support-tag route-override loader (RM-84) |
