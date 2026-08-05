@@ -195,14 +195,16 @@ STRANDED_TODAY: dict[str, str] = {
     "assume_lifeline_shield": "caster-state lifeline - operator-CLOSED s232",
     "assume_item_lowhp_magic_crit": "low-HP target state - operator-CLOSED s232",
     "assume_passive_reflect": "target-state reflect - operator-CLOSED s232",
-    # Per-item shield opt-ins into the EHP ItemShield pool. All five shipped
-    # DEFAULT-OFF with an operator-gated live flip (docs/LIVE_GAME_GATED_SYNC.md)
-    # and none was ever given a body key.
-    "assume_chainlaced_shield": "per-item shield opt-in - live flip operator-gated",
-    "assume_eclipse_shield": "per-item shield opt-in - live flip operator-gated",
-    "assume_fimbulwinter_shield": "per-item shield opt-in - live flip operator-gated",
-    "assume_kaenic_shield": "per-item shield opt-in - live flip operator-gated",
-    "assume_seraphs_shield": "per-item shield opt-in - live flip operator-gated",
+    # (The FIVE per-item shield opt-ins into the EHP ItemShield pool -
+    # assume_kaenic_shield / assume_eclipse_shield / assume_chainlaced_shield /
+    # assume_seraphs_shield / assume_fimbulwinter_shield - were wired to /ehp and
+    # to ``core.daemon_slayer_client.ehp_for`` and are therefore gone from this
+    # ledger. Their "live flip operator-gated" reason confused two questions, the
+    # same way the crit-chance lane's did: that slice exposes the seams
+    # DEFAULT-OFF, which is byte-identical, and does NOT flip any live default.
+    # The default flip remains unshipped, unclaimed and operator-gated. See
+    # test_per_item_shield_route_seams_rm118.py for the measured per-seam route
+    # table, the per-item non-leak proof and the ON-path movement pairs.)
     # (The two vamp lanes - assume_crit_weighted_vamp / assume_cleave_lifesteal -
     # were wired at ENGINE 1.268.0, together with the non-boolean
     # ``targets_in_rotation`` transport the cleave lane needs, and are therefore
