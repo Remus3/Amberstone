@@ -41,11 +41,19 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
 
 - Edit `agents/daemon_slayer/__init__.py` ENGINE_VERSION (semver; minor for a
   feature batch, patch for a correctness fix).
-- Update every pinned assertion - about 14 files assert
-  `daemon_slayer.ENGINE_VERSION == "<old>"` (agents/daemon_slayer/tests/test_*.py
-  conditional_block_index/effects_expansion/form_index/max_priority/nested_hp/
-  post_parser/sum_of_blocks/unit_variants). Sweep them in one pass; the pin IS
-  the guard test (a stale pin fails, proving the bump was deliberate).
+- Update every pinned assertion. **Do not trust a count written here** - it was
+  "about 14 files" for long enough to be wrong by an order of magnitude (measured
+  2026-08-04 at ENGINE 1.275.0: 126 test files, 146 quoted literals). Measure it
+  yourself, every time:
+
+  ```
+  git grep -l 'ENGINE_VERSION' -- 'tests/*.py' 'agents/daemon_slayer/tests/*.py' | xargs grep -l '<old>'
+  ```
+
+  Only a handful spell the pin as a bare `== "<old>"`; most go through
+  `assertEqual(daemon_slayer.ENGINE_VERSION, "<old>")`, so a grep for the
+  comparison operator alone under-reports badly. Sweep them in one pass; the pin
+  IS the guard test (a stale pin fails, proving the bump was deliberate).
 - Re-run `python -m pytest -q` - must be fully green.
 
 ## 4. Compile + commit + push
