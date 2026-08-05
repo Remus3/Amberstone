@@ -35,6 +35,14 @@ _LOCKFILE_PATHS = [
     Path(r"D:\Riot Games\League of Legends (PBE)\lockfile"),
 ]
 
+# Seconds between repeats of the lockfile-not-found notice within a single gap.
+# The first notice of each gap is exempt (see connect()). 60 s keeps a day of
+# League-never-launched under ~1500 lines per process instead of ~86400, and is
+# safe for tools/lcu_push_watcher.py: its _RE_LOCKFILE_GAP state machine latches
+# gap_pending until the next "LCU connected:" line and never reads timestamps,
+# so ONE line per gap - which the immediate first notice guarantees - is enough.
+_LOCKFILE_MISSING_REPEAT_S = 60.0
+
 
 from lcu.lcu_pregame import LcuPregame as _PGMixin
 
@@ -63,6 +71,10 @@ class LcuClient(_PGMixin):
         # information repeat 1 did not, and it buried every other line the
         # cost/health watchdog reads.
         self._lockfile_missing_logged = False
+        # Monotonic timestamp of the last not-found line this process emitted.
+        # Wall clock is deliberately not used: it can step backwards over NTP or
+        # DST and would then stall the notice for hours.
+        self._lockfile_missing_last_log = 0.0
 
     def connect(self):
         for lf in _LOCKFILE_PATHS:
@@ -86,13 +98,21 @@ class LcuClient(_PGMixin):
                     return True
                 except (OSError, IndexError, ValueError, UnicodeDecodeError) as e:
                     _log.warning("LCU lockfile parse (%s): %s", type(e).__name__, e)
-        # Repeats stay on disk: core/log_setup.py sends DEBUG to file
-        # unconditionally, so nothing is lost for diagnosis.
-        if self._lockfile_missing_logged:
-            _log.debug("LCU lockfile not found - client may not be running")
-        else:
+        # Demoting the repeat to DEBUG saved nothing ON DISK: core/log_setup.py
+        # sets the file handler to DEBUG unconditionally ("always verbose to
+        # file"), so on 2026-08-04 this one line was 13316 of 13692 lines (97.3
+        # percent) at 1.97 lines/sec across the two 1 Hz pollers. The repeat is
+        # therefore rate-limited as well as demoted. The FIRST notice of each
+        # gap stays immediate and INFO - that transition is the diagnostic, and
+        # a re-opened gap must not be swallowed by a still-running window.
+        now = time.monotonic()
+        if not self._lockfile_missing_logged:
             _log.info("LCU lockfile not found - client may not be running")
             self._lockfile_missing_logged = True
+            self._lockfile_missing_last_log = now
+        elif now - self._lockfile_missing_last_log >= _LOCKFILE_MISSING_REPEAT_S:
+            _log.debug("LCU lockfile not found - client may not be running")
+            self._lockfile_missing_last_log = now
         return False
 
     def _refresh_conn_if_changed(self) -> None:
