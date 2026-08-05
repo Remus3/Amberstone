@@ -9,8 +9,25 @@ Python 3.9 compatible: no walrus operator, no match statements, no X|Y unions.
 Validation statuses:
   OK       - file present and all required keys found with correct types
   WARNING  - file present but optional key has wrong type, or an advisory note
-  ERROR    - file present but required key missing or has wrong type
+  ERROR    - file present but required key missing, empty, or wrongly typed;
+             or the file could not be read, parsed, or is not a JSON object
   SKIP     - file not present and is marked as optional/future
+
+Diagnostic contract (this module's entire product is its log output, because
+main.py discards the return value and only the log line reaches the operator):
+
+  - A failure is ALWAYS attributed to a named config file. `validate_all`
+    pairs every validator with its path up front, so a validator that raises
+    is still reported against the file it was validating rather than against
+    a placeholder.
+  - "unreadable", "not valid JSON", and "valid JSON but not an object" are
+    three distinct messages, and the underlying error detail is preserved.
+  - A required key must be present, correctly typed, AND non-empty. Emptiness
+    is judged by container, not by truthiness: "" / "   " / [] / {} are empty,
+    while `false` and `0` are legitimate configured values.
+  - A type spec this module does not recognise is reported as an ERROR rather
+    than silently passing, so a typo in a field_types map cannot quietly
+    disable validation for that field.
 
 Usage:
     from core.config_validator import validate_all
@@ -32,7 +49,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
 _log = logging.getLogger("rc.config_validator")
 
@@ -54,12 +71,57 @@ class ValidationResult(NamedTuple):
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _load_json(path: Path) -> Optional[Dict[str, Any]]:
-    """Load and return a JSON file, or None on error."""
+def _load_json(path: Path) -> Tuple[Any, Optional[str]]:
+    """Load a JSON file.
+
+    Returns a ``(data, error)`` pair. On success ``error`` is None. On failure
+    ``data`` is None and ``error`` is a human-readable diagnostic that names
+    WHICH failure occurred and preserves the underlying detail.
+
+    The two failure modes are deliberately worded so they cannot be confused
+    in a log: an unreadable file and a syntactically invalid file are
+    different problems with different fixes. The previous implementation
+    collapsed both (plus a valid top-level `null`) into one detail-free
+    "Could not read or parse JSON".
+    """
     try:
-        return json.loads(path.read_text(encoding="utf-8-sig"))
-    except Exception as exc:  # noqa: BLE001
-        return None  # caller handles missing/unreadable
+        raw = path.read_text(encoding="utf-8-sig")
+    except OSError as exc:
+        return None, f"Could not read file: {exc}"
+    try:
+        return json.loads(raw), None
+    except ValueError as exc:
+        # json.JSONDecodeError subclasses ValueError and carries line/column.
+        return None, f"Invalid JSON: {exc}"
+
+
+def _describe_json_type(value: Any) -> str:
+    """Name a decoded JSON value's type using JSON vocabulary."""
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list):
+        return "list"
+    if isinstance(value, (int, float)):
+        return "number"
+    return type(value).__name__
+
+
+def _is_empty_value(value: Any) -> bool:
+    """Return True if a configured value is present but carries no content.
+
+    Emptiness is a property of containers and text, NOT of falsiness. A
+    `false` boolean and a `0` number are legitimate configured values and
+    must never be reported as empty.
+    """
+    if isinstance(value, str):
+        return value.strip() == ""
+    if isinstance(value, (list, dict)):
+        return len(value) == 0
+    return False
 
 
 _PYTHON_TYPE_MAP = {
@@ -70,6 +132,26 @@ _PYTHON_TYPE_MAP = {
     "array":   list,
     "object":  dict,
 }
+
+
+def _missing_required_file(rel_path: str) -> ValidationResult:
+    """Report a required config file that is absent.
+
+    Some required configs are machine-local and deliberately gitignored
+    (config/coach_settings.json, .gitignore:40), so this fires on every fresh
+    clone. When a tracked `*.example.json` sibling exists, name it - an ERROR
+    the reader cannot act on is an ERROR they learn to scroll past.
+    """
+    issues = [f"File missing: {rel_path}"]
+    message = "Required config file not found"
+    example_rel = rel_path.replace(".json", ".example.json")
+    if example_rel != rel_path and (APP_DIR / example_rel).is_file():
+        hint = f"copy {example_rel} to {rel_path} and edit it"
+        message = f"Required config file not found - {hint}"
+        issues.append(f"FIX: {hint}")
+    return ValidationResult(
+        file=rel_path, status="ERROR", message=message, issues=issues,
+    )
 
 
 def _check_type(value: Any, expected: str) -> bool:
@@ -112,38 +194,66 @@ def _validate_config(
                 message="Not present (optional/future file - expected for later Phase 1 step)",
                 issues=[],
             )
+        return _missing_required_file(rel_path)
+
+    data, load_error = _load_json(path)
+    if load_error is not None:
         return ValidationResult(
             file=rel_path, status="ERROR",
-            message="Required config file not found",
-            issues=[f"File missing: {rel_path}"],
+            message=load_error,
+            issues=[f"{rel_path}: {load_error}"],
         )
 
-    data = _load_json(path)
-    if data is None:
+    # A file can decode cleanly and still not be a config. Guard this BEFORE
+    # any key lookup: `key not in data` is a substring test against a string
+    # and an element test against a list, so both silently pass the
+    # required-key loop and then raise TypeError on data[key] - which used to
+    # surface as a validator crash attributed to "<unknown>".
+    if not isinstance(data, dict):
+        found = _describe_json_type(data)
         return ValidationResult(
             file=rel_path, status="ERROR",
-            message="Could not read or parse JSON",
-            issues=[f"JSON parse error in {rel_path}"],
+            message=f"Top-level value must be a JSON object, got {found}",
+            issues=[
+                f"ERROR: {rel_path} must contain a JSON object "
+                f"(a '{{...}}' mapping), got {found}"
+            ],
         )
 
     issues: List[str] = []
     warnings: List[str] = []
 
-    # Check required keys
+    # A type spec this module cannot resolve would silently pass every value.
+    # Report it instead - a typo here disables a field's validation forever.
+    for key, type_name in sorted(field_types.items()):
+        if type_name not in _PYTHON_TYPE_MAP:
+            issues.append(
+                f"ERROR: key '{key}' declares unknown type spec "
+                f"'{type_name}' (validation for this field is not enforced)"
+            )
+
+    # Check required keys: present, correctly typed, and non-empty.
     for key in required_keys:
         if key not in data:
             issues.append(f"ERROR: required key '{key}' is missing")
-        elif key in field_types:
+            continue
+        if key in field_types and field_types[key] in _PYTHON_TYPE_MAP:
             if not _check_type(data[key], field_types[key]):
                 actual_type = type(data[key]).__name__
                 issues.append(
                     f"ERROR: required key '{key}' has wrong type "
                     f"(expected {field_types[key]}, got {actual_type})"
                 )
+                continue
+        if _is_empty_value(data[key]):
+            issues.append(
+                f"ERROR: required key '{key}' is present but empty "
+                f"({_describe_json_type(data[key])} with no content)"
+            )
 
     # Check optional key types (wrong type -> WARNING not ERROR)
     for key in optional_keys:
-        if key in data and key in field_types:
+        if key in data and field_types.get(key) in _PYTHON_TYPE_MAP:
             if not _check_type(data[key], field_types[key]):
                 actual_type = type(data[key]).__name__
                 warnings.append(
@@ -170,12 +280,35 @@ def _validate_config(
 # Per-file validators
 # ---------------------------------------------------------------------------
 
-def _validate_rc_config() -> ValidationResult:
-    # heartbeat_interval_s and command_poll_interval_s are read by main.py
-    # when constructing DevRuntime (non-frozen). They are absent from the live
-    # rc_config.json (main.py falls back to hardcoded defaults of 1.0 / 0.5),
-    # so they are validated as optional keys here.
+class _ConfigSpec(NamedTuple):
+    """A declarative description of one schema-driven config file.
+
+    Declarative rather than inline so the shipped specs can be swept for an
+    unknown type name by a test, instead of the typo lying dormant until the
+    field it guards is the one that breaks.
+    """
+    rel_path:         str
+    required_keys:    List[str]
+    optional_keys:    List[str]
+    field_types:      Dict[str, str]
+    is_optional_file: bool = False
+
+
+def _validate_spec(spec: _ConfigSpec) -> ValidationResult:
     return _validate_config(
+        rel_path=spec.rel_path,
+        required_keys=spec.required_keys,
+        optional_keys=spec.optional_keys,
+        field_types=spec.field_types,
+        is_optional_file=spec.is_optional_file,
+    )
+
+
+# heartbeat_interval_s and command_poll_interval_s are read by main.py when
+# constructing DevRuntime (non-frozen). They are absent from the live
+# rc_config.json (main.py falls back to hardcoded defaults of 1.0 / 0.5), so
+# they are validated as optional keys here.
+_RC_CONFIG_SPEC = _ConfigSpec(
         rel_path="ops/rc_config.json",
         required_keys=[
             "project_root", "runtime_dir", "python_exe",
@@ -210,11 +343,10 @@ def _validate_rc_config() -> ValidationResult:
             "backup_retention_count":     "integer",
         },
         is_optional_file=False,
-    )
+)
 
 
-def _validate_coach_settings() -> ValidationResult:
-    return _validate_config(
+_COACH_SETTINGS_SPEC = _ConfigSpec(
         rel_path="config/coach_settings.json",
         required_keys=["model", "debounce_seconds", "timeout", "max_tokens"],
         optional_keys=["tft_pbe"],
@@ -226,11 +358,10 @@ def _validate_coach_settings() -> ValidationResult:
             "tft_pbe":          "boolean",
         },
         is_optional_file=False,
-    )
+)
 
 
-def _validate_self_monitor_profile() -> ValidationResult:
-    return _validate_config(
+_SELF_MONITOR_SPEC = _ConfigSpec(
         rel_path="config/self_monitor_profile.json",
         required_keys=["enabled", "auto_retry", "remediation_ladder"],
         optional_keys=[
@@ -257,7 +388,30 @@ def _validate_self_monitor_profile() -> ValidationResult:
             "allowed_panel_rebuild_keys": "array",
         },
         is_optional_file=False,
-    )
+)
+
+
+# Every schema-driven spec, in validation order. Swept by the test suite for
+# type names this module cannot resolve.
+_CONFIG_SPECS = [
+    _RC_CONFIG_SPEC,
+    _COACH_SETTINGS_SPEC,
+    _SELF_MONITOR_SPEC,
+]
+
+_FEATURE_FLAGS_REL = "config/feature_flags.json"
+
+
+def _validate_rc_config() -> ValidationResult:
+    return _validate_spec(_RC_CONFIG_SPEC)
+
+
+def _validate_coach_settings() -> ValidationResult:
+    return _validate_spec(_COACH_SETTINGS_SPEC)
+
+
+def _validate_self_monitor_profile() -> ValidationResult:
+    return _validate_spec(_SELF_MONITOR_SPEC)
 
 
 def _validate_feature_flags() -> ValidationResult:
@@ -265,21 +419,32 @@ def _validate_feature_flags() -> ValidationResult:
     Validate config/feature_flags.json - created in Step 7.
     Checks that each mode block contains only known features with valid decision values.
     """
-    path = APP_DIR / "config" / "feature_flags.json"
+    path = APP_DIR / _FEATURE_FLAGS_REL
     if not path.exists():
         return ValidationResult(
-            file="config/feature_flags.json",
+            file=_FEATURE_FLAGS_REL,
             status="SKIP",
             message="Not present (optional - runtime safe-defaults apply)",
             issues=[],
         )
-    data = _load_json(path)
-    if data is None:
+    data, load_error = _load_json(path)
+    if load_error is not None:
         return ValidationResult(
-            file="config/feature_flags.json",
+            file=_FEATURE_FLAGS_REL,
             status="ERROR",
-            message="Could not read or parse JSON",
-            issues=["JSON parse error in config/feature_flags.json"],
+            message=load_error,
+            issues=[f"{_FEATURE_FLAGS_REL}: {load_error}"],
+        )
+    if not isinstance(data, dict):
+        found = _describe_json_type(data)
+        return ValidationResult(
+            file=_FEATURE_FLAGS_REL,
+            status="ERROR",
+            message=f"Top-level value must be a JSON object, got {found}",
+            issues=[
+                f"ERROR: {_FEATURE_FLAGS_REL} must contain a JSON object "
+                f"(a '{{...}}' mapping), got {found}"
+            ],
         )
     _KNOWN_MODES = {"sr", "aram", "arena", "brawl", "tft"}
     _KNOWN_FEATURES = {
@@ -321,6 +486,17 @@ def _validate_feature_flags() -> ValidationResult:
 # Public API
 # ---------------------------------------------------------------------------
 
+# (rel_path, validator) pairs. The path is carried alongside the callable so
+# that a validator which raises can still be reported against a named file
+# rather than a placeholder.
+_VALIDATORS: List[Tuple[str, Callable[[], ValidationResult]]] = [
+    (_RC_CONFIG_SPEC.rel_path,      _validate_rc_config),
+    (_COACH_SETTINGS_SPEC.rel_path, _validate_coach_settings),
+    (_SELF_MONITOR_SPEC.rel_path,   _validate_self_monitor_profile),
+    (_FEATURE_FLAGS_REL,            _validate_feature_flags),
+]
+
+
 def validate_all() -> List[ValidationResult]:
     """
     Run validation for all config files. Returns a list of ValidationResult.
@@ -331,23 +507,18 @@ def validate_all() -> List[ValidationResult]:
       ERROR   -> ERROR
       SKIP    -> INFO
     """
-    validators = [
-        _validate_rc_config,
-        _validate_coach_settings,
-        _validate_self_monitor_profile,
-        _validate_feature_flags,
-    ]
-
     results: List[ValidationResult] = []
-    for fn in validators:
+    for rel_path, fn in _VALIDATORS:
         try:
             result = fn()
         except Exception as exc:  # noqa: BLE001
-            # Validator itself crashed - log and continue
+            # Validator itself crashed. Attribute it to the file it was
+            # validating: the file name is the only actionable part of the
+            # line, and a crash is exactly when the operator needs it.
             result = ValidationResult(
-                file="<unknown>", status="ERROR",
+                file=rel_path, status="ERROR",
                 message=f"Validator raised unexpectedly: {exc}",
-                issues=[str(exc)],
+                issues=[f"{type(exc).__name__}: {exc}"],
             )
 
         results.append(result)
