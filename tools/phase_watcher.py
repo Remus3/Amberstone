@@ -56,14 +56,22 @@ def _resolve_auth_token() -> str:
     env = os.environ.get("RC_VISION_TOKEN")
     if env:
         return env.strip()
-    cfg = Path(__file__).resolve().parent / "vision_token.txt"
-    try:
-        if cfg.exists():
-            line = cfg.read_text(encoding="utf-8").splitlines()[0].strip()
-            if line:
-                return line
-    except OSError:
-        pass
+    # RM-154: the canonical token is config/vision_token.txt (the same file
+    # core.vision_token and the dashboard read). Only the tools-sibling copy
+    # used to be searched, so an in-repo run resolved "" even with a valid
+    # token on disk - which the new tokenless guard below would then read as
+    # a genuine misconfiguration. The sibling stays first-class because the
+    # deployed copy at C:\RC-Agent\ has no repo above it.
+    _here = Path(__file__).resolve().parent
+    for cfg in (_here.parent / "config" / "vision_token.txt",
+                _here / "vision_token.txt"):
+        try:
+            if cfg.exists():
+                line = cfg.read_text(encoding="utf-8").splitlines()[0].strip()
+                if line:
+                    return line
+        except OSError:
+            pass
     # Lane 8 audit 2026-08-03: a hardcoded 32-hex token used to be
     # returned here. It was DEAD (it did not match the live token) but
     # dashboard/routes_static.py serves this file's SOURCE at
@@ -130,8 +138,20 @@ INPROGRESS_CAPTURE_DELAY_S = 15.0
 # (item 187 Slice C live verification), flip to True.
 CHERRY_NO_DEBOUNCE = False
 
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s %(levelname)s %(message)s")
+# RM-154. basicConfig without handlers= installs a StreamHandler on stderr,
+# and the RC-PhaseWatcher task runs this under pythonw.exe where stderr is
+# None - so every record this module emitted went nowhere. Pass explicit
+# handlers. Precedent: tools/liveclient_relay.py:41-51.
+_LOG_FILE = Path(__file__).resolve().parent.parent / "logs" / "phase_watcher.log"
+_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(str(_LOG_FILE), encoding="utf-8"),
+    ],
+)
 log = logging.getLogger("phase_watcher")
 
 _ssl_ctx_lcu = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -684,4 +704,10 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    if not AUTH_TOKEN:
+        # Exit non-zero so the scheduled task's Last Result is not a
+        # reassuring 0 while every capture upload 401s.
+        log.error("no vision token: set RC_VISION_TOKEN or create %s",
+                  Path(__file__).resolve().parent.parent / "config" / "vision_token.txt")
+        sys.exit(2)
     sys.exit(main())
