@@ -624,6 +624,12 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web" / "mc"
 # idempotency key). Mirrors the dashboard's 1 MiB cap.
 _MAX_POST_BYTES = 1 * 1024 * 1024
 
+# RM-152: the size cap is not a bound on TIME. Copy
+# `dashboard/_handler.Handler._read_body_deadlined` verbatim - it arms this
+# budget on the socket for the body read only and restores the previous
+# timeout in a finally, so nothing else on the connection sees a deadline.
+_BODY_READ_TIMEOUT_S = 10.0
+
 _CTYPES = {
     ".html": "text/html; charset=utf-8",
     ".css": "text/css; charset=utf-8",
@@ -694,10 +700,34 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(status, body)
                 return
             n = int(self.headers.get("Content-Length", "0"))
-            if n > _MAX_POST_BYTES:
+            if n < 0 or n > _MAX_POST_BYTES:
                 self._send_json(413, {"ok": False, "error": "payload too large"})
                 return
-            raw = self.rfile.read(n) if n else b""
+            # RM-152: the size cap above does not bound a client that declares
+            # a legal length and then sends nothing; that pins one
+            # ThreadingHTTPServer worker per connection. Read the body under a
+            # wall-clock deadline armed on the socket and restored right after.
+            #
+            # Do NOT reach for the simpler class-level `timeout` instead. The
+            # reason is NOT that it truncates a streamed or slow-to-produce
+            # response - MEASURED 2026-08-04 on the dashboard twin, it does not:
+            # an 8 MiB proxied payload arrived byte-complete at a reader stalled
+            # 3s mid-stream, and the SSE stream still delivered frames, because
+            # the send buffer absorbs the write. What it breaks is the READ
+            # side. socketserver arms it on the connection in `setup()`, so it
+            # deadlines the request line and headers too, and a client slow to
+            # speak - or one whose headers arrive in two packets with a gap - is
+            # aborted outright. MC's pollers open a fresh HTTP/1.0 connection
+            # per tick, so every one of them would be exposed. Mirror
+            # `dashboard/_handler.Handler._read_body_deadlined`, including its
+            # no-socket fall-through: this read runs before any auth gate, and
+            # an exception raised here is answered as a 400 by the `except`
+            # below, which would mask the reply the request had earned.
+            try:
+                raw = self._read_body_deadlined(n) if n else b""
+            except TimeoutError:
+                self._send_json(408, {"ok": False, "error": "body read timeout"})
+                return
             payload = json.loads(raw.decode("utf-8", errors="replace")) if raw else {}
             for matcher, handler in routes.POST_ROUTES:
                 if matcher(self.path):
