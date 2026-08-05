@@ -925,6 +925,7 @@ def rank_items(
     apply_ad_axis_ability_damage: bool = False,
     apply_passive_damage: bool = False,
     apply_extra_shot_procs: bool = False,
+    apply_ad_axis_dual_scaling_split: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -1122,6 +1123,13 @@ def rank_items(
     # only when its damage type is PHYSICAL or TRUE and its ``ap_pct_sum`` is
     # zero - so an AP champion routed here contributes nothing through it.
     #
+    # RM-36 follow-on: ``apply_ad_axis_dual_scaling_split`` (DEFAULT-OFF) is a
+    # MODIFIER of the term above, not a second term - it is read only inside
+    # ``_ad_axis_term``, so arming it without ``apply_ad_axis_ability_damage``
+    # is inert. It re-enters a row the AP-scaling gate dropped at its AD SHARE
+    # alone, which is what finally reaches Ezreal (credited 0.0 -> 14.1067 at
+    # level 16 on the sweep-standard tanky target).
+    #
     # DEFERRED IMPORT: ``ability_dps`` imports ``rank`` at module level
     # (ability_dps.py:148), so the module-level import that ``hybrid`` uses
     # would be circular here. Same idiom as ``dps.py:911``.
@@ -1132,6 +1140,7 @@ def rank_items(
             snapshot, champion_id, level, item_ids, mode,
             target_armor, target_mr, target_max_hp, target_bonus_hp,
             augments, target_current_hp_pct,
+            apply_dual_scaling_split=apply_ad_axis_dual_scaling_split,
         )
 
     # A-12 / RM-46: the crit-conversion flag must reach BOTH compute_dps calls
