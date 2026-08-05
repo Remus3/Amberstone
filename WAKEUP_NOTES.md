@@ -59,6 +59,8 @@ Gates run by the merger rather than inherited: RC 18351 passed / 0 failed, DS 10
 passed / 83 skipped / 6746 subtests from the repo root, RC restarted healthy,
 `/metrics` scrape 0.022s with `rc_riot_api_cache_over_cap` already reading 1.
 
+---
+
 # 2026-08-04i - orchestrated 3-slice pass: RM-117 retention, RM-118 shields, RM-36 Ezreal (ENGINE 1.275.0)
 
 Operator asked why open items were running one at a time instead of orchestrated
@@ -147,48 +149,3 @@ Suites at final state, repo root: DS 10413 passed / 6520 subtests; RC `tests/`
 
 Three ENGINE bumps this session (1.272.0 / 1.273.0 / 1.274.0) across RM-36/38
 and RM-42.
-
----
-
-# 2026-08-04g - RM-42 Akshan: the passive modelled, the ordering claim NOT closed (ENGINE 1.273.0)
-
-LEDGER 1193. Second Tier-2 slice of the day, same RM-35..RM-48 set.
-
-**The lesson of the session is the same one as the last: a sweep filing can be
-built on a mis-read of the ability text.** RM-42 describes Dirty Fighting as a
-"200% crit double-shot" and prescribes a fix on that basis. DDragon 16.15.1 says
-the second shot is a flat 50 pct AD PHYSICAL hit that APPLIES ON-HIT EFFECTS. So
-a faithful model raises on-hit value on Akshan, which is the opposite of the
-filed prescription. Read the shipped ability text before building to a filing -
-this is now twice in one day (RM-36's AP-scaling gate was the other).
-
-**Shipped.** The second shot is modelled (`_PASSIVE_DAMAGE_OVERRIDES` +
-`_AA_ROUTED_ON_HIT_KEYS`) and `apply_passive_damage` now reaches the CARRY
-ranker (`rank.rank_items` + `/rank` + client), DEFAULT-OFF. It is a large
-correction - +48.9 per hit, weighted DPS 142.06 -> 212.19 at depth, +49.4 pct.
-Before this, 33 registry entries were priced nowhere the item RANKING could see
-them.
-
-**A trap worth keeping.** The registry entry ALONE is inert - the consumer reads
-a 5-member EVERY-AA allowlist, not the registry at large. Entry added and
-nothing else: `compute_dps` byte-identical flag-ON, no note. Both edits needed.
-
-**NOT closed, and deliberately so.** Armed, BotRK/Runaan's still take #1/#2 at
-depth and Hexoptics C44 moves only #19 -> #18. Mechanism: the registry credits
-the shot as flat damage on the AA cadence (`per_hit * effective_AS`), so it
-raises ATTACK SPEED, which is what the on-hit items carry. The crit lift needs
-the shot's on-hit APPLICATION + independent crit - the aa-empower machinery.
-`test_rm42_ordering_claim_is_NOT_closed_by_this_slice` is designed to GO RED
-when that ships; delete it then.
-
-**Context measurement, taken before any code:** of 14 ranged marksmen at L16 on
-the tanky target, THIRTEEN return a BotRK/Runaan's-led head; only Aphelios leads
-crit. The on-hit lead is near-universal in `ds.dps`, so no champion-specific fix
-can do more than move one champion relative to that floor. That is the real
-shape behind the whole crit-marksman GAP family (RM-42 / RM-46 / RM-50 / RM-53 /
-RM-60 / RM-68).
-
-Suites at final state, repo root: DS 10396 passed / 6520 subtests; RC `tests/`
-18225 passed / 108 skipped. Tables stamp-only. Ruff, ASCII, drift guard clean.
-Live eyeball filed as `G2-47` - a default-ON flip would arm all 33 entries at
-once and only 6 have ever been eyeballed.
