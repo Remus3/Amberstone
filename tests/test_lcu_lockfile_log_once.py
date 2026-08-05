@@ -1,67 +1,145 @@
-"""The LCU lockfile-not-found INFO must fire once per transition, not once per tick.
+"""The LCU lockfile-not-found notice fires once per gap, then at most once per
+throttle interval - never once per tick.
 
 Measured 2026-07-29 on logs/2026-07-29.log: 20144 of 21082 lines (95.6 percent,
 2.4 MB) were the single line "LCU lockfile not found - client may not be
-running". Two ~1 Hz callers drive it while League is closed - the auto-accept
-heartbeat (lcu/lcu_client.py _auto_accept_tick, which calls connect() whenever
-_port is falsy) and the per-request cold connect in
-dashboard/_lcu_inprocess.py - so the line repeats forever with no new
-information after the first one.
+running". The first fix demoted the repeat from INFO to DEBUG, which fixed the
+console but NOTHING ON DISK, because core/log_setup.py calls
+fh.setLevel(logging.DEBUG) unconditionally ("always verbose to file").
 
-This is a signal-to-noise defect, not merely disk volume: the cost/health
-watchdog and every future log audit read a file that is 96 percent one line.
-The sibling _refresh_conn_if_changed already documents the intended contract in
-its own docstring ("it neither re-parses nor log-spams"), and the auto-accept
-loop's except handler already reasons explicitly about not flooding the log at
-1 Hz. The cold-start connect() path was the one place that did not honor it.
+Re-measured 2026-08-04 on logs/2026-08-04.log: the same line was 13316 of 13692
+lines (97.3 percent) over a 6771.5 s window - 1.97 lines/sec, because TWO
+processes poll LCU at 1 Hz and write the same daily file (pythonw main.py and
+tools/lcu_agent). core/log_setup.py guards double-setup WITHIN a process, so
+that pairing is cross-process and is not a duplicate-handler bug.
 
-The contract pinned here is deliberately about TRANSITIONS rather than a rate
-limit or a sampled every-Nth line: an operator reading the log needs to see
-exactly when League went away and exactly when it came back, and a rate limiter
-would eventually re-emit a line that says nothing.
+The contract pinned here therefore has two halves:
+
+  TRANSITION - the FIRST notice of a gap is INFO and immediate, because an
+  operator reading the log needs to see exactly when League went away and
+  exactly when it came back. A gap that ends and later re-opens re-notifies
+  immediately even if the previous throttle window has not expired.
+
+  THROTTLE - the repeat, which carries no information the first line did not,
+  is emitted at most once per _LOCKFILE_MISSING_REPEAT_S on the MONOTONIC
+  clock. Wall clock is not consulted: it can jump backwards (NTP, DST) and
+  would then stall the notice for hours.
+
+Downstream consumer: tools/lcu_push_watcher.py _RE_LOCKFILE_GAP parses these
+lines to detect a lockfile gap. Its state machine LATCHES (gap_pending stays
+True until the next "LCU connected:" line) and never looks at timestamps, so
+one line per gap is sufficient - which the immediate first INFO already
+guarantees. That is asserted end-to-end below rather than argued.
 """
 from __future__ import annotations
 
+import time as _real_time
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from lcu.lcu_client import LcuClient
+from lcu.lcu_client import _LOCKFILE_MISSING_REPEAT_S, LcuClient
+from tools.lcu_push_watcher import _RE_LOCKFILE_GAP, classify_events
 
 
 _MISSING = [Path(r"Z:\definitely-not-a-real-lockfile\lockfile")]
+_MSG = "lockfile not found"
 
 
 def _not_found_records(cm) -> list:
-    return [r for r in cm.records if "lockfile not found" in r.getMessage()]
+    return [r for r in cm.records if _MSG in r.getMessage()]
+
+
+def _fake_clock(now_ref):
+    """Module-namespace stand-in for `time` exposing ONLY monotonic and sleep.
+
+    Any use of time.time() in the throttle raises AttributeError here, so the
+    monotonic requirement is enforced by construction rather than by review.
+    sleep is kept because the module's auto-accept loop uses it.
+    """
+    return types.SimpleNamespace(
+        monotonic=lambda: now_ref[0],
+        sleep=_real_time.sleep,
+    )
+
+
+def _found_lockfile():
+    fake = mock.MagicMock(spec=Path)
+    fake.exists.return_value = True
+    fake.read_text.return_value = "LeagueClient:1234:2999:sekret:https"
+    fake.stat.return_value = mock.MagicMock(st_mtime=1.0)
+    return fake
 
 
 class LockfileNotFoundLogOnceTests(unittest.TestCase):
     def test_repeat_ticks_log_the_not_found_line_once(self):
-        client = LcuClient()
-        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
-            with self.assertLogs("rc.lcu", level="INFO") as cm:
-                for _ in range(50):
-                    self.assertFalse(client.connect())
-        self.assertEqual(
-            len(_not_found_records(cm)),
-            1,
-            "50 cold connects emitted more than one INFO; at 1 Hz this is the "
-            "20144-line flood measured on 2026-07-29",
-        )
-
-    def test_repeats_still_reach_the_file_at_debug(self):
-        """Suppression must not destroy the evidence - core/log_setup.py sends
-        DEBUG to file unconditionally, so a repeat stays diagnosable on disk.
+        """50 connects inside one instant produce exactly one record AT ANY
+        LEVEL - the DEBUG capture is the point, since the file handler is DEBUG.
         """
         client = LcuClient()
-        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
+        now = [1000.0]
+        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING), \
+                mock.patch("lcu.lcu_client.time", _fake_clock(now)):
             with self.assertLogs("rc.lcu", level="DEBUG") as cm:
-                for _ in range(5):
+                for _ in range(50):
+                    self.assertFalse(client.connect())
+        records = _not_found_records(cm)
+        self.assertEqual(
+            len(records),
+            1,
+            "50 cold connects emitted more than one record; at 1 Hz across two "
+            "processes this is the 13316-line flood measured on 2026-08-04",
+        )
+        self.assertEqual(records[0].levelname, "INFO")
+
+    def test_repeat_is_throttled_to_one_per_interval_not_one_per_tick(self):
+        """Suppression must not destroy the evidence - a repeat still reaches
+        the file, but on the interval rather than on every tick, and at DEBUG so
+        the console stays quiet.
+
+        Re-expresses the old test_repeats_still_reach_the_file_at_debug: same
+        intent (repeats stay diagnosable on disk at DEBUG), new rate.
+        """
+        client = LcuClient()
+        now = [1000.0]
+        interval = _LOCKFILE_MISSING_REPEAT_S
+        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING), \
+                mock.patch("lcu.lcu_client.time", _fake_clock(now)):
+            with self.assertLogs("rc.lcu", level="DEBUG") as cm:
+                # 1 Hz for a little over two intervals.
+                for _ in range(int(interval * 2) + 5):
                     client.connect()
-        self.assertEqual(len(_not_found_records(cm)), 5)
+                    now[0] += 1.0
         levels = [r.levelname for r in _not_found_records(cm)]
-        self.assertEqual(levels, ["INFO", "DEBUG", "DEBUG", "DEBUG", "DEBUG"])
+        self.assertEqual(
+            levels,
+            ["INFO", "DEBUG", "DEBUG"],
+            "expected one immediate INFO plus one DEBUG repeat per elapsed "
+            f"{interval} s window, got {levels}",
+        )
+
+    def test_measured_flood_window_collapses_to_about_two_hundred_lines(self):
+        """Regression pin on the interval itself, in the units that were
+        measured: the 2026-08-04 window was 6771.5 s and 13316 lines.
+        """
+        client = LcuClient()
+        now = [0.0]
+        window_s = 6771.5
+        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING), \
+                mock.patch("lcu.lcu_client.time", _fake_clock(now)):
+            with self.assertLogs("rc.lcu", level="DEBUG") as cm:
+                # 1.97 lines/sec was TWO processes at 1 Hz; one process ticks 1 Hz.
+                while now[0] < window_s:
+                    client.connect()
+                    now[0] += 1.0
+        emitted = len(_not_found_records(cm))
+        self.assertLessEqual(
+            emitted,
+            250,
+            f"{emitted} lines over the measured 6771.5 s window; the pre-fix "
+            "count for a single 1 Hz process was 6658",
+        )
 
     def test_a_second_loss_after_a_successful_connect_logs_again(self):
         """The transition contract: League closing a second time is news."""
@@ -98,11 +176,7 @@ class LockfileNotFoundLogOnceTests(unittest.TestCase):
                 client.connect()
         self.assertEqual(len(_not_found_records(cm1)), 1)
 
-        fake = mock.MagicMock(spec=Path)
-        fake.exists.return_value = True
-        fake.read_text.return_value = "LeagueClient:1234:2999:sekret:https"
-        fake.stat.return_value = mock.MagicMock(st_mtime=1.0)
-        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", [fake]):
+        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", [_found_lockfile()]):
             self.assertTrue(client.connect())
         self.assertEqual(client._port, 2999)
 
@@ -110,6 +184,43 @@ class LockfileNotFoundLogOnceTests(unittest.TestCase):
             with self.assertLogs("rc.lcu", level="INFO") as cm2:
                 client.connect()
         self.assertEqual(len(_not_found_records(cm2)), 1)
+
+    def test_a_reopened_gap_notifies_immediately_inside_a_live_window(self):
+        """The easiest thing to get wrong: a gap that ENDS and re-opens while
+        the previous throttle window is still running must NOT be swallowed.
+
+        The whole sequence runs inside one interval on the fake clock, so a
+        throttle that gates the first notice as well as the repeat fails here.
+        """
+        client = LcuClient()
+        now = [500.0]
+        with mock.patch("lcu.lcu_client.time", _fake_clock(now)):
+            with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
+                with self.assertLogs("rc.lcu", level="DEBUG") as first:
+                    client.connect()
+            self.assertEqual(len(_not_found_records(first)), 1)
+
+            now[0] += 1.0  # League launches one second later
+            with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", [_found_lockfile()]):
+                self.assertTrue(client.connect())
+
+            now[0] += 1.0  # and closes again, still deep inside the old window
+            with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
+                with self.assertLogs("rc.lcu", level="DEBUG") as second:
+                    client.connect()
+
+        records = _not_found_records(second)
+        self.assertEqual(
+            len(records),
+            1,
+            "the re-opened gap was swallowed by the still-running throttle "
+            f"window ({_LOCKFILE_MISSING_REPEAT_S} s)",
+        )
+        self.assertEqual(
+            records[0].levelname,
+            "INFO",
+            "a re-opened gap must re-notify at INFO, not as a DEBUG repeat",
+        )
 
     def test_return_value_is_unchanged_by_the_suppression(self):
         """Suppression is a logging change only - every caller branches on the
@@ -120,6 +231,38 @@ class LockfileNotFoundLogOnceTests(unittest.TestCase):
             self.assertEqual(
                 [client.connect() for _ in range(3)], [False, False, False]
             )
+
+
+class WatcherGapDetectionSurvivesTheThrottleTests(unittest.TestCase):
+    """tools/lcu_push_watcher.py must still detect the gap at this interval."""
+
+    def test_the_emitted_message_still_matches_the_watcher_regex(self):
+        client = LcuClient()
+        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
+            with self.assertLogs("rc.lcu", level="DEBUG") as cm:
+                client.connect()
+        msg = _not_found_records(cm)[0].getMessage()
+        self.assertTrue(
+            _RE_LOCKFILE_GAP.search(msg),
+            f"_RE_LOCKFILE_GAP no longer matches the emitted line: {msg!r}",
+        )
+
+    def test_one_gap_line_per_gap_is_enough_for_the_watcher(self):
+        """The watcher LATCHES gap_pending until the next connect and never
+        reads timestamps, so the single immediate INFO carries the detection.
+        Fed here as the minimum the throttle can produce: exactly ONE gap line.
+        """
+        verdicts = classify_events([
+            "INFO rc.lcu LCU connected: port 1111 (from x)",
+            "INFO rc.lcu LCU lockfile not found - client may not be running",
+            "INFO rc.lcu LCU connected: port 2222 (from x)",
+            "INFO rc.rune RuneWriter: champ select entered",
+            "INFO rc.rune RuneWriter: champion=Ezreal mode=ARAM - applying runes",
+            "INFO rc.rune RuneWriter: champ select ended - re-armed",
+        ])
+        self.assertEqual(len(verdicts), 1)
+        self.assertEqual(verdicts[0]["restart_reason"], "lockfile_gap")
+        self.assertEqual(verdicts[0]["verdict"], "PASS")
 
 
 if __name__ == "__main__":
