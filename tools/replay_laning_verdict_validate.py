@@ -46,11 +46,28 @@ Interpreting the result
   against this lane-outcome proxy. A human / orchestrator decides the flip; this
   harness only reports the number.
 
+Axis sweep (``--cd-state`` / ``--item-state``)
+----------------------------------------------
+Step 2 above scores ONE cell per pair. That silently collapsed two real axes,
+so a flip decision rested on a single slice of the table. The sweep flags score
+the cartesian product of the requested cd_states x item_states, reported per
+combination under ``axis_sweep``. Both flags default to unset, and an unset run
+resolves the identical baseline cell it always did - that is what keeps a new
+number comparable against the 2026-06 baseline artifact.
+
+Note that ``item_state`` is INERT against every table currently on disk: they
+are all schema ``laning_scenarios/v3``, whose cd node IS the leaf cell, so
+``lookup``'s descend-only fallback returns the same cell for every item_state.
+Measuring that inertness is the point - it was previously unobservable.
+
 Output
 ------
 - A JSON gate artifact at ``ops/runtime/laning_verdict_validation.json``
   (override with ``--out``). The durable deliverable.
-- A concise human summary on stdout.
+- A concise human summary on stdout, including a BALANCE CENSUS
+  (``label_base_rate_gold``) that separates "the verdict carries no signal"
+  from "the harness cannot tell" - a ~0.50 agreement only indicts the verdict
+  when the predictor and the label both actually vary.
 
 Fail-soft: a malformed match / pair / cell never aborts the run - it is skipped
 and counted. ASCII-only by hard rule.
@@ -99,6 +116,16 @@ _DEFAULT_GOLD_FRAME_MIN = 10
 # scale + default as the matchup gate (the table bakes the engine net_swing).
 _EVEN_BAND = 0.02
 
+# The unknown-state baseline cell: what the live chip resolves when mana / ult /
+# items are unknown (``mana_state_for(None)`` -> full, ``cd_state_for(None)`` ->
+# all_up, and ``lookup``'s own item_state default). These are pinned as module
+# constants rather than call-site literals so the sweep can vary an axis WITHOUT
+# moving the default - the 2026-06 baseline is only comparable against a run
+# that still scores this exact cell.
+_DEFAULT_MANA_STATE = "full"
+_DEFAULT_CD_STATE = "all_up"
+_DEFAULT_ITEM_STATE = "none"
+
 # Verdict -> champ_a stance. all_in/trade = a commits (a favored); back_off = a
 # yields (b favored); even = no decisive call.
 _AGGRESSIVE = ("all_in", "trade")
@@ -107,11 +134,22 @@ _ACTION_VERDICTS = _AGGRESSIVE + _DEFENSIVE
 
 
 # --------------------------------------------------------------------- verdict access
-def make_verdict_fn(table: object) -> Callable[[str, str, str], Tuple[Optional[str], object]]:
+def make_verdict_fn(
+    table: object,
+    cd_state: str = _DEFAULT_CD_STATE,
+    item_state: str = _DEFAULT_ITEM_STATE,
+    mana_state: str = _DEFAULT_MANA_STATE,
+) -> Callable[[str, str, str], Tuple[Optional[str], object]]:
     """Closure over the loaded HZ-A table -> ``(champ_a, champ_b, level) ->
     (verdict, net_swing)`` via the live coach lookup path. Missing cell / any
     error -> ``(None, None)`` (counted as uncovered). Imported lazily so unit
-    tests that inject their own verdict_fn never need the real data files."""
+    tests that inject their own verdict_fn never need the real data files.
+
+    The three state axes are keyword arguments defaulting to the unknown-state
+    baseline, so an un-flagged call resolves exactly the cell this gate has
+    always scored. ``item_state`` is a no-op against the v3 tables currently on
+    disk (a v3 cd node IS the leaf cell), which is precisely why the axis needs
+    to be sweepable rather than assumed - the collapse is invisible otherwise."""
     from core.archetype_picks import canonical_champion_id
     from core.laning_scenario_precompute import lookup
     from core.precomputed_laning_coach import band_for_level
@@ -123,8 +161,9 @@ def make_verdict_fn(table: object) -> Callable[[str, str, str], Tuple[Optional[s
                 canonical_champion_id(champ_a),
                 canonical_champion_id(champ_b),
                 band_for_level(level),
-                "full",
-                "all_up",
+                mana_state,
+                cd_state,
+                item_state,
             )
         except Exception:  # noqa: BLE001
             return (None, None)
@@ -133,6 +172,25 @@ def make_verdict_fn(table: object) -> Callable[[str, str, str], Tuple[Optional[s
         return (cell.get("verdict"), cell.get("net_swing"))
 
     return _verdict
+
+
+def _parse_states(raw: Optional[str], default: str) -> List[str]:
+    """Comma-separated axis states -> ordered, de-duplicated list. An absent or
+    all-blank value yields ``[default]`` so the caller always has one column."""
+    out: List[str] = []
+    for chunk in str(raw or "").split(","):
+        chunk = chunk.strip()
+        if chunk and chunk not in out:
+            out.append(chunk)
+    return out or [default]
+
+
+def sweep_axis_combos(
+    cd_states: Sequence[str], item_states: Sequence[str]
+) -> List[Tuple[str, str]]:
+    """Cartesian product of the two swept axes, cd-major (so the printed sweep
+    groups every item_state under its cd_state)."""
+    return [(cd, item) for cd in cd_states for item in item_states]
 
 
 def favored_side(verdict: Optional[str], net_swing: object, even_band: float) -> Optional[bool]:
@@ -215,6 +273,44 @@ def score_pair_duel(
     return ("decisive", fav_a == duel_favors_a, verdict)
 
 
+class _LabelBaseRate:
+    """Predictor-vs-label balance over the scored pairs.
+
+    Exists to separate two readings of a ~0.50 agreement that look identical in
+    the headline number: a verdict that carries no signal, versus a harness that
+    cannot tell. If the predictor is degenerate (always one side) or the label is
+    one-sided, the agreement is an artifact and says nothing about the verdict.
+    Only when BOTH vary does 0.50 mean zero mutual information."""
+
+    def __init__(self) -> None:
+        self.n = 0
+        self.pred_a = 0
+        self.label_a = 0
+        self.label_b = 0
+        self.label_ties = 0
+
+    def record(self, fav_a: bool, truth_a: float, truth_b: float) -> None:
+        self.n += 1
+        if fav_a:
+            self.pred_a += 1
+        if truth_a == truth_b:
+            self.label_ties += 1
+        elif truth_a > truth_b:
+            self.label_a += 1
+        else:
+            self.label_b += 1
+
+    def to_dict(self) -> dict:
+        label_n = self.label_a + self.label_b
+        return {
+            "n": self.n,
+            "predictor_favors_a_rate": (self.pred_a / self.n) if self.n else None,
+            "label_favors_a_rate": (self.label_a / label_n) if label_n else None,
+            "label_decisive_n": label_n,
+            "label_ties": self.label_ties,
+        }
+
+
 class _ActionBreakdown:
     """Per-verdict-ACTION agreement accumulator (all_in / trade / back_off)."""
 
@@ -247,6 +343,16 @@ class _ActionBreakdown:
 
 
 # ----------------------------------------------------------------------- orchestration
+def _connect_readonly(db_path: Path) -> sqlite3.Connection:
+    """Open the replay corpus read-only, falling back to a plain connect when
+    the URI form is unavailable so an odd path never fails the whole gate."""
+    try:
+        uri = "file:" + str(db_path).replace("\\", "/") + "?mode=ro"
+        return sqlite3.connect(uri, uri=True)
+    except sqlite3.Error:
+        return sqlite3.connect(str(db_path))
+
+
 def run_validation(
     db_path: Path,
     levels: Sequence[int],
@@ -258,13 +364,17 @@ def run_validation(
     """Walk the SR replays, score every lane pair vs gold + duel truth at each
     level, and build the report (gold agreement, duel agreement, per-action
     breakdown, coverage)."""
-    conn = sqlite3.connect(str(db_path))
+    # Read-only URI connect: this is the operator's live 1.8GB history DB in WAL
+    # mode, and a read-write handle would touch its -wal/-shm sidecars for a run
+    # that only ever SELECTs.
+    conn = _connect_readonly(db_path)
     try:
         match_ids = select_sr_match_ids(conn, limit)
         gold: Dict[int, LevelResult] = {lvl: LevelResult(level=lvl) for lvl in levels}
         duel: Dict[int, LevelResult] = {lvl: LevelResult(level=lvl) for lvl in levels}
         action_gold = _ActionBreakdown()
         action_duel = _ActionBreakdown()
+        base_rate = _LabelBaseRate()
 
         n_matches_used = 0
         n_matches_skipped = 0
@@ -290,6 +400,14 @@ def run_validation(
                     kc = {"solo": (0, 0), "any": (0, 0)}
                 a_solo, b_solo = kc["solo"]
                 for lvl in levels:
+                    # Balance census, kept independent of the agreement tally so
+                    # a 0.50 headline can be attributed to the verdict rather
+                    # than to a degenerate predictor or a one-sided label.
+                    _bv, _bs = verdict_fn(pair.champ_a, pair.champ_b, lvl)
+                    _bfav = favored_side(_bv, _bs, even_band)
+                    if _bfav is not None:
+                        base_rate.record(_bfav, pair.gold_a, pair.gold_b)
+
                     g_status, g_agree, g_verdict = score_pair_gold(
                         pair, lvl, verdict_fn, even_band)
                     if g_status == "uncovered":
@@ -330,6 +448,7 @@ def run_validation(
         "levels_duel": [duel[lvl].to_dict() for lvl in levels],
         "action_breakdown_gold": action_gold.to_dict(),
         "action_breakdown_duel": action_duel.to_dict(),
+        "label_base_rate_gold": base_rate.to_dict(),
         "interpretation": (
             "Gold + solo-kill duel are noisy lane-outcome proxies (ganks / roams "
             "/ missed-assist kills), so treat the agreement as an honest lower-"
@@ -400,6 +519,23 @@ def print_summary(report: dict) -> None:
         print(f"  -- {label} (per-verdict agreement) --")
         for verdict, slot in report[key].items():
             print(f"    {verdict:<9} n={slot['n']:>5}  agree={_fmt_pct(slot['agreement'])}")
+    br = report.get("label_base_rate_gold") or {}
+    if br.get("n"):
+        print("")
+        print("  -- BALANCE CENSUS (is 0.50 the verdict, or the harness?) --")
+        print(f"    scored pairs          n={br['n']}")
+        print(f"    predictor favors a    {_fmt_pct(br['predictor_favors_a_rate'])}")
+        print(f"    label     favors a    {_fmt_pct(br['label_favors_a_rate'])}"
+              f"  (n={br['label_decisive_n']}, ties={br['label_ties']})")
+        print("    Both near 50% + agreement near 50% = zero mutual information,")
+        print("    i.e. the VERDICT is uninformative (not a broken label).")
+    for entry in report.get("axis_sweep") or []:
+        print("")
+        print(f"  -- AXIS SWEEP cd_state={entry['cd_state']} "
+              f"item_state={entry['item_state']} --")
+        for lv in entry["levels_gold"]:
+            print(f"    gold L{lv['level']:<3} n={lv['n_decisive']:>6}  "
+                  f"agree={_fmt_pct(lv['agreement'])}")
     print("")
     print("interpretation:")
     print("  " + report["interpretation"])
@@ -435,7 +571,9 @@ def _parse_levels(raw: str) -> List[int]:
     return out or list(_DEFAULT_LEVELS)
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def build_arg_parser() -> argparse.ArgumentParser:
+    """The CLI surface, split out so the flag defaults are directly testable -
+    an accidentally-defaulted sweep flag would silently move the scored cell."""
     ap = argparse.ArgumentParser(
         description="Replay-validate the shipped HZ-A laning verdict (laning-coach Haiku-flip gate)."
     )
@@ -450,7 +588,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--even-band", type=float, default=_EVEN_BAND,
                     help="|net_swing| below this is excluded as even. Default %(default)s.")
     ap.add_argument("--out", default=str(_DEFAULT_OUT), help="Output JSON gate artifact path.")
-    args = ap.parse_args(argv)
+    # Both default to None, NOT to the baseline state: an explicit None is how
+    # main() tells "no sweep requested" from "sweep the baseline column", which
+    # keeps an un-flagged run byte-comparable with the 2026-06 baseline.
+    ap.add_argument("--cd-state", default=None,
+                    help="Comma-separated cd_states to sweep (e.g. all_up,no_ult). "
+                         "Absent = score only the all_up baseline, as before.")
+    ap.add_argument("--item-state", default=None,
+                    help="Comma-separated item_states to sweep (e.g. none,first_item). "
+                         "Absent = score only the lookup default. No-op on v3 tables.")
+    return ap
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    args = build_arg_parser().parse_args(argv)
 
     db_path = Path(args.db)
     if not db_path.exists():
@@ -466,6 +617,33 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         db_path=db_path, levels=levels, limit=args.limit,
         gold_frame_min=args.gold_frame, verdict_fn=verdict_fn, even_band=args.even_band,
     )
+
+    if args.cd_state is not None or args.item_state is not None:
+        combos = sweep_axis_combos(
+            _parse_states(args.cd_state, _DEFAULT_CD_STATE),
+            _parse_states(args.item_state, _DEFAULT_ITEM_STATE),
+        )
+        sweep = []
+        for cd, item in combos:
+            print(f"sweeping cd_state={cd} item_state={item}...", file=sys.stderr)
+            sub = run_validation(
+                db_path=db_path, levels=levels, limit=args.limit,
+                gold_frame_min=args.gold_frame,
+                verdict_fn=make_verdict_fn(table, cd_state=cd, item_state=item),
+                even_band=args.even_band,
+            )
+            sweep.append({
+                "cd_state": cd,
+                "item_state": item,
+                "mana_state": _DEFAULT_MANA_STATE,
+                "coverage": sub["coverage"],
+                "levels_gold": sub["levels_gold"],
+                "levels_duel": sub["levels_duel"],
+                "action_breakdown_gold": sub["action_breakdown_gold"],
+                "label_base_rate_gold": sub["label_base_rate_gold"],
+            })
+        report["axis_sweep"] = sweep
+
     out_path = Path(args.out)
     _write_report(report, out_path)
     print_summary(report)
