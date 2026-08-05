@@ -36,6 +36,7 @@ the 12s ready-check accept window:
 """
 import base64
 import json
+import logging
 import os
 import re
 import ssl
@@ -61,6 +62,24 @@ from lcu.snapshot_shape import (  # noqa: E402,F401
     _derive_search_state,
     shape_snapshot,
 )
+
+# RM-154. The RC-LCUAgent task runs this under pythonw.exe, which has NO
+# console: print() is discarded and stderr is None, so every line this module
+# used to emit - the 401s, the command results, the ingest-recovery trail -
+# went nowhere, and the only symptom was a champ-select UI that stopped
+# updating. Explicit handlers give it a channel that survives.
+# Precedent: tools/liveclient_relay.py:41-51.
+_LOG_FILE = Path(__file__).resolve().parent.parent / "logs" / "lcu_agent.log"
+_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(str(_LOG_FILE), encoding="utf-8"),
+    ],
+)
+log = logging.getLogger("lcu_agent")
 
 # Vision-relay base. LOOPBACK by default (RM-150). This was a hardcoded
 # 192.168.8.230, which still resolves on this box but is wrong on both counts
@@ -172,7 +191,7 @@ def ensure_lcu_conn() -> bool:
     if not port or not pwd:
         with _lcu_lock:
             if _lcu["port"] is not None:
-                print("[lcu] lockfile gone - client closed", flush=True)
+                log.info("[lcu] lockfile gone - client closed")
             _lcu["port"] = _lcu["auth"] = _lcu["header"] = None
         return False
     with _lcu_lock:
@@ -181,7 +200,7 @@ def ensure_lcu_conn() -> bool:
             _lcu["port"] = port
             _lcu["auth"] = pwd
             _lcu["header"] = f"Basic {token}"
-            print(f"[lcu] connected port={port}", flush=True)
+            log.info(f"[lcu] connected port={port}")
     return True
 
 
@@ -405,7 +424,7 @@ def execute_command(cmd: dict) -> dict:
         for k in ("auto_accept", "summoner_override", "summoner_d", "summoner_f"):
             if k in cmd:
                 CONFIG[k] = cmd[k]
-        print(f"[cmd] config -> {CONFIG}", flush=True)
+        log.info(f"[cmd] config -> {CONFIG}")
         return {"ok": True, "config": dict(CONFIG)}
     if name == "apply_item_set":
         # Push a custom item set (Phase 2).
@@ -798,13 +817,13 @@ def execute_command(cmd: dict) -> dict:
         for method, path in attempts:
             resp, err = lcu_request(method, path, body)
             if err is None:
-                print(f"[cmd] set_augment_intent augment={aug_id} slot={slot} "
-                      f"-> {method} {path} ok", flush=True)
+                log.info(f"[cmd] set_augment_intent augment={aug_id} slot={slot} "
+                      f"-> {method} {path} ok")
                 return {"ok": True, "augment_id": aug_id, "slot": slot,
                         "endpoint": f"{method} {path}", "resp": resp}
             tried.append(f"{method} {path} -> {err}")
-        print(f"[cmd] set_augment_intent augment={aug_id} slot={slot} "
-              f"FAIL all 4 endpoints", flush=True)
+        log.error(f"[cmd] set_augment_intent augment={aug_id} slot={slot} "
+              f"FAIL all 4 endpoints")
         return {"ok": False, "err": "augment_intent_all_endpoints_failed",
                 "augment_id": aug_id, "slot": slot, "tried": tried}
     if name == "trade_request":
@@ -1096,7 +1115,7 @@ def auto_features() -> None:
             pr = rc.get("playerResponse", "")
             if pr in ("None", None, ""):
                 lcu_request("POST", "/lol-matchmaking/v1/ready-check/accept")
-                print("[auto] queue accepted", flush=True)
+                log.info("[auto] queue accepted")
     # Auto-set summoner spells in champ select if override enabled
     if CONFIG.get("summoner_override"):
         sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
@@ -1117,7 +1136,7 @@ def auto_features() -> None:
                         "/lol-champ-select/v1/session/my-selection", body)
                     if err is None:
                         _session_state["last_summoner_set_for"] = key
-                        print(f"[auto] summoners -> D={want_d} F={want_f}", flush=True)
+                        log.info(f"[auto] summoners -> D={want_d} F={want_f}")
 
 
 # -- Legion HTTP -------------------------------------------------------------
@@ -1179,8 +1198,7 @@ def _maybe_load_champion_names():
             _CHAMP_NAME_CACHE[cid] = str(name)
     if _CHAMP_NAME_CACHE:
         _CHAMP_NAME_CACHE_LOADED = True
-        print(f"[lcu] loaded {len(_CHAMP_NAME_CACHE)} champion names",
-              flush=True)
+        log.info(f"[lcu] loaded {len(_CHAMP_NAME_CACHE)} champion names")
 
 
 def _champion_name_for(cid) -> str:
@@ -1307,12 +1325,11 @@ def _maybe_refresh_team_context(state: dict) -> None:
     if ok:
         _team_context_state["last_picks_signature"] = sig
         _team_context_state["last_post_at"] = time.monotonic()
-        print(f"[team-context] refresh OK queue={body['queue_id']} "
-              f"roster={len(body['roster'])} entry={is_entry}",
-              flush=True)
+        log.info(f"[team-context] refresh OK queue={body['queue_id']} "
+              f"roster={len(body['roster'])} entry={is_entry}")
     else:
         # Don't latch sig on failure - next cycle will retry.
-        print(f"[team-context] refresh failed: {detail}", flush=True)
+        log.error(f"[team-context] refresh failed: {detail}")
 
 
 # -- s219 Post Game Review: LCU match-detail auto-ingest ---------------------
@@ -1367,8 +1384,7 @@ def _maybe_force_augment_scan(state: dict) -> None:
     _augment_scan_state["was_open"] = open_now
     if open_now and not was:
         _write_force_scan_marker()
-        print("[augment-scan] force_scan bumped (Cherry picker opened)",
-              flush=True)
+        log.info("[augment-scan] force_scan bumped (Cherry picker opened)")
 
 # Persisted state path. Survives agent restart so a crash right at game end
 # doesn't cause the next boot to miss the ingest.
@@ -1389,11 +1405,10 @@ def _load_ingest_state() -> None:
         gid = data.get("last_game_id_ingested")
         if gid is not None:
             _post_match_ingest_state["last_game_id_ingested"] = gid
-            print(f"[ingest-state] restored last_game_id_ingested={gid} "
-                  f"from {INGEST_STATE_FILE}", flush=True)
+            log.info(f"[ingest-state] restored last_game_id_ingested={gid} "
+                  f"from {INGEST_STATE_FILE}")
     except (OSError, ValueError) as exc:
-        print(f"[ingest-state] load failed (continuing fresh): {exc}",
-              flush=True)
+        log.error(f"[ingest-state] load failed (continuing fresh): {exc}")
 
 
 def _save_ingest_state() -> None:
@@ -1409,7 +1424,7 @@ def _save_ingest_state() -> None:
         tmp.write_text(json.dumps(payload), encoding="utf-8")
         os.replace(tmp, INGEST_STATE_FILE)
     except OSError as exc:
-        print(f"[ingest-state] save failed: {exc}", flush=True)
+        log.error(f"[ingest-state] save failed: {exc}")
 
 
 def _recover_missed_ingest() -> None:
@@ -1450,15 +1465,15 @@ def _recover_missed_ingest() -> None:
             return
         last = _post_match_ingest_state["last_game_id_ingested"]
         if last == gid:
-            print(f"[ingest-recovery] latest gameId={gid} matches persisted "
-                  f"- no recovery needed", flush=True)
+            log.info(f"[ingest-recovery] latest gameId={gid} matches persisted "
+                  f"- no recovery needed")
             _post_match_ingest_state["startup_recovery_done"] = True
             return
         # Mismatch - fetch full detail + POST.
         detail, _ = lcu_request("GET", f"/lol-match-history/v1/games/{gid}")
         if not isinstance(detail, dict):
-            print(f"[ingest-recovery] couldn't fetch detail for gameId={gid}; "
-                  f"will retry via EndOfGame path", flush=True)
+            log.warning(f"[ingest-recovery] couldn't fetch detail for gameId={gid}; "
+                        f"will retry via EndOfGame path")
             return
         ok, status = post_last_match_ingest(puuid, detail)
         if ok:
@@ -1466,14 +1481,14 @@ def _recover_missed_ingest() -> None:
             _post_match_ingest_state["last_post_at"] = time.monotonic()
             _save_ingest_state()
             _post_match_ingest_state["startup_recovery_done"] = True
-            print(f"[ingest-recovery] shipped gameId={gid} on agent boot "
+            log.info(f"[ingest-recovery] shipped gameId={gid} on agent boot "
                   f"(persisted={last!r}, latest={gid}) - crash-recovery "
-                  f"path engaged", flush=True)
+                  f"path engaged")
         else:
-            print(f"[ingest-recovery] POST failed: {status}; will retry "
-                  f"via EndOfGame path", flush=True)
+            log.error(f"[ingest-recovery] POST failed: {status}; will retry "
+                  f"via EndOfGame path")
     except Exception as exc:  # noqa: BLE001
-        print(f"[ingest-recovery] error (non-fatal): {exc}", flush=True)
+        log.error(f"[ingest-recovery] error (non-fatal): {exc}")
 
 
 def _fetch_latest_match_for_ingest():
@@ -1574,11 +1589,11 @@ def _maybe_ingest_last_match(state: dict) -> None:
     if ok:
         _post_match_ingest_state["last_game_id_ingested"] = gid
         _save_ingest_state()  # persist for crash-recovery on next boot
-        print(f"[last-match-ingest] shipped gameId={gid} "
-              f"(transition {prior!r} -> EndOfGame)", flush=True)
+        log.info(f"[last-match-ingest] shipped gameId={gid} "
+              f"(transition {prior!r} -> EndOfGame)")
     else:
-        print(f"[last-match-ingest] POST failed: {status} "
-              f"(gameId={gid}; will retry next cycle)", flush=True)
+        log.error(f"[last-match-ingest] POST failed: {status} "
+              f"(gameId={gid}; will retry next cycle)")
 
 
 # -- Worker loops (one per concern) ------------------------------------------
@@ -1600,7 +1615,7 @@ def _state_push_loop():
                 consecutive_fail = 0
             except Exception as e:  # noqa: BLE001
                 consecutive_fail += 1
-                print(f"  [push err {consecutive_fail}x] {e}", flush=True)
+                log.error(f"  [push err {consecutive_fail}x] {e}")
             # FU02 last-mile: edge-fire team-context refresh on
             # ChampSelect entry + on lock/swap. Independent of the
             # vision-relay push above - failure here MUST NOT bump
@@ -1608,23 +1623,23 @@ def _state_push_loop():
             try:
                 _maybe_refresh_team_context(state)
             except Exception as e:  # noqa: BLE001
-                print(f"  [team-context err] {e}", flush=True)
+                log.error(f"  [team-context err] {e}")
             # s219 Post Game Review: edge-fire LCU match-detail ingest
             # on EndOfGame transition so the Post Game Review page is
             # instant. Same isolation as team-context above.
             try:
                 _maybe_ingest_last_match(state)
             except Exception as e:  # noqa: BLE001
-                print(f"  [last-match-ingest err] {e}", flush=True)
+                log.error(f"  [last-match-ingest err] {e}")
             # D6: edge-fire a force_scan when the Arena/Cherry augment picker
             # opens so vision OCRs the transient panel before it closes.
             # Same isolation as the neighbours - MUST NOT affect the push cadence.
             try:
                 _maybe_force_augment_scan(state)
             except Exception as e:  # noqa: BLE001
-                print(f"  [augment-scan err] {e}", flush=True)
+                log.error(f"  [augment-scan err] {e}")
         except Exception as e:  # noqa: BLE001
-            print(f"[state loop err] {e}", flush=True)
+            log.error(f"[state loop err] {e}")
         # E7 TODO-1: wake early when the cmd loop drained a latency-sensitive
         # batch (bench swap / reroll / accept) so the new pick reflects in
         # ~BENCH_CMD_FAST_INTERVAL; an idle wait still times out at the
@@ -1646,7 +1661,7 @@ def _auto_features_loop():
             ensure_lcu_conn()
             auto_features()
         except Exception as e:  # noqa: BLE001
-            print(f"[auto loop err] {e}", flush=True)
+            log.error(f"[auto loop err] {e}")
         time.sleep(AUTO_INTERVAL)
 
 
@@ -1678,9 +1693,9 @@ def drain_once(get_fn, post_fn, exec_fn):
             result = exec_fn(cmd)
         except Exception as exc:  # noqa: BLE001
             result = {"ok": False, "err": f"{type(exc).__name__}: {exc}"}
-            print(f"  [cmd-exc] {cmd.get('cmd')} -> {result}", flush=True)
+            log.warning(f"  [cmd-exc] {cmd.get('cmd')} -> {result}")
         else:
-            print(f"  [cmd] {cmd.get('cmd')} -> {result}", flush=True)
+            log.info(f"  [cmd] {cmd.get('cmd')} -> {result}")
         try:
             post_fn("/lcu-cmd-done", {"id": cid, "result": result})
         except Exception:  # noqa: BLE001
@@ -1714,16 +1729,15 @@ def _cmd_poll_loop():
             _processed, fast = drain_once(get, post, execute_command)
         except urllib.error.HTTPError as e:
             if e.code != 404:
-                print(f"  [cmd-poll err] {e}", flush=True)
+                log.error(f"  [cmd-poll err] {e}")
         except Exception as e:  # noqa: BLE001
-            print(f"  [cmd-poll err] {e}", flush=True)
+            log.error(f"  [cmd-poll err] {e}")
         _signal_state_refresh(fast, _processed)
         time.sleep(BENCH_CMD_FAST_INTERVAL if fast else CMD_INTERVAL)
 
 
 def loop() -> None:
-    print(f"lcu agent -> {LEGION} state={INTERVAL}s auto={AUTO_INTERVAL}s cmd={CMD_INTERVAL}s",
-          flush=True)
+    log.info(f"lcu agent -> {LEGION} state={INTERVAL}s auto={AUTO_INTERVAL}s cmd={CMD_INTERVAL}s")
     # s219: restore persisted ingest state + one-shot crash-recovery for
     # a missed EndOfGame POST. Both no-op gracefully if LCU isn't up yet
     # (the state-push loop's normal EndOfGame trigger handles the live
@@ -1737,5 +1751,12 @@ def loop() -> None:
 
 
 if __name__ == "__main__":
+    if not TOKEN:
+        # Exit non-zero so the RC-LCUAgent task's Last Result is not a
+        # reassuring 0 while every /upload-lcu POST 401s and champ-select
+        # never updates.
+        log.error("no vision token: set RC_VISION_TOKEN or create %s",
+                  Path(__file__).resolve().parent.parent / "config" / "vision_token.txt")
+        sys.exit(2)
     try: loop()
     except KeyboardInterrupt: sys.exit(0)
