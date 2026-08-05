@@ -6,6 +6,52 @@
 
 ---
 
+# 2026-08-05b - lane 8 cycle 8: the validator crashed, then blamed `<unknown>`
+
+`lane/true-audit` MERGED to main first (fast-forward `b1541d96..5da5cc7c`, the
+cycle-7 deploy containment now actually live since the supervisor loads it by
+absolute path). Then cycle 8: `core/config_validator.py`, 407 lines, **zero test
+references**, imported at import time by frozen `main.py:67`. Commit `17aa390a`;
+LEDGER 1199; 40 net-new tests.
+
+- **Read the CONSUMER before deciding what is worth fixing.** `main.py` wraps the
+  call in a bare `try/except` and **discards the return value**. The module's
+  entire product is its log line - so the bugs that mattered were the ones that
+  mangle the log line, not the ones that change a status code nobody reads.
+- **`key not in data` is a SUBSTRING test when `data` is a string.** A config
+  whose top-level JSON was a string passed the whole required-key loop, then
+  raised `TypeError` on `data[key]`. `validate_all` caught it and filed it under
+  the literal file name **`<unknown>`** - losing the file name in exactly the
+  case the module exists to diagnose. Fixed both ends: guard before any key
+  lookup, and pair every validator with its path UP FRONT so `<unknown>` is
+  unreachable.
+- **A permissive default is a silent off-switch.** `_check_type` returned True
+  for a type spec it did not recognise, so one typo in a `field_types` value
+  disabled that field's validation permanently with no signal. The shipped specs
+  moved into a declarative `_CONFIG_SPECS` registry so a test can sweep them.
+- **Emptiness is not falsiness.** Required keys must now be non-empty
+  (`python_exe: ""` and `app_cmd: []` both validated **OK** before), but judged
+  by container, so `false` and `0` stay legitimate configured values.
+- **A ruled-OUT assertion is not a pinned-DOWN one.** First mutation pass had a
+  survivor: the unreadable-file test asserted only that the word "expecting" was
+  ABSENT, which a collapsed generic message satisfies just as well as a correct
+  one. Strengthened to assert the OS detail survives AND that the read and parse
+  messages differ. **8 of 8 mutations now killed.**
+- **A required config that `.gitignore` excludes ERRORs on every fresh clone.**
+  `config/coach_settings.json` (`.gitignore:40`) is genuinely required and
+  genuinely absent in CI. Kept the ERROR, made it actionable by naming the
+  tracked `coach_settings.example.json`. Same reason `LiveConfigTests` is scoped
+  to configs that EXIST - a blanket "zero ERROR" gate passes on Legion and fails
+  in CI, which is a test that lies about where it works.
+- **`write_text` re-encoded the target to CRLF** during the mutation run
+  (`reference_windows_write_text_crlf_byte_count`). Caught by the `git diff` EOL
+  warning pre-commit and normalised back to LF. Pair it with the cycle-7 lesson:
+  CRLF breaks mutation anchors AND sneaks into commits.
+- Live config dir before and after: **4 OK, unchanged**. Full RC suite from the
+  REPO ROOT: **18393 passed, 154 skipped, 0 failed**.
+
+---
+
 # 2026-08-05a - lane 8 cycle 7: the deploy worker wrote wherever it was told
 
 `ops/rc_transactional_deploy.py` had **zero test references** and joined every
@@ -95,46 +141,3 @@ commit that fixes it - it needed a manual `workflow_dispatch`.
 Gates run by the merger rather than inherited: RC 18351 passed / 0 failed, DS 10380
 passed / 83 skipped / 6746 subtests from the repo root, RC restarted healthy,
 `/metrics` scrape 0.022s with `rc_riot_api_cache_over_cap` already reading 1.
-
----
-
-# 2026-08-04i - orchestrated 3-slice pass: RM-117 retention, RM-118 shields, RM-36 Ezreal (ENGINE 1.275.0)
-
-Operator asked why open items were running one at a time instead of orchestrated
-multi-agent. Answer: serial was drift, not policy - CLAUDE.md "Session Default" and
-memory `feedback_standing_five_item_parallel_loop` both make orchestrated the baseline.
-The exacting next-session prompt carries CONTENT, not cardinality. Ran the pass to prove it.
-
-SHIPPED - two commits, both pushed (`9907dca3..b510ce20`):
-- `1772c8d5` RM-117 (ii) `core/data_retention.py`, 4 classes, report-first. NOTHING DELETED.
-  RM-117 (iv) closed as STALE (fixed by `baecb54b` 68 min after filing, never recorded).
-- `b510ce20` merge, ENGINE 1.274.0 -> 1.275.0: RM-118 five per-item shield seams reach
-  `/ehp` (exposure only, `ehp.py` untouched); RM-36 AD-axis dual-scaling split credit,
-  Ezreal 0.0 -> 14.1067.
-
-THE THREE FINDINGS THAT MATTER MORE THAN THE CODE:
-1. Probing killed 2 of 5 proposed rows BEFORE any build. Filed rows are suspect until probed.
-2. RM-118 was filed as "10 seams declined by design". An adversarial pass tasked with
-   REFUTING that found 5 were live headless debt - their reason conflated route EXPOSURE
-   with a DEFAULT FLIP. An operator-gated live flip blocks ONLY the flip. My own two kills
-   were BOTH refuted by that pass; the reasoning I used to close RM-117 (iv) was vacuous
-   even though the conclusion held.
-3. MERGE HAZARD unique to parallel work: both DS slices recomputed the parity debt ledger
-   against a baseline the other invalidated (54 vs 60; truth is 55). Two individually
-   correct numbers, jointly wrong. Take the count by PARSING THE DICT.
-
-DO NOT REDO:
-- RM-35..RM-48 is CLOSED, all 14 resolved, narrative relocated to `docs/ROADMAP_HISTORY.md`.
-  Do not re-open the roster.
-- RM-117 (iv) is closed. `skipped: []` and `accounts_per_cohort: 14` are NOT evidence
-  about MASTER - both traps are recorded on the ROADMAP row.
-- The 5 seams remaining in `STRANDED_TODAY` are the s232 operator-CLOSED arc. Genuinely
-  declined. `assume_lifeline_shield` is one of them despite the name.
-- Neither new flag's default-ON flip is proposed. RM-36's rides G2-46 (blocked on RM-98).
-
-FLAGGED, NOT FIXED: `tools/ship-batch.md` says "about 14 files" assert the ENGINE pin.
-Real number is 125 files / 146 literals. Anyone trusting it ships a bump with ~110 red
-tests and assumes breakage. Worth a one-line correction next session.
-
-OPERATOR DECISION PENDING: 3.72 GB of `rewind_history.db` backups (11d/16d, zero readers)
-plus 24.6 MB tier-2 and 137 MB tier-3. Reported, deliberately not deleted.
