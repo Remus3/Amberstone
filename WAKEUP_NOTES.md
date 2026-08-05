@@ -6,6 +6,43 @@
 
 ---
 
+# 2026-08-05a - lane 8 cycle 7: the deploy worker wrote wherever it was told
+
+`ops/rc_transactional_deploy.py` had **zero test references** and joined every
+request-supplied path onto its root with no containment check. Committed
+`0647f3da` on `lane/true-audit`; LEDGER 1198; **branch is READY, not merged** -
+per the lane fence, lanes 7 and 8 ship last and the merge is the merger's call.
+
+- **The lane worktree did not exist at pre-flight.** `C:\rc-worktrees\` was empty
+  and there was no `lane/true-audit` branch, so the launcher had never fired for
+  this lane. Created it exactly as `ops/loop/lane_launcher.ensure_worktree`
+  (`:180-190`) would rather than editing the main tree. Main tree confirmed clean
+  and untouched at the end.
+- **Proven, not read:** the verifier ran the OLD and NEW modules against the same
+  hostile request. Old returned `phase=health_check` **having already written the
+  file outside `project_root`** - it failed later, after the write. New returns
+  `phase=validate` and writes nothing. On Windows `Path("C:/a") / Path("C:/b")`
+  is `C:\b`, so an absolute component discards the root entirely.
+- **A declared control that did not exist.** `rc_supervisor.py:29` documents that
+  rollback excludes `API-Key-Claude.txt`. The deploy script named that file in a
+  local `api_key` variable it never read. A grep for the exclusion passes; the
+  exclusion is not there. Worth carrying: **a variable holding the right value is
+  not an implementation, and it greps identically to one.**
+- **A CRLF file makes a mutation silently no-op.** Two mutants "survived" the
+  first pass; one was real (a test asserting only that something failed, over a
+  guard whose absence changed only the diagnosis) and one was a harness artifact -
+  a multi-line anchor containing `\n` never matches a CRLF file, so the mutation
+  applies to nothing and reads as GREEN. **Assert the anchor is present before
+  believing a surviving mutant.** Both were closed; 9 of 9 guards now die.
+- **No restart makes this live.** The supervisor launches the file by absolute
+  path from `C:\Riot Commander` (`ops/rc_config.json:9`), so `restart_trigger.txt`
+  deploys nothing here - only the merge does. Item 1179 in reverse, caught before
+  shipping rather than after.
+- **RM-160 filed** (BACKLOG, Reliability / hardening): the drop directory has no
+  producer and no ACL. Containment is now the only control standing on it.
+
+---
+
 # 2026-08-04j - headless run 2026-08-04-01: 6 slices, 3 refutations, 1 measured dead end
 
 The run's real output is not the six merges - it is that **every one of the three
