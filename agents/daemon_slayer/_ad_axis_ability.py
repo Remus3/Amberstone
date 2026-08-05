@@ -28,6 +28,48 @@ from .data_loader import DataSnapshot
 # on each.
 AD_AXIS_CREDITED_DAMAGE_TYPES = frozenset({"PHYSICAL", "TRUE"})
 
+# Damage types eligible for the RM-36 DUAL-SCALING SPLIT credit. PHYSICAL
+# only, and that is the guard rather than an oversight - see
+# ``_dual_scaling_ad_share`` below.
+AD_AXIS_SPLIT_DAMAGE_TYPES = frozenset({"PHYSICAL"})
+
+
+def _dual_scaling_ad_share(row) -> float:
+    """Fraction of a dual-scaling row's dps that belongs on the AD axis.
+
+    Returns ``ad_pct_sum / (ad_pct_sum + ap_pct_sum)`` for a PHYSICAL row that
+    carries BOTH sums, and 0.0 for everything else. A row with no AP scaling
+    is not a split case at all - the main filter already credits it in FULL -
+    and a row with no AD scaling has no AD portion to ship.
+
+    THE SHARE IS READ, NOT ASSUMED. The MIXED treatment the module docstring
+    describes is a flat 50 pct because ``_mitigation_factor`` splits MIXED
+    50/50 across armor and MR by construction (``ability_dps.py:385``). A
+    dual-SCALING row has no such structural constant: it carries its own
+    ratio in its damage blocks, so the honest analogue of that 50 pct is the
+    row's OWN ratio. Measured 2026-08-04, that share is 0.7647 for Ezreal Q
+    Mystic Shot (650.0 AD / 200.0 AP) and 0.6552 for Vayne Q Tumble.
+
+    WHY PHYSICAL ONLY - this is the load-bearing gate, not the ratio.
+    Roster-wide there is exactly ONE dual-scaling TRUE row, and it is the row
+    the AP-scaling exclusion was written to stop: Belveth R Endless Banquet,
+    ``ap_pct_sum`` 300.0 against ``ad_pct_sum`` 36.0. A ratio split applied to
+    TRUE would re-admit it at a 10.7 pct share, which is precisely the
+    "do NOT widen on the assumption that TRUE is AP-inert roster-wide"
+    warning in ``physical_ability_damage`` below. Chogath R Feast is the other
+    named exclusion and it carries ZERO AD scaling, so it is out twice over.
+    The TRUE arm therefore keeps its all-or-nothing gate; MAGIC stays
+    permanently excluded either way.
+    """
+    if (getattr(row, "damage_type", None) or "MAGIC").upper() \
+            not in AD_AXIS_SPLIT_DAMAGE_TYPES:
+        return 0.0
+    ap = float(getattr(row, "ap_pct_sum", 0.0) or 0.0)
+    ad = float(getattr(row, "ad_pct_sum", 0.0) or 0.0)
+    if ap <= 0.0 or ad <= 0.0:
+        return 0.0
+    return ad / (ad + ap)
+
 
 def physical_ability_damage(
     snapshot: DataSnapshot,
@@ -42,6 +84,7 @@ def physical_ability_damage(
     augments,
     target_current_hp_pct: float = 1.0,
     apply_cast_rate_propensity_prior: bool = False,
+    apply_dual_scaling_split: bool = False,
 ) -> float:
     """Credited-type ability-DPS scalar - the AD-axis analogue of
     ``_ability_damage`` (RM-39 / RM-43, DEFAULT-OFF seam).
@@ -127,6 +170,27 @@ def physical_ability_damage(
     become an AP-pricing channel - and her TRUE W Silver Bolts row, the one the
     L2 widen exists for, is unaffected.
 
+    ``apply_dual_scaling_split`` (RM-36, DEFAULT-OFF) is the repair for exactly
+    that collateral, and it is a SPLIT rather than a widen: the gate above is
+    untouched, and a row it drops is re-entered at only its AD SHARE,
+    ``_dual_scaling_ad_share(row) * row.dps``. PHYSICAL only - read that
+    helper for why, and for why Belveth R and Chogath R stay out. It exists
+    because the all-or-nothing gate made the term structurally blind to the
+    AD-CASTER it was ported to the carry ranker for: measured 2026-08-04 at
+    level 16 on the tanky target, Ezreal's ONLY PHYSICAL row is Q Mystic Shot
+    (dps 18.4472, ``ap_pct_sum`` 200.0) so his credited sum was exactly 0.0.
+    Armed, he credits 14.1067 and his carry ranking reorders. Roster-wide the
+    seam admits 24 PHYSICAL dual-scaling rows across 22 champions; a champion
+    with no such row (Aatrox, Corki) is byte-identical either way.
+
+    ZERO-TERM CONTROL: Ezreal WAS this seam's zero control and this flag
+    destroys that. SEJUANI replaces him and is sharper - her W Winter's Wrath
+    is PHYSICAL with a large dps (11.0029) but ``ap_pct_sum`` 800.0 and
+    ``ad_pct_sum`` 0.0, so it is zero under the gate AND under the share.
+    Mutation-proven: dropping the ``ad_pct_sum`` guard in
+    ``_dual_scaling_ad_share`` moves her from 0.0 to a large number. Pinned in
+    ``tests/test_ad_axis_dual_scaling_split_rm36.py``.
+
     WHY MIXED IS STILL HELD (a decision, not an oversight): the whole
     in-cohort MIXED population is Yone (W Spirit Cleave, R Fate Sealed).
     Unlike TRUE, MIXED does import magic-pen valuation - ``_mitigation_factor``
@@ -156,11 +220,31 @@ def physical_ability_damage(
         and float(getattr(row, "ap_pct_sum", 0.0) or 0.0) <= 0.0
     ]
     credited = sum(row.dps for row in credited_rows)
+    if apply_dual_scaling_split:
+        # RM-36: rows the AP-scaling gate DROPPED, re-entered at their AD share
+        # alone. Disjoint from ``credited_rows`` by construction - that list is
+        # exactly the ``ap_pct_sum <= 0`` rows, and the share is 0.0 unless
+        # ``ap_pct_sum`` is positive - so nothing can be counted twice.
+        credited += sum(
+            row.dps * _dual_scaling_ad_share(row) for row in result.per_spell
+        )
     if not apply_cast_rate_propensity_prior:
         return credited
     # The propensity DELTA rides the SAME filtered rows, not ``per_spell`` -
     # otherwise the RM-98 path would re-admit exactly what the sum excluded.
-    return credited + propensity_adjusted_dps_delta(
+    delta = propensity_adjusted_dps_delta(
         credited_rows,
         credited_damage_types=AD_AXIS_CREDITED_DAMAGE_TYPES,
     )
+    if apply_dual_scaling_split:
+        # A split row is credited at a FRACTION of its dps, so its propensity
+        # re-base has to be scaled by the same fraction - otherwise arming both
+        # seams would re-base the whole row while crediting only part of it.
+        for row in result.per_spell:
+            share = _dual_scaling_ad_share(row)
+            if share > 0.0:
+                delta += share * propensity_adjusted_dps_delta(
+                    (row,),
+                    credited_damage_types=AD_AXIS_SPLIT_DAMAGE_TYPES,
+                )
+    return credited + delta

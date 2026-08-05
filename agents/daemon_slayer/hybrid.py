@@ -411,6 +411,10 @@ def compute_hybrid(
     caster_current_hp_pct: float = 1.0,
     assume_ms_utility: bool = False,
     apply_ad_axis_ability_damage: bool = False,
+    # RM-36 (DEFAULT-OFF): MODIFIER of the term above - a dual-scaling row
+    # the AP-scaling gate drops is re-entered at its AD SHARE alone.
+    # Inert unless apply_ad_axis_ability_damage is also armed.
+    apply_ad_axis_dual_scaling_split: bool = False,
     # ENGINE 1.224.0 (R132) seam, forwarded verbatim to ``compute_ehp``. Appended at
     # the END per compute_ehp's stated convention - a mid-signature insert shifts the
     # positional index of every later parameter. Guarded by
@@ -650,6 +654,7 @@ def compute_hybrid(
             snapshot, champion_id, level, item_list, mode,
             target_armor, target_mr, target_max_hp, target_bonus_hp, augments,
             apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
+            apply_dual_scaling_split=apply_ad_axis_dual_scaling_split,
         )
     else:
         base_damage = dps_result.weighted_dps
@@ -965,6 +970,10 @@ def rank_items_by_hybrid(
     target_current_hp_pct: float = 1.0,
     assume_ms_utility: bool = False,
     apply_ad_axis_ability_damage: bool = False,
+    # RM-36 (DEFAULT-OFF): MODIFIER of the term above - a dual-scaling row
+    # the AP-scaling gate drops is re-entered at its AD SHARE alone.
+    # Inert unless apply_ad_axis_ability_damage is also armed.
+    apply_ad_axis_dual_scaling_split: bool = False,
     # ENGINE 1.224.0 (R132) seam, forwarded verbatim to ``compute_ehp``. Appended at
     # the END per compute_ehp's stated convention - a mid-signature insert shifts the
     # positional index of every later parameter. Guarded by
@@ -1209,6 +1218,7 @@ def rank_items_by_hybrid(
             target_armor, target_mr, target_max_hp, target_bonus_hp,
             augments, target_current_hp_pct,
             apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
+            apply_dual_scaling_split=apply_ad_axis_dual_scaling_split,
         )
     else:
         baseline_dps = baseline_dps_result.weighted_dps
@@ -1309,6 +1319,7 @@ def rank_items_by_hybrid(
                     target_armor, target_mr, target_max_hp, target_bonus_hp,
                     augments, target_current_hp_pct,
                     apply_cast_rate_propensity_prior=apply_cast_rate_propensity_prior,
+                    apply_dual_scaling_split=apply_ad_axis_dual_scaling_split,
                 )
             else:
                 scored_damage = dps_scored.weighted_dps
