@@ -41,6 +41,7 @@ import json
 import logging
 import math
 import threading
+import time
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -96,6 +97,13 @@ _log = logging.getLogger("daemon_slayer.server")
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8860
+
+# RM-152. A declared Content-Length is an untrusted number in two dimensions
+# and DS bounded neither: SIZE (_read_json_body allocated whatever was asked
+# for) and TIME (a body that never arrives pins one _RcThreadingHTTPServer
+# worker until the client releases it). Both are now refused.
+_MAX_POST_BYTES = 1 << 20
+_BODY_READ_TIMEOUT_S = 10.0
 
 _INDEX_HTML = """<!doctype html>
 <meta charset=utf-8>
@@ -2826,18 +2834,92 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length") or 0)
         except (TypeError, ValueError):
             length = 0
-        remaining = length
-        while remaining > 0:
-            chunk = self.rfile.read(min(remaining, 65536))
-            if not chunk:
-                break
-            remaining -= len(chunk)
+        # RM-152: the drain is the same read on the 404 path, so it needs the
+        # same deadline - draining a body that never arrives pins the worker
+        # exactly like reading one does. A drain that gives up early is fine;
+        # we are closing this connection either way.
+        if length > _MAX_POST_BYTES:
+            # Too big to drain; the clean-FIN courtesy is not worth an
+            # unbounded read, so take the RST and close.
+            self.close_connection = True
+            return
+        try:
+            self._read_body_deadlined(length)
+        except _ApiError:
+            self.close_connection = True
+
+    def _read_body_deadlined(self, n: int) -> bytes:
+        """Read exactly ``n`` body bytes or raise ``_ApiError(408)``.
+
+        RM-152. The deadline is armed on the socket right before the read and
+        restored in the ``finally`` so it is scoped to the request BODY, never
+        to the connection. MEASURED on the dashboard's twin of this handler
+        (see ``tests/test_body_read_timeout_rm152.py``): socketserver arms a
+        class-level ``timeout`` in ``setup()``, which then deadlines the
+        REQUEST LINE and headers too, and a client that is slow to speak - or
+        whose headers arrive in two packets with a gap - is aborted outright.
+        Scoping to the body read is what keeps that from happening.
+
+        The budget is absolute, not per-chunk, so a trickle client cannot
+        re-arm it one byte at a time.
+
+        With no socket to arm, the read is performed plainly - the peer
+        holding a socket open is the whole threat, so where there is no
+        socket there is nothing to defend. Reaching for ``self.connection``
+        unconditionally instead is what broke the dashboard twin: a caller
+        that stages an in-memory body raises ``AttributeError`` here, and the
+        caller's own error handling then answers that in place of the reply
+        the request had actually earned.
+        """
+        sock = getattr(self, "connection", None)
+        if not callable(getattr(sock, "settimeout", None)):
+            return self.rfile.read(n)
+        try:
+            prior = sock.gettimeout()
+        except OSError:
+            prior = None
+        deadline = time.monotonic() + _BODY_READ_TIMEOUT_S
+        chunks: list[bytes] = []
+        remaining = n
+        try:
+            while remaining > 0:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    self.close_connection = True
+                    raise _ApiError(408, "request body read timed out")
+                sock.settimeout(left)
+                try:
+                    chunk = self.rfile.read(min(remaining, 65536))
+                except TimeoutError:
+                    self.close_connection = True
+                    raise _ApiError(408, "request body read timed out") from None
+                if not chunk:
+                    break  # client closed early - caller sees a short body
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            return b"".join(chunks)
+        finally:
+            try:
+                sock.settimeout(prior)
+            except OSError:
+                pass
 
     def _read_json_body(self) -> dict:
-        length = int(self.headers.get("Content-Length") or 0)
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except (TypeError, ValueError):
+            raise _ApiError(400, "invalid Content-Length") from None
         if length <= 0:
             return {}
-        raw = self.rfile.read(length)
+        # RM-152: DS had NO upper bound here at all, so a declared length was
+        # an allocation instruction from any client that could reach :8860.
+        # Every real DS body is a champion name plus a handful of item ids;
+        # 1 MiB matches the dashboard's cap and is refused on the HEADER,
+        # before a single body byte is read.
+        if length > _MAX_POST_BYTES:
+            self.close_connection = True
+            raise _ApiError(413, "request body too large")
+        raw = self._read_body_deadlined(length)
         if not raw.strip():
             return {}
         try:
