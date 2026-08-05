@@ -353,6 +353,40 @@ class VersionAnchorTests(unittest.TestCase):
         )
         self.assertEqual(drift_guard.check_version_anchors(root, "1.259.0"), [])
 
+    def test_a_slash_joined_version_pair_is_provenance_not_a_live_anchor(self) -> None:
+        """A line naming TWO versions cannot be asserting which one is live.
+
+        MEASURED 2026-08-04 on the 1.275.0 bump: the G2-47 live-gated row reads
+        ``**G2-47** RM-42 ``apply_passive_damage`` + ``apply_extra_shot_procs``
+        on the CARRY ranker (ENGINE 1.273.0 / 1.274.0)`` - the two flags shipped
+        at two different revisions and the row cites both. That is provenance,
+        not a claim about the engine in force, but ``/`` was not in the
+        transition separator class so the sweep flagged it. A live anchor names
+        exactly ONE version; ``/`` joins a pair the same way ``->`` joins a
+        transition.
+        """
+        import drift_guard
+
+        root = self._tree()
+        (root / "docs" / "GATED.md").write_text(
+            "# Gated\n\n"
+            "- G2-47 two flags on the carry ranker (ENGINE 1.258.0 / 1.259.0)\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(drift_guard.check_version_anchors(root, "1.258.0"), [])
+
+    def test_a_lone_stale_version_still_breaches_after_the_slash_widen(self) -> None:
+        """The widen must not swallow a genuine single-version live anchor."""
+        import drift_guard
+
+        root = self._tree()
+        (root / "docs" / "LIVE.md").write_text(
+            "# Live\n\nENGINE_VERSION 1.258.0 is the engine in force.\n",
+            encoding="utf-8",
+        )
+        out = drift_guard.check_version_anchors(root, "1.258.0")
+        self.assertTrue(out, "a lone stale version anchor must still breach")
+
     def test_a_stale_line_in_a_file_that_also_has_history_still_breaches(self) -> None:
         """The narrowing must be per LINE, not per file.
 

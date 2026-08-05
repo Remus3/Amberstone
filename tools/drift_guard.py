@@ -205,7 +205,13 @@ def check_memory_index(
     return out
 
 
-VERSION_TRANSITION = re.compile(r"\d+\.\d+\.\d+\s*(?:->|to)\s*\d+\.\d+\.\d+")
+# ``/`` joins a version PAIR the way ``->`` joins a transition: a line reading
+# "(ENGINE 1.273.0 / 1.274.0)" is citing the two revisions a change landed
+# across, which is provenance. A LIVE anchor names exactly one version, so any
+# line naming two in one breath cannot be asserting which one is in force.
+# Added 2026-08-04 after the 1.275.0 bump flagged the G2-47 gated row, whose
+# two flags genuinely shipped at 1.273.0 and 1.274.0 respectively.
+VERSION_TRANSITION = re.compile(r"\d+\.\d+\.\d+\s*(?:->|to|/)\s*\d+\.\d+\.\d+")
 CLOSURE_MARKER = re.compile(
     r"~~|\b(?:shipped|closed|fixed|refuted|done|reverted|superseded)\b", re.I
 )
