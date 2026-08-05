@@ -333,12 +333,27 @@ class SeamsAreNoLongerStranded(unittest.TestCase):
                     "with a reason",
                 )
 
-    def test_the_ten_declined_seams_are_untouched(self):
-        """This slice drains 4 of 14 and must not silently drain the other 10."""
+    def test_the_declined_seams_are_untouched(self):
+        """This slice drains 4 of 14 and must not silently drain the rest.
+
+        The 5 per-item shield opt-ins left the ledger in their own slice
+        (test_per_item_shield_route_seams_rm118.py), which wired them to /ehp
+        DEFAULT-OFF - route EXPOSURE, not the live default flip their reason
+        conflated it with. What remains is the operator-CLOSED s232
+        target/caster-state set, and THAT is what this guard now pins: it is
+        deliberately not client-facing, so no slice may drain it.
+        """
         self.assertEqual(
-            len(STRANDED_TODAY), 10,
+            sorted(STRANDED_TODAY),
+            [
+                "assume_ally_detonation",
+                "assume_caster_lowhp",
+                "assume_item_lowhp_magic_crit",
+                "assume_lifeline_shield",
+                "assume_passive_reflect",
+            ],
             "the remaining ledger is the 5 operator-CLOSED target/caster-state "
-            "seams plus the 5 operator-gated per-item shield opt-ins",
+            "seams (s232) and nothing else",
         )
 
 
