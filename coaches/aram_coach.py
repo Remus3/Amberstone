@@ -64,6 +64,23 @@ _STATE_DEBOUNCE = os.getenv("RC_ARAM_STATE_DEBOUNCE", "0") == "1"
 # that the coach text never feels frozen mid-game.
 _STATE_DEBOUNCE_MAX_STALE_S = 45.0
 
+# How much of each live Haiku response is preserved in the log.
+#
+# This capture is the ONLY offline record of the live coach column, so the
+# Haiku-to-ZERO shadow comparison can replay it (tools/aram_raw_replay.py) only
+# as far as the capture reaches. The previous 600-char bound sat below the
+# observed 1200-2100 char response range, which cut the trailing `Choices:`
+# line off most records - and a clipped record is indistinguishable from a
+# model that never emitted the field, so the live column read as permanently
+# empty.
+#
+# 4000 covers the whole response the call can physically produce: max_tokens is
+# 900, and ~4 chars/token puts the ceiling near 3600. It stays a bound rather
+# than becoming unbounded because a model repetition loop would otherwise flood
+# the day's log (a prior cost sweep traced 97 percent of a log file to exactly
+# that shape).
+_RAW_LOG_CHARS = 4000
+
 
 def _coach_state_signature(state: dict, vision_state: dict) -> tuple:
     """COARSE signature of only the coaching-relevant snapshot fields.
@@ -1097,7 +1114,8 @@ class Coach(BaseCoach):
             # parse_fields returns empty values (output format drift, etc).
             try:
                 logger.info("ARAM Haiku raw (%d chars): %s",
-                            len(raw or ""), (raw or "")[:600].replace("\n", " | "))
+                            len(raw or ""),
+                            (raw or "")[:_RAW_LOG_CHARS].replace("\n", " | "))
             except Exception:  # noqa: BLE001
                 pass
             flds = parse_fields(raw, [
