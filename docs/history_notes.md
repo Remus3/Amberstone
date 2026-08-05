@@ -223,6 +223,49 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-04i - orchestrated 3-slice pass: RM-117 retention, RM-118 shields, RM-36 Ezreal (ENGINE 1.275.0)
+
+Operator asked why open items were running one at a time instead of orchestrated
+multi-agent. Answer: serial was drift, not policy - CLAUDE.md "Session Default" and
+memory `feedback_standing_five_item_parallel_loop` both make orchestrated the baseline.
+The exacting next-session prompt carries CONTENT, not cardinality. Ran the pass to prove it.
+
+SHIPPED - two commits, both pushed (`9907dca3..b510ce20`):
+- `1772c8d5` RM-117 (ii) `core/data_retention.py`, 4 classes, report-first. NOTHING DELETED.
+  RM-117 (iv) closed as STALE (fixed by `baecb54b` 68 min after filing, never recorded).
+- `b510ce20` merge, ENGINE 1.274.0 -> 1.275.0: RM-118 five per-item shield seams reach
+  `/ehp` (exposure only, `ehp.py` untouched); RM-36 AD-axis dual-scaling split credit,
+  Ezreal 0.0 -> 14.1067.
+
+THE THREE FINDINGS THAT MATTER MORE THAN THE CODE:
+1. Probing killed 2 of 5 proposed rows BEFORE any build. Filed rows are suspect until probed.
+2. RM-118 was filed as "10 seams declined by design". An adversarial pass tasked with
+   REFUTING that found 5 were live headless debt - their reason conflated route EXPOSURE
+   with a DEFAULT FLIP. An operator-gated live flip blocks ONLY the flip. My own two kills
+   were BOTH refuted by that pass; the reasoning I used to close RM-117 (iv) was vacuous
+   even though the conclusion held.
+3. MERGE HAZARD unique to parallel work: both DS slices recomputed the parity debt ledger
+   against a baseline the other invalidated (54 vs 60; truth is 55). Two individually
+   correct numbers, jointly wrong. Take the count by PARSING THE DICT.
+
+DO NOT REDO:
+- RM-35..RM-48 is CLOSED, all 14 resolved, narrative relocated to `docs/ROADMAP_HISTORY.md`.
+  Do not re-open the roster.
+- RM-117 (iv) is closed. `skipped: []` and `accounts_per_cohort: 14` are NOT evidence
+  about MASTER - both traps are recorded on the ROADMAP row.
+- The 5 seams remaining in `STRANDED_TODAY` are the s232 operator-CLOSED arc. Genuinely
+  declined. `assume_lifeline_shield` is one of them despite the name.
+- Neither new flag's default-ON flip is proposed. RM-36's rides G2-46 (blocked on RM-98).
+
+FLAGGED, NOT FIXED: `tools/ship-batch.md` says "about 14 files" assert the ENGINE pin.
+Real number is 125 files / 146 literals. Anyone trusting it ships a bump with ~110 red
+tests and assumes breakage. Worth a one-line correction next session.
+
+OPERATOR DECISION PENDING: 3.72 GB of `rewind_history.db` backups (11d/16d, zero readers)
+plus 24.6 MB tier-2 and 137 MB tier-3. Reported, deliberately not deleted.
+
+---
+
 # 2026-08-04h - RM-42 CLOSED: the follow-on REFUTED the row it was built for (ENGINE 1.274.0)
 
 LEDGER 1194. The aa-empower follow-on LEDGER 1193 filed as owed.
