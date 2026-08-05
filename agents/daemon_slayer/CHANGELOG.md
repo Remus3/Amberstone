@@ -1331,6 +1331,93 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.275.0 (2026-08-04) - TWO ROWS, ONE BUMP: RM-118's five per-item shield seams
+reach ``/ehp``, and RM-36's AD-axis dual-scaling split credit brings Ezreal to
+the carry scorer. Both DEFAULT-OFF. Landed as parallel worktree slices merged
+under a single engine revision, so a bisect on either lands on this commit.
+
+RM-118 - THE FIVE PER-ITEM SHIELD SEAMS (exposure, not a default flip).
+``assume_kaenic_shield`` (Kaenic Rookern 2504 / 222504),
+``assume_eclipse_shield`` (Eclipse 6692 / 226692), ``assume_chainlaced_shield``
+(Chainlaced Crushers 3173), ``assume_seraphs_shield`` (Seraph's Embrace 3040 /
+223040 / 323040) and ``assume_fimbulwinter_shield`` (Fimbulwinter 3121 /
+223121 / 323121) all shipped engine-complete - registry row, ``_collect_shields``
+arming branch, EHP-numerator consumer - while NO route parsed the flag. No coach
+tick, no build table, no operator curl and no client function could arm one.
+
+THE LEDGER REASON WAS THE BUG. These carried "live flip operator-gated", which
+conflates route EXPOSURE with a DEFAULT FLIP - the identical confusion the
+crit-chance lane's reason carried before 1.274.0. An operator-gated live flip
+blocks only the flip. Every seam stays ``bool=False`` on ``compute_ehp``, every
+body key is optional, every client argument is emitted only when armed, and
+``ehp.py`` is not in the diff at all, so an unarmed call is byte-identical. The
+live default flip remains unshipped, unclaimed and operator-gated.
+
+Route table MEASURED off ``inspect.signature`` over the whole package, never
+inherited from a sibling's prose: all five live on ``compute_ehp`` and
+``_collect_shields`` and NOTHING else, so ``/ehp`` is the entire route table,
+pinned by an equality assertion so it cannot silently grow. Transport is
+``items`` alone, parsed since Phase 1. ON-path movement proven per seam
+(blended_ehp, level 13, SR, 50/50 shares): Kaenic +441.388, Eclipse +370.937,
+Chainlaced +190.001, Seraph's +677.404, Fimbulwinter +400.789, plus a non-leak
+proof - on a Sett build carrying both Eclipse and Chainlaced, arming one credits
+exactly one. Anti-inert probe: deleting the five forward kwargs while leaving
+the parse in place (the R194 parse-without-pass shape) fails 21 tests.
+
+The R197 stranded ledger shrinks to the five operator-CLOSED s232
+target/caster-state seams, pinned BY EXACT LIST rather than by count so no
+future drain can take them along. ``assume_lifeline_shield`` STAYS - it is
+shield-named but belongs to the caster-state class, not this family.
+
+RM-36 - AD-AXIS DUAL-SCALING SPLIT CREDIT. Ezreal's only PHYSICAL per-spell row
+is Q Mystic Shot (dps 18.4472 at L16 vs the sweep-standard tanky target) and it
+carries ``ap_pct_sum`` 200.0, so the AP-scaling exclusion dropped it and his
+credited AD-axis term was exactly 0.0 - an AD-caster spell-weaver contributing
+nothing to the term built for that shape.
+
+THE AP-SCALING EXCLUSION IS UNCHANGED; this is NOT a widen of the
+``ap_pct_sum`` gate. A row the gate drops is re-entered at its AD SHARE alone,
+``dps * ad_pct_sum / (ad_pct_sum + ap_pct_sum)`` - the read-not-assumed analogue
+of the flat 50 pct the held MIXED note describes. PHYSICAL only, and that is the
+guard: Belveth R Endless Banquet is the SOLE dual-scaling TRUE row on the roster
+(ap 300.0 / ad 36.0) and a ratio split on TRUE would re-admit it at 10.7 pct, so
+her term measures 3.7050 both OFF and ON; Chogath R Feast carries ``ad_pct_sum``
+0.0 and is out twice over; MAGIC stays permanently excluded and Udyr's full
+carry order including Rabadon's is byte-identical, pinned by a test.
+
+``AbilitySpellDps.ad_pct_sum`` added END-APPENDED with default 0.0 and
+serialized, fed by ``ability_dps._form_ad_pct_sum`` (damage blocks only). End
+-appended deliberately: a mid-class required field breaks every existing
+positional construction (item 216).
+
+Ezreal: credited term 0.0 -> 14.1067, carry ``baseline_dps`` 30.9555 -> 45.0622,
+and 95 of 108 pool rows change position. Vayne Q Tumble is CREDITED at share
+0.6552 (+2.4821) - a DECISION, not a side effect; she is the exact collateral
+the term's own docstring recorded, and the repair is a split rather than a
+widen. 24 PHYSICAL dual-scaling rows across 22 champions are affected; Aatrox
+and Corki carry no dual-scaling rows and are byte-identical.
+
+ZERO-CONTROL REPLACED, and this is the part a later reader must not lose.
+Ezreal WAS the seam's zero-term control and a split credit destroys that role.
+Sejuani takes it: W Winter's Wrath is PHYSICAL at dps 11.0029 - larger than
+Ezreal's whole Q, so non-vacuous - with ``ap_pct_sum`` 800.0 and ``ad_pct_sum``
+0.0, zero under BOTH surviving arms since the all-or-nothing AP gate drops it
+and its AD share is exactly zero. Mutation-proven from both sides: dropping the
+``ad_pct_sum > 0`` guard flips her term off zero and fails her tests, while
+flattening the ratio with the guard intact fails Ezreal and Vayne instead.
+
+``apply_ad_axis_dual_scaling_split`` is inert unless
+``apply_ad_axis_ability_damage`` is also armed - it is a MODIFIER of that term,
+not a second term - and joins its parent on the ``/hybrid`` unreachable row
+rather than being parsed there, since parsing a modifier whose parent the route
+ignores is precisely the settable-but-inert shape RM-118 exists to catch. The
+default-ON flip stays blocked on RM-98 and belongs to gated row G2-46.
+
+MERGE NOTE: the parity debt ledger walked 59 -> 54 -> 55 pairs across 15 routes
+this cycle and NEITHER slice's own figure survived the merge - each computed its
+total against a baseline the other invalidated. Take the count from the dict,
+never from a slice report.
+
 1.274.0 (2026-08-04) - RM-42 follow-on: the extra shot's ON-HIT APPLICATION
 and its own CRIT. DEFAULT-OFF ``apply_extra_shot_procs``. It REFUTES RM-42's
 ordering claim rather than confirming it, which is the result the row was

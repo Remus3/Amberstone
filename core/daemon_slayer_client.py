@@ -179,6 +179,9 @@ def rank_for(
     kit_conversion_strength: float = 0.0,    # RM-86 L1 lever
     apply_crit_conversion: bool = False,     # A-12 / RM-46 (Ashe Frost Shot)
     apply_ad_axis_ability_damage: bool = False,  # RM-36 / RM-38 (AD-caster)
+    # RM-36 dual-scaling SPLIT credit - MODIFIER of the flag above, inert on
+    # its own. Without it the AD-axis term is exactly 0.0 for Ezreal.
+    apply_ad_axis_dual_scaling_split: bool = False,
     apply_passive_damage: bool = False,       # RM-42 (kit-passive registry)
     apply_extra_shot_procs: bool = False,     # RM-42 follow-on (extra shot)
     # RM-115 tail (1.254.0) - the two seams /rank parses that no client
@@ -283,6 +286,8 @@ def rank_for(
         body["apply_crit_conversion"] = True
     if apply_ad_axis_ability_damage:
         body["apply_ad_axis_ability_damage"] = True
+    if apply_ad_axis_dual_scaling_split:
+        body["apply_ad_axis_dual_scaling_split"] = True
     if apply_passive_damage:
         body["apply_passive_damage"] = True
     if apply_extra_shot_procs:
@@ -951,6 +956,9 @@ def rank_bruiser_for(
     assume_item_health_stacks: bool = False,
     assume_item_proc_heal: bool = False,
     apply_ad_axis_ability_damage: bool = False,
+    # RM-36 dual-scaling SPLIT credit - MODIFIER of the flag above. Plain
+    # DEFAULT-OFF bool, emitted by _emit_ehp_family_seams only when True.
+    apply_ad_axis_dual_scaling_split: bool = False,
     # TRI-STATE, unlike every other seam in this block - see rank_tank_for.
     # ``_route_rank_bruiser`` (server.py:973-975) reads it as None-when-absent
     # and the engine defaults it ON for cc_blended, so None = inherit and
@@ -1045,6 +1053,7 @@ def rank_bruiser_for(
         assume_item_health_stacks=assume_item_health_stacks,
         assume_item_proc_heal=assume_item_proc_heal,
         apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
+        apply_ad_axis_dual_scaling_split=apply_ad_axis_dual_scaling_split,
         assume_hsp_amp=assume_hsp_amp,
         apply_rune_self_heal=apply_rune_self_heal,
         apply_rune_shield_grants=apply_rune_shield_grants,
@@ -2340,6 +2349,8 @@ def rank_for_primary_archetype(
     kit_conversion_strength: float = 0.0,        # carry + assassin + bruiser (RM-86 L1)
     apply_crit_conversion: bool = False,         # carry (A-12 / RM-46)
     apply_ad_axis_ability_damage: bool = False,  # carry (RM-36 / RM-38)
+    # carry (RM-36) - dual-scaling SPLIT credit, MODIFIER of the flag above.
+    apply_ad_axis_dual_scaling_split: bool = False,
     apply_passive_damage: bool = False,          # carry (RM-42)
     apply_extra_shot_procs: bool = False,        # carry (RM-42 follow-on)
     # RM-115 gate-3 seam, MAGE-ONLY: /rank-mage is the sole route that parses
@@ -2758,6 +2769,7 @@ def rank_for_primary_archetype(
         kit_conversion_strength=kit_conversion_strength,
         apply_crit_conversion=apply_crit_conversion,
         apply_ad_axis_ability_damage=apply_ad_axis_ability_damage,
+        apply_ad_axis_dual_scaling_split=apply_ad_axis_dual_scaling_split,
         apply_passive_damage=apply_passive_damage,
         apply_extra_shot_procs=apply_extra_shot_procs,
         **_carry_hp_kwargs,

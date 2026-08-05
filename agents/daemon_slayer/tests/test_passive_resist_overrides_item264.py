@@ -240,8 +240,8 @@ class ExclusionDocTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_pin(self):
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.274.0")
-        self.assertEqual(ENGINE_VERSION, "1.274.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.275.0")
+        self.assertEqual(ENGINE_VERSION, "1.275.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):

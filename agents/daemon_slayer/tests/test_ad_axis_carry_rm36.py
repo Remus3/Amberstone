@@ -113,6 +113,11 @@ class AdAxisCarrySeamTest(unittest.TestCase):
         mirroring the "honest 50 pct credit" the MIXED note describes - not a
         widen of this gate. Do not re-file RM-36 as "port the term to carry";
         that is done and it does not reach him.
+
+        SHIPPED 2026-08-04 as ``apply_ad_axis_dual_scaling_split``
+        (DEFAULT-OFF, ``tests/test_ad_axis_dual_scaling_split_rm36.py``). This
+        test is unchanged and still true, because it exercises the DEFAULT
+        path: without that second flag Ezreal's term is still exactly 0.0.
         """
         self.assertEqual(_ad_term("Ezreal"), 0.0)
         off = _rank("Ezreal")
@@ -136,13 +141,24 @@ class AdAxisCarrySeamTest(unittest.TestCase):
         """A zero-credited-row champion must be untouched ON.
 
         This is what keeps the seam from being a blanket rescale, and it is
-        the control that RM-40 / RM-44 / RM-48 lacked. Ezreal is the sharpest
-        such control available - his term is zero for a MECHANICAL reason
-        (the AP-scaling gate), not because he has no abilities - so a future
-        widen of that gate will fail this test loudly rather than silently
-        turning it vacuous.
+        the control that RM-40 / RM-44 / RM-48 lacked. Both champions here are
+        zero for a MECHANICAL reason - the AP-scaling gate - not because they
+        have no abilities, so a widen of that gate fails this test loudly
+        rather than silently turning it vacuous.
+
+        EZREAL WAS THE SOLE CONTROL AND NO LONGER CARRIES THE CLAIM ALONE.
+        ``apply_ad_axis_dual_scaling_split`` (RM-36, 2026-08-04) exists
+        precisely to make his term nonzero, so his zero here is now a
+        statement about the DEFAULT path only. SEJUANI is the replacement and
+        is a valid zero under BOTH flags: her W Winter's Wrath is PHYSICAL
+        with a large dps (11.0029 at level 16 on this target, so the control
+        is not vacuous), ``ap_pct_sum`` 800.0 so the all-or-nothing gate drops
+        it, and ``ad_pct_sum`` 0.0 so its AD SHARE is exactly zero and the
+        split cannot re-admit it either. See
+        ``tests/test_ad_axis_dual_scaling_split_rm36.py``, which pins her
+        against the armed seam.
         """
-        for champ in ("Ezreal",):
+        for champ in ("Ezreal", "Sejuani"):
             self.assertEqual(_ad_term(champ), 0.0, champ)
             self.assertEqual(_order(_rank(champ)),
                              _order(_rank(champ, apply_ad_axis_ability_damage=True)))
