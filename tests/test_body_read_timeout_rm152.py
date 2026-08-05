@@ -50,7 +50,6 @@ import socket
 import threading
 import time
 from http.server import ThreadingHTTPServer
-from pathlib import Path
 
 import pytest
 
@@ -499,20 +498,7 @@ class TestBodyReadWithoutASocket:
         assert h.rfile.read() == b""
 
 
-# ------------------------------------------------------------ the spec
-
-
-def test_mission_control_plan_does_not_ship_the_defect() -> None:
-    """The unimplemented Mission Control S10 spec carries the same
-    ``rfile.read(n) if n else b""`` body read. Left alone it ships this bug
-    a fourth time (vision_server, dashboard, daemon_slayer, then :8895).
-    Read off disk, not restated."""
-    plan = (Path(__file__).resolve().parents[1] / "docs" / "superpowers" /
-            "plans" / "2026-07-31-mission-control-s10-decouple.md")
-    assert plan.exists(), f"plan moved: {plan}"
-    src = plan.read_text(encoding="utf-8")
-    assert 'self.rfile.read(n) if n else b""' not in src, (
-        "the S10 spec still tells its implementer to read the declared body "
-        "with no deadline - RM-152 all over again on :8895")
-    assert "_BODY_READ_TIMEOUT_S" in src, \
-        "the spec must carry the deadline it is expected to implement"
+# The spec-doc half of RM-152 lives in tests/test_mc_s10_spec_doc_rm152.py.
+# It must not live here: naming a tracked .md selects a module into
+# .github/workflows/docs-guards.yml, whose install is deliberately minimal,
+# and every test above needs the full route registry to answer a POST.
