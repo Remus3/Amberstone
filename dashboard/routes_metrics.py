@@ -24,6 +24,7 @@ from dashboard._dispatch import equals
 # until traffic flows.
 import core.cost_tracker  # noqa: F401
 import core.coach_trace   # noqa: F401
+from core import riot_api_cache
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -52,6 +53,62 @@ _G_DAILY_CALLS = Gauge(
     "API calls so far today (resets at local midnight).",
 )
 
+# -- Riot API cache size (RM-153) ----------------------------------------
+#
+# data/riot_api_cache.db reached 3.3 GB unnoticed because nothing reported
+# its size - stats() had no production callers at all. These gauges are that
+# missing consumer, so the NEXT 3 GB is visible while it accumulates.
+_CACHE_CAP_BYTES = riot_api_cache.DEFAULT_MAX_IMMUTABLE_BYTES
+
+_G_CACHE_DISK_BYTES = Gauge(
+    "rc_riot_api_cache_disk_bytes",
+    "Bytes on disk for data/riot_api_cache.db including its WAL sidecars.",
+)
+_G_CACHE_IMMUTABLE_ROWS = Gauge(
+    "rc_riot_api_cache_immutable_rows",
+    "Rows in cache_immutable (Match-V5 details/timelines, Account-V1). "
+    "These never expire by design.",
+)
+_G_CACHE_TTL_ROWS = Gauge(
+    "rc_riot_api_cache_ttl_live_rows",
+    "Unexpired rows in cache_ttl (League-V4 ranks, Champion-Mastery-V4).",
+)
+_G_CACHE_OVER_CAP = Gauge(
+    "rc_riot_api_cache_over_cap",
+    "1 if riot_api_cache.db is past the RM-153 size cap, 0 otherwise. "
+    "Measured against DISK bytes (file + WAL sidecars), which is a strictly "
+    "larger quantity than the payload bytes the planner caps - so this alarm "
+    "leads plan_eviction rather than trailing it. Alarm only - eviction is "
+    "opt-in and nothing calls it.",
+)
+
+
+def _refresh_cache_gauges() -> None:
+    """Size gauges for the Riot API cache. Cheap and fail-soft.
+
+    Uses `stats_fast()`, never `stats()`: the latter's
+    SUM(LENGTH(response_json)) was measured at 4.36-4.59s on the live 3.3 GB
+    DB (8.37s cold) and would be paid on every scrape. `stats_fast()` rides
+    covering-index counts plus a bare stat() instead.
+
+    ASYMMETRY, DELIBERATE AND KNOWN. `_CACHE_CAP_BYTES` is compared here
+    against DISK bytes, while `riot_api_cache.plan_eviction` applies the same
+    constant to summed payload bytes. Those are not the same quantity - disk
+    also carries page overhead, freelist and the WAL sidecars, so it is always
+    the larger. Reconciling them would mean paying the scan this function
+    exists to avoid, so the asymmetry is kept: the alarm fires at or before
+    the planner would act, never after. Both sites say so.
+    """
+    try:
+        st = riot_api_cache.get_cache().stats_fast()
+        disk = float(st.get("disk_bytes") or 0)
+        _G_CACHE_DISK_BYTES.set(disk)
+        _G_CACHE_IMMUTABLE_ROWS.set(float(st.get("immutable_rows") or 0))
+        _G_CACHE_TTL_ROWS.set(float(st.get("ttl_live_rows") or 0))
+        _G_CACHE_OVER_CAP.set(1.0 if disk > _CACHE_CAP_BYTES else 0.0)
+    except Exception as exc:  # noqa: BLE001
+        log.debug("metrics riot_api_cache refresh: %s", exc)
+
 
 def _refresh_gauges() -> None:
     h = read_json("ops/runtime/health.json") or {}
@@ -74,6 +131,8 @@ def _refresh_gauges() -> None:
         _G_DAILY_CALLS.set(float(spend.get("calls") or 0))
     except Exception as exc:  # noqa: BLE001
         log.debug("metrics daily_spend refresh: %s", exc)
+
+    _refresh_cache_gauges()
 
 
 def _serve_metrics(h) -> None:
