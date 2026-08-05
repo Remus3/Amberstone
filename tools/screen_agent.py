@@ -77,14 +77,22 @@ def _resolve_auth_token() -> str:
     env = _os_tok.environ.get("RC_VISION_TOKEN")
     if env:
         return env.strip()
-    cfg = _Path_tok(__file__).resolve().parent / "vision_token.txt"
-    try:
-        if cfg.exists():
-            line = cfg.read_text(encoding="utf-8").splitlines()[0].strip()
-            if line:
-                return line
-    except OSError:
-        pass
+    # RM-154: the canonical token is config/vision_token.txt (the same file
+    # core.vision_token and the dashboard read). Only the tools-sibling copy
+    # used to be searched, so an in-repo run resolved "" even with a valid
+    # token on disk - which the new tokenless guard below would then read as
+    # a genuine misconfiguration. The sibling stays first-class because the
+    # deployed copy at C:\RC-Agent\ has no repo above it.
+    _here = _Path_tok(__file__).resolve().parent
+    for cfg in (_here.parent / "config" / "vision_token.txt",
+                _here / "vision_token.txt"):
+        try:
+            if cfg.exists():
+                line = cfg.read_text(encoding="utf-8").splitlines()[0].strip()
+                if line:
+                    return line
+        except OSError:
+            pass
     # Lane 8 audit 2026-08-03: a hardcoded 32-hex token used to be
     # returned here. It was DEAD (it did not match the live token) but
     # dashboard/routes_static.py serves this file's SOURCE at
@@ -117,8 +125,21 @@ PRIMARY        = True         # False = don't update the global /latest-frame sl
 # whether it was the OS capture call or the network upload that stalled.
 STALL_WARN_S   = 2.5
 
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s %(levelname)s %(message)s")
+# RM-154. basicConfig without handlers= installs a StreamHandler on stderr,
+# and the RC-ScreenAgent-* tasks run this under pythonw.exe where stderr is
+# None - so every record this module emitted, including the upload errors,
+# went nowhere. Pass explicit handlers so there is a channel that survives.
+# Precedent: tools/liveclient_relay.py:41-51.
+_LOG_FILE = _Path_tok(__file__).resolve().parent.parent / "logs" / "screen_agent.log"
+_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(str(_LOG_FILE), encoding="utf-8"),
+    ],
+)
 log = logging.getLogger("screen_agent")
 
 
@@ -352,6 +373,12 @@ def loop(interval: float, monitor_index: int | None,
 
 
 if __name__ == "__main__":
+    if not AUTH_TOKEN:
+        # Exit non-zero so the scheduled task's Last Result is not a
+        # reassuring 0 while every frame upload 401s.
+        log.error("no vision token: set RC_VISION_TOKEN or create %s",
+                  _Path_tok(__file__).resolve().parent.parent / "config" / "vision_token.txt")
+        sys.exit(2)
     p = argparse.ArgumentParser()
     p.add_argument("--interval", type=float, default=INTERVAL_S,
                    help="seconds between captures (default %(default).1f)")
