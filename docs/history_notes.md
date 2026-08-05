@@ -223,6 +223,49 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-04f - RM-38 SHIPPED, RM-36 blocked-with-a-measured-reason (ENGINE 1.272.0)
+
+LEDGER 1192. Picked from the RM-35..RM-48 GAP set as the prior note directed. The
+set is much smaller than "14 UNBUILT" reads: RM-37 / RM-44 / RM-46 / RM-48 are
+CLOSED, RM-39 / RM-41 / RM-43 SHIPPED, RM-35's two clauses split shipped +
+blocked, RM-40 / RM-45 / RM-47 blocked on mage champion-sensitivity. Genuinely
+open and headless-actionable: RM-36 + RM-38 (batched) and RM-42.
+
+**Shipped.** `apply_ad_axis_ability_damage` now reaches `rank.rank_items`,
+`POST /rank` and `core.daemon_slayer_client.rank_for` - the same term the bruiser
+scorer has used since 1.222.0, RELOCATED to `agents/daemon_slayer/_ad_axis_ability.py`
+so there is one definition and not two (`hybrid` imports `rank`, so `rank` could
+not import `hybrid`; `hybrid` re-binds). DEFAULT-OFF, byte-identical omitted, all
+six build-order tables stamp-only, live-verified on `:8860`.
+
+**The finding that decided the session, and it is worth more than the code.**
+Ezreal's only PHYSICAL per-spell row is Q Mystic Shot with `ap_pct_sum` 200.0, so
+the term's AP-scaling exclusion drops it and his credited sum is EXACTLY 0.0. The
+seam is a provable no-op for him. RM-36 therefore is NOT closed by porting the
+term - it needs a SPLIT credit for the AD portion of a dual-scaling row, which is
+a new design and NOT a widen of that gate. Corki does reorder, so RM-38 is served.
+Memory `reference_ad_axis_term_cannot_price_a_dual_scaling_spell`.
+
+**Two stale filings corrected rather than inherited.** The pool half of RM-36 /
+RM-38 was already shipped - `exempt_offclass_by_win` and `widen_carry_pool` are
+DISJOINT, neither alone admits both Trinity Force and Spear of Shojin, and they
+COMPOSE (Ezreal both flags = pool 113, Trinity #4, Shojin #42). And the ROADMAP
+row's "all UNBUILT" header was wrong for most of its own table.
+
+**A relocation hazard worth remembering.** Two existing suites stubbed
+`hybrid.compute_ability_dps`; after the move that stub no longer bound the live
+call target. It failed loudly here, but the same move with a tolerant stub would
+have left every row-level assertion passing vacuously.
+
+**Not claimed:** the live eyeball is filed as `G2-46` in
+`docs/LIVE_GAME_GATED_SYNC.md`. A default-ON flip stays blocked on RM-98 (whole-game
+cast rate summed onto a combat-window auto rate), same as for the bruiser scorer.
+
+Suites at final state, repo root: DS 10378 passed / 6520 subtests; RC `tests/`
+18225 passed / 108 skipped. Ruff clean, ASCII clean, drift guard clean.
+
+---
+
 # 2026-08-04e - RM-118 stranded-seam ledger DRAINED to its declined floor (ENGINE 1.271.0)
 
 LEDGER 1191. Picked the top open row in ROADMAP NOW, exactly as the prior note said.

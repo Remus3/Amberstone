@@ -6,6 +6,49 @@
 
 ---
 
+# 2026-08-04i - orchestrated 3-slice pass: RM-117 retention, RM-118 shields, RM-36 Ezreal (ENGINE 1.275.0)
+
+Operator asked why open items were running one at a time instead of orchestrated
+multi-agent. Answer: serial was drift, not policy - CLAUDE.md "Session Default" and
+memory `feedback_standing_five_item_parallel_loop` both make orchestrated the baseline.
+The exacting next-session prompt carries CONTENT, not cardinality. Ran the pass to prove it.
+
+SHIPPED - two commits, both pushed (`9907dca3..b510ce20`):
+- `1772c8d5` RM-117 (ii) `core/data_retention.py`, 4 classes, report-first. NOTHING DELETED.
+  RM-117 (iv) closed as STALE (fixed by `baecb54b` 68 min after filing, never recorded).
+- `b510ce20` merge, ENGINE 1.274.0 -> 1.275.0: RM-118 five per-item shield seams reach
+  `/ehp` (exposure only, `ehp.py` untouched); RM-36 AD-axis dual-scaling split credit,
+  Ezreal 0.0 -> 14.1067.
+
+THE THREE FINDINGS THAT MATTER MORE THAN THE CODE:
+1. Probing killed 2 of 5 proposed rows BEFORE any build. Filed rows are suspect until probed.
+2. RM-118 was filed as "10 seams declined by design". An adversarial pass tasked with
+   REFUTING that found 5 were live headless debt - their reason conflated route EXPOSURE
+   with a DEFAULT FLIP. An operator-gated live flip blocks ONLY the flip. My own two kills
+   were BOTH refuted by that pass; the reasoning I used to close RM-117 (iv) was vacuous
+   even though the conclusion held.
+3. MERGE HAZARD unique to parallel work: both DS slices recomputed the parity debt ledger
+   against a baseline the other invalidated (54 vs 60; truth is 55). Two individually
+   correct numbers, jointly wrong. Take the count by PARSING THE DICT.
+
+DO NOT REDO:
+- RM-35..RM-48 is CLOSED, all 14 resolved, narrative relocated to `docs/ROADMAP_HISTORY.md`.
+  Do not re-open the roster.
+- RM-117 (iv) is closed. `skipped: []` and `accounts_per_cohort: 14` are NOT evidence
+  about MASTER - both traps are recorded on the ROADMAP row.
+- The 5 seams remaining in `STRANDED_TODAY` are the s232 operator-CLOSED arc. Genuinely
+  declined. `assume_lifeline_shield` is one of them despite the name.
+- Neither new flag's default-ON flip is proposed. RM-36's rides G2-46 (blocked on RM-98).
+
+FLAGGED, NOT FIXED: `tools/ship-batch.md` says "about 14 files" assert the ENGINE pin.
+Real number is 125 files / 146 literals. Anyone trusting it ships a bump with ~110 red
+tests and assumes breakage. Worth a one-line correction next session.
+
+OPERATOR DECISION PENDING: 3.72 GB of `rewind_history.db` backups (11d/16d, zero readers)
+plus 24.6 MB tier-2 and 137 MB tier-3. Reported, deliberately not deleted.
+
+---
+
 # 2026-08-04h - RM-42 CLOSED: the follow-on REFUTED the row it was built for (ENGINE 1.274.0)
 
 LEDGER 1194. The aa-empower follow-on LEDGER 1193 filed as owed.
@@ -96,46 +139,3 @@ Suites at final state, repo root: DS 10396 passed / 6520 subtests; RC `tests/`
 18225 passed / 108 skipped. Tables stamp-only. Ruff, ASCII, drift guard clean.
 Live eyeball filed as `G2-47` - a default-ON flip would arm all 33 entries at
 once and only 6 have ever been eyeballed.
-
----
-
-# 2026-08-04f - RM-38 SHIPPED, RM-36 blocked-with-a-measured-reason (ENGINE 1.272.0)
-
-LEDGER 1192. Picked from the RM-35..RM-48 GAP set as the prior note directed. The
-set is much smaller than "14 UNBUILT" reads: RM-37 / RM-44 / RM-46 / RM-48 are
-CLOSED, RM-39 / RM-41 / RM-43 SHIPPED, RM-35's two clauses split shipped +
-blocked, RM-40 / RM-45 / RM-47 blocked on mage champion-sensitivity. Genuinely
-open and headless-actionable: RM-36 + RM-38 (batched) and RM-42.
-
-**Shipped.** `apply_ad_axis_ability_damage` now reaches `rank.rank_items`,
-`POST /rank` and `core.daemon_slayer_client.rank_for` - the same term the bruiser
-scorer has used since 1.222.0, RELOCATED to `agents/daemon_slayer/_ad_axis_ability.py`
-so there is one definition and not two (`hybrid` imports `rank`, so `rank` could
-not import `hybrid`; `hybrid` re-binds). DEFAULT-OFF, byte-identical omitted, all
-six build-order tables stamp-only, live-verified on `:8860`.
-
-**The finding that decided the session, and it is worth more than the code.**
-Ezreal's only PHYSICAL per-spell row is Q Mystic Shot with `ap_pct_sum` 200.0, so
-the term's AP-scaling exclusion drops it and his credited sum is EXACTLY 0.0. The
-seam is a provable no-op for him. RM-36 therefore is NOT closed by porting the
-term - it needs a SPLIT credit for the AD portion of a dual-scaling row, which is
-a new design and NOT a widen of that gate. Corki does reorder, so RM-38 is served.
-Memory `reference_ad_axis_term_cannot_price_a_dual_scaling_spell`.
-
-**Two stale filings corrected rather than inherited.** The pool half of RM-36 /
-RM-38 was already shipped - `exempt_offclass_by_win` and `widen_carry_pool` are
-DISJOINT, neither alone admits both Trinity Force and Spear of Shojin, and they
-COMPOSE (Ezreal both flags = pool 113, Trinity #4, Shojin #42). And the ROADMAP
-row's "all UNBUILT" header was wrong for most of its own table.
-
-**A relocation hazard worth remembering.** Two existing suites stubbed
-`hybrid.compute_ability_dps`; after the move that stub no longer bound the live
-call target. It failed loudly here, but the same move with a tolerant stub would
-have left every row-level assertion passing vacuously.
-
-**Not claimed:** the live eyeball is filed as `G2-46` in
-`docs/LIVE_GAME_GATED_SYNC.md`. A default-ON flip stays blocked on RM-98 (whole-game
-cast rate summed onto a combat-window auto rate), same as for the bruiser scorer.
-
-Suites at final state, repo root: DS 10378 passed / 6520 subtests; RC `tests/`
-18225 passed / 108 skipped. Ruff clean, ASCII clean, drift guard clean.
