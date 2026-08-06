@@ -49,7 +49,10 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
+from types import MappingProxyType
+from typing import (
+    Any, Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple,
+)
 
 _log = logging.getLogger("rc.config_validator")
 
@@ -180,10 +183,17 @@ def _validate_config(
     optional_keys: List[str],
     field_types: Dict[str, str],
     is_optional_file: bool = False,
+    field_ranges: Optional[Mapping[str, Tuple[Any, Any]]] = None,
 ) -> ValidationResult:
     """
     Validate a config file against required/optional key lists and type map.
     Returns a ValidationResult.
+
+    `field_ranges` maps a key to an inclusive `(low, high)` bound, either end
+    `None` for unbounded. It is deliberately NOT a bound on every numeric
+    field: it carries only the knobs whose out-of-range value is DESTRUCTIVE
+    rather than merely wrong, which is why a range violation is an ERROR even
+    on an OPTIONAL key while a wrong type there is only a WARNING (RM-161).
     """
     path = APP_DIR / rel_path
 
@@ -261,6 +271,37 @@ def _validate_config(
                     f"(expected {field_types[key]}, got {actual_type})"
                 )
 
+    # Range check (RM-161). Runs after both type loops so a value that failed
+    # its type check is reported once, by the type pass, and never reaches a
+    # comparison - `"7" < 1` is a TypeError in Python 3, and a bool would
+    # satisfy `>= 1` because `True == 1`.
+    for key, bounds in sorted((field_ranges or {}).items()):
+        type_name = field_types.get(key)
+        if type_name not in ("integer", "number"):
+            # A range on a key that is not typed numerically can never be
+            # evaluated and nothing else would say so - the same silent-death
+            # failure the unknown-type-spec report above exists to prevent.
+            issues.append(
+                f"ERROR: key '{key}' declares a range but is typed "
+                f"'{type_name}' (range validation for this field is not "
+                f"enforced)"
+            )
+            continue
+        if key not in data or not _check_type(data[key], type_name):
+            continue
+        low, high = bounds
+        value = data[key]
+        if low is not None and value < low:
+            issues.append(
+                f"ERROR: key '{key}' is out of range: {value!r} "
+                f"(must be >= {low})"
+            )
+        elif high is not None and value > high:
+            issues.append(
+                f"ERROR: key '{key}' is out of range: {value!r} "
+                f"(must be <= {high})"
+            )
+
     all_issues = issues + warnings
 
     if issues:
@@ -292,6 +333,14 @@ class _ConfigSpec(NamedTuple):
     optional_keys:    List[str]
     field_types:      Dict[str, str]
     is_optional_file: bool = False
+    # Appended at the END with a default, per CLAUDE.md Python Conventions -
+    # a mid-class required field breaks every existing positional
+    # construction. Empty means "no bounds", which is every spec but one.
+    # The default is a read-only mapping, not a bare {}: a NamedTuple class
+    # default is ONE object shared by every spec that omits the field, so a
+    # mutable one would let a future in-place edit to one spec's table reach
+    # all of them.
+    field_ranges:     Mapping[str, Tuple[Any, Any]] = MappingProxyType({})
 
 
 def _validate_spec(spec: _ConfigSpec) -> ValidationResult:
@@ -301,6 +350,7 @@ def _validate_spec(spec: _ConfigSpec) -> ValidationResult:
         optional_keys=spec.optional_keys,
         field_types=spec.field_types,
         is_optional_file=spec.is_optional_file,
+        field_ranges=spec.field_ranges,
     )
 
 
@@ -388,6 +438,17 @@ _SELF_MONITOR_SPEC = _ConfigSpec(
             "allowed_panel_rebuild_keys": "array",
         },
         is_optional_file=False,
+        # RM-161. `ops/rc_supervisor.py:1442` (FROZEN) reads this key straight
+        # into `ops/rc_incident_log.IncidentLog`, whose purge keeps only
+        # entries newer than `now - timedelta(days=retention_days)`. At 0 or
+        # less that window is empty or inverted and the purge erases the whole
+        # incident log - the record the operator opens to diagnose an
+        # incident. `0` is a valid `"integer"`, so the type map alone let it
+        # through. Rejecting the profile here stops it before the frozen
+        # supervisor ever reads it.
+        field_ranges={
+            "incident_log_retention_days": (1, None),
+        },
 )
 
 
