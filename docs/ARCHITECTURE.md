@@ -227,6 +227,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tools/gen_state_schema.py` | generates web/js/lib/state_schema.js JSDoc typedefs from pydantic models |
 | `tools/gist_share_sync.py` | secret-gist mirror of the Share/ review package |
 | `tools/hz_mismatch_diagnose.py` | HZ mismatch root-cause diagnosis over the laning-combat shadow log |
+| `tools/hz_shadow_arena_contamination.py` | RM-158 data half - SR-contaminated ARENA row detector + purge over the HZ-C1 shadow corpus |
 | `tools/hz_shadow_report.py` | HZ-C validation report over the precompute shadow logs |
 | `tools/live_benchmark_band_report.py` | LBAND1 validation report over the live-benchmark-band shadow log |
 | `tools/macro_response_shadow_report.py` | RC2-P5.7 (WS4) macro-response register flip-readiness report over the macro shadow log |
@@ -234,6 +235,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tools/ocr_shadow_report.py` | OCR-vs-Sonnet shadow agreement report (Lane E OCR-only flip gate) |
 | `tools/perseus_recall.py` | compact projection over Perseus Vault recall |
 | `tools/rc_facts.py` | live RC health + topology probe |
+| `tools/regen_arena_laning_table.py` | RM-158 data half - patch-pinned ARENA laning-table regen runner |
 | `tools/unresolved_token_scan.py` | RM-108 unresolved-template-token detector over vendored feeds |
 | `tools/upstream_drift_check.py` | daily upstream content-drift detector (ddragon / meraki / cdragon / qq / queues) |
 
