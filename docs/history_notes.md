@@ -223,6 +223,98 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-05a - lane 8 cycle 7: the deploy worker wrote wherever it was told
+
+`ops/rc_transactional_deploy.py` had **zero test references** and joined every
+request-supplied path onto its root with no containment check. Committed
+`0647f3da` on `lane/true-audit`; LEDGER 1198; **branch is READY, not merged** -
+per the lane fence, lanes 7 and 8 ship last and the merge is the merger's call.
+
+- **The lane worktree did not exist at pre-flight.** `C:\rc-worktrees\` was empty
+  and there was no `lane/true-audit` branch, so the launcher had never fired for
+  this lane. Created it exactly as `ops/loop/lane_launcher.ensure_worktree`
+  (`:180-190`) would rather than editing the main tree. Main tree confirmed clean
+  and untouched at the end.
+- **Proven, not read:** the verifier ran the OLD and NEW modules against the same
+  hostile request. Old returned `phase=health_check` **having already written the
+  file outside `project_root`** - it failed later, after the write. New returns
+  `phase=validate` and writes nothing. On Windows `Path("C:/a") / Path("C:/b")`
+  is `C:\b`, so an absolute component discards the root entirely.
+- **A declared control that did not exist.** `rc_supervisor.py:29` documents that
+  rollback excludes `API-Key-Claude.txt`. The deploy script named that file in a
+  local `api_key` variable it never read. A grep for the exclusion passes; the
+  exclusion is not there. Worth carrying: **a variable holding the right value is
+  not an implementation, and it greps identically to one.**
+- **A CRLF file makes a mutation silently no-op.** Two mutants "survived" the
+  first pass; one was real (a test asserting only that something failed, over a
+  guard whose absence changed only the diagnosis) and one was a harness artifact -
+  a multi-line anchor containing `\n` never matches a CRLF file, so the mutation
+  applies to nothing and reads as GREEN. **Assert the anchor is present before
+  believing a surviving mutant.** Both were closed; 9 of 9 guards now die.
+- **No restart makes this live.** The supervisor launches the file by absolute
+  path from `C:\Riot Commander` (`ops/rc_config.json:9`), so `restart_trigger.txt`
+  deploys nothing here - only the merge does. Item 1179 in reverse, caught before
+  shipping rather than after.
+- **RM-160 filed** (BACKLOG, Reliability / hardening): the drop directory has no
+  producer and no ACL. Containment is now the only control standing on it.
+
+---
+
+# 2026-08-04j - headless run 2026-08-04-01: 6 slices, 3 refutations, 1 measured dead end
+
+The run's real output is not the six merges - it is that **every one of the three
+refutations was invisible to the slice's own passing suite**. Keep the verifier gate
+as the default; this run is the evidence for why it is not optional.
+
+- **S2 (RM-152)** ran 13 + 10380 + 102 tests green and honestly reported ONE suite it
+  could not finish under box contention. That unrun suite held a deterministic 7-test
+  auth regression. `_read_body_deadlined` did an unguarded `sock = self.connection`;
+  the auth harness builds a socketless handler; the `AttributeError` fell into a broad
+  `except` and answered **400 before the token check**, because the body read precedes
+  the auth gate. An unrun gate is not neutral - it is where the bug is.
+- **S3 (RM-153)** self-mutated 8 times and self-caught TWO vacuous guards, then shipped
+  a THIRD inside the test protecting its own headline claim: a spy that signalled by
+  RAISING, into a call site wrapped in `except Exception`. `AssertionError` IS an
+  `Exception`, so it passed both ways. Finding the class once does not inoculate you.
+- **S9 (claim gate)** passed 32 own tests, the full suite, and a genuine mutation probe
+  (8/8 vs a naive rule's 1/8) while having SILENCED 16 laundering phrases the unmodified
+  gate caught. Beating a deliberately-weak alternative is not soundness.
+
+**Four rows said something untrue as filed.** RM-152's "`_proxy_to_supervisor` STREAMS"
+(it buffers - `body = r.read()`, docstring self-contradictory in one sentence).
+RM-153's duplicate-retention guess (2698 of 3123 timelines, 86.39 pct, are in NEITHER
+`rewind_history` nor the `.rofl` archive - near-disjoint, so eviction destroys the only
+copy). The Haiku charter's `dashboard/_champ_select.py` call site (none since
+2026-06-06). And a recon's "16 of 89 responses intact" - **all 89 were log-clipped at
+600 chars**, declared lengths 1113-2029, ZERO at or under 600, so `both = 0` was
+substantially self-inflicted at write time rather than purely live-gated.
+
+**Filed:** RM-158 - `laning_scenarios_arena.json` is SHA-256 IDENTICAL to the SR table
+over 66,961,516 bytes; distinct real files differing only in the header `mode` and a
+5-second `generated_at`, so a GENERATION bug, and every Arena number read off it was an
+SR number. RM-155 - the Lane A gate still FAILS at 0.4887 with a base-rate census
+proving zero mutual information, so the deferred ~190 MB/mode regen buys nothing.
+**RM-159 CLOSED as a dead end** - two attempts, 16 then 28 bypasses, evasion by one-word
+paraphrase (`couldn't`, `ought not`, `by happenstance`); structurally the gate audits
+prose the agent itself writes, so any prose-level inference is gameable. Keep it strict.
+Both refuted commits are TAGGED `evidence/rm-159-attempt-*` so the citations survive
+worktree cleanup - the exact decay the LEDGER preamble documents at ~50 pct pre-2026-07.
+
+**Environment facts that will otherwise cost a session.** The suite count is NOT stable:
+18206-18351 passed across near-identical trees, 0-3 failures with DISJOINT failing sets -
+check disjointness, not isolation, before calling a regression. Five concurrent pytest
+processes DEADLOCK (byte-identical worker CPU over 10 min); `-n 4 --timeout=300` is the
+safe recipe. **`tests/daemon_slayer` does not exist**, so `pytest tests/daemon_slayer`
+exits 5 collecting nothing and reads as green. `docs-guards` triggers only on `**/*.md`
+plus three named files, so a failure caused by a `.py` module cannot be re-tested by the
+commit that fixes it - it needed a manual `workflow_dispatch`.
+
+Gates run by the merger rather than inherited: RC 18351 passed / 0 failed, DS 10380
+passed / 83 skipped / 6746 subtests from the repo root, RC restarted healthy,
+`/metrics` scrape 0.022s with `rc_riot_api_cache_over_cap` already reading 1.
+
+---
+
 # 2026-08-04i - orchestrated 3-slice pass: RM-117 retention, RM-118 shields, RM-36 Ezreal (ENGINE 1.275.0)
 
 Operator asked why open items were running one at a time instead of orchestrated

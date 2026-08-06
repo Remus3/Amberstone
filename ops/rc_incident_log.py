@@ -84,6 +84,21 @@ class IncidentLog:
         retention_days: int          = 7,
         run_id:         Optional[str] = None,
     ) -> None:
+        # RM-161. `_purge_old_locked` keeps only entries newer than
+        # `now - timedelta(days=retention_days)`, so a non-positive window is
+        # empty or inverted and the purge erases the whole incident log
+        # instead of bounding it. The value is not code: `rc_supervisor.py`
+        # reads it out of `config/self_monitor_profile.json`, so a typo in a
+        # config file reaches here. Reject it BEFORE any state or directory
+        # is created; the frozen caller wraps this construction in a
+        # non-fatal handler, so the cost is an unstarted monitor plus a log
+        # line, never a crash and never a wiped log.
+        if retention_days <= 0:
+            raise ValueError(
+                f"retention_days must be > 0, got {retention_days!r} - a "
+                "window at or before now matches no entry, so the purge "
+                "would delete the entire incident log instead of trimming it"
+            )
         self.runtime_dir    = Path(runtime_dir)
         self.log_file       = self.runtime_dir / "incident_log.jsonl"
         self.summary_file   = self.runtime_dir / "incident_summary.json"
