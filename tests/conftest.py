@@ -117,11 +117,26 @@ def redirect_cost_tracker_spend_dir_to_tmp(monkeypatch, tmp_path_factory):
     that had accumulated to 40 of 84 day-files carrying 13141 synthetic calls
     worth $1.156408, plus a phantom `1970-01-12.json` minted by the debounce
     ceiling test patching `time.time` (which `date.today()` reads through).
-    A THIRD leak reached the per-match sidecars rather than a day-file:
-    `core/match_db.py:177` fires `note_match_boundary()` on every saved match
-    and `tests/test_last_match_ingest_gameid.py` drives the real `save_match`.
-    Redirecting the singleton closes all three. `tools/repair_spend_ledger.py`
-    recovered the rows already written.
+    A SECOND, DISTINCT write reached the per-match sidecars rather than a
+    day-file, and its producer is UNIDENTIFIED. `core/match_db.py:177` fires
+    `get_tracker().note_match_boundary()` on every saved match, which is the
+    only route to those files, and the production ledger held two all-zero
+    `by_gate` records 41 MILLISECONDS apart at 2026-08-04 22:16:28 - not two
+    real matches. Ruled out, each by probe rather than by reading: no test in
+    `tests/` calls `save_match` at all (the only match in
+    `test_last_match_ingest_gameid.py` is a line-5 docstring mention; the file
+    does raw sqlite3 INSERTs, and an instrumented run records zero
+    `note_match_boundary` calls); `test_spend_gates_cutoff.py` calls it four
+    times but always on a `CostTracker(spend_dir=tmp_path)` (:20-25); nothing
+    under `agents/`, `scripts/`, `ops/` or `tools/` calls either function; and
+    the live RC process is excluded because `core/match_db.py:170` logs "Match
+    saved" at INFO on every save and `logs/2026-08-04.log` has no such line -
+    at 22:16:28 it shows a 57-second heartbeat-only gap with "LCU lockfile not
+    found" either side, so no game was running. That leaves an out-of-process
+    run that does not write `logs/YYYY-MM-DD.log`. Do not guess which; the
+    redirect below closes the route regardless of the caller, which is why the
+    unknown does not block the fix. `tools/repair_spend_ledger.py` recovered
+    the rows already written.
 
     PREVENTION, not detection: re-pointing the module global and clearing the
     memoized singleton means a future test cannot reintroduce the leak by
