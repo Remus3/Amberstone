@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import statistics
 import sys
 import time
@@ -59,6 +60,10 @@ VISION_RATE_FLOOR = 3.0       # --remediate will not push below this
 P95_DOUBLE_MULT = 2.0         # per-lane p95-cost >= 2x trailing baseline == signal
 P95_FLOOR_USD = 0.002         # ignore lanes whose p95 is below this (sub-cent noise)
 P95_MIN_CALLS = 20            # need this many calls today for a stable p95
+
+# A day-ledger stem is exactly YYYY-MM-DD in ASCII digits. Explicit [0-9]
+# rather than \d: \d also matches non-ASCII decimal digits.
+_DAY_STEM_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 # purpose -> (tier, primary caller file) from docs/COST_TRACE.md.
 PURPOSE_MAP = {
@@ -121,28 +126,52 @@ def _age_s(ts):
 
 
 def iter_day_ledgers(spend_dir: Path) -> list[Path]:
-    """Sorted day-ledger files in `spend_dir` - sidecars EXCLUDED (RM-165).
+    """Sorted day-ledger FILES in `spend_dir` - sidecars EXCLUDED (RM-165).
 
     `data/spend/` is not a pure directory of day-files: `core/cost_tracker.py`
-    :160-161 also parks `_match_open.json` (a by_purpose snapshot taken at the
-    last match boundary) and `recent_matches.json` (rolling per-match cost)
-    there. A bare `glob("*.json")` reads both as if they were day-ledgers.
+    also parks two per-match sidecars there, written at :461-462 off
+    `self._spend_dir` (`_match_open.json`, a by_purpose snapshot taken at the
+    last match boundary, and `recent_matches.json`, rolling per-match cost;
+    the latter is read back at :514). Note the module-level
+    `_MATCH_OPEN_PATH` / `_RECENT_MATCHES_PATH` constants at :160-161 are NOT
+    the write sites - they are referenced nowhere in `core/`.
+
+    A bare `glob("*.json")` reads both sidecars as if they were day-ledgers.
     `_match_open.json` carries a `by_purpose` block, so it passes every shape
-    check below, and `_` (0x5F) sorts AFTER every digit (0x30-0x39), so a
+    check downstream, and `_` (0x5F) sorts AFTER every digit (0x30-0x39), so a
     sidecar always lands at the END of the sorted list and is guaranteed to
     survive a `prior[-7:]` trailing window - displacing a genuine day out of
     the baseline and skewing both the daily-total median and the per-lane
     cost-per-call median.
 
-    The filter is deliberately POSITIVE (a real ISO calendar date plus
-    `.json`, which is exactly what `cost_tracker._today_str()` produces at
-    :237) rather than a blacklist of the two known sidecars, so a future
-    sidecar parked under any new name is excluded without a code change here.
+    The filter is deliberately POSITIVE rather than a blacklist of the two
+    known sidecars, so a future sidecar parked under any new name is excluded
+    without a code change here. Four independent clauses, each one
+    load-bearing and each pinned by its own test in
+    `tests/test_cost_health_watchdog_glob_rm165.py`:
+
+      is_file()        `glob` matches a DIRECTORY named `<date>.json` too.
+      exact `.json`    `Path.glob` is case-INSENSITIVE on Windows (measured:
+                       `glob("*.json")` returns `2026-05-01.JSON`), so the
+                       suffix must be re-checked case-SENSITIVELY.
+      _DAY_STEM_RE     `date.fromisoformat` is broader than YYYY-MM-DD on
+                       3.11+: it also accepts the ISO week date
+                       `2026-W01-1` (measured on 3.14.4 -> 2025-12-29), which
+                       is likewise 10 chars, so a length check does not
+                       exclude it. `cost_tracker._today_str()` (:183-184,
+                       used at :237) only ever emits `date.today()
+                       .isoformat()`, so anything else is a foreign file.
+      fromisoformat    calendar validity, which the regex cannot judge
+                       (`2026-02-30`, `2026-13-45`).
     """
     out = []
     for f in sorted(spend_dir.glob("*.json")):
         stem = f.stem
-        if len(stem) != 10 or f.name != stem + ".json":
+        if not f.is_file():
+            continue
+        if f.name != stem + ".json":
+            continue
+        if not _DAY_STEM_RE.fullmatch(stem):
             continue
         try:
             date.fromisoformat(stem)
