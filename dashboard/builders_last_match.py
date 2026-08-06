@@ -438,6 +438,22 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     }
 
 
+def _clamp_baseline(baseline) -> int:
+    """s220 baseline window, coerced + clamped to the range the Quick Review
+    comparison is defined over. Default 20 preserves pre-s220 behavior.
+
+    Shared with routes_last_match._serve_last_match, which needs the clamped
+    value BEFORE it keys the response cache: keying the raw value made
+    ?baseline=1 and ?baseline=2 distinct keys holding identical bodies.
+    A second copy of the bounds would be a future divergence.
+    """
+    try:
+        baseline = int(baseline)
+    except (TypeError, ValueError):
+        baseline = 20
+    return max(5, min(50, baseline))
+
+
 def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
     """Post Game Review payload for the Last Match page.
 
@@ -467,12 +483,9 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
     import json
     # s220: baseline window is operator-configurable from the Settings
     # page (localStorage rc-pgr-baseline -> ?baseline= query param).
-    # Clamp to a sane range; default 20 preserves pre-s220 behavior.
-    try:
-        baseline = int(baseline)
-    except (TypeError, ValueError):
-        baseline = 20
-    baseline = max(5, min(50, baseline))
+    # Idempotent, so callers that pre-clamp to build a cache key (the
+    # /api/last-match route) stay correct when they pass the clamped value.
+    baseline = _clamp_baseline(baseline)
     match_ts = (str(match_ts).strip() or None) if match_ts is not None else None
     out: dict = {"found": False, "match": None, "history_count": 0}
     db_path = _APP_DIR / "data" / "match_history.db"

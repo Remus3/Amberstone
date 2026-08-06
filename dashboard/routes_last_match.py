@@ -36,7 +36,7 @@ import time
 from collections import deque
 from datetime import datetime
 
-from dashboard.builders import _build_last_match
+from dashboard.builders import _build_last_match, _clamp_baseline
 from dashboard._context import APP_DIR as _APP_DIR
 from dashboard._dispatch import equals
 
@@ -57,9 +57,11 @@ _INGEST_RETRY_QUEUE: deque = deque()  # entries: (deadline_unix, body_dict)
 _INGEST_RETRY_LOCK = threading.Lock()
 _INGEST_RETRY_THREAD_STARTED = False
 
-# GET /api/last-match response cache, keyed (baseline, match_ts) - the full
-# set of request inputs the body varies with (_serve_last_match reads nothing
-# else off the handler, and _build_last_match takes exactly those two args).
+# GET /api/last-match response cache, keyed (clamped baseline, match_ts) -
+# the full set of request inputs the body varies with (_serve_last_match reads
+# nothing else off the handler, and _build_last_match takes exactly those two
+# args). The baseline is normalized through _clamp_baseline first so the many
+# raw values that clamp to the same window share one entry.
 # Rebuilding cost 320ms measured 2026-08-06 against 8-27ms for every other
 # dashboard route, and the frontend refires this on PGR activation, historical
 # PGR activation and every baseline toggle.
@@ -304,24 +306,32 @@ def _drain_ingest_queue_once() -> int:
 
 def _serve_last_match(h) -> None:
     try:
-        # s220: optional ?baseline=N (operator-set in Settings; clamped
-        # in _build_last_match). Defaults to 20 - pre-s220 behavior.
+        # s220: optional ?baseline=N (operator-set in Settings), clamped by
+        # the shared _clamp_baseline. Defaults to 20 - pre-s220 behavior.
         # HIST2: optional ?match_ts="YYYY-MM-DD HH:MM:SS" pins a specific
         # historical row (History / Session row click -> detached PGR).
         # Absent -> the live "latest non-TFT row" path is unchanged.
         from urllib.parse import urlparse, parse_qs
         qs = parse_qs(urlparse(h.path).query or "")
-        try:
-            baseline = int((qs.get("baseline") or ["20"])[0])
-        except (TypeError, ValueError):
-            baseline = 20
+        # Clamped BEFORE keying: the builder clamps to the same range, so
+        # keying the raw value split identical bodies across a key per
+        # out-of-range integer the frontend or a hand-edited URL can send.
+        baseline = _clamp_baseline((qs.get("baseline") or ["20"])[0])
         match_ts = (qs.get("match_ts") or [None])[0]
         key = (baseline, match_ts)
         now = time.time()
         body = _cache_get(key, now)
         if body is None:
-            body = json.dumps(_build_last_match(baseline, match_ts)).encode("utf-8")
-            _cache_put(key, now, body)
+            built = _build_last_match(baseline, match_ts)
+            body = json.dumps(built).encode("utf-8")
+            # A degraded build (db missing / sqlite error) returns 200 with
+            # an "error" key rather than raising, so it reaches here. Serve
+            # it, but never store it: the condition is transient and the
+            # sqlite branch drops its poisoned connection on the way out, so
+            # storing would pin a degraded Post Game Review for the full TTL
+            # when the next build would likely succeed.
+            if not (isinstance(built, dict) and built.get("error")):
+                _cache_put(key, now, body)
         h._send(200, body, "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/last-match: %s", exc)
