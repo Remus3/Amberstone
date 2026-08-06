@@ -57,6 +57,51 @@ _INGEST_RETRY_QUEUE: deque = deque()  # entries: (deadline_unix, body_dict)
 _INGEST_RETRY_LOCK = threading.Lock()
 _INGEST_RETRY_THREAD_STARTED = False
 
+# GET /api/last-match response cache, keyed (baseline, match_ts) - the full
+# set of request inputs the body varies with (_serve_last_match reads nothing
+# else off the handler, and _build_last_match takes exactly those two args).
+# Rebuilding cost 320ms measured 2026-08-06 against 8-27ms for every other
+# dashboard route, and the frontend refires this on PGR activation, historical
+# PGR activation and every baseline toggle.
+#
+# 30s rather than the 300s most sibling routes use: the default (no match_ts)
+# key resolves "newest non-TFT row", and match rows are INSERTed by
+# performance_tracker, which is not a call path this module can hook. The TTL
+# is therefore the staleness bound for a brand-new row, while the LCU detail
+# ingest - the write that actually fills the Post Game Review - invalidates
+# explicitly in _try_ingest_once.
+_CACHE_TTL_S = 30.0
+_CACHE: dict[tuple, tuple[float, bytes]] = {}
+_CACHE_LOCK = threading.Lock()
+_CACHE_MAX = 256
+_CACHE_EVICT = 64
+
+
+def _cache_get(key: tuple, now: float) -> bytes | None:
+    with _CACHE_LOCK:
+        entry = _CACHE.get(key)
+        if entry is None:
+            return None
+        stamped, body = entry
+        if (now - stamped) >= _CACHE_TTL_S:
+            _CACHE.pop(key, None)
+            return None
+        return body
+
+
+def _cache_put(key: tuple, now: float, body: bytes) -> None:
+    with _CACHE_LOCK:
+        _CACHE[key] = (now, body)
+        if len(_CACHE) > _CACHE_MAX:
+            victims = sorted(_CACHE.items(), key=lambda kv: kv[1][0])[:_CACHE_EVICT]
+            for k, _ in victims:
+                _CACHE.pop(k, None)
+
+
+def _cache_clear() -> None:
+    with _CACHE_LOCK:
+        _CACHE.clear()
+
 
 def _row_match_by_game_id(conn: sqlite3.Connection, game_id: int):
     """Returns (id, raw_data_str) for the non-TFT row with this game_id,
@@ -194,6 +239,11 @@ def _try_ingest_once(body: dict) -> tuple[str, dict]:
     finally:
         conn.close()
 
+    # Single invalidation point for BOTH ingest callers - the POST handler
+    # and the background retry drain - since this is the only place a row's
+    # raw_data actually changes.
+    _cache_clear()
+
     return ("ok", {
         "match_id":          int(mid),
         "game_id":           gid,
@@ -266,9 +316,13 @@ def _serve_last_match(h) -> None:
         except (TypeError, ValueError):
             baseline = 20
         match_ts = (qs.get("match_ts") or [None])[0]
-        h._send(200,
-                json.dumps(_build_last_match(baseline, match_ts)).encode("utf-8"),
-                "application/json")
+        key = (baseline, match_ts)
+        now = time.time()
+        body = _cache_get(key, now)
+        if body is None:
+            body = json.dumps(_build_last_match(baseline, match_ts)).encode("utf-8")
+            _cache_put(key, now, body)
+        h._send(200, body, "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/last-match: %s", exc)
         # Raw exception text can leak file paths - log it, never render it.
