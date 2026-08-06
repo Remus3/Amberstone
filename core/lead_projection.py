@@ -426,7 +426,26 @@ def project_lead(game_state: dict, *, mode: str = "SR") -> dict:
 # player can afford their next item / power spike. Coarse + operator-tunable.
 # ARAM out-earns SR (no recall downtime, constant minion flow + the ARAM gold
 # passive); unknown modes fall back to the SR rate.
-_GOLD_EARNED_PER_MIN: Dict[str, float] = {"SR": 450.0, "ARAM": 600.0}
+#
+# RM-158: ARENA is DERIVED from the ARAM profile, not invented - the same
+# doctrine (and the same wording) as the _WEIGHTS ARENA row above, for the same
+# reason. Arena has no lane, no wave, no recall downtime and a fixed per-round
+# stipend on top of combat gold, so ARAM is the closest profile RC already
+# models; SR is the WORST match of the three. WHY this row has to exist at all:
+# without it ARENA fell through to _DEFAULT_GOLD_EARNED_PER_MIN, which IS the SR
+# rate - and since the DS burst/matchup path applies mode modifiers for ARAM
+# only, this row was the LAST mode-dependent input the laning-scenario
+# precompute had for Arena. With it absent, every itemless Arena cell was
+# arithmetically the SR cell, and the shipped 16.13.1
+# laning_scenarios_arena.json is a byte-for-byte copy of the SR table under an
+# arena header (identical over 66,961,516 bytes from the "scenarios" offset).
+# Same failure class as the _NO_LANE_CS_MODES note below: a per-mode table that
+# silently defaults is indistinguishable from a per-mode table that is right.
+_GOLD_EARNED_PER_MIN: Dict[str, float] = {
+    "SR": 450.0,
+    "ARAM": 600.0,
+    "ARENA": 600.0,
+}
 _DEFAULT_GOLD_EARNED_PER_MIN: float = 450.0
 
 # Cumulative-gold power-spike ladder: (label, gold earned). A spike is "reached"
@@ -460,6 +479,17 @@ def gold_income_per_min(mode: str = "SR") -> float:
     return _GOLD_EARNED_PER_MIN.get(
         (mode or _DEFAULT_MODE).upper(), _DEFAULT_GOLD_EARNED_PER_MIN
     )
+
+
+def gold_income_is_registered(mode: str = "SR") -> bool:
+    """Whether ``mode`` has its OWN gross-income row, vs the silent SR default.
+
+    RM-158: ``gold_income_per_min`` fail-softs an unknown mode to the SR rate,
+    which is correct for a live read but is a TRAP for an offline per-mode
+    artifact generator - a mode with no row of its own produces the SR numbers
+    and the artifact looks legitimate. A generator can gate on this to refuse
+    writing a per-mode table it cannot actually differentiate."""
+    return (mode or _DEFAULT_MODE).upper() in _GOLD_EARNED_PER_MIN
 
 
 def expected_gold_earned(minutes: float, mode: str = "SR") -> float:
