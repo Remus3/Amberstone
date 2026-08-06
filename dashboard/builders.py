@@ -364,6 +364,7 @@ from dashboard.builders_lcu_enrich import (  # noqa: E402,F401
 )
 from dashboard.builders_last_match import (  # noqa: E402,F401
     _build_last_match,
+    _clamp_baseline,
     _compute_quick_review,
     _compute_wrong_team_from_enriched,
 )
