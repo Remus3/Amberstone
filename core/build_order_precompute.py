@@ -263,6 +263,102 @@ def split_bias(bias: dict[str, float]) -> tuple[dict[str, float], dict[str, floa
     return direct, rank
 
 
+# --------------------------------------------------------------------------- #
+# Starter-tier floor - the "wrong precompute" guard rail
+# --------------------------------------------------------------------------- #
+# A shipped build ORDER is a FULL 6-slot build. A starter item in one of those
+# slots is not a partial answer, it is a wrong one - and nothing upstream stops
+# it. The engine's candidate-pool filter (agents/daemon_slayer/rank.py
+# _eligible_items) denies already-equipped / non-coachable / off-map /
+# non-terminal / over-budget ids, and a starter is NONE of those: Doran's Helm
+# (1120, 450g), Doran's Bow (1086, 400g), Cull (1083, 450g) and Guardian's Blade
+# (3177, 950g) are all purchasable, terminal (``into`` empty) and map-legal, so
+# they sit in the pool of every scorer in every mode.
+#
+# Today's tables are clean only as an ACCIDENT of the ordering metric. The order
+# is planned with ``sort_by="delta"`` (absolute gain), which a 450g starter can
+# never win against a 3000g legendary. The engine's OTHER shipped ordering
+# metric, ``sort_by="efficiency"`` (gain per gold, implemented on all 7 scorers
+# and transported end to end as body key ``sort``), inverts exactly that
+# comparison, because stat-per-gold is what a starter maximizes. MEASURED
+# 2026-08-06 over a 15-champion x 4-comp-archetype static sweep: 52 of 60 cells
+# changed under efficiency, pulling Doran's Helm / Doran's Bow / Guardian's Blade
+# into slots 3-5. So this floor is one flag away from mattering across every
+# cell at once.
+#
+# THE RULE IS DERIVED FROM THE ITEM DATA, not assumed. Classification uses the
+# Meraki / DDragon bulk that is already the source of truth for item metrics:
+# the ``Lane`` tag plus a gold ceiling. Measured over the whole 16.15.1 registry,
+# 78 items carry ``Lane`` - 76 cost under 1000g and are all genuinely starter
+# tier (the Doran's line, Cull, Dark Seal, the Guardian's line, the support-quest
+# starters, potions, trinkets, zero-gold quest markers), and exactly 2 cost more
+# (Atma's Reckoning 223039 / 663039 at 2500g, a real legendary carrying the tag).
+# The ceiling therefore sits in an EMPTY price band - dearest starter 950g,
+# cheapest Lane-tagged legendary 2500g - rather than splitting a continuum.
+#
+# It is deliberately NOT a ``depth`` test: the mode-mirror namespaces (22xxxx
+# Arena / 44xxxx / 66xxxx) ship ``depth: None`` with a flattened 2500-2750g
+# price, so ``depth >= 2`` would flag 71 of the 138 currently-shipped ids -
+# every Arena mirror legendary and every upgraded boot included.
+STARTER_TIER_TAG = "Lane"
+STARTER_TIER_GOLD_CEILING = 1000
+
+
+def is_starter_tier(record: object) -> bool:
+    """True when a DDragon / Meraki item ``record`` is starter tier.
+
+    Starter tier = carries the ``Lane`` tag AND costs less than
+    ``STARTER_TIER_GOLD_CEILING``. Pure, and TOTAL: a missing, non-dict, or
+    unpriced record classifies as NOT starter tier. Unknown never becomes a
+    positive on purpose - the caller is a guard rail over shipped artifacts, and
+    a ragged item record must not be able to condemn a table on its own.
+    """
+    if not isinstance(record, dict):
+        return False
+    tags = record.get("tags")
+    if not isinstance(tags, (list, tuple)) or STARTER_TIER_TAG not in tags:
+        return False
+    gold = record.get("gold")
+    total = gold.get("total") if isinstance(gold, dict) else None
+    try:
+        return int(total) < STARTER_TIER_GOLD_CEILING
+    except (TypeError, ValueError):
+        return False
+
+
+def iter_order_item_ids(payload: object):
+    """Yield ``(champion, axis_class, item_id)`` for every ORDER slot in a
+    build-order table payload.
+
+    Walks BOTH committed leaf shapes, because the three table families do not
+    agree on one: the FLAT damage-axis family stores a bare list of ids per axis
+    class, while the comp-archetype precompute and the durability variants store
+    ``{"order": [...]}``. A walker that understood only one shape would silently
+    skip a whole family.
+
+    Ids are yielded as ``str`` in table order. Blank / None slots are skipped.
+    TOTAL - a missing, malformed, or partially-null payload yields nothing rather
+    than raising, matching the fail-soft contract of every Lane B read surface.
+    """
+    if not isinstance(payload, dict):
+        return
+    orders = payload.get("build_orders")
+    if not isinstance(orders, dict):
+        return
+    for champion, classes in orders.items():
+        if not isinstance(classes, dict):
+            continue
+        for axis_class, cell in classes.items():
+            if isinstance(cell, dict):
+                cell = cell.get("order")
+            if not isinstance(cell, (list, tuple)):
+                continue
+            for item_id in cell:
+                if item_id is None or not str(item_id).strip():
+                    continue
+                yield str(champion), str(axis_class), str(item_id)
+
+
 def engine_version() -> str:
     """The shipped DS engine version stamped into the table (fail-soft to ""
     so a missing engine package never sinks a dry-run)."""
