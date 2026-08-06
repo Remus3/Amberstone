@@ -17,25 +17,78 @@ So the tests here do two distinct jobs:
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from core import ports
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _module_file(module_path: str) -> Path | None:
+    """The on-disk file a dotted module name names, or None if it is not ours.
+
+    Resolved from the tree rather than from an import, because the whole point
+    is to decide whether a FAILED import was our file being absent or a third
+    party being absent - and by then importing tells you nothing.
+    """
+    parts = module_path.split(".")
+    cand = _REPO_ROOT.joinpath(*parts).with_suffix(".py")
+    if cand.is_file():
+        return cand
+    pkg = _REPO_ROOT.joinpath(*parts) / "__init__.py"
+    if pkg.is_file():
+        return pkg
+    return None
+
+
+def _is_first_party(top_level: str) -> bool:
+    """True when a top-level module name is a package/module in THIS repo."""
+    if not top_level:
+        return False
+    return ((_REPO_ROOT / f"{top_level}.py").is_file()
+            or (_REPO_ROOT / top_level / "__init__.py").is_file())
 
 
 class LiveDefinitionSitesAgreeTests(unittest.TestCase):
     """Each constant must equal the value the binding module actually uses.
 
-    Import failures are skips rather than errors: several of these modules pull
-    optional runtime deps, and a missing dep should not turn a port-registry
-    guard red. The skip is loud enough to notice, and the modules that matter
-    most (dashboard, DS engine, Mission Control) import cleanly in CI.
+    A missing THIRD-PARTY runtime dep is a capability question and still skips:
+    several of these modules pull optional deps, and RC does not want a port
+    registry guard red because opencv is absent. Everything else is a failure.
+
+    RM-119 B5 (2026-08-06): the previous form was `except Exception ->
+    skipTest`, which made this guard always-passing over its own subject. Every
+    module cited below is TRACKED in git, so "not importable" covered a deleted
+    file, a syntax error, and a first-party ImportError just as silently as a
+    missing optional dep - and it covered them at the one moment the guard
+    matters. The file's EXISTENCE is now asserted outright, and only a
+    ModuleNotFoundError naming a genuinely third-party top-level module is
+    still allowed to skip.
     """
 
     def _live(self, module_path: str, attr: str) -> int:
         import importlib
+
+        path = _module_file(module_path)
+        self.assertIsNotNone(
+            path,
+            f"{module_path} names no file in this checkout - it is TRACKED in "
+            f"git, so its absence is a broken tree, not a missing capability",
+        )
         try:
             mod = importlib.import_module(module_path)
-        except Exception as exc:  # noqa: BLE001 - optional runtime deps
-            self.skipTest(f"{module_path} not importable here: {exc}")
+        except ModuleNotFoundError as exc:
+            missing = (exc.name or "").split(".")[0]
+            if _is_first_party(missing):
+                raise AssertionError(
+                    f"{module_path} failed to import because the FIRST-PARTY "
+                    f"module {missing!r} is missing - that is a broken "
+                    f"checkout, not an absent optional dependency"
+                ) from exc
+            self.skipTest(
+                f"optional third-party dependency {missing!r} is not installed "
+                f"in this interpreter ({module_path} needs it)"
+            )
         self.assertTrue(
             hasattr(mod, attr),
             f"{module_path} no longer defines {attr} - the registry's citation "
