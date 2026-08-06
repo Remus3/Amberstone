@@ -37,8 +37,13 @@ BOUNDED TTL, NOT IMMUTABLE. The positive rows live in `cache_immutable`,
 which never expires - correct, because a finished match is a historical
 record. A negative is a statement about Riot's CURRENT inventory, and Riot
 does backfill: a timeline can appear minutes after the game ends. So the
-negative lands in the TTL table and self-heals. Tests here pin that it is
-bounded and that it is NOT written to the immutable table.
+negative lands in the TTL table and self-heals, at a TTL split by outcome
+(not_found 300s, forbidden 900s - see `TestNegativeTtlIsBounded`).
+
+KEY-SCOPED. The negative key embeds the API-key fingerprint. Without that, an
+expired key would 403 every match, fan a negative out across every id the
+dashboard touches, and then survive the operator installing a working key -
+a cache that ignores the fix. See `TestNegativeIsKeyScoped`.
 """
 from __future__ import annotations
 
@@ -123,6 +128,17 @@ class _NegCacheBase(unittest.TestCase):
             second = fn()
         return first, second
 
+    def _immutable_rows(self):
+        return RIC.get_cache().stats_fast()["immutable_rows"]
+
+
+def _zero_ttl():
+    """Patch every negative TTL to 0 so the entry is expired on write."""
+    return mock.patch.dict(
+        RA._NEGATIVE_TTL_S_BY_OUTCOME,
+        {k: 0 for k in RA._NEGATIVE_TTL_S_BY_OUTCOME},
+    )
+
 
 class TestCacheableNegative(_NegCacheBase):
     """404 / 403 are answers, not failures - store them."""
@@ -164,16 +180,39 @@ class TestCacheableNegative(_NegCacheBase):
         self.assertEqual(spy.calls, 1)
 
     def test_negative_does_not_land_in_the_immutable_table(self):
-        """A negative must never reach the never-expiring table.
+        """A negative must never reach the never-expiring table - AT ANY KEY.
 
-        If it did, one bad hour would blacklist a match for the life of the
+        If it did, one bad window would blacklist a match for the life of the
         DB with no way back short of manual SQL - the exact failure mode the
         immutable/TTL split exists to prevent.
+
+        Checking only the POSITIVE key here would be too weak: a mutation that
+        ALSO wrote the negative into cache_immutable under the `neg:` key
+        would sail through. The row COUNT is the assertion that cannot be
+        dodged, so it leads.
         """
         spy = _Spy(_resp(404))
+        self.assertEqual(self._immutable_rows(), 0, "precondition")
         with mock.patch.object(RA, "_http_get", spy):
             RA.get_match_timeline(_MATCH_ID)
+        self.assertEqual(
+            self._immutable_rows(), 0,
+            "a negative reached cache_immutable - it can never expire there")
         self.assertIsNone(RIC.get_cache().get_immutable(_TIMELINE_KEY))
+        self.assertIsNone(
+            RIC.get_cache().get_immutable(RA._negative_key(_TIMELINE_KEY)))
+
+    def test_positive_write_is_visible_to_the_row_count(self):
+        """Guards the guard above: prove immutable_rows CAN go up.
+
+        Without this, `assertEqual(rows, 0)` would also pass if stats_fast
+        were broken or always returned 0, and the strongest assertion in this
+        file would be vacuous.
+        """
+        spy = _Spy(_resp(200, {"info": {"frames": []}}))
+        with mock.patch.object(RA, "_http_get", spy):
+            RA.get_match_timeline(_MATCH_ID)
+        self.assertEqual(self._immutable_rows(), 1)
 
     def test_negative_never_masquerades_as_a_positive(self):
         """The cached negative must return None, not a truthy marker dict.
@@ -218,29 +257,52 @@ class TestPositiveStillCaches(_NegCacheBase):
 class TestNegativeTtlIsBounded(_NegCacheBase):
     """Riot backfills. A negative that never expires is a new bug."""
 
-    def test_ttl_constant_is_bounded_and_nonzero(self):
-        ttl = RA._NEGATIVE_TTL_S
-        self.assertIsInstance(ttl, int)
-        self.assertGreater(
-            ttl, 120,
-            "must outlast Riot's own 2-minute long rate-limit window or the "
-            "negative buys nothing")
-        self.assertLessEqual(
-            ttl, 86400,
-            "a negative older than a day is an assertion about Riot's "
-            "inventory that nobody re-checked")
+    def test_every_cacheable_outcome_has_a_bounded_nonzero_ttl(self):
+        self.assertEqual(
+            set(RA._NEGATIVE_TTL_S_BY_OUTCOME),
+            set(RA._CACHEABLE_NEGATIVE_OUTCOMES),
+            "every cacheable outcome needs an explicit TTL - the fallback is "
+            "a safety net, not a design")
+        for outcome, ttl in RA._NEGATIVE_TTL_S_BY_OUTCOME.items():
+            with self.subTest(outcome=outcome):
+                self.assertIsInstance(ttl, int)
+                self.assertGreater(
+                    ttl, 120,
+                    "must outlast Riot's own 2-minute long rate-limit window "
+                    "or the negative buys nothing")
+                self.assertLessEqual(
+                    ttl, 3600,
+                    "a negative older than an hour is an assertion about "
+                    "Riot's inventory that nobody re-checked")
 
-    def test_ttl_constant_is_pinned(self):
-        """Pinned deliberately at one hour.
+    def test_ttls_are_pinned_per_outcome(self):
+        """Split by how likely Riot is to change its mind.
 
-        Long enough that the row's actual cost is gone - /api/last-match
-        rebuilds on a seconds-to-minutes cadence, so an hour collapses
-        hundreds of 289ms round trips into one. Short enough that the two
-        ways a negative can be WRONG both self-heal without cache surgery:
-        a timeline Riot backfills minutes after the game ends, and a 403
-        that was really a rotated key rather than an event mode.
+        not_found (300s) is the VOLATILE one: a match that just ended has its
+        detail before its timeline, so a 404 seconds after the game resolves
+        minutes later. Capping at 5 minutes keeps post-game review from going
+        blind on a real SR timeline Riot has since published.
+
+        forbidden (900s) is the PERMANENT one once the key is ruled out - and
+        the key IS ruled out, structurally, by the fingerprint in
+        `_negative_key`. What remains is route/mode entitlement (ARAM Mayhem
+        KIWI / queue 2400), which never backfills.
         """
-        self.assertEqual(RA._NEGATIVE_TTL_S, 3600)
+        self.assertEqual(RA._NEGATIVE_TTL_S_BY_OUTCOME["not_found"], 300)
+        self.assertEqual(RA._NEGATIVE_TTL_S_BY_OUTCOME["forbidden"], 900)
+
+    def test_the_two_outcomes_do_not_share_a_ttl(self):
+        """The split is the point; equal values would make it decorative."""
+        self.assertNotEqual(
+            RA._negative_ttl_for("not_found"),
+            RA._negative_ttl_for("forbidden"))
+
+    def test_unknown_outcome_falls_back_to_the_shortest_ttl(self):
+        fallback = RA._negative_ttl_for("some_future_outcome")
+        self.assertEqual(fallback, RA._NEGATIVE_TTL_FALLBACK_S)
+        self.assertLessEqual(
+            fallback, min(RA._NEGATIVE_TTL_S_BY_OUTCOME.values()),
+            "forgetting the TTL table must cost extra calls, not staleness")
 
     def test_expired_negative_refires(self):
         """With the TTL driven to zero the second call MUST go out again.
@@ -249,7 +311,7 @@ class TestNegativeTtlIsBounded(_NegCacheBase):
         entry survived expiry the count would stay at 1 here too.
         """
         spy = _Spy(_resp(404))
-        with mock.patch.object(RA, "_NEGATIVE_TTL_S", 0):
+        with _zero_ttl():
             first, second = self._call_twice(spy)
         self.assertIsNone(first)
         self.assertIsNone(second)
@@ -263,11 +325,115 @@ class TestNegativeTtlIsBounded(_NegCacheBase):
             return _resp(404) if n == 1 else _resp(200, payload)
 
         spy = _Spy(outcome)
-        with mock.patch.object(RA, "_NEGATIVE_TTL_S", 0):
+        with _zero_ttl():
             first, second = self._call_twice(spy)
         self.assertIsNone(first)
         self.assertEqual(second, payload)
         self.assertEqual(spy.calls, 2)
+
+
+class TestNegativeIsKeyScoped(_NegCacheBase):
+    """Installing a fresh key must clear negatives the old key earned.
+
+    THE FAILURE THIS PREVENTS: the operator's Riot key expires, every
+    Match-V5 call 403s, and /api/last-match plus
+    dashboard/builders_lcu_enrich.py, lib/rewind_live_writer.py and
+    dashboard/routes_scouting.py fan that out across many match ids, each
+    taking a negative. Un-fingerprinted, installing a VALID key would not
+    clear any of them and RC would stay blind after the operator had already
+    fixed the problem - a cache actively ignoring the fix.
+    """
+
+    _KEY_A = "RGAPI-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    _KEY_B = "RGAPI-bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+
+    def test_new_key_invalidates_an_existing_negative(self):
+        spy = _Spy(_resp(403))
+        RA._KEY_CACHE = self._KEY_A
+        with mock.patch.object(RA, "_http_get", spy):
+            self.assertIsNone(RA.get_match_timeline(_MATCH_ID))
+            RA._reset_bucket_for_tests()
+            # Same key - must be served from the negative.
+            self.assertIsNone(RA.get_match_timeline(_MATCH_ID))
+            self.assertEqual(spy.calls, 1)
+            # Key rotated - the old negative must be unreachable.
+            RA._KEY_CACHE = self._KEY_B
+            RA._reset_bucket_for_tests()
+            self.assertIsNone(RA.get_match_timeline(_MATCH_ID))
+        self.assertEqual(
+            spy.calls, 2,
+            "a fresh API key did not clear the negative the old key earned")
+
+    def test_fresh_key_sees_the_payload_the_stale_key_was_denied(self):
+        """The whole point: after the fix, RC recovers immediately."""
+        payload = {"info": {"frames": []}}
+
+        def outcome(n):
+            return _resp(403) if n == 1 else _resp(200, payload)
+
+        spy = _Spy(outcome)
+        RA._KEY_CACHE = self._KEY_A
+        with mock.patch.object(RA, "_http_get", spy):
+            self.assertIsNone(RA.get_match_timeline(_MATCH_ID))
+            RA._KEY_CACHE = self._KEY_B
+            RA._reset_bucket_for_tests()
+            recovered = RA.get_match_timeline(_MATCH_ID)
+        self.assertEqual(recovered, payload)
+
+    def test_negative_key_embeds_the_fingerprint(self):
+        RA._KEY_CACHE = self._KEY_A
+        key_a = RA._negative_key(_TIMELINE_KEY)
+        RA._KEY_CACHE = self._KEY_B
+        key_b = RA._negative_key(_TIMELINE_KEY)
+        self.assertNotEqual(key_a, key_b)
+        self.assertIn(RA._key_fingerprint(), key_b)
+
+
+class TestNegativeKeyNamespace(_NegCacheBase):
+    """The prefix and the marker are load-bearing; pin them.
+
+    Nothing collides TODAY - eviction scans cache_immutable only, and no
+    production caller writes a positive into the TTL table under one of these
+    key shapes. That is a property of the current call graph, not of the
+    design, and it is one new TTL-cached endpoint away from being false. These
+    pin the two things that keep it true.
+    """
+
+    def test_prefix_is_pinned(self):
+        self.assertEqual(RA._NEGATIVE_PREFIX, "neg")
+
+    def test_marker_is_pinned(self):
+        self.assertEqual(RA._NEGATIVE_MARKER, "__rc_negative__")
+
+    def test_negative_key_starts_with_the_prefix_and_keeps_the_original(self):
+        neg = RA._negative_key(_TIMELINE_KEY)
+        self.assertTrue(neg.startswith(RA._NEGATIVE_PREFIX + ":"))
+        self.assertTrue(neg.endswith(_TIMELINE_KEY))
+        self.assertNotEqual(neg, _TIMELINE_KEY)
+
+    def test_negative_key_is_injective_over_cache_keys(self):
+        """Timeline and detail negatives must not alias each other."""
+        self.assertNotEqual(
+            RA._negative_key(_TIMELINE_KEY), RA._negative_key(_DETAIL_KEY))
+
+    def test_negative_key_cannot_collide_with_a_positive_namespace(self):
+        for positive in ("account:v1:", "match:v5:", "match:v5:timeline:",
+                         "league:v4:", "mastery:v4:", "mastery_top:v4:"):
+            with self.subTest(positive=positive):
+                self.assertFalse(
+                    RA._negative_key(_TIMELINE_KEY).startswith(positive))
+
+    def test_a_ttl_row_without_the_marker_is_not_a_negative(self):
+        """An unrelated TTL row at the same key must not read as absent."""
+        RIC.get_cache().set_ttl(
+            RA._negative_key(_TIMELINE_KEY), {"entries": []}, 300)
+        self.assertFalse(RA._negative_cached(_TIMELINE_KEY))
+
+    def test_marker_row_is_what_makes_negative_cached_true(self):
+        RIC.get_cache().set_ttl(
+            RA._negative_key(_TIMELINE_KEY),
+            {RA._NEGATIVE_MARKER: True}, 300)
+        self.assertTrue(RA._negative_cached(_TIMELINE_KEY))
 
 
 class TestTransientIsNotCached(_NegCacheBase):
