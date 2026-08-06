@@ -268,8 +268,8 @@ def split_bias(bias: dict[str, float]) -> tuple[dict[str, float], dict[str, floa
 # --------------------------------------------------------------------------- #
 # A shipped build ORDER is a FULL 6-slot build. A starter item in one of those
 # slots is not a partial answer, it is a wrong one - and nothing upstream stops
-# it. The engine's candidate-pool filter (agents/daemon_slayer/rank.py
-# _eligible_items) denies already-equipped / non-coachable / off-map /
+# it. The engine's candidate-pool filter (agents/daemon_slayer/rank.py:687
+# _filter_candidates) denies already-equipped / non-coachable / off-map /
 # non-terminal / over-budget ids, and a starter is NONE of those: Doran's Helm
 # (1120, 450g), Doran's Bow (1086, 400g), Cull (1083, 450g) and Guardian's Blade
 # (3177, 950g) are all purchasable, terminal (``into`` empty) and map-legal, so
