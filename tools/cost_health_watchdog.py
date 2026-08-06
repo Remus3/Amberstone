@@ -5,6 +5,9 @@ Runs every 15 minutes (RC-CostHealthWatchdog scheduled task). Probes:
 
   - RC daemon health      (ops/runtime/health.json)
   - tracked API spend     (data/spend/YYYY-MM-DD.json) vs a trailing baseline
+                          (day-ledgers ONLY - `iter_day_ledgers` keeps the
+                          `_match_open.json` / `recent_matches.json` sidecars
+                          that also live in that dir out of the baseline)
 
 Detects a cost breach (today > 1.5x trailing-median baseline, with an absolute
 floor so an idle day cannot false-positive against a near-zero baseline), a
@@ -117,6 +120,38 @@ def _age_s(ts):
         return None
 
 
+def iter_day_ledgers(spend_dir: Path) -> list[Path]:
+    """Sorted day-ledger files in `spend_dir` - sidecars EXCLUDED (RM-165).
+
+    `data/spend/` is not a pure directory of day-files: `core/cost_tracker.py`
+    :160-161 also parks `_match_open.json` (a by_purpose snapshot taken at the
+    last match boundary) and `recent_matches.json` (rolling per-match cost)
+    there. A bare `glob("*.json")` reads both as if they were day-ledgers.
+    `_match_open.json` carries a `by_purpose` block, so it passes every shape
+    check below, and `_` (0x5F) sorts AFTER every digit (0x30-0x39), so a
+    sidecar always lands at the END of the sorted list and is guaranteed to
+    survive a `prior[-7:]` trailing window - displacing a genuine day out of
+    the baseline and skewing both the daily-total median and the per-lane
+    cost-per-call median.
+
+    The filter is deliberately POSITIVE (a real ISO calendar date plus
+    `.json`, which is exactly what `cost_tracker._today_str()` produces at
+    :237) rather than a blacklist of the two known sidecars, so a future
+    sidecar parked under any new name is excluded without a code change here.
+    """
+    out = []
+    for f in sorted(spend_dir.glob("*.json")):
+        stem = f.stem
+        if len(stem) != 10 or f.name != stem + ".json":
+            continue
+        try:
+            date.fromisoformat(stem)
+        except ValueError:
+            continue
+        out.append(f)
+    return out
+
+
 def probe_health(path: Path = _HEALTH) -> dict:
     h = _read_json(path, {})
     return {
@@ -134,7 +169,7 @@ def spend_baseline(spend_dir: Path, today: str) -> dict:
     today_doc = _read_json(spend_dir / (today + ".json"), {})
     today_usd = _finite(today_doc.get("total_usd", 0.0) or 0.0)
     prior = []
-    for f in sorted(spend_dir.glob("*.json")):
+    for f in iter_day_ledgers(spend_dir):
         if f.stem == today:
             continue
         v = _finite(_read_json(f, {}).get("total_usd", 0.0) or 0.0)
@@ -211,7 +246,7 @@ def lane_cost_signals(spend_dir: Path, today: str) -> dict:
         for name in today_means
     }
     prior_series: dict = {}
-    for f in sorted(spend_dir.glob("*.json")):
+    for f in iter_day_ledgers(spend_dir):
         if f.stem == today:
             continue
         for name, mean in _lane_mean_cost(_read_json(f, {})).items():
