@@ -10,8 +10,8 @@ way for these tables to be WRONG rather than MISSING is item TIER: a shipped
 6-slot order that contains a 400-950g STARTER item instead of a legendary.
 
 Nothing prevented that, and nothing detected it. STARTER items pass every
-filter in the engine's candidate pool - ``agents/daemon_slayer/rank.py:747``
-``_eligible_items`` denies already-equipped / non-coachable / off-map /
+filter in the engine's candidate pool - ``agents/daemon_slayer/rank.py:687``
+``_filter_candidates`` denies already-equipped / non-coachable / off-map /
 non-terminal / over-budget ids, and a starter is none of those. Doran's Helm
 (1120, 450g), Doran's Bow (1086, 400g), Cull (1083, 450g) and Guardian's Blade
 (3177, 950g) are purchasable, terminal (``into`` empty) and map-legal, so they
