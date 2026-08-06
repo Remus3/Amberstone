@@ -112,9 +112,10 @@ def classify_bucket(purpose: str, bucket, usd_per_call: float) -> str:
         return "clean"
     # A bucket with NO `tokens` key predates that field. `record_call` has
     # always written it, so the leak cannot have produced such a bucket - it is
-    # real spend by construction. Measured 2026-08-06: 15 such buckets exist
-    # (2026-04-28 .. 2026-05-27), all at $0.003-0.004 per call, i.e. 34x to 47x
-    # the synthetic price. Without this branch they read as "suspect".
+    # real spend by construction. Measured 2026-08-06: 15 such buckets across
+    # 12 files (2026-04-28 .. 2026-05-27), at 28.7x to 47.0x the synthetic price
+    # - low 2026-05-09 arena_coach, high 2026-04-28 aram_coach. Without this
+    # branch they read as "suspect".
     if "tokens" not in bucket:
         return "clean"
     tokens = int(bucket.get("tokens", 0) or 0)
@@ -209,11 +210,12 @@ def _is_synthetic_match_record(rec) -> bool:
     """True for a per-match cost record the leak produced.
 
     `core/match_db.py:177` calls `get_tracker().note_match_boundary()` on every
-    saved match, and `tests/test_last_match_ingest_gameid.py` drives the real
-    `save_match` with only its match DB tempdir-isolated. The result is a
-    `recent_matches.json` record whose `by_gate` is all-zero (the synthetic
-    ledger delta had already been snapshotted) and limited to the aram/arena
-    gates.
+    saved match and is the only route to this file. The PRODUCER of the two
+    records found in the production ledger is UNIDENTIFIED - see the
+    ruled-out list in the `redirect_cost_tracker_spend_dir_to_tmp` docstring in
+    `tests/conftest.py`. What is measured is the SHAPE: `by_gate` all-zero (the
+    synthetic ledger delta had already been snapshotted by a prior boundary
+    call) and limited to the aram/arena gates, two records 41ms apart.
 
     The classification risk here is bounded in a way the day-file pass is not:
     an all-zero record contributes nothing to `recent_match_avg` except
