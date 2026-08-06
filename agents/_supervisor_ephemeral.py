@@ -58,7 +58,21 @@ def prune_task_logs(log_root: Path = LOG_ROOT,
     cap. Rollup ``agent<N>.log`` / supervisor logs are never touched. A file
     that cannot be deleted (held open by a live spawn) is skipped silently -
     the next prune gets it.
+
+    Raises ValueError on a non-positive age cap (RM-161). The cutoff is
+    ``now - max_age_days * 86400``, so at ``max_age_days <= 0`` it sits at or
+    after now and every file the glob matches is older than it: the knob that
+    bounds the corpus would erase it. The check runs BEFORE any filesystem
+    work so a bad policy cannot be masked by the missing-directory early
+    return. Same defect and same remedy as
+    ``core/log_retention._validate_policy`` (LEDGER 1200).
     """
+    if max_age_days <= 0:
+        raise ValueError(
+            f"max_age_days must be > 0, got {max_age_days!r} - a cutoff at or "
+            "after now makes every task log older than it, so the retention "
+            "cap would delete the whole corpus instead of bounding it"
+        )
     if not log_root.is_dir():
         return 0
     cutoff = time.time() - max_age_days * 86400

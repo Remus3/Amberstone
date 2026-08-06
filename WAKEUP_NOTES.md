@@ -6,6 +6,47 @@
 
 ---
 
+# 2026-08-05d - lane 8 cycle 10: RM-161 closed, and the sibling sweep found the instance with the teeth
+
+Three retention knobs took an age cap that erases everything it can reach at
+zero or below. LEDGER 1201; 23 new tests; 13/13 mutants killed; verifier
+CONFIRM 9/9; RM-162 filed LOW.
+
+- **The filing named two instances. The one that actually deletes was the
+  third.** RM-161 listed `prune_task_logs` and the FROZEN
+  `ops/rc_supervisor.py:1442`. But `:1442` only READS the value and hands it to
+  `ops/rc_incident_log.IncidentLog`, whose `_purge_old_locked` does the
+  deleting - a module with **zero test references**. Reading the CONSUMER of a
+  filed row, not just the row, is what found it.
+- **Closing a frozen path without editing it.** The config key reaches the
+  frozen supervisor, so the fix went upstream: `core/config_validator.py` gained
+  a `field_ranges` mechanism and now rejects the profile before the supervisor
+  ever reads it. That was the filing's own suggestion and it held up.
+- **Raising was checked against the caller, not assumed safe.** The
+  `IncidentLog` construction sits inside `_start_self_monitor`'s `try`, whose
+  handler logs "SelfMonitor start failed (non-fatal)". So a rejected policy
+  costs an unstarted monitor, never a supervisor crash. Verify the handler
+  before choosing raise over clamp.
+- **A range violation is an ERROR even on an OPTIONAL key.** Wrong type stays a
+  WARNING there. The range table is curated to knobs whose bad value is
+  DESTRUCTIVE, and a warning the operator scrolls past is the wrong severity for
+  "this erases your incident log".
+- **One of two first-pass mutation survivors was EQUIVALENT, not a test gap.**
+  `not _check_type(data.get(key), ...)` reaches the same `continue` an absent
+  key already took - it cannot change behaviour. The other survivor was real:
+  the assertion looked for the substring "range", which the demoted message
+  still contained. **A survivor is a claim about the test; sometimes it is a
+  claim about the mutant.** Say which.
+- **Scope was held, deliberately.** `image_retention_days` and
+  `control_file_retention_hours` are typed in the same file and were NOT ranged:
+  a tree-wide grep shows zero Python consumers, so bounding them bounds nothing.
+  Interval knobs are a different root cause (hot loop, not erase) and were left.
+- **Backfill probed live and CLEAN.** Shipped profile carries 7; incident log
+  intact at 8374 lines / 2.4 MB. Latent, never realised - which is the honest
+  answer, established by reading the live files.
+
+---
+
 # 2026-08-05c - lane 8 cycle 9: the log trimmer protected nothing, not even the log being written
 
 `core/log_retention.py`, 190 lines, **zero test references**, started at RC boot
@@ -91,40 +132,3 @@ LEDGER 1199; 40 net-new tests.
   CRLF breaks mutation anchors AND sneaks into commits.
 - Live config dir before and after: **4 OK, unchanged**. Full RC suite from the
   REPO ROOT: **18393 passed, 154 skipped, 0 failed**.
-
----
-
-# 2026-08-05a - lane 8 cycle 7: the deploy worker wrote wherever it was told
-
-`ops/rc_transactional_deploy.py` had **zero test references** and joined every
-request-supplied path onto its root with no containment check. Committed
-`0647f3da` on `lane/true-audit`; LEDGER 1198; **branch is READY, not merged** -
-per the lane fence, lanes 7 and 8 ship last and the merge is the merger's call.
-
-- **The lane worktree did not exist at pre-flight.** `C:\rc-worktrees\` was empty
-  and there was no `lane/true-audit` branch, so the launcher had never fired for
-  this lane. Created it exactly as `ops/loop/lane_launcher.ensure_worktree`
-  (`:180-190`) would rather than editing the main tree. Main tree confirmed clean
-  and untouched at the end.
-- **Proven, not read:** the verifier ran the OLD and NEW modules against the same
-  hostile request. Old returned `phase=health_check` **having already written the
-  file outside `project_root`** - it failed later, after the write. New returns
-  `phase=validate` and writes nothing. On Windows `Path("C:/a") / Path("C:/b")`
-  is `C:\b`, so an absolute component discards the root entirely.
-- **A declared control that did not exist.** `rc_supervisor.py:29` documents that
-  rollback excludes `API-Key-Claude.txt`. The deploy script named that file in a
-  local `api_key` variable it never read. A grep for the exclusion passes; the
-  exclusion is not there. Worth carrying: **a variable holding the right value is
-  not an implementation, and it greps identically to one.**
-- **A CRLF file makes a mutation silently no-op.** Two mutants "survived" the
-  first pass; one was real (a test asserting only that something failed, over a
-  guard whose absence changed only the diagnosis) and one was a harness artifact -
-  a multi-line anchor containing `\n` never matches a CRLF file, so the mutation
-  applies to nothing and reads as GREEN. **Assert the anchor is present before
-  believing a surviving mutant.** Both were closed; 9 of 9 guards now die.
-- **No restart makes this live.** The supervisor launches the file by absolute
-  path from `C:\Riot Commander` (`ops/rc_config.json:9`), so `restart_trigger.txt`
-  deploys nothing here - only the merge does. Item 1179 in reverse, caught before
-  shipping rather than after.
-- **RM-160 filed** (BACKLOG, Reliability / hardening): the drop directory has no
-  producer and no ACL. Containment is now the only control standing on it.
