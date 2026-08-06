@@ -87,6 +87,23 @@ at the band's representative minute (the project_lead level<->minute curve);
 mana / manaless state. BUILD + PERSIST only (same charter-4b do-not-flip-blind
 boundary as the v1 verdict).
 
+MODE FIDELITY (RM-158)
+    A per-mode table is only worth writing if the mode actually changes an
+    input. Three inputs carry the mode here: the DS burst / matchup path
+    (differentiates ARAM ONLY - ``engine._apply_mode_modifiers`` early-returns
+    when ``mode != "ARAM"`` and ``burst.py`` folds ``aramDamageDealt`` only), the
+    per-mode curated build order (``build_orders_<mode>.json``, so item-state
+    cells past ``none`` differentiate ARENA via its arena-mirror item ids), and
+    the ``core.lead_projection`` gross-income row (the ``economy`` block). ARENA
+    had NO income row, so at v3 - which was itemless - it had zero
+    differentiating inputs and ``laning_scenarios_arena.json`` shipped as a byte
+    copy of the SR table under an arena header. ``main`` now REFUSES to write a
+    mode whose income row is unregistered instead of emitting a copy. Residual,
+    documented, NOT fixed here: the itemless (``item_state == "none"``) ARENA
+    combat scalars still equal SR's, because the burst path has no ARENA branch
+    to reach - that is a DS engine gap (``burst.py`` takes no
+    ``apply_mode_modifiers``), not a generator one.
+
 FAIL-SOFT (read side)
     A missing / unreadable / malformed table yields ``{}`` and every ``lookup``
     yields ``{}``. The coach surface degrades to "no precomputed verdict" (it
@@ -1086,10 +1103,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
           f"dry_run={args.dry_run} out={out_dir}")
 
     started = time.time()
+    unregistered: list[str] = []
     for mode_key in target_modes:
+        ds_mode = _DS_MODE_BY_KEY.get(mode_key, "SR")
+        # RM-158 mode-fidelity gate. Every per-cell field this generator can
+        # differentiate for a non-ARAM mode flows from the lead_projection
+        # gross-income row (the DS burst/matchup path applies mode modifiers for
+        # ARAM only - engine._apply_mode_modifiers early-returns otherwise), so a
+        # mode with no income row of its own produces the SR table verbatim. That
+        # is exactly how laning_scenarios_arena.json shipped as a byte copy of
+        # laning_scenarios_sr.json at 16.13.1. Refuse the write rather than emit
+        # a copy under a different header - the same posture as the
+        # DataSnapshot.load() guard above (a wrong table is worse than none).
+        if not _lead.gold_income_is_registered(ds_mode):
+            unregistered.append(mode_key)
+            logger.warning(
+                f"  {mode_key:5s}: SKIPPED - no gross-income row registered for "
+                f"mode={ds_mode} in core.lead_projection, so this table would be "
+                f"the SR table under a {mode_key!r} header (RM-158)."
+            )
+            continue
         payload = generate_table(
-            snapshot, champions, enemies,
-            mode=_DS_MODE_BY_KEY.get(mode_key, "SR"), bands=bands,
+            snapshot, champions, enemies, mode=ds_mode, bands=bands,
         )
         leaves = _count_leaves(payload)
         if args.dry_run:
@@ -1100,6 +1135,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             logger.info(f"  {mode_key:5s}: {leaves} leaf cells -> {out_path.name}")
 
     logger.info(f"done in {time.time() - started:.1f}s")
+    if unregistered:
+        logger.warning(
+            f"laning-scenarios gen: {len(unregistered)} mode(s) skipped for a "
+            f"missing gross-income row: {unregistered}. Register them in "
+            f"core.lead_projection._GOLD_EARNED_PER_MIN and re-run."
+        )
+        return 2
     return 0
 
 
