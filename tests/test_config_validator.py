@@ -572,5 +572,250 @@ class LiveConfigTests(unittest.TestCase):
         self.assertTrue((cv.APP_DIR / "ops" / "rc_config.json").is_file())
 
 
+# =========================================================================
+# RM-161 - a typed knob is not a bounded knob
+# =========================================================================
+
+class RangeSpecCase(_TmpAppDirCase):
+    """`incident_log_retention_days` was typed `integer` and never ranged.
+
+    `ops/rc_supervisor.py:1442` (FROZEN) reads it straight out of
+    `config/self_monitor_profile.json` and hands it to
+    `ops/rc_incident_log.IncidentLog`, whose `_purge_old_locked` keeps only
+    entries newer than `now - timedelta(days=retention_days)`. At a value of
+    0 or less that window is empty or inverted, so the purge that exists to
+    bound the incident log erases every entry in it - including the incidents
+    the operator is reading it to diagnose. `0` passes `"integer"`, so the
+    validator waved it through, and because the supervisor is frozen the
+    validator is the non-frozen place to reject the profile before the
+    supervisor ever reads it.
+
+    Range violations are ERROR and never WARNING even on an OPTIONAL key,
+    unlike a wrong type. The range table is deliberately curated to knobs
+    whose bad value is DESTRUCTIVE rather than merely wrong, so a warning the
+    operator can scroll past is the wrong severity for it.
+    """
+
+    SELF_MONITOR = "config/self_monitor_profile.json"
+
+    def _profile(self, **over) -> dict:
+        base = {
+            "enabled": True,
+            "auto_retry": True,
+            "remediation_ladder": ["hot_reload", "restart"],
+        }
+        base.update(over)
+        return base
+
+    def _self_monitor_result(self, **over):
+        self.write_all_valid()
+        self.write_json(self.SELF_MONITOR, self._profile(**over))
+        return self.result_for(cv.validate_all(), self.SELF_MONITOR)
+
+    # - the defect ---------------------------------------------------------
+
+    def test_zero_retention_is_rejected(self):
+        result = self._self_monitor_result(incident_log_retention_days=0)
+        self.assertEqual(result.status, "ERROR", result.issues)
+        self.assertTrue(
+            any("incident_log_retention_days" in i and "ERROR" in i
+                for i in result.issues),
+            f"a zero retention window was accepted: {result.issues!r}",
+        )
+
+    def test_negative_retention_is_rejected(self):
+        result = self._self_monitor_result(incident_log_retention_days=-7)
+        self.assertEqual(result.status, "ERROR", result.issues)
+        self.assertTrue(
+            any("incident_log_retention_days" in i for i in result.issues),
+            f"a negative retention window was accepted: {result.issues!r}",
+        )
+
+    def test_the_supervisors_own_default_still_passes(self):
+        """`ops/rc_supervisor.py:1442` defaults to 7 and `ops/rc_self_monitor.py:44`
+        ships 7. A range that rejected the live value would be a regression,
+        not a hardening."""
+        result = self._self_monitor_result(incident_log_retention_days=7)
+        self.assertIn(result.status, ("OK", "WARNING"), result.issues)
+        self.assertFalse(
+            any("incident_log_retention_days" in i for i in result.issues),
+            f"the shipped default was flagged: {result.issues!r}",
+        )
+
+    def test_the_smallest_legal_value_passes(self):
+        result = self._self_monitor_result(incident_log_retention_days=1)
+        self.assertFalse(
+            any("incident_log_retention_days" in i for i in result.issues),
+            f"the boundary value 1 was flagged: {result.issues!r}",
+        )
+
+    def test_absent_optional_key_is_not_range_checked(self):
+        """The key is OPTIONAL. A range check that fired on its absence would
+        break every profile that never set it - which is all of them."""
+        result = self._self_monitor_result()
+        self.assertFalse(
+            any("incident_log_retention_days" in i for i in result.issues),
+            f"an absent optional key was range-checked: {result.issues!r}",
+        )
+
+    # - the mechanism ------------------------------------------------------
+
+    def test_wrong_type_is_reported_once_and_not_range_checked(self):
+        """A non-numeric value must not reach the comparison - `"7" < 1`
+        raises TypeError in Python 3. The type report is the whole report."""
+        result = self._self_monitor_result(incident_log_retention_days="7")
+        flagged = [i for i in result.issues if "incident_log_retention_days" in i]
+        self.assertEqual(len(flagged), 1, f"expected one issue, got {flagged!r}")
+        self.assertIn("expected integer", flagged[0])
+
+    def test_bool_is_not_accepted_as_an_in_range_integer(self):
+        """`True == 1` in Python, so a bool would satisfy `>= 1` if it ever
+        reached the comparison. `_check_type` rejects it first; pin that the
+        range pass cannot resurrect it."""
+        result = self._self_monitor_result(incident_log_retention_days=True)
+        flagged = [i for i in result.issues if "incident_log_retention_days" in i]
+        self.assertEqual(len(flagged), 1, f"expected one issue, got {flagged!r}")
+        self.assertIn("expected integer", flagged[0])
+
+    def test_range_message_states_the_bound_and_the_value(self):
+        result = self._self_monitor_result(incident_log_retention_days=0)
+        flagged = [i for i in result.issues if "incident_log_retention_days" in i]
+        self.assertEqual(len(flagged), 1, f"expected one issue, got {flagged!r}")
+        self.assertIn("0", flagged[0])
+        self.assertIn("1", flagged[0])
+
+    def test_every_ranged_key_is_typed_numeric_in_the_same_spec(self):
+        """A range on a key the spec does not type numerically is DEAD - it
+        can never be evaluated, and nothing would say so. This is the
+        `_check_type` unknown-type-spec failure class (D3) in a new place."""
+        for spec in cv._CONFIG_SPECS:
+            for key in spec.field_ranges:
+                self.assertIn(
+                    key, spec.field_types,
+                    f"{spec.rel_path}: ranged key {key!r} is not typed",
+                )
+                self.assertIn(
+                    spec.field_types[key], ("integer", "number"),
+                    f"{spec.rel_path}: ranged key {key!r} is typed "
+                    f"{spec.field_types[key]!r}, which no range can apply to",
+                )
+
+    def test_every_ranged_key_is_a_declared_key_of_its_spec(self):
+        for spec in cv._CONFIG_SPECS:
+            declared = set(spec.required_keys) | set(spec.optional_keys)
+            for key in spec.field_ranges:
+                self.assertIn(
+                    key, declared,
+                    f"{spec.rel_path}: ranged key {key!r} is neither "
+                    f"required nor optional, so it is never validated",
+                )
+
+    def test_incident_log_retention_days_is_actually_ranged(self):
+        """The registry sweeps above are vacuous on an empty table. Pin the
+        one row RM-161 exists for."""
+        self.assertIn(
+            "incident_log_retention_days", cv._SELF_MONITOR_SPEC.field_ranges,
+        )
+        low, high = cv._SELF_MONITOR_SPEC.field_ranges["incident_log_retention_days"]
+        self.assertEqual(low, 1)
+        self.assertIsNone(high)
+
+    def test_range_applies_to_a_required_key_too(self):
+        """The range pass must not be optional-only. Exercised directly
+        because no shipped spec ranges a required key today, which is exactly
+        how that path would rot unnoticed."""
+        self.write_json("ops/probe.json", {"n": 0})
+        result = cv._validate_config(
+            rel_path="ops/probe.json",
+            required_keys=["n"],
+            optional_keys=[],
+            field_types={"n": "integer"},
+            field_ranges={"n": (1, None)},
+        )
+        self.assertEqual(result.status, "ERROR", result.issues)
+        self.assertTrue(any("'n'" in i for i in result.issues), result.issues)
+
+    def test_upper_bound_is_enforced(self):
+        self.write_json("ops/probe.json", {"n": 11})
+        result = cv._validate_config(
+            rel_path="ops/probe.json",
+            required_keys=[],
+            optional_keys=["n"],
+            field_types={"n": "integer"},
+            field_ranges={"n": (1, 10)},
+        )
+        self.assertEqual(result.status, "ERROR", result.issues)
+        self.assertTrue(any("10" in i for i in result.issues), result.issues)
+
+    def test_a_value_exactly_on_either_bound_passes(self):
+        """Both bounds are INCLUSIVE. Without this, `<` -> `<=` and
+        `>` -> `>=` are both undetectable mutations."""
+        for n in (1, 10):
+            with self.subTest(n=n):
+                self.write_json("ops/probe.json", {"n": n})
+                result = cv._validate_config(
+                    rel_path="ops/probe.json",
+                    required_keys=[],
+                    optional_keys=["n"],
+                    field_types={"n": "integer"},
+                    field_ranges={"n": (1, 10)},
+                )
+                self.assertEqual(result.status, "OK", result.issues)
+
+    def test_a_range_on_a_non_numeric_key_is_reported_not_ignored(self):
+        """A range that can never be evaluated is dead validation, and dead
+        validation that says nothing is the D3 failure class again."""
+        self.write_json("ops/probe.json", {"n": "x"})
+        result = cv._validate_config(
+            rel_path="ops/probe.json",
+            required_keys=[],
+            optional_keys=["n"],
+            field_types={"n": "string"},
+            field_ranges={"n": (1, None)},
+        )
+        self.assertEqual(result.status, "ERROR", result.issues)
+        self.assertTrue(
+            any(i.startswith("ERROR") and "range" in i and "'n'" in i
+                for i in result.issues),
+            f"an unevaluatable range was silently ignored: {result.issues!r}",
+        )
+
+    def test_value_inside_both_bounds_passes(self):
+        self.write_json("ops/probe.json", {"n": 5})
+        result = cv._validate_config(
+            rel_path="ops/probe.json",
+            required_keys=[],
+            optional_keys=["n"],
+            field_types={"n": "integer"},
+            field_ranges={"n": (1, 10)},
+        )
+        self.assertEqual(result.status, "OK", result.issues)
+
+    def test_ranges_default_to_empty_so_existing_specs_are_unaffected(self):
+        """`field_ranges` was appended to `_ConfigSpec` with a default so no
+        existing positional construction breaks (CLAUDE.md Python
+        Conventions). Pin both halves of that."""
+        spec = cv._ConfigSpec(
+            rel_path="ops/probe.json",
+            required_keys=[],
+            optional_keys=[],
+            field_types={},
+            is_optional_file=False,
+        )
+        self.assertEqual(spec.field_ranges, {})
+        # One shared class default across every spec that omits the field, so
+        # it must not be mutable in place.
+        with self.assertRaises(TypeError):
+            spec.field_ranges["n"] = (1, None)   # type: ignore[index]
+        self.write_json("ops/probe.json", {"n": -99})
+        result = cv._validate_config(
+            rel_path="ops/probe.json",
+            required_keys=[],
+            optional_keys=["n"],
+            field_types={"n": "integer"},
+        )
+        self.assertEqual(result.status, "OK", result.issues)
+
+
 if __name__ == "__main__":
     unittest.main()
