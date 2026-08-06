@@ -223,6 +223,52 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 ---
 
+# 2026-08-05b - lane 8 cycle 8: the validator crashed, then blamed `<unknown>`
+
+`lane/true-audit` MERGED to main first (fast-forward `b1541d96..5da5cc7c`, the
+cycle-7 deploy containment now actually live since the supervisor loads it by
+absolute path). Then cycle 8: `core/config_validator.py`, 407 lines, **zero test
+references**, imported at import time by frozen `main.py:67`. Commit `17aa390a`;
+LEDGER 1199; 40 net-new tests.
+
+- **Read the CONSUMER before deciding what is worth fixing.** `main.py` wraps the
+  call in a bare `try/except` and **discards the return value**. The module's
+  entire product is its log line - so the bugs that mattered were the ones that
+  mangle the log line, not the ones that change a status code nobody reads.
+- **`key not in data` is a SUBSTRING test when `data` is a string.** A config
+  whose top-level JSON was a string passed the whole required-key loop, then
+  raised `TypeError` on `data[key]`. `validate_all` caught it and filed it under
+  the literal file name **`<unknown>`** - losing the file name in exactly the
+  case the module exists to diagnose. Fixed both ends: guard before any key
+  lookup, and pair every validator with its path UP FRONT so `<unknown>` is
+  unreachable.
+- **A permissive default is a silent off-switch.** `_check_type` returned True
+  for a type spec it did not recognise, so one typo in a `field_types` value
+  disabled that field's validation permanently with no signal. The shipped specs
+  moved into a declarative `_CONFIG_SPECS` registry so a test can sweep them.
+- **Emptiness is not falsiness.** Required keys must now be non-empty
+  (`python_exe: ""` and `app_cmd: []` both validated **OK** before), but judged
+  by container, so `false` and `0` stay legitimate configured values.
+- **A ruled-OUT assertion is not a pinned-DOWN one.** First mutation pass had a
+  survivor: the unreadable-file test asserted only that the word "expecting" was
+  ABSENT, which a collapsed generic message satisfies just as well as a correct
+  one. Strengthened to assert the OS detail survives AND that the read and parse
+  messages differ. **8 of 8 mutations now killed.**
+- **A required config that `.gitignore` excludes ERRORs on every fresh clone.**
+  `config/coach_settings.json` (`.gitignore:40`) is genuinely required and
+  genuinely absent in CI. Kept the ERROR, made it actionable by naming the
+  tracked `coach_settings.example.json`. Same reason `LiveConfigTests` is scoped
+  to configs that EXIST - a blanket "zero ERROR" gate passes on Legion and fails
+  in CI, which is a test that lies about where it works.
+- **`write_text` re-encoded the target to CRLF** during the mutation run
+  (`reference_windows_write_text_crlf_byte_count`). Caught by the `git diff` EOL
+  warning pre-commit and normalised back to LF. Pair it with the cycle-7 lesson:
+  CRLF breaks mutation anchors AND sneaks into commits.
+- Live config dir before and after: **4 OK, unchanged**. Full RC suite from the
+  REPO ROOT: **18393 passed, 154 skipped, 0 failed**.
+
+---
+
 # 2026-08-05a - lane 8 cycle 7: the deploy worker wrote wherever it was told
 
 `ops/rc_transactional_deploy.py` had **zero test references** and joined every
