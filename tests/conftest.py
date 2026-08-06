@@ -100,6 +100,58 @@ def redirect_prod_write_paths_to_tmp(monkeypatch, tmp_path_factory):
             monkeypatch.setattr(mod, attr, base / fname)
 
 
+@pytest.fixture(autouse=True)
+def redirect_cost_tracker_spend_dir_to_tmp(monkeypatch, tmp_path_factory):
+    """S5: no test may book synthetic spend into the operator's real ledger.
+
+    `core/cost_tracker.py:120` resolves `_SPEND_DIR` to `data/spend/` at
+    import time, and `get_tracker()` (:543) memoizes ONE process-global
+    `CostTracker` bound to it. Every coach reaches that singleton through
+    `coaches/_base_coach.py:713 _record_coach_call` and every non-coach call
+    site through `core.cost_tracker.record_anthropic_response` (:563), so any
+    test that drives a real coach with a mocked Anthropic client writes real
+    financial telemetry. MEASURED 2026-08-06 by instrumenting `record_call`
+    over the whole `tests/` suite: 32 leaked calls per run, all 10-in / 20-out
+    under aram_coach / arena_coach, from exactly two files
+    (`test_aram_state_debounce.py`, `test_arena_state_debounce.py`). On disk
+    that had accumulated to 40 of 84 day-files carrying 13141 synthetic calls
+    worth $1.156408, plus a phantom `1970-01-12.json` minted by the debounce
+    ceiling test patching `time.time` (which `date.today()` reads through).
+    A THIRD leak reached the per-match sidecars rather than a day-file:
+    `core/match_db.py:177` fires `note_match_boundary()` on every saved match
+    and `tests/test_last_match_ingest_gameid.py` drives the real `save_match`.
+    Redirecting the singleton closes all three. `tools/repair_spend_ledger.py`
+    recovered the rows already written.
+
+    PREVENTION, not detection: re-pointing the module global and clearing the
+    memoized singleton means a future test cannot reintroduce the leak by
+    forgetting to isolate - there is nothing to forget. Isolation lives in one
+    place rather than in each `setUp`, matching the SHADOW_PATH precedent
+    above. `monkeypatch` restores both after each test.
+
+    What it CANNOT catch: a test that constructs `CostTracker(spend_dir=...)`
+    with an explicit production path, or one that writes `data/spend/*.json`
+    with plain file I/O instead of going through the tracker. The session
+    guard in `assert_prod_artifacts_unchanged` is the backstop for those.
+    """
+    try:
+        from core import cost_tracker as _ct
+    except Exception:  # noqa: BLE001 - keep conftest collection dependency-free
+        yield
+        return
+    base = tmp_path_factory.mktemp("spend")
+    monkeypatch.setattr(_ct, "_SPEND_DIR", base, raising=False)
+    monkeypatch.setattr(_ct, "_MATCH_OPEN_PATH",
+                        base / "_match_open.json", raising=False)
+    monkeypatch.setattr(_ct, "_RECENT_MATCHES_PATH",
+                        base / "recent_matches.json", raising=False)
+    # The singleton may already hold a production-bound tracker from an
+    # earlier import; clearing it forces the next get_tracker() to rebuild
+    # against the redirected dir.
+    monkeypatch.setattr(_ct, "_singleton", None, raising=False)
+    yield
+
+
 @pytest.fixture(scope="session")
 def _fusion_shadow_base(tmp_path_factory):
     """One temp dir per worker for the fusion-shadow redirect below.
@@ -169,6 +221,33 @@ _PROD_ARTIFACT_GUARD = (
 )
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
+# S5 backstop for the cost ledger. `data/spend/` is a DIRECTORY of day-files,
+# so a single size check cannot cover it: the set membership matters as much as
+# the bytes (the leak minted a whole phantom `1970-01-12.json`). Three files are
+# deliberately EXCLUDED because a live coach legitimately writes them mid-run on
+# Legion, where RC-Supervisor is up most of the time - the same false-positive
+# that got `ops/loop/control/controller.log` removed from the tuple above:
+#   <today>.json           - today's ledger, written on every live API call
+#   _match_open.json       - re-snapshotted by note_match_boundary on match save
+#   recent_matches.json    - ditto
+# Everything older than today is immutable in production, so any change there is
+# a test writing a prod path. Prevention for today's file is the autouse
+# `redirect_cost_tracker_spend_dir_to_tmp` fixture; this guard catches what a
+# redirect cannot (raw file I/O, or an explicit production `spend_dir=`).
+_SPEND_DIR_GUARD = _REPO_ROOT / "data" / "spend"
+
+
+def _spend_ledger_snapshot() -> dict:
+    """{filename -> size} for every historic day-file in data/spend/."""
+    from datetime import date as _date
+    if not _SPEND_DIR_GUARD.is_dir():
+        return {}
+    skip = {_date.today().isoformat() + ".json",
+            "_match_open.json", "recent_matches.json"}
+    return {p.name: p.stat().st_size
+            for p in _SPEND_DIR_GUARD.iterdir()
+            if p.is_file() and p.name not in skip}
+
 
 def _prod_artifact_sizes() -> dict:
     out = {}
@@ -233,6 +312,7 @@ def _no_live_tft_ocr():
 @pytest.fixture(scope="session", autouse=True)
 def assert_prod_artifacts_unchanged():
     before = _prod_artifact_sizes()
+    spend_before = _spend_ledger_snapshot()
     yield
     after = _prod_artifact_sizes()
     changed = [
@@ -240,6 +320,12 @@ def assert_prod_artifacts_unchanged():
         for rel in _PROD_ARTIFACT_GUARD
         if before[rel] != after[rel]
     ]
+    spend_after = _spend_ledger_snapshot()
+    for name in sorted(set(spend_before) | set(spend_after)):
+        b = spend_before.get(name)
+        a = spend_after.get(name)
+        if b != a:
+            changed.append("data/spend/" + name + " " + str(b) + "->" + str(a))
     assert not changed, (
         "suite mutated a production artifact - a test wrote a prod path "
         "instead of tmp (RF5 hermeticity regression): " + "; ".join(changed)
