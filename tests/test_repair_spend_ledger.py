@@ -232,13 +232,16 @@ class RepairDirTests(unittest.TestCase):
 
 
 class MatchSidecarTests(unittest.TestCase):
-    """`_match_open.json` + `recent_matches.json` - the second leak.
+    """`_match_open.json` + `recent_matches.json` - the second write path.
 
     `core/match_db.py:177` fires `get_tracker().note_match_boundary()` on every
-    saved match, and `tests/test_last_match_ingest_gameid.py` drives the real
-    `save_match` with only its match DB isolated. Measured on the live tree
-    2026-08-06: two records 41 MILLISECONDS apart, all-zero `by_gate`, aram +
-    arena only - not two real matches.
+    saved match and is the only route to these files. What was MEASURED on the
+    live ledger 2026-08-06 is the shape, not the caller: two records 41
+    MILLISECONDS apart at 2026-08-04 22:16:28, all-zero `by_gate`, aram + arena
+    only - not two real matches. The producer is UNIDENTIFIED; the ruled-out
+    list lives in the `redirect_cost_tracker_spend_dir_to_tmp` docstring in
+    `tests/conftest.py`. These tests pin the repair against that measured
+    shape, so they do not depend on the caller ever being named.
     """
 
     def setUp(self) -> None:
