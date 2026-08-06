@@ -1,10 +1,15 @@
 """RM-165: the cost watchdog must read DAY-LEDGERS only, not sidecars.
 
-`data/spend/` is not a directory of day-files. `core/cost_tracker.py:160-161`
-also parks two sidecars there:
+`data/spend/` is not a directory of day-files. `core/cost_tracker.py` also
+parks two per-match sidecars there. They are written at :461-462 off
+`self._spend_dir`:
 
-    _SPEND_DIR / "_match_open.json"      (by_purpose snapshot @ match boundary)
-    _SPEND_DIR / "recent_matches.json"   (rolling per-match cost, pruned)
+    self._spend_dir / "_match_open.json"     (by_purpose snapshot @ boundary)
+    self._spend_dir / "recent_matches.json"  (rolling per-match cost, pruned)
+
+The module-level `_MATCH_OPEN_PATH` / `_RECENT_MATCHES_PATH` constants at
+:160-161 are NOT the write sites - they are referenced nowhere in `core/`
+(`recent_matches.json` is read back at :514, again off `self._spend_dir`).
 
 `tools/cost_health_watchdog.py` globbed `*.json` over that directory, so both
 sidecars were read as if they were day-ledgers. `_match_open.json` carries a
@@ -94,6 +99,68 @@ class DayLedgerFilterTests(unittest.TestCase):
         names = sorted(p.name for p in chw.iter_day_ledgers(d))
         self.assertEqual(names, ["2026-05-01.json"])
 
+    def test_uppercase_suffix_is_rejected(self):
+        """Pins the exact-`.json` clause.
+
+        `Path.glob("*.json")` is case-INSENSITIVE on this Windows/CPython -
+        measured: it returns a file named `2026-05-01.JSON`. So the suffix
+        has to be re-checked case-SENSITIVELY or a `.JSON` foreign file is
+        admitted. Distinct dates because NTFS is case-insensitive and the two
+        names would otherwise collide.
+        """
+        d = Path(tempfile.mkdtemp(prefix="rm165_case_"))
+        _write(d / "2026-05-01.JSON", 1.0, SIDECAR_BY_PURPOSE)
+        _write(d / "2026-05-02.json", 1.0)
+        self.assertIn("2026-05-01.JSON",
+                      [p.name for p in d.glob("*.json")],
+                      "precondition: glob is expected to be case-insensitive "
+                      "here; if this fails the clause below is untestable")
+        names = sorted(p.name for p in chw.iter_day_ledgers(d))
+        self.assertEqual(names, ["2026-05-02.json"])
+
+    def test_iso_week_date_is_rejected(self):
+        """Pins the YYYY-MM-DD regex clause.
+
+        `date.fromisoformat` is broader than YYYY-MM-DD on 3.11+: measured on
+        3.14.4, `fromisoformat("2026-W01-1")` returns 2025-12-29. That stem is
+        also exactly 10 chars, so a length check does NOT exclude it - only an
+        explicit YYYY-MM-DD match does. `cost_tracker._today_str()` only ever
+        emits `date.today().isoformat()`, so a week-date file is foreign.
+        """
+        d = Path(tempfile.mkdtemp(prefix="rm165_week_"))
+        _write(d / "2026-W01-1.json", 1.0, SIDECAR_BY_PURPOSE)
+        _write(d / "2026-05-02.json", 1.0)
+        from datetime import date as _date
+        self.assertEqual(_date.fromisoformat("2026-W01-1"),
+                         _date(2025, 12, 29),
+                         "precondition: this Python accepts the ISO week "
+                         "date; if not, the clause below is untestable")
+        names = sorted(p.name for p in chw.iter_day_ledgers(d))
+        self.assertEqual(names, ["2026-05-02.json"])
+
+    def test_calendar_validity_is_enforced(self):
+        """Pins the `date.fromisoformat` clause: the regex alone cannot judge
+        whether YYYY-MM-DD names a real day."""
+        d = Path(tempfile.mkdtemp(prefix="rm165_cal_"))
+        _write(d / "2026-02-30.json", 1.0, SIDECAR_BY_PURPOSE)
+        _write(d / "2026-13-45.json", 1.0, SIDECAR_BY_PURPOSE)
+        _write(d / "2026-05-02.json", 1.0)
+        names = sorted(p.name for p in chw.iter_day_ledgers(d))
+        self.assertEqual(names, ["2026-05-02.json"])
+
+    def test_directory_named_like_a_day_ledger_is_rejected(self):
+        """Pins the `is_file()` clause: `glob("*.json")` matches DIRECTORIES
+        too (measured). The sibling reader `tests/conftest.py:264` checks
+        `is_file()`; this one now does as well."""
+        d = Path(tempfile.mkdtemp(prefix="rm165_dir_"))
+        (d / "2026-05-01.json").mkdir()
+        _write(d / "2026-05-02.json", 1.0)
+        self.assertIn("2026-05-01.json",
+                      [p.name for p in d.glob("*.json")],
+                      "precondition: glob is expected to match the directory")
+        names = sorted(p.name for p in chw.iter_day_ledgers(d))
+        self.assertEqual(names, ["2026-05-02.json"])
+
 
 class SpendBaselineExcludesSidecarTests(unittest.TestCase):
 
@@ -138,6 +205,10 @@ class LaneCostExcludesSidecarTests(unittest.TestCase):
         self.assertEqual(res["flagged_lanes"], ["vision_relay"])
 
     def test_sidecar_only_lane_is_not_invented(self):
+        """CHARACTERIZATION, not regression - this one passes against the
+        UNFIXED module too. A lane that appears only in a sidecar is never in
+        `today_means`, so it could not reach `lanes` even before the fix.
+        Kept to pin that behaviour, but it is NOT evidence for RM-165."""
         d = Path(tempfile.mkdtemp(prefix="rm165_ghost_"))
         _write(d / "2026-05-08.json", 1.0,
                {"vision_relay": {"usd": 1.0, "calls": 100}})
