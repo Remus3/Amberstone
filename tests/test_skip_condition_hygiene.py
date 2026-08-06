@@ -49,7 +49,15 @@ _REPO_ROOT = _HERE.parent.parent
 # than on file absence follows test_changelog_tracks_engine_version.py:39.
 _IS_SHARE_MIRROR = "share" in (p.name.lower() for p in _HERE.parents)
 
-_TEST_TREES = ("tests", "agents/daemon_slayer/tests")
+# Every tree in this repo that pytest collects test modules from. Widened
+# 2026-08-06 (RM-119 B5 re-census): the original pair left
+# agents/agent3_testing/suite, tools/tests and benchmarks OUTSIDE the guard, so
+# a net-new skip gated on a tracked artifact could be added there and no test
+# in the repo would notice. The audit this module descends from
+# (docs/SKIPIF_AUDIT_2026-07-27.md) already had agent3 in scope; the guard did
+# not, which is exactly the producing-side gap constraint 1 warns about.
+_TEST_TREES = ("tests", "agents/daemon_slayer/tests",
+               "agents/agent3_testing/suite", "tools/tests", "benchmarks")
 
 _GIT = shutil.which("git")
 
@@ -578,9 +586,14 @@ class _Ctx:
     outermost path expression is a real reference.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, broad_handler: bool = False) -> None:
         self.sig = _Signals()
         self.consumed: set[int] = set()
+        # True when this skip sits in an `except Exception` / bare `except`.
+        # A handler that catches EVERYTHING cannot be read as evidence that a
+        # dynamic import failed for want of an optional dependency - it catches
+        # a deleted first-party file and a SyntaxError just as happily.
+        self.broad_handler = broad_handler
 
     def take(self, expr: ast.AST | None, model: _Model, scope: ast.AST,
              seen: frozenset) -> None:
@@ -624,14 +637,19 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx,
         _collect_call(node, model, scope, ctx, seen, depth)
 
     elif isinstance(node, ast.Name):
-        if node.id in model.optional_names:
+        # Load context only. A name being ASSIGNED is not a name being tested:
+        # `mod = importlib.import_module(module_path)` inside a swallowing try
+        # would otherwise credit an optional-import capability to its own
+        # target, and any dynamic first-party import written in the normal
+        # `x = import(...)` shape would classify itself CAPABILITY.
+        if isinstance(node.ctx, ast.Load) and node.id in model.optional_names:
             sig.optional_import = True
         if node.id not in seen and depth < _MAX_RESOLUTION_DEPTH:
             for bound in model.lookup(node.id, scope):
                 _collect(bound, model, scope, ctx, seen | {node.id}, depth + 1)
 
     elif isinstance(node, (ast.Import, ast.ImportFrom)):
-        _collect_import(node, sig)
+        _collect_import(node, sig, model)
         return
 
     elif isinstance(node, ast.Try):
@@ -666,16 +684,26 @@ def _derives_from_file(expr: ast.AST | None, model: _Model, scope: ast.AST,
     return False
 
 
-def _collect_import(node: ast.AST, sig: _Signals) -> None:
+def _collect_import(node: ast.AST, sig: _Signals,
+                    model: _Model | None = None) -> None:
     if isinstance(node, ast.Import):
         targets = [a.name for a in node.names]
+        bound = [a.asname or a.name.split(".")[0] for a in node.names]
     else:
         base = node.module or ""
         targets = [f"{base}.{a.name}" if base else a.name for a in node.names]
+        bound = [a.asname or a.name for a in node.names]
+    # A third-party import is evidence of an OPTIONAL dependency only when its
+    # failure was actually swallowed. A plain `import importlib` sitting in the
+    # same function as the skip is not: the widen-to-function pass would
+    # otherwise hand every skip in a module that imports anything from the
+    # stdlib a free capability signal, which is how the RM-119 B5 site in
+    # tests/test_ports.py read as clean.
+    swallowed = model is None or any(b in model.optional_names for b in bound)
     for dotted in targets:
         if _first_party_file(dotted) is not None:
             sig.firstparty_import.add(dotted)
-        else:
+        elif swallowed:
             sig.optional_import = True
 
 
@@ -743,8 +771,32 @@ def _collect_call(node: ast.Call, model: _Model, scope: ast.AST,
         sig.binary = True
     if tail in _ENV_CALLS or fname.startswith("os.environ"):
         sig.env = True
-    if tail in ("find_spec", "import_module", "importorskip", "util.find_spec"):
-        sig.optional_import = True
+    if tail in ("find_spec", "import_module", "importorskip", "util.find_spec",
+                "__import__"):
+        # A DYNAMIC import is only a capability question when the thing being
+        # imported is somebody else's. `importlib.import_module("mc.server")`
+        # names a TRACKED file, so swallowing its failure into a skip is the
+        # same always-pass guard as gating on that file's existence - which is
+        # what tests/test_ports.py did until RM-119 B5. Resolve the literal
+        # before deciding; a non-literal target stays a capability signal
+        # because nothing here can say what it will hold at run time.
+        target = node.args[0] if node.args else None
+        if (isinstance(target, ast.Constant)
+                and isinstance(target.value, str)
+                and _first_party_file(target.value) is not None):
+            sig.firstparty_import.add(target.value)
+        elif tail == "importorskip" or not ctx.broad_handler:
+            # `importorskip` is itself a skip primitive - it skips on absence
+            # and on nothing else - so it stays honest evidence wherever it is
+            # written. The others RETURN a module and leave the caller to
+            # decide what a failure meant, which is where the handler width
+            # starts to matter.
+            sig.optional_import = True
+        # else: an unreadable target caught by a catch-everything handler is
+        # not evidence of anything, so it resolves to nothing and the site
+        # lands in UNRESOLVED - which the guard treats as a defect until a
+        # human narrows the handler. tests/test_ports.py was exactly this
+        # (RM-119 B5) and read as a clean capability skip for months.
     if tail in _NETWORK_TOKENS or root in _NETWORK_ROOTS:
         sig.network = True
     if tail in _PATH_PREDICATES and isinstance(node.func, ast.Attribute):
@@ -842,8 +894,26 @@ def _context_conditions(model: _Model, node: ast.AST) -> list[ast.AST]:
     return out
 
 
+_BROAD_EXC = {"Exception", "BaseException"}
+
+
+def _in_catch_everything_handler(model: _Model, node: ast.AST) -> bool:
+    """True when the skip sits inside a bare `except:` or `except Exception:`."""
+    cur: ast.AST | None = node
+    parent = model.parent.get(cur)
+    while parent is not None and not isinstance(parent, _SCOPES):
+        if isinstance(parent, ast.ExceptHandler):
+            if parent.type is None:
+                return True
+            if any(n in _BROAD_EXC for n in _exc_names(parent.type)):
+                return True
+        cur, parent = parent, model.parent.get(parent)
+    return False
+
+
 def _signals_for(model: _Model, site: _Site) -> _Signals:
     scope = model.scope_of(site.node)
+    broad = _in_catch_everything_handler(model, site.node)
 
     if site.kind == "importorskip":
         sig = _Signals()
@@ -858,18 +928,18 @@ def _signals_for(model: _Model, site: _Site) -> _Signals:
         return sig
 
     if site.condition is not None:
-        ctx = _Ctx()
+        ctx = _Ctx(broad)
         _collect(site.condition, model, scope, ctx, frozenset(), 0)
         return ctx.sig
 
     # Bare skip: nearest guards first, then widen to the enclosing function.
-    near = _Ctx()
+    near = _Ctx(broad)
     for cond in _context_conditions(model, site.node):
         _collect(cond, model, scope, near, frozenset(), 0)
     if _classify(near.sig) != UNRESOLVED:
         return near.sig
     if isinstance(scope, _CALLABLE_SCOPES):
-        wide = _Ctx()
+        wide = _Ctx(broad)
         _collect(scope, model, scope, wide, frozenset(), 0)
         near.sig.merge(wide.sig)
     return near.sig
@@ -954,7 +1024,15 @@ def test_universe_is_globbed_not_listed():
     assert len(mods) > 400, f"only {len(mods)} test modules found - glob broke"
     rels = {m.resolve().relative_to(_REPO_ROOT).as_posix() for m in mods}
     assert "tests/test_skip_condition_hygiene.py" in rels
-    assert any(r.startswith("agents/daemon_slayer/tests/") for r in rels)
+    # Every collected tree, pinned by name: dropping one silently un-guards it,
+    # which is how agents/agent3_testing/suite sat outside this scan until the
+    # RM-119 B5 re-census. A tree that stops existing is a deliberate edit
+    # here, never an accident.
+    for tree in _TEST_TREES:
+        assert (_REPO_ROOT / tree).is_dir(), f"{tree} is not a directory"
+        assert any(r.startswith(tree + "/") for r in rels), (
+            f"no test module collected from {tree} - the glob stopped reaching it"
+        )
 
 
 def test_tracked_index_resolves_known_paths():
@@ -1072,6 +1150,46 @@ def test_thing():
         pytest.skip("pinned")
     assert True
 ''',
+    # RM-119 B5, the tests/test_ports.py shape: a first-party module pulled in
+    # dynamically and its failure swallowed into a skip. Every module named
+    # this way is TRACKED, so the skip can only fire on a broken checkout.
+    "dynamic_first_party_import_swallowed": '''
+import importlib
+import pytest
+def test_thing():
+    try:
+        mod = importlib.import_module("mc.server")
+    except Exception:
+        pytest.skip("mc.server not importable here")
+    assert mod.PORT
+''',
+    # The verbatim pre-fix tests/test_ports.py shape: a runtime-named dynamic
+    # import whose EVERY failure - deleted tracked file, SyntaxError, our own
+    # ImportError - is swallowed by `except Exception` and called a missing
+    # optional dep. Statically the target is unreadable, so the handler width
+    # is the whole signal, and a catch-everything handler is no signal at all.
+    "runtime_named_import_swallowed_by_bare_except": '''
+import importlib
+import unittest
+class T(unittest.TestCase):
+    def _live(self, module_path, attr):
+        try:
+            mod = importlib.import_module(module_path)
+        except Exception as exc:
+            self.skipTest(f"{module_path} not importable here: {exc}")
+        return getattr(mod, attr)
+    def test_thing(self):
+        self.assertEqual(8888, self._live("dashboard.server", "PORT"))
+''',
+    "dunder_import_of_a_first_party_module": '''
+import pytest
+def test_thing():
+    try:
+        mod = __import__("core.ports")
+    except ImportError:
+        pytest.skip("ports registry not importable")
+    assert mod
+''',
     "importorskip_on_a_first_party_module": '''
 import pytest
 mod = pytest.importorskip("core.build_order")
@@ -1132,6 +1250,20 @@ np = pytest.importorskip("numpy")
 def test_thing():
     assert np
 ''',
+    # The false-positive side of the dynamic-import rule: a target this scan
+    # cannot read cannot be called first-party, so it stays a capability skip.
+    # tests/test_ports.py is exactly this shape after the RM-119 B5 fix.
+    "dynamic_import_of_a_runtime_named_module": '''
+import importlib
+import pytest
+def _live(module_path):
+    try:
+        return importlib.import_module(module_path)
+    except ModuleNotFoundError as exc:
+        pytest.skip(f"optional dependency absent: {exc.name}")
+def test_thing():
+    assert _live("some.module")
+''',
     "share_mirror_path": '''
 import unittest
 from pathlib import Path
@@ -1146,10 +1278,16 @@ class T(unittest.TestCase):
 
 @pytest.mark.parametrize("name", sorted(_DEFECT_MUTATIONS))
 def test_mutation_defective_skip_is_flagged(name):
-    """Teeth check: each synthetic always-pass guard must be caught."""
+    """Teeth check: each synthetic always-pass guard must be caught.
+
+    The bar is the one the real guard applies - anything that is not a proven
+    CAPABILITY fails it. DEFECT and UNRESOLVED are both caught; which of the
+    two a site lands in depends on whether the thing it gates on is readable
+    statically, and that distinction must not decide whether it ships.
+    """
     findings = scan_source("tests/test_mutant.py", _DEFECT_MUTATIONS[name])
     assert findings, f"{name}: no skip site found at all"
-    assert any(f.verdict == DEFECT for f in findings), (
+    assert any(f.verdict != CAPABILITY for f in findings), (
         f"{name}: the guard did not flag a skip gated on tracked state - "
         + "; ".join(f"{f.verdict}:{f.evidence}" for f in findings)
     )
