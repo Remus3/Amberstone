@@ -98,8 +98,21 @@ MODE FIDELITY (RM-158)
     had NO income row, so at v3 - which was itemless - it had zero
     differentiating inputs and ``laning_scenarios_arena.json`` shipped as a byte
     copy of the SR table under an arena header. ``main`` now REFUSES to write a
-    mode whose income row is unregistered instead of emitting a copy. Residual,
-    documented, NOT fixed here: the itemless (``item_state == "none"``) ARENA
+    mode whose income row is unregistered instead of emitting a copy.
+
+    RESIDUAL CLOSED 2026-08-06 - the same defect one input over. The economy
+    block is income-rate x band-MINUTE, and the minute came from
+    ``lead_projection.minutes_for_level``, which took NO mode: one SR levelling
+    curve stood in for all three games. So the shipped ARAM tables carry SR band
+    minutes (measured, ARAM reaches L11 at 11.1 min, not the SR 20), and gating
+    the write on the income row alone was half a guard.
+    ``core.lead_projection._LEVEL_CURVE`` now registers a MEASURED per-mode
+    curve, ``level_curve_is_registered`` is its predicate, and ``main`` refuses
+    on it too. Every shipped ARAM and ARENA table predates this and needs a
+    regen before its economy block is trusted; SR is unaffected (its curve is
+    unchanged, so its tables stay byte-stable).
+
+    Residual, documented, NOT fixed here: the itemless (``item_state == "none"``) ARENA
     combat scalars still equal SR's, because the burst path has no ARENA branch
     to reach - that is a DS engine gap (``burst.py`` takes no
     ``apply_mode_modifiers``), not a generator one.
@@ -437,7 +450,7 @@ def economy_cell(
     cell-varying field, driven by the mana / manaless state + spike timing (NOT
     the combat trade verdict). ``spike_eta_s`` is computed to drive ``recall``
     but NOT persisted in the slim leaf (no reader consumes it)."""
-    minutes = _lead.minutes_for_level(level_for_band(band))
+    minutes = _lead.minutes_for_level(level_for_band(band), mode)
     gold = _lead.expected_gold_earned(minutes, mode)
     label, target = _lead.next_spike(gold)
     eta = _lead.spike_eta_seconds(gold, target, mode)
@@ -1121,6 +1134,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 f"  {mode_key:5s}: SKIPPED - no gross-income row registered for "
                 f"mode={ds_mode} in core.lead_projection, so this table would be "
                 f"the SR table under a {mode_key!r} header (RM-158)."
+            )
+            continue
+        # RM-158 RESIDUAL, same gate one input over. The economy block is
+        # income-rate x band-MINUTE, and the minute comes from the per-mode
+        # levelling curve; a mode with an income row but no curve of its own
+        # still reads the SR minutes, so gating on income alone was only half
+        # the guard. Refuse rather than fall through, for the same reason.
+        if not _lead.level_curve_is_registered(ds_mode):
+            unregistered.append(mode_key)
+            logger.warning(
+                f"  {mode_key:5s}: SKIPPED - no levelling curve registered for "
+                f"mode={ds_mode} in core.lead_projection, so every band would "
+                f"resolve to the SR minute under a {mode_key!r} header "
+                f"(RM-158 residual)."
             )
             continue
         payload = generate_table(
