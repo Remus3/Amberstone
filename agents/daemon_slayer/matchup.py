@@ -35,6 +35,19 @@ Be precise about WHICH field is mode-blind. It is ``ResolvedChampion.stats``.
 of unfinished work, so "default-OFF by DS doctrine" describes the status quo
 rather than justifying it.
 
+RM-172 (2026-08-06) MEASURED that note and found it misleading in both
+directions - read it as a hint, never as evidence. ``build_champion`` has TWO
+mode lanes and the flag gates only one: ``_resolve_mode_addends``
+(engine.py:106) is the ARENA/Swiftplay stat-growth ADDEND lane and it is
+flag-gated, while ``_apply_mode_modifiers`` (engine.py:225) is the ARAM
+MULTIPLIER lane, is called UNCONDITIONALLY at engine.py:450, and early-returns
+for every non-ARAM mode. The ARENA ADDEND table EXISTS (wiki sidecar, 45 of 173
+champions, axes hp_base/hp_lvl/dam_lvl/arm_lvl/as_lvl), so :458 fires even on
+calls where that table was just applied - the two notes contradict each other in
+the same list. The ARENA MULTIPLIER table genuinely does not exist, and Riot
+publishes no such axis, so that half is not a closable gap. The seam is pinned
+end to end by ``tests/test_rm172_mode_modifier_seam_characterization.py``.
+
 ``ability_dps.compute_ability_dps`` DOES differ by mode (142 of 173 champions at
 level 2 itemless) for one reason only: it reads a per-mode MEASURED cast-rate
 table (``ult_rates.get_spell_casts_per_sec(name, key, mode)``). Per-cast raw
