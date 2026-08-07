@@ -6,6 +6,53 @@
 
 ---
 
+# 2026-08-07a - headless run 2026-08-06-02: 21 slices over four cycles, and the adversarial pass earned its cost every single time
+
+Operator asked for five open ROADMAP items, orchestrated multi-agent, self-
+adjudicating and self-adversarial, self-looping for ten hours. Ran 18:00 to 02:30.
+Four cycles, 21 build slices plus 16 independent verifier passes, all worktree-
+isolated on disjoint files with one merger. Merges: `c20bf2c6..d6764910`.
+LEDGER 1207-1228. Dual suite closed at 29398 passed / 0 failed; drift guard clean;
+ROADMAP held at 72217 bytes.
+
+**The single most important line: a CLAUDE.md `Settled - do not re-litigate` entry
+called a LIVE paid Haiku path deadcode, and it was false on the day it was
+written.** Five game modes route to `coaches/brawl_coach.py`, the feature flag
+allows it, and construction alone spawns its poll loop. A cleanup pass acting on
+the old wording would have deleted it. Corrected in place (LEDGER 1222/1226).
+
+**Why the adversarial pass is not optional.** Every cycle it caught something the
+slice could not see in itself:
+- It CONSTRUCTED a catastrophic write - a process that won a relocated claim would
+  stamp its own live pid into the real supervisor sentinel.
+- It caught a skip converted into a NO-OP (an assertion true by construction), which
+  is worse than the skip it replaced because a visible SKIPPED became a silent dot.
+- It found a guard pointed at a different address than the thing it guarded.
+- It proved three separate fixes were arithmetically INERT downstream.
+- Twice it found a TRUE conclusion resting on a citation that did not exist.
+
+**Every filed count that was re-derived was wrong** - B5 `about 22` was 1, B4
+`about 22` was 11, B2 `19` was 20 - and two rows I wrote myself were refuted by the
+slices I sent to execute them. Treat a filed number as a hypothesis.
+
+**Three things I got wrong and the run corrected:** I pushed once with a failing
+test because a shell `&&` chain read `tail`'s exit code instead of pytest's; my own
+repo-root `pytest .` runs were deleting the live supervisor lock every time (that
+IS the RM-173 root cause); and I proposed a poll-based fix for the overlay flake
+that would have made it fail slower rather than pass.
+
+**The cross-slice failure only the merge could find:** the B5 skip guard did not
+know git-LFS exists, and two slices were both right. Tracked-and-LFS is a
+capability gate; tracked-and-not-LFS stays a defect; and the rescue quantifier must
+be ALL, not ANY, or the whole class re-opens. Five green branch reports would have
+shipped it.
+
+Rows closed: RM-163, RM-165, RM-158 data half, RM-119 B5/B4/B2 (the R219 skip audit
+is now fully drained), RM-164 provenance, RM-169, RM-170, RM-171, RM-172, RM-173,
+RM-174, RM-175 (ADR-014), RM-155 retired (ADR-013), RM-26 corrected. Filed: RM-169,
+RM-170, RM-171, RM-172, RM-173, RM-174, RM-175.
+
+---
 # 2026-08-06a - headless run 2026-08-06-01: four fixes, and three of them mask or measure something bigger than themselves
 
 Six merges `de5b5488..e8802e21` (`a8515a98`, `71f172aa`, `eba815e5`, `c5f1e4c8`,
