@@ -24,6 +24,56 @@ scripts that need stdout.
 
 ---
 
+## What "the suite is green" means (test scope)
+
+**AUTHORITATIVE (RM-170, 2026-08-06).** "Green" is a claim about a COMMAND, and
+this repo has more than one. Always name the command; never say "the suite"
+unqualified.
+
+The repo has **five** test trees. `tests/test_skip_condition_hygiene.py:59-60`
+is the single place that enumerates them, and it is the producing side - if you
+add a sixth tree, add it there:
+
+| Tree | Tests collected | In `pytest tests`? | In the "dual suite"? |
+|---|---|---|---|
+| `tests` | 18820 | yes | yes |
+| `agents/daemon_slayer/tests` | 10463 | no | yes |
+| `agents/agent3_testing/suite` | 360 | no | no |
+| `tools/tests` | 348 | no | no |
+| `benchmarks` | 7 | no | no |
+| **repo-root `pytest .`** | **29998** | | |
+
+Measured 2026-08-06 with `pytest <tree> --collect-only -q`; the five trees sum
+exactly to the repo-root total, so there is no sixth tree hiding.
+
+- **`pytest tests`** covers 18820 of 29998 (63 percent). This is the NARROW bar.
+- **The "dual suite"** (`tests` + the DS tree) that CLAUDE.md's Tier-2 rule and
+  the DS batch ritual refer to covers 29283 of 29998 (98 percent).
+- **`pytest .` from the repo root** is the only command that means "everything".
+
+Until RM-170 the repo's habitual green bar was quietly one of the narrow two,
+and the three uncovered trees (715 tests) had gone red without anyone seeing it:
+`tools/tests` carried two guard tests that had been failing since 2026-07-30
+(commit `9df58480` added a DS-engine import to both CDragon extractors and did
+not update their engine-independence guards), and `benchmarks` reported 7 red
+"ERROR at setup" lines because the CI-only `pytest-codspeed` plugin is not
+installed locally. Both are fixed; the point is that neither was VISIBLE.
+
+**Rules of thumb**
+- Claiming "suite green" in a ledger entry, a commit message or a hand-off:
+  write the command you actually ran plus the counts you actually saw.
+- `pytest . -n 8` is the pre-merge / pre-release bar. Measured on Legion
+  2026-08-06 after the RM-170 fixes: `29840 passed, 158 skipped, 8449 subtests
+  passed` in 277s (about 4.5 min), zero failures and zero collection errors.
+- Tier-0/Tier-1 edits keep using the narrow, fast per-module runs - see
+  CLAUDE.md "Execution Efficiency & Tooling Rules". This section defines what
+  the words mean, it does not raise the per-edit verification tax.
+- `benchmarks` never MEASURES anything locally. It runs on CodSpeed in CI via
+  `.github/workflows/codspeed.yml` (`pytest benchmarks/ --codspeed`); locally
+  the 7 cases skip with a reason. A local green there is not a perf signal.
+
+---
+
 ## Quick health check
 
 ```powershell
