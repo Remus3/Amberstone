@@ -122,6 +122,7 @@ from agents._supervisor_common import (
     acquire_lock,
     log,
     refresh_lock,
+    release_lock_ownership,
     smb_credential_present,
 )
 from agents._supervisor_ephemeral import (
@@ -177,6 +178,7 @@ __all__ = [
     "log",
     "main",
     "refresh_lock",
+    "release_lock_ownership",
     "shutil",
     "smb_credential_present",
     "spawn_ephemeral_llm",
@@ -397,7 +399,10 @@ class Supervisor:
             if self._web:
                 self._web.shutdown()
                 self._web.server_close()
-            # Lock metadata + sentinel both go.
+            # Lock metadata + sentinel both go. RM-173: drop ownership FIRST,
+            # so a heartbeat still in flight cannot re-arm the sentinel we are
+            # about to release on purpose.
+            release_lock_ownership()
             for p in (LOCKFILE, STATE_DIR / "lockfile.sentinel"):
                 try:
                     p.unlink(missing_ok=True)

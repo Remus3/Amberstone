@@ -304,6 +304,29 @@ def _reap_orphan_lockfile_tmps() -> None:
                 pass
 
 
+def _sentinel_path() -> Path:
+    """Path of the exclusive-claim sentinel beside the lockfile.
+
+    Derived from ``LOCKFILE`` rather than ``STATE_DIR`` so the two always move
+    together; by default both resolve under ``STATE_DIR`` exactly as before
+    (``<state>/lockfile`` -> ``<state>/lockfile.sentinel``).
+    """
+    return LOCKFILE.with_name(LOCKFILE.name + ".sentinel")
+
+
+# RM-173: pid of the process that WON the exclusive sentinel create, or None.
+# Ownership is per-PID and is only ever set by a successful acquire_lock() -
+# never inferred from the lockfile, which this process rewrites every 5s and
+# which therefore always looks like it names us. A forked child inherits this
+# module global, so every consumer compares it against the CURRENT os.getpid().
+_LOCK_OWNER_PID: int | None = None
+
+# Count of sentinel re-assertions performed by refresh_lock in this process.
+# Surfaced in the lockfile (see refresh_lock) so a disarmed singleton is
+# visible instead of silent.
+_SENTINEL_REPAIRS: int = 0
+
+
 def acquire_lock() -> bool:
     """Acquire the supervisor singleton lock.
 
@@ -312,9 +335,10 @@ def acquire_lock() -> bool:
     Stale sentinels (dead pid) are reclaimed after the exclusive-create
     fails.
     """
+    global _LOCK_OWNER_PID
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     _reap_orphan_lockfile_tmps()
-    sentinel = STATE_DIR / "lockfile.sentinel"
+    sentinel = _sentinel_path()
 
     def _write_lock_metadata() -> None:
         _atomic_write_json(LOCKFILE, {
@@ -328,6 +352,7 @@ def acquire_lock() -> bool:
         fd = os.open(str(sentinel), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         os.write(fd, str(os.getpid()).encode("ascii"))
         os.close(fd)
+        _LOCK_OWNER_PID = os.getpid()
         _write_lock_metadata()
         return True
     except FileExistsError:
@@ -356,6 +381,7 @@ def acquire_lock() -> bool:
     except FileExistsError:
         log.error("lost race to another reclaiming starter")
         return False
+    _LOCK_OWNER_PID = os.getpid()
     _write_lock_metadata()
     return True
 
@@ -402,15 +428,99 @@ def _port_available(host: str, port: int) -> bool:
     return True
 
 
+def _reassert_sentinel() -> bool:
+    """Re-create the singleton sentinel if it vanished under its live owner.
+
+    RM-173. ``acquire_lock`` writes the sentinel exactly once; only the
+    lockfile was re-stamped by the heartbeat. So any path that clears state
+    under a running daemon (an operator cleanup, a stray unlink, a partial
+    restore) disarmed the singleton silently: MEASURED on Legion 2026-08-06,
+    the sentinel was absent from 02:54 to 20:44 while the owning pid
+    heartbeated normally and every health signal read green. With no sentinel
+    a second supervisor's exclusive create SUCCEEDS and two daemons run.
+
+    Two guards, and the asymmetry of the failure modes is what shapes them. A
+    dead pid in the sentinel is no worse than no sentinel at all - the next
+    boot reclaims either. A LIVE pid belonging to some OTHER process is far
+    worse than absent: reclaim only fires when the recorded owner is dead, so
+    a wrongly-written live pid wedges every future legitimate start. Hence:
+
+    1. only the process that actually WON the exclusive create repairs, and
+       only while it is still that pid (a forked child inherits the global);
+    2. the write itself is ``O_CREAT|O_EXCL``, so a sentinel that reappears
+       between the check and the write - a competing starter legitimately
+       claiming the lock - wins, and this call quietly loses.
+
+    A stale dead-pid sentinel is deliberately left alone: reclaiming it is
+    ``acquire_lock``'s job, and duplicating that unlink-then-recreate here
+    would add a second racing writer to the one file whose entire purpose is
+    to be created exactly once.
+
+    Best-effort: any OSError is swallowed, because the caller is the liveness
+    heartbeat and a failed repair must never stop the lockfile stamp.
+    Returns True only when this call actually restored the sentinel.
+    """
+    global _SENTINEL_REPAIRS
+    if _LOCK_OWNER_PID is None or _LOCK_OWNER_PID != os.getpid():
+        return False
+    sentinel = _sentinel_path()
+    if sentinel.exists():
+        return False
+    try:
+        fd = os.open(str(sentinel), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        # Lost the race to a legitimate claimant - leave its bytes alone.
+        return False
+    except OSError as e:
+        log.warning("could not re-arm the singleton sentinel: %s", e)
+        return False
+    try:
+        os.write(fd, str(os.getpid()).encode("ascii"))
+    finally:
+        os.close(fd)
+    _SENTINEL_REPAIRS += 1
+    log.warning(
+        "singleton sentinel was MISSING under live owner pid=%s - re-armed "
+        "(repair #%s). Something removed %s while this supervisor was running; "
+        "until now a second supervisor could have started alongside it.",
+        os.getpid(), _SENTINEL_REPAIRS, sentinel,
+    )
+    return True
+
+
+def release_lock_ownership() -> None:
+    """Forget that this process holds the singleton lock.
+
+    RM-173. ``Supervisor.stop`` unlinks BOTH lock files, which is correct
+    release semantics. Ownership must be dropped in the same breath, or a
+    heartbeat still in flight would re-arm a sentinel that was deliberately
+    released and leave a stale claim behind for the next starter to reclaim.
+    Idempotent; safe to call when this process never owned the lock.
+    """
+    global _LOCK_OWNER_PID
+    _LOCK_OWNER_PID = None
+
+
 def refresh_lock() -> None:
+    _reassert_sentinel()
     if not LOCKFILE.exists():
         LOCKFILE.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_write_json(LOCKFILE, {
+    payload: dict[str, object] = {
         "pid": os.getpid(),
         "started_at": _STARTED_AT,
         "heartbeat_at": _iso_now(),
         "host": socket.gethostname(),
-    })
+    }
+    # RM-173 health signal. The lockfile is the surface the frozen
+    # _Phase3Watcher (ops/rc_supervisor.py) already polls every cycle, so the
+    # repair count rides along there rather than in a new subsystem. Emitted
+    # only once a repair has actually happened, so the steady-state payload
+    # keeps its exact prior key set and no reader sees a shape change. Sticky
+    # and cumulative - a count that cleared on the next heartbeat would be
+    # invisible again within 5 seconds.
+    if _SENTINEL_REPAIRS:
+        payload["sentinel_repairs"] = _SENTINEL_REPAIRS
+    _atomic_write_json(LOCKFILE, payload)
 
 
 # -------- cmdkey check ------------------------------------------------
