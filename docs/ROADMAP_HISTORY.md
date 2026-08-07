@@ -2155,3 +2155,89 @@ _All three CLOSED the same day. Relocated purely for the 80 KB CI budget, which 
 
 - **RM-153 CLOSED 2026-08-04 (`04c58336`) - bounded by OBSERVABILITY, not eviction, and the row's own premise is REFUTED.** The row guessed `rewind_history.db` + the `.rofl` archive might duplicate this retention, making eviction cheap. Measured read-only twice: of 3123 cached Match-V5 timelines (2,531,532,421 B, 75.8 pct of payload), **117 (3.75 pct)** are also in `rewind_history` and **316 (10.12 pct)** have a `.rofl` - **2698 (86.39 pct) exist in NEITHER**. The stores are near-DISJOINT (rewind carries frames for 2961 matches, 2844 absent from the cache), so eviction destroys the only local copy of ~86 pct of the timeline mass. Shipped: 4 gauges on `/metrics` (default-ON) and eviction default-OFF behind `EVICT_CONFIRM_TOKEN` with zero production callers. **`rc_riot_api_cache_over_cap` reads 1 as of 2026-08-04** (3,356,610,560 B vs a 2 GiB cap) - the alarm is already firing and the eviction decision is now an informed operator call rather than a blind one. **THE TRAP, and why `stats()` could not simply be wired up:** `SUM(LENGTH(response_json))` takes **seconds** (3.28-5.67s warm across runs, ~8.4s cold) against sub-millisecond `COUNT(*)` - roughly 5000x - so `stats()` on a scrape path is a self-inflicted multi-second block. Hence `stats_fast()`; live scrape measured at **0.022s**. **Row facts corrected:** timelines average **810,609 B** (the row's ~270 KB was the ALL-ROWS average); `core/rofl_archive.py:611 extract_stats` DOES parse the trailing Layer-1 blob (`the RIOT magic + 02 00` -> `statsJson`) but it is a final scoreboard with no time series, so a `.rofl` is still no substitute; and the archive holds 3427 files but only **2041 distinct match ids**.
 
+
+## 2026-08-06 (headless run 2026-08-06-02) - original filings relocated on closure
+
+Relocate-only, verbatim. Each row below was closed or largely closed by run 2026-08-06-02;
+its surviving verdict, fences and residuals stay in `ROADMAP.md`. Nothing here is open.
+
+- **RM-163** ORIGINAL FILING, kept for its measurements: `core/riot_api.py` never caches a NEGATIVE result, so every Match-V5 consumer refires the same outbound call forever.** `core/riot_api.py:520-522` does `data = _call(...)` then `if data is not None: get_cache().set_immutable(...)`. A `None` is NEVER stored, so a match Riot legitimately has no timeline for re-fetches on EVERY request. cProfile: **289ms of 291ms** of an `/api/last-match` build was that one urlopen, via `dashboard/builders_lcu_enrich.py:407 _attach_match_timeline` -> `core/riot_api.py:504 get_match_timeline`; 4 consecutive builds at 370/296/339/325ms, ZERO cache hits. **`None` is the NORMAL case, not an error path** - event modes (ARAM Mayhem `KIWI`, queue 2400) returning empty is EXPECTED AND PERMANENT. **The 30s response cache shipped at `c5f1e4c8` MASKS this and does not fix it** - cold is still ~475ms. **Acceptance:** negative caching at the `riot_api` layer, a test proving a `None` is stored and does NOT refire, plus `/api/last-match` COLD latency before and after (cold is the number that moves).
+
+- **RM-165** ORIGINAL FILING: `tools/cost_health_watchdog.py` globs `*.json` over `data/spend/` and so reads `_match_open.json` as a DAY-LEDGER.** That file carries a `by_purpose` block and sorts LAST (`_` 0x5F > `2` 0x32), so it displaces a genuine sample out of `prior[-7:]` and skews the trailing-median baseline. **INERT only because that file is currently `{}` - it refills on the next real match save.** Found while correcting the arena figure during the ledger repair and deliberately NOT fixed there (a logic change in a remediation-only pass). The fix is a filename filter, not a sort change.
+
+- **RM-164** ORIGINAL FILING: Lane B is blocked on a CONSUMER, not on data: the richest precomputed build table has ZERO PRODUCTION CONSUMERS.** The HZ-B1 comp-archetype table (692 cells/mode; flat 519; durability variants 346, all full and machine-guarded) is referenced only by its definition plus 5 test call sites - nothing under `tools/` or `ops/audit/` at all. Live readers use the shadow-only 2-class variants table or the flat table, so **Lane B cannot retire a Haiku call until a consumer is wired**, which is a coach-surface change. Two consumer-side defects ride along: `core/next_buy_fallback.py:70` hardcodes `_PREFERRED_BUCKET = "balanced"` and discards the flat table's AD/AP lean on a LIVE liveclient path; and no cell records the scorer archetype it was ranked under, so a consumer cannot detect staleness against an operator archetype override - that last one is the failure most likely to make a future flip unsafe. **DO NOT wire `sort_by="efficiency"` as the ordering metric** (MEASURED and REJECTED 2026-08-06 - it DEGRADES the tables). Measurements + the engine-side starter leak: `BACKLOG.md` (Lane B consumer wiring).
+
+- **RM-158** ORIGINAL ROOT-CAUSE FILING: the ARENA laning table generated as an SR byte-copy because ARENA had no gold-income row. `core/lead_projection.py` registered gold-income rates for SR and ARAM only, so `gold_income_per_min("ARENA")` fell through to a default byte-identical to the SR rate (450.0) - at schema v3 (itemless) that was ARENA's LAST mode-differentiating input, so the generator computed SR content and wrote it under an arena header. Fixed: the ARENA row registered at 600.0 (**DERIVED from the ARAM profile per the doctrine the `_WEIGHTS` ARENA row in the same file already states - not measured**), new `gold_income_is_registered()` at `core/lead_projection.py:484`, and `main()` now REFUSES to write a mode whose income row is unregistered. **WIDER THAN FILED: BOTH shipped arena tables are SR copies** - 16.12.1 (`cec62070b61e7c35`, 66,197,973 B) as well as 16.13.1 (`22982424e69c42cc`, 66,961,516 B), hashes re-derived independently. **STILL OWED, the DATA half:** regen both, and `data/hz_choice_shadow.jsonl` holds **1,148 `mode=arena` rows** (of 58,808) that are SR measurements labelled arena - DROP or RELABEL them, never average them into an arena figure. Blast radius contained: the only live reader is a discard-return shadow logger, so the corrupt table never reached the coach UI. **Residuals on record:** itemless ARENA combat scalars still equal SR's (`burst.py` has no ARENA branch - a Tier-2 DS change), and `minutes_for_level` is still an SR curve for all three modes. Do NOT delete the arena file or point arena at sr. The ARAM 0/1600 counter-trap and the 93.8 pct verdict-layer invariance stand unchanged: LEDGER 1197.
+
+- **RM-127 (body relocated 2026-08-06 run-02)** Two things that must not be lost: the notes gate was **WAIVED, never met** (zero operator notes ever landed; if they arrive, Phase 4 re-runs), and **ADDENDUM A is a SEPARATE Tier-2 row** that RM-127 does not cover - the only note of 155 authorizing a build.
+
+
+### RM-117 MEASUREMENT TRAPS - relocated VERBATIM from ROADMAP.md, 2026-08-06 run-02 size-budget pass
+
+  - **MEASUREMENT TRAPS - carried forward deliberately, because each one is a place where the obvious reading of the data is WRONG and re-deriving it costs a session:**
+    - **The v2 container has NO encryption**, so the fence's CRYPTO rationale is void while its CHURN rationale stands and has worsened. Do not cite crypto as the reason.
+    - **Match-V5 60 s positions carry ~2000 units of error.** `FAR_UNITS` / `SIGNAL_DECAY` in `core/replay_analysis.py` are historical-calibration constants ONLY - they are **NOT facts about junglers** and must never be quoted as behavioural findings.
+    - **`RC-ReplayRosterPull` Disabled with a NON-EMPTY `busy` is CORRECT, not a stuck watchdog.** See memory `reference_replay_chain_watch_busy_gate`.
+    - **No fetch-by-match-id route exists** - never plan a `.rofl` backfill. History comes from timelines, which paginate arbitrarily deep with no retention cutoff.
+    - **Summoner spells are LOADOUT ONLY**; buff intervals and buff sharing are unrecoverable.
+    - **Ward map positions carry a systematic uncalibrated offset** - the marker is a HEALTH BAR above the ward, not the ward.
+    - **`assistingParticipantIds` carries ENEMY participants** (3167 of 25450 elite kills, 12.44 pct, re-measured 2026-07-28 over the FULL 3005-timeline corpus - an earlier 400-timeline subset read 12.63 pct) and **`monsterSubType` is DRAGON-only** (present on 10833/10833 DRAGON, 0 on HORDE 8864 / BARON_NASHOR 3034 / RIFTHERALD 2719 - discriminate on `monsterType`). Both in `docs/REPLAY_T2_PARSE_CRITERIA.md`.
+    - **The `objective_participation` survivorship bias DEFLATES, it does not inflate** (sign corrected 2026-07-28 with the per-role measurement inline in `docs/REPLAY_T2_PARSE_CRITERIA.md`). The row is still REFUTED (LEDGER 1064) - do not re-promote it.
+    - **B13 legal is CLOSED (2026-07-26)** - operator-granted, and a read of Riot's own terms AGREES. The **"one (1) developer account" limit is about DEVELOPER accounts, NOT tracked player accounts**, so the 108-account roster never collided with it - do not re-audit the roster against that clause.
+
+
+### CLOSED in this lane (RM-100 .. RM-126 fences) - relocated VERBATIM from ROADMAP.md, 2026-08-06 run-02 size-budget pass
+
+### CLOSED in this lane - ids kept reachable, fences only
+
+Full narrative for every row below is in `docs/ROADMAP_HISTORY.md` (relocated 2026-07-30).
+Nothing here is open; the lines exist so no id becomes unreachable and so the fences survive.
+
+- **RM-100** CLOSED 2026-07-20, nightly critic + full-suite repaired; the asyncio running-loop-marker leak is an ACCEPTED TRADEOFF, do not re-pitch a fix.
+- **RM-106 / RM-106a / RM-107** SHIPPED-CLOSED 2026-07-19 (`556662a7`), the sanctioned Match-V5 `/replays` pull. **Bodies are GZIP-framed; 404 = Riot no longer retains the file; `/replays` needs the PRODUCT key; a dead account reports `rotated=False` forever.** RM-106a: LCU event-mode timelines carry a reduced event set and a hard 20-entry cap, so **that route can NEVER backfill.** RM-106b is still OPEN above.
+- **RM-109** SHIPPED-CLOSED 2026-07-20 (`533d70fb`), played-with-pro corpus by LOCAL SQL join at zero API calls; roster expansion + the post-2025-09 gap are operator-CLOSED.
+- **RM-111** SHIPPED-CLOSED 2026-07-20 - **descriptive only, firewalled from DS rank and pinned by test; `MIN_BUCKET_N=15` is a hard drop.**
+- **RM-112** CLOSED 2026-07-23, `Share/` runs its own suite clean standalone.
+- **RM-115** CLOSED 2026-07-26 (1.254.0), seam reachability 101 -> 4, the 4 DECLINED BY DESIGN. **Durable: a DS seam has THREE gates (engine kwarg, route parse, `core/daemon_slayer_client.py`), and NON-PREFIXED transports are invisible to both guards.**
+- **RM-116** CLOSED 2026-07-26 (1.256.0) - **do NOT re-commission a base-magnitude / mirror-parity vamp sweep, closed three times over (R181 + R193 + R194).**
+- **RM-120** CLOSED 2026-07-28 - the loop was DEAD, not running stale code; lesson in memory `reference_loop_running_lock_stale_vs_dead`.
+- **RM-123** DONE 2026-07-29 (1.263.0, `8f67f810`) - ONE canonical melee/ranged split (`attackrange_is_ranged`, ranged iff base attackrange >= 350) across SEVEN sites, not the two filed; only in-band champs are Rakan 300 / Lillia 325 (melee) and Urgot 350 (ranged).
+- **RM-125 original filing + RM-126** relocated 2026-07-29 (the web non-ASCII census; the two-latch overlay drag fix). RM-125's live-glyph residue is still OPEN above, routed to RM-122.
+
+
+
+### DS defensive-half sweep GAP specs (R132) fences - relocated VERBATIM from ROADMAP.md, 2026-08-06 run-02 size-budget pass
+
+### DS defensive-half sweep GAP specs (R132, 2026-07-19) - ALL CLOSED, fences only
+
+The section's full text was relocated 2026-07-30 to `docs/ROADMAP_HISTORY.md`: its own header
+claimed everything under it was UNBUILT, and by 2026-07-30 every row had shipped or been
+closed-refuted. Nothing here is open. The fences survive because each one is a thing that
+would otherwise get re-pitched:
+
+- **R134 CLOSED-REFUTED** - do NOT re-pitch `total_armor = armor + bonus_armor + ext_armor + item_resist_armor`; every added term is misidentified and it would make the result depend on the SOURCE ORDER of four peer registries. Guarded by `test_rune_resist_signature_convention_r134.py`.
+- **R135 CLOSED-INERT** - do NOT re-pitch the movespeed soft cap; the piecewise is real, correctly stated, and unreachable at every live site.
+- **RM-99 / RM-99b / RM-101 / RM-102 / RM-103 / RM-104 / RM-105 / RM-108 / RM-114 - all SHIPPED or CLOSED, relocated VERBATIM 2026-08-01** to `docs/ROADMAP_HISTORY.md` (the 2026-08-01 block). **They carry do-not-redo FENCES, not just history - read them before touching the DS scorer/item surface**, in particular RM-99 (the coefficient is 10 percent, NOT the spec's 8) and RM-102/RM-104 (Arena mirrors, plural - never re-file as a single-item fix).
+
+
+
+### Rerouted-to-gated-sync table - relocated VERBATIM from ROADMAP.md, 2026-08-06 run-02 size-budget pass
+
+### Rerouted to `docs/LIVE_GAME_GATED_SYNC.md`
+
+These items were purely "owed live capture" or "flip after a real game". The gated doc (125 open rows across 7 gates, reorganized by gate 2026-07-18; G2-43 added 2026-07-24 by RM-41) already carried each of them - the ROADMAP copy was a duplicate. Ids are retained here so nothing becomes unreachable; the work itself is drained from the gated doc, not from here.
+
+| id | item | where it lives now |
+|---|---|---|
+| RM-05 | Overlay live-gated punch-list (round-1 MISSING-IN-GAME cluster + round-2 drag/move + enemy-spell chip + objective gauges) - operator Ctrl+Alt+A verify each, do NOT ship blind headless | `G2-28` / `G2-32` / `G2-33` / `G2-34` / `G2-35` (+ the `RM-05` disposition notes: build META row stays STATIC; DMG/SURV/UTIL knob steppers dead; item right-click 5-choice radial dead; `am-statspanel` intent CLARIFY with the operator before acting). CONFIRMED-OK: `am-mmrect` ZOI markings DO show in-game |
+| RM-07 | L4 capability-gap live tail - SR-game validation with the chip ON (`RC_CAPGAP_SURFACE` default-ON since LEDGER 765) | the `SOURCE: RM-07` row - "the ONLY remaining gate is the in-game EYEBALL of the chip CONTENT vs a real enemy comp". Do-not-redo: both tail axes are already IN `core/ds_capability_gap.py` (zone_control gate :189, objective_damage gate :226). Open non-gated tail: the advisory DS-assumed-vs-actual divergence line + the shard seed-back into DS `base_stats` (a product call). E1 TFT deterministic twin untouched |
+| RM-08 | Per-page UI/UX review live tail - the E.1 ACTIVE knob physical-press round-trip | the ACTIVE knob-press row (bundles the ROADMAP-19 E.1 round-trip; SOURCE LEDGER 598). **Partly stale as written: the `RC_COMP_HP_LEAN` live EYEBALL is already DONE (2026-06-23, R24)** - only the default-ON flip AUTHORIZATION remains, and that is its own gated row. Respect: replay scroll-wrap is correct (do NOT "fix"); the operator-locked `last_match.css` sub-floors are fenced in RM-34. Recon harness `ops/runtime/ui_recon/` |
+| RM-09 | HZ shadow -> agreement -> flip chain (do-not-flip-blind): accrue real-game HZ shadow, re-measure precompute-vs-Haiku agreement on the item-614 corrected tables, THEN the live coach flip | `G7-01` (Lane-A laning-agreement flip gate, HOLD) + the `RC_LANING_CV_SERVED=1` >=70%-agreement rows. Arena tail: the shadow-report tool + flip-readiness read after real Arena games (R76, LEDGER 763). v4 full-roster DATA regen deferred to `BACKLOG.md`. Don't-redo anchors (agreement de-bias 574, mismatch diagnose 575/576, enemy-combo model fix 614) in `docs/ROADMAP_HISTORY.md` |
+| RM-10 | Orchestration A3 tail - SURFACE the DS-coach hints into coach context only after `data/ds_coach_hints_shadow.jsonl` accrues + validates on real games | the `SOURCE: RM-10` row. The A1-F1 fanout is CLOSED (director NO_WORK) |
+| RM-11 | ZOI district + identity live tail - verify macro callouts + district vector + MIA rings + OBS round-trip in a practice SR game before flipping `obs.frame_source` / roster-wiring ON | the two `RM-11` rows. Minimap IDENTITY is already DEFAULT-ON + live-verified (`fe37c534`, 2026-07-08). Do-not-redo: per-champion isolation via color/size/motion is a validated dead-end - presence detection + the native-res grab are the foundation (memory `project_zoi_minimap_reality`) |
+| RM-13 | Live UI watch - tick champ-select + in-game dashboard vs `/api/state` each ranked game, fix in-session where ADR-008 auto-serves | `G4-15`, tagged **"Standing per-game, never one-shot - it does not close."** That is a ritual, not a roadmap item |
+| RM-22 | Post Game Review aggregator G reframe - per-page UI-audit ritual on the next live PGR open | `G4-27` + the `F4 PGR UI-audit` batch reference |
+| RM-23 | Live ARAM Mayhem residue - the Phase 5.9.21 Thresh/Sona/Kalista/Malzahar `ability_dps` lifts riding through DS preview, unverified in a live Mayhem game | the `ability_dps` consumer rows. The item-243/244 live watches already covered build-chooser LCU push + archetype-mismatch nudge + comp-aware row-3 tip |
+| RM-24 | `set_augment_intent` Cherry endpoint discovery - `tools/lcu_agent.py` ships a 4-endpoint PATCH chain for the Arena 1750 augment-select phase (first 2xx wins); live verification owed at the next Arena augment phase | the `SOURCE: ROADMAP.md:113 / RM-24` row. Recipe + full historical record: `docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md` |
+| RM-25 | Mayhem/Arena augment recommender live cross-check - OCR->rank vs the pick actually made | the two `RM-25` rows, incl. the **drainable-today workaround: hold an augment ~25s so a vision tick lands**. The reco-pipeline field-bug is FIXED (`67519018`, LEDGER 867) |
+
