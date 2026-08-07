@@ -298,11 +298,20 @@ class LiveEngineBothKeyspacesTests(unittest.TestCase):
         # reason as above: a single refused connect here would silently SKIP
         # this class, which is worse than a failure because the acceptance
         # criterion disappears with no signal.
+        #
+        # RM-119 B2 (2026-08-06): the verdict is delegated to the shared gate
+        # so RC_REQUIRE_DS_ENGINE=1 turns the down-engine skip into a failure
+        # where the engine is supposed to be up. The retry stays HERE because
+        # the backoff is this suite's own answer to the backlog overflow.
+        from tests.test_ds_live_route_gate import require_live_engine
+        up = False
         for attempt in range(_TRANSPORT_ATTEMPTS):
             if dsc.is_engine_up(timeout=5.0):
-                return
+                up = True
+                break
             time.sleep(_TRANSPORT_BACKOFF * (attempt + 1))
-        raise unittest.SkipTest("DS engine 127.0.0.1:8860 is down")
+        require_live_engine("the alias-dedupe live slot-count acceptance",
+                            up=up)
 
     def setUp(self):
         # Rebind the single transport function every live caller below funnels

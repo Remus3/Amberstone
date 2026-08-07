@@ -397,9 +397,20 @@ def _engine_is_up() -> bool:
     return False
 
 
-@unittest.skipUnless(_engine_is_up(), "DS engine :8860 is down")
 class LiveConversionSeamReachabilityTests(unittest.TestCase):
     """Falsifiable acceptance criterion, measured through the CLIENT path."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        # RM-119 B2 (2026-08-06). Was `@unittest.skipUnless(_engine_is_up(),
+        # ...)`, which had two problems: a decorator can only skip - it can
+        # never fail, so RC_REQUIRE_DS_ENGINE could not reach it - and it ran
+        # the retry loop at IMPORT time, which is precisely the collection-time
+        # moment `_engine_is_up` documents as the load spike. Both fixed by
+        # moving the probe into setUpClass and delegating the verdict.
+        from tests.test_ds_live_route_gate import require_live_engine
+        require_live_engine("the live conversion-seam reachability class",
+                            up=_engine_is_up())
 
     def setUp(self) -> None:
         # Install the patient transport for the whole test (see the block

@@ -73,6 +73,33 @@ installed locally. Both are fixed; the point is that neither was VISIBLE.
   `.github/workflows/codspeed.yml` (`pytest benchmarks/ --codspeed`); locally
   the 7 cases skip with a reason. A local green there is not a perf signal.
 
+### `RC_REQUIRE_DS_ENGINE=1` - green does not mean the DS routes were tested
+
+**On Legion, set this.** Twenty-eight skip control points across nineteen test
+modules gate on the Daemon Slayer engine answering on `:8860`. That gate is
+CORRECT - CI and a fresh clone genuinely have no engine, and no workflow starts
+one (RM-119 class B2, 2026-08-06: all sites audited, all class A, none dead).
+But it means a WEDGED engine makes every live-route test vanish and the run
+still reports green. A wedged DS reads as task Running + port LISTENING + live
+PID, and only an HTTP request finds it (memory
+`reference_ds_wedges_with_every_signal_green`).
+
+```powershell
+$env:RC_REQUIRE_DS_ENGINE = "1"
+python -m pytest tests/ agents/daemon_slayer/tests/ -q -n 8
+```
+
+With it set, a down or wedged engine becomes an AssertionError instead of a
+skip, and `tests/test_ds_live_route_gate.py` additionally probes every route in
+`server._POST_ROUTES` and checks `/health` reports the ENGINE_VERSION this
+checkout declares. Unset, every gate behaves exactly as before.
+
+Nothing sets it automatically - not CI, not `ops/`, not a scheduled task. That
+is the deliberate difference from its two siblings `RC_REQUIRE_HOOK_GATE` and
+`RC_REQUIRE_BUILD_ORDER_TABLES`, which CI DOES set: no GitHub runner has a
+Daemon Slayer, so there is no CI job to set it in. It is an operator/Legion
+knob, and this paragraph is the only place outside test source that says so.
+
 ---
 
 ## Quick health check
