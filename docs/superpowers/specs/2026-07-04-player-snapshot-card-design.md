@@ -37,7 +37,7 @@ RC already owns roughly 80 percent of the card's substance. Confirmed by recon
   Objectives / Vision / DPM, 50 percent = role median, 100 percent = 2x) served
   at `/api/post-game-rubric` and rendered today as `#lm-rubric-components`
   (`web/js/panels/last_match.js:_setRubricComponents`).
-- `web/css/tokens.css:1-218` already defines the full Hextech palette
+- `web/css/tokens.css:1-217` already defines the full Hextech palette
   (`--prim-gold`, `--hextech-fill`, `--signal-good/warn/bad`), font tiers, and
   spacing. The card composes existing tokens, no new CSS system.
 - `web/js/panels/player_gpi.js` (the 8-axis radar) is BUILT BUT NEVER MOUNTED

@@ -217,7 +217,7 @@ regen, justify reduced scope" allowance):
 - No Share mirror sync (Family A is not in Share/src).
 - No DS :8893 restart OWED after (engine unchanged). BUT the engine MUST be UP and settled at
   the intended ENGINE_VERSION DURING the regen and the Layer-2 parity run (the generator
-  refuses on a dead engine, generate.py:303; a mid-run bounce corrupts the table or fakes a
+  refuses on a dead engine, tools/daemon_slayer_build_orders_generate.py:361; a mid-run bounce corrupts the table or fakes a
   parity mismatch).
 
 ---

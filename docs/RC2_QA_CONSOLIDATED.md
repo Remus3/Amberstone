@@ -236,7 +236,7 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 | 59 | Cache CS gameMode (L2) | NEW | OPEN | live-reads lobby per tick |
 | 60 | SSE tick + build TTL ->0.5s (L4) | P6.3 | SHIPPED | e9b1a5d0 _STATE_CADENCE_S |
 | 61 | Pooled keep-alive LCU conn (L6) | GATED | GATED-LIVE | lcu_pool.py OFF; E7 |
-| 62 | Single CS reader on 1-PC (L3) | NEW | OPEN | research-only io_timing_map.md:174 |
+| 62 | Single CS reader on 1-PC (L3) | NEW | OPEN | research-only docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_io_timing_map.md:174 |
 | 63 | Min-interval guard + 1.5s :2999 floor | NEW | SHIPPED | lcu_pool.py:143 MinIntervalGuard |
 | 64 | Port/CPU regression verify | P6.4/6.6 | SHIPPED | 92ca2279 footprint guard |
 | 65 | 11 flag-ready re-rank seams flip | FLIP | GATED-LIVE | =E2; live_flip_eyeball.py |
