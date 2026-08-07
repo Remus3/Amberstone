@@ -398,15 +398,31 @@ def _resolve_champion_id(snap: DataSnapshot, name: str) -> str:
 
 
 def _route_stats(body: dict) -> dict:
+    """POST /stats - the direct ``build_champion`` stat-block route.
+
+    RM-172 (2026-08-06): ``apply_mode_modifiers`` (DEFAULT-OFF) opts into the
+    ARENA/Swiftplay stat-growth ADDEND lane (``engine._resolve_mode_addends``).
+    45 of 173 champions carry an ``ar`` axis, so before this route parsed the
+    flag there was NO way to ask the engine for the corrected ARENA stat line
+    at all - even though ``build_champion`` is the exact function that applies
+    it. That was the sharpest instance of the RM-172 incoherence.
+
+    NO extra transport: the addend table is keyed by (champion, mode) and this
+    route already requires both, so unlike the rune lanes there is no roster to
+    carry. Omitting the key leaves the flag False and the response
+    byte-identical for all 173 champions.
+    """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
     level = _opt_int(body, "level", 1) or 1
     items = _coerce_str_list(body.get("items"), "items")
     mode = _opt_str(body, "mode", "SR") or "SR"
     augments = _coerce_str_list(body.get("augments"), "augments")
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         resolved = build_champion(snap, champion_id=champion, level=level,
-                                  item_ids=items, mode=mode, augments=augments)
+                                  item_ids=items, mode=mode, augments=augments,
+                                  apply_mode_modifiers=apply_mode_modifiers)
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
@@ -1643,6 +1659,10 @@ def _route_ability_dps(body: dict) -> dict:
     apply_ability_base_overrides = _opt_bool(
         body, "apply_ability_base_overrides", False
     )
+    # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF. See the
+    # /stats docstring for the full note - same (champion, mode) keying, so no
+    # extra transport, and byte-identical when the body omits the key.
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = compute_ability_dps(
             snap, champion_id=champion, level=level,
@@ -1657,6 +1677,7 @@ def _route_ability_dps(body: dict) -> dict:
             block_index_overrides=block_index_overrides,
             apply_ability_amps=apply_ability_amps,
             apply_passive_aura_damage=apply_passive_aura_damage,
+            apply_mode_modifiers=apply_mode_modifiers,
             abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
@@ -1725,6 +1746,10 @@ def _route_rank_mage(body: dict) -> dict:
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
+    # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF. Flows to
+    # BOTH the baseline and every candidate inside rank_items_by_ability_dps,
+    # which is what keeps the delta honest. See the /stats docstring.
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = rank_items_by_ability_dps(
             snap,
@@ -1744,6 +1769,7 @@ def _route_rank_mage(body: dict) -> dict:
             filter_shared_uniques=filter_shared_uniques,
             apply_ability_amps=apply_ability_amps,
             apply_passive_aura_damage=apply_passive_aura_damage,
+            apply_mode_modifiers=apply_mode_modifiers,
             abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
@@ -1789,6 +1815,11 @@ def _route_rank_onhit(body: dict) -> dict:
     filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
     apply_passive_damage = _opt_bool(body, "apply_passive_damage", True)
     ap_ad_coherence = _opt_float(body, "ap_ad_coherence", 0.0)
+    # RM-172: rank_items_by_onhit has accepted this kwarg since Slice B
+    # (onhit_dps.py:369) and forwards it to BOTH the baseline and every
+    # candidate, but no route ever parsed it - a kwarg nobody can reach over
+    # HTTP is inert. DEFAULT-OFF. See the /stats docstring.
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
@@ -1806,6 +1837,7 @@ def _route_rank_onhit(body: dict) -> dict:
             filter_shared_uniques=filter_shared_uniques,
             apply_passive_damage=apply_passive_damage,
             ap_ad_coherence=ap_ad_coherence,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1883,6 +1915,11 @@ def _route_burst(body: dict) -> dict:
     apply_ability_base_overrides = _opt_bool(
         body, "apply_ability_base_overrides", False
     )
+    # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF.
+    # compute_burst_damage resolves the build TWICE (build_champion + the
+    # compute_dps AA probe) and forwards the flag to both, so the ability half
+    # and the auto-attack half share one stat line. See the /stats docstring.
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = compute_burst_damage(
             snap, champion_id=champion, level=level,
@@ -1907,6 +1944,7 @@ def _route_burst(body: dict) -> dict:
             gate_target_hp_amp=gate_target_hp_amp,
             gate_caster_hp_amp=gate_caster_hp_amp,
             caster_current_hp_pct=caster_current_hp_pct,
+            apply_mode_modifiers=apply_mode_modifiers,
             abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
@@ -1977,6 +2015,11 @@ def _route_matchup(body: dict) -> dict:
       * ``item_ids_a`` / ``item_ids_b`` (list or comma string)
       * ``mode`` (default SR)
       * ``hp_a_pct`` / ``hp_b_pct`` (current-HP-pct assumption; default 1.0)
+      * ``apply_mode_modifiers`` (RM-172, default False) - ARENA/Swiftplay
+        stat-growth addend lane, applied SYMMETRICALLY to both champions'
+        defences and both bursts. RM-169 deliberately held this route blind
+        because wiring it alone would have made a split-brain engine; the
+        uniform wiring (LEDGER 1217) is what unblocks it.
     """
     snap = _CACHE.get()
     champ_a = _resolve_champion_id(snap, _required_str(body, "champ_a"))
@@ -1988,11 +2031,13 @@ def _route_matchup(body: dict) -> dict:
     mode = _opt_str(body, "mode", "SR") or "SR"
     hp_a_pct = _opt_float(body, "hp_a_pct", 1.0)
     hp_b_pct = _opt_float(body, "hp_b_pct", 1.0)
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = compute_matchup(
             snap, champ_a, champ_b, level_a, level_b,
             item_ids_a=items_a, item_ids_b=items_b, mode=mode,
             hp_a_pct=hp_a_pct, hp_b_pct=hp_b_pct,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -2261,6 +2306,9 @@ def _route_antitank(body: dict) -> dict:
     level = _opt_int(body, "level", None)
     item_ids = _coerce_str_list(body.get("item_ids"), "item_ids")
     augments = _coerce_str_list(body.get("augments"), "augments")
+    # RM-172: only the LIVE-build branch below resolves a stat line, so this key
+    # is inert on the static branch by construction (item_ids empty). DEFAULT-OFF.
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         if item_ids:
             # P3.2 live-build producer (B4): resolve AP/AD from the live build.
@@ -2268,6 +2316,7 @@ def _route_antitank(body: dict) -> dict:
             result = compute_antitank_live(
                 snap, champion, level if level is not None else 18,
                 item_ids, mode=mode, augments=(augments or None),
+                apply_mode_modifiers=apply_mode_modifiers,
             )
         else:
             # R17/R39 level-ramp seam (B12); level=None -> static.
@@ -2350,6 +2399,9 @@ def _route_ally_protected_ehp(body: dict) -> dict:
     granter_resists = body.get("granter_resists")
     if not isinstance(granter_resists, dict):
         granter_resists = None
+    # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF. See the
+    # /stats docstring.
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = ally_protected_ehp(
             snap,
@@ -2360,6 +2412,7 @@ def _route_ally_protected_ehp(body: dict) -> dict:
             mode=mode,
             enemy_champions=enemies,
             granter_resists=granter_resists,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -2477,6 +2530,9 @@ def _route_rank_assassin(body: dict) -> dict:
     apply_ability_base_overrides = _opt_bool(
         body, "apply_ability_base_overrides", False
     )
+    # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF. Flows to
+    # BOTH the baseline and every candidate. See the /stats docstring.
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = rank_items_by_burst(
             snap,
@@ -2504,6 +2560,7 @@ def _route_rank_assassin(body: dict) -> dict:
             assume_ability_amp=assume_ability_amp,
             target_preset=target_preset,
             kit_conversion_strength=kit_conversion_strength,
+            apply_mode_modifiers=apply_mode_modifiers,
             abilities_snapshot=_ABIL_CACHE.get(apply_ability_base_overrides),
         )
     except KeyError as e:
@@ -2556,6 +2613,12 @@ def _route_hps(body: dict) -> dict:
     # it is identity when the build carries no HSP item (amp_factor == 1.0) or
     # the champion has no ability heal block (ability_hps_total == 0.0).
     apply_ability_hsp_amp = _opt_bool(body, "apply_ability_hsp_amp", False)
+    # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF. compute_hps
+    # forwards it to compute_ability_hps as well, so the item-throughput half
+    # and the champion-ability half share one stat line. Unlike
+    # apply_ability_hsp_amp above, this key IS shared with /rank-enchanter -
+    # rank_items_by_hps names it. See the /stats docstring.
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = compute_hps(
             snap, champion_id=champion, level=level,
@@ -2563,6 +2626,7 @@ def _route_hps(body: dict) -> dict:
             augments=augments,
             targets_per_proc_override=targets_override,
             apply_ability_hsp_amp=apply_ability_hsp_amp,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -2610,6 +2674,9 @@ def _route_rank_enchanter(body: dict) -> dict:
     prefer_survivability_by_win = _opt_bool(body, "prefer_survivability_by_win", False)
     assume_missing_hp_heal_amp = _opt_bool(body, "assume_missing_hp_heal_amp", False)
     caster_missing_hp_pct = _opt_float(body, "caster_missing_hp_pct", 0.0)
+    # RM-172: ARENA/Swiftplay stat-growth addend lane, DEFAULT-OFF. Flows to
+    # BOTH the baseline and every candidate. See the /stats docstring.
+    apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     try:
         result = rank_items_by_hps(
             snap,
@@ -2625,6 +2692,7 @@ def _route_rank_enchanter(body: dict) -> dict:
             prefer_survivability_by_win=prefer_survivability_by_win,
             assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
             caster_missing_hp_pct=caster_missing_hp_pct,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))

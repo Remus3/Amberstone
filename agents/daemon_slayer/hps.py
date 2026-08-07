@@ -518,6 +518,7 @@ def compute_hps(
     assume_missing_hp_heal_amp: bool = False,
     caster_missing_hp_pct: float = 0.0,
     apply_ability_hsp_amp: bool = False,
+    apply_mode_modifiers: bool = False,
 ) -> HpsResult:
     """Compute total healing+shielding+buff throughput for the resolved build.
 
@@ -556,9 +557,12 @@ def compute_hps(
     """
     level = clamp_level(level)
 
+    # RM-172: apply_mode_modifiers (DEFAULT-OFF) opts into the ARENA/Swiftplay
+    # stat-growth ADDEND lane. Forwarded to compute_ability_hps below too, so
+    # both halves of total_throughput share one stat line.
     resolved = build_champion(
         snapshot, champion_id, level, item_ids=item_ids, mode=mode,
-        augments=augments,
+        augments=augments, apply_mode_modifiers=apply_mode_modifiers,
     )
     stats = resolved.stats
     ap = float(stats.get("ap", 0.0))
@@ -665,6 +669,7 @@ def compute_hps(
             resolve_target_relative=False,
             assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
             caster_missing_hp_pct=caster_missing_hp_pct,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
         ability_heal_hps = a.total_heal_per_sec
         ability_shield_hps = a.total_shield_per_sec
@@ -880,6 +885,7 @@ def rank_items_by_hps(
     prefer_survivability_by_win: bool = False,
     assume_missing_hp_heal_amp: bool = False,
     caster_missing_hp_pct: float = 0.0,
+    apply_mode_modifiers: bool = False,
 ) -> HpsRankResult:
     """Rank items by total-throughput contribution when added to current build.
 
@@ -984,6 +990,7 @@ def rank_items_by_hps(
         formulas=snap_formulas,
         assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
         caster_missing_hp_pct=caster_missing_hp_pct,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
 
     candidates = _filter_candidates(
@@ -1021,6 +1028,7 @@ def rank_items_by_hps(
                 formulas=snap_formulas,
                 assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
                 caster_missing_hp_pct=caster_missing_hp_pct,
+                apply_mode_modifiers=apply_mode_modifiers,
             )
         except (KeyError, ValueError):
             continue

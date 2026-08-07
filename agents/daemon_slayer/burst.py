@@ -536,6 +536,7 @@ def compute_burst_damage(
     assume_physical_burst: bool = False,
     assume_shielded_target: bool = False,
     assume_item_lowhp_magic_crit: bool = False,
+    apply_mode_modifiers: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -664,9 +665,14 @@ def compute_burst_damage(
     # Resolve the build once. Reused for ability stats AND the AA per-hit
     # damage probe via compute_dps below. Two engine passes per call - same
     # cost shape as Phase 4b's compute_ability_dps.
+    # RM-172: apply_mode_modifiers (DEFAULT-OFF) opts into the ARENA/Swiftplay
+    # stat-growth ADDEND lane. It MUST also be forwarded to the compute_dps AA
+    # probe below - this function resolves the build TWICE, and arming only one
+    # of the two would score the ability half off the ARENA stat line and the
+    # auto-attack half off the SR one, inside a single response.
     resolved = build_champion(
         snapshot, champion_id, level, item_ids=item_ids, mode=mode,
-        augments=augments,
+        augments=augments, apply_mode_modifiers=apply_mode_modifiers,
     )
 
     champ_rec = snapshot.champion(resolved.champion_id)
@@ -693,6 +699,8 @@ def compute_burst_damage(
         # R111: the AA per-hit also picks up Overlord's Bloodmail Retribution
         # bonus AD when the caster-low-HP seam is ON. Byte-identical when OFF.
         assume_caster_lowhp=assume_caster_lowhp,
+        # RM-172: same stat line as the build_champion call above (see note).
+        apply_mode_modifiers=apply_mode_modifiers,
     )
     aa_base_per_hit = max(0.0, float(aa_probe.avg_attack_dmg))
     # Phase 5.6 (s188, 2026-05-13): on-hit proc contribution per AA -
@@ -1926,6 +1934,7 @@ def rank_items_by_burst(
     prefer_kit_axis_by_win: bool = False,
     kit_conversion_strength: float = 0.0,
     exclude_off_axis_items: bool = False,
+    apply_mode_modifiers: bool = False,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -2076,6 +2085,7 @@ def rank_items_by_burst(
         aoe_targets_hit=aoe_targets_hit,
         assume_takedown=assume_takedown,
         assume_ability_amp=assume_ability_amp,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
 
     candidates = _filter_candidates(
@@ -2133,6 +2143,7 @@ def rank_items_by_burst(
                 aoe_targets_hit=aoe_targets_hit,
                 assume_takedown=assume_takedown,
                 assume_ability_amp=assume_ability_amp,
+                apply_mode_modifiers=apply_mode_modifiers,
             )
         except (KeyError, ValueError):
             continue

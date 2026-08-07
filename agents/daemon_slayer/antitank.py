@@ -827,6 +827,7 @@ def compute_antitank_live(
     item_ids=None,
     mode: str = "SR",
     augments=None,
+    apply_mode_modifiers: bool = False,
 ) -> AntiTankResult:
     """Anti-tank score with the LIVE caster's resolved AP/AD folded in (P3.2).
 
@@ -849,8 +850,12 @@ def compute_antitank_live(
     from .engine import build_champion  # deferred - avoid an import cycle
 
     try:
+        # RM-172: apply_mode_modifiers (DEFAULT-OFF) opts into the ARENA/
+        # Swiftplay stat-growth ADDEND lane, so a seeded row's ap_ratio /
+        # ad_ratio scales off the corrected stat line. OFF is byte-identical.
         stats = build_champion(
-            snapshot, champion, level, item_ids, mode=mode, augments=augments
+            snapshot, champion, level, item_ids, mode=mode, augments=augments,
+            apply_mode_modifiers=apply_mode_modifiers,
         )
     except Exception:  # noqa: BLE001 - fail-soft to the static (no-stats) score
         return compute_antitank(champion, mode=mode)
