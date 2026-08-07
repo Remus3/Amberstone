@@ -23,13 +23,42 @@ from pathlib import Path
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-STATE_DIR = _PROJECT_ROOT / "agents" / "state"
+
+
+def _env_port(name: str, default: int) -> int:
+    """Read an int port from the environment, falling back to ``default``.
+
+    RM-170 (2026-08-06): the ports and the state dir are env-overridable so a
+    test can spawn a supervisor on FREE ports with a throwaway state dir while
+    the live RC-Phase3-Supervisor still holds :8890/:8891. The DEFAULTS are
+    unchanged, so the live supervisor (which sets none of these) behaves
+    exactly as before. A malformed value falls back to the default rather than
+    crashing the daemon at import time.
+    """
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+# RM-170: overriding STATE_DIR relocates the lockfile, the lockfile sentinel,
+# the orphan-tmp reap glob AND the resolved_decisions.json load together, which
+# is exactly the set a hermetic supervisor test has to move as a unit.
+STATE_DIR = Path(os.environ.get("RC_PHASE3_STATE_DIR") or (_PROJECT_ROOT / "agents" / "state"))
 LOCKFILE = STATE_DIR / "lockfile"
 WEB_ROOT = _PROJECT_ROOT / "web"
 LOG_ROOT = _PROJECT_ROOT / "logs" / "agents"
 
-WS_PORT = 8891
-WEB_PORT = 8890
+# CAUTION: these resolve at IMPORT time, and tests/test_ports.py asserts the
+# repo-wide port registry equals these two values. Pass the overrides in a
+# CHILD process env (as agent3_testing/suite/test_supervisor.py does); do NOT
+# export RC_PHASE3_WEB_PORT / RC_PHASE3_WS_PORT into a pytest process itself,
+# or that registry assertion flips repo-wide with no obvious cause.
+WS_PORT = _env_port("RC_PHASE3_WS_PORT", 8891)
+WEB_PORT = _env_port("RC_PHASE3_WEB_PORT", 8890)
 HEARTBEAT_INTERVAL = 5.0
 # Legacy 2-PC SMB-push target (Game-PC LAN IP). Retired post-1PC (ADR-011):
 # Game-PC is out of the pipeline, so the cross-machine push path is dead and

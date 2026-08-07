@@ -6,6 +6,7 @@ monkeypatched with canned ``.bin.json`` dicts. Item 225 (2026-05-30).
 """
 from __future__ import annotations
 
+import ast
 import json
 import sys
 from pathlib import Path
@@ -17,6 +18,70 @@ if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 
 import daemon_slayer_cdragon_spell_extract as C  # noqa: E402
+
+# --------------------------------------------------------------------------- engine-independence guard
+# RM-170 (2026-08-06). Was `assert "from agents" not in src`. Commit 9df58480
+# (2026-07-30) deliberately added ONE engine import to both cdragon extractors
+# without updating the guard, leaving it red and unseen because `pytest tests`
+# does not collect tools/tests. The contract is narrowed, not dropped - see the
+# matching block in test_cdragon_ratio_extract.py for the full rationale.
+# Matched via AST, NOT text: a semicolon defeats line-prefix matching, and the
+# leaf check has to reject ANY non-stdlib root, not just the literal string
+# `import requests`. Both were live bypasses in the first cut of this guard.
+_ALLOWED_AGENTS_IMPORTS = frozenset({
+    ("agents.daemon_slayer.mode_variants", ("canonical_champions",)),
+})
+_LEAF_ALLOWED_ROOTS = frozenset(sys.stdlib_module_names) | {"__future__", "typing"}
+
+
+def _agents_imports(src: str) -> list[tuple[str, tuple[str, ...]]]:
+    """Every `agents...` import in src, as (module, imported names)."""
+    found: list[tuple[str, tuple[str, ...]]] = []
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if mod == "agents" or mod.startswith("agents."):
+                found.append((mod, tuple(sorted(a.name for a in node.names))))
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "agents" or alias.name.startswith("agents."):
+                    found.append((alias.name, ()))
+    return found
+
+
+def _assert_agents_imports_allowlisted(src: str, path: str) -> None:
+    offenders = [i for i in _agents_imports(src) if i not in _ALLOWED_AGENTS_IMPORTS]
+    assert offenders == [], (
+        f"{path} imports the DS engine beyond the RM-170 allowlist "
+        f"({sorted(_ALLOWED_AGENTS_IMPORTS)}): {offenders}"
+    )
+
+
+def _assert_mode_variants_is_leaf() -> None:
+    """The one allowlisted helper must stay a stdlib-only pure-data leaf.
+
+    A RELATIVE import counts as a failure: `from . import x` inside
+    agents/daemon_slayer reaches the engine just as surely as an absolute one.
+    """
+    mv = (
+        Path(__file__).resolve().parents[2]
+        / "agents" / "daemon_slayer" / "mode_variants.py"
+    )
+    assert mv.exists(), f"allowlisted helper missing: {mv}"
+    roots: set[str] = set()
+    for node in ast.walk(ast.parse(mv.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            roots.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                roots.add(f"<relative import level {node.level}>")
+            elif node.module:
+                roots.add(node.module.split(".")[0])
+    bad = sorted(r for r in roots if r not in _LEAF_ALLOWED_ROOTS)
+    assert bad == [], (
+        f"{mv} is no longer a stdlib-only leaf, so allowlisting it no longer "
+        f"preserves extractor engine-independence: {bad}"
+    )
 
 
 # --------------------------------------------------------------------------- canned bins
@@ -509,8 +574,10 @@ class TestExtract:
     def test_engine_independent_no_imports(self):
         src = open(C.__file__, encoding="utf-8").read()
         assert "import requests" not in src
-        assert "from agents" not in src
-        assert "import agents" not in src
+        _assert_agents_imports_allowlisted(src, C.__file__)
+
+    def test_allowlisted_helper_is_itself_engine_free(self):
+        _assert_mode_variants_is_leaf()
 
 
 # --------------------------------------------------------------------------- _fetch_with_retry
