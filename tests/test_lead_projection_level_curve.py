@@ -131,11 +131,11 @@ class PerModeCurveTests(unittest.TestCase):
         self.assertGreater(lp.minutes_for_level(2, "SR"), 0.0)
 
     def test_level_benchmark_differs_by_mode_at_the_same_minute(self) -> None:
-        # NOT asserted at minute 10: ARAM (1 + 0.9*10) and ARENA (3 + 0.7*10)
-        # both land on exactly 10.0 there. That crossing is a real property of
-        # two lines with different intercepts, not a fall-through, so the
-        # distinctness pin is taken where the curves are actually apart.
-        vals = [lp.level_benchmark(20.0, m) for m in ("SR", "ARAM", "ARENA")]
+        # Taken at minute 10 deliberately. Later minutes are NOT usable: ARAM
+        # hits the level-18 clamp at 16.83 and ARENA at 18.99, so by minute 20
+        # both read exactly 18.0 and a distinctness assertion there would fail
+        # on the clamp rather than on any fall-through.
+        vals = [lp.level_benchmark(10.0, m) for m in ("SR", "ARAM", "ARENA")]
         self.assertEqual(len(set(vals)), 3, vals)
         for minutes in (5.0, 10.0, 20.0, 30.0):
             # MEASURED mean level at minute 10: SR 7.04, ARAM 11.20, ARENA 11.35.
@@ -192,6 +192,128 @@ class LiveReadFailSoftTests(unittest.TestCase):
     def test_zero_rate_curve_returns_zero_minutes(self) -> None:
         with mock.patch.dict(lp._LEVEL_CURVE, {"SR": (1.0, 0.0)}):
             self.assertEqual(lp.minutes_for_level(11, "SR"), 0.0)
+
+
+class LiveProjectLeadAxisTests(unittest.TestCase):
+    """The SECOND live consumer. Every test here must DIE if project_lead's
+    ``level_bench`` reverts to the mode-blind ``_LEVEL_BASE +
+    _LEVEL_PER_MIN_BENCHMARK * minutes`` - verified by hand-reverting it.
+
+    The registry tests above do not cover this: they exercise the accessors and
+    the offline generator, and the whole repo stayed green with the live axis
+    reverted. Fixtures neutralise every OTHER axis so the level axis alone
+    decides the verdict - gold is set to exactly its benchmark
+    (``_GOLD_PER_MIN_BENCHMARK`` 350/min) and ``kda`` is omitted, which
+    ``_kda_ratio`` fail-softs to a neutral 0.0.
+    """
+
+    def _state(self, minutes: float, level: float, **extra) -> dict:
+        state = {
+            "game_time_s": minutes * 60.0,
+            "level": level,
+            "gold": 350.0 * minutes,
+        }
+        state.update(extra)
+        return state
+
+    def test_aram_average_player_reads_even_not_ahead(self) -> None:
+        # MEASURED ARAM mean level at minute 10 is 11.20. On the per-mode bench
+        # (1 + 1.01*10 = 11.1) a level-11 ARAM player is doing exactly as
+        # expected. On the SR bench (6.0) they read +83% and are coached as
+        # AHEAD - a permanent, mode-wide false positive at weight 0.30.
+        verdict = lp.project_lead(self._state(10.0, 11), mode="ARAM")
+        self.assertEqual(verdict["state"], "even")
+
+    def test_arena_average_player_reads_even_not_ahead(self) -> None:
+        # Same shape: measured ARENA mean at minute 10 is 11.35, bench is
+        # 3 + 0.79*10 = 10.9.
+        verdict = lp.project_lead(self._state(10.0, 11), mode="ARENA")
+        self.assertEqual(verdict["state"], "even")
+
+    def test_sr_verdict_at_the_same_fixture_is_unchanged(self) -> None:
+        # CHARACTERIZATION, pinned to pre-fix behaviour. SR rides the identical
+        # arithmetic before and after, so this must not move. cs is supplied at
+        # its benchmark (8/min) because SR weights cs at 0.40 and a missing cs
+        # would swamp the level axis.
+        verdict = lp.project_lead(
+            self._state(10.0, 11, cs=80.0), mode="SR"
+        )
+        self.assertEqual(verdict["state"], "ahead")
+        self.assertEqual(verdict["magnitude"], "clear")
+
+    def test_the_same_state_reads_differently_per_mode(self) -> None:
+        # The single most direct statement of the defect: one game_state, three
+        # modes, three level benchmarks. Mode-blind, ARAM and ARENA returned
+        # SR's verdict here.
+        state = self._state(10.0, 11)
+        sr = lp.project_lead(state, mode="SR")
+        self.assertNotEqual(sr["state"], lp.project_lead(state, mode="ARAM")["state"])
+        self.assertNotEqual(sr["state"], lp.project_lead(state, mode="ARENA")["state"])
+
+    def test_missing_level_defaults_to_the_modes_spawn_level(self) -> None:
+        # An ARENA game_state with no ``level`` must default to 3.0, not SR's
+        # 1.0. Gold is placed so the two candidate defaults land on opposite
+        # sides of the even/behind boundary, otherwise the flat default hides.
+        no_level = {"game_time_s": 600.0, "gold": 6037.5}
+        at_spawn = dict(no_level, level=3)
+        at_sr_spawn = dict(no_level, level=1)
+        absent = lp.project_lead(no_level, mode="ARENA")
+        self.assertEqual(
+            absent, lp.project_lead(at_spawn, mode="ARENA"),
+            "a missing level must read as the ARENA spawn level (3)",
+        )
+        self.assertNotEqual(
+            absent, lp.project_lead(at_sr_spawn, mode="ARENA"),
+            "a missing level is defaulting to SR's spawn level (1)",
+        )
+
+
+class MaxLevelClampTests(unittest.TestCase):
+    """Level 18 is a hard game cap, so the benchmark must stop there.
+
+    Uncapped, the bench crosses 18 at minute 34.00 for SR, 18.81 for ARAM and
+    21.99 for ARENA, and MEASURED shares of games running past those crossings
+    are 17.7% / 49.4% / 80.1%. Past the crossing the bench is unreachable and
+    every player reads permanently behind on the level axis.
+    """
+
+    def test_benchmark_never_exceeds_max_level(self) -> None:
+        for mode in lp.level_curve_modes():
+            for minutes in (0.0, 20.0, 35.0, 60.0, 600.0):
+                with self.subTest(mode=mode, minutes=minutes):
+                    self.assertLessEqual(
+                        lp.level_benchmark(minutes, mode), lp.MAX_CHAMPION_LEVEL
+                    )
+
+    def test_sr_is_bit_identical_below_its_crossing(self) -> None:
+        # The clamp must not disturb SR anywhere it was already reachable.
+        # SR reaches 18.0 at exactly minute 34.0.
+        for minutes in (0.0, 1.0, 10.0, 20.0, 30.0, 33.9, 34.0):
+            with self.subTest(minutes=minutes):
+                self.assertAlmostEqual(
+                    lp.level_benchmark(minutes, "SR"), 1.0 + 0.5 * minutes
+                )
+
+    def test_clamp_binds_past_each_crossing(self) -> None:
+        for mode, past in (("SR", 40.0), ("ARAM", 25.0), ("ARENA", 25.0)):
+            with self.subTest(mode=mode):
+                self.assertEqual(
+                    lp.level_benchmark(past, mode), lp.MAX_CHAMPION_LEVEL
+                )
+
+    def test_minutes_for_level_clamps_above_max(self) -> None:
+        for mode in lp.level_curve_modes():
+            with self.subTest(mode=mode):
+                self.assertEqual(
+                    lp.minutes_for_level(25, mode), lp.minutes_for_level(18, mode)
+                )
+
+    def test_maxed_aram_player_is_not_read_as_behind(self) -> None:
+        # MEASURED: the ARAM mean level at minute 25 is exactly 18.000 - the cap
+        # itself. Uncapped, the bench there is 26.25 and a MAXED player reads
+        # behind. This is the assertion that dies if the clamp is removed.
+        state = {"game_time_s": 1800.0, "level": 18, "gold": 350.0 * 30.0}
+        self.assertEqual(lp.project_lead(state, mode="ARAM")["state"], "even")
 
 
 class GeneratorRefusalTests(unittest.TestCase):
