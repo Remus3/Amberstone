@@ -53,6 +53,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
+        with:
+          # FULL history. See the long note on the `check` job's checkout
+          # below - this job runs the same `pytest tests/` tree and fails the
+          # same 12 ways without it.
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -171,6 +176,49 @@ jobs:
     timeout-minutes: 65
     steps:
       - uses: actions/checkout@v6
+        with:
+          # FULL history, and it is load-bearing, not defensive.
+          #
+          # `actions/checkout` defaults to fetch-depth: 1 - a SHALLOW clone
+          # with exactly one commit and no history at all. Several guards in
+          # `tests/` ask git "was this path once tracked, and when did it stop
+          # being tracked", and on a shallow clone git answers "never" for
+          # everything. That is not an error, it is a wrong answer, so the
+          # guards do not error - they assert the wrong thing and go red.
+          #
+          # MEASURED 2026-08-07 by cloning this repo at --depth 1 and running
+          # the affected modules in the clone:
+          #   `git log --all --diff-filter=DR --name-status`
+          #       shallow: 0 lines      full: 1344 lines
+          #   pytest test_u2500_candidate_sweep.py test_rc2_p73_quarantine.py
+          #          test_skip_condition_hygiene.py
+          #          test_cost_health_watchdog_glob_rm165.py
+          #       shallow clone: 12 failed, 73 passed
+          #       full clone:     0 failed, 85 passed
+          # Those 12 are exactly 12 of the 13 failures on CI runs 31136741053
+          # / 31140950764 / 31144927312 / 31156390386 (the 13th is a
+          # filesystem-case issue, fixed in the test itself).
+          #
+          # The alternative was to make those guards SKIP on a shallow clone.
+          # Rejected deliberately: every CI run here is a shallow clone, so
+          # the skip would fire on 100 percent of CI runs and on 0 percent of
+          # local runs - the guard would report green precisely where it is
+          # the only thing watching. tests/test_u2500_candidate_sweep.py and
+          # tests/test_rc2_p73_quarantine.py exist in their current form
+          # BECAUSE ccbafd5e made them skip and 3beeb8cf found they had been
+          # asserting nothing for months. Re-introducing that shape to dodge a
+          # 41MB fetch would undo the fix and hide the next real regression.
+          #
+          # PRICE, measured on this repo 2026-08-07: .git grows 32.7MB ->
+          # 74.1MB (+41.4MB) and 1 commit -> 4695. Local file:// full clone
+          # 12.6s; the CI number is a GitHub-side pack fetch and is not this
+          # number, but 41MB over the Actions network is seconds, against a
+          # job that already budgets 65 minutes.
+          #
+          # Pinned by tests/test_ci_checkout_history_depth.py: any job in
+          # .github/workflows/ that runs the whole `pytest tests/` tree must
+          # check out with fetch-depth: 0.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:
