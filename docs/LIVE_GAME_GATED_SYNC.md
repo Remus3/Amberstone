@@ -1968,10 +1968,15 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   `RC_LANING_CV_SERVED=1` to flip the served chips. **(c) IS RETIRED AS WRITTEN - see
   `docs/adr/ADR-013` (2026-08-06): the Haiku laning verdict it calibrates against carries zero
   mutual information, so agreement with it is not evidence. The gate itself is a different
-  predictor and is unaffected; it needs a fresh acceptance number. The `>=70%` figure is ALSO
-  mis-cited: it was attributed to `HZ_HAIKU_CALL_INVENTORY.md:75`, but that file lives at
-  `ops/audit/HZ_HAIKU_CALL_INVENTORY.md` and the string "70" appears NOWHERE in it - verified
-  2026-08-06. The number has no traceable source in this repo.** KNOWN at flip time: the served `_CACHE`
+  predictor and is unaffected; it needs a fresh acceptance number. **The `>=70%` figure is an
+  author-set ASPIRATION with an origin but no derivation, and it is mis-cited.** Origin: commit
+  `b700fdc8` (2026-06-19) wrote "(target: 39% -> >=70%)" into the RC2 coaching spec, now
+  `docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md:249`. That same line
+  carries the `HZ_HAIKU_CALL_INVENTORY.md:75` citation, so the number and the citation were
+  authored together and the citation has never supported the number - the cited bullet says only
+  "confirm agreement climbs before any flip", with no threshold at all (the audit file is at
+  `ops/audit/`, and carried no "70" anywhere until this correction was written). Nothing measures
+  70, and nothing justifies it over 65 or 80.** KNOWN at flip time: the served `_CACHE`
   sig (`_cache_sig`) is intentionally UNCHANGED (off-path byte-identical), so a flipped-ON CV
   transition (enemy dies / my HP drops mid-bucket) can serve a stale chip for up to the 3.0s
   TTL + 5s game-time bucket - acceptable for a gated/eyeballed flip; tighten the sig (coarse
@@ -2303,9 +2308,11 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   agreement climbs toward the >=70% target, authorize the 5.2 served flip. **(c) RETIRED AS
   WRITTEN 2026-08-06 - see `docs/adr/ADR-013`: the Haiku laning verdict this calibrates against
   carries zero mutual information, so agreement with it proves nothing. The gate is a different
-  predictor and survives; it needs a new acceptance number. The `>=70%` figure was cited to
-  `HZ_HAIKU_CALL_INVENTORY.md:75`; that file is at `ops/audit/` and contains no "70" anywhere -
-  the number is unsourced.**
+  predictor and survives; it needs a new acceptance number. The `>=70%` figure is an author-set
+  ASPIRATION: `b700fdc8` (2026-06-19) wrote "(target: 39% -> >=70%)" into what is now
+  `docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md:249`, on the SAME LINE as
+  the `HZ_HAIKU_CALL_INVENTORY.md:75` citation that has never supported it. It has an origin and
+  no derivation - nothing measures 70, nothing justifies it over 65 or 80.**
   Does NOT block any further stage.
 - 2026-06-20 RC2 P6.4 port-safety pooled LCU connection (`RC_LCU_POOL` default-ON flip). The L6 keep-alive
   connection pool (`core/lcu_pool.py`) ships DEFAULT-OFF; the live path is byte-identical until `RC_LCU_POOL=1`.
