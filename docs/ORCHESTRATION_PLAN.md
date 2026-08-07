@@ -151,6 +151,22 @@ original scoping - which is the pattern worth keeping from this run.
 Filed out of cycle 3: RM-174 (an intrinsic Playwright flake misattributed to parallel load
 for most of this run), RM-175 (the ARAM regen this work created).
 
+### Cycle 4 (four of five refilled from this run's own findings)
+
+| ID | Row | Status | Commit |
+|----|-----|--------|--------|
+| S16 | RM-174 overlay flake | DONE | `79a6a574` | Refuted the filed mechanism AND the filed rate. The flake is load-dependent: a 91-107 ms debounced revert against a two-round-trip test. Both conflicting measurements were correct. My proposed acceptance would have made it worse. LEDGER 1223. |
+| S17 | RM-175 ARAM regen | DECIDED, ADR-014 | `8b41a25b` | Declined the regen and corrected the filing (transposed axes). The adversarial pass found the argument AGAINST the decision that the slice had not made, and measured the corpus: already polluted on spike, never on recall. LEDGER 1224. |
+| S18 | RM-172 seam wiring | DONE | `f05d9096` | Found a LIVE settable-but-inert seam in production - parsed, forwarded to one of five sections, moving 0 of 45. Its own new invariant was then defeated by a docstring. LEDGER 1225. |
+| S19 | doc-truth sweep | DONE | `8b5f707a` | Found a live paid Haiku path documented as deadcode in four places including CLAUDE.md Settled - false on the day it was written. Recursion went three levels: the fix, the fix's own false sentence, and a correction that refuted its own grep. LEDGER 1226. |
+| S20 | RM-26 vision seeds | REFUTED then reframed | `39714703` | Row stale two weeks; real defect was a consumer; and the fix moved 0 of 21 crop rects. The slice reproduced its own refutation. LEDGER 1227. |
+| S21 | cross-slice integration | DONE | `<this commit>` | Found only by MERGING: the B5 guard did not know git-LFS exists, and two slices were both right. The rescue quantifier must be ALL, not ANY. LEDGER 1228. |
+
+**Cycle 4 is the argument for merging into one trunk.** S21's failure was invisible to every
+slice individually - S17 could not know the guard's shape, S10 could not know a future test
+would gate on LFS content. It appeared only when both landed in the same tree and the whole
+suite ran. Five green branch reports would have shipped it.
+
 **What this run is actually evidence for.** Every filed count that was re-derived was wrong -
 B5 "about 22" was 1, B4 "about 22" was 11, B2 "19" was 20, and two ROADMAP rows I wrote
 myself were refuted by the slices I sent to execute them. The adversarial pass earned its
