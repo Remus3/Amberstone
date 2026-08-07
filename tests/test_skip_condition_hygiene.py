@@ -11,10 +11,22 @@ The rule, restated mechanically:
     A test may skip only when an ENVIRONMENT CAPABILITY is absent - an OS
     feature, an external binary, an optional third-party import, a network
     endpoint, an opt-in env var, a sibling-repo tree, gitignored machine-local
-    state, or the Share mirror path (which deliberately omits data/meta and
-    data/meta_build). A tracked-in-git artifact is present in EVERY checkout,
-    so a skip gated on one can only fire when the thing under test is broken -
-    exactly the moment the test must FAIL.
+    state, the Share mirror path (which deliberately omits data/meta and
+    data/meta_build), or a tracked path behind a git-LFS filter. A
+    tracked-in-git artifact is present in EVERY checkout, so a skip gated on
+    one can only fire when the thing under test is broken - exactly the moment
+    the test must FAIL.
+
+The ONE carve-out is git-LFS, and it is a capability question rather than an
+exception to the rule. `git clone` fetches an LFS-filtered blob as a ~130-byte
+pointer stub unless the client has git-lfs installed AND smudges it (or the
+checkout runs `git lfs pull`). No workflow in `.github/workflows/` passes
+`lfs:` to `actions/checkout`, so in CI those paths are pointer stubs BY
+DESIGN - permanently, for every run. "The content is not fetched here" is an
+environment capability in exactly the sense the rule means, so a skip gated on
+a tracked-AND-LFS path is CAPABILITY. Tracked and NOT LFS stays DEFECT, which
+is the whole of class B5; see `_is_lfs_chain` for how the two are told apart
+and why a chain that reaches even one non-LFS tracked file is not rescued.
 
 Two design constraints come from prior guards in this repo that were green over
 the very class they existed to catch:
@@ -34,6 +46,7 @@ from __future__ import annotations
 
 import ast
 import fnmatch
+import functools
 import shutil
 import subprocess
 from dataclasses import dataclass, field
@@ -100,6 +113,96 @@ def _suffix_index(tracked: frozenset[str]) -> frozenset[str]:
 
 _TRACKED = _git_tracked()
 _TRACKED_SUFFIXES = _suffix_index(_TRACKED)
+
+
+def _git_lfs_tracked(tracked: frozenset[str]) -> frozenset[str]:
+    """The subset of `tracked` that git resolves to `filter=lfs`.
+
+    ASKED, never derived. The three alternatives were all rejected:
+
+    * hardcoding `data/daemon_slayer/laning_scenarios/**` pins the guard to
+      today's one LFS rule, so the second one added would be misclassified
+      silently - the same hand-list failure the module docstring warns about;
+    * parsing `.gitattributes` means re-implementing gitattributes semantics
+      (nested files down the tree, last-match-wins precedence, negation,
+      `!` and `**` globbing) and getting any of it wrong flips a verdict;
+    * `git lfs ls-files` needs the git-lfs binary, which is exactly the thing a
+      pointer-stub checkout may not have.
+
+    `git check-attr` is core git and answers the real question - what does git
+    think this path's filter is - including every attribute source and
+    precedence rule. One batched `--stdin` call covers the whole tracked set:
+    MEASURED 2026-08-06 at 0.03s for 5220 paths, against one subprocess per
+    candidate path had this been asked lazily per chain.
+
+    git being absent is already handled: the module skips at import when `git`
+    is not on PATH, because trackedness itself is unresolvable without it.
+    """
+    if not tracked:
+        return frozenset()
+    out = subprocess.run(
+        [_GIT, "check-attr", "filter", "-z", "--stdin"],
+        input="\0".join(sorted(tracked)),
+        cwd=str(_REPO_ROOT), capture_output=True, text=True,
+        timeout=180, check=True,
+    ).stdout
+    # `-z` output is a flat NUL-separated stream of (path, attr, value) triples.
+    fields = out.split("\0")
+    return frozenset(
+        fields[i] for i in range(0, len(fields) - 2, 3)
+        if fields[i + 2] == "lfs"
+    )
+
+
+_LFS_TRACKED = _git_lfs_tracked(_TRACKED)
+_NON_LFS_TRACKED = _TRACKED - _LFS_TRACKED
+
+
+def _chain_matches_any(chain: str, pool: frozenset[str]) -> bool:
+    """Does `chain` name any path in `pool`, under `_is_tracked_chain`'s rule?
+
+    `_is_tracked_chain` asks the same question against a precomputed suffix
+    index of the WHOLE tracked set; this asks it against an arbitrary subset,
+    so the two must agree on what "names" means. It does: the index is built
+    from every contiguous segment slice of every tracked path, which is what
+    the loop below tests directly.
+    """
+    if "*" in chain or "?" in chain or "[" in chain:
+        pats = (chain, "*/" + chain)
+        return any(fnmatch.fnmatch(rel, p) for rel in pool for p in pats)
+    needle = chain.split("/")
+    n = len(needle)
+    for rel in pool:
+        parts = rel.split("/")
+        if any(parts[i:i + n] == needle for i in range(len(parts) - n + 1)):
+            return True
+    return False
+
+
+@functools.cache
+def _is_lfs_chain(chain: str) -> bool:
+    """Every tracked path this chain can name is behind an LFS filter.
+
+    The ALL quantifier is the load-bearing half, and inverting it re-opens
+    class B5 wholesale. A resolved chain is a suffix (really any contiguous
+    segment slice), so it can name many tracked files: `data` names thousands,
+    `laning_scenarios_aram.json` names three. Rescuing a chain because SOME
+    file it names is LFS would rescue `data` - and with it every B5 defect
+    whose gate resolves to a broad directory. So the chain is a capability gate
+    only when the LFS set fully covers it: at least one match there, and none
+    outside it. `data/daemon_slayer` reaches `current.txt` and stays DEFECT;
+    `data/daemon_slayer/laning_scenarios` reaches only the seven LFS tables and
+    becomes CAPABILITY.
+
+    Cost: the cheap pool (7 paths today) is tested first, so the full-tracked
+    scan only runs for a chain that already looks LFS, and the cache means once
+    per distinct chain across all five test trees.
+    """
+    if not chain or not _LFS_TRACKED:
+        return False
+    if not _chain_matches_any(chain, _LFS_TRACKED):
+        return False
+    return not _chain_matches_any(chain, _NON_LFS_TRACKED)
 
 
 def _git_vanished() -> tuple[frozenset[str], frozenset[str]]:
@@ -271,6 +374,7 @@ class _Signals:
     tree_shape: bool = False
     external_tree: bool = False
     tracked: set = field(default_factory=set)
+    lfs: set = field(default_factory=set)
     untracked: set = field(default_factory=set)
     vanished: set = field(default_factory=set)
     firstparty_import: set = field(default_factory=set)
@@ -285,6 +389,7 @@ class _Signals:
         self.tree_shape |= other.tree_shape
         self.external_tree |= other.external_tree
         self.tracked |= other.tracked
+        self.lfs |= other.lfs
         self.untracked |= other.untracked
         self.vanished |= other.vanished
         self.firstparty_import |= other.firstparty_import
@@ -302,6 +407,8 @@ class _Signals:
                 if getattr(self, n)]
         if self.tracked:
             bits.append("tracked=" + ",".join(sorted(self.tracked)))
+        if self.lfs:
+            bits.append("tracked-lfs=" + ",".join(sorted(self.lfs)))
         if self.vanished:
             bits.append("was-tracked-now-gone="
                         + ",".join(sorted(self.vanished)))
@@ -326,9 +433,11 @@ def _prune_prefix_chains(sig: _Signals) -> None:
     teaching the resolver `parents[N]` made those inner slices resolvable for
     the first time.
     """
-    longer = sig.tracked | sig.untracked | sig.vanished
+    longer = sig.tracked | sig.lfs | sig.untracked | sig.vanished
     sig.tracked = {c for c in sig.tracked
                    if not any(o != c and o.startswith(c + "/") for o in longer)}
+    sig.lfs = {c for c in sig.lfs
+               if not any(o != c and o.startswith(c + "/") for o in longer)}
     sig.vanished = {c for c in sig.vanished
                     if not any(o != c and o.startswith(c + "/") for o in longer)}
 
@@ -361,6 +470,16 @@ def _classify(sig: _Signals) -> str:
     # environment capability.
     if sig.vanished:
         return ROTTED
+    # git-LFS. Placed HERE on purpose - last of the defect-bearing rules, not
+    # first. A site whose gate also reaches a tracked non-LFS path, a
+    # first-party import, or a deleted path has already been convicted above,
+    # so the LFS carve-out can only rescue a site whose ONLY unexplained signal
+    # is the unfetchable content itself. Hoisting this above `sig.tracked`
+    # would let one LFS chain launder every other defect in the same
+    # condition, which is precisely how B5 was re-opened in the design that
+    # this ordering rejects.
+    if sig.lfs:
+        return CAPABILITY
     if sig.untracked:
         return CAPABILITY
     return UNRESOLVED
@@ -711,7 +830,10 @@ def _record_chain(segs: list[str] | None, sig: _Signals) -> None:
         return
     chain = "/".join(reversed(tail))
     if _is_tracked_chain(chain):
-        sig.tracked.add(chain)
+        # Tracked, but the content may not be IN the checkout: an LFS-filtered
+        # path clones as a pointer stub unless the client smudged it, and no
+        # workflow here fetches LFS. That is a capability, not a defect.
+        (sig.lfs if _is_lfs_chain(chain) else sig.tracked).add(chain)
     elif _is_vanished_chain(chain):
         sig.vanished.add(chain)
     else:
@@ -1349,6 +1471,63 @@ def test_tracked_index_resolves_known_paths():
     assert not _is_tracked_chain("_archive/2026-05-01-audit/tft/comp_control.py")
 
 
+def test_lfs_oracle_comes_from_git_and_covers_only_lfs_paths():
+    """The LFS set is git's answer, and it is a strict subset of the tracked set."""
+    assert _LFS_TRACKED, (
+        "git check-attr reported no LFS-filtered tracked path - either the "
+        "attribute was removed or the batched --stdin parse broke; either way "
+        "the carve-out below is silently doing nothing"
+    )
+    assert _LFS_TRACKED < _TRACKED, "the LFS set must be a proper subset of tracked"
+    assert _NON_LFS_TRACKED == _TRACKED - _LFS_TRACKED
+    # Spot-check both directions against files this repo will not lose.
+    assert "ops/rc_config.json" in _NON_LFS_TRACKED
+    assert "data/daemon_slayer/current.txt" in _NON_LFS_TRACKED
+    assert all(p.endswith(".json") for p in _LFS_TRACKED)
+
+
+def test_lfs_chain_rule_is_all_not_any():
+    """A chain is a capability gate only when EVERY path it names is LFS."""
+    # Fully covered: file, patch dir, and the tables root.
+    assert _is_lfs_chain(
+        "data/daemon_slayer/laning_scenarios/16.13.1/laning_scenarios_aram.json")
+    assert _is_lfs_chain("data/daemon_slayer/laning_scenarios")
+    assert _is_lfs_chain("laning_scenarios_aram.json")
+    # Partially covered: these all reach at least one ordinary tracked file, so
+    # the carve-out must NOT rescue them. `data` is the one that matters - if
+    # the rule were ANY, every B5 defect gating on a broad data path would pass.
+    assert not _is_lfs_chain("data")
+    assert not _is_lfs_chain("data/daemon_slayer")
+    # Not tracked at all, and ordinary tracked paths.
+    assert not _is_lfs_chain("data/rewind_history.db")
+    assert not _is_lfs_chain("ops/rc_config.json")
+    assert not _is_lfs_chain("")
+
+
+def test_lfs_chains_do_not_leak_into_the_tracked_defect_signal():
+    """`_record_chain` routes an LFS chain away from `sig.tracked`, not into it.
+
+    Asserted on the signal rather than on the verdict because the verdict is
+    reachable two ways: a bug that marked the site CAPABILITY for some other
+    reason would look identical from outside.
+    """
+    src = _CAPABILITY_CONTROLS["tracked_artifact_behind_a_git_lfs_filter"]
+    model = _Model(_REPO_ROOT / "tests" / "test_mutant.py", src)
+    model.rel = "tests/test_mutant.py"
+    sites = _skip_sites(model)
+    assert len(sites) == 1
+    sig = _signals_for(model, sites[0])
+    _prune_prefix_chains(sig)
+    assert sig.lfs and not sig.tracked, (
+        f"expected the LFS path in sig.lfs only, got tracked={sig.tracked} "
+        f"lfs={sig.lfs}"
+    )
+    assert not sig.capability, (
+        "the fixture must be rescued by the LFS rule alone - if it already "
+        "carries an unrelated capability signal it proves nothing"
+    )
+
+
 def test_every_skip_gates_on_an_environment_capability():
     """The guard itself: no skip may fire on something a checkout always has."""
     bad = [
@@ -1593,6 +1772,39 @@ def test_thing():
         pytest.skip("archived file absent on this checkout")
     assert p.read_bytes()
 ''',
+    # --- the git-LFS carve-out, from the DEFECT side. Both of these reach an
+    # LFS path and neither may be rescued by it, because the LFS rule is
+    # "every tracked path this chain names is LFS", not "any".
+    #
+    # A directory one level above the LFS tables. `data/daemon_slayer` holds
+    # `current.txt` and the whole DDragon mirror, none of it LFS, so the gate
+    # can only fire on a broken checkout and stays B5.
+    "skip_on_a_dir_holding_both_lfs_and_ordinary_tracked_files": '''
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    d = REPO / "data" / "daemon_slayer"
+    if not d.is_dir():
+        pytest.skip("engine data tree absent")
+    assert any(d.iterdir())
+''',
+    # Laundering: one real LFS gate sitting in the same condition as an
+    # ordinary tracked gate. If the LFS signal were allowed to outrank
+    # `sig.tracked` in `_classify`, this would read CAPABILITY and every B5
+    # defect could be hidden by adding an LFS path to its condition.
+    "lfs_path_used_to_launder_a_tracked_non_lfs_path": '''
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    table = (REPO / "data" / "daemon_slayer" / "laning_scenarios"
+             / "16.13.1" / "laning_scenarios_aram.json")
+    pointer = REPO / "data" / "daemon_slayer" / "current.txt"
+    if not table.is_file() or not pointer.is_file():
+        pytest.skip("inputs absent on this checkout")
+    assert table.stat().st_size and pointer.read_text()
+''',
 }
 
 _CAPABILITY_CONTROLS = {
@@ -1698,6 +1910,35 @@ class T(unittest.TestCase):
             self.skipTest("moon_monitor.html is present on this box")
         self.assertEqual(status, 404)
 ''',
+    # The git-LFS carve-out from the CAPABILITY side, and the shape of the two
+    # real sites in tests/test_rm175_aram_table_known_wrong.py. The path is
+    # tracked, so the pre-LFS guard called it B5 masking; the content is a
+    # pointer stub in any checkout that did not smudge or `git lfs pull`, which
+    # is every CI run here, so the gate is an environment capability.
+    "tracked_artifact_behind_a_git_lfs_filter": '''
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    t = (REPO / "data" / "daemon_slayer" / "laning_scenarios"
+         / "16.13.1" / "laning_scenarios_aram.json")
+    if not t.is_file():
+        pytest.skip("LFS table not fetched on this checkout")
+    assert t.stat().st_size
+''',
+    # The same carve-out reached through the LFS DIRECTORY rather than a file.
+    # Every tracked path under it is LFS, so the ALL quantifier still holds -
+    # this is the tests/test_rm175_aram_table_known_wrong.py:257 spelling.
+    "git_lfs_directory_every_member_of_which_is_filtered": '''
+import pytest
+from pathlib import Path
+TABLES = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer" / "laning_scenarios"
+def test_thing():
+    p = TABLES / "16.13.1" / "laning_scenarios_aram.json"
+    if not TABLES.is_dir() or not p.is_file():
+        pytest.skip("LFS tables not fetched on this checkout")
+    assert p.stat().st_size
+''',
     "share_mirror_path": '''
 import unittest
 from pathlib import Path
@@ -1734,6 +1975,18 @@ def test_mutation_defective_skip_is_flagged(name):
     ("unconditional_mark_skip_with_reason", DEFECT),
     ("unconditional_unittest_skip", DEFECT),
     ("module_level_pytestmark_unconditional_skip", DEFECT),
+    # Class B5 proper, pinned by NAME rather than by "not CAPABILITY", so the
+    # git-LFS carve-out below cannot quietly widen into the whole tracked set.
+    # These three gate on ordinary tracked files (ops/rc_config.json,
+    # data/daemon_slayer/current.txt, web/legacy_index.html) and must stay
+    # DEFECT forever.
+    ("bare_skip_on_tracked_path", DEFECT),
+    ("mark_skipif_on_tracked_path", DEFECT),
+    ("skiptest_raise_on_tracked_path", DEFECT),
+    # The two LFS-adjacent defects: a chain that also names non-LFS tracked
+    # files, and an LFS gate sharing a condition with an ordinary one.
+    ("skip_on_a_dir_holding_both_lfs_and_ordinary_tracked_files", DEFECT),
+    ("lfs_path_used_to_launder_a_tracked_non_lfs_path", DEFECT),
 ])
 def test_mutation_lands_in_the_intended_verdict(name, expected):
     """Pin the REASON, not just the colour.
@@ -1825,6 +2078,21 @@ def test_known_real_sites_classify_as_documented():
     assert verdicts(
         "agents/daemon_slayer/tests/test_changelog_tracks_engine_version.py"
     ) == {CAPABILITY}
+
+    # The git-LFS anchor, added 2026-08-06. Both sites in this module gate on
+    # an LFS-filtered ARAM laning table, which no workflow fetches, so both are
+    # CAPABILITY - and the evidence must say so in the LFS bucket. Asserting
+    # the EVIDENCE and not just the verdict is what stops a future widening of
+    # the tracked rule from reaching the same green by the wrong route.
+    rm175 = by_module.get("tests/test_rm175_aram_table_known_wrong.py", [])
+    assert len(rm175) == 2, f"expected 2 skip sites in RM-175, got {len(rm175)}"
+    assert {f.verdict for f in rm175} == {CAPABILITY}
+    assert all("tracked-lfs=" in f.evidence for f in rm175), (
+        "RM-175 sites are CAPABILITY for some reason other than git-LFS: "
+        + "; ".join(f.evidence for f in rm175)
+    )
+    assert all("tracked=" not in f.evidence.replace("tracked-lfs=", "")
+               for f in rm175)
 
     # Guards ABOUT skips must not be mistaken for skip sites.
     stack = by_module.get(
