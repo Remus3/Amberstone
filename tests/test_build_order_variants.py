@@ -255,9 +255,17 @@ class LiveEnginePivotTests(unittest.TestCase):
         # absent capability. Letting the ImportError propagate makes it a hard
         # error instead of a green skip. Only the :8860 liveness gate below is a
         # real capability check.
+        #
+        # RM-119 B2 (2026-08-06): the liveness gate now routes through the
+        # shared one in tests/test_ds_live_route_gate.py, so
+        # RC_REQUIRE_DS_ENGINE=1 turns "the engine is down" from a green skip
+        # into a failure on a host where it is supposed to be up. Behaviour
+        # without that flag is unchanged - a down engine is still a skip,
+        # which is correct in CI and in a fresh clone.
         from core import daemon_slayer_client as dsc
-        if not dsc.is_engine_up(timeout=1.5):
-            self.skipTest("DS engine at 127.0.0.1:8860 is down")
+        from tests.test_ds_live_route_gate import require_live_engine
+        require_live_engine("the HZ-B2 live engine pivot",
+                            up=dsc.is_engine_up(timeout=1.5))
 
     def test_anti_tank_surfaces_a_penetration_or_hp_item(self):
         cell = bov.compute_variant_cell(

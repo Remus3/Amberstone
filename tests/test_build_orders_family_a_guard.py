@@ -386,13 +386,23 @@ def test_ranked_item_from_dict_parses_effective_score() -> None:
 # LAYER 2 - live dock parity (slow, env-gated, needs :8860)
 # --------------------------------------------------------------------------- #
 def _require_live_engine() -> None:
-    """Skip - never fail - when the DS engine is not answering on :8860."""
-    if not dsc.is_engine_up(timeout=2.0):
-        pytest.skip(
-            "DS engine on 127.0.0.1:8860 is not responding - the live parity "
-            "layer needs it up and settled; a missing engine is a skip, not a "
-            "failure"
-        )
+    """Skip when the DS engine is not answering on :8860 - unless it was DECLARED up.
+
+    RM-119 B2 (2026-08-06). The old docstring read "skip - never fail", and
+    that was wrong in one specific case: every caller of this helper is
+    already behind `RC_BUILD_ORDER_LIVE_PARITY`, whose own skip reason says
+    the layer "needs the DS engine on :8860". Setting that flag IS a
+    declaration that the engine is up, so a down engine there is a failure,
+    not an absent capability - otherwise arming the live-parity layer on a
+    wedged engine reports green and proves nothing. `RC_REQUIRE_DS_ENGINE`
+    arms it the same way for callers who set that instead.
+
+    With NEITHER flag set the behaviour is unchanged: a skip.
+    """
+    from tests.test_ds_live_route_gate import require_live_engine
+    require_live_engine("the live build-order dock-parity layer",
+                        up=dsc.is_engine_up(timeout=2.0),
+                        also_required=bool(_LIVE_PARITY))
 
 
 def _generator_cell_kwargs(comp_class: str, mode_key: str) -> dict:
