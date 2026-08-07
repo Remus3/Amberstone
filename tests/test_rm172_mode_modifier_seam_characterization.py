@@ -209,12 +209,57 @@ def _measure_gate_a() -> set[str]:
 
 
 def _route_defs() -> dict[str, bool]:
+    """Per-route: does the handler REALLY read the flag and forward it?
+
+    DELIBERATELY NOT a substring match over the route's source segment. That is
+    what this helper did until 2026-08-07, and an adversarial pass proved it
+    blind in one direction: the RM-172 prose on ``_route_stats`` and
+    ``_route_matchup`` names the flag inside a DOCSTRING, so a handler that
+    stopped parsing AND stopped forwarding it still measured as parses=True on
+    the strength of its own comment. A mutant that made /stats reach
+    build_champion without parsing stayed GREEN, with 0 flag literals and 0
+    keyword forwards left in the handler. Exactly 2 of the 19 wired routes were
+    affected, and for those two the response-changes proof was the ONLY guard.
+
+    A route counts only when BOTH of these hold, and both are read off the AST
+    so prose can never satisfy either:
+
+      * the flag appears as a STRING LITERAL ARGUMENT to a call - i.e. it is
+        actually looked up out of the request body - and
+      * the flag appears as a CALL KEYWORD - i.e. it is forwarded downstream.
+
+    Requiring both is also strictly better than the old "parses" question:
+    parse-without-forward is precisely the settable-but-inert shape RM-172
+    found live on /v2/fight-report, and it now reads as False rather than True.
+    """
     src = (REPO_ROOT / "agents/daemon_slayer/server.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     out: dict[str, bool] = {}
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("_route_"):
-            out[node.name] = FLAG in (ast.get_source_segment(src, node) or "")
+        if not (isinstance(node, ast.FunctionDef)
+                and node.name.startswith("_route_")):
+            continue
+        reads = forwards = False
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Call):
+                # "apply_mode_modifiers" passed as a literal arg to a body
+                # reader such as _opt_bool(body, "apply_mode_modifiers", False).
+                for arg in sub.args:
+                    if isinstance(arg, ast.Constant) and arg.value == FLAG:
+                        reads = True
+                for kw in sub.keywords:
+                    if kw.arg == FLAG:
+                        forwards = True
+            elif isinstance(sub, ast.Subscript):
+                # defensive: the body["key"] form, unused for this flag today
+                idx = sub.slice
+                if isinstance(idx, ast.Constant) and idx.value == FLAG:
+                    reads = True
+            elif isinstance(sub, ast.Compare) and isinstance(sub.left, ast.Constant):
+                # defensive: the `"key" in body` tri-state idiom
+                if sub.left.value == FLAG:
+                    reads = True
+        out[node.name] = reads and forwards
     return out
 
 
@@ -666,14 +711,19 @@ class TestTransportActuallyCarriesTheFlag(unittest.TestCase):
         "_route_rank_tank": ("Akali", 39),        # 39/45
         "_route_rank_bruiser": ("Akali", 44),     # 44/45
         "_route_beam": ("Akshan", 39),            # 39/45
-        "_route_fight_report": ("Briar", 2),      # 2/45 (ability-HPS carriers)
+        # 2/45 MOVE. Not "2 carriers" - 19 of the 45 carry nonzero ability HPS
+        # (measured 2026-08-07). The other 17 heal off ``ap``, and the ARENA
+        # addends move hp/ad/armor/as and never ``ap``, so only Briar and Galio
+        # can move. Both halves of the HPS lane are wired correctly; the small
+        # number is the data, not a gap.
+        "_route_fight_report": ("Briar", 2),      # 2/45
         "_route_ability_dps": ("Akali", 45),      # 45/45
         "_route_rank_mage": ("Akshan", 28),       # 28/45
         "_route_rank_onhit": ("Akali", 43),       # 43/45
         "_route_burst": ("Akali", 45),            # 45/45
         "_route_rank_assassin": ("Akshan", 20),   # 20/45
-        "_route_hps": ("Briar", 2),               # 2/45
-        "_route_rank_enchanter": ("Briar", 2),    # 2/45
+        "_route_hps": ("Briar", 2),               # 2/45 move, 19/45 carry
+        "_route_rank_enchanter": ("Briar", 2),    # 2/45 move, 19/45 carry
         "_route_matchup": ("Akali", 45),          # 45/45
         "_route_ally_protected_ehp": ("Akali", 45),  # 45/45
     }
