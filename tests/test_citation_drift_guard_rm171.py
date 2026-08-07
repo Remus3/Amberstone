@@ -62,12 +62,19 @@ broken", not "how many times is it written".
 
 SCOPE
 -----
-`tools.citation_audit.in_scope` fences the guarded surface. Append-only
-records (`docs/LEDGER.md`, `docs/history_notes.md`, `docs/ROADMAP_HISTORY.md`,
-the `_archive` tree, `WAKEUP_NOTES.md`, the dated QA/handoff dirs) are audited
-in report-only mode and are NEVER budgeted: a stale citation in an append-only
-record is CORRECT - it records what was true when it was written, and editing
-one is a history rewrite (`feedback_no_history_rewrite`).
+`tools.citation_audit.scope_of` splits docs THREE ways, not two, and the guard
+budgets exactly the GUARDED group. HISTORY (`docs/_archive/**`,
+`docs/LEDGER.md`, `docs/history_notes.md`, `docs/ROADMAP_HISTORY.md`, the
+ORCHESTRATION history files) is append-only by policy and never budgeted: a
+stale citation there is CORRECT, and editing one is a history rewrite
+(`feedback_no_history_rewrite`). UNGUARDED (`ops/**`, `agents/**`,
+`tools/*.md`, `Share/docs/**`) is neither - 22 broken citations live there and
+are reported on every run rather than being allowed to read as history.
+
+`WAKEUP_NOTES.md`, `docs/handoff/` and `docs/qa/` were moved INTO the budget
+on 2026-08-06. The first two cost nothing (0 broken). `docs/qa/` cost three
+baseline entries and bought coverage of 122 further live citations, which is
+the better trade than a blanket exclusion.
 
 Not to be confused with COMMIT-HASH citations. The repo already accepts that
 ~34 percent of pre-2026-07 8-hex commit citations are unresolvable and that
@@ -130,15 +137,6 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "Same compaction of docs/DAEMON_SLAYER.md.",
     ),
     (
-        "docs/ELECTRON_OVERLAY.md",
-        "web/js/ws_client.js:4",
-        "ROT",
-        "web/js/ws_client.js is not tracked. Whether the location.hostname "
-        "derivation moved or the file was folded into another module needs a "
-        "human who knows the overlay transport; guessing a new host file would "
-        "be a fabricated citation.",
-    ),
-    (
         "docs/LIVE_GAME_GATED_SYNC.md",
         "docs/OVERLAY_BUILD_MASTER_PLAN.md:806-816",
         "HISTORICAL",
@@ -176,8 +174,10 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "docs/ORCHESTRATION_PLAN.md",
         "gemini_audit.ps1:32",
         "DELETED",
-        "ops/gemini_audit.ps1 was removed by the Gemini decommission "
-        "(aee3bb96). MERGER-OWNED FILE - reported, not edited, by RM-171.",
+        "tools/gemini_audit.ps1 (NOT ops/ - verified in the commit's own "
+        "diffstat) was removed by the Gemini decommission aee3bb96, alongside "
+        "gemini_ask.ps1, gemini_audit_prompt.md and GEMINI.md. MERGER-OWNED "
+        "FILE - reported, not edited, by RM-171.",
     ),
     (
         "docs/ORCHESTRATION_PLAN.md",
@@ -309,10 +309,38 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
     (
         "docs/superpowers/plans/2026-07-31-mission-control-s10-decouple.md",
         "dev.js:778",
-        "ROT",
-        "The plan is QUOTING a stale citation carried by a comment in "
-        "tests/test_interrupt_panel.py. Repairing it here would hide the "
-        "defect the plan is reporting; the comment is what needs fixing.",
+        "HISTORICAL",
+        "CORRECTED 2026-08-06 - the first reason given here was itself wrong, "
+        "which is RM-171's own failure class appearing inside RM-171's "
+        "baseline. It claimed the plan quotes a comment in "
+        "tests/test_interrupt_panel.py that cites dev.js:778. Ground truth at "
+        "HEAD: that file contains ZERO dev.js citations (only mc.js:509 at "
+        ":219) and its line 213 is prose about _mcPaintInterrupt. What the "
+        "plan line actually is: a TO-DO instructing a future implementer to "
+        "re-derive dev.js:168 and dev.js:778, which it states are already "
+        "wrong. So the numbers are a work order, not a claim about HEAD, and "
+        "repairing them would delete the instruction. Baselined as a "
+        "point-in-time plan directive.",
+    ),
+    (
+        "docs/qa/LOBBY_QA_2026-07-04.md",
+        "ops/runtime/ui_recon/recon.py:40",
+        "EXTERNAL",
+        "ops/runtime/ is GITIGNORED runtime state, so this recon script was "
+        "never tracked and no revision of this repo can host the line.",
+    ),
+    (
+        "docs/qa/PGR_QA_2026-07-04.md",
+        "recon.py:40",
+        "EXTERNAL",
+        "Same gitignored ops/runtime/ui_recon/recon.py, written here without "
+        "its directory prefix.",
+    ),
+    (
+        "docs/qa/PGR_QA_2026-07-04.md",
+        "ops/runtime/ui_recon/recon.py:40",
+        "EXTERNAL",
+        "Same gitignored ops/runtime/ recon script, never tracked.",
     ),
 )
 
@@ -394,15 +422,48 @@ class CitationAuditMechanics(unittest.TestCase):
         noise = "https://127.0.0.1:8888/api  ENGINE 1.235.0  DS :8860  at 12:30"
         self.assertEqual(ca.extract_citations(noise, "d.md"), [])
 
-    def test_immutable_history_is_not_guarded(self) -> None:
-        for doc in ("docs/LEDGER.md", "docs/history_notes.md", "WAKEUP_NOTES.md"):
+    def test_append_only_history_is_not_guarded(self) -> None:
+        for doc in (
+            "docs/LEDGER.md",
+            "docs/history_notes.md",
+            "docs/ROADMAP_HISTORY.md",
+            "docs/_archive/anything.md",
+        ):
             with self.subTest(doc=doc):
-                self.assertFalse(ca.in_scope(doc))
+                self.assertEqual(ca.scope_of(doc), ca.HISTORY)
 
     def test_living_docs_are_guarded(self) -> None:
-        for doc in ("CLAUDE.md", "BACKLOG.md", "docs/ARCHITECTURE.md"):
+        for doc in (
+            "CLAUDE.md",
+            "BACKLOG.md",
+            "docs/ARCHITECTURE.md",
+            "WAKEUP_NOTES.md",
+            "docs/handoff/x.md",
+            "docs/qa/x.md",
+        ):
             with self.subTest(doc=doc):
-                self.assertTrue(ca.in_scope(doc))
+                self.assertEqual(ca.scope_of(doc), ca.GUARDED)
+
+    def test_unguarded_is_a_distinct_scope_not_history(self) -> None:
+        # The whole point of the three-way split: `ops/loop/director_prompt.md`
+        # is LIVE LOOP INPUT carrying a broken citation. If it collapsed into
+        # HISTORY it would read as "correct as written", which it is not.
+        for doc in (
+            "ops/audit/P2_FINDINGS.md",
+            "ops/loop/director_prompt.md",
+            "agents/daemon_slayer/CHANGELOG.md",
+            "Share/docs/01_OVERVIEW.md",
+        ):
+            with self.subTest(doc=doc):
+                self.assertEqual(ca.scope_of(doc), ca.UNGUARDED)
+
+    def test_scope_is_total(self) -> None:
+        # Every tracked .md must land in exactly one of the three groups; a
+        # doc that classified as nothing would be silently uncounted.
+        valid = {ca.GUARDED, ca.HISTORY, ca.UNGUARDED}
+        docs = [p for p in ca.tracked_files(REPO_ROOT) if p.endswith(".md")]
+        self.assertGreater(len(docs), 100, "tracked-doc enumeration collapsed")
+        self.assertTrue(all(ca.scope_of(d) in valid for d in docs))
 
 
 if __name__ == "__main__":
