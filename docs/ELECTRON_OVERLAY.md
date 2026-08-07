@@ -34,7 +34,7 @@ Operator pain points this solves:
 
 The frontend is already origin-agnostic:
 - Every API call is relative: `fetch("/api/...")` (`web/js/main.js` throughout).
-- WebSocket derives host from the page: `location.hostname` (`web/js/ws_client.js:4`).
+- WebSocket derives host from the page: `location.hostname` (`web/js/main.js:128`).
 - Only DDragon image URLs are absolute, and those are the public CDN (correct).
 
 Therefore the backend origin is a single value the Electron shell decides at

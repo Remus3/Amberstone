@@ -71,29 +71,72 @@ FALSE ``MOVED`` / ``ABSENT`` (matcher says wrong, citation is actually fine):
      it. Two fences bound this - ``_starts_block`` stops the window crossing
      into a sibling bullet, and ``_COL_WINDOW`` bounds it within the line -
      but neither can separate two clauses of one bullet. MEASURED on the run
-     that shipped this module: of 642 MOVED+ABSENT rows, 223 (34.7 percent)
-     sit on a doc line carrying more than one citation and are therefore
-     still bleed-exposed; the 419 sole-citation rows are the trustworthy
-     subset. Read a shared-line MOVED/ABSENT row as a HINT, not a finding.
+     that shipped this module: of 671 MOVED+ABSENT rows, 231 (34.4 percent)
+     sit on a doc line carrying more than one citation and are therefore the
+     MOST bleed-exposed.
 
-Because of 4-7, ``MOVED`` and ``ABSENT`` counts are UPPER bounds on real rot,
+     Do NOT read the remaining 440 sole-citation rows as clean. An
+     independent adversarial sample put their true-positive rate at 14 of 18,
+     about 78 percent, so roughly one in four or five is still a false
+     positive - bleed happens WITHIN a clause too, not only across citations
+     (one plan line carrying "do-not-flip-blind" was graded wrong because
+     `callouts` bled from the same clause). Sole-citation rows are a
+     majority-real, better-odds subset; they are not a verified list. Every
+     MOVED/ABSENT row is a HINT to check by hand.
+
+  8. RESOLUTION LENIENCY, and it is bigger than the mirror de-dup above.
+     Only 1084 of the 2050 guarded citations resolve by EXACT tracked path;
+     948 (46.2 percent) resolve by basename/suffix match. So a bare
+     `foo.py:42`
+     is checked against whatever single tracked `foo.py` happens to exist,
+     which may not be the `foo.py` the author meant - and it then reads
+     GREEN. This is why `_Index.candidates` returns a SET and a citation is
+     only broken when NO candidate can host the line: the conservative
+     reading. The cost of that conservatism is exactly this false-green
+     class. Prefer writing repo-root-relative paths in new prose.
+
+  9. FORMAT EVASION. The regex covers this repo's own convention
+     (`path:<N>` / `path:<N>-<M>`) and nothing else. `foo.py#L42`,
+     `foo.py line 42` and `foo.py :42` with a space are all invisible to it,
+     as are targets whose extension is absent from ``_EXTS`` - `.xml`,
+     `.svg`, `.vbs` and `.log` files all exist in the tree today. Nothing in
+     the repo currently uses those forms, so this is a hole a FUTURE author
+     can fall into rather than one already being exploited; a citation
+     written that way is simply never checked and never counted.
+
+Because of 4-9, ``MOVED`` and ``ABSENT`` counts are UPPER bounds on real rot,
 and ``CONFIRMED`` is an upper bound on real correctness. Neither number is
 exact. The only figures here that are exact are FILE_MISSING and PAST_EOF -
 those are pure filesystem facts, and they are the only ones the guard
 (``tests/test_citation_drift_guard_rm171.py``) is allowed to budget.
 
 Tightening these fences moves counts toward ``UNCHECKED``, which is the
-honest direction: the first cut of this matcher reported 545 MOVED / 524
-CONFIRMED, and after both fences landed the same corpus reads 503 / 425 with
-816 UNCHECKED. The extra abstentions were over-claims, not lost findings.
+honest direction. MEASURED on the 1918-citation scope as it stood before
+`docs/qa/`, `docs/handoff/` and `WAKEUP_NOTES.md` joined the budget: the first
+cut of this matcher reported 545 MOVED / 524 CONFIRMED, and after both fences
+landed the same corpus read 503 / 425 with 816 UNCHECKED. The extra
+abstentions were over-claims, not lost findings. (Today's larger scope reads
+525 / 435 / 907; the before-and-after pair above is quoted on the identical
+corpus so the comparison stays like-for-like.)
 
-SCOPE, AND WHY HISTORY IS EXCLUDED
------------------------------------
-``_IMMUTABLE_PREFIXES`` / ``_IMMUTABLE_FILES`` name the append-only records.
-A stale citation in an append-only ledger is CORRECT: it records what was true
-when it was written. Rewriting one would be a history rewrite, which this repo
-forbids (``feedback_no_history_rewrite``). Those files are audited in
-report-only mode and are NEVER part of the guard budget.
+SCOPE - THREE GROUPS, NOT TWO
+------------------------------
+``scope_of`` returns GUARDED, HISTORY or UNGUARDED, and the distinction
+matters because collapsing it hid real breakage once already:
+
+* GUARDED   - the living docs, budgeted by the guard. 2050 citations.
+* HISTORY   - append-only by policy (``docs/_archive/**``, ``docs/LEDGER.md``,
+              ``docs/history_notes.md``, the ROADMAP/ORCHESTRATION history
+              files). A stale citation here is CORRECT - it records what was
+              true when written - and editing it is a history rewrite
+              (``feedback_no_history_rewrite``). Report-only, never budgeted.
+* UNGUARDED - everything else: ``ops/**``, ``agents/**``, ``tools/*.md``,
+              ``Share/docs/**``. 882 citations carrying 22 broken, including
+              16 in ``ops/audit/P2_FINDINGS.md`` and one in
+              ``ops/loop/director_prompt.md``, which is LIVE LOOP INPUT.
+              These are NOT history and were never decided to be acceptable;
+              they are simply not budgeted yet. ``main()`` prints them on
+              every run so they cannot pass as history by omission.
 
 Do not confuse a `file:line` citation with a COMMIT-HASH citation. The repo
 already accepts that ~34 percent of pre-2026-07 8-hex commit citations are
@@ -173,13 +216,24 @@ _STOPWORDS = frozenset(
     """.split()
 )
 
-# Report-only. A stale citation in an append-only record is correct as written.
-_IMMUTABLE_PREFIXES = (
-    "docs/_archive/",
-    "docs/qa/",
-    "docs/handoff/",
-)
-_IMMUTABLE_FILES = frozenset(
+# THREE SCOPES, NOT TWO. An earlier cut of this module had only "in scope" and
+# its negation, and presented the negation as "immutable history". That was
+# misleading in a way that HID REAL BREAKAGE: 882 citations in `ops/**`,
+# `agents/**`, `tools/*.md` and `Share/docs/**` are neither guarded nor
+# append-only, and they carry 22 broken - 16 in `ops/audit/P2_FINDINGS.md` and
+# one in `ops/loop/director_prompt.md`, which is LIVE LOOP INPUT. Reading
+# "not guarded" as "history" would have retired those without anyone deciding
+# to. Append-only-by-policy and not-yet-guarded are different facts and are
+# now named separately.
+GUARDED = "GUARDED"  # budgeted by tests/test_citation_drift_guard_rm171.py
+HISTORY = "HISTORY"  # append-only by policy; a stale cite here is CORRECT
+UNGUARDED = "UNGUARDED"  # neither - reported, not yet budgeted
+
+# Append-only by policy. A stale citation in one of these records what was
+# true when it was written; editing it is a history rewrite
+# (`feedback_no_history_rewrite`).
+_HISTORY_PREFIXES = ("docs/_archive/",)
+_HISTORY_FILES = frozenset(
     {
         "docs/LEDGER.md",
         "docs/history_notes.md",
@@ -187,25 +241,43 @@ _IMMUTABLE_FILES = frozenset(
         "docs/ORCHESTRATION_PLAN_HISTORY.md",
         "docs/ORCHESTRATION_FINDINGS_ARCHIVE.md",
         "docs/ORCHESTRATION_FINDINGS_R145_PRECISION.md",
-        "WAKEUP_NOTES.md",
     }
 )
 
 # The guarded surface: the docs a reader is expected to navigate FROM.
-_SCOPE_FILES = frozenset({"CLAUDE.md", "ROADMAP.md", "BACKLOG.md", "README.md"})
+#
+# `WAKEUP_NOTES.md` (3 citations / 0 broken) is guarded despite its churn: it
+# is explicitly a LIVING doc that gets PRUNED to the last 2-3 sessions with the
+# older half relocated to docs/history_notes.md, so it is not append-only.
+# `docs/handoff/` (4 / 0) is guarded because it cost nothing to budget.
+# `docs/qa/` (125 / 3) is guarded by DECISION rather than by exclusion: the
+# three breaks are all `ops/runtime/ui_recon/recon.py:40`, a gitignored runtime
+# path that was never tracked, so budgeting the tree costs three documented
+# baseline entries and buys coverage of 122 live citations. A blanket
+# exclusion would have been cheaper to write and strictly worse.
+_SCOPE_FILES = frozenset(
+    {"CLAUDE.md", "ROADMAP.md", "BACKLOG.md", "README.md", "WAKEUP_NOTES.md"}
+)
 _SCOPE_PREFIXES = ("docs/",)
+
+
+def scope_of(relpath: str) -> str:
+    """Classify a doc as GUARDED, HISTORY or UNGUARDED. Never two-valued."""
+    relpath = relpath.replace("\\", "/")
+    if relpath in _HISTORY_FILES:
+        return HISTORY
+    if any(relpath.startswith(p) for p in _HISTORY_PREFIXES):
+        return HISTORY
+    if relpath in _SCOPE_FILES:
+        return GUARDED
+    if any(relpath.startswith(p) for p in _SCOPE_PREFIXES):
+        return GUARDED
+    return UNGUARDED
 
 
 def in_scope(relpath: str) -> bool:
     """True when `relpath` is a living doc whose citations the guard budgets."""
-    relpath = relpath.replace("\\", "/")
-    if relpath in _IMMUTABLE_FILES:
-        return False
-    if any(relpath.startswith(p) for p in _IMMUTABLE_PREFIXES):
-        return False
-    if relpath in _SCOPE_FILES:
-        return True
-    return any(relpath.startswith(p) for p in _SCOPE_PREFIXES)
+    return scope_of(relpath) == GUARDED
 
 
 def tracked_files(root: Path) -> list[str]:
@@ -241,8 +313,10 @@ class Citation:
     ambiguous: int = 0
 
     @property
-    def immutable(self) -> bool:
-        return not in_scope(self.doc)
+    def scope(self) -> str:
+        """GUARDED / HISTORY / UNGUARDED. Deliberately not a boolean: see the
+        three-scope note above for the breakage a two-valued split hid."""
+        return scope_of(self.doc)
 
 
 def extract_citations(text: str, doc: str) -> list[Citation]:
@@ -510,7 +584,7 @@ def main(argv: list[str] | None = None) -> int:
                         "detail": r.detail,
                         "claim_tokens": r.claim_tokens,
                         "found_lines": r.found_lines[:20],
-                        "immutable": r.immutable,
+                        "scope": r.scope,
                     }
                     for r in rows
                 ],
@@ -523,6 +597,27 @@ def main(argv: list[str] | None = None) -> int:
     print("citation census (scope: living docs%s)" % (" + history" if args.all else ""))
     for k in sorted(counts):
         print(f"  {k:24s} {counts[k]}")
+
+    # Always report the UNGUARDED tree, even on a default (guarded-only) run.
+    # It is the group most likely to be misread as history, so it does not get
+    # to hide behind a flag.
+    all_rows = rows if args.all else audit(include_immutable=True)
+    by_scope: dict[str, list[Citation]] = {GUARDED: [], HISTORY: [], UNGUARDED: []}
+    for r in all_rows:
+        by_scope[r.scope].append(r)
+    print("\nby scope (whole repo):")
+    for s in (GUARDED, HISTORY, UNGUARDED):
+        n_bad = len(broken(by_scope[s]))
+        print(f"  {s:10s} {len(by_scope[s]):5d} citations  {n_bad:4d} broken")
+    print(
+        "  HISTORY is append-only by policy - a stale cite there is CORRECT.\n"
+        "  UNGUARDED is NOT history: it is simply not budgeted yet."
+    )
+    ung = broken(by_scope[UNGUARDED])
+    if ung:
+        print(f"\n-- UNGUARDED broken ({len(ung)}), not budgeted --")
+        for r in ung:
+            print(f"  {r.doc}:{r.doc_line}  {r.raw}  {r.status}")
     if args.detail:
         print(f"\n-- RESOLVES/{args.detail} --")
         for r in rows:
