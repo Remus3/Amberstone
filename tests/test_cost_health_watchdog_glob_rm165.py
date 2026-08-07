@@ -48,6 +48,52 @@ SIDECAR_BY_PURPOSE = {
 }
 
 
+def _glob_is_case_insensitive() -> bool:
+    """MEASURED on this filesystem, never inferred from `sys.platform`.
+
+    `Path.glob` case behaviour is a property of the FILESYSTEM, not of the OS
+    name: NTFS is case-insensitive, ext4 is case-sensitive, and macOS ships
+    both. Probing it costs one temp directory and removes the guesswork.
+    """
+    d = Path(tempfile.mkdtemp(prefix="rm165_probe_"))
+    (d / "probe.JSON").write_text("{}", encoding="utf-8")
+    return [p.name for p in d.glob("*.json")] == ["probe.JSON"]
+
+
+GLOB_IS_CASE_INSENSITIVE = _glob_is_case_insensitive()
+
+
+class CaseInsensitiveGlobDir:
+    """A directory whose `glob` is case-INSENSITIVE, on any filesystem.
+
+    Why this exists: the exact-`.json` clause in `iter_day_ledgers` can only
+    fire on a file that `glob("*.json")` actually yields. On a case-SENSITIVE
+    filesystem `glob("*.json")` never yields `<date>.JSON`, so that clause is
+    unreachable through a real directory there and deleting it would keep CI
+    green - the clause would be untested on exactly the platform CI runs.
+
+    Rather than skip the assertion on Linux, the case-insensitive filesystem
+    is supplied. `iter_day_ledgers` touches its argument in exactly ONE way,
+    `spend_dir.glob("*.json")` (tools/cost_health_watchdog.py:168), so this is
+    a complete stand-in and not a partial mock. The candidate set comes from
+    `iterdir()` on a REAL directory holding REAL files, so `is_file()` and
+    every downstream clause still sees the truth; only the case-folding of the
+    match is supplied.
+    """
+
+    def __init__(self, real: Path) -> None:
+        self._real = real
+
+    def glob(self, pattern: str):
+        assert pattern.startswith("*."), (
+            f"stand-in only models a '*.<ext>' pattern, got {pattern!r} - "
+            "if iter_day_ledgers changed its glob, update this stand-in"
+        )
+        suffix = pattern[1:].lower()
+        return [p for p in self._real.iterdir()
+                if p.name.lower().endswith(suffix)]
+
+
 def _write(p: Path, total_usd, by_purpose=None):
     p.write_text(json.dumps({
         "total_usd": total_usd,
@@ -100,23 +146,71 @@ class DayLedgerFilterTests(unittest.TestCase):
         self.assertEqual(names, ["2026-05-01.json"])
 
     def test_uppercase_suffix_is_rejected(self):
-        """Pins the exact-`.json` clause.
+        """Pins the exact-`.json` clause, on a REAL directory.
 
-        `Path.glob("*.json")` is case-INSENSITIVE on this Windows/CPython -
-        measured: it returns a file named `2026-05-01.JSON`. So the suffix
-        has to be re-checked case-SENSITIVELY or a `.JSON` foreign file is
-        admitted. Distinct dates because NTFS is case-insensitive and the two
-        names would otherwise collide.
+        `Path.glob("*.json")` is case-INSENSITIVE on NTFS - measured: it
+        returns a file named `2026-05-01.JSON`. So the suffix has to be
+        re-checked case-SENSITIVELY or a `.JSON` foreign file is admitted.
+        Distinct dates because NTFS is case-insensitive and the two names
+        would otherwise collide.
+
+        CORRECTED 2026-08-07. This used to `assertIn("2026-05-01.JSON",
+        d.glob("*.json"))` as an unconditional precondition, which is FALSE by
+        construction on a case-sensitive filesystem - so it went red on every
+        CI run (ubuntu/ext4) while passing locally on Windows. The property is
+        genuinely environment-dependent, so it is now BRANCHED rather than
+        asserted one way: both filesystems get a real assertion about what
+        their glob does, and neither is skipped. The clause itself is pinned
+        independently of the filesystem by
+        `test_exact_suffix_clause_rejects_uppercase_json_on_any_filesystem`
+        below, so nothing goes untested on ext4 - which is the point, because
+        ext4 is what CI runs.
         """
         d = Path(tempfile.mkdtemp(prefix="rm165_case_"))
         _write(d / "2026-05-01.JSON", 1.0, SIDECAR_BY_PURPOSE)
         _write(d / "2026-05-02.json", 1.0)
-        self.assertIn("2026-05-01.JSON",
-                      [p.name for p in d.glob("*.json")],
-                      "precondition: glob is expected to be case-insensitive "
-                      "here; if this fails the clause below is untestable")
+        globbed = [p.name for p in d.glob("*.json")]
+        if GLOB_IS_CASE_INSENSITIVE:
+            self.assertIn(
+                "2026-05-01.JSON", globbed,
+                "this filesystem's glob was measured case-INSENSITIVE, so it "
+                "must offer the .JSON file and the exact-suffix clause must "
+                "be what rejects it")
+        else:
+            self.assertNotIn(
+                "2026-05-01.JSON", globbed,
+                "this filesystem's glob was measured case-SENSITIVE, so it "
+                "must not offer the .JSON file at all")
+        # The OUTCOME is required on BOTH filesystems. The mechanism differs -
+        # the suffix clause on NTFS, the glob itself on ext4 - the result may
+        # not.
         names = sorted(p.name for p in chw.iter_day_ledgers(d))
         self.assertEqual(names, ["2026-05-02.json"])
+
+    def test_exact_suffix_clause_rejects_uppercase_json_on_any_filesystem(self):
+        """The same clause, with the case-insensitive glob SUPPLIED.
+
+        On ext4 the test above can only prove that ext4's glob declines to
+        offer `<date>.JSON`; it cannot reach the `f.name != stem + ".json"`
+        clause, because nothing on that filesystem ever hands the clause an
+        uppercase candidate. Deleting the clause outright would leave CI
+        green. This test closes that hole with no environment gate at all:
+        the files are real, `is_file()` is real, and only the case-folding of
+        the glob match is supplied by `CaseInsensitiveGlobDir`.
+        """
+        d = Path(tempfile.mkdtemp(prefix="rm165_case_any_"))
+        _write(d / "2026-05-01.JSON", 1.0, SIDECAR_BY_PURPOSE)
+        _write(d / "2026-05-02.json", 1.0)
+        offered = [p.name for p in CaseInsensitiveGlobDir(d).glob("*.json")]
+        self.assertIn("2026-05-01.JSON", offered,
+                      "the stand-in must hand the clause an uppercase "
+                      "candidate, or this test proves nothing")
+        names = sorted(p.name
+                       for p in chw.iter_day_ledgers(CaseInsensitiveGlobDir(d)))
+        self.assertEqual(
+            names, ["2026-05-02.json"],
+            "a '.JSON' file was admitted as a day-ledger - the exact-suffix "
+            "clause in iter_day_ledgers has been weakened or removed")
 
     def test_iso_week_date_is_rejected(self):
         """Pins the YYYY-MM-DD regex clause.
