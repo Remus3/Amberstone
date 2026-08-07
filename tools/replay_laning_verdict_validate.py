@@ -106,6 +106,7 @@ and counted. ASCII-only by hard rule.
 from __future__ import annotations
 
 import argparse
+import copy as _copy
 import datetime as _dt
 import json
 import os
@@ -182,10 +183,17 @@ _DECISION = {
     ),
     "evidence": (
         "SR L6 n=1107 agreement 0.4887 (Wilson [0.45935, 0.51814]), mutual "
-        "information 0.00039 bits = 0.039 pct of label entropy. A held-out "
-        "per-(role, champion) mean-gold prior scores 0.5457 [0.5121, 0.5788] and "
-        "0.5394 [0.5030, 0.5754] on the same label, so the label is learnable "
-        "and the verdict is the dead half."
+        "information 0.00039 bits = 0.039 pct of label entropy, and the "
+        "Miller-Madow bias-corrected MI is NEGATIVE (-0.000262 bits at L6, "
+        "-0.000329 at L11): the association is smaller than what pure noise "
+        "produces at this n. A held-out per-(role, champion) mean-gold prior "
+        "scores 0.5457 [0.5121, 0.5788] and 0.5394 [0.5030, 0.5754] on the same "
+        "label, so the label is learnable and the verdict is the dead half. "
+        "Dropping JUNGLE and pooling the four genuine lane roles still gives "
+        "0.5124 [0.4891, 0.5356] over n=1778. The live compute_matchup engine "
+        "measured on the same corpus has no headroom either (lane gold 49.0 pct "
+        "L6 / 48.5 pct L11, solo-kill 51.3 / 51.5 pct, every interval straddling "
+        "0.50), so a table regen has nothing to recover."
     ),
     "traps": [
         "--mode swaps the shipped TABLE and never the CORPUS: select_sr_match_ids "
@@ -521,7 +529,12 @@ def run_validation(
         "action_breakdown_gold": action_gold.to_dict(),
         "action_breakdown_duel": action_duel.to_dict(),
         "label_base_rate_gold": base_rate.to_dict(),
-        "decision": dict(_DECISION),
+        # DEEP copy: _DECISION carries a nested `traps` list, and a shallow
+        # dict() would hand every report the SAME list object - one caller
+        # appending to it poisons the module constant for every later report in
+        # the process. The stamp is the retirement record; it must not be
+        # mutable by accident.
+        "decision": _copy.deepcopy(_DECISION),
         "interpretation": (
             "Gold + solo-kill duel are noisy lane-outcome proxies (ganks / roams "
             "/ missed-assist kills), so treat the agreement as an honest lower-"

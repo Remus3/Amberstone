@@ -215,7 +215,29 @@ def test_adr_013_records_the_deciding_evidence():
         "0.5457",                # held-out champion prior, fold A -> B
         "0.5394",                # held-out champion prior, fold B -> A
         "0.7705",                # duel winner predicts gold winner
+        "-0.000262",             # Miller-Madow corrected MI at L6 - NEGATIVE
+        "0.5124",                # four genuine lanes, JUNGLE dropped
+        "n=1778",                # ...and its sample size
         "RM-155",
+    ):
+        assert needle in text, f"ADR-013 no longer records {needle!r}"
+
+
+def test_adr_013_answers_the_two_objections_with_measurements_not_assertions():
+    """The two claims most likely to re-open this row are "a regen would fix
+    the score" and "JUNGLE proves the table is mis-built". Both were measured
+    against the LIVE ENGINE rather than asserted, and the ADR must keep those
+    numbers or it becomes re-openable on a stale ledger line."""
+    text = _ADR_PATH.read_text(encoding="utf-8")
+    for needle in (
+        "LEDGER 493",     # the stale prior finding, named and dated
+        "51.3 pct",       # engine solo-kill L6 - no headroom above the table
+        "49.0 pct",       # engine lane gold L6
+        "40.2 pct",       # engine reproduces the JUNGLE anti-correlation
+        "1.2e-5",         # JUNGLE chi-square p, stated before it is disposed of
+        "_stale_patch",   # the two-patch measurement condition
+        "16.15.1",        # ...requested
+        "16.13.1",        # ...served
     ):
         assert needle in text, f"ADR-013 no longer records {needle!r}"
 
@@ -285,16 +307,27 @@ def test_every_gate_artifact_carries_the_retirement_stamp(tmp_path):
         "NO LONGER A FLIP GATE" in report["interpretation"]
 
 
-def test_decision_stamp_is_copied_not_shared(tmp_path):
-    """A caller mutating one report must not poison the next one."""
+def test_decision_stamp_is_deep_copied_not_shared(tmp_path):
+    """A caller mutating one report must not poison the next one.
+
+    The top-level key is the easy half. The NESTED `traps` list is the one that
+    bites: a shallow dict() hands every report the same list object, so a single
+    append rewrites the retirement record for the rest of the process.
+    """
     db = tmp_path / "fix.db"
     _fixture_db(db)
     kwargs = dict(db_path=db, levels=[6], limit=0, gold_frame_min=10,
                   verdict_fn=lambda a, b, lvl: ("all_in", 0.3))
     first = GATE.run_validation(**kwargs)
+    n_traps = len(first["decision"]["traps"])
     first["decision"]["status"] = "TAMPERED"
+    first["decision"]["traps"].append("injected")
     second = GATE.run_validation(**kwargs)
     assert second["decision"]["status"] == "RETIRED"
+    assert len(second["decision"]["traps"]) == n_traps
+    assert "injected" not in second["decision"]["traps"]
+    assert len(GATE._DECISION["traps"]) == n_traps, \
+        "the module-level retirement constant was mutated through a report"
 
 
 # ------------------------------------------------------------------------- 4. math
@@ -342,6 +375,54 @@ def test_contingency_empty_sample_is_failsoft():
     assert PROBE.contingency([]) == {"n": 0}
 
 
+def test_miller_madow_correction_matches_the_closed_form_for_a_full_2x2():
+    """For a fully-occupied 2x2 the MI bias correction is exactly -1/(2N) nats.
+
+    Pinned against the closed form rather than a recorded output, because this
+    is the term that turns "small association" into "BELOW the noise floor" -
+    the strongest sentence in ADR-013 - and a sign error would silently invert
+    the claim.
+    """
+    rows = ([(True, True)] * 254 + [(True, False)] * 274
+            + [(False, True)] * 292 + [(False, False)] * 287)   # the real L6 cells
+    out = PROBE.contingency(rows)
+    n = out["n"]
+    assert n == 1107
+    expected = -1.0 / (2 * n) / math.log(2)
+    assert math.isclose(out["miller_madow_correction_bits"], expected, rel_tol=1e-12)
+    assert math.isclose(out["miller_madow_correction_bits"], -0.000651617, abs_tol=1e-8)
+    assert math.isclose(
+        out["mutual_information_bits_miller_madow"],
+        out["mutual_information_bits"] + out["miller_madow_correction_bits"],
+        rel_tol=1e-12,
+    )
+    # The headline consequence: at this n the measured association is smaller
+    # than what pure noise produces on average.
+    assert out["mutual_information_bits_miller_madow"] < 0.0
+    assert out["below_noise_floor"] is True
+
+
+def test_miller_madow_does_not_flag_a_genuinely_informative_sample():
+    """The correction must not turn every result negative - otherwise
+    `below_noise_floor` would be a tautology rather than a finding."""
+    rows = [(True, True)] * 500 + [(False, False)] * 500
+    out = PROBE.contingency(rows)
+    assert out["mutual_information_bits_miller_madow"] > 0.99
+    assert out["below_noise_floor"] is False
+
+
+def test_score_verdict_reports_a_jungle_excluded_pool():
+    """JUNGLE pairs are the two junglers, who never lane. The charitable read
+    drops them; the block must exist and must actually exclude them."""
+    pairs = [PROBE._Pair("M1", "JUNGLE", "A", "B", 5000.0, 4000.0, 0, 0),
+             PROBE._Pair("M1", "TOP", "C", "D", 5000.0, 4000.0, 0, 0),
+             PROBE._Pair("M1", "MIDDLE", "E", "F", 4000.0, 5000.0, 0, 0)]
+    out = PROBE.score_verdict(pairs, lambda a, b, lvl: ("all_in", 0.3), [6], 0.02)
+    assert out["pooled_levels"]["n"] == 3
+    assert out["pooled_excluding_jungle"]["n"] == 2
+    assert set(out["per_role"]) == {"JUNGLE", "TOP", "MIDDLE"}
+
+
 def _fold(agreement, lower_bound_clears):
     return {"beats_chance": bool(lower_bound_clears), "agreement": agreement}
 
@@ -384,9 +465,72 @@ def test_probe_finding_labels_are_distinguishable(learnable, mi_fraction, expect
     assert report["adr"] == "ADR-013"
 
 
-def test_learnability_control_splits_by_match_not_by_pair():
-    """Two pairs from one game share a team gold state, so a pair-level split
-    would leak the label across the fold and flatter the control."""
+def test_split_folds_partitions_by_match_never_by_pair():
+    """THE leak guard. The held-out control is what turns "the verdict scored
+    badly" into "the verdict carries no information", so a split that leaks is
+    the one defect that would silently invalidate ADR-013.
+
+    Up to five pairs come from one game and share a team gold state, a shared
+    snowball and a shared jungler. Two pairs from the same match must therefore
+    land in the SAME fold. Written against ``split_folds`` directly because a
+    leak is invisible in the returned scores - both mutations it catches
+    (splitting by pair, and fold_a == fold_b == everything) leave the output
+    shape identical and merely inflate the number.
+    """
+    pairs = [PROBE._Pair(f"M{i}", lane, "Garen", "Darius", 5000.0, 4000.0, 1, 0)
+             for i in range(10) for lane in ("TOP", "MIDDLE", "BOTTOM")]
+    fold_a, fold_b = PROBE.split_folds(pairs)
+
+    ids_a = {p.match_id for p in fold_a}
+    ids_b = {p.match_id for p in fold_b}
+    assert ids_a and ids_b, "a fold is empty - the split collapsed"
+    assert not (ids_a & ids_b), (
+        f"folds share match ids {sorted(ids_a & ids_b)} - the split leaks. "
+        "Either it is splitting by PAIR, or both folds are the whole corpus."
+    )
+    assert ids_a | ids_b == {f"M{i}" for i in range(10)}
+    assert len(fold_a) + len(fold_b) == len(pairs), "the split dropped pairs"
+    # Every match contributed 3 pairs; each match must be wholly in one fold.
+    for i in range(10):
+        in_a = sum(1 for p in fold_a if p.match_id == f"M{i}")
+        in_b = sum(1 for p in fold_b if p.match_id == f"M{i}")
+        assert {in_a, in_b} == {0, 3}, (
+            f"match M{i} was split across folds ({in_a} / {in_b}) - pair-level leak"
+        )
+
+
+def test_held_out_control_is_not_scored_in_sample():
+    """A held-out score that equals the in-sample ceiling is a train==test leak.
+
+    The fixture is built so the two MUST differ: the fit half has Garen ahead,
+    the held-out half has Darius ahead, so a prior fitted on fold A is exactly
+    wrong on fold B while the pooled in-sample prior is merely mediocre. If the
+    scoring path ever leaks, these two collapse onto each other.
+    """
+    pairs = []
+    for i in range(5):                      # fold A - Garen ahead
+        pairs.append(PROBE._Pair(f"M{i}", "TOP", "Garen", "Darius",
+                                 5000.0, 4000.0, 1, 0))
+    for i in range(5, 10):                  # fold B - Darius ahead
+        pairs.append(PROBE._Pair(f"M{i}", "TOP", "Garen", "Darius",
+                                 4600.0, 5000.0, 0, 1))
+    out = PROBE.learnability_control(pairs)
+    prior = out["champion_gold_prior"]
+    held_out = prior["fit_a_score_b"]["agreement"]
+    ceiling = prior["in_sample_ceiling"]["agreement"]
+    assert held_out == 0.0, (
+        f"fold-A prior should be exactly wrong on fold B, got {held_out}"
+    )
+    assert ceiling == 0.5
+    assert held_out != ceiling, (
+        "the held-out score equals the in-sample ceiling - the control is "
+        "scoring its own training data and the ADR-013 learnability claim is "
+        "unsupported."
+    )
+    assert prior["fit_a_score_b"]["beats_chance"] is False
+
+
+def test_learnability_control_shape_and_duel_coupling():
     pairs = [PROBE._Pair(f"M{i}", "TOP", "Garen", "Darius",
                          5000.0 + i, 4000.0, 1, 0) for i in range(10)]
     out = PROBE.learnability_control(pairs)

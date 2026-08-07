@@ -37,7 +37,16 @@ python tools/laning_verdict_information_probe.py --db data/rewind_history.db
 ```
 
 400 SR replays, 1998 lane pairs, levels 6 and 11, lane gold at minute 10 as the
-label, `even_band` 0.02, coverage 3978/3996 (99.5 pct):
+label, `even_band` 0.02, coverage 3978/3996 (99.5 pct).
+
+**Measurement condition, stated because it is not the obvious one.**
+`load_laning_scenarios('sr')` returns `_served_patch 16.13.1` against
+`_requested_patch 16.15.1`, with `_stale_patch: True` - a two-patch gap, because
+the full-roster tables are not regenerated on a patch bump and the read layer
+falls back to the newest available prior patch. Measuring the fallback is the
+RIGHT choice: it is what the chip would actually serve today. But "current
+tables" means the served 16.13.1 tables, not a 16.15.1 table, and nobody should
+re-read this ADR as a measurement of a table that does not exist.
 
 - **SR L6: n=1107, agreement 0.48870822041553746, Wilson [0.45935, 0.51814].**
   L11: n=1100, 0.4890909090909091, [0.45964, 0.51862]. Solo-kill-duel proxy:
@@ -47,6 +56,18 @@ label, `even_band` 0.02, coverage 3978/3996 (99.5 pct):
   bits - 0.039 pct.** phi -0.023, Yates chi-square 0.51 (p ~ 0.47). Pooled:
   MI 0.00035 bits, 0.035 pct of entropy. The point estimate is on the *wrong*
   side of chance.
+- **The strongest single fact available: the bias-corrected MI is NEGATIVE.**
+  Plug-in MI is biased upward - finite-sample noise manufactures apparent
+  association, so two genuinely independent variables score above zero on
+  average. The Miller-Madow correction for a fully-occupied 2x2 is exactly
+  `-1 / (2N)` nats, which at n=1107 is -0.000652 bits. **Corrected MI at L6 is
+  -0.000262 bits; at L11 it is -0.000329 bits.** Both negative. *The measured
+  association between the shipped verdict and the lane outcome is smaller than
+  what pure noise produces on average at this sample size.* This is not "a weak
+  signal" - it is below the noise floor. (The pooled-levels block corrects to a
+  hair above zero only because doubling n halves the bias term; the per-level
+  blocks are the honest unit, since a pair is scored at both levels against one
+  minute-10 label.)
 - Base-rate census: decisive fraction 0.5548 (2207 of 3978 covered scorings;
   1779 excluded by the even dead-band, 10 gold ties). Predictor favours side a
   48.13 pct of the time; the label favours side a 50.25 pct. Both vary. The
@@ -82,16 +103,39 @@ scenario corpus does not beat a coin.
 Per-role MI is not uniform. JUNGLE is 0.3916 over n=429, phi -0.216, chi-square
 19.1 - **significantly anti-correlated**; TOP is 0.5633 over n=474, phi +0.128.
 The aggregate zero is two real subgroup effects of opposite sign cancelling, not
-a flat nothing. It still does not rescue the feature:
+a flat nothing. That deserves an honest disposal rather than a dismissal, so:
 
-- The served chip does not condition on role, so neither subgroup is reachable
-  without a feature that does not exist.
-- TOP's n is inflated: levels 6 and 11 are the *same* pair scored twice against
-  the *same* minute-10 label, so the effective n is ~237 and the chi-square ~3.7,
-  which no longer clears p=0.05. JUNGLE survives that halving; TOP does not.
-- JUNGLE's effect has the wrong sign, and jungle "lane pairs" are an artifact -
-  the harness pairs the two junglers as though they laned. Exploiting it would
-  mean shipping an inverted verdict for a matchup that never happens.
+**It is NOT a table-build bug.** The obvious reading of an inverted verdict is
+"the precompute baked the sign wrong, fix the generator". It did not. The live
+`compute_matchup` engine, called fresh in-process on the same corpus via
+`tools/replay_matchup_validate.py`, reproduces it: **JUNGLE L6 40.2 pct over
+n=373, L11 38.2 pct over n=364**. Table and engine agree, so there is no build
+defect to repair and no regen that would repair it.
+
+**It survives every statistical objection this ADR can raise.** chi-square
+19.10, p 1.2e-5. Halve the sample for the two-levels-one-label dependency
+(levels 6 and 11 score the *same* pair against the *same* minute-10 label) and
+it is still p 0.0020. Bonferroni over the five roles and it is still p 0.0100.
+Unlike TOP - whose chi-square 7.30 falls to ~3.7 under the same halving and no
+longer clears p=0.05 - JUNGLE is real.
+
+**The disqualifier is WHAT it is signal about, not its size.** A JUNGLE "lane
+pair" is the two junglers, who never lane against each other, and the label is
+which of them banked more gold by minute 10 - clear speed and pathing, the known
+inverse of the early-duelist versus fast-farmer archetype split. So it is a real
+economic anti-correlation with champion archetype. The retired feature is a lane
+*trade* chip. The signal is not about the thing the chip claims.
+
+**The decisive test: drop JUNGLE entirely and pool the four genuine lane roles.**
+This is the most charitable framing available to the verdict - it removes the
+whole cancellation objection by deleting the anti-correlated subgroup outright.
+**n=1778, agreement 0.5124, Wilson [0.4891, 0.5356], MI 0.000441 bits (0.044 pct
+of label entropy), Yates chi-square 0.99.** The interval still straddles 0.50.
+Even with its worst role removed, the verdict does not clear chance on the roles
+it was built for. (`pooled_excluding_jungle` in the probe artifact.)
+
+And regardless: the served chip does not condition on role, so no subgroup is
+reachable without a feature that does not exist.
 
 ### Why the other acceptance branch is not buildable
 
@@ -114,9 +158,31 @@ that killed it:
   `income_per_min: 450.0`, identical to sr, against ARAM's 600.0).
 
 So the "native per-mode corpus" branch cannot be specified as a buildable row at
-any cost, and the cost that *was* on the table - the deferred v4 table regen,
-~8.5 min and 339 MB per mode - would not have touched the number: it changes
-which cell is read, not whether the cell's verdict predicts anything.
+any cost.
+
+### The regen has no headroom to recover - measured, not asserted
+
+The other standing objection is that the deferred v4 table regen (~8.5 min and
+339 MB per mode) would fix the score. There is a recorded prior finding that
+makes this sound plausible: LEDGER 493 (2026-06-18) put the `compute_matchup`
+ENGINE ceiling at ~52-53 pct solo-kill and noted the shipped table loses even
+that, i.e. table-build degradation - which implies a rebuild has something to
+recover. **That line is stale, and an assertion here would leave this ADR
+re-openable on it.** So it was measured, on this ADR's own corpus, against the
+live engine rather than the shipped table
+(`tools/replay_matchup_validate.py --levels 6,11`, 400 matches, 1998 pairs):
+
+| ground truth | engine (fresh `compute_matchup`) | shipped table |
+|---|---|---|
+| lane gold, L6 | 49.0 pct, n=1816, [46.7, 51.3] | 48.9 pct, n=1107 |
+| lane gold, L11 | 48.5 pct, n=1826, [46.2, 50.8] | 48.9 pct, n=1100 |
+| solo-kill duel, L6 | 51.3 pct, n=887, [48.0, 54.6] | 48.8 pct, n=535 |
+| solo-kill duel, L11 | 51.5 pct, n=880, [48.2, 54.8] | 48.9 pct, n=526 |
+
+**Every engine interval straddles 0.50.** The engine the table is baked from
+does not itself carry signal against these labels today, so there is no ceiling
+above the table for a regen to climb to. A regen changes which cell is read; it
+cannot manufacture information the source computation does not have.
 
 ## Decision
 
@@ -210,6 +276,11 @@ question than this one and needs its own ADR.
   `tools/hz_shadow_report.py`. This gate never opens it - it reads
   `data/rewind_history.db` and the shipped tables and nothing else. Verified by
   grep: zero `hz_choice_shadow` references in either replay tool.
+- **LEDGER 493 (2026-06-18) is STALE where it implies regen headroom.** It put
+  the engine ceiling at ~52-53 pct solo-kill above a worse table. Re-measured
+  2026-08-06: engine solo-kill 51.3 pct [48.0, 54.6] at L6 and 51.5 pct
+  [48.2, 54.8] at L11, engine lane-gold 49.0 pct and 48.5 pct - all straddling
+  0.50. Do not re-open this row on that ledger line without re-measuring first.
 - **Do not re-run the gate hoping for a better number, and do not build the v4
   regen to fix the score.** Neither addresses the finding. If you want to
   re-open, run `tools/laning_verdict_information_probe.py`: it emits
