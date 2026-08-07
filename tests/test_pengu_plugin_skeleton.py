@@ -1,8 +1,25 @@
-"""OVL2: structural contract for the pengu/ Pengu Loader plugin stub.
+"""OVL2: structural contract for the Pengu Loader plugin stub.
 
 No live client is needed (CODE-ONLY STUB; live validation OWED). These pins
 guard the skeleton's shape + ASCII hygiene so a later in-client wire-up has a
 stable contract to build on.
+
+RM-119 class B4, 2026-08-06: this module used to carry a module-level
+`pytestmark = pytest.mark.skipif(not PENGU.is_dir(), ...)` aimed at a repo-root
+`pengu/` that was relocated to `docs/_archive/2026-07-07-pengu-stub/` on
+2026-07-07. Every one of its six tests had skipped silently ever since, so the
+structural contract it exists to pin was asserted NOWHERE - the classic B4
+shape, where the tree contradicts the module's premise and the suite reports
+green by not running.
+
+The premise was SATISFIABLE the whole time: the three stub files are TRACKED at
+the archive path, so they are present in every checkout. The fix is to resolve
+the stub ROOT rather than to assume one location - repo-root `pengu/` when the
+stub is live there again, the tracked archive otherwise - and to assert, never
+skip. Whichever copy is authoritative on this checkout is the one held to the
+contract, and the BACKLOG question (was the archival intended, or should the
+stub return to `pengu/`?) is left exactly where it was: unanswered, but no
+longer able to silence the guard.
 """
 from __future__ import annotations
 
@@ -10,19 +27,29 @@ from pathlib import Path
 
 import pytest
 
-PENGU = Path(__file__).resolve().parent.parent / "pengu"
+_ROOT = Path(__file__).resolve().parent.parent
+_LIVE = _ROOT / "pengu"
+_ARCHIVED = _ROOT / "docs" / "_archive" / "2026-07-07-pengu-stub"
+
+# Prefer a revived repo-root stub; fall back to the tracked archived copy.
+PENGU = _LIVE if _LIVE.is_dir() else _ARCHIVED
 INDEX = PENGU / "index.js"
 PANEL = PENGU / "panel.css"
 README = PENGU / "README.md"
 
-# The pengu/ stub was relocated to docs/_archive/2026-07-07-pengu-stub/, so the
-# repo-root pengu/ dir is absent on a fresh checkout. This structural-contract
-# guard skips until the stub is live at the repo root again (see BACKLOG - was
-# the archival intended, or should the stub return to pengu/?).
-pytestmark = pytest.mark.skipif(
-    not PENGU.is_dir(),
-    reason="pengu/ stub relocated to docs/_archive/2026-07-07-pengu-stub",
-)
+
+def test_the_stub_is_reachable_on_every_checkout():
+    """No skip may stand in for this: one of the two locations MUST hold it.
+
+    `docs/_archive/2026-07-07-pengu-stub/` is tracked in git, so its absence is
+    a broken checkout rather than an absent environment capability - which is
+    exactly the moment the tests below have to fail instead of skip.
+    """
+    assert PENGU.is_dir(), (
+        f"neither the live stub at {_LIVE} nor the tracked archived copy at "
+        f"{_ARCHIVED} is present - the archived copy is committed, so this is "
+        "a broken checkout, not a relocated stub"
+    )
 
 
 def test_plugin_files_exist():

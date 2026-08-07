@@ -1070,6 +1070,56 @@ def _excused(finding: _Finding) -> bool:
 
 
 # --------------------------------------------------------------------------- #
+# RM-119 class B4: converted modules are a no-skip zone
+# --------------------------------------------------------------------------- #
+# B4 is the class where the skip fires because the DATA contradicts the test's
+# own premise - the corpus or the tree does not hold what the test assumes - so
+# the assertion never runs and the premise rots behind a green suite.
+#
+# WHY THERE IS NO GENERAL B4 GUARD HERE, measured 2026-08-06 rather than
+# asserted. The only condition that separates a B4 skip from a legitimate
+# machine-local-state skip is whether the data COULD be there, and answering
+# that means consulting the filesystem. Two measurements kill that approach:
+#
+#   1. PRECISION. The naive rule ("flag a skip gated on a path absent from this
+#      checkout") flags 24 of the current sites. Twenty-three are the reviewed
+#      legitimate class - `data/rewind_history.db` alone accounts for NINE, plus
+#      `data/fusion_shadow.jsonl`, the `.rofl` sidecar archive, the gitignored
+#      Share dist bundle, and two `tmp_path` fixture dirs. Exactly one is a real
+#      B4. A guard that is right once per twenty-four attempts is a guard that
+#      gets deleted, and this repo has already retired one for that reason.
+#   2. DETERMINISM, which is the decisive one. The rule's verdict depends on the
+#      TREE it runs in: `data/rewind_history.db` is 1.87 GB in the main tree at
+#      C:\Riot Commander and absent in every worktree, so the same commit would
+#      pass in one checkout and fail in another. Every parallel build agent runs
+#      from a worktree. A guard whose colour depends on where it was run cannot
+#      gate anything.
+#
+# What IS decidable is purely static and needs no filesystem at all: a module
+# whose B4 skip was REVIEWED AND CONVERTED must not grow a new one. Each entry
+# below was converted from an always-skip into a real assertion, with the
+# premise violated and the failure captured. Re-introducing any skip construct
+# there - however it is spelled, since the scanner resolves aliases, decorators,
+# `self.skipTest`, `raise SkipTest`, `importorskip` and module-level marks - is
+# a regression of reviewed work and fails `test_b4_converted_modules_never_skip`.
+_B4_CONVERTED: dict[str, str] = {
+    "tests/test_pengu_plugin_skeleton.py":
+        "RM-119 B4: a module-level pytestmark gated on a repo-root pengu/ dir "
+        "relocated to docs/_archive/2026-07-07-pengu-stub/ on 2026-07-07, so "
+        "all six tests skipped silently while the stub files sat TRACKED at "
+        "the archive path. Now resolves the stub root (live dir, else the "
+        "tracked archive) and asserts.",
+    "tests/test_u2500_candidate_sweep.py":
+        "RM-119 B4: seven per-file tests each opened with `if not p.is_file(): "
+        "pytest.skip(...)` against `_archive/2026-05-01-audit/**`, which is "
+        "gitignored, was never tracked, and is absent from BOTH the worktree "
+        "and the main tree - so all seven asserted nothing. Now a parametrized "
+        "assertion: present entries are checked, absent ones must be in the "
+        "pinned decommissioned set.",
+}
+
+
+# --------------------------------------------------------------------------- #
 # Tests
 # --------------------------------------------------------------------------- #
 def _discovered_test_trees() -> set[str]:
@@ -1470,6 +1520,66 @@ def test_mutation_on_a_real_module_goes_red_then_green(tmp_path):
     assert any(f.verdict == DEFECT for f in after), (
         "injecting a skip gated on tracked ops/rc_config.json did not flag: "
         + "; ".join(f"{f.site.label}={f.verdict}" for f in after)
+    )
+
+
+def test_b4_converted_modules_still_exist():
+    """A renamed or deleted module must not rot the pin into a silent pass."""
+    missing = [rel for rel in _B4_CONVERTED if not (_REPO_ROOT / rel).is_file()]
+    assert not missing, (
+        f"B4-converted modules no longer on disk: {missing} - if the module "
+        "was intentionally retired, drop its _B4_CONVERTED entry in the same "
+        "commit; do not leave the pin pointing at nothing"
+    )
+
+
+def test_b4_converted_modules_never_skip():
+    """The teeth: a reviewed B4 conversion may not grow a new skip.
+
+    Deliberately stricter than the repo-wide rule above. Elsewhere a skip is
+    allowed when it gates on an absent environment capability; here NO skip is
+    allowed at all, because these modules were measured to be fully decidable
+    from a checkout - the pengu stub is tracked, and the u2500 sweep's absent
+    targets are pinned as decommissioned. There is nothing left for a skip to
+    legitimately gate on, so any skip is the B4 regressing.
+    """
+    offenders = []
+    for rel in sorted(_B4_CONVERTED):
+        src = (_REPO_ROOT / rel).read_text(encoding="utf-8")
+        model = _Model(_REPO_ROOT / rel, src)
+        model.rel = rel
+        for site in _skip_sites(model):
+            offenders.append(f"  {site.label} - converted because: "
+                             f"{_B4_CONVERTED[rel]}")
+    assert not offenders, (
+        "RM-119 class B4 regression: these modules had their always-skip "
+        "converted into real assertions, and a skip construct is back. A skip "
+        "here means the premise stopped being asserted again:\n"
+        + "\n".join(offenders)
+    )
+
+
+@pytest.mark.parametrize("name", sorted(_DEFECT_MUTATIONS))
+def test_mutation_b4_pin_catches_a_reinjected_skip(name):
+    """Non-vacuity for the pin: injecting ANY skip shape must be seen.
+
+    Without this, `test_b4_converted_modules_never_skip` could pass simply
+    because the scanner never looks at those modules - the failure mode that
+    made this guard's predecessor green over the class it existed to catch.
+    Runs every skip spelling the scanner knows, against the real converted
+    source, so a scanner that stops recognising one of them fails here.
+    """
+    rel = "tests/test_pengu_plugin_skeleton.py"
+    clean = (_REPO_ROOT / rel).read_text(encoding="utf-8")
+    model = _Model(_REPO_ROOT / rel, clean)
+    model.rel = rel
+    assert not _skip_sites(model), "the converted module already carries a skip"
+
+    model = _Model(_REPO_ROOT / rel, clean + _DEFECT_MUTATIONS[name])
+    model.rel = rel
+    assert _skip_sites(model), (
+        f"a re-injected {name} skip in {rel} was INVISIBLE to the scanner, so "
+        "the B4 pin would report green over a restored always-skip"
     )
 
 
