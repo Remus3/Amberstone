@@ -209,7 +209,26 @@ class _Signals:
         return "; ".join(bits) or "nothing resolvable"
 
 
+def _prune_prefix_chains(sig: _Signals) -> None:
+    """Drop a tracked chain that is only a PREFIX of a longer recorded one.
+
+    `_Ctx.consumed` already enforces "only the outermost path expression is a
+    real reference", but it works on node identity and so cannot dedupe across
+    a resolution boundary: a helper in another module contributes its own
+    `Share/lolmath_ingest` while the call site contributes
+    `Share/lolmath_ingest/dist/daemon_slayer_bundle.json`. The tracked prefix
+    is the same reference seen half-resolved, and letting it stand turns a
+    gitignored build artifact into a tracked-artifact defect. Surfaced when
+    teaching the resolver `parents[N]` made those inner slices resolvable for
+    the first time.
+    """
+    longer = sig.tracked | sig.untracked
+    sig.tracked = {c for c in sig.tracked
+                   if not any(o != c and o.startswith(c + "/") for o in longer)}
+
+
 def _classify(sig: _Signals) -> str:
+    _prune_prefix_chains(sig)
     # A capability signal wins: `not SIDECAR.is_dir() or sys.platform != "win32"`
     # cannot fire on a healthy checkout no matter what else it touches.
     if sig.capability:
@@ -462,6 +481,14 @@ def _segments(expr: ast.AST, model: _Model, scope: ast.AST,
             return None
         return _cross_module_segments(expr, model, scope, seen, depth)
 
+    # NOT handled: ast.Subscript, i.e. `<path>.parents[N]`. RM-119 B5 added a
+    # symbolic evaluator for it and then removed it as an equivalent mutant:
+    # `_record_chain` already recovers the chain from the trailing literal
+    # segments, so `parents[1] / "ops" / "rc_config.json"` yields the same
+    # `ops/rc_config.json` whether or not the head resolves. The half of that
+    # blind spot that was REAL is in `_collect` - an indexed `parents` used to
+    # be credited as a tree-shape capability, which swallowed the site whole.
+
     if isinstance(expr, ast.Call):
         return _call_segments(expr, model, scope, seen, depth)
 
@@ -626,8 +653,15 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx,
             sig.platform = True
         if dotted.split(".")[-1] == "environ" or dotted.startswith("environ"):
             sig.env = True
-        if node.attr in ("parents", "parts") and _derives_from_file(
-                node.value, model, scope, seen, 0):
+        # `.parents` / `.parts` asks about the SHAPE of the checkout (am I in a
+        # worktree, is this the Share mirror) and that is a real capability
+        # question. `.parents[3]` does not: it is a path expression with an
+        # index, and crediting it as tree-shape is what made an
+        # otherwise-identical B5 invisible when written in the idiomatic form.
+        # Only the non-indexed use keeps the signal.
+        if (node.attr in ("parents", "parts")
+                and not _is_constant_indexed_parents(node, model)
+                and _derives_from_file(node.value, model, scope, seen, 0)):
             sig.tree_shape = True
         if node.attr in _PATH_PREDICATES:
             ctx.take(node.value, model, scope, seen)
@@ -637,12 +671,15 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx,
         _collect_call(node, model, scope, ctx, seen, depth)
 
     elif isinstance(node, ast.Name):
-        # Load context only. A name being ASSIGNED is not a name being tested:
-        # `mod = importlib.import_module(module_path)` inside a swallowing try
-        # would otherwise credit an optional-import capability to its own
-        # target, and any dynamic first-party import written in the normal
-        # `x = import(...)` shape would classify itself CAPABILITY.
-        if isinstance(node.ctx, ast.Load) and node.id in model.optional_names:
+        # Deliberately NOT narrowed to ast.Load. A Store-context optional name
+        # looks like it should be excluded, and RM-119 B5 shipped that
+        # narrowing for a day, but it is an EQUIVALENT MUTANT: `optional_names`
+        # is only populated by `_try_swallows_import`, which requires a literal
+        # import STATEMENT in the try, and in every such try the same name is
+        # also read in Load context somewhere in the region. No input
+        # distinguishes the two versions, so the narrowing was removed rather
+        # than left in the tree unpinned by any test.
+        if node.id in model.optional_names:
             sig.optional_import = True
         if node.id not in seen and depth < _MAX_RESOLUTION_DEPTH:
             for bound in model.lookup(node.id, scope):
@@ -663,6 +700,18 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx,
 
     for child in ast.iter_child_nodes(node):
         _collect(child, model, scope, ctx, seen, depth)
+
+
+def _is_constant_indexed_parents(node: ast.Attribute, model: _Model) -> bool:
+    """True for `<path>.parents[<int>]` - resolvable, so not a shape question."""
+    if node.attr != "parents":
+        return False
+    parent = model.parent.get(node)
+    if not isinstance(parent, ast.Subscript) or parent.value is not node:
+        return False
+    idx = parent.slice
+    return (isinstance(idx, ast.Constant) and isinstance(idx.value, int)
+            and not isinstance(idx.value, bool) and idx.value >= 0)
 
 
 def _derives_from_file(expr: ast.AST | None, model: _Model, scope: ast.AST,
@@ -998,8 +1047,13 @@ def scan_tree() -> list[_Finding]:
 # flags, and is still excusing exactly what it claims, so neither a deleted
 # file nor a fixed one can rot an exemption into a silent pass.
 _ALLOWLIST: dict[str, tuple[frozenset, str]] = {
+    # NARROWED 2026-08-06 (RM-119 B5): was
+    # {"data/daemon_slayer", "data/daemon_slayer/current.txt"}. The bare
+    # directory was the same reference seen half-resolved and is now pruned as
+    # a prefix, so the exemption covers ONE artifact instead of two. Strictly
+    # stricter - the entry did not grow, and no new entry was added.
     "tests/test_ds_ability_data_status_rm95.py": (
-        frozenset({"data/daemon_slayer", "data/daemon_slayer/current.txt"}),
+        frozenset({"data/daemon_slayer/current.txt"}),
         "FUTURE row in docs/SKIPIF_AUDIT_2026-07-27.md - the skip pins an RM-95 "
         "finding to patch 16.14.1 and is decidable against tracked current.txt "
         "today, but converting it turns CI red on the next patch bump. Needs a "
@@ -1018,18 +1072,66 @@ def _excused(finding: _Finding) -> bool:
 # --------------------------------------------------------------------------- #
 # Tests
 # --------------------------------------------------------------------------- #
+def _discovered_test_trees() -> set[str]:
+    """Every directory in the repo that actually holds pytest test modules.
+
+    Derived from the FILESYSTEM, never from `_TEST_TREES`, so it can contradict
+    the tuple. Directories are rolled up to their shallowest test-bearing
+    ancestor: `tests/snapshot_panels` is part of the `tests` tree, not a tree of
+    its own. Vendored / mirrored / archived trees are excluded on the same
+    grounds pytest.ini excludes them from collection.
+    """
+    skip_parts = {".git", ".claude", "__pycache__", "node_modules", "Share",
+                  "python-embed", "_archive", "docs", ".venv", "venv", "build",
+                  "dist"}
+    holders: set[str] = set()
+    for path in _REPO_ROOT.rglob("test_*.py"):
+        rel = path.resolve().relative_to(_REPO_ROOT).as_posix()
+        parts = rel.split("/")
+        if any(p in skip_parts for p in parts):
+            continue
+        holders.add("/".join(parts[:-1]) or ".")
+    rolled: set[str] = set()
+    for d in holders:
+        segs = d.split("/")
+        shallowest = d
+        for end in range(1, len(segs)):
+            anc = "/".join(segs[:end])
+            if anc in holders:
+                shallowest = anc
+                break
+        rolled.add(shallowest)
+    return rolled
+
+
+def test_universe_covers_every_test_bearing_tree_in_the_repo():
+    """`_TEST_TREES` is checked against the DISK, not against itself.
+
+    The predecessor of this test looped over `_TEST_TREES` and asserted each
+    entry collected something - which is a tautology: deleting a tree from the
+    tuple deletes its own assertion too, so reverting the RM-119 B5 widening
+    from five trees back to two stayed green. Caught by the verifier's mutation
+    pass on 2026-08-06. The set below is discovered by globbing the repo, so a
+    tree dropped from the tuple is still found on disk and still fails here.
+    """
+    discovered = _discovered_test_trees()
+    missing = sorted(discovered - set(_TEST_TREES))
+    assert not missing, (
+        "these directories hold pytest test modules but are OUTSIDE the skip "
+        "scan, so a skip gated on a tracked artifact could be added there and "
+        f"nothing would notice: {missing} - add them to _TEST_TREES"
+    )
+    stale = sorted(t for t in _TEST_TREES if not (_REPO_ROOT / t).is_dir())
+    assert not stale, f"_TEST_TREES names directories that do not exist: {stale}"
+
+
 def test_universe_is_globbed_not_listed():
     """The producing side is the glob; a hand list is how a guard goes blind."""
     mods = _iter_modules()
     assert len(mods) > 400, f"only {len(mods)} test modules found - glob broke"
     rels = {m.resolve().relative_to(_REPO_ROOT).as_posix() for m in mods}
     assert "tests/test_skip_condition_hygiene.py" in rels
-    # Every collected tree, pinned by name: dropping one silently un-guards it,
-    # which is how agents/agent3_testing/suite sat outside this scan until the
-    # RM-119 B5 re-census. A tree that stops existing is a deliberate edit
-    # here, never an accident.
     for tree in _TEST_TREES:
-        assert (_REPO_ROOT / tree).is_dir(), f"{tree} is not a directory"
         assert any(r.startswith(tree + "/") for r in rels), (
             f"no test module collected from {tree} - the glob stopped reaching it"
         )
@@ -1168,18 +1270,48 @@ def test_thing():
     # ImportError - is swallowed by `except Exception` and called a missing
     # optional dep. Statically the target is unreadable, so the handler width
     # is the whole signal, and a catch-everything handler is no signal at all.
+    # Structure matters here and the first version of this fixture got it
+    # wrong: it hoisted `import importlib` to MODULE level, while the real
+    # defect had it INSIDE the helper. That one difference made the fixture
+    # survive a mutation the real file did not, so it was shaped to pass rather
+    # than shaped to the bug (verifier, 2026-08-06). Byte-for-byte the pre-fix
+    # tests/test_ports.py `_live` now, import placement included.
     "runtime_named_import_swallowed_by_bare_except": '''
-import importlib
 import unittest
 class T(unittest.TestCase):
     def _live(self, module_path, attr):
+        import importlib
         try:
             mod = importlib.import_module(module_path)
         except Exception as exc:
             self.skipTest(f"{module_path} not importable here: {exc}")
+        self.assertTrue(hasattr(mod, attr))
         return getattr(mod, attr)
     def test_thing(self):
         self.assertEqual(8888, self._live("dashboard.server", "PORT"))
+''',
+    # The same B5 in the idiomatic path spelling. `.parent.parent` was caught
+    # and `.parents[1]` was not, in a resolver that treated `parents` as an
+    # unanswerable tree-shape question; nine skip-bearing modules already write
+    # it this way.
+    "skip_on_a_tracked_path_via_parents_index": '''
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parents[1]
+def test_thing():
+    p = REPO / "ops" / "rc_config.json"
+    if not p.is_file():
+        pytest.skip("config absent")
+    assert p.read_text()
+''',
+    "mark_skipif_on_a_tracked_path_via_parents_index": '''
+import pytest
+from pathlib import Path
+_HERE = Path(__file__).resolve()
+@pytest.mark.skipif(not (_HERE.parents[1] / "web" / "legacy_index.html").exists(),
+                    reason="page absent")
+def test_thing():
+    assert True
 ''',
     "dunder_import_of_a_first_party_module": '''
 import pytest
@@ -1249,6 +1381,22 @@ import pytest
 np = pytest.importorskip("numpy")
 def test_thing():
     assert np
+''',
+    # The false-positive side of the parents[N] resolver. Without it the path
+    # is opaque, the site lands in UNRESOLVED, and a legitimate gitignored-data
+    # skip written in the idiomatic spelling reads as a defect. This control is
+    # what makes the resolver itself load-bearing rather than an equivalent
+    # mutant: the DEFECT probes above still flag without it (via UNRESOLVED),
+    # this one does not survive without it.
+    "gitignored_artifact_via_parents_index": '''
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parents[1]
+def test_thing():
+    db = REPO / "data" / "rewind_history.db"
+    if not db.is_file():
+        pytest.skip("machine-local corpus absent")
+    assert db
 ''',
     # The false-positive side of the dynamic-import rule: a target this scan
     # cannot read cannot be called first-party, so it stays a capability skip.
