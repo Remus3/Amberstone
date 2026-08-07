@@ -54,11 +54,17 @@ table (``ult_rates.get_spell_casts_per_sec(name, key, mode)``). Per-cast raw
 damage and the resolved stat block are identical between the two modes. This
 module is a per-COMBO model with no casts-per-second term, so it has nothing to
 read there. The two paths answer different questions; do NOT "fix" one to match
-the other, and do NOT wire ``apply_mode_modifiers`` here alone - patching only
-this module flips 26 of 299 probed verdicts at level 11 while every other scorer
-stays blind, which is a split-brain engine. Whether the flag should be wired
-UNIFORMLY across the DS route seam, or those 45 arena stat lines discarded on
-purpose, is the open successor question to RM-169 and is tracked separately.
+the other. Do NOT wire ``apply_mode_modifiers`` here ALONE - patching only this
+module flips 26 of 299 probed verdicts at level 11 while every other scorer stays
+blind, which is a split-brain engine.
+
+That successor question is now ANSWERED (LEDGER 1217, executed 2026-08-06): the
+flag is wired UNIFORMLY across the DS route seam rather than the 45 arena stat
+lines being discarded, and it stays DEFAULT-OFF everywhere. So this module DOES
+carry the flag now - the "alone" precondition above is what is satisfied, not
+waived. ``compute_matchup`` forwards it to ``_defensive_stats``
+(``build_champion``) and to ``_combo_into`` (``compute_burst_damage``), so both
+sides of the trade are scored off the same stat line. OFF is byte-identical.
 Pinned by ``tests/test_rm169_matchup_mode_characterization.py``.
 """
 
@@ -136,6 +142,7 @@ def _defensive_stats(
     level: int,
     item_ids: Optional[Sequence[str | int]],
     mode: str,
+    apply_mode_modifiers: bool = False,
 ) -> tuple[float, float, float, float]:
     """Resolve (armor, mr, max_hp, bonus_hp) the SAME way the EHP scorer does.
 
@@ -145,6 +152,7 @@ def _defensive_stats(
     """
     resolved = build_champion(
         snapshot, champion_id, level, item_ids=item_ids, mode=mode,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
     stats = resolved.stats
     base = resolved.base_stats
@@ -167,6 +175,7 @@ def _combo_into(
     tgt_mr: float,
     tgt_max_hp: float,
     tgt_bonus_hp: float,
+    apply_mode_modifiers: bool = False,
 ):
     """Fire the attacker's burst into the resolved target defences.
 
@@ -186,6 +195,7 @@ def _combo_into(
         target_bonus_hp=tgt_bonus_hp,
         target_current_hp_pct=hp_pct,
         combo_sequence=sequence,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
     return burst
 
@@ -263,6 +273,7 @@ def compute_matchup(
     hp_b_pct: float = 1.0,
     sequence_a: Optional[Sequence[str]] = None,
     sequence_b: Optional[Sequence[str]] = None,
+    apply_mode_modifiers: bool = False,
 ) -> MatchupResult:
     """Resolve the 1v1 trade between champ A and champ B.
 
@@ -278,20 +289,28 @@ def compute_matchup(
     """
     notes: list[str] = []
 
+    # RM-172: apply_mode_modifiers reaches BOTH sides of the trade and BOTH
+    # halves of each side (defences via build_champion, offence via
+    # compute_burst_damage). Arming a subset would score A's burst off the ARENA
+    # stat line and B's defences off the SR one, which is worse than blind.
     a_armor, a_mr, a_max_hp, a_bonus_hp = _defensive_stats(
         snapshot, champ_a_id, level_a, item_ids_a, mode,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
     b_armor, b_mr, b_max_hp, b_bonus_hp = _defensive_stats(
         snapshot, champ_b_id, level_b, item_ids_b, mode,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
 
     burst_a = _combo_into(
         snapshot, champ_a_id, level_a, item_ids_a, mode, sequence_a,
         hp_b_pct, b_armor, b_mr, b_max_hp, b_bonus_hp,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
     burst_b = _combo_into(
         snapshot, champ_b_id, level_b, item_ids_b, mode, sequence_b,
         hp_a_pct, a_armor, a_mr, a_max_hp, a_bonus_hp,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
     dmg_a_to_b = float(burst_a.total_burst_damage)
     dmg_b_to_a = float(burst_b.total_burst_damage)

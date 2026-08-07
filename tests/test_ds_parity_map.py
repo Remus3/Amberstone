@@ -58,8 +58,11 @@ from tools.ds_parity_map import FLAG_TRANSPORTS, build_map
 _DROPPED_OK: set[tuple[str, str]] = set()
 
 # Engine parameters no route forwards - a caller cannot reach them over HTTP at
-# all. DEBT LEDGER, not an exemption: measured 2026-08-04 at ENGINE 1.274.0,
-# 55 pairs across 15 routes (was 65 across 16 at 1.268.0 - the RM-118
+# all. DEBT LEDGER, not an exemption: measured 2026-08-06 at ENGINE 1.275.0,
+# 53 pairs across 14 routes. RM-172 drained exactly two: ``apply_mode_modifiers``
+# on /rank-onhit and on /stats, which emptied the /stats row entirely (the flag
+# is now wired UNIFORMLY across the route seam, DEFAULT-OFF, LEDGER 1217). The
+# prior figure was 55 across 15 at ENGINE 1.274.0 (was 65 across 16 at 1.268.0 - the RM-118
 # stranded-seam slice drained six pairs: apply_crit_chance_overrides on /dps,
 # apply_ability_hsp_amp on /hps, and apply_cast_rate_propensity_prior +
 # assume_ms_utility on both /hybrid and /rank-bruiser, which emptied the
@@ -70,8 +73,9 @@ _DROPPED_OK: set[tuple[str, str]] = set()
 # both directions - a NEW unreachable param turns this RED, and wiring one up
 # turns it RED until the line is deleted here. Sampled and confirmed against
 # source: /v2/matchup parses a single body and never ``sequence_a``/
-# ``sequence_b`` (matchup.py:220-221); /rank-onhit never parses ``phase`` or
-# ``apply_mode_modifiers`` though rank_items_by_onhit accepts both.
+# ``sequence_b``; /rank-onhit still never parses ``phase`` though
+# rank_items_by_onhit accepts it (its ``apply_mode_modifiers`` sibling WAS
+# drained by RM-172, so this line is the residual half of that pair).
 _UNREACHABLE_OK: dict[str, set[str]] = {
     '/ability-dps':        {'assume_ability_amp', 'assume_item_lowhp_magic_crit', 'assume_magic_burst', 'assume_physical_burst', 'assume_shielded_target'},
     '/anti-tank':          {'stats'},
@@ -90,9 +94,8 @@ _UNREACHABLE_OK: dict[str, set[str]] = {
     '/rank':               {'mana_value_per_point'},
     '/rank-enchanter':     {'formulas'},
     '/rank-mage':          {'kit_conversion_strength'},
-    '/rank-onhit':         {'apply_mode_modifiers', 'phase'},
+    '/rank-onhit':         {'phase'},
     '/rank-tank':          {'kit_conversion_strength'},
-    '/stats':              {'apply_mode_modifiers'},
     '/v2/fight-report':    {'caster_hp_pct', 'game_time_s', 'recharge_window_s'},
     '/v2/matchup':         {'sequence_a', 'sequence_b'},
 }
