@@ -688,6 +688,7 @@ def compute_ability_hps(
     target_missing_hp_pct: float = 0.0,
     caster_missing_hp_pct: float = 0.0,
     assume_missing_hp_heal_amp: bool = False,
+    apply_mode_modifiers: bool = False,
 ) -> AbilityHpsResult:
     """Compute champion-ability healing + shielding throughput per second.
 
@@ -726,9 +727,13 @@ def compute_ability_hps(
         )
     level = clamp_level(level)
 
+    # RM-172: apply_mode_modifiers (DEFAULT-OFF) opts into the ARENA/Swiftplay
+    # stat-growth ADDEND lane. compute_hps forwards its own flag here so the
+    # item-throughput half and the champion-ability half of an /hps response
+    # are scored off the SAME stat line.
     resolved = build_champion(
         snapshot, champion_id, level, item_ids=item_ids, mode=mode,
-        augments=augments,
+        augments=augments, apply_mode_modifiers=apply_mode_modifiers,
     )
     champ_id = resolved.champion_id
 

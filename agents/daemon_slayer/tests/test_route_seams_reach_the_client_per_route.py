@@ -8,10 +8,11 @@ in ``core/daemon_slayer_client.py`` can express, and subtracts. That answers
 "can this seam be set from the client AT ALL", which was the right first
 question and caught the ASSUMED-INCOMING-SHARE regression it was written for.
 
-It is not the question a caller actually has. ``apply_mode_modifiers`` is
+It is not the question a caller actually has. ``apply_mode_modifiers`` was
 parsed by EIGHT routes (/dps, /rank, /ehp, /rank-tank, /hybrid, /rank-bruiser,
-/v2/fight-report, /beam); the moment ONE client function names it, the
-name-based guard reads it as reached on all eight. The same collapse hides
+/v2/fight-report, /beam) and, since the RM-172 uniform wiring on 2026-08-06, by
+NINETEEN; the moment ONE client function names it, the name-based guard reads it
+as reached on all nineteen. The same collapse hides
 ``apply_item_resist_grants`` on ``/ehp`` behind its ``/rank-tank`` wire.
 
 (The 1.250.0 and 1.251.0 write-ups of this file say SEVEN. That was a
@@ -74,8 +75,10 @@ _BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
 
 # ------------------------------------------------------------ the debt ledger
 # route -> seams that route parses but the client function POSTing that route
-# cannot express. Measured by the introspection below at ENGINE 1.254.0, NOT
-# copied from prose. 4 entries across 2 routes.
+# cannot express. Measured by the introspection below at ENGINE 1.275.0, NOT
+# copied from prose. 7 entries across 5 routes (was 4 across 2 at 1.254.0; the
+# RM-172 uniform wiring added 3, one each on /stats, /anti-tank and
+# /ally-protected-ehp - see the block at the end of this ledger).
 #
 # Wired across the RM-115 drain passes, and therefore ABSENT here:
 #   apply_ability_base_overrides ... /ability-dps, /burst, /rank-assassin,
@@ -88,7 +91,8 @@ _BODY_READERS = ("_opt_bool", "_opt_float", "_opt_int", "_opt_str",
 #                                    /rank 2, /ability-dps 1, /rank-mage 1
 #                                    (1.254.0)
 #
-# THE HONEST END STATE OF THIS LEDGER IS 4, NOT 0. The two routes below are
+# THE HONEST END STATE OF THIS LEDGER IS 7, NOT 0 (was 4 before RM-172). The
+# routes below are
 # DECLINED BY DESIGN, not undrained debt. Wiring them would flip the guard
 # green while manufacturing reachability with no reader - precisely the
 # reachable-and-dead illusion RM-115 exists to kill. Wire the CONSUMER first;
@@ -127,6 +131,44 @@ _STRANDED_BY_ROUTE: dict[str, frozenset[str]] = {
         'apply_ability_haste',
         'apply_mode_modifiers',
         'gate_ammo',
+    }),
+    # ---------------------------------------------------------------- RM-172
+    # The three entries below were ADDED 2026-08-06 (ENGINE 1.275.0) by the
+    # RM-172 uniform wiring, taking this ledger 4 -> 7. That is a real cost and
+    # it is recorded rather than avoided: RM-172's decision (LEDGER 1217) was to
+    # make ``apply_mode_modifiers`` ASKABLE on every route that can reach
+    # ``build_champion``, DEFAULT-OFF, instead of leaving 45 champions' ARENA
+    # stat lines unreachable. All three routes have NO client function at all -
+    # verified by grep at 1.275.0, the literals "/stats", "/anti-tank" and
+    # "/ally-protected-ehp" do not appear in core/daemon_slayer_client.py - so
+    # per this file's own reading ("a route with NO client function at all has
+    # every one of its seams stranded, which is the correct reading") they land
+    # in the same category as /beam and /v2/fight-report above.
+    #
+    # This is a CONSUMER gap, not an engine gap: all three seams are wired end
+    # to end and were proven by RESPONSE-CHANGES, not by signature, in
+    # tests/test_rm172_mode_modifier_seam_characterization.py.
+    # RE-OPEN EACH IF: a client function for that route appears. Add the keyword
+    # argument to it and delete the entry here - do not grow this ledger.
+    #
+    # /stats is the direct build_champion route and the sharpest instance
+    # RM-172 named; 45 of 45 arena-axis champions move on it.
+    '/stats': frozenset({
+        'apply_mode_modifiers',
+    }),
+    # /anti-tank forwards the flag only on its LIVE-build branch. Measured
+    # UNOBSERVABLE today for a structural reason, not a broken transport: of the
+    # 7 registry champions with a nonzero ap/ad ratio row, only KogMaw also
+    # carries an ARENA axis, and KogMaw's only nonzero ratio is an AP ratio
+    # while the ARENA addends move ad/as and never ap. Pinned by
+    # test_antitank_is_unobservable_for_a_STRUCTURAL_reason.
+    '/anti-tank': frozenset({
+        'apply_mode_modifiers',
+    }),
+    # /ally-protected-ehp reaches compute_ehp, which has accepted the flag since
+    # item 232; the consumer simply never forwarded it. 45 of 45 move.
+    '/ally-protected-ehp': frozenset({
+        'apply_mode_modifiers',
     }),
 }
 

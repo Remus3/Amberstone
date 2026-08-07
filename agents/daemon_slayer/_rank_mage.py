@@ -208,6 +208,7 @@ def rank_items_by_ability_dps(
     apply_ability_amps: bool = False,
     kit_conversion_strength: float = 0.0,
     apply_passive_aura_damage: bool = False,
+    apply_mode_modifiers: bool = False,
 ) -> AbilityDpsRankResult:
     """Rank items by total-ability-DPS gain when added to ``current_item_ids``.
 
@@ -294,6 +295,7 @@ def rank_items_by_ability_dps(
         block_index_overrides=resolved_block_index,
         apply_ability_amps=apply_ability_amps,
         apply_passive_aura_damage=apply_passive_aura_damage,
+        apply_mode_modifiers=apply_mode_modifiers,
     )
 
     candidates = _filter_candidates(
@@ -335,6 +337,7 @@ def rank_items_by_ability_dps(
                 block_index_overrides=resolved_block_index,
                 apply_ability_amps=apply_ability_amps,
                 apply_passive_aura_damage=apply_passive_aura_damage,
+                apply_mode_modifiers=apply_mode_modifiers,
             )
         except (KeyError, ValueError):
             continue
