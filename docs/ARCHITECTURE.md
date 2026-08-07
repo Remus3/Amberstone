@@ -227,7 +227,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tools/gen_state_schema.py` | generates web/js/lib/state_schema.js JSDoc typedefs from pydantic models |
 | `tools/gist_share_sync.py` | secret-gist mirror of the Share/ review package |
 | `tools/hz_mismatch_diagnose.py` | HZ mismatch root-cause diagnosis over the laning-combat shadow log |
-| `tools/hz_shadow_arena_contamination.py` | RM-158 data half - SR-contaminated ARENA row detector + purge over the HZ-C1 shadow corpus |
+| `tools/hz_shadow_arena_contamination.py` | RM-158 data half - SR-derived ARENA precompute detector + provenance flagger over the HZ-C1 shadow corpus |
 | `tools/hz_shadow_report.py` | HZ-C validation report over the precompute shadow logs |
 | `tools/live_benchmark_band_report.py` | LBAND1 validation report over the live-benchmark-band shadow log |
 | `tools/macro_response_shadow_report.py` | RC2-P5.7 (WS4) macro-response register flip-readiness report over the macro shadow log |
