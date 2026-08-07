@@ -474,8 +474,128 @@ def derive_scaled_regions(regions: dict, src_base, dst_base) -> dict:
     return out
 
 
+# Per-region anchor classification for the RM-26 anchor model.
+#
+# THIS IS A MODEL, NOT A MEASUREMENT. It states where League pins each HUD
+# element. It CANNOT be validated on this machine: at 16:9 the width ratio
+# equals the height ratio, so left / center / right all yield the identical
+# box, and every reference still in data/vision_calib_reference is 2560x1440.
+# One native full-screen 21:9 or 32:9 capture is the only thing that can
+# confirm or refute any row below. Until then the model is DEFAULT-OFF.
+REGION_ANCHORS = {
+    # Top-right info bar. League pins this cluster to the top-right corner.
+    "timer": ("right", "top"),
+    "kda": ("right", "top"),
+    "cs": ("right", "top"),
+    "ping": ("right", "top"),
+    "fps": ("right", "top"),
+    "score_blue": ("right", "top"),
+    "score_red": ("right", "top"),
+    # Bottom-centre champion frame. Centred on the screen midline.
+    "level": ("center", "bottom"),
+    "hp": ("center", "bottom"),
+    "mana": ("center", "bottom"),
+    "gold": ("center", "bottom"),
+    # Left ally team frames. Pinned to the left edge.
+    "ally_1_hp": ("left", "top"),
+    "ally_2_hp": ("left", "top"),
+    "ally_3_hp": ("left", "top"),
+    "ally_4_hp": ("left", "top"),
+    "ally_1_mana": ("left", "top"),
+    "ally_2_mana": ("left", "top"),
+    "ally_3_mana": ("left", "top"),
+    "ally_4_mana": ("left", "top"),
+    "ally_ults": ("left", "top"),
+    "ally_levels": ("left", "top"),
+}
+
+
+def classify_anchor(name, box, src_base) -> tuple:
+    """Return ``(horizontal, vertical)`` for a region.
+
+    Prefers the explicit REGION_ANCHORS entry. Falls back to geometric thirds
+    over ``src_base`` so a region added to the JSON without a registry entry
+    still derives instead of raising."""
+    known = REGION_ANCHORS.get(name)
+    if known:
+        return known
+    try:
+        src_w, src_h = int(src_base[0]), int(src_base[1])
+        cx = (box[0] + box[2]) / 2.0
+        cy = (box[1] + box[3]) / 2.0
+    except Exception:  # noqa: BLE001
+        return ("left", "top")
+    if cx < src_w / 3.0:
+        horiz = "left"
+    elif cx > src_w * 2.0 / 3.0:
+        horiz = "right"
+    else:
+        horiz = "center"
+    return (horiz, "top" if cy < src_h / 2.0 else "bottom")
+
+
+def _anchor_x(x, horiz, s, src_w, dst_w) -> int:
+    if horiz == "right":
+        return int(dst_w - (src_w - x) * s)
+    if horiz == "center":
+        return int(dst_w / 2.0 + (x - src_w / 2.0) * s)
+    return int(x * s)
+
+
+def _anchor_y(y, vert, s, src_h, dst_h) -> int:
+    # NOTE: under scale-by-height these two branches are the SAME map -
+    # dst_h - (src_h - y) * (dst_h/src_h) reduces to y * (dst_h/src_h). The
+    # branch is kept because it documents intent and would diverge under any
+    # future non-height-based vertical scale. A test pins the equivalence so
+    # nobody "discovers" it as a bug.
+    if vert == "bottom":
+        return int(dst_h - (src_h - y) * s)
+    return int(y * s)
+
+
+def derive_anchored_regions(regions: dict, src_base, dst_base,
+                            anchors=None) -> dict:
+    """Scale a region map by HEIGHT and re-anchor each box to its own screen
+    edge, instead of stretching it by one ratio per axis.
+
+    WHY: League scales HUD art by screen height and anchors most of it to an
+    edge, so proportional width scaling over-stretches every box on an
+    ultrawide. Measured best-anchor error vs each region's own true width:
+    16:9 2560x1440 exactly 0.00x, 21:9 median 0.45x max ~4.9x, 32:9
+    5120x1440 median 1.32x max 14.19x (LEDGER 1227).
+
+    IDENTITY AT MATCHING ASPECT: when dst_w/src_w == dst_h/src_h every anchor
+    class collapses to ``x * s``, so this is byte-identical to
+    derive_scaled_regions on any same-aspect base. That is also why no 16:9
+    frame can validate the CLASSIFICATION - the model is unverified until a
+    native 21:9 or 32:9 still exists, which is why derive_profile still
+    defaults to the proportional path.
+
+    Returns a NEW dict, never mutates the input; a box that is not a list /
+    tuple of length 4 is skipped, matching derive_scaled_regions."""
+    src_w, src_h = int(src_base[0]), int(src_base[1])
+    dst_w, dst_h = int(dst_base[0]), int(dst_base[1])
+    s = dst_h / src_h
+    out = {}
+    for name, box in regions.items():
+        if not isinstance(box, (list, tuple)) or len(box) != 4:
+            continue
+        if anchors is not None and name in anchors:
+            horiz, vert = anchors[name]
+        else:
+            horiz, vert = classify_anchor(name, box, (src_w, src_h))
+        l, t, r, b = box
+        out[name] = [
+            _anchor_x(l, horiz, s, src_w, dst_w),
+            _anchor_y(t, vert, s, src_h, dst_h),
+            _anchor_x(r, horiz, s, src_w, dst_w),
+            _anchor_y(b, vert, s, src_h, dst_h),
+        ]
+    return out
+
+
 def derive_profile(dst_base, config_key=None, source_regions=None,
-                   source_base=None) -> dict:
+                   source_base=None, anchor_model: bool = False) -> dict:
     """Pure derivation of a full profile dict at dst_base from a source region
     map (defaults to the legacy 1920x1080 baseline). No disk write.
 
@@ -490,10 +610,15 @@ def derive_profile(dst_base, config_key=None, source_regions=None,
     else:
         src_regions = _load_legacy_regions()
     src_base = source_base if source_base is not None else list(_LEGACY_BASE)
-    regions = derive_scaled_regions(src_regions, src_base, clean)
+    if anchor_model:
+        regions = derive_anchored_regions(src_regions, src_base, clean)
+        source = "derived_anchored"
+    else:
+        regions = derive_scaled_regions(src_regions, src_base, clean)
+        source = "derived"
     ck = config_key or f"{clean[0]}x{clean[1]}"
     return {"config_key": ck, "base": [clean[0], clean[1]],
-            "regions": regions, "source": "derived"}
+            "regions": regions, "source": source}
 
 
 # Seed targets: the 1440p + ultrawide bases worth shipping an untuned starting
