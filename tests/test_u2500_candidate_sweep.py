@@ -72,6 +72,32 @@ _ITEM_187_SWEPT: tuple[tuple[str, int], ...] = (
 
 _EXPECTED_TOTAL_PRE = 2874
 
+# RM-119 class B4, 2026-08-06. The seven `_archive/2026-05-01-audit/**` entries
+# above each had their own test that read `if not p.is_file(): pytest.skip(...)`,
+# and all seven skipped on every run: `_archive/` is gitignored, was NEVER
+# tracked, and is absent from BOTH this worktree and the main tree at
+# C:\Riot Commander. No checkout and no clone can restore it, so those tests had
+# been asserting nothing since the dir was cleared - the B4 shape, where the
+# tree contradicts the premise and green means "did not run".
+#
+# The skip was ALSO covering the two entries that are tracked and present: the
+# aggregate walk below used the same `is_file()` test and simply `continue`d,
+# so deleting web/legacy_index.html or ops/rc_config.json would have quietly
+# dropped them from the sweep rather than failing it.
+#
+# The fix keeps the forensic tuple intact and replaces absence-as-skip with
+# absence-as-assertion: an entry that is present is CHECKED, and an entry that
+# is absent must be one of the known-decommissioned seven. A new unreachable
+# entry - or a tracked one that goes missing - is now a failure. Restoring
+# `_archive/` is still fine: the entry becomes present and gets checked.
+_DECOMMISSIONED: frozenset[str] = frozenset(
+    rel for rel, _pre in _ITEM_187_SWEPT if rel.startswith("_archive/")
+)
+
+# Sentinel count used by the aggregate walk to distinguish "file is gone" from
+# "file is present and dirty"; a real U+2500 count is never negative.
+_MISSING = -1
+
 
 def _count_u2500(path: Path) -> int:
     try:
@@ -83,80 +109,33 @@ def _count_u2500(path: Path) -> int:
 
 # -------- Per-file U+2500-clean assertions --------
 
-def test_archive_comp_control_is_clean() -> None:
-    p = _REPO_ROOT / "_archive" / "2026-05-01-audit" / "tft" / "comp_control.py"
+@pytest.mark.parametrize("rel_posix,pre", _ITEM_187_SWEPT)
+def test_item_187_swept_file_is_clean_or_provably_decommissioned(
+    rel_posix: str, pre: int
+) -> None:
+    """Every swept entry either PASSES the glyph check or is a known removal.
+
+    This replaces seven per-file tests that each opened with
+    `if not p.is_file(): pytest.skip(...)`. All seven skipped unconditionally
+    (see the _DECOMMISSIONED note above), so the branch that did the asserting
+    was dead code and the branch that ran asserted nothing.
+
+    Absence is now a claim that has to be on the record: an entry missing from
+    the checkout must be one of the seven cleared `_archive/` files. A tracked
+    entry that vanishes fails here instead of quietly leaving the sweep.
+    """
+    p = _REPO_ROOT / rel_posix
     if not p.is_file():
-        pytest.skip(f"target absent on this checkout (gitignored/decommissioned): {p}")
+        assert rel_posix in _DECOMMISSIONED, (
+            f"{rel_posix} is in the item-187 swept set but is not on disk and "
+            "is not one of the seven decommissioned _archive/ targets - a "
+            "tracked file has gone missing, which retires its glyph guard"
+        )
+        return
     n = _count_u2500(p)
     assert n == 0, (
-        f"_archive/2026-05-01-audit/tft/comp_control.py contains {n} "
-        f"U+2500 chars (item 187 swept it clean, pre=886 -> post=0)."
-    )
-
-
-def test_archive_client_panel_is_clean() -> None:
-    p = _REPO_ROOT / "_archive" / "2026-05-01-audit" / "ui" / "client_panel.py"
-    if not p.is_file():
-        pytest.skip(f"target absent on this checkout (gitignored/decommissioned): {p}")
-    n = _count_u2500(p)
-    assert n == 0, (
-        f"_archive/2026-05-01-audit/ui/client_panel.py contains {n} "
-        f"U+2500 chars (item 187 swept it clean, pre=576 -> post=0)."
-    )
-
-
-def test_archive_arena_overlay_is_clean() -> None:
-    p = _REPO_ROOT / "_archive" / "2026-05-01-audit" / "modes" / "arena_overlay.py"
-    if not p.is_file():
-        pytest.skip(f"target absent on this checkout (gitignored/decommissioned): {p}")
-    n = _count_u2500(p)
-    assert n == 0, (
-        f"_archive/2026-05-01-audit/modes/arena_overlay.py contains {n} "
-        f"U+2500 chars (item 187 swept it clean, pre=330 -> post=0)."
-    )
-
-
-def test_archive_game_right_bot_is_clean() -> None:
-    p = _REPO_ROOT / "_archive" / "2026-05-01-audit" / "ui" / "game_right_bot.py"
-    if not p.is_file():
-        pytest.skip(f"target absent on this checkout (gitignored/decommissioned): {p}")
-    n = _count_u2500(p)
-    assert n == 0, (
-        f"_archive/2026-05-01-audit/ui/game_right_bot.py contains {n} "
-        f"U+2500 chars (item 187 swept it clean, pre=185 -> post=0)."
-    )
-
-
-def test_archive_tft_overlay_is_clean() -> None:
-    p = _REPO_ROOT / "_archive" / "2026-05-01-audit" / "tft" / "tft_overlay.py"
-    if not p.is_file():
-        pytest.skip(f"target absent on this checkout (gitignored/decommissioned): {p}")
-    n = _count_u2500(p)
-    assert n == 0, (
-        f"_archive/2026-05-01-audit/tft/tft_overlay.py contains {n} "
-        f"U+2500 chars (item 187 swept it clean, pre=116 -> post=0)."
-    )
-
-
-def test_archive_tk_ai_bar_proxy_is_clean() -> None:
-    p = _REPO_ROOT / "_archive" / "2026-05-01-audit" / "core" / "tk_ai_bar_proxy.py"
-    if not p.is_file():
-        pytest.skip(f"target absent on this checkout (gitignored/decommissioned): {p}")
-    n = _count_u2500(p)
-    assert n == 0, (
-        f"_archive/2026-05-01-audit/core/tk_ai_bar_proxy.py contains {n} "
-        f"U+2500 chars (item 187 swept it clean, pre=97 -> post=0)."
-    )
-
-
-def test_archive_ui_base_is_clean() -> None:
-    p = _REPO_ROOT / "_archive" / "2026-05-01-audit" / "ui" / "base.py"
-    if not p.is_file():
-        pytest.skip(f"target absent on this checkout (gitignored/decommissioned): {p}")
-    n = _count_u2500(p)
-    assert n == 0, (
-        f"_archive/2026-05-01-audit/ui/base.py contains {n} U+2500 chars "
-        f"(item 187 swept it clean, pre=59 -> post=0)."
+        f"{rel_posix} contains {n} U+2500 chars (item 187 swept it clean, "
+        f"pre={pre} -> post=0)."
     )
 
 
@@ -196,15 +175,22 @@ def test_all_item_187_swept_files_are_u2500_free() -> None:
     for rel_posix, _pre in _ITEM_187_SWEPT:
         p = _REPO_ROOT / rel_posix
         if not p.is_file():
-            # Gitignored/decommissioned archive files are absent on a fresh
-            # checkout (CI) - a file that does not exist cannot reintroduce
-            # U+2500, so skip it rather than fail. Present files still checked.
+            # RM-119 B4: this used to `continue` on ANY absent entry, which
+            # silently dropped a tracked file from the sweep as readily as a
+            # decommissioned archive one. Absence is now only tolerated for the
+            # seven cleared `_archive/` targets; anything else is a violation.
+            if rel_posix not in _DECOMMISSIONED:
+                violations.append((rel_posix, _MISSING))
             continue
         n = _count_u2500(p)
         if n > 0:
             violations.append((rel_posix, n))
     if violations:
-        lines = [f"  {rel}: U+2500 x{n}" for rel, n in violations]
+        lines = [
+            f"  {rel}: MISSING from this checkout and not decommissioned"
+            if n == _MISSING else f"  {rel}: U+2500 x{n}"
+            for rel, n in violations
+        ]
         msg = (
             "U+2500 drift detected in item-187-swept candidate files. "
             "Run `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen <path>` to "
