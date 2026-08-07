@@ -30,13 +30,32 @@ records there. moon_proxy only does the 2s vision dedupe accounting.
 | coaches/experimental_builder.py:207 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (build gen) | experimental_builder |
 | coaches/champ_select_coach.py:116 | HAIKU | YES (record_anthropic_response) | EVENT (champ select) | champ_select_coach |
 | coaches/replay_coach.py:192 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (replay) | replay_coach |
-| dashboard/_champ_select.py:92 | HAIKU | YES (record_anthropic_response) | ON-DEMAND (dash brief) | champ_select_brief |
+| ~~dashboard/_champ_select.py:92~~ | RETIRED 2026-06-06 | n/a | n/a | ~~champ_select_brief~~ |
 | tft/tft_coach_engine.py:692 | HAIKU | YES (record_anthropic_response, cache_control ephemeral) | POLLING (45s debounce) | tft_coach |
 | tft/tft_pbe_engine.py:421 | HAIKU | YES (record_anthropic_response) | POLLING (game tick) | tft_pbe |
 | tft/tft_live_analysis.py:292 | HAIKU | YES (record_anthropic_response) | POLLING (vision cycle) | tft_live_analysis |
 | tft/tft_live_analysis.py:316 | HAIKU | YES (record_anthropic_response) | POLLING (aug select) | tft_live_aug_select |
 | tft/tft_vision_reader.py:186 | SONNET | YES (record_anthropic_response) | POLLING (vision local fallback) | tft_vision |
 | agents/agent7_context/warm_session.py:154 | HAIKU | YES (record_anthropic_response) | WARM (persistent session) | agent7_warm |
+
+**CORRECTION 2026-08-06 - the `champ_select_brief` row above is RETIRED, not
+stale-by-line-number.** It was accurate when this matrix was audited
+(2026-05-19). The Haiku-elimination program flipped that surface on 2026-06-06
+(items 273/276/280/283): `dashboard/_champ_select.py` is now a 26-line facade
+whose `brief_via_coach` is a pure delegation to
+`dashboard/_champ_select_deterministic.brief_deterministic`, with ZERO Anthropic
+call and no `record_anthropic_response`. The `champ_select_brief` purpose key
+survives in `core/cost_tracker.py:151` (a purpose-map entry, not a producer) and
+can no longer accrue spend. The row is struck rather than deleted so the
+`champ_select_brief` key in old `data/spend/*.json` ledgers stays explainable.
+The `champ_select_coach` row above it is a DIFFERENT surface
+(`coaches/champ_select_coach.py`, the pick-advisor) and IS still on Haiku.
+
+**Every line number in the matrix above is from the 2026-05-19 audit and most
+have since drifted** (measured 2026-08-06: e.g. `coaches/arena_coach.py:587` is
+now `:797`, `coaches/aram_coach.py:743` is now `:1099`). Read the matrix for
+WHICH sites call Anthropic and with what cadence, not for where in the file.
+`grep -rn "messages\.create" --include="*.py"` is the live census.
 
 Tracked sites correctly extract `usage.input_tokens / output_tokens /
 cache_read_input_tokens / cache_creation_input_tokens` (see
@@ -107,7 +126,9 @@ Wired sites (`purpose` label is the by_purpose key in
 `data/spend/YYYY-MM-DD.json`):
 
 - `aram_team_analyzer`, `experimental_builder`, `champ_select_coach`,
-  `replay_coach`, `champ_select_brief`, `agent7_warm`
+  `replay_coach`, ~~`champ_select_brief`~~ (retired 2026-06-06, see the
+  correction above - its `WiredSitesGrepTests` case was removed with the wire,
+  so 10 of the 11 sites below are pinned, not 11), `agent7_warm`
 - `tft_coach`, `tft_pbe`, `tft_live_analysis`, `tft_live_aug_select`,
   `tft_vision`
 

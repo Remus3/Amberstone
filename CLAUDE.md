@@ -205,7 +205,7 @@ curl -k https://127.0.0.1:8888/api/health/all
 
 ## TDD First
 
-All feature work and bug fixes follow TDD: write failing characterization/regression test first, then implement, then verify full suite (DS 9546 + RC `tests/` 13061, measured 2026-07-25) before committing.
+All feature work and bug fixes follow TDD: write failing characterization/regression test first, then implement, then verify full suite (`pytest agents/daemon_slayer` + `pytest tests`, both from the repo root - never `pytest .`) before committing. **Do not restate a suite count here.** The DS count lives in the drift-guarded `docs/DAEMON_SLAYER.md` status banner (`tests/test_docs_daemon_slayer_drift.py` pins it); the RC `tests/` count has no guard, so measure it with `pytest tests --collect-only -q` rather than quoting a doc. A hardcoded pair sat here reading "DS 9546 + RC 13061, measured 2026-07-25" until 2026-08-06, by which point the true figures were 10463 and 18977 - the same failure `docs/ARCHITECTURE.md:285` already fixed by deleting its own recital (WP-F6a).
 
 ## Subagent Code Quality
 
