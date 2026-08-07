@@ -233,6 +233,18 @@ _PROD_ARTIFACT_GUARD = (
     "data/decisions_pending.json",
     "data/decisions_heartbeat.json",
     "data/vision_state.json",
+    # RM-173 (2026-08-06). The Phase 3 supervisor's singleton claim. A test
+    # that constructs a Supervisor and calls stop() without relocating
+    # STATE_DIR deletes the LIVE daemon's lock pair, and the damage is
+    # invisible: the lockfile is rewritten within 5s by the next heartbeat,
+    # the sentinel is not, and every health signal keeps reading green while
+    # the singleton is disarmed. Measured 2026-08-06 - absent 02:54 to 20:44,
+    # then again the same evening. Two known callers were relocated; this
+    # entry is the MECHANISM that catches the third. It is quiet in normal
+    # operation because the file is written exactly once per daemon start and
+    # never touched again, and a supervisor restart mid-suite only changes its
+    # size if the pid's digit count changes.
+    "agents/state/lockfile.sentinel",
 )
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
