@@ -250,7 +250,16 @@ def compute_fight_report(
     ability_shield_hps = 0.0
     ability_hps_total = 0.0
     try:
-        hps = compute_ability_hps(snap, champ, lvl, items, mode)
+        # RM-172: this section did NOT receive apply_mode_modifiers, so the
+        # route parsed the flag, forwarded it here, and only ONE of the five
+        # sections (compute_dps, below) ever saw it - and that one feeds
+        # compute_self_shred_uplift, whose output rounds the difference away.
+        # Net effect measured 2026-08-06: 0 of 45 arena-axis champions moved.
+        # A settable, guard-green, arithmetically INERT seam.
+        hps = compute_ability_hps(
+            snap, champ, lvl, items, mode,
+            apply_mode_modifiers=apply_mode_modifiers,
+        )
         ability_heal_hps = hps.total_heal_per_sec
         ability_shield_hps = hps.total_shield_per_sec
         ability_hps_total = hps.total_ability_hps
@@ -279,6 +288,7 @@ def compute_fight_report(
             snap, champion_id=champ, level=lvl, item_ids=items, mode=mode,
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            apply_mode_modifiers=apply_mode_modifiers,
         ).dps
     except Exception:
         magic_dps = 0.0
@@ -299,7 +309,10 @@ def compute_fight_report(
     rune_burst_total = 0.0
     keystone_amp_mult = 1.0
     try:
-        resolved = build_champion(snap, champ, lvl, item_ids=items, mode=mode)
+        resolved = build_champion(
+            snap, champ, lvl, item_ids=items, mode=mode,
+            apply_mode_modifiers=apply_mode_modifiers,
+        )
         if resolved.champion_name and champion_name == champ:
             champion_name = resolved.champion_name
         ctx = AbilityContext.from_build(

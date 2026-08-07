@@ -157,6 +157,7 @@ def ally_protected_ehp(
     mode: str = "SR",
     enemy_champions: Iterable[str] = (),
     granter_resists: Optional[dict] = None,
+    apply_mode_modifiers: bool = False,
 ) -> EhpResult:
     """EHP of ``champion_id`` with its live allies' enchanter grants folded in.
 
@@ -198,4 +199,8 @@ def ally_protected_ehp(
         external_flat_hp=max(0.0, flat_hp),
         external_resist_armor=max(0.0, ext_armor),
         external_resist_mr=max(0.0, ext_mr),
+        # RM-172: compute_ehp has accepted this since item 232; this consumer
+        # never forwarded it, so /ally-protected-ehp could not reach the ARENA
+        # stat-growth addend lane. DEFAULT-OFF -> byte-identical.
+        apply_mode_modifiers=apply_mode_modifiers,
     )
