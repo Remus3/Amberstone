@@ -113,8 +113,13 @@ def _burst(champion: str, items, **kw) -> float:
 class Rm115TailSeamsReachTheClientTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        if not dsc.is_engine_up(timeout=2.0):
-            raise unittest.SkipTest("DS engine :8860 is down")
+        # RM-119 B2 (2026-08-06): routed through the shared gate. See the
+        # sibling note in test_ehp_family_seams_reach_the_client_rm115.py -
+        # both modules are in tools/ds_share_sync._HOST_DEPENDENT_TESTS and
+        # are excluded from Share/src, so this import costs the mirror nothing.
+        from tests.test_ds_live_route_gate import require_live_engine
+        require_live_engine("the RM-115 tail seam reachability class",
+                            up=dsc.is_engine_up(timeout=2.0))
 
     # ----------------------------------------------------------------- /dps
     def test_dps_mode_modifiers_moves_on_urf_and_is_inert_on_aram_and_sr(self) -> None:

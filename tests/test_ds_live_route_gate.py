@@ -20,12 +20,20 @@ The verdict, per site, is the SAME, and it is not the verdict B2 assumed:
 
 The evidence for class A:
 
-  * ``.github/workflows/ci.yml`` never starts the engine. Measured 2026-08-06:
-    the only match for `8860` in `.github/workflows/*.yml` is a prose comment
-    at ci.yml:403, and no job runs `tools/start_daemon_slayer.py`. CI collects
-    `tests/` and `agents/daemon_slayer/tests/` with nothing listening on 8860,
-    so deleting these skips makes CI permanently red for an environment
-    reason.
+  * CI never starts the engine. Measured 2026-08-06, and RE-measured after an
+    adversarial pass caught the first statement of it being wrong: a
+    case-insensitive grep of the whole `.github/` tree for `8860`, for
+    `start_daemon_slayer`, and for any daemon-slayer serve/start/launch verb
+    returns NOTHING - the port and the launcher appear in no workflow at all.
+    (The first draft of this file cited "one prose comment at ci.yml:403" as
+    the single match. That was false: `8860` occurs zero times under
+    `.github/`, and ci.yml:403 is a comment about `request_queue_size`. The
+    conclusion survived; the cited evidence did not exist, which is worse than
+    a wrong conclusion in a file whose purpose is to be trusted instead of
+    re-derived.) What CI does run is `pytest tests/
+    agents/daemon_slayer/tests/` at ci.yml:125 and ci.yml:407, with nothing
+    listening on the port, so deleting these skips makes CI permanently red
+    for an environment reason.
   * A fresh clone, and any machine that is not Legion, is in the same
     position. The engine is opt-in infrastructure
     (`core/daemon_slayer_client.py:1-6`, "never load-bearing").
@@ -193,26 +201,58 @@ _BODY_SKIPS = {"pytest.skip", "skip", "skipTest"}
 #: census must never move for free.
 _GATE_CALL = "require_live_engine"
 
-#: What a DS-route gate says about ITSELF. Matched against the skip
-#: construct's OWN source segment, never a surrounding window - measured
-#: 2026-08-06, a +/-12-line window false-positives on
+#: What a DS-route gate says about ITSELF, or what its condition calls.
+#: Matched against the skip construct's own source segment plus the nearest
+#: enclosing `if`/`while` test - never a surrounding LINE WINDOW. A window
+#: pulls in whatever prose happens to sit nearby: a bare `engine` matcher over
+#: a +/-12-line window fires on
 #: `agents/daemon_slayer/tests/test_changelog_tracks_engine_version.py:65`,
-#: whose reason is about the CHANGELOG and whose docstring happens to say
-#: "daemon_slayer pulls the whole engine in".
+#: whose skip is about the CHANGELOG and whose neighbouring docstring says
+#: "daemon_slayer pulls the whole engine in". (An earlier draft of this
+#: comment claimed the SHIPPED matcher false-positived there. It does not, and
+#: never did - that file fails the prefilter on all six tokens and the hint
+#: does not match its reason. The corrected statement is the one above: window
+#: matching is rejected on principle and on a demonstrated bare-`engine`
+#: false positive, not on a false positive of this regex.)
 #:
 #: LIMIT, stated so it is not mistaken for completeness: this recognises the
-#: gate SHAPES that exist today. A DS-route gate written with a reason that
-#: names neither the port, nor "DS server/engine", nor an engine-liveness
-#: helper would not be seen. That is why the census is pinned as a SET below -
-#: a new site in a known shape turns this red and has to be classified.
+#: gate SHAPES that exist today. A gate whose reason AND whose condition both
+#: avoid every token here - say a liveness helper with a novel name, called
+#: through a variable - would not be seen. That is why the census is pinned as
+#: a SET below: a new site in any known shape turns this red and has to be
+#: classified.
 _DS_GATE_HINT = re.compile(
     r"8860"
     r"|DS server"
     r"|DS engine"
-    r"|engine (is )?(down|up|unreachable)"
+    r"|live engine"
+    r"|engine (is )?(down|up|unreachable|not answering|not responding)"
     r"|engine on [^\"']*is not responding"
+    r"|_?is_engine_up"
     r"|_engine_is_up",
     re.I)
+
+#: Cheap per-file prefilter. It MUST be a superset of what the hint can match,
+#: or a file is dropped before the hint ever runs. It was not, and that is the
+#: sharpest thing an adversarial pass found here: the hint carried
+#: `_engine_is_up` (a local helper name in one module) while the real client
+#: predicate is `core.daemon_slayer_client.is_engine_up` - different token
+#: order, so neither pass matched it. A net-new gate written the most natural
+#: way possible,
+#:
+#:     if not dsc.is_engine_up():
+#:         raise unittest.SkipTest("live engine not answering")
+#:
+#: was invisible to BOTH passes - exactly the net-new B2 this census exists to
+#: catch. `test_census_scanner_sees_the_natural_gate_spelling` pins it now.
+#:
+#: The fix is not a longer token list - a longer list is another chance to miss
+#: one, and the first attempt at it did (it carried `is_engine_up` and still
+#: dropped `_engine_is_up`). Every alternative in `_DS_GATE_HINT` except `8860`
+#: and `DS server` contains the substring `engine`, so these three tokens are a
+#: PROVABLE superset, and `test_prefilter_is_a_superset_of_the_hint` checks the
+#: property rather than the list. Matched case-insensitively.
+_PREFILTER_TOKENS = ("8860", "ds server", "engine")
 
 
 def _dotted(node: ast.AST) -> str:
@@ -240,6 +280,47 @@ def _skip_nodes(tree: ast.AST):
                 yield node
 
 
+def count_ds_route_gates(src: str) -> int:
+    """DS-route skip control points in one module's SOURCE.
+
+    Takes text, not a path, so the guard below can drive it with a synthetic
+    module and prove the scanner sees a shape that is not in the tree yet.
+    """
+    low = src.lower()
+    if not any(tok in low for tok in _PREFILTER_TOKENS):
+        return 0
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:  # pragma: no cover - not expected in-tree
+        return 0
+    parent: dict[int, ast.AST] = {}
+    for p in ast.walk(tree):
+        for child in ast.iter_child_nodes(p):
+            parent[id(child)] = p
+    n = 0
+    for node in _skip_nodes(tree):
+        if isinstance(node, ast.Call) and _dotted(node.func) == _GATE_CALL:
+            n += 1  # a gate call is a gate by construction
+            continue
+        # The skip's OWN text, plus the nearest enclosing `if` / `while` test.
+        # Reason-only matching reads the site's self-description and misses a
+        # gate whose reason is generic while its CONDITION calls the liveness
+        # predicate; condition-only matching misses the reverse. Both, and no
+        # wider - a +/- line window pulls in unrelated prose.
+        parts = [ast.get_source_segment(src, node) or ""]
+        cur: ast.AST | None = node
+        while cur is not None and not isinstance(
+                cur, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
+                      ast.Module)):
+            if isinstance(cur, (ast.If, ast.While)):
+                parts.append(ast.get_source_segment(src, cur.test) or "")
+                break
+            cur = parent.get(id(cur))
+        if any(_DS_GATE_HINT.search(p) for p in parts if p):
+            n += 1
+    return n
+
+
 def scan_ds_route_gates() -> dict[str, int]:
     """{repo-relative module -> number of DS-route skip control points}."""
     found: dict[str, int] = {}
@@ -248,24 +329,8 @@ def scan_ds_route_gates() -> dict[str, int]:
         if not root.is_dir():
             continue
         for path in sorted(root.rglob("*.py")):
-            src = path.read_text(encoding="utf-8", errors="replace")
-            if "8860" not in src and "DS server" not in src \
-                    and "DS engine" not in src and "_engine_is_up" not in src \
-                    and "require_live_engine" not in src:
-                continue
-            try:
-                tree = ast.parse(src)
-            except SyntaxError:  # pragma: no cover - not expected in-tree
-                continue
-            n = 0
-            for node in _skip_nodes(tree):
-                if isinstance(node, ast.Call) \
-                        and _dotted(node.func) == _GATE_CALL:
-                    n += 1  # a gate call is a gate by construction
-                    continue
-                segment = ast.get_source_segment(src, node) or ""
-                if _DS_GATE_HINT.search(segment):
-                    n += 1
+            n = count_ds_route_gates(
+                path.read_text(encoding="utf-8", errors="replace"))
             if n:
                 found[path.relative_to(_REPO_ROOT).as_posix()] = n
     return found
@@ -279,16 +344,23 @@ def scan_ds_route_gates() -> dict[str, int]:
 #: the same day and every one answered. The count below is higher only because
 #: this module's own gate calls are counted too.
 #:
-#: The five `tests/`-tree modules now route through `require_live_engine`
-#: above, so `RC_REQUIRE_DS_ENGINE=1` arms them. The thirteen
-#: `agents/daemon_slayer/tests/` modules deliberately do NOT: that tree is
-#: mirrored verbatim into `Share/src/` by `tools/ds_share_sync.py` and the
-#: mirror is a hard CI gate (`ds_share_sync.py --check`, ci.yml:245), and most
-#: of those modules are stdlib-only by design so they cannot import a `tests/`
-#: helper without breaking the shipped package. They are covered CLASS-WIDE
-#: instead, by `test_engine_is_up_when_required` and
-#: `test_every_post_route_dispatches_when_required` below - one control point
-#: for one class-wide capability, which is the right shape anyway.
+#: SEVEN modules now route through `require_live_engine` above, so
+#: `RC_REQUIRE_DS_ENGINE=1` arms them: the five in `tests/`, plus the two
+#: RM-115 seam modules in the DS tree. Those two are named in
+#: `tools/ds_share_sync._HOST_DEPENDENT_TESTS` (ds_share_sync.py:267,:271) and
+#: are therefore NOT copied into `Share/src` at all - they already
+#: `import core.daemon_slayer_client` at module level - so adopting the gate
+#: costs the shipped package nothing. An earlier draft justified leaving all
+#: thirteen DS-tree modules alone with "mirrored verbatim, stdlib-only,
+#: cannot import a tests/ helper". That is true of ELEVEN of them and was
+#: false of these two.
+#:
+#: The remaining ELEVEN deliberately do not adopt it: that tree is mirrored
+#: verbatim into `Share/src/` by `tools/ds_share_sync.py`, the mirror is a
+#: hard CI gate (`ds_share_sync.py --check`, ci.yml:245), and those modules
+#: are stdlib-only by design. They are covered CLASS-WIDE instead, by
+#: `LiveRouteSurfaceTests` below - one control point for one class-wide
+#: capability, which is the right shape anyway.
 _B2_CENSUS: dict[str, int] = {
     # --- tests/ tree: armed by RC_REQUIRE_DS_ENGINE ---
     "tests/phase8_smoke/test_sr_draft_profile_engine.py": 1,
@@ -408,6 +480,59 @@ class B2CensusTests(unittest.TestCase):
             "require_live_engine if it lives in tests/, then update "
             "_B2_CENSUS.",
         )
+
+    def test_census_scanner_sees_the_natural_gate_spelling(self) -> None:
+        """The evasion an adversarial pass found: `dsc.is_engine_up`.
+
+        The hint once carried only `_engine_is_up` - a local helper name in
+        one module - while the real client predicate is `is_engine_up`.
+        Different token order, so this shape failed the prefilter AND the
+        hint and was invisible on both passes. It is the most natural way to
+        write a net-new B2 site, which made it the worst possible blind spot.
+        """
+        natural = (
+            "import unittest\n"
+            "from core import daemon_slayer_client as dsc\n"
+            "class T(unittest.TestCase):\n"
+            "    def setUp(self):\n"
+            "        if not dsc.is_engine_up():\n"
+            "            raise unittest.SkipTest('skipping')\n"
+        )
+        self.assertEqual(count_ds_route_gates(natural), 1,
+                         "a gate on dsc.is_engine_up() with a generic reason "
+                         "is invisible to the census scanner")
+
+    def test_census_scanner_ignores_an_unrelated_skip(self) -> None:
+        """The other half: it must not count everything that says 'engine'."""
+        unrelated = (
+            "import unittest\n"
+            "# the engine package is imported wholesale here\n"
+            "@unittest.skipIf(True, 'does not vendor the engine CHANGELOG')\n"
+            "class T(unittest.TestCase):\n"
+            "    pass\n"
+        )
+        self.assertEqual(count_ds_route_gates(unrelated), 0)
+
+    def test_prefilter_is_a_superset_of_the_hint(self) -> None:
+        """A file dropped by the prefilter never reaches the hint at all.
+
+        This is the invariant whose violation created the blind spot above.
+        Every alternative the hint can match must contain a prefilter token,
+        or be unreachable by construction.
+        """
+        for probe in ("8860", "DS server", "DS engine", "live engine",
+                      "engine is down", "engine up", "engine unreachable",
+                      "engine not answering", "engine not responding",
+                      "is_engine_up", "_engine_is_up",
+                      "dsc.is_engine_up()"):
+            with self.subTest(probe=probe):
+                self.assertTrue(_DS_GATE_HINT.search(probe),
+                                f"{probe} should match the hint")
+                self.assertTrue(
+                    any(tok in probe.lower() for tok in _PREFILTER_TOKENS),
+                    f"{probe} matches the hint but no prefilter token - the "
+                    "prefilter would drop the file before the hint ran",
+                )
 
     def test_every_census_module_exists(self) -> None:
         for rel in _B2_CENSUS:
