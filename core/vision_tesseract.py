@@ -83,11 +83,23 @@ def _regions() -> dict:
     # scaling drift, no halved-frame tiny-text; memory
     # reference_vision_ocr_capture_pipeline). Fail-soft: any error or an empty /
     # legacy-seed profile falls through to the legacy vision_regions.json path.
+    #
+    # RM-26: a tier-2 "resolution_seed" answer counts too. load_profile already
+    # enforces precedence (a readable exact per-config profile is returned
+    # first), so accepting the seed here can never shadow a calibration.
+    # This does NOT change any crop: _scale_bbox below rescales by
+    # frame / _BASE_CACHE, so W/1920-prescaled boxes at base (W,H) and 1080p
+    # boxes at base (1920,1080) yield identical rects (measured 0 of 21
+    # differing at native and half-frame). What it fixes is the region table
+    # and _BASE_CACHE describing the real resolution instead of a 1080p
+    # fiction, which is what the reference-still size check keys off.
+    # "legacy_seed" is still REJECTED on purpose: the legacy path below reads
+    # the file's own ``_base`` metadata, which load_profile's tier 3 drops.
     try:
         from core.vision_profiles import load_profile
         prof = load_profile()
         regions = prof.get("regions") if isinstance(prof, dict) else None
-        if prof.get("source") == "profile" and regions:
+        if prof.get("source") in ("profile", "resolution_seed") and regions:
             base = prof.get("base") or [BASE_W, BASE_H]
             _BASE_CACHE = (int(base[0]), int(base[1]))
             _REGIONS_CACHE = {
