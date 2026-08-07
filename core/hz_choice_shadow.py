@@ -35,6 +35,57 @@ _LAST_SIG: dict[str, str] = {}
 # (see log_precomputed_choices). Keyed by str(target_path) like _LAST_SIG.
 _LAST_GT: dict[str, float] = {}
 
+# RM-158 writer gate. The shipped laning_scenarios_arena.json is a byte copy of
+# the SR table (ARENA had no gross-income row, so the generator had nothing left
+# to differentiate at schema v3), which means the PRECOMPUTE column of an arena
+# record is SR content wearing an arena label. The native half of the same
+# record - native_action, champion, band, level, game_time_s - is a genuine
+# Arena observation and must survive, so the record is written PRE-FLAGGED
+# rather than suppressed: a consumer excludes the poisoned column by testing
+# this key, and keeps the observation. Self-clearing - the tag stops being
+# stamped the moment a table with ARENA's own economy is served.
+SR_COPY_TAG: str = "sr_copy_rm158"
+PRECOMPUTE_SOURCE_KEY: str = "precompute_source"
+
+_DS_MODE_BY_KEY: dict[str, str] = {"sr": "SR", "aram": "ARAM", "arena": "ARENA"}
+
+
+def precompute_source_tag(mode: object) -> str | None:
+    """``SR_COPY_TAG`` when ``mode``'s served laning table carries SR's economy.
+
+    The test is the ROOT CAUSE, not a content heuristic: a per-mode table whose
+    ``dimensions.economy.income_per_min`` equals the SR rate, for a mode whose
+    registered rate is NOT the SR rate, was generated without that mode's income
+    row and is the SR table. Cheap on the hot path - ``load_laning_scenarios``
+    is mtime-cached and the caller has already loaded the same payload to build
+    ``choices``. Fail-soft ``None`` on any error (never raises).
+    """
+    try:
+        from core import lead_projection as _lead  # noqa: PLC0415
+        from core.laning_scenario_precompute import (  # noqa: PLC0415
+            load_laning_scenarios,
+        )
+
+        mode_key = str(mode or "").lower()
+        ds_mode = _DS_MODE_BY_KEY.get(mode_key)
+        if ds_mode is None:
+            return None
+        sr_rate = float(_lead.gold_income_per_min("SR"))
+        registered = float(_lead.gold_income_per_min(ds_mode))
+        if registered == sr_rate:
+            # SR itself, or a mode that legitimately shares the SR rate - the
+            # signature cannot distinguish a copy from a correct table here.
+            return None
+        economy = (load_laning_scenarios(mode_key).get("dimensions") or {}).get(
+            "economy"
+        ) or {}
+        income = economy.get("income_per_min")
+        if income is None:
+            return None
+        return SR_COPY_TAG if float(income) == sr_rate else None
+    except Exception:  # noqa: BLE001 - the coach hot path must never raise
+        return None
+
 
 def log_precomputed_choices(
     mode: str,
@@ -142,6 +193,15 @@ def log_precomputed_choices(
             # before any served flip (do-not-flip-blind).
             "verdict_blocks": verdict_blocks if isinstance(verdict_blocks, dict) else None,
         }
+
+        # RM-158: stamp the provenance of the PRECOMPUTE column when the served
+        # table for this mode carries SR's economy. Only a record that actually
+        # HAS a precompute column can carry a poisoned one, so a coverage-miss
+        # record (empty choices - a pure native observation) is never tagged.
+        if choice_list:
+            tag = precompute_source_tag(mode)
+            if tag:
+                record[PRECOMPUTE_SOURCE_KEY] = tag
 
         target.parent.mkdir(parents=True, exist_ok=True)
         with target.open("a", encoding="utf-8") as fh:
