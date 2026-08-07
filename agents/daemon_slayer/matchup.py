@@ -16,6 +16,26 @@ other's resolved defences. ``compute_burst_damage`` already mitigates against
 damage into the target - do not re-apply armor. The percent of the target's HP
 removed by one combo is the trade primitive; ``net_swing`` (A's removal minus B's
 removal) is the single who-wins scalar in [-1, 1] (positive = A favored).
+
+MODE (RM-169, measured 2026-08-06 at ENGINE 1.275.0 / patch 16.15.1). ``mode`` is
+threaded into every scorer this module composes, yet the result is IDENTICAL for
+SR and ARENA at fixed inputs. That is deliberate, not a dropped argument:
+
+* ``engine._apply_mode_modifiers`` early-returns for ``mode != "ARAM"``.
+* ``burst``'s only mode term is ``aramDamageDealt``, ARAM-gated, so the
+  multiplier is 1.0 for every other mode.
+* The ARENA stat-ADDEND axis (45 of 173 champions carry a wiki ``ar`` axis) is
+  reachable only via ``build_champion(apply_mode_modifiers=True)``, which
+  defaults False and is not exposed by ``compute_burst_damage`` or by this
+  module. Default-OFF by DS doctrine.
+
+``ability_dps.compute_ability_dps`` DOES differ by mode (142 of 173 champions at
+level 2 itemless) for one reason only: it reads a per-mode MEASURED cast-rate
+table (``ult_rates.get_spell_casts_per_sec(name, key, mode)``). Per-cast raw
+damage and the resolved stat line are byte-identical between the two modes. This
+module is a per-COMBO model with no casts-per-second term, so it has nothing to
+read there. The two paths answer different questions; do NOT "fix" one to match
+the other. Pinned by ``tests/test_rm169_matchup_mode_characterization.py``.
 """
 
 from __future__ import annotations
