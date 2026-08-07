@@ -314,9 +314,28 @@ class RosterDedupeTests(unittest.TestCase):
             })
         ]
         if not duplicate_name:
+            # RM-119 class B4, loudened 2026-08-06. This skip is honest - the
+            # 233-entry duplicate-name SHAPE is a property of a particular
+            # DDragon drop and cannot be conjured from a registry that does not
+            # have it - but its reason line was both silent and WRONG. It told
+            # the reader to point RC_TEST_DDRAGON_CHAMPIONS at "a 16.15.1+
+            # copy"; the committed registry IS 16.15.1 and carries 173 entries
+            # under 173 distinct names, so following that advice reproduces the
+            # skip. Name the registries actually consulted and what they hold,
+            # so the reader can see the premise is unmet rather than guess.
+            surveyed = "; ".join(
+                f"{p}: {len(json.loads(p.read_text(encoding='utf-8')).get('data', {}))} "
+                f"entries / {len({str(e.get('name') or e.get('id')) for e in json.loads(p.read_text(encoding='utf-8')).get('data', {}).values() if isinstance(e, dict)})} names"
+                for p in _real_registries()
+            )
             self.skipTest(
-                "no duplicate-name DDragon registry reachable (set "
-                "RC_TEST_DDRAGON_CHAMPIONS to a 16.15.1+ copy to exercise it)")
+                "the duplicate-name collapse assertion did NOT run: no "
+                "reachable DDragon registry carries more entries than distinct "
+                f"names. Surveyed - {surveyed}. Point "
+                "RC_TEST_DDRAGON_CHAMPIONS at a drop that actually has the "
+                "duplicate shape (the regression was a 233-entry / 173-name "
+                "registry); a same-patch copy of the committed file will not "
+                "exercise it (RM-119 B4)")
         for path in duplicate_name:
             with self.subTest(registry=str(path)):
                 raw = json.loads(path.read_text(encoding="utf-8"))

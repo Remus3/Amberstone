@@ -184,10 +184,32 @@ def test_live_absent_champions_report_absent():
         assert M.champion_ability_data_status(cid) != M.ABILITY_DATA_ABSENT
 
 
+_RM95_PINNED_PATCH = "16.14.1"
+
+
 def test_locke_and_zaahen_are_the_absent_set_at_1614():
-    """Pins the RM-95 finding against the shipped 16.14.1 snapshot."""
-    if _live_patch() != "16.14.1":
-        pytest.skip("pinned to the 16.14.1 snapshot")
+    """Pins the RM-95 finding against the shipped 16.14.1 snapshot.
+
+    RM-119 class B4: this skip is HONEST but it used to be silent. The premise
+    is a specific patch's roster, and the shipped patch pointer moves without
+    this test being touched, so the moment it does the assertions below stop
+    running and the suite still reads green. That is the whole B4 failure mode.
+
+    The skip is deliberately NOT converted (it is the one reviewed exemption in
+    tests/test_skip_condition_hygiene.py::_ALLOWLIST): a mechanical flip to a
+    hard assert turns CI red on the next patch bump, and a permanently red guard
+    gets deleted rather than fixed. What it needs is a re-pin policy. Until that
+    exists, the reason line below at least states, in the `-rs` summary, that
+    this pin is stale and by how much.
+    """
+    live = _live_patch()
+    if live != _RM95_PINNED_PATCH:
+        pytest.skip(
+            f"RM-95 pin is STALE and this test asserted NOTHING: pinned to "
+            f"patch {_RM95_PINNED_PATCH}, but data/daemon_slayer/current.txt "
+            f"says {live}. The Locke/Zaahen absent-set claim is unverified on "
+            f"{live} - re-pin it against the shipped snapshot (RM-119 B4)"
+        )
     roster = _live_roster()
     ability_keys = _live_ability_keys()
     absent = sorted(
