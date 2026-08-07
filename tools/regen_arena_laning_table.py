@@ -111,6 +111,10 @@ def main(argv: Optional[list] = None) -> int:
                     help="CSV roster override (default: the shipped table's roster).")
     ap.add_argument("--limit", type=int, default=0,
                     help="Use only the first N champions (cost measurement).")
+    ap.add_argument("--sr-control", action="store_true",
+                    help="Also generate the SR table at the SAME schema, so the "
+                         "'is it still an SR copy' check is like-for-like. "
+                         "Without it a shipped-v3 comparison is NOT decisive.")
     args = ap.parse_args(argv)
 
     if not args.dry_run and not args.out and not args.in_place:
@@ -147,16 +151,40 @@ def main(argv: Optional[list] = None) -> int:
     print(f"scenarios fingerprint {payload_fingerprint(payload)}")
     print(f"economy {payload['dimensions']['economy']}")
 
+    # SR comparison. A fingerprint taken against the SHIPPED sr table is only
+    # decisive when both are the SAME SCHEMA: the generator emits v4 while the
+    # shipped tables are v3, and cooldown_window / kill_threshold_met /
+    # spike_timing exist only in v4, so a cross-schema "DISTINCT" is a schema
+    # artifact and proves nothing about mode-correctness. --sr-control generates
+    # the SR table with THIS generator over the SAME roster for a like-for-like
+    # answer (it costs a second full sweep).
     sr_path = (gen._DS_DIR / gen._OUT_SUBDIR / args.patch /
                "laning_scenarios_sr.json")
-    if sr_path.is_file():
-        sr_fp = payload_fingerprint(json.loads(sr_path.read_bytes()))
+    decisive = False
+    same = None
+    if args.sr_control:
+        t1 = time.time()
+        control = gen.generate_table(snapshot, roster, roster, mode="SR",
+                                     bands=list(gen.GEN_BANDS))
+        same = payload_fingerprint(control) == payload_fingerprint(payload)
+        decisive = True
+        print(f"sr v4 control fingerprint {payload_fingerprint(control)} "
+              f"(generated in {time.time() - t1:.1f}s) -> "
+              f"{'STILL AN SR COPY' if same else 'DISTINCT from SR, same schema'}")
+    elif sr_path.is_file():
+        shipped = json.loads(sr_path.read_bytes())
+        sr_fp = payload_fingerprint(shipped)
         same = sr_fp == payload_fingerprint(payload)
-        print(f"sr fingerprint        {sr_fp}  ->  "
-              f"{'STILL AN SR COPY' if same else 'DISTINCT from SR (fixed)'}")
-        if same:
-            print("REFUSING to write an SR copy under an arena header (RM-158).")
-            return 1
+        decisive = shipped.get("schema") == payload.get("schema")
+        caveat = "" if decisive else (
+            "  [NOT DECISIVE: cross-schema comparison - pass --sr-control "
+            "for a like-for-like answer]")
+        print(f"shipped sr fingerprint {sr_fp} (schema {shipped.get('schema')} "
+              f"vs generated {payload.get('schema')}) -> "
+              f"{'STILL AN SR COPY' if same else 'differs'}{caveat}")
+    if same and decisive:
+        print("REFUSING to write an SR copy under an arena header (RM-158).")
+        return 1
 
     if args.dry_run:
         blob = json.dumps(payload, ensure_ascii=True, separators=(",", ":"),
