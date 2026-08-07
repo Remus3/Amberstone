@@ -21,6 +21,14 @@ Soft-fail invariants:
   - Network/HTTP error -> log WARNING, return None.
   - Cache layer is the source of truth for repeat lookups; this module
     is a fetch-and-store wrapper.
+  - A 404/403 from an IMMUTABLE-cached endpoint is CACHED AS A NEGATIVE, for
+    a short per-outcome TTL and scoped to the active API key (RM-163). Riot
+    serves no Match-V5 timeline for the event modes, and before this the
+    absence was re-discovered on every single request - 289ms of a 291ms
+    /api/last-match build. Transport failures, 429, 401 and 5xx are NOT
+    cached; see `_call_ex` and `_NEGATIVE_TTL_S_BY_OUTCOME`.
+  - The TTL-cached endpoints (League-V4, Champion-Mastery-V4) deliberately do
+    NOT negative-cache; see the note on `get_summoner_rank`.
   - The rate limiter shares state across all endpoints (bucket exhaustion
     on Match-V5 still blocks League-V4). Method-specific tracking is
     informational, not enforced - Riot's response headers are the
@@ -223,8 +231,8 @@ def _reset_bucket_for_tests() -> None:
 
 _M_CALLS_TOTAL = Counter(
     "rc_riot_api_calls_total",
-    "Riot Web API calls by endpoint and outcome (ok / cache / error / "
-    "rate_limited / no_key / 429).",
+    "Riot Web API calls by endpoint and outcome (ok / cache / cache_negative "
+    "/ error / rate_limited / no_key / 429).",
     labelnames=("endpoint", "outcome"),
 )
 _M_BUCKET_SHORT = Gauge(
@@ -291,34 +299,44 @@ def _http_get(url: str, api_key: str, timeout_s: float = _HTTP_TIMEOUT_S) -> _Ht
 
 # -- shared call wrapper -------------------------------------------------
 
-def _call(
+def _call_ex(
     endpoint_label: str,
     url: str,
     rate_limit_timeout_s: float = 5.0,
-) -> Optional[dict]:
-    """Rate-limited HTTPS GET returning parsed JSON or None on any failure.
+) -> tuple[Optional[dict], str]:
+    """Rate-limited HTTPS GET returning `(parsed_json_or_None, outcome)`.
 
-    Outcome metrics (`outcome` label):
+    `_call` below discards the outcome and is the right call for endpoints
+    that do not cache. Anything that CACHES must use this one, because a bare
+    None cannot distinguish "Riot has no such resource" - a permanent answer
+    worth remembering - from "the network blinked", which must be retried.
+    RM-163: collapsing the two is what made every /api/last-match build pay a
+    fresh 289ms timeline round trip forever.
+
+    Outcomes (also the `outcome` metric label, except that `not_found` /
+    `forbidden` still report as `error` so the label set is unchanged):
       no_key       - API key file missing/invalid; nothing fired
-      rate_limited - bucket full for `rate_limit_timeout_s`
+      rate_limited - bucket full for `rate_limit_timeout_s`; nothing fired
       429          - Riot returned 429; caller should back off
-      error        - network exception, non-2xx, or JSON parse failure
+      not_found    - 404; Riot has no such resource (CACHEABLE NEGATIVE)
+      forbidden    - 403; not served to this key/route (CACHEABLE NEGATIVE)
+      error        - network exception, 401, 5xx, or JSON parse failure
       ok           - 200 with parsed body
     """
     key = _get_api_key()
     if key is None:
         _bump_metric(endpoint_label, "no_key")
-        return None
+        return None, "no_key"
     if not _BUCKET.acquire(timeout_s=rate_limit_timeout_s):
         log.warning("riot_api: bucket exhausted on %s", endpoint_label)
         _bump_metric(endpoint_label, "rate_limited")
-        return None
+        return None, "rate_limited"
     try:
         resp = _http_get(url, key)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         log.warning("riot_api: %s network error: %s", endpoint_label, exc)
         _bump_metric(endpoint_label, "error")
-        return None
+        return None, "error"
 
     if resp.status == 200:
         try:
@@ -326,9 +344,9 @@ def _call(
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             log.warning("riot_api: %s parse error: %s", endpoint_label, exc)
             _bump_metric(endpoint_label, "error")
-            return None
+            return None, "error"
         _bump_metric(endpoint_label, "ok")
-        return data
+        return data, "ok"
     if resp.status == 429:
         retry_after = 60
         try:
@@ -339,18 +357,192 @@ def _call(
                     endpoint_label, retry_after)
         _BUCKET.note_429(retry_after)
         _bump_metric(endpoint_label, "429")
-        return None
-    if resp.status in (401, 403):
+        return None, "429"
+    if resp.status == 404:
+        # Not an error condition - Riot is answering. Match-V5 404s a match
+        # id it never had, Account-V1 404s a Riot ID nobody owns.
+        log.debug("riot_api: %s returned 404", endpoint_label)
+        _bump_metric(endpoint_label, "error")
+        return None, "not_found"
+    if resp.status == 403:
+        # AMBIGUOUS BY DESIGN, and the ambiguity is why the negative TTL is
+        # bounded. Riot 403s BOTH the event modes Match-V5 does not serve
+        # (ARAM Mayhem KIWI / queue 2400 - expected and permanent) AND a
+        # revoked key. Treating it as cacheable is what fixes the measured
+        # case; capping the entry at _NEGATIVE_TTL_S is what keeps the other
+        # reading from outliving a key rotation.
         log.warning(
-            "riot_api: %s returned %d - key may be invalid or revoked. "
-            "Check %s and re-issue if needed.",
-            endpoint_label, resp.status, _API_KEY_FILE,
+            "riot_api: %s returned 403 - either an unserved route/mode or a "
+            "revoked key. Check %s if this is unexpected.",
+            endpoint_label, _API_KEY_FILE,
         )
         _bump_metric(endpoint_label, "error")
-        return None
+        return None, "forbidden"
+    if resp.status == 401:
+        log.warning(
+            "riot_api: %s returned 401 - key may be invalid or revoked. "
+            "Check %s and re-issue if needed.",
+            endpoint_label, _API_KEY_FILE,
+        )
+        _bump_metric(endpoint_label, "error")
+        return None, "error"
     log.warning("riot_api: %s returned %d", endpoint_label, resp.status)
     _bump_metric(endpoint_label, "error")
-    return None
+    return None, "error"
+
+
+def _call(
+    endpoint_label: str,
+    url: str,
+    rate_limit_timeout_s: float = 5.0,
+) -> Optional[dict]:
+    """Rate-limited HTTPS GET returning parsed JSON or None on any failure.
+
+    Thin projection of `_call_ex`. Correct for endpoints that do not cache
+    (match-id lists, replay URLs, the TTL-cached lookups); anything writing
+    to the immutable cache needs the outcome and must call `_call_ex`.
+    """
+    return _call_ex(endpoint_label, url, rate_limit_timeout_s)[0]
+
+
+# -- negative caching (RM-163) -------------------------------------------
+
+# Outcomes that mean "Riot answered, and the answer is that this does not
+# exist / is not served". Everything else - 429, 5xx, 401, transport
+# failures, and the two cases where nothing was even sent (no_key,
+# rate_limited) - is a statement about the connection or our credentials,
+# never about the resource, and caching it would turn a blip into a
+# self-inflicted outage.
+_CACHEABLE_NEGATIVE_OUTCOMES = frozenset({"not_found", "forbidden"})
+
+# TTL per outcome. Both are SHORT, and the split is by how likely Riot is to
+# change its mind - which is the only thing a negative TTL is really about.
+#
+#   not_found (404) - 300s. Riot says it does not have this. For a timeline
+#     that is very often TEMPORARY: a match that just ended has its detail
+#     before its timeline, so a post-game review opened within seconds of the
+#     game hits a 404 that resolves minutes later. A long TTL here would hide
+#     a real SR timeline from post-game review long after Riot published it,
+#     which is a NEW bug traded for an old one. 5 minutes caps that blindness
+#     below the time it takes to finish a queue and load the next game, and
+#     still removes ~90 pct of the re-fetches (one per 5 min against one per
+#     30s, the response-cache cadence).
+#
+#   forbidden (403) - 900s. Riot says it will not serve this route/mode to
+#     us. With the API-key fingerprint in the negative key (see
+#     `_negative_key`), the "rotated key" reading of a 403 can no longer
+#     outlive the rotation, so what is left is the entitlement reading -
+#     event modes like ARAM Mayhem KIWI / queue 2400, which are PERMANENT and
+#     never backfill. It gets the longer TTL for that reason. It is capped at
+#     15 minutes rather than an hour because the value curve is flat above
+#     ~900s (over a 3-hour session: 12 calls at 900s vs 3 at 3600s, against
+#     360 pre-fix) while the cost of being wrong keeps rising with the clock.
+#
+# NOTE: this ordering is deliberately the REVERSE of the first review pass,
+# which proposed not_found=3600 / forbidden=300 on the ground that 403 is the
+# ambiguous one. That ambiguity was real but it was a KEY-ATTRIBUTION problem,
+# and fingerprinting the key into the negative key removes it structurally.
+# Once it is gone, the only axis left is backfill likelihood, and on that axis
+# 404 is the volatile one. Flip these two numbers if that reasoning is wrong;
+# both are pinned by test so a flip is a one-line, one-test change.
+_NEGATIVE_TTL_S_BY_OUTCOME = {
+    "not_found": 300,
+    "forbidden": 900,
+}
+
+# Used only if a future outcome joins _CACHEABLE_NEGATIVE_OUTCOMES without
+# getting an entry above. Deliberately the SHORTEST value, so forgetting the
+# table costs a few extra calls rather than a stale answer.
+_NEGATIVE_TTL_FALLBACK_S = 300
+
+
+def _negative_ttl_for(outcome: str) -> int:
+    return int(_NEGATIVE_TTL_S_BY_OUTCOME.get(outcome, _NEGATIVE_TTL_FALLBACK_S))
+
+
+# Key namespace for negatives. Load-bearing: it keeps a negative from ever
+# colliding with a POSITIVE key in the same TTL table. Nothing collides today
+# (no production caller writes a positive under `cached_get(..., ttl_s=)`),
+# but the prefix is what keeps that true when one does.
+_NEGATIVE_PREFIX = "neg"
+
+# Marker field inside the stored row. The row exists to be COUNTED as absent,
+# never returned: `_negative_cached` reports a bool and the callers return
+# None, so no consumer ever sees this dict.
+_NEGATIVE_MARKER = "__rc_negative__"
+
+
+def _negative_key(cache_key: str) -> str:
+    """Namespace the negative, SCOPED TO THE ACTIVE API KEY.
+
+    Deliberately a DIFFERENT key in a DIFFERENT table: the positive lives in
+    `cache_immutable`, which never expires, and a negative must never be able
+    to land there - one bad window would otherwise blacklist a match for the
+    life of the DB with no way back short of manual SQL.
+
+    THE FINGERPRINT IS THE LOAD-BEARING PART. A 403 does not distinguish "Riot
+    does not serve this mode" from "your key expired", and the expired-key
+    reading fans out: every match and timeline id touched by /api/last-match,
+    dashboard/builders_lcu_enrich.py, lib/rewind_live_writer.py and
+    dashboard/routes_scouting.py would take a negative. Without the
+    fingerprint, installing a FRESH VALID KEY would not clear any of them and
+    RC would stay blind until they aged out - a cache that ignores the
+    operator having already fixed the problem. With it, a new key is a new
+    namespace and every stale negative is unreachable immediately.
+
+    `get_account_by_riot_id` already fingerprints its POSITIVE key for the
+    same class of reason (PUUIDs are key-scoped); `match:v5:` keys do not need
+    it on the positive side, because match data is key-independent. Negatives
+    are the opposite: the ANSWER depends on the key even when the resource
+    does not.
+    """
+    return f"{_NEGATIVE_PREFIX}:{_key_fingerprint()}:{cache_key}"
+
+
+def _negative_cached(cache_key: str) -> bool:
+    """True when a live negative entry shadows `cache_key`."""
+    row = get_cache().get_ttl(_negative_key(cache_key))
+    return isinstance(row, dict) and row.get(_NEGATIVE_MARKER) is True
+
+
+def _note_negative(cache_key: str, outcome: str) -> None:
+    """Record that Riot has nothing for `cache_key`, for this outcome's TTL."""
+    get_cache().set_ttl(
+        _negative_key(cache_key),
+        {_NEGATIVE_MARKER: True, "outcome": outcome, "at": int(time.time())},
+        _negative_ttl_for(outcome),
+    )
+
+
+def _cached_or_fetch(
+    endpoint_label: str,
+    cache_key: str,
+    url_fn: Any,
+) -> Optional[dict]:
+    """Immutable-cache read-through with RM-163 negative caching.
+
+    The three immutable-cached endpoints below shared one body verbatim, and
+    fixing only the timeline would have left the same defect in the other two
+    - so they share it here instead of each carrying a copy.
+
+    `url_fn` is a zero-arg callable, not a string, so the URL is built only on
+    a MISS. Taking a built string would put `urllib.parse.quote` and an
+    f-string on the cache-hit path, which is the exact path this row exists
+    to make cheap.
+    """
+    cached = get_cache().get_immutable(cache_key)
+    if cached is not None:
+        _bump_metric(endpoint_label, "cache")
+        return cached
+    if _negative_cached(cache_key):
+        _bump_metric(endpoint_label, "cache_negative")
+        return None
+    data, outcome = _call_ex(endpoint_label, url_fn())
+    if data is not None:
+        get_cache().set_immutable(cache_key, data)
+    elif outcome in _CACHEABLE_NEGATIVE_OUTCOMES:
+        _note_negative(cache_key, outcome)
+    return data
 
 
 # -- endpoint wrappers ---------------------------------------------------
@@ -374,21 +566,17 @@ def get_account_by_riot_id(
     mastery keys embed the PUUID itself, so a new key yields a new cache key
     for free.
     """
-    name_e = urllib.parse.quote(name, safe="")
-    tag_e = urllib.parse.quote(tag, safe="")
     cache_key = f"account:v1:{_key_fingerprint()}:{region}:{name}#{tag}".lower()
-    cached = get_cache().get_immutable(cache_key)
-    if cached is not None:
-        _bump_metric("account_v1", "cache")
-        return cached
-    url = (
-        f"https://{region}.api.riotgames.com"
-        f"/riot/account/v1/accounts/by-riot-id/{name_e}/{tag_e}"
-    )
-    data = _call("account_v1", url)
-    if data is not None:
-        get_cache().set_immutable(cache_key, data)
-    return data
+
+    def _url() -> str:
+        name_e = urllib.parse.quote(name, safe="")
+        tag_e = urllib.parse.quote(tag, safe="")
+        return (
+            f"https://{region}.api.riotgames.com"
+            f"/riot/account/v1/accounts/by-riot-id/{name_e}/{tag_e}"
+        )
+
+    return _cached_or_fetch("account_v1", cache_key, _url)
 
 
 def get_replay_urls(
@@ -487,18 +675,10 @@ def get_match(
     if not match_id:
         return None
     cache_key = f"match:v5:{match_id}"
-    cached = get_cache().get_immutable(cache_key)
-    if cached is not None:
-        _bump_metric("match_v5_detail", "cache")
-        return cached
-    url = (
+    return _cached_or_fetch("match_v5_detail", cache_key, lambda: (
         f"https://{region}.api.riotgames.com"
         f"/lol/match/v5/matches/{urllib.parse.quote(match_id, safe='')}"
-    )
-    data = _call("match_v5_detail", url)
-    if data is not None:
-        get_cache().set_immutable(cache_key, data)
-    return data
+    ))
 
 
 def get_match_timeline(
@@ -509,18 +689,10 @@ def get_match_timeline(
     if not match_id:
         return None
     cache_key = f"match:v5:timeline:{match_id}"
-    cached = get_cache().get_immutable(cache_key)
-    if cached is not None:
-        _bump_metric("match_v5_timeline", "cache")
-        return cached
-    url = (
+    return _cached_or_fetch("match_v5_timeline", cache_key, lambda: (
         f"https://{region}.api.riotgames.com"
         f"/lol/match/v5/matches/{urllib.parse.quote(match_id, safe='')}/timeline"
-    )
-    data = _call("match_v5_timeline", url)
-    if data is not None:
-        get_cache().set_immutable(cache_key, data)
-    return data
+    ))
 
 
 _RANK_TTL_S = 300
@@ -534,6 +706,19 @@ def get_summoner_rank(
 
     Riot's league/v4/entries/by-puuid returns a list - one entry per
     queue (RANKED_SOLO_5x5 / RANKED_FLEX_SR / etc.). Empty list = unranked.
+
+    NO NEGATIVE CACHING HERE, AND THIS IS NOT AN OVERSIGHT (RM-163). The
+    defect shape is present: the `if data is None: return None` below writes
+    nothing on a 404, exactly like the immutable endpoints did, so the
+    re-fetch is just as unbounded - `_RANK_TTL_S` bounds the POSITIVE only.
+    It is left that way on purpose, because rank and mastery are MUTABLE
+    resources and a cached negative about them would be wrong by design: an
+    unranked player placing, or a first game on a new champion, both turn a
+    correct 404 into a stale "no data" the moment it is recorded. A negative
+    is only safe over a resource whose absence is a fact about the past, which
+    is true of a finished match and false of a live ladder standing. Same
+    reasoning applies to `get_champion_mastery` and
+    `get_top_champion_masteries`.
     """
     if not puuid:
         return None
