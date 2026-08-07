@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -35,7 +36,10 @@ from typing import Iterable
 logger = logging.getLogger("agent4.analyzer")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DB_DIR = _PROJECT_ROOT / "data" / "db"
+# RM-170: env-overridable so a test can point the mode DBs at a tmp dir.
+# Default unchanged. All five modules that define this path read the SAME
+# var, so an override cannot split schema-init from ingest.
+DB_DIR = Path(os.environ.get("RC_PHASE3_DB_DIR") or (_PROJECT_ROOT / "data" / "db"))
 
 from lib.modes import PHASE3_MODES as SUPPORTED_MODES
 

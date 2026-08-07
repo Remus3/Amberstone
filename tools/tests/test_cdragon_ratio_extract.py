@@ -8,8 +8,8 @@ shape-faithful slice of a live 16.11 bin (verified against lux/zac/jhin/darius).
 """
 from __future__ import annotations
 
+import ast
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -35,38 +35,67 @@ import daemon_slayer_cdragon_ratio_extract as R  # noqa: E402
 # than the coupling. Any OTHER agents import still fails, and
 # _assert_mode_variants_is_leaf keeps the allowance honest by asserting the
 # allowlisted module has not itself grown engine dependencies.
-_ALLOWED_AGENTS_IMPORT = (
-    "from agents.daemon_slayer.mode_variants import canonical_champions"
-)
-_AGENTS_IMPORT_RE = re.compile(r"^\s*(?:from|import)\s+agents(?:\.|\s|$)")
+# Matched via AST, NOT text. The first cut of this guard compared the stripped
+# source LINE with startswith(), which a semicolon walks straight through:
+# `from agents...import canonical_champions; from agents.daemon_slayer import dps`
+# imports fine, passes ruff, and passed that guard. Parsing removes the whole
+# class of textual bypasses (semicolons, aliasing, line continuations, trailing
+# lint-suppression comments) instead of patching them one at a time.
+_ALLOWED_AGENTS_IMPORTS = frozenset({
+    ("agents.daemon_slayer.mode_variants", ("canonical_champions",)),
+})
+# `typing` and `__future__` are in sys.stdlib_module_names already; named here
+# only so the intent of the leaf rule is readable.
+_LEAF_ALLOWED_ROOTS = frozenset(sys.stdlib_module_names) | {"__future__", "typing"}
+
+
+def _agents_imports(src: str) -> list[tuple[str, tuple[str, ...]]]:
+    """Every `agents...` import in src, as (module, imported names)."""
+    found: list[tuple[str, tuple[str, ...]]] = []
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if mod == "agents" or mod.startswith("agents."):
+                found.append((mod, tuple(sorted(a.name for a in node.names))))
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "agents" or alias.name.startswith("agents."):
+                    found.append((alias.name, ()))
+    return found
 
 
 def _assert_agents_imports_allowlisted(src: str, path: str) -> None:
-    offenders = [
-        line.strip()
-        for line in src.splitlines()
-        if _AGENTS_IMPORT_RE.match(line)
-        and not line.strip().startswith(_ALLOWED_AGENTS_IMPORT)
-    ]
+    offenders = [i for i in _agents_imports(src) if i not in _ALLOWED_AGENTS_IMPORTS]
     assert offenders == [], (
         f"{path} imports the DS engine beyond the RM-170 allowlist "
-        f"({_ALLOWED_AGENTS_IMPORT!r}): {offenders}"
+        f"({sorted(_ALLOWED_AGENTS_IMPORTS)}): {offenders}"
     )
 
 
 def _assert_mode_variants_is_leaf() -> None:
-    """The one allowlisted helper must stay a stdlib-only pure-data leaf."""
+    """The one allowlisted helper must stay a stdlib-only pure-data leaf.
+
+    This is the whole justification for allowlisting it, so it has to test the
+    real property. An earlier cut only rejected the literal string
+    `import requests`, which `import httpx` sailed past. Assert against
+    sys.stdlib_module_names instead, and treat a RELATIVE import as a failure
+    too - `from . import x` inside agents/daemon_slayer reaches the engine.
+    """
     mv = (
         Path(__file__).resolve().parents[2]
         / "agents" / "daemon_slayer" / "mode_variants.py"
     )
     assert mv.exists(), f"allowlisted helper missing: {mv}"
-    mv_src = mv.read_text(encoding="utf-8")
-    bad = [
-        line.strip()
-        for line in mv_src.splitlines()
-        if _AGENTS_IMPORT_RE.match(line) or "import requests" in line
-    ]
+    roots: set[str] = set()
+    for node in ast.walk(ast.parse(mv.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            roots.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                roots.add(f"<relative import level {node.level}>")
+            elif node.module:
+                roots.add(node.module.split(".")[0])
+    bad = sorted(r for r in roots if r not in _LEAF_ALLOWED_ROOTS)
     assert bad == [], (
         f"{mv} is no longer a stdlib-only leaf, so allowlisting it no longer "
         f"preserves extractor engine-independence: {bad}"

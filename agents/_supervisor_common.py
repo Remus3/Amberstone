@@ -52,6 +52,11 @@ LOCKFILE = STATE_DIR / "lockfile"
 WEB_ROOT = _PROJECT_ROOT / "web"
 LOG_ROOT = _PROJECT_ROOT / "logs" / "agents"
 
+# CAUTION: these resolve at IMPORT time, and tests/test_ports.py asserts the
+# repo-wide port registry equals these two values. Pass the overrides in a
+# CHILD process env (as agent3_testing/suite/test_supervisor.py does); do NOT
+# export RC_PHASE3_WEB_PORT / RC_PHASE3_WS_PORT into a pytest process itself,
+# or that registry assertion flips repo-wide with no obvious cause.
 WS_PORT = _env_port("RC_PHASE3_WS_PORT", 8891)
 WEB_PORT = _env_port("RC_PHASE3_WEB_PORT", 8890)
 HEARTBEAT_INTERVAL = 5.0
