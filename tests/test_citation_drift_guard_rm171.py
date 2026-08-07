@@ -171,6 +171,18 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "pair.",
     ),
     (
+        "docs/SKIPIF_AUDIT_2026-07-27.md",
+        "tests/test_pengu_plugin_skeleton.py:22",
+        "DELETED",
+        "The module was RETIRED by the RM-119 class-B4 pass on 2026-08-06 "
+        "(merge 940a774e), together with the pengu stub it guarded - the stub "
+        "itself was archived at 8c2afe21 on 2026-07-07 and the six tests had "
+        "been skipping silently ever since. The audit is a DATED point-in-time "
+        "record and its finding was CORRECT when written, so the citation is "
+        "not rewritten; a re-point would falsify the audit. Caught by this "
+        "guard on its first cross-slice integration, which is what it is for.",
+    ),
+    (
         "docs/ORCHESTRATION_PLAN.md",
         "gemini_audit.ps1:32",
         "DELETED",
