@@ -53,9 +53,17 @@ The `champ_select_coach` row above it is a DIFFERENT surface
 
 **Every line number in the matrix above is from the 2026-05-19 audit and most
 have since drifted** (measured 2026-08-06: e.g. `coaches/arena_coach.py:587` is
-now `:797`, `coaches/aram_coach.py:743` is now `:1099`). Read the matrix for
-WHICH sites call Anthropic and with what cadence, not for where in the file.
-`grep -rn "messages\.create" --include="*.py"` is the live census.
+now `:797`, `coaches/aram_coach.py:743` is now `:1099`). Trust the matrix for
+WHICH sites call Anthropic and with what cadence; do not trust it for where in
+the file. `grep -rn "messages\.create" --include="*.py"` is the live census.
+
+**DO NOT STRIP THE STALE LINE NUMBERS.** They are load-bearing despite being
+wrong: `tests/test_cost_trace_matrix_is_live.py` identifies a row by its
+`path.py:N` shape, so a row without one silently drops out of the guard's view.
+The guard therefore requires EVERY row of this table to carry one, and fails if
+any row stops parsing. Re-point them if you like; deleting them disarms the
+guard. The table is 21 rows (20 live-tier plus the struck retired row) and the
+guard pins that count exactly.
 
 Tracked sites correctly extract `usage.input_tokens / output_tokens /
 cache_read_input_tokens / cache_creation_input_tokens` (see
@@ -81,9 +89,12 @@ definitionally equal and internally consistent (`total_usd` == sum of
 tracked-vs-dashboard discrepancy. The real gap WAS **tracked ledger vs true
 Anthropic billing**:
 
-- **All 11 previously-UNTRACKED call sites are now WIRED** (audit 2026-05-23):
-  all TFT engines (coach + PBE + live analysis x2 + vision reader), champ-select
-  brief (dashboard), experimental builder, replay coach, champ-select coach,
+- **All 11 previously-UNTRACKED call sites were WIRED** (audit 2026-05-23);
+  **10 of those wires survive - see the 2026-08-06 correction above.** The
+  champ-select brief wire went away with the call site itself on 2026-06-06, and
+  its `WiredSitesGrepTests` case was deleted with it. The list reads: all TFT
+  engines (coach + PBE + live analysis x2 + vision reader), ~~champ-select
+  brief (dashboard)~~, experimental builder, replay coach, champ-select coach,
   aram_team_analyzer, agent7 warm session. Each funnels through the shared
   `core.cost_tracker.record_anthropic_response(resp, model=..., purpose=...)`
   helper. The previously-latent gap (TFT/Arena/champ-select sessions invisible
@@ -107,8 +118,11 @@ Anthropic billing**:
 
 ## Recommended follow-ups - SHIPPED 2026-05-23
 
-1. **SHIPPED** - All 11 untracked `messages.create` sites now feed
+1. **SHIPPED** - All 11 untracked `messages.create` sites were wired to feed
    `core.cost_tracker.record_anthropic_response(resp, model=..., purpose=...)`
+   (**10 today** - the champ-select brief site was retired 2026-06-06, see the
+   correction above; this sentence read "All 11 ... now feed", present tense,
+   until 2026-08-06)
    after a successful response. The helper is a single module-level chokepoint
    (sibling of the existing `coaches/_base_coach._record_coach_call` private
    method and `vision_server/_inference._record_to_cost_tracker` private
