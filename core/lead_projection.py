@@ -68,8 +68,90 @@ _GOLD_PER_MIN_BENCHMARK: float = 350.0
 
 # Expected level: 1 + minutes * this rate. ~0.5/min lands ~6 at 10min, ~11 at
 # 20min, tracking the standard solo XP curve closely enough for a coarse read.
+# These two are the SR row of _LEVEL_CURVE below; read the curve, not these.
 _LEVEL_PER_MIN_BENCHMARK: float = 0.5
 _LEVEL_BASE: float = 1.0
+
+# Per-mode levelling curve: mode -> (starting level, levels gained per minute),
+# so ``level = base + rate * minutes``.
+#
+# RM-158 RESIDUAL. The gold-income row was fixed per-mode; this curve was not,
+# and it is the SAME defect one line over: a single SR curve stood in for three
+# different games, in the live project_lead level axis AND in the offline
+# laning-scenario economy block. A mode-blind input does not fail loudly - it
+# produces a plausible number, which is precisely why the arena income gap
+# survived to ship a byte-identical table under an arena header.
+#
+# EVIDENCE - MEASURED 2026-08-06 against RC's own corpus, data/rewind_history.db
+# timeline_frames (666 CLASSIC / 2081 ARAM / 161 CHERRY matches with timelines).
+# Sample sizes below are DISTINCT (match_id, participant_id) keys, not raw
+# frames - see the duplicate-ingest caveat at the end, which is why:
+#   * level at timestamp 0: SR 1 (n=6660, min=max=1), ARAM 1 (n=20804,
+#     min=max=1), ARENA 3 (n=2414, min=max=3, ZERO variance). Arena spawns at
+#     level 3; the SR curve charged it 2.0 minutes to reach level 2 and 4.0 to
+#     reach level 3, both of which it already has at the loading screen.
+#   * mean level at minute 10: SR 7.04 (sd 1.04), ARAM 11.20 (sd 0.68),
+#     ARENA 11.35 (sd 0.69). Roughly four levels apart on the same clock, far
+#     outside the dispersion - this is not a tuning nuance.
+#   * weighted slope-through-origin over the first-reach minute for levels
+#     2/6/11/16, each mode fitted against its OWN measured base, n=5729/20007/
+#     2389 keys. Two estimators: RAW (first frame at/above the level, upward
+#     biased by up to one 60s frame) SR 0.5426 / ARAM 0.9734 / ARENA 0.7558;
+#     MIDPOINT-CORRECTED (crossing taken mid-interval, which removes that
+#     cadence bias) SR 0.5584 / ARAM 1.0148 / ARENA 0.7877.
+#
+# PROVENANCE of the shipped numbers, stated the same way the RM-158 ARENA
+# income row states its own:
+#   * ARAM 1.01 and ARENA 0.79 are MEASURED - the midpoint-corrected estimator
+#     rounded to two decimals. The raw estimator (0.9734 / 0.7558) is the
+#     lower sensitivity bound, not an equal alternative: it is known-biased in
+#     a known direction, so it bounds rather than averages.
+#   * The BASE levels are measured outright too - the timestamp-0 reading above
+#     has zero variance in all three modes. Intercept and slope therefore sit
+#     on the SAME footing for both new modes.
+#   * SR keeps its existing 0.5 EXACTLY, and SR is now the OUTLIER on that
+#     footing: the corpus measures SR at 0.5584, so the shipped 0.5 runs ~10.4%
+#     conservative. That is recorded as a KNOWN pre-existing inconsistency, NOT
+#     as a designed discount - 0.5 reads as a round-number heuristic in the
+#     module docstring, and an earlier draft of this registry propagated that
+#     10.4% to ARAM and ARENA as if it were doctrine. It is not. SR is pinned
+#     here only because it is a live coaching path and moving it is out of
+#     scope for the RM-158 residual; re-basing SR to its measured 0.5584 is a
+#     separate, deliberate, operator-gated change.
+#
+# Corpus caveats, recorded rather than hidden:
+#   * One operator, one region, one skill band, all participants rather than
+#     just the tracked player. The SR figure blends roles (measured level-11
+#     rate by position: TOP 0.689, MIDDLE 0.645, JUNGLE 0.571, BOTTOM 0.540,
+#     UTILITY 0.444), so it is a roster average, not a solo-laner figure.
+#   * DUPLICATE INGEST, and it is concentrated in ARENA: on (match_id,
+#     participant_id, timestamp_ms) the frame tables are 0.97% duplicated for
+#     SR, 0.00% for ARAM and 10.89% for ARENA, with one arena match ingested
+#     12x and another 6x. That inflates any FRAME count - the arena base-level
+#     n above was 2702 frames and is 2414 distinct keys. It does NOT move the
+#     fitted rates: the fit takes one first-reach minute per (match,
+#     participant) key, so repeated ingests of the same match collapse to one
+#     observation. Re-fitted on SELECT DISTINCT frames the rates are identical
+#     to four decimals (0.5584 / 1.0148 / 0.7877). Verified, not assumed.
+_LEVEL_CURVE: Dict[str, tuple] = {
+    "SR": (_LEVEL_BASE, _LEVEL_PER_MIN_BENCHMARK),
+    "ARAM": (1.0, 1.01),
+    "ARENA": (3.0, 0.79),
+}
+_DEFAULT_LEVEL_CURVE: tuple = (_LEVEL_BASE, _LEVEL_PER_MIN_BENCHMARK)
+
+# Champion levels are hard-capped at 18 by the game. WHY this needs saying: a
+# straight line has no ceiling, so an uncapped benchmark keeps climbing past a
+# level nobody can reach and every player then reads permanently BEHIND on the
+# level axis. MEASURED share of games that run past each mode's uncapped
+# level-18 crossing: SR crosses at minute 34.00 and 17.7% of SR games run past
+# it; ARAM crosses at 18.81 and 49.4% run past; ARENA crosses at 21.99 and
+# 80.1% run past. At minute 25 the ARAM mean level is exactly 18.000 (capped,
+# as it must be) against an uncapped bench of 26.3. The defect predates the
+# per-mode curve - it was already live for SR - so the clamp is applied to all
+# three rather than only to the two new rows, which would be the same
+# mode-blind-by-omission mistake in the other direction.
+MAX_CHAMPION_LEVEL: float = 18.0
 
 # Phase boundaries in seconds (early < 10min, mid 10-25min, late 25min+).
 _EARLY_MAX_S: float = 600.0
@@ -355,7 +437,13 @@ def project_lead(game_state: dict, *, mode: str = "SR") -> dict:
 
     cs = _num("cs", default=0.0)
     gold = _num("gold", default=0.0)
-    level = _num("level", default=_LEVEL_BASE)
+    # Per-mode default (RM-158 residual, second pass). A game_state with no
+    # ``level`` field must fall back to the mode's SPAWN level, not SR's. With
+    # the flat _LEVEL_BASE an Arena player missing the field defaulted to 1.0
+    # against a bench whose intercept is 3.0, which reads as behind before a
+    # single signal has been observed - fixing the curve and leaving the
+    # default that feeds it would have been half the fix.
+    level = _num("level", default=level_curve(mode_key)[0])
     kda_proxy = _kda_ratio(game_state.get("kda"))
 
     # --- per-axis expected benchmarks at this minute ---
@@ -364,7 +452,13 @@ def project_lead(game_state: dict, *, mode: str = "SR") -> dict:
         else _CS_PER_MIN_BENCHMARK_SR
     ) * minutes
     gold_bench = _GOLD_PER_MIN_BENCHMARK * minutes
-    level_bench = _LEVEL_BASE + (_LEVEL_PER_MIN_BENCHMARK * minutes)
+    # Per-mode (RM-158 residual). WHY this cannot stay mode-blind: the SR curve
+    # expects level 6.0 at minute 10, and the MEASURED ARAM / ARENA means at
+    # minute 10 are 11.20 / 11.35 - so on the SR curve every ARAM and Arena
+    # player carried a permanent +0.83 level-axis signal at weight 0.30 and was
+    # coached as ahead. Exact mirror of the ARENA cs=0.40 drag RM-158 removed,
+    # in the opposite direction. See _LEVEL_CURVE for the measurement.
+    level_bench = level_benchmark(minutes, mode_key)
 
     # --- per-axis normalized signed deltas ---
     cs_sig = _ratio(cs, cs_bench)
@@ -461,15 +555,68 @@ _SPIKE_LADDER: tuple = (
 SPIKE_COMPLETE: str = "complete"
 
 
-def minutes_for_level(level: float) -> float:
-    """Expected game-minute a solo laner reaches ``level`` - the inverse of the
-    project_lead level benchmark (level = _LEVEL_BASE + rate * minutes). Bridges a
-    discrete level band (L2/L6/L11/L16) to a game-time so the gold/spike model and
-    project_lead ride one curve. Fail-soft: a level <= base (or a non-positive
-    rate) -> 0.0 (never negative)."""
-    if _LEVEL_PER_MIN_BENCHMARK <= 0:
+def level_curve(mode: str = "SR") -> tuple:
+    """``(base_level, levels_per_min)`` for ``mode`` (an unknown mode falls back
+    to the SR curve, matching ``gold_income_per_min``'s live-read posture)."""
+    return _LEVEL_CURVE.get(
+        (mode or _DEFAULT_MODE).upper(), _DEFAULT_LEVEL_CURVE
+    )
+
+
+def level_curve_is_registered(mode: str = "SR") -> bool:
+    """Whether ``mode`` has its OWN levelling curve, vs the silent SR default.
+
+    The RM-158 residual sibling of ``gold_income_is_registered``, and it exists
+    for the identical reason: ``level_curve`` / ``minutes_for_level`` fail-soft
+    an unknown mode to the SR curve, which is right for a live read and is a
+    TRAP for an offline per-mode artifact generator - a mode with no curve of
+    its own produces the SR minutes, the SR gold, the SR spike labels, and an
+    artifact that looks legitimate under its own header. A generator gates on
+    this to REFUSE writing a table it cannot actually differentiate."""
+    return (mode or _DEFAULT_MODE).upper() in _LEVEL_CURVE
+
+
+def level_curve_modes() -> tuple:
+    """Modes carrying their own registered levelling curve."""
+    return tuple(_LEVEL_CURVE)
+
+
+def level_benchmark(minutes: float, mode: str = "SR") -> float:
+    """Expected level at ``minutes`` for ``mode`` (``base + rate * minutes``),
+    CLAMPED at ``MAX_CHAMPION_LEVEL``. Negative minutes clamp to the base level.
+
+    The clamp is not cosmetic - without it the benchmark climbs past level 18,
+    which no player can reach, so everyone reads permanently behind on the level
+    axis for the rest of the game. See MAX_CHAMPION_LEVEL for the measured
+    share of games in each mode that run past their own crossing."""
+    base, rate = level_curve(mode)
+    m = float(minutes)
+    if m < 0.0:
+        m = 0.0
+    bench = base + (rate * m)
+    return bench if bench < MAX_CHAMPION_LEVEL else MAX_CHAMPION_LEVEL
+
+
+def minutes_for_level(level: float, mode: str = "SR") -> float:
+    """Expected game-minute a player in ``mode`` reaches ``level`` - the inverse
+    of ``level_benchmark``. Bridges a discrete level band (L2/L6/L11/L16) to a
+    game-time so the gold/spike model and project_lead ride one curve.
+
+    Fail-soft: a level at/below the mode's base level (Arena spawns at 3, so its
+    L2 band costs zero elapsed minutes), a non-positive rate, or an unregistered
+    mode -> the SR curve and never a negative minute. A level above
+    ``MAX_CHAMPION_LEVEL`` clamps to it, so this stays the true inverse of the
+    clamped ``level_benchmark`` rather than quoting a minute for an unreachable
+    level. Callers writing a per-mode ARTIFACT must gate on
+    ``level_curve_is_registered`` first; this accessor cannot tell a deliberate
+    SR read from a mode that fell through to one."""
+    base, rate = level_curve(mode)
+    if rate <= 0:
         return 0.0
-    m = (float(level) - _LEVEL_BASE) / _LEVEL_PER_MIN_BENCHMARK
+    lvl = float(level)
+    if lvl > MAX_CHAMPION_LEVEL:
+        lvl = MAX_CHAMPION_LEVEL
+    m = (lvl - base) / rate
     return m if m > 0.0 else 0.0
 
 

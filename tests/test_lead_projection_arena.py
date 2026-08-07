@@ -81,8 +81,36 @@ def test_fed_arena_state_is_not_behind():
 def test_fed_arena_state_without_a_kda_string_is_not_behind():
     # The measured defect shape: no parseable kda, so the SR cs axis alone drove
     # the verdict to "behind" for a level-16 player at 15 minutes.
-    out = project_lead(_arena_gs(t_s=900, gold=1200, level=16), mode="ARENA")
+    #
+    # FIXTURE CORRECTED 2026-08-06 (RM-158 residual, per-mode levelling curve).
+    # The original fixture paired level 16 with gold 1200, which at minute 15 is
+    # 77% BELOW the 350/min gold benchmark - a real deficit on a real axis, so
+    # "behind" is the right verdict for it. It only read not-behind because the
+    # mode-blind SR level bench (6.0 at minute 15, against Arena's measured
+    # 14.85) drove the level axis to its +1.0 clamp and swamped the gold drag.
+    # The assertion was passing BECAUSE of the defect this slice removes. Gold
+    # now sits on its benchmark so "fed" means fed on every axis that exists,
+    # and the test proves what its name claims. See also the cs-independence
+    # test below, which pins the ACTUAL cs-drag guard in a way no curve change
+    # can mask.
+    out = project_lead(_arena_gs(t_s=900, gold=5250, level=16), mode="ARENA")
     assert out["state"] != "behind"
+
+
+def test_arena_verdict_is_independent_of_cs():
+    """The real cs-drag guard, stated on the cs axis itself.
+
+    The test above asserts a whole-verdict outcome, so ANY axis can carry it and
+    a future weight or benchmark change can make it pass or fail for reasons
+    that have nothing to do with cs. This one varies ONLY cs and requires the
+    verdict to be byte-identical, which is exactly what ``cs: 0.0`` in the ARENA
+    weight row means. It cannot be masked by the level curve, the gold
+    benchmark, or the kda proxy.
+    """
+    base = _arena_gs(t_s=900, gold=5250, level=15, kda="5/2/4")
+    for cs in (0, 40, 120, 300):
+        probe = dict(base, cs=cs)
+        assert project_lead(probe, mode="ARENA") == project_lead(base, mode="ARENA"), cs
 
 
 def test_arena_and_sr_disagree_on_the_fed_no_cs_state():
@@ -101,10 +129,27 @@ def test_losing_arena_state_is_still_behind():
 
 
 def test_even_arena_state_reads_even():
+    # FIXTURE CORRECTED 2026-08-06 (RM-158 residual, per-mode levelling curve).
+    # "Even" has to mean even on Arena's OWN curve. Level 9 at minute 15 is five
+    # levels under the MEASURED Arena mean of 13.83 and under the 14.85 bench -
+    # that is a genuine deficit and it now reads behind, correctly. The fixture
+    # was labelled even because the mode-blind SR bench put the expected level
+    # at 6.0, which made a 5-level Arena deficit look like a 3-level surplus.
+    # Level 15 sits on the Arena bench, so this is a real even state.
+    out = project_lead(
+        _arena_gs(t_s=900, gold=5250, level=15, kda="2/3/1"), mode="ARENA"
+    )
+    assert out["state"] == "even"
+
+
+def test_an_arena_level_deficit_still_reads_behind():
+    # Non-vacuity for the correction above: the level axis must still be able to
+    # DRIVE a behind verdict on its own, with gold and kda neutral. Level 9 is
+    # the exact state the old fixture called "even".
     out = project_lead(
         _arena_gs(t_s=900, gold=5250, level=9, kda="2/3/1"), mode="ARENA"
     )
-    assert out["state"] == "even"
+    assert out["state"] == "behind"
 
 
 # --- (d) no lane / CS vocabulary in any Arena directive -------------------
