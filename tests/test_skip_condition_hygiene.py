@@ -183,6 +183,24 @@ _DECORATOR_SKIPS = {
 }
 _IMPORTORSKIP = "importorskip"
 _BODY_SKIPS = {"pytest.skip", "skip"}
+
+# Call tails that ARE a skip decision even though they are not a pytest or
+# unittest primitive.
+#
+# `require_live_engine` added 2026-08-06 (RM-119 B2), and the reason is a
+# coverage loss this guard would otherwise have taken silently. B2 moved six
+# DS-engine liveness skips out of five modules and behind that one shared
+# helper (tests/test_ds_live_route_gate.py). MEASURED before and after at
+# ae0c2897: this scanner saw 7 sites across those five modules and then saw 1.
+# Four modules dropped to ZERO visible sites and
+# tests/test_build_orders_family_a_guard.py lost its `network` evidence
+# entirely. Nothing was wrong with any of them - they simply stopped LOOKING
+# like skips, which is the same disappearing act constraint 1 in the module
+# docstring warns about, arriving through a refactor instead of a hand-kept
+# list. Recognising the helper restores the population and, because a bare
+# site widens to its enclosing function, the `dsc.is_engine_up` call there
+# still resolves to a `network` capability signal.
+_BODY_SKIP_TAILS = {"skipTest", "require_live_engine"}
 _SKIP_EXC_SUFFIXES = ("SkipTest", "Skipped")
 
 # UNCONDITIONAL skips. Added 2026-08-06 after a verifier proved the scanner was
@@ -1020,7 +1038,7 @@ def _skip_sites(model: _Model) -> list[_Site]:
             cond = node.args[0] if node.args else None
             sites.append(_Site(model.rel, node.lineno, "importorskip",
                                cond, node))
-        elif fname in _BODY_SKIPS or tail == "skipTest":
+        elif fname in _BODY_SKIPS or tail in _BODY_SKIP_TAILS:
             sites.append(_Site(model.rel, node.lineno, fname or tail,
                                None, node))
     sites.sort(key=lambda s: (s.rel, s.line))
@@ -1788,7 +1806,18 @@ def test_known_real_sites_classify_as_documented():
         return {f.verdict for f in by_module.get(rel, [])}
 
     # network liveness, external binary, sibling repo, win32, gitignored data
-    assert verdicts("tests/test_build_order_variants.py") == {CAPABILITY}
+    #
+    # RE-POINTED 2026-08-06 (RM-119 B2). The network-liveness anchor used to
+    # be tests/test_build_order_variants.py, whose own `self.skipTest("DS
+    # engine ... is down")` moved into the shared gate
+    # `tests/test_ds_live_route_gate.require_live_engine`. That module now
+    # holds the canonical DS-route gate, and the classifier still reads it as
+    # CAPABILITY off the same evidence (`env; network`) because it resolves
+    # `core.daemon_slayer_client.is_engine_up` through to `urlopen`. Keeping a
+    # DS-route anchor here is the point: B2 asked whether these gates were
+    # capability or masking, the answer was capability, and this line is what
+    # makes a classifier regression on that answer loud.
+    assert verdicts("tests/test_ds_live_route_gate.py") == {CAPABILITY}
     assert verdicts("tests/test_coach_choices_trigger_render.py") == {CAPABILITY}
     assert verdicts("tests/test_loop_concurrency.py") == {CAPABILITY}
     assert verdicts("tests/test_hotkey_lowlevel_decoder.py") == {CAPABILITY}
