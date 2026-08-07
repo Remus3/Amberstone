@@ -125,6 +125,11 @@ def main(argv: Optional[list] = None) -> int:
         print(f"refusing: no gross-income row for {DS_MODE} in core.lead_projection")
         return 2
 
+    # RM-158 residual: the band MINUTE is as mode-dependent as the income rate.
+    if not gen._lead.level_curve_is_registered(DS_MODE):
+        print(f"refusing: no levelling curve for {DS_MODE} in core.lead_projection")
+        return 2
+
     started = time.time()
     snapshot = gen.DataSnapshot.load(patch=args.patch)
     load_s = time.time() - started
