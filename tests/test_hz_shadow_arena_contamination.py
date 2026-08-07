@@ -81,14 +81,25 @@ def test_income_rows_are_distinct():
 
 
 @pytest.mark.parametrize("band, sr_spike, ar_spike, sr_recall, ar_recall", [
-    ("L2", "component", "first_item", "back_soon", "hold"),
-    ("L6", "two_item", "two_item", "recall_now", "back_soon"),
-    ("L11", "three_item", "complete", "back_soon", "hold"),
+    ("L2", "component", "component", "back_soon", "hold"),
+    ("L6", "two_item", "first_item", "recall_now", "hold"),
+    ("L11", "three_item", "two_item", "back_soon", "back_soon"),
 ])
 def test_economy_expectation_is_the_pinned_table(band, sr_spike, ar_spike,
                                                  sr_recall, ar_recall):
     """Pinned, not merely recomputed - silent drift here would make the detector
-    stop firing while every assertion below still passed."""
+    stop firing while every assertion below still passed.
+
+    RE-PINNED for the RM-158 residual (per-mode levelling curve). Both mode
+    inputs now move: the income RATE (450 vs 600 g/min, RM-158) and the band
+    MINUTE (SR level = 1 + 0.5*min; ARENA spawns at 3 and levels at 0.70/min,
+    so it reaches every band far sooner and has banked LESS at it). The table
+    below is what ``economy_cell`` computes today; the detector derives its own
+    expectation live from that same function, so the discrimination is intact
+    and only the axis attribution moved. Measured against the live corpus after
+    the change: the SAME 644 rows are proven, arena_unflagged_sr = 0 and
+    arena_undecided_with_precompute = 0, so no re-flag is owed.
+    """
     exp = hzc.economy_expectation(band, "full")
     assert exp["sr"]["next_spike"] == sr_spike
     assert exp["arena"]["next_spike"] == ar_spike
@@ -96,29 +107,48 @@ def test_economy_expectation_is_the_pinned_table(band, sr_spike, ar_spike,
     assert exp["arena"]["recall"] == ar_recall
 
 
-def test_next_spike_alone_under_detects_at_l6():
+def test_next_spike_alone_under_detects_at_l2():
     """The reason the detector needs the recall axis at all."""
-    exp = hzc.economy_expectation("L6", "full")
+    exp = hzc.economy_expectation("L2", "full")
     assert exp["sr"]["next_spike"] == exp["arena"]["next_spike"]
     assert exp["sr"]["recall"] != exp["arena"]["recall"]
 
 
-def test_low_mana_l6_is_undecidable_without_the_gold_axis():
-    """next_spike AND recall both collapse at L6 low mana. The detector must not
-    guess there - but gold_at_band still decides when the row rendered it."""
-    exp = hzc.economy_expectation("L6", "low")
-    assert exp["sr"]["next_spike"] == exp["arena"]["next_spike"]
+def test_recall_alone_under_detects_at_l11():
+    """And the reason it needs the next_spike axis. Neither axis is sufficient
+    alone; together they cover every generated band."""
+    exp = hzc.economy_expectation("L11", "full")
     assert exp["sr"]["recall"] == exp["arena"]["recall"]
-    assert exp["sr"]["gold_at_band"] != exp["arena"]["gold_at_band"]
-    assert hzc.sr_derived_reason(
-        _row("L6", "two_item", "Recall now", mana="low")) is None
+    assert exp["sr"]["next_spike"] != exp["arena"]["next_spike"]
 
 
-def test_gold_axis_decides_where_the_other_two_cannot():
-    row = _row("L6", "two_item", "Recall now", mana="low")
-    row["choices"][1]["expected_outcome"] = "4500g banked; next spike two_item"
+@pytest.mark.parametrize("band", list(gen.GEN_BANDS))
+@pytest.mark.parametrize("mana", ["full", "low"])
+def test_every_generated_band_and_mana_is_decidable(band, mana):
+    """The strong form, and it now holds everywhere.
+
+    Under the mode-blind curve one band+mana cell collapsed on BOTH label axes
+    and the detector had to fall back to ``gold_at_band``, which only decides
+    when the row happened to render the no-next-item form. With the per-mode
+    curve every generated cell is decidable on a LABEL axis, so the detector no
+    longer depends on the render form anywhere. That is a strengthening, and it
+    is asserted rather than asserted-away.
+    """
+    exp = hzc.economy_expectation(band, mana)
+    assert (exp["sr"]["next_spike"] != exp["arena"]["next_spike"]
+            or exp["sr"]["recall"] != exp["arena"]["recall"])
+
+
+def test_gold_axis_still_decides_and_takes_precedence():
+    """``gold_at_band`` remains the first-precedence axis where it is rendered,
+    and it differs at every generated band."""
+    for band in gen.GEN_BANDS:
+        exp = hzc.economy_expectation(band, "full")
+        assert exp["sr"]["gold_at_band"] != exp["arena"]["gold_at_band"], band
+    row = _row("L11", "two_item", "Back soon")
+    row["choices"][1]["expected_outcome"] = "9000g banked; next spike two_item"
     assert hzc.sr_derived_reason(row) == "gold_at_band"
-    row["choices"][1]["expected_outcome"] = "6000g banked; next spike two_item"
+    row["choices"][1]["expected_outcome"] = "6076g banked; next spike two_item"
     assert hzc.sr_derived_reason(row) is None
 
 
@@ -132,20 +162,20 @@ def test_l16_reads_the_l11_cell():
 # ------------------------------------------------------------- 2. non-vacuity
 
 @pytest.mark.parametrize("band, spike, label, axis", [
-    ("L2", "component", "Back soon", "next_spike"),
-    ("L11", "three_item", "Back soon", "next_spike"),
-    ("L16", "three_item", "Back soon", "next_spike"),
-    ("L6", "two_item", "Recall now", "recall"),      # ONLY the recall axis
+    ("L2", "component", "Back soon", "recall"),        # ONLY the recall axis
+    ("L6", "two_item", "Recall now", "next_spike"),    # spike decides first
+    ("L11", "three_item", "Back soon", "next_spike"),  # ONLY the spike axis
+    ("L16", "three_item", "Back soon", "next_spike"),  # L16 reads the L11 cell
 ])
 def test_detector_fires_on_planted_sr_row(band, spike, label, axis):
     assert hzc.sr_derived_reason(_row(band, spike, label)) == axis
 
 
 @pytest.mark.parametrize("band, spike, label", [
-    ("L2", "first_item", "Hold and farm this window"),
-    ("L11", "complete", "Hold and farm this window"),
-    ("L16", "complete", "Hold and farm this window"),
-    ("L6", "two_item", "Back soon"),
+    ("L2", "component", "Hold and farm this window"),
+    ("L6", "first_item", "Hold and farm this window"),
+    ("L11", "two_item", "Back soon"),
+    ("L16", "two_item", "Back soon"),
 ])
 def test_detector_silent_on_correct_arena_row(band, spike, label):
     assert hzc.sr_derived_reason(_row(band, spike, label)) is None
@@ -167,9 +197,12 @@ def test_flag_tags_only_proven_rows_and_preserves_every_other_byte(tmp_path):
     dst = tmp_path / "dst.jsonl"
     keep_sr = json.dumps(_row("L2", "component", "Back soon", mode="sr"))
     native = json.dumps(_native_only_row())
-    hit_spike = json.dumps(_row("L2", "component", "Back soon"))
-    hit_recall = json.dumps(_row("L6", "two_item", "Recall now"))
-    clean = json.dumps(_row("L6", "two_item", "Back soon"))
+    # Under the per-mode curve L2 is decided by the recall axis and L6 by the
+    # next_spike axis (see the pinned table above). The fixture keeps one row
+    # per axis so the by-axis census below stays non-vacuous either way.
+    hit_recall = json.dumps(_row("L2", "component", "Back soon"))
+    hit_spike = json.dumps(_row("L6", "two_item", "Recall now"))
+    clean = json.dumps(_row("L6", "first_item", "Hold and farm this window"))
     torn = "\x00\x00\x00"
     raw = "\r\n".join([keep_sr, native, hit_spike, torn, hit_recall, clean]) + "\r\n"
     src.write_bytes(raw.encode("utf-8"))
