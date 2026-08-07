@@ -334,3 +334,52 @@ An aliased-module hole was found by the verifier and closed before landing:
 collect unrelated calls). `_canonical_call` now rewrites the alias head.
 Pinned by `aliased_pytest_bare_skip_on_tracked_path`; with the rewrite
 suppressed the site scans to zero findings.
+
+---
+
+## RM-119 class B2 - the DS live-route gates (2026-08-06, CLOSED)
+
+The rows in the table above marked "live DS engine on 127.0.0.1:8893" are the
+B2 class. (The port literal in those rows is stale - DS moved to `:8860` at
+RM-129, item 1146. The rows are a dated snapshot and are left as written.)
+
+B2 was filed as "19 DS live-route sites". Re-derived rather than inherited:
+the true pre-slice census is **20 skip control points across 18 modules**.
+
+**Verdict: all 20 are class A - a legitimate capability gate. None is dead.**
+
+- All 34 live paths (31 `_POST_ROUTES` plus `/health`, `/snapshot`,
+  `/modifier-summary`) were probed read-only at ENGINE 1.275.0 / patch
+  16.15.1. Every one answered. The single non-200 was `/v2/matchup` returning
+  400 for a field the probe body did not supply, which still proves dispatch.
+- No workflow starts the engine. A case-insensitive grep of the whole
+  `.github/` tree for `8860`, for `start_daemon_slayer`, and for any
+  daemon-slayer serve/start/launch verb returns nothing.
+
+The masking B2 named is real, but it is not in the skip CONDITION - it is that
+nothing ever declared the engine REQUIRED. Fixed with a third instance of the
+idiom this audit already established twice:
+
+| Flag | Set by | Documented in |
+|---|---|---|
+| `RC_REQUIRE_HOOK_GATE` | CI (`ci.yml`) | this doc, `docs/ORCHESTRATION_PLAN.md` |
+| `RC_REQUIRE_BUILD_ORDER_TABLES` | CI (`ci.yml`) | this doc, `docs/ORCHESTRATION_PLAN.md` |
+| `RC_REQUIRE_DS_ENGINE` | **nothing - operator only** | this doc, `docs/OPERATIONS.md` |
+
+That third row is the load-bearing difference and is deliberate: no GitHub
+runner has a Daemon Slayer, so there is no CI job to set it in. It is a
+Legion / operator knob. `docs/OPERATIONS.md` carries the command.
+
+Seven modules route through the shared gate
+`tests/test_ds_live_route_gate.require_live_engine` - the five in `tests/`,
+plus the two RM-115 seam modules in the DS tree, which are named in
+`tools/ds_share_sync._HOST_DEPENDENT_TESTS` and so are not mirrored into
+`Share/src` at all. The remaining eleven DS-tree gates are stdlib-only and ARE
+mirrored behind a hard CI gate, so they stay put and are covered class-wide by
+`LiveRouteSurfaceTests`, which under the flag probes the whole route surface
+and asserts `/health` matches the checkout's `ENGINE_VERSION`.
+
+`tests/test_skip_condition_hygiene.py` now recognises `require_live_engine` as
+a skip construct. Without that it lost sight of six of the seven adopted sites
+(7 visible sites across those modules before, 1 after) - a refactor can shrink
+a guard's population as effectively as a hand-kept list can.

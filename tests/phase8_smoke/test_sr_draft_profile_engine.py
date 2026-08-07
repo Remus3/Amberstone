@@ -262,11 +262,18 @@ class TestLiveEngineIntegration(unittest.TestCase):
 
     def setUp(self):
         clear_cache()
-        try:
-            with urllib.request.urlopen("http://127.0.0.1:8860/health", timeout=1) as r:
-                json.loads(r.read())
-        except Exception:  # noqa: BLE001
-            self.skipTest("engine on :8860 unreachable - skipping live integration")
+        # RM-119 B2 (2026-08-06): delegated to the shared gate so
+        # RC_REQUIRE_DS_ENGINE=1 makes a down engine a failure here. The bare
+        # `except Exception` is gone with it - it also swallowed a malformed
+        # /health body, which is the engine being BROKEN, not absent.
+        # The hardcoded "http://127.0.0.1:8860/health" literal is gone with
+        # it: `build_profile` reaches the engine through
+        # `core.daemon_slayer_client`, so a gate that probes a LITERAL address
+        # can report up while the address the code under test actually uses is
+        # dead. Measured 2026-08-06 - that divergence made this site the one
+        # adopted gate a dead-port mutation probe could not turn red.
+        from tests.test_ds_live_route_gate import require_live_engine
+        require_live_engine("the SR draft-profile live integration")
 
     def test_live_three_profiles(self):
         from agents.daemon_slayer import ENGINE_VERSION
