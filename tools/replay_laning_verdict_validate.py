@@ -37,14 +37,29 @@ How it works
 5. Also reports a per-verdict-ACTION breakdown: for each of all_in / trade /
    back_off, how often the favored side won. That is the headline flip signal.
 
+RETIRED AS A FLIP GATE - 2026-08-06, ADR-013 (RM-155)
+-----------------------------------------------------
+The flip this harness gated has been RETIRED. The tool is still correct and
+still worth running against a changed table, but no number it produces is
+authority to flip the laning coach onto the precomputed verdict.
+
+The deciding evidence was not the 0.4887 agreement on its own - a ~0.50 score
+could equally mean the LABEL is dead. ``tools/laning_verdict_information_probe.py``
+separated the two: a deliberately stupid held-out per-(role, champion) mean-gold
+prior scores 0.5457 [0.5121, 0.5788] and 0.5394 [0.5030, 0.5754] against the
+IDENTICAL label, and the solo-kill duel winner predicts the gold winner 0.7705
+[0.7429, 0.7960]. The label is learnable and is coupled to the head-to-head
+result; the shipped verdict is beaten by a champion-name lookup and does not
+beat a coin (MI 0.00039 bits, 0.039 pct of label entropy, phi -0.023).
+
 Interpreting the result
 -----------------------
-- agreement ~0.50 = the verdict carries no signal; do NOT flip the laning coach
-  off Haiku on it.
-- agreement meaningfully > 0.50 (e.g. >= 0.55 with large n) = the shipped
-  verdict is a defensible deterministic substitute for the LLM trade judgment
-  against this lane-outcome proxy. A human / orchestrator decides the flip; this
-  harness only reports the number.
+- agreement ~0.50 = the verdict carries no signal. This is the standing
+  measurement and it is what ADR-013 retired the flip on.
+- agreement meaningfully > 0.50 would CONTRADICT ADR-013. That is grounds to
+  re-open the ADR with a ``laning_verdict_information_probe`` artifact attached,
+  not grounds to flip. Re-running this file alone can never close that loop,
+  because it cannot tell a good verdict from a coincidentally-aligned one.
 
 Axis sweep (``--cd-state`` / ``--item-state``)
 ----------------------------------------------
@@ -59,6 +74,20 @@ Note that ``item_state`` is INERT against every table currently on disk: they
 are all schema ``laning_scenarios/v3``, whose cd node IS the leaf cell, so
 ``lookup``'s descend-only fallback returns the same cell for every item_state.
 Measuring that inertness is the point - it was previously unobservable.
+
+THE ``--mode`` TRAP - the easiest way to produce a plausible wrong number
+------------------------------------------------------------------------
+``--mode`` swaps the shipped TABLE and never the CORPUS.
+``replay_matchup_validate.select_sr_match_ids`` is
+``WHERE game_mode = 'CLASSIC'`` unconditionally, so ``--mode aram`` scores the
+ARAM table against SR lane outcomes. Measured 2026-08-06: it returned L6 n=1079
+agreement 50.3 pct [47.3, 53.3] with an IDENTICAL ``pairs=1998
+coverage=3978/3996`` to the sr run - only the agreement column moved. That reads
+like a native ARAM measurement and is not one. **ARAM has no native gate
+measurement and cannot have one:** Riot emits no ``team_position`` for ARAM or
+Arena (20804 ARAM and 2792 CHERRY participant rows, every one empty), so
+``extract_lane_pairs`` returns zero pairs for both, and neither mode has a lane
+1v1 for a lane-outcome label to be about.
 
 Output
 ------
@@ -77,6 +106,7 @@ and counted. ASCII-only by hard rule.
 from __future__ import annotations
 
 import argparse
+import copy as _copy
 import datetime as _dt
 import json
 import os
@@ -131,6 +161,56 @@ _DEFAULT_ITEM_STATE = "none"
 _AGGRESSIVE = ("all_in", "trade")
 _DEFENSIVE = ("back_off",)
 _ACTION_VERDICTS = _AGGRESSIVE + _DEFENSIVE
+
+# RETIREMENT STAMP (ADR-013, 2026-08-06). This harness is still a valid
+# instrument and is still worth running against a changed table - but it is NO
+# LONGER a flip-readiness gate, because the flip it gated has been retired. The
+# stamp rides in every artifact so a re-run cannot be mistaken for pending work:
+# the number has been at chance since 2026-06-18, and the deciding evidence is
+# that a held-out per-champion gold prior BEATS it (0.5457 / 0.5394, both Wilson
+# lower bounds above 0.50) against the identical label. The label is learnable;
+# the verdict does not learn it. Re-open with
+# tools/laning_verdict_information_probe.py, not with a re-run of this file.
+_DECISION = {
+    "status": "RETIRED",
+    "adr": "ADR-013",
+    "roadmap_row": "RM-155",
+    "decided": "2026-08-06",
+    "summary": (
+        "The HZ-A laning-verdict flip is retired. This gate reports a valid "
+        "measurement; it is not a pending flip decision. Do NOT flip the laning "
+        "coach onto the precomputed verdict on any number this tool produces."
+    ),
+    "evidence": (
+        "SR L6 n=1107 agreement 0.4887 (Wilson [0.45935, 0.51814]), mutual "
+        "information 0.00039 bits = 0.039 pct of label entropy, and the "
+        "Miller-Madow bias-corrected MI is NEGATIVE (-0.000262 bits at L6, "
+        "-0.000329 at L11): the association is smaller than what pure noise "
+        "produces at this n. A held-out per-(role, champion) mean-gold prior "
+        "scores 0.5457 [0.5121, 0.5788] and 0.5394 [0.5030, 0.5754] on the same "
+        "label, so the label is learnable and the verdict is the dead half. "
+        "Dropping JUNGLE and pooling the four genuine lane roles still gives "
+        "0.5124 [0.4891, 0.5356] over n=1778. The live compute_matchup engine "
+        "measured on the same corpus has no headroom either (lane gold 49.0 pct "
+        "L6 / 48.5 pct L11, solo-kill 51.3 / 51.5 pct, every interval straddling "
+        "0.50), so a table regen has nothing to recover."
+    ),
+    "traps": [
+        "--mode swaps the shipped TABLE and never the CORPUS: select_sr_match_ids "
+        "is WHERE game_mode = 'CLASSIC' unconditionally. A --mode aram run scores "
+        "the ARAM table against SR lane outcomes and returns a plausible wrong "
+        "number. ARAM has no native gate measurement and cannot have one - Riot "
+        "emits no team_position for ARAM or Arena, so extract_lane_pairs yields "
+        "zero pairs there.",
+        "--item-state is INERT on every shipped table: they are all schema "
+        "laning_scenarios/v3, in which the cd_state node IS the leaf, so lookup's "
+        "descend-only fallback returns the same cell for every item_state.",
+        "'SR is stranded on 16.12.1' is WRONG - 16.13.1 ships all three modes.",
+        "The RM-158 correction to data/hz_choice_shadow.jsonl cannot move this "
+        "number: this gate reads data/rewind_history.db and the shipped tables "
+        "and never opens the shadow corpus.",
+    ],
+}
 
 
 # --------------------------------------------------------------------- verdict access
@@ -449,14 +529,24 @@ def run_validation(
         "action_breakdown_gold": action_gold.to_dict(),
         "action_breakdown_duel": action_duel.to_dict(),
         "label_base_rate_gold": base_rate.to_dict(),
+        # DEEP copy: _DECISION carries a nested `traps` list, and a shallow
+        # dict() would hand every report the SAME list object - one caller
+        # appending to it poisons the module constant for every later report in
+        # the process. The stamp is the retirement record; it must not be
+        # mutable by accident.
+        "decision": _copy.deepcopy(_DECISION),
         "interpretation": (
             "Gold + solo-kill duel are noisy lane-outcome proxies (ganks / roams "
             "/ missed-assist kills), so treat the agreement as an honest lower-"
             "fidelity signal, not a 1v1 oracle. The full/all_up baseline cell is "
             "scored because that is what the chip shows when live mana/ult are "
-            "unknown. agreement ~0.50 = no signal (do NOT flip the laning coach "
-            "off Haiku); >0.50 with large n = a defensible deterministic "
-            "substitute. action_breakdown is the headline: when the chip says "
+            "unknown. THIS IS NO LONGER A FLIP GATE (ADR-013): the flip was "
+            "retired on 2026-08-06 after a held-out per-champion gold prior beat "
+            "the shipped verdict on the identical label, so a number above 0.50 "
+            "here is NOT authority to flip the laning coach off Haiku - it is "
+            "grounds to re-open ADR-013 with a "
+            "tools/laning_verdict_information_probe.py artifact attached. "
+            "action_breakdown remains the most legible slice: when the chip says "
             "all_in/trade, how often the aggressor actually came out ahead."
         ),
     }
@@ -490,7 +580,11 @@ def _fmt_pct(x: Optional[float]) -> str:
 def print_summary(report: dict) -> None:
     """Concise human-readable summary on stdout (ASCII only)."""
     print("")
-    print("=== Replay HZ-A laning-VERDICT validation (laning-coach Haiku-flip gate) ===")
+    print("=== Replay HZ-A laning-VERDICT validation (RETIRED gate - ADR-013) ===")
+    dec = report.get("decision") or {}
+    if dec.get("status"):
+        print(f"  [{dec['status']} {dec.get('adr', '')} {dec.get('decided', '')}] "
+              f"{dec.get('summary', '')}")
     cov = report["coverage"]
     print(
         f"db={report['db']}  gate={report['gate']}  even_band={report['even_band']}"
