@@ -69,7 +69,8 @@ SHAPE (per mode, atomic write to data/daemon_slayer/build_orders/<patch>/)::
           "<comp_archetype>": {
             "comp_archetype": "<class>",
             "order": ["<item_id>", ...],      # ordered, incl. boots
-            "bias": {"target_armor": ..., "enemy_ad_share": ..., ...}
+            "bias": {"target_armor": ..., "enemy_ad_share": ..., ...},
+            "archetype": "<scorer>"           # RM-164 provenance, see below
           }
         }
       }
@@ -79,6 +80,29 @@ NOTE - NEW build_orders/ SUBDIRECTORY. This writes to
 ``data/daemon_slayer/build_orders/<patch>/build_orders_<mode>.json``; it does
 NOT touch the FLAT ``data/daemon_slayer/<patch>/build_orders_<mode>.json`` (the
 item-265/266 damage-profile table). The two tables coexist on different axes.
+
+SCORER-ARCHETYPE PROVENANCE (RM-164)
+    Every cell is ranked under exactly ONE scorer archetype, resolved per
+    champion by ``core.archetype_picks.get_archetype_for`` - an operator pick
+    when one is set, the DDragon-tag default otherwise. Until RM-164 the cell
+    recorded the comp axis + the enemy bias but NOT that scorer, so a consumer
+    reading the table at request time could not notice that the operator had
+    since overridden the champion's archetype: it would serve a build ranked by
+    the OLD scorer while every other surface routed to the new one, silently.
+
+    Each cell therefore carries ``archetype`` = the scorer it was ACTUALLY
+    ranked under, read back off ``BuildOrderResult.archetype`` rather than off
+    the request, because the planner NORMALIZES before it ranks
+    (``core/build_order.py:594``): a blank request ranks under ``carry`` and
+    ``"TANK "`` ranks under ``tank``, so stamping the request would record what
+    was asked instead of what happened. :func:`archetype_status` is the consumer-side
+    check over it, and it is deliberately THREE-valued: a table generated before
+    this field existed reads ``unknown``, never ``fresh`` (which would license a
+    consumer to trust it) and never ``stale`` (which would blank a good table).
+
+    The field is additive and inert: it is a RECORD of the scorer, never an
+    input to it, so adding it reorders nothing (guarded by
+    ``tests/test_build_order_archetype_provenance.py``).
 
 FAIL-SOFT (read side)
     A missing / unreadable / malformed table yields ``{}`` and every ``lookup``
@@ -132,6 +156,19 @@ _OUT_SUBDIR = "build_orders"
 # Patch fallback when current.txt is missing (guards a fresh checkout only).
 _FALLBACK_PATCH = "16.11.1"
 
+# NOT bumped by the RM-164 ``archetype`` leaf key (2026-08-06), deliberately:
+#   * the addition is PURELY additive - no key removed, retyped, or revalued.
+#     Measured over the full 173-champion x 4-class x 3-mode regen: 2076 of 2076
+#     ``order`` lists byte-identical before and after. No reader must change, and
+#     a version bump exists to say the opposite.
+#   * a schema version is a TABLE-level gate, which is strictly weaker than what
+#     this slice actually ships. ``archetype_status`` answers per CELL, so a
+#     partially regenerated or hand-patched table is caught cell by cell; a
+#     v2-stamped table with one pre-provenance cell would sail through a version
+#     check and be caught by this one.
+# A consumer that wants a door-check gets it from the same primitive: treat
+# ARCHETYPE_UNKNOWN as "do not serve". Do not re-litigate this into a bump
+# without a reader that actually breaks on the old shape.
 SCHEMA_VERSION = "build_order_precompute/v1"
 
 # Representative build level for the precompute. 11 = 2-item mid, the same
@@ -369,6 +406,105 @@ def engine_version() -> str:
         return ""
 
 
+# --------------------------------------------------------------------------- #
+# Scorer-archetype provenance (RM-164) - the cell key + the consumer-side check
+# --------------------------------------------------------------------------- #
+# The leaf key. A named constant because the producer stamps it, the consumer
+# check reads it, and the guard test asserts it - three sites that must not drift
+# apart on a string literal.
+ARCHETYPE_KEY = "archetype"
+
+# The three-valued verdict of archetype_status. UNKNOWN is NOT a failure: it is
+# the honest answer for a table generated before the field existed, and for a
+# caller that has no archetype to compare against.
+ARCHETYPE_FRESH = "fresh"
+ARCHETYPE_STALE = "stale"
+ARCHETYPE_UNKNOWN = "unknown"
+
+# The scorer set a cell can legitimately record. Sourced from
+# archetype_picks.ARCHETYPES so a scorer added there never has to be re-listed,
+# PLUS "onhit": archetype_picks.axis_correct_archetype (core/archetype_picks.py:
+# 492-497) re-routes the on-hit-AP roster (Gwen / Kayle / AP Kog'Maw) to the
+# ds.onhit scorer, and that value is what get_archetype_for returns and what
+# therefore ranks those cells - measured 2026-08-06, 12 of 692 SR cells. It is
+# NOT in ARCHETYPES because that tuple is the champ-select PICKER surface, which
+# never offers on-hit as a pick. A validity check built on ARCHETYPES alone would
+# condemn three correctly-ranked champions.
+KNOWN_ARCHETYPES: frozenset[str] = frozenset(archetype_picks.ARCHETYPES) | {
+    "onhit",
+}
+
+
+def normalize_archetype(value: object) -> str:
+    """Mirror of the engine's own archetype normalization.
+
+    ``core/build_order.py:594`` does ``(archetype or "carry").strip().lower() or
+    "carry"`` and stores THAT on ``BuildOrderResult.archetype`` - so an empty
+    request ranks under ``carry`` and ``"TANK "`` ranks under ``tank``. This is
+    the FALLBACK only: :func:`compute_cell` reads the engine's resolved value
+    when there is a result, and falls back here only when the planner returned
+    nothing (engine down), where there is no result to read.
+    """
+    text = value if isinstance(value, str) else ""
+    return (text or "carry").strip().lower() or "carry"
+
+
+def cell_archetype(cell: object) -> str:
+    """The scorer archetype a precompute ``cell`` was ranked under, or ``""``.
+
+    TOTAL: a non-dict cell, a missing key, a non-string value, or a blank string
+    all yield ``""``. Every Lane B read surface is fail-soft, and a consumer must
+    be able to ask this of any leaf it just parsed without guarding the call.
+    """
+    if not isinstance(cell, dict):
+        return ""
+    value = cell.get(ARCHETYPE_KEY)
+    if not isinstance(value, str):
+        return ""
+    return value.strip().lower()
+
+
+def archetype_status(cell: object, requested: object) -> str:
+    """Compare a cell's recorded scorer against the one the caller wants NOW.
+
+    Returns :data:`ARCHETYPE_FRESH` when they agree, :data:`ARCHETYPE_STALE`
+    when they differ, and :data:`ARCHETYPE_UNKNOWN` when either side is absent
+    or ragged, OR when the RECORDED value is not a scorer this repo has
+    (:data:`KNOWN_ARCHETYPES`). That last clause matters: without it a garbage
+    stamp compared against itself ("banana" vs "banana") would read ``fresh``,
+    and a consumer whose whole reason to call this is to refuse a table it
+    cannot vouch for would be told the table is verified. An unrecognised stamp
+    is exactly as untrustworthy as a missing one.
+
+    The validation is deliberately ASYMMETRIC - only the recorded side is
+    checked. ``requested`` comes from the live resolver, so an unrecognised
+    value there is the CALLER's bug, and answering ``stale`` (do not serve this
+    cell) is the fail-safe direction; answering ``unknown`` would look like a
+    property of the table.
+
+    THIS IS THE CONSUMER-SIDE STALENESS CHECK the RM-164 filing asks for. A
+    future coach resolves the champion's archetype at request time (operator
+    pick or tag default) and passes it here; ``stale`` means the table was built
+    under a different scorer and the cell must not be served as if it agreed
+    with the rest of the surface.
+
+    Three-valued on purpose. Collapsing ``unknown`` into ``fresh`` would let a
+    pre-provenance table pass as verified; collapsing it into ``stale`` would
+    blank every cell of a table that is perfectly good, just older than the
+    field. Comparison is case- and whitespace-insensitive because the two sides
+    come from different stores (a JSON leaf and a live resolver).
+    """
+    recorded = cell_archetype(cell)
+    if not recorded or recorded not in KNOWN_ARCHETYPES:
+        return ARCHETYPE_UNKNOWN
+    if not isinstance(requested, str):
+        return ARCHETYPE_UNKNOWN
+    wanted = requested.strip().lower()
+    if not wanted:
+        return ARCHETYPE_UNKNOWN
+    return ARCHETYPE_FRESH if recorded == wanted else ARCHETYPE_STALE
+
+
 def archetype_for(champion: str) -> str:
     """Resolve the primary scorer archetype for ``champion`` (DDragon-tag
     default or operator pick). Falls back to ``carry`` on a blank resolve -
@@ -395,7 +531,13 @@ def compute_cell(
 
     Threads the comp-archetype's itemization bias (resist / HP context + AD/AP
     share + current-HP-pct) into the engine and returns the persisted leaf:
-    ``{comp_archetype, order, bias}``. ``order`` is the ordered item-id list
+    ``{comp_archetype, order, bias, archetype}`` - an EXACT key set, pinned by
+    ``tests/test_build_order_archetype_provenance.py``. The ``archetype`` value
+    is the RM-164 provenance stamp: the scorer the cell was ACTUALLY ranked
+    under, taken from the engine's own resolved ``BuildOrderResult.archetype``
+    (already normalized) and NOT from the ``archetype`` argument, which may be
+    blank, padded or uppercase (see :func:`normalize_archetype` and
+    :func:`archetype_status`). ``order`` is the ordered item-id list
     (incl. boots, no-double-unique enforced by the engine). An engine that is
     down / has nothing to plan yields ``order=[]`` (never raises - the planner's
     own None / empty contract).
@@ -430,10 +572,31 @@ def compute_cell(
         [str(s.item_id) for s in result.order if s.item_id]
         if result is not None and result.order else []
     )
+    # RM-164 provenance: the scorer this cell was ACTUALLY ranked under, so a
+    # consumer can detect staleness against an operator archetype override
+    # without re-running the engine. Recorded, never fed back in.
+    #
+    # Read from the ENGINE'S resolved value, not from the request local `arch`.
+    # plan_build_order normalizes (core/build_order.py:594) before it ranks and
+    # stores the result on BuildOrderResult.archetype, so the two differ for a
+    # blank / uppercase / padded request: `archetype=""` ranks under "carry" and
+    # `archetype="TANK "` ranks under "tank". Stamping the request would record
+    # what was ASKED rather than what HAPPENED, which is the one thing a
+    # provenance field must never do. Production passes None today
+    # (generate_table -> archetype_for), so this was latent, not shipped.
+    # getattr, not attribute access: plan_build_order is an injectable seam and
+    # a duck-typed stand-in (tests/test_build_order_producer_fail_loud.py) can
+    # carry ``order`` without ``archetype``. This module's contract is that one
+    # bad cell never sinks the sweep, so a partial result degrades to the
+    # normalized request rather than raising.
+    engine_arch = getattr(result, ARCHETYPE_KEY, "") if result is not None else ""
+    stamped = engine_arch if isinstance(engine_arch, str) and engine_arch.strip() \
+        else normalize_archetype(arch)
     return {
         "comp_archetype": comp_archetype,
         "order": order,
         "bias": bias,
+        ARCHETYPE_KEY: str(stamped),
     }
 
 
