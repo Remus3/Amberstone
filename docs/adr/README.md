@@ -23,13 +23,16 @@ adding a row here in the same commit.
 | [011](ADR-011-one-pc-consolidation.md) | One-PC consolidation (Game-PC -> Legion) | Accepted |
 | [012](ADR-012-bridge-decommissioned.md) | RC<->Peer cross-Claude bridge + lessons-sync decommissioned | Accepted (supersedes ADR-004) |
 | [013](ADR-013-laning-verdict-flip-retired.md) | HZ-A laning-verdict flip RETIRED - the verdict carries zero information | Accepted (closes RM-155) |
+| [014](ADR-014-aram-laning-table-known-wrong-not-regenerated.md) | Shipped ARAM laning tables are KNOWN-WRONG on economy (`gold_at_band` x `0.5/1.01`) and are deliberately NOT regenerated | Accepted (closes RM-175) |
 
 ## Reading order for a new session
 
 Topology and where things run: **011** (one-PC), **003** (vision in-process),
 **005** (tailnet naming). Coaching pipeline: **002** (DS before Haiku), **007**
 (event-driven pivot), **010** (Arena augments), **013** (laning-verdict flip
-retired - read before touching Lane A precompute or re-running its flip gate).
+retired - read before touching Lane A precompute or re-running its flip gate),
+**014** (the shipped ARAM laning tables are known-wrong on economy - read before
+trusting or regenerating any `laning_scenarios_*.json`).
 Data policy: **006** (Riot key), **009** (replay cleanroom). Frontend: **008**
 (asset hash). Retired: **004** -> **012** (bridge).
 
