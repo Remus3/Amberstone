@@ -21,7 +21,10 @@ test first.
   legitimate change - kJade is a group whose every member is genuinely that
   mode, which is exactly the discriminator COVERAGE_GROUPS documents.
 - Do NOT re-open the closed 173/173 DS_SWEEP roster.
-- Brawl is retired from champ-select (s214) and its backend is deadcode. It is
+- Brawl is retired from champ-select (s214). Its backend is NOT deadcode
+  (corrected 2026-08-06 - `core/game_snapshot.py:98-102` also routes URF /
+  ARURF / ONEFORALL / GAMEMODEX / NEXUSBLITZ to `MODE_BRAWL`, and the coach is
+  importlib-loaded for all of them; see `docs/DAEMON_SLAYER.md`). It is
   used in this spec ONLY as a shape reference for how a mode_key threads
   through MODE_TO_FILE and the coach registry. Do NOT revive it, and do not
   copy brawl_coach.py as a template.
