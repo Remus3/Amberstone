@@ -190,9 +190,36 @@ def load_profile(config_key=None) -> dict:
          never matched its own seed and fell to tier 3. The resolution is taken
          from the live ``read_hud_settings`` width/height when available and
          from the key's leading ``WxH`` token otherwise; the response also
-         carries ``resolution_key``.
+         carries ``resolution_key`` and ``seed_origin`` (``"file"``).
+      2b. ``"resolution_seed"`` with ``seed_origin == "derived"`` - no seed
+         FILE exists but the live base is in ``SEED_BASES``, so the same
+         rectangles are derived in memory. ``seed_profiles()`` has no
+         production caller and data/vision_profiles/ is gitignored +
+         per-machine, so without this an ultrawide first run still cropped
+         unscaled 1080p boxes even though tier 2 existed. Read-only: no disk
+         write on the lookup path.
       3. ``"legacy_seed"`` - the hand-calibrated data/vision_regions.json at
-         base 1920x1080, the last resort.
+         base 1920x1080, the last resort. Reached for 1920x1080 itself (the
+         authoring base is deliberately NOT in ``SEED_BASES``) and for any
+         resolution nobody seeded.
+
+    PRECEDENCE, which must never invert: a PARSEABLE tier 1 is a real
+    calibration and always wins; a seed - file or derived - is only ever
+    consulted when no readable exact profile exists. A seeded approximation
+    shadowing a calibrated profile would be strictly worse than falling
+    through to legacy. Note the qualifier: an unparseable or zero-byte tier-1
+    file is treated as ABSENT and falls through to the seed (the pre-tier-2b
+    code did the same, falling through to a tier-2 seed FILE), so the rule is
+    about a readable profile, not about the path existing.
+
+    NOTE ON WHAT A SEED CHANGES. It does NOT move any OCR crop rectangle.
+    core.vision_tesseract._scale_bbox already rescales by frame / _BASE_CACHE,
+    so 1080p boxes at base [1920,1080] and W/1920-prescaled boxes at base
+    [W,H] produce byte-identical crops (measured: 0 of 21 regions differ at
+    native and half-frame; 1 px on a 1920x1080 downscale, from double int()
+    truncation). What it changes is the reported BASE, which is what
+    ingest_reference_from_path validates an operator still against - that is
+    the real effect. Do not read a seed as a cropping fix.
 
     KNOWN LIMIT of tier 2: a seed is a proportional scale of the 1080p
     baseline, and League edge-anchors much of its HUD instead of stretching it.
@@ -221,9 +248,27 @@ def load_profile(config_key=None) -> dict:
                 d = json.loads(rp.read_text(encoding="utf-8"))
                 return {"config_key": ck, "base": d.get("base", _LEGACY_BASE),
                         "regions": d.get("regions", {}),
-                        "source": "resolution_seed", "resolution_key": res_ck}
+                        "source": "resolution_seed", "resolution_key": res_ck,
+                        "seed_origin": "file"}
         except Exception:  # noqa: BLE001
             log.debug("resolution seed read failed for %s", res_ck)
+        # Tier 2b: no seed FILE, but this base is one we ship a seed for.
+        # seed_profiles() has no production caller and data/vision_profiles/ is
+        # gitignored + per-machine, so tier 2 would otherwise find nothing on a
+        # fresh machine and an ultrawide first run would still crop unscaled
+        # 1080p boxes. Derive the same rectangles in memory instead - identical
+        # arithmetic to the generator, no disk write, no hot-path I/O.
+        try:
+            if [int(res_ck.split("x")[0]), int(res_ck.split("x")[1])] in SEED_BASES:
+                prof = derive_profile([int(res_ck.split("x")[0]),
+                                       int(res_ck.split("x")[1])],
+                                      config_key=res_ck)
+                return {"config_key": ck, "base": prof["base"],
+                        "regions": prof["regions"],
+                        "source": "resolution_seed", "resolution_key": res_ck,
+                        "seed_origin": "derived"}
+        except Exception:  # noqa: BLE001
+            log.debug("resolution seed derive failed for %s", res_ck)
     try:
         regions = json.loads(_LEGACY_REGIONS.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
