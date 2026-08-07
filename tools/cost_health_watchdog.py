@@ -5,6 +5,9 @@ Runs every 15 minutes (RC-CostHealthWatchdog scheduled task). Probes:
 
   - RC daemon health      (ops/runtime/health.json)
   - tracked API spend     (data/spend/YYYY-MM-DD.json) vs a trailing baseline
+                          (day-ledgers ONLY - `iter_day_ledgers` keeps the
+                          `_match_open.json` / `recent_matches.json` sidecars
+                          that also live in that dir out of the baseline)
 
 Detects a cost breach (today > 1.5x trailing-median baseline, with an absolute
 floor so an idle day cannot false-positive against a near-zero baseline), a
@@ -28,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import statistics
 import sys
 import time
@@ -56,6 +60,10 @@ VISION_RATE_FLOOR = 3.0       # --remediate will not push below this
 P95_DOUBLE_MULT = 2.0         # per-lane p95-cost >= 2x trailing baseline == signal
 P95_FLOOR_USD = 0.002         # ignore lanes whose p95 is below this (sub-cent noise)
 P95_MIN_CALLS = 20            # need this many calls today for a stable p95
+
+# A day-ledger stem is exactly YYYY-MM-DD in ASCII digits. Explicit [0-9]
+# rather than \d: \d also matches non-ASCII decimal digits.
+_DAY_STEM_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 # purpose -> (tier, primary caller file) from docs/COST_TRACE.md.
 PURPOSE_MAP = {
@@ -117,6 +125,62 @@ def _age_s(ts):
         return None
 
 
+def iter_day_ledgers(spend_dir: Path) -> list[Path]:
+    """Sorted day-ledger FILES in `spend_dir` - sidecars EXCLUDED (RM-165).
+
+    `data/spend/` is not a pure directory of day-files: `core/cost_tracker.py`
+    also parks two per-match sidecars there, written at :461-462 off
+    `self._spend_dir` (`_match_open.json`, a by_purpose snapshot taken at the
+    last match boundary, and `recent_matches.json`, rolling per-match cost;
+    the latter is read back at :514). Note the module-level
+    `_MATCH_OPEN_PATH` / `_RECENT_MATCHES_PATH` constants at :160-161 are NOT
+    the write sites - they are referenced nowhere in `core/`.
+
+    A bare `glob("*.json")` reads both sidecars as if they were day-ledgers.
+    `_match_open.json` carries a `by_purpose` block, so it passes every shape
+    check downstream, and `_` (0x5F) sorts AFTER every digit (0x30-0x39), so a
+    sidecar always lands at the END of the sorted list and is guaranteed to
+    survive a `prior[-7:]` trailing window - displacing a genuine day out of
+    the baseline and skewing both the daily-total median and the per-lane
+    cost-per-call median.
+
+    The filter is deliberately POSITIVE rather than a blacklist of the two
+    known sidecars, so a future sidecar parked under any new name is excluded
+    without a code change here. Four independent clauses, each one
+    load-bearing and each pinned by its own test in
+    `tests/test_cost_health_watchdog_glob_rm165.py`:
+
+      is_file()        `glob` matches a DIRECTORY named `<date>.json` too.
+      exact `.json`    `Path.glob` is case-INSENSITIVE on Windows (measured:
+                       `glob("*.json")` returns `2026-05-01.JSON`), so the
+                       suffix must be re-checked case-SENSITIVELY.
+      _DAY_STEM_RE     `date.fromisoformat` is broader than YYYY-MM-DD on
+                       3.11+: it also accepts the ISO week date
+                       `2026-W01-1` (measured on 3.14.4 -> 2025-12-29), which
+                       is likewise 10 chars, so a length check does not
+                       exclude it. `cost_tracker._today_str()` (:183-184,
+                       used at :237) only ever emits `date.today()
+                       .isoformat()`, so anything else is a foreign file.
+      fromisoformat    calendar validity, which the regex cannot judge
+                       (`2026-02-30`, `2026-13-45`).
+    """
+    out = []
+    for f in sorted(spend_dir.glob("*.json")):
+        stem = f.stem
+        if not f.is_file():
+            continue
+        if f.name != stem + ".json":
+            continue
+        if not _DAY_STEM_RE.fullmatch(stem):
+            continue
+        try:
+            date.fromisoformat(stem)
+        except ValueError:
+            continue
+        out.append(f)
+    return out
+
+
 def probe_health(path: Path = _HEALTH) -> dict:
     h = _read_json(path, {})
     return {
@@ -134,7 +198,7 @@ def spend_baseline(spend_dir: Path, today: str) -> dict:
     today_doc = _read_json(spend_dir / (today + ".json"), {})
     today_usd = _finite(today_doc.get("total_usd", 0.0) or 0.0)
     prior = []
-    for f in sorted(spend_dir.glob("*.json")):
+    for f in iter_day_ledgers(spend_dir):
         if f.stem == today:
             continue
         v = _finite(_read_json(f, {}).get("total_usd", 0.0) or 0.0)
@@ -211,7 +275,7 @@ def lane_cost_signals(spend_dir: Path, today: str) -> dict:
         for name in today_means
     }
     prior_series: dict = {}
-    for f in sorted(spend_dir.glob("*.json")):
+    for f in iter_day_ledgers(spend_dir):
         if f.stem == today:
             continue
         for name, mean in _lane_mean_cost(_read_json(f, {})).items():
