@@ -41,7 +41,7 @@ They are listed first on purpose.
 
 1. **The `ds-meta-valuation` headline ("Ezreal HIGH divergence") is REFUTED.**
    It rests on `prefer_kit_axis_by_win` being default-OFF live. That seam was
-   flipped default-ON on 2026-07-04 (`agents/daemon_slayer/archetype_dispatch.py:217`,
+   flipped default-ON on 2026-07-04 (`coach_integration/archetype_dispatch.py:217`,
    LEDGER 778, proven live on Ezreal) - **12 days before the doc was written**.
    The measurement came from a throwaway worktree pinned at ENGINE 1.216.0.
    That file's number-one recommendation is dead; do not action it.
