@@ -118,6 +118,7 @@ from agents._supervisor_common import (
     _pid_alive,
     _port_available,
     _redact_secrets,
+    _sentinel_path,
     _verify_decisions_version,
     acquire_lock,
     log,
@@ -172,6 +173,7 @@ __all__ = [
     "_port_available",
     "_redact_secrets",
     "_run",
+    "_sentinel_path",
     "_should_emit_game_summary",
     "_verify_decisions_version",
     "acquire_lock",
@@ -401,9 +403,14 @@ class Supervisor:
                 self._web.server_close()
             # Lock metadata + sentinel both go. RM-173: drop ownership FIRST,
             # so a heartbeat still in flight cannot re-arm the sentinel we are
-            # about to release on purpose.
+            # about to release on purpose (correct but inert on one event loop
+            # - see release_lock_ownership). The path comes from
+            # _sentinel_path() rather than a second STATE_DIR-based literal:
+            # the two derivations are identical by default but DIVERGE under a
+            # LOCKFILE-only relocation, which is exactly the footgun class this
+            # row exists to close.
             release_lock_ownership()
-            for p in (LOCKFILE, STATE_DIR / "lockfile.sentinel"):
+            for p in (LOCKFILE, _sentinel_path()):
                 try:
                     p.unlink(missing_ok=True)
                 except OSError:
