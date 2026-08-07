@@ -53,6 +53,7 @@ import pytest
 from agents import _supervisor_common as common
 from agents import _supervisor_http as http_mod
 from agents import _supervisor_ephemeral as eph
+from agents import supervisor as sup_mod
 from agents.supervisor import Supervisor
 from tests._asyncio_isolation import run_coro as _run_coro
 
@@ -332,7 +333,32 @@ def test_atomic_write_json_temp_is_pid_unique(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Supervisor.stop - toggles logging.raiseExceptions off then restores it.
 # ---------------------------------------------------------------------------
-def test_stop_restores_raise_exceptions() -> None:
+@pytest.fixture
+def _isolated_lock_pair(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Relocate the supervisor lock pair into tmp for any test that stops one.
+
+    RM-173 (2026-08-06): ``Supervisor.stop`` unlinks BOTH ``agents/state/
+    lockfile`` and ``agents/state/lockfile.sentinel`` (agents/supervisor.py
+    :400-407). The two stop() tests below ran with no relocation, so a repo-root
+    ``pytest .`` on Legion deleted the LIVE supervisor's lock pair. The lockfile
+    reappeared within 5s on the next heartbeat, so nothing looked wrong - but
+    the sentinel, which is the actual exclusive claim, did not, and the running
+    daemon's singleton was left disarmed with every health signal green. That is
+    the measured 02:54-to-20:44 outage on 2026-08-06, and it recurred the same
+    day. Both modules relocate: ``agents.supervisor`` imported LOCKFILE and
+    STATE_DIR into its own namespace at import time.
+    """
+    state = tmp_path / "state"
+    state.mkdir()
+    for mod in (common, sup_mod):
+        monkeypatch.setattr(mod, "STATE_DIR", state, raising=False)
+        monkeypatch.setattr(mod, "LOCKFILE", state / "lockfile", raising=False)
+    (state / "lockfile").write_text("{}", encoding="utf-8")
+    (state / "lockfile.sentinel").write_bytes(b"424242")
+    return state
+
+
+def test_stop_restores_raise_exceptions(_isolated_lock_pair: Path) -> None:
     sup = Supervisor()
     # Nothing started: every optional handle is None, so stop() walks the
     # teardown path without touching real servers/threads.
@@ -340,13 +366,17 @@ def test_stop_restores_raise_exceptions() -> None:
     try:
         logging.raiseExceptions = True
         _run_coro(sup.stop())
+        # The relocation is load-bearing, not decoration: stop() really did
+        # unlink the pair, and it was the tmp pair, not agents/state/.
+        assert not (_isolated_lock_pair / "lockfile").exists()
+        assert not (_isolated_lock_pair / "lockfile.sentinel").exists()
         # Restored to whatever it was on entry (True here).
         assert logging.raiseExceptions is True
     finally:
         logging.raiseExceptions = prev
 
 
-def test_stop_suppresses_logging_during_drain() -> None:
+def test_stop_suppresses_logging_during_drain(_isolated_lock_pair: Path) -> None:
     """During the drain, raiseExceptions must be False so a racing emit on
     a closing handler can't spray a traceback. We observe the value from
     inside a teardown hook (decision_loop.stop)."""
