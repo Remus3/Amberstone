@@ -138,6 +138,28 @@ Filed out of cycle 2: RM-172 (uniform `apply_mode_modifiers` wiring), RM-173 (su
 sentinel never self-heals). Both are direct products of adversarial review, not of the
 original scoping - which is the pattern worth keeping from this run.
 
+### Cycle 3 (four of five rows refilled from this run's own findings)
+
+| ID | Row | Status | Commit |
+|----|-----|--------|--------|
+| S11 | RM-173 supervisor sentinel self-heal | DONE | `fa52f73b` | Root cause was THE TEST SUITE - a repo-root `pytest .` deleted the live lock pair every run, including several during this one. First fix had a constructible catastrophic write (won a RELOCATED claim, stamped the REAL sentinel); claim is now a pid+path PAIR. LEDGER 1221. |
+| S12 | RM-119 class B2 | DONE (null result) | `b051f321` | All 20 sites legitimate, proven by leaving `/health` alive and 404-ing every other route (24 failed, 0 skipped). Real defect one level up: nothing DECLARED the engine required. Two false measurements were baked into its durable writeup and corrected as corrections. LEDGER 1218. |
+| S13 | RM-155 laning-verdict flip | RETIRED (ADR-013) | `a45dcb9e` | Bias-corrected MI is NEGATIVE - below the noise floor. The decider was a learnability control, not the bad score. Native corpus proven DEFINITIONALLY impossible. LEDGER 1219. |
+| S14 | RM-158 residual (`minutes_for_level`) | DONE | `027f0944` | Arena spawns at level 3 (zero variance); modes sit 4 levels apart at minute 10. Found a SECOND live consumer the row never named - and the adversarial pass proved that fix was untested. ARAM economy is 50 pct wrong; regen filed as RM-175. LEDGER 1220. |
+| S15 | RM-172 mode-modifier seam | DECIDED | `7b2873f2` | TWO lanes with confusable names; the engine's own note describes a different table from the one everyone reads it as. Only 6 of 34 routes clear all three gates. Order flips 37/45 but top-1 only 4/45. LEDGER 1217. |
+
+Filed out of cycle 3: RM-174 (an intrinsic Playwright flake misattributed to parallel load
+for most of this run), RM-175 (the ARAM regen this work created).
+
+**What this run is actually evidence for.** Every filed count that was re-derived was wrong -
+B5 "about 22" was 1, B4 "about 22" was 11, B2 "19" was 20, and two ROADMAP rows I wrote
+myself were refuted by the slices I sent to execute them. The adversarial pass earned its
+cost every cycle: it constructed a catastrophic write, caught a skip converted into a
+no-op, found a guard pointed at a different address than the thing it guarded, and twice
+found a true conclusion resting on a citation that did not exist. **Treat a filed number as
+a hypothesis, and treat "the slice says it is green" as unverified until something tried to
+break it.**
+
 Deliberately NOT picked, with the reason: RM-122 (operator-present UI/UX - the
 row's own note forbids a headless agent picking it), RM-167 and RM-168 and RM-151
 and RM-155 arena half (live-game gated), RM-125 rendered residue (routed to
