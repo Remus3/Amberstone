@@ -30,7 +30,8 @@ not HTTPS - a `curl -k https://` returns empty / TLS WRONG_VERSION_NUMBER; use `
 - Champions = 172 (cross-checked: `data/daemon_slayer/16.11.1/champions.json` `data` map = 172 entries).
 - Items = 706 in the loaded table (full table incl. Arena `22`-prefixed mirrors). The
   SR-purchasable `ItemEffect` registry is 547/547 covered - `_effects_data.py` (per
-  `docs/DAEMON_SLAYER.md:122`); the 706 vs 547 gap is map30/12 mirror + non-purchasable rows.
+  `docs/DAEMON_SLAYER.md:35`, repointed 2026-08-06 from a PAST_EOF `:122`); the 706 vs 547
+  gap is map30/12 mirror + non-purchasable rows.
 - DS server live PID 14744 LISTENING on 127.0.0.1:8893 (verified `netstat`).
 - Tests on disk: 7317 `def test_` in `agents/daemon_slayer/tests/` (246 files) + 6807 in
   `tests/` (DS-pinning + route + live-integration). `docs/DAEMON_SLAYER.md:5` header says

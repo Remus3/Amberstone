@@ -114,15 +114,11 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "The row is stale in CONTENT, not just in line number: that file is now "
         "a 26-line facade delegating to _champ_select_deterministic, and its "
         "docstring says ZERO Anthropic call - while this row still claims "
-        "HAIKU / record_anthropic_response. Needs a human to re-state the row, "
-        "not a re-pointed number.",
-    ),
-    (
-        "docs/DS_COMPLETENESS_GAP.md",
-        "docs/DAEMON_SLAYER.md:122",
-        "HISTORICAL",
-        "docs/DAEMON_SLAYER.md was compacted from ~190 lines to 110. This gap "
-        "doc quotes the old layout.",
+        "HAIKU / record_anthropic_response. RE-STATED 2026-08-06: the row is "
+        "now struck through and carries a dated CORRECTION paragraph below the "
+        "matrix. The dead citation is KEPT ON PURPOSE so the champ_select_brief "
+        "purpose key in old data/spend/*.json ledgers stays explainable - do "
+        "not re-point it, there is no line 92 to point at.",
     ),
     (
         "docs/DS_COMPLETENESS_GAP.md",
