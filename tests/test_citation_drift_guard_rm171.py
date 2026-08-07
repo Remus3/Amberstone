@@ -68,8 +68,11 @@ budgets exactly the GUARDED group. HISTORY (`docs/_archive/**`,
 ORCHESTRATION history files) is append-only by policy and never budgeted: a
 stale citation there is CORRECT, and editing one is a history rewrite
 (`feedback_no_history_rewrite`). UNGUARDED (`ops/**`, `agents/**`,
-`tools/*.md`, `Share/docs/**`) is neither - 22 broken citations live there and
-are reported on every run rather than being allowed to read as history.
+`tools/*.md`, `Share/docs/**`) is neither - 21 broken citations live there and
+are reported on every run rather than being allowed to read as history. (It
+read 22 until 2026-08-06, when the `ops/loop/director_prompt.md` ->
+`Share/README.md` citation was repointed. This count is prose, nothing asserts
+it - re-measure with `python tools/citation_audit.py` rather than quoting it.)
 
 `WAKEUP_NOTES.md`, `docs/handoff/` and `docs/qa/` were moved INTO the budget
 on 2026-08-06. The first two cost nothing (0 broken). `docs/qa/` cost three
@@ -114,15 +117,11 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "The row is stale in CONTENT, not just in line number: that file is now "
         "a 26-line facade delegating to _champ_select_deterministic, and its "
         "docstring says ZERO Anthropic call - while this row still claims "
-        "HAIKU / record_anthropic_response. Needs a human to re-state the row, "
-        "not a re-pointed number.",
-    ),
-    (
-        "docs/DS_COMPLETENESS_GAP.md",
-        "docs/DAEMON_SLAYER.md:122",
-        "HISTORICAL",
-        "docs/DAEMON_SLAYER.md was compacted from ~190 lines to 110. This gap "
-        "doc quotes the old layout.",
+        "HAIKU / record_anthropic_response. RE-STATED 2026-08-06: the row is "
+        "now struck through and carries a dated CORRECTION paragraph below the "
+        "matrix. The dead citation is KEPT ON PURPOSE so the champ_select_brief "
+        "purpose key in old data/spend/*.json ledgers stays explainable - do "
+        "not re-point it, there is no line 92 to point at.",
     ),
     (
         "docs/DS_COMPLETENESS_GAP.md",
