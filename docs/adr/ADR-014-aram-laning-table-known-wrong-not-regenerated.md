@@ -21,9 +21,11 @@ moves every economy leaf in the shipped ARAM laning tables. Those tables are
 
 RM-175's acceptance was "regen ARAM at both patches with the corrected curve, OR
 record why a 50 percent economy error in a shadow-only table is tolerable". This
-ADR is the second branch, and "tolerable" is the wrong word for what was found -
-the error is **contained and unreachable**, which is a different and stronger
-claim than tolerated.
+ADR is the second branch, and "tolerable" is the wrong word for what was found.
+The honest form of the finding is: **the tables are wrong, the wrongness is
+contained, and it is detectable only on a developer machine.** Each third of
+that sentence is load-bearing, and the last third is a limitation of this ADR's
+own guard, not a reassurance - see "Two gaps in the guarding" below.
 
 ### The error, derived analytically and then confirmed against the artifact
 
@@ -102,8 +104,33 @@ Every non-test, non-tool reader, with file:line:
 | `dashboard/_state_builder.py` | 629 | calls `shadow_log_precomputed_choices(coach, lc, mode_key)` |
 | `dashboard/_deterministic_coaching.py` | 1647 | `payload = load_laning_scenarios(lower)` - inside `shadow_log_precomputed_choices`, gated on a live liveclient champion |
 | `core/precomputed_laning_coach.py` | 484, 521 | `load_laning_scenarios(mode)` when the caller passes no payload |
-| `core/precomputed_laning_coach.py` | 333-342 | `_recall_outcome` - **the only consumer of the economy triple**, renders `"<N>g banked; next spike <label>"` onto a `CoachChoice` |
+| `core/precomputed_laning_coach.py` | 333-342 | `_recall_outcome` - renders `"<N>g banked; next spike <label>"` as the B-chip `expected_outcome` |
+| `core/precomputed_laning_coach.py` | 441 | `recall in _RECALL_LABELS` - **gates whether a B recall chip exists at all**, and picks its label |
+| `core/precomputed_laning_coach.py` | 575 | `b_is_recall` -> feeds `laning_rebranch` wording on the A chip |
 | `core/hz_choice_shadow.py` | 79 | reads `dimensions.economy` for the RM-158 arena writer gate (header only, not the leaves) |
+
+### The defect is worse in KIND than "a wrong number", and this is the strongest argument against this ADR
+
+`_RECALL_LABELS` (`core/precomputed_laning_coach.py:83-86`) has exactly two
+keys, `recall_now` and `back_soon`. **There is no `hold` key.** At `:441` the
+chip is built only `if recall in _RECALL_LABELS`, so a `hold` falls through to
+the `b_label_alt` branch and a combat alternative is substituted instead.
+
+The shipped ARAM tables say `hold` at L2 and L11 where the corrected curve says
+`back_soon`. So the consequence of the stale table is not a mis-worded recall
+chip - **it is a DELETED recall chip at two of the three generated bands**,
+replaced by a combat option. That is a missing option, not a wrong string, and
+it is a materially bigger defect than "off by 50 percent" suggests.
+
+It still does not change the decision, for one reason: the suppression happens
+entirely inside `shadow_log_precomputed_choices`. `dashboard/_state_builder.py:629`
+calls it AFTER `compute_deterministic`, and it writes only to
+`data/hz_choice_shadow.jsonl`. No served chip list is built from this path. The
+defect is severe in kind and zero in reach.
+
+**If a `hold` key is ever added to `_RECALL_LABELS`, this changes shape** - the
+chip would then be emitted with a wrong label rather than suppressed. That is on
+the trigger list below.
 
 **All of it terminates in `data/hz_choice_shadow.jsonl`**, which is gitignored
 and machine-local. `shadow_log_precomputed_choices` states in its own docstring
@@ -114,6 +141,28 @@ SET EQUALITY, so the day anything else reads it, that guard goes red.
 
 **Nothing renders an ARAM `gold_at_band` to a human.** The wrong number is
 written into a local jsonl and read by three offline report tools.
+
+### The corpus is ALREADY polluted, measured - and the pollution misses the field that matters
+
+This converts the hypothetical into a fact, in both directions. Measured
+read-only on 2026-08-06 against `data/hz_choice_shadow.jsonl` (gitignored,
+machine-local, 68555143 bytes, 58808 rows):
+
+- **13146 ARAM rows. 3507 of them carry a `two_item` next-spike label**, where
+  the corrected curve says `first_item` at L6. Those rows are on disk today and
+  `tools/hz_shadow_report.py`, `hz_mismatch_diagnose.py` and
+  `hz_shadow_arena_contamination.py` all read that file. So "the error is
+  contained" does NOT mean "the error never landed anywhere" - it landed, in a
+  local artifact, 3507 times.
+- **ZERO rows are polluted on `recall`.** All 3507 rows carrying a recall chip
+  carry `Back soon`, which is the L6 verdict - **the one band where `recall` does
+  not move under the fix.** The corpus simply contains no live L2 or L11 ARAM
+  rows, so the chip-deletion defect above has never actually fired in practice.
+
+That is the honest shape of it: the semantically weighty field is clean by
+accident of which bands real games logged, and the polluted field is a
+spike-label string. It is not an argument for regenerating; it is the reason the
+regen would not buy back anything already lost.
 
 ## The deferral premise, re-checked
 
@@ -182,12 +231,20 @@ load_laning_scenarios('aram','16.12.1') -> version 16.12.1, _served_patch None
 ```
 
 The prior-patch fallback takes `max()` over the patch dirs that have a table for
-the mode, so while 16.13.1 exists the fallback can never select 16.12.1. **Every
-production caller passes no `patch` argument** (`_deterministic_coaching.py:1647`,
-`hz_choice_shadow.py:79`, `precomputed_laning_coach.py:484,521`), so no
-production path can reach 16.12.1. An explicit pin IS honoured verbatim, and only
-`tools/replay_laning_verdict_validate.py:644` can supply one. This reproduces the
-sibling slice's finding exactly.
+the mode, so while 16.13.1 exists the fallback can never select 16.12.1.
+
+**No caller anywhere in the repo can supply a pin.** `load_laning_scenarios` does
+accept an explicit `patch` and honours it verbatim - the probe above proves that -
+but every call site passes mode only: `_deterministic_coaching.py:1647`,
+`hz_choice_shadow.py:79`, `precomputed_laning_coach.py:484,521`, and
+`tools/replay_laning_verdict_validate.py:644`, which is literally
+`return load_laning_scenarios(mode)` and whose argparse exposes no `--patch`
+flag. The only `patch=` arguments in the tree are in
+`tests/test_laning_scenario_precompute.py:141,394`, both asserting a MISS.
+
+So 16.12.1 is unreachable full stop, not merely unreachable by default. This is
+stronger than the sibling slice's finding, which said an explicit pin was
+available to a tool; it is available to the FUNCTION, not to any caller.
 
 ## Decision
 
@@ -197,9 +254,12 @@ defect as a machine-checked pin instead of a prose note.
 The reasoning, ranked:
 
 1. **The consumer's destination is retired.** ADR-013 closed the only path on
-   which a corrected `gold_at_band` could ever have reached a player. A 50 pct
-   economy error in a number nothing serves has no victim except a future reader
-   of the file - and that reader is exactly what the guard below is for.
+   which a corrected `gold_at_band` could ever have reached a player. This is the
+   reason that has to carry the weight, because the defect is worse in KIND than
+   a wrong number - at L2 and L11 it SUPPRESSES the recall chip entirely (see
+   `_RECALL_LABELS` above). Severity in kind times zero reach is still zero. The
+   only remaining victim is a future reader of the file, and that reader is what
+   the guard below is for.
 2. **The fix costs more integrity than the defect does.** ARAM-alone lands a v4
    file among v3 siblings and injects a per-mode structural asymmetry into the
    shadow corpus that three tools read. Trading a known, bounded, closed-form
@@ -247,17 +307,53 @@ teeth do not depend on git-LFS content being present:
 
 **A metadata marker stamped into the table header was considered and rejected:**
 rewriting a byte inside a 66 MB git-LFS object mints a whole new 66 MB LFS blob
-per file and invalidates the file hashes RM-158 recorded as evidence. The cost
-of the marker would exceed the cost of the thing it marks.
+per file, permanently, to carry a sentence. That cost alone decides it.
+
+(An earlier draft of this ADR also claimed the marker would invalidate "the
+RM-158 evidence hashes". **That reason was wrong and has been withdrawn.**
+`tests/test_laning_scenario_precompute_rm158.py` generates into a
+`TemporaryDirectory` and compares blobs PAIRWISE - it pins no literal file
+digest, and no 16-hex literal exists near this work. One sufficient reason is
+better than one sufficient reason plus one false one.)
+
+### Two gaps in the guarding, stated because they are load-bearing omissions
+
+**Gap 1: the disk pin is PERMANENTLY SKIPPED in CI.** All three workflows
+(`.github/workflows/ci.yml` lines 55 and 173, `codspeed.yml` line 34,
+`docs-guards.yml` line 61) use `actions/checkout@v6` with **zero `lfs:`
+occurrences**, so the tables are unfetched pointers there. The four disk
+assertions therefore run **only on a developer machine that has done a
+`git lfs pull`**. That is not a hypothetical skip - it is the normal, permanent
+CI state. The closed-form and axis-census assertions are pure code and do run
+everywhere; they are what carries the guard in CI.
+
+**Gap 2: `tests/test_laning_verdict_flip_retired.py` guards IMPORTERS, not
+READERS.** Its set-equality predicate is `_module_imports_precompute`
+(lines 131-150), and `dashboard/_deterministic_coaching.py` is **already on the
+allowlist**. So wiring a served render *inside that already-permitted module*
+leaves the guard green. The claim "the day anything else reads it, that guard
+goes red" is false for the single most likely regression shape - a new served
+call added to a module that is already allowed to import. Anyone relying on that
+guard should read it as "no NEW module may import the precompute", which is a
+narrower promise.
+
+Neither gap is repaired here (repairing gap 2 means changing ADR-013's guard,
+which is not this row's to change). They are named so nobody mistakes this
+decision for a fully fenced one.
 
 ## What would make the regen NECESSARY
 
 Any one of these flips the decision. They are the trigger list, not a wish list:
 
 - **Anything starts SERVING an ARAM economy value to a human.** Watch
-  `core/precomputed_laning_coach._recall_outcome` and the permitted-reference set
-  in `tests/test_laning_verdict_flip_retired.py`. That guard going red is the
-  signal.
+  `core/precomputed_laning_coach._recall_outcome` (:333-342), the chip gate at
+  :441 and the rebranch read at :575. **Do NOT rely on
+  `tests/test_laning_verdict_flip_retired.py` to catch this** - per gap 2 above
+  it guards importers, and the likeliest wiring happens inside a module that is
+  already allowlisted.
+- **A `hold` key is added to `_RECALL_LABELS`** (`precomputed_laning_coach.py:83-86`).
+  Today a stale `hold` suppresses the B chip; with that key present it would be
+  emitted carrying a wrong label, which is a different and more visible defect.
 - **The generator gains a v3 emit path**, or all three 16.13.1 modes are
   regenerated together for another reason (most likely RM-158's arena half). At
   that moment ARAM rides along for free and there is no reason not to.
@@ -279,12 +375,17 @@ than remembered by a doc. The closed form means a corrected value is one
 multiplication away for anyone who needs one.
 
 **Trade-off:** two shipped, tracked artifacts remain wrong on 714156 economy
-leaves combined. That is accepted, knowingly, and pinned.
+leaves combined, plus 3507 already-written rows in the local shadow corpus. That
+is accepted, knowingly, and pinned.
 
-**Watch for:** the guard's disk half skips when the tables are git-LFS pointers,
-which is the normal state of a fresh clone and of CI. The pure-code half does not
-skip and carries the load. Do not "fix" a skipping disk half by deleting the
-skip - fetch the LFS objects instead.
+**Watch for:** the disk half of the guard **never runs in CI** - no workflow
+fetches git-LFS, so the tables are pointers there and those four assertions skip
+permanently. They are a Legion-only tripwire. The pure-code half does not skip
+and carries the load everywhere. Under the repo's default `-q` a skip renders as
+a bare `s`, so the guard emits a `UserWarning` alongside each skip; the warnings
+summary is the visible signal. **Do not "fix" a skipping disk half by deleting
+the skip** - fetch the LFS objects, or accept that this half is developer-machine
+coverage only.
 
 ## Not decided here
 
