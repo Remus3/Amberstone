@@ -31,12 +31,14 @@ Docs, ledger entries and your memory of the last bump are all UNTRUSTWORTHY for 
 If the served version lags the repo constant the server is stale - bounce it (section 8) BEFORE measuring anything. The build-order generators compute over live
 HTTP, so a stale server returns a confident, well-formed, wrong answer.
 
-**Test counts drift and must be MEASURED, never carried forward.** Two tracked docs disagree right now, cited honestly: `CLAUDE.md:196` says "DS 9546 + RC
-`tests/` 13061, measured 2026-07-25"; `docs/DAEMON_SLAYER.md:5` says "ENGINE_VERSION 1.268.0 - 10234 tests - patch 16.15.1". Report the number YOUR run
-observed.
+**Test counts drift and must be MEASURED, never carried forward.** This paragraph used to cite a CLAUDE.md pair ("DS 9546 + RC `tests/` 13061, measured
+2026-07-25") against `docs/DAEMON_SLAYER.md:5` and call the disagreement honest. Both halves had rotted by 2026-08-06 (true figures: DS 10463, RC 18977),
+which is the same failure the paragraph warns about. The CLAUDE.md recital is now DELETED, so there is exactly one written count left and it is
+drift-guarded: `docs/DAEMON_SLAYER.md:5` (pinned by `tests/test_docs_daemon_slayer_drift.py`). The RC `tests/` count is written nowhere on purpose - measure
+it with `pytest tests --collect-only -q`. Report the number YOUR run observed, never a number you read.
 
 Read at start: `CLAUDE.md` (the DS paragraph, "Daemon Slayer Batch Workflow", "Engine / Build Conventions", "Testing Discipline", "Data Fixes", "Python
-Conventions", and the whole "Settled - do not re-litigate" section), `docs/DAEMON_SLAYER.md`, `ROADMAP.md` (77 RM-* rows), `BACKLOG.md`.
+Conventions", and the whole "Settled - do not re-litigate" section), `docs/DAEMON_SLAYER.md`, `ROADMAP.md` (the RM-* rows - the count is deliberately not written here; it read "77" until 2026-08-06 when the true figures were 106 distinct RM- ids over 84 lines), `BACKLOG.md`.
 
 **Recall before building:** `python tools/perseus_recall.py "<the task in your own words>"`. If a `settled` or `ledger` hit says the work is CLOSED, REFUTED or
 already shipped, stop and report that instead of building. Use the tool, not the raw MCP call.
