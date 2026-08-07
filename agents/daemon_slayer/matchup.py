@@ -18,8 +18,8 @@ removed by one combo is the trade primitive; ``net_swing`` (A's removal minus B'
 removal) is the single who-wins scalar in [-1, 1] (positive = A favored).
 
 MODE (RM-169, measured 2026-08-06 at ENGINE 1.275.0 / patch 16.15.1). ``mode`` is
-threaded into every scorer this module composes, yet the result is IDENTICAL for
-SR and ARENA at fixed inputs. That is deliberate, not a dropped argument:
+threaded into every scorer this module composes, and the result is nonetheless
+IDENTICAL for SR and ARENA at fixed inputs. The argument is not dropped:
 
 * ``engine._apply_mode_modifiers`` early-returns for ``mode != "ARAM"``.
 * ``burst``'s only mode term is ``aramDamageDealt``, ARAM-gated, so the
@@ -27,15 +27,26 @@ SR and ARENA at fixed inputs. That is deliberate, not a dropped argument:
 * The ARENA stat-ADDEND axis (45 of 173 champions carry a wiki ``ar`` axis) is
   reachable only via ``build_champion(apply_mode_modifiers=True)``, which
   defaults False and is not exposed by ``compute_burst_damage`` or by this
-  module. Default-OFF by DS doctrine.
+  module.
+
+Be precise about WHICH field is mode-blind. It is ``ResolvedChampion.stats``.
+``.notes`` differs on 173 of 173 ARENA calls, because ``engine.py:458`` appends
+"mode=ARENA - modifier table not plugged in for this mode". That is the language
+of unfinished work, so "default-OFF by DS doctrine" describes the status quo
+rather than justifying it.
 
 ``ability_dps.compute_ability_dps`` DOES differ by mode (142 of 173 champions at
 level 2 itemless) for one reason only: it reads a per-mode MEASURED cast-rate
 table (``ult_rates.get_spell_casts_per_sec(name, key, mode)``). Per-cast raw
-damage and the resolved stat line are byte-identical between the two modes. This
+damage and the resolved stat block are identical between the two modes. This
 module is a per-COMBO model with no casts-per-second term, so it has nothing to
 read there. The two paths answer different questions; do NOT "fix" one to match
-the other. Pinned by ``tests/test_rm169_matchup_mode_characterization.py``.
+the other, and do NOT wire ``apply_mode_modifiers`` here alone - patching only
+this module flips 26 of 299 probed verdicts at level 11 while every other scorer
+stays blind, which is a split-brain engine. Whether the flag should be wired
+UNIFORMLY across the DS route seam, or those 45 arena stat lines discarded on
+purpose, is the open successor question to RM-169 and is tracked separately.
+Pinned by ``tests/test_rm169_matchup_mode_characterization.py``.
 """
 
 from __future__ import annotations
