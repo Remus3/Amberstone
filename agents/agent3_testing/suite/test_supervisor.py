@@ -141,6 +141,14 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
     # (_verify_decisions_version, agents/_supervisor_common.py).
     shutil.copy2(decisions_src, state_dir / "resolved_decisions.json")
 
+    # agents/supervisor.py calls init_all_dbs() BEFORE the port preflight, so
+    # the child manufactures data/db/*.db in whatever tree it is launched from -
+    # which is how this test used to create the very precondition its sibling
+    # tests inspect, and why this row's failure count looked non-deterministic.
+    # Point the mode DBs at a tmp dir so the run leaves the checkout alone.
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+
     web_port = _free_port()
     ws_port = _free_port()
 
@@ -148,6 +156,7 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
     env["RC_PHASE3_WEB_PORT"] = str(web_port)
     env["RC_PHASE3_WS_PORT"] = str(ws_port)
     env["RC_PHASE3_STATE_DIR"] = str(state_dir)
+    env["RC_PHASE3_DB_DIR"] = str(db_dir)
 
     proc = subprocess.Popen(
         [str(PY), "-m", "agents.supervisor"],
