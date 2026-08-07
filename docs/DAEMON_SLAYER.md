@@ -89,9 +89,22 @@ Operator-facing scorer selection lands in three layers:
 |---|---|---|---|
 | `coaches/aram_coach.py` | yes | Before Haiku | yes (-37% system prompt) |
 | `coaches/arena_coach.py` | yes | Before Haiku | yes |
-| `coaches/brawl_coach.py` (LEGACY - brawl retired from champ-select s214; backend left as deadcode) | yes | Before Haiku | yes |
+| `coaches/brawl_coach.py` (BRAWL mode retired from champ-select s214, but the module is NOT deadcode - see below) | yes | Before Haiku | yes |
 | `coach_integration.py` (SR) | yes | Before Haiku | - |
 | TFT | N/A | N/A | N/A |
+
+**`brawl_coach.py` is live-reachable - do not delete it as deadcode (verified 2026-08-06).**
+This row previously read "backend left as deadcode". That is wrong about the CODE, and a
+cleanup pass acting on it would remove the coach for five other game modes. `core/game_snapshot.py:98-102`
+returns `MODE_BRAWL` for `NEXUSBLITZ` / `NEXUS` / `ULTBOOK` / `URF` / `ARURF` / `GAMEMODEX` /
+`ONEFORALL`, not only for Brawl. `app/__init__.py:158` sets `_brawl_mode` from that,
+`core/coach_registry.py:7` maps `_brawl_mode` -> `coaches.brawl_coach`, and
+`app/_game_lifecycle.py:87-104` importlib-loads it on game start. `config/feature_flags.json:12-14`
+has `brawl.live_coaching: "allow"`, so nothing gates it off. The end-to-end path is intact and
+`coaches/brawl_coach.py:492` would issue a live Haiku call. What IS true: the BRAWL mode itself
+is disabled by Riot (patch 25.23, see `BACKLOG.md:124`), so the module is currently unexercised -
+which is a statement about Riot's rotation, not about reachability. `ops/audit/HZ_HAIKU_CALL_INVENTORY.md:11`
+and `docs/specs/RM-141_JADE_MODE.md:24` carry the same wrong label.
 
 ## Permanently deferred items (3)
 

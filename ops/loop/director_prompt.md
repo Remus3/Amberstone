@@ -62,7 +62,7 @@ HARD RULES for the directive you emit:
        guard reads the paragraph form in `agents/daemon_slayer/CHANGELOG.md`; this one carries
        release notes under `##` headers. Editing only one leaves exactly one test red.
        Guard: `tests/test_ds_share_changelog_freshness.py`.
-    5. `Share/README.md:340` - the "Release history" bullet list. The `:3` header anchor is
+    5. `Share/README.md:181` - the "Release history" bullet list (heading at `:176`). The `:3` header anchor is
        MECHANICAL (`tools/ds_share_sync.py` restamps it), the bullet list is NOT, and
        `ds_share_sync --check` reads GREEN while it rots. Same guard file as (4).
     6. `docs/HEXCORE_offline.html:144` (TWO anchors on that one line - the `title=` tooltip and

@@ -1254,7 +1254,13 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
 - **G7-05** (was G5) RC2 P5.1/P5.2 CV laning: accrue `cv_override` rows in
   `data/hz_choice_shadow.jsonl` -> re-run hz_shadow_report WITH the CV layer -> set
   `RC_LANING_CV_SERVED=1` at >=70% agreement (tighten the ~8s stale-chip cache sig in the same flip
-  slice if the eyeball shows lag).
+  slice if the eyeball shows lag). **CALIBRATION TARGET RETIRED - read `docs/adr/ADR-013` first
+  (2026-08-06).** The >=70% number is agreement with the live Haiku laning VERDICT, and ADR-013
+  retired that verdict as carrying zero mutual information (MI 0.00039 bits against 0.99987 bits of
+  label entropy; bias-corrected MI negative). Agreeing with it 70% of the time measures nothing.
+  The `RC_LANING_CV_SERVED` gate is a DIFFERENT predictor (live `compute_matchup` plus a CV
+  override) and may still be worth flipping on its own terms - but it needs a new acceptance
+  number, not this one.
 - **G7-06** (was G6) DS calibration pipeline: needs **~20+ RANKED SR (queue 420)** games. Customs and
   Mayhem cannot feed it. SOURCE: RM-32.
 - **G7-07** (was G7) `post_game_score` LR retrain at N>=20 real timelines (`core/post_game_score.py:220`).
@@ -1958,8 +1964,19 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   start; the producer runs in-process). OWED (operator/Gemini-gated, NOT headless): (a) accrue
   real laning games so `data/hz_choice_shadow.jsonl` `cv_override` rows fill (5.1's shadow);
   (b) re-run `tools/hz_shadow_report.py` and read det-vs-Haiku agreement WITH the CV layer;
-  (c) when agreement climbs toward the >=70% target (`HZ_HAIKU_CALL_INVENTORY.md:75`), set
-  `RC_LANING_CV_SERVED=1` to flip the served chips. KNOWN at flip time: the served `_CACHE`
+  (c) when agreement climbs toward the >=70% target, set
+  `RC_LANING_CV_SERVED=1` to flip the served chips. **(c) IS RETIRED AS WRITTEN - see
+  `docs/adr/ADR-013` (2026-08-06): the Haiku laning verdict it calibrates against carries zero
+  mutual information, so agreement with it is not evidence. The gate itself is a different
+  predictor and is unaffected; it needs a fresh acceptance number. **The `>=70%` figure is an
+  author-set ASPIRATION with an origin but no derivation, and it is mis-cited.** Origin: commit
+  `b700fdc8` (2026-06-19) wrote "(target: 39% -> >=70%)" into the RC2 coaching spec, now
+  `docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md:249`. That same line
+  carries the `HZ_HAIKU_CALL_INVENTORY.md:75` citation, so the number and the citation were
+  authored together and the citation has never supported the number - the cited bullet says only
+  "confirm agreement climbs before any flip", with no threshold at all (the audit file is at
+  `ops/audit/`, and carried no "70" anywhere until this correction was written). Nothing measures
+  70, and nothing justifies it over 65 or 80.** KNOWN at flip time: the served `_CACHE`
   sig (`_cache_sig`) is intentionally UNCHANGED (off-path byte-identical), so a flipped-ON CV
   transition (enemy dies / my HP drops mid-bucket) can serve a stale chip for up to the 3.0s
   TTL + 5s game-time bucket - acceptable for a gated/eyeballed flip; tighten the sig (coarse
@@ -2288,7 +2305,14 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   (a) accrue real laning games so the new `cv_override` column fills (the live producer runs in-process on
   next RC restart - confirm rows appear with kind enemy_dead / enemy_missing / low_hp at the right moments);
   (b) re-run `tools/hz_shadow_report.py` and read det-vs-Haiku agreement WITH the CV layer applied; (c) when
-  agreement climbs toward the >=70% target (`HZ_HAIKU_CALL_INVENTORY.md:75`), authorize the 5.2 served flip.
+  agreement climbs toward the >=70% target, authorize the 5.2 served flip. **(c) RETIRED AS
+  WRITTEN 2026-08-06 - see `docs/adr/ADR-013`: the Haiku laning verdict this calibrates against
+  carries zero mutual information, so agreement with it proves nothing. The gate is a different
+  predictor and survives; it needs a new acceptance number. The `>=70%` figure is an author-set
+  ASPIRATION: `b700fdc8` (2026-06-19) wrote "(target: 39% -> >=70%)" into what is now
+  `docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md:249`, on the SAME LINE as
+  the `HZ_HAIKU_CALL_INVENTORY.md:75` citation that has never supported it. It has an origin and
+  no derivation - nothing measures 70, nothing justifies it over 65 or 80.**
   Does NOT block any further stage.
 - 2026-06-20 RC2 P6.4 port-safety pooled LCU connection (`RC_LCU_POOL` default-ON flip). The L6 keep-alive
   connection pool (`core/lcu_pool.py`) ships DEFAULT-OFF; the live path is byte-identical until `RC_LCU_POOL=1`.
