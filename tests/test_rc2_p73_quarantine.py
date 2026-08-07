@@ -19,6 +19,8 @@ docs/_archive/2026-07-28-research-consolidation/RC2_STALE_FILE_CENSUS.md.
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -26,6 +28,11 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 ARCHIVE_DIR = ROOT / "_archive" / "2026-06-20-rc2-p73"
 TOOLS = ROOT / "tools"
+
+# The scratch-cleanup commit that removed the quarantine directory from the
+# tree (2026-07-07). The archive was TRACKED until then - see
+# test_quarantined_present_in_archive for why that correction matters.
+ARCHIVE_REMOVED_AT = "8c2afe21"
 
 # The 7 one-shot scripts quarantined this stage (already-applied hotfixes,
 # migrations, and loadout one-shots; refs only in dated docs + docstrings).
@@ -66,13 +73,53 @@ def test_quarantined_gone_from_tools():
         assert not (TOOLS / name).exists(), f"{name} still under tools/ - must be quarantined"
 
 
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=str(ROOT),
+                          capture_output=True, text=True, timeout=60)
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")
 def test_quarantined_present_in_archive():
-    # _archive/ is gitignored, so on a fresh checkout (CI) the quarantine dir is
-    # absent - this is a local-only hygiene guard. Skip when it is not present.
-    if not ARCHIVE_DIR.is_dir():
-        pytest.skip(f"quarantine archive absent on this checkout (gitignored): {ARCHIVE_DIR}")
-    for name in QUARANTINED:
-        assert (ARCHIVE_DIR / name).exists(), f"{name} not found in {ARCHIVE_DIR}"
+    """The quarantine is proven from git history, not from the local disk.
+
+    RM-119 class B4, 2026-08-06. This used to read
+    `if not ARCHIVE_DIR.is_dir(): pytest.skip(...)` on the premise that
+    `_archive/` is gitignored machine-local state. That premise was wrong in
+    the way that matters: `_archive/2026-06-20-rc2-p73/` WAS tracked, and it
+    was removed at 8c2afe21 on 2026-07-07 - so the directory is not absent
+    pending a local copy, it is gone from every checkout, and this assertion
+    had stopped running everywhere rather than only on CI.
+
+    Found by the historical-trackedness rule added to
+    tests/test_skip_condition_hygiene.py in the same commit, which is the
+    argument for that rule: this site had been hand-classified as legitimate
+    machine-local state twice, and git history disagreed.
+
+    The quarantine claim is still checkable, just not against the filesystem:
+    each file must be present at the removal commit's parent and absent from
+    HEAD. Both halves can fail, and `test_quarantined_gone_from_tools` plus
+    `test_no_live_import_of_quarantined` continue to carry the live contract.
+    """
+    missing_from_history = [
+        name for name in QUARANTINED
+        if _git("cat-file", "-e",
+                f"{ARCHIVE_REMOVED_AT}^:_archive/2026-06-20-rc2-p73/{name}"
+                ).returncode != 0
+    ]
+    assert not missing_from_history, (
+        f"these were never quarantined to {ARCHIVE_DIR} at "
+        f"{ARCHIVE_REMOVED_AT}^, so the P7.3 record is wrong: "
+        f"{missing_from_history}"
+    )
+    still_tracked = [
+        name for name in QUARANTINED
+        if _git("ls-files", "--error-unmatch",
+                f"_archive/2026-06-20-rc2-p73/{name}").returncode == 0
+    ]
+    assert not still_tracked, (
+        f"the quarantine archive is tracked again at HEAD: {still_tracked} - "
+        "re-point this guard at the live directory if that was intended"
+    )
 
 
 def test_reusable_siblings_retained():

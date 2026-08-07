@@ -102,6 +102,66 @@ _TRACKED = _git_tracked()
 _TRACKED_SUFFIXES = _suffix_index(_TRACKED)
 
 
+def _git_vanished() -> tuple[frozenset[str], frozenset[str]]:
+    """Paths git history shows were tracked once and are NOT tracked at HEAD.
+
+    This is the ground truth for RM-119 class B4 - a skip whose premise ROTTED.
+    "Was there and is gone" is the definition of a rotted premise, which is why
+    this and not the filesystem is the right oracle: machine-local state
+    (`data/rewind_history.db`, `data/fusion_shadow.jsonl`, the gitignored Share
+    bundle) was never in history by construction, so it cannot be flagged here.
+
+    `--diff-filter=DR` is load-bearing, and D alone is the trap that hid the
+    headline instance. The `pengu/` stub was RENAMED into
+    `docs/_archive/2026-07-07-pengu-stub/` at 8c2afe21, and git records a
+    rename as R with the old path in field 2 - so a D-only scan reports it as
+    never deleted and the guard sees nothing. Measured 2026-08-06: D alone
+    yields 439 vanished paths and misses pengu entirely; DR yields 857 and
+    catches it.
+    """
+    out = subprocess.run(
+        [_GIT, "log", "--all", "--diff-filter=DR", "--name-status", "--format="],
+        cwd=str(_REPO_ROOT), capture_output=True, text=True,
+        timeout=300, check=True,
+    ).stdout
+    seen: set[str] = set()
+    for line in out.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if parts[0].startswith("D") and len(parts) >= 2:
+            seen.add(parts[1].strip())
+        elif parts[0].startswith("R") and len(parts) >= 3:
+            # field 1 is the OLD path - the one that stopped existing.
+            seen.add(parts[1].strip())
+    gone = seen - _TRACKED
+    dirs: set[str] = set()
+    for rel in gone:
+        segs = rel.split("/")
+        for end in range(1, len(segs)):
+            dirs.add("/".join(segs[:end]))
+    # A directory that still holds tracked files has not vanished at all.
+    dirs = {d for d in dirs
+            if not any(t.startswith(d + "/") for t in _TRACKED)}
+    return frozenset(gone), frozenset(dirs)
+
+
+_VANISHED, _VANISHED_DIRS = _git_vanished()
+
+
+def _is_vanished_chain(chain: str) -> bool:
+    """ROOT-ANCHORED, deliberately - suffix matching destroys the precision.
+
+    Unlike `_is_tracked_chain`, this does NOT consult a suffix index. Measured
+    2026-08-06: suffix matching flags `16.9.1`, a `tmp_path` fixture directory
+    in test_ddragon_mirror_prune.py that collides with the deleted DDragon
+    mirror `data/daemon_slayer/16.9.1/`, and the deleted-then-Desktop-relocated
+    `monitor.html`. Anchoring at the repo root drops both while still catching
+    root-level `pengu/` and `_archive/2026-05-01-audit/**`.
+    """
+    return bool(chain) and (chain in _VANISHED or chain in _VANISHED_DIRS)
+
+
 def _is_tracked_chain(chain: str) -> bool:
     if not chain:
         return False
@@ -125,12 +185,30 @@ _IMPORTORSKIP = "importorskip"
 _BODY_SKIPS = {"pytest.skip", "skip"}
 _SKIP_EXC_SUFFIXES = ("SkipTest", "Skipped")
 
+# UNCONDITIONAL skips. Added 2026-08-06 after a verifier proved the scanner was
+# blind to all four, which is worse than a misclassification: an invisible site
+# is not weighed at all, so `_B4_CONVERTED` reported green over a re-injected
+# `pytestmark = pytest.mark.skip(...)` - the EXACT spelling of the original
+# pengu defect this slice was converting. `_DECORATOR_SKIPS` carried only the
+# conditional forms, and `_skip_sites` visited only `ast.Raise` and `ast.Call`,
+# so the bare `@pytest.mark.skip` decorator (an `ast.Attribute`, never a Call)
+# could not be seen even in principle.
+#
+# These take NO condition, so they can never gate on an environment capability;
+# they are a disabled test by definition and are classified DEFECT outright.
+# Measured before shipping: the five RC test trees contain ZERO of them today,
+# so recognising them adds no false positives and turns nothing red.
+_UNCONDITIONAL_SKIPS = {
+    "pytest.mark.skip", "mark.skip", "unittest.skip",
+}
+
 _SCOPES = (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
            ast.ClassDef, ast.Lambda)
 _CALLABLE_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 CAPABILITY = "CAPABILITY"
 DEFECT = "DEFECT"
+ROTTED = "ROTTED"
 UNRESOLVED = "UNRESOLVED"
 
 
@@ -166,6 +244,7 @@ class _Site:
 class _Signals:
     """Everything a skip condition was measured to depend on."""
 
+    unconditional: bool = False
     platform: bool = False
     env: bool = False
     binary: bool = False
@@ -175,9 +254,11 @@ class _Signals:
     external_tree: bool = False
     tracked: set = field(default_factory=set)
     untracked: set = field(default_factory=set)
+    vanished: set = field(default_factory=set)
     firstparty_import: set = field(default_factory=set)
 
     def merge(self, other: "_Signals") -> None:
+        self.unconditional |= other.unconditional
         self.platform |= other.platform
         self.env |= other.env
         self.binary |= other.binary
@@ -187,6 +268,7 @@ class _Signals:
         self.external_tree |= other.external_tree
         self.tracked |= other.tracked
         self.untracked |= other.untracked
+        self.vanished |= other.vanished
         self.firstparty_import |= other.firstparty_import
 
     @property
@@ -196,11 +278,15 @@ class _Signals:
                 or self.tree_shape or self.external_tree)
 
     def evidence(self) -> str:
-        bits = [n for n in ("platform", "env", "binary", "optional_import",
+        bits = [n for n in ("unconditional", "platform", "env", "binary",
+                            "optional_import",
                             "network", "tree_shape", "external_tree")
                 if getattr(self, n)]
         if self.tracked:
             bits.append("tracked=" + ",".join(sorted(self.tracked)))
+        if self.vanished:
+            bits.append("was-tracked-now-gone="
+                        + ",".join(sorted(self.vanished)))
         if self.untracked:
             bits.append("untracked=" + ",".join(sorted(self.untracked)))
         if self.firstparty_import:
@@ -222,19 +308,41 @@ def _prune_prefix_chains(sig: _Signals) -> None:
     teaching the resolver `parents[N]` made those inner slices resolvable for
     the first time.
     """
-    longer = sig.tracked | sig.untracked
+    longer = sig.tracked | sig.untracked | sig.vanished
     sig.tracked = {c for c in sig.tracked
                    if not any(o != c and o.startswith(c + "/") for o in longer)}
+    sig.vanished = {c for c in sig.vanished
+                    if not any(o != c and o.startswith(c + "/") for o in longer)}
 
 
 def _classify(sig: _Signals) -> str:
     _prune_prefix_chains(sig)
+    # An unconditional skip takes no condition, so there is nothing it could be
+    # gating on. It is a disabled test, and it outranks every other signal -
+    # including a capability one that happens to be in the same function.
+    if sig.unconditional:
+        return DEFECT
     # A capability signal wins: `not SIDECAR.is_dir() or sys.platform != "win32"`
     # cannot fire on a healthy checkout no matter what else it touches.
+    #
+    # This precedence is also what keeps the B4 rule below precise, and it is
+    # not incidental. tests/test_vision_server_bind_rm150.py:210 gates on
+    # `monitor.html` / `moon_monitor.html`, both of which really were tracked at
+    # the repo root and really were deleted - so the historical oracle flags
+    # them correctly - but the test's actual premise is a Desktop file on this
+    # box, reached over HTTP, and it already carries a `network` signal. Letting
+    # capability win first turns the one measured false positive into a pass
+    # with no special-casing.
     if sig.capability:
         return CAPABILITY
     if sig.firstparty_import or sig.tracked:
         return DEFECT
+    # RM-119 B4: the gate names something git once tracked and no longer does.
+    # The thing under test was REMOVED, so the skip is permanent and the
+    # assertion behind it has stopped running - a rotted premise, not an absent
+    # environment capability.
+    if sig.vanished:
+        return ROTTED
     if sig.untracked:
         return CAPABILITY
     return UNRESOLVED
@@ -586,6 +694,8 @@ def _record_chain(segs: list[str] | None, sig: _Signals) -> None:
     chain = "/".join(reversed(tail))
     if _is_tracked_chain(chain):
         sig.tracked.add(chain)
+    elif _is_vanished_chain(chain):
+        sig.vanished.add(chain)
     else:
         sig.untracked.add(chain)
 
@@ -874,7 +984,23 @@ def _collect_call(node: ast.Call, model: _Model, scope: ast.AST,
 # --------------------------------------------------------------------------- #
 def _skip_sites(model: _Model) -> list[_Site]:
     sites: list[_Site] = []
+    seen_calls: set[int] = set()
     for node in ast.walk(model.tree):
+        # Unconditional skips first, and NOT restricted to ast.Call: a bare
+        # `@pytest.mark.skip` decorator is an ast.Attribute with no call at all.
+        if isinstance(node, ast.Attribute):
+            dotted = _canonical_call(_dotted(node), model)
+            if dotted in _UNCONDITIONAL_SKIPS:
+                parent = model.parent.get(node)
+                # `pytest.mark.skip(...)` - record the Call, not the Attribute,
+                # so the site is reported once at the call's line.
+                target = parent if (isinstance(parent, ast.Call)
+                                    and parent.func is node) else node
+                if id(target) not in seen_calls:
+                    seen_calls.add(id(target))
+                    sites.append(_Site(model.rel, target.lineno,
+                                       "unconditional " + dotted, None, target))
+            continue
         if isinstance(node, ast.Raise):
             exc = node.exc
             target = exc.func if isinstance(exc, ast.Call) else exc
@@ -964,6 +1090,11 @@ def _signals_for(model: _Model, site: _Site) -> _Signals:
     scope = model.scope_of(site.node)
     broad = _in_catch_everything_handler(model, site.node)
 
+    if site.kind.startswith("unconditional "):
+        sig = _Signals()
+        sig.unconditional = True
+        return sig
+
     if site.kind == "importorskip":
         sig = _Signals()
         cond = site.condition
@@ -1021,7 +1152,7 @@ def scan_source(rel: str, source: str) -> list[_Finding]:
         sig = _signals_for(model, site)
         findings.append(_Finding(
             site, _classify(sig), sig.evidence(),
-            frozenset(sig.tracked | sig.firstparty_import),
+            frozenset(sig.tracked | sig.firstparty_import | sig.vanished),
         ))
     return findings
 
@@ -1067,6 +1198,59 @@ def _excused(finding: _Finding) -> bool:
     if entry is None or not finding.gates_on:
         return False
     return finding.gates_on <= entry[0]
+
+
+# --------------------------------------------------------------------------- #
+# RM-119 class B4: how the rotted-premise rule was arrived at
+# --------------------------------------------------------------------------- #
+# B4 is the class where the skip fires because the DATA contradicts the test's
+# own premise - the tree does not hold what the test assumes - so the assertion
+# never runs and the premise rots behind a green suite.
+#
+# The first attempt at this section was a REFUSAL: a comment arguing no general
+# B4 guard was possible, on two measurements. Both measurements were true and
+# the conclusion was wrong, which is worth recording because the shape of the
+# error is a recurring one - one failed formulation presented as proof that
+# none exists.
+#
+#   * The FILESYSTEM formulation ("flag a skip gated on a path absent from this
+#     checkout") really is unusable: it flags 24 sites of which 23 are the
+#     reviewed legitimate class - `data/rewind_history.db` alone is nine - and
+#     worse, its verdict depends on the tree it runs in, since that DB is
+#     1.87 GB in the main tree and absent in every worktree. A guard whose
+#     colour changes with the checkout cannot gate anything.
+#   * The mistake was concluding from that to "no rule exists". The failing
+#     ingredient was the ORACLE, not the idea. Every one of those false
+#     positives is UNTRACKED machine-local state, and asking git instead of the
+#     disk separates them for free: machine-local state was never in history by
+#     construction, while "was tracked and is gone" is the definition of a
+#     rotted premise. That is `_git_vanished` above, and it needs no filesystem
+#     read at all, so it is identical in every checkout of a commit.
+#
+# MEASURED on all five test trees, 2026-08-06, with the pre-conversion shapes
+# restored so the known instances were present to be found:
+#   * 34 untracked-gated chains examined, 11 flagged across 10 sites.
+#   * TRUE positives 9/9 - `pengu` (root-level, reached only because renames
+#     are counted), the seven `_archive/2026-05-01-audit/**` targets, and
+#     `_archive/2026-06-20-rc2-p73`, which two hand passes had classified as
+#     legitimate machine-local state and git history contradicted.
+#   * FALSE positives 1 site before precedence, 0 after: the
+#     `monitor.html` / `moon_monitor.html` pair in test_vision_server_bind_rm150
+#     really were tracked and deleted, but the test's premise is a Desktop file
+#     reached over HTTP, and its `network` signal already wins in `_classify`.
+#   * Not visible to this rule by construction, and correctly so: the two
+#     VALUE-gated B4 sites (a pinned patch string, a registry's contents) gate
+#     on data CONTENT, not on a path. Recall against path-gated B4 is 9/9;
+#     against all 11 B4 control points it is 9/11.
+#
+# The census this rule was measured against: 11 B4 control points carrying 16
+# live skip events, across 130 skip sites in the five trees at 8b5a57a6. An
+# earlier headline of "11 sites / 13 events" did not decompose - it counted the
+# CONVERTED subset as if it were the whole class, and it predated this rule
+# finding `_archive/2026-06-20-rc2-p73`.
+# Cost: one `git log` at import, 0.67s.
+#
+# Precision against the naive rule it replaces: 9/9 versus 1/24.
 
 
 # --------------------------------------------------------------------------- #
@@ -1339,6 +1523,58 @@ class T(unittest.TestCase):
             raise unittest.SkipTest("no pointer")
         self.assertTrue(p.read_text())
 ''',
+    # --- UNCONDITIONAL skips. The scanner was blind to all four until
+    # 2026-08-06, and blindness is worse than misclassification: an invisible
+    # site is not weighed at all. The last of these is the exact spelling of
+    # the original pengu B4 defect, and a verifier proved a re-injected copy
+    # of it left the guard GREEN.
+    "bare_unconditional_mark_skip_decorator": '''
+import pytest
+@pytest.mark.skip
+def test_thing():
+    assert True
+''',
+    "unconditional_mark_skip_with_reason": '''
+import pytest
+@pytest.mark.skip(reason="flaky, will fix later")
+def test_thing():
+    assert True
+''',
+    "unconditional_unittest_skip": '''
+import unittest
+class T(unittest.TestCase):
+    @unittest.skip("disabled")
+    def test_thing(self):
+        self.assertTrue(True)
+''',
+    "module_level_pytestmark_unconditional_skip": '''
+import pytest
+pytestmark = pytest.mark.skip(reason="whole module parked")
+def test_thing():
+    assert True
+''',
+    # --- RM-119 B4 proper: the gate names something git tracked once and no
+    # longer does. `pengu/` is the real instance - renamed into
+    # docs/_archive/2026-07-07-pengu-stub/ at 8c2afe21 - and it is written here
+    # in the module-level form the original defect used.
+    "skip_gated_on_a_path_git_used_to_track": '''
+import pytest
+from pathlib import Path
+PENGU = Path(__file__).resolve().parent.parent / "pengu"
+pytestmark = pytest.mark.skipif(not PENGU.is_dir(), reason="stub relocated")
+def test_thing():
+    assert (PENGU / "index.js").is_file()
+''',
+    "bare_skip_gated_on_a_removed_archive_path": '''
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    p = REPO / "_archive" / "2026-05-01-audit" / "ui" / "base.py"
+    if not p.is_file():
+        pytest.skip("archived file absent on this checkout")
+    assert p.read_bytes()
+''',
 }
 
 _CAPABILITY_CONTROLS = {
@@ -1412,6 +1648,38 @@ def _live(module_path):
 def test_thing():
     assert _live("some.module")
 ''',
+    # The false-positive side of the historical-trackedness rule, and the two
+    # cases that actually shaped it. Neither may flag.
+    #
+    # `16.9.1` is a tmp_path fixture directory in test_ddragon_mirror_prune.py
+    # whose NAME collides with the deleted DDragon mirror
+    # `data/daemon_slayer/16.9.1/`. Suffix matching flags it; root-anchored
+    # matching does not, which is why `_is_vanished_chain` refuses to consult a
+    # suffix index.
+    "vanished_name_collision_in_a_tmp_fixture": '''
+import os
+import pytest
+def test_thing(tmp_path):
+    os.makedirs(tmp_path / "16.9.1", exist_ok=True)
+    if not (tmp_path / "16.9.1").is_dir():
+        pytest.skip("fixture tree not created")
+    assert True
+''',
+    # A genuinely deleted repo-root file whose test premise is nevertheless a
+    # live machine/network question. The `network` signal must win in
+    # `_classify`, which is what makes the B4 rule precise without a
+    # special case.
+    "vanished_path_but_the_premise_is_a_live_endpoint": '''
+import urllib.request
+import unittest
+class T(unittest.TestCase):
+    def test_thing(self):
+        with urllib.request.urlopen("http://127.0.0.1:8889/monitor") as r:
+            status = r.status
+        if status == 200:
+            self.skipTest("moon_monitor.html is present on this box")
+        self.assertEqual(status, 404)
+''',
     "share_mirror_path": '''
 import unittest
 from pathlib import Path
@@ -1437,6 +1705,30 @@ def test_mutation_defective_skip_is_flagged(name):
     assert findings, f"{name}: no skip site found at all"
     assert any(f.verdict != CAPABILITY for f in findings), (
         f"{name}: the guard did not flag a skip gated on tracked state - "
+        + "; ".join(f"{f.verdict}:{f.evidence}" for f in findings)
+    )
+
+
+@pytest.mark.parametrize("name,expected", [
+    ("skip_gated_on_a_path_git_used_to_track", ROTTED),
+    ("bare_skip_gated_on_a_removed_archive_path", ROTTED),
+    ("bare_unconditional_mark_skip_decorator", DEFECT),
+    ("unconditional_mark_skip_with_reason", DEFECT),
+    ("unconditional_unittest_skip", DEFECT),
+    ("module_level_pytestmark_unconditional_skip", DEFECT),
+])
+def test_mutation_lands_in_the_intended_verdict(name, expected):
+    """Pin the REASON, not just the colour.
+
+    `test_mutation_defective_skip_is_flagged` accepts anything that is not
+    CAPABILITY, which is the right bar for shipping but too loose to protect a
+    rule: if the historical-trackedness oracle broke, these two would still be
+    caught as UNRESOLVED and the parametrized test above would stay green while
+    the B4 rule did nothing. Naming the expected verdict makes that visible.
+    """
+    findings = scan_source("tests/test_mutant.py", _DEFECT_MUTATIONS[name])
+    assert [f.verdict for f in findings] == [expected], (
+        f"{name}: expected {expected}, got "
         + "; ".join(f"{f.verdict}:{f.evidence}" for f in findings)
     )
 
