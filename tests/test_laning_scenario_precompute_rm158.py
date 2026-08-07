@@ -129,10 +129,27 @@ class ArenaEconomyCellTests(unittest.TestCase):
                     f"ARENA economy cell at {band} is byte-identical to SR",
                 )
 
-    def test_arena_economy_cell_gold_exceeds_sr(self) -> None:
-        sr = lsp.economy_cell("L6", "full", mode="SR")
-        arena = lsp.economy_cell("L6", "full", mode="ARENA")
-        self.assertGreater(arena["gold_at_band"], sr["gold_at_band"])
+    def test_arena_out_earns_sr_per_minute(self) -> None:
+        # RE-SCOPED for the RM-158 residual (per-mode levelling curve). What
+        # RM-158 fixed is the RATE, and the rate assertion is the durable one.
+        # The old form of this test compared CUMULATIVE gold AT a band, which
+        # conflated two different quantities: Arena out-earns SR per minute AND
+        # reaches every band far sooner (it spawns at level 3 and levels at
+        # 0.70/min), so it has banked LESS at the band even while earning more
+        # per minute. Under the mode-blind curve both modes were charged the SR
+        # minute, which is exactly the defect - so the old assertion was passing
+        # BECAUSE of the bug it sat next to.
+        self.assertGreater(
+            lp.gold_income_per_min("ARENA"), lp.gold_income_per_min("SR")
+        )
+
+    def test_arena_reaches_a_band_sooner_than_sr(self) -> None:
+        for band in ("L6", "L11", "L16"):
+            with self.subTest(band=band):
+                self.assertLess(
+                    lp.minutes_for_level(lsp.level_for_band(band), "ARENA"),
+                    lp.minutes_for_level(lsp.level_for_band(band), "SR"),
+                )
 
 
 class GeneratedTableModeFidelityTests(unittest.TestCase):

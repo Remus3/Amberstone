@@ -40,23 +40,38 @@ THE PINNED DETECTABLE SIGNATURE (content-level, positive proof)
       * ``recall`` - the recall choice LABEL, "Recall now" / "Back soon"
         (``_RECALL_LABELS`` in ``core.precomputed_laning_coach``).
 
-    Reading only ``next_spike`` under-detects: it agrees at L6 under both income
-    rows. ``recall`` decides exactly there. Measured over the generated bands at
-    ``mana_state="full"`` (every covered arena row in the corpus is full-mana):
+    Reading only ``next_spike`` under-detects: it agrees at L2 and L11.
+    ``recall`` decides at every full-mana band. Measured over the generated
+    bands at ``mana_state="full"`` (every covered arena row in the corpus is
+    full-mana):
 
         band  next_spike SR / ARENA        recall SR / ARENA
-        L2    component  / first_item      back_soon  / hold
-        L6    two_item   / two_item        recall_now / back_soon
-        L11   three_item / complete        back_soon  / hold
+        L2    component  / component       back_soon  / hold
+        L6    two_item   / first_item      recall_now / back_soon
+        L11   three_item / three_item      back_soon  / recall_now
         L16   not generated - reads the L11 cell (item-370 descend-only
               fallback, core/precomputed_laning_coach.py:511)
+
+    That table is NOT hand-maintained - ``economy_expectation`` calls the
+    generator's own ``economy_cell``, so it tracks the model. It moved once, on
+    2026-08-06, when the RM-158 RESIDUAL landed: the band MINUTE became per-mode
+    alongside the income RATE (ARENA spawns at level 3 and levels at 0.70/min,
+    so it reaches every band far sooner and has banked LESS gold at it, where
+    the old mode-blind SR curve charged it the SR minute). The axes swapped
+    roles - next_spike used to decide at L2/L11 and agree at L6, now the
+    reverse - but the detector is strictly stronger: recall now decides at all
+    three bands instead of one. RE-MEASURED against the live corpus after the
+    change: the SAME 644 rows are proven, ``arena_unflagged_sr`` 0 and
+    ``arena_undecided_with_precompute`` 0, so the flagging already applied to
+    the corpus stays exactly correct and no re-flag is owed.
 
     A row is PROVEN SR-derived when either field equals the SR value at a band
     and mana state where SR and ARENA disagree. Between them the two axes cover
     every covered row in the corpus; ``low`` mana collapses ``recall`` to
-    ``recall_now`` under both modes, so a low-mana L6 row would be undecidable -
-    none exist today, and the detector reports such a row as undecided rather
-    than guessing.
+    ``recall_now`` under both modes, so a low-mana L11 row would be undecidable
+    on the label axes - none exist today, ``gold_at_band`` still decides where
+    the row rendered it, and the detector reports an undecided row as undecided
+    rather than guessing.
 
 USAGE
     python tools/hz_shadow_arena_contamination.py --report
