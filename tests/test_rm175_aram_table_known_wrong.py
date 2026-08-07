@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import re
 import sys
+import warnings
 from pathlib import Path
 
 import pytest
@@ -192,6 +193,33 @@ def test_which_economy_axes_move_per_band(monkeypatch):
     assert recall_combo_hits == {"L2": 3, "L6": 0, "L11": 3}, recall_combo_hits
 
 
+def test_a_stale_hold_SUPPRESSES_the_recall_chip_rather_than_mislabelling_it():
+    """The severity finding, and the one that makes the defect worse in KIND
+    than "a wrong number".
+
+    ``_RECALL_LABELS`` has no ``hold`` key, and the B chip at
+    precomputed_laning_coach.py:441 is built only when the recall value IS a
+    key. The shipped ARAM tables say ``hold`` at L2 and L11 where the corrected
+    curve says ``back_soon``, so the stale table DELETES the recall option at
+    two of three bands rather than mis-wording it.
+
+    Adding a ``hold`` key changes that shape - the chip would be emitted with a
+    wrong label instead of suppressed - which is an ADR-014 trigger, so this is
+    pinned rather than assumed."""
+    from core import precomputed_laning_coach as plc
+
+    assert "hold" not in plc._RECALL_LABELS, (
+        "_RECALL_LABELS gained a 'hold' key. The stale ARAM tables now EMIT a "
+        "wrongly-labelled recall chip instead of suppressing it - re-read the "
+        "trigger list in ADR-014."
+    )
+    assert set(plc._RECALL_LABELS) == {"recall_now", "back_soon"}, \
+        sorted(plc._RECALL_LABELS)
+    # The two shipped values at L2 / L11 vs what the corrected curve produces.
+    assert "hold" not in plc._RECALL_LABELS      # suppressed today
+    assert "back_soon" in plc._RECALL_LABELS     # would render post-regen
+
+
 def test_the_recall_combo_that_does_not_move_is_the_mana_starved_one(monkeypatch):
     """(low mana, mana champion) is pinned to recall_now by rule 1 of
     _recall_verdict on both curves, which is why it is the 1-of-4 that holds."""
@@ -204,12 +232,29 @@ def test_the_recall_combo_that_does_not_move_is_the_mana_starved_one(monkeypatch
 
 # ------------------------------------------------------------------ 3. disk pin
 def _table_bytes_or_skip(patch: str) -> Path:
+    """The disk half runs only where the git-LFS objects are fetched.
+
+    NO CI WORKFLOW FETCHES LFS - ci.yml, codspeed.yml and docs-guards.yml all
+    use actions/checkout@v6 with no `lfs:` key - so this half is PERMANENTLY
+    skipped in CI and is a developer-machine tripwire only. Under the repo's
+    default -q a skip renders as a bare `s`, which is not loud enough for a
+    permanent condition, so the reason is also raised as a warning: the
+    warnings summary shows under -q, the skip reason does not."""
     path = _TABLE_DIR / patch / "laning_scenarios_aram.json"
+    reason = None
     if not path.is_file():
-        pytest.skip(f"{path} absent (table not on disk)")
-    head = path.open("rb").read(64)
-    if head.startswith(b"version https://git-lfs"):
-        pytest.skip(f"{path} is an unfetched git-LFS pointer; run git lfs pull")
+        reason = f"{path} absent (table not on disk)"
+    else:
+        head = path.open("rb").read(64)
+        if head.startswith(b"version https://git-lfs"):
+            reason = f"{path} is an unfetched git-LFS pointer; run git lfs pull"
+    if reason:
+        warnings.warn(
+            f"ADR-014 disk pin NOT enforced for {patch}: {reason}. The "
+            "closed-form and axis-census assertions still ran.",
+            UserWarning, stacklevel=2,
+        )
+        pytest.skip(reason)
     return path
 
 
@@ -265,6 +310,11 @@ def test_16_12_1_aram_is_unreachable_without_an_explicit_pin():
     """Half the deferred regen is provably wasted work: no production caller can
     reach 16.12.1 while a 16.13.1 ARAM table exists."""
     if not (_TABLE_DIR / "16.13.1" / "laning_scenarios_aram.json").is_file():
+        warnings.warn(
+            "ADR-014 reachability pin NOT enforced: the 16.13.1 aram table is "
+            "not on disk (the permanent CI state - no workflow fetches LFS).",
+            UserWarning, stacklevel=2,
+        )
         pytest.skip("16.13.1 aram table absent; reachability claim not testable")
     assert lsp._latest_available_patch("aram") == "16.13.1", (
         "the ARAM prior-patch fallback no longer resolves to 16.13.1; 16.12.1 "
@@ -287,6 +337,8 @@ def test_adr_014_records_the_ratio_and_the_reachability_finding():
         "_latest_available_patch",
         "laning_scenarios/v4",
         "hz_choice_shadow.jsonl",
+        "_RECALL_LABELS",
+        "Two gaps in the guarding",
     ):
         assert token in text, f"ADR-014 no longer states {token!r}"
 
