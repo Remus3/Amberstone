@@ -289,7 +289,13 @@ class WiredSitesImportSmokeTests(unittest.TestCase):
 
 
 class WiredSitesGrepTests(unittest.TestCase):
-    """Pin that each of the 11 audit sites carries the wire-in.
+    """Pin that each of the 10 surviving audit sites carries the wire-in.
+
+    The 2026-05-23 audit wired 11. The champ-select brief site was flipped off
+    Anthropic on 2026-06-06 (items 273/276/280/283) and its case was deleted
+    with the wire, leaving 10 `test_*_wired` methods below. This docstring said
+    11 against 10 methods until 2026-08-06.
+
     Grep-based: the helper import + a purpose= label must appear in each
     source file. If a future commit accidentally rips the wire out, this
     test fails and we know exactly which site regressed."""

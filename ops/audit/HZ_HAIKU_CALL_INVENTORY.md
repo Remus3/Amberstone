@@ -89,10 +89,18 @@ flip: enough games have accrued for a clear signal (693 comparable-covered ticks
   mutual information about the lane outcome (MI 0.00039 bits against 0.99987
   bits of label entropy, bias-corrected MI negative). Raising agreement with a
   verdict that predicts nothing buys nothing. Do NOT action the recalibration
-  above. Note also, since three docs cite this bullet as the source: **this file
-  contains no ">=70%" flip threshold and never did** - `docs/LIVE_GAME_GATED_SYNC.md`
-  attributes one to `HZ_HAIKU_CALL_INVENTORY.md:75`; grep for "70" here returns
-  nothing (verified 2026-08-06).
+  above. Note also, since several docs cite this bullet as the source of a
+  numeric flip threshold: **the bullet above sets no threshold and never did.**
+  It says only "confirm agreement climbs before any flip". The percentage those
+  docs attribute here originates in commit `b700fdc8` (2026-06-19), which wrote
+  it into what is now
+  `docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md:249` on
+  the SAME LINE as the citation back to this bullet - so number and citation were
+  authored together and the citation never supported the number. It is an
+  author-set aspiration with no derivation. (Before this paragraph was added on
+  2026-08-06 the digits did not occur anywhere in this file at all; they occur
+  now only because the correction had to name them, so do not use a bare grep
+  here as evidence either way.)
 - The BUILD agreement lane is still 0/0 comparable (the native Haiku build side
   logs no comparable verdict) - build flip-readiness remains unmeasured, separate
   from laning.
