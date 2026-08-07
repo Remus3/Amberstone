@@ -91,8 +91,11 @@ SCORER-ARCHETYPE PROVENANCE (RM-164)
     the OLD scorer while every other surface routed to the new one, silently.
 
     Each cell therefore carries ``archetype`` = the scorer it was ACTUALLY
-    ranked under (the explicit override when :func:`compute_cell` is given one,
-    else the resolved primary). :func:`archetype_status` is the consumer-side
+    ranked under, read back off ``BuildOrderResult.archetype`` rather than off
+    the request, because the planner NORMALIZES before it ranks
+    (``core/build_order.py:594``): a blank request ranks under ``carry`` and
+    ``"TANK "`` ranks under ``tank``, so stamping the request would record what
+    was asked instead of what happened. :func:`archetype_status` is the consumer-side
     check over it, and it is deliberately THREE-valued: a table generated before
     this field existed reads ``unknown``, never ``fresh`` (which would license a
     consumer to trust it) and never ``stale`` (which would blank a good table).
@@ -432,6 +435,20 @@ KNOWN_ARCHETYPES: frozenset[str] = frozenset(archetype_picks.ARCHETYPES) | {
 }
 
 
+def normalize_archetype(value: object) -> str:
+    """Mirror of the engine's own archetype normalization.
+
+    ``core/build_order.py:594`` does ``(archetype or "carry").strip().lower() or
+    "carry"`` and stores THAT on ``BuildOrderResult.archetype`` - so an empty
+    request ranks under ``carry`` and ``"TANK "`` ranks under ``tank``. This is
+    the FALLBACK only: :func:`compute_cell` reads the engine's resolved value
+    when there is a result, and falls back here only when the planner returned
+    nothing (engine down), where there is no result to read.
+    """
+    text = value if isinstance(value, str) else ""
+    return (text or "carry").strip().lower() or "carry"
+
+
 def cell_archetype(cell: object) -> str:
     """The scorer archetype a precompute ``cell`` was ranked under, or ``""``.
 
@@ -452,7 +469,18 @@ def archetype_status(cell: object, requested: object) -> str:
 
     Returns :data:`ARCHETYPE_FRESH` when they agree, :data:`ARCHETYPE_STALE`
     when they differ, and :data:`ARCHETYPE_UNKNOWN` when either side is absent
-    or ragged.
+    or ragged, OR when the RECORDED value is not a scorer this repo has
+    (:data:`KNOWN_ARCHETYPES`). That last clause matters: without it a garbage
+    stamp compared against itself ("banana" vs "banana") would read ``fresh``,
+    and a consumer whose whole reason to call this is to refuse a table it
+    cannot vouch for would be told the table is verified. An unrecognised stamp
+    is exactly as untrustworthy as a missing one.
+
+    The validation is deliberately ASYMMETRIC - only the recorded side is
+    checked. ``requested`` comes from the live resolver, so an unrecognised
+    value there is the CALLER's bug, and answering ``stale`` (do not serve this
+    cell) is the fail-safe direction; answering ``unknown`` would look like a
+    property of the table.
 
     THIS IS THE CONSUMER-SIDE STALENESS CHECK the RM-164 filing asks for. A
     future coach resolves the champion's archetype at request time (operator
@@ -467,7 +495,7 @@ def archetype_status(cell: object, requested: object) -> str:
     come from different stores (a JSON leaf and a live resolver).
     """
     recorded = cell_archetype(cell)
-    if not recorded:
+    if not recorded or recorded not in KNOWN_ARCHETYPES:
         return ARCHETYPE_UNKNOWN
     if not isinstance(requested, str):
         return ARCHETYPE_UNKNOWN
@@ -503,10 +531,13 @@ def compute_cell(
 
     Threads the comp-archetype's itemization bias (resist / HP context + AD/AP
     share + current-HP-pct) into the engine and returns the persisted leaf:
-    ``{comp_archetype, order, bias, archetype}``. ``archetype`` is the RM-164
-    provenance stamp - the scorer the cell was ACTUALLY ranked under, which is
-    ``archetype`` when the caller passes one and the resolved primary otherwise
-    (see :func:`archetype_status`). ``order`` is the ordered item-id list
+    ``{comp_archetype, order, bias, archetype}`` - an EXACT key set, pinned by
+    ``tests/test_build_order_archetype_provenance.py``. The ``archetype`` value
+    is the RM-164 provenance stamp: the scorer the cell was ACTUALLY ranked
+    under, taken from the engine's own resolved ``BuildOrderResult.archetype``
+    (already normalized) and NOT from the ``archetype`` argument, which may be
+    blank, padded or uppercase (see :func:`normalize_archetype` and
+    :func:`archetype_status`). ``order`` is the ordered item-id list
     (incl. boots, no-double-unique enforced by the engine). An engine that is
     down / has nothing to plan yields ``order=[]`` (never raises - the planner's
     own None / empty contract).
@@ -541,14 +572,31 @@ def compute_cell(
         [str(s.item_id) for s in result.order if s.item_id]
         if result is not None and result.order else []
     )
+    # RM-164 provenance: the scorer this cell was ACTUALLY ranked under, so a
+    # consumer can detect staleness against an operator archetype override
+    # without re-running the engine. Recorded, never fed back in.
+    #
+    # Read from the ENGINE'S resolved value, not from the request local `arch`.
+    # plan_build_order normalizes (core/build_order.py:594) before it ranks and
+    # stores the result on BuildOrderResult.archetype, so the two differ for a
+    # blank / uppercase / padded request: `archetype=""` ranks under "carry" and
+    # `archetype="TANK "` ranks under "tank". Stamping the request would record
+    # what was ASKED rather than what HAPPENED, which is the one thing a
+    # provenance field must never do. Production passes None today
+    # (generate_table -> archetype_for), so this was latent, not shipped.
+    # getattr, not attribute access: plan_build_order is an injectable seam and
+    # a duck-typed stand-in (tests/test_build_order_producer_fail_loud.py) can
+    # carry ``order`` without ``archetype``. This module's contract is that one
+    # bad cell never sinks the sweep, so a partial result degrades to the
+    # normalized request rather than raising.
+    engine_arch = getattr(result, ARCHETYPE_KEY, "") if result is not None else ""
+    stamped = engine_arch if isinstance(engine_arch, str) and engine_arch.strip() \
+        else normalize_archetype(arch)
     return {
         "comp_archetype": comp_archetype,
         "order": order,
         "bias": bias,
-        # RM-164 provenance: the scorer this cell was ACTUALLY ranked under, so
-        # a consumer can detect staleness against an operator archetype override
-        # without re-running the engine. Recorded, never fed back in.
-        ARCHETYPE_KEY: str(arch),
+        ARCHETYPE_KEY: str(stamped),
     }
 
 
