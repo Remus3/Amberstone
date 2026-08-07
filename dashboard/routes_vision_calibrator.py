@@ -212,8 +212,17 @@ def _profile_regions_payload() -> dict:
         regions = _scale_regions(regions, ref_w / seed_w, ref_h / seed_h)
         return {"ok": True, "regions": regions, "base": [ref_w, ref_h],
                 "source": "legacy_seed", "seeded": True}
+    # RM-26: a tier-2 "resolution_seed" is already at its native base, so it is
+    # NOT rescaled like a legacy seed. It must still carry seeded=True: this is
+    # a REGRESSION GUARD, not a UX fix. Before tier 2b an unseeded ultrawide
+    # answered legacy_seed and so already got seeded=True; without this line the
+    # same machine would now answer resolution_seed and silently flip to
+    # seeded=False, i.e. an untuned proportional derivation would start
+    # presenting as a finished calibration. The operator-visible warning is
+    # unchanged in both states.
+    src = prof.get("source", "profile")
     return {"ok": True, "regions": regions, "base": base,
-            "source": prof.get("source", "profile"), "seeded": False}
+            "source": src, "seeded": src == "resolution_seed"}
 
 
 def _serve_regions_get(h) -> None:
