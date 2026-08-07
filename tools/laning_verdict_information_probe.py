@@ -30,16 +30,30 @@ gate does not make:
    second control reports how often the direct solo-kill duel winner predicts
    the gold winner, which is the same question asked of a known-good predictor.
 
-MEASURED 2026-08-06 (400 SR replays, levels 6 + 11, rewind_history.db):
+MEASURED 2026-08-06 (400 SR replays, levels 6 + 11, rewind_history.db; the
+served table is 16.13.1 under the stale-patch fallback against a requested
+16.15.1, which is what the chip would serve today):
   verdict vs gold      L6 n=1107 agree 0.4887, MI 0.00039 bits (0.039 pct of
-                       label entropy), phi -0.023, chi2 0.51 -> indistinguishable
-                       from zero, point estimate on the WRONG side of chance.
+                       label entropy), phi -0.023, chi2 0.51.
+  bias-corrected MI    L6 -0.000262 bits, L11 -0.000329 bits. NEGATIVE: the
+                       measured association is SMALLER than what pure noise
+                       produces on average at this n. Not a weak signal - below
+                       the noise floor.
+  four genuine lanes   dropping JUNGLE entirely (the two junglers never lane):
+                       n=1778 agree 0.5124 [0.4891, 0.5356], chi2 0.99. Still
+                       straddles 0.50 in the most charitable framing available.
   fitted champ prior   held-out 0.5457 [0.5121, 0.5788] and 0.5394 [0.5030,
                        0.5754] - BOTH Wilson intervals exclude 0.50.
   duel -> gold         0.7705 [0.7429, 0.7960].
 So the label is learnable by a per-champion mean and is strongly coupled to the
 direct duel outcome, while the shipped verdict is beaten by both and does not
 beat a coin. Explanation (a). See ADR-013.
+
+The learnability control is the leg the whole retirement rests on, so its split
+is a named function (``split_folds``) partitioned BY MATCH and pinned by test.
+Two leaks would otherwise be invisible in the output - splitting by pair, and
+fold_a == fold_b == the whole corpus - because both leave the report shape
+identical and merely inflate the number.
 
 TRAP - THE MODE FLAG. This probe REFUSES any mode but ``sr`` and it is not being
 precious. ``replay_matchup_validate.select_sr_match_ids`` is
@@ -100,6 +114,13 @@ _MIN_PRIOR_OBS = 2
 
 _ONLY_MODE = "sr"
 
+# The harness pairs same-"lane" opponents, and Riot files both junglers under
+# team_position JUNGLE - so a JUNGLE "lane pair" is two players who never lane
+# against each other, scored on which of them banked more gold by minute 10.
+# That is clear speed and pathing, not a lane trade. Excluded from the charitable
+# pooled read; still reported per-role, because its association is real.
+_NON_LANE_ROLE = "JUNGLE"
+
 
 # ------------------------------------------------------------------ information math
 def contingency(rows: Sequence[Tuple[bool, bool]]) -> Dict[str, object]:
@@ -137,6 +158,21 @@ def contingency(rows: Sequence[Tuple[bool, bool]]) -> Dict[str, object]:
     denom = math.sqrt((n11 + n10) * (n01 + n00) * (n11 + n01) * (n10 + n00))
     agree = (n11 + n00) / n
     lo, hi = wilson_interval(n11 + n00, n)
+
+    # MILLER-MADOW. The plug-in MI above is BIASED UPWARD: finite-sample noise
+    # manufactures apparent association, so a truly independent pair of
+    # variables scores above zero on average. The plug-in entropy bias is
+    # (K - 1) / 2N nats for K occupied bins, and MI = H(X) + H(Y) - H(X,Y), so
+    # the MI correction is ((Kx - 1) + (Ky - 1) - (Kxy - 1)) / 2N nats - which
+    # for a fully-occupied 2x2 is exactly -1 / 2N. Reporting it matters here:
+    # it is what turns "the association is small" into "the association is
+    # SMALLER THAN NOISE PRODUCES AT THIS n", which is a strictly stronger
+    # statement and the one ADR-013 rests on.
+    k_x = sum(1 for p in p_pred if p > 0)
+    k_y = sum(1 for p in p_label if p > 0)
+    k_xy = sum(1 for c in cells.values() if c > 0)
+    correction_bits = (((k_x - 1) + (k_y - 1) - (k_xy - 1)) / (2 * n)) / math.log(2)
+
     return {
         "n": n,
         "n_agree": n11 + n00,
@@ -146,6 +182,9 @@ def contingency(rows: Sequence[Tuple[bool, bool]]) -> Dict[str, object]:
         "predictor_favors_a_rate": p_pred[0],
         "label_favors_a_rate": p_label[0],
         "mutual_information_bits": mi,
+        "miller_madow_correction_bits": correction_bits,
+        "mutual_information_bits_miller_madow": mi + correction_bits,
+        "below_noise_floor": (mi + correction_bits) < 0.0,
         "label_entropy_bits": h_label,
         "mi_fraction_of_label_entropy": (mi / h_label) if h_label > 0 else None,
         "phi": (det / denom) if denom else None,
@@ -224,8 +263,18 @@ def score_verdict(pairs: Sequence[_Pair], verdict_fn, levels: Sequence[int],
             rows_all.append((fav, label))
             by_level[lvl].append((fav, label))
             by_lane[pair.lane].append((fav, label))
+    # The most charitable framing available to the verdict: drop JUNGLE, whose
+    # "lane pair" is the two junglers - players who never lane against each
+    # other - and pool the four roles that are genuine lane 1v1s. JUNGLE is the
+    # one role carrying real (anti-correlated) association, so excluding it
+    # removes the strongest objection that the aggregate is a cancellation
+    # artifact. If the remaining four still do not clear chance, no framing
+    # rescues the verdict.
+    genuine = [row for lane, rows in by_lane.items() if lane != _NON_LANE_ROLE
+               for row in rows]
     return {
         "pooled_levels": contingency(rows_all),
+        "pooled_excluding_jungle": contingency(genuine),
         "per_level": {str(lvl): contingency(by_level[lvl]) for lvl in levels},
         "per_role": {lane: contingency(by_lane[lane]) for lane in sorted(by_lane)},
     }
@@ -263,16 +312,26 @@ def _score_prior(prior: Dict[Tuple[str, str], float],
             "beats_chance": bool(n and lo is not None and lo > 0.5)}
 
 
-def learnability_control(pairs: Sequence[_Pair]) -> Dict[str, object]:
-    """Can ANY predictor beat 0.50 against this label? Split-half, held out.
+def split_folds(pairs: Sequence[_Pair]) -> Tuple[List[_Pair], List[_Pair]]:
+    """Split the corpus into two DISJOINT folds, partitioned BY MATCH.
 
-    Split is by MATCH, not by pair: two pairs from the same game share a team
-    gold state, so a pair-level split would leak the label across the fold.
+    Split by match and never by pair: up to five pairs come from one game and
+    share a team gold state, a shared snowball and a shared jungler, so a
+    pair-level split leaks the label across the fold boundary and flatters the
+    held-out control - which is the single number the ADR-013 retirement rests
+    on. Kept as a named function precisely so that property can be asserted
+    directly instead of being inferred from a score.
     """
     order = list(dict.fromkeys(p.match_id for p in pairs))
     half = set(order[: len(order) // 2])
     fold_a = [p for p in pairs if p.match_id in half]
     fold_b = [p for p in pairs if p.match_id not in half]
+    return fold_a, fold_b
+
+
+def learnability_control(pairs: Sequence[_Pair]) -> Dict[str, object]:
+    """Can ANY predictor beat 0.50 against this label? Split-half, held out."""
+    fold_a, fold_b = split_folds(pairs)
 
     duel_n = duel_k = 0
     for pair in pairs:
@@ -376,12 +435,14 @@ def print_summary(report: Dict[str, object]) -> None:
           f"pairs={report['pairs_collected']} over {report['matches_collected']} matches")
     print("")
     print("  -- VERDICT vs GOLD: mutual information --")
-    print(f"  {'slice':16s} {'n':>6s} {'agree':>8s} {'MI bits':>10s} {'MI/H':>8s} "
-          f"{'phi':>8s} {'chi2':>7s}")
-    print("  " + "-" * 68)
+    print(f"  {'slice':16s} {'n':>6s} {'agree':>8s} {'MI bits':>10s} {'MI corr':>11s} "
+          f"{'MI/H':>8s} {'phi':>8s} {'chi2':>7s}")
+    print("  (MI corr = Miller-Madow bias-corrected; NEGATIVE = below the noise floor)")
+    print("  " + "-" * 80)
     blocks = [(f"level {lvl}", blk) for lvl, blk in
               sorted((report["verdict_vs_gold"]["per_level"]).items())]
     blocks.append(("pooled", report["verdict_vs_gold"]["pooled_levels"]))
+    blocks.append(("pooled no-JUNGLE", report["verdict_vs_gold"]["pooled_excluding_jungle"]))
     blocks += [(f"role {k}", v) for k, v in
                (report["verdict_vs_gold"]["per_role"]).items()]
     for tag, blk in blocks:
@@ -390,6 +451,7 @@ def print_summary(report: Dict[str, object]) -> None:
         frac = blk.get("mi_fraction_of_label_entropy")
         print(f"  {tag:16s} {blk['n']:6d} {_fmt(blk['agreement']):>8s} "
               f"{_fmt(blk['mutual_information_bits'], 6):>10s} "
+              f"{_fmt(blk['mutual_information_bits_miller_madow'], 6):>11s} "
               f"{(_fmt(frac * 100, 3) + '%') if frac is not None else 'n/a':>8s} "
               f"{_fmt(blk['phi']):>8s} {_fmt(blk['chi2_yates'], 2):>7s}")
     print("")
