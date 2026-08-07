@@ -22,14 +22,16 @@ adding a row here in the same commit.
 | [010](ADR-010-arena-s2-augment-leveling.md) | Arena S2 Augment Level-Up pre-stage doctrine | Accepted |
 | [011](ADR-011-one-pc-consolidation.md) | One-PC consolidation (Game-PC -> Legion) | Accepted |
 | [012](ADR-012-bridge-decommissioned.md) | RC<->Peer cross-Claude bridge + lessons-sync decommissioned | Accepted (supersedes ADR-004) |
+| [013](ADR-013-laning-verdict-flip-retired.md) | HZ-A laning-verdict flip RETIRED - the verdict carries zero information | Accepted (closes RM-155) |
 
 ## Reading order for a new session
 
 Topology and where things run: **011** (one-PC), **003** (vision in-process),
 **005** (tailnet naming). Coaching pipeline: **002** (DS before Haiku), **007**
-(event-driven pivot), **010** (Arena augments). Data policy: **006** (Riot key),
-**009** (replay cleanroom). Frontend: **008** (asset hash). Retired: **004** ->
-**012** (bridge).
+(event-driven pivot), **010** (Arena augments), **013** (laning-verdict flip
+retired - read before touching Lane A precompute or re-running its flip gate).
+Data policy: **006** (Riot key), **009** (replay cleanroom). Frontend: **008**
+(asset hash). Retired: **004** -> **012** (bridge).
 
 Related routing: open work is `ROADMAP.md`, aspirational is `BACKLOG.md`, the per-item
 completion ledger is `docs/LEDGER.md` (items 325+) with the deep archive in
