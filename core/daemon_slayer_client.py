@@ -1140,6 +1140,12 @@ def rank_mage_for(
     # registry-present but documented LIVE-INERT at this snapshot, so it is
     # the wrong control. DEFAULT-OFF.
     apply_ability_amps: bool = False,
+    # RM-172 (2026-08-06): the ARENA/Swiftplay stat-growth ADDEND lane, wired
+    # UNIFORMLY across the DS route seam rather than left half-reachable.
+    # DEFAULT-OFF and emitted only when ON, so an omitted key leaves the request
+    # byte-identical. No extra transport is needed - the addend table is keyed by
+    # (champion, mode) and both are already on the wire.
+    apply_mode_modifiers: bool = False,
 ) -> Optional[list[MageRankedItem]]:
     """Call POST /rank-mage and return the parsed top-N rows. None on engine failure.
 
@@ -1198,6 +1204,9 @@ def rank_mage_for(
         body["apply_ability_base_overrides"] = True
     if apply_ability_amps:
         body["apply_ability_amps"] = True
+    # RM-172: bool seam, engine default False - emit only when ON.
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
     data = _post_json("/rank-mage", body, timeout=timeout)
     if data is None:
         return None
@@ -1227,6 +1236,7 @@ def ability_dps_for(
     apply_passive_aura_damage: bool = False,   # A-07 / RM-82 TERM 2
     apply_ability_base_overrides: bool = False,  # A-03 / RM-81
     apply_ability_amps: bool = False,          # RM-115 tail (1.254.0)
+    apply_mode_modifiers: bool = False,        # RM-172 ARENA addend lane
 ) -> Optional[dict]:
     """Call POST /ability-dps and return the raw result dict. None on failure.
 
@@ -1264,6 +1274,9 @@ def ability_dps_for(
         body["apply_ability_base_overrides"] = True
     if apply_ability_amps:
         body["apply_ability_amps"] = True
+    # RM-172: bool seam, engine default False - emit only when ON.
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
     return _post_json("/ability-dps", body, timeout=timeout)
 
 
@@ -1351,6 +1364,7 @@ def rank_assassin_for(
     assume_squishy_target: bool = False,
     assume_ability_amp: bool = False,
     target_preset: Optional[str] = None,
+    apply_mode_modifiers: bool = False,  # RM-172 ARENA addend lane
 ) -> Optional[list[AssassinRankedItem]]:
     """Call POST /rank-assassin and return the parsed top-N rows. None on engine failure.
 
@@ -1422,6 +1436,9 @@ def rank_assassin_for(
         body["assume_ability_amp"] = True
     if target_preset:
         body["target_preset"] = str(target_preset)
+    # RM-172: bool seam, engine default False - emit only when ON.
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
     data = _post_json("/rank-assassin", body, timeout=timeout)
     if data is None:
         return None
@@ -1467,6 +1484,7 @@ def burst_for(
     assume_takedown: bool = False,
     gate_caster_hp_amp: bool = False,
     gate_target_hp_amp: bool = False,
+    apply_mode_modifiers: bool = False,  # RM-172 ARENA addend lane
 ) -> Optional[dict]:
     """Call POST /burst and return the raw result dict. None on failure.
 
@@ -1539,6 +1557,9 @@ def burst_for(
         body["gate_caster_hp_amp"] = True
     if gate_target_hp_amp:
         body["gate_target_hp_amp"] = True
+    # RM-172: bool seam, engine default False - emit only when ON.
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
     return _post_json("/burst", body, timeout=timeout)
 
 
@@ -1727,6 +1748,7 @@ def rank_enchanter_for(
     prefer_survivability_by_win: bool = False,  # RF2
     assume_missing_hp_heal_amp: bool = False,   # R5
     caster_missing_hp_pct: float = 0.0,         # R5 input
+    apply_mode_modifiers: bool = False,         # RM-172 ARENA addend lane
 ) -> Optional[list[EnchanterRankedItem]]:
     """Call POST /rank-enchanter and return the parsed top-N rows. None on engine failure.
 
@@ -1761,6 +1783,9 @@ def rank_enchanter_for(
         body["assume_missing_hp_heal_amp"] = True
     if caster_missing_hp_pct:
         body["caster_missing_hp_pct"] = float(caster_missing_hp_pct)
+    # RM-172: bool seam, engine default False - emit only when ON.
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
     data = _post_json("/rank-enchanter", body, timeout=timeout)
     if data is None:
         return None
@@ -1782,6 +1807,9 @@ def hps_for(
     # the wire below. /hps is the sole owner; ``rank_enchanter_for`` does NOT
     # get it, because ``rank_items_by_hps`` cannot read it.
     apply_ability_hsp_amp: bool = False,
+    # RM-172: unlike apply_ability_hsp_amp above, this one IS shared with
+    # rank_enchanter_for - rank_items_by_hps names it.
+    apply_mode_modifiers: bool = False,
 ) -> Optional[dict]:
     """Call POST /hps and return the raw result dict. None on failure.
 
@@ -1810,6 +1838,9 @@ def hps_for(
         body["augments"] = [str(a) for a in augments if a]
     if apply_ability_hsp_amp:
         body["apply_ability_hsp_amp"] = True
+    # RM-172: bool seam, engine default False - emit only when ON.
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
     return _post_json("/hps", body, timeout=timeout)
 
 
@@ -1878,6 +1909,7 @@ def rank_onhit_for(
     apply_passive_damage: bool = True,
     ap_ad_coherence: float = 0.0,
     timeout: float = DEFAULT_TIMEOUT,
+    apply_mode_modifiers: bool = False,  # RM-172 ARENA addend lane
 ) -> Optional[list[OnhitRankedItem]]:
     """Call POST /rank-onhit and return the parsed top-N rows. None on engine failure.
 
@@ -1913,6 +1945,9 @@ def rank_onhit_for(
         body["only"] = [str(i) for i in only_item_ids if i]
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    # RM-172: bool seam, engine default False - emit only when ON.
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
     data = _post_json("/rank-onhit", body, timeout=timeout)
     if data is None:
         return None
@@ -2938,6 +2973,7 @@ def matchup(
     hp_a_pct: float = 1.0,
     hp_b_pct: float = 1.0,
     timeout: float = DEFAULT_TIMEOUT,
+    apply_mode_modifiers: bool = False,  # RM-172 ARENA addend lane
 ) -> Optional[dict]:
     """Call POST /v2/matchup and return the raw MatchupResult dict. None on failure.
 
@@ -2962,4 +2998,7 @@ def matchup(
         "hp_a_pct": float(hp_a_pct),
         "hp_b_pct": float(hp_b_pct),
     }
+    # RM-172: bool seam, engine default False - emit only when ON.
+    if apply_mode_modifiers:
+        body["apply_mode_modifiers"] = True
     return _post_json("/v2/matchup", body, timeout=timeout)

@@ -1023,6 +1023,7 @@ def compute_ability_dps(
     assume_shielded_target: bool = False,
     assume_item_lowhp_magic_crit: bool = False,
     apply_passive_aura_damage: bool = False,
+    apply_mode_modifiers: bool = False,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -1126,9 +1127,14 @@ def compute_ability_dps(
             )
 
     # Resolve build stats. Reuses the same engine pipeline as compute_dps.
+    # RM-172: apply_mode_modifiers (DEFAULT-OFF) opts into the ARENA/Swiftplay
+    # stat-growth ADDEND lane (engine._resolve_mode_addends, 45 of 173 champions
+    # carry an axis). OFF -> build_champion is called exactly as before, so the
+    # result is byte-identical. This is the ONLY champion build in this module,
+    # so forwarding here makes the whole ability-DPS lane coherent.
     resolved = build_champion(
         snapshot, champion_id, level, item_ids=item_ids, mode=mode,
-        augments=augments,
+        augments=augments, apply_mode_modifiers=apply_mode_modifiers,
     )
 
     # Mode damage multiplier (ARAM aramDamageDealt only - EHP scorer uses

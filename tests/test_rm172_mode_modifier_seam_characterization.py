@@ -4,6 +4,16 @@ RM-169 pinned ONE path (``matchup.compute_matchup``). This file pins the whole
 seam, so a PARTIAL wiring cannot land silently. MEASURED 2026-08-06 at
 ENGINE 1.275.0 / patch 16.15.1.
 
+STATUS: the seam is now WIRED UNIFORMLY (LEDGER 1217, executed 2026-08-06). It
+stays DEFAULT-OFF everywhere - the acceptance was that the axis became ASKABLE,
+not that it became active. The three gates moved A 13 -> 25, B 8 -> 19 of 34,
+C 6 -> 14. What this file pinned BEFORE that change was the partial state; those
+assertions are inverted below rather than deleted, and the weak
+"SOME routes are blind" check has been REPLACED by a strictly stronger
+machine-checked invariant (``parses IFF transitively reaches build_champion``)
+plus per-route RESPONSE-CHANGES proof. A test that the parameter is merely
+ACCEPTED is not proof a transport carries it; only a changed response is.
+
 WHAT THE FLAG ACTUALLY GATES (this is the finding that reframes the row).
 ``build_champion`` has TWO mode lanes and the flag gates only ONE of them:
 
@@ -39,7 +49,10 @@ COST OF THE CURRENT STATE (measured, see the module docstring assertions below).
 No production caller anywhere in the repo sets the flag True - the only non-test
 occurrences of ``apply_mode_modifiers=True`` are docstrings. So every shipped
 ARENA number today, including the generated ARENA build-order tables, is
-computed from the SR stat line for those 45 champions.
+computed from the SR stat line for those 45 champions. THAT IS STILL TRUE after
+the RM-172 wiring: wiring made the axis reachable, it did not arm it, and no
+table was regenerated. ``test_no_production_caller_sets_the_flag_true`` is the
+guard that keeps the tables and the engine in agreement.
 
 Deliberately NOT asserted here as exact numbers, because they are data-fragile
 across a patch bump and this file must survive a DDragon re-extract: the L18
@@ -57,6 +70,7 @@ from __future__ import annotations
 import ast
 import importlib
 import inspect
+import json
 import pkgutil
 import sys
 import unittest
@@ -76,6 +90,7 @@ FLAG = "apply_mode_modifiers"
 # inspect.signature, never inherited from a docstring (see CLAUDE.md: the
 # RM-118 ownership prose was wrong in OPPOSITE directions in a single run).
 EXPECTED_GATE_A = {
+    # Pre-RM-172 (13).
     "beam.beam_search_build",
     "dps.compute_dps",
     "dps.compute_dps_curve",
@@ -89,10 +104,25 @@ EXPECTED_GATE_A = {
     "onhit_dps.compute_onhit_dps",
     "onhit_dps.rank_items_by_onhit",
     "rank.rank_items",
+    # RM-172 widening (12). Every one of these already resolved a champion via
+    # build_champion but had no way to ask for the corrected stat line.
+    "_rank_mage.rank_items_by_ability_dps",
+    "ability_dps.compute_ability_dps",
+    "ability_hps.compute_ability_hps",
+    "antitank.compute_antitank_live",
+    "burst.compute_burst_damage",
+    "burst.rank_items_by_burst",
+    "dsp_live_consumers.ally_protected_ehp",
+    "hps.compute_hps",
+    "hps.rank_items_by_hps",
+    "matchup.compute_matchup",
+    "matchup._combo_into",
+    "matchup._defensive_stats",
 }
 
 # GATE B - HTTP routes that PARSE the flag out of the POST body.
 EXPECTED_GATE_B = {
+    # Pre-RM-172 (8).
     "_route_beam",
     "_route_dps",
     "_route_ehp",
@@ -101,16 +131,47 @@ EXPECTED_GATE_B = {
     "_route_rank",
     "_route_rank_bruiser",
     "_route_rank_tank",
+    # RM-172 widening (11).
+    "_route_ability_dps",
+    "_route_ally_protected_ehp",
+    "_route_antitank",
+    "_route_burst",
+    "_route_hps",
+    "_route_matchup",
+    "_route_rank_assassin",
+    "_route_rank_enchanter",
+    "_route_rank_mage",
+    "_route_rank_onhit",
+    "_route_stats",
 }
 
 # GATE C - core/daemon_slayer_client.py transport functions carrying the flag.
 EXPECTED_GATE_C = {
+    # Pre-RM-172 (6).
     "dps_for",
     "ehp_for",
     "hybrid_for",
     "rank_bruiser_for",
     "rank_for",
     "rank_tank_for",
+    # RM-172 widening (8).
+    "ability_dps_for",
+    "burst_for",
+    "hps_for",
+    "matchup",
+    "rank_assassin_for",
+    "rank_enchanter_for",
+    "rank_mage_for",
+    "rank_onhit_for",
+}
+
+# Routes with NO client function at all. Gate C is VACUOUS for these, not
+# incoherent - RM-172 wired the flag, it did not invent a client API surface.
+# These are the same five carried as DECLINED-BY-DESIGN debt in
+# agents/daemon_slayer/tests/test_route_seams_reach_the_client_per_route.py;
+# keep the two lists in step.
+ROUTES_WITH_NO_CLIENT_FN = {
+    "/stats", "/beam", "/v2/fight-report", "/anti-tank", "/ally-protected-ehp",
 }
 
 _SNAP: DataSnapshot | None = None
@@ -148,13 +209,100 @@ def _measure_gate_a() -> set[str]:
 
 
 def _route_defs() -> dict[str, bool]:
+    """Per-route: does the handler REALLY read the flag and forward it?
+
+    DELIBERATELY NOT a substring match over the route's source segment. That is
+    what this helper did until 2026-08-07, and an adversarial pass proved it
+    blind in one direction: the RM-172 prose on ``_route_stats`` and
+    ``_route_matchup`` names the flag inside a DOCSTRING, so a handler that
+    stopped parsing AND stopped forwarding it still measured as parses=True on
+    the strength of its own comment. A mutant that made /stats reach
+    build_champion without parsing stayed GREEN, with 0 flag literals and 0
+    keyword forwards left in the handler. Exactly 2 of the 19 wired routes were
+    affected, and for those two the response-changes proof was the ONLY guard.
+
+    A route counts only when BOTH of these hold, and both are read off the AST
+    so prose can never satisfy either:
+
+      * the flag appears as a STRING LITERAL ARGUMENT to a call - i.e. it is
+        actually looked up out of the request body - and
+      * the flag appears as a CALL KEYWORD - i.e. it is forwarded downstream.
+
+    Requiring both is also strictly better than the old "parses" question:
+    parse-without-forward is precisely the settable-but-inert shape RM-172
+    found live on /v2/fight-report, and it now reads as False rather than True.
+    """
     src = (REPO_ROOT / "agents/daemon_slayer/server.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     out: dict[str, bool] = {}
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("_route_"):
-            out[node.name] = FLAG in (ast.get_source_segment(src, node) or "")
+        if not (isinstance(node, ast.FunctionDef)
+                and node.name.startswith("_route_")):
+            continue
+        reads = forwards = False
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Call):
+                # "apply_mode_modifiers" passed as a literal arg to a body
+                # reader such as _opt_bool(body, "apply_mode_modifiers", False).
+                for arg in sub.args:
+                    if isinstance(arg, ast.Constant) and arg.value == FLAG:
+                        reads = True
+                for kw in sub.keywords:
+                    if kw.arg == FLAG:
+                        forwards = True
+            elif isinstance(sub, ast.Subscript):
+                # defensive: the body["key"] form, unused for this flag today
+                idx = sub.slice
+                if isinstance(idx, ast.Constant) and idx.value == FLAG:
+                    reads = True
+            elif isinstance(sub, ast.Compare) and isinstance(sub.left, ast.Constant):
+                # defensive: the `"key" in body` tri-state idiom
+                if sub.left.value == FLAG:
+                    reads = True
+        out[node.name] = reads and forwards
     return out
+
+
+def _reaches_build_champion() -> dict[str, bool]:
+    """Per-route: can it reach ``engine.build_champion`` transitively?
+
+    AST call-graph over the whole ``agents/daemon_slayer`` package, matched on
+    call NAME (plain and attribute form). Deliberately name-based rather than
+    import-resolved: it over-approximates rather than under-approximates, so a
+    genuinely unreachable route is never mistaken for a reachable one, which is
+    the direction that would let a real gap through.
+    """
+    calls: dict[str, set[str]] = {}
+    for py in sorted((REPO_ROOT / "agents/daemon_slayer").glob("*.py")):
+        try:
+            tree = ast.parse(py.read_text(encoding="utf-8"))
+        except (SyntaxError, OSError, UnicodeDecodeError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            found: set[str] = set()
+            for sub in ast.walk(node):
+                if isinstance(sub, ast.Call):
+                    fn = sub.func
+                    if isinstance(fn, ast.Name):
+                        found.add(fn.id)
+                    elif isinstance(fn, ast.Attribute):
+                        found.add(fn.attr)
+            calls.setdefault(node.name, set()).update(found)
+
+    def walk(fn: str, seen: set[str]) -> bool:
+        if fn in seen:
+            return False
+        seen.add(fn)
+        for callee in calls.get(fn, ()):
+            if callee == "build_champion":
+                return True
+            if callee in calls and walk(callee, seen):
+                return True
+        return False
+
+    return {n: walk(n, set()) for n in calls if n.startswith("_route_")}
 
 
 def _client_fns() -> set[str]:
@@ -205,34 +353,89 @@ class TestSeamThreeGates(unittest.TestCase):
             "reference_ds_route_seam_transport_vs_flag).",
         )
 
-    def test_seam_is_currently_INCOHERENT_by_construction(self):
-        """The row's whole premise: the seam is wired unevenly TODAY.
+    def test_seam_is_COHERENT_parses_iff_reaches_build_champion(self):
+        """RM-172's acceptance, as a machine-checked invariant.
 
-        This is a characterization, not an endorsement. If someone wires the
-        seam uniformly, this test SHOULD fail and be deleted along with the
-        RM-172 note in agents/daemon_slayer/matchup.py.
+        REPLACES the old ``test_seam_is_currently_INCOHERENT_by_construction``,
+        which asserted only that SOME routes were blind. That was a weak,
+        one-directional check: it passed for the shipped partial state AND for
+        almost any other partial state. The invariant below is strictly
+        stronger in both directions -
+
+        * a route that can reach ``build_champion`` but does NOT parse the flag
+          is an UNASKABLE axis (the RM-172 defect), and
+        * a route that parses the flag but can never reach ``build_champion``
+          is a SETTABLE-BUT-INERT seam (the RM-115 defect, memory
+          ``reference_ds_route_seam_transport_vs_flag``).
+
+        Reachability is computed transitively over the whole DS package by AST,
+        not read off a docstring - CLAUDE.md records a run where the ownership
+        prose was wrong in OPPOSITE directions for two lanes at once.
         """
         routes = _route_defs()
-        parsing = {n for n, v in routes.items() if v}
-        self.assertLess(
-            len(parsing),
-            len(routes),
-            "expected SOME routes to be mode-modifier-blind",
+        reach = _reaches_build_champion()
+        violations = sorted(
+            (name, parses, reach.get(name, False))
+            for name, parses in routes.items()
+            if parses != reach.get(name, False)
         )
-        # The pure stat-block route cannot ask for the corrected ARENA line at
-        # all, even though build_champion is the function that would apply it.
-        self.assertIn("_route_stats", routes)
-        self.assertFalse(
-            routes["_route_stats"],
-            "/stats is the direct build_champion route; it not parsing the "
-            "flag is the sharpest single instance of the incoherence",
+        self.assertEqual(
+            violations,
+            [],
+            "parses/reaches disagree (name, parses_flag, reaches_build_champion). "
+            "parses=False reaches=True -> the axis is unaskable on that route. "
+            "parses=True reaches=False -> the flag is settable and inert.",
         )
-        # Four archetype rankers accept the kwarg downstream via rank.rank_items
-        # / ehp.rank_items_by_ehp but expose no way to set it.
-        for blind in ("_route_rank_mage", "_route_rank_assassin",
-                      "_route_rank_enchanter", "_route_rank_onhit"):
-            self.assertIn(blind, routes)
-            self.assertFalse(routes[blind], f"{blind} unexpectedly parses {FLAG}")
+        # Guard against the invariant passing vacuously if the route table or
+        # the reachability walk ever collapses to empty.
+        self.assertGreaterEqual(len(routes), 30, "route table collapsed")
+        self.assertGreaterEqual(
+            sum(1 for v in routes.values() if v), 19,
+            "the parsing-route population shrank below the RM-172 measurement",
+        )
+
+    def test_the_sharpest_pre_rm172_instances_are_now_wired(self):
+        """The specific routes RM-172 named, asserted INDIVIDUALLY.
+
+        The invariant above would still pass if all of these regressed together
+        with their reachability; naming them keeps the row's actual findings
+        pinned. Inverted from the pre-wiring assertions, not deleted.
+        """
+        routes = _route_defs()
+        # /stats is the direct build_champion route - the sharpest instance.
+        self.assertTrue(
+            routes.get("_route_stats"),
+            "/stats no longer parses the flag; it is the direct build_champion "
+            "route and the one route RM-172 said must work",
+        )
+        # The four archetype rankers that exposed no way to set it.
+        for name in ("_route_rank_mage", "_route_rank_assassin",
+                     "_route_rank_enchanter", "_route_rank_onhit"):
+            self.assertTrue(routes.get(name), f"{name} stopped parsing {FLAG}")
+        # /beam and /v2/fight-report parsed it before RM-172 but had no client
+        # function; they must still parse it.
+        for name in ("_route_beam", "_route_fight_report"):
+            self.assertTrue(routes.get(name), f"{name} stopped parsing {FLAG}")
+
+    def test_routes_without_a_client_fn_are_a_known_closed_set(self):
+        """Gate C is VACUOUS, not incoherent, for three routes.
+
+        ``/stats``, ``/beam`` and ``/v2/fight-report`` have no client function
+        at all - not a client function missing the flag. RM-172 wired the seam;
+        it deliberately did not invent a new client API surface. If a client
+        function is ever added for one of these, it must carry the flag and this
+        set must shrink in the same change.
+        """
+        src = (REPO_ROOT / "core/daemon_slayer_client.py").read_text(
+            encoding="utf-8"
+        )
+        for path in sorted(ROUTES_WITH_NO_CLIENT_FN):
+            self.assertNotIn(
+                f'_post_json("{path}"',
+                src,
+                f"a client function for {path} now exists; it must carry "
+                f"{FLAG} and be added to EXPECTED_GATE_C",
+            )
 
     def test_no_production_caller_sets_the_flag_true(self):
         """Every shipped ARENA number is computed with the flag OFF.
@@ -478,6 +681,313 @@ class TestDownstreamCostDirection(unittest.TestCase):
             "measured 37 of 45 at L11. If this drops to 0 the axis has become "
             "cosmetic and the row can be closed as 'discard on purpose'.",
         )
+
+
+class TestTransportActuallyCarriesTheFlag(unittest.TestCase):
+    """RESPONSE-CHANGES proof, per route. Signature evidence is NOT proof.
+
+    ``inspect.signature`` says a kwarg exists; it says nothing about whether the
+    route forwards it, or whether the value survives to the arithmetic. The
+    measured precedent in this repo is a seam that was settable, guard-green and
+    arithmetically INERT (``reference_ds_route_seam_transport_vs_flag``), and
+    RM-172 found a live instance of exactly that in ``/v2/fight-report``: it
+    parsed the flag and forwarded it to ``compute_fight_report``, which passed
+    it to ONE of its five sections, and 0 of 45 arena-axis champions moved.
+
+    Each case below calls the real route handler twice with the SAME body except
+    for the flag, and asserts the serialized response differs. The champion on
+    each row was measured 2026-08-06 to move on that route; the counts in the
+    comments are the full 45-champion population for context, not assertions
+    (they are patch-fragile).
+    """
+
+    # route handler -> (champion measured to move, body factory)
+    CASES = {
+        "_route_stats": ("Akali", 45),            # 45/45
+        "_route_dps": ("Akali", 45),              # 45/45
+        "_route_ehp": ("Akali", 45),              # 45/45
+        "_route_hybrid": ("Akali", 44),           # 44/45
+        "_route_rank": ("Akali", 43),             # 43/45
+        "_route_rank_tank": ("Akali", 39),        # 39/45
+        "_route_rank_bruiser": ("Akali", 44),     # 44/45
+        "_route_beam": ("Akshan", 39),            # 39/45
+        # 2/45 MOVE. Not "2 carriers" - 19 of the 45 carry nonzero ability HPS
+        # (measured 2026-08-07). The other 17 heal off ``ap``, and the ARENA
+        # addends move hp/ad/armor/as and never ``ap``, so only Briar and Galio
+        # can move. Both halves of the HPS lane are wired correctly; the small
+        # number is the data, not a gap.
+        "_route_fight_report": ("Briar", 2),      # 2/45
+        "_route_ability_dps": ("Akali", 45),      # 45/45
+        "_route_rank_mage": ("Akshan", 28),       # 28/45
+        "_route_rank_onhit": ("Akali", 43),       # 43/45
+        "_route_burst": ("Akali", 45),            # 45/45
+        "_route_rank_assassin": ("Akshan", 20),   # 20/45
+        "_route_hps": ("Briar", 2),               # 2/45 move, 19/45 carry
+        "_route_rank_enchanter": ("Briar", 2),    # 2/45 move, 19/45 carry
+        "_route_matchup": ("Akali", 45),          # 45/45
+        "_route_ally_protected_ehp": ("Akali", 45),  # 45/45
+    }
+
+    LVL = 11
+
+    @classmethod
+    def setUpClass(cls):
+        from agents.daemon_slayer import server as ds_server
+
+        cls.server = ds_server
+        ds_server._CACHE.set(_snapshot())
+
+    # Per-route EXTRA body keys. These are not decoration: the effect is
+    # input-sensitive, and a body that differs from the one that was measured
+    # can make a correctly-wired route look inert (adding target_max_hp=2000 to
+    # /rank-onhit is enough to stop Akali moving). Each row below is exactly the
+    # body the 2026-08-06 sweep used for that route.
+    _AR_MR = {"target_armor": 60, "target_mr": 40}
+    _AR_MR_HP = {"target_armor": 60, "target_mr": 40, "target_max_hp": 2000}
+    EXTRA = {
+        "_route_stats": {},
+        "_route_ehp": {},
+        "_route_hps": {},
+        "_route_ally_protected_ehp": {},
+        "_route_rank_tank": {"top": 8},
+        "_route_rank_enchanter": {"top": 8},
+        "_route_dps": _AR_MR_HP,
+        "_route_hybrid": _AR_MR_HP,
+        "_route_fight_report": _AR_MR_HP,
+        "_route_ability_dps": _AR_MR_HP,
+        "_route_burst": _AR_MR_HP,
+        "_route_rank": {**_AR_MR, "top": 8},
+        "_route_rank_mage": {**_AR_MR, "top": 8},
+        "_route_rank_onhit": {**_AR_MR, "top": 8},
+        "_route_rank_assassin": {**_AR_MR, "top": 8},
+        "_route_rank_bruiser": {**_AR_MR, "top": 8},
+        "_route_beam": {**_AR_MR, "slots": 2, "beam_width": 3, "top": 3},
+    }
+
+    def _body(self, route: str, champ: str) -> dict:
+        lvl = self.LVL
+        if route == "_route_matchup":
+            return {"champ_a": champ, "champ_b": champ, "level_a": lvl,
+                    "level_b": lvl, "mode": "ARENA"}
+        base = {"champion": champ, "level": lvl, "mode": "ARENA"}
+        return {**base, **self.EXTRA[route]}
+
+    def test_the_proof_set_covers_every_parsing_route(self):
+        """Without this, a new wired route could ship with no proof at all.
+
+        CASES must be exactly the gate-B set minus ``_route_antitank``, which
+        is covered by the structural test below instead. If a route is added to
+        gate B, this fails until it gets a response-changes case (or a
+        documented structural one).
+        """
+        covered = set(self.CASES) | {"_route_antitank"}
+        parsing = {n for n, v in _route_defs().items() if v}
+        self.assertEqual(
+            covered,
+            parsing,
+            "the response-changes proof set and the set of routes parsing the "
+            "flag have diverged; every wired route needs evidence",
+        )
+        self.assertEqual(set(self.CASES), set(self.EXTRA) | {"_route_matchup"},
+                         "CASES and EXTRA disagree on the route list")
+
+    def test_every_wired_route_changes_its_response_when_the_flag_is_set(self):
+        for route, (champ, _pop) in sorted(self.CASES.items()):
+            with self.subTest(route=route, champion=champ):
+                fn = getattr(self.server, route)
+                off_body = self._body(route, champ)
+                on_body = dict(off_body, apply_mode_modifiers=True)
+                off = json.dumps(fn(off_body), sort_keys=True, default=str)
+                on = json.dumps(fn(on_body), sort_keys=True, default=str)
+                self.assertNotEqual(
+                    off,
+                    on,
+                    f"{route} returned an IDENTICAL response with "
+                    f"{FLAG}=True for {champ} in ARENA. The route parses the "
+                    "flag but the value is not reaching the arithmetic - that "
+                    "is the settable-but-inert failure, not a passing seam.",
+                )
+
+    def test_the_flag_is_a_no_op_at_the_default_for_every_wired_route(self):
+        """Omitting the key must be byte-identical to sending it False.
+
+        This is the other half of DEFAULT-OFF: RM-172 wired 11 new routes, and
+        every existing caller omits the key entirely.
+        """
+        for route, (champ, _pop) in sorted(self.CASES.items()):
+            with self.subTest(route=route, champion=champ):
+                fn = getattr(self.server, route)
+                omitted = self._body(route, champ)
+                explicit = dict(omitted, apply_mode_modifiers=False)
+                a = json.dumps(fn(omitted), sort_keys=True, default=str)
+                b = json.dumps(fn(explicit), sort_keys=True, default=str)
+                self.assertEqual(
+                    a, b, f"{route}: omitted key != explicit False"
+                )
+
+    def test_antitank_is_unobservable_for_a_STRUCTURAL_reason(self):
+        """/anti-tank parses and forwards the flag but cannot be seen to move.
+
+        Not a broken transport - a genuinely empty intersection, so it gets a
+        structural assertion instead of a response-changes one. Measured
+        2026-08-06: the anti-tank registry has 7 champions with a nonzero
+        ap/ad ratio row, exactly ONE of them (KogMaw) also carries an ARENA
+        axis, and KogMaw's only nonzero ratio is an AP ratio - while the ARENA
+        addend axes move ``ad`` and ``as`` and never ``ap``. If either
+        population changes this test fails and the route gets a real
+        response-changes case.
+        """
+        from agents.daemon_slayer import antitank as ds_antitank
+
+        snap = _snapshot()
+        movers = set(_arena_axis_champions(snap))
+        ratio_champs = set()
+        for cid, rows in ds_antitank._ANTITANK_REGISTRY.items():
+            for row in (rows if isinstance(rows, (list, tuple)) else [rows]):
+                if (getattr(row, "ap_ratio", 0) or 0) or (
+                    getattr(row, "ad_ratio", 0) or 0
+                ):
+                    ratio_champs.add(str(cid))
+        overlap = sorted(ratio_champs & movers)
+        self.assertEqual(
+            overlap,
+            ["KogMaw"],
+            "the anti-tank ratio population and the ARENA axis population no "
+            "longer intersect in exactly {KogMaw}; re-measure whether "
+            "/anti-tank can now be given a response-changes case",
+        )
+        off = build_champion(snap, "KogMaw", 11, [], mode="ARENA",
+                             apply_mode_modifiers=False)
+        on = build_champion(snap, "KogMaw", 11, [], mode="ARENA",
+                            apply_mode_modifiers=True)
+        moved_keys = {
+            k for k in set(off.stats) | set(on.stats)
+            if off.stats.get(k) != on.stats.get(k)
+        }
+        self.assertTrue(moved_keys, "KogMaw stopped responding to the addends")
+        self.assertNotIn(
+            "ap",
+            moved_keys,
+            "the ARENA addends now move 'ap', so KogMaw's ap_ratio anti-tank "
+            "row WOULD move - give /anti-tank a real response-changes case",
+        )
+
+
+class TestClientTransportEmitsTheKey(unittest.TestCase):
+    """Gate C proof: the client puts the key ON THE WIRE, and only when ON.
+
+    Captures the POST body each client function would send by stubbing
+    ``_post_json``. Then feeds the captured body to the REAL route handler and
+    asserts the response changes - so this is a client-to-arithmetic chain, not
+    a claim that a kwarg exists on the client signature.
+    """
+
+    CLIENT_TO_ROUTE = {
+        "rank_for": "_route_rank",
+        "rank_tank_for": "_route_rank_tank",
+        "rank_bruiser_for": "_route_rank_bruiser",
+        "rank_mage_for": "_route_rank_mage",
+        "rank_assassin_for": "_route_rank_assassin",
+        "rank_enchanter_for": "_route_rank_enchanter",
+        "rank_onhit_for": "_route_rank_onhit",
+        "ability_dps_for": "_route_ability_dps",
+        "burst_for": "_route_burst",
+        "hps_for": "_route_hps",
+        "dps_for": "_route_dps",
+        "ehp_for": "_route_ehp",
+        "hybrid_for": "_route_hybrid",
+        "matchup": "_route_matchup",
+    }
+
+    def _capture(self, fn_name: str, **kwargs) -> dict:
+        import core.daemon_slayer_client as dsc
+
+        captured: dict = {}
+
+        def _fake(path, body, timeout=0.0):
+            captured["path"] = path
+            captured["body"] = body
+            return None
+
+        real = dsc._post_json
+        dsc._post_json = _fake
+        try:
+            getattr(dsc, fn_name)(**kwargs)
+        finally:
+            dsc._post_json = real
+        return captured
+
+    # Briar moves 13 of the 14; rank_assassin_for needs Akshan. Both measured
+    # 2026-08-06 over the arena-axis population.
+    CHAMPION_FOR = {"rank_assassin_for": "Akshan"}
+    DEFAULT_CHAMPION = "Briar"
+
+    def _kwargs(self, fn_name: str, on: bool) -> dict:
+        import core.daemon_slayer_client as dsc
+
+        champ = self.CHAMPION_FOR.get(fn_name, self.DEFAULT_CHAMPION)
+        if fn_name == "matchup":
+            kw = {"champ_a": champ, "champ_b": champ, "level_a": 11,
+                  "level_b": 11, "mode": "ARENA"}
+        else:
+            kw = {"champion": champ, "level": 11, "item_ids": [],
+                  "mode": "ARENA"}
+        # Feed the target resists only where the signature takes them - the
+        # effect is input-sensitive and an all-zero target flattens some rankers.
+        params = inspect.signature(getattr(dsc, fn_name)).parameters
+        for name, val in (("target_armor", 60.0), ("target_mr", 40.0)):
+            if name in params:
+                kw[name] = val
+        if on:
+            kw["apply_mode_modifiers"] = True
+        return kw
+
+    def test_key_is_absent_by_default_and_true_when_set(self):
+        for fn_name in sorted(self.CLIENT_TO_ROUTE):
+            with self.subTest(client_fn=fn_name):
+                off = self._capture(fn_name, **self._kwargs(fn_name, False))
+                self.assertNotIn(
+                    FLAG,
+                    off["body"],
+                    f"{fn_name} emits {FLAG} at the DEFAULT; every existing "
+                    "caller would silently change its request",
+                )
+                on = self._capture(fn_name, **self._kwargs(fn_name, True))
+                self.assertIs(
+                    on["body"].get(FLAG),
+                    True,
+                    f"{fn_name} accepts {FLAG} but never puts it on the wire - "
+                    "that is the settable-but-inert transport failure",
+                )
+
+    def test_the_captured_client_body_changes_the_route_response(self):
+        """Close the loop: client body -> real route handler -> different result.
+
+        ALL 14 client functions, not a convenient subset. This is the assertion
+        that would have caught the RM-115 failure mode, and the one that caught
+        the live /v2/fight-report instance during RM-172: a signature test and a
+        body-contains-the-key test both pass on an inert seam; only a changed
+        response does not.
+        """
+        from agents.daemon_slayer import server as ds_server
+
+        ds_server._CACHE.set(_snapshot())
+        for fn_name in sorted(self.CLIENT_TO_ROUTE):
+            route = self.CLIENT_TO_ROUTE[fn_name]
+            with self.subTest(client_fn=fn_name, route=route):
+                off = self._capture(fn_name, **self._kwargs(fn_name, False))
+                on = self._capture(fn_name, **self._kwargs(fn_name, True))
+                handler = getattr(ds_server, route)
+                a = json.dumps(handler(off["body"]), sort_keys=True,
+                               default=str)
+                b = json.dumps(handler(on["body"]), sort_keys=True,
+                               default=str)
+                self.assertNotEqual(
+                    a, b,
+                    f"the body {fn_name} sends with {FLAG}=True produces an "
+                    f"identical {route} response - the wire carries the key but "
+                    "the engine does not act on it",
+                )
 
 
 if __name__ == "__main__":
