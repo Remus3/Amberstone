@@ -70,6 +70,10 @@ def _point_state_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(common, "LOCKFILE", state / "lockfile")
     # Default: this process is NOT the lock owner. Tests opt in explicitly.
     monkeypatch.setattr(common, "_LOCK_OWNER_PID", None, raising=False)
+    monkeypatch.setattr(common, "_LOCK_OWNER_SENTINEL", None, raising=False)
+    monkeypatch.setattr(common, "_SENTINEL_CONFLICTS", 0, raising=False)
+    monkeypatch.setattr(common, "_SENTINEL_CONFLICT_PID", None, raising=False)
+    monkeypatch.setattr(common, "_SENTINEL_CONFLICT_LOGGED_AT", 0.0, raising=False)
     # The repair counter is a PROCESS global (deliberately cumulative in the
     # daemon); zero it per test or one test's repair leaks into the next
     # assertion about the healthy-payload key set.
@@ -78,8 +82,15 @@ def _point_state_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def _claim(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Mark this process as the winner of the lock, as acquire_lock does."""
+    """Mark this process as the winner of the lock, as acquire_lock does.
+
+    Both halves, because the production claim is (pid, path) - see
+    test_owner_of_a_relocated_claim_never_stamps_the_real_sentinel for the
+    write that becomes possible when only the pid is recorded.
+    """
     monkeypatch.setattr(common, "_LOCK_OWNER_PID", os.getpid(), raising=False)
+    monkeypatch.setattr(
+        common, "_LOCK_OWNER_SENTINEL", common._sentinel_path(), raising=False)
 
 
 class _LiveChild:
@@ -423,6 +434,255 @@ def test_repair_is_visible_in_the_lockfile_and_silent_when_healthy(
     common.refresh_lock()
     still = json.loads(lock.read_text(encoding="utf-8"))
     assert still.get("sentinel_repairs") == 1
+
+
+def test_owner_of_a_relocated_claim_never_stamps_the_real_sentinel(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """THE catastrophic write, reconstructed exactly as the verifier found it.
+
+    A pid-only ownership record proves "this pid won A claim", not "this pid
+    won THIS sentinel". So: win acquire_lock against a RELOCATED sentinel,
+    then let the paths be restored - any test that relocates and undoes, or a
+    process that ran once under RC_PHASE3_STATE_DIR - and the next heartbeat
+    finds the REAL sentinel missing plus a matching pid, and stamps its own
+    LIVE pid into it. That claim outlives the mistake: acquire_lock reclaims
+    only from a DEAD owner, so it wedges every future legitimate start.
+
+    Prevented by binding the PATH into the claim, which is a mechanism. It was
+    previously prevented only by every fixture remembering to null the owner
+    global, which is a convention.
+
+    Uses a second tmp dir as the stand-in "real" location - the actual
+    agents/state/ belongs to a live daemon and no test may write there.
+    """
+    relocated = tmp_path / "relocated"
+    relocated.mkdir()
+    real = tmp_path / "real"
+    real.mkdir()
+
+    # Phase 1: win the lock against the relocated path.
+    monkeypatch.setattr(common, "STATE_DIR", relocated)
+    monkeypatch.setattr(common, "LOCKFILE", relocated / "lockfile")
+    monkeypatch.setattr(common, "_LOCK_OWNER_PID", None, raising=False)
+    monkeypatch.setattr(common, "_LOCK_OWNER_SENTINEL", None, raising=False)
+    assert common.acquire_lock() is True
+    assert (relocated / "lockfile.sentinel").exists()
+
+    # Phase 2: paths are restored underneath us; the owner global survives.
+    monkeypatch.setattr(common, "STATE_DIR", real)
+    monkeypatch.setattr(common, "LOCKFILE", real / "lockfile")
+    assert not (real / "lockfile.sentinel").exists()
+
+    common.refresh_lock()
+
+    assert not (real / "lockfile.sentinel").exists(), (
+        "a process that won a RELOCATED claim stamped its own live pid into a "
+        "different sentinel - this is the permanent wedge, not a stale file"
+    )
+    # The claim it really holds is untouched.
+    assert (relocated / "lockfile.sentinel").read_bytes() == str(os.getpid()).encode("ascii")
+
+
+def test_foreign_live_holder_is_counted_and_logged_not_silent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    live_foreign_pid: int, caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The real two-supervisor state must not read as healthy.
+
+    A present sentinel was previously an unconditional early return: no read,
+    no comparison, no log, no counter. So the one condition the singleton
+    exists to prevent - two daemons, one holding a claim the other thinks is
+    its own - was indistinguishable from healthy and recorded nowhere.
+    """
+    state = _point_state_at(tmp_path, monkeypatch)
+    _claim(monkeypatch)
+    sentinel = state / "lockfile.sentinel"
+    sentinel.write_bytes(str(live_foreign_pid).encode("ascii"))
+
+    with caplog.at_level("WARNING", logger="supervisor"):
+        common.refresh_lock()
+
+    msgs = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert any("CONFLICT" in m and str(live_foreign_pid) in m for m in msgs), msgs
+    assert any("TWO SUPERVISORS" in m for m in msgs), msgs
+    # Still no write: reporting must not turn into reclaiming.
+    assert sentinel.read_bytes() == str(live_foreign_pid).encode("ascii")
+    # And it is durable, not just a log line that scrolls away.
+    lock = json.loads((state / "lockfile").read_text(encoding="utf-8"))
+    assert lock["sentinel_conflicts"] == 1
+    assert lock["sentinel_conflict_pid"] == live_foreign_pid
+
+
+def test_persisting_conflict_is_throttled_but_still_counted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Every 5s forever would bury supervisor.log; the COUNT must not throttle.
+
+    A signal that floods its own log is the same silence in a different
+    costume, so the warning is rate-limited - but the counter and the lockfile
+    field advance on every observation, so the magnitude stays truthful.
+    """
+    state = _point_state_at(tmp_path, monkeypatch)
+    _claim(monkeypatch)
+    (state / "lockfile.sentinel").write_bytes(b"999999999")
+
+    with caplog.at_level("WARNING", logger="supervisor"):
+        for _ in range(4):
+            common.refresh_lock()
+
+    conflicts = [r for r in caplog.records
+                 if r.levelname == "WARNING" and "CONFLICT" in r.getMessage()]
+    assert len(conflicts) == 1, "same holder should log once, not once per heartbeat"
+    lock = json.loads((state / "lockfile").read_text(encoding="utf-8"))
+    assert lock["sentinel_conflicts"] == 4
+
+
+def test_a_new_conflicting_holder_relogs_immediately(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Throttling is per HOLDER - a different pid is a new event, not a repeat."""
+    state = _point_state_at(tmp_path, monkeypatch)
+    _claim(monkeypatch)
+    sentinel = state / "lockfile.sentinel"
+
+    with caplog.at_level("WARNING", logger="supervisor"):
+        sentinel.write_bytes(b"111111111")
+        common.refresh_lock()
+        sentinel.write_bytes(b"222222222")
+        common.refresh_lock()
+
+    msgs = [r.getMessage() for r in caplog.records if "CONFLICT" in r.getMessage()]
+    assert len(msgs) == 2
+    assert "111111111" in msgs[0] and "222222222" in msgs[1]
+
+
+def test_intact_own_sentinel_is_not_a_conflict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The healthy path stays silent and adds no keys - no crying wolf."""
+    state = _point_state_at(tmp_path, monkeypatch)
+    _claim(monkeypatch)
+    (state / "lockfile.sentinel").write_bytes(str(os.getpid()).encode("ascii"))
+
+    with caplog.at_level("WARNING", logger="supervisor"):
+        common.refresh_lock()
+
+    assert [r.getMessage() for r in caplog.records if r.levelname == "WARNING"] == []
+    lock = json.loads((state / "lockfile").read_text(encoding="utf-8"))
+    assert set(lock) == {"pid", "started_at", "heartbeat_at", "host"}
+
+
+def test_lock_health_is_the_live_reader_for_the_counters(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The counters need a reader that is not the frozen watcher.
+
+    _Phase3Watcher polls the lockfile FILE but reads only pid / heartbeat_at /
+    started_at, so a key added there is written and never consumed. lock_health
+    is what GET /api/env serves, which makes the count actionable rather than
+    merely recorded.
+    """
+    state = _point_state_at(tmp_path, monkeypatch)
+    _claim(monkeypatch)
+
+    healthy = common.lock_health()
+    assert healthy["owned"] is True
+    assert healthy["sentinel_present"] is False
+    assert healthy["sentinel_repairs"] == 0
+    assert healthy["sentinel_conflicts"] == 0
+
+    common.refresh_lock()                       # repairs
+    assert common.lock_health()["sentinel_repairs"] == 1
+    assert common.lock_health()["sentinel_present"] is True
+
+    (state / "lockfile.sentinel").write_bytes(b"888888888")
+    common.refresh_lock()                       # conflict
+    after = common.lock_health()
+    assert after["sentinel_conflicts"] == 1
+    assert after["sentinel_conflict_pid"] == 888888888
+
+    # A non-owner reports owned=False, so the field means what it says.
+    monkeypatch.setattr(common, "_LOCK_OWNER_PID", None, raising=False)
+    assert common.lock_health()["owned"] is False
+
+
+def test_api_env_serves_lock_health() -> None:
+    """The wire actually carries it - a reader nobody calls is not a reader."""
+    import inspect
+    from agents import _supervisor_http as http_mod
+    src = inspect.getsource(http_mod._QuietHandler._handle_env)
+    assert "lock_health" in src
+    assert 'out["lock"]' in src
+
+
+def test_stop_and_reassert_agree_on_the_sentinel_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One derivation, not two.
+
+    The repair used LOCKFILE.with_name while Supervisor.stop used a second
+    STATE_DIR-based literal. Identical by default, DIVERGENT under a
+    LOCKFILE-only relocation - which tests/test_p2w2_ds_h.py already performs.
+    """
+    import inspect
+    from agents import supervisor as sup_mod
+    assert "_sentinel_path()" in inspect.getsource(sup_mod.Supervisor.stop)
+    assert 'STATE_DIR / "lockfile.sentinel"' not in inspect.getsource(sup_mod.Supervisor.stop)
+
+    # And they agree under a LOCKFILE-only relocation, which is the case that
+    # made the two derivations differ.
+    monkeypatch.setattr(common, "LOCKFILE", tmp_path / "elsewhere" / "lockfile")
+    assert common._sentinel_path() == tmp_path / "elsewhere" / "lockfile.sentinel"
+
+
+def test_release_clears_both_halves_of_the_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After release, a heartbeat cannot re-arm what was deliberately let go."""
+    state = _point_state_at(tmp_path, monkeypatch)
+    assert common.acquire_lock() is True
+    common.release_lock_ownership()
+    assert common._LOCK_OWNER_PID is None
+    assert common._LOCK_OWNER_SENTINEL is None
+
+    (state / "lockfile.sentinel").unlink()
+    common.refresh_lock()
+    assert not (state / "lockfile.sentinel").exists()
+
+
+def test_suite_guard_would_catch_a_third_unrelocated_caller(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The mechanism, not just the two relocations.
+
+    The root cause was a MISSING relocation, so fixing the two known callers
+    leaves the next one free to repeat it. ``agents/state/lockfile.sentinel``
+    is enrolled in conftest's session-scoped prod-artifact guard, which turns
+    silent deletion of the live claim into a loud suite failure.
+
+    Exercises conftest's own helper with the repo root relocated, because the
+    real file belongs to a live daemon and this test may not touch it.
+    """
+    from tests import conftest as tests_conftest
+
+    assert "agents/state/lockfile.sentinel" in tests_conftest._PROD_ARTIFACT_GUARD
+
+    fake_root = tmp_path / "repo"
+    (fake_root / "agents" / "state").mkdir(parents=True)
+    monkeypatch.setattr(tests_conftest, "_REPO_ROOT", fake_root)
+    sentinel = fake_root / "agents" / "state" / "lockfile.sentinel"
+    sentinel.write_bytes(b"17376")
+
+    before = tests_conftest._prod_artifact_sizes()
+    assert before["agents/state/lockfile.sentinel"] == 5
+
+    sentinel.unlink()  # what an unrelocated Supervisor.stop() does
+    after = tests_conftest._prod_artifact_sizes()
+    assert after["agents/state/lockfile.sentinel"] is None
+    assert before["agents/state/lockfile.sentinel"] != after["agents/state/lockfile.sentinel"], (
+        "the prod-artifact guard cannot see the sentinel disappear"
+    )
 
 
 def test_repair_is_logged(
