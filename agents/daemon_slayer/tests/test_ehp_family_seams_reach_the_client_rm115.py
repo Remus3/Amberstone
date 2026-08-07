@@ -84,8 +84,16 @@ def _scalars(resp: dict) -> tuple:
 class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        if not dsc.is_engine_up(timeout=2.0):
-            raise unittest.SkipTest("DS engine :8860 is down")
+        # RM-119 B2 (2026-08-06): routed through the shared gate, so
+        # RC_REQUIRE_DS_ENGINE=1 turns a down engine into a failure here
+        # instead of a green skip. This module is already registered in
+        # tools/ds_share_sync._HOST_DEPENDENT_TESTS and is NOT copied into
+        # Share/src (it imports core.daemon_slayer_client at module level), so
+        # importing a tests/ helper costs the shipped package nothing. The
+        # eleven stdlib-only DS-tree gates cannot do this and stay class-wide.
+        from tests.test_ds_live_route_gate import require_live_engine
+        require_live_engine("the RM-115 EHP family seam reachability class",
+                            up=dsc.is_engine_up(timeout=2.0))
 
     # ------------------------------------------------------------ item lane
     def test_item_resist_grants_reorders_and_control_holds(self) -> None:
