@@ -1788,7 +1788,18 @@ def test_known_real_sites_classify_as_documented():
         return {f.verdict for f in by_module.get(rel, [])}
 
     # network liveness, external binary, sibling repo, win32, gitignored data
-    assert verdicts("tests/test_build_order_variants.py") == {CAPABILITY}
+    #
+    # RE-POINTED 2026-08-06 (RM-119 B2). The network-liveness anchor used to
+    # be tests/test_build_order_variants.py, whose own `self.skipTest("DS
+    # engine ... is down")` moved into the shared gate
+    # `tests/test_ds_live_route_gate.require_live_engine`. That module now
+    # holds the canonical DS-route gate, and the classifier still reads it as
+    # CAPABILITY off the same evidence (`env; network`) because it resolves
+    # `core.daemon_slayer_client.is_engine_up` through to `urlopen`. Keeping a
+    # DS-route anchor here is the point: B2 asked whether these gates were
+    # capability or masking, the answer was capability, and this line is what
+    # makes a classifier regression on that answer loud.
+    assert verdicts("tests/test_ds_live_route_gate.py") == {CAPABILITY}
     assert verdicts("tests/test_coach_choices_trigger_render.py") == {CAPABILITY}
     assert verdicts("tests/test_loop_concurrency.py") == {CAPABILITY}
     assert verdicts("tests/test_hotkey_lowlevel_decoder.py") == {CAPABILITY}
