@@ -64,7 +64,8 @@ installed locally. Both are fixed; the point is that neither was VISIBLE.
   write the command you actually ran plus the counts you actually saw.
 - `pytest . -n 8` is the pre-merge / pre-release bar. Measured on Legion
   2026-08-06 after the RM-170 fixes: `29840 passed, 158 skipped, 8449 subtests
-  passed` in 277s (about 4.5 min), zero failures and zero collection errors.
+  passed`, zero failures and zero collection errors, in 232-278s across two
+  runs (about 4 to 4.5 min).
 - Tier-0/Tier-1 edits keep using the narrow, fast per-module runs - see
   CLAUDE.md "Execution Efficiency & Tooling Rules". This section defines what
   the words mean, it does not raise the per-edit verification tax.

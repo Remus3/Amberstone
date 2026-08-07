@@ -12,13 +12,17 @@ Safe to call at every supervisor startup.
 from __future__ import annotations
 
 import logging
+import os
 import sqlite3
 from pathlib import Path
 
 logger = logging.getLogger("agent2.db_schema")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DB_DIR = _PROJECT_ROOT / "data" / "db"
+# RM-170: env-overridable so a test can point the mode DBs at a tmp dir.
+# Default unchanged. All five modules that define this path read the SAME
+# var, so an override cannot split schema-init from ingest.
+DB_DIR = Path(os.environ.get("RC_PHASE3_DB_DIR") or (_PROJECT_ROOT / "data" / "db"))
 
 MODE_DB_FILES = {
     "sr_draft": "sr_draft.db",

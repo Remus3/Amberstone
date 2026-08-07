@@ -18,6 +18,7 @@ contract is preserved post-split with zero test changes.
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -26,7 +27,10 @@ logger = logging.getLogger("coaches.adaptation_hint")
 # coaches/_adaptation_common.py is one level under the project root -
 # identical resolution to the pre-split coaches/adaptation_hint.py.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DB_DIR = _PROJECT_ROOT / "data" / "db"
+# RM-170: env-overridable so a test can point the mode DBs at a tmp dir.
+# Default unchanged. All five modules that define this path read the SAME
+# var, so an override cannot split schema-init from ingest.
+DB_DIR = Path(os.environ.get("RC_PHASE3_DB_DIR") or (_PROJECT_ROOT / "data" / "db"))
 
 from lib.modes import PHASE3_MODES as SUPPORTED_MODES
 

@@ -21,6 +21,7 @@ Safety:
 from __future__ import annotations
 
 import logging
+import os
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -29,7 +30,10 @@ from typing import Any
 logger = logging.getLogger("agent2.win_reconcile")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-MODE_DB_DIR = _PROJECT_ROOT / "data" / "db"
+# RM-170: env-overridable so a test can point the mode DBs at a tmp dir.
+# Default unchanged. All five modules that define this path read the SAME
+# var, so an override cannot split schema-init from ingest.
+MODE_DB_DIR = Path(os.environ.get("RC_PHASE3_DB_DIR") or (_PROJECT_ROOT / "data" / "db"))
 POSTGAME_DB = _PROJECT_ROOT / "data" / "postgame_stats.db"
 
 LIVE_SOURCE_TAG = "live-phase3"
