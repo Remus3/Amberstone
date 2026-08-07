@@ -314,17 +314,42 @@ def _sentinel_path() -> Path:
     return LOCKFILE.with_name(LOCKFILE.name + ".sentinel")
 
 
-# RM-173: pid of the process that WON the exclusive sentinel create, or None.
-# Ownership is per-PID and is only ever set by a successful acquire_lock() -
-# never inferred from the lockfile, which this process rewrites every 5s and
-# which therefore always looks like it names us. A forked child inherits this
-# module global, so every consumer compares it against the CURRENT os.getpid().
+# RM-173: the claim this process actually won, or None. BOTH halves are
+# load-bearing and neither is sufficient alone.
+#
+# The pid, because ownership is per-PID: a forked child inherits this module
+# global, so every consumer compares it against the CURRENT os.getpid(). It is
+# only ever set by a successful acquire_lock(), never inferred from the
+# lockfile - this process rewrites that every 5s, so the lockfile always looks
+# like it names us.
+#
+# The PATH, because the pid alone proves "this pid won A claim", not "this pid
+# won THIS sentinel". Without it the following sequence stamps a live foreign
+# pid into the real sentinel, which is the worst outcome in this whole module:
+# a process wins acquire_lock() against a RELOCATED sentinel (any test, any
+# alternate RC_PHASE3_STATE_DIR), the paths are later restored, and the next
+# unrelocated refresh_lock() sees a missing real sentinel plus a matching pid
+# and claims it. That claim never expires while the process lives, and
+# acquire_lock only reclaims from a DEAD owner, so it wedges every future
+# legitimate supervisor start. Verified reproducible before this pair existed.
 _LOCK_OWNER_PID: int | None = None
+_LOCK_OWNER_SENTINEL: Path | None = None
 
 # Count of sentinel re-assertions performed by refresh_lock in this process.
-# Surfaced in the lockfile (see refresh_lock) so a disarmed singleton is
-# visible instead of silent.
 _SENTINEL_REPAIRS: int = 0
+
+# Count of heartbeats that found the sentinel held by a pid that is NOT ours
+# while this process believed it owned the lock - i.e. the real two-daemon
+# condition, or someone else's claim having replaced ours. Distinct from a
+# repair: nothing is written, but it must never be silent.
+_SENTINEL_CONFLICTS: int = 0
+_SENTINEL_CONFLICT_PID: int | None = None
+_SENTINEL_CONFLICT_LOGGED_AT: float = 0.0
+# Re-log a persisting conflict at most this often (seconds). The condition is
+# re-observed every 5s; logging every observation would bury the rest of
+# supervisor.log at ~17k lines/day, and a signal that drowns its own log is
+# the same silence in a different costume.
+_SENTINEL_CONFLICT_LOG_INTERVAL_S = 300.0
 
 
 def acquire_lock() -> bool:
@@ -335,7 +360,7 @@ def acquire_lock() -> bool:
     Stale sentinels (dead pid) are reclaimed after the exclusive-create
     fails.
     """
-    global _LOCK_OWNER_PID
+    global _LOCK_OWNER_PID, _LOCK_OWNER_SENTINEL
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     _reap_orphan_lockfile_tmps()
     sentinel = _sentinel_path()
@@ -352,7 +377,7 @@ def acquire_lock() -> bool:
         fd = os.open(str(sentinel), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         os.write(fd, str(os.getpid()).encode("ascii"))
         os.close(fd)
-        _LOCK_OWNER_PID = os.getpid()
+        _LOCK_OWNER_PID, _LOCK_OWNER_SENTINEL = os.getpid(), sentinel
         _write_lock_metadata()
         return True
     except FileExistsError:
@@ -381,7 +406,7 @@ def acquire_lock() -> bool:
     except FileExistsError:
         log.error("lost race to another reclaiming starter")
         return False
-    _LOCK_OWNER_PID = os.getpid()
+    _LOCK_OWNER_PID, _LOCK_OWNER_SENTINEL = os.getpid(), sentinel
     _write_lock_metadata()
     return True
 
@@ -428,6 +453,55 @@ def _port_available(host: str, port: int) -> bool:
     return True
 
 
+def _check_sentinel_conflict(sentinel: Path) -> bool:
+    """Report a sentinel that exists but is NOT held by this process.
+
+    RM-173 follow-up. The repair path only fires when the sentinel is ABSENT,
+    so on its own it treats "present" as healthy without ever reading it. That
+    hides the condition this row exists to expose: a sentinel holding a
+    FOREIGN pid while this process believes it owns the lock is the actual
+    two-supervisors-running state, and it would otherwise be indistinguishable
+    from healthy and recorded nowhere, indefinitely.
+
+    Deliberately does NOT act - no unlink, no rewrite, no reclaim. Whoever
+    holds the sentinel holds the lock; stealing it back is the wedge this
+    module spends most of its guards avoiding. This function only observes and
+    makes noise. Returns True when a conflict is present.
+
+    Called only from the owner path, so an unparseable sentinel counts as a
+    conflict too: our claim is a plain decimal pid, so anything else means the
+    file is no longer the one we wrote.
+    """
+    global _SENTINEL_CONFLICTS, _SENTINEL_CONFLICT_PID, _SENTINEL_CONFLICT_LOGGED_AT
+    try:
+        holder = int(sentinel.read_text(encoding="ascii").strip() or "0")
+    except (OSError, ValueError):
+        holder = 0
+    if holder == os.getpid():
+        # Ours, intact. Clear any prior conflict state - the counter stays,
+        # the CURRENT pid does not, so a resolved conflict stops reading as live.
+        _SENTINEL_CONFLICT_PID = None
+        return False
+
+    _SENTINEL_CONFLICTS += 1
+    new_holder = holder != _SENTINEL_CONFLICT_PID
+    _SENTINEL_CONFLICT_PID = holder
+    now = time.monotonic()
+    if new_holder or (now - _SENTINEL_CONFLICT_LOGGED_AT) >= _SENTINEL_CONFLICT_LOG_INTERVAL_S:
+        _SENTINEL_CONFLICT_LOGGED_AT = now
+        alive = _pid_alive(holder) if holder else False
+        log.warning(
+            "singleton sentinel CONFLICT: %s is held by pid=%s (alive=%s) but "
+            "this process (pid=%s) owns the lock. %s Not reclaiming - the "
+            "holder's claim stands. Observed %s time(s).",
+            sentinel, holder or "unparseable", alive, os.getpid(),
+            ("TWO SUPERVISORS ARE PROBABLY RUNNING." if alive
+             else "The holder is dead, so the next start will reclaim it."),
+            _SENTINEL_CONFLICTS,
+        )
+    return True
+
+
 def _reassert_sentinel() -> bool:
     """Re-create the singleton sentinel if it vanished under its live owner.
 
@@ -439,17 +513,23 @@ def _reassert_sentinel() -> bool:
     heartbeated normally and every health signal read green. With no sentinel
     a second supervisor's exclusive create SUCCEEDS and two daemons run.
 
-    Two guards, and the asymmetry of the failure modes is what shapes them. A
-    dead pid in the sentinel is no worse than no sentinel at all - the next
+    Three guards, and the asymmetry of the failure modes is what shapes them.
+    A dead pid in the sentinel is no worse than no sentinel at all - the next
     boot reclaims either. A LIVE pid belonging to some OTHER process is far
     worse than absent: reclaim only fires when the recorded owner is dead, so
     a wrongly-written live pid wedges every future legitimate start. Hence:
 
     1. only the process that actually WON the exclusive create repairs, and
        only while it is still that pid (a forked child inherits the global);
-    2. the write itself is ``O_CREAT|O_EXCL``, so a sentinel that reappears
+    2. only at the exact PATH it won, because the pid alone proves "won A
+       claim", not "won THIS one" - see the _LOCK_OWNER_SENTINEL note;
+    3. the write itself is ``O_CREAT|O_EXCL``, so a sentinel that reappears
        between the check and the write - a competing starter legitimately
        claiming the lock - wins, and this call quietly loses.
+
+    A sentinel that is PRESENT is not assumed healthy: it is read and its pid
+    compared, so the two-daemon condition is reported rather than passed over
+    (``_check_sentinel_conflict``).
 
     A stale dead-pid sentinel is deliberately left alone: reclaiming it is
     ``acquire_lock``'s job, and duplicating that unlink-then-recreate here
@@ -461,10 +541,13 @@ def _reassert_sentinel() -> bool:
     Returns True only when this call actually restored the sentinel.
     """
     global _SENTINEL_REPAIRS
-    if _LOCK_OWNER_PID is None or _LOCK_OWNER_PID != os.getpid():
-        return False
     sentinel = _sentinel_path()
+    if (_LOCK_OWNER_PID is None
+            or _LOCK_OWNER_PID != os.getpid()
+            or _LOCK_OWNER_SENTINEL != sentinel):
+        return False
     if sentinel.exists():
+        _check_sentinel_conflict(sentinel)
         return False
     try:
         fd = os.open(str(sentinel), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -492,13 +575,42 @@ def release_lock_ownership() -> None:
     """Forget that this process holds the singleton lock.
 
     RM-173. ``Supervisor.stop`` unlinks BOTH lock files, which is correct
-    release semantics. Ownership must be dropped in the same breath, or a
-    heartbeat still in flight would re-arm a sentinel that was deliberately
-    released and leave a stale claim behind for the next starter to reclaim.
+    release semantics. Ownership is dropped in the same breath so a heartbeat
+    still in flight cannot re-arm a sentinel that was deliberately released.
+
+    Correct but INERT in production, and worth being precise about rather than
+    claiming a race is closed: ``refresh_lock`` has exactly one caller, the
+    asyncio ``_heartbeat_loop`` in agents/supervisor.py, and ``stop()``
+    contains no ``await`` between this call and the unlinks, so on a single
+    event loop the two cannot interleave anyway. This makes the ordering
+    robust to that changing, not load-bearing today.
+
     Idempotent; safe to call when this process never owned the lock.
     """
-    global _LOCK_OWNER_PID
+    global _LOCK_OWNER_PID, _LOCK_OWNER_SENTINEL
     _LOCK_OWNER_PID = None
+    _LOCK_OWNER_SENTINEL = None
+
+
+def lock_health() -> dict[str, object]:
+    """Singleton-lock health, for any live reader that wants it.
+
+    RM-173. Exists because the repair counter needed a reader that is not the
+    FROZEN ``_Phase3Watcher``: that watcher polls the lockfile FILE, but only
+    for ``pid`` / ``heartbeat_at`` / ``started_at``, so a new key in there is
+    written and never read by anything. Wired into ``GET /api/env``.
+
+    ``owned`` answers the question the pid alone cannot: whether this process
+    holds the claim at the path it is currently configured for.
+    """
+    sentinel = _sentinel_path()
+    return {
+        "owned": _LOCK_OWNER_PID == os.getpid() and _LOCK_OWNER_SENTINEL == sentinel,
+        "sentinel_present": sentinel.exists(),
+        "sentinel_repairs": _SENTINEL_REPAIRS,
+        "sentinel_conflicts": _SENTINEL_CONFLICTS,
+        "sentinel_conflict_pid": _SENTINEL_CONFLICT_PID,
+    }
 
 
 def refresh_lock() -> None:
@@ -511,15 +623,21 @@ def refresh_lock() -> None:
         "heartbeat_at": _iso_now(),
         "host": socket.gethostname(),
     }
-    # RM-173 health signal. The lockfile is the surface the frozen
-    # _Phase3Watcher (ops/rc_supervisor.py) already polls every cycle, so the
-    # repair count rides along there rather than in a new subsystem. Emitted
-    # only once a repair has actually happened, so the steady-state payload
-    # keeps its exact prior key set and no reader sees a shape change. Sticky
-    # and cumulative - a count that cleared on the next heartbeat would be
+    # RM-173 health signal, part 2 of 3. The other two are the WARNING lines
+    # (supervisor.log, the only signal that reaches an operator unprompted)
+    # and lock_health() on GET /api/env (the only one a live reader consumes).
+    # These keys ride in the lockfile because it is the natural place to
+    # inspect lock state by hand - NOT because the frozen _Phase3Watcher reads
+    # them, which it does not: it only looks at pid / heartbeat_at /
+    # started_at. Emitted only once something has actually gone wrong, so the
+    # steady-state payload keeps its exact prior key set. Sticky and
+    # cumulative - a count that cleared on the next heartbeat would be
     # invisible again within 5 seconds.
     if _SENTINEL_REPAIRS:
         payload["sentinel_repairs"] = _SENTINEL_REPAIRS
+    if _SENTINEL_CONFLICTS:
+        payload["sentinel_conflicts"] = _SENTINEL_CONFLICTS
+        payload["sentinel_conflict_pid"] = _SENTINEL_CONFLICT_PID
     _atomic_write_json(LOCKFILE, payload)
 
 
