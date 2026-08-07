@@ -259,6 +259,13 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         out["warm_agent7"] = warm.stats() if warm else {"warm": False}
         out["input_latency"] = sup.input_latency_stats()
         out["auto_analyze"] = sup.auto_analyze_stats()
+        # RM-173: singleton-lock health. This endpoint is the live reader for
+        # it - the frozen _Phase3Watcher polls the lockfile but never looks at
+        # these fields, so without this the only signal was a log line. A
+        # sentinel_repairs or sentinel_conflicts above zero means something
+        # removed or replaced the lock claim under a running daemon.
+        from agents._supervisor_common import lock_health
+        out["lock"] = lock_health()
         self._send_json(200, out)
 
     def _handle_minimap_crop(self) -> None:
