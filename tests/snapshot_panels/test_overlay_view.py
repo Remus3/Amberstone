@@ -942,18 +942,72 @@ def test_all_panels_visible_by_default(mock_server, pw_browser):
 
 
 def test_ovx_hidden_suppresses_a_panel(mock_server, pw_browser):
-    """Per-widget hide is now the only visibility gate: adding .ovx-hidden to a shown
-    panel (what the launcher menu toggle / right-click hide do) removes it, while its
-    siblings stay - the replacement for the retired panel-set hiding."""
+    """Per-widget hide is now the only visibility gate: hiding a shown panel (what the
+    launcher menu toggle / right-click hide do) removes it, while its siblings stay -
+    the replacement for the retired panel-set hiding.
+
+    RM-174: this test used to hide the panel by adding .ovx-hidden directly with
+    page.evaluate, and flaked with `assert 'flex' == 'none'`. That was NOT a
+    read-before-paint race (getComputedStyle is synchronous - an add-then-read probe
+    missed 0 times in 300 fresh page opens). The cause is that an out-of-band class is
+    REVERTED. In web/js/lib/overlay_layout.js, initOverlayLayout installs a
+    150ms-debounced MutationObserver that re-runs _placeAll, whose _applyPos does
+    `classList.toggle("ovx-hidden", p.hidden)` against the LAYOUT STORE - and the
+    store still said hidden:false, so the class was stripped. A re-place is already
+    pending when _open_overlay's wait_for_function returns, and it fires roughly
+    100ms after the class add. The add and the read are two separate CDP round trips:
+    on an idle machine that gap is a few ms and the read wins, under CPU load it
+    exceeds the fuse and loses. So the flake is LOAD-DEPENDENT, not intrinsic and not
+    absent - measured pre-fix at this base, 0 failures in 24 quiet executions and
+    2 in 28 under 24 CPU burners.
+
+    Polling alone would NOT have fixed it: in the failing regime the class is already
+    gone, the panel never becomes hidden, and the poll just times out instead of
+    failing fast. The fix is to hide through the store-backed seam production actually
+    uses, which makes the hide idempotent under a re-place.
+
+    THE BUG CLASS IS STILL OPEN and nothing guards it. Any test that mutates a
+    layout-owned property out-of-band on an overlay page - the .ovx-hidden or
+    .ovx-widget class, left/top/bottom, opacity, --ovx-scale - inherits the same
+    ~100ms fuse. Drive it through _internals (_setHidden / _setLayout + _applyPos)
+    instead, the way test_overlay_fix_coach_radial.py does for position.
+    """
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         assert _display(page, "#view-active-match .am-pane-build") != "none"
+        # Same seam as the launcher toggle / right-click hide: _setHidden writes the
+        # layout store and applies through _applyPos.
         page.evaluate(
-            "() => document.querySelector('#view-active-match .am-pane-build')"
-            ".classList.add('ovx-hidden')"
+            """async () => {
+                const L = await import('/js/lib/overlay_layout.js');
+                L._internals._setHidden(
+                    L._internals.WIDGETS.find(w => w.id === 'w-build'), true);
+            }"""
+        )
+        page.wait_for_function(
+            "() => {const e = document.querySelector("
+            "'#view-active-match .am-pane-build');"
+            " return e && getComputedStyle(e).display === 'none';}",
+            timeout=5_000,
+        )
+        assert "ovx-hidden" in page.eval_on_selector(
+            "#view-active-match .am-pane-build", "el => el.className"
+        ), "the hide must land as the .ovx-hidden CSS gate"
+        # REGRESSION PIN for the revert above: re-run the exact call the debounced
+        # observer makes (_applyPos with the store position) and require the hide to
+        # survive it. Deterministic - no sleep, no dependence on observer timing. The
+        # old out-of-band classList.add fails this test 5 times in 5, 4 of them here
+        # and the fifth one step earlier at the className gate above.
+        page.evaluate(
+            """async () => {
+                const L = await import('/js/lib/overlay_layout.js');
+                const w = L._internals.WIDGETS.find(x => x.id === 'w-build');
+                L._internals._applyPos(document.querySelector(w.sel),
+                                       L._internals._posFor(w));
+            }"""
         )
         assert _display(page, "#view-active-match .am-pane-build") == "none", (
-            ".ovx-hidden must suppress the panel"
+            "the hide must survive a layout re-place (RM-174)"
         )
         # A sibling pane is unaffected by another panel's hide.
         assert _display(page, "#am-pane-ovds") != "none", "sibling pane must stay shown"
