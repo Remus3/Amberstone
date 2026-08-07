@@ -124,6 +124,20 @@ append docs/LEDGER.md and sync ROADMAP plus this table.
 | S4 | RM-119 residual B5 | About 22 test skips gate on files that are TRACKED in git, so a missing tracked file turns the suite GREEN instead of red. Convert to hard assertions, prove non-vacuity by removal. | DONE | `fc522436` | The row's count was STALE: 1 genuine site, not about 22. The larger defect was in the guard itself - it globbed 2 test trees of 5. Verifier refuted 2 of the first 4 strengthenings: the tree-universe test LOOPED OVER THE TUPLE IT GUARDED (tautological), and one fixture was SHAPED TO THE FIX rather than the bug. A third change was dropped as a genuine equivalent mutant. New blind spot found and closed: `parents[N]` was invisible where `.parent.parent` was caught. Skip count did NOT drop and that is correct. LEDGER 1210. |
 | S5 | RM-164 | HZ-B1 comp-archetype cells record no scorer archetype, so a consumer cannot detect staleness against an operator override. Add provenance; report on the next_buy_fallback hardcoded bucket without fixing it. | DONE (provenance half only) | `b44a48e5` | 2076 of 2076 order lists byte-identical - no served build recommendation moved. Verifier caught that the stamp recorded the REQUEST, not the engine's resolved value, and that `KNOWN_ARCHETYPES` was test-only scaffolding so a garbage stamp read `fresh`. Both fixed. Defect (i) measured not fixed (served coach surface): SR 71/173, ARAM 71/173, Arena 67/173 champions have a lean bucket differing from `balanced`, Alistar diverging at the OPENING slot. LEDGER 1209. |
 
+### Cycle 2 (same run, refilled from cycle 1's own findings)
+
+| ID | Row | Scope | Status | Commit |
+|----|-----|-------|--------|--------|
+| S6 | RM-163 residual | The owed COLD `/api/last-match` acceptance number, taken by the merger on the live process rather than delegated. | DONE | (measured, LEDGER 1212) | 479.5 ms on the first call then 13.4 / 22.3 / 20.9 ms, same process either side of the negative being stored. Surfaced the durable fact that **a merge to main is a DEPLOYMENT** - the supervisor restarted RC 3 s after the merge wrote the file. |
+| S7 | RM-170 | The three test trees pulled into the skip guard whose own suites are red. | DONE | `c2f2b6a7` | Refuted BOTH of the row's filed claims (mine). Found a genuine defect red for 7 days and invisible, and found that the scope gap was MUTATING LIVE STATE - a test's spawned supervisor deleted the live singleton sentinel. LEDGER 1215. |
+| S8 | RM-171 | Repo-wide `file:line` citation drift plus a guard. | DONE | `274bdb27` | Row's own baseline contained the row's own failure class: three reasons factually wrong, one outright avoidance. Guard proved itself on first cross-slice integration. LEDGER 1214. |
+| S9 | RM-169 | Why `compute_matchup` is mode-blind where `compute_ability_dps` is not. | DONE-NARROW | `dbe2cdcb` | Proved the narrow question cleanly; decision was under-justified and the axis reopened as RM-172. Retracted a number its own runs supported. LEDGER 1213. |
+| S10 | RM-119 B4 | Skips where the data contradicts the test's premise. | DONE | `940a774e` | First attempt turned a skip into a no-op and shipped a false premise; both caught. The "infeasible" general guard turned out feasible via historical trackedness, precision 9/9 vs the naive 1/24. LEDGER 1216. |
+
+Filed out of cycle 2: RM-172 (uniform `apply_mode_modifiers` wiring), RM-173 (supervisor
+sentinel never self-heals). Both are direct products of adversarial review, not of the
+original scoping - which is the pattern worth keeping from this run.
+
 Deliberately NOT picked, with the reason: RM-122 (operator-present UI/UX - the
 row's own note forbids a headless agent picking it), RM-167 and RM-168 and RM-151
 and RM-155 arena half (live-game gated), RM-125 rendered residue (routed to
