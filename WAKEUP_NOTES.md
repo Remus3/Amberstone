@@ -53,6 +53,9 @@ RM-174, RM-175 (ADR-014), RM-155 retired (ADR-013), RM-26 corrected. Filed: RM-1
 RM-170, RM-171, RM-172, RM-173, RM-174, RM-175.
 
 ---
+
+---
+
 # 2026-08-06a - headless run 2026-08-06-01: four fixes, and three of them mask or measure something bigger than themselves
 
 Six merges `de5b5488..e8802e21` (`a8515a98`, `71f172aa`, `eba815e5`, `c5f1e4c8`,
@@ -162,45 +165,3 @@ CONFIRM 9/9; RM-162 filed LOW.
 - **Backfill probed live and CLEAN.** Shipped profile carries 7; incident log
   intact at 8374 lines / 2.4 MB. Latent, never realised - which is the honest
   answer, established by reading the live files.
-
----
-
-# 2026-08-05c - lane 8 cycle 9: the log trimmer protected nothing, not even the log being written
-
-`core/log_retention.py`, 190 lines, **zero test references**, started at RC boot
-from frozen `main.py:158`, deleting files on an hourly timer for RC's whole
-process lifetime. Commit `481e3ed5`; LEDGER 1200; 18 new tests; RM-161 filed.
-
-- **The live measurement chose the file, and then justified it.** `logs/` was at
-  **99.6 MB against this module's own 100 MB cap**, oldest file **9.0 days** -
-  inside the 14-day window. So the age pass reclaims nothing and the next sweep
-  to cross the cap runs the size pass over live files. Reading the module would
-  have found the same six bugs; only the probe showed it was about to matter.
-- **Windows was doing the module's job for it, and that is what hid the bug.**
-  Nothing was ever exempt from deletion - including the file the running logger
-  has open. It survived only because Windows refuses to unlink an open handle,
-  and that refusal was swallowed at DEBUG. Now `_protected_paths()` reads
-  `baseFilename` off every live handler and pins it in both passes.
-- **The first RED run was VACUOUS and looked fine.** Both live-handler tests
-  passed before the fix, because `active.exists()` is true on Windows whether or
-  not the module protects anything. The honest assertion is that the path is
-  never among the ATTEMPTED unlinks - via a spy that RECORDS and delegates, not
-  one that raises (a raising spy is vacuous against fail-soft code).
-- **A false SURVIVED from stale bytecode - new trap, worth keeping.**
-  `max_age_days` and `max_total_mb` are the SAME LENGTH, so two mutants produced
-  byte-identical file SIZES; Python revalidates a `.pyc` by source
-  mtime-in-whole-seconds plus size, so one mutant silently ran the other's
-  bytecode and its guard read as unneeded. Mutation harnesses need `-B`,
-  `PYTHONDONTWRITEBYTECODE=1` and a `__pycache__` purge between mutants.
-- **`git checkout --` destroyed the unstaged rewrite mid-investigation.** Exactly
-  `reference_git_checkout_destroys_unstaged_mutation_probe`. Recovered byte-exact
-  only because the harness keeps a copy-aside backup. Keep doing that.
-- **The verifier corrected a number AND caught a real defect.** RC count was
-  18410 in the commit draft; it measured **18411** and proved it (baseline 18393
-  with the file ignored, + 18 = 18411) rather than accepting either figure. It
-  also caught the rewritten file being **CRLF** against `.gitattributes eol=lf` -
-  `Path.write_text` on Windows, the same trap as cycle 8. Normalised before commit.
-- **Backfill probed, not assumed:** 13 real sweeps have fired, daily series
-  `07-27..08-05` CONTIGUOUS, cap never crossed. The bad state was **latent**.
-- **NOT armed by this branch.** RC runs `main.py` from `C:\Riot Commander`, so
-  only the merge to `main` plus a restart deploys it.
