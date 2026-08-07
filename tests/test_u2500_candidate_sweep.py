@@ -45,6 +45,8 @@ If this test fails on a re-introduction, run:
 """
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -74,24 +76,49 @@ _EXPECTED_TOTAL_PRE = 2874
 
 # RM-119 class B4, 2026-08-06. The seven `_archive/2026-05-01-audit/**` entries
 # above each had their own test that read `if not p.is_file(): pytest.skip(...)`,
-# and all seven skipped on every run: `_archive/` is gitignored, was NEVER
-# tracked, and is absent from BOTH this worktree and the main tree at
-# C:\Riot Commander. No checkout and no clone can restore it, so those tests had
-# been asserting nothing since the dir was cleared - the B4 shape, where the
-# tree contradicts the premise and green means "did not run".
+# and all seven skipped on every run, so the drift guard they exist to be had
+# been asserting nothing.
 #
-# The skip was ALSO covering the two entries that are tracked and present: the
-# aggregate walk below used the same `is_file()` test and simply `continue`d,
-# so deleting web/legacy_index.html or ops/rc_config.json would have quietly
-# dropped them from the sweep rather than failing it.
+# CORRECTION, and the reason this comment is long. The first pass at this fix
+# claimed the targets were "gitignored, NEVER tracked, permanently unreachable".
+# That is FALSE, and a verifier caught it: the files were ADDED at 63ac0acb,
+# MODIFIED at 5db053d0 (item 187 - the very sweep recorded above), and REMOVED
+# at 8c2afe21 on 2026-07-07. `git cat-file -e 8c2afe21^:<path>` succeeds for all
+# seven, and `git checkout 8c2afe21^ -- _archive/2026-05-01-audit/` restores
+# them. They are decommissioned, not unreachable - a distinction that decides
+# the remedy, because "gone forever" argues for deleting the record while "gone
+# from HEAD, recoverable from history" argues for pinning it.
 #
-# The fix keeps the forensic tuple intact and replaces absence-as-skip with
-# absence-as-assertion: an entry that is present is CHECKED, and an entry that
-# is absent must be one of the known-decommissioned seven. A new unreachable
-# entry - or a tracked one that goes missing - is now a failure. Restoring
-# `_archive/` is still fine: the entry becomes present and gets checked.
-_DECOMMISSIONED: frozenset[str] = frozenset(
-    rel for rel, _pre in _ITEM_187_SWEPT if rel.startswith("_archive/")
+# The first pass then made it WORSE by replacing the seven skips with a
+# parametrized `assert rel_posix in _DECOMMISSIONED` where `_DECOMMISSIONED` was
+# DERIVED by `rel.startswith("_archive/")` from the very tuple being checked.
+# For those seven that assertion was true by construction and could not fail:
+# seven announced SKIPs became seven silent green dots, so visibility went DOWN.
+# That is `feedback_fixture_parallel_by_construction` exactly.
+#
+# What is here now:
+#   * `_DECOMMISSIONED` is an explicit LITERAL, not derived from the tuple it
+#     is checked against, so the aggregate walk's absence rule can actually
+#     fail.
+#   * The per-file glyph check is parametrized over the REACHABLE entries only,
+#     so every parameter is a real U+2500 count on a file that exists.
+#   * The decommission itself is asserted against GIT rather than assumed:
+#     each of the seven must be absent from HEAD and present at the removal
+#     commit's parent. Re-adding one to git turns this red and says so.
+_ARCHIVE_REMOVED_AT = "8c2afe21"   # 2026-07-07 scratch-cleanup commit
+
+_DECOMMISSIONED: tuple[str, ...] = (
+    "_archive/2026-05-01-audit/tft/comp_control.py",
+    "_archive/2026-05-01-audit/ui/client_panel.py",
+    "_archive/2026-05-01-audit/modes/arena_overlay.py",
+    "_archive/2026-05-01-audit/ui/game_right_bot.py",
+    "_archive/2026-05-01-audit/tft/tft_overlay.py",
+    "_archive/2026-05-01-audit/core/tk_ai_bar_proxy.py",
+    "_archive/2026-05-01-audit/ui/base.py",
+)
+
+_REACHABLE: tuple[tuple[str, int], ...] = tuple(
+    (rel, pre) for rel, pre in _ITEM_187_SWEPT if rel not in _DECOMMISSIONED
 )
 
 # Sentinel count used by the aggregate walk to distinguish "file is gone" from
@@ -109,33 +136,59 @@ def _count_u2500(path: Path) -> int:
 
 # -------- Per-file U+2500-clean assertions --------
 
-@pytest.mark.parametrize("rel_posix,pre", _ITEM_187_SWEPT)
-def test_item_187_swept_file_is_clean_or_provably_decommissioned(
-    rel_posix: str, pre: int
-) -> None:
-    """Every swept entry either PASSES the glyph check or is a known removal.
+@pytest.mark.parametrize("rel_posix,pre", _REACHABLE)
+def test_item_187_reachable_file_is_u2500_clean(rel_posix: str, pre: int) -> None:
+    """The real glyph check, over the entries that actually exist at HEAD.
 
-    This replaces seven per-file tests that each opened with
-    `if not p.is_file(): pytest.skip(...)`. All seven skipped unconditionally
-    (see the _DECOMMISSIONED note above), so the branch that did the asserting
-    was dead code and the branch that ran asserted nothing.
-
-    Absence is now a claim that has to be on the record: an entry missing from
-    the checkout must be one of the seven cleared `_archive/` files. A tracked
-    entry that vanishes fails here instead of quietly leaving the sweep.
+    Parametrized over `_REACHABLE`, never over the full tuple: a parameter for
+    a decommissioned file could only ever assert something about its own
+    absence, and an assertion that cannot fail is worse than the skip it would
+    replace - it is invisible instead of merely silent.
     """
     p = _REPO_ROOT / rel_posix
-    if not p.is_file():
-        assert rel_posix in _DECOMMISSIONED, (
-            f"{rel_posix} is in the item-187 swept set but is not on disk and "
-            "is not one of the seven decommissioned _archive/ targets - a "
-            "tracked file has gone missing, which retires its glyph guard"
-        )
-        return
+    assert p.is_file(), (
+        f"{rel_posix} is tracked and expected in every checkout but is not on "
+        "disk - its glyph guard has silently retired"
+    )
     n = _count_u2500(p)
     assert n == 0, (
         f"{rel_posix} contains {n} U+2500 chars (item 187 swept it clean, "
         f"pre={pre} -> post=0)."
+    )
+
+
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=str(_REPO_ROOT),
+                          capture_output=True, text=True, timeout=60)
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")
+@pytest.mark.parametrize("rel_posix", _DECOMMISSIONED)
+def test_decommissioned_target_is_gone_from_head_and_present_in_history(
+    rel_posix: str,
+) -> None:
+    """Prove the removal instead of asserting it, and keep it falsifiable.
+
+    Two halves, both able to fail:
+
+    * NOT tracked at HEAD. If someone re-adds one of these, this goes red and
+      the per-file glyph guard has to come back with it - which is the whole
+      reason the entry was allowed to leave the sweep.
+    * PRESENT at the removal commit's parent. This is what makes the
+      decommission a checked claim rather than a comment, and it is what the
+      first pass got wrong by asserting these files had never been tracked.
+    """
+    tracked = _git("ls-files", "--error-unmatch", rel_posix)
+    assert tracked.returncode != 0, (
+        f"{rel_posix} is TRACKED at HEAD again - it is listed as "
+        "decommissioned, so either restore its per-file glyph guard or drop it "
+        "from _DECOMMISSIONED"
+    )
+    in_history = _git("cat-file", "-e", f"{_ARCHIVE_REMOVED_AT}^:{rel_posix}")
+    assert in_history.returncode == 0, (
+        f"{rel_posix} is not present at {_ARCHIVE_REMOVED_AT}^, so the removal "
+        "record in _DECOMMISSIONED is wrong - re-derive it from "
+        f"`git log --diff-filter=DR -- {rel_posix}` before trusting this list"
     )
 
 
