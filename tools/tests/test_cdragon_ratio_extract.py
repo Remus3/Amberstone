@@ -9,6 +9,7 @@ shape-faithful slice of a live 16.11 bin (verified against lux/zac/jhin/darius).
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -19,6 +20,57 @@ if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 
 import daemon_slayer_cdragon_ratio_extract as R  # noqa: E402
+
+# --------------------------------------------------------------------------- engine-independence guard
+# RM-170 (2026-08-06). This guard used to read `assert "from agents" not in src`.
+# Commit 9df58480 (2026-07-30, "patch refresh 16.15.1 + partition the new
+# throwback-mode registry") deliberately added ONE engine import to both cdragon
+# extractors and did not update the guard, so it went red and STAYED red - which
+# nobody saw, because `pytest tests` does not collect tools/tests.
+#
+# The contract is kept, not deleted: the extractors must stay runnable without
+# the DS engine's behaviour. `canonical_champions` is allowlisted because
+# agents/daemon_slayer/mode_variants.py is a stdlib-only pure-data registry, and
+# duplicating that champion-id mapping into tools/ would be a drift hazard worse
+# than the coupling. Any OTHER agents import still fails, and
+# _assert_mode_variants_is_leaf keeps the allowance honest by asserting the
+# allowlisted module has not itself grown engine dependencies.
+_ALLOWED_AGENTS_IMPORT = (
+    "from agents.daemon_slayer.mode_variants import canonical_champions"
+)
+_AGENTS_IMPORT_RE = re.compile(r"^\s*(?:from|import)\s+agents(?:\.|\s|$)")
+
+
+def _assert_agents_imports_allowlisted(src: str, path: str) -> None:
+    offenders = [
+        line.strip()
+        for line in src.splitlines()
+        if _AGENTS_IMPORT_RE.match(line)
+        and not line.strip().startswith(_ALLOWED_AGENTS_IMPORT)
+    ]
+    assert offenders == [], (
+        f"{path} imports the DS engine beyond the RM-170 allowlist "
+        f"({_ALLOWED_AGENTS_IMPORT!r}): {offenders}"
+    )
+
+
+def _assert_mode_variants_is_leaf() -> None:
+    """The one allowlisted helper must stay a stdlib-only pure-data leaf."""
+    mv = (
+        Path(__file__).resolve().parents[2]
+        / "agents" / "daemon_slayer" / "mode_variants.py"
+    )
+    assert mv.exists(), f"allowlisted helper missing: {mv}"
+    mv_src = mv.read_text(encoding="utf-8")
+    bad = [
+        line.strip()
+        for line in mv_src.splitlines()
+        if _AGENTS_IMPORT_RE.match(line) or "import requests" in line
+    ]
+    assert bad == [], (
+        f"{mv} is no longer a stdlib-only leaf, so allowlisting it no longer "
+        f"preserves extractor engine-independence: {bad}"
+    )
 
 
 def _dv(name, values):
@@ -651,8 +703,10 @@ class TestExtract:
     def test_engine_independent_no_agents_import(self):
         src = open(R.__file__, encoding="utf-8").read()
         assert "import requests" not in src
-        assert "from agents" not in src
-        assert "import agents" not in src
+        _assert_agents_imports_allowlisted(src, R.__file__)
+
+    def test_allowlisted_helper_is_itself_engine_free(self):
+        _assert_mode_variants_is_leaf()
 
 
 # --------------------------------------------------------------------------- leading rank-0 trim
