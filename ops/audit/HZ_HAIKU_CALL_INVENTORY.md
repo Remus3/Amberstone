@@ -10,7 +10,12 @@ Model across all sites: `claude-haiku-4-5-20251001`. North star = drive live in-
 - `coaches/arena_coach.py:634,758,868` - Arena live coach + augment rec + augment-resolve
 - `coaches/sr_coach.py` (Coach(CoachIntegration)) - SR live coach (per-tick via integration loop)
 - `coaches/tft_coach.py` / `tft_pbe_coach.py` - TFT live
-- `coaches/brawl_coach.py:475` - RETIRED mode (deadcode, not live; brawl off champ-select)
+- `coaches/brawl_coach.py:475` - RETIRED mode (brawl off champ-select). **"deadcode, not live"
+  CORRECTED 2026-08-06: the MODE is retired, the MODULE is not dead.** `core/game_snapshot.py:98-102`
+  routes URF / ARURF / ONEFORALL / GAMEMODEX / NEXUSBLITZ to `MODE_BRAWL` as well, and
+  `core/coach_registry.py:7` -> `app/_game_lifecycle.py:87-104` importlib-loads this coach for all
+  of them with `config/feature_flags.json` `brawl.live_coaching: "allow"`. It is unexercised
+  because Riot disabled Brawl, not because it is unreachable. See `docs/DAEMON_SLAYER.md`.
 
 HZ precompute TARGETS this tier. Status: laning verdict (action/choices) flip = data-blocked (capturer complete 456+458+459, awaiting alive ticks under guard); build lean = item-457 done / build agreement structurally N/A (item 456 finding).
 
@@ -78,6 +83,16 @@ flip: enough games have accrued for a clear signal (693 comparable-covered ticks
   back_off threshold, regenerate the `data/daemon_slayer/laning_scenarios` tables
   (LFS), then re-run `hz_shadow_report.py` and confirm agreement climbs before any
   flip. The report's new confusion matrix is the per-iteration measurement.
+  **RETIRED 2026-08-06 - see `docs/adr/ADR-013-laning-verdict-flip-retired.md`.**
+  This "NEXT" is the AGREEMENT gate: does the precompute say what Haiku said?
+  ADR-013 measured the VALIDITY gate and found the laning verdict carries zero
+  mutual information about the lane outcome (MI 0.00039 bits against 0.99987
+  bits of label entropy, bias-corrected MI negative). Raising agreement with a
+  verdict that predicts nothing buys nothing. Do NOT action the recalibration
+  above. Note also, since three docs cite this bullet as the source: **this file
+  contains no ">=70%" flip threshold and never did** - `docs/LIVE_GAME_GATED_SYNC.md`
+  attributes one to `HZ_HAIKU_CALL_INVENTORY.md:75`; grep for "70" here returns
+  nothing (verified 2026-08-06).
 - The BUILD agreement lane is still 0/0 comparable (the native Haiku build side
   logs no comparable verdict) - build flip-readiness remains unmeasured, separate
   from laning.
