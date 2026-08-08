@@ -8,10 +8,26 @@ console but NOTHING ON DISK, because core/log_setup.py calls
 fh.setLevel(logging.DEBUG) unconditionally ("always verbose to file").
 
 Re-measured 2026-08-04 on logs/2026-08-04.log: the same line was 13316 of 13692
-lines (97.3 percent) over a 6771.5 s window - 1.97 lines/sec, because TWO
-processes poll LCU at 1 Hz and write the same daily file (pythonw main.py and
-tools/lcu_agent). core/log_setup.py guards double-setup WITHIN a process, so
-that pairing is cross-process and is not a duplicate-handler bug.
+lines (97.3 percent) over a 6771.5 s window - 1.97 lines/sec, because TWO 1 Hz
+LCU pollers emit it.
+
+CORRECTED 2026-08-08: the sentence that stood here attributed that pairing to
+two PROCESSES, "pythonw main.py and tools/lcu_agent", and concluded it was
+therefore not fixable in-process. Both halves are wrong. `tools/lcu_agent.py:72`
+logs to `logs/lcu_agent.log`, not the daily file, and it never imports
+LcuClient. `main.py:40` is the ONLY caller of `core.log_setup.setup`, so
+`logs/YYYY-MM-DD.log` has exactly one writer process.
+
+The pairing is ONE client with TWO 1 Hz callers of `connect()` racing its
+shared throttle timestamp: the frozen auto-accept tick (`lcu/lcu_client.py:260`)
+and the rune writer's poll (`lcu/lcu_rune_writer.py:626`), which holds the very
+same object - `main.py:226` builds it, `main.py:244` hands it to `_RuneWriter`.
+Both are spawned on one AppLoop, hence the same-millisecond pair. The
+discriminator is that the first-of-gap line at `:110` is never paired (19
+singles on 2026-08-07, one per boot) while the `:114` repeat is 1143 pairs:
+two independent clients would each announce the gap. `lcu/lockfile_notice.py`
+dedupes across callers; the per-instance throttle pinned below is unchanged and
+still the first line of defense.
 
 The contract pinned here therefore has two halves:
 
@@ -33,12 +49,15 @@ guarantees. That is asserted end-to-end below rather than argued.
 """
 from __future__ import annotations
 
+import contextlib
+import logging
 import time as _real_time
 import types
 import unittest
 from pathlib import Path
 from unittest import mock
 
+from lcu import lockfile_notice
 from lcu.lcu_client import _LOCKFILE_MISSING_REPEAT_S, LcuClient
 from tools.lcu_push_watcher import _RE_LOCKFILE_GAP, classify_events
 
@@ -64,6 +83,18 @@ def _fake_clock(now_ref):
     )
 
 
+def _both_clocks(now_ref):
+    """There are TWO monotonic throttles on this line now - the per-instance
+    one in the frozen client and the process-wide one in lcu/lockfile_notice.py.
+    A test that advances only the client's clock silently measures the other
+    one against real elapsed time and sees every repeat suppressed."""
+    stack = contextlib.ExitStack()
+    stack.enter_context(mock.patch("lcu.lcu_client.time", _fake_clock(now_ref)))
+    stack.enter_context(
+        mock.patch("lcu.lockfile_notice.time", _fake_clock(now_ref)))
+    return stack
+
+
 def _found_lockfile():
     fake = mock.MagicMock(spec=Path)
     fake.exists.return_value = True
@@ -73,6 +104,19 @@ def _found_lockfile():
 
 
 class LockfileNotFoundLogOnceTests(unittest.TestCase):
+    def setUp(self):
+        # Nothing configures logging in a bare pytest process, so rc.lcu
+        # inherits the root logger's WARNING and every record emitted OUTSIDE
+        # an assertLogs block is dropped before any handler or filter sees it -
+        # including the "LCU connected:" line that re-arms the process-wide
+        # episode in lcu/lockfile_notice.py. Production never sees that skew:
+        # there is no level that passes the DEBUG repeat while dropping the
+        # INFO connect line. Pin DEBUG so the fixture measures the throttle
+        # rather than the ambient level.
+        logger = logging.getLogger("rc.lcu")
+        self.addCleanup(logger.setLevel, logger.level)
+        logger.setLevel(logging.DEBUG)
+
     def test_repeat_ticks_log_the_not_found_line_once(self):
         """50 connects inside one instant produce exactly one record AT ANY
         LEVEL - the DEBUG capture is the point, since the file handler is DEBUG.
@@ -80,7 +124,7 @@ class LockfileNotFoundLogOnceTests(unittest.TestCase):
         client = LcuClient()
         now = [1000.0]
         with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING), \
-                mock.patch("lcu.lcu_client.time", _fake_clock(now)):
+                _both_clocks(now):
             with self.assertLogs("rc.lcu", level="DEBUG") as cm:
                 for _ in range(50):
                     self.assertFalse(client.connect())
@@ -105,7 +149,7 @@ class LockfileNotFoundLogOnceTests(unittest.TestCase):
         now = [1000.0]
         interval = _LOCKFILE_MISSING_REPEAT_S
         with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING), \
-                mock.patch("lcu.lcu_client.time", _fake_clock(now)):
+                _both_clocks(now):
             with self.assertLogs("rc.lcu", level="DEBUG") as cm:
                 # 1 Hz for a little over two intervals.
                 for _ in range(int(interval * 2) + 5):
@@ -127,7 +171,7 @@ class LockfileNotFoundLogOnceTests(unittest.TestCase):
         now = [0.0]
         window_s = 6771.5
         with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING), \
-                mock.patch("lcu.lcu_client.time", _fake_clock(now)):
+                _both_clocks(now):
             with self.assertLogs("rc.lcu", level="DEBUG") as cm:
                 # 1.97 lines/sec was TWO processes at 1 Hz; one process ticks 1 Hz.
                 while now[0] < window_s:
@@ -150,9 +194,14 @@ class LockfileNotFoundLogOnceTests(unittest.TestCase):
         self.assertEqual(len(_not_found_records(first)), 1)
 
         # Simulate the success path having run (connect() sets these on a real
-        # lockfile); the reset is what re-arms the notice.
+        # lockfile); the reset is what re-arms the notice. In production that
+        # same success path also emits "LCU connected:", which is what re-arms
+        # the process-wide episode in lcu/lockfile_notice.py - poking the
+        # instance flag alone decouples the two, so re-arm both here. The
+        # sibling test below drives the real connect and needs no such help.
         client._port = 2999
         client._lockfile_missing_logged = False
+        lockfile_notice.current().reset()
 
         with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
             with self.assertLogs("rc.lcu", level="INFO") as second:
@@ -194,7 +243,7 @@ class LockfileNotFoundLogOnceTests(unittest.TestCase):
         """
         client = LcuClient()
         now = [500.0]
-        with mock.patch("lcu.lcu_client.time", _fake_clock(now)):
+        with _both_clocks(now):
             with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
                 with self.assertLogs("rc.lcu", level="DEBUG") as first:
                     client.connect()
