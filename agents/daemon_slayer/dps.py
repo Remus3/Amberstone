@@ -1575,7 +1575,12 @@ def compute_dps(
                 # passive that does NOT crit (Warwick Eternal Hunger is
                 # on-hit magic, not a second attack) is never scaled.
                 if extra_shot_entry_ is not None and extra_shot_entry_.can_crit:
-                    _shot_crit = min(float(stats.get("crit", 0.0)), 1.0)
+                    # crit_total, NOT stats["crit"] - the bare build stat omits
+                    # crit_chance_bonus_flat sourced from an ItemEffect, so a
+                    # Yun Tal build (DDragon crit 0, effect crit 0.25) left the
+                    # shot flat while the base auto beside it crit - RM-176.
+                    # Already clamped at 1.0 upstream.
+                    _shot_crit = crit_total
                     if _shot_crit > 0.0:
                         passive_aa_per_hit *= 1.0 + _shot_crit * crit_bonus
                 _passive_dps = passive_aa_per_hit * eff_as
