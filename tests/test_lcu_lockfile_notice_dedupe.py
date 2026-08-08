@@ -1,9 +1,14 @@
-"""The lockfile-not-found notice is deduped ACROSS LcuClient instances.
+"""The lockfile-not-found notice is deduped across every caller of connect().
 
-`tests/test_lcu_lockfile_log_once.py` pins the throttle for ONE client. That
-throttle is per-instance state (`lcu/lcu_client.py:73` + `:77`), and the RC
-process runs two long-lived clients, so it ran twice and the line landed twice
-per window.
+`tests/test_lcu_lockfile_log_once.py` pins the throttle for one caller. That
+throttle is instance state (`lcu/lcu_client.py:73` + `:77`) read and written
+with no lock, and the RC process drives it from TWO 1 Hz callers on ONE shared
+client - the frozen auto-accept tick (`lcu/lcu_client.py:260`) and the rune
+writer's poll (`lcu/lcu_rune_writer.py:626`), which holds the same object
+(`main.py:226` builds it, `main.py:244` hands it over). Both run their body via
+`asyncio.to_thread`, so they race the read-compare-write at
+`lcu/lcu_client.py:108` + `:113-115`: both read the old timestamp, both pass,
+both log.
 
 MEASURED on the daily logs this run (`logs/YYYY-MM-DD.log` has exactly one
 writer process - `main.py:40` is the only caller of `core.log_setup.setup`):
@@ -13,7 +18,11 @@ writer process - `main.py:40` is the only caller of `core.log_setup.setup`):
     2026-08-08  1587 / 2651 lines (59.9 pct),  654 duplicates (41.2 pct)
 
 Per-timestamp histogram `{1: n, 2: m}` on every day sampled - never 3 - with the
-pair 0-1 ms apart.
+pair 0-1 ms apart. That it is one client and not two is measured: on 2026-08-07
+the first-of-gap line at `lcu/lcu_client.py:110` is 19 singles and NEVER paired
+(one per boot, and that day had 19 boots) while the `:114` repeat is 1143 pairs.
+Two clients would each own `_lockfile_missing_logged` and both would announce
+the gap.
 
 The anti-degrade half is the important half. `lcu/lcu_client.py:105-107`
 records the intent that "a re-opened gap must not be swallowed by a
@@ -24,6 +33,7 @@ a gap that ends and re-opens inside a live throttle window MUST still notify.
 from __future__ import annotations
 
 import logging
+import threading
 import time as _real_time
 import types
 import unittest
@@ -78,9 +88,82 @@ class CrossInstanceDedupeTests(unittest.TestCase):
         self.addCleanup(logger.setLevel, logger.level)
         logger.setLevel(logging.DEBUG)
 
+    def test_two_racing_callers_on_one_client_log_the_notice_once(self):
+        """The PRODUCTION topology: one client, two callers in two worker
+        threads, both reading the throttle timestamp before either writes it.
+
+        Barriers inside both clocks park the threads past their
+        `now = time.monotonic()` reads (`lcu/lcu_client.py:108` and the filter's
+        own) so the interleaving is forced rather than hoped for. Serialised
+        callers would self-suppress, so a sequential test cannot reach this
+        defect at all - which is why the sibling two-client tests, though
+        useful for caller-agnosticism, do not cover the production topology.
+
+        SCOPE, measured by mutation rather than asserted: removing the filter
+        entirely fails this test, so it pins the fix. Replacing the filter's
+        lock with a nullcontext does NOT fail it - the unlocked window is too
+        narrow to preempt reliably. Mutual exclusion is pinned separately and
+        deterministically by
+        `FilterUnitTests.test_the_throttle_decision_is_mutually_exclusive`.
+        """
+        client = LcuClient()
+        now = [1000.0]
+
+        def racing_clock():
+            """Both throttles read their clock BEFORE taking any lock, so
+            barriering the read parks both threads past the check and makes the
+            interleaving deterministic instead of hoping for it. One barrier
+            each: the two clocks are read once per thread per throttle."""
+            barrier = threading.Barrier(2, timeout=10)
+            return types.SimpleNamespace(
+                monotonic=lambda: (barrier.wait(), now[0])[1],
+                sleep=_real_time.sleep,
+            )
+
+        with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING):
+            # main.py:227 connects synchronously before either loop spawns, so
+            # the gap is already announced and both callers take the throttled
+            # repeat branch - which is why :110 is never paired in the logs.
+            with mock.patch("lcu.lcu_client.time", _fake_clock(now)), \
+                    mock.patch("lcu.lockfile_notice.time", _fake_clock(now)):
+                client.connect()
+
+            now[0] += _LOCKFILE_MISSING_REPEAT_S  # both callers now due
+            errors = []
+
+            def caller():
+                try:
+                    client.connect()
+                except BaseException as exc:  # noqa: BLE001
+                    errors.append(exc)
+
+            # BOTH clocks are barriered. Patching only the client's would park
+            # the threads before the frozen throttle but let them run the
+            # filter one after the other, and the filter's lock would then be
+            # untested - verified by mutation: with only the client barriered,
+            # replacing the lock with a nullcontext still passed.
+            with mock.patch("lcu.lcu_client.time", racing_clock()), \
+                    mock.patch("lcu.lockfile_notice.time", racing_clock()):
+                with self.assertLogs("rc.lcu", level="DEBUG") as cm:
+                    threads = [threading.Thread(target=caller) for _ in range(2)]
+                    for t in threads:
+                        t.start()
+                    for t in threads:
+                        t.join(timeout=15)
+            self.assertEqual(errors, [])
+            self.assertFalse([t for t in threads if t.is_alive()])
+
+        self.assertEqual(
+            len(_not_found_records(cm)),
+            1,
+            "both racing callers logged the same repeat; that unsynchronized "
+            "read-compare-write is the measured duplicate",
+        )
+
     def test_two_clients_in_one_gap_log_the_notice_once(self):
-        """The measured defect: 41-43 pct of every emission was the second
-        client repeating the first, at the same millisecond."""
+        """Caller-agnostic by construction: the dedupe must also hold for an
+        emitter it has never heard of, so this drives two separate clients
+        rather than the two callers production actually has."""
         first, second = LcuClient(), LcuClient()
         now = [1000.0]
         with mock.patch("lcu.lcu_client._LOCKFILE_PATHS", _MISSING), \
@@ -221,6 +304,36 @@ class FilterUnitTests(unittest.TestCase):
                         f.filter(missing),
                         "a gap re-opened after a connection event must notify",
                     )
+
+    def test_the_throttle_decision_is_mutually_exclusive(self):
+        """The defect being fixed IS a race (two `asyncio.to_thread` callers
+        read the throttle timestamp before either writes it), so the filter's
+        own check-and-update must not reproduce it one layer up.
+
+        Asserted by holding the filter's lock and proving `filter()` cannot
+        reach its decision - a real lock blocks, a nullcontext does not.
+        Behavioural rather than an isinstance check, and unlike the racing test
+        above it kills the lock-removal mutant deterministically.
+        """
+        f = LockfileNoticeFilter()
+        reached = threading.Event()
+
+        def call_filter():
+            f.filter(self._record(
+                "LCU lockfile not found - client may not be running"))
+            reached.set()
+
+        with f._lock:
+            worker = threading.Thread(target=call_filter, daemon=True)
+            worker.start()
+            self.assertFalse(
+                reached.wait(0.5),
+                "filter() reached the throttle decision while the lock was "
+                "held, so concurrent callers can both pass it",
+            )
+        self.assertTrue(reached.wait(5), "filter() never completed")
+        worker.join(timeout=5)
+        self.assertFalse(worker.is_alive())
 
     def test_install_is_idempotent_and_attached_to_the_client_logger(self):
         logger = logging.getLogger("rc.lcu")

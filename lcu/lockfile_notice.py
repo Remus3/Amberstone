@@ -1,11 +1,38 @@
 # arch: process-wide dedupe for the LCU lockfile notice | section=lcu | frozen=no
 """Process-wide dedupe for the "LCU lockfile not found" notice.
 
-`lcu/lcu_client.py` already throttles that notice, but it does so in
-PER-INSTANCE state (`_lockfile_missing_logged` + `_lockfile_missing_last_log`,
-set in `LcuClient.__init__` at `lcu/lcu_client.py:73` and `:77`). Two
-long-lived clients live in the RC process, so the throttle runs twice and the
-line lands twice per window.
+`lcu/lcu_client.py` already throttles that notice, but the throttle state
+(`_lockfile_missing_logged` + `_lockfile_missing_last_log`, set in
+`LcuClient.__init__` at `lcu/lcu_client.py:73` and `:77`) is shared by every
+caller of `connect()`, and there are TWO of them at 1 Hz on the SAME instance:
+
+  * the frozen auto-accept tick, `lcu/lcu_client.py:260`, whose coroutine is
+    spawned at `:237`;
+  * the rune writer's poll, `lcu/lcu_rune_writer.py:626` inside `_poll` at
+    `:606`, `POLL_INTERVAL` 1.0 s at `:520`, spawned onto the SAME AppLoop at
+    `:564`. It holds the same object: `main.py:226` builds the one client and
+    `main.py:244` hands it to `_RuneWriter`.
+
+Both loops run their body through `asyncio.to_thread`
+(`lcu/lcu_client.py:298`, `lcu/lcu_rune_writer.py:592`), so the two callers land
+in DIFFERENT worker threads dispatched from the same loop iteration and the
+throttle's read-compare-write
+
+    now = time.monotonic()                          # :108
+    elif now - self._lockfile_missing_last_log >= _LOCKFILE_MISSING_REPEAT_S:
+        _log.debug(...); self._lockfile_missing_last_log = now   # :113-115
+
+is unsynchronized. Both threads read the old timestamp, both pass the
+comparison, both log. That is why the duplicate is exactly 2 and never 3 (there
+are exactly two callers), why it appears only on the 60 s boundary, and why the
+pair shares a millisecond. Serialised callers would self-suppress; this is a
+race, not merely shared state - which is why `self._lock` below is load-bearing
+and must not be simplified away.
+
+The rune writer's `connect()` is deliberate, documented and idempotent
+(`lcu/lcu_rune_writer.py:607-618`, added after the 2026-07-04 pid-6440 silent
+death so the writer survives a dead auto-accept loop). It is not a leak and
+must not be removed - the duplicate line is the bug, not the second caller.
 
 MEASURED on the daily logs (only `main.py:40` calls `core.log_setup.setup`, so
 `logs/YYYY-MM-DD.log` has exactly ONE writer process and the pairing is
@@ -16,15 +43,23 @@ in-process, not cross-process):
   2026-08-08  1587 of 2651 lines (59.9 pct), 41.2 pct duplicates
 
 The per-timestamp histogram is `{1: n, 2: m}` on every day sampled - never 3 -
-and the paired records land 0-1 ms apart, which is what two clients polling the
-same lockfile in the same process looks like. Dropping the duplicate half
-removes 21-25 pct of the whole log with no loss of signal.
+and the paired records land 0-1 ms apart.
+
+That there is ONE client and not two is measured, not assumed. On 2026-08-07
+the first-of-gap line at `lcu/lcu_client.py:110` appears 19 times and is NEVER
+paired, while the throttled repeat at `:114` is 1143 pairs and never a triple.
+Two independent clients would each own `_lockfile_missing_logged` and both
+would announce the gap; one shared instance emits exactly one `:110` per boot,
+and that day had exactly 19 boots (`Auto-accept started`, `Overlay running` and
+`LCU auto-accept ARMED` are 19 apiece). A duplicate log handler is ruled out
+too: the adjacent-identical-line count is 1143 for `rc.lcu` and 0 for every
+other logger.
 
 WHY A FILTER AND NOT SHARED STATE ON THE CLIENT
 `lcu/lcu_client.py` is on the CLAUDE.md frozen list. A `logging.Filter` on the
-`rc.lcu` logger reaches every emitter of the notice - including ones this
-module has never heard of - without touching the frozen module, which is also
-why it is robust to WHICH second client is doing the polling.
+`rc.lcu` logger drops the second of two identical emissions whoever makes them,
+so it is deliberately agnostic to WHICH caller emits and stays correct if a
+third `connect()` caller is ever added.
 
 WHY THIS CANNOT SWALLOW A RE-OPENED GAP
 The frozen client records a deliberate intent at `lcu/lcu_client.py:105-107`:

@@ -16,11 +16,18 @@ two PROCESSES, "pythonw main.py and tools/lcu_agent", and concluded it was
 therefore not fixable in-process. Both halves are wrong. `tools/lcu_agent.py:72`
 logs to `logs/lcu_agent.log`, not the daily file, and it never imports
 LcuClient. `main.py:40` is the ONLY caller of `core.log_setup.setup`, so
-`logs/YYYY-MM-DD.log` has exactly one writer process and the duplicate pair -
-0-1 ms apart, and paired again on the "LCU connected:" line - is two long-lived
-clients inside it. That is what `lcu/lockfile_notice.py` now dedupes; the
-per-instance throttle pinned below is unchanged and still the first line of
-defense.
+`logs/YYYY-MM-DD.log` has exactly one writer process.
+
+The pairing is ONE client with TWO 1 Hz callers of `connect()` racing its
+shared throttle timestamp: the frozen auto-accept tick (`lcu/lcu_client.py:260`)
+and the rune writer's poll (`lcu/lcu_rune_writer.py:626`), which holds the very
+same object - `main.py:226` builds it, `main.py:244` hands it to `_RuneWriter`.
+Both are spawned on one AppLoop, hence the same-millisecond pair. The
+discriminator is that the first-of-gap line at `:110` is never paired (19
+singles on 2026-08-07, one per boot) while the `:114` repeat is 1143 pairs:
+two independent clients would each announce the gap. `lcu/lockfile_notice.py`
+dedupes across callers; the per-instance throttle pinned below is unchanged and
+still the first line of defense.
 
 The contract pinned here therefore has two halves:
 
