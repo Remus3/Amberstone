@@ -82,7 +82,7 @@ _SUPPORTED_STEMS = frozenset({"sr", "aram", "arena"})
 
 # Neutral build path inside a champion's bucket dict, and the terminal
 # fallback for every lean that does not resolve. Mirrors
-# core/laning_scenario_precompute.py:355 and core/laning_verdicts.py:197.
+# core/laning_scenario_precompute.py:247 and core/laning_verdicts.py:197.
 _PREFERRED_BUCKET = "balanced"
 
 # Damage-axis labels shape_from_factors can emit that name a real bucket. Its
@@ -205,8 +205,15 @@ def fallback_build_ids(champion, game_mode, enemy_team=None) -> list:
     Live Client ``allPlayers[].championName`` shape). Supplying it selects the
     matching lean bucket; omitting it reads "balanced" exactly as before.
 
-    Total: unknown champion, unmapped mode, missing table, malformed row, a
-    malformed roster, or the kill switch being off all yield []. Never raises.
+    Total: unknown champion, unmapped mode, missing table, malformed row, or
+    the kill switch being off all yield []. Never raises.
+
+    A CLASSIFIER fault is deliberately NOT in that list. A malformed roster or
+    a broken lean classifier costs the LEAN, never the ROW: it degrades to the
+    "balanced" order, which is the exact pre-RM-164 behavior. Returning []
+    there would DELETE the champion's next-buy row over a comp-reading
+    failure, which is strictly worse than the neutral order this module
+    promises to fall back to.
     """
     try:
         if not fallback_enabled():
@@ -222,7 +229,15 @@ def fallback_build_ids(champion, game_mode, enemy_team=None) -> list:
         buckets = _canon_table(stem).get(canon)
         if not isinstance(buckets, dict):
             return []
-        order = buckets.get(preferred_bucket(enemy_team))
+        # Second guard at the CALL boundary even though preferred_bucket is
+        # itself total: without it a raising classifier would escape to the
+        # outer handler and return [], deleting the row instead of serving the
+        # neutral order. The two guards fail to different values on purpose.
+        try:
+            bucket = preferred_bucket(enemy_team)
+        except Exception:  # noqa: BLE001 - a lean fault must not cost the row
+            bucket = _PREFERRED_BUCKET
+        order = buckets.get(bucket)
         if not isinstance(order, list) or not order:
             order = buckets.get(_PREFERRED_BUCKET)
         if not isinstance(order, list) or not order:
