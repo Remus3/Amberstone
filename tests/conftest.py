@@ -53,6 +53,24 @@ def reset_cs_retention_between_tests():
 
 
 @pytest.fixture(autouse=True)
+def reset_lockfile_notice_between_tests():
+    """`lcu/lockfile_notice.py` dedupes the LCU lockfile-missing notice across
+    every client in the process, so its episode state is process-global for the
+    same reason the cache above is: correct in production, cross-contaminating
+    between tests. Without this, one test's open gap episode suppresses the
+    next test's first notice and the failure reads as "no logs triggered"."""
+    try:
+        from lcu.lockfile_notice import current
+    except Exception:  # noqa: BLE001
+        yield
+        return
+    attached = current()
+    if attached is not None:
+        attached.reset()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def redirect_shadow_paths_to_tmp(monkeypatch, tmp_path):
     """Suite hermeticity: no test may append to the repo's real shadow logs
     (data/det_coach_shadow.jsonl / hz_choice_shadow.jsonl /
