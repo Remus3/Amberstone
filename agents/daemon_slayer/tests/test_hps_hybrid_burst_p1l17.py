@@ -169,7 +169,7 @@ class HpsDerivationTests(unittest.TestCase):
         )
 
     def test_amp_is_additive_over_a_chain_product_and_buff_is_additive(self) -> None:
-        """RM-177 (ENGINE 1.275.2): renamed from ...amp_is_multiplicative....
+        """RM-177 (ENGINE 1.275.3): renamed from ...amp_is_multiplicative....
 
         The old form multiplied EVERY row's ``heal_shield_amp_pct``. Printed
         Heal-and-Shield-Power is additive in League; only an ``ally_chain_only``
