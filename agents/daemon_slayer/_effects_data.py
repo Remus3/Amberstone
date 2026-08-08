@@ -2835,15 +2835,21 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
     # Obsidian Cleaver (228005): Carve - dealing physical damage reduces target armor
-    # by 7%, stacks 5 times = 35% max reduction. Same layer as Black Cleaver's
+    # by 6%, stacks 5 times = 30% max reduction. Same layer as Black Cleaver's
     # armor_reduction_pct (applied before % pen). Modeled at full stacks per sustained-
     # DPS convention. Fervor 20 MS utility-only.
+    # Authored at 7% x 5 = 0.35 against the 16.10.1 snapshot, which did state 7%;
+    # Riot cut Carve to 6% by 16.12.1 and the row went stale for four snapshots.
+    # Landing on Black Cleaver's 30% is the mirror's OWN stat line agreeing, not the
+    # base item's number inherited (R161 doctrine B). Guarded by
+    # tests/test_stacking_pct_resist_reduction_drift.py, which re-derives the product
+    # from the live DDragon description instead of pinning this literal.
     "228005": ItemEffect(
         item_id="228005",
         name="Obsidian Cleaver",
-        armor_reduction_pct=0.35,
+        armor_reduction_pct=0.30,
         note=(
-            "Obsidian Cleaver: Carve 7% armor reduction per stack x 5 stacks = 35% max "
+            "Obsidian Cleaver: Carve 6% armor reduction per stack x 5 stacks = 30% max "
             "(same armor_reduction_pct layer as Black Cleaver, modeled at full stacks). "
             "Fervor 20 MS utility-only"
         ),
