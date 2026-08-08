@@ -10,7 +10,7 @@ League, HSP amplifies every heal/shield the wielder outputs, including abilities
 
 ``apply_ability_hsp_amp`` defaults False -> the ability fold stays RAW ->
 byte-identical to the pre-1.202.0 behavior. ON multiplies the ability fold by the
-SAME ``amp_factor`` the item heals use, one wielder. RM-177 (ENGINE 1.275.2)
+SAME ``amp_factor`` the item heals use, one wielder. RM-177 (ENGINE 1.275.3)
 changed what that factor IS - printed HSP now sums instead of compounding, with
 only ``ally_chain_only`` rows left multiplicative - but this module asserts the
 ability fold tracks ``amp_multiplier`` whatever its internal composition, so it
@@ -101,7 +101,7 @@ class TestAbilityHspAmp(unittest.TestCase):
         self.assertAlmostEqual(off.total_throughput, on.total_throughput, places=9)
 
     def test_engine_version_bumped(self):
-        self.assertEqual(ENGINE_VERSION, "1.275.2")
+        self.assertEqual(ENGINE_VERSION, "1.275.3")
 
 
 if __name__ == "__main__":

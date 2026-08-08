@@ -262,7 +262,7 @@ class AmpPipelineTests(unittest.TestCase):
     def test_amp_multipliers_stack_additively(self) -> None:
         """Redemption (+10%) + Mikael (+12%) -> 1 + 0.22 = 1.22.
 
-        RM-177 (ENGINE 1.275.2): this test previously asserted the PRODUCT
+        RM-177 (ENGINE 1.275.3): this test previously asserted the PRODUCT
         1.10 x 1.12 = 1.232 and was named ...compound_multiplicatively. Heal-
         and-Shield-Power is additive in League, and ``_hsp_amp`` had summed the
         same field off the same catalog since R60 - the two engines disagreed
