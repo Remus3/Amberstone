@@ -506,11 +506,20 @@ class RankedItem:
     is_terminal: bool           # `into` is empty - final-tier item
     tags: tuple[str, ...]
     # Phase 6 step 8 (2026-05-12): candidate's unique passive collides with an
-    # item already in current_item_ids - the proc/pen contribution would be
-    # zeroed by collect_effects() dedup. Stat block still contributes (the
-    # delta_dps reflects this honestly) but the operator gets no value from
-    # the unique itself. Default-filter is on in ``rank_items``; consumers
-    # can opt out via ``filter_shared_uniques=False`` to surface the flag.
+    # item already in current_item_ids - only ONE member of the family fires,
+    # so one of the two procs is dropped by ``collect_effects``. Stat block
+    # still contributes (the delta_dps reflects this honestly) but the operator
+    # is paying for a passive the build cannot use twice. Default-filter is on
+    # in ``rank_items``; consumers can opt out via
+    # ``filter_shared_uniques=False`` to surface the flag.
+    #
+    # RM-187 (1.277.0): WHICH member is dropped is no longer "the candidate,
+    # because it was seen second". The dedup now keeps the group's strongest
+    # member at the build's context, so a STRONGER colliding candidate displaces
+    # the incumbent's proc instead of being zeroed by it. The flag and the
+    # default filter are unchanged and still correct - League fires one passive
+    # either way, so the collision is real regardless of which side wins - but
+    # do not read this comment as "the candidate contributes nothing".
     shares_dead_unique: bool = False
     dead_unique_key: str = ""
     # Phase 4(d): candidate's own unique-passive family key, always set
@@ -1072,9 +1081,11 @@ def rank_items(
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
     current_set = set(current_ids)
     # Collect every unique_passive_key already locked in by the current build.
-    # Candidates sharing one of these keys would have their proc/pen effect
-    # zeroed by ``collect_effects`` - surface that to consumers via the flag
-    # on RankedItem, and filter by default.
+    # Only one member of a family fires, so a candidate sharing one of these
+    # keys collides - ``collect_effects`` drops one of the two procs (RM-187:
+    # the WEAKER one at the build's context, not automatically the candidate).
+    # Surface that to consumers via the flag on RankedItem, and filter by
+    # default.
     current_unique_keys: set[str] = set()
     for iid in current_ids:
         eff = ITEM_EFFECTS.get(iid)
