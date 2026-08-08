@@ -3528,14 +3528,29 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         unique_passive_key="immolate",
         # R70 (2026-07-03): Desolate eruption mirrors SR 6664 exactly (Arena
         # mirror convention - 226664 has no own Meraki entry).
+        # PROVENANCE (corrected 2026-08-08, note-only): 226664 is ABSENT from
+        # items_meraki.json at EVERY patch on disk (16.10.1 - 16.15.1), and its
+        # DDragon description leaves the Immolate magnitude placeholder EMPTY.
+        # Both the Immolate formula and the Desolate eruption above are
+        # therefore ASSUMED SR-parity inheritances from 6664, not measurements
+        # of 226664. The STAT LINE is measured to DIVERGE: DDragon 16.15.1
+        # gives 226664 450 HP / 40 MR / 10 AH with NO "100% Base Health Regen"
+        # line, against SR 6664 400 HP / 40 MR / 10 AH / 100% Base Health
+        # Regen. Per R161 doctrine B an Arena mirror credits its OWN DDragon
+        # stat line, not the SR twin's.
         takedown_eruption_base=60.0,
         takedown_eruption_bonus_hp_ratio=0.04,
         note=(
-            "Hollow Radiance (Arena 226664): same as SR 6664 - Immolate "
-            "15+1% bonus HP per second (Meraki 16.10.1); Desolate "
-            "champion-takedown eruption modeled R70 on assume_takedown "
-            "(400% Immolate = 60 + 4% bonus HP magic within 500); 200% "
-            "non-champion kill eruption unmodeled"
+            "Hollow Radiance (Arena 226664): Immolate 15+1% bonus HP per "
+            "second is ASSUMED equal to SR 6664 - no source carries the Arena "
+            "row (absent from Meraki at every patch on disk; DDragon magnitude "
+            "placeholder empty). The stat line is MEASURED to differ from the "
+            "twin (226664 450 HP / 40 MR / 10 AH and NO 100% base health "
+            "regen, vs 6664 400 HP plus that regen), per R161 doctrine B. "
+            "Desolate champion-takedown eruption modeled R70 on "
+            "assume_takedown (400% Immolate = 60 + 4% bonus HP magic within "
+            "500), likewise inherited; 200% non-champion kill eruption "
+            "unmodeled"
         ),
     ),
     "226672": ItemEffect(
@@ -4224,7 +4239,24 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
-        note="Sunfire Aegis (Arena 223068): same as SR 3068 - Immolate 20+1% bonus HP magic/s (Meraki 16.10.1), immolate-key",
+        # PROVENANCE (corrected 2026-08-08, note-only): 223068 is ABSENT from
+        # items_meraki.json at EVERY patch on disk (16.10.1 - 16.15.1; the
+        # Meraki bulk carries 320 rows and none is an Arena mirror), and its
+        # DDragon description leaves the Immolate magnitude placeholder EMPTY
+        # ("deal <magicDamage> magic damage</magicDamage> per second"). The
+        # formula above is therefore an ASSUMED SR-parity inheritance from
+        # 3068, not a measurement of 223068. The STAT LINE is measured to
+        # DIVERGE: DDragon 16.15.1 gives 223068 350 HP / 40 Armor / 10 AH
+        # against SR 3068 350 HP / 50 Armor / 10 AH. Per R161 doctrine B an
+        # Arena mirror credits its OWN DDragon stat line, not the SR twin's.
+        note=(
+            "Sunfire Aegis (Arena 223068): Immolate 20+1% bonus HP magic/s is "
+            "ASSUMED equal to SR 3068 - no source carries the Arena row "
+            "(absent from Meraki at every patch on disk; DDragon magnitude "
+            "placeholder empty). The stat line is MEASURED to differ from the "
+            "twin (223068 40 Armor vs 3068 50 Armor), per R161 doctrine B. "
+            "immolate-key"
+        ),
     ),
     "223071": ItemEffect(
         item_id="223071",
@@ -5140,7 +5172,23 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
-        note="Bami's Cinder (Arena 226660): same as SR 6660 - Immolate flat 15 magic/s (Meraki 16.10.1); shares immolate-key",
+        # PROVENANCE (corrected 2026-08-08, note-only): 226660 is ABSENT from
+        # items_meraki.json at EVERY patch on disk (16.10.1 - 16.15.1), and its
+        # DDragon description leaves the Immolate magnitude placeholder EMPTY.
+        # The flat 15 above is therefore an ASSUMED SR-parity inheritance from
+        # 6660, not a measurement of 226660. The STAT LINE is measured to
+        # DIVERGE hard: DDragon 16.15.1 gives 226660 550 Health / 5 AH against
+        # SR 6660 150 Health / 5 AH (226660 also carries an EMPTY name field in
+        # the DDragon feed). Per R161 doctrine B an Arena mirror credits its
+        # OWN DDragon stat line, not the SR twin's.
+        note=(
+            "Bami's Cinder (Arena 226660): Immolate flat 15 magic/s is ASSUMED "
+            "equal to SR 6660 - no source carries the Arena row (absent from "
+            "Meraki at every patch on disk; DDragon magnitude placeholder "
+            "empty). The stat line is MEASURED to differ from the twin "
+            "(226660 550 Health vs 6660 150 Health), per R161 doctrine B. "
+            "Shares immolate-key"
+        ),
     ),
     "226691": ItemEffect(
         item_id="226691",
@@ -5426,6 +5474,28 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # damage off bonus HP; Void Immolation deals TRUE damage off max HP.
         # unique_passive_key="immolate" prevents double-ticking if a build
         # includes multiple Immolate items (Riot enforces unique-passive).
+        #
+        # WHERE THAT CITATION LIVES (2026-08-08, note-only - re-litigated once
+        # already): unlike every other Immolate row, Meraki files 223069's
+        # Immolate under the row's `active` key and its `passives` list is
+        # EMPTY (`[]`). A passives-only probe therefore reads this entry as
+        # UNSOURCED and concludes it is an inherited assumption. It is not:
+        # 223069 IS present in items_meraki.json at every patch on disk
+        # (16.10.1 - 16.15.1, the ONLY Arena Immolate id that is), and
+        # `items["223069"]["active"][0]["effects"]` carries the formula above
+        # verbatim. Probe `active` as well as `passives` before calling it
+        # unsourced.
+        #
+        # UPTIME IS MODELLED AS EQUAL TO SUNFIRE'S, AND THAT IS WRONG BY 3:5.
+        # Meraki/DDragon 16.15.1 both state Void Immolation activates for 5
+        # seconds where SR 3068 / 6660 / 6664 activate for 3. PeriodicProc has
+        # no window/duration field (see its docstring, limitation 1), so this
+        # proc and the SR procs are both modelled at full-rotation uptime.
+        # Crediting the longer window needs a schema lift, NOT a scaled
+        # bonus_damage here. Meraki also gives 223069 a 150 percent minion
+        # multiplier with no monster clause and no minion-execute clause,
+        # unlike its SR relatives - also unmodelled and consumer-less; the
+        # measured family census lives in the PeriodicProc docstring.
         periodics=(PeriodicProc(
             name="Immolate",
             bonus_damage=lambda c: c.targets_in_rotation * (20.0 + 0.015 * c.caster_max_hp),
@@ -5435,8 +5505,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         unique_passive_key="immolate",
         note=(
             "Void Immolation (Arena 223069): Immolate 20 + 1.5% max HP true damage/s "
-            "to nearby enemies (Meraki confirmed; TRUE damage off max HP - distinct "
-            "from SR 3068/6664 which deal magical off bonus HP)"
+            "to nearby enemies (MEASURED, not inherited - Meraki files it under the "
+            "row's `active` key, `passives` is []; TRUE damage off max HP - distinct "
+            "from SR 3068/6664 which deal magical off bonus HP). Its 5-second "
+            "activation window is modelled with the same uptime as Sunfire's "
+            "3-second window: PeriodicProc has no window/duration field"
         ),
     ),
     "223105": ItemEffect(
