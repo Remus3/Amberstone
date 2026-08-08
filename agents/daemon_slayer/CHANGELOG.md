@@ -1331,6 +1331,87 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.277.0 (2026-08-08) - RM-187: FLIP the RM-186 strongest-at-context dedup ON at
+every engine call site. The seam is no longer inert.
+
+RM-186 landed `collect_effects(item_ids, caster_ctx=None)` and every engine
+caller passed nothing, so the order-independence fix shipped switched off.
+RM-187 supplies a real context at all six sites: `dps.py` (both - the
+`compute_dps` collect and `total_missing_hp_bonus_ad`, which grew a
+`caster_ctx` parameter), `ehp.py`, `burst.py`, `ability_dps.py`,
+`ability_hps.py`.
+
+THE CIRCULARITY. `ehp.py` builds its `CallContext` before it collects, but
+`dps.py` collects at line 957 and builds `call_ctx` at line ~1330, and that
+context's `ap` / `crit_chance` / `caster_lethality` / effective resists are
+themselves derived FROM the collected effect list (Riftmaker HP->AP, Mejai's
+stacked AP, Rabadon's AP amp, Demonic HP-scaled AP amp, Yun Tal / Atma's crit,
+Bastionbreaker lethality, the last_whisper / void_pen pen folds). Feeding
+`call_ctx` back into the dedup would be circular. Same shape in
+`ability_dps.py` / `ability_hps.py` / `burst.py`.
+
+THE RESOLUTION - cut, not worked around, and NOT a two-pass recompute. Item
+STAT BLOCKS are aggregated by `stats.aggregate_item_stats`, which lives outside
+`collect_effects` and is unaffected by the dedup (the dropped duplicate still
+contributes its whole stat block). New `effects.dedupe_context(stats,
+base_stats, level, ...)` builds the dedup context from those stat-block
+quantities, the champion base stats, the level and the caller's target
+assumptions - and nothing else - so it is order-independent BY CONSTRUCTION.
+Every effect-derived term is EXCLUDED and enumerated in its docstring: the AP
+augmentation chain (`ap` carries raw stat AP), `total_crit_chance_bonus`
+(`crit_chance` carries raw stat crit), the takedown / missing-HP / rune AD
+folds, `caster_lethality` entirely (0.0 - it is a sum over the DEDUPED list and
+two lethality carriers DO hold a key), and `effective_target_armor` /
+`effective_target_mr` (`target_armor` / `target_mr` carry the caller's raw
+values). `targets_in_rotation` is pinned at 1.0.
+
+The exclusion list is machine-guarded, not docstring-guarded.
+`ExclusionGuardTests` walks the live registry, perturbs every `CallContext`
+field against each contested family's timer procs, and fails if a member reads
+a field `dedupe_context` does not carry.
+
+MEASURED FAMILY REACH. Of the 9 keyed families, exactly TWO are contested (2+
+members exposing a comparable per-second magnitude): `immolate` 7/7 members and
+`spellblade` 16/16. `hydra_cleave` (8) is every_n_ATTACKS only; `last_whisper`
+(6), `lifeline` (12) and `void_pen` (4) carry no periodics at all - all four
+still resolve FIRST-SEEN, the documented fallback.
+
+TARGET-DEPENDENCE, measured and reported rather than silently assumed away.
+The `spellblade` winner IS target-dependent: Divine Sunderer (6632 / 226632 /
+446632) scales on `target_max_hp`, so at a zeroed target Sheen wins the group
+and at a 3000-HP target Divine Sunderer does. `dedupe_context` therefore
+carries the caller's target assumptions rather than comparing under zeros.
+`immolate` is target-INdependent (caster HP only), and `targets_in_rotation` is
+an exactly uniform x N multiplier across all 7 immolate members, so pinning it
+at 1.0 cannot move that argmax - pinned by `ImmolateTargetsUniformityTests`.
+
+BUILD-ORDER MEASUREMENT - the flip moves ZERO precomputed content, and the
+reason is mechanical, not luck. All six tables regenerated with
+`core.build_order_precompute --static --champions all` and
+`core.build_order_variants --static --champions all`, diffed against the
+committed 16.15.1 files ignoring the `engine_version` / `generated_at` stamps:
+173 champion rows per table, 0 changed, 6/6 tables byte-identical. An
+instrumented re-run counted 2,037,660 `collect_effects` calls across the full
+sweep - 2,037,660 of them carrying a real context (so the flip is live at every
+site the planner touches) and ZERO holding two members of one family. The
+planner never presents a contested list: `core/build_order.py` threads
+`filter_shared_uniques=True` and skips any `shares_dead_unique` row, so the
+family duplicate is removed before the engine is asked. The flip is inert in
+the precompute path and live everywhere a caller supplies its own item list.
+
+One pre-existing test INVERTED:
+`test_effects_expansion.SpellbladeUniquePassiveTests.test_triforce_plus_lich_bane_order_swap_yields_lich_bane_proc`
+asserted `assertNotAlmostEqual` and pinned the order-dependence as "real and
+documented". It now asserts equality (and the same surviving item name) and is
+renamed `..._yields_the_same_number`.
+
+`agents/daemon_slayer/tests/test_unique_passive_dedup_flip_rm187.py` (new, 39
+tests / 32 subtests, written RED first - 14 failed before the flip). The
+regression class replays the pre-RM-187 engine by patching all five call sites
+back to `caster_ctx=None` and asserts uncontested builds are byte-identical to
+it, plus a companion asserting that probe DOES separate on a contested build so
+the regression is not vacuous.
+
 1.276.0 (2026-08-08) - RM-186: the unique-passive dedup was ORDER-DEPENDENT, so
 slot order alone changed the score. DEFAULT-OFF seam, no default output moves.
 

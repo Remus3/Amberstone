@@ -853,9 +853,19 @@ def _cleave_vamp_damage(
     bound in a 6s window).
 
     The ``hydra_cleave`` unique-passive family is honoured by routing through
-    ``collect_effects``, which is first-seen-wins: a build whose family winner is
-    a lifesteal-silent hydra procs no Ravenous Cleave in game and is credited
-    nothing here. Duplicate ids collapse the same way.
+    ``collect_effects``: a build whose family winner is a lifesteal-silent hydra
+    procs no Ravenous Cleave in game and is credited nothing here. Duplicate ids
+    collapse the same way.
+
+    RM-187 (1.277.0): the local ``ctx`` is handed to ``collect_effects`` so this
+    site resolves groups strongest-at-context like every other lane. It is the
+    one site with no circularity - the context is built from this function's own
+    arguments, above, before anything is collected. ``hydra_cleave`` members are
+    every_n_ATTACKS only, so they expose no per-second comparable magnitude and
+    this family still resolves FIRST-SEEN in practice; that is the documented
+    fallback, not an oversight (an attack-keyed proc needs an attack-rate signal
+    ``collect_effects`` does not carry). Pinned by
+    ``test_unique_passive_dedup_flip_rm187.NoComparableMagnitudeStaysFirstSeenTests``.
 
     Damage is PRE-mitigation and carries no mode multiplier, matching
     ``_vamp_heal_pool``'s deliberate enemy-agnostic posture rather than
@@ -874,7 +884,7 @@ def _cleave_vamp_damage(
     )
     total_ad = safe_base_ad + safe_bonus_ad
     total = 0.0
-    for eff in collect_effects(item_ids):
+    for eff in collect_effects(item_ids, ctx):
         if eff.item_id not in VAMP_ELIGIBLE_CLEAVE_ITEM_IDS:
             continue
         for proc in eff.periodics:

@@ -140,6 +140,106 @@ def _strongest_index(
     return idxs[0] if best_idx is None else best_idx
 
 
+def dedupe_context(
+    stats: dict[str, float],
+    base_stats: dict[str, float] | None,
+    level: int,
+    *,
+    target_armor: float = 0.0,
+    target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
+    target_current_hp_pct: float = 1.0,
+) -> CallContext:
+    """Build the ``caster_ctx`` for ``collect_effects`` from DEDUPE-INDEPENDENT
+    quantities only (RM-187, ENGINE 1.277.0).
+
+    RM-187 flipped the RM-186 strongest-at-context dedup ON at every engine
+    call site, which exposed a circularity: ``ehp.py`` has its ``CallContext``
+    before it collects, but ``dps.py`` / ``ability_dps.py`` / ``ability_hps.py``
+    / ``burst.py`` collect FIRST and then derive parts of their context FROM the
+    collected effects. Feeding that context back into the dedup would be
+    circular.
+
+    The circularity is cut, not worked around: item STAT BLOCKS are aggregated
+    by ``stats.aggregate_item_stats``, which lives OUTSIDE ``collect_effects``
+    and is explicitly unaffected by the dedup (see ``collect_effects`` above -
+    the dropped duplicate still contributes its whole stat block). So the
+    resolved ``stats`` dict, the champion ``base_stats``, the level and the
+    caller-supplied target assumptions are all knowable BEFORE collection and
+    cannot move when the dedup changes its mind. This function uses those and
+    nothing else, which makes the dedup context order-independent BY
+    CONSTRUCTION rather than by a second pass.
+
+    DOCUMENTED EXCLUSIONS - fields whose engine value is derived from the very
+    effect list being deduped, and which are therefore NOT reconstructed here:
+
+    * ``ap`` carries the RAW stat-block AP. EXCLUDED: ``total_bonus_ap_from_hp``
+      (Riftmaker's Void Infusion), ``total_stacked_ap`` (Mejai's Glory),
+      ``total_ap_amp_multiplier`` (Rabadon's), ``total_caster_hp_scaled_ap_amp``
+      (Demonic Embrace) and the R145 rune adaptive AP grant. MEASURED
+      CONSEQUENCE: the spellblade family is AP-sensitive - Lich Bane and Dusk
+      and Dawn overtake Sheen as AP rises - so a very high-AP build can rank its
+      spellblade at pre-amp AP. Accepted deliberately: no ap-amp / ap-from-hp /
+      stacked-ap carrier holds a ``unique_passive_key`` today (guarded by
+      ``ExclusionGuardTests``), so the excluded terms are additive-on-top rather
+      than contested, and reconstructing them would require collecting first.
+    * ``crit_chance`` carries the RAW stat-block crit. EXCLUDED:
+      ``total_crit_chance_bonus`` (Yun Tal Wildarrows flat, Atma's Reckoning
+      HP-scaled). Only Essence Reaver reads it, and it never wins its group at
+      any crit value in the current registry.
+    * ``bonus_ad`` is ``stats["ad"] - base_ad``. EXCLUDED: the DSV2 takedown
+      (Hubris), R111 missing-HP (Overlord's Bloodmail) and R145 rune adaptive
+      AD folds - all three are DEFAULT-OFF seams computed from the collected
+      effect list.
+    * ``caster_lethality`` is EXCLUDED ENTIRELY (left at 0.0). Its engine value
+      is ``sum(e.lethality for e in item_effects)``, a sum over the DEDUPED
+      list, and two lethality carriers DO hold a ``unique_passive_key``
+      (Profane Hydra / hydra_cleave, Hellfire Hatchet / hellfire_char), so it is
+      genuinely circular. No contested family member reads it.
+    * ``target_armor`` / ``target_mr`` carry the caller's RAW values. EXCLUDED:
+      ``effective_target_armor`` / ``effective_target_mr``, which fold
+      ``armor_pen_pct`` + ``magic_pen_pct`` - carried by the ``last_whisper``
+      and ``void_pen`` families themselves, so maximally circular. No periodic
+      proc reads either field: the comparison is RAW PRE-MITIGATION by design
+      (see ``_comparable_periodic_magnitude``).
+    * ``targets_in_rotation`` is pinned at 1.0 (single target). Not
+      dedupe-dependent, but not known until the per-rotation loop, which runs
+      well after collection. Safe because it is an EXACTLY uniform multiplier
+      across every ``immolate`` member, so it cannot move the argmax - pinned by
+      ``ImmolateTargetsUniformityTests``.
+    * ``ult_casts_per_sec`` / ``is_melee`` stay at their defaults. Neither is
+      dedupe-dependent; no contested family member reads either.
+
+    The exclusion list is not left to this docstring: ``ExclusionGuardTests``
+    walks the live registry, computes which ``CallContext`` fields each
+    contested family's timer procs actually respond to, and fails if any of them
+    reads a field this function does not carry.
+    """
+    base = base_stats or {}
+    base_ad = float(base.get("ad", 0.0))
+    total_ad = float(stats.get("ad", 0.0))
+    caster_max_hp = float(stats.get("hp", 0.0))
+    return CallContext(
+        base_ad=base_ad,
+        bonus_ad=max(0.0, total_ad - base_ad),
+        level=level,
+        target_armor=target_armor,
+        target_mr=target_mr,
+        ap=float(stats.get("ap", 0.0)),
+        target_max_hp=target_max_hp,
+        caster_max_hp=caster_max_hp,
+        caster_bonus_hp=max(0.0, caster_max_hp - float(base.get("hp", 0.0))),
+        crit_chance=float(stats.get("crit", 0.0)),
+        target_bonus_hp=target_bonus_hp,
+        caster_max_mp=float(stats.get("mp", 0.0)),
+        caster_bonus_armor=max(
+            0.0, float(stats.get("armor", 0.0)) - float(base.get("armor", 0.0))
+        ),
+        target_current_hp_pct=target_current_hp_pct,
+    )
+
+
 def collect_effects(
     item_ids: Iterable[str | int],
     caster_ctx: CallContext | None = None,
