@@ -202,7 +202,25 @@ _WEB = _REPO_ROOT / "web"
 # designed and the session that tripped it wrapped before its CI landed. If a
 # push run is still in flight at wrap, collect it; a red that arrives after the
 # banner is still a red main.
-_LIVE_HALF_DIGEST = "b0e4d5ed256f7d0236a23927d3e80bdebfb71ef47bc6b6d568b5d6a75bcbe239"
+# RE-CAPTURED 2026-08-07 (the vision calibrator seed warning + UI-fixture
+# audit), superseding the capture immediately above. Ordinary case: 173 web/
+# sources on BOTH sides, no tokeniser change, no file added or removed, and
+# exactly ONE file differs in its live half:
+#   M web/vision_calibrator.html  four rendered changes, all deliberate.
+#                     (1) The UNTUNED-SEED warning moved out of #status - which
+#                     loadFrame() overwrites on every boot, so it was never
+#                     read - into a #seedwarn banner, and now names the real
+#                     base and the real provenance instead of saying "from
+#                     legacy" and hardcoding "2560" (LEDGER 1227 filed it).
+#                     (2) The toolbar hint's two &middot; separators became
+#                     " - "; the entity was ASCII in source but painted U+00B7,
+#                     and a rendered glyph is authored content.
+#                     (3) A save-arming status string for the seed guard.
+#                     (4) HIT-TARGETS: --hit-min 42px + :focus-visible.
+# Verified before re-pinning rather than assumed: the digest at HEAD
+# reproduces the superseded value byte for byte, so this is the only
+# legitimate successor.
+_LIVE_HALF_DIGEST = "213e62be428554f7364c11af65cd811afbd76dbe0ec71c48ad5b362ee37472c1"
 
 
 def _web_sources() -> list[Path]:
