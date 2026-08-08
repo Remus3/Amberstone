@@ -1331,6 +1331,62 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.276.0 (2026-08-08) - RM-186: the unique-passive dedup was ORDER-DEPENDENT, so
+slot order alone changed the score. DEFAULT-OFF seam, no default output moves.
+
+`effects.collect_effects` de-duplicates items sharing a non-empty
+`unique_passive_key` first-seen-wins (Phase 4 batch 10). That is correct for a
+component-and-upgrade pair (Bami's Cinder -> Sunfire Aegis, where owning both is
+a transient shop state) and WRONG for two FULL items that are legally co-owned.
+Measured on the live engine:
+
+    collect_effects(['6664','3068']) -> ['6664']   # Immolate 15 + 1% bonus HP
+    collect_effects(['3068','6664']) -> ['3068']   # Immolate 20 + 1% bonus HP
+
+Sunfire Aegis (3068) and Hollow Radiance (6664) are both finished items, both
+buyable in the same build, and the same build scored two different numbers
+depending only on how the caller happened to order the id list. The `immolate`
+family has 7 members, `spellblade` 16, `hydra_cleave` 8, `lifeline` 12, so the
+shape is not one pair.
+
+Operator decision: model STRONGEST-AT-CONTEXT WINS, behind a new DEFAULT-OFF
+keyword `caster_ctx: CallContext | None = None`. At `None` - every call site in
+the engine today - the function is byte-identical to the prior first-seen-wins
+behaviour, so this bump moves NO default output. When a context is supplied,
+each group resolves to the member with the largest comparable magnitude at that
+context, and the winner is emitted at the position the group FIRST claimed, so
+the whole returned LIST (not merely its membership) is invariant under
+re-ordering the input.
+
+Comparable magnitude = the sum over the effect's `periodics` of
+`proc.bonus_damage(caster_ctx)` normalised to PER-SECOND (`every_n_seconds=n`
+contributes value/n). `every_n_attacks` procs are SKIPPED - their rate needs an
+attack-speed / rotation signal this call site does not carry - so the
+`hydra_cleave` family (attack-keyed throughout) and the proc-less families
+(`last_whisper`, `lifeline`, `void_pen`) fall back to first-seen unchanged.
+Ties keep first-seen for determinism. A `bonus_damage` callable that RAISES
+disqualifies its whole group back to first-seen and logs a warning through a
+new module logger - the exception is never propagated and never swallowed
+silently.
+
+Comparison is on RAW PRE-MITIGATION magnitude and deliberately does NOT use
+damage type as a tiebreak: Void Immolation's TRUE-damage Immolate does not beat
+a larger-magnitude MAGICAL one. Mitigation needs a TARGET, which `collect_effects`
+does not have, and inventing one here would re-open the operator-CLOSED s232
+conditional-target-state arc. The downstream consumers that DO know the target
+(`dps._periodic_proc_dps` and friends) apply resists, mode multiplier and amps
+to whichever effect this returns. The assumption is pinned by a test, not left
+to the docstring.
+
+`tests/test_unique_passive_strongest_wins.py` (new, 32 tests, written RED first
+- 27 failed / 5 passed before the fix). NON-INERTNESS is asserted end to end
+against `dps._periodic_proc_dps`, not merely against the returned list: a
+2000-bonus-HP tank holding `['6664','3068']` in that order reads 35.0 periodic
+DPS OFF and 40.0 ON (Hollow Radiance 15 + 1% x 2000 vs Sunfire 20 + 1% x 2000,
+zero MR so the mitigation factor is 1.0 on both). The already-correct order
+`['3068','6664']` reads 40.0 both ways - the seam corrects the bad order, it
+never inflates the good one.
+
 1.275.3 (2026-08-08) - Obsidian Cleaver's Carve was four patches stale, and the
 whole STACKING-PERCENT class had no machine link to its source.
 **This MOVES DEFAULT OUTPUT** on Arena builds carrying 228005.

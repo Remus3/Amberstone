@@ -7964,7 +7964,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.275.3")
+        self.assertEqual(ENGINE_VERSION, "1.276.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -8025,7 +8025,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.275.3")
+        self.assertEqual(ENGINE_VERSION, "1.276.0")
 
 
 if __name__ == "__main__":
