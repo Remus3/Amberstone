@@ -219,7 +219,7 @@ class RankThreadingByteIdentical(unittest.TestCase):
 
 class EngineVersionPin(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.275.2")
+        self.assertEqual(ENGINE_VERSION, "1.275.3")
 
 
 if __name__ == "__main__":
