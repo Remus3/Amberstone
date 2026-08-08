@@ -98,13 +98,14 @@ Read `git log --oneline` rather than trusting any list below.
 
 ## CONTEXT
 
-HEAD `e8802e21` plus this run's docs commit. **ENGINE_VERSION 1.275.0**
-(`agents/daemon_slayer/__init__.py:18`) UNCHANGED last run, patch 16.15.1, DS
-`:8860` live and matching. RC pid 17184 after the run's restart. Run
-2026-08-06-01 landed six merges: `a8515a98` (RM-158 root cause), `71f172aa` +
-`eba815e5` (Lane B starter-tier guard + a cited-symbol correction), `c5f1e4c8`
-(`/api/last-match` cache), `8f417bc3` (its two residuals), `e8802e21`
-(cost-ledger pollution guard + backfill). Detail: LEDGER 1202-1206.
+HEAD `b697e139`. **ENGINE_VERSION 1.275.2**
+(`agents/daemon_slayer/__init__.py:18`) - BUMPED TWICE on 2026-08-08, patch
+16.15.1, DS `:8860` bounced and serving 1.275.2 (probed, not assumed). The
+lane-6 DS run landed `fb751846` (RM-176: the `_recharge_to` charge-remainder
+discard plus the extra-shot effect-crit basis, both opt-in paths) and
+`6a407b0e` (RM-177: heal-and-shield-power composes ADDITIVELY - the one
+DELIBERATE default-output move, `/api/spike-curve` amp 1.3552 -> 1.3200).
+Detail: LEDGER 1231-1232.
 
 ## ACCEPTANCE
 
