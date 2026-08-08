@@ -191,7 +191,7 @@ class RankerIntegrationTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.275.3")
+        self.assertEqual(ENGINE_VERSION, "1.276.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):

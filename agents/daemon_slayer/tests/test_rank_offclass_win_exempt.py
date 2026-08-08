@@ -159,7 +159,7 @@ class OffClassExemptSeamTests(unittest.TestCase):
 
 class EngineVersionPinTests(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.275.3")
+        self.assertEqual(ENGINE_VERSION, "1.276.0")
 
 
 if __name__ == "__main__":
