@@ -6,6 +6,50 @@
 
 ---
 
+# 2026-08-08 - headless lane 6 (DS): RM-176, and the refutations were worth more than the fixes
+
+Commit `d53c9673` on `lane/ds`, draft PR #12 (opened solely to exercise CI -
+all three workflows trigger on push-to-main or PR, so a lane push runs nothing).
+ENGINE 1.275.0 -> 1.275.1. Orchestrated: 4 parallel read-only audits over
+disjoint engine module groups, then a separate adversarial refutation panel.
+
+- **6 defects filed, 3 survived refutation. The panel was the highest-value
+  step, not a formality.** The R212 Yasuo overflow saturation came in HIGH with
+  a fully-cited root cause at `engine.py:217-218`. Simulating removal of that
+  clamp changed nothing - **the binding clamp is `crit_total` in `dps.py`, three
+  lines from the seam. A TRUE citation supporting a FALSE conclusion, and a fix
+  aimed at the filed line would have shipped inert.** Kept as a ground-truth
+  test pinning the saturation boundary, with a docstring saying game truth is
+  unresolved, so the next agent does not re-file it.
+- **Both real defects were hidden by a signal being read as safety.**
+  `_recharge_to` contradicted its own docstring - it claimed to prevent
+  DOUBLE-counting while actually DISCARDING time. And the extra-shot crit bug
+  presented as ON/OFF `weighted_dps` being **bit-identical**, which reads like a
+  well-behaved opt-in and was in fact the whole flag being arithmetically inert.
+  **Byte-identity is only reassuring when you know which side should have moved.**
+- **`--static` regen is load-bearing in a lane worktree.** `:8860` runs from the
+  main tree, so a live-HTTP regen would have computed against a different engine
+  than the one being shipped and returned a confident wrong answer. Same root
+  cause as the one dual-suite failure (`test_live_three_profiles` asserts live
+  `/health` == repo `ENGINE_VERSION`) - a lane cannot make the shared server
+  serve its own code, and that is not a regression.
+- **The post-commit hook clobbered the lane index.** It backgrounds
+  `tools/gist_share_sync.py` against `C:/Riot Commander` whenever a commit
+  touches `Share/`; its git calls left 5228 files staged as deleted while the
+  working tree was intact. `git reset` restored it. **Do not panic-reset --hard
+  on this** - the files were never gone, only the index was wrong. Also note the
+  hook publishes `Share/` to a review gist automatically on any Share-touching
+  commit.
+- **Filed not fixed - RM-177:** HSP composes multiplicatively in `hps.py` and
+  additively in `_hsp_amp.py`, on the DEFAULT path. The flip needs renaming
+  tests whose NAMES assert the opposite physical model, so it is operator-gated;
+  the adjudicating agent returned confirm-with-defer rather than shipping it.
+- Suites measured, not carried: DS **10518** passed / 13195 subtests; RC
+  `tests/` **18929** passed / 143 skipped / 2082 subtests / 1 failed (above).
+  Independent verifier: CONFIRM 11/11.
+
+---
+
 # 2026-08-07b - RM-26 anchor model, then the calibrator: the filed bug was the smallest of four
 
 Commits `4b157aef` (anchor model), `68ba3fb3` (CI fix), `f8aaa7ef` (calibrator).
