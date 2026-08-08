@@ -95,7 +95,8 @@ structure and call-counting".
 
 The false claim entered by summarisation: three artifacts
 (`project_ds_ability_haste_measured_inert.md:43-45`, `docs/LEDGER.md:51`,
-`WAKEUP_NOTES.md:130`) each weld "whole-game duration" and "already
+`docs/history_notes.md:8356-8357`, relocated there from `WAKEUP_NOTES.md` by the
+routine prune) each weld "whole-game duration" and "already
 haste-inclusive" into one clause with an "and". A later summary read the
 conjunction as causation.
 
