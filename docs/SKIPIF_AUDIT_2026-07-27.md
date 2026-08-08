@@ -349,9 +349,11 @@ the true pre-slice census is **20 skip control points across 18 modules**.
 **Verdict: all 20 are class A - a legitimate capability gate. None is dead.**
 
 - All 34 live paths (31 `_POST_ROUTES` plus `/health`, `/snapshot`,
-  `/modifier-summary`) were probed read-only at ENGINE 1.275.0 / patch
-  16.15.1. Every one answered. The single non-200 was `/v2/matchup` returning
-  400 for a field the probe body did not supply, which still proves dispatch.
+  `/modifier-summary`) were probed read-only at ENGINE 1.275.0 - audit CLOSED
+  2026-08-06, so this is a dated measurement and not a currency claim; the live
+  engine has moved on since - at patch 16.15.1. Every one answered. The single non-200
+  was `/v2/matchup` returning 400 for a field the probe body did not supply,
+  which still proves dispatch.
 - No workflow starts the engine. A case-insensitive grep of the whole
   `.github/` tree for `8860`, for `start_daemon_slayer`, and for any
   daemon-slayer serve/start/launch verb returns nothing.

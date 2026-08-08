@@ -6,6 +6,37 @@
 
 ---
 
+# 2026-08-08b - lane 6 continued: RM-177 HSP flip, MERGED and DEPLOYED
+
+Main `b697e139`. ENGINE **1.275.0 -> 1.275.2** across the day; `:8860` bounced
+and serving 1.275.2 (probed). Merges `fb751846` (RM-176) + `6a407b0e` (RM-177).
+CI 4/4 green on main. LEDGER 1231 + 1232.
+
+- **RM-177 shipped: HSP composes ADDITIVELY** - `product(1 + chain_pct) *
+  (1 + sum(hsp_pct))`. `hps.py` multiplied what `_hsp_amp` summed, off the same
+  catalog field, for 73 engine revisions with a green test on each side. **This
+  is the rare DELIBERATE default-output move** - `/api/spike-curve` amp
+  1.3552 -> 1.3200. Operator cleared the gate LEDGER 1231 had recorded.
+- **I wrote a FALSE claim into two shipped docs and the adjudicator caught it.**
+  I asserted "item ordering did not change" from a 7-champion probe at ONE build
+  state; a 3840-scenario sweep found ordering moves in **638 (16.6 pct)**, and
+  every zero-change state is a 0-or-1-HSP state - which is exactly why the
+  narrow probe read clean. Corrected visibly in three docs. **Top-1 is unchanged
+  in 0 of 3840**, which is why the six build-order tables still regenerate
+  2-line-diff. Lesson: I had written the "on these builds" caveat in chat and
+  then dropped it from the artifact.
+- **The `ally_chain_only` carve-out is only as good as the flag census, and the
+  composition test CANNOT guard it** - it mirrors the branching rule. What
+  guards it is `test_enchanter_hsp_magnitude_drift_r197.py:324`, pinning the
+  flagged set against DDragon. A future heal-chain item must be added there.
+- Do NOT re-derive: three tests were RENAMED not bent, all mutation-proven RED
+  under all-additive, all-product AND branch-swapped engines.
+- Wrap found + fixed 2 drift breaches: ROADMAP at 96 pct (relocated the RM-177
+  filing plus two fully-closed rows to `ROADMAP_HISTORY.md`, now 89.3 pct) and
+  three stale 1.275.0 anchors (CLAUDE.md:6, NEXT_SESSION_PROMPT, SKIPIF audit).
+
+---
+
 # 2026-08-08 - headless lane 6 (DS): RM-176, and the refutations were worth more than the fixes
 
 Commit `d53c9673` on `lane/ds`, draft PR #12 (opened solely to exercise CI -
@@ -92,92 +123,3 @@ CI green on all. Interactive session, inline, no subagents (harness directive).
   resize does not dispatch `resize` to the page.
 - Do NOT redo: the resolver, consumer fix, crop-rect guard, anchor model, or the
   calibrator. Do NOT re-measure anchors at 16:9 - it cannot answer the question.
-
----
-
-# 2026-08-07a - headless run 2026-08-06-02: 21 slices over four cycles, and the adversarial pass earned its cost every single time
-
-Operator asked for five open ROADMAP items, orchestrated multi-agent, self-
-adjudicating and self-adversarial, self-looping for ten hours. Ran 18:00 to 02:30.
-Four cycles, 21 build slices plus 16 independent verifier passes, all worktree-
-isolated on disjoint files with one merger. Merges: `c20bf2c6..d6764910`.
-LEDGER 1207-1228. Dual suite closed at 29398 passed / 0 failed; drift guard clean;
-ROADMAP held at 72217 bytes.
-
-**The single most important line: a CLAUDE.md `Settled - do not re-litigate` entry
-called a LIVE paid Haiku path deadcode, and it was false on the day it was
-written.** Five game modes route to `coaches/brawl_coach.py`, the feature flag
-allows it, and construction alone spawns its poll loop. A cleanup pass acting on
-the old wording would have deleted it. Corrected in place (LEDGER 1222/1226).
-
-**Why the adversarial pass is not optional.** Every cycle it caught something the
-slice could not see in itself:
-- It CONSTRUCTED a catastrophic write - a process that won a relocated claim would
-  stamp its own live pid into the real supervisor sentinel.
-- It caught a skip converted into a NO-OP (an assertion true by construction), which
-  is worse than the skip it replaced because a visible SKIPPED became a silent dot.
-- It found a guard pointed at a different address than the thing it guarded.
-- It proved three separate fixes were arithmetically INERT downstream.
-- Twice it found a TRUE conclusion resting on a citation that did not exist.
-
-**Every filed count that was re-derived was wrong** - B5 `about 22` was 1, B4
-`about 22` was 11, B2 `19` was 20 - and two rows I wrote myself were refuted by the
-slices I sent to execute them. Treat a filed number as a hypothesis.
-
-**Three things I got wrong and the run corrected:** I pushed once with a failing
-test because a shell `&&` chain read `tail`'s exit code instead of pytest's; my own
-repo-root `pytest .` runs were deleting the live supervisor lock every time (that
-IS the RM-173 root cause); and I proposed a poll-based fix for the overlay flake
-that would have made it fail slower rather than pass.
-
-**The cross-slice failure only the merge could find:** the B5 skip guard did not
-know git-LFS exists, and two slices were both right. Tracked-and-LFS is a
-capability gate; tracked-and-not-LFS stays a defect; and the rescue quantifier must
-be ALL, not ANY, or the whole class re-opens. Five green branch reports would have
-shipped it.
-
-Rows closed: RM-163, RM-165, RM-158 data half, RM-119 B5/B4/B2 (the R219 skip audit
-is now fully drained), RM-164 provenance, RM-169, RM-170, RM-171, RM-172, RM-173,
-RM-174, RM-175 (ADR-014), RM-155 retired (ADR-013), RM-26 corrected. Filed: RM-169,
-RM-170, RM-171, RM-172, RM-173, RM-174, RM-175.
-
----
-
-# 2026-08-05d - lane 8 cycle 10: RM-161 closed, and the sibling sweep found the instance with the teeth
-
-Three retention knobs took an age cap that erases everything it can reach at
-zero or below. LEDGER 1201; 23 new tests; 13/13 mutants killed; verifier
-CONFIRM 9/9; RM-162 filed LOW.
-
-- **The filing named two instances. The one that actually deletes was the
-  third.** RM-161 listed `prune_task_logs` and the FROZEN
-  `ops/rc_supervisor.py:1442`. But `:1442` only READS the value and hands it to
-  `ops/rc_incident_log.IncidentLog`, whose `_purge_old_locked` does the
-  deleting - a module with **zero test references**. Reading the CONSUMER of a
-  filed row, not just the row, is what found it.
-- **Closing a frozen path without editing it.** The config key reaches the
-  frozen supervisor, so the fix went upstream: `core/config_validator.py` gained
-  a `field_ranges` mechanism and now rejects the profile before the supervisor
-  ever reads it. That was the filing's own suggestion and it held up.
-- **Raising was checked against the caller, not assumed safe.** The
-  `IncidentLog` construction sits inside `_start_self_monitor`'s `try`, whose
-  handler logs "SelfMonitor start failed (non-fatal)". So a rejected policy
-  costs an unstarted monitor, never a supervisor crash. Verify the handler
-  before choosing raise over clamp.
-- **A range violation is an ERROR even on an OPTIONAL key.** Wrong type stays a
-  WARNING there. The range table is curated to knobs whose bad value is
-  DESTRUCTIVE, and a warning the operator scrolls past is the wrong severity for
-  "this erases your incident log".
-- **One of two first-pass mutation survivors was EQUIVALENT, not a test gap.**
-  `not _check_type(data.get(key), ...)` reaches the same `continue` an absent
-  key already took - it cannot change behaviour. The other survivor was real:
-  the assertion looked for the substring "range", which the demoted message
-  still contained. **A survivor is a claim about the test; sometimes it is a
-  claim about the mutant.** Say which.
-- **Scope was held, deliberately.** `image_retention_days` and
-  `control_file_retention_hours` are typed in the same file and were NOT ranged:
-  a tree-wide grep shows zero Python consumers, so bounding them bounds nothing.
-  Interval knobs are a different root cause (hot loop, not erase) and were left.
-- **Backfill probed live and CLEAN.** Shipped profile carries 7; incident log
-  intact at 8374 lines / 2.4 MB. Latent, never realised - which is the honest
-  answer, established by reading the live files.
