@@ -2,7 +2,52 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-06, automatic via `scripts/wakeup_prune.py --keep 3` (relocated lane 8 cycle 8 `2026-08-05b`; newest 3 = headless run 2026-08-06-01 `2026-08-06a` + lane 8 cycle 10 `2026-08-05d` + lane 8 cycle 9 `2026-08-05c`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-07, automatic via `scripts/wakeup_prune.py --keep 3` (relocated lane 8 cycle 9 `2026-08-05c`; newest 3 = RM-26 anchor model + calibrator `2026-08-07b` + headless run 2026-08-06-02 `2026-08-07a` + lane 8 cycle 10 `2026-08-05d`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-08-07b - RM-26 anchor model, then the calibrator: the filed bug was the smallest of four
+
+Commits `4b157aef` (anchor model), `68ba3fb3` (CI fix), `f8aaa7ef` (calibrator).
+CI green on all. Interactive session, inline, no subagents (harness directive).
+
+- **The RM-26 acceptance criterion could not be met, and the reason generalises.**
+  It asked for the anchor model to be "validated against a real frame - not a
+  model". Every reference still on disk is 2560x1440, and **at a matching aspect
+  the width ratio EQUALS the height ratio, so left / center / right / top /
+  bottom anchoring all produce the byte-identical box.** 16:9 cannot discriminate
+  between anchor classes at all. That is also why the earlier best-anchor error
+  measured exactly 0.00x - **that number was never evidence about anchoring.**
+  Model built and DEFAULT-OFF; one native 21:9 or 32:9 still is the only gap.
+- **Not inert, and measured before claiming so** (the LEDGER 1227 lesson): 0 of
+  21 boxes change at 2560x1440, 21 of 21 at every ultrawide, worst 492px at
+  5120x1440.
+- **The acceptance criterion's own top/bottom axis is arithmetically INERT.**
+  Under scale-by-height, bottom anchoring reduces to top anchoring. Filed and
+  pinned rather than quietly implemented as if it mattered.
+- **Two of my tests asserted hand-computed integers and FAILED on int()
+  truncation.** Corrected to property assertions with a stated 1px tolerance -
+  the implementation keeps `_scale_bbox`'s convention rather than being bent to
+  my prediction.
+- **A test that asserts on a GITIGNORED directory is green only on Legion.**
+  `data/vision_calib_reference` is untracked by design, so CI went red. Now a
+  CAPABILITY skip per the LEDGER 1228 B5 rule. Local green is not CI green.
+- **THE BIG ONE: reading the page beat fixing the filed line.** The calibrator's
+  seed warning was written into `#status`, which `loadFrame()` overwrites on
+  every boot - **nobody had ever seen it.** A wording-only fix would have shipped
+  a correct sentence no one reads.
+- **The UI audit found a live correctness bug that made the page useless for its
+  one job.** Boxes were laid out in FRAME space while their coordinates are in
+  PROFILE space; the live path serves a halved 1280x720 frame against a
+  2560x1440 base, so all 21 drew at double scale, the rightmost at 2471px on a
+  1265px page. Same mismatch in the save payload. **Run the audit on the page,
+  not on the diff.**
+- **Two measurements discarded rather than reported:** a `clientWidth: 0` probe
+  (zero-width pane) that claimed all 21 regions escaped, and an "all 21 labels
+  flipped" reading that was stale state because the harness's programmatic
+  resize does not dispatch `resize` to the page.
+- Do NOT redo: the resolver, consumer fix, crop-rect guard, anchor model, or the
+  calibrator. Do NOT re-measure anchors at 16:9 - it cannot answer the question.
 
 ---
 
@@ -51,79 +96,6 @@ Rows closed: RM-163, RM-165, RM-158 data half, RM-119 B5/B4/B2 (the R219 skip au
 is now fully drained), RM-164 provenance, RM-169, RM-170, RM-171, RM-172, RM-173,
 RM-174, RM-175 (ADR-014), RM-155 retired (ADR-013), RM-26 corrected. Filed: RM-169,
 RM-170, RM-171, RM-172, RM-173, RM-174, RM-175.
-
----
-
----
-
-# 2026-08-06a - headless run 2026-08-06-01: four fixes, and three of them mask or measure something bigger than themselves
-
-Six merges `de5b5488..e8802e21` (`a8515a98`, `71f172aa`, `eba815e5`, `c5f1e4c8`,
-`8f417bc3`, `e8802e21`) plus this docs commit. LEDGER 1202-1206; six rows filed
-RM-163 .. RM-168.
-
-- **CI IS OWED FOR EVERY SHA IN THIS RUN AND IT IS NOT A REPO FAULT.** GitHub
-  Actions was in a MAJOR OUTAGE from 2026-08-06 15:22:49 UTC, so every push
-  created ZERO workflow runs and `gh run list` shows only the previous day -
-  which reads exactly like a broken trigger. Ruled out by probe: Actions
-  enabled, all 3 workflows `state=active`, `ci.yml` `paths-ignore` is
-  `**/*.md` ONLY while every push carried `.py`, commits ARE on GitHub. NOT
-  ruled out: **billing** (the local `gh` token lacks the `user` scope the usage
-  endpoint needs). A manual `gh workflow run` DID create run `31127029404`, so
-  the failure is push-event DELIVERY, not run creation. **Do not write "CI
-  green" anywhere for these shas** - every merge passed a LOCAL gate only.
-- **RM-158's root cause was an unregistered dict key, and the corruption is
-  wider than the row said.** `core/lead_projection.py` registered gold-income
-  rates for SR and ARAM only, so `gold_income_per_min("ARENA")` fell through to
-  a default byte-identical to SR's 450.0 - and at schema v3 that was ARENA's
-  LAST mode-differentiating input, which is why the output was a byte-COPY
-  rather than merely similar. **BOTH shipped arena tables are SR copies**
-  (16.12.1 `cec62070b61e7c35` as well as 16.13.1 `22982424e69c42cc`, hashes
-  re-derived independently). The fix registers the row AND makes `main()`
-  REFUSE an unregistered mode, so the next one fails loudly. **The DATA half is
-  still open:** regen both, and 1,148 `mode=arena` rows in
-  `data/hz_choice_shadow.jsonl` are SR measurements labelled arena - drop or
-  relabel, never average.
-- **The obvious Lane B improvement was MEASURED AND REJECTED, and that is the
-  substantive half.** `sort_by="efficiency"` as the build ordering metric
-  changed 52 of 60 cells over 15 champions x 4 comp archetypes and pulled
-  Doran's Helm / Doran's Bow / Guardian's Blade into slots 3-5 of the final six.
-  It DEGRADES the tables. Shipped instead: the starter-tier invariant the tables
-  held only by ACCIDENT, now pinned (`Lane` tag AND gold < 1000 - and the
-  ceiling sits in a provably EMPTY band: no Lane item between 950g and 2500g).
-- **Lane B's real blocker is a CONSUMER, not data.** The HZ-B1 comp-archetype
-  table is the largest and richest of three families and has ZERO PRODUCTION
-  CONSUMERS - definition plus 5 test call sites, nothing under `tools/` or
-  `ops/audit/`. So the richest precomputed build data RC holds is on no path a
-  coach reads. Filed RM-164. Coverage being full and machine-guarded told us
-  nothing about whether anything READS it.
-- **A cache that fixes a latency number can hide the cause.** `/api/last-match`
-  went 0.475s cold -> 0.0078s cached, but 289ms of 291ms of the build was ONE
-  urlopen, because `core/riot_api.py:520-522` stores a result only
-  `if data is not None`. A `None` is never cached, so a match Riot has no
-  timeline for refires forever - and `None` is the NORMAL case (event modes
-  return empty by design). Filed RM-163, highest-value open non-gated row.
-  Cold is the number a real fix moves.
-- **The instrument was calibrated on fake data.** Tests were driving the REAL
-  cost tracker: 13,141 synthetic calls across 40 of 84 day-files. The
-  consequence, not the row count, is the finding -
-  `tools/cost_health_watchdog.py`'s trailing-median baseline read $0.039424
-  against a true $0.300906, **7.63x low and composed ENTIRELY of test rows**.
-  Prevention is an autouse conftest fixture; the backfill filters PER BUCKET,
-  never per file, because a day-file mixes real and synthetic rows.
-- **Two negatives held honestly.** The `recent_matches.json` zero-`by_gate`
-  producer stays UNIDENTIFIED - the first attribution was REFUTED by
-  measurement and no test in `tests/` calls `save_match` at all. And a negative
-  control on the conftest fixture was DECLINED on purpose: running the polluters
-  under the old conftest would have spent real money testing a guard against
-  spending real money.
-- **`.githooks/commit-msg:23-29` STRIPS the `Co-Authored-By: Claude` trailer**
-  (operator policy 2026-06-03, deletion not rejection). This run paid for that
-  three times: three slice prompts told agents to add it, TWO verifier passes
-  returned REFUTE on its absence as a genuine defect, and two merge bodies
-  assert they carry a trailer the hook removed. Audit it with an ANCHORED
-  predicate and read the message TAIL - `grep -ci` matches prose ABOUT the
-  trailer. Now a one-line hard rule in CLAUDE.md.
 
 ---
 
