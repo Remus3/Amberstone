@@ -1331,6 +1331,52 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.275.1 (2026-08-08) - RM-176, TWO CORRECTNESS FIXES, both on opt-in paths;
+no default-path number moves. Found by a four-way parallel engine audit and
+kept only after an adversarial refutation pass (3 CONFIRM / 3 REFUTE).
+
+RM-176a - CHARGE RECHARGE WAS DISCARDED BY FREQUENT POLLING.
+``mana_sim._recharge_to`` advanced ``last_t`` to ``clock`` on the no-gain
+path, destroying the sub-recharge remainder. A charge slot polled more often
+than its own recharge interval therefore accrued NOTHING however long the
+fight ran - the loss is not an edge case, it is every rotation whose
+cast-to-cast gap is below the recharge. Rengar Q at level 13 over a
+``["Q"] + (["AA"] * 4 + ["Q"]) * 8`` sequence resolved 1 cast then 8
+``no_ammo``; it now resolves 6, and ``bounded_dps`` moves 52.59 -> 65.39.
+The FULL-slot snap is deliberately KEPT - banking time while capped would
+refund a spent charge instantly - and is now pinned by its own test.
+Reachable only under ``gate_ammo=True`` (``POST /v2/fight-report``); the
+default ``gate_ammo=False`` path is byte-identical. A non-divisor poll
+cadence is part of the regression set, because a divisor-only probe cannot
+distinguish this bug from a cadence artifact.
+
+RM-176b - AKSHAN'S EXTRA SHOT IGNORED EFFECT-SOURCED CRIT.
+``dps.py`` scaled the extra shot by the bare build stat ``stats["crit"]``,
+which omits crit arriving as an ItemEffect ``crit_chance_bonus_flat``. The
+base auto-attack beside it uses ``crit_total``. On a Yun Tal Wildarrows 3032
+build (DDragon crit 0, effect crit 0.25) the shot stayed flat while the auto
+crit, under-crediting it by 15.79 percent and rendering the whole
+``apply_extra_shot_procs`` flag arithmetically INERT - the ON and OFF
+``weighted_dps`` were bit-identical, which is the defect, not evidence of
+safety. The shot now reads ``crit_total``, honouring the contract stated in
+both ``dps.py`` and ``_extra_shot_overrides``. DDragon-sourced crit is
+unchanged (Infinity Edge still folds chance and damage bonus exactly once),
+and champions whose routed passive is not a second attack stay byte-identical.
+Requires ``apply_passive_damage`` AND ``apply_extra_shot_procs``, both
+DEFAULT-OFF.
+
+Also landed, no behaviour change: property-style invariant coverage for the
+``_blend_with_heal`` mirror parity under every armed seam enumerated from
+``inspect.signature`` rather than a hardcoded list (the RM-105 regression
+reproduces against it), roster-wide EHP monotonicity in level / armor / flat
+HP / penetration, non-tautological ranker-row reproduction against a direct
+``compute_ehp``, gate-ammo dominance, and mana conservation. Plus a recorded
+ground-truth file for the R212 Yasuo overflow saturation, which was filed as
+a defect and REFUTED: the binding clamp is ``dps.py`` ``crit_total``, NOT the
+engine-wide stat clamp the filing blamed, and whether Riot caps before or
+after Yasuo's doubling is not resolvable from the DDragon text. That file
+exists so the next reader does not re-file it.
+
 1.275.0 (2026-08-04) - TWO ROWS, ONE BUMP: RM-118's five per-item shield seams
 reach ``/ehp``, and RM-36's AD-axis dual-scaling split credit brings Ezreal to
 the carry scorer. Both DEFAULT-OFF. Landed as parallel worktree slices merged
