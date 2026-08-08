@@ -1,6 +1,6 @@
 """RM-177 - Heal-and-Shield-Power composes ADDITIVELY, matching real League.
 
-Until ENGINE 1.275.2 ``hps.py`` compounded every ``heal_shield_amp_pct`` as a
+Until ENGINE 1.275.3 ``hps.py`` compounded every ``heal_shield_amp_pct`` as a
 product while ``_hsp_amp.sum_wielder_hsp_pct`` summed the same field off the
 same catalog. Two engines, one stat, opposite models - and two green tests
 asserting each. The product convention over-credited superlinearly in HSP-item

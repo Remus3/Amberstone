@@ -185,7 +185,7 @@ class EhpByteIdenticalTests(unittest.TestCase):
 
 class EnginePinTests(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.275.2")
+        self.assertEqual(ENGINE_VERSION, "1.275.3")
 
 
 if __name__ == "__main__":
