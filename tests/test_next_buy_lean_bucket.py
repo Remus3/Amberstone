@@ -41,6 +41,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import item_advisor as _item_advisor
 from core import next_buy_fallback as nbf
 from dashboard import _liveclient
 
@@ -55,6 +56,10 @@ MIXED_COMP = ["Zed", "Lux", "Garen", "Ahri", "Jinx"]
 
 # Live Client gameMode -> flat build-order table stem.
 MODE_STEMS = (("CLASSIC", "sr"), ("ARAM", "aram"), ("CHERRY", "arena"))
+
+# Derived from the source of truth, not transcribed, so that adding a curated
+# champion widens the priority test instead of silently leaving it uncovered.
+CURATED = sorted(_item_advisor.CHAMPION_BUILDS)
 
 
 def _table(stem: str) -> dict:
@@ -234,19 +239,26 @@ class LivePathTests(unittest.TestCase):
     def test_kill_switch_off_yields_no_fallback_row(self):
         self.assertEqual(_next_names(_summary("Alistar", AP_COMP, flag="0")), [])
 
-    def test_curated_champion_keeps_priority_under_every_lean(self):
+    def test_all_six_curated_champions_keep_priority_under_every_lean(self):
         # resolve_build wins whenever it answers, so a curated champion's
         # sr_items must be byte-identical with the fallback ON and OFF. Note
-        # resolve_build is ITSELF enemy-comp-aware (measured: Jinx opens
-        # Phantom Dancer into AP_COMP and Immortal Shieldbow into MIXED_COMP),
-        # so the comparison is per-comp - across comps it legitimately moves.
-        for comp in (AP_COMP, AD_COMP, MIXED_COMP):
-            on = _summary("Jinx", comp, flag="1").get("sr_items")
-            off = _summary("Jinx", comp, flag="0").get("sr_items")
-            with self.subTest(comp=tuple(comp)):
-                self.assertTrue(on)
-                self.assertEqual(json.dumps(on, sort_keys=True),
-                                 json.dumps(off, sort_keys=True))
+        # resolve_build is ITSELF enemy-comp-aware (measured: Jinx slot 5 is
+        # Phantom Dancer against AP_COMP and Immortal Shieldbow against AD_COMP
+        # and MIXED_COMP), so the comparison is WITHIN one comp - across comps
+        # it legitimately moves, and a cross-comp assertion would be false.
+        self.assertEqual(
+            CURATED,
+            ["Caitlyn", "Jinx", "Miss Fortune", "Nilah", "Tristana", "Vayne"],
+            "curated set changed - confirm the widened sweep still covers it",
+        )
+        for champ in CURATED:
+            for comp in (AP_COMP, AD_COMP, MIXED_COMP):
+                on = _summary(champ, comp, flag="1").get("sr_items")
+                off = _summary(champ, comp, flag="0").get("sr_items")
+                with self.subTest(champion=champ, comp=tuple(comp)):
+                    self.assertTrue(on, f"{champ} is curated and must have a build")
+                    self.assertEqual(json.dumps(on, sort_keys=True),
+                                     json.dumps(off, sort_keys=True))
 
 
 class FailSoftTests(unittest.TestCase):
@@ -289,11 +301,69 @@ class FailSoftTests(unittest.TestCase):
                 nbf.fallback_build_ids("Alistar", "CLASSIC", AP_COMP), ["1004"]
             )
 
-    def test_a_raising_classifier_does_not_propagate(self):
+class ClassifierFaultTests(unittest.TestCase):
+    """A lean fault costs the LEAN, never the ROW.
+
+    Degrading to [] on a classifier fault would delete the champion's whole
+    next-buy row over a comp-reading failure - strictly worse than the neutral
+    order, and worse than the pre-RM-164 behavior this module promises to fall
+    back to. The correct degrade target is the "balanced" order.
+    """
+
+    def _balanced(self, champ="Alistar", stem="sr"):
+        return [str(i) for i in _table(stem)[champ]["balanced"]]
+
+    def test_a_raising_classifier_degrades_to_balanced_not_empty(self):
         with mock.patch.object(nbf, "preferred_bucket",
                                side_effect=RuntimeError("boom")):
+            ids = nbf.fallback_build_ids("Alistar", "CLASSIC", AP_COMP)
+            names = nbf.fallback_build("Alistar", "CLASSIC", AP_COMP)
+        self.assertEqual(ids, self._balanced())
+        self.assertNotEqual(ids, [])
+        self.assertEqual(names[0], "Randuin's Omen")
+
+    def test_a_raising_classifier_does_not_propagate(self):
+        # Explicit non-propagation, separate from the value assertion above:
+        # a bare "did not raise" is the half that the outer handler could
+        # satisfy by swallowing into [], so both halves are pinned.
+        with mock.patch.object(nbf, "preferred_bucket",
+                               side_effect=RuntimeError("boom")):
+            try:
+                nbf.fallback_build_ids("Alistar", "CLASSIC", AP_COMP)
+                nbf.fallback_build("Alistar", "CLASSIC", AP_COMP)
+            except Exception as exc:  # noqa: BLE001 - the thing under test
+                self.fail(f"classifier fault propagated: {exc!r}")
+
+    def test_a_raising_shape_classifier_degrades_to_balanced(self):
+        # The REAL internal fault path, not a mock of the function under test.
+        for target in ("shape_from_factors", "compute_factors"):
+            with self.subTest(raising=target):
+                with mock.patch.object(nbf, target,
+                                       side_effect=RuntimeError("boom")):
+                    self.assertEqual(nbf.preferred_bucket(AP_COMP), "balanced")
+                    self.assertEqual(
+                        nbf.fallback_build_ids("Alistar", "CLASSIC", AP_COMP),
+                        self._balanced(),
+                    )
+
+    def test_a_classifier_returning_garbage_degrades_to_balanced(self):
+        for bogus in ("", "nonsense", None, 7, "mixed/fl_none"):
+            with self.subTest(returns=repr(bogus)):
+                with mock.patch.object(nbf, "preferred_bucket",
+                                       return_value=bogus):
+                    self.assertEqual(
+                        nbf.fallback_build_ids("Alistar", "CLASSIC", AP_COMP),
+                        self._balanced(),
+                    )
+
+    def test_empty_is_still_the_answer_where_empty_is_correct(self):
+        # The [] degrade path must NOT be weakened by the change above.
+        self.assertEqual(nbf.fallback_build_ids("Alistar", "TFT", AP_COMP), [])
+        self.assertEqual(nbf.fallback_build_ids("NotAChampion", "CLASSIC", AP_COMP), [])
+        with mock.patch.object(nbf, "fallback_enabled", return_value=False):
             self.assertEqual(nbf.fallback_build_ids("Alistar", "CLASSIC", AP_COMP), [])
-            self.assertEqual(nbf.fallback_build("Alistar", "CLASSIC", AP_COMP), [])
+        with mock.patch.object(nbf, "_canon_table", return_value={}):
+            self.assertEqual(nbf.fallback_build_ids("Alistar", "CLASSIC", AP_COMP), [])
 
 
 if __name__ == "__main__":
