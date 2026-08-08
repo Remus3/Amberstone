@@ -1331,6 +1331,75 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.275.2 (2026-08-08) - RM-177: Heal-and-Shield-Power composes ADDITIVELY.
+**This deliberately MOVES DEFAULT OUTPUT** - the first entry in a long while
+that does, so read the scope before assuming the usual byte-identical contract.
+
+``hps.py`` compounded every ``heal_shield_amp_pct`` as a product while
+``_hsp_amp.sum_wielder_hsp_pct`` SUMMED the same field off the same
+``enchanter_items.json`` catalog. One stat, one wielder, two engines, opposite
+models - and a green test pinning each (``test_hps.py`` asserted the product
+1.10 x 1.12 = 1.232 for Redemption + Mikael; ``test_hsp_amp_r60.py`` asserted
+the additive 0.22 for the identical pair). Real League HSP is additive. The
+product convention over-credited SUPERLINEARLY in HSP-item count, so the error
+was largest on exactly the finished enchanter build the scorer exists to rank:
+0.98 pct at two items, 4.98 pct at four, and 10.05 pct at a six-item build
+summing 0.58 HSP (state the BUILD with any such figure - a six-item build
+summing 0.66 reads 12.50 pct, so a bare "10 pct at six" is not reproducible).
+
+NOT a straight swap - ``heal_shield_amp_pct`` is an OVERLOADED field. Rows
+flagged ``ally_chain_only`` carry an ally-CHAIN ratio rather than the printed
+HSP stat, which is why ``_hsp_amp`` already skipped them for the wielder. A
+chain ratio genuinely multiplies, so the amp is now
+``product(1 + chain_pct) * (1 + sum(hsp_pct))``. At patch 16.15.1 THREE ids
+carry the flag - Moonstone Renewer 6617 plus BOTH mode-mirrors 226617 / 326617,
+of which only 6617 has a nonzero magnitude. The mirrors matter: an unflagged
+mirror would silently sum a chain ratio in Arena or ARAM, so the flagged set is
+pinned against DDragon by ``test_enchanter_hsp_magnitude_drift_r197.py:324``,
+which also asserts DDragon prints no "Heal and Shield Power" line for any of the
+three. That external pin - a different file, a different data source, untouched
+by this change - is what keeps the carve-out honest, because the composition
+test necessarily mirrors the branching rule and so cannot detect a row being
+mis-flagged. The other 19 nonzero HSP rows are the plain printed stat.
+
+MEASURED SCOPE. Default-path move on ``/api/spike-curve``: the shipped
+six-item enchanter build reads amp 1.3552 -> 1.3200 at level 13, total
+throughput 41.838 -> 41.522. Zero- and one-item builds are byte-identical by
+construction (a one-term sum and product are the same number), so only builds
+carrying TWO OR MORE printed-HSP rows move at all.
+
+**ITEM ORDERING DOES MOVE, and an earlier draft of this entry claimed it did
+not.** That claim was generalized from a single build state and is corrected
+here rather than quietly dropped. Measured over 3840 scenarios (20 champions x
+4 levels x 3 modes x 17 build states, ``top_n=200``): ordering changes in **638
+of 3840, 16.6 pct**, and the rate scales monotonically with HSP density in the
+CURRENT build - 0 pct at zero or one printed-HSP item, 24.2 pct at two, 36.2 pct
+at four, 42.1 pct at five. Every zero-change state is a 0-or-1-HSP state, which
+is exactly why a narrow probe reported no movement. **This is the correction
+working as designed**: the old product model over-rewarded stacking a fourth and
+fifth HSP item, and demoting those is the point of the fix.
+
+What genuinely does NOT move: the **top-1 pick, in 0 of 3840 scenarios** (the
+earliest differing rank index is 1, only 84 scenarios disturb the top three, and
+the modal first difference is index 5). That is why all six precomputed
+build-order tables regenerate with a 2-line diff (stamp + timestamp) at the full
+173-champion roster in all three modes despite 132 of their variants carrying
+2-3 printed-HSP items - the tables are greedy top-1 picks. Practical reach is
+bounded further: ``core/daemon_slayer_client.py`` ``rank_enchanter_for`` is the
+only RC-side consumer of ``/rank-enchanter`` and currently has no callers, so
+the moved ordering reaches no shipped surface today.
+
+Three tests were RENAMED rather than re-valued, and the rename is the point:
+``test_amp_multipliers_compound_multiplicatively`` ->
+``test_amp_multipliers_stack_additively``, and
+``test_amp_is_multiplicative_and_buff_is_additive`` ->
+``test_amp_is_additive_over_a_chain_product_and_buff_is_additive``. A test
+whose NAME asserts the wrong physical model is worse than no test. The
+``_hsp_amp`` lane is the model being converged ON and did not move; a new
+contract file pins that ``hps.py`` and ``_hsp_amp.py`` now agree EXACTLY for
+any chain-free build, which is the invariant that keeps them from drifting
+apart again.
+
 1.275.1 (2026-08-08) - RM-176, TWO CORRECTNESS FIXES, both on opt-in paths;
 no default-path number moves. Found by a four-way parallel engine audit and
 kept only after an adversarial refutation pass (3 CONFIRM / 3 REFUTE).
