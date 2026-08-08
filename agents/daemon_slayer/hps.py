@@ -111,8 +111,9 @@ class EnchanterItemFormula:
     notes: str
     # R143: True when heal_shield_amp_pct is an ALLY-CHAIN ratio rather than a
     # wielder Heal-and-Shield-Power stat (Moonstone Renewer's Starlit Grace
-    # explicitly excludes the wielder). The ally-throughput path in this module
-    # still compounds it; ``_hsp_amp.sum_wielder_hsp_pct`` skips it.
+    # explicitly excludes the wielder). RM-177: the ally-throughput path in this
+    # module still COMPOUNDS it - a chain ratio genuinely multiplies - while the
+    # printed-HSP rows sum; ``_hsp_amp.sum_wielder_hsp_pct`` skips it entirely.
     # Appended at the END with a default per CLAUDE.md "Python Conventions".
     ally_chain_only: bool = False
 
@@ -305,7 +306,7 @@ class HpsItemContribution:
     shield_procs_per_second: float
     shield_targets_per_proc: float
     shielding_hps_raw: float       # pre-amp
-    heal_shield_amp_pct: float     # contribution to compound amp
+    heal_shield_amp_pct: float     # additive HSP, or a chain ratio if ally_chain_only
     ally_buff_credit_per_second: float  # additive credit
     notes: str
 
@@ -525,7 +526,7 @@ def compute_hps(
     Items not in the curated enchanter formulas registry contribute zero
     (they're treated as non-enchanter items). Items in the registry but
     with zero formulas (e.g. Moonstone has no direct heal - it only amps)
-    contribute zero direct throughput but participate in the amp product.
+    contribute zero direct throughput but still feed the amp term.
 
     ``targets_per_proc_override`` replaces the curated per-item
     ``heal_targets_per_proc`` / ``shield_targets_per_proc`` values for ALL
@@ -576,7 +577,13 @@ def compute_hps(
     snap_formulas = formulas if formulas is not None else load_default_formulas()
 
     contributions: list[HpsItemContribution] = []
-    amp_factor = 1.0
+    # RM-177: Heal-and-Shield-Power is ADDITIVE in League, so the printed-stat
+    # rows accumulate into a sum and are folded once, below. Only the
+    # ``ally_chain_only`` rows are a genuine multiplier - their field carries an
+    # ally-CHAIN ratio, not the printed HSP stat, which is why ``_hsp_amp``
+    # skips them for the wielder entirely.
+    hsp_pct_sum = 0.0
+    chain_factor = 1.0
     healing_raw = 0.0
     shielding_raw = 0.0
     buff_credit = 0.0
@@ -613,7 +620,10 @@ def compute_hps(
         )
         healing_raw += heal_hps
         shielding_raw += shield_hps
-        amp_factor *= 1.0 + formula.heal_shield_amp_pct
+        if formula.ally_chain_only:
+            chain_factor *= 1.0 + formula.heal_shield_amp_pct
+        else:
+            hsp_pct_sum += formula.heal_shield_amp_pct
         buff_credit += formula.ally_buff_credit_per_second
 
         contributions.append(HpsItemContribution(
@@ -631,6 +641,8 @@ def compute_hps(
             ally_buff_credit_per_second=formula.ally_buff_credit_per_second,
             notes=formula.notes,
         ))
+
+    amp_factor = chain_factor * (1.0 + hsp_pct_sum)
 
     healing_hps = healing_raw * amp_factor * safe_heal_mult
     shielding_hps = shielding_raw * amp_factor * safe_shield_mult
@@ -683,7 +695,7 @@ def compute_hps(
     # folded RAW here, so the wielder's HSP items amped her item heals but NOT her
     # ability heals. ``apply_ability_hsp_amp`` defaults False -> the ability fold
     # stays RAW -> total_throughput byte-identical. ON multiplies it by the SAME
-    # ``amp_factor`` (product convention, one wielder), applied at THIS single
+    # ``amp_factor`` (RM-177 additive-HSP convention, one wielder), applied at THIS single
     # consumer boundary only (compute_ability_hps stays the pre-amp substrate, so
     # no double-count). amp_factor == 1.0 (no HSP item) or ability_hps_total == 0.0
     # (no ability heal block) -> byte-identical even when ON.
