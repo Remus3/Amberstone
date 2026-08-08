@@ -2075,17 +2075,25 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
         # And both must be well above bare - TF's spellblade still fires.
         self.assertGreater(delta_both, 50.0)
 
-    def test_triforce_plus_lich_bane_order_swap_yields_lich_bane_proc(self) -> None:
-        # Order swap -> LB spellblade kept (first-seen-wins).
-        # LB spellblade scales with AP (50% AP bonus), so it's larger
-        # on AP champions. Ahri's base AD is moderate; LB-kept value
-        # should be different from TF-kept value (pin order semantics).
+    def test_triforce_plus_lich_bane_order_swap_yields_the_same_number(self) -> None:
+        # RM-187 (ENGINE 1.277.0) INVERTED this assertion. It used to read
+        # ``assertNotAlmostEqual`` and pinned the order-dependence as
+        # "real and documented": TF first kept TF, LB first kept LB, and the
+        # same build scored two different numbers off slot order alone.
+        # ``compute_dps`` now hands ``collect_effects`` a dedup context, so the
+        # spellblade group resolves to its STRONGEST member at that context
+        # whichever way the caller happened to order the list.
         tf_first = compute_dps(self.snap, "Ahri", level=11, item_ids=["3078", "3100"])
         lb_first = compute_dps(self.snap, "Ahri", level=11, item_ids=["3100", "3078"])
-        # Both are valid "single spellblade" approximations but produce
-        # different numerical results - order dependence is real and
-        # documented.
-        self.assertNotAlmostEqual(tf_first.weighted_dps, lb_first.weighted_dps, places=1)
+        self.assertAlmostEqual(tf_first.weighted_dps, lb_first.weighted_dps, places=6)
+        # ... and it is the same ITEM, not merely the same total.
+        self.assertEqual(tf_first.spellblade_item_name, lb_first.spellblade_item_name)
+        self.assertTrue(tf_first.spellblade_item_name)
+        self.assertAlmostEqual(
+            tf_first.spellblade_per_proc_damage,
+            lb_first.spellblade_per_proc_damage,
+            places=6,
+        )
 
 
 class LifelineUniquePassiveTests(unittest.TestCase):
@@ -7964,7 +7972,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.276.0")
+        self.assertEqual(ENGINE_VERSION, "1.277.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -8025,7 +8033,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.276.0")
+        self.assertEqual(ENGINE_VERSION, "1.277.0")
 
 
 if __name__ == "__main__":
