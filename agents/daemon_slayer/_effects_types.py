@@ -174,6 +174,38 @@ class PeriodicProc:
     at full ramp). Default 0.0 -> no ramp gate (today's behavior).
     Mutually exclusive with ``every_n_seconds`` (the seconds-based path
     has no ramp semantics; ramp is implicit in the period).
+
+    KNOWN MODELLING LIMITATIONS (documented 2026-08-08, no behaviour change).
+    Both are schema gaps, not data errors - do NOT "fix" a registry number to
+    compensate for either one.
+
+    1. NO ACTIVATION-WINDOW / DURATION FIELD. The fields are exactly ``name``,
+       ``bonus_damage``, ``damage_type``, ``every_n_attacks``,
+       ``every_n_seconds``, ``stack_ramp_seconds``, ``ability_dot`` and
+       ``ranged_only``. An ``every_n_seconds`` proc is therefore modelled as
+       running for the WHOLE rotation; a proc that only ticks inside a bounded
+       re-triggered window is modelled at 100 percent uptime. Measured
+       consequence in the Immolate family at 16.15.1: SR 3068 / 6660 / 6664 all
+       state a 3-second activation window while Arena 223069 Void Immolation
+       states 5 seconds, and the engine models all four identically. Crediting
+       the difference needs a window/duration field plus an uptime term in
+       ``_periodic_proc_dps``, not a scaled ``bonus_damage``.
+
+    2. NO MINION / MONSTER DAMAGE MULTIPLIER FIELD. Several procs deal
+       amplified damage to non-champions. Measured from the Meraki 16.15.1
+       Immolate rows (``data/daemon_slayer/16.15.1/items_meraki.json``), the
+       family is NOT uniform:
+         - 3068  Sunfire Aegis   160 percent minions, 200 percent monsters, executes minions
+         - 6660  Bami's Cinder   150 percent minions, 200 percent monsters, executes minions
+         - 6664  Hollow Radiance 125 percent minions AND monsters, executes minions
+         - 223069 Void Immolation 150 percent minions; NO monster clause and NO
+           minion-execute clause stated
+       NONE of these has a consumer anywhere in the package: the champion-vs-
+       champion scorers never model non-champion targets, and
+       ``agents/daemon_slayer/waveclear.py`` is champion-ABILITY-only
+       (``compute_waveclear(champion, mode)`` reads ``_WAVECLEAR_REGISTRY`` and
+       takes no item ids at all). These figures are recorded here so a future
+       waveclear item-credit lift has them measured rather than re-derived.
     """
     name: str
     bonus_damage: DamageFn
