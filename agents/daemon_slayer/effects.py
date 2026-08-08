@@ -36,6 +36,7 @@ and a patch-notes diff re-pins the values.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Callable, Iterable, Union
 
@@ -51,8 +52,98 @@ from ._effects_types import (
     _DAMAGE_TYPES,
 )
 
+_LOG = logging.getLogger(__name__)
 
-def collect_effects(item_ids: Iterable[str | int]) -> list[ItemEffect]:
+# RM-186 sentinel: a group member whose ``bonus_damage`` callable RAISED.
+# Distinct from ``None`` ("this member exposes no comparable magnitude"),
+# because a raise disqualifies the whole GROUP (we cannot know whether the
+# broken member was the strongest), while a plain None only disqualifies that
+# one member. Module-level singleton so identity comparison is cheap + exact.
+_MAGNITUDE_ERROR = object()
+
+
+def _comparable_periodic_magnitude(
+    eff: ItemEffect, caster_ctx: CallContext
+) -> "float | None | object":
+    """Per-second RAW pre-mitigation periodic magnitude of one effect (RM-186).
+
+    Sums ``proc.resolve_damage(caster_ctx) / proc.every_n_seconds`` over the
+    effect's ``periodics``. Procs keyed on ``every_n_attacks`` are SKIPPED -
+    their rate depends on the wielder's attack speed and rotation, which this
+    function does not have, so they are not per-second comparable against a
+    timer proc. An effect whose procs are all attack-keyed therefore exposes no
+    comparable magnitude.
+
+    Returns
+    -------
+    float
+        The summed per-second magnitude (>= one usable timer proc).
+    None
+        No usable timer proc on this effect (no periodics at all, or
+        attack-keyed only).
+    ``_MAGNITUDE_ERROR``
+        A ``bonus_damage`` callable raised. The exception is logged, never
+        propagated, and never swallowed silently.
+
+    RAW magnitude means PRE-mitigation and damage-type-blind: a TRUE-damage
+    proc worth 20/s loses to a MAGICAL proc worth 40/s even though true damage
+    is strictly better after resists. Folding resists in here would need a
+    TARGET, which this call site does not have (and the s232 conditional
+    target-state arc is operator-CLOSED). Pinned by
+    ``test_unique_passive_strongest_wins.test_damage_type_is_not_a_tiebreak``.
+    """
+    total = 0.0
+    usable = False
+    for proc in eff.periodics:
+        if proc.every_n_seconds <= 0:
+            # every_n_attacks proc - no attack-rate signal here.
+            continue
+        try:
+            value = proc.resolve_damage(caster_ctx)
+        except Exception:
+            _LOG.warning(
+                "RM-186: item %s (%s) proc %r bonus_damage raised while ranking "
+                "unique_passive_key=%r - falling back to first-seen-wins for "
+                "that group",
+                eff.item_id,
+                eff.name,
+                proc.name,
+                eff.unique_passive_key,
+                exc_info=True,
+            )
+            return _MAGNITUDE_ERROR
+        total += value / proc.every_n_seconds
+        usable = True
+    return total if usable else None
+
+
+def _strongest_index(
+    ordered: list[ItemEffect], idxs: list[int], caster_ctx: CallContext
+) -> int:
+    """Index (into ``ordered``) of the strongest member of one unique-passive
+    group at ``caster_ctx``; ties and unresolvable groups keep first-seen.
+
+    ``idxs`` is already in first-seen order, so ``idxs[0]`` IS the first-seen
+    fallback and a strict ``>`` comparison keeps the earliest member on a tie.
+    """
+    magnitudes = [_comparable_periodic_magnitude(ordered[i], caster_ctx) for i in idxs]
+    if any(m is _MAGNITUDE_ERROR for m in magnitudes):
+        return idxs[0]
+    best_idx = None
+    best_mag = 0.0
+    for i, mag in zip(idxs, magnitudes):
+        if mag is None:
+            continue
+        if best_idx is None or mag > best_mag:
+            best_idx = i
+            best_mag = mag
+    return idxs[0] if best_idx is None else best_idx
+
+
+def collect_effects(
+    item_ids: Iterable[str | int],
+    caster_ctx: CallContext | None = None,
+) -> list[ItemEffect]:
     """Return the ItemEffect entries that match the build's items, in order.
 
     Items without an entry in ``ITEM_EFFECTS`` are silently skipped - they
@@ -68,18 +159,79 @@ def collect_effects(item_ids: Iterable[str | int]) -> list[ItemEffect]:
     duplicate item is unaffected - only the proc / armor-pen effects
     are dropped. Default ``unique_passive_key=""`` skips dedup so every
     pre-batch-10 entry passes through unchanged.
+
+    RM-186 (ENGINE 1.276.0) - ``caster_ctx``, a DEFAULT-OFF seam that makes the
+    dedup ORDER-INDEPENDENT. First-seen-wins is only correct when the group's
+    members are a component and its upgrade (Bami's Cinder -> Sunfire Aegis);
+    it is WRONG when two FULL items legally co-owned share a key, because slot
+    order alone then decides the score:
+
+        collect_effects(['6664','3068']) -> ['6664']   # Immolate 15 + 1% kept
+        collect_effects(['3068','6664']) -> ['3068']   # Immolate 20 + 1% kept
+
+    Both are Immolate items and both are buyable together, so the same build
+    scored two different numbers depending on how the caller happened to order
+    the list. Operator decision (2026-08-08): model STRONGEST-AT-CONTEXT WINS.
+
+    * ``caster_ctx is None`` (the default, and every call site in the engine
+      today) - BYTE-IDENTICAL to the pre-RM-186 first-seen-wins behaviour.
+    * ``caster_ctx`` supplied - each ``unique_passive_key`` group resolves to
+      the member with the largest comparable per-second magnitude at that
+      context (see ``_comparable_periodic_magnitude``). TIES keep first-seen so
+      the result stays deterministic; a group where NO member exposes a usable
+      magnitude (no periodics, or attack-keyed procs only) falls back to
+      first-seen unchanged; a group where a ``bonus_damage`` callable RAISES
+      falls back to first-seen and logs a warning.
+
+    The winner is emitted at the position the group FIRST claimed, not at its
+    own slot, so the whole returned list - not merely its membership - is
+    invariant under re-ordering the input.
+
+    Comparison is on RAW PRE-MITIGATION magnitude and deliberately does NOT use
+    damage type as a tiebreak: a TRUE-damage proc does not beat a
+    larger-magnitude MAGICAL one. Mitigation needs a TARGET, which this call
+    site does not carry, and inventing one here would re-open the
+    operator-CLOSED s232 conditional-target-state arc. The consumers that DO
+    know the target (``dps._periodic_proc_dps`` and friends) apply resists,
+    mode multiplier and amps downstream on whichever effect this returns.
     """
-    out: list[ItemEffect] = []
-    seen_keys: set[str] = set()
+    ordered: list[ItemEffect] = []
     for iid in item_ids:
         eff = ITEM_EFFECTS.get(str(iid))
         if eff is None:
             continue
+        ordered.append(eff)
+
+    if caster_ctx is None:
+        out: list[ItemEffect] = []
+        seen_keys: set[str] = set()
+        for eff in ordered:
+            if eff.unique_passive_key:
+                if eff.unique_passive_key in seen_keys:
+                    continue
+                seen_keys.add(eff.unique_passive_key)
+            out.append(eff)
+        return out
+
+    groups: dict[str, list[int]] = {}
+    for idx, eff in enumerate(ordered):
         if eff.unique_passive_key:
-            if eff.unique_passive_key in seen_keys:
-                continue
-            seen_keys.add(eff.unique_passive_key)
-        out.append(eff)
+            groups.setdefault(eff.unique_passive_key, []).append(idx)
+    winners = {
+        key: _strongest_index(ordered, idxs, caster_ctx)
+        for key, idxs in groups.items()
+    }
+    out = []
+    emitted: set[str] = set()
+    for eff in ordered:
+        key = eff.unique_passive_key
+        if not key:
+            out.append(eff)
+            continue
+        if key in emitted:
+            continue
+        emitted.add(key)
+        out.append(ordered[winners[key]])
     return out
 
 
