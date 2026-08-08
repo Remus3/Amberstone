@@ -216,6 +216,12 @@ not built blind. MED/LOW always defer.
 - DS schema lifts run as PARALLEL slices (section 2), prioritizing lifts that unblock section 4b Lane A/Lane B.
 - Stop rule: 11 consecutive no-change iterations. Source of truth: Meraki bulk (`/items.json`,
   `/items_meraki.json`, champion `aram_modifiers`) - never aggregator D/aggregator A.
+  **CARVE-OUT, measured 16.15.1 (2026-08-08): Meraki is NOT the source for item PEN / LETHALITY /
+  resist-reduction MAGNITUDES** - those live ONLY in the DDragon `<stats>` description block.
+  Meraki carries 320 items against DDragon's 706 canonical, ZERO rows carry a `stats` key, and
+  228005 is absent entirely, so auditing a magnitude against Meraki manufactures PHANTOM mismatches
+  (7 of them in one slice). Meraki REMAINS correct for `aram_modifiers` + item PASSIVE FORMULAS -
+  but read the WHOLE row: a passive can sit under `active` rather than `passives` (223069 does).
 - Each iteration touches ONE math lane and either ships an ENGINE_VERSION bump + tests, or records
   "no-change" with reasoning. After each bump: sync ENGINE_VERSION pins across DS tests + bounce DS.
   Prefer parametrized property-style tests (invariants over exact values).
