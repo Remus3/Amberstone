@@ -131,6 +131,7 @@ from .ehp import effective_cc_duration
 from .effects import (
     ITEM_EFFECTS,
     collect_effects,
+    dedupe_context,
     effective_target_armor,
     effective_target_mr,
     total_ability_damage_amp,
@@ -1171,7 +1172,21 @@ def compute_ability_dps(
     #   damage *= giant_slayer_amp (Perplexity @ max HP diff)
     # plus magic-only damage gets an extra ``magic_amp`` (Abyssal Mask)
     # applied inside the per-spell loop based on the form's damage_type.
-    item_effects = collect_effects(resolved.item_ids)
+    # RM-187 (1.277.0): strongest-at-context unique-passive dedup, built from
+    # DEDUPE-INDEPENDENT quantities only. Not the AbilityContext ``ctx`` above:
+    # its AP is amplified three lines below using the list this call produces.
+    # ``effects.dedupe_context`` documents every excluded term.
+    dedupe_ctx = dedupe_context(
+        resolved.stats,
+        resolved.base_stats,
+        level,
+        target_armor=target_armor,
+        target_mr=target_mr,
+        target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
+        target_current_hp_pct=target_current_hp_pct,
+    )
+    item_effects = collect_effects(resolved.item_ids, dedupe_ctx)
     ap_from_hp = total_bonus_ap_from_hp(item_effects, ctx.caster_bonus_hp)
     stacked_ap = total_stacked_ap(item_effects)
     ap_total = ctx.ap + ap_from_hp + stacked_ap

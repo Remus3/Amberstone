@@ -91,6 +91,7 @@ from .dps import (
 from .effects import (
     ITEM_EFFECTS,
     collect_effects,
+    dedupe_context,
     effective_target_armor,
     effective_target_mr,
     total_ability_damage_amp,
@@ -742,7 +743,23 @@ def compute_burst_damage(
         target_current_hp_pct=target_current_hp_pct,
     )
 
-    item_effects = collect_effects(resolved.item_ids)
+    # RM-187 (1.277.0): strongest-at-context unique-passive dedup. The context
+    # is built from DEDUPE-INDEPENDENT quantities only (resolved stat block,
+    # base stats, level, caller target assumptions) - it cannot be the
+    # AbilityContext ``ctx`` above, whose AP is about to be amplified by
+    # Rabadon's / Mejai's / Riftmaker using the very list being collected here.
+    # See ``effects.dedupe_context`` for the full exclusion list.
+    dedupe_ctx = dedupe_context(
+        resolved.stats,
+        resolved.base_stats,
+        level,
+        target_armor=target_armor,
+        target_mr=target_mr,
+        target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
+        target_current_hp_pct=target_current_hp_pct,
+    )
+    item_effects = collect_effects(resolved.item_ids, dedupe_ctx)
     ap_from_hp = total_bonus_ap_from_hp(item_effects, ctx.caster_bonus_hp)
     stacked_ap = total_stacked_ap(item_effects)
     ap_total = ctx.ap + ap_from_hp + stacked_ap
@@ -780,6 +797,7 @@ def compute_burst_damage(
         resolved.item_ids,
         float(resolved.stats.get("ad", 0.0)),
         assume_caster_lowhp,
+        dedupe_ctx,
     )
     if missing_hp_bonus_ad:
         ctx = replace(ctx, bonus_ad=ctx.bonus_ad + missing_hp_bonus_ad)
