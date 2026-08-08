@@ -1331,6 +1331,50 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.275.3 (2026-08-08) - Obsidian Cleaver's Carve was four patches stale, and the
+whole STACKING-PERCENT class had no machine link to its source.
+**This MOVES DEFAULT OUTPUT** on Arena builds carrying 228005.
+
+`_effects_data.py` stored `armor_reduction_pct=0.35` for Obsidian Cleaver
+(228005) on the arithmetic `7% per stack x 5 stacks`. That was CORRECT when the
+row was authored: the 16.10.1 DDragon snapshot does state `Armor by 7%`. Riot
+cut Carve to 6% and the retune is visible in every snapshot from 16.12.1
+onward - 16.12.1, 16.13.1, 16.14.1 and the live 16.15.1 all state `Armor by 6%
+... (stacks 5 times)`. The row read 0.35 against a stated 0.30 for four
+consecutive patches, a 5-percentage-point over-credit of armor reduction, which
+sits on the layer applied BEFORE percent penetration and so inflates physical
+damage for the whole build, not just the item. 228005 is Arena-only
+(`maps.30` is its single true map), so the blast radius is Arena scoring.
+
+Landing on Black Cleaver's 30% is the mirror's OWN stat line agreeing, NOT the
+base item's number inherited - R161 doctrine B is preserved, and the guard
+below derives 228005 from 228005's description with no reference to 3071.
+
+THE CLASS, not the row, is the finding. A stacking-percent row stores ONE
+number while DDragon states TWO factors, so the stored product is derived data
+with no link back to its source and a retune of either factor is invisible.
+`tests/test_stacking_pct_resist_reduction_drift.py` (new) closes that: it
+re-derives `per_stack x cap` from the LIVE snapshot for every registry row
+whose description carries the shape, rather than pinning a literal that would
+go stale the same way. The matched population is pinned at exactly
+{3071, 223071, 228005, 4010, 8010} so a parse regression cannot empty the set
+and read green. The other four were already correct (Black Cleaver and its
+Arena mirror 6% x 5 = 0.30; Bloodletter's Curse 4010 / 8010 7.5% x 4 = 0.30).
+Terminus and Flesheater state their caps in a different shape and are out of
+this guard's scope - they were checked by hand this pass and both agree with
+their own lines (Terminus 3302 10% x 3 = 0.30, Arena mirror 223302 8% x 3 =
+0.24; Flesheater 447112 / 667112 3 flat x 10 = 30).
+
+ONE TRAP recorded for a future failure here: DDragon ships bad numbers. The
+16.11.1 snapshot states Carve at `Armor by 500%`. A failure of this guard is a
+prompt to READ the stat line, never to copy it.
+
+Also corrected: `test_engine_math_correctness_pipeline_c.py`'s
+composition test named its two synthetic reducers "BlackCleaver" and
+"ObsidianCleaver" at 0.30 / 0.35. It never read the registry, so it was not
+wrong arithmetic - but it advertised a shipped magnitude it does not track.
+Renamed to ReducerA / ReducerB; the composition assertion is untouched.
+
 1.275.2 (2026-08-08) - RM-177: Heal-and-Shield-Power composes ADDITIVELY.
 **This deliberately MOVES DEFAULT OUTPUT** - the first entry in a long while
 that does, so read the scope before assuming the usual byte-identical contract.
