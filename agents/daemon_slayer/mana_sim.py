@@ -475,8 +475,15 @@ def _recharge_to(st: dict, clock: float) -> None:
     """Accrue charges for the elapsed time since ``last_t``, capped at ``max``.
 
     A recharge of 0 means charges never regenerate (charges stay where they
-    are). ``last_t`` always advances to ``clock`` so elapsed time is not
-    double-counted on the next call.
+    are).
+
+    While the slot is BELOW max, ``last_t`` advances only by the whole
+    recharge intervals actually consumed, never to ``clock``. Snapping it to
+    ``clock`` on the no-gain path discards the sub-recharge remainder, so a
+    slot polled more often than its own recharge interval accrues nothing at
+    all however long the fight runs - RM-176. Once the slot is FULL the snap
+    is correct and is kept: banking time while capped would refund a spent
+    charge instantly.
     """
     recharge = st["recharge"]
     if recharge > _FLOAT_EPS and st["charges"] < st["max"] - _FLOAT_EPS:
@@ -484,10 +491,8 @@ def _recharge_to(st: dict, clock: float) -> None:
         gained = math.floor(dt / recharge)
         if gained > 0:
             st["charges"] = min(st["max"], st["charges"] + float(gained))
-            # Advance last_t by the consumed whole-charge intervals so the
-            # remaining fractional time carries into the next recharge.
             st["last_t"] += gained * recharge
-            return
+        return
     st["last_t"] = clock
 
 
