@@ -458,10 +458,15 @@ def liveclient_summary() -> dict:
                 # this path; fail-soft to [] on any error (kill switch
                 # RC_NEXTBUY_DS_FALLBACK=0). The result feeds the SAME
                 # boots-phase / is_redundant pipeline below, not around it.
+                # RM-164: enemy_team is handed through so the fallback reads
+                # the DS table's ad_heavy / ap_heavy column instead of always
+                # balanced. Same roster resolve_build already receives on the
+                # line above, so this adds no data source and no new failure
+                # mode; a comp that does not lean resolves back to balanced.
                 if not build:
                     try:
                         build = _next_buy_fallback.fallback_build(
-                            champ, out.get("game_mode")
+                            champ, out.get("game_mode"), enemy_team
                         )
                     except Exception:  # noqa: BLE001
                         build = []
