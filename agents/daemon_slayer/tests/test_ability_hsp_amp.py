@@ -10,7 +10,11 @@ League, HSP amplifies every heal/shield the wielder outputs, including abilities
 
 ``apply_ability_hsp_amp`` defaults False -> the ability fold stays RAW ->
 byte-identical to the pre-1.202.0 behavior. ON multiplies the ability fold by the
-SAME ``amp_factor`` the item heals use (product convention, one wielder).
+SAME ``amp_factor`` the item heals use, one wielder. RM-177 (ENGINE 1.275.2)
+changed what that factor IS - printed HSP now sums instead of compounding, with
+only ``ally_chain_only`` rows left multiplicative - but this module asserts the
+ability fold tracks ``amp_multiplier`` whatever its internal composition, so it
+is convention-agnostic by construction.
 """
 
 import unittest
@@ -56,7 +60,9 @@ class TestAbilityHspAmp(unittest.TestCase):
         # Preconditions: HSP present + real ability heals to amp.
         self.assertGreater(off.amp_multiplier, 1.0)
         self.assertGreater(off.ability_hps_total, 0.0)
-        # ON: ability fold is amped by amp_multiplier (product convention).
+        # ON: ability fold is amped by the SAME amp_multiplier the item
+        # throughput uses - RM-177 made that an additive-HSP term over a
+        # chain-ratio product, but this assertion is convention-agnostic.
         self.assertAlmostEqual(
             on.total_throughput,
             on.direct_throughput + on.ally_buff_credit
@@ -95,7 +101,7 @@ class TestAbilityHspAmp(unittest.TestCase):
         self.assertAlmostEqual(off.total_throughput, on.total_throughput, places=9)
 
     def test_engine_version_bumped(self):
-        self.assertEqual(ENGINE_VERSION, "1.275.1")
+        self.assertEqual(ENGINE_VERSION, "1.275.2")
 
 
 if __name__ == "__main__":

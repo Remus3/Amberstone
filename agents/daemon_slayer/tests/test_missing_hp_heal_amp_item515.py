@@ -183,8 +183,8 @@ class SeamApplicationTests(unittest.TestCase):
 
 class EngineVersionPinTests(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.275.1")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.275.1")
+        self.assertEqual(ENGINE_VERSION, "1.275.2")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.275.2")
 
 
 class AsciiHygieneTests(unittest.TestCase):
