@@ -2,7 +2,82 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-07, automatic via `scripts/wakeup_prune.py --keep 3` (relocated lane 8 cycle 9 `2026-08-05c`; newest 3 = RM-26 anchor model + calibrator `2026-08-07b` + headless run 2026-08-06-02 `2026-08-07a` + lane 8 cycle 10 `2026-08-05d`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-08, automatic via `scripts/wakeup_prune.py --keep 3` (relocated RM-26 anchor model + calibrator `2026-08-07b`; newest 3 = orchestrated run 2026-08-08-01 `2026-08-08c` + lane 6 RM-177 `2026-08-08b` + lane 6 RM-176 `2026-08-08`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-08-08c - orchestrated run 2026-08-08-01: three merges, and two of the three root causes were WRONG on the first pass
+
+Baseline `aa8a386a`, head at merge time `f1f10f5c`. ENGINE **1.275.2 -> 1.275.3**.
+Merges `9752cdfc` (S1 / RM-164), `367b54e7` (S3 / Carve) + `a180b299` (restamp),
+`f1f10f5c` (S4 / LCU dedupe). S2 was read-only and shipped nothing.
+LEDGER 1233-1236.
+
+Measured in MERGED MAIN, not inherited from any slice: RC `tests/` **19011 passed,
+96 skipped, 4208 subtests, 0 failed**; DS `agents/daemon_slayer/tests/` **10535
+passed, 13218 subtests, 0 failed** (taken before the S4 merge, which touches no DS
+file). `drift_guard` 0 breaches, `ds_share_sync --check` in sync at 532 files,
+`ruff check .` clean.
+
+- **RC skips fell 138 -> 96 and that is the ENGINE BUMP, not a test change.** DS
+  live at 1.275.3 unlocks the `require_live_engine` set. The inverse is the trap
+  worth carrying: **a DS ENGINE bump red-lines RC guards OUTSIDE
+  `agents/daemon_slayer`, and bouncing the shared `:8860` mid-run turns every
+  gated worktree red at once.** A lane cannot make the shared server serve its
+  own code, so `test_live_three_profiles` asserting live `/health` against the
+  repo constant is STRUCTURAL, not a regression - it clears on merge plus bounce.
+- **RM-164 consumer half shipped, and the second finding was worth more than the
+  first.** The lean was being discarded at a call site that ALREADY had the enemy
+  comp in scope (sr 71/173, aram 71/173, arena 67/173 diverge; Alistar diverges at
+  the OPENING slot). But the verifier then found a **classifier fault escaping an
+  unguarded boundary and returning `[]`, DELETING the served row** rather than
+  degrading to the neutral order - strictly worse than the behaviour the module
+  promises. Also: **`item_advisor.resolve_build` is ALREADY comp-aware**, so the
+  obvious "byte-identical across comps" assertion would have been FALSE for a
+  correct reason. ON-vs-OFF within one comp is the invariant.
+- **Obsidian Cleaver Carve was four patches stale (0.35 against a stated 6 pct).
+  The durable half is the CLASS: these rows store one PRODUCT while DDragon states
+  two FACTORS, so the number had no machine link to its source and nothing could
+  go red when Riot re-tuned a factor.** New guard re-derives `per_stack x cap`
+  from the live snapshot, population pinned, four mutations killed. **TRAP:
+  16.11.1 DDragon states Carve at "Armor by 500%"** - verified verbatim, so a red
+  guard there means read the stat line, never copy it.
+- **The Meraki audit rule cost a slice 7 phantom mismatches before it was caught,
+  and the rule is now carved out in `CLAUDE.md`.** `items_meraki.json` at 16.15.1
+  is **320 items against DDragon's 706, ZERO rows carry a `stats` key at all, and
+  228005 is absent from Meraki entirely** - pen/lethality magnitudes live ONLY in
+  the DDragon `<stats>` block. Meraki stays correct for `aram_modifiers` and item
+  passive formulas; this is narrow, not "Meraki is wrong".
+- **The LCU duplicate-log root cause was REFUTED once and the correction is the
+  lesson: serialized callers on one shared throttle SELF-SUPPRESS.** There is ONE
+  `LcuClient` with two 1 Hz callers, but shared state alone cannot duplicate - the
+  second caller sees elapsed ~0. Both bodies run through `asyncio.to_thread` and
+  land in different worker threads, so the read-compare-write is unsynchronized.
+  **It is a RACE, which is what makes the filter's lock load-bearing rather than
+  decorative.** Discriminator: the first-of-gap INFO line is 19 singles and never
+  paired; the throttled DEBUG line is 1143 pairs and never a triple. **Do NOT
+  "clean up" the rune writer's second `connect()`** - deliberate, mtime-guarded,
+  added after the 2026-07-04 pid-6440 silent death.
+- **A shipped test was found weaker than claimed and REPLACED rather than
+  defended.** Removing the filter failed the racing test, but swapping the lock
+  for `nullcontext` did not - the unlocked window is too narrow to preempt
+  reliably. A deterministic lock-held test replaced it.
+- **Orchestrator process miss worth recording: a mistyped pytest path collects
+  nothing and reads as GREEN.** Ran `tests/test_next_buy_fallback.py`; the real
+  file is `tests/test_next_buy_ds_fallback.py`. The protocol records this only for
+  `tests/daemon_slayer` - it generalises to every path argument.
+- **Filed, not actioned: a 25th scheduled task.** Bare `RiotCommander`, logon
+  trigger, Administrator/Highest, `pythonw.exe main.py`, `LastTaskResult = 1`,
+  LastRun 2026-08-05, no repo artifact installs it. It races `RC-Supervisor` for
+  `:8888` and loses. **Deleting a Windows scheduled task is a system-settings
+  change - operator territory.** `docs/OPERATIONS.md` documents 24 and is short by
+  one whatever the operator decides.
+- **RM-167 re-sized: `aram_coach` alone is $40.02 / 31.2 pct of all-time spend**
+  over 12,413 calls, against the row's "10-15 pct" framing. Cache ratio
+  re-measured at 0.000221 pct on the post-repair ledger. Still NEEDS-OPERATOR -
+  the blocker is the live ARAM A/B, not the arithmetic.
+- **RM-168 was sampled on an idle client with League not running for the THIRD
+  time.** Stop re-sampling it headless.
 
 ---
 
@@ -78,48 +153,3 @@ disjoint engine module groups, then a separate adversarial refutation panel.
 - Suites measured, not carried: DS **10518** passed / 13195 subtests; RC
   `tests/` **18929** passed / 143 skipped / 2082 subtests / 1 failed (above).
   Independent verifier: CONFIRM 11/11.
-
----
-
-# 2026-08-07b - RM-26 anchor model, then the calibrator: the filed bug was the smallest of four
-
-Commits `4b157aef` (anchor model), `68ba3fb3` (CI fix), `f8aaa7ef` (calibrator).
-CI green on all. Interactive session, inline, no subagents (harness directive).
-
-- **The RM-26 acceptance criterion could not be met, and the reason generalises.**
-  It asked for the anchor model to be "validated against a real frame - not a
-  model". Every reference still on disk is 2560x1440, and **at a matching aspect
-  the width ratio EQUALS the height ratio, so left / center / right / top /
-  bottom anchoring all produce the byte-identical box.** 16:9 cannot discriminate
-  between anchor classes at all. That is also why the earlier best-anchor error
-  measured exactly 0.00x - **that number was never evidence about anchoring.**
-  Model built and DEFAULT-OFF; one native 21:9 or 32:9 still is the only gap.
-- **Not inert, and measured before claiming so** (the LEDGER 1227 lesson): 0 of
-  21 boxes change at 2560x1440, 21 of 21 at every ultrawide, worst 492px at
-  5120x1440.
-- **The acceptance criterion's own top/bottom axis is arithmetically INERT.**
-  Under scale-by-height, bottom anchoring reduces to top anchoring. Filed and
-  pinned rather than quietly implemented as if it mattered.
-- **Two of my tests asserted hand-computed integers and FAILED on int()
-  truncation.** Corrected to property assertions with a stated 1px tolerance -
-  the implementation keeps `_scale_bbox`'s convention rather than being bent to
-  my prediction.
-- **A test that asserts on a GITIGNORED directory is green only on Legion.**
-  `data/vision_calib_reference` is untracked by design, so CI went red. Now a
-  CAPABILITY skip per the LEDGER 1228 B5 rule. Local green is not CI green.
-- **THE BIG ONE: reading the page beat fixing the filed line.** The calibrator's
-  seed warning was written into `#status`, which `loadFrame()` overwrites on
-  every boot - **nobody had ever seen it.** A wording-only fix would have shipped
-  a correct sentence no one reads.
-- **The UI audit found a live correctness bug that made the page useless for its
-  one job.** Boxes were laid out in FRAME space while their coordinates are in
-  PROFILE space; the live path serves a halved 1280x720 frame against a
-  2560x1440 base, so all 21 drew at double scale, the rightmost at 2471px on a
-  1265px page. Same mismatch in the save payload. **Run the audit on the page,
-  not on the diff.**
-- **Two measurements discarded rather than reported:** a `clientWidth: 0` probe
-  (zero-width pane) that claimed all 21 regions escaped, and an "all 21 labels
-  flipped" reading that was stale state because the harness's programmatic
-  resize does not dispatch `resize` to the page.
-- Do NOT redo: the resolver, consumer fix, crop-rect guard, anchor model, or the
-  calibrator. Do NOT re-measure anchors at 16:9 - it cannot answer the question.
