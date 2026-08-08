@@ -59,8 +59,8 @@ _BOTH_THORNS_BUILD = ["3047", "3075", "3076"]
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.275.2")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.275.2")
+        self.assertEqual(ENGINE_VERSION, "1.275.3")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.275.3")
 
 
 class ItemRegistryPins(unittest.TestCase):
