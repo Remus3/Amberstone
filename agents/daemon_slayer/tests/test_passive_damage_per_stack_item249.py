@@ -184,7 +184,7 @@ class InjectOnTests(unittest.TestCase):
 
 class EnginePinTests(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.275.2")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.275.3")
 
 
 class AsciiHygieneTests(unittest.TestCase):

@@ -5272,15 +5272,18 @@ class Batch38ActiveItemTests(unittest.TestCase):
         eff = ITEM_EFFECTS.get("228005")
         self.assertIsNotNone(eff)
         self.assertFalse(eff.defensive_only)
-        self.assertAlmostEqual(eff.armor_reduction_pct, 0.35, places=4)
+        # 6% x 5 stacks per DDragon 16.15.1; was 7% x 5 = 0.35 when authored
+        # against 16.10.1. Derived-from-snapshot guard:
+        # tests/test_stacking_pct_resist_reduction_drift.py.
+        self.assertAlmostEqual(eff.armor_reduction_pct, 0.30, places=4)
         self.assertEqual(len(eff.periodics), 0)
 
     def test_obsidian_cleaver_reduces_effective_armor(self) -> None:
         from agents.daemon_slayer.effects import effective_target_armor
         effs = [ITEM_EFFECTS["228005"]]
-        # 100 armor x (1 - 0.35) = 65 effective armor
+        # 100 armor x (1 - 0.30) = 70 effective armor
         eff_armor = effective_target_armor(100.0, effs)
-        self.assertAlmostEqual(eff_armor, 65.0, places=2)
+        self.assertAlmostEqual(eff_armor, 70.0, places=2)
 
     def test_obsidian_cleaver_dps_lift_high_armor(self) -> None:
         from agents.daemon_slayer.dps import compute_dps
@@ -7961,7 +7964,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.275.2")
+        self.assertEqual(ENGINE_VERSION, "1.275.3")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -8022,7 +8025,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.275.2")
+        self.assertEqual(ENGINE_VERSION, "1.275.3")
 
 
 if __name__ == "__main__":

@@ -713,12 +713,14 @@ class MultiplicativePenCompositionTests(unittest.TestCase):
         self.assertNotAlmostEqual(got, wrong_additive, places=3)
 
     def test_two_armor_reduction_pct_items_compose_multiplicatively(self) -> None:
-        # Black Cleaver (30%) + Obsidian Cleaver (35%) (Arena pair).
+        # Two SYNTHETIC reducers at 30% and 35% - deliberately not named after
+        # real items, because a shipped magnitude drifts with the patch and
+        # this test is about the composition rule, not any item's number.
         # Real composition: 1 - 0.70*0.65 = 0.545, not 0.65.
         eff = [
-            ItemEffect(item_id="bc", name="BlackCleaver",
+            ItemEffect(item_id="synth_a", name="ReducerA",
                        armor_reduction_pct=0.30),
-            ItemEffect(item_id="oc", name="ObsidianCleaver",
+            ItemEffect(item_id="synth_b", name="ReducerB",
                        armor_reduction_pct=0.35),
         ]
         target_armor = 100.0
