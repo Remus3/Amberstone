@@ -445,7 +445,15 @@ def _clamp_baseline(baseline) -> int:
     Shared with routes_last_match._serve_last_match, which needs the clamped
     value BEFORE it keys the response cache: keying the raw value made
     ?baseline=1 and ?baseline=2 distinct keys holding identical bodies.
-    A second copy of the bounds would be a future divergence.
+
+    THIS FUNCTION IS THE AUTHORITY, and it is not the only holder of the
+    bounds. Four client-side mirrors exist and cannot be removed - JS cannot
+    import a Python constant, and the Settings slider's travel is a static
+    HTML attribute pair: web/js/panels/{last_match,historical_pgr,dev}.js and
+    the #set-pgr-baseline input in web/index.html. RM-166. They are pinned to
+    this function by tests/test_pgr_baseline_bounds_contract.py, which probes
+    these bounds behaviourally rather than restating them, so changing the
+    range here is a one-line edit that goes RED until the mirrors follow.
     """
     try:
         baseline = int(baseline)
