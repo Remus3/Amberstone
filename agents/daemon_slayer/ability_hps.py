@@ -144,6 +144,7 @@ from .ability_dps import (
 from .data_loader import DataSnapshot
 from .effects import (
     collect_effects,
+    dedupe_context,
     total_ap_amp_multiplier,
     total_bonus_ap_from_hp,
     total_caster_hp_scaled_ap_amp,
@@ -753,7 +754,19 @@ def compute_ability_hps(
         target_max_hp=0.0,
         target_bonus_hp=0.0,
     )
-    item_effects = collect_effects(resolved.item_ids)
+    # RM-187 (1.277.0): strongest-at-context unique-passive dedup, built from
+    # DEDUPE-INDEPENDENT quantities only. The target_* arguments are zero here
+    # for the same reason the AbilityContext above zeroes them - heal / shield
+    # blocks scale on caster stats, never on target resists or HP - EXCEPT
+    # target_max_hp, which the caller may supply and which the spellblade family
+    # (Divine Sunderer) genuinely ranks on. See ``effects.dedupe_context``.
+    dedupe_ctx = dedupe_context(
+        resolved.stats,
+        resolved.base_stats,
+        level,
+        target_max_hp=target_max_hp,
+    )
+    item_effects = collect_effects(resolved.item_ids, dedupe_ctx)
     ap_from_hp = total_bonus_ap_from_hp(item_effects, ctx.caster_bonus_hp)
     stacked_ap = total_stacked_ap(item_effects)
     ap_total = ctx.ap + ap_from_hp + stacked_ap

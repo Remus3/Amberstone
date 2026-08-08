@@ -60,6 +60,7 @@ from .effects import (
     PHYSICAL,
     TRUE,
     collect_effects,
+    dedupe_context,
     effective_target_armor,
     effective_target_mr,
     total_ap_amp_multiplier,
@@ -459,9 +460,13 @@ def _spellblade_per_proc_damage(
     Identifies Spellblade-family items by ``unique_passive_key="spellblade"``
     - Trinity Force / Lich Bane / Essence Reaver / Iceborn Gauntlet /
     Dusk+Dawn / Divine Sunderer / Sheen / Bloodsong (+ Arena mirrors).
-    ``collect_effects`` enforces the unique-passive dedup upstream (first-
-    seen-wins), so iterating ``effects`` yields at most one Spellblade
-    item.
+    ``collect_effects`` enforces the unique-passive dedup upstream, so
+    iterating ``effects`` yields at most one Spellblade item. RM-187
+    (1.277.0): that survivor is now the group's STRONGEST member at the
+    build's dedup context, not whichever one the caller happened to list
+    first - and for spellblade specifically the winner moves with the
+    context (Lich Bane / Dusk+Dawn overtake Sheen as AP rises, Divine
+    Sunderer overtakes it as the target gets beefier).
 
     Returns ``(per_proc_damage, item_name)``. The damage value applies
     the standard pipeline: ``resolve_damage(call_ctx)`` for the per-proc
@@ -718,6 +723,7 @@ def total_missing_hp_bonus_ad(
     item_ids: Iterable[str | int],
     total_ad: float,
     assume_caster_lowhp: bool = False,
+    caster_ctx: "CallContext | None" = None,
 ) -> float:
     """Sum Overlord's Bloodmail "Retribution" bonus AD across the build (R111).
 
@@ -740,6 +746,13 @@ def total_missing_hp_bonus_ad(
     Bloodmail's own flat AD, an operator-accepted approximation vs. the live HP
     feed we lack. Additive across carriers (only 2501/447111 carry the field, no
     unique-passive stack question), consistent with the engine's stat-stacking.
+
+    RM-187 (1.277.0): ``caster_ctx`` forwards the caller's dedup context to
+    ``collect_effects`` so this lane resolves unique-passive groups the same way
+    every other lane does. Neither Bloodmail id carries a ``unique_passive_key``,
+    so the value is unmoved today - the seam is here so the site is not the one
+    left order-dependent when a keyed carrier lands. ``None`` (the legacy
+    positional form, still used by tests) keeps first-seen-wins.
     """
     if not assume_caster_lowhp:
         return 0.0
@@ -748,7 +761,7 @@ def total_missing_hp_bonus_ad(
     )
     return sum(
         e.missing_hp_ad_amp_max_pct * realized_share * total_ad
-        for e in collect_effects(item_ids)
+        for e in collect_effects(item_ids, caster_ctx)
     )
 
 
@@ -954,7 +967,27 @@ def compute_dps(
         extra_shot_entry_ = extra_shot_entry(resolved.champion_id)
         extra_shot_on_hit_mult = on_hit_attack_multiplier(resolved.champion_id)
 
-    item_effects = collect_effects(resolved.item_ids)
+    # RM-187 (1.277.0): the unique-passive dedup is now STRONGEST-AT-CONTEXT,
+    # not first-seen-wins, so slot order no longer decides the score. The
+    # context is built from DEDUPE-INDEPENDENT quantities only - the resolved
+    # stat block (aggregated outside collect_effects and unaffected by the
+    # dedup), the champion base stats, the level and the caller's target
+    # assumptions. It CANNOT be ``call_ctx`` below: that one is built ~370
+    # lines further down and its ``ap`` / ``crit_chance`` / ``caster_lethality``
+    # / effective-resist fields are themselves derived from ``item_effects``,
+    # which is what this call produces. ``effects.dedupe_context`` documents
+    # every excluded term and ``ExclusionGuardTests`` pins the list.
+    dedupe_ctx = dedupe_context(
+        stats,
+        resolved.base_stats,
+        level,
+        target_armor=target_armor,
+        target_mr=target_mr,
+        target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
+        target_current_hp_pct=target_current_hp_pct,
+    )
+    item_effects = collect_effects(resolved.item_ids, dedupe_ctx)
     crit_bonus = DEFAULT_CRIT_BONUS + total_crit_damage_bonus(item_effects)
     # A-12 / RM-46 (2026-07-25): per-champion crit conversion. DEFAULT-OFF, so
     # the registry module is not even imported on the default path. When ON, an
@@ -1033,7 +1066,7 @@ def compute_dps(
     # total_missing_hp_bonus_ad). A build without Overlord's Bloodmail contributes
     # 0 even when the flag is set.
     missing_hp_bonus_ad = total_missing_hp_bonus_ad(
-        resolved.item_ids, total_ad, assume_caster_lowhp
+        resolved.item_ids, total_ad, assume_caster_lowhp, dedupe_ctx
     )
     if missing_hp_bonus_ad:
         bonus_ad += missing_hp_bonus_ad
