@@ -41,6 +41,18 @@ falls through to today's behavior rather than to a WRONG-mode build. Arena and
 ARAM item pools genuinely differ (Arena uses the 22xxxx / 44xxxx mirror ids),
 so a cross-mode leak is a real defect class.
 
+ENEMY LEAN (RM-164) - each champion's row carries THREE orders, "ad_heavy" /
+"balanced" / "ap_heavy". Reading only "balanced" threw away a real signal: 71
+of 173 SR champions, 71 of 173 ARAM and 67 of 173 Arena have a lean bucket
+that differs from balanced, and for Alistar on SR the divergence is at the
+OPENING slot (3143 Randuin's Omen, armor, vs 2504 Kaenic Rookern). The caller
+already holds the enemy roster, so ``fallback_build_ids`` / ``fallback_build``
+take it as a trailing optional argument and prefer the matching bucket. The
+classifier is REUSED: ``core.aram_comp_verdict.compute_factors`` (display
+names -> ad/ap counts) into ``core.aram_item_interaction.shape_from_factors``
+(counts -> the coarse damage/frontline label). Omitting the roster reproduces
+the pre-RM-164 balanced-only behavior exactly.
+
 KILL SWITCH - ``RC_NEXTBUY_DS_FALLBACK``, default ON. Set to "0" to restore
 the pre-slice behavior exactly.
 
@@ -56,6 +68,8 @@ import threading
 from pathlib import Path
 
 from core import laning_scenario_precompute as _lsp
+from core.aram_comp_verdict import compute_factors
+from core.aram_item_interaction import shape_from_factors
 from core.archetype_picks import canonical_champion_id
 from core.mode_capabilities import district_config
 
@@ -66,9 +80,15 @@ FALLBACK_ENV = "RC_NEXTBUY_DS_FALLBACK"
 # to today's empty behavior instead of borrowing another mode's pool.
 _SUPPORTED_STEMS = frozenset({"sr", "aram", "arena"})
 
-# Preferred build path inside a champion's bucket dict. Mirrors
+# Neutral build path inside a champion's bucket dict, and the terminal
+# fallback for every lean that does not resolve. Mirrors
 # core/laning_scenario_precompute.py:355 and core/laning_verdicts.py:197.
 _PREFERRED_BUCKET = "balanced"
+
+# Damage-axis labels shape_from_factors can emit that name a real bucket. Its
+# third label, "mixed", deliberately has no bucket of its own - a mixed enemy
+# comp IS the balanced case.
+_LEAN_BUCKETS = frozenset({"ad_heavy", "ap_heavy"})
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _ITEMS_INDEX_PATH = _PROJECT_ROOT / "web" / "data" / "items_index.json"
@@ -158,11 +178,35 @@ def _id_to_name() -> dict:
     return _ID_TO_NAME_CACHE
 
 
-def fallback_build_ids(champion, game_mode) -> list:
+def preferred_bucket(enemy_team=None) -> str:
+    """Bucket name to read for an enemy roster of champion DISPLAY names.
+
+    "ad_heavy" / "ap_heavy" when the enemy comp leans hard enough on one
+    damage axis, else "balanced". Absent, empty, unresolvable or malformed
+    input all degrade to "balanced" rather than manufacturing a lean, because
+    a wrong lean serves the wrong resistance item - strictly worse than the
+    neutral order. Never raises.
+    """
+    try:
+        names = [c.strip() for c in (enemy_team or [])
+                 if isinstance(c, str) and c.strip()]
+        if not names:
+            return _PREFERRED_BUCKET
+        lean = shape_from_factors(compute_factors(names)).split("/", 1)[0]
+        return lean if lean in _LEAN_BUCKETS else _PREFERRED_BUCKET
+    except Exception:  # noqa: BLE001 - fail-soft contract, never raise
+        return _PREFERRED_BUCKET
+
+
+def fallback_build_ids(champion, game_mode, enemy_team=None) -> list:
     """Ordered DS item IDS for ``champion`` in ``game_mode``, or [].
 
-    Total: unknown champion, unmapped mode, missing table, malformed row, or
-    the kill switch being off all yield []. Never raises.
+    ``enemy_team`` is an optional list of enemy champion DISPLAY names (the
+    Live Client ``allPlayers[].championName`` shape). Supplying it selects the
+    matching lean bucket; omitting it reads "balanced" exactly as before.
+
+    Total: unknown champion, unmapped mode, missing table, malformed row, a
+    malformed roster, or the kill switch being off all yield []. Never raises.
     """
     try:
         if not fallback_enabled():
@@ -178,7 +222,9 @@ def fallback_build_ids(champion, game_mode) -> list:
         buckets = _canon_table(stem).get(canon)
         if not isinstance(buckets, dict):
             return []
-        order = buckets.get(_PREFERRED_BUCKET)
+        order = buckets.get(preferred_bucket(enemy_team))
+        if not isinstance(order, list) or not order:
+            order = buckets.get(_PREFERRED_BUCKET)
         if not isinstance(order, list) or not order:
             order = next(
                 (v for v in buckets.values() if isinstance(v, list) and v), None
@@ -190,15 +236,16 @@ def fallback_build_ids(champion, game_mode) -> list:
         return []
 
 
-def fallback_build(champion, game_mode) -> list:
+def fallback_build(champion, game_mode, enemy_team=None) -> list:
     """Ordered item DISPLAY NAMES for ``champion`` in ``game_mode``, or [].
 
     Same shape ``item_advisor.resolve_build`` returns, so the caller can drop
     it straight into the EXISTING boots-phase / is_redundant pipeline rather
-    than around it. Unresolvable ids are skipped, not faked. Never raises.
+    than around it. ``enemy_team`` is passed through to ``fallback_build_ids``
+    for the lean bucket. Unresolvable ids are skipped, not faked. Never raises.
     """
     try:
-        ids = fallback_build_ids(champion, game_mode)
+        ids = fallback_build_ids(champion, game_mode, enemy_team)
         if not ids:
             return []
         by_id = _id_to_name()
