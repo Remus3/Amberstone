@@ -259,12 +259,21 @@ class AmpPipelineTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    def test_amp_multipliers_compound_multiplicatively(self) -> None:
-        """Redemption (+10%) + Mikael (+12%) -> product = 1.10 x 1.12 = 1.232."""
+    def test_amp_multipliers_stack_additively(self) -> None:
+        """Redemption (+10%) + Mikael (+12%) -> 1 + 0.22 = 1.22.
+
+        RM-177 (ENGINE 1.275.2): this test previously asserted the PRODUCT
+        1.10 x 1.12 = 1.232 and was named ...compound_multiplicatively. Heal-
+        and-Shield-Power is additive in League, and ``_hsp_amp`` had summed the
+        same field off the same catalog since R60 - the two engines disagreed
+        for 73 engine revisions with a green test on each side. The name is
+        changed deliberately, not the number bent: a test asserting the wrong
+        physical model is worse than no test.
+        """
         r = compute_hps(
             self.snap, "Soraka", level=11, item_ids=["3107", "3222"]
         )
-        self.assertAlmostEqual(r.amp_multiplier, 1.10 * 1.12, places=4)
+        self.assertAlmostEqual(r.amp_multiplier, 1.0 + 0.10 + 0.12, places=4)
 
     def test_moonstone_amps_redemption(self) -> None:
         """Adding Moonstone to Redemption build raises the amped HPS by x1.30."""
@@ -311,8 +320,12 @@ class AmpPipelineTests(unittest.TestCase):
         )
         # raw = Redemption only: 267.6 x 0.00833 x 3 = 6.687
         self.assertAlmostEqual(r.healing_hps_raw, 267.6 * 0.00833 * 3.0, places=3)
-        # amp = 1.30 (Moonstone) x 1.10 (Redemption) x 1.10 (Ardent) = 1.573
-        self.assertAlmostEqual(r.amp_multiplier, 1.30 * 1.10 * 1.10, places=4)
+        # amp = 1.30 (Moonstone, an ally-CHAIN ratio and so a true multiplier)
+        # x (1 + 0.10 Redemption + 0.10 Ardent) = 1.30 x 1.20 = 1.56.
+        # RM-177: was 1.30 x 1.10 x 1.10 = 1.573 under the old all-product
+        # convention. Moonstone keeps its product position; the two printed-HSP
+        # rows now sum, which is the only part that moved.
+        self.assertAlmostEqual(r.amp_multiplier, 1.30 * (1.0 + 0.10 + 0.10), places=4)
         # healing_hps = raw x amp
         self.assertAlmostEqual(
             r.healing_hps, r.healing_hps_raw * r.amp_multiplier, places=3

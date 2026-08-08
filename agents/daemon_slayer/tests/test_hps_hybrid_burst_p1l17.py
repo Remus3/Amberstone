@@ -77,7 +77,11 @@ class HpsDerivationTests(unittest.TestCase):
         per_proc(L, AP) = base + per_level*(L-1) + ap_scaling*max(0,AP)
         raw_hps         = per_proc * procs_per_second * targets
         total           = (heal_raw + shield_raw)*amp*mode_mult + buff
-        amp             = product(1 + heal_shield_amp_pct)
+        amp             = product(1 + chain_pct) * (1 + sum(hsp_pct))
+
+    RM-177: ``amp`` was ``product(1 + heal_shield_amp_pct)`` over every row.
+    Printed Heal-and-Shield-Power is ADDITIVE; only ``ally_chain_only`` rows
+    (Moonstone Renewer) multiply, since their field is an ally-chain ratio.
     """
 
     @classmethod
@@ -164,19 +168,33 @@ class HpsDerivationTests(unittest.TestCase):
             rA.healing_hps_raw - r0.healing_hps_raw, analytic_delta, places=4
         )
 
-    def test_amp_is_multiplicative_and_buff_is_additive(self) -> None:
-        # Moonstone (6617, +30% amp, 0 direct) + Redemption (3107, heal +
-        # 10% amp) + Ardent (3504, 0 direct, 15 buff, +10% amp).
+    def test_amp_is_additive_over_a_chain_product_and_buff_is_additive(self) -> None:
+        """RM-177 (ENGINE 1.275.2): renamed from ...amp_is_multiplicative....
+
+        The old form multiplied EVERY row's ``heal_shield_amp_pct``. Printed
+        Heal-and-Shield-Power is additive in League; only an ``ally_chain_only``
+        row (Moonstone 6617) is a genuine multiplier, because its field holds an
+        ally-CHAIN ratio rather than the printed stat. The derivation below now
+        splits on that flag instead of asserting one blanket convention.
+        """
+        # Moonstone (6617, +30% chain ratio, 0 direct) + Redemption (3107, heal
+        # + 10% HSP) + Ardent (3504, 0 direct, 15 buff, +10% HSP).
         ids = ["6617", "3107", "3504"]
         level = 13
         r = compute_hps(self.snap, "Soraka", level=level, item_ids=ids)
-        exp_amp = 1.0
+        exp_chain = 1.0
+        exp_hsp_sum = 0.0
         exp_buff = 0.0
         for iid in ids:
             f = self.reg[iid]
-            exp_amp *= 1.0 + f["heal_shield_amp_pct"]
+            if f.get("ally_chain_only", False):
+                exp_chain *= 1.0 + f["heal_shield_amp_pct"]
+            else:
+                exp_hsp_sum += f["heal_shield_amp_pct"]
             exp_buff += f["ally_buff_credit_per_second"]
-        self.assertAlmostEqual(r.amp_multiplier, exp_amp, places=6)
+        self.assertAlmostEqual(
+            r.amp_multiplier, exp_chain * (1.0 + exp_hsp_sum), places=6
+        )
         self.assertAlmostEqual(r.ally_buff_credit, exp_buff, places=4)
         # total = direct(amped) + buff(NOT amped) + ability_hps_total (V2
         # enchanter wire, ADDITIVE). Prove buff is not inside the item amp
