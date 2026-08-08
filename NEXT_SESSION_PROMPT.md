@@ -98,14 +98,15 @@ Read `git log --oneline` rather than trusting any list below.
 
 ## CONTEXT
 
-HEAD `b697e139`. **ENGINE_VERSION 1.275.2**
-(`agents/daemon_slayer/__init__.py:18`) - BUMPED TWICE on 2026-08-08, patch
-16.15.1, DS `:8860` bounced and serving 1.275.2 (probed, not assumed). The
-lane-6 DS run landed `fb751846` (RM-176: the `_recharge_to` charge-remainder
+HEAD `9caf47ae`. **ENGINE_VERSION 1.275.3**
+(`agents/daemon_slayer/__init__.py:18`) - BUMPED THREE TIMES on 2026-08-08,
+patch 16.15.1, DS `:8860` bounced and serving 1.275.3 (probed, not assumed).
+The lane-6 DS run landed `fb751846` (RM-176: the `_recharge_to` charge-remainder
 discard plus the extra-shot effect-crit basis, both opt-in paths) and
 `6a407b0e` (RM-177: heal-and-shield-power composes ADDITIVELY - the one
 DELIBERATE default-output move, `/api/spike-curve` amp 1.3552 -> 1.3200).
-Detail: LEDGER 1231-1232.
+The third bump is `367b54e7` (Obsidian Cleaver Carve four patches stale,
+0.35 -> 0.30). Detail: LEDGER 1231-1232 and 1233-1236.
 
 ## ACCEPTANCE
 
