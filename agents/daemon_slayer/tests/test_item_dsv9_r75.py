@@ -104,8 +104,8 @@ class EngineVersion(unittest.TestCase):
     """EXPECTED RED in the engine slice - the orchestrator owns the bump."""
 
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.275.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.275.0")
+        self.assertEqual(ENGINE_VERSION, "1.275.1")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.275.1")
 
 
 class SchemaDefaults(unittest.TestCase):
