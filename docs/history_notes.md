@@ -296,6 +296,51 @@ RM-163 .. RM-168.
 
 ---
 
+# 2026-08-07b - RM-26 anchor model, then the calibrator: the filed bug was the smallest of four
+
+Commits `4b157aef` (anchor model), `68ba3fb3` (CI fix), `f8aaa7ef` (calibrator).
+CI green on all. Interactive session, inline, no subagents (harness directive).
+
+- **The RM-26 acceptance criterion could not be met, and the reason generalises.**
+  It asked for the anchor model to be "validated against a real frame - not a
+  model". Every reference still on disk is 2560x1440, and **at a matching aspect
+  the width ratio EQUALS the height ratio, so left / center / right / top /
+  bottom anchoring all produce the byte-identical box.** 16:9 cannot discriminate
+  between anchor classes at all. That is also why the earlier best-anchor error
+  measured exactly 0.00x - **that number was never evidence about anchoring.**
+  Model built and DEFAULT-OFF; one native 21:9 or 32:9 still is the only gap.
+- **Not inert, and measured before claiming so** (the LEDGER 1227 lesson): 0 of
+  21 boxes change at 2560x1440, 21 of 21 at every ultrawide, worst 492px at
+  5120x1440.
+- **The acceptance criterion's own top/bottom axis is arithmetically INERT.**
+  Under scale-by-height, bottom anchoring reduces to top anchoring. Filed and
+  pinned rather than quietly implemented as if it mattered.
+- **Two of my tests asserted hand-computed integers and FAILED on int()
+  truncation.** Corrected to property assertions with a stated 1px tolerance -
+  the implementation keeps `_scale_bbox`'s convention rather than being bent to
+  my prediction.
+- **A test that asserts on a GITIGNORED directory is green only on Legion.**
+  `data/vision_calib_reference` is untracked by design, so CI went red. Now a
+  CAPABILITY skip per the LEDGER 1228 B5 rule. Local green is not CI green.
+- **THE BIG ONE: reading the page beat fixing the filed line.** The calibrator's
+  seed warning was written into `#status`, which `loadFrame()` overwrites on
+  every boot - **nobody had ever seen it.** A wording-only fix would have shipped
+  a correct sentence no one reads.
+- **The UI audit found a live correctness bug that made the page useless for its
+  one job.** Boxes were laid out in FRAME space while their coordinates are in
+  PROFILE space; the live path serves a halved 1280x720 frame against a
+  2560x1440 base, so all 21 drew at double scale, the rightmost at 2471px on a
+  1265px page. Same mismatch in the save payload. **Run the audit on the page,
+  not on the diff.**
+- **Two measurements discarded rather than reported:** a `clientWidth: 0` probe
+  (zero-width pane) that claimed all 21 regions escaped, and an "all 21 labels
+  flipped" reading that was stale state because the harness's programmatic
+  resize does not dispatch `resize` to the page.
+- Do NOT redo: the resolver, consumer fix, crop-rect guard, anchor model, or the
+  calibrator. Do NOT re-measure anchors at 16:9 - it cannot answer the question.
+
+---
+
 # 2026-08-07a - headless run 2026-08-06-02: 21 slices over four cycles, and the adversarial pass earned its cost every single time
 
 Operator asked for five open ROADMAP items, orchestrated multi-agent, self-
