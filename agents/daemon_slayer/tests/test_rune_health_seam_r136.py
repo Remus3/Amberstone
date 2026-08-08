@@ -93,7 +93,7 @@ class DefaultOffInertnessTests(unittest.TestCase):
     """OFF is byte-identical, and ids alone do not arm the seam."""
 
     def test_engine_version_pinned(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.276.0")
+        self.assertEqual(ENGINE_VERSION, "1.277.0")
 
     def test_omitting_the_flags_matches_explicit_false(self) -> None:
         implicit = compute_ehp(
