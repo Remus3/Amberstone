@@ -6,6 +6,52 @@
 
 ---
 
+# 2026-08-08d - the DS coverage lanes are SATURATED, and the one real defect came from an adversarial pass whose other two findings were both wrong
+
+Baseline `b18a9da9`, head `a27aa105`. ENGINE **1.275.3 -> 1.276.0 -> 1.277.0**.
+Merges `94432a20` (RM-186), `11698be4` (provenance), `432c857d` (RM-166),
+`ac332f4d` (ROADMAP trim), `845f9cea` (RM-187); plus `b3360d2c`, `7c323ec4`,
+`2b6917c0`, `a27aa105`. LEDGER 1237.
+
+**Measured in merged main, re-run by the merger rather than carried from any
+agent:** DS **10599 passed / 13337 subtests**; RC `tests/` **19015 passed /
+96 skipped / 4211 subtests**; `drift_guard` 0; `ds_share_sync --check` in sync
+at 535 files; DS `:8860` bounced and serving 1.277.0; CI green on `2b6917c0`.
+
+**FORK B was taken - no game was up all session, so the live-gated rows
+(RM-168 log-rate under load, RM-164 live acceptance, RM-167) are all still
+waiting and none of them moved.**
+
+**The lane picks both REFUTED, and that is the durable result.** Immolate is
+7/7 registered with magnitudes byte-stable across six patches; on-hit is 51/51
+canonical, the 24 "missing" ids all being throwback-band that `mode_variants.py`
+partitions out at load. **Coverage-level DS auditing is saturated - the next
+real depth is magnitude-level, not another coverage scan.**
+
+**Three things that were stated as fact and were WRONG - do not re-inherit
+them:** (1) "the Meraki rule can only be fixed by the operator because it lives
+in gitignored files" - `tools/headless-upgrade.md` and
+`tools/directed-headless-upgrade.md` are TRACKED MIRRORS with identical text at
+the same line numbers, and `drift_guard` enforces the pair; fixed in
+`b3360d2c`. (2) "223069 ships TRUE damage against a false citation" - Meraki
+files that passive under `active` with `passives: []`, so a passives-only probe
+fabricated the defect. (3) "a worktree can rebuild the ingest bundle" - `dist/`
+is gitignored, so the hook's success inside a worktree never crosses the merge;
+`--check` drifted in main and the sync had to be re-run there.
+
+**Two operator-facing items are OPEN and neither is mine to close:** the bare
+`RiotCommander` scheduled task (documented now, deletion is a system-settings
+change), and RM-167's prompt-cache hoist (needs a live ARAM A/B).
+
+**I restarted the live RC process by mistake** with a wildcard `taskkill /F /IM
+pythonw.exe` intended for the DS bounce; the supervisor recovered it. Later pid
+moves correlate with `pytest tests` runs and are filed as RM-188 - an
+observation with a plausible RM-173-family mechanism, deliberately NOT called a
+defect because the window is confounded and the one clean discriminator has not
+been run.
+
+---
+
 # 2026-08-08c - orchestrated run 2026-08-08-01: three merges, and two of the three root causes were WRONG on the first pass
 
 Baseline `aa8a386a`, head at merge time `f1f10f5c`. ENGINE **1.275.2 -> 1.275.3**.
