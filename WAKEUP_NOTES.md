@@ -60,10 +60,21 @@ change), and RM-167's prompt-cache hoist (needs a live ARAM A/B).
 
 **I restarted the live RC process by mistake** with a wildcard `taskkill /F /IM
 pythonw.exe` intended for the DS bounce; the supervisor recovered it. Later pid
-moves correlate with `pytest tests` runs and are filed as RM-188 - an
-observation with a plausible RM-173-family mechanism, deliberately NOT called a
-defect because the window is confounded and the one clean discriminator has not
-been run.
+moves correlate with `pytest tests` runs and were filed as RM-188. **RM-188 was
+then RUN and REFUTED the same day (`a7bcbd5a`) - do not re-file it.** Three
+controlled arms, each against a 185 s idle control in which the pid did not
+move: `pytest tests` from MAIN, the same suite from a fresh WORKTREE (the arm
+the correlation actually came from), and an `RC-DaemonSlayer` bounce - pid
+`21336` and `started_at` unchanged in all three. **The real trigger path is
+`restart_trigger.txt`** (`ops/runtime/status.json` carries
+`last_restart_reason: "restart_trigger"`, handled at
+`ops/rc_supervisor.py:1595-1607`). One writer IS a test,
+`agents/agent3_testing/suite/test_agent0.py`, but it sits in one of RM-170's
+three unguarded trees and is NOT collected by `pytest tests` - only by
+`pytest .`, already banned for deleting the live supervisor lock. Residual: two
+of the four pid moves stay unexplained and correlate with merge / Share-sync
+activity, not test runs. Watch `status.json.last_restart_reason` + `expected_pid`
+across a merge; do not re-run the suite to chase it.
 
 ---
 
