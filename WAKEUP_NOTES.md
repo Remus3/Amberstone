@@ -2,7 +2,22 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-08, automatic via `scripts/wakeup_prune.py --keep 3` (relocated RM-26 anchor model + calibrator `2026-08-07b`; newest 3 = orchestrated run 2026-08-08-01 `2026-08-08c` + lane 6 RM-177 `2026-08-08b` + lane 6 RM-176 `2026-08-08`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-09, weekly-hygiene pass (relocated headless lane 6 RM-176 `2026-08-08`; newest 3 = DS coverage saturated `2026-08-08d` + orchestrated run `2026-08-08c` + RM-177 HSP flip `2026-08-08b`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-08-09 - weekly-hygiene pass (automated, unattended)
+
+Relocated: `# 2026-08-08` (headless lane 6 RM-176, 43 lines) to `docs/history_notes.md`. WAKEUP_NOTES now holds 3 sessions.
+
+CLAUDE.md: 40.6 KB, no stray ledger entries. CLEAN.
+
+Memory suspects (operator judgment calls - do not act on these autonomously):
+- `feedback_oauth_flip_injection_vectors.md` (45 days old, MEDIUM): "How to apply" step 1 cites `C:/RC-Agent/gamepc_bridge_daemon.py` on a retired machine as a live example. The NOTE (2026-06-24) says bridge files are deleted; core lesson transfers. Consider updating step 1 to remove the dead path citation.
+- `feedback_gamepc_league_fullscreen_lockup.md` (Game-PC retired ADR-011): documents FS lockup on retired hardware. Low harm (filename self-labels it). Could move to `_retired/` when convenient.
+
+Anomaly triage (all EXPECTED): RC pid=17624 alive, last_reload_ok=True; DS :8860 alive patch=16.15.1; all 24 RC-* tasks healthy (Ready or Running).
+Open operator action (not new): bare `RiotCommander` scheduled task (noted 2026-08-08c) - races RC-Supervisor for :8888 and loses, LastTaskResult=1. Deletion = system-settings change, operator territory.
 
 ---
 
@@ -156,46 +171,3 @@ CI 4/4 green on main. LEDGER 1231 + 1232.
   filing plus two fully-closed rows to `ROADMAP_HISTORY.md`, now 89.3 pct) and
   three stale 1.275.0 anchors (CLAUDE.md:6, NEXT_SESSION_PROMPT, SKIPIF audit).
 
----
-
-# 2026-08-08 - headless lane 6 (DS): RM-176, and the refutations were worth more than the fixes
-
-Commit `d53c9673` on `lane/ds`, draft PR #12 (opened solely to exercise CI -
-all three workflows trigger on push-to-main or PR, so a lane push runs nothing).
-ENGINE 1.275.0 -> 1.275.1. Orchestrated: 4 parallel read-only audits over
-disjoint engine module groups, then a separate adversarial refutation panel.
-
-- **6 defects filed, 3 survived refutation. The panel was the highest-value
-  step, not a formality.** The R212 Yasuo overflow saturation came in HIGH with
-  a fully-cited root cause at `engine.py:217-218`. Simulating removal of that
-  clamp changed nothing - **the binding clamp is `crit_total` in `dps.py`, three
-  lines from the seam. A TRUE citation supporting a FALSE conclusion, and a fix
-  aimed at the filed line would have shipped inert.** Kept as a ground-truth
-  test pinning the saturation boundary, with a docstring saying game truth is
-  unresolved, so the next agent does not re-file it.
-- **Both real defects were hidden by a signal being read as safety.**
-  `_recharge_to` contradicted its own docstring - it claimed to prevent
-  DOUBLE-counting while actually DISCARDING time. And the extra-shot crit bug
-  presented as ON/OFF `weighted_dps` being **bit-identical**, which reads like a
-  well-behaved opt-in and was in fact the whole flag being arithmetically inert.
-  **Byte-identity is only reassuring when you know which side should have moved.**
-- **`--static` regen is load-bearing in a lane worktree.** `:8860` runs from the
-  main tree, so a live-HTTP regen would have computed against a different engine
-  than the one being shipped and returned a confident wrong answer. Same root
-  cause as the one dual-suite failure (`test_live_three_profiles` asserts live
-  `/health` == repo `ENGINE_VERSION`) - a lane cannot make the shared server
-  serve its own code, and that is not a regression.
-- **The post-commit hook clobbered the lane index.** It backgrounds
-  `tools/gist_share_sync.py` against `C:/Riot Commander` whenever a commit
-  touches `Share/`; its git calls left 5228 files staged as deleted while the
-  working tree was intact. `git reset` restored it. **Do not panic-reset --hard
-  on this** - the files were never gone, only the index was wrong. Also note the
-  hook publishes `Share/` to a review gist automatically on any Share-touching
-  commit.
-- **Filed not fixed - RM-177:** HSP composes multiplicatively in `hps.py` and
-  additively in `_hsp_amp.py`, on the DEFAULT path. The flip needs renaming
-  tests whose NAMES assert the opposite physical model, so it is operator-gated;
-  the adjudicating agent returned confirm-with-defer rather than shipping it.
-- Suites measured, not carried: DS **10518** passed / 13195 subtests; RC
-  `tests/` **18929** passed / 143 skipped / 2082 subtests / 1 failed (above).
-  Independent verifier: CONFIRM 11/11.
