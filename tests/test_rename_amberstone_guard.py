@@ -45,18 +45,25 @@ TIER0_FILES = (
     "rc-shell/electron-builder.yml",
     "rc-shell/package.json",
     "web/index.html",
+    # Added 2026-08-11 once the GitHub repo rename landed and the badge URLs
+    # moved with it. Until then README carried the old slug legitimately.
+    "README.md",
 )
 
-# The GitHub repo rename is an operator action (it changes a public URL), so
-# `riot-commander` inside a github.com URL is EXEMPT until that lands. Tracked
-# by test_github_urls_are_the_only_remaining_old_slug below, which fails loudly
-# once they are gone so this exemption cannot rot into a blanket pass.
-_GITHUB_URL_RE = re.compile(r"github\.com/[^\s)\"']*riot-commander[^\s)\"']*")
-
-# Same exemption, different shape: electron-builder's `publish.repo` slug must
-# equal the REAL GitHub repo name or electron-updater loses its feed, so it
-# moves in the same step as the repo rename and not before.
-_PUBLISH_SLUG_RE = re.compile(r"^\s*repo:\s*riot-commander\s*$", re.M)
+# 2026-08-11: the GitHub repo was renamed to Remus3/amberstone and the two
+# exempted shapes moved in the same step - electron-builder's `publish.repo`
+# and the README CI badge URLs. Both exemptions (_GITHUB_URL_RE and
+# _PUBLISH_SLUG_RE) are DELETED rather than left inert, so the Tier-0 check is
+# now unconditional.
+#
+# A correction worth keeping: those exemptions carried a comment claiming the
+# pending-rename test would "go RED once they are gone" and therefore could not
+# rot into a blanket pass. THAT WAS FALSE. The test asserted only that no
+# product-name form survived OUTSIDE a github URL, which is a subset check - it
+# passed identically before and after the rename and would have sat green
+# forever. A self-destructing guard has to assert the exemption is still LOAD-
+# BEARING (that something is actually being stripped), not merely that the
+# remainder is clean.
 
 
 def _read(rel: str) -> str:
@@ -68,7 +75,7 @@ class Tier0IsClean(unittest.TestCase):
 
     def test_tier0_files_have_no_old_product_name(self) -> None:
         for rel in TIER0_FILES:
-            text = _PUBLISH_SLUG_RE.sub("", _GITHUB_URL_RE.sub("", _read(rel)))
+            text = _read(rel)
             for form in PRODUCT_NAME_FORMS:
                 with self.subTest(file=rel, form=form):
                     self.assertNotIn(
@@ -124,23 +131,6 @@ class DisclaimerIsCorrect(unittest.TestCase):
                       "the disclaimer still names the OLD product")
         self.assertIn("Riot Games", line,
                       "the disclaimer must literally name Riot Games")
-
-
-class RepoRenameIsStillPending(unittest.TestCase):
-    """Operator action, deliberately not automated - it changes a public URL."""
-
-    def test_github_urls_are_the_only_remaining_old_slug(self) -> None:
-        # Once `gh repo rename` lands and the URLs are updated, this test goes
-        # RED and should be DELETED along with _GITHUB_URL_RE. That is the
-        # point: the exemption cannot outlive the thing it exempts.
-        readme = _read("README.md")
-        stripped = _GITHUB_URL_RE.sub("", readme)
-        for form in PRODUCT_NAME_FORMS:
-            with self.subTest(form=form):
-                self.assertNotIn(
-                    form, stripped,
-                    f"README carries {form!r} outside a github.com URL",
-                )
 
 
 if __name__ == "__main__":
