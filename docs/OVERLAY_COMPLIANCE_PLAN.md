@@ -159,7 +159,334 @@ rather than in a scratch file. Constraint set: no Riot IP (Riot, League, LoL,
 Rift, Summoner, Hextech / Hexcore, champion names), no confusable-with-Demon-
 Slayer construction, and not "closely resembling Riot's games or products".
 
-**KEPT by the operator so far:**
+**OPERATOR PICK 2026-08-11: "Reliquary" (product) + "Daemon Slayer" (engine).**
+The pairing is right - a reliquary is the vessel that holds the dangerous thing.
+**But Reliquary probed BADLY and the finding is recorded here before anything is
+renamed:**
+
+- **Domains:** only `reliquary.gg` is free. `.app`, `.com`, `.io`, `.dev`,
+  `getreliquary.com` and `reliquaryapp.com` are ALL registered. Contrast Salt
+  Circle, which has `.gg` AND `.app`.
+- **USPTO:** EAM Corporation holds `RELIQUARY OF SOULS` and `THE RELIQUARY
+  PROJECT`, both registered for downloadable computer game software - the same
+  class RC would file in. Neither is the bare word, and a composite mark is
+  weaker against a common English noun, but the field is not clear.
+- **Prior use, and this is the practical problem rather than the legal one:**
+  "Reliquary" / "Reliquary Reincarnations" is a Minecraft mod by P3pp3rF1y with
+  **over 100 million CurseForge downloads**. That is the SAME ECOSYSTEM RC would
+  ship into - game mods and companion apps - so the collision is with an
+  audience RC shares, not a distant industry.
+
+Not a legal opinion. The honest read is that Reliquary is usable but contested,
+where Salt Circle is clear on every axis probed. Operator decision pending.
+
+**Reliquary-family alternatives (probed 2026-08-11).** Two ways out: keep the
+WORD in a distinct two-word mark, or keep the CONCEPT with a cleaner word.
+
+Keep the word - all `.gg` AND `.app` free, and a two-word mark clears the
+Minecraft-mod collision that a bare "Reliquary" walks into:
+
+- **Iron Reliquary**, **Hollow Reliquary**, **Vigil Reliquary**
+- also free at `.gg`: Ash Reliquary, Bound Reliquary, Salt Reliquary
+- **AVOID "Black Reliquary"** - that is an existing Darkest Dungeon mod.
+
+Keep the concept. The strongest of these is not a generic container at all - a
+**monstrance / ostensorium is a reliquary whose entire purpose is to DISPLAY
+what is inside it** (from *ostendere*, "to show"). For a product whose whole job
+is to surface what the Daemon Slayer engine computes, that is exact rather than
+merely thematic.
+
+| Name | `.gg` | `.app` | Note |
+|---|---|---|---|
+| **Ostensorium** | free | free | "the thing that shows". Zero software or game products found under it. Five syllables is the only cost. |
+| **Monstrance** | free | taken | Same meaning, far more pronounceable. |
+| **Phylactery** | free | free | The vessel that holds a soul or power - gamer-legible via the D&D lich, and the tightest fit with a "Daemon Slayer" engine specifically. |
+| **Feretory** | free | free | A portable reliquary. Obscure, clean, easy to say. |
+| **Halidom** | free | free | A holy relic, or the sanctuary holding it. |
+| Chasse / Theca / Pyxis / Ossuary | free | taken | All genuine reliquary vocabulary; `.app` gone on each. |
+| Aumbry, Scrinium, Tabernacle | free | not probed | Aumbry is the cupboard for sacred vessels; scrinium the Roman scroll-box. |
+
+Searched for prior software / game use on Monstrance, Ostensorium and Feretory:
+**none found** - the terms return liturgical-supply commerce only.
+
+### 6b2.1 Name usability deep-dive (2026-08-11)
+
+Operator framing, which is the correct test: **aggregator B / aggregator A / Aggregator C all
+win because they are easy to say, spell and remember.** Scored the three
+finalists against that bar.
+
+**The mechanism, from the literature.** Pronounceability drives *processing
+fluency*, and fluency is not a nicety - Song and Schwarz (2009) found
+hard-to-pronounce names were rated as **riskier** (more harmful food additives,
+more dangerous amusement rides) than easy ones describing the same thing, and
+simple names were recalled correctly far more often. A name a user cannot say
+is a name they will not repeat, and word of mouth is exactly how a League
+companion app spreads ("just get aggregator A").
+
+**What the successful names actually share.** It is NOT brevity alone:
+
+| Name | Syllables | Why it works |
+|---|---|---|
+| aggregator A / aggregator B | 2 | trivially short, zero spelling ambiguity |
+| Overlay App E | 1-2 | common word |
+| Overlay Platform M | 2 | compound of two common words |
+| **Aggregator C** | **4** | **transparent blend - moba + analytics** |
+| **Overlay App F** | **4** | **transparent pun - poro + professor** |
+
+So length is survivable; **opacity is not**. Aggregator C is four syllables and
+still works because a listener reconstructs the spelling from parts they
+already know. That is the property to hunt for.
+
+**All three finalists are long AND opaque - the one quadrant with no winners.**
+
+| | Phylactery | Ostensorium | Feretory |
+|---|---|---|---|
+| Syllables | 4 (fi-LAK-ter-ee) | 5 (os-ten-SOR-ee-um) | 4 (FER-i-tor-ee) |
+| Spell from hearing | **FAILS** - `PH` for /f/; users type "filactery". Also -ery/-ary. | Mostly phonetic, but 11 letters | **FAILS** - heard as "ferretory" / "feritory"; the "ferret" mishearing is near-certain |
+| Say from reading | **Contested stress** - dictionaries give fi-LAK-ter-ee, D&D players often say FIL-ak-ter-ee. A name whose own audience splits on stress. | Determinate | Determinate |
+| Familiarity anchor | **Strongest** - the D&D lich phylactery is widely known to gamers | **None** | None |
+| Confusion neighbours | few | sanatorium, auditorium, **crematorium** | refectory, territory, factory |
+| Morphologically transparent | no | no (Latin *ostendere*) | no |
+| Search / typo tolerance | poor - a mistyped `f` finds nothing | fair | poor |
+
+Ranking within the set: **Phylactery > Feretory > Ostensorium.** Phylactery has
+the only real recognition anchor; Ostensorium has none and is the hardest to
+repeat. But none of the three clears the aggregator A bar, and the `PH` on the front of
+the best one is a direct hit on discoverability.
+
+**The structural argument, which decides it.** RC already has a rich, esoteric
+name doing the flavour work: **Daemon Slayer**, internal, never on a listing.
+The public name's job is the OPPOSITE job - be repeatable. Spending the
+esoteric budget twice leaves nothing carrying the plain-spoken half. The pairing
+works best as **evocative engine + plain vessel**, not two obscure Latinates.
+
+**What clears the bar while keeping the containment concept:**
+
+| Name | Syllables | Properties |
+|---|---|---|
+| **Wardstone** | 2 | two common words, spells itself, one pronunciation, `.gg` free |
+| **Salt Circle** | 3 | same, plus `.gg` AND `.app` free |
+| **Iron Circle** | 3 | same |
+
+Each pairs with a Daemon Slayer engine exactly as well as Reliquary did - the
+vessel that holds the dangerous thing - at half the syllables and none of the
+spelling traps.
+
+### 6b2.2 PHYLACTERY - DISQUALIFYING FINDING (2026-08-11)
+
+**"Phylactery" is the standard English word for TEFILLIN**, the small leather
+cases holding Torah texts that observant Jewish men wear on the arm and forehead
+at morning prayer. That is not an archaic sense - it is the ONLY sense in which
+the word is still in live use outside fantasy gaming.
+
+Consequences, all verifiable:
+
+- A rabbi has publicly characterised the D&D usage - an undead parasite draining
+  life through a "phylactery" - as antisemitic.
+- **Paizo already removed the word** from Pathfinder 2nd Edition, replacing it
+  with "soul cage". A major publisher in the same genre made this call
+  deliberately.
+- The gaming sense is therefore a **decaying** recognition anchor: the argument
+  for the name rests on familiarity that its own source publishers are retiring.
+
+A commercial product named Phylactery is naming itself after a sacred object of
+a living religion, on the strength of a pop-culture association the industry is
+actively walking away from. **DISQUALIFIED - do not revisit.** The
+concept (a vessel that binds a powerful entity) is fine and is exactly the
+Reliquary idea; this particular word is the problem.
+
+### 6b2.3 The Wardstone objection is CORRECT (operator, 2026-08-11)
+
+Operator observation, upheld: **"ward" names a mechanic RC cannot measure**
+beyond vision score, so Wardstone promises ward / vision analytics the product
+does not deliver. A name should not write a cheque the engine cannot cash.
+Wardstone is withdrawn on those grounds - but note this argues against the WORD,
+not against plain compounds generally. **Salt Circle** and **Iron Circle** carry
+no mechanical implication at all and keep the containment concept intact.
+
+### 6b2.4 The screen that kills most candidates: LEAGUE VOCABULARY COLLISION
+
+The operator's Wardstone objection generalises into a screen nobody had been
+applying, and it eliminates most of the shortlist including BOTH of my own
+recommendations. **This market has a dense reserved vocabulary. A name that
+collides with a rank, an item, a rune or a piece of player slang inherits that
+meaning whether you want it or not.**
+
+| Candidate | Collision | Verdict |
+|---|---|---|
+| Wardstone | "ward" names a mechanic RC cannot measure past vision score | WITHDRAWN (operator) |
+| **Salt Circle** | **"salt" / "salty" is THE gaming word for tilt and bitterness.** A League coaching product called Salt Circle reads as "the tilted-players circle". Also conceptually wrong under the refined criterion: a salt circle is a BARRIER that excludes, not a vessel that BINDS. | **WITHDRAWN** |
+| **Iron Circle** | **Iron is the LOWEST RANK in League.** An "Iron" product name says bottom-tier to every player who sees it. | **WITHDRAWN** |
+| Keystone | a Riot rune-system term | screened out |
+| Crucible | Mikael's Crucible is a League item; also Destiny's PvP mode. `.gg` taken | screened out |
+| Vessel | Senna is "the Vessel" in League lore. `.gg` taken | screened out |
+| Bindstone | an MMO respawn mechanic (WoW, Vanguard, Rise of Agon), an existing game (`bindstone.online`), AND an existing companion app ("Bindstone - Soulbound: Online Companion") | **DISQUALIFIED** |
+
+### 6b2.5 Binding-vessel candidates that survive every screen
+
+Screens applied: no live-religious-object referent (the Phylactery lesson), no
+League vocabulary collision, no existing game or software product, spells itself
+from hearing, one obvious pronunciation, domains free.
+
+| Name | Syl | `.gg` | `.app` | Read |
+|---|---|---|---|---|
+| **Sealstone** | 2 | free | free | the stone that seals something in. Spells itself, single pronunciation, no collision found. Strongest on the mechanics. |
+| **Anchorhold** | 3 | free | taken | the cell an anchorite is walled into for life - a binding vessel for a person. Clean, no products found. |
+| **Fetter** | 2 | free | not probed | a chain that binds. Shortest, plainest, unambiguous. Carries an imprisonment connotation, which is the concept but reads dark. |
+| **Brazen Vessel** | 4 | free | not probed | Solomon bound seventy-two demons in a brass vessel - THE binding-vessel archetype in Western occultism, and the closest literal match to a "Daemon Slayer" engine. Cost is four syllables and two words. |
+| Bindery | 3 | free | taken | a place where binding happens, but the dominant real-world sense is bookbinding - reads as a print shop. |
+
+### 6b2.6 Deep dive: Sealstone vs Brazen Vessel (2026-08-11)
+
+**SEALSTONE - survives, but it is bland and slightly off-concept.**
+
+- No company, product or trademark owns it. Clean field. `.gg`, `.app` and `.io`
+  all free.
+- **But it is a recurring generic in-game item noun**: "Sealstone of Water"
+  (Xenoblade Chronicles 2), "Seal Stone" (MapleStory), "Forest Seal Stone"
+  (Pokemon TCG). Same CLASS of problem that disqualified Bindstone, one notch
+  milder - no product to compete with, but the name feels unownable and carries
+  an SEO tax against those item queries.
+- **Conceptual defect.** A real sealstone - the Met has a collection, and
+  Chinese/Japanese carving stock is sold under the name - is an engraved stamp.
+  It MARKS and AUTHENTICATES. It does not bind. The "seal" that binds (sealed
+  away) is a DIFFERENT SENSE of the word, so for anyone who knows the object the
+  pun resolves the wrong way.
+- Cold surface read for a lay listener is the marine mammal.
+- Verdict: nothing kills it, nothing distinguishes it. The safe pick.
+
+**BRAZEN VESSEL - the imagery is even better than claimed, and the head word
+now means the wrong thing.**
+
+- **Confirmed and stronger than stated:** the Lemegeton's seventy-two spirits
+  are canonically titled **"the Spirits of the Brazen Vessel"**. Solomon
+  imprisoned them in a brass vessel and cast it into the sea; Babylonians broke
+  it open expecting treasure and released them. This is a real named thing, not
+  a construction - the tightest possible literal fit for a Daemon Slayer engine.
+- **The killer: "brazen" has semantically drifted.** Its dominant modern sense
+  is shameless / impudent ("a brazen disregard for the rules"); the brass sense
+  is the archaic root. To a modern audience the name reads **"Shameless
+  Vessel"**. Merriam-Webster and the OED both carry the drift.
+- "Brazen Bull" - an ancient torture device - is adjacent unpleasant imagery.
+- Some tellings make the seventy-two **jinn** rather than demons, and jinn are
+  part of live Islamic belief. Much weaker than the Phylactery problem (a brazen
+  vessel is not itself a sacred object, and the Solomonic material is a Western
+  grimoire tradition) but the same family of risk, stated rather than buried.
+- "Vessel" is also Senna's League epithet - the collision already screened at
+  6b2.4 applies to the second word.
+- Four syllables, two words: fails the operator's own ease test.
+- Verdict: best imagery in the whole exercise, worst ergonomics. **Better as an
+  internal codename or a release name than as the product name** - the same slot
+  Daemon Slayer already occupies successfully.
+
+### 6b2.7 Alternatives, same treatment
+
+**AMBERSTONE - the strongest conceptual fit found in this exercise.**
+Amber binds an insect permanently, preserves it, AND displays it. That is the
+binding property and the monstrance display property in one object, which is
+what the product actually does with the engine's output. 3 syllables, spells
+itself from hearing, one pronunciation, no League vocabulary collision, `.gg`
+and `.app` both free, no gaming trademark found.
+*Adversarial:* two non-gaming companies exist (Amberstone Ventures, a VC;
+Amberstone Digital, a South African software consultancy) and hold
+`amberstone.com` - dilution outside `.gg`, not a conflict inside it. "Amber" is
+warm and soft, which may read insufficiently sharp for a combat-math product.
+US audiences carry an Amber Alert association.
+
+**OUBLIETTE - fails the operator's own criteria, hard.** `.gg` + `.app` free
+and the concept is strong (a hole you drop someone into and forget), but:
+spelling trap (`ou-`, double `t`, `-ette`), French pronunciation (oo-blee-ET),
+and the semantics are about FORGETTING - exactly wrong for a product whose value
+is retained knowledge. REJECTED.
+
+**GAOLSTONE - rejected on sight.** "Gaol" is the British spelling of jail. A
+pure spelling trap.
+
+**VAULTSTONE / AMBERVAULT / SEALWARD / BINDWELL** - all `.gg` free (and
+`.app` free for the first two), all clean, all generic. Fallbacks, not picks.
+
+### 6b2.8 The soul-container field, swept (2026-08-11)
+
+Operator question: what OTHER words mean "a magical container holding a life
+force or soul", indifferent to the physical form? Swept the field. **The answer
+that matters: the trope is explicitly form-indifferent, and amber is one of its
+canonical forms - so Amberstone is not a departure from the phylactery idea, it
+IS that idea in a form with no baggage.**
+
+Folklore research: the canonical trope name is **Soul Jar**, and "a soul jar is
+not necessarily a jar; common examples in mythology and fairy tales are
+paintings, **gems**, still beating hearts, eggs, or trees". It recurs in Vodun,
+Zuni and Egyptian mysticism; Koschei the Deathless hid his soul in an egg
+(nested inside a duck, a hare, a chest, a tree); the Irish "The Soul Cages"
+(Croker, 1825) has a merman keeping souls in cages. Amber is a **gem-form soul
+jar** - and the only form on that list that occurs in nature already holding a
+real creature, visibly, forever.
+
+**Why the field is nearly exhausted.** Almost every good word here fails one of
+two screens, and they are the two screens this exercise already learned:
+
+*Live religious object - the Phylactery trap:*
+
+| Word | Referent |
+|---|---|
+| Nkisi | Bakongo power object that houses a spirit - live practice |
+| Shem | the name-scroll animating a golem - Jewish tradition |
+| Butsudan, spirit tablet | live Buddhist / Confucian household practice |
+| Tabernacle, Ark | live Christian / Jewish sacred furnishings |
+| Ka statue | Egyptian; the ka inhabits the statue if the body is destroyed - the closest true antique match, but "Ka" is one ambiguous syllable |
+
+*Already owned by a major game - the Bindstone trap:*
+
+| Word | Owner |
+|---|---|
+| **Horcrux** | Warner Bros. Not available under any circumstances. |
+| **Soulstone** | Diablo / Blizzard |
+| **Soul Gem** | Elder Scrolls / Bethesda |
+| **Soul Cage** | Paizo's official phylactery replacement, AND a Minecraft spawner |
+| **Emberstone** | Emberstone Interactive (London studio) + Heart of the Emberstone (Cloudhead VR). `.gg` and `.app` are free, the name is not. |
+| Talisman | Games Workshop board game; `.gg` taken |
+| Grail | Fate/stay night's Holy Grail War, plus the Christian relic |
+| Simulacrum | a D&D spell - and it MEANS a copy, positioning the product as not-the-real-thing |
+
+*Failed on their own merits:*
+
+- **Koschei** - the perfect myth, an impossible spelling (Koschei / Kashchei / Koshchey).
+- **Effigy** - dominant sense is "burned in effigy"; a poppet is a proxy for HARMING someone, not a container. `.app` taken.
+- **Athanor** - an alchemical furnace, not a container. Obscure with no recognition anchor (the Ostensorium problem). `.app` taken.
+- **Barrow** - a grave, and the primary modern sense is wheelbarrow. `.app` taken.
+- **Fetish** - the anthropological sense is exactly right; the modern sense ends it.
+- **Soul Jar** - the trope's own name, therefore generic and unownable.
+- Locket, Anima, Chrysalis, Heartwood - all `.gg` AND `.app` gone.
+
+**The one clean survivor: WILLSTONE.** `.gg` and `.app` both free, zero products
+found anywhere, 2 syllables, spells itself, one pronunciation, no League
+collision, invented so nothing can collide later.
+*Adversarial:* invented compounds read generic-fantasy, "will" is ambiguous
+between volition and testament, and it is markedly less distinctive than
+Amberstone. Mechanically flawless, characterfully thin.
+
+**Verdict: nothing displaces Amberstone.** Willstone is the only alternative
+that survives every screen, and it is blander. Also free if wanted:
+`corestone.gg`, `quickstone.gg`, `souljar.gg`, `soulcask.gg`, `amberkeep.gg`.
+
+### 6b2.9 NAME LOCKED (operator, 2026-08-11)
+
+**Amberstone** (product) + **Daemon Slayer** (engine, internal, unchanged).
+
+Rationale on record: amber is a canonical soul-jar form (6b2.8) that binds,
+preserves AND displays what is inside it - the phylactery concept with no
+religious referent and no game-industry owner. 3 syllables, spells itself from
+hearing, one pronunciation, no League vocabulary collision, `amberstone.gg` and
+`amberstone.app` both free at probe.
+
+Execution plan: **`docs/RENAME_SWEEP_AMBERSTONE.md`** (scoped, not executed).
+Headline from that scoping: only ~946 of the repo's **4163** "riot" occurrences
+are the product name - the other ~77 percent are NOMINATIVE (Riot Games, Riot
+API, Riot Live Client) and must survive. A blind find-replace would break the
+legally required disclaimer, which must literally read "isn't endorsed by
+**Riot Games**".
+
+**KEPT (superseded by the lock above, retained for the record):**
 
 | Name | Domains at probe | Register |
 |---|---|---|
