@@ -1,5 +1,5 @@
 """
-Headless pseudo-screen for the Riot Commander in-game overlay HUD.
+Headless pseudo-screen for the Amberstone in-game overlay HUD.
 
 Renders the overlay dock at 2560x1440 with NO League and NO live game, so
 overlay UI / UX / theme work can happen fully offline. It drives the same

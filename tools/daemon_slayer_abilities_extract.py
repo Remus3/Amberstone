@@ -114,7 +114,7 @@ MERAKI_BULK_URL = (
     "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json"
 )
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
-USER_AGENT = "RiotCommander/DaemonSlayer-abilities-extract/1.0"
+USER_AGENT = "Amberstone/DaemonSlayer-abilities-extract/1.0"
 
 # DS source-adoption WIN 2 - Meraki content-freshness guard.
 # The Meraki `latest` endpoint is mutable but its CONTENT is frozen at a past

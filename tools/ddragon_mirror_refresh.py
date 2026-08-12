@@ -62,7 +62,7 @@ INDEX_PATH = META_DIR / "_index.json"
 
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 VERSIONS_URL = f"{DDRAGON_BASE}/api/versions.json"
-USER_AGENT = "RiotCommander/3.0 ddragon-mirror-refresh"
+USER_AGENT = "Amberstone/3.0 ddragon-mirror-refresh"
 DEFAULT_TIMEOUT = 20.0
 MIN_INTERVAL_SEC = 0.05  # bundle-pull cadence; asset fetches use a worker pool
 DEFAULT_WORKERS = 8       # parallel asset fetches against CloudFront

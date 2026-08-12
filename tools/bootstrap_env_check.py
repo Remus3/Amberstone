@@ -1,6 +1,6 @@
 """
 tools/bootstrap_env_check.py
-Riot Commander -- Environment/bootstrap diagnostic.
+Amberstone -- Environment/bootstrap diagnostic.
 Phase 3 Step 3 / Phase 4 Step 1 / Phase 5 Step 1 update.
 
 Usage (from any directory):
@@ -104,7 +104,7 @@ def _check_writable(path: Path, label: str) -> None:
 
 def main() -> int:
     print("=" * 64)
-    print("Riot Commander -- Bootstrap Environment Check")
+    print("Amberstone -- Bootstrap Environment Check")
     print("=" * 64)
 
     # -- Project root ------------------------------------------------------

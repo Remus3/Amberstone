@@ -21,7 +21,7 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 **The line, for any future session:** Riot bans **tracking** enemy cooldowns - the verb carries the rule. DDragon publishes every per-rank cooldown and the client shows them. The DS engine's cooldown math is untouched and must stay so; champ-select CC advice ("enemy comp has 4 hard-CC abilities, consider Cleanse") is legal; a per-instance countdown is not. `cc_threat_cell` is the compliant rebuild - CC duration and threat spell, no cooldown scalar, guarded against the scalar returning under a new name.
 
 **OPERATOR ACTIONS OPEN (cannot be automated):**
-- **RENAME the product.** "Riot Commander" uses Riot's trademark and BLOCKS the Riot 3rd-party application. Operator has kept **Salt Circle** and **Lane Oracle**; full shortlist with domain-probe results is in `docs/OVERLAY_COMPLIANCE_PLAN.md` section 6b2. "Daemon Slayer" is NOT usable publicly (Shueisha's DEMON SLAYER covers computer game software; homophone, same class) - keep it as the internal engine codename.
+- **RENAME the product.** "Amberstone" uses Riot's trademark and BLOCKS the Riot 3rd-party application. Operator has kept **Salt Circle** and **Lane Oracle**; full shortlist with domain-probe results is in `docs/OVERLAY_COMPLIANCE_PLAN.md` section 6b2. "Daemon Slayer" is NOT usable publicly (Shueisha's DEMON SLAYER covers computer game software; homophone, same class) - keep it as the internal engine codename.
 - Riot Developer Portal product registration needs a Riot account login + form submission.
 - A production key needs a public website, Terms of Service and Privacy Policy. None exist.
 
@@ -40,7 +40,7 @@ Memory suspects (operator judgment calls - do not act on these autonomously):
 - `feedback_gamepc_league_fullscreen_lockup.md` (Game-PC retired ADR-011): documents FS lockup on retired hardware. Low harm (filename self-labels it). Could move to `_retired/` when convenient.
 
 Anomaly triage (all EXPECTED): RC pid=17624 alive, last_reload_ok=True; DS :8860 alive patch=16.15.1; all 24 RC-* tasks healthy (Ready or Running).
-Open operator action (not new): bare `RiotCommander` scheduled task (noted 2026-08-08c) - races RC-Supervisor for :8888 and loses, LastTaskResult=1. Deletion = system-settings change, operator territory.
+Open operator action (not new): bare `Amberstone` scheduled task (noted 2026-08-08c) - races RC-Supervisor for :8888 and loses, LastTaskResult=1. Deletion = system-settings change, operator territory.
 
 ---
 
@@ -78,7 +78,7 @@ is gitignored, so the hook's success inside a worktree never crosses the merge;
 `--check` drifted in main and the sync had to be re-run there.
 
 **Two operator-facing items are OPEN and neither is mine to close:** the bare
-`RiotCommander` scheduled task (documented now, deletion is a system-settings
+`Amberstone` scheduled task (documented now, deletion is a system-settings
 change), and RM-167's prompt-cache hoist (needs a live ARAM A/B).
 
 **I restarted the live RC process by mistake** with a wildcard `taskkill /F /IM
@@ -161,7 +161,7 @@ file). `drift_guard` 0 breaches, `ds_share_sync --check` in sync at 532 files,
   nothing and reads as GREEN.** Ran `tests/test_next_buy_fallback.py`; the real
   file is `tests/test_next_buy_ds_fallback.py`. The protocol records this only for
   `tests/daemon_slayer` - it generalises to every path argument.
-- **Filed, not actioned: a 25th scheduled task.** Bare `RiotCommander`, logon
+- **Filed, not actioned: a 25th scheduled task.** Bare `Amberstone`, logon
   trigger, Administrator/Highest, `pythonw.exe main.py`, `LastTaskResult = 1`,
   LastRun 2026-08-05, no repo artifact installs it. It races `RC-Supervisor` for
   `:8888` and loses. **Deleting a Windows scheduled task is a system-settings

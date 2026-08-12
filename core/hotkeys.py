@@ -1,5 +1,5 @@
 """
-core/hotkeys.py  - Global hotkey listener for Riot Commander
+core/hotkeys.py  - Global hotkey listener for Amberstone
 Ctrl+Tab -> triggers forced vision scan in all active non-TFT coaches.
 Runs as a daemon thread; safe to import from any module.
 """

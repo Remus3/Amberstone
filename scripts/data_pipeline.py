@@ -1,5 +1,5 @@
 """
-scripts/data_pipeline.py - Riot Commander data asset pipeline.
+scripts/data_pipeline.py - Amberstone data asset pipeline.
 
 Usage:
     python data_pipeline.py ddragon         # Download DDragon meta JSON files
@@ -79,13 +79,13 @@ VERSIONS_URL = f"{DDRAGON_BASE}/api/versions.json"
 # -- Utilities -----------------------------------------------------------------
 
 def _fetch_json(url: str, timeout: int = 15) -> dict | list:
-    req = urllib.request.Request(url, headers={"User-Agent": "RiotCommander/3.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Amberstone/3.0"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 
 
 def _fetch_bytes(url: str, timeout: int = 30) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "RiotCommander/3.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Amberstone/3.0"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 

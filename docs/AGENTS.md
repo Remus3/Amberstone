@@ -1,4 +1,4 @@
-# Riot Commander - Phase 3 Agent Framework
+# Amberstone - Phase 3 Agent Framework
 
 Deep reference for the agent roster and supervisor stack. For operating rules see `CLAUDE.md`; for DS engine see `DAEMON_SLAYER.md`.
 

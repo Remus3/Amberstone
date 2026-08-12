@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "feature_flags",
-  "description": "Per-mode feature policy matrix for Riot Commander. Read by core/feature_policy.py.",
+  "description": "Per-mode feature policy matrix for Amberstone. Read by core/feature_policy.py.",
   "type": "object",
   "properties": {
     "_comment": { "type": "string" },

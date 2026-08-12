@@ -59,7 +59,7 @@ def test_render_html_has_every_section():
     out = ri.render_html(_synthetic_facts())
     for marker in (
         "<!DOCTYPE html>",
-        "Riot Commander - Repo Insights",
+        "Amberstone - Repo Insights",
         "What You Worked On",
         "What Shipped",
         "What's Working",

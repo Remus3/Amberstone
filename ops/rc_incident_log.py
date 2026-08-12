@@ -1,7 +1,7 @@
 """
 ops/rc_incident_log.py
 
-Structured incident logging for the Riot Commander self-monitor.
+Structured incident logging for the Amberstone self-monitor.
 Writes newline-delimited JSON to ops/runtime/incident_log.jsonl.
 Maintains a rolling summary file readable by Claude at session start.
 

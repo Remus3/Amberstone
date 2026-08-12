@@ -112,7 +112,7 @@ CDRAGON_CHAR_URL = (
     "https://raw.communitydragon.org/{patch}/game/data/characters/{slug}/{slug}.bin.json"
 )
 HEADER_UA = (
-    "RiotCommander-DaemonSlayer/1.0 (offline patch-refresh extractor; local coaching tool)"
+    "Amberstone-DaemonSlayer/1.0 (offline patch-refresh extractor; local coaching tool)"
 )
 _HTTP_TIMEOUT = 40
 

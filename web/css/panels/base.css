@@ -180,7 +180,7 @@ body.cursor-hidden, body.cursor-hidden * { cursor: none !important; }
  * The tint is a single-pixel-thick top border + title-accent shift. */
 /* (2026-04-23) Phase-tinted title-left border removed - user wanted the
  * title position identical across client and in-game states; the border
- * was shifting "RIOT COMMANDER" 16px right whenever data-phase was set. */
+ * was shifting "AMBERSTONE" 16px right whenever data-phase was set. */
 body[data-phase="mid"]   header { background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 6%, var(--canvas)) 0%, var(--canvas) 100%); }
 body[data-phase="late"]  header { background: linear-gradient(180deg, color-mix(in srgb, var(--bad)  7%, var(--canvas)) 0%, var(--canvas) 100%); }
 

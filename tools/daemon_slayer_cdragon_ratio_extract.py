@@ -130,7 +130,7 @@ else:  # pragma: no cover - exercised only when the sibling import is unavailabl
         "{slug}/{slug}.bin.json"
     )
     _SLOT_KEYS = ("Q", "W", "E", "R")
-    _HEADER_UA = "RiotCommander-DaemonSlayer/1.0 (offline patch-refresh extractor)"
+    _HEADER_UA = "Amberstone-DaemonSlayer/1.0 (offline patch-refresh extractor)"
 
     def _fetch_with_retry(url: str, retries: int = 3, backoff_s: float = 3.0) -> str:
         last: Optional[Exception] = None
