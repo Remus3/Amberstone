@@ -1,6 +1,6 @@
 """
 core/metrics_cache.py
-Phase 1 Step 2 - Internal observability surface for Riot Commander.
+Phase 1 Step 2 - Internal observability surface for Amberstone.
 
 Runs a background thread that reads existing runtime artifacts on a fixed
 interval and caches a small derived MetricsSummary.  Consumers call
@@ -158,7 +158,7 @@ class MetricsSummary:
 
 class MetricsCache:
     """
-    Background metrics cache for Riot Commander.
+    Background metrics cache for Amberstone.
 
     Usage:
         mc = MetricsCache(Path("ops/runtime"))

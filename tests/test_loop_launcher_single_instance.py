@@ -50,6 +50,12 @@ def test_controller_kill_is_cmdline_scoped_to_this_repo(script: str) -> None:
     """Scoped to this repo, so a sibling loop's controller survives."""
     for line in script.splitlines():
         if "loop_controller.py" in line and "CommandLine" in line:
+            # NOT renamed with the product (2026-08-11): this string is the repo
+            # DIRECTORY name, which the launcher greps out of a process command
+            # line to scope its kill. The directory is still "Riot Commander" -
+            # moving it is Tier 2, deliberately deferred. Renaming this literal
+            # would make the guard assert a path that does not exist, and the
+            # kill it guards would silently stop being scoped.
             assert "Riot Commander" in line, (
                 "the prior-controller match must be scoped to this repo's path; "
                 f"unscoped match would kill a sibling loop: {line.strip()}"

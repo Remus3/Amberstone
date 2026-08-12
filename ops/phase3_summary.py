@@ -198,7 +198,7 @@ def _first_task() -> dict | None:
 
 def main() -> int:
     print("=" * 72)
-    print("RIOT COMMANDER - Phase 3 setup completion summary")
+    print("AMBERSTONE - Phase 3 setup completion summary")
     print("=" * 72)
     print()
 

@@ -1,6 +1,6 @@
 // rc-shell/src/main.js
 //
-// Riot Commander Electron Phase 1 companion shell - the main process.
+// Amberstone Electron Phase 1 companion shell - the main process.
 //
 // What it does (and ONLY this):
 //   - Creates one frameless, always-on-top BrowserWindow.
@@ -491,7 +491,7 @@ function createWindow() {
     frame: false, // frameless companion (spec 3.3); drag region injected post-load
     alwaysOnTop: cfg.alwaysOnTop,
     backgroundColor: "#0b0e14", // dark fallback while RC_ORIGIN loads
-    title: "Riot Commander",
+    title: "Amberstone",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -607,7 +607,7 @@ function createOverlayWindow() {
     hasShadow: false,
     show: false,
     backgroundColor: "#00000000",
-    title: "Riot Commander Overlay",
+    title: "Amberstone Overlay",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

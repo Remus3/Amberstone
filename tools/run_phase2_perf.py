@@ -357,7 +357,7 @@ def main() -> int:
     from datetime import datetime, timezone
 
     print("=" * 72)
-    print("Riot Commander - Phase 2 Step 4 Performance Probe")
+    print("Amberstone - Phase 2 Step 4 Performance Probe")
     print(f"REPS={REPS}  WARMUP={WARMUP}  Python {sys.version.split()[0]}")
     if _FORCE_FAIL_SECTION:
         print(f"[TEST HOOK] --fail-section {_FORCE_FAIL_SECTION} active")

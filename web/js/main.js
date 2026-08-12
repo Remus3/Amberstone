@@ -1,4 +1,4 @@
-// Riot Commander - Phase 3 dashboard. ES module - no outer IIFE.
+// Amberstone - Phase 3 dashboard. ES module - no outer IIFE.
 // Subscribes to the supervisor's /push WebSocket relay (which in turn
 // receives file-watcher pushes from agents/agent2_backend/file_ingest.py
 // while the live-client forwarder is still deferred).
@@ -548,7 +548,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // SEEDED to "client" (lib/state.js), so a fresh render that resolves to
   // "client" - the normal out-of-game case - hit the tag===state.mode early
   // return and never stamped anything: document.title stayed on index.html's
-  // static "Riot Commander - Phase 3", and the mode pill + body[data-mode]
+  // static "Amberstone - Phase 3", and the mode pill + body[data-mode]
   // kept their markup defaults. It only looked correct on a long-lived page
   // because some earlier real mode flip had stamped it. Observed 2026-08-02 on
   // a freshly relaunched rc-shell companion.

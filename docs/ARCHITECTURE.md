@@ -1,4 +1,4 @@
-# Riot Commander - Architecture
+# Amberstone - Architecture
 
 _Living document. Update after topology or module changes. See `docs/_archive/` for dated design docs._
 
