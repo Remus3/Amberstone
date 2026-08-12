@@ -1,4 +1,4 @@
-# Riot Commander - Categorical Open-Item Review (2026-07-25)
+# Amberstone - Categorical Open-Item Review (2026-07-25)
 
 Produced against HEAD `4f21782a`, ENGINE 1.241.0, patch 16.14.1. Loop HALTED
 (`ops/loop/control/STOP` present, confirmed on disk).

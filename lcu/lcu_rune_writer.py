@@ -1,5 +1,5 @@
 """
-lcu/lcu_rune_writer.py - Champion select rune auto-writer for Riot Commander.
+lcu/lcu_rune_writer.py - Champion select rune auto-writer for Amberstone.
 
 Polls LCU champ select session every ~1s (RC2 P6.2; env RC_RUNEWRITER_POLL_SEC).
 When a champion is selected (intent OR locked), loads the recommended

@@ -1,7 +1,7 @@
 """
 ops/rc_dev_runtime.py  -  Phase 0 Addendum compliant rewrite
 
-Lightweight file-based control plane for Riot Commander.
+Lightweight file-based control plane for Amberstone.
 
 Changes vs Phase 0 initial:
   [2]  shell, start_process disabled by default.
@@ -92,7 +92,7 @@ class DevRuntime:
     def __init__(
         self,
         project_root:         str | os.PathLike[str],
-        app_name:             str   = "riot-commander",
+        app_name:             str   = "amberstone",
         runtime_dir:          str   = "ops/runtime",
         heartbeat_interval:   float = 1.0,
         command_poll_interval: float = 0.5,

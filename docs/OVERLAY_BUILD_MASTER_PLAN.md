@@ -1,4 +1,4 @@
-# Riot Commander - Overlay + Build Master Plan
+# Amberstone - Overlay + Build Master Plan
 
 Authoritative build spec for the overlay redesign + adaptive build-path module. A looping
 multi-agent run executes this over many sessions. Every UI work package gates on the per-page

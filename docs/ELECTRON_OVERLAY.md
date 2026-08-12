@@ -48,7 +48,7 @@ RC_ORIGIN = https://127.0.0.1:8888      # after 1-PC consolidation (later)
 Consequence: build the overlay now against Legion. When/if the consolidation
 happens, flip `RC_ORIGIN` to localhost. No Electron rework, no JS change. The
 two efforts are fully decoupled. Store `RC_ORIGIN` in the Electron app's config
-(`%APPDATA%/RiotCommander/config.json`) with a Settings field to change it.
+(`%APPDATA%/Amberstone/config.json`) with a Settings field to change it.
 
 Cert: dashboard is mkcert self-signed HTTPS. Electron loads it with a scoped
 `certificate-error` handler that trusts only `RC_ORIGIN`'s host (not a blanket

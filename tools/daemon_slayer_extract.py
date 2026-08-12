@@ -75,7 +75,7 @@ MERAKI_BULK_URL = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-
 # Spellblade). Always prefer bulk for the snapshot - atomic + current.
 MERAKI_ITEMS_URL = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json"
 CDRAGON_ARENA_URL = "https://raw.communitydragon.org/latest/cdragon/arena/en_us.json"
-USER_AGENT = "RiotCommander/DaemonSlayer-extract/1.0"
+USER_AGENT = "Amberstone/DaemonSlayer-extract/1.0"
 
 # Markers used to identify the right chunk among lolmath's ~20 chunks.
 # `statPreference:` is the strongest signal for the scenarios chunk - appears

@@ -140,7 +140,7 @@ def _format_task_prompt(agent: str, task_id: str, op: str, payload: dict) -> str
         "",
         "## Instructions",
         "",
-        "You are running as an ephemeral session under the Riot Commander",
+        "You are running as an ephemeral session under the Amberstone",
         "Phase 3 framework. Your charter is in the system prompt above.",
         "Complete the task, then exit. Write any report artifacts the",
         "charter requires. Your final stdout message will be captured as",

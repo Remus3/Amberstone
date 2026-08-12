@@ -2,7 +2,7 @@
 
 Machine: DESKTOP-LCA3EBI (hostname verified live 2026-07-26; Tailscale is NOT installed on this box)
 Installed: 2026-07-26
-Applies to: every project on this box, not just Riot Commander
+Applies to: every project on this box, not just Amberstone
 
 > This file is the CANONICAL copy and is version controlled. A Desktop copy
 > exists for handing to other projects; an earlier Desktop-only version of this

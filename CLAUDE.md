@@ -1,4 +1,4 @@
-# Riot Commander - Agent Context
+# Amberstone - Agent Context
 
 Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC since 2026-05-29; ADR-011). RC is tkinter-free (scheduler is asyncio AppLoop; 13 residual .after() files); Daemon Slayer (`:8860`) computes real DPS math per champion.
 
@@ -170,7 +170,7 @@ Enforcement (hooks in `.claude/settings.json`): PostToolUse `tools/pytest_guard.
 
 ## Web dashboard
 
-`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Legion at `https://legion-rc:8888/` - design baseline is **standard 1920x1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport approx 1920x~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-peer`).
+`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Legion at `https://legion-rc:8888/` - design baseline is **standard 1920x1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport approx 1920x~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key, named per host on the Anthropic console. Those console names are deliberately NOT recited here (they name other machines), and they are NOT renamed by the product rename - editing a doc does not rename a key.
 
 ## Scheduled tasks (Legion)
 

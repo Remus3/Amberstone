@@ -1,6 +1,6 @@
 # arch: RC entry point; starts supervisor + RC process | section=orchestration | frozen=yes
 """
-main.py - Riot Commander entry point.
+main.py - Amberstone entry point.
 
 Handles:
 - Argument parsing (--debug)
@@ -25,7 +25,7 @@ if str(APP_DIR) not in sys.path:
 
 # - Parse arguments
 def _parse_args():
-    p = argparse.ArgumentParser(prog="Riot Commander", add_help=False)
+    p = argparse.ArgumentParser(prog="Amberstone", add_help=False)
     p.add_argument("--debug", action="store_true", default=False,
                    help="Enable verbose logging and console output")
     args, _ = p.parse_known_args()
@@ -39,7 +39,7 @@ args = _parse_args()
 from core.log_setup import setup as _log_setup, get as _log_get
 _log_setup(APP_DIR, debug=args.debug)
 _log = _log_get("main")
-_log.info("Riot Commander starting  debug=%s  python=%s", args.debug, sys.version.split()[0])
+_log.info("Amberstone starting  debug=%s  python=%s", args.debug, sys.version.split()[0])
 
 # - API key
 def _load_api_key():

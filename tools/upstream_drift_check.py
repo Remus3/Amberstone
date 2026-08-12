@@ -98,7 +98,7 @@ QQ_ROWCOUNT_BUCKET = 25
 # network. Refresh with --refresh-queue-snapshot after reviewing a drift.
 QUEUE_SNAPSHOT_PATH = ROOT / "data" / "queue_catalog_snapshot.json"
 
-USER_AGENT = "RiotCommander/upstream-drift-check/1.0"
+USER_AGENT = "Amberstone/upstream-drift-check/1.0"
 DEFAULT_TIMEOUT = 20.0
 # len() of this tuple == max retry count. Mirrors the compact retry style in
 # tools/ddragon_mirror_refresh.py (transient: URLError / timeout / 429+5xx).

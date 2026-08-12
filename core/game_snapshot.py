@@ -674,7 +674,7 @@ _PayloadType = Optional[Any]  # ClientSnapshot | RiftSnapshot | AramSnapshot | T
 
 class GameEnvelope:
     """
-    Authoritative mode container for Riot Commander.
+    Authoritative mode container for Amberstone.
 
     mode     - one of MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT,
                       MODE_ARENA, MODE_BRAWL, MODE_JADE (i.e. ALL_MODES).

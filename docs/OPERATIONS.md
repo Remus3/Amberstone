@@ -1,4 +1,4 @@
-# Riot Commander - Operations Reference
+# Amberstone - Operations Reference
 
 _Living document. Full ops command set for Legion sessions._
 
@@ -174,12 +174,12 @@ first resort.
 
 | `RiotCommander` | At logon | Administrator / HIGHEST | **NOT RC infra - machine-local cruft, documented so the count reconciles.** A bare task at TaskPath `\` (no `RC-` prefix), running `pythonw.exe main.py` in `C:\Riot Commander`. On every logon it starts an unmanaged SECOND RC process that races `RC-Supervisor` for `:8888` and loses - which is why it stayed invisible: it fails, RC works, nothing surfaces. Live probe 2026-08-08: `State=Ready`, `LastTaskResult=1`, LastRun 2026-08-05. NO repo artifact creates it (`ops/install_startup.bat` makes a differently-named `RiotCommanderWatcher.lnk` shortcut - different mechanism, not this). Most likely hand-made before `RC-Supervisor` existed. **Deleting it is a system-settings change and is OPERATOR territory - no headless lane may remove it.** Before deleting, confirm it is not load-bearing: stop it, log out and back in, and confirm `ops/runtime/health.json` still reports a live pid |
 
-Live task count is **25**: 24 `RC-*` plus the bare `RiotCommander` above.
+Live task count is **25**: 24 `RC-*` plus the bare `Amberstone` above.
 
-Check state (the `RC-*` glob alone MISSES `RiotCommander`, which is exactly how it went undocumented for so long):
+Check state (the `RC-*` glob alone MISSES `Amberstone`, which is exactly how it went undocumented for so long):
 
 ```powershell
-Get-ScheduledTask | Where-Object { $_.TaskName -like 'RC-*' -or $_.TaskName -eq 'RiotCommander' } | Select-Object TaskName, State
+Get-ScheduledTask | Where-Object { $_.TaskName -like 'RC-*' -or $_.TaskName -eq 'Amberstone' } | Select-Object TaskName, State
 ```
 
 Subscription failover routing: MEASURED 2026-07-29 - the MSIX Claude desktop GUI does NOT honor `ANTHROPIC_BASE_URL` (it talks to claude.ai's own app backend, not `api.anthropic.com`; the proxy activity log stayed empty after live GUI prompts). So the GUI CANNOT be transparently routed through the teamclaude proxy. The user-wide var was set then REMOVED (it only helped the CLI/headless surfaces the operator does not use, and added proxy-down fragility to the headless RC-* Claude tasks). GUI failover is therefore MANUAL: switch the desktop login from acct A to acct B when acct A's weekly quota is high - `RC-ClaudeQuotaWatch` toasts the reminder at >=90%. The `cf` shim (`C:\Users\Administrator\AppData\Roaming\npm\cf.cmd`) remains for an explicit failover-backed CLI session if ever wanted.

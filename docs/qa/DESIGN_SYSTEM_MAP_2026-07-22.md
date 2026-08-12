@@ -1,4 +1,4 @@
-# DESIGN SYSTEM MAP - Riot Commander Dashboard (2026-07-22)
+# DESIGN SYSTEM MAP - Amberstone Dashboard (2026-07-22)
 
 Read-only inventory for the cross-panel theme pass (operator ask #1: optical + coherence, NOT
 the old bare-hex compliance hunt). 4-layer cascade: `web/css/panels/base.css` (:root palette)

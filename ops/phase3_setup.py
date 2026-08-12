@@ -117,7 +117,7 @@ RESOLVED_DECISIONS = {
     "transport": "websocket_end_to_end",
     "sources": ["live_client", "lcu", "ddragon", "aggregator D", "ugg"],
     "scraper_discipline": {
-        "user_agent": "RiotCommander/3.0",
+        "user_agent": "Amberstone/3.0",
         "rate_limit": "<=1 req/sec per hostname",
         "respect_robots_txt": True,
         "circuit_breaker_owner": "agent6",

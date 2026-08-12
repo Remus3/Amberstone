@@ -115,7 +115,7 @@ could have answered is both a rule violation and a worse measurement.
    machine confirmation, assert on the captured PNG directly (pixel sampling / dominant colour over a known
    rect) and SAY that is what you did. Never claim an OCR pass you did not run.
 
-Historical trap: since 2026-06-28 the `preview_start name="Riot Commander"` launch.json path REFUSES to
+Historical trap: since 2026-06-28 the `preview_start name="Amberstone"` launch.json path REFUSES to
 reuse `:8888` ("Port 8888 is in use by pythonw.exe"). The `url` form and the `RC Web Static` config
 (`.claude/launch.json`, `python -m http.server 8810 --directory web`) are the working alternatives; the
 static server 404s `/api/*`, so panels render degraded there.

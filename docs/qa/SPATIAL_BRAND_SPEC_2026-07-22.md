@@ -1,4 +1,4 @@
-# OUT-OF-GAME SPATIAL BRAND SPEC - Riot Commander (operator-present, 2026-07-22)
+# OUT-OF-GAME SPATIAL BRAND SPEC - Amberstone (operator-present, 2026-07-22)
 
 Goal (operator): define the out-of-game display's spatial scope as a FINAL "brand" decision -
 fixed envelope, resolution spec, and placement relative to the League client + taskbar - so we

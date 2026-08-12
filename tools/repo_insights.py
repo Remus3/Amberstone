@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tools/repo_insights.py - grounded, on-command repo insights for Riot Commander.
+"""tools/repo_insights.py - grounded, on-command repo insights for Amberstone.
 
 Unlike the built-in /insights (which analyzes chat transcripts and can suggest
 work that already shipped), this reads GROUND TRUTH straight from the repo:
@@ -533,10 +533,10 @@ def render_html(f: dict) -> str:
     )
 
     return f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Riot Commander - Repo Insights</title>
+<html><head><meta charset="utf-8"><title>Amberstone - Repo Insights</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>{CSS}</style></head><body><div class="container">
-<h1>Riot Commander - Repo Insights</h1>
+<h1>Amberstone - Repo Insights</h1>
 <p class="subtitle">Grounded in git + LEDGER + ORCHESTRATION_PLAN | {g['window_start']} to {g['window_end']} ({g['days']}-day window) | generated {f['generated']}</p>
 
 <div class="at-a-glance"><div class="glance-title">At a Glance (ground truth)</div>
@@ -602,7 +602,7 @@ def build_facts(days: int, author: str | None) -> dict:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Grounded repo insights for Riot Commander")
+    ap = argparse.ArgumentParser(description="Grounded repo insights for Amberstone")
     ap.add_argument("--days", type=int, default=30, help="window size in days (default 30)")
     ap.add_argument("--author", default=None, help="restrict commits to one author")
     ap.add_argument("--out", default=None, help="output HTML path")

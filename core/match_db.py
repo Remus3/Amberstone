@@ -1,5 +1,5 @@
 """
-core/match_db.py - SQLite match history database for Riot Commander.
+core/match_db.py - SQLite match history database for Amberstone.
 
 Stores per-match results across all modes (SR, ARAM, Arena, Brawl, TFT).
 TFT matches include comp/trait/unit data for ranked LP analysis.

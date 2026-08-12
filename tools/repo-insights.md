@@ -1,5 +1,5 @@
 ---
-description: Generate a grounded, on-command repo insights report for Riot Commander - the actualized variant of /insights that reads git + LEDGER + ORCHESTRATION_PLAN + ROADMAP (never transcript inference, so it cannot re-pitch already-shipped work). Use when the operator asks for "repo insights", a "Legion work report", or a periodic activity report.
+description: Generate a grounded, on-command repo insights report for Amberstone - the actualized variant of /insights that reads git + LEDGER + ORCHESTRATION_PLAN + ROADMAP (never transcript inference, so it cannot re-pitch already-shipped work). Use when the operator asks for "repo insights", a "Legion work report", or a periodic activity report.
 ---
 
 > **SUBAGENT-FIRST (standing protocol, operator 2026-06-20).** Always use subagents for substantive work; do not build solo in the main thread.

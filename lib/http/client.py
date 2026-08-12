@@ -1,7 +1,7 @@
 """Shared HTTP client for all Phase 3 outbound requests.
 
 Responsibilities:
-  - Polite User-Agent: ``RiotCommander/3.0 (+https://local)``
+  - Polite User-Agent: ``Amberstone/3.0 (+https://local)``
   - Per-hostname rate limit: <= 1 request/second (token bucket of 1).
   - Blocklist enforcement against ``lib/http/blocklist.json``.
   - Circuit breaker per hostname: opens after 5 consecutive failures,
@@ -32,7 +32,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 from urllib.parse import urlparse
 
-USER_AGENT = "RiotCommander/3.0 (+https://local)"
+USER_AGENT = "Amberstone/3.0 (+https://local)"
 DEFAULT_TIMEOUT = 15.0
 MIN_INTERVAL_SEC = 1.0
 BREAKER_THRESHOLD = 5

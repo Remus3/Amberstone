@@ -1,5 +1,5 @@
 # FEATURE_POLICY.md
-# Riot Commander -- Feature Policy Matrix
+# Amberstone -- Feature Policy Matrix
 # Phase 1 Step 7 / Phase 2 Step 2 / Phase 3 Step 1 update
 
 ---

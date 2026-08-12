@@ -1,4 +1,4 @@
-# Riot Commander - Daemon Slayer Build Engine
+# Amberstone - Daemon Slayer Build Engine
 
 Local DPS-math service on `:8860`. Computes actual damage-per-second for any champion x item x target combination using real stat math. No API cost per query.
 

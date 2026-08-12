@@ -1,5 +1,5 @@
 {
-  "_doc": "Canonical runtime config for Riot Commander ops stack. This is the single source of truth for the supervisor, file bridge, and self-monitor. config/runtime.json is a legacy install-time file and is not read by the ops stack.",
+  "_doc": "Canonical runtime config for Amberstone ops stack. This is the single source of truth for the supervisor, file bridge, and self-monitor. config/runtime.json is a legacy install-time file and is not read by the ops stack.",
 
   "project_root":           "C:\\Riot Commander",
   "runtime_dir":            "C:\\Riot Commander\\ops\\runtime",

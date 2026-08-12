@@ -25,7 +25,7 @@ def fetch(url: str, dest: Path, *, retries: int = 2, timeout: float = 6.0) -> bo
         return False
     for attempt in range(retries + 1):
         try:
-            req = Request(url, headers={"User-Agent": "riot-commander-asset-cache/1"})
+            req = Request(url, headers={"User-Agent": "amberstone-asset-cache/1"})
             with urlopen(req, timeout=timeout) as r:
                 body = r.read()
             dest.parent.mkdir(parents=True, exist_ok=True)

@@ -5,7 +5,7 @@ Bug (observed 2026-08-02 on a freshly relaunched rc-shell companion):
 ``setMode(tag)`` early-returned on ``tag === state.mode``. So a fresh page
 whose first resolved mode is "client" - the ordinary out-of-game case -
 never stamped anything: ``document.title`` stayed on index.html's static
-"Riot Commander - Phase 3", and the mode pill + ``body[data-mode]`` kept
+"Amberstone - Phase 3", and the mode pill + ``body[data-mode]`` kept
 their markup defaults. A long-lived page looked fine only because some
 earlier REAL mode flip had eventually stamped it, which is why this
 survived: the failure is invisible on any page that has been open a while.

@@ -1,7 +1,7 @@
 # arch: canonical TCP port registry for RC + Daemon Slayer, and the cross-project block reservations | section=core | frozen=no
-"""Riot Commander port registry.
+"""Amberstone port registry.
 
-Three projects run concurrently on Legion - Riot Commander (this repo, which
+Three projects run concurrently on Legion - Amberstone (this repo, which
 contains Daemon Slayer), Sibling-A and Sibling-C - and until 2026-08-01
 none of them could answer "which ports are mine" without grepping bind sites
 and filtering vendored noise out of the result. Sibling-C solved it first with
@@ -19,7 +19,7 @@ re-auditing the other two.
 
     8770-8789   Sibling-C        (named: 8777 8778 8779 8780 8783; bound today: 8777 8780)
     8860-8879   Daemon Slayer   (in use: 8860 8861 - see MIGRATION below)
-    8888-8895   Riot Commander  (in use: 8888 8889 8890 8891 8895)
+    8888-8895   Amberstone  (in use: 8888 8889 8890 8891 8895)
     8900-8919   Sibling-A (named: 8901; bound only while the operator runs it)
 
 RC keeps 8888-8895 because moving a live control plane is churn with no payoff;
@@ -73,7 +73,7 @@ control plane down with it.
 """
 from __future__ import annotations
 
-# --- Riot Commander core (block 8888-8895) ---------------------------------
+# --- Amberstone core (block 8888-8895) ---------------------------------
 
 DASHBOARD = 8888
 """RC dashboard, HTTPS. Defined at `dashboard/server.py:28`."""

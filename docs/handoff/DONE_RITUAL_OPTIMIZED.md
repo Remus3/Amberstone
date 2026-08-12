@@ -1,6 +1,6 @@
 # The /done ritual - optimized, with a per-session drift guard
 
-Written 2026-07-26 on DESKTOP-LCA3EBI. Derived from Riot Commander's `/done`, but
+Written 2026-07-26 on DESKTOP-LCA3EBI. Derived from Amberstone's `/done`, but
 written to be **portable**: any project on this machine using the same
 commit + push + living-docs practice can adopt it by changing the paths in
 section 0.
@@ -168,7 +168,7 @@ item; do not move the threshold to make it quiet.
 **`.git/hooks/` is NOT version controlled.** A hook that lives only there does not
 reach a fresh clone, another machine, or a sibling project.
 
-Measured on Riot Commander 2026-07-26: `core.hooksPath` resolved to the untracked
+Measured on Amberstone 2026-07-26: `core.hooksPath` resolved to the untracked
 `.git\hooks`, whose `pre-commit` ran only a Share-mirror sync - while the TRACKED
 `.githooks/pre-commit` (running `py_compile`, an architecture-map check and a
 schema check) sat inert. **Three tracked guards had silently stopped running**,
