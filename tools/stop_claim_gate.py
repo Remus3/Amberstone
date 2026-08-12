@@ -96,7 +96,26 @@ CLAIM_FULL_SUITE = re.compile(r"\b(?:full suite|all tests|entire suite|whole sui
 
 # Evidence patterns.
 EV_PYTEST = re.compile(r"(?:^|\s|-m\s)pytest\b", re.I)
-EV_FILTERED = re.compile(r"\s-k\s|::|\btests?[\w/\\.-]*\.py\b", re.I)
+# Node's built-in runner is the SECOND suite in this repo (rc-shell). Until
+# 2026-08-11 the gate could not see it at all: it parsed only pytest's
+# "N passed", so an accurate "rc-shell 328 passed" scored as count_mismatch -
+# and, more seriously, a FALSE rc-shell claim could never have been caught
+# either. Widening the evidence here is what makes the guard cover both suites.
+EV_NODE_TEST = re.compile(r"\bnpm\s+(?:run\s+)?test\b|\bnode\b[^|;&\n]*--test\b", re.I)
+# Node prints "<marker> pass 328", not "328 passed" - keyword first, no trailing
+# "in X.Ys". Anchored to a WHOLE line whose only content is the marker, the
+# keyword and the number, so prose containing the word "pass" cannot feed the
+# observed set ("every check did pass 99 times" must not match, and does not).
+#
+# The prefix class is [^a-zA-Z] and NOT \W, which was the first attempt and was
+# WRONG: node's marker is U+2139 INFORMATION SOURCE, and Python's Unicode-aware
+# \w treats it as a WORD character, so \W* never matched it and the whole
+# widening was silently inert. Measured, not assumed. The glyph is matched by
+# class rather than written out because this file is 7-bit ASCII by repo rule.
+EV_NODE_PASS = re.compile(r"^[^a-zA-Z\n]{0,4}pass\s+(\d[\d,]{0,9})\s*$", re.M)
+EV_FILTERED = re.compile(r"\s-k\s|::|\btests?[\w/\\.-]*\.py\b"
+                         # `node --test <one file>` is as filtered as `-k`.
+                         r"|[\w/\\.-]+\.test\.[cm]?js\b", re.I)
 EV_COMMIT = re.compile(r"\bgit\b[^|;&]*\bcommit\b", re.I)
 EV_PUSH = re.compile(r"\bgit\b[^|;&]*\bpush\b", re.I)
 # The binary and its subcommand need not be ADJACENT: RC's own convention is to
@@ -135,7 +154,12 @@ EV_BACKGROUND = re.compile(r"running in background with ID|Output is being writt
 # floating count is what poisoned the first armed gate; requiring the trailing
 # duration is what keeps this a widening of evidence and not of belief.
 EV_SUMMARY_LINE = re.compile(
-    r"\d[\d,]*\s+(?:passed|failed|error)\b[^\n]*?\bin\s+[\d.]+\s*s", re.I)
+    r"\d[\d,]*\s+(?:passed|failed|error)\b[^\n]*?\bin\s+[\d.]+\s*s"
+    # Node's equivalent terminal marker: the duration line closing its summary
+    # block. Same intent - a SUMMARY shape, never a floating count. Prefix class
+    # is [^a-zA-Z] for the same measured reason as EV_NODE_PASS: node's U+2139
+    # marker is a WORD character to Python's Unicode \w, so \W* never matches it.
+    r"|^[^a-zA-Z\n]{0,4}duration_ms\s+[\d.]+\s*$", re.I | re.M)
 
 EDIT_TOOLS = {"edit", "write", "multiedit", "notebookedit"}
 
@@ -227,7 +251,8 @@ def collect_evidence(rows):
                 if name in ("bash", "powershell"):
                     command = str(data.get("command", ""))
                     ev["bash"].append(command)
-                    if EV_PYTEST.search(strip_command_noise(command)):
+                    stripped = strip_command_noise(command)
+                    if EV_PYTEST.search(stripped) or EV_NODE_TEST.search(stripped):
                         pending = {"cmd": command, "output": ""}
                         ev["runs"].append(pending)
                 if name in EDIT_TOOLS:
@@ -290,7 +315,8 @@ def audit(ev):
     ran_pytest = bool(runs)
     filtered_only = ran_pytest and all(EV_FILTERED.search(r["cmd"]) for r in runs)
     observed_counts = {m.replace(",", "") for r in runs
-                       for m in EV_PASSED.findall(r["output"])}
+                       for pat in (EV_PASSED, EV_NODE_PASS)
+                       for m in pat.findall(r["output"])}
     # Vacuous only if EVERY run was vacuous. One real green run answers the claim.
     vacuous = ran_pytest and all(EV_VACUOUS.search(r["output"]) for r in runs)
     did_commit = any(EV_COMMIT.search(c) for c in bash)
