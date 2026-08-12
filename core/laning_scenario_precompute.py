@@ -60,9 +60,9 @@ SHAPE (per mode, atomic write to data/daemon_slayer/laning_scenarios/<patch>/)::
             "economy": {"recall": "recall_now|back_soon|hold",
                         "next_spike": "component|first_item|two_item|three_item|complete",
                         "gold_at_band": <float>},
-            "cooldown_window": {"enemy_threat_spell": "<Q|W|E|R>", "enemy_cc_s": <float>,
-                        "enemy_cd_s": <float>, "my_ult_cd_s": <float>,
-                        "window_verdict": "punish_now|wait_cd|even"},
+            "cc_threat": {"enemy_threat_spell": "<Q|W|E|R>", "enemy_cc_s": <float>,
+                        "my_ult_cd_s": <float>,
+                        "threat_verdict": "punish_now|wait_cd|even"},
             "spike_timing": {"next_kind": "level|item", "next_threshold": <int>,
                         "next_label": "...", "crossed_dps_at": <float|null>,
                         "spike_verdict": "play_for_spike|spike_up|even"}}}}}}}
@@ -70,10 +70,10 @@ SHAPE (per mode, atomic write to data/daemon_slayer/laning_scenarios/<patch>/)::
     }
 
 v4 (Lane A) adds the ``item_state`` axis (0/1/2 completed legendaries, band-
-pruned) + the ``kill_threshold_met`` flag + the ``cooldown_window`` and
+pruned) + the ``kill_threshold_met`` flag + the ``cc_threat`` and
 ``spike_timing`` verdict blocks. The trade fields are unchanged from v3 (same
-compute_matchup). The new blocks call EXISTING substrate (cooldown_watch /
-spike_markers / combo) as read-only probes - no ENGINE math change. The
+compute_matchup). The new blocks call EXISTING substrate (the per-spell CC
+registry / spike_markers / combo) as read-only probes - no ENGINE math change. The
 committed v3 tables stay v3 and the v4 reader is backward-compatible with them.
 
 Slim leaf: only the reader-consumed fields are persisted (the derived
@@ -139,6 +139,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from dataclasses import dataclass
 from typing import Optional, Sequence, Tuple
 
 log = logging.getLogger(__name__)
@@ -151,13 +152,15 @@ from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.mana_sim import compute_mana_bounded_combo
 from agents.daemon_slayer.matchup import compute_matchup
 
-# v4 (Lane A): the cooldown-window + spike-timing verdict substrate. All three
-# are READ-ONLY probes over the existing engine - no new combat math here (the
-# trade verdict stays compute_matchup). compute_combo gives MY per-cast R
-# cooldown; compute_cooldown_watch gives the enemy highest-threat CC + its base
-# cooldown; compute_spike_markers gives the discrete power-spike picture.
+# v4 (Lane A): the CC-threat + spike-timing verdict substrate. All three are
+# READ-ONLY probes over the existing engine - no new combat math here (the trade
+# verdict stays compute_matchup). compute_combo gives MY per-cast R cooldown;
+# _enemy_cc_threat_card reads the per-spell CC registry for the enemy's
+# highest-CC ability; compute_spike_markers gives the discrete power-spike
+# picture. Riot compliance 2026-08-11: the enemy side reads CC DURATION only -
+# the old compute_cooldown_watch join carried the enemy's base cooldown, which
+# Riot's rules ban tracking. See docs/OVERLAY_COMPLIANCE_PLAN.md.
 from agents.daemon_slayer.combo import compute_combo
-from agents.daemon_slayer.cooldown_watch import compute_cooldown_watch
 from agents.daemon_slayer.spike_markers import compute_spike_markers
 
 # HZ-A2: the gold-income + power-spike primitives live in lead_projection (the
@@ -285,31 +288,36 @@ def item_states_for_band(band: str) -> Tuple[str, ...]:
     return _ITEM_STATES_BY_BAND.get(band, ITEM_STATES)
 
 
-def window_verdict(
-    enemy_cd_s: object,
+def cc_threat_verdict(
+    enemy_cc_s: object,
     my_ult_cd_s: object,
     cd_state: str,
 ) -> str:
-    """Cooldown-window verdict - PURE, no engine (mirrors laning_band's shape).
+    """CC-threat verdict - PURE, no engine (mirrors laning_band's shape).
 
-    Deterministic from the two cooldown scalars + the cd_state axis:
+    Riot compliance 2026-08-11: REPLACES ``window_verdict``, which keyed on the
+    enemy's ability COOLDOWN. The verdict vocabulary is unchanged so every
+    downstream label and consumer keeps working; only the enemy-side input moved
+    from a banned cooldown scalar to the ability's crowd-control duration.
+
+    Deterministic from the two scalars + the cd_state axis:
       * ``wait_cd`` when MY ult is down (the no_ult axis) - my key combo cannot
-        come out, so the honest call is to wait for the cooldown.
-      * ``punish_now`` when my ult IS up AND the enemy has a real threat spell on
-        a finite cooldown to bait/punish (their key CC is the punish trigger).
-      * ``even`` otherwise (no enemy threat spell, or non-numeric inputs).
+        come out, so the honest call is to wait for my own cooldown.
+      * ``punish_now`` when my ult IS up AND the enemy has real crowd control to
+        bait out (their key CC is the punish trigger).
+      * ``even`` otherwise (no enemy CC, or non-numeric inputs).
     Fail-soft to ``even`` on any malformed scalar (the coach hot path contract)."""
     if str(cd_state) == "no_ult":
         return "wait_cd"
     try:
-        enemy_cd = float(enemy_cd_s)
+        enemy_cc = float(enemy_cc_s)
     except (TypeError, ValueError):
         return "even"
     try:
         my_cd = float(my_ult_cd_s)
     except (TypeError, ValueError):
         my_cd = 0.0
-    if enemy_cd > 0.0 and my_cd >= 0.0:
+    if enemy_cc > 0.0 and my_cd >= 0.0:
         return "punish_now"
     return "even"
 
@@ -562,18 +570,44 @@ def _matchup(
     )
 
 
-def _enemy_cooldown_card(enemy: str):
-    """The enemy's single highest-threat CC card, or None (fail-soft).
+@dataclass(frozen=True)
+class CcThreatCard:
+    """One enemy's highest-CC ability - the spell key and how long it locks you.
 
-    ``compute_cooldown_watch`` is level- and build-INVARIANT (base cd by rank,
-    enemy-CC-only per its honesty contract), so the caller memoizes this per
-    enemy across every band / mana / cd / item-state. A champion with no
-    registered first-order CC yields no card (the block degrades to even)."""
+    Riot compliance 2026-08-11: this REPLACES the deleted CooldownWatchCard.
+    The old card carried ``cooldown_s`` (an enemy ability cooldown, which Riot's
+    third-party rules ban tracking). This one carries only static kit facts the
+    game client already shows in its own champion tooltips - which ability is the
+    threat, and its crowd-control duration. There is deliberately no cooldown
+    field; do not add one. See docs/OVERLAY_COMPLIANCE_PLAN.md.
+    """
+
+    spell_key: str = ""
+    cc_duration_s: float = 0.0
+
+
+def _enemy_cc_threat_card(enemy: str) -> Optional[CcThreatCard]:
+    """The enemy's single highest-CC ability, or None (fail-soft).
+
+    Reads the unconditional per-spell CC registry directly, so no cooldown data
+    is touched at any point. Level- and build-INVARIANT (max-rank base CC), so
+    the caller memoizes this per enemy across every band / mana / cd / item
+    state. A champion with no registered first-order CC yields None and the
+    block degrades to even - the same contract the old card had."""
     try:
-        res = compute_cooldown_watch([str(enemy)], top_n=1)
+        from agents.daemon_slayer.ability_dps import _PER_SPELL_CC_DURATIONS
+        by_spell = _PER_SPELL_CC_DURATIONS.get(str(enemy)) or {}
     except Exception:  # noqa: BLE001 - one bad enemy never sinks the sweep
         return None
-    return res.cards[0] if res.cards else None
+    best_key, best_cc = "", 0.0
+    for spell_key, ranks in sorted(by_spell.items()):
+        try:
+            cc = max(float(r) for r in (ranks or ()))
+        except (TypeError, ValueError):
+            continue
+        if cc > best_cc:
+            best_key, best_cc = str(spell_key), cc
+    return CcThreatCard(best_key, _round(best_cc)) if best_cc > 0.0 else None
 
 
 def _my_ult_cd_s(
@@ -601,7 +635,7 @@ def _my_ult_cd_s(
     return 0.0
 
 
-def cooldown_window_cell(
+def cc_threat_cell(
     snapshot: DataSnapshot,
     my_champion: str,
     level: int,
@@ -610,22 +644,25 @@ def cooldown_window_cell(
     mode: str,
     enemy_card,
 ) -> dict:
-    """The v4 cooldown-window verdict block for one cell.
+    """The v4 CC-threat verdict block for one cell.
 
-    ``enemy_card`` is the memoized CooldownWatchCard for the enemy (or None).
-    ``my_ult_cd_s`` is read from MY combo at this cell's level + items. The
-    derived ``window_verdict`` is pure (window_verdict). enemy_threat_spell / cc
-    fail-soft to "" / 0.0 when the enemy has no registered first-order CC."""
+    Riot compliance 2026-08-11: REPLACES ``cooldown_window_cell``. The emitted
+    block deliberately carries NO enemy cooldown scalar - ``enemy_cd_s`` is gone
+    and must not come back. ``my_ult_cd_s`` stays: it is the operator's OWN
+    ability, not an opponent's, and it is half the window decision.
+
+    ``enemy_card`` is the memoized CcThreatCard for the enemy (or None).
+    The derived ``threat_verdict`` is pure (cc_threat_verdict).
+    enemy_threat_spell / cc fail-soft to "" / 0.0 when the enemy has no
+    registered first-order CC."""
     enemy_spell = str(getattr(enemy_card, "spell_key", "") or "")
     enemy_cc_s = _round(getattr(enemy_card, "cc_duration_s", 0.0)) if enemy_card else 0.0
-    enemy_cd_s = _round(getattr(enemy_card, "cooldown_s", 0.0)) if enemy_card else 0.0
     my_cd = _my_ult_cd_s(snapshot, my_champion, level, item_ids, mode)
     return {
         "enemy_threat_spell": enemy_spell,
         "enemy_cc_s": enemy_cc_s,
-        "enemy_cd_s": enemy_cd_s,
         "my_ult_cd_s": my_cd,
-        "window_verdict": window_verdict(enemy_cd_s, my_cd, cd_state),
+        "threat_verdict": cc_threat_verdict(enemy_cc_s, my_cd, cd_state),
     }
 
 
@@ -676,7 +713,7 @@ def spike_timing_cell(
 def _cell_from_result(
     result,
     economy: Optional[dict] = None,
-    cooldown_window: Optional[dict] = None,
+    cc_threat: Optional[dict] = None,
     spike_timing: Optional[dict] = None,
 ) -> dict:
     """Shape a MatchupResult into the persisted SLIM leaf dict (single source so
@@ -684,7 +721,7 @@ def _cell_from_result(
     favored; ``pct_my_removed`` is the fraction of MY effective HP the enemy
     combo removes. ``economy`` (HZ-A2) is the optional recall/back-timing block;
     omitted when None. v4 adds ``kill_threshold_met`` (the explicit all-in gate)
-    + the optional ``cooldown_window`` / ``spike_timing`` blocks. Slim leaf
+    + the optional ``cc_threat`` / ``spike_timing`` blocks. Slim leaf
     persists ONLY reader-consumed fields - the derived ``my_can_full_combo`` /
     ``manaless`` / ``sequence`` stay dropped."""
     cell = {
@@ -701,8 +738,8 @@ def _cell_from_result(
     }
     if economy is not None:
         cell["economy"] = economy
-    if cooldown_window is not None:
-        cell["cooldown_window"] = cooldown_window
+    if cc_threat is not None:
+        cell["cc_threat"] = cc_threat
     if spike_timing is not None:
         cell["spike_timing"] = spike_timing
     return cell
@@ -727,7 +764,7 @@ def compute_cell(
     supplied, the curated build-order ids for that item-state are resolved
     (build_for_item_state) and threaded into BOTH sides (the enemy mirrors my
     item-state - the existing _matchup symmetry rule). The returned dict is the
-    persisted v4 leaf shape (incl. the cooldown_window + spike_timing blocks).
+    persisted v4 leaf shape (incl. the cc_threat + spike_timing blocks).
     """
     level = level_for_band(band)
     if not item_ids and item_state != "none":
@@ -738,9 +775,9 @@ def compute_cell(
     )
     result = _matchup(snapshot, my_champion, enemy, level, seq, cd_state, mode, item_ids)
     economy = economy_cell(band, mana_state, mode=mode, manaless=manaless)
-    cw = cooldown_window_cell(
+    cw = cc_threat_cell(
         snapshot, my_champion, level, item_ids, cd_state, mode,
-        _enemy_cooldown_card(enemy),
+        _enemy_cc_threat_card(enemy),
     )
     spike = spike_timing_cell(my_champion, band, item_state, item_ids, mode)
     return _cell_from_result(result, economy, cw, spike)
@@ -790,7 +827,7 @@ def generate_table(
 
     def _enemy_card(enemy: str):
         if enemy not in enemy_cd_cache:
-            enemy_cd_cache[enemy] = _enemy_cooldown_card(enemy)
+            enemy_cd_cache[enemy] = _enemy_cc_threat_card(enemy)
         return enemy_cd_cache[enemy]
 
     def _spike(champ: str, band: str, item_state: str) -> dict:
@@ -829,7 +866,7 @@ def generate_table(
                                 economy = economy_cell(
                                     band, mana, mode=mode, manaless=manaless,
                                 )
-                                cw = cooldown_window_cell(
+                                cw = cc_threat_cell(
                                     snapshot, my, level, ids, cd, mode, card,
                                 )
                                 per_item[istate] = _cell_from_result(

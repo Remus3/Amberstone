@@ -121,8 +121,11 @@ class EngineModeTests(unittest.TestCase):
     def test_arena_via_cherry(self):
         self.assertEqual(am._engine_mode({"game_mode": "CHERRY"}), "ARENA")
 
-    def test_brawl(self):
-        self.assertEqual(am._engine_mode({"game_mode": "BRAWL"}), "BRAWL")
+    def test_riot_brawl_is_excluded(self):
+        # Riot compliance 2026-08-11 - INVERTED from test_brawl. The old case
+        # asserted BRAWL -> "BRAWL"; Riot bans aggregating Brawl data, so the
+        # engine-mode resolver now returns "" (no engine mode) for it.
+        self.assertEqual(am._engine_mode({"game_mode": "BRAWL"}), "")
 
 
 class ComputeNudgeNoSignalTests(unittest.TestCase):

@@ -21,9 +21,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 MAIN_JS = REPO / "web" / "js" / "main.js"
 
+# Riot compliance 2026-08-11: "summoner_cooldowns" was REMOVED from this tuple
+# with the cooldown ledger it fed. The key still ships on /api/state as a
+# permanent null so consumers degrade, but nothing stamps it into state.latest
+# any more and nothing may. See docs/OVERLAY_COMPLIANCE_PLAN.md.
 _SIBLINGS = (
     "liveclient",
-    "summoner_cooldowns",
     "coach",
     "lead_projection",
     "callouts",

@@ -61,7 +61,6 @@ def _gather_get() -> list:
                                routes_cc_conditional_pressure,
                                routes_cc_pairing,
                                routes_peel_priority,
-                               routes_cooldown_watch,
                                routes_ops_panels,
                                routes_ds_combo, routes_ds_knobs,
                                routes_ds_shape,
@@ -120,7 +119,6 @@ def _gather_get() -> list:
                       + list(routes_cc_conditional_pressure.GET_ROUTES)
                       + list(routes_cc_pairing.GET_ROUTES)
                       + list(routes_peel_priority.GET_ROUTES)
-                      + list(routes_cooldown_watch.GET_ROUTES)
                       + list(routes_ops_panels.GET_ROUTES)
                       + list(routes_ds_combo.GET_ROUTES)
                       + list(routes_ds_knobs.GET_ROUTES)

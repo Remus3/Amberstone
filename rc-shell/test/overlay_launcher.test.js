@@ -130,14 +130,14 @@ test("LAUNCHER is a control widget, never a panel (excluded from WIDGETS)", () =
   assert.strictEqual(inPanels, false, "launcher must NOT appear in the panel list");
 });
 
-// w-threat (the enemy CD ledger) was removed 2026-07-05 (Live Client exposes no
-// cooldowns); the "spell panel is a click-through zone" contract now rides on
-// w-enemyspells (the enemy summoner-spell tap-tracker, interactive while playing).
-test("the enemy-spells panel (w-enemyspells) is flagged as a click-through zone", () => {
+// Riot compliance 2026-08-11: w-enemyspells (the enemy summoner-spell
+// tap-tracker) was removed, and with it the "spell panel is a click-through
+// zone" contract. w-threat (the enemy CD ledger) had already gone 2026-07-05.
+// Neither may come back - Riot bans tracking enemy summoner-spell cooldowns.
+test("no enemy summoner-spell or cooldown widget is registered (Riot compliance)", () => {
   const I = mod._internals;
-  const spells = I.WIDGETS.find((w) => w.id === "w-enemyspells");
-  assert.ok(spells, "w-enemyspells widget exists");
-  assert.strictEqual(spells.zone, true, "w-enemyspells must be a zone (interactive while playing)");
+  const banned = I.WIDGETS.filter((w) => w.id === "w-enemyspells" || w.id === "w-threat" || w.id === "w-spike");
+  assert.deepStrictEqual(banned, [], "w-enemyspells / w-threat / w-spike must stay removed");
 });
 
 // --- _setHidden / _toggleHidden: bidirectional show/hide for the menu ---------

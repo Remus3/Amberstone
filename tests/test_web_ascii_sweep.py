@@ -220,7 +220,29 @@ _WEB = _REPO_ROOT / "web"
 # Verified before re-pinning rather than assumed: the digest at HEAD
 # reproduces the superseded value byte for byte, so this is the only
 # legitimate successor.
-_LIVE_HALF_DIGEST = "213e62be428554f7364c11af65cd811afbd76dbe0ec71c48ad5b362ee37472c1"
+# RE-CAPTURED 2026-08-11 (Riot compliance removals), superseding the capture
+# immediately above. NOT the ordinary case - the web/ source set SHRANK, which
+# is why the digest moved. Seven files were deleted outright:
+#   D web/js/panels/enemy_spells.js          enemy summoner-spell tap-tracker
+#   D web/js/panels/enemy_spells_abbr.test.mjs
+#   D web/js/panels/enemy_spells_timer.test.mjs
+#   D web/js/panels/spike_cue.js             ultimate power-spike cue
+#   D web/js/panels/spike_cue.test.mjs
+#   D web/css/panels/spike_cue.css
+#   D web/css/panels/cd_ledger.css           summoner + ultimate cooldown ledger
+#   D web/js/panels/cd_ledger.js
+# and five more differ in their live half, all from the same removals:
+#   M web/index.html            the three pane / cue mounts stripped
+#   M web/css/overlay.css       the .cd-* / .ovx-enemyspells / w-spike rules
+#   M web/css/dashboard.css     two dropped @import lines
+#   M web/js/main.js            imports, render dispatch, cooldown threading
+#   M web/js/panels/active_match.js  the CD ledger import + dispatch
+# Riot's third-party rules ban tracking enemy summoner-spell cooldowns,
+# ultimate timers, and power-spike notifications. See
+# docs/OVERLAY_COMPLIANCE_PLAN.md. Verified the same way as the capture above:
+# the superseded digest reproduces byte for byte in a clean HEAD worktree, so
+# nothing else moved the value.
+_LIVE_HALF_DIGEST = "d1ea589cbb9f90b6298061dd7b00a105eabbb9577b934f14b20b8f74c04c59e2"
 
 
 def _web_sources() -> list[Path]:
