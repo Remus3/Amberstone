@@ -34,7 +34,11 @@ CSS_DIR = REPO / "web" / "css"
 
 # Measured 2026-07-28. A change here means the grid gained or lost a child and
 # the dispositions below must be re-read, not silently re-baselined.
-EXPECTED_DIRECT_CHILDREN = 13
+# Re-baselined 13 -> 10 on 2026-08-11: Riot compliance removed three am-grid
+# children - #am-spike-cue (power-spike notification), #am-enemyspells (enemy
+# summoner-spell cooldown tracker) and .am-pane-cd (the summoner + ultimate
+# cooldown ledger). Dispositions below were re-read, not silently rebased.
+EXPECTED_DIRECT_CHILDREN = 10
 
 _VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input",
          "link", "meta", "param", "source", "track", "wbr"}

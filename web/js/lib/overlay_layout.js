@@ -70,13 +70,11 @@ const WIDGETS = [
   // long as w-build anchors there, so the cue moves to the free strip between
   // the ability bar and the minimap - still low + near the eye, still out of
   // the champion / ability-bar lane.
-  { id: "w-spike", sel: "#am-spike-cue", x: 1276, y: 790, tier: "urgent", label: "Spike Cue" },
   // Operator 2026-06-28: the enemy summoner-spell tap-tracker (zone -> tappable
   // mid-game) + the API-backed HP/mana/stats mini-panel. Both overlay-only.
   // 2026-07-27 collision sweep: (1500,120) ran its 280x~210 box into the ARAM
   // balance grid's top edge (y 290) and into w-objgauges. Moving it up + left
   // keeps the upper-right urgent anchor while clearing both.
-  { id: "w-enemyspells", sel: "#am-enemyspells", x: 1340, y: 60, tier: "urgent", label: "Enemy Spells", zone: true },
   // 2026-07-27 collision sweep: (40,250) is unusable. The 240px-wide panel
   // cannot clear w-call (180..390 x) on either side inside the 482px left
   // gutter, and its bottom ran into w-build. The peripheral upper-right edge is

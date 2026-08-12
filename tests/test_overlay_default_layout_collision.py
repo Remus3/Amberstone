@@ -80,7 +80,6 @@ NATURAL_H = {
     "w-spike": 60,
     # ESTIMATE - overlay.css:469-474 documents 5 enemy rows that must each fit
     # on ONE line; 5 rows plus a head at the overlay row metric.
-    "w-enemyspells": 210,
     # ESTIMATE - selection row + source badge + bracket + column head + 5 metric
     # rows (overlay.css:943-1014 enumerates exactly these parts).
     "w-stats": 240,
@@ -207,7 +206,9 @@ class DefaultLayoutCollision(unittest.TestCase):
     def test_registry_parsed(self):
         # Cheap canary: a registry edit that breaks the regex must not silently
         # turn this whole guard into a no-op.
-        self.assertGreaterEqual(len(self.boxes), 12)
+        # Floor dropped 12 -> 10 on 2026-08-11 when Riot compliance removed
+        # w-enemyspells + w-spike from the registry (13 widgets -> 11).
+        self.assertGreaterEqual(len(self.boxes), 10)
         self.assertIn("w-build", self.boxes)
         self.assertIn("w-ovds", self.boxes)
         self.assertIn("w-launcher", self.boxes)

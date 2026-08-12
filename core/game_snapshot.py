@@ -67,9 +67,32 @@ MODE_TFT    = "TFT"
 MODE_ARENA  = "ARENA"
 MODE_BRAWL  = "BRAWL"
 MODE_JADE   = "JADE"
+# Riot compliance 2026-08-11: a mode RC is FORBIDDEN to coach or aggregate.
+# Riot's third-party rules bar data aggregation and display for Riot's own
+# Brawl mode and for League Classic. MODE_UNSUPPORTED is deliberately absent
+# from core/coach_registry.MODE_COACH_MAP so no coach can load for it.
+MODE_UNSUPPORTED = "UNSUPPORTED"
 
 # All valid mode strings
-ALL_MODES = (MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL, MODE_JADE)
+ALL_MODES = (MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL,
+             MODE_JADE, MODE_UNSUPPORTED)
+
+# Riot game_mode tokens RC must never coach or aggregate. Matched as exact
+# values or as a prefix, so a versioned token (BRAWL_2026 etc) is caught too.
+# NOTE the NAME COLLISION: RC's own MODE_BRAWL predates Riot's Brawl mode and
+# covers the ROTATING modes (URF / ARURF / NEXUSBLITZ / ONEFORALL / GAMEMODEX).
+# It has never meant Riot Brawl. Do not "reconcile" the two.
+FORBIDDEN_GAME_MODES = ("BRAWL", "CLASSIC_LEAGUE", "LEAGUECLASSIC")
+
+
+def is_forbidden_game_mode(game_mode: str | None) -> bool:
+    """True when a Riot game_mode string names a mode RC may not touch.
+
+    Riot compliance 2026-08-11 - see docs/OVERLAY_COMPLIANCE_PLAN.md. Callers
+    must skip aggregation, coaching and display entirely, not degrade to SR.
+    """
+    gm = (game_mode or "").upper()
+    return any(gm == f or gm.startswith(f) for f in FORBIDDEN_GAME_MODES)
 
 
 def mode_from_game_mode_string(game_mode: str) -> str:
@@ -83,6 +106,12 @@ def mode_from_game_mode_string(game_mode: str) -> str:
     Defaults to MODE_SR for any unrecognised value.
     """
     gm = (game_mode or "").upper()
+    # Riot compliance 2026-08-11: FIRST branch, ahead of every other match, so
+    # a forbidden mode can never fall through to the MODE_SR default and get
+    # coached + aggregated as a normal game (which is exactly what happened
+    # before this gate existed - "BRAWL" matched no branch and defaulted to SR).
+    if is_forbidden_game_mode(gm):
+        return MODE_UNSUPPORTED
     if "TFT" in gm:
         return MODE_TFT
     # KIWI = ARAM Mayhem (Riot internal code name), ODIN = Dominion-era ARAM variant

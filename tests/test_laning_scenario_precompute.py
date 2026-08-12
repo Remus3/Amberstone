@@ -235,7 +235,7 @@ class EngineCharacterizationTests(unittest.TestCase):
                                 # v4 blocks present on every leaf.
                                 self.assertIn("kill_threshold_met", cell)
                                 self.assertIsInstance(cell["kill_threshold_met"], bool)
-                                self.assertIn("cooldown_window", cell)
+                                self.assertIn("cc_threat", cell)
                                 self.assertIn("spike_timing", cell)
                                 leaves += 1
         # 2 champs x 2 enemies x [L6: 2 mana x 2 cd x 2 item + L11: 2x2x3] =

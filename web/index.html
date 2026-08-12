@@ -2166,20 +2166,20 @@
         <span class="view-section-sub" id="am-sub">scaffold · waiting for in-game data</span>
       </div>
       <div class="view-section-body am-grid">
-        <!-- RC Overlay Doctrine w-trinket + w-spike: movable position-fixed cue
-             widgets. Mounted as direct am-grid children (NOT inside a pane) so
-             overlay_layout.js can lift them to position:fixed - a fixed child of
+        <!-- RC Overlay Doctrine w-trinket: movable position-fixed cue widget.
+             Mounted as a direct am-grid child (NOT inside a pane) so
+             overlay_layout.js can lift it to position:fixed - a fixed child of
              a transformed .ovx-widget pane would be trapped + clipped. Overlay-
              only + data-gated (hidden until actionable); display:none on the 1920
-             dashboard so they never take a grid cell there. -->
+             dashboard so it never takes a grid cell there.
+             Riot compliance 2026-08-11: the w-spike cue mount and the
+             w-enemyspells tap-tracker mount were REMOVED (banned power-spike
+             notification / enemy summoner-spell cooldown tracking). Do not
+             reinstate; see docs/OVERLAY_COMPLIANCE_PLAN.md. -->
         <div class="ward-cue" id="am-ward-cue" hidden></div>
-        <div class="spike-cue" id="am-spike-cue" hidden></div>
-        <!-- w-enemyspells (2026-06-28): manual enemy summoner-spell tap-tracker
-             (panels/enemy_spells.js). A click-through zone so taps land mid-game.
-             w-statspanel: You-vs-benchmark LVL/CS/TF/KDA mini-panel (panels/
-             stats_panel.js). Both overlay-only am-grid children, lifted to
+        <!-- w-statspanel: You-vs-benchmark LVL/CS/TF/KDA mini-panel (panels/
+             stats_panel.js). Overlay-only am-grid child, lifted to
              position:fixed. -->
-        <div class="ovx-enemyspells" id="am-enemyspells" hidden></div>
         <div class="ovx-statspanel" id="am-statspanel" hidden></div>
         <!-- OQ16 (OQ3 variant A): peripheral objective gauge cluster - 2x2
              ring dials (DRAKE/BARON/ELDER/SUMMS) with exact ETA centers
@@ -2288,14 +2288,10 @@
             <div class="am-empty">Static mode map + ZOI/threat overlay will render here mid-game.</div>
           </div>
         </div>
-        <div class="am-pane am-pane-cd">
-          <div class="am-pane-head" id="cd-ledger-head">
-            <span class="cd-chev">-</span>
-          </div>
-          <div class="am-pane-body" id="cd-ledger-body">
-            <div class="cd-empty">no live game</div>
-          </div>
-        </div>
+        <!-- Riot compliance 2026-08-11: the am-pane-cd summoner + ultimate
+             cooldown ledger was REMOVED (banned enemy summoner-spell cooldown
+             tracking + banned ultimate timers). Do not reinstate the pane or
+             its mounts; see docs/OVERLAY_COMPLIANCE_PLAN.md. -->
       </div>
     </section>
 

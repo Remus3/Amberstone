@@ -281,13 +281,19 @@ class Coach(BaseCoach):
     # modes' item pools. Engine mode follows the same split: 'BRAWL'
     # becomes engine identity-mode (no aram_modifiers) which is correct
     # because Brawl doesn't have aramAttackSpeed-style tweaks.
+    # Riot compliance 2026-08-11: both splits USED to test `"BRAWL" in
+    # game_mode_upper`, which matched ONLY Riot's own Brawl mode - the one mode
+    # RC may not coach. Forbidden modes are stopped upstream (MODE_UNSUPPORTED
+    # in core.game_snapshot), so these now always take the SR arm and the DDragon
+    # map-35 brawl arm is dead by design. Do not restore the substring test; see
+    # docs/OVERLAY_COMPLIANCE_PLAN.md.
     @staticmethod
     def _ds_resolver_mode(game_mode_upper: str) -> str:
-        return "brawl" if "BRAWL" in (game_mode_upper or "") else "sr"
+        return "sr"
 
     @staticmethod
     def _ds_engine_mode(game_mode_upper: str) -> str:
-        return "BRAWL" if "BRAWL" in (game_mode_upper or "") else "SR"
+        return "SR"
 
     # -- Target-bonus-HP estimator (s75 - Phase 4 batch 19 wire-in) ----------
 

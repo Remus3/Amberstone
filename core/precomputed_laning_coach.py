@@ -85,14 +85,17 @@ _RECALL_LABELS: dict[str, str] = {
     "back_soon": "Back soon",
 }
 
-# v4 (Lane A) additive chips. The cooldown-window block surfaces a punish-window
-# chip ("their key CC is down - your combo is up"); the spike-timing block
+# v4 (Lane A) additive chips. The cc-threat block surfaces a punish-window chip
+# ("bait their key CC, then your combo"); the spike-timing block
 # surfaces a play-for-spike chip. Both are OPTIONAL + additive (absent block ->
 # no chip; the verdict-as-"even" filler never emits) so the v3 A/B trade chips
-# are unchanged. Keyed on the block's pure derived verdict (window_verdict /
+# are unchanged. Keyed on the block's pure derived verdict (threat_verdict /
 # spike_verdict in core.laning_scenario_precompute).
-_WINDOW_LABELS: dict[str, str] = {
-    "punish_now": "Punish - their {spell} is down",
+# Riot compliance 2026-08-11: renamed from _WINDOW_LABELS, and the punish label
+# no longer claims the enemy ability "is down" - that asserted knowledge of an
+# enemy cooldown. It now describes baiting the CC out, which is a kit fact.
+_THREAT_LABELS: dict[str, str] = {
+    "punish_now": "Bait their {spell}, then commit",
     "wait_cd": "Wait for your ult cooldown",
 }
 _SPIKE_LABELS: dict[str, str] = {
@@ -344,29 +347,35 @@ def _recall_outcome(economy: dict, next_item: Optional[Tuple[str, int]]) -> str:
     return f"{gold_s} banked; next spike {spike}"
 
 
-def _window_chip(cell: dict, trigger: str) -> Optional[CoachChoice]:
-    """Optional cooldown-window chip from the v4 ``cooldown_window`` block.
+def _threat_chip(cell: dict, trigger: str) -> Optional[CoachChoice]:
+    """Optional CC-threat chip from the v4 ``cc_threat`` block.
 
-    Emits a chip only for an ACTIONABLE window_verdict (punish_now / wait_cd);
-    the ``even`` filler (no enemy threat spell) emits nothing. A v3 cell has no
-    cooldown_window block -> None. Pure + fail-soft (never raises)."""
-    cw = cell.get("cooldown_window") if isinstance(cell.get("cooldown_window"), dict) else None
-    if not cw:
+    Riot compliance 2026-08-11: RENAMED from ``_window_chip`` and rewritten. The
+    old chip rendered "their {spell} cd ~{N}s" - an enemy ability cooldown, which
+    Riot's third-party rules ban. The chip now states the CC threat and the
+    resulting play, and carries no enemy cooldown at all. Do not put one back;
+    see docs/OVERLAY_COMPLIANCE_PLAN.md.
+
+    Emits a chip only for an ACTIONABLE threat_verdict (punish_now / wait_cd);
+    the ``even`` filler (no enemy CC) emits nothing. A v3 cell has no cc_threat
+    block -> None. Pure + fail-soft (never raises)."""
+    ct = cell.get("cc_threat") if isinstance(cell.get("cc_threat"), dict) else None
+    if not ct:
         return None
-    wv = str(cw.get("window_verdict") or "")
-    tpl = _WINDOW_LABELS.get(wv)
+    tv = str(ct.get("threat_verdict") or "")
+    tpl = _THREAT_LABELS.get(tv)
     if not tpl:
         return None
-    spell = str(cw.get("enemy_threat_spell") or "ability")
+    spell = str(ct.get("enemy_threat_spell") or "ability")
     try:
-        cd_s = float(cw.get("enemy_cd_s"))
+        cc_s = float(ct.get("enemy_cc_s"))
     except (TypeError, ValueError):
-        cd_s = 0.0
+        cc_s = 0.0
     return CoachChoice(
         key="C",
         label=tpl.format(spell=spell),
-        expected_outcome=(f"their {spell} cd ~{cd_s:.0f}s; your ult is your window"
-                          if wv == "punish_now" else "hold until your ult is back"),
+        expected_outcome=(f"their {spell} locks you for ~{cc_s:.2f}s; bait it, then your ult"
+                          if tv == "punish_now" else "hold until your ult is back"),
         confidence="mid",
         source_tag=SOURCE_TAG,
         trigger=trigger,
@@ -461,7 +470,7 @@ def _build_choices(
     # punish-window is more time-sensitive than the spike note, so it wins when
     # both are actionable; absent / even blocks add nothing (the v3 A/B chips
     # are unchanged). _MAX_CHOICES (coach_choices) is 3, so at most one extra.
-    extra = _window_chip(cell, trigger) or _spike_chip(cell, trigger)
+    extra = _threat_chip(cell, trigger) or _spike_chip(cell, trigger)
     if extra is not None:
         out.append(extra)
     return out
@@ -613,7 +622,7 @@ def precomputed_choices(
 
     Resolves the band / mana-state / cd-state / item-state from the live inputs,
     looks the cell up in the HZ-A table (``payload`` overrides for tests), and
-    shapes the A/B choices. v4: the optional ``cooldown_window`` / ``spike_timing``
+    shapes the A/B choices. v4: the optional ``cc_threat`` / ``spike_timing``
     blocks add additive chips when present (absent -> no extra chip; the v3 A/B
     trade chips are unchanged). Returns ``[]`` fail-soft on a missing table or
     uncovered cell."""

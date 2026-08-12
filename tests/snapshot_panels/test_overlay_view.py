@@ -141,8 +141,8 @@ def test_overlay_shell_is_widget_field(mock_server, pw_browser):
         # The map pane never paints on the HUD; the CD ledger (w-threat) was
         # removed 2026-07-05 (Live Client exposes no cooldowns) so it hides too.
         assert _display(page, ".am-pane-map") == "none", "map pane should hide"
-        assert _display(page, "#view-active-match .am-pane-cd") == "none", (
-            "the removed CD ledger (w-threat) must not paint"
+        assert page.locator("#view-active-match .am-pane-cd").count() == 0, (
+            "the CD ledger pane must stay removed (Riot compliance)"
         )
 
         # Header / footer / every other view is display:none.
@@ -402,50 +402,23 @@ def test_overlay_combat_mode_declutter(mock_server, pw_browser):
     assert not errors, f"JS errors [combat declutter]: {errors[:3]}"
 
 
-def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browser):
-    """RC Overlay Doctrine w-spike: the spike-crossed cue is registered as a
-    movable, position-fixed .ovx-widget field mount at its eye-line default
-    (w-spike 1276,790 - the low strip between the ability bar and the minimap;
-    it moved off the old 360,840 bottom-left anchor on 2026-07-27 because that
-    sat inside w-build's box, see tests/test_overlay_default_layout_collision.py).
-    It sits as a direct
-    am-grid child (NOT inside a transformed .ovx-widget pane) so position:fixed is
-    viewport-relative, not trapped + clipped by a pane's transform containing block.
-    (w-trinket / Ward Cue was removed 2026-07-05: Live Client has no cooldowns, so
-    the ward-ready cue could not turn off.)"""
+def test_overlay_has_no_banned_cue_mounts(mock_server, pw_browser):
+    """Riot compliance 2026-08-11: the spike-crossed cue (#am-spike-cue / w-spike)
+    and the enemy summoner-spell tap-tracker (#am-enemyspells / w-enemyspells) were
+    removed. Riot's third-party rules ban notifications that a power spike has hit
+    and any tracking of enemy summoner-spell cooldowns, so neither mount may exist
+    in the rendered overlay. This test replaces the old movable-field-mount contract
+    for those two widgets; see docs/OVERLAY_COMPLIANCE_PLAN.md."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
-        for sel, wid, left in (
-            ("#am-spike-cue", "w-spike", "1276px"),
-        ):
-            assert page.eval_on_selector(
-                sel, "e => e.classList.contains('ovx-widget')"
-            ), f"{sel} is not an .ovx-widget"
-            assert page.eval_on_selector(sel, "e => e.dataset.ovxId") == wid
-            assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
-            assert _css(page, sel, "left") == left, (
-                f"{sel} not at its eye-line default ({left})"
+        for sel in ("#am-spike-cue", "#am-enemyspells"):
+            assert page.locator(sel).count() == 0, (
+                f"{sel} must stay removed (Riot compliance)"
             )
-            parent = page.eval_on_selector(sel, "e => e.parentElement.className")
-            assert "am-grid" in parent, (
-                f"{sel} must mount in am-grid, not a transformed pane (got {parent!r})"
-            )
-        # data-gated (hidden until actionable in the empty-SSE mock): force-show
-        # the spike cue and confirm it lands at its viewport-fixed default x ~= 1276
-        # (a transform-trapped fixed child would be offset by the pane's position).
-        page.evaluate(
-            "() => { const s = document.getElementById('am-spike-cue');"
-            "  s.hidden = false;"
-            "  s.innerHTML = '<span class=\"spike-chip\">ULT ONLINE</span>'; }"
-        )
-        box = page.locator("#am-spike-cue").bounding_box()
-        assert box is not None and abs(box["x"] - 1276) < 6, (
-            f"spike cue not viewport-fixed at x~1276 (trapped?): {box and box['x']}"
-        )
     finally:
         page.close()
         ctx.close()
-    assert not errors, f"JS errors [new cue widgets]: {errors[:3]}"
+    assert not errors, f"JS errors [banned cue mounts]: {errors[:3]}"
 
 
 def test_overlay_minimap_rect_is_clickthrough_outline_widget(mock_server, pw_browser):
@@ -930,8 +903,8 @@ def test_all_panels_visible_by_default(mock_server, pw_browser):
         # The map pane still never paints on the HUD (not part of the field);
         # the CD ledger (w-threat) was removed 2026-07-05 so it hides too.
         assert _display(page, ".am-pane-map") == "none", "map pane should stay hidden"
-        assert _display(page, "#view-active-match .am-pane-cd") == "none", (
-            "the removed CD ledger (w-threat) must not paint"
+        assert page.locator("#view-active-match .am-pane-cd").count() == 0, (
+            "the CD ledger pane must stay removed (Riot compliance)"
         )
         SCREENSHOTS.mkdir(exist_ok=True)
         page.screenshot(path=str(SCREENSHOTS / "overlay_sr_all_panels.png"))
