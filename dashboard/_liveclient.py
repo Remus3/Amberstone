@@ -178,7 +178,6 @@ def liveclient_summary() -> dict:
         ally_team: list = []
         enemy_item_ids: list = []
         ally_item_ids: list = []
-        enemy_spells: list = []
         if me_pl:
             s = me_pl.get("scores") or {}
             out["kda"] = f'{s.get("kills",0)}/{s.get("deaths",0)}/{s.get("assists",0)}'
@@ -226,22 +225,12 @@ def liveclient_summary() -> dict:
             ally_item_ids = [str(it.get("itemID", "")) for p in all_players
                              if p.get("team") and p.get("team") == my_team
                              for it in (p.get("items") or [])]
-            # Slice 4 (2026-06-28): per-enemy summoner spells for the overlay spell
-            # tap-tracker. allPlayers[].summonerSpells is PUBLIC scoreboard data
-            # (names only - the API exposes NO live cooldown, hence the MANUAL
-            # tap-to-count-down tracker). Each entry: champion + its two spell
-            # display names (Flash / Barrier / ...).
-            enemy_spells = [
-                {
-                    "champion": p.get("championName", ""),
-                    "spells": [
-                        ((p.get("summonerSpells") or {}).get("summonerSpellOne") or {}).get("displayName", ""),
-                        ((p.get("summonerSpells") or {}).get("summonerSpellTwo") or {}).get("displayName", ""),
-                    ],
-                }
-                for p in all_players
-                if p.get("team") and p.get("team") != my_team
-            ]
+            # Riot compliance 2026-08-11: the per-enemy summoner-spell producer
+            # (slice 4, 2026-06-28) was REMOVED here along with its overlay
+            # tap-tracker. Riot's third-party rules ban tracking enemy summoner
+            # spell cooldowns, and a manual tap-to-count-down tracker is still an
+            # enemy cooldown timer. Do not reinstate the enemy_spells key; see
+            # docs/OVERLAY_COMPLIANCE_PLAN.md.
             # Per-player position + creep_score slice consumed by
             # _adaptation_latch.compute() to derive csd_at_15 (SR only).
             # is_active flags the operator's own row so the latch can find
@@ -289,7 +278,6 @@ def liveclient_summary() -> dict:
         out["ward_cue"] = compute_ward_cue(me_pl.get("items") if me_pl else None)
         out["enemy_team"]  = enemy_team
         out["ally_team"]   = ally_team
-        out["enemy_spells"] = enemy_spells
         out["enemy_item_ids"] = enemy_item_ids
         out["ally_item_ids"]  = ally_item_ids
         # RM-02 (2026-07-17): raw-ish allPlayers roster + activePlayer identity

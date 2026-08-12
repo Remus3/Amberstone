@@ -39,8 +39,6 @@ import { renderAramBalance } from './panels/aram_balance.js';
 import { renderOverlayDsControls } from './panels/overlay_ds_controls.js';
 // QA1: overlay-only trinket/control-ward READY glyph cue. Self-gates on
 // body[data-shell="overlay"]; a cheap no-op on the 1920 dashboard.
-import { renderSpikeCue } from './panels/spike_cue.js';
-import { renderEnemySpells } from './panels/enemy_spells.js';
 import { renderStatsPanel } from './panels/stats_panel.js';
 import { renderMinimapRect } from './panels/minimap_rect.js';
 // ZOI w-mmrect fill (item 567 slice 3): the influence shading INSIDE the box.
@@ -810,7 +808,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           mode: _amMockData.mode || "sr",
           lcuPhase: _amMockData.phase || "InProgress",
           liveclient: _amMockData.liveclient || null,
-          cooldowns: _amMockData.summoner_cooldowns || null,
         });
         // HZ-D1 Phase 4: same mock envelope feeds the overlay-only DS
         // fight-model pane (no-op unless body[data-shell="overlay"]).
@@ -1410,13 +1407,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           mode: _amMockData.mode || "sr",
           lcuPhase: _amMockData.phase || "InProgress",
           liveclient: _amMockData.liveclient || null,
-          cooldowns: _amMockData.summoner_cooldowns || null,
         });
         // HZ-D1 Phase 4: overlay-only DS fight-model pane rides the
         // same dispatch (self-gated on body[data-shell="overlay"]).
         renderOverlayDsControls(_amMockData.coach || {}, { mode: _amMockData.mode || "sr" });
-        renderSpikeCue(_amMockData.liveclient || null);
-        renderEnemySpells(_amMockData.liveclient || null);
         renderStatsPanel(_amMockData.liveclient || null, { mode: _amMockData.mode || "sr" });
         renderMinimapRect(_amMockData.minimap_rect || null);
         renderMinimapZoi(_amMockData.zoi || null);
@@ -1427,7 +1421,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         renderObjectiveGauges({
           mode: _amMockData.mode || "sr",
           liveclient: _amMockData.liveclient || null,
-          cooldowns: _amMockData.summoner_cooldowns || null,
         });
         // NEXT BUY rule lines ride the ui_mock dispatch too; the widget
         // self-hides when the mock liveclient carries no sr_items / gold.
@@ -1442,7 +1435,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         });
       } else {
         _amMockLoad();  // .then re-fires render on landing
-        renderActiveMatch({}, { mode: "", lcuPhase: "", liveclient: null, cooldowns: null });
+        renderActiveMatch({}, { mode: "", lcuPhase: "", liveclient: null });
       }
     } else {
       renderActiveMatch(p, {
@@ -1453,11 +1446,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // sourced from /api/damage-mix. Null-safe; renderActiveMatch
         // skips the THREATS strip when liveclient is missing/empty.
         liveclient: (state.latest && state.latest.liveclient) || null,
-        // UX-3 (2026-05-20): thread the summoner_cooldowns array (or null)
-        // so the active_match view's right-rail CD ledger picks it up.
-        // Computed backend-side in dashboard/_state_cooldowns.py + sorted
-        // by next-up ascending in core/summoner_cooldowns.compute_cooldowns.
-        cooldowns: (state.latest && state.latest.summoner_cooldowns) || null,
       });
       // ARAM balance-adjustment grid (aram_balance.js): renders Riot's
       // per-champion ARAM modifiers for self + ally + enemy. Self-gated
@@ -1472,15 +1460,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // Self-gated on body[data-shell="overlay"] - no-op on the 1920
       // dashboard.
       renderOverlayDsControls(p, { mode: state.mode });
-      // Slice 4 / 4b (2026-06-28): enemy summoner-spell tap-tracker + the
-      // API-backed stats mini-panel ride the same overlay-gated dispatch off the
-      // live block. Both self-gate on body[data-shell="overlay"] - no-op on 1920.
-      renderEnemySpells((state.latest && state.latest.liveclient) || null);
+      // Slice 4b (2026-06-28): the API-backed stats mini-panel rides the
+      // overlay-gated dispatch off the live block. Self-gates on
+      // body[data-shell="overlay"] - no-op on 1920.
+      // Riot compliance 2026-08-11: the enemy summoner-spell tap-tracker and the
+      // ultimate power-spike cue were REMOVED here. Riot's third-party rules ban
+      // tracking enemy summoner-spell cooldowns and any notification that a power
+      // spike has hit. Do not reinstate either; see docs/OVERLAY_COMPLIANCE_PLAN.md.
       renderStatsPanel((state.latest && state.latest.liveclient) || null, { mode: state.mode });
-      // RC Overlay Doctrine w-spike: the ultimate power-spike crossed cue rides
-      // the same overlay-gated dispatch off the live level (lc.level). One-shot
-      // + transient; null-safe; no-op out of game / off the overlay shell.
-      renderSpikeCue((state.latest && state.latest.liveclient) || null);
       // RC Overlay Doctrine w-mmrect (ZOI foundation): the settings-driven
       // minimap outline box rides the same overlay-gated dispatch off the
       // top-level minimap_rect (game.cfg-derived). Null-safe; hides off the
@@ -1494,12 +1481,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // (lc.objective_events + lc.game_time_s). Null-safe; hides when no respawn.
       renderObjectiveChips((state.latest && state.latest.liveclient) || null);
       // OQ16: peripheral objective gauge cluster rides the same overlay-gated
-      // dispatch off mode_key + the liveclient block + the summoner_cooldowns
-      // ledger. Null-safe; hides entirely outside a live SR game.
+      // dispatch off mode_key + the liveclient block. Null-safe; hides
+      // entirely outside a live SR game.
       renderObjectiveGauges({
         mode: state.mode,
         liveclient: (state.latest && state.latest.liveclient) || null,
-        cooldowns: (state.latest && state.latest.summoner_cooldowns) || null,
       });
       // NEXT BUY: gold-to-next-DS-item + the free trinket upgrade nudge, off
       // the same liveclient block (gold + sr_items + owned_items +
@@ -4138,7 +4124,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // fixture dispatcher (item 188, 2026-05-25). When body.dataset.uiMock
   // === "1" AND URL ?mode=<sr|aram|arena> is set, the renderActiveMatch
   // call-site short-circuits to /data/ui_mock/active_match_<mode>.json
-  // (full coach payload + liveclient block + summoner_cooldowns +
+  // (full coach payload + liveclient block +
   // forced phase=InProgress so the active_match.js isLive freshness gate
   // passes). Mirrors _csMockLoad (items 165 + 181) + _lmMockLoad
   // (item 183) + _lobbyMockLoad (item 163) patterns.
@@ -4179,7 +4165,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
               mode: _amMockData.mode || "sr",
               lcuPhase: _amMockData.phase || "InProgress",
               liveclient: _amMockData.liveclient || null,
-              cooldowns: _amMockData.summoner_cooldowns || null,
             });
             // HZ-D1 Phase 4: keep the overlay DS pane in step with the
             // mock landing re-fire (no-op outside the overlay shell).
@@ -6775,11 +6760,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           const coachPayload = st.coach || st;
           // 2026-05-25 item 201 fix: stamp the top-level /api/state
           // siblings into state.latest BEFORE onState() so renderActiveMatch
-          // sees fresh liveclient + summoner_cooldowns. Without this the
+          // sees fresh liveclient. Without this the
           // CDS rail rendered "no live game" mid-game and the threat-donut
           // strip got null liveclient.
           state.latest.liveclient = st.liveclient || null;
-          state.latest.summoner_cooldowns = st.summoner_cooldowns || null;
           // Item-378 tail (chip task_8a4ebe04): the W3A deterministic keys
           // are /api/state TOP-LEVEL siblings too; renderCoachChoices /
           // renderLead / renderCallouts read them off state.latest, so
@@ -6838,7 +6822,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           const coachPayload = st.coach || st;
           // 2026-05-25 item 201 fix: see HTTP-fallback site above.
           state.latest.liveclient = st.liveclient || null;
-          state.latest.summoner_cooldowns = st.summoner_cooldowns || null;
           // Item-378 tail: see HTTP-fallback site above.
           state.latest.coach = st.coach || null;
           state.latest.lead_projection = st.lead_projection || null;
@@ -6885,7 +6868,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           // independent LCU poller path also keeps state.latest fresh.
           if (st) {
             state.latest.liveclient = st.liveclient || null;
-            state.latest.summoner_cooldowns = st.summoner_cooldowns || null;
             // Item-378 tail: see HTTP-fallback site above.
             state.latest.coach = st.coach || null;
             state.latest.lead_projection = st.lead_projection || null;
@@ -7001,7 +6983,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             renderLead(st);
             renderCallouts(st);
             renderCoachChoices(st);
-            renderSpikeCue(st.liveclient || null);
           }
         }
       } catch (_) { /* silent */ }

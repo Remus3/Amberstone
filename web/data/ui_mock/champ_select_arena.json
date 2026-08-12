@@ -1,292 +1,292 @@
 {
-  "mock": true,
-  "note": "Arena (CHERRY / queue 1750) variant of the champ-select mock per docs/UI_SCALE_SPEC_V2.md page #10 (2026-05-25). Arena is 6 sub-teams x 2 players = 12 players total (the post-2v2v2v2 retirement state from s234/#89; the JS render at champ_select.js:2725 uses slice(0,3) so the cell layout can accommodate up to 3 per team for future flexibility, but live Arena ships 2 per team). Operator is at cell 4 (subteam 3 MY TEAM with 1 partner). Activated by ?ui_mock=1&mode=arena + #champ-select. Arena keeps [4,7] = Flash+Heal (revive frame; per item 169 don't-redo). Augments are empty scaffolds (champ-select pre-augment; augment_intent set later).",
-  "phase": "ChampSelect",
-  "champ_select": {
-    "queue_id": 1750,
-    "is_aram": false,
-    "phase": "FINALIZATION",
-    "sr_draft": false,
-    "my_cell_id": 4,
-    "my_champion": 222,
-    "my_completed": false,
-    "timer": {
-      "remaining_ms": 24000
-    },
-    "active_round": null,
-    "my_team": [
-      {
-        "cellId": 4,
-        "championId": 222,
-        "summonerName": "SamplePlayer",
-        "assignedPosition": "",
-        "completed": false,
-        "championPickIntent": 222,
-        "spell1Id": 4,
-        "spell2Id": 7
-      },
-      {
-        "cellId": 5,
-        "championId": 117,
-        "summonerName": "LuluEnjoyer",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 117,
-        "spell1Id": 4,
-        "spell2Id": 7
-      }
-    ],
-    "their_team": [
-      {
-        "cellId": 0,
-        "championId": 86,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 86
-      },
-      {
-        "cellId": 1,
-        "championId": 64,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 64
-      },
-      {
-        "cellId": 2,
-        "championId": 122,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 122
-      },
-      {
-        "cellId": 3,
-        "championId": 99,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 99
-      },
-      {
-        "cellId": 6,
-        "championId": 121,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 121
-      },
-      {
-        "cellId": 7,
-        "championId": 157,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 157
-      },
-      {
-        "cellId": 8,
-        "championId": 145,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 145
-      },
-      {
-        "cellId": 9,
-        "championId": 412,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 412
-      },
-      {
-        "cellId": 10,
-        "championId": 53,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 53
-      },
-      {
-        "cellId": 11,
-        "championId": 36,
-        "summonerName": "",
-        "assignedPosition": "",
-        "completed": true,
-        "championPickIntent": 36
-      }
-    ],
-    "arena_teams": [
-      {
-        "id": 1,
-        "name": "TEAM 1",
-        "is_me": false,
-        "cells": [
-          {
-            "cellId": 0,
-            "championId": 86
-          },
-          {
-            "cellId": 1,
-            "championId": 64
-          }
-        ]
-      },
-      {
-        "id": 2,
-        "name": "TEAM 2",
-        "is_me": false,
-        "cells": [
-          {
-            "cellId": 2,
-            "championId": 122
-          },
-          {
-            "cellId": 3,
-            "championId": 99
-          }
-        ]
-      },
-      {
-        "id": 3,
-        "name": "MY TEAM",
-        "is_me": true,
-        "cells": [
-          {
-            "cellId": 4,
-            "championId": 222
-          },
-          {
-            "cellId": 5,
-            "championId": 117
-          }
-        ]
-      },
-      {
-        "id": 4,
-        "name": "TEAM 4",
-        "is_me": false,
-        "cells": [
-          {
-            "cellId": 6,
-            "championId": 121
-          },
-          {
-            "cellId": 7,
-            "championId": 157
-          }
-        ]
-      },
-      {
-        "id": 5,
-        "name": "TEAM 5",
-        "is_me": false,
-        "cells": [
-          {
-            "cellId": 8,
-            "championId": 145
-          },
-          {
-            "cellId": 9,
-            "championId": 412
-          }
-        ]
-      },
-      {
-        "id": 6,
-        "name": "TEAM 6",
-        "is_me": false,
-        "cells": [
-          {
-            "cellId": 10,
-            "championId": 53
-          },
-          {
-            "cellId": 11,
-            "championId": 36
-          }
-        ]
-      }
-    ],
-    "augments": {
-      "my_slots": [
-        {
-          "tier": "silver",
-          "id": "",
-          "name": ""
-        },
-        {
-          "tier": "gold",
-          "id": "",
-          "name": ""
-        },
-        {
-          "tier": "prismatic",
-          "id": "",
-          "name": ""
-        }
-      ],
-      "options": [],
-      "current_round": "silver"
-    },
-    "local_cell": 4
+ "mock": true,
+ "note": "Arena (CHERRY / queue 1750) variant of the champ-select mock per docs/UI_SCALE_SPEC_V2.md page #10 (2026-05-25). Arena is 6 sub-teams x 2 players = 12 players total (the post-2v2v2v2 retirement state from s234/#89; the JS render at champ_select.js:2725 uses slice(0,3) so the cell layout can accommodate up to 3 per team for future flexibility, but live Arena ships 2 per team). Operator is at cell 4 (subteam 3 MY TEAM with 1 partner). Activated by ?ui_mock=1&mode=arena + #champ-select. Arena keeps [4,7] = Flash+Heal (revive frame; per item 169 don't-redo). Augments are empty scaffolds (champ-select pre-augment; augment_intent set later).",
+ "phase": "ChampSelect",
+ "champ_select": {
+  "queue_id": 1750,
+  "is_aram": false,
+  "phase": "FINALIZATION",
+  "sr_draft": false,
+  "my_cell_id": 4,
+  "my_champion": 222,
+  "my_completed": false,
+  "timer": {
+   "remaining_ms": 24000
   },
-  "config": {
-    "auto_accept": true
-  },
-  "build_variants": {
-    "Jinx|arena": [
-      {
-        "key": "arena-collapsed",
-        "label": "Builds for Jinx",
-        "_collapsed": true,
-        "keystone": "Lethal Tempo",
-        "primary": "Precision",
-        "secondary": "Domination",
-        "summoners": [
-          4,
-          7
-        ],
-        "item_ids": [
-          3094,
-          3153,
-          3031,
-          3036,
-          3072,
-          3026
-        ],
-        "build_paths": [
-          {
-            "key": "crit",
-            "label": "Crit",
-            "_archetype": "carry",
-            "_is_primary": true,
-            "item_ids": [
-              3094,
-              3153,
-              3031,
-              3036,
-              3072,
-              3026
-            ]
-          },
-          {
-            "key": "on-hit",
-            "label": "On-Hit",
-            "_archetype": "carry",
-            "item_ids": [
-              3094,
-              3115,
-              3091,
-              3153,
-              3036,
-              3072
-            ]
-          }
-        ]
-      }
+  "active_round": null,
+  "my_team": [
+   {
+    "cellId": 4,
+    "championId": 222,
+    "summonerName": "You",
+    "assignedPosition": "",
+    "completed": false,
+    "championPickIntent": 222,
+    "spell1Id": 4,
+    "spell2Id": 7
+   },
+   {
+    "cellId": 5,
+    "championId": 117,
+    "summonerName": "Ally 2",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 117,
+    "spell1Id": 4,
+    "spell2Id": 7
+   }
+  ],
+  "their_team": [
+   {
+    "cellId": 0,
+    "championId": 86,
+    "summonerName": "Ally 1",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 86
+   },
+   {
+    "cellId": 1,
+    "championId": 64,
+    "summonerName": "Ally 2",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 64
+   },
+   {
+    "cellId": 2,
+    "championId": 122,
+    "summonerName": "Ally 3",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 122
+   },
+   {
+    "cellId": 3,
+    "championId": 99,
+    "summonerName": "Ally 4",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 99
+   },
+   {
+    "cellId": 6,
+    "championId": 121,
+    "summonerName": "Ally 5",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 121
+   },
+   {
+    "cellId": 7,
+    "championId": 157,
+    "summonerName": "Ally 6",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 157
+   },
+   {
+    "cellId": 8,
+    "championId": 145,
+    "summonerName": "Ally 7",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 145
+   },
+   {
+    "cellId": 9,
+    "championId": 412,
+    "summonerName": "Ally 8",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 412
+   },
+   {
+    "cellId": 10,
+    "championId": 53,
+    "summonerName": "Ally 9",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 53
+   },
+   {
+    "cellId": 11,
+    "championId": 36,
+    "summonerName": "Ally 10",
+    "assignedPosition": "",
+    "completed": true,
+    "championPickIntent": 36
+   }
+  ],
+  "arena_teams": [
+   {
+    "id": 1,
+    "name": "TEAM 1",
+    "is_me": false,
+    "cells": [
+     {
+      "cellId": 0,
+      "championId": 86
+     },
+     {
+      "cellId": 1,
+      "championId": 64
+     }
     ]
-  }
+   },
+   {
+    "id": 2,
+    "name": "TEAM 2",
+    "is_me": false,
+    "cells": [
+     {
+      "cellId": 2,
+      "championId": 122
+     },
+     {
+      "cellId": 3,
+      "championId": 99
+     }
+    ]
+   },
+   {
+    "id": 3,
+    "name": "MY TEAM",
+    "is_me": true,
+    "cells": [
+     {
+      "cellId": 4,
+      "championId": 222
+     },
+     {
+      "cellId": 5,
+      "championId": 117
+     }
+    ]
+   },
+   {
+    "id": 4,
+    "name": "TEAM 4",
+    "is_me": false,
+    "cells": [
+     {
+      "cellId": 6,
+      "championId": 121
+     },
+     {
+      "cellId": 7,
+      "championId": 157
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "name": "TEAM 5",
+    "is_me": false,
+    "cells": [
+     {
+      "cellId": 8,
+      "championId": 145
+     },
+     {
+      "cellId": 9,
+      "championId": 412
+     }
+    ]
+   },
+   {
+    "id": 6,
+    "name": "TEAM 6",
+    "is_me": false,
+    "cells": [
+     {
+      "cellId": 10,
+      "championId": 53
+     },
+     {
+      "cellId": 11,
+      "championId": 36
+     }
+    ]
+   }
+  ],
+  "augments": {
+   "my_slots": [
+    {
+     "tier": "silver",
+     "id": "",
+     "name": ""
+    },
+    {
+     "tier": "gold",
+     "id": "",
+     "name": ""
+    },
+    {
+     "tier": "prismatic",
+     "id": "",
+     "name": ""
+    }
+   ],
+   "options": [],
+   "current_round": "silver"
+  },
+  "local_cell": 4
+ },
+ "config": {
+  "auto_accept": true
+ },
+ "build_variants": {
+  "Jinx|arena": [
+   {
+    "key": "arena-collapsed",
+    "label": "Builds for Jinx",
+    "_collapsed": true,
+    "keystone": "Lethal Tempo",
+    "primary": "Precision",
+    "secondary": "Domination",
+    "summoners": [
+     4,
+     7
+    ],
+    "item_ids": [
+     3094,
+     3153,
+     3031,
+     3036,
+     3072,
+     3026
+    ],
+    "build_paths": [
+     {
+      "key": "crit",
+      "label": "Crit",
+      "_archetype": "carry",
+      "_is_primary": true,
+      "item_ids": [
+       3094,
+       3153,
+       3031,
+       3036,
+       3072,
+       3026
+      ]
+     },
+     {
+      "key": "on-hit",
+      "label": "On-Hit",
+      "_archetype": "carry",
+      "item_ids": [
+       3094,
+       3115,
+       3091,
+       3153,
+       3036,
+       3072
+      ]
+     }
+    ]
+   }
+  ]
+ }
 }

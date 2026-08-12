@@ -94,6 +94,46 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # (doc, raw citation, reason family, why)
 _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
+    # --- Riot compliance removals, 2026-08-11 -------------------------------
+    # All five cite files deleted to satisfy Riot's third-party rules (enemy
+    # summoner-spell cooldown tracking, ultimate timers, power-spike
+    # notifications). The prose in each doc describes the pre-removal design and
+    # is a point-in-time record; re-pointing it would make those docs assert
+    # something they never asserted. See docs/OVERLAY_COMPLIANCE_PLAN.md.
+    (
+        "BACKLOG.md",
+        "web/js/panels/spike_cue.js:45",
+        "DELETED",
+        "The ultimate power-spike cue was removed 2026-08-11 - Riot bans "
+        "notifications that alert a player when a power spike hits.",
+    ),
+    (
+        "docs/ORCHESTRATION_PLAN.md",
+        "spike_cue.js:109-112",
+        "DELETED",
+        "Same removal as the BACKLOG entry above; the plan records the cue's "
+        "original edge-detection design.",
+    ),
+    (
+        "docs/ORCHESTRATION_PLAN.md",
+        "dashboard/_state_cooldowns.py:18",
+        "DELETED",
+        "The summoner + ultimate cooldown ledger backend was removed "
+        "2026-08-11 - Riot bans tracking enemy summoner-spell cooldowns and "
+        "forbids ultimate timers for every player.",
+    ),
+    (
+        "docs/LIVE_GAME_GATED_SYNC.md",
+        "dashboard/_state_cooldowns.py:18",
+        "DELETED",
+        "Same removal as the ORCHESTRATION_PLAN entry above.",
+    ),
+    (
+        "docs/COMPETITOR_LIFT_2026-07-28.md",
+        "dashboard/_state_cooldowns.py:18",
+        "DELETED",
+        "Same removal as the ORCHESTRATION_PLAN entry above.",
+    ),
     (
         "CLAUDE.md",
         "dashboard.js:5055",

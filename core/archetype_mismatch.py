@@ -70,6 +70,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
+from core.game_snapshot import is_forbidden_game_mode
+
 logger = logging.getLogger("rc.core.archetype_mismatch")
 
 
@@ -331,8 +333,15 @@ def _engine_mode(lc: dict | None) -> str:
         return "ARAM"
     if "ARENA" in gm or "CHERRY" in gm:
         return "ARENA"
-    if "BRAWL" in gm:
-        return "BRAWL"
+    # Riot compliance 2026-08-11: this branch USED to read `if "BRAWL" in gm`,
+    # which matched ONLY Riot's own Brawl mode - the one mode RC may not
+    # aggregate. RC's rotating modes ship game_mode tokens like URF / ARURF /
+    # NEXUSBLITZ, never "BRAWL", so the branch never did what its name implied.
+    # Forbidden modes are now stopped upstream in
+    # core.game_snapshot.mode_from_game_mode_string (MODE_UNSUPPORTED); this
+    # assert-style guard is the second fence. See docs/OVERLAY_COMPLIANCE_PLAN.md.
+    if is_forbidden_game_mode(gm):
+        return ""
     return "SR"
 
 

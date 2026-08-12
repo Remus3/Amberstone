@@ -101,7 +101,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/_matchers.py` | path-matcher factories (stdlib-only, importable without pydantic) |
 | `dashboard/_party_mains.py` | PARTY MAINS lobby enrichment (Legion-side, Riot Champion-Mastery-V4) |
 | `dashboard/_state_builder.py` | builds /api/state payload |
-| `dashboard/_state_cooldowns.py` | adapts Live Client snapshot -> compute_cooldowns input |
 | `dashboard/api_schema.py` | pydantic v2 schemas for RC dashboard HTTP API shapes |
 | `dashboard/routes_archetype.py` | cs archetype pick rest endpoints |
 | `dashboard/routes_auto_accept.py` | GET/POST /api/lcu/auto-accept (ready-check auto-accept on/off) |
@@ -110,7 +109,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/routes_cc_conditional_pressure.py` | cc_conditional pressure panel backend |
 | `dashboard/routes_cc_pairing.py` | cc_conditional ally-pairing panel backend |
 | `dashboard/routes_champions.py` | GET /api/champions |
-| `dashboard/routes_cooldown_watch.py` | cooldown-watch panel backend |
 | `dashboard/routes_ds_combo.py` | action-queue combo simulator backend |
 | `dashboard/routes_ds_knobs.py` | ds-engine-knobs control panel backend |
 | `dashboard/routes_ds_matchup.py` | DS 1v1 matchup backend |

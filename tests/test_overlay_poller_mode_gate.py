@@ -51,7 +51,8 @@ COACHING_RENDERERS = (
     "renderLead(st)",
     "renderCallouts(st)",
     "renderCoachChoices(st)",
-    "renderSpikeCue(st.liveclient",
+    # Riot compliance 2026-08-11: renderSpikeCue was removed from this poller
+    # with the w-spike cue itself (banned power-spike notification).
 )
 MINIMAP_STAMPS = (
     "state.latest.minimap_rect = st.minimap_rect",

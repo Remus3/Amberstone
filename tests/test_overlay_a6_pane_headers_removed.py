@@ -59,11 +59,12 @@ class FunctionalHeadersPreserved(unittest.TestCase):
         # The draft-elo chip lives inside the BUILD header.
         self.assertIn('id="am-draft-elo"', self.html)
 
-    def test_cds_collapse_head_survives(self):
-        self.assertIn('id="cd-ledger-head"', self.html)
-
-    def test_cds_chevron_survives(self):
-        self.assertIn("cd-chev", self.html)
+    # Riot compliance 2026-08-11: the CDS collapse head + chevron cases were
+    # removed with the cooldown ledger (banned enemy summ-spell cooldowns +
+    # ultimate timers). They must stay gone, which the case below asserts.
+    def test_cds_ledger_mounts_stay_removed(self):
+        for gone in ('id="cd-ledger-head"', 'id="cd-ledger-body"', "cd-chev"):
+            self.assertNotIn(gone, self.html, f"{gone} must stay removed")
 
 
 class PaneBodiesIntact(unittest.TestCase):
@@ -74,7 +75,7 @@ class PaneBodiesIntact(unittest.TestCase):
 
     def test_all_pane_bodies_present(self):
         for mount in ('id="am-call-body"', 'id="ovds-body"',
-                      'id="am-map-body"', 'id="cd-ledger-body"'):
+                      'id="am-map-body"'):
             self.assertIn(mount, self.html, f"{mount} pane body must survive")
 
 
