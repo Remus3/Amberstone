@@ -136,7 +136,7 @@ class CircuitBreaker:
 
 class SelfMonitor:
     """
-    Subordinate health monitor for Riot Commander.  Created and started by
+    Subordinate health monitor for Amberstone.  Created and started by
     Supervisor after start_app() + write_status() have established current-run
     state.  Call start() to begin monitoring; call stop() to shut down.
 

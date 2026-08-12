@@ -1,12 +1,12 @@
 # DISTRIBUTION_LAYOUT.md
-# Riot Commander -- Portable Single-Folder Distribution Layout
+# Amberstone -- Portable Single-Folder Distribution Layout
 # Phase 4 Step 1
 
 ---
 
 ## Overview
 
-Riot Commander is designed as a single-folder portable installation.
+Amberstone is designed as a single-folder portable installation.
 The project root contains all source, config, launchers, and tooling.
 All runtime-generated artifacts are written within the project root.
 No files are written outside the project root during normal operation.
@@ -148,7 +148,7 @@ project root via Path(__file__).parent.parent -- portable to any location.
   Option B (embedded Python runtime) is the current implemented baseline.
   build_portable.py stages python-embed/ when present; package_portable.py
   archives it. launch path: start.bat -> python-embed\pythonw.exe main.py.
-  Archive: dist/RiotCommander-portable-<YYYYMMDD>.zip  (~28 MB, single root folder)
+  Archive: dist/Amberstone-portable-<YYYYMMDD>.zip  (~28 MB, single root folder)
 
 ## Historical Progression (superseded steps)
 

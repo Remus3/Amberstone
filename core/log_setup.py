@@ -1,7 +1,7 @@
 # arch: log init | section=core | frozen=yes
 """
 core/log_setup.py
-Centralised logging configuration for Riot Commander.
+Centralised logging configuration for Amberstone.
 
 - Rotating file handler: 3 MB max per file, 3 backup files (9 MB total)
 - Verbose/DEBUG when RIOT_COMMANDER_DEBUG=1 or --debug passed
@@ -199,7 +199,7 @@ def setup(app_dir: Path, debug: bool = False) -> logging.Logger:
         pass
 
     _root_logger_configured = True
-    _logger.info("Riot Commander logging started - level=%s  file=%s",
+    _logger.info("Amberstone logging started - level=%s  file=%s",
                  "DEBUG" if debug else "INFO", log_file)
     if _n_pruned:
         _logger.info("log retention: pruned %d file(s) older than %d days",

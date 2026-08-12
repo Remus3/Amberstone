@@ -1,6 +1,6 @@
 """
 core/resource_manager.py
-Resource lifecycle management for Riot Commander.
+Resource lifecycle management for Amberstone.
 
 Responsibilities:
 - Register cleanup callbacks that fire on exit (atexit + signal)

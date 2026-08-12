@@ -251,7 +251,19 @@ _WEB = _REPO_ROOT / "web"
 #                     See docs/RENAME_SWEEP_AMBERSTONE.md.
 # Verified the same way as the captures above: the superseded digest reproduces
 # byte for byte in a clean HEAD worktree, so nothing else moved the value.
-_LIVE_HALF_DIGEST = "88723d38ad24d404866418c07326e70c7496c9f6a9881eb70493265e0098f791"
+# RE-CAPTURED 2026-08-11 (product rename, Tier 1 prose + comments), superseding
+# the Tier-0 capture immediately above. Ordinary case: same web/ source set on
+# both sides, no tokeniser change, no file added or removed. Six files differ in
+# their live half, and only two of those changes RENDER:
+#   M web/index.html          the visible brand label (RIOT COMMANDER -> AMBERSTONE)
+#   M web/legacy_index.html   its <title>
+#   M web/manifest.json       PWA "name" - public identity
+#   M web/css/dashboard.css   header comment only
+#   M web/css/panels/base.css comment naming the old brand label
+#   M web/js/main.js          two comments
+# Verified as before: the superseded digest reproduces byte for byte in a clean
+# HEAD worktree, so nothing else moved the value.
+_LIVE_HALF_DIGEST = "7e5e0d2c43b05cd62f33b74a9a2924815a982a87145d7a391caf13512f47ae8b"
 
 
 def _web_sources() -> list[Path]:

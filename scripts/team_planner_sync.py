@@ -87,7 +87,7 @@ for comp_name, tier in target_comps:
     lv9 = comp_data.get("lv9") or comp_data.get("core_units", []) + comp_data.get("flex_units", [])
 
     # Stable UUID per comp name
-    team_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"riot-commander.{comp_name}"))
+    team_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"amberstone.{comp_name}"))
 
     # Step 1: Create team slot (idempotent - 409 if exists)
     lcu("POST", f"/lol-tft-team-planner/v1/sets/{SET_ID}/teams/{team_uuid}", silent=True)

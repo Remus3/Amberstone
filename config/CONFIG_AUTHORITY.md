@@ -1,5 +1,5 @@
 # CONFIG_AUTHORITY.md
-# Riot Commander - Config File Authority and Domain Ownership
+# Amberstone - Config File Authority and Domain Ownership
 # Phase 1 Step 1 - documentation only, no behavior changes.
 
 ---

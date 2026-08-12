@@ -59,7 +59,7 @@ class ScraperBase:
         except (HttpError, Blocked) as e:
             self._log.warning("robots.txt fetch failed for %s: %s - permissive fallback", self.site, e)
 
-    def can_fetch(self, url: str, user_agent: str = "RiotCommander/3.0") -> bool:
+    def can_fetch(self, url: str, user_agent: str = "Amberstone/3.0") -> bool:
         self._load_robots()
         if self._robots is None:
             return True  # permissive fallback when robots.txt is unreachable

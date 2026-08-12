@@ -1,5 +1,5 @@
 # LAUNCH_STRATEGY.md
-# Riot Commander -- Launch Strategy and Environment Documentation
+# Amberstone -- Launch Strategy and Environment Documentation
 # Phase 3 Step 3
 
 ---
@@ -166,8 +166,8 @@
     python tools/package_portable.py --rebuild-staging
     tools\package_portable.cmd
 
-  Output: dist/RiotCommander-portable-<YYYYMMDD>.zip
-  ZIP root: RiotCommander-portable/  (single top-level folder)
+  Output: dist/Amberstone-portable-<YYYYMMDD>.zip
+  ZIP root: Amberstone-portable/  (single top-level folder)
   Includes: BUILD_MANIFEST.json + PACKAGE_MANIFEST.json inside the archive.
 
 ## Installer Command (Phase 5 Step 3)
@@ -179,12 +179,12 @@
 
   Output: dist/installer_staging/
     setup.bat                         -- guided extract + first-run setup
-    RiotCommander-portable-<date>.zip -- validated portable archive
+    Amberstone-portable-<date>.zip -- validated portable archive
     INSTALL_README.md                  -- operator install guide
     INSTALL_MANIFEST.json              -- machine-readable installer metadata
 
   Installer type: scripted-extract (not NSIS/MSIX/Inno yet).
-  Input: latest dist/RiotCommander-portable-*.zip (validated Option B archive).
+  Input: latest dist/Amberstone-portable-*.zip (validated Option B archive).
 
   python-embed/ is staged by build_portable.py when present at project root.
   Authoritative launch chain (Option B):

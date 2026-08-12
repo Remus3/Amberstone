@@ -1,4 +1,4 @@
-"""CodSpeed performance benchmarks for the Riot Commander build engine.
+"""CodSpeed performance benchmarks for the Amberstone build engine.
 
 These benchmarks exercise the pure-compute coaching paths that run several
 times a second during a live match: enemy-comp analysis, item suggestion,

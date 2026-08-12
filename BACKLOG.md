@@ -1,4 +1,4 @@
-# Riot Commander - Backlog
+# Amberstone - Backlog
 
 _Aspirational / longer-term items. Extracted from ROADMAP.md "Future" section 2026-05-08._
 _When an item moves to active work, migrate it to ROADMAP.md "Open items" and REMOVE it here._

@@ -1,6 +1,6 @@
-# rc-shell - Riot Commander companion shell (Electron, Phase 1)
+# rc-shell - Amberstone companion shell (Electron, Phase 1)
 
-A thin Electron window that wraps the existing Riot Commander dashboard. This is
+A thin Electron window that wraps the existing Amberstone dashboard. This is
 **Phase 1** of `docs/ELECTRON_OVERLAY.md`: a frameless, always-on-top
 companion / pop-out window so the dashboard is visible during a game on a single
 screen, without a second display or alt-tabbing a browser tab.

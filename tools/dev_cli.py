@@ -1,6 +1,6 @@
 """
 tools/dev_cli.py
-Riot Commander - local developer/operator CLI.
+Amberstone - local developer/operator CLI.
 
 Usage (from project root):
     python tools/dev_cli.py <subcommand> [options]
@@ -103,7 +103,7 @@ def _info(msg): print(f"          {msg}")
 def cmd_status() -> int:
     """Print environment diagnostics. Read-only, no side effects."""
     print("=" * 60)
-    print("Riot Commander -- Environment Status")
+    print("Amberstone -- Environment Status")
     print("=" * 60)
 
     # Project root

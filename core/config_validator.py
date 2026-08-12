@@ -1,6 +1,6 @@
 """
 core/config_validator.py
-Phase 1 Step 1 - Config schema validation for Riot Commander.
+Phase 1 Step 1 - Config schema validation for Amberstone.
 
 Non-fatal: validation results are logged as warnings/errors but never abort startup.
 Non-mutating: config files are never written or modified.
@@ -612,7 +612,7 @@ def validate_all() -> List[ValidationResult]:
 def print_results(results: List[ValidationResult]) -> None:
     """Print validation results to stdout in a human-readable format."""
     print("=" * 60)
-    print("Riot Commander - Config Validation")
+    print("Amberstone - Config Validation")
     print("=" * 60)
     for r in results:
         print(f"  [{r.status:<7}]  {r.file}")

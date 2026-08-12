@@ -134,7 +134,7 @@ META_DDRAGON_DIR = PROJECT_ROOT / "data" / "meta_build" / "ddragon"
 WIKI_HOST = "https://wiki.leagueoflegends.com"
 WIKI_API = WIKI_HOST + "/api.php"
 WIKI_RAW_MODULE = WIKI_HOST + "/en-us/Module:ChampionData/data?action=raw"
-HEADER_UA = "RiotCommander-DaemonSlayer/1.0 (offline patch-refresh extractor; local coaching tool)"
+HEADER_UA = "Amberstone-DaemonSlayer/1.0 (offline patch-refresh extractor; local coaching tool)"
 _HTTP_TIMEOUT = 40
 
 # CommunityDragon character-bin source (the backfill). Filename is

@@ -1,12 +1,12 @@
 # PYTHON_BUNDLING_STRATEGY.md
-# Riot Commander -- Python Bundling Strategy
+# Amberstone -- Python Bundling Strategy
 # Phase 4 Step 1
 
 ---
 
 ## Context
 
-Riot Commander's authoritative launch path is:
+Amberstone's authoritative launch path is:
 
   start.bat -> python-embed\pythonw.exe main.py  (Option B -- current baseline)
   OR: start.bat -> PATH pythonw.exe main.py  (Option A fallback)
@@ -85,7 +85,7 @@ The Python environment also serves:
     - `pythonw.exe` cannot be replicated by a PyInstaller .exe -- the .exe
       itself IS the process; there is no separate pythonw.exe to call from
       start.bat. The start.bat -> pythonw.exe chain would need to be replaced
-      by start.bat -> riot_commander.exe or similar.
+      by start.bat -> amberstone.exe or similar.
     - The frozen ops stack (rc_supervisor.py etc.) imports Python directly;
       these cannot be bundled into a single .exe without modifying frozen files.
     - dev_cli, smoke harness, and perf probe all require unbundled Python;
@@ -103,7 +103,7 @@ The Python environment also serves:
 
 ### Rationale
 
-Riot Commander's primary deployment context is a single Windows machine
+Amberstone's primary deployment context is a single Windows machine
 used by the developer/operator. The complexity cost of Option C (full .exe
 build) is not justified given:
 

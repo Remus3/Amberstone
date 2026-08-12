@@ -36,7 +36,7 @@ _LOG_FILE = _PROJECT_ROOT / "logs" / "daemon_slayer_startup.log"
 # trace instead of vanishing into a swallowed OSError.
 _FALLBACK_LOG_FILE = (
     Path(os.environ.get("ProgramData") or r"C:\ProgramData")
-    / "RiotCommander" / "daemon_slayer_startup.log"
+    / "Amberstone" / "daemon_slayer_startup.log"
 )
 
 

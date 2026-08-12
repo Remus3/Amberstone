@@ -501,7 +501,7 @@ class PreservedBehaviourTests(_TmpAppDirCase):
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             cv.print_results(cv.validate_all())
-        self.assertIn("Riot Commander", buf.getvalue())
+        self.assertIn("Amberstone", buf.getvalue())
 
 
 # =========================================================================

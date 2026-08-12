@@ -31,7 +31,7 @@ ACCESS (verified live 2026-05-30):
     wiki.gg backend). The bare ``leagueoflegends.wiki.gg`` host edge-blocks
     this development host's egress (HTTP 401 host-wide); the alias is
     reachable (HTTP 200).
-  * User-Agent MUST be NON-browser (e.g. ``RiotCommander-DaemonSlayer/1.0``). A
+  * User-Agent MUST be NON-browser (e.g. ``Amberstone-DaemonSlayer/1.0``). A
     ``Mozilla/5.0`` UA trips a Cloudflare challenge -> 403. stdlib urllib only.
 
 EFFICIENT FETCH (the key design choice): do NOT GET ~1080 ability pages one at a
@@ -110,7 +110,7 @@ WIKI_HOST = "https://wiki.leagueoflegends.com"
 WIKI_API = WIKI_HOST + "/en-us/api.php"
 WIKI_RAW_MODULE = WIKI_HOST + "/en-us/Module:ChampionData/data?action=raw"
 # A NON-browser UA. A Mozilla/5.0 UA trips a Cloudflare challenge -> 403.
-HEADER_UA = "RiotCommander-DaemonSlayer/1.0 (offline patch-refresh extractor; local coaching tool)"
+HEADER_UA = "Amberstone-DaemonSlayer/1.0 (offline patch-refresh extractor; local coaching tool)"
 _HTTP_TIMEOUT = 40
 
 # MediaWiki non-bot query API allows up to 50 titles per request.
