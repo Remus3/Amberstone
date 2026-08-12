@@ -1,7 +1,7 @@
 {
   "name": "rc-shell",
   "version": "0.4.0",
-  "description": "Riot Commander Electron companion shell (Phase 1) + in-game overlay (Phase 2/3): a frameless always-on-top window loading RC_ORIGIN, surface-switching companion <-> transparent overlay by mode_key with a global hotkey toggle. Phase 4: ACTIVE-mode glow indicator + overlay position/panel-set persistence. Phase 5: electron-updater on stable/dev GitHub Release channels. Vanguard-safe: DWM compositor window only, no capture / memory / injection.",
+  "description": "Amberstone Electron companion shell (Phase 1) + in-game overlay (Phase 2/3): a frameless always-on-top window loading RC_ORIGIN, surface-switching companion <-> transparent overlay by mode_key with a global hotkey toggle. Phase 4: ACTIVE-mode glow indicator + overlay position/panel-set persistence. Phase 5: electron-updater on stable/dev GitHub Release channels. Vanguard-safe: DWM compositor window only, no capture / memory / injection.",
   "private": true,
   "main": "src/main.js",
   "scripts": {
@@ -18,6 +18,6 @@
     "electron": "^33.0.0",
     "electron-builder": "^26.0.12"
   },
-  "author": "Riot Commander",
+  "author": "Amberstone",
   "license": "UNLICENSED"
 }

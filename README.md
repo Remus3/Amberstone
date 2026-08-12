@@ -1,4 +1,4 @@
-# Riot Commander
+# Amberstone
 
 A local, real-time coaching companion for League of Legends and Teamfight Tactics.
 
@@ -171,7 +171,7 @@ For maintenance and coding agents:
 
 ---
 
-Riot Commander is not endorsed by Riot Games and does not reflect the views or
+Amberstone is not endorsed by Riot Games and does not reflect the views or
 opinions of Riot Games or anyone officially involved in producing or managing
 Riot Games properties. League of Legends and Riot Games are trademarks or
 registered trademarks of Riot Games, Inc.
