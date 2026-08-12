@@ -242,7 +242,16 @@ _WEB = _REPO_ROOT / "web"
 # docs/OVERLAY_COMPLIANCE_PLAN.md. Verified the same way as the capture above:
 # the superseded digest reproduces byte for byte in a clean HEAD worktree, so
 # nothing else moved the value.
-_LIVE_HALF_DIGEST = "d1ea589cbb9f90b6298061dd7b00a105eabbb9577b934f14b20b8f74c04c59e2"
+# RE-CAPTURED 2026-08-11 (product rename, Tier 0), superseding the capture
+# immediately above. ORDINARY case: same web/ source set on both sides, no
+# tokeniser change, no file added or removed, and exactly ONE file differs in
+# its live half:
+#   M web/index.html  the <title> is the product name, and the product was
+#                     renamed off Riot's trademark (Riot Commander -> Amberstone).
+#                     See docs/RENAME_SWEEP_AMBERSTONE.md.
+# Verified the same way as the captures above: the superseded digest reproduces
+# byte for byte in a clean HEAD worktree, so nothing else moved the value.
+_LIVE_HALF_DIGEST = "88723d38ad24d404866418c07326e70c7496c9f6a9881eb70493265e0098f791"
 
 
 def _web_sources() -> list[Path]:
