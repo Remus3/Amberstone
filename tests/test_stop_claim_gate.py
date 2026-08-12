@@ -66,6 +66,23 @@ def _checks(report):
 
 PYTEST_GREEN = "==== 1397 passed, 12 skipped in 41.02s ===="
 
+# Node's built-in test runner (rc-shell) reports in a DIFFERENT shape: no
+# "N passed", no trailing "in X.Ys", and an information marker glyph in
+# front of every summary line. The glyph and the newlines are built with
+# chr() so this file stays 7-bit ASCII (repo hard rule) and carries no
+# escape-sequence ambiguity.
+_INFO = chr(0x2139)
+_NL = chr(10)
+NODE_GREEN = _NL.join([
+    _INFO + " tests 328",
+    _INFO + " suites 0",
+    _INFO + " pass 328",
+    _INFO + " fail 0",
+    _INFO + " cancelled 0",
+    _INFO + " skipped 0",
+    _INFO + " todo 0",
+    _INFO + " duration_ms 2040.4645",
+]) + _NL
 
 def test_gate_exists():
     assert GATE.exists(), "tools/stop_claim_gate.py must exist"
@@ -813,3 +830,66 @@ def test_quoted_python_path_still_reads_as_a_pytest_run(tmp_path):
         _assistant(_text("The suite is green.")),
     ]
     assert "suite_claim_without_run" not in _checks(_run_gate(tmp_path, rows))
+
+
+# ------------------------------------------------- node runner (rc-shell)
+# MEASURED FALSE POSITIVE 2026-08-11: the gate flagged an accurate
+# "rc-shell 328 passed / 0 failed" as count_mismatch because it only ever
+# parsed pytest's "N passed". The whole second test suite in this repo was
+# invisible to it, which also means it could never have caught a FALSE
+# rc-shell claim. These three cases pin the fix in both directions.
+
+def test_node_test_run_backs_an_accurate_count_claim(tmp_path):
+    # The claim is worded with 'suite' deliberately: if the node run were
+    # NOT recognised, tests_pass_without_run would fire. Asserting only the
+    # absence of count_mismatch would pass vacuously, because that check is
+    # skipped entirely when no run was observed.
+    rows = [
+        _assistant(_tool_use("Bash", command="cd rc-shell && npm test")),
+        _tool_result(NODE_GREEN),
+        _assistant(_text("The rc-shell suite is green: 328 passed.")),
+    ]
+    report = _run_gate(tmp_path, rows)
+    assert "tests_pass_without_run" not in _checks(report), (
+        "npm test must count as a test run: " + str(report["findings"]))
+    assert "count_mismatch" not in _checks(report), (
+        "an accurate count over a real node run must not flag: "
+        + str(report["findings"]))
+
+
+def test_node_test_run_still_catches_a_wrong_count(tmp_path):
+    # The widening must not become a blanket pass - a node run backs the
+    # numbers it actually printed and no others.
+    rows = [
+        _assistant(_tool_use("Bash", command="npm test")),
+        _tool_result(NODE_GREEN),
+        _assistant(_text("The rc-shell suite is green: 400 passed.")),
+    ]
+    report = _run_gate(tmp_path, rows)
+    assert "count_mismatch" in _checks(report)
+    finding = next(f for f in report["findings"]
+                   if f["check"] == "count_mismatch")
+    assert "400" in finding["claimed"]
+    assert "328" in finding["observed"]
+
+
+def test_node_summary_without_a_run_command_is_not_evidence(tmp_path):
+    # Same rule as pytest: a floating summary is not an observation of a run.
+    rows = [
+        _assistant(_text("For reference the runner prints:" + _NL + NODE_GREEN)),
+        _assistant(_text("The rc-shell suite is green: 328 passed.")),
+    ]
+    report = _run_gate(tmp_path, rows)
+    assert "tests_pass_without_run" in _checks(report)
+
+
+def test_node_direct_invocation_counts_as_a_run(tmp_path):
+    rows = [
+        _assistant(_tool_use("Bash",
+                             command="node --test test/config.test.js")),
+        _tool_result(NODE_GREEN),
+        _assistant(_text("The suite is green: 328 passed.")),
+    ]
+    report = _run_gate(tmp_path, rows)
+    assert "tests_pass_without_run" not in _checks(report)
+    assert "count_mismatch" not in _checks(report)
