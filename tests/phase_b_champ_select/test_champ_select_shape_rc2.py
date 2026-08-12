@@ -186,7 +186,7 @@ class TestSrDraftShape(unittest.TestCase):
             "champion_pick_intent": 0,
             "champion_locked": 67,
             "summonerId": 55,
-            "summonerName": "moonbeam",
+            "summonerName": "You",
             "puuid": "puuid-me",
             "completed": False,
             "assignedPosition": "bottom",
@@ -198,7 +198,10 @@ class TestSrDraftShape(unittest.TestCase):
         self.assertEqual(ally["championId"], 412)
         self.assertEqual(ally["champion_locked"], 0)
         self.assertEqual(ally["champion_pick_intent"], 412)
-        self.assertEqual(ally["summonerName"], "Ally Two")
+        # Riot compliance 2026-08-11: the producer emits a positional
+        # "Ally N" label, never the LCU name. See
+        # lcu/champ_select_shape._obfuscated_name.
+        self.assertEqual(ally["summonerName"], "Ally 2")
 
     def test_their_team_shaped(self):
         self.assertEqual(len(self.cs["their_team"]), 1)

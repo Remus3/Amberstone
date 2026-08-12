@@ -56,7 +56,6 @@ ROOT = Path(__file__).resolve().parent.parent
 ITEM_BUILD_CSS    = ROOT / "web" / "css" / "panels" / "item_build.css"
 AUGMENT_RECO_CSS  = ROOT / "web" / "css" / "panels" / "augment_reco.css"
 TEAM_CONTEXT_CSS  = ROOT / "web" / "css" / "panels" / "team_context.css"
-CD_LEDGER_CSS     = ROOT / "web" / "css" / "panels" / "cd_ledger.css"
 COACH_DECISIONS_CSS = ROOT / "web" / "css" / "panels" / "coach_decisions.css"
 
 
@@ -155,55 +154,8 @@ class TeamContextConsumesTokensTests(unittest.TestCase):
                       " for tc-label + tc-slot-rank")
 
 
-class CdLedgerConsumesTokensTests(unittest.TestCase):
-    """cd_ledger.css: zero hex swaps. Every hex is either an
-    ally/enemy team tint or the panel-internal compact surface
-    palette (dark backgrounds, ready-chip greens, ult-chip purples).
-    All intentionally outside the semantic palette; PRESERVED.
-
-    Test pins existing primitives the panel consumes so a future
-    sweep doesn't strip them mistakenly."""
-
-    def test_consumes_existing_primitives(self):
-        css = _read(CD_LEDGER_CSS)
-        self.assertIn("var(--surface-head)", css,
-                      "cd_ledger.css must consume var(--surface-head)"
-                      " for the right-rail pane background")
-        self.assertIn("var(--border-soft)", css,
-                      "cd_ledger.css must consume var(--border-soft)"
-                      " for the pane border")
-        self.assertIn("var(--radius)", css,
-                      "cd_ledger.css must consume var(--radius)"
-                      " for the pane corner radius")
-        self.assertIn("var(--text-faint", css,
-                      "cd_ledger.css must consume var(--text-faint)"
-                      " for the chev + chip text fallback")
-
-    def test_team_tint_outliers_preserved(self):
-        """Ally-blue / enemy-red team tints are panel-specific brand
-        colors intentionally distinct from --signal-good/--signal-bad
-        so the operator scans ally-vs-enemy by hue, not by traffic-
-        light semantics. PRESERVED."""
-        css = _read(CD_LEDGER_CSS)
-        self.assertIn("#5b8dff", css,
-                      "ally-team blue border-left preserved")
-        self.assertIn("#f07e8b", css,
-                      "enemy-team red border-left preserved")
-        self.assertIn("#9fbcff", css,
-                      "ally-team name tint preserved")
-        self.assertIn("#ffa5af", css,
-                      "enemy-team name tint preserved")
-
-    def test_ult_chip_purple_preserved(self):
-        """Ult chip is intentionally visually distinct from summoner
-        chips so the operator scans D/F/R left-to-right; the lavender
-        is not on the semantic palette. PRESERVED."""
-        css = _read(CD_LEDGER_CSS)
-        self.assertIn("#d3bfff", css,
-                      "ult-chip lavender text preserved")
-        self.assertIn("#3a3a52", css,
-                      "ult-chip dark purple sigil bg preserved")
-
+# Riot compliance 2026-08-11: CdLedgerConsumesTokensTests + the ASCII-hygiene
+# case for cd_ledger.css were removed with the cooldown ledger itself.
 
 class CoachDecisionsConsumesTokensTests(unittest.TestCase):
     """coach_decisions.css (split out of the decommissioned
@@ -287,10 +239,6 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_team_context_css_is_ascii_clean(self):
         self.assertEqual([], self._scan(TEAM_CONTEXT_CSS),
                          "team_context.css contains forbidden non-ASCII")
-
-    def test_cd_ledger_css_is_ascii_clean(self):
-        self.assertEqual([], self._scan(CD_LEDGER_CSS),
-                         "cd_ledger.css contains forbidden non-ASCII")
 
     def test_coach_decisions_css_is_ascii_clean(self):
         self.assertEqual([], self._scan(COACH_DECISIONS_CSS),

@@ -278,14 +278,16 @@ class CdsVisualHideTests(unittest.TestCase):
         self.assertIn('"call  map"', self.css)
         self.assertIn('"build map"', self.css)
 
-    def test_markup_and_js_wiring_kept(self) -> None:
-        # Operator rule: 'remove a field' is visual-only - the mount, the
-        # render dispatch and the summoner_cooldowns payload stay wired.
-        self.assertIn('id="cd-ledger-body"', self.html)
-        self.assertIn('id="cd-ledger-head"', self.html)
-        self.assertIn("am-pane-cd", self.html)
-        self.assertIn("renderCooldownLedger(", self.js)
-        self.assertIn("attachCooldownLedgerHandlers(", self.js)
+    def test_cd_ledger_wiring_stays_removed(self) -> None:
+        # Riot compliance 2026-08-11: this case USED to assert the CD ledger
+        # mount + dispatch stayed wired (the 'remove a field is visual-only'
+        # operator rule). The ledger itself is now banned - enemy summoner-spell
+        # cooldown tracking and ultimate timers both - so the assertion is
+        # inverted. See docs/OVERLAY_COMPLIANCE_PLAN.md.
+        for gone in ('id="cd-ledger-body"', 'id="cd-ledger-head"'):
+            self.assertNotIn(gone, self.html, f"{gone} must stay removed")
+        self.assertNotIn("renderCooldownLedger(", self.js)
+        self.assertNotIn("attachCooldownLedgerHandlers(", self.js)
 
     def test_overlay_cds_ledger_reshow_untouched(self) -> None:
         # Widget-field doctrine (panel sets retired 2026-06-28): the CDS ledger

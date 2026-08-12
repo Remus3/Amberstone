@@ -188,7 +188,9 @@ class CrossModeBrawlRoutingTests(unittest.TestCase):
     def test_resolver_and_engine_mode_split(self):
         from coaches.brawl_coach import Coach as BrawlCoach
         cases = {
-            "BRAWL": ("brawl", "BRAWL"),
+            # Riot compliance 2026-08-11: Riot Brawl takes the SR arm like
+            # every other token now - it is excluded upstream, never coached.
+            "BRAWL": ("sr", "SR"),
             "ULTBOOK": ("sr", "SR"),
             "NEXUSBLITZ": ("sr", "SR"),
             "GAMEMODEX": ("sr", "SR"),

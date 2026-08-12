@@ -154,7 +154,31 @@ def arena_teams(sess: dict) -> list[dict]:
     return out
 
 
-def _team_picks(team_arr) -> list[dict]:
+def _obfuscated_name(index: int, cell_id, local_cell) -> str:
+    """Riot-compliant champ-select display name for one roster slot.
+
+    Riot compliance 2026-08-11: "All instances of non-party Summoner Names in
+    Champion Select should be replaced with Ally #", and the designation must be
+    CONSISTENT ACROSS ALL CLIENTS. The label is therefore derived from the slot's
+    position in the LCU team array, which every client observes identically -
+    never from a local sort, a name or a puuid.
+
+    The local player keeps a real label ("You") because it is the operator's own
+    name, not another player's. RC has no party roster at this seam, so every
+    other slot is obfuscated - over-complying rather than guessing at premades.
+    The rule is scoped to Champion Select only; the loading screen and post-game
+    surfaces are exempt and are unaffected by this helper.
+    See docs/OVERLAY_COMPLIANCE_PLAN.md.
+    """
+    try:
+        if local_cell is not None and cell_id is not None and int(cell_id) == int(local_cell):
+            return "You"
+    except (TypeError, ValueError):
+        pass
+    return f"Ally {index + 1}"
+
+
+def _team_picks(team_arr, local_cell=None) -> list[dict]:
     """Slim a myTeam / theirTeam array for the dashboard.
 
     2026-04-25: the full arrays ship so the dashboard can run cold-start
@@ -162,7 +186,7 @@ def _team_picks(team_arr) -> list[dict]:
     without waiting for the game to start.
     """
     out = []
-    for p in team_arr or []:
+    for _idx, p in enumerate(team_arr or []):
         if not isinstance(p, dict):
             continue
         # s171 hover fix: championId is 0 until lock; the hovered champ
@@ -179,7 +203,12 @@ def _team_picks(team_arr) -> list[dict]:
             "champion_pick_intent": cid_intent,
             "champion_locked": cid_locked,
             "summonerId":  p.get("summonerId"),
-            "summonerName": p.get("summonerInternalName") or p.get("displayName") or "",
+            # Riot compliance 2026-08-11: the real LCU name is NOT emitted here.
+            # Obfuscation happens at the PRODUCER so every consumer - dashboard,
+            # overlay, coach prompt, mock fixtures - inherits it and no renderer
+            # can leak a name by forgetting to mask. Do not restore
+            # summonerInternalName / displayName; see docs/OVERLAY_COMPLIANCE_PLAN.md.
+            "summonerName": _obfuscated_name(_idx, p.get("cellId"), local_cell),
             # FU02 team-context refresh needs PUUIDs to fan out
             # to Riot Web API. theirTeam may carry empty puuid
             # before reveal in some queue types - that's fine,
@@ -302,8 +331,8 @@ def shape_champ_select(
         "bench": [c.get("championId") for c in sess.get("benchChampions", [])
                   if isinstance(c, dict)],
         "phase": (sess.get("timer") or {}).get("phase"),
-        "my_team":     _team_picks(sess.get("myTeam")),
-        "their_team":  _team_picks(sess.get("theirTeam")),
+        "my_team":     _team_picks(sess.get("myTeam"), local_cell),
+        "their_team":  _team_picks(sess.get("theirTeam"), local_cell),
         "trades": [
             {"id": t.get("id"), "cellId": t.get("cellId"),
              "state": t.get("state")}

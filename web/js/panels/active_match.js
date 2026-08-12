@@ -24,7 +24,6 @@ import { installItemRadial } from '../lib/overlay_item_radial.js';
 import { applyItemOverrides, filterSilenced, clearItemOverrides } from '../lib/item_overrides.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { classifyAction, escHtml, safe } from '../lib/helpers.js';
-import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
 import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_curve.js';
 import { renderSpikeMarkers, fetchSpikeMarkers, getCachedSpikeMarkers } from './spike_markers.js';
 import { renderWardHeat, fetchWardHeat, getCachedWardHeat } from './ward_heat.js';
@@ -63,7 +62,6 @@ const _AM = {
   callBody:   () => document.getElementById("am-call-body"),
   buildBody:  () => document.getElementById("am-build-body"),
   mapBody:    () => document.getElementById("am-map-body"),
-  cdBody:     () => document.getElementById("cd-ledger-body"),
   spikeCurve: () => document.getElementById("am-spike-curve"),
   spikeMarkers: () => document.getElementById("am-spike-markers"),
   wardHeat:   () => document.getElementById("am-ward-heat"),
@@ -1131,22 +1129,11 @@ export function renderActiveMatch(payload, ctx) {
     _renderAmMap(map, modeLow, p);
   }
 
-  // UX-3 (2026-05-20): right-rail CD ledger. Reads the
-  // summoner_cooldowns array threaded via ctx (top-level /api/state
-  // field; backend computes it in dashboard/_state_cooldowns.py and
-  // returns null when no live game is running). Render is null-safe
-  // and idempotent - sig-based dedup keeps the DOM stable across
-  // sub-second tick churn. attachCooldownLedgerHandlers is idempotent
-  // too (dataset.cdBound gate), safe to call every tick.
-  const cdBody = _AM.cdBody();
-  if (cdBody) {
-    const cooldowns = (ctx && ctx.cooldowns) || null;
-    renderCooldownLedger(cdBody, cooldowns, {
-      liveclient: (ctx && ctx.liveclient) || null,
-      version:    (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION,
-    });
-    attachCooldownLedgerHandlers();
-  }
+  // Riot compliance 2026-08-11: the UX-3 right-rail CD ledger (2026-05-20) was
+  // REMOVED here with its panel, its backend and its pane mount. Riot's
+  // third-party rules ban tracking enemy summoner-spell cooldowns and forbid
+  // ultimate timers outright. Do not reinstate; see
+  // docs/OVERLAY_COMPLIANCE_PLAN.md.
 
   // CS3 (2026-06-08): DS combat-analysis cluster (DPS scaling / 1v1 fight
   // model / combo timeline / relative item power) relocated off champ-select,

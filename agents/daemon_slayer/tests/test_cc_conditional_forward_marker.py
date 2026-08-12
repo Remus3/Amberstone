@@ -88,7 +88,9 @@ _ALLOWED_TEST_FILES = {
     "test_cc_conditional_overrides.py",
 }
 _ALLOWED_SOURCE_FILES = {
-    "cooldown_watch.py",
+    # Riot compliance 2026-08-11: cooldown_watch.py was DELETED (it joined enemy
+    # CC to enemy ability cooldowns, which Riot's third-party rules ban tracking),
+    # so its allow-list entry is gone with it. Do not re-add.
     "cc_pressure.py",
     # item 359 (CS1, 2026-06-08): the operator EXPLICITLY requested the
     # cc_conditional PAIRING UI on champ select ("surface the DS

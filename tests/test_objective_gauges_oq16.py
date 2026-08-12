@@ -144,12 +144,12 @@ class WiringTests(unittest.TestCase):
 
     def test_main_js_dispatches_both_branches(self):
         # ui_mock branch AND live branch (mirror of renderObjectiveChips at
-        # both sites); 2 call sites + threading of summoner_cooldowns.
+        # both sites). The summoner_cooldowns thread was dropped 2026-08-11
+        # (Riot compliance - the cooldown ledger is gone).
         js = _read(MAIN_JS)
         self.assertEqual(js.count("renderObjectiveGauges({"), 2)
         live = js[js.rindex("renderObjectiveGauges({"):]
         live = live[:live.index(");")]
-        self.assertIn("state.latest.summoner_cooldowns", live)
         self.assertIn("state.latest.liveclient", live)
         self.assertIn("state.mode", live)
 

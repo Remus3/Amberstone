@@ -34,10 +34,16 @@ class _StubCoach:
 class DsModeRoutingTests(unittest.TestCase):
     """Routing helpers split BRAWL from SR-fallback modes."""
 
-    def test_brawl_routes_to_brawl(self) -> None:
+    def test_riot_brawl_never_routes_to_the_brawl_ds_mode(self) -> None:
+        # Riot compliance 2026-08-11 - INVERTED from test_brawl_routes_to_brawl.
+        # The old case asserted "BRAWL" -> brawl/BRAWL, but that substring test
+        # matched ONLY Riot's own Brawl mode, which RC may not coach or
+        # aggregate. Riot Brawl is now stopped upstream (MODE_UNSUPPORTED in
+        # core.game_snapshot); these helpers take the SR arm unconditionally.
+        # See docs/OVERLAY_COMPLIANCE_PLAN.md.
         c = _StubCoach()
-        self.assertEqual(c._ds_resolver_mode("BRAWL"), "brawl")
-        self.assertEqual(c._ds_engine_mode("BRAWL"), "BRAWL")
+        self.assertEqual(c._ds_resolver_mode("BRAWL"), "sr")
+        self.assertEqual(c._ds_engine_mode("BRAWL"), "SR")
 
     def test_urf_routes_to_sr(self) -> None:
         c = _StubCoach()
@@ -69,12 +75,14 @@ class DsModeRoutingTests(unittest.TestCase):
         self.assertEqual(c._ds_resolver_mode(None), "sr")
         self.assertEqual(c._ds_engine_mode(""), "SR")
 
-    def test_brawl_substring_match(self) -> None:
-        # "BRAWL" should match even when LCU adds suffixes - matches
-        # 'in BRAWL' style game_mode strings if they ever appear.
+    def test_brawl_suffixed_token_also_takes_the_sr_arm(self) -> None:
+        # Riot compliance 2026-08-11 - INVERTED. A suffixed Riot token
+        # (BRAWL_RANKED) is still Riot Brawl, so it must NOT reach the brawl
+        # DS arm either. core.game_snapshot.is_forbidden_game_mode matches on
+        # prefix for exactly this reason.
         c = _StubCoach()
-        self.assertEqual(c._ds_resolver_mode("BRAWL_RANKED"), "brawl")
-        self.assertEqual(c._ds_engine_mode("BRAWL_RANKED"), "BRAWL")
+        self.assertEqual(c._ds_resolver_mode("BRAWL_RANKED"), "sr")
+        self.assertEqual(c._ds_engine_mode("BRAWL_RANKED"), "SR")
 
 
 class EstimateTargetBonusHpTests(unittest.TestCase):

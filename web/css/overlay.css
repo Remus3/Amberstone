@@ -452,7 +452,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] {
    * for sub-pixel / Electron font-metric drift - no horizontal overflow, no
    * clipped 7th icon, and no overflow-driven scrollbar eating the bottom edge
    * (which is what stopped the panel sitting flush when dragged to the bottom).
-   * Same widen-to-fit fix as w-objgauges (288px) + w-enemyspells (280px). Tunable
+   * Same widen-to-fit fix as w-objgauges (288px). Tunable
    * live via the SZ slider. */
   --ovx-w: 412px;
 }
@@ -466,19 +466,10 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-strip {
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-objgauges"] {
   --ovx-w: 288px;
 }
-/* BATCH C #4 (2026-07-08): widen w-enemyspells so 5 enemy rows (name + 2 spell chips)
- * fit on ONE line each without wrapping. At default 210px the chips wrap to a
- * second line per row, doubling the widget height and causing a scrollbar. The
- * --es-champ-ch column (~140px for "Renata Glasc") + 2 chips (min 54px each) +
- * gaps need ~245px interior; 280px widget gives 264px interior -- fits without
- * wrapping. Same width tier as w-objgauges (288px). */
-body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-enemyspells"] {
-  --ovx-w: 280px;
-}
 /* w-arambalance (2026-07-20): the ARAM balance grid became its own widget once
  * the champion-resolution fix made it populate - 11 rows inside .am-pane-build
  * pushed META BUILD + the DS item row into a clipped scroll region. Same
- * widen-to-fit law as w-build / w-objgauges / w-enemyspells: a row is the kind
+ * widen-to-fit law as w-build / w-objgauges: a row is the kind
  * tag (5ch) + the champion name (9ch) + up to three delta chips, and the
  * dashboard render measures ~615px at the widest (Annie: dealt + taken +
  * shielding). Below that .ab-row / .ab-deltas flex-wrap fold the chips onto a
@@ -594,22 +585,21 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"]::after {
   z-index: 1;
 }
 
-/* 4f. GLYPH widgets (w-trinket / w-spike): the doctrine cues that are a small
- * floating accent, not a boxed card. Strip the .ovx-widget frame (backing /
- * border / shadow / padding / hex-notch) so the chip itself is the visual; the
- * drag handle + the saved-position persistence still apply. They are data-gated
- * (their renderer un-hides the mount only when actionable) + coach-core (shown in
- * every panel set), so no panel-set rule is needed. */
-body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-trinket"],
-body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-spike"] {
+/* 4f. GLYPH widget (w-trinket): the doctrine cue that is a small floating
+ * accent, not a boxed card. Strip the .ovx-widget frame (backing / border /
+ * shadow / padding / hex-notch) so the chip itself is the visual; the drag
+ * handle + the saved-position persistence still apply. It is data-gated (its
+ * renderer un-hides the mount only when actionable) + coach-core (shown in
+ * every panel set), so no panel-set rule is needed.
+ * Riot compliance 2026-08-11: the w-spike selectors were removed with the cue. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-trinket"] {
   background: transparent;
   border: none;
   box-shadow: none;
   padding: 0;
   max-width: none;
 }
-body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-trinket"]::before,
-body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-spike"]::before {
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-trinket"]::before {
   display: none;
 }
 
@@ -681,18 +671,8 @@ body[data-shell="overlay"] .ovx-widget .cd-chip-sigil {
 body[data-shell="overlay"] .ovx-widget .cd-chip-sigil {
   font-size: var(--fs-ov-sigil);
 }
-body[data-shell="overlay"] .ovx-widget .cd-row-initial {
-  font-size: var(--fs-ov-chip);
-}
-body[data-shell="overlay"] .ovx-widget #cd-ledger-head {
-  pointer-events: none;
-}
-body[data-shell="overlay"] .ovx-widget #cd-ledger-head .cd-chev {
-  display: none;
-}
-body[data-shell="overlay"] .ovx-widget.am-pane-cd.cd-collapsed .am-pane-body {
-  display: block !important;
-}
+/* Riot compliance 2026-08-11: the .cd-* / #cd-ledger-* overlay rules were
+ * removed with the cooldown ledger. Do not reinstate. */
 
 /* 5. Change-pulse hook (overlay_pulse.js adds .ov-pulse for ~1.2s). One-shot
  * cyan edge glow - cheap, no loop, no blur (doctrine rule 5: motion rationed). */
@@ -876,66 +856,9 @@ body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-slider input[type="range
   cursor: pointer;
 }
 
-/* --- Enemy summoner-spell tap-tracker (w-enemyspells) ------------------------
- * A click-through zone: tap a chip when a spell is used -> base-CD countdown. */
-body[data-shell="overlay"] .ovx-enemyspells {
-  max-width: 360px;
-}
-body[data-shell="overlay"] .ovx-enemyspells .es-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap; /* BATCH C #3: a long enemy name wraps the chips instead of clipping them */
-  gap: 5px;
-  margin: 3px 0;
-}
-/* Name column sizes to the shared longest-name basis (--es-champ-ch, set per
- * roster by enemy_spells.js) so every row's chips align; no slice, no ellipsis -
- * the full champion name always renders. */
-body[data-shell="overlay"] .ovx-enemyspells .es-champ {
-  flex: 0 0 auto;
-  min-width: calc(var(--es-champ-ch, 12) * 1ch);
-  font-size: var(--fs-sm);
-  color: rgba(var(--ovx-text), 0.82);
-  white-space: nowrap;
-}
-body[data-shell="overlay"] .ovx-enemyspells .es-chip {
-  flex: 1;
-  padding: 3px 5px;
-  border-radius: 4px;
-  border: 1px solid transparent;
-  /* R62 TYPOGRAPHY: --fs-ov-head (11px) is the sanctioned sub-floor here, not the
-   * usual --fs-ov-chip 13px. The chip renders a bold 2-char A5 abbreviation tag
-   * ("FL UP" / "TP 142s"), never prose, so it reads at the same 11px rung the
-   * overlay already accepts for its uppercase pane-head labels; the compaction is
-   * A5-locked (enemy_spells.js:28-32). Sibling of the hit-target note below. */
-  font-size: var(--fs-ov-head);
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  /* R38 HIT-TARGETS: deliberately below --hit-min - an operator-tuned compact
-   * in-game tap-tracker (A5-locked); five rows of 42px chips would swamp the
-   * overlay. Sanctioned sub-floor relaxation, like the R36 launcher square.
-   * R72: the 3/5px off-grid compact spacing (.es-row gap/margin, .es-chip
-   * padding) is part of the same A5 lock, not new off-grid drift. */
-  cursor: pointer;
-  white-space: nowrap;
-  /* BATCH C #3 (2026-07-06): the chip content is always a short A5 tag
-   * ("FL UP" / "TP 142s"), so pin a min-width that always holds the tag and let
-   * the row wrap (.es-row flex-wrap) when a long enemy name squeezes it, rather
-   * than ellipsis-clipping the countdown ("F. P." etc). A clipped CD is useless. */
-  min-width: 3.4rem;
-  overflow: hidden;
-}
-/* UP = ready (good/green); DOWN = on cooldown (warn/amber, the count). */
-body[data-shell="overlay"] .ovx-enemyspells .es-chip.es-up {
-  background: rgba(var(--ovx-good), 0.16);
-  border-color: rgba(var(--ovx-good), 0.55);
-  color: rgb(var(--ovx-good));
-}
-body[data-shell="overlay"] .ovx-enemyspells .es-chip.es-down {
-  background: rgba(var(--ovx-warn), 0.16);
-  border-color: rgba(var(--ovx-warn), 0.55);
-  color: rgb(var(--ovx-warn));
-}
+/* Riot compliance 2026-08-11: the enemy summoner-spell tap-tracker styles
+ * (.ovx-enemyspells) were removed with the panel. Do not reinstate; see
+ * docs/OVERLAY_COMPLIANCE_PLAN.md. */
 
 /* --- Stats mini-panel (w-stats): vertical "You vs benchmark" table (WP-A4b) --- */
 body[data-shell="overlay"] .ovx-statspanel {

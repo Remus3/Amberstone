@@ -34,22 +34,22 @@ class PureClassifierTests(unittest.TestCase):
     """The two NEW pure verdict classifiers + the item-state helpers - no
     engine, no snapshot (mirrors the existing laning_band pure-helper shape)."""
 
-    def test_window_verdict_no_ult_is_wait_cd(self) -> None:
+    def test_cc_threat_verdict_no_ult_is_wait_cd(self) -> None:
         # MY ult down (the no_ult axis) -> wait for the cooldown regardless of
         # the enemy numbers.
-        self.assertEqual(lsp.window_verdict(12.0, 0.0, "no_ult"), "wait_cd")
-        self.assertEqual(lsp.window_verdict(0.0, 130.0, "no_ult"), "wait_cd")
+        self.assertEqual(lsp.cc_threat_verdict(12.0, 0.0, "no_ult"), "wait_cd")
+        self.assertEqual(lsp.cc_threat_verdict(0.0, 130.0, "no_ult"), "wait_cd")
 
-    def test_window_verdict_punish_when_ult_up_and_enemy_threat(self) -> None:
+    def test_cc_threat_verdict_punish_when_ult_up_and_enemy_threat(self) -> None:
         # Ult up + enemy has a real threat spell on a finite cd -> punish.
-        self.assertEqual(lsp.window_verdict(14.0, 130.0, "all_up"), "punish_now")
+        self.assertEqual(lsp.cc_threat_verdict(14.0, 130.0, "all_up"), "punish_now")
 
-    def test_window_verdict_even_when_no_enemy_threat(self) -> None:
-        # Ult up but enemy has no registered CC (enemy_cd_s 0) -> even.
-        self.assertEqual(lsp.window_verdict(0.0, 130.0, "all_up"), "even")
+    def test_cc_threat_verdict_even_when_no_enemy_threat(self) -> None:
+        # Ult up but enemy has no registered CC (enemy_cc_s 0) -> even.
+        self.assertEqual(lsp.cc_threat_verdict(0.0, 130.0, "all_up"), "even")
 
-    def test_window_verdict_failsoft_even_on_bad_input(self) -> None:
-        self.assertEqual(lsp.window_verdict("x", "y", "all_up"), "even")
+    def test_cc_threat_verdict_failsoft_even_on_bad_input(self) -> None:
+        self.assertEqual(lsp.cc_threat_verdict("x", "y", "all_up"), "even")
 
     def test_spike_verdict_spike_up_at_ult_band(self) -> None:
         # L6+ is the R-unlock band -> spike_up even itemless.
@@ -106,9 +106,9 @@ class PersistRoundTripV4Tests(unittest.TestCase):
             "pct_enemy_removed": 0.3, "kill_threshold_met": False,
             "economy": {"recall": "hold", "next_spike": "first_item",
                         "gold_at_band": 1000.0},
-            "cooldown_window": {"enemy_threat_spell": "Q", "enemy_cc_s": 1.5,
-                                "enemy_cd_s": 14.0, "my_ult_cd_s": 100.0,
-                                "window_verdict": "punish_now"},
+            "cc_threat": {"enemy_threat_spell": "Q", "enemy_cc_s": 1.5,
+                          "my_ult_cd_s": 100.0,
+                          "threat_verdict": "punish_now"},
             "spike_timing": {"next_kind": "level", "next_threshold": 6,
                              "next_label": "R unlock", "crossed_dps_at": 20.0,
                              "spike_verdict": "play_for_spike"},
@@ -134,12 +134,12 @@ class PersistRoundTripV4Tests(unittest.TestCase):
             back = json.loads(raw.decode("utf-8"))
         self.assertEqual(back, payload)
         cell = lsp.lookup(back, "Annie", "Ahri", "L6", "full", "all_up", "one_item")
-        self.assertEqual(cell["cooldown_window"]["window_verdict"], "punish_now")
+        self.assertEqual(cell["cc_threat"]["threat_verdict"], "punish_now")
         self.assertEqual(cell["spike_timing"]["spike_verdict"], "play_for_spike")
         self.assertIn("kill_threshold_met", cell)
 
     def test_reader_v4_emits_additive_chip(self) -> None:
-        # A covered v4 cell with an actionable window_verdict yields the
+        # A covered v4 cell with an actionable threat_verdict yields the
         # additive C chip on top of the A/B trade chips.
         payload = self._v4_payload()
         choices = plc.precomputed_choices(
@@ -151,7 +151,7 @@ class PersistRoundTripV4Tests(unittest.TestCase):
         self.assertIn("C", keys)
 
     def test_reader_v3_payload_no_new_chip_no_raise(self) -> None:
-        # A v3 payload (no cooldown_window / spike_timing; cd node IS the leaf)
+        # A v3 payload (no cc_threat / spike_timing; cd node IS the leaf)
         # read by the v4 reader yields the trade+recall chips and NO new chip,
         # and does NOT raise (spec 6.1 / 7.3 back-compat).
         v3cell = {
@@ -210,24 +210,21 @@ class EngineV4CharacterizationTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     # --- 7.1 characterization (cell == live substrate call) ------------------
-    def test_cooldown_window_enemy_cd_matches_substrate(self) -> None:
-        from agents.daemon_slayer.cooldown_watch import compute_cooldown_watch
+    def test_cc_threat_cell_matches_substrate(self) -> None:
+        # Riot compliance 2026-08-11: the substrate is the per-spell CC registry,
+        # not the deleted cooldown_watch join. There is no enemy cooldown to
+        # characterize any more - only the threat spell + its CC duration.
         cell = lsp.compute_cell(
             self.snap, "Annie", "Ahri", "L6", "full", "all_up",
             mode="SR", item_state="one_item",
         )
-        ref = compute_cooldown_watch(["Ahri"], top_n=1)
-        if ref.cards:
-            self.assertEqual(
-                cell["cooldown_window"]["enemy_cd_s"],
-                lsp._round(ref.cards[0].cooldown_s),
-            )
-            self.assertEqual(
-                cell["cooldown_window"]["enemy_threat_spell"],
-                ref.cards[0].spell_key,
-            )
+        ref = lsp._enemy_cc_threat_card("Ahri")
+        self.assertNotIn("enemy_cd_s", cell["cc_threat"])
+        if ref:
+            self.assertEqual(cell["cc_threat"]["enemy_cc_s"], ref.cc_duration_s)
+            self.assertEqual(cell["cc_threat"]["enemy_threat_spell"], ref.spell_key)
         else:  # no enemy CC -> the block degrades to even / empty spell
-            self.assertEqual(cell["cooldown_window"]["enemy_threat_spell"], "")
+            self.assertEqual(cell["cc_threat"]["enemy_threat_spell"], "")
 
     def test_spike_timing_next_threshold_matches_substrate(self) -> None:
         from agents.daemon_slayer.spike_markers import compute_spike_markers
@@ -359,19 +356,19 @@ class EngineV4CharacterizationTests(unittest.TestCase):
             self.assertEqual(cell["net_swing"], 0.0, f"{istate} mirror not 0")
             self.assertEqual(cell["verdict"], "even")
 
-    def test_cooldown_window_sanity(self) -> None:
-        # enemy_cd_s >= 0 and enemy_cc_s >= 0 always; a no_ult cell reports a
-        # wait_cd window verdict (my ult is down by the axis definition). The
+    def test_cc_threat_sanity(self) -> None:
+        # enemy_cc_s >= 0 always; a no_ult cell reports a
+        # wait_cd threat verdict (my ult is down by the axis definition). The
         # my_ult_cd_s>0 honesty: a champ with a resolvable R cd in the full
         # rotation reports a positive cooldown.
         cell = lsp.compute_cell(
             self.snap, "Annie", "Ahri", "L6", "full", "no_ult",
             mode="SR", item_state="none",
         )
-        cw = cell["cooldown_window"]
-        self.assertGreaterEqual(cw["enemy_cd_s"], 0.0)
+        cw = cell["cc_threat"]
+        self.assertNotIn("enemy_cd_s", cw)
         self.assertGreaterEqual(cw["enemy_cc_s"], 0.0)
-        self.assertEqual(cw["window_verdict"], "wait_cd")
+        self.assertEqual(cw["threat_verdict"], "wait_cd")
         # Annie's R has a real cooldown -> my_ult_cd_s is positive.
         self.assertGreater(cw["my_ult_cd_s"], 0.0)
 

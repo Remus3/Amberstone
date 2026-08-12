@@ -237,7 +237,12 @@ _MODE_TO_TBL: dict[str, str] = {
     "CLASSIC": "sr", "SR": "sr",
     "ARAM": "aram", "KIWI": "aram", "ARAM_5V5": "aram", "ARAM_MAYHEM": "aram",
     "CHERRY": "arena", "ARENA": "arena",
-    "NEXUSBLITZ": "brawl", "URF": "brawl", "BRAWL": "brawl",
+    # Riot compliance 2026-08-11: "BRAWL" (Riot's own mode) was REMOVED from
+    # this map. Riot's third-party rules ban aggregating or displaying Brawl
+    # data, and this table is what routes a game into an aggregation bucket.
+    # The rotating modes below are RC's MODE_BRAWL (a name collision, not Riot
+    # Brawl) and are unaffected. See docs/OVERLAY_COMPLIANCE_PLAN.md.
+    "NEXUSBLITZ": "brawl", "URF": "brawl",
     "TFT": "tft",
 }
 

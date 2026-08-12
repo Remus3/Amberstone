@@ -447,19 +447,14 @@ def build_state() -> dict:
     except Exception:  # noqa: BLE001
         screen_read = {}
 
-    # 2026-05-20 - summoner + ult cooldown ledger. Backend ships per-player
-    # blocks (d/f spell + ult, sorted by next-up ascending). The Live
-    # Client API doesn't expose summoner-cast events so the panel renders
-    # everything as READY today; the wire is here so a future event
-    # source (decision_detector OCR, LCU plugin) can light up the
-    # remaining-cd column without UI/transport churn. Null when no game.
+    # Riot compliance 2026-08-11: the summoner + ult cooldown ledger
+    # (2026-05-20, core/summoner_cooldowns.py + dashboard/_state_cooldowns.py)
+    # was REMOVED. Riot's third-party rules ban tracking enemy summoner-spell
+    # cooldowns outright and forbid ultimate timers for every player, ally
+    # included. The key is kept on the wire as a permanent null so downstream
+    # consumers degrade instead of KeyError-ing; do not repopulate it. See
+    # docs/OVERLAY_COMPLIANCE_PLAN.md.
     summoner_cooldowns: list | None = None
-    try:
-        from dashboard._state_cooldowns import compute_state_cooldowns
-        summoner_cooldowns = compute_state_cooldowns(lc)
-    except Exception:  # noqa: BLE001
-        summoner_cooldowns = None
-    _mark("cooldowns")
 
     # ZOI foundation (2026-06-21) - the settings-driven on-screen minimap rect,
     # in 1920x1080 design px, for the overlay's click-through minimap outline
