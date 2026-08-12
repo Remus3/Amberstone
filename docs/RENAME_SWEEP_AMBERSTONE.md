@@ -81,6 +81,27 @@ break auto-update for any packaged install. The guard exempts exactly these two
 shapes (`_GITHUB_URL_RE`, `_PUBLISH_SLUG_RE`) and carries a test that goes RED
 once they are gone, so the exemption cannot outlive the thing it exempts.
 
+## 1a-frozen. Frozen-file edits, OPERATOR-APPROVED 2026-08-11
+
+Tier 1 touched four files on the CLAUDE.md frozen list. **The operator reviewed
+the diff and approved keeping them.** 8 lines total, every one a user-visible
+product-name string - which is precisely what the rename exists to change, so
+leaving them would have kept the trademark in `--help` output and the log
+banner:
+
+| File | Lines | What |
+|---|---|---|
+| `main.py` | 3 | module docstring, `argparse` prog, startup log banner |
+| `core/log_setup.py` | 2 | module docstring, logging-started banner |
+| `core/game_snapshot.py` | 1 | docstring (`Authoritative mode container for ...`) |
+| `ops/rc_dev_runtime.py` | 2 | docstrings |
+
+No behaviour changed in any of them. `RIOT_COMMANDER_DEBUG` inside those same
+files was deliberately SKIPPED by the sweep and is untouched.
+
+This is the SECOND frozen-file approval this session; the first was
+`core/game_snapshot.py` for the B7 forbidden-mode gate, which was functional.
+
 ## 1b. HEXCORE - re-scoped, my Tier-0 estimate was wrong
 
 I filed the two `docs/HEXCORE*.html` files as a low-risk Tier-0 rename. Measured,
