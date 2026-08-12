@@ -152,6 +152,52 @@ UI and not the design intent.
 Side effect: this is the same precompute the Haiku-to-ZERO program needs, so the
 compliance path and the cost path converge rather than compete.
 
+## 6b2. Product-name shortlist (operator-kept, 2026-08-11)
+
+The rename is N1 and it gates the Riot application, so the shortlist lives here
+rather than in a scratch file. Constraint set: no Riot IP (Riot, League, LoL,
+Rift, Summoner, Hextech / Hexcore, champion names), no confusable-with-Demon-
+Slayer construction, and not "closely resembling Riot's games or products".
+
+**KEPT by the operator so far:**
+
+| Name | Domains at probe | Register |
+|---|---|---|
+| **Salt Circle** | `saltcircle.gg` + `saltcircle.app` | occult containment - what you draw to hold a daemon. Pairs with the Daemon Slayer engine: the engine summons, the product contains and presents. |
+| **Lane Oracle** | `laneoracle.gg` | advisory / divinatory, grounded in the game by "lane". |
+
+**Further candidates, all unregistered at probe (2026-08-11, NS lookup):**
+
+Advisory / divinatory register, siblings of Lane Oracle:
+
+- **Bellwether** (`bellwether.gg`) - the leading indicator. Reads as analytics.
+- **Portent** (`portent.gg`) - a sign of what is coming. Short, ownable.
+- **Auspice** (`auspice.gg`) - the reading of omens before a decision. Note the
+  bare `auspex.gg` and `pythia.gg` are both taken; `auspice` is the survivor.
+- **Lane Augur** (`laneaugur.gg`) - the augur read birds before a battle.
+- **Lane Almanac** (`lanealmanac.gg`) - quieter, reference-book framing.
+- **Lane Warden** (`lanewarden.gg` + `.app`) - the most literal and the safest.
+
+Occult / containment register, siblings of Salt Circle:
+
+- **Wardstone** (`wardstone.gg`) - the stone that holds a boundary.
+- **Hollow Circle** (`hollowcircle.gg`), **Iron Circle** (`ironcircle.gg`),
+  **Chalk Line** (`chalkline.gg`) - the same containment idea, different material.
+- **Candlewright** (`candlewright.gg`), **Banewright** (`banewright.gg`),
+  **Nightsmith** (`nightsmith.gg`) - maker-of register.
+- **Thornbind** (`thornbind.gg`), **Ashline** (`ashline.gg`),
+  **Bind Sigil** (`bindsigil.gg`), **Sigilcraft** (`sigilcraft.gg`) - binding.
+- **Reliquary** (`reliquary.gg`) - the vessel that holds the dangerous thing.
+
+Carried from the first pass: **Lane Commander** (`lanecommander.gg` + `.app`,
+lowest rename churn, keeps the existing equity) and **Sidelane** (`sidelane.gg`;
+`sidelane.app` is taken).
+
+**Taken at probe, do not re-check:** lodestar, sightline, coldiron, sigil,
+familiar, grimoire, pact, conjure, auspex, pythia, cadence, wardens, and every
+other bare single-word `.gg` tried. Availability rots - re-probe before
+committing to any of the above, and clear the final pick against USPTO.
+
 ## 6d. The CC threat cell - where the line actually falls
 
 Operator question 2026-08-11: enemy cooldowns are publicly observable, so how
