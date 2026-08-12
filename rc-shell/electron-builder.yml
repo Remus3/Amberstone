@@ -3,7 +3,11 @@
 # Minimal packaging + publish config for the Phase 5 stabilization slice
 # (docs/ELECTRON_OVERLAY.md sections 8 + 10). Build with: npx electron-builder
 #
-# Publish target is GitHub Releases on Remus3/riot-commander. The repo is
+# Publish target is GitHub Releases. The `publish.repo` slug below still reads
+# the OLD slug DELIBERATELY: the GitHub repo rename to `amberstone` is an
+# operator action (it changes a public URL) and the two MUST move together or
+# electron-updater loses its feed. Rename the repo and this slug in one step.
+# Riot compliance 2026-08-11 - see docs/RENAME_SWEEP_AMBERSTONE.md. The repo is
 # PRIVATE, so a packaged shell needs GH_TOKEN in its environment at runtime
 # for electron-updater to reach the release feed (operator-side concern).
 # Publishing a Release at all is operator-gated - none exists yet; this file
@@ -13,8 +17,12 @@
 # files so the stable/dev channel split (src/update_channel.js) has a feed
 # to read on both channels.
 
-appId: com.riotcommander.rc-shell
-productName: Riot Commander Shell
+# Riot compliance 2026-08-11: appId changed off the old product-name domain.
+# OPERATOR-APPROVED BREAKING CHANGE - Windows treats a new appId as a DIFFERENT
+# application, so an existing install will NOT upgrade in place; it co-installs
+# alongside and the old one must be uninstalled by hand.
+appId: com.amberstone.shell
+productName: Amberstone Shell
 
 directories:
   output: dist
