@@ -35,11 +35,56 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Rename-retry budget. Windows gives no POSIX rename-over-open-file guarantee:
+# a reader, an antivirus scan or the search indexer holding a handle for a few
+# milliseconds makes os.replace raise PermissionError/OSError even though the
+# payload is already safely on disk as .tmp and only the rename failed.
+#
+# MEASURED on Legion 2026-08-12 20:44:33 (ops/runtime/last_fatal.txt):
+#   PermissionError: [WinError 5] Access is denied:
+#   'ops/runtime/health.json.tmp' -> 'ops/runtime/health.json'
+#
+# The failure was deceptive rather than loud. _heartbeat_loop catches the
+# exception, calls write_fatal (which writes a marker file and RETURNS) and
+# keeps looping, so the process stayed alive, no supervisor restart fired, and
+# health.json simply stopped advancing while still parsing as a well-formed
+# payload with a live pid. RC read as up and was not.
+#
+# Total worst-case backoff is 0.05 + 0.10 = 0.15s, deliberately well under the
+# 1.0s default heartbeat_interval so a retry can never make ticks pile up.
+# Pinned by tests/test_rc_dev_runtime_atomic_write_retry.py.
+_ATOMIC_WRITE_RETRIES = 3
+_ATOMIC_WRITE_BACKOFF_S = 0.05
+
+
 def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, path)
+
+    # Only OSError is retried - that is the rename-contention family
+    # (PermissionError is a subclass). Anything else is a real bug in the
+    # payload or the path and must surface on the first attempt.
+    last_exc: Optional[OSError] = None
+    for attempt in range(_ATOMIC_WRITE_RETRIES):
+        try:
+            os.replace(tmp, path)
+            return
+        except OSError as exc:
+            last_exc = exc
+            if attempt + 1 < _ATOMIC_WRITE_RETRIES:
+                time.sleep(_ATOMIC_WRITE_BACKOFF_S * (2 ** attempt))
+
+    # Budget exhausted: this is a persistent fault, not contention. Drop the
+    # orphan so the next tick starts clean (an abandoned health.json.tmp is
+    # what made the live incident hard to read - the payload was on disk under
+    # the wrong name), then re-raise so the caller still reports it. Retrying
+    # must not trade a visible stale-health bug for a silent one.
+    try:
+        tmp.unlink()
+    except OSError:
+        pass
+    raise last_exc
 
 
 # -- Safe-reload allowlist (Item 9) --------------------------------------------
