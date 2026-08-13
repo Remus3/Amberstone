@@ -2062,6 +2062,27 @@
           </div>
         </div>
 
+        <!-- B4-e (RM-189) DECISION BRANCHES. The post-game half of the
+             compliance split: RC computes the multi-path choice set DURING
+             the game and renders nothing live (Riot bans in-game
+             notifications that dictate player action), then replays it here.
+             Fed by /api/branch-review, which reads the silent capture in
+             data/hz_choice_shadow.jsonl. This block must never be mounted in
+             the ?overlay=1 shell - see docs/OVERLAY_B4_DESIGN.md. -->
+        <div class="lm-br-wrap" id="lm-branch-review" hidden>
+          <div class="lm-br-head">
+            <span class="lm-br-title">Decision branches</span>
+            <span class="lm-br-meta" id="lm-br-meta">-</span>
+          </div>
+          <!-- Non-blocking data caveats (tail-clipped series, RM-158 Arena
+               precompute exclusion). Hidden when neither applies. -->
+          <div class="lm-br-note" id="lm-br-note" hidden></div>
+          <ol class="lm-br-list" id="lm-br-list"></ol>
+          <div class="lm-br-empty" id="lm-br-empty" hidden>
+            No branch capture for this match.
+          </div>
+        </div>
+
       </div>
     </section>
 

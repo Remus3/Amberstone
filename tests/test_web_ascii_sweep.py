@@ -282,7 +282,25 @@ _WEB = _REPO_ROOT / "web"
 # modified web/data/*_index.json files in the tree at capture time are the
 # uncommitted DDragon 16.16.1 bump and CANNOT affect this digest: _web_sources
 # filters on lang_for_path, whose _LANGS map is .js / .css / .html only.
-_LIVE_HALF_DIGEST = "63f408b51e1204516accab6694a2ed2aa357e3f50871d170be0ef5be8708d69f"
+# RE-CAPTURED 2026-08-12 (B4-e, RM-189 - the post-game DECISION BRANCHES
+# card), superseding the B4-b capture immediately above. Like that one, NOT the
+# ordinary case: two files were ADDED to web/.
+#   A web/css/panels/branch_review.css  new panel stylesheet
+#   A web/js/panels/branch_review.js    new panel module
+#   M web/index.html                    the #lm-branch-review mounts, inside
+#                                       #view-last-match (post-game only)
+#   M web/css/dashboard.css             one @import for the new stylesheet
+#   M web/js/main.js                    import + the last-match view hook
+# All of these RENDER - the slice adds a visible card to the Post Game Review
+# view. It is post-game by construction and never mounts in the ?overlay=1
+# shell; see docs/OVERLAY_B4_DESIGN.md section 5.
+# Verified the same way as the captures above: the superseded digest 63f408b5
+# reproduces byte for byte in a clean HEAD worktree (measured 2026-08-12 at
+# 149468f9), so nothing else moved the value. The three modified
+# web/data/*_index.json in the tree remain the uncommitted DDragon 16.16.1
+# bump (ROADMAP RM-190) and cannot affect this digest - _web_sources filters on
+# _LANGS, which is .js / .css / .html only.
+_LIVE_HALF_DIGEST = "87d64958e9dd8e0db361d7563df4cb33fa1441593d57a7c03423ba4f2a76f558"
 
 
 def _web_sources() -> list[Path]:

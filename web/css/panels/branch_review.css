@@ -1,0 +1,173 @@
+/* branch_review.css - B4-e (RM-189) DECISION BRANCHES card.
+ *
+ * Mount: #lm-branch-review, the last block inside #lm-body on the Post Game
+ * Review view. Shape follows the sibling .lm-wpa-wrap card (head + ordered
+ * list) so the view reads as one system.
+ *
+ * Every colour + size here is a design token from web/css/tokens.css and the
+ * primitives layer. An undefined var fails SILENTLY - it greps fine and then
+ * inherits - so each one used below was verified to exist before use:
+ * --surface-2 --border --text --text-dim --good --warn --bad --fs-xs --fs-sm
+ * --fs-md --fs-lg --panel-radius-sm.
+ *
+ * NOT overlay-safe by design: this card is post-game analysis and must never
+ * mount in the ?overlay=1 shell. It lives inside #view-last-match, which the
+ * overlay never renders, and branch_review.js self-gates as well.
+ */
+
+.lm-br-wrap {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius-sm);
+}
+.lm-br-wrap[hidden] { display: none; }
+
+.lm-br-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.lm-br-title {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lm-br-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  text-align: right;
+}
+
+/* Non-blocking data caveats (clipped window, RM-158 exclusion, ungroupable
+ * legacy rows). Warn-tinted, never an error - none of these mean failure. */
+.lm-br-note {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  border-left: 3px solid var(--warn);
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  border-radius: var(--panel-radius-sm);
+}
+.lm-br-note[hidden] { display: none; }
+
+.lm-br-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* One decision moment. The clock column is fixed-width so the timeline reads
+ * as a column at a glance instead of ragging with the label lengths. */
+.lm-br-row {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.lm-br-row:first-child { border-top: 0; }
+
+.lm-br-when {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lm-br-clock {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.lm-br-context {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
+.lm-br-paths {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.lm-br-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* The A / B / C key. Square so the eye can count paths without reading. */
+.lm-br-key {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lm-br-choice-body { min-width: 0; }
+
+.lm-br-label {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lm-br-outcome {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Confidence is the reader's calibration cue, so it is coloured rather than
+ * left as plain text - a low-confidence path should not read like a high one. */
+.lm-br-conf {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.lm-br-conf.is-high { color: var(--good); }
+.lm-br-conf.is-mid  { color: var(--warn); }
+.lm-br-conf.is-low  { color: var(--bad); }
+
+.lm-br-native {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.lm-br-excluded {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  border-left: 3px solid var(--warn);
+  padding-left: 10px;
+}
+
+.lm-br-empty {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  padding: 8px 0;
+}
+.lm-br-empty[hidden] { display: none; }
