@@ -5742,9 +5742,9 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3175": ItemEffect(
         item_id="3175",
         name="Spellslinger's Shoes",
-        magic_pen_flat=18.0,
+        magic_pen_flat=20.0,
         magic_pen_pct=0.08,
-        note="Spellslinger's Shoes (3175): 18 flat magic pen + 8% magic pen + 45 MS - both pen layers stack with Sorcerer's/Shadowflame",
+        note="Spellslinger's Shoes (3175): 20 flat magic pen + 8% magic pen + 45 MS - both pen layers stack with Sorcerer's/Shadowflame. Flat pen moved 18 -> 20 at DDragon 16.16.1 (RM-190); the percent layer did not move.",
     ),
     "3172": ItemEffect(
         item_id="3172",

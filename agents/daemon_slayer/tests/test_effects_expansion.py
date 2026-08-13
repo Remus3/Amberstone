@@ -6521,7 +6521,7 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
         e = ITEM_EFFECTS["3175"]
         self.assertIsNotNone(e)
         self.assertFalse(e.defensive_only)
-        self.assertAlmostEqual(e.magic_pen_flat, 18.0)
+        self.assertAlmostEqual(e.magic_pen_flat, 20.0)
         self.assertAlmostEqual(e.magic_pen_pct, 0.08)
         self.assertEqual(len(e.periodics), 0)
 
@@ -7972,7 +7972,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.277.0")
+        self.assertEqual(ENGINE_VERSION, "1.277.1")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -8033,7 +8033,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.277.0")
+        self.assertEqual(ENGINE_VERSION, "1.277.1")
 
 
 if __name__ == "__main__":
