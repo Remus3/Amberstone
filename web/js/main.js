@@ -51,6 +51,7 @@ import { renderObjectiveChips } from './panels/objective_chips.js';
 import { renderObjectiveGauges } from './panels/objective_gauges.js';
 import { renderNextBuy } from './panels/next_buy.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
+import { refreshBranchReview } from './panels/branch_review.js';
 // HIST2: detached historical PGR (archive view for a clicked History /
 // Session match row). Separate DOM + state from last_match.js - never
 // clobbers the live PGR.
@@ -818,7 +819,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     if (viewId === "session")     { _sessionFetchAndRender(); renderSessionHygiene(); renderPlaystyleLabels(); renderPatchImpact(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
-    if (viewId === "last-match")  { wireLastMatchOnce(); fetchAndRenderLastMatch(); }
+    if (viewId === "last-match")  {
+      wireLastMatchOnce(); fetchAndRenderLastMatch();
+      // B4-e (RM-189): the DECISION BRANCHES card. Post-game only by
+      // construction - this view is never rendered in the ?overlay=1 shell,
+      // and refreshBranchReview re-checks the live gate anyway.
+      try { refreshBranchReview(state.latest); } catch (_) {}
+    }
     if (viewId === "historical-pgr") {
       // HIST2: render the detached archive PGR for the match the operator
       // clicked. The timestamp was stashed by the History / Session row
