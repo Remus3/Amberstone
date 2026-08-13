@@ -263,7 +263,26 @@ _WEB = _REPO_ROOT / "web"
 #   M web/js/main.js          two comments
 # Verified as before: the superseded digest reproduces byte for byte in a clean
 # HEAD worktree, so nothing else moved the value.
-_LIVE_HALF_DIGEST = "7e5e0d2c43b05cd62f33b74a9a2924815a982a87145d7a391caf13512f47ae8b"
+# RE-CAPTURED 2026-08-12 (B4-b, RM-189 - client-side directive gate),
+# superseding the Tier-1 capture immediately above. NOT the ordinary case: a
+# file was ADDED to web/, so the digest covers one more source than before.
+#   A web/js/lib/live_directive_gate.js  new module - isLiveGame /
+#                                        directivesAllowed. Defence in depth
+#                                        behind the server-side B4 gate.
+#   M web/js/panels/coach_choices.js     import + coerce choices to [] while
+#                                        live, so #rn-choices goes quiet.
+#   M web/js/panels/callouts.js          import + the same coercion for
+#                                        #rn-callouts and #rn-lead.
+# All three changes RENDER, by construction - suppressing a render is the
+# entire point of the slice. Riot's third-party rules ban notifications that
+# dictate player action from live game state; see docs/OVERLAY_B4_DESIGN.md.
+# Verified the same way as the captures above: the superseded digest
+# 7e5e0d2c reproduces byte for byte in a clean HEAD worktree (measured
+# 2026-08-12 at f0501048), so nothing else moved the value. Note the three
+# modified web/data/*_index.json files in the tree at capture time are the
+# uncommitted DDragon 16.16.1 bump and CANNOT affect this digest: _web_sources
+# filters on lang_for_path, whose _LANGS map is .js / .css / .html only.
+_LIVE_HALF_DIGEST = "63f408b51e1204516accab6694a2ed2aa357e3f50871d170be0ef5be8708d69f"
 
 
 def _web_sources() -> list[Path]:

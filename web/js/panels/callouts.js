@@ -20,6 +20,8 @@
 // (a missing mount or a malformed state never throws). The chip UI for
 // state.coach.choices (coach_choices.js -> #rn-choices) is UNCHANGED.
 
+import { directivesAllowed } from '../lib/live_directive_gate.js';
+
 const LEAD_MOUNT_ID = "rn-lead";
 const CALLOUTS_MOUNT_ID = "rn-callouts";
 
@@ -124,7 +126,13 @@ function _escape(s) {
 export function renderLead(state) {
   const mount = document.getElementById(LEAD_MOUNT_ID);
   if (!mount) return;
-  const lead = (state && state.lead_projection) || {};
+  // B4 (RM-189): lead_projection's own source calls its table a "per-mode
+  // directive table" (core/lead_projection.py:321) and emits lines like
+  // "Big lead: dive or roam, snowball it now." Empty object -> _leadSig ""
+  // -> the existing clear-and-hide branch below.
+  const lead = directivesAllowed(state)
+    ? ((state && state.lead_projection) || {})
+    : {};
   const sig = _leadSig(lead);
   if (sig === "") {
     if (_lastLeadSig !== "") {
@@ -145,7 +153,13 @@ export function renderLead(state) {
 export function renderCallouts(state) {
   const mount = document.getElementById(CALLOUTS_MOUNT_ID);
   if (!mount) return;
-  const callouts = (state && Array.isArray(state.callouts)) ? state.callouts : [];
+  // B4 (RM-189): these lines are imperatives ("set up vision", "ward river",
+  // "force fights now"), and the lvl/item rows are ALSO the B3 power-spike
+  // notification, which survived B3's deletion of web/js/panels/spike_cue.js
+  // because it feeds a different mount.
+  const callouts = (directivesAllowed(state) && state && Array.isArray(state.callouts))
+    ? state.callouts
+    : [];
   const sig = _calloutsSig(callouts);
   if (sig === "") {
     if (_lastCalloutsSig !== "") {
