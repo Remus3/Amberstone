@@ -202,6 +202,24 @@ LIVE_SUPPRESSED_FIELDS = (
 # branch instead of the empty branch.
 _LIVE_SUPPRESSED_EMPTY = {"choices": []}
 
+# B4-b: the deterministic siblings. These are TOP-LEVEL keys on /api/state, NOT
+# inside `coach`, which is why the B4-a coach-field sweep did not reach them -
+# and they feed two of the only three mounts the overlay shell keeps visible
+# (web/css/overlay.css:127). Both are imperative at the source:
+#   core/event_callouts.py:119  "Your lvl-6 spike - look for all-in"
+#   core/event_callouts.py:127  "2-item spike - force fights now"
+#   core/event_callouts.py:107  "Drake spawns 5:00 - set up vision"
+#   core/lead_projection.py:211 "Big lead: dive or roam, snowball it now."
+# lead_projection's own source calls _LINES_BY_MODE a "per-mode directive
+# table" (core/lead_projection.py:321).
+#
+# The two spike lines are additionally the B3 artefact ("notifications that
+# alert players when a power spike hits"). B3 deleted web/js/panels/spike_cue.js
+# but not this feed, so the cue survived its own removal on a second mount.
+LIVE_SUPPRESSED_ENVELOPE_FIELDS = ("callouts", "lead_projection")
+
+_LIVE_SUPPRESSED_ENVELOPE_EMPTY = {"callouts": [], "lead_projection": {}}
+
 # Any of these on health means a game is actually running. brawl_mode is
 # included even though resolve_mode_key does not test it: the brawl coach is
 # live-reachable (URF / ARURF / ONEFORALL / GAMEMODEX / NEXUSBLITZ route to
@@ -239,6 +257,23 @@ def suppress_live_directives(coach, health: dict | None,
     for field in LIVE_SUPPRESSED_FIELDS:
         if field in out:
             out[field] = _LIVE_SUPPRESSED_EMPTY.get(field)
+    return out
+
+
+def suppress_live_envelope(det, health: dict | None,
+                           preflip_active: bool = False):
+    """Blank the top-level deterministic directive feeds while a game is live.
+
+    Sibling of ``suppress_live_directives`` for the keys that live OUTSIDE
+    ``coach`` on the served envelope. Same copy-not-mutate contract: the same
+    ``det`` dict is read by the shadow writers earlier in the tick.
+    """
+    if not isinstance(det, dict) or not is_live_game(health, preflip_active):
+        return det
+    out = dict(det)
+    for field in LIVE_SUPPRESSED_ENVELOPE_FIELDS:
+        if field in out:
+            out[field] = _LIVE_SUPPRESSED_ENVELOPE_EMPTY.get(field)
     return out
 
 
@@ -739,6 +774,7 @@ def build_state() -> dict:
     # SERVED envelope goes quiet. Guarded by
     # tests/test_b4_live_directive_suppression.py.
     coach = suppress_live_directives(coach, health, preflip_active)
+    det = suppress_live_envelope(det, health, preflip_active)
     _mark("b4_suppress")
 
     _warn_slow_stages(_stages)

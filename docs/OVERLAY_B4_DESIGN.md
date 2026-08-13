@@ -38,6 +38,30 @@ right-now surface the overlay keeps.
 
 Net: B4 is narrower than filed but not smaller in risk.
 
+**Correction 3, found during B4-b (2026-08-12) - ALL THREE overlay survivors
+are imperative, and two of them are not coach fields at all.** `#rn-callouts`
+and `#rn-lead` are fed by TOP-LEVEL `/api/state` keys (`callouts`,
+`lead_projection`), not by anything under `coach`, which is why the B4-a
+coach-field sweep did not reach them. Both are directive at the source:
+
+- `core/event_callouts.py:107` "Drake spawns 5:00 - set up vision"
+- `core/event_callouts.py:109` "Plates fall 14:00 - shove for gold"
+- `core/event_callouts.py:119` "Your lvl-6 spike - look for all-in"
+- `core/event_callouts.py:127` "2-item spike - force fights now"
+- `core/lead_projection.py:211` "Big lead: dive or roam, snowball it now."
+
+`core/lead_projection.py:321` calls its own table a "per-mode directive
+table", and `core/event_callouts.py:133` describes the recall callout as "a
+correct-by-construction directive". The code says what it is.
+
+**This also means B3 is not actually done.** B3 is recorded as
+"power-spike cue - DONE, deleted" (`OVERLAY_COMPLIANCE_PLAN.md:41`), and it
+did delete `web/js/panels/spike_cue.js`. But the level and item spike lines
+above still fire live into `#rn-callouts`, which is one of the three mounts
+the overlay keeps. The banned artefact survived its own removal by living on a
+second mount. B4-b's producer suppression closes it in a live game; the B3 row
+in the plan should be corrected rather than left reading DONE.
+
 ## 2. The capture half already exists - do not build it
 
 Section 6c asks RC to "compute the multi-path choice set at each decision
@@ -123,6 +147,8 @@ Suppress while live:
 | `coach.risk` | directive framing | `null` |
 | `coach.target_priority` (arena) | "focus X" | `null` |
 | `coach.round_strategy` (arena) | imperative | `null` |
+| `callouts` (top level) | objective + spike imperatives | `[]` |
+| `lead_projection` (top level) | macro directive line | `{}` |
 
 Keep live (descriptive state, not a directive): `hp_pct`, `gold`, `level`,
 game clock, CS, KDA, the rebuilt `cc_threat_cell` (CC durations, B10), and the
