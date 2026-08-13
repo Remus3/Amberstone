@@ -321,6 +321,21 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+# 2026-08-09 - weekly-hygiene pass (automated, unattended)
+
+Relocated: `# 2026-08-08` (headless lane 6 RM-176, 43 lines) to `docs/history_notes.md`. WAKEUP_NOTES now holds 3 sessions.
+
+CLAUDE.md: 40.6 KB, no stray ledger entries. CLEAN.
+
+Memory suspects (operator judgment calls - do not act on these autonomously):
+- `feedback_oauth_flip_injection_vectors.md` (45 days old, MEDIUM): "How to apply" step 1 cites `C:/RC-Agent/gamepc_bridge_daemon.py` on a retired machine as a live example. The NOTE (2026-06-24) says bridge files are deleted; core lesson transfers. Consider updating step 1 to remove the dead path citation.
+- `feedback_gamepc_league_fullscreen_lockup.md` (Game-PC retired ADR-011): documents FS lockup on retired hardware. Low harm (filename self-labels it). Could move to `_retired/` when convenient.
+
+Anomaly triage (all EXPECTED): RC pid=17624 alive, last_reload_ok=True; DS :8860 alive patch=16.15.1; all 24 RC-* tasks healthy (Ready or Running).
+Open operator action (not new): bare `Amberstone` scheduled task (noted 2026-08-08c) - races RC-Supervisor for :8888 and loses, LastTaskResult=1. Deletion = system-settings change, operator territory.
+
+---
+
 # 2026-08-08d - the DS coverage lanes are SATURATED, and the one real defect came from an adversarial pass whose other two findings were both wrong
 
 Baseline `b18a9da9`, head `a27aa105`. ENGINE **1.275.3 -> 1.276.0 -> 1.277.0**.

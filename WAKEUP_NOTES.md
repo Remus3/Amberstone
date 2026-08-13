@@ -6,6 +6,26 @@
 
 ---
 
+# 2026-08-12 - RM-190 decided (a1), the heartbeat rename retries, RM-191 filed
+
+Commits `f2e162e3` (RM-190), `603a8fd2` (heartbeat retry), `26f4ff87` (LEDGER 1242), `ed23d8fa` (RM-191 + size-budget pass), `6720ba7e` (drift-guard fix). All pushed. Local: DS **10584 passed / 13338 subtests**, RC `tests/` **19009 passed / 96 skipped / 0 failed**, ruff clean, drift_guard 0, `ds_share_sync --check` in sync at 533 files.
+
+**RM-190 CLOSED - operator chose a1.** 16.16.1 DDragon mirror committed; item 3175 flat magic pen 18 -> 20 carried into the DS registry; **ENGINE 1.277.0 -> 1.277.1**; DS deliberately left PINNED to data patch 16.15.1. `:8860` reporting patch **16.15.1** at engine 1.277.1 is **CORRECT, not drift** - do not file the gap as a defect. Full detail + traps: LEDGER 1241, body in `docs/ROADMAP_HISTORY.md`.
+
+**Heartbeat rename now retries (LEDGER 1242).** `ops/rc_dev_runtime.py` is FROZEN; the operator approved it this session - record that. The prior note's mechanism was wrong twice: **nothing crashed** (`write_fatal` writes a marker and RETURNS, so the loop kept running and `health.json` just froze while the pid stayed live), and it is **nine call sites**, not one, because `_atomic_write_json` is shared. 3 attempts, 0.15s worst case, under the 1.0s heartbeat interval.
+
+**RM-191 filed (operator-gated).** `write_fatal` is a WRITE-ONLY channel with **zero readers** - measured, `grep -rn last_fatal` returns only its own writes, and `health.json` has no `fatal` key. That is why the 2026-08-09 outage was found by hand three days later.
+
+**Do NOT redo / do NOT re-investigate:**
+- RM-190 in any form. Do not bump the DS per-patch snapshot casually (21 files / ~12 MB, needs a Meraki extract, never `--force`).
+- `core.build_order_precompute --static` does NOT restamp `build_order_variants_*.json` - separate `core.build_order_variants` run. `ds_share_sync` does NOT author release history; `Share/CHANGELOG.md` + `Share/README.md` are hand-written even when the sync reports clean.
+- The `docs/OVERLAY_COMPLIANCE_PLAN.md:35` "1.277.0" anchor is CORRECT - it is a dated `STATUS as of 2026-08-11` snapshot. The drift guard was taught this (`6720ba7e`); do not "fix" the doc.
+- B4-a..e, the B3 correction, the `enemy_summs_tracked` removal - all still shipped from the prior session.
+
+**Next:** RM-191 if you want it (needs a frozen-file grant), else the top open ROADMAP row.
+
+---
+
 # 2026-08-12 - RC recovered from a 3-day outage, then B4 built end to end
 
 Commits `f0501048` (B4-a), `543f738c` (B4-b), `3ca8ecd2` (RM-190), `12fc506c` (B4-c), `149468f9` (B4-d), `66914b81` (B4-e), `42e5c659` (B3 correction), `4920867d` (B1 residual). All pushed. RC `tests/` **19000 passed / 96 skipped**; ruff clean; drift_guard 0. Design: `docs/OVERLAY_B4_DESIGN.md`.
@@ -46,18 +66,3 @@ Commits `d0785c5e` (Tier 0), `a847a343` (gate), `119dff5a` (Tier 1), `0a70b6cf` 
 **Still open (operator-only):** Riot Developer Portal product registration needs the operator's account login; a production key needs a public website + Terms of Service + Privacy Policy, none of which exist. Then B4 (move coach imperatives to pre/post-game - decision recorded in the compliance plan 6c), B8 (vision/OCR capture) and B9 (LCU) are DevRel questions.
 
 **Two guard lessons worth carrying:** a self-destructing guard must assert its exemption is still LOAD-BEARING, not merely that the remainder is clean (mine did not, and sat green through the very rename it was supposed to detect); and `tools/stop_claim_gate.py` now parses node test output, closing a blind spot where the whole rc-shell suite was invisible to it.
-
----
-
-# 2026-08-09 - weekly-hygiene pass (automated, unattended)
-
-Relocated: `# 2026-08-08` (headless lane 6 RM-176, 43 lines) to `docs/history_notes.md`. WAKEUP_NOTES now holds 3 sessions.
-
-CLAUDE.md: 40.6 KB, no stray ledger entries. CLEAN.
-
-Memory suspects (operator judgment calls - do not act on these autonomously):
-- `feedback_oauth_flip_injection_vectors.md` (45 days old, MEDIUM): "How to apply" step 1 cites `C:/RC-Agent/gamepc_bridge_daemon.py` on a retired machine as a live example. The NOTE (2026-06-24) says bridge files are deleted; core lesson transfers. Consider updating step 1 to remove the dead path citation.
-- `feedback_gamepc_league_fullscreen_lockup.md` (Game-PC retired ADR-011): documents FS lockup on retired hardware. Low harm (filename self-labels it). Could move to `_retired/` when convenient.
-
-Anomaly triage (all EXPECTED): RC pid=17624 alive, last_reload_ok=True; DS :8860 alive patch=16.15.1; all 24 RC-* tasks healthy (Ready or Running).
-Open operator action (not new): bare `Amberstone` scheduled task (noted 2026-08-08c) - races RC-Supervisor for :8888 and loses, LastTaskResult=1. Deletion = system-settings change, operator territory.
