@@ -29,9 +29,11 @@ from unittest import mock
 
 from dashboard import _state_builder
 from dashboard._state_builder import (
+    LIVE_SUPPRESSED_ENVELOPE_FIELDS,
     LIVE_SUPPRESSED_FIELDS,
     is_live_game,
     suppress_live_directives,
+    suppress_live_envelope,
 )
 
 
@@ -147,6 +149,65 @@ class SuppressLiveDirectivesTests(unittest.TestCase):
                                                    False))
 
 
+def _directive_det():
+    """A deterministic block whose callout + lead lines are verbatim from the
+    producers, so these guards fail if the real vocabulary changes."""
+    return {
+        "choices": [{"key": "A", "label": "Force a short trade"}],
+        # core/event_callouts.py:119,127,107 - imperatives, and the two spike
+        # lines are ALSO the B3 power-spike notification.
+        "callouts": [
+            {"tag": "lvl6", "line": "Your lvl-6 spike - look for all-in",
+             "eta_s": 0.0, "kind": "spike"},
+            {"tag": "item2", "line": "2-item spike - force fights now",
+             "eta_s": 0.0, "kind": "spike"},
+            {"tag": "dragon", "line": "Drake spawns 5:00 - set up vision",
+             "eta_s": 45.0, "kind": "objective"},
+        ],
+        # core/lead_projection.py:211 - the module calls _LINES_BY_MODE a
+        # "per-mode directive table" in so many words.
+        "lead_projection": {"state": "ahead", "magnitude": "large",
+                            "line": "Big lead: dive or roam, snowball it now."},
+    }
+
+
+class SuppressLiveEnvelopeTests(unittest.TestCase):
+    """B4-b: `callouts` and `lead_projection` are TOP-LEVEL siblings of
+    `coach` on /api/state, so the B4-a coach-field sweep did not reach them -
+    yet #rn-callouts and #rn-lead are two of the only three mounts the overlay
+    shell keeps visible (web/css/overlay.css:127). Both carry imperatives."""
+
+    def test_callouts_and_lead_are_blanked_while_live(self):
+        out = suppress_live_envelope(_directive_det(), {"has_game": True}, False)
+        self.assertEqual(out["callouts"], [])
+        self.assertEqual(out["lead_projection"], {})
+
+    def test_every_declared_envelope_field_is_covered(self):
+        out = suppress_live_envelope(_directive_det(), {"has_game": True}, False)
+        for field in LIVE_SUPPRESSED_ENVELOPE_FIELDS:
+            with self.subTest(field=field):
+                self.assertFalse(out.get(field))
+
+    def test_negative_control_not_live_leaves_everything(self):
+        src = _directive_det()
+        out = suppress_live_envelope(src, {"mode": "client"}, False)
+        self.assertEqual(len(out["callouts"]), 3)
+        self.assertEqual(out["lead_projection"]["state"], "ahead")
+
+    def test_champ_select_preflip_leaves_everything(self):
+        src = _directive_det()
+        out = suppress_live_envelope(src, {"aram_mode": True}, True)
+        self.assertEqual(len(out["callouts"]), 3)
+
+    def test_does_not_mutate_caller_payload(self):
+        src = _directive_det()
+        suppress_live_envelope(src, {"has_game": True}, False)
+        self.assertEqual(len(src["callouts"]), 3)
+
+    def test_non_dict_safe(self):
+        self.assertIsNone(suppress_live_envelope(None, {"has_game": True}, False))
+
+
 class BuildStateSuppressesLiveDirectivesTests(unittest.TestCase):
     """End-to-end through build_state, mirroring the item-281 harness in
     tests/test_state_builder_cleared_at.py."""
@@ -220,6 +281,36 @@ class BuildStateSuppressesLiveDirectivesTests(unittest.TestCase):
                          "shadow writer lost the native branch set")
         self.assertEqual(seen.get("action"), "ALL-IN NOW")
         self.assertFalse(coach.get("choices"))
+
+    def _patch_det(self, det):
+        from dashboard import _deterministic_coaching as _dc
+        p = mock.patch.object(_dc, "compute_deterministic", return_value=det)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_live_game_serves_no_callouts_or_lead(self):
+        self._patch(
+            health={"mode": "client", "aram_mode": True},
+            coach_payload=_directive_coach(),
+            lc_payload={"champion": "Kai'Sa", "game_time": "14:54"},
+        )
+        self._patch_det(_directive_det())
+        state = _state_builder.build_state()
+        self.assertEqual(state["callouts"], [],
+                         "#rn-callouts feed leaked into the live envelope")
+        self.assertEqual(state["lead_projection"], {},
+                         "#rn-lead feed leaked into the live envelope")
+
+    def test_negative_control_client_idle_serves_callouts_and_lead(self):
+        self._patch(
+            health={"mode": "client"},
+            coach_payload=_directive_coach(),
+            lc_payload=None,
+        )
+        self._patch_det(_directive_det())
+        state = _state_builder.build_state()
+        self.assertEqual(len(state["callouts"]), 3)
+        self.assertEqual(state["lead_projection"].get("state"), "ahead")
 
     def test_negative_control_client_idle_serves_imperatives(self):
         """Not in a game: coaching is allowed and MUST still flow, otherwise

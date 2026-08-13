@@ -20,6 +20,8 @@
 
 import { stripCoachTags } from '../lib/helpers.js';
 
+import { directivesAllowed } from '../lib/live_directive_gate.js';
+
 const MOUNT_ID = "rn-choices";
 
 // Module-level state: latest rendered state (for game_context snapshot
@@ -194,7 +196,15 @@ export function renderCoachChoices(state) {
   // game_context snapshot at the moment the operator hits Alt+N.
   _latestState = state;
   const coach = (state && state.coach) || {};
-  const choices = Array.isArray(coach.choices) ? coach.choices : [];
+  // B4 (RM-189): the A/B decision chips are the most literal form of the
+  // banned artefact (a notification dictating player action from live game
+  // state), and #rn-choices is one of only three mounts the overlay shell
+  // keeps visible. Coercing to [] here reuses the existing clear-and-hide
+  // branch below rather than adding a second teardown path. The server has
+  // already blanked coach.choices; this catches a replayed cached tick.
+  const choices = (directivesAllowed(state) && Array.isArray(coach.choices))
+    ? coach.choices
+    : [];
   const sig = _chipsSignature(choices);
   if (choices.length === 0) {
     if (_lastSig !== "") {
