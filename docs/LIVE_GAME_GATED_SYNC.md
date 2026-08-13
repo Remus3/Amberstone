@@ -671,6 +671,21 @@ survivability flips below cannot roll otherwise.
 
 ### In-game
 
+- **G3-14** (filed 2026-08-12, B4-d / RM-189) **`hz_choice_shadow` records must carry a REAL
+  `game_id` during a live game.** The plumbing is proven headless: `game_id` is threaded from
+  `lcu_snapshot` through `shadow_log_precomputed_choices` into the record, and
+  `tests/test_b4_shadow_match_id.py` pins the contract at that boundary. What CANNOT be proven
+  without a game is that the value arrives non-null, because `lcu/snapshot_shape.py:431-439` only
+  sets `state["game_id"]` while the gameflow phase is `GameStart` / `InProgress` - idle and
+  champ-select ticks legitimately carry nothing, so a headless run cannot distinguish "correctly
+  absent" from "silently never populated". **Do NOT close this by asserting the key EXISTS** - it
+  always exists and is None by design; that is the mis-file trap this file exists to catch.
+  **Action:** during any live ARAM Mayhem tick, `tail` the last row of `data/hz_choice_shadow.jsonl`
+  and assert `game_id` is a non-empty numeric string and `game_run_id` equals it (rather than the
+  `local-aram-<ts>` fallback). One row closes it. **Also worth one glance:** that every row of the
+  SAME game shares one `game_run_id`, which is the property the post-game review (B4-e) depends on.
+  Applies equally at GATE 2 / 4 / 5 - ARAM is simply the cheapest gate that reaches it.
+
 - **G3-04** (was C3) DSP3 ARAM archetype-override (`prefer_aram_win_axis=True`) - **MIS-FILED, NOT
   VALIDATED. RE-FILE source: GATE 3; destination: headless CODE work, off the live-gated list.**
   SETTLED HEADLESS: the resolver works and the override table is exactly 6 entries deep - Zilean

@@ -1597,7 +1597,7 @@ def _native_build_text(coach) -> str | None:
 
 
 def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
-                                   *, path=None) -> None:
+                                   *, path=None, lcu_snapshot=None) -> None:
     """Fail-soft HZ-C1 validation shadow-log. Records what the PRECOMPUTED
     laning table (``core.precomputed_laning_coach``) would offer for this game
     state - including whether the seed table covered the matchup - to
@@ -1607,7 +1607,12 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
     forever after a game ends, so coach-champion presence alone would log a
     junk row on every idle /api/state tick. A coverage MISS during a live game
     is recorded too (the seed coverage rate on real games is itself the
-    validation signal). ``path`` overrides the jsonl target (test seam)."""
+    validation signal). ``path`` overrides the jsonl target (test seam).
+
+    ``lcu_snapshot`` supplies the canonical Riot ``game_id`` (captured from the
+    gameflow session at lcu/snapshot_shape.py:431-439) so a branch series can
+    be bound to one match for the B4 post-game review. Keyword-only with a
+    default because a dozen existing call sites pass three positional args."""
     try:
         gs = _build_game_state(coach, lc, mode_key)
         champ = gs.get("my_champion")
@@ -1713,6 +1718,8 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
             game_time_s=gs.get("game_time_s"),
             level=level, item_count=item_count, cv_override=cv,
             verdict_blocks=verdict_blocks, path=path,
+            game_id=(lcu_snapshot.get("game_id")
+                     if isinstance(lcu_snapshot, dict) else None),
         )
     except Exception:  # noqa: BLE001
         return
