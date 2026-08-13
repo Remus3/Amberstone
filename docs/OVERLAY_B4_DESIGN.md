@@ -210,7 +210,41 @@ B3 kept for exactly this reason (`OVERLAY_COMPLIANCE_PLAN.md:66`).
 Reader tooling already exists to model against: `tools/hz_shadow_report.py`,
 which also documents a real corpus hazard - "~8.3k false comparable leaks +
 ~20.8k mislabeled" (`hz_shadow_report.py:189`). Read that before trusting a
-naive filter over the corpus.
+naive filter over the corpus. That hazard is about scoring native-vs-precompute
+AGREEMENT, which the review does not do - it renders what was offered - so it
+does not constrain the reader, but a future scoring pass over the same corpus
+must honour it.
+
+SHIPPED B4-e. `core/branch_review.py` + `GET /api/branch-review` (and
+`/runs` for the match picker) + the `#lm-branch-review` card inside
+`#view-last-match`. Three properties worth keeping:
+
+- **Bounded read.** The corpus is 68 MB and this serves an HTTP route, so the
+  reader takes a 4 MB tail and reports `truncated` rather than serving a short
+  series as if it were complete.
+- **Legacy rows are counted, not guessed at.** Measured against the live
+  corpus the moment the route went up: 4633 rows in the tail, ZERO with a
+  `game_run_id`, so it answers `reason: "legacy-only"`. Almost the whole
+  corpus predates B4-d; inventing a grouping for it would invent matches.
+- **RM-158 exclusion drops the COLUMN, not the row**, and the card says so
+  in place rather than leaving an unexplained gap in the timeline.
+
+The 5-phase UI audit ran against the live dashboard before the commit.
+STRUCTURE: mounts inside `#view-last-match`, hidden by default, empty state
+present, follows the sibling `lm-wpa-*` card shape. TYPOGRAPHY: 29 / 22 / 18 /
+16 px straight off the tokens, all resolving under the live theme (the
+computed values come back as theme oklch, which is what proves no token fell
+back). HIT-TARGETS: not applicable - the card has ZERO focusable elements by
+design, since it is render-only. ASCII: clean per the web sweep. HIERARCHY:
+fixed 108 px clock column so the timeline reads as a column, confidence
+colour-coded, caveats warn-tinted and non-blocking, and no horizontal overflow
+at a forced 400-character label.
+
+Two independent barriers keep it off the in-game surface, and they are worth
+stating precisely: the overlay shell computes `display: none` on the whole
+`#view-last-match` SECTION (so the card is hidden by its ancestor, not by a
+rule of its own), and `branch_review.js` additionally refuses to render when
+`live_directive_gate` says a game is live.
 
 ## 6. Guard tests
 

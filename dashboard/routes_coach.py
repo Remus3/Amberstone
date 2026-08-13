@@ -147,6 +147,35 @@ def _serve_speak_post(h, payload) -> None:
         send_error(h, exc)
 
 
+def _serve_branch_review(h) -> None:
+    # B4-e (RM-189): the POST-GAME half of the compliance split. In-game, RC
+    # captures the decision branch set silently and renders nothing; this
+    # route reads one match's series back for review afterwards. Read-only,
+    # no Anthropic call, no live probe.
+    #
+    # ?run=<game_run_id> selects a match; omitted serves the most recent.
+    try:
+        from core.branch_review import load_branch_series
+        qs = parse_qs(urlparse(h.path).query)
+        run = (qs.get("run") or [""])[0].strip() or None
+        out = load_branch_series(run)
+        h._send(200, json.dumps(out).encode(), "application/json")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("api/branch-review: %s", exc)
+        send_error(h, exc)
+
+
+def _serve_branch_review_runs(h) -> None:
+    # Match picker for the review view - the runs present in the corpus tail.
+    try:
+        from core.branch_review import list_recent_runs
+        runs = list_recent_runs(limit=_limit_param(h, 20, hi=100))
+        h._send(200, json.dumps({"runs": runs}).encode(), "application/json")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("api/branch-review/runs: %s", exc)
+        send_error(h, exc)
+
+
 def _serve_champ_select_coach_post(h, payload) -> None:
     # Live champ-select coaching - Haiku call with the current pick state.
     # Dashboard POSTs whenever picks change (debounced).
@@ -221,6 +250,9 @@ GET_ROUTES = [
     (equals("/api/coach/state"),      _serve_coach_state),
     (equals("/api/replay/matches"),   _serve_replay_matches),
     (prefix("/api/replay/match/"),    _serve_replay_match),
+    # More-specific path first: /runs must not be swallowed by the bare route.
+    (equals("/api/branch-review/runs"), _serve_branch_review_runs),
+    (equals("/api/branch-review"),    _serve_branch_review),
 ]
 
 POST_ROUTES = [
