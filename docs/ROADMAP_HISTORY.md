@@ -1,5 +1,23 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-08-12 - RM-186 + RM-187 shipped row (relocated, size-budget pass)
+
+Relocate-only, VERBATIM - nothing summarised, condensed or reworded. Fully closed with no
+open residual. RM-158 was deliberately NOT relocated in this pass for the same reason it was
+held back on 2026-08-08: its TABLE REGEN half is still open.
+
+- **RM-186 + RM-187 SHIPPED 2026-08-08 (ENGINE 1.275.3 -> 1.276.0 -> 1.277.0, merges `94432a20` + `845f9cea`, LEDGER 1237) - unique-passive dedup was ORDER-DEPENDENT; it is now strongest-at-context and ON at all six call sites.** `['6664','3068']` kept Hollow Radiance 15 + 1 pct while `['3068','6664']` kept Sunfire 20 + 1 pct, and both are full items that are legally co-ownable, so slot order alone moved the score. **The circularity is the load-bearing detail: `dps.py` / `ability_dps.py` / `ability_hps.py` / `burst.py` collect BEFORE deriving part of their context from the collected effects (`ap` via `total_bonus_ap_from_hp`), so `effects.dedupe_context()` is built from dedupe-INDEPENDENT quantities only** - item stat blocks are aggregated outside `collect_effects` and are unaffected by the dedup, so stats / base stats / level / target assumptions are all knowable pre-collection. Order-independent BY CONSTRUCTION, not by a second pass; do not "simplify" it into a two-pass recompute. **BUILD-ORDER DIFF IS ZERO ACROSS ALL SIX TABLES BY DESIGN, NOT WEAK PROBING: 2,037,660 instrumented `collect_effects` calls, ALL carrying a real context, ZERO holding two members of one family**, because `core/build_order.py:711` threads `filter_shared_uniques=True` and `:493`/`:509` skip `shares_dead_unique`. The flip is inert in precompute and LIVE wherever a caller supplies its own item list - do not re-file the zero diff as a failed flip. **DO NOT RE-DERIVE THE TWO REFUTED FINDINGS:** 223069's TRUE / max-HP is CORRECT and its `Meraki confirms` citation is accurate (Meraki files that passive under `active` with `passives: []`; a passives-only probe fabricated the defect), and 773068 / 773073 are throwback-band, not uncredited items.
+
+## 2026-08-12 - RM-190 closed row (relocated, size-budget pass)
+
+`tools/drift_guard.py` reported ROADMAP.md at 92 pct of its 81920-byte budget after RM-191
+was filed. RM-190 is FULLY CLOSED with no open residual, so its closure body moves here
+VERBATIM, relocate-only - nothing summarised, condensed or reworded. The pointer left in
+ROADMAP.md carries the verdict, the citation and every do-NOT clause. The RM-190 ORIGINAL
+FILING was relocated separately in the block below.
+
+- **RM-190 CLOSED 2026-08-12 (LEDGER 1241) - operator chose option (a1): commit the 16.16.1 mirror, carry the ONE moved magnitude, leave DS pinned to data patch 16.15.1.** ENGINE 1.277.0 -> **1.277.1**. Item 3175 `magic_pen_flat` 18.0 -> 20.0 plus its three test pins; `:8860` serves 1.277.1 / patch 16.15.1; `ds_share_sync --check` in sync at 533 files; DS 10578 passed / 13338 subtests, RC 19000 passed / 96 skipped, both 0 failed from the repo root. **Two corrections to the filing below, both measured this session:** (1) "blast radius is ONE item" was true of the DS TEST surface only - the mirror also moved ~10 items' BASE stats (Ornn Carve AD 40->45, HP 350->400 and 400->450, AS 25->30pct and 40->45pct, MR 30->25, cost 2700->2800, one recipe dropped 1028) plus 720 lines of `ddragon_champions.json`; none reach DS, which reads base stats from its own pinned `data/daemon_slayer/16.15.1/` snapshot, which is why only the two sweeps that read `data/meta` broke. (2) Option (b) revert was self-undoing: `RC-DDragonMirrorRefresh` fires **daily 03:30**, so the tree re-dirties overnight unless that task is also disabled. **`/health` reporting 16.15.1 is CORRECT, not stale** - the DS per-patch snapshot is a separate 21-file / ~12 MB artefact and a full patch bump (option a2) needs a Meraki extract; do not file the version gap as a defect. All six build-order tables regenerated (`core.build_order_precompute` AND the separate `core.build_order_variants` - the first does NOT restamp the variants) with **content unchanged**, verified field-by-field against HEAD rather than assumed. Original filing follows for the measurement trail.
+
 ## 2026-08-12 - RM-190 original filing (relocated on closure)
 
 `tools/drift_guard.py` reported ROADMAP.md at 91 pct of its 81920-byte budget after
