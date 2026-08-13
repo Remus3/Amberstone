@@ -220,25 +220,11 @@ LIVE_SUPPRESSED_ENVELOPE_FIELDS = ("callouts", "lead_projection")
 
 _LIVE_SUPPRESSED_ENVELOPE_EMPTY = {"callouts": [], "lead_projection": {}}
 
-# Any of these on health means a game is actually running. brawl_mode is
-# included even though resolve_mode_key does not test it: the brawl coach is
-# live-reachable (URF / ARURF / ONEFORALL / GAMEMODEX / NEXUSBLITZ route to
-# MODE_BRAWL in core/game_snapshot.py) and issues live Haiku calls.
-_LIVE_GAME_FLAGS = ("has_game", "aram_mode", "arena_mode", "tft_mode",
-                    "brawl_mode")
-
-
-def is_live_game(health: dict | None, preflip_active: bool = False) -> bool:
-    """True when a game is actually running (not champ select, not idle).
-
-    ``preflip_active`` is load-bearing: ``apply_preflip_mirror`` stamps a
-    per-mode flag onto ``health`` during LCU champ select, so the flags alone
-    cannot distinguish "in an ARAM" from "sitting in an ARAM lobby". Champ
-    select is PRE-game, where coaching stays allowed.
-    """
-    if preflip_active or not isinstance(health, dict):
-        return False
-    return any(bool(health.get(f)) for f in _LIVE_GAME_FLAGS)
+# The predicate itself lives in core/live_game_gate.py - B4-c added a second
+# consumer (the voice path, which has no /api/state envelope in hand), and a
+# private copy here is exactly how a fix stops reaching one of them. Re-exported
+# under the same name so existing callers and tests are unaffected.
+from core.live_game_gate import is_live_game  # noqa: E402
 
 
 def suppress_live_directives(coach, health: dict | None,
