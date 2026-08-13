@@ -171,6 +171,77 @@ def apply_preflip_mirror(health: dict, mode_key: str, preflip_active: bool) -> d
     return {**health, flag: True}
 
 
+# --- B4 (RM-189): live-game imperative suppression -----------------------
+# Riot's third-party rules ban "notifications that dictate player action based
+# on the current game state". Operator decision 2026-08-11
+# (docs/OVERLAY_COMPLIANCE_PLAN.md section 6c): live coaching moves to
+# pre-game and post-game; in-game keeps SILENT capture of the decision branch
+# points only. Design + measurements: docs/OVERLAY_B4_DESIGN.md.
+#
+# Suppression lives at the PRODUCER, not the renderer, for two reasons the
+# design records: the overlay's current boundary is a single CSS :not() chain
+# (web/css/overlay.css:127) which fails silently, and a payload that reaches
+# the client is one DevTools panel away from a reviewer. Same doctrine as B5
+# ("obfuscate at the producer ... so every consumer inherits it").
+#
+# The KEY stays on the envelope, per the B2 precedent - a permanent falsy so
+# consumers degrade instead of crashing on a missing field.
+LIVE_SUPPRESSED_FIELDS = (
+    "action",           # imperative headline (#rn-action)
+    "immediate",        # imperative prose (#rn-immediate)
+    "fight_rule",
+    "next",
+    "risk",
+    "target_priority",  # arena "focus X"
+    "round_strategy",   # arena round imperative
+    "choices",          # A/B/C decision chips (#rn-choices) - the worst case
+)
+
+# choices is Array.isArray()-tested by web/js/panels/coach_choices.js, so it
+# must blank to [] and not None or the renderer falls through to the prose
+# branch instead of the empty branch.
+_LIVE_SUPPRESSED_EMPTY = {"choices": []}
+
+# Any of these on health means a game is actually running. brawl_mode is
+# included even though resolve_mode_key does not test it: the brawl coach is
+# live-reachable (URF / ARURF / ONEFORALL / GAMEMODEX / NEXUSBLITZ route to
+# MODE_BRAWL in core/game_snapshot.py) and issues live Haiku calls.
+_LIVE_GAME_FLAGS = ("has_game", "aram_mode", "arena_mode", "tft_mode",
+                    "brawl_mode")
+
+
+def is_live_game(health: dict | None, preflip_active: bool = False) -> bool:
+    """True when a game is actually running (not champ select, not idle).
+
+    ``preflip_active`` is load-bearing: ``apply_preflip_mirror`` stamps a
+    per-mode flag onto ``health`` during LCU champ select, so the flags alone
+    cannot distinguish "in an ARAM" from "sitting in an ARAM lobby". Champ
+    select is PRE-game, where coaching stays allowed.
+    """
+    if preflip_active or not isinstance(health, dict):
+        return False
+    return any(bool(health.get(f)) for f in _LIVE_GAME_FLAGS)
+
+
+def suppress_live_directives(coach, health: dict | None,
+                             preflip_active: bool = False):
+    """Blank every coach imperative while a game is live.
+
+    Returns a COPY - the same ``coach`` dict was handed to the shadow writers
+    earlier in the tick, and blanking it in place would retroactively empty
+    what they captured if any of them holds the reference. Descriptive state
+    (hp, gold, kda, clock, cc_threat_cell, the STATS block) is untouched: the
+    ban is on imperatives, and an over-broad strip would be its own defect.
+    """
+    if not isinstance(coach, dict) or not is_live_game(health, preflip_active):
+        return coach
+    out = dict(coach)
+    for field in LIVE_SUPPRESSED_FIELDS:
+        if field in out:
+            out[field] = _LIVE_SUPPRESSED_EMPTY.get(field)
+    return out
+
+
 def _active_champion(coach: dict, lc: dict | None, lcu_snapshot: dict | None) -> str:
     """Resolve the operator's currently-active champion across signals.
 
@@ -660,6 +731,15 @@ def build_state() -> dict:
         det = {"choices": [], "callouts": [], "lead_projection": {}}
         coach["choices"] = []
     _mark("deterministic")
+
+    # B4 (RM-189): strip every coach imperative while a game is live. Placed
+    # AFTER the deterministic/shadow block on purpose - the HZ-C1 shadow
+    # writers above must still capture the full native branch set to disk
+    # (that is the retained in-game behaviour section 6c asks for); only the
+    # SERVED envelope goes quiet. Guarded by
+    # tests/test_b4_live_directive_suppression.py.
+    coach = suppress_live_directives(coach, health, preflip_active)
+    _mark("b4_suppress")
 
     _warn_slow_stages(_stages)
 
