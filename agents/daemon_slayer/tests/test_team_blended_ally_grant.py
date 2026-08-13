@@ -184,7 +184,7 @@ class TeamBlendedRankingTests(_Base):
 
 class EngineVersionPinTests(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.277.0")
+        self.assertEqual(ENGINE_VERSION, "1.277.1")
 
 
 if __name__ == "__main__":

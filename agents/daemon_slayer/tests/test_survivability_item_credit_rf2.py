@@ -162,7 +162,7 @@ class TestHpsSeam(unittest.TestCase):
 
 class TestEnginePin(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.277.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.277.1")
 
 
 if __name__ == "__main__":

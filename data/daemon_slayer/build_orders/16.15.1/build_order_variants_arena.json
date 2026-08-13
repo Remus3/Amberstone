@@ -9697,8 +9697,8 @@
       "anti_squishy"
     ]
   },
-  "engine_version": "1.277.0",
-  "generated_at": "2026-08-08T23:26:45Z",
+  "engine_version": "1.277.1",
+  "generated_at": "2026-08-13T02:00:54Z",
   "mode": "arena",
   "schema": "build_order_variants/v1",
   "version": "16.15.1"

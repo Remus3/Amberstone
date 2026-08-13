@@ -209,7 +209,7 @@ class R160PercentPenPopulationTests(unittest.TestCase):
         # regex requires a "%" the flat regex forbids, so neither can ever
         # capture the other's number. But an item may legitimately state
         # BOTH lines, and exactly one does - 3175 Spellslinger's Shoes,
-        # "18 Magic Penetration" and "8% Magic Penetration" on consecutive
+        # "20 Magic Penetration" and "8% Magic Penetration" on consecutive
         # stat rows. DS credits both axes independently and correctly.
         # Pinned because a cross-fold (percent magnitude landing in the flat
         # term or the reverse) would be a real bug, and because a second such
@@ -221,10 +221,10 @@ class R160PercentPenPopulationTests(unittest.TestCase):
         flat = _swept_flat_magic_pen()
         pct = _swept_magic_pct()
         self.assertEqual(sorted(set(flat) & set(pct)), ["3175"])
-        self.assertAlmostEqual(flat["3175"][1], 18.0, places=3)
+        self.assertAlmostEqual(flat["3175"][1], 20.0, places=3)
         self.assertAlmostEqual(pct["3175"][1], 8.0, places=3)
         effect = ITEM_EFFECTS["3175"]
-        self.assertAlmostEqual(effect.magic_pen_flat, 18.0, places=3)
+        self.assertAlmostEqual(effect.magic_pen_flat, 20.0, places=3)
         self.assertAlmostEqual(effect.magic_pen_pct, 0.08, places=3)
 
     def test_both_catalog_layouts_agree(self) -> None:
