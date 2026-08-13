@@ -713,7 +713,8 @@ def build_state() -> dict:
         # HZ-C1/C2: also shadow-log what the PRECOMPUTED laning table (A/B
         # trade) + HZ-B2 build-variant table (A/B build) would offer
         # (do-not-flip-blind). Fail-soft, additive, NO effect on live output.
-        shadow_log_precomputed_choices(coach, lc, mode_key)
+        shadow_log_precomputed_choices(coach, lc, mode_key,
+                                       lcu_snapshot=lcu_snapshot)
         shadow_log_precomputed_build(coach, lc, mode_key)
         # RC2 P5.5 (WS3): shadow-log the deterministic objective playbook row vs
         # the native Haiku objective prose (do-not-flip-blind for a future served
