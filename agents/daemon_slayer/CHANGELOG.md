@@ -1331,6 +1331,27 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.277.1 (2026-08-12) - RM-190: Spellslinger's Shoes (3175) flat magic pen
+18 -> 20, carrying the DDragon 16.16.1 mirror bump.
+
+A `data_pipeline.py` run refreshed `data/meta/ddragon_*.json` from 16.15.1 to
+16.16.1. Riot moved exactly one magnitude the DS registry credits: item 3175's
+flat magic penetration, `18` -> `20`, in the DDragon `<stats>` description
+block. The percent layer (8%) did not move. `_effects_data.py` hard-coded the
+old value, so the two catalog sweeps that read `data/meta` failed from
+opposite directions - R153 (registry 18.0 vs stated 20.0) and R160 (stated
+20.0 vs the pinned 18.0). One defect, two reds.
+
+Note the source-of-truth carve-out this exercises: pen and lethality
+MAGNITUDES live ONLY in the DDragon `<stats>` block, never in the Meraki bulk,
+so a Meraki audit of this value would have returned a phantom match.
+
+DS remains PINNED to data patch 16.15.1 (`data/daemon_slayer/current.txt`) -
+its per-patch snapshot dir is a separate artefact and was not regenerated.
+The other ~10 item deltas in the 16.16.1 mirror are base stats (AD, HP, attack
+speed, MR, cost) sourced from that pinned snapshot, so they do not reach the
+engine. `/health` reporting 16.15.1 is correct, not stale.
+
 1.277.0 (2026-08-08) - RM-187: FLIP the RM-186 strongest-at-context dedup ON at
 every engine call site. The seam is no longer inert.
 

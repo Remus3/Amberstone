@@ -1,5 +1,14 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-08-12 - RM-190 original filing (relocated on closure)
+
+`tools/drift_guard.py` reported ROADMAP.md at 91 pct of its 81920-byte budget after
+the RM-190 closure entry landed. The ORIGINAL FILING moves here VERBATIM,
+relocate-only - nothing summarised, condensed or reworded. The CLOSED row and its two
+measured corrections stay in ROADMAP.md; this is the measurement trail behind them.
+
+**RM-190 ORIGINAL FILING (2026-08-12) - the DDragon mirror on disk is at patch 16.16.1 while the DS engine is still pinned to 16.15.1, and the drift is UNCOMMITTED, so the two failing tests exist only in the main checkout.** A `data_pipeline.py` run finishing `2026-08-12 11:07:01` (`logs/data_pipeline.log`, "=== Pipeline complete ===") rewrote `data/meta/ddragon_version.json` 16.15.1 -> 16.16.1 plus `ddragon_items.json` / `ddragon_champions.json` / `ddragon_summoner_spells.json` / `data/meta_build/ddragon/_index.json` / `web/data/{champions,items,spells}_index.json`, and left an untracked `data/meta_build/ddragon/16.16.1/`. None of it is committed. **DS still reports `patch: 16.15.1`** (`/health` on `:8860`, and `data/daemon_slayer/current.txt` reads `16.15.1`). **Measured blast radius is ONE item, not a patch-wide sweep:** Spellslinger's Shoes (`3175`) flat magic pen went **18 -> 20** in the DDragon description, against `agents/daemon_slayer/_effects_data.py:5742-5747` which hard-codes `18` plus a note restating it. That single value fails TWO tests from opposite directions - `test_magic_pen_flat_catalog_r153.py:149` (registry 18.0 vs stated 20.0) and `test_pen_pct_catalog_r160.py:224` (20.0 vs 18.0) - so it reads as two defects and is one. `agents/daemon_slayer/tests/test_effects_expansion.py:6521` also pins the item and must be checked. **Do NOT treat the 2 failures as a B4 regression:** they were present before the B4 work started, and `dashboard/_state_builder.py` is not in the DS import graph (verified 2026-08-12). **The decision is the operator's and it is NOT "just re-run the extract":** either (a) commit the 16.16.1 mirror and carry the DS registry with it - a Tier-2 DS batch (registry edit + the two tests + `ENGINE_VERSION` bump + `:8860` restart + Share mirror), or (b) revert the working-tree bump and stay on 16.15.1 until a deliberate patch batch. **Never `--force` a Meraki re-extract** (the `latest` endpoint is mutable - existing Settled fence), and remember Meraki is NOT the source for pen/lethality MAGNITUDES; those live only in the DDragon `<stats>` block, which is exactly what moved here.
+
 ## 2026-08-08 - size-budget relocation pass 11 (ROADMAP.md at 92 pct of its 81920-byte budget)
 
 `tools/drift_guard.py` reported ROADMAP.md at 92 pct of its 81920-byte budget
