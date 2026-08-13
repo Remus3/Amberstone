@@ -93,13 +93,25 @@ class BuildStateHonorsClearedAtTests(unittest.TestCase):
 
     def test_live_aram_game_still_served(self):
         # With a live game the same artifact (sans sentinel) flows through.
+        #
+        # 2026-08-12 (B4-a / RM-189): this case used to assert on
+        # coach["action"]. That field is now blanked in a live game by
+        # suppress_live_directives (Riot bans in-game imperatives; see
+        # docs/OVERLAY_B4_DESIGN.md), so asserting on it would test B4
+        # rather than item 281. The item-281 claim is that the ABSENCE of
+        # the cleared_at sentinel lets a live artifact through at all, so
+        # it is now made against a descriptive field B4 does not touch.
         self._patch(
             health={"mode": "client", "aram_mode": True},
-            coach_payload={"action": "TRADE", "champion": "Kai'Sa"},
+            coach_payload={"action": "TRADE", "champion": "Kai'Sa",
+                           "kda": "3/1/4"},
             lc_payload={"champion": "Kai'Sa", "game_time": "03:10"},
         )
         state = _state_builder.build_state()
-        self.assertEqual(state["coach"].get("action"), "TRADE")
+        self.assertEqual(state["coach"].get("champion"), "Kai'Sa")
+        self.assertEqual(state["coach"].get("kda"), "3/1/4")
+        # And the B4 suppression is live on this same path.
+        self.assertFalse(state["coach"].get("action"))
 
 
 if __name__ == "__main__":
