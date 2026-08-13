@@ -35,6 +35,35 @@ _LAST_SIG: dict[str, str] = {}
 # (see log_precomputed_choices). Keyed by str(target_path) like _LAST_SIG.
 _LAST_GT: dict[str, float] = {}
 
+# B4-d (RM-189). Per-target (last_game_time_s, run_id) for the LOCAL fallback
+# match key, used when the LCU is unreachable so no Riot game_id is available.
+# Keyed by str(target_path) like _LAST_SIG so an explicit test path and the
+# live default never share a run.
+_RUN: dict[str, tuple[float, str]] = {}
+
+
+def _run_id_for(tkey: str, mode: str, game_time_s: float | None,
+                ts: str) -> str:
+    """Return a local match key that is stable for the duration of one game.
+
+    Minted from the FIRST tick's ``ts`` and then held. A monotonic counter was
+    the obvious alternative and is wrong: it resets to 1 on every RC restart,
+    so a later game would reuse an earlier game's id and a post-game reader
+    would silently merge two matches into one series.
+
+    A game_time_s running BACKWARD is the new-game signal - the same signal
+    the freshness guard in ``log_precomputed_choices`` documents, since a new
+    game resets the clock below the previous game's frozen final value.
+    """
+    prev = _RUN.get(tkey)
+    gt = game_time_s if isinstance(game_time_s, (int, float)) else None
+    if prev is not None and gt is not None and gt >= prev[0]:
+        _RUN[tkey] = (gt, prev[1])
+        return prev[1]
+    run_id = f"local-{mode}-{ts}"
+    _RUN[tkey] = (gt if gt is not None else 0.0, run_id)
+    return run_id
+
 # RM-158 writer gate. The shipped laning_scenarios_arena.json is a byte copy of
 # the SR table (ARENA had no gross-income row, so the generator had nothing left
 # to differentiate at schema v3), which means the PRECOMPUTE column of an arena
@@ -106,6 +135,7 @@ def log_precomputed_choices(
     verdict_blocks: dict | None = None,
     path: Path | None = None,
     now_iso: str | None = None,
+    game_id: str | None = None,
 ) -> dict | None:
     """Append one HZ-C1 validation record to the shadow jsonl.
 
@@ -192,6 +222,15 @@ def log_precomputed_choices(
             # pass measure cooldown-window / spike-timing agreement (spec 7.4)
             # before any served flip (do-not-flip-blind).
             "verdict_blocks": verdict_blocks if isinstance(verdict_blocks, dict) else None,
+            # B4-d (RM-189): bind this branch series to ONE match so the
+            # post-game review can replay it. Appended at the END - 68 MB of
+            # records already on disk carry the keys above, and a mid-schema
+            # insert breaks an ordered consumer. `game_id` is the canonical
+            # Riot id from the LCU gameflow session and is None when the LCU
+            # is unreachable; `game_run_id` is always present.
+            "game_id": str(game_id) if game_id else None,
+            "game_run_id": (str(game_id) if game_id
+                            else _run_id_for(tkey, mode, game_time_s, ts)),
         }
 
         # RM-158: stamp the provenance of the PRECOMPUTE column when the served
