@@ -353,6 +353,73 @@ class VersionAnchorTests(unittest.TestCase):
         )
         self.assertEqual(drift_guard.check_version_anchors(root, "1.259.0"), [])
 
+    def test_a_dated_status_heading_makes_its_own_section_history(self) -> None:
+        """Line-level context cannot see a heading, and the heading was the fact.
+
+        MEASURED 2026-08-12 on the 1.277.1 bump: the sweep flagged
+        `docs/OVERLAY_COMPLIANCE_PLAN.md:35`, reading "in sync at engine
+        1.277.0, 533 files". No transition and no closure keyword, so both
+        line-level markers missed it - but it sits under `## 1b. STATUS as of
+        2026-08-11`, which makes it a DATED SNAPSHOT. 1.277.0 was the live
+        engine on that date; rewriting it to the current version would make the
+        record FALSE rather than fresh.
+        """
+        import drift_guard
+
+        root = self._tree()
+        (root / "docs" / "PLAN.md").write_text(
+            "# Plan\n\n"
+            "## 1b. STATUS as of 2026-08-11\n\n"
+            "Landed this session, all verified green (`ds_share_sync --check`\n"
+            "in sync at engine 1.277.0, 533 files).\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(drift_guard.check_version_anchors(root, "1.277.0"), [])
+
+    def test_a_dated_status_section_does_not_shelter_the_rest_of_the_doc(self) -> None:
+        """The block exemption must END at the next same-or-shallower heading.
+
+        This is the failure mode that makes a block exemption more dangerous
+        than a line one: a single dated section near the top could otherwise
+        silence every stale anchor below it. The live claim under the LATER
+        heading must still be reported.
+        """
+        import drift_guard
+
+        root = self._tree()
+        (root / "docs" / "PLAN.md").write_text(
+            "# Plan\n\n"
+            "## 1b. STATUS as of 2026-08-11\n\n"
+            "in sync at engine 1.277.0, 533 files.\n\n"
+            "## 2. Current\n\n"
+            "The engine is at 1.277.0 and that is the version in force.\n",
+            encoding="utf-8",
+        )
+        out = drift_guard.check_version_anchors(root, "1.277.0")
+        self.assertTrue(out, "a live anchor AFTER the dated section must be caught")
+        self.assertIn("docs/PLAN.md:9", out[0].message)
+        self.assertNotIn("docs/PLAN.md:5", out[0].message)
+
+    def test_an_undated_status_heading_earns_no_exemption(self) -> None:
+        """A bare "as of" is too easy to write by accident to carry a section.
+
+        The ISO date is what makes the heading a verifiable snapshot rather
+        than a phrase, so it is required.
+        """
+        import drift_guard
+
+        root = self._tree()
+        (root / "docs" / "PLAN.md").write_text(
+            "# Plan\n\n"
+            "## STATUS as of today\n\n"
+            "in sync at engine 1.277.0, 533 files.\n",
+            encoding="utf-8",
+        )
+        self.assertTrue(
+            drift_guard.check_version_anchors(root, "1.277.0"),
+            "only an explicitly dated heading may exempt its section",
+        )
+
     def test_a_slash_joined_version_pair_is_provenance_not_a_live_anchor(self) -> None:
         """A line naming TWO versions cannot be asserting which one is live.
 
