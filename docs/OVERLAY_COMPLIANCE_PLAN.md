@@ -38,8 +38,8 @@ Landed this session, all verified green (RC `tests/` 18470 passed / 104 skipped
 |---|---|---|
 | B1 enemy summoner-spell tracker | **DONE - deleted** | Panel, backend producer, mounts, CSS, 4 test files. |
 | B2 summoner + ultimate cooldown ledger | **DONE - deleted** | Panel, `core/summoner_cooldowns.py`, `dashboard/_state_cooldowns.py`, pane, 8 threading sites. `summoner_cooldowns` stays on `/api/state` as a permanent null so consumers degrade. |
-| B3 power-spike cue | **DONE - deleted** | Cue, CSS, registry entry, 2 test files. `spike_curve` / `spike_markers` survive as pre/post-game analysis. |
-| B4 coach imperatives | **DECIDED, NOT BUILT** | See 6c. Silent branch capture in-game, review post-game. |
+| B3 power-spike cue | **CORRECTED 2026-08-12 - the deletion was real but INCOMPLETE; closed for the live surface by B4-b** | `spike_cue.js` + CSS + registry entry + 2 test files went, and `spike_curve` / `spike_markers` survive as pre/post-game analysis. But the spike NOTIFICATION lived on a second mount and kept firing for 1 more day. See the corrected row below. |
+| B4 coach imperatives | **BUILT 2026-08-12 (a-e); only B4-f is open** | See 6c + `docs/OVERLAY_B4_DESIGN.md`. Silent branch capture in-game, review post-game. |
 | B5 champ-select names | **DONE - obfuscated at the producer** | `lcu/champ_select_shape._obfuscated_name`, positional so it is identical on every client. 3 mock fixtures updated. |
 | B6 TFT augment stats | **REFUTED - no action** | See the corrected row below. |
 | B7 Riot Brawl exclusion | **DONE** | See the corrected row below. |
@@ -63,7 +63,7 @@ Each row is a measured surface, not a guess.
 |---|---|---|---|
 | B1 | `rc-shell/test/enemy_spells_tracker.test.js` + `web/js/panels/enemy_spells_timer.test.mjs` (enemy summoner-spell tracker) | "Tracking of enemy summoner spells cooldowns" | DELETE the enemy-side tracker entirely. No manual-click carve-out is documented; do not assume one. |
 | B2 | `web/js/panels/cd_ledger.js` + `core/summoner_cooldowns.py` + `dashboard/_state_cooldowns.py` - per-player summ + ULT cooldown ledger for all 10 players | enemy summ cooldowns AND "use of Ultimate timers is strictly forbidden" | Drop the `ult` block for every player (ally too - the ban is unqualified). Restrict `summs` rows to own party only. |
-| B3 | `web/js/panels/spike_cue.js` - fires "the instant the operator crosses an ULTIMATE power spike" | "Notifications that alert players when a power spike hits" | Remove the live cue. The static build-planning curves (`spike_curve.js`, `spike_markers.js`) are pre/post-game analysis, not live notifications - keep them OUT of the in-game overlay and they survive. |
+| B3 | `web/js/panels/spike_cue.js` - fires "the instant the operator crosses an ULTIMATE power spike" | "Notifications that alert players when a power spike hits" | **CORRECTED 2026-08-12 - see the B3 row below. The filed fix was right and INCOMPLETE: deleting the named panel did not remove the artefact.** |
 | B4 | `web/js/panels/right_now.js` - "immediate coaching actions"; `coach.action` / `coach.immediate` / `coach.fight_rule`; `coaches/voice_coach.py` | "Notifications that dictate player action based on the current game state" | Highest-cost item. In-game overlay must stop issuing imperatives. Options: (a) move the whole coach to pre-game + post-game surfaces, (b) reword to non-directive descriptive state. (a) is defensible; (b) is a judgement call a reviewer can reject. |
 | B5 | `web/js/panels/champ_select.js` + mocks under `web/data/ui_mock/champ_select_*.json` render summoner names | non-party names must be "Ally 1..5", consistent across clients | Obfuscate at the producer, not the renderer, so every consumer inherits it. Loading screen is exempt; champ select is not. |
 | B6 | ~~TFT augment win/placement data~~ | TFT: no Legend win rates, no Augment win rates, no Augment average placements | **REFUTED 2026-08-11 - this row was WRONG when filed. Measured: `coaches/tft_coach.py` displays none of the three. Its `placement` hits are the operator's OWN board and unit placement. `core/augment_external_source.py` is an ARENA / Mayhem win-rate prior, and Riot's augment-stats ban is scoped to Teamfight Tactics, so it does not reach Arena. NO ACTION. Acting on the original row would have deleted a working Arena feature under a misapplied rule.** |
@@ -524,6 +524,69 @@ lowest rename churn, keeps the existing equity) and **Sidelane** (`sidelane.gg`;
 familiar, grimoire, pact, conjure, auspex, pythia, cadence, wardens, and every
 other bare single-word `.gg` tried. Availability rots - re-probe before
 committing to any of the above, and clear the final pick against USPTO.
+
+## 6c2. B3 CORRECTED - deleting the panel did not remove the artefact
+
+Filed 2026-08-12, during B4-b. **B3 was recorded DONE on 2026-08-11 and the
+power-spike notification was still firing in-game a day later.** The row is
+corrected here rather than quietly re-marked, because the failure mode is
+reusable and would have repeated on B1 / B2 / B10.
+
+**What was true:** `web/js/panels/spike_cue.js` really was deleted, along with
+its CSS, its registry entry and 2 test files, and an inverted guard was left
+behind so re-adding it turns a test red. Nothing about that work was wrong.
+
+**What was missed:** the banned artefact was never confined to that panel. The
+spike lines are generated server-side in `core/event_callouts.py` and shipped
+on the TOP-LEVEL `/api/state` key `callouts`, which feeds `#rn-callouts` - one
+of only three mounts the overlay shell keeps visible
+(`web/css/overlay.css:127`):
+
+- `core/event_callouts.py:119` "Your lvl-6 spike - look for all-in"
+- `core/event_callouts.py:127` "2-item spike - force fights now"
+- `core/event_callouts.py:126` "1-item spike - fight on cooldowns up"
+
+Those are the B3 artefact ("notifications that alert players when a power spike
+hits") AND the B4 artefact (an imperative) in the same string. The same feed
+also carries objective imperatives - `:107` "Drake spawns 5:00 - set up vision",
+`:109` "Plates fall 14:00 - shove for gold".
+
+**Status now: closed for the live surface, by B4-b (`543f738c`), not by B3.**
+`dashboard/_state_builder.suppress_live_envelope` blanks `callouts` and
+`lead_projection` while a game is live, and `web/js/panels/callouts.js`
+self-gates as defence in depth. The generators are untouched and remain
+available out of game, which is correct - a spike table read pre-game or
+post-game is analysis, not a live notification, exactly as the original B3 row
+intended for `spike_curve` / `spike_markers`.
+
+**The transferable lesson, worth applying to any future removal here: a banned
+artefact is a BEHAVIOUR, not a file.** The audit that produced the B1-B10 table
+searched by panel, so it found the panel that was named after the feature and
+missed the second producer that emits the same thing through a different mount.
+When closing a row, grep for the STRING the user sees and for every mount that
+can render it - not for the component whose name matches the rule.
+
+### Applying that lesson to B1 / B2 / B10 (checked 2026-08-12)
+
+The correction is only worth writing if the same miss is not sitting in the
+neighbouring rows, so they were swept the same way - by behaviour, not by file.
+**Result: no second live producer found. One dead residual, no violation.**
+
+- **B1 / B2 - clean.** The only surviving enemy-side symbol is
+  `core/match_metrics.py:294` `"enemy_summs_tracked"`, and it is a DEAD
+  REGISTRY KEY: nothing writes it (it is the sole non-doc, non-test hit in the
+  tree) and the renderer is gone (`st-enemy-summs` no longer appears anywhere
+  in `web/`, removed in an earlier pass). It maps a name to a label and cannot
+  surface. Not a compliance defect; it is an optics one, since a reviewer
+  grepping "enemy_summs" finds a metric that looks declared. Worth deleting in
+  a Tier-0 pass, not urgent.
+- **B10 - clean.** `cooldown-watch` survives only in docs, ROADMAP, WAKEUP,
+  LEDGER and `web/index.html` prose. No route, no producer.
+- **Deliberately retained and correct:** `my_ult_cd_s`
+  (`core/laning_scenario_precompute.py:613-664`) is the operator's OWN
+  ultimate, which the file already documents as intentionally kept, and
+  `ally_summs_up` is own-party, which the B2 row explicitly permits
+  ("restrict `summs` rows to own party only"). Neither is an enemy timer.
 
 ## 6d. The CC threat cell - where the line actually falls
 
