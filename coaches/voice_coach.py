@@ -29,6 +29,8 @@ import threading
 import time
 from typing import Optional
 
+from core import live_game_gate
+
 _log = logging.getLogger("rc.voice")
 
 _LAST_TS: float = 0.0
@@ -49,6 +51,19 @@ def speak(text: str, *, dedup: bool = True, rate: int = 0) -> bool:
 
     rate: -10 (slowest) to +10 (fastest); 0 is default.
     """
+    # B4 (RM-189): silent while a game is live. Spoken coaching is the most
+    # reviewer-visible form of "a notification that dictates player action
+    # based on the current game state" - they do not have to read a panel,
+    # they hear it. Operator decision 2026-08-11 moves coaching to pre-game
+    # and post-game (docs/OVERLAY_COMPLIANCE_PLAN.md section 6c).
+    #
+    # The gate sits here rather than on the one current caller
+    # (dashboard/routes_coach.py, the /api/speak route) so any future caller
+    # inherits it, and BEFORE the dedup / rate-limit bookkeeping below so a
+    # suppressed in-game line does not consume the dedup slot and silence the
+    # first legitimate post-game utterance of the same text.
+    if live_game_gate.live_game_now():
+        return False
     text = (text or "").strip()
     if not text:
         return False

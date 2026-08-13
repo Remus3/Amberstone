@@ -168,11 +168,32 @@ unilaterally deleting a core feature. See section 6.
 
 ## 4. voice_coach
 
-`coaches/voice_coach.py:47` `speak(text, *, dedup=True, rate=0)` is a live TTS
+`coaches/voice_coach.py` `speak(text, *, dedup=True, rate=0)` is a live TTS
 imperative channel and is the single most reviewer-visible form of "dictates
-player action". It must be hard-gated on the same live-game predicate as the
-producer above, not merely muted by config. `is_available()` (`:89`) is a
-capability probe and is not a gate.
+player action" - a reviewer does not have to read a panel, they hear it. It is
+hard-gated on the same live-game predicate as the producer above, not merely
+muted by config. `is_available()` is a capability probe and is deliberately
+NOT gated.
+
+SHIPPED B4-c. Two details that are load-bearing:
+
+- The gate sits inside `speak()`, not on its one current caller
+  (`dashboard/routes_coach.py`, the `/api/speak` route), so any future caller
+  inherits it.
+- It sits BEFORE the dedup / rate-limit bookkeeping. A suppressed in-game line
+  must not consume the dedup slot, or the first legitimate post-game utterance
+  of the same text is silently swallowed as a duplicate.
+
+B4-c also moved the predicate to `core/live_game_gate.py`, which is now its
+single home: `dashboard/_state_builder.py` re-exports `is_live_game` rather
+than defining its own, and the voice path (which holds no `/api/state`
+envelope) uses the sibling `live_game_now()`, reading `ops/runtime/health.json`
+directly. That file always carries the RAW flags - `apply_preflip_mirror`
+stamps the champ-select mirror onto the served copy only - so the disk reader
+needs no `preflip_active` argument. `live_game_now()` is fail-safe: an
+unreadable health.json answers False, since "I cannot tell" is not evidence of
+a game and failing closed would permanently silence the legitimate pre-game
+and post-game surfaces the first time the file went missing.
 
 ## 5. Post-game review surface
 
