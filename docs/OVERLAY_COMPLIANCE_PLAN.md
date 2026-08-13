@@ -572,14 +572,21 @@ The correction is only worth writing if the same miss is not sitting in the
 neighbouring rows, so they were swept the same way - by behaviour, not by file.
 **Result: no second live producer found. One dead residual, no violation.**
 
-- **B1 / B2 - clean.** The only surviving enemy-side symbol is
-  `core/match_metrics.py:294` `"enemy_summs_tracked"`, and it is a DEAD
-  REGISTRY KEY: nothing writes it (it is the sole non-doc, non-test hit in the
-  tree) and the renderer is gone (`st-enemy-summs` no longer appears anywhere
-  in `web/`, removed in an earlier pass). It maps a name to a label and cannot
-  surface. Not a compliance defect; it is an optics one, since a reviewer
-  grepping "enemy_summs" finds a metric that looks declared. Worth deleting in
-  a Tier-0 pass, not urgent.
+- **B1 / B2 - clean, and the one residual is now REMOVED (2026-08-12).** The
+  only surviving enemy-side symbol was `core/match_metrics.py`
+  `"enemy_summs_tracked"`, a dead entry in
+  `Recorder._PAYLOAD_METRIC_MAP` - the registry that decides what
+  `record_state_snapshot` persists to `data/match_metrics.db`. Proven dead on
+  three axes before deletion: no writer anywhere in the tree (it was the sole
+  non-doc, non-test hit), no renderer (`st-enemy-summs` had already gone from
+  `web/`), and **zero rows out of 246,928 in the live DB**, so there was no
+  historical data to recover either. Never a live violation - an optics one,
+  since a reviewer grepping "enemy_summs" would find an enemy metric that
+  looked declared and wired for persistence. Deleted with an inverted guard
+  (`tests/test_cc_threat_cell_riot_compliance.py`
+  `EnemySummsRegistryResidualTests`), including a broader
+  any-key-matching-enemy+summ assertion, because the lesson above is that the
+  ban is on the behaviour and not on one spelling.
 - **B10 - clean.** `cooldown-watch` survives only in docs, ROADMAP, WAKEUP,
   LEDGER and `web/index.html` prose. No route, no producer.
 - **Deliberately retained and correct:** `my_ult_cd_s`

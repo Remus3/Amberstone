@@ -291,7 +291,14 @@ class Recorder:
         "death_pattern":           ("death_pattern",        "text"),
         "wincon_ability_up":       ("wincon_ability_up",    "pair"),
         "ally_summs_up":           ("ally_summs_up",        "text"),
-        "enemy_summs_tracked":     ("enemy_summs_tracked",  "text"),
+        # "enemy_summs_tracked" removed 2026-08-12 (B1 residual, Riot
+        # compliance). The tracker and its dashboard row went with B1; this
+        # registry entry outlived them and would have persisted an
+        # enemy-summoner metric to match_metrics.db had anything ever emitted
+        # the payload key. Nothing did - the live DB held 246,928 rows and
+        # ZERO for it. Guarded by tests/test_cc_threat_cell_riot_compliance.py
+        # (EnemySummsRegistryResidualTests). Own-party "ally_summs_up" above
+        # stays: B2 permits own-party summoner rows.
         "flank_success":           ("flank_success",        "pair"),
         # Map presence
         "vision_summary":          ("vision_summary",       "pair"),

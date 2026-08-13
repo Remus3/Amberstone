@@ -107,5 +107,48 @@ class CoachChipCarriesNoCooldownTests(unittest.TestCase):
         self.assertIsNone(plc._threat_chip({}, "trade"))
 
 
+class EnemySummsRegistryResidualTests(unittest.TestCase):
+    """B1 residual, removed 2026-08-12.
+
+    The enemy summoner-spell TRACKER was deleted under B1, and its dashboard
+    row (``st-enemy-summs``) with it - but a key survived in
+    ``core.match_metrics.Recorder._PAYLOAD_METRIC_MAP``, which is the registry
+    that decides what ``record_state_snapshot`` persists to
+    ``data/match_metrics.db``. It was inert: nothing wrote the payload key, no
+    renderer consumed it, and the live DB held 246,928 rows with ZERO for it
+    (measured 2026-08-12). So this was an optics defect, not a live one - a
+    reviewer grepping "enemy_summs" would find an enemy-tracking metric that
+    looked declared and wired for persistence.
+
+    Inverted guard, the same shape B1-B3 left behind: re-adding the key turns
+    this red.
+    """
+
+    def _metric_map(self) -> dict:
+        from core.match_metrics import Recorder
+        return Recorder._PAYLOAD_METRIC_MAP
+
+    def test_enemy_summs_key_is_gone(self) -> None:
+        self.assertNotIn("enemy_summs_tracked", self._metric_map())
+
+    def test_no_enemy_summ_metric_of_any_name(self) -> None:
+        """Broader than the exact key - the ban is on the behaviour, which is
+        the whole lesson of the B3 correction (plan section 6c2)."""
+        offenders = [k for k in self._metric_map()
+                     if "enemy" in k and "summ" in k]
+        self.assertEqual(offenders, [])
+
+    def test_own_party_summs_key_survives(self) -> None:
+        """Negative control. B2 permits own-party summoner rows explicitly
+        ("restrict `summs` rows to own party only"), so an over-broad sweep
+        that also removed the ally key must turn this red."""
+        self.assertIn("ally_summs_up", self._metric_map())
+
+    def test_own_ultimate_metric_survives(self) -> None:
+        """Same control for the operator's OWN ability state - banned only for
+        opponents."""
+        self.assertIn("wincon_ability_up", self._metric_map())
+
+
 if __name__ == "__main__":
     unittest.main()
