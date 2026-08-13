@@ -215,6 +215,13 @@ VERSION_TRANSITION = re.compile(r"\d+\.\d+\.\d+\s*(?:->|to|/)\s*\d+\.\d+\.\d+")
 CLOSURE_MARKER = re.compile(
     r"~~|\b(?:shipped|closed|fixed|refuted|done|reverted|superseded)\b", re.I
 )
+# A markdown ATX heading, capturing its depth so a section's scope can be
+# closed by the next heading at the same or a shallower level.
+HEADING = re.compile(r"^(#{1,6})\s")
+# A heading that DATES ITSELF, e.g. "## 1b. STATUS as of 2026-08-11". The ISO
+# date is required: a bare "as of" is too easy to write by accident, and this
+# exemption covers a whole section rather than one line.
+DATED_STATUS_HEADING = re.compile(r"\bas of\b\s*:?\s*\d{4}-\d{2}-\d{2}", re.I)
 
 
 def _line_is_version_history(line: str) -> bool:
@@ -250,6 +257,23 @@ def check_version_anchors(
         being named as the one some finished work landed at, which stays true
         forever.
 
+    A third marker is BLOCK-scoped, added 2026-08-12 after the 1.277.0 bump
+    reported ``docs/OVERLAY_COMPLIANCE_PLAN.md:35``. That line reads "in sync
+    at engine 1.277.0, 533 files" - no transition, no closure keyword, so
+    line-level context could not see it - but it sits under the heading
+    ``## 1b. STATUS as of 2026-08-11``. It is a DATED SNAPSHOT: 1.277.0 was the
+    live engine on that date, and rewriting it to the current version would
+    make the record FALSE rather than fresh. So a heading that explicitly dates
+    itself (``as of <YYYY-MM-DD>``) marks its own section historical.
+
+    That exemption is deliberately the narrowest thing that works, because a
+    block exemption is stronger than a line one:
+      * it must be a HEADING line (``#``-prefixed), not any prose line;
+      * the heading must carry an explicit ISO date, not a bare "as of";
+      * scope ends at the next heading of the SAME OR HIGHER level, so a dated
+        status section cannot silently shelter the rest of a document.
+    Anything less specific re-opens the hole this check exists to close.
+
     KNOWN LIMIT: a line that asserts currency AND carries a closure keyword
     would be exempted. That shape has never occurred here, and the alternative -
     exempting the whole file - provably re-opens the hole this check exists to
@@ -268,8 +292,20 @@ def check_version_anchors(
             continue
         if old_version not in text:
             continue
+        dated_depth: int | None = None
         for n, line in enumerate(text.splitlines(), start=1):
+            head = HEADING.match(line)
+            if head:
+                depth = len(head.group(1))
+                # Leaving the dated section: a heading at the same or a
+                # shallower level ends its scope.
+                if dated_depth is not None and depth <= dated_depth:
+                    dated_depth = None
+                if DATED_STATUS_HEADING.search(line):
+                    dated_depth = depth
             if old_version not in line:
+                continue
+            if dated_depth is not None:
                 continue
             if _line_is_version_history(line):
                 continue
