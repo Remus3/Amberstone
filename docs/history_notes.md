@@ -296,6 +296,31 @@ RM-163 .. RM-168.
 
 ---
 
+---
+
+# 2026-08-11 - Overlay Platform M submission compliance (operator-directed, interactive)
+
+Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 failed. DS 10495 passed / 83 skipped / 0 failed. `ds_share_sync --check` in sync (engine 1.277.0, 533 files). Plan: `docs/OVERLAY_COMPLIANCE_PLAN.md`. Full detail: LEDGER 1238.
+
+**What this session was.** Reviewed the Overlay Platform M app-proposal form + Riot's third-party rules, then cut every RC surface those rules ban and rebuilt the one worth keeping. Framework verdict for a future port: **ow-electron, not Overlay Platform M Native** (RC already ships an Electron shell and needs native node + a Python sidecar; Native is a CEF UI wrapper with no story for either).
+
+**Removed:** enemy summoner-spell tap-tracker; summoner + ultimate cooldown ledger; ultimate power-spike cue; `/api/cooldown-watch` + `agents/daemon_slayer/cooldown_watch.py`. Every removal left an INVERTED guard test where the old case asserted the banned surface must exist - reinstating any of them turns a test red.
+
+**Two things worth carrying forward:**
+1. **B7 was a live routing bug, not just compliance.** `mode_from_game_mode_string` matched no branch on `"BRAWL"`, so a real Riot Brawl game defaulted to `MODE_SR` and got coached. Three OTHER sites tested substring `"BRAWL"` and so matched ONLY Riot Brawl, never RC's rotating modes. Gate is now `is_forbidden_game_mode()` + `MODE_UNSUPPORTED`, checked first, in `core/game_snapshot.py` (FROZEN file, edited with explicit operator approval).
+2. **My own filed blocker B6 was wrong.** RC displays no TFT Legend/Augment win rates or average placements, and `core/augment_external_source.py` is an ARENA prior the TFT-scoped rule does not reach. Acting on the row as filed would have deleted a working Arena feature. Filed rows stay hypotheses until probed.
+
+**The line, for any future session:** Riot bans **tracking** enemy cooldowns - the verb carries the rule. DDragon publishes every per-rank cooldown and the client shows them. The DS engine's cooldown math is untouched and must stay so; champ-select CC advice ("enemy comp has 4 hard-CC abilities, consider Cleanse") is legal; a per-instance countdown is not. `cc_threat_cell` is the compliant rebuild - CC duration and threat spell, no cooldown scalar, guarded against the scalar returning under a new name.
+
+**OPERATOR ACTIONS OPEN (cannot be automated):**
+- **RENAME the product.** "Amberstone" uses Riot's trademark and BLOCKS the Riot 3rd-party application. Operator has kept **Salt Circle** and **Lane Oracle**; full shortlist with domain-probe results is in `docs/OVERLAY_COMPLIANCE_PLAN.md` section 6b2. "Daemon Slayer" is NOT usable publicly (Shueisha's DEMON SLAYER covers computer game software; homophone, same class) - keep it as the internal engine codename.
+- Riot Developer Portal product registration needs a Riot account login + form submission.
+- A production key needs a public website, Terms of Service and Privacy Policy. None exist.
+
+**NOT started:** B4 (move coach imperatives to pre/post-game, decision recorded in plan 6c - compute branches live, render nothing, review post-game), B8 (vision/OCR capture - DevRel question), B9 (LCU declaration), and the rename sweep itself.
+
+---
+
 # 2026-08-08d - the DS coverage lanes are SATURATED, and the one real defect came from an adversarial pass whose other two findings were both wrong
 
 Baseline `b18a9da9`, head `a27aa105`. ENGINE **1.275.3 -> 1.276.0 -> 1.277.0**.
