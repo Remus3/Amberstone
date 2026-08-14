@@ -6,6 +6,25 @@
 
 ---
 
+# 2026-08-13 - /sync-all-md: five drifted numbers, one of them a provenance error
+
+Commits `24df6595` (the reconcile). Documentation only - no code, no `data/` write, no restart. Gate: ruff clean, **95 doc-guard tests passed**, `drift_guard` 0 breaches, both edited files 7-bit ASCII, CLAUDE.md 41.7 KB / 60 KB budget.
+
+**Fixed (all measured this turn, none carried from a doc):** `CLAUDE.md:6` ENGINE **1.275.3 -> 1.277.1** (three bumps missed); `CLAUDE.md:7` **11 -> 12 live ADRs** (013 + 014 had landed; ADR-004's supersession by ADR-012 now named); `DAEMON_SLAYER.md:5` banner **10594 -> 10578 tests**; `_effects_data` row **547 -> 548** entries; and the `tests/` module-map row **11754 -> 10578**, which was a PROVENANCE error - 11754 is the RC `tests/` dir at ENGINE 1.216.0 (LEDGER 911) filed against the **DS** module map. The wrong attribution is written into the row so it does not get restored.
+
+**Canonical facts as measured 2026-08-13:** patch 16.15.1, ENGINE 1.277.1, DS **10578** collected, RC `tests/` **19105** collected, ITEM_EFFECTS **548**, DDragon purchasable **544** / total **706**, champion overrides **167 entries / 132 champs**, `rewind_history.db` **2966** rows. Zero broken relative links across all nine living docs.
+
+**Do NOT redo / do NOT "correct" back:**
+- The **10578** figure. Collected TWICE this turn, both `agents/daemon_slayer` and `agents/daemon_slayer/tests`. The 2026-08-12 note above says **10584 passed**; the 6-test delta is UNEXPLAINED and was not reconciled by preferring either doc. If you re-measure and get 10584, say so - do not assume one of us fat-fingered it.
+- The **`547/547 DDragon purchasable items`** line in `DAEMON_SLAYER.md:10`. Left ALONE on purpose - three denominators measure out and none reproduces the pair (registry 548, purchasable 544, total 706). Coverage prose is a DS-batch job (`feedback_ds_coverage_prose_recompute`), not a general sync.
+- The README. It carries zero hard numbers by design; it needed no edit and still does not.
+
+**Filed for the operator, deliberately NOT given RM ids** (ids come from `docs/DS_SWEEP_TRACKER.md` and I did not want to mis-allocate one for what are decision items, not scoped work): (1) the `547/547` denominator above; (2) **the `/sync-all-md` skill cites three paths ADR-012 deleted** - section 2 names `docs/BRIDGE.md`, section 5 compares `docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md` against `core/bridge_envelope.py`; its two mirror copies are byte-identical and glyph-clean, so this is a content defect, not drift; (3) `RC_WORK_TRACKER.md` untracked, self-labelled "living", 26 days cold. Minor: `MEMORY.md` has 48 index lines over the 150-char cap, and DS `/health` answers **http** - the skill's `curl -k https://...:8860/health` exits 35.
+
+**Next:** operator call on the three filed findings, else the top open ROADMAP row.
+
+---
+
 # 2026-08-12 - RM-190 decided (a1), the heartbeat rename retries, RM-191 filed
 
 Commits `f2e162e3` (RM-190), `603a8fd2` (heartbeat retry), `26f4ff87` (LEDGER 1242), `ed23d8fa` (RM-191 + size-budget pass), `6720ba7e` (drift-guard fix). All pushed. Local: DS **10584 passed / 13338 subtests**, RC `tests/` **19009 passed / 96 skipped / 0 failed**, ruff clean, drift_guard 0, `ds_share_sync --check` in sync at 533 files.
@@ -44,25 +63,3 @@ Commits `f0501048` (B4-a), `543f738c` (B4-b), `3ca8ecd2` (RM-190), `12fc506c` (B
 - **B3 was recorded DONE while its artefact was still firing.** `spike_cue.js` was deleted but the spike lines live in `core/event_callouts.py` and shipped through `#rn-callouts` for another day. Lesson, now in plan section 6c2: **a banned artefact is a BEHAVIOUR, not a file** - grep the string the user sees, not the component named after the rule. Applied back over B1/B2/B10; found one dead registry key, now removed.
 
 **Open, all needing the operator or DevRel:** RM-190 (the uncommitted DDragon 16.16.1 bump vs DS pinned 16.15.1 - decide commit-and-carry or revert; it is the ONLY thing in the working tree and it fails 2 DS pen tests), B4-f / B8 / B9 (DevRel), the Riot portal registration, and G3-14 (one live ARAM row closes it).
-
----
-
-# 2026-08-11b - the product rename: Riot Commander -> Amberstone
-
-Commits `d0785c5e` (Tier 0), `a847a343` (gate), `119dff5a` (Tier 1), `0a70b6cf` (frozen record), `044351af` (repo rename). All pushed. RC `tests/` 18481 passed / 104 skipped / 0 failed; rc-shell 328 passed / 0 failed; drift_guard 0; ds_share_sync --check in sync. Full detail: LEDGER 1239. Plan: `docs/RENAME_SWEEP_AMBERSTONE.md`.
-
-**The name is DONE and the Riot application is no longer blocked on it.** Amberstone is the product name everywhere a reviewer looks: packaging, appId, installer, dashboard brand, PWA manifest, window titles, User-Agent headers, README, disclaimer, and the GitHub repo (`Remus3/amberstone`).
-
-**Do NOT redo:**
-- The rename itself. Tiers 0 and 1 shipped; the repo rename landed with its two dependents (`publish.repo` + README badge URLs) in ONE step, which is the only safe order.
-- `appId` is now `com.amberstone.shell`. Operator-approved BREAKING change - an existing install co-installs rather than upgrading.
-- Frozen-file edits (8 lines in main.py / core/log_setup.py / core/game_snapshot.py / ops/rc_dev_runtime.py) were reviewed and APPROVED. Do not revert them.
-
-**Do NOT re-attempt, with reasons on file:**
-- **Tier 2** (renaming the `C:\Riot Commander` directory): recommended DEFER INDEFINITELY. No outsider sees it, so it buys zero compliance, and it risks every absolute path at once - including the Claude workspace-trust key in `~/.claude.json`, which is keyed per path STRING, so a rename silently drops trust and headless runs start discarding `permissions.allow`.
-- **Tier 3** (the `RC` abbreviation): recommended NEVER. Initials are not a trademark.
-- A blind find-replace on the token `Riot`. Only ~946 of 4163 occurrences are the product name; ~77 percent are nominative and REQUIRED, and the mandated disclaimer must literally contain "Riot Games".
-
-**Still open (operator-only):** Riot Developer Portal product registration needs the operator's account login; a production key needs a public website + Terms of Service + Privacy Policy, none of which exist. Then B4 (move coach imperatives to pre/post-game - decision recorded in the compliance plan 6c), B8 (vision/OCR capture) and B9 (LCU) are DevRel questions.
-
-**Two guard lessons worth carrying:** a self-destructing guard must assert its exemption is still LOAD-BEARING, not merely that the remainder is clean (mine did not, and sat green through the very rename it was supposed to detect); and `tools/stop_claim_gate.py` now parses node test output, closing a blind spot where the whole rc-shell suite was invisible to it.
