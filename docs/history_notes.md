@@ -321,6 +321,28 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+# 2026-08-11b - the product rename: Riot Commander -> Amberstone
+
+Commits `d0785c5e` (Tier 0), `a847a343` (gate), `119dff5a` (Tier 1), `0a70b6cf` (frozen record), `044351af` (repo rename). All pushed. RC `tests/` 18481 passed / 104 skipped / 0 failed; rc-shell 328 passed / 0 failed; drift_guard 0; ds_share_sync --check in sync. Full detail: LEDGER 1239. Plan: `docs/RENAME_SWEEP_AMBERSTONE.md`.
+
+**The name is DONE and the Riot application is no longer blocked on it.** Amberstone is the product name everywhere a reviewer looks: packaging, appId, installer, dashboard brand, PWA manifest, window titles, User-Agent headers, README, disclaimer, and the GitHub repo (`Remus3/amberstone`).
+
+**Do NOT redo:**
+- The rename itself. Tiers 0 and 1 shipped; the repo rename landed with its two dependents (`publish.repo` + README badge URLs) in ONE step, which is the only safe order.
+- `appId` is now `com.amberstone.shell`. Operator-approved BREAKING change - an existing install co-installs rather than upgrading.
+- Frozen-file edits (8 lines in main.py / core/log_setup.py / core/game_snapshot.py / ops/rc_dev_runtime.py) were reviewed and APPROVED. Do not revert them.
+
+**Do NOT re-attempt, with reasons on file:**
+- **Tier 2** (renaming the `C:\Riot Commander` directory): recommended DEFER INDEFINITELY. No outsider sees it, so it buys zero compliance, and it risks every absolute path at once - including the Claude workspace-trust key in `~/.claude.json`, which is keyed per path STRING, so a rename silently drops trust and headless runs start discarding `permissions.allow`.
+- **Tier 3** (the `RC` abbreviation): recommended NEVER. Initials are not a trademark.
+- A blind find-replace on the token `Riot`. Only ~946 of 4163 occurrences are the product name; ~77 percent are nominative and REQUIRED, and the mandated disclaimer must literally contain "Riot Games".
+
+**Still open (operator-only):** Riot Developer Portal product registration needs the operator's account login; a production key needs a public website + Terms of Service + Privacy Policy, none of which exist. Then B4 (move coach imperatives to pre/post-game - decision recorded in the compliance plan 6c), B8 (vision/OCR capture) and B9 (LCU) are DevRel questions.
+
+**Two guard lessons worth carrying:** a self-destructing guard must assert its exemption is still LOAD-BEARING, not merely that the remainder is clean (mine did not, and sat green through the very rename it was supposed to detect); and `tools/stop_claim_gate.py` now parses node test output, closing a blind spot where the whole rc-shell suite was invisible to it.
+
+---
+
 # 2026-08-09 - weekly-hygiene pass (automated, unattended)
 
 Relocated: `# 2026-08-08` (headless lane 6 RM-176, 43 lines) to `docs/history_notes.md`. WAKEUP_NOTES now holds 3 sessions.
