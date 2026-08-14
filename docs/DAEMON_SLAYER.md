@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8860`. Computes actual damage-per-second for any champion x item x target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.277.1 - 10594 tests - patch 16.15.1.
+**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.277.1 - 10578 tests - patch 16.15.1.
 
 ## Engine substrate & registries
 
@@ -32,7 +32,7 @@ to those canonical files - do not resume a summary changelog here.
 | `server.py` | Stdlib `ThreadingHTTPServer`; 34 routes - core `/health`, `/snapshot`, `/stats`; the DPS + build rankers `/rank`, `/dps`, `/beam`, `/ehp`; the 7 archetype rankers `/rank-tank`, `/hybrid`, `/rank-bruiser`, `/ability-dps`, `/rank-mage`, `/rank-onhit`, `/burst`, `/rank-assassin`, `/hps`, `/rank-enchanter`; the additive scored-axis routes `/anti-tank`, `/extended-duel`, `/sustain`, `/mobility`, `/scaling`, `/waveclear`, `/threat-range`, `/zone-control`, `/objective-damage`, `/cc-output`, `/ally-amp`, `/modifier-summary`; the DSP live-input producer routes `/summoner-fight-adj`, `/enemy-rune-threat`, `/ally-protected-ehp` (OQ18); the DS V2 unified routes `/v2/matchup` + `/v2/fight-report` |
 | `effects.py` | Re-export facade (s246 split) - the 14 effect-aggregation logic fns (`collect_effects`, `total_*`, `effective_target_armor/mr`) + full public-surface re-export. Logic only |
 | `_effects_types.py` | **s246** - schema types + damage-type constants (`CallContext`, `DamageFn`, `PeriodicProc`, `ItemEffect`, `PHYSICAL/MAGICAL/TRUE`). Zero deps |
-| `_effects_data.py` | **s246** - the `ItemEffect` registry: 547 entries, DDragon purchasable coverage COMPLETE. Patch-pinned per `current.txt`; refresh on patch bump |
+| `_effects_data.py` | **s246** - the `ItemEffect` registry: 548 entries (measured `len(ITEM_EFFECTS)` 2026-08-13), DDragon purchasable coverage COMPLETE. Patch-pinned per `current.txt`; refresh on patch bump |
 | `dps.py` | `CallContext` dataclass + `compute_dps()` - stat walk, armor/MR pen, on-hit, periodic procs, damage amps |
 | `ehp.py` | **Phase 1 (s174)** - `compute_ehp()` + `EhpResult` + `rank_items_by_ehp()` + `EhpRankResult` - Tank EHP scorer; HP / armor_factor math with caller-supplied AD/AP/true enemy shares; ARAM `aramDamageTaken` modifier folded in |
 | `hybrid.py` | **Phase 2 (s175)** - `compute_hybrid()` + `HybridResult` + `rank_items_by_hybrid()` - Bruiser hybrid scorer; composes `compute_dps` x `compute_ehp` weighted by per-champion (alpha,beta) from `archetype_weights.json`; normalized-percentage-delta sort keeps weights intuitive across the ~10x DPS/EHP magnitude gap. **RM-39/RM-43 AD-axis ability term** (DEFAULT-OFF `apply_ad_axis_ability_damage`; L1 ENGINE 1.222.0, L2 1.223.0): `_damage_axis` resolves 92 of 173 champions to `"ad"` and every `_ability_damage` call site gated on `"ap"`, so those 92 were scored on auto-attack DPS alone; `_physical_ability_damage()` now adds an ability term at all three gate sites, summing `compute_ability_dps(...).per_spell` rows whose damage type is in `_AD_AXIS_CREDITED_DAMAGE_TYPES`. L2 widened that set from PHYSICAL to PHYSICAL + TRUE (TRUE has no resist derivative - `_mitigation_factor` returns a flat 1.0 for it). MIXED is HELD (it splits 50/50 armor/MR, so a full credit would import magic-pen valuation; the honest shape is a 50% credit, a separate design) and MAGIC is EXCLUDED PERMANENTLY. Byte-identical at the default, proven by cohort golden diff plus a full build-order regen. Live default-ON flip is operator-gated and additionally blocked on RM-98 (the ability rate is a whole-game average, the auto rate a combat window) |
@@ -48,7 +48,7 @@ to those canonical files - do not resume a summary changelog here.
 | `beam.py` | `beam_search_build()` - full-build beam search returning top-N complete builds |
 | `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
 | `ult_rates.py` | Per-champion cast-rate lookup. Legacy `get_ult_casts_per_sec` (R-only, reads `ult_cast_rates.json`) preserved for Malignance Hatefog backward compat; `get_spell_casts_per_sec(champion, key, mode)` (Phase 4b, s178) reads `spell_cast_rates.json` for all 4 active spells; both derived from rewind_history.db via `scripts/build_spell_cast_rates.py`; 172 champions x 4 spells x 3 mode buckets |
-| `tests/` | 11754 tests passing (full tests/ run at 1.216.0, LEDGER 911 verbatim) |
+| `tests/` | 10578 tests collected (`pytest agents/daemon_slayer` from the repo root, measured 2026-08-13). The prior figure here, 11754, was the RC `tests/` dir at 1.216.0 (LEDGER 911), not this directory - do not restore it |
 
 ## Key data types
 
