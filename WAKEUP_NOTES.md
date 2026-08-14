@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-08-13b - new-project design QA: portable conventions extracted, Sibling-E specced
+
+Commit `afd98bd3` (`docs/PORTABLE_PROJECT_CONVENTIONS.md`, 723 lines / 36.9 KB) plus this ledger/notes sync. **Tier-0, documentation only** - no code, no `data/` write, no RC or DS restart. Gate: `drift_guard` 0 breaches, `perseus_sync` **embedded 1415/1415**, both authored files verified **0 non-ASCII bytes** and **0 project-noun hits**.
+
+**What shipped.** A planning + QA session (4 rounds of framed questions, no building) producing two documents. (1) `docs/PORTABLE_PROJECT_CONVENTIONS.md` - this repo's operating doctrine with every project noun stripped, meant to be dropped into any new repo unchanged. 19 sections: doc topology with one owner per fact, file-size budgets, open/closed/gated item organization, the orchestrated multi-agent self-adjudicating self-adversarial default, R1-R11, TDD + 9 test-quality failure classes, 4 CI tiers, ASCII/Windows encoding, markdown-SSoT memory + semantic mirror, agent/command/skill/MCP roster, visual+OCR policy, the 5-trap license gate, 13 verification failure classes, 4 hook confounds, private-to-public flip gate. **Section 18 is its refresh protocol - re-diff it, never rewrite it.** (2) A bootstrap spec for a second project at `C:\Sibling-E` (Satisfactory planning/advisory system), written outside this repo along with a byte-copy of the conventions. Memory: `project_sibling_e_bootstrap`.
+
+**Method note worth carrying forward.** The bootstrap was not written from recollection. Every environmental claim was probed live before it was written (install path, shipped data files with real byte sizes, free port band, toolchain), and every claim that could NOT be probed was labelled as a numbered spike carrying a binary acceptance criterion **and** a stated fallback. When the operator supplied two screenshots mid-session, a further probing round settled an open design question outright and surfaced a hazard that assumption would have missed. That is the shape: probe what is knowable, label what is not, re-probe when new evidence arrives.
+
+**Do NOT redo:** the 4-round QA. All decisions are fenced in that project's own decision log (its section 11) - name, private-first, Python core, deterministic zero-LLM advisor, three explain tiers, per-world ledger + global mute, four v1 advice domains, mods architecture-first, no external optimizer in phase 3, no community datasets. Re-opening any of them re-litigates a settled call.
+
+**Not done, by scope:** nothing in `C:\Sibling-E` is initialized - no git, no hooks, no code. That is its own first session's phase 0.
+
+---
+
 # 2026-08-13 - /sync-all-md: five drifted numbers, one of them a provenance error
 
 Commits `24df6595` (the reconcile). Documentation only - no code, no `data/` write, no restart. Gate: ruff clean, **95 doc-guard tests passed**, `drift_guard` 0 breaches, both edited files 7-bit ASCII, CLAUDE.md 41.7 KB / 60 KB budget.
