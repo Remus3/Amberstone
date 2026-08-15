@@ -1626,6 +1626,16 @@ def compute_ehp(
     # no-mid-signature-insert convention.
     targets_in_rotation: float = 1.0,
     assume_cleave_lifesteal: bool = False,
+    # RM-200: the SCALING half of the wielder HSP item lane. The curated
+    # ``heal_shield_amp_pct`` field stores only the FLAT PRINTED stat, so an item
+    # that earns ADDITIONAL HSP through a scaling clause (Dawncore 6621's First
+    # Light, 2% per additional 100% base mana regen) contributed nothing to
+    # ``shield_amp_mult``. A MODIFIER of ``assume_hsp_amp`` rather than an
+    # independent switch: the helper is only reached inside that branch, so this
+    # flag alone is byte-identical. Its transport is the existing ``item_ids``.
+    # Live default-ON flip is operator-gated. Appended at END per the
+    # no-mid-signature-insert convention.
+    assume_scaling_hsp_grants: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1947,8 +1957,16 @@ def compute_ehp(
     # stronger on targets below 40% health") is a TARGET-STATE conditional and is
     # deliberately NOT modelled - that arc is operator-CLOSED. Independently gated
     # from assume_hsp_amp so the operator can flip the item and rune lanes apart.
+    # RM-200: assume_scaling_hsp_grants folds the SCALING-clause grants into the
+    # same additive sum. Nested inside the assume_hsp_amp branch so the flat lane
+    # keeps sole ownership of whether the item axis contributes at all.
     hsp_pct = (
-        sum_wielder_hsp_pct(resolved.item_ids) if assume_hsp_amp else 0.0
+        sum_wielder_hsp_pct(
+            resolved.item_ids,
+            assume_scaling_hsp_grants=assume_scaling_hsp_grants,
+        )
+        if assume_hsp_amp
+        else 0.0
     )
     if apply_rune_hsp_amp:
         from ._rune_hsp_amp import sum_rune_hsp_pct as _rune_hsp_fn
