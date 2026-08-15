@@ -415,9 +415,14 @@ STRANDED_DEPTH1: dict[str, str] = {
     "apply_cc_floor": "RM-201 - Tier-2 wiring, filed and OPEN. Owned by "
                       "cc_pressure.compute_cc_pressure, which has five production "
                       "callers and none forwards it.",
-    "assume_scaling_hsp_grants": "RM-200 - Tier-2 wiring, filed and OPEN. Owned by "
-                                 "_hsp_amp.sum_wielder_hsp_pct; neither production "
-                                 "call site passes it.",
+    # (assume_scaling_hsp_grants was WIRED by RM-200 - threaded through
+    # ehp.compute_ehp and sustain.compute_sustain to its sole owner
+    # _hsp_amp.sum_wielder_hsp_pct, parsed and passed on /ehp and /sustain, and
+    # exposed on the Python client. Threading it through two route-facing entry
+    # points promoted it OUT of this tier and into the depth-0 universe, where
+    # the depth-0 guard now measures it as reachable. See
+    # test_scaling_hsp_route_seam_rm200.py for the measured per-seam route
+    # table and the ON-path movement proofs.)
 }
 
 
@@ -502,12 +507,20 @@ class StrandedSeamGuardDepth1(unittest.TestCase):
 
     def test_the_two_seams_rm202_filed_are_now_visible(self):
         # The headline. Both were invisible to the depth-0 guard while it was
-        # green, and neither is wired.
+        # green. apply_cc_floor is still unwired and still ledgered above.
         stranded = stranded_seams_depth1(SERVER_SRC)
-        self.assertIn("assume_scaling_hsp_grants", stranded)
         self.assertIn("apply_cc_floor", stranded)
-        self.assertNotIn("assume_scaling_hsp_grants", _engine_seams())
         self.assertNotIn("apply_cc_floor", _engine_seams())
+        # RM-200 wired the other one, so its half of this test asserts the
+        # OPPOSITE now: reachable, and no longer a depth-1-ONLY seam. Both
+        # halves are load-bearing - membership in _engine_seams() proves the
+        # promotion to depth 0, and parsed+passed proves the route wire, which
+        # is the same two-part contract the depth-0 guard applies.
+        self.assertNotIn("assume_scaling_hsp_grants", stranded)
+        self.assertIn("assume_scaling_hsp_grants", _engine_seams())
+        self.assertIn("assume_scaling_hsp_grants", _parsed_keys(SERVER_SRC))
+        self.assertIn("assume_scaling_hsp_grants", _passed_kwargs(SERVER_SRC))
+        self.assertNotIn("assume_scaling_hsp_grants", stranded_seams(SERVER_SRC))
 
     def test_local_import_resolution_is_load_bearing(self):
         # Pins resolution fix 1. compute_cc_pressure is imported INSIDE

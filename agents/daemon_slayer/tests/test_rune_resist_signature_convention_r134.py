@@ -182,6 +182,18 @@ _R194A_TAIL = ("assume_max_stacks_omnivamp",)
 # land at the END, in order, never mid-signature.
 _R194C_TAIL = ("targets_in_rotation", "assume_cleave_lifesteal")
 
+# RM-200 (2026-08-15) appends the SCALING wielder-HSP seam to ``compute_ehp``
+# ONLY, for the same reason R193 and R194 slice C did: it modifies a magnitude
+# computed inside the per-build EHP math (the shield_amp_mult that scales the
+# wielder's own ItemShield pool), and ``rank_items_by_ehp`` orders builds and
+# holds no such pool. Mirroring it onto the ranker would be a signature-tidy
+# pretending to be a capability. Its flat-lane partner ``assume_hsp_amp`` sits
+# mid-signature on ``compute_ehp`` because it predates this convention; the new
+# seam lands at the END, which is exactly what the convention asks. The
+# invariant is unchanged: seam kwargs land at the END, in order, never
+# mid-signature.
+_RM200_TAIL = ("assume_scaling_hsp_grants",)
+
 # RM-91 T1 appends the champion HEALTH -> DAMAGE coupling pair to
 # ``rank_items_by_ehp`` ONLY. It is the health-axis twin of the RM-87 resist
 # pair, and like that pair it is a RANKING-only lever - but unlike RM-87 it is
@@ -241,7 +253,10 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
         )
         hybrid_shared = shared + _R145_TAIL + _RM98_TAIL
         cases = (
-            ((compute_ehp,), shared + _RM87_TAIL + _R193_TAIL + _R194C_TAIL),
+            (
+                (compute_ehp,),
+                shared + _RM87_TAIL + _R193_TAIL + _R194C_TAIL + _RM200_TAIL,
+            ),
             (
                 (rank_items_by_ehp,),
                 shared + _RM87_TAIL + _A1250_TAIL + _R194A_TAIL + _RM91_TAIL
