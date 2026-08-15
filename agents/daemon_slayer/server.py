@@ -720,6 +720,15 @@ def _route_ehp(body: dict) -> dict:
     # from the keys server.py already parses. Absent key -> False -> hsp_pct 0.0
     # -> shield_amp_mult unchanged -> byte-identical response.
     assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
+    # RM-200: the SCALING half of that same item lane, stranded one hop deeper
+    # since R197 - the kwarg lived on _hsp_amp.sum_wielder_hsp_pct and NEITHER
+    # production call site forwarded it, so it was invisible to the depth-0
+    # stranded-seam guard as well as to every client. It is a MODIFIER of
+    # assume_hsp_amp above (the helper is only reached inside that branch), and
+    # its transport is the ``items`` list already parsed here - Dawncore 6621
+    # earns 0.02 per additional 100% base mana regen on top of its flat 0.16.
+    # Absent key -> False -> the flat sum is unchanged -> byte-identical.
+    assume_scaling_hsp_grants = _opt_bool(body, "assume_scaling_hsp_grants", False)
     # RM-118 residual (2026-07-29): four EHP survivability seams whose ENGINE
     # half shipped complete - registry, consumer and all - while no route ever
     # parsed them, so the R197 stranded-seam guard ledgered them as debt. Same
@@ -841,6 +850,7 @@ def _route_ehp(body: dict) -> dict:
             assume_item_general_dr=assume_item_general_dr,
             assume_max_stacks_omnivamp=assume_max_stacks_omnivamp,
             assume_hsp_amp=assume_hsp_amp,
+            assume_scaling_hsp_grants=assume_scaling_hsp_grants,
             assume_passive_flat_mitigation=assume_passive_flat_mitigation,
             assume_passive_health_stacks=assume_passive_health_stacks,
             assume_item_revive=assume_item_revive,
@@ -2101,6 +2111,7 @@ def _route_sustain(body: dict) -> dict:
       * ``champion`` (required)
       * ``mode`` (default SR; carried on the result, does not change output)
       * ``items`` + ``assume_hsp_amp`` (R197, both DEFAULT-OFF)
+      * ``assume_scaling_hsp_grants`` (RM-200, DEFAULT-OFF; modifies the above)
     Additive read-only metric: it perturbs no other route.
     """
     snap = _CACHE.get()
@@ -2114,10 +2125,16 @@ def _route_sustain(body: dict) -> dict:
     # [] / False -> hsp_mult 1.0 -> byte-identical response.
     items = _coerce_str_list(body.get("items"), "items")
     assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
+    # RM-200: the SCALING half of the same lane, stranded one hop below the
+    # route until now. A MODIFIER of assume_hsp_amp - compute_sustain reaches
+    # the helper only inside that branch - so the two arm together or not at
+    # all, and this key alone leaves hsp_mult at 1.0. Transport is ``items``.
+    assume_scaling_hsp_grants = _opt_bool(body, "assume_scaling_hsp_grants", False)
     try:
         result = compute_sustain(
             champion, mode=mode, item_ids=items,
             assume_hsp_amp=assume_hsp_amp,
+            assume_scaling_hsp_grants=assume_scaling_hsp_grants,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
