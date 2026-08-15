@@ -408,13 +408,12 @@ def stranded_seams_depth1(src: str) -> dict[str, list[str]]:
 # Measured 2026-08-15 against 219 depth-1 functions. Started at 3 and SHRANK to
 # 2 the same day: RM-207 established that apply_dual_scaling_split is wired
 # under a different name, so it moved to DEPTH1_ENGINE_INTERNAL above rather
-# than being deleted. Equality, so this tier can
-# only ever shrink from here - exactly like STRANDED_TODAY, from its own
-# baseline rather than by editing depth-0's.
+# than being deleted. SHRANK to 1 when RM-201 wired apply_cc_floor onto /ehp -
+# a real drain, not a reclassification: server.py now parses and forwards it,
+# and compute_ehp names it, so the seam left this tier by being fixed. Equality,
+# so this tier can only ever shrink from here - exactly like STRANDED_TODAY,
+# from its own baseline rather than by editing depth-0's.
 STRANDED_DEPTH1: dict[str, str] = {
-    "apply_cc_floor": "RM-201 - Tier-2 wiring, filed and OPEN. Owned by "
-                      "cc_pressure.compute_cc_pressure, which has five production "
-                      "callers and none forwards it.",
     "assume_scaling_hsp_grants": "RM-200 - Tier-2 wiring, filed and OPEN. Owned by "
                                  "_hsp_amp.sum_wielder_hsp_pct; neither production "
                                  "call site passes it.",
@@ -502,12 +501,21 @@ class StrandedSeamGuardDepth1(unittest.TestCase):
 
     def test_the_two_seams_rm202_filed_are_now_visible(self):
         # The headline. Both were invisible to the depth-0 guard while it was
-        # green, and neither is wired.
+        # green. RM-202 made them visible; RM-201 then DRAINED one of them.
         stranded = stranded_seams_depth1(SERVER_SRC)
+        # Still filed and open - RM-200 owns this one.
         self.assertIn("assume_scaling_hsp_grants", stranded)
-        self.assertIn("apply_cc_floor", stranded)
         self.assertNotIn("assume_scaling_hsp_grants", _engine_seams())
-        self.assertNotIn("apply_cc_floor", _engine_seams())
+        # RM-201 wired apply_cc_floor onto /ehp, so it is no longer stranded at
+        # depth 1. Asserting only "not in stranded" would be a NEGATIVE that
+        # also passes if the seam were DELETED, so the wire itself is pinned:
+        # server.py parses it AND forwards it, and it graduated to the depth-0
+        # universe by landing on compute_ehp - which is exactly why
+        # _depth1_only_seams no longer offers it.
+        self.assertNotIn("apply_cc_floor", stranded)
+        self.assertIn("apply_cc_floor", _parsed_keys(SERVER_SRC))
+        self.assertIn("apply_cc_floor", _passed_kwargs(SERVER_SRC))
+        self.assertIn("apply_cc_floor", _engine_seams())
 
     def test_local_import_resolution_is_load_bearing(self):
         # Pins resolution fix 1. compute_cc_pressure is imported INSIDE

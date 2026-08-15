@@ -1626,6 +1626,15 @@ def compute_ehp(
     # no-mid-signature-insert convention.
     targets_in_rotation: float = 1.0,
     assume_cleave_lifesteal: bool = False,
+    *,
+    # RM-201: the guaranteed-minimum CC band. ``compute_cc_pressure`` has shipped
+    # this seam since ENGINE 1.150.0 and none of its five production callers
+    # forwarded it, so the ``durations_floor_s`` half of the conditional registry
+    # could not be armed from any route. KEYWORD-ONLY and appended at END so no
+    # existing positional call site shifts. It is an AND-gate with
+    # ``include_conditional`` above - the floor lives on the CONDITIONAL registry,
+    # so this flag alone is arithmetically inert and the two travel together.
+    apply_cc_floor: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -2521,8 +2530,15 @@ def compute_ehp(
             # Default False preserves byte-identical 1.38.0 behavior for
             # every existing caller (the 4 cc_blended_ehp consumers stay
             # unchanged unless an explicit opt-in flows in).
+            # RM-201: ``apply_cc_floor`` rides the SAME per-enemy call. It is
+            # read only inside the conditional branch of
+            # ``_conditional_credit_seconds``, so arming it with
+            # ``include_conditional`` False is a measured no-op rather than a
+            # convention.
             cc_total += compute_cc_pressure(
-                enemy, mode, include_conditional=include_conditional
+                enemy, mode,
+                include_conditional=include_conditional,
+                apply_cc_floor=apply_cc_floor,
             ).total_cc_seconds
         # Item 236: OPT-IN build-tenacity credit. Tenacity shortens the CC the
         # CASTER actually eats, so it shrinks the enemy CC pressure for THIS
