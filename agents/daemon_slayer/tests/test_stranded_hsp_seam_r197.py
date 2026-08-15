@@ -408,13 +408,12 @@ def stranded_seams_depth1(src: str) -> dict[str, list[str]]:
 # Measured 2026-08-15 against 219 depth-1 functions. Started at 3 and SHRANK to
 # 2 the same day: RM-207 established that apply_dual_scaling_split is wired
 # under a different name, so it moved to DEPTH1_ENGINE_INTERNAL above rather
-# than being deleted. Equality, so this tier can
-# only ever shrink from here - exactly like STRANDED_TODAY, from its own
-# baseline rather than by editing depth-0's.
+# than being deleted. SHRANK to 1 when RM-201 wired apply_cc_floor onto /ehp -
+# a real drain, not a reclassification: server.py now parses and forwards it,
+# and compute_ehp names it, so the seam left this tier by being fixed. Equality,
+# so this tier can only ever shrink from here - exactly like STRANDED_TODAY,
+# from its own baseline rather than by editing depth-0's.
 STRANDED_DEPTH1: dict[str, str] = {
-    "apply_cc_floor": "RM-201 - Tier-2 wiring, filed and OPEN. Owned by "
-                      "cc_pressure.compute_cc_pressure, which has five production "
-                      "callers and none forwards it.",
     # (assume_scaling_hsp_grants was WIRED by RM-200 - threaded through
     # ehp.compute_ehp and sustain.compute_sustain to its sole owner
     # _hsp_amp.sum_wielder_hsp_pct, parsed and passed on /ehp and /sustain, and
@@ -423,6 +422,16 @@ STRANDED_DEPTH1: dict[str, str] = {
     # the depth-0 guard now measures it as reachable. See
     # test_scaling_hsp_route_seam_rm200.py for the measured per-seam route
     # table and the ON-path movement proofs.)
+    # (apply_cc_floor was WIRED by RM-201 in the same batch - forwarded from
+    # ehp.compute_ehp to its depth-1 owner cc_pressure.compute_cc_pressure,
+    # parsed and passed on /ehp, and exposed on the Python client together with
+    # include_conditional, which the floor is an AND-gate with. See
+    # test_cc_floor_route_seam_rm201.py.)
+    #
+    # This tier is now EMPTY, which is the ledger reaching its floor rather than
+    # the guard going quiet: both names left by being WIRED, and both left by
+    # landing on a depth-0 entry point, so the depth-0 guard measures them from
+    # here on. The equality below still fails on any newly-revealed depth-1 seam.
 }
 
 
@@ -507,20 +516,23 @@ class StrandedSeamGuardDepth1(unittest.TestCase):
 
     def test_the_two_seams_rm202_filed_are_now_visible(self):
         # The headline. Both were invisible to the depth-0 guard while it was
-        # green. apply_cc_floor is still unwired and still ledgered above.
+        # green. RM-202 made them visible; RM-200 and RM-201 then DRAINED both
+        # in one batch, so this asserts the OPPOSITE of what it was written to
+        # assert. Every half below is load-bearing, and a bare "not stranded"
+        # would NOT be: that negative also passes if a seam were DELETED
+        # outright, so the wire itself is pinned in three parts - membership in
+        # _engine_seams() proves the promotion to depth 0 (both landed on
+        # compute_ehp, which is exactly why _depth1_only_seams no longer offers
+        # them), and parsed + passed prove the route wire, the same two-part
+        # contract the depth-0 guard applies.
         stranded = stranded_seams_depth1(SERVER_SRC)
-        self.assertIn("apply_cc_floor", stranded)
-        self.assertNotIn("apply_cc_floor", _engine_seams())
-        # RM-200 wired the other one, so its half of this test asserts the
-        # OPPOSITE now: reachable, and no longer a depth-1-ONLY seam. Both
-        # halves are load-bearing - membership in _engine_seams() proves the
-        # promotion to depth 0, and parsed+passed proves the route wire, which
-        # is the same two-part contract the depth-0 guard applies.
-        self.assertNotIn("assume_scaling_hsp_grants", stranded)
-        self.assertIn("assume_scaling_hsp_grants", _engine_seams())
-        self.assertIn("assume_scaling_hsp_grants", _parsed_keys(SERVER_SRC))
-        self.assertIn("assume_scaling_hsp_grants", _passed_kwargs(SERVER_SRC))
-        self.assertNotIn("assume_scaling_hsp_grants", stranded_seams(SERVER_SRC))
+        for seam in ("assume_scaling_hsp_grants", "apply_cc_floor"):
+            with self.subTest(seam=seam):
+                self.assertNotIn(seam, stranded)
+                self.assertIn(seam, _engine_seams())
+                self.assertIn(seam, _parsed_keys(SERVER_SRC))
+                self.assertIn(seam, _passed_kwargs(SERVER_SRC))
+                self.assertNotIn(seam, stranded_seams(SERVER_SRC))
 
     def test_local_import_resolution_is_load_bearing(self):
         # Pins resolution fix 1. compute_cc_pressure is imported INSIDE

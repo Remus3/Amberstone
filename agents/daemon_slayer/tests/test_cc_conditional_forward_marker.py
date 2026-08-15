@@ -57,6 +57,13 @@ _REPO_ROOT = _DS_PACKAGE.parent.parent   # repo root
 _ALLOWED_TEST_FILES = {
     "test_cc_conditional.py",
     "test_cc_conditional_durations_floor.py",
+    # RM-201. A TEST read, not a consumer wire: it reads Maokai's conditional R
+    # entry to pin WHY the coexistence MAX rule dominates his floor band, which
+    # is the reason that champion was rejected as the acceptance case. The
+    # operator gate is untouched - RM-201 adds no new SOURCE import of
+    # cc_conditional, reaching the registry through the already-authorized
+    # cc_pressure.py consumer.
+    "test_cc_floor_route_seam_rm201.py",
     "test_cc_conditional_forward_marker.py",
     "test_cc_conditional_wave1.py",
     "test_cc_conditional_wave2.py",
