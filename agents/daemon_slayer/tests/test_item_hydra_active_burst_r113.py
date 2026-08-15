@@ -97,8 +97,8 @@ _HYDRA_SR_BUILD = ["3047", _RAVENOUS_SR]  # Plated Steelcaps + Ravenous
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.277.1")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.277.1")
+        self.assertEqual(ENGINE_VERSION, "1.278.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.278.0")
 
 
 class SchemaDefaults(unittest.TestCase):
