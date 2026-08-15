@@ -57,22 +57,3 @@ Commit `afd98bd3` (`docs/PORTABLE_PROJECT_CONVENTIONS.md`, 723 lines / 36.9 KB) 
 **Do NOT redo:** the 4-round QA. All decisions are fenced in that project's own decision log (its section 11) - name, private-first, Python core, deterministic zero-LLM advisor, three explain tiers, per-world ledger + global mute, four v1 advice domains, mods architecture-first, no external optimizer in phase 3, no community datasets. Re-opening any of them re-litigates a settled call.
 
 **Not done, by scope:** nothing in `C:\Sibling-E` is initialized - no git, no hooks, no code. That is its own first session's phase 0.
-
----
-
-# 2026-08-13 - /sync-all-md: five drifted numbers, one of them a provenance error
-
-Commits `24df6595` (the reconcile). Documentation only - no code, no `data/` write, no restart. Gate: ruff clean, **95 doc-guard tests passed**, `drift_guard` 0 breaches, both edited files 7-bit ASCII, CLAUDE.md 41.7 KB / 60 KB budget.
-
-**Fixed (all measured this turn, none carried from a doc):** `CLAUDE.md:6` ENGINE **1.275.3 -> 1.277.1** (three bumps missed); `CLAUDE.md:7` **11 -> 12 live ADRs** (013 + 014 had landed; ADR-004's supersession by ADR-012 now named); `DAEMON_SLAYER.md:5` banner **10594 -> 10578 tests**; `_effects_data` row **547 -> 548** entries; and the `tests/` module-map row **11754 -> 10578**, which was a PROVENANCE error - 11754 is the RC `tests/` dir at ENGINE 1.216.0 (LEDGER 911) filed against the **DS** module map. The wrong attribution is written into the row so it does not get restored.
-
-**Canonical facts as measured 2026-08-13:** patch 16.15.1, ENGINE 1.277.1, DS **10578** collected, RC `tests/` **19105** collected, ITEM_EFFECTS **548**, DDragon purchasable **544** / total **706**, champion overrides **167 entries / 132 champs**, `rewind_history.db` **2966** rows. Zero broken relative links across all nine living docs.
-
-**Do NOT redo / do NOT "correct" back:**
-- The **10578** figure. Collected TWICE this turn, both `agents/daemon_slayer` and `agents/daemon_slayer/tests`. The 2026-08-12 note above says **10584 passed**; the 6-test delta is UNEXPLAINED and was not reconciled by preferring either doc. If you re-measure and get 10584, say so - do not assume one of us fat-fingered it.
-- The **`547/547 DDragon purchasable items`** line in `DAEMON_SLAYER.md:10`. Left ALONE on purpose - three denominators measure out and none reproduces the pair (registry 548, purchasable 544, total 706). Coverage prose is a DS-batch job (`feedback_ds_coverage_prose_recompute`), not a general sync.
-- The README. It carries zero hard numbers by design; it needed no edit and still does not.
-
-**Filed for the operator, deliberately NOT given RM ids** (ids come from `docs/DS_SWEEP_TRACKER.md` and I did not want to mis-allocate one for what are decision items, not scoped work): (1) the `547/547` denominator above; (2) **the `/sync-all-md` skill cites three paths ADR-012 deleted** - section 2 names `docs/BRIDGE.md`, section 5 compares `docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md` against `core/bridge_envelope.py`; its two mirror copies are byte-identical and glyph-clean, so this is a content defect, not drift; (3) `RC_WORK_TRACKER.md` untracked, self-labelled "living", 26 days cold. Minor: `MEMORY.md` has 48 index lines over the 150-char cap, and DS `/health` answers **http** - the skill's `curl -k https://...:8860/health` exits 35.
-
-**Next:** operator call on the three filed findings, else the top open ROADMAP row.
