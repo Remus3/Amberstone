@@ -69,7 +69,9 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free GAP spec = **RM-205**. (This line read `RM-203` for the few hours between
+  Next free GAP spec = **RM-206**. (RM-205 was consumed 2026-08-15 by the RM-197
+  adversarial gate - four scope-fenced sanitizer bypasses, body in `BACKLOG.md`.)
+  (This line read `RM-203` for the few hours between
   the two 2026-08-14 sessions landing. RM-203 + RM-204 were allocated concurrently by
   the headless-upgrade run and are recorded in the block below; measured 2026-08-15 the
   true max is **RM-204** across the working tree AND all three lane branches - `lane/ds`
