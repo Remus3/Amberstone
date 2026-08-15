@@ -705,6 +705,16 @@ def ehp_for(
     assume_chainlaced_shield: bool = False,
     assume_seraphs_shield: bool = False,
     assume_fimbulwinter_shield: bool = False,
+    # RM-200: the SCALING half of the wielder-HSP item lane ``assume_hsp_amp``
+    # opens above. Only /ehp and /sustain parse it, so it is deliberately NOT
+    # routed through ``_emit_ehp_family_seams`` - that helper is shared by four
+    # entry points and folding this in would let a later edit leak the key onto
+    # /rank-tank, /rank-bruiser or /hybrid, none of which parse it. A MODIFIER of
+    # ``assume_hsp_amp``: setting this alone is accepted and arithmetically inert
+    # engine-side, because the helper is reached only inside that flag's branch.
+    # Transport is the existing ``item_ids`` (Dawncore 6621). Appended at END per
+    # the no-mid-signature-insert convention.
+    assume_scaling_hsp_grants: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
@@ -761,6 +771,10 @@ def ehp_for(
     # that does not name the seam is byte-identical on the wire to a pre-R197 one.
     if assume_hsp_amp:
         body["assume_hsp_amp"] = True
+    # RM-200: same emit-when-True contract. Arming this WITHOUT assume_hsp_amp
+    # is accepted and inert by construction - see the signature comment.
+    if assume_scaling_hsp_grants:
+        body["assume_scaling_hsp_grants"] = True
     # RM-118 residual: same emit-when-True contract - each key absent leaves
     # _route_ehp's _opt_bool on its engine default, so a call that names none of
     # them is byte-identical on the wire to a pre-wire one.
@@ -803,6 +817,10 @@ def sustain_for(
     # which is why the two are declared as a pair rather than as independent
     # switches. DEFAULT-OFF, emitted only when True.
     assume_hsp_amp: bool = False,
+    # RM-200: the SCALING half of that same lane, and inert without BOTH the
+    # flag above and ``item_ids`` - it modifies the sum ``assume_hsp_amp`` opens
+    # rather than opening one of its own. DEFAULT-OFF, emitted only when True.
+    assume_scaling_hsp_grants: bool = False,
 ) -> Optional[dict]:
     """Call POST /sustain and return the raw SustainResult dict. None on failure.
 
@@ -853,6 +871,8 @@ def sustain_for(
     # DEFAULT-OFF, emit-when-True - same contract as the ``ehp_for`` twin.
     if assume_hsp_amp:
         body["assume_hsp_amp"] = True
+    if assume_scaling_hsp_grants:
+        body["assume_scaling_hsp_grants"] = True
     return _post_json("/sustain", body, timeout=timeout)
 
 
