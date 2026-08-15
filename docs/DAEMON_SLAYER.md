@@ -48,7 +48,7 @@ to those canonical files - do not resume a summary changelog here.
 | `beam.py` | `beam_search_build()` - full-build beam search returning top-N complete builds |
 | `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
 | `ult_rates.py` | Per-champion cast-rate lookup. Legacy `get_ult_casts_per_sec` (R-only, reads `ult_cast_rates.json`) preserved for Malignance Hatefog backward compat; `get_spell_casts_per_sec(champion, key, mode)` (Phase 4b, s178) reads `spell_cast_rates.json` for all 4 active spells; both derived from rewind_history.db via `scripts/build_spell_cast_rates.py`; 172 champions x 4 spells x 3 mode buckets |
-| `tests/` | 10578 tests collected (`pytest agents/daemon_slayer` from the repo root, measured 2026-08-13). The prior figure here, 11754, was the RC `tests/` dir at 1.216.0 (LEDGER 911), not this directory - do not restore it |
+| `tests/` | 10653 tests collected (`pytest agents/daemon_slayer` from the repo root, measured 2026-08-15 at ENGINE 1.278.0). **This cell and the count in the line-5 banner are the SAME number and must be set together** - the 1.278.0 bump corrected the banner and left this cell at 10578, and a read-only verifier gate is what caught it, 46 lines below the line that had just been edited. The prior figure here, 11754, was the RC `tests/` dir at 1.216.0 (LEDGER 911), not this directory - do not restore it |
 
 ## Key data types
 
