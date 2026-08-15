@@ -178,6 +178,15 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     "test_assumed_share_exposure.py",
     "test_route_seams_reach_the_client.py",
     "test_route_seams_reach_the_client_per_route.py",
+    # -- RM-201 (ENGINE 1.278.0, 2026-08-15): same class again. The CC-floor
+    # route seam's guard asserts the seam is expressible through the HOST
+    # client, and its third gate is precisely that the client carries the
+    # ``include_conditional`` axis the floor is inert without - so the
+    # core.daemon_slayer_client import IS its subject. Note its RM-200 sibling
+    # is deliberately NOT listed: that file reaches the client only inside a
+    # function body, so it mirrors safely and excluding it would be a
+    # cargo-culted pair.
+    "test_cc_floor_route_seam_rm201.py",
     # -- R193 (ENGINE 1.255.0, 2026-07-26): same class as the RM-115 pair. It
     # asserts that the omnivamp EHP seam parsed by server.py is expressible
     # through the HOST client, so importing core.daemon_slayer_client is its

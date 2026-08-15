@@ -566,7 +566,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
 
     def test_engine_version_current(self) -> None:
         import agents.daemon_slayer as ds
-        self.assertEqual(ds.ENGINE_VERSION, "1.277.1")
+        self.assertEqual(ds.ENGINE_VERSION, "1.278.0")
 
 
 if __name__ == "__main__":
