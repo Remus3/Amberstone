@@ -6,7 +6,7 @@
 
 ---
 
-# 2026-08-15 - RM-197 closed: three sanitizer bypasses, and the top one was an ORDERING defect
+# 2026-08-15 - RM-197 + RM-205 both fully closed: seven sanitizer bypasses, one retraction, one new row
 
 **Fork taken: C (no game).** Probed live before choosing, never inherited: RC pid 30768 alive `mode=client`, `/api/state` `liveclient` empty, DS `:8860` ok ENGINE **1.277.1** patch **16.15.1** 173/706. Fork A (Arena) and Fork B (SR/ARAM) both need a real game running, so neither was runnable. **RM-204 still needs the operator and is untouched** - `dashboard/_deterministic_coaching.py:1481` still passes no `owned_augments=`, deliberately.
 
@@ -18,7 +18,20 @@
 
 **Gates:** red-first **14 failed / 9 passed** before the fix, then `pytest tests -q -n 8` **19088 passed / 96 skipped / 4305 subtests / 0 failed** in 174s, ruff clean. Full suite rather than module-only because the module sits on a live prompt path (sole consumer `coach_integration/_sr_prompt.py:308`).
 
-**Next:** RM-202 (needs the ledger ambiguity resolved), RM-203 as its own DS batch, or Fork A/B when a game is up.
+**Then the adversarial gate ran (operator-requested) and REFUTED a claim I had already shipped.** Two background agents, different lenses: a read-only ground-truth `verifier` (8/8 CONFIRMED, re-derived every number itself) and an adversarial refuter told to break the fix. **The refuter found that RM-197's own commit message was false** - it said the cap is an upper bound "for every `max_len`", but a negative `max_len` makes `out[:max_len]` a from-the-end slice, so `-1` returned 4999 chars. Unreachable in production, which is why it survived. **An unreachable falsehood in a commit message is still a falsehood the next reader builds on.** It also found the `max_len <= 3` branch was entirely untested (the tuple started at 4, one above the boundary). LEDGER 1254.
+
+**Its highest-value attack was REFUTED, which is the most useful result of the run:** moving the pattern loop ahead of tokenise/collapse does NOT let those transforms re-form an injection that nothing rescans. 400k-iteration differential fuzz, zero transform-created matches, with a structural reason - the newline token inserts only `[`, `\`, `n`, `]`, no pattern matches those, and none can begin with `n`.
+
+**Then RM-205's four findings were closed one at a time, each red-first, each mutation-proven with anchor-asserted mutants** (LEDGER 1255 / 1256 / 1257 / 1259). **The two that generalise:**
+
+1. **Finding 2 and finding 1 are the same defect inverted, and finding 2 is RM-197 bypass 1 at a different line.** Bypass 1 destroyed whitespace by tokenising newlines before the patterns ran; finding 2 destroyed it by DELETING separators before they ran (`isprintable()` is False for Zs/Zl/Zp/Cf, and 10 of the 20 probed codepoints ARE matched by `\s` - the patterns would have fired had the strip left them alone). Finding 1 is the inverse: characters `isprintable()` ACCEPTS that render as nothing. **Three instances of one mechanism - whitespace destroyed before the scanner sees it - across three different lines.**
+2. **Finding 1 is closed by a rule DERIVED FROM THE UCD NAME, not a codepoint list**, because the row warned it could not be closed by enumeration. Ends `PATTERN BLANK` / contains `FILLER` or `JOINER`, plus two Khmer vowels. Swept all 1,114,112 codepoints: selects 27, none outside the invisible-capable categories. The pin tests four characters the row never named so that swapping the derivation for a list goes RED - that mutant is KILLED.
+
+**ONE RETRACTION, recorded because it is the reusable failure (LEDGER 1258).** I flagged a `Vital system:` false positive as live, the operator asked me to fix it, and probing the call path first refuted my own report: the string is `champion_profiles/Fiora.json` key `mechanic`, which reaches `SR_SYSTEM_PROMPT.format(profile=...)` - the SYSTEM prompt - and never passes through `clean()`. **The sanitizer's true domain is 18 named `gs` fields at `coach_integration/_sr_prompt.py:309-347`; 110 live values, 0 false positives.** Had I done as asked I would have weakened the role-marker pattern for nothing. **A string appearing under `data/` is not evidence that a consumer reads it** - the corpus scan was the right tool for measuring over-blocking and the wrong tool for asserting reachability. The over-claimed "ACTUAL input domain" wording was corrected in LEDGER 1257 and the RM-205 row too.
+
+**Filed: RM-206** - VISIBLE confusables (fullwidth colon, fullwidth Latin letters, Cyrillic homoglyph), all three OPEN at HEAD. **Deliberately NOT folded into finding 1**: that rule keys on invisibility and these are fully visible, so extending it would be the wrong axis. NFKC closes two of three; the homoglyph needs a UTS #39 table. Operator scope call, since the budget question for a defense-in-depth module over TRUSTED input has never been answered. **Next free id = RM-207.**
+
+**Next:** RM-206 (needs the operator's scope call first), RM-202 (needs its ledger ambiguity resolved), RM-203 as its own DS batch, or Fork A/B when a game is up. RM-204 still needs the operator.
 
 ---
 
