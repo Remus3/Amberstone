@@ -194,6 +194,17 @@ _R194C_TAIL = ("targets_in_rotation", "assume_cleave_lifesteal")
 # mid-signature.
 _RM200_TAIL = ("assume_scaling_hsp_grants",)
 
+# RM-201 (the CC-floor band) appends a single seam to ``compute_ehp`` ONLY.
+# ``rank_items_by_ehp`` deliberately does NOT grow it: the seam moves the enemy
+# CC pressure the caster eats, which the ranker only ever reads through its own
+# ``compute_ehp`` calls, and adding it there would manufacture a key
+# ``_route_rank_tank`` does not parse. It is additionally KEYWORD-ONLY - the
+# first seam on this signature to be so - which does not disturb the invariant
+# this guard protects: seam kwargs land at the END, in order, never
+# mid-signature. ``inspect.signature`` reports keyword-only params in their
+# declared position, so the tail comparison below is unaffected.
+_RM201_TAIL = ("apply_cc_floor",)
+
 # RM-91 T1 appends the champion HEALTH -> DAMAGE coupling pair to
 # ``rank_items_by_ehp`` ONLY. It is the health-axis twin of the RM-87 resist
 # pair, and like that pair it is a RANKING-only lever - but unlike RM-87 it is
@@ -255,7 +266,8 @@ class RuneResistTrailingKwargConventionTests(unittest.TestCase):
         cases = (
             (
                 (compute_ehp,),
-                shared + _RM87_TAIL + _R193_TAIL + _R194C_TAIL + _RM200_TAIL,
+                shared + _RM87_TAIL + _R193_TAIL + _R194C_TAIL + _RM200_TAIL
+                + _RM201_TAIL,
             ),
             (
                 (rank_items_by_ehp,),
