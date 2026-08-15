@@ -10,6 +10,8 @@ Module-level GET_ROUTES is consumed by `dashboard._dispatch`.
 """
 import json
 import logging
+import threading
+import time
 from urllib.parse import parse_qs, urlparse
 
 from dashboard.builders import (
@@ -80,6 +82,23 @@ def _parse_home_mode(path: str) -> str | None:
     return mode if mode in _HOME_MODES else None
 
 
+# Route TTL cache - the established _CACHE / _CACHE_TTL_S / _CACHE_LOCK
+# triple used by 44 sibling route modules (see routes_op_score.py:41-45).
+#
+# 25s sits just above the 20s client poll (web/js/main.js:3106 _HOME
+# intervalMs) so a tab's consecutive polls coalesce onto one build instead
+# of straddling the window, and every extra open tab or reload becomes free.
+# Fidelity-neutral: match_history.db only changes when a game completes, and
+# the home view is hidden during ChampSelect / InProgress anyway.
+#
+# No eviction policy - unlike the champion-keyed sibling caches, the key
+# space here is bounded by construction at len(_HOME_MODES) + 1 (the
+# unfiltered ALL entry keys on None), so the dict cannot grow.
+_CACHE_TTL_S = 25.0
+_CACHE: dict[str | None, tuple[float, bytes]] = {}
+_CACHE_LOCK = threading.Lock()
+
+
 def _serve_home_summary(h) -> None:
     # Read-only aggregate for the dashboard's home/lobby view.
     # Pulls from data/match_history.db (the freshest source -
@@ -87,8 +106,18 @@ def _serve_home_summary(h) -> None:
     # the stats sections to one mode (home mode tabs, HOME QA round 1).
     try:
         mode = _parse_home_mode(h.path)
-        h._send(200, json.dumps(_build_home_summary(mode)).encode("utf-8"),
-                "application/json")
+        now = time.time()
+        with _CACHE_LOCK:
+            cached = _CACHE.get(mode)
+            if cached and (now - cached[0]) < _CACHE_TTL_S:
+                h._send(200, cached[1], "application/json")
+                return
+        body = json.dumps(_build_home_summary(mode)).encode("utf-8")
+        # Stored only on success, so one transient DB error cannot pin a
+        # failure for the whole TTL window.
+        with _CACHE_LOCK:
+            _CACHE[mode] = (now, body)
+        h._send(200, body, "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/home/summary: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
