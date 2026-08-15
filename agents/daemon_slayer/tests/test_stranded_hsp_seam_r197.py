@@ -371,17 +371,44 @@ def _depth1_only_seams() -> dict[str, list[str]]:
     return seams
 
 
+# RM-207 - ENGINE-INTERNAL BY RENAME, NOT DEBT.
+#
+# A fifth blind-spot class, and the only one that cannot be fixed by widening
+# the universe: this checker keys on the PARAMETER NAME, so a seam that is
+# fully wired at the route level under a DIFFERENT name reads as stranded.
+# ``hybrid.py:657`` forwards ``apply_dual_scaling_split=<route name>``, and the
+# route name is on three depth-0 entry points, parsed and passed by server.py,
+# and exposed on the Python client.
+#
+# This is an EXCLUSION, not an exemption, and it is required to PROVE its own
+# reason: the test below asserts the named route-level twin is genuinely wired
+# and not itself stranded. If that twin ever strands, this exclusion goes RED
+# instead of quietly hiding real debt - which is the failure mode an untested
+# exemption list always eventually becomes.
+DEPTH1_ENGINE_INTERNAL: dict[str, str] = {
+    "apply_dual_scaling_split": "apply_ad_axis_dual_scaling_split",
+}
+
+
 def stranded_seams_depth1(src: str) -> dict[str, list[str]]:
-    """Depth-1-only seams that ``src`` neither parses nor forwards."""
+    """Depth-1-only seams that ``src`` neither parses nor forwards.
+
+    Excludes internal parameter names that a route-level seam forwards under a
+    different name - see DEPTH1_ENGINE_INTERNAL.
+    """
     parsed, passed = _parsed_keys(src), _passed_kwargs(src)
     return {
         name: owners
         for name, owners in _depth1_only_seams().items()
-        if not (name in parsed and name in passed)
+        if name not in DEPTH1_ENGINE_INTERNAL
+        and not (name in parsed and name in passed)
     }
 
 
-# Measured 2026-08-15 against 219 depth-1 functions. Equality, so this tier can
+# Measured 2026-08-15 against 219 depth-1 functions. Started at 3 and SHRANK to
+# 2 the same day: RM-207 established that apply_dual_scaling_split is wired
+# under a different name, so it moved to DEPTH1_ENGINE_INTERNAL above rather
+# than being deleted. Equality, so this tier can
 # only ever shrink from here - exactly like STRANDED_TODAY, from its own
 # baseline rather than by editing depth-0's.
 STRANDED_DEPTH1: dict[str, str] = {
@@ -391,9 +418,6 @@ STRANDED_DEPTH1: dict[str, str] = {
     "assume_scaling_hsp_grants": "RM-200 - Tier-2 wiring, filed and OPEN. Owned by "
                                  "_hsp_amp.sum_wielder_hsp_pct; neither production "
                                  "call site passes it.",
-    "apply_dual_scaling_split": "RM-36 AD-axis dual-scaling SPLIT, DEFAULT-OFF by "
-                                "design. Owned by _ad_axis_ability; no wiring row "
-                                "filed - see RM-207.",
 }
 
 
@@ -526,6 +550,28 @@ class StrandedSeamGuardDepth1(unittest.TestCase):
         )
         self.assertNotIn("assume_item_aa_dr", _passed_kwargs(stripped))
         self.assertIn("assume_item_aa_dr", stranded_seams_depth1(stripped))
+
+    def test_engine_internal_exclusions_prove_their_route_level_twin(self):
+        # RM-207. An exclusion must EARN its place: the route-level name that
+        # forwards this internal one has to be genuinely reachable. If that
+        # twin ever strands, this goes red rather than hiding real debt.
+        depth0_seams = _engine_seams()
+        depth0_stranded = stranded_seams(SERVER_SRC)
+        parsed, passed = _parsed_keys(SERVER_SRC), _passed_kwargs(SERVER_SRC)
+        for internal, route_name in DEPTH1_ENGINE_INTERNAL.items():
+            with self.subTest(internal=internal, route=route_name):
+                self.assertIn(internal, _depth1_only_seams(),
+                              "exclusion is stale - the internal seam is gone")
+                self.assertIn(route_name, depth0_seams,
+                              "route-level twin is not a depth-0 seam")
+                self.assertIn(route_name, parsed)
+                self.assertIn(route_name, passed)
+                self.assertNotIn(route_name, depth0_stranded)
+
+    def test_engine_internal_exclusions_are_not_in_the_ledger(self):
+        # The two lists must stay disjoint, or a name could be silently
+        # excused twice and its removal from one would look harmless.
+        self.assertFalse(set(DEPTH1_ENGINE_INTERNAL) & set(STRANDED_DEPTH1))
 
     def test_depth1_universe_is_engine_derived_not_server_derived(self):
         # Anti-circularity for the new tier, mirroring the depth-0 test.
