@@ -36,9 +36,13 @@ _NEWLINE_TOKEN = "[\\n]"
 # Patterns that look like prompt-injection attempts. Conservative - we
 # replace the matched text with a marker so the LLM sees an opaque token
 # and cannot follow the embedded instruction.
+# RM-197 bypass 3: the verb slot previously admitted only the literal
+# "all", so "Ignore the above instructions" passed through untouched. Any
+# short filler run is now tolerated between the verb and the anchor word.
+_FILLER = r"(?:\w+\s+){0,3}"
 _INJECTION_PATTERNS = (
-    re.compile(r"(?i)ignore\s+(all\s+)?(previous|above|prior)\s+instructions?"),
-    re.compile(r"(?i)disregard\s+(all\s+)?(previous|above|prior)\s+instructions?"),
+    re.compile(r"(?i)ignore\s+" + _FILLER + r"(previous|above|prior)\s+instructions?"),
+    re.compile(r"(?i)disregard\s+" + _FILLER + r"(previous|above|prior)\s+instructions?"),
     re.compile(r"(?i)forget\s+(everything|all|previous)\s+\w*"),
     re.compile(r"(?i)\bsystem\s*[:>]\s*"),
     re.compile(r"(?i)\bassistant\s*[:>]\s*"),
@@ -70,6 +74,13 @@ def clean(value: object, *, max_len: int = DEFAULT_MAX_LEN) -> str:
         ch if ch == "\n" or ch == "\t" or (ch.isprintable() and ch != "\x00") else ""
         for ch in value
     )
+    # Inject-pattern neutralisation runs FIRST, while \n and \t are still
+    # real whitespace that \s can match. RM-197 bypass 1: tokenising the
+    # newline first turned "System\n:" into "System[\\n]:", which the
+    # role-marker patterns could no longer see - one newline defeated the
+    # block while the same string without it was caught.
+    for p in _INJECTION_PATTERNS:
+        out = p.sub(_INJECTION_MARKER, out)
     # Replace newlines with a token so multi-line input stays contained
     # in a single visible line - preserves info, removes the newline as
     # an LLM section delimiter.
@@ -78,13 +89,12 @@ def clean(value: object, *, max_len: int = DEFAULT_MAX_LEN) -> str:
     out = out.replace("\t", " ")
     # Collapse repeated whitespace.
     out = re.sub(r" {3,}", "  ", out)
-    # Inject-pattern neutralisation.
-    for p in _INJECTION_PATTERNS:
-        out = p.sub(_INJECTION_MARKER, out)
-    # Final length cap - append an ellipsis so a downstream reader can
-    # see truncation happened.
+    # Final length cap - append an ellipsis so a downstream reader can see
+    # truncation happened. RM-197 bypass 2: the ellipsis used to be added
+    # ON TOP of a max_len-1 slice, so the result was max_len+2 and the cap
+    # was not an upper bound at all. It is one now, for every max_len.
     if len(out) > max_len:
-        out = out[: max_len - 1] + "..."
+        out = out[:max_len] if max_len <= 3 else out[: max_len - 3] + "..."
     return out
 
 
