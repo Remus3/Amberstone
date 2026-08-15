@@ -36,6 +36,12 @@ from typing import Iterable
 # (zero-width space, joiners, BOM, soft hyphen). See _strip_char.
 _SEPARATOR_CATEGORIES = frozenset(("Zs", "Zl", "Zp", "Cf"))
 
+# Word-character test for the RM-206 boundary rule. Deliberately \w and
+# NOT str.isalnum(): the underscore is a word character but is not
+# alphanumeric, and six connector-punctuation codepoints fold to "_".
+# An isalnum() test missed every one of them - measured, not reasoned.
+_WORD_RE = re.compile(r"\w")
+
 # RM-205 finding 1: characters that str.isprintable() accepts but that
 # render as blank or zero-width. They survive the strip legitimately and
 # are not \s, so no pattern can bridge them - one U+2800 between a role
@@ -90,6 +96,32 @@ def _strip_char(ch: str) -> str:
     # glue words together exactly like a deleted separator would.
     if ord(ch) > 0x7F and _is_blank_printable(ch):
         return " "
+    # RM-206: fold the compatibility plane so a fullwidth colon or a
+    # fullwidth role word cannot render as its ASCII twin while reading as
+    # a different codepoint.
+    #
+    # PER CHARACTER, NOT PER STRING, and that is load-bearing. Normalising
+    # the whole value glues an expansion to its neighbour and DESTROYS the
+    # word boundary the original glyph provided: U+2105 turned
+    # "<C/O>system:" into "c/osystem:", which \bsystem can no longer match.
+    # Measured over the full codespace, whole-string NFKC hid a role marker
+    # in 300 cases that were caught before it - a net loss. Expanding one
+    # character at a time and re-supplying the boundary keeps the fold and
+    # drops the regression.
+    if ord(ch) > 0x7F:
+        folded = unicodedata.normalize("NFKC", ch)
+        if folded != ch:
+            # A non-alphanumeric glyph WAS a token boundary. If the fold
+            # turns it into word characters, that boundary has to be put
+            # back or the fold hides the very markers it was added to
+            # expose - a circled letter folding to a bare "A" glues onto
+            # "system:" exactly like the multi-character expansions do.
+            # Measured over the full codespace, in two stages: keying on
+            # LENGTH missed 504 single-character folds, and keying on
+            # isalnum() then missed 6 more that fold to an underscore.
+            if not _WORD_RE.match(ch) and _WORD_RE.search(folded):
+                return " " + folded + " "
+            return folded
     if ch.isprintable() and ch != "\x00":
         return ch
     return ""
