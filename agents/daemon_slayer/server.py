@@ -812,6 +812,26 @@ def _route_ehp(body: dict) -> dict:
     assume_chainlaced_shield = _opt_bool(body, "assume_chainlaced_shield", False)
     assume_seraphs_shield = _opt_bool(body, "assume_seraphs_shield", False)
     assume_fimbulwinter_shield = _opt_bool(body, "assume_fimbulwinter_shield", False)
+    # RM-201: the guaranteed-minimum CC band, stranded since ENGINE 1.150.0.
+    # ``cc_pressure.compute_cc_pressure`` shipped the seam complete and none of
+    # its five production callers forwarded it, so the ``durations_floor_s``
+    # half of the conditional registry (Maokai R / Hecarim R / Ashe R / KSante W
+    # / Sion R) was unreachable from every route. Same defect class R197 fixed
+    # for assume_hsp_amp, and invisible to the depth-0 reachability guard
+    # because the owner sits one hop past the 32 functions server.py calls
+    # directly.
+    #
+    # TRANSPORT is TWO keys, both parsed above since Phase 1 / ENGINE 1.39.0:
+    # ``enemies`` (an empty comp skips the whole cc block) and
+    # ``include_conditional`` (the floor band lives on the CONDITIONAL registry,
+    # so this flag is arithmetically inert without it). No new transport needed.
+    #
+    # MEASURED off inspect.signature: ``apply_cc_floor`` lands on ``compute_ehp``
+    # ONLY - NOT on ``rank_items_by_ehp``, not on the hybrid pair - so /ehp is
+    # the whole route table and no other route may grow this key. Route
+    # EXPOSURE only: the seam stays bool=False on every engine entry point and
+    # the live default flip remains unshipped.
+    apply_cc_floor = _opt_bool(body, "apply_cc_floor", False)
     try:
         result = compute_ehp(
             snap, champion_id=champion, level=level,
@@ -821,6 +841,7 @@ def _route_ehp(body: dict) -> dict:
             augments=augments,
             enemy_champions=enemies,
             include_conditional=include_conditional,
+            apply_cc_floor=apply_cc_floor,
             apply_mode_modifiers=apply_mode_modifiers,
             apply_passive_mitigation=apply_passive_mitigation,
             apply_passive_resist=apply_passive_resist,
