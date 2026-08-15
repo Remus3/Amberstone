@@ -345,6 +345,7 @@ def compute_sustain(
     mode: str = "SR",
     item_ids: Optional[Iterable[str | int]] = None,
     assume_hsp_amp: bool = False,
+    assume_scaling_hsp_grants: bool = False,
 ) -> SustainResult:
     """Aggregate a champion's damage-conversion + regen sustain into a score.
 
@@ -367,6 +368,11 @@ def compute_sustain(
     (kind-agnostic pre-weight quantity) is left UNamped. The live default-ON flip
     is operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
 
+    RM-200: ``assume_scaling_hsp_grants`` (DEFAULT-OFF) folds the SCALING-clause
+    HSP grants (Dawncore 6621's First Light) into that same additive sum. It is a
+    MODIFIER of ``assume_hsp_amp``, not an independent switch - the helper is
+    reached only inside that branch, so arming it alone is byte-identical.
+
     Returns an all-zero ``SustainResult`` (empty ``spells``) when the champion
     is blank / None or absent from the registry; never raises.
     """
@@ -379,7 +385,11 @@ def compute_sustain(
 
     hsp_mult = 1.0
     if assume_hsp_amp and item_ids:
-        hsp_mult = 1.0 + sum_wielder_hsp_pct(item_ids)
+        # RM-200: the scaling half rides the same additive sum. Nested inside the
+        # flat lane's branch, so arming it alone leaves hsp_mult at 1.0.
+        hsp_mult = 1.0 + sum_wielder_hsp_pct(
+            item_ids, assume_scaling_hsp_grants=assume_scaling_hsp_grants
+        )
 
     scored: list[SustainSpellEntry] = []
     sustain = 0.0
