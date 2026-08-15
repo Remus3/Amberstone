@@ -151,6 +151,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/aram_deterministic_coach.py` | deterministic ARAM coach block assembler (Stage 2) |
 | `core/archetype_mismatch.py` | first-purchase archetype mismatch nudge |
 | `core/archetype_picks.py` | cs archetype pick storage + DDragon-tag default resolver |
+| `core/arena_augment_playline.py` | deterministic Arena augment play-line |
 | `core/arena_deterministic_coach.py` | deterministic Arena coach block assembler (Stage 2) |
 | `core/augment_shadow.py` | arena augment-select shadow writer |
 | `core/build_order_precompute.py` | Lane B build-order precompute (comp-archetype table) |
