@@ -74,6 +74,26 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   and RM-99/RM-101..RM-104 are NOT champion GAPs - they are ITEM / RUNE axis
   gaps, so they add no roster checkbox and the Summary counts above are
   unchanged by them.
+- **RM-203 + RM-204 ALLOCATED 2026-08-14 (orchestrated-run docs sync).** Both are
+  ITEM / DOC / PRODUCT rows, **not champion GAPs** - they add NO roster checkbox and
+  change NONE of the Summary counts above. **RM-203** = the stale `547/547` DS coverage
+  denominator in `docs/DAEMON_SLAYER.md:10` + `docs/DS_COMPLETENESS_GAP.md:32,33,261`
+  (re-measured 16.15.1: ITEM_EFFECTS 548, DDragon purchasable 544, total 706 - no
+  denominator reproduces 547); DS-BATCH only, body in `BACKLOG.md` under "Daemon Slayer
+  scorer calibration". **RM-204** = the Arena augment play-line serve-hop, operator-gated,
+  body in `BACKLOG.md` under "Draft + coach lane". Bodies live in BACKLOG because
+  `ROADMAP.md` was at ~91 pct of its 80 KB budget when these were filed; ROADMAP carries
+  one pointer line each.
+  **CONCURRENCY NOTE - read before taking the next id.** These two were allocated while a
+  SECOND session was live on this repo, which consumed **RM-192..RM-202** on the
+  `lane/research` branch. That branch merges independently, so for a window the true max
+  id is NOT visible from `main` alone. **Next free id after both land = RM-205.** The
+  "Next free GAP spec = **RM-135**" pointer above is LONG STALE (RM-135..RM-204 are all
+  consumed) - it is left in place because it is quoted by its own correction note, but do
+  NOT take an id from it. Verify the true max across BOTH the working tree and every live
+  lane branch before taking one:
+  `git fetch origin && git show origin/lane/research:ROADMAP.md | grep -ohE "RM-[0-9]+"`
+  alongside the working-tree grep on the line below.
 - **RM-86 L1 SHIPPED 2026-07-18 (LEDGER 940, ENGINE 1.218.0)** - the sweep's first
   engine change. `agents/daemon_slayer/kit_conversion.py` + a default-OFF
   `kit_conversion_strength` lever on carry / assassin / mage / tank. Two spec
