@@ -69,7 +69,14 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free GAP spec = **RM-203**.
+  Next free GAP spec = **RM-205**. (This line read `RM-203` for the few hours between
+  the two 2026-08-14 sessions landing. RM-203 + RM-204 were allocated concurrently by
+  the headless-upgrade run and are recorded in the block below; measured 2026-08-15 the
+  true max is **RM-204** across the working tree AND all three lane branches - `lane/ds`
+  and `lane/true-audit` top out at RM-177, so neither hides a higher id. **This is the
+  RM-192 defect recurring within one day, which is the argument for its guard**: the
+  pointer is only ever correct until the next concurrent session, and nothing machine-
+  checks it.)
   **POINTER CORRECTED 2026-08-14 (lane-research): this line read `RM-135` and was 57 ids stale.**
   RM-135 had been in use since 2026-08-01 and the live repo-wide max was RM-191, so an agent
   following `tools/headless-research.md:46` or `tools/headless-true-audit.md:305` - both of which
@@ -114,10 +121,13 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   SECOND session was live on this repo, which consumed **RM-192..RM-202** on the
   `lane/research` branch. That branch merges independently, so for a window the true max
   id is NOT visible from `main` alone. **Next free id after both land = RM-205.** The
-  "Next free GAP spec = **RM-135**" pointer above is LONG STALE (RM-135..RM-204 are all
-  consumed) - it is left in place because it is quoted by its own correction note, but do
-  NOT take an id from it. Verify the true max across BOTH the working tree and every live
-  lane branch before taking one:
+  pointer above now reads **RM-205** and is CURRENT as of 2026-08-15. **This sentence
+  originally warned that the pointer above read `RM-135` and was LONG STALE; that was
+  true when it was written and became false in the same merge**, because the concurrent
+  lane-research session corrected the pointer in the commit this note landed beside. The
+  `RM-135` string now survives only inside its own correction note further up - do not
+  read that occurrence as a live pointer. Verify the true max across BOTH the working
+  tree and every live lane branch before taking an id:
   `git fetch origin && git show origin/lane/research:ROADMAP.md | grep -ohE "RM-[0-9]+"`
   alongside the working-tree grep on the line below.
 - **RM-86 L1 SHIPPED 2026-07-18 (LEDGER 940, ENGINE 1.218.0)** - the sweep's first
