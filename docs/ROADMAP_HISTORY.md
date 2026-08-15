@@ -2,6 +2,11 @@
 
 ## 2026-08-14 - RM-188 pair relocated VERBATIM (size-budget pass)
 
+### RM-171 body relocated VERBATIM from ROADMAP.md, 2026-08-14 size-budget pass
+
+- **RM-171 SHIPPED 2026-08-06 (`274bdb27`, LEDGER 1214) - `tools/citation_audit.py` is the ONLY citation checker in the repo; extend it, never write a second.** Guarded census 2050 citations / 37 broken; whole repo GUARDED 2050-37, HISTORY 4055-355, UNGUARDED 882-22. **Three traps that make a naive re-run produce garbage:** `Share/src/**` is a generated MIRROR so a bare `dps.py:700` matches two tracked files (a naive index reported 500 missing against a real 22); 46.2 pct of citations resolve by BASENAME not exact path, so a bare `foo.py` citation can resolve against a DIFFERENT `foo.py` nobody meant; and `#L42` / `line 42` / `foo.py :42` plus `.xml`/`.svg`/`.vbs`/`.log` evade the pattern entirely. **RESOLVES IS NOT CORRECT** - the headline find is a comment cited at `server.py:1241` that lives at `:1851`, 610 lines of drift, still green. The resolves-but-wrong figure is an UPPER BOUND: an independent sample of the cleanest subset measured ~78 pct true positive, so roughly 1 in 4-5 is false, and token bleed reaches WITHIN a clause. **Append-only trees stay unbudgeted BY DESIGN - a stale citation in an append-only record is CORRECT as written.** **Worth actioning, not yet done: `ops/loop/director_prompt.md:65` carries a PAST_EOF citation into the Share README, and that file is live loop input - see the baseline entry in `tests/test_citation_drift_guard_rm171.py` for the exact target.**
+
+
 `tools/drift_guard.py` reported ROADMAP.md at 92 pct of its 81920-byte budget after the
 orchestrated-run docs sync filed RM-203 + RM-204. RM-188 is FULLY CLOSED - the hypothesis
 was REFUTED the same day it was filed - so the pair moves here together. Relocate-only,
