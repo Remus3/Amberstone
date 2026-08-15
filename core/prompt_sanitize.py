@@ -28,12 +28,44 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from functools import lru_cache
 from typing import Iterable
 
 # Unicode categories whose members render as nothing or as blank space:
 # Zs/Zl/Zp are the separator families, Cf the invisible format controls
 # (zero-width space, joiners, BOM, soft hyphen). See _strip_char.
 _SEPARATOR_CATEGORIES = frozenset(("Zs", "Zl", "Zp", "Cf"))
+
+# RM-205 finding 1: characters that str.isprintable() accepts but that
+# render as blank or zero-width. They survive the strip legitimately and
+# are not \s, so no pattern can bridge them - one U+2800 between a role
+# word and its colon defeated the whole module.
+#
+# DERIVED FROM THE UCD NAME, NOT ENUMERATED. The row that filed this said
+# it could not be closed by listing codepoints, and a list is exactly what
+# goes stale: keying off the name means a filler or joiner added by a
+# future Unicode revision is covered without a code change. Measured at
+# authoring time the rule selects 25 codepoints - 12 FILLER, 12 JOINER,
+# and U+2800 - and every one of them is invisible or a zero-width joining
+# mark. Verify with the sweep in the test file before widening it.
+_BLANK_NAME_SUBSTRINGS = ("FILLER", "JOINER")
+_BLANK_NAME_SUFFIX = "PATTERN BLANK"
+# Invisible by design but carrying no name signal to key off.
+_BLANK_EXPLICIT = frozenset((chr(0x17B4), chr(0x17B5)))
+
+
+@lru_cache(maxsize=8192)
+def _is_blank_printable(ch: str) -> bool:
+    """True for a printable character that renders as nothing."""
+    if ch in _BLANK_EXPLICIT:
+        return True
+    try:
+        name = unicodedata.name(ch)
+    except ValueError:  # unassigned / control - handled by the strip
+        return False
+    if name.endswith(_BLANK_NAME_SUFFIX):
+        return True
+    return any(s in name for s in _BLANK_NAME_SUBSTRINGS)
 
 
 def _strip_char(ch: str) -> str:
@@ -52,6 +84,11 @@ def _strip_char(ch: str) -> str:
     if ch == "\n" or ch == "\t":
         return ch
     if ch.isspace() or unicodedata.category(ch) in _SEPARATOR_CATEGORIES:
+        return " "
+    # RM-205 finding 1: the opposite case - isprintable() says True, so
+    # these survive the strip legitimately, yet they render as nothing and
+    # glue words together exactly like a deleted separator would.
+    if ord(ch) > 0x7F and _is_blank_printable(ch):
         return " "
     if ch.isprintable() and ch != "\x00":
         return ch
