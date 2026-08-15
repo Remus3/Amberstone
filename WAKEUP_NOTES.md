@@ -2,7 +2,29 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-09, weekly-hygiene pass (relocated headless lane 6 RM-176 `2026-08-08`; newest 3 = DS coverage saturated `2026-08-08d` + orchestrated run `2026-08-08c` + RM-177 HSP flip `2026-08-08b`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-08-14 - orchestrated run: 5 merges, 2 corrections, 4 traps that each cost real time
+
+Merges `41d1c7b6` (S1) / `b4d1dac0` (S4) / `2a50acca` (S2) / `a3668a31` (S5) / `63a753c8` (S7), plus this docs sync. Every merge passed an independent read-only verifier gate BEFORE it landed - none was self-graded. Suites measured by the merger on merged main: DS **10595 passed / 13444 subtests**; RC `tests/` **19076 passed / 96 skipped / 4288 subtests, exit 0**. **Read the RC number carefully before filing a regression:** total collected is **19172, IDENTICAL to the pre-merge expectation of 19034 passed + 138 skipped**. 42 conditional skips executed as PASSES because RC was live after the S5 restart. That is a fixture-conditional shift, **not new tests and not a regression** - do not "reconcile" it by hunting for 42 additions.
+
+**What shipped.** **S1** - the `/sync-all-md` skill cited **FIVE** dead ADR-012 bridge paths, not the three the operator's note named: `docs/BRIDGE.md` (twice), `tools/process-bridge-tasks.md`, `tools/bridge_watcher_action_prompt.md`, `core/bridge_envelope.py`, plus a root `docs io RC peer/` dir that was **ARCHIVED, not deleted**. Four were removed by `49b1c9ea`; the archived dir was emptied incrementally by `c50b98eb` / `6edfbd3e` / `8c2afe21` - **do not credit `49b1c9ea` for it.** **S4** - immolate family audit, verdict **NO-CHANGE to engine math** (all 7 items match Meraki, authoritative for item passive FORMULAS; the DDragon carve-out covers only PEN/LETHALITY magnitudes). Shipped a catalog-derived **REGISTRATION** guard because both existing guards key on hardcoded id tuples, so an 8th immolate item would be silently credited nothing. Mutation-proven: 7 mutants killed by the slice, 3 re-killed independently at the gate. **ENGINE_VERSION unchanged at 1.277.1.** **S2** - the PRIMARY Haiku-to-ZERO slice: `core/arena_deterministic_coach.py` held the ONLY hardcoded-empty column in either deterministic block, and the comment claiming no honest source existed was false. New `core/arena_augment_playline.py`. 127 of 225 augment descs carry unresolved `@Placeholder@` vars whose values live in a per-rarity `dataValues` array, so any sentence still holding a placeholder is DROPPED rather than guessed. **S7** - S2's guard dropped only at-sign sentences, so 17 of 225 outputs still leaked double-brace keyword tokens (5) and percent-i icon tokens (12); guard INVERTED to a prose-character allowlist so a whole token family dies at once. Coverage moved 126/99 to 109/116, deliberately. **S5** - TTL-cache on `/api/home/summary`, the one hot polled route with no cache, re-running a SQLite aggregate over a 17 MB DB per hit; TTL **25.0s, chosen just ABOVE the 20s client poll** so consecutive polls coalesce. Live-verified after restart: **0.247s -> 0.0079s**. **S3** was read-only: 6 of 7 cost/latency levers CLEAN, one finding, which became S5.
+
+**Two corrections, both worth more than the features.** (1) **The operator's `RC-ClaudeQuotaWatch` scheduled-task anomaly is REFUTED ON BOTH HALVES**, re-probed live again at this sync. The code is `2147946720` = **`0x800710E0`**, sub-code **4320**, "the operator or administrator refused the request" - **NOT** `0x80070520` / `ERROR_NO_SUCH_LOGON_SESSION`. And the task carrying it is **not** `RC-ClaudeQuotaWatch` (`LastTaskResult=0`) but **`RC-MissionControl` and `RC-Phase3-Supervisor`**, both `State=Running` under `MultipleInstances=IgnoreNew`, where the code is Task Scheduler correctly refusing a duplicate launch. `tools/rc_facts.py:177-194` **already suppresses it. NO FIX IS WARRANTED** - do not re-file it. (2) The headless-upgrade skill claimed the coaches' Sonnet assignments were post-call telemetry stamps. **Measured FALSE** - they are call-time picks consumed at `modes/shared_vision.py:390` and `:378`. Still not a tier violation, but the false rationale would make a future cost sweep skip a real model assignment unchecked.
+
+**FOUR TRAPS measured this run. These are the expensive ones - read them before the next parallel run.**
+- **(i) A worktree measures mirror parity VACUOUSLY GREEN while main is red.** `tools/drift_guard.py:139-140` skips a mirror pair unless BOTH dirs exist, and `.claude/` is gitignored (`.gitignore:116`), so a worktree agent has no `.claude/commands`, the check compares ZERO files, and it reports clean. **A guard that skips is not a guard that passed** - assert the pair was actually compared, and re-run mirror checks in the SHARED checkout.
+- **(ii) `.md` is unmanaged by `.gitattributes` and `core.autocrlf=true`, while `check_mirror_parity` compares RAW BYTES** (`tools/drift_guard.py:145`). `.gitattributes` pins `*.py text eol=lf` but says nothing about `*.md`, so the merge rewrites the file to CRLF and **any digest measured pre-merge is the wrong one**. The fix is an ORDER, not a flag: **merge, THEN byte-copy, THEN verify.** Verifying before the merge measures a file that is about to change underneath you.
+- **(iii) A test's NAME is not its DOMAIN.** `test_no_markup_or_placeholder_ever_leaks` claims the entire domain in its name while its body parametrized exactly three characters - and 17 of 225 outputs leaked past it. A confidently-named guard is the easiest place for a blind spot to hide; read the body, never the name.
+- **(iv) The `Share/` post-commit gist hook INHERITS `GIT_DIR` and staged 5243 phantom deletions. This is the FIFTH occurrence and the R68 durable fix STILL has not landed.** Recurring, known, unfixed - budget for it or fix it, but stop being surprised by it.
+
+**Also, a self-inflicted one:** the merger hit a bash **`bad substitution`** failure merging a commit message containing `${ }` inline. That is exactly why the repo rule says commit messages go through a file - `git commit -F <ascii tmpfile>`, never inline on the command line. The rule is not stylistic.
+
+**Filed this session:** `RM-203` (the stale `547/547` DS coverage denominator - `docs/DAEMON_SLAYER.md:10` + `docs/DS_COMPLETENESS_GAP.md:32,33,261`; re-measured 16.15.1 gives ITEM_EFFECTS 548 / purchasable 544 / total 706, so **no denominator reproduces 547** - it is two stale numbers colliding, and it is a **DS-BATCH** job, never a general sync) and `RM-204` (the Arena augment play-line serve-hop - built, tested, markup-clean and **deliberately INERT** at `dashboard/_deterministic_coaching.py:1481`, operator-gated because flipping a coach off a live call needs live validation; only the PLAY half of the field is closed, the SELECT half is still Haiku-only). **Bodies are in `BACKLOG.md`, pointers only in `ROADMAP.md`** - that file is at ~91 pct of its 80 KB budget, so the overflow rule applied. **ID CONCURRENCY:** a second session ran on this repo simultaneously and consumed **RM-192..RM-202** on `lane/research`; RM-192 was taken mid-flight, hence 203/204. Next free after both land = **RM-205**. Verify the max across live lane branches, not just the working tree.
+
+**Next:** RM-203 as its own DS batch, or the top open ROADMAP row. RM-204 needs the operator.
 
 ---
 
@@ -54,44 +76,3 @@ Commits `24df6595` (the reconcile). Documentation only - no code, no `data/` wri
 **Filed for the operator, deliberately NOT given RM ids** (ids come from `docs/DS_SWEEP_TRACKER.md` and I did not want to mis-allocate one for what are decision items, not scoped work): (1) the `547/547` denominator above; (2) **the `/sync-all-md` skill cites three paths ADR-012 deleted** - section 2 names `docs/BRIDGE.md`, section 5 compares `docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md` against `core/bridge_envelope.py`; its two mirror copies are byte-identical and glyph-clean, so this is a content defect, not drift; (3) `RC_WORK_TRACKER.md` untracked, self-labelled "living", 26 days cold. Minor: `MEMORY.md` has 48 index lines over the 150-char cap, and DS `/health` answers **http** - the skill's `curl -k https://...:8860/health` exits 35.
 
 **Next:** operator call on the three filed findings, else the top open ROADMAP row.
-
----
-
-# 2026-08-12 - RM-190 decided (a1), the heartbeat rename retries, RM-191 filed
-
-Commits `f2e162e3` (RM-190), `603a8fd2` (heartbeat retry), `26f4ff87` (LEDGER 1242), `ed23d8fa` (RM-191 + size-budget pass), `6720ba7e` (drift-guard fix). All pushed. Local: DS **10584 passed / 13338 subtests**, RC `tests/` **19009 passed / 96 skipped / 0 failed**, ruff clean, drift_guard 0, `ds_share_sync --check` in sync at 533 files.
-
-**RM-190 CLOSED - operator chose a1.** 16.16.1 DDragon mirror committed; item 3175 flat magic pen 18 -> 20 carried into the DS registry; **ENGINE 1.277.0 -> 1.277.1**; DS deliberately left PINNED to data patch 16.15.1. `:8860` reporting patch **16.15.1** at engine 1.277.1 is **CORRECT, not drift** - do not file the gap as a defect. Full detail + traps: LEDGER 1241, body in `docs/ROADMAP_HISTORY.md`.
-
-**Heartbeat rename now retries (LEDGER 1242).** `ops/rc_dev_runtime.py` is FROZEN; the operator approved it this session - record that. The prior note's mechanism was wrong twice: **nothing crashed** (`write_fatal` writes a marker and RETURNS, so the loop kept running and `health.json` just froze while the pid stayed live), and it is **nine call sites**, not one, because `_atomic_write_json` is shared. 3 attempts, 0.15s worst case, under the 1.0s heartbeat interval.
-
-**RM-191 filed (operator-gated).** `write_fatal` is a WRITE-ONLY channel with **zero readers** - measured, `grep -rn last_fatal` returns only its own writes, and `health.json` has no `fatal` key. That is why the 2026-08-09 outage was found by hand three days later.
-
-**Do NOT redo / do NOT re-investigate:**
-- RM-190 in any form. Do not bump the DS per-patch snapshot casually (21 files / ~12 MB, needs a Meraki extract, never `--force`).
-- `core.build_order_precompute --static` does NOT restamp `build_order_variants_*.json` - separate `core.build_order_variants` run. `ds_share_sync` does NOT author release history; `Share/CHANGELOG.md` + `Share/README.md` are hand-written even when the sync reports clean.
-- The `docs/OVERLAY_COMPLIANCE_PLAN.md:35` "1.277.0" anchor is CORRECT - it is a dated `STATUS as of 2026-08-11` snapshot. The drift guard was taught this (`6720ba7e`); do not "fix" the doc.
-- B4-a..e, the B3 correction, the `enemy_summs_tracked` removal - all still shipped from the prior session.
-
-**Next:** RM-191 if you want it (needs a frozen-file grant), else the top open ROADMAP row.
-
----
-
-# 2026-08-12 - RC recovered from a 3-day outage, then B4 built end to end
-
-Commits `f0501048` (B4-a), `543f738c` (B4-b), `3ca8ecd2` (RM-190), `12fc506c` (B4-c), `149468f9` (B4-d), `66914b81` (B4-e), `42e5c659` (B3 correction), `4920867d` (B1 residual). All pushed. RC `tests/` **19000 passed / 96 skipped**; ruff clean; drift_guard 0. Design: `docs/OVERLAY_B4_DESIGN.md`.
-
-**RC had been DOWN since 2026-08-09** and the cause is worth keeping: `ops/runtime/last_fatal.txt` shows a `PermissionError [WinError 5]` on `os.replace(health.json.tmp -> health.json)` in the heartbeat (`ops/rc_dev_runtime.py:42`) - a Windows sharing violation from a reader holding the file at the swap. The supervisor was already dead, so nothing restarted it. Fixed by `schtasks /run /tn RC-Supervisor`. **The heartbeat still has no retry around `os.replace`, so one transient handle kills the whole app** - a 3-try backoff would convert a fatal into a logged blip, but `rc_dev_runtime.py` is FROZEN and needs operator approval.
-
-**B4 is BUILT (a through e); only B4-f is open** and it is a DevRel question, not code.
-
-**Do NOT redo:**
-- B4-a..e. Producer suppression (`suppress_live_directives` + `suppress_live_envelope`), the client gate (`web/js/lib/live_directive_gate.js`), the voice gate, `game_id` / `game_run_id` on the shadow record, and the post-game DECISION BRANCHES card + `/api/branch-review`.
-- The B3 row correction and the `enemy_summs_tracked` removal.
-
-**Three findings that changed the work, all recorded in `docs/OVERLAY_B4_DESIGN.md`:**
-- **The capture half was already shipped.** `core/hz_choice_shadow.py` has been writing the branch set to a 68 MB corpus all along, so B4 was a render-gate plus a reader, not a new recorder.
-- **B4-a's field list was incomplete and B4-b caught it.** `callouts` and `lead_projection` are TOP-LEVEL `/api/state` keys, not `coach` fields, and they feed two of the only three mounts the overlay keeps.
-- **B3 was recorded DONE while its artefact was still firing.** `spike_cue.js` was deleted but the spike lines live in `core/event_callouts.py` and shipped through `#rn-callouts` for another day. Lesson, now in plan section 6c2: **a banned artefact is a BEHAVIOUR, not a file** - grep the string the user sees, not the component named after the rule. Applied back over B1/B2/B10; found one dead registry key, now removed.
-
-**Open, all needing the operator or DevRel:** RM-190 (the uncommitted DDragon 16.16.1 bump vs DS pinned 16.15.1 - decide commit-and-carry or revert; it is the ONLY thing in the working tree and it fails 2 DS pen tests), B4-f / B8 / B9 (DevRel), the Riot portal registration, and G3-14 (one live ARAM row closes it).
