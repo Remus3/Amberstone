@@ -28,10 +28,10 @@ not HTTPS - a `curl -k https://` returns empty / TLS WRONG_VERSION_NUMBER; use `
 - ENGINE_VERSION = `1.147.0` - source of truth `agents/daemon_slayer/__init__.py:18`.
 - Patch = `16.12.1` - `data/daemon_slayer/current.txt:1`; matches `/health`.
 - Champions = 172 (cross-checked: `data/daemon_slayer/16.11.1/champions.json` `data` map = 172 entries).
-- Items = 706 in the loaded table (full table incl. Arena `22`-prefixed mirrors). The
-  SR-purchasable `ItemEffect` registry is 547/547 covered - `_effects_data.py` (per
-  `docs/DAEMON_SLAYER.md:35`, repointed 2026-08-06 from a PAST_EOF `:122`); the 706 vs 547
-  gap is map30/12 mirror + non-purchasable rows.
+- Items = 706 in the loaded table (full table incl. Arena `22`-prefixed mirrors). **RM-203
+  CORRECTION 2026-08-15:** the `547/547 covered` claim that stood here was never a ratio -
+  547 was `len(ITEM_EFFECTS)` on 2026-05-06 written twice. Live, population-labelled item
+  coverage is `docs/DAEMON_SLAYER.md:10`, guarded by `tests/test_docs_ds_item_coverage_drift.py`.
 - DS server live PID 14744 LISTENING on 127.0.0.1:8893 (verified `netstat`).
 - Tests on disk: 7317 `def test_` in `agents/daemon_slayer/tests/` (246 files) + 6807 in
   `tests/` (DS-pinning + route + live-integration). `docs/DAEMON_SLAYER.md:5` header says
@@ -258,8 +258,8 @@ Listed so they are not re-pitched as "gaps".
 
 HONEST VERDICT: DS is approximately **90-93% of the way to "truly complete besides patch
 updates"** on capability, and the remaining 7-10% is dominated by VALIDATION, not new
-engine code. The math substrate, 6 archetype scorers, 17+ additive axes, 547/547
-purchasable item coverage, per-spell CC ecosystem, and the WIN-correlation harness are all
+engine code. The math substrate, 6 archetype scorers, 17+ additive axes, complete shop-legal
+item coverage (`docs/DAEMON_SLAYER.md:10`), per-spell CC ecosystem, and the WIN-correlation harness are all
 SHIPPED and saturated. The 3-5 things standing between here and the line are:
 
 1. **The live-flip backlog** (34 gated boxes; 11 flag-ready seams) - needs real games to
