@@ -705,6 +705,28 @@ def ehp_for(
     assume_chainlaced_shield: bool = False,
     assume_seraphs_shield: bool = False,
     assume_fimbulwinter_shield: bool = False,
+    # RM-201: the guaranteed-minimum CC band and the axis it rides.
+    #
+    # ``include_conditional`` is NOT incidental here. ``/ehp`` has parsed it
+    # since ENGINE 1.39.0 but this module never carried it - measured, the name
+    # did not appear anywhere in this file before this slice - because the
+    # per-route client-reach guard filters candidate keys by
+    # ``_SEAM_PREFIXES = ("apply_", "assume_", "gate_", "exclude_")`` and
+    # ``include_conditional`` matches none of them, so it was never examined.
+    # The floor band lives on the CONDITIONAL registry, so shipping
+    # ``apply_cc_floor`` without its axis would give the client a seam it can
+    # set and that can never move a number - the reachable-and-dead failure mode
+    # RM-115 exists to kill. They ship together.
+    #
+    # ``enemies`` above is the third gate: an empty comp skips the cc block
+    # entirely. Deliberately NOT routed through ``_emit_ehp_family_seams`` -
+    # that helper has four callers and only ``/ehp`` parses ``apply_cc_floor``
+    # (measured off inspect.signature: it names ``compute_ehp`` and nothing
+    # else), so folding it in would leak a key that dies on the wire. Plain
+    # DEFAULT-OFF bools emitted only when True, appended at END per the
+    # no-mid-signature-insert convention.
+    include_conditional: bool = False,
+    apply_cc_floor: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
@@ -780,6 +802,12 @@ def ehp_for(
         ("assume_chainlaced_shield", assume_chainlaced_shield),
         ("assume_seraphs_shield", assume_seraphs_shield),
         ("assume_fimbulwinter_shield", assume_fimbulwinter_shield),
+        # RM-201: the CC-floor band and the conditional axis it is gated on.
+        # Same emit-when-True contract - both keys absent leaves _route_ehp's
+        # _opt_bool on the engine default, so a call naming neither is
+        # byte-identical on the wire to a pre-wire one.
+        ("include_conditional", include_conditional),
+        ("apply_cc_floor", apply_cc_floor),
     ):
         if _armed:
             body[_seam] = True
