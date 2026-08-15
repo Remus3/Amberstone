@@ -19,7 +19,9 @@ PURPOSE
                              plus the HP / alive-teams clauses
       * fight_rule / risk <- core.aram_fight_risk (the CC-threat-line
                              parsers are mode-generic; Arena reuses them)
-      * augment_advice    <- "" ALWAYS in v1 (documented degrade below)
+      * augment_advice    <- core.arena_augment_playline.play_line(...) over
+                             the augments the player OWNS ("" when none are
+                             known; the v1 always-empty degrade is closed)
       * anvil_advice      <- the head of the remaining-build list
       * target_priority   <- core.arena_target_rule.target_priority(...)
 
@@ -43,7 +45,12 @@ from __future__ import annotations
 
 import math
 
-from core import aram_fight_risk, arena_action_rule, arena_target_rule
+from core import (
+    aram_fight_risk,
+    arena_action_rule,
+    arena_augment_playline,
+    arena_target_rule,
+)
 from core.coach_choices import CoachChoice, synthesize_simple_choices, to_jsonable
 
 # Action label -> the approach clause the round_strategy template ends
@@ -234,6 +241,14 @@ def _safe_choices(action: str, fight_rule: str) -> list[dict]:
         return []
 
 
+def _safe_augment_advice(owned_augments: object) -> str:
+    try:
+        out = arena_augment_playline.play_line(owned_augments)
+        return out if isinstance(out, str) else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _safe_target(alive_opponents: object, frontline_names: object) -> str:
     try:
         out = arena_target_rule.target_priority(alive_opponents, frontline_names)
@@ -252,6 +267,7 @@ def build_block(
     alive_opponents: object = None,
     frontline_names: object = None,
     build_remaining: object = None,
+    owned_augments: object = None,
 ) -> dict:
     """Assemble the deterministic Arena coach block (the seven live fields).
 
@@ -278,6 +294,10 @@ def build_block(
             frontline by the wiring layer (set/list/None all accepted).
         build_remaining: ordered not-yet-built item-name list; the head
             anchors anvil_advice. Absent / empty / non-list -> "".
+        owned_augments: the augments the player currently HOLDS, as apiNames
+            (the shape ``state["augments"]`` carries) and/or display names.
+            Drives augment_advice via core.arena_augment_playline. Absent /
+            empty / unresolvable -> "" (never a guess).
 
     Returns:
         dict with exactly the keys action, round_strategy, fight_rule,
@@ -294,11 +314,7 @@ def build_block(
             "action": action,
             "round_strategy": _round_strategy(action, hp_pct, alive_teams),
             "fight_rule": fight_rule,
-            # augment_advice is a DOCUMENTED v1 degrade: there is no honest
-            # per-tick deterministic source for augment PLAY advice (the
-            # discrete augment-SELECT event is covered elsewhere), so the
-            # field stays "" rather than guessing.
-            "augment_advice": "",
+            "augment_advice": _safe_augment_advice(owned_augments),
             "anvil_advice": _anvil_line(build_remaining),
             "target_priority": _safe_target(alive_opponents, frontline_names),
             "risk": _safe_risk(cc_threat_line),
