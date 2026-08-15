@@ -1331,6 +1331,58 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.278.0 (2026-08-15) - RM-200 + RM-201: the last two stranded route seams are
+wired, draining the depth-1 debt tier to zero.
+
+Both seams were settable on the engine and forwarded by nobody.
+`assume_scaling_hsp_grants` (`_hsp_amp.sum_wielder_hsp_pct`) had ZERO
+production callers, so Dawncore 6621's First Light scaling HSP was credited on
+no route, by no client, and in no in-engine path. `apply_cc_floor`
+(`cc_pressure.compute_cc_pressure`, shipped 1.150.0) had FIVE production
+callers and not one forwarded it, so the `durations_floor_s` half of the
+conditional registry could not be armed from anywhere. Both are route EXPOSURE
+only, DEFAULT-OFF; neither is a default flip.
+
+RM-200 threads through `ehp.compute_ehp` + `sustain.compute_sustain` to `/ehp`
+and `/sustain`; RM-201 through `ehp.compute_ehp` to `/ehp`. Both reach
+`core/daemon_slayer_client.py`.
+
+THE THIRD GATE PAID FOR ITSELF TWICE. A flag without its transport is settable,
+guard-green and arithmetically INERT, which is worse than an honestly stranded
+seam because the ledger shrinks while nothing works. RM-201's axis
+`include_conditional` did not appear ANYWHERE in the client module - the floor
+is inert without it, so shipping the flag alone would have produced exactly that
+failure. It survived because the per-route client-reach guard filters candidates
+by `_SEAM_PREFIXES = ("apply_", "assume_", "gate_", "exclude_")` and
+`include_conditional` matches none of them. Both ship together.
+
+TWO FACTS IN THE RM-201 FILING WERE WRONG and are corrected here: the `/ehp`
+body key is `enemies`, not `enemy_champions` (the engine-side name is silently
+dropped), and `/ehp` does not parse `score_by` at all - it belongs to
+`/rank-tank` and `/rank-bruiser`, and `cc_blended_ehp` is an unconditional
+response field rather than a ranking mode.
+
+THE ROW'S OWN ACCEPTANCE CHAMPION CANNOT MOVE. Maokai's conditional R is a
+`coexists` entry, so the consumer credits MAX(unconditional, conditional) and
+his unconditional 2.0s dominates the floored 1.35s - a Maokai assertion would
+have passed over a completely unwired seam. Measured on Ashe, whose R is her
+only CC slot: `enemy_cc_pressure_s` 1.5 -> 2.0. All four real movers
+(Ashe / KSante / Sion / Hecarim) are swept so the choice is not load-bearing.
+
+Measured OFF -> ON for RM-200: `/ehp` Aatrox L11 [6621, 3053] `shield_amp_mult`
+1.16 -> 1.18, `blended_ehp` 3843.7038 -> 3851.6264; `/sustain` DrMundo [6621]
+`sustain_score` 0.6907 -> 0.7027. Without a self-shield item the `/ehp`
+ItemShield pool is empty and only the multiplier moves - the R194 uniform-
+multiplier-on-an-empty-numerator shape, pinned as such.
+
+Both seams landed on `compute_ehp`, a depth-0 entry point, so both PROMOTE out
+of the depth-1 tier into the depth-0 universe and `STRANDED_DEPTH1` resolves to
+empty. That is a ledger reaching its floor by wiring, not a guard going quiet:
+the equality still fails on any newly-revealed depth-1 seam, and a non-vacuity
+test pins that it can go non-empty again. `STRANDED_TODAY` is byte-exact at 5
+(the target/caster-state arc, operator-CLOSED s232) and no anti-circularity
+test or negative control was weakened.
+
 1.277.1 (2026-08-12) - RM-190: Spellslinger's Shoes (3175) flat magic pen
 18 -> 20, carrying the DDragon 16.16.1 mirror bump.
 
