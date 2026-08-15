@@ -53,15 +53,129 @@ def test_every_augment_resolves_by_api_name() -> None:
     assert seen > 100
 
 
-@pytest.mark.parametrize("bad", ["<", ">", "@"])
-def test_no_markup_or_placeholder_ever_leaks(bad: str) -> None:
-    """Riot markup tags and unresolved @Var@ placeholders never reach output."""
+# The characters that occur in real English prose. Deliberately spelled out
+# here rather than imported from the module: the test states the PROPERTY the
+# player-facing string must have, and the module has to satisfy it on its own
+# terms. Anything outside this set is a template sigil, not prose.
+_PROSE_CHARS = frozenset(
+    "0123456789"
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    " .,;:!?'\"()/%+-"
+)
+
+# Riot's desc field is a template language, and enumerating the token shapes it
+# ships today is exactly the trap that let 17 of them through. These families
+# are the reader's-side statement of the same property: a served string holds
+# no bracketed construct of ANY kind. Families Riot does not currently use are
+# listed on purpose, so a future patch shipping one is caught by this suite
+# rather than by a player.
+_TOKEN_FAMILIES = {
+    "riot-placeholder": r"@[^@]*@",
+    "double-brace": r"\{\{.*?\}\}",
+    "single-brace": r"\{[^{}]*\}",
+    "icon-ref": r"%[A-Za-z][^%]*%",
+    "html-tag": r"<[^>]*>",
+    "square-bracket": r"\[[^\]]*\]",
+    "dollar-brace": r"\$\{[^}]*\}",
+    "double-square": r"\[\[.*?\]\]",
+    "double-percent": r"%%[^%]*%%",
+    "angle-double": r"<<.*?>>",
+}
+
+
+def _served_lines() -> list[tuple[str, str]]:
+    """Every (apiName, served string) pair the live augment set can produce."""
+    out = []
     for row in apl._rows():
         api = row.get("apiName") or ""
         if not api:
             continue
+        out.append((api, apl.play_line([api])))
+    assert len(out) > 100, "live augment set should yield many served lines"
+    return out
+
+
+def _served_effects() -> list[tuple[str, str, str]]:
+    """(apiName, line, effect) - effect is '' for a name-only line.
+
+    The name is stripped by the row's OWN name rather than by splitting on
+    ': ', because augment names contain colons ("Transmute: Chaos") and a
+    naive split reads such a name as if it were an effect.
+    """
+    out = []
+    for row in apl._rows():
+        api = row.get("apiName") or ""
+        name = str(row.get("name") or "").strip()
+        if not api or not name:
+            continue
         line = apl.play_line([api])
-        assert bad not in line, f"{api} leaked {bad!r}: {line!r}"
+        if line == f"Playing {name}.":
+            out.append((api, line, ""))
+            continue
+        prefix = f"Playing {name}: "
+        assert line.startswith(prefix), f"{api} unexpected line shape: {line!r}"
+        out.append((api, line, line[len(prefix):]))
+    assert len(out) > 100
+    return out
+
+
+def test_served_output_is_plain_prose_only() -> None:
+    """No template sigil of any shape reaches the player.
+
+    This is the general form of the rule. A sigil-delimited token cannot exist
+    without its delimiter, so forbidding every non-prose character forbids the
+    whole family - including shapes nobody has seen yet.
+    """
+    for api, line in _served_lines():
+        bad = sorted(set(line) - _PROSE_CHARS)
+        assert not bad, f"{api} served non-prose {bad!r}: {line!r}"
+
+
+@pytest.mark.parametrize("family", sorted(_TOKEN_FAMILIES))
+def test_no_unresolved_token_family_survives(family: str) -> None:
+    """No bracketed template construct survives into served output."""
+    pattern = re.compile(_TOKEN_FAMILIES[family])
+    for api, line in _served_lines():
+        found = pattern.search(line)
+        assert not found, f"{api} leaked {family} {found.group(0)!r}: {line!r}"
+
+
+def test_percent_is_only_ever_a_percent_sign() -> None:
+    """'%' reuses a prose character, so position is what separates the uses.
+
+    A percent SIGN always follows its number ("40%"). A '%' used as a template
+    delimiter ("%i:StatAnvil%") does not - that is the discriminator, and it
+    holds without knowing which icon names Riot ships this patch.
+    """
+    for api, line in _served_lines():
+        for match in re.finditer("%", line):
+            prefix = line[:match.start()]
+            assert prefix[-1:].isdigit(), (
+                f"{api} served a non-numeric '%' at {match.start()}: {line!r}"
+            )
+
+
+def test_served_output_is_seven_bit_ascii() -> None:
+    """Repo-wide ASCII rule holds for data-derived output too."""
+    for api, line in _served_lines():
+        assert line.isascii(), f"{api} served non-ASCII: {line!r}"
+
+
+def test_no_content_free_effect_is_served() -> None:
+    """A row whose desc carries no real content degrades to name-only.
+
+    Riot ships sentinel rows (NullAugment's desc is the literal string "Null").
+    Restating a sentinel as advice is noise, so an effect has to be at least a
+    couple of real words before it earns a place next to the augment name.
+    """
+    for api, line, effect in _served_effects():
+        assert line, f"{api} produced no line at all"
+        if not effect:
+            continue
+        assert len(re.findall(r"[A-Za-z]{2,}", effect)) >= 2, (
+            f"{api} served a content-free effect: {line!r}"
+        )
 
 
 def test_no_space_before_punctuation() -> None:
