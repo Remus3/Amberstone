@@ -91,9 +91,12 @@ def test_action_labels_from_hp_bands() -> None:
     assert build_block(hp_pct=90, low_opp_count=1)["action"] == "ALL IN"
 
 
-def test_augment_advice_always_empty_v1() -> None:
-    # Documented v1 degrade: no honest per-tick deterministic augment
-    # source exists, so the field is "" across every input shape.
+def test_augment_advice_empty_without_owned_augments() -> None:
+    # The v1 always-empty degrade is CLOSED: augment_advice is now filled by
+    # core.arena_augment_playline whenever owned augments are passed. It stays
+    # "" for every shape that carries NO owned-augment signal, which is what
+    # these shapes cover. Positive coverage lives in
+    # tests/test_arena_augment_playline.py.
     shapes = (
         {},
         {"hp_pct": 90, "camp_phase": True, "alive_teams": 4},
