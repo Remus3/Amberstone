@@ -43,7 +43,13 @@ _FILLER = r"(?:\w+\s+){0,3}"
 _INJECTION_PATTERNS = (
     re.compile(r"(?i)ignore\s+" + _FILLER + r"(previous|above|prior)\s+instructions?"),
     re.compile(r"(?i)disregard\s+" + _FILLER + r"(previous|above|prior)\s+instructions?"),
-    re.compile(r"(?i)forget\s+(everything|all|previous)\s+\w*"),
+    # RM-205 finding 3: the trailing \w* was GREEDY and ran at index 2,
+    # ahead of the three role-marker patterns below, so it ate the role
+    # word in "forget all system: ..." and patterns 3-5 never saw it. Lazy
+    # means it matches empty, leaving the role word exposed to its own
+    # pattern. The loop is single-pass and never re-scans a substitution,
+    # so a word this match consumes is a word nothing else ever inspects.
+    re.compile(r"(?i)forget\s+(everything|all|previous)\s+\w*?"),
     re.compile(r"(?i)\bsystem\s*[:>]\s*"),
     re.compile(r"(?i)\bassistant\s*[:>]\s*"),
     re.compile(r"(?i)\b(human|user)\s*[:>]\s*"),
