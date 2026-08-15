@@ -64,13 +64,32 @@ _NEWLINE_TOKEN = "[\\n]"
 # Patterns that look like prompt-injection attempts. Conservative - we
 # replace the matched text with a marker so the LLM sees an opaque token
 # and cannot follow the embedded instruction.
-# RM-197 bypass 3: the verb slot previously admitted only the literal
-# "all", so "Ignore the above instructions" passed through untouched. Any
-# short filler run is now tolerated between the verb and the anchor word.
-_FILLER = r"(?:\w+\s+){0,3}"
+# The override phrase is three parts - a verb, an anchor word, and the
+# word "instructions" - separated by filler the attacker controls.
+#
+# RM-197 bypass 3 replaced a literal "all" with (?:\w+\s+){0,3}. That read
+# like a widening but was still a bound on what the filler may LOOK like:
+# three word-shaped tokens. RM-205 finding 4 walked through it with a
+# comma, a bracket, a hyphen and a fourth word.
+#
+# The bound is now on DISTANCE instead of shape, so any filler is
+# tolerated and only padding defeats it. [\s\S] rather than . because the
+# gap must span a newline - the previous \s+ did, and losing that would
+# re-introduce RM-197 bypass 1 through the back door.
+#
+# THIS IS STILL A BOUND, NOT A CLOSURE. A gap wider than these constants
+# passes by construction; that is a deliberate, documented residual and
+# not an oversight. Do not describe this pattern as "closed".
+_VERB_GAP = r"[\s\S]{0,48}?"
+_ANCHOR_GAP = r"[\s\S]{0,24}?"
+_ANCHOR = r"(?:previous|above|prior)"
+_OVERRIDE = (
+    r"(?i)\b(?:%s)\b" + _VERB_GAP + r"\b" + _ANCHOR + r"\b" + _ANCHOR_GAP
+    + r"\binstructions?\b"
+)
 _INJECTION_PATTERNS = (
-    re.compile(r"(?i)ignore\s+" + _FILLER + r"(previous|above|prior)\s+instructions?"),
-    re.compile(r"(?i)disregard\s+" + _FILLER + r"(previous|above|prior)\s+instructions?"),
+    re.compile(_OVERRIDE % "ignore"),
+    re.compile(_OVERRIDE % "disregard"),
     # RM-205 finding 3: the trailing \w* was GREEDY and ran at index 2,
     # ahead of the three role-marker patterns below, so it ate the role
     # word in "forget all system: ..." and patterns 3-5 never saw it. Lazy
