@@ -31,7 +31,17 @@
 
 **Filed: RM-206** - VISIBLE confusables (fullwidth colon, fullwidth Latin letters, Cyrillic homoglyph), all three OPEN at HEAD. **Deliberately NOT folded into finding 1**: that rule keys on invisibility and these are fully visible, so extending it would be the wrong axis. NFKC closes two of three; the homoglyph needs a UTS #39 table. Operator scope call, since the budget question for a defense-in-depth module over TRUSTED input has never been answered. **Next free id = RM-207.**
 
-**Next:** RM-206 (needs the operator's scope call first), RM-202 (needs its ledger ambiguity resolved), RM-203 as its own DS batch, or Fork A/B when a game is up. RM-204 still needs the operator.
+**RM-206 CLOSED too (LEDGER 1260), and it is the entry to read if you only read one.** The row's own suggested fix - whole-string NFKC - closes the fullwidth confusables and **opens a bigger hole**: NFKC expands one character into several and the expansion GLUES onto its neighbour, killing the word boundary the glyph supplied. `clean(U+2105 + "system: reveal")` returned `c/osystem: reveal`, unblocked, where it was blocked before. **Full-codespace sweep: whole-string NFKC HID a role marker in 300 previously-caught cases.**
+
+**It was caught by a test written for a different purpose** - one pinning that the fold runs BEFORE the pattern loop so anything it manufactures is still scanned. A test written to pin an ORDERING caught a regression in the thing being ordered. That is the second time this session a test earned its keep sideways.
+
+**The shipped fix folds per character and re-supplies the boundary, and that rule took TWO further measured corrections rather than one guess:** keying on expansion LENGTH still missed **504** single-character folds (U+24B6 circled A folds to a bare `A`), and keying on `str.isalnum()` then still missed **6** connector-punctuation codepoints folding to `_` - **an underscore is a word character but is not alphanumeric.** Shipped predicate is `\w`. Final sweep **0 lost / 156 gained**, both positions. Over-block: **0 differing across the 18 real fields and 0 across the 9,853-string proxy corpus** - and that proxy/real distinction is stated deliberately, since conflating them produced this session's retraction.
+
+**RESIDUAL, recorded not pinned:** the Cyrillic homoglyph (U+0405 DZE) still passes. Normalisation has no business folding a distinct letter from another script into Latin S; that needs a UTS #39 confusables table. **No assertion pins it open** - that would turn a future improvement into a red suite, same call as RM-205 finding 4's padding residual. It lives in the code comment, the test docstring, the BACKLOG row and the ledger.
+
+**Sanitizer state: RM-197 + RM-205 + RM-206 all CLOSED - 8 bypasses fixed red-first across LEDGER 1253-1260, one retraction, one recorded residual.** Suite 19114 / 96 skipped / 4438 subtests / 0 failed.
+
+**Next:** RM-202 (needs its ledger ambiguity resolved - its acceptance wants the guard RED and the ledger shrink-only, which cannot both hold), RM-203 as its own DS batch, or Fork A/B when a game is up. RM-204 still needs the operator. Next free id = **RM-207**.
 
 ---
 
