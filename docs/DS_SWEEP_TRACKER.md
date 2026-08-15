@@ -52,7 +52,33 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   RM-132 overlay `font-size:13px` token-bypass (BACKLOG "Reliability/hardening"; lane 7);
   RM-133 Arena My Pick archetype-chip parity (BACKLOG "Competitor-lift open candidates"; lane 4);
   RM-134 MC raw-error-string leak to :8895 (BACKLOG "Reliability/hardening"; lane 8).
-  Next free GAP spec = **RM-135**.
+  **RM-192..RM-195 allocated 2026-08-14** (lane-research refill; all repo/ops hygiene rows, no
+  roster checkbox, no Summary count change, all filed under BACKLOG "Reliability / hardening"):
+  RM-192 this pointer's own staleness plus the missing guard (lane 7);
+  RM-193 `incident_summary.json` write-only channel with zero readers (lane 7);
+  RM-194 `RC_META_CRAWL` / `RC_SGP` documented-but-inert kill switches (lane 7);
+  RM-195 four zero-reference module-level functions (lane 7);
+  RM-196 ds_statcheck knob-strip stale champId closure (lane 4);
+  RM-197 `core/prompt_sanitize.py` three executed bypasses (lane 8);
+  RM-198 `core/base_worker.py` restart discards its bounded join (lane 8);
+  RM-199 `core/coaching_data_lock.py` silent fail-open, no logger (lane 8);
+  RM-200 R197 scaling-HSP seam has zero production callers (lane 6, Tier-2);
+  RM-201 `apply_cc_floor` settable but forwarded by nobody (lane 6, Tier-2);
+  RM-202 stranded-seam guard universe is one call deep (lane 6).
+  RM-200..RM-202 are the only DS/engine rows in this block and are filed under
+  BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
+  rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
+  none changes the Summary count.
+  Next free GAP spec = **RM-203**.
+  **POINTER CORRECTED 2026-08-14 (lane-research): this line read `RM-135` and was 57 ids stale.**
+  RM-135 had been in use since 2026-08-01 and the live repo-wide max was RM-191, so an agent
+  following `tools/headless-research.md:46` or `tools/headless-true-audit.md:305` - both of which
+  name this file as the authoritative registry - would have minted a COLLIDING id. That is the
+  THIRD time this pointer has gone stale (see the RM-119 and RM-134 corrections recorded in
+  `docs/history_notes.md:2372` and `:2288`), which is why the standing fix is a GUARD and not
+  another hand-correction: filed as **RM-192**. Until that guard exists, do NOT trust this line
+  on its own - derive the max with a repo-wide `grep -rhoE "RM-[0-9]{1,3}"` over `ROADMAP.md`,
+  `BACKLOG.md` and `docs/LEDGER.md` and take the next id above it.
   (lane-research corrected 2026-07-31: the prior "= RM-119"
   pointer was ITSELF stale - RM-119..RM-127 were all consumed by ROADMAP/BACKLOG rows whose
   tracker registration was owed-and-never-done, exactly the "tracker registration is owed"

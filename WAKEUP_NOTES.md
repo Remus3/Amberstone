@@ -6,6 +6,24 @@
 
 ---
 
+# 2026-08-14 - lane 5 headless-research REFILL: 11 rows filed, a guard found blind, the id registry unstuck
+
+Branch `lane/research` in `C:\rc-worktrees\rc-lane-research`. **NOT MERGED - hand-off only.** A concurrent headless-upgrade session owned `C:\Riot Commander` for this entire run, so nothing was written there and the merge is deliberately left to the merger. Docs-only: `ROADMAP.md`, `BACKLOG.md`, `docs/DS_SWEEP_TRACKER.md`, `docs/LEDGER.md` (1245), this file. No code, no engine, no Share, no restart.
+
+**Filed RM-192..RM-202** (bodies in `BACKLOG.md`, one pointer line in `ROADMAP.md`; next free id now **RM-203**). Ground truth re-probed live at start: ENGINE 1.277.1, patch 16.15.1, `:8860` ok 173/706, RC pid 19268 mode=client.
+
+**The three that matter most.** (1) **RM-202** - `test_stranded_hsp_seam_r197.py` is GREEN while blind: running its own helpers gives 32 route-facing entry points and 66 seams, and `sum_wielder_hsp_pct` / `compute_cc_pressure` / `assume_scaling_hsp_grants` / `apply_cc_floor` are in NEITHER set. Its universe is an enumerated NAME LIST, not a call depth - do not repeat the "one call deep" shorthand, the verifier killed it, since `compute_cc_pressure` is shallow with five callers and one hop from a live route. This QUALIFIES RM-118 without refuting it: "drained to zero" is true of what the guard measures. (2) **RM-200 + RM-201** are the two seams it cannot see, both Tier-2. (3) **RM-192** - the id registry said next-free RM-135 while RM-135 was in use and the live max was RM-191, so following the documented procedure produced a collision. Third recurrence, and it had been NOTED twice before inside other rows rather than tracked - which is why it got worse instead of fixed. Pointer corrected; the guard is the open work.
+
+**Rediscovery gate did its job three times.** The BACKLOG "snowball elasticity - NO aggregator exists" row is REFUTED (`core/snowball_elasticity.py` shipped 2026-07-05, same lift, same source, route + panel live) and is STRUCK IN PLACE, not deleted - picking it up as written would have rebuilt a shipped module. The 2026-07-30 teardown's two HIGH "fix now" rows were both already handled: F20 filed live-gated, F22 fixed at LEDGER 1128 (`data/meta/tft_set17_meta.json` measures 0 non-ASCII today).
+
+**Verifier: 8 CONFIRMED / 3 PARTIAL / 0 REFUTED - and all three PARTIALs were errors in my own filed text**, each re-probed before correction: `bus_enabled` at `:250` not `:249`, `health_pulse` at `:93` not `:97`, and RM-201's "sole production caller" was flatly wrong (five callers, none forwarding), which made that row stronger.
+
+**Decisions logged, no operator present.** Competitor-lift teardown NOT run - RM-01 fences the category as drained 4x with an explicit do-not-re-pick, so the lift half went to categorizing filed candidates instead. All 11 rows went to `BACKLOG.md` because `ROADMAP.md` was at 89.8 pct of budget (now 91.0 pct).
+
+**Not done, by scope:** no code written, no test written, no row executed. RM-196 is filed MEDIUM confidence and its acceptance carries its own inertness check first.
+
+---
+
 # 2026-08-13b - new-project design QA: portable conventions extracted, Sibling-E specced
 
 Commit `afd98bd3` (`docs/PORTABLE_PROJECT_CONVENTIONS.md`, 723 lines / 36.9 KB) plus this ledger/notes sync. **Tier-0, documentation only** - no code, no `data/` write, no RC or DS restart. Gate: `drift_guard` 0 breaches, `perseus_sync` **embedded 1415/1415**, both authored files verified **0 non-ASCII bytes** and **0 project-noun hits**.
