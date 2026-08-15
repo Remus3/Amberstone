@@ -6,7 +6,7 @@
 
 ---
 
-# 2026-08-15 - RM-197 + RM-205 both fully closed: seven sanitizer bypasses, one retraction, one new row
+# 2026-08-15 - five rows closed (RM-197 / 205 / 206 / 202 / 207), two refutations, zero left open
 
 **Fork taken: C (no game).** Probed live before choosing, never inherited: RC pid 30768 alive `mode=client`, `/api/state` `liveclient` empty, DS `:8860` ok ENGINE **1.277.1** patch **16.15.1** 173/706. Fork A (Arena) and Fork B (SR/ARAM) both need a real game running, so neither was runnable. **RM-204 still needs the operator and is untouched** - `dashboard/_deterministic_coaching.py:1481` still passes no `owned_augments=`, deliberately.
 
@@ -41,7 +41,17 @@
 
 **Sanitizer state: RM-197 + RM-205 + RM-206 all CLOSED - 8 bypasses fixed red-first across LEDGER 1253-1260, one retraction, one recorded residual.** Suite 19114 / 96 skipped / 4438 subtests / 0 failed.
 
-**Next:** RM-202 (needs its ledger ambiguity resolved - its acceptance wants the guard RED and the ledger shrink-only, which cannot both hold), RM-203 as its own DS batch, or Fork A/B when a game is up. RM-204 still needs the operator. Next free id = **RM-207**.
+**RM-202 CLOSED (LEDGER 1261), and the ledger ambiguity is RESOLVED rather than worked around: "can only ever shrink" is a property of a ledger relative to a FIXED universe.** Widening the universe does not ADD debt, it REVEALS debt. So `STRANDED_TODAY` stays byte-exact at 5 and a new `STRANDED_DEPTH1` carries the new tier with its own baseline and its own equality. Nothing was weakened; the anti-circularity test and both negative controls are byte-unchanged and the new tier ships its own of each.
+
+**The row's acceptance was NOT achievable as written, and that was the work.** One extra call depth reports `assume_scaling_hsp_grants` and NOT `apply_cc_floor`. Two more blind spots: **function-local imports** (`compute_cc_pressure` is imported INSIDE `compute_ehp` at `ehp.py:2510` to break a circular load, so `getattr(module, name)` can never see it) and **`**splat` forwarding** (`_passed_kwargs` was blind to `handler(**assumed_share_kwargs)` at `server.py:1155`). **The splat one is the only blind spot in that file producing FALSE POSITIVES - it would have written three lies into the debt ledger.** Caught by checking each candidate's entry-point default before writing its reason.
+
+**RM-207 filed and then REFUTED the same day (LEDGER 1262), by me, one commit apart.** `apply_dual_scaling_split` is not debt - it is the INTERNAL name of an already-wired route seam (`hybrid.py:657` forwards it as `apply_ad_axis_dual_scaling_split`, which is on three entry points, parsed + passed at `server.py:601-602,635`, and on the client). **A FIFTH blind-spot class and the only one widening the universe cannot fix: a seam wired under a DIFFERENT NAME is invisible to a name-keyed checker.** `STRANDED_DEPTH1` shrank 3 -> 2 the day it was created, by the intended mechanism - the entry MOVED to a self-verifying exclusion (a test asserts the route-level twin is genuinely wired) rather than being deleted.
+
+**TWO REFUTATIONS THIS SESSION, BOTH MINE, BOTH THE SAME SHAPE:** the `Vital system:` false positive (LEDGER 1258) and RM-207. In each case a MEASUREMENT was right and the INFERENCE from it was wrong, because reachability was asserted from a scan instead of probed on the call path. That is the reusable lesson of the whole session.
+
+**State: RM-197 / RM-205 / RM-206 / RM-202 / RM-207 all CLOSED.** 8 sanitizer bypasses + the seam guard, LEDGER 1253-1262, 11 commits. Suites DS **10605 / 13448 subtests**, RC **19114 / 96 skipped / 4438 subtests / 0 failed**.
+
+**Next:** RM-200 + RM-201 (the two seams the depth-1 tier now makes visible - both Tier-2, engine bump + Share mirror), RM-203 as its own DS batch, or Fork A/B when a game is up. RM-204 still needs the operator. Next free id = **RM-208**.
 
 ---
 
@@ -84,17 +94,3 @@ Branch `lane/research` in `C:\rc-worktrees\rc-lane-research`. **NOT MERGED - han
 **Not done, by scope:** no code written, no test written, no row executed. RM-196 is filed MEDIUM confidence and its acceptance carries its own inertness check first.
 
 **CLOSED 2026-08-15 at /done.** The branch was MERGED by the headless-upgrade session per the operator hand-off (`0dadbfc2` ff into main); all 11 rows verified present in main's `BACKLOG.md` and LEDGER 1245 intact (the head reads 1252..1247 then 1245 - **1246 is a deliberate gap, not a lost entry**). **One error in my own filed text, found by that session and independently confirmed here: the RM-197 row cited `tests/test_p2w1_core_b.py` with an end line of 170 on a 168-line file.** (Deliberately NOT written here in `path:line-line` form - the citation guard parses that shape as a live citation, so quoting a broken one to explain it re-breaks the guard. That happened on the first attempt at this very note and is worth knowing before writing about a bad citation.) It went red only on the MERGED tree, because the citation was authored against a branch where main still held the shorter file - so the guard was green on both branches independently. Corrected to `158-168` in `ddb8ed89`. **The merge also produced a net-new doc defect that drift_guard cannot see, fixed here:** `docs/DS_SWEEP_TRACKER.md` ended up with TWO next-free statements, one saying RM-203 (already consumed by the concurrent run) and one warning that the pointer above read `RM-135` - a warning that was true when written and false by the time it landed, because my correction to that same pointer arrived in the same merge. Pointer now reads **RM-205**, measured across the working tree AND all three lane branches (`lane/ds` and `lane/true-audit` top out at RM-177). **That is the RM-192 defect recurring inside one day, which is the strongest argument yet for shipping its guard** - the pointer is only correct until the next concurrent session, and nothing machine-checks it.
-
----
-
-# 2026-08-13b - new-project design QA: portable conventions extracted, Sibling-E specced
-
-Commit `afd98bd3` (`docs/PORTABLE_PROJECT_CONVENTIONS.md`, 723 lines / 36.9 KB) plus this ledger/notes sync. **Tier-0, documentation only** - no code, no `data/` write, no RC or DS restart. Gate: `drift_guard` 0 breaches, `perseus_sync` **embedded 1415/1415**, both authored files verified **0 non-ASCII bytes** and **0 project-noun hits**.
-
-**What shipped.** A planning + QA session (4 rounds of framed questions, no building) producing two documents. (1) `docs/PORTABLE_PROJECT_CONVENTIONS.md` - this repo's operating doctrine with every project noun stripped, meant to be dropped into any new repo unchanged. 19 sections: doc topology with one owner per fact, file-size budgets, open/closed/gated item organization, the orchestrated multi-agent self-adjudicating self-adversarial default, R1-R11, TDD + 9 test-quality failure classes, 4 CI tiers, ASCII/Windows encoding, markdown-SSoT memory + semantic mirror, agent/command/skill/MCP roster, visual+OCR policy, the 5-trap license gate, 13 verification failure classes, 4 hook confounds, private-to-public flip gate. **Section 18 is its refresh protocol - re-diff it, never rewrite it.** (2) A bootstrap spec for a second project at `C:\Sibling-E` (Satisfactory planning/advisory system), written outside this repo along with a byte-copy of the conventions. Memory: `project_sibling_e_bootstrap`.
-
-**Method note worth carrying forward.** The bootstrap was not written from recollection. Every environmental claim was probed live before it was written (install path, shipped data files with real byte sizes, free port band, toolchain), and every claim that could NOT be probed was labelled as a numbered spike carrying a binary acceptance criterion **and** a stated fallback. When the operator supplied two screenshots mid-session, a further probing round settled an open design question outright and surfaced a hazard that assumption would have missed. That is the shape: probe what is knowable, label what is not, re-probe when new evidence arrives.
-
-**Do NOT redo:** the 4-round QA. All decisions are fenced in that project's own decision log (its section 11) - name, private-first, Python core, deterministic zero-LLM advisor, three explain tiers, per-world ledger + global mute, four v1 advice domains, mods architecture-first, no external optimizer in phase 3, no community datasets. Re-opening any of them re-litigates a settled call.
-
-**Not done, by scope:** nothing in `C:\Sibling-E` is initialized - no git, no hooks, no code. That is its own first session's phase 0.
