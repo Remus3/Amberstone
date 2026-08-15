@@ -52,9 +52,20 @@ class TestLengthCapIsAnUpperBound(unittest.TestCase):
         self.assertLessEqual(len(clean("A" * 5000)), DEFAULT_MAX_LEN)
 
     def test_explicit_cap_is_not_exceeded(self):
-        for n in (4, 10, 50, 199, 200, 1000):
+        # 0..3 exercise the degenerate branch, where a bare max_len - 3
+        # slice would go negative and silently mean "from the end".
+        for n in (0, 1, 2, 3, 4, 10, 50, 199, 200, 1000):
             with self.subTest(max_len=n):
                 self.assertLessEqual(len(clean("A" * 5000, max_len=n)), n)
+
+    def test_negative_cap_is_clamped_not_treated_as_from_the_end(self):
+        # A negative max_len used to reach out[:max_len], which is a
+        # from-the-end slice: max_len=-1 returned 4999 chars, and newline
+        # input returned 19999. Clamped to empty.
+        for n in (-1, -5, -100):
+            with self.subTest(max_len=n):
+                self.assertEqual(clean("A" * 5000, max_len=n), "")
+                self.assertEqual(clean("\n" * 5000, max_len=n), "")
 
     def test_truncation_is_still_visible(self):
         self.assertTrue(clean("A" * 5000).endswith("..."))

@@ -63,6 +63,12 @@ def clean(value: object, *, max_len: int = DEFAULT_MAX_LEN) -> str:
 
     Non-string input is coerced via ``str(value)``; ``None`` returns "".
     """
+    # A negative cap would reach out[:max_len] below, which Python reads as
+    # a from-the-end slice rather than an error - max_len=-1 returned 4999
+    # chars and newline input returned 19999. Clamp so the cap can only
+    # ever mean "at most this many characters".
+    if max_len < 0:
+        max_len = 0
     if value is None:
         return ""
     if not isinstance(value, str):
