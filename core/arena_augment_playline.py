@@ -22,13 +22,31 @@ PURPOSE
     that is WRONG is worse than a Haiku call.
 
 CORRECT-BY-CONSTRUCTION, NEVER INVENTED
-    127 of the 225 ``desc`` strings carry unresolved ``@Placeholder@``
-    variables whose real values live in a per-rarity ``dataValues`` array.
-    Guessing which rarity tier is live would manufacture wrong numbers, so
-    this module never tries: it drops any SENTENCE still holding a
-    placeholder and keeps the rest. 126 augments retain real effect text;
-    the remaining 99 degrade to a name-only line. A broken ``@Var@`` or a
-    fabricated number can therefore never reach the player.
+    Riot's ``desc`` is a template: the shipped string carries tokens a live
+    client resolves. Most numerous is ``@Placeholder@``, whose real value
+    lives in a per-rarity ``dataValues`` array; guessing which rarity tier is
+    live would manufacture wrong numbers, so this module resolves nothing. It
+    drops any SENTENCE still holding a token and keeps the rest. 109 augments
+    retain real effect text; the remaining 116 degrade to a name-only line.
+
+    The guard is stated as a SHAPE, not as a list of known tokens. An earlier
+    revision rejected only ``@`` and shipped 17 augments carrying
+    ``{{ Item_Keyword_OnHit }}`` and ``%i:StatAnvil%`` straight to the player,
+    because a literal list only ever covers the families someone remembered.
+    So the rule is inverted: a sentence must consist ONLY of characters that
+    occur in real prose. A delimited token cannot exist without its delimiter,
+    so banning non-prose characters bans the whole family - ``{{ }}``, ``@ @``,
+    ``< >``, ``[[ ]]``, ``${ }`` and any shape a future patch invents.
+
+    ``%`` is the one delimiter that reuses a prose character, so position
+    decides: a percent SIGN follows its digits ("40%"), a template delimiter
+    does not. That discriminator needs no icon-name vocabulary.
+
+    Rows can also ship a sentinel instead of content - ``NullAugment`` has the
+    literal ``desc`` "Null". Restating a sentinel is noise, so an effect must
+    carry at least two real words to be served; below that the row degrades to
+    the name-only line. The live set has a clean margin here (one row at one
+    word, none at two, the rest at three or more).
 
 NO LLM, NO NETWORK, NO SERVED-OUTPUT CHANGE
     Pure disk read plus string work. The live Arena Haiku call is untouched;
@@ -53,6 +71,18 @@ _MAX_EFFECT_LEN = 180
 _TAG_RE = re.compile(r"<[^>]*>")
 _SPACE_BEFORE_PUNCT_RE = re.compile(r"\s+([.,;:!?])")
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+# Any character that does not occur in real prose. See the module docstring:
+# this is the whole placeholder guard, expressed as a shape so that a token
+# family nobody has seen yet is still caught.
+_NON_PROSE_RE = re.compile(r"[^0-9A-Za-z\s.,;:!?'\"()/%+-]")
+# A '%' that is not closing a number is a template delimiter, not a percent
+# sign - the one token family that reuses a prose character.
+_TEMPLATE_PERCENT_RE = re.compile(r"(?<![0-9])%")
+# "Real word" for the content-free sentinel check - two or more letters, so a
+# stray initial or unit does not read as content.
+_REAL_WORD_RE = re.compile(r"[A-Za-z]{2,}")
+_MIN_REAL_WORDS = 2
 
 _ROWS_CACHE: list[dict] | None = None
 _INDEX_CACHE: dict[str, dict] | None = None
@@ -118,18 +148,34 @@ def _load_index() -> dict[str, dict]:
     return index
 
 
+def _holds_unresolved_token(sentence: str) -> bool:
+    """True when a sentence still carries template markup of any shape."""
+    return bool(
+        _NON_PROSE_RE.search(sentence) or _TEMPLATE_PERCENT_RE.search(sentence)
+    )
+
+
 def _clean_text(raw: object) -> str:
     """Strip Riot markup, normalise spacing, and drop placeholder sentences."""
     text = _TAG_RE.sub(" ", str(raw or ""))
     text = " ".join(text.split())
     text = _SPACE_BEFORE_PUNCT_RE.sub(r"\1", text)
-    # A sentence still holding @Var@ has no honest value here - see module
-    # docstring on why the per-rarity dataValues array is not resolved.
-    kept = [s for s in _SENTENCE_SPLIT_RE.split(text) if s and "@" not in s]
+    # SEPARATOR is the caller's field delimiter, so it must not appear inside a
+    # segment or a consumer splitting on it would mis-count augments. Done
+    # before the token guard so a prose pipe is rewritten, not treated as
+    # markup and taken down with its whole sentence.
+    text = text.replace("|", "/")
+    # A sentence still holding a token has no honest value here - see the module
+    # docstring on why nothing is resolved and why the guard is a shape.
+    kept = [
+        s for s in _SENTENCE_SPLIT_RE.split(text)
+        if s and not _holds_unresolved_token(s)
+    ]
     out = " ".join(kept).strip()
-    # SEPARATOR is the caller's field delimiter, so it must not appear inside
-    # a segment or a consumer splitting on it would mis-count augments.
-    out = out.replace("|", "/")
+    # A sentinel desc ("Null") survives the token guard but says nothing, and
+    # naming it back at the player is worse than saying nothing.
+    if len(_REAL_WORD_RE.findall(out)) < _MIN_REAL_WORDS:
+        return ""
     if len(out) > _MAX_EFFECT_LEN:
         out = out[:_MAX_EFFECT_LEN].rstrip() + "..."
     return out
