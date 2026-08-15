@@ -27,7 +27,35 @@ text is preserved (information-preserving neutralisation, not removal).
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Iterable
+
+# Unicode categories whose members render as nothing or as blank space:
+# Zs/Zl/Zp are the separator families, Cf the invisible format controls
+# (zero-width space, joiners, BOM, soft hyphen). See _strip_char.
+_SEPARATOR_CATEGORIES = frozenset(("Zs", "Zl", "Zp", "Cf"))
+
+
+def _strip_char(ch: str) -> str:
+    """Map one input character to its sanitised form.
+
+    RM-205 finding 2: a separator must become a SPACE, never vanish.
+    Deleting it fused the neighbouring words - "Ignore<NBSP>previous"
+    collapsed to "Ignoreprevious" and no pattern could match. For the
+    Zs/Zl/Zp half that is especially perverse, because those characters
+    ARE matched by ``\\s``, so the strip was destroying the very
+    whitespace the injection patterns needed, one step before they ran.
+    The Cf half is not ``\\s``, but deleting it fuses words just the
+    same, so both map to a space and the word boundary a reader sees is
+    the word boundary the patterns see.
+    """
+    if ch == "\n" or ch == "\t":
+        return ch
+    if ch.isspace() or unicodedata.category(ch) in _SEPARATOR_CATEGORIES:
+        return " "
+    if ch.isprintable() and ch != "\x00":
+        return ch
+    return ""
 
 # Sanitised representation for line breaks so the cleaned value still
 # fits a single CSV-style display cell while staying scannable.
@@ -81,11 +109,9 @@ def clean(value: object, *, max_len: int = DEFAULT_MAX_LEN) -> str:
         value = str(value)
     if not value:
         return ""
-    # Strip control characters except common whitespace.
-    out = "".join(
-        ch if ch == "\n" or ch == "\t" or (ch.isprintable() and ch != "\x00") else ""
-        for ch in value
-    )
+    # Strip control characters except common whitespace, mapping every
+    # invisible separator to a real space rather than deleting it.
+    out = "".join(_strip_char(ch) for ch in value)
     # Inject-pattern neutralisation runs FIRST, while \n and \t are still
     # real whitespace that \s can match. RM-197 bypass 1: tokenising the
     # newline first turned "System\n:" into "System[\\n]:", which the
