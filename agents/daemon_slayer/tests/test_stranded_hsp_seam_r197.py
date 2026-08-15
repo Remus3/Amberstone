@@ -37,9 +37,12 @@ Offline only - no server start, no sockets. AST + inspect + direct handler calls
 from __future__ import annotations
 
 import ast
+import importlib
 import inspect
 import pathlib
 import re
+import sys
+import textwrap
 import unittest
 
 from .. import server as S
@@ -50,6 +53,7 @@ from .._hsp_amp import sum_wielder_hsp_pct
 
 SERVER_PATH = pathlib.Path(S.__file__)
 SERVER_SRC = SERVER_PATH.read_text(encoding="utf-8")
+_PKG = "agents.daemon_slayer"
 
 # Curated HSP inventory used by every measurement below - Redemption 0.10 +
 # Mikael's Blessing 0.12 = 0.22 (additive, per _hsp_amp.sum_wielder_hsp_pct).
@@ -123,15 +127,58 @@ def _passed_kwargs(src: str) -> set[str]:
     The second half of the contract. R194 recorded a PARSE-side drop - a key
     read out of the body and then never forwarded - which made a live re-rank
     read as inert, so parsing alone is NOT reachability.
+
+    RM-202: also counts keys forwarded through a ``**splat``. Collecting only
+    ``kw.arg`` made this helper blind to ``handler(**assumed_share_kwargs)`` at
+    ``server.py:1155``, and it reported three genuinely-wired keys
+    (assume_item_aa_dr / assume_item_crit_dr / assume_item_enemy_as_slow) as
+    stranded. That is the one blind spot in this file that produces FALSE
+    POSITIVES rather than false negatives - it would have written three lies
+    into the debt ledger. Resolution is precise, not an over-approximation:
+    only dicts that are actually splatted into a call are read, so this cannot
+    silently mark an unrelated seam as reachable.
     """
     tree = ast.parse(src)
-    return {
+    explicit = {
         kw.arg
         for n in ast.walk(tree)
         if isinstance(n, ast.Call)
         for kw in n.keywords
         if kw.arg
     }
+    splatted = {
+        kw.value.id
+        for n in ast.walk(tree)
+        if isinstance(n, ast.Call)
+        for kw in n.keywords
+        if kw.arg is None and isinstance(kw.value, ast.Name)
+    }
+    via_splat: set[str] = set()
+    for n in ast.walk(tree):
+        if not isinstance(n, ast.Assign):
+            continue
+        for t in n.targets:
+            # opts["key"] = ...
+            if (
+                isinstance(t, ast.Subscript)
+                and isinstance(t.value, ast.Name)
+                and t.value.id in splatted
+                and isinstance(t.slice, ast.Constant)
+                and isinstance(t.slice.value, str)
+            ):
+                via_splat.add(t.slice.value)
+            # opts = {"key": ...}
+            if (
+                isinstance(t, ast.Name)
+                and t.id in splatted
+                and isinstance(n.value, ast.Dict)
+            ):
+                via_splat.update(
+                    k.value
+                    for k in n.value.keys
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str)
+                )
+    return explicit | via_splat
 
 
 def stranded_seams(src: str) -> dict[str, list[str]]:
@@ -220,6 +267,136 @@ STRANDED_TODAY: dict[str, str] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# RM-202 - THE DEPTH-1 TIER
+#
+# The guard above is GREEN and was structurally BLIND. Its universe is the 32
+# functions server.py calls DIRECTLY; a seam owned by a function that one of
+# those 32 calls is invisible to it. That is not a depth-of-call-stack claim -
+# ``cc_pressure.compute_cc_pressure`` is ONE hop from a live route and has five
+# production callers - it is membership in a closed set.
+#
+# Extending by exactly one hop needed TWO resolution fixes that the depth-0
+# helpers did not need, both measured rather than predicted:
+#
+#   1. FUNCTION-LOCAL IMPORTS. ``getattr(module, name)`` cannot see
+#      ``from .cc_pressure import compute_cc_pressure`` written INSIDE
+#      ``compute_ehp`` (ehp.py:2510, a deliberate lazy import that breaks a
+#      circular module load). Depth extension ALONE still did not reach
+#      ``apply_cc_floor``; the local-import map is what reaches it.
+#   2. ``**SPLAT`` FORWARDING - see _passed_kwargs. Without it this tier
+#      reported three genuinely-wired keys as stranded.
+#
+# WHY A SECOND LEDGER RATHER THAN APPENDING TO STRANDED_TODAY
+# -----------------------------------------------------------
+# RM-202's acceptance asks for two things that look contradictory: the guard
+# must go RED until each new name is wired or ledgered, AND the ledger must
+# stay an equality that can only ever shrink. Appending six names to
+# STRANDED_TODAY would GROW it and break its ratchet.
+#
+# The contradiction dissolves once "can only shrink" is read as a property of a
+# ledger relative to a FIXED universe. Widening the universe does not ADD debt,
+# it REVEALS debt that was always there. So the depth-0 ledger is left
+# byte-exact - its ratchet is untouched and still measures exactly what it
+# always measured - and the newly-visible tier gets its OWN baseline and its
+# OWN equality, which can likewise only shrink from here. Ledgering with a
+# stated reason is the same choice the depth-0 ledger made and documented: it
+# keeps the guard green on arrival instead of blocking on unrelated wirings.
+# ---------------------------------------------------------------------------
+def _local_import_map(tree: ast.AST) -> dict[str, str]:
+    """Names bound by ``from .mod import name`` anywhere in ``tree``."""
+    out: dict[str, str] = {}
+    for n in ast.walk(tree):
+        if isinstance(n, ast.ImportFrom) and n.module:
+            target = f"{_PKG}.{n.module}" if n.level else n.module
+            for a in n.names:
+                out[a.asname or a.name] = target
+    return out
+
+
+def _callees(fn: object) -> dict[str, object]:
+    """Package functions ``fn`` calls, by qualified name.
+
+    Resolved through the defining module namespace FIRST and through the
+    function's own local imports second - a lazy import inside a function body
+    never lands in the module namespace.
+    """
+    mod = sys.modules[fn.__module__]
+    try:
+        tree = ast.parse(textwrap.dedent(inspect.getsource(fn)))
+    except (OSError, TypeError, SyntaxError):
+        return {}
+    local = _local_import_map(tree)
+    out: dict[str, object] = {}
+    for n in ast.walk(tree):
+        if not (isinstance(n, ast.Call) and isinstance(n.func, ast.Name)):
+            continue
+        name = n.func.id
+        obj = getattr(mod, name, None)
+        if obj is None and name in local:
+            try:
+                obj = getattr(importlib.import_module(local[name]), name, None)
+            except Exception:  # noqa: BLE001 - unimportable is simply not a seam
+                obj = None
+        if not inspect.isfunction(obj):
+            continue
+        owner = getattr(obj, "__module__", "") or ""
+        if not owner.startswith(_PKG) or owner.endswith(".server"):
+            continue
+        out[f"{owner.rsplit('.', 1)[-1]}.{name}"] = obj
+    return out
+
+
+def _depth1_functions() -> dict[str, object]:
+    """Package functions called BY a route-facing entry point, minus the
+    entry points themselves."""
+    eps = _route_facing_entry_points()
+    out: dict[str, object] = {}
+    for fn in eps.values():
+        for fq, obj in _callees(fn).items():
+            if fq not in eps:
+                out[fq] = obj
+    return out
+
+
+def _depth1_only_seams() -> dict[str, list[str]]:
+    """DEFAULT-OFF seams visible at depth 1 and NOT already at depth 0."""
+    depth0 = _engine_seams()
+    seams: dict[str, list[str]] = {}
+    for fq, fn in sorted(_depth1_functions().items()):
+        for p in inspect.signature(fn).parameters.values():
+            if p.name.startswith(("assume_", "apply_", "use_")) and p.default is False:
+                if p.name not in depth0:
+                    seams.setdefault(p.name, []).append(fq)
+    return seams
+
+
+def stranded_seams_depth1(src: str) -> dict[str, list[str]]:
+    """Depth-1-only seams that ``src`` neither parses nor forwards."""
+    parsed, passed = _parsed_keys(src), _passed_kwargs(src)
+    return {
+        name: owners
+        for name, owners in _depth1_only_seams().items()
+        if not (name in parsed and name in passed)
+    }
+
+
+# Measured 2026-08-15 against 219 depth-1 functions. Equality, so this tier can
+# only ever shrink from here - exactly like STRANDED_TODAY, from its own
+# baseline rather than by editing depth-0's.
+STRANDED_DEPTH1: dict[str, str] = {
+    "apply_cc_floor": "RM-201 - Tier-2 wiring, filed and OPEN. Owned by "
+                      "cc_pressure.compute_cc_pressure, which has five production "
+                      "callers and none forwards it.",
+    "assume_scaling_hsp_grants": "RM-200 - Tier-2 wiring, filed and OPEN. Owned by "
+                                 "_hsp_amp.sum_wielder_hsp_pct; neither production "
+                                 "call site passes it.",
+    "apply_dual_scaling_split": "RM-36 AD-axis dual-scaling SPLIT, DEFAULT-OFF by "
+                                "design. Owned by _ad_axis_ability; no wiring row "
+                                "filed - see RM-207.",
+}
+
+
 class StrandedSeamGuard(unittest.TestCase):
     """The engine-derived reachability guard. Not circular by construction."""
 
@@ -276,6 +453,88 @@ class StrandedSeamGuard(unittest.TestCase):
         self.assertIn("assume_hsp_amp", _parsed_keys(parse_only))
         self.assertNotIn("assume_hsp_amp", _passed_kwargs(parse_only))
         self.assertIn("assume_hsp_amp", stranded_seams(parse_only))
+
+
+class StrandedSeamGuardDepth1(unittest.TestCase):
+    """RM-202 - the tier the depth-0 guard is structurally blind to."""
+
+    def test_depth1_universe_strictly_extends_depth0(self):
+        eps = _route_facing_entry_points()
+        d1 = _depth1_functions()
+        self.assertGreater(len(eps), 25, "depth-0 entry points collapsed")
+        self.assertGreater(len(d1), len(eps), "depth-1 did not widen the universe")
+        self.assertFalse(
+            set(d1) & set(eps),
+            "depth-1 must be the NEW functions only, not a superset",
+        )
+
+    def test_depth1_stranded_set_equals_the_depth1_ledger(self):
+        self.assertEqual(
+            sorted(stranded_seams_depth1(SERVER_SRC)),
+            sorted(STRANDED_DEPTH1),
+            "depth-1 stranded seams drifted - wire the seam into a route, or add "
+            "it to STRANDED_DEPTH1 with a reason",
+        )
+
+    def test_the_two_seams_rm202_filed_are_now_visible(self):
+        # The headline. Both were invisible to the depth-0 guard while it was
+        # green, and neither is wired.
+        stranded = stranded_seams_depth1(SERVER_SRC)
+        self.assertIn("assume_scaling_hsp_grants", stranded)
+        self.assertIn("apply_cc_floor", stranded)
+        self.assertNotIn("assume_scaling_hsp_grants", _engine_seams())
+        self.assertNotIn("apply_cc_floor", _engine_seams())
+
+    def test_local_import_resolution_is_load_bearing(self):
+        # Pins resolution fix 1. compute_cc_pressure is imported INSIDE
+        # compute_ehp to break a circular module load, so it is absent from the
+        # ehp module namespace - depth extension alone never reaches it.
+        import agents.daemon_slayer.ehp as _ehp
+        self.assertFalse(
+            hasattr(_ehp, "compute_cc_pressure"),
+            "compute_cc_pressure became a module attribute - this test's premise "
+            "is gone, re-derive whether the local-import map is still needed",
+        )
+        self.assertIn("cc_pressure.compute_cc_pressure", _depth1_functions())
+
+    def test_splat_forwarded_keys_are_not_reported_stranded(self):
+        # Pins resolution fix 2, the one blind spot here that produces FALSE
+        # POSITIVES. These three are forwarded through **assumed_share_kwargs,
+        # so they are wired; a splat-blind checker would have written all three
+        # into the ledger as debt that does not exist.
+        stranded = stranded_seams_depth1(SERVER_SRC)
+        for name in (
+            "assume_item_aa_dr",
+            "assume_item_crit_dr",
+            "assume_item_enemy_as_slow",
+        ):
+            with self.subTest(seam=name):
+                self.assertIn(name, _parsed_keys(SERVER_SRC))
+                self.assertIn(name, _passed_kwargs(SERVER_SRC))
+                self.assertNotIn(name, stranded)
+
+    def test_splat_awareness_did_not_move_the_depth0_ledger(self):
+        # The depth-0 ratchet must be byte-exact after this change, which is
+        # what lets STRANDED_TODAY keep its shrink-only property untouched.
+        self.assertEqual(sorted(stranded_seams(SERVER_SRC)), sorted(STRANDED_TODAY))
+
+    def test_depth1_negative_control_goes_red_on_stripped_source(self):
+        # Not vacuously green: a wired depth-1 key must read as stranded once
+        # its forwarding is removed from the source.
+        stripped = SERVER_SRC.replace(
+            'assumed_share_kwargs["assume_item_aa_dr"]', '_dropped_aa_dr'
+        )
+        self.assertNotIn("assume_item_aa_dr", _passed_kwargs(stripped))
+        self.assertIn("assume_item_aa_dr", stranded_seams_depth1(stripped))
+
+    def test_depth1_universe_is_engine_derived_not_server_derived(self):
+        # Anti-circularity for the new tier, mirroring the depth-0 test.
+        seams = _depth1_only_seams()
+        self.assertTrue(seams, "depth-1 seam universe collapsed")
+        self.assertTrue(
+            set(seams) - _parsed_keys(SERVER_SRC),
+            "depth-1 seam universe is a subset of what server.py parses",
+        )
 
 
 class HspCuratedValues(unittest.TestCase):
