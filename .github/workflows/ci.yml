@@ -292,6 +292,29 @@ jobs:
           # to re-sync (python tools/ds_share_sync.py) fails here. Pure stdlib.
           python tools/ds_share_sync.py --check
 
+      - name: DS feed provenance index in sync - a stale row hides a copy-forward
+        run: |
+          # tools/ds_feed_index.json stores, per shipped patch dir per feed, a
+          # content-addressed body hash with every marker / wall-clock / prose
+          # key stripped. --check recomputes all of it off disk and exits 1 on
+          # any disagreement.
+          #
+          # What a failure MEANS: the stored provenance no longer describes the
+          # bytes on disk. That is not cosmetic. The index is the BASELINE the
+          # RM-213 refresh guard compares a new patch dir against
+          # (agents/daemon_slayer/abilities.artifact_refresh_verdict), so a
+          # stale stored hash makes the next copy-forward compare against the
+          # wrong body, read as a legitimate change, and PASS - which is the
+          # exact defect the guard was built to catch. A drifted row is also
+          # how a hand-edited feed slips in with no re-extract behind it.
+          #
+          # Runs HERE rather than in docs-guards.yml: that workflow fires only
+          # on '**/*.md', and the inputs that move this index are
+          # data/daemon_slayer/**/*.json and tools/ds_feed_index.py, so a step
+          # there would never fire on a commit that can cause the drift.
+          # Pure stdlib and read-only, same shape as the Share sync above.
+          python tools/ds_feed_index.py --check
+
       - name: authored-source hygiene
         run: |
           # ASCII-hygiene drift guards: no smart quotes / em-en dashes / NBSP /

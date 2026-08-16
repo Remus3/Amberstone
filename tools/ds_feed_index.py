@@ -1,6 +1,6 @@
 """DS feed provenance index - content-addressed body hashes + declared stamps.
 
-Two design points that MUST survive any later "simplification":
+Three design points that MUST survive any later "simplification":
 
 (a) The index is CONTENT-ADDRESSED and is deliberately NOT a payload-patch
     compare. The sanctioned patch-refresh ritual sed-flips `_patch` on
@@ -13,6 +13,12 @@ Two design points that MUST survive any later "simplification":
     unchanged and correct in a newer patch dir while still declaring the
     patch it was authored against. That is why enchanter_items.json is
     exception-listed in known_stamp_lag rather than reported red.
+
+(c) An unchanged BODY is likewise not a defect on its own - only an unchanged
+    body under a REWRITTEN vintage stamp is. KNOWN_STATIC_BODY is the
+    reasoned-innocent set for the former, and it carries a per-row remedy so it
+    cannot decay into a decorative allowlist. Its hygiene tests live in
+    tests/test_ds_feed_index.py and are what force a row back out again.
 
 Modes:
     python tools/ds_feed_index.py --write    regenerate the index
@@ -66,6 +72,90 @@ KNOWN_STAMP_LAG = {
 # no longer lagging and the guard test correctly rejected the stale entry. The
 # 16.10.1 through 16.13.1 copies still declare 16.9.1; that is historical-dir
 # lag, which this list does not track.
+
+# An UNCHANGED canonical body is not by itself a defect - it is only a defect
+# when the feed's vintage stamp was rewritten with no re-run behind it. This
+# registry is the reasoned-innocent set: the feeds whose static body is the
+# CORRECT result. Everything not listed is reported red.
+#
+# The body-identical set splits three ways and only the third needs an
+# exemption. Re-derive it from the enforcing group in
+# tests/test_ds_feed_index.py rather than trusting a census written here - a
+# recited count goes stale on the next regen, which is exactly how the previous
+# version of this comment became wrong inside a single session.
+#
+# NOT listed, deliberately, and each for a different reason:
+#
+#   champion_abilities.json / items_meraki.json - innocent and PROVABLE from
+#     their own body, so there is nothing to exempt. fetched_at moved
+#     2026-07-16 -> 2026-07-30 in both, i.e. a genuine re-run that returned
+#     identical bytes. A moved vintage stamp is exactly the evidence the
+#     pending-vintage rows below cannot produce.
+#
+#   ability_staleness.json - the FOUNDING instance of the defect class, and no
+#     longer a live finding. Its generator tools/ds_wiki_staleness_check.py
+#     writes _generated_at in the SAME dict literal as _patch (around :454-455),
+#     so the stamp cannot be absent from a real run - yet at 16.15.1 it sat
+#     frozen at 2026-07-18T11:59:22Z across both dirs. A frozen stamp from a
+#     generator that always stamps is positive proof of a copy-forward, not
+#     absence of proof. Exempting it would have been dishonest, so it was
+#     REGENERATED instead (2026-08-16, RM-213); it now carries a moved stamp and
+#     needs no entry. It is named here because it is why this registry exists,
+#     NOT because it is currently red - if it ever reads frozen again, that is a
+#     regression and the answer is another regen, never an exemption.
+KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
+    # filename: (kind, remedy)
+    #   kind in {"authored", "upstream-static", "pending-vintage"}
+    #   remedy: "none" for authored / upstream-static, else the repo-relative
+    #           generator path that must start emitting a vintage key.
+
+    # Arena augment set fetched once at 16.10.1 and carried forward since.
+    # fetched_at is frozen at 2026-05-18T03:58:33 in BOTH dirs, which is
+    # consistent rather than suspicious: there is no newer upstream to fetch,
+    # which is the same root cause that already puts it in KNOWN_STAMP_LAG.
+    "cherry_augments.json": ("upstream-static", "none"),
+
+    # Event-mode feed sourced at 16.10 with no newer upstream. Both of its
+    # vintage keys - fetched_at AND source_generated_at - are frozen at
+    # 2026-05-18 across the two dirs, so the static body is the correct result.
+    # Also in KNOWN_STAMP_LAG for the same reason.
+    "mayhem_augment_stats.json": ("upstream-static", "none"),
+
+    # AUTHORED curation, verified this session: there is NO generator for it
+    # anywhere. A grep of tools/ for the filename returns only this module's
+    # own prose and the generated index sidecar, and every other reference in
+    # the repo READS it (agents/daemon_slayer/hps.py:181 loads the snapshot;
+    # the enchanter tests read the same path). It is 34 hand-curated rows, so
+    # an unchanged body between patches is its normal, correct state and it can
+    # never acquire a vintage stamp.
+    "enchanter_items.json": ("authored", "none"),
+
+    # Genuinely INNOCENT but unprovable from its own body, which carries no
+    # vintage key at all. Verified this session: it is named in the 16.15.1
+    # manifest "outputs", its mtime (2026-07-30T18:24:22) matches that
+    # manifest's extracted_at to the second, and BOTH manifests record the
+    # identical sources.lolmath_scenarios_chunk (370vfc_ounngn.js, 734373
+    # bytes), so the upstream SPA bundle did not rebuild between extracts and a
+    # byte-identical body is the CORRECT extract result. The remedy is a
+    # vintage stamp in the extractor, not a regen: the extractor writes this
+    # file only as part of a whole-snapshot run, never in isolation.
+    "scenarios.json": ("pending-vintage", "tools/daemon_slayer_extract.py"),
+
+    # The two feeds named in point (a) of this module's docstring: the
+    # sanctioned patch-refresh ritual sed-flips _patch on them while the body
+    # is copied forward, so a still body is expected. Neither payload carries a
+    # vintage key, so a real re-run cannot be told from a relabel - which is
+    # precisely the gap the remedy closes.
+    "wiki_ability_stats.json":
+        ("pending-vintage", "tools/daemon_slayer_wiki_ability_extract.py"),
+    "wiki_stats.json":
+        ("pending-vintage", "tools/daemon_slayer_wiki_stats_extract.py"),
+
+    # CDragon per-spell stat sidecar. Body carries no vintage key, so the same
+    # relabel-vs-refresh ambiguity applies.
+    "cdragon_spell_stats.json":
+        ("pending-vintage", "tools/daemon_slayer_cdragon_spell_extract.py"),
+}
 
 
 def live_patch() -> str:
@@ -143,6 +233,13 @@ def build_index() -> dict:
     return {
         "generated_from_current_txt": live_patch(),
         "known_stamp_lag": dict(KNOWN_STAMP_LAG),
+        # Emitted as LISTS, not tuples, and that is load-bearing rather than
+        # stylistic: --check compares the stored index (parsed from JSON, where
+        # a tuple has already become a list) against this freshly built one. A
+        # dict of tuples would therefore never compare equal and the guard
+        # below would report drift on every single run, which is the same as
+        # having no guard at all.
+        "known_static_body": {k: list(v) for k, v in KNOWN_STATIC_BODY.items()},
         "dirs": dirs,
     }
 
@@ -180,6 +277,8 @@ def main() -> int:
         )
     if stored.get("known_stamp_lag") != fresh["known_stamp_lag"]:
         drift.append("  known_stamp_lag: stored differs from tool-declared")
+    if stored.get("known_static_body") != fresh["known_static_body"]:
+        drift.append("  known_static_body: stored differs from tool-declared")
 
     s_dirs, f_dirs = stored.get("dirs", {}), fresh["dirs"]
     for patch in sorted(set(s_dirs) | set(f_dirs)):
