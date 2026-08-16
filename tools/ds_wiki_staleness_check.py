@@ -359,6 +359,7 @@ def compare_champion(
     wiki_by_name: dict[str, str],
     skipped_pages: Optional[list[dict[str, Any]]] = None,
     skipped_labels: Optional[list[dict[str, Any]]] = None,
+    stems: Optional[list[str]] = None,
 ) -> list[dict[str, Any]]:
     """Compare every stored ability of one champion, matched by ability NAME.
 
@@ -384,6 +385,7 @@ def compare_champion(
                         "ability": slot,
                         "name": name,
                         "reason": "no live wiki page for this ability name",
+                        "tried": list(stems or [champion]),
                     }
                 )
             continue
@@ -463,24 +465,71 @@ def _load_abilities(patch: str) -> dict[str, Any]:
     )
 
 
-def _titles_for(champion: str, champ_data: dict[str, Any]) -> list[str]:
-    names = []
+def _load_champion_names(patch: str) -> dict[str, str]:
+    """``{ddragon_key: display_name}`` from the same patch dir, or ``{}``.
+
+    A missing or malformed bulk degrades to key-only titles rather than
+    aborting the sweep - the names are an accuracy improvement, not a
+    precondition.
+    """
+    try:
+        doc = json.loads(
+            (DATA_DIR / patch / "champions.json").read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return {}
+    out: dict[str, str] = {}
+    for key, entry in (doc.get("data") or {}).items():
+        name = (entry or {}).get("name")
+        if name:
+            out[str(key)] = str(name)
+    return out
+
+
+def wiki_title_stems(champion: str, names: dict[str, str]) -> list[str]:
+    """Every spelling a champion's Data pages might be titled under (RM-219).
+
+    `champion_abilities.json` is keyed by DDragon key (`MonkeyKing`) while the
+    wiki titles by display name (`Wukong`), so the key alone found nothing for
+    20 champions. Both are returned rather than the display name alone: the
+    wiki also serves `Template:Data Nunu/...` for a champion whose display name
+    is `Nunu & Willump`, so REPLACING the key would trade one silent miss for
+    another. Order is key first, then display name, and duplicates collapse.
+    """
+    stems = [champion]
+    display = names.get(champion)
+    if display and display != champion:
+        stems.append(display)
+    return stems
+
+
+def _titles_for(
+    champion: str,
+    champ_data: dict[str, Any],
+    names: Optional[dict[str, str]] = None,
+) -> list[str]:
+    abilities = []
     for forms in (champ_data or {}).values():
         if isinstance(forms, list) and forms and isinstance(forms[0], dict):
             n = forms[0].get("name")
             if n:
-                names.append(str(n))
-    return [f"{_TEMPLATE_PREFIX}{champion}/{n}" for n in dict.fromkeys(names)]
+                abilities.append(str(n))
+    return [
+        f"{_TEMPLATE_PREFIX}{stem}/{n}"
+        for stem in wiki_title_stems(champion, names or {})
+        for n in dict.fromkeys(abilities)
+    ]
 
 
 def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
     doc = _load_abilities(patch)
     data = doc.get("data", {})
+    names = _load_champion_names(patch)
     targets = sorted(c for c in data if champions is None or c in champions)
 
     titles: list[str] = []
     for champ in targets:
-        titles.extend(_titles_for(champ, data[champ]))
+        titles.extend(_titles_for(champ, data[champ], names))
     pages = fetch_pages(titles) if titles else {}
 
     findings: list[dict[str, Any]] = []
@@ -488,13 +537,15 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
     skipped_labels: list[dict[str, Any]] = []
     for champ in targets:
         by_name = {}
-        prefix = _TEMPLATE_PREFIX + champ + "/"
-        for title, text in pages.items():
-            if title.startswith(prefix):
-                by_name[title[len(prefix):]] = text
+        stems = wiki_title_stems(champ, names)
+        for stem in stems:
+            prefix = _TEMPLATE_PREFIX + stem + "/"
+            for title, text in pages.items():
+                if title.startswith(prefix):
+                    by_name.setdefault(title[len(prefix):], text)
         findings.extend(
             compare_champion(
-                champ, data[champ], by_name,
+                champ, data[champ], by_name, stems=stems,
                 skipped_pages=skipped_pages, skipped_labels=skipped_labels,
             )
         )
