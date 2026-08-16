@@ -1,5 +1,9 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-08-15 - RM-213 closed and relocated from ROADMAP.md
+
+- **RM-213 CLOSED 2026-08-15 (LEDGER 1266; LANE 6, Tier-2)** - the DS artifact patch-marker guard could not see a patch-refresh carry-forward, because the copy-forward rewrote the marker to match its new directory. Shipped a vintage-aware refresh verdict (`agents/daemon_slayer/abilities.py`), a reasoned exemption registry whose every kind carries a falsifiable obligation (`tools/ds_feed_index.py` `KNOWN_STATIC_BODY`), the cross-dir assertion (`tests/test_ds_feed_index.py`), and `ds_feed_index.py --check` wired into the `ci.yml` `check` job. `data/daemon_slayer/16.15.1/ability_staleness.json` was REGENERATED rather than exempted. **The filed row was an undercount and its do-not-redo fence was STRUCK by the operator:** the census is 7 of 20 under the row's own strip method (10 under the repo's `body_md5`, 2 raw), and `scenarios.json` turned out not to be a carry-forward at all. Full body and the four refuted premises in `BACKLOG.md`; spun off as RM-216 and RM-217.
+
 ## 2026-08-14 - RM-188 pair relocated VERBATIM (size-budget pass)
 
 ### RM-171 body relocated VERBATIM from ROADMAP.md, 2026-08-14 size-budget pass
