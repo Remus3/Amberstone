@@ -6,6 +6,26 @@
 
 ---
 
+# 2026-08-16 - RM-216 closed: instrumenting a silent skip measured it at 3x the signal it was hiding
+
+**Shape: single-thread, TDD, Tier-1.** Commit `d6fc0927`. Files: `tools/ds_wiki_staleness_check.py`, `tests/test_ds_wiki_staleness_check.py`, plus BACKLOG + LEDGER 1267. RED confirmed first at `8 failed, 33 passed`, GREEN at `41 passed`. Full `pytest tests` 19142 / 96 skipped / 4438 subtests, ruff clean.
+
+**THE ROW WAS RIGHT ABOUT THE MECHANISM AND WRONG ABOUT WHICH HALF MATTERS.** RM-216 led with the page-rename skip (`:346-348`), the one that can lose a whole champion. A live `--recent --days 3` run over 13 champions reports `stale=7 findings=11 skipped_pages=0 skipped_labels=31`. The headline site fired ZERO times. The label site (`:317-318`) fired 31 - nearly three discarded comparisons for every finding the report displayed. **Instrumenting a suspected silence is worth doing even when you cannot yet see it fire; the first measurement is what tells you where it actually lives.**
+
+**THE 31 SKIPS ARE NOT THE RENAME THE ROW PREDICTED, and that distinction is the reason not to widen the fix.** They are a systematic Meraki-vs-wiki VOCABULARY gap: stored `Total Physical Damage` against live `Physical Damage per Hit` (Samira W), stored `Total Magic Damage` against live `Magic Damage` + `Magic Damage Per Tick` (Nasus E), six Gangplank R labels against one live `Magic Damage Per Wave`. Fixing that means a label-aliasing table, and there was zero test evidence for any specific alias. Left as a separate unfiled defect. **RM-216 was about the SILENCE, not about making the comparison succeed.**
+
+**A THIRD CLASS SURFACED THAT NOBODY FILED AND NOTHING COULD SEE BEFORE:** Aphelios P, Udyr Q and Udyr R report `live labels []` - the page was fetched and parsed to ZERO labels. That is a parse gap, not a name mismatch, and it is only distinguishable because each skip row carries the labels that WERE found. **When you instrument a skip, record what the lookup DID find, not just that it missed** - the found-set is what separates a rename from a parse failure without a second live fetch.
+
+**Design kept it Tier-1:** optional out-param accumulators rather than a changed return type, so the pre-existing `compare_champion(...) == []` assertion and every caller stayed untouched. Two negative-control tests assert the counters stay at zero on a healthy compare, so the guard cannot pass by always firing. `write_report` carries skip rows forward on a partial merge - the same hazard its own docstring already documents for findings - and recomputes counts from the MERGED lists, not the partial run's own.
+
+**NOT done, deliberately:** no regen of `ability_staleness.json` (needs a live 173-champion sweep; a regen owes Share resync + `ds_feed_index.py --write` AFTER the data moves), so no feed-index churn. No Share resync owed at all - `tools/ds_wiki_staleness_check.py` is NOT in the mirror, checked by listing `Share/src/tools/` (14 files) rather than assumed.
+
+**PROCESS COST, do not repeat:** the suite was run four times and only the uncontended runs agreed. One pass reported 3 ERRORs in `tests/test_unresolved_template_tokens_rm108.py`, another 1 FAILED in `tests/test_mission_control_server.py` - both files untouched by the change, both green standalone and green in the clean run. Two of those runs overlapped because a background suite was started and then a second suite was run in the FOREGROUND against the same ports and files. **Never report a full-suite verdict from a run sharing the box with another suite; on this machine RC + DS + Mission Control are live during every run as it is.**
+
+**Left alone on purpose:** `ROADMAP.md:40` still lists RM-203 as OPEN against a CLOSED record in BACKLOG + LEDGER 1265. The hand-off flagged it as a quick win for a session that owns that work, and this session did not.
+
+---
+
 # 2026-08-15c - RM-213 closed: the artifact guard could not see a carry-forward; 4 of the row's own premises refuted
 
 **Shape: 8 agents - 3 read-only recon, 4 build on disjoint files, 1 adversarial verifier - one merger, no worktrees (disjoint main-tree files).** Commits `9eb3e32b` (census correction) + `0ced2f42` (the guard). CI green on all three workflows. Verified by the merger, never inherited: DS 10684 / 13482 subtests, RC 19134 / 96 skipped / 4438 subtests.
