@@ -447,7 +447,7 @@
     },
     "16.15.1": {
       "ability_staleness.json": {
-        "body_md5": "2ad50954",
+        "body_md5": "68998517",
         "declared_patch": "16.15.1",
         "stamp_field": "_patch"
       },
@@ -457,17 +457,17 @@
         "stamp_field": "patch"
       },
       "build_orders_aram.json": {
-        "body_md5": "d71180be",
+        "body_md5": "a258a834",
         "declared_patch": "16.15.1",
         "stamp_field": "version"
       },
       "build_orders_arena.json": {
-        "body_md5": "8819c384",
+        "body_md5": "68bab744",
         "declared_patch": "16.15.1",
         "stamp_field": "version"
       },
       "build_orders_sr.json": {
-        "body_md5": "f9a2d898",
+        "body_md5": "6c9b2ffe",
         "declared_patch": "16.15.1",
         "stamp_field": "version"
       },
@@ -552,5 +552,35 @@
   "known_stamp_lag": {
     "cherry_augments.json": "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged since 16.10.1; authored feed, body has not moved",
     "mayhem_augment_stats.json": "declares rc_patch 16.10.1 - Mayhem augment stats sourced at 16.10 and carried forward; event-mode feed with no newer upstream"
+  },
+  "known_static_body": {
+    "cdragon_spell_stats.json": [
+      "pending-vintage",
+      "tools/daemon_slayer_cdragon_spell_extract.py"
+    ],
+    "cherry_augments.json": [
+      "upstream-static",
+      "none"
+    ],
+    "enchanter_items.json": [
+      "authored",
+      "none"
+    ],
+    "mayhem_augment_stats.json": [
+      "upstream-static",
+      "none"
+    ],
+    "scenarios.json": [
+      "pending-vintage",
+      "tools/daemon_slayer_extract.py"
+    ],
+    "wiki_ability_stats.json": [
+      "pending-vintage",
+      "tools/daemon_slayer_wiki_ability_extract.py"
+    ],
+    "wiki_stats.json": [
+      "pending-vintage",
+      "tools/daemon_slayer_wiki_stats_extract.py"
+    ]
   }
 }
