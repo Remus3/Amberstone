@@ -37,10 +37,12 @@ Snapshot layout::
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from collections import Counter
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -530,13 +532,11 @@ def check_artifact_patch(
     False.
 
     ``strict`` (default False / OFF) additionally raises ``ValueError``.
-    Enforcement ships OFF because it is measurably NOT a no-op on the shipped
-    16.14.1 data, which is the bar RM-81's ``strict_cdragon_patch`` cleared and
-    this guard cannot:
+    Enforcement ships OFF because it is measurably NOT a no-op on the CURRENT
+    shipped dir (``data/daemon_slayer/current.txt``, 16.15.1 when this was last
+    re-measured on 2026-08-15), which is the bar RM-81's
+    ``strict_cdragon_patch`` cleared and this guard cannot:
 
-    * ``arena_augments.json`` and ``items_meraki.json`` carry no marker at all.
-      ``tools/daemon_slayer_extract.py`` stamps both as of this commit, but the
-      copies on disk predate the stamp and only a re-extract clears them.
     * The two authored event-mode augment feeds declare ``rc_patch`` 16.10.1 ON
       PURPOSE - their body has not moved. They are named once, in
       ``tools/ds_feed_index.KNOWN_STAMP_LAG``, and deliberately not repeated here:
@@ -544,9 +544,22 @@ def check_artifact_patch(
       reads a bare mention inside the engine package as evidence the engine READS
       it. Enforcing stamp-equals-directory on them would be a false positive.
 
+    The OTHER historical reason is GONE and the old wording here was measurably
+    wrong: this docstring used to claim ``arena_augments.json`` and
+    ``items_meraki.json`` "carry no marker at all". Re-measured 2026-08-15 over
+    the current dir, ZERO of its 20 artifacts lack a marker - both of those now
+    declare ``patch`` equal to their directory, backfilled in place plus stamped
+    by ``tools/daemon_slayer_extract.py`` for every future extract.
+
+    That correction is not housekeeping, it is the RM-213 defect: a MATCHING
+    marker is not evidence of a refresh. The marker is exactly the field a
+    copy-forward commit rewrites, so this guard goes green on an artifact whose
+    body never moved. :func:`check_artifact_refresh` is the second axis - pair
+    them, and never read a green from this one alone as "regenerated".
+
     Detection is therefore always on and enforcement is opt-in. Flip ``strict``
     per-call once an artifact is known clean; do NOT flip the default until the
-    pending set is empty and the lag list is handled explicitly.
+    lag list is handled explicitly.
     """
     key, got = artifact_patch_marker(_read_artifact_doc(root, patch, artifact))
     if got == patch:
@@ -562,6 +575,279 @@ def check_artifact_patch(
             f"DS artifact {patch}/{artifact} was generated at patch {got!r} "
             f"(marker {key!r}), not {patch!r} - stale copy carried forward."
         )
+    _LOG.warning("%s", msg)
+    if strict:
+        raise ValueError(msg)
+    return False
+
+
+# --- RM-213: the SECOND axis - did the artifact actually get re-generated? ----
+#
+# check_artifact_patch above answers "does the payload declare the dir it sits
+# in". That is necessary and NOT sufficient, and the reason is structural
+# rather than incidental: a copy-forward commit rewrites exactly that marker,
+# so the patch-marker guard is green over every relabelled artifact BY
+# CONSTRUCTION. The marker is evidence about the commit, never about the body.
+#
+# Two independent signals separate a real refresh from a relabel, and neither
+# is sufficient alone:
+#
+#   BODY     the canonical fingerprint below - every marker / wall-clock /
+#            prose key stripped. Answers "did the content move".
+#   VINTAGE  the payload's own GENERATION stamp. Answers "did a run happen".
+#
+# BODY alone over-reports. Measured across all six shipped dirs: items_meraki
+# and champion_abilities each carry a canonically-identical body in every one
+# of them while their ``fetched_at`` moved on every extract. Both are genuinely
+# re-fetched each time and genuinely return the same bytes, so a body-only
+# check reports them red forever and the red means nothing.
+#
+# VINTAGE alone under-reports, and the founding RM-213 instance is why:
+# tools/ds_wiki_staleness_check.py:454-455 writes ``_patch`` and
+# ``_generated_at`` into the SAME dict literal, so a genuine run cannot emit
+# one without the other - yet ability_staleness.json once sat in the current
+# dir declaring the current patch over a ``_generated_at`` byte-identical to
+# the previous dir's. A generator that ALWAYS stamps, showing a frozen stamp,
+# is positive proof of a copy-forward rather than mere absence of proof. (That
+# artifact has since been regenerated - it is recorded here as the shape this
+# guard exists to catch, not as a live finding.)
+#
+# So the verdict below reads body AND vintage together. That is what lets it
+# tell "re-run, returned identical bytes" (innocent) from "relabelled" (the
+# defect) from "carries no stamp at all, so unknowable either way" (a
+# remediable gap in the generator, not an accusation against the payload).
+#
+# Wall-clock GENERATION keys, in precedence order. Same key NAMES as
+# tools/ds_feed_index._WALL_CLOCK, deliberately DUPLICATED rather than imported:
+# the engine package must not import from tools/. The duplication is paid for by
+# a parity test that loads ds_feed_index by path and asserts the subset.
+_VINTAGE_KEYS: tuple[str, ...] = (
+    "_generated_at",
+    "generated_at",
+    "extracted_at",
+    "source_generated_at",
+    "fetched_at",
+    "timestamp",
+)
+
+# Keys dropped before hashing a body, BY NAME and at EVERY depth. Mirrors
+# tools/ds_feed_index._STRIP (wall-clock + prose + stamp) so a fingerprint
+# computed here is comparable with a body_md5 computed there. Never a
+# value-shape regex: wiki_ability_stats carries bare numeric strings
+# (speed_raw='1800') that a "looks like a version" matcher would eat.
+_BODY_PROSE_KEYS: tuple[str, ...] = ("generated_note", "_note")
+_BODY_STAMP_KEYS: tuple[str, ...] = (
+    "version",
+    "patch",
+    "_patch",
+    "rc_patch",
+    "source_patch",
+    "ddragon_version",
+    "patch_segment",
+    "_patch_segment",
+    "meraki_content_patch",
+    "_meraki_content_patch",
+    "content_patch",
+)
+_BODY_STRIP_KEYS: frozenset[str] = frozenset(
+    _VINTAGE_KEYS + _BODY_PROSE_KEYS + _BODY_STAMP_KEYS
+)
+
+
+def artifact_vintage(doc: object) -> tuple[str | None, str | None]:
+    """The ``(key, ISO-8601 value)`` of ``doc``'s own GENERATION stamp.
+
+    ``(None, None)`` for a non-dict, an absent stamp, or a value that is not a
+    parseable timestamp - the same unprovable-vintage contract
+    :func:`artifact_patch_marker` uses for the patch marker.
+
+    Parsed with ``datetime.fromisoformat`` and NOT with a fixed ``strptime``
+    format: all six shapes on disk (trailing ``Z``, ``-0500``, ``+00:00``, each
+    with and without microseconds) round-trip through ``fromisoformat`` with
+    tzinfo attached, and any single ``strptime`` format rejects three of them.
+    """
+    if not isinstance(doc, dict):
+        return None, None
+    for key in _VINTAGE_KEYS:
+        val = doc.get(key)
+        if not isinstance(val, str) or not val:
+            continue
+        try:
+            datetime.fromisoformat(val)
+        except ValueError:
+            continue
+        return key, val
+    return None, None
+
+
+def _canonical_body(obj):
+    """Recursively drop marker, wall-clock and prose keys by NAME."""
+    if isinstance(obj, dict):
+        return {
+            k: _canonical_body(v)
+            for k, v in obj.items()
+            if k not in _BODY_STRIP_KEYS
+        }
+    if isinstance(obj, list):
+        return [_canonical_body(v) for v in obj]
+    return obj
+
+
+def artifact_body_fingerprint(doc: object) -> str:
+    """8-hex digest of ``doc`` with every marker / wall-clock / prose key gone.
+
+    Content-addressed, so it answers "did the CONTENT move" independently of
+    what the payload claims about itself. Same canonicalisation and same digest
+    width as ``tools/ds_feed_index.body_md5``, so the two are comparable and a
+    caller may pass a stored index row straight in as ``prior_body``.
+    """
+    blob = json.dumps(
+        _canonical_body(doc), sort_keys=True, separators=(",", ":")
+    )
+    return hashlib.md5(blob.encode("utf-8")).hexdigest()[:8]
+
+
+def artifact_refresh_verdict(
+    doc: object, *, prior_body: str | None, prior_vintage: str | None
+) -> str:
+    """Classify ``doc`` against the PREVIOUS patch dir's body + vintage.
+
+    One of five strings, so a caller can pin WHICH condition fired rather than
+    only that nothing raised:
+
+    ``no-baseline``   no ``prior_body`` was supplied. An explicit PASS, never a
+                      skip - "there is no previous dir" is the CALLER's answer.
+    ``body-moved``    the content itself changed. Refreshed, provably.
+    ``vintage-moved`` body identical, generation stamp moved. A genuine re-run
+                      that returned identical bytes (the items_meraki shape).
+    ``frozen``        body identical AND the generation stamp is byte-identical.
+                      No re-run happened; a matching patch marker on top of this
+                      is a relabel (the ability_staleness shape - RM-213).
+    ``unprovable``    body identical and the payload carries NO generation stamp
+                      at all, so re-run cannot be confirmed either way (the
+                      scenarios / wiki_* shape).
+
+    The baseline is INJECTED, never read from disk. The Share mirror ships only
+    ONE patch dir, so a helper that went looking for the previous dir itself
+    would be a permanent silent skip inside the shipped package.
+    """
+    if prior_body is None:
+        return "no-baseline"
+    if artifact_body_fingerprint(doc) != prior_body:
+        return "body-moved"
+    _, vintage = artifact_vintage(doc)
+    if vintage is not None and vintage != prior_vintage:
+        return "vintage-moved"
+    if vintage is not None:
+        return "frozen"
+    return "unprovable"
+
+
+def check_artifact_refresh(
+    root: Path,
+    patch: str,
+    artifact: str,
+    *,
+    prior_body: str | None,
+    prior_vintage: str | None,
+    strict: bool = False,
+) -> bool:
+    """Verify ``<root>/<patch>/<artifact>`` was REGENERATED, not relabelled.
+
+    The sibling of :func:`check_artifact_patch` on the other axis. That one asks
+    whether the payload declares its own directory; this one asks whether
+    anything about the payload actually moved since ``prior_body`` /
+    ``prior_vintage`` (the previous dir's, supplied BY THE CALLER - see
+    :func:`artifact_refresh_verdict`).
+
+    Returns False, logging at WARNING with the artifact name and the verdict,
+    for ``frozen`` and ``unprovable``. True for ``no-baseline``, ``body-moved``
+    and ``vintage-moved``.
+
+    ``strict`` (default False / OFF) additionally raises ``ValueError``.
+    Enforcement ships OFF for the same reason ``check_artifact_patch`` does: it
+    is measurably not a no-op over the shipped dirs. The load-bearing point is
+    that a False here is NOT automatically a defect - both failing verdicts
+    have a legitimate reading:
+
+    * ``frozen`` is the CORRECT result for a feed whose upstream genuinely has
+      not moved. The two authored event-mode augment feeds named in
+      ``tools/ds_feed_index.KNOWN_STAMP_LAG`` read ``frozen`` precisely BECAUSE
+      their vintage is honestly frozen - there is no newer upstream to fetch,
+      so an actual re-run would reproduce the same stamp. Those two are
+      referred to by their registry and never by filename on purpose: one of
+      them is Share-excluded, and
+      ``tests/test_ds_share_data_snapshot_scope.py`` scans every non-transient
+      ``*.py`` under this package for the excluded sidecar's stem, reading a
+      bare mention as evidence the engine READS a file the mirror does not
+      ship. Going through the registry satisfies that guard without depending
+      on which of the two is currently excluded.
+    * ``unprovable`` is a gap in the GENERATOR, not an accusation against the
+      payload: the body did not move and nothing in it records a run, so this
+      guard has nothing to read either way. The remedy is a vintage key at the
+      write site. A hand-authored feed with no generator at all can never
+      acquire one, and for it an unchanged body is the normal, correct state.
+
+    WHICH artifacts currently read which verdict is deliberately NOT recited
+    here. A census in prose is unguarded, goes stale on the next regen or patch
+    bump, and the one that used to sit in this paragraph went stale inside a
+    single session. The durable pair is a registry plus a machine check:
+    ``tools/ds_feed_index.KNOWN_STATIC_BODY`` is the reasoned-innocent set,
+    one written reason per feed, and the live-dir group in
+    ``tests/test_ds_feed_index.py`` enforces the invariant that actually
+    matters - every artifact reading ``frozen`` or ``unprovable`` against the
+    previous dir must carry an entry there, so an unexplained one fails CI
+    instead of sitting uncontradicted in a comment. To re-derive the live
+    picture rather than trust prose::
+
+        # recomputes each verdict off disk and NAMES any feed lacking a
+        # reasoned exemption; this is the invariant, not a printout
+        python -m pytest tests/test_ds_feed_index.py -q
+
+        # recomputes every stored body hash off disk; exit 1 on any drift,
+        # which is what keeps the baseline above honest
+        python tools/ds_feed_index.py --check
+
+    Scope note: an ABSENT artifact is not this guard's job. It fingerprints as
+    the empty document, which differs from any real ``prior_body`` and so reads
+    ``body-moved``; :func:`check_artifact_patch` is what reports a missing or
+    unreadable file.
+    """
+    doc = _read_artifact_doc(root, patch, artifact)
+    verdict = artifact_refresh_verdict(
+        doc, prior_body=prior_body, prior_vintage=prior_vintage
+    )
+    if verdict == "no-baseline":
+        _LOG.debug(
+            "DS artifact %s/%s: verdict 'no-baseline' - no prior body supplied, "
+            "so the refresh check PASSES by contract (not a skip).",
+            patch,
+            artifact,
+        )
+        return True
+    if verdict in ("body-moved", "vintage-moved"):
+        _LOG.debug(
+            "DS artifact %s/%s: verdict %r - re-generation evidence present.",
+            patch,
+            artifact,
+            verdict,
+        )
+        return True
+    if verdict == "frozen":
+        detail = (
+            f"body is byte-identical to the previous dir's AND its generation "
+            f"stamp is unchanged at {prior_vintage!r} - it was copied forward "
+            f"and relabelled, not regenerated (RM-213 class)"
+        )
+    else:
+        detail = (
+            "body is byte-identical to the previous dir's and the payload "
+            "carries no generation stamp, so a re-run cannot be confirmed - "
+            "add one at the write site (RM-213 class)"
+        )
+    msg = (
+        f"DS artifact {patch}/{artifact} refresh verdict {verdict!r}: {detail}."
+    )
     _LOG.warning("%s", msg)
     if strict:
         raise ValueError(msg)
