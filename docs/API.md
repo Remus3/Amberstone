@@ -56,7 +56,6 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/champ-select/pickban-recs` | pickban |
 | `/api/champ-select/spell-winrates` | adaptive_summoners |
 | `/api/champ-select/team-damage-mix` | pickban |
-| `/api/cooldown-watch` | cooldown_watch |
 | `/api/cs-archetype-pick` | archetype |
 | `/api/damage-mix` | damage_mix |
 | `/api/dictionary/{augments,champion-tags,items,runes}` | dictionary |
@@ -75,7 +74,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/item-wpa` / `/api/skill-wpa` / `/api/rune-wpa` / `/api/summspell-wpa` | *_wpa |
 | `/api/last-match` | last_match |
 | `/api/lcu/auto-accept` | auto_accept |
-| `/api/loop-status` / `/api/loop-monitor` / `/loop-monitor` | loop_status / loop_monitor |
+| `/api/loop-monitor` / `/loop-monitor` | loop_monitor |
 | `/api/mains` / `/api/top8` | lobby_aux |
 | `/api/op-score-curve` | op_score |
 | `/api/peel-priority` | peel_priority |
@@ -122,7 +121,6 @@ Static assets (`routes_static`): `/`, `/css/`, `/js/`, `/data/`, `/icons/*`,
 | `/api/loadout/apply` | `{variant_id}` | Apply a saved SR loadout via LCU |
 | `/api/loadout/list` | `{champion?, mode?}` | List available loadout variants |
 | `/api/loadout/rune-pages` | - | Rune-page ops via LCU |
-| `/api/loop-control` | - | Headless-loop remote control |
 | `/api/scouting` | - | Player-scouting rank fan-out |
 | `/api/speak` | `SpeakRequest` | TTS speak (voice coach) |
 | `/api/sr-draft/apply` | `{profile_id}` | Apply SR draft coaching profile |
@@ -130,6 +128,24 @@ Static assets (`routes_static`): `/`, `/css/`, `/js/`, `/data/`, `/icons/*`,
 | `/api/team-context/refresh` | `TeamContextRefreshRequest` | Force team-context recompute |
 | `/api/top8` | - | Lobby top-8 refresh |
 | `/api/vision-reference` / `/api/vision-regions` | - | Vision-calibrator reference/region writes |
+
+---
+
+## NOT on `:8888` - Mission Control (`:8895`)
+
+These two live in `dashboard/routes_*.py` alongside the dashboard modules above, but
+`dashboard/_dispatch.py` does NOT register them: `mc/routes.py` mounts them on the
+Mission Control server (`mc/server.py`, `PORT = 8895`, tailnet + loopback). They are
+listed here only so a reader who greps `dashboard/routes_loop_*` does not conclude
+they are reachable on `:8888` - they are not.
+
+| Path | Method | Module | Served by |
+|---|---|---|---|
+| `/api/loop-status` | GET | loop_status | `mc/routes.py` -> `:8895` |
+| `/api/loop-control` | POST | loop_control | `mc/routes.py` -> `:8895` |
+
+(`/api/loop-monitor` + `/loop-monitor` ARE on `:8888` - different module,
+`dashboard/routes_loop_monitor.py`, registered in `_dispatch.py`.)
 
 ---
 
