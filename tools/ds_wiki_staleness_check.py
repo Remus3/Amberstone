@@ -292,9 +292,19 @@ def _differs(a: tuple[float, float], b: tuple[float, float]) -> bool:
 
 
 def compare_ability(
-    champion: str, slot: str, entry: dict[str, Any], wikitext: str
+    champion: str,
+    slot: str,
+    entry: dict[str, Any],
+    wikitext: str,
+    skipped_labels: Optional[list[dict[str, Any]]] = None,
 ) -> list[dict[str, Any]]:
-    """Compare one stored ability form against its live wiki Data page."""
+    """Compare one stored ability form against its live wiki Data page.
+
+    A stored damage label with no counterpart on the live page cannot be
+    compared - the wiki relabels damage lines on reworks. That is not an error
+    and the sweep keeps going, but it is LOST COVERAGE, so pass
+    ``skipped_labels`` to have each miss appended rather than dropped (RM-216).
+    """
     findings: list[dict[str, Any]] = []
     mine = meraki_endpoints(entry)
 
@@ -315,7 +325,20 @@ def compare_ability(
     suspect = mine.get("shape_suspect") or {}
     for attr, pts in mine["bases"].items():
         live = wiki_bases.get(attr)
-        if live and _differs(pts, live):
+        if not live:
+            if skipped_labels is not None:
+                skipped_labels.append(
+                    {
+                        "champion": champion,
+                        "ability": slot,
+                        "name": entry.get("name"),
+                        "label": attr,
+                        "reason": "label absent from live wiki page",
+                        "wiki_labels": sorted(wiki_bases),
+                    }
+                )
+            continue
+        if _differs(pts, live):
             row = {
                 "champion": champion,
                 "ability": slot,
@@ -334,8 +357,16 @@ def compare_champion(
     champion: str,
     meraki_champ: dict[str, Any],
     wiki_by_name: dict[str, str],
+    skipped_pages: Optional[list[dict[str, Any]]] = None,
+    skipped_labels: Optional[list[dict[str, Any]]] = None,
 ) -> list[dict[str, Any]]:
-    """Compare every stored ability of one champion, matched by ability NAME."""
+    """Compare every stored ability of one champion, matched by ability NAME.
+
+    The match is by name, so a wiki page RENAME (ability renamed on a rework)
+    leaves the stored ability with no page and nothing to compare. Pass
+    ``skipped_pages`` to have that recorded instead of silently dropping the
+    ability - and, when it is the champion's only one, the champion (RM-216).
+    """
     findings: list[dict[str, Any]] = []
     for slot, forms in (meraki_champ or {}).items():
         if not isinstance(forms, list) or not forms:
@@ -343,10 +374,22 @@ def compare_champion(
         entry = forms[0]
         if not isinstance(entry, dict):
             continue
-        page = wiki_by_name.get(str(entry.get("name") or ""))
+        name = str(entry.get("name") or "")
+        page = wiki_by_name.get(name)
         if not page:
+            if skipped_pages is not None:
+                skipped_pages.append(
+                    {
+                        "champion": champion,
+                        "ability": slot,
+                        "name": name,
+                        "reason": "no live wiki page for this ability name",
+                    }
+                )
             continue
-        findings.extend(compare_ability(champion, slot, entry, page))
+        findings.extend(
+            compare_ability(champion, slot, entry, page, skipped_labels=skipped_labels)
+        )
     return findings
 
 
@@ -441,13 +484,20 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
     pages = fetch_pages(titles) if titles else {}
 
     findings: list[dict[str, Any]] = []
+    skipped_pages: list[dict[str, Any]] = []
+    skipped_labels: list[dict[str, Any]] = []
     for champ in targets:
         by_name = {}
         prefix = _TEMPLATE_PREFIX + champ + "/"
         for title, text in pages.items():
             if title.startswith(prefix):
                 by_name[title[len(prefix):]] = text
-        findings.extend(compare_champion(champ, data[champ], by_name))
+        findings.extend(
+            compare_champion(
+                champ, data[champ], by_name,
+                skipped_pages=skipped_pages, skipped_labels=skipped_labels,
+            )
+        )
 
     stale = sorted({f["champion"] for f in findings})
     return {
@@ -459,13 +509,28 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
             "RM-81 staleness report. A row means the STORED Meraki value and the "
             "LIVE wiki value disagree at the first/last rank endpoint for the same "
             "labelled quantity. Conservative: unmatched damage labels are skipped, "
-            "so this UNDER-reports. Absence of a champion is not proof of currency."
+            "so this UNDER-reports. Absence of a champion is not proof of currency "
+            "- if it was skipped rather than compared it is named in "
+            "skipped_champions, so a shrinking stale set can be read as "
+            "convergence or as lost coverage without a live wiki fetch (RM-216)."
         ),
         "_checked_champions": len(targets),
         "_pages_fetched": len(pages),
+        "_skipped_pages": len(skipped_pages),
+        "_skipped_labels": len(skipped_labels),
         "stale_champions": stale,
+        "skipped_champions": _skipped_champions(skipped_pages, skipped_labels),
+        "skipped_pages": skipped_pages,
+        "skipped_labels": skipped_labels,
         "findings": findings,
     }
+
+
+def _skipped_champions(*rows: Iterable[dict[str, Any]]) -> list[str]:
+    out: set[str] = set()
+    for group in rows:
+        out.update(str(r.get("champion")) for r in group or [])
+    return sorted(out)
 
 
 def write_report(
@@ -493,6 +558,17 @@ def write_report(
             merged["findings"] = kept + list(report.get("findings") or [])
             merged["stale_champions"] = sorted(
                 {f["champion"] for f in merged["findings"]}
+            )
+            for key in ("skipped_pages", "skipped_labels"):
+                carried = [
+                    s for s in (prior.get(key) or [])
+                    if s.get("champion") not in checked
+                ]
+                merged[key] = carried + list(report.get(key) or [])
+            merged["_skipped_pages"] = len(merged["skipped_pages"])
+            merged["_skipped_labels"] = len(merged["skipped_labels"])
+            merged["skipped_champions"] = _skipped_champions(
+                merged["skipped_pages"], merged["skipped_labels"]
             )
             merged["_mode"] = "recent+merged"
         except (OSError, ValueError, AttributeError, KeyError):
@@ -551,8 +627,20 @@ def main(argv: Optional[list[str]] = None) -> int:
             f"checked={report['_checked_champions']} "
             f"pages={report['_pages_fetched']} "
             f"stale={len(report['stale_champions'])} "
-            f"findings={len(report['findings'])}"
+            f"findings={len(report['findings'])} "
+            f"skipped_pages={report.get('_skipped_pages', 0)} "
+            f"skipped_labels={report.get('_skipped_labels', 0)}"
         )
+        for row in report.get("skipped_pages") or []:
+            print(
+                f"  SKIP-PAGE {row['champion']} {row['ability']} "
+                f"'{row['name']}': {row['reason']}"
+            )
+        for row in report.get("skipped_labels") or []:
+            print(
+                f"  SKIP-LABEL {row['champion']} {row['ability']} "
+                f"'{row['label']}': live labels {row['wiki_labels']}"
+            )
         for champ in report["stale_champions"]:
             rows = [f for f in report["findings"] if f["champion"] == champ]
             detail = ", ".join(
