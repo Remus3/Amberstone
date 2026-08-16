@@ -25,6 +25,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 _TOOLS = Path(__file__).resolve().parents[1] / "tools"
 if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
@@ -755,3 +757,132 @@ def test_champion_names_load_reads_the_ddragon_bulk(tmp_path, monkeypatch):
         encoding="utf-8",
     )
     assert M._load_champion_names("16.15.1") == {"MonkeyKing": "Wukong"}
+
+
+# --------------------------------------------------------------------------- RM-218
+#
+# RM-218 was FILED as a "Meraki-vs-wiki vocabulary gap" on the theory that the
+# wiki simply does not publish the aggregate labels Meraki stores. **That is
+# refuted by the pages themselves.** Every fixture below is verbatim live
+# wikitext, and each one CARRIES the label the report said was missing:
+#
+#   Alistar Trample  - `Total Magic Damage` is the second pair of the SAME
+#                      {{st|}} block, and the parser read only the first.
+#   Akali Shuriken Flip - same, in |leveling3.
+#   Gangplank R      - all six stored labels are on the page.
+#
+# Three mechanisms, one parser, and they compose - Alistar needs the pair split
+# AND arithmetic before either of its two labels resolves:
+#
+#   (1) a {{st|}} block may hold MANY label/value pairs, not one
+#   (2) an endpoint may be an EXPRESSION - {{ap|80/10 to 200/10}}, {{ap|40*12+40*3 ...}}
+#   (3) a label may embed a template - `True Damage with {{ii|Death's Daughter}}`
+#
+# The zero-label rows RM-218 filed separately as "(B), a different fix" are the
+# same root cause: Alistar and Akali parse to {} today purely because their
+# only plain-numeric label is the one the pair split never reaches.
+
+ALISTAR_E_WIKI = (
+    "|leveling     = {{st|Magic Damage Per Tick|{{ap|80/10 to 200/10}} "
+    "{{as|(+ {{ap|70/10}}% AP)}}|Total Magic Damage|{{ap|80 to 200}} "
+    "{{as|(+ 70% AP)}}}}\n"
+)
+
+AKALI_E_WIKI = (
+    "|leveling3    = {{st|Magic Damage|{{ap|70*0.7 to 350*0.7}} "
+    "{{as|(+ {{ap|100*0.7}}% AD)}} {{as|(+ {{ap|110*0.7}}% AP)}}"
+    "|Total Magic Damage|{{ap|70 to 350}} {{as|(+ 100% AD)}} "
+    "{{as|(+ 110% AP)}}}}\n"
+)
+
+GANGPLANK_R_WIKI = (
+    "|leveling    = {{st|Magic Damage Per Wave|{{ap|40 to 100}} "
+    "{{as|(+ 10% AP)}}|Magic Damage Per Cluster|{{ap|40*3 to 100*3}} "
+    "{{as|(+ {{ap|10*3}}% AP)}}}}\n"
+    "{{st|Total Magic Damage|{{ap|40*12 to 100*12}} {{as|(+ {{ap|10*12}}% AP)}}}}\n"
+    "|leveling3    = {{st|True Damage with {{ii|Death's Daughter}}|"
+    "{{ap|40*3 to 100*3}} {{as|(+ {{ap|10*3}}% AP)}}}}\n"
+)
+
+
+# ------------------------------------------------------------- (1) the pair split
+
+def test_second_pair_of_an_st_block_is_read():
+    """The defect RM-218 mis-filed as a vocabulary gap. `Total Magic Damage` is
+    RIGHT THERE, as pair two of the same block."""
+    got = M.parse_leveling_bases(ALISTAR_E_WIKI)
+    assert got.get("Total Magic Damage") == (80.0, 200.0)
+
+
+def test_single_pair_block_is_unchanged_by_the_split():
+    """Negative control: the Maokai path must not move."""
+    assert M.parse_leveling_bases(MAOKAI_Q_WIKI).get("Magic Damage") == (75.0, 255.0)
+
+
+def test_pair_split_does_not_read_a_scaling_term_as_a_label():
+    """`{{as|(+ 70% AP)}}` sits between the pairs; it is not a label."""
+    got = M.parse_leveling_bases(ALISTAR_E_WIKI)
+    assert not any("AP)" in k for k in got)
+
+
+# ------------------------------------------------------------- (2) expression endpoints
+
+def test_division_endpoint_is_evaluated():
+    """Alistar's per-tick line is `80/10 to 200/10`, i.e. 8 to 20."""
+    assert M.parse_endpoints("{{ap|80/10 to 200/10}}") == (8.0, 20.0)
+
+
+def test_multiplication_endpoint_is_evaluated():
+    """IEEE754, not a bug: 350*0.7 is 244.99999999999997. `_differs` compares
+    within `_TOL`, so binary float noise never reaches a finding."""
+    lo, hi = M.parse_endpoints("{{ap|70*0.7 to 350*0.7}}")
+    assert lo == pytest.approx(49.0)
+    assert hi == pytest.approx(245.0)
+
+
+def test_sum_of_products_endpoint_is_evaluated():
+    """Gangplank's mixed-damage line: 40*12+40*3 to 100*12+100*3."""
+    assert M.parse_endpoints("{{ap|40*12+40*3 to 100*12+100*3}}") == (600.0, 1500.0)
+
+
+def test_expression_endpoint_rejects_anything_that_is_not_arithmetic():
+    """A whitelist, not an evaluator. Names and calls must not resolve."""
+    assert M.parse_endpoints("{{ap|__import__ to 2}}") is None
+    assert M.parse_endpoints("{{ap|open('x') to 2}}") is None
+    assert M.parse_endpoints("{{ap|2**9999999 to 2}}") is None
+
+
+def test_plain_numeric_endpoints_still_parse():
+    """Negative control for the arithmetic path."""
+    assert M.parse_endpoints("{{ap|7 to 5}}") == (7.0, 5.0)
+    assert M.parse_endpoints("40") == (40.0, 40.0)
+    assert M.parse_endpoints("{{tip|cr}} 450 based on level") is None
+
+
+# ------------------------------------------------------------- (3) templated labels
+
+def test_template_inside_a_label_is_flattened_to_its_text():
+    """Stored side reads `True Damage with Death's Daughter`, plain."""
+    got = M.parse_leveling_bases(GANGPLANK_R_WIKI)
+    assert "True Damage with Death's Daughter" in got
+
+
+# ------------------------------------------------------------- composition
+
+def test_alistar_resolves_both_labels_only_when_all_parts_compose():
+    got = M.parse_leveling_bases(ALISTAR_E_WIKI)
+    assert got.get("Magic Damage Per Tick") == (8.0, 20.0)
+    assert got.get("Total Magic Damage") == (80.0, 200.0)
+
+
+def test_akali_leveling3_resolves_both_labels():
+    got = M.parse_leveling_bases(AKALI_E_WIKI)
+    assert got.get("Magic Damage") == pytest.approx((49.0, 245.0))
+    assert got.get("Total Magic Damage") == (70.0, 350.0)
+
+
+def test_gangplank_multi_block_page_resolves_every_stored_label():
+    got = M.parse_leveling_bases(GANGPLANK_R_WIKI)
+    assert got.get("Magic Damage Per Wave") == (40.0, 100.0)
+    assert got.get("Magic Damage Per Cluster") == (120.0, 300.0)
+    assert got.get("Total Magic Damage") == (480.0, 1200.0)
