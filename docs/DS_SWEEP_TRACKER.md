@@ -69,69 +69,24 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free GAP spec = **RM-208**. (RM-205, RM-206 and RM-207 were consumed 2026-08-15 by the RM-197
-  adversarial gate - four scope-fenced sanitizer bypasses, body in `BACKLOG.md`.)
-  (This line read `RM-203` for the few hours between
-  the two 2026-08-14 sessions landing. RM-203 + RM-204 were allocated concurrently by
-  the headless-upgrade run and are recorded in the block below; measured 2026-08-15 the
-  true max is **RM-204** across the working tree AND all three lane branches - `lane/ds`
-  and `lane/true-audit` top out at RM-177, so neither hides a higher id. **This is the
-  RM-192 defect recurring within one day, which is the argument for its guard**: the
-  pointer is only ever correct until the next concurrent session, and nothing machine-
-  checks it.)
-  **POINTER CORRECTED 2026-08-14 (lane-research): this line read `RM-135` and was 57 ids stale.**
-  RM-135 had been in use since 2026-08-01 and the live repo-wide max was RM-191, so an agent
-  following `tools/headless-research.md:46` or `tools/headless-true-audit.md:305` - both of which
-  name this file as the authoritative registry - would have minted a COLLIDING id. That is the
-  THIRD time this pointer has gone stale (see the RM-119 and RM-134 corrections recorded in
-  `docs/history_notes.md:2372` and `:2288`), which is why the standing fix is a GUARD and not
-  another hand-correction: filed as **RM-192**. Until that guard exists, do NOT trust this line
-  on its own - derive the max with a repo-wide `grep -rhoE "RM-[0-9]{1,3}"` over `ROADMAP.md`,
-  `BACKLOG.md` and `docs/LEDGER.md` and take the next id above it.
-  (lane-research corrected 2026-07-31: the prior "= RM-119"
-  pointer was ITSELF stale - RM-119..RM-127 were all consumed by ROADMAP/BACKLOG rows whose
-  tracker registration was owed-and-never-done, exactly the "tracker registration is owed"
-  note each carries. Roughly: RM-119 skip-audit laning gap, RM-120..RM-122 UI/CCR lanes,
-  RM-123/RM-124 shipped/gated, RM-125 web-glyph, RM-126 relocated, RM-127 CCR link-ingest.
-  Verify the true max before taking an id:
-  `grep -rhoE "RM-[0-9]+" ROADMAP.md BACKLOG.md docs/ | sort -t- -k2 -n | tail -1`.)
-  Historical note: the earlier "RM-105" reading was STALE - ids
-  RM-105..RM-117 were consumed after it was written, and RM-118 was allocated
-  2026-07-26 to the mana-as-damage `ds.ehp` blindness, population 1
-  (Blitzcrank), the third instance of the RM-87 / RM-91 lever - ITEM / AXIS
-  gap, no roster checkbox. Verify against this file, never against ROADMAP
-  prose, before taking an id; RM-96 Zilean + RM-97 Zyra assigned in batch32;
-  RM-98 cast-rate TIME BASE allocated 2026-07-19 out of the RM-39/RM-43 L2
-  build; RM-99 + RM-101..RM-104 allocated 2026-07-19 to the R132 defensive-half
-  sweep - Heartsteel HP-stack, the defensive-rune remainder, the Warmog's Arena
-  mirror phantom credit, Unending Despair's self-heal, and the Kaenic Arena
-  mirror shield; see ROADMAP "DS defensive-half sweep GAP specs"). Note RM-98
-  and RM-99/RM-101..RM-104 are NOT champion GAPs - they are ITEM / RUNE axis
-  gaps, so they add no roster checkbox and the Summary counts above are
-  unchanged by them.
-- **RM-203 + RM-204 ALLOCATED 2026-08-14 (orchestrated-run docs sync).** Both are
-  ITEM / DOC / PRODUCT rows, **not champion GAPs** - they add NO roster checkbox and
-  change NONE of the Summary counts above. **RM-203** = the stale `547/547` DS coverage
-  denominator in `docs/DAEMON_SLAYER.md:10` + `docs/DS_COMPLETENESS_GAP.md:32,33,261`
-  (re-measured 16.15.1: ITEM_EFFECTS 548, DDragon purchasable 544, total 706 - no
-  denominator reproduces 547); DS-BATCH only, body in `BACKLOG.md` under "Daemon Slayer
-  scorer calibration". **RM-204** = the Arena augment play-line serve-hop, operator-gated,
-  body in `BACKLOG.md` under "Draft + coach lane". Bodies live in BACKLOG because
-  `ROADMAP.md` was at ~91 pct of its 80 KB budget when these were filed; ROADMAP carries
-  one pointer line each.
-  **CONCURRENCY NOTE - read before taking the next id.** These two were allocated while a
-  SECOND session was live on this repo, which consumed **RM-192..RM-202** on the
-  `lane/research` branch. That branch merges independently, so for a window the true max
-  id is NOT visible from `main` alone. **Next free id after both land = RM-205.** The
-  pointer above now reads **RM-205** and is CURRENT as of 2026-08-15. **This sentence
-  originally warned that the pointer above read `RM-135` and was LONG STALE; that was
-  true when it was written and became false in the same merge**, because the concurrent
-  lane-research session corrected the pointer in the commit this note landed beside. The
-  `RM-135` string now survives only inside its own correction note further up - do not
-  read that occurrence as a live pointer. Verify the true max across BOTH the working
-  tree and every live lane branch before taking an id:
-  `git fetch origin && git show origin/lane/research:ROADMAP.md | grep -ohE "RM-[0-9]+"`
-  alongside the working-tree grep on the line below.
+  **Next free id = RM-222.** Re-derived 2026-08-16 across the working tree AND all
+  three lane branches: the true max filed is RM-221 (filed later the same day by the
+  markdown organizing pass), and `lane/ds`, `lane/research` and `lane/true-audit` all
+  top out at RM-220, so none hides a higher id. **This line was written reading
+  RM-221 and went stale within the same session, when that very session filed
+  RM-221** - a sixth instance, and the sharpest available argument for the guard.
+  **DERIVE IT, do not read it.** This pointer has now gone stale FIVE times (RM-119,
+  RM-134, RM-135-at-57-ids, RM-203-within-one-day, RM-208-to-RM-220, and RM-221-within-one-session), which
+  is the whole argument for **RM-192**'s guard: the line is only ever correct until
+  the next concurrent session, and nothing machine-checks it. Until that guard
+  exists, take an id only after running:
+  `grep -rhoE "RM-[0-9]{1,3}" ROADMAP.md BACKLOG.md docs/LEDGER.md | sed 's/RM-//' | sort -n | tail -1`
+  and repeating it against each live lane branch via `git show <branch>:BACKLOG.md`.
+  Two consumers name this file as the authoritative id registry and will mint a
+  COLLIDING id if the pointer above is wrong: `tools/headless-research.md:46` and
+  `tools/headless-true-audit.md:305`. The five superseded pointer-correction blocks
+  that used to sit here are relocated VERBATIM to `docs/history_notes.md`
+  (2026-08-16 block) - incident record only, no live pointer among them.
 - **RM-86 L1 SHIPPED 2026-07-18 (LEDGER 940, ENGINE 1.218.0)** - the sweep's first
   engine change. `agents/daemon_slayer/kit_conversion.py` + a default-OFF
   `kit_conversion_strength` lever on carry / assassin / mage / tank. Two spec
