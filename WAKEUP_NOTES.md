@@ -170,21 +170,3 @@ quotes in every changed file. **Next free id = RM-222.**
 **I walked into a documented trap:** the first full suite after `ds_share_sync` reported 1 FAILED in `phase8_smoke/test_sr_draft_profile_engine.py`. That is the mid-suite DS-bounce artifact CLAUDE.md already warns about; confirmed transient by an 18/18 isolated run and a clean full re-run. **Let the Share sync settle before starting a suite.**
 
 **Residue FILED as RM-220 (109 skips), and this time the mechanisms were verified against live wikitext BEFORE filing** - the direct lesson of having two rows in two days turn out to rest on inferred mechanisms. Three separated parts: **(A)** 27 zero-label rows caused by three more `{{ap|}}` forms the endpoint parser cannot read - a rank-count suffix (`{{ap|35 to 110 6}}`, Jayce), enumerated ranks (`{{ap|150|275|400}}`, Nocturne) and a named parameter (`|round=2`, Rumble); **(B)** a SMALL real synonym set - Ahri W's `Subsequent Flame Magic Damage` vs live `Subsequent Magic Damage` - which is the hypothesis RM-218 was refuted for, true of different rows than the ones it named, and explicitly not to be generalized since the same residue holds one-to-many splits (Ekko) and genuinely different quantities (Chogath); **(C)** a design question worth more than either - **an unmatched label may itself BE the drift.** Briar Q stores `Magic Damage` against a page carrying only `Physical Damage`. A stored label that no longer exists upstream is exactly the staleness this tool exists to find, and today it is discarded as "cannot compare". Next free id = RM-221.
-
----
-
-# 2026-08-16b - RM-219 closed: the checker was asking the wiki for "MonkeyKing", and 10 champions were stale the whole time
-
-**Shape: single-thread, TDD, Tier-1.** 10 tests first, RED at `13 failed, 38 passed`, GREEN at `51 passed`. DS 10684 / 13482 subtests, RC 19152 / 96 skipped / 4438 subtests, ruff clean.
-
-**BEFORE AND AFTER, both live read-only full sweeps:** `skipped_pages` **101 to 1**, `stale` **74 to 84**, `findings` 127 to 146, and **zero champions dropped out of stale** - coverage added, none traded. Newly stale: Belveth, Kaisa, Khazix, Leblanc, LeeSin, MonkeyKing, RekSai, TahmKench, Velkoz, XinZhao. The one surviving page skip is Renekton E, a genuine per-ability case.
-
-**THE REUSABLE PART IS WHY THE FIX ADDS A SPELLING INSTEAD OF REPLACING ONE.** 21 keys differ from their display name but only 20 failed. The 21st is Nunu, and a live probe showed `Template:Data Nunu/Consume` AND `Template:Data Nunu & Willump/Consume` BOTH resolve. The obvious swap would have been **green on all 20 headline cases** while silently betting that no Data page is titled by the key. **When a population splits 20/21, the odd one out is the design constraint, not a rounding error** - I only found it because the count of differing keys did not match the count of failures, and that mismatch was worth one probe.
-
-**The row's own predicted trap also held:** a punctuation-stripping rule reaches 19 of 20 and misses `MonkeyKing` to `Wukong`. That is a named mandatory test, not one row in a parametrized sweep, precisely so it cannot be lost in an aggregate green.
-
-**No new alias table:** `champions.json` was already sitting in the same patch dir the tool reads. **Check what the directory already holds before writing a mapping** - the fix needed zero new data and zero new fetches.
-
-**DATA BACKFILLED IN THE SAME PASS**, per the CLAUDE.md rule that preventing future occurrences is not a fix while the corrupted rows stand: `ability_staleness.json` regenerated 74 to 84, then `ds_feed_index.py --write` AFTER the data moved (the ordering LEDGER 1266 was burned by), then `ds_share_sync.py`; both `--check` IN SYNC at 535 files.
-
-**RM-218 counts were RESTATED, not left:** `skipped_labels` rose 323 to 357 because 20 champions became comparable. A rising number after a fix can be the fix working - but a follow-up row quoting the pre-fix figure would have started from a wrong population, so the row now says so at the top.
