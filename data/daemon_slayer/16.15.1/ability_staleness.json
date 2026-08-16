@@ -1,17 +1,20 @@
 {
  "_patch": "16.15.1",
- "_generated_at": "2026-08-16T01:34:51Z",
+ "_generated_at": "2026-08-16T12:47:59Z",
  "_meraki_content_patch": "25.15",
  "_source": "wiki.leagueoflegends.com Template:Data <Champion>/<Ability>",
- "_note": "RM-81 staleness report. A row means the STORED Meraki value and the LIVE wiki value disagree at the first/last rank endpoint for the same labelled quantity. Conservative: unmatched damage labels are skipped, so this UNDER-reports. Absence of a champion is not proof of currency.",
+ "_note": "RM-81 staleness report. A row means the STORED Meraki value and the LIVE wiki value disagree at the first/last rank endpoint for the same labelled quantity. Conservative: unmatched damage labels are skipped, so this UNDER-reports. Absence of a champion is not proof of currency - if it was skipped rather than compared it is named in skipped_champions, so a shrinking stale set can be read as convergence or as lost coverage without a live wiki fetch (RM-216).",
  "_checked_champions": 171,
- "_pages_fetched": 754,
+ "_pages_fetched": 859,
+ "_skipped_pages": 1,
+ "_skipped_labels": 357,
  "stale_champions": [
   "Ahri",
   "Akshan",
   "Anivia",
   "Annie",
   "Azir",
+  "Belveth",
   "Blitzcrank",
   "Brand",
   "Braum",
@@ -32,10 +35,14 @@
   "Irelia",
   "Jhin",
   "Jinx",
+  "Kaisa",
   "Kassadin",
   "Kayle",
   "Kayn",
   "Kennen",
+  "Khazix",
+  "Leblanc",
+  "LeeSin",
   "Lissandra",
   "Lucian",
   "Lulu",
@@ -44,6 +51,7 @@
   "Malzahar",
   "Maokai",
   "Mel",
+  "MonkeyKing",
   "Mordekaiser",
   "Morgana",
   "Naafiri",
@@ -55,6 +63,7 @@
   "Olaf",
   "Orianna",
   "Qiyana",
+  "RekSai",
   "Samira",
   "Sejuani",
   "Senna",
@@ -65,15 +74,18 @@
   "Smolder",
   "Swain",
   "Syndra",
+  "TahmKench",
   "Taliyah",
   "Tristana",
   "Trundle",
   "Tryndamere",
   "Varus",
   "Veigar",
+  "Velkoz",
   "Vex",
   "Volibear",
   "Xayah",
+  "XinZhao",
   "Yone",
   "Yunara",
   "Zac",
@@ -81,6 +93,3833 @@
   "Zeri",
   "Zoe",
   "Zyra"
+ ],
+ "skipped_champions": [
+  "Aatrox",
+  "Ahri",
+  "Akali",
+  "Akshan",
+  "Alistar",
+  "Ambessa",
+  "Anivia",
+  "Aphelios",
+  "AurelionSol",
+  "Aurora",
+  "Belveth",
+  "Brand",
+  "Briar",
+  "Caitlyn",
+  "Cassiopeia",
+  "Chogath",
+  "Corki",
+  "Darius",
+  "Diana",
+  "DrMundo",
+  "Draven",
+  "Ekko",
+  "Evelynn",
+  "Ezreal",
+  "Fiddlesticks",
+  "Fizz",
+  "Galio",
+  "Gangplank",
+  "Garen",
+  "Gnar",
+  "Gragas",
+  "Graves",
+  "Gwen",
+  "Hecarim",
+  "Hwei",
+  "Irelia",
+  "Ivern",
+  "Janna",
+  "Jax",
+  "Jayce",
+  "Jhin",
+  "Jinx",
+  "KSante",
+  "Kaisa",
+  "Kalista",
+  "Karma",
+  "Karthus",
+  "Kassadin",
+  "Katarina",
+  "Kayn",
+  "Kennen",
+  "Khazix",
+  "Kindred",
+  "Kled",
+  "KogMaw",
+  "Leblanc",
+  "Lillia",
+  "Lucian",
+  "Lulu",
+  "Malphite",
+  "Malzahar",
+  "Maokai",
+  "MasterYi",
+  "Mel",
+  "MissFortune",
+  "Morgana",
+  "Naafiri",
+  "Nami",
+  "Nasus",
+  "Nautilus",
+  "Neeko",
+  "Nidalee",
+  "Nilah",
+  "Nocturne",
+  "Nunu",
+  "Orianna",
+  "Ornn",
+  "Pantheon",
+  "Poppy",
+  "Qiyana",
+  "RekSai",
+  "Rell",
+  "Renekton",
+  "Rengar",
+  "Riven",
+  "Rumble",
+  "Samira",
+  "Sejuani",
+  "Seraphine",
+  "Sett",
+  "Shaco",
+  "Shen",
+  "Singed",
+  "Sion",
+  "Sivir",
+  "Skarner",
+  "Smolder",
+  "Sona",
+  "Soraka",
+  "Swain",
+  "Sylas",
+  "Syndra",
+  "Taliyah",
+  "Talon",
+  "Teemo",
+  "Tristana",
+  "Tryndamere",
+  "Twitch",
+  "Udyr",
+  "Varus",
+  "Vayne",
+  "Veigar",
+  "Velkoz",
+  "Vex",
+  "Vi",
+  "Viego",
+  "Viktor",
+  "Vladimir",
+  "Xayah",
+  "Xerath",
+  "XinZhao",
+  "Yasuo",
+  "Yone",
+  "Yunara",
+  "Yuumi",
+  "Zac",
+  "Zed",
+  "Zeri",
+  "Ziggs",
+  "Zilean",
+  "Zoe"
+ ],
+ "skipped_pages": [
+  {
+   "champion": "Renekton",
+   "ability": "E",
+   "name": "Slice",
+   "reason": "no live wiki page for this ability name",
+   "tried": [
+    "Renekton"
+   ]
+  }
+ ],
+ "skipped_labels": [
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "label": "First Sweetspot Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "First Cast Damage"
+   ]
+  },
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "label": "Second Cast Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "First Cast Damage"
+   ]
+  },
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "label": "Second Sweetspot Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "First Cast Damage"
+   ]
+  },
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "label": "Third Cast Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "First Cast Damage"
+   ]
+  },
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "label": "Third Sweetspot Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "First Cast Damage"
+   ]
+  },
+  {
+   "champion": "Aatrox",
+   "ability": "W",
+   "name": "Infernal Chains",
+   "label": "Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Ahri",
+   "ability": "Q",
+   "name": "Orb of Deception",
+   "label": "Total Mixed Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Damage Per Pass"
+   ]
+  },
+  {
+   "champion": "Ahri",
+   "ability": "W",
+   "name": "Fox-Fire",
+   "label": "Initial Flame Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Primary Magic Damage"
+   ]
+  },
+  {
+   "champion": "Ahri",
+   "ability": "W",
+   "name": "Fox-Fire",
+   "label": "Subsequent Flame Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Primary Magic Damage"
+   ]
+  },
+  {
+   "champion": "Ahri",
+   "ability": "W",
+   "name": "Fox-Fire",
+   "label": "Total Single-Target Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Primary Magic Damage"
+   ]
+  },
+  {
+   "champion": "Akali",
+   "ability": "E",
+   "name": "Shuriken Flip",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Akali",
+   "ability": "E",
+   "name": "Shuriken Flip",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Akali",
+   "ability": "R",
+   "name": "Perfect Execution",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Akshan",
+   "ability": "Q",
+   "name": "Avengerang",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Non-Champion Damage",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Alistar",
+   "ability": "E",
+   "name": "Trample",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Alistar",
+   "ability": "E",
+   "name": "Trample",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Ambessa",
+   "ability": "Q",
+   "name": "Cunning Sweep",
+   "label": "Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Ambessa",
+   "ability": "Q",
+   "name": "Cunning Sweep",
+   "label": "Increased Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Ambessa",
+   "ability": "W",
+   "name": "Repudiation",
+   "label": "Increased Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Ambessa",
+   "ability": "E",
+   "name": "Lacerate",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Anivia",
+   "ability": "Q",
+   "name": "Flash Frost",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Stun Duration"
+   ]
+  },
+  {
+   "champion": "Anivia",
+   "ability": "E",
+   "name": "Frostbite",
+   "label": "Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Anivia",
+   "ability": "R",
+   "name": "Glacial Storm",
+   "label": "Empowered Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Tick",
+    "Slow",
+    "Slow Strength Increase"
+   ]
+  },
+  {
+   "champion": "Aphelios",
+   "ability": "P",
+   "name": "The Hitman and the Seer",
+   "label": "Bonus Attack Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "AurelionSol",
+   "ability": "Q",
+   "name": "Breath of Light",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage"
+   ]
+  },
+  {
+   "champion": "AurelionSol",
+   "ability": "Q",
+   "name": "Breath of Light",
+   "label": "Reduced Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage"
+   ]
+  },
+  {
+   "champion": "AurelionSol",
+   "ability": "Q",
+   "name": "Breath of Light",
+   "label": "Total Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage"
+   ]
+  },
+  {
+   "champion": "AurelionSol",
+   "ability": "E",
+   "name": "Singularity",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Tick"
+   ]
+  },
+  {
+   "champion": "Aurora",
+   "ability": "Q",
+   "name": "Twofold Hex",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Aurora",
+   "ability": "Q",
+   "name": "Twofold Hex",
+   "label": "Subsequent Bolt Minimum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Aurora",
+   "ability": "Q",
+   "name": "Twofold Hex",
+   "label": "Subsequent Bolt Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "E",
+   "name": "Royal Maelstrom",
+   "label": "Maximum Physical Damage per hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Damage Reduction",
+    "Life Steal",
+    "Minimum Physical Damage per hit"
+   ]
+  },
+  {
+   "champion": "Brand",
+   "ability": "W",
+   "name": "Pillar of Flame",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Brand",
+   "ability": "R",
+   "name": "Pyroclasm",
+   "label": "Total Single-Target Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Briar",
+   "ability": "Q",
+   "name": "Head Rush",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Resistances Reduction"
+   ]
+  },
+  {
+   "champion": "Briar",
+   "ability": "E",
+   "name": "Chilling Scream",
+   "label": "Minimum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage",
+    "Maximum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Briar",
+   "ability": "E",
+   "name": "Chilling Scream",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage",
+    "Maximum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Caitlyn",
+   "ability": "Q",
+   "name": "Piltover Peacemaker",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "Q",
+   "name": "Noxious Blast",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Movement Speed",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "W",
+   "name": "Miasma",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Second",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "E",
+   "name": "Twin Fang",
+   "label": "Total Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage"
+   ]
+  },
+  {
+   "champion": "Chogath",
+   "ability": "E",
+   "name": "Vorpal Spikes",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Monster Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Chogath",
+   "ability": "R",
+   "name": "Feast",
+   "label": "Champion True Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Attack Range Per Stack",
+    "Bonus Health Per Stack",
+    "Non-Champion True Damage"
+   ]
+  },
+  {
+   "champion": "Corki",
+   "ability": "W",
+   "name": "Valkyrie",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Corki",
+   "ability": "E",
+   "name": "Gatling Gun",
+   "label": "Physical Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Resistances Reduction Per Stack"
+   ]
+  },
+  {
+   "champion": "Corki",
+   "ability": "E",
+   "name": "Gatling Gun",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Resistances Reduction Per Stack"
+   ]
+  },
+  {
+   "champion": "Corki",
+   "ability": "R",
+   "name": "Missile Barrage",
+   "label": "Big One Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Darius",
+   "ability": "Q",
+   "name": "Decimate",
+   "label": "Reduced Damage (Handle)",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage (Blade)"
+   ]
+  },
+  {
+   "champion": "Darius",
+   "ability": "R",
+   "name": "Noxian Guillotine",
+   "label": "Bonus Damage Per Stack",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "True Damage"
+   ]
+  },
+  {
+   "champion": "Darius",
+   "ability": "R",
+   "name": "Noxian Guillotine",
+   "label": "Maximum True Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "True Damage"
+   ]
+  },
+  {
+   "champion": "Diana",
+   "ability": "W",
+   "name": "Pale Cascade",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Orb",
+    "Shield Strength"
+   ]
+  },
+  {
+   "champion": "Diana",
+   "ability": "R",
+   "name": "Moonfall",
+   "label": "Total Damage Vs. 5 Champions",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Damage Per Champion",
+    "Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "DrMundo",
+   "ability": "W",
+   "name": "Heart Zapper",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Damage per Tick"
+   ]
+  },
+  {
+   "champion": "DrMundo",
+   "ability": "E",
+   "name": "Blunt Force Trauma",
+   "label": "Maximum Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Bonus Physical Damage"
+   ]
+  },
+  {
+   "champion": "Draven",
+   "ability": "R",
+   "name": "Whirling Death",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Draven",
+   "ability": "R",
+   "name": "Whirling Death",
+   "label": "Minimum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Draven",
+   "ability": "R",
+   "name": "Whirling Death",
+   "label": "Minimum Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Ekko",
+   "ability": "Q",
+   "name": "Timewinder",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Initial Magic Damage",
+    "Return Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Ekko",
+   "ability": "Q",
+   "name": "Timewinder",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Initial Magic Damage",
+    "Return Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Evelynn",
+   "ability": "Q",
+   "name": "Hate Spike",
+   "label": "Total Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Evelynn",
+   "ability": "Q",
+   "name": "Hate Spike",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Evelynn",
+   "ability": "Q",
+   "name": "Hate Spike",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Evelynn",
+   "ability": "R",
+   "name": "Last Caress",
+   "label": "Empowered Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Ezreal",
+   "ability": "R",
+   "name": "Trueshot Barrage",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Modified Damage"
+   ]
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "Q",
+   "name": "Terrify",
+   "label": "Increased Minimum Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Fear Duration",
+    "Minimum Damage"
+   ]
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "W",
+   "name": "Bountiful Harvest",
+   "label": "Damage per second",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Champion Heal Portion"
+   ]
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "W",
+   "name": "Bountiful Harvest",
+   "label": "Damage per Instance",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Champion Heal Portion"
+   ]
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "W",
+   "name": "Bountiful Harvest",
+   "label": "Last Tick of Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Champion Heal Portion"
+   ]
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "W",
+   "name": "Bountiful Harvest",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Champion Heal Portion"
+   ]
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "R",
+   "name": "Crowstorm",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "R",
+   "name": "Crowstorm",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Fizz",
+   "ability": "W",
+   "name": "Seastone Trident",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Active Magic Damage",
+    "Active On-Hit Magic Damage",
+    "Total Passive Magic Damage"
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "W",
+   "name": "Seastone Trident",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Active Magic Damage",
+    "Active On-Hit Magic Damage",
+    "Total Passive Magic Damage"
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "W",
+   "name": "Seastone Trident",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Active Magic Damage",
+    "Active On-Hit Magic Damage",
+    "Total Passive Magic Damage"
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "W",
+   "name": "Seastone Trident",
+   "label": "Bonus Magic Damage On-Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Active Magic Damage",
+    "Active On-Hit Magic Damage",
+    "Total Passive Magic Damage"
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "R",
+   "name": "Chum the Waters",
+   "label": "Chomper Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Guppy Damage"
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "R",
+   "name": "Chum the Waters",
+   "label": "Gigalodon Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Guppy Damage"
+   ]
+  },
+  {
+   "champion": "Galio",
+   "ability": "W",
+   "name": "Shield of Durand",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Reduction",
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Gangplank",
+   "ability": "R",
+   "name": "Cannon Barrage",
+   "label": "Magic Damage Per Cluster",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Wave"
+   ]
+  },
+  {
+   "champion": "Gangplank",
+   "ability": "R",
+   "name": "Cannon Barrage",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Wave"
+   ]
+  },
+  {
+   "champion": "Gangplank",
+   "ability": "R",
+   "name": "Cannon Barrage",
+   "label": "True Damage with Death's Daughter",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Wave"
+   ]
+  },
+  {
+   "champion": "Gangplank",
+   "ability": "R",
+   "name": "Cannon Barrage",
+   "label": "Total Mixed Damage with Death's Daughter",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Wave"
+   ]
+  },
+  {
+   "champion": "Gangplank",
+   "ability": "R",
+   "name": "Cannon Barrage",
+   "label": "Total Magic Damage with Fire at Will",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Wave"
+   ]
+  },
+  {
+   "champion": "Gangplank",
+   "ability": "R",
+   "name": "Cannon Barrage",
+   "label": "Maximum Mixed Total Damage with Fire at Will and Death's Daughter",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Wave"
+   ]
+  },
+  {
+   "champion": "Garen",
+   "ability": "E",
+   "name": "Judgment",
+   "label": "Increased Damage Per Spin",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Spin"
+   ]
+  },
+  {
+   "champion": "Gnar",
+   "ability": "Q",
+   "name": "Boomerang Throw",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Gnar",
+   "ability": "R",
+   "name": "GNAR!",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Disable Duration",
+    "Physical Damage",
+    "{{ai"
+   ]
+  },
+  {
+   "champion": "Gragas",
+   "ability": "Q",
+   "name": "Barrel Roll",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage",
+    "Minimum Slow"
+   ]
+  },
+  {
+   "champion": "Graves",
+   "ability": "Q",
+   "name": "End of the Line",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "label": "Center Damage per Snip",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Damage per Snip",
+    "Final Snip Damage"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "label": "Final Snip Center Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Damage per Snip",
+    "Final Snip Damage"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "label": "Minimum Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Damage per Snip",
+    "Final Snip Damage"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "label": "Minimum Center Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Damage per Snip",
+    "Final Snip Damage"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "label": "Maximum Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Damage per Snip",
+    "Final Snip Damage"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "label": "Maximum Center Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Damage per Snip",
+    "Final Snip Damage"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "E",
+   "name": "Skip 'n Slash",
+   "label": "Bonus Magic Damage On-Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Attack Speed",
+    "Cooldown Refund"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "label": "Damage with A Thousand Cuts",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Needle",
+    "Slow",
+    "Subsequent Slow"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "label": "Second Cast Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Needle",
+    "Slow",
+    "Subsequent Slow"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "label": "Third Cast Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Needle",
+    "Slow",
+    "Subsequent Slow"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "label": "Maximum Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Needle",
+    "Slow",
+    "Subsequent Slow"
+   ]
+  },
+  {
+   "champion": "Hecarim",
+   "ability": "W",
+   "name": "Spirit of Dread",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Resistances",
+    "Capped Healing",
+    "Magic Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Hecarim",
+   "ability": "E",
+   "name": "Devastating Charge",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Hwei",
+   "ability": "R",
+   "name": "Spiraling Despair",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Hwei",
+   "ability": "R",
+   "name": "Spiraling Despair",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Hwei",
+   "ability": "R",
+   "name": "Spiraling Despair",
+   "label": "Maximum Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Irelia",
+   "ability": "W",
+   "name": "Defiant Dance",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Ivern",
+   "ability": "W",
+   "name": "Brushmaker",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Magic Damage",
+    "Ally Additional Magic Damage"
+   ]
+  },
+  {
+   "champion": "Ivern",
+   "ability": "W",
+   "name": "Brushmaker",
+   "label": "Ally Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Magic Damage",
+    "Ally Additional Magic Damage"
+   ]
+  },
+  {
+   "champion": "Janna",
+   "ability": "Q",
+   "name": "Howling Gale",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Damage Per Second",
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Jax",
+   "ability": "W",
+   "name": "Empower",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Magic Damage"
+   ]
+  },
+  {
+   "champion": "Jax",
+   "ability": "E",
+   "name": "Counter Strike",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Jax",
+   "ability": "R",
+   "name": "Grandmaster-at-Arms",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Magic Damage",
+    "Bonus Armor",
+    "Bonus Armor per Champion Hit",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Jayce",
+   "ability": "Q",
+   "name": "To the Skies!",
+   "label": "Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Jayce",
+   "ability": "W",
+   "name": "Lightning Field",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Jayce",
+   "ability": "W",
+   "name": "Lightning Field",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Jhin",
+   "ability": "Q",
+   "name": "Dancing Grenade",
+   "label": "Bonus Damage per Target Death",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Jhin",
+   "ability": "Q",
+   "name": "Dancing Grenade",
+   "label": "Maximum Final Bounce Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Jhin",
+   "ability": "E",
+   "name": "Captive Audience",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Jhin",
+   "ability": "R",
+   "name": "Curtain Call",
+   "label": "Maximum Physical Damage per Bullet",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Physical Damage per Bullet"
+   ]
+  },
+  {
+   "champion": "Jhin",
+   "ability": "R",
+   "name": "Curtain Call",
+   "label": "Minimum Fourth Shot Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Physical Damage per Bullet"
+   ]
+  },
+  {
+   "champion": "Jhin",
+   "ability": "R",
+   "name": "Curtain Call",
+   "label": "Maximum Fourth Shot Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Physical Damage per Bullet"
+   ]
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "label": "Minimum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "label": "Maximum Secondary Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "label": "Minimum Secondary Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Physical Damage"
+   ]
+  },
+  {
+   "champion": "KSante",
+   "ability": "W",
+   "name": "Path Maker",
+   "label": "Minimum Bonus True Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Monster Damage Cap",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "KSante",
+   "ability": "W",
+   "name": "Path Maker",
+   "label": "Maximum Bonus True Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Monster Damage Cap",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "KSante",
+   "ability": "W",
+   "name": "Path Maker",
+   "label": "Total Maximum Mixed Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Monster Damage Cap",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "KSante",
+   "ability": "R",
+   "name": "All Out",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Attack Speed",
+    "Physical Damage",
+    "Strike Physical Damage"
+   ]
+  },
+  {
+   "champion": "Kaisa",
+   "ability": "Q",
+   "name": "Icathian Rain",
+   "label": "Reduced Damage Per Missile",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Missile"
+   ]
+  },
+  {
+   "champion": "Kaisa",
+   "ability": "Q",
+   "name": "Icathian Rain",
+   "label": "Total Single-Target Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Missile"
+   ]
+  },
+  {
+   "champion": "Kaisa",
+   "ability": "Q",
+   "name": "Icathian Rain",
+   "label": "Total Evolved Single-Target Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Missile"
+   ]
+  },
+  {
+   "champion": "Kalista",
+   "ability": "E",
+   "name": "Rend",
+   "label": "Damage per Additional Stack",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Damage per Additional Stack",
+    "Physical Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Karma",
+   "ability": "W",
+   "name": "Focused Resolve",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Root Duration"
+   ]
+  },
+  {
+   "champion": "Karthus",
+   "ability": "Q",
+   "name": "Lay Waste",
+   "label": "Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Karthus",
+   "ability": "E",
+   "name": "Defile",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Karthus",
+   "ability": "E",
+   "name": "Defile",
+   "label": "Damage Per Second",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Kassadin",
+   "ability": "R",
+   "name": "Riftwalk",
+   "label": "Maximum Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Damage Per Stack",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Kassadin",
+   "ability": "R",
+   "name": "Riftwalk",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Damage Per Stack",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Katarina",
+   "ability": "R",
+   "name": "Death Lotus",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Dagger",
+    "On-Hit/On-Attack Damage Effectiveness"
+   ]
+  },
+  {
+   "champion": "Kayn",
+   "ability": "Q",
+   "name": "Reaping Slash",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Capped Monster Damage per Hit",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Kennen",
+   "ability": "R",
+   "name": "Slicing Maelstrom",
+   "label": "Total Single-Target Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Resistances",
+    "Magic Damage Per Bolt"
+   ]
+  },
+  {
+   "champion": "Khazix",
+   "ability": "Q",
+   "name": "Taste Their Fear",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Kindred",
+   "ability": "E",
+   "name": "Mounting Dread",
+   "label": "Enhanced damage below threshold",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage"
+   ]
+  },
+  {
+   "champion": "Kled",
+   "ability": "Q",
+   "name": "Bear Trap on a Rope",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Kled",
+   "ability": "W",
+   "name": "Violent Tendencies",
+   "label": "Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage",
+    "Structure Additional Damage"
+   ]
+  },
+  {
+   "champion": "Kled",
+   "ability": "W",
+   "name": "Violent Tendencies",
+   "label": "Structure Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage",
+    "Structure Additional Damage"
+   ]
+  },
+  {
+   "champion": "Kled",
+   "ability": "E",
+   "name": "Jousting",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "KogMaw",
+   "ability": "R",
+   "name": "Living Artillery",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "Q",
+   "name": "Sigil of Malice",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "E",
+   "name": "Ethereal Chains",
+   "label": "Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Fracture Magic Damage",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "label": "Mark Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Application Magic Damage",
+    "Magic Damage",
+    "Orb Magic Damage"
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Application Magic Damage",
+    "Magic Damage",
+    "Orb Magic Damage"
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "label": "Fracture Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Application Magic Damage",
+    "Magic Damage",
+    "Orb Magic Damage"
+   ]
+  },
+  {
+   "champion": "Lillia",
+   "ability": "Q",
+   "name": "Blooming Blows",
+   "label": "Total Mixed Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Movement Speed per Stack",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Lillia",
+   "ability": "W",
+   "name": "Watch Out! Eep!",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Lucian",
+   "ability": "R",
+   "name": "The Culling",
+   "label": "Additional Damage per 20% Crit Chance",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Shot"
+   ]
+  },
+  {
+   "champion": "Lucian",
+   "ability": "R",
+   "name": "The Culling",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Shot"
+   ]
+  },
+  {
+   "champion": "Lulu",
+   "ability": "Q",
+   "name": "Glitterlance",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Lulu",
+   "ability": "Q",
+   "name": "Glitterlance",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Malphite",
+   "ability": "W",
+   "name": "Thunderclap",
+   "label": "Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Malzahar",
+   "ability": "E",
+   "name": "Malefic Visions",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Malzahar",
+   "ability": "R",
+   "name": "Nether Grasp",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Maokai",
+   "ability": "E",
+   "name": "Sapling Toss",
+   "label": "Total Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minion Damage"
+   ]
+  },
+  {
+   "champion": "Maokai",
+   "ability": "E",
+   "name": "Sapling Toss",
+   "label": "Enhanced Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minion Damage"
+   ]
+  },
+  {
+   "champion": "MasterYi",
+   "ability": "Q",
+   "name": "Alpha Strike",
+   "label": "Reduced Damage per hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Primary Bonus Monster Damage",
+    "Primary Physical Damage"
+   ]
+  },
+  {
+   "champion": "MasterYi",
+   "ability": "Q",
+   "name": "Alpha Strike",
+   "label": "Maximum Single-Target Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Primary Bonus Monster Damage",
+    "Primary Physical Damage"
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "Q",
+   "name": "Radiant Volley",
+   "label": "Magic Damage per Explosion",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Initial Explosion Magic Damage",
+    "Magic Damage per Subsequent Explosion",
+    "Number of Bolts"
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "Q",
+   "name": "Radiant Volley",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Initial Explosion Magic Damage",
+    "Magic Damage per Subsequent Explosion",
+    "Number of Bolts"
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "E",
+   "name": "Solar Snare",
+   "label": "Field Magic Damage per Second",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Field Magic Damage per Tick",
+    "Orb Magic Damage"
+   ]
+  },
+  {
+   "champion": "MissFortune",
+   "ability": "E",
+   "name": "Make It Rain",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "MissFortune",
+   "ability": "E",
+   "name": "Make It Rain",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Morgana",
+   "ability": "Q",
+   "name": "Dark Binding",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Root Duration"
+   ]
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "label": "Maximum Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "label": "Minimum Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "label": "Maximum Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Morgana",
+   "ability": "R",
+   "name": "Soul Shackles",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Movement Speed",
+    "Magic Damage",
+    "Stun Duration"
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "label": "Bleed Physical Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal",
+    "Initial Physical Damage",
+    "Minimum Bonus Physical Damage"
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "label": "Total Bleed Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal",
+    "Initial Physical Damage",
+    "Minimum Bonus Physical Damage"
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal",
+    "Initial Physical Damage",
+    "Minimum Bonus Physical Damage"
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "label": "Maximum Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal",
+    "Initial Physical Damage",
+    "Minimum Bonus Physical Damage"
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "label": "Minimum Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal",
+    "Initial Physical Damage",
+    "Minimum Bonus Physical Damage"
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "label": "Maximum Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal",
+    "Initial Physical Damage",
+    "Minimum Bonus Physical Damage"
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "E",
+   "name": "Eviscerate",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Dash Physical Damage",
+    "Flurry Physical Damage"
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "R",
+   "name": "Hounds' Pursuit",
+   "label": "Physical Damage per Packmate",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Shield"
+   ]
+  },
+  {
+   "champion": "Nami",
+   "ability": "W",
+   "name": "Ebb and Flow",
+   "label": "Minimum Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nami",
+   "ability": "E",
+   "name": "Tidecaller's Blessing",
+   "label": "Total Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage Per Hit",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Nami",
+   "ability": "R",
+   "name": "Tidal Wave",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Nasus",
+   "ability": "E",
+   "name": "Spirit Fire",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Nautilus",
+   "ability": "W",
+   "name": "Titan's Wrath",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Shield Strength",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nautilus",
+   "ability": "E",
+   "name": "Riptide",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Monster Bonus Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Nautilus",
+   "ability": "E",
+   "name": "Riptide",
+   "label": "Maximum Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Monster Bonus Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Neeko",
+   "ability": "Q",
+   "name": "Blooming Burst",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Monster Damage",
+    "Initial Magic Damage",
+    "Subsequent Magic Damage"
+   ]
+  },
+  {
+   "champion": "Neeko",
+   "ability": "Q",
+   "name": "Blooming Burst",
+   "label": "Total Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Monster Damage",
+    "Initial Magic Damage",
+    "Subsequent Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nidalee",
+   "ability": "Q",
+   "name": "Javelin Toss",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nidalee",
+   "ability": "W",
+   "name": "Bushwhack",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Nilah",
+   "ability": "Q",
+   "name": "Formless Blade",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Nilah",
+   "ability": "R",
+   "name": "Apotheosis",
+   "label": "Physical Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Nilah",
+   "ability": "R",
+   "name": "Apotheosis",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Nilah",
+   "ability": "R",
+   "name": "Apotheosis",
+   "label": "Burst Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Nilah",
+   "ability": "R",
+   "name": "Apotheosis",
+   "label": "Maximum Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Nocturne",
+   "ability": "E",
+   "name": "Unspeakable Horror",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Disable Duration",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nocturne",
+   "ability": "R",
+   "name": "Paranoia",
+   "label": "Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Nunu",
+   "ability": "W",
+   "name": "Biggest Snowball Ever!",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "W",
+   "name": "Biggest Snowball Ever!",
+   "label": "Minimum Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "W",
+   "name": "Biggest Snowball Ever!",
+   "label": "Maximum Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "E",
+   "name": "Snowball Barrage",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Damage Per Hit",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "E",
+   "name": "Snowball Barrage",
+   "label": "Maximum Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Damage Per Hit",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "R",
+   "name": "Absolute Zero",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Magic Damage",
+    "Shield Strength"
+   ]
+  },
+  {
+   "champion": "Orianna",
+   "ability": "Q",
+   "name": "Command: Attack",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Ornn",
+   "ability": "E",
+   "name": "Searing Charge",
+   "label": "Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Ornn",
+   "ability": "R",
+   "name": "Call of the Forge God",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Ornn",
+   "ability": "R",
+   "name": "Call of the Forge God",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Pantheon",
+   "ability": "Q",
+   "name": "Comet Spear",
+   "label": "Increased Hurl Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Hurl Physical Damage",
+    "Thrust Physical Damage"
+   ]
+  },
+  {
+   "champion": "Pantheon",
+   "ability": "Q",
+   "name": "Comet Spear",
+   "label": "Hurl Secondary Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Hurl Physical Damage",
+    "Thrust Physical Damage"
+   ]
+  },
+  {
+   "champion": "Pantheon",
+   "ability": "Q",
+   "name": "Comet Spear",
+   "label": "Increased Hurl Secondary Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Hurl Physical Damage",
+    "Thrust Physical Damage"
+   ]
+  },
+  {
+   "champion": "Pantheon",
+   "ability": "Q",
+   "name": "Comet Spear",
+   "label": "Increased Thrust Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Hurl Physical Damage",
+    "Thrust Physical Damage"
+   ]
+  },
+  {
+   "champion": "Pantheon",
+   "ability": "R",
+   "name": "Grand Starfall",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Armor Penetration",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Poppy",
+   "ability": "Q",
+   "name": "Hammer Shock",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Capped Minion/Monster Health Damage",
+    "Physical Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Poppy",
+   "ability": "E",
+   "name": "Heroic Charge",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Stun Duration"
+   ]
+  },
+  {
+   "champion": "Qiyana",
+   "ability": "Q",
+   "name": "Edge of Ixtal",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Qiyana",
+   "ability": "R",
+   "name": "Supreme Display of Talent",
+   "label": "Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "RekSai",
+   "ability": "E",
+   "name": "Furious Bite",
+   "label": "True Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Rell",
+   "ability": "R",
+   "name": "Magnet Storm",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Rell",
+   "ability": "R",
+   "name": "Magnet Storm",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Renekton",
+   "ability": "Q",
+   "name": "Cull the Meek",
+   "label": "Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Champion Healing",
+    "Healing Cap",
+    "Non-Champion Healing",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Renekton",
+   "ability": "W",
+   "name": "Ruthless Predator",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Renekton",
+   "ability": "W",
+   "name": "Ruthless Predator",
+   "label": "Physical Damage Per Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Renekton",
+   "ability": "R",
+   "name": "Dominus",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Health",
+    "Magic Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Rengar",
+   "ability": "Q",
+   "name": "Savagery",
+   "label": "Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage"
+   ]
+  },
+  {
+   "champion": "Riven",
+   "ability": "Q",
+   "name": "Broken Wings",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "Q",
+   "name": "Flamespitter",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Rumble",
+   "ability": "Q",
+   "name": "Flamespitter",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Rumble",
+   "ability": "Q",
+   "name": "Flamespitter",
+   "label": "Total Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Rumble",
+   "ability": "Q",
+   "name": "Flamespitter",
+   "label": "Enhanced Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Rumble",
+   "ability": "E",
+   "name": "Electro Harpoon",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Resistance Reduction",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "E",
+   "name": "Electro Harpoon",
+   "label": "Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Resistance Reduction",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "E",
+   "name": "Electro Harpoon",
+   "label": "Total Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Resistance Reduction",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "R",
+   "name": "The Equalizer",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Rumble",
+   "ability": "R",
+   "name": "The Equalizer",
+   "label": "Minimum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Rumble",
+   "ability": "R",
+   "name": "The Equalizer",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Samira",
+   "ability": "W",
+   "name": "Blade Whirl",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage per Hit"
+   ]
+  },
+  {
+   "champion": "Samira",
+   "ability": "R",
+   "name": "Inferno Trigger",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Shot"
+   ]
+  },
+  {
+   "champion": "Sejuani",
+   "ability": "W",
+   "name": "Winter's Wrath",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Seraphine",
+   "ability": "Q",
+   "name": "High Note",
+   "label": "Maximum Champion Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Sett",
+   "ability": "Q",
+   "name": "Knuckle Down",
+   "label": "Total Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Physical Damage"
+   ]
+  },
+  {
+   "champion": "Sett",
+   "ability": "R",
+   "name": "The Show Stopper",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Shaco",
+   "ability": "W",
+   "name": "Jack in the Box",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Monster Damage",
+    "Fear Duration",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Shaco",
+   "ability": "E",
+   "name": "Two-Shiv Poison",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Shaco",
+   "ability": "R",
+   "name": "Hallucinate",
+   "label": "Increased Modified Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Modified Magic Damage"
+   ]
+  },
+  {
+   "champion": "Shen",
+   "ability": "Q",
+   "name": "Twilight Assault",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Monster Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Shen",
+   "ability": "Q",
+   "name": "Twilight Assault",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Monster Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Shen",
+   "ability": "Q",
+   "name": "Twilight Assault",
+   "label": "Increased Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Monster Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Shen",
+   "ability": "Q",
+   "name": "Twilight Assault",
+   "label": "Total Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Monster Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Singed",
+   "ability": "Q",
+   "name": "Poison Trail",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Singed",
+   "ability": "Q",
+   "name": "Poison Trail",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Sion",
+   "ability": "Q",
+   "name": "Decimating Smash",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Sion",
+   "ability": "R",
+   "name": "Unstoppable Onslaught",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Physical Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Sivir",
+   "ability": "Q",
+   "name": "Boomerang Blade",
+   "label": "Minimum Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Sivir",
+   "ability": "Q",
+   "name": "Boomerang Blade",
+   "label": "Total Maximum Champion Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Skarner",
+   "ability": "Q",
+   "name": "Shattered Earth",
+   "label": "Total Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Attack Speed",
+    "Bonus Physical Damage per Hit",
+    "Monster Percent Health Damage Cap"
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "Q",
+   "name": "Super Scorcher Breath",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "Q",
+   "name": "Super Scorcher Breath",
+   "label": "Maximum Damage with Infinity Edge",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "Q",
+   "name": "Super Scorcher Breath",
+   "label": "Maximum Physical Damage with Infinity Edge",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "W",
+   "name": "Achooo!",
+   "label": "Total Physical Damage On Champion Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Explosion Physical Damage",
+    "Glob Physical Damage"
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "E",
+   "name": "Flap, Flap, Flap",
+   "label": "Minimum Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage per Hit"
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "R",
+   "name": "MMOOOMMMM!",
+   "label": "Increased Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Self Heal"
+   ]
+  },
+  {
+   "champion": "Sona",
+   "ability": "R",
+   "name": "Crescendo",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Soraka",
+   "ability": "E",
+   "name": "Equinox",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Root Duration"
+   ]
+  },
+  {
+   "champion": "Swain",
+   "ability": "Q",
+   "name": "Death's Hand",
+   "label": "Bonus Damage Per Bolt",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Swain",
+   "ability": "Q",
+   "name": "Death's Hand",
+   "label": "Total Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Swain",
+   "ability": "R",
+   "name": "Demonic Ascension",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Sylas",
+   "ability": "Q",
+   "name": "Chain Lash",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "W",
+   "name": "Force of Will",
+   "label": "Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "W",
+   "name": "Force of Will",
+   "label": "Total Mixed Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "R",
+   "name": "Unleashed Power",
+   "label": "Minimum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Ability Haste",
+    "Magic Damage per Sphere"
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "R",
+   "name": "Unleashed Power",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Ability Haste",
+    "Magic Damage per Sphere"
+   ]
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "Q",
+   "name": "Threaded Volley",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Monster Damage",
+    "Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "Q",
+   "name": "Threaded Volley",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Monster Damage",
+    "Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "Q",
+   "name": "Threaded Volley",
+   "label": "Empowered Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Monster Damage",
+    "Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "E",
+   "name": "Unraveled Earth",
+   "label": "Total Maximum Detonation Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Detonation Magic Damage",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Talon",
+   "ability": "Q",
+   "name": "Noxian Diplomacy",
+   "label": "Critical Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Talon",
+   "ability": "W",
+   "name": "Rake",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Talon",
+   "ability": "R",
+   "name": "Shadow Assault",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Movement Speed",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Teemo",
+   "ability": "E",
+   "name": "Toxic Shot",
+   "label": "Total Poison Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage On-Hit",
+    "Magic Damage per Tick"
+   ]
+  },
+  {
+   "champion": "Teemo",
+   "ability": "R",
+   "name": "Noxious Trap",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bounce Distance Cap",
+    "Maximum Charges",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Teemo",
+   "ability": "R",
+   "name": "Noxious Trap",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bounce Distance Cap",
+    "Maximum Charges",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "label": "Bonus Damage Per Stack",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "label": "Full Stack Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "label": "Full Stack Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Tryndamere",
+   "ability": "Q",
+   "name": "Bloodlust",
+   "label": "Bonus Attack Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Bonus Attack Damage",
+    "Minimum Heal"
+   ]
+  },
+  {
+   "champion": "Twitch",
+   "ability": "E",
+   "name": "Contaminate",
+   "label": "Minimum Mixed Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Base Physical Damage",
+    "Physical Damage Per Stack"
+   ]
+  },
+  {
+   "champion": "Twitch",
+   "ability": "E",
+   "name": "Contaminate",
+   "label": "Maximum Mixed Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Base Physical Damage",
+    "Physical Damage Per Stack"
+   ]
+  },
+  {
+   "champion": "Udyr",
+   "ability": "Q",
+   "name": "Wilding Claw",
+   "label": "Bonus Physical Damage On-Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Udyr",
+   "ability": "R",
+   "name": "Wingborne Storm",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Udyr",
+   "ability": "R",
+   "name": "Wingborne Storm",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "label": "Minimum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "label": "Minimum Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "label": "Maximum Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Vayne",
+   "ability": "E",
+   "name": "Condemn",
+   "label": "Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Vayne",
+   "ability": "E",
+   "name": "Condemn",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Vayne",
+   "ability": "R",
+   "name": "Final Hour",
+   "label": "Bonus Attack Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Effect Duration",
+    "{{ai"
+   ]
+  },
+  {
+   "champion": "Veigar",
+   "ability": "R",
+   "name": "Primordial Burst",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Velkoz",
+   "ability": "W",
+   "name": "Void Rift",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Velkoz",
+   "ability": "R",
+   "name": "Life Form Disintegration Ray",
+   "label": "Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Velkoz",
+   "ability": "R",
+   "name": "Life Form Disintegration Ray",
+   "label": "Maximum Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Vex",
+   "ability": "R",
+   "name": "Shadow Surge",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Vi",
+   "ability": "Q",
+   "name": "Vault Breaker",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Viego",
+   "ability": "Q",
+   "name": "Blade of the Ruined King",
+   "label": "Minimum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Bonus Damage",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Viego",
+   "ability": "Q",
+   "name": "Blade of the Ruined King",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Bonus Damage",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Viktor",
+   "ability": "Q",
+   "name": "Siphon Power",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Modified Magic Damage"
+   ]
+  },
+  {
+   "champion": "Viktor",
+   "ability": "E",
+   "name": "Hextech Ray",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Viktor",
+   "ability": "R",
+   "name": "Arcane Storm",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Vladimir",
+   "ability": "Q",
+   "name": "Transfusion",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Vladimir",
+   "ability": "W",
+   "name": "Sanguine Pool",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Tick"
+   ]
+  },
+  {
+   "champion": "Vladimir",
+   "ability": "E",
+   "name": "Tides of Blood",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Xayah",
+   "ability": "Q",
+   "name": "Double Daggers",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Hit"
+   ]
+  },
+  {
+   "champion": "Xayah",
+   "ability": "Q",
+   "name": "Double Daggers",
+   "label": "Reduced Damage per Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Hit"
+   ]
+  },
+  {
+   "champion": "Xayah",
+   "ability": "Q",
+   "name": "Double Daggers",
+   "label": "Total Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Hit"
+   ]
+  },
+  {
+   "champion": "Xerath",
+   "ability": "W",
+   "name": "Eye of Destruction",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Increased Slow",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Xerath",
+   "ability": "R",
+   "name": "Rite of the Arcane",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Impact Distance to Reveal",
+    "Magic Damage",
+    "Maximum Stacks",
+    "Number of Recasts"
+   ]
+  },
+  {
+   "champion": "Xerath",
+   "ability": "R",
+   "name": "Rite of the Arcane",
+   "label": "Increased Damage per Stack",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Impact Distance to Reveal",
+    "Magic Damage",
+    "Maximum Stacks",
+    "Number of Recasts"
+   ]
+  },
+  {
+   "champion": "XinZhao",
+   "ability": "Q",
+   "name": "Three Talon Strike",
+   "label": "Total Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Physical Damage"
+   ]
+  },
+  {
+   "champion": "XinZhao",
+   "ability": "W",
+   "name": "Wind Becomes Lightning",
+   "label": "Slash Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Thrust Physical Damage"
+   ]
+  },
+  {
+   "champion": "XinZhao",
+   "ability": "W",
+   "name": "Wind Becomes Lightning",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Thrust Physical Damage"
+   ]
+  },
+  {
+   "champion": "Yasuo",
+   "ability": "E",
+   "name": "Sweeping Blade",
+   "label": "Bonus Damage per Stack",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Yasuo",
+   "ability": "E",
+   "name": "Sweeping Blade",
+   "label": "Maximum Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Yasuo",
+   "ability": "E",
+   "name": "Sweeping Blade",
+   "label": "Total Combined Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Yasuo",
+   "ability": "R",
+   "name": "Last Breath",
+   "label": "Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Yone",
+   "ability": "W",
+   "name": "Spirit Cleave",
+   "label": "Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Total Mixed Damage"
+   ]
+  },
+  {
+   "champion": "Yone",
+   "ability": "W",
+   "name": "Spirit Cleave",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Total Mixed Damage"
+   ]
+  },
+  {
+   "champion": "Yone",
+   "ability": "R",
+   "name": "Fate Sealed",
+   "label": "Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Total Mixed Damage"
+   ]
+  },
+  {
+   "champion": "Yone",
+   "ability": "R",
+   "name": "Fate Sealed",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Total Mixed Damage"
+   ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "Q",
+   "name": "Cultivation of Spirit",
+   "label": "Combined Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Active Bonus Magic Damage",
+    "Bonus Attack Speed",
+    "Passive Bonus Magic Damage"
+   ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "W",
+   "name": "Arc of Judgment",
+   "label": "Linger Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Initial Magic Damage"
+   ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "W",
+   "name": "Arc of Judgment",
+   "label": "Total Expanded Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Initial Magic Damage"
+   ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "R",
+   "name": "Transcend One's Self",
+   "label": "Arc of Ruin Base Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "[[File: Yunara Arc of Ruin.png",
+    "[[File: Yunara Untouchable Shadow.png"
+   ]
+  },
+  {
+   "champion": "Yuumi",
+   "ability": "Q",
+   "name": "Prowling Projectile",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Yuumi",
+   "ability": "Q",
+   "name": "Prowling Projectile",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Yuumi",
+   "ability": "Q",
+   "name": "Prowling Projectile",
+   "label": "Bonus Magic Damage On-Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Yuumi",
+   "ability": "R",
+   "name": "Final Chapter",
+   "label": "Reduced Damage per Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal per Hit",
+    "Magic Damage per Hit"
+   ]
+  },
+  {
+   "champion": "Yuumi",
+   "ability": "R",
+   "name": "Final Chapter",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal per Hit",
+    "Magic Damage per Hit"
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "Q",
+   "name": "Stretching Strikes",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "R",
+   "name": "Let's Bounce!",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Hit"
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "R",
+   "name": "Let's Bounce!",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Hit"
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "R",
+   "name": "Let's Bounce!",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Hit"
+   ]
+  },
+  {
+   "champion": "Zed",
+   "ability": "Q",
+   "name": "Razor Shuriken",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Zeri",
+   "ability": "Q",
+   "name": "Burst Fire",
+   "label": "Physical Damage per Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Total Physical Damage"
+   ]
+  },
+  {
+   "champion": "Zeri",
+   "ability": "E",
+   "name": "Spark Surge",
+   "label": "Burst Fire Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "{{ai"
+   ]
+  },
+  {
+   "champion": "Ziggs",
+   "ability": "E",
+   "name": "Hexplosive Minefield",
+   "label": "Reduced Damage per Mine",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Mine",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Ziggs",
+   "ability": "E",
+   "name": "Hexplosive Minefield",
+   "label": "Maximum Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Mine",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Ziggs",
+   "ability": "R",
+   "name": "Mega Inferno Bomb",
+   "label": "Epicenter Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Ziggs",
+   "ability": "R",
+   "name": "Mega Inferno Bomb",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Zilean",
+   "ability": "Q",
+   "name": "Time Bomb",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Stun Duration"
+   ]
+  },
+  {
+   "champion": "Zoe",
+   "ability": "Q",
+   "name": "Paddle Star!",
+   "label": "Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Zoe",
+   "ability": "W",
+   "name": "Spell Thief",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Movement Speed",
+    "Bonus Movement Speed Duration",
+    "Magic Damage Per Bolt"
+   ]
+  },
+  {
+   "champion": "Zoe",
+   "ability": "E",
+   "name": "Sleepy Trouble Bubble",
+   "label": "Maximum Mixed Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Damage Cap",
+    "Cooldown Refund",
+    "Magic Damage",
+    "Maximum Slow"
+   ]
+  }
  ],
  "findings": [
   {
@@ -284,6 +4123,90 @@
    "wiki": [
     70.0,
     230.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "Q",
+   "name": "Void Surge",
+   "field": "cooldown",
+   "meraki": [
+    1.0,
+    1.0
+   ],
+   "wiki": [
+    4.0,
+    1.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "Q",
+   "name": "Void Surge",
+   "field": "base:Physical Damage",
+   "meraki": [
+    0.0,
+    20.0
+   ],
+   "wiki": [
+    12.0,
+    20.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "W",
+   "name": "Above and Below",
+   "field": "base:Magic Damage",
+   "meraki": [
+    70.0,
+    230.0
+   ],
+   "wiki": [
+    80.0,
+    320.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "E",
+   "name": "Royal Maelstrom",
+   "field": "cooldown",
+   "meraki": [
+    20.0,
+    16.0
+   ],
+   "wiki": [
+    24.0,
+    12.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "E",
+   "name": "Royal Maelstrom",
+   "field": "base:Minimum Physical Damage per hit",
+   "meraki": [
+    6.0,
+    10.0
+   ],
+   "wiki": [
+    10.0,
+    18.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "R",
+   "name": "Endless Banquet",
+   "field": "base:Bonus True Damage",
+   "meraki": [
+    6.0,
+    10.0
+   ],
+   "wiki": [
+    2.0,
+    6.0
    ]
   },
   {
@@ -721,6 +4644,34 @@
    ]
   },
   {
+   "champion": "Kaisa",
+   "ability": "W",
+   "name": "Void Seeker",
+   "field": "cooldown",
+   "meraki": [
+    22.0,
+    14.0
+   ],
+   "wiki": [
+    20.0,
+    14.0
+   ]
+  },
+  {
+   "champion": "Kaisa",
+   "ability": "R",
+   "name": "Killer Instinct",
+   "field": "cooldown",
+   "meraki": [
+    120.0,
+    60.0
+   ],
+   "wiki": [
+    130.0,
+    70.0
+   ]
+  },
+  {
    "champion": "Kassadin",
    "ability": "Q",
    "name": "Null Sphere",
@@ -788,6 +4739,76 @@
    "wiki": [
     40.0,
     120.0
+   ]
+  },
+  {
+   "champion": "Khazix",
+   "ability": "W",
+   "name": "Void Spike",
+   "field": "base:Physical Damage",
+   "meraki": [
+    85.0,
+    205.0
+   ],
+   "wiki": [
+    75.0,
+    195.0
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "base:Orb Magic Damage",
+   "meraki": [
+    70.0,
+    210.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "base:Magic Damage",
+   "meraki": [
+    150.0,
+    450.0
+   ],
+   "wiki": [
+    150.0,
+    480.0
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "base:Application Magic Damage",
+   "meraki": [
+    70.0,
+    210.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "LeeSin",
+   "ability": "Q",
+   "name": "Sonic Wave",
+   "field": "base:Physical Damage",
+   "meraki": [
+    55.0,
+    155.0
+   ],
+   "wiki": [
+    60.0,
+    180.0
    ]
   },
   {
@@ -1019,6 +5040,34 @@
    "wiki": [
     125.0,
     275.0
+   ]
+  },
+  {
+   "champion": "MonkeyKing",
+   "ability": "W",
+   "name": "Warrior Trickster",
+   "field": "cooldown",
+   "meraki": [
+    20.0,
+    16.0
+   ],
+   "wiki": [
+    22.0,
+    18.0
+   ]
+  },
+  {
+   "champion": "MonkeyKing",
+   "ability": "E",
+   "name": "Nimbus Strike",
+   "field": "base:Magic Damage",
+   "meraki": [
+    80.0,
+    200.0
+   ],
+   "wiki": [
+    80.0,
+    240.0
    ]
   },
   {
@@ -1295,6 +5344,20 @@
    ]
   },
   {
+   "champion": "RekSai",
+   "ability": "E",
+   "name": "Furious Bite",
+   "field": "base:Physical Damage",
+   "meraki": [
+    80.0,
+    192.0
+   ],
+   "wiki": [
+    70.0,
+    170.0
+   ]
+  },
+  {
    "champion": "Samira",
    "ability": "Q",
    "name": "Flair",
@@ -1554,6 +5617,41 @@
    ]
   },
   {
+   "champion": "TahmKench",
+   "ability": "Q",
+   "name": "Tongue Lash",
+   "field": "base:Magic Damage",
+   "meraki": [
+    81.0,
+    270.88235294117646
+   ],
+   "wiki": [
+    75.0,
+    255.0
+   ],
+   "SHAPE_SUSPECT": {
+    "reason": "concatenated_per_level_tail",
+    "kept_ranks": 5,
+    "stored_len": 18,
+    "cooldown_ranks": 5,
+    "dropped_tail": [
+     18.3529,
+     20.8235,
+     23.2941,
+     25.7647,
+     28.2353,
+     30.7059,
+     33.1765,
+     35.6471,
+     38.1176,
+     40.5882,
+     43.0588,
+     45.5294,
+     48.0
+    ]
+   }
+  },
+  {
    "champion": "Taliyah",
    "ability": "Q",
    "name": "Threaded Volley",
@@ -1666,6 +5764,20 @@
    ]
   },
   {
+   "champion": "Velkoz",
+   "ability": "E",
+   "name": "Tectonic Disruption",
+   "field": "cooldown",
+   "meraki": [
+    14.0,
+    12.0
+   ],
+   "wiki": [
+    12.0,
+    10.0
+   ]
+  },
+  {
    "champion": "Vex",
    "ability": "E",
    "name": "Looming Darkness",
@@ -1747,6 +5859,20 @@
    "wiki": [
     50.0,
     110.0
+   ]
+  },
+  {
+   "champion": "XinZhao",
+   "ability": "Q",
+   "name": "Three Talon Strike",
+   "field": "base:Bonus Physical Damage",
+   "meraki": [
+    20.0,
+    80.0
+   ],
+   "wiki": [
+    15.0,
+    75.0
    ]
   },
   {

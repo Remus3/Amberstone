@@ -580,13 +580,14 @@ def test_matched_wiki_page_records_no_skip():
     assert skipped == []
 
 
-def _stub_run(monkeypatch, wiki_by_title):
+def _stub_run(monkeypatch, wiki_by_title, champ="Maokai", names=None):
     """Drive `run()` with no network: one champion, one ability, one page."""
     monkeypatch.setattr(
         M, "_load_abilities",
         lambda patch: {"meraki_content_patch": "25.15",
-                       "data": {"Maokai": {"Q": MAOKAI_Q_MERAKI}}},
+                       "data": {champ: {"Q": MAOKAI_Q_MERAKI}}},
     )
+    monkeypatch.setattr(M, "_load_champion_names", lambda patch: dict(names or {}))
     monkeypatch.setattr(M, "fetch_pages", lambda titles: dict(wiki_by_title))
 
 
@@ -645,3 +646,112 @@ def test_partial_run_carries_forward_prior_skips(tmp_path, monkeypatch):
     assert [s["champion"] for s in got["skipped_labels"]] == ["Zyra"]
     assert got["skipped_champions"] == ["Ahri", "Zyra"]
     assert got["_skipped_pages"] == 1
+
+
+# --------------------------------------------------------------------------- RM-219
+#
+# `champion_abilities.json` is keyed by DDRAGON KEY (`MonkeyKing`), while the
+# wiki titles its Data pages by DISPLAY NAME (`Wukong`). Building the title from
+# the key made 20 champions 100 percent uncomparable, and because an ability
+# with no page was skipped in silence they all read as NOT STALE - the report
+# certified 12 percent of the roster it never looked at.
+#
+# Measured on the live wiki 2026-08-16, and the pair of probes is why this fix
+# ADDS a spelling rather than REPLACING one:
+#
+#   Template:Data MonkeyKing/Crushing Blow   -> miss
+#   Template:Data Wukong/Crushing Blow       -> HIT
+#   Template:Data Nunu/Consume               -> HIT   <- key still resolves
+#   Template:Data Nunu & Willump/Consume     -> HIT   <- display name too
+#
+# 21 keys differ from their display name but only 20 failed, because Nunu
+# resolves under BOTH. A swap would have been green on all 20 headline cases
+# while silently betting that no wiki page is titled by the key.
+
+# Verbatim `data/daemon_slayer/16.15.1/champions.json` -> data[key].name.
+DDRAGON_NAMES = {
+    "MonkeyKing": "Wukong",
+    "Nunu": "Nunu & Willump",
+    "KogMaw": "Kog'Maw",
+    "Maokai": "Maokai",
+}
+
+
+def test_title_stems_include_the_display_name():
+    assert "Wukong" in M.wiki_title_stems("MonkeyKing", DDRAGON_NAMES)
+
+
+def test_title_stems_keep_the_ddragon_key_as_well():
+    """The measured Nunu case: the key resolves on the wiki too, so dropping it
+    would trade one silent miss for another."""
+    assert M.wiki_title_stems("Nunu", DDRAGON_NAMES) == ["Nunu", "Nunu & Willump"]
+
+
+def test_title_stems_do_not_duplicate_when_key_equals_display_name():
+    assert M.wiki_title_stems("Maokai", DDRAGON_NAMES) == ["Maokai"]
+
+
+def test_title_stems_fall_back_to_the_key_when_the_name_is_unknown():
+    assert M.wiki_title_stems("Ahri", {}) == ["Ahri"]
+
+
+def test_titles_for_emits_both_spellings():
+    titles = M._titles_for("MonkeyKing", {"Q": MAOKAI_Q_MERAKI}, DDRAGON_NAMES)
+    assert titles == [
+        "Template:Data MonkeyKing/Bramble Smash",
+        "Template:Data Wukong/Bramble Smash",
+    ]
+
+
+def test_run_matches_a_page_titled_by_display_name(monkeypatch):
+    """The RM-219 defect end to end: keyed MonkeyKing, page titled Wukong."""
+    _stub_run(
+        monkeypatch,
+        {"Template:Data Wukong/Bramble Smash": MAOKAI_Q_WIKI},
+        champ="MonkeyKing", names=DDRAGON_NAMES,
+    )
+    rep = M.run("16.15.1")
+
+    assert rep["_skipped_pages"] == 0
+    assert rep["stale_champions"] == ["MonkeyKing"]
+
+
+def test_run_still_matches_a_page_titled_by_the_key(monkeypatch):
+    """The Nunu regression guard: adding a spelling must not remove one."""
+    _stub_run(
+        monkeypatch,
+        {"Template:Data Nunu/Bramble Smash": MAOKAI_Q_WIKI},
+        champ="Nunu", names=DDRAGON_NAMES,
+    )
+    rep = M.run("16.15.1")
+
+    assert rep["_skipped_pages"] == 0
+    assert rep["stale_champions"] == ["Nunu"]
+
+
+def test_page_skip_row_names_the_stems_it_tried(monkeypatch):
+    """A miss must say WHICH spellings were attempted, or the next reader
+    repeats this whole investigation to find out."""
+    _stub_run(monkeypatch, {}, champ="MonkeyKing", names=DDRAGON_NAMES)
+    rep = M.run("16.15.1")
+
+    assert rep["_skipped_pages"] == 1
+    assert rep["skipped_pages"][0]["tried"] == ["MonkeyKing", "Wukong"]
+
+
+def test_champion_names_load_is_tolerant_of_a_missing_file(tmp_path, monkeypatch):
+    """The names bulk is a separate artifact; its absence must degrade to the
+    old key-only behaviour, not crash the sweep."""
+    monkeypatch.setattr(M, "DATA_DIR", tmp_path)
+    (tmp_path / "16.15.1").mkdir(parents=True)
+    assert M._load_champion_names("16.15.1") == {}
+
+
+def test_champion_names_load_reads_the_ddragon_bulk(tmp_path, monkeypatch):
+    monkeypatch.setattr(M, "DATA_DIR", tmp_path)
+    (tmp_path / "16.15.1").mkdir(parents=True)
+    (tmp_path / "16.15.1" / "champions.json").write_text(
+        json.dumps({"data": {"MonkeyKing": {"id": "MonkeyKing", "name": "Wukong"}}}),
+        encoding="utf-8",
+    )
+    assert M._load_champion_names("16.15.1") == {"MonkeyKing": "Wukong"}
