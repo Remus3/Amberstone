@@ -6,6 +6,55 @@
 
 ---
 
+# 2026-08-16e - RM-221: the Share mirror's exclusion list becomes a RULE, and reproducing first corrected four of the row's particulars
+
+Closed RM-221. The reviewer's own Start-here command now reports **8256 passed, 2 failed,
+15 skipped, 11133 subtests in 96s** on a clean copy unpacked outside the repo and
+deliberately RENAMED to `ds-engine-review`, against 58 failed / 5 errors before. Both
+survivors are the SAME RM-190 divergence on item 3175 Spellslinger's Shoes - engine 20
+flat magic pen, pinned 16.15.1 snapshot states 18 - reported engine-side by
+`test_magic_pen_flat_catalog_r153.py` and feed-side by `test_pen_pct_catalog_r160.py`.
+
+**The row was right that the package was broken and wrong about four particulars, and the
+only reason that surfaced is that I reproduced before building.** (a) The filed **73 is not
+reproducible from the bytes**: a copy that KEEPS the name `Share` gives 58. The 15-failure
+delta was an ancestor-directory-NAME check in four engine tests, so the number moved when
+the reproduction renamed the folder. (b) **Four** files import `core`, not six, and all four
+do it DEFERRED inside test bodies - which is why the pre-existing guard stayed green
+throughout: its `_CORE_IMPORT` was anchored at column 0 because "only a collection abort
+counts". True, wrong bar. (c) The two biggest offenders are neither a `core` import nor a
+`data/meta` read - `test_health_damage_coupling_rm91.py` (50 of 58) and
+`test_item_proc_heal_rm103.py` (all 5 errors) pin the historical 16.14.1 snapshot, and
+`test_antitank_axis_score_invariance_r196.py` is a host-tree POPULATION scan. (d)
+`test_pen_pct_catalog_r160.py` was filed as a packaging artifact and is the same TRUE
+signal as r153 - excluding it would have deleted it, the exact trap the row raised for r153.
+
+**Shipped:** two rules in `tools/ds_share_sync._is_host_dependent_test` (any-indent `core`
+import; an AST check for a `data/daemon_slayer/<patch>` read other than the shipped patch,
+in two shapes only) plus ONE named entry for r196 with its reason written down. Rule 2's
+narrowness is MEASURED: a blunt stale-patch-literal scan hits 10 modules and 8 of them pass,
+because they build their own snapshot; the shipped rule hits exactly 2 with 0 false
+positives. Also the `SHARE_MIRROR` sentinel the generator emits, replacing the name check in
+all four tests, pinned `eol=lf` in `.gitattributes` so `core.autocrlf` cannot fail `--check`
+on the next clone.
+
+**Two things worth carrying forward.** The sentinel sites walk `parents` NON-INDEXED on
+purpose: `tests/test_skip_condition_hygiene.py` credits that exact form as a tree-shape
+capability and names the case "is this the Share mirror" in its own source. My first attempt
+indexed `parents[3]`, resolved to a suffix-tracked artifact, and turned all four skips into
+class-B5 DEFECTs - caught by the RC suite, not by inspection, and fixed on the guard's own
+terms rather than by buying an `_ALLOWLIST` exemption. Second: the first mutation probe of
+the new snapshot guard SURVIVED, because flipping `_PATCH` moves the generator and the guard
+together - an EQUIVALENT mutant. Re-aimed at a generator that stops applying the rule, it
+goes red. All four guards are mutation-proved with non-equivalent mutants.
+
+**Gate note that cost a re-run:** the DS suite under `-n 8` reports 19 failures, ALL in
+`test_ehp_family_seams_reach_the_client_rm115.py`, which drives the shared live DS `:8860`
+server; serially the same tree is **10684 passed / 13482 subtests, 0 failed**. Run that file
+serially or expect phantom reds.
+
+---
+
 # 2026-08-16d - markdown organizing pass: the Share package's own Start-here command had not exited green for weeks
 
 Structure and contents sweep over every tracked `.md` outside `docs/_archive`, plus a
