@@ -447,7 +447,7 @@
     },
     "16.15.1": {
       "ability_staleness.json": {
-        "body_md5": "68998517",
+        "body_md5": "6cdce644",
         "declared_patch": "16.15.1",
         "stamp_field": "_patch"
       },
