@@ -24,7 +24,7 @@
 
 **I walked into a documented trap:** the first full suite after `ds_share_sync` reported 1 FAILED in `phase8_smoke/test_sr_draft_profile_engine.py`. That is the mid-suite DS-bounce artifact CLAUDE.md already warns about; confirmed transient by an 18/18 isolated run and a clean full re-run. **Let the Share sync settle before starting a suite.**
 
-**Residue: 109 skips remain** (27 zero-label across 14 champions, 82 with a live label set). A genuine further parser tail, free to file as RM-220 - but not as an aliasing problem, that hypothesis is now refuted by measurement. Next free id = RM-220.
+**Residue FILED as RM-220 (109 skips), and this time the mechanisms were verified against live wikitext BEFORE filing** - the direct lesson of having two rows in two days turn out to rest on inferred mechanisms. Three separated parts: **(A)** 27 zero-label rows caused by three more `{{ap|}}` forms the endpoint parser cannot read - a rank-count suffix (`{{ap|35 to 110 6}}`, Jayce), enumerated ranks (`{{ap|150|275|400}}`, Nocturne) and a named parameter (`|round=2`, Rumble); **(B)** a SMALL real synonym set - Ahri W's `Subsequent Flame Magic Damage` vs live `Subsequent Magic Damage` - which is the hypothesis RM-218 was refuted for, true of different rows than the ones it named, and explicitly not to be generalized since the same residue holds one-to-many splits (Ekko) and genuinely different quantities (Chogath); **(C)** a design question worth more than either - **an unmatched label may itself BE the drift.** Briar Q stores `Magic Damage` against a page carrying only `Physical Damage`. A stored label that no longer exists upstream is exactly the staleness this tool exists to find, and today it is discarded as "cannot compare". Next free id = RM-221.
 
 ---
 
