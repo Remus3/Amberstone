@@ -1,6 +1,8 @@
 # The /done ritual - optimized, with a per-session drift guard
 
-Written 2026-07-26 on DESKTOP-LCA3EBI. Derived from Amberstone's `/done`, but
+Written 2026-07-26 on Legion (Tailscale node `legion-rc` - the only canonical name
+for this box; CLAUDE.md deliberately does not record the Windows computer name,
+which is re-rolled periodically). Derived from Amberstone's `/done`, but
 written to be **portable**: any project on this machine using the same
 commit + push + living-docs practice can adopt it by changing the paths in
 section 0.

@@ -53,8 +53,15 @@ _ENTRY_HEADING = re.compile(
     re.MULTILINE,
 )
 # `- <old> -> <new> - <prose>` under README "## Release history" (Share/README.md:290).
+# Share/README.md's "Release history" moved from a bullet list to a two-column
+# table on 2026-08-16 (the section had grown to 25 full CHANGELOG entries and was
+# duplicating CHANGELOG.md at ~21 KB). Both shapes are accepted so this guard
+# keeps its teeth across the restructure and would survive a revert:
+#   bullet: "- 1.277.1 -> 1.278.0 - <prose>"
+#   table:  "| 1.277.1 -> 1.278.0 (2026-08-15) | <prose> |"
 _README_ENTRY = re.compile(
-    r"^- (?P<old>\d+\.\d+\.\d+) -> (?P<new>\d+\.\d+\.\d+) - ",
+    r"^(?:- |\| )(?P<old>\d+\.\d+\.\d+) -> (?P<new>\d+\.\d+\.\d+)"
+    r"(?: \(\d{4}-\d{2}-\d{2}\))? *(?:-|\|) ",
     re.MULTILINE,
 )
 

@@ -74,7 +74,7 @@ A restated fact is a fact that will drift.
 | `docs/ARCHITECTURE.md` | Module map, data flow, seams, ownership | Ops commands, counts |
 | `docs/OPERATIONS.md` | Commands, restart, scheduled tasks, runbooks | Architecture, rationale |
 | `docs/adr/` | One file per architectural decision, indexed in `docs/adr/README.md` | Anything not a decision |
-| `docs/GATED.md` | Items blocked on something outside the repo | Items merely unstarted |
+| `docs/GATED.md` (Amberstone: `docs/LIVE_GAME_GATED_SYNC.md`) | Items blocked on something outside the repo | Items merely unstarted |
 | `WAKEUP_NOTES.md` | Last 2-3 sessions at full fidelity | Anything older (archive it) |
 | `docs/history_notes.md` | Deep archive of pruned notes and old ledger items | Current state |
 | `memory/` | Durable cross-project and cross-session facts (section 11) | Project state derivable from code |
@@ -95,13 +95,21 @@ A restated fact is a fact that will drift.
 
 Context is the binding budget in every session. Enforce in CI:
 
-| File | Budget | Enforcement |
+| File | Starting budget | Enforcement |
 |---|---|---|
 | `CLAUDE.md` | < 40 KB | CI hard fail |
 | Any single auto-loaded file | < 40 KB | CI hard fail |
 | `memory/MEMORY.md` (index) | < 20 KB | CI hard fail |
 | Any `memory/*.md` leaf | < 6 KB | CI warn |
 | `ROADMAP.md` | < 60 KB | CI warn, triggers a relocate pass |
+
+**These are the numbers to START a new project at, not this repo's live limits.**
+Amberstone itself enforces **60 KB for `CLAUDE.md` and 80 KB for `ROADMAP.md`** -
+`tests/test_doc_size_budget.py` holds the constants and `tools/drift_guard.py`
+warns at 90 percent of each. `CLAUDE.md` here sits above 40 KB and is compliant.
+Read the guard, never this table, before reporting a budget violation in this
+repo; a new project adopting these conventions should start tight and raise the
+number deliberately rather than inherit a grown one.
 
 When a budget is hit, **relocate, do not delete**. Move detail to a sub-index or an
 archive file and leave a one-line pointer. A sub-index (`INDEX_<domain>.md`) holds the
@@ -148,7 +156,7 @@ Every work item is in exactly one of four states, in exactly one file.
 |---|---|---|
 | **OPEN** | `ROADMAP.md` | `<ID> - <one line> - acceptance: <testable condition> - tier: <0/1/2>` |
 | **ASPIRATIONAL** | `BACKLOG.md` | One line. No acceptance criteria required. Not scheduled. |
-| **GATED** | `docs/GATED.md` | One line + the exact external condition that unblocks it |
+| **GATED** | `docs/GATED.md` - this repo names it `docs/LIVE_GAME_GATED_SYNC.md`; `docs/GATED.md` does not exist here | One line + the exact external condition that unblocks it |
 | **CLOSED** | `docs/LEDGER.md` + a `Settled` line in `CLAUDE.md` if it must never reopen | Newest-first, dated, with a verification pointer |
 
 **Prose discipline for all four:** one line per item. If an item needs a paragraph, it

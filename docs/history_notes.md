@@ -321,6 +321,30 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+# 2026-08-16 - RM-216 closed: instrumenting a silent skip measured it at 3x the signal it was hiding
+
+**Shape: single-thread, TDD, Tier-1.** Commit `d6fc0927`. Files: `tools/ds_wiki_staleness_check.py`, `tests/test_ds_wiki_staleness_check.py`, plus BACKLOG + LEDGER 1267. RED confirmed first at `8 failed, 33 passed`, GREEN at `41 passed`. Full `pytest tests` 19142 / 96 skipped / 4438 subtests, ruff clean.
+
+**THE INSTRUMENTATION PAID FOR ITSELF IMMEDIATELY, AND THEN CORRECTED ME.** A live `--recent --days 3` run over 13 champions reported `stale=7 findings=11 skipped_pages=0 skipped_labels=31`, and I wrote that up as "the row led with the wrong half - the page site fires zero." **That was a sampling artifact and it is withdrawn.** A read-only `--full` sweep run later the same day to size the follow-up rows reports `checked=171 pages=754 stale=74 findings=127 skipped_pages=101 skipped_labels=323`, with **137 of 171 champions in at least one skip list and only 34 wholly clean.** The page site fires 101 times at roster scale and is the MORE severe half. **A `--recent` window is a convenience sample drawn from whatever the wiki edited lately, which systematically EXCLUDES the champions the tool cannot address at all - the population and the sample disagree precisely where the defect lives.** Size a defect on the population before you rank its halves.
+
+**THE 101 PAGE SKIPS ARE NOT RENAMES EITHER - they are a title-construction bug, and it is the worst thing found this session.** `:473` builds `Template:Data {champion}/{ability}` from the DDRAGON KEY, so it requests `MonkeyKing`, `KogMaw`, `DrMundo` instead of `Wukong`, `Kog'Maw`, `Dr. Mundo`. **20 champions are 100 percent uncomparable and ZERO of them appear in `stale_champions`** - the report positively certifies 12 percent of the roster it never looked at. Filed RM-219. Note for whoever takes it: a punctuation-stripping fix passes 19 of 20 and looks done; `MonkeyKing` to `Wukong` is the case that no such rule reaches.
+
+**THE LABEL SKIPS (323 at full scale) ARE NOT THE RENAME THE ROW PREDICTED EITHER, and that distinction is the reason not to widen the fix.** They are a systematic Meraki-vs-wiki VOCABULARY gap - 125 distinct unmatched stored labels, headed by `Total Magic Damage` (37) and `Total Physical Damage` (21), because Meraki publishes DERIVED AGGREGATES where the wiki publishes the COMPONENT: stored `Total Physical Damage` against live `Physical Damage per Hit` (Samira W), stored `Total Magic Damage` against live `Magic Damage` + `Magic Damage Per Tick` (Nasus E), six Gangplank R labels against one live `Magic Damage Per Wave`. Fixing that means a label-aliasing table, and there was zero test evidence for any specific alias. Left as a separate unfiled defect. **RM-216 was about the SILENCE, not about making the comparison succeed.**
+
+**A THIRD CLASS SURFACED THAT NOBODY FILED AND NOTHING COULD SEE BEFORE:** 50 rows across 23 champions report `live labels []` - the page was fetched and parsed to ZERO labels. That is a parse gap, not a name mismatch, and it is only distinguishable because each skip row carries the labels that WERE found. **When you instrument a skip, record what the lookup DID find, not just that it missed** - the found-set is what separates a rename from a parse failure without a second live fetch.
+
+**Design kept it Tier-1:** optional out-param accumulators rather than a changed return type, so the pre-existing `compare_champion(...) == []` assertion and every caller stayed untouched. Two negative-control tests assert the counters stay at zero on a healthy compare, so the guard cannot pass by always firing. `write_report` carries skip rows forward on a partial merge - the same hazard its own docstring already documents for findings - and recomputes counts from the MERGED lists, not the partial run's own.
+
+**NOT done, deliberately:** no regen of `ability_staleness.json` (needs a live 173-champion sweep; a regen owes Share resync + `ds_feed_index.py --write` AFTER the data moves), so no feed-index churn. No Share resync owed at all - `tools/ds_wiki_staleness_check.py` is NOT in the mirror, checked by listing `Share/src/tools/` (14 files) rather than assumed.
+
+**PROCESS COST, do not repeat:** the suite was run four times and only the uncontended runs agreed. One pass reported 3 ERRORs in `tests/test_unresolved_template_tokens_rm108.py`, another 1 FAILED in `tests/test_mission_control_server.py` - both files untouched by the change, both green standalone and green in the clean run. Two of those runs overlapped because a background suite was started and then a second suite was run in the FOREGROUND against the same ports and files. **Never report a full-suite verdict from a run sharing the box with another suite; on this machine RC + DS + Mission Control are live during every run as it is.**
+
+**FILED, not fixed here:** RM-218 (label vocabulary gap, 273 rows page-found-label-unmatched plus 50 rows page-parsed-to-zero) and RM-219 (title construction, 20 wholly-uncomparable champions). **Take RM-219 first** - it is the one that certifies champions current without looking at them, and fixing it will make `stale_champions` RISE from 74, which is the fix working, not a regression. Neither belongs to RM-216, which is CLOSED; the instrumentation already exists, so do not re-file the silence and do not re-derive these counts by reading code - run the tool. **Next free id = RM-220.**
+
+**Left alone on purpose:** `ROADMAP.md:40` still lists RM-203 as OPEN against a CLOSED record in BACKLOG + LEDGER 1265. The hand-off flagged it as a quick win for a session that owns that work, and this session did not.
+
+---
+
 # 2026-08-15c - RM-213 closed: the artifact guard could not see a carry-forward; 4 of the row's own premises refuted
 
 **Shape: 8 agents - 3 read-only recon, 4 build on disjoint files, 1 adversarial verifier - one merger, no worktrees (disjoint main-tree files).** Commits `9eb3e32b` (census correction) + `0ced2f42` (the guard). CI green on all three workflows. Verified by the merger, never inherited: DS 10684 / 13482 subtests, RC 19134 / 96 skipped / 4438 subtests.
@@ -30144,3 +30168,68 @@ BEFORE any regen. Full narrative: `docs/LEDGER.md` 1044.
   class `coherence.py:138-139` already defers. The eviction is right; the replacement
   is not clearly better.
 - CLAUDE.md's **"20,190 tests" is stale** against the measured `tests/` count (12987).
+
+---
+
+## 2026-08-16 - relocated from `docs/DS_SWEEP_TRACKER.md`: the five-layer RM id-pointer correction stack
+
+Verbatim. Each of these blocks was a dated correction of the id pointer that then went
+stale itself; by 2026-08-16 the tracker carried five of them, contradicting each other
+(one line read RM-208, another asserted RM-205 was "CURRENT"). The tracker now carries a
+single derived pointer plus the derivation command, and the durable lesson - that only a
+guard (RM-192) fixes this - survives there. Kept here for the incident record only; do
+NOT read any id pointer below as live.
+
+  **POINTER CORRECTED 2026-08-14 (lane-research): this line read `RM-135` and was 57 ids stale.**
+  RM-135 had been in use since 2026-08-01 and the live repo-wide max was RM-191, so an agent
+  following `tools/headless-research.md:46` or `tools/headless-true-audit.md:305` - both of which
+  name this file as the authoritative registry - would have minted a COLLIDING id. That is the
+  THIRD time this pointer has gone stale (see the RM-119 and RM-134 corrections recorded in
+  `docs/history_notes.md:2372` and `:2288`), which is why the standing fix is a GUARD and not
+  another hand-correction: filed as **RM-192**. Until that guard exists, do NOT trust this line
+  on its own - derive the max with a repo-wide `grep -rhoE "RM-[0-9]{1,3}"` over `ROADMAP.md`,
+  `BACKLOG.md` and `docs/LEDGER.md` and take the next id above it.
+  (lane-research corrected 2026-07-31: the prior "= RM-119"
+  pointer was ITSELF stale - RM-119..RM-127 were all consumed by ROADMAP/BACKLOG rows whose
+  tracker registration was owed-and-never-done, exactly the "tracker registration is owed"
+  note each carries. Roughly: RM-119 skip-audit laning gap, RM-120..RM-122 UI/CCR lanes,
+  RM-123/RM-124 shipped/gated, RM-125 web-glyph, RM-126 relocated, RM-127 CCR link-ingest.
+  Verify the true max before taking an id:
+  `grep -rhoE "RM-[0-9]+" ROADMAP.md BACKLOG.md docs/ | sort -t- -k2 -n | tail -1`.)
+  Historical note: the earlier "RM-105" reading was STALE - ids
+  RM-105..RM-117 were consumed after it was written, and RM-118 was allocated
+  2026-07-26 to the mana-as-damage `ds.ehp` blindness, population 1
+  (Blitzcrank), the third instance of the RM-87 / RM-91 lever - ITEM / AXIS
+  gap, no roster checkbox. Verify against this file, never against ROADMAP
+  prose, before taking an id; RM-96 Zilean + RM-97 Zyra assigned in batch32;
+  RM-98 cast-rate TIME BASE allocated 2026-07-19 out of the RM-39/RM-43 L2
+  build; RM-99 + RM-101..RM-104 allocated 2026-07-19 to the R132 defensive-half
+  sweep - Heartsteel HP-stack, the defensive-rune remainder, the Warmog's Arena
+  mirror phantom credit, Unending Despair's self-heal, and the Kaenic Arena
+  mirror shield; see ROADMAP "DS defensive-half sweep GAP specs"). Note RM-98
+  and RM-99/RM-101..RM-104 are NOT champion GAPs - they are ITEM / RUNE axis
+  gaps, so they add no roster checkbox and the Summary counts above are
+  unchanged by them.
+- **RM-203 + RM-204 ALLOCATED 2026-08-14 (orchestrated-run docs sync).** Both are
+  ITEM / DOC / PRODUCT rows, **not champion GAPs** - they add NO roster checkbox and
+  change NONE of the Summary counts above. **RM-203** = the stale `547/547` DS coverage
+  denominator in `docs/DAEMON_SLAYER.md:10` + `docs/DS_COMPLETENESS_GAP.md:32,33,261`
+  (re-measured 16.15.1: ITEM_EFFECTS 548, DDragon purchasable 544, total 706 - no
+  denominator reproduces 547); DS-BATCH only, body in `BACKLOG.md` under "Daemon Slayer
+  scorer calibration". **RM-204** = the Arena augment play-line serve-hop, operator-gated,
+  body in `BACKLOG.md` under "Draft + coach lane". Bodies live in BACKLOG because
+  `ROADMAP.md` was at ~91 pct of its 80 KB budget when these were filed; ROADMAP carries
+  one pointer line each.
+  **CONCURRENCY NOTE - read before taking the next id.** These two were allocated while a
+  SECOND session was live on this repo, which consumed **RM-192..RM-202** on the
+  `lane/research` branch. That branch merges independently, so for a window the true max
+  id is NOT visible from `main` alone. **Next free id after both land = RM-205.** The
+  pointer above now reads **RM-205** and is CURRENT as of 2026-08-15. **This sentence
+  originally warned that the pointer above read `RM-135` and was LONG STALE; that was
+  true when it was written and became false in the same merge**, because the concurrent
+  lane-research session corrected the pointer in the commit this note landed beside. The
+  `RM-135` string now survives only inside its own correction note further up - do not
+  read that occurrence as a live pointer. Verify the true max across BOTH the working
+  tree and every live lane branch before taking an id:
+  `git fetch origin && git show origin/lane/research:ROADMAP.md | grep -ohE "RM-[0-9]+"`
+  alongside the working-tree grep on the line below.

@@ -44,12 +44,15 @@ pre-commit check and rejected.
 
 ## Design vantage
 Authoring canvas is **standard 1920x1080 in Chrome windowed** (titlebar
-+ URL bar + bookmarks bar present - usable viewport approx 1920x~920). The
-Game-PC secondary panel is 1920x1280 native @ 100% OS scale, so when
-the operator hits F11 the dashboard recovers the browser chrome AND the
-extra ~200px of panel height; `body` is flex-column with `main { flex:
-1 1 auto }` so the main content area auto-grows into whatever vertical
-space the viewport gives. Design at 1920x~920 - anything taller is
++ URL bar + bookmarks bar present - usable viewport approx 1920x~920).
+F11 is optional and recovers the browser chrome; `body` is flex-column
+with `main { flex: 1 1 auto }` so the main content area auto-grows into
+whatever vertical space the viewport gives, and no layout is pinned to a
+fixed height. Until 2026-08-16 this paragraph also asserted, in the
+present tense, a 1920x1280 native Game-PC secondary panel and an extra
+~200px of panel height on F11; that display left the pipeline with the
+1-PC consolidation (ADR-011, 2026-05-29) and the `web/` push to it is
+retired per the section above. Design at 1920x~920 - anything taller is
 slack.
 
 ## Output contract

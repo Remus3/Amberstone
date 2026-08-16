@@ -1,6 +1,10 @@
 # PowerShell 7 on this machine - what was done, and how to switch a project to it
 
-Machine: DESKTOP-LCA3EBI (hostname verified live 2026-07-26; Tailscale is NOT installed on this box)
+Machine: Legion, Tailscale node `legion-rc` (the ONLY canonical name for this box -
+CLAUDE.md deliberately does not record the Windows computer name, which is re-rolled
+periodically, so any value written down goes stale). Tailscale IS installed here, at
+`C:\Program Files\Tailscale\tailscale.exe` - verified on disk 2026-08-16. This line
+named a since-rotated computer name and claimed Tailscale was absent until then.
 Installed: 2026-07-26
 Applies to: every project on this box, not just Amberstone
 
