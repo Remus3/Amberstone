@@ -518,3 +518,130 @@ def test_per_level_passive_cooldown_may_legitimately_decrease():
              "cooldown": [30.0 - i * (10.0 / 17.0) for i in range(18)],
              "damage_blocks": []}
     assert M.meraki_endpoints(entry)["cooldown"] == (30.0, 20.0)
+
+
+# --------------------------------------------------------------------------- RM-216
+#
+# Both skip paths used to `continue` without a counter or a log line, so a
+# champion could DROP OUT of the report entirely and the shrinking stale set
+# read as convergence. The two renames below are the realistic triggers: the
+# wiki moves a Data page when an ability is renamed (the page-level skip), and
+# it relabels a damage line on a rework (the label-level skip). Neither is a
+# data error, so the run must keep going - but it must SAY SO.
+
+# MAOKAI_Q_WIKI with only the damage LABEL renamed. Same numbers, and those
+# numbers still disagree with the stored 65..245, so a finding is owed unless
+# the label miss is what suppressed it.
+MAOKAI_Q_WIKI_RELABELLED = MAOKAI_Q_WIKI.replace(
+    "{{st|Magic Damage|", "{{st|Magic Damage Per Hit|"
+)
+
+
+def test_renamed_damage_label_is_recorded_not_silently_dropped():
+    skipped: list = []
+    findings = M.compare_ability(
+        "Maokai", "Q", MAOKAI_Q_MERAKI[0], MAOKAI_Q_WIKI_RELABELLED,
+        skipped_labels=skipped,
+    )
+    assert findings == [], "cooldowns match; only the label miss is in play"
+    assert [(s["champion"], s["ability"], s["label"]) for s in skipped] == [
+        ("Maokai", "Q", "Magic Damage")
+    ]
+
+
+def test_matched_damage_label_records_no_skip():
+    """Negative control: the counter must not fire on a healthy compare."""
+    skipped: list = []
+    M.compare_ability(
+        "Maokai", "Q", MAOKAI_Q_MERAKI[0], MAOKAI_Q_WIKI, skipped_labels=skipped
+    )
+    assert skipped == []
+
+
+def test_renamed_wiki_page_is_recorded_not_silently_dropped():
+    skipped: list = []
+    findings = M.compare_champion(
+        "Maokai", {"Q": MAOKAI_Q_MERAKI},
+        {"Bramble Smash (Rework)": MAOKAI_Q_WIKI},
+        skipped_pages=skipped,
+    )
+    assert findings == []
+    assert [(s["champion"], s["ability"], s["name"]) for s in skipped] == [
+        ("Maokai", "Q", "Bramble Smash")
+    ]
+
+
+def test_matched_wiki_page_records_no_skip():
+    skipped: list = []
+    M.compare_champion(
+        "Maokai", {"Q": MAOKAI_Q_MERAKI}, {"Bramble Smash": MAOKAI_Q_WIKI},
+        skipped_pages=skipped,
+    )
+    assert skipped == []
+
+
+def _stub_run(monkeypatch, wiki_by_title):
+    """Drive `run()` with no network: one champion, one ability, one page."""
+    monkeypatch.setattr(
+        M, "_load_abilities",
+        lambda patch: {"meraki_content_patch": "25.15",
+                       "data": {"Maokai": {"Q": MAOKAI_Q_MERAKI}}},
+    )
+    monkeypatch.setattr(M, "fetch_pages", lambda titles: dict(wiki_by_title))
+
+
+def test_run_report_counts_and_names_the_page_skip(monkeypatch):
+    """The champion must appear in the report body, not vanish from it."""
+    _stub_run(monkeypatch, {"Template:Data Maokai/Bramble Smash (Rework)":
+                            MAOKAI_Q_WIKI})
+    rep = M.run("16.15.1")
+
+    assert rep["stale_champions"] == []
+    assert rep["_skipped_pages"] == 1
+    assert rep["skipped_champions"] == ["Maokai"]
+    assert rep["skipped_pages"][0]["name"] == "Bramble Smash"
+
+
+def test_run_report_counts_and_names_the_label_skip(monkeypatch):
+    _stub_run(monkeypatch, {"Template:Data Maokai/Bramble Smash":
+                            MAOKAI_Q_WIKI_RELABELLED})
+    rep = M.run("16.15.1")
+
+    assert rep["_skipped_labels"] == 1
+    assert rep["skipped_champions"] == ["Maokai"]
+    assert rep["skipped_labels"][0]["label"] == "Magic Damage"
+
+
+def test_run_report_is_quiet_when_nothing_is_skipped(monkeypatch):
+    _stub_run(monkeypatch, {"Template:Data Maokai/Bramble Smash": MAOKAI_Q_WIKI})
+    rep = M.run("16.15.1")
+
+    assert rep["stale_champions"] == ["Maokai"]
+    assert rep["_skipped_pages"] == 0
+    assert rep["_skipped_labels"] == 0
+    assert rep["skipped_champions"] == []
+
+
+def test_partial_run_carries_forward_prior_skips(tmp_path, monkeypatch):
+    """Same hazard `write_report` already fixes for findings: a --recent pass
+    over one champion must not erase everyone else's skip record."""
+    monkeypatch.setattr(M, "DATA_DIR", tmp_path)
+    (tmp_path / "16.15.1").mkdir(parents=True)
+    full = _report({"Mel"}, mode="full")
+    full["skipped_pages"] = [{"champion": "Ahri", "ability": "Q", "name": "Orb"}]
+    full["skipped_labels"] = [{"champion": "Zyra", "ability": "W",
+                               "label": "Magic Damage"}]
+    M.write_report(full, "16.15.1")
+
+    partial = _report({"Mel"})
+    partial["skipped_pages"] = []
+    partial["skipped_labels"] = []
+    M.write_report(partial, "16.15.1", checked={"Mel"})
+
+    got = json.loads(
+        (tmp_path / "16.15.1" / M.REPORT_NAME).read_text(encoding="utf-8")
+    )
+    assert [s["champion"] for s in got["skipped_pages"]] == ["Ahri"]
+    assert [s["champion"] for s in got["skipped_labels"]] == ["Zyra"]
+    assert got["skipped_champions"] == ["Ahri", "Zyra"]
+    assert got["_skipped_pages"] == 1
