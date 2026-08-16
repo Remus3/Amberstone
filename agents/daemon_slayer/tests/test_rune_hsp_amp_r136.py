@@ -55,9 +55,11 @@ _MIKAEL = "3222"      # heal_shield_amp_pct 0.12
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 # True only inside the Share handoff mirror, which does not vendor
-# data/meta_build. See _require_rune_files for why this keys on the PATH rather
+# data/meta_build. See _require_rune_files for why this keys on the SENTINEL rather
 # than on the snapshot glob coming back empty.
-_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in Path(__file__).resolve().parents)
+_IS_SHARE_MIRROR = any(
+    (p / "SHARE_MIRROR").is_file() for p in Path(__file__).resolve().parents
+)
 
 
 class SumRuneHspPctTests(unittest.TestCase):

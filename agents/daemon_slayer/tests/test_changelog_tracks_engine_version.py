@@ -33,10 +33,12 @@ _CHANGELOG = _PKG / "CHANGELOG.md"
 # Share package deliberately does NOT vendor the engine changelog - it ships its
 # own Share/CHANGELOG.md release notes instead. So in the mirror the file is
 # legitimately absent and the whole class is skipped. The discriminator is the
-# mirror PATH, not the file's absence: keying on absence would let a genuinely
+# mirror SENTINEL, not the file's absence: keying on absence would let a genuinely
 # deleted CHANGELOG.md silently skip in the main tree, which is the exact failure
 # this guard exists to catch.
-_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in _HERE.parents)
+_IS_SHARE_MIRROR = any(
+    (p / "SHARE_MIRROR").is_file() for p in _HERE.parents
+)
 
 # An entry STARTS A PARAGRAPH with an engine semver followed by " (".
 #
