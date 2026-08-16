@@ -48,6 +48,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -79,6 +80,17 @@ _TOL = 1e-2
 
 _COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _ST_RE = re.compile(r"\{\{\s*st\s*\|", re.IGNORECASE)
+# Deliberately LOCAL rather than the imported `_AP_WRAPPER_RE`, which pins bare
+# `[0-9.]+` endpoints. The extractor that owns that regex is mirrored into
+# Share and feeds the engine, so widening it there would be a Tier-2 change to
+# a data producer; this reader only needs the looser capture for itself.
+_AP_EXPR_RE = re.compile(
+    r"\{\{\s*ap\s*\|\s*([^|}]+?)\s+to\s+([^|}]+?)\s*\}\}", re.IGNORECASE
+)
+_ARITH_CHARS_RE = re.compile(r"[0-9.+\-*/() ]+")
+# `{{ii|Death's Daughter}}` inside a LABEL - the stored side reads it as plain
+# text, so the wrapper has to be flattened before the two can ever match.
+_LABEL_TEMPLATE_RE = re.compile(r"\{\{\s*[a-z]+\s*\|([^{}|]*)\}\}", re.IGNORECASE)
 _VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 
@@ -143,17 +155,62 @@ def parse_endpoints(raw: Optional[str]) -> Optional[tuple[float, float]]:
     s = _strip_comments(raw or "").strip()
     if not s:
         return None
-    m = _AP_WRAPPER_RE.search(s)
+    m = _AP_EXPR_RE.search(s)
     if m:
-        try:
-            return (float(m.group(1)), float(m.group(2)))
-        except (TypeError, ValueError):
+        lo, hi = _arith(m.group(1)), _arith(m.group(2))
+        if lo is None or hi is None:
             return None
+        return (lo, hi)
     try:
         v = float(s)
     except (TypeError, ValueError):
         return None
     return (v, v)
+
+
+def _arith(expr: Optional[str]) -> Optional[float]:
+    """Evaluate a literal arithmetic endpoint, or None (RM-218).
+
+    Wiki endpoints are not always bare numbers: Alistar's Trample is
+    ``{{ap|80/10 to 200/10}}`` (per-tick), Gangplank's R is
+    ``{{ap|40*12+40*3 to 100*12+100*3}}``. Refusing those dropped the whole
+    LABEL, which is why two champions parsed to no labels at all.
+
+    This is a whitelist walk, not an evaluator: numeric literals and
+    ``+ - * /`` only, so a name, call, attribute or power cannot be reached.
+    Anything else returns None and the label goes on counting itself as a skip.
+    """
+    s = (expr or "").strip()
+    if not s or not _ARITH_CHARS_RE.fullmatch(s):
+        return None
+    try:
+        tree = ast.parse(s, mode="eval")
+    except (SyntaxError, ValueError, MemoryError, RecursionError):
+        return None
+    return _arith_node(tree.body)
+
+
+def _arith_node(node: ast.AST) -> Optional[float]:
+    if isinstance(node, ast.Constant):
+        return float(node.value) if isinstance(node.value, (int, float)) else None
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+        val = _arith_node(node.operand)
+        if val is None:
+            return None
+        return val if isinstance(node.op, ast.UAdd) else -val
+    if isinstance(node, ast.BinOp):
+        left, right = _arith_node(node.left), _arith_node(node.right)
+        if left is None or right is None:
+            return None
+        if isinstance(node.op, ast.Add):
+            return left + right
+        if isinstance(node.op, ast.Sub):
+            return left - right
+        if isinstance(node.op, ast.Mult):
+            return left * right
+        if isinstance(node.op, ast.Div):
+            return None if right == 0 else left / right
+    return None
 
 
 def _st_blocks(wikitext: str) -> list[str]:
@@ -186,15 +243,59 @@ def parse_leveling_bases(wikitext: str) -> dict[str, tuple[float, float]]:
     """
     out: dict[str, tuple[float, float]] = {}
     for block in _st_blocks(wikitext):
-        label, sep, rest = block.partition("|")
-        if not sep:
-            continue
-        label = label.strip()
-        head = re.split(r"\{\{\s*as\s*\|", rest, maxsplit=1, flags=re.IGNORECASE)[0]
-        pts = parse_endpoints(head.strip())
-        if label and pts is not None:
-            out.setdefault(label, pts)
+        parts = _top_level_parts(block)
+        for i in range(0, len(parts) - 1, 2):
+            label = _flatten_label(parts[i])
+            head = re.split(
+                r"\{\{\s*as\s*\|", parts[i + 1], maxsplit=1, flags=re.IGNORECASE
+            )[0]
+            pts = parse_endpoints(head.strip())
+            if label and pts is not None:
+                out.setdefault(label, pts)
     return out
+
+
+def _top_level_parts(body: str) -> list[str]:
+    """Split an ``{{st|}}`` body on its OWN pipes, ignoring nested templates.
+
+    An ``{{st|}}`` block may carry several label/value pairs -
+    ``{{st|Magic Damage Per Tick|{{ap|...}}|Total Magic Damage|{{ap|...}}}}`` -
+    and reading only the first pair is what made RM-218 look like a vocabulary
+    gap: the "missing" label was on the page all along, one pipe further in.
+    """
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    i = 0
+    while i < len(body):
+        if body.startswith("{{", i):
+            depth += 1
+            buf.append("{{")
+            i += 2
+        elif body.startswith("}}", i):
+            depth = max(0, depth - 1)
+            buf.append("}}")
+            i += 2
+        elif body[i] == "|" and depth == 0:
+            parts.append("".join(buf))
+            buf = []
+            i += 1
+        else:
+            buf.append(body[i])
+            i += 1
+    parts.append("".join(buf))
+    return parts
+
+
+def _flatten_label(raw: str) -> str:
+    """``True Damage with {{ii|Death's Daughter}}`` -> the plain stored spelling."""
+    s = raw or ""
+    for _ in range(4):
+        nxt = _LABEL_TEMPLATE_RE.sub(lambda m: m.group(1), s)
+        if nxt == s:
+            break
+        s = nxt
+    return re.sub(r"\s+", " ", s).strip()
 
 
 def _floats(seq: Any) -> Optional[list[float]]:
