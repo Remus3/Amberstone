@@ -33,9 +33,15 @@ main.py, core/log_setup.py, core/moon_proxy.py, lcu/lcu_client.py,
 core/game_snapshot.py, ops/rc_dev_runtime.py, ops/rc_supervisor.py,
 app/__init__.py, app/_loop.py, app/_health_monitor.py, app/_remediation.py,
 app/_state_authority.py, app/_overlay_manager.py, app/_game_lifecycle.py,
-tools/bridge_watcher_*, tools/bridge_post_result.py, tools/bridge_pull_tasks.py,
-tools/process-bridge-tasks.md, tools/diagnose.md, tools/caveman.md,
-dashboard/routes_bridge_pending.py, ops/RC-BridgeWatcher.xml.
+tools/diagnose.md, tools/caveman.md.
+
+This mirrors the "Frozen files" list at the top of CLAUDE.md, which is the
+authoritative copy - re-read it rather than trusting this one. Six bridge paths
+(tools/bridge_watcher_*, tools/bridge_post_result.py, tools/bridge_pull_tasks.py,
+tools/process-bridge-tasks.md, dashboard/routes_bridge_pending.py,
+ops/RC-BridgeWatcher.xml) were listed here until 2026-08-16 and were never on
+CLAUDE.md's list; all six were deleted with the bridge decommission (ADR-012,
+2026-06-24) and verified absent from disk.
 
 ## Procedure
 

@@ -2,11 +2,12 @@
 description: Mission Control lane 4 (uiux). Headless UI/UX queue plus usability deep-dives across RC / DS / dashboard / overlay / menus / settings. Drives every page from mock data rooted in real match data so no League client and no live game are needed; confirms the rendered result text-first (computed styles, accessibility tree) with pixel capture reserved for genuine rendered-pixel questions. Authorized to add, remove, relocate and redesign the UI guidelines it works against. Runs detached in its own worktree with no operator present, so every "done" is gated by the 5-phase UI-fixture audit and an independent verifier.
 ---
 
-> **SUBAGENT-FIRST (standing protocol, operator 2026-06-20).** Always use subagents for substantive work; do not build solo in the main thread.
+> **SUBAGENT-FIRST (standing protocol, operator 2026-06-20, restated 2026-07-30).** Orchestrated + multi-agent + self-adjudicating + self-adversarial is the DEFAULT shape, not an escalation.
 > 1. **Spec first:** a Plan/design subagent (or the loop director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
-> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build.
-> 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done".
-> 4. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Subagent-First Protocol" + memory `feedback_subagent_first_protocol`.
+> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build. Verify before building.
+> 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done" claim.
+> 4. **Self-adjudicating:** the agent that produced a thing never grades it. **Self-adversarial:** every finding gets an independent pass trying to REFUTE it, defaulting to refuted when uncertain. Two agents agreeing is not evidence (`feedback_row_agreement_is_not_evidence`).
+> 5. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Session Default".
 
 This is the lane-4 command doc, fed verbatim to a detached headless `claude -p` worker with full authority
 and NO operator present. Lane 3 is `tools/headless-upgrade.md`; the lane roster and the single

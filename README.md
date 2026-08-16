@@ -11,6 +11,20 @@ in-game overlay.
 Personal project, private repo, not packaged for general use. It is readable as
 a reference, not installable as a product - see [Limitations](#limitations).
 
+## Contents
+
+| | |
+|---|---|
+| [What makes it different](#what-makes-it-different) | why the math runs before the model, and what that buys |
+| [What it does](#what-it-does) | the features, and the modes they run in |
+| [How it works](#how-it-works) | the pipeline in one diagram, plus the port map |
+| [Daemon Slayer build engine](#daemon-slayer-build-engine) | the technical centerpiece, and the part most worth reading |
+| [Limitations](#limitations) | what it cannot do, stated before you read further |
+| [Where it runs](#where-it-runs) | the single-machine deployment |
+| [Status](#status) | what is finished and where open work is tracked |
+| [Data sources and credits](#data-sources-and-credits) | the public projects the game data comes from |
+| [Documentation map](#documentation-map) | every other document, and who each is written for |
+
 ---
 
 ## What makes it different
@@ -46,7 +60,9 @@ players bought it in many games. This project takes the other route.
 - Writes runes into the client automatically.
 
 Modes: Summoner's Rift, ARAM (including its event variants), Arena, and
-Teamfight Tactics.
+Teamfight Tactics. A fifth path covers Riot's rotating game modes - URF, One for
+All, Nexus Blitz and their siblings - which is wired and enabled but only
+exercised when Riot actually rotates one of them in.
 
 ---
 
@@ -85,9 +101,10 @@ vision server on the side: screen capture -> OCR -> AI vision only on a miss
 
 ## Daemon Slayer build engine
 
-The technical centerpiece, and the part most worth reading. It covers every
-purchasable item and the full champion roster on the modes it coaches, and picks
-one of seven scoring modes automatically from the champion's role:
+The technical centerpiece, and the part most worth reading. It models the full
+champion roster and every item the shop actually offers in the modes it scores -
+including the mode-specific pools - and picks one of seven scoring modes
+automatically from the champion's role:
 
 | Role | What it optimizes |
 |---|---|
@@ -103,8 +120,11 @@ Champions do not fit one formula, so a registry of per-champion mechanic
 overrides handles the unusual kits - form swaps, recast windows, resource bars,
 revives - and covers most of the roster.
 
-The engine also ships as a self-contained package for external review, with its
-own documentation and test suite: [`Share/README.md`](./Share/README.md). Depth
+The engine's live counts are reported by its own `/health` endpoint rather than
+restated here, so they cannot go stale in prose.
+
+It also ships as a self-contained package for external review, with its own
+documentation and test suite: [`Share/README.md`](./Share/README.md). Depth
 reference: [`docs/DAEMON_SLAYER.md`](./docs/DAEMON_SLAYER.md).
 
 ---
@@ -132,10 +152,11 @@ Electron overlay for in-game display. Operational procedures live in
 
 ## Status
 
-The coaching loop is functionally complete across all four modes; the build
-engine and champion-select advice cover the three League modes, and TFT uses the
+The coaching loop is functionally complete across the modes it covers; the build
+engine and champion-select advice cover the League modes, and TFT uses the
 vision and coaching paths. Open work is tracked in
-[`ROADMAP.md`](./ROADMAP.md).
+[`ROADMAP.md`](./ROADMAP.md), with the longer-horizon queue in
+[`BACKLOG.md`](./BACKLOG.md).
 
 ---
 
@@ -168,6 +189,9 @@ For maintenance and coding agents:
 
 - [`CLAUDE.md`](./CLAUDE.md) - agent operating context
 - [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) - run, restart, and maintenance procedures
+- [`BACKLOG.md`](./BACKLOG.md) - filed work items, each with acceptance criteria
+- [`docs/LEDGER.md`](./docs/LEDGER.md) - per-item completion record, newest first
+- [`docs/history_notes.md`](./docs/history_notes.md) - the deep archive
 
 ---
 
