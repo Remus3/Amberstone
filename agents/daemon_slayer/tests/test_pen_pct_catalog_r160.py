@@ -83,11 +83,16 @@ _PATCH_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 # deleted - a failure. The Share handoff genuinely does not vendor data/meta, so
 # the two-layout agreement check is unrunnable there and must skip.
 #
-# Keyed on the mirror PATH, never on the file's absence: keying on absence would
+# Keyed on the mirror SENTINEL, never on the file's absence: keying on absence would
 # let a deleted data/meta/ddragon_items.json silently skip in the main tree,
 # which is the exact failure this guard exists to catch. Same idiom as
-# test_changelog_tracks_engine_version._IS_SHARE_MIRROR.
-_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in Path(__file__).resolve().parents)
+# test_changelog_tracks_engine_version._IS_SHARE_MIRROR. The sentinel is the
+# SHARE_MIRROR file tools/ds_share_sync.py emits at the package root; RM-221
+# replaced an ancestor-directory-NAME check, which a reviewer silently broke
+# by renaming the folder they unpacked into.
+_IS_SHARE_MIRROR = any(
+    (p / "SHARE_MIRROR").is_file() for p in Path(__file__).resolve().parents
+)
 
 # Percent only. The mandatory "%" before the closing tag is the exact
 # mirror-image of R153's flat regex, whose digits must butt directly against

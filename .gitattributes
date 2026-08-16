@@ -26,4 +26,9 @@ data/meta/ddragon_*.json          linguist-generated=true
 # keeps .py LF in the repo AND the working tree, overriding autocrlf
 # so the corruption cannot recur fleet-wide.
 *.py text eol=lf
+# The Share mirror sentinel is generated with LF bytes by tools/ds_share_sync.py
+# and byte-compared by its --check gate. It has no extension, so without this it
+# inherits core.autocrlf=true and comes back CRLF on the next clone, failing the
+# drift check for everyone who has not run the sync locally.
+Share/src/SHARE_MIRROR text eol=lf
 data/daemon_slayer/laning_scenarios/**/*.json filter=lfs diff=lfs merge=lfs -text

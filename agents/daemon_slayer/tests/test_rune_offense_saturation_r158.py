@@ -53,7 +53,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 # True only inside the Share handoff mirror, which does not vendor
 # data/meta_build. See _require_feed_path.
-_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in Path(__file__).resolve().parents)
+_IS_SHARE_MIRROR = any(
+    (p / "SHARE_MIRROR").is_file() for p in Path(__file__).resolve().parents
+)
 _CURRENT_TXT = _REPO_ROOT / "data" / "daemon_slayer" / "current.txt"
 
 # ALL FIVE trees, swept to saturation as of R159. Precision 8000, Inspiration
@@ -92,7 +94,7 @@ def _require_feed_path() -> Path:
     so _feed_path() returning None there means a committed snapshot was deleted
     and every sweep below would silently cover nothing. The Share handoff
     deliberately does not vendor meta_build, so the sweep is unrunnable there.
-    Discriminate on the mirror PATH, never on the lookup returning None.
+    Discriminate on the mirror SENTINEL, never on the lookup returning None.
     """
     path = _feed_path()
     if path is None:
