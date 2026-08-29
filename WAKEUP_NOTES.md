@@ -52,6 +52,10 @@ JOB-level `contents: write` with a fenced auto-repair step.
   because it broke; the flat one stayed quiet.
 - **The `claude` CLI on Legion is BROKEN** (`claude.exe` incompatible with this Windows build).
   The loop executor's `--append-subagent-system-prompt` path depends on it. Unfixed.
+- **RM-226: `stop_claim_gate` blocked THIS session and could not be satisfied.** It admits
+  counts only from test-runner output, so a figure quoted off disk while CORRECTING it reads
+  as fabricated; and it scans the whole transcript, so retraction cannot clear the line. Do
+  not edit that gate from a session it is blocking.
 - **`gh run watch --exit-status` returns 0 on a CANCELLED run.** I reported a cancelled `ci`
   as passing before reading `conclusion`. Read the conclusion field, never the watch exit code.
 - DS stays PINNED at data patch 16.15.1 while live DDragon is 16.17.1. `:8860` reporting
