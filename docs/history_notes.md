@@ -321,6 +321,28 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+# 2026-08-16c - RM-218 closed by refuting it: no vocabulary gap, a parser reading one pair out of many
+
+**Shape: single-thread, TDD, Tier-1.** 12 tests first, RED at `8 failed, 55 passed`, GREEN at `63 passed`. DS 10684 / 13482 subtests, RC 19164 / 96 skipped / 4438 subtests, ruff clean.
+
+**I FILED THIS ROW YESTERDAY AND ITS CENTRAL CLAIM WAS FALSE.** RM-218 said Meraki publishes derived aggregates the wiki does not publish. The pages say otherwise: Alistar Trample reads `{{st|Magic Damage Per Tick|{{ap|80/10 to 200/10}}...|Total Magic Damage|{{ap|80 to 200}}...}}` - the "missing" label is the SECOND pair of the same block. **The row inferred a DATA problem from a PARSER artifact, because the evidence it reasoned over was the parser's own incomplete output.** When instrumentation reports what it could not find, its list of what it DID find is not a survey of reality - it is a survey of the instrument.
+
+**THREE MECHANISMS, ONE PARSER, AND THEY COMPOSE - which is why single-mechanism reasoning kept reading as a data problem.** (1) `parse_leveling_bases` did `block.partition("|")`, reading only pair one of an `{{st|}}` block. (2) An arithmetic endpoint (`80/10`, `40*12+40*3`) failed to parse and took the whole LABEL down with it. (3) A label embedding `{{ii|Death's Daughter}}` never matched the plain stored spelling. Alistar needed the split AND the arithmetic before EITHER of its labels resolved.
+
+**THE ROW'S OWN FENCE WAS WRONG TOO:** it said "do not fold (B) into (A), they have different fixes". Same root cause - the 54 zero-label rows fell to 27 with no work aimed at them. **A fence written from an unverified mechanism fences off the fix.**
+
+**Measured, both numbers, because a falling skip count is only good news if findings do not fall with it:** `skipped_labels` **357 to 109** (-69pct), `findings` ROSE 146 to **208**, stale 84 to 87, zero champions lost, and **zero existing findings changed value** - the parser added comparisons without perturbing settled ones. That last check is the non-regression proof that matters more than a green suite. Two net-new findings were verified against raw wikitext, not trusted: Ahri Q `{{ap|35*2 to 135*2}}` = 70-270 against a stored 80-280.
+
+**Blast radius held deliberately:** the shared `_AP_WRAPPER_RE` in `daemon_slayer_wiki_ability_extract.py` was NOT touched - it is Share-mirrored and feeds the engine, so widening it is a Tier-2 change to a data PRODUCER. This reader got its own regex. Arithmetic is a whitelist AST walk with no `eval`; `2**9999999`, names and calls are rejected by test.
+
+**One test relaxed after green, named rather than hidden:** `350*0.7` is 244.99999999999997, so exact equality became `pytest.approx`. The production path was already right - `_differs` compares within `_TOL` - and the over-precise assertion was the defect.
+
+**I walked into a documented trap:** the first full suite after `ds_share_sync` reported 1 FAILED in `phase8_smoke/test_sr_draft_profile_engine.py`. That is the mid-suite DS-bounce artifact CLAUDE.md already warns about; confirmed transient by an 18/18 isolated run and a clean full re-run. **Let the Share sync settle before starting a suite.**
+
+**Residue FILED as RM-220 (109 skips), and this time the mechanisms were verified against live wikitext BEFORE filing** - the direct lesson of having two rows in two days turn out to rest on inferred mechanisms. Three separated parts: **(A)** 27 zero-label rows caused by three more `{{ap|}}` forms the endpoint parser cannot read - a rank-count suffix (`{{ap|35 to 110 6}}`, Jayce), enumerated ranks (`{{ap|150|275|400}}`, Nocturne) and a named parameter (`|round=2`, Rumble); **(B)** a SMALL real synonym set - Ahri W's `Subsequent Flame Magic Damage` vs live `Subsequent Magic Damage` - which is the hypothesis RM-218 was refuted for, true of different rows than the ones it named, and explicitly not to be generalized since the same residue holds one-to-many splits (Ekko) and genuinely different quantities (Chogath); **(C)** a design question worth more than either - **an unmatched label may itself BE the drift.** Briar Q stores `Magic Damage` against a page carrying only `Physical Damage`. A stored label that no longer exists upstream is exactly the staleness this tool exists to find, and today it is discarded as "cannot compare". Next free id = RM-221.
+
+---
+
 # 2026-08-16b - RM-219 closed: the checker was asking the wiki for "MonkeyKing", and 10 champions were stale the whole time
 
 **Shape: single-thread, TDD, Tier-1.** 10 tests first, RED at `13 failed, 38 passed`, GREEN at `51 passed`. DS 10684 / 13482 subtests, RC 19152 / 96 skipped / 4438 subtests, ruff clean.
