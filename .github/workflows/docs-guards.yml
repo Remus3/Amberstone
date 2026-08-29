@@ -34,6 +34,7 @@ on:
       # Edits to the mechanism itself must re-run the mechanism.
       - 'tools/md_guard_selector.py'
       - 'tests/test_ci_docs_guard_coverage.py'
+      - 'tools/sanitize_agent6_reports.py'
       - '.github/workflows/docs-guards.yml'
   pull_request:
     branches: [main]
@@ -41,6 +42,7 @@ on:
       - '**/*.md'
       - 'tools/md_guard_selector.py'
       - 'tests/test_ci_docs_guard_coverage.py'
+      - 'tools/sanitize_agent6_reports.py'
       - '.github/workflows/docs-guards.yml'
   workflow_dispatch:
 
@@ -49,6 +51,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
+# Workflow default stays READ, deliberately, so any job added later inherits
+# least privilege. Only md-guards is elevated, at job level, and only because
+# it carries the auto-repair step below.
 permissions:
   contents: read
 
@@ -57,6 +62,15 @@ jobs:
     name: guards that read docs
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Elevated for the "Auto-repair" step ONLY. The agent6 audit reports are
+    # written by CLOUD SCHEDULED ROUTINES that commit straight to main from a
+    # fresh clone, where core.hooksPath is unset and tools/precommit_gate.py
+    # therefore never fires. CI is the only gate that can see those files, so
+    # it is also the only place a fix can be applied. Three incidents
+    # (2026-07-27, 2026-08-04, 2026-08-25) were each repaired by hand; the
+    # last one left main red for four days.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -69,6 +83,43 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+
+      - name: Auto-repair non-ASCII in cloud-routine audit reports
+        # push only. A pull_request run must never write, and a fork PR is
+        # downgraded to read by GitHub anyway - this makes the intent explicit
+        # rather than relying on that.
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          if python tools/sanitize_agent6_reports.py --check; then
+            echo "agent6 reports already 7-bit ASCII - nothing to repair"
+            exit 0
+          fi
+          echo "::warning::non-ASCII landed in agents/agent6_auditor/reports/ - auto-repairing"
+          python tools/sanitize_agent6_reports.py --apply
+          # Refuse to push anything outside the reports directory. The tool is
+          # already scoped there, so a stray path means the tool changed and
+          # this job should stop rather than commit a surprise.
+          changed="$(git diff --name-only)"
+          if [ -z "$changed" ]; then
+            echo "::error::--check failed but --apply produced no diff"
+            exit 1
+          fi
+          echo "changed files:"; printf '%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -qv '^agents/agent6_auditor/reports/'; then
+            echo "::error::sanitizer touched a path outside the reports dir - refusing to push"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add agents/agent6_auditor/reports
+          git commit -m "fix(hygiene): auto-repair non-ASCII in agent6 audit report" \
+                     -m "Written by a cloud scheduled routine, which commits from a clone with no core.hooksPath, so tools/precommit_gate.py never saw it. Repaired by tools/sanitize_agent6_reports.py --apply in docs-guards."
+          # HEAD is detached on a push event, so name the branch explicitly.
+          # A push made with GITHUB_TOKEN does NOT trigger a new workflow run,
+          # which is what keeps this from looping.
+          git push origin "HEAD:${{ github.ref_name }}"
+          echo "::notice::auto-repaired and pushed; the guards below now run on the fixed tree"
 
       - name: Install minimal test deps
         run: |
