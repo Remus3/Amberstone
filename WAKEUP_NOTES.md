@@ -50,8 +50,26 @@ JOB-level `contents: write` with a fenced auto-repair step.
 - **RM-222: the FLAT pen axis has no live-vs-pinned layout guard** - and it is the axis that
   already carries a divergence (3175: 18 pinned vs 20 live). The percent axis got hardened
   because it broke; the flat one stayed quiet.
-- **The `claude` CLI on Legion is BROKEN** (`claude.exe` incompatible with this Windows build).
-  The loop executor's `--append-subagent-system-prompt` path depends on it. Unfixed.
+- **The `claude` CLI binary is FIXED; the OAuth session is NOT, and that is the bigger problem.**
+  The npm install shipped a 500-byte SHELL-SCRIPT STUB where `bin/claude.exe` should be - an
+  interrupted install had left the real 253 MB `claude-code-win32-x64` package sitting in npm's
+  `.claude-code-lEZNDFsD` staging dir, never moved into place. `npm install -g
+  @anthropic-ai/claude-code@latest` fixed it (now a real 207 MB binary, reports 2.1.251) and
+  npm reclaimed the staging dir. npm config was clean throughout - not a `--ignore-scripts` or
+  `--omit=optional` misconfiguration. **The stub's "not compatible with the version of Windows
+  you're running" message was Windows failing to exec a shell script as a PE, NOT an
+  architecture mismatch - do not chase that.**
+  **STILL BROKEN, and operator-only:** every CLI binary on this box fails with `Failed to
+  authenticate: OAuth session expired and could not be refreshed` - measured on BOTH the npm
+  2.1.251 and the desktop-managed 2.1.247, so it is NOT version-specific. `~/.claude/.credentials.json`
+  exists and was touched 2026-08-29 09:47, so presence is not the issue. **Headless `claude -p`
+  therefore cannot run AT ALL on Legion**, which takes out the whole `ops/loop` headless program,
+  not just one test. Needs `claude login`; I will not perform a credential action.
+- **`test_cli_version_still_matches_the_pin` is now legitimately RED on Legion** (2.1.251 vs
+  pinned 2.1.220) and that is CORRECT - the broken binary had been masking it. **Do NOT bump
+  `PINNED_CLI`:** its contract requires the propagation canary with a negative control first, and
+  the canary needs a working authenticated CLI, so it is blocked behind the login above. CI is
+  unaffected - `claude` is not on PATH there, so the test skips.
 - **RM-226: `stop_claim_gate` blocked THIS session and could not be satisfied.** It admits
   counts only from test-runner output, so a figure quoted off disk while CORRECTING it reads
   as fabricated; and it scans the whole transcript, so retraction cannot clear the line. Do
