@@ -54,6 +54,50 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _META_CATALOG = _REPO_ROOT / "data" / "meta" / "ddragon_items.json"
 _PATCH_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
+
+# Is the LIVE DDragon catalog present? ``data/meta/ddragon_items.json`` tracks
+# live DDragon; the per-patch snapshot under ``data/daemon_slayer/<patch>/``
+# is PINNED (16.15.1 today) and the registry deliberately runs AHEAD of it.
+# RM-190 carried item 3175 ``magic_pen_flat`` 18 -> 20 out of the 16.16.1
+# mirror while leaving the DS snapshot pinned, and 16.17.1 carried 226694
+# ``armor_pen_pct`` 0.40 -> 0.45 the same way. So a magnitude-parity assertion
+# is only meaningful against the LIVE catalog.
+#
+# The Share package does not vendor ``data/meta`` BY DESIGN. Falling back to
+# the pinned snapshot there compares the registry against a catalog it no
+# longer describes and manufactures a FALSE failure - which is exactly how the
+# mirror sat red on 3175 from 2026-08-12 until the 16.17.1 upstream pass found
+# it (``ds_share_sync --check`` verifies FILES, and never ran the mirror's own
+# suite). The swept SET is stable across the two layouts, so the population
+# sweeps keep the fallback; only magnitude parity skips.
+_IS_SHARE_MIRROR = any(
+    (p / "SHARE_MIRROR").is_file() for p in Path(__file__).resolve().parents
+)
+
+
+def _require_live_catalog(case: "unittest.TestCase") -> None:
+    """Gate a magnitude-parity assertion on the tree actually having the live catalog.
+
+    Gates on the SHARE_MIRROR sentinel, NOT on ``_META_CATALOG.is_file()``.
+    ``data/meta/ddragon_items.json`` is TRACKED in the main repo, so its
+    absence there is a deleted committed file - a DEFECT that must fail
+    loudly - and a skip keyed on it would be an always-passing guard
+    (tests/test_skip_condition_hygiene.py, docs/SKIPIF_AUDIT_2026-07-27.md).
+    The Share package omitting it is the one legitimate environment
+    difference, and it is the same discriminator
+    ``test_both_catalog_layouts_agree`` already uses.
+    """
+    if _IS_SHARE_MIRROR:
+        case.skipTest(
+            "Share/src does not vendor data/meta by design; magnitude parity "
+            "needs the LIVE catalog, because the registry deliberately runs "
+            "ahead of the pinned per-patch snapshot (RM-190 / 16.17.1 carry-"
+            "forward)"
+        )
+    case.assertTrue(
+        _META_CATALOG.is_file(), f"tracked {_META_CATALOG} is missing"
+    )
+
 # Flat pen only. A percent source renders as "<attention>40%</attention>"
 # and cannot match, because the digits must be followed directly by the
 # closing tag.
@@ -142,6 +186,7 @@ class R153FlatMagicPenCatalogSweepTests(unittest.TestCase):
                 )
 
     def test_registered_magnitude_matches_the_stated_value(self) -> None:
+        _require_live_catalog(self)
         # R161 doctrine B: no exemptions. Every swept id, Arena mirror or
         # not, credits exactly the magnitude its own description states.
         for iid, (name, stated) in sorted(self.swept.items()):

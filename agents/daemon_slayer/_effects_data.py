@@ -3553,6 +3553,33 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "unmodeled"
         ),
     ),
+    "226668": ItemEffect(
+        item_id="226668",
+        name="Ultra Hydra",
+        # NET-NEW in DDragon 16.17.1 (absent from 16.16.1 entirely): an
+        # Arena-only 6000g standalone (no from/into, maps {"12": True}).
+        # <stats> block: 200 AD / 25 Ability Haste / 25 Lethality / 1000 HP
+        # / 15% Omnivamp.
+        #
+        # Lethality is the ONLY magnitude credited here, for the R152 reason
+        # Profane Hydra 6698 records: lethality has no DDragon stats key and
+        # stats.ITEM_STAT_KEY_MAP has no lethality entry, so ITEM_EFFECTS is
+        # the sole credit path and an unregistered id reads a silent 0.0 (the
+        # R143 / da5cb2ae defect class).
+        lethality=25.0,
+        # Hydra family unique - shares the cleave lockout with 6698 / 3748 /
+        # 6673 so a live inventory cannot double-credit two hydras.
+        unique_passive_key="hydra_cleave",
+        # DELIBERATELY NOT MODELLED: the "Ultra Hydra" active carries NO
+        # magnitude anywhere in the DDragon description (unlike Profane
+        # Hydra, whose 80% total-AD Heretical Cleave came from Meraki
+        # 16.13.1), and Meraki has no 226668 row at all. Inventing a cleave
+        # ratio here would be an unsourced number, so the active stays out
+        # until a real magnitude source exists - start tight, widen on
+        # evidence. Omnivamp likewise deferred: _item_omnivamp.py sources its
+        # fractions from items_meraki.json, which does not carry this id.
+        note="Ultra Hydra (Arena 226668, NEW at 16.17.1): 25 lethality credited; cleave active unmodelled (no DDragon/Meraki magnitude). Not yet a build candidate - absent from the pinned 16.15.1 DS snapshot, so it scores only when handed in a live inventory.",
+    ),
     "226672": ItemEffect(
         item_id="226672",
         # DDragon 226672 == "Kraken Slayer" (Arena mirror of 6672), NOT
@@ -3603,11 +3630,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226694": ItemEffect(
         item_id="226694",
         name="Serylda's Grudge",
-        # R161 doctrine B: Arena feed states 40% armor pen vs SR 6694's 35%;
+        # R161 doctrine B: Arena feed states 45% armor pen vs SR 6694's 35%;
         # the explicitly-stated Arena value wins over SR inheritance.
-        armor_pen_pct=0.40,
+        # DDragon 16.17.1 moved the Arena magnitude 40% -> 45% while leaving
+        # the SR twin at 35%; pen percent has no DDragon stats key, so the
+        # <stats> description block is the only source and this entry is the
+        # only credit path (same posture as the R152 lethality parity note).
+        armor_pen_pct=0.45,
         unique_passive_key="last_whisper",
-        note="Serylda's Grudge (Arena 226694): 40% armor penetration per the Arena feed (SR 6694 carries 35%)",
+        note="Serylda's Grudge (Arena 226694): 45% armor penetration per the Arena feed at 16.17.1 (SR 6694 carries 35%)",
     ),
     "226696": ItemEffect(
         item_id="226696",
