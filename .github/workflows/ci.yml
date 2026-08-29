@@ -50,7 +50,16 @@ jobs:
     # wall clock ran 24m13s .. 28m08s against 30, i.e. under two minutes of
     # headroom. Fixing only the job that happened to fail first would have left
     # the identical defect one job up in the same file.
-    timeout-minutes: 60
+    # RAISED 60 -> 75 on 2026-08-29, together with this job's own Full Dual
+    # Suite step (45 -> 55). This job runs the SAME dual suite that timed out
+    # on `check` in run 33257192032 at 45m04s, so its 45m step ceiling was the
+    # identical latent failure one job up - exactly the "fixing only the job
+    # that happened to fail first" mistake the block above warns about. The job
+    # ceiling must cover the step PLUS the setup tail, and that tail is not
+    # small: RM-156 measured `Install Playwright Chromium` at 10m33s on a cache
+    # miss against 27s either side. 55 + an 11m setup tail is 66, so 75 keeps
+    # the step-fires-first invariant real rather than nominal.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v6
         with:
@@ -85,7 +94,7 @@ jobs:
         # `cancelled`, which is the same word GitHub uses for a run superseded
         # by the concurrency group above. Pinned by
         # tests/test_ci_job_timeout_headroom_rm156.py.
-        timeout-minutes: 45
+        timeout-minutes: 55
         run: |
           # Runs the exhaustive 23k+ test suite.
           #
@@ -173,7 +182,13 @@ jobs:
     # neither pass nor fail. The ORDERING is the invariant: job must exceed
     # step, or the job dies first and the conclusion is silent again.
     # tests/test_ci_job_timeout_headroom_rm156.py pins all of it.
-    timeout-minutes: 65
+    #
+    # RAISED 65 -> 75 on 2026-08-29 with this job's step ceiling (45 -> 55),
+    # after run 33257192032 printed a fully GREEN suite - 29690 passed, 258
+    # skipped, 0 failed in 2704.11s - and was killed two seconds later by the
+    # 45m step ceiling. The guard requires job >= step + 12, so 55 forces 67 as
+    # the floor here; 75 keeps the same variance margin the 65 had.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v6
         with:
@@ -403,11 +418,22 @@ jobs:
 
       - name: "full dual suite (RM-119 - push CI now gates the whole tree)"
         # RM-156: this is the ceiling that should fire, not the job's. See the
-        # block above `timeout-minutes: 65` for the measurement; the short
+        # block above `timeout-minutes: 75` for the measurement; the short
         # version is that a step timeout reports `failure` and a job timeout
         # reports `cancelled`, and `cancelled` is unreadable because a
         # superseded run says the same thing.
-        timeout-minutes: 45
+        #
+        # RAISED 45 -> 55 on 2026-08-29, and the mechanism above is exactly why
+        # this was visible at all. Run 33257192032 printed
+        # `29690 passed, 258 skipped, 0 failed in 2704.11s (0:45:04)` and was
+        # then killed TWO SECONDS later by the 45m ceiling, so a fully GREEN
+        # suite reported as a red step. The suite had simply outgrown its
+        # budget: the baseline recorded below was 19m42s / 23607 passed, and it
+        # is now 45m04s / 29690 passed - 26 percent more tests for well over
+        # twice the wall clock. 55 is deliberately not 46: RM-156's own finding
+        # is that a ceiling hugging the worst complete observation converts
+        # ordinary runner variance into a fake red.
+        timeout-minutes: 55
         run: |
           # 2026-07-28 (R217-U1) completes RM-119. Until this step, push CI ran
           # four hand-picked subsets of tests/ - phase2_smoke,
