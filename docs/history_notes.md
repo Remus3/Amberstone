@@ -321,6 +321,102 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+# 2026-08-16d - markdown organizing pass: the Share package's own Start-here command had not exited green for weeks
+
+Structure and contents sweep over every tracked `.md` outside `docs/_archive`, plus a
+full rewrite of both READMEs. 42 files, 451 insertions, 249 deletions; exactly ONE
+non-`.md` file touched (a guard I broke and fixed, below).
+
+**The find that justified the session was not a doc fact.** `Share/README.md` and
+`Share/docs/05_AUDIT_AND_REFACTOR.md` both promised that the package's own Start-here
+command exits green - "0 failed, 0 errors, exit code 0. The plain command exits green -
+no pytest flag, no `--ignore` list." Measured on a genuinely clean copy (`Share/` copied
+out of the tree, run from its own `src`), reproduced identically twice: **8376 passed,
+73 failed, 5 errors, 11182 subtests**. An external reviewer's FIRST action produces 73
+failures against a doc promising none.
+
+**Root-caused by opening them, not inferred.** Three classes, all packaging-exclusion
+gaps and none an engine defect: `ModuleNotFoundError: No module named 'core'` (host
+application, deliberately not shipped); a missing `data/meta/ddragon_items.json` (live
+upstream mirror, not the pinned snapshot - `Share/src/data/meta/` does not exist); and
+`test_changelog_tracks_engine_version.py` looking for `agents/daemon_slayer/CHANGELOG.md`
+while the package ships it at the package ROOT one level up. The generator already drops
+66 of the repo's 429 engine test files; these 11 should have gone with them. **Filed as
+RM-221**, with the fence that matters: a TWELFTH failure is CORRECT and must survive any
+fix - `test_magic_pen_flat_catalog_r153.py` reports Spellslinger's Shoes at 20 flat magic
+pen against the pinned 16.15.1 snapshot's 18, which is release 1.277.1 working as
+designed. Excluding that file would delete a true signal. Deselect command shipped in the
+README is verified, not asserted: it leaves 8152 passed and exactly that one subtest.
+
+**A first-run measurement was invalid and I threw it away rather than publish it.** The
+in-repo run gave 53 failed; that is not the claim's condition, because in-repo the
+catalog sweeps read the repo's refreshed mirrors. Re-ran from a real clean copy. The
+first clean run was also truncated by my own `tail -20`, which is why only 13 of 73
+FAILED lines were visible - re-ran with full capture before writing any number.
+
+**Recital drift, deleted rather than refreshed** (three sites, same disease):
+`docs/DAEMON_SLAYER.md` carried `10653 tests` twice; RM-210 was filed at "stale by 27"
+and by closing had drifted twice more to 31, which is the row's own argument. Both
+recitals gone, replaced by the measure command; `docs/ARCHITECTURE.md` stops calling the
+banner drift-guarded for counts no guard pins and now names what IS guarded. RM-210 CLOSED.
+
+`docs/DS_SWEEP_TRACKER.md` had accreted **five layers of superseded RM id-pointer
+corrections that contradicted each other** - one line read RM-208, another asserted
+RM-205 was "CURRENT as of 2026-08-15". Each layer was a dated correction of a pointer
+that then went stale itself. Relocated verbatim to `history_notes`; replaced with one
+pointer re-derived across the working tree AND all three lane branches (RM-221) plus the
+derivation command, since the doc's own advice is to derive it.
+
+**Majority is not authority.** 17 of 20 `tools/*.md` carried a SUBAGENT-FIRST block that
+`CLAUDE.md:226` explicitly marks SUPERSEDED - it cites the retired "Subagent-First
+Protocol" heading and omits the self-adjudicating / self-adversarial point entirely. The
+audit called the 17 "current" and the 3 "drifted" on a head count, and my first
+instruction to an apply-agent repeated that. **The agent refused half of it and was
+right**, then propagated the superseded block to two more files anyway, making it 19.
+Resolved by merging the canonical block from `CLAUDE.md` "Session Default" itself and
+writing it to all 20 plus all 20 `.claude/commands` mirrors; parity byte-identical.
+
+**Three MUST-FIX audit findings were REFUTED and deliberately not applied** - all one
+class: `core/_rune_stat_grants.py`, `core/zoi_mia.py`, `lcu/lcu_events.py` are cited
+inside green-field proposal and refutation contexts, so they do not exist ON PURPOSE.
+One exists in neither the claimed old nor the claimed new location. Applying those
+"fixes" would have corrupted three records of work being correctly refused. **The lesson
+is the shape: a path that resolves to nothing is not automatically a broken citation -
+read the sentence around it.**
+
+**I broke a guard and fixed it rather than dropping it.**
+`tests/test_ds_share_changelog_freshness.py` parsed `- <old> -> <new> - ` release
+BULLETS out of `Share/README.md`; converting that section to a table broke it. Its own
+failure message says to update the pattern rather than drop the check. Widened to accept
+both shapes and **mutation-proved it still has teeth** - removing the newest row drops
+the parse to 1.277.1.
+
+**READMEs.** `Share/README.md` 33473 -> 15889 bytes while gaining accuracy: its Release
+history was reproducing 25 full CHANGELOG entries verbatim, ~21 KB duplicating the file
+it points at, now a six-row index into the 66-entry `CHANGELOG.md`. Both READMEs gained a
+Contents index (21 anchors, all verified to resolve). Main README's mode list corrected -
+a fifth rotating-game-mode path (URF / One for All / Nexus Blitz) is routed in
+`core/game_snapshot.py` and flag-enabled in `config/feature_flags.json`, phrased as
+"unexercised, not unreachable" per the CLAUDE.md fence.
+
+**Also fixed:** `docs/API.md` documented `/api/cooldown-watch`, a surface REMOVED to pass
+Riot review (compliance-relevant), and listed two Mission Control `:8895` routes under
+`:8888`; ARCHITECTURE said 6 scored axes where `server.py` registers 11, and 13 residual
+`.after()` files where there are 3 (all frozen); `DS_COMPLETENESS_GAP` had a staleness
+banner 94 engine versions stale, now a pointer; ADR-004 had two contradicting Status
+lines; two handoff docs hardcoded a machine name CLAUDE.md forbids recording and claimed
+Tailscale was not installed (the binary is on disk); `PORTABLE_PROJECT_CONVENTIONS`
+budget table (40/60 KB) read as this repo's limits, actually 60/80.
+`docs/HEADLESS_LOOP_SPEC.md` archived - a true orphan describing a retired vendor as a
+live participant. Quick win taken: ROADMAP RM-203 was OPEN against LEDGER 1265.
+
+**Measured this session, never quoted:** DS **10684** collected, RC `tests/` **19260**
+collected, `/health` 1.278.0 / 16.15.1 / 173 / 706. Gates: `drift_guard` 0 breaches;
+CI-selected doc-guard set **1521 passed, 0 failed**; zero em-dash / en-dash / smart
+quotes in every changed file. **Next free id = RM-222.**
+
+---
+
 # 2026-08-16c - RM-218 closed by refuting it: no vocabulary gap, a parser reading one pair out of many
 
 **Shape: single-thread, TDD, Tier-1.** 12 tests first, RED at `8 failed, 55 passed`, GREEN at `63 passed`. DS 10684 / 13482 subtests, RC 19164 / 96 skipped / 4438 subtests, ruff clean.
