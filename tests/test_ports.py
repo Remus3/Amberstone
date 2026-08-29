@@ -135,7 +135,11 @@ class BlockReservationTests(unittest.TestCase):
                     overlap, set(), f"blocks {a} and {b} overlap on {sorted(overlap)}"
                 )
                 checked += 1
-        self.assertEqual(checked, 6, "expected 6 pairs across 4 blocks")
+        expected = len(names) * (len(names) - 1) // 2
+        self.assertEqual(
+            checked, expected, f"expected {expected} pairs across {len(names)} blocks"
+        )
+        self.assertEqual(len(names), 6, "a block was added or dropped without review")
 
     def test_rc_ports_fall_inside_the_rc_block(self):
         for port in (
@@ -176,6 +180,35 @@ class BlockReservationTests(unittest.TestCase):
         self.assertIsNone(ports.block_for(80))
         self.assertIsNone(ports.block_for(8896))
 
+    def test_sibling_e_block_does_not_overlap_sibling_a(self):
+        """The specific collision this registry gained a cs block to clear.
+
+        Sibling-E allocated itself 8900-8911 with a dashboard on 8901 - inside
+        LW's block, on LW's MONITOR port - because it probed for a free
+        listener while LW's operator-launched GUI was not running. Asserted by
+        NUMBER rather than by re-deriving the ranges, so a future edit that
+        widens either block back over the other fails here.
+        """
+        self.assertEqual(set(ports.CS_BLOCK) & set(ports.LW_BLOCK), set())
+        for port in (8900, 8901, 8911):
+            self.assertEqual(
+                ports.block_for(port), "lw", f"{port} is Sibling-A's"
+            )
+        for port in (8920, 8939):
+            self.assertEqual(ports.block_for(port), "cs")
+
+    def test_sibling_d_block_covers_its_widened_range(self):
+        """Widened 8810-8814 -> 8810-8819 by the operator 2026-08-27.
+
+        8815-8819 are the ports the widening added; if this file is ever
+        reverted to the narrow range they would silently read as unassigned
+        and become available to hand to somebody else.
+        """
+        for port in (8810, 8814, 8815, 8819):
+            self.assertEqual(ports.block_for(port), "ll")
+        self.assertIsNone(ports.block_for(8809))
+        self.assertIsNone(ports.block_for(8820))
+
 
 class NextFreeTests(unittest.TestCase):
     """`next_free` must never invent a number RC has no standing to assign."""
@@ -204,7 +237,7 @@ class NextFreeTests(unittest.TestCase):
         This is the whole point of the guard: a confident wrong number here
         would be handed to a sibling as "your next free port" and collide.
         """
-        for block in ("lw", "rm"):
+        for block in ("lw", "rm", "ll", "cs"):
             with self.assertRaises(ValueError):
                 ports.next_free(block)
 
