@@ -2,7 +2,60 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-29, upstream processing pass (relocated `2026-08-16c` - RM-218 refuted; newest 3 = upstream processing `2026-08-29` + RM-221 mirror-rule `2026-08-16e` + markdown organizing `2026-08-16d`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-08-29 - upstream processing: a 4-day CI red, DDragon 16.17.1 into the engine, and the Share mirror off its knowingly-red baseline
+
+Operator asked to "check for upstream changes and updates and process them". There were
+TWO upstreams and both were unprocessed.
+
+**CI had been red for four days, and the cause arrived by `git pull`.** Commit `39ba69c8`,
+authored by `weekly-rc-health@anthropic-routines` - a CLOUD routine, not a Legion task -
+carried 27 non-ASCII bytes. Cloud clones have no `core.hooksPath`, so `precommit_gate.py`
+never sees these files; CI is the only gate, and it had been failing since 08-25.
+
+**DDragon 16.17.1 (mirror auto-pulled 08-26, nothing downstream run).** Canonical partition
+holds at 706 / 173 in BOTH patches. Four percent-pen magnitudes moved and every one is on an
+Arena-band `22xxxx` id - all four SR twins held. Exactly ONE reaches the registry: Serylda's
+Grudge Arena `226694` armor pen 40 -> 45. It MOVES DEFAULT OUTPUT: the Arena planner now
+prefers it over Lord Dominik's `223036`, diffed field-by-field rather than assumed. ENGINE
+1.278.0 -> 1.278.1, 150 anchored sites / 128 files, provenance recitals verified untouched.
+
+**The thing to carry forward: I got the Share-mirror history WRONG and the repo corrected me.**
+I reported the mirror's 2 failures as an unnoticed 17-day regression that read "green
+throughout". LEDGER 1271 refutes that in writing - RM-221 MEASURED those exact two reds on
+08-16, diagnosed them correctly, and deliberately declined to exclude the test, reasoning that
+excluding it would delete a true signal. They were known and accepted on purpose. The narrower
+true statement: nobody ran the mirror suite at RM-190 time, and `--check` verifies FILES, not
+TESTS. **Read the ledger before characterising history; a "nobody noticed" claim is a claim
+about the record, and the record was right there.**
+
+The fix is not the exclusion RM-221 refused: magnitude parity now SKIPS only where the live
+catalogue is absent, so the signal survives where it can be evaluated. Gated on the
+`SHARE_MIRROR` sentinel, NOT `_META_CATALOG.is_file()` - that file is TRACKED, so a skip on its
+absence is an always-passing guard, and `test_skip_condition_hygiene` caught it on my first
+attempt. Mirror 8256/2-failed -> **8251 passed / 0 failed**.
+
+**The ASCII recurrence had a mechanical cause nobody had named:** the guard's own docstring
+prescribed `strip_smart_quotes.py`, which has no notion of U+2713 - the dominant glyph these
+routines emit. The prescribed fix could never clear the guard, so all three incidents were
+hand-repaired. New `tools/sanitize_agent6_reports.py` + 11 tests; `docs-guards` elevated to
+JOB-level `contents: write` with a fenced auto-repair step.
+
+**NEXT SESSION should know:**
+- **RM-225: the auto-repair branch has NEVER fired.** Only the clean early-exit path has run.
+  Do not describe it as proven.
+- **RM-222: the FLAT pen axis has no live-vs-pinned layout guard** - and it is the axis that
+  already carries a divergence (3175: 18 pinned vs 20 live). The percent axis got hardened
+  because it broke; the flat one stayed quiet.
+- **The `claude` CLI on Legion is BROKEN** (`claude.exe` incompatible with this Windows build).
+  The loop executor's `--append-subagent-system-prompt` path depends on it. Unfixed.
+- **`gh run watch --exit-status` returns 0 on a CANCELLED run.** I reported a cancelled `ci`
+  as passing before reading `conclusion`. Read the conclusion field, never the watch exit code.
+- DS stays PINNED at data patch 16.15.1 while live DDragon is 16.17.1. `:8860` reporting
+  16.15.1 is CORRECT - do not file it as drift (RM-223 tracks the accruing carry-forward debt).
 
 ---
 
@@ -148,25 +201,3 @@ live participant. Quick win taken: ROADMAP RM-203 was OPEN against LEDGER 1265.
 collected, `/health` 1.278.0 / 16.15.1 / 173 / 706. Gates: `drift_guard` 0 breaches;
 CI-selected doc-guard set **1521 passed, 0 failed**; zero em-dash / en-dash / smart
 quotes in every changed file. **Next free id = RM-222.**
-
----
-
-# 2026-08-16c - RM-218 closed by refuting it: no vocabulary gap, a parser reading one pair out of many
-
-**Shape: single-thread, TDD, Tier-1.** 12 tests first, RED at `8 failed, 55 passed`, GREEN at `63 passed`. DS 10684 / 13482 subtests, RC 19164 / 96 skipped / 4438 subtests, ruff clean.
-
-**I FILED THIS ROW YESTERDAY AND ITS CENTRAL CLAIM WAS FALSE.** RM-218 said Meraki publishes derived aggregates the wiki does not publish. The pages say otherwise: Alistar Trample reads `{{st|Magic Damage Per Tick|{{ap|80/10 to 200/10}}...|Total Magic Damage|{{ap|80 to 200}}...}}` - the "missing" label is the SECOND pair of the same block. **The row inferred a DATA problem from a PARSER artifact, because the evidence it reasoned over was the parser's own incomplete output.** When instrumentation reports what it could not find, its list of what it DID find is not a survey of reality - it is a survey of the instrument.
-
-**THREE MECHANISMS, ONE PARSER, AND THEY COMPOSE - which is why single-mechanism reasoning kept reading as a data problem.** (1) `parse_leveling_bases` did `block.partition("|")`, reading only pair one of an `{{st|}}` block. (2) An arithmetic endpoint (`80/10`, `40*12+40*3`) failed to parse and took the whole LABEL down with it. (3) A label embedding `{{ii|Death's Daughter}}` never matched the plain stored spelling. Alistar needed the split AND the arithmetic before EITHER of its labels resolved.
-
-**THE ROW'S OWN FENCE WAS WRONG TOO:** it said "do not fold (B) into (A), they have different fixes". Same root cause - the 54 zero-label rows fell to 27 with no work aimed at them. **A fence written from an unverified mechanism fences off the fix.**
-
-**Measured, both numbers, because a falling skip count is only good news if findings do not fall with it:** `skipped_labels` **357 to 109** (-69pct), `findings` ROSE 146 to **208**, stale 84 to 87, zero champions lost, and **zero existing findings changed value** - the parser added comparisons without perturbing settled ones. That last check is the non-regression proof that matters more than a green suite. Two net-new findings were verified against raw wikitext, not trusted: Ahri Q `{{ap|35*2 to 135*2}}` = 70-270 against a stored 80-280.
-
-**Blast radius held deliberately:** the shared `_AP_WRAPPER_RE` in `daemon_slayer_wiki_ability_extract.py` was NOT touched - it is Share-mirrored and feeds the engine, so widening it is a Tier-2 change to a data PRODUCER. This reader got its own regex. Arithmetic is a whitelist AST walk with no `eval`; `2**9999999`, names and calls are rejected by test.
-
-**One test relaxed after green, named rather than hidden:** `350*0.7` is 244.99999999999997, so exact equality became `pytest.approx`. The production path was already right - `_differs` compares within `_TOL` - and the over-precise assertion was the defect.
-
-**I walked into a documented trap:** the first full suite after `ds_share_sync` reported 1 FAILED in `phase8_smoke/test_sr_draft_profile_engine.py`. That is the mid-suite DS-bounce artifact CLAUDE.md already warns about; confirmed transient by an 18/18 isolated run and a clean full re-run. **Let the Share sync settle before starting a suite.**
-
-**Residue FILED as RM-220 (109 skips), and this time the mechanisms were verified against live wikitext BEFORE filing** - the direct lesson of having two rows in two days turn out to rest on inferred mechanisms. Three separated parts: **(A)** 27 zero-label rows caused by three more `{{ap|}}` forms the endpoint parser cannot read - a rank-count suffix (`{{ap|35 to 110 6}}`, Jayce), enumerated ranks (`{{ap|150|275|400}}`, Nocturne) and a named parameter (`|round=2`, Rumble); **(B)** a SMALL real synonym set - Ahri W's `Subsequent Flame Magic Damage` vs live `Subsequent Magic Damage` - which is the hypothesis RM-218 was refuted for, true of different rows than the ones it named, and explicitly not to be generalized since the same residue holds one-to-many splits (Ekko) and genuinely different quantities (Chogath); **(C)** a design question worth more than either - **an unmatched label may itself BE the drift.** Briar Q stores `Magic Damage` against a page carrying only `Physical Damage`. A stored label that no longer exists upstream is exactly the staleness this tool exists to find, and today it is discarded as "cannot compare". Next free id = RM-221.
