@@ -2,7 +2,49 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-29, RM-222 pass (relocated `2026-08-16d` - markdown organizing; newest 3 = RM-222 flat-pen layout guard `2026-08-29b` + upstream processing `2026-08-29` + RM-221 mirror-rule `2026-08-16e`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-29, cross-project ports pass (relocated `2026-08-16e` - RM-221 mirror rule; newest 3 = port-block collision `2026-08-29c` + RM-222 flat-pen layout guard `2026-08-29b` + upstream processing `2026-08-29`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-08-29c - a cross-project port collision, found by answering a question
+
+Operator asked which ports are reserved for Amberstone, DS, Sibling-E, Sibling-D,
+Sibling-A and Sibling-C. `core/ports.py` could only answer for FOUR: the 2026-08-01
+negotiation predates both Sibling-D and Sibling-E, so `BLOCKS` had no `ll` or `cs`
+key and `block_for(8810)` returned None.
+
+**Answering it turned up a live collision.** Sibling-E claimed band **8900-8911** with
+its dashboard on **8901** - wholly inside Sibling-A's reserved 8900-8919, where
+8901 is LW's `MONITOR` and 8900 its `RUNDASH`. Cause is the exact method `core/ports.py`
+warns about in capitals: CS picked the band by SCANNING for a free listener, and LW's
+monitor is an operator-launched GUI that is unbound most of the time, so the scan
+reported a reserved block as free. CS names Sibling-A in zero files. It had already
+met the symptom and mis-filed it - its BACKLOG blamed "an unrelated process" holding 8901
+since 2026-08-16.
+
+**Shipped:** RC `533d4f97` - `LL_BLOCK` + `CS_BLOCK` registered, `BLOCKS` now six, the
+collision recorded in the docstring, two new guards (CS/LW disjointness pinned by NUMBER;
+LL's widened 8815-8819). Mutation-proved RED three ways, `core/ports.py` restored
+byte-identical. LEDGER 1274. Sibling-E moved to **8920-8939** base **8920** across 6
+files; its `verify_env.py` went from a soft failure on every run since 2026-08-16 to
+**PASS, ports free 20/20**.
+
+**Do NOT redo:** Sibling-D was already correct (8810-8819) and already carried the
+identical six-row table - it independently settled a one-digit ambiguity in the operator's
+own message (prose said 8820-8839, the table said 8920-8939). It has uncommitted work from
+its own session; leave it alone.
+
+**BLOCKED, and it is not ours to clear:** the Sibling-E commit `67b00b2` exists and is
+byte-identical to the intended content, but **the push is blocked by that repo's own
+`pre-push` hook** (`pytest tests -q -x`). Its suite is red from ANOTHER session's in-flight
+surface-contract work - an untracked `sibling_e/surface/api/contract.py` that its staged
+`tests/surface/test_contract.py` imports. Two of the three failures name that file
+directly; the third passes in isolation. `main` there is ahead 1, remote still `4ac5c3e`.
+Never `--no-verify` it. It goes up when that session's work lands green.
+
+**Process note worth keeping:** I edited a sibling repo another session was concurrently
+working in. It resolved cleanly, but I checked Sibling-D for in-flight work and did NOT
+check Sibling-E before writing. Check every sibling tree's `git status` first.
 
 ---
 
@@ -118,52 +160,3 @@ JOB-level `contents: write` with a fenced auto-repair step.
   as passing before reading `conclusion`. Read the conclusion field, never the watch exit code.
 - DS stays PINNED at data patch 16.15.1 while live DDragon is 16.17.1. `:8860` reporting
   16.15.1 is CORRECT - do not file it as drift (RM-223 tracks the accruing carry-forward debt).
-
----
-
-# 2026-08-16e - RM-221: the Share mirror's exclusion list becomes a RULE, and reproducing first corrected four of the row's particulars
-
-Closed RM-221. The reviewer's own Start-here command now reports **8256 passed, 2 failed,
-15 skipped, 11133 subtests in 96s** on a clean copy unpacked outside the repo and
-deliberately RENAMED to `ds-engine-review`, against 58 failed / 5 errors before. Both
-survivors are the SAME RM-190 divergence on item 3175 Spellslinger's Shoes - engine 20
-flat magic pen, pinned 16.15.1 snapshot states 18 - reported engine-side by
-`test_magic_pen_flat_catalog_r153.py` and feed-side by `test_pen_pct_catalog_r160.py`.
-
-**The row was right that the package was broken and wrong about four particulars, and the
-only reason that surfaced is that I reproduced before building.** (a) The filed **73 is not
-reproducible from the bytes**: a copy that KEEPS the name `Share` gives 58. The 15-failure
-delta was an ancestor-directory-NAME check in four engine tests, so the number moved when
-the reproduction renamed the folder. (b) **Four** files import `core`, not six, and all four
-do it DEFERRED inside test bodies - which is why the pre-existing guard stayed green
-throughout: its `_CORE_IMPORT` was anchored at column 0 because "only a collection abort
-counts". True, wrong bar. (c) The two biggest offenders are neither a `core` import nor a
-`data/meta` read - `test_health_damage_coupling_rm91.py` (50 of 58) and
-`test_item_proc_heal_rm103.py` (all 5 errors) pin the historical 16.14.1 snapshot, and
-`test_antitank_axis_score_invariance_r196.py` is a host-tree POPULATION scan. (d)
-`test_pen_pct_catalog_r160.py` was filed as a packaging artifact and is the same TRUE
-signal as r153 - excluding it would have deleted it, the exact trap the row raised for r153.
-
-**Shipped:** two rules in `tools/ds_share_sync._is_host_dependent_test` (any-indent `core`
-import; an AST check for a `data/daemon_slayer/<patch>` read other than the shipped patch,
-in two shapes only) plus ONE named entry for r196 with its reason written down. Rule 2's
-narrowness is MEASURED: a blunt stale-patch-literal scan hits 10 modules and 8 of them pass,
-because they build their own snapshot; the shipped rule hits exactly 2 with 0 false
-positives. Also the `SHARE_MIRROR` sentinel the generator emits, replacing the name check in
-all four tests, pinned `eol=lf` in `.gitattributes` so `core.autocrlf` cannot fail `--check`
-on the next clone.
-
-**Two things worth carrying forward.** The sentinel sites walk `parents` NON-INDEXED on
-purpose: `tests/test_skip_condition_hygiene.py` credits that exact form as a tree-shape
-capability and names the case "is this the Share mirror" in its own source. My first attempt
-indexed `parents[3]`, resolved to a suffix-tracked artifact, and turned all four skips into
-class-B5 DEFECTs - caught by the RC suite, not by inspection, and fixed on the guard's own
-terms rather than by buying an `_ALLOWLIST` exemption. Second: the first mutation probe of
-the new snapshot guard SURVIVED, because flipping `_PATCH` moves the generator and the guard
-together - an EQUIVALENT mutant. Re-aimed at a generator that stops applying the rule, it
-goes red. All four guards are mutation-proved with non-equivalent mutants.
-
-**Gate note that cost a re-run:** the DS suite under `-n 8` reports 19 failures, ALL in
-`test_ehp_family_seams_reach_the_client_rm115.py`, which drives the shared live DS `:8860`
-server; serially the same tree is **10684 passed / 13482 subtests, 0 failed**. Run that file
-serially or expect phantom reds.
