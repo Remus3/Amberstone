@@ -73,8 +73,27 @@ def test_cli_version_still_matches_the_pin():
     claude = shutil.which("claude.cmd") or shutil.which("claude")
     if not claude:
         pytest.skip("claude CLI not on PATH")
-    out = subprocess.run([claude, "--version"], capture_output=True, text=True,
-                         check=False, timeout=60).stdout.strip()
+    proc = subprocess.run([claude, "--version"], capture_output=True, text=True,
+                          check=False, timeout=60)
+    out = proc.stdout.strip()
+    # A launcher ON PATH is not the same capability as a WORKING CLI, and
+    # conflating them made this assert a false version-drift alarm. Measured
+    # 2026-08-29 on Legion: the `claude.cmd` shim resolves, but the native
+    # binary is not installed, so the process exits 1 with an empty stdout and
+    # "Error: claude native binary not installed." on stderr. That read as
+    # `CLI moved to '' from the pinned 2.1.220` - which names the wrong defect
+    # and points at a canary re-run that cannot be performed, because there is
+    # no working CLI to spawn a subagent with.
+    #
+    # An unusable CLI is an absent ENVIRONMENT CAPABILITY, so it skips, the
+    # same class as the not-on-PATH branch above. Version DRIFT - a CLI that
+    # runs and reports a different number - still fails loudly below, which is
+    # the signal this file exists for.
+    if proc.returncode != 0 or not out:
+        pytest.skip(
+            f"claude CLI at {claude} is not runnable (exit {proc.returncode}, "
+            f"stdout empty); stderr: {proc.stderr.strip().splitlines()[:1]}"
+        )
     assert PINNED_CLI in out, (
         f"CLI moved to {out!r} from the pinned {PINNED_CLI}. "
         f"{FLAG} is UNDOCUMENTED - re-run the canary before trusting it: spawn a "
