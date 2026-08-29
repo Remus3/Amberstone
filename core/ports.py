@@ -1,11 +1,16 @@
 # arch: canonical TCP port registry for RC + Daemon Slayer, and the cross-project block reservations | section=core | frozen=no
 """Amberstone port registry.
 
-Three projects run concurrently on Legion - Amberstone (this repo, which
-contains Daemon Slayer), Sibling-A and Sibling-C - and until 2026-08-01
-none of them could answer "which ports are mine" without grepping bind sites
-and filtering vendored noise out of the result. Sibling-C solved it first with
-`core/ports.py` plus a guard test; this module is the same idea for RC.
+Five projects run concurrently on Legion - Amberstone (this repo, which
+contains Daemon Slayer), Sibling-A, Sibling-C, Sibling-D and Sibling-E
+- and until 2026-08-01 none of them could answer "which ports are mine" without
+grepping bind sites and filtering vendored noise out of the result. Sibling-C
+solved it first with `core/ports.py` plus a guard test; this module is the same
+idea for RC.
+
+The last two did not exist when the blocks were first negotiated (Sibling-D
+and Sibling-E were both specced after 2026-08-01), which is how the collision
+recorded below happened.
 
 Import these constants. A port literal spelled out at a bind site is how the
 registry silently goes stale, and `tests/test_ports.py` fails when a live
@@ -18,9 +23,17 @@ the point is that a new service can be added to any project without first
 re-auditing the other two.
 
     8770-8789   Sibling-C        (named: 8777 8778 8779 8780 8783; bound today: 8777 8780)
+    8810-8819   Sibling-D    (named: 8810-8814; nothing bound)
     8860-8879   Daemon Slayer   (in use: 8860 8861 - see MIGRATION below)
-    8888-8895   Amberstone  (in use: 8888 8889 8890 8891 8895)
-    8900-8919   Sibling-A (named: 8901; bound only while the operator runs it)
+    8888-8895   Amberstone      (in use: 8888 8889 8890 8891 8895), plus 2999,
+                                which RIOT binds - see LIVE_CLIENT
+    8900-8919   Sibling-A (named: 8900 8901; bound only while the operator runs it)
+    8920-8939   Sibling-E      (named: 8920; nothing bound yet - see COLLISION below)
+
+Two of these were assigned after the original round: the operator widened
+Sibling-D from 8810-8814 to 8810-8819 on 2026-08-27, and assigned Sibling-E
+8920-8939 on 2026-08-29. Both are recorded independently in
+`C:/Sibling-D/CLAUDE.md`, which carries the same six-row table.
 
 RC keeps 8888-8895 because moving a live control plane is churn with no payoff;
 the block is stated so the other two projects can route around it.
@@ -29,6 +42,20 @@ Provenance, so a later session does not re-open a closed negotiation. Sibling-C
 accepted 8770-8789 unchanged and Sibling-A accepted 8900-8919 unchanged;
 both replies are in `moon_sync_inbox/` dated 2026-08-01. Neither asked RC to
 move anything, and neither owes RC a renumber.
+
+**COLLISION FOUND AND CLEARED 2026-08-29, and it is the rule below proving
+itself.** Sibling-E allocated itself 8900-8911 with a dashboard on 8901 - a
+band wholly inside Sibling-A's block, whose 8900 and 8901 are LW's
+RUNDASH and MONITOR (`C:/Sibling-A/tools/lw_ports.py`). It was found by
+reading SOURCE: CS's `BOOTSTRAP.md` recorded "8900-8911 all free and unbound on
+this machine" and its `config/ports.json` said "verified free at allocation
+time", which is exactly the listener-scan method this next paragraph refutes -
+LW's monitor is an operator-launched GUI, so on any ordinary morning it reads
+as portless and the band reads as free. CS had already met the symptom and
+mis-filed it: its BACKLOG said 8901 "has been held since 2026-08-16 by an
+unrelated process", when in fact 8901 was never CS's to hold. CS names
+Sibling-A in zero files, so it never read the owner's registry. Moved to
+8920-8939 by operator assignment.
 
 **AUDIT BY SOURCE, NEVER BY NETSTAT.** This is the durable lesson from the
 confirmation round, and it inverts the obvious method. LW's monitor is an
@@ -129,16 +156,23 @@ RC_BLOCK = range(8888, 8896)
 DS_BLOCK = range(8860, 8880)
 LW_BLOCK = range(8900, 8920)
 RM_BLOCK = range(8770, 8790)
+LL_BLOCK = range(8810, 8820)
+CS_BLOCK = range(8920, 8940)
 
 BLOCKS = {
     "rc": RC_BLOCK,
     "ds": DS_BLOCK,
     "lw": LW_BLOCK,
     "rm": RM_BLOCK,
+    "ll": LL_BLOCK,
+    "cs": CS_BLOCK,
 }
 """Every project's reserved range, keyed by short name.
 
-LW and RM are listed so RC can prove disjointness without reading their trees.
+LW, RM, LL and CS are listed so RC can prove disjointness without reading
+their trees. Listing a sibling is NOT a licence to bind in its range, and it is
+not a claim that RC knows what the sibling has allocated INSIDE the block -
+`next_free` refuses to answer for a sibling for exactly that reason.
 
 RC carrying all four blocks is an RC-side choice, not a shared convention. Red
 Moon deliberately does the opposite: it names only its own ports and proves
@@ -177,10 +211,11 @@ def next_free(block: str = "rc", taken=None) -> int:
     it" instead of a hand-scan of bind sites - and a hand-scan is the exact
     method that nearly handed 8901 to Daemon Slayer.
 
-    Only the RC block can be answered from this repo. `taken` exists for the
-    sibling blocks: RC does not know what LW or RM have allocated and must not
-    guess, so asking for one of those without passing their allocations raises
-    rather than returning a number that would be a fabrication.
+    Only the RC and DS blocks can be answered from this repo. `taken` exists
+    for the sibling blocks: RC does not know what LW, RM, LL or CS have
+    allocated and must not guess, so asking for one of those without passing
+    their allocations raises rather than returning a number that would be a
+    fabrication.
     """
     if block not in BLOCKS:
         raise KeyError(f"unknown block {block!r} - known: {', '.join(sorted(BLOCKS))}")
