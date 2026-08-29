@@ -312,9 +312,25 @@ def test_agent6_reports_are_ascii() -> None:
     checkmarks that the 8-codepoint banned set does not cover.
 
     A failure here means a routine prompt is emitting non-ASCII. Fix the
-    landed file with tools/strip_smart_quotes.py --apply, then fix the
-    routine prompt itself - the prompt lives in cloud scheduling config,
-    not in this repo, so it needs an operator edit via /schedule.
+    landed file with:
+
+        python tools/sanitize_agent6_reports.py --apply
+
+    NOT with tools/strip_smart_quotes.py. That tool maps dashes, smart
+    quotes, the ellipsis and NBSP and has no notion of U+2713, which is the
+    DOMINANT glyph these routines emit (24 of 24 non-ASCII bytes on
+    2026-08-04; 8 of 9 on 2026-08-25). This docstring pointed at it for
+    both of those incidents, so the prescribed fix could not clear this
+    guard and each one was repaired by hand instead - which is exactly why
+    it kept recurring. tools/sanitize_agent6_reports.py covers the glyphs
+    the routines actually produce and is pinned by
+    tests/test_sanitize_agent6_reports.py.
+
+    Then fix the routine prompt itself - the prompt lives in cloud
+    scheduling config, not in this repo, so it needs an operator edit via
+    /schedule. Until that happens this is a detect-and-repair loop, not
+    prevention: the routines commit from a fresh clone where core.hooksPath
+    is unset, so no local hook ever sees the file.
     """
     reports = _REPO_ROOT / "agents" / "agent6_auditor" / "reports"
     assert reports.is_dir(), f"tracked reports dir missing at {reports}"
