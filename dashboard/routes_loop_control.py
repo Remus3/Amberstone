@@ -6,10 +6,19 @@ operator halt a running headless loop, clear the halt flag, or queue a one-shot
 directive override for the next cycle - all from the phone over Tailscale
 (https://legion-rc:8888 -> Settings) without shelling into Legion.
 
-Trust model: same as every other dashboard POST (/api/command, /api/input) - the
-:8888 surface is local / Tailscale-tailnet only, single-operator. This route only
-WRITES files under ops/loop/control/ (all gitignored runtime state); it never
-executes anything itself. ops/loop/loop_controller.py polls those files:
+Trust model (re-measured lane 8 cycle 21 - the previous wording described the
+:8888 surface this route no longer sits on). mc/routes.py:16 is the ONLY
+production importer, so the perimeter is Mission Control's, not the dashboard's:
+mc/server.py:39 binds 127.0.0.1 + the Tailscale address ONLY (never a wildcard,
+never the LAN address), mc/server.py:62-66 refuses to start without TLS, and
+mc/handler.py:105-108 gates every POST on a bearer token that fails CLOSED
+(mc/auth.py:48-61 - 503 when unconfigured, 401 on absent/mismatched). That is a
+STRONGER perimeter than the old paragraph claimed, not a weaker one; do not
+relax this route on the belief that it is only as guarded as /api/command.
+
+This route only WRITES files under ops/loop/control/ (all gitignored runtime
+state); it never executes anything itself, except `interrupt` (see S9 below).
+ops/loop/loop_controller.py polls those files:
   STOP                  present => the controller halts at its next poll (external STOP).
   directive_override.md one-shot; consume_directive_override() reads + unlinks it
                         as the NEXT cycle's directive, ahead of the director.
@@ -77,14 +86,14 @@ from __future__ import annotations
 
 import importlib
 import json
-from dashboard._errors import send_error
 import logging
-import os
 import sys
 import time
 from pathlib import Path
 
+from core.polled_json import atomic_write_bytes
 from dashboard import _idempotency as idem
+from dashboard._errors import send_error
 from dashboard._matchers import equals
 
 log = logging.getLogger("rc.web_dashboard")
@@ -145,10 +154,37 @@ _IDEMPOTENT_ACTIONS = ("fire_lane", "queue_intent", "steer", "interrupt")
 
 
 def _awrite(path: Path, text: str) -> None:
-    """Atomic write (tmp + os.replace) - loop_controller polls mid-write."""
-    tmp = Path(str(path) + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    """Atomic write - and the contention here is ROUTINE, not theoretical.
+
+    STOP is read from three separate poll loops: loop_controller.py:772/786
+    every 5 s (ops/loop/config.json poll_sec), claude_gui_bridge.ahk:299 every
+    1 s, and routes_loop_status.py:450 read_text() on every browser poll of
+    GET /api/loop-status. On Windows a reader holding the destination open
+    share-locks it, so a bare os.replace raises PermissionError (WinError 5) -
+    measured, and already recorded in-tree at dashboard/_writers.py:29-36.
+
+    This used to hand-roll `tmp.write_text` + a bare `os.replace`, which meant
+    the operator's emergency `stop` lost a coin-flip against the poller: the
+    PermissionError escaped apply_action, hit the catch-all in
+    _serve_loop_control, and returned HTTP 500 "internal error - see logs"
+    while the loop kept running. It also stranded STOP.tmp.
+
+    Bytes, not text: Path.write_text rewrites LF as CRLF on Windows, so the
+    `N chars queued` detail disagreed with the file and MAX_DIRECTIVE was not
+    a byte cap (reference_windows_write_text_crlf_byte_count).
+    """
+    try:
+        atomic_write_bytes(path, text.encode("utf-8"))
+    except PermissionError:
+        # The bounded backoff (~275 ms) is sized for the routine case, a reader
+        # that holds the file for a few ms. If it still loses, do NOT strand the
+        # tmp for the next writer to trip over, and let the caller render an
+        # actionable 503 - "internal error - see logs" tells the operator
+        # nothing about a halt that did not land.
+        # Must mirror atomic_write_bytes' own tmp naming (core/polled_json.py:
+        # `path.with_suffix(path.suffix + ".tmp")`), not a hand-rolled variant.
+        path.with_suffix(path.suffix + ".tmp").unlink(missing_ok=True)
+        raise
 
 
 def _state() -> str:
@@ -320,6 +356,25 @@ def _steer(body: dict, key: str) -> tuple[int, dict]:
     except OSError as exc:
         log.warning("api/loop-control steer: %s", exc)
         return 503, {"ok": False, "action": "steer", "error": str(exc)}
+    except RuntimeError as exc:
+        # ops/loop/steer.py:146 serializes the append on a Win32 named mutex and
+        # raises winmutex.MutexTimeout (a RuntimeError, NOT an OSError) after
+        # 5 s. Only ValueError/OSError were caught, so losing the lock race
+        # returned a 500 "internal error" for what is simply "busy, retry".
+        #
+        # Narrowed to that ONE class on purpose: catching RuntimeError whole
+        # would report a genuine bug inside steer.append to the operator as
+        # "busy - retry", which is the worst of both worlds - the fault is
+        # hidden AND the suggested remedy does not work. Matched by NAME rather
+        # than imported, because ops.loop.winmutex is late-bound like every
+        # other ops.loop dependency here (and is byte-identical-by-contract
+        # with the sibling repo, so this module must not take a hard import on
+        # it). Anything else re-raises to the generic guard.
+        if type(exc).__name__ != "MutexTimeout":
+            raise
+        log.warning("api/loop-control steer: lock contention: %s", exc)
+        return 503, {"ok": False, "action": "steer",
+                     "error": "steer channel busy - retry"}
     return 200, {"ok": True, "action": "steer", "state": _state(),
                  "detail": f"{tier} queued (#{rec['id']})",
                  "tier": tier, "id": rec["id"], "key": key}
@@ -441,9 +496,12 @@ def apply_action(action: str, body: dict) -> tuple[int, dict]:
     if action not in _VALID_ACTIONS:
         return 400, {"ok": False, "error": f"unknown action: {action!r}",
                      "valid": list(_VALID_ACTIONS)}
-    CONTROL_DIR.mkdir(parents=True, exist_ok=True)
     if action == "interrupt_preview":
+        # BEFORE the mkdir: this action is documented read-only ("Kills
+        # nothing, writes nothing") and must not create control/ as a side
+        # effect. _state() only calls .exists(), which is safe on a missing dir.
         return _interrupt_preview()
+    CONTROL_DIR.mkdir(parents=True, exist_ok=True)
     if action in _IDEMPOTENT_ACTIONS:
         return _apply_idempotent(action, body)
     detail = ""
@@ -477,6 +535,19 @@ def _serve_loop_control(h, body) -> None:
             action = str(body.get("action") or "").strip()
             status, payload = apply_action(action, body)
         h._send(status, json.dumps(payload).encode("utf-8"), "application/json")
+    except PermissionError as exc:
+        # A control file stayed share-locked past the retry window. This is a
+        # known, transient, RETRYABLE condition, so it gets its own actionable
+        # answer rather than the generic 500 - the operator has to be able to
+        # tell "your halt did not land, press it again" from "the server is
+        # broken". CLAUDE.md Error Handling: friendly message out, raw cause
+        # to logs.
+        log.warning("api/loop-control: control file busy: %s", exc)
+        try:
+            send_error(h, exc, status=503,
+                       public_msg="control file busy - the loop is mid-poll, retry")
+        except Exception:  # noqa: BLE001
+            pass
     except Exception as exc:  # noqa: BLE001 - last-resort guard, never 500 the server
         log.warning("api/loop-control: %s", exc)
         try:
