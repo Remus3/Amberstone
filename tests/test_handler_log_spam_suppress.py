@@ -24,8 +24,24 @@ SRC = Path(__file__).resolve().parent.parent / "dashboard" / "_handler.py"
 
 class _FakeHandler:
     """Minimal stand-in for a BaseHTTPRequestHandler instance: just
-    enough to call Handler.log_message unbound. log_message reads no
-    instance state besides what the format args carry."""
+    enough to call Handler.log_message unbound.
+
+    Updated 2026-08-30 (lane 8 cycle 13). This docstring used to read
+    "log_message reads no instance state besides what the format args
+    carry", and that stopped being true when log_message started
+    prefixing the peer address - the stdlib does that on every line and
+    the override had silently dropped it. The double was under-specifying
+    a real handler, so it gains the method rather than the production
+    code gaining a getattr dance: every genuine BaseHTTPRequestHandler
+    has address_string(). The suppression assertions below are unchanged.
+    """
+
+    client_address = ("127.0.0.1", 54321)
+    # Borrow the REAL implementations rather than hand-rolling look-alikes:
+    # a double that reimplements what it stands in for can drift away from it
+    # silently, which is the whole failure mode this file exists to catch.
+    address_string = _handler.Handler.address_string
+    _peer = _handler.Handler._peer
 
 
 class SuppressLogPathsConstantTests(unittest.TestCase):
@@ -196,7 +212,16 @@ class LogMessageSuppressionTests(unittest.TestCase):
             # The formatted message must include the path so diagnostics
             # remain readable; assert the substring rather than an exact
             # match (caller-supplied fmt may evolve).
-            (msg,), _kwargs = mock_debug.call_args
+            #
+            # Call shape changed 2026-08-30 (lane 8 cycle 13): the emit is now
+            # lazy 3-arg `log.debug("%s %s", peer, scrubbed)` rather than a
+            # single pre-formatted string, because the override had dropped
+            # the peer address the stdlib prefixes to every line. Lazy %s is
+            # deliberate - it skips the formatting when the level is off.
+            args, _kwargs = mock_debug.call_args
+            self.assertEqual(len(args), 3, f"unexpected emit shape: {args!r}")
+            _fmt, peer, msg = args
+            self.assertEqual(peer, "127.0.0.1")
             self.assertIn("/api/health/all", msg)
             self.assertTrue(msg.startswith("HTTP "))
 

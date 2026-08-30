@@ -69,8 +69,20 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free GAP spec = **RM-208**. (RM-205, RM-206 and RM-207 were consumed 2026-08-15 by the RM-197
-  adversarial gate - four scope-fenced sanitizer bypasses, body in `BACKLOG.md`.)
+  Next free GAP spec = **RM-229**. (Corrected 2026-08-30 by lane 8 cycle 13, which
+  minted RM-228 on `lane/true-audit`. RM-205, RM-206 and RM-207 were consumed
+  2026-08-15 by the RM-197 adversarial gate - four scope-fenced sanitizer bypasses,
+  body in `BACKLOG.md`. **This is the FIFTH hand-correction of this pointer, and the
+  first where the drift actually MATERIALIZED AS A DUPLICATE ID rather than being
+  caught as a stale number.** Cycle 13 first minted its row as RM-223 against a
+  measured max of RM-222; while the slice sat unmerged, other lanes filed RM-223
+  through RM-227 on `main`, so the id collided with a real row and had to be re-minted
+  to RM-228 before commit. That is the concrete failure RM-192 predicted: the pointer
+  is not merely stale, it hands out ids that are already taken, and a lane that
+  allocates against a branch-local max cannot see `main` move underneath it. **Do NOT
+  treat this edit as closing RM-192 - it is now the strongest evidence FOR it.** Any
+  future allocation must re-measure against `origin/main` at COMMIT time, not at file-
+  selection time.)
   (This line read `RM-203` for the few hours between
   the two 2026-08-14 sessions landing. RM-203 + RM-204 were allocated concurrently by
   the headless-upgrade run and are recorded in the block below; measured 2026-08-15 the

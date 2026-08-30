@@ -8,9 +8,20 @@ Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
   * `do_GET`  - delegates to `dashboard._dispatch.dispatch_get`,
                 falls through to the agents-supervisor proxy for
                 paths only :8890 implements, else 404
-  * `do_POST` - same-origin CSRF guard, 1-MiB body cap, JSON
-                decode, then delegates to `dashboard._dispatch.
-                dispatch_post`, else 404
+  * `do_POST` - same-origin CSRF guard, 411 on a chunked body (no
+                Content-Length means no cap, no deadline and no shape
+                check apply; the guard reads EVERY Transfer-Encoding
+                header, not just the first). A body sent with neither
+                Content-Length nor Transfer-Encoding is still read as
+                empty - that is correct HTTP, not a second bypass.
+                Then 1-MiB body cap, read deadline, JSON decode,
+                dict-or-400, then delegates to
+                `dashboard._dispatch.dispatch_post`, else 404
+  * `log_message` / `_peer` - restore the two properties the stdlib
+                gives every handler and an override silently drops:
+                control characters escaped (`_scrub_log`) so a request
+                target cannot inject into `logs/`, and the client
+                address prefixed so a rejection is attributable
   * `_send`   - TLS-aware response writer; sets HSTS only when
                 the connection itself is wrapped (matches the
                 2026-04-29 audit)
@@ -31,6 +42,7 @@ log-filter rules keep matching.
 """
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -40,6 +52,36 @@ from http.server import BaseHTTPRequestHandler
 from dashboard import _dispatch
 
 log = logging.getLogger("rc.web_dashboard")
+
+# Lane 8, 2026-08-30: the stdlib's own log hardening, which this module used
+# to opt out of by accident. `BaseHTTPRequestHandler.log_message` translates
+# C0 controls, DEL and the C1 range to `\xHH` before writing - OVERRIDING the
+# method silently drops that, and the request target is attacker-controlled
+# from anywhere the `HOST = "::"` bind reaches (dashboard/server.py:35).
+# Measured: `GET /api/<ESC>[31m...` put a raw 0x1b into the record, and the
+# sink is logs/YYYY-MM-DD.log, which the operator reads in a terminal.
+#
+# Borrowed from the stdlib rather than re-rolled so it tracks any future
+# widening of the table; the fallback covers a Python that drops the private
+# attribute, and is asserted equivalent by tests.
+_CONTROL_CHAR_TABLE = getattr(BaseHTTPRequestHandler, "_control_char_table", None)
+_SCRUB_RANGES = tuple(range(0x00, 0x20)) + tuple(range(0x7F, 0xA0))
+
+
+def _scrub_log(text: str) -> str:
+    """Escape control characters so a request cannot inject into the log."""
+    if _CONTROL_CHAR_TABLE is not None:
+        return text.translate(_CONTROL_CHAR_TABLE)
+    # The backslash escape is not decoration: without it a client can type
+    # the literal six characters `\x1b[31m` and produce a log line byte-for-
+    # byte identical to a scrubbed real ESC, so the escaping stops being
+    # injective. The stdlib table maps `\` to `\\` for exactly this reason,
+    # and the fallback is asserted equivalent to it by test.
+    return "".join(
+        f"\\x{ord(ch):02x}" if ord(ch) in _SCRUB_RANGES
+        else ("\\\\" if ch == "\\" else ch)
+        for ch in text
+    )
 
 # OVL2 (Electron Phase 6, Pengu Surface C): loopback origins always allowed
 # to read responses cross-origin. The Pengu Loader plugin (pengu/) runs in
@@ -149,12 +191,31 @@ _SUPPRESS_LOG_PATHS = (
 
 
 class Handler(BaseHTTPRequestHandler):
+    def _peer(self) -> str:
+        """Client address for a log line, never raising.
+
+        The stdlib prefixes ``address_string()`` to every log_message; this
+        override used to drop it, so no HTTP log line named who sent the
+        request - on a port reachable from the whole LAN and the tailnet.
+
+        Narrowed deliberately rather than suppressed with a noqa: the
+        stdlib body is ``return self.client_address[0]``, so the only ways
+        it fails are a missing attribute or a client_address that is not
+        indexable. Anything else is a real bug and should surface.
+        """
+        try:
+            return self.address_string()
+        except (AttributeError, IndexError, TypeError):
+            return "?"
+
     def log_message(self, fmt: str, *a: object) -> None:
         msg = "HTTP " + (fmt % a if a else fmt)
         for needle in _SUPPRESS_LOG_PATHS:
             if needle in msg:
                 return
-        log.debug(msg)
+        # Suppression matches on the raw text so the needle set keeps its
+        # existing meaning; only what is EMITTED is scrubbed and attributed.
+        log.debug("%s %s", self._peer(), _scrub_log(msg))
 
     def _minimap_no_frame(self) -> None:
         """Send 204 No Content for a minimap-crop with no frame to serve."""
@@ -250,7 +311,13 @@ class Handler(BaseHTTPRequestHandler):
             ctype = e.headers.get("Content-Type", "application/json") if e.headers else "application/json"
             self._send(e.code, body, ctype)
         except Exception as exc:  # noqa: BLE001
-            log.debug("proxy %s: %s", self.path, exc)
+            # The exception text is scrubbed too. MEASURED: no currently
+            # reachable exception here carries raw control bytes (int()'s
+            # ValueError repr-escapes its operand, and urllib does not raise
+            # on an ESC in the path at all), so this closes the CLASS rather
+            # than a demonstrated instance - the alternative is betting on
+            # every future exception type formatting its payload safely.
+            log.debug("proxy %s: %s", _scrub_log(self.path), _scrub_log(str(exc)))
             if proxy_error_status(self.path, None) == 204:
                 self._minimap_no_frame()
                 return
@@ -372,12 +439,37 @@ class Handler(BaseHTTPRequestHandler):
         # Browser-driven cross-origin POSTs (Origin/Referer mismatch) are
         # rejected with 403; script callers without those headers pass.
         if not self._csrf_ok():
-            log.warning("do_POST CSRF reject path=%s origin=%r referer=%r host=%r",
-                        self.path,
+            log.warning("do_POST CSRF reject peer=%s path=%s origin=%r "
+                        "referer=%r host=%r",
+                        self._peer(),
+                        _scrub_log(self.path),
                         self.headers.get("Origin"),
                         self.headers.get("Referer"),
                         self.headers.get("Host"))
             self._send(403, b'{"error":"cross_origin"}', "application/json")
+            return
+        # Lane 8, 2026-08-30: every body control below keys off Content-Length
+        # - the 1 MiB cap, the read deadline, and the dict-or-400 guard. A
+        # chunked request carries no Content-Length, so `n` was 0, the declared
+        # body was never read off the socket, and the route was dispatched with
+        # `{}` as though the client had sent an empty object. Measured against
+        # the real Handler: a chunked POST /api/command reached
+        # _dispatch._validate_request_body. That is a body silently DISCARDED,
+        # not merely uncapped. Nothing in RC sends chunked (web/js uses fetch
+        # with a string body, which sets Content-Length), so 411 is both
+        # correct per RFC 7230 and free.
+        # get_all, NOT get: `Message.get` returns only the FIRST header of a
+        # repeated name, and the adversarial pass measured the bypass - two
+        # Transfer-Encoding lines (`identity` then `chunked`) made `get` read
+        # "identity", walked past this guard, and the body was discarded
+        # exactly as before the fix. A comma-joined view of EVERY value is the
+        # only shape that cannot be split across duplicate headers.
+        _te = ", ".join(self.headers.get_all("Transfer-Encoding", []) or [])
+        if "chunked" in _te.lower():
+            log.warning("do_POST chunked body refused peer=%s path=%s",
+                        self._peer(), _scrub_log(self.path))
+            self.close_connection = True
+            self._send(411, b'{"error":"length_required"}', "application/json")
             return
         try:
             n = int(self.headers.get("Content-Length", "0"))
@@ -405,15 +497,16 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 body = self._read_body_deadlined(n) if n else b""
             except TimeoutError:
-                log.warning("do_POST body read timed out path=%s declared=%d",
-                            self.path, n)
+                log.warning("do_POST body read timed out peer=%s path=%s "
+                            "declared=%d",
+                            self._peer(), _scrub_log(self.path), n)
                 self.close_connection = True
                 self._send(408, b'{"error":"body_read_timeout"}',
                            "application/json")
                 return
             payload = json.loads(body.decode("utf-8", errors="replace")) if body else {}
         except Exception as exc:  # noqa: BLE001
-            log.debug("do_POST bad_body: %s", exc)
+            log.debug("do_POST bad_body: %s", _scrub_log(str(exc)))
             self._send(400, b'{"error":"bad_body"}', "application/json")
             return
 
@@ -440,8 +533,25 @@ class Handler(BaseHTTPRequestHandler):
             dash_token = os.environ.get("RC_DASH_TOKEN", "").strip()
             if dash_token:
                 req_token = (self.headers.get("X-RC-Token") or "").strip()
-                if req_token != dash_token:
-                    log.warning("control endpoint auth reject: %s", path_base)
+                # Constant-time compare. Graded honestly: RC_DASH_TOKEN is set
+                # NOWHERE in this deployment, so this gate does not run today
+                # and the change is inert defense-in-depth, not a live fix.
+                # Both operands are encoded because compare_digest rejects a
+                # str containing any non-ASCII, and the header is caller-set.
+                # `surrogatepass` is not decoration: os.environ round-trips
+                # lone surrogates on Windows, and a plain .encode() then raises
+                # UnicodeEncodeError, turning this 401 into a traceback. It
+                # must be surrogatepass and NOT surrogateescape - the latter
+                # only covers the U+DC80..U+DCFF range that decoding produces,
+                # so it still raises on a U+D800 and the first version of this
+                # fix was wrong until the regression test caught it. The header
+                # itself is iso-8859-1-decoded and cannot carry a surrogate, so
+                # the handler only ever fires on the configured side.
+                if not hmac.compare_digest(
+                        req_token.encode("utf-8", "surrogatepass"),
+                        dash_token.encode("utf-8", "surrogatepass")):
+                    log.warning("control endpoint auth reject: peer=%s path=%s",
+                                self._peer(), path_base)
                     self._send(401, b'{"error":"unauthorized"}', "application/json")
                     return
 

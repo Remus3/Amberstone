@@ -10,12 +10,32 @@ batch); nothing in dashboard/_handler.py changes here.
 """
 from __future__ import annotations
 
+import http.client
 import io
 
 import pytest
 
 import dashboard._dispatch as _dispatch
 from dashboard._handler import Handler
+
+
+def _headers(pairs):
+    """Build the real header container a Handler gets, not a dict.
+
+    `BaseHTTPRequestHandler.headers` is an `http.client.HTTPMessage`, which
+    supports repeated header names and `get_all()`. These doubles used a plain
+    dict, which answers `.get` but not `.get_all` - so they silently
+    under-specified a real handler, and the cycle-13 duplicate-Transfer-
+    Encoding fix (which must read EVERY value, not just the first) broke all
+    eight of them. The double gains the real container rather than production
+    gaining a getattr dance: a double that reimplements what it stands in for
+    drifts away from it silently, which is the failure this file exists to
+    catch.
+    """
+    msg = http.client.HTTPMessage()
+    for k, v in pairs.items():
+        msg[k] = v
+    return msg
 
 
 def _make_post_handler(path, token_header=None, body=b"{}"):
@@ -28,7 +48,7 @@ def _make_post_handler(path, token_header=None, body=b"{}"):
     headers = {"Content-Length": str(len(body))}
     if token_header is not None:
         headers["X-RC-Token"] = token_header
-    h.headers = headers
+    h.headers = _headers(headers)
     h.path = path
     h.rfile = io.BytesIO(body)
     h._csrf_ok = lambda: True
