@@ -13,7 +13,17 @@ import os
 import socketserver
 import threading
 import time
+import urllib.parse
 from typing import TYPE_CHECKING, Any
+
+# Lane 8 cycle 15: reuse the control-char scrubber built and verified in cycle
+# 13 rather than re-rolling it (RM-228 names this reuse explicitly). Its
+# fallback branch was checked there against all 1111998 non-surrogate
+# codepoints with zero divergence from the stdlib table. The agents -> dashboard
+# import direction already exists (agents/supervisor.py, agent2_backend/
+# file_ingest.py) and dashboard/_handler.py imports nothing from agents, so
+# this adds no cycle. The mc/ package is deliberately NOT given this import.
+from dashboard._handler import _scrub_log
 
 from agents.agent7_context.warm_session import WarmSessionError, warm_spawn_factory
 
@@ -38,12 +48,45 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
                        "api-key-claude.txt", "credentials.json"}
 
     def _is_forbidden(self, path: str) -> bool:
-        # strip query string
+        # Lane 8 cycle 15: this used to test the RAW request target, but
+        # SimpleHTTPRequestHandler.translate_path unquotes before opening the
+        # file - so the gate and the file-opener disagreed about what the path
+        # IS, and every denylisted name was reachable by percent-encoding any
+        # one of its characters (`/%2Eenv` served `.env`; `/%61pi-key-claude
+        # .txt` served the key file). Decode the SAME way translate_path does,
+        # including its UnicodeDecodeError fallback, so the two cannot diverge.
+        #
+        # Decode exactly ONCE. translate_path unquotes once, so a loop here
+        # would block `%252Eenv` - a request for the literal filename `%2Eenv`,
+        # which is not `.env` and is honestly a 404.
         clean = path.split("?", 1)[0].split("#", 1)[0]
-        basename = clean.rsplit("/", 1)[-1].lower()
-        if basename.startswith("."):
-            return True
-        return basename in self._DENYLIST_NAMES
+        try:
+            clean = urllib.parse.unquote(clean, errors="surrogatepass")
+        except UnicodeDecodeError:
+            clean = urllib.parse.unquote(clean)
+        # Check BOTH readings of the separator and forbid if EITHER says so.
+        #
+        # An earlier revision of this fix normalised the backslash and tested
+        # only that reading, and the cycle-15 verifier measured it going the
+        # WRONG WAY: `/..\OUTSIDE.txt` had been 403 (the slash-only basename
+        # `..\OUTSIDE.txt` starts with a dot) and became a 301 to the directory
+        # listing, because the normalised basename is the innocent
+        # `OUTSIDE.txt`. Normalising picked a single reading and that reading
+        # was sometimes the more permissive one, so the gate got LOOSER for
+        # backslash-shaped targets - the opposite of the intent.
+        #
+        # Taking the union is what actually delivers "never looser than the
+        # opener": translate_path DROPS any segment whose os.path.dirname is
+        # non-empty (on Windows that includes `a\b`), so it serves neither
+        # reading, and the gate must refuse both rather than pick one.
+        tail = clean.rsplit("/", 1)[-1].lower()
+        candidates = {tail, tail.rsplit("\\", 1)[-1]}
+        for basename in candidates:
+            if basename.startswith("."):
+                return True
+            if basename in self._DENYLIST_NAMES:
+                return True
+        return False
 
     def do_GET(self) -> None:
         if self._is_forbidden(self.path):
@@ -93,7 +136,29 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             return self.do_GET()
         super().do_HEAD()
 
+    def _rejects_chunked(self) -> bool:
+        """Reject a body RC cannot read, instead of silently dispatching {}.
+
+        Lane 8 cycle 15: every body control here keys off Content-Length - the
+        256 KiB cap and the read itself. A `Transfer-Encoding: chunked` POST
+        carries none, so `_read_body` returned b"" and the route ran as though
+        the client had sent an empty object. That is a body DISCARDED, not
+        merely uncapped, and it was measured: `_read_body` returns b"" for a
+        well-formed chunked request whose payload is 23 bytes.
+
+        `get_all`, not `get`: cycle 13 measured that `email.message.Message.get`
+        returns only the FIRST header of a repeated name, so
+        `Transfer-Encoding: identity` followed by `Transfer-Encoding: chunked`
+        walks straight past a `get`-based guard. A comma-joined view cannot be
+        split across duplicate headers.
+        """
+        values = self.headers.get_all("Transfer-Encoding") or []
+        return "chunked" in ",".join(values).lower()
+
     def do_POST(self) -> None:
+        if self._rejects_chunked():
+            self._send_error(411, "chunked request bodies are not supported")
+            return
         if self.path == "/api/input":
             return self._handle_input()
         if self.path == "/api/analyze":
@@ -940,7 +1005,17 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         self._send_json(200, result if mode else {"per_mode": result})
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
-        log.info("web %s - %s", self.address_string(), format % args)
+        # Lane 8 cycle 15 (RM-228 for this file): BaseHTTPRequestHandler.
+        # log_message ends with `message.translate(self._control_char_table)`,
+        # a deliberate stdlib hardening that lives INSIDE the method - so any
+        # override drops it with no warning and no lint. This one did, at INFO,
+        # on a port measured live as 0.0.0.0-bound. Measured before the fix: a
+        # request target carrying ESC/BS/DEL put raw 0x1b, 0x08 and 0x7f into
+        # the record, and the backspaces erase characters when the operator
+        # reads logs/YYYY-MM-DD.log with cat or tail.
+        #
+        # The peer (address_string) was already correct here and is kept.
+        log.info("web %s - %s", self.address_string(), _scrub_log(format % args))
 
 
 class _WebServer(socketserver.ThreadingTCPServer):
