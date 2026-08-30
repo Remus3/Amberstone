@@ -9,6 +9,9 @@ import re
 import logging
 from datetime import datetime
 from pathlib import Path
+
+from core.polled_json import atomic_write_bytes
+
 _log = logging.getLogger("rc.tracker")
 # 2026-04-27: unification - the per-mode last_<mode>.json files are the
 # canonical source of truth. The "last across all modes" is now derived as
@@ -18,10 +21,31 @@ RATINGS_DIR = "data/ratings"
 
 
 def _atomic_write_json(path: Path, data: dict) -> None:
-    """Atomic JSON write - CLAUDE.md SHard rules. Overlays/dashboard poll
+    """Atomic JSON write - CLAUDE.md hard rules. Overlays/dashboard poll
     mid-write, so the only safe pattern is tmp.write -> os.replace.
-    AUDIT C4 (2026-04-22): replaces direct path.write_text usage below."""
-    path.parent.mkdir(parents=True, exist_ok=True)
+    AUDIT C4 (2026-04-22): replaces direct path.write_text usage below.
+
+    Lane 8 cycle 23: the replace step now goes through
+    ``core.polled_json.atomic_write_bytes``, which carries the bounded
+    PermissionError backoff. This used to be a BARE ``os.replace``, and
+    that is a measured defect on Windows rather than a theoretical one:
+    ``os.replace`` raises PermissionError (WinError 5) whenever a
+    concurrent reader holds the destination open, a plain CPython
+    ``open()`` handle is enough, and these rating files have a real
+    cross-process reader in ``agents/supervisor.py:794-805``. Measured
+    on Python 3.14 / win32: the bare call raised in under a millisecond
+    against a reader that released after 80 ms, while the retry-backed
+    call rode it out and landed its content.
+
+    ``core/polled_json.py:30-35`` already recorded this and the same fix
+    already shipped to ``ops/rc_supervisor.atomic_write_json`` on
+    2026-05-02; this module simply held a private copy that never got it.
+    The retry buys the TRANSIENT window only - under a permanently held
+    handle it still raises, exactly as that helper's comment claims.
+
+    Bytes, not text: ``Path.write_text`` rewrites LF as CRLF on Windows
+    (reference_windows_write_text_crlf_byte_count), so the encode is
+    explicit here and the byte count on disk matches the payload."""
     # allow_nan=False: a stray inf/nan (e.g. a degenerate upstream
     # cs_per_min) must raise here BEFORE the tmp file is written, rather
     # than serialize to the bare ``Infinity`` / ``NaN`` tokens that a
@@ -29,9 +53,69 @@ def _atomic_write_json(path: Path, data: dict) -> None:
     # wraps this in try/except + warn, so a raise just drops the one bad
     # rating and leaves the prior valid file intact.  (P2-W4 hw2 slice H)
     payload = json.dumps(data, indent=2, allow_nan=False)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(payload, encoding="utf-8")
-    os.replace(tmp, path)
+    try:
+        atomic_write_bytes(path, payload.encode("utf-8"))
+    except OSError:
+        # An exhausted retry must not leave a stray ``last_<mode>.json.tmp``
+        # beside the target - the sibling lane 8 cycle 22 audit records the
+        # repo treating an orphaned tmp after a failed replace as a defect
+        # in its own right (tests/test_sr_user_builds_lane8_cycle22.py:28).
+        try:
+            path.with_suffix(path.suffix + ".tmp").unlink()
+        except OSError:
+            pass
+        raise
+
+
+def _num(value, default=0):
+    """Coerce a metric to a number, treating a present-but-NULL field the
+    same as a missing one.
+
+    Every numeric read in this module used ``game_state.get(key, default)``,
+    which supplies the default only when the KEY IS ABSENT and passes a
+    present ``None`` straight through to the arithmetic. Measured lane 8
+    cycle 23: six fields (ally_kills_total, cs_per_min, gold, game_seconds,
+    deaths, kills) each crashed ``save_rating`` with a TypeError on a null.
+
+    That is not a cosmetic crash. Both call sites - ``app/_game_lifecycle``
+    ``.py:201`` and ``:230`` - wrap the call in ``except Exception``, so the
+    raise is swallowed and the user silently loses BOTH the rating file and
+    the match_history.db row, while the caller still logs success. The
+    upstream Live Client feed is one RC does not control and has changed
+    shape before, so a null is a shape this boundary has to absorb.
+
+    The caller is a FROZEN file, so the coercion belongs here at the
+    boundary - which is the correct place for it regardless."""
+    if isinstance(value, bool):
+        # A bool where a metric was expected is wrong input, not the 0/1 it
+        # would silently arithmetic as.
+        return default
+    if isinstance(value, (int, float)):
+        return value
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _redact(text: str, secret: str) -> str:
+    """Strip a credential out of a string that is about to be logged.
+
+    The experimental-builder hook hands the Anthropic API key to
+    ``record_result``; if that call raises with the credential embedded in
+    its message (the ordinary shape for a client that echoes the request it
+    built), the outer handler would write the key into
+    ``logs/YYYY-MM-DD.log``. CLAUDE.md forbids the key reaching any log
+    line, so the handler redacts before formatting rather than trusting the
+    callee's exception text.
+
+    The length floor keeps an empty or trivially short value from matching
+    everywhere in the message."""
+    if secret and len(secret) >= 8 and secret in text:
+        return text.replace(secret, "[redacted]")
+    return text
 BENCHMARKS = {"cs_per_min": 8.5, "deaths_per_10": 0.8, "kp_pct": 65, "gold_per_min": 380}
 GRADE_COLORS = {"S": "#FFD700", "A": "#44FF88", "B": "#4A9EFF", "C": "#D0D0E0", "D": "#FFA84A", "F": "#FF4A6A"}
 GRADE_LABEL = {"S": "DOMINANT - elite across all metrics", "A": "GREAT - above baseline, one area to sharpen",
@@ -133,7 +217,9 @@ def _latest_rating_file(sd):
 def is_valid_match(gs):
     gm = (gs.get("game_mode","") or "").upper()
     if gm in _EXCLUDED_MODES or gm.startswith("TUTORIAL") or gm.startswith("PRACTICE"): return False
-    return gs.get("game_seconds", 0) >= 180
+    # _num, not a bare .get: a present-but-null game_seconds used to raise
+    # TypeError comparing None >= 180 on the FIRST line of save_rating.
+    return _num(gs.get("game_seconds", 0)) >= 180
 
 def calculate_rating(s):
     cs=s.get("cs_per_min",0);d=s.get("deaths",0);gm=max(1.0,s.get("game_mins",1));k=s.get("kills",0);a=s.get("assists",0)
@@ -247,7 +333,12 @@ def calculate_tft_rating(placement,stage=0,level=0,game_mins=0.0,traits=None,uni
 def save_tft_rating(script_dir,tft_live,tft_coaching=None):
     if not tft_live: return ("", [])
     variant=(tft_coaching or {}).get("variant","standard")
-    alive_others=(tft_coaching or {}).get("alive_others",7)
+    # _num on both feed-supplied numbers: same root cause as the save_rating
+    # nulls. A null alive_others crashed at the (alive_others+1) placement
+    # derivation below, and a null stage crashed the `0<stage<=4` compare in
+    # calculate_tft_rating - reached only when stage_round fails to parse, so
+    # the obvious probe (a well-formed stage_round) hides it.
+    alive_others=_num((tft_coaching or {}).get("alive_others",7),7)
     is_duo=variant in ("double_up","TFT_DOUBLE_UP","TFT_PAIRS")
     mx=4 if is_duo else 8
     placement=_parse_tft_placement(tft_live.get("last_round_result","") or "")
@@ -265,7 +356,7 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
         # statement in the try can raise.
         try:sn=int(str(ss).split("-")[0])
         except (TypeError, ValueError) as _e: _log.debug("TFT stage parse: %s", _e)  # QUAL-002
-    if not sn and tft_coaching:sn=tft_coaching.get("stage",0)
+    if not sn and tft_coaching:sn=_num(tft_coaching.get("stage",0))
     lv=tft_live.get("level") or (tft_coaching or {}).get("level",0) or 0
     gs=(tft_coaching or {}).get("game_time_s",0);gm=max(0,gs/60) if gs else 0
     traits=tft_live.get("traits_active",[]) or [];units=tft_live.get("board_units",[]) or []
@@ -343,16 +434,20 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
 
 def save_rating(script_dir,champion,game_state,ally_kills_total):
     if not is_valid_match(game_state): return ("", [])
-    game_secs=game_state.get("game_seconds",0);game_mins=max(1.0,game_secs/60)
-    gpm=round(game_state.get("gold",0)/game_mins);raw_mode=game_state.get("game_mode","CLASSIC")
+    # Every numeric read goes through _num: the upstream feed supplies these
+    # and a present-but-null field used to crash the whole save (six measured
+    # fields), which the frozen caller then swallowed - see _num's docstring.
+    game_secs=_num(game_state.get("game_seconds",0));game_mins=max(1.0,game_secs/60)
+    gpm=round(_num(game_state.get("gold",0))/game_mins);raw_mode=game_state.get("game_mode","CLASSIC")
     category=mode_category(raw_mode)
     if not category: return ("", [])
-    stats={"cs_per_min":game_state.get("cs_per_min",0),"deaths":game_state.get("deaths",0),"kills":game_state.get("kills",0),"assists":game_state.get("assists",0),"game_mins":game_mins,"ally_kills_total":ally_kills_total,"gold_per_min":gpm}
+    stats={"cs_per_min":_num(game_state.get("cs_per_min",0)),"deaths":_num(game_state.get("deaths",0)),"kills":_num(game_state.get("kills",0)),"assists":_num(game_state.get("assists",0)),"game_mins":game_mins,"ally_kills_total":_num(ally_kills_total,1),"gold_per_min":gpm}
     if category=="ARAM":grade,notes=calculate_aram_rating(stats)
     elif category=="ARENA":grade,notes=calculate_arena_rating(stats)
     elif category=="BRAWL":grade,notes=calculate_brawl_rating(stats)
     else:grade,notes=calculate_rating(stats)
-    kda_str=game_state.get("kda","0/0/0");kp=round((stats["kills"]+stats["assists"])/max(1,ally_kills_total)*100)
+    # stats["ally_kills_total"], not the raw arg: max(1, None) raises.
+    kda_str=game_state.get("kda") or "0/0/0";kp=round((stats["kills"]+stats["assists"])/max(1,stats["ally_kills_total"])*100)
     data={"rating":grade,"label":GRADE_LABEL.get(grade,""),"champion":champion,"game_mode":raw_mode,"mode_category":category,"game_time":game_state.get("game_time","0:00"),
         "stats":{"cs_per_min":round(stats["cs_per_min"],1),"kda":kda_str,"deaths":stats["deaths"],"kill_participation":kp,"gold_per_min":gpm},
         "notes":notes,"timestamp":datetime.now().strftime("%Y-%m-%d %H:%M")}
@@ -397,17 +492,21 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
     # into the experimental variant for this match, archive the result
     # against the current iteration and (on poor grades) auto-generate
     # the next iteration. Marker is consumed regardless of category.
+    # api_key is hoisted OUT of the inner block so the handler below can
+    # redact it. It stays "" on every path that never reads the file.
+    api_key = ""
     try:
         from coaches import experimental_builder as _eb
         marker = _eb.consume_active()
         if marker and marker.get("champion") == champion:
-            api_key = ""
             try:
                 api_key = (Path(script_dir) / "API-Key-Claude.txt").read_text(encoding="utf-8").strip()
             # Narrowed 2026-07-19: read_text raises OSError (absent / locked
             # key file) or UnicodeDecodeError (a ValueError subclass) on a
             # non-UTF-8 file; Path() raises TypeError on a non-path script_dir.
-            # str.strip() cannot raise.
+            # str.strip() cannot raise. Re-measured lane 8 cycle 23 against
+            # every raising case: the tuple covers all of them, including the
+            # ValueError from a NUL in script_dir that the list above omits.
             except (OSError, TypeError, ValueError): pass
             gs_for_record = {
                 "kda":         kda_str,
@@ -417,7 +516,22 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
             }
             _eb.record_result(champion, grade, gs_for_record, api_key)
     except Exception as _ee:  # noqa: BLE001
-        _log.debug("experimental.record_result failed: %s", _ee)
+        # _redact, not a bare %s: this handler logs an exception raised by a
+        # callee that was just handed the API key, and CLAUDE.md forbids the
+        # key reaching any log line.
+        #
+        # HONEST SCOPE - this is defense in depth, not a live leak fix. Lane 8
+        # cycle 23 measured the current path CLEAN for two independent
+        # reasons: experimental_builder._call_haiku catches everything at
+        # :236 so no anthropic exception escapes record_result, and the SDK's
+        # own exception surfaces carry no credential under %s formatting.
+        # It is guarded anyway because the margin is one formatting change
+        # wide - repr() of the UnicodeEncodeError raised by a non-ASCII key
+        # file DOES embed the key, so switching this line to %r or to
+        # log.exception would have leaked it. The guard removes the handler's
+        # dependence on what the callee happens to raise.
+        _log.debug("experimental.record_result failed: %s",
+                   _redact(str(_ee), api_key))
     return grade, notes
 
 def load_rating(sd,category=""):
