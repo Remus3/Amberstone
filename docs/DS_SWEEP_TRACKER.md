@@ -69,7 +69,11 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free GAP spec = **RM-231**. (Advanced 2026-08-30 by lane 8 cycle 14, which
+  Next free GAP spec = **RM-232**. (Advanced 2026-08-30 by lane 8 cycle 15, which
+  minted RM-231 on `lane/true-audit` after re-measuring against `origin/main` at
+  COMMIT time, not at file-selection time: `origin/main` carried no RM-231 and no
+  RM-232, and the branch-local RM-231 was only this pointer line itself. Previously
+  advanced 2026-08-30 by lane 8 cycle 14, which
   minted RM-229 and RM-230 on `lane/true-audit` after re-measuring against
   `origin/main` at commit time exactly as the note below demands: `origin/main`
   max was RM-228 and the branch-local max was the RM-229 pointer itself, so both
