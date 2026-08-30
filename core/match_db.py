@@ -9,7 +9,7 @@ Usage:
     db = MatchDB(app_dir / "data" / "match_history.db")
     db.save_match({...})
     recent = db.get_recent("TFT", limit=20)
-    best = db.get_best_comps(min_placement=4, limit=10)
+    best = db.get_best_comps(min_games=2, limit=10)
 
 AUDIT 2026-04-28 (proposal 1.2): WAL journal mode + per-thread connections.
 Replaces the previous single-connection-under-Lock model. WAL allows
@@ -26,6 +26,60 @@ from datetime import datetime
 from pathlib import Path
 
 _log = logging.getLogger("rc.match_db")
+
+# Lane 8 cycle 16. Columns declared INTEGER / REAL in _SCHEMA below. Every
+# value bound to one of these MUST be coerced to a number before the INSERT.
+#
+# Why this is not cosmetic: SQLite type affinity converts a numeric-looking
+# TEXT value but leaves a non-numeric one stored AS TEXT. The previous
+# `{c: data.get(c, "") for c in cols}` defaulted every absent column to the
+# empty string, so a TFT save (which carries no kills/cs/gold) wrote `''`
+# into thirteen numeric columns. Two measured consequences:
+#   1. get_mode_stats("TFT") raised TypeError unconditionally - `sum()` over
+#      `int + str`. ZERO of the 8041 live TFT rows had a numeric `kills`.
+#   2. SQLite orders TEXT above INTEGER, so `'' > 0` is TRUE and the
+#      `tft_placement > 0` guard admitted exactly the rows it exists to
+#      exclude.
+# tests/test_match_db_column_types.py pins both, and
+# tests/test_match_db_backfill.py covers the repair of rows already written.
+_INT_COLS = frozenset({
+    "kills", "deaths", "assists", "cs", "gold",
+    "tft_placement", "tft_stage", "tft_level",
+    "arena_rounds_won", "arena_placement", "game_id",
+})
+_REAL_COLS = frozenset({
+    "game_time_s", "cs_per_min", "gold_per_min", "kp_pct",
+})
+NUMERIC_COLS = _INT_COLS | _REAL_COLS
+
+
+def _as_int(value) -> int:
+    """Best-effort integer. Anything unparseable becomes the schema DEFAULT 0."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        pass
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _as_float(value) -> float:
+    """Best-effort float. Anything unparseable becomes the schema DEFAULT 0."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def coerce_numeric(column: str, value):
+    """Bind-time coercion for one column. Non-numeric columns pass through."""
+    if column in _INT_COLS:
+        return _as_int(value)
+    if column in _REAL_COLS:
+        return _as_float(value)
+    return value
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS matches (
@@ -143,18 +197,33 @@ class MatchDB:
             "notes", "label", "raw_data",
             "game_id",
         ]
-        vals = {c: data.get(c, "") for c in cols}
+        # Numeric columns default to 0 (their declared schema DEFAULT), text
+        # columns to ''. Defaulting a numeric column to '' is what wrote TEXT
+        # into thirteen INTEGER/REAL columns - see NUMERIC_COLS above.
+        #
+        # CAREFUL: this default is REDUNDANT today and no test covers it. The
+        # coercion loop below runs unconditionally over every numeric column,
+        # so reverting this to a bare "" is an EQUIVALENT MUTANT - measured,
+        # all 20 tests in tests/test_match_db_column_types.py stay green.
+        # It is kept as defence in depth, which means: if you ever make that
+        # loop conditional, this line silently becomes the ONLY protection
+        # and the suite will NOT catch its removal. Change one, re-check the
+        # other.
+        vals = {
+            c: data.get(c, 0 if c in NUMERIC_COLS else "")
+            for c in cols
+        }
         # Serialize lists to JSON
         for k in ("tft_traits", "tft_units", "tft_augments", "tft_items", "notes"):
             v = vals.get(k)
             if isinstance(v, (list, dict)):
                 vals[k] = json.dumps(v)
-        # Item 211: game_id is INTEGER; coerce blank/None to 0 so the
-        # callers that omit it (TFT save_match call) still INSERT cleanly.
-        try:
-            vals["game_id"] = int(vals.get("game_id") or 0)
-        except (TypeError, ValueError):
-            vals["game_id"] = 0
+        # A caller may still pass '' or None explicitly for a numeric column
+        # (several do), so coerce at bind time rather than trusting the
+        # default above. Item 211's game_id special case is subsumed here.
+        for c in cols:
+            if c in NUMERIC_COLS:
+                vals[c] = coerce_numeric(c, vals[c])
         if not vals.get("timestamp"):
             vals["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if not vals.get("raw_data"):
@@ -270,8 +339,15 @@ class MatchDB:
         }
 
     def close(self) -> None:
-        """Close the calling thread's connection. Other threads' connections
-        are released by the OS when those threads exit."""
+        """Close the calling thread's connection only.
+
+        Another thread's connection is NOT closed here and cannot be - the
+        handle lives in that thread's `threading.local` storage. It is
+        released when that thread exits and CPython finalizes the orphaned
+        Connection, not by the OS (the previous wording said "by the OS",
+        which is wrong about the mechanism even though the outcome holds on
+        CPython). A non-refcounting runtime would defer the close until GC.
+        """
         c = getattr(self._tlocal, "conn", None)
         if c is None:
             return
