@@ -6,6 +6,30 @@
 
 ---
 
+# 2026-08-30 - lane 8 cycle 11: a socket leak on every error response, and a header that froze the Riot client for 31.7 years
+
+**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, verifier-gated.** Commit `ac0f6303`. Target `core/riot_api.py` (963 lines, `frozen=no`), chosen by five criteria at once and confirmed NOT already audited - recall showed cycles 3-10 had taken `vision_server/_http.py`, `core/rofl_archive.py`, `lcu/lcu_postgame_collector.py`, `dashboard/api_schema.py`, `core/riot_api_cache.py`, `tools/liveclient_relay.py`, `core/liveclient_cache.py`, `ops/rc_transactional_deploy.py`, `core/config_validator.py` and `core/log_retention.py`. **The CACHE was audited in cycle 5; the CLIENT that fills it never was.**
+
+**THE MODULE WAS ALREADY GOOD, AND THAT IS WORTH RECORDING** - every path segment `quote`d, timeout set, handlers already narrow, and no log line carries the key (all 15 `log.*` calls read; they pass the key FILE PATH, never the value, and the key travels as `X-Riot-Token` so it cannot leak through a URL either). Four defects survived that reading.
+
+**THE ONE THAT MATTERS: `DualBucket.note_429` clamped only the BOTTOM.** `_cooldown_until = time.monotonic() + max(0.0, float(retry_after_s))`. Measured, not reasoned: `note_429(999999999)` gives 999999998.99s of cooldown and every later `acquire()` returns False - **31.7 years, for the life of the process**. Nothing in the module can clear it (`reload_api_key` touches only the key cache; `_reset_bucket_for_tests` is test-only), so recovery meant restarting RC, which runs for days. **The verifier found the strictly worse form I had missed: `note_429(inf)` sets `_cooldown_until` to `inf`, which can never elapse at all.** Clamped to `_MAX_COOLDOWN_S = 600`, placed in `note_429` rather than at the header parse **because that is the single line that assigns `_cooldown_until`** - clamping there covers every caller including future ones. Graded honestly as an availability defect from an upstream-controlled value, not a remote exploit.
+
+**The quiet one: `HTTPError` is not a plain exception.** Its MRO ends `OSError -> addinfourl -> addbase -> _TemporaryFileWrapper`, so it OWNS the socket wrapper, and `read()` does not release it - I probed that directly rather than believing it. `_http_get` read 4096 bytes and returned, leaking until GC, on a path RM-163 records as firing on EVERY `/api/last-match` build. Plus two smaller ones: `get_champion_mastery` applied its shape check to the CACHE WRITE and returned the bad body anyway from a function annotated `-> Optional[dict]`, and `get_top_champion_masteries` clamped `count` at the bottom only while its own sibling clamps both ends.
+
+**TWO VACUITY TRAPS CAUGHT WHILE WRITING THE TESTS, and both had already produced PASSING tests.** (a) The sibling `_resp` helper falls back to `bytes(body)` for non-dict/list, and **`bytes(42)` is forty-two NUL bytes** - two shape tests were exercising the JSON-parse-failure path and proving nothing. (b) `_url_for_count` reused one puuid, so `count=0` and `count=-7` both clamp to 1, share a TTL cache row, and the second never reaches the transport - `call_args` is None and the failure has nothing to do with clamping. Both are now named in the test file so they are not re-introduced. **This is the `feedback_acceptance_example_may_be_vacuous` class, twice, in one file I wrote myself.**
+
+**29 tests, 17 RED before the fix (11 were deliberate no-regression pins). Every guarded line mutation-tested red-then-green TWICE** - mine, then the verifier's independent harness, which asserts each anchor applies EXACTLY ONCE so a mutant cannot silently fail to apply and read as green. All four caught, restore proven byte-identical by sha256.
+
+**NO RESTART, DELIBERATELY - the item-1179 lesson.** Live RC (pid 12892) runs the MAIN TREE's 2026-08-11 copy of this file (36887 bytes vs the worktree's 41340), so a `restart_trigger.txt` bounce from here would restart UNFIXED code and hand back a green runtime check that proves nothing. **Deployment is the merge.** Backfill checked live rather than asserted: 0 polluted `mastery_top` cache rows of 2, and 228 handles at 1.1h uptime shows no leak accumulation (consistent with RM-163 removing the hot 404/403 traffic).
+
+**The 2 RC suite failures are INHERITED and I PROVED it** rather than reasoning about it - reverted the change to HEAD and reproduced both identically. CLI moved 2.1.220 -> 2.1.251, and live DS `:8860` reports engine 1.278.1 against the repo's 1.278.0. Neither file references `riot_api`. **Also worth remembering: `schtasks /query /fo csv` piped to grep reported 0 RC-* tasks; `Get-ScheduledTask` reports 24.** That false negative would have gone into the ledger as fact if I had not re-probed it.
+
+**RESIDUE FILED as RM-221** (next free id = RM-222): `match:v5:<id>` and `match:v5:timeline:<id>` are prefix-ambiguous into a never-expiring table. **NOT reachable today** - no caller can produce a match id containing a colon - and filed rather than fixed because changing the key shape orphans 18575 rows, making it a migration. **Its acceptance explicitly forbids closing it by re-asserting unreachability**, since that is a property of the callers and callers change.
+
+**Branch is ready to merge and NOT merged** - lane 8 ships last, and the merge is the deployment.
+
+---
+
 # 2026-08-16c - RM-218 closed by refuting it: no vocabulary gap, a parser reading one pair out of many
 
 **Shape: single-thread, TDD, Tier-1.** 12 tests first, RED at `8 failed, 55 passed`, GREEN at `63 passed`. DS 10684 / 13482 subtests, RC 19164 / 96 skipped / 4438 subtests, ruff clean.
