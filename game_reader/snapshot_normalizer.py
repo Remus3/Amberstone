@@ -34,8 +34,14 @@ FIRST_ATAKHAN = 1200     # 20:00
 
 
 def _normalize_name(name: str) -> str:
-    """Strip Riot tag (#NA1 etc.), lowercase, trim whitespace."""
-    if not name:
+    """Strip Riot tag (#NA1 etc.), lowercase, trim whitespace.
+
+    Non-str input yields "". The falsy guard below does NOT cover a TRUTHY
+    non-string (a bare int `riotIdGameName` in a transitional payload), and
+    `.split` then raises AttributeError out of the self-identification loop
+    in `_process_game` - which the relay path calls unwrapped.
+    """
+    if not isinstance(name, str) or not name:
         return ""
     return name.split("#")[0].strip().lower()
 
@@ -43,13 +49,26 @@ def _normalize_name(name: str) -> str:
 # ----------------------------------------------------------------------
 # Live Client subresource degradation observability (silent-except A4)
 # ----------------------------------------------------------------------
-# `_PollerMixin._get` (game_reader/poller.py:250-253) does NOT swallow - it
+# `_PollerMixin._get` (game_reader/poller.py:277-280) does NOT swallow - it
 # lets urllib raise. That makes the handlers in the rune / ability readers
 # below the SOLE swallow point for a 404, endpoint rename or auth change on
-# /activeplayerrunes, /playermainrunes and /activeplayerabilities. Those
-# fields feed live coach prompts (coaches/aram_coach.py:350, 352), so a
-# permanently-404ing endpoint used to degrade every prompt at DEBUG only,
-# i.e. with zero operator signal.
+# /activeplayerrunes, /playermainrunes and /activeplayerabilities.
+#
+# TWO CORRECTIONS to the original note (lane 8 cycle 17, both measured).
+# (1) The `_get` citation read poller.py:250-253, which is now
+#     `_normalise_events`; `_get` moved to :277-280.
+# (2) It claimed these fields "feed live coach prompts
+#     (coaches/aram_coach.py:350, 352)". They do NOT: those lines are ARAM
+#     fountain-rule prose, and a repo-wide grep finds NO production consumer
+#     of `my_runes` / `runes_full` / `stat_shards` at all. The endpoints are
+#     still read every tick, so the swallow point and its counter remain
+#     real - but the justification for paying for them is currently absent.
+#     Filed as RM-234 rather than deleted here.
+#
+# NOTE the swallow point is not the only one over `self._get`:
+# poller.py:233-234 catches Exception and passes, wholly silently, for
+# /gamestats, /activeplayer, /allplayers and /eventdata - same failure
+# class, no counter, no log.
 #
 # WARNING makes the failure falsifiable; the throttle keeps a continuously
 # polling reader from emitting one record per tick. The counter is NOT
@@ -66,7 +85,17 @@ def get_liveclient_subresource_failures() -> dict:
 
 
 def reset_liveclient_subresource_failures() -> None:
-    """Clear the counters and the throttle state (test / new-game hook)."""
+    """Clear the counters and the throttle state.
+
+    TEST HOOK ONLY. This previously advertised itself as a "new-game hook";
+    measured 2026-08-30, it has NO production caller, so the counters and
+    the 60s throttle are process-global and survive every game boundary in
+    a process that runs for days. Two consequences, both real: the WARNING
+    text "so far this session" means the PROCESS, not the game; and a warn
+    that fired shortly before a new game silences the first part of that
+    game. Wiring it to game start belongs with the worker, not here - filed
+    as RM-235.
+    """
     _subresource_failures.clear()
     _subresource_last_warn.clear()
 
@@ -104,60 +133,73 @@ def _coerce_num(value, default=0.0) -> float:
     return f if math.isfinite(f) else float(default)
 
 
+def _coerce_int(value, default=0) -> int:
+    """Coerce a Live Client JSON numeric to an int, via `_coerce_num`.
+
+    The wire carries levels, kill counts and creep scores that RC uses in
+    arithmetic, in `>=` comparisons and as LIST INDICES. Every one of those
+    raises on a str / None / list, and a float index raises even when the
+    value is otherwise sane - all on the unwrapped relay path documented in
+    `_coerce_num` above. Route them through here at the point of READ, so a
+    shape change upstream degrades one field instead of killing the tick.
+
+    Non-finite input takes `default`, inherited from `_coerce_num`; a
+    numeric-looking string ("13") is preserved rather than discarded, because
+    that is real upstream drift and the value is still the truth.
+    """
+    return int(_coerce_num(value, default))
+
+
+def _turret_side(turret_name) -> str:
+    """Map a Live Client turret structure name to the side that LOST it.
+
+    `"Turret_T1_C_05_A"` -> `"ORDER"`, `"Turret_T2_L_03_A"` -> `"CHAOS"`.
+    The token convention is authoritative at `core/district_fusion.py:85`
+    (`_SIDE_BY_TOKEN = {"T1": "ORDER", "T2": "CHAOS"}`) and names whose
+    structure DIED. Returns `""` for anything unrecognised, so an unknown
+    or renamed structure credits NEITHER side rather than being laundered
+    into a real count.
+    """
+    if not isinstance(turret_name, str):
+        return ""
+    parts = turret_name.split("_")
+    if len(parts) < 2:
+        return ""
+    return {"T1": "ORDER", "T2": "CHAOS"}.get(parts[1], "")
+
+
+def _coerce_identity(value) -> str:
+    """Coerce a wire identity field (riotIdGameName / summonerName) to str.
+
+    A str or a number is a usable name; a list, dict or None is shape drift
+    and is treated as ABSENT rather than stringified, so we never build a
+    `?summonerName=['a']` query out of garbage.
+    """
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, bool):
+        return ""
+    if isinstance(value, (int, float)):
+        return str(value).strip()
+    return ""
+
+
 class _NormalizerMixin:
     """Snapshot construction + derivation helpers. State
     (`_enemy_last_seen`, `_enemy_death_time`, etc.) is initialized by
     `GameReader.__init__`."""
 
     # ------------------------------------------------------------------
-    # Snapshot text formatter
+    # `format_for_claude` REMOVED - lane 8 cycle 17 (dead code, provenance)
     # ------------------------------------------------------------------
-
-    def format_for_claude(self, state):
-        """Format game state into the Live Input Template for pasting into Claude."""
-        if not state:
-            return ""
-
-        items = ", ".join(state["items"]) if state["items"] else "Starting items"
-        ally_comp = ", ".join(state["ally_comp"])
-        enemy_comp = ", ".join(state["enemy_comp"])
-        dead = ", ".join(state["dead_enemies"]) if state["dead_enemies"] else "None"
-        alive_enemies = ", ".join(state["alive_enemies"]) if state["alive_enemies"] else "All dead"
-
-        lines = [
-            f"Time: {state['game_time']}",
-            f"Champion: {state['champion']}",
-            f"Our comp: {ally_comp}",
-            f"Enemy comp: {enemy_comp}",
-            f"Me HP/Mana: {state['hp']} / {state['mana']}",
-            f"Items: {items}",
-            f"Levels: {state['level']}",
-            f"CS: {state['cs']} ({state['cs_per_min']}/min)",
-            f"KDA: {state['kda']}",
-            f"Gold: {state['gold']}g",
-            f"Nearby enemies: {alive_enemies}",
-            f"Dead enemies: {dead}",
-            f"Objective timer: {state['objectives']}",
-        ]
-
-        summ_d = state.get("summoner_d", "")
-        summ_f = state.get("summoner_f", "")
-        if summ_d or summ_f:
-            lines.append(f"Summoners: D={summ_d or '?'}  F={summ_f or '?'}")
-
-        # Add ally details
-        if state.get("ally_details"):
-            lines.append("Allies:")
-            for a in state["ally_details"]:
-                lines.append(f"  {a}")
-
-        # Add enemy details
-        if state.get("enemy_details"):
-            lines.append("Enemies:")
-            for e in state["enemy_details"]:
-                lines.append(f"  {e}")
-
-        return "\n".join(lines)
+    # It built a paste-into-Claude text block from the state dict. Its ONLY
+    # caller was `_copy_state_to_clipboard`, a tkinter clipboard button
+    # deleted on 2026-05-01 by a00414b9 ("strip tkinter overlay shim from RC
+    # main"). RC has been tkinter-free since; a repo-wide grep over EVERY
+    # file type found exactly one occurrence of the name - its own def. It
+    # was also latently broken, subscripting state["items"] / ["game_time"]
+    # / ["cs_per_min"] directly, so any minimal or TFT state dict would have
+    # raised KeyError had a caller existed. Recover from git if ever wanted.
 
     # ------------------------------------------------------------------
     # Game data processing
@@ -294,7 +336,7 @@ class _NormalizerMixin:
             "resource_type":   str(stats.get("resourceType", "")),
         }
 
-        my_level = active.get("level", me.get("level", 1) if me else 1)
+        my_level = _coerce_int(active.get("level", me.get("level", 1) if me else 1), 1)
         my_gold = int(_coerce_num(active.get("currentGold", 0)))
 
         cs = 0
@@ -303,10 +345,13 @@ class _NormalizerMixin:
         if me:
             sc = me.get("scores", {})
             if not isinstance(sc, dict): sc = {}
-            cs = sc.get("creepScore", 0)
-            kills = sc.get("kills", 0)
-            deaths = sc.get("deaths", 0)
-            assists = sc.get("assists", 0)
+            # These four feed arithmetic (`cs_per_min`, :457) and the state
+            # dict's typed contract, so they are coerced at the read, not at
+            # each use site.
+            cs = _coerce_int(sc.get("creepScore", 0))
+            kills = _coerce_int(sc.get("kills", 0))
+            deaths = _coerce_int(sc.get("deaths", 0))
+            assists = _coerce_int(sc.get("assists", 0))
             raw_items = me.get("items", [])
             if not isinstance(raw_items, list): raw_items = []
             my_items = [it.get("displayName", "")
@@ -348,7 +393,7 @@ class _NormalizerMixin:
             esc = e.get("scores", {})
             if not isinstance(esc, dict): esc = {}
             ename = e.get("championName", "?")
-            elevel = e.get("level", 0)
+            elevel = _coerce_int(e.get("level", 0))
             ekda = f"{esc.get('kills',0)}/{esc.get('deaths',0)}/{esc.get('assists',0)}"
             dead = e.get("isDead", False)
             tag = " [DEAD]" if dead else ""
@@ -366,7 +411,7 @@ class _NormalizerMixin:
             asc = a.get("scores", {})
             if not isinstance(asc, dict): asc = {}
             aname = a.get("championName", "?")
-            alevel = a.get("level", 0)
+            alevel = _coerce_int(a.get("level", 0))
             akda = f"{asc.get('kills',0)}/{asc.get('deaths',0)}/{asc.get('assists',0)}"
             dead = a.get("isDead", False)
             tag = " [DEAD]" if dead else ""
@@ -406,7 +451,7 @@ class _NormalizerMixin:
             for p in players:
                 sc = p.get("scores", {})
                 if isinstance(sc, dict):
-                    total += sc.get("kills", 0)
+                    total += _coerce_int(sc.get("kills", 0))
             return total
 
         ally_kills_total  = _safe_kills(allies)
@@ -456,8 +501,12 @@ class _NormalizerMixin:
 
         cs_per_min = round(cs / max(game_time / 60, 0.5), 1)
 
-        # R65-A: fetched once and reused for both runes_full and stat_shards
-        # so the snapshot pays a single /activeplayerrunes GET, not two.
+        # R65-A: fetched once and reused for both runes_full and stat_shards.
+        # CORRECTED lane 8 cycle 17: this said the snapshot "pays a single
+        # /activeplayerrunes GET, not two". It pays TWO - `_read_my_runes()`
+        # below issues a second GET against the same endpoint on the same
+        # tick, which also double-counts that endpoint in
+        # `_subresource_failures` on a 404. Deduplicating is RM-234.
         runes_full = self._read_my_runes_structured()
 
         return {
@@ -572,6 +621,19 @@ class _NormalizerMixin:
 
             if self._enemy_last_seen.get(name, {}).get("dead"):
                 self._enemy_death_time.pop(name, None)
+                # Clear the record's OWN dead flag here, unconditionally.
+                # It used to be cleared only inside the `if x or z:` block
+                # below, which a champion who respawned and is walking back
+                # through FOG never satisfies - the Live Client reports
+                # (0, 0) for an unseen player. The record therefore stayed
+                # dead=True indefinitely, so `_gank_threat` announced
+                # "SAFE - <jungler> is dead" about a living jungler, and
+                # `_derive_enemy_locations` threw away a perfectly good
+                # last-seen zone as "untracked". The player is alive: say so
+                # even though we cannot say WHERE.
+                rec = self._enemy_last_seen[name]
+                rec["dead"] = False
+                rec["dead_time"] = None
 
             if x or z:
                 self._enemy_last_seen[name] = {
@@ -607,7 +669,18 @@ class _NormalizerMixin:
             else:
                 last = self._enemy_last_seen.get(name)
                 if last and not last.get("dead") and last.get("time"):
-                    ago  = int(game_time - last["time"])
+                    # max(0, ...): game_time can REGRESS when the poller
+                    # alternates between a fresh direct :2999 read and a
+                    # relay snapshot up to RELAY_MAX_AGE_S=12s stale.
+                    # DEFENSIVE ONLY - this clamp provably changes no
+                    # outcome here, because every negative and the clamped 0
+                    # both fall in the same `< 8` bucket below (verified
+                    # exhaustively; the mutation survives and is equivalent).
+                    # Kept for consistency with the death-time guard and in
+                    # case these thresholds ever move. The sibling clamp in
+                    # `_gank_threat` is NOT cosmetic - the value is rendered
+                    # into user-facing text there.
+                    ago  = max(0, int(game_time - last["time"]))
                     zone = last["zone"]
                     if ago < 8:
                         visible.append(f"{name} [{zone}]")
@@ -635,12 +708,22 @@ class _NormalizerMixin:
             elif en == "BaronKill":
                 last_baron_time = et
             elif en == "TurretKilled":
-                team = ev.get("TowerTeam", ev.get("TeamID", ""))
-                if str(team) in ("100", "ORDER"):
+                # The Live Client eventdata schema carries NEITHER "TowerTeam"
+                # NOR "TeamID" - it carries the structure NAME, e.g.
+                # "Turret_T1_C_05_A". This previously read those two absent
+                # keys, so `team` was ALWAYS "", and the `else` fell through to
+                # the same counter as the CHAOS branch: every turret in every
+                # game was credited to CHAOS and `_order_towers_down` was
+                # structurally pinned at 0. The rest of the tree already parses
+                # the name (dashboard/_liveclient.py:348-350); the side token
+                # convention is authoritative at core/district_fusion.py:85
+                # ({"T1": "ORDER", "T2": "CHAOS"}) and names whose structure
+                # DIED. An unrecognised name credits NOBODY - laundering it
+                # into a real count is what caused this defect.
+                side = _turret_side(ev.get("TurretKilled"))
+                if side == "ORDER":
                     self._order_towers_down = getattr(self, "_order_towers_down", 0) + 1
-                elif str(team) in ("200", "CHAOS"):
-                    self._chaos_towers_down = getattr(self, "_chaos_towers_down", 0) + 1
-                else:
+                elif side == "CHAOS":
                     self._chaos_towers_down = getattr(self, "_chaos_towers_down", 0) + 1
             elif en == "InhibKilled":
                 self._inhib_kill_count = getattr(self, "_inhib_kill_count", 0) + 1
@@ -714,15 +797,15 @@ class _NormalizerMixin:
         if dead_allies:
             lines.append(f"Dead allies: {', '.join(dead_allies)}")
         if me:
-            my_lv = me.get("level", 1)
+            my_lv = _coerce_int(me.get("level", 1), 1)
             for e in enemies:
                 if e.get("isDead"):
                     continue
                 esc    = e.get("scores", {})
                 if not isinstance(esc, dict): esc = {}
                 ename  = e.get("championName", "?")
-                elv    = e.get("level", 1)
-                ekills = esc.get("kills", 0)
+                elv    = _coerce_int(e.get("level", 1), 1)
+                ekills = _coerce_int(esc.get("kills", 0))
                 if elv >= my_lv + 2:
                     lines.append(f"{ename} lv{elv} (+{elv - my_lv} levels)")
                 elif ekills >= 4:
@@ -737,7 +820,7 @@ class _NormalizerMixin:
             for p in players:
                 sc = p.get("scores", {})
                 if isinstance(sc, dict):
-                    total += sc.get("kills", 0)
+                    total += _coerce_int(sc.get("kills", 0))
             return total
 
         ally_kills  = _kills(allies)
@@ -777,7 +860,12 @@ class _NormalizerMixin:
 
     @classmethod
     def _respawn_secs(cls, level: int, game_time_s: float) -> int:
-        base = cls._RESPAWN_BASE[min(level, 18)]
+        # Defence in depth: callers coerce, but `_RESPAWN_BASE` is indexed by
+        # this value and Python's negative indexing wraps to the END of the
+        # table - level -1 silently returned the LEVEL-18 respawn (54s), the
+        # maximally wrong answer. Clamp BOTH ends, not just the top.
+        level = max(0, min(_coerce_int(level, 1), 18))
+        base = cls._RESPAWN_BASE[level]
         if game_time_s > 25 * 60:
             scale = 1.0 + min(0.5, (game_time_s - 25 * 60) / 60 * 0.0045)
             base = int(base * scale)
@@ -792,7 +880,7 @@ class _NormalizerMixin:
             if not e.get("isDead"):
                 continue
             name  = e.get("championName", "?")
-            level = e.get("level", 1)
+            level = _coerce_int(e.get("level", 1), 1)
             death_t = self._enemy_death_time.get(name, game_time)
             elapsed = max(0, game_time - death_t)
             total   = self._respawn_secs(level, game_time)
@@ -807,7 +895,7 @@ class _NormalizerMixin:
             if a.get("championName") == my_champ:
                 continue
             name  = a.get("championName", "?")
-            level = a.get("level", 1)
+            level = _coerce_int(a.get("level", 1), 1)
             sc    = a.get("scores", {})
             if a.get("isDead"):
                 respawn = self._respawn_secs(level, game_time)
@@ -942,7 +1030,7 @@ class _NormalizerMixin:
                 else:
                     threat = f"HIGH - {enemy_jg_name} untracked, play safe until spotted"
             else:
-                time_ago = int(game_time - last_t)
+                time_ago = max(0, int(game_time - last_t))
                 if is_dead:
                     threat = f"SAFE - {enemy_jg_name} is dead"
                 elif zone in ("jg bot", "bot side", "bot lane") and time_ago < 12:
@@ -1071,7 +1159,7 @@ class _NormalizerMixin:
             zone = self._map_zone(ex, ez)
             if zone not in ("bot lane", "bot side"):
                 continue
-            elv    = e.get("level", 1)
+            elv    = _coerce_int(e.get("level", 1), 1)
             edead  = e.get("isDead", False)
             eitems = [it.get("displayName", "") for it in e.get("items", []) if it.get("displayName")]
             eitemsStr = ", ".join(eitems[:3]) if eitems else "starter items"
@@ -1164,7 +1252,15 @@ class _NormalizerMixin:
             name = e.get("championName", "")
             if not name:
                 continue
-            summoner = (e.get("riotIdGameName") or e.get("summonerName") or "").strip()
+            # This line sits OUTSIDE the try below, so a non-string identity
+            # field (a bare int riotIdGameName during a transitional payload)
+            # raised AttributeError straight onto the unwrapped poll path.
+            # A str or a number is a name we can still query; a list or dict
+            # is garbage and is treated as absent rather than stringified
+            # into a nonsense query.
+            summoner = _coerce_identity(
+                e.get("riotIdGameName") or e.get("summonerName")
+            )
             if not summoner:
                 continue
             try:
@@ -1241,7 +1337,12 @@ class _NormalizerMixin:
             except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.hp_pct       = int(state_dict.get("hp_pct",       100))
             except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
-            try: s.items        = list(state_dict.get("items",        []))
+            try:
+                _raw_items = state_dict.get("items", [])
+                # A str is iterable, so list("Doran") exploded into five
+                # single-character "items". Only a real sequence counts.
+                s.items = (list(_raw_items)
+                           if isinstance(_raw_items, (list, tuple)) else [])
             except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             return s
         except Exception as exc:  # noqa: BLE001
@@ -1252,6 +1353,11 @@ class _NormalizerMixin:
             s.raw_state = state_dict
             return s
         except Exception as exc:  # noqa: BLE001
+            _log.warning(
+                "snapshot factory exhausted all three tiers, returning None "
+                "- the consumer degrades to an emergency payload (%s: %s)",
+                type(exc).__name__, exc,
+            )
             return None
 
     @staticmethod
@@ -1281,7 +1387,12 @@ class _NormalizerMixin:
             except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.hp_pct       = int(state_dict.get("hp_pct",       100))
             except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
-            try: s.items        = list(state_dict.get("items",        []))
+            try:
+                _raw_items = state_dict.get("items", [])
+                # A str is iterable, so list("Doran") exploded into five
+                # single-character "items". Only a real sequence counts.
+                s.items = (list(_raw_items)
+                           if isinstance(_raw_items, (list, tuple)) else [])
             except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             return s
         except Exception as exc:  # noqa: BLE001
@@ -1292,4 +1403,9 @@ class _NormalizerMixin:
             s.raw_state = state_dict
             return s
         except Exception as exc:  # noqa: BLE001
+            _log.warning(
+                "snapshot factory exhausted all three tiers, returning None "
+                "- the consumer degrades to an emergency payload (%s: %s)",
+                type(exc).__name__, exc,
+            )
             return None
