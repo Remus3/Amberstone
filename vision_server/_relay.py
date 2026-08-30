@@ -29,6 +29,7 @@ import urllib.request
 
 from core.game_host import GAME_HOST
 
+from ._config import log
 from ._stats import _record, _stats, _stats_lock
 
 # -- LCU relay --------------------------------------------------------------
@@ -46,7 +47,13 @@ def handle_upload_lcu(body: bytes) -> dict:
     try:
         parsed = json.loads(body)
     except Exception as e:  # noqa: BLE001
-        return {"error": f"bad_json: {e}"}
+        # AUDIT 2026-08-30 (lane 8 cycle 20): this echoed the raw exception
+        # text - offending byte offset and surrounding document context - back
+        # to the caller, bypassing the redaction that _err500 applies to every
+        # RAISED error. Same class cycles 18/19 closed in routes_diag and
+        # routes_state. Log the cause, return a fixed token.
+        log.warning("upload-lcu bad json: %s", e)
+        return {"error": "bad_json"}
     with _lcu_lock:
         _lcu_state.update({"data": parsed, "ts": time.time(),
                            "size": len(body)})
