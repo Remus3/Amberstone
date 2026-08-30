@@ -22,6 +22,15 @@ $ErrorActionPreference = "Continue"   # native stderr must not kill the lane; it
 # the subscription is for (memory feedback_no_dollar_cap_on_max_subscription).
 $env:ANTHROPIC_API_KEY = $null
 
+# Wait long enough for the worker's background subagents (notably the
+# non-negotiable verifier gate) to finish before the CLI terminates them. The
+# default ceiling is 600s; MEASURED 2026-08-30 (lane 8 cycle 3): the verifier
+# was still re-running the dual suite at 600s, the CLI killed it, and the worker
+# exited 0 having committed NOTHING - a whole audit lost. 2400000 ms (40 min) is
+# ample for the RC + DS suites plus the re-read, while staying bounded so a truly
+# wedged task still exits and reports rather than hanging forever.
+$env:CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS = "2400000"
+
 $claude = (Get-Command claude -ErrorAction Stop).Source
 Set-Location $Cwd
 
