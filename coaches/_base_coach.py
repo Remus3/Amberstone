@@ -498,9 +498,10 @@ class BaseCoach(abc.ABC):
                     # float(vision_burst) -> TypeError/ValueError,
                     # core/cost_tracker.py:218-222) and gate_disabled ->
                     # coach_disabled (:423-425) builds a set over a
-                    # disk-sourced config value (TypeError if not iterable),
-                    # via read_json_dict which can also surface
-                    # UnicodeDecodeError. No complete type set is provable
+                    # disk-sourced config value (TypeError if not iterable).
+                    # read_json_dict no longer contributes UnicodeDecodeError
+                    # to that set - lane 8 cycle 24 made a non-UTF-8 file yield
+                    # the default. No complete type set is provable even so,
                     # without pinning the whole cost_tracker/polled_json chain.
                     except Exception:  # noqa: BLE001
                         pass
@@ -536,8 +537,9 @@ class BaseCoach(abc.ABC):
         # LEFT BROAD (silent-except triage, C-class declined): allow_call
         # (core/cost_tracker.py:336-340) compares a disk-sourced
         # daily_spend()["total_usd"] against the budget - a non-numeric ledger
-        # value raises TypeError, and daily_spend -> read_json_dict can raise
-        # UnicodeDecodeError. Live coaching path; not worth a guessed set.
+        # value raises TypeError. daily_spend -> read_json_dict no longer
+        # raises UnicodeDecodeError (lane 8 cycle 24: a non-UTF-8 ledger yields
+        # the default). Live coaching path; not worth a guessed set.
         except Exception:  # noqa: BLE001
             pass
         now      = time.time()

@@ -177,13 +177,15 @@ def _awrite(path: Path, text: str) -> None:
         atomic_write_bytes(path, text.encode("utf-8"))
     except PermissionError:
         # The bounded backoff (~275 ms) is sized for the routine case, a reader
-        # that holds the file for a few ms. If it still loses, do NOT strand the
-        # tmp for the next writer to trip over, and let the caller render an
-        # actionable 503 - "internal error - see logs" tells the operator
-        # nothing about a halt that did not land.
-        # Must mirror atomic_write_bytes' own tmp naming (core/polled_json.py:
-        # `path.with_suffix(path.suffix + ".tmp")`), not a hand-rolled variant.
-        path.with_suffix(path.suffix + ".tmp").unlink(missing_ok=True)
+        # that holds the file for a few ms. If it still loses, the caller
+        # renders an actionable 503 - "internal error - see logs" tells the
+        # operator nothing about a halt that did not land.
+        #
+        # LANE 8 CYCLE 24: the scratch file is no longer cleaned up here.
+        # atomic_write_bytes now removes its own scratch file on every failure
+        # path (core/polled_json._write_then_replace), and the name it uses is
+        # per-writer, so this mirror of the old shared "<dest>.tmp" name would
+        # be a silent no-op rather than the cleanup it looks like.
         raise
 
 

@@ -34,22 +34,21 @@ def atomic_write_json(rel: str, data: dict) -> None:
     # .tmp behind. The operator-visible symptom is the dashboard Refresh button
     # returning 500 {"error":"command_failed"} and doing nothing.
     #
-    # `core.polled_json._replace_with_retry` is the in-tree answer (bounded
-    # ~275 ms backoff, then re-raise). Reused rather than re-rolled so the two
-    # backoff tables cannot drift. Serialization is deliberately NOT delegated
-    # to polled_json.atomic_write_json: that passes ensure_ascii=False, which
+    # `core.polled_json` is the in-tree answer (bounded ~275 ms backoff, then
+    # re-raise). Reused rather than re-rolled so the two backoff tables cannot
+    # drift. SERIALIZATION stays here and is deliberately NOT delegated to
+    # polled_json.atomic_write_json: that passes ensure_ascii=False, which
     # would change the bytes written for any non-ASCII coaching text.
-    from core.polled_json import _replace_with_retry
-    p = APP_DIR / rel
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    try:
-        _replace_with_retry(tmp, p)
-    except Exception:
-        # Do not leave an orphan .tmp shadowing the next write.
-        tmp.unlink(missing_ok=True)
-        raise
+    #
+    # Lane 8 cycle 24: the tmp+rename itself now IS delegated, via
+    # atomic_write_bytes. The hand-rolled version derived its scratch name from
+    # the destination alone, so two writers of one file opened the same scratch
+    # file - and coaching_data.json has a second writer in another process
+    # (app/__init__.py:253). Bytes, not write_text, because write_text rewrites
+    # LF as CRLF on Windows (reference_windows_write_text_crlf_byte_count).
+    from core.polled_json import atomic_write_bytes
+    body = json.dumps(data, indent=2)
+    atomic_write_bytes(APP_DIR / rel, body.encode("utf-8"))
 
 
 def set_pregame(text: str) -> None:
