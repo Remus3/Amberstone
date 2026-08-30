@@ -60,6 +60,23 @@ def atomic_write_json(path: Path, payload: Any, *, indent: int = 2) -> None:
     _replace_with_retry(tmp, path)
 
 
+def atomic_write_bytes(path: Path, data: bytes) -> None:
+    """Atomic byte write via tmp + rename, with the same PermissionError retry.
+
+    Use this instead of atomic_write_text whenever the BYTE COUNT matters - a
+    size cap, a digest, or a reader that compares lengths. Path.write_text
+    rewrites LF as CRLF on Windows and read_text hides it on the way back, so a
+    text write silently puts more bytes on disk than the caller counted
+    (reference_windows_write_text_crlf_byte_count). Callers hold the encoding
+    decision; UTF-8 is the repo default.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_bytes(data)
+    _replace_with_retry(tmp, path)
+
+
 def atomic_write_text(path: Path, content: str) -> None:
     """Atomic text write via tmp + rename. AUDIT 2026-04-28 (proposal 4.3):
     use this for restart_trigger.txt writers so the supervisor never sees
