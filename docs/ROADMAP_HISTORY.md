@@ -1,5 +1,15 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-08-30 - RM-155 retired and relocated from ROADMAP.md
+
+Relocated verbatim by the lane 8 cycle 17 /done drift-guard pass (ROADMAP.md was at
+91 percent of its 81920-byte CI budget). NOTHING is dropped: the row was already
+RETIRED via ADR-013 and its durable record is
+`docs/adr/ADR-013-laning-verdict-flip-retired.md`. A one-line pointer, keeping the
+do-not-reopen fence, remains in `ROADMAP.md`.
+
+- **RM-155 RETIRED 2026-08-06 via ADR-013 (`a45dcb9e`, LEDGER 1219) - the laning verdict is BELOW THE NOISE FLOOR, not merely weak.** MI 0.00039 bits against 0.99987 bits of label entropy; **Miller-Madow bias at this n is 0.000652 bits, so the bias-corrected MI is NEGATIVE** - the association is smaller than pure noise produces on average. **The decider is the LEARNABILITY CONTROL, not the bad score:** a per-(role, champion) mean-gold prior, split by MATCH and strictly held out, reaches 0.5457, and the solo-kill duel winner predicts the gold winner at 0.7705. The label is learnable; a champion-name lookup beats a 200 MB corpus. **A v4 regen cannot rescue it** - measured against the LIVE engine, every interval straddles 0.50, so LEDGER 493's implied headroom is stale. **JUNGLE's anti-correlation is REAL and reproduces in the engine** (so it is not a build bug), but it is signal about jungle clear speed, not lane trades - and dropping JUNGLE entirely still leaves n=1778 at 0.5124 [0.4891, 0.5356]. **The native-corpus path is DEFINITIONALLY closed:** Riot emits no `team_position` for ARAM or Arena, so `extract_lane_pairs` returns 0 pairs from either. **RETIRE = the decision to SERVE `precomputed_laning_coach` verdicts; it was never wired, so it is enforced structurally. NOT deleted: the `laning_scenarios` tables, the shadow logging, `laning_trigger` (live), `RC_LANING_CV_SERVED`.** Read `docs/adr/ADR-013-laning-verdict-flip-retired.md` before re-opening.
+
 ## 2026-08-15 - RM-213 closed and relocated from ROADMAP.md
 
 - **RM-213 CLOSED 2026-08-15 (LEDGER 1266; LANE 6, Tier-2)** - the DS artifact patch-marker guard could not see a patch-refresh carry-forward, because the copy-forward rewrote the marker to match its new directory. Shipped a vintage-aware refresh verdict (`agents/daemon_slayer/abilities.py`), a reasoned exemption registry whose every kind carries a falsifiable obligation (`tools/ds_feed_index.py` `KNOWN_STATIC_BODY`), the cross-dir assertion (`tests/test_ds_feed_index.py`), and `ds_feed_index.py --check` wired into the `ci.yml` `check` job. `data/daemon_slayer/16.15.1/ability_staleness.json` was REGENERATED rather than exempted. **The filed row was an undercount and its do-not-redo fence was STRUCK by the operator:** the census is 7 of 20 under the row's own strip method (10 under the repo's `body_md5`, 2 raw), and `scenarios.json` turned out not to be a carry-forward at all. Full body and the four refuted premises in `BACKLOG.md`; spun off as RM-216 and RM-217.
