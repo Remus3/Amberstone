@@ -44,6 +44,13 @@ Never output trait names as unit names. Spectating -> board_units=["SPECTATING"]
 # and `tft/` sends its own, so pinning to VISION_MODEL/COACH_MODEL would break
 # the escalation path this server exists to serve. Validate SHAPE instead:
 # printable, bounded, no control characters, no path separators.
+# FENCE for a future migration: this pattern rejects Bedrock-style
+# (`anthropic.claude-...-v2:0`, colon) and OpenRouter-style
+# (`anthropic/claude-3.5-sonnet`, slash) ids. That is deliberate, and no live
+# caller is affected - every model literal in the repo today is a plain
+# `claude-*` (`_config.py:35-36`, `modes/shared_vision.py:110`,
+# `tft/tft_coach_engine.py:593`), all of which match. If RC ever routes
+# through Bedrock or a proxy, widen this REGEX rather than deleting the gate.
 _MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
@@ -102,8 +109,13 @@ def _parse_json(raw: str) -> dict | None:
     # value was discarded downstream while the stats ring called it a
     # success. Enforce the documented contract here.
     # A non-dict parse falls THROUGH to the next candidate rather than
-    # returning: a model answering with a JSON string that quotes an object
-    # still has its object salvaged by the brace fallback below.
+    # returning, so the brace fallback below still gets its turn. MEASURED
+    # salvages: `[{"a":1}]` and `5 {"a":1}` both yield {"a": 1}. NOT salvaged,
+    # and deliberately not claimed: a JSON *string* quoting an object, e.g.
+    # the raw text `"{\"gold\": 5}"` - the fallback slices the braces out with
+    # the backslashes still in them and json.loads rejects it. The first
+    # version of this comment cited exactly that unreachable case; the
+    # cycle-20 verifier refuted it by measurement.
     for t in [raw, raw.strip("`").strip()]:
         t2 = t[4:].strip() if t.startswith("json") else t
         try:
