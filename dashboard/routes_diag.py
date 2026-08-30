@@ -1,16 +1,42 @@
 """Diagnostics / vision / OCR / decisions routes.
 
 Slice 2C (2026-05-01): handlers carved out of web_dashboard._Handler.
-Group 4 - read-only diag and vision endpoints. Several reach the
-in-process vision server at 127.0.0.1:8889 (using `_VISION_TOKEN`)
-and the Live Client API at {RC_GAME_HOST}:2999 (https, self-signed).
+Group 4 - diag and vision endpoints. ONE handler (`_serve_ocr`) reaches
+the in-process vision server at 127.0.0.1:8889 using `_VISION_TOKEN`.
 
-Each route receives the BaseHTTPRequestHandler (`h`) as its sole
-argument and uses `h._send(code, body, ctype)` to write the response.
-Module-level GET_ROUTES is consumed by `dashboard._dispatch`.
+Three claims were CORRECTED here on 2026-08-30 (lane 8 cycle 18) after
+being checked against the tree rather than inherited:
+  - this module does NOT touch the Live Client API at {RC_GAME_HOST}:2999.
+    `2999`, `GAME_HOST` and `game_host` have zero hits in this file outside
+    the sentence that used to claim it. A name that appears only where it
+    is DESCRIBED and never where it is USED is a name this module does not
+    use (the same tell that produced the cycle-17 `TowerTeam` defect);
+  - the group is not "read-only" - `_serve_decision_choice_post` and
+    `_serve_decisions_respond_active_post` both WRITE through
+    `DecisionStore.record_choice`;
+  - `_VISION_TOKEN` is deferred-imported inside ONE handler, not "the OCR
+    handlers" plural.
 
-`_VISION_TOKEN` is deferred-imported from web_dashboard inside the
-OCR handlers to avoid a circular import at module load time.
+GET routes receive the BaseHTTPRequestHandler (`h`) as their sole
+argument; POST routes receive `(h, payload)` - `_serve_decision_choice_post`
+and `_serve_decisions_respond_active_post` both take the parsed body. (The
+"sole argument" line here used to be unqualified, and was still wrong after
+the three corrections above were made; found by the adversarial pass, not by
+the pass that wrote them.) All of them use `h._send(code, body, ctype)`.
+GET_ROUTES and POST_ROUTES are consumed by `dashboard._dispatch`
+(`dashboard/_dispatch.py:114` and `:198`).
+
+ERROR ENVELOPE, stated as narrowly as it is actually enforced: every
+EXCEPTION path in this module goes through `dashboard._errors.send_error`,
+which puts a generic line on the wire and the raw cause in `logs/`.
+`tests/test_routes_diag_lane8_cycle18.py::test_every_five_hundred_in_this_module_routes_through_send_error`
+fails on an `except` block that answers 5xx without it. It does NOT forbid
+every hand-rolled 5xx: the two curated `h._send(503, ...)` calls in normal
+flow are allowed on purpose, because a constant literal body carries no
+exception text, and a companion test pins their COUNT at 2 so a third cannot
+appear unnoticed. An earlier draft of this paragraph claimed the test caught
+any hand-rolled 5xx anywhere; it did not, and promising more than a guard
+delivers is how the RM-134 guard came to be trusted while this module leaked.
 `diagnostics_cached` is imported directly from `dashboard._diagnostics`
 (Tier 2 #2 helper-shake - no longer routed through web_dashboard).
 """
@@ -50,7 +76,12 @@ def _serve_decisions(h) -> None:
                 "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/decisions: %s", exc)
-        h._send(500, b'{"error":"decisions_read_failed"}', "application/json")
+        # Lane 8 cycle 18: the wire string is unchanged (it was already a
+        # curated constant, not raw exception text - grepped, zero consumers
+        # match on it). Routed through the shared envelope so this module has
+        # ONE error path, and so the raw cause is logged even if this call
+        # site's own log.warning is ever dropped.
+        send_error(h, exc, public_msg="decisions_read_failed")
 
 
 # Tier 4 #18 (2026-05-01): tail of resolved decisions for the dashboard's
@@ -64,7 +95,9 @@ def _serve_decisions_log(h) -> None:
     """GET /api/decisions/log?limit=N - last N resolved decisions, newest
     first. N caps at 50. Tolerates a torn final line (mid-write append)."""
     try:
-        from urllib.parse import parse_qs, urlparse
+        # Lane 8 cycle 18: dropped a function-local re-import that shadowed the
+        # module-level one on line 20 (ruff cannot see it - ruff.toml:27 turns
+        # F401 off globally, so neither import was ever flagged).
         qs = parse_qs(urlparse(h.path).query)
         try:
             limit = max(1, min(50, int((qs.get("limit") or ["20"])[0])))
@@ -72,35 +105,46 @@ def _serve_decisions_log(h) -> None:
             limit = 20
         if not _LOG_PATH.exists():
             h._send(200, b'{"entries":[]}', "application/json"); return
-        # Read whole file - bounded by the JSONL's natural size cap (the
-        # detector emits at most ~5 decisions per game).
+        # Reads the whole file. The old comment here claimed this was
+        # "bounded by the JSONL's natural size cap"; there is no cap - the
+        # log is append-only and nothing rotates it (`core/log_retention.py`
+        # covers no `.jsonl`, grepped 2026-08-30). The real bound is write
+        # VOLUME, at most ~5 decisions per game: the live file was 3775
+        # bytes on 2026-08-30 having been appended to since June. Low risk
+        # today, but it grows without limit - RM-238.
         try:
             text = _LOG_PATH.read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
             log.debug("api/decisions/log read: %s", exc)
             h._send(200, b'{"entries":[]}', "application/json"); return
         lines = text.splitlines()
-        # Take last N candidates (we'll skip torn ones, so over-fetch a bit
-        # so a torn tail line doesn't shrink the result).
-        candidates = lines[-(limit + 4):]
+        # Lane 8 cycle 18: this over-fetched by a FIXED `+4` and then dropped
+        # blank and torn lines from that window, so any tail damage came
+        # straight off the result - measured at 30 good rows plus 10 torn
+        # trailing lines returning 14 entries for limit=20, silently short by
+        # 6, with a 200. Walk backwards from the end instead and stop once
+        # `limit` VALID entries are in hand, so junk costs nothing.
         entries: list = []
-        for line in candidates:
+        for line in reversed(lines):
+            if len(entries) >= limit:
+                break
             line = line.strip()
             if not line:
                 continue
             try:
                 e = json.loads(line)
-                if isinstance(e, dict) and e.get("id"):
-                    entries.append(e)
             except json.JSONDecodeError:
-                continue  # tolerate torn append
-        # Newest first
-        entries = list(reversed(entries))[:limit]
+                continue  # tolerate a torn append
+            if isinstance(e, dict) and e.get("id"):
+                entries.append(e)
+        # `entries` is already newest-first - it was built from the tail back.
         h._send(200, json.dumps({"entries": entries}).encode("utf-8"),
                 "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/decisions/log: %s", exc)
-        h._send(500, b'{"error":"log_read_failed"}', "application/json")
+        # Same as the sibling above - curated wire string preserved verbatim,
+        # routed through the shared envelope.
+        send_error(h, exc, public_msg="log_read_failed")
 
 
 def _serve_diagnostics(h) -> None:
@@ -109,7 +153,12 @@ def _serve_diagnostics(h) -> None:
         h._send(200, payload, "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/diagnostics: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        # Lane 8 cycle 18: was json.dumps({"error": str(exc)}). This endpoint
+        # reaches the widest surface of the three that hand-rolled the envelope
+        # (dashboard/server.py:35 binds "::"), and diagnostics_cached() raises
+        # with absolute paths in the message. send_error keeps the raw cause in
+        # logs/ and puts only the generic line on the wire.
+        send_error(h, exc)
 
 
 def _serve_ocr(h) -> None:
@@ -132,24 +181,47 @@ def _serve_ocr(h) -> None:
             if (time.time() - lc.get("ts", 0)) < 3:
                 drop = {"cs", "kda", "gold", "level", "hp", "mana",
                         "score_blue", "score_red", "timer"}
-        except Exception:  # noqa: BLE001
-            pass
-        from core.vision_tesseract import configure_drop_fields
-        configure_drop_fields(drop)
-        req = _ur.Request("http://127.0.0.1:8889/latest-frame", headers=_AUTH)
-        with _ur.urlopen(req, timeout=4) as r:
-            frame = json.loads(r.read())
-        from core.vision_tesseract import read_fast_fields, _regions
-        t0 = time.time()
-        fields = read_fast_fields(frame["b64"])
-        ms = int((time.time() - t0) * 1000)
-        payload = {"fields": fields, "regions_used": list(_regions().keys()),
-                   "frame_age_s": time.time() - frame.get("ts", 0),
-                   "ocr_ms": ms}
-        h._send(200, json.dumps(payload).encode(), "application/json")
+        except Exception as exc:  # noqa: BLE001
+            # Lane 8 cycle 18: this was a bare `pass`. Falling back to "drop
+            # nothing" is the correct behaviour, but it silently changes what
+            # OCR returns, so it must leave a trail - otherwise a down relay
+            # presents as OCR quietly re-reading fields the Live Client owns.
+            log.debug("api/ocr: liveclient relay probe failed (%s: %s) - "
+                      "dropping no fields", type(exc).__name__, exc)
+        # Lane 8 cycle 18: `_DROP_FIELDS` is a MODULE GLOBAL
+        # (core/vision_tesseract.py:539), rebound by configure_drop_fields
+        # (:552) and honoured by read_fast_fields at :650 REGARDLESS of an
+        # explicit fields= argument. core/vision_routing.py:97 calls
+        # read_fast_fields in this same process, so this diagnostic endpoint
+        # was silently disabling up to 9 fields for the COACH's OCR path until
+        # the next /api/ocr call happened to reset them. Save and restore, so a
+        # diagnostic GET has no lasting effect on anything else.
+        from core import vision_tesseract as _vt
+        _prev_drop = set(_vt._DROP_FIELDS)
+        _vt.configure_drop_fields(drop)
+        try:
+            req = _ur.Request("http://127.0.0.1:8889/latest-frame", headers=_AUTH)
+            with _ur.urlopen(req, timeout=4) as r:
+                frame = json.loads(r.read())
+            from core.vision_tesseract import read_fast_fields, _regions
+            t0 = time.time()
+            fields = read_fast_fields(frame["b64"])
+            ms = int((time.time() - t0) * 1000)
+            payload = {"fields": fields, "regions_used": list(_regions().keys()),
+                       "frame_age_s": time.time() - frame.get("ts", 0),
+                       "ocr_ms": ms}
+            h._send(200, json.dumps(payload).encode(), "application/json")
+        finally:
+            # Restore unconditionally - the return path AND every
+            # exception path, or a failed OCR call leaves the coach's
+            # fields disabled, which is the worse of the two states.
+            _vt.configure_drop_fields(_prev_drop)
     except Exception as exc:  # noqa: BLE001
         log.warning("api/ocr: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        # Lane 8 cycle 18: was json.dumps({"error": str(exc)}). The urlopen
+        # failures raised in this body carry the relay URL, and a Tesseract
+        # failure carries local install paths - neither belongs on the wire.
+        send_error(h, exc)
 
 
 # -- route table ------------------------------------------------------
@@ -171,7 +243,15 @@ def _serve_decision_choice_post(h, payload) -> None:
         decision_id = h.path[len("/api/decisions/"):].split("?", 1)[0]
         if not decision_id:
             h._send(400, b'{"error":"id required"}', "application/json"); return
-        choice = (payload.get("choice") or "").strip()
+        # Lane 8 cycle 18: `(payload.get("choice") or "").strip()` assumed a
+        # string, so a JSON number raised AttributeError and the handler
+        # answered 500 with the internal type name. A wrong TYPE is the same
+        # class of caller error as a missing value - answer it the same way.
+        raw_choice = payload.get("choice")
+        if raw_choice is not None and not isinstance(raw_choice, str):
+            h._send(400, b'{"error":"choice must be a string"}',
+                    "application/json"); return
+        choice = (raw_choice or "").strip()
         if not choice or len(choice) > 32:
             h._send(400, b'{"error":"choice required (<=32 chars)"}',
                     "application/json"); return
@@ -208,7 +288,11 @@ def _serve_decision_choice_post(h, payload) -> None:
                 "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/decisions POST: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        # Lane 8 cycle 18: was json.dumps({"error": str(exc)}), which put
+        # attribute/type detail from a wrong-typed body straight back to the
+        # caller. The typed rejection above now handles the common case as a
+        # 400; this stays the last resort.
+        send_error(h, exc)
 
 
 def _serve_decisions_heartbeat(h) -> None:
@@ -255,15 +339,29 @@ def _serve_decisions_respond_active_post(h, payload) -> None:
         active = pending[0]
         active_id = active.get("id") or ""
         options = active.get("options") or []
-        dismiss = bool(payload.get("dismiss", False))
+        # Lane 8 cycle 18: this was `bool(payload.get("dismiss", False))`, so
+        # ANY non-empty JSON string was truthy - {"dismiss": "false"} threw the
+        # caller's real choice away and journalled a dismissal, and
+        # record_choice is irreversible. Same wrong-type class already fixed
+        # for `choice` in the sibling handler; this one had no guard.
+        raw_dismiss = payload.get("dismiss", False)
+        if not isinstance(raw_dismiss, bool):
+            h._send(400, b'{"error":"dismiss must be true or false"}',
+                    "application/json"); return
+        dismiss = raw_dismiss
         if dismiss:
             choice = "skip"
         else:
-            try:
-                idx = int(payload.get("choice_index"))
-            except (TypeError, ValueError):
+            # Lane 8 cycle 18: `int(...)` silently TRUNCATED, so 1.9 resolved
+            # to options[1] and 0.9 to options[0] - a client with an off-by-a
+            # -fraction index had a different choice journalled than it asked
+            # for, with a 200 back. `True` is an int in Python and was
+            # accepted as index 1; reject that too.
+            raw_idx = payload.get("choice_index")
+            if isinstance(raw_idx, bool) or not isinstance(raw_idx, int):
                 h._send(400, b'{"error":"choice_index must be int 0 or 1"}',
                         "application/json"); return
+            idx = raw_idx
             if idx < 0 or idx >= len(options):
                 h._send(400, json.dumps({
                     "error": "choice_index out of range",
