@@ -1,5 +1,17 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-08-30 - lane 8 cycle 22 four-id row relocated from ROADMAP.md
+
+Relocated verbatim by the lane 8 cycle 25 wrap: adding the cycle-25 pointer row took
+ROADMAP.md to 83489 bytes, past its 81920-byte CI budget
+(`tests/test_doc_size_budget.py`). NOTHING is dropped - two of this row's four ids
+are now CLOSED (RM-253 by cycle 25, RM-254 by cycle 24, detail in `docs/LEDGER.md`
+1284 and 1283), and a compact row naming the still-open RM-255 / RM-256 stays in
+`ROADMAP.md`. Every id's full body remains in `BACKLOG.md`.
+
+- **RM-253 / RM-254 / RM-255 / RM-256 OPEN (filed 2026-08-30, lane 8 cycle 22; RM-253/254/255 LANE 8, RM-256 LANE 7-or-8, all Tier-1)** - four findings from the cycle-22 audit of `coaches/sr_user_builds.py`, each verified by DIRECT READ rather than inherited from a scan, none of them in the audited file: **(253)** cycle 20 fixed the raw-exception echo in `vision_server/_relay.py:50-56` and left the identical sibling at `:177` (`return {"error": f"bad_json: {e}"}`) untouched - the resolver-vs-consumer shape at its smallest, one file, one commit apart; **(254)** `core/polled_json.py` - the module that IS the repo's atomic-write contract - derives its tmp name from the destination alone at `:57`, `:75` and `:87`, so concurrent writers share one scratch file and the second truncates the first, and an exhausted retry orphans that tmp on all three helpers; **(255)** `lib/http/client.py`'s blocklist FAILS OPEN on both failure paths (`:112-117`, `:120-127`) and is re-evaluated per request, on the chokepoint for every third-party fetch in the tree, with zero tests - plus `certifi` absent from both requirements files, making the `_SSL_CONTEXT` at `:45-49` inert; **(256)** `agents/agent2_backend/ws_server.py:46` binds `0.0.0.0` with no auth on `/ingest` or `/push` (`agents/supervisor.py:296`), zero tests - PROBE REACHABILITY BEFORE FIXING. Bodies in `BACKLOG.md`. **RM-254 is the highest-leverage of the four.** **Next free id = RM-257.**
+
+
 ## 2026-08-30 - RM-155 retired and relocated from ROADMAP.md
 
 Relocated verbatim by the lane 8 cycle 17 /done drift-guard pass (ROADMAP.md was at
