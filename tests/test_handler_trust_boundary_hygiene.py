@@ -34,8 +34,11 @@ live defect. It is here because the correct idiom costs one line.
 """
 from __future__ import annotations
 
+import collections
 import logging
+import os
 import socket
+import sys
 import threading
 from http.server import ThreadingHTTPServer
 
@@ -100,6 +103,38 @@ def _messages(records) -> list[str]:
 
 def _control_bytes_in(text: str) -> list[str]:
     return [hex(ord(ch)) for ch in text if ord(ch) in _FORBIDDEN]
+
+
+# A lone HIGH surrogate. Deliberately NOT one of U+DC80..U+DCFF: that is the
+# range `surrogateescape` round-trips, so a token drawn from it encodes
+# cleanly under BOTH `surrogatepass` and `surrogateescape` and cannot tell
+# the shipped handler apart from the wrong first version of the same fix.
+_UNENCODABLE_TOKEN = "\ud800bad"
+
+
+class _OsWithEnvOverlay:
+    """Stand-in for the ``os`` module that ``dashboard/_handler`` imports.
+
+    ``_handler`` touches ``os`` in exactly two places, both
+    ``os.environ.get`` (``_handler.py:114`` for the CORS allow-list and
+    ``_handler.py:533`` for the token), so overlaying ``environ`` with a
+    ChainMap in front of the real mapping changes one key and leaves every
+    other environment read - and every other ``os`` attribute - untouched.
+
+    This exists because the value under test cannot be delivered through the
+    real ``os.environ`` on a POSIX runner: CPython encodes environment values
+    with the filesystem encoding (utf-8/surrogateescape), and
+    ``surrogateescape`` only re-encodes U+DC80..U+DCFF, so assigning a lone
+    HIGH surrogate raises UnicodeEncodeError inside ``setenv`` itself. The
+    old delivery therefore died in its own setup on Linux CI without ever
+    reaching the handler (GitHub run 33332566593).
+    """
+
+    def __init__(self, **overrides: str) -> None:
+        self.environ = collections.ChainMap(dict(overrides), os.environ)
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(os, name)
 
 
 # -- W1: control-character sanitization --------------------------------
@@ -286,16 +321,83 @@ def test_duplicate_transfer_encoding_headers_cannot_smuggle_a_body(server,
     assert seen == [], f"the smuggled body still reached a route: {seen!r}"
 
 
-def test_token_gate_survives_a_lone_surrogate_in_the_env(server, monkeypatch):
-    """A surrogate in RC_DASH_TOKEN must 401, not raise.
+def test_token_gate_survives_a_lone_surrogate_in_the_configured_token(server,
+                                                                      monkeypatch):
+    """A lone surrogate in the configured token must 401, not raise.
 
-    os.environ round-trips lone surrogates on Windows, so a plain
-    `.encode("utf-8")` raises UnicodeEncodeError and turns the reject into a
-    traceback - a crash where the old `!=` had merely returned False. The
-    header side cannot carry one (headers are iso-8859-1-decoded), so this
-    is entirely about the configured value.
+    RECORDED FINDING (unchanged, this is the defect): a plain
+    `.encode("utf-8")` on the configured token raises UnicodeEncodeError and
+    turns the reject into a traceback - a crash where the older `!=` compare
+    had merely returned False. The FIRST version of that fix reached for
+    `surrogateescape` and was still wrong, because that handler only covers
+    the U+DC80..U+DCFF range decoding produces and still raises on a U+D800;
+    only `surrogatepass` survives. The header side cannot carry a surrogate
+    at all (headers are iso-8859-1-decoded), so this is entirely about the
+    configured value. This test guards `_handler.py:551-553`.
+
+    DELIVERY (this is what changed, the property above did not): the value
+    used to arrive via `monkeypatch.setenv`, which works only on Windows -
+    POSIX encodes environment values with utf-8/surrogateescape and raises on
+    a lone HIGH surrogate, so on Linux CI this test died inside its own setup
+    before the handler ran at all (GitHub run 33332566593). The value is now
+    injected at the point `_handler.py:533` READS it, which is the same
+    string arriving at the same compare on every platform. The Windows-only
+    claim - that a real environment can actually hold such a value - is kept
+    below as its own gated test, because that is the one thing this one
+    cannot show.
     """
-    monkeypatch.setenv("RC_DASH_TOKEN", "\ud800bad")
+    monkeypatch.setattr(_handler, "os",
+                        _OsWithEnvOverlay(RC_DASH_TOKEN=_UNENCODABLE_TOKEN))
+    body = b'{"command":"noop"}'
+    resp = _raw(server,
+                b"POST /api/command HTTP/1.0\r\nHost: 127.0.0.1\r\n"
+                b"X-RC-Token: wrong\r\nContent-Length: " +
+                str(len(body)).encode() + b"\r\n\r\n" + body)
+    status = resp.split(b"\r\n")[0]
+    assert b"401" in status, f"expected a clean 401, got: {status!r}"
+    assert b"500" not in status
+
+
+def test_env_overlay_actually_reaches_the_token_read(server, monkeypatch):
+    """Negative control on the delivery seam above.
+
+    A test that monkeypatches its way past the code it claims to guard is
+    worse than the red test it replaced, so pin the seam: with the overlay
+    installed and NO token in the real environment, the gate must run - an
+    unauthenticated POST is refused. Without the overlay reaching
+    `_handler.py:533` the gate is skipped entirely and this POST dispatches
+    with a 200/404, which is a different status and fails here.
+    """
+    monkeypatch.delenv("RC_DASH_TOKEN", raising=False)
+    monkeypatch.setattr(_handler, "os",
+                        _OsWithEnvOverlay(RC_DASH_TOKEN="s3cret"))
+    body = b'{"command":"noop"}'
+    resp = _raw(server,
+                b"POST /api/command HTTP/1.0\r\nHost: 127.0.0.1\r\n"
+                b"X-RC-Token: wrong\r\nContent-Length: " +
+                str(len(body)).encode() + b"\r\n\r\n" + body)
+    status = resp.split(b"\r\n")[0]
+    assert b"401" in status, (
+        f"the overlay never reached the token read at _handler.py:533: {status!r}")
+
+
+@pytest.mark.skipif(sys.platform != "win32",
+                    reason="only Windows os.environ round-trips a lone HIGH "
+                           "surrogate; POSIX setenv raises UnicodeEncodeError "
+                           "encoding the value with utf-8/surrogateescape")
+def test_windows_environ_really_can_hold_an_unencodable_token(server,
+                                                              monkeypatch):
+    """The platform half of the finding, gated rather than deleted.
+
+    The portable test proves the handler survives such a token; it cannot
+    prove such a token is reachable in the first place. On Windows the
+    environment is native UTF-16 and stores the lone surrogate verbatim, so
+    the configured value is a real deployment state and not a hypothetical -
+    which is what made the plain-`.encode()` crash a defect worth fixing.
+    """
+    monkeypatch.setenv("RC_DASH_TOKEN", _UNENCODABLE_TOKEN)
+    assert os.environ["RC_DASH_TOKEN"] == _UNENCODABLE_TOKEN, (
+        "this platform did not round-trip the surrogate; the gate is wrong")
     body = b'{"command":"noop"}'
     resp = _raw(server,
                 b"POST /api/command HTTP/1.0\r\nHost: 127.0.0.1\r\n"

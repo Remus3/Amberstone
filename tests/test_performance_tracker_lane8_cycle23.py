@@ -38,14 +38,14 @@ coercion belongs here at the boundary, which is the correct place regardless.
 import json
 import os
 import sys
-import threading
-import time
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import performance_tracker as pt  # noqa: E402
+from core.polled_json import _REPLACE_RETRY_DELAYS_S as _DELAYS  # noqa: E402
+from tests._replace_faults import replace_fails  # noqa: E402
 
 
 def _seed(target: Path, marker: str) -> None:
@@ -69,33 +69,36 @@ class TestAtomicWriteUnderConcurrentReader(unittest.TestCase):
         """The routine case: a poller holds the file open, then releases.
 
         This is the discriminator between the bare os.replace and the
-        retry-backed one. Measured on Python 3.14 / win32: the bare writer
-        raises PermissionError [WinError 5] in under a millisecond, while the
-        retry-backed writer rides out an 80 ms reader and lands its content.
+        retry-backed one. Measured on Python 3.14 / win32 when this guard was
+        written: the bare writer raised PermissionError [WinError 5] in under a
+        millisecond, while the retry-backed writer rode out an 80 ms reader and
+        landed its content.
+
+        LANE 8 CYCLE 26 - the fault is now INJECTED at the os.replace boundary
+        instead of BORROWED from the operating system. The original shape held
+        the destination open on a background thread and relied on the Windows
+        share lock to manufacture the PermissionError. POSIX renames straight
+        through an open read handle, so on Linux no fault ever occurred and
+        this test asserted a success that needed no retry at all: vacuously
+        green on the one platform where the retry loop had never run. Two
+        failures then a success drives the real backoff on every platform.
         """
         _seed(self.target, "OLD")
-        released = threading.Event()
-
-        def _hold_open():
-            with open(self.target, encoding="utf-8"):
-                time.sleep(0.08)
-            released.set()
-
-        t = threading.Thread(target=_hold_open, name="rc-l8c23-reader")
-        t.start()
-        time.sleep(0.01)  # ensure the reader owns the handle first
-        try:
+        with replace_fails(self.target, times=2) as rec:
             pt._atomic_write_json(self.target, {"marker": "NEW"})
-        finally:
-            t.join(timeout=5)
 
-        self.assertTrue(released.is_set(), "reader thread did not finish")
+        self.assertEqual(rec.failures, 2)
+        self.assertEqual(rec.attempts, 3,
+                         "the writer did not re-attempt after a transient "
+                         "PermissionError; the retry loop was not exercised")
         on_disk = json.loads(self.target.read_text(encoding="utf-8"))
         self.assertEqual(
             on_disk.get("marker"), "NEW",
             "the rating write was lost to a routine concurrent reader; the "
             "file still holds the previous game's content",
         )
+        self.assertEqual(list(self.target.parent.glob("*.tmp")), [],
+                         "a retried write must not leave a scratch file")
 
     def test_no_orphaned_tmp_when_the_write_cannot_land(self):
         """Under PERMANENT contention the write must still fail loudly, but it
@@ -104,15 +107,25 @@ class TestAtomicWriteUnderConcurrentReader(unittest.TestCase):
         Deliberately NOT asserting success here - the retry buys the transient
         window only, exactly as core/polled_json.py:30-35 claims, and pinning a
         stronger promise than the mechanism makes would be a false guard.
+
+        LANE 8 CYCLE 26 - the fault is now INJECTED rather than borrowed from
+        the OS. Held open, this test was RED on Linux ("PermissionError not
+        raised") because POSIX lets the rename through, which is also why the
+        exhaustion branch of _replace_with_retry had never executed there.
         """
         _seed(self.target, "OLD")
-        holder = open(self.target, encoding="utf-8")
-        try:
+        with replace_fails(self.target) as rec:
             with self.assertRaises(PermissionError):
                 pt._atomic_write_json(self.target, {"marker": "NEW"})
-        finally:
-            holder.close()
 
+        self.assertEqual(
+            rec.attempts, len(_DELAYS) + 1,
+            "a permanently failing replace must be attempted once per entry "
+            "in core/polled_json._REPLACE_RETRY_DELAYS_S, plus the initial "
+            "attempt, before the re-raise. Derived rather than hardcoded so a "
+            "deliberate change to the backoff table does not present as a "
+            "regression here.",
+        )
         strays = list(self.target.parent.glob("*.tmp"))
         self.assertEqual(
             strays, [],
@@ -121,6 +134,28 @@ class TestAtomicWriteUnderConcurrentReader(unittest.TestCase):
         on_disk = json.loads(self.target.read_text(encoding="utf-8"))
         self.assertEqual(on_disk.get("marker"), "OLD",
                          "a failed write must leave the prior file intact")
+
+    @unittest.skipUnless(
+        sys.platform == "win32",
+        "POSIX rename ignores an open read handle; there is no OS fault to "
+        "observe here, which is exactly why the tests above inject their own")
+    def test_a_held_read_handle_really_blocks_replace_on_this_os(self):
+        """The narrow question the portable tests can no longer answer.
+
+        They simulate the share lock, so something has to prove the simulated
+        condition is REAL on the platform RC actually ships on. This asserts
+        the OS property alone - no writer, no retry loop - so it stays true
+        whatever core/polled_json does next. If it ever goes red on win32, the
+        premise of the whole retry loop is gone and the injected-fault tests
+        above are testing a fiction.
+        """
+        _seed(self.target, "OLD")
+        scratch = self.target.with_name("os_probe.scratch")
+        scratch.write_text("NEW", encoding="utf-8")
+        with open(self.target, encoding="utf-8"):
+            with self.assertRaises(PermissionError):
+                os.replace(scratch, self.target)
+        scratch.unlink()
 
     def test_rejects_non_finite_values_before_touching_disk(self):
         """Pre-existing contract (P2-W4 hw2 slice H) - keep it pinned.
