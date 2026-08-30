@@ -194,6 +194,14 @@ def _serve_decision_choice_post(h, payload) -> None:
             extra["note"] = str(payload.get("note") or "")[:500]
         entry = store.record_choice(decision_id, choice, extra=extra)
         if entry is None:
+            # Lane-8 cycle 12: record_choice returns None for "not pending"
+            # AND for a transient write failure that deliberately left the
+            # decision in place. Reporting the second as a permanent 404
+            # tells the caller to stop when it should retry.
+            if any(d.get("id") == decision_id for d in store.list_pending()):
+                h._send(503, b'{"error":"could not record that choice right '
+                             b'now - it is still pending, please retry"}',
+                        "application/json"); return
             h._send(404, b'{"error":"id not pending"}', "application/json"); return
         h._send(200, json.dumps({"ok": True, "id": entry["id"],
                                   "choice": entry["choice"]}).encode(),
@@ -207,9 +215,17 @@ def _serve_decisions_heartbeat(h) -> None:
     """ADR-007 (s169): GET /api/decisions/heartbeat -> loop liveness snapshot.
 
     File-backed read of data/decisions_heartbeat.json (written by the
-    DecisionLoop in the Phase 3 supervisor process). The dashboard
-    #trigger-pill polls this at ~2 Hz to render the eval counter +
-    green/amber/red alive indicator."""
+    DecisionLoop in the Phase 3 supervisor process).
+
+    NO CURRENT UI CONSUMER. This docstring used to say "the dashboard
+    #trigger-pill polls this at ~2 Hz"; that pill was deleted with the
+    header second row in `bfa78360`, and `web/css/panels/map_state.css:119`
+    records the removal while noting the backend was deliberately kept.
+    Corrected 2026-08-30 (lane 8 cycle 12) after the stale line was used as
+    evidence that an operator would see a heartbeat change. Grep before
+    trusting it again: `#trigger-pill` and `/api/decisions/heartbeat` both
+    have zero hits under web/. The endpoint remains reachable by curl and is
+    the only way to read `detector_errors` today."""
     try:
         from core.decision_detector import read_heartbeat
         payload = read_heartbeat()
@@ -259,6 +275,13 @@ def _serve_decisions_respond_active_post(h, payload) -> None:
             extra["note"] = str(payload.get("note") or "")[:500]
         entry = store.record_choice(active_id, choice, extra=extra)
         if entry is None:
+            # See the sibling handler above (lane-8 cycle 12): a failed
+            # write leaves the decision pending and is retryable, which is
+            # not the same as the decision having vanished.
+            if any(d.get("id") == active_id for d in store.list_pending()):
+                h._send(503, b'{"error":"could not record that choice right '
+                             b'now - it is still pending, please retry"}',
+                        "application/json"); return
             h._send(404, b'{"error":"decision vanished mid-respond"}',
                     "application/json"); return
         h._send(200, json.dumps({

@@ -44,6 +44,8 @@ from typing import Callable, Iterator, Optional
 
 import portalocker
 
+from core.polled_json import atomic_write_json
+
 _log = logging.getLogger("rc.decision_detector")
 _APP_DIR = Path(__file__).parent.parent
 
@@ -61,6 +63,10 @@ _HEARTBEAT_PATH   = _APP_DIR / "data" / "decisions_heartbeat.json"
 
 _DEFAULT_POLL_S   = 1.0
 _LOCK_TIMEOUT_S   = 2.0
+# Cap on the heartbeat's last_detector_error string. It is served over
+# /api/decisions/heartbeat and an exception message can quote snapshot
+# fields, so it is bounded the way routes_diag bounds its own notes.
+_MAX_ERR_CHARS    = 200
 
 # Tier 3 #15 (2026-05-01): the DecisionLoop now runs in agents/supervisor.py
 # while record_choice() is invoked from the dashboard handler in the RC
@@ -381,6 +387,19 @@ def detect_lane_roam_window(
 
 # -- Detector: post-fight objective opportunity --------------------------------
 
+def _team_of(all_players: list, name: Optional[str]) -> Optional[str]:
+    """Resolve a Live Client participant name to its team ("ORDER"/"CHAOS"),
+    or None when the name is absent from allPlayers - which is the normal
+    case for a turret/minion `KillerName`."""
+    if not name:
+        return None
+    for p in all_players:
+        if not isinstance(p, dict):
+            continue
+        if (p.get("summonerName") or p.get("riotIdGameName")) == name:
+            return p.get("team")
+    return None
+
 @register_detector
 def detect_postfight_objective(
     snapshot: dict, vision_state: dict
@@ -399,11 +418,10 @@ def detect_postfight_objective(
     active = snapshot.get("activePlayer") or {}
     self_name = active.get("summonerName") or active.get("riotIdGameName")
     all_players = snapshot.get("allPlayers") or []
-    self_team = None
-    for p in all_players:
-        if (p.get("summonerName") or p.get("riotIdGameName")) == self_name:
-            self_team = p.get("team")
-            break
+    # _team_of isinstance-guards each row; the hand-rolled loop this
+    # replaced raised on a non-dict allPlayers entry before ever reaching
+    # the guarded lookup below (lane-8 cycle 12).
+    self_team = _team_of(all_players, self_name)
     if not self_team:
         return None
 
@@ -419,20 +437,25 @@ def detect_postfight_objective(
         if not isinstance(t, (int, float)) or t < window_start:
             continue
         last_event_t = max(last_event_t, float(t))
-        # Resolve the killer's team. The Live Client gives KillerName as a
-        # summoner; cross-reference allPlayers.
-        killer = ev.get("KillerName")
-        victim = ev.get("VictimName")
-        for p in all_players:
-            nm = p.get("summonerName") or p.get("riotIdGameName")
-            if nm == killer:
-                diff += (1 if p.get("team") == self_team else -1)
-                break
-        for p in all_players:
-            nm = p.get("summonerName") or p.get("riotIdGameName")
-            if nm == victim:
-                diff += (-1 if p.get("team") == self_team else 1)
-                break
+        # Count each kill exactly ONCE. Prefer the killer's team; a turret
+        # or minion execute has no KillerName in allPlayers, so fall back
+        # to the victim's side.
+        #
+        # Lane-8 cycle 12: this resolved BOTH the killer AND the victim and
+        # added a point for each, so every event moved `diff` by +/-2. The
+        # "+3 (or better)" gate above therefore fired at a TRUE +2, and the
+        # title rendered double the real number to the player ("+4 fight"
+        # for a 2-kill swing). Pinned by
+        # tests/test_decision_detector_lane8_cycle12.py.
+        killer_team = _team_of(all_players, ev.get("KillerName"))
+        victim_team = _team_of(all_players, ev.get("VictimName"))
+        if (killer_team is not None and victim_team is not None
+                and killer_team == victim_team):
+            continue        # same-team kill: one kill, one death, net zero
+        if killer_team is not None:
+            diff += 1 if killer_team == self_team else -1
+        elif victim_team is not None:
+            diff += -1 if victim_team == self_team else 1
     if diff < 3:
         return None
 
@@ -470,14 +493,22 @@ def detect_postfight_objective(
 # -- Detector: jungler gank-likely (ADR-007 s169) ------------------------------
 
 def _enemy_has_smite(p: dict) -> bool:
-    """Live Client summonerSpells shape: each spell has displayName, rawName.
-    Smite's rawName is 'GeneratedTip_SummonerSpell_SummonerSmite_DisplayName'
-    and displayName is 'Smite'. We accept either."""
+    """Live Client summonerSpells shape: each spell carries displayName,
+    rawDescription and rawDisplayName. Smite is displayName 'Smite',
+    rawDisplayName 'GeneratedTip_SummonerSpell_SummonerSmite_DisplayName'
+    and rawDescription '..._SummonerSmite_Description'. Any one of the
+    three is accepted.
+
+    Lane-8 cycle 12: the docstring already claimed the raw name was read,
+    but the code read only displayName + rawDescription, so a payload
+    carrying the cited rawDisplayName alone returned False. Both raw keys
+    are now read."""
     spells = p.get("summonerSpells") or {}
     for slot in ("summonerSpellOne", "summonerSpellTwo"):
         s = spells.get(slot) or {}
         nm = (s.get("displayName") or "").lower()
-        raw = (s.get("rawDescription") or "").lower()
+        raw = ((s.get("rawDescription") or "")
+               + (s.get("rawDisplayName") or "")).lower()
         if "smite" in nm or "summonersmite" in raw:
             return True
     return False
@@ -535,11 +566,10 @@ def detect_jungler_gank_likely(
     active = snapshot.get("activePlayer") or {}
     self_name = active.get("summonerName") or active.get("riotIdGameName")
     all_players = snapshot.get("allPlayers") or []
-    self_team = None
-    for p in all_players:
-        if (p.get("summonerName") or p.get("riotIdGameName")) == self_name:
-            self_team = p.get("team")
-            break
+    # _team_of isinstance-guards each row; the hand-rolled loop this
+    # replaced raised on a non-dict allPlayers entry before ever reaching
+    # the guarded lookup below (lane-8 cycle 12).
+    self_team = _team_of(all_players, self_name)
     if not self_team:
         return None
     enemy_team = "CHAOS" if self_team == "ORDER" else "ORDER"
@@ -673,26 +703,65 @@ class DecisionStore:
         self._log_path = log_path
 
     def list_pending(self) -> list[dict]:
+        """Pending decisions, always a list of dicts carrying a string id.
+
+        Lane-8 cycle 12: this returned whatever the file parsed to. Every
+        one of its five consumers (reconcile, record_choice, _apply_rate_cap,
+        dashboard/routes_diag.py, dashboard/routes_metrics.py) assumes a list
+        of id-carrying dicts, so a file holding any other JSON - `{}`, `null`,
+        a bare string, a list of ints - wedged reconcile() with a TypeError
+        on `d["id"]` INSIDE the loop's broad except, on every tick, forever,
+        without ever repairing the file. To be accurate about WHY that is
+        worth guarding, since the first draft of this note overstated it:
+        `_write_pending` is the SOLE writer in the tree, so a bad shape can
+        only arrive from outside it - a hand edit, a truncated or restored
+        file, a half-copied data/ directory. Rare, but the failure it caused
+        was permanent and silent, which is the combination worth a cheap
+        filter. Filtering here (rather than raising) also repairs the bad
+        state: the next reconcile() writes a well-formed list back over it."""
         try:
-            return json.loads(self._pending_path.read_text(encoding="utf-8"))
+            raw = json.loads(self._pending_path.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError):
             return []
-        except Exception as exc:  # noqa: BLE001
+        except OSError as exc:
             _log.debug("pending read failed: %s", exc)
             return []
+        if not isinstance(raw, list):
+            _log.warning("pending file is %s, not a list - treating as empty",
+                         type(raw).__name__)
+            return []
+        items = [d for d in raw
+                 if isinstance(d, dict) and isinstance(d.get("id"), str)]
+        if len(items) != len(raw):
+            _log.warning("pending file: dropped %d malformed entr%s",
+                         len(raw) - len(items),
+                         "y" if len(raw) - len(items) == 1 else "ies")
+        return items
 
-    def _write_pending(self, items: list[dict]) -> None:
+    def _write_pending(self, items: list[dict]) -> bool:
+        # Lane-8 cycle 12: this used a bare `tmp.replace()`. On Windows that
+        # raises PermissionError (WinError 5) while a reader holds the
+        # destination open, and PermissionError IS an OSError, so the write
+        # was swallowed below at debug level. decisions_pending.json is read
+        # cross-process by dashboard/routes_diag.py and routes_metrics.py, so
+        # that contention is routine BY DESIGN. The measured consequence was
+        # in record_choice(): the JSONL entry was appended and the decision
+        # then silently stayed pending, so one decision logged twice and
+        # never cleared. core.polled_json.atomic_write_json is the canonical
+        # answer already in the tree (bounded backoff, ~275 ms, then raise).
         try:
-            self._pending_path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self._pending_path.with_suffix(self._pending_path.suffix + ".tmp")
-            tmp.write_text(json.dumps(items, indent=2), encoding="utf-8")
-            tmp.replace(self._pending_path)
-        # Narrowed 2026-07-19: mkdir / write_text / Path.replace raise OSError;
-        # json.dumps raises TypeError on a non-serializable decision field and
-        # ValueError on a circular ref or out-of-range float; with_suffix raises
-        # ValueError on a malformed suffix. Those are every raising statement.
+            atomic_write_json(self._pending_path, items)
+            return True
+        # mkdir / write_text / os.replace raise OSError; json.dumps raises
+        # TypeError on a non-serializable decision field and ValueError on a
+        # circular ref or out-of-range float; with_suffix raises ValueError on
+        # a malformed suffix. Those are every raising statement.
         except (OSError, TypeError, ValueError) as exc:
-            _log.debug("pending write failed: %s", exc)
+            # WARNING, not debug: a dropped write means the pending list on
+            # disk no longer matches reality, and record_choice() depends on
+            # the return value to stay consistent.
+            _log.warning("pending write failed: %s", exc)
+            return False
 
     def reconcile(self, fresh: list[Decision], game_time: float) -> None:
         """Merge newly-detected decisions into the pending list:
@@ -767,13 +836,38 @@ class DecisionStore:
                 "decided_at_unix": time.time(),
                 "extra": extra or {},
             }
+            # Lane-8 cycle 12: the JSONL append used to run FIRST, and the
+            # pending write's failure was swallowed. Under a concurrent
+            # reader that produced the worst of both - the choice was logged
+            # AND the decision stayed pending, so the next click logged it a
+            # second time. Removing it from pending is what makes the choice
+            # final, so that has to succeed before anything is recorded.
+            #
+            # The invariant both orderings must preserve: a decision is
+            # either STILL PENDING (retryable) or LOGGED EXACTLY ONCE. Never
+            # both, and never neither. So a failed pending write records
+            # nothing, and a failed log append puts the decision BACK - the
+            # adversarial pass on this slice caught the version that returned
+            # `entry` after a failed append, which silently satisfied
+            # "neither" and reported success to the caller.
+            if not self._write_pending(remaining):
+                _log.warning("record_choice %s: pending write failed, "
+                             "choice not recorded", decision_id)
+                return None
             try:
                 self._log_path.parent.mkdir(parents=True, exist_ok=True)
                 with self._log_path.open("a", encoding="utf-8") as f:
                     f.write(json.dumps(entry) + "\n")
-            except Exception as exc:  # noqa: BLE001
-                _log.warning("decisions_log append failed: %s", exc)
-            self._write_pending(remaining)
+            except OSError as exc:
+                _log.warning("decisions_log append failed: %s - restoring %s "
+                             "to pending", exc, decision_id)
+                if not self._write_pending(current):
+                    # Both writes failed: the decision is gone from disk and
+                    # unlogged. Nothing further can be done here, but it must
+                    # not be reported as a recorded choice.
+                    _log.error("record_choice %s: log append AND pending "
+                               "restore both failed - choice LOST", decision_id)
+                return None
             return entry
 
 
@@ -799,6 +893,18 @@ class DecisionLoop:
         # silently deciding not to fire.
         self._eval_count = 0
         self._last_eval_unix = 0.0
+        # Lane-8 cycle 12: detector exceptions were swallowed per-detector at
+        # DEBUG while the pill went on reporting alive with a cleanly rising
+        # counter. Measured: an upstream shape change (events.Events arriving
+        # as a str) crashed 2 of 6 detectors on EVERY tick and nothing in the
+        # heartbeat could say so. The pill exists precisely so the operator
+        # can tell "alive and deciding not to fire" from dead - it must also
+        # separate that from "alive and crashing".
+        self._detector_errors = 0
+        self._last_detector_error: Optional[str] = None
+        # Log-spam control for the above - see _loop.
+        self._last_logged_error_sig: Optional[tuple] = None
+        self._last_error_log_m = 0.0
         self._heartbeat_lock = threading.Lock()
 
     def store(self) -> DecisionStore:
@@ -880,15 +986,46 @@ class DecisionLoop:
                     # match so the dashboard pill starts from 0 each game.
                     with self._heartbeat_lock:
                         self._eval_count = 0
+                        self._detector_errors = 0
+                        self._last_detector_error = None
                 self._prev_game_time = game_time
                 fresh: list[Decision] = []
+                errors = 0
+                last_error: Optional[str] = None
                 for fn in DECISION_REGISTRY:
                     try:
                         d = fn(snap, vs)
                         if d is not None:
                             fresh.append(d)
                     except Exception as exc:  # noqa: BLE001
+                        errors += 1
+                        # Truncated: this string is served by
+                        # /api/decisions/heartbeat, and an exception message
+                        # can quote snapshot data (a Riot ID in a KeyError).
+                        last_error = (
+                            f"{fn.__name__}: {type(exc).__name__}: "
+                            f"{exc}"[:_MAX_ERR_CHARS]
+                        )
                         _log.debug("detector %s failed: %s", fn.__name__, exc)
+                if errors:
+                    # A detector crashing is a shape change upstream, not a
+                    # debug detail - but the loop ticks at 1 Hz, so logging
+                    # every failing eval would write ~3600 WARNING lines an
+                    # hour for one persistent breakage. Log on CHANGE of
+                    # signature, then at most once a minute after that.
+                    sig = (errors, last_error)
+                    now_m = time.monotonic()
+                    if (sig != self._last_logged_error_sig
+                            or now_m - self._last_error_log_m >= 60.0):
+                        _log.warning(
+                            "%d/%d detectors failed this eval (last: %s)",
+                            errors, len(DECISION_REGISTRY), last_error)
+                        self._last_logged_error_sig = sig
+                        self._last_error_log_m = now_m
+                elif self._last_logged_error_sig is not None:
+                    _log.info("detectors recovered - all %d evaluating again",
+                              len(DECISION_REGISTRY))
+                    self._last_logged_error_sig = None
                 fresh = self._apply_rate_cap(fresh)
                 self._store.reconcile(fresh, game_time)
                 # Heartbeat: bump AFTER a successful eval cycle, then
@@ -896,6 +1033,8 @@ class DecisionLoop:
                 with self._heartbeat_lock:
                     self._eval_count += 1
                     self._last_eval_unix = time.time()
+                    self._detector_errors = errors
+                    self._last_detector_error = last_error
                 self._write_heartbeat()
             except Exception as exc:  # noqa: BLE001
                 _log.debug("decision_detector loop: %s", exc)
@@ -905,13 +1044,12 @@ class DecisionLoop:
         """Persist heartbeat to data/decisions_heartbeat.json so the
         dashboard handler in the RC main process can read it without
         IPC into the Phase 3 supervisor. Atomic via tmp + replace."""
+        # Same WinError-5 hazard as DecisionStore._write_pending - the
+        # dashboard polls this file at ~2 Hz from the RC main process, so a
+        # bare replace dropped heartbeats whenever a poll overlapped a write.
         try:
-            payload = self.heartbeat()
-            _HEARTBEAT_PATH.parent.mkdir(parents=True, exist_ok=True)
-            tmp = _HEARTBEAT_PATH.with_suffix(_HEARTBEAT_PATH.suffix + ".tmp")
-            tmp.write_text(json.dumps(payload), encoding="utf-8")
-            tmp.replace(_HEARTBEAT_PATH)
-        except Exception as exc:  # noqa: BLE001
+            atomic_write_json(_HEARTBEAT_PATH, self.heartbeat())
+        except (OSError, TypeError, ValueError) as exc:
             _log.debug("heartbeat write failed: %s", exc)
 
     def heartbeat(self) -> dict:
@@ -919,17 +1057,21 @@ class DecisionLoop:
         pill. Pure read; safe to call from the dashboard handler thread.
 
         Returns:
-            counter:         eval cycles in current match (resets on new game)
-            last_eval_unix:  wall-clock time of most recent eval
-            age_s:           seconds since last eval (None if never ran)
-            alive:           bool - true when age_s < 5
-            game_time:       last observed game_time (0 when no game)
-            detectors:       count of registered detectors
+            counter:             eval cycles in current match (resets on new game)
+            last_eval_unix:      wall-clock time of most recent eval
+            age_s:               seconds since last eval (None if never ran)
+            alive:               bool - true when age_s < 5
+            game_time:           last observed game_time (0 when no game)
+            detectors:           count of registered detectors
+            detector_errors:     detectors that raised during the last eval
+            last_detector_error: "<fn>: <ExcType>: <msg>" for the last one
         """
         with self._heartbeat_lock:
             count = self._eval_count
             last = self._last_eval_unix
             game_t = self._prev_game_time
+            errors = self._detector_errors
+            last_err = self._last_detector_error
         now = time.time()
         age_s = (now - last) if last > 0 else None
         alive = age_s is not None and age_s < 5.0
@@ -940,6 +1082,8 @@ class DecisionLoop:
             "alive": alive,
             "game_time": round(game_t, 1),
             "detectors": len(DECISION_REGISTRY),
+            "detector_errors": errors,
+            "last_detector_error": last_err,
         }
 
 
@@ -967,27 +1111,33 @@ def read_heartbeat() -> dict:
     Recomputes age_s + alive at read time so the dashboard can detect
     the supervisor stopping (stale file, alive flips False) without the
     loop re-writing on every tick."""
+    def _sentinel() -> dict:
+        return {
+            "counter": 0,
+            "last_eval_unix": None,
+            "age_s": None,
+            "alive": False,
+            "game_time": 0.0,
+            "detectors": len(DECISION_REGISTRY),
+            "detector_errors": 0,
+            "last_detector_error": None,
+        }
+
     try:
         raw = json.loads(_HEARTBEAT_PATH.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
-        return {
-            "counter": 0,
-            "last_eval_unix": None,
-            "age_s": None,
-            "alive": False,
-            "game_time": 0.0,
-            "detectors": len(DECISION_REGISTRY),
-        }
-    except Exception as exc:  # noqa: BLE001
+        return _sentinel()
+    except OSError as exc:
         _log.debug("heartbeat read failed: %s", exc)
-        return {
-            "counter": 0,
-            "last_eval_unix": None,
-            "age_s": None,
-            "alive": False,
-            "game_time": 0.0,
-            "detectors": len(DECISION_REGISTRY),
-        }
+        return _sentinel()
+    if not isinstance(raw, dict):
+        _log.warning("heartbeat file is %s, not a dict", type(raw).__name__)
+        return _sentinel()
+    # A file written by a pre-cycle-12 loop carries neither new key; the
+    # dashboard route reads this shape directly, so backfill rather than
+    # let it KeyError.
+    raw.setdefault("detector_errors", 0)
+    raw.setdefault("last_detector_error", None)
     last = raw.get("last_eval_unix")
     if isinstance(last, (int, float)) and last > 0:
         age_s = time.time() - float(last)
