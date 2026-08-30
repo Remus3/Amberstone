@@ -30,16 +30,31 @@ W4 INPUT VALID. - list_pending() returned whatever JSON the file held.
                   A non-list (or a list of non-dicts) then wedged
                   reconcile() with TypeError inside the loop's broad
                   except, every tick, forever, without repairing the file.
+
+LANE 8 CYCLE 26 - the W2 tests changed how contention is PRODUCED, not what
+they assert. They used to open the destination on a thread and let win32's
+share lock supply the PermissionError. POSIX renames straight through an open
+read handle, so on the Linux CI runner
+test_record_choice_does_not_double_log_when_the_write_fails was RED (the write
+succeeded, so record_choice returned a dict instead of None) and the three
+transient-reader tests were vacuously GREEN, having provoked no fault at all.
+The fault is now injected at the os.replace boundary by
+tests/_replace_faults.replace_fails, so the retry loop runs on every platform;
+the OS-shaped question is a separate platform-gated test at the end of W2.
 """
 from __future__ import annotations
 
 import json
+import os
+import sys
 import threading
 import time
 
 import pytest
 
 import core.decision_detector as dd
+from core.polled_json import _REPLACE_RETRY_DELAYS_S as _DELAYS
+from tests._replace_faults import replace_fails
 from core.decision_detector import (
     DecisionLoop,
     DecisionStore,
@@ -124,32 +139,33 @@ class TestWritePendingUnderConcurrentReader:
     real contention window at <100 ms and retries for ~275 ms, so a BRIEF
     overlapping read must now succeed. An indefinite hold cannot be beaten
     by any atomic-rename design - what matters there is that the store
-    stays CONSISTENT rather than double-logging."""
+    stays CONSISTENT rather than double-logging.
+
+    The fault is INJECTED at os.replace (see the module docstring); it is no
+    longer borrowed from a real held handle, which only ever produced it on
+    win32. The read that causes it is nonetheless real and cross-process:
+    dashboard/routes_diag.py and dashboard/routes_metrics.py both read
+    decisions_pending.json from the RC main process."""
 
     @staticmethod
-    def _hold_briefly(path, seconds=0.06):
-        """Open `path` for read on a background thread, the way
-        routes_diag/routes_metrics do from the RC main process."""
-        opened = threading.Event()
+    def _brief_contention(path):
+        """Two failed replaces, then a real one.
 
-        def _reader():
-            with open(path, encoding="utf-8"):
-                opened.set()
-                time.sleep(seconds)
-
-        t = threading.Thread(target=_reader, daemon=True)
-        t.start()
-        opened.wait(timeout=2)
-        return t
+        That is the poller's read window expressed deterministically: it must
+        CLEAR for the ~275 ms retry to be able to win, so a transient fault is
+        what exercises the retry loop. A permanent one exercises exhaustion,
+        which is a different test.
+        """
+        return replace_fails(path, times=2)
 
     def test_write_pending_survives_a_transient_reader(self, tmp_path):
         pending = tmp_path / "decisions_pending.json"
         store = DecisionStore(pending_path=pending,
                               log_path=tmp_path / "log.jsonl")
         store._write_pending([{"id": "x", "expires_at_game_time": 9e9}])
-        t = self._hold_briefly(pending)
-        assert store._write_pending([]) is True
-        t.join(timeout=2)
+        with self._brief_contention(pending) as rec:
+            assert store._write_pending([]) is True
+        assert rec.attempts == 3, "the write did not re-attempt after a fault"
         assert json.loads(pending.read_text(encoding="utf-8")) == []
 
     def test_record_choice_survives_a_transient_reader(self, tmp_path):
@@ -159,10 +175,10 @@ class TestWritePendingUnderConcurrentReader:
         store._write_pending([{"id": "objective_contest:Dragon:920",
                                "type": "objective_contest",
                                "expires_at_game_time": 9e9}])
-        t = self._hold_briefly(pending)
-        assert store.record_choice("objective_contest:Dragon:920",
-                                   "contest") is not None
-        t.join(timeout=2)
+        with self._brief_contention(pending) as rec:
+            assert store.record_choice("objective_contest:Dragon:920",
+                                       "contest") is not None
+        assert rec.attempts == 3
         assert json.loads(pending.read_text(encoding="utf-8")) == []
 
     def test_record_choice_does_not_double_log_when_the_write_fails(
@@ -170,18 +186,27 @@ class TestWritePendingUnderConcurrentReader:
         """The measured pre-fix behaviour: the JSONL append ran first and
         the pending write's failure was swallowed, so ONE decision logged
         TWICE and never left the pending list. A failed write must now
-        record nothing at all."""
+        record nothing at all.
+
+        The permanent fault is injected rather than borrowed from an
+        indefinitely held handle. As a held-handle test this was RED on the
+        Linux runner: the rename succeeded, so record_choice returned a dict
+        and the double-log branch it guards was never reached there at all."""
         pending = tmp_path / "decisions_pending.json"
         log = tmp_path / "decisions_log.jsonl"
         store = DecisionStore(pending_path=pending, log_path=log)
         store._write_pending([{"id": "objective_contest:Dragon:920",
                                "type": "objective_contest",
                                "expires_at_game_time": 9e9}])
-        with open(pending, encoding="utf-8"):          # indefinite hold
+        with replace_fails(pending) as rec:        # every attempt fails
             first = store.record_choice("objective_contest:Dragon:920",
                                         "contest")
             second = store.record_choice("objective_contest:Dragon:920",
                                          "give")
+        # Both calls must exhaust the loop: one attempt per backoff delay,
+        # plus the initial attempt, twice over.
+        assert rec.attempts == 2 * (len(_DELAYS) + 1), (
+            f"retry loop not exhausted twice: {rec}")
         assert first is None and second is None
         assert not log.exists() or log.read_text(encoding="utf-8").strip() == ""
         # The decision is still pending, so the player's next click works.
@@ -205,10 +230,31 @@ class TestWritePendingUnderConcurrentReader:
         loop._write_heartbeat()
         with loop._heartbeat_lock:
             loop._eval_count = 2
-        t = self._hold_briefly(path)
-        loop._write_heartbeat()
-        t.join(timeout=2)
+        with self._brief_contention(path) as rec:
+            loop._write_heartbeat()
+        assert rec.attempts == 3, "the heartbeat write did not re-attempt"
         assert json.loads(path.read_text(encoding="utf-8"))["counter"] == 2
+
+    @pytest.mark.skipif(
+        sys.platform != "win32",
+        reason="POSIX rename ignores an open read handle; there is no OS "
+               "fault to observe, which is why the tests above inject theirs")
+    def test_the_real_os_still_share_locks_a_held_pending_file(self, tmp_path):
+        """The one question replace_fails() cannot answer: is it real?
+
+        The tests above simulate the share lock, so this asserts the OS
+        property alone - no store, no retry loop - and stays true whatever
+        core/decision_detector does next. Red here on win32 would mean the
+        premise of the retry loop is gone and the injected faults model a
+        condition that no longer occurs."""
+        pending = tmp_path / "decisions_pending.json"
+        pending.write_text("[]", encoding="utf-8")
+        scratch = tmp_path / "decisions_pending.os_probe"
+        scratch.write_text("[]", encoding="utf-8")
+        with open(pending, encoding="utf-8"):
+            with pytest.raises(PermissionError):
+                os.replace(scratch, pending)
+        scratch.unlink()
 
 
 # -- W3: the heartbeat admits detector failures --------------------------------
