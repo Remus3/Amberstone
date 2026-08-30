@@ -42,6 +42,7 @@ platform=`na1`. Multi-region support is out of scope for v1.
 from __future__ import annotations
 
 import collections
+import contextlib
 import hashlib
 import json
 import logging
@@ -143,6 +144,14 @@ def reload_api_key() -> None:
 
 # -- dual-bucket rate limiter --------------------------------------------
 
+# Ceiling on any 429-imposed cooldown, in seconds. Sits ABOVE every backoff
+# Riot can legitimately mean - the long bucket is 100 requests per 120s, so a
+# real application-rate backoff is well inside 600s - and far BELOW the point
+# where a bad value becomes indistinguishable from a permanent outage. See
+# `DualBucket.note_429` for the defect this bounds.
+_MAX_COOLDOWN_S = 600.0
+
+
 class DualBucket:
     """Token-bucket dual-window limiter.
 
@@ -159,6 +168,7 @@ class DualBucket:
         short_window_s: float = 1.0,
         long_n: int = 100,
         long_window_s: float = 120.0,
+        max_cooldown_s: float = _MAX_COOLDOWN_S,
     ) -> None:
         self._short: collections.deque = collections.deque()
         self._long: collections.deque = collections.deque()
@@ -167,9 +177,11 @@ class DualBucket:
         self._long_n = int(long_n)
         self._long_w = float(long_window_s)
         self._lock = threading.Lock()
+        self._max_cooldown_s = float(max_cooldown_s)
         # Tracks a forced cool-down imposed by a 429 response. Until
         # `_cooldown_until` passes, acquire() returns False even if the
-        # local deques would admit. Set by `note_429`.
+        # local deques would admit. Set by `note_429`, which CLAMPS it - see
+        # the note there.
         self._cooldown_until: float = 0.0
 
     def acquire(self, timeout_s: float = 5.0) -> bool:
@@ -192,9 +204,25 @@ class DualBucket:
             time.sleep(0.05)
 
     def note_429(self, retry_after_s: float) -> None:
-        """Caller observed a 429 - pause acquires until retry_after passes."""
+        """Caller observed a 429 - pause acquires until retry_after passes.
+
+        CLAMPED AT BOTH ENDS, and the top end is the load-bearing one. The
+        value originates in an upstream `Retry-After` header, and the previous
+        `max(0.0, ...)` bounded only the bottom. A value of 999999999 - a
+        misbehaving intermediary, a Riot bug, a header in milliseconds -
+        therefore set a cooldown of 31.7 YEARS, after which every `acquire()`
+        refused for the life of the process. Nothing in this module could
+        clear it: `reload_api_key` touches only the key cache, and
+        `_reset_bucket_for_tests` is test-only, so recovery meant restarting
+        RC. The supervisor runs for days at a time.
+
+        `min` after `max` also disposes of NaN without a special case: every
+        NaN comparison is False, so `max(0.0, nan)` keeps 0.0 and the cooldown
+        lands at zero rather than at a value that can never elapse.
+        """
         with self._lock:
-            self._cooldown_until = time.monotonic() + max(0.0, float(retry_after_s))
+            bounded = min(self._max_cooldown_s, max(0.0, float(retry_after_s)))
+            self._cooldown_until = time.monotonic() + bounded
 
     def snapshot(self) -> dict:
         """Read-only view for /metrics + tests."""
@@ -290,11 +318,26 @@ def _http_get(url: str, api_key: str, timeout_s: float = _HTTP_TIMEOUT_S) -> _Ht
             body = r.read()
             return _HttpResp(r.status, body, dict(r.headers))
     except urllib.error.HTTPError as exc:
+        # HTTPError is NOT a plain exception. Its MRO ends
+        # `OSError -> addinfourl -> addbase -> _TemporaryFileWrapper`, so it
+        # OWNS the file object wrapping the socket, and `read()` does not
+        # release it - only `close()` does. Returning without closing leaves
+        # the connection held until the garbage collector happens to run.
+        # This is a hot path, not a corner: RM-163 records the timeline route
+        # 404/403-ing on EVERY /api/last-match build before negative caching
+        # landed, so the leak was continuous. The close is in a `finally` so
+        # it also covers the `read()` failure above it, and it is suppressed
+        # because a close on an already-broken socket can itself raise and
+        # must not turn a handled 404 into an unhandled exception.
         try:
-            body = exc.read(4096)
-        except Exception:  # noqa: BLE001
-            body = b""
-        return _HttpResp(int(exc.code), body, dict(exc.headers or {}))
+            try:
+                body = exc.read(4096)
+            except Exception:  # noqa: BLE001
+                body = b""
+            return _HttpResp(int(exc.code), body, dict(exc.headers or {}))
+        finally:
+            with contextlib.suppress(Exception):
+                exc.close()
 
 
 # -- shared call wrapper -------------------------------------------------
@@ -745,6 +788,11 @@ def get_summoner_rank(
 
 _MASTERY_TTL_S = 300
 
+# Upper bound on `get_top_champion_masteries(count=)`. Mirrors the 100 that
+# `get_recent_matches` already clamps to, and sits comfortably below the
+# 173-champion roster, so no real caller can notice it.
+_MAX_MASTERY_COUNT = 100
+
 
 def get_champion_mastery(
     puuid: str,
@@ -766,8 +814,17 @@ def get_champion_mastery(
         f"{urllib.parse.quote(puuid, safe='')}/by-champion/{champion_id}"
     )
     data = _call("mastery_v4", url)
-    if data is not None and isinstance(data, dict):
-        get_cache().set_ttl(cache_key, data, _MASTERY_TTL_S)
+    # The shape check used to guard only the cache write, so an unexpected
+    # body was refused entry to the cache and then returned to the caller
+    # anyway - from a function annotated `-> Optional[dict]`. Both siblings
+    # (`get_summoner_rank`, `get_top_champion_masteries`) return None on a
+    # wrong shape; the asymmetry was the defect, not the check.
+    if not isinstance(data, dict):
+        if data is not None:
+            log.warning("riot_api: mastery_v4 unexpected shape: %s",
+                        type(data).__name__)
+        return None
+    get_cache().set_ttl(cache_key, data, _MASTERY_TTL_S)
     return data
 
 
@@ -784,7 +841,10 @@ def get_top_champion_masteries(
     if not puuid:
         return None
     try:
-        count = max(1, int(count))
+        # Clamped at BOTH ends, matching `get_recent_matches`. `count` reaches
+        # the Riot query string and the TTL cache key, so an unbounded value
+        # is both a request Riot rejects and a cache row per distinct integer.
+        count = max(1, min(_MAX_MASTERY_COUNT, int(count)))
     except (TypeError, ValueError):
         count = 3
     cache_key = f"mastery_top:v4:{region}:{puuid}:{count}"
