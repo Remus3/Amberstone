@@ -228,6 +228,13 @@ def handle_upload_frame(body: bytes) -> dict:
     except Exception:  # noqa: BLE001
         _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
         return {"error": "bad_json"}
+    # AUDIT 2026-08-30 (lane 8 cycle 20, sibling of the _inference fix): the
+    # guard above covers only the DECODE. A body that is valid JSON but not an
+    # object - `[1,2]`, `"x"`, `5` - decoded fine and then died on `.get`
+    # below with AttributeError, which do_POST turned into an HTTP 500.
+    if not isinstance(d, dict):
+        _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
+        return {"error": "bad_body"}
     img = d.get("image_b64", "")
     if not img:
         _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
