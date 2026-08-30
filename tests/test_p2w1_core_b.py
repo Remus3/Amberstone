@@ -61,13 +61,21 @@ def test_write_coaching_ts_unknown_mode_skipped(tmp_path):
 # ---------------------------------------------------------------------------
 
 def _postfight_snapshot() -> dict:
-    """Minimal Live Client shape: +4 ally kill diff in last 20s at 890s,
-    DragonKill at 600 so the next dragon (900) is inside the -10..30 window."""
+    """Minimal Live Client shape: +3 ally kill diff in last 20s at 890s,
+    DragonKill at 600 so the next dragon (900) is inside the -10..30 window.
+
+    Lane-8 cycle 12: this fixture carried TWO ally kills and a docstring
+    reading "+4 ally kill diff" - the doubled value the detector reported
+    before the double-count was fixed, read back and encoded as the
+    expected input. A third ally kill makes the differential a true +3,
+    which is what the detector's docstring has always promised, so this
+    test goes on exercising the ASCII rule it exists for."""
     players = [
         {"summonerName": "Me", "team": "ORDER"},
         {"summonerName": "Ally", "team": "ORDER"},
         {"summonerName": "Foe1", "team": "CHAOS"},
         {"summonerName": "Foe2", "team": "CHAOS"},
+        {"summonerName": "Foe3", "team": "CHAOS"},
     ]
     events = [
         {"EventName": "DragonKill", "EventTime": 600.0},
@@ -75,6 +83,8 @@ def _postfight_snapshot() -> dict:
          "KillerName": "Me", "VictimName": "Foe1"},
         {"EventName": "ChampionKill", "EventTime": 882.0,
          "KillerName": "Ally", "VictimName": "Foe2"},
+        {"EventName": "ChampionKill", "EventTime": 884.0,
+         "KillerName": "Me", "VictimName": "Foe3"},
     ]
     return {
         "gameData": {"gameTime": 890.0, "gameMode": "CLASSIC"},
