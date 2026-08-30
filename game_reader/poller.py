@@ -34,11 +34,24 @@ LIVE_API = f"https://{GAME_HOST}:2999/liveclientdata"
 # down (ADR-011), so this stays the primary read path for all consumers.
 RELAY_URL = "http://127.0.0.1:8889/latest-liveclient"
 # AUDIT (2026-04-22): token resolved via core.vision_token.
-try:
-    from core.vision_token import get_vision_token as _get_vision_token
-    RELAY_TOKEN = _get_vision_token()
-except ImportError:
-    RELAY_TOKEN = "8e8f131e212b329438218eca27372dde"
+# Lane 8 cycle 14: the `except ImportError` fallback used to substitute the
+# constant that `core/vision_token.py` explicitly RETIRED ("there is NO
+# hardcoded fallback ... so a misconfigured deploy fails loud instead of
+# silently authenticating every request with a known constant"). The literal no
+# longer matches the rotated token (measured: 401 against :8889, where the
+# canonical token gets 200), so the fallback could only ever fail to
+# authenticate.
+#
+# Severity, stated honestly rather than inflated: this branch was close to
+# unreachable and fail-soft even when taken. `get_vision_token()` raises
+# RuntimeError - NOT ImportError - when no token is configured, so only a
+# physically missing `core/vision_token.py` could trigger it; and a bad
+# RELAY_TOKEN just makes `_try_relay` return None, after which `read_game`
+# falls through to the direct :2999 path. This is hygiene - removing a retired
+# secret-shaped literal - not the repair of a live outage.
+from core.vision_token import get_vision_token as _get_vision_token
+
+RELAY_TOKEN = _get_vision_token()
 RELAY_MAX_AGE_S = 12.0  # treat older snapshots as stale -> fall through to direct
                         # 2026-04-26: bumped from 5.0 -> 12.0. Relay polls every 1s
 LCU_RELAY_URL     = "http://127.0.0.1:8889/latest-lcu"
@@ -226,12 +239,26 @@ class _PollerMixin:
         # eventdata structure differs from allgamedata - normalise
         ev = result.get("events")
         if isinstance(ev, dict) and "Events" not in ev:
-            result["events"] = {"Events": list(ev.values())[0] if ev else []}
+            result["events"] = {"Events": self._normalise_events(ev)}
         elif isinstance(ev, list):
             result["events"] = {"Events": ev}
 
         _log.info("read_game: fallback ok (keys=%s)", list(result.keys()))
         return result
+
+    @staticmethod
+    def _normalise_events(ev: dict) -> list:
+        """Pull the event list out of an unexpected /eventdata envelope.
+
+        Lane 8 cycle 14: this used to be `list(ev.values())[0]`, which trusts
+        the key ORDER of a foreign payload - so a dict whose first value was a
+        version string handed that string downstream AS the event list. Select
+        by shape instead, and return [] when nothing list-shaped is present.
+        """
+        for value in ev.values():
+            if isinstance(value, list):
+                return value
+        return []
 
     def read_champ_select(self):
         """Read champ select from LCU. Returns dict or None."""
@@ -261,8 +288,23 @@ class _PollerMixin:
                 if lf.exists():
                     parts = lf.read_text(encoding="utf-8").strip().split(":")
                     if len(parts) >= 4:
-                        self._lcu_port = parts[2]
-                        pw = parts[3]
+                        # Lane 8 cycle 14: validate before caching. League
+                        # writes this file at client startup, so a torn read is
+                        # a real race, and `_lcu_port` is cached on the instance
+                        # for the process lifetime - accepting garbage once
+                        # breaks every later LCU request until a restart.
+                        port, pw = parts[2], parts[3]
+                        if not (port.isdigit() and 0 < int(port) <= 65535):
+                            _log.debug(
+                                "LCU lockfile %s: bad port %r - skipping", lf, port
+                            )
+                            continue
+                        if not pw:
+                            _log.debug(
+                                "LCU lockfile %s: empty auth field - skipping", lf
+                            )
+                            continue
+                        self._lcu_port = port
                         self._lcu_auth = base64.b64encode(
                             f"riot:{pw}".encode()
                         ).decode()
@@ -312,27 +354,57 @@ class _PollerMixin:
     # Champ select processing
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _picks(session: dict, key: str) -> list:
+        """Champion ids off one LCU team list, tolerant of wrong shapes.
+
+        The LCU sends `null` for fields it populates later, and it sends them
+        as PRESENT keys - which is why `dict.get(key, [])` is not enough: the
+        default applies only when the key is ABSENT. Anything that is not a
+        list of dicts contributes nothing rather than raising.
+        """
+        out = []
+        entries = session.get(key)
+        if not isinstance(entries, list):
+            return out
+        for pick in entries:
+            if not isinstance(pick, dict):
+                continue
+            champ_id = pick.get("championId", 0)
+            if champ_id:
+                out.append(str(champ_id))
+        return out
+
     def _process_champ_select(self, session):
-        my_team = []
-        their_team = []
+        # Lane 8 cycle 14: this body had no type guards at all. A null session,
+        # a present-but-null `bans` block, or a non-dict team entry each raised
+        # AttributeError, which `read_champ_select` then swallowed.
+        #
+        # REACHABILITY, measured rather than assumed: `read_champ_select` has
+        # NO production callers today (repo-wide grep finds only its own
+        # definition and tests), and it is the sole caller of `_ensure_lcu`,
+        # `_lcu_get` and this method - so the whole LCU branch of this module
+        # is currently dead. The `_lcu_get` calls in `lcu/lcu_postgame_collector`
+        # are that class's OWN same-named method, not this one
+        # (`feedback_symbol_name_collision_masks_dead_code`). This is therefore
+        # hardening of a dormant path, kept because the path is wired to be
+        # revived, not the repair of an observed champ-select outage.
+        if not isinstance(session, dict):
+            return None
+
+        my_team = self._picks(session, "myTeam")
+        their_team = self._picks(session, "theirTeam")
+
         bans = []
-
-        for pick in session.get("myTeam", []):
-            champ_id = pick.get("championId", 0)
-            if champ_id:
-                my_team.append(str(champ_id))
-
-        for pick in session.get("theirTeam", []):
-            champ_id = pick.get("championId", 0)
-            if champ_id:
-                their_team.append(str(champ_id))
-
-        for ban in session.get("bans", {}).get("myTeamBans", []):
-            if ban:
-                bans.append(str(ban))
-        for ban in session.get("bans", {}).get("theirTeamBans", []):
-            if ban:
-                bans.append(str(ban))
+        ban_block = session.get("bans")
+        if isinstance(ban_block, dict):
+            for side in ("myTeamBans", "theirTeamBans"):
+                entries = ban_block.get(side)
+                if not isinstance(entries, list):
+                    continue
+                for ban in entries:
+                    if ban:
+                        bans.append(str(ban))
 
         return {
             "phase": "champ_select",

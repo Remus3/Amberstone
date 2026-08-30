@@ -200,8 +200,14 @@ def _resolve_token() -> str:
                     return v
             except OSError:
                 pass
-    # Hardcoded fallback so the dev path works without setup. Override in prod.
-    return "8e8f131e212b329438218eca27372dde"
+    # Lane 8 cycle 14: this chain ended in the constant retired by the
+    # 2026-04-28 audit and never consulted the canonical source at
+    # config/vision_token.txt - the exact divergent-lookup-chain shape that
+    # caused the item-242 and item-243 silent-401 outages. Fall through to the
+    # canonical resolver instead of a dead literal.
+    from core.vision_token import get_vision_token
+
+    return get_vision_token()
 
 
 AUTH_TOKEN = _resolve_token()

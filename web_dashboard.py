@@ -31,17 +31,21 @@ from pathlib import Path
 
 # AUDIT (2026-04-22): vision bearer token routed through core.vision_token
 
-# for rotation support (env / config file / legacy default).
+# for rotation support (env var, then config file).
 
-try:
+# Lane 8 cycle 14: the "legacy default" this comment used to name was retired
 
-    from core.vision_token import get_vision_token as _get_vision_token
+# by the 2026-04-28 audit (see core/vision_token.py), but a private copy of the
 
-    _VISION_TOKEN = _get_vision_token()
+# retired constant survived here in the ImportError branch. It no longer
 
-except ImportError:
+# matched the rotated token, so it could only 401 - silently. Resolve through
 
-    _VISION_TOKEN = "8e8f131e212b329438218eca27372dde"
+# the canonical source only.
+
+from core.vision_token import get_vision_token as _get_vision_token
+
+_VISION_TOKEN = _get_vision_token()
 
 
 

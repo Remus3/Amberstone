@@ -22,7 +22,13 @@ sys.path.insert(0, str(ROOT))
 
 from PIL import Image, ImageDraw, ImageFont
 
-TOKEN = "8e8f131e212b329438218eca27372dde"
+# Lane 8 cycle 14: this was an UNCONDITIONAL copy of the constant retired by
+# the 2026-04-28 audit, so every request this tool made returned 401 - the
+# CLAUDE.md OCR-coverage workflow ("calibrate data/vision_regions.json to
+# expand OCR coverage") ran through a tool that could not authenticate.
+from core.vision_token import get_vision_token as _get_vision_token
+
+TOKEN = _get_vision_token()
 
 
 def fetch_frame() -> bytes:

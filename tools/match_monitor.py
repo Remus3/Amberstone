@@ -18,7 +18,11 @@ _NOVERIFY = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 _NOVERIFY.check_hostname = False
 _NOVERIFY.verify_mode = ssl.CERT_NONE
 
-H = {"X-RC-Token": "8e8f131e212b329438218eca27372dde"}
+# Lane 8 cycle 14: this header carried an UNCONDITIONAL copy of the constant
+# retired by the 2026-04-28 audit, so every :8889 read here returned 401.
+from core.vision_token import get_vision_token as _get_vision_token
+
+H = {"X-RC-Token": _get_vision_token()}
 BASE = "http://127.0.0.1:8889"
 DASH = "https://127.0.0.1:8888"
 
