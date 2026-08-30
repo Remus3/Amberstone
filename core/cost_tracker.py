@@ -486,15 +486,18 @@ class CostTracker:
                 atomic_write_json(_recent_path, {"matches": matches})
                 atomic_write_json(_open_path,
                                   {"by_purpose": now_bp, "ts": time.time()})
-        # Narrowed 2026-07-19. Enumerated raise surface of the block above:
-        #   read_json_dict / daily_spend (core/polled_json.py:75-93) swallows
-        #     OSError + JSONDecodeError but lets UnicodeDecodeError (ValueError)
-        #     escape on a non-UTF-8 ledger;
+        # Narrowed 2026-07-19; re-checked lane 8 cycle 24. Enumerated raise
+        # surface of the block above:
+        #   read_json_dict / daily_spend (core/polled_json.py:139-174) swallows
+        #     OSError + JSONDecodeError, and since cycle 24 UnicodeDecodeError
+        #     too - a non-UTF-8 ledger now yields the default instead of
+        #     raising. ValueError stays in the handler below on its own merits
+        #     (the float()/int() coercions), not for this;
         #   float()/int() over ledger values -> ValueError / TypeError;
         #   matches.append(...) -> AttributeError when a corrupt file stored a
         #     non-list under "matches";
-        #   atomic_write_json (core/polled_json.py:51-60) -> OSError from
-        #     mkdir/write_text/os.replace, TypeError/ValueError from json.dumps.
+        #   atomic_write_json (core/polled_json.py:104-116) -> OSError from
+        #     mkdir/write_bytes/os.replace, TypeError/ValueError from json.dumps.
         #   now_bp.items() / matches.append -> AttributeError when a corrupt
         #     ledger stored a list where a dict/list was expected.
         # _purpose_to_gate (:165) is pure str/dict work over the GATE_META
