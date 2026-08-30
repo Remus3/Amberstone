@@ -53,18 +53,15 @@ def _atomic_write_json(path: Path, data: dict) -> None:
     # wraps this in try/except + warn, so a raise just drops the one bad
     # rating and leaves the prior valid file intact.  (P2-W4 hw2 slice H)
     payload = json.dumps(data, indent=2, allow_nan=False)
-    try:
-        atomic_write_bytes(path, payload.encode("utf-8"))
-    except OSError:
-        # An exhausted retry must not leave a stray ``last_<mode>.json.tmp``
-        # beside the target - the sibling lane 8 cycle 22 audit records the
-        # repo treating an orphaned tmp after a failed replace as a defect
-        # in its own right (tests/test_sr_user_builds_lane8_cycle22.py:28).
-        try:
-            path.with_suffix(path.suffix + ".tmp").unlink()
-        except OSError:
-            pass
-        raise
+    # An exhausted retry must not leave a stray scratch file beside the target
+    # - the sibling lane 8 cycle 22 audit records the repo treating an orphaned
+    # tmp after a failed replace as a defect in its own right
+    # (tests/test_sr_user_builds_lane8_cycle22.py:28). Lane 8 cycle 24 moved
+    # that cleanup INTO atomic_write_bytes, which now removes its own scratch
+    # file on every failure path. The mirror that used to live here unlinked
+    # ``<dest>.tmp``, a name the helper no longer uses, so keeping it would be
+    # a no-op dressed as a guarantee.
+    atomic_write_bytes(path, payload.encode("utf-8"))
 
 
 def _num(value, default=0):
