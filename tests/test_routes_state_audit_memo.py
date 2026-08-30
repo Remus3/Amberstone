@@ -28,6 +28,8 @@ import os
 import pathlib
 from unittest import mock
 
+from dashboard._errors import GENERIC_ERROR
+
 import dashboard.routes_state as rs
 
 
@@ -98,7 +100,12 @@ def _reference_outcomes(q: pathlib.Path, max_count: int = 3) -> list:
             "event": ev.get("event"),
             "ts": ev.get("ts"),
             "status": task.get("status"),
-            "last_error": task.get("last_error"),
+            # Lane 8 cycle 19: the scan scrubs `last_error` before it is
+            # serialized into /api/health/all - the raw text goes to logs/ only
+            # (tests/test_routes_state_health_scrub.py pins that contract). This
+            # oracle tracks the field mapping so it keeps testing what it is FOR,
+            # namely that the memo agrees with an unmemoized scan.
+            "last_error": GENERIC_ERROR if task.get("last_error") else None,
         })
     return outcomes[-max_count:]
 

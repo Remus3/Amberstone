@@ -9,7 +9,7 @@ Module-level GET_ROUTES is consumed by `dashboard._dispatch`.
 """
 import hashlib
 import json
-from dashboard._errors import send_error
+from dashboard._errors import GENERIC_ERROR, send_error
 import logging
 import os
 import threading
@@ -25,7 +25,7 @@ from dashboard._writers import (
     set_pregame,
 )
 
-# Cost sweep 2026-08-02 (S6): /api/health/all calls _agent6_audit_outcomes once
+# Cost sweep 2026-08-02 (S6): /api/health/all calls _agent6_audit_outcomes_ex once
 # per request and the scan below read + json.loads EVERY line of a file measured
 # at 4,645,089 bytes / 5,813 lines - 33.5-47.0 ms of a 41.6-53.6 ms route, at a
 # measured 0.134 req/s, growing monotonically because the file only appends.
@@ -45,11 +45,41 @@ _A6_MEMO: tuple | None = None
 
 def _agent6_audit_outcomes(max_count: int = 3) -> list:
     """Return the last ``max_count`` agent6-full-audit-pass final events from
-    agents/state/task_queue.jsonl, oldest-first. Returns [] on any error."""
+    agents/state/task_queue.jsonl, oldest-first.
+
+    Lane 8 cycle 19: this line used to read "Returns [] on any error", which was
+    FALSE and contradicted the inline comment six lines down that correctly says
+    a failed scan "yields a TRUNCATED list". The comment was right: a read that
+    blows up mid-scan returns whatever had accumulated, which is `[]` only when
+    the failure happened to come first. Malformed LINES are now skipped rather
+    than aborting the scan, but a read FAILURE still truncates - which is
+    exactly why the `_ex` form exists.
+
+    Callers that must distinguish "scan failed" from "clean, nothing to report"
+    want :func:`_agent6_audit_outcomes_ex` - see the note on its `scanned_clean`
+    return. This wrapper keeps the historical list-only contract.
+    """
+    return _agent6_audit_outcomes_ex(max_count)[0]
+
+
+def _agent6_audit_outcomes_ex(max_count: int = 3) -> tuple[list, bool]:
+    """As :func:`_agent6_audit_outcomes`, plus whether the scan RAN TO COMPLETION.
+
+    Lane 8 cycle 19: the list alone cannot carry that. An unreadable or
+    mid-rewrite `task_queue.jsonl` returned `[]`, `len(last_two) >= 2` was then
+    False, and `/api/health/all` fell through to a confident **green** - a read
+    error and a clean audit history were indistinguishable to the health dot.
+    MEASURED: with `read_text` raising OSError on the live 4.6 MB file, the
+    rollup served `{"last_outcomes": [], "status": "green"}`. That file is
+    append-only, growing, and rewritten by `Scheduler.compact`, so a read
+    landing mid-rewrite is the realistic trigger. The module's own comment says
+    "stale health is precisely the thing that must never be stale"; a false
+    green is worse than stale.
+    """
     global _A6_MEMO
     q = APP_DIR / "agents" / "state" / "task_queue.jsonl"
     if not q.exists():
-        return []
+        return [], True  # no history yet is a CLEAN scan, not a failed one
     try:
         st = q.stat()
         sig = (st.st_mtime_ns, st.st_size, max_count)
@@ -58,7 +88,7 @@ def _agent6_audit_outcomes(max_count: int = 3) -> list:
     memo = _A6_MEMO
     if sig is not None and memo is not None and memo[0] == sig:
         # Copied out so a caller mutating the list cannot corrupt the memo.
-        return list(memo[1])
+        return list(memo[1]), True  # only a clean scan is ever memoized
     outcomes: list = []
     # A read that blew up mid-scan yields a TRUNCATED list, and memoizing that
     # would pin a wrong answer until the file next changes. Only a scan that ran
@@ -73,24 +103,51 @@ def _agent6_audit_outcomes(max_count: int = 3) -> list:
                 ev = json.loads(raw)
             except (json.JSONDecodeError, ValueError):
                 continue
+            # Lane 8 cycle 19: the loop validated JSON SYNTAX but never JSON
+            # SHAPE. A line that parses to a non-object (`123`, `"x"`, `[1,2]`)
+            # made `ev.get` raise AttributeError, and the `except` below is
+            # OUTSIDE this loop, so one bad line aborted the scan for the whole
+            # file. Because the caller keeps the TAIL (`outcomes[-max_count:]`),
+            # the entries lost were always the most RECENT ones - exactly the
+            # failures the yellow dot exists to report. Measured: a single
+            # scalar line flipped /api/health/all from yellow to GREEN while
+            # agent6 was failing consecutively. Skip it like an unparseable one.
+            if not isinstance(ev, dict):
+                continue
             task = ev.get("task") or {}
+            if not isinstance(task, dict):
+                continue
             if task.get("op") != "agent6-full-audit-pass":
                 continue
             if ev.get("event") not in ("completed", "failed", "reclassified_completed"):
                 continue
+            # Lane 8 cycle 19: `last_error` is raw subprocess stderr from the
+            # agent runner and this dict is serialized into the /api/health/all
+            # body. MEASURED live 2026-08-30: it served 227 characters of raw
+            # `claude` CLI stderr naming an auth env var, on a port confirmed
+            # reachable off-loopback the same day. CLAUDE.md "Error Handling":
+            # log the raw text, serve a friendly degraded line. The key is kept
+            # (str or None, same as before) so the served shape is unchanged -
+            # no consumer reads it (web/js/main.js:7506+ is the only fetcher).
+            raw_err = task.get("last_error")
+            if raw_err:
+                log.warning("agent6 task %s last_error: %s",
+                            task.get("id"), raw_err)
             outcomes.append({
                 "task_id": task.get("id"),
                 "event": ev.get("event"),
                 "ts": ev.get("ts"),
                 "status": task.get("status"),
-                "last_error": task.get("last_error"),
+                "last_error": GENERIC_ERROR if raw_err else None,
             })
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        log.warning("agent6 audit-outcomes scan: %s: %s",
+                    type(exc).__name__, exc)
         scanned_clean = False
     result = outcomes[-max_count:]
     if sig is not None and scanned_clean:
         _A6_MEMO = (sig, list(result))
-    return result
+    return result, scanned_clean
 
 
 log = logging.getLogger("rc.web_dashboard")
@@ -369,13 +426,15 @@ def _serve_health_all(h) -> None:
             with urllib.request.urlopen("http://127.0.0.1:8889/health", timeout=2) as r:
                 rollup["vision"] = json.loads(r.read())
         except Exception as e:  # noqa: BLE001
-            rollup["vision"] = {"alive": False, "error": str(e)[:120]}
+            log.warning("health/all vision probe: %s: %s", type(e).__name__, e)
+            rollup["vision"] = {"alive": False, "error": GENERIC_ERROR}
         try:
             with urllib.request.urlopen("http://127.0.0.1:8860/health", timeout=2) as r:
                 ds_data = json.loads(r.read())
                 rollup["daemon_slayer"] = {**ds_data, "alive": ds_data.get("status") == "ok"}
         except Exception as e:  # noqa: BLE001
-            rollup["daemon_slayer"] = {"alive": False, "error": str(e)[:120]}
+            log.warning("health/all daemon-slayer probe: %s: %s", type(e).__name__, e)
+            rollup["daemon_slayer"] = {"alive": False, "error": GENERIC_ERROR}
         try:
             sup = read_json("ops/runtime/supervisor.pid")
             # AUDIT 2026-04-29: also surface oslock state - when the
@@ -389,7 +448,8 @@ def _serve_health_all(h) -> None:
                 "oslock_present": oslock_path.exists(),
             }
         except Exception as e:  # noqa: BLE001
-            rollup["supervisor"] = {"error": str(e)[:120]}
+            log.warning("health/all supervisor probe: %s: %s", type(e).__name__, e)
+            rollup["supervisor"] = {"error": GENERIC_ERROR}
         try:
             from core.version import version_string as _vs
             rollup["rc_version"] = _vs()
@@ -400,20 +460,38 @@ def _serve_health_all(h) -> None:
             rollup["cost"] = {"banner": _gt().banner_state(),
                               "today_usd": _gt().daily_spend().get("total_usd", 0.0)}
         except Exception as e:  # noqa: BLE001
-            rollup["cost"] = {"error": str(e)[:120]}
+            log.warning("health/all cost probe: %s: %s", type(e).__name__, e)
+            rollup["cost"] = {"error": GENERIC_ERROR}
         try:
-            agent6_outcomes = _agent6_audit_outcomes(max_count=3)
+            agent6_outcomes, a6_scan_ok = _agent6_audit_outcomes_ex(max_count=3)
+            # Defence in depth at the serialization boundary. The producer above
+            # already scrubs, but this is the point where the dict reaches the
+            # wire, and this leak class has now recurred three times (RM-134 on
+            # the shared envelope, lane 8 cycle 18 on routes_diag, cycle 19
+            # here). A future edit to the producer must not be able to reopen it.
+            agent6_outcomes = [
+                {**o, "last_error": GENERIC_ERROR} if o.get("last_error") else o
+                for o in agent6_outcomes
+            ]
             last_two = agent6_outcomes[-2:]
             consecutive_fails = (
                 len(last_two) >= 2
                 and all(o.get("event") == "failed" for o in last_two)
             )
+            # Lane 8 cycle 19: a scan that did not run to completion must NOT
+            # read as green. `[]` from an unreadable file used to be
+            # indistinguishable from `[]` meaning "clean history", so an I/O
+            # error on the 4.6 MB append-only queue reported a confident green.
+            # "unknown" is the honest third state, and it is the value this
+            # handler already uses when the whole agent6 probe raises.
             rollup["agent6"] = {
                 "last_outcomes": agent6_outcomes,
-                "status": "yellow" if consecutive_fails else "green",
+                "status": ("yellow" if consecutive_fails
+                           else "green" if a6_scan_ok else "unknown"),
             }
         except Exception as e:  # noqa: BLE001
-            rollup["agent6"] = {"error": str(e)[:120], "status": "unknown"}
+            log.warning("health/all agent6 probe: %s: %s", type(e).__name__, e)
+            rollup["agent6"] = {"error": GENERIC_ERROR, "status": "unknown"}
         rc_ok = bool(rollup.get("rc", {}).get("alive"))
         vis_ok = bool(rollup.get("vision", {}).get("alive"))
         ds_ok = bool(rollup.get("daemon_slayer", {}).get("alive"))
@@ -450,7 +528,12 @@ def _serve_ui_version(h) -> None:
         digest = compute_asset_hash()
         h._send(200, json.dumps({"v": digest}).encode(), "application/json")
     except Exception as exc:  # noqa: BLE001
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(), "application/json")
+        # Lane 8 cycle 19: was `{"error": str(exc)[:200]}` into the body with NO
+        # log call at all, so the raw text (an absolute path, a module name) went
+        # to the wire and the failure was otherwise unobservable. This endpoint
+        # is the cache-bust signal, so a silent failure serves stale panel JS.
+        log.warning("api/ui-version: %s: %s", type(exc).__name__, exc)
+        send_error(h, exc)
 
 
 def _asset_stamp_mtime() -> float:
@@ -499,10 +582,34 @@ def _serve_asset_stamp(h) -> None:
 # -- POST handlers (slice 2C-7a) --------------------------------------
 
 
+# Lane 8 cycle 19: a TRUTHY wrong-typed field used to kill the handler with NO
+# HTTP RESPONSE AT ALL - `.strip()` sat outside the try, so `{"text": 123}` raised
+# an uncaught AttributeError, the worker thread died and the socket closed empty.
+# Only FALSY wrong types were safe (`[]`, `0`, `null`, `{}` fall through `or ""`),
+# which is why it survived. LEDGER 1181 checked the CONTAINER type in
+# `_handler.py` and `{"text": 123}` IS a dict, so that guard could not see it.
+# `api_schema` declares `text: str` and pydantic does reject it, but
+# `_dispatch._validate_request_body` only LOGS the verdict and dispatches anyway
+# (RM-243 covers making that validator reject, which changes every POST route).
+#
+# The `text` cap is the other half: nothing on the path bounded the length
+# (`_writers.set_pregame` and `core.coaching_payload.pregame` are both uncapped),
+# so one 1 MiB POST inflated EVERY /api/state response and SSE frame at 2 Hz
+# across up to 8 subscribers, and survived restart because it lands on disk.
+_MAX_PREGAME_CHARS = 4000
+
+
 def _serve_input_post(h, payload) -> None:
-    text = (payload.get("text") or "").strip()
+    raw = payload.get("text")
+    if raw is not None and not isinstance(raw, str):
+        h._send(400, b'{"error":"text_must_be_a_string"}', "application/json"); return
+    text = (raw or "").strip()
     if not text:
         h._send(400, b'{"error":"empty_text"}', "application/json"); return
+    if len(text) > _MAX_PREGAME_CHARS:
+        log.warning("api/input: rejected %d chars (cap %d)",
+                    len(text), _MAX_PREGAME_CHARS)
+        h._send(400, b'{"error":"text_too_long"}', "application/json"); return
     try:
         set_pregame(text)
         log.info("dashboard input: %d chars accepted", len(text))
@@ -513,7 +620,11 @@ def _serve_input_post(h, payload) -> None:
 
 
 def _serve_command_post(h, payload) -> None:
-    cmd = (payload.get("command") or "").strip().lower()
+    # See the note above _serve_input_post: same uncaught-AttributeError class.
+    raw = payload.get("command")
+    if raw is not None and not isinstance(raw, str):
+        h._send(400, b'{"error":"command_must_be_a_string"}', "application/json"); return
+    cmd = (raw or "").strip().lower()
     try:
         if cmd == "force_vision":
             force_vision_scan()
@@ -883,8 +994,13 @@ def _serve_ds_preview_post(h, payload) -> None:
             "capability_gap":  capability_gap,
         }).encode(), "application/json")
     except Exception as exc:  # noqa: BLE001
+        # Lane 8 cycle 19: was `{"error": str(exc)[:200]}` into the body, while
+        # the sibling `_serve_build_order_post` handled the SAME input with
+        # `send_error`. Everything inside this try (registry reads, champion id
+        # resolution, build planning) can raise an OSError carrying an absolute
+        # path. The asymmetry with the sibling is what makes it an oversight.
         log.warning("ds-preview: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(), "application/json")
+        send_error(h, exc)
 
 
 def _resolve_enemy_champions(payload: dict) -> list:
@@ -1079,14 +1195,24 @@ def _serve_console_error_post(h, payload) -> None:
         log.info("client-console: %d previously throttled", _CE_DROPPED)
         _CE_DROPPED = 0
     try:
-        kind  = (payload.get("kind") or "error")[:30]
-        msg   = (payload.get("message") or "")[:600]
-        src   = (payload.get("source") or "")[:200]
+        # Lane 8 cycle 19: these six strings are request-controlled and the sink
+        # is logs/YYYY-MM-DD.log, which the operator reads IN A TERMINAL. They
+        # were truncated for length but never escaped, so an unauthenticated
+        # POST could embed `\x1b[2J\x1b[1;1H` to clear the operator's screen and
+        # then write a forged, genuine-looking WARNING line - or a bare newline
+        # to forge a whole record. `_handler._scrub_log` is the in-tree helper
+        # for exactly this (cycle 13 used it for the log_message override; the
+        # sweep never reached here). Imported locally to match this file's
+        # existing cross-module style and keep the import graph acyclic.
+        from dashboard._handler import _scrub_log
+        kind  = _scrub_log(str(payload.get("kind") or "error"))[:30]
+        msg   = _scrub_log(str(payload.get("message") or ""))[:600]
+        src   = _scrub_log(str(payload.get("source") or ""))[:200]
         line  = int(payload.get("lineno") or 0)
         col   = int(payload.get("colno") or 0)
-        stack = (payload.get("stack") or "")[:1500]
-        url   = (payload.get("url") or "")[:300]
-        ua    = h.headers.get("User-Agent", "")[:80]
+        stack = _scrub_log(str(payload.get("stack") or ""))[:1500]
+        url   = _scrub_log(str(payload.get("url") or ""))[:300]
+        ua    = _scrub_log(str(h.headers.get("User-Agent", "")))[:80]
         log.warning(
             "client-console %s | %s:%d:%d | %s | url=%s | ua=%s%s",
             kind, src, line, col, msg, url, ua,

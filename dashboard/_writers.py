@@ -26,11 +26,30 @@ from dashboard._context import APP_DIR, read_json
 
 
 def atomic_write_json(rel: str, data: dict) -> None:
+    # Lane 8 cycle 19: this was a bare `tmp.replace(p)`. On Windows os.replace
+    # transiently raises PermissionError (WinError 5) while a reader holds the
+    # destination open - and these files are POLLED BY DESIGN, so that
+    # contention is routine, not exceptional. MEASURED on this machine: a plain
+    # open(target, "r") by a reader was enough to raise it, leaving an orphan
+    # .tmp behind. The operator-visible symptom is the dashboard Refresh button
+    # returning 500 {"error":"command_failed"} and doing nothing.
+    #
+    # `core.polled_json._replace_with_retry` is the in-tree answer (bounded
+    # ~275 ms backoff, then re-raise). Reused rather than re-rolled so the two
+    # backoff tables cannot drift. Serialization is deliberately NOT delegated
+    # to polled_json.atomic_write_json: that passes ensure_ascii=False, which
+    # would change the bytes written for any non-ASCII coaching text.
+    from core.polled_json import _replace_with_retry
     p = APP_DIR / rel
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(p.suffix + ".tmp")
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    tmp.replace(p)
+    try:
+        _replace_with_retry(tmp, p)
+    except Exception:
+        # Do not leave an orphan .tmp shadowing the next write.
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def set_pregame(text: str) -> None:
