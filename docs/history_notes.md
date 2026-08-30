@@ -321,6 +321,46 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+# 2026-08-29b - RM-222: the flat pen axis gets the live-vs-pinned layout guard the percent axis has had since it broke
+
+Commit `e5b5c9e6`, Tier-1, one test module plus its Share mirror. No engine change, no
+`ENGINE_VERSION` bump.
+
+**The gap was real and asymmetric.** `test_pen_pct_catalog_r160.py` compares live
+`data/meta/ddragon_items.json` against the pinned `data/daemon_slayer/16.15.1/items.json`
+under a `_PINNED_CARRY_FORWARD` allowlist. `test_magic_pen_flat_catalog_r153.py` had NO
+layout test - confirmed by enumerating its 9 `def test_` names, not inferred. The percent
+axis got hardened because it broke; the FLAT axis stayed quiet while carrying the only
+live divergence in either sweep (item 3175, RM-190 carried 18 -> 20 with the snapshot left
+pinned). A second such move would have landed silently.
+
+**Measured before the allowlist was written, not copied from the row:** both layouts sweep
+10 ids and diverge on exactly `{'3175': ('20', '18')}`. Predicting it is not measuring it.
+**Proved non-hollow three ways** - a wrong magnitude, a wrong id, an empty allowlist each
+turn the guard RED - then the file was restored byte-identical, sha256 checked both sides.
+Two of the three new tests make that permanent rather than a one-time authoring act:
+`_layout_divergences` is a free function taking both sides, so one test perturbs live and
+one asserts a VANISHED divergence is caught (the half that makes a stale entry go red after
+a snapshot bump - an RM-223 trigger).
+
+**Do NOT redo:** the fence held - the flat regex was NOT folded into R160's pattern tuple.
+Both Share doc recitals (`21 skipped`, `10684 collected`) were already refreshed from a
+FRESH mirror run. `docs/DAEMON_SLAYER.md` needed nothing; RM-210 already deleted its recital.
+
+**The one RC `tests/` red is NOT a regression and must not be "fixed" by bumping the pin.**
+`test_cli_version_still_matches_the_pin` moved skip -> fail since LEDGER 1272 because
+Legion's `claude.exe` got FIXED: it now runs, reports 2.1.251 against `PINNED_CLI =
+"2.1.220"`, and correctly fires the genuine-drift branch. The guard is right in both states;
+that is also why the skip tally moved 97 -> 96. The pin needs the undocumented-flag canary
+re-run first, which needs an authenticated CLI - still blocked on `claude login`.
+
+**Measured this session:** DS **10687 passed / 13483 subtests / 0 failed**, collect-only
+10687. RC `tests/` 19177 passed / 96 skipped / 1 failed (the CLI pin above). Share mirror
+**8251 passed / 0 failed / 24 skipped / 11124 subtests**. `ds_share_sync --check` in sync at
+529 files; `drift_guard` 0 breaches; ruff clean; hygiene 14 passed.
+
+---
+
 # 2026-08-29 - upstream processing: a 4-day CI red, DDragon 16.17.1 into the engine, and the Share mirror off its knowingly-red baseline
 
 Operator asked to "check for upstream changes and updates and process them". There were
