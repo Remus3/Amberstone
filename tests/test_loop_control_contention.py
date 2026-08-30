@@ -22,17 +22,30 @@ comment calls the contention "routine". _awrite did not use it, so:
 Separately, _awrite used Path.write_text, which translates LF to CRLF on
 Windows. The route reports `len(text)` characters to the operator while writing
 a different number of bytes, and MAX_DIRECTIVE is consequently not a byte cap.
+
+LANE 8 CYCLE 26 - how the contention is produced changed, not what is
+asserted. Every test below used to open the control file and let the operating
+system supply the PermissionError. That is a win32-only mechanism: POSIX
+renames straight through an open read handle, so on the Linux CI runner
+test_a_reader_held_past_the_retry_window_is_503_not_500 was RED ("expected a
+retryable 503, got 200") and every other reader test was vacuously GREEN,
+having triggered no fault at all. The fault is now injected at the os.replace
+boundary by tests/_replace_faults.replace_fails, so the retry loop, the
+backoff, the scratch cleanup and the 503 all run on every platform. The one
+genuinely OS-shaped question - does a held handle still share-lock a
+destination here - is now its own platform-gated test at the bottom.
 """
 from __future__ import annotations
 
-import contextlib
 import json
-import threading
-import time
+import os
+import sys
 
 import pytest
 
 from dashboard import routes_loop_control as mod
+from core.polled_json import _REPLACE_RETRY_DELAYS_S as _DELAYS
+from tests._replace_faults import replace_fails
 
 
 class FakeHandler:
@@ -54,30 +67,21 @@ def ctldir(tmp_path, monkeypatch):
     return ctl
 
 
-@contextlib.contextmanager
-def _transient_reader(path, hold_s: float = 0.06):
-    """Hold `path` open for read briefly, the way a poller actually does.
+def _transient_reader(path):
+    """Simulate a poller that owns the share lock for a moment, then lets go.
 
     loop_controller polls every 5 s and the AHK bridge every 1 s; each read
-    holds the share lock for milliseconds, not for the whole write attempt.
-    That is the window _replace_with_retry (~275 ms of backoff) is sized for,
-    so the reader must RELEASE for the retry to be able to win - a reader held
-    for the full attempt tests the exhaustion path, not the retry path.
+    holds the lock for milliseconds, not for the whole write attempt. That is
+    the window _replace_with_retry (~275 ms of backoff) is sized for, so the
+    contention must CLEAR for the retry to be able to win - contention held for
+    the full attempt tests the exhaustion path, not the retry path. Two failed
+    replaces then a real one is that window, expressed deterministically.
+
+    This used to hold a real read handle on a thread and let win32 supply the
+    fault. See the module docstring for why that made these tests vacuous on
+    POSIX.
     """
-    started = threading.Event()
-
-    def _hold():
-        with open(path, encoding="utf-8"):
-            started.set()
-            time.sleep(hold_s)
-
-    t = threading.Thread(target=_hold, daemon=True)
-    t.start()
-    started.wait(timeout=5)
-    try:
-        yield
-    finally:
-        t.join(timeout=5)
+    return replace_fails(path, times=2)
 
 
 def _post(body):
@@ -93,19 +97,21 @@ def test_stop_succeeds_while_a_reader_holds_STOP_open(ctldir):
     """The halt must land even though the controller is mid-poll on STOP."""
     stop = ctldir / "STOP"
     stop.write_text("previous reason", encoding="utf-8")
-    with _transient_reader(stop):
+    with _transient_reader(stop) as rec:
         status, payload, _ = _post({"action": "stop", "reason": "halt from phone"})
     assert status == 200, f"halt failed under a concurrent reader: {payload}"
     assert payload["ok"] is True
     assert stop.read_text(encoding="utf-8") == "halt from phone"
+    assert rec.attempts == 3, "the halt did not re-attempt the contended replace"
 
 
 def test_stop_under_contention_leaves_no_tmp(ctldir):
     """A contended write must not strand STOP.tmp in the control dir."""
     stop = ctldir / "STOP"
     stop.write_text("previous reason", encoding="utf-8")
-    with _transient_reader(stop):
+    with _transient_reader(stop) as rec:
         _post({"action": "stop", "reason": "halt from phone"})
+    assert rec.failures == 2
     assert list(ctldir.glob("*.tmp")) == []
 
 
@@ -113,11 +119,12 @@ def test_halt_save_raises_STOP_while_a_reader_holds_it(ctldir):
     """queue_intent halt_save writes the intent AND raises STOP on the same path."""
     stop = ctldir / "STOP"
     stop.write_text("previous reason", encoding="utf-8")
-    with _transient_reader(stop):
+    with _transient_reader(stop) as rec:
         status, payload, _ = _post({
             "action": "queue_intent", "intent": "halt_save",
             "idempotency_key": "a1b2c3d4-0000-4000-8000-000000000001",
         })
+    assert rec.attempts == 3, "the STOP raise did not re-attempt"
     assert status == 200, f"halt_save failed under a concurrent reader: {payload}"
     assert payload["ok"] is True
     assert stop.read_text(encoding="utf-8") == "halt_save queued from dashboard"
@@ -128,10 +135,11 @@ def test_halt_save_raises_STOP_while_a_reader_holds_it(ctldir):
 def test_set_directive_survives_a_reader_on_the_override(ctldir):
     override = ctldir / "directive_override.md"
     override.write_text("old directive", encoding="utf-8")
-    with _transient_reader(override):
+    with _transient_reader(override) as rec:
         status, payload, _ = _post({"action": "set_directive", "text": "new directive"})
     assert status == 200, f"set_directive failed under a reader: {payload}"
     assert override.read_text(encoding="utf-8") == "new directive"
+    assert rec.attempts == 3, "set_directive did not re-attempt the replace"
 
 
 # ---------------------------------------------------------------- byte fidelity
@@ -196,23 +204,62 @@ def test_a_reader_held_past_the_retry_window_is_503_not_500(ctldir):
     The operator has to be able to tell "your halt did not land, press it
     again" from "the server is broken". CLAUDE.md Error Handling: friendly
     actionable message out, raw cause to the log.
+
+    Contention is INJECTED for the whole attempt (every replace fails), not
+    borrowed from a held handle - the held-handle version of this test was one
+    of the three that went RED on Linux, where the write simply succeeded and
+    the route answered 200.
     """
     stop = ctldir / "STOP"
     stop.write_text("previous reason", encoding="utf-8")
-    with open(stop, encoding="utf-8"):  # held for the WHOLE attempt
+    with replace_fails(stop) as rec:  # contended for the WHOLE attempt
         status, payload, _ = _post({"action": "stop", "reason": "halt"})
+    assert rec.attempts == len(_DELAYS) + 1, (
+        "an exhausted retry is one attempt per entry in "
+        "core/polled_json._REPLACE_RETRY_DELAYS_S plus the initial one")
     assert status == 503, f"expected a retryable 503, got {status}: {payload}"
     assert payload["error"] == "control file busy - the loop is mid-poll, retry"
     assert "WinError" not in payload["error"] and "Temp" not in payload["error"]
 
 
 def test_an_exhausted_retry_strands_no_tmp(ctldir):
-    """A stranded STOP.tmp is the next writer's problem - clean it up."""
+    """A stranded STOP.tmp is the next writer's problem - clean it up.
+
+    Injected, not borrowed: as a held-handle test this asserted a cleanup after
+    a failure that never happened on POSIX, so it was vacuously green there -
+    the exact shape the cycle-26 sweep was looking for.
+    """
     stop = ctldir / "STOP"
     stop.write_text("previous reason", encoding="utf-8")
-    with open(stop, encoding="utf-8"):
+    with replace_fails(stop) as rec:
         _post({"action": "stop", "reason": "halt"})
+    assert rec.failures == 4, "no write actually failed, so nothing was cleaned"
     assert list(ctldir.glob("*.tmp")) == []
+    assert stop.read_text(encoding="utf-8") == "previous reason", (
+        "a failed halt must leave the prior control file intact")
+
+
+@pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="POSIX rename ignores an open read handle; there is no OS fault to "
+           "observe, which is why the tests above inject their own")
+def test_the_real_os_still_share_locks_a_held_control_file(ctldir):
+    """The one question replace_fails() cannot answer: is the condition real?
+
+    Every contention test above simulates the share lock. This asserts the OS
+    property itself - no route, no writer, no retry loop - so it stays true
+    whatever dashboard/routes_loop_control or core/polled_json do next. If this
+    ever goes red on win32 the premise of the retry loop is gone and the
+    injected-fault tests are modelling a fiction.
+    """
+    stop = ctldir / "STOP"
+    stop.write_text("previous reason", encoding="utf-8")
+    scratch = ctldir / "STOP.os_probe"
+    scratch.write_text("halt", encoding="utf-8")
+    with open(stop, encoding="utf-8"):
+        with pytest.raises(PermissionError):
+            os.replace(scratch, stop)
+    scratch.unlink()
 
 
 # --------------------------------------------------- steer under lock contention

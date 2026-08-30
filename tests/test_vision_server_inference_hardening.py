@@ -88,6 +88,74 @@ def _calls(kind: str) -> int:
     return st.get_stats()["stats"].get(kind, {}).get("calls", 0)
 
 
+# --- OCR capability gate ---------------------------------------------------
+# ``handle_ocr`` validates the body SHAPE before importing the OCR stack
+# (``vision_server/_inference.py:331-334``, deliberate), then short-circuits at
+# ``_inference.py:348-352`` with ``{"error": "pytesseract/PIL missing"}`` if
+# that import fails. On a machine without the stack, every assertion ABOUT
+# per-crop handling is an assertion about code that never ran: such a test is
+# not failing, it is UNRUNNABLE. Measured on the Linux CI runner (GitHub runs
+# 33332566855 / 33332566593), which ships PIL but not pytesseract - five tests
+# below went red there and pass on Legion, where both are installed.
+#
+# These tests genuinely require the capability and must not be faked, so they
+# skip when it is absent and run when it is present. The predicate performs
+# the SAME two imports the production guard performs, in the same order,
+# rather than standing in a proxy for them.
+#
+# The tesseract BINARY is deliberately NOT part of the predicate. MEASURED
+# 2026-08-30 with pytesseract importable but both ``tesseract_cmd`` and
+# ``_TESSERACT_DEFAULT`` pointed at a nonexistent path (so image_to_string
+# provably raised TesseractNotFoundError): all 7 OcrResourceTests still
+# PASSED. Most raise inside ``_pre``, which is evaluated as an ARGUMENT and so
+# runs before ``image_to_string`` is ever entered, and the rest survive
+# ``TesseractNotFoundError`` being caught by ``_OCR_EXC`` (it subclasses
+# OSError). Putting the binary in the predicate would skip tests that pass,
+# which is a deletion, not a gate.
+def _ocr_stack_missing() -> str:
+    """First missing OCR dependency, or "" when handle_ocr can reach a crop."""
+    try:
+        import pytesseract  # noqa: F401
+    except ImportError:
+        return "pytesseract"
+    try:
+        from PIL import Image, ImageEnhance  # noqa: F401
+    except ImportError:
+        return "PIL"
+    return ""
+
+
+def _pil_missing() -> str:
+    """PIL alone. ``_png_b64`` needs it to BUILD a crop fixture, whatever the
+    test then asserts - a pre-import test still has to construct its input."""
+    try:
+        from PIL import Image  # noqa: F401
+    except ImportError:
+        return "PIL"
+    return ""
+
+
+_NO_OCR_STACK = _ocr_stack_missing()
+_NO_PIL = _pil_missing()
+
+_SKIP_OCR = (
+    "needs the OCR stack; this machine is missing "
+    + (_NO_OCR_STACK or "nothing")
+    + ". handle_ocr returns {'error': 'pytesseract/PIL missing'} at "
+    "vision_server/_inference.py:351-352 before any crop is touched, so this "
+    "test would be asserting about code that never ran. CAPABILITY GAP on the "
+    "runner, not a silenced failure: it executes and passes wherever "
+    "pytesseract and PIL are both installed."
+)
+
+_SKIP_PIL = (
+    "needs PIL to BUILD its crop fixture via _png_b64 (PIL.Image), "
+    "independently of what it then asserts. CAPABILITY GAP on the runner, not "
+    "a silenced failure. The assertion itself is on a pre-import guard and "
+    "needs no OCR stack, so this test is NOT gated on pytesseract."
+)
+
+
 class WrongTypedBodyTests(unittest.TestCase):
     """A merely-WRONG body must not raise out of the handler.
 
@@ -113,13 +181,20 @@ class WrongTypedBodyTests(unittest.TestCase):
         self.assertIn("error", r)
 
     def test_ocr_string_crops_returns_error_not_raises(self):
-        """crops="stage_round": `in` succeeds on a str, indexing does not."""
+        """crops="stage_round": `in` succeeds on a str, indexing does not.
+
+        Pins the error VALUE. These two land on handle_ocr's pre-import side
+        and so are the OCR coverage that keeps running on a runner with no
+        pytesseract; a bare assertIn("error", r) would also be satisfied by
+        the {"error": "pytesseract/PIL missing"} short-circuit there, i.e. it
+        would pass with the isinstance guard deleted.
+        """
         r = inf.handle_ocr(json.dumps({"crops": "stage_round"}).encode())
-        self.assertIn("error", r)
+        self.assertEqual(r.get("error"), "bad_crops", r)
 
     def test_ocr_list_crops_returns_error_not_raises(self):
         r = inf.handle_ocr(json.dumps({"crops": ["stage_round"]}).encode())
-        self.assertIn("error", r)
+        self.assertEqual(r.get("error"), "bad_crops", r)
 
     def test_vision_non_string_image_returns_error_not_raises(self):
         for bad in ({"a": 1}, 12345, ["x"], True):
@@ -250,8 +325,14 @@ class ModelFieldTests(unittest.TestCase):
 class OcrResourceTests(unittest.TestCase):
     """``_pre`` upscaled every crop 3-4x linear (9-16x pixels) with no bound.
     Measured pre-fix: a 5 KB 1000x1000 PNG became a 16 MB resident buffer at
-    scale=4, a ~3000x wire-to-memory amplification under a 10 MiB body cap."""
+    scale=4, a ~3000x wire-to-memory amplification under a 10 MiB body cap.
 
+    Gating is PER-TEST, never per-class - see the OCR capability gate above.
+    ``test_too_many_crop_keys_are_refused`` lands on the pre-import side of
+    handle_ocr and keeps running with no OCR stack, because that is real
+    coverage of a real path."""
+
+    @unittest.skipIf(_NO_OCR_STACK, _SKIP_OCR)
     def test_oversized_crop_is_refused_not_upscaled(self):
         """Asserts the MECHANISM, not the absence of a key.
 
@@ -267,6 +348,7 @@ class OcrResourceTests(unittest.TestCase):
         self.assertNotIn("gold", r.get("result", {}))
         self.assertGreater(_errors("ocr"), before)
 
+    @unittest.skipIf(_NO_OCR_STACK, _SKIP_OCR)
     def test_decompression_bomb_is_skipped_not_raised(self):
         """PIL's DecompressionBombError subclasses Exception directly, so it
         was covered by no entry in the pre-fix _OCR_EXC tuple and escaped as
@@ -284,18 +366,66 @@ class OcrResourceTests(unittest.TestCase):
         finally:
             Image.MAX_IMAGE_PIXELS = orig
 
+    @unittest.skipIf(_NO_OCR_STACK, _SKIP_OCR)
     def test_reasonable_crop_is_still_processed(self):
-        """The cap must not refuse a real calibrated crop."""
-        small = _png_b64(120, 40)
-        r = inf.handle_ocr(json.dumps({"crops": {"gold": small}}).encode())
-        self.assertNotIn("error", r)
+        """The cap must not refuse a real calibrated crop.
 
+        Asserts the MECHANISM, not the absence of a key - same lesson as the
+        oversized sibling above. ``assertNotIn("error", r)`` ALONE survived the
+        mutation that drops ``_OCR_MAX_CROP_PX`` to 1 (measured 2026-08-30): a
+        refused crop and a crop that simply OCRs to nothing both return
+        ``{"ok": True, "result": {}}``, because every ``_pre`` failure is
+        swallowed into the per-crop skip. The discriminating observable is
+        whether ``image_to_string`` was reached at all, so spy on it.
+
+        A RECORDING spy, never a raising one: a raising spy would be caught by
+        ``_OCR_EXC`` and prove nothing (memory
+        ``reference_raise_based_spy_is_vacuous_under_fail_soft``). Spying also
+        removes this test's dependence on the tesseract BINARY, so it needs
+        exactly the same capability as its siblings and no third predicate.
+        """
+        import pytesseract
+        seen = []
+        orig = pytesseract.image_to_string
+
+        def _spy(img, *a, **kw):
+            seen.append(getattr(img, "size", None))
+            return ""
+
+        pytesseract.image_to_string = _spy
+        try:
+            small = _png_b64(120, 40)
+            r = inf.handle_ocr(json.dumps({"crops": {"gold": small}}).encode())
+        finally:
+            pytesseract.image_to_string = orig
+        self.assertNotIn("error", r)
+        self.assertEqual(len(seen), 1,
+                         "crop never reached OCR - the cap refused it")
+        # 3x is the `gold` scale in handle_ocr's `_pre` default.
+        self.assertEqual(seen[0], (120 * 3, 40 * 3))
+
+    @unittest.skipIf(_NO_PIL, _SKIP_PIL)
     def test_too_many_crop_keys_are_refused(self):
+        """Asserts the error VALUE, not merely that some "error" key exists.
+
+        This is the pre-import guard, so it is the OCR coverage that survives
+        on a runner with no pytesseract - which is exactly why it must not be
+        satisfiable by the WRONG error. MEASURED 2026-08-30 with the
+        `len(crops) > _OCR_MAX_CROPS` check deleted: `assertIn("error", r)`
+        alone went RED on Legion but SURVIVED under simulated absence, because
+        the ImportError short-circuit at _inference.py:351-352 also returns a
+        dict with an "error" key. Pinning the value kills that survivor.
+
+        The fixture is sized off `inf._OCR_MAX_CROPS`, so mutating the
+        CONSTANT is an equivalent mutant (measured: 12 -> 999 survived). The
+        mutation this is pinned against is deletion of the check itself.
+        """
         crops = {f"k{i}": _png_b64(8, 8)
                  for i in range(inf._OCR_MAX_CROPS + 5)}
         r = inf.handle_ocr(json.dumps({"crops": crops}).encode())
-        self.assertIn("error", r)
+        self.assertEqual(r.get("error"), "too_many_crops", r)
 
+    @unittest.skipIf(_NO_OCR_STACK, _SKIP_OCR)
     def test_non_string_crop_value_is_skipped_not_raised(self):
         """Two guards cover this jointly - the isinstance check in _pre and
         TypeError in _OCR_EXC - so removing EITHER alone is an equivalent
@@ -306,11 +436,20 @@ class OcrResourceTests(unittest.TestCase):
         self.assertNotIn("gold", r.get("result", {}))
         self.assertGreater(_errors("ocr"), before)
 
+    @unittest.skipIf(_NO_OCR_STACK, _SKIP_OCR)
     def test_undecodable_crop_is_skipped_not_raised(self):
+        """Gated even though it was GREEN on the stack-less runner: without
+        the stack handle_ocr returns {"error": ...}, whose ``.get("result",
+        {})`` is ``{}``, so ``assertNotIn("gold", ...)`` passed VACUOUSLY. A
+        vacuous pass is worse than a skip - it claims coverage it has none of.
+        """
+        before = _errors("ocr")
         r = inf.handle_ocr(json.dumps(
             {"crops": {"gold": "!!!not-base64!!!"}}).encode())
         self.assertNotIn("gold", r.get("result", {}))
+        self.assertGreater(_errors("ocr"), before)
 
+    @unittest.skipIf(_NO_OCR_STACK, _SKIP_OCR)
     def test_ocr_records_error_when_every_crop_fails(self):
         """Pre-fix _record("ocr", ok=True) was unconditional, so a call where
         every crop threw was indistinguishable from a clean read."""
