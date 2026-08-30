@@ -44,6 +44,7 @@ regression pins and are labelled as such rather than oversold.
 from __future__ import annotations
 
 import hashlib
+import http.client
 import http.server
 import io
 import socket
@@ -445,7 +446,12 @@ class TestBodyReadWithoutASocket:
         headers = {"Content-Length": str(len(body))}
         if token_header is not None:
             headers["X-RC-Token"] = token_header
-        h.headers = headers
+        # Real container, not a dict - see the note on _headers in
+        # tests/test_control_endpoint_auth.py. A dict has no get_all().
+        _hm = http.client.HTTPMessage()
+        for _k, _v in headers.items():
+            _hm[_k] = _v
+        h.headers = _hm
         h.path = path
         h.rfile = io.BytesIO(body)
         if connection is not _NO_CONNECTION:
