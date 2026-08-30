@@ -6,6 +6,28 @@
 
 ---
 
+# 2026-08-30l - lane 8 cycle 22: the store ate the operator's builds, then served a build that was never saved
+
+**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, 11/11 mutation-killed, verifier-gated.** Target `coaches/sr_user_builds.py` + its caller `dashboard/routes_sr_user_builds.py`. LEDGER 1281. Filed RM-253 / RM-254 / RM-255 / RM-256.
+
+**I CHECKED THE SELECTION RATIONALE BEFORE PAYING FOR IT, WHICH IS THE CYCLE-21 LESSON LANDING.** The module looks untested if you grep `tests/` for `test_sr_user_builds` and stop. It is not: `tests/phase8_smoke/test_sr_user_builds.py` has 20 tests and `tests/test_loadout_user_builds_merge.py` another 20. Criterion 4 was REFUTED and the file was audited on criteria 1 and 3 instead. Cycle 21 recorded this trap AFTER paying for it; this is the first cycle that paid nothing.
+
+**THE HEADLINE DEFECT DESTROYS DATA AND ONLY LOGS A WARNING.** `_load`'s blanket `except Exception` turned an unparseable `user_builds.json` into an EMPTY store, and the next `add()` wrote that empty store over the file. Probed end to end: a seeded Tristana build was on disk before the call and absent after. The fix quarantines by RENAMING to `user_builds.corrupt-<stamp>.json` - which preserves the bytes exactly and is self-limiting, because the next `_load` then hits the does-not-exist branch instead of re-quarantining per read.
+
+**THE SECOND DEFECT SERVES A BUILD THAT WAS NEVER SAVED.** `_load()` returned the SHARED cache dict and the SHARED per-champion list; mutators edited it in place BEFORE `_save`. Force `os.replace` to fail and `add()` raises, the route answers 500 - and `list_for` still reports the "ghost build". That is not cosmetic: `coaches/rune_pages.py:142` folds `list_for` output into a live rune page. One root cause covered both this and the unlocked-reader race: mutate a private deep copy, publish the cache only after the write lands, and hold the lock across read AND copy (`_STORE_LOCK` became an `RLock` because the read path legitimately nests).
+
+**TWO OF MY OWN TESTS WERE WEAK AND I KEPT THE RECORD RATHER THAN THE APPEARANCE.** `test_concurrent_reads_and_deletes_never_tear` was ALREADY GREEN pre-fix - the GIL hides the tear - so it is a smoke test, not the guard; the guard for that weakness is the structural `test_load_does_not_hand_out_the_shared_mutable_cache`, and the mutation run killed it. Separately my first W8 test asserted the ABSENCE of the string "16M", which then failed against a corrected docstring that QUOTES the old claim while fixing it. A negative assertion rules out without pinning down; I replaced it with a positive pin on the corrected magnitude.
+
+**I ALMOST SHIPPED A SEVERITY CLAIM THE LIVE SYSTEM REFUTES.** W3 (non-dict POST body) measured as a 500 when I called `_serve_user_builds_post` directly, and I wrote it up as a live defect. Then I probed the actual dashboard: `POST /api/sr-draft/user-builds` with `["not","a","dict"]` returns **400**, because `dashboard/_handler.py:525` already rejects every non-dict POST body at the single trust boundary for all ~40 routes, and `mc/routes.py:16` splices only `routes_loop_status` + `routes_loop_control` into `:8895` so this route has no second surface. The guard I added is defence in depth and nothing more. The function-level measurement was CORRECT and the severity inference from it was WRONG - `feedback_verified_claim_vs_measured_downstream`. Corrected in the ledger and the commit message rather than left to read stronger than it is. **The general rule this cost me: a direct-call probe measures the FUNCTION, not the SURFACE. Probe the surface before assigning severity.**
+
+**THE FOUR FILED ROWS ARE NOT IN THE AUDITED FILE, AND I READ EVERY CITED LINE MYSELF.** A shortlist agent surfaced them; a shortlist is not evidence. RM-254 is the one to do first: `core/polled_json.py` IS the repo's atomic-write contract and derives its tmp name from the destination alone at `:57`, `:75`, `:87`, so concurrent writers share one scratch file - the module cannot deliver the atomicity every other module is told to get from it. RM-253 is the cheapest: cycle 20 fixed the raw-exception echo at `vision_server/_relay.py:50-56` yesterday and left the identical sibling at `:177`.
+
+**ID MINTING: the tracker would have collided.** `docs/DS_SWEEP_TRACKER.md` tops out at RM-232 while `ROADMAP.md` already used RM-252. The lane skill says mint from the tracker; doing that literally would have produced a duplicate id. Minted from the repo-wide max instead. This is the already-filed RM-192 staleness, still open.
+
+**Suites (repo root):** RC `tests/` 19460 passed / 2 failed / 144 skipped, against a pre-slice baseline of 19436 / 2 / 144 measured the same way - the delta is exactly the 24 new tests and the two failures are IDENTICAL node ids in both runs (`test_live_three_profiles`, `test_cli_version_still_matches_the_pin`), inherited and unrelated. DS 10684 passed / 0 failed. Ruff clean tree-wide. No RC restart needed - no live runtime path changed. Backfill: the live store was probed and is healthy (2 champions, 4 builds, no cap violations, no stray tmp), so there was nothing to repair.
+
+---
+
 # 2026-08-30k - lane 8 cycle 21: the halt button lost a race with the thing it was halting
 
 **Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested, verifier-gated.** Target `dashboard/routes_loop_control.py` (491 lines, not frozen) - the privileged remote-control surface that halts the headless loop from the phone. Full detail in `docs/LEDGER.md` 1280; RM-250/251 filed in `BACKLOG.md` with a pointer row in `ROADMAP.md`.

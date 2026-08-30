@@ -28,8 +28,30 @@ import logging
 from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals
+from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
+
+# The generic line the rest of the dashboard uses for a scrubbed failure -
+# kept identical to dashboard/_errors.GENERIC_ERROR so the UI never shows two
+# dialects of "it broke".
+_GENERIC_BAD_REQUEST = "invalid request - see logs"
+
+
+def _send_validation_error(h, exc: Exception, context: str) -> None:
+    """400 with an RC-authored message, never the raw exception text.
+
+    `coaches.sr_user_builds.BuildValidationError` is the store's contract for
+    "this rejection is safe to show the caller". Everything else is scrubbed:
+    a bare ValueError can carry a path, a module name or a secret-shaped
+    fragment, which is the class RM-134 closed for the 500 path.
+    """
+    from coaches.sr_user_builds import BuildValidationError
+
+    log.warning("%s: %s: %s", context, type(exc).__name__, exc)
+    msg = exc.public_message if isinstance(exc, BuildValidationError) \
+        else _GENERIC_BAD_REQUEST
+    h._send(400, json.dumps({"error": msg}).encode(), "application/json")
 
 
 def _serve_user_builds_get(h) -> None:
@@ -47,15 +69,25 @@ def _serve_user_builds_get(h) -> None:
             "builds":   builds,
         }).encode(), "application/json")
     except Exception as exc:  # noqa: BLE001
+        # Lane 8 cycle 22: route the 500 through the shared RM-134 helper
+        # rather than re-spelling its message here, so this module joins the
+        # family the scrub guard actually parametrizes.
         log.warning("api/sr-draft/user-builds GET: %s", exc)
-        # Raw exception text stays in the log only (was untruncated here).
-        h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_user_builds_post(h, payload) -> None:
     try:
         from coaches.sr_user_builds import add, delete, list_for, update
+        # AUDIT 2026-08-30 (lane 8 cycle 22, W3): this went straight to
+        # payload.get(), so a JSON list, string, number or null raised
+        # AttributeError and the blanket handler below answered 500 - a server
+        # error for what is plainly a client one, plus a log line per request.
+        # dashboard/routes_coach.py:214 already guards its body this way.
+        if not isinstance(payload, dict):
+            h._send(400, b'{"error":"JSON object body required"}',
+                    "application/json")
+            return
         action = (payload.get("action") or "").strip().lower()
         # Default action: if a build is included, treat as add.
         if not action:
@@ -79,7 +111,13 @@ def _serve_user_builds_post(h, payload) -> None:
             try:
                 new_id = add(champion, build)
             except ValueError as exc:
-                h._send(400, json.dumps({"error": str(exc)}).encode(), "application/json")
+                # AUDIT 2026-08-30 (lane 8 cycle 22, W4): this was
+                # json.dumps({"error": str(exc)}) - the un-scrubbed shape
+                # RM-134 / dashboard/_errors.py exists to end. Only a
+                # BuildValidationError carries an RC-authored message that is
+                # safe to return verbatim; any other ValueError is treated as
+                # untrusted and scrubbed, with the cause logged.
+                _send_validation_error(h, exc, "api/sr-draft/user-builds add")
                 return
             h._send(200, json.dumps({"ok": True, "id": new_id}).encode(),
                     "application/json")
@@ -110,14 +148,15 @@ def _serve_user_builds_post(h, payload) -> None:
             h._send(200, json.dumps({"ok": True}).encode(), "application/json")
             return
 
+        # W5: the unknown action is reflected back, so bound it. json.dumps
+        # already escapes control characters, but nothing capped the LENGTH of
+        # a caller-supplied string being echoed into a response.
         h._send(400,
-                json.dumps({"error": f"unknown action: {action}"}).encode(),
+                json.dumps({"error": f"unknown action: {action[:32]}"}).encode(),
                 "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/sr-draft/user-builds POST: %s", exc)
-        # Raw exception text stays in the log only (was untruncated here).
-        h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 # -- route table ------------------------------------------------------

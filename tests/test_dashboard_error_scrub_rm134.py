@@ -153,6 +153,7 @@ class DashboardSurfaceScrubTests(unittest.TestCase):
             "dashboard.routes_loop_monitor",
             "dashboard.routes_loop_status",
             "dashboard.routes_spike_curve",
+            "dashboard.routes_sr_user_builds",
             "dashboard.routes_state",
         )
         for name in modules:
