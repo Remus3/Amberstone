@@ -38,22 +38,89 @@ RULES: Read TRAITS panel (left), SHOP names (bottom cards), BENCH, BOARD (your s
 Never output trait names as unit names. Spectating -> board_units=["SPECTATING"]."""
 
 
+# AUDIT 2026-08-30 (lane 8 cycle 20): the model id is caller-controlled on
+# both /vision and /coach. A membership allowlist was REJECTED as the guard -
+# `modes/shared_vision.py:273` legitimately sends SONNET_MODEL for escalation
+# and `tft/` sends its own, so pinning to VISION_MODEL/COACH_MODEL would break
+# the escalation path this server exists to serve. Validate SHAPE instead:
+# printable, bounded, no control characters, no path separators.
+_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+
+
+def _body_object(body: bytes) -> tuple[dict | None, dict | None]:
+    """Decode a request body that must be a JSON object.
+
+    AUDIT 2026-08-30 (lane 8 cycle 20): all three handlers went straight to
+    ``json.loads(body)`` then ``d.get(...)``. A top-level array or scalar -
+    merely WRONG input, not hostile - raised AttributeError out of the
+    handler, which ``do_POST`` turned into a bare HTTP 500 "internal error"
+    with no stats record. Returns ``(obj, None)`` or ``(None, error_dict)``.
+    """
+    try:
+        d = json.loads(body or b"{}")
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        return None, {"error": "bad_json"}
+    if not isinstance(d, dict):
+        return None, {"error": "bad_body"}
+    return d, None
+
+
+def _resolve_model(d: dict, default: str) -> tuple[str | None, dict | None]:
+    """Pick and shape-validate the model id. See ``_MODEL_RE``."""
+    m = d.get("model")
+    if m is None or m == "":
+        m = default
+    if not isinstance(m, str) or not _MODEL_RE.match(m):
+        return None, {"error": "bad_model"}
+    return m, None
+
+
+def _first_text(resp) -> str | None:
+    """First content block carrying str ``.text``, else None.
+
+    AUDIT 2026-08-30 (lane 8 cycle 20): both handlers read
+    ``resp.content[0].text``, which assumes a non-empty content list whose
+    FIRST block is a text block. Measured: an empty list raises IndexError and
+    a leading thinking block raises AttributeError - the thinking-block class
+    CLAUDE.md names explicitly. Scan for the first text block instead.
+    """
+    for blk in (getattr(resp, "content", None) or []):
+        t = getattr(blk, "text", None)
+        if isinstance(t, str):
+            return t
+    return None
+
+
 def _parse_json(raw: str) -> dict | None:
     # AUDIT (2026-04-22): bare `except: pass` replaced with specific
     # JSONDecodeError catches so SystemExit/KeyboardInterrupt propagate.
+    # AUDIT 2026-08-30 (lane 8 cycle 20): the annotation has always said
+    # `dict | None`, but a model answering `[1,2,3]` / `123` / `"x"` / `true`
+    # returned that value straight through, and handle_vision then counted it
+    # ok=True. Both live consumers isinstance-gate the result
+    # (modes/shared_vision.py:383, dashboard/_screen_read.py:134), so the
+    # value was discarded downstream while the stats ring called it a
+    # success. Enforce the documented contract here.
+    # A non-dict parse falls THROUGH to the next candidate rather than
+    # returning: a model answering with a JSON string that quotes an object
+    # still has its object salvaged by the brace fallback below.
     for t in [raw, raw.strip("`").strip()]:
         t2 = t[4:].strip() if t.startswith("json") else t
         try:
-            return json.loads(t2)
+            v = json.loads(t2)
         except json.JSONDecodeError:
-            pass
+            continue
+        if isinstance(v, dict):
+            return v
     fb = raw.find("{")
     lb = raw.rfind("}")
     if fb != -1 and lb > fb:
         try:
-            return json.loads(raw[fb:lb + 1])
+            v = json.loads(raw[fb:lb + 1])
         except json.JSONDecodeError:
-            pass
+            return None
+        if isinstance(v, dict):
+            return v
     return None
 
 
@@ -72,6 +139,12 @@ def _crop_to_primary(img_b64: str) -> tuple[str, str]:
 
     Disable via env: RC_VISION_NO_CROP=1.
     """
+    # AUDIT 2026-08-30 (lane 8 cycle 20): every `startswith` below assumed a
+    # str. On a wrong-typed `image_b64` the b64decode inside the try raised,
+    # and then the EXCEPT handler raised too - AttributeError on the same
+    # non-string - so the recovery path was itself a crash. Guard once here.
+    if not isinstance(img_b64, str):
+        return img_b64, "image/png"
     if os.environ.get("RC_VISION_NO_CROP") == "1":
         mt = "image/jpeg" if img_b64.startswith("/9j/") else "image/png"
         return img_b64, mt
@@ -124,11 +197,22 @@ def _record_to_cost_tracker(resp, *, model: str, purpose: str) -> None:
 
 
 def handle_vision(body: bytes) -> dict:
-    d = json.loads(body)
+    # AUDIT 2026-08-30 (lane 8 cycle 20): validate the body shape, the image
+    # field type and the model id BEFORE any work. Each rejection is recorded
+    # ok=False so malformed traffic is visible in /stats - pre-fix these paths
+    # raised before `t0` was ever set, so not one of them reached the ring.
+    d, err = _body_object(body)
+    if err is not None:
+        _record("vision", 0, ok=False)
+        return err
     img = d.get("image_b64", "")
-    model = d.get("model", VISION_MODEL)
-    if not img:
+    if not img or not isinstance(img, str):
+        _record("vision", 0, ok=False)
         return {"error": "no image_b64"}
+    model, err = _resolve_model(d, VISION_MODEL)
+    if err is not None:
+        _record("vision", 0, ok=False)
+        return err
     # Spend-gate (belt-and-suspenders, separate process): refuse the Sonnet
     # vision call when the "vision" gate is disabled. Re-reads coach_settings
     # off disk each call, so a Settings toggle applies here too.
@@ -156,8 +240,10 @@ def handle_vision(body: bytes) -> dict:
                                              "media_type": media_type,
                                              "data": img_send}}]}])
         ms = int((time.time() - t0) * 1000)
-        raw = resp.content[0].text.strip()
-        result = _parse_json(raw)
+        # AUDIT 2026-08-30 (lane 8 cycle 20): was resp.content[0].text.
+        _raw_txt = _first_text(resp)
+        raw = _raw_txt.strip() if _raw_txt is not None else ""
+        result = _parse_json(raw) if raw else None
         tok = getattr(resp, 'usage', None)
         tokens = (tok.input_tokens + tok.output_tokens) if tok else 0
         # AUDIT 2026-04-29 (gap B): feed cost_tracker.
@@ -175,18 +261,31 @@ def handle_vision(body: bytes) -> dict:
 
 
 def handle_coach(body: bytes) -> dict:
-    d = json.loads(body)
+    # AUDIT 2026-08-30 (lane 8 cycle 20): same three gates as handle_vision.
+    d, err = _body_object(body)
+    if err is not None:
+        _record("coach", 0, ok=False)
+        return err
     p = d.get("prompt", "")
-    model = d.get("model", COACH_MODEL)
-    if not p:
+    if not p or not isinstance(p, str):
+        _record("coach", 0, ok=False)
         return {"error": "no prompt"}
+    model, err = _resolve_model(d, COACH_MODEL)
+    if err is not None:
+        _record("coach", 0, ok=False)
+        return err
     t0 = time.time()
     try:
         resp = _get_client().messages.create(
             model=model, max_tokens=600,
             messages=[{"role": "user", "content": p}])
         ms = int((time.time() - t0) * 1000)
-        text = resp.content[0].text.strip()
+        # AUDIT 2026-08-30 (lane 8 cycle 20): was resp.content[0].text.
+        text = _first_text(resp)
+        if text is None:
+            _record("coach", ms, ok=False)
+            return {"error": "empty_response"}
+        text = text.strip()
         tok = getattr(resp, 'usage', None)
         tokens = (tok.input_tokens + tok.output_tokens) if tok else 0
         # AUDIT 2026-04-29 (gap B): feed cost_tracker.
@@ -205,13 +304,35 @@ _TESSERACT_DEFAULT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 # fix this slice missed): pytesseract default timeout=0 waits unbounded, so a
 # hung tesseract.exe blocks this HTTP handler thread forever. Cap every call.
 _OCR_TIMEOUT_S = 10.0
+# AUDIT 2026-08-30 (lane 8 cycle 20): `_pre` upscales every crop 3-4x LINEAR,
+# i.e. 9-16x in pixels, with no bound on the decoded input. MEASURED on the
+# pre-fix file: a 5 KB 1000x1000 PNG became a 16 MB resident "L" buffer at
+# scale=4 - a ~3000x wire-to-memory amplification, under a do_POST body cap of
+# 10 MiB. A 9000x9000 crop sits just under PIL's 89 MP bomb threshold and
+# reaches ~1.3 GB after the 4x upscale, on a ThreadingHTTPServer worker.
+# Cap the decoded dimensions and the crop count.
+_OCR_MAX_CROP_PX = 4096
+_OCR_MAX_CROPS = 12
 
 
 def handle_ocr(body: bytes) -> dict:
-    d = json.loads(body)
+    # AUDIT 2026-08-30 (lane 8 cycle 20): `crops` was used with `in` and then
+    # `[]`. Both succeed on a str/list for `in` and raise TypeError on the
+    # index, so a wrong-typed field became an HTTP 500. Validate the shape
+    # BEFORE importing the OCR stack, so bad input costs nothing.
+    d, err = _body_object(body)
+    if err is not None:
+        _record("ocr", 0, ok=False)
+        return err
     crops = d.get("crops", {})
+    if not isinstance(crops, dict):
+        _record("ocr", 0, ok=False)
+        return {"error": "bad_crops"}
     if not crops:
         return {"error": "no crops"}
+    if len(crops) > _OCR_MAX_CROPS:
+        _record("ocr", 0, ok=False)
+        return {"error": "too_many_crops"}
     try:
         import pytesseract
         from PIL import Image, ImageEnhance
@@ -227,9 +348,21 @@ def handle_ocr(body: bytes) -> dict:
     t0 = time.time()
 
     def _pre(b64, scale=3):
-        img = Image.open(BytesIO(base64.b64decode(b64))).convert("L")
+        """Decode + upscale one crop. Raises ValueError on anything unusable.
+
+        AUDIT 2026-08-30 (lane 8 cycle 20): the type check and the dimension
+        cap are the guard against the amplification measured above. The size
+        is read BEFORE `convert`/`resize`, so an oversized crop is refused
+        without ever allocating the upscaled buffer.
+        """
+        if not isinstance(b64, str):
+            raise ValueError("crop is not a string")
+        img = Image.open(BytesIO(base64.b64decode(b64)))
         w, h = img.size
-        img = img.resize((w * scale, h * scale), Image.LANCZOS)
+        if not (0 < w <= _OCR_MAX_CROP_PX and 0 < h <= _OCR_MAX_CROP_PX):
+            raise ValueError(
+                f"crop {w}x{h} outside 1..{_OCR_MAX_CROP_PX}")
+        img = img.convert("L").resize((w * scale, h * scale), Image.LANCZOS)
         return ImageEnhance.Contrast(img).enhance(2.5)
 
     # AUDIT (2026-04-22): specific exception classes - pytesseract raises
@@ -237,8 +370,28 @@ def handle_ocr(body: bytes) -> dict:
     # failures; PIL raises PIL.UnidentifiedImageError / OSError on crop
     # decode. Keep the silent-continue behaviour (OCR is best-effort) but
     # stop swallowing SystemExit/KeyboardInterrupt.
-    _OCR_EXC = (RuntimeError, OSError, ValueError, AttributeError)
+    # AUDIT 2026-08-30 (lane 8 cycle 20): TypeError (wrong-typed crop value),
+    # MemoryError (the amplification above) and PIL's DecompressionBombError
+    # (a direct Exception subclass, so NOT covered by any entry below) all
+    # escaped this tuple and became an HTTP 500. A bad crop must degrade to a
+    # skipped field, never to a 5xx.
+    # DecompressionBombError is resolved defensively: `tests/test_p2w1_app_a.py`
+    # substitutes a SimpleNamespace for the PIL Image module, which has no such
+    # attribute, and a hard reference raises AttributeError at tuple-build time.
+    # Under a stub there is no real PIL to raise it either, so nothing is lost;
+    # against real PIL the class is always present and stays pinned by
+    # OcrResourceTests::test_decompression_bomb_is_skipped_not_raised.
+    _bomb = getattr(Image, "DecompressionBombError", None)
+    _OCR_EXC = (RuntimeError, OSError, ValueError, AttributeError,
+                TypeError, MemoryError)
+    if isinstance(_bomb, type) and issubclass(_bomb, BaseException):
+        _OCR_EXC = _OCR_EXC + (_bomb,)
+    # Track attempt/failure so a call where EVERY crop threw is not recorded
+    # as a clean read - see the _record call at the end of this function.
+    attempts = 0
+    fails = 0
     if "stage_round" in crops:
+        attempts += 1
         try:
             t = re.sub(r"[^0-9\-]", "",
                        pytesseract.image_to_string(
@@ -250,9 +403,11 @@ def handle_ocr(body: bytes) -> dict:
                 s, r2 = int(m.group(1)), int(m.group(2))
                 if 1 <= s <= 7 and 1 <= r2 <= (4 if s == 1 else 7):
                     results["stage_round"] = f"{s}-{r2}"
-        except _OCR_EXC:
-            pass
+        except _OCR_EXC as _oe:
+            fails += 1
+            log.debug("OCR crop skipped: %s", _oe)
     if "level" in crops:
+        attempts += 1
         try:
             t = pytesseract.image_to_string(
                 _pre(crops["level"]),
@@ -261,9 +416,11 @@ def handle_ocr(body: bytes) -> dict:
             m = re.search(r"\d+", t)
             if m and 1 <= int(m.group()) <= 10:
                 results["level"] = int(m.group())
-        except _OCR_EXC:
-            pass
+        except _OCR_EXC as _oe:
+            fails += 1
+            log.debug("OCR crop skipped: %s", _oe)
     if "gold" in crops:
+        attempts += 1
         try:
             t = re.sub(r"[^0-9]", "",
                        pytesseract.image_to_string(
@@ -272,9 +429,14 @@ def handle_ocr(body: bytes) -> dict:
                            timeout=_OCR_TIMEOUT_S).strip())
             if t and 0 <= int(t) <= 999:
                 results["gold"] = int(t)
-        except _OCR_EXC:
-            pass
+        except _OCR_EXC as _oe:
+            fails += 1
+            log.debug("OCR crop skipped: %s", _oe)
     ms = int((time.time() - t0) * 1000)
-    _record("ocr", ms, ok=True)
-    log.info("OCR: %s %dms", results, ms)
+    # AUDIT 2026-08-30 (lane 8 cycle 20): this was an unconditional ok=True,
+    # so a call in which EVERY crop threw was indistinguishable in /stats from
+    # a clean read. A call that simply found no legible text is still a
+    # success (attempts>0, fails<attempts); only an all-failed call is not.
+    _record("ocr", ms, ok=not (attempts > 0 and fails == attempts))
+    log.info("OCR: %s %dms (%d/%d crops failed)", results, ms, fails, attempts)
     return {"ok": True, "result": results}
