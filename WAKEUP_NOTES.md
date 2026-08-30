@@ -2,7 +2,49 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-29, cross-project ports pass (relocated `2026-08-16e` - RM-221 mirror rule; newest 3 = port-block collision `2026-08-29c` + RM-222 flat-pen layout guard `2026-08-29b` + upstream processing `2026-08-29`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-30, lane-7 headless-repo pass (relocated `2026-08-29` upstream processing; newest 3 = lane-7 headless-repo `2026-08-30` + port-block collision `2026-08-29c` + RM-222 flat-pen layout guard `2026-08-29b`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-08-30 - LANE 7 headless-repo: repo already clean, two doc fixes, two sweeps deferred
+
+Outsider-clean audit in worktree `lane/repo`. Pre-flight caught that the launcher had
+dropped the session in the MAIN tree with the `lane/repo` worktree ABSENT - created it
+from main HEAD `2be9603c` and worked only there. `core.hooksPath` is the shared absolute
+`.githooks` (reported, unchanged per 1b). Every standing guard was green on arrival
+(drift_guard 0, archmap + state_schema up to date, ruff clean, worktree clean, the
+byte-identical pair matching its pins), so the repo is clean at every machine-checkable
+level; the value was in the uncovered surfaces.
+
+**Shipped (LEDGER 1275, Tier-0 docs):**
+- `docs/DAEMON_SLAYER.md:40` `cast_rates.` -> `ult_rates.` (the fn is defined only in
+  `ult_rates.py:201`; line 50 already said so - a self-contradiction a stranger would grep and fail on).
+- `docs/OPERATIONS.md:309` stale absolute rotation date ("~2026-08-01", a month past)
+  replaced with a derive-from-mtime instruction.
+- RM-227 filed (BACKLOG Reliability/hardening); DS_SWEEP_TRACKER pointer advanced to RM-228.
+
+**Deferred, NOT executed (both filed under RM-227, anti-rediscovery):**
+- Dead code: NO file dead to a HIGH bar. Five MED candidates (`ops/_scheduler_client.py`
+  plus four re-runnable Phase-3 seeders), each with a retention rationale - a headless delete
+  would be a wrong deletion. RM-195 already covers dead FUNCTIONS; this is files.
+- Glyphs: 3,017 grandfathered U+2192/U+00D7/U+00B7/U+2248, already blocked NET-NEW by the
+  `precommit_gate.py` catch-all (2026-07-28); population is deep-archive / DS-mirrored / frozen /
+  FUNCTIONAL-delimiter (the coach arrow is a `_re.split` delimiter), so a rewrite is behaviour
+  change, not hygiene. Outsider-facing living docs already clean.
+
+**Out-of-repo: ZERO deletions executed** (67 GB 2026-07-30 snapshot fully stale on re-measure):
+- `.gemini` 99 MB - distinct adjudicator APPROVED the purge on clean evidence (no live
+  filesystem reader of `~/.gemini`), PROPOSED-ready but NOT deleted (permanent file deletion is
+  operator territory under the standing safety rule).
+- `Temp/claude/C--Sibling-A` 0.29 GB (was 35.5) - sibling repo, UNTOUCHED, propose-only.
+- `.claude/projects` 1.19 GB - EVIDENCE, UNTOUCHED. `.cache` 13.8 GB - propose-only.
+  RC Temp scratch 0.2 MB total - nothing older than 30d, no prune worthwhile.
+
+**Gates:** doc guards green; full `tests/` from the worktree root **19131 passed / 144 skipped /
+1 failed** - the one failure is the pre-existing fenced `test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin`
+(PINNED_CLI 2.1.220 vs live CLI 2.1.251, needs `claude login`), 0 in this diff. No `.py` touched,
+no `ENGINE_VERSION`, no Share mirror, no frozen-file edit. Branch `lane/repo` ready for the merger;
+NOT merged to main from the worktree.
 
 ---
 
@@ -85,78 +127,3 @@ re-run first, which needs an authenticated CLI - still blocked on `claude login`
 10687. RC `tests/` 19177 passed / 96 skipped / 1 failed (the CLI pin above). Share mirror
 **8251 passed / 0 failed / 24 skipped / 11124 subtests**. `ds_share_sync --check` in sync at
 529 files; `drift_guard` 0 breaches; ruff clean; hygiene 14 passed.
-
----
-
-# 2026-08-29 - upstream processing: a 4-day CI red, DDragon 16.17.1 into the engine, and the Share mirror off its knowingly-red baseline
-
-Operator asked to "check for upstream changes and updates and process them". There were
-TWO upstreams and both were unprocessed.
-
-**CI had been red for four days, and the cause arrived by `git pull`.** Commit `39ba69c8`,
-authored by `weekly-rc-health@anthropic-routines` - a CLOUD routine, not a Legion task -
-carried 27 non-ASCII bytes. Cloud clones have no `core.hooksPath`, so `precommit_gate.py`
-never sees these files; CI is the only gate, and it had been failing since 08-25.
-
-**DDragon 16.17.1 (mirror auto-pulled 08-26, nothing downstream run).** Canonical partition
-holds at 706 / 173 in BOTH patches. Four percent-pen magnitudes moved and every one is on an
-Arena-band `22xxxx` id - all four SR twins held. Exactly ONE reaches the registry: Serylda's
-Grudge Arena `226694` armor pen 40 -> 45. It MOVES DEFAULT OUTPUT: the Arena planner now
-prefers it over Lord Dominik's `223036`, diffed field-by-field rather than assumed. ENGINE
-1.278.0 -> 1.278.1, 150 anchored sites / 128 files, provenance recitals verified untouched.
-
-**The thing to carry forward: I got the Share-mirror history WRONG and the repo corrected me.**
-I reported the mirror's 2 failures as an unnoticed 17-day regression that read "green
-throughout". LEDGER 1271 refutes that in writing - RM-221 MEASURED those exact two reds on
-08-16, diagnosed them correctly, and deliberately declined to exclude the test, reasoning that
-excluding it would delete a true signal. They were known and accepted on purpose. The narrower
-true statement: nobody ran the mirror suite at RM-190 time, and `--check` verifies FILES, not
-TESTS. **Read the ledger before characterising history; a "nobody noticed" claim is a claim
-about the record, and the record was right there.**
-
-The fix is not the exclusion RM-221 refused: magnitude parity now SKIPS only where the live
-catalogue is absent, so the signal survives where it can be evaluated. Gated on the
-`SHARE_MIRROR` sentinel, NOT `_META_CATALOG.is_file()` - that file is TRACKED, so a skip on its
-absence is an always-passing guard, and `test_skip_condition_hygiene` caught it on my first
-attempt. Mirror 8256/2-failed -> **8251 passed / 0 failed**.
-
-**The ASCII recurrence had a mechanical cause nobody had named:** the guard's own docstring
-prescribed `strip_smart_quotes.py`, which has no notion of U+2713 - the dominant glyph these
-routines emit. The prescribed fix could never clear the guard, so all three incidents were
-hand-repaired. New `tools/sanitize_agent6_reports.py` + 11 tests; `docs-guards` elevated to
-JOB-level `contents: write` with a fenced auto-repair step.
-
-**NEXT SESSION should know:**
-- **RM-225: the auto-repair branch has NEVER fired.** Only the clean early-exit path has run.
-  Do not describe it as proven.
-- **RM-222: the FLAT pen axis has no live-vs-pinned layout guard** - and it is the axis that
-  already carries a divergence (3175: 18 pinned vs 20 live). The percent axis got hardened
-  because it broke; the flat one stayed quiet.
-- **The `claude` CLI binary is FIXED; the OAuth session is NOT, and that is the bigger problem.**
-  The npm install shipped a 500-byte SHELL-SCRIPT STUB where `bin/claude.exe` should be - an
-  interrupted install had left the real 253 MB `claude-code-win32-x64` package sitting in npm's
-  `.claude-code-lEZNDFsD` staging dir, never moved into place. `npm install -g
-  @anthropic-ai/claude-code@latest` fixed it (now a real 207 MB binary, reports 2.1.251) and
-  npm reclaimed the staging dir. npm config was clean throughout - not a `--ignore-scripts` or
-  `--omit=optional` misconfiguration. **The stub's "not compatible with the version of Windows
-  you're running" message was Windows failing to exec a shell script as a PE, NOT an
-  architecture mismatch - do not chase that.**
-  **STILL BROKEN, and operator-only:** every CLI binary on this box fails with `Failed to
-  authenticate: OAuth session expired and could not be refreshed` - measured on BOTH the npm
-  2.1.251 and the desktop-managed 2.1.247, so it is NOT version-specific. `~/.claude/.credentials.json`
-  exists and was touched 2026-08-29 09:47, so presence is not the issue. **Headless `claude -p`
-  therefore cannot run AT ALL on Legion**, which takes out the whole `ops/loop` headless program,
-  not just one test. Needs `claude login`; I will not perform a credential action.
-- **`test_cli_version_still_matches_the_pin` is now legitimately RED on Legion** (2.1.251 vs
-  pinned 2.1.220) and that is CORRECT - the broken binary had been masking it. **Do NOT bump
-  `PINNED_CLI`:** its contract requires the propagation canary with a negative control first, and
-  the canary needs a working authenticated CLI, so it is blocked behind the login above. CI is
-  unaffected - `claude` is not on PATH there, so the test skips.
-- **RM-226: `stop_claim_gate` blocked THIS session and could not be satisfied.** It admits
-  counts only from test-runner output, so a figure quoted off disk while CORRECTING it reads
-  as fabricated; and it scans the whole transcript, so retraction cannot clear the line. Do
-  not edit that gate from a session it is blocking.
-- **`gh run watch --exit-status` returns 0 on a CANCELLED run.** I reported a cancelled `ci`
-  as passing before reading `conclusion`. Read the conclusion field, never the watch exit code.
-- DS stays PINNED at data patch 16.15.1 while live DDragon is 16.17.1. `:8860` reporting
-  16.15.1 is CORRECT - do not file it as drift (RM-223 tracks the accruing carry-forward debt).

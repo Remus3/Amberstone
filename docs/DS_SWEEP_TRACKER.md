@@ -69,7 +69,9 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  **Next free id = RM-227.** Re-derived 2026-08-29 across the working tree AND all
+  **Next free id = RM-228.** RM-227 was consumed 2026-08-30 by the LANE 7 headless-repo
+  deferral row in BACKLOG "Reliability / hardening". DERIVE this, do not trust it.
+  Prior note, re-derived 2026-08-29 across the working tree AND all
   three lane branches: the true max filed is RM-221 (filed later the same day by the
   markdown organizing pass), and `lane/ds`, `lane/research` and `lane/true-audit` all
   top out at RM-220, so none hides a higher id. **This line was written reading
