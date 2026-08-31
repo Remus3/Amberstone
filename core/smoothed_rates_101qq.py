@@ -64,7 +64,22 @@ _DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "external"
 _RECORDS_PATH = _DATA_DIR / "101qq_hero_rank_double_tier200_capture_20260525.json"
 _ID_MAP_PATH = _DATA_DIR / "101qq_id_map.json"
 
+# Lock discipline (lane 8, 2026-08-30). Two locks, one order:
+#
+#   _CACHE_LOCK    guards ONLY the published snapshot globals below. It is
+#                  never held across I/O - the load reads the network and the
+#                  disk seed first, then publishes under it in a handful of
+#                  assignments. Re-entrant because a public accessor may take
+#                  it around a read that itself calls a helper.
+#   _REFRESH_LOCK  admits exactly ONE loader at a time (single flight), so a
+#                  crowd of callers cannot each fire their own fetch.
+#
+# _REFRESH_LOCK is always acquired BEFORE _CACHE_LOCK and never the reverse,
+# so the pair cannot deadlock; a stale reader only ever tries it non-blocking.
 _CACHE_LOCK = threading.RLock()
+_REFRESH_LOCK = threading.Lock()
+_REFRESH_THREAD: threading.Thread | None = None   # in-flight background refresh
+_CACHE_GEN = 0                      # bumped by _reset_cache; stale publishes drop
 _LOADED = False
 _LOADED_AT: float = 0.0             # monotonic stamp of last (re)load
 _SOURCE: str = "none"               # "live" | "static" | "none" - which seed won
@@ -182,133 +197,233 @@ def _parse_itemp(raw: str | float | None) -> float:
         return 0.0
 
 
-def _load_once() -> None:
-    """Loads + indexes both seed files. Thread-safe, idempotent.
+def _build_snapshot() -> dict:
+    """Read + index both seeds and return a self-contained snapshot.
 
-    Silent on missing files (returns empty cache); the API layer surfaces
-    that as "no data" rather than 500.
+    ALL of the blocking work lives here - the live Tencent fetch (up to 3
+    sequential GETs at a 6s socket timeout each) and the static-seed disk
+    read - and NONE of it runs under a lock. The caller publishes the result
+    with `_publish()`, which is pure assignment. Writes no globals.
+
+    Silent on missing files (yields an empty snapshot); the API layer
+    surfaces that as "no data" rather than 500.
+    """
+    # ID map: numeric-string keys -> DDragon names
+    id_to_name: dict[int, str] = {}
+    name_to_id: dict[str, int] = {}
+    try:
+        raw_map = json.loads(_ID_MAP_PATH.read_text(encoding="utf-8"))
+        for k, v in raw_map.items():
+            try:
+                cid = int(k)
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(v, str) or not v:
+                continue
+            id_to_name[cid] = v
+            name_to_id[v.lower()] = cid
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    # Records source (item 277): live Tencent rows first, static seed
+    # fallback. Both are the same row schema; the indexer below is shared.
+    _src = "none"
+    try:
+        data = _live_data_rows()
+    except Exception:  # noqa: BLE001 - the live seam is a monkey-patchable
+        # third-party boundary; a raising live source must degrade to the
+        # static seed (that is what the fallback exists for), never propagate.
+        data = None
+    if data:
+        _src = "live"
+    else:
+        try:
+            raw_env = json.loads(_RECORDS_PATH.read_text(encoding="utf-8"))
+            d = raw_env.get("data") if isinstance(raw_env, dict) else None
+            data = d if isinstance(d, list) else []
+        except (OSError, json.JSONDecodeError):
+            data = []
+        if data:
+            _src = "static"
+
+    # Records: normalize fields (shared indexer over live OR static rows).
+    # No try/except wrapper: the loop body does no I/O or JSON parsing
+    # (the old OSError/JSONDecodeError catch here was unreachable) and
+    # per-field coercion failures are handled row-by-row below.
+    records: list[dict] = []
+    for rec in data:
+        if not isinstance(rec, dict):
+            continue
+        try:
+            bot_id = int(rec.get("championid1") or 0)
+            sup_id = int(rec.get("championid2") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not (bot_id and sup_id):
+            continue
+        bot_name = id_to_name.get(bot_id) or _name_fallback(bot_id)
+        sup_name = id_to_name.get(sup_id) or _name_fallback(sup_id)
+        if not (bot_name and sup_name):
+            continue
+        try:
+            doublewr = float(rec.get("doublewinrate") or 0.0)
+            iwr1 = float(rec.get("iwinrate1") or 0.0)
+            iwr2 = float(rec.get("iwinrate2") or 0.0)
+            irank = int(rec.get("irank") or 0)
+        except (TypeError, ValueError):
+            continue
+        itemp = _parse_itemp(rec.get("itemp1"))
+        # Sample-size proxy: itemp1 is play-rate share; scale to
+        # wins-count proxy and Laplace-smooth. doublewr * proxy
+        # = wins, proxy = games, alpha = 1.0.
+        sample = max(0.0, itemp * _ITEMP_TO_SAMPLE_SCALE)
+        wins = doublewr * sample
+        smoothed = _sr.laplace_rate(wins, sample, _LAPLACE_ALPHA)
+        records.append({
+            "bot": bot_name,
+            "sup": sup_name,
+            "bot_id": bot_id,
+            "sup_id": sup_id,
+            "doublewinrate": doublewr,
+            "iwinrate_bot": iwr1,
+            "iwinrate_sup": iwr2,
+            "itemp_bot": itemp,
+            "irank": irank,
+            "smoothed_rate": smoothed,
+        })
+
+    # Build per-side indices, sorted by smoothed_rate DESC for the
+    # "given a locked partner, who pairs best with them" queries.
+    pair_index: dict[tuple[int, int], dict] = {}
+    bots_by_sup: dict[int, list[dict]] = {}
+    sups_by_bot: dict[int, list[dict]] = {}
+    for r in records:
+        pair_index[(r["bot_id"], r["sup_id"])] = r
+        bots_by_sup.setdefault(r["sup_id"], []).append(r)
+        sups_by_bot.setdefault(r["bot_id"], []).append(r)
+    # Sort each list by smoothed_rate DESC then irank ASC (tiebreaker).
+    for v in bots_by_sup.values():
+        v.sort(key=lambda x: (-x["smoothed_rate"], x["irank"]))
+    for v in sups_by_bot.values():
+        v.sort(key=lambda x: (-x["smoothed_rate"], x["irank"]))
+
+    return {
+        "id_to_name": id_to_name,
+        "name_to_id": name_to_id,
+        "records": records,
+        "pair_index": pair_index,
+        "bots_by_sup": bots_by_sup,
+        "sups_by_bot": sups_by_bot,
+        "source": _src,
+    }
+
+
+def _publish(snapshot: dict, gen: int) -> None:
+    """Swap a freshly built snapshot in. Assignment only - no I/O, so the
+    cache lock is held for microseconds.
+
+    Drops the publish when `gen` no longer matches `_CACHE_GEN`: a
+    `_reset_cache()` landed while this load was out on the network, and
+    republishing pre-reset data would resurrect it.
     """
     global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
     global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT
     with _CACHE_LOCK:
-        if _LOADED and (_clock() - _LOADED_AT) < _LIVE_TTL_S:
+        if gen != _CACHE_GEN:
             return
-        # ID map: numeric-string keys -> DDragon names
-        id_to_name: dict[int, str] = {}
-        name_to_id: dict[str, int] = {}
-        try:
-            raw_map = json.loads(_ID_MAP_PATH.read_text(encoding="utf-8"))
-            for k, v in raw_map.items():
-                try:
-                    cid = int(k)
-                except (TypeError, ValueError):
-                    continue
-                if not isinstance(v, str) or not v:
-                    continue
-                id_to_name[cid] = v
-                name_to_id[v.lower()] = cid
-        except (OSError, json.JSONDecodeError):
-            pass
-
-        # Records source (item 277): live Tencent rows first, static seed
-        # fallback. Both are the same row schema; the indexer below is shared.
-        _src = "none"
-        data = _live_data_rows()
-        if data:
-            _src = "live"
-        else:
-            try:
-                raw_env = json.loads(_RECORDS_PATH.read_text(encoding="utf-8"))
-                d = raw_env.get("data") if isinstance(raw_env, dict) else None
-                data = d if isinstance(d, list) else []
-            except (OSError, json.JSONDecodeError):
-                data = []
-            if data:
-                _src = "static"
-
-        # Records: normalize fields (shared indexer over live OR static rows).
-        # No try/except wrapper: the loop body does no I/O or JSON parsing
-        # (the old OSError/JSONDecodeError catch here was unreachable) and
-        # per-field coercion failures are handled row-by-row below.
-        records: list[dict] = []
-        for rec in data:
-            if not isinstance(rec, dict):
-                continue
-            try:
-                bot_id = int(rec.get("championid1") or 0)
-                sup_id = int(rec.get("championid2") or 0)
-            except (TypeError, ValueError):
-                continue
-            if not (bot_id and sup_id):
-                continue
-            bot_name = id_to_name.get(bot_id) or _name_fallback(bot_id)
-            sup_name = id_to_name.get(sup_id) or _name_fallback(sup_id)
-            if not (bot_name and sup_name):
-                continue
-            try:
-                doublewr = float(rec.get("doublewinrate") or 0.0)
-                iwr1 = float(rec.get("iwinrate1") or 0.0)
-                iwr2 = float(rec.get("iwinrate2") or 0.0)
-                irank = int(rec.get("irank") or 0)
-            except (TypeError, ValueError):
-                continue
-            itemp = _parse_itemp(rec.get("itemp1"))
-            # Sample-size proxy: itemp1 is play-rate share; scale to
-            # wins-count proxy and Laplace-smooth. doublewr * proxy
-            # = wins, proxy = games, alpha = 1.0.
-            sample = max(0.0, itemp * _ITEMP_TO_SAMPLE_SCALE)
-            wins = doublewr * sample
-            smoothed = _sr.laplace_rate(wins, sample, _LAPLACE_ALPHA)
-            records.append({
-                "bot": bot_name,
-                "sup": sup_name,
-                "bot_id": bot_id,
-                "sup_id": sup_id,
-                "doublewinrate": doublewr,
-                "iwinrate_bot": iwr1,
-                "iwinrate_sup": iwr2,
-                "itemp_bot": itemp,
-                "irank": irank,
-                "smoothed_rate": smoothed,
-            })
-
-        # Build per-side indices, sorted by smoothed_rate DESC for the
-        # "given a locked partner, who pairs best with them" queries.
-        pair_index: dict[tuple[int, int], dict] = {}
-        bots_by_sup: dict[int, list[dict]] = {}
-        sups_by_bot: dict[int, list[dict]] = {}
-        for r in records:
-            pair_index[(r["bot_id"], r["sup_id"])] = r
-            bots_by_sup.setdefault(r["sup_id"], []).append(r)
-            sups_by_bot.setdefault(r["bot_id"], []).append(r)
-        # Sort each list by smoothed_rate DESC then irank ASC (tiebreaker).
-        for v in bots_by_sup.values():
-            v.sort(key=lambda x: (-x["smoothed_rate"], x["irank"]))
-        for v in sups_by_bot.values():
-            v.sort(key=lambda x: (-x["smoothed_rate"], x["irank"]))
-
-        _ID_TO_NAME = id_to_name
-        _NAME_TO_ID = name_to_id
-        _DUO_RECS = records
-        _PAIR_INDEX = pair_index
-        _BOTS_BY_SUP = bots_by_sup
-        _SUPS_BY_BOT = sups_by_bot
+        _ID_TO_NAME = snapshot["id_to_name"]
+        _NAME_TO_ID = snapshot["name_to_id"]
+        _DUO_RECS = snapshot["records"]
+        _PAIR_INDEX = snapshot["pair_index"]
+        _BOTS_BY_SUP = snapshot["bots_by_sup"]
+        _SUPS_BY_BOT = snapshot["sups_by_bot"]
         _LOADED = True
         _LOADED_AT = _clock()
-        _SOURCE = _src
+        _SOURCE = snapshot["source"]
+
+
+def _refresh(gen: int) -> None:
+    """Build outside every lock, then publish. Fail-soft end to end."""
+    try:
+        snapshot = _build_snapshot()
+    except Exception:  # noqa: BLE001 - belt and braces: this runs on a
+        # background thread whose exception nothing would ever see, and a
+        # failed refresh must leave the previous snapshot in place.
+        return
+    _publish(snapshot, gen)
+
+
+def _start_background_refresh(gen: int) -> None:
+    """Refresh an expired snapshot off the caller's thread (single flight).
+
+    Only reached when a previous snapshot exists, so readers keep being
+    served stale data while this runs. If a refresh is already in flight the
+    non-blocking acquire fails and the caller simply keeps the stale data -
+    no caller ever waits on the network here.
+    """
+    global _REFRESH_THREAD
+    if not _REFRESH_LOCK.acquire(blocking=False):
+        return
+
+    def _run() -> None:
+        try:
+            _refresh(gen)
+        finally:
+            _REFRESH_LOCK.release()
+
+    t = threading.Thread(
+        target=_run, name="rc-duo-synergy-refresh", daemon=True)
+    _REFRESH_THREAD = t
+    t.start()
+
+
+def _load_once() -> None:
+    """Ensure a usable snapshot is published. Thread-safe, idempotent.
+
+    Three paths:
+      * fresh cache            -> one lock acquire, no work;
+      * expired cache          -> hand back the STALE snapshot immediately
+                                  and refresh in the background;
+      * cold start (no data)   -> block until the first load completes.
+
+    The cold-start block is deliberate and is the only blocking path: there
+    is no snapshot to serve, so there is nothing to hand back. Every other
+    cold-start caller waits on _REFRESH_LOCK (never on _CACHE_LOCK) and
+    re-checks, so exactly one load runs however many callers arrive.
+    """
+    with _CACHE_LOCK:
+        gen = _CACHE_GEN
+        if _LOADED and (_clock() - _LOADED_AT) < _LIVE_TTL_S:
+            return
+        have_stale = _LOADED
+    if have_stale:
+        _start_background_refresh(gen)
+        return
+    with _REFRESH_LOCK:
+        with _CACHE_LOCK:
+            if _LOADED:
+                return          # another cold-start caller just landed one
+            gen = _CACHE_GEN
+        _refresh(gen)
 
 
 def source() -> str:
     """Which seed the live cache is currently serving: live | static | none."""
     _load_once()
-    return _SOURCE
+    with _CACHE_LOCK:
+        return _SOURCE
 
 
 def _reset_cache() -> None:
-    """Test-only: clear cache so the next call re-reads from disk."""
+    """Test-only: clear cache so the next call re-reads from disk.
+
+    Bumps the generation so a refresh still out on the network cannot
+    republish the data this call just dropped.
+    """
     global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
-    global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT
+    global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT, _CACHE_GEN
     with _CACHE_LOCK:
+        _CACHE_GEN += 1
         _LOADED = False
         _LOADED_AT = 0.0
         _SOURCE = "none"
@@ -326,7 +441,8 @@ def _resolve_id(champ: str) -> int:
     if not champ:
         return 0
     _load_once()
-    return _NAME_TO_ID.get(str(champ).strip().lower(), 0)
+    with _CACHE_LOCK:
+        return _NAME_TO_ID.get(str(champ).strip().lower(), 0)
 
 
 def _rec_to_duo(rec: dict) -> DuoRec:
@@ -358,7 +474,10 @@ def top_duos_for_bot(bot_champ: str, top_n: int = 4) -> list[DuoRec]:
     bot_id = _resolve_id(bot_champ)
     if not bot_id:
         return []
-    recs = _SUPS_BY_BOT.get(bot_id) or []
+    # A background refresh may republish between the resolve and the read;
+    # take the index under the cache lock so one call sees one snapshot.
+    with _CACHE_LOCK:
+        recs = list(_SUPS_BY_BOT.get(bot_id) or ())
     n = max(0, min(int(top_n), len(recs)))
     return [_rec_to_duo(r) for r in recs[:n]]
 
@@ -370,7 +489,8 @@ def top_duos_for_sup(sup_champ: str, top_n: int = 4) -> list[DuoRec]:
     sup_id = _resolve_id(sup_champ)
     if not sup_id:
         return []
-    recs = _BOTS_BY_SUP.get(sup_id) or []
+    with _CACHE_LOCK:
+        recs = list(_BOTS_BY_SUP.get(sup_id) or ())
     n = max(0, min(int(top_n), len(recs)))
     return [_rec_to_duo(r) for r in recs[:n]]
 
@@ -382,7 +502,8 @@ def pair_synergy(bot_champ: str, sup_champ: str) -> DuoRec | None:
     sup_id = _resolve_id(sup_champ)
     if not (bot_id and sup_id):
         return None
-    rec = _PAIR_INDEX.get((bot_id, sup_id))
+    with _CACHE_LOCK:
+        rec = _PAIR_INDEX.get((bot_id, sup_id))
     return _rec_to_duo(rec) if rec else None
 
 
@@ -398,16 +519,22 @@ def top_solo_picks(role: Literal["bot", "sup"], top_n: int = 4) -> list[SoloRec]
     r = role.lower() if role else ""
     if r not in ("bot", "sup"):
         return []
+    # One coherent snapshot per call: grab the references under the cache
+    # lock (published structures are swapped, never mutated in place, so the
+    # aggregation below is safe to run outside it).
+    with _CACHE_LOCK:
+        duo_recs = _DUO_RECS
+        id_to_name = _ID_TO_NAME
     # Group records by champion id (depending on role side).
     buckets: dict[int, list[dict]] = {}
-    for rec in _DUO_RECS:
+    for rec in duo_recs:
         cid = rec["bot_id"] if r == "bot" else rec["sup_id"]
         buckets.setdefault(cid, []).append(rec)
     aggregates: list[SoloRec] = []
     for cid, recs in buckets.items():
         if not recs:
             continue
-        name = _ID_TO_NAME.get(cid, "")
+        name = id_to_name.get(cid, "")
         if not name:
             continue
         ranks = sorted(x["irank"] for x in recs)
@@ -444,9 +571,10 @@ def top_solo_picks(role: Literal["bot", "sup"], top_n: int = 4) -> list[SoloRec]
 def coverage() -> dict:
     """Diagnostic: how many unique champs + records are loaded."""
     _load_once()
-    return {
-        "unique_champions": len(_ID_TO_NAME),
-        "total_records":    len(_DUO_RECS),
-        "unique_bot_ids":   len(_SUPS_BY_BOT),
-        "unique_sup_ids":   len(_BOTS_BY_SUP),
-    }
+    with _CACHE_LOCK:
+        return {
+            "unique_champions": len(_ID_TO_NAME),
+            "total_records":    len(_DUO_RECS),
+            "unique_bot_ids":   len(_SUPS_BY_BOT),
+            "unique_sup_ids":   len(_BOTS_BY_SUP),
+        }
