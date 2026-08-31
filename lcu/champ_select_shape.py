@@ -55,6 +55,55 @@ ARAM_QUEUE_IDS = frozenset({450, 720, 920, 2400, 2401, 2403, 2405, 2410, 2450})
 ARENA_QUEUE_IDS = (1700, 1710, 1750)
 
 
+# -- Fail-soft field readers -------------------------------------------------
+# This module is called from two places that both swallow exceptions, so a
+# raise here is not an error the operator ever sees - it is a silently
+# missing champ-select payload:
+#
+#   dashboard/_lcu_inprocess.py:190-191  catches Exception, returns None with
+#       NO log line, and the in-process L3 path falls back to the :8889 relay
+#       hop that L3 exists to remove.
+#   tools/lcu_agent.py:1612              calls capture_state() inside the
+#       state push loop, so the whole snapshot for that tick is lost.
+#
+# The module already fails soft nearly everywhere (isinstance guards on
+# trades, bench entries, action groups, team entries). These readers exist so
+# that decision is applied UNIFORMLY - the sites below were the ones it had
+# been missed at. lcu/snapshot_shape.py:509-517 records the identical defect
+# found in its own gameflow read, eleven lines after it calls into here.
+
+def _as_dict(value) -> dict:
+    """``value`` when it is a dict, else an empty dict.
+
+    ``payload.get(key, {})`` hands back the default only when the key is
+    ABSENT. LCU routinely emits a present-and-NULL sub-object, and the
+    chained ``.get`` on that None then raised AttributeError.
+    """
+    return value if isinstance(value, dict) else {}
+
+
+def _as_list(value) -> list:
+    """``value`` when it is a list, else an empty list.
+
+    NOT the same as ``value or []``, which forwards any truthy non-list
+    unchanged: a string then iterates per character and an int raises
+    TypeError. Both shapes reached this module's loops.
+    """
+    return value if isinstance(value, list) else []
+
+
+def _as_int(value, default: int) -> int:
+    """``int(value)`` when it coerces, else ``default``.
+
+    A ``.get(key, default)`` default only fires for an ABSENT key, so a
+    present-and-null field reached ``int()`` and raised.
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def active_round(sess: dict) -> dict | None:
     """Derive the active pick/ban round from ``session.actions``.
 
@@ -65,7 +114,7 @@ def active_round(sess: dict) -> dict | None:
     type they share (ban or pick). Used by the dashboard to highlight the
     active border on ally + enemy slots.
     """
-    actions = sess.get("actions") or []
+    actions = _as_list(sess.get("actions"))
     for group in actions:
         if not isinstance(group, list):
             continue
@@ -92,7 +141,7 @@ def swap_entries(arr) -> list[dict]:
     cell_id on swap requests.
     """
     out = []
-    for e in arr or []:
+    for e in _as_list(arr):
         if not isinstance(e, dict):
             continue
         out.append({
@@ -115,20 +164,18 @@ def arena_teams(sess: dict) -> list[dict]:
     Returns an empty list when the session is not in a subteamed queue
     or when LCU has not yet populated the field (pre-reveal).
     """
-    raw = sess.get("additionalSubteamData") or []
-    if not isinstance(raw, list) or not raw:
+    raw = _as_list(sess.get("additionalSubteamData"))
+    if not raw:
         return []
     my_subteam = None
-    try:
-        local_cell = int(sess.get("localPlayerCellId", -1))
-    except (TypeError, ValueError):
-        local_cell = -1
+    local_cell = _as_int(sess.get("localPlayerCellId", -1), -1)
     if local_cell >= 0:
         for tm in raw:
             if not isinstance(tm, dict):
                 continue
-            members = tm.get("members") or []
-            if any(isinstance(m, dict) and int(m.get("cellId", -2)) == local_cell
+            members = _as_list(tm.get("members"))
+            if any(isinstance(m, dict)
+                   and _as_int(m.get("cellId"), -2) == local_cell
                    for m in members):
                 my_subteam = tm.get("subteamId") or tm.get("id")
                 break
@@ -138,7 +185,7 @@ def arena_teams(sess: dict) -> list[dict]:
             continue
         sid = tm.get("subteamId") or tm.get("id")
         cells = []
-        for m in tm.get("members") or []:
+        for m in _as_list(tm.get("members")):
             if not isinstance(m, dict):
                 continue
             cells.append({
@@ -186,7 +233,7 @@ def _team_picks(team_arr, local_cell=None) -> list[dict]:
     without waiting for the game to start.
     """
     out = []
-    for _idx, p in enumerate(team_arr or []):
+    for _idx, p in enumerate(_as_list(team_arr)):
         if not isinstance(p, dict):
             continue
         # s171 hover fix: championId is 0 until lock; the hovered champ
@@ -233,7 +280,7 @@ def _local_pick_completed(sess: dict, local_cell) -> bool:
     showed "HOVERING" forever after lock. The true lock state is
     ``sess.actions[N][M].completed`` for the local cell's pick action.
     """
-    for group in sess.get("actions", []) or []:
+    for group in _as_list(sess.get("actions")):
         if not isinstance(group, list):
             continue
         for action in group:
@@ -278,8 +325,7 @@ def shape_champ_select(
     if not isinstance(sess, dict):
         return {"cs_debug": cs_debug}
 
-    _q = (sess.get("gameData", {}).get("queue", {})
-          if "gameData" in sess else {})
+    _q = _as_dict(_as_dict(sess.get("gameData")).get("queue"))
     cs_debug["queue_obj"] = {
         "id":       _q.get("id"),
         "mapId":    _q.get("mapId"),
@@ -287,13 +333,19 @@ def shape_champ_select(
         "type":     _q.get("type"),
         "category": _q.get("category"),
     }
-    cs_debug["bench_len"] = len(sess.get("benchChampions", []) or [])
+    cs_debug["bench_len"] = len(_as_list(sess.get("benchChampions")))
 
-    local_cell = sess.get("localPlayerCellId", -1)
-    my_pick = next((p for p in sess.get("myTeam", [])
-                    if p.get("cellId") == local_cell), None)
-    queue_id = (sess.get("gameData", {}).get("queue", {}).get("id", 0)
-                if "gameData" in sess else 0)
+    # s155 (tools/lcu_agent.py:919-921): some LCU builds emit
+    # localPlayerCellId / cellId as JSON strings depending on the patch.
+    # A bare == then silently missed on any MIXED pairing, so my_champion
+    # read 0 and the dashboard lock button never activated. That cast was
+    # applied to the agent's lock_pick handler and never to the shaper.
+    # Normalize once, then compare like against like.
+    local_cell = _as_int(sess.get("localPlayerCellId", -1), -1)
+    my_pick = next((p for p in _as_list(sess.get("myTeam"))
+                    if isinstance(p, dict)
+                    and _as_int(p.get("cellId"), -2) == local_cell), None)
+    queue_id = _q.get("id", 0) or 0
     # 2026-05-09 (s154): /lol-champ-select/v1/session frequently omits
     # gameData during BAN_PICK, leaving queue_id=0. The dashboard's
     # sr_draft gate (is_sr_draft_queue) then evaluates False and the
@@ -302,9 +354,9 @@ def shape_champ_select(
     # carries gameData.queue.id reliably from queue-pop onward.
     if not queue_id:
         gf, _ = request("GET", "/lol-gameflow/v1/session")
-        if isinstance(gf, dict):
-            queue_id = (gf.get("gameData", {}).get("queue", {})
-                        .get("id", 0) or 0)
+        queue_id = _as_dict(
+            _as_dict(_as_dict(gf).get("gameData")).get("queue")
+        ).get("id", 0) or 0
 
     # s171 hover fix: my_champion = locked OR hovered. The lock
     # button visibility on the dashboard depends on this - if
@@ -319,7 +371,7 @@ def shape_champ_select(
         # resolver (_csvResolveRole) can find my_team[i] by
         # cellId == local_cell to read assignedPosition. Without
         # this the role stays "-" and the P&B fetch never fires.
-        "local_cell":   local_cell if isinstance(local_cell, int) else -1,
+        "local_cell":   local_cell,
         "my_champion":  _my_locked or _my_intent,
         "my_champion_locked":  _my_locked,
         "my_champion_intent":  _my_intent,
@@ -328,15 +380,16 @@ def shape_champ_select(
             (my_pick or {}).get("spell1Id", 0),
             (my_pick or {}).get("spell2Id", 0),
         ],
-        "bench": [c.get("championId") for c in sess.get("benchChampions", [])
+        "bench": [c.get("championId")
+                  for c in _as_list(sess.get("benchChampions"))
                   if isinstance(c, dict)],
-        "phase": (sess.get("timer") or {}).get("phase"),
+        "phase": _as_dict(sess.get("timer")).get("phase"),
         "my_team":     _team_picks(sess.get("myTeam"), local_cell),
         "their_team":  _team_picks(sess.get("theirTeam"), local_cell),
         "trades": [
             {"id": t.get("id"), "cellId": t.get("cellId"),
              "state": t.get("state")}
-            for t in (sess.get("trades") or [])
+            for t in _as_list(sess.get("trades"))
             if isinstance(t, dict)
         ],
         # Swap candidate lists. Mirror trades - slim id/cellId/state

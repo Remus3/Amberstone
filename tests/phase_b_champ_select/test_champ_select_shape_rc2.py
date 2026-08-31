@@ -358,16 +358,31 @@ class TestDegenerateSessions(unittest.TestCase):
         self.assertIsNone(cs["active_round"])
         self.assertFalse(cs["my_completed"])
 
-    def test_non_dict_my_team_entry_raises_as_it_always_has(self):
-        # Pinned, not fixed: the local-pick lookup does a bare ``p.get``
-        # on every myTeam entry. LCU has never emitted a non-dict there,
-        # and hardening it here would be a behavior change on an
-        # extraction slice that must stay byte-identical.
+    def test_non_dict_my_team_entry_is_dropped_not_raised(self):
+        # SUPERSEDED 2026-08-31 (lane 8 cycle 46). This pinned an
+        # AttributeError as intended behaviour, on the stated grounds that
+        # "hardening it here would be a behavior change on an extraction
+        # slice that must stay byte-identical". That reason went stale when
+        # the extraction landed: the RC2 L3 slice completed 2026-07-20 and
+        # tools/lcu_agent.py retains NO inline copy of the shaping (it
+        # delegates at :344), so there is no second implementation left for
+        # this one to be byte-identical WITH.
+        #
+        # The pin was also internally inconsistent with the test directly
+        # above it, which requires malformed theirTeam / trades /
+        # positionSwaps / actions entries to be DROPPED, not raised - the
+        # same function, the same class of input, the opposite policy. And
+        # the raise was never observable: both callers swallow it
+        # (dashboard/_lcu_inprocess.py:190-191 returns None with no log
+        # line; tools/lcu_agent.py:1612 loses the snapshot for the tick),
+        # so it deleted the whole champ-select payload silently rather
+        # than surfacing anything.
         sess = _sr_draft_session()
         sess["myTeam"] = [None]
-        with self.assertRaises(AttributeError):
-            shape_champ_select(_fake_request({_SESSION_PATH: sess}),
-                               "ChampSelect")
+        cs = shape_champ_select(_fake_request({_SESSION_PATH: sess}),
+                                "ChampSelect")["champ_select"]
+        self.assertEqual(cs["my_team"], [])
+        self.assertEqual(cs["my_champion"], 0)
 
     def test_non_int_local_cell_normalises_to_minus_one(self):
         sess = _sr_draft_session()

@@ -284,13 +284,18 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "but that doc has since been compacted so the shorthand cannot be "
         "expanded AND re-pointed without asserting a line nobody wrote.",
     ),
-    (
-        "docs/specs/SPEC_data_provenance_guard_and_index.md",
-        "ROADMAP.md:231",
-        "HISTORICAL",
-        "The sentence containing this citation exists to record that the cite "
-        "went stale DURING the audit. Repairing it would delete the finding.",
-    ),
+    # DISCHARGED 2026-08-31 (lane 8 cycle 46). The entry below read
+    # ("docs/specs/SPEC_data_provenance_guard_and_index.md", "ROADMAP.md:231",
+    # "HISTORICAL", ...) and was removed because the guard asserts exact set
+    # equality and the citation stopped being broken - but NOT because anything
+    # was repaired. It was broken only because ROADMAP.md was 230 lines long, so
+    # line 231 did not exist; a routine 2-line ROADMAP append made it resolve, and
+    # it now points at an unrelated row. The cited string is a MENTION, not a live
+    # pointer: the sentence at SPEC_data_provenance_guard_and_index.md:2005 exists
+    # to record that this very cite went stale during an audit, so the spec must
+    # NOT be "corrected". EXPECT THIS ENTRY TO RETURN the next time ROADMAP.md
+    # drops below 231 lines. If the guard then reports it as NET-NEW, that is this
+    # same historical debt resurfacing, not fresh rot - re-add it with this reason.
     (
         "docs/specs/SPEC_rm98_cast_rate_time_base.md",
         "project_ds_rm98_cast_rate_time_base.md:46-49",
