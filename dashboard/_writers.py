@@ -10,9 +10,16 @@ file - never a torn one.
 
 `set_pregame()` additionally holds the shared `core.coaching_data_lock`
 because root `coaching_data.json` is also written by the SR coach
-(`coach_integration._write_fields`) and the supervisor's aftergame
-collector - without the lock, a concurrent R-M-W can clobber the
-pregame field (NOTE-003 fix).
+(`coach_integration._write_fields`) - without the lock, a concurrent
+R-M-W can clobber the pregame field (NOTE-003 fix).
+
+Lane 8 cycle 28 correction: this used to also name "the supervisor's
+aftergame collector" as a writer. That was false. `core/aftergame_summary.py`
+has ZERO production importers - it is reachable only through its own
+`if __name__ == "__main__"` block - it never takes the lock, and it targets
+`data/coaching_data.json`, not the root file this module writes. The real
+uncovered writer is `app/__init__.py` `_write_data()`, which is filed as
+RM-277 (frozen file, needs an adjudicating agent).
 
 `force_vision_scan()` writes a sentinel that BaseCoach._vision_loop
 polls - same effect as the Ctrl+Tab hotkey.
@@ -43,8 +50,14 @@ def atomic_write_json(rel: str, data: dict) -> None:
     # Lane 8 cycle 24: the tmp+rename itself now IS delegated, via
     # atomic_write_bytes. The hand-rolled version derived its scratch name from
     # the destination alone, so two writers of one file opened the same scratch
-    # file - and coaching_data.json has a second writer in another process
-    # (app/__init__.py:253). Bytes, not write_text, because write_text rewrites
+    # file - and coaching_data.json does have a second writer at
+    # app/__init__.py:253. Cycle 28 correction: that writer is in the SAME
+    # process, not "another process" as this comment used to claim (RC runs as
+    # one `pythonw.exe main.py` with the dashboard in-process). The fix is
+    # unaffected - two threads racing one scratch name tear the file exactly as
+    # two processes would - but the process claim itself was wrong and was
+    # being cited as evidence that the cross-process file lock carries load.
+    # Bytes, not write_text, because write_text rewrites
     # LF as CRLF on Windows (reference_windows_write_text_crlf_byte_count).
     from core.polled_json import atomic_write_bytes
     body = json.dumps(data, indent=2)
