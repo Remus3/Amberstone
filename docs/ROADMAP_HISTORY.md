@@ -1,5 +1,35 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-08-30 - RM-246 size-budget pass: sixteen CLOSED pointer rows relocated from ROADMAP.md
+
+Relocated verbatim by the lane 8 RM-246 headroom pass. ROADMAP.md stood at 81856 bytes
+against the 81920-byte CI budget in `tests/test_doc_size_budget.py` - 64 bytes of headroom,
+so three consecutive lane 8 cycles had each had to shrink their own row to fit and one could
+only fit by appending to an existing row's tail. NOTHING is dropped: every row below was
+already a CLOSED / SHIPPED / REFUTED POINTER whose body had been relocated to this file in an
+earlier pass, so each stub now sits beside the body it points at, with its heading, date and
+RM ids intact. Rows carrying an inline fence, an open half, a pending operator decision or a
+still-open sibling id were deliberately LEFT in `ROADMAP.md` - in particular RM-121, RM-127,
+RM-129, RM-142 (its RM-142-T sibling is FUTURE in `BACKLOG.md`), RM-144, RM-150, RM-155,
+RM-157, RM-158, RM-159, RM-164, RM-170, RM-171, RM-174, RM-175, RM-188 and RM-190.
+
+- **RM-163 CLOSED 2026-08-06 (`f4e6de24`, LEDGER 1208 + 1212) - Match-V5 negative caching SHIPPED and ACCEPTANCE MET. Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08) - READ IT before re-opening this id.**
+- **RM-186 + RM-187 SHIPPED 2026-08-08 (ENGINE 1.275.3 -> 1.276.0 -> 1.277.0, merges `94432a20` + `845f9cea`, LEDGER 1237) - unique-passive dedup was ORDER-DEPENDENT; it is now strongest-at-context and flipped ON at every engine call site.** Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-12 size-budget pass) - READ IT before re-opening either id. Superseded only in version: the engine is now **1.277.1** (RM-190, LEDGER 1241).
+- **RM-176 SHIPPED 2026-08-08 (ENGINE 1.275.0 -> 1.275.1, lane 6) - two engine correctness fixes, both opt-in-path (the `mana_sim._recharge_to` sub-recharge remainder + the `dps.py` extra-shot crit read).** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 11) - READ THEM before re-opening this id.
+- **RM-177 SHIPPED 2026-08-08 (ENGINE 1.275.1 -> 1.275.2, lane 6) - printed HSP now composes ADDITIVELY in `hps.py`, with the `ally_chain_only` product carve-out kept.** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 11) - READ THEM before re-opening this id; the filing's own "ordering unchanged" blast-radius claim was WRONG (638 of 3840) and the correction lives there.
+- **RM-177 FILING (the original defect report, relocated VERBATIM to `docs/ROADMAP_HISTORY.md` 2026-08-08) - superseded by the SHIPPED row above; read it there before re-opening the composition question.**
+- **RM-169 CLOSED-NARROW 2026-08-06 (`dbe2cdcb`, LEDGER 1213) - `compute_matchup` is NOT missing an argument; the AXIS question moved to RM-172 (itself now CLOSED).** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 11) - READ THEM before re-opening this id; two of its counts are GRID-DEPENDENT and must never be quoted from this stub.
+- **RM-172 CLOSED 2026-08-07 (`f05d9096`, LEDGER 1225) - the seam is wired uniformly, default-OFF and COHERENT, and a LIVE inert seam was found in production.** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 11) - READ THEM before re-opening this id.
+- **RM-173 SHIPPED 2026-08-06 (`fa52f73b`, LEDGER 1221) - the supervisor sentinel self-heals, and the root cause was THE TEST SUITE (a repo-root `pytest .` deleted the live lock pair).** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 11) - READ THEM before re-opening this id; the dead-vs-foreign-live-pid asymmetry there governs any future repair.
+- **RM-165 CLOSED 2026-08-06 (`668f4335`, LEDGER 1207) - fixed, and the row was NARROWER than the defect.** Full detail in LEDGER 1207. Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-15).
+- **RM-146 CLOSED 2026-08-02 (LEDGER 1171, `bfca6a48`) - the 500 MB ceiling was WRONG and nothing leaks; raised to 700/1200 (`core/resource_manager.py:46-62`), pinned by `tests/test_resource_manager_ceiling_rm146.py`.** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
+- **RM-147 CLOSED 2026-08-02 (LEDGER 1170, `5c8f3b3d`) - a SECOND `monitor_capture` added disabled-by-default beside the untouched `window_capture`; G6-03 ran and CLOSED on it the same session.** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
+- **RM-145 SHIPPED + LIVE-CONFIRMED 2026-08-02 (LEDGER 1166 + 1169; G6-04 CLOSED).** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
+- **RM-145 original filing (pre-fix diagnosis) relocated VERBATIM to `docs/ROADMAP_HISTORY.md`.**
+- **RM-140 SHIPPED + CLOSED 2026-08-02 - do NOT re-open.** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
+- **RM-141 SHIPPED + CLOSED 2026-08-02.** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
+- **RM-143 P1 + P2 + P3 SHIPPED 2026-08-01** (`dda07d08` map, `3e2fd192` runner). Full row relocated VERBATIM to `docs/ROADMAP_HISTORY.md`.
+
 ## 2026-08-30 - lane 8 cycle 22 four-id row relocated from ROADMAP.md
 
 Relocated verbatim by the lane 8 cycle 25 wrap: adding the cycle-25 pointer row took
