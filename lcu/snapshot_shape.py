@@ -90,7 +90,58 @@ _LOBBY_QUEUE_NAMES = {
 # 10 min because riot-id changes are rare (and would re-fire on next
 # capture cycle anyway since cache is per-process).
 _SUMMONER_LOOKUP_TTL_S = 600.0
+# The TTL alone bounded FRESHNESS, never SIZE: an expired entry was re-fetched
+# but never removed, so the dict grew monotonically for the life of the
+# process. The dashboard runs for days across many lobbies, and every distinct
+# lobby member ever seen kept a row. Evict on insert (2026-08-31, lane 8
+# cycle 35): drop everything already past its TTL, and if that is still not
+# enough, drop the oldest rows until the cap holds.
+_SUMMONER_LOOKUP_CACHE_MAX = 256
 _summoner_lookup_cache: dict = {}  # {sid: {"data": {...}, "fetched_at": float}}
+
+
+def _coerce_int(value, default: int = 0) -> int:
+    """Best-effort int cast for a field LCU supplies, never raising.
+
+    The League client changes field TYPES between builds (the Riot ID
+    migration alone re-typed several), so every int-cast over an LCU value
+    needs the same guard. This module already applied it by hand in some
+    places and not others - ``_slim_lobby_member`` guarded ``summonerId``
+    while ``_resolve_local_summoner_id`` cast the SAME field bare, and the
+    mastery loop guarded ``championId`` while leaving its six siblings
+    exposed. One helper so the guard cannot be forgotten again.
+
+    OverflowError is caught alongside TypeError/ValueError and is NOT
+    theoretical: ``json.loads`` accepts the non-standard ``Infinity``
+    literal unless a ``parse_constant`` is supplied, and neither transport
+    supplies one (``tools/lcu_agent.py:222``, ``lcu/lcu_client.py:197``).
+    ``int(float("inf"))`` raises OverflowError, which is an ArithmeticError
+    and so is caught by neither of the other two arms.
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
+def _prune_summoner_lookup_cache(now: float) -> None:
+    """Keep ``_summoner_lookup_cache`` under ``_SUMMONER_LOOKUP_CACHE_MAX``."""
+    if len(_summoner_lookup_cache) < _SUMMONER_LOOKUP_CACHE_MAX:
+        return
+    for sid, row in list(_summoner_lookup_cache.items()):
+        if now - row.get("fetched_at", 0.0) >= _SUMMONER_LOOKUP_TTL_S:
+            _summoner_lookup_cache.pop(sid, None)
+    if len(_summoner_lookup_cache) < _SUMMONER_LOOKUP_CACHE_MAX:
+        return
+    # Materialise with list() BEFORE sorting: this cache is process-global
+    # and the dashboard reaches it from more than one handler thread, so
+    # iterating the live dict could raise "dictionary changed size during
+    # iteration". pop(sid, None) is likewise tolerant of a racing eviction.
+    for sid, _row in sorted(list(_summoner_lookup_cache.items()),
+                            key=lambda kv: kv[1].get("fetched_at", 0.0)):
+        if len(_summoner_lookup_cache) < _SUMMONER_LOOKUP_CACHE_MAX:
+            break
+        _summoner_lookup_cache.pop(sid, None)
 
 
 def _lookup_summoner_by_id(request: Callable[..., tuple], sid: int):
@@ -100,6 +151,15 @@ def _lookup_summoner_by_id(request: Callable[..., tuple], sid: int):
     summonerLevel/puuid) or None when unreachable. Quiet failure -
     callers must tolerate missing data and emit empty strings.
     """
+    # Coerce HERE rather than trusting callers. ``sid`` is interpolated into
+    # the request path below, and ``tools/lcu_agent.py:254`` re-exports this
+    # helper with an unenforced ``sid: int`` annotation and no coercion of
+    # its own - a string argument would build
+    # ``/lol-summoner/v1/summoners/../../<anything>`` and the transport
+    # concatenates it raw (``tools/lcu_agent.py:210``). That re-export has
+    # zero non-test callers today, so the containment was ACCIDENTAL rather
+    # than enforced; this makes it intrinsic.
+    sid = _coerce_int(sid, default=0)
     if not sid:
         return None
     cached = _summoner_lookup_cache.get(sid)
@@ -109,6 +169,7 @@ def _lookup_summoner_by_id(request: Callable[..., tuple], sid: int):
     payload, err = request("GET", f"/lol-summoner/v1/summoners/{sid}")
     if not isinstance(payload, dict):
         return None
+    _prune_summoner_lookup_cache(now)
     _summoner_lookup_cache[sid] = {"data": payload, "fetched_at": now}
     return payload
 
@@ -143,14 +204,8 @@ def _slim_lobby_member(request: Callable[..., tuple], m, *,
     game_name = str(m.get("gameName") or "")
     tag_line  = str(m.get("tagLine") or "")
     summ_name = str(m.get("summonerName") or "")
-    try:
-        sid = int(m.get("summonerId") or 0)
-    except (TypeError, ValueError):
-        sid = 0
-    try:
-        lvl = int(m.get("summonerLevel") or 0)
-    except (TypeError, ValueError):
-        lvl = 0
+    sid = _coerce_int(m.get("summonerId") or 0)
+    lvl = _coerce_int(m.get("summonerLevel") or 0)
 
     # s170.1: enrich missing names via per-summoner lookup. Current LCU
     # builds frequently leave gameName/tagLine empty on lobby members.
@@ -161,10 +216,7 @@ def _slim_lobby_member(request: Callable[..., tuple], m, *,
             tag_line  = tag_line  or str(prof.get("tagLine") or "")
             summ_name = summ_name or str(prof.get("displayName") or prof.get("internalName") or "")
             if not lvl:
-                try:
-                    lvl = int(prof.get("summonerLevel") or 0)
-                except (TypeError, ValueError):
-                    pass
+                lvl = _coerce_int(prof.get("summonerLevel") or 0)
 
     if game_name and tag_line:
         riot_id = f"{game_name}#{tag_line}"
@@ -173,8 +225,15 @@ def _slim_lobby_member(request: Callable[..., tuple], m, *,
 
     # is_self: prefer summoner-id match (reliable on current LCU builds);
     # fall back to the LCU ``isLocalMember`` flag (works on older builds).
-    if local_summoner_id is not None and sid:
-        is_self = (sid == int(local_summoner_id))
+    # _coerce_int, not int(): this helper is re-exported through
+    # tools/lcu_agent and its docstring promises totality over garbage, so
+    # the comparison must not raise on a caller-supplied bad id either. A
+    # local id that cannot be parsed falls back to the isLocalMember flag
+    # rather than silently marking every member "not me".
+    _local_sid = (None if local_summoner_id is None
+                  else _coerce_int(local_summoner_id, default=0))
+    if _local_sid and sid:
+        is_self = (sid == _local_sid)
     else:
         is_self = bool(m.get("isLocalMember"))
 
@@ -253,8 +312,16 @@ def _resolve_local_summoner_id(request: Callable[..., tuple]) -> int | None:
     sid = me.get("summonerId")
     if not sid:
         return None
-    _mastery_cache["summoner_id"] = int(sid)
-    return int(sid)
+    # Guarded because the docstring promises "or None", and because an
+    # unguarded int() here raised straight out of shape_snapshot: the agent
+    # then skipped the whole /upload-lcu post for the tick and the
+    # in-process path returned None and fell back to the relay silently.
+    # _slim_lobby_member already guards this SAME field.
+    sid_int = _coerce_int(sid, default=0)
+    if not sid_int:
+        return None
+    _mastery_cache["summoner_id"] = sid_int
+    return sid_int
 
 
 def _maybe_refresh_mastery(request: Callable[..., tuple]) -> dict | None:
@@ -296,18 +363,23 @@ def _maybe_refresh_mastery(request: Callable[..., tuple]) -> dict | None:
             cid = int(cid)
         except (TypeError, ValueError):
             continue
+        # Every one of these was a BARE int() while championId above was
+        # guarded, so a single mistyped field raised and cost the caller the
+        # entire snapshot - not just this champion's row. An unparseable
+        # value now coerces to the same 0 an ABSENT field already got from
+        # the `or 0`, so "unknown" keeps one meaning.
         out[cid] = {
-            "level":          int(entry.get("championLevel", 0) or 0),
-            "points":         int(entry.get("championPoints", 0) or 0),
-            "last_play_time": int(entry.get("lastPlayTime", 0) or 0),
-            "points_since_last_level": int(
+            "level":          _coerce_int(entry.get("championLevel", 0) or 0),
+            "points":         _coerce_int(entry.get("championPoints", 0) or 0),
+            "last_play_time": _coerce_int(entry.get("lastPlayTime", 0) or 0),
+            "points_since_last_level": _coerce_int(
                 entry.get("championPointsSinceLastLevel", 0) or 0
             ),
-            "points_until_next_level": int(
+            "points_until_next_level": _coerce_int(
                 entry.get("championPointsUntilNextLevel", 0) or 0
             ),
             "chest_granted": bool(entry.get("chestGranted", False)),
-            "tokens_earned": int(entry.get("tokensEarned", 0) or 0),
+            "tokens_earned": _coerce_int(entry.get("tokensEarned", 0) or 0),
         }
     _mastery_cache["data"] = out
     _mastery_cache["fetched_at"] = now
@@ -434,7 +506,16 @@ def shape_snapshot(request: Callable[..., tuple], config,
     if state["phase"] in ("GameStart", "InProgress"):
         gflow, _ = request("GET", "/lol-gameflow/v1/session")
         if isinstance(gflow, dict):
-            gid = str(gflow.get("gameData", {}).get("gameId") or "")
+            # `.get("gameData", {})` hands back the DEFAULT only when the key
+            # is ABSENT. LCU routinely emits a present-and-NULL sub-object,
+            # and `None.get(...)` then raised AttributeError straight out of
+            # shape_snapshot, costing the whole snapshot for the tick. The
+            # `_gq` read below was already isinstance-guarded; its parent
+            # was not.
+            gdata = gflow.get("gameData")
+            if not isinstance(gdata, dict):
+                gdata = {}
+            gid = str(gdata.get("gameId") or "")
             if gid and gid != "0":
                 state["game_id"] = gid
             # D6 (2026-07-04): observe the Arena/Cherry augment picker so a
@@ -444,7 +525,7 @@ def shape_snapshot(request: Callable[..., tuple], config,
             # above (1700/1710 legacy aliases, 1750 = live CHERRY). Derive the
             # queue id from the gameflow session already in hand (the champ-
             # select queue_id local is not in scope during InProgress).
-            _gq = gflow.get("gameData", {}).get("queue", {})
+            _gq = gdata.get("queue", {})
             _gq_id = _gq.get("id", 0) if isinstance(_gq, dict) else 0
             if _gq_id in (1700, 1710, 1750):
                 aug, _aug_err = request(
