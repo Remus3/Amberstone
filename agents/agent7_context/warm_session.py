@@ -134,8 +134,12 @@ class WarmAgent7Session:
         first message to use the "user" role, and a bare tail slice lands
         on an assistant turn: `send` appends the user message BEFORE
         trimming, so at turn 21 the list is cap+1 long and `[-cap:]`
-        starts one past the oldest user turn. Every request from then on
-        was a 400. `_last_activity` only advances on success, so
+        starts one past the oldest user turn, so every request from then
+        on violated that documented contract. (The resulting status code
+        was not observed - no live call was made - and the SDK performs
+        no client-side ordering check, so this is stated as a contract
+        violation, not as a measured 400.)
+        `_last_activity` only advances on success, so
         `_check_idle` could not fire and the session stayed broken for
         the whole idle timeout - silently, because both callers catch
         WarmSessionError and fall back to the ephemeral CLI this module
