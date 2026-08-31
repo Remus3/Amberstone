@@ -199,7 +199,7 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 | 22 | Finish ready-check auto-accept | NEW | SHIPPED | E6 main.js:5344 _syncAutoAccept |
 | 23 | Duo synergy at the lobby | NEW | OPEN | champ-select-only today |
 | 24 | Party/Top8 recent-form chips | NEW | OPEN | Top8 hue-highlight only |
-| 25 | Counter-picks vs live enemy comp | NEW | SHIPPED | E4 routes_pickban.py:1263 |
+| 25 | Counter-picks vs live enemy comp | NEW | SHIPPED | E4 routes_pickban.py:1231 `_serve_counter_picks` |
 | 26 | Ban reason labels + ally AD/AP | NEW | OPEN | pick reasons ship; ban/profile do not |
 | 27 | Enemy/ally scouting table | GATED | SHIPPED | E9 routes_scouting.py:1 |
 | 28 | Arena augment tier ratings | GATED | SHIPPED | augment_recommender.py (live OCR still gated) |
