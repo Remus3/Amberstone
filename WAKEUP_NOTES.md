@@ -4,6 +4,38 @@
 
 > Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
+# 2026-08-31o - lane 8 cycle 45: one malformed replay sidecar did not just abort the backfill sweep, it ROLLED BACK every row the sweep had already repaired
+
+**Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1304. RM-310 filed.**
+
+Audited `core/rofl_stats_backfill.py` (506 -> 639 lines), picked on criterion 1: it parses `.rofl` container bytes and stats sidecars RC does not author, and carried ONE test file against a live caller that globs a whole directory. Recall showed the NEIGHBOUR (`core/rofl_archive.py`) was lane-8 audited as item-1176; this module never was.
+
+**THE HEADLINE IS THE TRANSACTION, NOT THE CRASH.** Both entry points ran `json.loads(sidecar_path.read_text())` bare inside a per-file loop, and that loop sits INSIDE an open SQLite transaction. One unreadable sidecar at position N raised out of the loop, skipped `conn.commit()`, and `conn.close()` in the `finally` discarded the N-1 UPDATEs that had already succeeded. Measured before any fix: [good, malformed, good] against two tracked-NULL rows raised `JSONDecodeError` and left BOTH rows NULL - the first row's repair was undone. `tools/rofl_tracked_backfill.py:69` globs `*.json` wholesale, so one half-written sidecar poisons every FUTURE run identically: self-perpetuating, not transient.
+
+**The same class was fixed one file away and the sibling was missed.** `core/rofl_archive.py:655-665` documents it in-code (item-1176): one wrong-shape `.rofl` "aborted the whole extract_archive loop". The extract half degrades into a `failed` list; the backfill half never got it, and is worse because of the open transaction.
+
+**Three header defects on untrusted bytes, all measured:** a file ending mid-header raised `IndexError` not the documented `ValueError`; the declared length byte was trusted blindly and a slice CLIPS, so a length of 40 against a 14-char version returned the version plus 26 bytes of compressed body, stored verbatim in `matches.game_version`; corrupt bytes raised `UnicodeDecodeError`.
+
+**A FOURTH was found by MUTATION TESTING, not by reading.** Deleting the `len(raw) != length` check left the suite GREEN - the alphabet check only catches an overrun into NON-version bytes. A file cut mid-version whose surviving bytes are all digits/dots silently returns a SHORTER version. Distinguishable, so a real gap in my own tests, not an equivalent mutant.
+
+**A MODULE-WIDE SKIP GATE WAS HIDING SEVEN HERMETIC TESTS, and it is why the new tests first came back GREEN.** The module-level `pytestmark` skipif keyed on `data/rewind_history.db`, which is gitignored and exists only in the main checkout - so all 25 tests it then collected skipped in EVERY worktree and in CI. My nine new failing tests reported `11 skipped`, not red: the `feedback_unrun_gate_is_where_the_bug_hides` signature. Now a named `requires_live_archive` marker on only the 8 tests that read production.
+
+**MUTATION: 12 behaviours broken, 12 RED, every restore md5-verified** (7 module + 3 CLI contract + 2 path containment) (backed up to scratch, never `git checkout` - the fix was uncommitted). One "SURVIVED" was my own `-k` selector: the test is `test_rofl_version_truncated_mid_field...` and I filtered `test_truncated_mid_field`, not a substring, so pytest matched nothing and passed vacuously.
+
+**TWO OF MY OWN TESTS WERE VACUOUS.** `test_non_ascii_rofl_version` asserted only `pytest.raises(ValueError)` - but `UnicodeDecodeError` IS a ValueError subclass, so it passed against UNFIXED code. Now pins the concrete type. The encoding test was red only on a missing key; rewritten as a SUBPROCESS probe with `PYTHONUTF8=0`, because in-process it is vacuous on this box.
+
+**Encoding finding LATENT - and the verifier REFUTED my stated reason, which is corrected here.** The reader had no encoding pin while the writer declares utf-8: a real declaration mismatch. But my claim that it is safe only because `PYTHONUTF8=1` is set MACHINE-WIDE is FALSE - re-probed at the registry, it is in NEITHER the User nor the Machine key, only this process tree's inherited env. The latent verdict survives for a better reason I had missed: `core/rofl_archive.py:811` uses `json.dumps` at the default `ensure_ascii=True`, so real sidecars are pure ASCII (measured 0 non-ASCII bytes across all 17) and cp1252 decodes those identically. Declarations differed, bytes never did. The guard is defence in depth and is now labelled as such. 
+
+**Suites (repo root, fresh):** RC 20163 passed / 137 skipped / 2 failed / 4697 subtests; DS 10684 passed / 0 failed. The delta reconciles both claims: cycle 44 was 20141/144, so +22 passed and -7 skipped = 7 un-skipped + 15 new instances. Both RC failures INHERITED and PROVEN so - my 3 files were copied aside, reverted, the two tests re-run at baseline, both failed identically, then restored md5-verified.
+
+**Backfill (6e): measured NEGATIVE, both directions.** All 17 live sidecars and all 15 `.rofl` headers are clean, so nothing to repair. The inverse mattered too: the hardened reader was re-run over all 15 real containers and rejects none.
+
+**CLI fixed too, because a silent skip is worse than the crash it replaced.** `tools/rofl_tracked_backfill.py` now prints `failed=N`, names each bad sidecar, and exits 2 - so a partial sweep cannot read as clean.
+
+**Doc budget: SIXTH consecutive cycle to pay it.** ROADMAP had 44 bytes free; relocated RM-35..RM-48 and RM-04 VERBATIM to `docs/ROADMAP_HISTORY.md` with fences preserved. 81311 bytes, 609 to spare. Cause remains RM-284 (LANE 7).
+
+Ruff clean, all authored bytes 7-bit ASCII, NO frozen file touched, no tree restructuring. NOT LIVE: RC pid 47076 runs out of `C:/Riot Commander`; nothing is armed until merge. The 1.8 GB production `rewind_history.db` was deliberately NOT written to, not even in dry-run, because RC is live against it.
+
 # 2026-08-31n - lane 8 cycle 44: the fail-soft guard on every numeric input was defeated by exactly the two values it existed to stop
 
 **Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1303. RM-304/305/306/307/308 filed; G2-46 filed live-gated.**

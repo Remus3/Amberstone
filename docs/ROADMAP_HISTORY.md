@@ -2506,3 +2506,18 @@ Verbatim as they stood in `ROADMAP.md` before relocation. Nothing dropped. Both 
 Moved out of `ROADMAP.md` to keep it under the 81920-byte CI budget. The row was already a pointer whose full narrative lives in the 2026-08-06 run-02 block above; this is the pointer itself, kept verbatim so no fence is lost.
 
 - **RM-127 CLOSED 2026-08-01 - CCR LINK-INGEST, PHASES 1-7 ALL SHIPPED, ZERO RESIDUE** (LEDGER 1108 / 1145 / 1147 / 1149 / 1150 / 1151 / 1152 / 1155; full narrative relocated VERBATIM to `docs/ROADMAP_HISTORY.md`, do not re-derive it here). 146 links triaged to 4 ADOPT / 1 HOLD / 1 DROP; Phase 5 collapsed the four adoptions into ONE build; both remaining operator calls are MADE. **Do NOT re-run any pass or re-score the roster.** Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block); fences live there.
+
+## RM-35 .. RM-48 (relocated from ROADMAP.md 2026-08-31, lane 8 cycle 45)
+
+Moved out of `ROADMAP.md` to keep it under the 81920-byte CI budget. The row was
+already fully CLOSED (all fourteen ids resolved); relocated VERBATIM, nothing dropped.
+
+- **RM-35 .. RM-48 DS sweep GAP specs - ALL FOURTEEN RESOLVED; the row is CLOSED.** **RM-36 Ezreal SHIPPED 2026-08-04 (ENGINE 1.275.0, `b510ce20`)** was the last open id: DEFAULT-OFF `apply_ad_axis_dual_scaling_split`, `ap_pct_sum` gate UNCHANGED, MAGIC permanently excluded, and **Sejuani REPLACES Ezreal as the seam's zero-term control**. The default-ON flip stays blocked on RM-98 and belongs to gated row G2-46. The other thirteen are shipped, refuted, or closed-BLOCKED-unfalsifiable - read the per-id verdict in `docs/ROADMAP_HISTORY.md` (2026-08-04 + 2026-08-06 blocks) before re-picking ANY of them, and do NOT re-open the roster.
+
+## RM-04 (relocated from ROADMAP.md 2026-08-31, lane 8 cycle 45)
+
+Moved out of `ROADMAP.md` for the 81920-byte CI budget. Row was already CLOSED
+(roster 173/173). Relocated VERBATIM; the do-not-re-open fence is preserved both
+here and in the ROADMAP stub, and independently in CLAUDE.md's Settled section.
+
+- **RM-04 DS sweep: ROSTER CLOSED 173/173 - do NOT re-open the roster or re-scan for uncovered champions.** Canonical tracker `docs/DS_SWEEP_TRACKER.md`. Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-03) when `tools/drift_guard.py` flagged ROADMAP.md at 100 percent of its 81920-byte budget; the row carried zero open markers. **Two probe hazards survive here because they silently produce plausible-but-WRONG output:** `POST /rank` is the CARRY scorer and silently IGNORES `enemy_ad_share`/`enemy_ap_share` - use `/rank-<archetype>`; and probing at `item_ids=[]` under-ranks amp/complementary items, which is what manufactured the two headline RM-92 instances. Memories `reference_ds_probe_rank_vs_archetype_route` + `reference_ds_probe_empty_build_artifact`. Further growth needs a schema lift, not another scan.

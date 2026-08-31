@@ -80,14 +80,19 @@ def main(argv=None) -> int:
           f"skipped_no_operator={len(report['skipped_no_operator'])} "
           f"skipped_already_filled={len(report['skipped_already_filled'])} "
           f"net_new={len(report['net_new'])} "
-          f"unresolved_champions={len(report['unresolved_champions'])}")
+          f"unresolved_champions={len(report['unresolved_champions'])} "
+          f"failed={len(report['failed'])}")
     for match_id in report["updated"]:
         print(f"  v {match_id}")
     for entry in report["unresolved_champions"]:
         print(f"  ? unresolved champion {entry}")
     for match_id in report["net_new"]:
         print(f"  + net-new (not in DB; use the INSERT path) {match_id}")
-    return 0
+    # An unreadable sidecar is skipped rather than raised, so it has to be
+    # SAID: a silent skip would be a worse failure than the crash it replaced.
+    for path, reason in report["failed"]:
+        print(f"  ! unusable sidecar {Path(path).name}: {reason}")
+    return 2 if report["failed"] else 0
 
 
 if __name__ == "__main__":
