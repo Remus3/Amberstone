@@ -5,7 +5,7 @@ Each test pins a defect the slice-A audit found and fixed in
 
   1. Non-numeric TFT hp aborts the whole validation run.
      ``run_once()`` does ``float(hp)`` on the live-vision ``hp`` field with no
-     guard. The vision/OCR writer (tft/tft_live_analysis.py:354 -> vs.get("hp"))
+     guard. The vision/OCR writer (tft/tft_live_analysis.py:477 -> vs.get("hp"))
      can emit a non-numeric token (stale OCR garbage, a "-" no-data sentinel,
      an empty-ish string). ``float("-")`` raises ValueError, which unwinds out
      of run_once past checks 4/5/6; the SelfMonitor caller swallows it

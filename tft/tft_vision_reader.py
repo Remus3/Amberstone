@@ -194,7 +194,7 @@ class TftVisionReader:
             # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
             # local-fallback path. moon_proxy primary records via vision_server.
             # Tier note corrected 2026-07-29: this reader is NOT Sonnet. Its
-            # only construction site is tft/tft_live_analysis.py:143, which
+            # only construction site is tft/tft_live_analysis.py:220, which
             # forwards a model defaulting to claude-haiku-4-5 (:139), so the
             # old "SONNET tier - the most expensive untracked cadence" comment
             # sent every cost auditor chasing a surface that does not exist.

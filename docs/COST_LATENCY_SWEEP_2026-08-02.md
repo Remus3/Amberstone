@@ -54,8 +54,8 @@ passes `system=""` explicitly:
 | `coaches/arena_coach.py:928` | `system=""` at `:933`; short augment-select prompt |
 | `coaches/arena_coach.py:1067` | `system=""` at `:1072`; short anvil prompt |
 | `coaches/aram_coach.py:1274` | `system=""` at `:1279`; short augment-select prompt |
-| `tft/tft_live_analysis.py:302` | item-286 note at `:73` - static portion ~669 tok, below threshold |
-| `tft/tft_live_analysis.py:337` | item-286 note at `:121` - static portion ~51 tok |
+| `tft/tft_live_analysis.py:391` | item-286 note at `:73` - static portion ~669 tok, below threshold |
+| `tft/tft_live_analysis.py:457` | item-286 note at `:121` - static portion ~51 tok |
 | `coaches/aram_coach.py` build block | item-286 note at `:422` - static portion ~62 tok |
 
 EXEMPT - image-first, no cacheable prefix exists:

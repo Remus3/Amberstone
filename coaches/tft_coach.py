@@ -253,7 +253,7 @@ class Coach:
         and the two had drifted: the live-data default was 9 keys here against
         19 in reset_state. The 19-key spelling is the canonical one, corroborated
         by core/feature_policy.py:102 `_TFT_LIVE_DISABLED_PAYLOAD` and by the
-        live producer tft/tft_live_analysis.py:354 - so the short copy was the
+        live producer tft/tft_live_analysis.py:477 - so the short copy was the
         outlier and is NOT what the two were reconciled onto.
         """
         return [
