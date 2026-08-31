@@ -9,10 +9,32 @@ so they share the `_VISION_TOKEN` auth header.
 handler - same pattern as `routes_diag` - to avoid a circular import
 at module load time (web_dashboard imports the dashboard package
 during start-up).
+
+TRUST BOUNDARY (lane 8 cycle 38, 2026-08-31)
+    This module's prose used to say "the vision server also revalidates".
+    That is MEASURED FALSE and the wrong component was named:
+    `vision_server/_http.py:213` routes /lcu-cmd straight into
+    `vision_server/_relay.lcu_queue_command`, which appends the decoded
+    dict to the pending queue VERBATIM - there is no allowlist anywhere in
+    `vision_server/`. The vision server is a PIPE, not a gate.
+
+    The second gate is one hop further on, in `tools/lcu_agent.py`: it
+    name-dispatches at `:422`, answers an unrecognised verb with
+    "unknown cmd" at `:1102`, coerces every field it reads (`int()` /
+    `str()`, e.g. `:657`), and catches per command at `:1693-1696`. So
+    this edge is NOT the only defence - but it is the only one before the
+    command is queued, and the agent's coercion is incidental to its
+    implementation rather than a declared contract.
+
+    What this edge checks today is the `cmd` VERB only; every sibling key
+    is forwarded unexamined. Per-command payload schemas are filed as
+    RM-296 rather than guessed at here - each of the 28 verbs has its own
+    shape and a wrong guess breaks champ-select silently.
 """
 import json
 import logging
 import urllib.error
+import urllib.request
 from urllib.parse import parse_qs, quote, urlparse
 
 from dashboard._dispatch import equals, prefix
@@ -23,11 +45,17 @@ log = logging.getLogger("rc.web_dashboard")
 # (same policy as dashboard/_handler.do_POST; audit cycle 8 slice E).
 _GENERIC_ERR = "internal error - see logs"
 
+# Summoner-spell ids are small positive ints (Riot's live set tops out in
+# the low hundreds; Arena's pair sits near 2200). The bound exists to reject
+# obvious junk - a negative id, a 10-digit id - not to enumerate Riot's set,
+# which changes per patch and is not this module's to pin.
+_SUMMONER_ID_MAX = 9999
+
 
 # Allowlist for /api/lcu-cmd. Hoisted out of the legacy handler body
-# so it's allocated once at import, not per-request. The vision server
-# also revalidates, but the dashboard edge rejects malformed bodies
-# before they cross the LAN.
+# so it's allocated once at import, not per-request. See TRUST BOUNDARY
+# in the module docstring: nothing downstream re-checks this, so a verb
+# that reaches the queue reaches the League client.
 _LCU_ALLOWED_CMDS = {
     "accept_ready", "set_config", "bench_swap",
     "set_summoners", "lock_pick", "reroll",
@@ -79,14 +107,84 @@ _LCU_ALLOWED_CMDS = {
 }
 
 
+def _text(payload, key: str, default: str = "") -> str:
+    """Read a string field WITHOUT assuming the client sent a string.
+
+    Lane 8 cycle 38: every handler here did `(payload.get(k) or "").strip()`.
+    `payload` is guaranteed a dict by `_handler.do_POST` (LEDGER 1181), but
+    its VALUES are not guaranteed anything, and `.strip()` on a truthy
+    non-str raises AttributeError. A non-str is a client error, so it
+    collapses to the same empty string the missing-key case produces and
+    the handler's own "required" branch answers it with a 400.
+    """
+    val = payload.get(key)
+    if not isinstance(val, str):
+        return default
+    return val.strip() or default
+
+
+def _coerce_override_summoners(value) -> tuple | None:
+    """Validate `override_summoners` into a real (d, f) int pair, or None.
+
+    The old guard was `isinstance(x, int) for x in pair`, and in Python
+    `isinstance(True, int)` is True - so `[true, false]` passed. It then
+    took two different routes: the user-build path ran `int(pair[0])`
+    (turning it into 1/0), while the resolver path assigned the value
+    straight into the outbound LCU command, so a JSON boolean was forwarded
+    to the League client. Two paths, same input, different wire bytes.
+
+    Bools are rejected outright rather than coerced: a client that sends
+    `true` for a spell id is malfunctioning, and silently reading it as
+    spell id 1 (Cleanse) would push a wrong summoner rather than report.
+    """
+    if isinstance(value, bool) or not isinstance(value, (list, tuple)):
+        return None
+    if len(value) != 2:
+        return None
+    out = []
+    for item in value:
+        if isinstance(item, bool) or not isinstance(item, int):
+            return None
+        if not (0 < item <= _SUMMONER_ID_MAX):
+            return None
+        out.append(item)
+    return (out[0], out[1])
+
+
+def _post_lcu_cmd(cmd_obj: dict) -> bytes:
+    """POST one command to the vision server's LCU queue; return its body.
+
+    Extracted as a seam so the enqueue path can be exercised without a
+    live :8889. Raises on any transport failure - callers decide whether
+    that is fatal, which is the point: the previous inline version
+    swallowed the exception where the caller could not see it.
+    """
+    from web_dashboard import _VISION_TOKEN
+    req = urllib.request.Request(
+        "http://127.0.0.1:8889/lcu-cmd",
+        data=json.dumps(cmd_obj).encode(),
+        method="POST",
+        headers={"X-RC-Token": _VISION_TOKEN,
+                 "Content-Type": "application/json"},
+    )
+    with _urlopen(req, timeout=2) as r:
+        return r.read()
+
+
+def _urlopen(req, timeout=None):
+    """Indirection seam over urllib.request.urlopen so tests can inject
+    transport failures without monkeypatching the stdlib globally."""
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
 def _serve_loadout_list_post(h, payload) -> None:
     # GET-style query in POST body for symmetry: {champion, mode}.
     # Returns [{key, label, is_default}, ...] for variants visible
     # in this mode for this champion.
     try:
         from coaches.loadout_resolver import list_variants, default_variant
-        champ = (payload.get("champion") or "").strip()
-        mode  = (payload.get("mode")     or "sr").strip()
+        champ = _text(payload, "champion")
+        mode  = _text(payload, "mode", "sr")
         if not champ:
             h._send(400, b'{"error":"champion required"}', "application/json"); return
         vs = list_variants(champ, mode)
@@ -144,8 +242,8 @@ def _serve_rune_pages_post(h, payload) -> None:
     # and only IMPORTS the frozen build_perk_ids resolver - it writes nothing.
     try:
         from coaches.rune_pages import enumerate_pages
-        champ = (payload.get("champion") or "").strip()
-        mode  = (payload.get("mode")     or "sr").strip()
+        champ = _text(payload, "champion")
+        mode  = _text(payload, "mode", "sr")
         if not champ:
             h._send(400, b'{"error":"champion required"}', "application/json"); return
         h._send(200, json.dumps({
@@ -249,6 +347,32 @@ def _resolve_user_build(champion: str, variant: str, mode: str,
     }
 
 
+def _resolve_variant(champ: str, variant: str, mode: str,
+                     override_summ) -> dict:
+    """Route a variant key to its resolver and apply the summoner override.
+
+    Extracted from `_serve_loadout_apply_post` so the enqueue/report logic
+    can be tested without `coaches.loadout_resolver` on the path. Behaviour
+    is unchanged: "userbuild_" keys go to `_resolve_user_build` (which
+    applies the override itself), everything else to `resolve()` with the
+    override rewritten onto summ_cmd afterwards so the rune + item commands
+    still come from the variant.
+    """
+    if variant.startswith("userbuild_"):
+        return _resolve_user_build(champ, variant, mode,
+                                   list(override_summ) if override_summ else None)
+    from coaches.loadout_resolver import resolve
+    resolved = resolve(champ, variant, mode)
+    if not resolved.get("ok"):
+        return resolved
+    if override_summ and resolved.get("summ_cmd"):
+        sc = dict(resolved["summ_cmd"])
+        sc["d"] = override_summ[0]
+        sc["f"] = override_summ[1]
+        resolved["summ_cmd"] = sc
+    return resolved
+
+
 def _serve_loadout_apply_post(h, payload) -> None:
     # Body: {champion, variant, mode, push_runes?, push_items?, push_summoners?,
     #        override_runes?:{keystone,primary,secondary},
@@ -260,12 +384,9 @@ def _serve_loadout_apply_post(h, payload) -> None:
     # immediately; results come back via the LCU command queue
     # (best-effort).
     try:
-        from coaches.loadout_resolver import resolve
-        import urllib.request as _ur
-        from web_dashboard import _VISION_TOKEN
-        champ   = (payload.get("champion") or "").strip()
-        variant = (payload.get("variant")  or "").strip()
-        mode    = (payload.get("mode")     or "sr").strip()
+        champ   = _text(payload, "champion")
+        variant = _text(payload, "variant")
+        mode    = _text(payload, "mode", "sr")
         push_runes = payload.get("push_runes",   True)
         push_items = payload.get("push_items",   True)
         push_summ  = payload.get("push_summoners", True)
@@ -275,10 +396,8 @@ def _serve_loadout_apply_post(h, payload) -> None:
         # (Cleanse vs CC / Barrier vs burst) the JS sends the swapped
         # pair as [d_id, f_id]. Falls through to the variant's stored
         # summoners when omitted or malformed.
-        override_summ = payload.get("override_summoners")
-        if not (isinstance(override_summ, list) and len(override_summ) == 2
-                and all(isinstance(x, int) for x in override_summ)):
-            override_summ = None
+        override_summ = _coerce_override_summoners(
+            payload.get("override_summoners"))
         # item 213 (2026-05-28): the experimental override_runes +
         # override_items inline-build path was removed with the
         # experimental chooser row. The apply route now routes only
@@ -289,36 +408,21 @@ def _serve_loadout_apply_post(h, payload) -> None:
         # "userbuild_<id>" by /api/loadout/list; routed here BEFORE the
         # experimental + resolver paths so the colon-free key never
         # reaches resolve()'s "<variant>:<path>" partition logic.
-        if variant.startswith("userbuild_"):
-            resolved = _resolve_user_build(champ, variant, mode, override_summ)
-            if not resolved.get("ok"):
-                h._send(404, json.dumps(resolved).encode(), "application/json"); return
-        else:
-            resolved = resolve(champ, variant, mode)
-            if not resolved.get("ok"):
-                h._send(404, json.dumps(resolved).encode(), "application/json"); return
-            # Apply summoner override AFTER resolve so the rune + item cmds
-            # come from the variant; only the summ_cmd is rewritten.
-            if override_summ and resolved.get("summ_cmd"):
-                sc = dict(resolved["summ_cmd"])
-                sc["d"] = override_summ[0]
-                sc["f"] = override_summ[1]
-                resolved["summ_cmd"] = sc
+        resolved = _resolve_variant(champ, variant, mode, override_summ)
+        if not resolved.get("ok"):
+            h._send(404, json.dumps(resolved).encode(), "application/json"); return
         queued = []
+        failed = []
         def _enqueue(cmd_obj):
             if not cmd_obj: return
             try:
-                req = _ur.Request(
-                    "http://127.0.0.1:8889/lcu-cmd",
-                    data=json.dumps(cmd_obj).encode(),
-                    method="POST",
-                    headers={"X-RC-Token": _VISION_TOKEN,
-                             "Content-Type": "application/json"},
-                )
-                with _ur.urlopen(req, timeout=2) as r:
-                    r.read()
+                _post_lcu_cmd(cmd_obj)
                 queued.append(cmd_obj.get("cmd"))
             except Exception as exc:  # noqa: BLE001
+                # Still non-fatal per command - one dead push must not abort
+                # the other two - but it is now REPORTED. See the `ok` note
+                # below for why swallowing it silently was the real defect.
+                failed.append(cmd_obj.get("cmd"))
                 log.warning("loadout enqueue %s: %s",
                             cmd_obj.get("cmd"), exc)
         if push_runes: _enqueue(resolved.get("rune_cmd"))
@@ -332,11 +436,21 @@ def _serve_loadout_apply_post(h, payload) -> None:
                 for it in blk.get("items", []):
                     iid = it.get("id")
                     if iid: item_ids.append(str(iid))
+        # Lane 8 cycle 38: `ok` was hardcoded True, so a run in which every
+        # enqueue raised still answered {"ok": true} with an empty `queued`.
+        # That is not a cosmetic inaccuracy - `web/js/panels/item_build.js:445`
+        # ALREADY reads this field (`if (!data || !data.ok) _ibSetStatus(
+        # "push failed", "err")`), so the operator was shown a green
+        # "check <label>" for a push that never reached the League client, and
+        # the panel's own failure branch could never fire. Reporting honestly
+        # activates UI that was written for it and has been dead since.
+        # `failed` is additive; `champ_select.js:3366` ignores the body.
         h._send(200, json.dumps({
-            "ok": True,
+            "ok": not failed,
             "champion": champ, "variant": variant, "mode": resolved.get("mode"),
             "label":    resolved.get("label"),
             "queued":   queued,
+            "failed":   failed,
             "raw_items": resolved.get("raw_items", []),
             "item_ids":  item_ids,
         }).encode(), "application/json")
@@ -350,7 +464,20 @@ def _serve_lcu_cmd_post(h, payload) -> None:
     # Body: {cmd: "accept_ready"} or {cmd:"set_config", auto_accept:true}
     # Validate at the dashboard edge so a malformed body never reaches
     # the Legion LCU agent.
-    cmd_name = (payload.get("cmd") or "").strip()
+    # Lane 8 cycle 38: this block used to read
+    #     cmd_name = (payload.get("cmd") or "").strip()
+    # and sat OUTSIDE the try below. `payload` is a guaranteed dict
+    # (LEDGER 1181) but its VALUES are not, and .strip() on a truthy
+    # non-str raises AttributeError - which nothing catches, because
+    # `_handler.do_POST` wraps `_dispatch.dispatch_post` in no try at all.
+    # MEASURED LIVE 2026-08-31 against pid 47076 on the LAN-reachable
+    # :8888: {"cmd":123}, {"cmd":{"a":1}} and {"cmd":true} each returned
+    # curl exit 56 - the connection closed with NO HTTP RESPONSE - while
+    # {"cmd":"bogus_cmd"} correctly returned 400. The three failures left
+    # NO log line either (the 400 is logged at _handler.py:157; they die
+    # before that), and the traceback goes to stderr, which under
+    # pythonw.exe is nowhere. Invisible on the wire and in the log at once.
+    cmd_name = _text(payload, "cmd")
     if cmd_name not in _LCU_ALLOWED_CMDS:
         h._send(400,
             json.dumps({"error": "unknown_lcu_cmd",
@@ -359,16 +486,22 @@ def _serve_lcu_cmd_post(h, payload) -> None:
             "application/json")
         return
     try:
-        import urllib.request as _ur
         from web_dashboard import _VISION_TOKEN
-        req = _ur.Request(
+        # Lane 8 cycle 38: the edge validated the STRIPPED name and then
+        # forwarded the payload UNSTRIPPED, so `{"cmd":" accept_ready "}`
+        # passed here and reached `lcu_agent.py:422`, whose `name ==
+        # "accept_ready"` is False - the agent answered "unknown cmd" while
+        # this route had already reported acceptance. Forward the same
+        # bytes that were validated.
+        forwarded = dict(payload, cmd=cmd_name)
+        req = urllib.request.Request(
             "http://127.0.0.1:8889/lcu-cmd",
-            data=json.dumps(payload).encode(),
+            data=json.dumps(forwarded).encode(),
             method="POST",
             headers={"X-RC-Token": _VISION_TOKEN,
                      "Content-Type": "application/json"},
         )
-        with _ur.urlopen(req, timeout=2) as r:
+        with _urlopen(req, timeout=2) as r:
             body = r.read()
         h._send(200, body, "application/json")
     except Exception as exc:  # noqa: BLE001
@@ -376,12 +509,53 @@ def _serve_lcu_cmd_post(h, payload) -> None:
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
 
+def _scrub_result_err(body: bytes) -> bytes:
+    """Replace a raw exception string in an LCU result with a friendly one.
+
+    Lane 8 cycle 38. CLAUDE.md "Error Handling" is absolute: never surface a
+    raw error string on a user-facing surface; log it and render a friendly
+    degraded message. This route breached it on the 200 path, not the error
+    path (the 404/500 bodies were already generic - that half of the finding
+    was refuted). The chain is real and ends in champ select:
+
+        tools/lcu_agent.py:1694   result = {"ok": False,
+                                            "err": f"{type(exc).__name__}: {exc}"}
+        vision_server/_http.py:148 self._j(200, rec)         # verbatim
+        this route                 forwarded the body verbatim
+        web/js/panels/champ_select.js:1330-1331
+                                   "X Lock failed: " + err   # rendered
+
+    So a `PermissionError: [WinError 5] ...` from inside the LCU agent was
+    painted into the champ-select lock button. The raw text is logged here
+    and the client is given an actionable degraded line instead. `ok` and
+    every other field are passed through untouched, so the UI's existing
+    success/failure branch is unchanged.
+
+    Fail-soft by construction: a body that is not the expected JSON object
+    is returned exactly as received, because this is a pass-through and
+    inventing a shape would be worse than forwarding an unexpected one.
+    """
+    try:
+        parsed = json.loads(body)
+    except (ValueError, TypeError):
+        return body
+    if not isinstance(parsed, dict):
+        return body
+    result = parsed.get("result")
+    target = result if isinstance(result, dict) else parsed
+    err = target.get("err")
+    if not isinstance(err, str) or not err:
+        return body
+    log.warning("lcu cmd result err (raw, not rendered): %s", err)
+    target["err"] = "command failed - see logs"
+    return json.dumps(parsed).encode()
+
+
 def _serve_lcu_cmd_result_get(h) -> None:
     # Pulls the stored result for a previously-queued LCU command so the
     # UI can surface errors (e.g. start_matchmaking returning 400 from a
     # non-leader). Vision server returns 404 while pending; client polls.
     try:
-        import urllib.request as _ur
         from web_dashboard import _VISION_TOKEN
         qs = parse_qs(urlparse(h.path).query)
         rid = (qs.get("id") or [""])[0]
@@ -390,15 +564,30 @@ def _serve_lcu_cmd_result_get(h) -> None:
         # parse_qs already DECODED rid - re-encode it so a value with
         # spaces / & / = cannot smuggle params into (or break) the
         # outbound vision-server URL (audit cycle 8 slice E).
-        req = _ur.Request(
+        req = urllib.request.Request(
             f"http://127.0.0.1:8889/lcu-cmd-result?id={quote(rid, safe='')}",
             headers={"X-RC-Token": _VISION_TOKEN},
         )
         try:
-            with _ur.urlopen(req, timeout=2) as r:
-                h._send(200, r.read(), "application/json")
+            with _urlopen(req, timeout=2) as r:
+                h._send(200, _scrub_result_err(r.read()), "application/json")
         except urllib.error.HTTPError as e:
-            h._send(e.code, e.read(), "application/json")
+            # Lane 8 cycle 38: `e` was read and dropped, which this audit
+            # first filed as a socket leak on the hot polled path. THAT WAS
+            # REFUTED by the adversarial pass and the claim is corrected
+            # here rather than quietly dropped: CPython `urllib.request` (request.py lines 1333-1335)
+            # closes the socket right after `getresponse()`, and an
+            # amt-less CPython `http.client` (client.py line 505) `read()` calls `_close_conn()`,
+            # so `e.fp.fp is None` by this point. 300 iterations against a
+            # local 404 server moved the process handle count by ZERO.
+            # The only real residue is a ResourceWarning from
+            # `urllib.response.addbase`, so this close() is hygiene that
+            # keeps the warning out of the test log - NOT a leak fix. The
+            # `finally` is still right: it must run if _send raises.
+            try:
+                h._send(e.code, e.read(), "application/json")
+            finally:
+                e.close()
     except Exception as exc:  # noqa: BLE001
         log.warning("api/lcu-cmd-result: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
@@ -411,13 +600,29 @@ def _serve_lcu_cmd_result_get(h) -> None:
 # first so its exact-match fires before the /list prefix would
 # (`/list` does not prefix-match `/apply`, but ordering is explicit
 # for safety as future loadout/* endpoints land here).
+def path_or_query(p: str):
+    """Match exactly `p`, or `p` followed by a query string.
+
+    Lane 8 cycle 38: both routes below used `prefix()`, which is a bare
+    `startswith` (`dashboard/_matchers.py:25-27`). MEASURED live:
+    `GET /api/lcu-cmd-resultXYZ?id=1` was HANDLED (404 `{"error":"pending"}`
+    from the vision server, not the dispatcher's 404), and
+    `POST /api/loadout/listEVIL` answered 400 `champion required`. Both
+    used `prefix` only to tolerate the `?id=...` query string, so this
+    narrower matcher keeps that and drops the accidental suffix match.
+    Fixed locally rather than by changing `prefix`, whose other callers
+    are outside this file and outside this lane's one-file scope.
+    """
+    return lambda x: x == p or x.startswith(p + "?")
+
+
 GET_ROUTES = [
-    (prefix("/api/lcu-cmd-result"), _serve_lcu_cmd_result_get),
+    (path_or_query("/api/lcu-cmd-result"), _serve_lcu_cmd_result_get),
 ]
 
 POST_ROUTES = [
-    (equals("/api/loadout/apply"),      _serve_loadout_apply_post),
-    (equals("/api/loadout/rune-pages"), _serve_rune_pages_post),
-    (prefix("/api/loadout/list"),       _serve_loadout_list_post),
-    (equals("/api/lcu-cmd"),            _serve_lcu_cmd_post),
+    (equals("/api/loadout/apply"),           _serve_loadout_apply_post),
+    (equals("/api/loadout/rune-pages"),      _serve_rune_pages_post),
+    (path_or_query("/api/loadout/list"),     _serve_loadout_list_post),
+    (equals("/api/lcu-cmd"),                 _serve_lcu_cmd_post),
 ]
