@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 import urllib.error
 import urllib.request
@@ -60,6 +61,10 @@ _ENDPOINTS = {"mayhem": MAYHEM_ENDPOINT, "arena": ARENA_ENDPOINT}
 _SCHEMA = 1
 _HTTP_TIMEOUT_S = 15.0
 _USER_AGENT = "rc-augment-source/1"
+# Cap on a response body from a host RC does not own. The two real payloads
+# are well under 2 MB (cherry-augments.json is 568 entries, the Overlay App E table
+# ~199 augments), so 32 MB is generous headroom that still bounds memory.
+_MAX_BODY_BYTES = 32 * 1024 * 1024
 
 # Process cache: (mode -> AugmentPriorTable), mtime-gated like
 # daemon_slayer_resolver so a patch flip / external refresh is picked up
@@ -107,8 +112,7 @@ class AugmentPriorTable:
         row = self._row(augment_id)
         if not row:
             return None
-        wr = row.get("win_rate")
-        return float(wr) if isinstance(wr, (int, float)) else None
+        return _finite(row.get("win_rate"))
 
     def num_games(self, augment_id: int | str | None) -> int:
         row = self._row(augment_id)
@@ -123,15 +127,72 @@ class AugmentPriorTable:
         row = self._row(augment_id)
         if not row:
             return None
-        wr = (row.get("stage_win_rate") or {}).get(str(stage))
-        return float(wr) if isinstance(wr, (int, float)) else None
+        return _finite((row.get("stage_win_rate") or {}).get(str(stage)))
 
 
 def _current_patch() -> str:
     try:
         return _PATCH_FILE.read_text(encoding="utf-8").strip()
-    except OSError:
+    except (OSError, UnicodeDecodeError):
+        # LANE 8 CYCLE 33: UnicodeDecodeError is a ValueError, NOT an OSError,
+        # so a non-UTF-8 current.txt used to escape this function and every
+        # "never raises" accessor below it. Same class core/polled_json.py
+        # fixed in cycle 24; fixed at the root here rather than by widening a
+        # caller's handler, which is what that module's comment warns about.
         return ""
+
+
+def _reject_non_finite(token: str):
+    """json.loads parse_constant hook - see the call site in _http_get."""
+    raise AugmentSourceError(f"non-finite JSON literal {token!r} in payload")
+
+
+def _finite(value) -> Optional[float]:
+    """Coerce to a finite float, or None. The last line that can keep a
+    NaN/Infinity out of the scorer when it came from a snapshot written
+    before the parse_constant guard above existed - read_json_dict goes
+    through a plain json.loads, which ACCEPTS those literals."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    f = float(value)
+    return f if math.isfinite(f) else None
+
+
+def _as_int(value, default: int = 0) -> int:
+    """Tolerant numeric coercion for a field on a payload RC does not own.
+
+    LANE 8 CYCLE 33: this feed demonstrably string-encodes numbers -
+    `augment_id` arrives as a numeric STRING - so bare int() on a sibling
+    field was a live ValueError waiting on an upstream formatting choice
+    ("1500.0" and "n/a" both proven). A wrong-typed COUNT must not cost the
+    win rate that row exists to carry, so it degrades to `default`; the one
+    field whose absence still drops the row is win_rate itself, asserted in
+    tests/test_augment_external_source_hardening.py.
+    """
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(float(value.strip()))
+        except (TypeError, ValueError):
+            return default
+    return default
+
+
+def _as_float(value, default: float = 0.0) -> float:
+    """Tolerant float twin of `_as_int`. Same rationale."""
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except (TypeError, ValueError):
+            return default
+    return default
 
 
 def _cache_path(mode: str, patch: str) -> Path:
@@ -150,15 +211,34 @@ def _http_get(url: str, timeout_s: float):
     try:
         with urllib.request.urlopen(req, timeout=timeout_s) as r:
             if r.status != 200:
-                raise AugmentSourceError(f"{url} → HTTP {r.status}")
-            body = r.read()
+                raise AugmentSourceError(f"{url} -> HTTP {r.status}")
+            # LANE 8 CYCLE 33: bounded. This is a third-party host RC does
+            # not control, and a bare r.read() would buffer whatever it
+            # chose to send into a coach-path process that runs for days.
+            # Read one byte past the cap so an over-cap body is detectable
+            # rather than silently truncated into a JSON parse error.
+            body = r.read(_MAX_BODY_BYTES + 1)
+            if len(body) > _MAX_BODY_BYTES:
+                raise AugmentSourceError(
+                    f"{url} body too large (over {_MAX_BODY_BYTES} bytes)"
+                )
     except AugmentSourceError:
         raise
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
         raise AugmentSourceError(f"{url} fetch failed: {exc}") from exc
     try:
-        return json.loads(body)
-    except json.JSONDecodeError as exc:
+        # LANE 8 CYCLE 33: parse_constant fires on exactly the three
+        # NON-STANDARD literals json.loads accepts by default - NaN,
+        # Infinity, -Infinity. They must die at the door, because
+        # isinstance(float("nan"), float) is True so a non-finite survives
+        # every type check below, every comparison against it is False so
+        # the recommender's ranking degrades SILENTLY rather than failing,
+        # and json.dumps re-emits it as a bare NaN token (allow_nan
+        # defaults True) which makes the written cache file invalid JSON.
+        # core/synergy_external_source.py:135-147 is the twin that already
+        # guards this; found by grepping this root cause, not by reading.
+        return json.loads(body, parse_constant=_reject_non_finite)
+    except (json.JSONDecodeError, ValueError) as exc:
         raise AugmentSourceError(f"{url} bad JSON: {exc}") from exc
 
 
@@ -190,8 +270,13 @@ def _normalize(mode: str, rc_patch: str, raw: dict) -> dict:
         if not aid:
             continue
         st = r.get("stats") if isinstance(r.get("stats"), dict) else {}
-        wr = st.get("win_rate")
-        if not isinstance(wr, (int, float)):
+        # win_rate is the ONE field whose absence drops the row: a count that
+        # will not coerce degrades to 0 (see _as_int), but a missing or
+        # non-finite win rate must not become a silent 0.0 that scores as a
+        # 0-percent augment. _finite also rejects bool, which isinstance
+        # (int, float) would have accepted as 0/1.
+        wr = _finite(st.get("win_rate"))
+        if wr is None:
             continue
         if not source_patch and isinstance(r.get("patch"), str):
             source_patch = r["patch"]
@@ -205,9 +290,9 @@ def _normalize(mode: str, rc_patch: str, raw: dict) -> dict:
                 stage_wr[str(stg)] = float(swr)
         augments[aid] = {
             "win_rate": float(wr),
-            "num_games": int(st.get("num_games") or 0),
-            "num_win_games": int(st.get("num_win_games") or 0),
-            "pick_rate": float(st.get("pick_rate") or 0.0),
+            "num_games": _as_int(st.get("num_games")),
+            "num_win_games": _as_int(st.get("num_win_games")),
+            "pick_rate": _as_float(st.get("pick_rate")),
             "tier": st.get("tier"),
             "stage_win_rate": stage_wr,
         }
@@ -469,10 +554,31 @@ def _table_from_meta_snapshot(snap: dict) -> AugmentMetaTable:
         rc_patch=str(snap.get("rc_patch") or ""),
         fetched_at=str(snap.get("fetched_at") or ""),
         augments=augs if isinstance(augs, dict) else {},
-        _name_index={k: int(v) for k, v in idx.items()}
-        if isinstance(idx, dict)
-        else {},
+        _name_index=_index_from_snapshot(idx),
     )
+
+
+def _index_from_snapshot(idx) -> dict[str, int]:
+    """Rebuild the normalized-name -> id reverse index from a cached
+    snapshot, dropping entries that will not coerce.
+
+    LANE 8 CYCLE 33: this was `{k: int(v) for k, v in idx.items()}`, so a
+    single junk value in a cached cherry_augments.json raised ValueError (or
+    TypeError for a dict/list) out of `get_augment_meta`, whose docstring
+    calls it a "never-raises accessor". Dropping the bad row costs one OCR
+    alias; raising cost the whole augment surface.
+    """
+    if not isinstance(idx, dict):
+        return {}
+    out: dict[str, int] = {}
+    for k, v in idx.items():
+        if isinstance(v, bool) or not isinstance(v, (int, float, str)):
+            continue
+        try:
+            out[str(k)] = int(v)
+        except (TypeError, ValueError):
+            continue
+    return out
 
 
 def _load_degraded_meta() -> AugmentMetaTable:
