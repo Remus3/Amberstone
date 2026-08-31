@@ -4,6 +4,34 @@
 
 > Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
+# 2026-08-31m - lane 8 cycle 43: the advice publisher had no degraded branch, so an outage left seven readers serving the previous round forever
+
+**Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1302. RM-301/302/303 filed.**
+
+Audited `tft/tft_live_analysis.py` (456 -> 597 lines), picked on criterion 1 + 4: it parses model responses and vision payloads RC does not author, and it had ZERO dedicated tests while publishing `data/tft_live_data.json`, which seven other modules touch - FOUR of them readers (the verifier corrected an initial 'seven readers'; the other three write or wire the producer). Perseus recall returned no CLOSED/REFUTED row.
+
+**Headline: the missing branch, not a crash.** Every user-facing exit from `_run_analysis` was `except Exception: logger.error(...)` and nothing more. A 400, an exhausted balance or a rate-limit published NOTHING, so the polled file kept the previous round's advice and all four readers served it as current, indefinitely, with no marker. Added `_publish_degraded` - keeps the last advice so the panel does not collapse, adds `degraded` + "coaching paused - retrying", raw error to `logs/` only.
+
+**Seven dimensions:** CORRECTNESS / SECURITY / ERROR-HANDLING / RESOURCE-LIFETIME / CONCURRENCY / INPUT-VALIDATION all HARDENED; MACHINE-ENVIRONMENT **N/A** with reason - the module is a daemon thread inside the RC process, binds no port, spawns no process and has no `RC-*` scheduled task of its own.
+
+**Two things the process caught that the audit did not, both recorded because they are the transferable part:**
+1. **Self-review of my own diff** found a regression the FIX introduced: `_publish_degraded` did not touch `_last_write`, so a recovery cycle with byte-identical advice compared equal to the write gate, was suppressed, and left `degraded: True` on disk after the outage cleared. Red-first test, then `self._last_write={}`.
+2. **The adversarial pass killed a vacuous test of mine.** `test_w4b` asserted only that no scratch litter REMAINED - which the PRE-FIX code also satisfies, since `tmp.replace()` renames it away on success. Rewritten to plant a sentinel at the shared scratch name; now RED against the pre-fix writer. The file's header claim "every test proven RED" was also FALSE (3 of 12 are characterization) and now says so.
+
+**The scratch-name finding was ALREADY FILED - reading `docs/ROADMAP_HISTORY.md:2482` before filing is why it is not reported as a discovery.** RM-261's cycle-30 addendum names `tft/tft_live_analysis.py:452` verbatim. Converted to `core.polled_json.atomic_write_json`. **RESIDUAL, and the first draft got this wrong:** there are **THREE** writers of `tft_live_data.json`, not two - the refuter found `coaches/tft_coach.py:265` -> `coaches/_base_coach.py:94` `safe_write`, verified directly. So `core/feature_policy.py:440` and `_base_coach.py:94` **still share `data/tft_live_data.tmp` with each other**. This fix removed one writer of three, NOT the collision. Both remaining sites are already RM-261's; a tree sweep is not lane 8's unit.
+
+**Reachability stated honestly on two claims that were overstated first:** the thinking-block half of the `content[0].text` fix is **NOT reachable** at these sites (neither `messages.create` passes a `thinking` parameter) - only the empty-content half is live. And the scan-indicator leak is **LATENT**: `TftAiStatusBar` is defined nowhere in the repo and `wire_ai_bar()` has zero production callers.
+
+**Suites from the REPO ROOT:** RC `tests/ -q -n 8` **20112 passed / 144 skipped / 2 failed / 4637 subtests**; DS **10684 passed / 13482 subtests / 0 failed**. Both failures INHERITED and proven so (neither test references this module; both are driven by external constants) - CLI `2.1.251` vs `PINNED_CLI 2.1.220`, and live DS `:8860` `1.278.1` vs this branch's `ENGINE_VERSION 1.278.0`. **9 mutants, 9 killed**, every restore sha256-verified.
+
+**Backfill: nothing to repair, and that is measured.** Zero `*.tmp` litter in either data dir, `tft_live_data.json` parses in both trees, live `unit_presence.json` is well-formed - so the TypeError path is reachable but has not fired.
+
+**Doc budget:** filing the three rows pushed `ROADMAP.md` to 83761 bytes over its 81920 guard (RM-284 coming true). Compacted to a pointer row, bodies in `BACKLOG.md`, and relocated fully-CLOSED RM-152 + RM-153 verbatim to `docs/ROADMAP_HISTORY.md`. 81828 bytes, guard green.
+
+**PROCESS LESSON:** the adversarial pass was dispatched against a MOVING tree and reported two already-fixed doc failures as blocking. Its four substantive findings were all correct and all adopted. Adversary early against a frozen snapshot, verifier last - not both at once.
+
+**NEXT:** lane 8 cycle 44. Candidates, none yet audited, all measured live-reachable: `tft/tft_pbe_engine.py` (511 lines, 0 dedicated tests, and it is an enumerated RM-261 site at `:495`), `core/aftergame_summary.py` (456, 0 - also an RM-300 ASCII instance, carries U+26A0/U+2713). NOTE `core/data_retention.py` (711) stays DESELECTED - zero production importers, CLI-only, so its blast radius is latent; prefer a live-reachable target. Recall first, and read `docs/ROADMAP_HISTORY.md` for the RM-261 enumeration before filing any scratch-name finding as new.
+
 # 2026-08-31l - lane 8 cycle 42: a typography guard parametrized over the exact file that violated it
 
 **Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1301. RM-300 filed.**
