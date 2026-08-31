@@ -13,8 +13,12 @@ Lifecycle (per Agent 7 charter):
 
 Thread-safety: the SDK client is threadsafe for independent calls, but
 we serialise ``send()`` under an internal lock because we're editing a
-shared ``messages`` list. Concurrent /api/input POSTs block briefly -
-acceptable for an interactive NL parser.
+shared ``messages`` list. The lock is held across the upstream call, so
+a waiter blocks for up to the 30s request timeout - not "briefly", as
+this docstring claimed before the lane-8 audit of 2026-08-31. ``stats()``
+and ``close()`` take the same lock, so a shutdown racing an in-flight
+send waits on it too. Acceptable for an interactive NL parser at current
+cadence; narrowing the lock to the history mutation is filed as RM-294.
 """
 from __future__ import annotations
 
@@ -34,6 +38,22 @@ MAX_HISTORY_TURNS = 20         # trim past this to keep token cost bounded
 DEFAULT_MAX_OUTPUT_TOKENS = 600
 
 
+def _usable_key(k: str) -> bool:
+    """A key must survive being written into an HTTP header.
+
+    The SDK encodes headers as ASCII, so an internal newline or a
+    non-ASCII character (a mis-saved key file) fails EVERY request. The
+    client is cached on first use, so nothing re-reads the file and the
+    session never recovers. Reject it here and fall through to the
+    environment instead of caching a permanently broken client.
+    """
+    return (
+        k.startswith("sk-ant-")
+        and k.isascii()
+        and not any(c.isspace() for c in k)
+    )
+
+
 def _load_api_key() -> str:
     """Mirror coaches/_base_coach.py read_api_key so warm session finds
     the same key the coaches use."""
@@ -41,8 +61,10 @@ def _load_api_key() -> str:
     if p.exists():
         try:
             k = p.read_text(encoding="utf-8").strip()
-            if k.startswith("sk-ant-"):
+            if _usable_key(k):
                 return k
+            logger.warning("API-Key-Claude.txt is present but unusable "
+                           "(non-ASCII, whitespace, or wrong prefix)")
         except OSError:
             pass
     return os.environ.get("ANTHROPIC_API_KEY", "")
@@ -105,10 +127,26 @@ class WarmAgent7Session:
 
     def _trim_history(self) -> None:
         """Keep the last ``MAX_HISTORY_TURNS * 2`` messages (one user +
-        one assistant per turn). Drops from the front."""
+        one assistant per turn), aligned so the window starts on a user
+        turn. Drops from the front.
+
+        The alignment is not cosmetic. The Messages API requires the
+        first message to use the "user" role, and a bare tail slice lands
+        on an assistant turn: `send` appends the user message BEFORE
+        trimming, so at turn 21 the list is cap+1 long and `[-cap:]`
+        starts one past the oldest user turn. Every request from then on
+        was a 400. `_last_activity` only advances on success, so
+        `_check_idle` could not fire and the session stayed broken for
+        the whole idle timeout - silently, because both callers catch
+        WarmSessionError and fall back to the ephemeral CLI this module
+        exists to avoid. Pinned by
+        tests/test_warm_session_history_contract.py.
+        """
         cap = MAX_HISTORY_TURNS * 2
         if len(self._messages) > cap:
             self._messages = self._messages[-cap:]
+        while self._messages and self._messages[0]["role"] != "user":
+            self._messages.pop(0)
 
     def _check_idle(self) -> bool:
         """If we've been idle past the timeout, reset to cold. Returns
@@ -123,11 +161,29 @@ class WarmAgent7Session:
         self._last_activity = 0.0
         return True
 
+    def _redact(self, text: str) -> str:
+        """Defense in depth: never let the key ride out on an error
+        string a caller might log or render. No live SDK path was found
+        that echoes it (measured against anthropic 0.96.0), so this
+        guards the contract, not a demonstrated leak."""
+        if self._api_key and self._api_key in text:
+            return text.replace(self._api_key, "<redacted-api-key>")
+        return text
+
     def close(self) -> None:
         with self._lock:
             self._messages.clear()
-            # SDK has no explicit close; GC handles the HTTP pool.
-            self._client = None
+            # anthropic 0.96.0 DOES expose close() (and __enter__); the
+            # previous comment here claimed it did not and left the httpx
+            # connection pool to GC. Release it deterministically.
+            client, self._client = self._client, None
+            if client is not None:
+                try:
+                    client.close()
+                except Exception as exc:      # noqa: BLE001
+                    # A transport already torn down must not block the
+                    # supervisor's shutdown path.
+                    logger.debug("sdk client close: %s", exc)
             self._last_activity = 0.0
         logger.info("warm session closed")
 
@@ -142,7 +198,15 @@ class WarmAgent7Session:
         Raises :class:`WarmSessionError` on any failure so the supervisor
         can fall back to the ephemeral CLI.
         """
-        if not user_text or not user_text.strip():
+        # Both callers catch ONLY WarmSessionError to fall back to the
+        # ephemeral CLI (supervisor.py, _supervisor_http.py), so a
+        # non-string payload field must not escape as a raw
+        # AttributeError past that handler.
+        if not isinstance(user_text, str):
+            raise WarmSessionError(
+                f"user_text must be str, got {type(user_text).__name__}"
+            )
+        if not user_text.strip():
             raise WarmSessionError("empty user_text")
 
         with self._lock:
@@ -164,11 +228,19 @@ class WarmAgent7Session:
                 )
             except Exception as e:               # noqa: BLE001
                 # Roll back the user message so a retry doesn't
-                # duplicate it into the conversation.
+                # duplicate it into the conversation. No re-align is
+                # needed after this pop: _trim_history above guarantees
+                # messages[0] is a user turn, and popping the TAIL cannot
+                # change the head. A re-align loop here was written, then
+                # removed when mutation testing showed it unreachable
+                # (an equivalent mutant), rather than shipped as dead
+                # code carrying a comment claiming work it never does.
                 if self._messages and self._messages[-1]["role"] == "user":
                     self._messages.pop()
+                # Raw error to logs/ per the CLAUDE.md Error Handling
+                # rule; the propagated string is redacted.
                 logger.warning("warm send failed: %s", e)
-                raise WarmSessionError(str(e)) from e
+                raise WarmSessionError(self._redact(str(e))) from e
 
             try:
                 text = resp.content[0].text
@@ -195,13 +267,16 @@ class WarmAgent7Session:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cost_tracker record: %s", exc)
 
-        return {
-            "text": text,
-            "model": self._model,
-            "input_tokens": inp,
-            "output_tokens": out,
-            "turns": self._total_sent,
-        }
+            # Built INSIDE the lock: `turns` read outside it could be
+            # bumped by a concurrent send between release and return, so
+            # two callers could report the same turn number.
+            return {
+                "text": text,
+                "model": self._model,
+                "input_tokens": inp,
+                "output_tokens": out,
+                "turns": self._total_sent,
+            }
 
     # ---- introspection ------------------------------------------------
     def stats(self) -> dict[str, Any]:
