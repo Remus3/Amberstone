@@ -542,6 +542,24 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 
 ### GATE 2 singles
 
+- **G2-46** (RM-307, filed 2026-08-31 lane 8 cycle 44) Settle which player field the Live Client
+  `events.Events[].KillerName` actually carries. TWO RC modules read the SAME field against
+  DIFFERENT rosters and at most one can be right: `dashboard/_liveclient.py` classifies it against
+  `championName` sets, while `core/decision_detector.py` matches it against
+  `summonerName` / `riotIdGameName`. If the summoner-name reading is right then
+  `killer_team` is permanently unknown live, and THREE features are unconditionally silent in
+  production: `epic_buff_callouts` (drops any unsided buff by design), `dragon_soul_callout`
+  (returns None - verified headless: four drakes with `killer_team=unknown` yields None) and the
+  soul suppression in `_dynamic_epic_callouts`. **THIS IS NOT HEADLESS-DRAINABLE and the reason is
+  the measured one:** `tests/test_liveclient_objective_events.py` `_player()` sets
+  `summonerName` and `championName` to the SAME string, so the fixture is parallel by
+  construction and all 7 of its tests pass under EITHER reading. No synthetic fixture can settle a
+  question about what Riot actually sends. CHECK: in ONE game with any objective kill (drake, herald
+  or baron), capture the raw `GET :2999/liveclientdata/allgamedata` body and record the literal
+  `KillerName` value for that event beside the same game's `allPlayers[].championName` and
+  `allPlayers[].summonerName`. One capture answers it permanently. Also record a kill CREDITED TO
+  A TURRET OR MINION if one occurs - that case yields a non-champion KillerName under EITHER reading
+  and is the confirmed-live half. SOURCE: BACKLOG RM-307, LEDGER 1303.
 - **G2-39** (RM-124, built 2026-07-29 `266c1fac`, gated OFF) Validate the deterministic wave/cannon
   clock cadence before the flip. The code ships (`core.event_callouts.wave_callout` + `minion_events`
   transport) but `enable_wave` defaults False; the dashboard flips it only on env `RC_WAVE_CALLOUT=1`.
