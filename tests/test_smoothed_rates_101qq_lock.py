@@ -222,13 +222,32 @@ class ServeStaleWhileRefreshingTests(LockBase):
     def test_refresh_result_replaces_the_stale_snapshot(self) -> None:
         self._prime(wr=0.61)
         self._expire_ttl()
-        S101._live_data_rows = lambda: _live_rows([(22, 147, 0.77, "4.00%")])
 
-        # Stale read first, then the refresh lands.
+        # The refresh source parks until the stale read is done. With an
+        # instant source this test was racy BY CONSTRUCTION: the background
+        # thread could publish 0.77 before the "stale" read ran, and the
+        # stale assertion then failed as "0.77 != 0.61". It passed locally
+        # and standalone and went red only under the loaded parallel CI
+        # suite, which is where scheduling actually lets the refresh win.
+        entered = threading.Event()
+        release = threading.Event()
+
+        def _held_rows() -> list:
+            entered.set()
+            release.wait(_FETCH_HOLD_S)
+            return _live_rows([(22, 147, 0.77, "4.00%")])
+
+        S101._live_data_rows = _held_rows
+
+        # Stale read while the refresh is provably still parked in the fetch.
         stale = S101.pair_synergy("Ashe", "Seraphine")
+        self.assertTrue(entered.wait(_JOIN_S),
+                        "the refresh fetch never started - the assertions "
+                        "below would pass vacuously")
         self.assertIsNotNone(stale)
         self.assertAlmostEqual(stale.doublewinrate, 0.61, places=3)
 
+        release.set()
         _join_background_refresh()
         fresh = S101.pair_synergy("Ashe", "Seraphine")
         self.assertIsNotNone(fresh)
@@ -368,3 +387,115 @@ class AsciiHygieneTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RefreshDegradationTests(LockBase):
+    """A refresh that yields nothing must not destroy a working snapshot.
+
+    `_build_snapshot` is deliberately fail-soft: it swallows OSError and
+    JSONDecodeError and hands back an EMPTY snapshot. `_refresh` states the
+    opposite contract - "a failed refresh must leave the previous snapshot
+    in place" - but only honours it when the build RAISES, which is the one
+    failure mode the builder is written never to produce. So the designed
+    failure path was the one that wiped the cache.
+    """
+
+    def test_live_rows_with_no_usable_records_fall_back_to_the_static_seed(
+            self) -> None:
+        # Champion ids in neither the id_map nor DDragon: every row is
+        # skipped, so the live source yields zero usable records.
+        S101._live_data_rows = lambda: _live_rows(
+            [(999999, 999998, 0.60, "4.00%")])
+        S101._reset_cache()
+
+        self.assertEqual(
+            S101.source(), "static",
+            "live rows that yield no usable records must fall through to "
+            "the static seed - that is what the fallback exists for",
+        )
+        self.assertGreater(
+            S101.coverage()["total_records"], 0,
+            "the static seed was never consulted because the live response "
+            "was merely non-empty, not usable",
+        )
+
+    def test_an_empty_rebuild_does_not_wipe_a_good_snapshot(self) -> None:
+        self._prime(wr=0.61)
+        before = S101.coverage()["total_records"]
+        self.assertGreater(before, 0)
+
+        # Live source down AND the static seed unreadable - a transient disk
+        # failure mid-refresh. The build fails soft and returns nothing.
+        missing = S101._RECORDS_PATH.parent / "does_not_exist_lane8.json"
+        orig_path = S101._RECORDS_PATH
+        self.addCleanup(setattr, S101, "_RECORDS_PATH", orig_path)
+        S101._RECORDS_PATH = missing
+        S101._live_data_rows = lambda: None
+
+        self._expire_ttl()
+        S101.coverage()               # triggers the background refresh
+        _join_background_refresh()
+
+        self.assertEqual(
+            S101.coverage()["total_records"], before,
+            "an empty rebuild replaced a good snapshot - the duo-synergy "
+            "panel goes blank for a full TTL despite having had live data",
+        )
+        rec = S101.pair_synergy("Ashe", "Seraphine")
+        self.assertIsNotNone(rec, "the previous records were dropped")
+        self.assertAlmostEqual(rec.doublewinrate, 0.61, places=3)
+
+    def test_a_failed_refresh_thread_start_releases_the_single_flight_lock(
+            self) -> None:
+        self._prime(wr=0.61)
+        # Pre-fix, the leaked lock wedges every LATER cold start (tearDown
+        # resets the cache, so the next test blocks on _REFRESH_LOCK
+        # forever). Force-release it on the way out so this test fails
+        # RED rather than hanging the whole suite.
+        def _unwedge() -> None:
+            if S101._REFRESH_LOCK.locked():
+                try:
+                    S101._REFRESH_LOCK.release()
+                except RuntimeError:
+                    pass
+        self.addCleanup(_unwedge)
+
+        class _BoomThread:
+            def __init__(self, *a, **k) -> None:
+                pass
+
+            def start(self) -> None:
+                raise RuntimeError("can't start new thread")
+
+            def join(self, timeout: float | None = None) -> None:
+                return None
+
+        orig_thread = S101.threading.Thread
+        self.addCleanup(setattr, S101.threading, "Thread", orig_thread)
+        S101.threading.Thread = _BoomThread
+
+        self._expire_ttl()
+        # Must not propagate out of a public accessor: the OS refusing a
+        # thread is not a reason for /api/duo-synergy to 500.
+        recs = S101.top_duos_for_bot("Ashe", top_n=1)
+        self.assertEqual(len(recs), 1, "the stale snapshot was not served")
+
+        S101.threading.Thread = orig_thread
+        self.assertFalse(
+            S101._REFRESH_LOCK.locked(),
+            "the single-flight lock leaked on the failed thread start - "
+            "every later refresh is silently dead and a cold start would "
+            "block forever",
+        )
+
+        # And the module still recovers: a later refresh must land.
+        S101._live_data_rows = lambda: _live_rows([(22, 147, 0.77, "4.00%")])
+        self._expire_ttl()
+        S101.coverage()
+        _join_background_refresh()
+        fresh = S101.pair_synergy("Ashe", "Seraphine")
+        self.assertIsNotNone(fresh)
+        self.assertAlmostEqual(
+            fresh.doublewinrate, 0.77, places=3,
+            msg="refresh never recovered after the failed thread start",
+        )
