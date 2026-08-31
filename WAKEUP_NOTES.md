@@ -4,6 +4,32 @@
 
 > Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
+# 2026-08-31b - lane 8 cycle 32: the replay scrubber folded item inventories from a column Riot never populates, so its ITEM_UNDO branch had never once fired
+
+**Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1291. RM-290 filed.**
+
+Audited `core/replay_history.py` (criterion 4 load-bearing + **no dedicated test file**, reached live from `dashboard/routes_coach.py:71`/`:89`; criterion 1 untrusted parse). 5 defects, all PROVEN by measurement against the live 1.87 GB `rewind_history.db`, not read off the source.
+
+**Headline.** Riot sends `beforeId`/`afterId` on ITEM_UNDO, never `itemId`. `scripts/rewind_scraper.py:567` maps only `itemId`, so `timeline_events.item_id` is NULL for **28405 of 28405** undo rows, and the fold's `elif ... and item:` branch was structurally dead - it had never fired, while the docstring claimed it reversed purchases. **Both directions were wrong:** 25917 rows undo a PURCHASE (item wrongly left IN), 2488 undo a SALE (item wrongly left OUT).
+
+**Downstream measured, not assumed.** `participants.item0..item6` is ground truth, so the fold is falsifiable: over 400 participant-inventories in the 40 most undo-heavy matches, EXACT reconstruction went **12 -> 37 (3.1x)**, re-measured against the shipped module. Honestly: 37/400 is still not "correct" - the residual is component/trinket modelling that `core/replay_seek.py:29-34` already flagged, and only the undo axis was in scope.
+
+**Backfill was free and that drove the design.** `raw_json` is populated for **0 NULLs of 28405**, so reading the fold from there repairs every historical row with no migration of a 1.87 GB WAL database (whose `-wal`/`-shm` sidecars make copy-and-replace its own hazard). The 12 -> 37 measurement IS the historical repair.
+
+**Four more, all latent against today's data and all labelled so:** `if queue_filter:` swallowed queue **0** (custom games); `LIMIT -1` is UNLIMITED in SQLite and the function runs a join PER ROW, so a negative limit was a full-table read amplified into an N+1 (route clamps 1..200, the query's owner did not); the frame sampler could never reach the final index (90 frames capped to 60 kept 88, dropped 89 - the END of the game; live corpus maxes at 53 so it never triggers); `max_frames=0` was a ZeroDivisionError.
+
+**Two mutation survivors, both converted to kills by strengthening.** Dropping `raw_json` from the production SELECT **survived the whole suite** - every undo test called `_build_inventory_at` with rows the TEST selected, so `match_detail`'s real query was never exercised. My own defensive `except (IndexError, KeyError)` was masking it, silently degrading back to the exact bug being fixed. A missing COLUMN now raises (caller contract) while bad DATA still degrades; two end-to-end tests close the path. Second survivor coerced a NULL participant id to 0, inventing a phantom participant that `assertNotIn(None, inv)` happily passed.
+
+**Don't-redo / durable:**
+- **ITEM_UNDO has NO `itemId`.** Never fold it from `item_id`; read `raw_json`. `core/event_patterns.py:233` already reads the right fields but collapses them with `beforeId or afterId`, which is BACKWARDS for the 2488 undone sales - that is **RM-290**, filed not fixed (offline batch: it feeds `data/event_pattern_rates.json` + cohort baselines).
+- The misleading `-- ITEM_PURCHASED / ITEM_SOLD / ITEM_UNDO / ITEM_DESTROYED` comment above `item_id` exists ONLY in the live DB's `sqlite_master`; **no source file carries it**, so it cannot be fixed without a table rebuild. Do not go looking for it in `.py`.
+- `data/rewind_history.db` is NOT in the worktree (gitignored, main tree only) - tests must build a fixture DB.
+- **Do not run a mutation harness while a full suite is running.** The first full run overlapped mine and was DISCARDED, not reported. Cycle 29's own lesson.
+- Both remaining RC failures are INHERITED and were confirmed by probe, not by "does not import my module": `PINNED_CLI = "2.1.220"` vs live CLI **2.1.251**, and worktree `ENGINE_VERSION 1.278.0` vs live DS `:8860` **1.278.1** (resolves on merge).
+- `tools/drift_guard.py` still reports its 1 inherited breach (ROADMAP at 99% of budget, **RM-284**); this cycle did not touch `ROADMAP.md`, which is why RM-290 went to `BACKLOG.md`. Two orphaned stashes (**RM-285**) untouched again - shared stack, not this lane's to pop.
+
+**Suites (repo root, FROZEN tree):** `tests/` 2 failed / **19838 passed** / 144 skipped / 4627 subtests. DS **10684 passed** / 13482 subtests, exit 0. 30 new tests, **12/12 mutants killed**, source restored byte-identical. No restart - worktree branch, not deployed.
+
 # 2026-08-31 - lane 8 cycle 31: the fallback that exists for an unreachable endpoint was itself gated behind that endpoint's full timeout, under a lock every reader takes
 
 **Commit `6f575612` on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1290. RM-289 filed.**
