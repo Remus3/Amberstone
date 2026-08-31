@@ -242,14 +242,15 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "EXTERNAL",
         "playwright package internal, never in this repo. MERGER-OWNED FILE.",
     ),
-    (
-        "docs/RC2_QA_CONSOLIDATED.md",
-        "routes_pickban.py:1263",
-        "ROT",
-        "dashboard/routes_pickban.py is 1235 lines. The QA row's claim "
-        "(counter-picks vs live enemy comp) names no symbol, so there is "
-        "nothing to re-point against.",
-    ),
+    # RESOLVED 2026-08-31 (lane 8 cycle 41). The file grew from 1235 to 1310
+    # lines when the id-list cap landed, so :1263 came back into range. The
+    # verifier's caveat is why the doc row was ALSO re-pointed rather than
+    # just un-listed here: :1263 landed on a COMMENT line, inside the right
+    # function only by coincidence of an unrelated 75-line growth, and would
+    # re-break on the next size change. docs/RC2_QA_CONSOLIDATED.md row 25
+    # now reads `routes_pickban.py:1231 _serve_counter_picks` - the def line
+    # plus the symbol, the same self-checking shape row 22 already uses, so
+    # future drift grades MOVED instead of passing by luck.
     (
         "docs/research/RESEARCH_CONSOLIDATED_2026-07-28.md",
         "analysis.js:129-134",

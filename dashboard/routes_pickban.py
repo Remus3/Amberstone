@@ -69,6 +69,24 @@ _PB_CACHE_LOCK = threading.Lock()
 _PB_CACHE_MAX = 256
 _PB_CACHE_EVICT = 64
 
+# Cycle-41 audit: :8888 binds `::` - all interfaces, measured 2026-08-31 with
+# Get-NetTCPConnection - not loopback, and every route below takes a
+# comma-separated championId list straight off the query string.
+# /api/champ-select/personal-record then runs ONE `_query_co_participant`
+# (a correlated EXISTS over `participants`) per id in `allies` and per id in
+# `enemies`. MEASURED against the live 1.87 GB rewind_history.db: 291 ms cold,
+# 13.5 ms warm, per id. The stdlib HTTP request line admits 65536 bytes, so a
+# single GET carries roughly 32000 one-digit ids - about 7 minutes of solid
+# CPU on one handler thread holding a read connection.
+# dashboard/_handler.py already caps POST bodies (`_MAX_POST_BYTES`, cycle 4,
+# which closed the sibling "negative Content-Length pinned a handler thread
+# from the tailnet"); the GET side had no equivalent and this is it.
+#
+# 32 clears every real lobby with headroom: an SR draft peaks at 10 picks +
+# 10 bans = 20, and Arena carries 16 players. Worst case is now bounded at
+# roughly 32 * 13.5 ms = 0.43 s.
+_MAX_ID_PARAMS = 32
+
 
 def _db_mtime() -> float:
     try:
@@ -942,6 +960,30 @@ def _send_json_err(h, code: int, msg: str) -> None:
     _send_json(h, code, {"ok": False, "error": msg})
 
 
+def _oversized(h, **id_lists: tuple[int, ...]) -> bool:
+    """Reject any id list longer than ``_MAX_ID_PARAMS`` with a 400 naming
+    the offending parameter, and return True so the caller returns at once.
+
+    Over-cap is a 400 and NEVER a silent truncation: a junk *token* stays
+    dropped (that is `_parse_csv_ints`'s documented contract, so a typo does
+    not 400 a whole draft), but a junk *length* is not a typo - truncating
+    30000 ids would serve a plausible answer to a hostile request and leave
+    no trace. Kwargs order is preserved, so the first oversized parameter is
+    reported deterministically.
+
+    Callers MUST invoke this before opening a connection: the cap exists to
+    stop the per-id SQL fan-out, so a rejected request has to cost zero
+    queries or it buys nothing on the expensive path."""
+    for name, ids in id_lists.items():
+        if len(ids) > _MAX_ID_PARAMS:
+            _send_json_err(
+                h, 400,
+                f"{name}: {len(ids)} ids exceeds the limit of "
+                f"{_MAX_ID_PARAMS}")
+            return True
+    return False
+
+
 def _parse_queue_ids(qs: dict) -> tuple[int, ...] | None:
     """?queue=420 -> (420,); ?queue=400,420 -> (400, 420); absent/blank ->
     _DEFAULT_SR_QUEUES. Returns None on a malformed value so the caller can
@@ -987,7 +1029,17 @@ def _open_ro_with_puuid(h):
     read-only uri mode: the catchup script is the only writer and WAL means
     reads don't block its writes."""
     conn = sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True, timeout=2.0)
-    puuid = _resolve_operator_puuid(conn)
+    # Cycle 41 (resource lifetime): the caller's try/finally only starts once
+    # this function RETURNS, so a raise from `_resolve_operator_puuid` - a
+    # corrupt file is DatabaseError, a missing `participants` table is
+    # OperationalError, both reachable off a half-written db - left this
+    # connection with no deterministic close on the one path that matters.
+    # Close it here and re-raise; the handler's outer guard still 500s.
+    try:
+        puuid = _resolve_operator_puuid(conn)
+    except BaseException:
+        conn.close()
+        raise
     if not puuid:
         conn.close()
         _send_json_err(h, 503, "no operator puuid in rewind_history.db")
@@ -1053,6 +1105,14 @@ def _serve_pickban_recs(h) -> None:
         except ValueError:
             top_raw = 1
         top = max(1, min(5, top_raw))
+
+        # Cycle 41: cap before the connection. `exclude` becomes one `?`
+        # placeholder per id in every query this route runs, so uncapped it
+        # walks into SQLite's variable ceiling and 500s instead of naming
+        # the bad input.
+        if _oversized(h, queue=queue_ids, exclude=exclude_ids,
+                      enemies=enemy_ids, my_summoners=my_summs):
+            return
 
         if not _REWIND_DB.exists():
             _send_json_err(h, 503, "rewind_history.db missing")
@@ -1124,6 +1184,12 @@ def _serve_personal_record(h) -> None:
             _send_json_err(h, 400, "queue must be comma-separated ints")
             return
 
+        # Cycle 41: cap before the connection. This route is the sharp one -
+        # one correlated-subquery per ally id and per enemy id.
+        if _oversized(h, allies=ally_ids, enemies=enemy_ids,
+                      queue=queue_ids):
+            return
+
         if not _REWIND_DB.exists():
             _send_json_err(h, 503, "rewind_history.db missing")
             return
@@ -1186,6 +1252,11 @@ def _serve_counter_picks(h) -> None:
             top_raw = 5
         limit = max(1, min(5, top_raw))
 
+        # Cycle 41: in-memory walk rather than SQL, but still O(n) over
+        # attacker-sized input on a shared handler thread - same cap.
+        if _oversized(h, enemies=enemy_ids, exclude=exclude_ids):
+            return
+
         counters = _counters_vs_comp(enemy_ids, exclude_ids, limit=limit)
         # Attach a champion icon path so the JS renders the portrait without
         # a second id->slug round-trip. DDragon slug = the counters index
@@ -1211,6 +1282,10 @@ def _serve_team_damage_mix(h) -> None:
     try:
         qs = parse_qs(urlparse(h.path).query)
         team_ids = _parse_csv_ints((qs.get("team_ids") or [""])[0])
+        # Cycle 41: a team is 5 champions; the cap keeps the echo list and
+        # the sum bounded by the same rule as every sibling route.
+        if _oversized(h, team_ids=team_ids):
+            return
         payload = _compute_team_damage_mix(team_ids)
         _send_json(h, 200, payload)
     except Exception as exc:  # noqa: BLE001
