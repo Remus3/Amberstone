@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import os
 import threading
 import time
@@ -147,6 +148,45 @@ def _perk_by_name() -> dict[str, int]:
 
 # -- Core resolver ---------------------------------------------------------
 
+def _substitute_colliding_secondary(primary_tree: str, secondary_tree: str) -> str:
+    """Return the secondary tree name to actually USE for `primary_tree`.
+
+    League rejects a rune page whose subStyleId equals its primaryStyleId, so a
+    caller asking for the same tree twice gets a different one substituted in.
+    Sole owner of that rule - `build_perk_ids` and `resolve_tree_ids` both go
+    through here so the perk ids and the style ids can never disagree.
+    """
+    if primary_tree != secondary_tree:
+        return secondary_tree
+    _log.warning(
+        "Primary and secondary trees are the same (%r) - using %s as secondary",
+        secondary_tree, "Resolve" if primary_tree != "Resolve" else "Precision")
+    return "Resolve" if primary_tree != "Resolve" else "Precision"
+
+
+def resolve_tree_ids(primary_tree: str, secondary_tree: str) -> tuple[int, int]:
+    """Resolve tree NAMES to the (primaryStyleId, subStyleId) pair that MATCHES
+    the perk ids `build_perk_ids` returns for the same input.
+
+    Lane 8 cycle 39. Every call site used to re-derive the sub style itself with
+    a bare `_TREES.get(secondary, 0)`, which is correct only while the two names
+    differ. `build_perk_ids` substitutes a colliding secondary INTERNALLY and
+    could not report it, so a same-tree request produced a page carrying
+    subStyleId == primaryStyleId with the substituted tree's runes sitting in
+    it - malformed on two counts, and posted only after `_write_page` had
+    already deleted the page it was replacing.
+
+    Unknown names resolve to 0 on that side, preserving the `if not sub_id`
+    rejection every call site already performs.
+    """
+    pri_id = _TREES.get(primary_tree, 0)
+    if not pri_id or not _TREES.get(secondary_tree, 0):
+        # Unknown on either side: no substitution to reason about, and the
+        # caller's own guard rejects the pair. Report what was asked for.
+        return pri_id, _TREES.get(secondary_tree, 0)
+    return pri_id, _TREES[_substitute_colliding_secondary(primary_tree, secondary_tree)]
+
+
 def build_perk_ids(
     keystone: str,
     primary_tree: str,
@@ -177,10 +217,10 @@ def build_perk_ids(
         _log.warning("Unknown trees %r / %r", primary_tree, secondary_tree)
         return None
 
-    if primary_tree == secondary_tree:
-        _log.warning("Primary and secondary trees are the same (%r) - using Resolve as secondary", secondary_tree)
-        secondary_tree = "Resolve" if primary_tree != "Resolve" else "Precision"
-        sec_id = _TREES[secondary_tree]
+    # Lane 8 cycle 39: the substitution rule lives in ONE place now, so
+    # resolve_tree_ids cannot drift from the perks produced here.
+    secondary_tree = _substitute_colliding_secondary(primary_tree, secondary_tree)
+    sec_id = _TREES[secondary_tree]
 
     # Primary rows: look for keystone-specific override, fall back to _default
     pri_rows_map = _PRIMARY_ROWS.get(primary_tree, {})
@@ -504,6 +544,63 @@ def save_champ_spell_pref(champion: str, mode: str,
 # RuneWriter
 # ==============================================================================
 
+# Lane 8 cycle 39. RC_RUNEWRITER_POLL_SEC used to be read straight into the
+# class body as `float(os.environ.get(...))`, unvalidated. Two measured arms:
+#
+#   "0" / "-1"  -> POLL_INTERVAL 0.0, and _stop_event.wait(0.0) returns
+#                  instantly (2000 waits in 0.0011s). The poll loop became an
+#                  unbounded spin issuing LCU HTTP requests as fast as the
+#                  League client could answer them.
+#   "abc"       -> ValueError at MODULE IMPORT. main.py:254 catches that as
+#                  "RuneWriter init failed" (rune auto-apply silently off), and
+#                  the same failure breaks every other importer of this module:
+#                  coaches/rune_pages.py, coaches/loadout_resolver.py,
+#                  dashboard/routes_loadout.py, dashboard/routes_sr_draft.py.
+#
+# A FLOOR, not a ceiling: a deliberately slow poll is the operator's business,
+# an unbounded spin against the game client is not. 0.1s is 10x the shipped
+# 1.0s rate and still bounded, so a deliberate fast setting still works.
+_MIN_POLL_INTERVAL = 0.1
+_DEFAULT_POLL_INTERVAL = 1.0
+
+
+def _poll_interval_from_env(
+    raw: Optional[str] = None,
+    *,
+    _sentinel: object = object(),
+) -> float:
+    """Parse RC_RUNEWRITER_POLL_SEC into a usable poll interval.
+
+    Never raises: an unparseable, non-finite, zero or negative value falls back
+    to the 1.0s default, and anything below the floor is raised to it.
+    """
+    if raw is None:
+        raw = os.environ.get("RC_RUNEWRITER_POLL_SEC")
+    if raw is None or str(raw).strip() == "":
+        return _DEFAULT_POLL_INTERVAL
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        _log.warning(
+            "RC_RUNEWRITER_POLL_SEC=%r is not a number - using %.1fs",
+            raw, _DEFAULT_POLL_INTERVAL)
+        return _DEFAULT_POLL_INTERVAL
+    # float() accepts "nan" and "inf". nan fails EVERY comparison, so a naive
+    # `if value < floor` check would pass it straight through into wait().
+    if not math.isfinite(value):
+        _log.warning(
+            "RC_RUNEWRITER_POLL_SEC=%r is not finite - using %.1fs",
+            raw, _DEFAULT_POLL_INTERVAL)
+        return _DEFAULT_POLL_INTERVAL
+    if value < _MIN_POLL_INTERVAL:
+        _log.warning(
+            "RC_RUNEWRITER_POLL_SEC=%r is below the %.1fs floor - clamping "
+            "(a zero or negative interval spins the LCU)", raw,
+            _MIN_POLL_INTERVAL)
+        return _MIN_POLL_INTERVAL
+    return value
+
+
 class RuneWriter:
     """
     Background thread that monitors champion select and auto-writes
@@ -517,7 +614,7 @@ class RuneWriter:
     # RC2 P6.2: tightened 2.0 -> 1.0s for faster rune/spell auto-apply across
     # ALL modes (slowest champ-select cadence per the IO timing map). Port-safe:
     # a single loop adds ~0.5 calls/s to the lockfile port. Env-tunable.
-    POLL_INTERVAL = float(os.environ.get("RC_RUNEWRITER_POLL_SEC", "1.0"))
+    POLL_INTERVAL = _poll_interval_from_env()
     MAX_RETRIES   = 3     # attempts to write rune page on failure
 
     def __init__(self, lcu_client) -> None:
@@ -973,8 +1070,11 @@ class RuneWriter:
         if not perk_ids:
             return False
 
-        pri_id = _TREES.get(primary_tree, 0)
-        sec_id = _TREES.get(secondary_tree, 0)
+        # Lane 8 cycle 39: resolve_tree_ids applies the SAME colliding-secondary
+        # substitution build_perk_ids just applied, so the style ids always
+        # describe the perks above. A bare _TREES.get here shipped a page whose
+        # subStyleId equalled its primaryStyleId.
+        pri_id, sec_id = resolve_tree_ids(primary_tree, secondary_tree)
         if not pri_id or not sec_id:
             _log.warning("Unknown tree IDs for %s / %s", primary_tree, secondary_tree)
             return False

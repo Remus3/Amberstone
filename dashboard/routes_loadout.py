@@ -238,8 +238,9 @@ def _serve_rune_pages_post(h, payload) -> None:
     # {champion, mode} -> the deduped rune-page model for rune-follows-build
     # (item 1 Phase 1). Mirrors _serve_loadout_list_post: mode defaults to
     # "sr", champion is required, and enumerate_pages(champ, mode) is spliced
-    # back with the echoed champion + mode. coaches.rune_pages is non-frozen
-    # and only IMPORTS the frozen build_perk_ids resolver - it writes nothing.
+    # back with the echoed champion + mode. coaches.rune_pages only IMPORTS
+    # build_perk_ids - it writes nothing. (Neither module is frozen; the
+    # "frozen build_perk_ids" claim here was wrong, corrected lane 8 cycle 39.)
     try:
         from coaches.rune_pages import enumerate_pages
         champ = _text(payload, "champion")
@@ -278,7 +279,7 @@ def _resolve_user_build(champion: str, variant: str, mode: str,
         _load_champ_id_by_name, _norm, _normalize_mode,
     )
     from coaches.sr_user_builds import format_for_display, list_for
-    from lcu.lcu_rune_writer import _TREES, build_perk_ids
+    from lcu.lcu_rune_writer import build_perk_ids, resolve_tree_ids
     uid = variant[len("userbuild_"):]
     rec = next((b for b in list_for(champion)
                 if isinstance(b, dict) and b.get("id") == uid), None)
@@ -300,8 +301,8 @@ def _resolve_user_build(champion: str, variant: str, mode: str,
             minor_primary=[str(x) for x in (runes.get("minor_primary") or []) if x],
             minor_secondary=[str(x) for x in (runes.get("minor_secondary") or []) if x],
         )
-        primary_id = _TREES.get(primary, 0)
-        sub_id     = _TREES.get(secondary, 0)
+        # Lane 8 cycle 39: user-curated builds can name the same tree twice.
+        primary_id, sub_id = resolve_tree_ids(primary, secondary)
         if perk_ids and primary_id and sub_id:
             rune_cmd = {
                 "cmd":        "apply_runes",
