@@ -4,6 +4,28 @@
 
 > Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
+# 2026-08-31c - lane 8 cycle 33: a parser promised in three docstrings that it never raises, raised four ways, and its own twin had already fixed the fifth
+
+**Commits on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1292. RM-291 filed.**
+
+Audited `core/augment_external_source.py` (569 -> 675 lines), picked on criterion 1 (parses Overlay App E's unauthenticated data backend + a CommunityDragon mirror - a payload RC does not own) and criterion 4 (one test file). 18 new tests in `tests/test_augment_external_source_hardening.py`, **11/11 mutants killed, 0 survivors**, restore digest-verified each time.
+
+**The contract was asserted three times and false four ways.** Module docstring: "never raises into its callers except via the explicit `refresh_cache` force path"; `get_priors`: "Never raises"; `get_augment_meta`: "never-raises accessor". Each defect was probed BEFORE any edit. (W1) `_normalize` used bare `int()`/`float()` on third-party numerics - and this feed **demonstrably string-encodes numbers**, since `augment_id` arrives as a numeric string, so `num_games: "1500.0"` raised `ValueError`, which is not `AugmentSourceError` and walked past the handler. (W2) `_table_from_meta_snapshot` did `{k: int(v) ...}` over a cached file. (W3) `_current_patch` caught `OSError` only, and `UnicodeDecodeError` is a `ValueError`. (W4) a `U+2192` arrow in a raised error string.
+
+**W3 is the FOURTH site of a class this lane already root-fixed** in `core/polled_json.py` (cycle 24), whose comment names three callers that widened their own handlers instead. Fixed at the root here, not in a caller.
+
+**The best defect came from grepping the root cause, not reading the file (W6).** `json.loads` accepts `NaN`/`Infinity` by default, `isinstance(float("nan"), float)` is True so a non-finite passes every type check, every comparison against NaN is False so the recommender's ranking degrades **silently**, and `json.dumps` re-emits a bare `NaN` token that makes the written cache invalid JSON. `core/synergy_external_source.py:135-147` - the twin this module is the *stated pattern for* - already guarded exactly this. The namesake did not.
+
+**Deliberately not widened:** a junk COUNT degrades to 0, but `win_rate` stays the one field whose absence DROPS the row, since a junk win rate silently becoming `0.0` scores as a 0-percent augment - worse than no prior. `_finite` also rejects `bool` (`True` would have read as a 100-percent win rate).
+
+**Blast radius traced, not assumed.** `coaches/arena_coach.py:329` swallows it in a broad `except Exception`, so the recommendation silently vanished; `core/augment_recommender.py:303-304` calls both accessors OUTSIDE its `except (TypeError, ValueError)` blocks, so there it propagated.
+
+**Backfill: nothing needed repairing, and that is measured.** All **18** snapshot files under `data/daemon_slayer/` strict-parsed with `parse_constant`: **0** non-finite literals. W6 is latent, not observed. Said so rather than claiming a recovery.
+
+**The verifier refuted three things and was right on all three.** (a) The backfill count was written as **24**, is **18** - the glob unioned `*augment*.json` with `cherry_augments.json`, and the second is a SUBSET of the first, so cherry files counted twice; it had already been committed into a docstring, so it was a durable false number, corrected in place WITH the correction recorded. (b) The body-cap test was **partially vacuous** - its stub ignored the `n` argument, so a mutant reverting to an unbounded `r.read()` while keeping the length check would still have passed; the stub now honours `n` and that mutant is killed. (c) A production comment claimed `_finite` rejects `bool` with no test asserting it. An earlier grep also "found" 12 poisoned files and was wrong - it matched `Infinity` inside augment NAMES.
+
+**Inherited, NOT caused by this cycle** (both proven: neither test imports the module): `tests/test_subagent_prompt_flag.py` - Claude CLI moved **2.1.220 -> 2.1.251**, the documented pin expiry, and its own message says update only after re-running the codeword canary; `tests/phase8_smoke/...::test_live_three_profiles` - live DS `:8860` serves ENGINE **1.278.1** against this branch's **1.278.0**. Also inherited: CI red on `lane/true-audit` is a missing-asset gap, `web/data/ddragon/16.16.1/img/**` PNGs absent on the runner.
+
 # 2026-08-31b - lane 8 cycle 32: the replay scrubber folded item inventories from a column Riot never populates, so its ITEM_UNDO branch had never once fired
 
 **Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1291. RM-290 filed.**
