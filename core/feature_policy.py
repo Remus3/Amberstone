@@ -91,7 +91,12 @@ _TFT_COACHING_DISABLED_PAYLOAD = {
     "mode": "tft",
     "action": "COACHING DISABLED",
     "board": "", "econ": "", "rolldown": "", "items": "",
-    "carousel": "", "placement": "", "upgrade": "", "risk": "",
+    # LANE 8 CYCLE 30: this said "carousel". This module is a co-writer of
+    # data/tft_coaching_data.json, whose shape is declared by
+    # core/coaching_payload.TftPayload (god_pick) and seeded by
+    # coaches/tft_coach.py (god_pick). The disabled payload was the third
+    # disagreeing spelling of one field.
+    "god_pick": "", "placement": "", "upgrade": "", "risk": "",
 }
 
 _TFT_LIVE_DISABLED_PAYLOAD = {
