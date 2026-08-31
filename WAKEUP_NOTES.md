@@ -4,6 +4,26 @@
 
 > Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
+# 2026-08-31l - lane 8 cycle 42: a typography guard parametrized over the exact file that violated it
+
+**Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1301. RM-300 filed.**
+
+Audited `core/obs_publisher.py` (468 -> 541 lines) on criteria 1 + 2 + 3 + 4: it parses OBS-WebSocket v5 payloads RC does not author, carries an auth password, runs a daemon thread plus an asyncio loop over a process-wide frame slot, and had no dedicated test module. Live-reachable from `dashboard/server.py:259`. Recall returned no CLOSED/REFUTED row.
+
+**Headline: the guard, not the glyph.** `tests/test_p2w1_core_f.py::test_no_banned_typography` is parametrized over seven files, NAMES `core/obs_publisher.py`, and passed green while that file carried four U+00B7 on three lines inside `_render_state` - the string pushed to OBS, not a comment. `_BANNED_CHARS` holds only the six historical glyphs. `tools/precommit_gate.py` was widened to a non-ASCII catch-all on 2026-07-28 for exactly this disagreement, but the widening reached the gate and not the test, and the gate scans ADDED lines only, so a 2026-05-01 file is invisible to it forever. Guard widened; measured first, it reddens exactly one of its seven files.
+
+**Three more, all in `_identify`, all fixed in-slice.** Non-object JSON (`[1,2]`, `null`, `42`) hit `.get()` and raised AttributeError OUTSIDE the local try - while the sibling `request_response` in the same module already had the isinstance check. Two UNBOUNDED `ws.recv()` calls, where `open_timeout` bounds only the opening handshake and every other recv in the module is bounded. And `stop()` dropped the task handle right after `cancel()`, so `start_background()` spawned a second loop and `_stop.clear()` resurrected the first - the cycle-9 `log_retention` defect (LEDGER 1200 w4/w5) on the asyncio path. Verifier drove HEAD: 2 loops, `_stop.is_set() == False`.
+
+**Mutation testing found a gap the fix had not.** M10 survived: `_task is not None` and `_handle_running` agree on every state the tests reached, but diverge when the loop ends WITHOUT `stop()` - a non-None finished handle latches the publisher off forever. Not equivalent; a real hole, because every other test calls `stop()` first. **10 mutants, 10 killed** after closing it, sha256-verified restores, `__pycache__` purged between mutants.
+
+**Secret handling CLEAN, measured not assumed** - the gitignored config holds a real non-empty password, and every path it can take was traced (hashed into the WS chain, never logged; `JSONDecodeError.__str__` carries no document; tracebacks carry no locals; no route serves the file; `config_validator`'s `{value!r}` echo never reaches the obs block).
+
+**Backfill: latent, never realised.** `obs.enabled` is false and the live logs carry 50 `OBS publisher disabled` lines and ZERO started/connected across 15 days - no handshake was ever parsed, no double loop ever spawned, no U+00B7 ever reached OBS. The ASCII violation's real already-bad state is tree-wide (**28 tracked `.py`, 640 non-ASCII codepoints, 34 distinct, none exempt**) and is FILED as RM-300 for LANE 7, not swept - tree sweeps are not lane 8's unit.
+
+**Suites (repo root):** RC 20100 passed / 144 skipped / 2 failed / 4637 subtests; DS 10684 passed / 0 failed. 20069 (cycle 41) + 31 new = 20100. Both failures inherited, proven by mechanism plus unmodified constants (CLI 2.1.251 vs pin 2.1.220; live DS 1.278.1 vs branch 1.278.0) rather than by running a reverted tree - the verifier insisted on that distinction. Verifier **CONFIRM on all 11 claims**, tree hash-frozen throughout, four phrasings tightened and adopted.
+
+**NEXT:** lane 8 cycle 43. Candidates, none yet audited, all measured live-reachable: `tft/tft_live_analysis.py` (456 lines, 0 dedicated tests, imported by `core/tft_worker.py:155` + `coaches/tft_pbe_coach.py:31`), `tft/tft_pbe_engine.py` (511, 0), `core/aftergame_summary.py` (456, 0 - and it carries U+26A0/U+2713, so it is also an RM-300 instance). NOTE `core/data_retention.py` (711 lines) was CONSIDERED and DESELECTED this cycle: it has **zero production importers** (CLI-only), so its blast radius is latent - prefer a live-reachable target. Recall first.
+
 # 2026-08-31k - lane 8 cycle 41: a deprecated endpoint, still live on an all-interfaces port, ran one heavy query per element of an uncapped query-string list
 
 **Commit `6e9199e5` on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1300. RM-299a-b filed.**

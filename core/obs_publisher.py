@@ -96,6 +96,14 @@ def _load_obs_config() -> dict:
 
 _REQUEST_TIMEOUT_S = 2.0
 
+# Bound on each frame of the op:0/op:1/op:2 handshake. `websockets.connect`
+# takes an `open_timeout`, but that bounds only the OPENING handshake; a peer
+# that completes it and then goes silent (while still answering keepalive
+# pings) left `_identify` awaiting `ws.recv()` forever. `_stop` is read only
+# at the top of the publisher loops, so `stop()` could not reclaim that
+# thread either. Every other recv in this module is already bounded.
+_HANDSHAKE_TIMEOUT_S = 5.0
+
 _frame_slot_lock = threading.Lock()
 _frame_slot: dict = {"data": None, "mono": 0.0}
 
@@ -228,8 +236,8 @@ def _render_state() -> str:
             kda   = lc.get("kda") or "0/0/0"
             level = lc.get("level")
             gt    = lc.get("game_time") or "?"
-            level_part = f" · lv{level}" if level else ""
-            return f"{mode} · {champ} {kda}{level_part} · {gt}"
+            level_part = f" - lv{level}" if level else ""
+            return f"{mode} - {champ} {kda}{level_part} - {gt}"
 
         # Lobby / champ-select / out-of-game: mode + the most relevant pregame field.
         # `coach.pregame` is a free-form string the dashboard's chat input
@@ -240,7 +248,7 @@ def _render_state() -> str:
         if pregame:
             # cap to ~50 chars so OBS doesn't get a wall of text
             short = pregame[:50] + ("..." if len(pregame) > 50 else "")
-            return f"{mode} · {short}"
+            return f"{mode} - {short}"
         return mode
     except Exception as exc:  # noqa: BLE001
         _log.debug("OBS render: %s", exc)
@@ -270,7 +278,8 @@ class OBSPublisher:
             _log.debug("OBS publisher disabled (config.obs.enabled=%r)",
                        cfg.get("enabled"))
             return
-        if (self._thread and self._thread.is_alive()) or self._task is not None:
+        if ((self._thread and self._thread.is_alive())
+                or self._handle_running(self._task)):
             return
         self._stop.clear()
         try:
@@ -295,14 +304,46 @@ class OBSPublisher:
                       cfg.get("source_name", "RC State"),
                       cfg.get("interval_s", 2.0))
 
+    @staticmethod
+    def _handle_running(handle) -> bool:
+        """True unless `handle` is PROVABLY finished.
+
+        An unrecognised handle counts as RUNNING, so an unknown scheduler
+        can never license a double spawn. This is the cycle-9
+        `core/log_retention.py` rule (LEDGER 1200 weakness 4/5) applied to
+        the asyncio path.
+        """
+        if handle is None:
+            return False
+        done = getattr(handle, "done", None)
+        if callable(done):
+            try:
+                return not bool(done())
+            except Exception:  # noqa: BLE001
+                return True
+        return True
+
     def stop(self) -> None:
         self._stop.set()
-        if self._thread:
+        if self._thread is not None:
             self._thread.join(timeout=3)
-        if self._task is not None:
-            try: self._task.cancel()
-            except Exception: pass  # noqa: BLE001
-            self._task = None
+            if not self._thread.is_alive():
+                self._thread = None
+        task = self._task
+        if task is not None:
+            cancel = getattr(task, "cancel", None)
+            if callable(cancel):
+                try:
+                    cancel()
+                except Exception:  # noqa: BLE001
+                    pass
+            # `cancel()` is a REQUEST, not a stop: the loop only unwinds
+            # when it next reaches an await. Dropping the handle here let
+            # the next start_background() pass its idempotence check AND
+            # call `_stop.clear()`, resurrecting this loop and running two
+            # publishers against one OBS connection and one frame slot.
+            if not self._handle_running(task):
+                self._task = None
 
     def _run(self, cfg: dict) -> None:
         """Thread entrypoint (fallback path). Owns its own asyncio loop so
@@ -387,25 +428,33 @@ class OBSPublisher:
             secret   = base64(sha256(password + salt))
             response = base64(sha256(secret + challenge))
         """
-        hello_raw = await ws.recv()
-        try:
-            hello = json.loads(hello_raw)
-        except Exception:  # noqa: BLE001
+        hello = await self._recv_object(ws)
+        if hello is None or hello.get("op") != 0:
             return False
-        if hello.get("op") != 0:
-            return False
-        d = hello.get("d") or {}
+        d = hello.get("d")
+        if not isinstance(d, dict):
+            d = {}
         # eventSubscriptions=0: the publisher only pushes SetInputSettings
         # and never consumes events. The OBS-WS default (omitted field) is
         # subscribe-to-ALL, which floods the never-read recv queue.
         identify = {"op": 1, "d": {"rpcVersion": 1, "eventSubscriptions": 0}}
         auth = d.get("authentication")
         if auth:
+            if not isinstance(auth, dict):
+                _log.warning("OBS sent a malformed authentication block (%s)",
+                             type(auth).__name__)
+                return False
             if not password:
                 _log.warning("OBS requires a password but none configured")
                 return False
             salt = auth.get("salt", "")
             challenge = auth.get("challenge", "")
+            if not isinstance(salt, str) or not isinstance(challenge, str):
+                # Concatenating a non-str here raises TypeError inside the
+                # handshake, which the caller can only report as a generic
+                # "unexpected error" and then retry forever.
+                _log.warning("OBS sent a non-string salt/challenge")
+                return False
             secret = base64.b64encode(
                 hashlib.sha256((password + salt).encode("utf-8")).digest()
             ).decode("ascii")
@@ -414,12 +463,37 @@ class OBSPublisher:
             ).decode("ascii")
             identify["d"]["authentication"] = response
         await ws.send(json.dumps(identify))
-        idd_raw = await ws.recv()
+        idd = await self._recv_object(ws)
+        return idd is not None and idd.get("op") == 2
+
+    async def _recv_object(self, ws, timeout_s: "float | None" = None):
+        """Await one frame; return it only if it is a JSON OBJECT, else None.
+
+        Three refusals in one place, all previously missing:
+          * TIMEOUT - see `_HANDSHAKE_TIMEOUT_S`.
+          * malformed JSON - was already handled.
+          * valid JSON that is not an object. `json.loads("[1,2]")` and
+            `json.loads("null")` both succeed, and the `.get()` that
+            followed raised AttributeError OUTSIDE the local try, so it
+            escaped to the publisher loop's generic handler and was logged
+            as an "unexpected error" before reconnecting forever. The
+            sibling `request_response` already carried this isinstance
+            check; the handshake did not.
+        """
+        limit = _HANDSHAKE_TIMEOUT_S if timeout_s is None else timeout_s
         try:
-            idd = json.loads(idd_raw)
+            raw = await asyncio.wait_for(ws.recv(),
+                                         timeout=max(0.01, float(limit)))
+        except (asyncio.TimeoutError, TimeoutError):
+            _log.debug("OBS handshake frame timed out after %.2fs", limit)
+            return None
         except Exception:  # noqa: BLE001
-            return False
-        return idd.get("op") == 2
+            return None
+        try:
+            msg = json.loads(raw)
+        except Exception:  # noqa: BLE001
+            return None
+        return msg if isinstance(msg, dict) else None
 
     async def _drain_pending(self, ws) -> None:
         """Discard buffered incoming messages (request responses, stray
