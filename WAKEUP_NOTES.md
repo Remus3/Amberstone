@@ -4,6 +4,30 @@
 
 > Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
+# 2026-08-31 - lane 8 cycle 31: the fallback that exists for an unreachable endpoint was itself gated behind that endpoint's full timeout, under a lock every reader takes
+
+**Commit `6f575612` on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1290. RM-289 filed.**
+
+Audited `core/synergy_external_source.py` (criterion 1 untrusted third-party input + criterion 3 concurrency-exposed). Two live defects, both PROVEN by measurement, not read off the source.
+
+1. **Network I/O under a process-wide lock.** `smoothed_rates_101qq.py:193` held `_CACHE_LOCK` across up to 3 sequential 6s CN fetches at `:216`. All 7 accessors take that lock; `/api/duo-synergy` + `/api/draft-score` read them on a threaded server. Stubbed slow, a second thread blocked **5.70s**. Default ON (`RC_DUO_SYNERGY_LIVE` -> `"1"`). Now: lock-free build, publish under the lock, serve-stale-while-refreshing behind a separate `_REFRESH_LOCK`, generation counter for a mid-build reset.
+2. **Non-finite floats.** `json.loads` takes `NaN` by default, it passes `isinstance(x, float)`, and `json.dumps` re-emits a bare `NaN` that browser `JSON.parse` REJECTS - killing the WHOLE response, not one row. Closed at the parse boundary.
+
+**Sibling sweep found 3 sites repo-wide** via an AST transitive call-graph pass. My first grep-shaped attempt matched `dict.get` 181 times and was junk - the tight predicate is worth keeping. The `rank_tier` pair is the self-described mirror and was strictly worse (20-cell sweep, ~120s); fixed the same way. Third site `core/moon_proxy.py:48` is FROZEN -> audited, reachability opened, FILED as RM-289, NOT edited.
+
+**The verifier earned its keep twice.** It REFUTED my C8 claim: `rank_tier_source.py` asserted in its own docstring that nothing in the module puts the endpoint in an exception message, and that was FALSE at five raise sites, one of which escaped as a raw `ValueError` from outside the try. The guard cited as enforcing it filtered on `"ident"`/`"digest"` and was structurally blind to the `{url}` lines - vacuous against the exact string carrying a credential. **I closed it in-slice rather than filing it**, because a false written invariant is worse than none. Second catch: it flagged an undeclared `BACKLOG.md` in the merge set - that edit was MINE (RM-289) and I had not disclosed it when briefing the re-gate. Fair hit; the artifact caught what an agent-to-agent claim would not have.
+
+**Don't-redo / durable:**
+- `RC_DUO_SYNERGY_LIVE` defaults **ON**; `RC_RANK_TIER_LIVE` defaults **OFF**. Do not restate these backwards.
+- The CN endpoint IS reachable from Legion (measured 1.28s, 200 rows) - do not file a "stale seed" row without re-measuring.
+- `file://` on that seam is blocked incidentally: `urlopen` returns `status=None` so the `!= 200` gate raises. Measured. Not an SSRF.
+- The qq drift guard is SHIPPED (RM-131); sentinel `qq_synergy_shape` live and fresh. Do not re-file it.
+- `docs/DS_SWEEP_TRACKER.md` is a STALE id registry - tops out at RM-232 while ROADMAP carries RM-288. Mint from the true max across ROADMAP+BACKLOG.
+- Two INHERITED suite failures, environmental, not lane 8's: live DS `:8860` = ENGINE `1.278.1` vs `1.278.0` pinned in the worktree, and Claude CLI `2.1.251` vs `PINNED_CLI = "2.1.220"`. CI on this branch has also been red/timeout since 2026-08-30 17:26 - inherited, diagnosed in cycle 29.
+- Mutation harness trap re-confirmed: same-size mutants + mtime-to-seconds = stale `.pyc`. Run mutations with `-B` / cleared `__pycache__`.
+
+**Suites (repo root):** `tests/` 2 failed / 19808 passed / 144 skipped / 4627 subtests. DS 10684 passed / 13482 subtests. 71 new tests, 46 mutants all killed (one survivor found and its test strengthened, not excused). No restart - worktree branch, not deployed.
+
 # 2026-08-30t - lane 8 cycle 30: the live TFT coach asked the model for a field its own parser did not know, so the Set 17 headline advice was glued onto the ITEMS string and the key every consumer reads was never written
 
 **Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD red-first, sole-merger inline.** Target `tft/tft_coach_engine.py` (806 -> 928 lines, not frozen), picked because it hit FOUR selection criteria at once: reads `API-Key-Claude.txt`, writes a file three consumers poll at 0.5 s, parses a model response it does not author, and had **zero dedicated tests**. Closed **RM-211**, filed **RM-286 / RM-287** plus an RM-261 addendum. LEDGER 1289.
