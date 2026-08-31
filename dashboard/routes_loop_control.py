@@ -152,6 +152,27 @@ _INTERRUPT_MODULE = "ops.loop.interrupt"
 # list, because a phone retrying over Tailscale must not kill twice.
 _IDEMPOTENT_ACTIONS = ("fire_lane", "queue_intent", "steer", "interrupt")
 
+# How long a duplicate request waits for the in-flight original to settle.
+#
+# SHORT ON PURPOSE, and the first version of this comment had the reasoning
+# backwards. It claimed the guarded side effects were "a lane launch and a
+# taskkill - none of them slow" and set a 10 s ceiling meant to outlast them.
+# Both halves were wrong. ops/loop/interrupt.py:297-298 kills victims SERIALLY
+# and :235-236 gives each taskkill `timeout=20`, so an interrupt over N victims
+# runs to 20N seconds; _fire_lane -> launch_lane -> ensure_worktree
+# (ops/loop/lane_launcher.py:185-191) shells out to `git worktree add` on a
+# lane's first fire. No wait this route can afford outlasts either, so a
+# ceiling sized to try is a ceiling that expires DURING normal operation and
+# then reports a false failure.
+#
+# The wait therefore does the only job it can do honestly: absorb a transport
+# level re-send of the SAME request, which arrives in milliseconds. Anything
+# longer is answered as an explicit refusal instead. That also keeps the pin on
+# a ThreadingHTTPServer worker brief - and the pin is real, because mc/handler.py
+# (the only production importer of this route, see the arch line above) sets no
+# Handler.timeout at all.
+INFLIGHT_WAIT_S = 2.0
+
 
 def _awrite(path: Path, text: str) -> None:
     """Atomic write - and the contention here is ROUTINE, not theoretical.
@@ -471,22 +492,75 @@ def _apply_idempotent(action: str, body: dict) -> tuple[int, dict]:
         return 400, {"ok": False, "action": action,
                      "error": f"{action} requires 'idempotency_key' "
                               "(hex/dash, 1-64 chars)"}
-    prior = idem.seen(key)
-    if prior is not None:
-        payload = dict(prior)
-        payload["replayed"] = True
-        return 200, payload
 
-    if action == "fire_lane":
-        status, payload = _fire_lane(body)
-    elif action == "steer":
-        status, payload = _steer(body, key)
-    elif action == "interrupt":
-        status, payload = _do_interrupt(body, key)
-    else:
-        status, payload = _queue_intent(body, key)
-    if status == 200:
-        idem.remember(key, payload)
+    deadline = time.monotonic() + INFLIGHT_WAIT_S
+    while True:
+        state, value = idem.claim(key)
+        if state == "hit":
+            payload = dict(value)
+            payload["replayed"] = True
+            return 200, payload
+        if state == "claimed":
+            break
+        # Another thread owns this key and is mid-side-effect. Wait for its
+        # answer rather than acting: seen() alone let both threads through,
+        # which is how a retrying phone got two kills out of one intent.
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            # 200 + ok=false, NOT 503: web/mc/mc.js:51-53 maps EVERY 503 to
+            # "auth not configured on the server" and returns before r.json(),
+            # so a 503 would report a false cause and discard this payload
+            # (filed as RM-283).
+            #
+            # `refused` is REQUIRED, not decoration. Each panel has its own
+            # renderer and only _mcFire (mc.js:161, queue_intent) treats a bare
+            # ok=false as a refusal; _mcFireLane (mc.js:221) and _mcIrqFire
+            # (mc.js:363) branch on `refused` and otherwise fall through to
+            # "<label> failed:", which would report a still-running interrupt
+            # as a FAILED one.
+            #
+            # The text must not invite an immediate retry either. Every client
+            # mints a fresh key per send (mc.js:717 "one key per SEND"), so a
+            # re-send is a NEW key that this gate cannot dedupe - it would run
+            # the side effect a second time alongside the first. Telling the
+            # operator to wait is the only advice that does not manufacture the
+            # double-fire this whole protocol exists to prevent.
+            return 200, {"ok": False, "action": action, "in_flight": True,
+                         "refused": "in_flight",
+                         "detail": "the original request is still running - "
+                                   "wait for it to finish, do not re-send",
+                         "error": "an identical request is still running"}
+        value.wait(remaining)
+
+    # The claim is released on EVERY path, including one where settle() itself
+    # raises. Covering only the side effect leaves a real hole: settle ->
+    # remember -> _remember_locked deep-copies the payload BEFORE releasing, so
+    # a payload that cannot be copied dies with the key still reserved and
+    # nothing to wake its waiters - permanently, since _INFLIGHT has no TTL and
+    # purge() does not touch it. Every later request on that key would then
+    # block and be refused until the process restarts, which is a worse outage
+    # than the double-fire this protocol removes.
+    settled = False
+    try:
+        if action == "fire_lane":
+            status, payload = _fire_lane(body)
+        elif action == "steer":
+            status, payload = _steer(body, key)
+        elif action == "interrupt":
+            status, payload = _do_interrupt(body, key)
+        else:
+            status, payload = _queue_intent(body, key)
+        if status == 200:
+            idem.settle(key, payload)
+        else:
+            # A 400/503 is not an answer to replay - it is a request that never
+            # happened - so the key is released WITHOUT being remembered and the
+            # next caller is free to act.
+            idem.abandon(key)
+        settled = True
+    finally:
+        if not settled:
+            idem.abandon(key)
     return status, payload
 
 
