@@ -10,7 +10,84 @@ import threading
 import time
 from pathlib import Path
 from typing import Optional
+
+from core.polled_json import atomic_write_json
+
 logger = logging.getLogger("rc.tft.live")
+
+# LANE 8 CYCLE 43. The panel must never show a raw upstream error string
+# (CLAUDE.md "Error Handling"), and it must not COLLAPSE either
+# (feedback_no_reflow_on_data_absence) - so a failed cycle republishes the
+# last known advice with a degraded marker beside it, and the raw error goes
+# to logs/ only.
+_DEGRADED_TEXT = "coaching paused - retrying"
+
+_SECRET_RE = re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}")
+
+
+def _safe_err(exc: object) -> str:
+    """Format an upstream exception for a log line with secrets removed.
+
+    The key reaches this module from API-Key-Claude.txt
+    (coaches/tft_pbe_coach.py _read_api_key -> core/tft_worker.py) and is
+    handed to the SDK, so any upstream that echoes a credential into its
+    error text would land it in logs/YYYY-MM-DD.log verbatim. No upstream is
+    known to do that today; this is the defence-in-depth half, and it costs
+    one regex.
+    """
+    return _SECRET_RE.sub("sk-ant-<redacted>", str(exc))
+
+
+def _first_text(resp: object) -> Optional[str]:
+    """The first TEXT block of a model response, or None.
+
+    `resp.content[0].text` assumed both that a block exists and that the
+    first one is text.
+
+    The LIVE half is the empty content list: a response can stop with no
+    block at all, and `content[0]` then raises IndexError into the blanket
+    handler, which logged at ERROR and published nothing.
+
+    The non-text half is DEFENCE, not a live defect, and the distinction was
+    forced by the refutation pass: neither `messages.create` call in this
+    module passes a `thinking` parameter, so the SDK cannot emit a thinking
+    block at these sites today. Kept because the same shape WAS live at the
+    :8889 inference boundary (lane 8 cycle 20) and costs nothing here.
+    """
+    blocks = getattr(resp, "content", None) or []
+    for b in blocks:
+        if getattr(b, "type", None) == "text":
+            t = getattr(b, "text", None)
+            if isinstance(t, str) and t.strip():
+                return t
+    for b in blocks:
+        t = getattr(b, "text", None)
+        if isinstance(t, str) and t.strip():
+            return t
+    return None
+
+
+def _as_name_list(value: object) -> list:
+    """Coerce an operator-authored JSON field to a list of clean strings.
+
+    unit_presence.json is written by another surface and is not schema
+    checked. A non-string entry used to reach `", ".join(...)`, which sits
+    outside every handler in _run_analysis, so a TypeError escaped into
+    _loop's blanket handler and killed EVERY scan while the bad file
+    remained on disk.
+    """
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, (list, tuple)):
+        return []
+    out = []
+    for v in value:
+        if v is None or isinstance(v, (dict, list, tuple)):
+            continue
+        s = str(v).strip()
+        if s:
+            out.append(s)
+    return out
 _TFT_CHAMPIONS = {
     # Set 17: Space Gods - confirmed from CommunityDragon PBE
     "Aatrox","Akali","Aurelion Sol","Aurora","Bard","Bel'Veth","Blitzcrank",
@@ -106,7 +183,7 @@ RULES:
 - If Board units shows "unknown", skip those - only position units you can NAME from the board list.
 - The board canvas shows YOUR current units. Do NOT add units you want the player to buy.
 
-OUTPUT \u2014 9 fields, one line each. NO markdown.
+OUTPUT - 9 fields, one line each. NO markdown.
 Comp: <dominant traits + carry>
 Build: <1-2 units to star-up>
 Buy: <shop units or "hold gold">
@@ -114,7 +191,7 @@ Sell: <bench units or "none">
 Keep: <bench units worth holding>
 AugmentPlay: <how to use augment, or "N/A">
 Loss: <weakness if lost, else "N/A">
-UnitPlacement: <board units positioned \u2014 "Jinx D7, Vi A1">
+UnitPlacement: <board units positioned - "Jinx D7, Vi A1">
 UnitSwap: <"Swap X for Y" or "none">
 """
 
@@ -180,11 +257,9 @@ class TftLiveAnalysis:
                 _d["aug_take"] = ""
                 _d["aug_why"] = ""
                 _d["aug_plan"] = "Rescanning augment choices..."
-                _tmp = Path(str(self._data_file)).with_suffix(".json.tmp")
-                _tmp.write_text(_j.dumps(_d, indent=2), encoding="utf-8")
-                _tmp.replace(Path(str(self._data_file)))
-        except Exception:  # noqa: BLE001
-            pass
+                atomic_write_json(Path(str(self._data_file)), _d)
+        except Exception as _exc:  # noqa: BLE001
+            logger.debug("force_scan pre-clear failed: %s", _safe_err(_exc))
         self._force_flag = True
         logger.info("Force vision scan triggered (augment reroll path)")
     def notify_round(self, state: dict) -> None:
@@ -222,14 +297,21 @@ class TftLiveAnalysis:
                 if self._ai_bar:
                     _next = self._round_start_time + (1.5 if not self._scanned_planning else 12.0)
                     self._notify_next_scan(_next)
-            except Exception as e: logger.error("LiveAnalysis loop: %s",e)  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.error("LiveAnalysis loop: %s", _safe_err(e))
             time.sleep(1.5)
     def _run_cycle(self):
         if not self._lock.acquire(blocking=False): return
         self._notify_scanning(10)
+        # LANE 8 CYCLE 43: _notify_done() used to sit on two of the four exit
+        # paths. The SPECTATING early return and any exception out of
+        # self._vision.read() both left the bar reading "scanning" forever.
+        # LATENT, not live - TftAiStatusBar is defined nowhere in the repo and
+        # wire_ai_bar() has no production caller, so _ai_bar is always None
+        # today. Structural so it cannot resurface if a bar is ever wired.
         try:
             vs=self._vision.read()
-            if not vs: self._notify_done(); return
+            if not vs: return
             self._notify_scanning(60)
             if vs.get("augments"): vs["augments"]=[a for a in vs["augments"] if a and not _FAKE_AUGMENT_RE.match(str(a))]
             na=[a for a in (vs.get("augments") or []) if a and a not in self._known_augments]
@@ -240,15 +322,16 @@ class TftLiveAnalysis:
             if vs.get("is_augment_select"):
                 ch=[c for c in (vs.get("augment_choices") or []) if c and (isinstance(c,dict) or str(c).lower() not in _NOT_AUGMENTS)]
                 vl=[c if isinstance(c,str) else c.get("name","") for c in ch if (isinstance(c,dict) and c.get("description")) or (isinstance(c,str) and len(c.split())>=2)]
-                if len(vl)>=2: self._run_augment_select(vs); self._notify_done(); return
+                if len(vl)>=2: self._run_augment_select(vs); return
                 vs["is_augment_select"]=False
             bu=vs.get("board_units") or []
             if bu and any(str(u).upper()=="SPECTATING" for u in bu):
-                logger.debug("SPECTATING detected \u2014 skipping"); return
+                logger.debug("SPECTATING detected - skipping"); return
             self._notify_scanning(90)
             self._run_analysis(vs)
+        finally:
             self._notify_done()
-        finally: self._lock.release()
+            self._lock.release()
     @staticmethod
     def _clean_units(units,trait_names):
         r=[]
@@ -268,21 +351,27 @@ class TftLiveAnalysis:
         cs=self._coach_state; rt=vs.get("traits_active") or []
         tn={t.split()[0].lower() for t in rt if t}
         bc=self._clean_units(vs.get("board_units"),tn); bn=self._clean_units(vs.get("bench_units"),tn); sc=self._clean_units(vs.get("shop_units"),tn)
-        lc=f"LAST ROUND LOST \u2014 took {vs.get('round_damage','?')} damage." if vs.get("last_round_result")=="loss" else ""
+        lc=f"LAST ROUND LOST - took {vs.get('round_damage','?')} damage." if vs.get("last_round_result")=="loss" else ""
         ac=f"ACTIVE AUGMENTS: {', '.join(str(a) for a in vs.get('augments',[]))}" if vs.get("augments") else ""
         # Unit presence from board/roster clicks
+        # LANE 8 CYCLE 43: one read, one handler, and every field coerced.
+        # This block used to read the file TWICE and bind _pd inside the try,
+        # so the trailing `_pd.get(...)` was only safe by accident - the
+        # conditional expression short-circuits on the same failure that
+        # leaves _pd unbound. It also passed the raw JSON straight to
+        # ", ".join(), outside any handler. See _as_name_list.
         _pf=Path(str(self._data_file)).parent/"unit_presence.json"
-        _bc,_ep=[],[]
+        _bc,_ep,_ml=[],[],None
         try:
-            import json as _pj
-            _pd=_pj.loads(_pf.read_text(encoding="utf-8")) if _pf.exists() else {}
-            _bc=_pd.get("board_confirmed",[])
-            _ep=_pd.get("extra_present",[])
-        except Exception: pass  # noqa: BLE001
-        _ml = _pd.get("manual_level") if _bc or _ep else None
-        if not _ml:
-            try: _ml = _pj.loads(_pf.read_text(encoding="utf-8")).get("manual_level") if _pf.exists() else None
-            except Exception: pass  # noqa: BLE001
+            _pd=json.loads(_pf.read_text(encoding="utf-8")) if _pf.exists() else {}
+            if isinstance(_pd,dict):
+                _bc=_as_name_list(_pd.get("board_confirmed"))
+                _ep=_as_name_list(_pd.get("extra_present"))
+                _lv=_pd.get("manual_level")
+                if isinstance(_lv,(int,float,str)) and str(_lv).strip():
+                    _ml=str(_lv).strip()
+        except Exception as _exc:  # noqa: BLE001
+            logger.debug("unit_presence.json unreadable: %s", _safe_err(_exc))
         if _bc: ac=(ac+"\nCONFIRMED ON BOARD: "+", ".join(_bc)+".").strip()
         if _ep: ac=(ac+"\nALSO PRESENT (not in comp): "+", ".join(_ep)+".").strip()
         if _ml: ac=(ac+f"\nCURRENT LEVEL: {_ml} (player-confirmed).").strip()
@@ -297,7 +386,7 @@ class TftLiveAnalysis:
                 from core.moon_proxy import moon_proxy
                 raw=moon_proxy.get_coaching(p,model=self._model)
             except Exception as _exc:  # noqa: BLE001
-                logger.debug("moon_proxy.get_coaching primary path failed: %s", _exc)
+                logger.debug("moon_proxy.get_coaching primary path failed: %s", _safe_err(_exc))
             if raw is None:
                 resp=self._client.messages.create(model=self._model,max_tokens=500,messages=[{"role":"user","content":p}])
                 # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
@@ -306,15 +395,46 @@ class TftLiveAnalysis:
                     from core.cost_tracker import record_anthropic_response
                     record_anthropic_response(resp, model=self._model, purpose="tft_live_analysis")
                 except Exception as _exc:  # noqa: BLE001
-                    logger.debug("cost_tracker record: %s", _exc)
-                raw=resp.content[0].text; logger.info("Live analysis in %dms",int((time.time()-t0)*1000))
+                    logger.debug("cost_tracker record: %s", _safe_err(_exc))
+                raw=_first_text(resp); logger.info("Live analysis in %dms",int((time.time()-t0)*1000))
+            if not isinstance(raw,str) or not raw.strip():
+                logger.warning("Live analysis: no usable text block in response")
+                self._publish_degraded(vs,cs); return
             f=_parse_analysis(raw)
-            if f.get("comp","").upper().startswith("SPECTATING"): logger.debug("Spectating \u2014 skip"); return
+            if f.get("comp","").upper().startswith("SPECTATING"): logger.debug("Spectating - skip"); return
             if self._debug or not f: logger.debug("Raw:\n%s",raw[:600])
             up=f.get("unitplacement","")
             if up: self._last_placement=up
             self._write(vs,f,cs)
-        except Exception as e: logger.error("Live analysis API: %s",e)  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            # CLAUDE.md "Error Handling": the raw string goes to logs/ ONLY.
+            # Pre-fix this branch was the whole handler, so an exhausted
+            # balance or a 400 published NOTHING and the panel held the
+            # previous round's advice indefinitely with no indication.
+            logger.error("Live analysis API: %s", _safe_err(e))
+            self._publish_degraded(vs,cs)
+    def _publish_degraded(self,vs,cs):
+        """Republish live state with a friendly degraded marker.
+
+        Keeps the last known advice so the panel still RENDERS
+        (feedback_no_reflow_on_data_absence) and adds `degraded` /
+        `degraded_message` beside it. Never carries the upstream error text.
+        """
+        try:
+            ex=_load(self._data_file)
+            out=dict(ex) if isinstance(ex,dict) else {"mode":"tft_live"}
+            out.update({"mode":"tft_live","stage_round":cs.get("stage_round",""),
+                        "level":vs.get("level") or cs.get("level"),"hp":vs.get("hp"),
+                        "degraded":True,"degraded_message":_DEGRADED_TEXT})
+            _write(self._data_file,out)
+            # Invalidate the write gate. Without this, a recovery cycle whose
+            # advice is byte-identical to the last good one compares equal to
+            # _last_write, is suppressed, and leaves degraded=True on disk
+            # after the outage has already cleared.
+            self._last_write={}
+        except Exception as _exc:  # noqa: BLE001
+            logger.error("degraded publish failed: %s", _safe_err(_exc))
+
     def _run_augment_select(self,vs):
         try:
             from core.cost_tracker import get_tracker as _gt
@@ -332,7 +452,7 @@ class TftLiveAnalysis:
                 from core.moon_proxy import moon_proxy
                 _araw=moon_proxy.get_coaching(p,model=self._model)
             except Exception as _exc:  # noqa: BLE001
-                logger.debug("moon_proxy.get_coaching augment-select path failed: %s", _exc)
+                logger.debug("moon_proxy.get_coaching augment-select path failed: %s", _safe_err(_exc))
             if _araw is None:
                 _aresp=self._client.messages.create(model=self._model,max_tokens=300,messages=[{"role":"user","content":p}])
                 # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
@@ -341,15 +461,18 @@ class TftLiveAnalysis:
                     from core.cost_tracker import record_anthropic_response
                     record_anthropic_response(_aresp, model=self._model, purpose="tft_live_aug_select")
                 except Exception as _exc:  # noqa: BLE001
-                    logger.debug("cost_tracker record: %s", _exc)
-                _araw=_aresp.content[0].text
+                    logger.debug("cost_tracker record: %s", _safe_err(_exc))
+                _araw=_first_text(_aresp)
+            if not isinstance(_araw,str) or not _araw.strip():
+                logger.warning("Augment select: no usable text block in response"); return
             raw=re.sub(r'\*{1,3}(.*?)\*{1,3}',r'\1',_araw)
             tk=_xf(raw,"Take"); why=_xf(raw,"Why"); plan=_xf(raw,"Gameplan")
             if not tk: tk=ch[0].get("name","") if isinstance(ch[0],dict) else str(ch[0])
             ex=_load(self._data_file)
             ex.update({"augment_select":True,"aug_take":tk,"aug_why":why or "","aug_plan":plan or "","augment_choices":[_fc(c) for c in ch]})
             _write(self._data_file,ex); logger.info("Augment select written")
-        except Exception as e: logger.error("Augment select: %s",e)  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            logger.error("Augment select: %s", _safe_err(e))
     def _write(self,vs,f,cs):
         out={"mode":"tft_live","stage_round":cs.get("stage_round",""),"level":vs.get("level") or cs.get("level"),"hp":vs.get("hp"),
             "board_units":vs.get("board_units") or [],"bench_units":vs.get("bench_units") or [],
@@ -404,7 +527,20 @@ class TftLiveAnalysis:
                 out["loss"] = "board active - units unidentified"
             else:
                 out["loss"] = "N/A"
-        if any(out.get(k)!=self._last_write.get(k) for k in ("comp","buy","sell","unit_placement","unit_swap","loss")):
+        # LANE 8 CYCLE 43: this gate compared only the six ADVICE keys, so a
+        # round whose advice happened to repeat published NOTHING - and
+        # stage_round / hp / level / board_units stayed frozen at the previous
+        # round's values for all seven polling readers, including
+        # ops/rc_state_validator.py which range-checks exactly those fields.
+        # Comparing the whole payload fixes that. Be honest about the cost:
+        # suppression now fires only on a byte-identical payload, which is
+        # rare because shop_units turns over on every reroll - so this writes
+        # more often than the old gate did. That is the correct trade for a
+        # file seven readers treat as current state, and the write is atomic
+        # and small, but it is a real change in write frequency, not a
+        # like-for-like preservation of the old behaviour.
+        out["degraded"]=False; out["degraded_message"]=""
+        if out!=self._last_write:
             self._last_write=dict(out); _write(self._data_file,out); logger.debug("Live analysis written")
 
 def _fmt(lst):
@@ -449,8 +585,13 @@ def _write(path, data):
                         data["augments"] = prev_augs
             except Exception:  # noqa: BLE001
                 pass
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        tmp.replace(path)
+        # LANE 8 CYCLE 43 - RM-261 enumerated site. This derived the scratch
+        # name from the DESTINATION, and core/feature_policy.py:_write_json
+        # writes the SAME file the SAME way, so both writers opened
+        # data/tft_live_data.tmp: the torn-destination defect lane 8 cycle 24
+        # measured and fixed in core/polled_json.py. atomic_write_json gives a
+        # per-writer <name>.<pid>.<token>.tmp, retries WinError 5 against a
+        # polling reader, and never orphans the scratch file.
+        atomic_write_json(path, data)
     except Exception as e:  # noqa: BLE001
-        logger.error("Write failed: %s", e)
+        logger.error("Write failed: %s", _safe_err(e))
