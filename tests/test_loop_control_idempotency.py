@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import types
 
 import pytest
@@ -716,3 +717,186 @@ def test_legacy_unknown_action_still_400_with_valid_list(ctldir):
     status, payload, _ = _post({"action": "nuke"})
     assert status == 400 and payload["ok"] is False
     assert "valid" in payload
+
+
+# ------------------------------------------------- LANE 8 CYCLE 29: concurrency
+# The replay gate is a check-then-act. seen() and remember() are each locked,
+# but the SEQUENCE seen -> side effect -> remember is not, and the dashboard is
+# a ThreadingHTTPServer (dashboard/server.py:54), so two same-key requests run
+# on two threads. A retry storm from a wedged phone is CONCURRENT, not
+# sequential - which is the one shape this module exists to stop and the one
+# shape it did not stop. "interrupt itself is the most important entry in the
+# list, because a phone retrying over Tailscale must not kill twice."
+def test_concurrent_duplicate_key_fires_the_side_effect_exactly_once(
+        ctldir, monkeypatch):
+    """Two threads, one key, one side effect - the whole point of the module."""
+    # Pin the wait well above this test's own probe windows so the assertions
+    # measure the CLAIM protocol, not the shipped INFLIGHT_WAIT_S - which is
+    # deliberately short (2 s) and would otherwise time the waiter out mid-probe.
+    monkeypatch.setattr(mod, "INFLIGHT_WAIT_S", 30.0)
+    calls = []
+    entered = threading.Semaphore(0)
+    release = threading.Event()
+
+    def _slow_intent(body, key):
+        calls.append(key)
+        entered.release()
+        # Hold the owner inside the side effect so the second thread reaches
+        # the gate while the first is provably still mid-flight.
+        release.wait(10)
+        return 200, {"ok": True, "action": "queue_intent", "intent": "halt_save",
+                     "detail": "halt_save queued", "state": "stopped"}
+
+    monkeypatch.setattr(mod, "_queue_intent", _slow_intent)
+    body = {"action": "queue_intent", "intent": "halt_save",
+            "idempotency_key": KEY_A}
+    out = {}
+
+    def run(tag):
+        out[tag] = mod.apply_action("queue_intent", dict(body))
+
+    a = threading.Thread(target=run, args=("a",), name="idem-a")
+    a.start()
+    assert entered.acquire(timeout=10), "thread A never entered the side effect"
+
+    b = threading.Thread(target=run, args=("b",), name="idem-b")
+    b.start()
+    # B either enters the side effect too (the defect - observed immediately)
+    # or blocks on A's claim (correct). Both outcomes are observable, so this
+    # is deterministic in each direction rather than a sleep race.
+    doubled = entered.acquire(timeout=2.0)
+    release.set()
+    a.join(10)
+    b.join(10)
+
+    assert not doubled, "both threads ran the side effect - the gate is not atomic"
+    assert calls == [KEY_A], f"the side effect ran {len(calls)} times, expected 1"
+    assert not a.is_alive() and not b.is_alive()
+    assert out["a"][0] == 200 and out["b"][0] == 200
+    # The waiter gets the OWNER's settled answer, unchanged, flagged replayed -
+    # the same contract a sequential replay already had, so the client in
+    # web/mc/mc.js needs no change.
+    assert out["b"][1]["replayed"] is True
+    assert out["b"][1]["detail"] == "halt_save queued"
+    assert "replayed" not in out["a"][1]
+
+
+def test_a_waiter_acts_when_the_owner_abandons_a_non_200(ctldir, monkeypatch):
+    """A 400/503 is not an answer to replay - it is a request that never
+    happened, so the second caller must be allowed to act rather than inherit
+    the failure. Pins the abandon path, not just the settle path."""
+    # Pin the wait well above this test's own probe windows so the assertions
+    # measure the CLAIM protocol, not the shipped INFLIGHT_WAIT_S - which is
+    # deliberately short (2 s) and would otherwise time the waiter out mid-probe.
+    monkeypatch.setattr(mod, "INFLIGHT_WAIT_S", 30.0)
+    calls = []
+    entered = threading.Semaphore(0)
+    release = threading.Event()
+
+    def _flaky(body, key):
+        calls.append(key)
+        entered.release()
+        if len(calls) == 1:
+            release.wait(10)
+            return 503, {"ok": False, "action": "queue_intent", "error": "busy"}
+        return 200, {"ok": True, "action": "queue_intent", "detail": "second won"}
+
+    monkeypatch.setattr(mod, "_queue_intent", _flaky)
+    body = {"action": "queue_intent", "intent": "halt_save",
+            "idempotency_key": KEY_B}
+    out = {}
+
+    def run(tag):
+        out[tag] = mod.apply_action("queue_intent", dict(body))
+
+    a = threading.Thread(target=run, args=("a",), name="abandon-a")
+    a.start()
+    assert entered.acquire(timeout=10)
+    b = threading.Thread(target=run, args=("b",), name="abandon-b")
+    b.start()
+    # B must WAIT for A rather than act alongside it. Without this assertion the
+    # test passes on the UNFIXED check-then-act too - both threads act there, so
+    # every remaining assertion below is satisfied for the wrong reason and the
+    # test pins nothing. Caught by an adversarial pass, not by the mutation run,
+    # because mutating `abandon` to `settle` does kill it while a full revert
+    # does not (feedback_parallel_slice_stubs_and_vacuous_regression_tests).
+    assert not entered.acquire(timeout=2.0),         "B ran the side effect while A still owned the key"
+    release.set()
+    a.join(10)
+    b.join(10)
+
+    assert out["a"][0] == 503, "the owner's own failure must reach the owner"
+    assert out["b"][0] == 200, "the waiter inherited a failure it should retry"
+    assert calls == [KEY_B, KEY_B], "the waiter never got to act"
+    assert idem.size() == 1, "only the settled 200 is remembered"
+
+
+def test_an_in_flight_duplicate_is_refused_in_a_shape_every_panel_renders(
+        ctldir, monkeypatch):
+    """A duplicate that outlasts the wait is REFUSED, not reported as failed.
+
+    Each Mission Control panel renders its own way and only _mcFire
+    (web/mc/mc.js:161, queue_intent) treats a bare ok=false as a refusal;
+    _mcFireLane (mc.js:221) and _mcIrqFire (mc.js:363) branch on `refused` and
+    otherwise fall through to "<label> failed:". Without `refused` the operator
+    would be told a still-running INTERRUPT had FAILED. The text must also not
+    invite a re-send: every client mints a fresh key per send, so a retry is a
+    new key this gate cannot dedupe, and it would run the side effect twice.
+    """
+    monkeypatch.setattr(mod, "INFLIGHT_WAIT_S", 0.05)
+    release = threading.Event()
+    entered = threading.Semaphore(0)
+
+    def _slow_intent(body, key):
+        entered.release()
+        release.wait(10)
+        return 200, {"ok": True, "action": "queue_intent", "detail": "done"}
+
+    monkeypatch.setattr(mod, "_queue_intent", _slow_intent)
+    body = {"action": "queue_intent", "intent": "halt_save",
+            "idempotency_key": KEY_A}
+    out = {}
+    a = threading.Thread(target=lambda: out.setdefault(
+        "a", mod.apply_action("queue_intent", dict(body))), name="slow-a")
+    a.start()
+    assert entered.acquire(timeout=10), "the owner never entered the side effect"
+
+    status, payload = mod.apply_action("queue_intent", dict(body))
+    release.set()
+    a.join(10)
+
+    assert status == 200, "must not be 503 - mc.js:51 calls every 503 an auth fault"
+    assert payload["ok"] is False
+    assert payload["in_flight"] is True
+    assert payload["refused"] == "in_flight",         "without `refused` the lane and interrupt panels render this as FAILED"
+    assert "do not re-send" in payload["detail"]
+    assert "retry" not in payload["detail"],         "advising a retry mints a NEW key, which this gate cannot dedupe"
+
+
+def test_a_raising_settle_still_releases_the_claim(ctldir, monkeypatch):
+    """The claim is released even when settle() ITSELF raises.
+
+    _INFLIGHT has no TTL and purge() does not touch it, so a key left reserved
+    is reserved until the process restarts: every later request on it blocks
+    for INFLIGHT_WAIT_S and is then refused, forever. Guarding only the side
+    effect misses this, because settle -> remember -> _remember_locked
+    deep-copies the payload BEFORE releasing. Raised by an adversarial pass
+    after the first version of the unwind covered the side effect alone.
+    """
+    monkeypatch.setattr(mod, "_queue_intent",
+                        lambda body, key: (200, {"ok": True, "action": "x"}))
+
+    def _boom(key, result, ttl_s=None):
+        raise RuntimeError("settle exploded")
+
+    monkeypatch.setattr(idem, "settle", _boom)
+    body = {"action": "queue_intent", "intent": "halt_save",
+            "idempotency_key": KEY_A}
+    with pytest.raises(RuntimeError):
+        mod.apply_action("queue_intent", dict(body))
+
+    # The key must be claimable again - NOT stuck reporting inflight.
+    state, _value = idem.claim(KEY_A)
+    assert state == "claimed", (
+        f"the claim was stranded: claim() returned {state!r}. Every later "
+        "request on this key would block then be refused until restart.")
