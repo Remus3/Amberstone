@@ -28,7 +28,8 @@ hot-reload on each gate call:
 - **Invalid / malformed reload**: if the file changed but contains invalid JSON,
   a non-dict top-level value, or an unrecognised decision value (not `"allow"` or
   `"disabled"`), the reload is rejected. The last-known-good policy remains active.
-  A warning is recorded and surfaced through the OPS tab.
+  A warning is recorded on the policy state. (It is not displayed: see the
+  OPS Visibility section - the renderer this doc used to name is gone.)
 
 - **File disappears after valid load**: if `feature_flags.json` is deleted or
   temporarily unavailable after a valid load, the last-known-good policy remains
@@ -54,7 +55,13 @@ hot-reload on each gate call:
 | `last_known_good` | File disappeared after a valid load; prior policy retained |
 | `invalid_reload_retained` | File changed but was invalid; prior policy retained |
 
-These values are surfaced in MetricsCache -> OPS tab FEATURE POLICY section.
+These values are computed into `MetricsSummary.policy_source_status` by
+`core/metrics_cache.py`. They are NOT rendered anywhere: measured 2026-08-31
+(lane 8 cycle 40), `dashboard/` and `web/` contain zero references to
+`policy_source_status` or an OPS-tab FEATURE POLICY section, and nothing in
+production calls `MetricsCache.get_summary()` at all. This line previously
+asserted that OPS tab as a live consumer; it does not exist. Tracked as
+RM-298a.
 
 ---
 
@@ -62,21 +69,26 @@ These values are surfaced in MetricsCache -> OPS tab FEATURE POLICY section.
 
 Warnings are **last-one-wins** (a single string field, not a history list).
 Cleared to None after a valid reload.
-Surfaced via `get_policy_state()["policy_last_warning"]` and the OPS tab warning line.
+Readable via `get_policy_state()["policy_last_warning"]`. Not displayed anywhere.
 
 ---
 
 ## OPS Visibility
 
-Policy state is **not** read directly from `feature_flags.json` by the UI.
-The data flow is:
+**There is currently NO visibility.** Corrected 2026-08-31 (lane 8 cycle 40);
+the chain below used to be written as if its last hop existed.
 
   feature_flags.json
     -> core/feature_policy._PolicyCache (hot-reload, owns matrix)
       -> feature_policy.get_policy_state() (read-only snapshot)
         -> MetricsCache._read_policy_state() (every 5s refresh)
           -> MetricsSummary.policy_* fields
-            -> ui/client_panel.py FEATURE POLICY section (read-only display)
+            -> (NO CONSUMER - chain ends here)
+
+The old last hop read `ui/client_panel.py FEATURE POLICY section`. That file
+does not exist and neither does the `ui/` package - RC is tkinter-free. Nothing
+calls `MetricsCache.get_summary()` in production either, so the policy fields
+are computed every 5s and read by nobody. Tracked as RM-298a.
 
 ---
 
@@ -181,4 +193,5 @@ Policy gating never crashes startup.
 | File disappears after valid load | retain last-known-good | `last_known_good` |
 
 Warnings are **last-one-wins**. Cleared to None after a valid reload.
-Surfaced via `get_policy_state()["policy_last_warning"]` and the OPS tab warning line.
+Readable via `get_policy_state()["policy_last_warning"]`. Not displayed anywhere
+(see OPS Visibility).
