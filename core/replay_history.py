@@ -16,8 +16,23 @@ exposes:
         per-minute snapshots (level/gold/CS/items), kill events.
 
 Items at minute T are computed by folding ITEM_PURCHASED / ITEM_SOLD /
-ITEM_DESTROYED / ITEM_UNDO events with timestamp <= T*60000. UNDO
-reverses the most-recent matching purchase.
+ITEM_DESTROYED / ITEM_UNDO events with timestamp <= T*60000.
+
+AUDIT 2026-08-31 (lane 8 cycle 32): ITEM_UNDO is read from `raw_json`,
+NOT from the `item_id` column. Riot does not send `itemId` on an
+ITEM_UNDO event - it sends `beforeId` (the item the player had before
+the undo) and `afterId` (the item they have after it), and
+`scripts/rewind_scraper.py:567` maps only `itemId`. So `item_id` is
+NULL for every ITEM_UNDO row: MEASURED 28405 of 28405 in the live
+database. The previous fold guarded on that column, so its undo branch
+was structurally dead and had never once fired, while this docstring
+claimed "UNDO reverses the most-recent matching purchase". Both
+directions were wrong: 25917 of those rows undo a PURCHASE (the item
+was wrongly LEFT IN) and 2488 undo a SELL (the item was wrongly LEFT
+OUT). The scraper stores the verbatim event in `raw_json` and that
+column is NULL for 0 of the 28405 rows, so reading the fold from there
+repairs every historical row with no migration of the 1.87 GB file.
+Pinned by tests/test_replay_history.py.
 
 DDragon item id -> name resolution is deferred to the dashboard JS which
 already has web/data/items_index.json loaded.
@@ -90,13 +105,24 @@ def _open() -> Optional[sqlite3.Connection]:
 
 def list_matches(limit: int = 25, queue_filter: Optional[int] = None) -> list[dict]:
     """Recent matches sorted by game_creation_ts desc. Returns the metadata
-    needed for the dashboard match picker - no per-frame data."""
+    needed for the dashboard match picker - no per-frame data.
+
+    AUDIT 2026-08-31 (lane 8 cycle 32): `limit` is clamped here and not
+    only at the route. SQLite reads LIMIT -1 as UNLIMITED, and this
+    function runs one extra join PER ROW, so a negative limit was a
+    full-table read amplified into an N+1. `dashboard/routes_coach.py`
+    clamps to 1..200, so that was latent - but the clamp belongs to the
+    function that owns the query."""
     _load_champ_index()
+    if limit < 0:
+        limit = 0
     c = _open()
     if c is None:
         return []
     try:
-        if queue_filter:
+        # `is not None`, not truthiness: queue_id 0 is a real queue
+        # (custom game) and was silently falling through to "no filter".
+        if queue_filter is not None:
             rows = c.execute(
                 """
                 SELECT match_id, queue_id, game_mode, game_duration_s,
@@ -158,10 +184,43 @@ def list_matches(limit: int = 25, queue_filter: Optional[int] = None) -> list[di
             pass
 
 
+def _undo_pair(event: sqlite3.Row) -> tuple[int, int]:
+    """(beforeId, afterId) for an ITEM_UNDO row, read from `raw_json`.
+
+    Returns (0, 0) for a row whose `raw_json` is empty or malformed: the
+    scraper writes that column, so a bad row degrades to "no undo
+    applied" rather than taking down the whole match view.
+
+    A row with no `raw_json` COLUMN AT ALL is a different thing and is
+    deliberately left to raise. That is a caller that forgot to select
+    it, not bad data, and swallowing it would silently restore exactly
+    the dead-branch bug this function exists to fix - a mutation that
+    dropped the column from the SELECT survived the suite until this
+    distinction was drawn."""
+    raw = event["raw_json"]
+    if not raw:
+        return 0, 0
+    try:
+        d = json.loads(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return 0, 0
+    if not isinstance(d, dict):
+        return 0, 0
+    def _slot(key: str) -> int:
+        try:
+            return int(d.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0
+    return _slot("beforeId"), _slot("afterId")
+
+
 def _build_inventory_at(events: list[sqlite3.Row], up_to_ms: int) -> dict[int, list[int]]:
     """Per-participant item list at timestamp `up_to_ms`. Folds
     ITEM_PURCHASED / ITEM_SOLD / ITEM_DESTROYED / ITEM_UNDO in order.
-    Returns {participant_id: [item_id, ...]}."""
+    Returns {participant_id: [item_id, ...]}.
+
+    `events` must carry `raw_json` as well as `item_id` - see the module
+    docstring for why ITEM_UNDO cannot be folded from `item_id`."""
     inv: dict[int, list[int]] = defaultdict(list)
     for e in events:
         if e["timestamp_ms"] > up_to_ms:
@@ -169,18 +228,24 @@ def _build_inventory_at(events: list[sqlite3.Row], up_to_ms: int) -> dict[int, l
         et = e["event_type"]
         pid = e["participant_id"]
         item = e["item_id"]
-        if et == "ITEM_PURCHASED" and pid and item:
+        if not pid:
+            continue
+        if et == "ITEM_PURCHASED" and item:
             inv[pid].append(item)
-        elif et in ("ITEM_SOLD", "ITEM_DESTROYED") and pid and item:
+        elif et in ("ITEM_SOLD", "ITEM_DESTROYED") and item:
             try:
                 inv[pid].remove(item)
             except ValueError:
                 pass
-        elif et == "ITEM_UNDO" and pid and item:
-            try:
-                inv[pid].remove(item)
-            except ValueError:
-                pass
+        elif et == "ITEM_UNDO":
+            before, after = _undo_pair(e)
+            if before:
+                try:
+                    inv[pid].remove(before)
+                except ValueError:
+                    pass
+            if after:
+                inv[pid].append(after)
     return dict(inv)
 
 
@@ -248,9 +313,22 @@ def match_detail(match_id: str, *, max_frames: int = 60) -> Optional[dict]:
         ).fetchall()
         timestamps = [r["timestamp_ms"] for r in ts_rows]
         # Sample down to max_frames if needed.
-        if len(timestamps) > max_frames:
-            step = len(timestamps) / max_frames
-            timestamps = [timestamps[int(i * step)] for i in range(max_frames)]
+        #
+        # AUDIT 2026-08-31 (lane 8 cycle 32): the old sampler was
+        # `timestamps[int(i * len/max)]` for i in range(max), which can
+        # never reach the final index - at 90 frames capped to 60 it kept
+        # index 88 and dropped 89, losing the END of the game, the single
+        # most-looked-at moment of a match. Anchor both ends instead.
+        # max_frames < 1 used to be a ZeroDivisionError on a public
+        # signature (the route does not pass it today, so it was latent).
+        cap = max(1, int(max_frames))
+        if len(timestamps) > cap:
+            if cap == 1:
+                timestamps = [timestamps[-1]]
+            else:
+                last = len(timestamps) - 1
+                keep = sorted({round(i * last / (cap - 1)) for i in range(cap)})
+                timestamps = [timestamps[i] for i in keep]
 
         # Pre-load all frame data for this match so we don't N+1.
         frame_rows = c.execute(
@@ -271,7 +349,7 @@ def match_detail(match_id: str, *, max_frames: int = 60) -> Optional[dict]:
         # All item events for inventory folding.
         event_rows = c.execute(
             """
-            SELECT timestamp_ms, event_type, participant_id, item_id
+            SELECT timestamp_ms, event_type, participant_id, item_id, raw_json
             FROM timeline_events
             WHERE match_id = ?
               AND event_type IN ('ITEM_PURCHASED','ITEM_SOLD',
