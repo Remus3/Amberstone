@@ -145,13 +145,26 @@ class ResponseSizeCapTest(unittest.TestCase):
     """W5 - the body of a host RC does not control is read under a cap."""
 
     def test_oversized_body_raises_augment_source_error(self):
+        """The stub HONOURS the n argument, so this pins the bounded-read
+        property and not merely the length check.
+
+        The cycle-33 verifier refuted the first version of this test: its
+        stub ignored n, so a mutant that kept `if len(body) > cap` but went
+        back to an unbounded `r.read()` would still have passed - i.e. it
+        tested the raise and not the memory bound, which is the whole stated
+        rationale for the cap. Now `read` records what it was asked for and
+        returns at most that, so an unbounded read yields cap bytes exactly,
+        trips no raise, and the assertions below fail."""
+        seen = []
+
         class _Resp:
             status = 200
             headers = {}
 
             def read(self, n=-1):
-                # Larger than the cap, so a capped read returns cap+1 bytes.
-                return b"x" * (X._MAX_BODY_BYTES + 1)
+                seen.append(n)
+                body = b"x" * (X._MAX_BODY_BYTES * 4)
+                return body if n is None or n < 0 else body[:n]
 
             def __enter__(self):
                 return self
@@ -164,6 +177,8 @@ class ResponseSizeCapTest(unittest.TestCase):
             with self.assertRaises(X.AugmentSourceError) as ctx:
                 X._http_get("https://example.invalid/x", 1.0)
         self.assertIn("too large", str(ctx.exception).lower())
+        # The bound itself: read was asked for a finite cap, not everything.
+        self.assertEqual(seen, [X._MAX_BODY_BYTES + 1])
 
 
 class NonFiniteTest(unittest.TestCase):
@@ -181,11 +196,20 @@ class NonFiniteTest(unittest.TestCase):
     against NaN is False, so the recommender's ranking silently degrades
     rather than failing.
 
-    SEVERITY, stated honestly: latent. All 24 live snapshot files under
-    data/daemon_slayer/ were strict-parsed with parse_constant during this
+    SEVERITY, stated honestly: latent. All 18 live snapshot files under
+    data/daemon_slayer/ (6 patch dirs x arena_augments / cherry_augments /
+    mayhem_augment_stats) were strict-parsed with parse_constant during this
     audit and ZERO carry a non-finite literal, so nothing on disk needed
     backfilling. It is fixed because the upstream host is not RC's to
     control and the twin module already treats this as a live risk.
+
+    That count read "24" when this file was first committed (54d485c7) and
+    the cycle-33 verifier refuted it: the measuring glob unioned
+    "*augment*.json" with "cherry_augments.json", and the second pattern is
+    a SUBSET of the first, so every cherry file was counted twice. The
+    substantive half - zero non-finite literals - survived re-derivation
+    unchanged. Recorded rather than quietly corrected because a filed count
+    that nobody re-derives is how a wrong number becomes durable.
     """
 
     def test_http_get_rejects_nan_literal_in_body(self):
@@ -240,6 +264,18 @@ class NonFiniteTest(unittest.TestCase):
                          "8": {"win_rate": 0.51, "num_games": 5}}})
         self.assertIsNone(t.win_rate(7))
         self.assertEqual(t.win_rate(8), 0.51)
+
+    def test_bool_win_rate_is_dropped_not_scored_as_one(self):
+        """_finite rejects bool, which isinstance(x, (int, float)) would
+        have accepted - True would have scored as a 100 percent win rate.
+        The production comment claimed this; the cycle-33 verifier noted no
+        test asserted it, so it is asserted here."""
+        with self.assertRaises(X.AugmentSourceError):
+            X._normalize("mayhem", "tp", _payload(
+                {"win_rate": True, "num_games": 10}))
+        t = X._table_from_snapshot("mayhem", {
+            "augments": {"7": {"win_rate": True}}})
+        self.assertIsNone(t.win_rate(7))
 
     def test_cached_non_finite_stage_win_rate_reads_back_as_none(self):
         t = X._table_from_snapshot("mayhem", {
