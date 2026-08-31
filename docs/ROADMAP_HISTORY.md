@@ -2454,3 +2454,23 @@ Verbatim body of the RM-211 / RM-286 / RM-287 row. RM-286 and RM-287 remain
 OPEN; only the body moved. Read this before re-opening any of the three ids.
 
 - **RM-211 CLOSED + RM-286 / RM-287 OPEN (2026-08-30, lane 8 cycle 30; RM-286 + RM-287 LANE 8, Tier-1)** - the audit of `tft/tft_coach_engine.py`, the LIVE TFT coach. **Closed RM-211** (`_write_status` wrote the polled artifact non-atomically while its PBE twin had carried the atomic fix since 2026-04-27) and found a sharper defect above it: the module's own system prompt asks the model for `God pick:` every round while `FIELD_MAP` knew only `carousel`, so the Set 17 headline advice was **concatenated into the `items` string** and `god_pick` - the key `core/coaching_payload.py:168`, `coaches/tft_coach.py:147` and `tests/snapshot_panels/fixtures/tft.json` all read - was never written. Eight further defects fixed in-slice (a provably DEAD empty-fields guard, an inert `self._timeout` leaving the Anthropic call untimed inside a held lock, a silent no-API-key path, a fail-OPEN spend gate, unvalidated config, and a str/bool HP disagreement between two paths reading one file). 21 tests, 20/20 mutations killed. **New rows:** (286) `tft/tft_pbe_engine.py` carries the inert-timeout and unvalidated-config halves of the same audit - its `_write_status` and its `god` field spelling are CORRECT and fenced, do not touch them; (287) `coaches/_base_coach.py:88` `safe_write`, the shared writer for EVERY coach, uses `write_text`, so every coaching artifact on disk carries CRLF - measured 11 pairs in the live `data/tft_coaching_data.json`. Bodies in `BACKLOG.md`. **Next free id = RM-288.**
+
+## 2026-08-31 pass (lane 8 cycle 37) - RM-174 + RM-157 ROADMAP SUMMARY ROWS
+
+Relocated VERBATIM from `ROADMAP.md` to make room for RM-295 under the
+81920-byte doc budget. Both ids were already CLOSED; only the text moved.
+Every fence below is still live - read them before re-opening either id.
+
+**These are the ROADMAP SUMMARY ROWS, not the bodies.** Corrected by the
+cycle-37 verifier, which caught this section originally calling them
+"bodies": the full bodies were relocated here by EARLIER passes and are
+already in this file - RM-174 at the 2026-08-08 pass 10 section, RM-157 at
+the 2026-08-04 / 2026-08-06 sections. Each row below therefore still reads
+"Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md`" while itself living
+in that file; that self-reference is preserved deliberately rather than
+edited, because these are verbatim copies and the body it points at is
+genuinely here. Nothing was lost in either move.
+
+- **RM-174 CLOSED 2026-08-07 (`79a6a574`, LEDGER 1223) - the overlay flake is LOAD-DEPENDENT and the FILED MECHANISM WAS REFUTED (not a read-before-paint race).** Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 10) - READ IT before re-opening. Two fences that must not be lost: **do NOT 'fix' this class by polling** (once the class is stripped the pane never hides, so a wait burns its full timeout and fails SLOWER, 5.01 s confirmed) - hide through the store-backed seam instead; and the **RESIDUAL CLASS is OPEN and UNGUARDED - any test that mutates a layout-owned class or style out-of-band inherits the same 91-107 ms debounce fuse.**
+
+- **RM-157 CLOSED 2026-08-04 (`b21d4bf6` + `4cc862d0` + `027d1031`, LEDGER 1186/1188/1189) - duplicate `/done` full-suite dispatch REMOVED; per-push suite priced against the real invoice and KEPT.** Rate **0.006/min**, allotment **~3000/mo**; the old `settings/billing/{actions,shared-storage}` are **410 Gone**, use `users/{u}/settings/billing/usage` with the `user` scope. Suite step is ~64 USD/mo and buys the only pre-merge gate. **Do NOT restore the dispatch** and do NOT re-pitch deleting the suite on cost share - cite a catch rate. Push-volume lever: `BACKLOG.md`. Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-04 + 2026-08-06).

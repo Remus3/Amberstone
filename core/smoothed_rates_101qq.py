@@ -47,6 +47,7 @@ Smoothing notes:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 import time
@@ -55,6 +56,8 @@ from pathlib import Path
 from typing import Literal
 
 from core import smoothed_rates as _sr
+
+log = logging.getLogger("rc.web_dashboard")
 
 # --------------------------------------------------------------------
 # Paths + cache
@@ -197,60 +200,17 @@ def _parse_itemp(raw: str | float | None) -> float:
         return 0.0
 
 
-def _build_snapshot() -> dict:
-    """Read + index both seeds and return a self-contained snapshot.
+def _rows_to_records(data, id_to_name: dict[int, str]) -> list[dict]:
+    """Normalize raw Tencent-schema rows (live OR static) into records.
 
-    ALL of the blocking work lives here - the live Tencent fetch (up to 3
-    sequential GETs at a 6s socket timeout each) and the static-seed disk
-    read - and NONE of it runs under a lock. The caller publishes the result
-    with `_publish()`, which is pure assignment. Writes no globals.
-
-    Silent on missing files (yields an empty snapshot); the API layer
-    surfaces that as "no data" rather than 500.
+    Shared by both seeds - they carry the same row schema. Rows that cannot
+    be coerced, or whose champion ids resolve to no name, are skipped, so an
+    empty return means "these rows yielded nothing usable" and is what makes
+    the static fallback fire. Does no I/O and raises nothing.
     """
-    # ID map: numeric-string keys -> DDragon names
-    id_to_name: dict[int, str] = {}
-    name_to_id: dict[str, int] = {}
-    try:
-        raw_map = json.loads(_ID_MAP_PATH.read_text(encoding="utf-8"))
-        for k, v in raw_map.items():
-            try:
-                cid = int(k)
-            except (TypeError, ValueError):
-                continue
-            if not isinstance(v, str) or not v:
-                continue
-            id_to_name[cid] = v
-            name_to_id[v.lower()] = cid
-    except (OSError, json.JSONDecodeError):
-        pass
-
-    # Records source (item 277): live Tencent rows first, static seed
-    # fallback. Both are the same row schema; the indexer below is shared.
-    _src = "none"
-    try:
-        data = _live_data_rows()
-    except Exception:  # noqa: BLE001 - the live seam is a monkey-patchable
-        # third-party boundary; a raising live source must degrade to the
-        # static seed (that is what the fallback exists for), never propagate.
-        data = None
-    if data:
-        _src = "live"
-    else:
-        try:
-            raw_env = json.loads(_RECORDS_PATH.read_text(encoding="utf-8"))
-            d = raw_env.get("data") if isinstance(raw_env, dict) else None
-            data = d if isinstance(d, list) else []
-        except (OSError, json.JSONDecodeError):
-            data = []
-        if data:
-            _src = "static"
-
-    # Records: normalize fields (shared indexer over live OR static rows).
-    # No try/except wrapper: the loop body does no I/O or JSON parsing
-    # (the old OSError/JSONDecodeError catch here was unreachable) and
-    # per-field coercion failures are handled row-by-row below.
     records: list[dict] = []
+    if not isinstance(data, list):
+        return records
     for rec in data:
         if not isinstance(rec, dict):
             continue
@@ -291,6 +251,69 @@ def _build_snapshot() -> dict:
             "irank": irank,
             "smoothed_rate": smoothed,
         })
+    return records
+
+
+def _build_snapshot() -> dict:
+    """Read + index both seeds and return a self-contained snapshot.
+
+    ALL of the blocking work lives here - the live Tencent fetch (up to 3
+    sequential GETs at a 6s socket timeout each) and the static-seed disk
+    read - and NONE of it runs under a lock. The caller publishes the result
+    with `_publish()`, which is pure assignment. Writes no globals.
+
+    Silent on missing files (yields an empty snapshot); the API layer
+    surfaces that as "no data" rather than 500.
+    """
+    # ID map: numeric-string keys -> DDragon names
+    id_to_name: dict[int, str] = {}
+    name_to_id: dict[str, int] = {}
+    try:
+        raw_map = json.loads(_ID_MAP_PATH.read_text(encoding="utf-8"))
+        for k, v in raw_map.items():
+            try:
+                cid = int(k)
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(v, str) or not v:
+                continue
+            id_to_name[cid] = v
+            name_to_id[v.lower()] = cid
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    # Records source (item 277): live Tencent rows first, static seed
+    # fallback. Both are the same row schema; the indexer is shared.
+    #
+    # Lane 8 (2026-08-31): the fallback used to trigger on "the live source
+    # returned NO rows". That is the wrong predicate - a live response can be
+    # non-empty and still yield ZERO usable records (ids in neither the id_map
+    # nor DDragon, so every row is skipped below). The seed was then never
+    # consulted and an empty snapshot shipped labelled source="live". The
+    # predicate is now "the live source yielded no usable RECORDS", which is
+    # what the fallback was always for.
+    _src = "none"
+    try:
+        live_rows = _live_data_rows()
+    except Exception:  # noqa: BLE001 - the live seam is a monkey-patchable
+        # third-party boundary; a raising live source must degrade to the
+        # static seed (that is what the fallback exists for), never propagate.
+        live_rows = None
+    records: list[dict] = []
+    if live_rows:
+        records = _rows_to_records(live_rows, id_to_name)
+        if records:
+            _src = "live"
+    if not records:
+        try:
+            raw_env = json.loads(_RECORDS_PATH.read_text(encoding="utf-8"))
+            d = raw_env.get("data") if isinstance(raw_env, dict) else None
+            static_rows = d if isinstance(d, list) else []
+        except (OSError, json.JSONDecodeError):
+            static_rows = []
+        records = _rows_to_records(static_rows, id_to_name)
+        if records:
+            _src = "static"
 
     # Build per-side indices, sorted by smoothed_rate DESC for the
     # "given a locked partner, who pairs best with them" queries.
@@ -325,11 +348,26 @@ def _publish(snapshot: dict, gen: int) -> None:
     Drops the publish when `gen` no longer matches `_CACHE_GEN`: a
     `_reset_cache()` landed while this load was out on the network, and
     republishing pre-reset data would resurrect it.
+
+    Also drops an EMPTY rebuild over a non-empty snapshot. `_refresh` states
+    that "a failed refresh must leave the previous snapshot in place", but
+    pre-2026-08-31 that only held when `_build_snapshot` RAISED - and the
+    builder is written never to raise, swallowing OSError/JSONDecodeError and
+    returning an empty snapshot instead. So the designed failure path was the
+    one that wiped a good cache, blanking /api/duo-synergy for a full TTL.
+    The TTL stamp is still refreshed so the retry lands one TTL later rather
+    than on every single read.
     """
     global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
     global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT
     with _CACHE_LOCK:
         if gen != _CACHE_GEN:
+            return
+        if not snapshot["records"] and _DUO_RECS:
+            log.warning(
+                "duo-synergy: refresh yielded 0 records; keeping the previous "
+                "%d-record %s snapshot", len(_DUO_RECS), _SOURCE)
+            _LOADED_AT = _clock()
             return
         _ID_TO_NAME = snapshot["id_to_name"]
         _NAME_TO_ID = snapshot["name_to_id"]
@@ -371,10 +409,23 @@ def _start_background_refresh(gen: int) -> None:
         finally:
             _REFRESH_LOCK.release()
 
-    t = threading.Thread(
-        target=_run, name="rc-duo-synergy-refresh", daemon=True)
+    # The lock is released by _run, so it is only ever safe to hand it over
+    # once the thread is genuinely running. A refused thread (the OS is out
+    # of them - RuntimeError) previously leaked it permanently: every later
+    # refresh silently no-opped on the failed non-blocking acquire, and any
+    # cold start blocked on it forever. Release here and stay fail-soft; a
+    # thread-starved box must not turn a cached read into a 500.
+    try:
+        t = threading.Thread(
+            target=_run, name="rc-duo-synergy-refresh", daemon=True)
+        t.start()
+    except RuntimeError:
+        _REFRESH_LOCK.release()
+        log.warning(
+            "duo-synergy: could not start the refresh thread; serving the "
+            "existing snapshot and retrying on a later read")
+        return
     _REFRESH_THREAD = t
-    t.start()
 
 
 def _load_once() -> None:

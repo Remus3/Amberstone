@@ -148,6 +148,29 @@ def test_live_empty_falls_back_to_static(monkeypatch):
     assert RTB.source() == "static"
 
 
+def test_an_empty_rebuild_does_not_wipe_a_good_grid(monkeypatch):
+    """Sibling of the core/smoothed_rates_101qq lane-8 fix.
+
+    `_load_static_grid` is fail-soft and returns {} on a transient read
+    failure, so a refresh that read NOTHING used to publish that empty grid
+    over a working one - blanking the overlay stats panel for a full TTL
+    despite having had good data in memory.
+    """
+    RTB._reset_cache()
+    good = RTB.rank_tier_grid("iron", "SR")
+    assert good, "precondition: the static seed must load"
+
+    # The seed read now fails, exactly as a transient disk error would.
+    monkeypatch.setattr(RTB, "_load_static_grid", lambda: {})
+    RTB._LOADED_AT = RTB._clock() - (RTB._TTL_S * 2)
+    RTB._refresh_now()
+
+    assert RTB.rank_tier_grid("iron", "SR") == good, (
+        "an empty rebuild replaced a working grid - the overlay stats panel "
+        "goes blank for a full TTL"
+    )
+
+
 # --- ascii hygiene -------------------------------------------------------
 
 def test_module_is_ascii():

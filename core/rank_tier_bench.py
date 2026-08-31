@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import math
 import os
 import threading
@@ -49,6 +50,8 @@ import time
 from pathlib import Path
 
 from core import rank_tier_source
+
+log = logging.getLogger("rc.web_dashboard")
 
 _ROOT = Path(__file__).resolve().parent.parent
 _SEED_PATH = _ROOT / "data" / "rank_tiers" / "rank_tier_averages.seed.json"
@@ -213,6 +216,18 @@ def _refresh_now() -> None:
     with _LOCK:
         if gen != _GENERATION:
             return                       # a _reset_cache landed mid-build
+        if not grid and _GRID:
+            # Lane 8 (2026-08-31), sibling of the core/smoothed_rates_101qq
+            # fix: _load_static_grid is fail-soft and hands back {} on a
+            # transient read failure, so a refresh that read NOTHING used to
+            # overwrite a perfectly good grid and blank the overlay stats
+            # panel for a full TTL. Keep what we have; re-stamp so the retry
+            # lands one TTL later rather than on every read.
+            log.warning(
+                "rank-tier bench: refresh yielded an empty grid; keeping the "
+                "previous %s grid", _SOURCE)
+            _LOADED_AT = _clock()
+            return
         _GRID = grid
         _SOURCE = src
         _LOADED = True
