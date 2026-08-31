@@ -14,6 +14,8 @@ from pathlib import Path
 
 import anthropic
 
+from core.polled_json import atomic_write_json
+
 logger = logging.getLogger("rc.tft.coach")
 
 TFT_SYSTEM_PROMPT = """\
@@ -77,7 +79,15 @@ FIELD_MAP = {
     "econ":      "econ",
     "rolldown":  "rolldown",
     "items":     "items",
-    "carousel":  "carousel",
+    # LANE 8 CYCLE 30 (W1): the Set 17 prompt asks for "God pick:" and the
+    # payload contract (core/coaching_payload.TftPayload.god_pick, and the
+    # reset defaults in coaches/tft_coach.py) reads god_pick. FIELD_MAP knew
+    # only "carousel", so the God pick line matched NO prefix, fell into the
+    # continuation branch, and was appended to the PRECEDING field (items).
+    # Both spellings now land in god_pick; "carousel" is kept only so a model
+    # that regresses to the pre-Set-17 label still parses.
+    "god pick":  "god_pick",
+    "carousel":  "god_pick",
     "placement": "placement",
     "upgrade":   "upgrade",
     "risk":      "risk",
@@ -596,16 +606,107 @@ class TftCoachEngine:
         self._max_tokens = 600    # reduced from 800  -  9 short fields don't need more
         if cfg_path.exists():
             try:
-                cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-                self._model      = cfg.get("model",            self._model)
-                self._debounce_s = cfg.get("debounce_seconds", self._debounce_s)
-                self._timeout    = cfg.get("timeout",          self._timeout)
-                self._max_tokens = cfg.get("max_tokens",       self._max_tokens)
-            except Exception:  # noqa: BLE001
-                pass
+                self._apply_config(json.loads(cfg_path.read_text(encoding="utf-8")))
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("coach_settings.json unreadable, using defaults: %s", exc)
 
-        logger.info("TftCoachEngine ready [v3-trait-augments] (model=%s debounce=%.0fs)",
-                    self._model, self._debounce_s)
+        # LANE 8 CYCLE 30 (W7): this line used to say "ready" unconditionally.
+        # With no API key `submit()` returns immediately at every call, so a
+        # key-less box logged a healthy start and then silently never coached -
+        # byte-identical, from outside, to a working engine.
+        if self._client is None:
+            logger.warning(
+                "TftCoachEngine DISABLED: no API key (checked ANTHROPIC_API_KEY "
+                "and API-Key-Claude.txt) - TFT text coaching will not run")
+        else:
+            logger.info("TftCoachEngine ready [v3-trait-augments] (model=%s debounce=%.0fs)",
+                        self._model, self._debounce_s)
+
+    def _apply_config(self, cfg: dict) -> None:
+        """Adopt coach_settings.json values, rejecting anything unusable.
+
+        LANE 8 CYCLE 30 (W9): these were adopted verbatim. A string
+        `debounce_seconds` made `(now - self._last_call) < self._debounce_s`
+        raise TypeError out of submit() and into the TFT poll loop; a
+        non-positive `max_tokens` or `timeout` is refused by the API on every
+        call. A bad config value degrades to the default, loudly.
+        """
+        if not isinstance(cfg, dict):
+            logger.warning("coach_settings.json is not an object, using defaults")
+            return
+
+        def _num(key, current, *, minimum, maximum, cast):
+            if key not in cfg:
+                return current
+            val = cfg[key]
+            if isinstance(val, bool) or not isinstance(val, (int, float)):
+                logger.warning("coach_settings.%s must be a number, got %r - keeping %r",
+                               key, val, current)
+                return current
+            if not (minimum <= val <= maximum):
+                logger.warning("coach_settings.%s out of range [%s, %s], got %r - keeping %r",
+                               key, minimum, maximum, val, current)
+                return current
+            return cast(val)
+
+        model = cfg.get("model", self._model)
+        if isinstance(model, str) and model.strip():
+            self._model = model
+        elif "model" in cfg:
+            logger.warning("coach_settings.model must be a non-empty string, got %r - keeping %r",
+                           model, self._model)
+
+        self._debounce_s = _num("debounce_seconds", self._debounce_s,
+                                minimum=0, maximum=3600, cast=float)
+        self._timeout    = _num("timeout", self._timeout,
+                                minimum=1, maximum=600, cast=float)
+        self._max_tokens = _num("max_tokens", self._max_tokens,
+                                minimum=1, maximum=8192, cast=int)
+
+    @staticmethod
+    def _coerce_hp(value):
+        """One definition of a usable vision HP reading, shared by the urgency
+        gate and the rendered payload.
+
+        LANE 8 CYCLE 30 (W10): submit() accepted a STRING hp for the urgency
+        decision while _write_fields rejected it for the payload, so the two
+        halves disagreed about the same file; and _write_fields' isinstance
+        check accepted a BOOL, because bool subclasses int, rendering
+        `"hp": true` as 1 HP (critical).
+        """
+        if isinstance(value, bool) or value is None:
+            return None
+        try:
+            hp = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not (0 < hp <= 100):
+            return None
+        return int(hp)
+
+    def _vision_hp(self, loader=None):
+        """Read hp from data/tft_live_data.json, or None if unusable."""
+        try:
+            if loader is not None:
+                data = loader()
+            else:
+                path = Path(__file__).parent.parent / "data" / "tft_live_data.json"
+                data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                return None
+            return self._coerce_hp(data.get("hp"))
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _resolve_hp(self, state: dict, default: int = 100) -> int:
+        """Vision HP wins, then API state, then the default."""
+        vision = self._vision_hp()
+        if vision is not None:
+            return vision
+        api = self._coerce_hp(state.get("health"))
+        if api is not None:
+            return api
+        return default
 
     def _read_key_file(self) -> str:
         for p in [Path(__file__).parent.parent / "API-Key-Claude.txt"]:
@@ -621,16 +722,7 @@ class TftCoachEngine:
         now       = time.time()
         sr        = (state.get("stage", 0), state.get("round", 0))
         # Use vision HP for urgency check when API health is unavailable
-        hp = state.get("health")
-        if hp is None:
-            try:
-                import json as _hj
-                from pathlib import Path as _hp2
-                _hd = _hj.loads((_hp2(__file__).parent.parent / "data" / "tft_live_data.json").read_text())
-                _vhp = _hd.get("hp")
-                hp = int(float(_vhp)) if _vhp and 0 < float(_vhp) <= 100 else 100
-            except Exception:  # noqa: BLE001
-                hp = 100
+        hp = self._resolve_hp(state)
         new_round = sr != self._last_round
         # Urgent: HP critical, but cap at one call per 30s to prevent end-game burst
         urgent    = hp <= 30 and (now - self._last_call) >= 30.0
@@ -657,16 +749,14 @@ class TftCoachEngine:
             blank = {
                 "mode": "tft",
                 "action": "", "board": "", "econ": "", "rolldown": "",
-                "items": "", "carousel": "", "placement": "",
+                "items": "", "god_pick": "", "placement": "",
                 "upgrade": "", "risk": "",
                 "stage": 1, "round": 1, "level": 1,
                 "gold": 0, "health": 100, "alive_others": 7,
             }
-            tmp = self._data_file.with_suffix(".tmp")
-            tmp.write_text(__import__("json").dumps(blank, indent=2), encoding="utf-8")
-            tmp.replace(self._data_file)
-        except Exception:  # noqa: BLE001
-            pass
+            atomic_write_json(self._data_file, blank)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to reset TFT coaching data: %s", exc)
 
     def shutdown(self) -> None:
         logger.info("TftCoachEngine shutdown")
@@ -687,20 +777,29 @@ class TftCoachEngine:
 
     def _run(self, state: dict):
         # Spend-gate: TFT Anthropic calls off via Settings kill-switch.
+        # LANE 8 CYCLE 30 (W8): this used to `pass` on any failure, so a
+        # broken cost_tracker import turned the operator's spend kill-switch
+        # into a no-op and the paid call went out anyway. Fail CLOSED.
         try:
             from core.cost_tracker import get_tracker as _gt
             if _gt().gate_disabled("tft"):
                 return
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.error("TFT spend-gate unavailable, refusing to call: %s", exc)
+            return
         t0     = time.time()
         prompt = _build_prompt(state)
         if self._debug:
             logger.debug("TFT prompt:\n%s", prompt)
 
+        # LANE 8 CYCLE 30 (W6): self._timeout was assigned twice and read
+        # nowhere, so this call carried only the SDK default. _run_safe holds
+        # self._lock across it, so one hung request wedged the TFT coach and
+        # every later submit logged "busy - skipping" for the duration.
         response = self._client.messages.create(
             model      = self._model,
             max_tokens = self._max_tokens,
+            timeout    = self._timeout,
             system     = [{"type": "text", "text": TFT_SYSTEM_PROMPT,
                            "cache_control": {"type": "ephemeral"}}],
             messages   = [{"role": "user", "content": prompt}],
@@ -721,14 +820,19 @@ class TftCoachEngine:
 
     def _write_fields(self, raw: str, state: dict):
         fields = _parse_response(raw)
-        fields["_stage_round"] = state.get("stage_round", "")
+        # LANE 8 CYCLE 30 (W5): `fields["_stage_round"]` used to be assigned
+        # HERE, one line above the guard, so `not fields` could never be true
+        # and the guard below was dead code. An unparseable response therefore
+        # blanked every field on the overlay instead of retaining the last good
+        # advice, and the diagnostic warning never once fired.
         if not fields:
             logger.warning("TFT: no fields parsed from response (first 200 chars): %s",
                            raw[:200].replace("\n", " | "))
             return
+        fields["_stage_round"] = state.get("stage_round", "")
 
         _WATCH = ("action", "board", "econ", "rolldown", "items",
-                  "carousel", "placement", "upgrade", "risk")
+                  "god_pick", "placement", "upgrade", "risk")
         if self._last_fields:
             changed = any(fields.get(k) != self._last_fields.get(k) for k in _WATCH)
             if not changed:
@@ -737,18 +841,7 @@ class TftCoachEngine:
         self._last_fields = dict(fields)
 
         # Resolve authoritative HP: prefer vision HP, fallback to API state, fallback to 100
-        _out_hp = state.get("health")  # may be None if state reader didn't get HP from API
-        try:
-            import json as _ohj
-            from pathlib import Path as _ohp
-            _ohd = _ohj.loads((_ohp(__file__).parent.parent / "data" / "tft_live_data.json").read_text())
-            _vision_hp = _ohd.get("hp")
-            if _vision_hp and isinstance(_vision_hp, (int, float)) and 0 < float(_vision_hp) <= 100:
-                _out_hp = int(float(_vision_hp))
-        except Exception:  # noqa: BLE001
-            pass
-        if _out_hp is None:
-            _out_hp = 100
+        _out_hp = self._resolve_hp(state)
 
         output = {
             "mode":         "tft",
@@ -774,16 +867,14 @@ class TftCoachEngine:
             "econ":         fields.get("econ",         ""),
             "rolldown":     fields.get("rolldown",     ""),
             "items":        fields.get("items",        ""),
-            "carousel":     fields.get("carousel",     ""),
+            "god_pick":     fields.get("god_pick",     ""),
             "placement":    fields.get("placement",    ""),
             "upgrade":      fields.get("upgrade",      ""),
             "risk":         fields.get("risk",         ""),
         }
 
         try:
-            tmp = self._data_file.with_suffix(".tmp")
-            tmp.write_text(json.dumps(output, indent=2), encoding="utf-8")
-            tmp.replace(self._data_file)
+            atomic_write_json(self._data_file, output)
             logger.debug("TFT coaching data written (%d fields)", len(fields))
             # arch: phase 3 step 1.1 - write TFT coaching timestamp only after payload write succeeds
             # Mirrors SR/ARAM/Arena/Brawl successful-write semantics.
@@ -796,11 +887,23 @@ class TftCoachEngine:
             logger.error("Failed to write TFT coaching data: %s", exc)
 
     def _write_status(self, msg: str):
+        """Degraded-mode payload. `msg` is ALWAYS a friendly string chosen by
+        the caller - never raw API error text (CLAUDE.md "Error Handling").
+
+        LANE 8 CYCLE 30 (RM-211): this wrote the polled destination DIRECTLY -
+        no scratch file, no rename - so a poller mid-read saw a truncated
+        artifact. The sibling engine tft/tft_pbe_engine.py has carried the
+        atomic fix since 2026-04-27; the audit that fixed the twin missed the
+        LIVE engine. The keys mirror the reset payload so a degraded write
+        never shrinks the artifact's shape out from under a consumer.
+        """
         try:
-            self._data_file.write_text(
-                json.dumps({"mode": "tft", "action": "ERROR", "risk": msg},
-                           indent=2),
-                encoding="utf-8"
-            )
-        except Exception:  # noqa: BLE001
-            pass
+            payload = {
+                "mode": "tft", "action": "ERROR",
+                "board": "", "econ": "", "rolldown": "", "items": "",
+                "god_pick": "", "placement": "", "upgrade": "",
+                "risk": msg,
+            }
+            atomic_write_json(self._data_file, payload)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to write TFT status payload: %s", exc)
