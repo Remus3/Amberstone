@@ -4,6 +4,28 @@
 
 > Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
+# 2026-08-31d - lane 8 cycle 34: the reset logged success unconditionally because the writer it calls cannot report failure
+
+**Commits on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1293. RM-292 filed.**
+
+Audited `coaches/tft_coach.py` (214 -> 268 lines), picked on four criteria at once: it parses model-authored text, it read `API-Key-Claude.txt`, it is live-reachable (`core/coach_registry.py:5` -> `app/_game_lifecycle.py:116`, and construction alone spawns the poll loop), and it had ZERO dedicated tests. 18 new tests, 9/9 mutants killed.
+
+**The recall gate earned its keep three times before a single line was written.** It rejected `core/rofl_archive.py` (already audited, item-1176), `core/liveclient_cache.py` (already audited, item-1184), and `core/sgp_client.py` - the last of which has ZERO production callers and whose live path RM-106 records as permanently blocked at the Cloudflare edge, so hardening it would have been provably inert work. Three rediscoveries avoided.
+
+**The headline root-caused one layer BELOW the audited file.** `coaches/_base_coach.py:81 safe_write` never raises and returned `None` on success and on all three failure paths alike, so no caller could tell a completed write from a failed one. That is why `reset_state` wrapped it in `except Exception: pass` - a handler that can never fire, at two sites - and then logged "data files cleared" unconditionally. `safe_write` now returns bool (additive; all 19 call sites that ignore it are unaffected). **The LIVE route to the false success was not the vacuous handler but a missing `mkdir`**, which only `_ensure_data_files` had.
+
+**Two subagents DISAGREED and that was worth more than agreement.** One reported the 19-key live-data default as the outlier and called the 9-vs-19 drift live on cold start. The other refuted both halves; the merger verified directly that `core/feature_policy.py:102` and the live producer both agree with the 19-key spelling (so the SHORT copy was the outlier), and that `__init__` runs `_ensure_data_files()` then `reset_state()` back-to-back, so the short shape survives microseconds and is not live-observable. Filed the corrected version, not the first one.
+
+**Two claims were withdrawn before they could ship as findings.** A sibling agent called the PBE twin's spend-gate a "live paid-call leak"; an independent check showed `coaches/__init__.py:66 load_coach` has zero callers repo-wide and `core/coach_registry.py:5` has no PBE branch, so the whole subsystem is unreachable and nothing there is live. And the LEDGER's first draft claimed RC had been restarted to load the fix - it had not and could not be, since this branch is unmerged and the running supervisor executes the main tree. Both corrected in place.
+
+**W3 is labelled LATENT, not sold as a live fix.** `_coach_board_to_placement` gave two units the same hex once a class outgrew its column list (measured: three mages -> `Anivia D4, Swain D4`; six tanks -> `Delta A7 ... Foxtrot A7`, and non-monotonic). It has no production caller. **Its pre-existing 5-test smoke guard could never have caught it** - every case passes `"Jinx Caitlyn Lulu"`, exactly the one arity where no collision occurs. A mutant on the new board-wide fallback SURVIVED round one; it was a real coverage gap, not an equivalent mutant, and died once two tests reached past 14 units.
+
+**`_read_api_key` was deleted, not hardened** - zero callers in either direction, and the live TFT key path is a different symbol (`app/_game_lifecycle.py:315`). A dead function that loads a secret is a latent secret path with no upside.
+
+**Inherited, not caused (measured both):** RC suite 2 failed / 19874 passed / 144 skipped / 4627 subtests - `test_cli_version_still_matches_the_pin` (CLI moved 2.1.220 -> 2.1.251) and `test_live_three_profiles` (live DS serves ENGINE 1.278.1 against this branch's 1.278.0); neither imports a touched module. DS 10684 passed / 13482 subtests / 0 failed. The ROADMAP doc-budget breach was inherited too - the guard run against HEAD's own file reports 100% - and was net-improved to 99% by relocating the closed RM-190 row verbatim to `docs/ROADMAP_HISTORY.md`, while still adding a row.
+
+**Owed at MERGE, not here:** the runtime restart + `/api/health/all` re-probe, since the running RC does not execute this worktree.
+
 # 2026-08-31c - lane 8 cycle 33: a parser promised in three docstrings that it never raises, raised four ways, and its own twin had already fixed the fifth
 
 **Commits on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1292. RM-291 filed.**
