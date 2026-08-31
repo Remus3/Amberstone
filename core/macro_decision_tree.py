@@ -8,7 +8,7 @@ an ORDERED registry of pure rules per mode, each rule a
 ``(predicate(ctx) -> bool, emit(ctx) -> callout)`` pair. ``evaluate``
 walks the mode's rules first-match-wins and returns at most ONE callout
 in the canonical ``{tag, line, eta_s, kind}`` schema
-(core/event_callouts.py:220-228) with ``kind="macro"`` - deliberately
+(core/event_callouts.py:265-274) with ``kind="macro"`` - deliberately
 distinct from the WS4 ``kind="macro_response"`` row
 (core/macro_response.py:267), no naming collision.
 

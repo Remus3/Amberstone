@@ -93,7 +93,7 @@ absolute game time. A wave clock is that function with `first_at` supplied by th
 live `MinionsSpawning` event instead of a constant, and a piecewise cadence
 instead of a scalar respawn. No new algorithm.
 
-**HAVE. No.** `core/event_callouts.py:106` `_SR_OBJECTIVES` is the timed-callout
+**HAVE. No.** `core/event_callouts.py:107` `_SR_OBJECTIVES` is the timed-callout
 registry and holds dragon / herald / baron / plates / elder only; constants at
 `:72-78`. No wave row, no minion row. `dashboard/_liveclient.py` extracts three
 event classes into the slim envelope - `inhib_events` (`:302-313`),
@@ -148,7 +148,7 @@ coaching number so it is do-not-flip-blind. **LIFT: MED-HIGH**, gated behind F1.
 
 ### F3 - Wave-conditioned recall. MED, FUTURE (pair with F1).
 
-`core/event_callouts.py:414-444` `recall_callout` takes three purely economic
+`core/event_callouts.py:460-526` `recall_callout` takes three purely economic
 arguments and has no time or wave term, so it can advise a back into a crashing
 cannon wave. The wave clock is the missing input. Deferred only because it
 changes an EXISTING served verdict, which is a flip, not an addition.

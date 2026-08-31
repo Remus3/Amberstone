@@ -2500,3 +2500,9 @@ Verbatim as they stood in `ROADMAP.md` before relocation. Nothing dropped. Both 
 - **RM-150 CLOSED 2026-08-04 (LEDGER 1190) - `:8889` binds loopback and its 5xx bodies say `internal error`.** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
 
 - **RM-119 CLOSED 2026-07-28 (R217-U1, `9e7b70d1`)** - push CI gates the WHOLE tree, both halves. Narrative: `docs/ROADMAP_HISTORY.md`.
+
+## RM-127 relocated verbatim 2026-08-31 (lane 8 cycle 44 doc-budget pass)
+
+Moved out of `ROADMAP.md` to keep it under the 81920-byte CI budget. The row was already a pointer whose full narrative lives in the 2026-08-06 run-02 block above; this is the pointer itself, kept verbatim so no fence is lost.
+
+- **RM-127 CLOSED 2026-08-01 - CCR LINK-INGEST, PHASES 1-7 ALL SHIPPED, ZERO RESIDUE** (LEDGER 1108 / 1145 / 1147 / 1149 / 1150 / 1151 / 1152 / 1155; full narrative relocated VERBATIM to `docs/ROADMAP_HISTORY.md`, do not re-derive it here). 146 links triaged to 4 ADOPT / 1 HOLD / 1 DROP; Phase 5 collapsed the four adoptions into ONE build; both remaining operator calls are MADE. **Do NOT re-run any pass or re-score the roster.** Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block); fences live there.

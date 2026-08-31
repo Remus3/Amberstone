@@ -49,6 +49,7 @@ CHAMPION SPIKES (mode-agnostic, level- and item-driven)
 """
 from __future__ import annotations
 
+import math
 from typing import Optional
 
 # ---------------------------------------------------------------------------
@@ -157,6 +158,47 @@ _SIEGE_RECENCY_S: float = 30.0
 _KNOWN_MODES: frozenset[str] = frozenset({"sr", "aram", "arena"})
 
 
+def _finite(value: object) -> Optional[float]:
+    """Coerce to a FINITE float, or None. The ONE numeric entry point here.
+
+    WHY THIS EXISTS (lane 8 cycle 44). Every numeric coercion in this module
+    used to be a bare ``float(...)`` guarded by ``except (TypeError,
+    ValueError)``. That guard catches a string and a None and does NOT catch
+    NaN or +/-Infinity, because ``float('nan')`` SUCCEEDS - so the two values
+    the module cannot actually use were exactly the two its fail-soft guard
+    let through. Two measured consequences:
+
+      - ``next_callouts`` RAISED on a non-finite clock:
+        ``int(elapsed_since_first // cadence_s)`` raised ValueError on NaN,
+        and ``int(level)`` raised OverflowError on Infinity, which the
+        ``(TypeError, ValueError)`` handler does not catch either. Both
+        callers in ``dashboard/_deterministic_coaching.py`` (:929 inline,
+        :959 background) swallow that with a bare ``except Exception`` and no
+        log line, so the whole deterministic coaching result blanked
+        silently and the warm path served the last good value indefinitely.
+
+      - a non-finite ``down_at_s`` on ONE event produced ``eta_s: nan``, and
+        ``dashboard/routes_state.py:226`` dumps the state at the default
+        ``allow_nan=True``, emitting a bare ``NaN`` token. That is not valid
+        JSON and browser ``JSON.parse`` throws on it, so one bad event field
+        blanked the ENTIRE dashboard, not just the callout panel. This repo
+        already rejects that token with ``allow_nan=False`` in five modules
+        (``agents/_supervisor_http.py:190``, ``performance_tracker.py:55``
+        and three more); this module was manufacturing it.
+
+    Booleans are rejected on purpose. ``float(True)`` is 1.0, which would let
+    a bool masquerade as a one-second clock; two sites here already excluded
+    bool by hand and this makes that uniform rather than site-by-site.
+    """
+    if isinstance(value, bool):
+        return None
+    try:
+        coerced = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return coerced if math.isfinite(coerced) else None
+
+
 def _norm_mode(mode: object) -> str:
     """Lowercase a mode string; non-str -> empty (fail-soft)."""
     if not isinstance(mode, str):
@@ -212,9 +254,8 @@ def _last_kill_t(objective_events: object, *, name: str,
             continue
         if elemental_only and not _is_elemental_drake(ev):
             continue
-        try:
-            t = float(ev.get("down_at_s"))
-        except (TypeError, ValueError):
+        t = _finite(ev.get("down_at_s"))
+        if t is None:
             continue
         if last is None or t > last:
             last = t
@@ -516,10 +557,9 @@ def _wave_anchor_s(minion_events: object) -> Optional[float]:
     for ev in minion_events:
         if not isinstance(ev, dict):
             continue
-        t = ev.get("at_s")
-        if isinstance(t, bool) or not isinstance(t, (int, float)):
+        ft = _finite(ev.get("at_s"))
+        if ft is None:
             continue
-        ft = float(t)
         if best is None or ft < best:
             best = ft
     return best
@@ -538,12 +578,12 @@ def wave_callout(
     anchor or the clock inputs are non-numeric - a wave time is NEVER
     synthesized from a constant.
     """
-    if isinstance(game_time_s, bool) or not isinstance(game_time_s, (int, float)):
+    gt = _finite(game_time_s)
+    if gt is None:
         return None
     anchor = _wave_anchor_s(minion_events)
     if anchor is None:
         return None
-    gt = float(game_time_s)
 
     # Walk waves forward from the anchor; first cannon wave whose spawn time is
     # at/after now is the answer.
@@ -591,17 +631,15 @@ def inhibitor_callouts(inhib_events: object, game_time_s: float) -> list[dict]:
     """
     if not isinstance(inhib_events, list):
         return []
-    try:
-        gt = float(game_time_s)
-    except (TypeError, ValueError):
+    gt = _finite(game_time_s)
+    if gt is None:
         gt = 0.0
     out: list[dict] = []
     for ev in inhib_events:
         if not isinstance(ev, dict):
             continue
-        try:
-            down_at = float(ev.get("down_at_s"))
-        except (TypeError, ValueError):
+        down_at = _finite(ev.get("down_at_s"))
+        if down_at is None:
             continue
         eta = (down_at + _INHIB_RESPAWN_S) - gt
         if eta <= 0:
@@ -635,9 +673,8 @@ def structure_siege_callout(
     order). Team side is deliberately NOT claimed - a wrong side is worse than
     none, and the operator already sees which structure fell.
     """
-    try:
-        gt = float(game_time_s)
-    except (TypeError, ValueError):
+    gt = _finite(game_time_s)
+    if gt is None:
         return []
 
     def _has_recent(evs: object) -> bool:
@@ -646,9 +683,8 @@ def structure_siege_callout(
         for ev in evs:
             if not isinstance(ev, dict):
                 continue
-            try:
-                d = float(ev.get("down_at_s"))
-            except (TypeError, ValueError):
+            d = _finite(ev.get("down_at_s"))
+            if d is None:
                 continue
             if 0.0 <= (gt - d) <= recency_s:
                 return True
@@ -708,9 +744,8 @@ def epic_buff_callouts(objective_events: object, game_time_s: float) -> list[dic
     """
     if not isinstance(objective_events, list):
         return []
-    try:
-        gt = float(game_time_s)
-    except (TypeError, ValueError):
+    gt = _finite(game_time_s)
+    if gt is None:
         gt = 0.0
     out: list[dict] = []
     for ev in objective_events:
@@ -722,9 +757,8 @@ def epic_buff_callouts(objective_events: object, game_time_s: float) -> list[dic
         side = ev.get("killer_team")
         if side not in ("ally", "enemy"):
             continue  # the side IS the value; never render an unsided epic buff
-        try:
-            down_at = float(ev.get("down_at_s"))
-        except (TypeError, ValueError):
+        down_at = _finite(ev.get("down_at_s"))
+        if down_at is None:
             continue
         remaining = (down_at + _EPIC_BUFF_S[kind]) - gt
         if remaining <= 0:
@@ -780,9 +814,8 @@ def _locked_element(objective_events: object) -> str:
         dt = ev.get("dragon_type")
         if not isinstance(dt, str) or not dt.strip():
             continue
-        try:
-            t = float(ev.get("down_at_s"))
-        except (TypeError, ValueError):
+        t = _finite(ev.get("down_at_s"))
+        if t is None:
             continue
         if latest_t is None or t > latest_t:
             latest_t = t
@@ -871,17 +904,27 @@ def _sort_key(c: dict) -> tuple[int, float]:
     """Sort callouts active-first, then by ascending ETA, None last.
 
     Returns (bucket, eta) where bucket 0 = active (eta_s <= 0), 1 =
-    upcoming with a numeric eta, 2 = unknown eta (None). Within bucket 1
-    sort by ascending eta. None etas sort to the very end deterministically.
+    upcoming with a numeric eta, 2 = unknown eta (None OR non-finite).
+    Within bucket 1 sort by ascending eta. Unknown etas sort to the very end
+    deterministically.
+
+    A non-finite eta joins the None bucket rather than bucket 1. NaN compares
+    False against everything, so ``eta <= 0`` was False and a NaN key landed
+    in bucket 1, where list.sort() then produced an order that depends on the
+    input permutation - the exact opposite of the "deterministically" this
+    docstring promises. This function is also imported by
+    ``dashboard/_deterministic_coaching.py:50`` to sort rows merged from OTHER
+    producers, so it hardens against a non-finite eta this module can no
+    longer originate but a future sibling still could.
     """
-    eta = c.get("eta_s")
+    eta = _finite(c.get("eta_s"))
     if eta is None:
         return (2, 0.0)
     if eta <= 0:
         # Active. Sort most-recently-active (eta closest to 0 from below)
         # first by using -eta so eta=0 beats eta=-25.
         return (0, -eta)
-    return (1, float(eta))
+    return (1, eta)
 
 
 def next_callouts(
@@ -921,14 +964,30 @@ def next_callouts(
             callout is emitted (correct-by-construction; see recall_callout).
         inhib_events: list of ``{down_at_s, name}`` InhibKilled events (SR
             only). Each still-down inhibitor yields a respawn-timing callout
-            300s after it fell (see inhibitor_callouts).
+            300s after it fell (see inhibitor_callouts). Also feeds the
+            instant siege callout.
         objective_events: list of ``{name, killer_team, down_at_s}`` Baron/Elder
             kill events (SR only). Each live epic buff yields a sided expiry
             countdown (see epic_buff_callouts).
+        turret_events: list of ``{down_at_s, name}`` TurretKilled events. Feeds
+            the instant siege callout only (SR + ARAM).
+        minion_events: list of ``{at_s}`` MinionsSpawning events, the anchor
+            for the RM-124 wave/cannon clock.
+        enable_wave: emit the wave/cannon row. DEFAULT FALSE - the cadence
+            table is provisional and do-not-flip-blind until validated
+            against one real game.
+        max_n: cap on returned list length. None or a negative value means no
+            cap; an uncoercible value fails soft to the same "no cap".
 
     Returns:
         list of dicts ``{tag, line, eta_s, kind}`` where:
-          - kind in {objective, level_spike, item_spike, recall, epic_buff, wave}
+          - kind in {objective, level_spike, item_spike, recall, epic_buff,
+            inhibitor, siege, wave}. EIGHT kinds - ``inhibitor`` and ``siege``
+            were absent from this list until lane 8 cycle 44 even though the
+            function has always emitted them, and
+            ``web/js/panels/callouts.js`` stamps the kind into ``data-kind``
+            for CSS, so a style map built from this docstring silently
+            unstyled two of the eight row types.
           - eta_s is seconds-to-event; <= 0 means active/just-happened;
             None means the ETA is not deterministic (level/item spikes).
         Sorted active-first, then ascending ETA, None-ETA last.
@@ -939,18 +998,15 @@ def next_callouts(
     if m not in _KNOWN_MODES:
         return []
 
-    try:
-        gt = float(game_time_s)
-    except (TypeError, ValueError):
+    # Each scalar takes the SAME fallback an uncoercible value always took;
+    # the defect was that a non-finite value RAISED instead of reaching one.
+    gt = _finite(game_time_s)
+    if gt is None:
         gt = 0.0
-    try:
-        lvl = int(level)
-    except (TypeError, ValueError):
-        lvl = 1
-    try:
-        legs = int(legendary_count)
-    except (TypeError, ValueError):
-        legs = 0
+    _lvl_f = _finite(level)
+    lvl = 1 if _lvl_f is None else int(_lvl_f)
+    _legs_f = _finite(legendary_count)
+    legs = 0 if _legs_f is None else int(_legs_f)
 
     callouts: list[dict] = []
     if m in _OBJECTIVE_MODES:
@@ -982,6 +1038,14 @@ def next_callouts(
 
     callouts.sort(key=_sort_key)
 
-    if max_n is not None and max_n >= 0:
-        return callouts[:max_n]
+    # max_n was the ONE numeric parameter here with no coercion guard, in a
+    # function whose whole contract is fail-soft: max_n="3" raised TypeError
+    # ("'>=' not supported between 'str' and 'int'") straight out of it, and
+    # max_n=True silently returned exactly one row because bool is an int.
+    # An uncoercible cap joins None and -1, which ALREADY mean "no cap" and
+    # are pinned that way by tests/test_event_callouts.py:276 - so this adds
+    # no third behaviour.
+    cap = max_n if isinstance(max_n, int) and not isinstance(max_n, bool) else None
+    if cap is not None and cap >= 0:
+        return callouts[:cap]
     return callouts
