@@ -20,8 +20,18 @@ Only the mapping lives here. Writes live in the backfill entry point, which
 refuses to run unless the oracle passes.
 """
 
+import logging
+import pathlib
+
 from core.rofl_archive import DEFAULT_ACCOUNTS
 from lcu.lcu_postgame_collector import _s
+
+logger = logging.getLogger("rc.rofl_stats_backfill")
+
+_VERSION_LENGTH_OFFSET = 14
+_VERSION_ALPHABET = "0123456789."
+# 15-byte preamble plus the widest a single length byte can declare.
+_VERSION_FIELD_END = _VERSION_LENGTH_OFFSET + 1 + 255
 
 # participants column -> engine / Match-V5 key candidates, most specific first.
 COLUMN_ALIASES = {
@@ -165,6 +175,55 @@ TEXT_COLUMNS = {
 }
 
 
+def _load_sidecar(path):
+    """Return the parsed sidecar, or raise ValueError describing the defect.
+
+    Sidecars are written by a separate process (core.rofl_archive) and are
+    globbed wholesale by tools/rofl_tracked_backfill.py, so a truncated or
+    half-written file is an ordinary event, not an exceptional one. Every
+    defect is normalised to ValueError so one caller-side guard covers all of
+    them.
+
+    Encoding is pinned because read_text() with no encoding resolves to the
+    locale codepage (cp1252 here) while the writer declares utf-8. This is
+    DEFENCE IN DEPTH, not a live bug, and the honest reason is worth stating:
+    core/rofl_archive.py:811 serializes at the default ensure_ascii=True, so
+    every sidecar it writes is pure ASCII (measured: 0 non-ASCII bytes across
+    all 17 live sidecars) and cp1252 decodes that identically to utf-8. The
+    pin matters the day that writer passes ensure_ascii=False, or a sidecar
+    arrives from anywhere else.
+    """
+    import json
+
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"unreadable sidecar: {exc}") from exc
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"sidecar is not valid UTF-8: {exc}") from exc
+    try:
+        sidecar = json.loads(raw)
+    except ValueError as exc:
+        raise ValueError(f"sidecar is not valid JSON: {exc}") from exc
+    if not isinstance(sidecar, dict):
+        raise ValueError(f"sidecar is {type(sidecar).__name__}, not an object")
+    match_id = sidecar.get("match_id")
+    if not isinstance(match_id, str) or not match_id:
+        raise ValueError(f"sidecar match_id is {match_id!r}, not a non-empty string")
+    players = sidecar.get("players")
+    if not isinstance(players, list):
+        raise ValueError(f"sidecar players is {type(players).__name__}, not a list")
+    if not all(isinstance(entry, dict) for entry in players):
+        raise ValueError("sidecar players holds non-object entries")
+    return sidecar
+
+
+def _record_failure(report, path, exc):
+    """Log and record one unusable sidecar, so the sweep can carry on."""
+    logger.warning("skipping unusable sidecar %s: %s", path.name, exc)
+    report["failed"].append((str(path), str(exc)))
+
+
 def map_rofl_player(player: dict, index: int) -> dict:
     """Return a participants-shaped dict for one sidecar player entry.
 
@@ -195,13 +254,45 @@ def read_rofl_game_version(path) -> str:
     This is the ONLY match-level fact the container yields in plaintext. The
     body is zstd-compressed, so queue_id and game_mode are NOT recoverable -
     Replay Tool Z16 does not read them either, it infers the MAP from player stats.
+
+    Raises ValueError, and ONLY ValueError, for every rejected container: a
+    wrong magic, a header too short to hold the length byte, a declared length
+    that overruns the file, non-ASCII version bytes, or a version carrying
+    anything but digits and dots. Callers guard one exception type.
     """
     with open(path, "rb") as handle:
-        head = handle.read(64)
+        head = handle.read(_VERSION_FIELD_END)
     if head[:4] != b"RIOT":
         raise ValueError(f"not a .rofl container: {path}")
-    length = head[14]
-    return head[15 : 15 + length].decode("ascii")
+    # These bytes are Riot's, not ours, and a partially-written or truncated
+    # container reaches here routinely. Every rejection below used to escape as
+    # something other than ValueError, past callers guarding ValueError:
+    # a short header raised IndexError, and non-ASCII bytes UnicodeDecodeError.
+    if len(head) <= _VERSION_LENGTH_OFFSET:
+        raise ValueError(
+            f"truncated .rofl header, {len(head)} bytes, need at least "
+            f"{_VERSION_LENGTH_OFFSET + 1}: {path}"
+        )
+    length = head[_VERSION_LENGTH_OFFSET]
+    raw = head[_VERSION_LENGTH_OFFSET + 1 : _VERSION_LENGTH_OFFSET + 1 + length]
+    # A slice never raises, it clips - so a length byte larger than the file
+    # silently returned a SHORT version rather than failing.
+    if len(raw) != length:
+        raise ValueError(
+            f".rofl header declares a {length}-byte version but only "
+            f"{len(raw)} bytes follow: {path}"
+        )
+    try:
+        version = raw.decode("ascii")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"non-ASCII .rofl version field: {path}") from exc
+    # The declared length is not self-checking: a length byte larger than the
+    # true version simply appends compressed-body bytes to the string, which is
+    # then stored verbatim in matches.game_version. A version is digits and
+    # dots only, so an out-of-alphabet byte proves the length was wrong.
+    if not version or version.strip(_VERSION_ALPHABET) != "":
+        raise ValueError(f"implausible .rofl version field {version!r}: {path}")
+    return version
 
 
 def _patch_from_version(version: str) -> str:
@@ -224,9 +315,24 @@ def _champion_id_map(conn) -> dict:
 
 
 def _find_rofl(archive_dir, match_id):
-    """Locate the container for a match id, tolerating both name separators."""
+    """Locate the container for a match id, tolerating both name separators.
+
+    CONTAINED, because match_id comes from the sidecar and the sidecar is a
+    file RC did not author: a match_id of "../x" used to resolve OUTSIDE the
+    archive and hand back a container from anywhere on disk, whose header then
+    became this match's game_version. Uses the same resolve-then-relative_to
+    shape as dashboard/routes_static.py:64-67, whose own comment records that a
+    prefix check plus a ".." filter was deliberately replaced by this, both
+    being bypassable.
+    """
+    root = pathlib.Path(archive_dir).resolve()
     for name in (f"{match_id}.rofl", f"{match_id.replace('_', '-')}.rofl"):
-        candidate = archive_dir / name
+        candidate = (root / name).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            logger.warning("refusing .rofl path outside the archive: %r", match_id)
+            continue
         if candidate.is_file():
             return candidate
     return None
@@ -299,6 +405,12 @@ def backfill_tracked_summary(
     the participants the target DB already holds. Names that do not resolve are
     reported in `unresolved_champions` and stored as NULL, never guessed.
 
+    A sidecar that cannot be read or is the wrong shape is reported in
+    `failed` as (path, reason) and SKIPPED, never raised: the loop runs inside
+    an open transaction, so an escaping exception used to discard every update
+    the sweep had already made (see core/rofl_archive.py:655-665 for the same
+    class, fixed there as item-1176).
+
     Idempotent: a row that already carries a tracked_champion_name is reported
     in `skipped_already_filled` and left alone. A sidecar whose match is not in
     the DB at all is reported in `net_new` (that is the INSERT path's job, see
@@ -317,6 +429,7 @@ def backfill_tracked_summary(
         "skipped_already_filled": [],
         "net_new": [],
         "unresolved_champions": [],
+        "failed": [],
     }
 
     conn = sqlite3.connect(db_path)
@@ -325,7 +438,11 @@ def backfill_tracked_summary(
         resolved_ids = champion_ids if champion_ids is not None else _champion_id_map(conn)
 
         for sidecar_path in sidecar_paths:
-            sidecar = json.loads(sidecar_path.read_text())
+            try:
+                sidecar = _load_sidecar(sidecar_path)
+            except ValueError as exc:
+                _record_failure(report, sidecar_path, exc)
+                continue
             match_id = sidecar["match_id"]
 
             row = conn.execute(
@@ -380,6 +497,9 @@ def backfill_participants(
 
     Deliberate constraints:
 
+    * A sidecar that cannot be read or is the wrong shape is reported in
+      `failed` as (path, reason) and skipped, never raised - one bad file must
+      not roll back the inserts already made in the same transaction.
     * Matches shorter than `min_duration_s` are skipped as remakes.
     * Already-present matches are skipped, so the call is idempotent.
     * A minimal `matches` stub is written so participants are never orphaned
@@ -408,6 +528,7 @@ def backfill_participants(
         "skipped_short": [],
         "skipped_present": [],
         "unresolved_champions": [],
+        "failed": [],
     }
 
     conn = sqlite3.connect(db_path)
@@ -419,9 +540,13 @@ def backfill_participants(
         }
 
         for sidecar_path in sidecar_paths:
-            sidecar = json.loads(sidecar_path.read_text())
-            match_id = sidecar["match_id"]
-            duration_s = sidecar["game_length_ms"] // 1000
+            try:
+                sidecar = _load_sidecar(sidecar_path)
+                match_id = sidecar["match_id"]
+                duration_s = int(sidecar["game_length_ms"]) // 1000
+            except (ValueError, TypeError, KeyError) as exc:
+                _record_failure(report, sidecar_path, exc)
+                continue
 
             if match_id in present:
                 report["skipped_present"].append(match_id)
@@ -431,7 +556,15 @@ def backfill_participants(
                 continue
 
             rofl = _find_rofl(sidecar_path.parent.parent, match_id)
-            version = read_rofl_game_version(rofl) if rofl else None
+            # A corrupt container must not cost the whole sweep either: the
+            # version is a nice-to-have column, so degrade it to NULL and keep
+            # the participant rows, which are the point of the pass.
+            version = None
+            if rofl:
+                try:
+                    version = read_rofl_game_version(rofl)
+                except ValueError as exc:
+                    logger.warning("unreadable .rofl header for %s: %s", match_id, exc)
             queue_id, game_mode = queue_overrides.get(match_id, (None, None))
 
             # Close the tracked_* hole on the way in: a net-new operator-present
