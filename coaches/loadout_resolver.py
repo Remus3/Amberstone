@@ -29,10 +29,17 @@ from agents.daemon_slayer._melee_ranged import (
     attackrange_is_ranged,
 )
 
-# These are private constants in the frozen lcu_rune_writer, but we
-# need them to translate variant rune names into LCU perk IDs. We're
-# not modifying the file - only importing constants.
-from lcu.lcu_rune_writer import _TREES, build_perk_ids, load_rune_rec
+# Private constants of lcu_rune_writer, needed to translate variant rune
+# names into LCU perk IDs.
+#
+# NOT FROZEN - corrected lane 8 cycle 39. This comment used to call
+# lcu_rune_writer frozen. The CLAUDE.md frozen list carries 16 entries and
+# lcu/lcu_rune_writer.py is not among them; only lcu/lcu_client.py is, and
+# LEDGER item-360 states the distinction explicitly. Four source files plus
+# one test repeated the false claim, which would have deterred exactly the
+# cycle-39 fix these imports now carry.
+from lcu.lcu_rune_writer import (_TREES, build_perk_ids, load_rune_rec,
+                                  resolve_tree_ids)
 
 _log = logging.getLogger("rc.loadout")
 
@@ -460,8 +467,9 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
     if keystone and primary and secondary:
         is_aram = (mode_key == "aram")
         perk_ids = build_perk_ids(keystone, primary, secondary, is_aram)
-        primary_id = _TREES.get(primary, 0)
-        sub_id = _TREES.get(secondary, 0)
+        # Lane 8 cycle 39: mirrors build_perk_ids' colliding-secondary
+        # substitution so the style ids describe the perk ids above.
+        primary_id, sub_id = resolve_tree_ids(primary, secondary)
         if perk_ids and primary_id and sub_id:
             out["rune_cmd"] = {
                 "cmd": "apply_runes",

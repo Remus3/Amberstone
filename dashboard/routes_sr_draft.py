@@ -87,7 +87,8 @@ def _build_rune_cmd(champion: str, key: str, runes: dict) -> "dict | None":
     """Translate a profile's runes dict -> `apply_runes` LCU command.
 
     Returns None when the keystone or trees aren't recognised by the
-    frozen `lcu.lcu_rune_writer.build_perk_ids` resolver - in that case
+    `lcu.lcu_rune_writer.build_perk_ids` resolver (NOT frozen - the claim
+    that it was is corrected lane 8 cycle 39) - in that case
     the caller skips the rune push and surfaces a note. The shard3=5002
     SR bug in the rune writer is documented in
     `project_rune_writer_shard3_not_applied.md`; SR-draft variants ride
@@ -101,13 +102,14 @@ def _build_rune_cmd(champion: str, key: str, runes: dict) -> "dict | None":
     if not (keystone and primary and secondary):
         return None
     try:
-        from lcu.lcu_rune_writer import _TREES, build_perk_ids
+        from lcu.lcu_rune_writer import build_perk_ids, resolve_tree_ids
     except Exception as exc:  # noqa: BLE001
         log.warning("api/sr-draft/apply rune import: %s", exc)
         return None
     perk_ids = build_perk_ids(keystone, primary, secondary, is_aram=False)
-    primary_id = _TREES.get(primary, 0)
-    sub_id     = _TREES.get(secondary, 0)
+    # Lane 8 cycle 39: these names arrive in a POST body, so primary == secondary
+    # is reachable. resolve_tree_ids mirrors build_perk_ids' substitution.
+    primary_id, sub_id = resolve_tree_ids(primary, secondary)
     if not (perk_ids and primary_id and sub_id):
         return None
     return {

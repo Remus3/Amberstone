@@ -6,7 +6,7 @@ pageId = the dedup key: two builds that resolve identically collapse to one page
 a keystone/tree difference mints a distinct page. enumerate_pages(champ, mode)
 walks list_variants + build_paths + each variant's auto (recommended) page,
 dedups, and maps each buildId -> its recommendedPageId. NON-frozen: it only
-IMPORTS build_perk_ids (frozen). See docs/specs/2026-07-11-overlay-item1-...IMPL.md.
+IMPORTS build_perk_ids (NOT frozen - corrected lane 8 cycle 39). See docs/specs/2026-07-11-overlay-item1-...IMPL.md.
 """
 from __future__ import annotations
 
