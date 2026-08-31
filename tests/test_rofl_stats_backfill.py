@@ -11,6 +11,7 @@ mapping is real work rather than a rename.
 """
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -44,7 +45,14 @@ ORACLE_MATCH_IDS = [
 # papered over here. See that module's docstring for why each was dropped.
 ORACLE_COLUMNS = [*COLUMN_ALIASES, *TEXT_COLUMNS, "win"]
 
-pytestmark = pytest.mark.skipif(
+# Lane 8 cycle 45: this gate was a MODULE-level pytestmark, so it skipped all
+# 25 tests this file then collected, wherever the live archive is absent -
+# which is every worktree (the
+# DB is gitignored and DB_PATH resolves under the tree root) and CI. Seven of
+# the backfill tests build their own DB via _hermetic_db and need neither
+# artifact, so they were being skipped for no reason and had never run in CI.
+# The gate now names only the tests that genuinely read production.
+requires_live_archive = pytest.mark.skipif(
     not SIDECAR_DIR.is_dir() or not DB_PATH.is_file(),
     reason="rofl sidecar archive or rewind_history.db not present on this host",
 )
@@ -63,6 +71,7 @@ def _db_rows(match_id):
         conn.close()
 
 
+@requires_live_archive
 def test_sidecar_puuid_is_not_the_match_v5_puuid():
     """The sidecar carries a RAW uuid; the DB carries the key-encrypted puuid.
 
@@ -77,6 +86,7 @@ def test_sidecar_puuid_is_not_the_match_v5_puuid():
     assert not (sidecar_ids & db_ids), "sidecar and Match-V5 puuid namespaces overlap"
 
 
+@requires_live_archive
 @pytest.mark.parametrize("match_id", ORACLE_MATCH_IDS)
 def test_sidecar_player_matches_match_v5_row(match_id):
     """A sidecar-derived row agrees with the Match-V5 row already in the DB."""
@@ -159,12 +169,14 @@ def empty_db(tmp_path):
     return path
 
 
+@requires_live_archive
 def test_read_rofl_game_version_reads_the_header():
     """Game version IS carried in the .rofl header, unlike queue and mode."""
     version = read_rofl_game_version(ARCHIVE_DIR / "NA1-5604806601.rofl")
     assert version == "16.14.794.5912"
 
 
+@requires_live_archive
 @pytest.mark.parametrize("match_id", ORACLE_MATCH_IDS)
 def test_rofl_header_version_matches_match_v5(match_id):
     """The header parse is oracle-checked, same as the stat mapping.
@@ -194,6 +206,7 @@ def test_rofl_header_version_matches_match_v5(match_id):
     assert read_rofl_game_version(path) == expected
 
 
+@requires_live_archive
 def test_backfill_skips_remakes_below_the_duration_floor(empty_db, champion_ids):
     paths = [SIDECAR_DIR / f"{m}.json" for m in REMAKE_MATCH_IDS]
     report = backfill_participants(empty_db, paths, min_duration_s=300, champion_ids=champion_ids)
@@ -203,6 +216,7 @@ def test_backfill_skips_remakes_below_the_duration_floor(empty_db, champion_ids)
     assert sorted(report["skipped_short"]) == sorted(REMAKE_MATCH_IDS)
 
 
+@requires_live_archive
 def test_backfill_inserts_net_new_participants(empty_db, champion_ids):
     paths = [SIDECAR_DIR / f"{m}.json" for m in NEW_MATCH_IDS]
     report = backfill_participants(empty_db, paths, min_duration_s=300, champion_ids=champion_ids)
@@ -244,6 +258,7 @@ def test_backfill_inserts_net_new_participants(empty_db, champion_ids):
         conn.close()
 
 
+@requires_live_archive
 def test_backfill_is_idempotent(empty_db, champion_ids):
     paths = [SIDECAR_DIR / f"{m}.json" for m in NEW_MATCH_IDS]
     backfill_participants(empty_db, paths, min_duration_s=300, champion_ids=champion_ids)
@@ -254,6 +269,7 @@ def test_backfill_is_idempotent(empty_db, champion_ids):
     assert sorted(report["skipped_present"]) == sorted(NEW_MATCH_IDS)
 
 
+@requires_live_archive
 def test_backfill_dry_run_writes_nothing(empty_db, champion_ids):
     paths = [SIDECAR_DIR / f"{m}.json" for m in NEW_MATCH_IDS]
     report = backfill_participants(empty_db, paths, min_duration_s=300, dry_run=True, champion_ids=champion_ids)
@@ -569,3 +585,295 @@ def test_backfill_sweeps_all_null_rows_regardless_of_queue(tmp_path):
         row = _match_row(db, match_id)
         assert row["tracked_champion_name"] == "Vayne"
         assert row["queue_id"] == queue_id
+
+
+# ---------------------------------------------------------------------------
+# Lane 8 cycle 45: malformed-input resilience.
+#
+# core/rofl_archive.py:655-665 already carries the fix for this exact class -
+# one wrong-shape .rofl aborted the whole extract_archive loop (item-1176).
+# The backfill half never got it, and is strictly worse: the loop body runs
+# INSIDE an open transaction, so an abort at file N discards the N-1 updates
+# that already succeeded. The live caller (tools/rofl_tracked_backfill.py:69)
+# globs *.json, so one partially-written sidecar poisons every future run.
+# ---------------------------------------------------------------------------
+
+
+def _write_broken_sidecar(stats_dir, name, body):
+    stats_dir.mkdir(parents=True, exist_ok=True)
+    path = stats_dir / f"{name}.json"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def test_one_malformed_sidecar_does_not_discard_the_whole_run(tmp_path):
+    """A bad sidecar is skipped and reported; the good ones still commit.
+
+    Regression: json.loads raised out of the per-file loop, past the pending
+    UPDATE for NA1_1, and conn.close() in the finally block rolled it back.
+    """
+    db = _hermetic_db(tmp_path)
+    players = _lobby_with_operator()
+    _seed_match(db, "NA1_1", 2400, "KIWI", players)
+    _seed_match(db, "NA1_2", 2400, "KIWI", players)
+    good1 = _write_sidecar(tmp_path / "stats", "NA1_1", players)
+    bad = _write_broken_sidecar(tmp_path / "stats", "NA1_bad", "{not valid json")
+    good2 = _write_sidecar(tmp_path / "stats", "NA1_2", players)
+
+    report = backfill_tracked_summary(
+        db, [good1, bad, good2], operator_accounts=[OPERATOR], champion_ids=CHAMP_IDS
+    )
+
+    assert sorted(report["updated"]) == ["NA1_1", "NA1_2"]
+    assert [Path(p).name for p, _ in report["failed"]] == ["NA1_bad.json"]
+    # The commit actually landed - the pre-fix rollback left both of these None.
+    for match_id in ("NA1_1", "NA1_2"):
+        assert _match_row(db, match_id)["tracked_champion_name"] == "Vayne"
+
+
+@pytest.mark.parametrize(
+    "label, body",
+    [
+        ("not_json", "{not valid json"),
+        ("missing_match_id", '{"players": [], "game_length_ms": 1250000}'),
+        ("missing_players", '{"match_id": "NA1_9", "game_length_ms": 1250000}'),
+        ("players_not_a_list", '{"match_id": "NA1_9", "players": 3, '
+                               '"game_length_ms": 1250000}'),
+    ],
+)
+def test_every_malformed_sidecar_shape_is_survived(tmp_path, label, body):
+    """Wrong SHAPE is as common as wrong syntax and must not abort either."""
+    db = _hermetic_db(tmp_path)
+    players = _lobby_with_operator()
+    _seed_match(db, "NA1_1", 2400, "KIWI", players)
+    good = _write_sidecar(tmp_path / "stats", "NA1_1", players)
+    bad = _write_broken_sidecar(tmp_path / "stats", f"bad_{label}", body)
+
+    report = backfill_tracked_summary(
+        db, [bad, good], operator_accounts=[OPERATOR], champion_ids=CHAMP_IDS
+    )
+
+    assert report["updated"] == ["NA1_1"]
+    assert len(report["failed"]) == 1
+    assert _match_row(db, "NA1_1")["tracked_champion_name"] == "Vayne"
+
+
+def test_malformed_sidecar_does_not_abort_participant_inserts(tmp_path):
+    """backfill_participants carries the same loop and needs the same guard."""
+    db = _hermetic_db(tmp_path)
+    players = _lobby_with_operator()
+    bad = _write_broken_sidecar(tmp_path / "stats", "NA1_bad", "{not valid json")
+    good = _write_sidecar(tmp_path / "stats", "NA1_7", players)
+
+    report = backfill_participants(
+        db, [bad, good], champion_ids=CHAMP_IDS, operator_accounts=[OPERATOR]
+    )
+
+    assert report["inserted_matches"] == 1
+    assert report["inserted_participants"] == len(players)
+    assert [Path(p).name for p, _ in report["failed"]] == ["NA1_bad.json"]
+
+
+def test_sidecars_are_decoded_as_utf8_under_a_non_utf8_codepage(tmp_path):
+    """A non-ASCII RIOT_ID_GAME_NAME must survive the read.
+
+    read_text() with no encoding resolves to the locale codepage (cp1252 on
+    this box) while the writer declares utf-8. This guard is DEFENCE IN
+    DEPTH and the byte pattern below is one production cannot currently
+    emit: core/rofl_archive.py:811 serializes at the default
+    ensure_ascii=True, so real sidecars are pure ASCII (measured 0 non-ASCII
+    bytes across all 17) and cp1252 decodes those identically. It bites the
+    day that writer passes ensure_ascii=False, or a sidecar arrives from
+    elsewhere. In-process the assertion is vacuous while this session
+    carries PYTHONUTF8=1, so it runs in a subprocess with PYTHONUTF8=0.
+    NOTE PYTHONUTF8 is NOT set machine-wide: it is absent from both the User
+    and Machine registry and is only inherited by this process tree, so a
+    process started outside it would not have it either.
+    """
+    import subprocess
+    import sys
+
+    repo = Path(__file__).resolve().parent.parent
+    sidecar = tmp_path / "NA1_1.json"
+    # Escaped, not literal: this repo is 7-bit ASCII in authored bytes.
+    name = "\u30d7\u30ec\u30a4\u30e4\u30fc"  # katakana, 5 non-ASCII chars
+    sidecar.write_bytes(
+        json.dumps(
+            {
+                "match_id": "NA1_1",
+                "game_length_ms": 1250000,
+                "players": [{"RIOT_ID_GAME_NAME": name}],
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
+    )
+
+    script = chr(10).join([
+        "import sys",
+        f"sys.path.insert(0, {str(repo)!r})",
+        "from pathlib import Path",
+        "from core.rofl_stats_backfill import _load_sidecar",
+        f"d = _load_sidecar(Path({str(sidecar)!r}))",
+        "print(d['players'][0]['RIOT_ID_GAME_NAME'])",
+    ])
+
+    env = dict(os.environ, PYTHONUTF8="0", PYTHONIOENCODING="utf-8")
+    done = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True, text=True, encoding="utf-8", env=env,
+    )
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == name
+
+
+def test_cli_reports_and_exits_nonzero_when_a_sidecar_is_unusable(tmp_path, capsys):
+    """The CLI must SAY a sidecar was dropped, not silently skip it.
+
+    Trading a loud crash for a silent skip would be a worse bug than the one
+    the guard fixes, and a zero exit is exactly the "Last Result: 0 means
+    nothing happened" trap. So the skip is reported and the exit is 2, while
+    the good sidecar in the same run still lands.
+    """
+    from tools import rofl_tracked_backfill
+
+    db = _hermetic_db(tmp_path)
+    players = _lobby_with_operator()
+    _seed_match(db, "NA1_1", 2400, "KIWI", players)
+    archive = tmp_path / "arch"
+    _write_sidecar(archive / "stats", "NA1_1", players)
+    (archive / "stats" / "BAD.json").write_text("{truncated", encoding="utf-8")
+
+    code = rofl_tracked_backfill.main(
+        ["--archive", str(archive), "--db", str(db), "--no-extract", "--commit"]
+    )
+
+    assert code == 2
+    out = capsys.readouterr().out
+    assert "failed=1" in out
+    assert "BAD.json" in out
+    # The good sidecar in the same sweep still committed.
+    assert _match_row(db, "NA1_1")["tracked_champion_name"] == "Vayne"
+
+
+def test_find_rofl_cannot_escape_the_archive_directory(tmp_path):
+    """SECURITY: match_id comes from the sidecar and builds a filesystem path.
+
+    Before containment, a match_id of "../ESCAPED" resolved OUTSIDE the
+    archive and returned a container from anywhere on disk, whose header then
+    became that match's game_version. Found by the cycle-45 adversarial pass,
+    which refuted this dimension being marked N/A.
+    """
+    from core.rofl_stats_backfill import _find_rofl
+
+    archive = tmp_path / "archive"
+    (archive / "stats").mkdir(parents=True)
+    outside = tmp_path / "ESCAPED.rofl"
+    outside.write_bytes(b"RIOT" + bytes([0, 1]) + bytes(8) + bytes([4]) + b"1.2.")
+
+    assert _find_rofl(archive, "../ESCAPED") is None
+    # An absolute path must not be honoured either.
+    assert _find_rofl(archive, str(tmp_path / "ESCAPED")) is None
+    # The legitimate in-archive lookup still works, both separators.
+    good = archive / "NA1_9.rofl"
+    good.write_bytes(b"RIOT")
+    assert _find_rofl(archive, "NA1_9") == good.resolve()
+    dashed = archive / "NA1-8.rofl"
+    dashed.write_bytes(b"RIOT")
+    assert _find_rofl(archive, "NA1_8") == dashed.resolve()
+
+
+def test_sidecar_keys_can_never_become_sql_column_names():
+    """SECURITY: both INSERT/UPDATE statements are built with an f-string.
+
+    They are safe only because every column name is derived from a
+    module-level dict literal and never from sidecar data. That is a claim
+    about provenance, so it is pinned rather than asserted: a player entry
+    carrying a SQL fragment as a KEY must not contribute a column, and its
+    strings must survive only as bound parameter VALUES.
+    """
+    evil_key = "x); DROP TABLE participants;--"
+    row = map_rofl_player(
+        {
+            "RIOT_ID_GAME_NAME": evil_key,
+            "SKIN": "a'--",
+            evil_key: 1,
+            "CHAMPIONS_KILLED": 5,
+        },
+        0,
+    )
+    allowed = set(COLUMN_ALIASES) | set(TEXT_COLUMNS) | {
+        "participant_id", "champion_name", "rofl_uuid", "win",
+    }
+    assert [k for k in row if k not in allowed] == []
+    # The fragment is still present - as data, which is the point.
+    assert row["riot_id_game_name"] == evil_key
+
+
+# --- .rofl container header, on bytes RC did not author ---------------------
+
+
+def _write_header(tmp_path, name, payload):
+    path = tmp_path / name
+    path.write_bytes(payload)
+    return path
+
+
+def test_truncated_rofl_header_raises_value_error(tmp_path):
+    """A file ending mid-header raised a bare IndexError, not the documented
+    ValueError, so callers guarding ValueError lost the whole run."""
+    path = _write_header(tmp_path, "trunc.rofl", b"RIOT\x00\x01")
+    with pytest.raises(ValueError):
+        read_rofl_game_version(path)
+
+
+def test_rofl_length_byte_cannot_smuggle_body_bytes_into_the_version(tmp_path):
+    """The declared length is trusted blindly and the slice silently clips.
+
+    A length byte of 40 against a 14-char version appended 26 bytes of the
+    compressed body to the returned string, which is then stored verbatim in
+    matches.game_version.
+    """
+    payload = b"RIOT\x00\x01" + b"\x00" * 8 + bytes([40]) + b"16.14.794.5912" + b"A" * 200
+    path = _write_header(tmp_path, "liar.rofl", payload)
+    with pytest.raises(ValueError):
+        read_rofl_game_version(path)
+
+
+def test_non_ascii_rofl_version_raises_a_plain_value_error(tmp_path):
+    """Corrupt bytes in the version field raised UnicodeDecodeError.
+
+    Asserting only pytest.raises(ValueError) here is VACUOUS -
+    UnicodeDecodeError is itself a ValueError subclass, so that assertion
+    passed against the UNFIXED code. The contract the fix establishes is a
+    plain ValueError carrying the path, so pin the concrete type.
+    """
+    payload = b"RIOT\x00\x01" + b"\x00" * 8 + bytes([4]) + b"\xff\xfe\xfd\xfc"
+    path = _write_header(tmp_path, "nonascii.rofl", payload)
+    with pytest.raises(ValueError) as caught:
+        read_rofl_game_version(path)
+    assert type(caught.value) is ValueError
+    assert not isinstance(caught.value, UnicodeDecodeError)
+    assert "nonascii.rofl" in str(caught.value)
+
+
+def test_rofl_version_truncated_mid_field_is_rejected_not_silently_short(tmp_path):
+    """A file cut mid-version must fail, not return a shorter version.
+
+    Found by mutation testing: deleting the len(raw) != length check left the
+    whole suite green, because the alphabet check only catches a length byte
+    that overruns into NON-version bytes. Here the file ends mid-field and
+    every surviving byte is a legal version character, so the alphabet check
+    passes and the slice silently returns "16.14.79" for a declared 14.
+    """
+    payload = b"RIOT" + bytes([0, 1]) + bytes(8) + bytes([14]) + b"16.14.79"
+    path = _write_header(tmp_path, "cutshort.rofl", payload)
+    with pytest.raises(ValueError) as caught:
+        read_rofl_game_version(path)
+    assert "only 8 bytes follow" in str(caught.value)
+
+
+def test_well_formed_rofl_header_still_reads(tmp_path):
+    """Characterization: the happy path is unchanged by the hardening."""
+    payload = b"RIOT\x00\x01" + b"\x00" * 8 + bytes([14]) + b"16.14.794.5912" + b"A" * 60
+    path = _write_header(tmp_path, "good.rofl", payload)
+    assert read_rofl_game_version(path) == "16.14.794.5912"

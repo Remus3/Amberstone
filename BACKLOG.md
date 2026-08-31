@@ -423,3 +423,26 @@ _One line per still-open candidate. Full teardown context + every CLOSED verdict
 ### OBS + deterministic-CV + minimap capability
 
 Canonical home: `docs/OBS_CV_MINIMAP_PLAN.md` (full phased plan - OCR-field shadow-first coach wire-in NOW-next; OBS extension O1-O3; new deterministic-CV modules; minimap champion IDENTITY via `opencv-python`, the only genuinely new dep). Status + next steps: the ROADMAP.md RM-01 Lane-E row.
+
+### RM-310 - core/rofl_archive.py sidecar writes use a bare os.replace (LANE 8, Tier-1)
+
+Filed 2026-08-31 by lane 8 cycle 45 off the `core/rofl_stats_backfill.py` audit
+(LEDGER 1304). NOT fixed in-slice: it is a different file, and lane 8's unit of work
+is one file plus the direct callers whose contract changed. `rofl_archive` is neither.
+
+**Finding.** `core/rofl_archive.py` `_atomic_write_json` (and two siblings) finish with a
+bare `tmp.replace(target)` at `:812`, `:823` and `:839`. On Windows `os.replace` raises
+`PermissionError` (WinError 5) when any reader holds the target open - a poller reading
+the file for a few milliseconds is enough. `core/polled_json.py:41` `_replace_with_retry`
+already solves this with bounded backoff (~275 ms worst case, then re-raise) and its own
+comment cites `reference_os_replace_winerror5`; the rofl writer predates or missed it.
+
+**Severity is bounded and stated honestly.** Sidecars are read on demand by the backfill,
+not polled continuously by an overlay, so the collision window is far narrower than for
+`data/*.json`. This is a latent robustness gap, NOT a measured live failure: no WinError-5
+has been observed on this path. Cycle 45 hardened the READER against a torn/short file,
+which is the consequence; this row is the cause.
+
+**Acceptance.** The three sites route through `core.polled_json._replace_with_retry` (or
+`atomic_write_json`), plus a regression test that holds the target open and asserts the
+write still lands rather than raising. Mutation-test it: remove the retry and confirm RED.
