@@ -206,9 +206,9 @@ _LIVE_SUPPRESSED_EMPTY = {"choices": []}
 # inside `coach`, which is why the B4-a coach-field sweep did not reach them -
 # and they feed two of the only three mounts the overlay shell keeps visible
 # (web/css/overlay.css:127). Both are imperative at the source:
-#   core/event_callouts.py:119  "Your lvl-6 spike - look for all-in"
-#   core/event_callouts.py:127  "2-item spike - force fights now"
-#   core/event_callouts.py:107  "Drake spawns 5:00 - set up vision"
+#   core/event_callouts.py:120  "Your lvl-6 spike - look for all-in"
+#   core/event_callouts.py:128  "2-item spike - force fights now"
+#   core/event_callouts.py:108  "Drake spawns 5:00 - set up vision"
 #   core/lead_projection.py:211 "Big lead: dive or roam, snowball it now."
 # lead_projection's own source calls _LINES_BY_MODE a "per-mode directive
 # table" (core/lead_projection.py:321).

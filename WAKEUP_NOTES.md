@@ -4,6 +4,31 @@
 
 > Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-14, orchestrated-run docs sync (relocated BOTH `2026-08-12` blocks - RM-190 decided + the 3-day-outage recovery; newest 3 = orchestrated run `2026-08-14` + new-project design QA `2026-08-13b` + /sync-all-md `2026-08-13`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
+# 2026-08-31n - lane 8 cycle 44: the fail-soft guard on every numeric input was defeated by exactly the two values it existed to stop
+
+**Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1303. RM-304/305/306/307/308 filed; G2-46 filed live-gated.**
+
+Audited `core/event_callouts.py` (987 -> 1052 lines), picked on criterion 1: it parses the Live Client `:2999` event envelope and produces user-facing coach strings. Never lane-8 audited before (recall returned feature-add rows only). Live-reachable via `dashboard/_deterministic_coaching.py:776`.
+
+**THE HEADLINE: the guard and the hole were the same line.** Every numeric coercion was a bare `float(...)` under `except (TypeError, ValueError)`. That catches a string and a None and does NOT catch NaN or +/-Infinity, because `float('nan')` SUCCEEDS. Two consequences, different in kind: (1) `next_callouts` RAISED on a non-finite clock, and both callers swallow it with a bare `except Exception` and NO log line, so the whole deterministic coaching result blanked silently while the warm path served the last good value forever; (2) a non-finite `down_at_s` produced `eta_s: nan`, and `dashboard/routes_state.py:226` dumps at the default `allow_nan=True`, emitting a bare `NaN` token that browser `JSON.parse` rejects - one bad event field blanks the ENTIRE dashboard. Five other modules in this repo already reject that token with `allow_nan=False`; this one manufactured it.
+
+**A third handler class was found only by checking the `int()` sites after the `float()` ones:** `int(float('inf'))` raises OverflowError, which `(TypeError, ValueError)` does not catch either.
+
+Fix is one helper (`_finite()`, rejecting bool) routed through all 11 float sites and both int sites, each keeping the fallback an uncoercible value always took. `_sort_key` now buckets a non-finite eta with None instead of returning `(1, nan)`, which made `list.sort()` order depend on input permutation.
+
+**Three more fixed in-slice, two of them found by the independent audit pass:** `max_n` was the one numeric parameter with no guard (`max_n="3"` raised TypeError out of a fail-soft function); the docstring declared SIX kinds where the function emits EIGHT (`inhibitor` and `siege` missing, and the JS stamps kind into `data-kind` for CSS); and `test_all_lines_at_most_8_words` swept a helper that passes NO event kwargs, so it graded 3 of 8 kinds and two shipped 15- and 13-word siege lines had never been seen by it.
+
+**MUTATION TESTING CAUGHT TWO VACUOUS TESTS OF MY OWN.** `test_r4` / `test_r17` compared the NaN result to the junk-string result - but post-fix both take the SAME branch, so moving the fallback moved both sides together and they stayed green. Re-anchored on literal values. A third survivor showed `test_r20` was substring-matching the whole docstring. **21 mutants, 21 killed**, every restore sha256-verified.
+
+**Suites (repo root, fresh):** RC 20141 passed / 144 skipped / 2 failed / 4697 subtests; DS 10684 passed / 0 failed. Both failures INHERITED and proven so - neither file references this module (grep 0), and both are external constants (CLI 2.1.251 vs pinned 2.1.220; live DS ENGINE_VERSION vs this branch).
+
+**Backfill (6e): measured NEGATIVE.** 418 JSON files across worktree `data/` + `ops/runtime/` and 960 across an exhaustive worktree walk, ZERO non-finite values and zero unparseable in both; live `/api/state` re-encodes clean under `allow_nan=False`. Nothing to repair. **The verifier refuted my first count of '569', which was a probe artifact and reproducible from no directory pairing - the substance survived, the denominator did not.**
+
+**Nine inbound line citations re-pointed** after the +65-line shift (+1 from `import math`, +41 from the helper), across `_state_builder.py`, `district_fusion.py`, `macro_context.py`, `macro_decision_tree.py` and one dated doc. Two were INHERITED drift, corrected rather than claimed.
+
+**Doc budget: FIFTH consecutive cycle to pay it rather than fix it.** Merged two duplicate RM-164 pointers, relocated RM-127's row verbatim to `docs/ROADMAP_HISTORY.md` with a stub, compacted RM-33, and cut my own row to 915 bytes. 81876 bytes, 44 spare. **The cause is RM-284 (LANE 7)** - cycle 41 predicted it, cycle 43 called itself the fourth.
+
+**NEXT:** RM-305/306/308 are the natural lane-8 follow-ups on this same file and all three have acceptance criteria in `BACKLOG.md`. RM-307 needs ONE live `:2999` capture and cannot be drained headless - its fixture is parallel by construction.
 # 2026-08-31m - lane 8 cycle 43: the advice publisher had no degraded branch, so an outage left seven readers serving the previous round forever
 
 **Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1302. RM-301/302/303 filed.**
