@@ -328,5 +328,18 @@ def test_synthetic_session_ids_unique_across_threads():
 ])
 def test_no_banned_typography(rel):
     text = (_REPO_ROOT / rel).read_text(encoding="utf-8")
-    bad = sorted({c for c in text if c in _BANNED_CHARS})
-    assert not bad, f"{rel} contains banned chars: {[hex(ord(c)) for c in bad]}"
+    # CATCH-ALL, not the six historical glyphs. `_BANNED_CHARS` names the
+    # six for a readable diagnostic, but CLAUDE.md's rule is "7-bit ASCII
+    # authored content", and a guard scoped to six codepoints cannot
+    # enforce it. tools/precommit_gate.py:_glyph_hits was widened the same
+    # way on 2026-07-28 after U+00D7 reached the repo through a gate
+    # "working exactly as written"; that widening reached the gate and not
+    # this test, so four U+00B7 sat in core/obs_publisher.py - a file this
+    # very parametrize list names - and this assertion passed green.
+    bad = sorted({c for c in text if ord(c) > 126})
+    named = sorted({c for c in bad if c in _BANNED_CHARS})
+    assert not bad, (
+        f"{rel} contains non-ASCII: "
+        f"{[f'U+{ord(c):04X}' for c in bad]}"
+        + (f" (banned glyphs: {[hex(ord(c)) for c in named]})" if named else "")
+    )
