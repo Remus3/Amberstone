@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-# ONE cited source for SR epic spawn timings (core/event_callouts.py:66-69).
+# ONE cited source for SR epic spawn timings (core/event_callouts.py:67-70).
 # _last_kill_t is the same events-shape reader the served dynamic-ETA path
 # uses ({name, killer_team, down_at_s[, dragon_type]} rows from
 # dashboard/_liveclient.py) - importing it keeps the respawn anchor math

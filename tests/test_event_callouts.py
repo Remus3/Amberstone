@@ -218,24 +218,108 @@ class CapAndSortTests(unittest.TestCase):
         self.assertEqual(numeric, sorted(numeric))
 
 
+# Per-kind word budget. The DEFAULT is 8; a kind may exceed it only with an
+# entry here, and that entry is itself a bound, not a waiver - a new line in an
+# exempt kind still fails if it goes past the kind's number. Both exemptions
+# are measured, not guessed (lane 8 cycle 44).
+_DEFAULT_WORD_BUDGET = 8
+_KIND_WORD_BUDGET: dict[str, int] = {
+    # structure_siege_callout ships two deliberately long instant-bridge
+    # lines: 15 and 13 words. Whether the panel should carry a 15-word line
+    # at all is a UI question filed for lane 4 (RM-304), not a test question.
+    "siege": 15,
+    # dragon_soul_callout: the enemy soul-point line is 10 words, which is
+    # also the budget the module states for its own sided lines at :93.
+    "dragon_soul": 10,
+}
+# Tags allowed to use an over-budget kind. Pinned EXACTLY so a NEW long line
+# cannot hide behind an existing kind's exemption. Measured, not guessed.
+_OVER_BUDGET_TAGS = {
+    "siege_inhib", "siege_turret",
+    "soul_secured_enemy", "soul_point_ally", "soul_point_enemy",
+    "soul_race_enemy",
+}
+
+
 class LineLengthAndAsciiTests(unittest.TestCase):
-    def _all_lines(self) -> list[str]:
-        lines: list[str] = []
-        # Sweep a representative grid of states across all modes.
+    """DOMAIN NOTE (lane 8 cycle 44). This sweep used to call
+    ``_all_callouts_unbounded`` with NO event kwargs, so it only ever saw the
+    static objective + level-spike + item-spike lines - three of the eight
+    kinds next_callouts emits. The guard was named "all lines" and graded a
+    third of them, which is why two 13-to-15-word siege lines shipped past it.
+    The sweep below drives every event list, so ``siege``, ``inhibitor``,
+    ``epic_buff``, ``recall``, ``wave`` and ``dragon_soul`` are all in scope.
+    """
+
+    def _all_rows(self) -> list[dict]:
+        """Every row the module can emit across a representative grid."""
+        rows: list[dict] = []
         for mode in ("sr", "aram", "arena"):
             for t in (0.0, 150.0, 305.0, 360.0, 840.0, 905.0, 1200.0, 1800.0, 2200.0):
                 for lvl in (1, 5, 6, 8, 11, 16, 18):
                     for items in (0, 1, 2, 3, 4):
-                        for c in _all_callouts_unbounded(mode, t, lvl, items):
-                            lines.append(c["line"])
-        return lines
+                        rows.extend(next_callouts(
+                            mode, t, lvl, items, max_n=99,
+                            gold=99999, next_item_name="Rabadon's Deathcap",
+                            next_item_cost=100,
+                            objective_events=[
+                                {"name": "baron", "killer_team": "ally",
+                                 "down_at_s": max(t - 30.0, 0.0)},
+                                {"name": "dragon", "killer_team": "enemy",
+                                 "down_at_s": max(t - 40.0, 0.0),
+                                 "dragon_type": "Fire"},
+                                {"name": "dragon", "killer_team": "ally",
+                                 "down_at_s": max(t - 50.0, 0.0),
+                                 "dragon_type": "Ocean"}],
+                            inhib_events=[{"name": "Barracks_T1L1",
+                                           "down_at_s": max(t - 10.0, 0.0)}],
+                            turret_events=[{"name": "Turret_T2_L_03_A",
+                                            "down_at_s": max(t - 5.0, 0.0)}],
+                            minion_events=[{"at_s": 65.0}],
+                            enable_wave=True))
+        # dragon_soul_callout is reached by dashboard/_deterministic_coaching
+        # directly, never through next_callouts, so it needs its own probe or
+        # it stays outside the guard exactly as the siege lines used to.
+        # BOTH sides and all three soul states - an ally-only probe reaches
+        # four of the six soul lines and misses the 10-word enemy one.
+        for side in ("ally", "enemy"):
+            for n in (2, 3, 4):
+                soul = dragon_soul_callout([
+                    {"name": "dragon", "killer_team": side,
+                     "down_at_s": 100.0 + i, "dragon_type": "Fire"}
+                    for i in range(n)])
+                if soul is not None:
+                    rows.append(soul)
+        return rows
 
-    def test_all_lines_at_most_8_words(self):
-        for line in self._all_lines():
+    def _all_lines(self) -> list[str]:
+        return [r["line"] for r in self._all_rows()]
+
+    def test_sweep_actually_reaches_every_kind(self):
+        """Guard on the guard: if the sweep stops producing a kind, the
+        budget test silently narrows again and nobody notices."""
+        kinds = {r["kind"] for r in self._all_rows()}
+        for expected in ("objective", "level_spike", "item_spike", "recall",
+                         "epic_buff", "inhibitor", "siege", "wave",
+                         "dragon_soul"):
+            self.assertIn(expected, kinds,
+                          f"sweep no longer emits {expected!r} - the line "
+                          f"budget guard has narrowed. Kinds: {sorted(kinds)}")
+
+    def test_all_lines_within_their_kind_word_budget(self):
+        for row in self._all_rows():
+            kind = row.get("kind", "")
+            budget = _KIND_WORD_BUDGET.get(kind, _DEFAULT_WORD_BUDGET)
+            words = len(row["line"].split())
             self.assertLessEqual(
-                len(line.split()), 8,
-                f"line over 8 words: {line!r}",
-            )
+                words, budget,
+                f"{kind} line over its {budget}-word budget "
+                f"({words} words): {row['line']!r}")
+            if budget > _DEFAULT_WORD_BUDGET and words > _DEFAULT_WORD_BUDGET:
+                self.assertIn(
+                    row.get("tag"), _OVER_BUDGET_TAGS,
+                    f"tag {row.get('tag')!r} is using the {kind!r} "
+                    f"over-budget exemption but is not on the pinned list")
 
     def test_all_lines_ascii(self):
         for line in self._all_lines():

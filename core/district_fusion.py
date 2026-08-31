@@ -21,7 +21,7 @@ hard fact. Four fusion steps, applied in order:
    implies the killing team was present at that structure: pinned to the
    lane district (SR, lane parsed from the structure name - inhib
    ``Barracks_T2_L1``, turret ``Turret_T2_L_03_A``; token L/C/R ->
-   top/mid/bot as in core/event_callouts.py:104,441-454) or to the one
+   top/mid/bot as in core/event_callouts.py:105,603-617) or to the one
    bridge (ARAM). The killer team is inferred from the owner token
    (T1=ORDER / T2=CHAOS) vs the active player's side; when the side
    cannot be determined the kill is annotated but never forces a count
@@ -65,7 +65,7 @@ OBJ_FUSE_WINDOW_S = 8.0
 _TEAMS = ("ally", "enemy")
 _DEFAULT_TEAM_SIZE = 5
 
-# Structure-name lane token -> lane (core/event_callouts.py:104 convention).
+# Structure-name lane token -> lane (core/event_callouts.py:105 convention).
 _LANE_BY_TOKEN = {"L": "top", "C": "mid", "R": "bot"}
 
 # Lane -> SR district id (config/minimap_grids/sr.json).
@@ -190,7 +190,7 @@ def _structure_lane(name):
     Handles both the inhib token (``Barracks_T2_L1`` - letter+digits) and
     the turret token (``Turret_T2_L_03_A`` - a bare L/C/R part). An
     unrecognized name yields "" so a naming change can never produce a
-    WRONG lane (mirrors core/event_callouts.py:441-454).
+    WRONG lane (mirrors core/event_callouts.py:603-617).
     """
     if not isinstance(name, str):
         return ""
