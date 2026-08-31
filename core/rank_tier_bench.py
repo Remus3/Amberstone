@@ -19,6 +19,19 @@ source() reports "static" ("none" if the seed is missing/empty). The kill
 switch defaults OFF this phase (no live endpoint exists yet). The loader is
 thread-safe, idempotent, TTL-cached, and never raises.
 
+Concurrency contract (this module is read from dashboard server threads via
+dashboard/routes_bench_rank_tier.py, so a blocked reader is a blocked request):
+  - `_LOCK` guards the published cache fields ONLY and is NEVER held across
+    network I/O. A live sweep is VALID_TIERS x VALID_MODES = 20 cells, each a
+    fresh HTTP GET at rank_tier_source._TIMEOUT_S = 6.0s, so holding `_LOCK`
+    over one would stall every accessor for ~120s in the worst case.
+  - `_REFRESH_LOCK` serialises refreshers and IS held across the sweep, but the
+    only caller that ever WAITS on it is a cold start with nothing to serve.
+  - Once a grid exists, an expired TTL kicks a BACKGROUND refresh and the stale
+    grid is returned immediately (stale-while-revalidate).
+  - `_LIVE_BUDGET_S` bounds one sweep's wall clock so a half-dead endpoint
+    yields a partial live overlay instead of a two-minute refresh.
+
 Grid shape (nested, JSON-friendly), returned by rank_tier_grid(tier, mode):
   { <role>: { <bracket>: { <metric>: {"avg": <number>} } } }
 role is "all" for laneless benchmarking; bracket is "early" (< 840s) or "mid"
@@ -29,6 +42,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import os
 import threading
 import time
@@ -52,11 +66,22 @@ VALID_BRACKETS = ("early", "mid")
 VALID_METRICS = ("cs", "kda", "kp")
 
 _TTL_S = 6 * 3600.0
+# Wall-clock ceiling for ONE live sweep. 20 cells x a 6.0s socket timeout is a
+# ~120s floor on the unbounded worst case; the budget is checked between cells,
+# so a slow endpoint yields a PARTIAL live overlay (already fail-soft per cell)
+# instead of a two-minute refresh.
+_LIVE_BUDGET_S = 30.0
 _clock = time.monotonic
 
+# _LOCK guards the published fields below and is NEVER held across network I/O.
+# _REFRESH_LOCK serialises refreshers and IS held across the sweep; only a cold
+# start ever waits on it. Never take _LOCK and then block on _REFRESH_LOCK.
 _LOCK = threading.RLock()
+_REFRESH_LOCK = threading.Lock()
 _LOADED = False
 _LOADED_AT: float = 0.0
+_GENERATION = 0                     # bumped by _reset_cache; a build from an
+                                    # older generation is discarded at publish
 _SOURCE: str = "none"               # "live" | "static" | "none" - which seed won
 _GRID: dict = {}                    # tier -> mode -> role -> bracket -> metric -> {avg}
 
@@ -94,7 +119,19 @@ def _fold_rows(rows: list) -> dict:
     """Fold a live source's flat metric rows into a role->bracket->metric grid.
 
     Each row: {"role","bracket","metric","avg"}. Unknown brackets/metrics and
-    non-numeric averages are dropped. role defaults to "all"."""
+    non-numeric averages are dropped. role defaults to "all".
+
+    Two value rules, both load-bearing:
+      - NON-FINITE avgs are dropped. json.loads accepts NaN / Infinity /
+        -Infinity by default, a nan passes isinstance(x, float) AND survives
+        float() (raising neither TypeError nor ValueError), and json.dumps then
+        re-emits a bare `NaN` token that a browser JSON.parse rejects - which
+        breaks the ENTIRE /api/rank-tier-bench body, not one row.
+        core.rank_tier_source already rejects these at its parse boundary; this
+        is the belt to that braces, and it also covers a caller-supplied row.
+      - BOOLS are dropped. bool subclasses int and float(True) is 1.0, so a
+        `"avg": true` would silently become the average 1.0. A boolean is not a
+        measured average, so this is treated as a type error, not a value."""
     out: dict = {}
     for r in rows or []:
         if not isinstance(r, dict):
@@ -104,9 +141,14 @@ def _fold_rows(rows: list) -> dict:
         metric = r.get("metric")
         if bracket not in VALID_BRACKETS or metric not in VALID_METRICS:
             continue
+        raw_avg = r.get("avg")
+        if isinstance(raw_avg, bool):
+            continue
         try:
-            avg = float(r.get("avg"))
+            avg = float(raw_avg)
         except (TypeError, ValueError):
+            continue
+        if not math.isfinite(avg):
             continue
         out.setdefault(role, {}).setdefault(bracket, {})[metric] = {"avg": avg}
     return out
@@ -115,10 +157,17 @@ def _fold_rows(rows: list) -> dict:
 def _try_live_grid() -> dict:
     """Assemble a live grid by asking core.rank_tier_source for each
     (tier, mode). Empty {} when nothing is live (unconfigured/unreachable);
-    the caller then keeps the static seed. Fail-soft per cell."""
+    the caller then keeps the static seed. Fail-soft per cell.
+
+    Performs NETWORK I/O - callers must not hold _LOCK. Bounded by
+    _LIVE_BUDGET_S, checked between cells: a partial grid is a valid result
+    because the overlay is per-cell and the static seed backs every miss."""
     grid: dict = {}
+    started = _clock()
     for tier in VALID_TIERS:
         for mode in VALID_MODES:
+            if (_clock() - started) >= _LIVE_BUDGET_S:
+                return grid
             try:
                 rows = rank_tier_source.fetch_rows(tier, mode)
             except Exception:  # noqa: BLE001 - live path must never raise into the loader
@@ -145,24 +194,74 @@ def _overlay(base: dict, live: dict) -> None:
                         dst_bracket[metric] = val
 
 
-def _load_once() -> None:
-    """Load + cache the grid. Thread-safe, idempotent, TTL-bounded. Static
-    seed is the base; live rows overlay it when the kill switch is on."""
+def _refresh_now() -> None:
+    """Build a fresh grid and publish it. Caller MUST hold _REFRESH_LOCK.
+
+    The build - a disk read plus, when live is on, up to 20 HTTP GETs - runs
+    with NO lock held. Only the publish takes _LOCK, and only for the handful of
+    assignments. That is the whole fix for the ~120s lock hold."""
     global _LOADED, _LOADED_AT, _SOURCE, _GRID
     with _LOCK:
-        if _LOADED and (_clock() - _LOADED_AT) < _TTL_S:
-            return
-        grid = _load_static_grid()
-        src = "static" if grid else "none"
-        if _live_enabled():
-            live = _try_live_grid()
-            if live:
-                _overlay(grid, live)
-                src = "live"
+        gen = _GENERATION
+    grid = _load_static_grid()
+    src = "static" if grid else "none"
+    if _live_enabled():
+        live = _try_live_grid()          # network I/O - deliberately lock-free
+        if live:
+            _overlay(grid, live)
+            src = "live"
+    with _LOCK:
+        if gen != _GENERATION:
+            return                       # a _reset_cache landed mid-build
         _GRID = grid
         _SOURCE = src
         _LOADED = True
         _LOADED_AT = _clock()
+
+
+def _refresh_in_background() -> None:
+    """Kick a refresh onto a daemon thread, or do nothing when one is already in
+    flight. Callers keep serving the stale grid meanwhile."""
+    if not _REFRESH_LOCK.acquire(blocking=False):
+        return                           # a refresh is already running
+
+    def _run() -> None:
+        try:
+            _refresh_now()
+        finally:
+            _REFRESH_LOCK.release()
+
+    try:
+        threading.Thread(target=_run, name="rank-tier-bench-refresh",
+                         daemon=True).start()
+    except RuntimeError:
+        # Interpreter shutting down, or the thread limit is hit. Release rather
+        # than leak the lock; the stale grid keeps serving and the next call
+        # retries.
+        _REFRESH_LOCK.release()
+
+
+def _load_once() -> None:
+    """Ensure a grid is published, refreshing when the TTL has lapsed.
+
+    A COLD start (nothing cached) blocks the caller, and only one thread does
+    that work. Once a grid exists, an expired TTL kicks a background refresh and
+    the stale grid is served immediately - a reader never waits on network I/O,
+    and never waits on _LOCK behind a fetch because _LOCK is not held over one.
+    """
+    with _LOCK:
+        loaded = _LOADED
+        fresh = loaded and (_clock() - _LOADED_AT) < _TTL_S
+    if fresh:
+        return
+    if loaded:
+        _refresh_in_background()         # stale-while-revalidate
+        return
+    with _REFRESH_LOCK:
+        with _LOCK:
+            if _LOADED:
+                return                   # another thread did the cold load
+        _refresh_now()
 
 
 def source() -> str:
@@ -192,10 +291,22 @@ def rank_tier_grid(tier: str, mode: str) -> dict:
 
 
 def _reset_cache() -> None:
-    """Test-only: clear the cache so the next call re-reads from disk/live."""
-    global _LOADED, _LOADED_AT, _SOURCE, _GRID
+    """Test-only: clear the cache so the next call re-reads from disk/live.
+    Bumps the generation so an in-flight background build cannot publish over
+    the reset."""
+    global _LOADED, _LOADED_AT, _SOURCE, _GRID, _GENERATION
     with _LOCK:
         _LOADED = False
         _LOADED_AT = 0.0
         _SOURCE = "none"
         _GRID = {}
+        _GENERATION += 1
+
+
+def _await_refresh_for_tests(timeout_s: float = 15.0) -> bool:
+    """Test-only: block until no background refresh is in flight. True when the
+    refresher is idle, False on timeout."""
+    if not _REFRESH_LOCK.acquire(timeout=timeout_s):
+        return False
+    _REFRESH_LOCK.release()
+    return True
