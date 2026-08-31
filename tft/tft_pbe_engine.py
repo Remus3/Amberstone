@@ -115,7 +115,7 @@ META S-TIER COMPS (17.3 - May 2026):
 5. Conduit Reroll - 3-star Nami, Conduit 4 + Replicator 2.
 6. N.O.V.A. - Caitlyn/Akali carry, (5) Striker selector. Akali buffed.
 7. Mecha - Corki/Rammus, transform units, (6) for +1 team size.
-A TIER: Anima (LeBlanc, buffed 17.3 - every-combat loot) · Stargazer (Karma, reworked HP regen) · Rogue Reroll (Akali) · Space Opera (Jinx).
+A TIER: Anima (LeBlanc, buffed 17.3 - every-combat loot) / Stargazer (Karma, reworked HP regen) / Rogue Reroll (Akali) / Space Opera (Jinx).
 AVOID 17.3: Primordian comps (Apex Primordian gutted). Master Yi (omnivamp 15->10%). Marauder vertical (omnivamp nerfed).
 17.3 NOTE: Timebreaker still viable flex AS trait. Anima now S-tier candidate with loot-every-combat buff.
 
@@ -354,16 +354,64 @@ class TftPbeCoachEngine:
         self._max_tokens = 700
         if cfg_path.exists():
             try:
-                cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-                self._model      = cfg.get("model",            self._model)
-                self._debounce_s = cfg.get("debounce_seconds", self._debounce_s)
-                self._timeout    = cfg.get("timeout",          self._timeout)
-                self._max_tokens = cfg.get("max_tokens",       self._max_tokens)
-            except Exception:  # noqa: BLE001
-                pass
+                self._apply_config(json.loads(cfg_path.read_text(encoding="utf-8")))
+            except (OSError, ValueError) as exc:
+                # ValueError covers json.JSONDecodeError and the
+                # UnicodeDecodeError raised by a non-UTF-8 settings file.
+                # Fail soft on the DEFAULTS, but never silently: this used to
+                # be a bare `except Exception: pass`, so an unreadable or
+                # malformed coach_settings.json was indistinguishable from an
+                # absent one.
+                logger.warning("coach_settings.json unusable (%s) - using defaults", exc)
 
         logger.info("TftPbeCoachEngine ready (model=%s debounce=%.0fs)",
                     self._model, self._debounce_s)
+
+    def _apply_config(self, cfg: dict) -> None:
+        """Adopt coach_settings.json values, rejecting anything unusable.
+
+        RM-286 (lane 8): these were adopted verbatim, so a string
+        `debounce_seconds` made `(now - self._last_call) < self._debounce_s`
+        at submit() raise TypeError into the TFT PBE poll loop, and a
+        non-positive `max_tokens` or `timeout` is refused by the API on every
+        call. A bad config value now degrades to the default, loudly.
+
+        Mirrors tft/tft_coach_engine.py `_apply_config` (the live twin, fixed
+        in cycle 30) - keep the two contracts identical.
+        """
+        if not isinstance(cfg, dict):
+            logger.warning("coach_settings.json is not an object, using defaults")
+            return
+
+        def _num(key, current, *, minimum, maximum, cast):
+            if key not in cfg:
+                return current
+            val = cfg[key]
+            # bool first: bool subclasses int, so `True` would pass isinstance
+            # and silently configure a 1-second timeout.
+            if isinstance(val, bool) or not isinstance(val, (int, float)):
+                logger.warning("coach_settings.%s must be a number, got %r - keeping %r",
+                               key, val, current)
+                return current
+            if not (minimum <= val <= maximum):
+                logger.warning("coach_settings.%s out of range [%s, %s], got %r - keeping %r",
+                               key, minimum, maximum, val, current)
+                return current
+            return cast(val)
+
+        model = cfg.get("model", self._model)
+        if isinstance(model, str) and model.strip():
+            self._model = model
+        elif "model" in cfg:
+            logger.warning("coach_settings.model must be a non-empty string, got %r - keeping %r",
+                           model, self._model)
+
+        self._debounce_s = _num("debounce_seconds", self._debounce_s,
+                                minimum=0, maximum=3600, cast=float)
+        self._timeout    = _num("timeout", self._timeout,
+                                minimum=1, maximum=600, cast=float)
+        self._max_tokens = _num("max_tokens", self._max_tokens,
+                                minimum=1, maximum=8192, cast=int)
 
     def _read_key_file(self) -> str:
         for p in [Path(__file__).parent.parent / "API-Key-Claude.txt"]:
@@ -434,6 +482,10 @@ class TftPbeCoachEngine:
         response = self._client.messages.create(
             model      = self._model,
             max_tokens = self._max_tokens,
+            # RM-286: without this the call inherits the SDK default (600s)
+            # while _run_safe holds self._lock, so every later submit logs
+            # "busy - skipping" for as long as it hangs.
+            timeout    = self._timeout,
             system     = [{"type": "text", "text": TFT_PBE_SYSTEM_PROMPT,
                            "cache_control": {"type": "ephemeral"}}],
             messages   = [{"role": "user", "content": prompt}],
