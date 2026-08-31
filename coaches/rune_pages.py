@@ -8,7 +8,9 @@ key is the resolved perk_ids tuple: two builds that resolve identically collapse
 to ONE page, and a keystone/tree (or user minor-rune) difference mints a distinct
 page.
 
-NON-frozen: this module only IMPORTS build_perk_ids (the frozen resolver),
+NON-frozen: this module only IMPORTS build_perk_ids (also NOT frozen -
+corrected lane 8 cycle 39; lcu/lcu_rune_writer.py is absent from the 16-entry
+CLAUDE.md frozen list, unlike lcu/lcu_client.py),
 list_variants (the non-frozen loadout reader), and list_for (the user-build
 store). It writes nothing. Operator user-curated builds fold into the same
 model (Phase 4) via resolve_page, which honors the stored minor_primary/
@@ -20,7 +22,7 @@ import hashlib
 import logging
 from typing import Optional
 
-from lcu.lcu_rune_writer import build_perk_ids
+from lcu.lcu_rune_writer import _TREES, build_perk_ids, resolve_tree_ids
 from coaches.loadout_resolver import list_variants
 # Phase 4: operator user-curated builds fold into the same model. list_for is a
 # leaf reader (no coaches imports at module load), so this top-level import is
@@ -63,11 +65,18 @@ def resolve_page(
         keystone, primary, secondary, is_aram, minor_primary, minor_secondary)
     if not perk_ids:
         return None
+    # Lane 8 cycle 39: report the secondary tree the perk ids ACTUALLY came
+    # from. build_perk_ids substitutes a secondary that collides with the
+    # primary, and echoing the requested name here rendered a page in the UI
+    # whose named tree did not own two of its runes.
+    _, sub_id = resolve_tree_ids(primary, secondary)
+    resolved_secondary = next(
+        (name for name, tid in _TREES.items() if tid == sub_id), secondary)
     return {
         "pageId": page_id(perk_ids),
         "keystone": keystone,
         "primary": primary,
-        "secondary": secondary,
+        "secondary": resolved_secondary,
         "perk_ids": list(perk_ids),
     }
 
