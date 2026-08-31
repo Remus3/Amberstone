@@ -404,7 +404,9 @@ def test_tft_reset_state_uses_atomic_safe_write(tmp_path, monkeypatch):
 
     def _spy(path, data):
         written.append((path, data))
-        real(path, data)
+        # Forward the verdict: safe_write returns bool since lane 8 cycle 34,
+        # and a spy that drops it would report a false write failure.
+        return real(path, data)
 
     # Pre-fix this setattr fails: tft_coach had no safe_write binding.
     monkeypatch.setattr(mod, "safe_write", _spy)
@@ -428,7 +430,7 @@ def test_tft_pbe_data_files_use_atomic_safe_write(tmp_path, monkeypatch):
 
     def _spy(path, data):
         written.append(path)
-        real(path, data)
+        return real(path, data)
 
     monkeypatch.setattr(mod, "safe_write", _spy)
     c = mod.Coach.__new__(mod.Coach)

@@ -36,17 +36,54 @@ if str(_APP_DIR) not in sys.path:
 if TYPE_CHECKING:
     from core.tft_worker import TftWorker
 
-def _read_api_key(app_dir: Path) -> str:
-    for p in [app_dir / "API-Key-Claude.txt"]:
-        if p.exists():
-            k = p.read_text(encoding="utf-8").strip()
-            if k.startswith("sk-ant-"):
-                return k
-    return __import__("os").environ.get("ANTHROPIC_API_KEY", "")
+# `_read_api_key` was removed in the lane 8 cycle 34 audit. It read
+# API-Key-Claude.txt into a local and had ZERO callers - no direct call, no
+# getattr, no string dispatch, no __all__ and no star import (checked in both
+# directions). NOTE the name still exists as a PRIVATE DUPLICATE in the twin,
+# coaches/tft_pbe_coach.py:38, called at :71; that copy is untouched here and
+# is itself unreachable (RM-292b), so this is not a repo-wide removal. The live TFT key path is a different
+# symbol entirely: app/_game_lifecycle.py:315 `_try_read_api_key`, which
+# reaches the worker without passing through this facade. A dead function
+# that loads a secret is a latent secret path with no offsetting benefit,
+# so it is gone rather than hardened.
+
+
+# One TFT board: rows A (front) to D (back), 7 columns. A hex holds exactly
+# one unit, so allocation below is greedy against a shared occupancy set - the
+# per-class lists are PREFERENCES, not reservations. The head of each list
+# reproduces the original hand-picked spread (tanks spaced across the front,
+# mages centre-back, ranged on the back flank); the tail exists only so that a
+# class with more members than preferred columns still lands somewhere legal
+# instead of stacking two units on one hex.
+_ALL_HEXES = tuple(f"{row}{col}" for row in "ABCD" for col in range(1, 8))
+_TANK_HEXES = ("A1", "A3", "A5", "A7", "A2", "A4", "A6",
+               "B1", "B3", "B5", "B7", "B2", "B4", "B6")
+_MAGE_HEXES = ("D3", "D4", "D2", "D5", "D1", "C3", "C4", "C2", "C5", "C1")
+_RANGED_HEXES = ("D6", "D7", "D5", "C6", "C7", "D2", "D1", "C5", "C2", "C1")
+
+
+def _claim_hex(preferred, taken):
+    """First free hex from ``preferred``, then anywhere legal. None if full."""
+    for hexid in preferred:
+        if hexid not in taken:
+            taken.add(hexid)
+            return hexid
+    for hexid in _ALL_HEXES:
+        if hexid not in taken:
+            taken.add(hexid)
+            return hexid
+    return None
 
 
 def _coach_board_to_placement(board_text):
-    """Convert coach board to grid positions. Handles both grid format and FRONT/BACK format."""
+    """Convert coach board to grid positions. Handles both grid format and FRONT/BACK format.
+
+    ``board_text`` arrives from a model response, so a non-string is a
+    realistic upstream shape change rather than a hypothetical; it yields ""
+    rather than the TypeError that ``re.search`` used to raise.
+    """
+    if not isinstance(board_text, str):
+        return ""
     if not board_text or board_text == "\u2014":
         return ""
     import re as _re
@@ -67,23 +104,29 @@ def _coach_board_to_placement(board_text):
             name = w.strip(" [](),")
             if name and len(name) >= 3 and name[0].isupper() and name.lower() not in _skip:
                 all_names.append(name)
-    tanks, melee, ranged_u, mages = [], [], [], []
+    tanks, ranged_u, mages = [], [], []
     for name in all_names:
         nl = name.lower().split()[0]
         if nl in _ranged:  ranged_u.append(name)
         elif nl in _mage:  mages.append(name)
         else:              tanks.append(name)
+    # Greedy against one shared occupancy set. The previous form indexed a
+    # fixed column list and fell back to an arithmetic column, which handed
+    # the same hex to two units as soon as a class outgrew its list - three
+    # mages returned "Anivia D4, Swain D4" and six tanks returned both
+    # "Delta A7" and "Foxtrot A7". A unit that finds no legal hex is dropped
+    # rather than stacked; that needs 29 units, which no TFT board reaches.
     units = []
-    _cols_a = [1, 3, 5, 7]; _cols_d_mage = [3, 4]; _cols_d_ranged = [6, 7]
-    for i, name in enumerate(tanks):
-        col = _cols_a[i] if i < len(_cols_a) else 2 + i
-        units.append(f"{name} A{min(col, 7)}")
-    for i, name in enumerate(mages):
-        col = _cols_d_mage[i] if i < len(_cols_d_mage) else 2 + i
-        units.append(f"{name} D{min(col, 7)}")
-    for i, name in enumerate(ranged_u):
-        col = _cols_d_ranged[i] if i < len(_cols_d_ranged) else 5 + i
-        units.append(f"{name} D{min(col, 7)}")
+    taken: set = set()
+    for names, preferred in (
+        (tanks, _TANK_HEXES),
+        (mages, _MAGE_HEXES),
+        (ranged_u, _RANGED_HEXES),
+    ):
+        for name in names:
+            hexid = _claim_hex(preferred, taken)
+            if hexid is not None:
+                units.append(f"{name} {hexid}")
     return ", ".join(units)
 
 
@@ -123,8 +166,17 @@ class Coach:
         """No-op: TftWorker owns coaching submission."""
         pass
 
-    def reset_state(self) -> None:
-        """Reset TFT components and clear data files."""
+    def reset_state(self) -> bool:
+        """Reset TFT components and clear data files. True if both files landed.
+
+        Returns a verdict because `safe_write` never raises: it logs its own
+        fault and returns False, so an `except` around it can never fire and
+        the caller has no other channel. This method used to log "data files
+        cleared" unconditionally, which was false whenever the write failed -
+        reachable for real, since unlike `_ensure_data_files` this path never
+        created the parent directory, and a Defender lock can also exhaust
+        safe_write's three retries.
+        """
         # Delegate to worker if available
         if self._worker is not None:
             if getattr(self._worker, "_engine", None) is not None:
@@ -140,27 +192,28 @@ class Coach:
                     live._last_round     = (0, 0)
                 except Exception:  # noqa: BLE001
                     pass
-        # Clear data files (atomic - the dashboard polls these mid-write)
-        for path, default in [
-            (self._tft_data_file, {
-                "mode": "tft", "action": "", "board": "", "econ": "",
-                "rolldown": "", "items": "", "god_pick": "", "placement": "",
-                "upgrade": "", "risk": "",
-            }),
-            (self._live_data_file, {
-                "mode": "tft_live", "stage_round": "", "level": 0, "hp": 0,
-                "board_units": [], "bench_units": [], "shop_units": [],
-                "traits_active": [], "augments": [], "augment_select": False,
-                "comp": "", "build": "", "buy": "", "sell": "", "keep": "",
-                "augment_play": "", "loss": "", "unit_placement": "",
-                "unit_swap": "",
-            }),
-        ]:
+        # Clear data files (atomic - the dashboard polls these mid-write).
+        # mkdir first: this path used to assume the directory existed, which
+        # is the failure mode that made the old unconditional success log wrong.
+        failed = []
+        for path, default in self._default_payloads():
             try:
-                safe_write(path, default)
-            except Exception:  # noqa: BLE001
-                pass
+                path.parent.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                logger.warning("TFT reset: cannot create %s: %s", path.parent, exc)
+                failed.append(path.name)
+                continue
+            # `is False` rather than `not ok`: only a positive failure report
+            # from safe_write counts, so a wrapper that returns None cannot
+            # manufacture a false alarm.
+            if safe_write(path, default) is False:
+                failed.append(path.name)
+        if failed:
+            logger.warning("TFT state reset INCOMPLETE - not cleared: %s",
+                           ", ".join(failed))
+            return False
         logger.info("TFT state reset - data files cleared")
+        return True
 
     def shutdown(self) -> None:
         """
@@ -193,22 +246,43 @@ class Coach:
                 except Exception:  # noqa: BLE001
                     pass
 
-    def _ensure_data_files(self) -> None:
-        for path, default in [
+    def _default_payloads(self):
+        """The blank payload for each data file - ONE definition, two callers.
+
+        `_ensure_data_files` and `reset_state` each carried their own literal
+        and the two had drifted: the live-data default was 9 keys here against
+        19 in reset_state. The 19-key spelling is the canonical one, corroborated
+        by core/feature_policy.py:102 `_TFT_LIVE_DISABLED_PAYLOAD` and by the
+        live producer tft/tft_live_analysis.py:354 - so the short copy was the
+        outlier and is NOT what the two were reconciled onto.
+        """
+        return [
             (self._tft_data_file, {
                 "mode": "tft", "action": "", "board": "", "econ": "",
                 "rolldown": "", "items": "", "god_pick": "", "placement": "",
                 "upgrade": "", "risk": "",
             }),
             (self._live_data_file, {
-                "mode": "tft_live", "comp": "", "build": "", "buy": "",
-                "sell": "", "keep": "", "augment_play": "", "loss": "",
-                "augment_select": False,
+                "mode": "tft_live", "stage_round": "", "level": 0, "hp": 0,
+                "board_units": [], "bench_units": [], "shop_units": [],
+                "traits_active": [], "augments": [], "augment_select": False,
+                "comp": "", "build": "", "buy": "", "sell": "", "keep": "",
+                "augment_play": "", "loss": "", "unit_placement": "",
+                "unit_swap": "",
             }),
-        ]:
+        ]
+
+    def _ensure_data_files(self) -> bool:
+        """Seed any missing data file. True if every file is present after."""
+        ok = True
+        for path, default in self._default_payloads():
             try:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                if not path.exists():
-                    safe_write(path, default)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Could not create data file %s: %s", path, exc)
+            except OSError as exc:
+                logger.warning("Could not create data dir %s: %s", path.parent, exc)
+                ok = False
+                continue
+            if not path.exists() and safe_write(path, default) is False:
+                logger.warning("Could not create data file %s", path)
+                ok = False
+        return ok
