@@ -252,7 +252,7 @@ def _build_prompt(state: dict) -> str:
     try:
         import json as _j
         from pathlib import Path as _P
-        _ld = _j.loads((_P(__file__).parent.parent / "data" / "tft_live_data.json").read_text())
+        _ld = _j.loads((_P(__file__).parent.parent / "data" / "tft_live_data.json").read_text(encoding="utf-8"))
         _live_hp = _ld.get("hp")
         _live_gold = _ld.get("gold") if _ld.get("gold") else None
         _live_traits = ", ".join(_ld.get("traits_active") or [])
@@ -268,7 +268,7 @@ def _build_prompt(state: dict) -> str:
     try:
         from pathlib import Path as _PP
         import json as _pj
-        _pd = _pj.loads((_PP(__file__).parent.parent / "data" / "tft_live_data.json").read_text())
+        _pd = _pj.loads((_PP(__file__).parent.parent / "data" / "tft_live_data.json").read_text(encoding="utf-8"))
         _partner_hp = _pd.get("partner_hp", _partner_hp)
     except Exception:  # noqa: BLE001
         pass
@@ -336,7 +336,7 @@ def _build_prompt(state: dict) -> str:
         try:
             import json as _json
             from pathlib import Path as _Path
-            _live = _json.loads((_Path(__file__).parent.parent / "data" / "tft_live_data.json").read_text())
+            _live = _json.loads((_Path(__file__).parent.parent / "data" / "tft_live_data.json").read_text(encoding="utf-8"))
             _comp = _live.get("comp", "") or ""
             _traits = ", ".join(_live.get("traits_active") or [])
             if _comp or _traits:
