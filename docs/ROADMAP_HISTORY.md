@@ -2521,3 +2521,17 @@ Moved out of `ROADMAP.md` for the 81920-byte CI budget. Row was already CLOSED
 here and in the ROADMAP stub, and independently in CLAUDE.md's Settled section.
 
 - **RM-04 DS sweep: ROSTER CLOSED 173/173 - do NOT re-open the roster or re-scan for uncovered champions.** Canonical tracker `docs/DS_SWEEP_TRACKER.md`. Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-03) when `tools/drift_guard.py` flagged ROADMAP.md at 100 percent of its 81920-byte budget; the row carried zero open markers. **Two probe hazards survive here because they silently produce plausible-but-WRONG output:** `POST /rank` is the CARRY scorer and silently IGNORES `enemy_ad_share`/`enemy_ap_share` - use `/rank-<archetype>`; and probing at `item_ids=[]` under-ranks amp/complementary items, which is what manufactured the two headline RM-92 instances. Memories `reference_ds_probe_rank_vs_archetype_route` + `reference_ds_probe_empty_build_artifact`. Further growth needs a schema lift, not another scan.
+
+## RM-164 (relocated from ROADMAP.md 2026-08-31, lane 8 cycle 45)
+
+Moved out of `ROADMAP.md` for the 81920-byte CI budget; the row was already
+fully CLOSED. Relocated VERBATIM, nothing dropped, fences preserved.
+
+- **RM-164 FULLY CLOSED 2026-08-08 - BOTH halves shipped and the "operator-gated" framing is HISTORY, not a live gate.** Consumer wiring at merge `9752cdfc` (LEDGER 1233); provenance half at `b44a48e5` (LEDGER 1209). Bodies + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 passes 10 and 11) - READ THEM before re-opening this id or extending the provenance stamp. The pass-10 body carries the three traps (`KNOWN_ARCHETYPES` must include `onhit`; validation is deliberately ASYMMETRIC; `plan_build_order` is an injectable seam whose stand-ins may lack the attribute), the deliberate non-stamping of patch dirs 16.11.1-16.14.1, and the **PRE-EXISTING `tools/ds_feed_index.py --check` drift on the three 16.15.1 FLAT build_orders files - do NOT misattribute it.**
+
+## RM-129 (relocated from ROADMAP.md 2026-08-31, lane 8 cycle 45)
+
+Moved out of `ROADMAP.md` for the 81920-byte CI budget; the row was already
+fully CLOSED. Relocated VERBATIM, nothing dropped, fences preserved.
+
+- **RM-129 CLOSED 2026-08-01 - DS PORT-BLOCK MIGRATION SHIPPED** (`2872c1a7`). DS binds **8860** (engine) + **8861** (match-DB MCP) in its own 8860-8879 block; 8893/8894 retired. Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-03) - read it before touching a port. Fences that must not be lost: **DO NOT renumber 8895** (Mission Control); a residual 8893 in a provenance or append-only history file is CORRECT, not rot; and never size a port move with a bare `grep -c` (the filed "~186 places" was substring noise - LEDGER 1146 + `core/ports.py`).
