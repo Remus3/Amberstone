@@ -6,6 +6,35 @@
 
 ---
 
+# 2026-08-31 - lane-8 true-audit loop: run_lane.ps1 opus-5 + bg-ceiling, 61 branch commits
+
+Ran the Headless-True-Audit lane (lane 8) as a continuous autonomous loop from an
+interactive session. Two main-tree fixes shipped + pushed:
+- `a9ff183e` run_lane.ps1 reads the model from `ops/loop/config.json:executor_model`
+  (claude-opus-5), not the hardcoded `claude-opus-4-8`. Governs all 7 lanes.
+- `40f2a45d` run_lane.ps1 sets `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=2400000` (40 min)
+  so a worker's background verifier gate finishes before the CLI reaps it. MEASURED:
+  at the default 600s the verifier was killed mid-run and the worker exited 0 having
+  committed NOTHING - a lost cycle.
+
+Loop produced 61 commits on `lane/true-audit` (`39b63ebb` -> `246af97d`), ~41 spawn
+cycles, 14+ files hardened (riot_api, _handler, match_db, polled_json, routes_state/
+diag, snapshot_normalizer, performance_tracker, sr_user_builds, _supervisor_http,
+decision_detector, vision_server). Branch is UNMERGED - lane ships last, merger's
+call. Independently re-verified `2eed2421` (polled_json per-writer scratch-name
+concurrency fix) myself: 33 tests pass, and reverting the fix reds 4 guard tests.
+
+Loop tooling lives in the session scratchpad (loop_driver.py + loop_spawn.py +
+watch_lane8.py + lane8_loop_state.json), NOT committed - to resume, restart
+loop_driver.py. Loop is STOPPED (operator wrapped).
+
+Do NOT redo: the run_lane.ps1 fixes are shipped; lane commits are real (verify by
+merge/file/test, never a worktree slice hash). Watch: headless workers can
+hang-after-commit (~27 subagent children; taskkill /F /T reaps; the driver
+auto-reaps on commit+clean+idle now); ~26 orphaned claude.exe subagents linger.
+
+---
+
 # 2026-08-30b - merger: lane/repo merged to main, then RM-227(a) executed
 
 The merger session picked up `lane/repo` @ `0c1eaa1b` (LEDGER 1275, Tier-0 docs,
@@ -97,45 +126,3 @@ level; the value was in the uncovered surfaces.
 (PINNED_CLI 2.1.220 vs live CLI 2.1.251, needs `claude login`), 0 in this diff. No `.py` touched,
 no `ENGINE_VERSION`, no Share mirror, no frozen-file edit. Branch `lane/repo` ready for the merger;
 NOT merged to main from the worktree.
-
----
-
-# 2026-08-29c - a cross-project port collision, found by answering a question
-
-Operator asked which ports are reserved for Amberstone, DS, Sibling-E, Sibling-D,
-Sibling-A and Sibling-C. `core/ports.py` could only answer for FOUR: the 2026-08-01
-negotiation predates both Sibling-D and Sibling-E, so `BLOCKS` had no `ll` or `cs`
-key and `block_for(8810)` returned None.
-
-**Answering it turned up a live collision.** Sibling-E claimed band **8900-8911** with
-its dashboard on **8901** - wholly inside Sibling-A's reserved 8900-8919, where
-8901 is LW's `MONITOR` and 8900 its `RUNDASH`. Cause is the exact method `core/ports.py`
-warns about in capitals: CS picked the band by SCANNING for a free listener, and LW's
-monitor is an operator-launched GUI that is unbound most of the time, so the scan
-reported a reserved block as free. CS names Sibling-A in zero files. It had already
-met the symptom and mis-filed it - its BACKLOG blamed "an unrelated process" holding 8901
-since 2026-08-16.
-
-**Shipped:** RC `533d4f97` - `LL_BLOCK` + `CS_BLOCK` registered, `BLOCKS` now six, the
-collision recorded in the docstring, two new guards (CS/LW disjointness pinned by NUMBER;
-LL's widened 8815-8819). Mutation-proved RED three ways, `core/ports.py` restored
-byte-identical. LEDGER 1274. Sibling-E moved to **8920-8939** base **8920** across 6
-files; its `verify_env.py` went from a soft failure on every run since 2026-08-16 to
-**PASS, ports free 20/20**.
-
-**Do NOT redo:** Sibling-D was already correct (8810-8819) and already carried the
-identical six-row table - it independently settled a one-digit ambiguity in the operator's
-own message (prose said 8820-8839, the table said 8920-8939). It has uncommitted work from
-its own session; leave it alone.
-
-**BLOCKED, and it is not ours to clear:** the Sibling-E commit `67b00b2` exists and is
-byte-identical to the intended content, but **the push is blocked by that repo's own
-`pre-push` hook** (`pytest tests -q -x`). Its suite is red from ANOTHER session's in-flight
-surface-contract work - an untracked `sibling_e/surface/api/contract.py` that its staged
-`tests/surface/test_contract.py` imports. Two of the three failures name that file
-directly; the third passes in isolation. `main` there is ahead 1, remote still `4ac5c3e`.
-Never `--no-verify` it. It goes up when that session's work lands green.
-
-**Process note worth keeping:** I edited a sibling repo another session was concurrently
-working in. It resolved cleanly, but I checked Sibling-D for in-flight work and did NOT
-check Sibling-E before writing. Check every sibling tree's `git status` first.

@@ -321,6 +321,48 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+# 2026-08-29c - a cross-project port collision, found by answering a question
+
+Operator asked which ports are reserved for Amberstone, DS, Sibling-E, Sibling-D,
+Sibling-A and Sibling-C. `core/ports.py` could only answer for FOUR: the 2026-08-01
+negotiation predates both Sibling-D and Sibling-E, so `BLOCKS` had no `ll` or `cs`
+key and `block_for(8810)` returned None.
+
+**Answering it turned up a live collision.** Sibling-E claimed band **8900-8911** with
+its dashboard on **8901** - wholly inside Sibling-A's reserved 8900-8919, where
+8901 is LW's `MONITOR` and 8900 its `RUNDASH`. Cause is the exact method `core/ports.py`
+warns about in capitals: CS picked the band by SCANNING for a free listener, and LW's
+monitor is an operator-launched GUI that is unbound most of the time, so the scan
+reported a reserved block as free. CS names Sibling-A in zero files. It had already
+met the symptom and mis-filed it - its BACKLOG blamed "an unrelated process" holding 8901
+since 2026-08-16.
+
+**Shipped:** RC `533d4f97` - `LL_BLOCK` + `CS_BLOCK` registered, `BLOCKS` now six, the
+collision recorded in the docstring, two new guards (CS/LW disjointness pinned by NUMBER;
+LL's widened 8815-8819). Mutation-proved RED three ways, `core/ports.py` restored
+byte-identical. LEDGER 1274. Sibling-E moved to **8920-8939** base **8920** across 6
+files; its `verify_env.py` went from a soft failure on every run since 2026-08-16 to
+**PASS, ports free 20/20**.
+
+**Do NOT redo:** Sibling-D was already correct (8810-8819) and already carried the
+identical six-row table - it independently settled a one-digit ambiguity in the operator's
+own message (prose said 8820-8839, the table said 8920-8939). It has uncommitted work from
+its own session; leave it alone.
+
+**BLOCKED, and it is not ours to clear:** the Sibling-E commit `67b00b2` exists and is
+byte-identical to the intended content, but **the push is blocked by that repo's own
+`pre-push` hook** (`pytest tests -q -x`). Its suite is red from ANOTHER session's in-flight
+surface-contract work - an untracked `sibling_e/surface/api/contract.py` that its staged
+`tests/surface/test_contract.py` imports. Two of the three failures name that file
+directly; the third passes in isolation. `main` there is ahead 1, remote still `4ac5c3e`.
+Never `--no-verify` it. It goes up when that session's work lands green.
+
+**Process note worth keeping:** I edited a sibling repo another session was concurrently
+working in. It resolved cleanly, but I checked Sibling-D for in-flight work and did NOT
+check Sibling-E before writing. Check every sibling tree's `git status` first.
+
+---
+
 # 2026-08-29b - RM-222: the flat pen axis gets the live-vs-pinned layout guard the percent axis has had since it broke
 
 Commit `e5b5c9e6`, Tier-1, one test module plus its Share mirror. No engine change, no
