@@ -368,6 +368,47 @@ class TftLiveAnalysisAuditTest(unittest.TestCase):
                          "panel stayed degraded after recovery")
         self.assertEqual(data.get("comp"), "Vanguard Jinx")
 
+    # ---- W7: the encoding contract this slice itself changed -------------
+
+    def test_w7_every_reader_of_the_file_decodes_it_as_utf8(self):
+        """Routing _write through atomic_write_json changed the BYTES.
+
+        core/polled_json.py serializes with ensure_ascii=False, so this file
+        can now hold raw UTF-8 where the old json.dumps default escaped
+        everything to ASCII. Two readers in tft/tft_coach_engine.py called
+        .read_text() with NO encoding, which on Windows resolves to the
+        locale codepage. That happens to work on this box only because
+        PYTHONUTF8=1 is set in the ENVIRONMENT, and no launcher in this repo
+        sets it - a grep for PYTHONUTF8 over the tracked py/bat/ps1/json
+        surface returns nothing. A model reply carrying a curly apostrophe
+        would then mojibake or raise under cp1252.
+
+        Structural because the failure is environment-dependent and cannot be
+        forced portably - the reasoning cycle 24 used for its scratch-name
+        guards.
+        """
+        import re as _re
+
+        src = (_ROOT / "tft" / "tft_coach_engine.py").read_text(
+            encoding="utf-8")
+        bare = _re.findall(r"read_text\(\s*\)", src)
+        self.assertEqual(
+            bare, [],
+            "tft_coach_engine.py still calls read_text() with no encoding; "
+            "those reads decode this file with the platform codepage")
+
+    def test_w7b_non_ascii_advice_round_trips_through_the_writer(self):
+        """A model reply can contain a curly apostrophe or a dash."""
+        name = "Kai" + chr(0x2019) + "Sa"
+        body = "Comp: " + name + " reroll\nBuy: none\n"
+        obj = _mk(self.tmp, _FakeResp([_TextBlock(body)]))
+        obj._run_analysis(dict(_VS))
+        raw = obj._data_file.read_bytes()
+        self.assertIn(name.encode("utf-8"), raw,
+                      "payload was not written as UTF-8 bytes")
+        self.assertEqual(json.loads(raw.decode("utf-8"))["comp"],
+                         name + " reroll")
+
     # ---- W6: the scanning-state leak (LATENT - see the ledger) -----------
 
     def test_w6_scan_state_is_released_on_every_exit_path(self):
