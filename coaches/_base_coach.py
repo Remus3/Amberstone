@@ -78,9 +78,18 @@ def load_json(path: Path) -> dict:
 _SAFE_WRITE_LOCK = threading.Lock()
 
 
-def safe_write(path: Path, data: dict) -> None:
-    """Atomic JSON write via .tmp -> replace.
+def safe_write(path: Path, data: dict) -> bool:
+    """Atomic JSON write via .tmp -> replace. True only if the file landed.
+
     Retries up to 3x on Windows WinError 5 (Defender/lock races).
+
+    This function NEVER RAISES - every fault is logged and swallowed - so the
+    return value is the only channel a caller has for telling a completed
+    write apart from a failed one. It previously returned None on success and
+    on every failure path alike, which is why `Coach.reset_state` in
+    coaches/tft_coach.py could log "data files cleared" after both writes had
+    failed. Returning bool is additive: the 19 existing call sites that ignore
+    the value keep their exact prior behaviour.
     """
     tmp = path.with_suffix(".tmp")
     with _SAFE_WRITE_LOCK:
@@ -88,11 +97,11 @@ def safe_write(path: Path, data: dict) -> None:
             tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception as exc:  # noqa: BLE001
             _log.error("safe_write write %s: %s", path.name, exc)
-            return
+            return False
         for attempt in range(3):
             try:
                 tmp.replace(path)
-                return
+                return True
             except PermissionError:
                 if attempt == 2:
                     _log.warning("safe_write %s: gave up after 3 retries", path.name)
@@ -103,7 +112,8 @@ def safe_write(path: Path, data: dict) -> None:
                     import time as _tw; _tw.sleep(0.015 * (2 ** attempt))
             except Exception as exc:  # noqa: BLE001
                 _log.error("safe_write %s: %s", path.name, exc)
-                return
+                return False
+        return False
 
 
 def mirror_live_stats(payload: dict, state: dict) -> None:
