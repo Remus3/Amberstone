@@ -71,6 +71,37 @@ def reset_lockfile_notice_between_tests():
 
 
 @pytest.fixture(autouse=True)
+def reset_idempotency_table_between_tests():
+    """`dashboard/_idempotency.py` holds the operator-intent replay table in a
+    process-global OrderedDict with a 900 s TTL, so a key remembered by one
+    test is still remembered by every later test in the same worker.
+
+    LANE 8 CYCLE 29. That leak produced a CI failure which read as a platform
+    bug and was not one. `test_session_intents.py` and
+    `test_loop_control_contention.py` share the literal key
+    a1b2c3d4-0000-4000-8000-000000000001; when xdist put both files on one
+    worker, the second file's halt_save POST replayed the first file's answer,
+    performed NO side effect, and the contention test failed with
+    "replace_fails(...) never fired: 0 matching attempts" - which looks exactly
+    like the win32-only fault injector this lane fixed in cycle 26, and is
+    instead ordinary cross-file state leakage. It reproduces on Windows in
+    under two seconds by running those two files in one process.
+
+    Isolating here rather than per-file on purpose: the correct fixture already
+    existed in test_loop_control_idempotency.py:56 and had done since S2, which
+    is precisely why the class stayed open - a guard that one file opts into
+    does not cover the file that has not been written yet."""
+    try:
+        from dashboard import _idempotency
+    except Exception:  # noqa: BLE001
+        yield
+        return
+    _idempotency.clear()
+    yield
+    _idempotency.clear()
+
+
+@pytest.fixture(autouse=True)
 def redirect_shadow_paths_to_tmp(monkeypatch, tmp_path):
     """Suite hermeticity: no test may append to the repo's real shadow logs
     (data/det_coach_shadow.jsonl / hz_choice_shadow.jsonl /
