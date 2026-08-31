@@ -8,7 +8,7 @@
 
 **Commit on `lane/true-audit` (NOT merged - lane 8 ships last). Tier-1. LEDGER 1301. RM-300 filed.**
 
-Audited `core/obs_publisher.py` (468 -> 541 lines) on criteria 1 + 2 + 3 + 4: it parses OBS-WebSocket v5 payloads RC does not author, carries an auth password, runs a daemon thread plus an asyncio loop over a process-wide frame slot, and had no dedicated test module. Live-reachable from `dashboard/server.py:259`. Recall returned no CLOSED/REFUTED row.
+Audited `core/obs_publisher.py` (468 -> 542 lines) on criteria 1 + 2 + 3 + 4: it parses OBS-WebSocket v5 payloads RC does not author, carries an auth password, runs a daemon thread plus an asyncio loop over a process-wide frame slot, and had no dedicated test module. Live-reachable from `dashboard/server.py:259`. Recall returned no CLOSED/REFUTED row.
 
 **Headline: the guard, not the glyph.** `tests/test_p2w1_core_f.py::test_no_banned_typography` is parametrized over seven files, NAMES `core/obs_publisher.py`, and passed green while that file carried four U+00B7 on three lines inside `_render_state` - the string pushed to OBS, not a comment. `_BANNED_CHARS` holds only the six historical glyphs. `tools/precommit_gate.py` was widened to a non-ASCII catch-all on 2026-07-28 for exactly this disagreement, but the widening reached the gate and not the test, and the gate scans ADDED lines only, so a 2026-05-01 file is invisible to it forever. Guard widened; measured first, it reddens exactly one of its seven files.
 
