@@ -41,7 +41,10 @@ def test_dashboard_css_imports_draft_elo():
 def test_index_html_has_mount_point():
     html = _read(INDEX_HTML)
     assert 'id="am-draft-elo"' in html
-    # Inside the BUILD pane head.
+    # Inside the BUILD pane. B-OVL-4 (2026-09-01) re-parented the chip out of
+    # .am-pane-head (hidden in the overlay, so the chip painted 0x0 in-game)
+    # into the .am-pane-chips row - still under .am-pane-build, which is what
+    # this assertion has always actually pinned.
     pane_start = html.find('class="am-pane am-pane-build"')
     assert pane_start >= 0
     mount_pos = html.find('id="am-draft-elo"', pane_start)

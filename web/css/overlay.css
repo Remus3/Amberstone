@@ -507,6 +507,84 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .am-pane-head {
   display: none !important;
 }
 
+/* B-OVL-4 (2026-09-01): the draft-elo chip row. The chip used to be mounted
+ * inside the pane head hidden just above, so in-game it computed every tick and
+ * painted a 0x0 box; it now lives in its own .am-pane-chips row (a direct child
+ * of .am-pane-build, so it rides this widget when the operator drags it). That
+ * row is the FIRST visible thing in the in-game build widget, so it drops the
+ * dashboard gutter padding and keeps just a hairline of separation from the
+ * build strips below. panels/active_match.css scopes the base rule by CLASS
+ * (not #view-active-match), so this override wins without an !important. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .am-pane-chips {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+/* B-OVL-4 MUST-FIX 1 (UI audit 2026-09-01): collapse the chip row for EVERY
+ * content-free chip state, not just the Arena "hidden" gate.
+ *
+ * panels/active_match.css collapses the row only at data-de-state="hidden".
+ * But "init" is the SHIPPED DEFAULT (web/index.html stamps it on the mount) and
+ * "empty" is reached on any not-ok /api/draft-elo, and in BOTH the chip renders
+ * either nothing or an empty <div class="de-empty">. Before the re-parent those
+ * painted nothing in-game (the chip sat under the display:none pane head); now
+ * they paint a content-free chip box - measured 18.00x8.00 at ovscale 1.0 and
+ * 23.31x9.97 at 1.333, on the chip's own rgba(20,22,30,0.85) backing. That is
+ * litter on a HUD whose whole doctrine is data-ink (rule 8), and it is litter
+ * the re-parent introduced, so it is fixed here rather than left to the queue.
+ *
+ * OVERLAY-SCOPED on purpose. On the dashboard the dimmed empty chip is a
+ * deliberate, documented surface: panels/draft_elo.css carries a
+ * [data-de-state="empty"] rule stating the chip "stays VISIBLE - it is a
+ * 5v5-only surface that must be present (enabled) in SR/ARAM and hidden only in
+ * Arena (the mode gate)", which test_active_match_draft_elo_mode_gate pins.
+ * A blanket collapse would gut that, so the dashboard keeps its row.
+ *
+ * Reads as: no child that is anything OTHER than one of the three content-free
+ * states. An empty row (no children at all) collapses too. Specificity (0,3,1)
+ * clears both the base .am-pane-chips display:flex and the class-scoped hidden
+ * rule, so no !important is needed. */
+body[data-shell="overlay"] .am-pane-chips:not(:has(> *:not([data-de-state="hidden"]):not([data-de-state="init"]):not([data-de-state="empty"]))) {
+  display: none;
+}
+
+/* B-OVL-4 MUST-FIX 2 (UI audit 2026-09-01): no SECOND red on the in-game HUD.
+ *
+ * The chip rides w-build, whose registry tier is AMBIENT
+ * (web/js/lib/overlay_layout.js stamps data-ovx-tier="ambient"). Doctrine rule
+ * 4: "at any instant exactly ONE element is the ONLY red / ONLY moving / ONLY
+ * large thing on screen... Five reds = nothing pops", and section 5: "lethal
+ * red is RESERVED for the current Emergency winner... NOTHING else paints red."
+ * Measured on the re-parented chip: .de-wr.de-band-red resolved --signal-bad to
+ * rgb(232,64,87) - the --ovx-red token ITSELF - at 13px/700, and .de-sample-low
+ * to rgb(255,128,128). Two more reds competing with the one that matters.
+ *
+ * Re-mapped to neutral --ovx-text ink rather than to another hue. There is no
+ * fourth accent to spend: gold is the frame/heads hue, cyan is info + the
+ * PRIMARY glow, --ovx-good and --ovx-warn are already the green and amber bands
+ * (both measured fine at 8.65:1 / 7.98:1 and left untouched). Dropping the bad
+ * band to ink also moves the widget TOWARD rule 10 ("QUANTITIES as bar-length /
+ * position, CATEGORIES as color. Never magnitude-in-hue") - win rate is a
+ * magnitude, and the chip already prints it as a number plus a signed score, so
+ * no information leaves the surface. The read stays three-way and ordinal by
+ * luminance: green = favoured, amber = even, quiet ink = against you, which is
+ * also the right emphasis for an ambient widget (bad draft-prior news is not
+ * actionable mid-fight; it should recede, not compete).
+ *
+ * Alpha 0.62 lands ~7.5:1 on the chip backing - above the AA floor with margin
+ * and just under the two accent bands, so it recedes without going illegible.
+ *
+ * OVERLAY-SCOPED: the dashboard is not a HUD over a live game, has no Emergency
+ * tier bidding for the one red, and keeps --signal-bad + the pink unchanged. */
+body[data-shell="overlay"] .draft-elo-chip .de-wr.de-band-red {
+  color: rgba(var(--ovx-text), 0.62);
+}
+
+body[data-shell="overlay"] .draft-elo-chip .de-sample-low {
+  color: rgba(var(--ovx-text), 0.55);
+  background: rgba(var(--ovx-text), 0.06);
+}
+
 /* 4c. DRAG HANDLE - a small gold-dot grab bar (top-right). data-rc-zone makes
  * JUST the handle interactive to the rc-shell click-through machine, so the body
  * stays click-through during play (no accidental mid-fight drags). Hidden until

@@ -321,6 +321,58 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+# 2026-08-30b - merger: lane/repo merged to main, then RM-227(a) executed
+
+The merger session picked up `lane/repo` @ `0c1eaa1b` (LEDGER 1275, Tier-0 docs,
+docs-guards green) and fast-forward-merged it to main - a clean FF (main was 0
+ahead, no conflict possible). `ci` correctly skipped (docs-only paths-ignore);
+docs-guards green on the main push. Then the operator approved continuing with
+RM-227(a).
+
+**RM-227(a) - five dead ops scripts removed and pinned (commit `b5e10a7d`, LEDGER
+1276, Tier-1).** Prove-it-dead was re-verified from scratch, NOT trusted from
+lane-7's filed row. The decisive catch: `ops/_scheduler_client.py` looked alive
+only because its `file_task` shares a name with `Scheduler.file_task` - every hit
+is a call to the SCHEDULER METHOD (`agents/agent1_lead/scheduler.py:416`), never
+the `ops._scheduler_client.file_task` wrapper FUNCTION, whose HTTP-first design no
+caller ever adopted; its only importer was one self-test, removed with it. The
+four Phase-3 seeders (`phase3_file_audit_proposals`, `phase3_file_rc_audit_proposals`,
+`phase3_queue_first_audit`, `phase3_summary`) had zero code references at all; no
+`.ps1`, scheduled task, or dynamic `ops/phase3_*` loader reaches them
+(`RC-Phase3-PeriodicAudit` runs `-m ops.phase3_file_audit`, a KEPT sibling).
+Pinned by `tests/test_orphan_scripts_rm227.py`, red-first proven (it failed
+listing all five while present, passed once gone). Removed the orphaned self-test
+`test_client_fallback_when_supervisor_unreachable` + its now-unused `Path` import
+from `test_file_task_api.py`; that file still collects its 6 live-endpoint tests.
+
+**Deliberately left:** the five appear as decorative HEXCORE dust particles -
+guard-safe residue, because no test asserts dust-entry-to-disk correspondence and
+`drift_guard` sweeps HEXCORE for versions/ASCII only. Editing that fragile
+multi-count DUST contract for cosmetic gain is higher-risk than leaving it.
+RM-227(b) (grandfathered glyphs) and the `.gemini` purge remain operator-gated and
+untouched.
+
+**Gates:** `pytest tests` 19132 passed / 144 skipped / 1 failed - the one failure
+is the pre-existing fenced `test_cli_version_still_matches_the_pin` (CLI 2.1.251 vs
+PINNED_CLI 2.1.220, needs `claude login`, outside this diff, LEDGER 1273),
+confirmed twice (once foreground for direct evidence). On the main push `b5e10a7d`:
+**ci = success, docs-guards = success, CodSpeed = success** (ci ran ~45min on a slow
+runner but completed green; the local CLI-pin failure SKIPS on CI). doc-content
+guards 74 passed; `drift_guard` 0 breaches; ruff clean. No `ENGINE_VERSION`, no
+Share mirror, no `:8860` bounce, no frozen-file edit.
+
+**One process note worth keeping:** the `stop_claim_gate` (RM-226, known-defective)
+blocked the first stop on the `19132` count because it reached me via a background
+task's OUTPUT FILE (read with the Read tool), which the gate never admits as
+evidence - exactly the RM-226 defect. Resolved the RM-226-compliant way: re-ran the
+suite in the FOREGROUND so the count is direct runner output. Did NOT edit the gate
+(it must not be edited by a session it is blocking).
+
+**NEXT:** RM-227(b) glyphs + the `.gemini` purge stay operator-gated. RM-192/193/225/226
+open in BACKLOG. CLI-pin still needs `claude login` (unchanged, LEDGER 1273).
+
+---
+
 # 2026-08-30 - LANE 7 headless-repo: repo already clean, two doc fixes, two sweeps deferred
 
 Outsider-clean audit in worktree `lane/repo`. Pre-flight caught that the launcher had
