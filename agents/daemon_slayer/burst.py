@@ -81,7 +81,7 @@ from .ability_dps import (
     _select_blocks,
     rank_at_level,
 )
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .dps import (
     _ASSUMED_ABILITY_AMP_STACKS,
     _ASSUMED_TAKEDOWN_STACKS,
@@ -623,6 +623,13 @@ def compute_burst_damage(
     picks which rd arm applies. The sustained "shields gained within the
     duration" reduction stays UNMODELED (utility over time, not burst math).
     """
+    # RM-325: fold the mode string ONCE here, before build_champion, so
+    # every ARAM gate below it - engine stat modifiers, the map-id item
+    # filter, this scorer's multiplier, the provenance note - sees one
+    # spelling. Item 244 fixed only the filter and left the scorers
+    # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
+    # through a non-ARAM multiplier path.
+    mode = canonical_mode(mode)
     if block_strategy not in {"first", "sum", "max"}:
         raise ValueError(
             f"block_strategy must be one of first|sum|max, got {block_strategy!r}"
@@ -2021,6 +2028,8 @@ def rank_items_by_burst(
     champion without a decisive damage split is a no-op. The live default-ON
     flip is operator-gated -> docs/LIVE_GAME_GATED_SYNC.md.
     """
+    # RM-325: fold once at the public entry - see canonical_mode.
+    mode = canonical_mode(mode)
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)

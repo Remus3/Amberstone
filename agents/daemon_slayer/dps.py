@@ -53,7 +53,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Iterable, Optional
 
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .effects import (
     CallContext,
     ItemEffect,
@@ -890,6 +890,13 @@ def compute_dps(
     validation-gated (do-not-flip-blind); ``rank.py`` has no parameter for this
     seam, so no shipped build table reaches it today.
     """
+    # RM-325: fold the mode string ONCE here, before build_champion, so
+    # every ARAM gate below it - engine stat modifiers, the map-id item
+    # filter, this scorer's multiplier, the provenance note - sees one
+    # spelling. Item 244 fixed only the filter and left the scorers
+    # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
+    # through a non-ARAM multiplier path.
+    mode = canonical_mode(mode)
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
     if selected_phase not in PHASES:
@@ -2000,6 +2007,8 @@ def compute_dps_curve(
     (no dedup) - caller can request a denser sample around a phase
     boundary by repeating a level.
     """
+    # RM-325: fold once at the public entry - see canonical_mode.
+    mode = canonical_mode(mode)
     target_levels = tuple(levels) if levels is not None else DPS_CURVE_LEVELS
     pts: list[DpsCurvePoint] = []
     for lv in target_levels:

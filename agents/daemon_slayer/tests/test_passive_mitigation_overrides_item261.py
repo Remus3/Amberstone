@@ -274,8 +274,8 @@ class RankItemsByEhpTests(unittest.TestCase):
 
 class EngineAndHygieneTests(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.278.1")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.278.1")
+        self.assertEqual(ENGINE_VERSION, "1.279.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.279.0")
 
     def test_module_ascii(self):
         import agents.daemon_slayer._passive_mitigation_overrides as m

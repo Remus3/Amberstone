@@ -3789,6 +3789,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=12.0,
         ),),
+        # RM-323: single-Echo burst-window magnitude from THIS row's own note
+        # (doctrine B). The Arena Echo mechanic TEXT differs from SR 6655's
+        # (Arena consumes all charges across the primary plus one nearby target
+        # per charge; SR fires remaining Echoes at 20%), but DDragon 16.15.1
+        # publishes no magnitude on either id, so the note stands and the
+        # unmodeled AoE spread stays unmodeled - the primary hit is credited.
+        magic_burst_base=75.0,
+        magic_burst_ap_ratio=0.05,
         note="Luden's Echo (Arena 226655): Echo 75 (+5% AP) magic / 12s (SR Meraki values; AoE splash not modeled)",
     ),
     "226657": ItemEffect(
@@ -4040,6 +4048,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=30.0,
         ),),
+        # RM-323: single-Squall burst-window magnitude, taken from THIS row's
+        # own note (doctrine B) - DDragon 16.15.1 gives the Squall text but no
+        # number for 224646 or SR 4646. Credited once per burst combo; the
+        # periodic above keeps the sustained-DPS valuation, so no double-count.
+        magic_burst_base=125.0,
+        magic_burst_ap_ratio=0.10,
         note="Stormsurge (Arena 224646): same as SR 4646 - 15 flat magic pen + Squall 125 (+10% AP) magic / 30s",
     ),
 
@@ -4739,6 +4753,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
                 every_n_seconds=1.0,
             ),
         ),
+        # RM-323: the burst lane excludes periodic procs, so without these two
+        # fields this row scored 0.00 magic burst while its note asserted a
+        # magnitude. Credited from THIS row's own note per doctrine B - DDragon
+        # 16.15.1 carries the Hatefog TEXT but no magnitude for 223118 OR 3118,
+        # so the note is the only authority; it happens to match SR 3118.
+        # No rate factor here (that is the periodic's sustained-DPS concept).
+        magic_burst_base=180.0,
+        magic_burst_ap_ratio=0.15,
         note="Malignance Arena mirror (223118) Hatefog: (180+15%AP) magic per ult zone hit",
     ),
     "223119": ItemEffect(
