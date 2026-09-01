@@ -27,8 +27,11 @@ from ops.loop import executor
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "ops" / "loop" / "config.json"
 
-# Measured 2026-08-01. Re-measure the canary on any change to this pin.
-PINNED_CLI = "2.1.220"
+# Measured 2026-08-01; re-measured 2026-09-01 on 2.1.251 after Legion's CLI
+# upgraded 2.1.220 -> 2.1.251. Canary + negative control BOTH passed: a codeword
+# placed only in --append-subagent-system-prompt reached a spawned subagent, and
+# the same prompt without the flag did not carry it. Re-measure on any change.
+PINNED_CLI = "2.1.251"
 FLAG = "--append-subagent-system-prompt"
 
 
