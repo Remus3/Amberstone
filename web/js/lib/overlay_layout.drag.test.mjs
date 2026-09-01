@@ -304,7 +304,17 @@ test("drag marks el a click-through zone for its duration (and restores it)", ()
 test("a widget that was already a zone keeps its zone mark after a drag", () => {
   const dom = installDom();
   setActive(dom, false);
-  const w = I.WIDGETS.find((x) => x.zone === true);
+  // The subject of this test is the ELEMENT's pre-existing [data-rc-zone]
+  // (set two lines below), which _installDrag records into `hadZone` at
+  // overlay_layout.js:534 and honours on drop - it never reads w.zone. So any
+  // valid widget descriptor works as the drag subject.
+  //
+  // This previously did `I.WIDGETS.find((x) => x.zone === true)`. The only
+  // zone:true widget was w-enemyspells, removed from the registry by the
+  // 2026-08-11 Riot-compliance change, after which find() returned undefined
+  // and _posFor(undefined) threw TypeError. The suite is not run by CI (no
+  // node --test in .github/workflows), so it sat red and unnoticed.
+  const w = I.WIDGETS[0];
   I._setLayout({});
   const el = makeNode();
   el.setAttribute("data-rc-zone", "");

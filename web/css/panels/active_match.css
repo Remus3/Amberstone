@@ -109,6 +109,41 @@ body:not([data-shell="overlay"]) #view-active-match
   border-bottom: 1px solid var(--border-soft);
 }
 
+/* B-OVL-4 (2026-09-01): dedicated chip row directly under a pane head.
+ *
+ * The draft-elo chip used to be mounted INSIDE .am-pane-head, which overlay.css
+ * hides outright for the w-build widget - so in-game the chip computed a full
+ * payload on every tick and painted a 0x0 box. The queue ruled a re-parent (not
+ * a CSS exception, the head stays hidden by design), and this is the row it
+ * moved into.
+ *
+ * Deliberately class-scoped rather than #view-active-match-scoped: the overlay
+ * shell renders the SAME #view-active-match subtree, so an id-prefixed rule here
+ * would out-specify overlay.css and force an !important there.
+ *
+ * No font-size of its own - the chip owns its type scale (panels/draft_elo.css,
+ * item 184 operator-exception). */
+.am-pane-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Collapse the row entirely when every chip in it is hidden, so a mode that
+ * gates the chip off leaves no empty padded strip behind (Arena:
+ * active_match.js _renderDraftEloFromCtx stamps data-de-state="hidden" and
+ * display:none on the chip - the 5v5-only gate). */
+.am-pane-chips:not(:has(> *:not([data-de-state="hidden"]))) {
+  display: none;
+}
+
+/* Dashboard surface: line the row up with the pane body's 14px gutter. */
+.am-pane .am-pane-chips {
+  padding: 8px 14px 0;
+}
+
 #view-active-match .am-pane-body {
   flex: 1 1 auto;
   min-height: 0;
