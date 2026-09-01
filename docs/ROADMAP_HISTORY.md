@@ -41,6 +41,20 @@ stays in `ROADMAP.md`. Every id remains reachable.
 - **RM-166 CLOSED 2026-08-08 - the PGR baseline `(5, 50)` clamp bounds are pinned by a contract test, and the row was TRUE but UNDERCOUNTED (FIVE representations, not two).** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 11) - READ THEM before re-opening this id.
 - **RM-33 CLOSED-STALE 2026-08-02 - auto-ops verb expansion, PARKED not built. Do NOT re-open as a build row.** Refuted by three probes (`auto_ops_verbs` is prose-only, the 95-percent gate has no meter, and `docs/OVERLAY_BUILD_MASTER_PLAN.md:169` already recorded the park). Full narrative in `docs/ROADMAP_HISTORY.md`.
 
+## 2026-09-01 - RM-192..RM-202 compact-open-row split
+
+The combined RM-192..RM-202 refill row was relocated here VERBATIM and replaced in
+`ROADMAP.md` by a compact row naming only the still-open ids (RM-192 / RM-193 /
+RM-194 / RM-195 / RM-196 / RM-198 / RM-199), per the RM-246 pattern of keeping a
+compact row for the still-open ids while the closed narrative moves to history.
+RM-197 / RM-200 / RM-201 / RM-202 are CLOSED (LEDGER 1253 / 1263 / 1264 / 1261,
+ENGINE 1.278.0). The verbatim row's own "11 open rows" and "Next free id = RM-216"
+are POINT-IN-TIME (2026-08-14) and stale: the live open count is seven and the
+live next-free id is RM-322 (`docs/DS_SWEEP_TRACKER.md`). Bodies + acceptance for
+every open id stay in `BACKLOG.md`.
+
+- **RM-192..RM-202 FILED 2026-08-14 (lane-research refill, LEDGER 1245) - 11 open rows, all bodies in `BACKLOG.md`, NOT here.** This file was at 89.8 pct of its byte budget when they were filed, so they went to the overflow tier under its own rule, beside their siblings RM-135 / RM-160 / RM-161. Split: **RM-200 / RM-201 / RM-202** under "Daemon Slayer scorer calibration" (lane 6; RM-200 + RM-201 are Tier-2 and bump `ENGINE_VERSION` + the Share mirror), **RM-192..RM-199** under "Reliability / hardening" (lanes 4 / 7 / 8, all Tier-0/1). Headlines: **RM-202** the stranded-seam guard is green while BLIND to two live seams - **CLOSED 2026-08-15, LEDGER 1261**; a depth-1 tier with its own `STRANDED_DEPTH1` ledger now sees both, and closing it needed two blind spots the row did not name (function-local imports, `**splat` forwarding); **RM-192** the `docs/DS_SWEEP_TRACKER.md` id pointer was 57 ids stale and is corrected to RM-203, guard still owed; **RM-197** `core/prompt_sanitize.py` has three EXECUTED bypasses - **CLOSED 2026-08-15, LEDGER 1253**. **The whole sanitizer arc is closed: RM-197 + RM-205 + RM-206 + RM-202 + RM-207, LEDGER 1253-1262.** **UPDATE 2026-08-15: RM-200 / RM-201 / RM-203 ALSO CLOSED (LEDGER 1263-1265, ENGINE 1.278.0); `STRANDED_DEPTH1` is now EMPTY, by wiring. RM-208..RM-214 filed, RM-215 filed then REFUTED by its author. Bodies in `BACKLOG.md`. Next free id = RM-216.**
+
 ## 2026-08-30 - RM-246 size-budget pass: sixteen CLOSED pointer rows relocated from ROADMAP.md
 
 Relocated verbatim by the lane 8 RM-246 headroom pass. ROADMAP.md stood at 81856 bytes
