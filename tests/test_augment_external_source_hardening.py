@@ -154,8 +154,21 @@ class ResponseSizeCapTest(unittest.TestCase):
         tested the raise and not the memory bound, which is the whole stated
         rationale for the cap. Now `read` records what it was asked for and
         returns at most that, so an unbounded read yields cap bytes exactly,
-        trips no raise, and the assertions below fail."""
+        trips no raise, and the assertions below fail.
+
+        ISOLATION (2026-09-01): the recording stub is served ONLY for this
+        test's own URL. `mock.patch.object` replaces the process-global
+        `urllib.request.urlopen`, and under the full `-n 8` suite a leaked
+        background thread from another test can call it inside this patch
+        window; served the recording stub, its `read(-1)` appends a stray
+        entry to `seen` and the exact-list assertion below fails on correct
+        code - observed once in CI as `seen == [cap+1, -1]`
+        (reference_flaky_only_under_full_parallel_suite). Any non-test URL now
+        gets a benign non-recording response, so `seen` holds this test's read
+        alone and the exact-list assertion - which is what catches an
+        unbounded-read mutant - stays sound."""
         seen = []
+        test_url = "https://example.invalid/x"
 
         class _Resp:
             status = 200
@@ -172,10 +185,28 @@ class ResponseSizeCapTest(unittest.TestCase):
             def __exit__(self, *a):
                 return False
 
-        with mock.patch.object(X.urllib.request, "urlopen",
-                               lambda *a, **k: _Resp()):
+        class _Benign:
+            # Served to any OTHER url (a leaked concurrent call under -n 8).
+            # Records nothing, so it cannot pollute `seen`.
+            status = 200
+            headers = {}
+
+            def read(self, n=-1):
+                return b""
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def _urlopen(req, *a, **k):
+            url = getattr(req, "full_url", req)
+            return _Resp() if url == test_url else _Benign()
+
+        with mock.patch.object(X.urllib.request, "urlopen", _urlopen):
             with self.assertRaises(X.AugmentSourceError) as ctx:
-                X._http_get("https://example.invalid/x", 1.0)
+                X._http_get(test_url, 1.0)
         self.assertIn("too large", str(ctx.exception).lower())
         # The bound itself: read was asked for a finite cap, not everything.
         self.assertEqual(seen, [X._MAX_BODY_BYTES + 1])
