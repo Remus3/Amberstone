@@ -62,6 +62,53 @@ _ARCHETYPE_PICK_FIXTURE = {
 }
 
 
+# Deterministic /api/draft-elo response for the B-OVL-4 chip tests. Shape
+# mirrors dashboard/routes_draft_elo.py's success payload (the `?breakdown=1`
+# form the frontend always requests), trimmed to the keys draft_elo.js reads:
+# ok / predicted_wr / team_score / sample{min_solo,min_pair} / top_contributions.
+#
+# Deliberately a BAD band with a LOW sample density (predicted_wr 0.38 < the
+# 0.42 red threshold; min_solo 4 < 10) so one payload exercises BOTH colour
+# lanes the overlay must re-map: `.de-wr.de-band-red` and `.de-sample-low`.
+#
+# OPT-IN, not a default: store["draft_elo"] starts as None and the route then
+# answers {"ok": false}, which is exactly what an unstubbed /api/* returned
+# before this existed. A test that wants a populated chip calls
+# mock_server.set_draft_elo(DRAFT_ELO_BAD_BAND) and resets it afterwards, so
+# every other snapshot page keeps rendering the empty chip it always did.
+DRAFT_ELO_BAD_BAND = {
+    "ok": True,
+    "ally": {"champs": [24, 64, 103, 22, 412], "total": -21.0},
+    "enemy": {"champs": [122, 121, 157, 51, 555], "total": 21.0},
+    "team_score": -42.0,
+    "predicted_wr": 0.38,
+    "sample": {"min_solo": 4, "min_pair": 1, "min_matchup": 0},
+    "queue_ids": [420],
+    "top_contributions": [
+        {"kind": "enemy-pair", "a": 122, "b": 121, "delta": -18.0, "n": 7},
+        {"kind": "matchup", "a": 24, "b": 122, "delta": -13.0, "n": 5},
+        {"kind": "ally-pair", "a": 22, "b": 412, "delta": 6.0, "n": 9},
+    ],
+}
+
+# Same shape, a GOOD band with a HIGH sample density - the control case the
+# bad-band assertions are read against (green must stay green in both shells).
+DRAFT_ELO_GOOD_BAND = {
+    "ok": True,
+    "ally": {"champs": [24, 64, 103, 22, 412], "total": 33.0},
+    "enemy": {"champs": [122, 121, 157, 51, 555], "total": -22.0},
+    "team_score": 55.0,
+    "predicted_wr": 0.63,
+    "sample": {"min_solo": 44, "min_pair": 12, "min_matchup": 6},
+    "queue_ids": [420],
+    "top_contributions": [
+        {"kind": "ally-pair", "a": 22, "b": 412, "delta": 21.0, "n": 31},
+        {"kind": "matchup", "a": 24, "b": 122, "delta": 12.0, "n": 18},
+        {"kind": "enemy-pair", "a": 121, "b": 157, "delta": -4.0, "n": 12},
+    ],
+}
+
+
 def _make_handler(store: dict) -> type:
     """Return an HTTP handler class bound to the shared fixture store."""
 
@@ -121,6 +168,13 @@ def _make_handler(store: dict) -> type:
                 self._send_json(_PERSONAL_BUILD_FIXTURE)
             elif p == "/api/cs-archetype-pick":
                 self._send_json(_ARCHETYPE_PICK_FIXTURE)
+            elif p == "/api/draft-elo":
+                # Opt-in stub (see DRAFT_ELO_BAD_BAND). Unset -> the not-ok
+                # answer the generic /api/ fallthrough used to give, so the
+                # chip renders its empty state exactly as before.
+                self._send_json(
+                    store.get("draft_elo") or {"ok": False, "error": "no fixture"}
+                )
             elif p.startswith("/api/"):
                 self._send_json({})
             else:
@@ -182,13 +236,18 @@ def _make_handler(store: dict) -> type:
 
 class _MockServer:
     def __init__(self) -> None:
-        self._store: dict = {"data": {}}
+        self._store: dict = {"data": {}, "draft_elo": None}
         self._server: ThreadingHTTPServer | None = None
         self.url: str = ""
 
     def set_fixture(self, name: str) -> None:
         path = FIXTURE_DIR / f"{name}.json"
         self._store["data"] = json.loads(path.read_text(encoding="utf-8"))
+
+    def set_draft_elo(self, payload: dict | None) -> None:
+        """Arm (or clear) the /api/draft-elo stub. None restores the not-ok
+        answer, which is what every page that does not opt in still sees."""
+        self._store["draft_elo"] = payload
 
     def start(self) -> None:
         handler_cls = _make_handler(self._store)

@@ -754,6 +754,108 @@ function _setMenu(open) {
   if (open) _renderMenu(_menuEl);
 }
 
+// --- Menu focus preservation across the _renderMenu rebuild -------------------
+// _renderMenu is a REPAINTING HOST: it does `menu.innerHTML = ""` and rebuilds
+// every row, so the very control the operator just activated is destroyed under
+// them. Activating a toggle (or Reset) with the KEYBOARD therefore dropped
+// document.activeElement to <body>, and a keyboard operator had to re-tab from
+// the top of a 400+ element document after each of the 10 toggles - i.e. the
+// menu was effectively mouse-only. The node cannot be re-found by identity
+// (it is gone), so every control carries a STABLE key in data-ovx-ctl and the
+// focus is re-established by that key after the rebuild. Same law the sibling
+// half already follows in panels/overlay_ds_controls.js:367-378 ("never clobber
+// a control the operator is currently interacting with").
+//
+// Keys: "toggle:<widget id>" / "op:<widget id>" / "sz:<widget id>" for the
+// per-panel row controls, and the bare "reset" / "done" for the two singletons.
+// Widget ids are [a-z0-9-] only (the WIDGETS registry above), so the key is
+// always safe inside an attribute selector.
+const CTL_ATTR = "data-ovx-ctl";
+
+function _ctlKey(kind, id) {
+  return id ? kind + ":" + id : kind;
+}
+
+// True while a range thumb is under an active pointer drag. A rebuild mid-drag
+// would destroy the input the browser is tracking, which both kills the drag and
+// discards the in-progress value - so _renderMenu declines to repaint until the
+// pointer is released. Window-level release tracking (via _winOn/_winOff) because
+// the pointer routinely leaves the 42px row before it comes up.
+let _menuRangeBusy = false;
+
+function _installRangeBusy(input) {
+  try {
+    if (typeof input.addEventListener !== "function") return;
+    input.addEventListener("pointerdown", () => {
+      _menuRangeBusy = true;
+      const clear = () => {
+        _menuRangeBusy = false;
+        _winOff("pointerup", clear);
+        _winOff("pointercancel", clear);
+      };
+      _winOn("pointerup", clear);
+      _winOn("pointercancel", clear);
+    });
+    // A keyboard-driven range (arrow keys) never repaints the menu, but a blur
+    // is still the honest end of any interaction with it.
+    input.addEventListener("blur", () => {
+      _menuRangeBusy = false;
+    });
+  } catch (_e) {
+    // locked-down node: the rebuild guard degrades to "not busy", which is the
+    // pre-existing behaviour and never worse than it.
+  }
+}
+
+// Snapshot which menu control has focus, keyed stably. Returns null when focus
+// is NOT inside this menu - the restore must never STEAL focus from wherever the
+// operator actually was. Also carries the range's in-progress value + the menu's
+// scroll offset so neither is lost to the repaint.
+function _captureMenuFocus(menu) {
+  try {
+    if (!menu || typeof menu.contains !== "function") return null;
+    const a = document && document.activeElement;
+    if (!a || a === document.body || !menu.contains(a)) return null;
+    const key = (a.getAttribute && a.getAttribute(CTL_ATTR)) || "";
+    if (!key) return null;
+    const st = Number(menu.scrollTop);
+    return {
+      key,
+      // Ranges only; a text-like control would want selectionStart/End, but the
+      // menu has none and input[type=range] THROWS on those properties.
+      value: a.type === "range" ? a.value : null,
+      busy: _menuRangeBusy && a.type === "range",
+      scrollTop: Number.isFinite(st) ? st : 0,
+    };
+  } catch (_e) {
+    return null; // headless / locked-down document: nothing to preserve.
+  }
+}
+
+// Re-establish focus on the rebuilt control that carries the captured key.
+// Best-effort in every direction: a missing key, a missing node, a host with no
+// focus() and a browser without the preventScroll option all degrade to a no-op
+// rather than throwing out of a click handler.
+function _restoreMenuFocus(menu, snap) {
+  if (!menu || !snap || !snap.key) return;
+  try {
+    if (typeof menu.querySelector !== "function") return;
+    const el = menu.querySelector("[" + CTL_ATTR + '="' + snap.key + '"]');
+    if (!el) return;
+    if (snap.value != null && el.type === "range") el.value = snap.value;
+    if (typeof el.focus !== "function") return;
+    try {
+      el.focus({ preventScroll: true });
+    } catch (_e) {
+      el.focus();
+    }
+    // focus() can scroll the 70vh-capped menu; put it back where it was.
+    if (Number.isFinite(snap.scrollTop)) menu.scrollTop = snap.scrollTop;
+  } catch (_e) {
+    // additive affordance; never break the menu over it.
+  }
+}
+
 // Build one per-panel control row: a show/hide toggle + an opacity slider + a
 // scale slider. Each control mutates only its own _layout field through the
 // shared read-side path (_applyPos) + persistence, so they compose cleanly.
@@ -766,6 +868,7 @@ function _menuPanelRow(menu, w) {
   const toggle = document.createElement("button");
   toggle.type = "button";
   toggle.className = "ovx-menu-row ovx-menu-toggle";
+  toggle.setAttribute(CTL_ATTR, _ctlKey("toggle", w.id));
   toggle.dataset.on = p.hidden ? "0" : "1";
   toggle.textContent = (p.hidden ? "[ ] " : "[x] ") + (w.label || w.id);
   toggle.addEventListener("click", () => {
@@ -786,7 +889,9 @@ function _menuPanelRow(menu, w) {
   op.type = "range";
   op.min = "30"; op.max = "100"; op.step = "5";
   op.value = String(Math.round((p.opacity == null ? 1 : p.opacity) * 100));
+  op.setAttribute(CTL_ATTR, _ctlKey("op", w.id));
   op.addEventListener("input", () => { _setOpacity(w, Number(op.value) / 100); });
+  _installRangeBusy(op);
   opWrap.appendChild(op);
   sliders.appendChild(opWrap);
 
@@ -797,7 +902,9 @@ function _menuPanelRow(menu, w) {
   sc.type = "range";
   sc.min = "50"; sc.max = "160"; sc.step = "10";
   sc.value = String(Math.round((p.scale == null ? 1 : p.scale) * 100));
+  sc.setAttribute(CTL_ATTR, _ctlKey("sz", w.id));
   sc.addEventListener("input", () => { _setScale(w, Number(sc.value) / 100); });
+  _installRangeBusy(sc);
   scWrap.appendChild(sc);
   sliders.appendChild(scWrap);
 
@@ -810,6 +917,13 @@ function _menuPanelRow(menu, w) {
 // quick-swap is RETIRED (operator 2026-06-28): all panels are accessible and the
 // operator manages each one here (hide / reposition / opacity / scale).
 function _renderMenu(menu) {
+  if (!menu) return;
+  // Capture BEFORE the repaint - the focused node is about to be destroyed, so
+  // only its stable data-ovx-ctl key survives (see _captureMenuFocus).
+  const snap = _captureMenuFocus(menu);
+  // Never repaint out from under a live range drag: it would kill the drag and
+  // discard the in-progress value (overlay_ds_controls.js:367-378, same law).
+  if (snap && snap.busy) return;
   menu.innerHTML = "";
   const head = document.createElement("div");
   head.className = "ovx-menu-head";
@@ -821,6 +935,7 @@ function _renderMenu(menu) {
   const reset = document.createElement("button");
   reset.type = "button";
   reset.className = "ovx-menu-row ovx-menu-reset";
+  reset.setAttribute(CTL_ATTR, _ctlKey("reset"));
   reset.textContent = "Reset all panels";
   reset.addEventListener("click", () => {
     resetOverlayLayout();
@@ -831,12 +946,18 @@ function _renderMenu(menu) {
   const done = document.createElement("button");
   done.type = "button";
   done.className = "ovx-menu-row ovx-menu-done";
+  done.setAttribute(CTL_ATTR, _ctlKey("done"));
   done.textContent = "Done (back to play)";
   done.addEventListener("click", () => {
     _setMenu(false);
     _shellAction({ action: "set-active" }); // flip back to PASSIVE / click-through
   });
   menu.appendChild(done);
+
+  // Re-establish focus on the SAME control (by key, not node identity) so a
+  // keyboard operator keeps their place across the rebuild. No-op when focus
+  // was outside the menu, so this never steals it.
+  _restoreMenuFocus(menu, snap);
 }
 
 // Create the launcher mount once (idempotent: returns the existing node on a
@@ -998,6 +1119,10 @@ export const _internals = {
   _shellAction,
   _ensureLauncher,
   _renderMenu,
+  CTL_ATTR,
+  _ctlKey,
+  _captureMenuFocus,
+  _restoreMenuFocus,
   _installHideMenu,
   _makeHandle,
   _persist,

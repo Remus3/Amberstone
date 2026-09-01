@@ -2,9 +2,9 @@
 //
 // RC2 Stage 4.2: click-through ZONES. The overlay is a passive click-through
 // HUD ({forward:true}), but a handful of interactive controls (the #ovset
-// settings strip, the A+B choice chips, the DS fight-model knobs, the drag
-// strip) should capture the cursor WITHOUT the operator first hitting the
-// global ACTIVE hotkey. The renderer reports "cursor is over a zone" over the
+// settings strip, the A+B choice chips, the DS fight-model knobs) should
+// capture the cursor WITHOUT the operator first hitting the global ACTIVE
+// hotkey. The renderer reports "cursor is over a zone" over the
 // preload bridge (window.rcShell.setZoneHover); main.js flips the window's
 // ignore-mouse via the pure effectiveIgnoreMouse decision (overlay_state.js).
 //
@@ -27,6 +27,21 @@ test("ZONE_SELECTOR names the interactive overlay controls", () => {
   assert.ok(ctz.ZONE_SELECTOR.includes("#am-pane-ovds"), "DS knob pane is a zone");
   // A generic opt-in hook so future controls join without a code change.
   assert.ok(ctz.ZONE_SELECTOR.includes("data-rc-zone"), "generic data-rc-zone hook");
+});
+
+// ANTI-DRIFT (2026-07-06 incomplete-revert tail). ZONE_SELECTOR is only ever
+// compiled into the OVERLAY page (main.js injectClickThroughZones is called
+// from createOverlayWindow alone), while #rc-shell-drag-region is mounted only
+// by injectDragRegion, which is called only from createWindow (the companion).
+// The overlay deliberately gets NO drag strip: dragging the display-pinned
+// fullscreen canvas shifts every design-px widget off the game (operator
+// 2026-07-06). So a drag-strip selector here can never match a node, and its
+// presence documents an interaction that cannot happen. Keep it out.
+test("ZONE_SELECTOR does not name the companion-only drag strip", () => {
+  assert.ok(
+    !ctz.ZONE_SELECTOR.includes("rc-shell-drag-region"),
+    "drag strip is companion-only; a zone selector for it is dead on the overlay"
+  );
 });
 
 test("clickThroughZonesMountJS returns an IIFE string", () => {
