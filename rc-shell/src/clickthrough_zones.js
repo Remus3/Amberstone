@@ -24,11 +24,15 @@
 // The interactive overlay controls that should capture the cursor on hover.
 // #ovset = the overlay settings strip (toggles + opacity + revert seconds);
 // #rn-choices = the A+B coach choice chips; #am-pane-ovds = the DS fight-model
-// knob pane; #rc-shell-drag-region = the move strip (hover-to-grab without
-// ACTIVE); [data-rc-zone] = a generic opt-in hook so a future control joins a
+// knob pane; [data-rc-zone] = a generic opt-in hook so a future control joins a
 // zone with no code change here.
-const ZONE_SELECTOR =
-  "#ovset, #rn-choices, #am-pane-ovds, #rc-shell-drag-region, [data-rc-zone]";
+//
+// Overlay controls ONLY. This selector is compiled into the OVERLAY page and
+// nowhere else, so a control that lives in the companion window can never
+// match and must not be listed. In particular there is deliberately NO entry
+// for the #rc-shell-drag-region move strip: that strip is companion-only (see
+// ./drag_region.js), and clickthrough_zones.test.js pins its absence.
+const ZONE_SELECTOR = "#ovset, #rn-choices, #am-pane-ovds, [data-rc-zone]";
 
 // JS that wires the hover detector. IDEMPOTENT (a window flag) because it runs
 // on every did-finish-load and a reload re-fires the hook. Self-heals when the
