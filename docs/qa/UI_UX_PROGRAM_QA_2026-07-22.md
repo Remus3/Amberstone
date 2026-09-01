@@ -118,3 +118,39 @@ Legion (operator's to keep or remove via Revo).
 Merge order when theme lands: verify each with `git show --stat` (staged-deletion guard), verifier
 gate, then merge overlay + rofl (disjoint) + theme; run live --commit rofl backfill; render faithful
 comparison for the operator's palette pick.
+
+--------------------------------------------------------------------------------
+## 2026-09-01 - lane 4 headless, ELECTRON OVERLAY only (LEDGER 1315)
+
+Operator scoped the run to the Electron overlay (rc-shell + the in-game dock) and split the
+mandate: SHIP the text-verifiable, PREPARE anything ending in a rendered-pixel judgement.
+All figures below were measured in real headless Chromium, not read off source.
+
+### RULINGS
+
+| # | Ruling |
+|---|--------|
+| OV-R1 | **B-OVL-4 CLOSED.** The draft-elo chip is re-parented out of `.am-pane-head` into a new `.am-pane-chips` row, a DIRECT child of `.am-pane-build`. The queue fence ("re-parent, not a CSS exception") holds: the pane-head hide rule is untouched. It is deliberately NOT in `#am-build-body`, which `active_match.js:859` wipes on every build-signature change. |
+| OV-R2 | **A repainting host in the overlay MUST preserve `document.activeElement`.** Now enforced for the layout menu by `_captureMenuFocus` / `_restoreMenuFocus` in `web/js/lib/overlay_layout.js`, keyed on a stable `data-ovx-ctl` because node identity dies with the rebuild. Guard: `tests/snapshot_panels/test_overlay_launcher_menu.py`. |
+| OV-R3 | **An AMBIENT-tier widget may not paint the reserved lethal red.** `OVERLAY_DOCTRINE.md` rule 4 + section 5 reserve red for the Emergency winner. The draft-elo bad band and low-sample pill are re-mapped to neutral ink in the overlay shell ONLY; the dashboard keeps its colours. Ordinal meaning survives via luminance plus the printed percentage and signed score. |
+| OV-R4 | **A newly-PAINTING element inherits the overlay's rules, not its origin surface's.** The re-parent moved a dashboard-scoped chip onto the HUD and it arrived carrying a dashboard red and a dashboard type scale. Any future "make X visible in the overlay" slice re-audits X against the doctrine before it ships, not after. |
+| OV-R5 | **The lane doctrine's own citations are auditable artifacts.** `tools/headless-uiux.md` trap 2 cited a focus-preservation pattern in `dev.js` that does not exist. Corrected and pinned by `tests/test_uiux_lane_doc_focus_citation.py`. A doctrine doc that tells the next agent to copy absent code costs a whole slice. |
+
+### FUTURE (measured, grounded, NOT actioned this run)
+
+- **F-OV-1 PREPARED, operator-gated.** `#view-active-match .am-pane` (specificity 1,1,0) in `web/css/panels/active_match.css:92-100` BEATS `body[data-shell="overlay"] .ovx-widget.am-pane` (0,3,1) in `web/css/overlay.css`, so `w-call` / `w-build` / `w-ovds` paint OPAQUE `oklch(0.27 0.06 302)` in-game instead of the intended `rgba(22,32,46,0.58)`. The PRIMARY widget is not see-through. Diagnosis is text-verifiable; the fix flips it translucent over live gameplay, so it rides DS3. Repair specified in all three variants in `OVERLAY_LEGIBILITY_VARIANTS_2026-09-01.md`.
+- **F-OV-2.** `#w-launcher` is a `<div>`, `tabIndex -1`, no `role`. The layout menu is now keyboard-USABLE once open but still cannot be OPENED from the keyboard.
+- **F-OV-3.** Same focus-destruction class, unfixed: `coach_choices.js:223` (rebuilds the A/B chips), `overlay_ds_controls.js:535` and `:556` (wipes the four `#ovds-*` number inputs mid-typing when a champion drops out of a tick), and `web/js/panels/dev.js:510` on the dashboard.
+- **F-OV-4.** CI runs NO `.mjs` node tests (no `node --test` in `.github/workflows/`), so `web/js/lib/*.test.mjs` is an unrun gate. One test sat red there from 2026-08-11 until this run.
+- **F-OV-5.** The draft-elo chip exposes dashboard-scoped type to the overlay: `.de-sample` computes 9px (12.0px effective at ovscale 1.333), below the overlay's own smallest sanctioned token `--fs-ov-head` (11px, 14.7px effective).
+- **F-OV-6.** `w-build` computes `overflow:hidden` with a max-height, so overflow is CLIPPED not scrollable; the new chips row costs 14-30px of clipped content.
+- **F-OV-7.** `_menuRangeBusy` guards a path no caller reaches (`_setOpacity` / `_setScale` do not re-render), but the flag can stick and its `blur` rescue is untested - deleting it would convert the guard into a silent menu freeze.
+- **F-OV-8.** `.draft-elo-contributions` still uses `#ff8080`. Left deliberately: it is `display:none` at rest, hover-only, `pointer-events:none`, and the overlay is click-through, so it paints no red on the HUD at rest; and its ally-green / enemy-red / matchup-amber triad is a CATEGORY encoding, not magnitude. Flagged for an operator ruling rather than neutralised blind.
+- **F-OV-9 citation drift found while triaging** - `UI_UX_QUEUE_2026-07-21.md:78` and `LIVE_GAME_GATED_SYNC.md:98` cite `overlay.css:482`; the rule is now at `:506`. `LIVE_GAME_GATED_SYNC.md:500` cites `overlay_layout.js:67` for `w-stats`; it is `:83`. `UI_UX_PROGRAM_QA:106` cites `aram_balance.js:46` in `web/js/lib/`; it is `web/js/panels/aram_balance.js:55`. This file's `:57` cites the footer at `web/index.html:2251`, which is now the draft-elo chip.
+- **F-OV-10 dead gated rows.** `LIVE_GAME_GATED_SYNC.md` G2-26 and G2-33 point at `web/js/panels/enemy_spells.js`, deleted by `25fce0df` (2026-08-11, LEDGER 1238). Kill them, do not drain. Same for queue row B-OVL-5.
+- **F-OV-11.** `health.overlay_visible` has ZERO writers - exactly two references repo-wide, the read at `app/_health_monitor.py:82` and the initializer at `app/__init__.py:132` - so it is hardcoded false by construction and can never be true. Both files are CLAUDE.md frozen, so it needs an adjudicating agent's approval; not actioned in an overlay-scoped run. (= queue B-OVL-7.)
+
+### CONTRADICTION TO RECONCILE BEFORE ANYONE ACTS ON THE QUEUE
+Queue lines 86-88 record G2-34 and G2-35 as "RULED", while `LIVE_GAME_GATED_SYNC.md:538-541` still
+carries both as OPEN live-gated DECISIONS the operator makes after seeing them in-game. The gated
+doc is the later, narrower authority; treat both as NOT closable headless.
