@@ -296,6 +296,21 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
     # NOT be "corrected". EXPECT THIS ENTRY TO RETURN the next time ROADMAP.md
     # drops below 231 lines. If the guard then reports it as NET-NEW, that is this
     # same historical debt resurfacing, not fresh rot - re-add it with this reason.
+    # RE-ADDED 2026-09-01. The prediction above came true: the 2026-09-01 ROADMAP
+    # size-budget relocation pass moved 24 closed pointer stubs to
+    # docs/ROADMAP_HISTORY.md, dropping ROADMAP.md from 234 to 194 lines, so line
+    # 231 no longer exists and the MENTION at SPEC_..._index.md:2005 is PAST_EOF
+    # again. Same historical debt resurfacing, not fresh rot; the spec records that
+    # this cite went stale during an audit and must NOT be "corrected".
+    (
+        "docs/specs/SPEC_data_provenance_guard_and_index.md",
+        "ROADMAP.md:231",
+        "HISTORICAL",
+        "The cited string is a MENTION recording that this cite went stale during "
+        "an audit, not a live pointer; ROADMAP.md is now 194 lines so line 231 is "
+        "past EOF. Re-pointing it would falsify the spec's own record. Returns "
+        "whenever ROADMAP.md drops below 231 lines (see the DISCHARGED note above).",
+    ),
     (
         "docs/specs/SPEC_rm98_cast_rate_time_base.md",
         "project_ds_rm98_cast_rate_time_base.md:46-49",
