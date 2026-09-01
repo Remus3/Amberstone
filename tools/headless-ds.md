@@ -27,7 +27,10 @@ Docs, ledger entries and your memory of the last bump are all UNTRUSTWORTHY for 
 |---|---|---|
 | patch | `data/daemon_slayer/current.txt` | `16.15.1` |
 | engine constant | `agents/daemon_slayer/__init__.py` `ENGINE_VERSION` | READ IT LIVE - that file is the source of truth, and no literal is copied here on purpose |
-| live server | `curl -s http://127.0.0.1:8860/health` (HTTP, not HTTPS) | `engine_version` MUST EQUAL the repo constant above; `patch 16.15.1, champions 173, items 706` |
+| live server | `curl -s http://127.0.0.1:8860/health` (HTTP, not HTTPS) | `engine_version` equals the repo constant **only before you bump, and only in main** - see the LANE-WORKTREE CAVEAT below; `patch 16.15.1, champions 173, items 706` |
+
+**LANE-WORKTREE CAVEAT - MEASURED 2026-09-01 (LEDGER 1317), and it INVERTS the row above.** The `RC-DaemonSlayer` task runs `pythonw.exe` against `C:\Riot Commander\tools\start_daemon_slayer.py` - the MAIN checkout - so `:8860` serves MAIN's engine version no matter what this lane pins. Probed that run: task command line confirmed, listener PID's command line confirmed, main constant 1.278.1, lane constant 1.279.0, served 1.278.1. Consequences: (1) after you bump, served != repo is EXPECTED and is NOT evidence of a stale server; (2) `tests/phase8_smoke/test_sr_draft_profile_engine.py::TestLiveEngineIntegration::test_live_three_profiles` asserts served == imported constant and therefore goes RED on any lane DS bump - structural, not a defect, and it clears only on merge PLUS restart (a merge without the restart leaves it red); (3) the equality test in this table is only meaningful BEFORE your bump, as a check that the server is not stale relative to main.
+
 
 If the served version lags the repo constant the server is stale - bounce it (section 8) BEFORE measuring anything. The build-order generators compute over live
 HTTP, so a stale server returns a confident, well-formed, wrong answer. **That test is a COMPARISON of two values you probe in this session, which is why the
@@ -155,7 +158,7 @@ run, zero real regressions. It RECURRED on the next bump, then again silently on
 changed`; after the bounce the same regen changed 82 of 173).
 
 1. Bump the quoted literal in `agents/daemon_slayer/__init__.py` (`ENGINE_VERSION = "<read the current value>"`). Minor for a feature batch, patch for a correctness fix.
-2. **Bounce DS :8860** (section 8) and confirm `/health` serves the NEW version. This is a CORRECTNESS step, not stamp hygiene.
+2. **Bounce DS :8860** (section 8) and confirm `/health` serves the NEW version. This is a CORRECTNESS step, not stamp hygiene - **IN MAIN.** **DO NOT do this from a lane worktree (measured 2026-09-01, LEDGER 1317).** The scheduled task launches the MAIN checkout, so a bounce either changes nothing or, if you repoint it, serves UNMERGED lane code on the port RC and every other live lane reads - inverting your own failure onto four other lanes. From a lane worktree, regenerate IN-PROCESS instead: `core/build_order_precompute.py` and `core/build_order_variants.py` both take `--static`, which installs `_install_static_transport()` and computes through the DS server's own POST handlers with no HTTP and no running server, documented as identical to the live path by construction. That is strictly MORE correct here than regenerating against a foreign-version server. **The bounce is then OWED AT MERGE, in main, together with a re-run of `tools/ds_share_sync.py`** - `dist/` is gitignored so the rebuilt ingest bundle never survives a merge, and `LiveIngestFreshTests` only runs in main (`feedback_ds_worktree_merge_regen_dist_bundle`).
 3. Regenerate the precompute tables. Verified live: `data/daemon_slayer/build_orders/16.15.1/` holds 6 files - `build_orders_{sr,aram,arena}.json` +
    `build_order_variants_{sr,aram,arena}.json`. `core/build_order_precompute.py` and `core/build_order_variants.py` both need an explicit `--champions all`
    ("all" is the ONLY full-roster path; the default is a seed sample and silently shrinks a shipped 173-champion table).
