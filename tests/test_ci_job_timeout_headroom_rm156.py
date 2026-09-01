@@ -95,6 +95,12 @@ _DS_TREE = "agents/daemon_slayer/tests/"
 # and we will never know how much more. A ceiling has to sit above the tail of
 # ordinary variance or it manufactures fake reds, so this floor sits about 12
 # minutes above the 27m40s worst COMPLETE observation rather than hugging it.
+# 2026-09-01 UPDATE: landing the 61-commit lane 8 true-audit branch grew the dual
+# suite from ~45min to ~57min on CI (run 33470194278 timed out at the old 55m step
+# ceiling while 99 pct passing - a green-but-slow suite, no test failure). Active
+# ceilings raised in ci.yml: step 55 -> 75, job 75 -> 95. The floor below stays
+# conservative on purpose - it guards against an absurdly-LOW ceiling, not the
+# suite's actual size; the real headroom lives in the 75m step ceiling.
 _MIN_SUITE_STEP_CEILING_MIN = 40
 
 # MEASURED 2026-08-04: `Install Playwright Chromium` took 10m33s on run
