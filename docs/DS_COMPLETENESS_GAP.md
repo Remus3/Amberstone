@@ -1,10 +1,15 @@
 # Daemon Slayer - Completeness Gap Analysis
 
-> **SNAPSHOT as of 2026-06-19 - the live-count lines below are SUPERSEDED.** Live DS engine
-> is 1.184.0 now (not 1.147.0), and several gated boxes have since flipped (B45/B46/B47,
-> DSP11 C4). Do NOT read the counts in this file as current - see docs/LEDGER.md and
-> docs/LIVE_GAME_GATED_SYNC.md for live state. This doc is a dated snapshot, kept in place
-> (not archived) because it is cross-referenced by line number.
+> **SNAPSHOT as of 2026-06-19 - the live-count lines below are SUPERSEDED.** Every version,
+> patch and count in this file (including the 1.147.0 ENGINE_VERSION it was written against)
+> is stale, and several gated boxes have since flipped (B45/B46/B47, DSP11 C4). Do NOT read
+> anything here as current. **This banner deliberately names no replacement number** - it used
+> to recite one and drifted 94 ENGINE versions before anyone noticed, which is the exact
+> failure it exists to prevent. Measure live state instead:
+> `curl http://127.0.0.1:8860/health` (HTTP, not HTTPS) plus `data/daemon_slayer/current.txt`
+> and `agents/daemon_slayer/__init__.py`; for shipped work see docs/LEDGER.md and
+> docs/LIVE_GAME_GATED_SYNC.md. This doc is a dated snapshot, kept in place (not archived)
+> because it is cross-referenced by line number.
 
 > Authored 2026-06-19 (RC 2.0 Phase 8.2). Answers the operator question: "What is
 > lacking for Daemon Slayer to be TRULY complete - nothing more to add or do, even
