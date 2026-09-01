@@ -165,10 +165,19 @@ Each is stated as a rule because each one passes the check you would naturally r
    `_mcPaint` rebuilt the row 4x/second while an arm countdown ran, so arming from the keyboard threw focus
    to `<body>` and the confirm click inside the 3s window was UNREACHABLE - the flow was silently
    mouse-only, and nothing in the source looks wrong. **RULE: any repainting host preserves
-   `document.activeElement` across the repaint.** Pattern: `web/js/panels/dev.js:512-513` + `:573-574`
-   (capture the focused id before the rebuild, restore after);
-   `web/js/panels/overlay_ds_controls.js:367-378` is the other half (never overwrite an input the operator
-   is currently in).
+   `document.activeElement` across the repaint.** Canonical pattern:
+   `web/js/lib/overlay_layout.js` `_captureMenuFocus` / `_restoreMenuFocus` (capture a STABLE key off the
+   focused control before the rebuild - node identity is useless, the node is destroyed - then re-find and
+   re-focus by that key after, returning null when focus was not inside the host so the restore never
+   STEALS focus); `web/js/panels/overlay_ds_controls.js:367-378` is the other half (never overwrite an
+   input the operator is currently in). Guard:
+   `tests/snapshot_panels/test_overlay_launcher_menu.py`.
+   **CORRECTED 2026-09-01:** this trap previously cited `web/js/panels/dev.js:512-513` + `:573-574` as the
+   pattern to copy. That citation was FALSE and had to be re-derived mid-slice. `dev.js` contains no
+   focus-preservation code at all - a repo-wide grep for `activeElement` across `web/js/` returns ONLY the
+   four `overlay_ds_controls.js` hits above plus `overlay_layout.js`. `dev.js:510` is
+   `tbody.innerHTML = ""` followed by an unguarded rebuild, i.e. `dev.js` is an OPEN INSTANCE of this
+   defect, not the fix for it. Copying the named lines would have shipped nothing.
 3. **Contrast must be computed on RESOLVED colors.** `web/css/themes.css` defines several tokens as
    `oklch()` - e.g. `:145` `--text-faint: oklch(0.63 0.045 40)`, `:227` `--surface-alt: oklch(0.31 0.036
    25)` - usually as a second declaration overriding a hex sibling on the line above, so a check parsing the

@@ -300,7 +300,45 @@ _WEB = _REPO_ROOT / "web"
 # web/data/*_index.json in the tree remain the uncommitted DDragon 16.16.1
 # bump (ROADMAP RM-190) and cannot affect this digest - _web_sources filters on
 # _LANGS, which is .js / .css / .html only.
-_LIVE_HALF_DIGEST = "87d64958e9dd8e0db361d7563df4cb33fa1441593d57a7c03423ba4f2a76f558"
+# RE-CAPTURED 2026-09-01 (lane-4 overlay slice: the launcher-menu focus fix +
+# the B-OVL-4 draft-elo re-parent), superseding the B4-e capture immediately
+# above. Ordinary case: same web/ source set on both sides (171 before and
+# after, nothing added or removed), no tokeniser change. Exactly four files
+# differ in their live half, and ALL FOUR render by construction:
+#   M web/js/lib/overlay_layout.js    _captureMenuFocus / _restoreMenuFocus
+#                                     around the _renderMenu rebuild, plus the
+#                                     data-ovx-ctl key now stamped on every
+#                                     menu control. Keyboard activation of a
+#                                     panel toggle dropped document.activeElement
+#                                     to <body>, so the 10-row overlay layout
+#                                     menu was effectively mouse-only.
+#   M web/index.html                  the draft-elo chip re-parented OUT of
+#                                     .am-pane-head into a new .am-pane-chips
+#                                     row. Inside the head it sat under a
+#                                     display:none ancestor in the overlay and
+#                                     painted a 0x0 box every tick.
+#   M web/css/panels/active_match.css the .am-pane-chips base row + its :has()
+#                                     collapse so a hidden chip leaves no strip.
+#   M web/css/overlay.css             three blocks: the w-build .am-pane-chips
+#                                     override (padding/margin), the overlay-only
+#                                     collapse of that row in the chip's init /
+#                                     empty / hidden states, and the overlay-only
+#                                     re-map of the chip's bad band + low-sample
+#                                     pill off lethal red onto neutral ink. The
+#                                     pane-head hide rule is deliberately
+#                                     UNTOUCHED - the queue fence is "re-parent,
+#                                     not a CSS exception".
+# The last two blocks are the two MUST-FIX the independent 5-phase audit raised
+# against the re-parent: without them the row painted a content-free 18x8 box
+# in-game in its default state, and an AMBIENT-tier widget painted the lethal red
+# that docs/OVERLAY_DOCTRINE.md rule 4 reserves for the Emergency winner.
+# Verified the same way as the captures above: the superseded digest 87d64958
+# reproduces byte for byte in a clean HEAD worktree (measured 2026-09-01 at
+# 30156a0b via a throwaway detached worktree), so nothing else moved the value.
+# Note web/js/lib/overlay_layout.drag.test.mjs also changed in this slice and
+# correctly does NOT appear above: _LANGS is .js / .css / .html, so .mjs is
+# outside _web_sources. Confirmed by per-file live-half diff, not assumed.
+_LIVE_HALF_DIGEST = "06da4a450f69b79236268c97f0e9ddb37da6c0e6986ed755eebf3a7a63b4a866"
 
 
 def _web_sources() -> list[Path]:
