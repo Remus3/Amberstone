@@ -34,6 +34,21 @@ FEED VALUE WINS. Both rows now credit their stated magnitude, so the
 plain stated-equals-credited assertion covers every swept id with no
 skip list - which is the whole point of the doctrine call. SR parents
 are untouched (3020 stays 12, 4645 stays 15).
+
+RM-222 - THE LAYOUT-AGREEMENT GUARD THE FLAT AXIS NEVER HAD. R160 grew
+``test_both_catalog_layouts_agree`` for the PERCENT axis when that axis
+broke. The flat axis stayed quiet and unguarded while carrying the only
+live divergence in either sweep: item 3175 states 20 in live
+``data/meta`` and 18 in the pinned 16.15.1 snapshot, carried forward by
+RM-190. Nothing in the repo compared the two layouts on this axis, so a
+SECOND such move would have landed silently. The guard below closes that,
+with its own ``_PINNED_CARRY_FORWARD`` allowlist.
+
+The flat regex is deliberately NOT folded into R160's pattern tuple. The
+two sweeps are disjoint by MAGNITUDE by design - the percent pattern
+requires a "%" this one forbids - and merging them would re-open the
+cross-fold that R160's
+``test_one_item_states_both_flat_and_percent_magic_pen`` exists to pin.
 """
 
 from __future__ import annotations
@@ -54,12 +69,71 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _META_CATALOG = _REPO_ROOT / "data" / "meta" / "ddragon_items.json"
 _PATCH_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
+
+# Is the LIVE DDragon catalog present? ``data/meta/ddragon_items.json`` tracks
+# live DDragon; the per-patch snapshot under ``data/daemon_slayer/<patch>/``
+# is PINNED (16.15.1 today) and the registry deliberately runs AHEAD of it.
+# RM-190 carried item 3175 ``magic_pen_flat`` 18 -> 20 out of the 16.16.1
+# mirror while leaving the DS snapshot pinned, and 16.17.1 carried 226694
+# ``armor_pen_pct`` 0.40 -> 0.45 the same way. So a magnitude-parity assertion
+# is only meaningful against the LIVE catalog.
+#
+# The Share package does not vendor ``data/meta`` BY DESIGN. Falling back to
+# the pinned snapshot there compares the registry against a catalog it no
+# longer describes and manufactures a FALSE failure - which is exactly how the
+# mirror sat red on 3175 from 2026-08-12 until the 16.17.1 upstream pass found
+# it (``ds_share_sync --check`` verifies FILES, and never ran the mirror's own
+# suite). The swept SET is stable across the two layouts, so the population
+# sweeps keep the fallback; only magnitude parity skips.
+_IS_SHARE_MIRROR = any(
+    (p / "SHARE_MIRROR").is_file() for p in Path(__file__).resolve().parents
+)
+
+
+def _require_live_catalog(case: "unittest.TestCase") -> None:
+    """Gate a magnitude-parity assertion on the tree actually having the live catalog.
+
+    Gates on the SHARE_MIRROR sentinel, NOT on ``_META_CATALOG.is_file()``.
+    ``data/meta/ddragon_items.json`` is TRACKED in the main repo, so its
+    absence there is a deleted committed file - a DEFECT that must fail
+    loudly - and a skip keyed on it would be an always-passing guard
+    (tests/test_skip_condition_hygiene.py, docs/SKIPIF_AUDIT_2026-07-27.md).
+    The Share package omitting it is the one legitimate environment
+    difference, and it is the same discriminator
+    ``test_both_catalog_layouts_agree`` already uses.
+    """
+    if _IS_SHARE_MIRROR:
+        case.skipTest(
+            "Share/src does not vendor data/meta by design; magnitude parity "
+            "needs the LIVE catalog, because the registry deliberately runs "
+            "ahead of the pinned per-patch snapshot (RM-190 / 16.17.1 carry-"
+            "forward)"
+        )
+    case.assertTrue(
+        _META_CATALOG.is_file(), f"tracked {_META_CATALOG} is missing"
+    )
+
 # Flat pen only. A percent source renders as "<attention>40%</attention>"
 # and cannot match, because the digits must be followed directly by the
 # closing tag.
 _FLAT_MAGIC_PEN_RE = re.compile(
     r"<attention>\s*(\d+(?:\.\d+)?)\s*</attention>\s*Magic Penetration"
 )
+
+# Ids where the LIVE data/meta catalog and the PINNED per-patch snapshot
+# legitimately state a different flat magic pen, because Riot moved the
+# magnitude after the DS snapshot was pinned and the registry carried the NEW
+# value forward (a1 posture: carry the magnitude, do not bump the snapshot).
+# ITEM_EFFECTS credits the LIVE value.
+#
+# item_id -> (live stated, pinned stated). FLAT, not keyed by regex source the
+# way R160's twin is: this module sweeps exactly ONE pattern, so a per-pattern
+# key would be a constant lookup dressed up as a dimension.
+_PINNED_CARRY_FORWARD = {
+    # RM-190 carried 3175 Spellslinger's Shoes 18 -> 20 out of the 16.16.1
+    # mirror while leaving the snapshot at 16.15.1, which still states 18.
+    "3175": ("20", "18"),
+}
 
 
 def _catalog() -> dict:
@@ -79,6 +153,35 @@ def _swept_flat_magic_pen() -> dict:
         if match:
             found[iid] = (entry.get("name", ""), float(match.group(1)))
     return found
+
+
+def _sweep_stated(catalog: dict) -> dict:
+    """item_id -> flat magic pen as the RAW string the catalog prints.
+
+    Compared as strings on purpose. This guard is about the two catalog
+    LAYOUTS agreeing on what they state, so an authoring change from "20" to
+    "20.0" is a real difference and ``float()`` would launder it away.
+    """
+    return {
+        iid: _FLAT_MAGIC_PEN_RE.search(entry["description"]).group(1)
+        for iid, entry in catalog.items()
+        if _FLAT_MAGIC_PEN_RE.search(entry.get("description", ""))
+    }
+
+
+def _layout_divergences(live: dict, pinned: dict) -> dict:
+    """item_id -> (live stated, pinned stated) for every id the two disagree on.
+
+    A free function taking BOTH sides as arguments so the detector can be
+    driven with a perturbed input - the same reason R160 factors
+    ``_parity_mismatches`` out. A guard that cannot fail is worse than no
+    guard.
+    """
+    return {
+        iid: (live.get(iid), pinned.get(iid))
+        for iid in sorted(set(live) | set(pinned))
+        if live.get(iid) != pinned.get(iid)
+    }
 
 
 class R153JarvanOnesFlatMagicPenTests(unittest.TestCase):
@@ -142,6 +245,7 @@ class R153FlatMagicPenCatalogSweepTests(unittest.TestCase):
                 )
 
     def test_registered_magnitude_matches_the_stated_value(self) -> None:
+        _require_live_catalog(self)
         # R161 doctrine B: no exemptions. Every swept id, Arena mirror or
         # not, credits exactly the magnitude its own description states.
         for iid, (name, stated) in sorted(self.swept.items()):
@@ -166,6 +270,77 @@ class R153FlatMagicPenCatalogSweepTests(unittest.TestCase):
                 self.assertNotAlmostEqual(
                     arena_credit, ITEM_EFFECTS[sr].magic_pen_flat, places=3
                 )
+
+    def _both_layouts(self) -> tuple:
+        """(live, pinned) stated-magnitude maps, or skip where unrunnable.
+
+        Keyed on the SHARE_MIRROR sentinel, never on the file's absence: both
+        catalogs are TRACKED in the main repo, so keying on absence would let
+        a deleted committed catalog silently SKIP, which is one of the two
+        failures this guard exists to catch.
+        """
+        if _IS_SHARE_MIRROR:
+            self.skipTest("Share/src does not vendor data/meta by design")
+        patch = (_PATCH_ROOT / "current.txt").read_text(encoding="utf-8").strip()
+        patch_file = _PATCH_ROOT / patch / "items.json"
+        self.assertTrue(
+            _META_CATALOG.is_file(), f"tracked {_META_CATALOG} is missing"
+        )
+        self.assertTrue(patch_file.is_file(), f"tracked {patch_file} is missing")
+        return (
+            _sweep_stated(
+                json.loads(_META_CATALOG.read_text(encoding="utf-8"))["data"]
+            ),
+            _sweep_stated(
+                json.loads(patch_file.read_text(encoding="utf-8"))["data"]
+            ),
+        )
+
+    def test_both_catalog_layouts_agree(self) -> None:
+        # RM-222. The Share package resolves the patch layout while the repo
+        # resolves data/meta. These stated the same magnitudes until the DS
+        # snapshot fell behind live DDragon: the snapshot is PINNED at 16.15.1
+        # while data/meta tracks live, so a magnitude Riot moves in between
+        # shows up in ONE layout only. That is EXPECTED under the a1 posture,
+        # so this guard does not demand equality - it demands that every
+        # divergence is a DOCUMENTED carry-forward. An undocumented divergence
+        # is real drift and goes red, and a carry-forward that DISAPPEARS (a
+        # snapshot bump realigning the layouts) goes red too, so the list
+        # cannot rot silently.
+        live, pinned = self._both_layouts()
+        self.assertEqual(
+            _layout_divergences(live, pinned),
+            _PINNED_CARRY_FORWARD,
+            "live data/meta vs the pinned DS snapshot diverged on a flat "
+            "magic pen id that is not a documented carry-forward. Either a "
+            "new patch moved a magnitude (carry it into ITEM_EFFECTS and "
+            "record it in _PINNED_CARRY_FORWARD), or the DS snapshot was "
+            "bumped and the entry is now stale.",
+        )
+
+    def test_layout_detector_reports_a_new_divergence(self) -> None:
+        # Drive the detector with a perturbed live side and prove it names
+        # exactly the perturbed id ON TOP of the documented carry-forward.
+        # Without this, the assertion above could pass because
+        # _layout_divergences never returns anything at all.
+        live, pinned = self._both_layouts()
+        self.assertIn("3020", live)
+        perturbed = dict(live)
+        perturbed["3020"] = str(int(perturbed["3020"]) + 1)
+        self.assertEqual(
+            sorted(_layout_divergences(perturbed, pinned)),
+            sorted(set(_PINNED_CARRY_FORWARD) | {"3020"}),
+        )
+
+    def test_layout_detector_reports_a_vanished_divergence(self) -> None:
+        # The other direction, which is the half a plain "no new drift" check
+        # misses: realign 3175 and the documented carry-forward must stop
+        # being reported, so a stale allowlist entry surviving a snapshot bump
+        # fails the assertion above instead of passing quietly.
+        live, pinned = self._both_layouts()
+        realigned = dict(live)
+        realigned["3175"] = pinned["3175"]
+        self.assertNotIn("3175", _layout_divergences(realigned, pinned))
 
     def test_placeholder_stat_item_is_not_swept(self) -> None:
         # 443064 Talisman of Ascension renders every stat line as a

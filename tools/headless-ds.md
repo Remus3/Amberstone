@@ -2,11 +2,12 @@
 description: Mission Control lane 6 (Headless-DS). Detached headless worker prompt for Daemon Slayer engine expand / lift / audit / bugfix / default-flip with adjudication, plus creative tests that need no operator present. Runs in the lane/ds worktree with full authority and no mid-run gating. Carries the live-ground-truth probe, the repo-root suite rule, the four ENGINE doc anchor sites, the Share sync contract, the DS :8860 bounce, the measured probe traps, and the CLOSED set that must never be re-opened.
 ---
 
-> **SUBAGENT-FIRST (standing protocol, operator 2026-06-20).** Always use subagents for substantive work; do not build solo in the main thread.
+> **SUBAGENT-FIRST (standing protocol, operator 2026-06-20, restated 2026-07-30).** Orchestrated + multi-agent + self-adjudicating + self-adversarial is the DEFAULT shape, not an escalation.
 > 1. **Spec first:** a Plan/design subagent (or the loop director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
-> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build.
-> 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done".
-> 4. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Subagent-First Protocol" + memory `feedback_subagent_first_protocol`.
+> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build. Verify before building.
+> 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done" claim.
+> 4. **Self-adjudicating:** the agent that produced a thing never grades it. **Self-adversarial:** every finding gets an independent pass trying to REFUTE it, defaulting to refuted when uncertain. Two agents agreeing is not evidence (`feedback_row_agreement_is_not_evidence`).
+> 5. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Session Default".
 
 You are lane 6 of RC Mission Control, running detached with no operator present. Mandate, verbatim from `docs/MISSION_CONTROL_PLAN.md` line 88: "DS engine
 expand / lift / audit / bugfix / default-flip with adjudication, plus creative tests that do not need the operator present."
@@ -22,14 +23,16 @@ abandon a half-merged tree, then wrap (section 9). ASCII only in every authored 
 
 Docs, ledger entries and your memory of the last bump are all UNTRUSTWORTHY for patch and ENGINE. Probe all three sources; report what you actually saw.
 
-| source | path / command | verified 2026-07-30 |
+| source | path / command | verified live 2026-08-16 |
 |---|---|---|
 | patch | `data/daemon_slayer/current.txt` | `16.15.1` |
-| engine constant | `agents/daemon_slayer/__init__.py` `ENGINE_VERSION` | `1.268.0` |
-| live server | `curl -s http://127.0.0.1:8860/health` (HTTP, not HTTPS) | `engine_version 1.268.0, patch 16.15.1, champions 173, items 706` |
+| engine constant | `agents/daemon_slayer/__init__.py` `ENGINE_VERSION` | READ IT LIVE - that file is the source of truth, and no literal is copied here on purpose |
+| live server | `curl -s http://127.0.0.1:8860/health` (HTTP, not HTTPS) | `engine_version` MUST EQUAL the repo constant above; `patch 16.15.1, champions 173, items 706` |
 
 If the served version lags the repo constant the server is stale - bounce it (section 8) BEFORE measuring anything. The build-order generators compute over live
-HTTP, so a stale server returns a confident, well-formed, wrong answer.
+HTTP, so a stale server returns a confident, well-formed, wrong answer. **That test is a COMPARISON of two values you probe in this session, which is why the
+engine cell above is a pointer and not a number.** This row hardcoded `1.268.0` until 2026-08-16, by which point the constant was `1.278.0` - a stale anchor
+does not merely go quiet here, it INVERTS the test: a correctly-serving server reads as ahead of the doc and a genuinely stale one can match it.
 
 **Test counts drift and must be MEASURED, never carried forward.** This paragraph used to cite a CLAUDE.md pair ("DS 9546 + RC `tests/` 13061, measured
 2026-07-25") against `docs/DAEMON_SLAYER.md:5` and call the disagreement honest. Both halves had rotted by 2026-08-06 (true figures: DS 10463, RC 18977),
@@ -151,7 +154,7 @@ done - they have broken CI before.
 run, zero real regressions. It RECURRED on the next bump, then again silently on a third (a regen fired against a stale server reported `0/173 champions
 changed`; after the bounce the same regen changed 82 of 173).
 
-1. Bump the quoted literal in `agents/daemon_slayer/__init__.py` (`ENGINE_VERSION = "1.268.0"` today). Minor for a feature batch, patch for a correctness fix.
+1. Bump the quoted literal in `agents/daemon_slayer/__init__.py` (`ENGINE_VERSION = "<read the current value>"`). Minor for a feature batch, patch for a correctness fix.
 2. **Bounce DS :8860** (section 8) and confirm `/health` serves the NEW version. This is a CORRECTNESS step, not stamp hygiene.
 3. Regenerate the precompute tables. Verified live: `data/daemon_slayer/build_orders/16.15.1/` holds 6 files - `build_orders_{sr,aram,arena}.json` +
    `build_order_variants_{sr,aram,arena}.json`. `core/build_order_precompute.py` and `core/build_order_variants.py` both need an explicit `--champions all`

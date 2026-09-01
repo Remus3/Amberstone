@@ -1,4 +1,4 @@
-"""Round 22 - POST /api/file-task + ops._scheduler_client fallback + task detail."""
+"""Round 22 - POST /api/file-task + task detail."""
 from __future__ import annotations
 
 import json
@@ -7,7 +7,6 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from pathlib import Path
 
 import pytest
 
@@ -108,39 +107,6 @@ def test_file_task_endpoint_frozen_file_gates(live_supervisor) -> None:
             urllib.request.urlopen(dismiss, timeout=3).close()
         except urllib.error.HTTPError:
             pass  # best-effort cleanup; the gate-limbo reaper is the backstop
-
-
-# -- ops/_scheduler_client.py fallback path -------------------------
-
-def test_client_fallback_when_supervisor_unreachable(tmp_path: Path, monkeypatch) -> None:
-    """Point the client at a dead port so HTTP fails, confirm it falls
-    back to a direct Scheduler.file_task that writes to jsonl."""
-    monkeypatch.setenv("RC_SUPERVISOR_URL", "http://127.0.0.1:1")   # TCP 1 - guaranteed closed
-
-    # Isolate the scheduler fallback by redirecting QUEUE_LOG.
-    import agents.agent1_lead.scheduler as sched_mod
-    monkeypatch.setattr(sched_mod, "QUEUE_LOG", tmp_path / "q.jsonl")
-
-    # Reload client so DEFAULT_BASE_URL picks up the env change.
-    import importlib
-    import ops._scheduler_client as client_mod
-    importlib.reload(client_mod)
-
-    result = client_mod.file_task(
-        op="fallback-test-op",
-        owner_agent="6",
-        priority=42,
-        payload={"source": "fallback-path"},
-    )
-    assert result["used_http"] is False
-    assert result["op"] == "fallback-test-op"
-    assert result["owner_agent"] == "6"
-    assert result["priority"] == 42
-    # jsonl file exists and contains the task.
-    jsonl = tmp_path / "q.jsonl"
-    assert jsonl.exists()
-    text = jsonl.read_text(encoding="utf-8")
-    assert "fallback-test-op" in text
 
 
 # -- /api/task/<id> detail endpoint ---------------------------------

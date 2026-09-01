@@ -27,10 +27,18 @@ percent, and recorded the open question: do Arena mirrors inherit their SR
 coefficients, or does an explicitly different DDragon stat line win? The
 director answered DOCTRINE B - when a DDragon Arena mirror states its OWN
 explicit stat line that differs from its SR twin, THE ARENA FEED VALUE WINS.
-Both rows now credit 0.40, so they pass the plain parity assertion and the
-holdout is GONE, along with the sibling escalations R152 recorded for its 7
-lethality rows and R153 pinned for ``223020`` / ``224645``. SR parents are
-untouched (``3036`` and ``6694`` stay 0.35). The inheritance-side guard in
+Both rows passed the plain parity assertion at 0.40 and the holdout is GONE,
+along with the sibling escalations R152 recorded for its 7 lethality rows and
+R153 pinned for ``223020`` / ``224645``. SR parents are untouched (``3036``
+and ``6694`` stay 0.35).
+
+DDragon 16.17.1 then moved ``226694`` alone to 45 percent (``223036`` held at
+40, both SR twins held at 35), and the registry carried it: ``226694`` now
+credits 0.45. Doctrine B is unchanged - the row still takes its OWN stated
+Arena value, that value simply moved. Because the DS per-patch snapshot stays
+PINNED at 16.15.1, the live and pinned catalogs now state different numbers
+for this id; that divergence is recorded in ``_PINNED_CARRY_FORWARD`` and the
+magnitude-parity assertions skip in any tree that lacks the live catalog. The inheritance-side guard in
 ``test_effects_expansion`` was inverted in the same slice and is now
 ``test_arena_serylda_armor_pen_diverges_from_sr``.
 
@@ -78,16 +86,60 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _META_CATALOG = _REPO_ROOT / "data" / "meta" / "ddragon_items.json"
 _PATCH_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
+
+# Is the LIVE DDragon catalog present? ``data/meta/ddragon_items.json`` tracks
+# live DDragon; the per-patch snapshot under ``data/daemon_slayer/<patch>/``
+# is PINNED (16.15.1 today) and the registry deliberately runs AHEAD of it.
+# RM-190 carried item 3175 ``magic_pen_flat`` 18 -> 20 out of the 16.16.1
+# mirror while leaving the DS snapshot pinned, and 16.17.1 carried 226694
+# ``armor_pen_pct`` 0.40 -> 0.45 the same way. So a magnitude-parity assertion
+# is only meaningful against the LIVE catalog.
+#
+# The Share package does not vendor ``data/meta`` BY DESIGN. Falling back to
+# the pinned snapshot there compares the registry against a catalog it no
+# longer describes and manufactures a FALSE failure - which is exactly how the
+# mirror sat red on 3175 from 2026-08-12 until the 16.17.1 upstream pass found
+# it (``ds_share_sync --check`` verifies FILES, and never ran the mirror's own
+# suite). The swept SET is stable across the two layouts, so the population
+# sweeps keep the fallback; only magnitude parity skips.
+def _require_live_catalog(case: "unittest.TestCase") -> None:
+    """Gate a magnitude-parity assertion on the tree actually having the live catalog.
+
+    Gates on the SHARE_MIRROR sentinel, NOT on ``_META_CATALOG.is_file()``.
+    ``data/meta/ddragon_items.json`` is TRACKED in the main repo, so its
+    absence there is a deleted committed file - a DEFECT that must fail
+    loudly - and a skip keyed on it would be an always-passing guard
+    (tests/test_skip_condition_hygiene.py, docs/SKIPIF_AUDIT_2026-07-27.md).
+    The Share package omitting it is the one legitimate environment
+    difference, and it is the same discriminator
+    ``test_both_catalog_layouts_agree`` already uses.
+    """
+    if _IS_SHARE_MIRROR:
+        case.skipTest(
+            "Share/src does not vendor data/meta by design; magnitude parity "
+            "needs the LIVE catalog, because the registry deliberately runs "
+            "ahead of the pinned per-patch snapshot (RM-190 / 16.17.1 carry-"
+            "forward)"
+        )
+    case.assertTrue(
+        _META_CATALOG.is_file(), f"tracked {_META_CATALOG} is missing"
+    )
+
 # Which TREE is this file running from? Both catalogs are tracked in the main
 # repo, so there "only one layout present" can only mean a committed catalog was
 # deleted - a failure. The Share handoff genuinely does not vendor data/meta, so
 # the two-layout agreement check is unrunnable there and must skip.
 #
-# Keyed on the mirror PATH, never on the file's absence: keying on absence would
+# Keyed on the mirror SENTINEL, never on the file's absence: keying on absence would
 # let a deleted data/meta/ddragon_items.json silently skip in the main tree,
 # which is the exact failure this guard exists to catch. Same idiom as
-# test_changelog_tracks_engine_version._IS_SHARE_MIRROR.
-_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in Path(__file__).resolve().parents)
+# test_changelog_tracks_engine_version._IS_SHARE_MIRROR. The sentinel is the
+# SHARE_MIRROR file tools/ds_share_sync.py emits at the package root; RM-221
+# replaced an ancestor-directory-NAME check, which a reviewer silently broke
+# by renaming the folder they unpacked into.
+_IS_SHARE_MIRROR = any(
+    (p / "SHARE_MIRROR").is_file() for p in Path(__file__).resolve().parents
+)
 
 # Percent only. The mandatory "%" before the closing tag is the exact
 # mirror-image of R153's flat regex, whose digits must butt directly against
@@ -121,6 +173,18 @@ _TERMINUS_STACK_CAP = 3
 # Delisted, unbuyable on every map, sole survivors of the mythic-passive
 # template. Uncredited on BOTH pen axes, and that is correct.
 _INERT_DELISTED = ("6632", "226632")
+
+# Ids where the LIVE data/meta catalog and the PINNED per-patch snapshot
+# legitimately state different percentages, because Riot moved the magnitude
+# after the DS snapshot was pinned and the registry carried the NEW value
+# forward (a1 posture: carry the magnitude, do not bump the snapshot).
+# Keyed by regex source -> {item_id: (live_stated, pinned_stated)}.
+# ITEM_EFFECTS credits the LIVE value in every case.
+_PINNED_CARRY_FORWARD = {
+    # 16.17.1 moved Serylda's Grudge Arena armor pen 40 -> 45 while leaving
+    # the SR twin 6694 at 35. Snapshot 16.15.1 still states 40.
+    _PCT_ARMOR_ATTENTION_RE.pattern: {"226694": ("45", "40")},
+}
 
 
 def _catalog() -> dict:
@@ -205,6 +269,7 @@ class R160PercentPenPopulationTests(unittest.TestCase):
         )
 
     def test_one_item_states_both_flat_and_percent_magic_pen(self) -> None:
+        _require_live_catalog(self)
         # The two sweeps are disjoint by MAGNITUDE, not by id: the percent
         # regex requires a "%" the flat regex forbids, so neither can ever
         # capture the other's number. But an item may legitimately state
@@ -229,8 +294,16 @@ class R160PercentPenPopulationTests(unittest.TestCase):
 
     def test_both_catalog_layouts_agree(self) -> None:
         # The Share package resolves the patch layout while the repo resolves
-        # data/meta; a divergence would make this guard mean different things
-        # in the two trees.
+        # data/meta. These agreed exactly until the DS snapshot fell behind
+        # live DDragon: the snapshot is PINNED at 16.15.1 while data/meta
+        # tracks live, so a magnitude Riot moves in between shows up in one
+        # layout only. That is EXPECTED under the a1 posture (carry the
+        # magnitude, leave the snapshot pinned), so this guard no longer
+        # demands equality - it demands that every divergence is one of the
+        # DOCUMENTED carry-forwards below. An undocumented divergence is real
+        # drift and still goes red, and a carry-forward that disappears (a
+        # snapshot bump that realigns the layouts) goes red too, so the list
+        # cannot rot silently.
         if _IS_SHARE_MIRROR:
             self.skipTest("Share/src does not vendor data/meta by design")
         patch = (_PATCH_ROOT / "current.txt").read_text(encoding="utf-8").strip()
@@ -247,17 +320,29 @@ class R160PercentPenPopulationTests(unittest.TestCase):
             _PCT_MAGIC_ATTENTION_RE,
         ):
             with self.subTest(pattern=pattern.pattern):
+                live = {
+                    i: pattern.search(e["description"]).group(1)
+                    for i, e in meta.items()
+                    if pattern.search(e.get("description", ""))
+                }
+                pinned = {
+                    i: pattern.search(e["description"]).group(1)
+                    for i, e in vendored.items()
+                    if pattern.search(e.get("description", ""))
+                }
+                diverged = {
+                    i: (live.get(i), pinned.get(i))
+                    for i in sorted(set(live) | set(pinned))
+                    if live.get(i) != pinned.get(i)
+                }
                 self.assertEqual(
-                    {
-                        i: pattern.search(e["description"]).group(1)
-                        for i, e in meta.items()
-                        if pattern.search(e.get("description", ""))
-                    },
-                    {
-                        i: pattern.search(e["description"]).group(1)
-                        for i, e in vendored.items()
-                        if pattern.search(e.get("description", ""))
-                    },
+                    diverged,
+                    _PINNED_CARRY_FORWARD.get(pattern.pattern, {}),
+                    "live data/meta vs the pinned DS snapshot diverged on an "
+                    "id that is not a documented carry-forward. Either a new "
+                    "patch moved a percent-pen magnitude (carry it into "
+                    "ITEM_EFFECTS and record it in _PINNED_CARRY_FORWARD), or "
+                    "the DS snapshot was bumped and the entry is now stale.",
                 )
 
 
@@ -265,6 +350,7 @@ class R160PercentPenParityTests(unittest.TestCase):
     """stated == credited on every row that is not a documented holdout."""
 
     def test_armor_pct_parity(self) -> None:
+        _require_live_catalog(self)
         swept = {
             k: v for k, v in _swept_armor_pct().items() if k not in _HOLDOUTS
         }
@@ -273,6 +359,7 @@ class R160PercentPenParityTests(unittest.TestCase):
         )
 
     def test_magic_pct_parity(self) -> None:
+        _require_live_catalog(self)
         swept = {
             k: v for k, v in _swept_magic_pct().items() if k not in _HOLDOUTS
         }
@@ -305,6 +392,12 @@ class R160PercentPenParityTests(unittest.TestCase):
     def test_detector_is_not_hollow(self) -> None:
         # Perturb one real credit and prove the comparison reports exactly
         # that id. Without this, every assertion above could be vacuous.
+        # Needs the LIVE catalog: the assertion is that the perturbed id is
+        # the ONLY mismatch, which presumes a clean baseline. Against the
+        # pinned snapshot the documented carry-forwards are already
+        # mismatches, so the list would carry them too and this would fail
+        # for a reason that has nothing to do with detector integrity.
+        _require_live_catalog(self)
         swept = {
             k: v for k, v in _swept_armor_pct().items() if k not in _HOLDOUTS
         }
@@ -316,6 +409,8 @@ class R160PercentPenParityTests(unittest.TestCase):
         )
 
     def test_detector_reports_a_dropped_registration(self) -> None:
+        # Same clean-baseline premise as test_detector_is_not_hollow.
+        _require_live_catalog(self)
         swept = {
             k: v for k, v in _swept_armor_pct().items() if k not in _HOLDOUTS
         }

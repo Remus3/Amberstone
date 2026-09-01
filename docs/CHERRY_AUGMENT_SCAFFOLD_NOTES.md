@@ -1,5 +1,15 @@
 # Cherry / Arena 1750 set_augment_intent scaffold notes
 
+> **STALE TOPOLOGY BANNER, added 2026-08-16. The mechanics below are still accurate;
+> the machine layout around them is not.** Every reference to Game-PC, to an operator
+> sitting at Game-PC, to `C:\RC-Agent\gamepc_lcu_agent.py`, and to redeploying over an
+> `http.server 8765` describes the retired 2-PC topology. Legion has been 1-PC since
+> 2026-05-29 (ADR-011), the `gamepc_` prefix was dropped 2026-06-20, and the live module
+> is `tools/lcu_agent.py` - verified this pass: `tools/gamepc_lcu_agent.py` does not
+> exist. Read cited line numbers against `tools/lcu_agent.py`, and treat the deployment
+> steps as history. `docs/LIVE_GAME_GATED_SYNC.md:1072` already flags the same path in
+> its twin doc; this is that flag's missing counterpart.
+
 Item 188 Slice C closes the scaffold half of item 187 Slice E's research-only
 findings. The handler at `tools/gamepc_lcu_agent.py:1179` replaces the
 `augment_intent_unsupported` no-op with a 4-endpoint PATCH chain; first 2xx

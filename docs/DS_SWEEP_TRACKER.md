@@ -69,7 +69,14 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free GAP spec = **RM-232**. (Advanced 2026-08-30 by lane 8 cycle 15, which
+  Next free id = **RM-322** (2026-08-31 merge of `lane/true-audit` onto `main`).
+  At merge the branch's RM-221/222/223/227/228 collided with `main`'s same-numbered
+  filings and were renumbered to RM-317/318/319/320/321 (consuming 317..321), and the
+  branch's LEDGER entries 1270-1306 were renumbered +7 to 1277-1313 because `main` had
+  already shipped LEDGER 1270-1276. That is precisely the collision RM-192 predicted.
+  Two consumers (`tools/headless-research.md`, `tools/headless-true-audit.md`) read
+  THIS line to mint ids - keep it correct.
+  The pre-merge branch pointer read `RM-232`. (Advanced 2026-08-30 by lane 8 cycle 15, which
   minted RM-231 on `lane/true-audit` after re-measuring against `origin/main` at
   COMMIT time, not at file-selection time: `origin/main` carried no RM-231 and no
   RM-232, and the branch-local RM-231 was only this pointer line itself. Previously

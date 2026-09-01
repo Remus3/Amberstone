@@ -1,5 +1,14 @@
 # Headless self-adjudicating loop - spec
 
+> **ARCHIVED 2026-08-16. Do not read this as current.** Two reasons, both measured:
+> it was a TRUE ORPHAN (zero references anywhere in the tracked tree or in `.claude/`),
+> and it describes a "Director / auditor (Gemini)" as a live participant. That vendor was
+> retired 2026-08-01 - Claude is now director, executor, adjudicator and auditor, and the
+> loop is single-vendor. The AHK GUI bridge it treats as the current fallback has also
+> moved on. Kept for the design record only. Live loop docs: `docs/ORCHESTRATION_PLAN.md`
+> and `ops/loop/`.
+
+
 Status date: 2026-07-26. Supersedes the AHK/GUI executor path for new work; the
 GUI bridge stays as a fallback until the headless lane has a proven run.
 

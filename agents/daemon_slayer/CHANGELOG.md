@@ -1331,6 +1331,41 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.278.1 (2026-08-29) - DDragon 16.17.1 upstream carry: Serylda's Grudge Arena
+mirror (226694) armor pen 40 -> 45 percent, plus Ultra Hydra (226668).
+
+16.17.1 moved four percent-pen magnitudes and every one of them sits on an
+Arena-band (22xxxx) id; all four SR twins held. Only 226694 reaches the
+registry: it states 45 percent armor pen where it stated 40. R161 doctrine B is
+UNCHANGED - the Arena mirror still credits its OWN stated line rather than SR
+6694's 35 percent, that line simply moved. 223033 and 223036 moved base attack
+damage only (30 -> 40 and 30 -> 45); DS reads base stats from its pinned
+snapshot and not from ITEM_EFFECTS, so neither is a registry change.
+
+THIS BUMP MOVES DEFAULT OUTPUT. At 45 percent, Serylda's Grudge (226694)
+displaces Lord Dominik's Regards (223036) in the Arena planner, and the Arena
+build tables re-ordered accordingly. The SR and ARAM tables are identical apart
+from the stamp, which is correct: 226694 is Arena-only.
+
+Ultra Hydra (226668) is NET-NEW at 16.17.1 - an Arena-only 6000g standalone
+(no from/into) carrying 25 lethality. Lethality has no DDragon stats key and no
+ITEM_STAT_KEY_MAP entry, so an unregistered id reads a silent 0.0 (the R143 /
+da5cb2ae defect class); it is now registered and carries the hydra_cleave
+unique so a live inventory cannot double-credit two hydras. Its cleave active
+is deliberately NOT modelled - DDragon states no magnitude for it and Meraki
+has no row for the id, so any ratio here would be invented. Because the DS
+per-patch snapshot stays PINNED at 16.15.1 the item is not yet a build
+CANDIDATE; the entry scores it only when it arrives in a live inventory.
+
+The pinned snapshot now states a different percentage from live data/meta for
+226694. That divergence is intentional under the carry-forward posture, is
+pinned by _PINNED_CARRY_FORWARD in test_pen_pct_catalog_r160, and the
+magnitude-parity sweeps now skip in any tree lacking the live catalog. That
+last change also repairs the Share mirror, whose R153 flat-pen parity had been
+RED since 1.277.1 carried item 3175 the same way (18 in the pinned snapshot,
+20 in the registry) - ds_share_sync --check verifies FILES and never ran the
+mirror's own suite, so it read green throughout.
+
 1.278.0 (2026-08-15) - RM-200 + RM-201: the last two stranded route seams are
 wired, draining the depth-1 debt tier to zero.
 
