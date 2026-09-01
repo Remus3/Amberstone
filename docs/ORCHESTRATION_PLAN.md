@@ -1,10 +1,18 @@
-# Orchestration Plan - Gemini-Directed Fanout Run
+# Orchestration Plan - Directed Fanout Run
 
-LIVING DOC. The gemini director reads this each cycle and picks the next OPEN
+LIVING DOC. The director reads this each cycle and picks the next OPEN
 session (top-to-bottom, phase order A -> F). The executor cycle updates it:
 flip the picked session OPEN -> WIP -> DONE, fill the Commit sha, and append any
 newly discovered work to the Findings log at the bottom. When no session is OPEN,
 the director emits NO_WORK and the loop self-terminates.
+
+**The director is CLAUDE, not Gemini.** That vendor was retired 2026-08-01 and
+the loop has been single-vendor since - director, executor, adjudicator and
+auditor are all Claude. This header said "Gemini-Directed" until 2026-08-16
+while the operator-directive paragraph further down already recorded the
+retirement ("NO gemini director - that vendor is retired (2026-08-01)"), so the
+file refuted itself, and `ROADMAP.md` designates this doc "machine-read each
+cycle" - making the stale header the first thing a director read.
 
 Per-cycle contract (enforced by ops/loop/director_prompt.md):
 orchestrator multi-agent fanout (disjoint-file worktree subagents, sole merger,

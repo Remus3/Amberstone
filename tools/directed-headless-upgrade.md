@@ -2,11 +2,12 @@
 description: Self-directed autonomous headless-upgrade loop, merged with the full 13-section orchestrator framework. Claude (read-only, --permission-mode plan) is DIRECTOR + AUDITOR; a Python controller (ops/loop/loop_controller.py) is the brain; an AutoHotkey v2 bridge types into THIS Claude window. Invoking this turns the CURRENT session into the ephemeral executor - AHK /clears it and feeds one director-authored directive per cycle. Continuity lives on disk (git history + docs/LEDGER.md + the directive chain). Each executor cycle natively runs the orchestrator-merge pattern (1 Claude merger + up to 100 parallel worktree agents on disjoint file sets + read-only verifier gate before merge), the section 3b UI-audit ritual, the section 4/4b cost + Haiku-to-ZERO program, the section 5/6 frozen-file grant + ASCII hygiene, section 7/7b multi-agent + deep-dive competitor research (6-point depth checklist), section 8-13 DS audit loop / interrupt / cadence / anti-patterns / done / banner, the DS Share package commit ritual, and the two-way escalation channel. Model + cycle cap in ops/loop/config.json. Proven end-to-end 2026-06-05.
 ---
 
-> **SUBAGENT-FIRST (standing protocol, operator 2026-06-20).** Always use subagents for substantive work; do not build solo in the main thread.
+> **SUBAGENT-FIRST (standing protocol, operator 2026-06-20, restated 2026-07-30).** Orchestrated + multi-agent + self-adjudicating + self-adversarial is the DEFAULT shape, not an escalation.
 > 1. **Spec first:** a Plan/design subagent (or the loop director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
-> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build.
-> 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done".
-> 4. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Subagent-First Protocol" + memory `feedback_subagent_first_protocol`.
+> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build. Verify before building.
+> 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done" claim.
+> 4. **Self-adjudicating:** the agent that produced a thing never grades it. **Self-adversarial:** every finding gets an independent pass trying to REFUTE it, defaulting to refuted when uncertain. Two agents agreeing is not evidence (`feedback_row_agreement_is_not_evidence`).
+> 5. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Session Default".
 
 Invoking this command hands THIS Claude session over to the autonomous loop. After launch,
 AHK will `/clear` this session and type one director-authored directive per cycle into it; the
@@ -173,9 +174,12 @@ precompute is worse than a Haiku call - do not flip blind (haiku stays as interi
 - Frozen list is authoritative at the TOP of CLAUDE.md (main.py, core/log_setup.py, core/moon_proxy.py,
   lcu/lcu_client.py, core/game_snapshot.py, ops/rc_dev_runtime.py, ops/rc_supervisor.py, app/__init__.py,
   app/_loop.py, app/_health_monitor.py, app/_remediation.py, app/_state_authority.py, app/_overlay_manager.py,
-  app/_game_lifecycle.py, the tools/bridge_watcher_* set, tools/bridge_post_result.py, tools/bridge_pull_tasks.py,
-  tools/process-bridge-tasks.md, tools/diagnose.md, tools/caveman.md, dashboard/routes_bridge_pending.py,
-  ops/RC-BridgeWatcher.xml). `app/__init__.py` SCRIPT_DIR MUST stay `Path(__file__).parent.parent`.
+  app/_game_lifecycle.py, tools/diagnose.md, tools/caveman.md). `app/__init__.py` SCRIPT_DIR MUST stay
+  `Path(__file__).parent.parent`. Re-read CLAUDE.md rather than trusting this copy - the bridge entries
+  (tools/bridge_watcher_*, tools/bridge_post_result.py, tools/bridge_pull_tasks.py, tools/process-bridge-tasks.md,
+  dashboard/routes_bridge_pending.py, ops/RC-BridgeWatcher.xml) were listed here until 2026-08-16 and were
+  never on CLAUDE.md's list; all six paths were deleted with the bridge decommission (ADR-012, 2026-06-24)
+  and verified absent from disk.
 
 ### 6. ASCII hygiene (hard rule)
 - No em-dash, en-dash, or smart quotes anywhere (.py/.md/.ps1/.css/.js/commit/chat). ` - ` for a clause

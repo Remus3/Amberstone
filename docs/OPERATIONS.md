@@ -306,7 +306,7 @@ curl http://127.0.0.1:8889/health
 curl http://127.0.0.1:8889/latest-frame     # check if frames flowing
 ```
 
-Vision token is in `config/vision_token.txt` (Legion). Rotate quarterly - next rotation ~2026-08-01.
+Vision token is in `config/vision_token.txt` (Legion). Rotate quarterly (no fixed calendar date is recorded here - an absolute date only drifts stale; gauge from the token file's own last-modified time).
 
 ---
 

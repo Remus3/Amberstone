@@ -321,222 +321,305 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
-# 2026-08-30j - lane 8 cycle 20: the test that survived the mutation it was written for
+# 2026-08-29c - a cross-project port collision, found by answering a question
 
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested, adversarially refuted.** Target `vision_server/_inference.py` (280 lines, not frozen) - the `:8889` inference boundary, picked because it stacks THREE untrusted surfaces in one file: a JSON body RC did not author, an image forwarded to the Anthropic API, and a model response RC does not control. Full detail in `docs/LEDGER.md` 1279; RM-247/248 filed in `BACKLOG.md` with a pointer row in `ROADMAP.md`.
+Operator asked which ports are reserved for Amberstone, DS, Sibling-E, Sibling-D,
+Sibling-A and Sibling-C. `core/ports.py` could only answer for FOUR: the 2026-08-01
+negotiation predates both Sibling-D and Sibling-E, so `BLOCKS` had no `ll` or `cs`
+key and `block_for(8810)` returned None.
 
-**RECALL EARNED ITS PLACE THIS CYCLE.** The first pick was `vision_server/_http.py`; `perseus_recall` returned item-1177, lane 8's OWN cycle-1 audit of that exact file. One tool call to re-pick against a whole cycle of rediscovery. The mandatory step is mandatory because the thing it catches is invisible from the file itself - a hardened file looks like an unaudited one.
+**Answering it turned up a live collision.** Sibling-E claimed band **8900-8911** with
+its dashboard on **8901** - wholly inside Sibling-A's reserved 8900-8919, where
+8901 is LW's `MONITOR` and 8900 its `RUNDASH`. Cause is the exact method `core/ports.py`
+warns about in capitals: CS picked the band by SCANNING for a free listener, and LW's
+monitor is an operator-launched GUI that is unbound most of the time, so the scan
+reported a reserved block as free. CS names Sibling-A in zero files. It had already
+met the symptom and mis-filed it - its BACKLOG blamed "an unrelated process" holding 8901
+since 2026-08-16.
 
-**THE LESSON WORTH KEEPING: three of my regression tests were worthless, and only mutation testing said so.** They asserted `assertNotIn("gold", result)` after feeding an oversized crop. That passes when the cap REFUSES the crop and equally when the crop is simply blank and unreadable - so deleting the very cap the test was written for kept it green. That is `feedback_negative_assertion_rules_out_without_pinning_down` in its purest form: an absence assertion rules something out without pinning anything down. The rewrite asserts the discriminating observable instead - the stats ring counts a REFUSED crop as a failure and an ILLEGIBLE one as a clean read - and the bomb branch is now pinned end-to-end by temporarily lowering `Image.MAX_IMAGE_PIXELS` so a small image trips the real check. **If a test cannot fail for the wrong reason, it also cannot pass for the right one.**
+**Shipped:** RC `533d4f97` - `LL_BLOCK` + `CS_BLOCK` registered, `BLOCKS` now six, the
+collision recorded in the docstring, two new guards (CS/LW disjointness pinned by NUMBER;
+LL's widened 8815-8819). Mutation-proved RED three ways, `core/ports.py` restored
+byte-identical. LEDGER 1274. Sibling-E moved to **8920-8939** base **8920** across 6
+files; its `verify_env.py` went from a soft failure on every run since 2026-08-16 to
+**PASS, ports free 20/20**.
 
-**A survivor is not automatically a bad test.** Removing the `_pre` isinstance guard ALONE survived, and the reason turned out to be legitimate defence in depth: `TypeError` in `_OCR_EXC` independently catches the same input. Rather than weaken the test or wave it through, the COMBINED mutant was run and goes RED - so the pair is jointly load-bearing and the single-guard mutant is genuinely EQUIVALENT (`reference_mutation_survivor_may_be_equivalent`). Final tally 17 mutants, 16 RED individually, 1 equivalent-and-RED-in-combination.
+**Do NOT redo:** Sibling-D was already correct (8810-8819) and already carried the
+identical six-row table - it independently settled a one-digit ambiguity in the operator's
+own message (prose said 8820-8839, the table said 8920-8939). It has uncommitted work from
+its own session; leave it alone.
 
-**Blast radius was smaller than the first draft claimed, and the consumer said so.** The headline defect - `_parse_json` returning lists and scalars through an annotation that has always said `dict | None`, with `handle_vision` then recording `ok=True` - looked like a downstream break until `modes/shared_vision.py:383` and `dashboard/_screen_read.py:134` turned out to isinstance-gate it already. Nothing crashes; a failed read is counted GREEN in `/stats` and cached 2 s by moon_proxy. Filed at that severity, not the exciting one (`feedback_verified_claim_vs_measured_downstream`).
+**BLOCKED, and it is not ours to clear:** the Sibling-E commit `67b00b2` exists and is
+byte-identical to the intended content, but **the push is blocked by that repo's own
+`pre-push` hook** (`pytest tests -q -x`). Its suite is red from ANOTHER session's in-flight
+surface-contract work - an untracked `sibling_e/surface/api/contract.py` that its staged
+`tests/surface/test_contract.py` imports. Two of the three failures name that file
+directly; the third passes in isolation. `main` there is ahead 1, remote still `4ac5c3e`.
+Never `--no-verify` it. It goes up when that session's work lands green.
 
-**The baseline is what made the self-inflicted regression provable rather than arguable.** `_OCR_EXC` referenced `Image.DecompressionBombError` at runtime; `tests/test_p2w1_app_a.py` stubs the PIL Image module with a `SimpleNamespace`, so the tuple build raised `AttributeError` and a pre-existing test went red. Because the pre-edit baseline (2 failed / 19386 passed) was taken BEFORE any edit and the new failure was not one of those two names, it was unambiguously mine. Fixed with a `getattr` resolve; the guard is still pinned because its mutant re-run goes RED against real PIL.
-
-**Root-cause siblings were fixed, not just filed.** `_frame.py:231` guarded the JSON decode but not the shape, so a valid-JSON non-object died on `.get` - on the path the coaches poll every 2 s. `_relay.py:49` returned `f"bad_json: {e}"`, echoing decoder byte offsets past the redaction `_err500` applies to every RAISED error - the same leak class cycles 18 and 19 closed elsewhere. That second fix needed a correction of its own: `log` was not imported in `_relay.py`, so the first version would have raised `NameError`. A one-line "fix" is still a change that needs compiling.
-
-**A membership allowlist was the obvious move and the wrong one.** The model id is caller-controlled, but `modes/shared_vision.py:273` legitimately sends `SONNET_MODEL`, so pinning to `VISION_MODEL`/`COACH_MODEL` would have broken the escalation path the server exists to serve - item 208's narrow-first-fix failure, avoided by checking who actually calls it before writing the guard. `_MODEL_RE` validates shape, not membership.
-
-**HAND-OFF FOR THE MERGER.** Suites observed THIS run from the repo root: RC `tests/` see the banner below; DS **10684 passed / 13482 subtests / 0 failed**. The inherited baseline taken BEFORE any edit was **2 failed / 19386 passed / 144 skipped**, and those two names (`test_live_three_profiles`, `test_cli_version_still_matches_the_pin`) are branch lag - the engine-version one because this branch trails `origin/main` while live DS serves the newer engine, the CLI one because it is pinned to 2.1.220. **Take the baseline BEFORE editing; it is what makes "not mine" provable, and this cycle it also caught a regression that WAS mine.** No restart was done and none would have helped: the live `:8889` server (pid 12148) runs the MAIN-tree copy at 12238 bytes against this branch's 19914, so a bounce from this worktree deploys nothing (item-1179 trap). **Until the merge lands, the running server keeps 500-ing on wrong-typed bodies and keeps echoing decoder detail from `/upload-lcu`.** Backfill measured EMPTY - the 1 MB live vision log carries zero instances of all five crash signatures, and its 139 ERROR lines are all upstream Anthropic errors correctly routed to the log. `:8889` re-measured LIVE as **127.0.0.1-bound**, so unlike cycle 19's `:8888` findings none of these are LAN-reachable. **One thing I made worse and am not hiding:** `ROADMAP.md` went from 91.81% to 92.37% of its drift-guard budget, deepening the open RM-246 breach; that row is explicitly LANE 7 doc restructuring, so it is flagged rather than fixed here. Branch is ready and NOT merged; lane 8 ships last.
-
----
-
-# 2026-08-30i - lane 8 cycle 19: the guard was one layer up, and so was the fix that missed
-
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested, adversarially refuted.** Target `dashboard/routes_state.py` (1189 lines, not frozen) - the module hosting the `/api/input` and `/api/command` POST handlers, picked on three selection criteria at once and the highest repeat-offender count of any candidate (24 LEDGER + 39 history mentions). Full detail in `docs/LEDGER.md` 1278; RM-242/243/244/245 filed in `BACKLOG.md` with a pointer row in `ROADMAP.md`.
-
-**Eight defects fixed, the two worst of which were live.** `/api/health/all` was serving 227 characters of raw `claude` CLI stderr at the moment I probed it, and a truthy wrong-typed POST field (`{"text": 123}`) killed the handler thread with NO HTTP RESPONSE AT ALL - the socket closed with zero bytes, so the browser sees a network error rather than a 400. Both on a port I re-measured as LAN-reachable this run (`::` on pid 23644, off-loopback probe to `192.168.8.230:8888` returned 200), not localhost-only.
-
-**The through-line worth carrying forward: three separate guards each sat ONE LAYER away from the defect they were named for.** (a) The RM-134 scrub guard names `routes_state` explicitly and asserts only `mod.send_error is send_error` - that the module IMPORTS the scrubbed helper, never that it USES it - so six inline leak sites passed it. That is the third recurrence of this exact class (RM-134 envelope, cycle 18 `routes_diag`, cycle 19 here). (b) LEDGER 1181 closed the POST trust boundary with a CONTAINER check in `_handler.py`, and `{"text": 123}` IS a dict, so the field-type crash it cites BY LINE NUMBER survived it. (c) `api_schema` declares `text: str`, pydantic 2.13.2 genuinely rejects it, and `_dispatch._validate_request_body` LOGS the verdict and dispatches the bad body anyway - the gate detects the defect and throws its own answer away. **When a guard names your file, read what it asserts, not what it is called.**
-
-**Two process lessons, both self-inflicted and both cheap to avoid.** First, my sibling sweep for the leak class used `head -25` and the output truncated one line before `routes_state.py` itself - I missed two more raw-error sites IN THE FILE I WAS AUDITING, and a parallel agent found them. A truncated grep is a claim about your pager. Second, mutation testing caught that **two of my fixes shipped completely unguarded** (the length cap and the `scanned_clean` signal) with the whole suite green, and that my first cap test was TAUTOLOGICAL - it built its input from `_MAX_PREGAME_CHARS + 1`, so mutating the cap to a billion moved the test with it. Absolute values, not constant-relative ones. A third test was vacuous because it patched a symbol on the wrong module with `create=True`, inventing an attribute nobody reads; the handler returned a clean 200 and the test "passed". **A fourth was FLAKY and only the full `-n 8` suite caught it** - it passed standalone and passed with its own file under `-n 4`, because it drove the whole rollup through a GLOBAL `pathlib.Path.read_text` patch and leaned on a module global. Rewritten hermetic, both halves re-mutation-tested. **The per-file run is not the gate; only the full parallel run is.**
-
-**What the parallel agents were worth, concretely.** Three read-only dimension agents ran against HEAD while I edited, so their findings could not be confounded by my changes. They independently reproduced the two headline defects, found the two sites I missed, found a defect my own fix did NOT cover (a read FAILURE also read as green, distinct from the malformed-LINE case I had fixed), and - most valuably - **REFUTED three things I might otherwise have "fixed"**: the `_CE_LAST_TS`/`_CE_DROPPED` throttle race is not a bug under the GIL (measured 60/60 rounds and 9600/9600 increments correct), the socket-leak class does not reproduce here (weakref positive control), and the file has zero bare `open()` calls - all three of my grep hits were `urlopen` substring matches. Refutations were the highest-value output of the run.
-
-**HAND-OFF FOR THE MERGER.** Suites observed THIS run from the repo root: RC `tests/` 2 failed / 19386 passed / 144 skipped / 4517 subtests; DS 10684 passed / 13482 subtests / 0 failed. The baseline taken BEFORE any edit was 2 failed / 19358 passed, and the two failure NAMES are byte-identical before and after (+28 passed exactly matches the 28 new tests), so both are inherited branch lag - `test_live_three_profiles` fails `1.278.1 != 1.278.0` because this branch is 26 commits behind `origin/main` and live DS serves the newer engine, and the CLI canary is pinned to 2.1.220. **Take the inherited baseline BEFORE editing; it is what makes "not mine" provable instead of asserted.** No restart was done and none would have helped: live RC pid 23644 runs the MAIN-tree copy, so a bounce from this worktree restarts the old code (item-1179 trap). **Until the merge lands, the live process keeps serving raw exception text on `/api/health/all` and keeps dying with no response on a wrong-typed POST field.** Backfill is measured EMPTY - the leak was serve-time only, zero persisted artifacts under `data/` or `ops/runtime/` carry the raw text. Branch is ready and NOT merged; lane 8 ships last.
-
----
-
-# 2026-08-30h - lane 8 cycle 18: the guard named the module by name, and could not see the leak
-
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested, adversarially refuted.** Target `dashboard/routes_diag.py` (315 lines, not frozen) - six GET and two POST routes on `:8888`. Full detail in `docs/LEDGER.md` 1277; RM-238/239/240/241 filed in `BACKLOG.md` with a pointer row in `ROADMAP.md`.
-
-**THE ONE WORTH CARRYING FORWARD: a guard can name the exact module it fails to protect.** `test_every_dashboard_importer_gets_the_scrubbed_helper` lists `dashboard.routes_diag` explicitly - and asserts only `assertIs(mod.send_error, send_error)`, that the module IMPORTS the scrubbed helper. It did import it, called it in two handlers, and hand-rolled `json.dumps({"error": str(exc)})` in three others. **Measured in one run at the same commit:** that guard file returns `8 passed`, and `_serve_diagnostics` returns `500 {"error": "unable to open database file at C:\Riot Commander\data\rewind_history.db (ZORBLEAK)"}` to a listener bound `::`. **When a guard asserts an IMPORT, ask what it would take for the module to import the right thing and still do the wrong thing - usually nothing at all.**
-
-**AND THEN I DID THE SAME THING IN THE FIX.** My replacement docstring promised "do not hand-roll `h._send(5xx, ...)` here - the test fails on it". The new AST guard walked only `ast.ExceptHandler`, so the two curated `h._send(503, ...)` calls in normal flow were invisible; an adversarial pass demonstrated two clean bypasses. **The fix was NOT to ban those 503s** - a constant literal body carries no exception text, which is what the contract actually protects. So the docstring was narrowed to what is enforced, the walker was extracted into ONE shared `guard_offenders()` used by both the module test and the domain tests (two implementations is how the domains diverged), and a companion test pins the allowed-constant count at exactly 2. **Promising more than a guard delivers is how the RM-134 guard got trusted in the first place.**
-
-**THE BIGGEST DEFECT WAS ONE I NEVER WENT LOOKING FOR, and a subagent found it.** `_serve_ocr` called `configure_drop_fields(drop)`, which rebinds `_DROP_FIELDS` - a **module global** (`core/vision_tesseract.py:539`) honoured by `read_fast_fields` at `:650` **regardless of an explicit `fields=` argument** - and `core/vision_routing.py:97` calls that function in the same process. So one hit on a DIAGNOSTIC endpoint disabled nine fields (cs, kda, gold, level, hp, mana, score_blue, score_red, timer) for the COACH's OCR until the next `/api/ocr` reset them. Verified the global and its second consumer myself before acting. Fixed with save/restore in a `finally` - the exception path matters most, since a FAILED call leaving the coach degraded is the worse state.
-
-**MY SIBLING CENSUS WAS WRONG BY 13x AND THE CORRECTION IS THE LESSON.** The first sweep reported **326 sites across 135 files**; it counted every `str(exc)` in any `except` block, including `log.warning("...: %s", exc)` - which is the behaviour CLAUDE.md ASKS for. That is a survey of the instrument, not of reality. Re-measured with an AST pass counting only exception text reaching an `h._send(...)` body or a returned response: **25 sites across 19 route modules**, filed as RM-239 with the naive form marked do-not-re-run. **RM-239 is the row to read next** - it is the RM-134 residue, the helper was built and its callers never converted (`feedback_resolver_fix_is_not_a_consumer_fix`), and `routes_loop_control.py` is the sharp end: 6 of the 25 sites, reachable on BOTH `:8888` (`::`) and Mission Control `:8895` (tailnet `100.70.22.55`), both binds re-measured live.
-
-**Two of five pre-registered predictions were REFUTED** - `_VISION_TOKEN` here is the canonical resolver, not cycle 14's hardcode (do not port that finding); and the unused import was real but F401 is globally disabled at `ruff.toml:27`, so no configured lint could ever have flagged it. **Also fixed:** `{"dismiss": "false"}` journalled a dismissal and discarded the caller's real choice (`bool()` coercion, and `record_choice` is irreversible); `choice_index=1.9` silently truncated to `options[1]`; `/api/decisions/log?limit=20` returned **14** entries when the tail had 10 torn lines, with a 200. **Three false docstring claims corrected**, headed by a `:2999` Live Client reference whose only occurrence in the file was the sentence claiming it - the cycle-17 `TowerTeam` tell again.
-
-**HAND-OFF FOR THE MERGER.** No restart was done and none would have helped: live RC pid 23644 runs the MAIN-tree copy (13109 bytes against this branch's 18227), so a bounce from this worktree restarts the old code (item-1179 trap). **Until the merge lands, the live process keeps serving raw exception text on `/api/diagnostics` and keeps letting one diagnostic OCR call degrade the coach's vision.** Backfill is measured and EMPTY - all 33 files under `logs/` contain zero instances of the three call-site warning prefixes, so the leak path was never exercised. Branch is ready and NOT merged; lane 8 ships last.
-
-**Suites this run, repo root, final code: RC `tests/` 19358 passed / 2 failed / 144 skipped (+22, exactly the tests added), DS 10684 passed exit 0, ruff clean, 0 non-ASCII in every touched file. 22 tests, 13 mutants, 13 killed, source restored byte-identical by sha256 after every restore.** The 2 failures are the same inherited pair cycles 11/13/17 recorded (CLI-pin canary; live DS 1.278.1 against 1.278.0 source), proven unrelated by a grep count of 0 for every symbol this slice touched.
+**Process note worth keeping:** I edited a sibling repo another session was concurrently
+working in. It resolved cleanly, but I checked Sibling-D for in-flight work and did NOT
+check Sibling-E before writing. Check every sibling tree's `git status` first.
 
 ---
 
-# 2026-08-30g - lane 8 cycle 17: the key it read did not exist, so every turret went to one team
+# 2026-08-29b - RM-222: the flat pen axis gets the live-vs-pinned layout guard the percent axis has had since it broke
 
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested.** Target `game_reader/snapshot_normalizer.py` (1295 lines, not frozen) - THE parser for the Live Client `:2999` envelope, the largest body of externally-authored input in the tree. Full detail in `docs/LEDGER.md` 1276; RM-234/235/236/237 filed in `BACKLOG.md` with a pointer row in `ROADMAP.md`.
+Commit `e5b5c9e6`, Tier-1, one test module plus its Share mirror. No engine change, no
+`ENGINE_VERSION` bump.
 
-**THE ONE WORTH CARRYING FORWARD: a `.get()` chain with a default cannot tell you the key was never there.** `team = ev.get("TowerTeam", ev.get("TeamID", ""))` - NEITHER key exists in the Live Client eventdata schema. So `team` was always `""`, every turret fell to the `else`, and the `else` incremented the same counter as the CHAOS branch. **`_order_towers_down` was structurally pinned at 0 for the life of the process**, and an ORDER player was told they had lost zero towers in a game they were losing on structures. The tell was cheap and I nearly missed it: **grep the key name repo-wide.** `TowerTeam` appeared on exactly one line in the whole tree - its own read - while the rest of the repo already parsed the structure NAME (`dashboard/_liveclient.py:348-350`) and real `Turret_T2_L_03_A` strings sat in existing fixtures. **A field name that appears only where it is READ and never where it is produced or tested is a field that does not exist.**
+**The gap was real and asymmetric.** `test_pen_pct_catalog_r160.py` compares live
+`data/meta/ddragon_items.json` against the pinned `data/daemon_slayer/16.15.1/items.json`
+under a `_PINNED_CARRY_FORWARD` allowlist. `test_magic_pen_flat_catalog_r153.py` had NO
+layout test - confirmed by enumerating its 9 `def test_` names, not inferred. The percent
+axis got hardened because it broke; the FLAT axis stayed quiet while carrying the only
+live divergence in either sweep (item 3175, RM-190 carried 18 -> 20 with the snapshot left
+pinned). A second such move would have landed silently.
 
-**Second critical, same file, different shape: the flag was cleared in the wrong scope.** A respawned jungler walking back through fog reports position (0, 0). The `dead` flag was only cleared inside `if x or z:`, which that never satisfies - so the record stayed dead forever and `_gank_threat` announced **"SAFE - Lee Sin is dead"** about a living jungler. Generalise: **when you clear state inside a conditional, ask what happens to the entity that never satisfies the condition.** The pop of `_enemy_death_time` was correctly unconditional one line above; only the flag was trapped in the branch.
+**Measured before the allowlist was written, not copied from the row:** both layouts sweep
+10 ids and diverge on exactly `{'3175': ('20', '18')}`. Predicting it is not measuring it.
+**Proved non-hollow three ways** - a wrong magnitude, a wrong id, an empty allowlist each
+turn the guard RED - then the file was restored byte-identical, sha256 checked both sides.
+Two of the three new tests make that permanent rather than a one-time authoring act:
+`_layout_divergences` is a free function taking both sides, so one test perturbs live and
+one asserts a VANISHED divergence is caught (the half that makes a stale entry go red after
+a snapshot bump - an RM-223 trigger).
 
-**I OVERCLAIMED THE HEADLINE AND A SUBAGENT'S REFUTATION KILLED IT - and it was right.** I had proven `json.dumps({"cs_per_min": nan})` emits a bare `NaN` (invalid JSON) and framed it as "one poisoned field kills the whole `/api/state` document and every panel". The security pass refuted its OWN version of that finding and I re-measured rather than defending mine: `cs_per_min` never reaches `/api/state` as a raw number, and its only route into `app.data` runs through `min(10, max(-10, ...))` at `app/_state_authority.py:79` - and `max(-10, nan)` returns `-10`. NaN is laundered before the browser sees it. I rewrote the test docstring before commit. **The crash half needed no downgrade and got worse:** the raise is swallowed at DEBUG in `sr_aram_worker.py:204`, `none_streak` never increments, no game-end fires, and the dashboard renders the last good state as if live, forever.
+**Do NOT redo:** the fence held - the flat regex was NOT folded into R160's pattern tuple.
+Both Share doc recitals (`21 skipped`, `10684 collected`) were already refreshed from a
+FRESH mirror run. `docs/DAEMON_SLAYER.md` needed nothing; RM-210 already deleted its recital.
 
-**A MUTATION SURVIVED, AND THE RIGHT ANSWER WAS TO DELETE MY OWN TEST.** Reverting the `max(0, ...)` clamp on `ago` left everything green. I checked the mechanism instead of inventing a test: that site's buckets are `< 8` / `< 45` / else, and every negative lands in the same `< 8` bucket as 0 - exhaustively verified over -10000..-1, zero differing inputs. Equivalent mutant. **And it followed that MY test was vacuous** - it passed identically before and after the fix - so it went, replaced by a comment recording the equivalence. It also partly refutes the finding that motivated the clamp: clamping to 0 does NOT stop "a 40s-missing enemy reads as visible", because 0 is still `< 8`. The sibling clamp in `_gank_threat` is real (the negative renders into user-facing text) and mutation-tests RED. **A surviving mutant is a question about the MECHANISM, not a prompt to write another assertion.**
+**The one RC `tests/` red is NOT a regression and must not be "fixed" by bumping the pin.**
+`test_cli_version_still_matches_the_pin` moved skip -> fail since LEDGER 1272 because
+Legion's `claude.exe` got FIXED: it now runs, reports 2.1.251 against `PINNED_CLI =
+"2.1.220"`, and correctly fires the genuine-drift branch. The guard is right in both states;
+that is also why the skip tally moved 97 -> 96. The pin needs the undocumented-flag canary
+re-run first, which needs an authenticated CLI - still blocked on `claude login`.
 
-**CYCLE 16'S SCAR, DELIBERATELY NOT REPEATED.** That run lost three mutation restores to a `cp a || cp b` fallback that short-circuited, and the mutations stacked invisibly. This harness used ONE explicit backup path, no fallback, a byte-equality assertion after every single restore, and a four-anchor check at the end. 11 mutations, 10 RED, 1 equivalent, all restored and proven restored.
-
-**MY OWN SELECTION CLAIM WAS WRONG AND IS CORRECTED IN THE LEDGER.** I picked the file partly on "zero dedicated test file", from `ls tests/ | grep` - which does not descend into subdirectories. Truth: **7 test modules plus a fixture** touch it. There is still no `tests/test_snapshot_normalizer.py`, which is the narrower and honest version. Worth remembering that the scan you select a target with is itself a measurement that can be wrong.
-
-**Also fixed:** `_normalize_name` raised on any truthy non-string - found by grepping for SIBLING sites after the first identity fix, not by a failure, which is the whole point of the root-cause-first step; a non-string `riotIdGameName` crashed a `.strip()` sitting outside its own try; `list(...)` exploded a string `items` into per-character entries in BOTH snapshot factories; the only two of the file's 30 `except Exception` clauses with NO log at all now warn. **Removed** `format_for_claude` (45 lines) - sole caller was a tkinter clipboard button deleted 2026-05-01 in `a00414b9`, RC has been tkinter-free since, one occurrence repo-wide across all file types. **Corrected four false in-file claims**, including a comment justifying two per-tick HTTP GETs by citing coach lines that turn out to be ARAM fountain-rule prose, against fields with no production consumer at all.
-
-**HAND-OFF FOR THE MERGER.** No restart was done and none would have helped - the running RC (pid 7788) executes MAIN-tree code, so a bounce from this worktree restarts the old code (item 1179 trap). **Until the merge lands and RC restarts, the live process keeps crediting every turret to CHAOS and calling respawned junglers dead.** Branch is 26 commits behind `origin/main`; the 2 inherited suite failures (ENGINE 1.278.0-vs-1.278.1, and the deliberate CLI-pin canary) both resolve or stay out of scope on merge. **RM-236 is the one to read next** - six more defects in this same file, four wrong on real Riot data every game, headed by `quest_boots_owned` being wrong in BOTH directions on 16.15.1 while feeding a literal build instruction into the live SR coach prompt.
-
-**Suites this run, repo root, final code: RC `tests/` 19336 passed / 2 failed / 144 skipped (+78, exactly the tests added), DS 10684 passed exit 0, ruff clean repo-wide. 78 tests, 11 mutations, 10 RED, 1 equivalent.**
-
----
-
-# 2026-08-30f - lane 8 cycle 16: the empty string is not zero, and SQLite will not tell you
-
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested.** Target `core/match_db.py` (282 lines, not frozen), picked on three criteria at once - it persists match data RC does not author, it runs SQLite under WAL with per-thread connections and 9 non-test consumers, and it had **zero dedicated test file**. Confirmed not among the 15 files taken in cycles 1-15. Full detail in `docs/LEDGER.md` 1275; RM-233 filed in `BACKLOG.md` with a pointer row in `ROADMAP.md`.
-
-**THE ONE WORTH CARRYING FORWARD: a column's DECLARED type is not a constraint, and a defaulting dict-comprehension is where that bites.** `save_match` did `{c: data.get(c, "") for c in cols}` - one line, every absent column defaulted to `""` regardless of whether the schema said INTEGER. SQLite has type AFFINITY, not type enforcement: it converts a numeric-LOOKING string and silently stores a non-numeric one AS TEXT. So thirteen numeric columns filled with `''` and nothing ever complained. **Generalise it: any time you write a uniform default across a heterogeneous schema, the default is wrong for some column, and a dynamically-typed store will accept it silently.**
-
-**The second half is nastier and is pure SQLite semantics: `'' > 0` is TRUE.** SQLite orders TEXT above INTEGER in cross-type comparison, so `WHERE tft_placement > 0` - a predicate whose entire job is to exclude rows with no placement - ADMITTED exactly those rows. A guard that reads as obviously correct in the SQL was inverted by the storage class of the value. **If you ever compare a column against a number, you are also asserting that column is numeric; the query cannot check that for you.**
-
-**I OVERCLAIMED ONCE AND MEASUREMENT KILLED IT, WHICH IS THE PART TO KEEP.** My headline was that this poisoned the `get_best_comps` ranking live - an unplaced comp aggregates to `avg_place 0.0` and sorts FIRST under `ORDER BY avg_place ASC`, so "the best-comp recommendation puts unplayed comps at #1". Plausible, mechanically real, and FALSE of the live data: all 354 rows with a non-numeric placement are ARAM 243 / ARENA 28 / SR 83, and **zero are TFT**, so the `mode = 'TFT'` predicate shielded both TFT readers. The hole is real and I pinned it with a test, but it was LATENT, not active, and the ledger says so. The defect that WAS unconditional is the boring one: `get_mode_stats("TFT")` raised `TypeError` every single time, because 0 of 8041 live TFT rows had a numeric `kills`.
-
-**A MUTATION SURVIVED AND I REPORTED IT AS EQUIVALENT RATHER THAN INVENTING A TEST FOR IT.** Reverting the numeric default back to `""` left all 20 tests green. That is not a test gap: the bind-time coercion loop runs unconditionally over every numeric column immediately afterwards, so the default provably cannot change behaviour - a textbook equivalent mutant (`reference_mutation_survivor_may_be_equivalent`). Writing a test to "catch" it would have been writing a test against unreachable state. The behaviour-bearing guard is the coercion loop, and deleting THAT went red at 35 failures. Five of six mutations RED, one equivalent, all restored.
-
-**PROCESS SCAR FROM THIS RUN, worth avoiding next time: my mutation harness silently ate its own restores.** I wrote `cp file /tmp/backup || cp file <scratchpad>/backup`, and because Git Bash HAS `/tmp` the first arm succeeded, the `||` short-circuited, and the variable I actually restored from pointed at the never-created scratchpad path. Three restores failed with a visible `cp: cannot stat`, mutations stacked on top of each other, and the "restored, confirm green" run was still fully mutated. **Ground truth caught it, not the stdout:** `git diff` plus a grep for the three anchors. Do not use `||` fallbacks for backup paths, and always re-assert the anchor after a restore.
-
-**Backfill was the bigger half of the work (charter 6e).** The writer fix prevents new bad rows and repairs nothing - **8395 of 8395 live rows were already wrong**. `scripts/repair_match_db_column_types.py` routes the repair through the SAME `coerce_numeric` the writer binds through, deliberately not a hand-written `CAST`, so there is one definition of correct instead of two that can drift. Idempotent, single-transaction, dry-run by default. Ran it against the live DB after a verified WAL-safe `Connection.backup()` - never copy a `.db` alone, the `-wal`/`-shm` sidecars are part of the database. Result: 8395 repaired, 0 non-numeric cells remaining, row count unchanged, re-run reports 0 to fix, and `get_mode_stats("TFT")` now returns where it used to raise (`get_mode_stats("ARAM")` unchanged, as the control).
-
-**HAND-OFF FOR THE MERGER, one action required.** No RC restart was done and none would have helped - the running RC (pid 7788) executes MAIN-tree code, so a `restart_trigger.txt` bounce from this worktree restarts the old code and proves nothing (item 1179 is exactly this trap). **After the merge lands and RC restarts, re-run `python scripts/repair_match_db_column_types.py --apply` once**, because the live RC keeps writing `''` rows until the fixed writer is actually deployed. It is idempotent and safe to run any number of times. Branch is 26 commits behind `origin/main`; the 2 inherited suite failures (`test_live_three_profiles` on ENGINE 1.278.0-vs-1.278.1, and the deliberate CLI-pin canary) both resolve or stay out of scope on merge.
-
-**Suites this run, repo root, final code: RC `tests/` 19258 passed / 2 failed / 144 skipped (+30, exactly the tests added), DS 10684 passed exit 0, ruff clean repo-wide.**
+**Measured this session:** DS **10687 passed / 13483 subtests / 0 failed**, collect-only
+10687. RC `tests/` 19177 passed / 96 skipped / 1 failed (the CLI pin above). Share mirror
+**8251 passed / 0 failed / 24 skipped / 11124 subtests**. `ds_share_sync --check` in sync at
+529 files; `drift_guard` 0 breaches; ruff clean; hygiene 14 passed.
 
 ---
 
-# 2026-08-30e - lane 8 cycle 15: the denylist and the file-opener disagreed about what the path IS
+# 2026-08-29 - upstream processing: a 4-day CI red, DDragon 16.17.1 into the engine, and the Share mirror off its knowingly-red baseline
 
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested.** Target `agents/_supervisor_http.py` (961 lines, NOT frozen - only `ops/rc_supervisor.py` is, per the s243 split). Confirmed not among the 14 files taken in cycles 1-14. Full detail in `docs/LEDGER.md` 1274; RM-231 plus an RM-229 sibling-site note filed in `BACKLOG.md`. **This run also recovered and re-verified cycle 14 from an orphaned stash first** (commit `f1e1cc8c`, LEDGER 1273) - see the bottom of this entry.
+Operator asked to "check for upstream changes and updates and process them". There were
+TWO upstreams and both were unprocessed.
 
-**THE ONE WORTH CARRYING FORWARD: when a gate and the thing it guards parse the same input differently, the gate is decoration.** `_is_forbidden` tested `self.path`, the RAW request target. `SimpleHTTPRequestHandler.translate_path` unquotes that same target before opening the file. So percent-encoding any ONE character of a basename walked straight past the L4 denylist: measured live against the real handler, `/.env` -> 403 but `/%2Eenv` -> 200 with the file body, and `/%61pi-key-claude.txt` -> 200, proving there is nothing special about the dot. The fix is not a bigger denylist - it is making the gate decode EXACTLY as the opener does, once, including the opener's own `UnicodeDecodeError` fallback. **Generalise it: any two-stage check where stage 1 inspects a string and stage 2 normalises it is this bug waiting to happen.**
+**CI had been red for four days, and the cause arrived by `git pull`.** Commit `39ba69c8`,
+authored by `weekly-rc-health@anthropic-routines` - a CLOUD routine, not a Legion task -
+carried 27 non-ASCII bytes. Cloud clones have no `core.hooksPath`, so `precommit_gate.py`
+never sees these files; CI is the only gate, and it had been failing since 08-25.
 
-**I CUT MY OWN HEADLINE TWICE, BY MEASUREMENT, AND THAT IS THE HONEST PART.** The scary framing was available and wrong. (1) It is CONFINED TO THE WEB ROOT - five traversal vectors all measured 403/404 because the stdlib collapses `..` correctly, so this is NOT the item-1177 arbitrary-read class and `API-Key-Claude.txt` at the repo root was never reachable. (2) The real `web/` root has no dotfile and no secret-shaped file, so nothing was leaking. What remains is real but narrower: **a safety net that fails precisely at the operator error it was written for** ("a misplaced `.env` in `web/` never reaches the wire" - its own docstring). Grading it as a key leak would have been the easier story and a false one.
+**DDragon 16.17.1 (mirror auto-pulled 08-26, nothing downstream run).** Canonical partition
+holds at 706 / 173 in BOTH patches. Four percent-pen magnitudes moved and every one is on an
+Arena-band `22xxxx` id - all four SR twins held. Exactly ONE reaches the registry: Serylda's
+Grudge Arena `226694` armor pen 40 -> 45. It MOVES DEFAULT OUTPUT: the Arena planner now
+prefers it over Lord Dominik's `223036`, diffed field-by-field rather than assumed. ENGINE
+1.278.0 -> 1.278.1, 150 anchored sites / 128 files, provenance recitals verified untouched.
 
-**PREDICTION CALIBRATION: 2 of 4 right, 1 HALF-refuted, 1 refuted.** The half-refutation is the useful one - I predicted the `log_message` override dropped both the control-char scrub AND the peer address; it drops only the scrub, because it already calls `address_string()`. RM-228's census ("peer yes, scrub NO") was accurate and MY prediction was the thing that over-claimed against a row I had written myself. The peer is now pinned by a test. Also refuted: I expected an uncapped request body and found a 256 KiB cap already there.
+**The thing to carry forward: I got the Share-mirror history WRONG and the repo corrected me.**
+I reported the mirror's 2 failures as an unnoticed 17-day regression that read "green
+throughout". LEDGER 1271 refutes that in writing - RM-221 MEASURED those exact two reds on
+08-16, diagnosed them correctly, and deliberately declined to exclude the test, reasoning that
+excluding it would delete a true signal. They were known and accepted on purpose. The narrower
+true statement: nobody ran the mirror suite at RM-190 time, and `--check` verifies FILES, not
+TESTS. **Read the ledger before characterising history; a "nobody noticed" claim is a claim
+about the record, and the record was right there.**
 
-**TWO MUTATION LESSONS, both process not code.** (1) **A survivor forced an honest question rather than a quick test.** The gate's backslash normalisation survived; instead of writing a leak-shaped assertion I measured whether it was an EQUIVALENT mutant, and it nearly is - the stdlib already drops those segments, so nothing is served either way and only the gate's own status code changes. The test now pins the gate's contract at unit level and its docstring SAYS it is not preventing a leak the stdlib already prevents. A leak-shaped test there would have passed with the guard deleted. (2) **I noticed my chunked-body tests all called the guard directly and nothing proved `do_POST` invoked it** - deleting the call would have left every unit test green (`feedback_guard_on_nondefault_call_path_is_untested`). Added a socket-level wiring test on an unrouted path so the 411 is distinguishable from routing's 404.
+The fix is not the exclusion RM-221 refused: magnitude parity now SKIPS only where the live
+catalogue is absent, so the signal survives where it can be evaluated. Gated on the
+`SHARE_MIRROR` sentinel, NOT `_META_CATALOG.is_file()` - that file is TRACKED, so a skip on its
+absence is an always-passing guard, and `test_skip_condition_hygiene` caught it on my first
+attempt. Mirror 8256/2-failed -> **8251 passed / 0 failed**.
 
-**THE HARNESS CAUGHT ITSELF, and this is the cheapest thing to inherit.** Round 1 aborted on `RESTORE FAILED`: `Path.write_text` had rewritten the whole 961-line file LF -> CRLF, so the sha256 restore check failed even though the text was correct (`reference_windows_write_text_crlf_byte_count`, hit live). Switched to `read_bytes`/`write_bytes`. **Without that check the run would have continued and committed a 961-line line-ending churn on top of a 40-line fix.** Final round: 8 mutants, all 8 killed, each anchor asserted to apply exactly once, source restored byte-identical every round. The full round was re-run from scratch after the verifier pass, because the fix itself changed - see the next paragraph.
+**The ASCII recurrence had a mechanical cause nobody had named:** the guard's own docstring
+prescribed `strip_smart_quotes.py`, which has no notion of U+2713 - the dominant glyph these
+routines emit. The prescribed fix could never clear the guard, so all three incidents were
+hand-repaired. New `tools/sanitize_agent6_reports.py` + 11 tests; `docs-guards` elevated to
+JOB-level `contents: write` with a fenced auto-repair step.
 
-**THE VERIFIER FOUND A DEFECT IN MY OWN FIX, which is the whole argument for the adversarial pass.** It confirmed all nine claims, matched both suite counts exactly, found four bypass vectors I had not, and cleared the confinement claim with 30 escape vectors against my five. Then it refuted a line in my own code comment: I had written that normalising `\` to `/` kept the gate "never LOOSER than the opener", and measured it did the opposite for one shape - `/..\OUTSIDE.txt` went 403 -> 301, because the normalised basename is the innocent `OUTSIDE.txt`. **Normalising picks ONE reading and that reading is sometimes the more permissive one.** No secret was exposed, and every leak-shaped test in the file stayed green through it, which is exactly why only a targeted probe caught it. Fixed by taking the UNION of both separator readings rather than by softening the comment. It also caught the RM-229 sibling row citing a wrong line number and a second unbounded-read site I had missed.
-
-**Filed not fixed, deliberately: RM-231, the `0.0.0.0` bind** on `:8890`/`:8891` (re-measured live, pid 25908, not inherited). item-1190 recorded that narrowing `:8889` "turned out to be a CLIENT sweep, not a one-line bind change"; the client set here is unmeasured and a bind flip is exactly what a headless suite cannot validate with no operator present to ask whether the Phase 3 UI is opened from another device. Cycle 13 had already said this was the row worth filing.
-
-**A note on branch lag that cost me a diagnosis and might cost the next run one:** `lane/true-audit` is **26 commits behind `origin/main`**. That is why `test_live_three_profiles` fails `'1.278.1' != '1.278.0'` - `origin/main` already carries the newer `ENGINE_VERSION` and live DS `:8860` serves it, so the failure is branch lag and resolves on merge, not a DS regression. The other inherited failure is the CLI canary at 2.1.251 against a 2.1.220 pin. **Take the inherited baseline BEFORE editing; it is what makes "not mine" provable instead of asserted.**
-
-**On the recovered stash:** cycle 14's work sat uncommitted with a prior session's "verifier CONFIRMed" note. I did not inherit that claim - the four mutation groups were re-run from scratch (all red, source restored byte-identical), and RM-229/RM-230 were re-measured against a freshly fetched `origin/main` before commit. That mattered: cycle 13's id had rotted into a genuine duplicate the same way while its work waited. **Re-measure an RM id at COMMIT time, never at selection time.** Entry dropped by SHA, never popped (shared stash stack).
-
-**Next cycle:** 15 files taken. Cycle 14's recommendations are still unaudited and still strong - `game_reader/snapshot_normalizer.py` (1295 lines, no dedicated tests, `_process_game` called UNWRAPPED so a raise kills the poll tick), `core/coaching_data_lock.py` (102 lines, no tests, non-reentrant `threading.Lock` acquired outside try/finally), and `dashboard/routes_diag.py` (315 lines, three handlers send raw untruncated `str(exc)` while the module imports the scrubber and uses it correctly two lines away, with an RM-134 guard test that passes vacuously). I took `_supervisor_http.py` ahead of these because RM-228 named it the worst of five offenders AND its bind was measurable live - but note the four remaining RM-228 siblings are still open.
-
----
-
-# 2026-08-30d - lane 8 cycle 14: the resolver was hardened, and five consumers kept a private copy of the constant it retired
-
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested, verifier-gated, adversarially refuted.** Target `game_reader/poller.py` (342 lines, `frozen=no`) - the first file in this lane to hit all five section-3 risk criteria at once. Confirmed not among the 13 files taken in cycles 1-13. Full detail in `docs/LEDGER.md` 1273; RM-229 + RM-230 + a lane-7 handoff row filed in `BACKLOG.md`.
-
-**THE ONE WORTH CARRYING FORWARD: hardening a resolver does nothing until you sweep its consumers, and the sweep is the deliverable.** `core/vision_token.py` retired its hardcoded token fallback on purpose, and says so in its own docstring: "a missing token raises RuntimeError at import time so a misconfigured deploy fails loud instead of silently authenticating every request with a known constant." That fix landed. Five production modules kept a private copy of the retired constant anyway, and it is DEAD - measured live at `:8889`, the retired value returns 401 and the canonical resolver returns 200. Two of the five (`tools/calibrate_vision.py`, `tools/match_monitor.py`) held it unconditionally with no env override, so they were 401ing on every request and were simply broken. This is `feedback_resolver_fix_is_not_a_consumer_fix`, and `reference_vision_token_canonical` already recorded the same literal causing two silent-401 outages. The durable fix is not the five one-line edits, it is the repo-wide guard test that fails if the constant ever reappears.
-
-**THE ADVERSARIAL PASS CUT MY OWN SEVERITY TWICE, AND BOTH CUTS ARE IN THE LEDGER.** I had drafted "latent landmine" for the `poller.py` site and "champ select silently died" for the shape guards. Both were wrong. The token branch catches `ImportError` while the resolver raises `RuntimeError`, and a bad token only makes `_try_relay` return None before falling through to `:2999` - fail-soft. And `read_champ_select` has ZERO production callers, so the whole LCU branch of poller is dormant; the `_lcu_get` calls that look like callers are a different class's same-named method (`feedback_symbol_name_collision_masks_dead_code`). I re-verified both myself rather than taking the refutation on trust, then rewrote the code comments, the test docstring and the ledger. **A finding that survives only until someone checks reachability was never a finding.**
-
-**TWO PROCESS LESSONS, both cheap to inherit.** (1) **A mutation harness that does not purge `__pycache__` reports survivors that are not survivors.** Mine flagged a guard as SURVIVED; manual re-application showed it dying correctly. Stale `.pyc` between iterations was the cause, and purging before each run made it reproducible at 11/11. This is `feedback_mutation_that_fails_to_apply_looks_green` one layer down - the mutation applied fine, the *interpreter* did not see it. (2) **Do not run two full suites plus a verifier against one worktree at once.** Doing so produced 4 failures against an inherited baseline of 2, and the two extras included `snapshot_panels/test_champ_select_view.py` - the file family I had just edited, i.e. maximally believable as my regression. Both passed in isolation. The inherited baseline (2 failed / 19191 passed, both pre-existing) is what made the call possible at all; take one before editing. The verifier hit a second, unrelated concurrency flake worth knowing about: collecting `tests/test_skip_condition_hygiene.py` under `-n 8` aborted once with `CalledProcessError` on its collection-time `git log --all --diff-filter=DR` (exit 128) plus a gw3/gw7 collection mismatch, while the identical git command exits 0 standalone and two later 8-worker runs were clean. **Not caused by this cycle** - that module shells out to git at COLLECTION time, which is inherently racy when several pytest processes share one worktree.
-
-**Mutation testing also caught my own guard being too weak to be worth having.** The repo-wide token guard was a contiguous-substring check, so it passed against the constant written as a split concatenation - the first workaround anyone would reach for. I strengthened the guard rather than deleting the mutant.
-
-**Next cycle:** 14 files are now taken (cycles 1-13 plus `game_reader/poller.py`). The strongest unaudited candidates recon surfaced and I did not take: `game_reader/snapshot_normalizer.py` (1295 lines, no dedicated tests, `_process_game` is called UNWRAPPED so a raise kills the poll tick), `core/coaching_data_lock.py` (102 lines, no tests, non-reentrant `threading.Lock` acquired outside try/finally), and `dashboard/routes_diag.py` (315 lines, three handlers send raw untruncated `str(exc)` while the module imports the scrubber and uses it correctly two lines away, with an RM-134 guard test that only checks the import identity and so passes vacuously).
-
----
-
-# 2026-08-30c - lane 8 cycle 13: every prediction I registered was wrong, and the bug was in the log line
-
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested, verifier-gated.** Target `dashboard/_handler.py` (452 lines, `frozen=no`) - the single trust boundary every `:8888` request crosses. Confirmed not among the 12 files taken in cycles 1-12. Full detail in `docs/LEDGER.md` 1272; RM-228 filed in `BACKLOG.md`.
-
-**THE ONE WORTH CARRYING FORWARD: overriding a stdlib method can silently drop a security control that lives inside it.** `BaseHTTPRequestHandler.log_message` ends with `message.translate(self._control_char_table)`, escaping C0/DEL/C1 so a request target cannot inject terminal escapes into a log a human later reads. That hardening is INSIDE the method, so every override loses it - no warning, no lint, no behavioural difference until someone sends an escape. Measured against the real handler: a raw `0x1b` reached the record and the backspaces in the payload visibly erased characters. Three `log.warning` sites made it worse by rendering `self.path` with `%s` instead of `%r`, and those fire at WARNING, so it never needed debug logging. **The sibling sweep is the real value: ALL FIVE remaining `log_message` overrides in the tree have it** (RM-228), including `vision_server/_http.py`, **which was cycle 1's own target**. A sweep that finds a CLASS is worth more than the file that hosts it.
-
-**Second, and the reason to keep pre-registering predictions: all three of mine were REFUTED.** I wrote down before reading that I expected a proxy socket leak, a CORS allowlist hole, and a CSRF bypass. The socket leak looked certain - the `except HTTPError` branch does `e.read()` with no `e.close()`, the exact class closed in `core/riot_api.py` last cycle - and it is NOT one: a full `read()` sets `HTTPResponse.fp = None` and refcounting does the rest, so 40 iterations with `gc` disabled left zero accumulation. Cycle 11's finding was about a PARTIAL read, which is genuinely different. CORS and CSRF held under probe. A fourth lead (the auth gate's four literal paths drifting from the dispatcher) died too - both go through `equals()` and agree exactly. A fifth was downgraded, not killed: `urlopen` really does forward `..` unnormalized, but `netstat` shows `:8890` bound **0.0.0.0**, so the supervisor is already LAN-reachable and the proxy is no confused deputy. **The findings came from the place I had not looked.**
-
-**Third: two of my OWN tests were vacuous, and both passed.** `test_csrf_reject_warning_names_the_peer` passed on the PRE-FIX code because the warning already printed `host=%r` and my probe sent `Host: 127.0.0.1` - it was reading the echoed Host, not the peer; sending `Host: legion-rc` made the connection's address the only possible source and it went red. Then `test_sanitizer_fallback_branch_is_equivalent` passed instantly while the fallback it certified was genuinely WRONG: the stdlib table also maps `\` to `\\` and mine did not, but the sample had no backslash. Both were caught by the same reflex - a test that passes too easily is a claim about the sample, not the code.
-
-**Fourth: the full suite caught a regression I introduced in a test DOUBLE, not in production.** `_FakeHandler` in `tests/test_handler_log_spam_suppress.py` carried a docstring saying "log_message reads no instance state besides what the format args carry", which my change falsified. The double was under-specifying a real handler, so it now borrows the REAL `address_string` and `_peer` rather than hand-rolling look-alikes. I also narrowed my own new `except Exception` in `_peer` to the three types the stdlib body can actually raise, instead of shipping it behind a `noqa` - an audit that exists to narrow catches should not add one.
-
-**Backfill was measured, not assumed, and came back empty** - all 33 files in `logs/` scanned for C0/DEL bytes; the only three hits are subprocess-capture artifacts in `weekly_hygiene_*.log`, so there is no evidence the injection was ever exercised.
-
-**NO RESTART, deliberately, and re-proven rather than inherited:** live RC pid 7788 runs the MAIN TREE's copy of this file (21567 bytes vs this branch's 26084), so a bounce from here would restart UNFIXED code. **Deployment is the merge.**
-
-**Fifth, and the one that only shows up in a multi-lane repo: the RM id I minted went STALE while the work waited.** This slice was finished, then stashed when its verifier hit the 600s background-task ceiling, and recovered a cycle later. The base had not moved (stash parent == HEAD `3afd1d75`, applied clean), so the code was fine - but `origin/main` had. Other lanes filed RM-223 through RM-227 while the slice sat, so the row minted here as RM-223 against a correctly-measured branch-local max of RM-222 had become a DUPLICATE of a real row filed 2026-08-29. Caught by re-measuring against `origin/main` before staging, re-minted to RM-228. **The allocation was not careless - it was right when it was made and rotted in the gap.** A branch-local max cannot see `main` move underneath it, so the rule is: re-measure an RM id against `origin/main` at COMMIT time, not at file-selection time. This is the fifth hand-correction of that pointer and the first where the drift produced a genuine collision rather than a merely stale number, which makes it the strongest evidence yet FOR the still-OPEN RM-192 guard - do not read it as closing that row.
-
-**Sixth, and the best argument for the adversarial pass: it CONFIRMED all four of my claims and still found a MEDIUM defect in the fix itself.** The 411 that closes the chunked-body discard used `self.headers.get("Transfer-Encoding")`, and `Message.get` returns only the FIRST header of a repeated name - so two `Transfer-Encoding` lines (`identity`, then `chunked`) walked straight past the brand-new guard and the body was discarded exactly as before. **The guard was real and its header accessor was not.** It also proved the `_scrub_log` fallback over all 1,111,998 non-surrogate codepoints rather than trusting my sample, and reproduced the original defect by loading `git show HEAD:` as a live module over a socket. A verifier that only re-runs your suite is not worth dispatching; one that re-derives the mechanism is.
-
-**Seventh: my own second fix was wrong, and the test I wrote for it caught me.** Guarding the token gate against a lone surrogate in `RC_DASH_TOKEN`, I reached for `surrogateescape` - which only covers the U+DC80..U+DCFF range that DECODING produces, so it still raises on U+D800. `surrogatepass` is the right handler. Ten minutes, and only because the regression test existed before the fix was believed.
-
-**Eighth: the mutation harness caught ITSELF.** Two multi-line anchors matched zero times because `_handler.py` is CRLF on disk while the anchors were authored with `
-`. Both mutants would have reported applied-and-caught if the harness did not assert each anchor applies EXACTLY ONCE - `feedback_mutation_that_fails_to_apply_looks_green` crossed with `reference_windows_write_text_crlf_byte_count`. Final tally 16 tests, 8 mutants, 8 killed.
-
-**Ninth, and the one the full suite earned its keep on: fixing the duplicate-header bypass broke EIGHT existing tests, and they were all wrong in the same way.** Switching `self.headers.get(...)` to `get_all(...)` raised `AttributeError: 'dict' object has no attribute 'get_all'` across `tests/test_control_endpoint_auth.py` (7) and `tests/test_body_read_timeout_rm152.py` (1), because those doubles assign a plain **dict** to `h.headers`. A real `BaseHTTPRequestHandler.headers` is an `http.client.HTTPMessage`, which supports repeated names. **The dict double cannot represent the very input the defect lives in** - a duplicated header - so those tests could never have caught it and quietly certified a handler shape that does not exist. Fixed in the doubles, not in production: I did NOT add a `getattr(self.headers, "get_all", ...)` dance to make the weak double pass, because that would bake the under-specification into the shipped code. **This is the SAME lesson as the `_FakeHandler` fix earlier in this very slice, now with eight more instances** - a double that reimplements what it stands in for drifts away from it silently, and you only find out when a fix needs the real behaviour. Worth noting the sequence: the adversarial pass found the bypass, the bypass fix found the doubles. Neither would have surfaced from reading.
-
-**Branch is ready to merge and NOT merged** - lane 8 ships last, and the merge is the deployment.
-
----
-
-# 2026-08-30b - lane 8 cycle 12: the coach showed double the number it gated on, and a test had already ratified it
-
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, mutation-tested, adversarially reviewed.** Target `core/decision_detector.py` (999 lines, `frozen=no`), picked on four criteria at once and confirmed not already audited - cycles 1-11 took `vision_server/_http.py`, `core/rofl_archive.py`, `lcu/lcu_postgame_collector.py`, `dashboard/api_schema.py`, `core/riot_api_cache.py`, `tools/liveclient_relay.py`, `core/liveclient_cache.py`, `ops/rc_transactional_deploy.py`, `core/config_validator.py`, `core/log_retention.py` and `core/riot_api.py`. Full detail in `docs/LEDGER.md` 1271; RM-222 filed in `BACKLOG.md`.
-
-**The one worth carrying forward: a green test had already ratified the bug.** `detect_postfight_objective` counted every `ChampionKill` twice (killer's team AND victim's), so a true +3 reported 6 and the player was shown `"+4 fight"` for a 2-kill swing. It is the ONLY detector with no test class in `tests/test_decision_detector_adr007.py` - but it was not untested. `tests/test_p2w1_core_b.py` had a fixture with two ally kills under a docstring reading **"+4 ally kill diff"**: someone ran the detector, read the doubled number back, and wrote it in as the expected input. The suite then stayed green through the defect for as long as it existed. That is `feedback_subagent_fixture_shaped_to_bug` in a file nobody suspected, and the tell was in the fixture's own prose, not its assertions.
-
-**Second lesson, about my own claim - it was wrong TWICE, in different ways.** I framed the heartbeat finding as "the pill reports alive while detectors crash". My own probe refuted the first version: a non-numeric `gameTime` is floated by `_loop` OUTSIDE the per-detector `try`, so the whole tick dies and the heartbeat honestly goes stale. It survived only for the PARTIAL case (`events.Events` as a `str`, 2 of 6 detectors crashing every tick, counter climbing, `alive=True`). Then the adversarial pass refuted the other half: **there is no pill.** `#trigger-pill` and `/api/decisions/heartbeat` both have ZERO hits under `web/` - it was deleted with the header second row in `bfa78360`, and `web/css/panels/map_state.css:119` records that while noting the backend was kept. I had inherited the premise from a stale docstring at `dashboard/routes_diag.py:211`, which is exactly the `feedback_instrument_output_is_not_a_survey_of_reality` failure: I cited a doc for a UI fact instead of grepping `web/`. The docstring is corrected in this slice. The fix stands (the heartbeat was lying and now is not) but it is curl-visible only, and I should not have claimed an operator benefit without looking for the consumer.
-
-**Third: run the adversarial pass, it pays.** It found FOUR real defects in my own fix - a failed JSONL append left a decision removed-and-unlogged while reporting ok; ally-kills-ally credited +1 where the bug I replaced netted 0; the self-team lookup kept an unguarded hand-rolled loop that raised before my guarded helper ran; and the new WARNING fired 3600 times an hour. Separately, mutation-testing caught my OWN new test passing for the wrong reason - it patched `Path.open` globally, which also broke `write_text` in the pending write, so it returned at an earlier branch and never reached the code it claimed to guard. The mutant survived until the test was rebuilt around a directory-as-log-path. `feedback_mutation_that_fails_to_apply_looks_green`, self-inflicted.
-
-**Fourth: the test I wanted to write was unsatisfiable.** The Windows `os.replace` fix (`core/polled_json.atomic_write_json`) retries ~275 ms then re-raises, so a test that holds the destination open indefinitely asserts something no atomic-rename design can deliver. Rewriting it to model REAL contention (a brief overlapping read, <100 ms per polled_json's own measurement) exposed the deeper defect: `record_choice` appended to the JSONL BEFORE the pending write, so a swallowed failure logged one decision twice and left it pending forever. Ordering was the actual bug; the retry was only half the fix.
-
-**Backfill was measured, not assumed, and came back empty** - `decisions_log.jsonl` holds 12 rows with zero duplicate ids and zero `postfight_objective` rows, so neither defect reached a persisted record.
-
-**Branch is ready to merge and NOT merged** - lane 8 ships last, and the merge is the deployment.
+**NEXT SESSION should know:**
+- **RM-225: the auto-repair branch has NEVER fired.** Only the clean early-exit path has run.
+  Do not describe it as proven.
+- **RM-222: the FLAT pen axis has no live-vs-pinned layout guard** - and it is the axis that
+  already carries a divergence (3175: 18 pinned vs 20 live). The percent axis got hardened
+  because it broke; the flat one stayed quiet.
+- **The `claude` CLI binary is FIXED; the OAuth session is NOT, and that is the bigger problem.**
+  The npm install shipped a 500-byte SHELL-SCRIPT STUB where `bin/claude.exe` should be - an
+  interrupted install had left the real 253 MB `claude-code-win32-x64` package sitting in npm's
+  `.claude-code-lEZNDFsD` staging dir, never moved into place. `npm install -g
+  @anthropic-ai/claude-code@latest` fixed it (now a real 207 MB binary, reports 2.1.251) and
+  npm reclaimed the staging dir. npm config was clean throughout - not a `--ignore-scripts` or
+  `--omit=optional` misconfiguration. **The stub's "not compatible with the version of Windows
+  you're running" message was Windows failing to exec a shell script as a PE, NOT an
+  architecture mismatch - do not chase that.**
+  **STILL BROKEN, and operator-only:** every CLI binary on this box fails with `Failed to
+  authenticate: OAuth session expired and could not be refreshed` - measured on BOTH the npm
+  2.1.251 and the desktop-managed 2.1.247, so it is NOT version-specific. `~/.claude/.credentials.json`
+  exists and was touched 2026-08-29 09:47, so presence is not the issue. **Headless `claude -p`
+  therefore cannot run AT ALL on Legion**, which takes out the whole `ops/loop` headless program,
+  not just one test. Needs `claude login`; I will not perform a credential action.
+- **`test_cli_version_still_matches_the_pin` is now legitimately RED on Legion** (2.1.251 vs
+  pinned 2.1.220) and that is CORRECT - the broken binary had been masking it. **Do NOT bump
+  `PINNED_CLI`:** its contract requires the propagation canary with a negative control first, and
+  the canary needs a working authenticated CLI, so it is blocked behind the login above. CI is
+  unaffected - `claude` is not on PATH there, so the test skips.
+- **RM-226: `stop_claim_gate` blocked THIS session and could not be satisfied.** It admits
+  counts only from test-runner output, so a figure quoted off disk while CORRECTING it reads
+  as fabricated; and it scans the whole transcript, so retraction cannot clear the line. Do
+  not edit that gate from a session it is blocking.
+- **`gh run watch --exit-status` returns 0 on a CANCELLED run.** I reported a cancelled `ci`
+  as passing before reading `conclusion`. Read the conclusion field, never the watch exit code.
+- DS stays PINNED at data patch 16.15.1 while live DDragon is 16.17.1. `:8860` reporting
+  16.15.1 is CORRECT - do not file it as drift (RM-223 tracks the accruing carry-forward debt).
 
 ---
 
-# 2026-08-30 - lane 8 cycle 11: a socket leak on every error response, and a header that froze the Riot client for 31.7 years
+# 2026-08-16e - RM-221: the Share mirror's exclusion list becomes a RULE, and reproducing first corrected four of the row's particulars
 
-**Shape: lane 8 Headless-True-Audit, worktree `lane/true-audit`, Tier-1, TDD, verifier-gated.** Commit `ac0f6303`. Target `core/riot_api.py` (963 lines, `frozen=no`), chosen by five criteria at once and confirmed NOT already audited - recall showed cycles 3-10 had taken `vision_server/_http.py`, `core/rofl_archive.py`, `lcu/lcu_postgame_collector.py`, `dashboard/api_schema.py`, `core/riot_api_cache.py`, `tools/liveclient_relay.py`, `core/liveclient_cache.py`, `ops/rc_transactional_deploy.py`, `core/config_validator.py` and `core/log_retention.py`. **The CACHE was audited in cycle 5; the CLIENT that fills it never was.**
+Closed RM-221. The reviewer's own Start-here command now reports **8256 passed, 2 failed,
+15 skipped, 11133 subtests in 96s** on a clean copy unpacked outside the repo and
+deliberately RENAMED to `ds-engine-review`, against 58 failed / 5 errors before. Both
+survivors are the SAME RM-190 divergence on item 3175 Spellslinger's Shoes - engine 20
+flat magic pen, pinned 16.15.1 snapshot states 18 - reported engine-side by
+`test_magic_pen_flat_catalog_r153.py` and feed-side by `test_pen_pct_catalog_r160.py`.
 
-**THE MODULE WAS ALREADY GOOD, AND THAT IS WORTH RECORDING** - every path segment `quote`d, timeout set, handlers already narrow, and no log line carries the key (all 15 `log.*` calls read; they pass the key FILE PATH, never the value, and the key travels as `X-Riot-Token` so it cannot leak through a URL either). Four defects survived that reading.
+**The row was right that the package was broken and wrong about four particulars, and the
+only reason that surfaced is that I reproduced before building.** (a) The filed **73 is not
+reproducible from the bytes**: a copy that KEEPS the name `Share` gives 58. The 15-failure
+delta was an ancestor-directory-NAME check in four engine tests, so the number moved when
+the reproduction renamed the folder. (b) **Four** files import `core`, not six, and all four
+do it DEFERRED inside test bodies - which is why the pre-existing guard stayed green
+throughout: its `_CORE_IMPORT` was anchored at column 0 because "only a collection abort
+counts". True, wrong bar. (c) The two biggest offenders are neither a `core` import nor a
+`data/meta` read - `test_health_damage_coupling_rm91.py` (50 of 58) and
+`test_item_proc_heal_rm103.py` (all 5 errors) pin the historical 16.14.1 snapshot, and
+`test_antitank_axis_score_invariance_r196.py` is a host-tree POPULATION scan. (d)
+`test_pen_pct_catalog_r160.py` was filed as a packaging artifact and is the same TRUE
+signal as r153 - excluding it would have deleted it, the exact trap the row raised for r153.
 
-**THE ONE THAT MATTERS: `DualBucket.note_429` clamped only the BOTTOM.** `_cooldown_until = time.monotonic() + max(0.0, float(retry_after_s))`. Measured, not reasoned: `note_429(999999999)` gives 999999998.99s of cooldown and every later `acquire()` returns False - **31.7 years, for the life of the process**. Nothing in the module can clear it (`reload_api_key` touches only the key cache; `_reset_bucket_for_tests` is test-only), so recovery meant restarting RC, which runs for days. **The verifier found the strictly worse form I had missed: `note_429(inf)` sets `_cooldown_until` to `inf`, which can never elapse at all.** Clamped to `_MAX_COOLDOWN_S = 600`, placed in `note_429` rather than at the header parse **because that is the single line that assigns `_cooldown_until`** - clamping there covers every caller including future ones. Graded honestly as an availability defect from an upstream-controlled value, not a remote exploit.
+**Shipped:** two rules in `tools/ds_share_sync._is_host_dependent_test` (any-indent `core`
+import; an AST check for a `data/daemon_slayer/<patch>` read other than the shipped patch,
+in two shapes only) plus ONE named entry for r196 with its reason written down. Rule 2's
+narrowness is MEASURED: a blunt stale-patch-literal scan hits 10 modules and 8 of them pass,
+because they build their own snapshot; the shipped rule hits exactly 2 with 0 false
+positives. Also the `SHARE_MIRROR` sentinel the generator emits, replacing the name check in
+all four tests, pinned `eol=lf` in `.gitattributes` so `core.autocrlf` cannot fail `--check`
+on the next clone.
 
-**The quiet one: `HTTPError` is not a plain exception.** Its MRO ends `OSError -> addinfourl -> addbase -> _TemporaryFileWrapper`, so it OWNS the socket wrapper, and `read()` does not release it - I probed that directly rather than believing it. `_http_get` read 4096 bytes and returned, leaking until GC, on a path RM-163 records as firing on EVERY `/api/last-match` build. Plus two smaller ones: `get_champion_mastery` applied its shape check to the CACHE WRITE and returned the bad body anyway from a function annotated `-> Optional[dict]`, and `get_top_champion_masteries` clamped `count` at the bottom only while its own sibling clamps both ends.
+**Two things worth carrying forward.** The sentinel sites walk `parents` NON-INDEXED on
+purpose: `tests/test_skip_condition_hygiene.py` credits that exact form as a tree-shape
+capability and names the case "is this the Share mirror" in its own source. My first attempt
+indexed `parents[3]`, resolved to a suffix-tracked artifact, and turned all four skips into
+class-B5 DEFECTs - caught by the RC suite, not by inspection, and fixed on the guard's own
+terms rather than by buying an `_ALLOWLIST` exemption. Second: the first mutation probe of
+the new snapshot guard SURVIVED, because flipping `_PATCH` moves the generator and the guard
+together - an EQUIVALENT mutant. Re-aimed at a generator that stops applying the rule, it
+goes red. All four guards are mutation-proved with non-equivalent mutants.
 
-**TWO VACUITY TRAPS CAUGHT WHILE WRITING THE TESTS, and both had already produced PASSING tests.** (a) The sibling `_resp` helper falls back to `bytes(body)` for non-dict/list, and **`bytes(42)` is forty-two NUL bytes** - two shape tests were exercising the JSON-parse-failure path and proving nothing. (b) `_url_for_count` reused one puuid, so `count=0` and `count=-7` both clamp to 1, share a TTL cache row, and the second never reaches the transport - `call_args` is None and the failure has nothing to do with clamping. Both are now named in the test file so they are not re-introduced. **This is the `feedback_acceptance_example_may_be_vacuous` class, twice, in one file I wrote myself.**
+**Gate note that cost a re-run:** the DS suite under `-n 8` reports 19 failures, ALL in
+`test_ehp_family_seams_reach_the_client_rm115.py`, which drives the shared live DS `:8860`
+server; serially the same tree is **10684 passed / 13482 subtests, 0 failed**. Run that file
+serially or expect phantom reds.
 
-**29 tests, 17 RED before the fix (11 were deliberate no-regression pins). Every guarded line mutation-tested red-then-green TWICE** - mine, then the verifier's independent harness, which asserts each anchor applies EXACTLY ONCE so a mutant cannot silently fail to apply and read as green. All four caught, restore proven byte-identical by sha256.
+---
 
-**NO RESTART, DELIBERATELY - the item-1179 lesson.** Live RC (pid 12892) runs the MAIN TREE's 2026-08-11 copy of this file (36887 bytes vs the worktree's 41340), so a `restart_trigger.txt` bounce from here would restart UNFIXED code and hand back a green runtime check that proves nothing. **Deployment is the merge.** Backfill checked live rather than asserted: 0 polluted `mastery_top` cache rows of 2, and 228 handles at 1.1h uptime shows no leak accumulation (consistent with RM-163 removing the hot 404/403 traffic).
+# 2026-08-16d - markdown organizing pass: the Share package's own Start-here command had not exited green for weeks
 
-**The 2 RC suite failures are INHERITED and I PROVED it** rather than reasoning about it - reverted the change to HEAD and reproduced both identically. CLI moved 2.1.220 -> 2.1.251, and live DS `:8860` reports engine 1.278.1 against the repo's 1.278.0. Neither file references `riot_api`. **Also worth remembering: `schtasks /query /fo csv` piped to grep reported 0 RC-* tasks; `Get-ScheduledTask` reports 24.** That false negative would have gone into the ledger as fact if I had not re-probed it.
+Structure and contents sweep over every tracked `.md` outside `docs/_archive`, plus a
+full rewrite of both READMEs. 42 files, 451 insertions, 249 deletions; exactly ONE
+non-`.md` file touched (a guard I broke and fixed, below).
 
-**RESIDUE FILED as RM-221** (next free id = RM-222): `match:v5:<id>` and `match:v5:timeline:<id>` are prefix-ambiguous into a never-expiring table. **NOT reachable today** - no caller can produce a match id containing a colon - and filed rather than fixed because changing the key shape orphans 18575 rows, making it a migration. **Its acceptance explicitly forbids closing it by re-asserting unreachability**, since that is a property of the callers and callers change.
+**The find that justified the session was not a doc fact.** `Share/README.md` and
+`Share/docs/05_AUDIT_AND_REFACTOR.md` both promised that the package's own Start-here
+command exits green - "0 failed, 0 errors, exit code 0. The plain command exits green -
+no pytest flag, no `--ignore` list." Measured on a genuinely clean copy (`Share/` copied
+out of the tree, run from its own `src`), reproduced identically twice: **8376 passed,
+73 failed, 5 errors, 11182 subtests**. An external reviewer's FIRST action produces 73
+failures against a doc promising none.
 
-**Branch is ready to merge and NOT merged** - lane 8 ships last, and the merge is the deployment.
+**Root-caused by opening them, not inferred.** Three classes, all packaging-exclusion
+gaps and none an engine defect: `ModuleNotFoundError: No module named 'core'` (host
+application, deliberately not shipped); a missing `data/meta/ddragon_items.json` (live
+upstream mirror, not the pinned snapshot - `Share/src/data/meta/` does not exist); and
+`test_changelog_tracks_engine_version.py` looking for `agents/daemon_slayer/CHANGELOG.md`
+while the package ships it at the package ROOT one level up. The generator already drops
+66 of the repo's 429 engine test files; these 11 should have gone with them. **Filed as
+RM-221**, with the fence that matters: a TWELFTH failure is CORRECT and must survive any
+fix - `test_magic_pen_flat_catalog_r153.py` reports Spellslinger's Shoes at 20 flat magic
+pen against the pinned 16.15.1 snapshot's 18, which is release 1.277.1 working as
+designed. Excluding that file would delete a true signal. Deselect command shipped in the
+README is verified, not asserted: it leaves 8152 passed and exactly that one subtest.
+
+**A first-run measurement was invalid and I threw it away rather than publish it.** The
+in-repo run gave 53 failed; that is not the claim's condition, because in-repo the
+catalog sweeps read the repo's refreshed mirrors. Re-ran from a real clean copy. The
+first clean run was also truncated by my own `tail -20`, which is why only 13 of 73
+FAILED lines were visible - re-ran with full capture before writing any number.
+
+**Recital drift, deleted rather than refreshed** (three sites, same disease):
+`docs/DAEMON_SLAYER.md` carried `10653 tests` twice; RM-210 was filed at "stale by 27"
+and by closing had drifted twice more to 31, which is the row's own argument. Both
+recitals gone, replaced by the measure command; `docs/ARCHITECTURE.md` stops calling the
+banner drift-guarded for counts no guard pins and now names what IS guarded. RM-210 CLOSED.
+
+`docs/DS_SWEEP_TRACKER.md` had accreted **five layers of superseded RM id-pointer
+corrections that contradicted each other** - one line read RM-208, another asserted
+RM-205 was "CURRENT as of 2026-08-15". Each layer was a dated correction of a pointer
+that then went stale itself. Relocated verbatim to `history_notes`; replaced with one
+pointer re-derived across the working tree AND all three lane branches (RM-221) plus the
+derivation command, since the doc's own advice is to derive it.
+
+**Majority is not authority.** 17 of 20 `tools/*.md` carried a SUBAGENT-FIRST block that
+`CLAUDE.md:226` explicitly marks SUPERSEDED - it cites the retired "Subagent-First
+Protocol" heading and omits the self-adjudicating / self-adversarial point entirely. The
+audit called the 17 "current" and the 3 "drifted" on a head count, and my first
+instruction to an apply-agent repeated that. **The agent refused half of it and was
+right**, then propagated the superseded block to two more files anyway, making it 19.
+Resolved by merging the canonical block from `CLAUDE.md` "Session Default" itself and
+writing it to all 20 plus all 20 `.claude/commands` mirrors; parity byte-identical.
+
+**Three MUST-FIX audit findings were REFUTED and deliberately not applied** - all one
+class: `core/_rune_stat_grants.py`, `core/zoi_mia.py`, `lcu/lcu_events.py` are cited
+inside green-field proposal and refutation contexts, so they do not exist ON PURPOSE.
+One exists in neither the claimed old nor the claimed new location. Applying those
+"fixes" would have corrupted three records of work being correctly refused. **The lesson
+is the shape: a path that resolves to nothing is not automatically a broken citation -
+read the sentence around it.**
+
+**I broke a guard and fixed it rather than dropping it.**
+`tests/test_ds_share_changelog_freshness.py` parsed `- <old> -> <new> - ` release
+BULLETS out of `Share/README.md`; converting that section to a table broke it. Its own
+failure message says to update the pattern rather than drop the check. Widened to accept
+both shapes and **mutation-proved it still has teeth** - removing the newest row drops
+the parse to 1.277.1.
+
+**READMEs.** `Share/README.md` 33473 -> 15889 bytes while gaining accuracy: its Release
+history was reproducing 25 full CHANGELOG entries verbatim, ~21 KB duplicating the file
+it points at, now a six-row index into the 66-entry `CHANGELOG.md`. Both READMEs gained a
+Contents index (21 anchors, all verified to resolve). Main README's mode list corrected -
+a fifth rotating-game-mode path (URF / One for All / Nexus Blitz) is routed in
+`core/game_snapshot.py` and flag-enabled in `config/feature_flags.json`, phrased as
+"unexercised, not unreachable" per the CLAUDE.md fence.
+
+**Also fixed:** `docs/API.md` documented `/api/cooldown-watch`, a surface REMOVED to pass
+Riot review (compliance-relevant), and listed two Mission Control `:8895` routes under
+`:8888`; ARCHITECTURE said 6 scored axes where `server.py` registers 11, and 13 residual
+`.after()` files where there are 3 (all frozen); `DS_COMPLETENESS_GAP` had a staleness
+banner 94 engine versions stale, now a pointer; ADR-004 had two contradicting Status
+lines; two handoff docs hardcoded a machine name CLAUDE.md forbids recording and claimed
+Tailscale was not installed (the binary is on disk); `PORTABLE_PROJECT_CONVENTIONS`
+budget table (40/60 KB) read as this repo's limits, actually 60/80.
+`docs/HEADLESS_LOOP_SPEC.md` archived - a true orphan describing a retired vendor as a
+live participant. Quick win taken: ROADMAP RM-203 was OPEN against LEDGER 1265.
+
+**Measured this session, never quoted:** DS **10684** collected, RC `tests/` **19260**
+collected, `/health` 1.278.0 / 16.15.1 / 173 / 706. Gates: `drift_guard` 0 breaches;
+CI-selected doc-guard set **1521 passed, 0 failed**; zero em-dash / en-dash / smart
+quotes in every changed file. **Next free id = RM-222.**
 
 ---
 
@@ -30427,3 +30510,68 @@ BEFORE any regen. Full narrative: `docs/LEDGER.md` 1044.
   class `coherence.py:138-139` already defers. The eviction is right; the replacement
   is not clearly better.
 - CLAUDE.md's **"20,190 tests" is stale** against the measured `tests/` count (12987).
+
+---
+
+## 2026-08-16 - relocated from `docs/DS_SWEEP_TRACKER.md`: the five-layer RM id-pointer correction stack
+
+Verbatim. Each of these blocks was a dated correction of the id pointer that then went
+stale itself; by 2026-08-16 the tracker carried five of them, contradicting each other
+(one line read RM-208, another asserted RM-205 was "CURRENT"). The tracker now carries a
+single derived pointer plus the derivation command, and the durable lesson - that only a
+guard (RM-192) fixes this - survives there. Kept here for the incident record only; do
+NOT read any id pointer below as live.
+
+  **POINTER CORRECTED 2026-08-14 (lane-research): this line read `RM-135` and was 57 ids stale.**
+  RM-135 had been in use since 2026-08-01 and the live repo-wide max was RM-191, so an agent
+  following `tools/headless-research.md:46` or `tools/headless-true-audit.md:305` - both of which
+  name this file as the authoritative registry - would have minted a COLLIDING id. That is the
+  THIRD time this pointer has gone stale (see the RM-119 and RM-134 corrections recorded in
+  `docs/history_notes.md:2372` and `:2288`), which is why the standing fix is a GUARD and not
+  another hand-correction: filed as **RM-192**. Until that guard exists, do NOT trust this line
+  on its own - derive the max with a repo-wide `grep -rhoE "RM-[0-9]{1,3}"` over `ROADMAP.md`,
+  `BACKLOG.md` and `docs/LEDGER.md` and take the next id above it.
+  (lane-research corrected 2026-07-31: the prior "= RM-119"
+  pointer was ITSELF stale - RM-119..RM-127 were all consumed by ROADMAP/BACKLOG rows whose
+  tracker registration was owed-and-never-done, exactly the "tracker registration is owed"
+  note each carries. Roughly: RM-119 skip-audit laning gap, RM-120..RM-122 UI/CCR lanes,
+  RM-123/RM-124 shipped/gated, RM-125 web-glyph, RM-126 relocated, RM-127 CCR link-ingest.
+  Verify the true max before taking an id:
+  `grep -rhoE "RM-[0-9]+" ROADMAP.md BACKLOG.md docs/ | sort -t- -k2 -n | tail -1`.)
+  Historical note: the earlier "RM-105" reading was STALE - ids
+  RM-105..RM-117 were consumed after it was written, and RM-118 was allocated
+  2026-07-26 to the mana-as-damage `ds.ehp` blindness, population 1
+  (Blitzcrank), the third instance of the RM-87 / RM-91 lever - ITEM / AXIS
+  gap, no roster checkbox. Verify against this file, never against ROADMAP
+  prose, before taking an id; RM-96 Zilean + RM-97 Zyra assigned in batch32;
+  RM-98 cast-rate TIME BASE allocated 2026-07-19 out of the RM-39/RM-43 L2
+  build; RM-99 + RM-101..RM-104 allocated 2026-07-19 to the R132 defensive-half
+  sweep - Heartsteel HP-stack, the defensive-rune remainder, the Warmog's Arena
+  mirror phantom credit, Unending Despair's self-heal, and the Kaenic Arena
+  mirror shield; see ROADMAP "DS defensive-half sweep GAP specs"). Note RM-98
+  and RM-99/RM-101..RM-104 are NOT champion GAPs - they are ITEM / RUNE axis
+  gaps, so they add no roster checkbox and the Summary counts above are
+  unchanged by them.
+- **RM-203 + RM-204 ALLOCATED 2026-08-14 (orchestrated-run docs sync).** Both are
+  ITEM / DOC / PRODUCT rows, **not champion GAPs** - they add NO roster checkbox and
+  change NONE of the Summary counts above. **RM-203** = the stale `547/547` DS coverage
+  denominator in `docs/DAEMON_SLAYER.md:10` + `docs/DS_COMPLETENESS_GAP.md:32,33,261`
+  (re-measured 16.15.1: ITEM_EFFECTS 548, DDragon purchasable 544, total 706 - no
+  denominator reproduces 547); DS-BATCH only, body in `BACKLOG.md` under "Daemon Slayer
+  scorer calibration". **RM-204** = the Arena augment play-line serve-hop, operator-gated,
+  body in `BACKLOG.md` under "Draft + coach lane". Bodies live in BACKLOG because
+  `ROADMAP.md` was at ~91 pct of its 80 KB budget when these were filed; ROADMAP carries
+  one pointer line each.
+  **CONCURRENCY NOTE - read before taking the next id.** These two were allocated while a
+  SECOND session was live on this repo, which consumed **RM-192..RM-202** on the
+  `lane/research` branch. That branch merges independently, so for a window the true max
+  id is NOT visible from `main` alone. **Next free id after both land = RM-205.** The
+  pointer above now reads **RM-205** and is CURRENT as of 2026-08-15. **This sentence
+  originally warned that the pointer above read `RM-135` and was LONG STALE; that was
+  true when it was written and became false in the same merge**, because the concurrent
+  lane-research session corrected the pointer in the commit this note landed beside. The
+  `RM-135` string now survives only inside its own correction note further up - do not
+  read that occurrence as a live pointer. Verify the true max across BOTH the working
+  tree and every live lane branch before taking an id:
+  `git fetch origin && git show origin/lane/research:ROADMAP.md | grep -ohE "RM-[0-9]+"`
+  alongside the working-tree grep on the line below.

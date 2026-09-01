@@ -2,11 +2,12 @@
 description: End-of-session ritual - auto-commit any pending changes, push, do the /wrap checks, then signal "ready for /clear" so the next session starts fresh without context bloat. Use when work is wrapped and you want a clean exit.
 ---
 
-> **SUBAGENT-FIRST (standing protocol, operator 2026-06-20).** Always use subagents for substantive work; do not build solo in the main thread.
+> **SUBAGENT-FIRST (standing protocol, operator 2026-06-20, restated 2026-07-30).** Orchestrated + multi-agent + self-adjudicating + self-adversarial is the DEFAULT shape, not an escalation.
 > 1. **Spec first:** a Plan/design subagent (or the loop director) emits the spec/plan BEFORE any code; verify it vs ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
-> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build.
-> 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done".
-> 4. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Subagent-First Protocol" + memory `feedback_subagent_first_protocol`.
+> 2. **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build. Verify before building.
+> 3. **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done" claim.
+> 4. **Self-adjudicating:** the agent that produced a thing never grades it. **Self-adversarial:** every finding gets an independent pass trying to REFUTE it, defaulting to refuted when uncertain. Two agents agreeing is not evidence (`feedback_row_agreement_is_not_evidence`).
+> 5. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Session Default".
 
 The user wants to end the session cleanly so the next one starts with a fresh context window. This is /wrap, but with auto-commit instead of "stop and ask". Run all sections in order; surface a tight final banner.
 
@@ -78,7 +79,7 @@ Versioning is cheap; lost work is not. The operator never passes up a commit + p
   - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m ruff check .` (must report ALL CHECKS PASSED)
   - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m py_compile <each touched .py>` (syntax - silent-crash guard per CLAUDE.md hard rule)
   - **Authored-source hygiene (ALWAYS run, every /done - this is the same step CI runs):** `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py tests/test_u2500_hygiene.py -q`. Must be green. No smart quotes / em-en dashes / NBSP / ellipsis / mojibake / U+2500 in authored source. The `Share/src` DS data mirror is excluded as external data. If this fails, it is NEVER "pre-existing / unrelated / not in CI" - it is in CI now; fix it (`"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply` for smart-quote/dash drift) before the gate is green.
-  - Test slice covering the change: **the targeted module**, plus the DS suite `agents/daemon_slayer/tests/` if the engine was touched (that one is genuinely fast - 9932 tests in ~115s). Do NOT run the full `tests/` suite here; section 2c dispatches it to CI instead. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
+  - Test slice covering the change: **the targeted module**, plus the DS suite `agents/daemon_slayer/tests/` if the engine was touched (that one is genuinely fast; measure its size with `pytest agents/daemon_slayer --collect-only -q`, never from a recited figure, since suite counts are unguarded and this line said "9932 tests in ~115s" until 2026-08-16). Do NOT run the full `tests/` suite here; section 2c dispatches it to CI instead. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
 - Ground truth, not memory (per CLAUDE.md Verification Discipline): run the gate FRESH this turn, read the pass/fail counts you observe now, and `ls` any test file you cite as added - never carry forward a prior or subagent-reported green. If the work came from parallel slices, the `verifier` subagent's CONFIRM is the gate, not the slice agent's claim.
 - GREEN: proceed to section 0c, then commit (section 1).
 - RED: fix and re-run. If the failure is pre-existing and unrelated to this session's work, note it ABOVE the banner and commit only the green-verified authored files - never commit over a regression you introduced.

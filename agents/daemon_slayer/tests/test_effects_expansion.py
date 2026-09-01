@@ -5660,11 +5660,12 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
         self.assertAlmostEqual(e.lethality, 22.0)
 
     def test_arena_seryldas_armor_pen(self) -> None:
-        # Doctrine B (R161): the Arena feed states 40 percent, so 226694
-        # credits its own line rather than SR 6694's 35 percent.
+        # Doctrine B (R161): the Arena feed states its own percentage, so
+        # 226694 credits that line rather than SR 6694's 35 percent. DDragon
+        # 16.17.1 moved the Arena line 40 -> 45; the SR twin did not move.
         e = ITEM_EFFECTS.get("226694")
         self.assertIsNotNone(e, "226694 missing")
-        self.assertAlmostEqual(e.armor_pen_pct, 0.40)
+        self.assertAlmostEqual(e.armor_pen_pct, 0.45)
 
     def test_arena_voltaic_lethality_and_proc(self) -> None:
         # Doctrine B (R161): Arena feed states 20 lethality, SR 6699 = 10.
@@ -5715,15 +5716,17 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
 
         Doctrine B (R161): when a DDragon Arena mirror states an explicit
         stat line that differs from its SR twin, the Arena feed value
-        wins. Serylda's Grudge states 40 percent armor pen in the Arena
-        feed and 35 percent on SR, so the two must DIVERGE - the old
-        "Arena mirrors inherit SR coefficients" guard that pinned them
-        equal is exactly what locked the wrong magnitude in place.
+        wins. Serylda's Grudge states 45 percent armor pen in the Arena
+        feed (16.17.1 moved it from 40) and 35 percent on SR, so the two
+        must DIVERGE - the old "Arena mirrors inherit SR coefficients"
+        guard that pinned them equal is exactly what locked the wrong
+        magnitude in place. The divergence is the invariant here; the
+        Arena magnitude itself is free to move patch to patch.
         """
         sr = ITEM_EFFECTS["6694"]
         arena = ITEM_EFFECTS["226694"]
         self.assertAlmostEqual(sr.armor_pen_pct, 0.35)
-        self.assertAlmostEqual(arena.armor_pen_pct, 0.40)
+        self.assertAlmostEqual(arena.armor_pen_pct, 0.45)
         self.assertNotAlmostEqual(sr.armor_pen_pct, arena.armor_pen_pct)
 
     # -- defensive_only Arena mirrors --------------------------------------
@@ -7972,7 +7975,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.278.0")
+        self.assertEqual(ENGINE_VERSION, "1.278.1")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -8033,7 +8036,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.278.0")
+        self.assertEqual(ENGINE_VERSION, "1.278.1")
 
 
 if __name__ == "__main__":
