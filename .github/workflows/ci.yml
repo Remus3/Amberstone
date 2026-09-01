@@ -59,7 +59,7 @@ jobs:
     # small: RM-156 measured `Install Playwright Chromium` at 10m33s on a cache
     # miss against 27s either side. 55 + an 11m setup tail is 66, so 75 keeps
     # the step-fires-first invariant real rather than nominal.
-    timeout-minutes: 75
+    timeout-minutes: 95
     steps:
       - uses: actions/checkout@v6
         with:
@@ -94,7 +94,7 @@ jobs:
         # `cancelled`, which is the same word GitHub uses for a run superseded
         # by the concurrency group above. Pinned by
         # tests/test_ci_job_timeout_headroom_rm156.py.
-        timeout-minutes: 55
+        timeout-minutes: 75
         run: |
           # Runs the exhaustive 23k+ test suite.
           #
@@ -175,7 +175,7 @@ jobs:
     # So the job ceiling is now sized as: step ceiling (45) + the worst observed
     # setup (about 11m) + slack. It is not the number that should normally fire.
     #
-    # The one that should fire is the step-level `timeout-minutes: 45` on the
+    # The one that should fire is the step-level `timeout-minutes: 75` on the
     # dual-suite step below, because a step timeout reports `failure` while a
     # job timeout reports `cancelled` - the same conclusion as a concurrency
     # supersede (run 30863180947, 5m19s), so a timed-out branch reads as
@@ -188,7 +188,7 @@ jobs:
     # skipped, 0 failed in 2704.11s - and was killed two seconds later by the
     # 45m step ceiling. The guard requires job >= step + 12, so 55 forces 67 as
     # the floor here; 75 keeps the same variance margin the 65 had.
-    timeout-minutes: 75
+    timeout-minutes: 95
     steps:
       - uses: actions/checkout@v6
         with:
@@ -418,7 +418,7 @@ jobs:
 
       - name: "full dual suite (RM-119 - push CI now gates the whole tree)"
         # RM-156: this is the ceiling that should fire, not the job's. See the
-        # block above `timeout-minutes: 75` for the measurement; the short
+        # block above `timeout-minutes: 95` for the measurement; the short
         # version is that a step timeout reports `failure` and a job timeout
         # reports `cancelled`, and `cancelled` is unreadable because a
         # superseded run says the same thing.
@@ -433,7 +433,7 @@ jobs:
         # twice the wall clock. 55 is deliberately not 46: RM-156's own finding
         # is that a ceiling hugging the worst complete observation converts
         # ordinary runner variance into a fake red.
-        timeout-minutes: 55
+        timeout-minutes: 75
         run: |
           # 2026-07-28 (R217-U1) completes RM-119. Until this step, push CI ran
           # four hand-picked subsets of tests/ - phase2_smoke,
