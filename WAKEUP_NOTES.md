@@ -6,6 +6,45 @@
 
 ---
 
+# 2026-09-01 - merger: lane 8 true-audit (61 commits) LANDED on main
+
+Operator was given the framed decision (review+merge vs resume the loop) and chose
+**merge**. lane/true-audit was the LAST unmerged lane (lane/repo already on main;
+lane/ds + lane/research empty), so the "ships last" precondition was met.
+
+**Landed: `main` @ `a41a2ad9`** (was `0779188f`). Two commits: the merge `e2a8f960`
+(main folded into the branch in the worktree, then main FF'd to it) + a doc fix
+`a41a2ad9`. Pushed to `Remus3/amberstone`.
+
+- **Code: zero code conflicts.** Branch hardening vs main's advances (DS 16.17.1,
+  ports, run_lane, dead-ops) are disjoint by file.
+- **Docs: 6 conflicts, parallel-landing renumber.** LEDGER branch 1270-1306 -> +7 ->
+  1277-1313; RM-221/222/223/227/228 (dual-allocations) -> 317-321; next-free = RM-322
+  (authoritative in `docs/DS_SWEEP_TRACKER.md`). WAKEUP+history took main's canonical.
+- **Review: 6 parallel adversarial slices, ZERO MUST-FIX.** SHOULDs all pre-existing/
+  filed (RM-302/314 TFT timeouts, RM-294 warm_session lock).
+- **Suite on merged tree:** DS 10687/0; RC 20272 pass + the known CLI-pin fail only.
+  Fixed one net-new broken citation (BACKLOG -> WAKEUP:174, from main's shorter WAKEUP).
+- **Follow-ups DONE:** RC restarted (pid 29904, code live); match_db repair dry-run
+  0/8395 (already backfilled during the loop; `--apply` is a no-op; DB backed up).
+
+**NEXT (do first):**
+1. **ROADMAP size-budget relocation.** ROADMAP is 81757 bytes = 99.7 pct of the 81920
+   budget (drift_guard WARN; main was a clean 86.7 pct before this merge). The branch
+   carried it at 99.6 pct. Relocate CLOSED-row stubs from the active ROADMAP to
+   `docs/ROADMAP_HISTORY.md` (their bodies are already there) to get back under 90 pct.
+   NOT done inline at merge because the active list interleaves open rows with
+   load-bearing do-not-re-open fences - it is the recurring operator-gated pass.
+2. `restart_trigger.txt` did NOT self-clear after the restart (pid stable, no loop, so
+   benign - the supervisor is content-keyed), but confirm it is gone / harmless.
+3. `data/match_history.db.premerge-bak-20260901` (16.5 MB, gitignored) can be deleted.
+4. Confirm the `a41a2ad9` CI `ci` job went green (docs-guards/CodSpeed already green).
+
+Loop tooling was ephemeral (prior session scratchpad); to resume lane 8, restart via
+Mission Control. ~27 orphaned claude.exe from the loop still linger (reboot or reap).
+
+---
+
 # 2026-08-31 - lane-8 true-audit loop: run_lane.ps1 opus-5 + bg-ceiling, 61 branch commits
 
 Ran the Headless-True-Audit lane (lane 8) as a continuous autonomous loop from an
@@ -84,45 +123,3 @@ suite in the FOREGROUND so the count is direct runner output. Did NOT edit the g
 
 **NEXT:** RM-227(b) glyphs + the `.gemini` purge stay operator-gated. RM-192/193/225/226
 open in BACKLOG. CLI-pin still needs `claude login` (unchanged, LEDGER 1273).
-
----
-
-# 2026-08-30 - LANE 7 headless-repo: repo already clean, two doc fixes, two sweeps deferred
-
-Outsider-clean audit in worktree `lane/repo`. Pre-flight caught that the launcher had
-dropped the session in the MAIN tree with the `lane/repo` worktree ABSENT - created it
-from main HEAD `2be9603c` and worked only there. `core.hooksPath` is the shared absolute
-`.githooks` (reported, unchanged per 1b). Every standing guard was green on arrival
-(drift_guard 0, archmap + state_schema up to date, ruff clean, worktree clean, the
-byte-identical pair matching its pins), so the repo is clean at every machine-checkable
-level; the value was in the uncovered surfaces.
-
-**Shipped (LEDGER 1275, Tier-0 docs):**
-- `docs/DAEMON_SLAYER.md:40` `cast_rates.` -> `ult_rates.` (the fn is defined only in
-  `ult_rates.py:201`; line 50 already said so - a self-contradiction a stranger would grep and fail on).
-- `docs/OPERATIONS.md:309` stale absolute rotation date ("~2026-08-01", a month past)
-  replaced with a derive-from-mtime instruction.
-- RM-227 filed (BACKLOG Reliability/hardening); DS_SWEEP_TRACKER pointer advanced to RM-228.
-
-**Deferred, NOT executed (both filed under RM-227, anti-rediscovery):**
-- Dead code: NO file dead to a HIGH bar. Five MED candidates (`ops/_scheduler_client.py`
-  plus four re-runnable Phase-3 seeders), each with a retention rationale - a headless delete
-  would be a wrong deletion. RM-195 already covers dead FUNCTIONS; this is files.
-- Glyphs: 3,017 grandfathered U+2192/U+00D7/U+00B7/U+2248, already blocked NET-NEW by the
-  `precommit_gate.py` catch-all (2026-07-28); population is deep-archive / DS-mirrored / frozen /
-  FUNCTIONAL-delimiter (the coach arrow is a `_re.split` delimiter), so a rewrite is behaviour
-  change, not hygiene. Outsider-facing living docs already clean.
-
-**Out-of-repo: ZERO deletions executed** (67 GB 2026-07-30 snapshot fully stale on re-measure):
-- `.gemini` 99 MB - distinct adjudicator APPROVED the purge on clean evidence (no live
-  filesystem reader of `~/.gemini`), PROPOSED-ready but NOT deleted (permanent file deletion is
-  operator territory under the standing safety rule).
-- `Temp/claude/C--Sibling-A` 0.29 GB (was 35.5) - sibling repo, UNTOUCHED, propose-only.
-- `.claude/projects` 1.19 GB - EVIDENCE, UNTOUCHED. `.cache` 13.8 GB - propose-only.
-  RC Temp scratch 0.2 MB total - nothing older than 30d, no prune worthwhile.
-
-**Gates:** doc guards green; full `tests/` from the worktree root **19131 passed / 144 skipped /
-1 failed** - the one failure is the pre-existing fenced `test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin`
-(PINNED_CLI 2.1.220 vs live CLI 2.1.251, needs `claude login`), 0 in this diff. No `.py` touched,
-no `ENGINE_VERSION`, no Share mirror, no frozen-file edit. Branch `lane/repo` ready for the merger;
-NOT merged to main from the worktree.

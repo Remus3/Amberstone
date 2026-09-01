@@ -321,6 +321,48 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+# 2026-08-30 - LANE 7 headless-repo: repo already clean, two doc fixes, two sweeps deferred
+
+Outsider-clean audit in worktree `lane/repo`. Pre-flight caught that the launcher had
+dropped the session in the MAIN tree with the `lane/repo` worktree ABSENT - created it
+from main HEAD `2be9603c` and worked only there. `core.hooksPath` is the shared absolute
+`.githooks` (reported, unchanged per 1b). Every standing guard was green on arrival
+(drift_guard 0, archmap + state_schema up to date, ruff clean, worktree clean, the
+byte-identical pair matching its pins), so the repo is clean at every machine-checkable
+level; the value was in the uncovered surfaces.
+
+**Shipped (LEDGER 1275, Tier-0 docs):**
+- `docs/DAEMON_SLAYER.md:40` `cast_rates.` -> `ult_rates.` (the fn is defined only in
+  `ult_rates.py:201`; line 50 already said so - a self-contradiction a stranger would grep and fail on).
+- `docs/OPERATIONS.md:309` stale absolute rotation date ("~2026-08-01", a month past)
+  replaced with a derive-from-mtime instruction.
+- RM-227 filed (BACKLOG Reliability/hardening); DS_SWEEP_TRACKER pointer advanced to RM-228.
+
+**Deferred, NOT executed (both filed under RM-227, anti-rediscovery):**
+- Dead code: NO file dead to a HIGH bar. Five MED candidates (`ops/_scheduler_client.py`
+  plus four re-runnable Phase-3 seeders), each with a retention rationale - a headless delete
+  would be a wrong deletion. RM-195 already covers dead FUNCTIONS; this is files.
+- Glyphs: 3,017 grandfathered U+2192/U+00D7/U+00B7/U+2248, already blocked NET-NEW by the
+  `precommit_gate.py` catch-all (2026-07-28); population is deep-archive / DS-mirrored / frozen /
+  FUNCTIONAL-delimiter (the coach arrow is a `_re.split` delimiter), so a rewrite is behaviour
+  change, not hygiene. Outsider-facing living docs already clean.
+
+**Out-of-repo: ZERO deletions executed** (67 GB 2026-07-30 snapshot fully stale on re-measure):
+- `.gemini` 99 MB - distinct adjudicator APPROVED the purge on clean evidence (no live
+  filesystem reader of `~/.gemini`), PROPOSED-ready but NOT deleted (permanent file deletion is
+  operator territory under the standing safety rule).
+- `Temp/claude/C--Sibling-A` 0.29 GB (was 35.5) - sibling repo, UNTOUCHED, propose-only.
+- `.claude/projects` 1.19 GB - EVIDENCE, UNTOUCHED. `.cache` 13.8 GB - propose-only.
+  RC Temp scratch 0.2 MB total - nothing older than 30d, no prune worthwhile.
+
+**Gates:** doc guards green; full `tests/` from the worktree root **19131 passed / 144 skipped /
+1 failed** - the one failure is the pre-existing fenced `test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin`
+(PINNED_CLI 2.1.220 vs live CLI 2.1.251, needs `claude login`), 0 in this diff. No `.py` touched,
+no `ENGINE_VERSION`, no Share mirror, no frozen-file edit. Branch `lane/repo` ready for the merger;
+NOT merged to main from the worktree.
+
+---
+
 # 2026-08-29c - a cross-project port collision, found by answering a question
 
 Operator asked which ports are reserved for Amberstone, DS, Sibling-E, Sibling-D,
