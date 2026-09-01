@@ -143,6 +143,26 @@ def build_zip(dest: Path) -> int:
     return count
 
 
+# git sets these in the environment when it runs a hook, and they OVERRIDE
+# `-C CLONE_DIR`: git resolves the repo from GIT_DIR, not the -C cwd. This script
+# is wired to a post-commit hook, so left inherited every call below would operate
+# on the COMMITTING worktree instead of the gist clone - staging it, committing
+# "sync Share -> gist" onto its branch, `reset --hard`-ing its HEAD, `gc --prune`
+# expiring its objects (orphaning in-flight commits), and `push --force origin main`
+# against the RC remote. MEASURED 2026-09-01: this corrupted the lane/ds worktree
+# and GC'd its DS commits across repeated recovery attempts. Stripping them lets
+# `-C` win. Pinned by tests/test_gist_share_sync_env_isolation.py.
+_GIT_ENV_LEAK = (
+    "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+    "GIT_COMMON_DIR", "GIT_NAMESPACE",
+)
+
+
+def _clean_git_env() -> dict:
+    """os.environ minus the hook-injected git vars, so `-C CLONE_DIR` is honoured."""
+    return {k: v for k, v in os.environ.items() if k not in _GIT_ENV_LEAK}
+
+
 def _git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", "-C", str(CLONE_DIR), *args],
@@ -150,6 +170,7 @@ def _git(*args: str) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         timeout=GIT_TIMEOUT_S,
+        env=_clean_git_env(),
     )
 
 
