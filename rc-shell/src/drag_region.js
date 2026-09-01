@@ -7,9 +7,24 @@
 // executeJavaScript) after every load; the preload stays empty because
 // sandbox:true forbids it from requiring local modules.
 //
-// Same strip on the overlay: while click-through the strip is inert (mouse
-// events forward to the game), but in ACTIVE mode it makes the overlay
-// user-draggable for free - no extra state plumbing.
+// COMPANION-ONLY, BY DESIGN - the overlay must never get this strip. The
+// absence is a deliberate fix, not an oversight: do not "restore" it.
+//
+// These builders are injected from exactly one place, injectDragRegion() in
+// main.js, called only from createWindow (the companion). createOverlayWindow
+// does NOT call it. The overlay is a display-PINNED fullscreen canvas whose
+// widgets are positioned in design px against the game underneath, so making
+// the window itself draggable moved the WHOLE canvas in ACTIVE mode and
+// offset every widget - the minimap gold outline especially - off the game by
+// the drag distance, with all panels appearing to move together and to hit a
+// display-edge wall (operator 2026-07-06; the injection was removed the same
+// day). Overlay panels are repositioned INDIVIDUALLY by the per-widget drag
+// field in web/js/lib/overlay_layout.js, never by dragging the canvas.
+//
+// Consequences worth knowing before editing: the #rc-shell-drag-region element
+// exists only in the companion window, so it is correctly ABSENT from the
+// overlay-only ZONE_SELECTOR in ./clickthrough_zones.js (pinned by an
+// anti-drift assertion in test/clickthrough_zones.test.js).
 
 "use strict";
 
