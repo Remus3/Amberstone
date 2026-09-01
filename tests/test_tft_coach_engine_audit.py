@@ -269,9 +269,17 @@ class TestConfigValidation(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             eng = _engine(Path(d))
+            # The property under test is REJECTION - an invalid value is dropped
+            # and the prior one kept - not a specific number. config/
+            # coach_settings.json is GITIGNORED, so init legitimately differs by
+            # box: CI has no file and lands on the code default 45.0, a dev box
+            # may carry a local 15. Capturing `before` (as the sibling
+            # test_non_string_model_is_rejected does) makes this hermetic;
+            # hardcoding 45.0 failed on any box with a local config.
+            before = eng._debounce_s
             eng._apply_config({"debounce_seconds": "not-a-number"})
             self.assertIsInstance(eng._debounce_s, (int, float))
-            self.assertEqual(eng._debounce_s, 45.0)
+            self.assertEqual(eng._debounce_s, before)
 
     def test_negative_debounce_is_rejected(self):
         import tempfile
