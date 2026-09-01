@@ -69,7 +69,10 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-322** (2026-08-31 merge of `lane/true-audit` onto `main`).
+  Next free id = **RM-329** (2026-09-01 lane 5 Headless-Research refill consumed RM-322 through
+  RM-328: RM-322 doc-vs-measured test-scope drift (lane 7); RM-323/324/325 Daemon Slayer
+  (lane 6); RM-326/327/328 dashboard UI (lane 4). The prior pointer read RM-322 from the
+  2026-08-31 merge of `lane/true-audit` onto `main`.)
   At merge the branch's RM-221/222/223/227/228 collided with `main`'s same-numbered
   filings and were renumbered to RM-317/318/319/320/321 (consuming 317..321), and the
   branch's LEDGER entries 1270-1306 were renumbered +7 to 1277-1313 because `main` had
