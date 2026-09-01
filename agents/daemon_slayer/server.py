@@ -294,14 +294,34 @@ def _required_str(body: dict, key: str) -> str:
     return str(v).strip()
 
 
+def _to_int(value: Any, field_name: str) -> int:
+    """Coerce one body value to ``int`` or raise a 400.
+
+    RM-324: ``int(float("inf"))`` raises OverflowError, which is neither
+    TypeError nor ValueError, so every non-finite input escaped the int
+    coercions here as an unhandled 500 while the float keys returned a
+    clean 400 for the same value. Two ways in, both closed below: the bare
+    ``Infinity`` / ``-Infinity`` token json.loads accepts by default, and an
+    ordinary float literal such as 1e400 that overflows to inf while being
+    parsed - the second reaches this without a non-standard token at all,
+    which is why rejecting the tokens at parse time would not have sufficed.
+    The non-finite policy is not a new one: it is ``_opt_float``'s, reused
+    verbatim so an int key and its float sibling answer alike.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        raise _ApiError(
+            400, f"{field_name}: must be a finite number, got {value!r}")
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        raise _ApiError(400, f"{field_name}: expected integer, got {value!r}")
+
+
 def _opt_int(body: dict, key: str, default: Optional[int] = None) -> Optional[int]:
     v = body.get(key, default)
     if v is None or v == "":
         return default
-    try:
-        return int(v)
-    except (TypeError, ValueError):
-        raise _ApiError(400, f"{key}: expected integer, got {v!r}")
+    return _to_int(v, key)
 
 
 def _opt_float(body: dict, key: str, default: float = 0.0) -> float:
@@ -1545,7 +1565,10 @@ def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
     """Decode the optional ``form_index`` body field - JSON dict only."""
     raw_form = body.get("form_index")
     if isinstance(raw_form, dict):
-        return {str(k).upper(): int(v) for k, v in raw_form.items()}
+        # RM-324 sibling: this bare int() had no _ApiError mapping at all, so
+        # it 500'd on every unparseable rank, not just the non-finite ones.
+        return {str(k).upper(): _to_int(v, f"form_index[{k}]")
+                for k, v in raw_form.items()}
     return None
 
 

@@ -29,12 +29,18 @@ import threading
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from decimal import Decimal
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer.data_loader import DataSnapshot
-from agents.daemon_slayer.server import _POST_ROUTES, start_server
+from agents.daemon_slayer.server import (
+    _POST_ROUTES,
+    _ApiError,
+    _to_int,
+    start_server,
+)
 
 
 def _start() -> tuple[str, int, object]:
@@ -55,8 +61,11 @@ def _get(url: str) -> tuple[int, dict]:
         return e.code, json.loads(e.read().decode("utf-8"))
 
 
-def _post(url: str, body: dict) -> tuple[int, dict]:
-    raw = json.dumps(body).encode("utf-8")
+def _post_raw(url: str, raw: bytes) -> tuple[int, dict]:
+    """POST pre-serialized bytes. Needed for tokens Python's json.dumps
+    cannot round-trip to the wire verbatim - notably the plain literal
+    ``1e400``, which dumps() would re-emit as ``Infinity`` because the
+    value has already overflowed to float inf in Python."""
     last: Exception | None = None
     for _attempt in range(5):
         req = Request(url, data=raw, method="POST",
@@ -74,6 +83,27 @@ def _post(url: str, body: dict) -> tuple[int, dict]:
             last = exc
             time.sleep(0.02 * (_attempt + 1))
     raise last if last else RuntimeError("unreachable")
+
+
+def _post(url: str, body: dict) -> tuple[int, dict]:
+    return _post_raw(url, json.dumps(body).encode("utf-8"))
+
+
+# RM-324. Raw JSON tokens an integer body key must reject with a 400.
+# "abc" is the original single-input domain of the guard below; the rest are
+# the non-finite half it never covered. ``Infinity`` / ``-Infinity`` / ``NaN``
+# are the bare tokens json.loads accepts by default, and 1e400 is a perfectly
+# ordinary float literal that overflows to inf while being parsed - so it
+# reaches the same int() without using a non-standard token at all.
+_NON_FINITE_INT_TOKENS = ('"abc"', "Infinity", "-Infinity", "1e400", "NaN")
+
+
+def _raw_json(base: dict, key: str, token: str) -> bytes:
+    """Serialize ``base`` with ``key`` set to the literal ``token`` bytes."""
+    parts = [f"{json.dumps(k)}: {json.dumps(v)}"
+             for k, v in base.items() if k != key]
+    parts.append(f"{json.dumps(key)}: {token}")
+    return ("{" + ", ".join(parts) + "}").encode("utf-8")
 
 
 class _Base(unittest.TestCase):
@@ -191,10 +221,81 @@ class ErrorShapeTests(_Base):
         self.assertEqual(body_zero["level"], 1)
 
     def test_garbage_numeric_param_is_400_not_500(self) -> None:
+        # RM-324 widened this. The name promised the whole garbage-number
+        # domain but the body covered exactly one input, the string "abc" -
+        # so a bare ``Infinity`` in the very same key returned 500 for as
+        # long as this guard has existed. int(inf) raises OverflowError,
+        # which _opt_int did not catch, so it escaped to the 500 handler
+        # while the float sibling ten lines below returned a clean 400.
+        for token in _NON_FINITE_INT_TOKENS:
+            with self.subTest(token=token):
+                raw = _raw_json({"champion": "Aatrox", "level": 11},
+                                "level", token)
+                status, body = _post_raw(self.base + "/dps", raw)
+                self.assertEqual(status, 400,
+                                 f"level={token} -> {status} {body}")
+                self.assertEqual(body["status"], 400)
+                self.assertIn("level", body["error"])
+                if token != '"abc"':
+                    # Pin the MESSAGE, not just the status: an int key and its
+                    # float sibling must reject a non-finite value with the
+                    # same wording, and status alone leaves the finiteness
+                    # check itself unexercised (a bare OverflowError catch
+                    # would also return 400, with different text).
+                    self.assertIn("must be a finite number", body["error"])
+
+    def test_non_finite_rank_int_params_are_400_not_500(self) -> None:
+        # /rank carries three more int keys through the same helper.
+        base = {"champion": "Aatrox", "level": 11, "top": 3}
+        for key in ("top", "budget", "slots"):
+            for token in _NON_FINITE_INT_TOKENS:
+                with self.subTest(key=key, token=token):
+                    raw = _raw_json(base, key, token)
+                    status, body = _post_raw(self.base + "/rank", raw)
+                    self.assertEqual(status, 400,
+                                     f"{key}={token} -> {status} {body}")
+                    self.assertEqual(body["status"], 400)
+                    self.assertIn(key, body["error"])
+
+    def test_non_finite_form_index_value_is_400_not_500(self) -> None:
+        # Same root cause in a second helper: _parse_form_index coerces the
+        # per-key rank with a bare int() and no _ApiError mapping at all, so
+        # both an overflowing number and an unparseable string 500'd there.
+        for token in _NON_FINITE_INT_TOKENS:
+            with self.subTest(token=token):
+                raw = ('{"champion": "Aatrox", "level": 11, '
+                       f'"form_index": {{"Q": {token}}}}}').encode()
+                status, body = _post_raw(self.base + "/ability-dps", raw)
+                self.assertEqual(status, 400,
+                                 f"form_index Q={token} -> {status} {body}")
+                self.assertEqual(body["status"], 400)
+                self.assertIn("form_index", body["error"])
+
+    def test_well_formed_numeric_params_still_200(self) -> None:
+        # Control for the three tests above: the guard rejects non-finite
+        # input without narrowing the legitimate domain.
         status, body = _post(self.base + "/dps",
-                             {"champion": "Aatrox", "level": "abc"})
+                             {"champion": "Ahri", "level": 11})
+        self.assertEqual(status, 200, body)
+        status_r, body_r = _post(self.base + "/rank",
+                                 {"champion": "Aatrox", "level": 11,
+                                  "top": 3, "slots": 6, "budget": 10000})
+        self.assertEqual(status_r, 200, body_r)
+
+    def test_non_finite_float_param_keeps_its_existing_400_message(self) -> None:
+        # Regression fence on the fix's SHAPE. _opt_float already rejected
+        # non-finite input with this exact text; rejecting the bare Infinity
+        # token earlier (at json.loads, via parse_constant) would have
+        # replaced it with a generic parse error on a path that was never
+        # broken - and would still have missed 1e400, which is an ordinary
+        # JSON float literal that overflows to inf during parsing.
+        raw = _raw_json({"champion": "Ahri", "level": 11},
+                        "target_armor", "Infinity")
+        status, body = _post_raw(self.base + "/dps", raw)
         self.assertEqual(status, 400)
         self.assertEqual(body["status"], 400)
+        self.assertEqual(body["error"],
+                         "target_armor: must be a finite number, got inf")
 
     def test_bad_enum_phase_is_400(self) -> None:
         status, body = _post(self.base + "/dps",
@@ -209,6 +310,25 @@ class ErrorShapeTests(_Base):
                               "enemy_ad_share": 0.9, "enemy_ap_share": 0.9})
         self.assertEqual(status, 422)
         self.assertEqual(body["status"], 422)
+
+
+class IntCoercionUnitTests(unittest.TestCase):
+    """Direct cover for the arm of ``_to_int`` no HTTP body can reach.
+
+    json.loads only ever hands the helper float / int / str, so the
+    OverflowError branch is unreachable through a route; a non-float type
+    whose int() overflows exercises it without a server."""
+
+    def test_overflowing_non_float_is_api_error_not_overflow(self) -> None:
+        with self.assertRaises(_ApiError) as ctx:
+            _to_int(Decimal("Infinity"), "level")
+        self.assertEqual(ctx.exception.status, 400)
+        self.assertIn("level", ctx.exception.message)
+
+    def test_ordinary_values_still_coerce(self) -> None:
+        self.assertEqual(_to_int(11, "level"), 11)
+        self.assertEqual(_to_int("11", "level"), 11)
+        self.assertEqual(_to_int(11.7, "level"), 11)
 
 
 class ConcurrencyTests(_Base):

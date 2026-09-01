@@ -6,6 +6,66 @@
 
 ---
 
+# 2026-09-01b - lane 6 Headless-DS: RM-323 / RM-324 / RM-325 batch (ENGINE 1.279.0)
+
+Branch `lane/ds`, **NOT merged** - a merge to main is a deployment and landing is
+the merger session's call. Ledger entry: `docs/LEDGER.md` **1317**.
+
+**Shipped the three LANE 6 rows the lane-5 refill filed the same morning, and all
+three filed specs turned out to need correction.** That is the durable finding, not
+the code:
+
+- **RM-323** asked for `mirror == base` equality. Reading DDragon 16.15.1 for all
+  six ids showed it carries **NO proc magnitude for any of them, SR twins
+  included** - the `<stats>` block is base stats only. Doctrine B ("Arena mirrors
+  credit their OWN line") therefore cannot be settled from DDragon here, so each
+  mirror is credited from its own `note` and equality is a MEASURED CONSEQUENCE.
+  The row's acceptance EXAMPLE was also vacuous: `burst(with) > burst(without)`
+  passes at HEAD because `226655` carries 85 AP and the total rises on the stat
+  block alone.
+- **RM-325's site list named four NOTE sites and missed the real multiplier
+  resolvers** (`ehp.py:932`/`:1728`, `ability_dps.py:654`, `hps.py:265`). Fixing
+  exactly what was filed would have left the arithmetic wrong with the notes
+  reading correct - `feedback_resolver_fix_is_not_a_consumer_fix`, in a row that
+  itself cited that memory.
+- **RM-324's proposed `parse_constant` class-fix was rejected on a measurement**:
+  `1e400` is an ordinary JSON float literal that overflows inside `parse_float`
+  and never reaches `parse_constant`, so it would have looked class-level while
+  leaving the bug reachable.
+
+**THE LANE-WORKTREE / :8860 SEAM IS THE THING TO CARRY FORWARD.** `RC-DaemonSlayer`
+runs `pythonw.exe` against `C:\Riot Commander\tools\start_daemon_slayer.py` - the
+MAIN checkout - so the shared port serves main's version no matter what a lane
+pins. The headless-ds ritual says "bounce :8860 and confirm it serves the NEW
+version", which is unachievable from a lane worktree and would be actively harmful
+if forced: it would push unmerged lane code onto the port RC and four other live
+lanes read. The regen was run through `_install_static_transport()` instead
+(in-process via the DS server's own POST handlers, documented as identical to the
+live path by construction). **Owed AT MERGE, in main:** bounce `:8860`, then re-run
+`tools/ds_share_sync.py` because `dist/` is gitignored and never survives a merge.
+
+**Consequence, expected and not a defect:** `test_sr_draft_profile_engine.py::
+TestLiveEngineIntegration::test_live_three_profiles` is RED on this branch
+(`'1.278.1' != '1.279.0'`) and stays red until the merge AND the restart. A merge
+without the restart leaves it failing.
+
+**A gitignored orphan nearly poisoned the provenance.** The ingest dist bundle
+already read `1.279.0` at session start, built by a prior aborted attempt whose
+commits never landed. It MATCHED the new constant while encoding different code,
+so a green `--check` would have proved nothing; it was force-rebuilt.
+
+**Gates, fresh on a frozen tree:** DS **10722 passed / 13530 subtests / 0 failed**
+(repo root); RC `tests/ -q -n 8` **20300 passed / 136 skipped / 1 failed** (the
+structural skew above); four ritual guards 28 passed; ruff clean; sync `--check`
+exit 0. Verifier: **11 claims, 11 CONFIRM / 0 REFUTE**. Anchors 4/4; 149
+`ENGINE_VERSION` pins swept across 127 files.
+
+**Still open in this lane:** RM-208 (DS doc route-list guard is regex-blind to the
+two `/v2/*` routes and checks one direction only) and RM-220 (109 label
+comparisons never run). Both Tier-1, both untouched this run.
+
+---
+
 # 2026-09-01 - lane 5 Headless-Research REFILL (lane/research, docs-only)
 
 Branch `lane/research`, NOT merged - left ready for the merger per the standing

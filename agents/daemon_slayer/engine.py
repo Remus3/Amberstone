@@ -12,7 +12,7 @@ from typing import Iterable, Optional
 
 from ._passive_as_lock_overrides import as_lock_entry
 from .augments import compute_augment_stats
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .effects import ITEM_EFFECTS
 from .stats import (
     CHAMPION_SCALING_RULES,
@@ -309,6 +309,12 @@ def build_champion(
     engine doesn't gate them - it's the caller's job to not pass arena
     augments into an SR query).
     """
+    # RM-325: fold mode case at the engine's own door, not only at the 12
+    # scorer entry points. antitank / cli / fight_report / matchup / server
+    # call build_champion DIRECTLY, so a fold anywhere above them leaves the
+    # bare ``mode != "ARAM"`` gate below reachable with a lowercase spelling.
+    # Idempotent, so the scorer-level folds stay valid.
+    mode = canonical_mode(mode)
     level = clamp_level(level)
     champ = snapshot.champion(champion_id)
     champ_stats = champ.get("stats", {})

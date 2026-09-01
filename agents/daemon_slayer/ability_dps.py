@@ -124,7 +124,7 @@ from .abilities import (
     AbilityForm,
     DamageBlock,
 )
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .dps import _ASSUMED_ABILITY_AMP_STACKS, _armor_factor, _periodic_proc_dps
 from ._effects_types import CallContext
 from .ehp import effective_cc_duration
@@ -1086,6 +1086,13 @@ def compute_ability_dps(
         against ``compute_dps``. See ``_passive_damage_overrides
         .per_second_aura_entry`` for the cadence gate.
     """
+    # RM-325: fold the mode string ONCE here, before build_champion, so
+    # every ARAM gate below it - engine stat modifiers, the map-id item
+    # filter, this scorer's multiplier, the provenance note - sees one
+    # spelling. Item 244 fixed only the filter and left the scorers
+    # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
+    # through a non-ARAM multiplier path.
+    mode = canonical_mode(mode)
     if block_strategy not in _BLOCK_STRATEGIES:
         raise ValueError(
             f"block_strategy must be one of {_BLOCK_STRATEGIES}, "
