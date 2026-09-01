@@ -23,8 +23,13 @@
 //   - Panel-set cycle: Alt+Shift+C rotates the overlay through the PANEL_SETS
 //     (coach -> build -> threat) by reloading the overlay URL with
 //     panelset=NAME (ov.cyclePanelSet + ov.overlayUrl).
-//   - Drag region: injected -webkit-app-region strip (companion always;
-//     overlay grabbable when ACTIVE) - see ./drag_region.
+//   - Drag region: injected -webkit-app-region strip, COMPANION-ONLY - see
+//     ./drag_region. injectDragRegion is called from createWindow and nowhere
+//     else; createOverlayWindow deliberately does not call it. The overlay is a
+//     display-pinned canvas whose widgets are positioned in design px against
+//     the game, so dragging the WINDOW offset every widget off the game
+//     (removed 2026-07-06). Overlay panels move INDIVIDUALLY via the per-widget
+//     field in web/js/lib/overlay_layout.js.
 //   - Overlay persistence: overlay position + panel set ride the same state
 //     file under one "overlay" key (ov.mergeOverlayPatch keeps the companion
 //     keys intact) so a relaunch restores the HUD where the operator left it.
