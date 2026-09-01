@@ -1,5 +1,46 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-01 - ROADMAP size-budget relocation pass (24 closed pointer stubs)
+
+Relocated verbatim by the 2026-09-01 size-budget pass. ROADMAP.md stood at 81897
+bytes against its 81920-byte budget (`tests/test_doc_size_budget.py`) - 23 bytes
+of headroom, WARNing at every /done, after the lane-8 true-audit merge landed a
+run of OPEN rows. NOTHING is dropped: every stub below was already a
+CLOSED / SHIPPED / RETIRED / REFUTED / DECIDED POINTER whose body had been
+relocated to this file (or to `BACKLOG.md` for RM-210) in an earlier pass, so
+each stub now sits beside the body it points at. Rows carrying an OPEN half, a
+still-open sibling id, a deferred task or a live inline fence were LEFT in
+`ROADMAP.md` - in particular RM-158 (regen deferred), RM-192..RM-202 (RM-192/193
+open), RM-117, RM-118, RM-124, RM-125 and RM-81. The RM-35..RM-48 duplicate
+verdict table was DELETED from `ROADMAP.md` rather than moved here: it was
+already verbatim in the 2026-07-25 block, and the RM-35..RM-48 one-line pointer
+stays in `ROADMAP.md`. Every id remains reachable.
+
+- **RM-210 CLOSED 2026-08-16 (main)** - the false "drift-guarded" attribution was corrected and both DS-banner test-count recitals were deleted rather than refreshed. Body in `BACKLOG.md`.
+- **RM-159 CLOSED-BY-MEASUREMENT 2026-08-04 - DO NOT make `tools/stop_claim_gate.py` negation-aware.** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
+- **RM-155 RETIRED 2026-08-06 via ADR-013 (`a45dcb9e`, LEDGER 1219)** - the laning verdict is BELOW THE NOISE FLOOR (bias-corrected MI is NEGATIVE), and the decider was the learnability control, not the bad score: a per-(role, champion) prior beats a 200 MB corpus. The native-corpus path is DEFINITIONALLY closed - Riot emits no `team_position` for ARAM or Arena. **NOT deleted: the `laning_scenarios` tables, the shadow logging, `laning_trigger` (live), `RC_LANING_CV_SERVED`.** Full body relocated to `docs/ROADMAP_HISTORY.md` (2026-08-30). **Read `docs/adr/ADR-013-laning-verdict-flip-retired.md` before re-opening.**
+- **RM-188 REFUTED 2026-08-08 THE SAME DAY IT WAS FILED - `pytest tests` does NOT restart the live RC, and neither does a DS bounce. DO NOT RE-FILE THIS.** Body + the original filing relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-14 size-budget pass) - READ THEM before re-opening this id. Three controlled arms all came back clean; the real restart path is `restart_trigger.txt` (`ops/rc_supervisor.py:1595-1607`), NOT the suite. The one unexplained residual is a low-frequency restart around repo-mutating operations - watch `status.json.last_restart_reason` across a MERGE, do not re-run the suite.
+- **RM-174 CLOSED 2026-08-07 (`79a6a574`, LEDGER 1223) - overlay flake is LOAD-DEPENDENT; the filed mechanism was REFUTED.** Body + both fences (do NOT 'fix' it by polling; the RESIDUAL CLASS is OPEN and UNGUARDED) relocated VERBATIM to `docs/ROADMAP_HISTORY.md` - READ THEM before re-opening.
+- **RM-175 DECIDED 2026-08-07 via ADR-014 (`8b41a25b`, LEDGER 1224) - the ARAM tables are known-wrong and deliberately NOT regenerated.** Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 10). **Read `docs/adr/ADR-014-aram-laning-table-regen-declined.md` before re-opening** - the equal-base premise behind the constant error is load-bearing (ARENA's base is 3.0, so its ratios are NOT constant), the filing was TRANSPOSED on which bands move, and if a regen ever happens the coherent unit is ALL THREE MODES AT ONE PATCH.
+- **RM-170 CLOSED 2026-08-06 (`c2f2b6a7`, LEDGER 1215) - the three unguarded trees are green, and BOTH of this row's filed claims were WRONG.** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 11) - READ THEM before re-opening this id; they carry the suite-scope rule and the do-NOT-revert on the cdragon AST import guards.
+- **RM-171 SHIPPED 2026-08-06 (`274bdb27`, LEDGER 1214) - `tools/citation_audit.py` is the ONLY citation checker in the repo; extend it, never write a second.** Body + all three probe traps + the RESOLVES-IS-NOT-CORRECT finding + the open `director_prompt.md:65` action relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-14 size-budget pass) - READ THEM before re-running a citation audit; a naive re-run reports garbage.
+- **RM-164 FULLY CLOSED 2026-08-08 - BOTH halves shipped; the "operator-gated" framing is HISTORY, not a live gate.** Full row relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-31).
+- **RM-144 SHIPPED 2026-08-02 (LEDGER 1165) - vision was NEVER dead.** Full row relocated VERBATIM to `docs/ROADMAP_HISTORY.md`. Do NOT re-probe `:8889` over `https://` (it is plain HTTP, token-gated on `X-RC-Token`) and do NOT re-file a stale `screen_read` as a vision outage - it is an operator-click-only dwell field. Memories `reference_vision_token_canonical` + `reference_screen_read_sticky_bydesign`.
+- **RM-142 SHIPPED + CLOSED 2026-08-02 (`3214d8f5`, ENGINE 1.268.0 -> 1.269.0)** - `ops/audit/P6_LOLMATH_PARITY.md` is DRAINED; read its DRAIN STATUS table before touching any slice. Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
+- **RM-121 CLOSED 2026-07-28 (R217, LEDGER 1094)** - the five-file operator desktop queue is DRAINED, there is no file 5, do NOT re-pick it. It read "two files left" for three days after LEDGER 1094 closed it (the stale-ROADMAP class LEDGER 1093 named); caught 2026-08-01. Narrative: `docs/ROADMAP_HISTORY.md`. The `random.txt` part-2 UI/UX block is NOT this row and lives on as **RM-122**.
+- **RM-127 CLOSED 2026-08-01 - CCR link-ingest, phases 1-7 ALL SHIPPED, zero residue** (LEDGER 1108/1145/1147/1149/1150/1151/1152/1155). **Do NOT re-run any pass or re-score the roster.** Row + full narrative in `docs/ROADMAP_HISTORY.md`.
+- **RM-129 CLOSED 2026-08-01 - DS PORT-BLOCK MIGRATION SHIPPED** (`2872c1a7`). DS binds 8860 (engine) + 8861 (match-DB MCP). Full row relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-31).
+  - **Skip audit (R219, 2026-07-28) - FULLY DRAINED 2026-08-06; nothing in this class is open. Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08) - read it there before re-opening any skip-masking question.**
+- **RM-190 CLOSED 2026-08-12 (LEDGER 1241, `f2e162e3`) - 16.16.1 DDragon mirror committed, ENGINE 1.277.0 -> 1.277.1, DS left PINNED to data patch 16.15.1.** Full row incl. its four fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-31 lane 8 cycle 34 size-budget pass) - READ IT before re-opening this id.
+- RM-190 original filing body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-12 size-budget pass) - it carries the full measurement trail and the two option shapes; READ IT before re-opening this id.
+- **RM-157 CLOSED 2026-08-04 (LEDGER 1186/1188/1189) - duplicate `/done` full-suite dispatch REMOVED; per-push suite priced and KEPT.** Do NOT restore the dispatch; do NOT re-pitch deleting the suite on cost share without a catch rate. Body + billing figures relocated VERBATIM to `docs/ROADMAP_HISTORY.md`.
+- **RM-156 CLOSED 2026-08-04 (LEDGER 1185) - CI step timeouts at `45` plus job ceilings 65 / 60; the filing's own headroom figure was wrong (about 3 minutes, not 13).** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
+- **RM-154 CLOSED 2026-08-04 (`30fa3cae`)** - the three pythonw agents file-log to `logs/<agent>.log` and exit 2 loudly when tokenless. Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ THEM before re-opening this id.
+- **[x] Mission Control S8/S9/S10 - lanes 7/8, the INTERRUPT tier, and the dashboard DECOUPLE - ALL SHIPPED 2026-07-31** (`97c74550`, `79cdd590`, `4ad8d535`). Full narrative relocated VERBATIM to `docs/ROADMAP_HISTORY.md` 2026-08-01 (ROADMAP hit 91 percent of its size budget); do not re-derive it here. Residual minors live in `BACKLOG.md` as RM-134 (shipped) plus five adjudicated non-blocking items.
+- **RM-04 DS sweep: ROSTER CLOSED 173/173 - do NOT re-open the roster.** Full row relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-31).
+- **RM-166 CLOSED 2026-08-08 - the PGR baseline `(5, 50)` clamp bounds are pinned by a contract test, and the row was TRUE but UNDERCOUNTED (FIVE representations, not two).** Body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-08 pass 11) - READ THEM before re-opening this id.
+- **RM-33 CLOSED-STALE 2026-08-02 - auto-ops verb expansion, PARKED not built. Do NOT re-open as a build row.** Refuted by three probes (`auto_ops_verbs` is prose-only, the 95-percent gate has no meter, and `docs/OVERLAY_BUILD_MASTER_PLAN.md:169` already recorded the park). Full narrative in `docs/ROADMAP_HISTORY.md`.
+
 ## 2026-08-30 - RM-246 size-budget pass: sixteen CLOSED pointer rows relocated from ROADMAP.md
 
 Relocated verbatim by the lane 8 RM-246 headroom pass. ROADMAP.md stood at 81856 bytes
