@@ -36,8 +36,8 @@ from agents.daemon_slayer.effects import total_conditional_as
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_pinned(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.278.1")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.278.1")
+        self.assertEqual(ENGINE_VERSION, "1.279.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.279.0")
 
 
 class CondAsAddsBaseAsScaledFraction(unittest.TestCase):

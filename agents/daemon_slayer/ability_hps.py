@@ -141,7 +141,7 @@ from .ability_dps import (
     clamp_level,
     rank_at_level,
 )
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .effects import (
     collect_effects,
     dedupe_context,
@@ -721,6 +721,13 @@ def compute_ability_hps(
       ``caster_missing_hp_pct == 0`` (full HP) it is still 1.0. HEAL-only,
       independent of ``resolve_target_relative``.
     """
+    # RM-325: fold the mode string ONCE here, before build_champion, so
+    # every ARAM gate below it - engine stat modifiers, the map-id item
+    # filter, this scorer's multiplier, the provenance note - sees one
+    # spelling. Item 244 fixed only the filter and left the scorers
+    # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
+    # through a non-ARAM multiplier path.
+    mode = canonical_mode(mode)
     if block_strategy not in _BLOCK_STRATEGIES:
         raise ValueError(
             f"block_strategy must be one of {sorted(_BLOCK_STRATEGIES)}, "

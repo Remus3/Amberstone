@@ -25,7 +25,7 @@ from ._melee_ranged import (
     MELEE_RANGED_ATTACKRANGE_SPLIT,
     attackrange_is_ranged,
 )
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .dps import _select_phase, compute_dps
 from .effects import ITEM_EFFECTS
 from .kit_axis_credit import kit_axis_item_ids, kit_axis_item_names
@@ -1065,6 +1065,13 @@ def rank_items(
     carry (dps) scorer surfaces the same current-HP model the mage/assassin
     scorers already had. Default 1.0 is an identity multiply -> byte-identical.
     """
+    # RM-325: fold the mode string ONCE here, before build_champion, so
+    # every ARAM gate below it - engine stat modifiers, the map-id item
+    # filter, this scorer's multiplier, the provenance note - sees one
+    # spelling. Item 244 fixed only the filter and left the scorers
+    # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
+    # through a non-ARAM multiplier path.
+    mode = canonical_mode(mode)
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
@@ -1429,6 +1436,12 @@ def rank_items(
         ranked = ranked[:top_n]
 
     notes: list[str] = []
+    # RM-325: ``mode`` is the canonical_mode-folded spelling, so this bare
+    # membership test is the SAME verdict _is_legal_in_mode reached. Pre-fold
+    # it was not: a lowercase request missed MODE_MAP_ID here and shipped
+    # "not in MODE_MAP_ID - no per-mode item filter applied" while item 244's
+    # filter had in fact applied the map-12 filter. Do not hoist this block
+    # above the fold at the top of the function or the note goes false again.
     if mode in MODE_MAP_ID:
         notes.append(f"mode={mode} -> maps id {MODE_MAP_ID[mode]}")
     else:

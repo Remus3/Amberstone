@@ -37,6 +37,30 @@ _WIKI_MODE_ALIASES = {
 }
 
 
+def canonical_mode(mode: Any) -> Any:
+    """Fold a caller-supplied mode string to the engine's UPPERCASE spelling.
+
+    RM-325: item 244 made the rank-layer mode FILTER case-insensitive
+    (``MODE_MAP_ID.get(mode.upper())``) and left every SCORER gating on a
+    bare ``mode == "ARAM"``. A lowercase ``mode="aram"`` therefore got an
+    ARAM-legal item POOL scored through a non-ARAM multiplier path - and
+    with ``apply_mode_modifiers=True`` it fell into the wiki-sidecar
+    ``elif`` branch that ``dps.py``'s own comment forbids for ARAM.
+
+    Every public scorer entry point folds its ``mode`` through this ONCE,
+    before ``build_champion``, so the whole call tree below it - engine
+    stat modifiers, item filters, per-scorer ARAM gates, provenance notes -
+    sees one canonical spelling. That is deliberately the shape that cannot
+    drift: a new ``mode == "ARAM"`` added anywhere downstream is correct by
+    construction, whereas eight scattered ``.upper()`` calls would need a
+    ninth added by hand.
+
+    Non-str input (``None``, an enum) passes through UNTOUCHED so this
+    cannot invent a mode where the caller supplied none.
+    """
+    return mode.upper() if isinstance(mode, str) else mode
+
+
 class SnapshotNotFound(FileNotFoundError):
     """Raised when the requested patch directory is missing."""
 

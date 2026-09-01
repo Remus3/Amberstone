@@ -61,7 +61,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Optional
 
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .effects import ITEM_EFFECTS
 from .engine import build_champion
 from .rank import (
@@ -556,6 +556,13 @@ def compute_hps(
     block (ability_hps_total == 0.0) stays byte-identical even ON. The live
     default-ON flip is operator-gated (mirrors the ehp.py item-side seams).
     """
+    # RM-325: fold the mode string ONCE here, before build_champion, so
+    # every ARAM gate below it - engine stat modifiers, the map-id item
+    # filter, this scorer's multiplier, the provenance note - sees one
+    # spelling. Item 244 fixed only the filter and left the scorers
+    # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
+    # through a non-ARAM multiplier path.
+    mode = canonical_mode(mode)
     level = clamp_level(level)
 
     # RM-172: apply_mode_modifiers (DEFAULT-OFF) opts into the ARENA/Swiftplay
@@ -940,6 +947,8 @@ def rank_items_by_hps(
     a champ with a registered missing-HP heal (MasterYi W / Sylas W / Lissandra R /
     Briar P) sees its ability-heal throughput, and therefore its delta, rise.
     """
+    # RM-325: fold once at the public entry - see canonical_mode.
+    mode = canonical_mode(mode)
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
