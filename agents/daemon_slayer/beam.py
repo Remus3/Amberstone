@@ -32,7 +32,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .dps import compute_dps
 from .rank import (
     MODE_MAP_ID,
@@ -229,6 +229,13 @@ def beam_search_build(
     ``only_item_ids`` whitelists), the deepest layer reached is what
     ``ranked`` returns.
     """
+    # RM-325: fold the mode string ONCE here, before build_champion, so
+    # every ARAM gate below it - engine stat modifiers, the map-id item
+    # filter, this scorer's multiplier, the provenance note - sees one
+    # spelling. Item 244 fixed only the filter and left the scorers
+    # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
+    # through a non-ARAM multiplier path.
+    mode = canonical_mode(mode)
     if beam_width < 1:
         raise ValueError(f"beam_width must be >= 1, got {beam_width}")
     if top_n < 1:
@@ -267,6 +274,10 @@ def beam_search_build(
     )
 
     notes: list[str] = []
+    # RM-325: same coupling as rank_items - ``mode`` is already folded by
+    # canonical_mode at the top of this function, so this membership test
+    # agrees with the filter that actually ran. Pre-fold a lowercase mode
+    # printed the no-filter line while the map filter had applied.
     if mode in MODE_MAP_ID:
         notes.append(f"mode={mode} -> maps id {MODE_MAP_ID[mode]}")
     else:

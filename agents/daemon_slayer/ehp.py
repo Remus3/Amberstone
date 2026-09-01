@@ -114,7 +114,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .effects import ITEM_EFFECTS, collect_effects
 from ._effects_types import ANY, CallContext, MAGICAL, PHYSICAL, TRUE
 from .engine import build_champion
@@ -1693,6 +1693,13 @@ def compute_ehp(
     ``include_conditional=False`` preserves BYTE-IDENTICAL behavior
     for every existing caller; the conditional axis is opt-in.
     """
+    # RM-325: fold the mode string ONCE here, before build_champion, so
+    # every ARAM gate below it - engine stat modifiers, the map-id item
+    # filter, this scorer's multiplier, the provenance note - sees one
+    # spelling. Item 244 fixed only the filter and left the scorers
+    # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
+    # through a non-ARAM multiplier path.
+    mode = canonical_mode(mode)
     level = clamp_level(level)
     if not (0.0 <= enemy_ad_share <= 1.0):
         raise ValueError(
@@ -3382,6 +3389,8 @@ def rank_items_by_ehp(
     A champ ABSENT from the table is a no-op even when ON. The live default-ON flip
     is EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md).
     """
+    # RM-325: fold once at the public entry - see canonical_mode.
+    mode = canonical_mode(mode)
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     if score_by not in ("blended", "cc_blended", "team_blended", "sustain"):

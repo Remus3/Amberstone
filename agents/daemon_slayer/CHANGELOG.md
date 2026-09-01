@@ -1331,6 +1331,56 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.279.0 (2026-09-01) - RM-323 / RM-324 / RM-325 lane-6 batch: Arena burst
+mirrors credited, mode-case folded at the engine door, non-finite ints rejected.
+
+RM-323 - three Arena mirrors credited ZERO magic burst while their own note
+asserted a magnitude: 223118 Malignance Hatefog (180 + 15 percent AP), 224646
+Stormsurge Squall (125 + 10 percent AP), 226655 Luden's Echo (75 + 5 percent
+AP). Each row contradicted ITSELF, which is what made it a defect rather than a
+modelling choice. They carry populated periodics, and burst.py:564 excludes
+periodic procs from the burst lane, so magic_burst_* was burst's only path to
+them. MEASURED, and it corrects how doctrine B is applied: DDragon 16.15.1
+carries NO proc MAGNITUDE for any of the six ids, SR twins included - the
+<stats> block is base stats only. Doctrine B therefore could not be settled from
+DDragon here, and the row's own note is the authority. Base-equality is a
+MEASURED CONSEQUENCE of the three notes, never the premise. The six mirrors that
+legitimately credit nothing (221043, 222512, 224636, 226630, 223095, 224403)
+stay at zero and are pinned so a future blanket mirror-parity sweep fails loudly.
+
+RM-325 - item 244 made the mode FILTER case-insensitive and left every SCORER
+case-SENSITIVE, so mode="aram" got an ARAM-legal item POOL scored through a
+non-ARAM multiplier path: mode_multiplier read 0.92 (the wiki sidecar) against
+0.87 for "ARAM", routing ARAM through the exact branch dps.py:928-932 forbids it
+in its own comment. THE FILED SPLIT WAS SMALLER THAN THE REAL ONE: four of the
+filed sites (hps.py:727, ability_hps.py:960, ehp.py:2606) are NOTE sites, and
+the actual multiplier resolvers at ehp.py:932/1728, ability_dps.py:654 and
+hps.py:265 were unlisted - fixing only what was filed would have left the
+arithmetic wrong. Fixed by folding canonical_mode() ONCE per public entry point
+before build_champion (12 sites), plus at build_champion itself, so the five
+modules that call it directly (antitank, cli, fight_report, matchup, server) are
+covered too and a future mode == "ARAM" added downstream is correct by
+construction. The false provenance note ("mode=aram not in MODE_MAP_ID") now
+names the resolved map id. Unrecognised modes still take the documented
+allow-all fallback; rejection was deliberately NOT folded in and is fenced by a
+standing test.
+
+RM-324 - int body keys 500'd on a non-finite value while the float sibling ten
+lines below returned a clean 400: int(float("inf")) raises OverflowError, which
+_opt_int did not catch. Hardening _opt_int, the chokepoint every int key already
+flows through, is the class fix; parse_constant on json.loads was WEIGHED AND
+REJECTED because 1e400 is an ordinary JSON float literal that overflows inside
+parse_float and never reaches parse_constant, so it would have looked
+class-level while leaving the bug reachable. Sibling found and fixed in the same
+pass: _parse_form_index (server.py:1568) coerced with a bare int() and no error
+mapping at all, so it 500'd on every unparseable rank.
+
+DEFAULT OUTPUT IS UNMOVED FOR EXISTING CALLERS. The RM-323 credit sits behind
+DEFAULT-OFF assume_magic_burst, and RM-325 moves only lowercase/mixed-case mode
+callers; the live coach dispatches uppercase. All six precomputed build-order
+tables regenerated to a stamp-only diff (engine_version + generated_at), full
+173-champion roster, confirming the byte-identical-at-default contract.
+
 1.278.1 (2026-08-29) - DDragon 16.17.1 upstream carry: Serylda's Grudge Arena
 mirror (226694) armor pen 40 -> 45 percent, plus Ultra Hydra (226668).
 

@@ -350,7 +350,7 @@ def test_unrelated_ad_carry_ability_dps_unchanged(data):
 
 
 def test_engine_version_pin():
-    assert ENGINE_VERSION == "1.278.1"
+    assert ENGINE_VERSION == "1.279.0"
 
 
 def test_file_is_seven_bit_ascii():
