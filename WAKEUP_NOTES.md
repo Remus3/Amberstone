@@ -6,6 +6,33 @@
 
 ---
 
+# 2026-09-01c - MERGER session: ROADMAP trim + 3-lane merge + gist-sync fix
+
+Interactive merger session; everything below is on main + CI-green, all five lane
+branches 0 commits ahead of main.
+
+**Shipped:** ROADMAP trim 100 pct -> 89 pct (24 closed stubs + the RM-192..202
+compact-open-row split relocated to ROADMAP_HISTORY; the RM-171 `ROADMAP.md:231`
+citation baseline re-added as its DISCHARGED note predicted). Three hygiene fixes:
+augment-source `-n 8` flake `30156a0b`, CLI pin 2.1.220 -> 2.1.251 after a canary
+re-run `f0c847f8`, TFT debounce made hermetic `6ac142f1`. MERGED all three lane
+branches: research (RM-322..328), uiux (overlay focus + chip paint), ds
+(RM-323/324/325 + ENGINE 1.279.0). DS DEPLOYED live: `:8860` bounced -> 1.279.0,
+`test_live_three_profiles` green.
+
+**Gist-sync corruptor FIXED `01e6530bb`:** `tools/gist_share_sync.py` `_git` left
+the hook-injected `GIT_DIR` inherited, so `git -C CLONE_DIR` operated on the
+committing worktree - corrupting `lane/ds` and force-pushing to the wrong remote.
+Now scrubs the env; 3 regression tests; validated 3x under real Share commits. Full
+mechanism in LEDGER 1318.
+
+**Do NOT redo:** all three merges landed; DS 1.279.0 is deployed + live; the gist
+bug is fixed. **Still open (flagged):** rc-shell overlay needs an operator Electron
+relaunch; uiux PREPARE items (legibility variants + opaque-widget defect) are RM-122
+operator-present; lane-6 RM-208/RM-220 + research RM-328 open in BACKLOG.
+
+---
+
 # 2026-09-01b - lane 6 Headless-DS: RM-323 / RM-324 / RM-325 batch (ENGINE 1.279.0)
 
 Branch `lane/ds`, **NOT merged** - a merge to main is a deployment and landing is
