@@ -2590,3 +2590,11 @@ Moved out of `ROADMAP.md` for the 81920-byte CI budget; the row was already
 fully CLOSED. Relocated VERBATIM, nothing dropped, fences preserved.
 
 - **RM-129 CLOSED 2026-08-01 - DS PORT-BLOCK MIGRATION SHIPPED** (`2872c1a7`). DS binds **8860** (engine) + **8861** (match-DB MCP) in its own 8860-8879 block; 8893/8894 retired. Body relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-03) - read it before touching a port. Fences that must not be lost: **DO NOT renumber 8895** (Mission Control); a residual 8893 in a provenance or append-only history file is CORRECT, not rot; and never size a port move with a bare `grep -c` (the filed "~186 places" was substring noise - LEDGER 1146 + `core/ports.py`).
+
+
+### 2026-09-02 - RM-203 relocated from ROADMAP (lane 5 research refill)
+
+Relocated VERBATIM from the ROADMAP NOW section, where it had read OPEN for 18 days after
+closing. It is kept struck rather than deleted, per the one-tracker rule.
+
+- **RM-203 CLOSED 2026-08-15 (LEDGER 1265) - struck here 2026-09-02 by lane 5 research. This row read OPEN in the one tracker for 18 days after it closed, and `docs/LEDGER.md:669` (LEDGER 1270, 2026-08-16) had ALREADY recorded the drift - "Quick win: ROADMAP RM-203 was OPEN against LEDGER 1265" - without ever applying it, so the correction was claimed and never landed. Full verdict in `BACKLOG.md` under "Daemon Slayer scorer calibration": the row's own hypothesis was REFUTED (`547/547` was ONE number written twice, not two stale numbers colliding), and the shipped guard re-derives every figure at runtime. **Do NOT re-open, and do NOT re-derive the denominator** - ITEM_EFFECTS 548 / DDragon 706 / flag 544 / engine gate 468 / credited 467 are pinned by `tests/test_docs_ds_item_coverage_drift.py`.**
