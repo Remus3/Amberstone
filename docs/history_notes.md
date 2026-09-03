@@ -321,6 +321,130 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
+
+# 2026-09-01b - lane 4 headless-uiux: ELECTRON OVERLAY only (LEDGER 1316)
+
+Operator scoped the entire run to the Electron overlay (rc-shell + the in-game dock)
+and split the mandate: SHIP the text-verifiable through the 5-phase audit, PREPARE
+anything ending in a rendered-pixel judgement (RM-122 fences those to operator-present).
+Branch `lane/uiux`, baseline `30156a0b`. NOT merged to main - that is a deployment and
+belongs to the merger session.
+
+**SHIPPED (all measured in real headless Chromium, not read off source):**
+1. The in-game overlay layout menu was **silently mouse-only**. `_renderMenu` does
+   `menu.innerHTML = ""` and both the toggle handler and "Reset all panels" call it,
+   destroying the control just activated - Enter on any of the 10 toggles dropped
+   `document.activeElement` to `BODY`. Fixed with a stable-key capture/restore
+   (`data-ovx-ctl`); focus now survives AND the toggle still flips.
+2. **B-OVL-4 closed.** The draft-elo chip computed a full payload every tick and painted
+   a 0x0 box in-game (`checkVisibility()` false under a `display:none` pane head).
+   Re-parented into a new `.am-pane-chips` row; the hide rule untouched, per the fence.
+3. The 2026-07-06 overlay-drag revert had **three** stale sites, not one. All corrected,
+   anti-drift test added. The third was found by the audit, not by the slice.
+4. `overlay_layout.drag.test.mjs` had been RED since 2026-08-11 and **nothing ran it** -
+   CI has no `node --test` at all. Repaired + mutation-checked; node suite 20/21 -> 21/21.
+5. The lane doctrine's own trap-2 citation was FALSE (`dev.js` has no focus code; it is an
+   OPEN instance of the defect). Corrected + pinned by a new 4-test guard.
+6. `tools/pseudo_screen_out/` was not gitignored - the harness had been writing commitable
+   PNGs all along.
+
+**THE 5-PHASE AUDIT EARNED ITS KEEP:** an independent auditor returned **2 MUST-FIX**
+against my own re-parent - the chips row did not collapse in `init`/`empty` (new 18x8
+litter on the HUD in the default state), and the chip carried a dashboard **lethal red**
+into an AMBIENT-tier widget, against doctrine rule 4. Both fixed in-slice. Lesson worth
+keeping: a newly-PAINTING element inherits the overlay's rules, not its origin surface's.
+
+**PREPARED-for-operator (NOT done):** DS3 in-game legibility - spec + render harness +
+24 renders at 2560x1440 (4 variants x 3 backdrop proxies) + 11 mutation-checked tests.
+Stated plainly: no client, no game, no frame archive on this box, so nothing was rendered
+over real game pixels and the proxies can ELIMINATE a variant but not ELECT one.
+
+**The biggest thing found and deliberately NOT fixed:** `#view-active-match .am-pane`
+(specificity 1,1,0) BEATS the overlay's own `body[data-shell="overlay"] .ovx-widget.am-pane`
+(0,3,1), so `w-call`/`w-build`/`w-ovds` paint an OPAQUE dashboard purple in-game. The
+PRIMARY in-game widget is not see-through. Text-verifiable diagnosis, but the fix flips it
+translucent over live gameplay = RM-122 class. Filed F-OV-1, specified in all 3 variants.
+
+**Gates (fresh, frozen tree, after the last edit):** RC 20296 passed / 137 skipped / 4750
+subtests / 1 failed; rc-shell 329/329; node 21/21; ruff clean; snapshot_panels 424.
+The 1 failure is the KNOWN fenced `test_cli_version_still_matches_the_pin` (CLI 2.1.251 vs
+pin 2.1.220), untouched here, skips on CI - LEDGER 1273. Verifier gate: 15/15 CONFIRMED.
+CI does not run on a lane branch (`push: branches: [main]`), so no CI signal is claimed.
+
+**Next session:** F-OV-1 through F-OV-11 in `docs/qa/UI_UX_PROGRAM_QA_2026-07-22.md` are
+the queue. F-OV-3 (three more unfixed focus-destruction sites) is the cheapest real win and
+reuses the pattern shipped here.
+
+---
+
+# 2026-09-01 - merger: lane 8 true-audit (61 commits) LANDED on main
+
+Operator was given the framed decision (review+merge vs resume the loop) and chose
+**merge**. lane/true-audit was the LAST unmerged lane (lane/repo already on main;
+lane/ds + lane/research empty), so the "ships last" precondition was met.
+
+**Landed: `main` @ `a41a2ad9`** (was `0779188f`). Two commits: the merge `e2a8f960`
+(main folded into the branch in the worktree, then main FF'd to it) + a doc fix
+`a41a2ad9`. Pushed to `Remus3/amberstone`.
+
+- **Code: zero code conflicts.** Branch hardening vs main's advances (DS 16.17.1,
+  ports, run_lane, dead-ops) are disjoint by file.
+- **Docs: 6 conflicts, parallel-landing renumber.** LEDGER branch 1270-1306 -> +7 ->
+  1277-1313; RM-221/222/223/227/228 (dual-allocations) -> 317-321; next-free = RM-322
+  (authoritative in `docs/DS_SWEEP_TRACKER.md`). WAKEUP+history took main's canonical.
+- **Review: 6 parallel adversarial slices, ZERO MUST-FIX.** SHOULDs all pre-existing/
+  filed (RM-302/314 TFT timeouts, RM-294 warm_session lock).
+- **Suite on merged tree:** DS 10687/0; RC 20272 pass + the known CLI-pin fail only.
+  Fixed one net-new broken citation (BACKLOG -> WAKEUP:174, from main's shorter WAKEUP).
+- **Follow-ups DONE:** RC restarted (pid 29904, code live); match_db repair dry-run
+  0/8395 (already backfilled during the loop; `--apply` is a no-op; DB backed up).
+
+**NEXT (do first):**
+1. **ROADMAP size-budget relocation.** ROADMAP is 81757 bytes = 99.7 pct of the 81920
+   budget (drift_guard WARN; main was a clean 86.7 pct before this merge). The branch
+   carried it at 99.6 pct. Relocate CLOSED-row stubs from the active ROADMAP to
+   `docs/ROADMAP_HISTORY.md` (their bodies are already there) to get back under 90 pct.
+   NOT done inline at merge because the active list interleaves open rows with
+   load-bearing do-not-re-open fences - it is the recurring operator-gated pass.
+2. `restart_trigger.txt` did NOT self-clear after the restart (pid stable, no loop, so
+   benign - the supervisor is content-keyed), but confirm it is gone / harmless.
+3. `data/match_history.db.premerge-bak-20260901` (16.5 MB, gitignored) can be deleted.
+4. Confirm the `a41a2ad9` CI `ci` job went green (docs-guards/CodSpeed already green).
+
+Loop tooling was ephemeral (prior session scratchpad); to resume lane 8, restart via
+Mission Control. ~27 orphaned claude.exe from the loop still linger (reboot or reap).
+
+---
+
+# 2026-08-31 - lane-8 true-audit loop: run_lane.ps1 opus-5 + bg-ceiling, 61 branch commits
+
+Ran the Headless-True-Audit lane (lane 8) as a continuous autonomous loop from an
+interactive session. Two main-tree fixes shipped + pushed:
+- `a9ff183e` run_lane.ps1 reads the model from `ops/loop/config.json:executor_model`
+  (claude-opus-5), not the hardcoded `claude-opus-4-8`. Governs all 7 lanes.
+- `40f2a45d` run_lane.ps1 sets `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=2400000` (40 min)
+  so a worker's background verifier gate finishes before the CLI reaps it. MEASURED:
+  at the default 600s the verifier was killed mid-run and the worker exited 0 having
+  committed NOTHING - a lost cycle.
+
+Loop produced 61 commits on `lane/true-audit` (`39b63ebb` -> `246af97d`), ~41 spawn
+cycles, 14+ files hardened (riot_api, _handler, match_db, polled_json, routes_state/
+diag, snapshot_normalizer, performance_tracker, sr_user_builds, _supervisor_http,
+decision_detector, vision_server). Branch is UNMERGED - lane ships last, merger's
+call. Independently re-verified `2eed2421` (polled_json per-writer scratch-name
+concurrency fix) myself: 33 tests pass, and reverting the fix reds 4 guard tests.
+
+Loop tooling lives in the session scratchpad (loop_driver.py + loop_spawn.py +
+watch_lane8.py + lane8_loop_state.json), NOT committed - to resume, restart
+loop_driver.py. Loop is STOPPED (operator wrapped).
+
+Do NOT redo: the run_lane.ps1 fixes are shipped; lane commits are real (verify by
+merge/file/test, never a worktree slice hash). Watch: headless workers can
+hang-after-commit (~27 subagent children; taskkill /F /T reaps; the driver
+auto-reaps on commit+clean+idle now); ~26 orphaned claude.exe subagents linger.
+
+---
+
 # 2026-08-30b - merger: lane/repo merged to main, then RM-227(a) executed
 
 The merger session picked up `lane/repo` @ `0c1eaa1b` (LEDGER 1275, Tier-0 docs,
