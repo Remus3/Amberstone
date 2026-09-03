@@ -142,7 +142,14 @@ def check_mirror_parity(
             fb = db / fa.name
             if not fb.is_file():
                 continue
-            if fa.read_bytes() != fb.read_bytes():
+            # Compare CONTENT, not raw bytes. .claude/ is gitignored
+            # (.gitignore:116), so the *.md text eol=lf rule added for
+            # RM-284 normalises the tools/ side and can never touch the
+            # .claude/ side - a raw-byte compare would then report every
+            # mirrored file as drifted on line endings alone. This guard
+            # exists to catch two copies of a document DISAGREEING.
+            _norm = lambda b: b.replace(b"\r\n", b"\n")
+            if _norm(fa.read_bytes()) != _norm(fb.read_bytes()):
                 newer = fa if fa.stat().st_mtime > fb.stat().st_mtime else fb
                 out.append(Finding(
                     "mirror-drift",
