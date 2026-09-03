@@ -1117,7 +1117,7 @@ def _check_ingest_anchors() -> int:
                     line = text.count("\n", 0, m.start()) + 1
                     drift += 1
                     print(f"  INGEST ANCHOR DRIFT ({label}): "
-                          f"lolmath_ingest/{rel}:{line} has '{m.group(0)}', "
+                          f"Share/lolmath_ingest/{rel}:{line} has '{m.group(0)}', "
                           f"live is '{live}'")
     return drift
 
@@ -1162,7 +1162,7 @@ def _check_ingest_bundle() -> int:
     if not target.exists():
         return 0
     if target.read_bytes() != _build_expected_bundle():
-        print(f"  INGEST BUNDLE DRIFT: lolmath_ingest/{_INGEST_BUNDLE_REL} "
+        print(f"  INGEST BUNDLE DRIFT: Share/lolmath_ingest/{_INGEST_BUNDLE_REL} "
               f"differs from a rebuild of the live snapshot (engine "
               f"{_engine_version()}, patch {_PATCH})")
         return 1
@@ -1239,7 +1239,10 @@ def main(argv: list[str] | None = None) -> int:
                  + _check_ingest_anchors() + _check_ingest_bundle())
         if drift:
             print(f"ds_share_sync: {drift} path(s)/anchor(s) drifted - run "
-                  f"`python tools/ds_share_sync.py` and commit Share/.")
+                  "`python tools/ds_share_sync.py` to rebuild, then commit the "
+                  "tracked Share/ files it changes. The dist bundle is a "
+                  "gitignored build artifact, so it is rebuilt in place and "
+                  "never committed.")
             return 1
         print(f"ds_share_sync: Share/src + doc anchors + lolmath_ingest in "
               f"sync (engine {version}, {len(expected)} files).")
