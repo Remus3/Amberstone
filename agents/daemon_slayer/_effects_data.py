@@ -2994,10 +2994,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True,
         unique_passive_key="lifeline",
         note=(
-            "Protoplasm Harness: Lifeline - triggered shield when dropping below 30% HP, "
-            "then heals max HP over 5s + size/MS/tenacity boost. "
+            "Protoplasm Harness: Lifeline - triggered MAX-HEALTH grant when dropping below "
+            "30% HP (gain maximum Health for 5s), then heal Health over that duration, "
+            "plus a size/MS/tenacity boost. Grants NO shield - contrast Immortal Shieldbow 6673, "
+            "whose Lifeline does grant a Shield, so shield=None on this row is correct. "
             "Joins lifeline unique-passive family (Immortal Shieldbow, Sterak's, Maw, Seraph's). "
-            "Shield/sustain mechanic, no DPS"
+            "Max-Health/sustain mechanic, no DPS"
         ),
     ),
     "3143": ItemEffect(
@@ -3985,7 +3987,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Protoplasm Harness",
         defensive_only=True,
         unique_passive_key="lifeline",
-        note="Protoplasm Harness (Arena 222525): Lifeline shield; joins lifeline unique-passive family",
+        note=("Protoplasm Harness (Arena 222525): Lifeline max-Health grant then heal, NOT a shield; "
+              "joins lifeline unique-passive family"),
     ),
 
     # -- 224xxx Arena mirrors (base 4xxx) ----------------------------------
