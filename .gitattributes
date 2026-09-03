@@ -43,4 +43,41 @@ Share/src/SHARE_MIRROR text eol=lf
 # eol=lf makes on-disk equal the blob everywhere. Guarded by
 # tests/test_md_line_endings.py.
 *.md text eol=lf
+
+# RM-284 follow-on (2026-09-03): the same pin for every other tracked TEXT type,
+# so on-disk equals blob for all of them and no future size/digest check can
+# disagree by checkout. Verified line-ending-INDEPENDENT before pinning, rather
+# than assumed: the web digest at tests/test_web_ascii_sweep.py normalises with
+# .replace(CRLF, LF) before hashing; tools/ds_feed_index.py digests a canonical
+# JSON OBJECT parsed via read_text; dashboard/_static.compute_asset_hash hashes
+# MTIMES, not bytes; and the SHARED_SHA256 cross-repo pins are .py, already
+# covered above. Guarded by tests/test_text_line_endings.py, which reads this
+# list off disk rather than hardcoding it.
+*.json  text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.ts    text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.svg   text eol=lf
+*.xml   text eol=lf
+*.txt   text eol=lf
+*.csv   text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.ini   text eol=lf
+*.ps1   text eol=lf
+*.spec  text eol=lf
+
+# DELIBERATELY NOT PINNED, each for its own reason - do not "finish the job".
+# .bat / .cmd  Windows shell scripts. The 15 tracked .bat are ALREADY LF and
+#              work; the 12 .cmd are CRLF. Pinning either way churns live
+#              launch/restart scripts to buy nothing - no size or digest check
+#              reads them.
+# .log         rotated logs are immutable history; CLAUDE.md exempts them from
+#              repo-wide sweeps for exactly this reason.
+# .jsonl       append-only ledgers, same exemption. Renormalising a file that is
+#              only ever appended to would rewrite records nobody re-read.
+# LFS payloads keep the -text rule below; it is LAST so it wins over *.json.
 data/daemon_slayer/laning_scenarios/**/*.json filter=lfs diff=lfs merge=lfs -text
