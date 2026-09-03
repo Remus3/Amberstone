@@ -227,6 +227,15 @@ _HOST_DEPENDENT_TESTS: frozenset[str] = frozenset({
     # through the HOST client, so importing core.daemon_slayer_client is its
     # subject rather than an accident.
     "test_route_omnivamp_seam_r193.py",
+    # -- RM-330 (ENGINE 1.280.0, 2026-09-03): host-only for a different
+    # reason than the imports above - it READS a HOST source file rather
+    # than importing one. Its UpstreamContractTests asserts the canonical-id
+    # roster contract is still written down at
+    # dashboard/routes_cc_blended_ehp_threat.py, which the shipped package
+    # does not contain, so mirroring it ships a guaranteed-red test. The
+    # subject IS the host contract, so this is inherent, not incidental.
+    # Its RM-334 sibling is already excluded by the same rule.
+    "test_roster_key_id_only_contract_rm330.py",
     # -- R194 slice A (RM-116 part a): the RANKER lane of the same omnivamp
     # seam, plus the score_by="sustain" transport. Same class again - it asserts
     # the (route, seam) pair is expressible through the HOST client, so the
@@ -1040,7 +1049,12 @@ def _rewrite_doc_anchors() -> list[str]:
         for _label, pat, live in rules:
             new = pat.sub(live, new)
         if new != text:
-            p.write_text(new, encoding="utf-8")
+            # newline="" keeps the in-memory LF as LF on disk, exactly as the
+            # ingest-anchor writer below does. The default translates to CRLF on
+            # Windows, which trips the *.md eol=lf pin the moment this refresh
+            # actually fires - and it only fires on an ENGINE bump, so the bug
+            # stays invisible between releases.
+            p.write_text(new, encoding="utf-8", newline="")
             changed.append(rel)
     return changed
 

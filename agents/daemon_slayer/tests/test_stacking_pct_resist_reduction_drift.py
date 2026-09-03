@@ -136,7 +136,7 @@ class StackingPctResistReductionDriftTests(unittest.TestCase):
                 self.assertGreater(got, armor * (1.0 - (a + b)))
 
     def test_engine_version_pin(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.279.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.280.0")
 
 
 if __name__ == "__main__":  # pragma: no cover
