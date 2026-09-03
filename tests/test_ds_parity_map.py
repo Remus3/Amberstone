@@ -76,12 +76,18 @@ _DROPPED_OK: set[tuple[str, str]] = set()
 # ``sequence_b``; /rank-onhit still never parses ``phase`` though
 # rank_items_by_onhit accepts it (its ``apply_mode_modifiers`` sibling WAS
 # drained by RM-172, so this line is the residual half of that pair).
+# RM-334 drained one more on 2026-09-03: ``apply_build_tenacity`` on /ehp. It was
+# the inverse of the usual case - transport present, flag missing. compute_ehp
+# already accepted the parameter (default=False) and /ehp already carried the
+# ``enemies`` CC transport that makes tenacity bite, so only the route dropped it;
+# server.py now parses and forwards it. Deleted here rather than exempted, which
+# is what the equality ratchet above is for.
 _UNREACHABLE_OK: dict[str, set[str]] = {
     '/ability-dps':        {'assume_ability_amp', 'assume_item_lowhp_magic_crit', 'assume_magic_burst', 'assume_physical_burst', 'assume_shielded_target'},
     '/anti-tank':          {'stats'},
     '/burst':              {'assume_ally_detonation', 'assume_caster_lowhp', 'assume_item_lowhp_magic_crit', 'assume_lifeline_shield', 'assume_passive_reflect', 'caster_hp_pct', 'game_time_s'},
     '/dps':                {'apply_crit_conversion', 'assume_ally_detonation', 'assume_caster_lowhp', 'assume_lifeline_shield', 'assume_passive_reflect', 'assume_takedown', 'only_phase', 'target_current_hp_pct'},
-    '/ehp':                {'apply_build_tenacity', 'apply_egg_resist', 'apply_resist_damage_coupling', 'assume_item_aa_dr', 'assume_item_crit_dr', 'assume_item_enemy_as_slow', 'caster_current_hp_pct', 'enemy_armor_pen_pct', 'enemy_lethality', 'enemy_magic_pen_flat', 'enemy_magic_pen_pct', 'enemy_shred_pct', 'external_flat_hp', 'resist_coupling_strength'},
+    '/ehp':                {'apply_egg_resist', 'apply_resist_damage_coupling', 'assume_item_aa_dr', 'assume_item_crit_dr', 'assume_item_enemy_as_slow', 'caster_current_hp_pct', 'enemy_armor_pen_pct', 'enemy_lethality', 'enemy_magic_pen_flat', 'enemy_magic_pen_pct', 'enemy_shred_pct', 'external_flat_hp', 'resist_coupling_strength'},
     '/hps':                {'assume_missing_hp_heal_amp', 'caster_missing_hp_pct', 'formulas'},
     # ``apply_ad_axis_dual_scaling_split`` (RM-36, 2026-08-04) joins its PARENT
     # here rather than being wired: it is a modifier of
