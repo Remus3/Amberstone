@@ -9,7 +9,7 @@ delivered is smaller than the raw combo total.
 
 Magnitude reuses the Phase-1.5 ``ItemShield`` already extracted from Meraki into
 ``_effects_data.ITEM_EFFECTS`` (no re-parse of wiki-template effect strings) for
-the three ``unique_passive_key="lifeline"`` items:
+the three lifeline items this helper models on the TARGET side:
 
   * Immortal Shieldbow 6673 - ANY shield, flat 400 (<=L9) lerp-> 700 (>=L18),
     ranged x0.80. Pure level-scaled flat, NO wielder-stat dependency -> the
@@ -28,7 +28,14 @@ from __future__ import annotations
 
 from ._effects_data import ITEM_EFFECTS
 
-# The three unique_passive_key="lifeline" items, all carrying an ItemShield.
+# Target-side modeled subset, NOT a census of the family. The
+# unique_passive_key="lifeline" family is 12 items today (measured 2026-09-03):
+# 10 carry an ItemShield, and 2 - Protoplasm Harness 2525 / 222525 - grant
+# maximum Health plus a heal instead, so their shield=None is correct. These
+# three are the ones modeled here and each of the three does carry an
+# ItemShield. Do NOT widen this tuple into a derived family census: pulling a
+# shield-less member into a target-shield assumption would invent EHP that
+# does not exist.
 LIFELINE_ITEM_IDS: tuple[str, ...] = ("6673", "3053", "3156")
 
 # Canonical representative Lifeline item a modeled target is assumed to hold.
