@@ -1331,6 +1331,46 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.280.0 (2026-09-03) - RM-329 / RM-330 / RM-331 / RM-332 / RM-333 /
+RM-334 batch. TWO behaviour changes. (1) RM-331: an Arena augment passed
+by DISPLAY name scored byte-identically to passing none, because
+data_loader looked up apiName exactly and augments.py swallowed the miss.
+DataSnapshot now carries an alnum-lowercase alias index over BOTH apiName
+and name, mirroring core/augment_external_source._norm_name. Resolution
+order is exact apiName, then numeric id, then alias; unknown keys still
+raise KeyError. Collision census is zero across all six shipped snapshots,
+counted twice with independent normalizers, and apiName wins by
+construction if that ever changes. (2) RM-334: /ehp was the one route that
+never parsed apply_build_tenacity though compute_ehp accepts it and /ehp
+carries the enemies CC transport that makes tenacity bite. Now parsed and
+forwarded; the default path is byte-identical, proven by sha256 over three
+canonical payloads captured before the route learned the key. The seam left
+the tests/test_ds_parity_map.py unreachable ledger by being fixed.
+ADDITIVE NOTES, no arithmetic change (RM-329): all seven EHP-family
+rankers plus compute_hps now emit a mode-provenance note, so an
+unrecognised mode no longer returns an unfiltered pool in silence. The two
+rankers that reach _is_legal_in_mode state the item-legality verdict;
+compute_hps filters no pool and claims only that its own modifier table
+has no row for the mode. Notes report the RESOLVED mode - hybrid.py,
+_rank_mage.py and onhit_dps.py do not fold canonical_mode at all, so they
+build the string through it rather than echoing the caller's spelling,
+which would have reproduced the pre-RM-325 falsehood. beam.py's inline
+copy collapsed onto the shared rank.mode_filter_note helper, proven
+byte-identical over 12 spellings. NO ARITHMETIC: pools, ordering and every
+scored value are unchanged across 45 measured scenarios.
+CONTRACT AND GUARDS, no behaviour change: RM-330 option B propagates the
+documented canonical-id-only roster-key contract to all five parsing
+routes and guards it (option A, a third normalizer, is explicitly fenced
+off). RM-333 widens the stranded-seam checker along a new axis - it keyed
+on `default is False`, so a seam defaulting to None was invisible; this is
+RM-207's "invisible under a different NAME" durable recurring under a
+different DEFAULT TYPE. apply_canonical_cast_rate_keys is now ledgered as
+stranded with a measured reason: it has no transport at all, since all
+four call sites pass champion_name positionally. Its default was NOT
+flipped. RM-332 corrects both Protoplasm Harness notes - the item grants
+max Health plus a heal, not a shield, so shield=None on 2525 / 222525 is
+correct and the lifeline roster was right as it stood.
+
 1.279.0 (2026-09-01) - RM-323 / RM-324 / RM-325 lane-6 batch: Arena burst
 mirrors credited, mode-case folded at the engine door, non-finite ints rejected.
 
