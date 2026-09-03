@@ -6,69 +6,66 @@
 
 ---
 
-# 2026-09-02 - lane 5 Headless-Research REFILL (lane/research, docs-only, NOT merged)
+# 2026-09-02/03 - lane 5 REFILL, then merger + two repo fixes (all ON MAIN)
 
-Detached headless, operator away, full authority. Branch `lane/research` was 0 ahead
-/ 13 behind `main` at start, fast-forwarded to `ca1e6447b` before any probing so the
-worktree matched live DS (its `ENGINE_VERSION` read 1.278.1 against `:8860`'s 1.279.0
-until the ff - do NOT probe a lane worktree without checking that first).
+Started as a detached lane-5 research refill, then the operator directed the
+merge and two follow-on repo fixes. Everything below is on `main`, pushed, CI
+green, and all five lane worktrees are fast-forwarded to it and clean.
 
-**Filed RM-329..RM-336, next free id RM-337** (registry `docs/DS_SWEEP_TRACKER.md:72`).
-Six LANE 6, two LANE 7. Bodies + acceptance in `BACKLOG.md`, pointer in `ROADMAP.md`,
-LEDGER 1319.
+**Commits, newest first:**
+```
+8119b3334  eol=lf for every other text type (RM-284 follow-on, LEDGER 1321)
+a2d132489  RM-284 - *.md text eol=lf (LEDGER 1320)
+acc7f25ad  ROADMAP relocation pass - 8 rows, 0 ids lost
+6c4e37bde  clear the budget breach the merge itself caused
+7ff7f00cb  Merge lane/research: RM-329..RM-336 refill (LEDGER 1319)
+aac80637c  preserve the merger session's orphaned WAKEUP archive
+```
 
-**Why lane 6:** it was the starved lane and the tracker was UNDERSTATING it. Its
-ROADMAP-visible open work was ONE row. RM-323/324/325 were filed by the 2026-09-01
-refill and closed by lane 6 within a day; RM-118's wireable debt is zero at both tiers
-(RE-MEASURED here: `STRANDED_TODAY` 5, `STRANDED_DEPTH1` 0); and RM-220 - actionable,
-LANE 6 - had no ROADMAP entry at all. Pointer added.
+**REFILL: RM-329..RM-336 filed, next free id RM-337.** Six LANE 6 (the starved
+lane - its ROADMAP-visible work was ONE row), two LANE 7. The refutation pass
+changed three of nine candidates: RM-332 KILLED as a defect (`unique_passive_key`
+is a DEDUP family, `shield=None` is CORRECT - kept as a Tier-0 note fix), RM-330
+downgraded to DECIDE-THEN-ACT after its live-defect claim was refuted twice, and
+RM-329 re-framed and severity-capped. RM-220 also got the ROADMAP pointer it had
+never had.
 
-**The refutation pass earned its cost - it changed three of nine candidates.**
-- **RM-332 killed as a defect**, kept as a Tier-0 note fix. `unique_passive_key` is a
-  DEDUP family, not a shield family (`effects.py:256-260`, `ehp.py:2966-2972`), and
-  DDragon 2525 grants "maximum Health ... then heal", not a shield - so `shield=None`
-  is CORRECT. Only the two note strings are wrong. The row now FENCES the guard it
-  resembled: `test_lifeline_target_shield_r59.py:54`'s hardcoded set is a TARGET-SIDE
-  assumption (`_lifeline_target_shield.py:34`), and deriving it would invent EHP.
-- **RM-330's live-defect claim refuted twice**, so it is filed DECIDE-THEN-ACT rather
-  than as a bug. The cited chain dies at `cc_blended_ehp_context.py` (zero DS
-  dispatch); the fallback chain dies too - `build_capability_gap` is spelling-
-  insensitive, byte-identical for `Chogath`/`Cho'Gath` and `MonkeyKing`/`Wukong`. An
-  id-only contract is already written at `routes_cc_blended_ehp_threat.py:33-38`.
-- **RM-329's framing corrected** - nothing is "dropped"; `ehp.py` has zero
-  `MODE_MAP_ID` occurrences and no mode-note lane at all. Severity capped: no live
-  caller can send an unconstrained mode.
+**MERGE: the main tree was NOT clean.** It held an uncommitted 124-line
+`docs/history_notes.md` addition, 28.5h stale - the archive half of the
+2026-09-01c merger `/done`, never staged. Committed FIRST and separately
+(`aac80637c`) so the merge could not clobber it.
 
-**Doc drift fixed in place, and it was a repeat offence.** ROADMAP's first NOW content
-row carried RM-203 as OPEN while BACKLOG had it CLOSED 2026-08-15 - and
-`docs/LEDGER.md:669` (LEDGER 1270) had already logged "Quick win: ROADMAP RM-203 was
-OPEN against LEDGER 1265" on 2026-08-16 and never applied it. Struck in place with the
-cite. A sweep of all 73 ROADMAP ids against 141 BACKLOG ids found this was the ONLY
-divergence, so it is a single miss, not rot.
+**RM-284 CLOSED, both halves.** (a) the relocation pass took ROADMAP 89.9 -> 87.55
+pct with all 179 ids retained and every fence kept in its stub; (b) `.gitattributes`
+now pins 18 text suffixes to `eol=lf`, so on-disk equals blob. ROADMAP measured
+71719 on disk against a 71522 blob before, and 71522/71522 after.
 
-**MEMORY.md sub-index counts DELETED, not refreshed** (the LEDGER 1270 precedent).
-All four were stale - 79 / 20 / 31 / 59 actual against 73 / 19 / 30 / 41 recited, ops
-off by 18 - and nothing guards them.
+**THE RECURRING LESSON THIS SESSION, three times over: measure with the same
+filter the contract uses.**
+- A doc budget measured in a lane worktree (LF) passed while main (CRLF) breached.
+  ALWAYS measure a budget on main.
+- A green `ci` run proved nothing because the scheduled nightly SKIPS the `check`
+  job. Read `jobs[].steps[].conclusion`, never the workflow conclusion.
+- The eol guard flagged 7 LFS payloads that were correct, because it filtered by
+  SUFFIX while `.gitattributes` filters by effective attribute. It asks
+  `git check-attr` now.
 
-**New probe trap, found by falling into it** - memory
-`reference_ds_probe_flag_needs_its_scoring_axis`. A DS flag probe reads INERT unless
-the request also selects the axis the flag moves: `/rank-tank` + `apply_build_tenacity`
-returns identical arms until you add `score_by="cc_blended"`. Nearly shipped an
-"inert everywhere" framing. Two siblings recorded: `apply_rune_offense_grants` is
-+0.00 on Jinx (AS-locked, `dps.py:1321-1333`), and the `/dps` build key is `items`,
-not the output echo `item_ids`.
+**Three of my own claims were corrected mid-run** and are recorded rather than
+quietly fixed: "the bundle is absent from both trees" (wrong path), "CI is
+unaffected" twice (docstring, then derivation - now rests on six observed run
+conclusions), and a recommendation to relocate three ROADMAP rows that were
+ALREADY relocated on 2026-08-31.
 
-**No external lift, deliberately.** The competitor-lift category is DRAINED (LEDGER
-880). No `COMPETITOR_LIFT_<date>.md`, no license gate triggered, nothing external read
-or quoted.
+**Memories added/updated:** `reference_ds_probe_flag_needs_its_scoring_axis` (new
+- a DS flag reads INERT unless the request selects the axis it moves),
+`reference_green_ci_run_may_have_skipped_the_job` (new),
+`reference_windows_write_text_crlf_byte_count` (two new sections). MEMORY.md's
+four sub-index counts were DELETED rather than refreshed - all four were stale
+(79/20/31/59 against 73/19/30/41) and nothing guards them.
 
-**Gates:** doc size budget 2 passed; citation + drift guards 58 passed / 92 subtests;
-roadmap/backlog-selected 5 passed; `tools/drift_guard.py` 0 breaches; zero non-ASCII in
-every authored line, gated BEFORE insert. ROADMAP 75299 of 81920 bytes.
-
-**NEXT:** branch is READY and UNMERGED per the worktree rule - the merger takes it.
-Lane 6 now has 8 actionable rows (RM-208, RM-220, RM-329..334); lane 4 still holds
-RM-326/327/328 + RM-209 unworked from the previous refill.
+**NEXT:** lane 6 has 8 actionable rows (RM-208, RM-220, RM-329..334); lane 4 still
+holds RM-326/327/328 + RM-209 unworked. Full brief with acceptance checks and the
+do-not-redo set: `C:\\Users\\Administrator\\Desktop\\RC-NEXT-SESSION.txt`.
 
 ---
 
@@ -99,64 +96,3 @@ relaunch; uiux PREPARE items (legibility variants + opaque-widget defect) are RM
 operator-present; lane-6 RM-208/RM-220 + research RM-328 open in BACKLOG.
 
 ---
-
-# 2026-09-01b - lane 6 Headless-DS: RM-323 / RM-324 / RM-325 batch (ENGINE 1.279.0)
-
-Branch `lane/ds`, **NOT merged** - a merge to main is a deployment and landing is
-the merger session's call. Ledger entry: `docs/LEDGER.md` **1317**.
-
-**Shipped the three LANE 6 rows the lane-5 refill filed the same morning, and all
-three filed specs turned out to need correction.** That is the durable finding, not
-the code:
-
-- **RM-323** asked for `mirror == base` equality. Reading DDragon 16.15.1 for all
-  six ids showed it carries **NO proc magnitude for any of them, SR twins
-  included** - the `<stats>` block is base stats only. Doctrine B ("Arena mirrors
-  credit their OWN line") therefore cannot be settled from DDragon here, so each
-  mirror is credited from its own `note` and equality is a MEASURED CONSEQUENCE.
-  The row's acceptance EXAMPLE was also vacuous: `burst(with) > burst(without)`
-  passes at HEAD because `226655` carries 85 AP and the total rises on the stat
-  block alone.
-- **RM-325's site list named four NOTE sites and missed the real multiplier
-  resolvers** (`ehp.py:932`/`:1728`, `ability_dps.py:654`, `hps.py:265`). Fixing
-  exactly what was filed would have left the arithmetic wrong with the notes
-  reading correct - `feedback_resolver_fix_is_not_a_consumer_fix`, in a row that
-  itself cited that memory.
-- **RM-324's proposed `parse_constant` class-fix was rejected on a measurement**:
-  `1e400` is an ordinary JSON float literal that overflows inside `parse_float`
-  and never reaches `parse_constant`, so it would have looked class-level while
-  leaving the bug reachable.
-
-**THE LANE-WORKTREE / :8860 SEAM IS THE THING TO CARRY FORWARD.** `RC-DaemonSlayer`
-runs `pythonw.exe` against `C:\Riot Commander\tools\start_daemon_slayer.py` - the
-MAIN checkout - so the shared port serves main's version no matter what a lane
-pins. The headless-ds ritual says "bounce :8860 and confirm it serves the NEW
-version", which is unachievable from a lane worktree and would be actively harmful
-if forced: it would push unmerged lane code onto the port RC and four other live
-lanes read. The regen was run through `_install_static_transport()` instead
-(in-process via the DS server's own POST handlers, documented as identical to the
-live path by construction). **Owed AT MERGE, in main:** bounce `:8860`, then re-run
-`tools/ds_share_sync.py` because `dist/` is gitignored and never survives a merge.
-
-**Consequence, expected and not a defect:** `test_sr_draft_profile_engine.py::
-TestLiveEngineIntegration::test_live_three_profiles` is RED on this branch
-(`'1.278.1' != '1.279.0'`) and stays red until the merge AND the restart. A merge
-without the restart leaves it failing.
-
-**A gitignored orphan nearly poisoned the provenance.** The ingest dist bundle
-already read `1.279.0` at session start, built by a prior aborted attempt whose
-commits never landed. It MATCHED the new constant while encoding different code,
-so a green `--check` would have proved nothing; it was force-rebuilt.
-
-**Gates, fresh on a frozen tree:** DS **10722 passed / 13530 subtests / 0 failed**
-(repo root); RC `tests/ -q -n 8` **20300 passed / 136 skipped / 1 failed** (the
-structural skew above); four ritual guards 28 passed; ruff clean; sync `--check`
-exit 0. Verifier: **11 claims, 11 CONFIRM / 0 REFUTE**. Anchors 4/4; 149
-`ENGINE_VERSION` pins swept across 127 files.
-
-**Still open in this lane:** RM-208 (DS doc route-list guard is regex-blind to the
-two `/v2/*` routes and checks one direction only) and RM-220 (109 label
-comparisons never run). Both Tier-1, both untouched this run.
-
----
-
