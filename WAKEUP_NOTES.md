@@ -6,6 +6,73 @@
 
 ---
 
+# 2026-09-02 - lane 5 Headless-Research REFILL (lane/research, docs-only, NOT merged)
+
+Detached headless, operator away, full authority. Branch `lane/research` was 0 ahead
+/ 13 behind `main` at start, fast-forwarded to `ca1e6447b` before any probing so the
+worktree matched live DS (its `ENGINE_VERSION` read 1.278.1 against `:8860`'s 1.279.0
+until the ff - do NOT probe a lane worktree without checking that first).
+
+**Filed RM-329..RM-336, next free id RM-337** (registry `docs/DS_SWEEP_TRACKER.md:72`).
+Six LANE 6, two LANE 7. Bodies + acceptance in `BACKLOG.md`, pointer in `ROADMAP.md`,
+LEDGER 1319.
+
+**Why lane 6:** it was the starved lane and the tracker was UNDERSTATING it. Its
+ROADMAP-visible open work was ONE row. RM-323/324/325 were filed by the 2026-09-01
+refill and closed by lane 6 within a day; RM-118's wireable debt is zero at both tiers
+(RE-MEASURED here: `STRANDED_TODAY` 5, `STRANDED_DEPTH1` 0); and RM-220 - actionable,
+LANE 6 - had no ROADMAP entry at all. Pointer added.
+
+**The refutation pass earned its cost - it changed three of nine candidates.**
+- **RM-332 killed as a defect**, kept as a Tier-0 note fix. `unique_passive_key` is a
+  DEDUP family, not a shield family (`effects.py:256-260`, `ehp.py:2966-2972`), and
+  DDragon 2525 grants "maximum Health ... then heal", not a shield - so `shield=None`
+  is CORRECT. Only the two note strings are wrong. The row now FENCES the guard it
+  resembled: `test_lifeline_target_shield_r59.py:54`'s hardcoded set is a TARGET-SIDE
+  assumption (`_lifeline_target_shield.py:34`), and deriving it would invent EHP.
+- **RM-330's live-defect claim refuted twice**, so it is filed DECIDE-THEN-ACT rather
+  than as a bug. The cited chain dies at `cc_blended_ehp_context.py` (zero DS
+  dispatch); the fallback chain dies too - `build_capability_gap` is spelling-
+  insensitive, byte-identical for `Chogath`/`Cho'Gath` and `MonkeyKing`/`Wukong`. An
+  id-only contract is already written at `routes_cc_blended_ehp_threat.py:33-38`.
+- **RM-329's framing corrected** - nothing is "dropped"; `ehp.py` has zero
+  `MODE_MAP_ID` occurrences and no mode-note lane at all. Severity capped: no live
+  caller can send an unconstrained mode.
+
+**Doc drift fixed in place, and it was a repeat offence.** ROADMAP's first NOW content
+row carried RM-203 as OPEN while BACKLOG had it CLOSED 2026-08-15 - and
+`docs/LEDGER.md:669` (LEDGER 1270) had already logged "Quick win: ROADMAP RM-203 was
+OPEN against LEDGER 1265" on 2026-08-16 and never applied it. Struck in place with the
+cite. A sweep of all 73 ROADMAP ids against 141 BACKLOG ids found this was the ONLY
+divergence, so it is a single miss, not rot.
+
+**MEMORY.md sub-index counts DELETED, not refreshed** (the LEDGER 1270 precedent).
+All four were stale - 79 / 20 / 31 / 59 actual against 73 / 19 / 30 / 41 recited, ops
+off by 18 - and nothing guards them.
+
+**New probe trap, found by falling into it** - memory
+`reference_ds_probe_flag_needs_its_scoring_axis`. A DS flag probe reads INERT unless
+the request also selects the axis the flag moves: `/rank-tank` + `apply_build_tenacity`
+returns identical arms until you add `score_by="cc_blended"`. Nearly shipped an
+"inert everywhere" framing. Two siblings recorded: `apply_rune_offense_grants` is
++0.00 on Jinx (AS-locked, `dps.py:1321-1333`), and the `/dps` build key is `items`,
+not the output echo `item_ids`.
+
+**No external lift, deliberately.** The competitor-lift category is DRAINED (LEDGER
+880). No `COMPETITOR_LIFT_<date>.md`, no license gate triggered, nothing external read
+or quoted.
+
+**Gates:** doc size budget 2 passed; citation + drift guards 58 passed / 92 subtests;
+roadmap/backlog-selected 5 passed; `tools/drift_guard.py` 0 breaches; zero non-ASCII in
+every authored line, gated BEFORE insert. ROADMAP 75299 of 81920 bytes.
+
+**NEXT:** branch is READY and UNMERGED per the worktree rule - the merger takes it.
+Lane 6 now has 8 actionable rows (RM-208, RM-220, RM-329..334); lane 4 still holds
+RM-326/327/328 + RM-209 unworked from the previous refill.
+
+---
+
+
 # 2026-09-01c - MERGER session: ROADMAP trim + 3-lane merge + gist-sync fix
 
 Interactive merger session; everything below is on main + CI-green, all five lane
@@ -93,67 +160,3 @@ comparisons never run). Both Tier-1, both untouched this run.
 
 ---
 
-# 2026-09-01 - lane 5 Headless-Research REFILL (lane/research, docs-only)
-
-Branch `lane/research`, NOT merged - left ready for the merger per the standing
-worktree rule (an interactive session holds `C:/Riot Commander`).
-
-**Which lanes were starved was MEASURED, not guessed.** `LANE N` tag counts across
-ROADMAP + BACKLOG at run start: lane 8 = 103, lane 7 = 47, lane 4 = 10, lane 6 = 8.
-So the refill targeted 4 and 6. Seven rows filed or corrected, **RM-322 through
-RM-328**; next free id is now **RM-329** (`docs/DS_SWEEP_TRACKER.md:72`).
-
-**The recall gate changed the run's shape and that is the headline.** A dispatched
-census of unrun test trees was REDIRECTED mid-flight because `perseus_recall`
-surfaced LEDGER 1215 / RM-170 (CLOSED 2026-08-06), which had already measured that
-exact population into `docs/OPERATIONS.md`. Re-tasking the slice from "derive the
-census" to "is the recorded census still true" is where the real defect was.
-
-**Filed (bodies + acceptance in `BACKLOG.md`, compact pointers in `ROADMAP.md`):**
-- **RM-322** (LANE 7) - the self-labelled AUTHORITATIVE test-scope table at
-  `docs/OPERATIONS.md:27` is stale 4 ways. Re-measured: `tests` 18820 -> 20410,
-  DS 10463 -> 10687, agent3 360 -> 359, root 29998 -> 31811. Its own invariant
-  still closes exactly. `benchmarks` IS run by `codspeed.yml:51`, so CI-unrun is
-  TWO trees / 707, not three; CI has NINE pytest sites, not two. **Acceptance
-  deliberately FORBIDS a count guard** and points at the existing structural guard
-  (`test_skip_condition_hygiene.py:1431`).
-- **RM-323 / 324 / 325** (LANE 6, DS) - Arena mirrors `223118`/`224646`/`226655`
-  credit 0.00 magic burst while their own notes state the SR magnitudes their twins
-  return; `level: Infinity` returns HTTP 500 where the float sibling returns 400;
-  `mode="ARAM"` gives multiplier 0.87 but `mode="aram"` gives 0.92 and `"FOO"` is
-  accepted with 200. All three PROBED live or in-process by the merger.
-- **RM-326 / 327 / 328** (LANE 4, UI) - the lobby view is the only polled panel with
-  no idempotent-render gate (2 s timer, two unconditional `innerHTML` clears, focus
-  dies invisibly); Top-8 reorder buttons re-index on click so a second click undoes
-  the first; `renderTeamContext` returns at its second line every call because
-  `cs-team-context-block` is in no HTML. RM-328 is DECIDE-THEN-ACT with no
-  prescribed resolution.
-
-**Corrected in place, not struck:**
-- **RM-314** constructor census 12 -> **17**. A verifier reached 17 independently,
-  and `tests/test_anthropic_base_url_pin.py:23-40` already lists exactly those 17
-  behind a passing exhaustiveness guard - the repo had said 17 all along. The row's
-  substantive claim (no client sets `timeout=`) is UNAFFECTED and true. My own
-  opening hypothesis, that RM-314 and RM-302 were duplicate mints, was WRONG and is
-  recorded as refuted.
-- **RM-294b** DOWNGRADED. Its discovery is a rediscovery of what OPERATIONS.md:41
-  and ROADMAP_HISTORY.md:128 recorded 25 days earlier, and 3 of its cites are wrong.
-  Its ACTION half survives, re-scoped to two trees. Striking it entirely would have
-  destroyed real lane-7 work.
-
-**New closed negatives (do NOT re-run these sweeps):** undefined-CSS-custom-property
-is EXHAUSTED at RM-209's seven; the banned non-ASCII glyph set is EMPTY across
-`web/**` and `rc-shell/**`; DS route-seam transport-vs-flag is well guarded by
-`test_ds_parity_map.py`; all 32 route-facing DEFAULT-OFF seams ARE exercised ON;
-per-map `ITEM_EFFECTS` coverage complete on all 6 live maps; `DAEMON_SLAYER.md`'s
-108/89 CC and 34-route claims both re-measure CORRECT.
-
-**Method trap that cost real time twice in one run:** `grep -P` aborts under this
-Git Bash locale ("supports only unibyte and UTF-8 locales") and with stderr unread
-that reads as a clean sweep. It produced a false zero for the merger AND for one
-slice independently. A `git ls-files | xargs grep` also returned empty for its
-CONTROL as well as its target (exit 123) and was discarded rather than believed.
-Every sweep here was re-run with a proven control. See
-`feedback_empty_grep_is_a_claim_about_the_pattern`.
-
-**Next session:** `C:/Users/Administrator/Desktop/RC-NEXT-SESSION.txt`.
