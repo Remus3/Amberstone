@@ -6,6 +6,67 @@
 
 ---
 
+# 2026-09-03 - MERGER: RM-329..RM-336 shipped as one batch, ENGINE 1.280.0 (ON MAIN)
+
+STATE. Main at the 1.280.0 bump, pushed. All eight rows the 2026-09-02 lane-5
+refill filed are CLOSED. `:8860` bounced and serving 1.280.0 / 16.15.1 / 173
+champs / 706 items. Share mirror `--check` exit 0 at 534 files. DS 10845 passed
+/ 13659 subtests / 0 failed; RC 20370 passed / 96 skipped / 4779 subtests / 0
+failed (measured AFTER the bounce - before it, `test_live_three_profiles` is
+structurally red). ROADMAP 72151 of 81920 = 88.07 pct, measured ON MAIN. All six
+run worktrees removed, branches deleted. The five lane worktrees are untouched
+at `22e8bd0ef` and are now one batch behind main - fast-forward before using one.
+
+WHAT SHIPPED. RM-331 (Arena augments resolve by DISPLAY name; alias index over
+apiName AND name, zero collisions across all 6 snapshots) and RM-334 (`/ehp`
+parses `apply_build_tenacity`) are the two behaviour changes that earned the
+bump. RM-329 (mode-provenance notes on all 7 EHP-family routes plus
+`compute_hps`), RM-330 option B, RM-332, RM-333, RM-335, RM-336 rode along.
+
+READ THIS BEFORE THE NEXT PARALLEL RUN - THE MACHINE OOM'd. Five slices each
+running the ~10.7k DS suite, at least three with `-n 8`, took free RAM to 721 MB
+of 32 GB. `git status` died on malloc, one slice hit `INTERNALERROR MemoryError`,
+two slices were killed. **It presents as an API error and is not one.** Cap it:
+single-process pytest in slices, targeted modules while iterating, ONE full suite
+at the end. Killed slices resume fine via SendMessage with context intact - both
+did, and nothing was lost. A slice suite run that died on malloc reports nothing
+trustworthy; re-run it rather than reading it.
+
+NEXT - RM-337 is the obvious pick and it is already filed with acceptance.
+A clean copy of `Share/` OUTSIDE the repo reports 13 failed / 8361 passed. They
+are PRE-EXISTING (set-difference against `22e8bd0ef` returns exactly one new
+name, already fixed) and caused by CWD-relative path opens -
+`test_rune_procs_per_attack.py:99` opens the literal
+`agents/daemon_slayer/rune_procs.py`, which resolves at the repo root but not
+under `Share/src`. **All 13 are GREEN in the main tree, for the wrong reason** -
+verify any fix from a clean copy outside the repo, never from `cd Share` inside
+it and never from the main tree. Fix with `__file__`-relative paths PLUS a guard
+asserting no test under `agents/daemon_slayer/tests/` opens a path starting with
+`agents/`; the guard is the load-bearing half. Do NOT fix by excluding them from
+the mirror - they have no host subject and belong in the package.
+`Share/README.md`'s "0 failed / passes clean" claim is already corrected in place
+to the measured 13. Also still open from earlier refills: RM-208 + RM-220 (lane
+6), RM-326/327/328 + RM-209 (lane 4). Next free id is RM-338.
+
+TWO TRAPS THIS RUN PAID FOR. (1) `tools/ds_share_sync.py` had a SECOND
+`write_text` path (doc-anchor refresh, `:1043`) while its sibling at `:1099`
+already passed `newline=""` and carried a comment about this exact failure. It
+only fires on an ENGINE bump, which is how it survived the RM-284 sweep that
+created the `eol=lf` pin. Fixed. **If you add a writer for a tracked pinned file,
+write bytes or pass `newline=""` - and remember a bump-only path is invisible
+between releases.** (2) The build-order tables DO have a stamp guard tying them
+to `ENGINE_VERSION` - this session asserted otherwise off too narrow a grep and
+got 14 red assertions for it. `python -m core.build_order_precompute --static
+--mode all --champions all` and the `build_order_variants` twin; both name their
+own regen command in the failure text. The generator writes CRLF, so normalise
+the six JSON files to LF afterwards.
+
+COUNTING. Do not trust a merger-supplied baseline either - S6 was briefed the DS
+base was 10741 and correctly refuted it with exact arithmetic (true base 10803;
+10741 was one slice's ISOLATED number). And `grep -rl` for a version literal
+matches compiled `.pyc` binaries: the bump surface is 131 `.py` files / 155
+occurrences, not the 381 a naive `grep -rl` reports.
+
 # 2026-09-02/03 - lane 5 REFILL, then merger + two repo fixes (all ON MAIN)
 
 Started as a detached lane-5 research refill, then the operator directed the
