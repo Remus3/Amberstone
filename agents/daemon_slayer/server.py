@@ -680,6 +680,35 @@ def _route_ehp(body: dict) -> dict:
     augments = _coerce_str_list(body.get("augments"), "augments")
     enemies = _coerce_str_list(body.get("enemies"), "enemies")
     include_conditional = _opt_bool(body, "include_conditional", False)
+    # RM-334: the item-236 build-tenacity credit, live on the three ranker
+    # routes (_route_rank_tank, _route_hybrid, _route_rank_bruiser) since it
+    # shipped and never parsed HERE - so the seam was arithmetically inert on
+    # the very route that exposes ``compute_ehp`` directly.
+    #
+    # TRANSPORT is TWO keys, both parsed above since Phase 1 / ENGINE 1.39.0:
+    # ``items`` (ehp.py:2582 reads ``total_item_tenacity(item_ids)``, so a build
+    # with no tenacity source is a no-op) and ``enemies`` (an empty comp skips
+    # the whole cc block). No new transport needed.
+    #
+    # PARSE SHAPE is the PLAIN default-False bool, matching ``_route_hybrid``
+    # (:1255) and deliberately NOT the tri-state the two rankers use.
+    # MEASURED off inspect.signature: ``rank_items_by_ehp`` takes
+    # ``Optional[bool] = None`` and resolves it per scoring mode (ehp.py:3431 -
+    # ON for cc_blended, OFF for blended), which is what the tri-state exists
+    # for; ``compute_ehp`` takes a plain ``bool = False`` and has no scoring
+    # mode to resolve against, so a tri-state here would hand ``None`` to a
+    # bool-annotated parameter for no gain.
+    #
+    # An older note on ``core/daemon_slayer_client.ehp_for`` called the flag
+    # "deliberately absent - _route_ehp does not parse it (it needs a resolved
+    # build, which /ehp does not rank over)". That reason is backwards and is
+    # corrected in the same slice: build tenacity needs a RESOLVED build, and
+    # /ehp is the route that scores exactly one. It is the RANKERS that lack a
+    # single resolved build, which is why THEY need the tri-state.
+    #
+    # Route EXPOSURE only: the seam stays bool=False on compute_ehp and the key
+    # is optional, so a body omitting it is a byte-identical response.
+    apply_build_tenacity = _opt_bool(body, "apply_build_tenacity", False)
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     apply_passive_mitigation = _opt_bool(body, "apply_passive_mitigation", False)
     apply_passive_resist = _opt_bool(body, "apply_passive_resist", False)
@@ -871,6 +900,7 @@ def _route_ehp(body: dict) -> dict:
             enemy_champions=enemies,
             include_conditional=include_conditional,
             apply_cc_floor=apply_cc_floor,
+            apply_build_tenacity=apply_build_tenacity,
             apply_mode_modifiers=apply_mode_modifiers,
             apply_passive_mitigation=apply_passive_mitigation,
             apply_passive_resist=apply_passive_resist,
