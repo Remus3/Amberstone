@@ -71,6 +71,7 @@ from .rank import (
     _champion_is_melee,
     _filter_candidates,
     _is_terminal,
+    mode_filter_note,
     strip_arena_trinkets,
 )
 from .stats import clamp_level
@@ -710,6 +711,20 @@ def compute_hps(
     total = direct + buff_credit + ability_hps_total * ability_hps_amp_mult
 
     notes_out: list[str] = []
+    # RM-329 mode provenance. This route filters NO pool - it scores the
+    # build the caller supplied - so it must NOT borrow ``mode_filter_note``:
+    # an item-legality verdict it never reached would be a false provenance
+    # line, the exact failure ``ModeNoteProvenanceTests`` was written against.
+    # What it CAN prove is its own table: ``_aram_heal_shield_modifiers``
+    # carries a row for ARAM only, and SR is the unmodified baseline that
+    # needs none, so every other mode - ARENA and BRAWL included, not just an
+    # unrecognised string - is scored with heal/shield multipliers of 1.0 and
+    # nothing said so. Wording mirrors ``engine.py``'s sibling line (which is
+    # how /ehp already annotates this), narrowed to name the table.
+    if mode not in ("SR", "ARAM"):
+        notes_out.append(
+            f"mode={mode} - heal/shield modifier table not plugged in for this mode"
+        )
     if matched_count == 0:
         notes_out.append(
             "no enchanter formulas matched current items - item throughput is 0"
@@ -1092,6 +1107,12 @@ def rank_items_by_hps(
         ranked = ranked[:top_n]
 
     notes: list[str] = []
+    # RM-329: same pool, same filter, same debt as ``rank_items`` - this
+    # ranker runs ``_filter_candidates`` -> ``_is_legal_in_mode``, so it
+    # reports which map id that filter resolved to (or that it resolved to
+    # none and let everything through). ``mode`` is canonical_mode-folded by
+    # here - see the caution in ``mode_filter_note``.
+    notes.append(mode_filter_note(mode))
     if surv_active:
         notes.append(
             f"prefer_survivability_by_win=ON - {len(surv_ids)} WIN-anchored "
