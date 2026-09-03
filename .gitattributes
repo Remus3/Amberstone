@@ -31,4 +31,16 @@ data/meta/ddragon_*.json          linguist-generated=true
 # inherits core.autocrlf=true and comes back CRLF on the next clone, failing the
 # drift check for everyone who has not run the sync locally.
 Share/src/SHARE_MIRROR text eol=lf
+# RM-284: same policy for Markdown, for a different reason - SIZE, not corruption.
+# ROADMAP.md and CLAUDE.md are CI size-budgeted (tests/test_doc_size_budget.py)
+# and tools/drift_guard.py warns at 90 pct, and BOTH measure stat().st_size on
+# disk. Under core.autocrlf=true the blob is LF and the Windows working tree is
+# CRLF, so the same content measures one byte per line larger here than it does
+# in the blob or on Linux CI - 197 bytes for ROADMAP.md. That gap flipped the
+# verdict in both directions: a lane worktree measured 73718 and passed while
+# main measured 73915 and breached, and earlier a tool rewrote the file LF-only,
+# measured 81917 and shipped green against a real checkout size of 82134.
+# eol=lf makes on-disk equal the blob everywhere. Guarded by
+# tests/test_md_line_endings.py.
+*.md text eol=lf
 data/daemon_slayer/laning_scenarios/**/*.json filter=lfs diff=lfs merge=lfs -text

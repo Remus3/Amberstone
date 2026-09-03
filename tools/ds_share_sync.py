@@ -954,7 +954,10 @@ def _stamp_manifest(version: str, n_files: int) -> None:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     eng_files = sum(1 for r in _build_expected() if r.startswith("agents/daemon_slayer/") and r.endswith(".py"))
     body = _manifest_body(version, n_files, eng_files, ts)
-    (_SHARE / "MANIFEST.md").write_text(body, encoding="utf-8")
+    # write_bytes, not write_text: text mode emits CRLF on Windows, and
+    # MANIFEST.md is a TRACKED .md now pinned to LF by `.gitattributes`
+    # (RM-284) and asserted by tests/test_md_line_endings.py.
+    (_SHARE / "MANIFEST.md").write_bytes(body.encode("utf-8"))
 
 
 def _doc_anchor_rules() -> tuple[tuple[str, "re.Pattern[str]", str], ...]:
