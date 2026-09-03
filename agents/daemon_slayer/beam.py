@@ -35,10 +35,10 @@ from typing import Iterable, Optional
 from .data_loader import DataSnapshot, canonical_mode
 from .dps import compute_dps
 from .rank import (
-    MODE_MAP_ID,
     _champion_is_melee,
     _filter_candidates,
     _is_terminal,
+    mode_filter_note,
     strip_arena_trinkets,
 )
 from .stats import clamp_level
@@ -278,10 +278,12 @@ def beam_search_build(
     # canonical_mode at the top of this function, so this membership test
     # agrees with the filter that actually ran. Pre-fold a lowercase mode
     # printed the no-filter line while the map filter had applied.
-    if mode in MODE_MAP_ID:
-        notes.append(f"mode={mode} -> maps id {MODE_MAP_ID[mode]}")
-    else:
-        notes.append(f"mode={mode} not in MODE_MAP_ID - no per-mode item filter applied")
+    # RM-329 collapsed the two literals onto ``rank.mode_filter_note`` so the
+    # eight scorers that emit this line cannot drift into eight paraphrases.
+    # Byte-identical: the helper is the same if/else over the same
+    # ``MODE_MAP_ID`` with the same f-strings, and the CALL stays here, below
+    # the fold, for the RM-325 reason the paragraph above gives.
+    notes.append(mode_filter_note(mode))
     if stripped_trinkets:
         notes.append(
             f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} from current_item_ids"
