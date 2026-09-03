@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
 from .ability_dps import compute_ability_dps
-from .data_loader import DataSnapshot
+from .data_loader import DataSnapshot, canonical_mode
 from .dps import compute_dps
 from .effects import ITEM_EFFECTS
 from .hybrid import _damage_axis
@@ -47,6 +47,7 @@ from .rank import (
     _champion_is_melee,
     _filter_candidates,
     _is_terminal,
+    mode_filter_note,
     strip_arena_trinkets,
 )
 from .stats import clamp_level
@@ -548,6 +549,22 @@ def rank_items_by_onhit(
         ranked = ranked[:top_n]
 
     notes: list[str] = []
+    # RM-329: this ranker filters its pool through ``_filter_candidates`` ->
+    # ``_is_legal_in_mode`` exactly as ``rank_items`` does, so it owes the same
+    # item-legality provenance line. Without it an unrecognised mode silently
+    # returned an UNFILTERED pool - map-illegal ids leaking into a mode-legal
+    # answer - with nothing in the payload saying so.
+    #
+    # ``mode`` is NOT ``canonical_mode``-folded in this function (unlike
+    # ``rank_items`` / ``rank_items_by_burst``), and ``result.mode`` deliberately
+    # keeps echoing the caller's raw spelling. The FILTER is case-insensitive
+    # (``_is_legal_in_mode`` upper-cases), so the note must be built from the
+    # RESOLVED spelling or it prints the pre-RM-325 falsehood: "mode=aram not in
+    # MODE_MAP_ID" over a pool the map-12 filter had in fact been applied to.
+    # ``canonical_mode`` is read here ONLY to build the string - folding ``mode``
+    # itself would move what the scorers below are handed, which is a scoring
+    # change and out of scope for a notes-only row.
+    notes.append(mode_filter_note(canonical_mode(mode)))
     if stripped_trinkets:
         notes.append(
             f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} "
