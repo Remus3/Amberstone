@@ -30793,3 +30793,71 @@ NOT read any id pointer below as live.
   tree and every live lane branch before taking an id:
   `git fetch origin && git show origin/lane/research:ROADMAP.md | grep -ohE "RM-[0-9]+"`
   alongside the working-tree grep on the line below.
+
+
+<!-- archived from WAKEUP_NOTES 2026-09-02 (lane 5 refill) -->
+
+# 2026-09-01 - lane 5 Headless-Research REFILL (lane/research, docs-only)
+
+Branch `lane/research`, NOT merged - left ready for the merger per the standing
+worktree rule (an interactive session holds `C:/Riot Commander`).
+
+**Which lanes were starved was MEASURED, not guessed.** `LANE N` tag counts across
+ROADMAP + BACKLOG at run start: lane 8 = 103, lane 7 = 47, lane 4 = 10, lane 6 = 8.
+So the refill targeted 4 and 6. Seven rows filed or corrected, **RM-322 through
+RM-328**; next free id is now **RM-329** (`docs/DS_SWEEP_TRACKER.md:72`).
+
+**The recall gate changed the run's shape and that is the headline.** A dispatched
+census of unrun test trees was REDIRECTED mid-flight because `perseus_recall`
+surfaced LEDGER 1215 / RM-170 (CLOSED 2026-08-06), which had already measured that
+exact population into `docs/OPERATIONS.md`. Re-tasking the slice from "derive the
+census" to "is the recorded census still true" is where the real defect was.
+
+**Filed (bodies + acceptance in `BACKLOG.md`, compact pointers in `ROADMAP.md`):**
+- **RM-322** (LANE 7) - the self-labelled AUTHORITATIVE test-scope table at
+  `docs/OPERATIONS.md:27` is stale 4 ways. Re-measured: `tests` 18820 -> 20410,
+  DS 10463 -> 10687, agent3 360 -> 359, root 29998 -> 31811. Its own invariant
+  still closes exactly. `benchmarks` IS run by `codspeed.yml:51`, so CI-unrun is
+  TWO trees / 707, not three; CI has NINE pytest sites, not two. **Acceptance
+  deliberately FORBIDS a count guard** and points at the existing structural guard
+  (`test_skip_condition_hygiene.py:1431`).
+- **RM-323 / 324 / 325** (LANE 6, DS) - Arena mirrors `223118`/`224646`/`226655`
+  credit 0.00 magic burst while their own notes state the SR magnitudes their twins
+  return; `level: Infinity` returns HTTP 500 where the float sibling returns 400;
+  `mode="ARAM"` gives multiplier 0.87 but `mode="aram"` gives 0.92 and `"FOO"` is
+  accepted with 200. All three PROBED live or in-process by the merger.
+- **RM-326 / 327 / 328** (LANE 4, UI) - the lobby view is the only polled panel with
+  no idempotent-render gate (2 s timer, two unconditional `innerHTML` clears, focus
+  dies invisibly); Top-8 reorder buttons re-index on click so a second click undoes
+  the first; `renderTeamContext` returns at its second line every call because
+  `cs-team-context-block` is in no HTML. RM-328 is DECIDE-THEN-ACT with no
+  prescribed resolution.
+
+**Corrected in place, not struck:**
+- **RM-314** constructor census 12 -> **17**. A verifier reached 17 independently,
+  and `tests/test_anthropic_base_url_pin.py:23-40` already lists exactly those 17
+  behind a passing exhaustiveness guard - the repo had said 17 all along. The row's
+  substantive claim (no client sets `timeout=`) is UNAFFECTED and true. My own
+  opening hypothesis, that RM-314 and RM-302 were duplicate mints, was WRONG and is
+  recorded as refuted.
+- **RM-294b** DOWNGRADED. Its discovery is a rediscovery of what OPERATIONS.md:41
+  and ROADMAP_HISTORY.md:128 recorded 25 days earlier, and 3 of its cites are wrong.
+  Its ACTION half survives, re-scoped to two trees. Striking it entirely would have
+  destroyed real lane-7 work.
+
+**New closed negatives (do NOT re-run these sweeps):** undefined-CSS-custom-property
+is EXHAUSTED at RM-209's seven; the banned non-ASCII glyph set is EMPTY across
+`web/**` and `rc-shell/**`; DS route-seam transport-vs-flag is well guarded by
+`test_ds_parity_map.py`; all 32 route-facing DEFAULT-OFF seams ARE exercised ON;
+per-map `ITEM_EFFECTS` coverage complete on all 6 live maps; `DAEMON_SLAYER.md`'s
+108/89 CC and 34-route claims both re-measure CORRECT.
+
+**Method trap that cost real time twice in one run:** `grep -P` aborts under this
+Git Bash locale ("supports only unibyte and UTF-8 locales") and with stderr unread
+that reads as a clean sweep. It produced a false zero for the merger AND for one
+slice independently. A `git ls-files | xargs grep` also returned empty for its
+CONTROL as well as its target (exit 123) and was discarded rather than believed.
+Every sweep here was re-run with a proven control. See
+`feedback_empty_grep_is_a_claim_about_the_pattern`.
+
+**Next session:** `C:/Users/Administrator/Desktop/RC-NEXT-SESSION.txt`.
