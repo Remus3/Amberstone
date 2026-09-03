@@ -669,6 +669,17 @@ def _route_ehp(body: dict) -> dict:
     Body shape mirrors /dps but swaps ``target_armor`` / ``target_mr`` for
     ``enemy_ad_share`` / ``enemy_ap_share`` (the operator's *exposure* to
     physical/magical damage, not the target's resists).
+
+    ROSTER CONTRACT (RM-330). ``enemies`` takes canonical DDragon ids only
+    ("Annie", "Garen", "MonkeyKing"), never Riot display names. Blank entries
+    and unknown champions are silently skipped, mirroring ``compute_ehp``'s
+    fail-soft contract on ``enemy_champions`` and ``compute_cc_pressure``. So
+    "Cho'Gath" contributes NOTHING where "Chogath" moves the number, and the
+    request still returns 200 either way. ``champion`` is the exception: it
+    alone is resolved tolerantly (``_resolve_champion_id``) and 404s on a miss.
+    Canonicalize roster names client-side - ``core.archetype_picks``
+    ``.canonical_champion_id`` and ``core.daemon_slayer_client``
+    ``._canon_champ_key`` both exist for exactly this bridge.
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -955,6 +966,16 @@ def _route_rank_tank(body: dict) -> dict:
     swaps: ``enemy_ad_share`` / ``enemy_ap_share`` (floats) replace
     ``target_armor`` / ``target_mr`` (irrelevant to EHP - they describe
     the target, not the caster's exposure).
+
+    ROSTER CONTRACT (RM-330). ``enemies`` takes canonical DDragon ids only
+    ("Annie", "Garen", "MonkeyKing"), never Riot display names. Blank entries
+    and unknown champions are silently skipped, mirroring ``compute_ehp``'s
+    fail-soft contract on ``enemy_champions`` and ``compute_cc_pressure``. A
+    display name does not merely mis-rank here, it drops the enemy from the CC
+    comp entirely, so ``score_by="cc_blended"`` silently degrades to the
+    no-enemy ordering while still returning 200. ``champion`` is the exception:
+    it alone is resolved tolerantly and 404s on a miss. Canonicalize roster
+    names client-side (``core.archetype_picks.canonical_champion_id``).
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -1261,6 +1282,19 @@ def _route_hybrid(body: dict) -> dict:
 
     Phase 2 (s175, 2026-05-12). Body shape is the union of /dps and /ehp
     parameters plus optional ``alpha`` / ``beta`` weight overrides.
+
+    ROSTER CONTRACT (RM-330). ``enemies`` takes canonical DDragon ids only
+    ("Annie", "Garen", "MonkeyKing"), never Riot display names. Blank entries
+    and unknown champions are silently skipped, mirroring ``compute_ehp``'s
+    fail-soft contract on ``enemy_champions`` and ``compute_cc_pressure``.
+    THE ECHO IS NOT CONFIRMATION, and this route is the one that makes that
+    trap visible: the response field ``enemy_champions`` reflects the list you
+    sent back VERBATIM and unresolved, so a caller who sends "Wukong" sees
+    "Wukong" returned and can read it as acknowledgement. It is not - the
+    arithmetic is byte-identical to sending no roster at all. ``champion`` is
+    the exception: it alone is resolved tolerantly and 404s on a miss.
+    Canonicalize roster names client-side
+    (``core.archetype_picks.canonical_champion_id``).
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -1387,6 +1421,15 @@ def _route_rank_bruiser(body: dict) -> dict:
     Phase 2 (s175, 2026-05-12). Body is the union of /rank and /rank-tank
     parameters. ``alpha`` / ``beta`` default to per-champion overrides
     from ``archetype_weights.json``; pass explicit floats to override.
+
+    ROSTER CONTRACT (RM-330). ``enemies`` takes canonical DDragon ids only
+    ("Annie", "Garen", "MonkeyKing"), never Riot display names. Blank entries
+    and unknown champions are silently skipped, mirroring ``compute_ehp``'s
+    fail-soft contract on ``enemy_champions`` and ``compute_cc_pressure``, so
+    a display name degrades ``score_by="cc_blended"`` to the no-enemy ordering
+    while still returning 200. ``champion`` is the exception: it alone is
+    resolved tolerantly and 404s on a miss. Canonicalize roster names
+    client-side (``core.archetype_picks.canonical_champion_id``).
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -2479,6 +2522,20 @@ def _route_ally_protected_ehp(body: dict) -> dict:
         base_mr]} for Taric's percent-of-resist grant)
     EMPTY ``ally_grant_champions`` -> byte-identical to a plain compute_ehp.
     Additive read-only.
+
+    ROSTER CONTRACT (RM-330). ``ally_grant_champions``, ``enemy_champions``
+    and the KEYS of ``granter_resists`` all take canonical DDragon ids only
+    ("Annie", "Garen", "MonkeyKing"), never Riot display names. Blank entries
+    and unknown champions are silently skipped, mirroring ``compute_ehp``'s
+    fail-soft contract on ``enemy_champions`` and ``compute_cc_pressure``.
+    ``granter_resists`` is the easiest to get wrong, because it is a DICT
+    KEYED BY champion: a display-name key matches no granter, so Taric's
+    percent-of-resist grant silently falls back to its default rather than
+    erroring. This route is also the reason an EMPTY response is ambiguous -
+    "no allies granted anything" and "every ally name was unresolvable" are
+    indistinguishable from the outside. ``champion`` is the exception: it
+    alone is resolved tolerantly and 404s on a miss. Canonicalize roster
+    names client-side (``core.archetype_picks.canonical_champion_id``).
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
