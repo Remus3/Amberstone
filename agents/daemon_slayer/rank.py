@@ -678,6 +678,34 @@ def _is_terminal(item: dict) -> bool:
     return not into
 
 
+def mode_filter_note(mode: str) -> str:
+    """Provenance line for the per-mode item-legality filter this module owns.
+
+    RM-329. The single source of the two sentences ``/rank`` has always
+    emitted, so every scorer that runs ``_filter_candidates`` reports the
+    SAME verdict rather than a paraphrase that drifts out of sync:
+
+      * recognised   -> ``mode=ARAM -> maps id 12``
+      * unrecognised -> ``mode=ARAMM not in MODE_MAP_ID - no per-mode item
+        filter applied``
+
+    ``mode`` MUST already be ``canonical_mode``-folded. Pass a raw
+    caller-supplied spelling and the note goes FALSE in the RM-325 way: a
+    lowercase ``aram`` misses this membership test while
+    ``_is_legal_in_mode`` (which upper-cases) has in fact applied map 12,
+    so the result would claim no filter ran when one did. A false
+    provenance line is worse than none - see
+    ``test_mode_case_scorer_parity_rm325.ModeNoteProvenanceTests``.
+
+    Callers that filter NO pool (``compute_hps`` and friends, which score a
+    build the caller supplied) must NOT use this - they have no item-filter
+    verdict to report.
+    """
+    if mode in MODE_MAP_ID:
+        return f"mode={mode} -> maps id {MODE_MAP_ID[mode]}"
+    return f"mode={mode} not in MODE_MAP_ID - no per-mode item filter applied"
+
+
 def _is_legal_in_mode(item: dict, mode: str) -> bool:
     """Items list per-map availability. If we don't recognise the mode, allow.
 
@@ -1442,10 +1470,10 @@ def rank_items(
     # "not in MODE_MAP_ID - no per-mode item filter applied" while item 244's
     # filter had in fact applied the map-12 filter. Do not hoist this block
     # above the fold at the top of the function or the note goes false again.
-    if mode in MODE_MAP_ID:
-        notes.append(f"mode={mode} -> maps id {MODE_MAP_ID[mode]}")
-    else:
-        notes.append(f"mode={mode} not in MODE_MAP_ID - no per-mode item filter applied")
+    # RM-329 extracted the two literals into ``mode_filter_note`` so the
+    # EHP-family scorers emit this exact sentence too. The CALL stays here,
+    # below the fold, for the reason the paragraph above gives.
+    notes.append(mode_filter_note(mode))
     if stripped_trinkets:
         notes.append(
             f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} from current_item_ids"

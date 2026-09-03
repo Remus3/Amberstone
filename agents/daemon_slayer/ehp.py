@@ -137,6 +137,7 @@ from .rank import (
     _champion_is_melee,
     _filter_candidates,
     _is_terminal,
+    mode_filter_note,
     strip_arena_trinkets,
 )
 from .stats import clamp_level
@@ -4093,6 +4094,13 @@ def rank_items_by_ehp(
         ranked = ranked[:top_n]
 
     notes: list[str] = []
+    # RM-329: this ranker filters its pool through ``_filter_candidates`` ->
+    # ``_is_legal_in_mode``, exactly as ``rank_items`` does, so it owes the
+    # same provenance line. Without it an unrecognised mode silently returned
+    # an UNFILTERED pool (map-illegal ids leaking into a mode-legal answer)
+    # with nothing in the payload saying so. ``mode`` is canonical_mode-folded
+    # by here - see the caution in ``mode_filter_note``.
+    notes.append(mode_filter_note(mode))
     notes.append(
         f"enemy mix: AD {enemy_ad_share * 100:.0f}% / "
         f"AP {enemy_ap_share * 100:.0f}% / "
