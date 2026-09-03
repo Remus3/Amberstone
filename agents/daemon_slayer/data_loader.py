@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,22 @@ _WIKI_MODE_ALIASES = {
     "nb": "nb",
     "nexusblitz": "nb",
 }
+
+
+def _norm_augment_key(s: Any) -> str:
+    """Normalize an Arena augment key for alias lookup: lowercase, keep
+    only alphanumerics. "The Brutalizer", "the-brutalizer" and
+    " TheBrutalizer! " all collapse to "thebrutalizer".
+
+    This deliberately MIRRORS the existing ``_norm_name`` at
+    ``core/augment_external_source.py:445`` (and the same
+    ``name.lower().replace(" ", "")`` shape at
+    ``coaches/arena_coach.py:264-272``) rather than inventing a third
+    convention. It is re-implemented instead of imported because the
+    ``agents/daemon_slayer`` package is mirrored standalone into
+    ``Share/`` and must not depend on ``core``.
+    """
+    return "".join(ch for ch in str(s or "").lower() if ch.isalnum())
 
 
 def canonical_mode(mode: Any) -> Any:
@@ -561,11 +578,77 @@ class DataSnapshot:
         val = mm.get(wiki_key)
         return val if isinstance(val, dict) else None
 
+    def _arena_augment_alias_index(self) -> dict[str, dict]:
+        """RM-331: lazily built alnum-lowercase alias -> augment record.
+
+        Built on first use and cached on the instance (frozen dataclass,
+        so the write goes through ``object.__setattr__``). Lazy rather
+        than a constructor field on purpose: every ``DataSnapshot``
+        instance gets the index however it was constructed, including
+        the direct ``DataSnapshot(...)`` calls in tests and tools that
+        never go through ``load()``.
+
+        TIE-BREAK, stated explicitly: ``apiName`` WINS. Pass 1 claims
+        every normalized ``apiName``; pass 2 fills only keys pass 1 left
+        free, so a display name can never shadow a different augment's
+        apiName. Within a pass the FIRST row in snapshot order wins,
+        matching the ``setdefault`` convention of ``_norm_name`` /
+        ``_name_index`` in ``core/augment_external_source.py``.
+
+        CENSUS (measured 2026-09-03 over all 6 shipped snapshots,
+        16.10.1 through 16.15.1, 220-227 rows each): ZERO normalized
+        apiName collisions, ZERO normalized name collisions, and ZERO
+        cross collisions where a display name lands on another
+        augment's apiName. The pass ordering above is therefore a
+        forward-looking guarantee, not a fix for existing data, and
+        ``test_arena_augment_name_alias_rm331.py`` guards it staying so.
+        """
+        cached = self.__dict__.get("_arena_augment_aliases")
+        if cached is not None:
+            return cached
+        index: dict[str, dict] = {}
+        # Pass 1: apiName is authoritative.
+        for rec in self.arena_augments_by_api.values():
+            alias = _norm_augment_key(rec.get("apiName"))
+            if alias:
+                index.setdefault(alias, rec)
+        # Pass 2: display names fill only what pass 1 left unclaimed.
+        # Iterate both indexes so a row carrying a name but no apiName
+        # (present in by_id only) is still reachable.
+        for rec in chain(
+            self.arena_augments_by_id.values(), self.arena_augments_by_api.values()
+        ):
+            alias = _norm_augment_key(rec.get("name"))
+            if alias:
+                index.setdefault(alias, rec)
+        object.__setattr__(self, "_arena_augment_aliases", index)
+        return index
+
     def arena_augment(self, key: int | str) -> dict:
+        """Resolve an Arena augment by numeric id, ``apiName`` or display
+        ``name``.
+
+        Resolution order, most-specific first: exact ``apiName``, then
+        the numeric id (int, or an all-digit string), then the RM-331
+        alnum-lowercase alias index over ``apiName`` AND ``name``. An
+        unrecognized key still raises ``KeyError`` - the alias index is
+        an exact match on a normalized key, NOT a fuzzy matcher, so the
+        documented "unregistered augment is a no-op" contract is
+        unchanged.
+        """
         if isinstance(key, int):
             rec = self.arena_augments_by_id.get(key)
         else:
-            rec = self.arena_augments_by_api.get(key) or self.arena_augments_by_id.get(int(key)) if str(key).isdigit() else self.arena_augments_by_api.get(key)
+            text = str(key)
+            rec = self.arena_augments_by_api.get(text)
+            if rec is None and text.isdigit():
+                rec = self.arena_augments_by_id.get(int(text))
+            if rec is None:
+                # RM-331: a DISPLAY name ("The Brutalizer") used to miss
+                # here and be swallowed by augments.py's `except
+                # (KeyError, AttributeError): continue`, scoring
+                # byte-identically to passing no augment at all.
+                rec = self._arena_augment_alias_index().get(_norm_augment_key(text))
         if rec is None:
             raise KeyError(f"Unknown arena augment: {key!r} (snapshot {self.patch})")
         return rec
