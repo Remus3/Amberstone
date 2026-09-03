@@ -61,6 +61,7 @@ from agents.daemon_slayer._mana_damage_coupling import (
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.ehp import compute_ehp, rank_items_by_ehp
 from agents.daemon_slayer.engine import build_champion
+from agents.daemon_slayer.rank import mode_filter_note
 
 _SNAP = None
 
@@ -177,6 +178,16 @@ def _digest(result, drop_notes: bool = False) -> str:
     payload = result.to_dict()
     for row in payload["ranked"]:
         row.pop("delta_max_mp", None)
+    # RM-329 (2026-09-03): the mode-provenance note is the NOTES-side twin of
+    # the row-key exclusions above, and it is dropped for the identical reason -
+    # a note first emitted AFTER this digest was captured cannot by construction
+    # appear in a pre-change capture. It is removed BY VALUE (never a prefix
+    # sweep) so no other note can hide behind the exclusion, and it is asserted
+    # in full by test_mode_provenance_notes_rm329.py rather than lost here.
+    payload["notes"] = [
+        n for n in payload.get("notes", ())
+        if n != mode_filter_note(payload["mode"])
+    ]
     if drop_notes:
         # For an ARMED-but-inert run the ONLY legitimate payload difference is
         # the operator-facing "ON but inert" note, which is positive evidence the
