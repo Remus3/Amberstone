@@ -737,6 +737,18 @@ def ehp_for(
     # no-mid-signature-insert convention.
     include_conditional: bool = False,
     apply_cc_floor: bool = False,
+    # RM-334: the item-236 build-tenacity credit. ``_route_ehp`` learned this
+    # key in the same slice, and the per-route client-reach guard requires the
+    # client function POSTing that route to be able to express it - wiring the
+    # route alone would ship a seam settable by curl and dead to every RC
+    # caller, the reachable-and-dead failure RM-115 exists to kill.
+    #
+    # A plain DEFAULT-OFF bool, NOT the tri-state ``rank_tank_for`` /
+    # ``rank_bruiser_for`` carry: those resolve None per ``score_by`` against
+    # ``rank_items_by_ehp`` (Optional[bool] = None), and ``/ehp`` has no
+    # scoring mode - ``compute_ehp`` takes a plain ``bool = False``.
+    # Appended at END per the no-mid-signature-insert convention.
+    apply_build_tenacity: bool = False,
 ) -> Optional[dict]:
     """Call POST /ehp and return the raw result dict. None on failure.
 
@@ -744,8 +756,18 @@ def ehp_for(
 
     The RM-115 seam block is DEFAULT-OFF end to end: each flag is emitted only
     when True, so omitting them all reproduces the pre-seam request byte for
-    byte. ``apply_build_tenacity`` is deliberately absent - ``_route_ehp`` does
-    not parse it (it needs a resolved build, which /ehp does not rank over).
+    byte.
+
+    ``apply_build_tenacity`` used to be documented here as "deliberately absent
+    - ``_route_ehp`` does not parse it (it needs a resolved build, which /ehp
+    does not rank over)". RM-334 measured that reason backwards and corrected
+    it: build tenacity needs a RESOLVED build, and ``/ehp`` is the route that
+    scores exactly one - ``ehp.py:2582`` reads
+    ``total_item_tenacity(item_ids)``, and ``item_ids`` is the ``items`` list
+    this function already sends. The RANKERS are the endpoints without a single
+    resolved build, which is why they carry the tri-state and this does not.
+    Its TRANSPORT is ``item_ids`` plus ``enemies``: a build with no tenacity
+    source, or an empty enemy comp, leaves it arithmetically inert.
     """
     _resolved_ad_share, _resolved_ap_share = _resolve_enemy_shares(
         enemy_ad_share, enemy_ap_share
@@ -822,6 +844,11 @@ def ehp_for(
         # byte-identical on the wire to a pre-wire one.
         ("include_conditional", include_conditional),
         ("apply_cc_floor", apply_cc_floor),
+        # RM-334: same emit-when-True contract - an absent key leaves
+        # _route_ehp's _opt_bool(body, "apply_build_tenacity", False) on the
+        # engine default, so a call that does not name it is byte-identical on
+        # the wire to a pre-RM-334 one.
+        ("apply_build_tenacity", apply_build_tenacity),
     ):
         if _armed:
             body[_seam] = True
