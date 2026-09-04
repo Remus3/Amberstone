@@ -57,7 +57,7 @@ import { refreshBranchReview } from './panels/branch_review.js';
 // clobbers the live PGR.
 import { wireHistoricalPgrOnce, renderHistoricalPgr } from './panels/historical_pgr.js';
 import { renderCoachDecisions, renderRecentCoachCalls } from './panels/coach_decisions.js';
-import { _settingsRefresh, renderSpendGates, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
+import { _settingsRefresh, renderSpendGates, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 import { renderBuildInsights } from './panels/build_insights.js';
 // HZ-D1: overlay-shell change-pulse hook (inert unless ?overlay=1).
 import { initOverlayPulse } from './overlay_pulse.js';
@@ -1639,7 +1639,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
 
   function renderAdaptation(data) {
-    const trendEl = document.getElementById("trend-pill");
     const adaptPanel = document.querySelector(".panel-adaptation");
     if (!data || !data.present) {
       AD.status.textContent = "no data";
@@ -1649,7 +1648,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       AD.recent.textContent = "-";
       if (AD.kda) AD.kda.textContent = "-";
       AD.counters.textContent = "-";
-      if (trendEl) trendEl.classList.add("hidden");
       if (adaptPanel) adaptPanel.classList.add("adapt-empty");
       return;
     }
@@ -1687,32 +1685,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         AD.kda.textContent = line;
       } else {
         AD.kda.textContent = "-";
-      }
-    }
-
-    // Trend pill in the header - prefers 30d window, falls back to rolling.
-    if (trendEl) {
-      trendEl.classList.remove("hidden", "up", "down", "neutral");
-      const r30 = data.recency_30d;
-      if (r30 && (r30.games || 0) >= 5) {
-        const dv = r30.delta_vs_alltime || 0;
-        const arrow = dv > 0.05 ? "↑" : (dv < -0.05 ? "↓" : "·");
-        const klass = dv > 0.05 ? "up" : (dv < -0.05 ? "down" : "neutral");
-        trendEl.classList.add(klass);
-        trendEl.textContent = `30d ${(r30.win_rate * 100).toFixed(0)}% ${arrow}`;
-        trendEl.title = `30d wr ${(r30.win_rate*100).toFixed(1)}% vs ` +
-                        `all-time ${(data.win_rate*100).toFixed(1)}% (n=${r30.games})`;
-      } else if (data.recent_win_rate != null && data.recent_sample_size >= 5) {
-        const dv = data.recent_win_rate - data.win_rate;
-        const arrow = dv > 0.05 ? "↑" : (dv < -0.05 ? "↓" : "·");
-        const klass = dv > 0.05 ? "up" : (dv < -0.05 ? "down" : "neutral");
-        trendEl.classList.add(klass);
-        trendEl.textContent = `last${data.recent_sample_size} ${(data.recent_win_rate*100).toFixed(0)}% ${arrow}`;
-        trendEl.title = `rolling last-${data.recent_sample_size} wr ` +
-                        `${(data.recent_win_rate*100).toFixed(1)}% vs ` +
-                        `all-time ${(data.win_rate*100).toFixed(1)}%`;
-      } else {
-        trendEl.classList.add("hidden");
       }
     }
 
@@ -2370,44 +2342,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         _historyApplyFilters();
       });
     });
-  }
-
-  // -- Loadouts view (2026-04-26) -----------------------------------
-  function _loadoutsFetchAndRender() {
-    const mode = (document.getElementById("loadouts-mode-filter") || {}).value || "aram";
-    const filter = ((document.getElementById("loadouts-filter") || {}).value || "").toLowerCase();
-    fetch("/api/loadouts/all?mode=" + encodeURIComponent(mode), { cache: "no-store" })
-      .then((r) => (r && r.ok ? r.json() : null))
-      .then((d) => {
-        if (!d) return;
-        const list = document.getElementById("loadouts-list");
-        const cnt = document.getElementById("loadouts-count");
-        if (!list) return;
-        list.innerHTML = "";
-        const champs = (d.champions || []).filter((c) =>
-          !filter || c.champion.toLowerCase().includes(filter));
-        if (cnt) cnt.textContent = `${champs.length} of ${(d.champions||[]).length} champions`;
-        champs.forEach((c) => {
-          const card = document.createElement("div");
-          card.className = "loadout-champ";
-          const variants = (c.variants || [])
-            .filter((v) => v.key !== "experimental")
-            .map((v) => `<span style="color:var(--text-dim); font-size:11px; margin-right:14px">${escapeHtml(v.label)} <span style="color:var(--text-faint)">(${escapeHtml(v.keystone||"?")})</span></span>`)
-            .join("");
-          card.innerHTML = `<div class="loadout-champ-name">${escapeHtml(c.champion)}</div><div>${variants}</div>`;
-          list.appendChild(card);
-        });
-        if (!champs.length) list.innerHTML = '<div class="home-empty">no champions match filter</div>';
-      })
-      .catch(() => {});
-  }
-  function _loadoutsWireOnce() {
-    if (window.__loadoutsWired) return;
-    window.__loadoutsWired = true;
-    const f = document.getElementById("loadouts-filter");
-    const m = document.getElementById("loadouts-mode-filter");
-    if (f) f.addEventListener("input", _loadoutsFetchAndRender);
-    if (m) m.addEventListener("change", _loadoutsFetchAndRender);
   }
 
   // -- User Builds view (Phase 8 step 6 - 2026-05-04) ---------------
