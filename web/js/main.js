@@ -4556,13 +4556,99 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // joins or leaves the party, the LCU agent re-pushes the lobby
   // envelope; this renderer auto-populates / depopulates accordingly.
   const PARTY_MAX_SLOTS = 5;
+  // ---- RM-326: idempotent lobby renders + focus carry ---------------
+  // The lobby view re-renders on every state envelope (setInterval
+  // pollLcu, 2000 - plus the SSE and HTTP-fallback paths, which all
+  // funnel through handleLcuEnvelope -> _maybeRefreshLobbyView). Both
+  // interactive lists used to clear innerHTML unconditionally and
+  // re-create every row, so anything the operator was holding - keyboard
+  // focus on a copy / promote / kick / reorder button, or a mid-flight
+  // 1200ms is-copied confirmation against a 2000ms rebuild - was
+  // destroyed on that cadence, and INVISIBLY: the panel just quietly
+  // stopped being keyboard-usable.
+  //
+  // Same shape and same fix as panels/champ_select.js:704
+  // (`if (section.dataset.csvSig === sig) return;`, added because the
+  // operator saw the build chooser flicker every ~3s): compute a
+  // signature over everything the renderer reads and skip the rebuild
+  // when nothing observable changed.
+  //
+  // Focus carry is the second half, for the rebuilds that DO have to
+  // happen (a member joined, an entry moved). Capture the focused
+  // control's stable identity first, re-focus the matching control after.
+  // Fields are compared one by one rather than through a built selector
+  // so a riot_id's "#" needs no escaping.
+  function _lvFocusToken(container) {
+    if (typeof document === "undefined") return null;
+    const el = document.activeElement;
+    if (!el || !el.dataset || !container) return null;
+    if (!container.contains(el) || !el.dataset.action) return null;
+    return {
+      action: el.dataset.action,
+      ign: el.dataset.ign || "",
+      idx: el.dataset.idx || "",
+    };
+  }
+  function _lvRestoreFocus(container, tok) {
+    if (!tok || !container) return false;
+    const nodes = container.querySelectorAll("[data-action]");
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if ((n.dataset.action || "") !== tok.action) continue;
+      // Party rows key on data-ign (stable across a re-render); Top 8
+      // rows carry no ign, so they key on the positional data-idx.
+      if (tok.ign) { if ((n.dataset.ign || "") !== tok.ign) continue; }
+      else if ((n.dataset.idx || "") !== tok.idx) continue;
+      if (n.disabled) continue;
+      try { n.focus(); } catch (_) { return false; }
+      return true;
+    }
+    return false;
+  }
+  // Signature over every field _renderPartyMembers reads. Covers the
+  // conflict pre-pass too - it derives purely from the prefs + is_self
+  // values already included here.
+  function _lvPartySig(lobby, top8Keys) {
+    const members = (lobby && lobby.members) || [];
+    const parts = [
+      (lobby && lobby.is_leader) ? "L1" : "L0",
+      "P" + (_LV.prefPrimary || ""),
+      "S" + (_LV.prefSecondary || ""),
+      "N" + members.length,
+    ];
+    members.forEach((m) => {
+      const prefs = m.position_preferences || m.positionPreferences || {};
+      const rank = m.rank || {};
+      const key = m.riot_id || m.summoner_name || "";
+      parts.push([
+        m.riot_id || "", m.game_name || "", m.tag_line || "",
+        m.summoner_name || "",
+        m.is_self ? 1 : 0, m.is_leader ? 1 : 0,
+        prefs.first || prefs.primary || "",
+        prefs.second || prefs.secondary || "",
+        rank.tier || "", rank.division || "",
+        rank.lp == null ? "" : rank.lp,
+        m.summoner_level == null ? "" : m.summoner_level,
+        m.level == null ? "" : m.level,
+        m.assessed_role || "", m.preferred_role || "",
+        Array.isArray(m.top_role_champs) ? m.top_role_champs.join("+") : "",
+        top8Keys.has(key) ? 1 : 0,
+      ].join("~"));
+    });
+    return parts.join("|");
+  }
   function _renderPartyMembers(lobby) {
     const ul  = document.getElementById("lv-members-list");
     const members = (lobby && lobby.members) || [];
     const iAmLeader = !!(lobby && lobby.is_leader);
     if (!ul) return;
     if (!members.length) {
-      ul.innerHTML = '<li class="home-empty">no members visible - LCU agent needs to forward lcu.lobby.members[]</li>';
+      // RM-326: the empty state is static, so re-writing it every 2s is
+      // pure churn. Stamp it with a sentinel signature and skip.
+      if (ul.dataset.lvPartySig !== "empty") {
+        ul.innerHTML = '<li class="home-empty">no members visible - LCU agent needs to forward lcu.lobby.members[]</li>';
+        ul.dataset.lvPartySig = "empty";
+      }
       return;
     }
     const isSolo = members.length === 1;
@@ -4615,6 +4701,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (primaryBtn) {
       primaryBtn.classList.toggle("is-conflict", selfHasConflict);
     }
+    // RM-326: idempotent render gate. Everything above this line is
+    // cheap bookkeeping with side effects OUTSIDE the list (the
+    // #lv-lane-primary conflict class), so it keeps running every tick;
+    // only the row rebuild below is skipped when nothing changed.
+    const _partySig = _lvPartySig(lobby, top8Keys);
+    if (ul.dataset.lvPartySig === _partySig) return;
+    ul.dataset.lvPartySig = _partySig;
+    // RM-326: something DID change, so this rebuild is unavoidable -
+    // carry keyboard focus across it instead of dropping it to <body>.
+    const _partyFocus = _lvFocusToken(ul);
     ul.innerHTML = "";
     let otherIdx = 0;  // index among non-self members; cross-refs PARTY MAINS card idx
     // s162 v13: iterate up to PARTY_MAX_SLOTS, rendering placeholders
@@ -4820,6 +4916,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         }
       });
     });
+    // RM-326: re-focus the control the operator was on before the rebuild.
+    _lvRestoreFocus(ul, _partyFocus);
   }
   function _renderPartyMains(lobby) {
     const list = document.getElementById("lv-mainchamps-list");
@@ -5482,6 +5580,52 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const lp  = rank.lp != null ? ` ${rank.lp} LP` : "";
     return `${rank.tier}${div}${lp}`;
   }
+  // RM-326: signature over every field _renderTop8 reads, including the
+  // in-party tint (partyKeys) and the end-slot disabled states, which are
+  // positional and therefore already implied by the fixed-length layout.
+  function _top8Sig(list, partyKeys) {
+    const parts = ["N" + list.length];
+    for (let i = 0; i < TOP8_MAX; i++) {
+      const e = list[i];
+      if (!e) { parts.push(""); continue; }
+      const rank = e.rank || {};
+      parts.push([
+        e.riot_id || "", e.summoner_name || "",
+        e.games_with_me == null ? "" : e.games_with_me,
+        e.preferred_role || "",
+        rank.tier || "", rank.division || "",
+        rank.lp == null ? "" : rank.lp,
+        e.summoner_level == null ? "" : e.summoner_level,
+        e.level == null ? "" : e.level,
+        e.user_tag || "",
+        e.is_online ? 1 : 0,
+        (partyKeys.has(e.riot_id) || partyKeys.has(e.summoner_name)) ? 1 : 0,
+      ].join("~"));
+    }
+    return parts.join("|");
+  }
+  // RM-327: after a reorder the moved entry sits at a NEW index, and the
+  // button that moved it was destroyed by the re-render. Put focus on the
+  // control that governs the entry at its new home, so a repeat
+  // activation keeps walking the SAME entry instead of grabbing whatever
+  // slid into the old slot and swapping it straight back. Falls back to
+  // the sibling direction (then invite) when the entry has landed on an
+  // end slot where this direction is disabled, so the operator is never
+  // dumped to <body>.
+  function _top8FocusAction(action, idx) {
+    const ul = document.getElementById("lv-top8-list");
+    if (!ul) return;
+    const row = ul.querySelector('.lv-top8-row[data-idx="' + idx + '"]');
+    if (!row) return;
+    let btn = row.querySelector('[data-action="' + action + '"]');
+    if (!btn || btn.disabled) {
+      const alt = (action === "up") ? "down" : "up";
+      const altBtn = row.querySelector('[data-action="' + alt + '"]');
+      btn = (altBtn && !altBtn.disabled)
+        ? altBtn : row.querySelector('[data-action="invite"]');
+    }
+    if (btn && !btn.disabled) { try { btn.focus(); } catch (_) {} }
+  }
   function _renderTop8() {
     const list = _top8Load();
     const ul = document.getElementById("lv-top8-list");
@@ -5495,6 +5639,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       if (m.riot_id) partyKeys.add(m.riot_id);
       if (m.summoner_name) partyKeys.add(m.summoner_name);
     });
+    // RM-326: idempotent render gate (same pattern as the party list).
+    // Skipping the rebuild also skips _wireTop8Actions below, which is
+    // load-bearing: re-wiring surviving nodes would stack a duplicate
+    // click listener on every button on every 2s tick.
+    const _t8Sig = _top8Sig(list, partyKeys);
+    if (ul.dataset.lvTop8Sig === _t8Sig) return;
+    ul.dataset.lvTop8Sig = _t8Sig;
+    const _t8Focus = _lvFocusToken(ul);
     ul.innerHTML = "";
     for (let i = 0; i < TOP8_MAX; i++) {
       const entry = list[i];
@@ -5568,6 +5720,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       ul.appendChild(li);
     }
     _wireTop8Actions();
+    // RM-326: carry focus across the rebuild. A reorder overrides this
+    // immediately afterwards via _top8FocusAction (RM-327), because the
+    // moved entry's control lives at a different data-idx than the one
+    // that was focused.
+    _lvRestoreFocus(ul, _t8Focus);
   }
   function _wireTop8Actions() {
     const ul = document.getElementById("lv-top8-list");
@@ -5600,12 +5757,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           [list[idx - 1], list[idx]] = [list[idx], list[idx - 1]];
           _top8Save(list);
           _renderTop8();
+          // RM-327: follow the moved entry to its new index.
+          _top8FocusAction("up", idx - 1);
           return;
         }
         if (action === "down" && idx < list.length - 1) {
           [list[idx + 1], list[idx]] = [list[idx], list[idx + 1]];
           _top8Save(list);
           _renderTop8();
+          // RM-327: follow the moved entry to its new index.
+          _top8FocusAction("down", idx + 1);
           return;
         }
         if (action === "invite") {
