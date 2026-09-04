@@ -351,7 +351,19 @@ _WEB = _REPO_ROOT / "web"
 # the four web-touching slices' file sets and nothing else. Deliberately NOT
 # stamped by any single slice: a whole-tree digest cannot be computed on a
 # partial tree, so the merger owns it once, after every slice lands.
-_LIVE_HALF_DIGEST = "3b47f4c53b3f8304cb23f4f78b567283a30c57976e7e2cbba2395e26ff3a8a9d"
+# RE-CAPTURED at RM-339 (deletion of the s162 decommission residue and the
+# never-live trend pill), superseding the six-slice-batch capture earlier the
+# same day. Ordinary case: LIVE web edits, no tokeniser change, so the
+# classifier is fixed and the two-tree diff is a straight answer. Run over
+# 9c6de1b68 and the post-RM-339 tree with the SAME tokeniser: 171 web/ sources
+# in BOTH trees, and exactly 6 differ in their live half - header.css,
+# map_state.css, primitives.css (dead rule blocks), main.js (loadouts view +
+# trend pill), dev.js (diagnostics view + live-metrics poll) and last_match.js
+# (one dead id dropped from a list). web/index.html ALSO changed in that slice
+# and correctly does NOT appear here: its edit was to stale prose inside an
+# HTML comment, which is the swept half, not the live half. Confirmed by
+# reading the diff, not assumed from the absence.
+_LIVE_HALF_DIGEST = "884b2b078e026e13ed384d3dc75ecc30031057fb9959c5de3ab59990d3a25946"
 
 
 def _web_sources() -> list[Path]:
