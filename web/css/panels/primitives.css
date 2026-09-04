@@ -80,31 +80,6 @@ header { transition: height 180ms ease; }
  * tests/test_rc_skel_removed.py; re-add from git history WITH a dispatcher
  * if a skeleton affordance is ever wanted.) */
 
-/* AUDIT 2026-04-28 - proposal 2.1 cost tile + 2.2 coach toggles +
- * 2.5 trace tab. These pieces live in the ops/diagnostics view and
- * are therefore wrapped in their own selector prefix to avoid colliding
- * with the existing diagnostics-card styles. */
-.cost-tile { display: grid; gap: 6px; min-width: 220px; }
-.cost-tile .cost-tile-row { display: flex; justify-content: space-between; gap: 16px; }
-.cost-tile .cost-tile-key { color: var(--text-dim); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
-.cost-tile .cost-tile-val { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
-.cost-tile .cost-tile-banner { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; }
-.cost-tile .cost-tile-banner.ok    { background: var(--good-soft);  color: var(--good); }
-.cost-tile .cost-tile-banner.warn  { background: var(--gold-soft);  color: var(--gold); }
-.cost-tile .cost-tile-banner.over  { background: var(--bad-soft);   color: var(--bad);  }
-
-.coach-toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.coach-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; background: var(--surface-alt); border-radius: var(--radius-sm); }
-.coach-toggle-row .coach-toggle-label { font-size: 14px; font-weight: 700; letter-spacing: 0.05em; color: var(--text); text-transform: uppercase; }
-.coach-toggle-row .coach-toggle-pill { font-size: 12px; padding: 2px 10px; border-radius: 999px; font-weight: 800; letter-spacing: 0.1em; cursor: pointer; user-select: none; }
-.coach-toggle-row .coach-toggle-pill.on  { background: var(--good-soft); color: var(--good); }
-.coach-toggle-row .coach-toggle-pill.off { background: var(--bad-soft);  color: var(--bad);  }
-
-.trace-list { display: flex; flex-direction: column; gap: 6px; max-height: 70vh; overflow-y: auto; }
-.trace-item { padding: 10px 12px; background: var(--surface-alt); border-radius: var(--radius-sm); font-size: 13px; }
-.trace-item .trace-meta { display: flex; gap: 12px; color: var(--text-dim); font-size: 12px; letter-spacing: 0.05em; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
-.trace-item pre { white-space: pre-wrap; word-break: break-word; color: var(--text); margin-top: 4px; font-size: 12px; line-height: 1.4; }
-
 /* Health rollup dot (proposal 4.4). Anchored to row 2 of the header at
  * the far right via margin-left:auto so it shares the row with the
  * existing pills instead of getting a 3rd row of its own. */

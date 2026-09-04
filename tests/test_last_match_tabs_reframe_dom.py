@@ -167,13 +167,20 @@ class LegacyMigrationTests(unittest.TestCase):
     def test_set_empty_state_does_not_reference_dead_id(self):
         """s220 S5 carry-forward: lm-build-pending was a dead id in the
         _setEmptyState forEach loop (no matching element in index.html;
-        getElementById no-ops). Single-line cleanup pins the forEach to
-        only the 3 live pending ids."""
+        getElementById no-ops). RM-339: lm-tl-pending was dead in this
+        same list on the day this test was written - S4 had already
+        merged the Timeline placeholder into lm-chart-pending, which is
+        itself in the list, so "the 3 live pending ids" was only ever 2
+        and this test asserted the PRESENCE of a dead id. The forEach is
+        now pinned to the 2 ids that really have elements in index.html.
+        (_setTimeline keeps its own lm-tl-pending lookup - that one is a
+        deliberate optional no-op, documented in web/index.html beside
+        the merged placeholder.)"""
         js = _read(PANEL_JS)
         ses = js.split("function _setEmptyState(", 1)[1].split("\n}\n", 1)[0]
-        self.assertIn(
-            '["lm-tc-pending","lm-chart-pending","lm-tl-pending"]', ses)
+        self.assertIn('["lm-tc-pending","lm-chart-pending"]', ses)
         self.assertNotIn("lm-build-pending", ses)
+        self.assertNotIn("lm-tl-pending", ses)
 
 
 class CssNoLegacySelectorsTests(unittest.TestCase):
