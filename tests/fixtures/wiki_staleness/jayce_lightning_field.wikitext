@@ -1,0 +1,27 @@
+{{{{{1<noinclude>|Ability data</noinclude>}}}|Lightning Field|{{{2|}}}|{{{3|}}}|{{{4|}}}|{{{5|}}}
+|champion     = Jayce
+|skill        = W
+|icon         = false
+|blurbicon    = Lightning Field.png
+|blurb        = {{sbc|Passive:}} {{cis|Jayce}} {{tip|basic attacks}} restore {{sti|{{as|mana}}}} {{tip|on-hit}}.
+|blurb2       = {{sbc|Active:}} '''Jayce''' surrounds himself with an electric field for a few seconds, continually dealing {{as|magic damage}} to nearby enemies.
+|description  = {{sbc|Passive:}} '''Jayce's''' {{tip|basic attacks}} restore {{sti|{{as|mana}}}} {{tip|on-hit}}.
+|leveling     = {{st|Mana Restored|{{as|{{ap|15 to 25 6}}|Mana}}}}
+|icon2        = Lightning Field.png
+|description2 = {{sbc|Active:}} '''Jayce''' surrounds himself with an electric field for 4 seconds that deals {{as|magic damage}} every second to nearby enemies.
+|leveling2    = {{st|Magic Damage Per Tick|{{ap|35 to 110 6}} {{as|(+ 25% AP)}}|Total Magic Damage|{{ap|35*4 to 110*4 6}} {{as|(+ 100% AP)}}}}
+|effect radius= {{tip|cr|icononly = true}} 350
+|cooldown     = 10
+|cdstart      = on-cast
+|cost         = 40
+|costtype     = Mana
+|cast time = none
+|targeting    = Auto
+|affects      = Self, Enemies
+|damagetype   = magic
+|spelleffects = aoedot
+|onhiteffects = 
+|spellshield  = 
+|notes        = 
+* The {{as|{{sti|mana}}}} restore triggers on {{tip|structures}}.
+}}

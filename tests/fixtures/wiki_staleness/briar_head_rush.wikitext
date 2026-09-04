@@ -1,0 +1,35 @@
+{{{{{1<noinclude>|Ability data</noinclude>}}}|Head Rush|{{{2|}}}|{{{3|}}}|{{{4|}}}|{{{5|}}}
+|champion     = Briar
+|skill        = Q
+|icon         = Briar Head Rush.png
+|description  = {{sbc|Active:}} '''Briar''' {{tip|dash|leaps}} to the target unit. If the target is an enemy, she deals {{as|physical damage}}, applies {{tip|on-hit}} effects, triggers {{tip|on-attack}} effects, {{tip|stun|stuns}} them for {{fd|0.85}} seconds, and reduces their {{sti|armor penetration|{{as|armor}}}} and {{sti|magic penetration|{{as|magic resistance}}}} for 5 seconds.
+|description2 = ''Head Rush {{tip|basic attack reset|resets}} '''Briar's''' basic attack timer.''
+|leveling     = {{st|Physical Damage|{{ap|60 to 160}} {{as|(+ 80% '''bonus''' AD)}} {{as|(+ 60% AP)}}}}
+{{st|Resistances Reduction|{{ap|10 to 20}}%}}
+|cooldown     = {{ap|13 to 9}}
+|cdstart      = 
+|cost         = {{as|5%|health}}
+|costtype     = {{as|'''current''' Health}}
+|cast time    = none
+|target range = {{tip|cr|icononly = true}} 475
+|speed        = {{pp|type=distance|600 to 600+300|0 to 450 for 10|formula=600 base + 300 over the target range}}
+|queue time   = {{fd|0.5}}
+|targeting    = Unit
+|affects      = Enemies, Self
+|damagetype   = Physical
+|spellshield  = true
+|spelleffects = spell
+|grounded     = true
+|knockdown    = true
+|notes        = 
+* ''Head Rush'' can be cast on [[jungle plants]], {{tip|wards}}, and {{tip|stealthed trap|traps}}.
+** It cannot be cast on {{tip|structures}}.
+* ''Head Rush'' does not force the target's armor and magic resistance to update immediately outside of the {{tt|natural stat update cycle|once every 0.25 seconds}}, meaning its damage will typically still be mitigated by the unreduced armor value.
+* ''Head Rush's'' damage benefits from {{as|{{sti|life steal}}}}.
+* ''Head Rush'' is a non-following dash.
+** It picks its dash destination ~100 units in front of enemy targets, 75 units in front of enemy targets when already very close to them, 75 units in front of allied targets. 
+** If already within 75 units of her target, she dashes to her current location, which takes 0 time but still triggers dash effects such as {{ri|Sudden Impact}}.
+<!-- Blurb --> 
+|blurb        = {{sbc|Active:}} {{ci|Briar}} {{tip|dash|leaps}} to the target unit. If the target is an enemy, she deals {{as|physical damage}}, {{tip|stun|stuns}} them briefly, and additionally reduces their {{sti|armor penetration|{{as|armor}}}} and {{sti|magic penetration|{{as|magic resistance}}}} for a few seconds.
+|blurb4       = ''Head Rush'' applies {{tip|on-hit}} and {{tip|on-attack}} effects.
+}}
