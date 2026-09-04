@@ -29,6 +29,7 @@ ENGINE_VERSION 0.97.0 -> 0.98.0 pinned.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer import ult_rates
 from agents.daemon_slayer.abilities import load_default, reset_default_cache
@@ -40,6 +41,10 @@ from agents.daemon_slayer.ability_dps import (
     reset_form_index_cache,
 )
 from agents.daemon_slayer.data_loader import DataSnapshot
+
+# _DS_DIR anchors on __file__, not the process CWD, so the shipped Share
+# package resolves its registry JSON from any working directory.
+_DS_DIR = Path(__file__).resolve().parents[1]   # agents/daemon_slayer
 
 
 def _snap() -> DataSnapshot:
@@ -155,10 +160,8 @@ class BackwardCompatS226Tests(unittest.TestCase):
 
     def test_form_index_champion_count(self) -> None:
         import json
-        from pathlib import Path
         reg = json.loads(
-            Path("agents/daemon_slayer/champion_form_index.json")
-            .read_text(encoding="utf-8")
+            (_DS_DIR / "champion_form_index.json").read_text(encoding="utf-8")
         )
         self.assertEqual(len(reg["champions"]), 12)  # 9 prior + 3 s226
         self.assertEqual(reg["champions"]["Swain"], {"R": 1})

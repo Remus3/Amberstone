@@ -51,6 +51,10 @@ from agents.daemon_slayer.ability_dps import (
 )
 from agents.daemon_slayer.data_loader import DataSnapshot
 
+# _DS_DIR anchors on __file__, not the process CWD, so the shipped Share
+# package resolves its registry JSON from any working directory.
+_DS_DIR = Path(__file__).resolve().parents[1]   # agents/daemon_slayer
+
 # Every conditional shipped s228->s231 - the terminal set of the
 # autonomous pure-data conditional vein.
 _SHIPPED_CONDITIONALS = {
@@ -100,8 +104,7 @@ class VocabAndShippedConditionalsTests(unittest.TestCase):
 
     def test_registry_still_125_champions(self) -> None:
         reg = json.loads(
-            Path("agents/daemon_slayer/champion_block_index.json")
-            .read_text(encoding="utf-8")
+            (_DS_DIR / "champion_block_index.json").read_text(encoding="utf-8")
         )
         self.assertEqual(len(reg["champions"]), 125)
 

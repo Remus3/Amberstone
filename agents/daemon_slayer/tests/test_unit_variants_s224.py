@@ -26,6 +26,7 @@ ENGINE_VERSION 0.95.0 -> 0.96.0 pinned.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer import ult_rates
 from agents.daemon_slayer.abilities import load_default, reset_default_cache
@@ -40,6 +41,10 @@ from tools.daemon_slayer_abilities_extract import (
     _UNIT_TO_FIELD,
     _canonicalize_unit,
 )
+
+# _DS_DIR anchors on __file__, not the process CWD, so the shipped Share
+# package resolves its registry JSON from any working directory.
+_DS_DIR = Path(__file__).resolve().parents[1]   # agents/daemon_slayer
 
 
 def _snap() -> DataSnapshot:
@@ -212,10 +217,8 @@ class BackwardCompatS224Tests(unittest.TestCase):
         """s224 added a KEY to an already-covered champ (Bel'Veth) - the
         champion count stays 125 (s223's number)."""
         import json
-        from pathlib import Path
         reg = json.loads(
-            Path("agents/daemon_slayer/champion_block_index.json")
-            .read_text(encoding="utf-8")
+            (_DS_DIR / "champion_block_index.json").read_text(encoding="utf-8")
         )
         self.assertEqual(len(reg["champions"]), 125)
         self.assertEqual(reg["champions"]["Belveth"], {"E": 2, "R": 1})
