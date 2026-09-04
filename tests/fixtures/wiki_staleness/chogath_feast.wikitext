@@ -1,0 +1,43 @@
+{{{{{1<noinclude>|Ability data</noinclude>}}}|Feast|{{{2|}}}|{{{3|}}}|{{{4|}}}|{{{5|}}}
+|champion     = Cho'Gath
+|skill        = R
+|icon         = Feast.png
+|blurb        = {{sbc|Active:}} {{ci|Cho'Gath}} devours an enemy, dealing {{as|true damage}} based on {{as|'''Cho'Gath's bonus''' health}}. If this attack kills the target, '''Cho'Gath''' gains a permanent ''Feast'' {{tip|stack}} that infinitely stacks.
+|blurb4       = {{sbc|Feast:}} For each stack, '''Cho'Gath''' gains {{as|{{sti|health|'''bonus''' health}}}}, {{sti|range|'''bonus''' attack range}} and increased {{tip|size}}.
+|description  = {{sbc|Active:}} '''Cho'Gath''' attempts to eat the target enemy, dealing them {{sti|{{as|true damage}}}}. Against non-{{tip|champions}}, the '''base''' damage is modified.
+|leveling     = {{st|Champion True Damage|{{ap|300|475|650}} {{as|(+ 50% AP)}} {{as|(+ 10% '''bonus''' health)}}}}
+{{st|Non-Champion True Damage|1200 {{as|(+ 50% AP)}} {{as|(+ 10% '''bonus''' health)}}}}
+|description2 = If the target is killed, '''Cho'Gath''' gains a {{tip|stack}} of ''Feast''. Only 6 stacks can be gained from non-epic {{tip|monster|monsters}} or {{tip|minion|minions}}.
+|description3 = Each stack of ''Feast'' increases the cast range of the ability by {{fd|2.5}}, for a maximum increase of 25 at 10 stacks, and grants '''Cho'Gath''' {{as|{{sti|health|'''bonus''' health}}}} as well as {{sti|range|'''bonus''' attack range}} and increased {{tip|size}}, capping at {{sti|range|75 '''bonus''' attack range}} and 100% increased size.
+|leveling3    = {{st|Bonus Health Per Stack|{{ap|80 to 160}}}}
+{{st|Bonus Attack Range Per Stack|{{ap|4.7 to 7.7}}}}
+{{st|Bonus Size Per Stack|{{ap|(60 to 100)/10}}%}}
+|target range = {{tip|er|icononly = true}} 175
+|cooldown     = {{ap|80 to 60}}
+|cost         = 100
+|costtype     = mana
+|cast time    = {{fd|0.25}}
+|targeting    = Unit
+|affects      = Enemies / Self
+|damagetype   = True
+|spelleffects = spell
+|spellshield  = True
+|projectile   = 
+|callforhelp  = True
+|flavorsound  = 
+|knockdown    = 
+|grounded     = 
+|notes        = 
+* The increased size stacks additively with other size increases.
+* The name of the bonus health buff is ''"Feast"''.
+* The bonus attack range and increase size cap at respectively {{ap|75/((60 to 100)/13)|round=2}} and {{ap|100/((60 to 100)/10)|round=2}} stacks, with the last stack being effective as the decimal part of the value (no decimal meaning 100% as effective).
+* Each stack of ''Feast'' increases the damage by {{ap|8|12|16}}.
+{{Unit-targeted cancel conditions}}
+* If an enemy {{tip|champion}} has health below the amount of {{as|true damage}} ''Feast'' deals, they will be marked for execution. This indicator does not consider {{tip|shield|shields}} or {{tip|invulnerability}}.  
+* Consuming any additional {{ui|Voidgrub|Voidgrubs}} from the same spawn group will be tracked as a "monster eaten" for ''Feast's'' buff, but will neither grant any bonuses nor count towards the 6-stack limit.{{bug}}
+* While not on {{sti|cooldown}}, ''Feast's'' ability icon on the HUD can be [[ping|pinged]] to announce its damage to {{tip|monsters}} in the ally chat.
+<!--
+** Pending Test: The kill success check is after all additional instant damage applied. If the additional instant damage triggered by Feast from Cho'Gath killed the target then Chogath will still earn the stack, eg: Dark Harvest, Electrocute, Cheap Shot, etc killed the target . Non-instant damage that requires another check such as Aery, Comet, Hextech & Infernal dragon soul, Luden Echo, The Collector etc does not add however. Hextech Alternator (including Night Harvester)??
+*Possibly bug: Feast has special interaction toward Shaco R Hallucination where it counted as champion stack.-->
+[[File:Feast_Execute_Indicator.png|thumb|left|150px|This indicator is only visible to '''Cho'Gath'''.]]
+}}
