@@ -45,6 +45,10 @@ from agents.daemon_slayer.ability_dps import (
 )
 from agents.daemon_slayer.data_loader import DataSnapshot
 
+# _DS_DIR anchors on __file__, not the process CWD, so the shipped Share
+# package resolves its registry JSON from any working directory.
+_DS_DIR = Path(__file__).resolve().parents[1]   # agents/daemon_slayer
+
 
 def _snap() -> DataSnapshot:
     reset_default_cache()
@@ -80,8 +84,7 @@ class MaxPriorityRegistryShapeTests(unittest.TestCase):
 
     def test_registry_count(self) -> None:
         reg = json.loads(
-            Path("agents/daemon_slayer/champion_max_priority.json")
-            .read_text(encoding="utf-8")
+            (_DS_DIR / "champion_max_priority.json").read_text(encoding="utf-8")
         )
         self.assertEqual(len(reg["champions"]), 15)  # 12 prior + 3 s227
 
@@ -178,8 +181,7 @@ class CombosAdequateNegativeResultTests(unittest.TestCase):
 
     def test_unmapped_assassins_stay_out_of_combo_sequence(self) -> None:
         reg = json.loads(
-            Path("agents/daemon_slayer/champion_combo_sequences.json")
-            .read_text(encoding="utf-8")
+            (_DS_DIR / "champion_combo_sequences.json").read_text(encoding="utf-8")
         )["champions"]
         # Shaco / Ekko are assassin-archetype but have NO reset/shadow/
         # chain mechanic the default Q-W-E-AA-R-AA misses -> correctly

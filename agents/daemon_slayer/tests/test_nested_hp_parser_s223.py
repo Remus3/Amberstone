@@ -25,6 +25,7 @@ ENGINE_VERSION 0.94.0 -> 0.95.0 pinned.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer import ult_rates
 from agents.daemon_slayer.abilities import reset_default_cache
@@ -40,6 +41,10 @@ from tools.daemon_slayer_abilities_extract import (
     _canonicalize_unit,
     _normalize_modifiers,
 )
+
+# _DS_DIR anchors on __file__, not the process CWD, so the shipped Share
+# package resolves its registry JSON from any working directory.
+_DS_DIR = Path(__file__).resolve().parents[1]   # agents/daemon_slayer
 
 
 def _snap() -> DataSnapshot:
@@ -303,10 +308,8 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
 
     def test_covered_count_grew_by_one(self) -> None:
         import json
-        from pathlib import Path
         reg = json.loads(
-            Path("agents/daemon_slayer/champion_block_index.json")
-            .read_text(encoding="utf-8")
+            (_DS_DIR / "champion_block_index.json").read_text(encoding="utf-8")
         )
         # s228 converts 3 entries in-place (Zoe E / Evelynn Q / Kindred E)
         # to conditional dicts - no new champions, count stays 125.
