@@ -338,7 +338,20 @@ _WEB = _REPO_ROOT / "web"
 # Note web/js/lib/overlay_layout.drag.test.mjs also changed in this slice and
 # correctly does NOT appear above: _LANGS is .js / .css / .html, so .mjs is
 # outside _web_sources. Confirmed by per-file live-half diff, not assumed.
-_LIVE_HALF_DIGEST = "06da4a450f69b79236268c97f0e9ddb37da6c0e6986ed755eebf3a7a63b4a866"
+# RE-CAPTURED at the RM-208/209/220/326/327/328/338 six-slice batch,
+# superseding the 06da4a45 capture. Ordinary case: LIVE web edits, no
+# tokeniser change, so the classifier is fixed and the two-tree diff is a
+# straight answer. Run over a55ece97e and the merged tree with the SAME
+# tokeniser: 171 web/ sources in BOTH trees (nothing added or removed), and
+# exactly 11 differ in their live half - web/js/main.js (RM-326/327 render
+# gates), web/index.html (RM-328 team-context mount), web/css/tokens.css plus
+# build_module / build_order / champ_benchmarks / duration_winrate / op_score /
+# perf_curve / snowball_elasticity (RM-209 token resolution) and
+# web/css/panels/header.css (RM-338 hit-target overlay). That is the union of
+# the four web-touching slices' file sets and nothing else. Deliberately NOT
+# stamped by any single slice: a whole-tree digest cannot be computed on a
+# partial tree, so the merger owns it once, after every slice lands.
+_LIVE_HALF_DIGEST = "3b47f4c53b3f8304cb23f4f78b567283a30c57976e7e2cbba2395e26ff3a8a9d"
 
 
 def _web_sources() -> list[Path]:
