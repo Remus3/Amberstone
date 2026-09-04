@@ -1556,7 +1556,7 @@ function _setEmptyState(errMsg) {
   if (chartWrap) chartWrap.hidden = true;
   const tlWrap = document.getElementById("lm-tl-wrap");
   if (tlWrap) tlWrap.hidden = true;
-  ["lm-tc-pending","lm-chart-pending","lm-tl-pending"].forEach((id) => {
+  ["lm-tc-pending","lm-chart-pending"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.hidden = false;
   });
