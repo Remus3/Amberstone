@@ -23,7 +23,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/coach/state` | Coach active/disabled state per mode | - |
 | `/api/session/summary` | Current session summary (kills / deaths / gold delta etc.) | - |
 | `/api/history?...` | Match history (query: `mode`, `limit`, `since_days`) | - |
-| `/api/loadouts/all` | All stored loadout variants from `data/sr_user_builds.json` | - |
+| `/api/loadouts/all` | All stored loadout variants from `data/champion_loadouts.json` | - |
 | `/api/home/summary` | Home-screen summary card (win rate, streak, recent matches) | - |
 | `/api/replay/matches` | Replay-eligible match list from `rewind_history.db` | - |
 | `/api/replay/match/<id>` | Single replay match detail | - |
