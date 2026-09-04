@@ -20,13 +20,13 @@
   padding: var(--space-2, 8px) var(--space-4, 16px);
   font-size: var(--fs-sm, 18px);
   color: var(--text-faint, #9ca3af);
-  background: var(--bg-elevated, #1c1c24);
+  background: var(--surface-3, #1c1c24);
   border: 1px solid var(--border-soft, #2a2a35);
   border-radius: var(--panel-radius-sm, 10px);
   cursor: pointer;
 }
 #bi-duration-mount .dw-mode-btn.is-active {
-  color: var(--text-strong, #f0f0f5);
+  color: var(--text, #f0f0f5);
   border-color: var(--signal-info, #8a8cf0);
 }
 #bi-duration-mount .dw-chart {
@@ -48,7 +48,7 @@
 #bi-duration-mount .dw-track {
   flex: 1 1 auto;
   height: 24px;
-  background: var(--bg-elevated, #1c1c24);
+  background: var(--surface-3, #1c1c24);
   border: 1px solid var(--border-soft, #2a2a35);
   border-radius: var(--panel-radius-sm, 10px);
   overflow: hidden;
@@ -90,9 +90,15 @@
  * accent is the #6cf cyan convention (never the reserved --accent); keyboard
  * focus uses the shared --focus-ring (tokens.css) like build_insights.css.
  * New rules reference DEFINED tokens only (--surface-3 / --border-soft /
- * --text in base.css - NOT the undefined --bg-elevated, whose bare form
- * computes invalid -> transparent) and carry no dark-hex fallbacks, so the
- * dark-values ratchet pin (test_dark_values_ratchet_oq6: 4) holds. */
+ * --text in base.css) and carry no dark-hex fallbacks, so the dark-values
+ * ratchet pin (test_dark_values_ratchet_oq6: 4) holds.
+ *
+ * RM-209 later applied that same reading to the whole file: the rules above
+ * referenced --bg-elevated and --text-strong, which were declared nowhere,
+ * so they computed invalid and fell back to their literals in every theme.
+ * They now name --surface-3 and --text, the tokens this comment already
+ * pointed at. Their fallbacks are deliberately KEPT - stripping them would
+ * move this file off its ratchet pin, and the pin is an exact match. */
 #bi-duration-mount .dw-champ {
   display: flex;
   align-items: center;
