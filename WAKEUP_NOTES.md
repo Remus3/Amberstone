@@ -6,6 +6,85 @@
 
 ---
 
+# 2026-09-04b - RM-339: 20 dead element ids adjudicated per-id, 16 deleted, 4 allowlisted (ON MAIN)
+
+STATE. Main carries RM-339 on top of the 1324 six-slice batch. ENGINE 1.280.0
+unchanged, Tier-1 asset-only, no `:8860` bounce, no Share sync. Three read-only
+adjudicators (one per family) + two build slices; all worktrees and branches
+removed. LEDGER 1325 has the detail. RM-340 filed.
+
+FINAL GUARD STATE. `tests/test_web_element_id_resolution_rm339.py` is GREEN:
+20 unresolved, 4 allowlisted with cited reasons, 0 remaining, `KNOWN_OPEN`
+empty. Do not "clean up" the allowlist - each entry is load-bearing.
+
+THE COUNT WAS WRONG TWICE, IN BOTH DIRECTIONS.
+Filed 25. RM-328 had closed 4, so the merger re-derived 21 - and got the
+FAMILY SPLIT wrong too (the row's own dev.js enumeration sums to 13, not the
+12 it stated). Then an adjudicator refuted the merger's 21:
+`csv-sugg-ds-combo-input` is created at RUNTIME by `ds_combo.js:309` emitting
+`id="${sigKey}-input"`. True count 20. Re-derive, then expect the re-derivation
+to be wrong too.
+
+THE DISCRIMINATOR THAT DECIDED EVERY ID.
+RM-328 (earlier the same day) was RESTORE; RM-339 came out 16 REMOVE / 4
+ALLOWLIST / 0 RESTORE. The test is not "did the removing commit have a
+message" but "does the message name THIS thing". `832704a7c` (s162) says
+"removed 5 live menu items (Loadouts/Diagnostics/Coach Calls/Bridge Pending/
+Fleet)" - named, so REMOVE. `440ede616` enumerated its cuts exhaustively and
+never mentioned the panel it killed - unnamed, so RESTORE. Both branches have
+now been exercised; use the same test next time.
+
+FOUR TRAPS WORTH CARRYING.
+1. **A blanket "every getElementById must resolve" guard would be REVERTED.**
+   `set-force-scan-btn` / `set-force-scan-status` are pinned in BOTH directions
+   by `tests/test_settings_force_scan_dom.py` (:42-43 assert the ids are ABSENT
+   from html, :56 asserts the binder is PRESENT in js), so a restore AND a
+   removal both go red there. Four ids are deliberate optional targets.
+2. **An exemption needs a falsifiable obligation, and the guard enforced it on
+   the merger.** Allowlist reasons must cite a `.js`/`.html` `file:line`; the
+   merger's first attempt cited only a `.py` path and was rejected by the
+   guard's own test until real citations were added.
+3. **`$'\u2191'` DOES NOT EXPAND in this shell.** The merger declared a slice's
+   non-ASCII finding refuted on a grep that returned nothing, then found the
+   pattern was literal. Byte-count instead: 12 arrow glyphs before, 8 after.
+   The remaining 8 are in LIVE spans, which `test_web_ascii_sweep.py` excludes
+   BY DESIGN (it sweeps comment spans only) - not a defect, do not "fix" it.
+4. **A test can assert a falsehood while its name denies it.**
+   `test_set_empty_state_does_not_reference_dead_id` pinned a list CONTAINING a
+   dead id, and had done since the day the id died. Read what a guard asserts,
+   not what it is called.
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-341.
+      RM-340 (LANE 4, Tier-1) is the direct follow-on: `state.js:39` registers a
+      `dev` view with no mount, no menu item and no markup, plus an orphan
+      `VIEW_LABELS` entry at :56. It is NOT residue deletion - `VIEW_IDS`
+      membership drives the hash-route parser, the persisted-selection restore
+      and the menu builder, so read every consumer and cite it before deciding.
+      Also open: RM-322 (LANE 7), RM-212, RM-214, RM-286/287, RM-291..295.
+      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
+
+Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. Lane worktrees at
+      C:\rc-worktrees\rc-lane-* were NOT touched today and still sit at
+      a55ece97e - fast-forward before using one.
+
+Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
+      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
+      :8860 restart and a Share mirror sync; Tier-0/1 do not.
+
+Do NOT redo: RM-339 is CLOSED (LEDGER 1325) and RM-208/209/220/326/327/328/338
+      closed the same day (LEDGER 1324). Do not re-run the id census - it is 20,
+      measured twice and corrected once. Do not delete the 4 allowlist entries.
+      Do not delete `/api/loadouts/all` or `/api/diagnostics` - both were left
+      serving with no renderer ON PURPOSE (history_notes:23148: backends kept
+      because ops tools depend on them); each removal is its own row.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-04 - six-slice batch: RM-208 / 209 / 220 / 326 / 327 / 328 shipped, RM-338 found+fixed, RM-339 filed (ON MAIN)
 
 STATE. Main carries all seven. ENGINE **1.280.0 unchanged**, patch 16.15.1,
@@ -148,66 +227,3 @@ looking for unmerged lane work.
 
 NEXT. Next free id is **RM-338**. Still open: RM-208 + RM-220 (lane 6),
 RM-326/327/328 + RM-209 (lane 4).
-
----
-
-# 2026-09-03 - MERGER: RM-329..RM-336 shipped as one batch, ENGINE 1.280.0 (ON MAIN)
-
-STATE. Main at the 1.280.0 bump, pushed. All eight rows the 2026-09-02 lane-5
-refill filed are CLOSED. `:8860` bounced and serving 1.280.0 / 16.15.1 / 173
-champs / 706 items. Share mirror `--check` exit 0 at 534 files. DS 10845 passed
-/ 13659 subtests / 0 failed; RC 20370 passed / 96 skipped / 4779 subtests / 0
-failed (measured AFTER the bounce - before it, `test_live_three_profiles` is
-structurally red). ROADMAP 72151 of 81920 = 88.07 pct, measured ON MAIN. All six
-run worktrees removed, branches deleted. The five lane worktrees are untouched
-at `22e8bd0ef` and are now one batch behind main - fast-forward before using one.
-
-WHAT SHIPPED. RM-331 (Arena augments resolve by DISPLAY name; alias index over
-apiName AND name, zero collisions across all 6 snapshots) and RM-334 (`/ehp`
-parses `apply_build_tenacity`) are the two behaviour changes that earned the
-bump. RM-329 (mode-provenance notes on all 7 EHP-family routes plus
-`compute_hps`), RM-330 option B, RM-332, RM-333, RM-335, RM-336 rode along.
-
-READ THIS BEFORE THE NEXT PARALLEL RUN - THE MACHINE OOM'd. Five slices each
-running the ~10.7k DS suite, at least three with `-n 8`, took free RAM to 721 MB
-of 32 GB. `git status` died on malloc, one slice hit `INTERNALERROR MemoryError`,
-two slices were killed. **It presents as an API error and is not one.** Cap it:
-single-process pytest in slices, targeted modules while iterating, ONE full suite
-at the end. Killed slices resume fine via SendMessage with context intact - both
-did, and nothing was lost. A slice suite run that died on malloc reports nothing
-trustworthy; re-run it rather than reading it.
-
-NEXT - RM-337 is the obvious pick and it is already filed with acceptance.
-A clean copy of `Share/` OUTSIDE the repo reports 13 failed / 8361 passed. They
-are PRE-EXISTING (set-difference against `22e8bd0ef` returns exactly one new
-name, already fixed) and caused by CWD-relative path opens -
-`test_rune_procs_per_attack.py:99` opens the literal
-`agents/daemon_slayer/rune_procs.py`, which resolves at the repo root but not
-under `Share/src`. **All 13 are GREEN in the main tree, for the wrong reason** -
-verify any fix from a clean copy outside the repo, never from `cd Share` inside
-it and never from the main tree. Fix with `__file__`-relative paths PLUS a guard
-asserting no test under `agents/daemon_slayer/tests/` opens a path starting with
-`agents/`; the guard is the load-bearing half. Do NOT fix by excluding them from
-the mirror - they have no host subject and belong in the package.
-`Share/README.md`'s "0 failed / passes clean" claim is already corrected in place
-to the measured 13. Also still open from earlier refills: RM-208 + RM-220 (lane
-6), RM-326/327/328 + RM-209 (lane 4). Next free id is RM-338.
-
-TWO TRAPS THIS RUN PAID FOR. (1) `tools/ds_share_sync.py` had a SECOND
-`write_text` path (doc-anchor refresh, `:1043`) while its sibling at `:1099`
-already passed `newline=""` and carried a comment about this exact failure. It
-only fires on an ENGINE bump, which is how it survived the RM-284 sweep that
-created the `eol=lf` pin. Fixed. **If you add a writer for a tracked pinned file,
-write bytes or pass `newline=""` - and remember a bump-only path is invisible
-between releases.** (2) The build-order tables DO have a stamp guard tying them
-to `ENGINE_VERSION` - this session asserted otherwise off too narrow a grep and
-got 14 red assertions for it. `python -m core.build_order_precompute --static
---mode all --champions all` and the `build_order_variants` twin; both name their
-own regen command in the failure text. The generator writes CRLF, so normalise
-the six JSON files to LF afterwards.
-
-COUNTING. Do not trust a merger-supplied baseline either - S6 was briefed the DS
-base was 10741 and correctly refuted it with exact arithmetic (true base 10803;
-10741 was one slice's ISOLATED number). And `grep -rl` for a version literal
-matches compiled `.pyc` binaries: the bump surface is 131 `.py` files / 155
-occurrences, not the 381 a naive `grep -rl` reports.

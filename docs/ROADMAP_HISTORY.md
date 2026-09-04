@@ -1,5 +1,13 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-04b - RM-339 relocation
+
+Relocated by the RM-339 merger session for the ROADMAP size budget. Full detail in `docs/LEDGER.md` 1325; row body retained in `BACKLOG.md`.
+
+### RM-339
+
+- **RM-339 SHIPPED 2026-09-04 (LEDGER 1325)** - the 25 filed dead `getElementById` ids were really **20** (one was created at runtime from an interpolated id, and RM-328 had closed 4). Adjudicated per-id from git history by three read-only agents: **16 REMOVE, 4 ALLOWLIST, 0 RESTORE**. 15 of the 16 were residue of `832704a7c` (s162), which deleted five menu mounts and their router dispatch but left the JS and CSS. Guarded by `tests/test_web_element_id_resolution_rm339.py`, whose allowlist requires a cited `file:line` per exemption. Body in `BACKLOG.md`.
+
 ## 2026-09-04 - ROADMAP size-budget relocation pass (6 shipped entries)
 
 Relocated verbatim by the 2026-09-04 six-slice merger session. ROADMAP.md stood
