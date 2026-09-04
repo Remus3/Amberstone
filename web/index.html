@@ -1171,6 +1171,38 @@
             </div>
           </div>
         </div>
+        <!-- Team Context block (FU02 panel stub). Populates from the
+             coach.team_context payload spliced by dashboard/_state_builder,
+             fanned out by dashboard/routes_team_context.py off the
+             tools/lcu_agent.py champ-select POST.
+             RM-328: this mount was collateral damage in 440ede616 (s208,
+             the legacy #cs-overlay retirement) - the markup lived inside
+             that block and is named in none of that commit's enumerated
+             cuts. web/js/panels/team_context.js stayed wired into all three
+             /api/state consumers the whole time and returned at its
+             getElementById guard on every call. Re-homed here to the
+             placement web/css/panels/team_context.css:2-3 has documented
+             since s208: a full-width strip inside .view-section-body,
+             directly below the champ-select team rows, styled by a flat
+             .cs-team-context-block selector with no .cs-overlay ancestor.
+             renderTeamContext reads exactly four ids off this subtree -
+             cs-team-context-block, tc-status, tc-allies, tc-enemies. -->
+        <div class="cs-team-context-block" id="cs-team-context-block" hidden>
+          <div class="tc-head">
+            <span class="tc-label">TEAM CONTEXT</span>
+            <span class="tc-status" id="tc-status">waiting for enrichment...</span>
+          </div>
+          <div class="tc-teams">
+            <div class="tc-team-block">
+              <div class="tc-team-label">Allies</div>
+              <div class="tc-team-row" id="tc-allies"></div>
+            </div>
+            <div class="tc-team-block">
+              <div class="tc-team-label">Enemies</div>
+              <div class="tc-team-row" id="tc-enemies"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
