@@ -422,8 +422,11 @@ def test_the_committed_corpus_still_carries_the_cited_stored_blocks():
     engine's data.
     """
     path = _ROOT / "data" / "daemon_slayer" / "16.15.1" / "champion_abilities.json"
-    if not path.exists():
-        pytest.skip("16.15.1 corpus not present in this checkout")
+    # No skip guard here on purpose. This corpus is TRACKED, so its absence is a
+    # defect rather than an environment gate, and a skip would make this an
+    # always-passing test - see docs/SKIPIF_AUDIT_2026-07-27.md and the guard in
+    # tests/test_skip_condition_hygiene.py that caught exactly that here.
+    assert path.exists(), f"tracked corpus missing: {path}"
     data = json.loads(path.read_text(encoding="utf-8"))["data"]
     for champ, slot, copied in [
         ("Jayce", "W", JAYCE_W_MERAKI),
