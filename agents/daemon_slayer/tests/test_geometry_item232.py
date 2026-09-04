@@ -24,6 +24,12 @@ _REPO_ROOT = os.path.normpath(
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+# Source-file lookups below are anchored on this file's own location, not the
+# process CWD, so the shipped Share/ package runs them from any directory.
+_DS_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+)
+
 from agents.daemon_slayer.geometry import (
     _AOE_TARGET_CAP,
     _CONFLATED_RADIUS_SENTINELS,
@@ -363,7 +369,7 @@ class AsciiHygieneTests(unittest.TestCase):
     """Verify the new source files contain only ASCII bytes."""
 
     def _check_file(self, rel_path: str) -> None:
-        abs_path = os.path.join(_REPO_ROOT, rel_path)
+        abs_path = os.path.join(_DS_DIR, rel_path)
         with open(abs_path, "rb") as fh:
             content = fh.read()
         non_ascii = [
@@ -377,12 +383,10 @@ class AsciiHygieneTests(unittest.TestCase):
         )
 
     def test_geometry_module_is_ascii(self) -> None:
-        self._check_file("agents/daemon_slayer/geometry.py")
+        self._check_file("geometry.py")
 
     def test_geometry_test_file_is_ascii(self) -> None:
-        self._check_file(
-            "agents/daemon_slayer/tests/test_geometry_item232.py"
-        )
+        self._check_file("tests/test_geometry_item232.py")
 
 
 if __name__ == "__main__":

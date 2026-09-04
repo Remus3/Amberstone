@@ -49,12 +49,17 @@ RM-42 spec actually needs, and they are filed as the follow-on.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer import _passive_damage_overrides as pdo
 from agents.daemon_slayer import rank
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.dps import compute_dps
 from agents.daemon_slayer.rank import rank_items
+
+# Anchor source-file lookups on this file's own location, not the process CWD,
+# so the source-inspection test below resolves from any directory.
+_DS_DIR = Path(__file__).resolve().parents[1]   # agents/daemon_slayer
 
 _SNAP = DataSnapshot.load()
 _LEVEL = 16
@@ -318,9 +323,7 @@ class RoutePlumbTest(unittest.TestCase):
         """`server.py` asserted that `/rank` parses `apply_passive_damage`
         while it provably did not. Now that it DOES, the sentence must not read
         as though it always did - the correction is the point."""
-        from pathlib import Path
-
-        src = Path("agents/daemon_slayer/server.py").read_text(encoding="utf-8")
+        src = (_DS_DIR / "server.py").read_text(encoding="utf-8")
         self.assertNotIn(
             "NOT the ``apply_passive_damage`` flag that ``/rank`` and "
             "``/rank-onhit`` parse", src,
