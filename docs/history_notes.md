@@ -119,6 +119,71 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-02/03 - lane 5 REFILL, then merger + two repo fixes (all ON MAIN)
+
+Started as a detached lane-5 research refill, then the operator directed the
+merge and two follow-on repo fixes. Everything below is on `main`, pushed, CI
+green, and all five lane worktrees are fast-forwarded to it and clean.
+
+**Commits, newest first:**
+```
+8119b3334  eol=lf for every other text type (RM-284 follow-on, LEDGER 1321)
+a2d132489  RM-284 - *.md text eol=lf (LEDGER 1320)
+acc7f25ad  ROADMAP relocation pass - 8 rows, 0 ids lost
+6c4e37bde  clear the budget breach the merge itself caused
+7ff7f00cb  Merge lane/research: RM-329..RM-336 refill (LEDGER 1319)
+aac80637c  preserve the merger session's orphaned WAKEUP archive
+```
+
+**REFILL: RM-329..RM-336 filed, next free id RM-337.** Six LANE 6 (the starved
+lane - its ROADMAP-visible work was ONE row), two LANE 7. The refutation pass
+changed three of nine candidates: RM-332 KILLED as a defect (`unique_passive_key`
+is a DEDUP family, `shield=None` is CORRECT - kept as a Tier-0 note fix), RM-330
+downgraded to DECIDE-THEN-ACT after its live-defect claim was refuted twice, and
+RM-329 re-framed and severity-capped. RM-220 also got the ROADMAP pointer it had
+never had.
+
+**MERGE: the main tree was NOT clean.** It held an uncommitted 124-line
+`docs/history_notes.md` addition, 28.5h stale - the archive half of the
+2026-09-01c merger `/done`, never staged. Committed FIRST and separately
+(`aac80637c`) so the merge could not clobber it.
+
+**RM-284 CLOSED, both halves.** (a) the relocation pass took ROADMAP 89.9 -> 87.55
+pct with all 179 ids retained and every fence kept in its stub; (b) `.gitattributes`
+now pins 18 text suffixes to `eol=lf`, so on-disk equals blob. ROADMAP measured
+71719 on disk against a 71522 blob before, and 71522/71522 after.
+
+**THE RECURRING LESSON THIS SESSION, three times over: measure with the same
+filter the contract uses.**
+- A doc budget measured in a lane worktree (LF) passed while main (CRLF) breached.
+  ALWAYS measure a budget on main.
+- A green `ci` run proved nothing because the scheduled nightly SKIPS the `check`
+  job. Read `jobs[].steps[].conclusion`, never the workflow conclusion.
+- The eol guard flagged 7 LFS payloads that were correct, because it filtered by
+  SUFFIX while `.gitattributes` filters by effective attribute. It asks
+  `git check-attr` now.
+
+**Three of my own claims were corrected mid-run** and are recorded rather than
+quietly fixed: "the bundle is absent from both trees" (wrong path), "CI is
+unaffected" twice (docstring, then derivation - now rests on six observed run
+conclusions), and a recommendation to relocate three ROADMAP rows that were
+ALREADY relocated on 2026-08-31.
+
+**Memories added/updated:** `reference_ds_probe_flag_needs_its_scoring_axis` (new
+- a DS flag reads INERT unless the request selects the axis it moves),
+`reference_green_ci_run_may_have_skipped_the_job` (new),
+`reference_windows_write_text_crlf_byte_count` (two new sections). MEMORY.md's
+four sub-index counts were DELETED rather than refreshed - all four were stale
+(79/20/31/59 against 73/19/30/41) and nothing guards them.
+
+**NEXT:** lane 6 has 8 actionable rows (RM-208, RM-220, RM-329..334); lane 4 still
+holds RM-326/327/328 + RM-209 unworked. Full brief with acceptance checks and the
+do-not-redo set: `C:\\Users\\Administrator\\Desktop\\RC-NEXT-SESSION.txt`.
+
+---
+
+---
+
 # 2026-09-01c - MERGER session: ROADMAP trim + 3-lane merge + gist-sync fix
 
 Interactive merger session; everything below is on main + CI-green, all five lane
@@ -143,10 +208,6 @@ mechanism in LEDGER 1318.
 bug is fixed. **Still open (flagged):** rc-shell overlay needs an operator Electron
 relaunch; uiux PREPARE items (legibility variants + opaque-widget defect) are RM-122
 operator-present; lane-6 RM-208/RM-220 + research RM-328 open in BACKLOG.
-
----
-
----
 
 ---
 
@@ -191,162 +252,6 @@ operator-present; lane-6 RM-208/RM-220 + research RM-328 open in BACKLOG.
   text lives in BOTH `tools/done.md` and `.claude/commands/done.md` (drift_guard
   enforces mirror parity), so edit them together. Not done: it changes the wrap
   ritual and that is an operator call.
-
----
-
-**Operator note at wrap - console flash hunt, LEAD ALREADY NARROWED (do not re-scan from
-zero).** Every one of the 6 `subprocess.run` call sites in the four hook scripts
-(`ci_watchdog`, `pytest_guard`, `edit_lint_check`, `precommit_gate` x3) ALREADY passes
-`creationflags` - audited per CALL SITE, not per file, so "the file contains CREATE_NO_WINDOW"
-was not accepted as the answer. The flash is elsewhere. **Prime suspect: the `Stop` hook is the
-ONLY hook in `.claude/settings.json` launched with `python.exe` instead of `pythonw.exe`** -
-`tools/stop_claim_gate.py --arm` - and it fires at EVERY turn end, which matches "briefly,
-repeatedly". It is also the CI-probe gate, matching the operator's own hunch that it sits in the
-CI monitoring. Secondary: the two `perseus-vault.exe` hooks (SessionStart + SessionEnd) are
-native binaries, but fire once per session, not per turn. **Confirm before changing anything** -
-per `reference_pythonw_child_console_flash` the flash can also come from a CHILD of a pythonw
-parent, and per CLAUDE.md a `settings.json` with single-backslash Windows paths is INVALID JSON
-that silently registers no hooks at all, so assert it parses after any edit.
-
-# 2026-08-02d - RM-141 JADE SHIPPED (offline half); the guard was excusing what it existed to catch
-
-Headless-upgrade run `2026-08-02-01`, main tree. 8 commits, pushed
-`0a9240b9..3f4e2ab8`. Full ledger entry: `docs/LEDGER.md` item 1163.
-Spec: `docs/specs/RM-141_JADE_MODE.md`.
-
-**TIER-1, and the continue-note said Tier-2.** Second run running where the
-row's own tier guess was wrong. The 60 `Jade_*` champion rows and the 162-item
-`[770000,780000)` band live ONLY in `data/meta_build/ddragon/16.15.1/`; they
-reach `data/daemon_slayer/16.15.1/` zero times. Mirrored, ingested by nothing.
-No ENGINE bump, no Share sync, no `:8860` bounce were owed and none were done.
-
-**The bug fixed was WRONG output, not absent output.** A JADE game fell through
-the SR catch-all, was rejected by `is_sr_mode`, fired no coach, built no
-snapshot - and the dashboard kept serving the LAST SR game's advice.
-
-**Do NOT redo:** what "League Classic" means is settled (JADE, three sessions
-now). The three kCustom kJade ids are unmapped on purpose. `4311` is mapped at
-`gameSelectPriority` 0 on purpose - the queue map is a designed SUPERSET of the
-census and no guard asserts the converse. `history_notes.md` and `LEDGER.md`
-keep their "alias" wording by design (append-only). Ingesting the throwback
-registry is BLOCKED-UPSTREAM, not deferred - Meraki 404s all 60.
-
-**Two process lessons worth more than the feature:**
-1. The full repo-root suite caught a defect that FIVE verifier gates and every
-   per-slice run missed - and the defect was mine, from a bad slice brief ("skip
-   if the file is absent" on a TRACKED file, which
-   `tests/test_skip_condition_hygiene.py` correctly calls an always-passing
-   guard). Per-slice greens do not compose into a suite green.
-2. The alias guard shipped green while excusing exactly what it existed to
-   catch. The verifier found one cause (`variant` was a refutation marker);
-   removing it did NOT close the hole, because the marker was searched across a
-   2-line window, so one legitimate correction excused every re-introduction in
-   the same paragraph. Fixed by requiring the marker on the SAME line. A guard
-   is not proven by its own green.
-
-**Next:** the remaining half of RM-141 is LIVE-GATED as
-`docs/LIVE_GAME_GATED_SYNC.md` GATE 8, rows G8-01..G8-06. G8-01 can invalidate
-the rest: if liveclient `gameMode` reads `CLASSIC` rather than `JADE`, the
-exact-match branch is dead code and the row re-scopes. Desktop
-`RC-NEXT-SESSION.txt` carries the live-state fork.
-
----
-
----
-
-# 2026-08-06a - headless run 2026-08-06-01: four fixes, and three of them mask or measure something bigger than themselves
-
-Six merges `de5b5488..e8802e21` (`a8515a98`, `71f172aa`, `eba815e5`, `c5f1e4c8`,
-`8f417bc3`, `e8802e21`) plus this docs commit. LEDGER 1202-1206; six rows filed
-RM-163 .. RM-168.
-
-- **CI IS OWED FOR EVERY SHA IN THIS RUN AND IT IS NOT A REPO FAULT.** GitHub
-  Actions was in a MAJOR OUTAGE from 2026-08-06 15:22:49 UTC, so every push
-  created ZERO workflow runs and `gh run list` shows only the previous day -
-  which reads exactly like a broken trigger. Ruled out by probe: Actions
-  enabled, all 3 workflows `state=active`, `ci.yml` `paths-ignore` is
-  `**/*.md` ONLY while every push carried `.py`, commits ARE on GitHub. NOT
-  ruled out: **billing** (the local `gh` token lacks the `user` scope the usage
-  endpoint needs). A manual `gh workflow run` DID create run `31127029404`, so
-  the failure is push-event DELIVERY, not run creation. **Do not write "CI
-  green" anywhere for these shas** - every merge passed a LOCAL gate only.
-- **RM-158's root cause was an unregistered dict key, and the corruption is
-  wider than the row said.** `core/lead_projection.py` registered gold-income
-  rates for SR and ARAM only, so `gold_income_per_min("ARENA")` fell through to
-  a default byte-identical to SR's 450.0 - and at schema v3 that was ARENA's
-  LAST mode-differentiating input, which is why the output was a byte-COPY
-  rather than merely similar. **BOTH shipped arena tables are SR copies**
-  (16.12.1 `cec62070b61e7c35` as well as 16.13.1 `22982424e69c42cc`, hashes
-  re-derived independently). The fix registers the row AND makes `main()`
-  REFUSE an unregistered mode, so the next one fails loudly. **The DATA half is
-  still open:** regen both, and 1,148 `mode=arena` rows in
-  `data/hz_choice_shadow.jsonl` are SR measurements labelled arena - drop or
-  relabel, never average.
-- **The obvious Lane B improvement was MEASURED AND REJECTED, and that is the
-  substantive half.** `sort_by="efficiency"` as the build ordering metric
-  changed 52 of 60 cells over 15 champions x 4 comp archetypes and pulled
-  Doran's Helm / Doran's Bow / Guardian's Blade into slots 3-5 of the final six.
-  It DEGRADES the tables. Shipped instead: the starter-tier invariant the tables
-  held only by ACCIDENT, now pinned (`Lane` tag AND gold < 1000 - and the
-  ceiling sits in a provably EMPTY band: no Lane item between 950g and 2500g).
-- **Lane B's real blocker is a CONSUMER, not data.** The HZ-B1 comp-archetype
-  table is the largest and richest of three families and has ZERO PRODUCTION
-  CONSUMERS - definition plus 5 test call sites, nothing under `tools/` or
-  `ops/audit/`. So the richest precomputed build data RC holds is on no path a
-  coach reads. Filed RM-164. Coverage being full and machine-guarded told us
-  nothing about whether anything READS it.
-- **A cache that fixes a latency number can hide the cause.** `/api/last-match`
-  went 0.475s cold -> 0.0078s cached, but 289ms of 291ms of the build was ONE
-  urlopen, because `core/riot_api.py:520-522` stores a result only
-  `if data is not None`. A `None` is never cached, so a match Riot has no
-  timeline for refires forever - and `None` is the NORMAL case (event modes
-  return empty by design). Filed RM-163, highest-value open non-gated row.
-  Cold is the number a real fix moves.
-- **The instrument was calibrated on fake data.** Tests were driving the REAL
-  cost tracker: 13,141 synthetic calls across 40 of 84 day-files. The
-  consequence, not the row count, is the finding -
-  `tools/cost_health_watchdog.py`'s trailing-median baseline read $0.039424
-  against a true $0.300906, **7.63x low and composed ENTIRELY of test rows**.
-  Prevention is an autouse conftest fixture; the backfill filters PER BUCKET,
-  never per file, because a day-file mixes real and synthetic rows.
-- **Two negatives held honestly.** The `recent_matches.json` zero-`by_gate`
-  producer stays UNIDENTIFIED - the first attribution was REFUTED by
-  measurement and no test in `tests/` calls `save_match` at all. And a negative
-  control on the conftest fixture was DECLINED on purpose: running the polluters
-  under the old conftest would have spent real money testing a guard against
-  spending real money.
-- **`.githooks/commit-msg:23-29` STRIPS the `Co-Authored-By: Claude` trailer**
-  (operator policy 2026-06-03, deletion not rejection). This run paid for that
-  three times: three slice prompts told agents to add it, TWO verifier passes
-  returned REFUTE on its absence as a genuine defect, and two merge bodies
-  assert they carry a trailer the hook removed. Audit it with an ANCHORED
-  predicate and read the message TAIL - `grep -ci` matches prose ABOUT the
-  trailer. Now a one-line hard rule in CLAUDE.md.
-
----
-
----
-
-# 2026-08-11 - Overlay Platform M submission compliance (operator-directed, interactive)
-
-Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 failed. DS 10495 passed / 83 skipped / 0 failed. `ds_share_sync --check` in sync (engine 1.277.0, 533 files). Plan: `docs/OVERLAY_COMPLIANCE_PLAN.md`. Full detail: LEDGER 1238.
-
-**What this session was.** Reviewed the Overlay Platform M app-proposal form + Riot's third-party rules, then cut every RC surface those rules ban and rebuilt the one worth keeping. Framework verdict for a future port: **ow-electron, not Overlay Platform M Native** (RC already ships an Electron shell and needs native node + a Python sidecar; Native is a CEF UI wrapper with no story for either).
-
-**Removed:** enemy summoner-spell tap-tracker; summoner + ultimate cooldown ledger; ultimate power-spike cue; `/api/cooldown-watch` + `agents/daemon_slayer/cooldown_watch.py`. Every removal left an INVERTED guard test where the old case asserted the banned surface must exist - reinstating any of them turns a test red.
-
-**Two things worth carrying forward:**
-1. **B7 was a live routing bug, not just compliance.** `mode_from_game_mode_string` matched no branch on `"BRAWL"`, so a real Riot Brawl game defaulted to `MODE_SR` and got coached. Three OTHER sites tested substring `"BRAWL"` and so matched ONLY Riot Brawl, never RC's rotating modes. Gate is now `is_forbidden_game_mode()` + `MODE_UNSUPPORTED`, checked first, in `core/game_snapshot.py` (FROZEN file, edited with explicit operator approval).
-2. **My own filed blocker B6 was wrong.** RC displays no TFT Legend/Augment win rates or average placements, and `core/augment_external_source.py` is an ARENA prior the TFT-scoped rule does not reach. Acting on the row as filed would have deleted a working Arena feature. Filed rows stay hypotheses until probed.
-
-**The line, for any future session:** Riot bans **tracking** enemy cooldowns - the verb carries the rule. DDragon publishes every per-rank cooldown and the client shows them. The DS engine's cooldown math is untouched and must stay so; champ-select CC advice ("enemy comp has 4 hard-CC abilities, consider Cleanse") is legal; a per-instance countdown is not. `cc_threat_cell` is the compliant rebuild - CC duration and threat spell, no cooldown scalar, guarded against the scalar returning under a new name.
-
-**OPERATOR ACTIONS OPEN (cannot be automated):**
-- **RENAME the product.** "Amberstone" uses Riot's trademark and BLOCKS the Riot 3rd-party application. Operator has kept **Salt Circle** and **Lane Oracle**; full shortlist with domain-probe results is in `docs/OVERLAY_COMPLIANCE_PLAN.md` section 6b2. "Daemon Slayer" is NOT usable publicly (Shueisha's DEMON SLAYER covers computer game software; homophone, same class) - keep it as the internal engine codename.
-- Riot Developer Portal product registration needs a Riot account login + form submission.
-- A production key needs a public website, Terms of Service and Privacy Policy. None exist.
-
-**NOT started:** B4 (move coach imperatives to pre/post-game, decision recorded in plan 6c - compute branches live, render nothing, review post-game), B8 (vision/OCR capture - DevRel question), B9 (LCU declaration), and the rename sweep itself.
 
 ---
 
@@ -25015,6 +24920,166 @@ disjoint engine module groups, then a separate adversarial refutation panel.
 - Suites measured, not carried: DS **10518** passed / 13195 subtests; RC
   `tests/` **18929** passed / 143 skipped / 2082 subtests / 1 failed (above).
   Independent verifier: CONFIRM 11/11.
+
+---
+
+---
+
+---
+
+**Operator note at wrap - console flash hunt, LEAD ALREADY NARROWED (do not re-scan from
+zero).** Every one of the 6 `subprocess.run` call sites in the four hook scripts
+(`ci_watchdog`, `pytest_guard`, `edit_lint_check`, `precommit_gate` x3) ALREADY passes
+`creationflags` - audited per CALL SITE, not per file, so "the file contains CREATE_NO_WINDOW"
+was not accepted as the answer. The flash is elsewhere. **Prime suspect: the `Stop` hook is the
+ONLY hook in `.claude/settings.json` launched with `python.exe` instead of `pythonw.exe`** -
+`tools/stop_claim_gate.py --arm` - and it fires at EVERY turn end, which matches "briefly,
+repeatedly". It is also the CI-probe gate, matching the operator's own hunch that it sits in the
+CI monitoring. Secondary: the two `perseus-vault.exe` hooks (SessionStart + SessionEnd) are
+native binaries, but fire once per session, not per turn. **Confirm before changing anything** -
+per `reference_pythonw_child_console_flash` the flash can also come from a CHILD of a pythonw
+parent, and per CLAUDE.md a `settings.json` with single-backslash Windows paths is INVALID JSON
+that silently registers no hooks at all, so assert it parses after any edit.
+
+# 2026-08-02d - RM-141 JADE SHIPPED (offline half); the guard was excusing what it existed to catch
+
+Headless-upgrade run `2026-08-02-01`, main tree. 8 commits, pushed
+`0a9240b9..3f4e2ab8`. Full ledger entry: `docs/LEDGER.md` item 1163.
+Spec: `docs/specs/RM-141_JADE_MODE.md`.
+
+**TIER-1, and the continue-note said Tier-2.** Second run running where the
+row's own tier guess was wrong. The 60 `Jade_*` champion rows and the 162-item
+`[770000,780000)` band live ONLY in `data/meta_build/ddragon/16.15.1/`; they
+reach `data/daemon_slayer/16.15.1/` zero times. Mirrored, ingested by nothing.
+No ENGINE bump, no Share sync, no `:8860` bounce were owed and none were done.
+
+**The bug fixed was WRONG output, not absent output.** A JADE game fell through
+the SR catch-all, was rejected by `is_sr_mode`, fired no coach, built no
+snapshot - and the dashboard kept serving the LAST SR game's advice.
+
+**Do NOT redo:** what "League Classic" means is settled (JADE, three sessions
+now). The three kCustom kJade ids are unmapped on purpose. `4311` is mapped at
+`gameSelectPriority` 0 on purpose - the queue map is a designed SUPERSET of the
+census and no guard asserts the converse. `history_notes.md` and `LEDGER.md`
+keep their "alias" wording by design (append-only). Ingesting the throwback
+registry is BLOCKED-UPSTREAM, not deferred - Meraki 404s all 60.
+
+**Two process lessons worth more than the feature:**
+1. The full repo-root suite caught a defect that FIVE verifier gates and every
+   per-slice run missed - and the defect was mine, from a bad slice brief ("skip
+   if the file is absent" on a TRACKED file, which
+   `tests/test_skip_condition_hygiene.py` correctly calls an always-passing
+   guard). Per-slice greens do not compose into a suite green.
+2. The alias guard shipped green while excusing exactly what it existed to
+   catch. The verifier found one cause (`variant` was a refutation marker);
+   removing it did NOT close the hole, because the marker was searched across a
+   2-line window, so one legitimate correction excused every re-introduction in
+   the same paragraph. Fixed by requiring the marker on the SAME line. A guard
+   is not proven by its own green.
+
+**Next:** the remaining half of RM-141 is LIVE-GATED as
+`docs/LIVE_GAME_GATED_SYNC.md` GATE 8, rows G8-01..G8-06. G8-01 can invalidate
+the rest: if liveclient `gameMode` reads `CLASSIC` rather than `JADE`, the
+exact-match branch is dead code and the row re-scopes. Desktop
+`RC-NEXT-SESSION.txt` carries the live-state fork.
+
+---
+
+---
+
+# 2026-08-06a - headless run 2026-08-06-01: four fixes, and three of them mask or measure something bigger than themselves
+
+Six merges `de5b5488..e8802e21` (`a8515a98`, `71f172aa`, `eba815e5`, `c5f1e4c8`,
+`8f417bc3`, `e8802e21`) plus this docs commit. LEDGER 1202-1206; six rows filed
+RM-163 .. RM-168.
+
+- **CI IS OWED FOR EVERY SHA IN THIS RUN AND IT IS NOT A REPO FAULT.** GitHub
+  Actions was in a MAJOR OUTAGE from 2026-08-06 15:22:49 UTC, so every push
+  created ZERO workflow runs and `gh run list` shows only the previous day -
+  which reads exactly like a broken trigger. Ruled out by probe: Actions
+  enabled, all 3 workflows `state=active`, `ci.yml` `paths-ignore` is
+  `**/*.md` ONLY while every push carried `.py`, commits ARE on GitHub. NOT
+  ruled out: **billing** (the local `gh` token lacks the `user` scope the usage
+  endpoint needs). A manual `gh workflow run` DID create run `31127029404`, so
+  the failure is push-event DELIVERY, not run creation. **Do not write "CI
+  green" anywhere for these shas** - every merge passed a LOCAL gate only.
+- **RM-158's root cause was an unregistered dict key, and the corruption is
+  wider than the row said.** `core/lead_projection.py` registered gold-income
+  rates for SR and ARAM only, so `gold_income_per_min("ARENA")` fell through to
+  a default byte-identical to SR's 450.0 - and at schema v3 that was ARENA's
+  LAST mode-differentiating input, which is why the output was a byte-COPY
+  rather than merely similar. **BOTH shipped arena tables are SR copies**
+  (16.12.1 `cec62070b61e7c35` as well as 16.13.1 `22982424e69c42cc`, hashes
+  re-derived independently). The fix registers the row AND makes `main()`
+  REFUSE an unregistered mode, so the next one fails loudly. **The DATA half is
+  still open:** regen both, and 1,148 `mode=arena` rows in
+  `data/hz_choice_shadow.jsonl` are SR measurements labelled arena - drop or
+  relabel, never average.
+- **The obvious Lane B improvement was MEASURED AND REJECTED, and that is the
+  substantive half.** `sort_by="efficiency"` as the build ordering metric
+  changed 52 of 60 cells over 15 champions x 4 comp archetypes and pulled
+  Doran's Helm / Doran's Bow / Guardian's Blade into slots 3-5 of the final six.
+  It DEGRADES the tables. Shipped instead: the starter-tier invariant the tables
+  held only by ACCIDENT, now pinned (`Lane` tag AND gold < 1000 - and the
+  ceiling sits in a provably EMPTY band: no Lane item between 950g and 2500g).
+- **Lane B's real blocker is a CONSUMER, not data.** The HZ-B1 comp-archetype
+  table is the largest and richest of three families and has ZERO PRODUCTION
+  CONSUMERS - definition plus 5 test call sites, nothing under `tools/` or
+  `ops/audit/`. So the richest precomputed build data RC holds is on no path a
+  coach reads. Filed RM-164. Coverage being full and machine-guarded told us
+  nothing about whether anything READS it.
+- **A cache that fixes a latency number can hide the cause.** `/api/last-match`
+  went 0.475s cold -> 0.0078s cached, but 289ms of 291ms of the build was ONE
+  urlopen, because `core/riot_api.py:520-522` stores a result only
+  `if data is not None`. A `None` is never cached, so a match Riot has no
+  timeline for refires forever - and `None` is the NORMAL case (event modes
+  return empty by design). Filed RM-163, highest-value open non-gated row.
+  Cold is the number a real fix moves.
+- **The instrument was calibrated on fake data.** Tests were driving the REAL
+  cost tracker: 13,141 synthetic calls across 40 of 84 day-files. The
+  consequence, not the row count, is the finding -
+  `tools/cost_health_watchdog.py`'s trailing-median baseline read $0.039424
+  against a true $0.300906, **7.63x low and composed ENTIRELY of test rows**.
+  Prevention is an autouse conftest fixture; the backfill filters PER BUCKET,
+  never per file, because a day-file mixes real and synthetic rows.
+- **Two negatives held honestly.** The `recent_matches.json` zero-`by_gate`
+  producer stays UNIDENTIFIED - the first attribution was REFUTED by
+  measurement and no test in `tests/` calls `save_match` at all. And a negative
+  control on the conftest fixture was DECLINED on purpose: running the polluters
+  under the old conftest would have spent real money testing a guard against
+  spending real money.
+- **`.githooks/commit-msg:23-29` STRIPS the `Co-Authored-By: Claude` trailer**
+  (operator policy 2026-06-03, deletion not rejection). This run paid for that
+  three times: three slice prompts told agents to add it, TWO verifier passes
+  returned REFUTE on its absence as a genuine defect, and two merge bodies
+  assert they carry a trailer the hook removed. Audit it with an ANCHORED
+  predicate and read the message TAIL - `grep -ci` matches prose ABOUT the
+  trailer. Now a one-line hard rule in CLAUDE.md.
+
+---
+
+---
+
+# 2026-08-11 - Overlay Platform M submission compliance (operator-directed, interactive)
+
+Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 failed. DS 10495 passed / 83 skipped / 0 failed. `ds_share_sync --check` in sync (engine 1.277.0, 533 files). Plan: `docs/OVERLAY_COMPLIANCE_PLAN.md`. Full detail: LEDGER 1238.
+
+**What this session was.** Reviewed the Overlay Platform M app-proposal form + Riot's third-party rules, then cut every RC surface those rules ban and rebuilt the one worth keeping. Framework verdict for a future port: **ow-electron, not Overlay Platform M Native** (RC already ships an Electron shell and needs native node + a Python sidecar; Native is a CEF UI wrapper with no story for either).
+
+**Removed:** enemy summoner-spell tap-tracker; summoner + ultimate cooldown ledger; ultimate power-spike cue; `/api/cooldown-watch` + `agents/daemon_slayer/cooldown_watch.py`. Every removal left an INVERTED guard test where the old case asserted the banned surface must exist - reinstating any of them turns a test red.
+
+**Two things worth carrying forward:**
+1. **B7 was a live routing bug, not just compliance.** `mode_from_game_mode_string` matched no branch on `"BRAWL"`, so a real Riot Brawl game defaulted to `MODE_SR` and got coached. Three OTHER sites tested substring `"BRAWL"` and so matched ONLY Riot Brawl, never RC's rotating modes. Gate is now `is_forbidden_game_mode()` + `MODE_UNSUPPORTED`, checked first, in `core/game_snapshot.py` (FROZEN file, edited with explicit operator approval).
+2. **My own filed blocker B6 was wrong.** RC displays no TFT Legend/Augment win rates or average placements, and `core/augment_external_source.py` is an ARENA prior the TFT-scoped rule does not reach. Acting on the row as filed would have deleted a working Arena feature. Filed rows stay hypotheses until probed.
+
+**The line, for any future session:** Riot bans **tracking** enemy cooldowns - the verb carries the rule. DDragon publishes every per-rank cooldown and the client shows them. The DS engine's cooldown math is untouched and must stay so; champ-select CC advice ("enemy comp has 4 hard-CC abilities, consider Cleanse") is legal; a per-instance countdown is not. `cc_threat_cell` is the compliant rebuild - CC duration and threat spell, no cooldown scalar, guarded against the scalar returning under a new name.
+
+**OPERATOR ACTIONS OPEN (cannot be automated):**
+- **RENAME the product.** "Amberstone" uses Riot's trademark and BLOCKS the Riot 3rd-party application. Operator has kept **Salt Circle** and **Lane Oracle**; full shortlist with domain-probe results is in `docs/OVERLAY_COMPLIANCE_PLAN.md` section 6b2. "Daemon Slayer" is NOT usable publicly (Shueisha's DEMON SLAYER covers computer game software; homophone, same class) - keep it as the internal engine codename.
+- Riot Developer Portal product registration needs a Riot account login + form submission.
+- A production key needs a public website, Terms of Service and Privacy Policy. None exist.
+
+**NOT started:** B4 (move coach imperatives to pre/post-game, decision recorded in plan 6c - compute branches live, render nothing, review post-game), B8 (vision/OCR capture - DevRel question), B9 (LCU declaration), and the rename sweep itself.
 
 ---
 
