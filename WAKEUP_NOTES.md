@@ -59,9 +59,16 @@ status tokens flipped with the LEDGER cite (bodies left as the record), next fre
 id now RM-338. Two of the eight were spot-checked in code first, not taken on the
 ledger's word.
 
+LANES ARE CURRENT - no fast-forward needed next session. All five lane
+worktrees (`ds`, `repo`, `research`, `true-audit`, `uiux`) were fast-forwarded
+from `22e8bd0ef` to `81f7e734a` and pushed at wrap; `lane/uiux` had no upstream
+and now tracks `origin/lane/uiux`. Checked before merging: every lane was
+ahead=0 both locally AND on origin, all five worktrees clean with zero stashes,
+so there was nothing to merge - the fast-forward was the whole job. Do not go
+looking for unmerged lane work.
+
 NEXT. Next free id is **RM-338**. Still open: RM-208 + RM-220 (lane 6),
-RM-326/327/328 + RM-209 (lane 4). The five lane worktrees are at `22e8bd0ef`,
-now two batches behind main - fast-forward before using one.
+RM-326/327/328 + RM-209 (lane 4).
 
 ---
 
