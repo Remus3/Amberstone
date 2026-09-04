@@ -6,6 +6,65 @@
 
 ---
 
+# 2026-09-03b - RM-337: the shipped Share package passes clean (ON MAIN)
+
+STATE. Main carries RM-337. A clean copy of `Share/` in a temp dir OUTSIDE the
+repo now reports **8376 passed / 0 failed / 24 skipped / 11256 subtests**. The
+baseline this session opened with, measured the same way, was 13 failed / 8361
+passed / 24 skipped. 8361 + 13 + 2 new guard tests = 8376 - the zero came from
+fixing tests, not excluding them. DS from the repo root 10847 passed / 13659
+subtests / 0 failed, which is yesterday's 10845 plus exactly the 2 guard tests.
+`ds_share_sync.py --check` exit 0 at 535 files. `drift_guard.py` 0 breaches.
+NO `ENGINE_VERSION` bump and no `:8860` bounce - Tier-1, nothing in the engine
+moved.
+
+VERIFY IT THE HARD WAY OR NOT AT ALL. `cd Share` inside the repo passes for the
+wrong reason, and all 13 were always green in the main tree. The only honest
+check is `cp -r Share <temp outside repo> && python -m pytest src -q` there.
+
+WHAT SHIPPED. 16 literal sites across 14 files anchored on
+`_DS_DIR = Path(__file__).resolve().parents[1]`. Three more than the row filed:
+a sibling sweep found `test_akshan_passive_carry_rm42.py` (same defect, but
+excluded from the mirror by `_HOST_DEPENDENT_TESTS`, so a count taken in the
+package could never show it) and `test_geometry_item232.py` (already correct,
+but it passed an `agents/`-prefixed literal that had to go so the guard could
+carry zero exemptions).
+
+THE GUARD IS THE HALF THAT MATTERS.
+`agents/daemon_slayer/tests/test_no_cwd_relative_paths.py` - `ast`-based, not a
+grep, so a `#` comment naming such a path stays legal; docstrings exempt
+STRUCTURALLY by node identity, never by name; NO per-file skip list. Its
+forbidden prefixes are assembled from `_TOP_PACKAGE = "agents"` because as plain
+literals they would be its own first two violations - do not "simplify" that
+back. Proven non-vacuous by planting a violation and watching it go red BOTH in
+the repo and inside the shipped package copy, where it resolves its scan root to
+the temp dir. It asserts it scanned more than 50 files (finds 438) and that it
+finds itself.
+
+TWO RESIDUALS, WRITTEN DOWN SO THE ROW IS NOT OVER-CLAIMED. It keys on the
+`agents/` prefix per the filed acceptance, so a bare
+`open("champion_block_index.json")` would slip through (none exists today), and
+a concatenated `"agents" + "/x.json"` splits the constant and evades it - the
+guard's own `_TOP_PACKAGE` line demonstrates that bypass.
+
+DRIFT FOUND WHILE IN THESE FILES, all fixed. `Share/README.md` needed correcting
+a SECOND time in two days (yesterday it went from "passes clean" to "expect 13";
+this made that stale in reverse) and rewriting it surfaced three more defects in
+the same section: a garbled duplicated clause, a "21 skips" line contradicting
+the same file's own header of 24, and a "356 of 429, drops 73" recital against a
+measured 362 of 437, drops 75. Separately, ROADMAP + BACKLOG still marked
+RM-329..RM-336 OPEN although LEDGER 1322 shipped all eight the day before, and
+ROADMAP still advertised "next free id RM-337" - the id this session used. Eight
+status tokens flipped with the LEDGER cite (bodies left as the record), next free
+id now RM-338. Two of the eight were spot-checked in code first, not taken on the
+ledger's word.
+
+NEXT. Next free id is **RM-338**. Still open: RM-208 + RM-220 (lane 6),
+RM-326/327/328 + RM-209 (lane 4). The five lane worktrees are at `22e8bd0ef`,
+now two batches behind main - fast-forward before using one.
+
+---
+
 # 2026-09-03 - MERGER: RM-329..RM-336 shipped as one batch, ENGINE 1.280.0 (ON MAIN)
 
 STATE. Main at the 1.280.0 bump, pushed. All eight rows the 2026-09-02 lane-5
@@ -127,33 +186,5 @@ four sub-index counts were DELETED rather than refreshed - all four were stale
 **NEXT:** lane 6 has 8 actionable rows (RM-208, RM-220, RM-329..334); lane 4 still
 holds RM-326/327/328 + RM-209 unworked. Full brief with acceptance checks and the
 do-not-redo set: `C:\\Users\\Administrator\\Desktop\\RC-NEXT-SESSION.txt`.
-
----
-
-
-# 2026-09-01c - MERGER session: ROADMAP trim + 3-lane merge + gist-sync fix
-
-Interactive merger session; everything below is on main + CI-green, all five lane
-branches 0 commits ahead of main.
-
-**Shipped:** ROADMAP trim 100 pct -> 89 pct (24 closed stubs + the RM-192..202
-compact-open-row split relocated to ROADMAP_HISTORY; the RM-171 ROADMAP.md
-line-231 citation baseline re-added as its DISCHARGED note predicted). Three hygiene fixes:
-augment-source `-n 8` flake `30156a0b`, CLI pin 2.1.220 -> 2.1.251 after a canary
-re-run `f0c847f8`, TFT debounce made hermetic `6ac142f1`. MERGED all three lane
-branches: research (RM-322..328), uiux (overlay focus + chip paint), ds
-(RM-323/324/325 + ENGINE 1.279.0). DS DEPLOYED live: `:8860` bounced -> 1.279.0,
-`test_live_three_profiles` green.
-
-**Gist-sync corruptor FIXED `01e6530bb`:** `tools/gist_share_sync.py` `_git` left
-the hook-injected `GIT_DIR` inherited, so `git -C CLONE_DIR` operated on the
-committing worktree - corrupting `lane/ds` and force-pushing to the wrong remote.
-Now scrubs the env; 3 regression tests; validated 3x under real Share commits. Full
-mechanism in LEDGER 1318.
-
-**Do NOT redo:** all three merges landed; DS 1.279.0 is deployed + live; the gist
-bug is fixed. **Still open (flagged):** rc-shell overlay needs an operator Electron
-relaunch; uiux PREPARE items (legibility variants + opaque-widget defect) are RM-122
-operator-present; lane-6 RM-208/RM-220 + research RM-328 open in BACKLOG.
 
 ---

@@ -45,6 +45,10 @@ from agents.daemon_slayer.ability_dps import (
 from agents.daemon_slayer.burst import compute_burst_damage
 from agents.daemon_slayer.data_loader import DataSnapshot
 
+# _DS_DIR anchors on __file__, not the process CWD, so the shipped Share
+# package resolves its registry JSON from any working directory.
+_DS_DIR = Path(__file__).resolve().parents[1]   # agents/daemon_slayer
+
 
 def _snap() -> DataSnapshot:
     reset_default_cache()
@@ -85,8 +89,7 @@ class S231RegistryShapeTests(unittest.TestCase):
 
     def test_registry_still_125_champions(self) -> None:
         reg = json.loads(
-            Path("agents/daemon_slayer/champion_block_index.json")
-            .read_text(encoding="utf-8")
+            (_DS_DIR / "champion_block_index.json").read_text(encoding="utf-8")
         )
         self.assertEqual(len(reg["champions"]), 125)
 

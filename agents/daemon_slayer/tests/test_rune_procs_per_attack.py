@@ -17,12 +17,17 @@ only).
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer.rune_procs import (
     RUNE_PROCS,
     compute_rune_proc_damage,
     keystone_amp,
 )
+
+# Anchor source-file lookups on this file's own location, not the process CWD,
+# so the shipped Share/ package runs its hygiene tests from any directory.
+_DS_DIR = Path(__file__).resolve().parents[1]   # agents/daemon_slayer
 
 _TOL = 1e-6
 
@@ -95,14 +100,14 @@ class FailSoftTests(unittest.TestCase):
 
 class AsciiHygieneTests(unittest.TestCase):
     def test_rune_procs_module_is_ascii(self):
-        path = "agents/daemon_slayer/rune_procs.py"
+        path = _DS_DIR / "rune_procs.py"
         with open(path, "rb") as fh:
             data = fh.read()
         for i, b in enumerate(data):
             self.assertLess(b, 128, f"non-ASCII byte {b} at offset {i} in {path}")
 
     def test_this_test_file_is_ascii(self):
-        path = "agents/daemon_slayer/tests/test_rune_procs_per_attack.py"
+        path = Path(__file__).resolve()
         with open(path, "rb") as fh:
             data = fh.read()
         for i, b in enumerate(data):

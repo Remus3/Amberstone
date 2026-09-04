@@ -23,6 +23,7 @@ Irelia / Nilah. ASCII only.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer import server
 from agents.daemon_slayer.data_loader import DataSnapshot
@@ -180,8 +181,10 @@ class RouteHybridMitigationTests(_Base):
 
 class AsciiHygieneTests(unittest.TestCase):
     def test_new_test_file_is_ascii(self) -> None:
-        rel = "agents/daemon_slayer/tests/test_bruiser_mitigation_item262.py"
-        with open(rel, "rb") as fh:
+        # Anchored on __file__, not the process CWD, so the shipped Share/
+        # package runs this hygiene test from any directory.
+        path = Path(__file__).resolve()
+        with open(path, "rb") as fh:
             raw = fh.read()
         # decode raises on the first non-ASCII byte
         self.assertTrue(raw.decode("ascii"))
