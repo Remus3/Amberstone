@@ -6,6 +6,85 @@
 
 ---
 
+# 2026-09-04 - six-slice batch: RM-208 / 209 / 220 / 326 / 327 / 328 shipped, RM-338 found+fixed, RM-339 filed (ON MAIN)
+
+STATE. Main carries all seven. ENGINE **1.280.0 unchanged**, patch 16.15.1,
+`:8860` NOT bounced and no Share sync - `ds_share_sync.py --check` exit 0 at 535
+files proves nothing merged touches a mirrored file. Tier-1 throughout. Six
+worktree slices on disjoint file sets plus one read-only adjudicator; all six
+branches and worktrees removed at wrap. LEDGER 1324 has the full detail.
+
+WHAT SHIPPED.
+- RM-208 DS doc route guard: `ast` over `_POST_ROUTES`, BOTH directions, whole
+  backticked doc tokens so `/v2/matchup` stops splitting into `/v` + `/matchup`.
+- RM-220 wiki staleness: `{{ap|}}` brace-balancing reaches rank-count,
+  enumerated and named-parameter forms. `skipped_labels` 109 -> 72, zero-label
+  rows 27 -> 2, `findings` ROSE 214 -> 225. 2 cited aliases. Part (C) decided in
+  writing, deliberately NOT implemented.
+- RM-209 CSS: 5 tokens mapped onto existing names, 2 declared as new roles.
+- RM-326/327 lobby: dataset-signature render gates + focus carry + reorder
+  re-index, following the `champ_select.js:704` precedent.
+- RM-328 team-context mount RESTORED (adjudicated, not assumed).
+- RM-338 (filed and closed same day): every Top-8 `up` chevron was dead to the
+  mouse. RM-339 filed, not fixed.
+
+FIVE TRAPS WORTH CARRYING, all paid for this run.
+1. **THREE FILED ACCEPTANCES WERE DEFECTIVE AND THE SLICES CAUGHT ALL THREE.**
+   RM-328's "assert `#tc-allies` has 5 child slots" is VACUOUS - the no-payload
+   branch pads to 5 placeholders, so it passes with the payload never reaching
+   the DOM. RM-327's "two mouse clicks at one screen position" cannot
+   discriminate a fix from HEAD in a position-indexed list. RM-208's 4(b)
+   described the forward direction while asking for the reverse. Read an
+   acceptance as a hypothesis, not an instruction.
+2. **A WHOLE-TREE DIGEST CANNOT BE STAMPED BY A SLICE.**
+   `test_web_ascii_sweep.py::test_live_half_digest_...` moves on any `web/` edit.
+   The RM-209 slice correctly refused to stamp it. The merger owns it once,
+   after every slice lands, and the file's own rule wants a two-tree diff with
+   the SAME tokeniser - 11 differing files here, exactly the union of the four
+   web-touching slices.
+3. **TWO FILED CENSUSES WERE WRONG IN THE SAFE-LOOKING DIRECTION.** RM-209 filed
+   21 sites / 8 files; truth is 22 / 10, and the row's own enumeration summed to
+   22. RM-220's baseline had drifted 87/208 -> 92/214 because the wiki moves.
+   Re-measure before building, every time.
+4. **`git commit -m "merge: ..."` IS REJECTED.** The commit-msg hook enforces
+   `<type>(<scope>)?: <description>`. Use `chore(merge): <branch>`. Four merges
+   failed on this before it was noticed, and the failure reads like a conflict.
+5. **RESTORING OLD MARKUP VERBATIM VIOLATES THE ASCII RULE.** The 2026-05
+   team-context hunk carries U+2026 and U+2014. Anything recovered from
+   pre-purge history needs a programmatic ASCII assertion, not a glance.
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-340.
+      RM-339 (LANE 4, Tier-1) is the natural follow-on to this batch: 25 dead
+      `getElementById` ids, of which 21 are still live residue. Adjudicate each
+      RESTORE-or-REMOVE from git history the way RM-328 was - a dead id is NOT
+      proof of dead code. Keep its guard SEPARATE from RM-209's CSS guard.
+      Also open: RM-322 (LANE 7), RM-212, RM-214, RM-286/287, RM-291..295.
+      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
+
+Context: Main is at the six-slice merge, ENGINE 1.280.0, patch 16.15.1, :8860
+      serving. Lane worktrees at C:\rc-worktrees\rc-lane-* were NOT touched this
+      run and still sit at a55ece97e - fast-forward them before using one.
+
+Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
+      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
+      :8860 restart and a Share mirror sync; Tier-0/1 do not.
+
+Do NOT redo: RM-208 / RM-209 / RM-220 / RM-326 / RM-327 / RM-328 / RM-338 are
+      CLOSED (LEDGER 1324). RM-337 closed 2026-09-03 (LEDGER 1323). Do not
+      re-open RM-220 part (B) as a blanket vocabulary gap - that hypothesis was
+      refuted once already as RM-218, and the 2 zero-label rows that remain are
+      a DIFFERENT mechanism (`{{as|}}` head-cut and `[[File:...]]` pipes), not
+      an `{{ap|}}` form. Do not delete the 44x44 hit-target overlays - they are
+      a deliberate audit floor; four of the five sibling sites were measured
+      NOT broken.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-03b - RM-337: the shipped Share package passes clean (ON MAIN)
 
 STATE. Main carries RM-337. A clean copy of `Share/` in a temp dir OUTSIDE the
@@ -132,66 +211,3 @@ base was 10741 and correctly refuted it with exact arithmetic (true base 10803;
 10741 was one slice's ISOLATED number). And `grep -rl` for a version literal
 matches compiled `.pyc` binaries: the bump surface is 131 `.py` files / 155
 occurrences, not the 381 a naive `grep -rl` reports.
-
-# 2026-09-02/03 - lane 5 REFILL, then merger + two repo fixes (all ON MAIN)
-
-Started as a detached lane-5 research refill, then the operator directed the
-merge and two follow-on repo fixes. Everything below is on `main`, pushed, CI
-green, and all five lane worktrees are fast-forwarded to it and clean.
-
-**Commits, newest first:**
-```
-8119b3334  eol=lf for every other text type (RM-284 follow-on, LEDGER 1321)
-a2d132489  RM-284 - *.md text eol=lf (LEDGER 1320)
-acc7f25ad  ROADMAP relocation pass - 8 rows, 0 ids lost
-6c4e37bde  clear the budget breach the merge itself caused
-7ff7f00cb  Merge lane/research: RM-329..RM-336 refill (LEDGER 1319)
-aac80637c  preserve the merger session's orphaned WAKEUP archive
-```
-
-**REFILL: RM-329..RM-336 filed, next free id RM-337.** Six LANE 6 (the starved
-lane - its ROADMAP-visible work was ONE row), two LANE 7. The refutation pass
-changed three of nine candidates: RM-332 KILLED as a defect (`unique_passive_key`
-is a DEDUP family, `shield=None` is CORRECT - kept as a Tier-0 note fix), RM-330
-downgraded to DECIDE-THEN-ACT after its live-defect claim was refuted twice, and
-RM-329 re-framed and severity-capped. RM-220 also got the ROADMAP pointer it had
-never had.
-
-**MERGE: the main tree was NOT clean.** It held an uncommitted 124-line
-`docs/history_notes.md` addition, 28.5h stale - the archive half of the
-2026-09-01c merger `/done`, never staged. Committed FIRST and separately
-(`aac80637c`) so the merge could not clobber it.
-
-**RM-284 CLOSED, both halves.** (a) the relocation pass took ROADMAP 89.9 -> 87.55
-pct with all 179 ids retained and every fence kept in its stub; (b) `.gitattributes`
-now pins 18 text suffixes to `eol=lf`, so on-disk equals blob. ROADMAP measured
-71719 on disk against a 71522 blob before, and 71522/71522 after.
-
-**THE RECURRING LESSON THIS SESSION, three times over: measure with the same
-filter the contract uses.**
-- A doc budget measured in a lane worktree (LF) passed while main (CRLF) breached.
-  ALWAYS measure a budget on main.
-- A green `ci` run proved nothing because the scheduled nightly SKIPS the `check`
-  job. Read `jobs[].steps[].conclusion`, never the workflow conclusion.
-- The eol guard flagged 7 LFS payloads that were correct, because it filtered by
-  SUFFIX while `.gitattributes` filters by effective attribute. It asks
-  `git check-attr` now.
-
-**Three of my own claims were corrected mid-run** and are recorded rather than
-quietly fixed: "the bundle is absent from both trees" (wrong path), "CI is
-unaffected" twice (docstring, then derivation - now rests on six observed run
-conclusions), and a recommendation to relocate three ROADMAP rows that were
-ALREADY relocated on 2026-08-31.
-
-**Memories added/updated:** `reference_ds_probe_flag_needs_its_scoring_axis` (new
-- a DS flag reads INERT unless the request selects the axis it moves),
-`reference_green_ci_run_may_have_skipped_the_job` (new),
-`reference_windows_write_text_crlf_byte_count` (two new sections). MEMORY.md's
-four sub-index counts were DELETED rather than refreshed - all four were stale
-(79/20/31/59 against 73/19/30/41) and nothing guards them.
-
-**NEXT:** lane 6 has 8 actionable rows (RM-208, RM-220, RM-329..334); lane 4 still
-holds RM-326/327/328 + RM-209 unworked. Full brief with acceptance checks and the
-do-not-redo set: `C:\\Users\\Administrator\\Desktop\\RC-NEXT-SESSION.txt`.
-
----
