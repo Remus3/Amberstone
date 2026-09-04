@@ -87,6 +87,24 @@ _EL_ID = re.compile(r"""\.id\s*=\s*(["'`])([A-Za-z0-9_:.\-]+)\1""")
 _SET_ATTR = re.compile(
     r"""setAttribute\(\s*(["'`])id\1\s*,\s*(["'`])([A-Za-z0-9_:.\-]+)\2"""
 )
+# Population 4: an id ASSEMBLED at runtime from an interpolated expression plus
+# a literal suffix, e.g. `id="${sigKey}-input"`. _ID_ATTR deliberately refuses
+# these (its value class excludes $ and {) because the id is not knowable from
+# source - but refusing them entirely reports a WORKING panel as dangling. The
+# measured case: web/js/panels/ds_combo.js:309 emits id="${sigKey}-input" where
+# :296 sets sigKey = blockEl.id, and the block is #csv-sugg-ds-combo
+# (web/index.html:2323), so the live element is #csv-sugg-ds-combo-input, read
+# at web/js/panels/active_match.js:1489.
+#
+# We therefore harvest the literal SUFFIX and treat any referenced id ending in
+# it as creatable. That is deliberately CONSERVATIVE - it can mask a genuine
+# dangling id that happens to share a suffix - and the alternative is executing
+# JS. It is scoped tightly by test_interpolated_suffixes_stay_rare below, which
+# fails if this population ever grows beyond a handful, so the masking surface
+# cannot widen unobserved.
+_ID_ATTR_INTERP = re.compile(
+    r"""(?<![-\w])id\s*=\s*(["'`])\$\{[^{}]*\}([A-Za-z0-9_:.\-]+)\1"""
+)
 
 
 # ------------------------------------------------------------------ allowlist
@@ -101,6 +119,30 @@ ALLOWLIST: dict[str, str] = {
         "the #lv-queue-sub line IF PRESENT and console.warn-ing regardless, so "
         "the guarded `if (sub)` write is the designed quiet path. Delete this "
         "entry the moment that guard goes away or the element is mounted."
+    ),
+    "lm-tl-pending": (
+        "Optional write target BY DESIGN. Superseded by #lm-chart-pending in "
+        "ddb813f6e (s220 S4, 4 tabs to 3). web/index.html:2047-2049 states in "
+        "place that _setTimeline still references lm-tl-pending by id and the "
+        "lookup just no-ops when absent, so the guard at "
+        "web/js/panels/last_match.js:1360 is intentional. Delete this entry if "
+        "that guard goes away or the element is mounted."
+    ),
+    "set-force-scan-btn": (
+        "Deliberate visual-only removal per 409f0915a, which states the "
+        "/api/command force_vision route and its dev.js binder stay for a "
+        "possible future re-surfacing. PINNED IN BOTH DIRECTIONS by "
+        "tests/test_settings_force_scan_dom.py:42-43 (asserts the id is ABSENT "
+        "from web/index.html) and :56 (asserts the binder is PRESENT in "
+        "web/js/panels/dev.js), so a restore AND a removal both go red there. "
+        "The guarded read is web/js/panels/dev.js:131."
+    ),
+    "set-force-scan-status": (
+        "Same decision and the same both-directions pin as set-force-scan-btn: "
+        "409f0915a preserved the binder deliberately, and "
+        "tests/test_settings_force_scan_dom.py:42-43,56 fails on either a "
+        "restore or a removal. The guarded write is web/js/panels/dev.js:132. "
+        "Delete both entries together if that decision is reversed."
     ),
 }
 
@@ -181,13 +223,38 @@ def _definitions(web_root: Path) -> tuple[dict[str, str], dict[str, str]]:
     return markup, js_made
 
 
+def _interpolated_suffixes(web_root: Path) -> dict[str, str]:
+    """{literal suffix: site} for ids built as `id="${expr}<suffix>"` in JS."""
+    found: dict[str, str] = {}
+    for path in _modules(web_root):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for match in _ID_ATTR_INTERP.finditer(text):
+            found.setdefault(
+                match.group(2), _site(web_root, path, text, match.start())
+            )
+    return found
+
+
 def _unresolved(web_root: Path) -> dict[str, list[str]]:
     """{id: [reference site, ...]} for ids nothing in the tree ever creates."""
     refs = _references(web_root)
     markup, js_made = _definitions(web_root)
+    suffixes = _interpolated_suffixes(web_root)
+
+    def _creatable(name: str) -> bool:
+        if name in markup or name in js_made:
+            return True
+        # Population 4: an id longer than a harvested suffix and ending in it
+        # may be assembled at runtime. See _ID_ATTR_INTERP for why this is
+        # deliberately conservative.
+        return any(
+            name.endswith(suffix) and len(name) > len(suffix)
+            for suffix in suffixes
+        )
+
     return {
         name: sites for name, sites in sorted(refs.items())
-        if name not in markup and name not in js_made
+        if not _creatable(name)
     }
 
 
@@ -414,4 +481,45 @@ def test_inline_page_script_residue_is_pinned():
         "inline-page-script residue changed. Every entry needs a reason in "
         "INLINE_PAGE_RESIDUE, and a fixed one must be removed from it.\n"
         + _report(found)
+    )
+def test_an_id_assembled_from_an_interpolated_suffix_is_not_flagged():
+    """Population 4, pinned on the real in-repo case rather than a fixture.
+
+    ``web/js/panels/ds_combo.js:296`` sets ``sigKey = blockEl.id`` and ``:309``
+    emits ``id="${sigKey}-input"``. The block is ``#csv-sugg-ds-combo``
+    (``web/index.html:2323``), so the live element is
+    ``#csv-sugg-ds-combo-input``, which
+    ``web/js/panels/active_match.js:1489`` reads. A scanner that sees only
+    literal ``id=`` attributes reports that WORKING panel as dangling - this
+    test is the standing proof that it does not.
+    """
+    web_root = WEB
+    suffixes = _interpolated_suffixes(web_root)
+    assert "-input" in suffixes, (
+        "expected ds_combo.js to emit an interpolated id ending in '-input'; "
+        "if that panel changed, re-derive this population rather than deleting "
+        "the test - the masking behaviour it documents is still live"
+    )
+    unresolved = _unresolved(web_root)
+    assert "csv-sugg-ds-combo-input" not in unresolved, (
+        "csv-sugg-ds-combo-input is created at runtime by ds_combo.js:309 and "
+        "must not be reported as dangling"
+    )
+    # And the reference really exists, so this is not vacuous.
+    assert "csv-sugg-ds-combo-input" in _references(web_root)
+
+
+def test_interpolated_suffixes_stay_rare():
+    """The population-4 escape hatch masks by suffix, so it must stay small.
+
+    Each harvested suffix silently resolves EVERY referenced id ending in it.
+    That is an acceptable trade at this size and would not be at ten times it,
+    so the surface is pinned rather than left to drift.
+    """
+    suffixes = _interpolated_suffixes(WEB)
+    assert len(suffixes) <= 6, (
+        f"interpolated-id suffixes have grown to {len(suffixes)} "
+        f"({', '.join(sorted(suffixes))}). Each one masks every referenced id "
+        "ending in it - re-check that the escape hatch is still narrow enough "
+        "to be honest before raising this bound."
     )
