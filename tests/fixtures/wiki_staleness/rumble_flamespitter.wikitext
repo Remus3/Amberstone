@@ -1,0 +1,64 @@
+<!-- The following values are defined as parameters.
+
+Values are defined OVER 3 SECONDS, even if the debuff's duration allows for a longer effect in total.
+
+-->{{#vardefine:q_b1|50}}<!-- Non-heat-zone, Rank 1 base damage
+-->{{#vardefine:q_b5|150}}<!-- Non-heat-zone, Rank 5 base damage
+-->{{#vardefine:q_h1|6}}<!-- Non-heat-zone, Rank 1 target health ratio as a PERCENTAGE
+-->{{#vardefine:q_h5|8}}<!-- Non-heat-zone, Rank 5 target health ratio as a PERCENTAGE
+-->{{#vardefine:q_r|105}}<!-- Non-heat-zone, AP ratio as a PERCENTAGE
+-->{{#vardefine:q_mmod|0.7}}<!-- Minion damage modifier
+-->{{{{{1<noinclude>|Ability data</noinclude>}}}|Flamespitter|{{{2|}}}|{{{3|}}}|{{{4|}}}|{{{5|}}}
+|champion     = Rumble
+|skill        = Q
+|icon         = Flamespitter.png
+|blurb        = {{sbc|Active:}} {{ci|Rumble}} activates a flamethrower for a short time that continually deals {{as|magic damage}} in a frontal cone.
+|blurb4       = {{sbc|{{ai|Junkyard Titan 2|Rumble|Danger Zone}} Bonus:}} ''Flamespitter's'' damage is increased.
+|description  = {{sbc|Active:}} '''Rumble''' generates {{tip|Heat|20 Heat}} to activate his flamethrower for 3 seconds, spewing forth flames in a {{tt|frontal|In his facing direction}} cone every {{fd|0.25}} seconds. Enemies hit by the flame are scorched for {{ap|0.5<!-- Primary debuff duration (2 instances) --> + 0.1<!-- Offset -->}} seconds, taking {{as|magic damage}} every {{fd|0.25}} seconds as well as upon being hit if not currently scorched, refreshing on subsequent inflictions.<br><br>''Flamespitter's'' damage is reduced to {{ap|{{#var:q_mmod}}*100}}% against {{tip|minions}}.
+|leveling     = 
+<!------------->
+{{st|Minimum Magic Damage|{{ap|({{#var:q_b1}}/12)*3 to ({{#var:q_b5}}/12)*3|round=2}} {{as|(+ {{ap|({{#var:q_r}}/12)*3|round=2}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*3 to ({{#var:q_h5}}/12)*3|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Magic Damage per Second|{{ap|({{#var:q_b1}}/12)*4 to ({{#var:q_b5}}/12)*4|round=2}} {{as|(+ {{ap|({{#var:q_r}}/12)*4|round=2}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*4 to ({{#var:q_h5}}/12)*4|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Magic Damage per Tick|{{ap|{{#var:q_b1}}/12 to {{#var:q_b5}}/12|round=3}} {{as|(+ {{ap|{{#var:q_r}}/12|round=3}}% AP)}} {{as|(+ {{ap|{{#var:q_h1}}/12 to {{#var:q_h5}}/12|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Maximum Magic Damage|{{ap|{{#var:q_b1}}*(15/12) to {{#var:q_b5}}*(15/12)|round=2}} {{as|(+ {{ap|{{#var:q_r}}*(15/12)|round=2}}% AP)}} {{as|(+ {{ap|{{#var:q_h1}}*(15/12) to {{#var:q_h5}}*(15/12)|round=2}}% of target's '''maximum''' health)}}<!--
+-->}}
+<!------------->
+{{st|Minimum Minion Damage|{{ap|({{#var:q_b1}}/12)*3*{{#var:q_mmod}} to ({{#var:q_b5}}/12)*3*{{#var:q_mmod}}|round=2}} {{as|(+ {{ap|({{#var:q_r}}/12)*3*{{#var:q_mmod}}|round=2}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*3*{{#var:q_mmod}} to ({{#var:q_h5}}/12)*3*{{#var:q_mmod}}|round=2}}% of target's '''maximum''' health)}}<!--
+-->|Minion Damage per Second|{{ap|({{#var:q_b1}}/12)*4*{{#var:q_mmod}} to ({{#var:q_b5}}/12)*4*{{#var:q_mmod}}|round=2}} {{as|(+ {{ap|({{#var:q_r}}/12)*4*{{#var:q_mmod}}|round=2}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*4*{{#var:q_mmod}} to ({{#var:q_h5}}/12)*4*{{#var:q_mmod}}|round=2}}% of target's '''maximum''' health)}}<!--
+-->|Minion Damage per Tick|{{ap|({{#var:q_b1}}/12)*{{#var:q_mmod}} to ({{#var:q_b5}}/12)*{{#var:q_mmod}}|round=3}} {{as|(+ {{ap|({{#var:q_r}}*{{#var:q_mmod}})/12|round=3}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*{{#var:q_mmod}} to ({{#var:q_h5}}/12)*{{#var:q_mmod}}|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Maximum Minion Damage|{{ap|{{#var:q_b1}}*(15/12)*{{#var:q_mmod}} to {{#var:q_b5}}*(15/12)*{{#var:q_mmod}}|round=2}} {{as|(+ {{ap|{{#var:q_r}}*(15/12)*{{#var:q_mmod}}|round=2}}% AP)}} {{as|(+ {{ap|{{#var:q_h1}}*(15/12)*{{#var:q_mmod}} to {{#var:q_h5}}*(15/12)*{{#var:q_mmod}}|round=2}}% of target's '''maximum''' health)}}<!--
+-->}}
+|description2 = {{sbc|{{ai|Junkyard Titan 2|Rumble|Danger Zone}} Bonus:}} ''Flamespitter's'' damage is increased by 50%.<br><br>''Flamespitter's'' total damage based on the target's health is capped at {{pp|65+((300-65)/17)*(x-1)*(0.7025+0.0175*(x-1)) for 20|formula=Uses stat growth interpolation; 65 base, 300 maximum}} against {{tip|monsters}}.
+|leveling2    = 
+{{st|Minimum Enhanced Damage|{{ap|({{#var:q_b1}}/12)*3*1.5 to ({{#var:q_b5}}/12)*3*1.5|round=3}} {{as|(+ {{ap|({{#var:q_r}}/12)*3*1.5|round=3}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*3*1.5 to ({{#var:q_h5}}/12)*3*1.5|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Enhanced Damage per Second|{{ap|({{#var:q_b1}}/12)*4*1.5 to ({{#var:q_b5}}/12)*4*1.5|round=3}} {{as|(+ {{ap|({{#var:q_r}}/12)*4*1.5|round=3}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*4*1.5 to ({{#var:q_h5}}/12)*4*1.5|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Enhanced Damage per Tick|{{ap|({{#var:q_b1}}/12)*1.5 to ({{#var:q_b5}}/12)*1.5|round=3}} {{as|(+ {{ap|({{#var:q_r}}/12)*1.5|round=3}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*1.5 to ({{#var:q_h5}}/12)*1.5|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Maximum Enhanced Damage|{{ap|{{#var:q_b1}}*(15/12)*1.5 to {{#var:q_b5}}*(15/12)*1.5|round=2}} {{as|(+ {{ap|{{#var:q_r}}*(15/12)*1.5|round=2}}% AP)}} {{as|(+ {{ap|{{#var:q_h1}}*(15/12)*1.5 to {{#var:q_h5}}*(15/12)*1.5|round=2}}% of target's '''maximum''' health)}}<!--
+-->}}
+<!------------->
+{{st|Minimum Enhanced Minion Damage|{{ap|({{#var:q_b1}}/12)*3*{{#var:q_mmod}}*1.5 to ({{#var:q_b5}}/12)*3*{{#var:q_mmod}}*1.5|round=3}} {{as|(+ {{ap|({{#var:q_r}}/12)*3*{{#var:q_mmod}}*1.5|round=3}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*3*{{#var:q_mmod}}*1.5 to ({{#var:q_h5}}/12)*3*{{#var:q_mmod}}*1.5|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Enhanced Minion Damage per Second|{{ap|({{#var:q_b1}}/12)*4*{{#var:q_mmod}}*1.5 to ({{#var:q_b5}}/12)*4*{{#var:q_mmod}}*1.5|round=3}} {{as|(+ {{ap|({{#var:q_r}}/12)*4*{{#var:q_mmod}}*1.5|round=3}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*4*{{#var:q_mmod}}*1.5 to ({{#var:q_h5}}/12)*4*{{#var:q_mmod}}*1.5|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Enhanced Minion Damage per Tick|{{ap|({{#var:q_b1}}/12)*{{#var:q_mmod}}*1.5 to ({{#var:q_b5}}/12)*{{#var:q_mmod}}*1.5|round=3}} {{as|(+ {{ap|({{#var:q_r}}/12)*{{#var:q_mmod}}*1.5|round=3}}% AP)}} {{as|(+ {{ap|({{#var:q_h1}}/12)*{{#var:q_mmod}}*1.5 to ({{#var:q_h5}}/12)*{{#var:q_mmod}}*1.5|round=3}}% of target's '''maximum''' health)}}<!--
+-->|Maximum Enhanced Minion Damage|{{ap|{{#var:q_b1}}*(15/12)*{{#var:q_mmod}}*1.5 to {{#var:q_b5}}*(15/12)*{{#var:q_mmod}}*(15/12)*1.5|round=2}} {{as|(+ {{ap|{{#var:q_r}}*(15/12)*{{#var:q_mmod}}*1.5|round=2}}% AP)}} {{as|(+ {{ap|{{#var:q_h1}}*(15/12)*{{#var:q_mmod}}*1.5 to {{#var:q_h5}}*(15/12)*{{#var:q_mmod}}*1.5|round=2}}% of target's '''maximum''' health)}}<!--
+-->}}
+|cooldown     = {{ap|10 to 6}}
+|cdstart      = on-cast
+|range        = {{dv|{{tip|er|icononly = true}} {{tt|600|Cone length}}|{{tt|-50|Cone origin point behind Rumble's center}}}}
+|angle        = {{tip|er|icononly = true}} 64{{degree}}
+|cast time    = none
+|targeting    = Auto
+|affects      = Enemies
+|damagetype   = Magic
+|spellshield  = false
+|spelleffects = AoeDoT
+|grounded     = 
+|knockdown    = 
+|projectile   = False
+|notes        = 
+* ''Flamespitter'' will deal an additional tick of damage to a minion if it would die to its per-tick damage. This is intended.
+* '''Rumble''' will instantly turn to face the cursor if he is not moving when ''Flamespitter'' is cast. He will also instantly turn when issuing an Attack order on an enemy while ''Flamespitter'' is active.
+** Issuing an Attack Move order at a location will not cause '''Rumble''' to instantly turn.{{bug|2}}
+** If '''Rumble''' does not path to a location after an Attack or Attack Move order, and the player issues a Stop or Hold order immediately afterwards, '''Rumble''' will not visually turn completely to face the new direction,{{bug}} but the area will turn to have the correct direction as intended.
+* When ''Flamespitter's'' debuff is applied instead of refreshed, the target is dealt one additional instance of the debuff at the same time as the application. This is done by delaying the actual debuff by {{fd|0.1}} seconds.
+** If the target is already affected by the debuff, its duration is refreshed to the maximum ({{fd|0.6}} seconds).
+}}
