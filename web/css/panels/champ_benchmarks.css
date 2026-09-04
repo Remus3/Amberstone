@@ -13,13 +13,13 @@
   padding: var(--space-2, 8px) var(--space-4, 16px);
   font-size: var(--fs-sm, 18px);
   color: var(--text-faint, #9ca3af);
-  background: var(--bg-elevated, #1c1c24);
+  background: var(--surface-3, #1c1c24);
   border: 1px solid var(--border-soft, #2a2a35);
   border-radius: var(--panel-radius-sm, 10px);
   cursor: pointer;
 }
 #bi-bench-mount .cb-mode-btn.is-active {
-  color: var(--text-strong, #f0f0f5);
+  color: var(--text, #f0f0f5);
   border-color: var(--signal-info, #8a8cf0);
 }
 
@@ -65,7 +65,7 @@
 }
 #bi-bench-mount .cb-champ-name {
   font-size: var(--fs-sm, 18px);
-  color: var(--text-strong, #f0f0f5);
+  color: var(--text, #f0f0f5);
 }
 
 #bi-bench-mount .cb-stat {
@@ -74,7 +74,7 @@
 #bi-bench-mount .cb-p50 {
   display: block;
   font-size: var(--fs-sm, 18px);
-  color: var(--text-strong, #f0f0f5);
+  color: var(--text, #f0f0f5);
 }
 #bi-bench-mount .cb-range {
   display: block;
@@ -86,7 +86,7 @@
 }
 #bi-bench-mount .cb-games {
   font-size: var(--fs-sm, 18px);
-  color: var(--text-muted, #c5c8d3);
+  color: var(--text-dim, #c5c8d3);
 }
 
 #bi-bench-mount .cb-caption {

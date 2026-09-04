@@ -16,7 +16,7 @@
 }
 #bi-snowball-mount .se-cp-title {
   font-size: var(--fs-sm, 18px);
-  color: var(--text-strong, #f0f0f5);
+  color: var(--text, #f0f0f5);
 }
 #bi-snowball-mount .se-chip {
   padding: var(--space-1, 4px) var(--space-3, 12px);

@@ -57,6 +57,14 @@
   --signal-good-soft: rgba(var(--prim-green), 0.18);
   --signal-warn-soft: rgba(var(--prim-amber), 0.18);
   --signal-bad-soft:  rgba(var(--prim-red), 0.18);
+  /* RM-209: the -soft family was missing its INFO member while
+   * --signal-info itself existed, so ds_shaper.css:73 (the shaper button
+   * :active fill) referenced an undefined name and rendered its fallback
+   * literal in all six themes. Declared here at the family's shared .18
+   * alpha over --prim-blue, so it re-tints per theme exactly like its
+   * three siblings - the terminal block overrides --prim-blue and the
+   * jewel themes inherit it, and neither needs a line for this token. */
+  --signal-info-soft: rgba(var(--prim-blue), 0.18);
 
   /* Additive Hextech component tokens (consumed by web/css/hextech.css
    * primitives). The fill is the teal->gold sweep used on progress bars
@@ -81,6 +89,21 @@
   --fs-lg:      29px;  /* v1 20 -> v2 25 -> 29; section heads, panel titles*/
   --fs-xl:      37px;  /* v1 27 -> v2 32 -> 37; display heads, action text */
   --fs-display: 46px;  /* v2.1 NEW; lobby clock, PGR verdict, hero number  */
+
+  /* Monospace family (RM-209). The scale above is font-SIZE only; there was
+   * no font-FAMILY token at all, yet two panel rules already referenced
+   * --font-mono (header.css .ub-field textarea, replay_events.css
+   * .replay-events-clock) and each carried a DIFFERENT fallback, so the
+   * clock and the textarea resolved to different stacks. One declaration
+   * settles both. Deliberately theme-invariant: no theme re-skins type,
+   * so this belongs at the base :root and in none of the data-theme
+   * blocks. Stack matches the literal web/mc/mc.css already inlines.
+   *
+   * NOTE for whoever next reads mc.css: its two comments say this token is
+   * "defined in NO stylesheet in web/css". That was true and is no longer;
+   * mc.css is outside this change's file set, so its literal stack stands
+   * (identical output) and the stale prose is filed rather than edited. */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* 8px spacing grid. Six existing rungs unchanged (replaces off-grid
    * 2/4/5/6/7px paddings from the wave-1 audit; existing panel paddings
