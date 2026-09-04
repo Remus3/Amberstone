@@ -1167,13 +1167,52 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   cursor: pointer;
   padding: 0;
 }
+/* RM-338: the overlay above WAS 44x44 centred on the 14px-tall button,
+ * so it extended 15px past it in both vertical directions - and the two
+ * reorder chevrons sit 1px apart inside .lv-top8-reorder, so each
+ * overlay covered its sibling whole. Neither sets z-index, so `down`
+ * (later in DOM order) owned every `up` chevron's own centre and every
+ * "move up" control in the Top 8 was dead to the mouse. MEASURED
+ * 2026-09-04 with document.elementFromPoint: 3 of 3 rows, disabled or
+ * not. Keyboard activation still worked, which is why it shipped.
+ *
+ * Same shape of fix as .lv-member-action above - bound the overlay in
+ * the axis where a neighbour sits, keep it expanded in the axis with
+ * room. There the crowded axis was horizontal; here it is VERTICAL, so
+ * the 44px WIDTH is left exactly as it was and only the height changes.
+ *
+ * Slack measured on the 1920x1080 baseline: .lv-top8-row is 39px tall
+ * with the 29px reorder stack centred in it (5px of padding above and
+ * below), and .lv-top8-list adds a 4px inter-row gap. Each chevron
+ * therefore owns 5 + 2 = 7px on its outer side. 14 + 7 = 21px, and the
+ * pair tiles the 43px row pitch exactly, abutting the neighbouring
+ * rows' overlays instead of overlapping them.
+ *
+ * MEASURED effective target after the change (elementFromPoint walked
+ * out from each control's own centre): `up` 41x21 and `down` 41x22,
+ * against 26x14 visible and against ZERO for `up` before it. 41 rather
+ * than 44 because the last 3px on the right belong to the `remove`
+ * overlay, which is later in DOM order - the invite / remove controls
+ * still measure their full 30x43, unchanged.
+ *
+ * 21px is still short of the 42px var(--hit-min) floor vertically, and
+ * unavoidably so: two 14px controls stacked 1px apart cannot BOTH clear
+ * 42px without one eating the other, which is the defect being fixed.
+ * Widening the visible chevrons is a layout change, not a hit-target
+ * one, and belongs to its own row. */
 .lv-top8-reorder-btn::before {
   content: "";
   position: absolute;
-  top: 50%; left: 50%;
-  width: 44px; height: 44px;
-  transform: translate(-50%, -50%);
+  left: 50%;
+  width: 44px; height: 21px;
+  transform: translateX(-50%);
 }
+/* Top chevron claims the slack ABOVE it, bottom chevron the slack
+ * BELOW; neither crosses the 1px seam between the two. Structural
+ * selectors, not data-action, because the defect is about stacking
+ * position rather than about what the buttons do. */
+.lv-top8-reorder-btn:first-child::before { bottom: 0; }
+.lv-top8-reorder-btn:last-child::before  { top: 0; }
 .lv-top8-reorder-btn:hover { color: var(--info); border-color: var(--info); }
 .lv-top8-reorder-btn:disabled { opacity: 0.3; cursor: default; }
 .lv-top8-spacer-reorder { width: 26px; }
