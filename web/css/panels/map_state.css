@@ -96,25 +96,6 @@ body[data-view="home"] header .vis-pill.hidden {
 .adapt-notice.pending { color: var(--gold); border-left-color: var(--gold); background: var(--gold-soft); }
 .adapt-notice.running { color: var(--good); border-left-color: var(--good); background: var(--good-soft); }
 
-.trend-pill {
-  padding: 4px 12px;
-  border: none;
-  border-radius: 999px;
-  background: var(--surface-alt);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-.trend-pill.hidden  { display: none; }
-/* Trend pill content like "30d 45% ^" must stay on one line - in narrow
- * pill widths, it was wrapping to two visual rows. */
-.trend-pill { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.trend-pill.up      { color: var(--good); background: var(--good-soft); }
-.trend-pill.down    { color: var(--bad);  background: var(--bad-soft); }
-.trend-pill.neutral { color: var(--text-dim); }
-
 /* (2026-07-04) The header row-2 pill styles (augments-pill, ds-pill,
  * trigger-pill, archetype-nudge-chip) were removed with the row itself
  * per operator - dead chrome on the companion; in-game glances live on
