@@ -1,0 +1,30 @@
+{{{{{1<noinclude>|Ability data</noinclude>}}}|Trample|{{{2|}}}|{{{3|}}}|{{{4|}}}|{{{5|}}}
+|champion     = Alistar
+|skill        = E
+|icon         = Trample.png
+|description  = {{sbc|Active:}} '''Alistar''' tramples the ground around him every {{fd|0.5}} seconds over 5 seconds, becoming {{tip|ghosted}} and dealing {{as|magic damage}} to nearby enemies. Each time this damages at least one enemy champion, he generates a {{tip|stack}} of ''Trample'' that lasts for the remaining duration, stacking up to 5 times.
+|icon2        = Alistar Trample Indicator.png
+|leveling     = {{st|Magic Damage Per Tick|{{ap|80/10 to 200/10}} {{as|(+ {{ap|70/10}}% AP)}}|Total Magic Damage|{{ap|80 to 200}} {{as|(+ 70% AP)}}}}
+|description2 = At 5 stacks, '''Alistar's''' next {{tip|basic attack}} {{tip|on-hit}} against a {{tip|champion}} within 6 seconds ends ''Trample's'' effects to deal {{as|{{pplevel|20 to 275}} '''bonus''' magic damage}} and {{tip|stun}} the target for 1 second.
+|effect radius= {{tip|cr|icononly = true}} 350
+|cooldown     = {{ap|12 to 10}}
+|cdstart      = on-cast
+|cost         = {{ap|50 to 70}}
+|costtype     = mana
+|cast time    = none
+|targeting    = Auto
+|affects      = Self, Enemies
+|damagetype   = Magic
+|spellshield  = Special
+|spelleffects = Special
+|parry        = Special
+|notes        = 
+* ''Trample'' deals {{tip|persistent area damage}} damage around '''Alistar''', while the bonus damage on the resulting attack is {{tip|proc damage}}.
+* The {{tip|stun}} and '''bonus''' damage are blocked by {{tip|spell shield|spell shields}} but the base attack damage is not.
+* The on-hit effect is consumed if the attack {{tip|blocked}}, but not if it is {{tip|dodged}} or missed while '''Alistar''' is {{tip|blind|blinded}}. In all cases, the attack's effects are negated as normal.
+* The bonus damage and stun can be applied by {{iis|Guinsoo's Rageblade}} Phantom Hit if the triggering attack did not.
+** If the triggering attack does however apply the bonus damage and stun already, then Phantom Hit cannot apply them a subsequent time by triggering on-hit effects, despite ''Trample's'' empowered attack being an on-hit effect.
+<!-- Blurb -->
+|blurb        = {{sbc|Active:}} {{ci|Alistar}} becomes {{tip|ghosted}} and continually deals {{as|magic damage}} to nearby enemies. He generates a stack of ''Trample'' each time this damages at least one {{tip|champion}}.
+|blurb2       = At max stacks, his next {{tip|basic attack}} against a {{tip|champion}} within a few seconds will deal {{as|'''bonus''' magic damage}} and {{tip|stun}} them.
+}}

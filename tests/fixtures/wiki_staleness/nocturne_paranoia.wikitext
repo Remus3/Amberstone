@@ -1,0 +1,49 @@
+{{{{{1<noinclude>|Ability data</noinclude>}}}|Paranoia|{{{2|}}}|{{{3|}}}|{{{4|}}}|{{{5|}}}
+|champion     = Nocturne
+|skill        = R
+|icon         = Paranoia.png
+|blurb        = {{sbc|Active:}} {{ci|Nocturne}} terrorizes all enemy champions, {{tip|nearsight|nearsighting}} them for a few seconds. He can recast ''Paranoia'' during this time.
+|blurb2      = {{sbc|Recast:}} '''Nocturne''' {{tip|dash|dashes}} with {{tip|displacement immunity}} to the target enemy champion, dealing {{as|physical damage}} upon arrival.
+|blurb4      = {{sbc|{{tip|displacement immunity|nolink=true}}:}} The dash cannot be deterred by {{tip|crowd control}}.
+|description  = {{sbc|Active:}} '''Nocturne''' terrorizes all enemy champions, {{tip|nearsight|nearsighting}} them for 6 seconds, during which their {{tip|sight}} radius is reduced by {{tt|300 units|Total sight radius of enemy champions after reduction is 1050 units.}}. He can recast ''Paranoia'' for the same duration after {{fd|0.25}} seconds.
+|description2 = {{sbc|Recast:}} '''Nocturne''' {{tip|dash|dashes}} with {{tip|displacement immunity}} to the target enemy champion, dealing {{as|physical damage}} upon arrival.
+|leveling2    = {{st|Physical Damage|{{ap|150|275|400}} {{as|(+ 120% '''bonus''' AD)}}}}
+|description3 = '''''Nocturne''' can cast any of his [[champion ability|abilities]] and [[Active_ability_items|item actives]] during the dash.''
+|target range = {{tip|cr|icononly = true}} {{ap|2500|3250|4000}}
+|speed        = 1800
+|effect radius= Global
+|cooldown     = {{tt|{{ap|140 to 90}}|Starts after recast times out or is used}}
+|cdstart      = post-effect
+|cost         = 100
+|cast time = none
+|costtype     = Mana
+|targeting    = [[Auto-targeted|Auto]] / [[Unit-targeted|Unit]]
+|affects      = Enemies
+|damagetype   = Physical
+|spellshield  = True
+|spelleffects = spell
+|callforhelp  = true
+|grounded     = special
+|knockdown    = False
+|outofrange   = Walk in range of the target unit to cast (recast)
+|flavorsound = {{sm2|Nocturne_Original_R_1.ogg}} ''"Darkness... "''<br>{{sm2|Nocturne Original R SFX 0.ogg}} ''Activation alert.''
+|notes        = 
+* '''Nocturne''' will track the target if they change locations.
+** He will not stop tracking the target until he reaches them, as there is no maximum tracking distance.
+<!-- outdated as of 25.23 ** He will dash to the target's previous location without dealing damage if the target is too far away or moves beyond {{ap|3500|4250|5000}} (based on ''Paranoia's'' rank) units.-->
+* Enemy players affected by ''Paranoia's'' {{tip|nearsight}} cannot interact with the allied portrait icons on the HUD.
+* ''Paranoia's'' {{tip|nearsight}} will apply to enemy champions that are {{tip|untargetable}} or are dead, and will persist through {{tip|death}}.
+* '''Nocturne''' can cast any of his [[champion ability|abilities]], [[summoner spell|summoner spells]] (excluding {{si|Hexflash}}), or [[active ability items|item actives]] during flight.
+** Using a {{tip|dash}} or {{tip|blink}} ability will interrupt the flight.
+** The flight will also be interrupted if '''Nocturne''' is affected by a {{ui|Blast Cone}} triggered by an allied champion.{{bug|1}}<!-- Has only been tested with the chemtech map's blast cones -->
+* ''Paranoia'' cannot be recast while {{tip|ground|grounded}} or {{tip|root|rooted}}.
+* ''Paranoia's'' {{tip|nearsight}} does not apply to {{tip|clone|clones}}.
+{{safesubst:unexpected|desc=
+* [[summoner|Players']] screens will turn a different color when ''Paranoia'' is cast, based on their perspective: blue for allies and red for enemies.
+** If an existing player overlay is overwritten, it will not be added back once ''Paranoia'' ends. [https://www.twitch.tv/scrubnoob/clip/BoxyEmpathicJayBCouch-6jetjjqssFUY5ACY] {{bug|2}}|affectedEffects=Nocturne R; Rengar R|estimatedPatchOrigin=V1.0.0.113|<!--added automatically-->wikiUploadTimestamp=1776209439|<!--added automatically-->pagename=Template:Data Nocturne/Paranoia
+}}
+* {{iis|Experimental Hexplate}} {{nie|Overdrive}}, {{iis|Fiendhunter Bolts}} {{nie|Opening Barrage}}, and {{iis|Zeke's Convergence}} {{nie|Frostfire Tempest}} will activate immediately upon ''Paranoia's'' first cast. If the recast is used, the buff's duration is refreshed at the end of the dash.
+* A [[spell indicator]] telegraphed to '''Nocturne''' and his allies will be placed on all enemy {{tip|champion|champions}} within range of ''Paranoia's'' recast while the ability is active. ''The following images display the indicator for the default [[skin]]:''
+[[File:Nocturne_Original_Paranoia_Indicator_Red.png|thumb|left|A glowing '''{{color|#8b0000|red silhouette}}''' of '''Nocturne's''' blades indicates an enemy champion can be targeted by ''Paranoia's'' recast.]]
+[[File:Nocturne Original Paranoia Indicator.png|thumb|left|A glowing '''{{color|#32CD32|green silhouette}}''' of '''Nocturne's''' blades signifies an enemy champion has been targeted by ''Paranoia's'' recast.]]
+}}
