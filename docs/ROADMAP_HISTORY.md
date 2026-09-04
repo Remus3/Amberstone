@@ -1,5 +1,40 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-04 - ROADMAP size-budget relocation pass (6 shipped entries)
+
+Relocated verbatim by the 2026-09-04 six-slice merger session. ROADMAP.md stood
+at 75268 bytes against its 81920-byte budget - 92 percent, which `tools/drift_guard.py`
+reports as a breach at every /done. NOTHING is dropped: every entry below is a
+SHIPPED row whose full detail already lives in `docs/LEDGER.md` (1322 / 1323 / 1324)
+and whose body is retained in `BACKLOG.md`, and each left a pointer stub in
+ROADMAP.md naming this file. Rows carrying an OPEN half were LEFT IN PLACE - in
+particular `RM-322 .. RM-328` stays, because RM-322 is still open.
+
+### RM-337
+
+- **RM-337 SHIPPED 2026-09-03 (LEDGER 1323; body + outcome in `BACKLOG.md`)** - 13 tests in the shipped `Share/` package fail on a clean copy (measured 3 ways, incl. outside the repo) because they open CWD-relative paths that only resolve at the repo root; pre-existing, NOT from the 1.280.0 batch (set-difference against `22e8bd0ef` returns exactly 1 new name, already fixed). `Share/README.md`'s "passes clean" claim corrected in place. Fixed: 16 literal sites across 14 files anchored on `__file__`, plus an AST guard with zero exemptions (`test_no_cwd_relative_paths.py`). A clean copy outside the repo now reports 8376 passed / 0 failed / 24 skipped.
+
+### RM-329..336
+
+- **RM-329 .. RM-336 SHIPPED 2026-09-03 at ENGINE 1.280.0 (LEDGER 1322, main `edbf5192a`; bodies retained in `BACKLOG.md` as the historical record; next free id RM-340)** - six LANE 6 (329 mode-note absent, 330 roster-key ids DECIDE-THEN-ACT, 331 augment display-name dropped, 332 note wording only, 333 cast-rate seam unreachable, 334 `/ehp` drops `apply_build_tenacity`), two LANE 7 (335 bad path in the Share-sync message, 336 wrong CLAUDE.md route attributions). A refutation pass KILLED 332 (`unique_passive_key` is a DEDUP family, `shield=None` is CORRECT) and CUT DOWN 329 + 330 - read those blocks first.
+
+### RM-338
+
+- **RM-338 SHIPPED 2026-09-04 (filed and closed the same day; LEDGER 1324; LANE 4, Tier-1)** - every Top-8 `up` chevron in the lobby view was DEAD TO THE MOUSE. `.lv-top8-reorder-btn::before` was a 44x44 hit-target overlay on a 26x14 button, so each of the two stacked chevrons covered its sibling, and `down` (later in DOM order, no `z-index`) won hit testing over the whole of `up`. Found by the RM-327 slice with `document.elementFromPoint`, not by inspection. Fixed by bounding the crowded axis (height 44 -> 21, anchored to each chevron's OUTER edge) per the `.lv-member-action` precedent; deleting the overlay was rejected as trading one audit defect for another. **All five sibling 44x44 sites were MEASURED and four are NOT overlays or not adjacent; the fifth (`.lv-fr-copy` / `.lv-fr-invite`) is the same defect shape but has ZERO markup producers in `web/`, so it got a tripwire test rather than a blind fix.** Honest residue: the fixed targets are 21-22px tall against a 42px `--hit-min` floor - two 14px controls 1px apart cannot both clear it, and widening the visible chevrons is a layout row of its own.
+
+### RM-220
+
+- **RM-220 SHIPPED 2026-09-04 (LEDGER 1324)** - (A) `parse_endpoints` brace-balances `{{ap|}}` and reads the rank-count, enumerated and named-parameter forms; (B) exactly 2 aliases, both cited to one live page; (C) decided in writing, NOT implemented. Measured `skipped_labels` 109 -> 72 and zero-label rows 27 -> 2 while `findings` ROSE 214 -> 225. Two zero-label rows remain on a DIFFERENT mechanism (`{{as|}}` head-cut, `[[File:...]]` pipes) - a follow-up, not this row. Body in `BACKLOG.md`.
+
+### RM-209
+
+- **RM-209 SHIPPED 2026-09-04 (LEDGER 1324)** - 5 of the 7 mapped onto existing tokens, 2 declared as genuinely new roles in `tokens.css`; guarded by `tests/test_css_var_definitions_rm209.py`. The row's own census was corrected by measurement: **22** reference sites across **10** files, not 21 across 8. Proven by computed style across all six themes (1 distinct value -> 6). Body in `BACKLOG.md`.
+
+### RM-208
+
+- **RM-208 SHIPPED 2026-09-04 (LEDGER 1324)** - DS doc route-list guard now parses `_POST_ROUTES` with `ast` and asserts BOTH directions; the 2 `/v2/*` routes are no longer invisible. Proven red-then-green by planting `/v2/zzz` and by advertising an unregistered doc route. Body in `BACKLOG.md`.
+
+
 ## 2026-09-01 - ROADMAP size-budget relocation pass (24 closed pointer stubs)
 
 Relocated verbatim by the 2026-09-01 size-budget pass. ROADMAP.md stood at 81897
