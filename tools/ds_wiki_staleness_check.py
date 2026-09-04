@@ -40,6 +40,12 @@ that do not match a Meraki ``attribute`` verbatim are skipped rather than
 guessed at, so the report under-reports rather than crying wolf: an editorial
 wiki edit ("fixed typo") moves no number and therefore produces no finding.
 
+The one exception is ``_LABEL_ALIASES`` (RM-220), a hand-cited, exact,
+champion-scoped table of stored spellings the live page publishes under
+different wording for the same quantity. It is deliberately tiny, every entry
+names the live page it was read off, and a row it produces carries
+``wiki_label`` so an aliased comparison is never mistaken for a verbatim one.
+
 Usage:
     python tools/ds_wiki_staleness_check.py --full [--patch 16.14.1] [--write]
     python tools/ds_wiki_staleness_check.py --recent [--days 7] [--write]
@@ -84,14 +90,54 @@ _ST_RE = re.compile(r"\{\{\s*st\s*\|", re.IGNORECASE)
 # `[0-9.]+` endpoints. The extractor that owns that regex is mirrored into
 # Share and feeds the engine, so widening it there would be a Tier-2 change to
 # a data producer; this reader only needs the looser capture for itself.
-_AP_EXPR_RE = re.compile(
-    r"\{\{\s*ap\s*\|\s*([^|}]+?)\s+to\s+([^|}]+?)\s*\}\}", re.IGNORECASE
-)
+_AP_OPEN_RE = re.compile(r"\{\{\s*ap\s*\|", re.IGNORECASE)
+_TO_SPLIT_RE = re.compile(r"\s+to\s+", re.IGNORECASE)
+# `round=2` / `fd=1` - a RENDERING hint, not a rank (RM-220).
+_NAMED_PARAM_RE = re.compile(r"^\s*[A-Za-z_][A-Za-z0-9_]*\s*=")
+# `110 6` - the endpoint, then the ability's RANK COUNT (RM-220). Bounded to two
+# digits: no ability has 100 ranks, and an unbounded tail would let a genuine
+# trailing number be eaten.
+_RANK_COUNT_SUFFIX_RE = re.compile(r"^(?P<expr>.*\S)\s+\d{1,2}$")
 _ARITH_CHARS_RE = re.compile(r"[0-9.+\-*/() ]+")
 # `{{ii|Death's Daughter}}` inside a LABEL - the stored side reads it as plain
 # text, so the wrapper has to be flattened before the two can ever match.
 _LABEL_TEMPLATE_RE = re.compile(r"\{\{\s*[a-z]+\s*\|([^{}|]*)\}\}", re.IGNORECASE)
 _VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+
+# RM-220(B): exact, champion-scoped label aliases. NOT a vocabulary table.
+#
+# RM-218 was REFUTED as a blanket vocabulary gap, and this must not become one
+# by increments. Each entry is one stored spelling that a single CITED live page
+# publishes under different wording for the SAME quantity - nothing else
+# qualifies, and three nearby residue cases show why the bar is that high:
+#
+#   * Ekko Q stores one ``Magic Damage`` where the live page publishes BOTH
+#     ``Initial Magic Damage`` and ``Return Magic Damage``. A one-to-many split
+#     has no single correct target, so it stays unaliased.
+#   * Cho'Gath R stores ``Champion True Damage`` while the live page's only
+#     PARSEABLE true-damage label used to be ``Non-Champion True Damage`` (1200
+#     flat) - which reads like an alias and is a different quantity. That one
+#     dissolved on its own: the missing label was the enumerated
+#     ``{{ap|300|475|650}}`` form, and RM-220(A) reads it, so an exact match now
+#     exists and no alias is needed.
+#   * Briar Q stores ``Magic Damage`` where the live page publishes ``Physical
+#     Damage`` and ``Resistances Reduction``. Binding those would assert the
+#     damage TYPE never changed, which is itself the drift.
+#
+# Matching is EXACT on the whole stored label and scoped to the champion, never
+# fuzzy and never substring: ``Magic Damage`` is itself an unmatched stored
+# label, and a substring rule would bind it to ``Magic Damage Per Tick`` and
+# compare a per-tick number against a total.
+_LABEL_ALIASES: dict[tuple[str, str], str] = {
+    # Template:Data Ahri/Fox-Fire, fetched 2026-09-04 at 16.15.1, |leveling2:
+    #   {{st|Primary Magic Damage|{{ap|40 to 120}} {{as|(+ 40% AP)}}
+    #       |Subsequent Magic Damage|{{ap|40*0.4 to 120*0.4}} ...}}
+    # Stored: Initial Flame 40..120 (agrees), Subsequent Flame 12..36 against a
+    # live 16..48 - the second flame moved from 30 to 40 percent of the first,
+    # so this alias converts a discarded skip into the finding it always was.
+    ("Ahri", "Initial Flame Magic Damage"): "Primary Magic Damage",
+    ("Ahri", "Subsequent Flame Magic Damage"): "Subsequent Magic Damage",
+}
 
 
 _VARDEFINE_RE = re.compile(r"\{\{#vardefine:\s*([A-Za-z0-9_]+)\s*\|([^}|]*)\}\}")
@@ -151,21 +197,98 @@ def parse_endpoints(raw: Optional[str]) -> Optional[tuple[float, float]]:
     (Mel W is 38/35/33/29/26, not the 38/35/32/29/26 a linear expansion gives),
     so comparing interiors would manufacture false findings. First and last rank
     are exact on both sides.
+
+    THREE MORE AUTHORED FORMS (RM-220). A single ``X to Y`` regex reached only
+    part of the corpus: at 16.15.1, 27 skipped-label rows across 14 champions
+    carried an EMPTY live-label list, meaning the page parsed to no labelled
+    quantity whatsoever. The cause was never vocabulary, it was that ``{{ap|}}``
+    is authored four ways, so the body is now brace-balanced and split on its
+    OWN pipes instead:
+
+      * ``{{ap|35 to 110 6}}`` (Jayce W) - the trailing 6 is his rank count. The
+        old non-greedy tail backtracked across the space, captured ``110 6`` and
+        died in ``_arith``, taking the whole page's labels with it.
+      * ``{{ap|150|275|400}}`` (Nocturne R, Cho'Gath R) - enumerated ranks, no
+        ``to`` anywhere. First and last positional are the endpoints.
+      * ``{{ap|(50/12)*3 to (150/12)*3|round=2}}`` (Rumble Q) - ``round=`` is a
+        rendering hint sitting between the endpoint and the closing braces.
+
+    The scan takes the first ``{{ap|`` that PARSES rather than the first one it
+    finds, which is what keeps a widened parser from stealing a match the old
+    regex would have skipped past - Nocturne's cooldown is
+    ``{{tt|{{ap|140 to 90}}|note}}`` and must still read 140..90.
     """
     s = _strip_comments(raw or "").strip()
     if not s:
         return None
-    m = _AP_EXPR_RE.search(s)
-    if m:
-        lo, hi = _arith(m.group(1)), _arith(m.group(2))
-        if lo is None or hi is None:
-            return None
-        return (lo, hi)
+    for body in _ap_bodies(s):
+        pts = _ap_endpoints(body)
+        if pts is not None:
+            return pts
     try:
         v = float(s)
     except (TypeError, ValueError):
         return None
     return (v, v)
+
+
+def _ap_bodies(text: str) -> list[str]:
+    """Every ``{{ap|...}}`` body in ``text``, brace-balanced, in page order.
+
+    Balanced rather than regex-terminated because a body legitimately contains
+    nested templates - Rumble Q authors its endpoints as ``{{#var:q_b1}}``, and
+    an unresolved ``{{#var:}}`` must not truncate the body at its own ``}}``.
+    An unterminated wrapper yields nothing rather than a guess.
+    """
+    out: list[str] = []
+    for m in _AP_OPEN_RE.finditer(text):
+        i = m.end()
+        depth = 1
+        while i < len(text) and depth:
+            if text.startswith("{{", i):
+                depth += 1
+                i += 2
+            elif text.startswith("}}", i):
+                depth -= 1
+                i += 2
+            else:
+                i += 1
+        if depth == 0:
+            out.append(text[m.end(): i - 2])
+    return out
+
+
+def _ap_endpoints(body: str) -> Optional[tuple[float, float]]:
+    """First/last endpoint of one ``{{ap|}}`` body, or None (RM-220)."""
+    parts = [p.strip() for p in _top_level_parts(body)]
+    parts = [p for p in parts if p and not _NAMED_PARAM_RE.match(p)]
+    if not parts:
+        return None
+    if len(parts) > 1:
+        lo, hi = _arith(parts[0]), _arith(parts[-1])
+        return None if lo is None or hi is None else (lo, hi)
+    halves = _TO_SPLIT_RE.split(parts[0], maxsplit=1)
+    if len(halves) == 2:
+        lo, hi = _endpoint(halves[0]), _endpoint(halves[1])
+        return None if lo is None or hi is None else (lo, hi)
+    only = _endpoint(parts[0])
+    return None if only is None else (only, only)
+
+
+def _endpoint(expr: str) -> Optional[float]:
+    """One endpoint, tolerating the rank count the wiki appends to it (RM-220).
+
+    Order matters and is the whole safety argument: the arithmetic walk runs
+    FIRST, so a settled expression like ``100*12+100*3`` is never reinterpreted.
+    The suffix strip only fires on input that already failed to parse, and
+    ``N M`` is never valid arithmetic, so it cannot reach a working parse.
+    """
+    s = (expr or "").strip()
+    val = _arith(s)
+    if val is not None:
+        return val
+    m = _RANK_COUNT_SUFFIX_RE.match(s)
+    return _arith(m.group("expr")) if m else None
 
 
 def _arith(expr: Optional[str]) -> Optional[float]:
@@ -405,6 +528,11 @@ def compare_ability(
     compared - the wiki relabels damage lines on reworks. That is not an error
     and the sweep keeps going, but it is LOST COVERAGE, so pass
     ``skipped_labels`` to have each miss appended rather than dropped (RM-216).
+
+    A miss falls back to ``_LABEL_ALIASES`` exactly once, by whole-label lookup
+    scoped to the champion (RM-220). When that fires, the row carries
+    ``wiki_label`` naming the live label it was actually compared against, so an
+    aliased finding is never mistaken for a verbatim one.
     """
     findings: list[dict[str, Any]] = []
     mine = meraki_endpoints(entry)
@@ -426,6 +554,12 @@ def compare_ability(
     suspect = mine.get("shape_suspect") or {}
     for attr, pts in mine["bases"].items():
         live = wiki_bases.get(attr)
+        alias = None
+        if not live:
+            alias = _LABEL_ALIASES.get((champion, attr))
+            live = wiki_bases.get(alias) if alias else None
+            if not live:
+                alias = None
         if not live:
             if skipped_labels is not None:
                 skipped_labels.append(
@@ -448,6 +582,11 @@ def compare_ability(
                 "meraki": list(pts),
                 "wiki": list(live),
             }
+            if alias:
+                # An alias is a JUDGEMENT, not a measurement, so the row names
+                # the live label it was compared against and a reader can
+                # re-check it without re-deriving the table.
+                row["wiki_label"] = alias
             if attr in suspect:
                 row["SHAPE_SUSPECT"] = suspect[attr]
             findings.append(row)

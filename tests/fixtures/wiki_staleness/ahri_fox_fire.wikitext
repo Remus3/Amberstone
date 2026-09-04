@@ -1,0 +1,29 @@
+{{{{{1<noinclude>|Ability data</noinclude>}}}|Fox-Fire|{{{2|}}}|{{{3|}}}|{{{4|}}}|{{{5|}}}
+|champion     = Ahri
+|skill        = W
+|icon         = Fox-Fire.png
+|description  = {{sbc|Active:}} '''Ahri''' gains {{sti|{{as|40% '''bonus''' movement speed}}}} that decays over 2 seconds and conjures three flames which orbit her clockwise for up to {{fd|2.5}} seconds.
+|description2 = After {{fd|0.25}} seconds of the cast, each flame targets a {{tip|sight|visible}} enemy based on priority, or after {{fd|0.4}} seconds, simply targets the closest visible enemy in range. Each flame deals {{as|magic damage}}, with subsequent flames against a target dealing 40% damage.
+|leveling2    = {{st|Primary Magic Damage|{{ap|40 to 120}} {{as|(+ 40% AP)}}|Subsequent Magic Damage|{{ap|40*0.4 to 120*0.4}} {{as|(+ {{ap|40*0.4}}% AP)}}|Total Single-Target Damage|{{ap|40*(1+0.4*2) to 120*(1+0.4*2)}} {{as|(+ {{ap|40*(1+0.4*2)}}% AP)}}}}
+|description3 = Flames prioritize enemy champions hit by ''{{ai|Charm|Ahri}}'', then enemy {{tip|champion|champions}}, then minions that would die to ''Fox-Fire's'' damage, and then the target of '''Ahri's''' last basic attack within 3 seconds.
+|description4 = ''Fox-Fire's'' damage is doubled against {{tip|minions}} below {{sti|{{as|20% '''maximum''' health}}}}.
+|leveling4    = {{st|Primary Minion Damage|{{ap|40*2 to 120*2}} {{as|(+ {{ap|40*2}}% AP)}}|Subsequent Minion Damage|{{ap|40*2*0.4 to 120*2*0.4}} {{as|(+ {{ap|40*2*0.4}}% AP)}}}}
+|effect radius= {{dv|{{tip|cr|icononly = true}} {{tt|150|Orbit radius}}|{{tt|550|Non-prioritized targets, from the missile location}}|{{tt|725|Prioritized targets, from Ahri's location}}}}
+|speed        = {{dv|{{tt|{{fd|75.92}}{{degree}} per second|Orbiting angular velocity; 2.65 rad/s}}|{{tt|1400|Fired missile speed}}}}
+|cooldown     = {{tt|{{ap|9 to 5}}|Starts post-effect}}
+|cost         = 30
+|costtype     = mana
+|cast time    = none
+|targeting    = Auto
+|affects      = Enemies
+|damagetype   = Magic
+|spellshield  = True
+|spelleffects = Single target
+|projectile   = True
+|notes        = 
+* Each missile of ''Fox-Fire'' has its own shorter non-priority range.
+* Any unused ''Fox-Fires'' will fizzle upon death.
+* This ability's damage is calculated based on the caster's current stats and changes dynamically.
+<!-- Blurb -->
+|blurb        = {{sbc|Active:}} {{ci|Ahri}} gains a burst of {{sti|ms|{{as|move speed}}}} and conjures three fox-fires that orbit her for a short time. Fox-fires home onto nearby enemies, dealing {{as|magic damage}}.
+}}

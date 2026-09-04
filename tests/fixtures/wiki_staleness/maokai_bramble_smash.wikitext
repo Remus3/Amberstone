@@ -1,0 +1,32 @@
+{{{{{1<noinclude>|Ability data</noinclude>}}}|Bramble Smash|{{{2|}}}|{{{3|}}}|{{{4|}}}|{{{5|}}}
+|champion     = Maokai
+|skill        = Q
+|icon         = Bramble Smash.png
+|blurb        = {{sbc|Active:}} {{ci|Maokai}} sends a shockwave in the target direction that deals {{as|magic damage}} and briefly {{tip|slow|slows}} enemies hit.
+|blurb2      = Enemies near '''Maokai''' are also briefly {{tip|stun|stunned}} and {{tip|airborne|knocked back}}.
+|description  = {{sbc|Active:}} '''Maokai''' sends a shockwave in the target direction that deals {{as|magic damage}} to enemies hit and {{tip|slow|slows}} them by 99% for {{fd|0.25}} seconds. ''Bramble Smash'' deals {{as|'''bonus''' magic damage}} to {{tip|monsters}}.
+|leveling     = {{st|Magic Damage|{{ap|75 to 255}} {{as|(+ {{ap|2 to 4}}% of the target's '''maximum''' health)}} {{as|(+ 50% AP)}}}}
+{{st|Bonus Monster Damage|{{ap|150 to 190}}|Total Monster Damage|{{ap|75+150 to 255+190}} {{as|(+ {{ap|2 to 4}}% of the target's '''maximum''' health)}} {{as|(+ 50% AP)}}}}
+|description2 = Enemies near '''Maokai''' are also {{tip|stun|stunned}} for {{fd|0.5}} seconds and {{tip|airborne|knocked back}} up to 300 units based on their proximity to him.
+|target range = 600
+|effect radius= {{tt|325|Knockback circle radius around Maokai}}
+|speed        = 1600
+|cost         = 40
+|costtype     = Mana
+|cooldown     = {{ap|7 to 5}}
+|cast time    = {{fd|0.3}}
+|targeting    = Direction
+|affects      = Enemies
+|damagetype   = Magic
+|spelleffects = Area of effect
+|spellshield  = True
+|parry        = 
+|projectile   = True
+|grounded     = 
+|knockdown    = 
+|notes        =
+{{Effect at cast time end}}
+* ''Bramble Smash's'' damage based on the target's health ratio is capped at 9999 against non-champions.
+* {{tip|Displacement immunity}} will also resist the application of the {{tip|stun}}.
+* '''Maokai''' remains locked out from the cast time for another {{fd|0.075}} seconds after it.
+}}
