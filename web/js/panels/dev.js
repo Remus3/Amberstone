@@ -1,4 +1,4 @@
-// Dev panel - settings, diagnostics, dev/sim fixture viewer, replay scrubber.
+// Dev panel - settings, dev/sim fixture viewer, replay scrubber.
 import { el, safe, fmtList, _to12, logLine } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
@@ -92,14 +92,6 @@ function _settingsRefresh() {
       applyTheme(v);
     });
   }
-
-  // Live metrics status (read-only - env var)
-  fetch("/api/diagnostics", { cache: "no-store" })
-    .then((r) => (r && r.ok ? r.json() : null))
-    .then((d) => {
-      const el = document.getElementById("set-live-metrics-status");
-      if (el && d) el.textContent = d.live_metrics_enabled ? "ON" : "OFF";
-    }).catch(() => {});
 
   // API SPEND GATES (dev): a master dev-mode toggle reveals the per-gate
   // Anthropic kill-switches. The gate rows themselves are server-driven
@@ -201,139 +193,6 @@ function renderSpendGates() {
       }
     })
     .catch(() => {});
-}
-
-// -- Diagnostics view (2026-04-26) --------------------------------
-function _diagFetchAndRender() {
-  fetch("/api/diagnostics", { cache: "no-store" })
-    .then((r) => (r && r.ok ? r.json() : null))
-    .then((d) => {
-      if (!d) return;
-      const ul = document.getElementById("diag-conn-list");
-      if (ul) {
-        ul.innerHTML = "";
-        (d.connections || []).forEach((c) => {
-          const li = document.createElement("li");
-          li.className = "diag-conn-row";
-          const dot = document.createElement("span");
-          dot.className = "diag-conn-dot " + (c.ok ? "ok" : "err");
-          const nm = document.createElement("span");
-          nm.style.cssText = "flex:1; color:var(--text); font-weight:700";
-          nm.textContent = c.name;
-          const det = document.createElement("span");
-          det.className = "dim";
-          // DIAG1 audit: dropped the inline 10px sub-floor; the detail span
-          // inherits the .diag-conn-row 12px dense-surface size.
-          det.textContent = c.detail || "";
-          li.append(dot, nm, det);
-          ul.appendChild(li);
-        });
-        if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no connections reporting</li>';
-      }
-      const log = document.getElementById("diag-log");
-      if (log) log.textContent = (d.log_tail || []).join("\n") || "(no log lines)";
-      const health = document.getElementById("diag-health");
-      if (health) health.textContent = JSON.stringify(d.health || {}, null, 2);
-    })
-    .catch(() => {});
-  // 2026-04-28: also refresh the cost tile, coach toggles, and trace
-  // list. Each is independent; one failure doesn't block the others.
-  _diagFetchCost();
-  _diagFetchCoachState();
-  _diagFetchTrace();
-}
-function _diagFetchCost() {
-  fetch("/api/cost", { cache: "no-store" })
-    .then(r => r.ok ? r.json() : null)
-    .then(j => {
-      if (!j) return;
-      const sp = j.spend || {};
-      const v = document.getElementById("cost-val");
-      if (v) v.textContent = "$" + (sp.total_usd || 0).toFixed(4);
-      const c = document.getElementById("cost-calls");
-      if (c) c.textContent = String(sp.calls || 0);
-      const t = document.getElementById("cost-tokens");
-      if (t) t.textContent = `${(sp.tokens_in||0).toLocaleString()} / ${(sp.tokens_out||0).toLocaleString()}`;
-      const cc = document.getElementById("cost-cache");
-      if (cc) cc.textContent = `${(sp.cache_in||0).toLocaleString()} / ${(sp.cache_write||0).toLocaleString()}`;
-      const b = document.getElementById("cost-banner");
-      if (b) {
-        b.classList.remove("ok","warn","over");
-        b.classList.add(j.banner || "ok");
-        b.textContent = (j.banner || "ok").toUpperCase();
-      }
-    })
-    .catch(()=>{});
-}
-function _diagFetchCoachState() {
-  fetch("/api/coach/state", { cache: "no-store" })
-    .then(r => r.ok ? r.json() : null)
-    .then(j => {
-      if (!j || !j.enabled) return;
-      for (const mode of Object.keys(j.enabled)) {
-        const pill = document.querySelector(`.coach-toggle-pill[data-mode="${mode}"]`);
-        if (!pill) continue;
-        if (pill.dataset.disabled === "1") continue;   // tft on hold
-        const on = j.enabled[mode];
-        pill.classList.remove("on","off");
-        pill.classList.add(on ? "on" : "off");
-        pill.textContent = on ? "ON" : "OFF";
-      }
-    })
-    .catch(()=>{});
-}
-function _diagFetchTrace() {
-  fetch("/api/coach/trace?limit=20", { cache: "no-store" })
-    .then(r => r.ok ? r.json() : null)
-    .then(j => {
-      const host = document.getElementById("trace-list");
-      if (!host) return;
-      host.innerHTML = "";
-      const rows = (j && j.records) || [];
-      if (!rows.length) {
-        host.innerHTML = '<div class="home-empty">no coach calls yet today</div>';
-        return;
-      }
-      for (const rec of rows.slice().reverse()) {  // newest first
-        const item = document.createElement("div");
-        item.className = "trace-item";
-        const meta = document.createElement("div");
-        meta.className = "trace-meta";
-        const tsStr = _to12(new Date((rec.ts || 0) * 1000));
-        meta.textContent = `${tsStr} - ${rec.mode || "?"} - ${rec.model || ""} - ${rec.latency_ms || 0}ms - in ${rec.tokens_in || 0} / out ${rec.tokens_out || 0}` +
-          ((rec.cache_read || rec.cache_write) ? ` - cache r ${rec.cache_read || 0} w ${rec.cache_write || 0}` : "");
-        const resp = document.createElement("pre");
-        resp.textContent = (rec.response || "").slice(0, 600);
-        item.append(meta, resp);
-        host.appendChild(item);
-      }
-    })
-    .catch(()=>{});
-}
-function _diagToggleCoach(mode, currentlyOn) {
-  fetch("/api/coach/toggle", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Requested-With": "rc-dashboard" },
-    body: JSON.stringify({ mode: mode, disabled: currentlyOn })
-  })
-    .then(r => r.ok ? r.json() : null)
-    .then(_ => _diagFetchCoachState())
-    .catch(()=>{});
-}
-function _diagWireOnce() {
-  if (window.__diagWired) return;
-  window.__diagWired = true;
-  const r = document.getElementById("diag-refresh");
-  if (r) r.addEventListener("click", _diagFetchAndRender);
-  // Coach-toggle clicks
-  document.querySelectorAll(".coach-toggle-pill").forEach(p => {
-    if (p.dataset.disabled === "1") return;
-    p.addEventListener("click", () => {
-      const mode = p.dataset.mode;
-      const currentlyOn = p.classList.contains("on");
-      _diagToggleCoach(mode, currentlyOn);
-    });
-  });
 }
 
 // -- Replay scrubber (audit suggestion 2.3, 2026-04-28) ------------
@@ -600,6 +459,5 @@ function _replayViewWireOnce() {
 
 export {
   _settingsRefresh, renderSpendGates,
-  _diagFetchAndRender, _diagWireOnce,
   _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch,
 };

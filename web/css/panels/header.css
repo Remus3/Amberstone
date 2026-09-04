@@ -67,7 +67,6 @@ header .zone-pill.hidden,
 header .cs-pill.hidden,
 header .kda.hidden,
 header .win-pill.hidden,
-header .trend-pill.hidden,
 header .advisory-badge.hidden,
 header .self-spells.hidden {
   display: inline-flex !important;
@@ -547,13 +546,9 @@ body[data-view="lobby"] main,
 body[data-view="active-match"] main,
 body[data-view="session"] main,
 body[data-view="history"] main,
-body[data-view="loadouts"] main,
 body[data-view="user-builds"] main,
 body[data-view="build-insights"] main,
 body[data-view="settings"] main,
-body[data-view="diagnostics"] main,
-body[data-view="coach-calls"] main,
-body[data-view="bridge-pending"] main,
 body[data-view="champ-select"] main,
 body[data-view="last-match"] main,
 body[data-view="replay"] main { display: none; }
@@ -586,13 +581,9 @@ body[data-view="last-match"]     #view-last-match,
 body[data-view="session"]        #view-session,
 body[data-view="history"]        #view-history,
 body[data-view="historical-pgr"] #view-historical-pgr,
-body[data-view="loadouts"]       #view-loadouts,
 body[data-view="user-builds"]    #view-user-builds,
 body[data-view="build-insights"] #view-build-insights,
 body[data-view="settings"]       #view-settings,
-body[data-view="diagnostics"]    #view-diagnostics,
-body[data-view="coach-calls"]    #view-coach-calls,
-body[data-view="bridge-pending"] #view-bridge-pending,
 body[data-view="replay"]         #view-replay { display: block; }
 /* Hide the home overlay when a non-default view is active. (E11: the
  * inline #lobby-overlay strip was removed; #view-lobby is the sole
@@ -600,12 +591,8 @@ body[data-view="replay"]         #view-replay { display: block; }
 body[data-view="session"]        #home-overlay,
 body[data-view="history"]        #home-overlay,
 body[data-view="historical-pgr"] #home-overlay,
-body[data-view="loadouts"]       #home-overlay,
 body[data-view="user-builds"]    #home-overlay,
 body[data-view="settings"]       #home-overlay,
-body[data-view="diagnostics"]    #home-overlay,
-body[data-view="coach-calls"]    #home-overlay,
-body[data-view="bridge-pending"] #home-overlay,
 body[data-view="replay"]         #home-overlay,
 body[data-view="last-match"]     #home-overlay,
 body[data-view="active-match"]   #home-overlay,
@@ -2073,7 +2060,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   padding-bottom: var(--space-1);
   display: flex; align-items: baseline; gap: var(--space-2);
 }
-.history-count, .diag-sub {
+.history-count {
   font-size: var(--fs-xs); color: var(--accent); margin-left: auto;
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
@@ -2243,37 +2230,6 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .history-match-list .home-empty::before {
   content: "\2756"; font-size: var(--fs-xl); line-height: 1;
   color: var(--accent); opacity: 0.35;
-}
-
-/* Loadouts view layout */
-.loadouts-toolbar {
-  display: flex; gap: 10px; align-items: center;
-  padding: 6px 0 12px;
-}
-.loadouts-toolbar input[type="text"] {
-  flex: 1; padding: 6px 10px; font-size: 13px;
-  background: var(--surface-alt); border: 1px solid var(--border);
-  border-radius: 4px; color: var(--text);
-}
-.loadouts-toolbar select {
-  padding: 6px 10px; background: var(--surface-alt);
-  border: 1px solid var(--border); color: var(--text);
-  font-size: 13px; border-radius: 4px;
-}
-.loadouts-count {
-  font-size: 11px; color: var(--text-faint); letter-spacing: 0.06em;
-}
-.loadouts-list {
-  display: flex; flex-direction: column; gap: 8px;
-  max-height: 600px; overflow-y: auto;
-}
-.loadout-champ {
-  background: var(--surface-head); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 10px 14px;
-}
-.loadout-champ-name {
-  font-size: 14px; font-weight: 800; letter-spacing: 0.06em;
-  color: var(--text); margin-bottom: 6px;
 }
 
 /* User Builds view (Phase 8 step 6 - 2026-05-04, UI scale v2.1 page #2
@@ -2949,50 +2905,6 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   color: var(--text-faint);        /* tier smaller than the row body    */
 }
 
-/* Diagnostics view layout */
-.diag-grid {
-  display: grid; grid-template-columns: 1fr 1.6fr; gap: 14px;
-  grid-template-areas: "conn log" "health log";
-}
-.diag-card {
-  background: var(--surface-head); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 12px 14px;
-  max-height: 360px; overflow: auto;
-}
-.diag-card-wide { grid-area: log; max-height: 740px; }
-.diag-card:nth-child(1) { grid-area: conn; }
-.diag-card:nth-child(3) { grid-area: health; }
-/* operator-exception (DIAG1 audit): the Diagnostics view is a dense
- * developer-only surface (connection list + log tail + health JSON dump);
- * the sub-floor 11-12px sizes below are intentional micro-density so many
- * log lines / the full health blob stay visible at once, same rationale as
- * the ward-heat micro-strip (item 184). Not a player-facing coaching surface. */
-.diag-card-head {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--label);
-  margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 5px;
-  display: flex; align-items: baseline; gap: 8px;
-}
-.diag-conn-list { list-style: none; margin: 0; padding: 0; }
-.diag-conn-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 0; font-size: 12px;
-}
-.diag-conn-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--text-faint); flex-shrink: 0;
-}
-.diag-conn-dot.ok { background: var(--good); box-shadow: 0 0 4px rgba(127,209,154,0.5); }
-.diag-conn-dot.err { background: var(--bad); }
-.diag-log, .diag-health {
-  font-family: "SF Mono", Consolas, monospace;
-  font-size: 11px; color: var(--text-dim);
-  background: var(--surface-alt); border-radius: 4px;
-  padding: 8px 10px; margin: 0;
-  white-space: pre-wrap; word-break: break-word;
-  max-height: 580px; overflow-y: auto;
-}
 .mode-pill {
   padding: 5px 14px;
   border: 1px solid transparent;
