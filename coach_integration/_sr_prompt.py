@@ -321,8 +321,14 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     items      = ", ".join(_ps_iter(gs.get("items", []))) or "none"
     summ_d     = _ps_clean(gs.get("summoner_d", "?"), max_len=24)
     summ_f     = _ps_clean(gs.get("summoner_f", "?"), max_len=24)
-    allies     = ", ".join(_ps_iter(gs.get("ally_comp", []))) or "unknown"
-    enemies    = ", ".join(_ps_iter(gs.get("enemy_comp", []))) or "unknown"
+    # RM-361: sanitise the wire comps ONCE and reuse the cleaned lists on
+    # every branch below. Both keys used to be cleaned here and then re-read
+    # RAW further down, so a single wire field had two renderings - one
+    # sanitised and one not - and only the sanitised one was obvious.
+    ally_list  = _ps_iter(gs.get("ally_comp", []))
+    enemy_list = _ps_iter(gs.get("enemy_comp", []))
+    allies     = ", ".join(ally_list) or "unknown"
+    enemies    = ", ".join(enemy_list) or "unknown"
     # Prefer vision_tracker output (position-freeze detection - more
     # accurate fog-of-war model than game_reader's (0,0) heuristic).
     # Falls through to game_reader's enemy_locs when tracker is cold/stale.
@@ -369,11 +375,11 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     elif gs.get("level", 1) >= 5 and not quest_boots:
         lines.append(f"Note: Lane quest boots NOT yet completed (level {gs.get('level',1)})")
 
-    ally_list  = gs.get("ally_comp",  [])
-    enemy_list = gs.get("enemy_comp", [])
-
+    # RM-361: ally_list / enemy_list are the sanitised lists built above -
+    # do NOT re-read gs here. lane_partner likewise reuses the already
+    # cleaned ally_status rather than re-reading ally_status_str raw.
     lane_partner = ""
-    for a_info in (gs.get("ally_status_str", "") or "").split(","):
+    for a_info in (ally_status or "").split(","):
         a_info = a_info.strip()
         if a_info:
             lane_partner = a_info.split()[0] if a_info else ""
@@ -447,7 +453,14 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     if comp_ctx:
         lines.append("")
         lines.append("COMPOSITION ANALYSIS:")
-        for cl in comp_ctx.splitlines():
+        # RM-361: clean each line rather than the whole blob. comp_context
+        # is legitimately multi-line (composition_advisor.comp_context_str
+        # joins up to eight lines), so a whole-string clean would flatten
+        # the block onto one line and truncate it at DEFAULT_MAX_LEN. Per
+        # line keeps the layout and still neutralises role markers. Note
+        # the splitlines() here is why the whole-string newline token never
+        # applied to this field - see the residual noted in the RM-361 test.
+        for cl in _ps_iter(comp_ctx.splitlines()):
             lines.append(f"  {cl}")
 
     return "\n".join(lines)
