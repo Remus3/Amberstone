@@ -6,6 +6,62 @@
 
 ---
 
+# 2026-09-05d - ROW EXECUTION: RM-346 / RM-362 shipped, gate refuted the MERGER this time
+
+STATE. LEDGER 1336. Two worktree slices merged `--no-ff` with zero conflicts
+(`753ea0937`, `fe1678f2b`) plus in-merger follow-up `7d9e9b7a7`. Suites measured
+on the merged tree: `pytest tests -n 8` **20673 passed / 96 skipped / 4859
+subtests / exit 0**; `pytest agents/daemon_slayer -n 8` **10856 passed / 13662
+subtests / exit 0**. No `ENGINE_VERSION` bump, no `:8860` bounce, no Share sync,
+no frozen file touched. Next free id still **RM-367** - nothing new was minted,
+because the one sibling defect found was fixed in-slice rather than filed.
+
+WHAT SHIPPED. **RM-362** - `core/hot_reload.py:95` was `any(s in r for s in
+_SKIP_DIRS)`, an unanchored substring test, so any watched file whose path
+merely CONTAINED `data` / `web` / `logs` / `Share` was silently dropped. Now
+segment-anchored, basename excluded from the window, `docs/_archive` matched as
+a consecutive run at any depth. **RM-346** - the three `lcu/lcu_pregame.py`
+champ-select readers are now total against JSON `null` and non-dict elements.
+
+THREE THINGS WORTH CARRYING FORWARD.
+
+1. **The row's count was wrong and the missing item was the interesting one.**
+   RM-362 said 22 unwatched files; the truth is 23, and the 23rd is
+   `web_dashboard.py` itself - excluded because its own BASENAME contains `web`,
+   so the watcher could not see the module that starts it at `:59`. Three
+   parties derived 23 independently before comparing.
+
+2. **The verifier refuted the MERGER, not a slice.** The merger swept for
+   sibling cases by grepping `int(` and declared the three sites complete. The
+   root cause is not `int()`, it is `.get()` returning `None` - so the sweep
+   missed `get_my_pick_action` 15 lines up, measured raising on five shapes.
+   **A pattern-scoped sweep is not a root-cause sweep.** Fixed in the same slice
+   per the root-cause-first rule.
+
+3. **A crashed xdist run reads exactly like a green one.** Three suite runs were
+   discarded: two had all 8 workers die with `OSError: cannot send (already
+   closed?)` at `pytest_sessionfinish`, leaving a truncated file with NO summary
+   line - and `grep -c FAILED` on it returns 0, which looks like success. The
+   third was a real `1 failed` (`test_live_three_profiles`, `engine error: timed
+   out` vs DS `:8860`) that passed standalone with `:8860` reporting `status:
+   ok`. Cause of all three was contention - a verifier subagent running pytest
+   while the merge had just bounced RC. Assert on the summary line AND the exit
+   code, never on the absence of `FAILED`.
+
+ALSO. The RM-346 row's "spell auto-push path" framing is REFUTED - all three
+readers have zero in-repo callers, and the auto-push path reads the same wire
+fields inline at `lcu_rune_writer.py:879` with its own `or 0` guard. The defect
+is latent public surface on the `LcuClient` mixin, not a live crash. Correction
+is committed in the shipped docstrings, not only in the ledger. Two residuals
+deliberately not filed, with reasons in LEDGER 1336: `_aram_mode` (declares
+`mode: str`, no null contract, zero callers) and the pre-existing
+case-sensitivity of the skip match (non-regressing, non-leaking).
+
+NOTE. RC now restarts on edits it previously ignored - 14 of the 23 newly
+watched files are under `tests/`.
+
+---
+
 # 2026-09-05c - ROW EXECUTION: RM-344 / RM-345 / RM-361 shipped, and the gate refuted one
 
 STATE. LEDGER 1335, pushed `cfb46f99b..f459e56eb`. Three worktree slices merged
