@@ -6,6 +6,54 @@
 
 ---
 
+# 2026-09-05c - ROW EXECUTION: RM-344 / RM-345 / RM-361 shipped, and the gate refuted one
+
+STATE. LEDGER 1335, pushed `cfb46f99b..f459e56eb`. Three worktree slices merged
+`--no-ff` with zero conflicts, worktrees + branches cleaned. CI green at STEP
+level on `f459e56eb`: `check` -> `full dual suite (RM-119) => success`, and
+`docs-guards` success. Local dual suite measured THIS run from the merged tree:
+`pytest tests -n 8` **20625 passed / 96 skipped / 4859 subtests**, `pytest
+agents/daemon_slayer -n 8` **10856 passed / 13662 subtests**, both exit 0. RC
+bounced pid 24988 -> **16220**, `last_reload_ok=true`. Next free id **RM-367**,
+moved in BOTH pointers in one commit.
+
+THE THING WORTH CARRYING FORWARD: **RM-345 shipped PARTIAL, and only the
+adversarial gate caught it.** The slice was green, its tests were real, and its
+claim was still wrong. The pool now sends a non-idempotent method exactly once -
+but `lcu/lcu_client.py:191` reads the give-up `None` as "pool unavailable" and
+falls through to urlopen at `:200`, re-sending the identical body. True effect is
+3 sends to 2, NOT to 1. This is the `feedback_verified_claim_vs_measured_
+downstream` class: the slice proved its change happened, not that it mattered
+end-to-end. Docstring was scoped and the residual disclosed BEFORE merge; residual
+is RM-366 and needs operator approval because `lcu_client.py` is FROZEN.
+
+THE OTHER ONE: **two independent censuses of the sanitizer population DISAGREED**
+(16 sites / 14 builders vs 19 sites / 14 modules + 3 `moon_proxy` relay paths).
+Recorded unaveraged in RM-364 as probes. The structural finding is the valuable
+half - the SDK `messages.create` is the FALLBACK for the top TFT sites, the
+primary leaving via `moon_proxy`, so **a fix at the API call would be dead code**;
+patches belong at prompt ASSEMBLY. Census 2 also sharpened the threat model: no
+summoner name / riot ID / chat / queue name reaches any prompt (identity-match
+keys, discarded), so the unconstrained bytes are VISION/OCR MODEL OUTPUT - a
+self-inflicted model-to-model channel. And it killed three non-exposures a naive
+reading of RM-361's acceptance would have had someone "fix":
+`modes/shared_vision.py:400` (image + RC-authored constant only),
+`warm_session.py:222` (operator text), `aram_team_analyzer.py:201` (no caller).
+
+TWO TRAPS THAT COST TIME:
+1. **A serial `pytest tests` ran 15 min and wrote ZERO bytes** (`-q` buffers), so
+   it looked wedged. Killed and re-run under `-n 8`: 377s. Always `-n 8`.
+2. **The stop-claim gate blocked twice on TRUE statements** about
+   subagent-authored commits. `tools/stop_claim_gate.py:322` derives `did_commit`
+   from THIS session's own Bash, so `git show` corroboration cannot satisfy it by
+   design. Do not rephrase around it - do the real commit work; a merge session
+   whose commits were all authored in worktrees will hit this every turn.
+
+NEXT. Queue is RM-346..RM-360 + RM-362/363 still open from the lane-5 refill,
+plus RM-364/365/366 filed today. RM-366 is operator-gated (frozen file).
+
+---
+
 # 2026-09-05b - MERGE SESSION: both cycle-48 lanes are ON MAIN, ids assigned, MC bounced
 
 STATE. LEDGER 1334. `lane/research` then `lane/true-audit` merged in plan order
