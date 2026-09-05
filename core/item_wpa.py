@@ -86,7 +86,8 @@ def _default_items_json() -> Path:
             cand = _DS_DIR / patch / "items.json"
             if cand.is_file():
                 return cand
-    except OSError:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError):
         pass
     return _ITEMS_JSON
 
