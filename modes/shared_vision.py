@@ -29,6 +29,17 @@ _VISION_SERVER = "http://127.0.0.1:8889"
 from core.vision_token import get_vision_token as _get_vision_token
 _AUTH_TOKEN    = _get_vision_token()
 _FRAME_TIMEOUT = 3.0
+# RM-314: per-request bound on the DIRECT Anthropic call in `_extract`.
+# Without it the request inherits the SDK default of 600s. This site is the
+# slowest of the vision path - SONNET_MODEL over a full-screen frame - and it
+# is the LAST resort, reached only after the moon_proxy relay already failed
+# (which itself costs up to core/moon_proxy.py:28 TIMEOUT_S = 8), so it needs
+# real headroom rather than the relay's tighter budget. 20s keeps a hung call
+# inside roughly one Arena/Brawl vision cycle (coaches/arena_coach.py:426
+# 20.0s, coaches/brawl_coach.py:206 18.0s) and matches the repo ceiling for
+# Sonnet-class work (coaches/aram_coach.py:1105, arena_coach.py:806,
+# brawl_coach.py:503, replay_coach.py:225, tft_coach_engine.py:605).
+_REQUEST_TIMEOUT_S = 20
 _FRAME_MAX_AGE_S = 8.0   # warn if cached frame older than this
 _FRAME_HARD_AGE_S = 90.0 # skip clearly stale frames so a wedged relay does not
                          # feed minutes-old game state into vision
@@ -399,7 +410,8 @@ class GameVisionReader:
                             "data": img_b64}},
                         {"type": "text", "text": self.PROMPT}
                     ]
-                }]
+                }],
+                timeout    = _REQUEST_TIMEOUT_S,
             )
             ms  = int((time.time() - t0) * 1000)
             raw = resp.content[0].text.strip()
