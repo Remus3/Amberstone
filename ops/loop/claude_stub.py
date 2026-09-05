@@ -11,11 +11,40 @@ Fault injection for pass 2:
   --delay N        seconds of fake work (default 3)
 """
 import argparse
+import importlib.util
 import json
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
+
+# core/polled_json.py holds the repo's atomic-write contract - LANE 8 CYCLE 48,
+# RM-250 sibling sweep. This is the DRY-RUN twin of done_sentinel.py and writes
+# the same claude.done destination, so it shared that module's fixed
+# "claude.done.tmp" scratch name; the two are exactly the pair a per-writer
+# scratch name exists to separate. Plain import first; absolute-path bind as the
+# script-context fallback.
+try:
+    from core.polled_json import atomic_write_bytes as _atomic_write_bytes
+except ModuleNotFoundError:
+    _pj_name = "rc_core_polled_json"
+    if _pj_name in sys.modules:
+        _atomic_write_bytes = sys.modules[_pj_name].atomic_write_bytes
+    else:
+        try:
+            _pj_spec = importlib.util.spec_from_file_location(
+                _pj_name,
+                Path(__file__).resolve().parents[2] / "core" / "polled_json.py")
+            _pj = importlib.util.module_from_spec(_pj_spec)
+            sys.modules[_pj_name] = _pj
+            _pj_spec.loader.exec_module(_pj)
+        except OSError as _exc:
+            sys.modules.pop(_pj_name, None)
+            raise ModuleNotFoundError(
+                "core/polled_json.py could not be loaded by absolute path"
+            ) from _exc
+        _atomic_write_bytes = _pj.atomic_write_bytes
 
 # This module sits at <repo>/ops/loop/, so the checkout is two levels up. This
 # was an absolute C: literal, which is right on exactly one host and silently
@@ -58,9 +87,8 @@ def main():
             time.sleep(a.delay)  # fake Claude work
             payload = {"cycle": 0, "sha": head(), "tests_pass": 1342,
                        "regressions": bool(a.regressions), "ts": time.time()}
-            tmp = CTL / "claude.done.tmp"
-            tmp.write_text(json.dumps(payload), encoding="utf-8")
-            os.replace(tmp, CTL / "claude.done")
+            _atomic_write_bytes(CTL / "claude.done",
+                                json.dumps(payload).encode("utf-8"))
             print("stub: wrote claude.done", payload, flush=True)
             while (CTL / "claude.done").exists() and not (CTL / "STOP").exists():
                 time.sleep(1)  # wait for controller to consume

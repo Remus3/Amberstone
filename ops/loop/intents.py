@@ -37,10 +37,46 @@ own tests while the producer wrote a file the consumer never opens.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
+import sys
 import time
 from pathlib import Path
+
+# core/polled_json.py holds the repo's atomic-write contract - LANE 8 CYCLE 48,
+# RM-250. The plain import is tried FIRST so the dashboard and the test suite
+# share one module object; the absolute-path bind is the fallback for the
+# launcher's context, where these ops/loop modules are loaded BY FILE PATH and
+# the repo root is not on sys.path, so `import core.polled_json` raises
+# ModuleNotFoundError (measured; guarded by
+# tests/test_loop_control_sibling_writers_lane8_cycle48.py).
+try:
+    from core.polled_json import atomic_write_bytes as _atomic_write_bytes
+except ModuleNotFoundError:
+    _pj_name = "rc_core_polled_json"
+    if _pj_name in sys.modules:
+        _atomic_write_bytes = sys.modules[_pj_name].atomic_write_bytes
+    else:
+        try:
+            _pj_spec = importlib.util.spec_from_file_location(
+                _pj_name,
+                Path(__file__).resolve().parents[2] / "core" / "polled_json.py")
+            _pj = importlib.util.module_from_spec(_pj_spec)
+            sys.modules[_pj_name] = _pj
+            _pj_spec.loader.exec_module(_pj)
+        except OSError as _exc:
+            # exec_module on a missing or unreadable file raises
+            # FileNotFoundError, not ModuleNotFoundError. This module is
+            # imported by NAME from the loop-control route, whose handler
+            # catches only ModuleNotFoundError, so an OSError here would turn a
+            # designed 503 into a 500. Do not leave a half-initialised module
+            # object cached under the bind name for the next caller to find.
+            sys.modules.pop(_pj_name, None)
+            raise ModuleNotFoundError(
+                "core/polled_json.py could not be loaded by absolute path"
+            ) from _exc
+        _atomic_write_bytes = _pj.atomic_write_bytes
 
 # Mirrors dashboard.routes_loop_control._INTENT_FILES. Pinned by
 # tests/test_session_intents.py::test_filenames_match_the_route_not_a_copy.
@@ -106,11 +142,18 @@ def _awrite(path: Path, text: str) -> None:
     a byte count that does not match the file is a lie in a status line.
     Round-tripping through `read_text` hides this, so the guard test asserts
     raw bytes.
+
+    LANE 8 CYCLE 48 (RM-250): the byte-mode write above was already right, but
+    the replace was BARE. A reader holding the INTENT file open share-locks it
+    on Windows and `os.replace` then raises WinError 5, so the consume that
+    marks an intent `consumed: True` (:230) could fail against the very poller
+    it is reporting to. The scratch name was also `str(path) + ".tmp"`, derived
+    from the DESTINATION alone and therefore shared by every writer of that
+    file. core/polled_json supplies both the bounded ~275 ms PermissionError
+    backoff and a per-writer scratch name, so this delegates instead.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = Path(str(path) + ".tmp")
-    tmp.write_bytes(text.encode("utf-8"))
-    os.replace(tmp, path)
+    _atomic_write_bytes(path, text.encode("utf-8"))
 
 
 def _read_doc(path: Path) -> dict | None:
