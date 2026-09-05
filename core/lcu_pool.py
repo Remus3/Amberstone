@@ -44,6 +44,15 @@ _TRUTHY = ("1", "true", "yes", "on")
 #: not latent: pool_enabled() defaults ON and lcu/lcu_client.py routes every
 #: method through the pool, including ready-check accept, rune-page create and
 #: champ-select bench swap. POST and PATCH are deliberately absent.
+#:
+#: SCOPE, measured - this gate closes the double-apply INSIDE THE POOL ONLY, and
+#: the end-to-end hazard is NOT closed. On the give-up return of None,
+#: lcu/lcu_client.py:191 falls through to its urlopen path at :200 and re-sends
+#: the identical method and body, so a POST that faults in getresponse() is
+#: still transmitted twice: this change takes the worst case from 3 sends to 2,
+#: not to 1. Closing it needs an edit to lcu/lcu_client.py, which is a FROZEN
+#: file requiring operator approval - filed as RM-366. Do not read the gate
+#: below as an end-to-end exactly-once guarantee.
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE"})
 
 
@@ -51,7 +60,9 @@ def is_idempotent(method: object) -> bool:
     """True when re-sending `method` cannot double-apply a side effect (RM-345).
 
     Fail-closed by design: a non-string or unrecognised verb is treated as a
-    write, so an unknown method is sent exactly once rather than replayed.
+    write, so an unknown method is not replayed BY THE POOL. See the scope note
+    on IDEMPOTENT_METHODS: the caller's urlopen fallthrough can still re-send it
+    once, so this is not an end-to-end exactly-once guarantee (RM-366).
     """
     if not isinstance(method, str):
         return False
