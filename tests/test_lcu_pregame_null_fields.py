@@ -264,3 +264,58 @@ def test_bench_null_bench_returns_empty_list():
 
 def test_bench_absent_key_returns_empty_list():
     assert _pregame().get_bench_champion_ids({}) == []
+
+
+# -- get_my_pick_action --------------------------------------------------------
+#
+# Found by the merge-gate verifier, NOT by the RM-346 row: the same
+# JSON-null / non-dict-element root cause sits 15 lines above the three
+# readers the row named. The row's sibling sweep was scoped to `int(`
+# coercions, which is why it missed a site with no int() in it. Fixed in
+# the same slice rather than filed, per the repo's root-cause-first rule.
+
+def test_pick_action_null_actions_returns_none():
+    assert _pregame().get_my_pick_action({"actions": None}) is None
+
+
+def test_pick_action_null_group_is_skipped():
+    assert _pregame().get_my_pick_action({"actions": [None]}) is None
+
+
+def test_pick_action_null_action_entry_is_skipped():
+    assert _pregame().get_my_pick_action({"actions": [[None]]}) is None
+
+
+def test_pick_action_non_dict_action_entry_is_skipped():
+    assert _pregame().get_my_pick_action({"actions": [[42]]}) is None
+
+
+def test_pick_action_non_list_actions_returns_none():
+    assert _pregame().get_my_pick_action({"actions": 5}) is None
+
+
+def test_pick_action_absent_key_returns_none():
+    assert _pregame().get_my_pick_action({}) is None
+
+
+def test_pick_action_happy_path_unchanged():
+    session = {
+        "localPlayerCellId": 0,
+        "actions": [[{"actorCellId": 0, "type": "pick", "completed": False}]],
+    }
+    got = _pregame().get_my_pick_action(session)
+    assert got is not None and got["actorCellId"] == 0
+
+
+def test_pick_action_survives_a_junk_group_before_the_real_one():
+    """A malformed group must not hide a valid pick action after it."""
+    session = {
+        "localPlayerCellId": 0,
+        "actions": [
+            None,
+            [42],
+            [{"actorCellId": 0, "type": "pick", "completed": False}],
+        ],
+    }
+    got = _pregame().get_my_pick_action(session)
+    assert got is not None and got["type"] == "pick"
