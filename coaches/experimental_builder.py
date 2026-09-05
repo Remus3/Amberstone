@@ -119,7 +119,11 @@ def _save(data: dict) -> None:
     """Atomic write - overlays may poll mid-write."""
     _BUILDS_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = _BUILDS_PATH.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    # RM-287: write BYTES, not text. Path.write_text rewrites LF as CRLF on
+    # Windows while read_text hides it coming back, so any byte count or digest
+    # over this artifact would be wrong by the line count. Mirrors
+    # core/polled_json.atomic_write_json and coaches/_base_coach.safe_write.
+    tmp.write_bytes(json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8"))
     tmp.replace(_BUILDS_PATH)
 
 
@@ -347,9 +351,12 @@ def mark_active(champion: str, mode: str) -> None:
     try:
         _ACTIVE_PATH.parent.mkdir(parents=True, exist_ok=True)
         tmp = _ACTIVE_PATH.with_suffix(".tmp")
-        tmp.write_text(json.dumps({
+        # RM-287: bytes for the same reason as _save above. This payload has no
+        # indent so it carries no newline today - writing bytes keeps it correct
+        # if anyone ever adds one.
+        tmp.write_bytes(json.dumps({
             "champion": champion, "mode": mode, "marked_at": time.time(),
-        }), encoding="utf-8")
+        }).encode("utf-8"))
         tmp.replace(_ACTIVE_PATH)
     except Exception as exc:  # noqa: BLE001
         logger.warning("mark_active failed: %s", exc)
