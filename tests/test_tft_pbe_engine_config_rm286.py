@@ -343,6 +343,31 @@ class TestValidConfigIsAdopted(_EngineCase):
         self.assertIsInstance(eng._max_tokens, int)
         self.assertEqual(eng._max_tokens, 900)
 
+    def test_a_bad_key_does_not_discard_its_good_siblings(self):
+        """Per-key independence - the property the whole corpus missed.
+
+        RM-286's rejection tests all pass single-key dicts and the hostile-config
+        test passes an all-bad dict, so an all-or-nothing validator (validate
+        every key, warn, then commit only if NOTHING was rejected) passes all of
+        them. Measured 2026-09-04 by mutation: that naive variant survived the
+        entire 48-test corpus. It is not an equivalent mutant - under it the two
+        good keys below fall back to defaults.
+
+        This is the only test in the module with a MIXED good-and-bad config,
+        which is what makes it the one that can tell the two apart.
+        """
+        eng = self.engine()
+        eng._apply_config({
+            "debounce_seconds": "not-a-number",   # rejected
+            "timeout": [],                        # rejected
+            "max_tokens": 1234,                   # valid, must survive
+            "model": "claude-sonnet-4-5-20250929",  # valid, must survive
+        })
+        self.assertEqual(eng._max_tokens, 1234)
+        self.assertEqual(eng._model, "claude-sonnet-4-5-20250929")
+        self.assertEqual(eng._debounce_s, DEFAULT_DEBOUNCE)
+        self.assertEqual(eng._timeout, DEFAULT_TIMEOUT)
+
     def test_a_valid_config_is_adopted_from_disk_at_construction(self):
         # The guard is worthless if __init__ never routes through it.
         eng = _engine_with_disk_config(self.tmp, {
