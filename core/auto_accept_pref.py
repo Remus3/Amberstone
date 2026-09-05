@@ -42,7 +42,8 @@ def is_enabled() -> bool:
     """
     try:
         raw = _PREF_PATH.read_text(encoding="utf-8")
-    except OSError:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError):
         return _DEFAULT_ENABLED
     try:
         data = json.loads(raw)

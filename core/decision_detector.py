@@ -721,7 +721,8 @@ class DecisionStore:
         state: the next reconcile() writes a well-formed list back over it."""
         try:
             raw = json.loads(self._pending_path.read_text(encoding="utf-8"))
-        except (FileNotFoundError, json.JSONDecodeError):
+        # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+        except (FileNotFoundError, UnicodeDecodeError, json.JSONDecodeError):
             return []
         except OSError as exc:
             _log.debug("pending read failed: %s", exc)
@@ -1125,7 +1126,8 @@ def read_heartbeat() -> dict:
 
     try:
         raw = json.loads(_HEARTBEAT_PATH.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (FileNotFoundError, UnicodeDecodeError, json.JSONDecodeError):
         return _sentinel()
     except OSError as exc:
         _log.debug("heartbeat read failed: %s", exc)

@@ -421,7 +421,8 @@ def load_pull_observations(archive_dir) -> list:
     rows = []
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError) as exc:
         logger.warning("cannot read %s: %s", path, exc)
         return []
     for n, line in enumerate(lines, 1):

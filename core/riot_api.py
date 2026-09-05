@@ -98,7 +98,8 @@ def _get_api_key() -> Optional[str]:
             return None
         try:
             raw = _API_KEY_FILE.read_text(encoding="utf-8").strip()
-        except OSError as exc:
+        # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+        except (OSError, UnicodeDecodeError) as exc:
             log.warning("riot_api: read %s failed: %s", _API_KEY_FILE, exc)
             return None
         # Strip surrounding quotes operators sometimes paste in.

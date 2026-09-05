@@ -150,7 +150,8 @@ def _resolve_patch() -> Optional[str]:
     """Read the active DS patch from current.txt. None if absent/unreadable."""
     try:
         return _DS_DATA_DIR.joinpath("current.txt").read_text(encoding="utf-8").strip() or None
-    except OSError:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError):
         return None
 
 

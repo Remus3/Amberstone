@@ -90,7 +90,8 @@ _LEGENDARY_CATALOG_CACHE: tuple[frozenset[str], frozenset[str]] | None = None
 def _current_patch() -> str:
     try:
         return (_DS_DATA / "current.txt").read_text(encoding="utf-8").strip()
-    except OSError:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError):
         return ""
 
 
