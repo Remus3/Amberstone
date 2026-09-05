@@ -6,6 +6,94 @@
 
 ---
 
+# 2026-09-04g - HEADLESS four-slice batch: RM-287 / RM-214 / RM-342 shipped, RM-286 was already done (ON MAIN)
+
+STATE. Seventh unit of the day, run headless with the operator away (LEDGER
+1324 six-slice batch, then 1325 RM-339, 1326 RM-340, 1327 RM-341, 1328 RM-322,
+1329 RM-212, 1330 this batch). ENGINE 1.280.0 unchanged, Tier-1 throughout. No
+`web/` change, so no digest re-stamp. All four slice worktrees removed.
+
+**RM-286 WAS ALREADY SHIPPED AND ITS MARKERS WERE STALE.** Fixed 2026-08-31 by
+lane 8 cycle 47 (`246af97dc`, LEDGER 1313) while `BACKLOG.md` and `ROADMAP.md`
+still said OPEN - the SECOND stale-marker incident today (the session-start note
+flagged the same for RM-329..336). The slice re-verified and wrote NOTHING,
+which was right: the acceptance corpus it was asked to create already existed.
+**Check the ledger before building a filed row.**
+
+WHAT SHIPPED.
+- **RM-287** - `safe_write` wrote CRLF into every coaching artifact (12 CR bytes
+  measured at HEAD). Fixed to `write_bytes`. **The sibling was closed in the
+  same pass**, not filed: `coaches/experimental_builder.py:122` had the identical
+  live defect (6 CR bytes) and `:350` the latent one. Guard is now an AST sweep
+  asserting NO `Path.write_text` call survives anywhere in `coaches/` - it MUST
+  be AST, because the string `write_text` still appears there in a comment and a
+  grep reports a false positive.
+- **RM-214** - the `/monitor` redaction guard skipped itself whenever
+  `moon_monitor.html` existed, and the server writes that file into its own CWD
+  on any authenticated PUT. Now HERMETIC: isolates all six `/monitor` candidates
+  and asserts in BOTH states. 11 passed + 1 skipped -> **14 passed, zero skips**,
+  verified by me with the file planted AND absent. `_http.py` untouched - the
+  row's "no live leak" scope fence holds.
+- **RM-342** - rc-shell's 329 Node tests ran in NO CI job. Now run from
+  `tests/test_rc_shell_node_suite_rm342.py`, riding the existing `pytest tests/`
+  job with no workflow change. Zero third-party deps in those tests, and the
+  runner was VERIFIED to carry Node 22.23.2 (not assumed). It ASSERTS rather
+  than skipping when node is missing, on purpose: here CI *is* the subject, so a
+  skip would report green over the exact gap being closed.
+
+THE BEST FINDING OF THE BATCH came from the slice that wrote no code. Its
+mutation probe showed per-key config independence was behaviourally correct but
+**UNGUARDED** - every rejection test used a single-key dict and the hostile test
+an all-bad dict, so a naive all-or-nothing validator passed all 48. I confirmed
+it independently (`ast` over the test module: 43 config dicts, only 4 multi-key,
+all uniformly good or uniformly bad - no mixed case), added the one missing
+test, and planted the mutant: **it fails exactly the new test and no other.**
+
+RM-291 RE-MEASURED, since the row invited it. Its "33 candidate sites" came from
+a regex the row itself called the weak link. An `ast` walk over real try/except
+structure gives **31** (167 sites scanned, 136 genuinely protected). Premise
+confirmed live in the interpreter, not reasoned: `UnicodeDecodeError` and
+`json.JSONDecodeError` are SIBLING `ValueError` subclasses, so
+`except (json.JSONDecodeError, OSError)` lets a decode error straight through.
+
+THREE INCIDENTALS, recorded not acted on: `vision_server/_http.py:57` and `:58`
+are literally the same path, so the `/monitor` candidate list has a redundant
+entry; an AST sweep found 4 untimed `messages.create` sites beyond the RM-302
+pair, MATCHING RM-314's filed count so no re-file is needed; and
+`rc-shell/test/store.test.js` carries a deliberate NUL byte in a path fixture.
+
+CI CAUTION FOR WHOEVER IS NEXT. Pushing once per row cancelled `ci` three times
+in a row today - GitHub supersedes an in-flight run when a newer commit lands.
+Cancelled is NOT failed, and `gh run watch --exit-status` returns 0 on it, so
+read `conclusion`. The last `ci` to run to completion was `9c6de1b68` (success).
+**Batch the pushes.**
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-343.
+      Open: RM-291 (now a MEASURED population of 31, not a hypothesis - each
+      candidate needs its own read before widening a handler), RM-261..264,
+      RM-266..269, RM-292..295, RM-302, RM-314.
+      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
+
+Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. ROADMAP at 89.0 pct of
+      its 81920-byte budget (guard warns at 90) - **a relocation pass is owed
+      before filing another row.** Only rows with NO open half may move; two of
+      the largest closed-looking ones (RM-253, RM-254) carry OPEN sibling ids on
+      the same line and must stay.
+
+Do NOT redo: RM-287 + its experimental_builder sibling, RM-214, RM-342, RM-212,
+      RM-322, RM-339, RM-340, RM-341(refuted), RM-286(already shipped 1313).
+      Do not re-measure the RM-291 population, the rc-shell 329/0, or the
+      test-scope table. Do not convert `rc-shell`'s test script to a directory
+      glob (fenced, measured). Do not "simplify" the coaches AST sweep into a
+      grep - it would report a false positive on its own comment.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-04f - RM-212: rc-shell test list guarded; RM-342 filed, and it is the bigger one (ON MAIN)
 
 STATE. Sixth row of the day (LEDGER 1324 six-slice batch, then 1325 RM-339,
@@ -155,88 +243,6 @@ Do NOT redo: RM-322 (1328), RM-341 closed-as-REFUTED (1327), RM-340 (1326),
       RM-339 (1325), RM-208/209/220/326/327/328/338 (1324). Do not re-measure
       the test-scope table unless you need the numbers for a decision - they are
       dated and the doc says so. Do not add a guard pinning those counts.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-      git log.
-
----
-
-# 2026-09-04d - RM-341 CLOSED, premise REFUTED; ROADMAP relocation pass done (ON MAIN)
-
-STATE. Fourth row of the day (LEDGER 1324 six-slice batch, 1325 RM-339, 1326
-RM-340, 1327 RM-341). ENGINE 1.280.0 unchanged, Tier-1. **No `web/` change at
-all this row, so no live-half digest re-stamp was owed** - the only row today
-that touched no web asset. Slice worktree and branch removed.
-
-THE ROW WAS WRONG AND SO WAS MY COUNTER-HYPOTHESIS. RM-341 said there were two
-competing `VIEW_IDS` registries that had drifted and needed guarding against
-each other. There are not. `web/js/lib/state.js` is the only real one; the
-10-tuple at `dashboard/view_router_state.py:31` was read by **NOTHING** - no
-importer, no `import *`, no `getattr`/`importlib`, and neither of the module's
-two tests takes it. Both branches the row offered (add the 2 ids / guard
-containment) were wrong. So was the subset reading the row itself argued for
-and that I initially accepted: the module docstring at `:16` claims the machine
-maps "to one of `VIEW_IDS`", and that claim is FALSE - `derive_view` returns
-exactly 5 ids against the tuple's 10, confirmed two ways (ast + an exhaustive
-dynamic sweep).
-
-**A constant that looks like a contract but has no readers costs more than it
-documents.** Its only observed effect was manufacturing the false "drifted by
-3" finding that created this row - which I then re-measured to 2 before filing,
-when the real answer was that the comparison was meaningless either way.
-
-WHAT SHIPPED INSTEAD. The tuple is deleted and the docstring repaired, and the
-guard the row SHOULD have asked for is in place:
-`tests/test_view_router_registry_rm341.py` pins that every id `derive_view` can
-return exists in the canonical JS registry - SUBSET, not equality, because the
-JS list legitimately holds manual-only views. That closes a real silent-rot
-channel the dead tuple never covered: the module is a declared test mirror, so
-a view renamed in `state.js` would leave it deriving a stale id with its
-existing tests still green, since they never cross the language boundary.
-
-TRAPS WORTH CARRYING.
-1. **Ask "who reads this?" before "are these two in sync?"** The sync question
-   presupposes both sides matter. A sibling sweep of all 7 module-scope
-   constants found `VIEW_IDS` was the only dead one - a clean result, recorded
-   so nobody re-asks.
-2. **A relocation pass can hide OPEN work.** Mine first classified RM-12 and
-   RM-15 as "pure closed" - both carry OPEN halves - because my line indices
-   were 0-based and `sed` is 1-based, so I inspected the wrong rows. Caught it,
-   then restricted the pass to the 8 rows closed THIS SESSION and asserted
-   programmatically that none carries an OPEN half.
-
-ROADMAP BUDGET: **now 87.6%** (was 89.9, guard warns at 90). The 8 rows closed
-2026-09-03/04 were relocated verbatim to `docs/ROADMAP_HISTORY.md`.
-RM-329..RM-336 was deliberately LEFT in ROADMAP despite being shipped, because
-it carries the live "next free id" pointer - do not relocate it without moving
-that pointer somewhere first. Room for roughly two more rows before the next
-pass is owed.
-
-NEXT SESSION
-------------
-Task: Pick the next open row. Next free id is RM-342.
-      Open: RM-322 (LANE 7, doc-vs-measured test-scope drift at
-      `docs/OPERATIONS.md:27`), RM-212 (`rc-shell/package.json` names its test
-      files by hand, nothing guards the list), RM-214 (vision-server `/monitor`
-      path-disclosure guard skips itself), RM-286/287, RM-291..RM-295.
-      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
-
-Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. Lane worktrees at
-      C:\rc-worktrees\rc-lane-* were NOT touched today and still sit at
-      a55ece97e - fast-forward before using one.
-
-Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
-      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
-      :8860 restart and a Share mirror sync; Tier-0/1 do not.
-
-Do NOT redo: RM-341 CLOSED-as-REFUTED (1327), RM-340 (1326), RM-339 (1325),
-      RM-208/209/220/326/327/328/338 (1324). **Do not re-add a Python-side
-      `VIEW_IDS`** - it was deleted on measurement, not on taste, and the
-      docstring carries a do-not-re-add note. Do not assert equality between
-      the JS registry and the mirror's derive range; subset is correct and
-      `historical-pgr` is the documented manual-only case. Do not re-derive the
-      id census, the view-registry census, or the drift count - all measured
-      and corrected today.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       git log.
