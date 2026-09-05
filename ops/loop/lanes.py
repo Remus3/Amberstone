@@ -102,6 +102,31 @@ def _bind(modname: str, filename: str):
 
 slots = _bind("rc_loop_slots", "slots.py")
 
+# core/polled_json.py holds the repo's atomic-write contract - LANE 8 CYCLE 48,
+# RM-250 sibling sweep. Plain import first so a repo-root process shares one
+# module object; absolute-path bind as the fallback for the script / launcher
+# context where the repo root is not on sys.path.
+try:
+    from core.polled_json import atomic_write_bytes as _atomic_write_bytes
+except ModuleNotFoundError:
+    _pj_name = "rc_core_polled_json"
+    if _pj_name in sys.modules:
+        _atomic_write_bytes = sys.modules[_pj_name].atomic_write_bytes
+    else:
+        try:
+            _pj_spec = importlib.util.spec_from_file_location(
+                _pj_name,
+                Path(__file__).resolve().parents[2] / "core" / "polled_json.py")
+            _pj = importlib.util.module_from_spec(_pj_spec)
+            sys.modules[_pj_name] = _pj
+            _pj_spec.loader.exec_module(_pj)
+        except OSError as _exc:
+            sys.modules.pop(_pj_name, None)
+            raise ModuleNotFoundError(
+                "core/polled_json.py could not be loaded by absolute path"
+            ) from _exc
+        _atomic_write_bytes = _pj.atomic_write_bytes
+
 LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated")
 MAX_SLOTS = 1
 DEFAULT_ROOT = _HERE / "control" / "lanes"
@@ -416,15 +441,18 @@ def repoint_lane_pid(token, pid, root=None) -> bool:
     # so a stale value here would make every repointed lock - which is every
     # real lane fire - read as a pid reuse and free itself under a live worker.
     rec["pid_started"] = proc_started(new_pid)
-    tmp = Path(str(lock) + ".tmp")
+    # LANE 8 CYCLE 48 (RM-250 sibling sweep). This hand-rolled writer carried
+    # the same three defects as the three writers RM-250 named, and here the
+    # consequence is the worst of the set: a Windows share-lock on the lane lock
+    # raises PermissionError (an OSError), the handler below swallows it,
+    # repoint_lane_pid returns False, and launch_lane then KILLS the worker it
+    # just started. core/polled_json supplies the bounded ~275 ms retry, a
+    # per-writer scratch name, and scratch cleanup on every failure path, so the
+    # manual unlink goes with it. The `except OSError: return False` contract is
+    # deliberately KEPT - callers rely on the boolean, not on an exception.
     try:
-        tmp.write_text(json.dumps(rec), encoding="utf-8")
-        os.replace(tmp, lock)
+        _atomic_write_bytes(Path(lock), json.dumps(rec).encode("utf-8"))
     except OSError:
-        try:
-            tmp.unlink()
-        except OSError:
-            pass
         return False
     if owned is not None:
         _OWNED[key] = (owned[0], owned[1], new_pid)
