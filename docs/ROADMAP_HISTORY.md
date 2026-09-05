@@ -1,5 +1,48 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-04c - ROADMAP relocation, the eight rows closed on 2026-09-03/04
+
+Relocated verbatim at the end of the four-row merger day. ROADMAP.md stood at
+73661 bytes against its 81920-byte budget (89.9 percent), and tools/drift_guard.py
+warns at 90, so the next filed row would have tripped it. Only rows CLOSED THIS
+SESSION are moved - each was checked for an OPEN half programmatically and none
+has one. RM-329..RM-336 is deliberately LEFT IN PLACE despite being shipped,
+because it carries the live 'next free id' pointer. Full detail for every row
+below is in docs/LEDGER.md 1322-1327; bodies are retained in BACKLOG.md.
+
+### RM-208
+
+- **RM-208 SHIPPED 2026-09-04 (LEDGER 1324)** - DS doc route guard now parses `_POST_ROUTES` with `ast` and asserts both directions; the 2 `/v2/*` routes are no longer invisible. Body relocated to `docs/ROADMAP_HISTORY.md`; row in `BACKLOG.md`.
+
+### RM-209
+
+- **RM-209 SHIPPED 2026-09-04 (LEDGER 1324)** - 7 dangling CSS custom properties resolved (5 mapped, 2 declared) plus a guard; the filed census was corrected to 22 sites across 10 files. Body relocated to `docs/ROADMAP_HISTORY.md`; row in `BACKLOG.md`.
+
+### RM-220
+
+- **RM-220 SHIPPED 2026-09-04 (LEDGER 1324)** - wiki staleness `{{ap|}}` parser: `skipped_labels` 109 -> 72, zero-label rows 27 -> 2, `findings` ROSE 214 -> 225. 2 cited aliases; part (C) decided in writing, not implemented. Body relocated to `docs/ROADMAP_HISTORY.md`; row in `BACKLOG.md`.
+
+### RM-337
+
+- **RM-337 SHIPPED 2026-09-03 (LEDGER 1323)** - shipped `Share/` package failed 13 tests on a clean copy outside the repo; fixed with `__file__`-relative paths plus an AST guard. Body relocated to `docs/ROADMAP_HISTORY.md`; row in `BACKLOG.md`.
+
+### RM-338
+
+- **RM-338 SHIPPED 2026-09-04 (LEDGER 1324)** - every Top-8 `up` chevron was dead to the mouse: a 44x44 `::before` hit-target overlay on a 26x14 button covered its stacked sibling. Fixed by bounding the crowded axis; all five sibling 44x44 sites measured, four not broken. Body relocated to `docs/ROADMAP_HISTORY.md`.
+
+### RM-339
+
+- **RM-339 SHIPPED 2026-09-04 (LEDGER 1325)** - 25 filed dead `getElementById` ids were really 20; adjudicated per-id from git history to 16 REMOVE / 4 ALLOWLIST / 0 RESTORE, 15 of them residue of `832704a7c` (s162). Guarded by `tests/test_web_element_id_resolution_rm339.py`. Body relocated to `docs/ROADMAP_HISTORY.md`; row in `BACKLOG.md`.
+
+### RM-340
+
+- **RM-340 SHIPPED 2026-09-04 (LEDGER 1326)** - the router registered a `dev` view with no mount, so `#dev` was an ACCEPTED hash that rendered a blank dashboard instead of falling back to home. Three sites, not the two filed: the `VIEW_IDS` entry, its `VIEW_LABELS` orphan, and an unreachable redundant `else if (v === "dev")` branch at `main.js:928`. Guarded by `tests/test_web_view_registry_rm340.py` in three directions (id to mount, id and label BOTH ways, menu to id), with both exemptions redirecting rather than skipping. Body in `BACKLOG.md`.
+
+### RM-341
+
+- **RM-341 CLOSED 2026-09-04 (LEDGER 1327) - PREMISE REFUTED.** There are not two competing `VIEW_IDS` registries. `web/js/lib/state.js` is the only real one; the 10-tuple at `dashboard/view_router_state.py:31` was read by NOTHING (no importer, no `import *`, no dynamic access) and its only observed effect was to manufacture a false drift finding. Deleted. Replaced by the guard the row should have asked for: every id `derive_view` can return must exist in the JS registry (subset, not equality) - `tests/test_view_router_registry_rm341.py`. Body in `BACKLOG.md`.
+
+
 ## 2026-09-04b - RM-339 relocation
 
 Relocated by the RM-339 merger session for the ROADMAP size budget. Full detail in `docs/LEDGER.md` 1325; row body retained in `BACKLOG.md`.
