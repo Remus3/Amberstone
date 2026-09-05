@@ -69,7 +69,12 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-364** (2026-09-05, at the merge of `lane/research`: the 20 rows in
+  Next free id = **RM-366** (2026-09-05, superseding the RM-364 pin below: RM-364 and RM-365
+  were minted the same day when the RM-361 execution session spun its census out as its own
+  row and split the stale-prose finding off it. Re-derived the same way - highest live id
+  across every tracked `.md` and `.py` - after the filing commit, not before it.)
+  Prior pin, kept for the audit trail: Next free id was **RM-364** (2026-09-05, at the merge of
+  `lane/research`: the 20 rows in
   `docs/_research_refill_2026-09-05.md` consumed RM-344 through RM-363 in row order. The merger
   did NOT mint from this line on faith - it re-derived the highest live id across every tracked
   `.md` and `.py`, got RM-343, and assigned upward from there; this line agreed, having been
