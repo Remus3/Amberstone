@@ -6,6 +6,75 @@
 
 ---
 
+# 2026-09-04i - HEADLESS: RM-291 FULLY closed, and a Settled CLAUDE.md line was wrong (ON MAIN)
+
+STATE. Ninth unit of the day, headless (LEDGER 1332). ENGINE 1.280.0 unchanged,
+Tier-1. No `web/` change, no digest re-stamp. Worktree removed.
+
+RM-291 IS NOW FULLY CLOSED (Sweep A 1331, Sweep B 1332).
+
+**THE FILED COUNT WAS WRONG BY AN ORDER OF MAGNITUDE AND IT DID NOT MATTER.**
+Sweep B filed "~20 sites"; an AST scan finds 535 matching the literal shape and
+1815 matching the wider one. Fifth corrected count today. But the row's
+acceptance is PROVENANCE-TIERED, and by that measure the third-party tier held
+exactly ONE unhardened boundary. **Shape is not the discriminator; where the
+data comes from is.** Hardening a DDragon read buys nothing.
+
+THE ONE REAL SITE, and its failure mode is the point: `core/smoothed_rates_101qq.py`
+consumes raw 101.qq.com rows. Verified against the captured payload -
+`championid1` is a STRING in 200/200 rows and `itemp1` is `'4.78%'`. Six sibling
+fields used bare `int()`/`float()` inside `except (TypeError, ValueError):
+continue`, so an upstream reformat would not raise - it would silently DROP the
+row, and enough drops fires the static fallback, **serving a 15-month-old
+May-2025 seed as live with nothing saying so.** Non-regression proven on the
+real 200-row seed: 200 -> 200, byte-identical.
+
+**A SETTLED LINE IN CLAUDE.md WAS FACTUALLY WRONG AND IS NOW FIXED.** The Meraki
+carve-out claimed Meraki is "correct and preferred for `aram_modifiers`". It is
+LOLMATH-sourced. Verified at four independent sites before editing a rule-bearing
+auto-loaded file: `tools/daemon_slayer_extract.py:503` declares it on the
+`LolmathExtract` dataclass under "Sourced from the data chunk", `:970` assigns
+`lolmath.aram_modifiers.get(champ_id)`, all eight engine consumers read
+`champ_rec["lolmath"]["aram_modifiers"]`, and `ehp.py:930` says so in prose. The
+OTHER half of the carve-out (Meraki for item PASSIVE FORMULAS) still stands.
+**A wrong line in a Settled section is worse than no line - Settled is exactly
+what nobody re-checks.**
+
+TWO METHOD NOTES.
+1. **Mutation testing changed the outcome.** Two survivors were NOT equivalent:
+   deleting the `isfinite` guard and deleting the `isinstance(value, bool)`
+   branch both left the suite green, because a negative assertion ruled out a
+   failure without pinning the value down. NaN is invalid JSON and blanks the
+   panel; `isinstance(True, int)` is True so a JSON `true` publishes as rate 1.0.
+   Four tests added, all 9 mutants now die - re-verified independently.
+2. **A grep-based provenance sweep has a structural blind spot.** The adversarial
+   pass found `core/rank_tier_source.py`, whose endpoint lives in GITIGNORED
+   config, so no host grep can ever find it. It was checked by hand and is
+   already guarded.
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-343.
+      Open: RM-261..264, RM-266..269, RM-292..295, RM-301, RM-303, RM-312/313,
+      RM-315/316. Bodies + acceptance in BACKLOG.md.
+      A clean follow-up nobody has filed: all 17 `anthropic.Anthropic(...)`
+      constructions pass only `api_key` + `base_url`, so the RM-302/RM-314
+      timeouts are PER ATTEMPT and the SDK retries twice - true ceiling is 3x
+      the value. `max_retries` at construction would close it.
+
+Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. ROADMAP 88.3 pct.
+
+Do NOT redo: RM-291 (both sweeps), RM-302, RM-314, RM-287(+sibling), RM-214,
+      RM-342, RM-212, RM-322, RM-339, RM-340, RM-341(refuted), RM-286.
+      Do not re-attribute `aram_modifiers` to Meraki - that was corrected on
+      measured evidence. Do not "fix" the RM-291A sites that DEGRADED or the
+      Riot-authored / RC-internal coercion tiers; both were probe-proven safe.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-04h - HEADLESS batch 2: RM-291 sweep A closed, RM-302 + RM-314 shipped (ON MAIN)
 
 STATE. Eighth unit of the day, headless (LEDGER 1324 six-slice, 1325 RM-339,
@@ -161,77 +230,6 @@ Do NOT redo: RM-287 + its experimental_builder sibling, RM-214, RM-342, RM-212,
       test-scope table. Do not convert `rc-shell`'s test script to a directory
       glob (fenced, measured). Do not "simplify" the coaches AST sweep into a
       grep - it would report a false positive on its own comment.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-      git log.
-
----
-
-# 2026-09-04f - RM-212: rc-shell test list guarded; RM-342 filed, and it is the bigger one (ON MAIN)
-
-STATE. Sixth row of the day (LEDGER 1324 six-slice batch, then 1325 RM-339,
-1326 RM-340, 1327 RM-341, 1328 RM-322, 1329 RM-212). ENGINE 1.280.0 unchanged,
-Tier-1, one new guard. No worktree, no `web/` change, no digest re-stamp owed.
-
-WHAT SHIPPED. `rc-shell/package.json:9` runs its Node suite as a single
-`node --test <16 explicit paths>` string with nothing globbing the directory, so
-the next test file added would run NOWHERE with every signal green. The list is
-still exactly in sync (16 named, 16 on disk) - this closed an UNREALISED trap,
-which is the cheapest moment to close one. Guard:
-`tests/test_rc_shell_test_script_covers_the_dir_rm212.py`, 5 assertions, proven
-red in BOTH directions (drop a name / add an unnamed file).
-
-TWO FENCES ON THAT GUARD, both deliberate:
-- **A directory glob is NOT the fix.** `package.json:12` pins `"node": ">=18"`
-  and directory-mode `node --test` semantics differ across that range. Probed,
-  not assumed: on Node v24.15.0 `node --test test/` does not reproduce the
-  enumerated run cleanly here either.
-- **It ASSERTS rather than skips when rc-shell is absent.** A guard that
-  excuses itself when its subject vanishes is green over its own blind spot -
-  the same shape as the still-open RM-214.
-
-**RM-342 IS THE FINDING THAT MATTERS AND IT IS BIGGER THAN RM-212.** Having
-guarded that the list covers the directory, I asked whether the list runs at
-all. It does not: grepping `.github/workflows/*.yml` for `rc-shell`, `npm test`,
-`npm run test` and `node --test` returns **ZERO** hits, and no pytest harness
-runs them either (unlike `web/js`, which IS node-executed from Python). Those
-**329 tests pass locally and are invisible to CI.** Worse,
-`tests/test_overlay_a1_slider_apply.py:19` already justifies its own narrower
-approach with "the rc-shell node tests cover the shell half" - the repo is
-leaning on coverage no CI job produces.
-
-So: RM-212 does NOT make rc-shell CI-covered. Do not read it that way.
-
-NEXT SESSION
-------------
-Task: Pick the next open row. Next free id is RM-343.
-      **RM-342 is the natural follow-on** (LANE 7, Tier-1): get the rc-shell
-      suite running in CI. There is an in-repo precedent for the cheap shape -
-      `web/js` is node-executed from pytest, and
-      `tests/test_interrupt_panel.py:5` records a
-      `node --test web/mc/arm_confirm.test.mjs` invocation - so a pytest harness
-      would ride the existing CI job rather than needing a new workflow. Two
-      traps are written into the row: Node must exist on the CI image, and a
-      harness that SKIPS when node is missing reproduces exactly the
-      self-excusing shape RM-212's guard was written to avoid.
-      Also open: RM-214, RM-286/287, RM-291..RM-295.
-      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
-
-Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. ROADMAP at 88.5 pct of
-      its 81920-byte budget (guard warns at 90) - room for about one more row
-      before another relocation pass is owed. Lane worktrees at
-      C:\rc-worktrees\rc-lane-* were NOT touched today and still sit at
-      a55ece97e - fast-forward before use.
-
-Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
-      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
-      :8860 restart and a Share mirror sync; Tier-0/1 do not.
-
-Do NOT redo: RM-212 (1329), RM-322 (1328), RM-341 closed-as-REFUTED (1327),
-      RM-340 (1326), RM-339 (1325), RM-208/209/220/326/327/328/338 (1324). Do
-      not re-measure the rc-shell 16/16 equality or the 329/0 suite result, and
-      do not convert the test script to a directory glob - that is fenced with a
-      measured reason.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       git log.
