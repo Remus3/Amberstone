@@ -21,6 +21,18 @@ logger = logging.getLogger("rc.tft.vision")
 
 GAME_W, GAME_H = 1600, 900
 
+# RM-314: per-request bound on the local-fallback Anthropic call in
+# `_extract_local`. Without it the request inherits the SDK default of 600s.
+# Sized BELOW the two Sonnet-class sites deliberately: this reader is Haiku
+# (tft/tft_live_analysis.py:220 forwards a model defaulting to
+# claude-haiku-4-5) and `_CROP_REGIONS` cuts the payload to ~350 image tiles
+# against ~1400 for a full frame, so it does not need their headroom. 15s
+# equals the TFT scan cadence (tft/tft_live_analysis.py:223
+# _vision_interval = 15.0) so a hung extract cannot outlive the round it was
+# scanning, and it still clears the p99 (10.95s) of the one measured latency
+# distribution in the repo (data/coach_trace.jsonl, n=200).
+_REQUEST_TIMEOUT_S = 15
+
 _EXTRACT_PROMPT = """You are analyzing a TFT (Teamfight Tactics) screenshot at 1600x900.
 Focus ONLY on what requires visual AI: unit names on cards, bench, and board.
 Numbers (round, HP, level, gold) are handled separately - skip them.
@@ -190,7 +202,8 @@ class TftVisionReader:
                         "type": "base64", "media_type": "image/png",
                         "data": img_b64}},
                     {"type": "text", "text": _EXTRACT_PROMPT}
-                ]}])
+                ]}],
+                timeout=_REQUEST_TIMEOUT_S)
             # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
             # local-fallback path. moon_proxy primary records via vision_server.
             # Tier note corrected 2026-07-29: this reader is NOT Sonnet. Its
