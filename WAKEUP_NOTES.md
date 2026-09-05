@@ -6,6 +6,79 @@
 
 ---
 
+# 2026-09-04h - HEADLESS batch 2: RM-291 sweep A closed, RM-302 + RM-314 shipped (ON MAIN)
+
+STATE. Eighth unit of the day, headless (LEDGER 1324 six-slice, 1325 RM-339,
+1326 RM-340, 1327 RM-341, 1328 RM-322, 1329 RM-212, 1330 four-slice batch, 1331
+this one). ENGINE 1.280.0 unchanged, Tier-1 throughout. No `web/` change, no
+digest re-stamp. All three slice worktrees removed.
+
+WHAT SHIPPED.
+- **RM-291 SWEEP A** - 29 read sites where a non-UTF-8 byte escaped the handler,
+  fixed AT THE READ SITE (never by widening a caller). 4 candidates DEGRADED and
+  were correctly left alone; 0 unprobeable. **Four of the 29 run at MODULE
+  IMPORT** - one bad byte was an unimportable module, not a degraded panel.
+  **SWEEP B (numeric coercion) REMAINS OPEN** - different acceptance, different
+  severity model, do not merge them.
+- **RM-302** - both `tft_live_analysis` fallback calls bounded at 20.0 s.
+- **RM-314** - the four untimed `messages.create` sites bounded with four
+  ARGUED values (20/15/10/10 s), not one copy-pasted constant.
+
+FOUR THINGS WORTH CARRYING.
+1. **THE ACCEPTANCE NAMED A DATA SOURCE THAT DOES NOT EXIST.** RM-302 required
+   the timeout be set from the p99 of the `Live analysis in %dms` log line.
+   That line has NEVER been emitted (n=0 across all 46 log files) - it sits
+   inside the fallback branch and moon_proxy answers first. The slice did not
+   guess: it substituted `data/coach_trace.jsonl` (n=200, p99 10950 ms,
+   re-measured independently by me) and disclosed the substitution and its
+   limits in the code. **Read an acceptance's data source before trusting it.**
+2. **A DISPUTED POPULATION IS SETTLED BY PROBING THE UNION.** RM-291's row said
+   33, my AST scan said 31, a strict innermost-try walk says 33 and a full
+   ancestor-chain walk says 30. The slice probed the UNION of 33 instead of
+   arguing - a site that degrades is not a defect whichever scan named it.
+3. **THE OBVIOUS TEST WOULD HAVE BEEN VACUOUS, AGAIN.** RM-302's degraded-marker
+   test looked trivial, but the existing handler already publishes on a RAISED
+   error and an existing cycle-43 test already proves that - it passes against
+   unfixed code. **A call that never returns never raises.** The shipped test
+   models the HANG against a join deadline instead.
+4. **RM-314's "12 constructions" IS REFUTED - it is 17** (independently
+   AST-confirmed, still ZERO passing `timeout=`). Fourth filed count corrected
+   today. The substantive claim survived; the number did not.
+
+KNOWN LIMIT ON RM-302/314, disclosed not hidden: these bounds are PER ATTEMPT
+and the SDK retries twice, so the true wall-clock ceiling is 3x the value (60 s
+for RM-302). Closing that fully means passing `max_retries` at client
+construction - all 17 constructions pass only `api_key` + `base_url`. That is a
+clean follow-up row for whoever wants it.
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-343.
+      **RM-291 SWEEP B** is the natural follow-on: ~20 bare numeric-coercion
+      sites, and its acceptance is explicitly provenance-tiered - classify each
+      by whether the dict comes from RC-internal, Riot-authored or third-party
+      data and harden ONLY the third-party tier. `core/augment_external_source.py`
+      has a tolerant `_as_int`/`_as_float` pair to copy. `core/synergy_external_source.py`
+      is explicitly OUT of scope (verified clean, and the pattern came from it).
+      Also open: RM-261..264, RM-266..269, RM-292..295, RM-301, RM-303,
+      RM-312/313, RM-315/316.
+
+Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. ROADMAP at 88.3 pct after
+      a relocation pass this session. Lane worktrees at C:\rc-worktrees\rc-lane-*
+      were NOT touched today and still sit at a55ece97e.
+
+Do NOT redo: RM-291 sweep A, RM-302, RM-314, RM-287(+sibling), RM-214, RM-342,
+      RM-212, RM-322, RM-339, RM-340, RM-341(refuted), RM-286(already shipped).
+      Do not re-derive the RM-291 candidate population or re-measure the
+      coach_trace p99. Do not reuse moon_proxy's 8 s as a WAN timeout - 4 pct of
+      measured real calls already exceed it. Do not "fix" the 4 DEGRADED
+      RM-291 sites; they were probe-proven safe.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-04g - HEADLESS four-slice batch: RM-287 / RM-214 / RM-342 shipped, RM-286 was already done (ON MAIN)
 
 STATE. Seventh unit of the day, run headless with the operator away (LEDGER
@@ -159,90 +232,6 @@ Do NOT redo: RM-212 (1329), RM-322 (1328), RM-341 closed-as-REFUTED (1327),
       not re-measure the rc-shell 16/16 equality or the 329/0 suite result, and
       do not convert the test script to a directory glob - that is fenced with a
       measured reason.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-      git log.
-
----
-
-# 2026-09-04e - RM-322: test-scope table re-measured, CI-unrun set split, tree list guarded (ON MAIN)
-
-STATE. Fifth row of the day (LEDGER 1324 six-slice batch, 1325 RM-339, 1326
-RM-340, 1327 RM-341, 1328 RM-322). ENGINE 1.280.0 unchanged, Tier-0/1, one doc
-plus one new guard. No worktree, no `web/` change, no digest re-stamp owed.
-
-THE ROW'S OWN NUMBERS WERE STALE WHEN I OPENED IT. RM-322 was filed 2026-09-01
-carrying a re-measure of a table measured 2026-08-06; by 2026-09-04 that
-re-measure had itself drifted, because this session alone added roughly a
-hundred tests. Everything was re-derived from scratch.
-
-MEASURED FRESH (`pytest <tree> --collect-only -q`, repo root, Python314):
-  tests 20561 | agents/daemon_slayer/tests 10856 | agents/agent3_testing/suite
-  359 | tools/tests 348 | benchmarks 7 | repo-root `pytest .` 32131.
-  Invariant holds exactly: the five sum to 32131, so no sixth tree is hiding.
-  `pytest tests` = 64 pct; dual suite = 31417 of 32131 = 98 pct.
-
-THE REAL DEFECT WAS A CONFLATION, AND THE DOC ALREADY CONTRADICTED ITSELF.
-It called all three non-local trees "uncovered", but `benchmarks` runs in CI
-(`codspeed.yml:51`) - and the same document said so 17 lines further down. Now
-split: **three trees / 714 tests** are outside both local suites, but only
-**two trees / 707 tests** (`agents/agent3_testing/suite` + `tools/tests`) are
-run by NO CI job. The table gained a CI column so the two can never be read off
-one number again.
-
-THREE TRAPS WORTH CARRYING.
-1. **My CI invocation-site count was WRONG and the row was right.** I counted 7,
-   it said 9. My regex wanted `pytest` at a line start / after `;&|` / after
-   `run:` and missed two env-prefixed forms, `RC_REQUIRE_HOOK_GATE=1 pytest`
-   (ci.yml:388) and `RC_REQUIRE_BUILD_ORDER_TABLES=1 pytest` (:412). Second
-   time in one day for that pattern trap. The corrected nine, and the
-   env-prefix warning, are now IN the doc.
-2. **THE NEW GUARD WOULD NOT HAVE RUN WHERE IT MATTERS.** `ci.yml` carries
-   `paths-ignore: ['**/*.md']`, so a docs-only commit triggers no full suite;
-   `docs-guards.yml` covers that case and runs whatever
-   `tools/md_guard_selector.py` prints. My guard was absent from the 65
-   selected modules - the selector takes its universe from TRACKED files and
-   mine was untracked. Staged, it selects at 66. **Stage a new md-reading guard
-   before believing the selector.**
-3. **A stale `file:line` cite is worse than none** - it reads as verified. The
-   doc named `test_skip_condition_hygiene.py:59-60` as the producing side while
-   `_TEST_TREES` sits at `:72`.
-
-THE GUARD PINS SHAPE, NEVER COUNTS - the row explicitly forbade a count guard
-and it is right: counts drift on almost every commit.
-`tests/test_docs_operations_test_scope_rm322.py` asserts only that the doc table
-names the same trees as `_TEST_TREES` and that the cite still lands on it. Both
-sides read off disk. Do NOT "improve" it into pinning the numbers.
-
-NOT DONE, deliberately: the `pytest . -n 8` line at the end of that section
-still quotes a 2026-08-06 measurement (29840 passed). It is explicitly
-date-stamped, so it is honest as written, and re-running the full root suite to
-refresh a prose figure is not worth the wall-clock.
-
-NEXT SESSION
-------------
-Task: Pick the next open row. Next free id is RM-342.
-      Open: RM-212 (`rc-shell/package.json:9` names its 16 test files by hand,
-      nothing guards the list against the directory - and memory
-      `reference_rc_shell_test_script_enumerates_files` says a new file runs
-      NOWHERE until added, so this is an unrun-gate row), RM-214 (vision-server
-      `/monitor` path-disclosure guard skips itself once the file it probes for
-      exists in CWD), RM-286/287, RM-291..RM-295.
-      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
-
-Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. ROADMAP is at 87.6 pct of
-      its 81920-byte budget after this session's relocation pass - room for
-      roughly two more rows. Lane worktrees at C:\rc-worktrees\rc-lane-* were
-      NOT touched today and still sit at a55ece97e - fast-forward before use.
-
-Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
-      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
-      :8860 restart and a Share mirror sync; Tier-0/1 do not.
-
-Do NOT redo: RM-322 (1328), RM-341 closed-as-REFUTED (1327), RM-340 (1326),
-      RM-339 (1325), RM-208/209/220/326/327/328/338 (1324). Do not re-measure
-      the test-scope table unless you need the numbers for a decision - they are
-      dated and the doc says so. Do not add a guard pinning those counts.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       git log.
