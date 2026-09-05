@@ -68,6 +68,41 @@ winmutex = _bind("rc_loop_winmutex", "winmutex.py")
 # controller code and carries RC's directive opener and watch_bridge wait.
 executor = _bind("rc_loop_executor", "executor.py")
 
+
+def _bind_path(modname, path):
+    """The same absolute-path bind as _bind, for a module OUTSIDE ops/loop."""
+    if modname in sys.modules:
+        return sys.modules[modname]
+    spec = importlib.util.spec_from_file_location(modname, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[modname] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# core/polled_json.py holds the repo's atomic-write contract - LANE 8 CYCLE 48,
+# RM-250. Two properties this module needs and cannot hand-roll correctly:
+# a PER-WRITER scratch name (STOP has a second independent writer in
+# dashboard/routes_loop_control.py:344,587, and a scratch derived from the
+# destination alone is shared, so the two interleave), and a bounded
+# PermissionError backoff (~275 ms) for the Windows share-lock a poller holding
+# the destination open produces.
+#
+# It cannot be reached with a plain `from core.polled_json import ...`: this
+# module is loaded by ABSOLUTE FILE PATH (see the adjudicator comment above), so
+# the repo root is not on sys.path either and that import raises
+# ModuleNotFoundError - measured, and guarded by
+# tests/test_loop_control_sibling_writers_lane8_cycle48.py. The normal import is
+# tried FIRST so the dashboard and the test suite keep sharing one module
+# object; the bind is the launcher's fallback, not the primary path.
+try:
+    from core.polled_json import atomic_write_bytes as _atomic_write_bytes
+except ModuleNotFoundError:
+    _atomic_write_bytes = _bind_path(
+        "rc_core_polled_json",
+        Path(__file__).resolve().parents[2] / "core" / "polled_json.py",
+    ).atomic_write_bytes
+
 _HERE = Path(__file__).resolve().parent
 # The default config is a REPO ASSET, not a machine location. This literal used
 # to be an absolute C: path, which resolves on exactly ONE host: every other
@@ -123,9 +158,30 @@ def log(m):
         f.write(line + "\n")
 
 def awrite(path, text):
-    tmp = Path(str(path) + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    """Atomic write of a polled control file - STOP (:174), cycle.txt.
+
+    LANE 8 CYCLE 48 (RM-250). This used to hand-roll `tmp.write_text` + a BARE
+    `os.replace`, which carried three defects that cycle 21 had already closed
+    in the dashboard's copy of this same writer:
+
+      * No PermissionError retry. STOP is read from three poll loops - this
+        module at :772/:786 every 5 s, ops/loop/claude_gui_bridge.ahk:299 every
+        1 s, and dashboard/routes_loop_status.py:450 on every browser poll of
+        GET /api/loop-status. On Windows a reader holding the destination open
+        share-locks it and the replace raises WinError 5, so the controller's
+        own halt could lose a coin-flip against its own poller.
+      * A scratch name of `str(path) + ".tmp"`, a function of the DESTINATION
+        alone. dashboard/routes_loop_control.py:344,587 also writes STOP, so
+        both writers opened the same scratch file and could interleave.
+      * `Path.write_text`, which rewrites LF as CRLF on Windows and makes every
+        downstream byte count disagree with the file
+        (reference_windows_write_text_crlf_byte_count).
+
+    All three are properties of core/polled_json, so this delegates rather than
+    re-deriving them. Bytes, not text, for the same reason the siblings in
+    intents.py and steer.py already wrote bytes.
+    """
+    _atomic_write_bytes(Path(path), text.encode("utf-8"))
 
 def consume_directive_override(ctl=None):
     """One-shot operator directive override (written by POST /api/loop-control).

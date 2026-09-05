@@ -90,15 +90,58 @@ def _bind(modname: str, filename: str):
     return mod
 
 
+def _bind_path(modname: str, path):
+    """The same absolute-path bind as _bind, for a module OUTSIDE ops/loop."""
+    if modname in sys.modules:
+        return sys.modules[modname]
+    spec = importlib.util.spec_from_file_location(modname, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[modname] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
 winmutex = _bind("rc_loop_winmutex", "winmutex.py")
+
+# core/polled_json.py holds the repo's atomic-write contract - LANE 8 CYCLE 48,
+# RM-250. The plain import is tried FIRST so the dashboard and the test suite
+# share one module object; the absolute-path bind is the fallback for the
+# launcher's context, where these ops/loop modules are loaded BY FILE PATH and
+# the repo root is not on sys.path, so `import core.polled_json` raises
+# ModuleNotFoundError (measured; guarded by
+# tests/test_loop_control_sibling_writers_lane8_cycle48.py).
+try:
+    from core.polled_json import atomic_write_bytes as _atomic_write_bytes
+except ModuleNotFoundError:
+    try:
+        _atomic_write_bytes = _bind_path(
+            "rc_core_polled_json",
+            Path(__file__).resolve().parents[2] / "core" / "polled_json.py",
+        ).atomic_write_bytes
+    except OSError as _exc:
+        # exec_module on a missing or unreadable file raises FileNotFoundError,
+        # NOT ModuleNotFoundError, and this module is imported by NAME from
+        # dashboard/routes_loop_control.py:363, whose handler catches only
+        # ModuleNotFoundError. Letting an OSError through would turn the steer
+        # route's designed 503 into a 500. Re-raise in the taxonomy the callers
+        # already handle, and keep the cause attached.
+        raise ModuleNotFoundError(
+            "core/polled_json.py could not be loaded by absolute path") from _exc
 
 
 def _awrite(path: Path, data: bytes) -> None:
     """Atomic write. Bytes, not text - `write_text` rewrites LF as CRLF on
-    Windows and every byte count downstream then lies (measured, S3)."""
-    tmp = Path(str(path) + ".tmp")
-    tmp.write_bytes(data)
-    os.replace(tmp, path)
+    Windows and every byte count downstream then lies (measured, S3).
+
+    LANE 8 CYCLE 48 (RM-250): the byte-mode write was already right, but the
+    replace was BARE. STEER.cursor (:243) is polled, and on Windows a reader
+    holding it open share-locks it, so `os.replace` raises WinError 5 and the
+    cursor advance is lost. The scratch name was also `str(path) + ".tmp"`,
+    derived from the DESTINATION alone and so shared by every writer of that
+    file. core/polled_json supplies the bounded ~275 ms PermissionError backoff
+    and a per-writer scratch name; this delegates rather than re-deriving them.
+    """
+    _atomic_write_bytes(path, data)
 
 
 def normalize_tier(tier) -> str:
