@@ -279,7 +279,8 @@ def _build_snapshot() -> dict:
                 continue
             id_to_name[cid] = v
             name_to_id[v.lower()] = cid
-    except (OSError, json.JSONDecodeError):
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         pass
 
     # Records source (item 277): live Tencent rows first, static seed
@@ -309,7 +310,8 @@ def _build_snapshot() -> dict:
             raw_env = json.loads(_RECORDS_PATH.read_text(encoding="utf-8"))
             d = raw_env.get("data") if isinstance(raw_env, dict) else None
             static_rows = d if isinstance(d, list) else []
-        except (OSError, json.JSONDecodeError):
+        # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             static_rows = []
         records = _rows_to_records(static_rows, id_to_name)
         if records:

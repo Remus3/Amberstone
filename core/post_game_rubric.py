@@ -196,6 +196,18 @@ def _load_weights_overrides() -> dict[str, dict]:
     except OSError:
         # Permission errors, parent-not-a-directory, etc. - fail-soft.
         return {}
+    except UnicodeDecodeError:
+        # RM-291A: this used to escape - UnicodeDecodeError is a ValueError,
+        # not an OSError. It matters more here than at most sites because
+        # this loader runs at IMPORT time (_DEFAULT_WEIGHTS is built from it
+        # below), so an overrides file with one bad byte made the module
+        # unimportable rather than degrading to the defaults this docstring
+        # promises. Warned, not silent, to match the malformed-JSON branch.
+        _LOG.warning(
+            "post_game_rubric: %s is not valid UTF-8; defaults preserved",
+            _OVERRIDES_PATH,
+        )
+        return {}
     if not raw.strip():
         return {}
     try:

@@ -91,7 +91,8 @@ def _load_if_stale() -> None:
         return
     try:
         doc = json.loads(_INDEX_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
         logger.warning("items_index read failed: %s", e)
         return
     by_name = doc.get("byName") or {}
@@ -144,7 +145,8 @@ def resolve_many(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
 def _current_patch() -> Optional[str]:
     try:
         return _PATCH_FILE.read_text(encoding="utf-8").strip() or None
-    except OSError:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError):
         return None
 
 
@@ -215,7 +217,8 @@ def _derive_non_inventory_ids(path: Optional[Path]) -> frozenset[str]:
         return _NON_INVENTORY_BASE_IDS
     try:
         data = json.loads(path.read_text(encoding="utf-8")).get("data") or {}
-    except (OSError, json.JSONDecodeError, AttributeError) as e:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, AttributeError) as e:
         logger.warning("non-inventory derivation fell back to base set: %s", e)
         return _NON_INVENTORY_BASE_IDS
     # A well-formed document whose "data" is truthy but not a mapping parses
@@ -289,7 +292,8 @@ def _load_hp_if_stale() -> None:
         return
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
         logger.warning("DDragon items.json read failed: %s", e)
         return
     data = doc.get("data") or {}

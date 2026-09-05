@@ -62,7 +62,8 @@ def _load_balance_map() -> Dict[str, tuple[float, float]]:
     champs_file = _DATA_DIR / patch / "champions.json"
     try:
         raw = json.loads(champs_file.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return {}
     data = raw.get("data") or {}
     if not isinstance(data, dict):
@@ -181,7 +182,8 @@ def _load_balance_grid_map() -> Dict[str, Dict[str, float]]:
     champs_file = _DATA_DIR / patch / "champions.json"
     try:
         raw = json.loads(champs_file.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return {}
     data = raw.get("data") or {}
     if not isinstance(data, dict):
