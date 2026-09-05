@@ -6,6 +6,88 @@
 
 ---
 
+# 2026-09-04d - RM-341 CLOSED, premise REFUTED; ROADMAP relocation pass done (ON MAIN)
+
+STATE. Fourth row of the day (LEDGER 1324 six-slice batch, 1325 RM-339, 1326
+RM-340, 1327 RM-341). ENGINE 1.280.0 unchanged, Tier-1. **No `web/` change at
+all this row, so no live-half digest re-stamp was owed** - the only row today
+that touched no web asset. Slice worktree and branch removed.
+
+THE ROW WAS WRONG AND SO WAS MY COUNTER-HYPOTHESIS. RM-341 said there were two
+competing `VIEW_IDS` registries that had drifted and needed guarding against
+each other. There are not. `web/js/lib/state.js` is the only real one; the
+10-tuple at `dashboard/view_router_state.py:31` was read by **NOTHING** - no
+importer, no `import *`, no `getattr`/`importlib`, and neither of the module's
+two tests takes it. Both branches the row offered (add the 2 ids / guard
+containment) were wrong. So was the subset reading the row itself argued for
+and that I initially accepted: the module docstring at `:16` claims the machine
+maps "to one of `VIEW_IDS`", and that claim is FALSE - `derive_view` returns
+exactly 5 ids against the tuple's 10, confirmed two ways (ast + an exhaustive
+dynamic sweep).
+
+**A constant that looks like a contract but has no readers costs more than it
+documents.** Its only observed effect was manufacturing the false "drifted by
+3" finding that created this row - which I then re-measured to 2 before filing,
+when the real answer was that the comparison was meaningless either way.
+
+WHAT SHIPPED INSTEAD. The tuple is deleted and the docstring repaired, and the
+guard the row SHOULD have asked for is in place:
+`tests/test_view_router_registry_rm341.py` pins that every id `derive_view` can
+return exists in the canonical JS registry - SUBSET, not equality, because the
+JS list legitimately holds manual-only views. That closes a real silent-rot
+channel the dead tuple never covered: the module is a declared test mirror, so
+a view renamed in `state.js` would leave it deriving a stale id with its
+existing tests still green, since they never cross the language boundary.
+
+TRAPS WORTH CARRYING.
+1. **Ask "who reads this?" before "are these two in sync?"** The sync question
+   presupposes both sides matter. A sibling sweep of all 7 module-scope
+   constants found `VIEW_IDS` was the only dead one - a clean result, recorded
+   so nobody re-asks.
+2. **A relocation pass can hide OPEN work.** Mine first classified RM-12 and
+   RM-15 as "pure closed" - both carry OPEN halves - because my line indices
+   were 0-based and `sed` is 1-based, so I inspected the wrong rows. Caught it,
+   then restricted the pass to the 8 rows closed THIS SESSION and asserted
+   programmatically that none carries an OPEN half.
+
+ROADMAP BUDGET: **now 87.6%** (was 89.9, guard warns at 90). The 8 rows closed
+2026-09-03/04 were relocated verbatim to `docs/ROADMAP_HISTORY.md`.
+RM-329..RM-336 was deliberately LEFT in ROADMAP despite being shipped, because
+it carries the live "next free id" pointer - do not relocate it without moving
+that pointer somewhere first. Room for roughly two more rows before the next
+pass is owed.
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-342.
+      Open: RM-322 (LANE 7, doc-vs-measured test-scope drift at
+      `docs/OPERATIONS.md:27`), RM-212 (`rc-shell/package.json` names its test
+      files by hand, nothing guards the list), RM-214 (vision-server `/monitor`
+      path-disclosure guard skips itself), RM-286/287, RM-291..RM-295.
+      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
+
+Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. Lane worktrees at
+      C:\rc-worktrees\rc-lane-* were NOT touched today and still sit at
+      a55ece97e - fast-forward before using one.
+
+Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
+      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
+      :8860 restart and a Share mirror sync; Tier-0/1 do not.
+
+Do NOT redo: RM-341 CLOSED-as-REFUTED (1327), RM-340 (1326), RM-339 (1325),
+      RM-208/209/220/326/327/328/338 (1324). **Do not re-add a Python-side
+      `VIEW_IDS`** - it was deleted on measurement, not on taste, and the
+      docstring carries a do-not-re-add note. Do not assert equality between
+      the JS registry and the mirror's derive range; subset is correct and
+      `historical-pgr` is the documented manual-only case. Do not re-derive the
+      id census, the view-registry census, or the drift count - all measured
+      and corrected today.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-04c - RM-340: the mountless `dev` view dropped, view registry guarded (ON MAIN)
 
 STATE. Third row of the day, on top of LEDGER 1324 (six-slice batch) and 1325
@@ -162,85 +244,6 @@ Do NOT redo: RM-339 is CLOSED (LEDGER 1325) and RM-208/209/220/326/327/328/338
       Do not delete `/api/loadouts/all` or `/api/diagnostics` - both were left
       serving with no renderer ON PURPOSE (history_notes:23148: backends kept
       because ops tools depend on them); each removal is its own row.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-      git log.
-
----
-
-# 2026-09-04 - six-slice batch: RM-208 / 209 / 220 / 326 / 327 / 328 shipped, RM-338 found+fixed, RM-339 filed (ON MAIN)
-
-STATE. Main carries all seven. ENGINE **1.280.0 unchanged**, patch 16.15.1,
-`:8860` NOT bounced and no Share sync - `ds_share_sync.py --check` exit 0 at 535
-files proves nothing merged touches a mirrored file. Tier-1 throughout. Six
-worktree slices on disjoint file sets plus one read-only adjudicator; all six
-branches and worktrees removed at wrap. LEDGER 1324 has the full detail.
-
-WHAT SHIPPED.
-- RM-208 DS doc route guard: `ast` over `_POST_ROUTES`, BOTH directions, whole
-  backticked doc tokens so `/v2/matchup` stops splitting into `/v` + `/matchup`.
-- RM-220 wiki staleness: `{{ap|}}` brace-balancing reaches rank-count,
-  enumerated and named-parameter forms. `skipped_labels` 109 -> 72, zero-label
-  rows 27 -> 2, `findings` ROSE 214 -> 225. 2 cited aliases. Part (C) decided in
-  writing, deliberately NOT implemented.
-- RM-209 CSS: 5 tokens mapped onto existing names, 2 declared as new roles.
-- RM-326/327 lobby: dataset-signature render gates + focus carry + reorder
-  re-index, following the `champ_select.js:704` precedent.
-- RM-328 team-context mount RESTORED (adjudicated, not assumed).
-- RM-338 (filed and closed same day): every Top-8 `up` chevron was dead to the
-  mouse. RM-339 filed, not fixed.
-
-FIVE TRAPS WORTH CARRYING, all paid for this run.
-1. **THREE FILED ACCEPTANCES WERE DEFECTIVE AND THE SLICES CAUGHT ALL THREE.**
-   RM-328's "assert `#tc-allies` has 5 child slots" is VACUOUS - the no-payload
-   branch pads to 5 placeholders, so it passes with the payload never reaching
-   the DOM. RM-327's "two mouse clicks at one screen position" cannot
-   discriminate a fix from HEAD in a position-indexed list. RM-208's 4(b)
-   described the forward direction while asking for the reverse. Read an
-   acceptance as a hypothesis, not an instruction.
-2. **A WHOLE-TREE DIGEST CANNOT BE STAMPED BY A SLICE.**
-   `test_web_ascii_sweep.py::test_live_half_digest_...` moves on any `web/` edit.
-   The RM-209 slice correctly refused to stamp it. The merger owns it once,
-   after every slice lands, and the file's own rule wants a two-tree diff with
-   the SAME tokeniser - 11 differing files here, exactly the union of the four
-   web-touching slices.
-3. **TWO FILED CENSUSES WERE WRONG IN THE SAFE-LOOKING DIRECTION.** RM-209 filed
-   21 sites / 8 files; truth is 22 / 10, and the row's own enumeration summed to
-   22. RM-220's baseline had drifted 87/208 -> 92/214 because the wiki moves.
-   Re-measure before building, every time.
-4. **`git commit -m "merge: ..."` IS REJECTED.** The commit-msg hook enforces
-   `<type>(<scope>)?: <description>`. Use `chore(merge): <branch>`. Four merges
-   failed on this before it was noticed, and the failure reads like a conflict.
-5. **RESTORING OLD MARKUP VERBATIM VIOLATES THE ASCII RULE.** The 2026-05
-   team-context hunk carries U+2026 and U+2014. Anything recovered from
-   pre-purge history needs a programmatic ASCII assertion, not a glance.
-
-NEXT SESSION
-------------
-Task: Pick the next open row. Next free id is RM-340.
-      RM-339 (LANE 4, Tier-1) is the natural follow-on to this batch: 25 dead
-      `getElementById` ids, of which 21 are still live residue. Adjudicate each
-      RESTORE-or-REMOVE from git history the way RM-328 was - a dead id is NOT
-      proof of dead code. Keep its guard SEPARATE from RM-209's CSS guard.
-      Also open: RM-322 (LANE 7), RM-212, RM-214, RM-286/287, RM-291..295.
-      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
-
-Context: Main is at the six-slice merge, ENGINE 1.280.0, patch 16.15.1, :8860
-      serving. Lane worktrees at C:\rc-worktrees\rc-lane-* were NOT touched this
-      run and still sit at a55ece97e - fast-forward them before using one.
-
-Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
-      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
-      :8860 restart and a Share mirror sync; Tier-0/1 do not.
-
-Do NOT redo: RM-208 / RM-209 / RM-220 / RM-326 / RM-327 / RM-328 / RM-338 are
-      CLOSED (LEDGER 1324). RM-337 closed 2026-09-03 (LEDGER 1323). Do not
-      re-open RM-220 part (B) as a blanket vocabulary gap - that hypothesis was
-      refuted once already as RM-218, and the 2 zero-label rows that remain are
-      a DIFFERENT mechanism (`{{as|}}` head-cut and `[[File:...]]` pipes), not
-      an `{{ap|}}` form. Do not delete the 44x44 hit-target overlays - they are
-      a deliberate audit floor; four of the five sibling sites were measured
-      NOT broken.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       git log.
