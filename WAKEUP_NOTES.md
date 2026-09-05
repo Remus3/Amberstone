@@ -11,6 +11,16 @@
 STATE. Ninth unit of the day, headless (LEDGER 1332). ENGINE 1.280.0 unchanged,
 Tier-1. No `web/` change, no digest re-stamp. Worktree removed.
 
+SESSION WRAPPED at `b28616286`, and CI is CONFIRMED GREEN on it at STEP level -
+`check: success`, including "full dual suite (RM-119 - push CI now gates the
+whole tree)". `nightly-full-suite: skipped` is expected on a push run. The
+previous head `8ec2d3f4d` is also green, so the day's nine units are covered by
+two completed runs. **Three earlier `ci` runs that day read `cancelled`, NOT
+failed** - GitHub supersedes an in-flight run when a newer commit lands on the
+same branch, and pushing once per row caused it. Batch the pushes, and read
+`conclusion` rather than an exit code (`gh run watch --exit-status` returns 0 on
+a cancelled run).
+
 RM-291 IS NOW FULLY CLOSED (Sweep A 1331, Sweep B 1332).
 
 **THE FILED COUNT WAS WRONG BY AN ORDER OF MAGNITUDE AND IT DID NOT MATTER.**
