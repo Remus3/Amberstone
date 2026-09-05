@@ -79,6 +79,20 @@ def spells_for_role(role: Optional[str]) -> tuple[int, int]:
     return SPELLS_BY_ROLE.get(r, SPELLS_BY_ROLE["BOTTOM"])
 
 
+def _as_int(value) -> int:
+    """Coerce an LCU numeric field to int, defaulting to 0.
+
+    The champ-select session carries JSON `null` for ids the client has
+    not filled in yet (pre-hover window), and `int(None)` raises. Junk
+    strings coerce to 0 too - these readers document total contracts
+    ("0 if none", "(0, 0)"), so nothing here may raise (RM-346).
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _aram_mode(mode: str) -> bool:
     return mode.upper() in ("ARAM", "KIWI", "ARAM_5V5", "ARAM_MAYHEM")
 
@@ -137,30 +151,59 @@ class LcuPregame:
                     return action
         return None
 
+    def _my_team_entries(self, session: dict) -> list[dict]:
+        """Return the dict entries of session["myTeam"], defensively.
+
+        `dict.get(key, default)` yields the default only when the key is
+        ABSENT - a key present with a JSON `null` yields None, and the
+        LCU sends exactly that in the pre-hover window of champ select.
+        Non-dict entries are dropped so callers can `.get` freely.
+        """
+        team = session.get("myTeam") or []
+        if not isinstance(team, list):
+            return []
+        return [p for p in team if isinstance(p, dict)]
+
     def get_my_current_champion(self, session: dict) -> int:
-        """Return my current championId (0 if none) from session."""
+        """Return my current championId (0 if none) from session.
+
+        Total by contract: a null / missing / unparseable id yields 0
+        rather than raising, and a null championId still falls through
+        to championPickIntent (RM-346).
+        """
         my_cell = session.get("localPlayerCellId", -1)
-        for player in session.get("myTeam", []):
+        for player in self._my_team_entries(session):
             if player.get("cellId") == my_cell:
-                cid = player.get("championId", 0) or player.get("championPickIntent", 0)
-                return int(cid)
+                return (_as_int(player.get("championId"))
+                        or _as_int(player.get("championPickIntent")))
         return 0
 
     def get_my_summoner_spells(self, session: dict) -> tuple[int, int]:
-        """Return (spell1Id, spell2Id) for my slot, or (0, 0)."""
+        """Return (spell1Id, spell2Id) for my slot, or (0, 0).
+
+        Total by contract: a null / missing / unparseable spell id
+        yields 0 for that slot rather than raising (RM-346). This sits
+        on the spell auto-push path, where one null used to be enough.
+        """
         my_cell = session.get("localPlayerCellId", -1)
-        for player in session.get("myTeam", []):
+        for player in self._my_team_entries(session):
             if player.get("cellId") == my_cell:
-                return (int(player.get("spell1Id", 0)),
-                        int(player.get("spell2Id", 0)))
+                return (_as_int(player.get("spell1Id")),
+                        _as_int(player.get("spell2Id")))
         return (0, 0)
 
     def get_bench_champion_ids(self, session: dict) -> list[int]:
-        """Return list of bench champion IDs available for swap."""
-        bench = session.get("benchChampions", [])
-        if isinstance(bench, list):
-            return [int(b.get("championId", 0)) for b in bench if b.get("championId")]
-        return []
+        """Return list of bench champion IDs available for swap.
+
+        Non-dict bench entries (the LCU sends bare ints in some payload
+        versions) and unparseable ids are skipped rather than raising
+        (RM-346).
+        """
+        bench = session.get("benchChampions")
+        if not isinstance(bench, list):
+            return []
+        ids = [_as_int(b.get("championId")) for b in bench if isinstance(b, dict)]
+        return [cid for cid in ids if cid]
 
     # -- Actions ---------------------------------------------------------------
 
