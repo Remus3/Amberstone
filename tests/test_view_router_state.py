@@ -275,8 +275,12 @@ class UrgentViewTests(unittest.TestCase):
                 self.assertTrue(is_urgent(v))
 
     def test_non_urgent_views_do_not_promote(self):
+        # "dev" removed 2026-09-04 (RM-340): it was never in this module's
+        # VIEW_IDS and is now gone from the JS registry too, so asserting it is
+        # non-urgent asserted nothing - is_urgent returns False for any unknown
+        # id. Same shape as the "loading" case documented below.
         for v in ("home", "session", "history",
-                  "replay", "user-builds", "settings", "dev"):
+                  "replay", "user-builds", "settings"):
             with self.subTest(view=v):
                 self.assertFalse(is_urgent(v))
 
