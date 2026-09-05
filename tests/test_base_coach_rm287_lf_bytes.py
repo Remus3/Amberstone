@@ -112,3 +112,45 @@ class TestSafeWriteRemainsAtomicAndReadable(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCoachesDirectoryHasNoTextModeJsonWriter(unittest.TestCase):
+    """The sibling half of RM-287, closed in the same pass.
+
+    ``safe_write`` was the filed site, but the sibling sweep found the identical
+    defect live in ``coaches/experimental_builder.py`` ``_save`` (measured: 6 CR
+    bytes on a small payload) and latent in ``mark_active``, which carries no
+    ``indent`` today and so translates nothing until someone adds one. Fixing
+    only the filed site would have left the class half-open in the same
+    directory - `root-cause-fix` calls for the sibling grep, and this pins it.
+
+    The scan is AST, not grep: after the fix the string ``write_text`` still
+    appears in ``experimental_builder.py`` inside the explanatory comment, so a
+    text search reports a false positive. A grep and an AST sweep answer
+    different questions (LEDGER 1323).
+    """
+
+    def test_no_pathlib_write_text_call_survives_in_coaches(self):
+        import ast
+
+        offenders = []
+        for path in sorted((_REPO_ROOT / "coaches").rglob("*.py")):
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+            except SyntaxError:  # pragma: no cover - a broken file is another test's problem
+                continue
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "write_text"
+                ):
+                    offenders.append(f"{path.relative_to(_REPO_ROOT).as_posix()}:{node.lineno}")
+        self.assertEqual(
+            offenders, [],
+            "Path.write_text writes CRLF on Windows and read_text hides it, so "
+            "any byte count or digest over the artifact is wrong by the line "
+            "count. Use write_bytes with an explicit .encode('utf-8'), as "
+            "coaches/_base_coach.safe_write and core/polled_json."
+            "atomic_write_json both do. Offending call sites: " + str(offenders),
+        )
