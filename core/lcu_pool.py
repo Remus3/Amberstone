@@ -9,7 +9,8 @@ This module supplies two reusable, stdlib-only primitives:
 
   L6 - HttpsConnectionPool: one keep-alive http.client.HTTPSConnection per
        (host, port), reused under a per-key lock, with reconnect-on-drop
-       (single retry) so a peer-closed kept-alive socket self-heals. Eliminates
+       (single retry, idempotent methods only - RM-345) so a peer-closed
+       kept-alive socket self-heals without ever replaying a write. Eliminates
        the per-call handshake that otherwise caps how fast any LCU loop can run.
   L7 - MinIntervalGuard: a shared monotonic rate FLOOR keyed per endpoint so
        multiple stacked loops cannot independently push the effective read rate
@@ -34,6 +35,39 @@ _log = logging.getLogger("rc.lcu_pool")
 
 _TRUTHY = ("1", "true", "yes", "on")
 
+#: HTTP methods whose repetition is guaranteed side-effect-equivalent to a
+#: single call (RFC 9110 s9.2.2). RM-345: the pool's reconnect-on-drop retry is
+#: gated on this set. The fault it recovers from - HTTPException / OSError /
+#: EOFError - is also raised by conn.getresponse(), i.e. AFTER the request bytes
+#: are on the wire, so for anything NOT listed here the peer may already have
+#: applied the write and a blind re-send would double-apply it. This is live,
+#: not latent: pool_enabled() defaults ON and lcu/lcu_client.py routes every
+#: method through the pool, including ready-check accept, rune-page create and
+#: champ-select bench swap. POST and PATCH are deliberately absent.
+#:
+#: SCOPE, measured - this gate closes the double-apply INSIDE THE POOL ONLY, and
+#: the end-to-end hazard is NOT closed. On the give-up return of None,
+#: lcu/lcu_client.py:191 falls through to its urlopen path at :200 and re-sends
+#: the identical method and body, so a POST that faults in getresponse() is
+#: still transmitted twice: this change takes the worst case from 3 sends to 2,
+#: not to 1. Closing it needs an edit to lcu/lcu_client.py, which is a FROZEN
+#: file requiring operator approval - filed as RM-366. Do not read the gate
+#: below as an end-to-end exactly-once guarantee.
+IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE"})
+
+
+def is_idempotent(method: object) -> bool:
+    """True when re-sending `method` cannot double-apply a side effect (RM-345).
+
+    Fail-closed by design: a non-string or unrecognised verb is treated as a
+    write, so an unknown method is not replayed BY THE POOL. See the scope note
+    on IDEMPOTENT_METHODS: the caller's urlopen fallthrough can still re-send it
+    once, so this is not an end-to-end exactly-once guarantee (RM-366).
+    """
+    if not isinstance(method, str):
+        return False
+    return method.strip().upper() in IDEMPOTENT_METHODS
+
 
 def pool_enabled() -> bool:
     """True when RC_LCU_POOL opts pooling in. Default ON since E7 (2026-06-30):
@@ -56,8 +90,15 @@ class HttpsConnectionPool:
     """Thread-safe keep-alive HTTPS connection pool keyed by (host, port).
 
     request() returns (status, body_bytes) on success or None on a fail-soft
-    error (matching the None-returning LCU readers). A dropped kept-alive
-    socket is transparently reconnected once before giving up.
+    error (matching the None-returning LCU readers).
+
+    A dropped kept-alive socket is transparently reconnected once before giving
+    up, but ONLY for an idempotent method (IDEMPOTENT_METHODS, RM-345). The
+    caught fault can be raised by getresponse() as well as by request(), so the
+    request bytes may already have been applied by the peer; replaying a POST or
+    PATCH on that fault would double-apply the write. A non-idempotent request
+    is therefore sent exactly once - the poisoned socket is still dropped, and
+    the call fails soft to None like any other give-up.
     """
 
     def __init__(
@@ -117,10 +158,15 @@ class HttpsConnectionPool:
         except (TypeError, ValueError):
             return None
         hdrs = headers or {}
+        # RM-345: only an idempotent method may be replayed. The retry below
+        # cannot tell a pre-write connect failure from a post-write response
+        # failure, so a write gets a single attempt.
+        retryable = is_idempotent(method)
         lock = self._key_lock(key)
         with lock:
-            # Two attempts: the first may hit a peer-closed kept-alive socket;
-            # the second always runs on a freshly built connection.
+            # Idempotent: two attempts - the first may hit a peer-closed
+            # kept-alive socket, the second always runs on a fresh connection.
+            # Non-idempotent: one attempt only.
             for attempt in (0, 1):
                 conn = self._get_conn(key)
                 try:
@@ -130,6 +176,13 @@ class HttpsConnectionPool:
                     return (resp.status, data)
                 except (http.client.HTTPException, OSError, EOFError) as e:
                     self._drop(key)
+                    if not retryable:
+                        _log.debug(
+                            "pool request %s %s%s failed; not retried "
+                            "(non-idempotent, RM-345): %s",
+                            method, host, path, e,
+                        )
+                        return None
                     if attempt == 1:
                         _log.debug("pool request %s%s failed twice: %s", host, path, e)
                         return None
