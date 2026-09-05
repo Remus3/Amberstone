@@ -91,6 +91,15 @@ def _load_json(path: Path) -> Tuple[Any, Optional[str]]:
         raw = path.read_text(encoding="utf-8-sig")
     except OSError as exc:
         return None, f"Could not read file: {exc}"
+    except UnicodeDecodeError as exc:
+        # RM-291A: a third distinct failure mode, and it used to escape this
+        # function entirely - UnicodeDecodeError is a ValueError, not an
+        # OSError, so neither handler here caught it and a non-UTF-8 config
+        # crashed the validator instead of being reported as invalid. Worded
+        # separately from the two above for the same reason they are worded
+        # separately from each other: "not text" and "not JSON" have
+        # different fixes.
+        return None, f"File is not valid UTF-8: {exc}"
     try:
         return json.loads(raw), None
     except ValueError as exc:

@@ -113,7 +113,8 @@ _champ_names_loaded = False
 def _resolve_patch() -> Optional[str]:
     try:
         return _DS_DIR.joinpath("current.txt").read_text(encoding="utf-8").strip() or None
-    except OSError:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError):
         return None
 
 

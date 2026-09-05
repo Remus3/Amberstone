@@ -64,7 +64,8 @@ def sidecar_has_afk(sidecar_path) -> bool:
     """
     try:
         blob = json.loads(Path(sidecar_path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return False
     for player in blob.get("players") or []:
         for key in ("WAS_AFK", "WAS_LEAVER"):

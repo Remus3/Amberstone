@@ -60,7 +60,8 @@ def _load_champ_index() -> None:
         return
     try:
         data = json.loads(_DDR_CHAMPS.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         _log.warning("ddragon_champions read failed: %s", exc)
         return
     new_n2i: dict[str, int] = {}
@@ -155,7 +156,8 @@ def _load_materialized_kda() -> Optional[dict]:
             return _kda_materialized
         try:
             data = json.loads(_KDA_FILE.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             return _kda_materialized   # keep prior cache on parse error
         _kda_materialized = (data.get("champions") or {}) if isinstance(data, dict) else None
         _kda_mtime = mt
