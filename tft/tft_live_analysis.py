@@ -22,6 +22,34 @@ logger = logging.getLogger("rc.tft.live")
 # to logs/ only.
 _DEGRADED_TEXT = "coaching paused - retrying"
 
+# RM-302. Per-request bound for the two LOCAL-FALLBACK model calls below.
+# Both are direct calls to api.anthropic.com, and the SDK default read
+# timeout is 600 s (anthropic 0.96.0, DEFAULT_TIMEOUT read=600) inside a loop
+# that ticks every 1.5 s. _run_cycle drops ticks rather than queueing them
+# (`self._lock.acquire(blocking=False)`), so the symptom of an unbounded call
+# is SILENCE, not a thread storm - and the cycle-43 degraded marker cannot
+# help, because a call that never returns never raises into the handler.
+# The primary path needs no bound of its own: core/moon_proxy.py TIMEOUT_S=8.
+#
+# 20.0 is DERIVED, not guessed, and deliberately not moon_proxy's 8 s - that
+# figure bounds a LAN hop to a local relay, this is a WAN call with a
+# 500-token completion. The `Live analysis in %dms` line has never once been
+# emitted on this box (0 hits across 46 days of logs/, because moon_proxy
+# answers first and this fallback stays cold), so the nearest MEASURED
+# population stood in: the 200 records in data/coach_trace.jsonl, which are
+# direct `messages.create` calls on this same model id from this same host,
+# wall-clock bracketed by coaches/_base_coach.py `_record_coach_call`.
+#   n=200  p50 5972 ms  p90 7048 ms  p95 7610 ms  p99 10947 ms  max 26000 ms
+# 20 s is 1.8x that p99 and clears 199 of the 200, so a healthy call is not
+# truncated into a false degraded panel, while worst-case silence falls from
+# 600 s to 20 s per attempt.
+#
+# CAVEAT before anyone tunes this: the SDK RETRIES a timeout, so the true
+# wall-clock ceiling is _MODEL_TIMEOUT_S x (max_retries + 1), i.e. 60 s at
+# the SDK default of 2. Bounding that means passing max_retries where the
+# client is constructed, which is a different row.
+_MODEL_TIMEOUT_S = 20.0
+
 _SECRET_RE = re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}")
 
 
@@ -388,7 +416,7 @@ class TftLiveAnalysis:
             except Exception as _exc:  # noqa: BLE001
                 logger.debug("moon_proxy.get_coaching primary path failed: %s", _safe_err(_exc))
             if raw is None:
-                resp=self._client.messages.create(model=self._model,max_tokens=500,messages=[{"role":"user","content":p}])
+                resp=self._client.messages.create(model=self._model,max_tokens=500,messages=[{"role":"user","content":p}],timeout=_MODEL_TIMEOUT_S)
                 # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
                 # local-fallback path. moon_proxy primary records via vision_server.
                 try:
@@ -454,7 +482,7 @@ class TftLiveAnalysis:
             except Exception as _exc:  # noqa: BLE001
                 logger.debug("moon_proxy.get_coaching augment-select path failed: %s", _safe_err(_exc))
             if _araw is None:
-                _aresp=self._client.messages.create(model=self._model,max_tokens=300,messages=[{"role":"user","content":p}])
+                _aresp=self._client.messages.create(model=self._model,max_tokens=300,messages=[{"role":"user","content":p}],timeout=_MODEL_TIMEOUT_S)
                 # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker on
                 # local-fallback path. moon_proxy primary records via vision_server.
                 try:
