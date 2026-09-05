@@ -36,7 +36,7 @@ export const CADENCE = {
 export const VIEW_IDS = [
   "home", "lobby", "champ-select", "active-match", "last-match",
   "session", "history", "historical-pgr", "replay",
-  "user-builds", "build-insights", "settings", "dev",
+  "user-builds", "build-insights", "settings",
 ];
 
 export const VIEW_LABELS = {
@@ -53,7 +53,6 @@ export const VIEW_LABELS = {
   "user-builds": "User Builds",
   "build-insights": "Build Insights",
   "settings": "Settings",
-  "dev": "Dev",
 };
 
 // View-router mutable state (current + manual override + banner tracking).
