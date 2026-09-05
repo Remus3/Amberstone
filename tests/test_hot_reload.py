@@ -73,6 +73,59 @@ class TestShouldWatch:
         assert not _should_watch("docs/_archive/old_module.py")
 
 
+class TestSkipDirsAreSegmentAnchored:
+    """_SKIP_DIRS entries are DIRECTORY names, so they must match on path
+    SEGMENT boundaries - never as a raw substring of the whole path.
+
+    The shipped test above only ever exercised the TOP-LEVEL shape of each
+    skip dir ("data/something.py", "web/js/panel.js"), which is precisely why
+    it could not see the defect: an unanchored `s in r` also drops any file
+    whose path merely CONTAINS a token anywhere, including inside its own
+    basename. Measured against this tree, that silently excluded 23 live
+    non-frozen .py files - among them web_dashboard.py, the module that
+    starts the watcher.
+
+    Every path asserted watched below is a real file in this repo except the
+    two basename probes at the end, which are representative shapes.
+    """
+
+    def test_data_token_inside_basename_is_watched(self):
+        assert _should_watch("core/data_retention.py")
+        assert _should_watch("core/coaching_data_lock.py")
+        assert _should_watch("agents/daemon_slayer/data_loader.py")
+
+    def test_web_token_inside_basename_is_watched(self):
+        assert _should_watch("tools/web_ascii_sweep.py")
+        assert _should_watch("web_dashboard.py")
+
+    def test_basename_is_never_treated_as_a_directory_segment(self):
+        # A skip token that appears only in the FILE name must not skip.
+        assert _should_watch("core/webhook_client.py")
+        assert _should_watch("tools/logs_rotate.py")
+
+    def test_top_level_skip_dirs_still_skipped(self):
+        # The behaviour the original test pinned must not regress.
+        assert not _should_watch("data/x.py")
+        assert not _should_watch("web/js/panel.js")
+        assert not _should_watch("data/coaching/snapshot.py")
+
+    def test_multi_segment_skip_entry_still_honoured(self):
+        assert not _should_watch("docs/_archive/foo.py")
+
+    def test_multi_segment_skip_entry_honoured_at_depth(self):
+        assert not _should_watch("tools/docs/_archive/foo.py")
+
+    def test_nested_skip_dir_skipped_at_any_depth(self):
+        assert not _should_watch("core/build_planner/__pycache__/mod.py")
+        assert not _should_watch("agents/daemon_slayer/Share/src/mod.py")
+        assert not _should_watch("tools/logs/rotated/old.py")
+
+    def test_partial_segment_is_not_a_skip_dir(self):
+        # "data" must not match the segment "database", nor "web" "webhooks".
+        assert _should_watch("core/database/pool.py")
+        assert _should_watch("tools/webhooks/send.py")
+
+
 class TestScanPyFiles:
     """_scan_py_files returns {rel_path: mtime} for watchable .py files."""
 
