@@ -69,7 +69,12 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-344** (2026-09-05 lane 8 cycle 48 corrected this line, which had gone SIX
+  Next free id = **RM-364** (2026-09-05, at the merge of `lane/research`: the 20 rows in
+  `docs/_research_refill_2026-09-05.md` consumed RM-344 through RM-363 in row order. The merger
+  did NOT mint from this line on faith - it re-derived the highest live id across every tracked
+  `.md` and `.py`, got RM-343, and assigned upward from there; this line agreed, having been
+  corrected hours earlier by the entry below.)
+  Superseded pointer, kept for the chain: (2026-09-05 lane 8 cycle 48 corrected this line, which had gone SIX
   ids stale: it still read RM-337 while RM-337 through RM-342 were all SHIPPED - RM-337 LEDGER
   1323, RM-338 1324, RM-339/340 1325, RM-341/342 later - and `ROADMAP.md:55` already carried the
   true pointer, "next free id RM-343". This file is named as the AUTHORITATIVE id registry, so a

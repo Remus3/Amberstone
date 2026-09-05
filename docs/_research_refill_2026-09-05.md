@@ -7,9 +7,11 @@ produced a finding, the cited line was re-read independently before it was filed
 findings were CORRECTED by that pass and one candidate was dropped outright (see
 DO-NOT-REDO below).
 
-**Ids:** every row carries `RM-TBD`. The merger assigns from `docs/DS_SWEEP_TRACKER.md`.
-**Read row 17 FIRST** - the tracker's own next-free-id is stale by six ids, so minting
-from it as written collides with six live rows.
+**Ids: ASSIGNED 2026-09-05 at merge - rows 1-20 are RM-344 through RM-363, in row order.**
+The ids were NOT minted from `docs/DS_SWEEP_TRACKER.md` on faith (row 17 records that the
+tracker had gone six ids stale); the merger re-derived the highest live id across every
+tracked `.md` and `.py`, which returned RM-343, and assigned from RM-344 upward.
+`docs/DS_SWEEP_TRACKER.md` is bumped to next free RM-364 in the same commit.
 
 **Theme of this run:** the highest-yield seam was not "unaudited file" but "a guard that
 exists in the tree and is bypassed on one branch". Rows 1, 9 and 16 are all the same
@@ -59,7 +61,7 @@ which refuted the in-code comment I was about to file row 2 against. See row 2 a
 
 ## Rows
 
-### Row 1 - LANE 8, Tier-1. The TFT branch returns BEFORE the non-finite guard the same module wrote to stop exactly this crash
+### RM-344 (Row 1) - LANE 8, Tier-1. The TFT branch returns BEFORE the non-finite guard the same module wrote to stop exactly this crash
 
 `game_reader/snapshot_normalizer.py:119-134` defines `_coerce_num`, whose own docstring
 states the threat model verbatim:
@@ -113,7 +115,7 @@ into `mode_router.py`, which has never been audited.
 
 ---
 
-### Row 2 - LANE 8, Tier-1. The LCU pool blindly re-sends non-idempotent writes, and it is DEFAULT-ON
+### RM-345 (Row 2) - LANE 8, Tier-1. The LCU pool blindly re-sends non-idempotent writes, and it is DEFAULT-ON
 
 `core/lcu_pool.py:124` retries every request twice:
 
@@ -151,7 +153,7 @@ LEDGER item-709 records the default-ON flip being validated, not the retry seman
 
 ---
 
-### Row 3 - LANE 8, Tier-1. `int(None)` on champ-select fields the LCU emits as explicit null
+### RM-346 (Row 3) - LANE 8, Tier-1. `int(None)` on champ-select fields the LCU emits as explicit null
 
 `lcu/lcu_pregame.py:141` promises `"""Return my current championId (0 if none) from session."""`
 and `:145-146` does:
@@ -187,7 +189,7 @@ and a test asserting `get_bench_champion_ids` returns `[]` given `benchChampions
 
 ---
 
-### Row 4 - LANE 8, Tier-1. A gameflow read FAILURE is reported as the valid idle phase
+### RM-347 (Row 4) - LANE 8, Tier-1. A gameflow read FAILURE is reported as the valid idle phase
 
 `lcu/lcu_pregame.py:285` `return "None"` is reached from the bare `except Exception` at
 `:283-284`, and by fall-through for any non-str body. The docstring at `:258` lists that
@@ -208,7 +210,7 @@ neither cycle touched.
 
 ---
 
-### Row 5 - LANE 8, Tier-1. `stop()` cannot interrupt an idle LCU websocket, and the backoff never escalates
+### RM-348 (Row 5) - LANE 8, Tier-1. `stop()` cannot interrupt an idle LCU websocket, and the backoff never escalates
 
 `core/lcu_events.py:293-294`:
 
@@ -243,7 +245,7 @@ scoped to the transport half only.
 
 ---
 
-### Row 6 - LANE 8, Tier-1. "Never raises" is false: the parse call sits outside the try
+### RM-349 (Row 6) - LANE 8, Tier-1. "Never raises" is false: the parse call sits outside the try
 
 `core/lcu_ranked.py:149` states `Never raises - any unexpected error fails soft to ``None``.`
 The `try/except Exception` at `:153-157` wraps only `lcu._request(...)`. The parse is at
@@ -271,7 +273,7 @@ correctly guarded - do not re-file that as a division bug.
 
 ---
 
-### Row 7 - LANE 8 (or LANE 7), Tier-1. A read route is issued as POST, and the test pins the bug rather than the contract
+### RM-350 (Row 7) - LANE 8 (or LANE 7), Tier-1. A read route is issued as POST, and the test pins the bug rather than the contract
 
 `core/lcu_mastery.py:99`:
 
@@ -301,7 +303,7 @@ tax.
 
 ---
 
-### Row 8 - LANE 8, Tier-1. Unbounded response read at the single outbound chokepoint
+### RM-351 (Row 8) - LANE 8, Tier-1. Unbounded response read at the single outbound chokepoint
 
 `lib/http/client.py:497` `body = resp.read()` - no argument, so it reads to EOF. Same shape
 on the error path at `:508` `body = e.read() if hasattr(e, "read") else b""`. There is no
@@ -327,7 +329,7 @@ concerns response size. Confirmed by reading the cycle-27 LEDGER line, not assum
 
 ---
 
-### Row 9 - LANE 8, Tier-1. The DDragon version fetch omits the status check its own sibling method performs
+### RM-352 (Row 9) - LANE 8, Tier-1. The DDragon version fetch omits the status check its own sibling method performs
 
 `lib/ddragon/fetch.py:42-43`:
 
@@ -358,7 +360,7 @@ the module for a retention test.
 
 ---
 
-### Row 10 - LANE 8, Tier-1. An unvalidated CDN string becomes a filesystem path segment, and `mkdir(parents=True)` follows it out of the cache root
+### RM-353 (Row 10) - LANE 8, Tier-1. An unvalidated CDN string becomes a filesystem path segment, and `mkdir(parents=True)` follows it out of the cache root
 
 `lib/ddragon/fetch.py:55-57`:
 
@@ -391,7 +393,7 @@ and a second case returning the bare string `"maintenance"`.
 
 ---
 
-### Row 11 - LANE 8, Tier-1. A 200-response bot wall destroys the good cached page and is stamped "ok"; the whole package is untested
+### RM-354 (Row 11) - LANE 8, Tier-1. A 200-response bot wall destroys the good cached page and is stamped "ok"; the whole package is untested
 
 `lib/scrapers/_base.py:96-101`:
 
@@ -430,7 +432,7 @@ fetch to site B, cached under site A's directory.
 
 ---
 
-### Row 12 - LANE 8, Tier-1. The crawl's inner loop has no bound of its own, so a non-ARAM stream never terminates
+### RM-355 (Row 12) - LANE 8, Tier-1. The crawl's inner loop has no bound of its own, so a non-ARAM stream never terminates
 
 `core/meta_crawl.py:187` bounds the OUTER loop
 (`while frontier and len(visited) < max_players and accumulator.total_games < max_games:`),
@@ -459,7 +461,7 @@ switch in this file, a different defect. Checked before filing.
 
 ---
 
-### Row 13 - LANE 8, Tier-1. `same_team` is unconditionally False in the non-default mode
+### RM-356 (Row 13) - LANE 8, Tier-1. `same_team` is unconditionally False in the non-default mode
 
 `core/pro_match_index.py:104` initializes `operator_team: dict[str, int] = {}` and it is
 populated ONLY inside `if same_team_only:` at `:105-111`. At `:122`:
@@ -489,7 +491,7 @@ shifts `pro_name` into `role_team`.
 
 ---
 
-### Row 14 - LANE 8, Tier-1. The base worker documents a pulse clock that contradicts both subclasses AND the consumer
+### RM-357 (Row 14) - LANE 8, Tier-1. The base worker documents a pulse clock that contradicts both subclasses AND the consumer
 
 `core/base_worker.py:34` instructs subclass authors:
 
@@ -521,7 +523,7 @@ defect and fold it into the RM-198 slice; do not treat RM-198 as already coverin
 
 ---
 
-### Row 15 - LANE 7, Tier-0. A stale DEFAULT-OFF comment in a frozen file misstates a live default (FILED, NOT PROPOSED FOR EDIT)
+### RM-358 (Row 15) - LANE 7, Tier-0. A stale DEFAULT-OFF comment in a frozen file misstates a live default (FILED, NOT PROPOSED FOR EDIT)
 
 `lcu/lcu_client.py:178` reads:
 
@@ -550,7 +552,7 @@ returns True for an unset environment.
 
 ---
 
-### Row 16 - LANE 7, Tier-0/1. A 168-line module with zero production callers, whose rune path lacks the validation its live twin has
+### RM-359 (Row 16) - LANE 7, Tier-0/1. A 168-line module with zero production callers, whose rune path lacks the validation its live twin has
 
 `lib/icons/downloader.py:36-58` defines `_safe_basename` with an explicit audit rationale at
 `:37-43` ("defense-in-depth ... an attacker who successfully MITMs DDragon"). Three of the
@@ -585,7 +587,7 @@ the private `_atomic_write_bytes` re-roll only. Co-locate the two; they are one 
 
 ---
 
-### Row 17 - LANE 7, Tier-0. The authoritative id registry's next-free id is stale by six, and the documented rule points lanes straight at a collision
+### RM-360 (Row 17) - LANE 7, Tier-0. The authoritative id registry's next-free id is stale by six, and the documented rule points lanes straight at a collision
 
 `ROADMAP.md`'s own doc table declares `docs/DS_SWEEP_TRACKER.md` the "**authoritative `RM-NN`
 id registry** - take ids from here, never from ROADMAP prose".
@@ -623,14 +625,14 @@ from RM-343 upward, not from the tracker line as written.
 
 ---
 
-### Row 18 - LANE 8, Tier-1. The prompt sanitizer has exactly ONE production caller, and it is bypassed inside that caller
+### RM-361 (Row 18) - LANE 8, Tier-1. The prompt sanitizer has exactly ONE production caller, and it is bypassed inside that caller
 
 `core/prompt_sanitize.py:2-3` describes itself as a "defense-in-depth sanitizer for external
 strings that reach Anthropic prompt builders" - plural. Measured across the whole tree
 (excluding `tests/` and `Share/`), it has **exactly one** production importer:
 
 ```
-./coach_integration/_sr_prompt.py:308:    from core.prompt_sanitize import clean as _ps_clean, clean_iter as _ps_iter
+coach_integration/_sr_prompt.py:308:    from core.prompt_sanitize import clean as _ps_clean, clean_iter as _ps_iter
 ```
 
 The ARAM, Arena, Brawl, TFT, TFT-PBE, champ-select and replay prompt builders all construct
@@ -679,7 +681,7 @@ vocabulary, so that residual does not cover this.
 
 ---
 
-### Row 19 - LANE 8, Tier-1. The hot-reload skip test is an unanchored substring match, so 22 watched .py files never trigger a reload
+### RM-362 (Row 19) - LANE 8, Tier-1. The hot-reload skip test is an unanchored substring match, so 22 watched .py files never trigger a reload
 
 `core/hot_reload.py:95`:
 
@@ -713,7 +715,7 @@ No test passes a path that merely contains a token, which is the whole defect.
 
 ---
 
-### Row 20 - LANE 8, Tier-1. Two unvalidated retention caps repeat the RM-161 shape, and one of them deletes the log a live writer holds open
+### RM-363 (Row 20) - LANE 8, Tier-1. Two unvalidated retention caps repeat the RM-161 shape, and one of them deletes the log a live writer holds open
 
 **(a) Append-log age cap.** `core/data_retention.py:471`:
 
