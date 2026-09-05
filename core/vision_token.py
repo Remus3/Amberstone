@@ -56,7 +56,8 @@ def _resolve() -> tuple[str, TokenSource]:
             first_line = _CONFIG_PATH.read_text(encoding="utf-8").splitlines()[0].strip()
             if first_line:
                 return first_line, "config"
-    except OSError:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError):
         pass
     raise RuntimeError(
         "vision_token: no token configured. Set RC_VISION_TOKEN env var "

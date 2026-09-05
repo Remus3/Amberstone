@@ -134,7 +134,8 @@ def _load_counters_index() -> dict:
             if not isinstance(v, list):
                 continue
             out[_norm_name(k)] = list(v)
-    except (OSError, json.JSONDecodeError) as exc:
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         # A5 (docs/specs/2026-07-19-silent-except-triage.md): NEVER cache a
         # failed load. Returning uncached leaves the module-level global at
         # None so the next call retries instead of pinning an empty map for
