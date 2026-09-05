@@ -69,7 +69,15 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-337** (2026-09-02 lane 5 Headless-Research refill consumed RM-329 through
+  Next free id = **RM-344** (2026-09-05 lane 8 cycle 48 corrected this line, which had gone SIX
+  ids stale: it still read RM-337 while RM-337 through RM-342 were all SHIPPED - RM-337 LEDGER
+  1323, RM-338 1324, RM-339/340 1325, RM-341/342 later - and `ROADMAP.md:55` already carried the
+  true pointer, "next free id RM-343". This file is named as the AUTHORITATIVE id registry, so a
+  slice minting from it would have collided with a shipped row. RM-343 is consumed by cycle 48
+  itself, hence RM-344. The pointer goes stale whenever a batch lands without updating BOTH this
+  line and ROADMAP; when the two disagree, believe the HIGHER one and re-derive with
+  `grep -rhoE "RM-[0-9]{2,3}" ROADMAP.md BACKLOG.md docs/LEDGER.md | sort -t- -k2 -n | tail -3`.)
+  Superseded pointer, kept for the chain: (2026-09-02 lane 5 Headless-Research refill consumed RM-329 through
   RM-336: RM-329/330/331/332/333/334 Daemon Slayer (lane 6); RM-335/336 tooling + doc drift
   (lane 7). Superseded pointer, kept for the chain: the 2026-09-01 refill consumed RM-322
   through RM-328 - RM-322 doc-vs-measured test-scope drift (lane 7); RM-323/324/325 Daemon

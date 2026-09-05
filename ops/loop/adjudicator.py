@@ -24,9 +24,37 @@ for the reasoning, and do not re-add a second vendor for "independent review" -
 independence comes from the producer not grading its own work, which is a
 prompt-level property, not a vendor-level one.
 """
+import importlib.util
 import os
 import subprocess
+import sys
 from pathlib import Path
+
+# core/polled_json.py holds the repo's atomic-write contract - LANE 8 CYCLE 48,
+# RM-250 sibling sweep. Plain import first so a repo-root process shares one
+# module object; absolute-path bind as the fallback for the launcher context,
+# where this module is loaded BY FILE PATH (loop_controller.py:41) and the repo
+# root is not on sys.path.
+try:
+    from core.polled_json import atomic_write_bytes as _atomic_write_bytes
+except ModuleNotFoundError:
+    _pj_name = "rc_core_polled_json"
+    if _pj_name in sys.modules:
+        _atomic_write_bytes = sys.modules[_pj_name].atomic_write_bytes
+    else:
+        try:
+            _pj_spec = importlib.util.spec_from_file_location(
+                _pj_name,
+                Path(__file__).resolve().parents[2] / "core" / "polled_json.py")
+            _pj = importlib.util.module_from_spec(_pj_spec)
+            sys.modules[_pj_name] = _pj
+            _pj_spec.loader.exec_module(_pj)
+        except OSError as _exc:
+            sys.modules.pop(_pj_name, None)
+            raise ModuleNotFoundError(
+                "core/polled_json.py could not be loaded by absolute path"
+            ) from _exc
+        _atomic_write_bytes = _pj.atomic_write_bytes
 
 DEFAULT_CLAUDE_CMD = r"C:\Users\Administrator\AppData\Roaming\npm\claude.cmd"
 DEFAULT_CLAUDE_MODEL = "opus"
@@ -34,10 +62,18 @@ DEFAULT_CLAUDE_TIMEOUT_SEC = 300
 
 
 def _atomic_write(path, text):
-    """The control dir is polled by the operator and the bridge mid-write."""
-    tmp = Path(str(path) + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    """The control dir is polled by the operator and the bridge mid-write.
+
+    LANE 8 CYCLE 48 (RM-250 sibling sweep). This carried the same three defects
+    as the three writers RM-250 named: a BARE os.replace (so a poller holding
+    the destination open raises WinError 5 on Windows), a scratch name derived
+    from the DESTINATION alone (shared by every writer of that file), and
+    Path.write_text (LF rewritten as CRLF). It escaped cycle 48's first pass
+    because loop_controller.py:594 injects its own already-fixed `awrite` over
+    this function - but that injection is an override, so the DEFAULT path any
+    other caller takes was still the bare one. Delegating fixes the default.
+    """
+    _atomic_write_bytes(Path(path), text.encode("utf-8"))
 
 
 def read_err(errfile):
