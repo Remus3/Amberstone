@@ -6,6 +6,89 @@
 
 ---
 
+# 2026-09-04c - RM-340: the mountless `dev` view dropped, view registry guarded (ON MAIN)
+
+STATE. Third row of the day, on top of LEDGER 1324 (six-slice batch) and 1325
+(RM-339). ENGINE 1.280.0 unchanged, Tier-1 asset-only, no `:8860` bounce, no
+Share sync. One merger-side adjudication + one build slice; worktree and branch
+removed. LEDGER 1326. RM-341 filed.
+
+WHAT IT ACTUALLY FIXED - not cosmetic. `VIEW_IDS` membership is read at
+`main.js:611` / `:776` / `:6525`, so registering `dev` made `#dev` an ACCEPTED
+hash that set `body[data-view="dev"]`, matched no CSS and showed no section: a
+blank dashboard reachable by URL and by a stale `rc-view-manual` in
+localStorage. It now falls back to `home`.
+
+THE ROW FILED 2 SITES, THERE WERE 3. The third was an unreachable AND redundant
+`else if (v === "dev")` branch at `main.js:928` - unreachable because it reads
+`btn.dataset.view` and no menu item carries that value, redundant because it
+did exactly what the generic `else` two lines below does.
+
+GUARD: `tests/test_web_view_registry_rm340.py`, 15 tests, three directions -
+id to mount, id and label BOTH ways, menu `data-view` to id. The label
+direction is the one a naive guard misses and it was proven independent:
+restoring only the `VIEW_LABELS` orphan reddens the label assertion while the
+mount assertion stays green. **Both exemptions REDIRECT rather than skip** -
+`home` resolves to `#home-overlay` (still asserted to exist) and `auto` is
+pinned to `main.js:926` - and two further tests fail if either exemption goes
+obsolete or loses its citation. Do not "simplify" an exemption into a skip.
+
+THREE TRAPS WORTH CARRYING.
+1. **`git checkout` to undo a probe takes your UNCOMMITTED work with it.** The
+   slice reverted probe 1 that way and silently reverted its own fix, making
+   probe 2's output invalid. It caught it and redid probes with file-copy
+   backups. Back up the FILE, not the commit, when probing a dirty tree.
+2. **A slice's incidental finding is a hypothesis too.** It reported the
+   JS-vs-Python `VIEW_IDS` drift as 3 ids; re-measured it is **2**
+   (`historical-pgr`, `build-insights`). Its 3 counted `dev`, which Python
+   never carried and JS no longer does.
+3. **A stale reference can pass forever.** `tests/test_view_router_state.py:279`
+   listed `"dev"` among non-urgent views and stayed green, because `is_urgent`
+   is membership in a hardcoded 4-tuple so any unknown id returns False.
+   Cleaned, with the reason recorded in place.
+
+HOUSEKEEPING FOR WHOEVER IS NEXT. **ROADMAP.md is at 89.7% of its 81920-byte
+budget** and `tools/drift_guard.py` warns at 90, so the next filed row will trip
+it. A relocation pass is owed and was deliberately NOT half-done here: the two
+biggest closed rows (RM-253, RM-254) each carry OPEN sibling ids in the same
+line, so convention leaves them in place - the pass needs real judgment, not a
+byte trim. See the 2026-09-01 and 2026-09-04 sections of
+`docs/ROADMAP_HISTORY.md` for how previous passes drew the line.
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-342.
+      RM-341 (LANE 7, Tier-1) is the direct follow-on: TWO `VIEW_IDS`
+      registries, `web/js/lib/state.js` (12 ids) and
+      `dashboard/view_router_state.py:31` (10), drifted by 2 with nothing
+      guarding them. **Do NOT default to equality** - `historical-pgr` is
+      documented in state.js as manual-only ("the auto-derive view-router never
+      selects it"), which is real evidence the Python tuple is a deliberate
+      SUBSET. Establish intent from the consumers first, then guard containment
+      or equality accordingly, parsing BOTH registries off disk.
+      Also open: RM-322 (LANE 7), RM-212, RM-214, RM-286/287, RM-291..295.
+
+Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. Lane worktrees at
+      C:\rc-worktrees\rc-lane-* were NOT touched today and still sit at
+      a55ece97e - fast-forward before using one.
+
+Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
+      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
+      :8860 restart and a Share mirror sync; Tier-0/1 do not.
+
+Do NOT redo: RM-340 CLOSED (LEDGER 1326), RM-339 CLOSED (1325),
+      RM-208/209/220/326/327/328/338 CLOSED (1324). Do not re-derive the
+      view-registry census or the id census - both were measured and corrected
+      this session. Do not delete the RM-339 allowlist entries or the RM-340
+      exemptions. `web/js/panels/dev.js` is a LIVE panel (settings / fixture
+      viewer / replay scrubber) and is unrelated to the dead `dev` VIEW despite
+      the name - do not confuse them.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-04b - RM-339: 20 dead element ids adjudicated per-id, 16 deleted, 4 allowlisted (ON MAIN)
 
 STATE. Main carries RM-339 on top of the 1324 six-slice batch. ENGINE 1.280.0
@@ -161,69 +244,3 @@ Do NOT redo: RM-208 / RM-209 / RM-220 / RM-326 / RM-327 / RM-328 / RM-338 are
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       git log.
-
----
-
-# 2026-09-03b - RM-337: the shipped Share package passes clean (ON MAIN)
-
-STATE. Main carries RM-337. A clean copy of `Share/` in a temp dir OUTSIDE the
-repo now reports **8376 passed / 0 failed / 24 skipped / 11256 subtests**. The
-baseline this session opened with, measured the same way, was 13 failed / 8361
-passed / 24 skipped. 8361 + 13 + 2 new guard tests = 8376 - the zero came from
-fixing tests, not excluding them. DS from the repo root 10847 passed / 13659
-subtests / 0 failed, which is yesterday's 10845 plus exactly the 2 guard tests.
-`ds_share_sync.py --check` exit 0 at 535 files. `drift_guard.py` 0 breaches.
-NO `ENGINE_VERSION` bump and no `:8860` bounce - Tier-1, nothing in the engine
-moved.
-
-VERIFY IT THE HARD WAY OR NOT AT ALL. `cd Share` inside the repo passes for the
-wrong reason, and all 13 were always green in the main tree. The only honest
-check is `cp -r Share <temp outside repo> && python -m pytest src -q` there.
-
-WHAT SHIPPED. 16 literal sites across 14 files anchored on
-`_DS_DIR = Path(__file__).resolve().parents[1]`. Three more than the row filed:
-a sibling sweep found `test_akshan_passive_carry_rm42.py` (same defect, but
-excluded from the mirror by `_HOST_DEPENDENT_TESTS`, so a count taken in the
-package could never show it) and `test_geometry_item232.py` (already correct,
-but it passed an `agents/`-prefixed literal that had to go so the guard could
-carry zero exemptions).
-
-THE GUARD IS THE HALF THAT MATTERS.
-`agents/daemon_slayer/tests/test_no_cwd_relative_paths.py` - `ast`-based, not a
-grep, so a `#` comment naming such a path stays legal; docstrings exempt
-STRUCTURALLY by node identity, never by name; NO per-file skip list. Its
-forbidden prefixes are assembled from `_TOP_PACKAGE = "agents"` because as plain
-literals they would be its own first two violations - do not "simplify" that
-back. Proven non-vacuous by planting a violation and watching it go red BOTH in
-the repo and inside the shipped package copy, where it resolves its scan root to
-the temp dir. It asserts it scanned more than 50 files (finds 438) and that it
-finds itself.
-
-TWO RESIDUALS, WRITTEN DOWN SO THE ROW IS NOT OVER-CLAIMED. It keys on the
-`agents/` prefix per the filed acceptance, so a bare
-`open("champion_block_index.json")` would slip through (none exists today), and
-a concatenated `"agents" + "/x.json"` splits the constant and evades it - the
-guard's own `_TOP_PACKAGE` line demonstrates that bypass.
-
-DRIFT FOUND WHILE IN THESE FILES, all fixed. `Share/README.md` needed correcting
-a SECOND time in two days (yesterday it went from "passes clean" to "expect 13";
-this made that stale in reverse) and rewriting it surfaced three more defects in
-the same section: a garbled duplicated clause, a "21 skips" line contradicting
-the same file's own header of 24, and a "356 of 429, drops 73" recital against a
-measured 362 of 437, drops 75. Separately, ROADMAP + BACKLOG still marked
-RM-329..RM-336 OPEN although LEDGER 1322 shipped all eight the day before, and
-ROADMAP still advertised "next free id RM-337" - the id this session used. Eight
-status tokens flipped with the LEDGER cite (bodies left as the record), next free
-id now RM-338. Two of the eight were spot-checked in code first, not taken on the
-ledger's word.
-
-LANES ARE CURRENT - no fast-forward needed next session. All five lane
-worktrees (`ds`, `repo`, `research`, `true-audit`, `uiux`) were fast-forwarded
-from `22e8bd0ef` to `81f7e734a` and pushed at wrap; `lane/uiux` had no upstream
-and now tracks `origin/lane/uiux`. Checked before merging: every lane was
-ahead=0 both locally AND on origin, all five worktrees clean with zero stashes,
-so there was nothing to merge - the fast-forward was the whole job. Do not go
-looking for unmerged lane work.
-
-NEXT. Next free id is **RM-338**. Still open: RM-208 + RM-220 (lane 6),
-RM-326/327/328 + RM-209 (lane 4).
