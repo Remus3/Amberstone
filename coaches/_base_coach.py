@@ -94,7 +94,20 @@ def safe_write(path: Path, data: dict) -> bool:
     tmp = path.with_suffix(".tmp")
     with _SAFE_WRITE_LOCK:
         try:
-            tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            # RM-287: bytes, not write_text. On Windows Path.write_text
+            # rewrites every LF as CRLF while read_text translates it back,
+            # so the extra bytes are invisible to readers yet real on disk
+            # (measured 2026-08-30: data/tft_coaching_data.json, 176 bytes,
+            # 11 CRLF pairs). Any size cap, digest or byte-length compare
+            # over a coaching artifact is then wrong by the line count.
+            # Encoding here makes the payload byte-identical on every
+            # platform. Do NOT "simplify" this back to write_text: an
+            # explicit newline="" would cover only this one call site and
+            # still leaves the encode implicit. Mirrors the same decision
+            # in core/polled_json.atomic_write_json, for the same reason.
+            # ensure_ascii is left at its default so the JSON text itself
+            # is unchanged - this fix moves line endings only.
+            tmp.write_bytes(json.dumps(data, indent=2).encode("utf-8"))
         except Exception as exc:  # noqa: BLE001
             _log.error("safe_write write %s: %s", path.name, exc)
             return False
