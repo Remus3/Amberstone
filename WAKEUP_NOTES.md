@@ -17,8 +17,10 @@ commit. Main is green: dispatched run 33968377531 on `8263bb311`, `check` job
 THE TWO THINGS THAT COST TIME, so they do not cost it twice:
 1. The merge went in RED and the lanes could not have known. `docs-guards` +
    `ci` both failed on `ea45ff5be` on ONE test - the RM-171 citation guard, on
-   `./coach_integration/_sr_prompt.py:308` in the refill doc. A leading `./`
-   reads as an untracked path. Content was correct; the prefix was dropped.
+   `coach_integration/_sr_prompt.py:308` in the refill doc, written there with a
+   leading dot-slash. That prefix reads as an untracked path. Content was
+   correct; the prefix was dropped. Do NOT write the dot-slash form in a doc,
+   not even when quoting the defect - this entry tripped the same guard once.
 2. **A docs-only fix cannot prove itself.** `ci.yml:24` path-ignores `**/*.md`,
    so the fix commit ran ONLY `docs-guards`. Believing that green would have left
    the full suite unverified on HEAD. `ci.yml:31` has `workflow_dispatch` and
