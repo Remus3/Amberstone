@@ -265,9 +265,16 @@ def test_absolute_path_load_still_resolves_the_atomic_writer(monkeypatch):
     so ops/loop is never on sys.path". The repo root is absent too, so a plain
     `import core.polled_json` raises ModuleNotFoundError there. This test
     removes the repo root from sys.path and evicts every cached `core` module,
-    then loads all three writers by path and asserts each still reached a
+    then loads all SEVEN swept writers by path and asserts each still reached a
     working atomic writer. Without this guard the bind could regress to a bare
     import and stay green here while crashing the controller on launch.
+
+    Seven, not three: RM-250 named three siblings and cycle 48's adversarial
+    pass refuted that count, so the loop below is driven by `_SWEPT_MODULES`
+    rather than a hardcoded triple. This paragraph said "three" until the
+    verifier caught it disagreeing with the code it documents - which is the
+    same defect class (docstring asserts one thing, code does another) that
+    this lane audits for, so it is corrected here rather than left as a nit.
     """
     monkeypatch.setattr(
         sys, "path",
@@ -304,7 +311,7 @@ def test_absolute_path_load_still_resolves_the_atomic_writer(monkeypatch):
             f"the repo root is off sys.path - this is the launcher's context")
         # "A name resolved" is not "the right file was found". Pin the writer
         # to the REAL core/polled_json.py, so a wrong parents[N] or a typo'd
-        # filename in any of the three bind blocks fails here instead of
+        # filename in any of the seven bind blocks fails here instead of
         # shipping green - each module computes that path independently.
         origin = Path(sys.modules[writer.__module__].__file__).resolve()
         assert origin == real_pj, (
