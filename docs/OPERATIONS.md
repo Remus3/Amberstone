@@ -43,20 +43,20 @@ producing side - if you add a sixth tree, add it there:
 
 | Tree | Tests collected | In `pytest tests`? | In the "dual suite"? | Run by any CI job? |
 |---|---|---|---|---|
-| `tests` | 20561 | yes | yes | yes |
+| `tests` | 20564 | yes | yes | yes |
 | `agents/daemon_slayer/tests` | 10856 | no | yes | yes |
 | `agents/agent3_testing/suite` | 359 | no | no | **no** |
 | `tools/tests` | 348 | no | no | **no** |
 | `benchmarks` | 7 | no | no | yes (CodSpeed) |
-| **repo-root `pytest .`** | **32131** | | | |
+| **repo-root `pytest .`** | **32134** | | | |
 
 Measured 2026-09-04 with `pytest <tree> --collect-only -q` from the repo root on
-Python314; the five trees sum exactly to the repo-root total (20561 + 10856 +
-359 + 348 + 7 = 32131), so there is no sixth tree hiding.
+Python314; the five trees sum exactly to the repo-root total (20564 + 10856 +
+359 + 348 + 7 = 32134), so there is no sixth tree hiding.
 
-- **`pytest tests`** covers 20561 of 32131 (64 percent). This is the NARROW bar.
+- **`pytest tests`** covers 20564 of 32134 (64 percent). This is the NARROW bar.
 - **The "dual suite"** (`tests` + the DS tree) that CLAUDE.md's Tier-2 rule and
-  the DS batch ritual refer to covers 31417 of 32131 (98 percent).
+  the DS batch ritual refer to covers 31420 of 32134 (98 percent).
 - **`pytest .` from the repo root** is the only command that means "everything".
 
 **"Not in the local suites" and "unrun in CI" are DIFFERENT SETS - do not
