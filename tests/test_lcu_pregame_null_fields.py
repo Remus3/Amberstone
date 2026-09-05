@@ -155,7 +155,11 @@ def test_current_champion_empty_session_returns_zero():
 # -- get_my_summoner_spells ----------------------------------------------------
 
 def test_spells_both_null_returns_zero_pair():
-    """The row's stated acceptance: null spell ids on the auto-push path."""
+    """The row's stated acceptance: both spell ids null yields (0, 0).
+
+    See the module docstring - the row's "auto-push path" framing is
+    refuted; this reader has no in-repo callers.
+    """
     session = _session(spell1Id=None, spell2Id=None)
     assert _pregame().get_my_summoner_spells(session) == (0, 0)
 

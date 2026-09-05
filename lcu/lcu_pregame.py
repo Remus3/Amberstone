@@ -182,8 +182,15 @@ class LcuPregame:
         """Return (spell1Id, spell2Id) for my slot, or (0, 0).
 
         Total by contract: a null / missing / unparseable spell id
-        yields 0 for that slot rather than raising (RM-346). This sits
-        on the spell auto-push path, where one null used to be enough.
+        yields 0 for that slot rather than raising (RM-346).
+
+        NOT on the spell auto-push path, despite what the RM-346 row
+        claimed - that path reads the same wire fields inline at
+        `lcu/lcu_rune_writer.py:879` with its own `or 0` guard and
+        never calls this method. Measured 2026-09-05: this reader has
+        zero in-repo callers. It is public surface on the LcuClient
+        mixin, so the total contract still has to hold, but the defect
+        this docstring describes was latent, not a live crash.
         """
         my_cell = session.get("localPlayerCellId", -1)
         for player in self._my_team_entries(session):
