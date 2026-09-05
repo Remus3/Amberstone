@@ -76,7 +76,8 @@ def _load_champ_index() -> None:
         return
     try:
         data = json.loads(_DDR_CHAMPS.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return
     built: dict[int, str] = {}
     for slug, entry in (data.get("data") or {}).items():

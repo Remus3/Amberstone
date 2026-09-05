@@ -121,7 +121,8 @@ def _load_tips() -> dict:
                 if isinstance(pairs, dict):
                     out["pairs"] = {str(k): str(v) for k, v in pairs.items()
                                     if isinstance(v, str)}
-        except (OSError, json.JSONDecodeError):
+        # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             pass
         _TIPS_CACHE = out
         return out
