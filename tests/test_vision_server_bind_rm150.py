@@ -42,19 +42,33 @@ machine-local JSON API, not a coach UI or a dashboard panel, so the CLAUDE.md
 rule about user-facing error strings does not bind it. It is still a free
 disclosure of module paths, home directory and exception internals to anything
 that can reach the port, so it is closed here rather than carried.
+
+RM-214 - the ``/monitor`` half of HALF B used to disarm itself.
+That guard was a single test that called ``skipTest`` the moment ``/monitor``
+answered 200, and the assertions it thereby skipped were the redaction ones.
+The server creates the file that flips the state: an authenticated PUT of
+``moon_monitor.html`` writes it into ``Path.cwd()`` (``_http.do_PUT``) and
+into ``SYNC_DIR``, which are three of the six candidates the ``/monitor``
+branch probes. So one PUT silently stopped the guard asserting for that
+working directory, forever. It is now ``MonitorRedactionTests``: two
+deterministic states driven from a scratch tree, neither of them skipped.
 """
 from __future__ import annotations
 
 import ast
+import contextlib
 import json
 import os
 import re
+import shutil
+import tempfile
 import threading
 import unittest
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from unittest import mock
 
 import vision_server
 from vision_server import _http
@@ -62,6 +76,9 @@ from vision_server._config import AUTH_HEADER, AUTH_TOKEN
 
 REPO = Path(__file__).resolve().parent.parent
 LAN_PIN = re.compile(r"192\.168\.8\.230:8889")
+# Captured before any test redirects Path.home, so the redaction assertions can
+# check the REAL home as well as the scratch one they point the handler at.
+_REAL_HOME = Path.home()
 
 
 class _Server:
@@ -80,9 +97,11 @@ class _Server:
         self.srv.server_close()
         self.thread.join(timeout=5)
 
-    def get(self, path: str) -> tuple[int, bytes]:
+    def _call(self, method: str, path: str,
+              payload: bytes | None = None) -> tuple[int, bytes]:
         req = urllib.request.Request(
             f"http://127.0.0.1:{self.port}{path}",
+            data=payload, method=method,
             headers={AUTH_HEADER: AUTH_TOKEN},
         )
         try:
@@ -90,6 +109,13 @@ class _Server:
                 return resp.status, resp.read()
         except urllib.error.HTTPError as e:
             return e.code, e.read()
+
+    def get(self, path: str) -> tuple[int, bytes]:
+        return self._call("GET", path)
+
+    def put(self, path: str, payload: bytes) -> tuple[int, bytes]:
+        """A real authenticated PUT - the write that used to disarm RM-214."""
+        return self._call("PUT", path, payload)
 
 
 class BindHostTests(unittest.TestCase):
@@ -203,17 +229,6 @@ class ErrorBodyRedactionTests(unittest.TestCase):
         self.assertNotIn(sentinel, body.decode("utf-8", "replace"))
         self.assertEqual(json.loads(body).get("error"), "internal error")
 
-    def test_monitor_404_does_not_list_filesystem_paths(self) -> None:
-        with _Server() as s:
-            status, body = s.get("/monitor")
-        if status == 200:
-            self.skipTest("moon_monitor.html is present on this box")
-        self.assertEqual(status, 404)
-        text = body.decode("utf-8", "replace")
-        self.assertNotIn("searched", text)
-        self.assertNotIn(str(Path.home()), text)
-        self.assertNotIn("Desktop", text)
-
     def test_no_500_site_still_formats_the_exception(self) -> None:
         """Source pin - the four str(e) bodies LEDGER 1177 named."""
         src = (REPO / "vision_server" / "_http.py").read_text(encoding="utf-8")
@@ -227,6 +242,138 @@ class ErrorBodyRedactionTests(unittest.TestCase):
         self.assertEqual(src.count("self._err500("), 4)
         body = src.split("def _err500")[1].split("\n    def ")[0]
         self.assertIn("log.error", body)
+
+
+class MonitorRedactionTests(unittest.TestCase):
+    """RM-214 - /monitor discloses no filesystem layout in EITHER state.
+
+    This replaces a single test that did ``if status == 200: self.skipTest(...)``
+    and so stopped asserting the redaction properties the moment the file it
+    probed for existed - a file the server itself plants on any authenticated
+    PUT. Precedent: LEDGER 1179 fixed the sibling
+    ``test_absolute_path_injection_is_refused`` in this same subsystem by
+    ASSERTING its environment assumption instead of skipping it, "so a machine
+    that breaks the assumption fails loudly instead of quietly passing"
+    (memory ``reference_guard_can_be_green_while_self_excusing``).
+
+    Both states are driven from a scratch tree, so the box decides nothing and
+    the conditional skip becomes two deterministic cases.
+    """
+
+    # The six candidate expressions ``_http.do_GET`` probes for /monitor, as
+    # source. Pinned so a seventh cannot silently escape ``_isolate`` below.
+    _CANDIDATE_SOURCES = (
+        "MONITOR_HTML_PATH",
+        "Path(__file__).parent.parent / 'moon_monitor.html'",
+        "Path.cwd() / 'moon_monitor.html'",
+        "Path.home() / 'Desktop' / 'moon_monitor.html'",
+        "SYNC_DIR / 'moon_monitor.html'",
+        "SYNC_DIR / 'monitor.html'",
+    )
+
+    def _isolate(self) -> Path:
+        """Point every /monitor candidate at a scratch tree, and return it.
+
+        Four levers cover all six candidates without editing the server:
+        ``MONITOR_HTML_PATH`` (1), the module's own ``__file__`` (2, which
+        resolves to the same repo-root file as 1), the process CWD (3, which
+        also anchors the CWD-relative ``SYNC_DIR`` behind 5 and 6), and
+        ``Path.home()`` (4). With all four redirected, which state the handler
+        is in becomes a property of the test rather than of the machine.
+        """
+        tmp = Path(tempfile.mkdtemp(prefix="rc_rm214_")).resolve()
+        # LIFO: unpatch, then leave the dir, then delete it. Windows refuses to
+        # remove the process CWD, so the chdir-back must run before the rmtree.
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        self.addCleanup(os.chdir, Path.cwd())
+        os.chdir(tmp)
+        stack = contextlib.ExitStack()
+        self.addCleanup(stack.close)
+        stack.enter_context(
+            mock.patch.object(_http, "MONITOR_HTML_PATH", tmp / "moon_monitor.html"))
+        stack.enter_context(
+            mock.patch.object(_http, "__file__", str(tmp / "pkg" / "_http.py")))
+        stack.enter_context(
+            mock.patch.object(Path, "home", classmethod(lambda cls: tmp)))
+        return tmp
+
+    def _assert_no_layout_disclosure(self, body: bytes, tmp: Path) -> None:
+        """The property under test - identical wording in both states.
+
+        ``searched`` is the word the pre-RM-150 body used to introduce the
+        candidate list; ``tmp`` is what candidates 1-6 resolve to here, so it
+        is what a re-leak would actually print; ``Desktop`` is the segment
+        candidate 4 contributes; and the real home is checked too, so a leak
+        built before the redirect is caught rather than hidden by it.
+        """
+        text = body.decode("utf-8", "replace")
+        self.assertNotIn("searched", text)
+        self.assertNotIn(str(tmp), text)
+        self.assertNotIn("Desktop", text)
+        self.assertNotIn(str(_REAL_HOME), text)
+        self.assertNotIn("moon_sync_inbox", text)
+
+    def test_isolation_still_covers_every_monitor_candidate(self) -> None:
+        """Guard the guard - a seventh candidate would silently un-isolate.
+
+        If ``_http`` grows a candidate rooted somewhere ``_isolate`` does not
+        redirect, the two state tests below quietly go back to depending on
+        whatever the box happens to have - which is the RM-214 failure mode in
+        a new costume. Read the list off disk so this cannot drift.
+        """
+        src = (REPO / "vision_server" / "_http.py").read_text(encoding="utf-8")
+        found = None
+        for node in ast.walk(ast.parse(src)):
+            if (isinstance(node, ast.Assign)
+                    and any(getattr(t, "id", "") == "candidates"
+                            for t in node.targets)
+                    and isinstance(node.value, ast.List)):
+                found = [ast.unparse(e) for e in node.value.elts]
+                break
+        self.assertIsNotNone(found, "the /monitor candidate list was not found")
+        self.assertEqual(
+            found, list(self._CANDIDATE_SOURCES),
+            "the /monitor candidate list changed - re-check that _isolate "
+            "still redirects every entry before updating this pin")
+
+    def test_monitor_404_does_not_list_filesystem_paths(self) -> None:
+        """State A - no monitor file anywhere the handler looks."""
+        tmp = self._isolate()
+        with _Server() as s:
+            status, body = s.get("/monitor")
+        self.assertEqual(status, 404,
+                         "the scratch tree still resolved a monitor file")
+        self.assertEqual(json.loads(body).get("error"),
+                         "moon_monitor.html not found")
+        self._assert_no_layout_disclosure(body, tmp)
+
+    def test_monitor_200_after_a_put_still_redacts_filesystem_paths(self) -> None:
+        """State B - reached by the exact write that used to disarm the guard.
+
+        ``do_PUT`` writes an authenticated ``moon_monitor.html`` into
+        ``Path.cwd()`` and into ``SYNC_DIR``, lighting up candidates 3, 5 and
+        (because ``_isolate`` points MONITOR_HTML_PATH at that same file) 1.
+        Driving the real PUT rather than writing the file directly is the
+        point: it proves the guard survives the mechanism that silenced it.
+        """
+        tmp = self._isolate()
+        (tmp / "moon_sync_inbox").mkdir()   # SYNC_DIR is CWD-relative
+        payload = b"<html><body>rm214 monitor payload</body></html>"
+        with _Server() as s:
+            put_status, _ = s.put("/sync/put/moon_monitor.html", payload)
+            self.assertEqual(put_status, 200,
+                             "the PUT that flips the state did not succeed")
+            self.assertTrue((tmp / "moon_monitor.html").exists(),
+                            "the PUT did not plant the file it is here to plant")
+            status, body = s.get("/monitor")
+        self.assertEqual(status, 200)
+        # A 200 is a DIFFERENT contract from a 404: the response is the file
+        # and nothing else, which is the strongest available form of "no
+        # layout disclosure" in this state. Assert that byte-exactly, then
+        # restate the named redaction strings so the property this module
+        # guards is asserted in both states rather than implied in one.
+        self.assertEqual(body, payload, "/monitor did not serve the file verbatim")
+        self._assert_no_layout_disclosure(body, tmp)
 
 
 if __name__ == "__main__":
