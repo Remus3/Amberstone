@@ -26,33 +26,51 @@ scripts that need stdout.
 
 ## What "the suite is green" means (test scope)
 
-**AUTHORITATIVE (RM-170, 2026-08-06).** "Green" is a claim about a COMMAND, and
-this repo has more than one. Always name the command; never say "the suite"
-unqualified.
+**AUTHORITATIVE (RM-170, 2026-08-06; counts re-measured RM-322, 2026-09-04).**
+"Green" is a claim about a COMMAND, and this repo has more than one. Always name
+the command; never say "the suite" unqualified.
 
-The repo has **five** test trees. `tests/test_skip_condition_hygiene.py:59-60`
-is the single place that enumerates them, and it is the producing side - if you
-add a sixth tree, add it there:
+**THE COUNTS BELOW ARE A MEASUREMENT, NOT A PIN.** They drift on almost every
+commit and NOTHING guards them - deliberately, because a count guard here would
+go red on any commit that adds a test, which is the same reason
+`tests/test_docs_daemon_slayer_drift.py` refuses to pin `def test_` counts. Read
+the date, and if it matters to your decision, re-measure. What IS stable is the
+SHAPE: five trees, and the five summing exactly to the repo-root total.
 
-| Tree | Tests collected | In `pytest tests`? | In the "dual suite"? |
-|---|---|---|---|
-| `tests` | 18820 | yes | yes |
-| `agents/daemon_slayer/tests` | 10463 | no | yes |
-| `agents/agent3_testing/suite` | 360 | no | no |
-| `tools/tests` | 348 | no | no |
-| `benchmarks` | 7 | no | no |
-| **repo-root `pytest .`** | **29998** | | |
+The repo has **five** test trees. `tests/test_skip_condition_hygiene.py:72`
+is the single place that enumerates them (`_TEST_TREES`), and it is the
+producing side - if you add a sixth tree, add it there:
 
-Measured 2026-08-06 with `pytest <tree> --collect-only -q`; the five trees sum
-exactly to the repo-root total, so there is no sixth tree hiding.
+| Tree | Tests collected | In `pytest tests`? | In the "dual suite"? | Run by any CI job? |
+|---|---|---|---|---|
+| `tests` | 20561 | yes | yes | yes |
+| `agents/daemon_slayer/tests` | 10856 | no | yes | yes |
+| `agents/agent3_testing/suite` | 359 | no | no | **no** |
+| `tools/tests` | 348 | no | no | **no** |
+| `benchmarks` | 7 | no | no | yes (CodSpeed) |
+| **repo-root `pytest .`** | **32131** | | | |
 
-- **`pytest tests`** covers 18820 of 29998 (63 percent). This is the NARROW bar.
+Measured 2026-09-04 with `pytest <tree> --collect-only -q` from the repo root on
+Python314; the five trees sum exactly to the repo-root total (20561 + 10856 +
+359 + 348 + 7 = 32131), so there is no sixth tree hiding.
+
+- **`pytest tests`** covers 20561 of 32131 (64 percent). This is the NARROW bar.
 - **The "dual suite"** (`tests` + the DS tree) that CLAUDE.md's Tier-2 rule and
-  the DS batch ritual refer to covers 29283 of 29998 (98 percent).
+  the DS batch ritual refer to covers 31417 of 32131 (98 percent).
 - **`pytest .` from the repo root** is the only command that means "everything".
 
+**"Not in the local suites" and "unrun in CI" are DIFFERENT SETS - do not
+conflate them.** Three trees (359 + 348 + 7 = **714** tests) are outside both
+local suites. But only TWO trees (`agents/agent3_testing/suite` + `tools/tests`,
+359 + 348 = **707** tests) are run by NO CI job at all; `benchmarks` does run, on
+CodSpeed. And CI is not two commands either - there are **nine** pytest
+invocation sites across three workflows: `ci.yml:139`, `:340`, `:356`, `:388`,
+`:412`, `:504` (the last two are `RC_REQUIRE_*=1 pytest` env-prefixed forms that
+a naive grep for a line starting with `pytest` will miss), `docs-guards.yml:148`,
+`:154`, and `codspeed.yml:51`.
+
 Until RM-170 the repo's habitual green bar was quietly one of the narrow two,
-and the three uncovered trees (715 tests) had gone red without anyone seeing it:
+and the trees outside it had gone red without anyone seeing it:
 `tools/tests` carried two guard tests that had been failing since 2026-07-30
 (commit `9df58480` added a DS-engine import to both CDragon extractors and did
 not update their engine-independence guards), and `benchmarks` reported 7 red
