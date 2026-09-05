@@ -119,6 +119,89 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-04c - RM-340: the mountless `dev` view dropped, view registry guarded (ON MAIN)
+
+STATE. Third row of the day, on top of LEDGER 1324 (six-slice batch) and 1325
+(RM-339). ENGINE 1.280.0 unchanged, Tier-1 asset-only, no `:8860` bounce, no
+Share sync. One merger-side adjudication + one build slice; worktree and branch
+removed. LEDGER 1326. RM-341 filed.
+
+WHAT IT ACTUALLY FIXED - not cosmetic. `VIEW_IDS` membership is read at
+`main.js:611` / `:776` / `:6525`, so registering `dev` made `#dev` an ACCEPTED
+hash that set `body[data-view="dev"]`, matched no CSS and showed no section: a
+blank dashboard reachable by URL and by a stale `rc-view-manual` in
+localStorage. It now falls back to `home`.
+
+THE ROW FILED 2 SITES, THERE WERE 3. The third was an unreachable AND redundant
+`else if (v === "dev")` branch at `main.js:928` - unreachable because it reads
+`btn.dataset.view` and no menu item carries that value, redundant because it
+did exactly what the generic `else` two lines below does.
+
+GUARD: `tests/test_web_view_registry_rm340.py`, 15 tests, three directions -
+id to mount, id and label BOTH ways, menu `data-view` to id. The label
+direction is the one a naive guard misses and it was proven independent:
+restoring only the `VIEW_LABELS` orphan reddens the label assertion while the
+mount assertion stays green. **Both exemptions REDIRECT rather than skip** -
+`home` resolves to `#home-overlay` (still asserted to exist) and `auto` is
+pinned to `main.js:926` - and two further tests fail if either exemption goes
+obsolete or loses its citation. Do not "simplify" an exemption into a skip.
+
+THREE TRAPS WORTH CARRYING.
+1. **`git checkout` to undo a probe takes your UNCOMMITTED work with it.** The
+   slice reverted probe 1 that way and silently reverted its own fix, making
+   probe 2's output invalid. It caught it and redid probes with file-copy
+   backups. Back up the FILE, not the commit, when probing a dirty tree.
+2. **A slice's incidental finding is a hypothesis too.** It reported the
+   JS-vs-Python `VIEW_IDS` drift as 3 ids; re-measured it is **2**
+   (`historical-pgr`, `build-insights`). Its 3 counted `dev`, which Python
+   never carried and JS no longer does.
+3. **A stale reference can pass forever.** `tests/test_view_router_state.py:279`
+   listed `"dev"` among non-urgent views and stayed green, because `is_urgent`
+   is membership in a hardcoded 4-tuple so any unknown id returns False.
+   Cleaned, with the reason recorded in place.
+
+HOUSEKEEPING FOR WHOEVER IS NEXT. **ROADMAP.md is at 89.7% of its 81920-byte
+budget** and `tools/drift_guard.py` warns at 90, so the next filed row will trip
+it. A relocation pass is owed and was deliberately NOT half-done here: the two
+biggest closed rows (RM-253, RM-254) each carry OPEN sibling ids in the same
+line, so convention leaves them in place - the pass needs real judgment, not a
+byte trim. See the 2026-09-01 and 2026-09-04 sections of
+`docs/ROADMAP_HISTORY.md` for how previous passes drew the line.
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-342.
+      RM-341 (LANE 7, Tier-1) is the direct follow-on: TWO `VIEW_IDS`
+      registries, `web/js/lib/state.js` (12 ids) and
+      `dashboard/view_router_state.py:31` (10), drifted by 2 with nothing
+      guarding them. **Do NOT default to equality** - `historical-pgr` is
+      documented in state.js as manual-only ("the auto-derive view-router never
+      selects it"), which is real evidence the Python tuple is a deliberate
+      SUBSET. Establish intent from the consumers first, then guard containment
+      or equality accordingly, parsing BOTH registries off disk.
+      Also open: RM-322 (LANE 7), RM-212, RM-214, RM-286/287, RM-291..295.
+
+Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. Lane worktrees at
+      C:\rc-worktrees\rc-lane-* were NOT touched today and still sit at
+      a55ece97e - fast-forward before using one.
+
+Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
+      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
+      :8860 restart and a Share mirror sync; Tier-0/1 do not.
+
+Do NOT redo: RM-340 CLOSED (LEDGER 1326), RM-339 CLOSED (1325),
+      RM-208/209/220/326/327/328/338 CLOSED (1324). Do not re-derive the
+      view-registry census or the id census - both were measured and corrected
+      this session. Do not delete the RM-339 allowlist entries or the RM-340
+      exemptions. `web/js/panels/dev.js` is a LIVE panel (settings / fixture
+      viewer / replay scrubber) and is unrelated to the dead `dev` VIEW despite
+      the name - do not confuse them.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-04b - RM-339: 20 dead element ids adjudicated per-id, 16 deleted, 4 allowlisted (ON MAIN)
 
 STATE. Main carries RM-339 on top of the 1324 six-slice batch. ENGINE 1.280.0
