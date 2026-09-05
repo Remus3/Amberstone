@@ -6,6 +6,77 @@
 
 ---
 
+# 2026-09-04f - RM-212: rc-shell test list guarded; RM-342 filed, and it is the bigger one (ON MAIN)
+
+STATE. Sixth row of the day (LEDGER 1324 six-slice batch, then 1325 RM-339,
+1326 RM-340, 1327 RM-341, 1328 RM-322, 1329 RM-212). ENGINE 1.280.0 unchanged,
+Tier-1, one new guard. No worktree, no `web/` change, no digest re-stamp owed.
+
+WHAT SHIPPED. `rc-shell/package.json:9` runs its Node suite as a single
+`node --test <16 explicit paths>` string with nothing globbing the directory, so
+the next test file added would run NOWHERE with every signal green. The list is
+still exactly in sync (16 named, 16 on disk) - this closed an UNREALISED trap,
+which is the cheapest moment to close one. Guard:
+`tests/test_rc_shell_test_script_covers_the_dir_rm212.py`, 5 assertions, proven
+red in BOTH directions (drop a name / add an unnamed file).
+
+TWO FENCES ON THAT GUARD, both deliberate:
+- **A directory glob is NOT the fix.** `package.json:12` pins `"node": ">=18"`
+  and directory-mode `node --test` semantics differ across that range. Probed,
+  not assumed: on Node v24.15.0 `node --test test/` does not reproduce the
+  enumerated run cleanly here either.
+- **It ASSERTS rather than skips when rc-shell is absent.** A guard that
+  excuses itself when its subject vanishes is green over its own blind spot -
+  the same shape as the still-open RM-214.
+
+**RM-342 IS THE FINDING THAT MATTERS AND IT IS BIGGER THAN RM-212.** Having
+guarded that the list covers the directory, I asked whether the list runs at
+all. It does not: grepping `.github/workflows/*.yml` for `rc-shell`, `npm test`,
+`npm run test` and `node --test` returns **ZERO** hits, and no pytest harness
+runs them either (unlike `web/js`, which IS node-executed from Python). Those
+**329 tests pass locally and are invisible to CI.** Worse,
+`tests/test_overlay_a1_slider_apply.py:19` already justifies its own narrower
+approach with "the rc-shell node tests cover the shell half" - the repo is
+leaning on coverage no CI job produces.
+
+So: RM-212 does NOT make rc-shell CI-covered. Do not read it that way.
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-343.
+      **RM-342 is the natural follow-on** (LANE 7, Tier-1): get the rc-shell
+      suite running in CI. There is an in-repo precedent for the cheap shape -
+      `web/js` is node-executed from pytest, and
+      `tests/test_interrupt_panel.py:5` records a
+      `node --test web/mc/arm_confirm.test.mjs` invocation - so a pytest harness
+      would ride the existing CI job rather than needing a new workflow. Two
+      traps are written into the row: Node must exist on the CI image, and a
+      harness that SKIPS when node is missing reproduces exactly the
+      self-excusing shape RM-212's guard was written to avoid.
+      Also open: RM-214, RM-286/287, RM-291..RM-295.
+      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
+
+Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. ROADMAP at 88.5 pct of
+      its 81920-byte budget (guard warns at 90) - room for about one more row
+      before another relocation pass is owed. Lane worktrees at
+      C:\rc-worktrees\rc-lane-* were NOT touched today and still sit at
+      a55ece97e - fast-forward before use.
+
+Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
+      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
+      :8860 restart and a Share mirror sync; Tier-0/1 do not.
+
+Do NOT redo: RM-212 (1329), RM-322 (1328), RM-341 closed-as-REFUTED (1327),
+      RM-340 (1326), RM-339 (1325), RM-208/209/220/326/327/328/338 (1324). Do
+      not re-measure the rc-shell 16/16 equality or the 329/0 suite result, and
+      do not convert the test script to a directory glob - that is fenced with a
+      measured reason.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-04e - RM-322: test-scope table re-measured, CI-unrun set split, tree list guarded (ON MAIN)
 
 STATE. Fifth row of the day (LEDGER 1324 six-slice batch, 1325 RM-339, 1326
@@ -166,89 +237,6 @@ Do NOT redo: RM-341 CLOSED-as-REFUTED (1327), RM-340 (1326), RM-339 (1325),
       `historical-pgr` is the documented manual-only case. Do not re-derive the
       id census, the view-registry census, or the drift count - all measured
       and corrected today.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-      git log.
-
----
-
-# 2026-09-04c - RM-340: the mountless `dev` view dropped, view registry guarded (ON MAIN)
-
-STATE. Third row of the day, on top of LEDGER 1324 (six-slice batch) and 1325
-(RM-339). ENGINE 1.280.0 unchanged, Tier-1 asset-only, no `:8860` bounce, no
-Share sync. One merger-side adjudication + one build slice; worktree and branch
-removed. LEDGER 1326. RM-341 filed.
-
-WHAT IT ACTUALLY FIXED - not cosmetic. `VIEW_IDS` membership is read at
-`main.js:611` / `:776` / `:6525`, so registering `dev` made `#dev` an ACCEPTED
-hash that set `body[data-view="dev"]`, matched no CSS and showed no section: a
-blank dashboard reachable by URL and by a stale `rc-view-manual` in
-localStorage. It now falls back to `home`.
-
-THE ROW FILED 2 SITES, THERE WERE 3. The third was an unreachable AND redundant
-`else if (v === "dev")` branch at `main.js:928` - unreachable because it reads
-`btn.dataset.view` and no menu item carries that value, redundant because it
-did exactly what the generic `else` two lines below does.
-
-GUARD: `tests/test_web_view_registry_rm340.py`, 15 tests, three directions -
-id to mount, id and label BOTH ways, menu `data-view` to id. The label
-direction is the one a naive guard misses and it was proven independent:
-restoring only the `VIEW_LABELS` orphan reddens the label assertion while the
-mount assertion stays green. **Both exemptions REDIRECT rather than skip** -
-`home` resolves to `#home-overlay` (still asserted to exist) and `auto` is
-pinned to `main.js:926` - and two further tests fail if either exemption goes
-obsolete or loses its citation. Do not "simplify" an exemption into a skip.
-
-THREE TRAPS WORTH CARRYING.
-1. **`git checkout` to undo a probe takes your UNCOMMITTED work with it.** The
-   slice reverted probe 1 that way and silently reverted its own fix, making
-   probe 2's output invalid. It caught it and redid probes with file-copy
-   backups. Back up the FILE, not the commit, when probing a dirty tree.
-2. **A slice's incidental finding is a hypothesis too.** It reported the
-   JS-vs-Python `VIEW_IDS` drift as 3 ids; re-measured it is **2**
-   (`historical-pgr`, `build-insights`). Its 3 counted `dev`, which Python
-   never carried and JS no longer does.
-3. **A stale reference can pass forever.** `tests/test_view_router_state.py:279`
-   listed `"dev"` among non-urgent views and stayed green, because `is_urgent`
-   is membership in a hardcoded 4-tuple so any unknown id returns False.
-   Cleaned, with the reason recorded in place.
-
-HOUSEKEEPING FOR WHOEVER IS NEXT. **ROADMAP.md is at 89.7% of its 81920-byte
-budget** and `tools/drift_guard.py` warns at 90, so the next filed row will trip
-it. A relocation pass is owed and was deliberately NOT half-done here: the two
-biggest closed rows (RM-253, RM-254) each carry OPEN sibling ids in the same
-line, so convention leaves them in place - the pass needs real judgment, not a
-byte trim. See the 2026-09-01 and 2026-09-04 sections of
-`docs/ROADMAP_HISTORY.md` for how previous passes drew the line.
-
-NEXT SESSION
-------------
-Task: Pick the next open row. Next free id is RM-342.
-      RM-341 (LANE 7, Tier-1) is the direct follow-on: TWO `VIEW_IDS`
-      registries, `web/js/lib/state.js` (12 ids) and
-      `dashboard/view_router_state.py:31` (10), drifted by 2 with nothing
-      guarding them. **Do NOT default to equality** - `historical-pgr` is
-      documented in state.js as manual-only ("the auto-derive view-router never
-      selects it"), which is real evidence the Python tuple is a deliberate
-      SUBSET. Establish intent from the consumers first, then guard containment
-      or equality accordingly, parsing BOTH registries off disk.
-      Also open: RM-322 (LANE 7), RM-212, RM-214, RM-286/287, RM-291..295.
-
-Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. Lane worktrees at
-      C:\rc-worktrees\rc-lane-* were NOT touched today and still sit at
-      a55ece97e - fast-forward before using one.
-
-Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
-      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
-      :8860 restart and a Share mirror sync; Tier-0/1 do not.
-
-Do NOT redo: RM-340 CLOSED (LEDGER 1326), RM-339 CLOSED (1325),
-      RM-208/209/220/326/327/328/338 CLOSED (1324). Do not re-derive the
-      view-registry census or the id census - both were measured and corrected
-      this session. Do not delete the RM-339 allowlist entries or the RM-340
-      exemptions. `web/js/panels/dev.js` is a LIVE panel (settings / fixture
-      viewer / replay scrubber) and is unrelated to the dead `dev` VIEW despite
-      the name - do not confuse them.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       git log.
