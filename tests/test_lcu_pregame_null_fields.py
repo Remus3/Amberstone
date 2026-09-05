@@ -14,10 +14,20 @@ local player has hovered a champion:
 Three holes, one root cause plus one type variant:
 
   1. `get_my_current_champion` - both ids null -> `int(None)` TypeError.
-     There is no try/except in the method, so the crash propagates to
-     the champ-select poll.
-  2. `get_my_summoner_spells` - ONE null id is enough to raise. This
-     sits on the spell auto-push path.
+     There is no try/except in the method, so the crash escapes to
+     whatever calls it.
+
+REACHABILITY, measured 2026-09-05 and deliberately recorded here: these
+three methods have ZERO in-repo callers. `LcuPregame` is mixed into
+`LcuClient`, so they are public surface an external caller can reach,
+but no path in this tree invokes them (`tools/lcu_agent.py` dispatches
+`bench_swap` only, and there is no getattr dispatch table). The row that
+filed this defect described them as sitting on the champ-select poll and
+the spell auto-push path; that reachability was inherited, not proven,
+and it does not hold here. The fix is still correct - a documented total
+contract that raises is a defect regardless of current call count - but
+it is a latent one, not a live crash.
+  2. `get_my_summoner_spells` - ONE null id is enough to raise.
   3. `get_bench_champion_ids` - the trailing `if b.get("championId")`
      already filters the null case, so this site is the ELEMENT-TYPE
      hole only: a non-dict bench element (the LCU sends bare ints in
@@ -111,6 +121,28 @@ def test_current_champion_numeric_string_still_coerces():
     assert _pregame().get_my_current_champion(session) == 103
 
 
+def test_current_champion_string_zero_falls_through_to_pick_intent():
+    """DELIBERATE behavior change, pinned so it cannot drift back.
+
+    The `or` fallthrough now runs on the COERCED value, not the raw one.
+    Pre-fix, championId="0" was a truthy string so the intent was never
+    consulted and the method returned 0 while an intent was sitting
+    right there. Post-fix it coerces to 0 and falls through.
+    """
+    session = _session(championId="0", championPickIntent=266)
+    assert _pregame().get_my_current_champion(session) == 266
+
+
+def test_current_champion_float_string_coerces_to_zero_not_raise():
+    """"3.9" raised ValueError pre-fix; the total contract makes it 0.
+
+    Only INTEGER-formatted strings round-trip - see
+    test_current_champion_numeric_string_still_coerces.
+    """
+    session = _session(championId="3.9", championPickIntent=None)
+    assert _pregame().get_my_current_champion(session) == 0
+
+
 def test_current_champion_no_matching_cell_returns_zero():
     session = {"localPlayerCellId": 9, "myTeam": [{"cellId": 0, "championId": 103}]}
     assert _pregame().get_my_current_champion(session) == 0
@@ -192,6 +224,24 @@ def test_bench_null_id_still_filtered():
     """Pre-existing behavior - the trailing `if` already dropped these."""
     session = {"benchChampions": [{"championId": None}, {"championId": 103}]}
     assert _pregame().get_bench_champion_ids(session) == [103]
+
+
+def test_bench_string_zero_id_is_dropped():
+    """DELIBERATE behavior change, pinned so it cannot drift back.
+
+    Filtering moved from pre-coercion raw truthiness to post-coercion
+    int truthiness. Pre-fix, championId="0" passed the truthy-string
+    guard and the method emitted a literal 0 into the id list - a bogus
+    champion id a bench-swap caller would then act on. Now it is dropped.
+    """
+    session = {"benchChampions": [{"championId": "0"}, {"championId": 266}]}
+    assert _pregame().get_bench_champion_ids(session) == [266]
+
+
+def test_bench_order_is_preserved():
+    session = {"benchChampions": [{"championId": 266}, {"championId": 103},
+                                  {"championId": 42}]}
+    assert _pregame().get_bench_champion_ids(session) == [266, 103, 42]
 
 
 def test_bench_happy_path_unchanged():
