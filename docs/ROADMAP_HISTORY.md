@@ -1,5 +1,22 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-05 - the RM-329..RM-341 + RM-250 shipped block, collapsed to one pointer
+
+ROADMAP.md reached 73859 of its 81920-byte budget (90.2 percent) and
+`tools/drift_guard.py` warns at 90, so the seven consecutive SHIPPED/CLOSED lines
+below were replaced in ROADMAP.md by a single pointer line. Every row here is
+closed with no open sibling on its line; the OPEN rows around them were left
+untouched, and so was the mixed-state RM-322 line, per the 2026-09-04d convention.
+Bodies remain in `BACKLOG.md`; per-item evidence is LEDGER 1322-1333.
+
+- **RM-337 SHIPPED 2026-09-03 (LEDGER 1323)** - body relocated here earlier; row in `BACKLOG.md`.
+- **RM-329 .. RM-336 SHIPPED 2026-09-03 at ENGINE 1.280.0 (LEDGER 1322, main `edbf5192a`)** - eight-row batch, six LANE 6 and two LANE 7. A refutation pass KILLED 332 and CUT DOWN 329 + 330. Bodies retained in `BACKLOG.md`. (This line also carried a "next free id RM-343" pointer, correct when written and superseded twice since: RM-343 by lane 8 cycle 48, then RM-344..RM-363 by the lane 5 refill. The live pointer is RM-364 in `docs/DS_SWEEP_TRACKER.md`.)
+- **RM-338 SHIPPED 2026-09-04 (LEDGER 1324)** - body relocated here earlier; row in `BACKLOG.md`.
+- **RM-339 SHIPPED 2026-09-04 (LEDGER 1325)** - body relocated here earlier; row in `BACKLOG.md`.
+- **RM-340 SHIPPED 2026-09-04 (LEDGER 1326)** - body relocated here earlier; row in `BACKLOG.md`.
+- **RM-341 CLOSED 2026-09-04 (LEDGER 1327)** - body relocated here earlier; row in `BACKLOG.md`.
+- **RM-250 FIRST HALF SHIPPED / SECOND HALF REFUTED 2026-09-05 (LEDGER 1333, lane 8 cycle 48)** - seven `ops/loop/` writers now route through `core.polled_json.atomic_write_bytes`; the row named three and its own adversarial pass found four more. The row's stated acceptance was UNSHIPPABLE as literally written (a plain `core.polled_json` import crashes the controller, which is loaded by absolute file path) and its SECOND HALF was already false on the day it was filed. Body + full evidence in `BACKLOG.md`.
+
 ## 2026-09-04d - relocation of the standalone rows closed in the headless run
 
 ROADMAP.md stood at 73317 bytes of its 81920-byte budget (89.5 percent) and
