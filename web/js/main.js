@@ -926,9 +926,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         if (v === "auto") {
           _viewSaveManual(null);
           location.hash = "";
-        } else if (v === "dev") {
-          _viewSaveManual("dev");
-          location.hash = "#dev";
         } else {
           _viewSaveManual(v);
           location.hash = "#" + v;
