@@ -72,6 +72,16 @@ _SKIP_DIRS: tuple[str, ...] = (
     "node_modules",
 )
 
+# Derived from _SKIP_DIRS (which stays the single source of truth) so the
+# segment test below is a cheap membership check for the common single-segment
+# case and an explicit run-match for the multi-segment ones.
+_SKIP_SEGMENTS: frozenset[str] = frozenset(
+    s for s in _SKIP_DIRS if "/" not in s
+)
+_SKIP_RUNS: tuple[tuple[str, ...], ...] = tuple(
+    tuple(s.split("/")) for s in _SKIP_DIRS if "/" in s
+)
+
 # Directories we DO watch (only these subtrees contain editable .py).
 _WATCH_DIRS: tuple[str, ...] = (
     "agents",
@@ -89,10 +99,40 @@ def _is_frozen(rel: str) -> bool:
     return rel.replace("\\", "/") in _FROZEN_PATHS
 
 
+def _is_skipped(rel: str) -> bool:
+    """True if any _SKIP_DIRS entry matches a DIRECTORY segment of the path.
+
+    Matching is anchored to path-segment boundaries, never a raw substring of
+    the whole path. An unanchored `entry in rel` test also drops any file
+    whose path merely CONTAINS a token - measured on this tree, that silently
+    excluded 23 live non-frozen .py files (core/data_retention.py,
+    core/coaching_data_lock.py, tools/web_ascii_sweep.py, and web_dashboard.py
+    itself, the module that starts this watcher), which defeats the whole
+    point of the watchdog.
+
+    Two rules follow from a skip entry naming a DIRECTORY:
+      - The basename is not part of the comparison window, so a file called
+        web_dashboard.py is not "in a web directory".
+      - A partial segment does not count: "data" must not match "database".
+
+    Multi-segment entries (e.g. "docs/_archive") match a consecutive run of
+    directory segments at any depth.
+    """
+    dirs = rel.replace("\\", "/").split("/")[:-1]  # drop the basename
+    if _SKIP_SEGMENTS.intersection(dirs):
+        return True
+    for run in _SKIP_RUNS:
+        n = len(run)
+        for i in range(len(dirs) - n + 1):
+            if tuple(dirs[i:i + n]) == run:
+                return True
+    return False
+
+
 def _should_watch(rel: str) -> bool:
     """True if this .py file should be watched for changes."""
     r = rel.replace("\\", "/")
-    if any(s in r for s in _SKIP_DIRS):
+    if _is_skipped(r):
         return False
     if _is_frozen(r):
         return False
