@@ -363,7 +363,15 @@ _WEB = _REPO_ROOT / "web"
 # and correctly does NOT appear here: its edit was to stale prose inside an
 # HTML comment, which is the swept half, not the live half. Confirmed by
 # reading the diff, not assumed from the absence.
-_LIVE_HALF_DIGEST = "884b2b078e026e13ed384d3dc75ecc30031057fb9959c5de3ab59990d3a25946"
+# RE-CAPTURED at RM-340 (the mountless `dev` view dropped from the router
+# registry), superseding the RM-339 capture the same day. Ordinary case: LIVE
+# web edits, no tokeniser change, so the classifier is fixed and the two-tree
+# diff is a straight answer. Run over 24bb113af and the post-RM-340 tree with
+# the SAME tokeniser: 171 web/ sources in BOTH trees, and exactly 2 differ in
+# their live half - web/js/lib/state.js (the VIEW_IDS entry and its VIEW_LABELS
+# orphan) and web/js/main.js (the unreachable `else if (v === "dev")` branch).
+# That is the slice's whole file set and nothing else.
+_LIVE_HALF_DIGEST = "9d387af80c3f28f6b8afb62b567944c133df8dd43bede7ae576cc2efb1ca8e00"
 
 
 def _web_sources() -> list[Path]:
