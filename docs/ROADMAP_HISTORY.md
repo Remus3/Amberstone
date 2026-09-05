@@ -1,5 +1,27 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-04d - relocation of the standalone rows closed in the headless run
+
+ROADMAP.md stood at 73317 bytes of its 81920-byte budget (89.5 percent) and
+tools/drift_guard.py warns at 90. Only STANDALONE rows closed this session are
+moved, each checked programmatically for an OPEN half. Rows sharing a line with an
+open sibling id (RM-302 with RM-301/303, RM-314 with RM-315/316, RM-286/287 with
+RM-211, RM-322 with RM-326/327/328) stay in ROADMAP.md by convention. Full detail
+in docs/LEDGER.md 1328-1331.
+
+### RM-212
+
+- **RM-212 SHIPPED 2026-09-04 (LEDGER 1329)** - `rc-shell/package.json:9` enumerates its 16 test files by hand and nothing guarded the list, so the next file added would run nowhere. List was in sync (16/16); guarded by `tests/test_rc_shell_test_script_covers_the_dir_rm212.py`, which ASSERTS rather than skips when rc-shell is absent. A directory glob is fenced by the row (node >=18 semantics) and the fence was re-probed on Node 24. **Does NOT make rc-shell CI-covered - see RM-342.** Body in `BACKLOG.md`.
+
+### RM-214
+
+- **RM-214 SHIPPED 2026-09-04 (LEDGER 1330)** - the vision `/monitor` redaction guard skipped itself whenever `moon_monitor.html` existed, and the server writes exactly that file into its own CWD on any authenticated PUT. The test is now HERMETIC: it isolates all six `/monitor` candidates and asserts in BOTH states (11 passed + 1 skipped -> 14 passed, zero skips). `vision_server/_http.py` untouched - there was no live leak. Body in `BACKLOG.md`.
+
+### RM-342
+
+- **RM-342 SHIPPED 2026-09-04 (LEDGER 1330)** - rc-shell's 329 Node tests ran in no CI job; now run from `tests/test_rc_shell_node_suite_rm342.py`, which rides the existing `pytest tests/` job (no workflow change), reads the file list off `package.json` rather than retyping it, and ASSERTS rather than skips when node is missing. Runner verified to carry Node 22.23.2. Body in `BACKLOG.md`.
+
+
 ## 2026-09-04c - ROADMAP relocation, the eight rows closed on 2026-09-03/04
 
 Relocated verbatim at the end of the four-row merger day. ROADMAP.md stood at
