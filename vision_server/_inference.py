@@ -53,6 +53,29 @@ Never output trait names as unit names. Spectating -> board_units=["SPECTATING"]
 # through Bedrock or a proxy, widen this REGEX rather than deleting the gate.
 _MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
+# RM-314: per-request bound on both Anthropic calls below. Without it each
+# inherits the SDK default of 600s, and no client construction anywhere in the
+# repo sets one (`_config.py:75` passes only api_key + base_url), so the
+# per-call kwarg is the ONLY bound that exists.
+#
+# `handle_vision` and `handle_coach` are DIFFERENT call shapes - image plus a
+# cache_control system block at max_tokens=1400 versus text-only at
+# max_tokens=600 - and that was checked rather than assumed. It is not the
+# binding constraint. `core/moon_proxy.py` is the sole in-repo client of both
+# routes (`:108` /vision, `:151` /coach) and it abandons the request at
+# `core/moon_proxy.py:28` TIMEOUT_S = 8, so past ~10s either handler is
+# producing a response nobody will read while occupying a ThreadingHTTPServer
+# worker that also serves the 1 Hz LCU upload path. 10s is that 8s client
+# budget plus margin - high enough that the server never abandons a request
+# its caller would still have accepted, low enough that orphaned work is
+# bounded. It is also the value the repo already uses for its shortest model
+# call (`coaches/arena_coach.py:1077`).
+#
+# Deliberately TIGHTER than the two reader-side sites (modes/shared_vision.py
+# 20s, tft/tft_vision_reader.py 15s): those are direct SDK calls with no
+# intermediary deadline in front of them, these two sit behind one.
+_REQUEST_TIMEOUT_S = 10
+
 
 def _body_object(body: bytes) -> tuple[dict | None, dict | None]:
     """Decode a request body that must be a JSON object.
@@ -250,7 +273,8 @@ def handle_vision(body: bytes) -> dict:
             messages=[{"role": "user", "content": [
                 {"type": "image", "source": {"type": "base64",
                                              "media_type": media_type,
-                                             "data": img_send}}]}])
+                                             "data": img_send}}]}],
+            timeout=_REQUEST_TIMEOUT_S)
         ms = int((time.time() - t0) * 1000)
         # AUDIT 2026-08-30 (lane 8 cycle 20): was resp.content[0].text.
         _raw_txt = _first_text(resp)
@@ -290,7 +314,8 @@ def handle_coach(body: bytes) -> dict:
     try:
         resp = _get_client().messages.create(
             model=model, max_tokens=600,
-            messages=[{"role": "user", "content": p}])
+            messages=[{"role": "user", "content": p}],
+            timeout=_REQUEST_TIMEOUT_S)
         ms = int((time.time() - t0) * 1000)
         # AUDIT 2026-08-30 (lane 8 cycle 20): was resp.content[0].text.
         text = _first_text(resp)
