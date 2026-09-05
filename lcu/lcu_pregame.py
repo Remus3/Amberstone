@@ -141,10 +141,23 @@ class LcuPregame:
         """
         From a champ-select session, return the pending pick action for my cell.
         Returns the action dict or None.
+
+        Total by contract, same root cause as the readers below (RM-346):
+        `dict.get(key, default)` yields the default only when the key is
+        ABSENT, so a key present with a JSON `null` yields None and
+        `for group in None` raises. Non-list groups and non-dict actions
+        are skipped rather than raising.
         """
         my_cell = session.get("localPlayerCellId", -1)
-        for group in session.get("actions", []):
+        groups = session.get("actions") or []
+        if not isinstance(groups, list):
+            return None
+        for group in groups:
+            if not isinstance(group, list):
+                continue
             for action in group:
+                if not isinstance(action, dict):
+                    continue
                 if (action.get("actorCellId") == my_cell
                         and action.get("type") == "pick"
                         and not action.get("completed", False)):
