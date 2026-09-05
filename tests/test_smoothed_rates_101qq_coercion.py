@@ -138,6 +138,76 @@ class RowsToRecordsCoercionTests(unittest.TestCase):
                             f"{type(exc).__name__}: {exc}"
                         )
 
+    def test_non_finite_values_are_rejected_not_propagated(self):
+        """A NaN/Infinity must not reach the record.
+
+        Pinned down explicitly because the no-raise test above passes
+        whether or not the isfinite guard exists - a negative assertion
+        rules a failure out without pinning the value down, and a
+        mutation that deleted the guard survived on it. NaN is not valid
+        JSON, so one leaking into the duo-synergy payload blanks the
+        whole dashboard panel rather than degrading one row.
+        """
+        for hostile in (float("nan"), float("inf"), float("-inf"),
+                        "nan", "inf", "-inf", "NaN", "Infinity"):
+            with self.subTest(hostile=hostile):
+                self.assertEqual(
+                    S101._rows_to_records(
+                        [_row(doublewinrate=hostile)], _ID_TO_NAME,
+                    ),
+                    [],
+                    "a non-finite win rate must not be kept",
+                )
+
+    def test_booleans_are_not_numbers(self):
+        """JSON `true` is a plausible field value, and `isinstance(True, int)`
+        is True in Python - so without an explicit bool branch a boolean
+        win rate would silently become 1.0/0.0 and be published as a real
+        pairing rate. Pinned because a mutation of that branch survived."""
+        self.assertIsNone(S101._as_rate(True))
+        self.assertIsNone(S101._as_rate(False))
+        self.assertIsNone(S101._as_int(True))
+        self.assertIsNone(S101._as_int(False))
+        for hostile in (True, False):
+            with self.subTest(hostile=hostile):
+                self.assertEqual(
+                    S101._rows_to_records(
+                        [_row(doublewinrate=hostile)], _ID_TO_NAME,
+                    ),
+                    [],
+                    "a boolean win rate must not be published as a rate",
+                )
+                self.assertEqual(
+                    S101._rows_to_records(
+                        [_row(championid1=hostile)], _ID_TO_NAME,
+                    ),
+                    [],
+                    "a boolean champion id must not resolve",
+                )
+
+    def test_helpers_reject_non_finite_directly(self):
+        for hostile in (float("nan"), float("inf"), float("-inf"),
+                        "nan", "inf", "NaN", "1e999"):
+            with self.subTest(hostile=hostile):
+                self.assertIsNone(S101._as_rate(hostile))
+                self.assertIsNone(S101._as_int(hostile))
+
+    def test_no_record_field_is_ever_non_finite(self):
+        """Whole-record sweep: nothing the module publishes may be NaN/inf."""
+        import math as _m
+        rows = [
+            _row(doublewinrate=float("nan")),
+            _row(iwinrate1=float("inf"), championid1="22.0"),
+            _row(irank="nan"),
+            _row(),
+        ]
+        for r in S101._rows_to_records(rows, _ID_TO_NAME):
+            for k, v in r.items():
+                if isinstance(v, float):
+                    self.assertTrue(
+                        _m.isfinite(v), f"{k} published non-finite {v!r}",
+                    )
+
     def test_row_with_no_usable_win_rate_is_still_dropped(self):
         """A pairing with no rate carries nothing; inventing 0.0 would rank
         a real duo dead last. This is the one field whose absence is fatal."""
