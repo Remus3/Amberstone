@@ -119,6 +119,88 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-04d - RM-341 CLOSED, premise REFUTED; ROADMAP relocation pass done (ON MAIN)
+
+STATE. Fourth row of the day (LEDGER 1324 six-slice batch, 1325 RM-339, 1326
+RM-340, 1327 RM-341). ENGINE 1.280.0 unchanged, Tier-1. **No `web/` change at
+all this row, so no live-half digest re-stamp was owed** - the only row today
+that touched no web asset. Slice worktree and branch removed.
+
+THE ROW WAS WRONG AND SO WAS MY COUNTER-HYPOTHESIS. RM-341 said there were two
+competing `VIEW_IDS` registries that had drifted and needed guarding against
+each other. There are not. `web/js/lib/state.js` is the only real one; the
+10-tuple at `dashboard/view_router_state.py:31` was read by **NOTHING** - no
+importer, no `import *`, no `getattr`/`importlib`, and neither of the module's
+two tests takes it. Both branches the row offered (add the 2 ids / guard
+containment) were wrong. So was the subset reading the row itself argued for
+and that I initially accepted: the module docstring at `:16` claims the machine
+maps "to one of `VIEW_IDS`", and that claim is FALSE - `derive_view` returns
+exactly 5 ids against the tuple's 10, confirmed two ways (ast + an exhaustive
+dynamic sweep).
+
+**A constant that looks like a contract but has no readers costs more than it
+documents.** Its only observed effect was manufacturing the false "drifted by
+3" finding that created this row - which I then re-measured to 2 before filing,
+when the real answer was that the comparison was meaningless either way.
+
+WHAT SHIPPED INSTEAD. The tuple is deleted and the docstring repaired, and the
+guard the row SHOULD have asked for is in place:
+`tests/test_view_router_registry_rm341.py` pins that every id `derive_view` can
+return exists in the canonical JS registry - SUBSET, not equality, because the
+JS list legitimately holds manual-only views. That closes a real silent-rot
+channel the dead tuple never covered: the module is a declared test mirror, so
+a view renamed in `state.js` would leave it deriving a stale id with its
+existing tests still green, since they never cross the language boundary.
+
+TRAPS WORTH CARRYING.
+1. **Ask "who reads this?" before "are these two in sync?"** The sync question
+   presupposes both sides matter. A sibling sweep of all 7 module-scope
+   constants found `VIEW_IDS` was the only dead one - a clean result, recorded
+   so nobody re-asks.
+2. **A relocation pass can hide OPEN work.** Mine first classified RM-12 and
+   RM-15 as "pure closed" - both carry OPEN halves - because my line indices
+   were 0-based and `sed` is 1-based, so I inspected the wrong rows. Caught it,
+   then restricted the pass to the 8 rows closed THIS SESSION and asserted
+   programmatically that none carries an OPEN half.
+
+ROADMAP BUDGET: **now 87.6%** (was 89.9, guard warns at 90). The 8 rows closed
+2026-09-03/04 were relocated verbatim to `docs/ROADMAP_HISTORY.md`.
+RM-329..RM-336 was deliberately LEFT in ROADMAP despite being shipped, because
+it carries the live "next free id" pointer - do not relocate it without moving
+that pointer somewhere first. Room for roughly two more rows before the next
+pass is owed.
+
+NEXT SESSION
+------------
+Task: Pick the next open row. Next free id is RM-342.
+      Open: RM-322 (LANE 7, doc-vs-measured test-scope drift at
+      `docs/OPERATIONS.md:27`), RM-212 (`rc-shell/package.json` names its test
+      files by hand, nothing guards the list), RM-214 (vision-server `/monitor`
+      path-disclosure guard skips itself), RM-286/287, RM-291..RM-295.
+      Bodies + acceptance in BACKLOG.md; ROADMAP.md carries the pointers.
+
+Context: ENGINE 1.280.0, patch 16.15.1, :8860 serving. Lane worktrees at
+      C:\rc-worktrees\rc-lane-* were NOT touched today and still sit at
+      a55ece97e - fast-forward before using one.
+
+Acceptance: whatever the chosen row states. Tier-2 rows (engine/scorer/schema/
+      ENGINE_VERSION) need the full dual suite from the REPO ROOT plus a DS
+      :8860 restart and a Share mirror sync; Tier-0/1 do not.
+
+Do NOT redo: RM-341 CLOSED-as-REFUTED (1327), RM-340 (1326), RM-339 (1325),
+      RM-208/209/220/326/327/328/338 (1324). **Do not re-add a Python-side
+      `VIEW_IDS`** - it was deleted on measurement, not on taste, and the
+      docstring carries a do-not-re-add note. Do not assert equality between
+      the JS registry and the mirror's derive range; subset is correct and
+      `historical-pgr` is the documented manual-only case. Do not re-derive the
+      id census, the view-registry census, or the drift count - all measured
+      and corrected today.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log.
+
+---
+
 # 2026-09-04c - RM-340: the mountless `dev` view dropped, view registry guarded (ON MAIN)
 
 STATE. Third row of the day, on top of LEDGER 1324 (six-slice batch) and 1325

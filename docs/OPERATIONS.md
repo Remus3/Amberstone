@@ -26,7 +26,7 @@ scripts that need stdout.
 
 ## What "the suite is green" means (test scope)
 
-**AUTHORITATIVE (RM-170, 2026-08-06; counts re-measured RM-322, 2026-09-04).**
+**AUTHORITATIVE (RM-170, 2026-08-06; counts re-measured RM-322, 2026-09-04, refreshed same day).**
 "Green" is a claim about a COMMAND, and this repo has more than one. Always name
 the command; never say "the suite" unqualified.
 
@@ -43,20 +43,20 @@ producing side - if you add a sixth tree, add it there:
 
 | Tree | Tests collected | In `pytest tests`? | In the "dual suite"? | Run by any CI job? |
 |---|---|---|---|---|
-| `tests` | 20569 | yes | yes | yes |
+| `tests` | 20584 | yes | yes | yes |
 | `agents/daemon_slayer/tests` | 10856 | no | yes | yes |
 | `agents/agent3_testing/suite` | 359 | no | no | **no** |
 | `tools/tests` | 348 | no | no | **no** |
 | `benchmarks` | 7 | no | no | yes (CodSpeed) |
-| **repo-root `pytest .`** | **32139** | | | |
+| **repo-root `pytest .`** | **32154** | | | |
 
 Measured 2026-09-04 with `pytest <tree> --collect-only -q` from the repo root on
-Python314; the five trees sum exactly to the repo-root total (20569 + 10856 +
-359 + 348 + 7 = 32139), so there is no sixth tree hiding.
+Python314; the five trees sum exactly to the repo-root total (20584 + 10856 +
+359 + 348 + 7 = 32154), so there is no sixth tree hiding.
 
-- **`pytest tests`** covers 20569 of 32139 (64 percent). This is the NARROW bar.
+- **`pytest tests`** covers 20584 of 32154 (64 percent). This is the NARROW bar.
 - **The "dual suite"** (`tests` + the DS tree) that CLAUDE.md's Tier-2 rule and
-  the DS batch ritual refer to covers 31425 of 32139 (98 percent).
+  the DS batch ritual refer to covers 31440 of 32154 (98 percent).
 - **`pytest .` from the repo root** is the only command that means "everything".
 
 **"Not in the local suites" and "unrun in CI" are DIFFERENT SETS - do not
