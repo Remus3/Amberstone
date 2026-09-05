@@ -69,10 +69,13 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-366** (2026-09-05, superseding the RM-364 pin below: RM-364 and RM-365
-  were minted the same day when the RM-361 execution session spun its census out as its own
-  row and split the stale-prose finding off it. Re-derived the same way - highest live id
-  across every tracked `.md` and `.py` - after the filing commit, not before it.)
+  Next free id = **RM-367** (2026-09-05, LEDGER 1335, superseding the RM-364 pin below: RM-364,
+  RM-365 and RM-366 were all minted the same day by the RM-344/345/361 execution session - the
+  census spun out as its own row, the stale-prose finding split off it, and the verifier gate
+  raised RM-366 by refuting RM-345's end-to-end claim. Re-derived the same way - highest live id
+  across every tracked `.md` and `.py` - after the filing commits, not before them. Updated in
+  the SAME commit as the `ROADMAP.md` pointer, per the LEDGER 1334 note that the documented way
+  this pointer goes stale is a batch moving only one of the two.)
   Prior pin, kept for the audit trail: Next free id was **RM-364** (2026-09-05, at the merge of
   `lane/research`: the 20 rows in
   `docs/_research_refill_2026-09-05.md` consumed RM-344 through RM-363 in row order. The merger
