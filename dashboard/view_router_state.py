@@ -13,7 +13,23 @@ The state machine has two layers:
    through transient LCU phase=null/Lobby blips during the CS->game flip.
    Cleared on stable post-game phases.
 2. **View derivation**: maps (phase, mode, gameStarted, feature flags) to
-   one of `VIEW_IDS` per the precedence rules in `_viewAutoDerive`.
+   exactly one of five view ids, per the precedence rules in
+   `_viewAutoDerive`: `active-match`, `champ-select`, `home`, `last-match`,
+   `lobby`. That is the auto-derive RANGE, and it is NOT the dashboard's
+   navigable registry. The canonical list of every reachable view is
+   `VIEW_IDS` in `web/js/lib/state.js`, which is deliberately larger
+   because it also carries manual-only views this machine never selects
+   (`historical-pgr` is reached solely by a History/Session row click).
+
+RM-341 (2026-09-04): this module deliberately carries NO view-id registry
+of its own. It used to define a 10-entry `VIEW_IDS` tuple that nothing in
+the repo read - not this module, not either of its two test files, not the
+runtime - and which had quietly rotted into a stale copy of an older JS
+list. Its only observed effect was to invite a drift report against a
+registry it was never the peer of. What replaced it is
+`tests/test_view_router_registry_rm341.py`, which extracts the five ids
+from `derive_view` itself and asserts each one exists in the JS registry.
+Do not re-add a Python-side list; extend that assertion instead.
 
 s209 changes:
 - Dropped the `loading` view tier entirely. GameStart now routes directly
@@ -27,12 +43,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional
-
-VIEW_IDS = (
-    "home", "lobby", "champ-select", "active-match", "last-match",
-    "session", "history", "replay",
-    "user-builds", "settings",
-)
 
 IN_GAME_MODES = frozenset({"sr", "aram", "arena", "brawl", "tft"})
 
