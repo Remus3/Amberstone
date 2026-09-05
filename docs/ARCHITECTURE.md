@@ -62,6 +62,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `game_reader/snapshot_normalizer.py` | raw liveclient JSON -> coaching state dict + derived fields |
 | `moon_vision_server.py` | vision server entrypoint shim - delegates to vision_server.main |
 | `tests/test_relay_lane8_cycle25.py` | lane 8 cycle 25 regression suite |
+| `tests/test_rm344_tft_coercion.py` | regression - the TFT early-exit branch must coerce wire numerics too |
 | `tests/test_silent_except_liveclient_subresource.py` | regression - live-client subresource reads must be falsifiable |
 | `tests/test_snapshot_normalizer_wire_coercion.py` | regression - Live Client wire numerics must not crash or poison the snapshot |
 | `vision_server/__init__.py` | vision_server package facade + entrypoint |
