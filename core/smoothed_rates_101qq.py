@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import threading
 import time
@@ -187,6 +188,77 @@ class SoloRec:
 # --------------------------------------------------------------------
 
 
+def _as_int(value) -> int | None:
+    """Tolerant int coercion for a field on a payload RC does not own.
+
+    RM-291 Sweep B. This is a THIRD-PARTY feed and it demonstrably
+    string-encodes numbers: every `championid1` in the captured seed is a
+    STRING ("22"), and `itemp1` is a percent-suffixed string ("4.78%").
+    A bare `int()` was therefore one upstream formatting choice ("22.0")
+    away from raising ValueError - the LEDGER 1299 W1 class - which the
+    enclosing handler turned into a silently DROPPED ROW.
+
+    Returns None when the value carries no usable integer, so the CALLER
+    decides whether that is row-fatal. Non-finite is None on purpose:
+    `int(inf)` raises OverflowError, which is not a ValueError and so is a
+    third handler class the original guard never covered.
+
+    DUPLICATED, not imported, from the `_as_int`/`_as_float` pair in
+    `core/augment_external_source.py`: those are private to a module that
+    owns a different feed and its own network I/O, and they default on
+    failure where this call site needs None-on-failure so it can tell an
+    absent secondary field from an unusable primary one.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value) if math.isfinite(value) else None
+    if isinstance(value, str):
+        try:
+            f = float(value.strip())
+        except (TypeError, ValueError):
+            return None
+        return int(f) if math.isfinite(f) else None
+    return None
+
+
+def _as_rate(value) -> float | None:
+    """Tolerant win-rate coercion, percent-aware. Twin of `_as_int`.
+
+    `itemp1` already arrives as "4.78%", so a sibling rate field could
+    arrive that way too. A trailing '%' divides by 100; a bare numeric
+    string is already a decimal share (0.5653 = 56.53%) and is taken
+    as-is. Returns None when the value carries no usable rate.
+
+    Non-finite is None deliberately: a NaN reaching the dashboard JSON
+    blanks the whole panel, and `float("nan")` passes an `isinstance`
+    check that a plain float() guard would wave through.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            f = float(value)
+        except (OverflowError, ValueError):
+            return None
+        return f if math.isfinite(f) else None
+    if isinstance(value, str):
+        s = value.strip()
+        pct = s.endswith("%")
+        if pct:
+            s = s[:-1].strip()
+        try:
+            f = float(s)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(f):
+            return None
+        return f / 100.0 if pct else f
+    return None
+
+
 def _parse_itemp(raw: str | float | None) -> float:
     """Parse "4.78%" -> 0.0478 (decimal share). Returns 0.0 on garbage."""
     if raw is None:
@@ -214,23 +286,33 @@ def _rows_to_records(data, id_to_name: dict[int, str]) -> list[dict]:
     for rec in data:
         if not isinstance(rec, dict):
             continue
-        try:
-            bot_id = int(rec.get("championid1") or 0)
-            sup_id = int(rec.get("championid2") or 0)
-        except (TypeError, ValueError):
-            continue
+        # RM-291 Sweep B: tolerant coercion, because this feed sends ids as
+        # STRINGS ("22") and could send "22.0". `_as_int` returns None on
+        # anything unusable, which the existing id guard already treats as
+        # row-fatal - an unresolvable champion is not a pairing.
+        bot_id = _as_int(rec.get("championid1"))
+        sup_id = _as_int(rec.get("championid2"))
         if not (bot_id and sup_id):
             continue
         bot_name = id_to_name.get(bot_id) or _name_fallback(bot_id)
         sup_name = id_to_name.get(sup_id) or _name_fallback(sup_id)
         if not (bot_name and sup_name):
             continue
-        try:
-            doublewr = float(rec.get("doublewinrate") or 0.0)
-            iwr1 = float(rec.get("iwinrate1") or 0.0)
-            iwr2 = float(rec.get("iwinrate2") or 0.0)
-            irank = int(rec.get("irank") or 0)
-        except (TypeError, ValueError):
+        # doublewinrate is the payload this row exists to carry. If it will
+        # not coerce the row is DROPPED rather than invented as 0.0, which
+        # would rank a real pairing dead last in the "best pairings" list.
+        # Same doctrine as core/augment_external_source.py, where win_rate is
+        # likewise the one field whose absence still drops the row.
+        doublewr = _as_rate(rec.get("doublewinrate"))
+        if doublewr is None:
+            continue
+        # Secondary display / aggregation fields keep the original `or`
+        # tolerance: an absent value here is a legitimate 0, not a parse
+        # failure, so only a present-but-unusable value drops the row.
+        iwr1 = _as_rate(rec.get("iwinrate1") or 0.0)
+        iwr2 = _as_rate(rec.get("iwinrate2") or 0.0)
+        irank = _as_int(rec.get("irank") or 0)
+        if iwr1 is None or iwr2 is None or irank is None:
             continue
         itemp = _parse_itemp(rec.get("itemp1"))
         # Sample-size proxy: itemp1 is play-rate share; scale to
