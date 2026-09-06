@@ -817,5 +817,71 @@ class RangeSpecCase(_TmpAppDirCase):
         self.assertEqual(result.status, "OK", result.issues)
 
 
+class BackupRetentionRangeCase(_TmpAppDirCase):
+    """RM-363 sibling sweep. Same shape as RM-161, same missing guard.
+
+    `_RC_CONFIG_SPEC` types `backup_retention_count` as `"integer"` and is
+    constructed with NO `field_ranges` at all, so `0` is a valid integer and
+    the validator waves it through. `ops/rc_supervisor.py:1332` (FROZEN)
+    reads it straight into `retention`, and `:1339` slices
+    `backups[retention:]` - "keep newest N, delete the rest". At 0 that
+    slice is EVERY backup and `:1343` calls `shutil.rmtree` on all of them.
+    The call sits at the tail of `_do_rollback`, so the run that just
+    restored from a snapshot then erases that snapshot along with every
+    other rollback point. At -1 the knob inverts outright: `backups[-1:]`
+    deletes the oldest rather than keeping the newest.
+
+    Because the supervisor is frozen, the validator is the non-frozen place
+    to reject the config before the supervisor ever reads it - which is
+    exactly the reasoning `_SELF_MONITOR_SPEC` already carries for RM-161.
+    """
+
+    RC_CONFIG = "ops/rc_config.json"
+
+    def _rc_result(self, **over):
+        self.write_all_valid()
+        cfg = self.valid_rc_config()
+        cfg.update(over)
+        self.write_json(self.RC_CONFIG, cfg)
+        return self.result_for(cv.validate_all(), self.RC_CONFIG)
+
+    def test_zero_backup_retention_is_rejected(self):
+        result = self._rc_result(backup_retention_count=0)
+        self.assertEqual(result.status, "ERROR", result.issues)
+        self.assertTrue(
+            any("backup_retention_count" in i and "ERROR" in i
+                for i in result.issues),
+            f"a keep-zero backup policy was accepted: {result.issues!r}",
+        )
+
+    def test_negative_backup_retention_is_rejected(self):
+        result = self._rc_result(backup_retention_count=-1)
+        self.assertEqual(result.status, "ERROR", result.issues)
+
+    def test_the_shipped_default_still_passes(self):
+        """`ops/rc_config.json` ships 10 and the supervisor defaults to 10.
+        A range that rejected the live value would be a regression."""
+        result = self._rc_result(backup_retention_count=10)
+        self.assertFalse(
+            any("backup_retention_count" in i for i in result.issues),
+            f"the shipped default was flagged: {result.issues!r}",
+        )
+
+    def test_the_smallest_legal_value_passes(self):
+        result = self._rc_result(backup_retention_count=1)
+        self.assertFalse(
+            any("backup_retention_count" in i for i in result.issues),
+            f"the boundary value 1 was flagged: {result.issues!r}",
+        )
+
+    def test_absent_optional_key_is_not_range_checked(self):
+        """It is OPTIONAL, and the shipped rc_config is allowed to omit it."""
+        result = self._rc_result()
+        self.assertFalse(
+            any("backup_retention_count" in i for i in result.issues),
+            f"an absent optional key was range-checked: {result.issues!r}",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
