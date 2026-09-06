@@ -34,6 +34,10 @@ import time
 from typing import Callable
 
 from lcu.champ_select_shape import shape_champ_select
+# RM-367: the single in-package answer to "does this gameflow body name a
+# phase". Owned by lcu_pregame (RM-347), which documents the rule; a near-copy
+# here is the private-copy drift class, so this imports rather than restates.
+from lcu.lcu_pregame import _phase_or_none
 
 
 # -- Lobby members forwarding ------------------------------------------------
@@ -413,11 +417,26 @@ def shape_snapshot(request: Callable[..., tuple], config,
     """
     state: dict = {}
     phase, _ = request("GET", "/lol-gameflow/v1/gameflow-phase")
+    # RM-367: an empty, quote-only or whitespace-only body names no phase, so
+    # it is reported as None - a falsy no-phase joining the path the consumers
+    # already handle - and never as the "" it used to land as. NOT "Unknown":
+    # that value is TRUTHY, and both arms of the runtime view router that
+    # branch on a falsy phase (web/js/main.js:711 s209 sticky-guard, :728
+    # item-281 in-game promotion, off `const phase = lcu && lcu.phase` at
+    # :629) would be silently disarmed by it. None keeps them firing exactly
+    # as "" did, and dashboard/_cs_retention.py:114 already treats both as
+    # "unknown, do not act on it" - its _CLEAR_PHASES holds the *string*
+    # "None", a REAL idle phase, which is why that one must survive intact.
+    # The predicate is RM-347's, deliberately imported rather than copied.
     if isinstance(phase, str):
-        state["phase"] = phase.strip('"')
+        state["phase"] = _phase_or_none(phase)
     elif isinstance(phase, bytes):
-        state["phase"] = phase.decode().strip('"')
+        state["phase"] = _phase_or_none(phase.decode())
     else:
+        # Left as-is by RM-367: a non-str/non-bytes body is a different
+        # question from an empty one, and its truthiness is filed, not fixed
+        # here. The unguarded .decode() above is likewise RM-293's, not this
+        # row's.
         state["phase"] = "Unknown"
 
     # KNOWN-BUG diagnostic breadcrumb (2026-05-17): the operator's

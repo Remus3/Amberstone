@@ -69,7 +69,16 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-382** (2026-09-06). RM-381 was minted by
+  Next free id = **RM-383** (2026-09-06). RM-382 was minted by
+  LEDGER 1354, LANE 10 queue cycle 16, for the RM-367 sibling sweep: two
+  TRUTHY non-phase sentinels (`"Unknown"` at `lcu/snapshot_shape.py:440`,
+  `"Offline"` at `tools/lcu_agent.py:330`) reach `/api/state.lcu.phase` and
+  each disarms the two `web/js/main.js` arms that recover a lost sticky from a
+  falsy phase. Allocation was checked with the pointer-vs-allocated predicate
+  before minting: RM-382's only two occurrences were next-free pointer prose,
+  in this file and in `ROADMAP.md`, neither heading a row nor carrying a
+  status marker.
+  Previously: RM-381 was minted by
   LEDGER 1353, LANE 10 queue cycle 14, for the measured RESIDUE of RM-364: seven
   Anthropic prompt builders that still interpolate wire or model text unsanitised.
   It is pinned by a guard rather than remembered - the RM-364 census partitions every
