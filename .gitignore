@@ -265,9 +265,23 @@ ops/local_paths.json
 # operator's builds are theirs alone.
 data/daemon_slayer/user_builds.json
 
-# Tencent 101.qq raw scrape payloads - redistributable third-party data, never commit
+# Tencent 101.qq raw scrape payloads - third-party data, never commit.
+#
+# The glob below used to be `qq_double_*.json` ONLY, which never matched the
+# name the capture tooling actually writes (`101qq_<...>.json`), so
+# `data/external/101qq_hero_rank_double_tier200_capture_20260525.json` was
+# committed and `git check-ignore` exits 1 on it to this day. Widened here.
+#
+# NOTE the already-tracked exception: that May-25 capture and
+# `101qq_id_map.json` are BOTH read by `core/smoothed_rates_101qq.py` - the
+# capture IS the static seed the duo-synergy lane falls back to when the live
+# endpoint is unreachable (item-277), so it is load-bearing, not scrap.
+# Listing a tracked file here does NOT untrack it. Before publishing, that seed
+# should be re-expressed in RC's own schema rather than shipped as a verbatim
+# vendor response - the same transformation the lolmath extracts need.
 data/external/qq_double_raw.json
 data/external/qq_double_*.json
+data/external/101qq_*_capture_*.json
 
 # Rank-tier live/generated averages (overlay item 8). The committed estimate seed
 # is rank_tier_averages.seed.json; the pipeline-generated live file is local-only.
