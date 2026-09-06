@@ -69,7 +69,19 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-375** (2026-09-06, superseding the RM-373 pin: RM-373 AND RM-374 were
+  Next free id = **RM-376** (2026-09-06, superseding the RM-375 pin: RM-375 was minted by
+  LEDGER 1346, LANE 10 queue cycle 8, off the RM-355 sibling sweep, for the two Perseus vault
+  readers (`tools/perseus_sync.py:114-124` and `tools/perseus_recall.py:125-135`) that loop
+  forever on any non-JSON line the vault binary writes to stdout - filed rather than swept
+  because it is a DIFFERENT root-cause class from RM-355 (a content-match exit, not a counter
+  the body declines to advance), and filed at raised priority because `perseus_recall.py` is
+  the mandatory recall gate at the head of every lane cycle. Filed to BACKLOG "Platform /
+  observability". Re-derived from the tree after a `git fetch`, not minted from this line on
+  faith - which mattered this cycle: the pin read RM-370 at cycle start and three ids had been
+  allocated by other lanes in the interim. RM-376 and RM-377 both have ZERO occurrences
+  anywhere; every RM-375 occurrence before this commit was next-free POINTER prose heading no
+  row body and carrying no status marker.
+  The superseded RM-375 pin: RM-373 AND RM-374 were
   both minted by LEDGER 1345, LANE 10 queue cycle 7, off the RM-354 sibling sweep - RM-373 for
   `lib/icons/downloader.py:82` committing a 200 body to a durable cache with no acceptance test
   on the body (the RM-354 root cause in a second module, filed rather than swept because a PNG
