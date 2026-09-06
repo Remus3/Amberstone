@@ -11,15 +11,15 @@ description: Mission Control lane 4 (uiux). Headless UI/UX queue plus usability 
 
 This is the lane-4 command doc, fed verbatim to a detached headless `claude -p` worker with full authority
 and NO operator present. Lane 3 is `tools/headless-upgrade.md`; the lane roster and the single
-mutual-exclusion lock live in `ops/loop/lanes.py:105` (`LANES = ("upgrade", "uiux", "research", "ds",
-"repo", "true-audit", "gated")`). Run sections in order.
+mutual-exclusion lock live in `ops/loop/lanes.py:136-137` (`LANES = ("upgrade", "uiux", "research", "ds",
+"repo", "true-audit", "gated", "queue")`). Run sections in order.
 
 ### 1. Pre-flight baseline (do this FIRST, every time)
 
 - **Confirm the worktree, not the main tree.** `git rev-parse --show-toplevel` must print
   `C:/rc-worktrees/rc-lane-uiux` and `git branch --show-current` must print `lane/uiux`. The convention is
   code, not lore: `ops/loop/lane_launcher.py:84` (`WORKTREE_BASE = C:\rc-worktrees`, overridable via
-  `RC_LANE_WORKTREE_BASE`) and `:121` (`rc-lane-<lane>`). `ops/loop/lanes.py:221` `_require_worktree` raises
+  `RC_LANE_WORKTREE_BASE`) and `:145` (`rc-lane-<lane>`). `ops/loop/lanes.py:317` `_require_worktree` raises
   on an absent worktree. If the toplevel is `C:/Riot Commander`, STOP and report; do not edit.
 - **A fresh worktree has no hooks.** `python scripts/install_hooks.py` first (CLAUDE.md hard rule:
   `core.hooksPath` is LOCAL config and is not cloned). Then recall before building: `python

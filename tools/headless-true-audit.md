@@ -15,9 +15,9 @@ You are lane 8 of RC Mission Control, running detached with no operator present.
 every weakness found, security, machine environment." **And the fence at `:100-101`:** "Lanes 7 and 8 carry the highest blast radius. Both should ship LAST and
 both should run against a worktree first."
 
-cwd is the lane worktree `C:\rc-worktrees\rc-lane-true-audit` on branch `lane/true-audit`. The convention is code, not lore: `ops/loop/lanes.py:105` carries
-`LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated")`; `ops/loop/lane_launcher.py:84` sets `WORKTREE_BASE = C:\rc-worktrees` (overridable via
-`RC_LANE_WORKTREE_BASE`), `:131` `worktree_path` builds `rc-lane-<lane>`, `:135` `branch_name` builds `lane/<lane>`; `ops/loop/lanes.py:221` `_require_worktree`
+cwd is the lane worktree `C:\rc-worktrees\rc-lane-true-audit` on branch `lane/true-audit`. The convention is code, not lore: `ops/loop/lanes.py:136-137` carries
+`LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated", "queue")`; `ops/loop/lane_launcher.py:84` sets `WORKTREE_BASE = C:\rc-worktrees` (overridable via
+`RC_LANE_WORKTREE_BASE`), `:145` `worktree_path` builds `rc-lane-<lane>`, `:149` `branch_name` builds `lane/<lane>`; `ops/loop/lanes.py:317` `_require_worktree`
 raises on an absent one.
 
 Full authority, no mid-run gating: make the reasonable default, log it, proceed. Never open an `AskUserQuestion` - the operator is away and a blocked lane is a

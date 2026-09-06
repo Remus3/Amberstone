@@ -371,7 +371,18 @@ _WEB = _REPO_ROOT / "web"
 # their live half - web/js/lib/state.js (the VIEW_IDS entry and its VIEW_LABELS
 # orphan) and web/js/main.js (the unreachable `else if (v === "dev")` branch).
 # That is the slice's whole file set and nothing else.
-_LIVE_HALF_DIGEST = "9d387af80c3f28f6b8afb62b567944c133df8dd43bede7ae576cc2efb1ca8e00"
+# RE-CAPTURED at the LANE 10 wiring (`queue` added to the lane roster),
+# superseding the RM-340 capture. Ordinary case: one LIVE web edit, no
+# tokeniser change. `git status --short web/` reports exactly ONE modified
+# source, `web/mc/mc.js`, and `_web_sources()` still returns 171 - nothing was
+# added or removed. The live-half change is the single `"queue":
+# "Headless-Gated (live)"`-shaped entry appended to `_LANE_LABELS`; the comment
+# block above it is the swept half and does not reach this digest. The roster
+# it mirrors is pinned independently by
+# tests/test_mc_lane_roster_contract.py, so this digest is not the thing
+# stopping the panel from drifting - it is the thing that makes the drift
+# deliberate.
+_LIVE_HALF_DIGEST = "9510af8151fc06d1e45e7c8846133c11e55f97f7880e171862fd898946c17e2f"
 
 
 def _web_sources() -> list[Path]:

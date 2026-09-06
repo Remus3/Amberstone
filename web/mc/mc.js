@@ -183,6 +183,11 @@ const _LANE_LABELS = {
   // an unlabelled lane still renders here, as its bare id, which is why the
   // contract is a test and not a convention.
   "gated": "Headless-Gated (live)",
+  // Lane 10 (2026-09-05). The only lane a driver re-fires on a loop
+  // (ops/loop/queue_loop.py), so what the operator sees here is one CYCLE of
+  // it: firing this button runs a single queue row and exits, exactly as the
+  // loop's own cycle does. Labelled for the queue it drains, not for a file.
+  "queue": "Headless-Queue (drain)",
 };
 
 let _mcLanes = { all: [], wired: [] };
