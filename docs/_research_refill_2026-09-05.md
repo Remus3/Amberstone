@@ -438,7 +438,23 @@ fetch to site B, cached under site A's directory.
 
 ---
 
-### RM-355 (Row 12) - LANE 8, Tier-1. The crawl's inner loop has no bound of its own, so a non-ARAM stream never terminates
+### RM-355 (Row 12) - SHIPPED 2026-09-06 (LEDGER 1346, LANE 10 queue cycle 8). The crawl's inner loop has no bound of its own, so a non-ARAM stream never terminates
+
+> **CLOSED.** Fix in `core/meta_crawl.py` (a third bound, `max_games_per_player`,
+> independent of `total_games`), tests in
+> `tests/test_meta_crawl.py::TestInnerLoopIsBoundedIndependently`.
+> **The row named two non-advancing shapes; there are FIVE** - it missed the
+> duplicate-game skip (`record` `:138`), the malformed-envelope skip (`:123`)
+> and the empty-participants skip (`:126`), all post-fix line numbers. They do
+> not behave alike: `:134` / `:138` / `:145` return the game's puuids and so
+> grow `frontier` while the counter stands still, whereas `:123` / `:126`
+> return `[]` and only spin. All five are tested. **The acceptance's literal fixture was deviated from on
+> purpose:** a bare `itertools.repeat` with no ceiling HANGS the suite on a
+> regression instead of failing it, so the fixtures wrap it in a 5000-pull
+> tripwire that raises (pre-fix RED in 0.36s). **Caveat that belongs with the
+> closure: `core/meta_crawl.py` has ZERO production callers**, so the hang was
+> never reachable in production - this hardened a library, not a live path.
+> Sweep found zero siblings of the class; it spawned RM-375.
 
 `core/meta_crawl.py:187` bounds the OUTER loop
 (`while frontier and len(visited) < max_players and accumulator.total_games < max_games:`),
