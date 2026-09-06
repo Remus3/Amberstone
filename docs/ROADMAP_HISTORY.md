@@ -1,5 +1,26 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06k - the RM-347 .. RM-363 merged SHIPPED line, relocated by the LANE 10 RM-364 cycle
+
+Recording RM-364 took ROADMAP.md to 90.77 percent of its 81920-byte budget, past
+the 90 percent at which `tools/drift_guard.py` warns (`tools/drift_guard.py:57-58`).
+This line was the cheapest honest thing to archive: every id it names carries a
+closure record, so nothing live is being hidden, and the three longest lines in the
+file (`RM-191`, `RM-189`, `RM-106b`) are all still-OPEN rows that must not move.
+
+One thing it said is deliberately NOT carried into the pointer that replaces it.
+Its closing sentence directed the reader to "the RM-358 line below" for the live
+next-free id - a ROADMAP-relative pointer, and the exact drift shape RM-380 was
+filed for. The pointer above names `docs/DS_SWEEP_TRACKER.md` instead, which is the
+GUARDED pin (`tests/test_rm_id_registry_drift.py`) and does not relocate when a
+size-budget pass moves lines around. The archived body's own OPEN-id list is also
+one id short - it omits RM-369, which its own text names as still open two clauses
+earlier - so the replacement pointer states RM-367, RM-369, and RM-370 .. RM-379.
+
+Body, verbatim:
+
+- **RM-347 / RM-348 / RM-349 / RM-350 .. RM-357 / RM-359 / RM-360 / RM-363 ALL SHIPPED 2026-09-06 (LEDGER 1337, 1339-1348, 1350-1352)** - five pointer lines merged here; **RM-363** closed the RM-161 degenerate-cap shape in `core/data_retention.py` (two of the four knobs it fixes were unfiled) and its sibling sweep found THREE more, two reaching `rmtree` on the backup corpus: `core/config_validator.py` now ranges `backup_retention_count` for the FROZEN supervisor, `ops/rc_transactional_deploy.py:308` was off by one, `scripts/wakeup_prune.py` `--keep` was unbounded; the RM-348 / RM-349 half was relocated by the RM-360 cycle (block 2026-09-06i) and **RM-369 stays OPEN** from it. **RM-360** made this file's own next-free pin the first GUARDED one (`tests/test_rm_id_registry_drift.py` + `tools/rm_id_registry.py`, runnable before a mint); its data half was already correct on arrival and was verified rather than redone. Bodies in `docs/ROADMAP_HISTORY.md` blocks 2026-09-06b / 06c / 06g. **RM-359** hardened the rune path in `lib/icons/downloader.py` (zero callers) and swept a HIGHER-severity sibling in the daily-scheduled `tools/ddragon_mirror_refresh.py`, refuting the row's own "the live twin is CORRECT". **The ids they spawned still OPEN**, bodies in `BACKLOG.md`: RM-367 and RM-370 .. RM-379. Next-free figures in those archived blocks are superseded; the live pin is on the RM-358 line below.
+
 ## 2026-09-06j - the RM-344 .. RM-363 FILED batch line, relocated by the LANE 10 RM-363 cycle
 
 Recording RM-363 took ROADMAP.md to 90.03 percent of its 81920-byte budget, past
