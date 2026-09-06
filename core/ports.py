@@ -1,16 +1,23 @@
 # arch: canonical TCP port registry for RC + Daemon Slayer, and the cross-project block reservations | section=core | frozen=no
 """Amberstone port registry.
 
-Five projects run concurrently on Legion - Amberstone (this repo, which
-contains Daemon Slayer), Sibling-A, Sibling-C, Sibling-D and Sibling-E
-- and until 2026-08-01 none of them could answer "which ports are mine" without
-grepping bind sites and filtering vendored noise out of the result. Sibling-C
-solved it first with `core/ports.py` plus a guard test; this module is the same
-idea for RC.
+Projects run concurrently on Legion - Amberstone (this repo, which contains
+Daemon Slayer), Sibling-A, Sibling-C, Sibling-D, Sibling-E and
+Sibling-B - and until 2026-08-01 none of them could answer "which ports are
+mine" without grepping bind sites and filtering vendored noise out of the
+result. Sibling-C solved it first with `core/ports.py` plus a guard test; this
+module is the same idea for RC.
 
-The last two did not exist when the blocks were first negotiated (Sibling-D
-and Sibling-E were both specced after 2026-08-01), which is how the collision
-recorded below happened.
+Three of them did not exist when the blocks were first negotiated (Sibling-D
+and Sibling-E were both specced after 2026-08-01, Sibling-B on 2026-09-06),
+which is how BOTH collisions recorded below happened. A project scaffolded after
+the registry was drawn is the recurring shape, not a one-off.
+
+SIBLING-C IS ARCHIVED (2026-09-06, read-only at a sibling private repo; the
+working copy at `C:\\Sibling-C\\` was deleted). Its block is deliberately NOT
+freed or reallocated here. Reassigning a retired project's band is an operator
+decision, and leaving 8770-8789 reserved costs nothing - a dead project cannot
+collide, but a half-remembered reassignment can.
 
 Import these constants. A port literal spelled out at a bind site is how the
 registry silently goes stale, and `tests/test_ports.py` fails when a live
@@ -22,7 +29,8 @@ both siblings the same day).** The blocks are wider than current use on purpose:
 the point is that a new service can be added to any project without first
 re-auditing the other two.
 
-    8770-8789   Sibling-C        (named: 8777 8778 8779 8780 8783; bound today: 8777 8780)
+    8770-8789   Sibling-C        (ARCHIVED 2026-09-06; block held, not reallocated)
+    8790-8809   Sibling-B    (named: 8790 PityEngine, 8791 dashboard; 8792-8809 unassigned)
     8810-8819   Sibling-D    (named: 8810-8814; nothing bound)
     8860-8879   Daemon Slayer   (in use: 8860 8861 - see MIGRATION below)
     8888-8895   Amberstone      (in use: 8888 8889 8890 8891 8895), plus 2999,
@@ -30,10 +38,13 @@ re-auditing the other two.
     8900-8919   Sibling-A (named: 8900 8901; bound only while the operator runs it)
     8920-8939   Sibling-E      (named: 8920; nothing bound yet - see COLLISION below)
 
-Two of these were assigned after the original round: the operator widened
-Sibling-D from 8810-8814 to 8810-8819 on 2026-08-27, and assigned Sibling-E
-8920-8939 on 2026-08-29. Both are recorded independently in
-`C:/Sibling-D/CLAUDE.md`, which carries the same six-row table.
+Three of these were assigned after the original round: the operator widened
+Sibling-D from 8810-8814 to 8810-8819 on 2026-08-27, assigned Sibling-E
+8920-8939 on 2026-08-29, and Sibling-B reserved 8790-8809 on 2026-09-06
+(`moon_sync_inbox/2026-09-06-1918-from-RSC-port-block-reservation.md`). The
+first two are recorded independently in `C:/Sibling-D/CLAUDE.md`, which
+carried a six-row table when last read. Whether that table has grown the rsc
+row is a fact about THAT tree, not this one - do not assert it from here.
 
 RC keeps 8888-8895 because moving a live control plane is churn with no payoff;
 the block is stated so the other two projects can route around it.
@@ -56,6 +67,19 @@ mis-filed it: its BACKLOG said 8901 "has been held since 2026-08-16 by an
 unrelated process", when in fact 8901 was never CS's to hold. CS names
 Sibling-A in zero files, so it never read the owner's registry. Moved to
 8920-8939 by operator assignment.
+
+**SECOND COLLISION, CAUGHT BEFORE IT BOUND ANYTHING (2026-09-06).**
+Sibling-B scaffolded its compute engine on **8870** - chosen by mirroring
+Daemon Slayer's 8860 and adding ten - which is inside DS's reserved 8860-8879.
+This one is worth more than the first, because it shows the failure is SILENT
+in both directions: nothing was listening on 8870, DS binds only 8860 and 8861,
+so no bind failed, no log warned, and a listener scan of that number reads clean
+every second of every day. It surfaced only because RSC read THIS file instead
+of the machine. It has migrated to 8790 and pinned the number against the module
+that binds it. Note also that RSC verified 8790 free partly from
+`RM_BLOCK = range(8770, 8790)` - whose end is EXCLUSIVE, so Sibling-C stops at
+8789. A registry that is read by siblings must be read correctly by them, which
+is an argument for ranges over prose.
 
 **AUDIT BY SOURCE, NEVER BY NETSTAT.** This is the durable lesson from the
 confirmation round, and it inverts the obvious method. LW's monitor is an
@@ -156,6 +180,7 @@ RC_BLOCK = range(8888, 8896)
 DS_BLOCK = range(8860, 8880)
 LW_BLOCK = range(8900, 8920)
 RM_BLOCK = range(8770, 8790)
+RSC_BLOCK = range(8790, 8810)
 LL_BLOCK = range(8810, 8820)
 CS_BLOCK = range(8920, 8940)
 
@@ -164,17 +189,18 @@ BLOCKS = {
     "ds": DS_BLOCK,
     "lw": LW_BLOCK,
     "rm": RM_BLOCK,
+    "rsc": RSC_BLOCK,
     "ll": LL_BLOCK,
     "cs": CS_BLOCK,
 }
 """Every project's reserved range, keyed by short name.
 
-LW, RM, LL and CS are listed so RC can prove disjointness without reading
+LW, RM, RSC, LL and CS are listed so RC can prove disjointness without reading
 their trees. Listing a sibling is NOT a licence to bind in its range, and it is
 not a claim that RC knows what the sibling has allocated INSIDE the block -
 `next_free` refuses to answer for a sibling for exactly that reason.
 
-RC carrying all four blocks is an RC-side choice, not a shared convention. Red
+RC carrying all five blocks is an RC-side choice, not a shared convention. Red
 Moon deliberately does the opposite: it names only its own ports and proves
 disjointness from the negative side, with a guard that fails on any FORBIDDEN
 foreign literal (8888, 8889 and 8860 among them) appearing in its source. So do
@@ -212,7 +238,7 @@ def next_free(block: str = "rc", taken=None) -> int:
     method that nearly handed 8901 to Daemon Slayer.
 
     Only the RC and DS blocks can be answered from this repo. `taken` exists
-    for the sibling blocks: RC does not know what LW, RM, LL or CS have
+    for the sibling blocks: RC does not know what LW, RM, RSC, LL or CS have
     allocated and must not guess, so asking for one of those without passing
     their allocations raises rather than returning a number that would be a
     fabrication.

@@ -2,7 +2,7 @@
 r"""Machine-wide concurrency governor for headless loop runs.
 
 SHARED FILE - this must stay BYTE-IDENTICAL across the Legion Wallpaper, Riot
-Commander and Red Moon repos. The three loops coordinate with each other
+Commander and Resin Compute repos. The three loops coordinate with each other
 THROUGH this file's on-disk protocol, so a divergence is not a merge conflict
 you notice, it is a silent concurrency bug. Nothing here may reference ANY of
 them: every project-specific value arrives as an argument.

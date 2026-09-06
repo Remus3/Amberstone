@@ -5,6 +5,32 @@ build. Written to be **handed to a different machine with three different
 projects**, so nothing below names a project except in examples, and every
 project-specific value is a parameter.
 
+**ROSTER UPDATE 2026-09-06.** The "authored from" line above is left as written,
+because it records which build this document came out of and that does not
+change. The CURRENT trio does: Sibling-C is archived read-only at
+`a sibling private repo`, its working copy at `C:\Sibling-C\` is deleted, and
+**Sibling-B takes the vacated slot** in the machine-wide concurrency
+governor. Its path is `C:\Sibling-B` - with a SPACE, not a hyphen.
+Participants are now RC, Sibling-A and Sibling-B. The count is
+unchanged at three, so `MAX_CONCURRENT_SLOTS` stays 3: the bucket models
+ANTHROPIC ACCOUNT concurrency, one rate-limit pool, and a pool does not shrink
+because a name changed. Source: `moon_sync_inbox/2026-09-06-1702-from-RM-
+archived-resin-compute-takes-the-third-slot.md`, RM's final message.
+
+**The shared-file half is DONE on RC's side, and RC was the follower.** RM's
+message asked for `ops/loop/slots.py` line 5 to read "Sibling-B" where it
+read "Sibling-C". **Sibling-A authored those bytes and carried the red
+window**; RC discovered it the way the guard intends - not by reading the note,
+but by `test_shared_modules_are_byte_identical_to_lw` going red against LW's
+live tree. RC then copied LW's file VERBATIM (a byte-level copy, never a text
+write: `write_text` turns LF into CRLF on Windows and the pin is on bytes),
+confirmed the ONLY delta was that one line, re-hashed from its OWN disk, and
+re-pinned `SHARED_SHA256` to `1c4f8af4...`. Do NOT edit a pin constant to make a
+local edit pass - re-sync the file, then let the digest follow.
+
+**Still outstanding, and it is not RC's to do:** Sibling-B vendors its copy
+LAST, since it has no pin to break until it has one.
+
 **What this is.** Three separate repositories, each running its own autonomous
 headless Claude loop, on one machine, at the same time, without stepping on each
 other. It is a set of shared conventions plus one genuinely shared file.
