@@ -1,5 +1,25 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06c - the RM-351 line, relocated by the LANE 10 RM-352 cycle
+
+ROADMAP.md stood at 73475 of its 81920-byte budget (89.69 percent), leaving 253
+bytes before the 90 percent at which `tools/drift_guard.py` warns - less than
+the RM-352 line needed. The line below is fully SHIPPED, so it moved here
+verbatim in the same commit behind a collapsed pointer, the same 2026-09-04d
+convention the 2026-09-06a and 2026-09-06b blocks used in the two cycles before
+this one.
+
+Fences checked before the move rather than assumed. RM-371, spawned by the
+RM-351 cycle, is still OPEN - it is the correction that `lib/http/client.py` is
+NOT the single outbound chokepoint its docstring claims, and its three cited
+bypass sites are the whole value of the line, so the pointer that replaces it
+names RM-371 explicitly rather than only its LEDGER number. The next-free-id
+figure the line carries (RM-372) is still current and is independently pinned
+by `docs/DS_SWEEP_TRACKER.md:72`, the authoritative registry (`ROADMAP.md:14`),
+so relocating it strands no pointer. Full evidence stays in LEDGER 1342.
+
+- **RM-351 SHIPPED 2026-09-06 (LEDGER 1342), spawning RM-371; next free id RM-372.** `lib/http/client.py` read every response to EOF at both `resp.read()` and the 4xx/5xx `e.read()`; `timeout` bounds time, not bytes. Now `max_bytes` on `request`, default 16 MiB: a 2xx over the cap raises `ResponseTooLarge`, a 4xx/5xx body truncates (diagnostic only, and raising would skip the breaker's `_on_success`). The cap does NOT trip the breaker. **The row's "single outbound chokepoint" premise is CORRECTED** - three external fetchers bypass the client and still read unbounded (`core/riot_api.py:319`, `core/rofl_archive.py:503`, `core/sgp_client.py:167`), filed as RM-371. That count was wrong twice before it was committed: two flagged sites were already bounded, and a `head -30` on the census grep hid the third until the verifier swept unlimited.
+
 ## 2026-09-06b - the RM-347 and RM-350 lines, relocated by the LANE 10 RM-351 cycle
 
 ROADMAP.md stood at 73572 of its 81920-byte budget (89.81 percent), leaving 156
