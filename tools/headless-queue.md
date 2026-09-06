@@ -201,7 +201,16 @@ gh run view <id> --json jobs
 
 The step that must reach `success` is named **`full dual suite (RM-119 - push CI now gates the whole tree)`** (`.github/workflows/ci.yml:419`, inside the `check` job at `:142`; its command is `pytest tests/ agents/daemon_slayer/tests/` at `:504-505`).
 
-- **Never cite the run conclusion.** `gh run watch --exit-status` returns 0 on CANCELLED, and a superseded run and a job timeout both report `cancelled`.
+- **YOUR PUSH RUN WILL BE CANCELLED BY THE NEXT CYCLE, SO DO NOT WAIT ON IT. MEASURED 2026-09-05, the first night this lane ran.** `ci.yml:38-40` sets `cancel-in-progress: true` on the group `${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}`, a `ci` run takes roughly 45 minutes, and a cycle takes roughly 26 - so every push run on `main` was cancelled by the following cycle's push, three in a row, and the acceptance was unsatisfiable as originally written. **The fix is in that same concurrency key: `event_name` is part of the group, so a `workflow_dispatch` run sits in a DIFFERENT group and a later push cannot touch it.** After your push, trigger one and watch THAT run:
+
+```
+gh workflow run ci.yml --ref main
+sleep 20 && gh run list --workflow=ci.yml --event=workflow_dispatch --limit 3 --json databaseId,headSha,status
+gh run view <id> --json jobs
+```
+
+  Only another `workflow_dispatch` can supersede it, and the next one is a cycle away because cycles are serial. Confirm the run's `headSha` actually contains your commit before you cite it - `gh workflow run` takes a BRANCH ref, so it builds `main` as of trigger time, which is your commit or a descendant of it. A dispatch also runs `nightly-full-suite` (`:44`), so expect two heavy jobs, and read the `check` job's step, not the nightly's.
+- **Never cite the run conclusion.** `gh run watch --exit-status` returns 0 on CANCELLED, and a superseded run and a job timeout both report `cancelled`. A cancelled run is NOT a red - it usually means a newer push superseded it - but it is not a green either, and it may never be cited as acceptance.
 - **A green run may have SKIPPED the job you care about.** `check` carries `if: github.event_name != 'schedule'` (`:143`) and `nightly-full-suite` carries the complementary `if` (`:44`), so the scheduled nightly never runs `check`. Open `jobs[].steps[]` and confirm the named step actually ran.
 - **A docs-only push runs no `ci.yml` at all** - `paths-ignore: '**/*.md'` at `:24-25` and `:28-29`. Its complement is `.github/workflows/docs-guards.yml`, pinned by `tests/test_ci_docs_guard_coverage.py`. **A push carrying both code and docs commits DOES run `ci.yml`**, which is the normal shape of a queue cycle, so the docs half is covered for free. A docs-only cycle (a recall-closed row, a Tier-0 prose fix) cannot prove itself through `ci.yml`; check `docs-guards` instead and say which one you read.
 
