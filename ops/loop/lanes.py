@@ -1,7 +1,13 @@
 #!/usr/bin/env python
-r"""Lane lock - the seven headless lanes are mutually exclusive, one holder max.
+r"""Lane lock - every headless lane is mutually exclusive, one holder max.
 
-    LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated")
+The roster is stated ONCE, immediately below, and the prose deliberately does
+not recite its size: "the seven headless lanes" sat here while the tuple two
+lines down already carried eight (caught 2026-09-05 when the `queue` lane
+landed), and a count in prose goes stale the moment a lane is added.
+
+    LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit",
+             "gated", "queue")
 
 WHY THREE STATES, NOT TWO. A lock file whose pid is DEAD is indistinguishable
 from a live one by file inspection alone. Measured 2026-07-30: the live
@@ -127,7 +133,8 @@ except ModuleNotFoundError:
             ) from _exc
         _atomic_write_bytes = _pj.atomic_write_bytes
 
-LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated")
+LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated",
+         "queue")
 MAX_SLOTS = 1
 DEFAULT_ROOT = _HERE / "control" / "lanes"
 # slots.try_acquire names slot i "<i>.lock"; at max_slots=1 there is only slot 0.
