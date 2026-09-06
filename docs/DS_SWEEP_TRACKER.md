@@ -69,7 +69,14 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-378** (2026-09-06). RM-377 was minted by
+  Next free id = **RM-379** (2026-09-06). RM-378 was minted by
+  LEDGER 1349, LANE 10 queue cycle 11, for `tools/gen_archmap.py` - it writes the tracked
+  `docs/ARCHITECTURE.md` as TEXT, so every run leaves 343 CRLF pairs on disk against 0 in
+  the blob while `git status` reports clean. Found by that cycle's own doc-guard run, not
+  by a scan. Allocation checked by the pointer-vs-allocated predicate before minting: all
+  RM-378 occurrences at the time were next-free POINTER prose, heading no row body and
+  carrying no status marker. Filed to BACKLOG "Reliability / hardening".
+  The previous holder of this line - RM-377 - was minted by
   LEDGER 1348, LANE 10 queue cycle 10, off the RM-357 root-cause probe, for
   `core/base_worker.py` - `health_pulse()` has ZERO callers in the whole tree, so every
   field RM-198 wants to add to it would ship INERT; the frozen consumer reads the raw
