@@ -69,7 +69,16 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-381** (2026-09-06). RM-380 was minted by
+  Next free id = **RM-382** (2026-09-06). RM-381 was minted by
+  LEDGER 1353, LANE 10 queue cycle 14, for the measured RESIDUE of RM-364: seven
+  Anthropic prompt builders that still interpolate wire or model text unsanitised.
+  It is pinned by a guard rather than remembered - the RM-364 census partitions every
+  production Anthropic egress site into three buckets, and its residual-bucket test
+  goes RED the moment a member is fixed, forcing a move into the sanitized bucket.
+  Allocation was checked with the pointer-vs-allocated predicate before minting:
+  every occurrence of the id above was next-free POINTER prose, heading no row body
+  and carrying no status marker. Filed to BACKLOG "Reliability / hardening".
+  Prior pin, kept for the audit trail: Next free id was **RM-381** (2026-09-06). RM-380 was minted by
   LEDGER 1351, LANE 10 queue cycle 13, for four more self-declared authoritative
   doc lines that no code reads - the siblings of THIS line's own drift, turned up by
   the RM-360 sibling sweep. **This pin is now GUARDED**, which it was not when RM-360

@@ -40,6 +40,12 @@ import logging
 import time
 from typing import Any
 
+# RM-364: `state` here is an HTTP POST body forwarded verbatim from
+# dashboard/routes_coach.py, so EVERY interpolated field is attacker-shaped
+# by construction - not one named field. Sanitised at assembly.
+from core.prompt_sanitize import clean as _psan_clean
+from core.prompt_sanitize import clean_iter as _psan_clean_iter
+
 logger = logging.getLogger("rc.coaches.champ_select")
 
 _MODEL = "claude-haiku-4-5-20251001"
@@ -103,15 +109,17 @@ def coach_pick(state: dict, api_key: str | None) -> dict[str, Any]:
 
     is_aram = bool(state.get("is_aram"))
     mode_label = "ARAM" if is_aram else "Summoner's Rift draft/blind"
-    my_team = ", ".join(c for c in (state.get("my_team") or []) if c) or "?"
-    their_team = ", ".join(c for c in (state.get("their_team") or []) if c) or "?"
-    bench = state.get("bench") or []
-    bench_line = (f"Bench: {', '.join(c for c in bench if c)}" if (is_aram and bench)
+    # RM-364: clean_iter already drops None and empties, so it subsumes the
+    # `if c` filter these joins used to carry.
+    my_team = ", ".join(_psan_clean_iter(state.get("my_team") or [])) or "?"
+    their_team = ", ".join(_psan_clean_iter(state.get("their_team") or [])) or "?"
+    bench = _psan_clean_iter(state.get("bench") or [])
+    bench_line = (f"Bench: {', '.join(bench)}" if (is_aram and bench)
                   else "")
 
     prompt = _USER_TEMPLATE.format(
         mode_label=mode_label,
-        my_champion=state["my_champion"],
+        my_champion=_psan_clean(state["my_champion"]),
         my_team=my_team,
         their_team=their_team,
         bench_line=bench_line,

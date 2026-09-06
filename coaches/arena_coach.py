@@ -37,6 +37,10 @@ from core.cc_conditional_impact_context import (
     cc_conditional_impact_line,
 )
 from core.death_patterns_loader import personal_context_block
+# RM-364: the augment/anvil choice lists are Haiku-VISION OCR output joined
+# straight into a prompt. Applied at ASSEMBLY, not at messages.create - the
+# TFT builders proved an API-call-side guard can sit on a dead path.
+from core.prompt_sanitize import clean_iter as _clean_for_prompt
 from core.enemy_cc_threat_context import enemy_cc_threat_line
 
 logger = logging.getLogger("rc.coaches.arena")
@@ -928,7 +932,12 @@ class Coach(BaseCoach):
             items    = ", ".join(gs.get("items", [])) or "none",
             hp_pct   = gs.get("hp_pct", 100),
             round    = gs.get("round",  0),
-            choices  = "\n".join(f"- {c}" for c in choices),
+            # RM-364: sanitised HERE and not at `choices` above, because the
+            # raw list must still reach _augment_recommendation - that ranker
+            # matches augment names against a data table, and a [\n] token or
+            # a [BLOCKED:override] marker would break the lookup it needs.
+            # A newline inside one OCR choice forges an extra "- " bullet.
+            choices  = "\n".join(f"- {c}" for c in _clean_for_prompt(choices)),
         )
         try:
             import time as _time_b
@@ -1062,10 +1071,13 @@ class Coach(BaseCoach):
         if not choices or not self._client:
             return
         gs = self._last_state
+        # RM-364: OCR text, joined into an inline f-string with no cap, no
+        # filter and no delimiter discipline before this line.
+        safe_choices = _clean_for_prompt(choices)
         prompt = (
             f"Arena item anvil. Champion: {gs.get('champion','?')}. "
             f"Current items: {', '.join(gs.get('items', []) or ['none'])}. "
-            f"Anvil choices: {', '.join(choices)}. "
+            f"Anvil choices: {', '.join(safe_choices)}. "
             f"HP: {gs.get('hp_pct', 100)}%. Round: {gs.get('round', 0)}. "
             "NO markdown. Output: Take: <item>\nWhy: <one line reason>"
         )
