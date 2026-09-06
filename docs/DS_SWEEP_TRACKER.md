@@ -69,7 +69,16 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-372** (2026-09-06, superseding the RM-371 pin: RM-371 was minted by
+  Next free id = **RM-373** (2026-09-06, superseding the RM-372 pin: RM-372 was minted by
+  LEDGER 1344, LANE 10 queue cycle 6, for `scripts/cache_ddragon_assets.py` creating a
+  version directory from `_index.json` `latest_pulled` with no validation of its own - safe
+  today only because both writers of that key now validate, which a third writer would undo -
+  filed to BACKLOG "Platform / observability". Re-derived from the tree after a `git fetch`,
+  not minted from this line on faith: RM-370 and RM-371 both HEAD open BACKLOG rows and are
+  allocated, while every RM-372 occurrence was next-free POINTER prose in this file,
+  `docs/LEDGER.md`, `ROADMAP.md` and `docs/ROADMAP_HISTORY.md`, heading no row body and
+  carrying no status marker, and RM-373 had ZERO occurrences anywhere.
+  The superseded RM-371 pin: RM-371 was minted by
   LEDGER 1342, LANE 10 queue cycle 4, for `lib/http/client.py` not being the single outbound
   chokepoint its own docstring claims - `core/riot_api.py:318` and `core/rofl_archive.py:503`
   bypass it and still read unbounded - filed to BACKLOG "Platform / observability". Re-derived

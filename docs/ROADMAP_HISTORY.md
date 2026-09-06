@@ -1,5 +1,26 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06d - the RM-352 line, relocated by the LANE 10 RM-353 cycle
+
+ROADMAP.md stood at 73481 of its 81920-byte budget (89.70 percent), leaving 247
+bytes before the 90 percent at which `tools/drift_guard.py` warns - less than
+the RM-353 line needed. The line below is fully SHIPPED, so it moved here
+verbatim in the same commit behind a collapsed pointer, the same convention the
+2026-09-06a, 2026-09-06b and 2026-09-06c blocks used in the three cycles before
+this one.
+
+Fences checked before the move rather than assumed. RM-352 spawned NO id - the
+line says so itself - so unlike the RM-351 relocation there is no open child to
+name in the pointer. Its next-free-id figure (RM-372) is superseded rather than
+stranded: this cycle minted RM-372, so the pointer that replaces this line
+carries RM-373, and `docs/DS_SWEEP_TRACKER.md:72`, the authoritative registry
+(`ROADMAP.md:14`), is updated to the same value in the same commit. The one
+substantive fact this line holds that the pointer does not - that the sibling
+sweep over all five body-reading `lib.http` call sites found ZERO other
+unguarded ones - is preserved verbatim below and in full in LEDGER 1343.
+
+- **RM-352 SHIPPED 2026-09-06 (LEDGER 1343); no new id spawned, next free stays RM-372.** `lib/ddragon/fetch.py` `latest_version` parsed the body before checking the status, and `HttpClient` RETURNS a `Response` for 4xx/5xx, so a DDragon 503 page surfaced as `json.JSONDecodeError` - a class no caller catches. Now the same `!= 200` guard and message shape its own `_pull` sibling already had. Sibling sweep over all 5 body-reading `lib.http` call sites found ZERO other unguarded ones, and the mirror's own stdlib `http_get` checks all 4 of its.
+
 ## 2026-09-06c - the RM-351 line, relocated by the LANE 10 RM-352 cycle
 
 ROADMAP.md stood at 73475 of its 81920-byte budget (89.69 percent), leaving 253
