@@ -1,5 +1,24 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06l - the RM-364 SHIPPED line, relocated by the operator session that re-cased the repo
+
+Same cause as block `2026-09-06k` below, one cycle later and from the other
+direction: ROADMAP.md stood at 73659 bytes (89.9 percent) BEFORE this session
+touched it, so a 454-byte next-free-id correction tipped it over the 90 percent
+`tools/drift_guard.py` warns at. Shrinking that correction to fit would have been
+silencing the guard rather than answering it, so a genuine relocation was done
+instead - and RM-364 is the honest candidate, being the largest line in the block
+that is FULLY shipped. Note the pattern: this is the second consecutive session in
+which recording a completed row is what breached the budget. The file is at its
+working ceiling, and the next session that adds a line should expect to relocate
+one too.
+
+Relocated verbatim:
+
+- **RM-364 SHIPPED 2026-09-06 (LEDGER 1353)** - the prompt sanitizer had ONE production importer against 14 wire-text builders. All five RANKED exposures are now cleaned at prompt ASSEMBLY, which is the point both egress paths share: `moon_proxy.get_coaching` is the PRIMARY route for the TFT builders and the SDK `messages.create` only the fallback, so an API-call-side guard would have been dead code on the live path. The unconstrained bytes are Haiku-VISION OCR output, not Riot wire data - a self-inflicted model-to-model channel. Ships a census guard partitioning every production Anthropic egress site into three buckets, so a new builder cannot be added without a decision. **RM-381 OPEN** in `BACKLOG.md` - the residual bucket, seven builders plus two `_run_coach` sites the file-level guard cannot see.
+
+RM-381 stays OPEN and its body stays in `BACKLOG.md`; only the shipped narrative moved.
+
 ## 2026-09-06k - the RM-347 .. RM-363 merged SHIPPED line, relocated by the LANE 10 RM-364 cycle
 
 Recording RM-364 took ROADMAP.md to 90.77 percent of its 81920-byte budget, past
