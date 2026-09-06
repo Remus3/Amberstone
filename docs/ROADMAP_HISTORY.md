@@ -19,6 +19,23 @@ this same commit, which consumes RM-375 and sets the authoritative registry at
 
 - **RM-352 SHIPPED, line relocated 2026-09-06** to `docs/ROADMAP_HISTORY.md` (2026-09-06d) at 89.70 pct of budget; it spawned no id. **RM-353 SHIPPED 2026-09-06 (LEDGER 1344), spawning RM-372. RM-354 SHIPPED 2026-09-06 (LEDGER 1345), spawning RM-373 + RM-374; next free id RM-375.** RM-354: a bot wall is served as HTTP 200, so `lib/scrapers/_base.py`'s only gate (`status >= 400`) passed it, `_atomic_write_text` committed it over the good cached page, and `_last_fetch.json` stamped `status="ok"`; the body is now judged before it reaches the cache. Bodies in `BACKLOG.md`. The DDragon version string was CDN input joined straight into a filesystem path and `mkdir(parents=True)`; now `validate_version` gates all four entry points, and the shape it accepts is the same object the retention pruner scans for, so nothing created is unprunable. Body in `docs/_research_refill_2026-09-05.md`; RM-372 (the one unguarded second-order writer) in `BACKLOG.md`.
 
+## 2026-09-06g - the RM-352..RM-356 line, relocated by the LANE 10 RM-356 cycle
+
+Relocated at 90.59 pct of the 81920-byte ROADMAP budget (a BREACH, not a
+warning - `tools/drift_guard.py` reported it), by LEDGER 1347. Every id the
+line reports SHIPPED is genuinely shipped: RM-352, RM-353, RM-354, RM-355 and
+RM-356.
+
+**The live facts it held are preserved in the pointer that replaces it rather
+than archived with it: RM-372, RM-373, RM-374, RM-375 and RM-376 - the five ids
+these five shipped rows spawned - are ALL still OPEN**, with bodies in
+`BACKLOG.md`. The line's next-free-id figure (RM-377) is current as of this
+commit and is pinned authoritatively at `docs/DS_SWEEP_TRACKER.md:72`. Full
+evidence stays in LEDGER 1344 through 1347; nothing below should be restated as
+still-open work.
+
+- **RM-352 / RM-353 / RM-354 SHIPPED, line relocated 2026-09-06** to `docs/ROADMAP_HISTORY.md` (2026-09-06f) at 89.93 pct of budget; **RM-372 / RM-373 / RM-374, which they spawned, stay OPEN** in `BACKLOG.md` (LEDGER 1344 / 1345). **RM-355 SHIPPED 2026-09-06 (LEDGER 1346), spawning RM-375. RM-356 SHIPPED 2026-09-06 (LEDGER 1347), spawning RM-376; next free id RM-377.** RM-356: `core/pro_match_index.py` populated its `operator_team` lookup only under `same_team_only`, then read it unconditionally, so the un-filtered mode reported `same_team: False` on every row - 29 of 62 rows wrong on the real corpus, now reconciling exactly with the filtered mode and with LEDGER 972. **No production callers, so this hardened a library.** RM-376 (the same cause on a LIVE path: `game_reader/snapshot_normalizer.py` emits `cs: 0` / `kda: "0/0/0"` beside a real level and gold when the operator is absent from `allPlayers`) in `BACKLOG.md`. `core/meta_crawl.py`'s per-player loop exited only on a counter that `record()` declines to advance for an off-family, off-patch, duplicate or malformed game, so an unbounded fetcher hung and grew `frontier` without limit; `max_games_per_player` is a bound that needs nothing to have counted. Zero siblings of the class in the tree. **The module has no production callers, so this hardened a library, not a live path.** RM-375 (both Perseus vault readers loop forever on non-JSON stdout, and one is the recall gate every lane cycle runs first) in `BACKLOG.md`.
+
 ## 2026-09-06e - the RM-344 / RM-345 / RM-361 line, relocated by the LANE 10 RM-354 cycle
 
 ROADMAP.md reached 73890 of its 81920-byte budget (90.20 percent) once the
