@@ -151,6 +151,46 @@ empty, and it is the only write into the main tree any lane makes.
 
 ---
 
+## Machine concurrency budget (operator, 2026-09-06)
+
+Legion is now shared by four headless workers across three repos, so lane
+capacity is a MACHINE question and not a per-repo one:
+
+| Repo | Concurrent lanes | Notes |
+|---|---|---|
+| Riot Commander | **2** | next up: true-audit loop + research loop |
+| Resin (`C:\Sibling-B`) | 1 | reserved, its own control plane |
+| Sibling-E (`C:\Sibling-E`) | 1 | reserved, lane port in progress |
+
+**Two concurrent RC lanes are NOT possible as the code stands, and this is the
+first thing to fix.** `ops/loop/lanes.py:138` is `MAX_SLOTS = 1`, and the
+1-slot bucket in `slots.py` IS the mutex - the roster is mutually exclusive by
+construction, not by convention. Two sites pin it: `tests/test_lane_lock.py:138`
+asserts the value with the message "every lane is mutually exclusive with the
+rest", and `lanes.py`'s own module docstring says the same in prose. Raising it
+to 2 is a deliberate change to a control-plane invariant and needs its own
+tests, not a one-character edit at wrap time.
+
+**The measured constraint that should shape it.** This box is a Ryzen 7 7700X:
+**8 physical cores, 16 logical**, and `pytest -n auto` resolves to **8 workers**
+(measured 2026-09-06 - it counts physical cores, so "16-core machine" overstates
+what `auto` will use). The RC dual suite is 31854 items: **250s at `-n auto`,
+5070s serial** - a 20.5x speedup, superlinear, because the suite is wait-bound
+rather than CPU-bound. Two RC workers each running that suite at `-n auto`
+puts 16 pytest processes on 8 physical cores plus two agent processes plus
+whatever Resin and Sibling-E are doing. So a second RC slot should come with a
+worker-side cap (`-n 4` while two RC lanes are live) or staggered suite runs -
+`reference_parallel_slices_full_suite_oom` is what over-subscription looks like
+when it goes wrong, and it presents as an API error rather than as memory
+pressure.
+
+**The budget is a convention, not an enforced limit.** Each repo owns its own
+lock (RC's lives at `ops/loop/control/lanes/`), so nothing stops all four
+running at once, and nothing on this machine currently counts workers across
+repos. That gap is worth a row before the count grows past four.
+
+---
+
 ## Steer channel (added on operator request)
 
 The native mechanism already works - a message sent mid-turn reaches the running
