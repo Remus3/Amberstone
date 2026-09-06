@@ -55,6 +55,10 @@ TIER0_FILES = (
 # and the README CI badge URLs. Both exemptions (_GITHUB_URL_RE and
 # _PUBLISH_SLUG_RE) are DELETED rather than left inert, so the Tier-0 check is
 # now unconditional.
+# 2026-09-06: the slug was re-cased to Remus3/Amberstone on operator request.
+# GitHub slugs are case-insensitive for lookup and the old URL still resolves,
+# so this is display casing only - but publish.repo and the badge URLs were
+# moved with it anyway, for the same lockstep reason as the 2026-08-11 rename.
 #
 # A correction worth keeping: those exemptions carried a comment claiming the
 # pending-rename test would "go RED once they are gone" and therefore could not
