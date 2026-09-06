@@ -69,7 +69,12 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-369** (2026-09-05, superseding the RM-368 pin below: RM-368 was minted the
+  Next free id = **RM-370** (2026-09-06, superseding the RM-369 pin below: RM-369 was minted by
+  LEDGER 1339, LANE 10 queue cycle 1, for the two `tests/test_queue_loop.py` cases that read live
+  machine state - filed to BACKLOG "Platform / observability". Re-derived from the tree AFTER a
+  `git fetch`, which is what caught a parallel lane minting RM-368 mid-cycle.)
+
+  Superseded pin: RM-369 (2026-09-05, superseding the RM-368 pin below: RM-368 was minted the
   same day, operator-raised, for the three `github.com/affaan-m/ECC` harness mechanisms worth
   re-implementing narrowly - filed to BACKLOG "Platform / observability" with the whole-package
   lift REFUTED in the row itself and a named 10-file do-not-lift set. Re-derived the same way -
