@@ -121,6 +121,34 @@ one that asks framed questions, names a lobby to queue, and runs `/done`.
 Blast radius is LOW by construction - most of what it commits is Tier-0 doc
 edits to one checklist - but it is worktree-mandatory like every other lane.
 
+**10. Headless-Queue (drain).** Added 2026-09-05 on operator request.
+`tools/headless-queue.md`. The DRAIN half of the lane-5 pairing the plan
+already names at line 86 ("lane 3 drains, lane 5 refills"): lane 5 files
+acceptance-bearing `RM-NN` rows, lane 10 executes them. It is the first lane
+built to be RE-FIRED rather than clicked - `ops/loop/queue_loop.py` is a
+driver that takes the lane lock, launches one worker, waits on its pid,
+releases, and repeats.
+
+**One row per cycle, and the worker exits.** The repeat lives in the driver,
+not in the worker, for two reasons that are failure modes rather than
+preferences: a `claude -p` worker that looped internally would accumulate
+context across rows until it degraded, and a crash in row 4 would lose rows
+1 through 3 with it. One process per row also keeps each pushed commit
+reviewable on its own.
+
+It ships to `main` by pushing a ref (`git push origin HEAD:refs/heads/main`,
+fast-forward only) rather than by merging in a working tree, because CI fires
+on push to `main` only and an unattended loop that parked 13 rows on a branch
+would have proven nothing. Pushing a ref does not touch `C:\Riot Commander`,
+so the worktree-mandatory rule is intact.
+
+Stops on three sentinels, any of which ends the loop at the next cycle
+boundary: `control/STOP` (the existing global halt),
+`control/lanes/QUEUE_STOP` (this lane only), and
+`control/lanes/QUEUE_DRAINED`, which the WORKER writes when no open,
+non-gated row remains. That last one is the lane reporting its own queue
+empty, and it is the only write into the main tree any lane makes.
+
 ---
 
 ## Steer channel (added on operator request)
