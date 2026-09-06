@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.http import get_client
-from tools.ddragon_mirror_refresh import prune_stale_versions
+from tools.ddragon_mirror_refresh import prune_stale_versions, validate_version
 
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 DEFAULT_LOCALE = "en_US"
@@ -49,7 +49,11 @@ def latest_version(client=None) -> str:
     versions = resp.json()
     if not versions:
         raise RuntimeError("DDragon returned empty versions list")
-    return versions[0]
+    # RM-353: entry [0] is CDN input. A JSON *string* body makes this a single
+    # character ("maintenance" -> "m"); a list element can be "../../evil" or
+    # an anchored "C:/...". This function is exported from lib/ddragon, so the
+    # guard belongs here as well as at the path join in DDragon.__init__.
+    return validate_version(versions[0])
 
 
 class DDragon:
@@ -58,7 +62,12 @@ class DDragon:
     def __init__(self, version: str | None = None, locale: str = DEFAULT_LOCALE) -> None:
         self._client = get_client()
         self._locale = locale
-        self._version = version or latest_version(self._client)
+        # RM-353: validate BEFORE the join, not after. `version` may be an
+        # explicit caller argument (fetch_all, IconDownloader, the agent2
+        # orchestrator) that never passed through latest_version, and pathlib
+        # does not normalise - on Windows an anchored segment replaces
+        # CACHE_ROOT outright, so the mkdir below would land anywhere.
+        self._version = validate_version(version or latest_version(self._client))
         self._root = CACHE_ROOT / self._version
         self._root.mkdir(parents=True, exist_ok=True)
 
