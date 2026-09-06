@@ -93,6 +93,18 @@ def _as_int(value) -> int:
         return 0
 
 
+def _phase_or_none(raw: str) -> Optional[str]:
+    """Unwrap an LCU gameflow-phase body, or None when it holds no phase.
+
+    `/lol-gameflow/v1/phase` answers a bare JSON string, so the body
+    arrives quoted (`"Lobby"`) on some client versions and unquoted on
+    others. An EMPTY body is not a phase name - reporting it as one
+    would hand a caller a value that claims to be a live read (RM-347).
+    """
+    phase = raw.strip().strip('"').strip()
+    return phase or None
+
+
 def _aram_mode(mode: str) -> bool:
     return mode.upper() in ("ARAM", "KIWI", "ARAM_5V5", "ARAM_MAYHEM")
 
@@ -314,21 +326,44 @@ class LcuPregame:
         _log.warning("set_summoner_spells: failed %d + %d", spell1_id, spell2_id)
         return False
 
-    def get_gameflow_phase(self) -> str:
+    def get_gameflow_phase(self) -> Optional[str]:
         """
-        Return current gameflow phase string.
-        Handles LCU versions where /phase returns raw string.
-        Returns: 'None', 'Lobby', 'ChampSelect', 'InProgress', etc.
+        Return the current gameflow phase string, or None if it could not
+        be READ. Handles LCU versions where /phase returns a raw string.
+
+        Returns: 'Lobby', 'ChampSelect', 'InProgress', 'EndOfGame', etc.,
+        and also the literal string 'None' - which is a REAL phase, the
+        one the client reports while idle at the home screen.
+
+        Which is exactly why a failed read is Python None and never the
+        string 'None' (RM-347). Collapsing the two made a transient LCU
+        error - client closed mid-poll, lockfile password rotated, an
+        unexpected body shape, no cached credentials - indistinguishable
+        from "the operator is idle", so a caller would stop driving
+        champ-select logic with nothing to retry on.
+
+        None rather than '' (lcu_postgame_collector._get_gameflow_phase)
+        or 'Unknown' (snapshot_shape.shape_snapshot) because it is the
+        value the live consumer contract in dashboard/_cs_retention.py
+        already treats as "unknown, do not act on it": the *string*
+        'None' is an explicit clear phase there, a Python None
+        deliberately is not.
+
+        Failures stay at debug level on purpose - the sentinel is what
+        makes them detectable now, and promoting this to a warning would
+        spam the log once per tick for as long as the client is closed.
+        A polling caller can log at its own cadence.
         """
         try:
             result = self._request("GET", "/lol-gameflow/v1/phase")
             if isinstance(result, str):
-                return result.strip('"')
+                return _phase_or_none(result)
             # Some LCU versions return a string-as-JSON
             if result is None:
                 # Try raw fetch
                 if not self._port or not self._auth:
-                    return "None"
+                    _log.debug("get_gameflow_phase: no cached lockfile port/auth")
+                    return None
                 import ssl as _ssl
                 from core.game_host import GAME_HOST
                 url = f"https://{GAME_HOST}:{self._port}/lol-gameflow/v1/phase"
@@ -342,7 +377,14 @@ class LcuPregame:
                 ctx.verify_mode = _ssl.CERT_NONE
                 with urllib.request.urlopen(req, context=ctx, timeout=2) as resp:
                     raw = resp.read().decode()
-                    return raw.strip().strip('"')
+                    return _phase_or_none(raw)
         except Exception as exc:  # noqa: BLE001
             _log.debug("get_gameflow_phase: %s", exc)
-        return "None"
+            return None
+        # Neither a str nor None: a dict / int / list body is not a phase,
+        # and used to fall through to the idle string without even
+        # attempting the raw fetch.
+        _log.debug(
+            "get_gameflow_phase: unexpected body type %s", type(result).__name__
+        )
+        return None
