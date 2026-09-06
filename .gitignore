@@ -334,3 +334,12 @@ data/rofl_archive_growth.jsonl
 # Headless lane worker logs - runtime churn, one per lane run (S5 lane_launcher).
 # The mdclean-*.md reports in the same dir ARE deliberate artifacts and stay tracked.
 ops/loop/reports/lane_*.log
+# The lane-10 DRIVER's own artifacts (ops/loop/queue_loop.py, 2026-09-05). Same
+# class as the worker logs above and deliberately NOT tracked: the JSONL is
+# rewritten every cycle by a process that runs for hours, so committing it would
+# put the loop and its own operator in a permanent conflict over one file. The
+# durable record of what a cycle did is its COMMIT and its LEDGER entry; this
+# file is the local flight recorder for the run in progress.
+ops/loop/reports/queue_loop.jsonl
+ops/loop/reports/queue_loop.log
+ops/loop/reports/queue_loop.log.err
