@@ -1,8 +1,9 @@
 """Guards for core/lcu_events.py - the LCU WAMP event subscription registry.
 
 The registry half is pure (no socket), so every dispatch/lifecycle rule is
-unit-testable without a live client. Transport lives behind it and is not
-exercised here.
+unit-testable without a live client. The transport half is exercised too, as
+of RM-348, against a fake ``websockets`` module rather than a live LCU - see
+``TestTransportLifecycle`` at the bottom of this file.
 
 Design rules under test, each one a real failure mode observed in a
 client-plugin teardown (non-repo) that RC's polling path does not have:
@@ -12,9 +13,14 @@ client-plugin teardown (non-repo) that RC's polling path does not have:
   - callbacks registered before a reconnect must not fire afterwards
 """
 
+import asyncio
+import sys
+import types
+
 import pytest
 
 from core import lcu_events
+from tests._asyncio_isolation import run_coro
 
 
 @pytest.fixture()
@@ -207,3 +213,198 @@ class TestEndpointTopic:
     def test_topic_is_prefixed_by_the_firehose_name(self):
         topic = lcu_events.endpoint_topic("/a/b")
         assert topic.startswith(lcu_events.WAMP_TOPIC + "_")
+
+
+# --------------------------------------------------------------------------
+# RM-348 - transport lifecycle
+#
+# NOTE ON WHAT THESE ARE NOT: LcuEventBus has ZERO in-repo consumers today
+# (the module's own docstring says callers still use their poll path), so
+# these are CONTRACT tests on the bus itself, not caller tests. Inventing a
+# call path to wrap them in would prove nothing about production - same
+# reasoning recorded for RM-346 and RM-347.
+#
+# Both defects are shutdown/reconnect behaviour, so neither is observable
+# against a real LCU without a live client. The fake below is a websockets
+# module stand-in: run() does `import websockets` at call time, so replacing
+# the sys.modules entry is enough.
+# --------------------------------------------------------------------------
+
+
+class _FakeConnection:
+    """Async context manager standing in for ``websockets.connect(...)``."""
+
+    def __init__(self, socket):
+        self._socket = socket
+
+    async def __aenter__(self):
+        return self._socket
+
+    async def __aexit__(self, *_exc):
+        return False
+
+
+class _IdleSocket:
+    """A connected LCU that never pushes a frame - the client home screen.
+
+    ``__anext__`` parks on an event nobody sets, which is exactly what a real
+    quiet socket does when ``ping_interval=None`` removes the keepalive.
+    """
+
+    def __init__(self, connected):
+        self._connected = connected
+        self.sent = []
+
+    async def send(self, payload):
+        self.sent.append(payload)
+        self._connected.set()
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable - the idle socket never yields")
+
+
+class _ScriptedSocket:
+    """Yields ``frames`` then ends the session, like a socket that closes."""
+
+    def __init__(self, frames=(), on_exhausted=None):
+        self._frames = list(frames)
+        self._on_exhausted = on_exhausted
+        self.sent = []
+
+    async def send(self, payload):
+        self.sent.append(payload)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self._frames:
+            return self._frames.pop(0)
+        if self._on_exhausted is not None:
+            self._on_exhausted()
+        raise StopAsyncIteration
+
+
+def _install_fake_websockets(monkeypatch, connect):
+    module = types.ModuleType("websockets")
+    module.connect = connect
+    monkeypatch.setitem(sys.modules, "websockets", module)
+
+
+def _record_backoff_delays(monkeypatch, bus, stop_after):
+    """Capture every backoff timeout and stop the bus after ``stop_after``.
+
+    Patches ``asyncio.wait_for``, which run() uses ONLY for the interruptible
+    backoff sleep - the read loop races with ``asyncio.wait`` instead, so this
+    does not touch the read path. Nothing else in this test file may use
+    wait_for while the patch is live.
+    """
+    delays = []
+
+    async def fake_wait_for(awaitable, timeout):
+        delays.append(timeout)
+        close = getattr(awaitable, "close", None)
+        if close is not None:
+            close()  # the un-awaited self._stop.wait() coroutine
+        if len(delays) >= stop_after:
+            bus.stop()
+        raise TimeoutError
+
+    monkeypatch.setattr(asyncio, "wait_for", fake_wait_for)
+    return delays
+
+
+class TestTransportLifecycle:
+    @pytest.fixture(autouse=True)
+    def _bus_enabled(self, monkeypatch):
+        monkeypatch.delenv("RC_LCU_EVENTS", raising=False)
+
+    def test_stop_interrupts_an_idle_connected_socket(self, monkeypatch):
+        """stop() must unpark a read that no frame will ever complete.
+
+        The pre-RM-348 loop checked the stop flag only AFTER a frame arrived,
+        so on a quiet LCU the run() task stayed parked forever, RC shutdown
+        hung on it and the wss:// socket leaked for the duration.
+        """
+        connected = asyncio.Event()
+        socket = _IdleSocket(connected)
+        _install_fake_websockets(monkeypatch, lambda *a, **k: _FakeConnection(socket))
+        bus = lcu_events.LcuEventBus("127.0.0.1", 12345, "pw")
+
+        async def scenario():
+            task = asyncio.ensure_future(bus.run())
+            await asyncio.wait_for(connected.wait(), timeout=2.0)
+            bus.stop()
+            await asyncio.wait_for(task, timeout=1.0)
+            return True
+
+        assert run_coro(scenario(), timeout=8.0) is True
+
+    def test_frames_still_dispatch_through_the_raced_read(self, monkeypatch):
+        """The race must not cost delivery - guards the fix against itself."""
+        bus = lcu_events.LcuEventBus("127.0.0.1", 12345, "pw")
+        seen = []
+        bus.subscribe("/lol-gameflow/v1/gameflow-phase", seen.append)
+        frame = ('[8,"OnJsonApiEvent",{"uri":"/lol-gameflow/v1/gameflow-phase",'
+                 '"data":"ChampSelect"}]')
+        socket = _ScriptedSocket([frame], on_exhausted=bus.stop)
+        _install_fake_websockets(monkeypatch, lambda *a, **k: _FakeConnection(socket))
+
+        run_coro(bus.run(), timeout=8.0)
+
+        assert seen == ["ChampSelect"]
+        assert socket.sent == ['[5, "OnJsonApiEvent"]']
+
+    def test_backoff_escalates_to_the_cap_when_the_socket_flaps(self, monkeypatch):
+        """A completed handshake is not a healthy session.
+
+        Pre-RM-348 the attempt counter was zeroed the instant connect()
+        returned, so a socket that connects and immediately closes retried at
+        the 1.0s floor forever and never reached the 30.0s cap.
+        """
+        bus = lcu_events.LcuEventBus("127.0.0.1", 12345, "pw")
+        _install_fake_websockets(
+            monkeypatch, lambda *a, **k: _FakeConnection(_ScriptedSocket()),
+        )
+        delays = _record_backoff_delays(monkeypatch, bus, stop_after=12)
+
+        run_coro(bus.run(), timeout=8.0)
+
+        assert delays[:6] == [1.0, 2.0, 5.0, 10.0, 30.0, 30.0]
+        assert delays[-1] == 30.0
+
+    def test_a_sustained_session_returns_the_backoff_to_the_floor(self, monkeypatch):
+        """The escalation is threshold-gated, not permanent.
+
+        Not a regression test - the pre-fix code passes this too. It pins the
+        other half of the contract, so "never reset at all" cannot be shipped
+        as a fix for the test above.
+        """
+        monkeypatch.setattr(lcu_events, "STABLE_SESSION_SECONDS", 0.0)
+        bus = lcu_events.LcuEventBus("127.0.0.1", 12345, "pw")
+        _install_fake_websockets(
+            monkeypatch, lambda *a, **k: _FakeConnection(_ScriptedSocket()),
+        )
+        delays = _record_backoff_delays(monkeypatch, bus, stop_after=4)
+
+        run_coro(bus.run(), timeout=8.0)
+
+        assert delays == [1.0, 1.0, 1.0, 1.0]
+
+    def test_a_failed_connect_still_escalates(self, monkeypatch):
+        """connected_at stays None when the handshake never lands."""
+        bus = lcu_events.LcuEventBus("127.0.0.1", 12345, "pw")
+
+        def refuse(*_a, **_k):
+            raise OSError("connection refused")
+
+        _install_fake_websockets(monkeypatch, refuse)
+        delays = _record_backoff_delays(monkeypatch, bus, stop_after=5)
+
+        run_coro(bus.run(), timeout=8.0)
+
+        assert delays == [1.0, 2.0, 5.0, 10.0, 30.0]

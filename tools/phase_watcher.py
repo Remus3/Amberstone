@@ -138,6 +138,14 @@ INPROGRESS_CAPTURE_DELAY_S = 15.0
 # (item 187 Slice C live verification), flip to True.
 CHERRY_NO_DEBOUNCE = False
 
+# WAMP reconnect ladder. A session has to SURVIVE STABLE_SESSION_SECONDS
+# before the backoff returns to the floor: a handshake proves the port
+# answered, not that the connection is usable, so resetting on connect alone
+# pins a flapping socket at the floor forever and it never reaches the 30s
+# cap. Same root cause as RM-348 in core/lcu_events.py, swept here with it.
+BACKOFF_MIN_S = 1.0
+STABLE_SESSION_SECONDS = 30.0
+
 # RM-154. basicConfig without handlers= installs a StreamHandler on stderr,
 # and the RC-PhaseWatcher task runs this under pythonw.exe where stderr is
 # None - so every record this module emitted went nowhere. Pass explicit
@@ -583,6 +591,24 @@ def handle_event(topic: str, data: object, queue_id: int | None, *,
 
 # -- WAMP loop (live deployment) --------------------------------------------
 
+def backoff_after_session(current: float, connected_at: float | None,
+                          now: float) -> float:
+    """Backoff to sleep after a WAMP session ended.
+
+    Returns the floor only when the session actually LASTED
+    ``STABLE_SESSION_SECONDS``; otherwise the caller's current backoff is
+    handed back unchanged so the existing 1.5x escalation keeps climbing to
+    the cap. ``connected_at`` is None when the handshake never completed.
+
+    Split out of ``_wamp_loop`` because that loop is a live-deployment
+    ``while True`` that tests bypass entirely, so the reconnect POLICY needs a
+    seam of its own to be testable at all.
+    """
+    if connected_at is not None and (now - connected_at) >= STABLE_SESSION_SECONDS:
+        return BACKOFF_MIN_S
+    return current
+
+
 def _wamp_loop(sidecar_dir: Path) -> None:
     """Connect to LCU WAMP socket + subscribe + dispatch events. Lives
     in the live deployment path only; tests bypass it entirely.
@@ -599,9 +625,10 @@ def _wamp_loop(sidecar_dir: Path) -> None:
         return
 
     debouncer = Debouncer()
-    backoff = 1.0
+    backoff = BACKOFF_MIN_S
 
     while True:
+        connected_at: float | None = None
         if not ensure_lcu():
             time.sleep(min(backoff, 10.0))
             backoff = min(backoff * 1.5, 30.0)
@@ -625,7 +652,7 @@ def _wamp_loop(sidecar_dir: Path) -> None:
                 ws.send(build_subscribe_frame(topic))
             log.info("WAMP connected; subscribed to %d topics",
                      len(SUBSCRIBED_TOPICS))
-            backoff = 1.0
+            connected_at = time.monotonic()
 
             while True:
                 raw = ws.recv()
@@ -650,6 +677,7 @@ def _wamp_loop(sidecar_dir: Path) -> None:
                     debouncer.reset_cycle()
                     log.info("cycle reset on EndOfGame")
         except Exception as exc:  # noqa: BLE001
+            backoff = backoff_after_session(backoff, connected_at, time.monotonic())
             log.warning("WAMP loop exited: %s; reconnecting in %.1fs",
                         exc, backoff)
             time.sleep(min(backoff, 30.0))

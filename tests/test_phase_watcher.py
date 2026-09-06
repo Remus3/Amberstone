@@ -586,5 +586,47 @@ class DispatchIntegrationTests(unittest.TestCase):
         self.assertEqual(out, ("champ_select_session", "BAN_PICK", 420))
 
 
+class ReconnectBackoffTests(unittest.TestCase):
+    """RM-348 sibling sweep - same root cause as core/lcu_events.py.
+
+    The WAMP reconnect ladder used to reset to the floor the moment the
+    handshake completed, so a socket that connects and instantly dies
+    reconnected at 1.0s forever and never climbed to the 30s cap. Only a
+    session that SURVIVED earns the floor back.
+
+    _wamp_loop itself is a live-deployment `while True` that tests bypass, so
+    the policy lives in backoff_after_session and is pinned here.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_watcher_module()
+
+    def test_a_flapping_session_keeps_the_caller_backoff(self):
+        now = 1000.0
+        kept = self.mod.backoff_after_session(8.0, now - 0.2, now)
+        self.assertEqual(kept, 8.0)
+
+    def test_a_sustained_session_returns_to_the_floor(self):
+        now = 1000.0
+        reset = self.mod.backoff_after_session(
+            8.0, now - self.mod.STABLE_SESSION_SECONDS, now)
+        self.assertEqual(reset, self.mod.BACKOFF_MIN_S)
+
+    def test_a_handshake_that_never_landed_keeps_the_backoff(self):
+        self.assertEqual(
+            self.mod.backoff_after_session(8.0, None, 1000.0), 8.0)
+
+    def test_the_ladder_actually_reaches_the_cap_while_flapping(self):
+        """The end-to-end consequence, not just the predicate."""
+        backoff = self.mod.BACKOFF_MIN_S
+        now = 1000.0
+        for _ in range(20):
+            # a session that lands and dies immediately
+            backoff = self.mod.backoff_after_session(backoff, now, now)
+            backoff = min(backoff * 1.5, 30.0)
+        self.assertEqual(backoff, 30.0)
+
+
 if __name__ == "__main__":
     unittest.main()
