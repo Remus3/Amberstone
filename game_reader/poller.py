@@ -332,10 +332,16 @@ class _PollerMixin:
         return False
 
     def _lcu_get(self, endpoint):
-        # RC2 P6.4 (L6): opt-in pooled keep-alive connection reuse to cut the
-        # per-call LCU TCP+TLS handshake churn. DEFAULT-OFF (RC_LCU_POOL) so the
-        # urlopen path below stays byte-identical until a port-safety pilot
-        # enables it; a pooled fail-soft None falls through to the per-call read.
+        # RC2 P6.4 (L6): pooled keep-alive connection reuse to cut the per-call
+        # LCU TCP+TLS handshake churn. DEFAULT-ON (RC_LCU_POOL) since the E7
+        # flip 2026-06-30, validated over a live game 2026-07-01 - an UNSET env
+        # pools, and explicit RC_LCU_POOL=0 is the only way back to the
+        # byte-identical urlopen path below; a pooled fail-soft None falls
+        # through to the per-call read either way. RM-358: this comment claimed
+        # the opposite default for two months after the flip, and that misread
+        # cost real triage time (RM-345 was first graded latent-behind-a-flag
+        # on it), so tests/test_rc_lcu_pool_default_prose_guard_rm358.py now
+        # pins the prose to what pool_enabled() actually returns.
         from core import lcu_pool
         if lcu_pool.pool_enabled():
             res = lcu_pool.get_shared_pool().request(

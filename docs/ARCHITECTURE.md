@@ -247,6 +247,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 |---|---|
 | `tests/test_lcu_pool.py` | port-safety pooled-connection + min-interval primitives (RC2 P6.4) |
 | `tests/test_port_cpu_footprint_rc2.py` | consolidated port/CPU footprint regression guard (RC2 P6.6) |
+| `tests/test_rc_lcu_pool_default_prose_guard_rm358.py` | guard that RC_LCU_POOL prose cannot contradict the measured default |
 
 <!-- archmap:end -->
 
