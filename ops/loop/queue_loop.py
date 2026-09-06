@@ -220,10 +220,21 @@ CYCLE_LOG = REPORTS / "queue_loop.jsonl"
 # Twelve rows is roughly one unattended night at the observed lane cadence, and
 # a bound rather than "until stopped" means a driver nobody notices still ends.
 DEFAULT_MAX_CYCLES = 12
-# Matches the loop controller's cycle deadline (slots.DEFAULT_STALE_AFTER is
-# built from the same 5400s figure). A worker still alive at 90 minutes is not
-# working, it is wedged.
-DEFAULT_CYCLE_TIMEOUT_S = 5400
+# RAISED 2026-09-06 from 5400s (90 min), which no longer bounded a wedge - it
+# bounded legitimate WORK. The lane's CI acceptance requires the worker to block
+# until its own dispatch run reaches `completed`, because a run (roughly 45 to
+# 67 minutes, RM-370 measured 67) otherwise gets cancelled by the next cycle's
+# run whatever concurrency group it sits in; only serializing fixes that. So a
+# healthy cycle is now work plus a block of up to 90 minutes, plus up to another
+# 90 if the run is superseded and the worker re-dispatches once. Cycle 3
+# measured 83.8 minutes against the old 5400s kill, which is how close this came
+# to killing a worker that was doing exactly what it was told.
+#
+# 4 hours is a WEDGE ceiling, not a work budget: it must sit above the worst
+# legitimate cycle, and everything below it is bounded by the prompt's own
+# budgets rather than by this kill. It deliberately no longer matches the loop
+# controller's 5400s deadline - that number bounds a different workload.
+DEFAULT_CYCLE_TIMEOUT_S = 14400
 # Between cycles, not after the last. Long enough for the worker's commit and
 # push to land and for the DS Share mirror / :8860 bounce to settle before the
 # next worker reads the tree - a mid-settle read is the false anchor-mismatch
