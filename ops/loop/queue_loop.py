@@ -125,6 +125,34 @@ WHICH sentinel stopped it and where that file lives, and exits
 EXIT_STOP_SENTINEL so no launcher can print a success banner over a no-op;
 clear it deliberately, do not special-case it here.
 
+THE CI WAIT IS THE DRIVER'S, NOT THE PROMPT'S. The lane's acceptance is CI
+green - specifically the `full dual suite` step of the `check` job, read out of
+`jobs[].steps[]`. `.github/workflows/ci.yml:38-40` sets
+`cancel-in-progress: true` on the group
+`${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}`; a run takes
+45 to 67 minutes and a cycle takes 25 to 45, so cycle N+1's run cancels cycle
+N's in WHATEVER group - moving groups does not fix it, only serializing does.
+That fix was written as PROSE first (`tools/headless-queue.md` section 9 told
+the worker to block until its own run completed) and MEASURED over six cycles it
+half-held: cycles 2 and 3 blocked (102.7 and 113.3 minutes, both green), but
+cycles 4, 5 and 6 ran 45 / 24.2 / 38.5 minutes - shorter than a run - so those
+workers exited early and three consecutive dispatch runs were cancelled. An
+instruction a worker can rationalize past is not a mechanism. So the wait moved
+here: nothing can cancel a run while the only thing that would trigger the next
+one is the driver, and the driver is waiting. Cycles are already serial, which
+is what makes that structural rather than hopeful.
+
+THE CI GATE FAILS SOFT ON TOOLING AND HARD ON THE VERDICT. `gh` not installed,
+an expired token, a 502, an unparseable payload - every one of them returns
+`unavailable` and the night goes on, because a CLI hiccup may not end eleven
+remaining rows. A `failure` on the named STEP is the opposite: it stops the loop
+(`ci_red`, EXIT_CI_RED), because every further cycle would push another row onto
+a red `main` and compound a break nobody is watching. `cancelled`, `timeout`,
+`skipped` and `unknown` sit in between - recorded, never red. `cancelled`
+especially: a superseded run and a job that hit its own ceiling report the same
+word, and `gh run watch --exit-status` returns 0 on both, so it may never be
+cited as acceptance and is not evidence of a break either.
+
 SIDE-EFFECT FREE AT IMPORT. Nothing below creates a directory, reads the
 control plane or spawns anything at import time - the dashboard and the tests
 both import this module, and an import that mutated the control plane would
@@ -260,6 +288,53 @@ DEFAULT_KILL_GRACE_S = 15
 # same traceback scroll past all night.
 DEFAULT_MAX_CONSECUTIVE_ERRORS = 3
 
+# ---- CI acceptance. See "THE CI WAIT IS THE DRIVER'S" in the module docstring.
+CI_WORKFLOW = "ci.yml"
+# A BRANCH ref, which is what `gh workflow run` takes - so a dispatch builds
+# `main` as of trigger time, i.e. our commit or a descendant of it.
+CI_REF = "main"
+# The job (`.github/workflows/ci.yml:142`) and the step inside it (`:419`). The
+# step is matched on a SUBSTRING because its shipped name carries a
+# parenthetical - "full dual suite (RM-119 - push CI now gates the whole tree)" -
+# and a parenthetical is prose that will be reworded. "full dual suite" is the
+# thing. The JOB name is matched exactly: `nightly-full-suite` also contains
+# "full" and runs the same command, and grading the wrong job is precisely the
+# failure the "read jobs[].steps[]" rule exists to prevent.
+CI_JOB = "check"
+CI_STEP = "full dual suite"
+
+# The seven words a verdict may be. Anything outside this set is a bug in this
+# file, not a state of the world, which is why the tuple is asserted in tests.
+CI_SUCCESS = "success"
+CI_FAILURE = "failure"
+CI_CANCELLED = "cancelled"
+CI_SKIPPED = "skipped"
+CI_TIMEOUT = "timeout"
+CI_UNAVAILABLE = "unavailable"
+CI_UNKNOWN = "unknown"
+CI_STEPS = (CI_SUCCESS, CI_FAILURE, CI_CANCELLED, CI_SKIPPED, CI_TIMEOUT,
+            CI_UNAVAILABLE, CI_UNKNOWN)
+
+# 90 minutes. MEASURED rather than picked: RM-370 timed a real wait at 67
+# minutes, so the 60 first written into the prose contract was under-set and a
+# worker obeying it would have abandoned a run that was about to pass. This is
+# the budget for ONE run; a cancelled run buys one re-dispatch and a second
+# budget, which is why DEFAULT_CYCLE_TIMEOUT_S is 4 hours and not 90 minutes.
+DEFAULT_CI_WAIT_S = 5400
+# A `ci` run is measured in tens of minutes. Polling faster than a minute buys
+# nothing and spends API quota that `gh` shares with everything else on the box.
+DEFAULT_CI_POLL_S = 60
+# Per `gh` / `git` invocation. These are single API round trips, not the run
+# itself - the run is waited out by polling, never by holding a subprocess open.
+GH_TIMEOUT_S = 120
+# One cycle's push plus the dispatch it triggers is 2 runs; 20 covers a night of
+# them plus whatever the operator's own lanes pushed in between.
+CI_RUN_LIST_LIMIT = 20
+# A dispatched run takes a beat to become visible to `gh run list`. Six tries at
+# 10s is a minute of patience against an API that normally answers on the first.
+CI_TRIGGER_TRIES = 6
+CI_TRIGGER_WAIT_S = 10
+
 _NO_WINDOW = 0x08000000 if os.name == "nt" else 0      # CREATE_NO_WINDOW
 
 # Two names, never one. The driver mutex is held for the WHOLE run (hours), so
@@ -286,6 +361,10 @@ OUTCOME_ERROR = "error"
 
 STOPPED_BY_MAX_CYCLES = "max_cycles"
 STOPPED_BY_CONSECUTIVE_ERRORS = "consecutive_errors"
+# The `full dual suite` step of the `check` job reported `failure` on the sha
+# this cycle pushed. Every further cycle would stack another row on top of a
+# break, so the night ends here.
+STOPPED_BY_CI_RED = "ci_red"
 
 # Process exit codes. Distinct on purpose: the launcher and any future scheduled
 # task can only tell "ran the night" from "refused to start" by the number.
@@ -301,6 +380,7 @@ EXIT_ALREADY_RUNNING = 3    # another driver holds DRIVER_MUTEX
 # so the next thing anyone does there must be to check for it by hand.
 EXIT_KILL_FAILED = 4        # a worker outlived its taskkill - worktree suspect
 EXIT_CONSECUTIVE_ERRORS = 5  # the same fault repeated until the loop gave up
+EXIT_CI_RED = 6             # the gating CI step went red on a pushed sha
 
 
 def _taskkill(pid) -> None:
@@ -474,6 +554,294 @@ def _await_death(pid, started, *, alive, stranger, kill_grace_s, poll_s,
         sleep(step)
 
 
+def _gh(args) -> tuple[int, str]:
+    """The ONE `gh` call site. Returns (returncode, text) and never raises.
+
+    Every CI question goes through here so the timeout, the console-window flag
+    and the "a missing gh is an exit code, not a traceback" contract are set
+    once. It is also the seam every test injects: a suite that could reach the
+    real `gh` would fire a 45-minute runner against the live repo from a unit
+    test, and would race whatever the lane is doing at the time.
+
+    On failure the text is stderr FIRST, because that is where `gh` puts the
+    reason (`could not find any workflows`, an auth prompt, a 502) while stdout
+    is usually empty; both are returned because which one carries the message
+    varies by subcommand.
+    """
+    argv = ["gh", *[str(a) for a in args]]
+    try:
+        proc = subprocess.run(argv, capture_output=True, text=True,
+                              timeout=GH_TIMEOUT_S, creationflags=_NO_WINDOW)
+    except (OSError, subprocess.SubprocessError) as exc:
+        # 127 is the shell's "command not found", which is the common case here
+        # (no gh on PATH under a detached pythonw) and reads correctly in a log.
+        return 127, f"{type(exc).__name__}: {exc}"
+    if proc.returncode != 0:
+        return proc.returncode, ((proc.stderr or "") + (proc.stdout or "")).strip()
+    return 0, proc.stdout or ""
+
+
+def _head_sha() -> str | None:
+    """The sha `origin/main` points at right now, or None. Never raises.
+
+    `git ls-remote` and not `git rev-parse`, for two independent reasons. The
+    driver runs in the MAIN tree while the worker commits and pushes from
+    `C:\\rc-worktrees\\rc-lane-queue`, so this tree's own HEAD is not what was
+    pushed; and a local `origin/main` ref is only as fresh as the last fetch,
+    which nothing in this loop performs. `ls-remote` asks the remote and mutates
+    nothing - no fetch, no index, no reflog - which matters because the driver
+    must never write into a tree a worker may be using.
+
+    None on every failure. The caller turns that into an `unavailable` verdict
+    rather than a skipped cycle: a night whose CI evidence is missing must not
+    read like a night of greens.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(lanes.REPO_ROOT), "ls-remote", "origin",
+             "refs/heads/" + CI_REF],
+            capture_output=True, text=True, timeout=GH_TIMEOUT_S,
+            creationflags=_NO_WINDOW)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    first = (proc.stdout or "").strip().split("\n", 1)[0]
+    parts = first.split()
+    return parts[0] if parts else None
+
+
+def _gh_json(gh, args):
+    """(parsed, None) or (None, why). Every shape surprise is a `why`.
+
+    A missing field, a payload that is a list where an object was expected, a
+    non-zero exit and unparseable output are all the SAME class here - the CLI
+    did not answer the question - and all of them have to degrade to
+    `unavailable` rather than raise, so they are normalised at the one place
+    that talks to `gh`.
+    """
+    rc, out = gh(args)
+    if rc != 0:
+        return None, (f"gh {' '.join(str(a) for a in args)} exited {rc}: "
+                      f"{str(out).strip()[:300]}")
+    try:
+        return json.loads(out), None
+    except (TypeError, ValueError) as exc:
+        return None, (f"gh {' '.join(str(a) for a in args)} returned "
+                      f"unparseable JSON: {exc}")
+
+
+def _ci_run_list(gh):
+    """Recent `ci` runs, newest first, as `gh` orders them."""
+    data, err = _gh_json(gh, ["run", "list", "--workflow", CI_WORKFLOW,
+                              "--limit", str(CI_RUN_LIST_LIMIT), "--json",
+                              "databaseId,headSha,status,conclusion,event"])
+    if err:
+        return [], err
+    if not isinstance(data, list):
+        return [], (f"gh run list returned {type(data).__name__}, "
+                    f"expected a list of runs")
+    return [row for row in data if isinstance(row, dict)], None
+
+
+def _pick_ci_run(rows, sha):
+    """The best existing run for `sha`, preferring a dispatch over a push.
+
+    `event_name` is part of the concurrency group, so a `workflow_dispatch` run
+    sits in a DIFFERENT group from every push and a later push cannot cancel it.
+    A push run has no such protection - it is exactly what got cancelled three
+    times in a row - so given both for one sha, the dispatch is the one worth
+    waiting on. Rows arrive newest-first, so the first match within an event is
+    the freshest.
+    """
+    matches = [row for row in rows if str(row.get("headSha") or "") == str(sha)]
+    for event in ("workflow_dispatch", "push"):
+        for row in matches:
+            if str(row.get("event") or "") == event:
+                return row
+    return matches[0] if matches else None
+
+
+def _trigger_ci_run(gh, sha, seen, *, sleep):
+    """Fire one dispatch and return the run it created. (row, None) or (None, why).
+
+    NEW-ID identification, not a timestamp comparison. `seen` holds every run id
+    this call has already accounted for, so "the run the trigger created" is
+    "the newest run whose id we have not seen", which needs no clock, no
+    timezone and no ISO parsing - and cannot mistake the FIRST dispatch for the
+    second when a cancelled run is re-dispatched.
+
+    An exact `headSha` match wins when one is offered. Otherwise the newest
+    fresh dispatch run is accepted even though its head is a DESCENDANT of the
+    sha we asked about: `gh workflow run` takes a branch ref, so it builds
+    `main` as of trigger time, and a later sha subsumes an earlier one. What is
+    NOT done is claim descent we did not prove - the run's own headSha is
+    returned and recorded, so the ledger cites the tree CI actually built.
+    """
+    rc, out = gh(["workflow", "run", CI_WORKFLOW, "--ref", CI_REF])
+    if rc != 0:
+        return None, (f"gh workflow run {CI_WORKFLOW} exited {rc}: "
+                      f"{str(out).strip()[:300]}")
+    why = (f"no new ci run appeared within "
+           f"{CI_TRIGGER_TRIES * CI_TRIGGER_WAIT_S}s of the dispatch")
+    for _ in range(CI_TRIGGER_TRIES):
+        sleep(CI_TRIGGER_WAIT_S)
+        rows, err = _ci_run_list(gh)
+        if err:
+            why = err
+            continue
+        fresh = [row for row in rows if row.get("databaseId") not in seen]
+        exact = [row for row in fresh
+                 if str(row.get("headSha") or "") == str(sha)]
+        dispatched = [row for row in fresh
+                      if str(row.get("event") or "") == "workflow_dispatch"]
+        picked = (exact or dispatched or [None])[0]
+        if picked is not None:
+            seen.add(picked.get("databaseId"))
+            return picked, None
+    return None, why
+
+
+def _ci_step_verdict(gh, run_id):
+    """(step, detail) for the `full dual suite` step of the `check` job.
+
+    NEVER the run conclusion. Two independent reasons, both measured: a green
+    run may have SKIPPED the job that matters (`check` carries
+    `if: github.event_name != 'schedule'`, `ci.yml:143`, so the scheduled
+    nightly never runs it), and `gh run watch --exit-status` returns 0 on a
+    CANCELLED run. The only thing that means "the tree passed" is the named
+    step's own conclusion.
+
+    An absent or skipped `check` job is `skipped` - a real answer about the
+    world. A `check` job that is present but shaped in a way this function does
+    not understand is `unavailable` - an answer about the TOOL. Collapsing the
+    two would let a payload change read as a green.
+    """
+    data, err = _gh_json(gh, ["run", "view", str(run_id), "--json", "jobs"])
+    if err:
+        return CI_UNAVAILABLE, err
+    jobs = data.get("jobs") if isinstance(data, dict) else None
+    if not isinstance(jobs, list):
+        return CI_UNAVAILABLE, f"run {run_id} carried no jobs list"
+    job = None
+    for row in jobs:
+        if isinstance(row, dict) and str(row.get("name") or "") == CI_JOB:
+            job = row
+            break
+    if job is None:
+        return CI_SKIPPED, (f"run {run_id} has no {CI_JOB!r} job - a scheduled "
+                            f"run skips it (ci.yml:143)")
+    if str(job.get("conclusion") or "") == CI_SKIPPED:
+        return CI_SKIPPED, f"the {CI_JOB!r} job was skipped in run {run_id}"
+    steps = job.get("steps")
+    if not isinstance(steps, list):
+        return CI_UNAVAILABLE, (f"the {CI_JOB!r} job in run {run_id} carried "
+                                f"no steps list")
+    for step in steps:
+        if not isinstance(step, dict) or CI_STEP not in str(step.get("name") or ""):
+            continue
+        verdict = str(step.get("conclusion") or "").strip().lower()
+        if verdict in CI_STEPS:
+            return verdict, f"{CI_JOB} step {step.get('name')!r} -> {verdict}"
+        return CI_UNKNOWN, (f"{CI_JOB} step {step.get('name')!r} reported "
+                            f"conclusion {verdict!r}")
+    return CI_UNAVAILABLE, (f"run {run_id} has a {CI_JOB!r} job with no step "
+                            f"named like {CI_STEP!r}")
+
+
+def wait_for_ci(sha, *, budget_s: float = DEFAULT_CI_WAIT_S,
+                poll_s: float = DEFAULT_CI_POLL_S,
+                allow_trigger: bool = True,
+                gh=_gh, sleep=time.sleep, monotonic=time.monotonic) -> dict:
+    """Block until `sha`'s ci run is graded, and return the verdict.
+
+    Returns `{"sha", "run_id", "status", "step", "waited_s", "detail"}` where
+    `step` is one of CI_STEPS. `sha` is the head CI ACTUALLY built, which may be
+    a descendant of the one asked about - see `_trigger_ci_run`.
+
+    THIS FUNCTION NEVER RAISES. Every tooling fault - a missing `gh`, a
+    non-zero exit, unparseable JSON, a payload missing a field - becomes
+    `unavailable` with the reason in `detail`, because a CLI hiccup may not
+    wedge or end an overnight loop. Only the VERDICT is allowed to be bad news.
+
+    `monotonic`, never `clock`: this can block for 90 minutes, and wall time is
+    not monotonic. The file already pays for that lesson once, in `run_cycle`.
+    """
+    started_m = monotonic()
+    deadline = started_m + max(0.0, float(budget_s))
+
+    def _out(step, *, run_id=None, status="unknown", detail="", head=None):
+        return {"sha": str(head or sha), "run_id": run_id, "status": status,
+                "step": step, "waited_s": round(monotonic() - started_m, 1),
+                "detail": str(detail)[:400]}
+
+    rows, err = _ci_run_list(gh)
+    if err:
+        return _out(CI_UNAVAILABLE, detail=err)
+    # Everything visible BEFORE any trigger of ours. Anything outside this set
+    # later is, by construction, a run we caused.
+    seen = {row.get("databaseId") for row in rows}
+
+    run = _pick_ci_run(rows, sha)
+    if run is None:
+        if not allow_trigger:
+            return _out(CI_UNAVAILABLE,
+                        detail=f"no ci run found for {sha} and triggering is off")
+        run, err = _trigger_ci_run(gh, sha, seen, sleep=sleep)
+        if err:
+            return _out(CI_UNAVAILABLE, detail=err)
+
+    def _watch(row):
+        run_id = row.get("databaseId")
+        head = str(row.get("headSha") or "") or None
+        if run_id is None:
+            return _out(CI_UNAVAILABLE, head=head,
+                        detail="the ci run row carried no databaseId")
+        status = str(row.get("status") or "")
+        conclusion = str(row.get("conclusion") or "")
+        while status != "completed":
+            # Checked BEFORE the sleep so a zero budget answers immediately, and
+            # so the last poll cannot overshoot the deadline by a whole poll_s.
+            if monotonic() >= deadline:
+                return _out(CI_TIMEOUT, run_id=run_id, head=head,
+                            status=status or "unknown",
+                            detail=f"run {run_id} was still "
+                                   f"{status or 'pending'} after {budget_s}s")
+            sleep(poll_s)
+            view, verr = _gh_json(gh, ["run", "view", str(run_id),
+                                       "--json", "status,conclusion"])
+            if verr:
+                return _out(CI_UNAVAILABLE, run_id=run_id, head=head,
+                            status=status or "unknown", detail=verr)
+            if not isinstance(view, dict):
+                return _out(CI_UNAVAILABLE, run_id=run_id, head=head,
+                            status=status or "unknown",
+                            detail=f"run {run_id} status payload was not an object")
+            status = str(view.get("status") or "")
+            conclusion = str(view.get("conclusion") or "")
+        if conclusion == CI_CANCELLED:
+            # Read here rather than from the step, because a cancelled run's
+            # steps carry no useful conclusion - and the caller has a specific
+            # remedy for this one word that it has for no other.
+            return _out(CI_CANCELLED, run_id=run_id, head=head, status=status,
+                        detail=f"run {run_id} completed 'cancelled' - superseded, "
+                               f"or a job hit its own ceiling")
+        step, detail = _ci_step_verdict(gh, run_id)
+        return _out(step, run_id=run_id, head=head, status=status, detail=detail)
+
+    out = _watch(run)
+    if out["step"] != CI_CANCELLED or not allow_trigger:
+        return out
+    # ONCE. Being superseded is the exact failure this wait exists to survive,
+    # so one fresh run is worth starting - but a driver that re-dispatched on
+    # every cancel would spend the whole budget starting runs instead of
+    # watching one, and would keep the runner busy for a night.
+    again, err = _trigger_ci_run(gh, sha, seen, sleep=sleep)
+    if err:
+        return dict(out, detail=f"{out['detail']}; re-dispatch failed: {err}"[:400])
+    return _watch(again)
+
+
 def run_cycle(cycle: int, *, lane: str = LANE, worktree=None, run_id=None,
               poll_s: float = DEFAULT_POLL_S,
               cycle_timeout_s: float = DEFAULT_CYCLE_TIMEOUT_S,
@@ -611,6 +979,9 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
              cycle_timeout_s: float = DEFAULT_CYCLE_TIMEOUT_S,
              kill_grace_s: float = DEFAULT_KILL_GRACE_S,
              max_consecutive_errors: int = DEFAULT_MAX_CONSECUTIVE_ERRORS,
+             ci_gate: bool = True,
+             ci_wait_s: float = DEFAULT_CI_WAIT_S,
+             ci_poll_s: float = DEFAULT_CI_POLL_S,
              lane: str = LANE, worktree=None,
              control_dir=None, cycle_log=None,
              acquire_retries: int = ACQUIRE_RETRIES,
@@ -622,6 +993,9 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
              proc_started=lanes.proc_started,
              stranger=lanes._holder_is_a_stranger,
              kill=_taskkill,
+             head_sha=_head_sha,
+             gh=_gh,
+             wait=wait_for_ci,
              sleep=time.sleep,
              clock=time.time,
              monotonic=time.monotonic,
@@ -629,15 +1003,30 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
     """Fire cycles until `max_cycles`, a stop sentinel, or a hard stop.
 
     `stopped_by` is the sentinel's file name, "max_cycles" when the loop ran its
-    full course, or one of the two hard stops: OUTCOME_KILL_FAILED (a worker
-    survived its kill, so the lane worktree may still have a live writer) and
-    STOPPED_BY_CONSECUTIVE_ERRORS.
+    full course, or one of the three hard stops: OUTCOME_KILL_FAILED (a worker
+    survived its kill, so the lane worktree may still have a live writer),
+    STOPPED_BY_CONSECUTIVE_ERRORS, and STOPPED_BY_CI_RED.
 
     The sentinel check is at the TOP of the iteration, which is what makes a
     QUEUE_DRAINED written by the worker mid-cycle stop the NEXT cycle rather
-    than retroactively discard the one that wrote it. The two hard stops are
+    than retroactively discard the one that wrote it. The hard stops are
     checked at the BOTTOM, after the offending record is appended and emitted -
     the evidence of why the night ended has to reach the ledger.
+
+    THE CI GATE, and why it hangs off `origin/main` rather than off the worker.
+    The driver never looks inside the lane worktree and has no channel to the
+    worker beyond a pid, so the only push signal available to it is the remote
+    ref moving: `head_sha()` is read before and after each cycle, and an
+    UNCHANGED answer means the worker shipped nothing (a recall-closed row, a
+    refuted row, a drained queue) and there is no run to wait for. The verdict
+    is attached to the SAME record as `record["ci"]`, so one JSONL row carries a
+    cycle and its acceptance and nobody has to join two files at 3am.
+
+    An ABSENT `ci` key means no gate ran for that cycle - gate off, no push
+    detected, or an outcome other than `completed`. It deliberately is NOT
+    recorded as `step="skipped"`, because that word already means the `check`
+    JOB was skipped, and one word cannot carry two conditions (the same defect
+    `main`'s exit codes were split to fix).
     """
     records: list = []
     stopped_by = None
@@ -655,6 +1044,10 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
         # before returning would otherwise leave a row nothing can be joined to.
         run_id = uuid.uuid4().hex[:8]
         started_at = clock()
+        # BEFORE the cycle, unconditionally when the gate is on: the outcome is
+        # not knowable in advance, and one `ls-remote` against a 25-to-45-minute
+        # cycle is not a cost worth optimising.
+        pre_sha = head_sha() if ci_gate else None
         try:
             record = run_cycle(cycle, lane=lane, worktree=worktree,
                                run_id=run_id, poll_s=poll_s,
@@ -682,12 +1075,53 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
                       "duration_s": round(ended_at - started_at, 3),
                       "outcome": OUTCOME_ERROR,
                       "detail": f"{type(exc).__name__}: {exc}"[:400]}
+
+        # ---- CI acceptance, BEFORE the append so one row carries both halves.
+        ci_note = ""
+        if ci_gate and record["outcome"] == OUTCOME_COMPLETED:
+            post_sha = head_sha()
+            if pre_sha is None or post_sha is None:
+                # A tooling failure, and it is recorded as one. Staying silent
+                # here would make a night with no CI evidence read exactly like
+                # a night of greens.
+                record["ci"] = {"sha": post_sha or pre_sha, "run_id": None,
+                                "status": "unknown", "step": CI_UNAVAILABLE,
+                                "waited_s": 0.0,
+                                "detail": "origin/" + CI_REF + " could not be "
+                                          "resolved, so this cycle's push could "
+                                          "not be identified"}
+            elif post_sha == pre_sha:
+                ci_note = " ci=no-push"
+            else:
+                record["ci"] = wait(post_sha, budget_s=ci_wait_s,
+                                    poll_s=ci_poll_s, gh=gh, sleep=sleep,
+                                    monotonic=monotonic)
+        verdict = record.get("ci")
+        if verdict:
+            ci_note = (f" ci={verdict['step']} run={verdict['run_id']} "
+                       f"{verdict['waited_s']}s")
+
         records.append(record)
         append_record(record, cycle_log)
+        # ONE line per cycle, still. The verdict rides on it rather than taking
+        # a line of its own, because an operator tailing this reads a night by
+        # counting cycles down the left margin.
         emit(f"queue-loop cycle {cycle}/{total} {record['outcome']} "
              f"run_id={record['run_id']} pid={record['pid']} "
-             f"{record['duration_s']}s {record['detail']}".rstrip())
+             f"{record['duration_s']}s{ci_note} {record['detail']}".rstrip())
 
+        if verdict and verdict["step"] == CI_FAILURE:
+            # HARD STOP, and the only CI verdict that is one. Every further
+            # cycle would push another row on top of a break nobody is
+            # watching, and the rows would then have to be untangled from each
+            # other before either could be judged. `cancelled` / `timeout` /
+            # `skipped` / `unavailable` / `unknown` are all recorded and passed
+            # over: none of them is evidence that main is broken.
+            stopped_by = STOPPED_BY_CI_RED
+            emit(f"queue-loop stop: ci is RED on {verdict['sha']} "
+                 f"(run {verdict['run_id']}) - refusing to push another row "
+                 f"onto a broken {CI_REF}")
+            break
         if record["outcome"] == OUTCOME_KILL_FAILED:
             # HARD STOP. The next cycle would fire a second worker into a
             # worktree whose previous writer is still alive, and two writers in
@@ -723,12 +1157,15 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
 def main(argv=None, *, singleton=None) -> int:
     """CLI entry point for the detached launcher.
 
-    Three exit codes, because the launcher cannot otherwise tell a night that
-    ran from a launch that did nothing:
+    Distinct exit codes, because the launcher cannot otherwise tell a night
+    that ran from a launch that did nothing:
 
       EXIT_OK              cycles ran, or zero were asked for.
       EXIT_STOP_SENTINEL   zero cycles because a stop file was ALREADY there.
       EXIT_ALREADY_RUNNING another driver holds DRIVER_MUTEX.
+      EXIT_KILL_FAILED     a worker outlived its kill - the worktree is suspect.
+      EXIT_CONSECUTIVE_ERRORS the same fault repeated until the loop gave up.
+      EXIT_CI_RED          the gating ci step went red on a pushed sha.
 
     The second one supersedes this function's original contract ("always
     returns 0 ... a drained queue is a SUCCESSFUL outcome"), and the reason is
@@ -763,6 +1200,14 @@ def main(argv=None, *, singleton=None) -> int:
                         help="where the stop sentinels live (default ops/loop/control)")
     parser.add_argument("--reports-dir", default=None,
                         help="where queue_loop.jsonl is written (default ops/loop/reports)")
+    parser.add_argument("--ci-wait", type=float, default=DEFAULT_CI_WAIT_S,
+                        help=(f"seconds to block on a pushed sha's ci run "
+                              f"(default {DEFAULT_CI_WAIT_S})"))
+    # A kill switch, not a mode. The gate is the point of this driver owning
+    # the wait at all; turning it off is for a lane run whose CI is already
+    # known bad, or for a box with no `gh` credentials.
+    parser.add_argument("--no-ci-gate", action="store_true",
+                        help="do not wait on ci after a cycle pushes")
     parser.add_argument("--once", action="store_true",
                         help="run exactly one cycle - overrides --cycles")
     args = parser.parse_args(argv)
@@ -777,6 +1222,8 @@ def main(argv=None, *, singleton=None) -> int:
         with guard():
             summary = run_loop(max_cycles=cycles, settle_s=args.settle,
                                poll_s=args.poll, cycle_timeout_s=args.timeout,
+                               ci_gate=not args.no_ci_gate,
+                               ci_wait_s=args.ci_wait,
                                lane=args.lane, control_dir=control_dir,
                                cycle_log=cycle_log)
     except winmutex.MutexTimeout:
@@ -810,6 +1257,12 @@ def main(argv=None, *, singleton=None) -> int:
         return EXIT_KILL_FAILED
     if summary["stopped_by"] == STOPPED_BY_CONSECUTIVE_ERRORS:
         return EXIT_CONSECUTIVE_ERRORS
+    if summary["stopped_by"] == STOPPED_BY_CI_RED:
+        _emit("queue-loop ALERT: ci went RED on a pushed sha - the night "
+              "stopped rather than stack more rows onto a broken tree. Read "
+              f"the last row of {CYCLE_LOG.name} for the run id, fix the red, "
+              "then fire the lane again.")
+        return EXIT_CI_RED
     return EXIT_OK
 
 
