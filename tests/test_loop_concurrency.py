@@ -430,7 +430,20 @@ SHARED_SHA256 = {
     # RC and RM followed; all three re-hashed from their OWN disk rather than
     # trusting the digest in the hand-off note.
     # previous 95077a62527c9764e896e3bd1da9027e5efd2b15631feb725fe6138cee5054f9
-    "slots.py": "5297f2d041030398a9ba240aad527b2b01a86d6e7f57a196719af8f0a91cb0a6",
+    #
+    # re-pinned 2026-09-06: Sibling-C is archived (read-only at
+    # a sibling private repo, working copy deleted) and Sibling-B takes
+    # the vacated slot, so line 5 of the docstring names it instead. Docstring
+    # only - no code, no protocol, no behaviour, and the bucket stays at 3
+    # because it models ANTHROPIC ACCOUNT concurrency and the participant count
+    # did not change. THIS TIME LW AUTHORED THE BYTES and carried the red
+    # window; RC copied the file verbatim off LW's live tree with a byte-level
+    # copy (not a text write - `write_text` would CRLF-mangle it on Windows and
+    # the pin is on bytes) and re-hashed from its OWN disk, which is how this
+    # value was obtained rather than by trusting RM's hand-off note. Resin
+    # Compute vendors LAST: it has no pin to break until it has one.
+    # previous 5297f2d041030398a9ba240aad527b2b01a86d6e7f57a196719af8f0a91cb0a6
+    "slots.py": "1c4f8af43ff349709c11bf3fe622e922b24cb720771c49a522b13a4d5e58c492",
     # re-pinned 2026-07-26 for f1-phase6 item 9 (POSIX branch now emits
     # UNSERIALIZED); previous c21bfe4f309c9ed27e68f7cdf0458d001a9942e6a35c61869e6dedd16cc23b79
     "winmutex.py": "f1b4b011112685efb88616c52752657cf896fbb0993b2d2d264e7b3edde8b4f4",
