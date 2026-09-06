@@ -76,7 +76,7 @@ This is the INITIAL order. Take the first row that is still open and not gated.
 
 | # | id | tier / lane | one-line |
 |---|---|---|---|
-| 1 | RM-348 | Tier-1 | `stop()` cannot interrupt an idle LCU websocket, and the backoff never escalates |
+| 1 | ~~RM-348~~ | **SHIPPED 2026-09-06** | closed by cycle 1 - LEDGER 1339, `c4657e8df`. Do not re-take it; see 4a, which stays as the record of what the row meant |
 | 2 | RM-349 | Tier-1 | "Never raises" is false: the parse call sits outside the try |
 | 3 | RM-350 | Tier-1 | a read route is issued as POST, and the test pins the bug rather than the contract |
 | 4 | RM-351 | Tier-1 | unbounded response read at the single outbound chokepoint |
@@ -90,10 +90,10 @@ This is the INITIAL order. Take the first row that is still open and not gated.
 | 12 | RM-359 | Tier-0/1, LANE 7 | a 168-line module with zero production callers whose rune path lacks its live twin's validation |
 | 13 | RM-360 | Tier-0, LANE 7 | the authoritative id registry's next-free id is stale by six |
 | 14 | RM-363 | Tier-1 | two unvalidated retention caps repeat the RM-161 shape, and one deletes the log a live writer holds open |
-| 15 | RM-364 | Tier-1 | the prompt sanitizer's POPULATION - 14 wire-text builders that skip it (`BACKLOG.md:244`) |
-| 16 | RM-365 | Tier-0, LANE 7 | `RC_LCU_POOL` DEFAULT-OFF prose stale in two sites (`BACKLOG.md:246`) |
-| 17 | RM-367 | Tier-1 | the LIVE gameflow reader reports an EMPTY body as the phase `""` (`BACKLOG.md:242`) |
-| 18 | RM-343 | Tier-1, LANE 7 | every lane WORKTREE materializes 1884 LF-normalized tracked files with CRLF on disk while `git status` reports the tree clean (`ROADMAP.md:51`, `BACKLOG.md:243`) |
+| 15 | RM-364 | Tier-1 | the prompt sanitizer's POPULATION - 14 wire-text builders that skip it (`BACKLOG.md:247`) |
+| 16 | RM-365 | Tier-0, LANE 7 | `RC_LCU_POOL` DEFAULT-OFF prose stale in two sites (`BACKLOG.md:249`) |
+| 17 | RM-367 | Tier-1 | the LIVE gameflow reader reports an EMPTY body as the phase `""` (`BACKLOG.md:245`) |
+| 18 | RM-343 | Tier-1, LANE 7 | every lane WORKTREE materializes 1884 LF-normalized tracked files with CRLF on disk while `git status` reports the tree clean (`ROADMAP.md:51`, `BACKLOG.md:246`) |
 
 Bodies for rows 1 through 14 are in `docs/_research_refill_2026-09-05.md` (headers at `:213`, `:248`, `:276`, `:306`, `:332`, `:363`, `:396`, `:435`, `:464`, `:494`, `:526`, `:555`, `:590`, `:718`), pointed at by `ROADMAP.md:54`. Bodies for rows 15 through 18 are in `ROADMAP.md` / `BACKLOG.md` at the lines above. RM-361 and RM-362 are deliberately absent - both SHIPPED (LEDGER 1335 and 1336). **RM-366 is absent and stays absent: see 4c.**
 
@@ -119,9 +119,9 @@ Two consequences, both binding:
 
 **4b. RM-358 is FILED, NOT PROPOSED FOR EDIT.** It is a stale comment in `lcu/lcu_client.py`, which is on the frozen list at `CLAUDE.md:42`. **Do not edit a frozen file to close it.** The `CLAUDE.md` frozen list governs; an edit to any entry on it requires an ADJUDICATING AGENT THAT DID NOT AUTHOR THE CHANGE, recorded in the slice, plus explicit operator approval, tests and CI green. Close what you can outside the frozen file (the row names a non-frozen sibling in `tests/test_lcu_pool.py:6`, and RM-365 names the non-frozen `game_reader/poller.py:336`), state plainly which half remains, and leave the frozen half open. A prior operator frozen-grant on that file exists on the record; it is context for an adjudicator, not permission.
 
-**4c. RM-366 is OPERATOR-GATED. SKIP it. Never silently take it.** It cannot be executed without an edit to the frozen `lcu/lcu_client.py:191` give-up path (`BACKLOG.md:245` says so in the row itself). It is not in the section 3 queue and must not be re-added by a later re-derivation - step 2 of the selection rule drops it.
+**4c. RM-366 is OPERATOR-GATED. SKIP it. Never silently take it.** It cannot be executed without an edit to the frozen `lcu/lcu_client.py:191` give-up path (`BACKLOG.md:248` says so in the row itself). It is not in the section 3 queue and must not be re-added by a later re-derivation - step 2 of the selection rule drops it.
 
-**4d. RM-367 carries a trap that inverts the obvious fix.** A FALSY phase is LOAD-BEARING in the runtime view router: `web/js/main.js:711` (`_VIEW.gameStarted === "champ-select" && !phase && live`, the s209 sticky-guard inference) and `:728` (`!phase && live && inGame`, the item-281 null-phase in-game promotion) both branch on it, and `"Unknown"` is truthy and matches no explicit `phase === ...` arm, so the one-line consistency fix silently disarms both. **`dashboard/view_router_state.py` is a TEST-ONLY MIRROR, not the consumer** - its own header at `:1-7` says it is not imported at runtime. Read the filed row's own fence at `BACKLOG.md:242` before touching anything.
+**4d. RM-367 carries a trap that inverts the obvious fix.** A FALSY phase is LOAD-BEARING in the runtime view router: `web/js/main.js:711` (`_VIEW.gameStarted === "champ-select" && !phase && live`, the s209 sticky-guard inference) and `:728` (`!phase && live && inGame`, the item-281 null-phase in-game promotion) both branch on it, and `"Unknown"` is truthy and matches no explicit `phase === ...` arm, so the one-line consistency fix silently disarms both. **`dashboard/view_router_state.py` is a TEST-ONLY MIRROR, not the consumer** - its own header at `:1-7` says it is not imported at runtime. Read the filed row's own fence at `BACKLOG.md:245` before touching anything.
 
 **4e. RM-347 is SHIPPED (LEDGER 1337, `be7747fcb`, `ROADMAP.md:52`). Do not redo it.** Do not re-file its log level - failure logging was deliberately left at debug so a polling caller cannot spam a warning once per tick while the client is closed. Do not "unify" the three in-tree failure-value conventions (`lcu/lcu_pregame.py` now `None`, `lcu/lcu_postgame_collector.py:1034` `""`, `lcu/snapshot_shape.py:415-421` `"Unknown"`); consistency could not settle that choice and the consumer contract did. **Its second acceptance clause was met with consumer-contract tests, not a caller test, because `get_gameflow_phase` has ZERO in-repo callers** - the same shape as RM-346's three readers. That precedent is how a zero-caller row is closed honestly: pin the consumer's contract, say in the test docstring that these are not caller tests, and state that inventing a call path would prove nothing.
 
@@ -131,7 +131,7 @@ Two consequences, both binding:
 
 ### 5. Ids
 
-Next free id is **RM-368** as of 2026-09-05, pinned at `docs/DS_SWEEP_TRACKER.md:72` and again at `ROADMAP.md:52`. `ROADMAP.md:14` names the tracker the authoritative registry.
+Next free id is **RM-370** as of 2026-09-06, pinned at `docs/DS_SWEEP_TRACKER.md:72` and again at the newest SHIPPED line in `ROADMAP.md`. `ROADMAP.md:14` names the tracker the authoritative registry. **RM-368 and RM-369 are both ALLOCATED** - RM-368 by another lane on 2026-09-05, RM-369 by queue cycle 1. The worked example below still reads RM-368 because it is the RECORD of one re-derivation, not a live answer; re-derive anyway, and note the lesson cycle 1 paid for: **RM-368 was free when that cycle started and was minted by a parallel lane while it worked, so re-derive AFTER `git fetch`, never from a pre-fetch tree.**
 
 **That pointer is UNGUARDED and has been stale by six before, which is itself row RM-360.** Never mint from it on faith. Re-derive from the tree every time you file:
 
