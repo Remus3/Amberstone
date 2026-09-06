@@ -24,6 +24,7 @@ guard ships untested: every ordinary request settles the probe slot through
 """
 from __future__ import annotations
 
+import io
 import json
 import logging
 import sys
@@ -169,8 +170,19 @@ class TheHalfOpenProbeSlotIsAlwaysReleased(unittest.TestCase):
 
     def test_probe_slot_released_on_an_ordinary_success(self) -> None:
         c, st = self._client_with_an_elapsed_open_breaker()
+        # `read` takes an optional amount because the real
+        # http.client.HTTPResponse.read does, and the client passes one once
+        # RM-351's byte cap is in force. It must also EXHAUST - a stub that
+        # answers b"ok" forever turns the bounded read into a 16 MiB loop.
+        # Widened 2026-09-06; the observed body is still b"ok".
+        remaining = io.BytesIO(b"ok")
         resp = mock.Mock(
-            read=lambda: b"ok", getheaders=lambda: [], status=200, url=self.url
+            read=lambda amt=None: (
+                remaining.read() if amt is None else remaining.read(amt)
+            ),
+            getheaders=lambda: [],
+            status=200,
+            url=self.url,
         )
         ctx = mock.MagicMock()
         ctx.__enter__ = mock.Mock(return_value=resp)
