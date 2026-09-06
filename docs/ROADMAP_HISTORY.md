@@ -1,5 +1,20 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06i - the RM-348 / RM-349 line, relocated by the LANE 10 RM-360 cycle
+
+ROADMAP.md reached 89.85 percent of its 81920-byte budget once the RM-360
+result and the RM-380 filing were recorded, leaving 122 bytes before the 90
+percent at which `tools/drift_guard.py` warns (`tools/drift_guard.py:57-58`).
+That is not enough for the next cycle to write a single line, so a closed line
+is relocated here rather than left for the next cycle to trip over. Both of its
+rows are SHIPPED outright, which makes it the cheapest honest choice.
+
+One live fact it held is preserved in the pointer that replaces it rather than
+archived with it: **RM-369 is still OPEN** (spawned by RM-348), with its body in
+`BACKLOG.md`.
+
+- **RM-348 and RM-349 SHIPPED 2026-09-06 (LEDGER 1339 / 1340)** - two lines collapsed to this pointer 2026-09-06 at 89.99 pct of budget. Bodies in `docs/ROADMAP_HISTORY.md` (2026-09-06a block). **RM-369 remains OPEN** (spawned by RM-348; body in `BACKLOG.md`).
+
 ## 2026-09-06f - the RM-352 / RM-353 / RM-354 line, relocated by the LANE 10 RM-355 cycle
 
 ROADMAP.md stood at 73672 of its 81920-byte budget (89.93 percent) before this
