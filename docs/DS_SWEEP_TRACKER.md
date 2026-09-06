@@ -69,7 +69,18 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-376** (2026-09-06, superseding the RM-375 pin: RM-375 was minted by
+  Next free id = **RM-377** (2026-09-06, superseding the RM-376 pin: RM-376 was minted by
+  LEDGER 1347, LANE 10 queue cycle 9, off the RM-356 sibling sweep, for
+  `game_reader/snapshot_normalizer.py` - when the operator is not found in `allPlayers` the LIVE
+  snapshot emits `cs: 0`, `kda: "0/0/0"` and `items: []` beside a REAL level, gold and HP, with
+  no early return and no not-found marker, so a consumer cannot tell the collapsed values from
+  measured ones. Filed rather than swept because RM-356's fix was to hoist a query and here
+  there is no value to hoist: choosing between omit / `None` / marker / reject-the-snapshot is a
+  design decision with a consumer census attached. Filed to BACKLOG "Reliability / hardening".
+  Re-derived from the tree after a `git fetch`, not minted from this line on faith: every
+  RM-376 occurrence before this commit was next-free POINTER prose heading no row body and
+  carrying no status marker, and RM-377 had ZERO occurrences anywhere.
+  The superseded RM-376 pin: RM-375 was minted by
   LEDGER 1346, LANE 10 queue cycle 8, off the RM-355 sibling sweep, for the two Perseus vault
   readers (`tools/perseus_sync.py:114-124` and `tools/perseus_recall.py:125-135`) that loop
   forever on any non-JSON line the vault binary writes to stdout - filed rather than swept

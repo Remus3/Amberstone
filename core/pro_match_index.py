@@ -93,6 +93,9 @@ def find_pro_matches(
 
     With ``same_team_only`` (the default) a match is returned only when the pro
     shared the operator's ``team_id`` - "played WITH", not "played against".
+    The flag selects which matches are RETURNED; it never changes what
+    ``same_team`` MEANS. Every emitted row carries the real answer, so the two
+    modes agree on any match they both return.
 
     Never joins on puuid: `participants.puuid` holds two distinct values per
     operator tagline because the API key rotated, and a fresh API puuid will
@@ -101,14 +104,16 @@ def find_pro_matches(
     uri = f"file:{Path(db_path).as_posix()}?mode=ro"
     conn = sqlite3.connect(uri, uri=True)
     try:
-        operator_team: dict[str, int] = {}
-        if same_team_only:
-            rows = conn.execute(
-                "SELECT match_id, team_id FROM participants "
-                "WHERE lower(riot_id_game_name) = ?",
-                (OPERATOR_GAME_NAME.lower(),),
-            )
-            operator_team = {mid: tid for mid, tid in rows}
+        # Loaded in BOTH modes on purpose. `same_team` is emitted on every
+        # returned row, so populating this only under `same_team_only` would
+        # leave the dict empty in the other mode, make `.get(match_id)` return
+        # None, and pin the flag to False on matches the pro genuinely shared.
+        rows = conn.execute(
+            "SELECT match_id, team_id FROM participants "
+            "WHERE lower(riot_id_game_name) = ?",
+            (OPERATOR_GAME_NAME.lower(),),
+        )
+        operator_team: dict[str, int] = {mid: tid for mid, tid in rows}
 
         found: dict[str, list[dict]] = {}
         for pro in roster:
