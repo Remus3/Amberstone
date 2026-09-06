@@ -169,11 +169,33 @@ def test_stop_reason_is_none_when_no_sentinel_exists(tmp_path):
     assert qloop.stop_reason(tmp_path) is None
 
 
-def test_stop_reason_reads_the_GIVEN_control_dir_not_the_live_one(tmp_path):
-    """The live `ops/loop/control/STOP` exists; a hardcoded CONTROL would show."""
-    assert (qloop.CONTROL / "STOP").exists(), (
-        "precondition: this test is only meaningful while the live STOP is there")
-    assert qloop.stop_reason(tmp_path) is None
+def test_stop_reason_reads_the_GIVEN_control_dir_not_the_live_one(
+        tmp_path, monkeypatch):
+    """A hardcoded `CONTROL` would leak the live control plane into a caller's dir.
+
+    HERMETIC ON PURPOSE, and the first cut was not. It asserted as a
+    precondition that the live `ops/loop/control/STOP` existed - true on this
+    box at the time (a stale 2026-07-28 halt) and FALSE everywhere else,
+    including CI, where `ops/loop/control/` is gitignored and ships no
+    sentinels at all. The test would have gone red the moment that file was
+    cleared, which is exactly what happened when the queue lane was first
+    fired. A test may never depend on machine state it does not create:
+    `feedback_verifier_needs_a_frozen_tree` is the same lesson from the other
+    side. The property under test is unchanged - it is now proven by planting
+    a sentinel in a FAKE control dir and asserting a different dir stays clean.
+    """
+    fake_live = tmp_path / "live-control"
+    fake_live.mkdir()
+    (fake_live / "STOP").write_text("halt", encoding="utf-8")
+    monkeypatch.setattr(qloop, "CONTROL", fake_live)
+
+    caller_dir = tmp_path / "caller-control"
+    caller_dir.mkdir()
+    assert qloop.stop_reason(caller_dir) is None, (
+        "stop_reason leaked the module-level CONTROL into a caller's dir")
+    # ...and the fake live dir still answers when it IS the one asked about,
+    # so the assertion above cannot pass by the sentinel simply being unreadable.
+    assert qloop.stop_reason(fake_live) == "STOP"
 
 
 @pytest.mark.parametrize("rel,expected", [
@@ -779,6 +801,32 @@ def test_main_still_returns_zero_when_zero_cycles_were_simply_asked_for(monkeypa
                         {"cycles_run": 0, "stopped_by": "max_cycles", "records": []})
     assert qloop.main(["--cycles", "0"],
                       singleton=contextlib.nullcontext) == qloop.EXIT_OK
+
+
+def test_the_launcher_quotes_the_driver_path_because_the_repo_root_has_a_space():
+    """MEASURED on the first real fire, 2026-09-05.
+
+    `Start-Process -ArgumentList @($driver, ...)` joins with spaces and quotes
+    nothing, so `C:\\Riot Commander\\ops\\loop\\queue_loop.py` reached pythonw as
+    `C:\\Riot` and it died with `can't open file`. Start-Process had already
+    issued a real pid and the launcher had already printed `queue-loop driver
+    started`, so the night would have produced nothing while reporting success -
+    the same silent shape as the DETACHED_PROCESS case in lane_launcher.py.
+
+    Structural, because the .ps1 cannot be imported: the assertion is that the
+    driver path is interpolated INSIDE escaped quotes in the argument list.
+    """
+    text = (lanes.REPO_ROOT / "ops/loop/launch_queue_loop.ps1").read_text(
+        encoding="utf-8")
+
+    arg_lines = [ln for ln in text.splitlines() if "$argList" in ln and "=" in ln]
+    assert arg_lines, "the launcher no longer builds an $argList"
+    built = arg_lines[0]
+    assert '"`"$driver`""' in built, (
+        "the driver path must be quoted in the argument list - the repo root "
+        f"contains a space. Got: {built.strip()}")
+    assert not any(part.strip() == "$driver" for part in built.split(",")), (
+        "a bare $driver element is the measured 2026-09-05 defect")
 
 
 def test_the_launcher_refuses_to_start_over_a_stop_sentinel_unless_forced():
