@@ -119,6 +119,47 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-05 - LANE 8 cycle 48 + LANE 5 refill, HEADLESS (NOT on main - two lane branches ready)
+
+STATE. Lane 8 (`lane/true-audit`) and lane 5 (`lane/research`), both run detached
+with the operator away. LEDGER 1333. ENGINE 1.280.0 unchanged, Tier-1, no
+`:8860` bounce, no Share sync, no `web/` change. **Neither branch is merged** -
+lane 8 ships LAST by the Mission Control plan, and the merge is the merger's.
+
+WHAT LANDED. RM-250: seven `ops/loop/` writers now route through
+`core.polled_json.atomic_write_bytes` (bounded ~275 ms PermissionError retry,
+per-writer scratch name, cleanup on every failure path). 15 tests in
+`tests/test_loop_control_sibling_writers_lane8_cycle48.py`, five distinct
+mutations. RM-343 filed. `docs/DS_SWEEP_TRACKER.md:72` corrected. Lane 5 filed
+20 rows to `docs/_research_refill_2026-09-05.md` (`0d2545c19`, pushed).
+
+THE THREE THINGS WORTH CARRYING FORWARD.
+1. **The filed row was wrong in three separate ways and only measurement found
+   it.** Its acceptance was unshippable as literally written (a plain
+   `core.polled_json` import crashes a controller loaded by absolute file path);
+   its SECOND HALF was already false the day it was filed, fixed hours earlier by
+   cycle 24; and its sibling count was three when the truth was seven. Execute a
+   filed row by re-measuring it, never by following it.
+2. **The lane's own first guard was VACUOUS and the adversarial pass proved it.**
+   `_bind_path` short-circuits on `if modname in sys.modules`, so seeding the
+   bind name with a stub made the test pass while only one of three fallbacks
+   ever executed. A guard that asserts "a name resolved" is not asserting the
+   right file was found. This is why the author never grades its own work.
+3. **AST, not grep, for a structural guard.** A text scan for `os.replace` over
+   `ops/loop` returns TEN hits here and every one is prose - including the
+   comments this cycle wrote explaining the removal.
+
+FOR THE MERGER. Bounce `RC-MissionControl` after merging: nothing in
+`dashboard/`, `app/` or `mc/` imports these modules at import time, Mission
+Control late-binds them, so the running process holds the old code until it
+restarts. Assign research-row ids from **RM-344** upward (cycle 48 consumed
+RM-343); do NOT mint from `docs/DS_SWEEP_TRACKER.md` without re-deriving - it was
+six ids stale this run and is corrected but unguarded. Three RC suite failures
+are INHERITED and proven independent (RM-343 CRLF; two DS-share env failures) -
+do not read them as this branch's regressions.
+
+---
+
 # 2026-09-04i - HEADLESS: RM-291 FULLY closed, and a Settled CLAUDE.md line was wrong (ON MAIN)
 
 STATE. Ninth unit of the day, headless (LEDGER 1332). ENGINE 1.280.0 unchanged,
