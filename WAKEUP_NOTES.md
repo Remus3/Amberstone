@@ -6,6 +6,36 @@
 
 ---
 
+# 2026-09-06e - operator session: repo re-case, 7th port block, slots.py re-pin, token rotation
+
+> Filed as `e`: lane 10 already holds `d` (RM-367) and lane 8 holds `c`, both same day.
+
+On main: `7ebdde80b` (slug), `dcd965f2d` (three queued items). LEDGER 1356.
+Full RC suite 21023 passed / 96 skipped / 0 failed; ruff + hygiene + drift_guard clean.
+DS untouched, so no Share sync.
+
+Four items, and EVERY one had a second half its filing did not name:
+- GitHub repo is now `Remus3/Amberstone`. `gh repo rename` rewrote `origin` in the
+  shared config, so all 6 lane worktrees followed - no per-worktree action needed.
+- Sibling-B owns 8790-8809 (7th block). The real finding: RSC had scaffolded onto
+  **8870, inside DS's 8860-8879**, and it could never have surfaced from a scan - DS
+  binds 8860/8861 only. Pinned by number now. RM's 8770-8789 is HELD, not freed.
+- `ops/loop/slots.py`: **LW authored the bytes, RC followed.** Found by the digest
+  guard going red, not by the note. Copied byte-level (never `write_text` - CRLF),
+  re-pinned to `1c4f8af4...`. RSC vendors last.
+- Vision token rotated + untracked. **The documented procedure was WRONG**: a
+  supervisor restart does NOT re-credential `:8889` (detached child, one-shot
+  self-heal at dashboard startup), so the OLD token still returned 200 after a
+  by-the-book rotation. Fixed + docstring corrected. Also killed the MCP fallback
+  coupling with `tools/mcp_token.txt` (gitignored).
+
+Do NOT redo: all four are shipped. `restart_trigger.txt` alone will NOT rotate `:8889`.
+
+NEXT is RM-383, **not RM-382** - lane 10 minted 382 the same day. Details in the
+next-session prompt; note `tools/rm_id_registry.py` cannot confirm a named id.
+
+---
+
 # 2026-09-06c - LANE 8 true-audit: core/rofl_archive.py, and the verifier caught MY regression
 
 On main: `387a593a2` (code+tests), `4fcf1980b` (LEDGER 1354), `66f167a90`
@@ -99,33 +129,3 @@ before inheriting the row's premise.
 **ROADMAP is at 89.76 pct of budget, 197 bytes below the 90 pct warn.** The
 next cycle should plan to relocate a closed body to `docs/ROADMAP_HISTORY.md`
 rather than expect room for a new line.
-
----
-
-# 2026-09-06b - LANE 10 cycle 15: RM-364 shipped, and it ADOPTED a crashed cycle
-
-RM-364 is on main (`d9e8c5d98` code, `f01918b4b` sha citation). LEDGER 1353.
-The prompt sanitizer had ONE production importer against 17 Anthropic egress
-files; the five ranked ones are now cleaned at prompt ASSEMBLY, and the
-population is pinned by a bidirectional census guard instead of remembered.
-Residue filed as **RM-381 OPEN** (7 builders + the two `_run_coach` sites the
-file-level guard structurally cannot see).
-
-DO NOT REDO / read before touching this area:
-- The fix is at ASSEMBLY, never at `messages.create` - `moon_proxy.get_coaching`
-  is the PRIMARY egress for the TFT builders, so an API-call-side guard is dead
-  code on the live path. This was measured, not assumed.
-- The threat model was CORRECTED by the row's own census: no summoner name,
-  riot ID, chat or queue name reaches any prompt. The unconstrained bytes are
-  Haiku-VISION OCR output - a self-inflicted model-to-model channel.
-- `modes/shared_vision.py` + `tft/tft_vision_reader.py` were REFUTED, not
-  missed: their untrusted input is PIXELS. Do not "fix" them.
-
-**NEW FINDING, worth more than the row:** the pre-commit hook pulled
-`docs/ARCHITECTURE.md` in, and running `tools/gen_archmap.py` reproduced
-**RM-378 live** - it rewrote the whole file as CRLF (343 pairs), reddening
-`tests/test_text_line_endings.py` while `git status` read CLEAN throughout.
-The committed blob was never affected. One datum for **RM-343**, fenced: the
-re-checkout produced LF because `.gitattributes` pins `eol=lf`, overriding
-`core.autocrlf=true` in the shared `.git/config` - so THAT file's CRLF came
-from the generator, not from worktree materialization. One file, not the 1884.
