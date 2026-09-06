@@ -69,7 +69,22 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-380** (2026-09-06). RM-379 was minted by
+  Next free id = **RM-381** (2026-09-06). RM-380 was minted by
+  LEDGER 1351, LANE 10 queue cycle 13, for four more self-declared authoritative
+  doc lines that no code reads - the siblings of THIS line's own drift, turned up by
+  the RM-360 sibling sweep. **This pin is now GUARDED**, which it was not when RM-360
+  was filed: `tests/test_rm_id_registry_drift.py` fails if the id named here is
+  allocated anywhere in a seven-document corpus, and `python tools/rm_id_registry.py`
+  answers the same question on demand before a mint. The guard reads the FIRST pin in
+  this file, so a new pin goes ABOVE the older ones or the guard silently reads a
+  stale id (asserted separately). Allocation was checked with the pointer-vs-allocated
+  predicate before minting: every occurrence of the id above was next-free POINTER
+  prose, heading no row body and carrying no status marker. **Write that sentence
+  WITHOUT repeating the id** - the guard's first live act was to fail on this very
+  note, because a bare id with no pin cue in front of it is exactly what an allocation
+  looks like. That is the guard working, not a false alarm. Filed to BACKLOG
+  "Reliability / hardening".
+  Prior pin, kept for the audit trail: Next free id was **RM-380** (2026-09-06). RM-379 was minted by
   LEDGER 1350, LANE 10 queue cycle 12, for three `scripts/` DDragon downloaders that
   interpolate a wire-supplied `image.full` straight into a filesystem path with no
   validator at all - the adjacent shape to the RM-359 defect, turned up by its sibling
