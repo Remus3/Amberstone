@@ -86,7 +86,18 @@ $errLog = "$Log.err"
 # already returns immediately and leaves the child running independently of this
 # session, so detachment costs nothing extra; -WindowStyle Hidden is the belt to
 # pythonw's braces for any console the child might otherwise be given.
-$argList = @($driver, "--cycles", $Cycles, "--settle", $Settle)
+# The driver path MUST be quoted, and this is not defensive style - MEASURED
+# 2026-09-05 on the first real fire of this launcher. Start-Process joins an
+# -ArgumentList array with spaces and quotes NOTHING, so the repo root's space
+# split the path in two and pythonw got `C:\Riot` as its script argument:
+#
+#   pythonw.exe: can't open file 'C:\Riot': [Errno 2] No such file or directory
+#
+# The failure is silent in the shape that matters - Start-Process still issued
+# a real pid, this script still printed "queue-loop driver started", and the
+# whole night would have produced nothing. Same class as the DETACHED_PROCESS
+# note below: a success banner over a process that did no work.
+$argList = @("`"$driver`"", "--cycles", $Cycles, "--settle", $Settle)
 $proc = Start-Process -FilePath $py -ArgumentList $argList `
                       -WorkingDirectory $repo `
                       -WindowStyle Hidden -PassThru `
