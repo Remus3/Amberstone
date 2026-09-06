@@ -483,7 +483,7 @@ The audit is complete.
 User reviewed the open notes and approved closing all except NOTE-025 (TFT calibration, deferred to user's next TFT session).
 
 ### FIX-022 · Vision token rotated (was NOTE-017)
-- New token: `c3c5e23f13c084cf306a61e1b3248730` (gitignored — `config/vision_token.txt` on Legion, `C:\RC-Agent\vision_token.txt` on Game-PC)
+- New token: `[REDACTED 2026-09-06 - value rotated and dead]` (`config/vision_token.txt` on Legion, `C:\RC-Agent\vision_token.txt` on Game-PC). The original text claimed this path was "gitignored". It was not, and it stayed not for 113 days: `config/vision_token.txt` was TRACKED from the initial commit until 2026-09-06, when it was rotated and untracked in one commit. Recording a secret as gitignored is not the same as gitignoring it - this is the only edit ever made to this archived file, and it was made because the claim in it was false.
 - Restored `_resolve_auth_token()` in Game-PC's `gamepc_lcu_agent.py` and `gamepc_liveclient_relay.py` (cycle-7 rewrites had stripped the resolver — they hardcoded the legacy token)
 - Restarted RC + 4 Game-PC agents. Vision relay (:8889) now requires the new token.
 - **Side-effect (recovered):** the MCP server's auth resolver falls back to `vision_token.txt` after `mcp_token.txt`. After restart, the MCP server adopted the NEW vision token, breaking the MCP client (Legion's Claude Code) which was configured with the OLD bearer. Recovered by writing `mcp_token.txt` with the legacy MCP token (now MCP and vision tokens are explicitly separated).

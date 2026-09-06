@@ -48,6 +48,26 @@ config/rank_tier_source.json
 # a live control-plane credential that can kill processes - no template needed.
 config/mission_control_token.txt
 
+# Vision / relay bearer secret, the X-RC-Token every producer sends to :8889
+# (core/vision_token.py; env RC_VISION_TOKEN takes precedence over this file).
+# Untracked 2026-09-06 - it had been TRACKED and live since the initial commit,
+# which is hygiene rather than an incident because :8889 binds loopback only,
+# verified live. The value in git history is dead: it was rotated in the same
+# commit that untracked it. No template is shipped - core/vision_token.py
+# raises at import when the file is missing, on purpose, so a misconfigured
+# deploy fails loud instead of silently authenticating with a known constant.
+config/vision_token.txt
+
+# MCP bearer for the DS + match-DB server on :8861 (tools/ds_matchdb_mcp_server.py
+# `_resolve_token`, which reads env RC_MCP_TOKEN, then tools/mcp_token.txt, then
+# tools/vision_token.txt, and only then falls through to the canonical vision
+# token). Created 2026-09-06 so that last fallback can never fire: without it,
+# rotating the VISION token silently re-credentials the MCP server too. That
+# exact side-effect is on the record - docs/_archive/2026-05-16-doc-sync/
+# audit-notes.md FIX-022 broke the MCP client that way and recovered by
+# separating the two, and the separation did not survive.
+tools/mcp_token.txt
+
 # Live coaching state (mutates per game - written by main.py atomically)
 coaching_data.json
 data/aram_coaching_data.json

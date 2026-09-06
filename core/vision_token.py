@@ -22,8 +22,32 @@ authenticating every request with a known constant.
      looks in the same relative location next to their scripts).
   4. Restart the supervisor on Legion (``echo x > restart_trigger.txt``)
      + restart the Legion-local relay agents.
-  5. Verify ``get_vision_token_source()`` returns ``"env"`` or
-     ``"config"``.
+  5. **Kill the :8889 listener by PID.** Step 4 is NOT enough on its own -
+     measured 2026-09-06, and it is the step that makes a rotation look
+     done while :8889 still accepts the OLD token. ``vision_server/
+     _config.py`` reads ``AUTH_TOKEN`` once at import, and the process
+     serving :8889 is a DETACHED child (``moon_vision_server.py``, spawned
+     by ``dashboard/server.py``) that SURVIVES a supervisor restart. The
+     dashboard's "self-heal" is a one-shot ``connect_ex`` at startup, so on
+     the next boot it finds :8889 already up and does nothing - the stale
+     token then persists indefinitely. Find the owner with
+     ``Get-NetTCPConnection -LocalPort 8889 -State Listen``, ``taskkill /F
+     /PID <it>``, THEN write restart_trigger.txt again so the startup check
+     misses the port and respawns it on the new token.
+  6. Verify ``get_vision_token_source()`` returns ``"env"`` or
+     ``"config"``, and prove it on the wire: the new token must return 200
+     from ``GET http://127.0.0.1:8889/latest-lcu`` and the OLD one 401.
+     Checking only the resolver proves the FILE changed, not the listener.
+
+## The MCP coupling, which a rotation used to drag along
+
+``tools/ds_matchdb_mcp_server.py`` ``_resolve_token`` ends its chain by
+falling through to ``get_vision_token()``, so before 2026-09-06 rotating
+the vision token silently re-credentialed the :8861 MCP server too. That
+side-effect is on the record twice - ``docs/_archive/2026-05-16-doc-sync/
+audit-notes.md`` FIX-022 hit it, separated the two, and the separation did
+not survive. ``tools/mcp_token.txt`` now exists (gitignored) so the
+fallback can never fire again. If you delete it, the coupling comes back.
 
 Inspection: ``python -c "from core.vision_token import debug; debug()"``
 prints the active source + first/last chars of the token so you can

@@ -139,7 +139,34 @@ class BlockReservationTests(unittest.TestCase):
         self.assertEqual(
             checked, expected, f"expected {expected} pairs across {len(names)} blocks"
         )
-        self.assertEqual(len(names), 6, "a block was added or dropped without review")
+        self.assertEqual(len(names), 7, "a block was added or dropped without review")
+
+    def test_sibling_b_block_is_disjoint_and_8870_stays_daemon_slayer(self):
+        """The second collision this registry caught, and the first it PREVENTED.
+
+        Sibling-B scaffolded its compute engine on 8870 on 2026-09-06 by
+        mirroring Daemon Slayer's 8860 and adding ten - a number wholly inside
+        DS's reserved 8860-8879. Nothing failed and nothing warned, because DS
+        binds 8860 and 8861 only, so a listener scan of 8870 is clean every
+        second of every day. RSC found it by reading THIS file rather than the
+        machine, migrated to 8790, and asked for the seventh block.
+
+        Asserted by NUMBER, like the Sibling-E case below, so a future edit
+        that widens rsc up into the DS block fails here rather than in a live
+        bind months later.
+        """
+        self.assertEqual(set(ports.RSC_BLOCK) & set(ports.DS_BLOCK), set())
+        for port in (8790, 8791, 8809):
+            self.assertEqual(ports.block_for(port), "rsc", f"{port} is Sibling-B's")
+        self.assertEqual(
+            ports.block_for(8870), "ds",
+            "8870 is Daemon Slayer's - this is the number RSC nearly took",
+        )
+        self.assertEqual(
+            ports.block_for(8789), "rm",
+            "RM_BLOCK's end is exclusive, so 8789 is Sibling-C's last port and "
+            "8790 was free for RSC to claim",
+        )
 
     def test_rc_ports_fall_inside_the_rc_block(self):
         for port in (
@@ -203,10 +230,17 @@ class BlockReservationTests(unittest.TestCase):
         8815-8819 are the ports the widening added; if this file is ever
         reverted to the narrow range they would silently read as unassigned
         and become available to hand to somebody else.
+
+        The lower fence CHANGED on 2026-09-06 and the change is the point.
+        8809 used to assert unassigned; it is now Sibling-B's last port, so
+        the fence asserts "rsc" instead - a strictly stronger claim, because it
+        proves both that LL has not grown downward and that the neighbour owns
+        the abutting number. RSC picked 8790-8809 partly BECAUSE 8815-8859
+        abuts an expansion Sibling-D had already announced.
         """
         for port in (8810, 8814, 8815, 8819):
             self.assertEqual(ports.block_for(port), "ll")
-        self.assertIsNone(ports.block_for(8809))
+        self.assertEqual(ports.block_for(8809), "rsc")
         self.assertIsNone(ports.block_for(8820))
 
 
