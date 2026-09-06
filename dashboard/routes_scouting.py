@@ -151,7 +151,13 @@ def _scout_one(puuid: str, now: float) -> dict:
     """Resolve one puuid's rank, cache-first, fail-soft.
 
     A raised exception from the Riot layer fails THIS player to
-    unranked-with-error so the batch always completes.
+    unranked-with-error so the batch always completes. The guard covers
+    the SHAPE as well as the fetch: _shape_rank coerces the League-V4
+    wire fields bare (``int(entry.get("wins") or 0)`` and its losses
+    twin) and calls back into riot_api for pick_solo_rank /
+    format_rank_entry, so a malformed entry raised from there. Callers
+    build the batch with a list comprehension, so an escape cost every
+    OTHER player's rank too, not just this one (RM-349 sibling).
     """
     cached = _cache_get(puuid, now)
     if cached is not None:
@@ -160,11 +166,14 @@ def _scout_one(puuid: str, now: float) -> dict:
         return out
     try:
         entries = riot_api.get_summoner_rank(puuid)
+        shaped = _shape_rank(puuid, entries)
     except Exception as exc:  # noqa: BLE001 - one bad player must not break batch
-        log.warning("api/scouting: rank fetch failed for a player: %s", exc)
+        log.warning("api/scouting: rank resolve failed for a player: %s", exc)
         return _unranked(puuid, error=True)
-    shaped = _shape_rank(puuid, entries)
-    _cache_put(puuid, now, dict(shaped))
+    try:
+        _cache_put(puuid, now, dict(shaped))
+    except Exception as exc:  # noqa: BLE001 - a cache write must not cost a good row
+        log.warning("api/scouting: rank cache write failed for a player: %s", exc)
     return shaped
 
 

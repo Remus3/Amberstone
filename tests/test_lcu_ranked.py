@@ -174,3 +174,95 @@ def test_display_strings_are_ascii():
     for payload in (_solo_payload(), {"queueMap": {}}):
         out = lr.read_ranked_identity(_FakeLcu(payload))
         assert all(ord(c) < 128 for c in out["display"]), repr(out["display"])
+
+
+# -- RM-349: the "Never raises" contract must cover the PARSE too -------
+#
+# read_ranked_identity's docstring promises "Never raises - any unexpected
+# error fails soft to None", but its try/except historically wrapped only
+# lcu._request(...); the parse_ranked_stats call sat outside it. The wire
+# fields are coerced bare (int(entry.get("wins") or 0) and siblings), and
+# the "or 0" absorbs null but NOT a type change - int("N/A") raises
+# ValueError, int({}) raises TypeError.
+#
+# Blast radius that makes this worth a guard: the sole consumer,
+# dashboard/builders_home.py:214, assigns out["rank"] BEFORE the try that
+# opens at :219, so a raise here escapes _build_home_summary entirely and
+# the whole home payload fails rather than degrading to the graceful
+# unranked placeholder that :393-397 exists to supply.
+
+
+def _bad_solo_payload(**overrides):
+    """A well-formed ranked payload with wire fields overridden to hostile
+    types - the shape a client build / schema change can hand us."""
+    entry = {
+        "queueType": "RANKED_SOLO_5x5",
+        "tier": "PLATINUM",
+        "division": "II",
+        "leaguePoints": 47,
+        "wins": 1,
+        "losses": 1,
+        "isProvisional": False,
+    }
+    entry.update(overrides)
+    return {"queueMap": {"RANKED_SOLO_5x5": entry}}
+
+
+def test_non_numeric_league_points_fails_soft_to_none():
+    """RM-349 acceptance: a str leaguePoints must not escape as ValueError."""
+    assert lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(leaguePoints="N/A"))) is None
+
+
+def test_non_numeric_wins_fails_soft_to_none():
+    """Sibling coercion at the same shape - int() on a dict raises TypeError.
+
+    Deliberately a NON-EMPTY dict. The filed row cited ``int({})``, but that
+    value never reaches the coercion: ``or 0`` short-circuits every FALSY
+    input, so ``{}``, ``[]`` and ``""`` are absorbed into 0 and are safe.
+    Only a TRUTHY non-numeric gets through, which is the real reachable set.
+    """
+    assert lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(wins={"count": 1}))) is None
+
+
+def test_falsy_wire_values_are_absorbed_not_raised():
+    """The other half of that boundary, pinned so a future 'hardening' pass
+    does not mistake the ``or 0`` fallback for a bug and remove it."""
+    for value in ({}, [], "", None, 0):
+        out = lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(wins=value)))
+        assert out is not None, repr(value)
+        assert out["wins"] == 0, repr(value)
+
+
+def test_non_numeric_losses_fails_soft_to_none():
+    """Third bare coercion in the same parse - a list is not int-able."""
+    assert lr.read_ranked_identity(_FakeLcu(_bad_solo_payload(losses=["3"]))) is None
+
+
+def test_read_never_raises_for_any_hostile_wire_type():
+    """The docstring's promise, asserted as a contract rather than per-case.
+
+    Covers the float-guard trap (a try/float()/except (TypeError, ValueError)
+    is defeated by NaN/Infinity, and int(inf) raises OverflowError, which a
+    narrow two-exception handler would miss) - so the guard must be broad.
+    """
+    hostile = ("N/A", {}, ["3"], object(), float("nan"), float("inf"), "12.5")
+    for field in ("leaguePoints", "wins", "losses"):
+        for value in hostile:
+            payload = _bad_solo_payload(**{field: value})
+            out = lr.read_ranked_identity(_FakeLcu(payload))
+            assert out is None or isinstance(out, dict), (field, repr(value))
+
+
+def test_home_rank_payload_survives_a_hostile_ranked_entry():
+    """The consumer contract this guard actually protects.
+
+    dashboard/builders_home.py:393-397 maps a None read to the graceful
+    unranked placeholder. Asserted here because the raise escaped the home
+    builder's own try, so the failure was the whole payload, not one field.
+    """
+    from dashboard import builders_home
+
+    out = builders_home._home_rank_identity(_FakeLcu(_bad_solo_payload(leaguePoints="N/A")))
+    assert isinstance(out, dict)
+    assert out["ranked"] is False
+    assert out["display"] == "Unranked"

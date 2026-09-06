@@ -2802,3 +2802,16 @@ exists in this file, `docs/LEDGER.md` or `BACKLOG.md` was removed. No RM id was 
 - **RM-26 vision seeds - ONE thing is open: VALIDATING the anchor model, and it is blocked on an input this machine cannot produce.** Everything else shipped: the tier-2 `resolution_seed` resolver (2026-07-24 `7d947f11`), the `core/vision_tesseract.py` consumer fix + crop-rect guard (LEDGER 1227), the scale-by-height + per-region anchor model `derive_anchored_regions` / `REGION_ANCHORS` DEFAULT-OFF (LEDGER 1229), and the calibrator page (LEDGER 1230). **Do NOT re-open any of those, and do NOT 'fix' seed reachability again - it is reachable and moves 0 of 21 crop rects.** **The blocker, stated precisely so nobody re-measures the wrong thing: at a MATCHING aspect the width ratio equals the height ratio, so left / center / right / top / bottom anchoring all yield the BYTE-IDENTICAL box.** 16:9 therefore cannot discriminate between anchor classes - that, not accuracy, is why the 16:9 error measured exactly 0.00x, and it means no 2560x1440 still can confirm or refute a single row of `REGION_ANCHORS`. **Needed: ONE native full-screen 21:9 or 32:9 capture.** `ingest_reference_from_path` already accepts it, so the frame is the whole remaining gap. Until then the model stays DEFAULT-OFF and `seed_profiles()` keeps no anchor knob (a seed on disk is promotable to a calibration). Measured delta if adopted: 0 of 21 boxes change at 2560x1440, 21 of 21 at every ultrawide, worst 492px at 5120x1440. Second finding, already pinned: under scale-by-height the top/bottom axis is arithmetically INERT (bottom anchoring reduces to top anchoring) - it is kept for intent, not because it moves a pixel.
 ```
 
+## 2026-09-06 - ROADMAP relocation pass (LANE 10 queue cycle 2, LEDGER 1340)
+
+Relocated verbatim when `ROADMAP.md` reached 90.6 pct of its 81920-byte budget
+(`tools/drift_guard.py:57-58` warns at 90.0), the same trigger and the same
+treatment as the 2026-09-05 block above. The family below is FULLY CLOSED -
+every id in it is SHIPPED or CLOSED, so nothing open was buried. Note the
+relocated line contradicts itself on RM-322: its opening clause says "still
+OPEN" and a later clause says "RM-322 SHIPPED 2026-09-04 (LEDGER 1328)". The
+later clause is the true one; the stale opening is preserved here verbatim
+rather than silently corrected, because that is what relocation means.
+
+- **RM-322 .. RM-328: RM-326 / RM-327 / RM-328 SHIPPED 2026-09-04 (LEDGER 1324); RM-323 / RM-324 / RM-325 CLOSED 2026-09-01 (LEDGER 1317, ENGINE 1.279.0); RM-322 still OPEN (filed 2026-09-01, lane 5 refill; bodies + acceptance in `BACKLOG.md`)** - RM-322 SHIPPED 2026-09-04 (LEDGER 1328) - test-scope table re-measured, the CI-unrun set split out, tree list guarded; RM-326/327/328 dashboard UI, asset-only (LANE 4, Tier-1). **All three closed specs were CORRECTED by measurement before any code was written** - the correction detail is relocated 2026-09-02 to `docs/ROADMAP_HISTORY.md`; READ IT before re-filing a spec in this family. Same run: RM-314 constructor census corrected 12 -> 17, RM-294 LANE-7 half downgraded (superseded by RM-170).
+

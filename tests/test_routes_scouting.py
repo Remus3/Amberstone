@@ -219,3 +219,101 @@ def test_display_strings_ascii():
         _post(handler, {"puuids": ["puuid-a", "puuid-c"]})
     for p in handler.sent[1]["players"]:
         assert all(ord(c) < 128 for c in p["display"]), repr(p["display"])
+
+
+# -- RM-349 sibling: the guard must cover the SHAPE, not just the fetch --
+#
+# _scout_one promises "A raised exception from the Riot layer fails THIS
+# player to unranked-with-error so the batch always completes", but its
+# try wrapped only riot_api.get_summoner_rank(...). _shape_rank(...) and
+# _cache_put(...) ran after it, and _shape_rank coerces the League-V4
+# wire fields bare - int(entry.get("wins") or 0) and its losses twin -
+# the same expressions as the core/lcu_ranked.py anchor. ("or 0" absorbs
+# every FALSY value, so only a TRUTHY non-numeric is reachable; lp is
+# already isinstance-guarded here and is NOT part of this defect.)
+#
+# The promise is what breaks: _serve_scouting builds players via a list
+# comprehension, so one bad player escapes to the outer handler and the
+# response degrades to a 500 with "players": [] - every OTHER player's
+# rank lost to one malformed entry.
+
+
+def _entry(**overrides):
+    entry = {"queueType": "RANKED_SOLO_5x5", "tier": "DIAMOND",
+             "rank": "IV", "leaguePoints": 12, "wins": 40, "losses": 35}
+    entry.update(overrides)
+    return [entry]
+
+
+def test_malformed_wins_does_not_break_the_batch():
+    """RM-349 sibling acceptance: a hostile wins value fails ONE player."""
+    handler = _FakeHandler("/api/scouting")
+
+    def _hostile(puuid, region="na1"):
+        if puuid == "puuid-b":
+            return _entry(wins={"count": 40})
+        return _RANKS.get(puuid)
+
+    with mock.patch.object(rs.riot_api, "get_summoner_rank",
+                           side_effect=_hostile), \
+         mock.patch.object(rs.riot_api, "is_configured", return_value=True):
+        code, payload = _post(handler, {"puuids": ["puuid-a", "puuid-b"]})
+
+    assert code == 200
+    by_puuid = {p["puuid"]: p for p in payload["players"]}
+    # The whole point: puuid-a survives puuid-b being malformed.
+    assert by_puuid["puuid-a"]["ranked"] is True
+    assert by_puuid["puuid-b"]["ranked"] is False
+    assert by_puuid["puuid-b"].get("error") is True
+
+
+def test_malformed_losses_does_not_break_the_batch():
+    """The sibling coercion one line down from wins."""
+    handler = _FakeHandler("/api/scouting")
+
+    def _hostile(puuid, region="na1"):
+        return _entry(losses=["35"]) if puuid == "puuid-b" else _RANKS.get(puuid)
+
+    with mock.patch.object(rs.riot_api, "get_summoner_rank",
+                           side_effect=_hostile), \
+         mock.patch.object(rs.riot_api, "is_configured", return_value=True):
+        code, payload = _post(handler, {"puuids": ["puuid-a", "puuid-b"]})
+
+    assert code == 200
+    by_puuid = {p["puuid"]: p for p in payload["players"]}
+    assert by_puuid["puuid-a"]["ranked"] is True
+    assert by_puuid["puuid-b"].get("error") is True
+
+
+def test_raising_riot_helper_outside_the_fetch_is_caught():
+    """pick_solo_rank and format_rank_entry are called by _shape_rank, i.e.
+    outside the fetch. A raise from either must degrade one player too."""
+    handler = _FakeHandler("/api/scouting")
+
+    with mock.patch.object(rs.riot_api, "get_summoner_rank",
+                           side_effect=_fake_get_summoner_rank), \
+         mock.patch.object(rs.riot_api, "format_rank_entry",
+                           side_effect=RuntimeError("formatter blew up")), \
+         mock.patch.object(rs.riot_api, "is_configured", return_value=True):
+        code, payload = _post(handler, {"puuids": ["puuid-a"]})
+
+    assert code == 200
+    assert payload["players"][0].get("error") is True
+
+
+def test_malformed_player_is_not_cached_as_a_good_row():
+    """_cache_put also sat outside the guard. A degraded row must not be
+    written to the cache as though it were a clean read."""
+    handler = _FakeHandler("/api/scouting")
+
+    def _hostile(puuid, region="na1"):
+        return _entry(wins={"count": 1})
+
+    with mock.patch.object(rs.riot_api, "get_summoner_rank",
+                           side_effect=_hostile) as fetch, \
+         mock.patch.object(rs.riot_api, "is_configured", return_value=True):
+        _post(handler, {"puuids": ["puuid-b"]})
+        first_calls = fetch.call_count
+        _post(_FakeHandler("/api/scouting"), {"puuids": ["puuid-b"]})
+        # A poisoned row must not be served from cache on the next request.
+        assert fetch.call_count > first_calls
