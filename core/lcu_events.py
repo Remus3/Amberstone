@@ -45,6 +45,7 @@ import json
 import logging
 import os
 import ssl
+import time
 from typing import Any, Callable
 
 _log = logging.getLogger(__name__)
@@ -57,6 +58,13 @@ _WAMP_SUBSCRIBE = 5
 _WAMP_EVENT = 8
 
 DEFAULT_BACKOFF_SECONDS = (1.0, 2.0, 5.0, 10.0, 30.0)
+
+# A connection has to SURVIVE this long before the backoff ladder counts as
+# recovered. Resetting the moment the handshake completes means a socket that
+# connects and immediately closes - client shutting down, credentials rotated
+# mid-session - reconnects at the 1.0s floor forever and never reaches the
+# 30.0s cap above, hammering a client that is trying to exit.
+STABLE_SESSION_SECONDS = 30.0
 
 
 def endpoint_topic(uri: str) -> str:
@@ -258,6 +266,7 @@ class LcuEventBus:
 
         attempt = 0
         while not self._stop.is_set():
+            connected_at: float | None = None
             try:
                 url = f"wss://{self._host}:{self._port}/"
                 async with websockets.connect(
@@ -266,7 +275,7 @@ class LcuEventBus:
                     additional_headers={"Authorization": self._auth_header()},
                     ping_interval=None,
                 ) as socket:
-                    attempt = 0
+                    connected_at = time.monotonic()
                     await socket.send(json.dumps([_WAMP_SUBSCRIBE, WAMP_TOPIC]))
                     self.registry.rearm()
                     _log.info("LCU event bus connected on port %d", self._port)
@@ -280,6 +289,15 @@ class LcuEventBus:
             self.registry.bump_generation()
             if self._stop.is_set():
                 return
+            # Only a session that actually LASTED earns a return to the floor.
+            # A handshake proves the port answered, not that the connection is
+            # usable, so resetting on connect alone pins a flapping socket at
+            # 1.0s forever (RM-348).
+            if (
+                connected_at is not None
+                and time.monotonic() - connected_at >= STABLE_SESSION_SECONDS
+            ):
+                attempt = 0
             delay = DEFAULT_BACKOFF_SECONDS[
                 min(attempt, len(DEFAULT_BACKOFF_SECONDS) - 1)
             ]
@@ -290,12 +308,41 @@ class LcuEventBus:
                 pass
 
     async def _read_loop(self, socket: Any) -> None:
-        async for raw in socket:
-            if self._stop.is_set():
-                return
-            uri, payload = self._parse_event(raw)
-            if uri is not None:
-                self.registry.dispatch(uri, payload)
+        """Dispatch frames until the socket ends or ``stop()`` is called.
+
+        The read is RACED against the stop event instead of driven by a plain
+        ``async for``. A quiet LCU - the normal state at the client home
+        screen - pushes nothing for minutes at a time, and ``ping_interval``
+        is None on the connect above, so no keepalive wakes the iterator
+        either. A stop check that only runs after a frame arrives therefore
+        never runs at all on an idle socket: ``stop()`` would set the flag,
+        this task would stay parked in the read, and RC shutdown would hang on
+        it while the ``wss://`` socket stayed open (RM-348).
+        """
+        stop_wait = asyncio.ensure_future(self._stop.wait())
+        frames = socket.__aiter__()
+        try:
+            while not self._stop.is_set():
+                read = asyncio.ensure_future(frames.__anext__())
+                done, _pending = await asyncio.wait(
+                    (read, stop_wait), return_when=asyncio.FIRST_COMPLETED
+                )
+                if read not in done:
+                    # Stop won the race. Cancelling the pending read lets the
+                    # caller's ``async with`` close the socket immediately.
+                    read.cancel()
+                    return
+                try:
+                    raw = read.result()
+                except StopAsyncIteration:
+                    return
+                if self._stop.is_set():
+                    return
+                uri, payload = self._parse_event(raw)
+                if uri is not None:
+                    self.registry.dispatch(uri, payload)
+        finally:
+            stop_wait.cancel()
 
     @staticmethod
     def _parse_event(raw: Any) -> tuple[str | None, Any]:
