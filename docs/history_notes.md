@@ -119,6 +119,69 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-05e - ROW EXECUTION: RM-347 shipped, gate caught two false rationale lines
+
+STATE. LEDGER 1337. One row, inline TDD, `be7747fcb` on `main` (single production
+file + single test file, so there were no disjoint slices to parallelize; the
+adversarial property was preserved with a read-only `verifier` against the
+finished tree). Suites measured on the committed tree: `pytest tests -n 8`
+**20697 passed / 96 skipped / 4859 subtests / exit 0** (baseline 20673, so +24 =
+exactly the new file); `pytest agents/daemon_slayer -n 8` **10856 passed / 13662
+subtests / exit 0**, unchanged. No `ENGINE_VERSION` bump, no `:8860` bounce, no
+Share sync, no frozen file. Next free id **RM-368** - RM-367 was minted.
+
+WHAT SHIPPED. `lcu/lcu_pregame.py` `get_gameflow_phase` returned the string
+`"None"` from all three bail-outs (bare `except`, no cached port/auth, non-str
+non-None body), and `"None"` is a REAL phase - the LCU's idle-at-home-screen
+value. Failure is now Python `None`; genuine phases including `"None"` still
+return strings. New `_phase_or_none` unwraps LCU JSON quoting on both paths and
+rejects an empty body.
+
+FOUR THINGS WORTH CARRYING FORWARD.
+
+1. **A test-only MIRROR is not the consumer.** Filing RM-367 nearly cited
+   `dashboard/view_router_state.py` as the code a naive fix would break. It has
+   the right three `not phase` arms and reads exactly like the router - and its
+   own docstring at `:1-7` says it is NOT imported at runtime. The live arms are
+   `web/js/main.js:711` and `:728`. Sibling of
+   `feedback_scan_is_not_a_reachability_probe`: a faithful mirror of live logic
+   can still be zero-consumer code.
+
+2. **Two existing conventions means "be consistent" settles nothing.** This
+   failure class already had `""` (`lcu_postgame_collector.py:1034`) AND
+   `"Unknown"` (`snapshot_shape.py:415-421`) in-tree. The sentinel was picked
+   from the CONSUMER contract instead - `dashboard/_cs_retention.py:49-56`
+   treats the string `"None"` as a clear phase and Python `None` as "unknown, do
+   not act".
+
+3. **A realism pin is not a breadth pin.** A test justified itself by claiming
+   `HTTPError` is not an `OSError` subclass, so the handler could not be a narrow
+   `except OSError`. The gate measured the MRO: HTTPError -> URLError ->
+   **OSError**. False, and the test proved less than it claimed. Relabelled, and
+   a real `ValueError` case now carries the breadth claim.
+
+4. **Zero-caller rows again, second day running.** `get_gameflow_phase` has no
+   in-repo caller, so the row's "caller-side assertion" acceptance clause was met
+   with consumer-contract tests that SAY they are not caller tests. RM-346 hit
+   the same shape yesterday. When a row asserts a call path, re-derive it.
+
+FILED, NOT FIXED. **RM-367** - `snapshot_shape.py:415-421` reports an empty
+gameflow body as phase `""`, same class, and this reader IS live behind
+`/api/state.lcu`. The one-line consistency fix to `"Unknown"` is a regression: a
+falsy phase is load-bearing at `web/js/main.js:711`/`:728`, and `"Unknown"` is
+truthy and matches no explicit arm. Body + acceptance in `BACKLOG.md`.
+
+HOUSEKEEPING. ROADMAP hit 90.4 pct (`tools/drift_guard.py` warns at 90), so the
+closed RM-346 / RM-362 line was relocated verbatim to
+`docs/ROADMAP_HISTORY.md` (2026-09-05b) in the same commit; back to 89.5 pct.
+The RM-344/345/361 line was left alone on purpose - RM-345 is SHIPPED-PARTIAL
+with RM-366 open on the same line, the mixed state the convention excludes.
+
+STILL GATED. **RM-366** needs operator approval - it edits the FROZEN
+`lcu/lcu_client.py`. Until then a faulting LCU POST is still sent twice.
+
+---
+
 # 2026-09-05d - ROW EXECUTION: RM-346 / RM-362 shipped, gate refuted the MERGER this time
 
 STATE. LEDGER 1336. Two worktree slices merged `--no-ff` with zero conflicts
