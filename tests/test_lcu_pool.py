@@ -3,7 +3,9 @@
 
 Deterministic: a FakeConnection stands in for http.client.HTTPSConnection so
 no real sockets are opened. Covers reuse, reconnect-on-drop, fail-soft, the
-RC_LCU_POOL default-OFF gate, and the shared min-interval rate floor.
+RC_LCU_POOL gate (DEFAULT-ON since the E7 flip 2026-06-30 - see
+test_default_on; explicit RC_LCU_POOL=0 is the only way off), and the shared
+min-interval rate floor.
 """
 import os
 import unittest
