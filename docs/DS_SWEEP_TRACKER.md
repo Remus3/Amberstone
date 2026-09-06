@@ -70,7 +70,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
   Next free id = **RM-383** (2026-09-06). RM-382 was minted by
-  LEDGER 1354, LANE 10 queue cycle 16, for the RM-367 sibling sweep: two
+  LEDGER 1355, LANE 10 queue cycle 16, for the RM-367 sibling sweep: two
   TRUTHY non-phase sentinels (`"Unknown"` at `lcu/snapshot_shape.py:440`,
   `"Offline"` at `tools/lcu_agent.py:330`) reach `/api/state.lcu.phase` and
   each disarms the two `web/js/main.js` arms that recover a lost sticky from a
