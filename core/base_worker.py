@@ -19,10 +19,45 @@ all of these. TftWorker adds `shutdown()` - kept on the subclass.
 from __future__ import annotations
 
 import logging
+import math
 import threading
+import time
 from typing import Any, Dict, Optional
 
 _log = logging.getLogger("rc.base_worker")
+
+# A pulse read fractionally before ours can never be ahead of ours by more than
+# scheduling noise, so anything further in the "future" than this did not come
+# from this process's monotonic clock.
+_PULSE_FUTURE_SLACK_S: float = 1.0
+
+
+def _sanitise_pulse(value: Any) -> float:
+    """Coerce a pulse timestamp, degrading anything not from `time.monotonic()`
+    to 0.0 - which every consumer already reads as "never pulsed".
+
+    RM-357: this class's contract used to instruct `time.time()` while
+    HealthMonitor differences pulse_ts against `time.monotonic()`. A subclass
+    written to that contract produced a worker_age near -1.7e9, which passes
+    the `worker_age < 12.0` liveness gate forever - a dead worker reported
+    alive, the exact inversion of what the pulse exists to detect. Failing to
+    0.0 inverts that the safe way: a wrongly-clocked worker reads NOT alive.
+    """
+    try:
+        stamp = float(value)
+    except (TypeError, ValueError):
+        stamp = math.nan
+    if not math.isfinite(stamp) or stamp < 0.0:
+        _log.warning("discarding non-monotonic pulse timestamp %r", value)
+        return 0.0
+    if stamp > time.monotonic() + _PULSE_FUTURE_SLACK_S:
+        _log.warning(
+            "discarding pulse timestamp %r - not from time.monotonic() "
+            "(wall-clock epoch?); see RM-357",
+            value,
+        )
+        return 0.0
+    return stamp
 
 
 class BaseCoachWorker:
@@ -31,8 +66,13 @@ class BaseCoachWorker:
     Subclass contract:
       * implement `_run(self, my_gen: int) -> None` - the poll loop. Read
         `self._stop_event.is_set()` to exit cleanly. Set
-        `self.pulse_ts = time.time()` on each iteration so HealthMonitor
-        sees liveness; set `self.last_success_ts` on a successful read.
+        `self.pulse_ts = time.monotonic()` on each iteration so HealthMonitor
+        sees liveness; set `self.last_success_ts = time.monotonic()` on a
+        successful read. Both are MONOTONIC, not wall-clock: HealthMonitor
+        differences pulse_ts against `time.monotonic()`, so a wall-clock
+        stamp would make the age negative and pin the liveness gate open
+        (RM-357). A stamp that cannot have come from that clock is discarded
+        and read as "never pulsed".
       * generation safety: receive `my_gen` and exit when
         `my_gen != self._generation` (a newer start() has superseded you).
     """
@@ -46,9 +86,20 @@ class BaseCoachWorker:
         self._stop_event = threading.Event()
         self._generation: int = 0
         self._thread: Optional[threading.Thread] = None
-        # Float writes are GIL-atomic on CPython - no lock needed.
-        self.pulse_ts: float = 0.0
+        # Single-slot float writes stay GIL-atomic on CPython - no lock needed.
+        # pulse_ts goes through a property (see below) whose setter is still a
+        # single store to _pulse_ts, so the reader cannot observe a torn value.
+        self._pulse_ts: float = 0.0
         self.last_success_ts: float = 0.0
+
+    @property
+    def pulse_ts(self) -> float:
+        """Monotonic liveness stamp, read by HealthMonitor."""
+        return self._pulse_ts
+
+    @pulse_ts.setter
+    def pulse_ts(self, value: Any) -> None:
+        self._pulse_ts = _sanitise_pulse(value)
 
     # -- Public lifecycle --------------------------------------------------
 

@@ -69,7 +69,20 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-377** (2026-09-06, superseding the RM-376 pin: RM-376 was minted by
+  Next free id = **RM-378** (2026-09-06). RM-377 was minted by
+  LEDGER 1348, LANE 10 queue cycle 10, off the RM-357 root-cause probe, for
+  `core/base_worker.py` - `health_pulse()` has ZERO callers in the whole tree, so every
+  field RM-198 wants to add to it would ship INERT; the frozen consumer reads the raw
+  `pulse_ts` / `last_success_ts` attributes instead and builds its own key shape. Filed to
+  BACKLOG "Reliability / hardening" as a FENCE on RM-198, not a duplicate of it.
+  Re-derived from the tree after a `git fetch`, not minted from this line on faith: RM-378
+  has ZERO occurrences anywhere (`git grep "RM-378" HEAD` exits 1), and all SEVEN RM-377
+  occurrences before this commit, across FOUR files (`ROADMAP.md:55`, this file at `:72,82,92`,
+  `docs/LEDGER.md:67`, `docs/ROADMAP_HISTORY.md:32,37`), were next-free POINTER prose heading
+  no row body and carrying no status marker. That census read "five, in two files" until an
+  adversarial pass re-derived it - it had omitted `ROADMAP.md` and `docs/LEDGER.md`. The
+  verdict was unchanged, but do not cite a census here without re-running it over ALL md files.
+  The superseded RM-377 pin: RM-376 was minted by
   LEDGER 1347, LANE 10 queue cycle 9, off the RM-356 sibling sweep, for
   `game_reader/snapshot_normalizer.py` - when the operator is not found in `allPlayers` the LIVE
   snapshot emits `cs: 0`, `kda: "0/0/0"` and `items: []` beside a REAL level, gold and HP, with
