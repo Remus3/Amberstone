@@ -101,10 +101,20 @@ def _prose_blocks(path):
     """Yield (first_lineno, text) for every comment run and string literal.
 
     Consecutive comment lines are joined into ONE block so a claim split
-    across lines is still seen whole - the live stale comments spell
-    "DEFAULT-OFF (RC_LCU_POOL)" on one line and the rest on the next. String
-    literals are already single tokens, which is how a module docstring
-    carrying the flag name and the claim in different sentences is caught.
+    across lines is still seen whole.
+
+    HONEST SCOPE, corrected by the RM-358 verifier gate: grouping is NOT what
+    caught the three shipped defects. All three spelled the flag name and the
+    claim on a SINGLE line, so a line-at-a-time scan would have found the same
+    three, and a whole-file scan would have found the same three files without
+    the false positive an earlier draft of this comment claimed for it. The
+    grouping is prophylactic - it covers the paraphrase where "RC_LCU_POOL"
+    ends one comment line and "is default-off" begins the next - and it is
+    cheap, but do not let this docstring tell you it was load-bearing.
+
+    String literals are already single tokens, and THAT is doing real work
+    here: tests/test_lcu_pool.py:6 carried the flag name and the claim in
+    different sentences of one module docstring.
     """
     source = path.read_text(encoding="utf-8", errors="replace")
     blocks = []
