@@ -449,5 +449,80 @@ class TestPrune(unittest.TestCase):
         self.assertEqual(WP.check(keep=3), 1)
 
 
+class TestKeepCountIsBounded(unittest.TestCase):
+    """RM-363 sibling sweep. The third instance of the same root cause.
+
+    `--keep` is `type=int` with no range, and the only test on it is the
+    early-out `if len(sessions) <= keep`, which any non-positive value sails
+    straight through. At `keep=0` the split is `sessions[:0]` / `sessions[0:]`,
+    so EVERY session including the current one is relocated and
+    `WAKEUP_NOTES.md` is rewritten down to its header. At `keep=-1` the knob
+    inverts: it keeps all but the oldest and archives that one instead.
+
+    Lower severity than the two rmtree siblings - the displaced blocks are
+    written to `docs/history_notes.md`, so nothing is unlinked and the
+    content survives - but it still empties the live hand-off ledger, which
+    `CLAUDE.md` makes the session-to-session continuity record.
+    """
+
+    def setUp(self):
+        import tempfile
+        self.tmp = Path(tempfile.mkdtemp(prefix="rc_wakeup_keep_"))
+        self._orig_wakeup = WP.WAKEUP
+        self._orig_archive = WP.ARCHIVE
+        WP.WAKEUP = self.tmp / "WAKEUP_NOTES.md"
+        WP.ARCHIVE = self.tmp / "docs" / "history_notes.md"
+        WP.WAKEUP.write_text(
+            _doc([_session("s150"), _session("s149"), _session("s148"),
+                  _session("s147")]),
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        WP.WAKEUP = self._orig_wakeup
+        WP.ARCHIVE = self._orig_archive
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _sessions_left(self) -> int:
+        _, sessions = WP.split_sessions(
+            WP.WAKEUP.read_text(encoding="utf-8"))
+        return len(sessions)
+
+    def test_keep_zero_is_refused_and_the_ledger_is_untouched(self):
+        before = WP.WAKEUP.read_text(encoding="utf-8")
+
+        rc = WP.prune(keep=0, dry_run=False)
+
+        self.assertEqual(rc, 2)
+        self.assertEqual(WP.WAKEUP.read_text(encoding="utf-8"), before,
+                         "a keep-zero prune rewrote WAKEUP_NOTES")
+        self.assertEqual(self._sessions_left(), 4)
+
+    def test_negative_keep_is_refused(self):
+        rc = WP.prune(keep=-1, dry_run=False)
+
+        self.assertEqual(rc, 2)
+        self.assertEqual(self._sessions_left(), 4)
+
+    def test_check_mode_refuses_the_same_value(self):
+        """`--check` takes the same knob down a second path and writes
+        nothing, but it must not report a bad policy as a clean tree."""
+        self.assertEqual(WP.check(keep=0), 2)
+
+    def test_keep_one_still_prunes(self):
+        """Anti-vacuity: the smallest legal value must still do its job."""
+        rc = WP.prune(keep=1, dry_run=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(self._sessions_left(), 1)
+
+    def test_the_shipped_default_still_prunes(self):
+        rc = WP.prune(keep=3, dry_run=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(self._sessions_left(), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

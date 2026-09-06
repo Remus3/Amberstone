@@ -87,6 +87,17 @@ never rename. `tests/test_data_retention.py` pins that with a before/after
 tree comparison so a later edit cannot quietly turn the report into a
 delete.
 
+POLICY RANGE GATE (RM-363)
+--------------------------
+Every cap here feeds a `>` comparison, so at 0 or below the predicate
+INVERTS: the knob that exists to bound the corpus marks everything it can
+reach eligible instead. `plan` therefore raises ValueError on any cap
+below 1, before it touches the filesystem - the same shape RM-161 closed
+in three sibling retention knobs (LEDGER 1201). `keep_patches` is the one
+knob that is FLOORED rather than rejected, because returning the newest
+generation is a contract bug in `_superseded_patch_dirs` at any keep
+value, not merely a bad input; see the comment there.
+
 `apply` exists so the policy has an enforcement arm, but it is inert by
 construction and NOTHING in RC calls it: it refuses unless handed
 CONFIRM_TOKEN, it refuses every class whose verdict is not
@@ -375,7 +386,16 @@ def _superseded_patch_dirs(root: Path, keep_patches: int) -> list[Path]:
     superseded: list[Path] = []
     for _parent, dirs in groups.items():
         ordered = sorted(dirs, key=lambda p: _version_key(p.name), reverse=True)
-        superseded.extend(ordered[max(0, keep_patches):])
+        # RM-363: floor at 1, not 0. "Superseded" is defined by this
+        # function's own docstring as "a newer sibling supersedes it", and
+        # the newest generation has no newer sibling - so returning it is
+        # wrong at ANY keep value, not merely at a bad one. `max(0, ...)`
+        # made ordered[0:] the WHOLE list, which handed the current live
+        # generation (data/daemon_slayer/<current patch>) to a report that
+        # recommends deletion. Floored rather than rejected because a
+        # caller asking to keep as little as possible has a coherent
+        # intent; asking to delete the generation in use does not.
+        superseded.extend(ordered[max(1, keep_patches):])
     return superseded
 
 
@@ -439,6 +459,27 @@ def scan(
 # -- policy --------------------------------------------------------------
 
 
+def _validate_policy(**caps: int) -> None:
+    """Refuse a cap that can only mean "everything". RM-363, RM-161 shape.
+
+    Runs BEFORE any filesystem work, deliberately: scan() early-returns on
+    a missing root, and a range check sitting after that would let a
+    caller point a destructive policy at an absent path and be told
+    nothing was wrong.
+
+    Each cap is reported by NAME so a caller with several knobs is told
+    which one it got wrong, and every offending cap is named in one pass
+    rather than one per round trip.
+    """
+    bad = [f"{name}={value!r}" for name, value in caps.items() if value < 1]
+    if bad:
+        raise ValueError(
+            "retention cap below 1 erases everything it can reach: "
+            + ", ".join(sorted(bad))
+            + " (a cap bounds a corpus; it is not a delete-all switch)"
+        )
+
+
 def plan(
     data_dir: Path | str,
     *,
@@ -452,7 +493,19 @@ def plan(
 
     Eligibility is per class and never implies permission; permission is
     the class VERDICT, and only VERDICT_AUTO_ELIGIBLE grants any.
+
+    Raises ValueError on a cap below 1 (RM-363). Every cap here feeds a
+    `>` comparison, so at 0 or below the predicate inverts and EVERY
+    record it can reach becomes eligible - the knob that exists to bound
+    the corpus erases it instead. CLASS_APPEND_LOG carries the only
+    VERDICT_AUTO_ELIGIBLE verdict, so that inversion reaches
+    `target.unlink()` in apply() on files a live writer holds open.
     """
+    _validate_policy(
+        max_backup_age_days=max_backup_age_days,
+        max_append_log_age_days=max_append_log_age_days,
+        max_cache_bytes=max_cache_bytes,
+    )
     root = Path(data_dir)
     raw = scan(root, keep_patches=keep_patches, now=now)
 
@@ -694,13 +747,21 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
               else render_game_information_report(manifest))
         return 0
 
-    rplan = plan(
-        args.data_dir,
-        max_backup_age_days=args.max_backup_age_days,
-        max_append_log_age_days=args.max_append_log_age_days,
-        max_cache_bytes=int(args.max_cache_gb * 1024**3),
-        keep_patches=args.keep_patches,
-    )
+    try:
+        rplan = plan(
+            args.data_dir,
+            max_backup_age_days=args.max_backup_age_days,
+            max_append_log_age_days=args.max_append_log_age_days,
+            max_cache_bytes=int(args.max_cache_gb * 1024**3),
+            keep_patches=args.keep_patches,
+        )
+    except ValueError as exc:
+        # RM-363: a rejected policy is an operator mistake, not a crash.
+        # Exit 2 keeps it distinct from exit 1, which means "the report ran
+        # and something breached a floor" - a scheduled caller must be able
+        # to tell a bad flag from a real finding.
+        print(f"refusing this policy: {exc}", file=sys.stderr)
+        return 2
     print(json.dumps(rplan.to_dict(), indent=2) if args.json
           else render_report(rplan))
     # Exit 1 when something breached a floor, so a scheduled caller notices.

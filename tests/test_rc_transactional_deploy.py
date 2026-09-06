@@ -472,6 +472,63 @@ class BackupPruneTests(_TmpTreeCase):
         self.assertEqual(removed, 0)
         self.assertEqual(errors, [])
 
+    # - RM-363 sibling sweep: the guard was off by one --------------------
+
+    def _four_backups(self) -> Path:
+        backups = self.project / "ops" / "backups"
+        backups.mkdir(parents=True, exist_ok=True)
+        for stamp in ("20260801-000000-a", "20260802-000000-b",
+                      "20260803-000000-c", "20260804-000000-d"):
+            (backups / stamp).mkdir()
+        return backups
+
+    def test_a_retention_of_zero_is_refused_and_deletes_nothing(self) -> None:
+        """The guard rejected `< 0` and admitted `0`, which is the one
+        degenerate value a "keep newest N" slice cannot survive:
+        `all_bkps[0:]` is EVERY backup and each one is rmtree'd. Worse than
+        the supervisor's copy, because `prune_backups` runs after the health
+        check inside a live deploy, so the in-flight deploy's own rollback
+        snapshot lives under the same root and goes with the history.
+        """
+        backups = self._four_backups()
+        errors: list = []
+
+        removed = D.prune_backups(backups, {"backup_retention_count": 0},
+                                  errors)
+
+        self.assertEqual(removed, 0)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("backup_retention_count", errors[0])
+        self.assertEqual(len(list(backups.iterdir())), 4,
+                         "a keep-zero policy deleted backups")
+
+    def test_a_negative_retention_still_deletes_nothing(self) -> None:
+        """Already refused before RM-363; pinned so the widened bound cannot
+        quietly narrow back to `< 0` and lose the negative case too."""
+        backups = self._four_backups()
+        errors: list = []
+
+        removed = D.prune_backups(backups, {"backup_retention_count": -1},
+                                  errors)
+
+        self.assertEqual(removed, 0)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertEqual(len(list(backups.iterdir())), 4)
+
+    def test_a_retention_of_one_still_prunes(self) -> None:
+        """Anti-vacuity: the smallest LEGAL value must still do its job, or
+        the guard has disabled the feature instead of bounding it."""
+        backups = self._four_backups()
+        errors: list = []
+
+        removed = D.prune_backups(backups, {"backup_retention_count": 1},
+                                  errors)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(removed, 3)
+        self.assertEqual([p.name for p in backups.iterdir()],
+                         ["20260804-000000-d"])
+
 
 class RequestValidationTests(_TmpTreeCase):
     """What happens on merely WRONG input, distinct from hostile input."""
