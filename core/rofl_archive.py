@@ -58,9 +58,23 @@ import shutil
 import time
 import urllib.error
 import urllib.parse
+import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+# The scratch-name and WinError-5 retry primitives are imported rather than
+# re-rolled: this module had its own copies of both and both were wrong (RM-310,
+# and the shared-scratch defect polled_json fixed for itself in lane 8 cycle
+# 24). The two underscore-prefixed names are package-internal by convention, not
+# by contract - duplicating them is what produced the divergence being fixed
+# here. polled_json imports stdlib only, so there is no import cycle.
+from core.polled_json import (
+    _replace_with_retry,
+    _scratch_path,
+    atomic_write_bytes,
+    atomic_write_json,
+)
 
 logger = logging.getLogger("rc.rofl_archive")
 
@@ -483,25 +497,125 @@ class DownloadResult:
 _GZIP_MAGIC = b"\x1f\x8b"
 
 
-def _maybe_gunzip(body: bytes) -> bytes:
+# This ceiling has to be generous, and the live archive says how generous.
+# MEASURED 2026-09-06 over the FULL archive, walked recursively: 13896 replays,
+# 180.4 GiB, ALL carrying valid RIOT magic, and the largest is 28.48 MB
+# (29862216 bytes). That number is the whole argument - it is well past
+# lib/http/client.py's 16 MB default, so inheriting the shared cap would have
+# rejected real replays. RM-371 warned about exactly this ("must NOT simply
+# inherit a small default") and the measurement confirms it. 64 MB is ~2.2x the
+# largest observed replay and still bounds transfer and gzip expansion.
+#
+# Measure this RECURSIVELY if it is ever re-derived. The first pass here used a
+# non-recursive glob of the archive root, saw 15 files, and reported a 18.6 MB
+# maximum - wrong by three orders of magnitude on count and by 10 MB on the
+# maximum, because 13881 of the replays live under players/<ROLE>/ subdirs
+# written by this same module via tools/replay_roster_pull.py.
+MAX_REPLAY_BYTES = 64 * 1024 * 1024
+_READ_CHUNK_BYTES = 64 * 1024
+
+
+class ReplayTooLarge(Exception):
+    """A replay body ran past MAX_REPLAY_BYTES (RM-371).
+
+    Raised by the default transport. download_replays catches it per item, so
+    one oversize body cannot abort a whole sweep - the failure class this module
+    was already fixed for twice (LEDGER 1176, 1311).
+    """
+
+
+def _read_bounded(reader, max_bytes: int) -> tuple[bytes, bool]:
+    """Read at most *max_bytes* + 1 bytes.
+
+    Returns (body, over_cap). Reading one byte past the ceiling is what lets the
+    caller tell "ended exactly at the ceiling" from "ran past it" without
+    buffering the overflow. Same shape as lib/http/client.py:_read_bounded.
+    """
+    remaining = max_bytes + 1
+    chunks: list[bytes] = []
+    while remaining > 0:
+        chunk = reader.read(min(_READ_CHUNK_BYTES, remaining))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    body = b"".join(chunks)
+    return body, len(body) > max_bytes
+
+
+def _maybe_gunzip(body: bytes, max_bytes: int = MAX_REPLAY_BYTES) -> bytes:
     """MEASURED 2026-07-19: Riot's pre-signed bodies arrive GZIP-framed, and
     urllib does not decompress. Returning the compressed bytes unchanged made
     the first live pull discard 5 of 5 as "not a replay". Left as-is when it is
-    not gzip, so a raw body still works."""
+    not gzip, so a raw body still works.
+
+    LANE 8: the expansion is BOUNDED, and the bound matters more here than at
+    the transfer. download_replays gunzips BEFORE it validates the container
+    magic, so an unbounded gzip.decompress applied the full expansion ratio
+    (~1000x on compressible filler) to bytes nothing had checked yet. Bounding
+    the output makes a bomb cost one chunk instead of its whole expansion.
+    """
     if not body or not body.startswith(_GZIP_MAGIC):
         return body
-    import gzip
+    import zlib
+    out = bytearray()
+    remaining = body
     try:
-        return gzip.decompress(body)
-    except (OSError, EOFError, ValueError) as exc:
+        # 16 + MAX_WBITS selects the gzip container. One decompressobj handles
+        # exactly ONE member, so the loop preserves gzip.decompress's
+        # concatenate-every-member behaviour; without it a multi-member body
+        # silently returned only its first member.
+        while remaining:
+            dec = zlib.decompressobj(16 + zlib.MAX_WBITS)
+            # Budget is always >= 1 here: the ceiling check below returns as
+            # soon as out exceeds max_bytes, and zlib treats max_length=0 as
+            # UNLIMITED, so a zero budget would silently remove the bound.
+            out += dec.decompress(remaining, max_bytes + 1 - len(out))
+            if len(out) > max_bytes:
+                logger.warning(
+                    "gzip body expands past the %d byte ceiling (%d compressed)"
+                    " - discarded", max_bytes, len(body),
+                )
+                return b""
+            if not dec.eof:
+                # The member did not end. Either the body is TRUNCATED or the
+                # ceiling stopped us mid-stream; both are unusable.
+                #
+                # This check is the whole reason the bounded rewrite is safe.
+                # gzip.decompress raised EOFError on a truncated body, which
+                # this function turned into b"" and download_replays discarded.
+                # decompressobj instead returns the partial bytes with NO
+                # exception - and a truncated replay still carries the RIOT
+                # prefix, so it passed validation and was written under its
+                # final name, then recorded in an index that is idempotent on
+                # match id, so the re-pull skipped it forever. Caught by the
+                # lane 8 verifier, not by the suite.
+                logger.warning(
+                    "gzip body is incomplete or truncated (%d compressed,"
+                    " %d decompressed so far) - discarded", len(body), len(out),
+                )
+                return b""
+            remaining = dec.unused_data
+            if remaining and not remaining.startswith(_GZIP_MAGIC):
+                # Trailing bytes that are not another member. gzip.decompress
+                # rejects this; so do we, rather than return a partial body.
+                logger.warning(
+                    "gzip body carries %d trailing non-member bytes - discarded",
+                    len(remaining),
+                )
+                return b""
+    except (OSError, EOFError, ValueError, zlib.error) as exc:
         logger.warning("gzip body would not decompress (%d bytes): %s", len(body), exc)
         return b""
+    return bytes(out)
 
 
-def _http_get_bytes(url: str) -> bytes:
-    import urllib.request
+def _http_get_bytes(url: str, max_bytes: int = MAX_REPLAY_BYTES) -> bytes:
     with urllib.request.urlopen(url, timeout=120) as resp:
-        return resp.read()
+        body, over_cap = _read_bounded(resp, max_bytes)
+    if over_cap:
+        raise ReplayTooLarge(f"replay body ran past {max_bytes} bytes: {url}")
+    return body
 
 
 def download_replays(urls, archive_dir, index_path=None, fetcher=None,
@@ -564,12 +678,29 @@ def download_replays(urls, archive_dir, index_path=None, fetcher=None,
                 logger.warning("download failed for %s: HTTP %s", match_id, exc.code)
                 res.failed.append(match_id)
             continue
+        except ReplayTooLarge as exc:
+            logger.warning("download for %s exceeded the size ceiling: %s",
+                           match_id, exc)
+            res.failed.append(match_id)
+            continue
         except OSError as exc:
             logger.warning("download failed for %s: %s", match_id, exc)
             res.failed.append(match_id)
             continue
 
-        body = _maybe_gunzip(body)
+        # The transport is INJECTED, so the ceiling cannot live only inside
+        # _http_get_bytes - every caller supplying its own fetcher would bypass
+        # it. Bound the body here as well, and do it before the gunzip, so an
+        # oversize body is rejected without being expanded first.
+        if len(body or b"") > MAX_REPLAY_BYTES:
+            logger.warning(
+                "body for %s is %d bytes, past the %d byte ceiling - discarded",
+                match_id, len(body or b""), MAX_REPLAY_BYTES,
+            )
+            res.failed.append(match_id)
+            continue
+
+        body = _maybe_gunzip(body, MAX_REPLAY_BYTES)
         if not body or not body.startswith(_ROFL_MAGIC):
             logger.warning(
                 "response for %s is not a replay (%d bytes, starts %r) - discarded",
@@ -807,43 +938,47 @@ def _load_index(index_path: Path, key: str = "replays") -> dict:
 
 
 def _atomic_write_json(target: Path, payload: dict) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    tmp.replace(target)
+    """Delegates to core/polled_json.py so the WinError-5 retry (RM-310) and the
+    per-writer scratch name stay single-sourced.
+
+    Both properties were re-rolled here and both were wrong. The replace was
+    bare, so a reader holding index.json open lost the write; and the scratch
+    name was derived from the destination alone, so every writer of a given
+    index.json opened the SAME index.json.tmp. polled_json fixed exactly that
+    for itself in lane 8 cycle 24 and this module never inherited it - the
+    resolver-fix-is-not-a-consumer-fix shape.
+    """
+    atomic_write_json(target, payload)
 
 
 def _atomic_write_bytes(target: Path, payload: bytes) -> None:
-    """Write a downloaded replay via a tmp sibling then replace, and leave no
-    tmp artifact behind on failure - a truncated 10 MB body under the final
-    name would be indistinguishable from a good replay."""
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    try:
-        tmp.write_bytes(payload)
-        tmp.replace(target)
-    finally:
-        if tmp.exists():
-            try:
-                tmp.unlink()
-            except OSError as exc:
-                logger.warning("could not clean tmp artifact %s: %s", tmp, exc)
+    """Write a downloaded replay via a scratch sibling then replace, leaving no
+    artifact behind on failure - a truncated 10 MB body under the final name
+    would be indistinguishable from a good replay. Delegated for the same
+    reason as _atomic_write_json."""
+    atomic_write_bytes(target, payload)
 
 
 def _atomic_copy(src: Path, dst: Path) -> None:
-    """Copy via a tmp sibling then replace - a partially written 13 MB replay
-    must never be visible under its final name."""
+    """Copy via a scratch sibling then replace - a partially written 13 MB
+    replay must never be visible under its final name.
+
+    Streams with copy2 rather than routing through polled_json.atomic_write_bytes,
+    which would pull the whole replay through memory; the scratch NAMING and the
+    WinError-5 retry are still polled_json's, so all three writers share one
+    implementation of both properties.
+    """
     dst.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    tmp = _scratch_path(dst)
     try:
         shutil.copy2(src, tmp)
-        tmp.replace(dst)
+        _replace_with_retry(tmp, dst)
     finally:
         if tmp.exists():
             try:
                 tmp.unlink()
             except OSError as exc:
-                logger.warning("could not clean tmp artifact %s: %s", tmp, exc)
+                logger.warning("could not clean scratch artifact %s: %s", tmp, exc)
 
 
 def archive_replays(source_dir, archive_dir, index_path=None) -> ArchiveResult:
