@@ -7,6 +7,8 @@ Responsibilities:
   - Circuit breaker per hostname: opens after 5 consecutive failures,
     half-open after 60s; exactly one probe call is admitted, and its
     success closes the breaker while its failure restarts the cooldown.
+  - Response size ceiling: ``max_bytes``, defaulting to
+    ``DEFAULT_MAX_RESPONSE_BYTES``. ``timeout`` bounds time, not bytes.
 
 Uses only the stdlib (``urllib.request``) - no third-party deps so the
 client works in the embedded python-embed too.
@@ -63,6 +65,16 @@ MIN_INTERVAL_SEC = 1.0
 BREAKER_THRESHOLD = 5
 BREAKER_COOLDOWN_SEC = 60.0
 
+# RM-351. `timeout` bounds TIME, not BYTES: a remote that keeps drip-feeding
+# data inside the inactivity timeout streams for as long as it likes, and a
+# bare `resp.read()` buffers all of it. Every caller therefore inherits a
+# ceiling. 16 MiB is far above the largest artefact anything in this tree
+# actually pulls through here (a DDragon bundle is single-digit MB, an icon is
+# KBs, a scraped page smaller still) and still bounds the amplification.
+# Pass `max_bytes=None` to opt a specific call out.
+DEFAULT_MAX_RESPONSE_BYTES = 16 * 1024 * 1024
+READ_CHUNK_BYTES = 64 * 1024
+
 # Only these schemes may be fetched. The default opener also installs
 # FileHandler, FTPHandler and DataHandler, so without this allowlist a url
 # like file://localhost/C:/Windows/win.ini reads a LOCAL FILE through what
@@ -103,6 +115,16 @@ class Blocked(HttpError):
 
 class CircuitOpen(HttpError):
     """Breaker is open for this hostname; retry after cooldown."""
+
+
+class ResponseTooLarge(HttpError):
+    """A 2xx/3xx response body ran past ``max_bytes`` (RM-351).
+
+    Raised rather than truncated, because a short body is a LIE to the caller:
+    ``resp.json()`` over half a document fails somewhere far away from the
+    real cause. The 4xx/5xx path is deliberately asymmetric and truncates
+    instead - see the comment on that branch in ``request``.
+    """
 
 
 class _BlocklistInvalid(Exception):
@@ -156,6 +178,32 @@ def _parse_blocklist(raw: str) -> tuple[set[str], tuple[str, ...]]:
     norm_hosts = {h for h in (_normalize_host(x) for x in hosts) if h}
     norm_suffixes = tuple(s for s in (x.strip().lower() for x in suffixes) if s)
     return norm_hosts, norm_suffixes
+
+
+def _read_bounded(reader: Any, max_bytes: int | None) -> tuple[bytes, bool]:
+    """Read a body without trusting the remote to ever stop (RM-351).
+
+    Returns ``(body, over_cap)``. The body is at most ``max_bytes`` + 1 bytes -
+    the one extra byte is how we learn the stream still had more to give,
+    since a read that returns exactly the cap is indistinguishable from a
+    body that happened to end there. ``max_bytes=None`` restores the
+    unbounded read for a caller that has explicitly opted out.
+
+    ``len(chunk)`` is subtracted rather than the amount requested, so a reader
+    that hands back more than it was asked for still terminates the loop.
+    """
+    if max_bytes is None:
+        return reader.read(), False
+    chunks: list[bytes] = []
+    remaining = max_bytes + 1
+    while remaining > 0:
+        chunk = reader.read(min(READ_CHUNK_BYTES, remaining))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    body = b"".join(chunks)
+    return body, len(body) > max_bytes
 
 
 class Response:
@@ -459,7 +507,12 @@ class HttpClient:
         headers: dict[str, str] | None = None,
         data: bytes | None = None,
         timeout: float = DEFAULT_TIMEOUT,
+        max_bytes: int | None = DEFAULT_MAX_RESPONSE_BYTES,
     ) -> Response:
+        if max_bytes is not None and max_bytes < 0:
+            raise ValueError(
+                f"max_bytes must be non-negative or None (to disable), got {max_bytes!r}"
+            )
         scheme = (urlparse(url).scheme or "").lower()
         if scheme not in ALLOWED_SCHEMES:
             raise Blocked(
@@ -494,7 +547,16 @@ class HttpClient:
                 # self._opener carries the certifi-backed SSL context and the
                 # redirect handler that re-checks the blocklist on every hop.
                 with self._opener.open(req, timeout=timeout) as resp:
-                    body = resp.read()
+                    body, over_cap = _read_bounded(resp, max_bytes)
+                    if over_cap:
+                        # Not caught by any handler below and `settled` is
+                        # still False, so the `finally` releases the probe
+                        # slot WITHOUT counting this against the breaker.
+                        # An over-cap body is a client-side policy rejection
+                        # like Blocked, not evidence the remote is unhealthy.
+                        raise ResponseTooLarge(
+                            f"response body exceeded max_bytes={max_bytes} for {url}"
+                        )
                     hdrs = {k: v for k, v in resp.getheaders()}
                     r = Response(resp.status, hdrs, body, resp.url)
             except Blocked:
@@ -505,7 +567,21 @@ class HttpClient:
                 raise
             except urllib_error.HTTPError as e:
                 # 4xx/5xx - body available via e.read(); still a failure for breaker purposes.
-                body = e.read() if hasattr(e, "read") else b""
+                # The error body is DIAGNOSTIC only - the caller reads
+                # `resp.status` - so an over-cap one is truncated rather than
+                # raised (RM-351). Raising here would turn a well-formed 404
+                # into a network-class exception and would skip the
+                # `_on_success` bookkeeping a working-but-refusing remote is
+                # owed, wrongly walking the breaker toward open.
+                if hasattr(e, "read"):
+                    body, over_cap = _read_bounded(e, max_bytes)
+                    if over_cap:
+                        body = body[:max_bytes]
+                        logger.warning(
+                            "error body for %s truncated at max_bytes=%d", url, max_bytes
+                        )
+                else:
+                    body = b""
                 hdrs = {k: v for k, v in (e.headers.items() if e.headers else [])}
                 r = Response(e.code, hdrs, body, url)
                 if 500 <= e.code < 600:
