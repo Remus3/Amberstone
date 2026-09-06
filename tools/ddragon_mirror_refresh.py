@@ -363,6 +363,15 @@ def pull_champion_detail(version: str, champion_key: str) -> dict | None:
     ``data/meta_build/ddragon/<ver>/champion_detail/<Name>.json`` so an
     unchanged-patch re-run is a no-op.
     """
+    if _safe_basename(champion_key) is None:
+        # RM-359 sibling: `champion_key` is a raw key off the wire
+        # (`pull_all_champion_details` reads it from the downloaded
+        # champion.json bundle) and reaches BOTH the outbound URL and a
+        # `_atomic_write_json` whose mkdir(parents=True) would create the
+        # escaped directory. The version half of this same join was already
+        # guarded by `validate_version`; this half was not.
+        logger.warning("rejecting suspicious champion key %r", champion_key)
+        return None
     url = f"{DDRAGON_BASE}/cdn/{version}/data/{DEFAULT_LOCALE}/champion/{champion_key}.json"
     res = http_get(url)
     if res.status != 200:
@@ -380,6 +389,11 @@ def pull_champion_detail(version: str, champion_key: str) -> dict | None:
 
 def read_or_pull_champion_detail(version: str, champion_key: str, *,
                                  force: bool = False) -> dict | None:
+    if _safe_basename(champion_key) is None:
+        # Guarded here too, not only in the puller: this entry point joins the
+        # same escaped path and probes `.exists()` on it before delegating.
+        logger.warning("rejecting suspicious champion key %r", champion_key)
+        return None
     dest = META_DIR / version / "champion_detail" / f"{champion_key}.json"
     if dest.exists() and not force:
         try:

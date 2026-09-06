@@ -2953,3 +2953,11 @@ rather than silently corrected, because that is what relocation means.
 
 - **RM-322 .. RM-328: RM-326 / RM-327 / RM-328 SHIPPED 2026-09-04 (LEDGER 1324); RM-323 / RM-324 / RM-325 CLOSED 2026-09-01 (LEDGER 1317, ENGINE 1.279.0); RM-322 still OPEN (filed 2026-09-01, lane 5 refill; bodies + acceptance in `BACKLOG.md`)** - RM-322 SHIPPED 2026-09-04 (LEDGER 1328) - test-scope table re-measured, the CI-unrun set split out, tree list guarded; RM-326/327/328 dashboard UI, asset-only (LANE 4, Tier-1). **All three closed specs were CORRECTED by measurement before any code was written** - the correction detail is relocated 2026-09-02 to `docs/ROADMAP_HISTORY.md`; READ IT before re-filing a spec in this family. Same run: RM-314 constructor census corrected 12 -> 17, RM-294 LANE-7 half downgraded (superseded by RM-170).
 
+
+## 2026-09-06h - the RM-357 line, relocated by the LANE 10 RM-359 cycle
+
+Relocated verbatim from `ROADMAP.md` at 89.82 pct of budget so the RM-359 line
+could land under the 90 pct warn at `tools/drift_guard.py:58`. The pointer that
+replaces it is the merged `RM-347 / RM-350 .. RM-357 / RM-359` line.
+
+- **RM-357 SHIPPED 2026-09-06 (LEDGER 1348)** - `core/base_worker.py` documented a `time.time()` pulse while the frozen consumer differences against `time.monotonic()`, so a subclass obeying the contract would pin `game_poll_worker_alive` TRUE forever. Contract corrected, `pulse_ts` now fails safe. **RM-377 OPEN** in `BACKLOG.md` (`health_pulse()` has no production caller; fences RM-198). Its next-free figure (RM-378) is RETIRED - consumed by LEDGER 1349, and RM-378 is itself OPEN in `BACKLOG.md`.
