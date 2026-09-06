@@ -69,7 +69,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-379** (2026-09-06). RM-378 was minted by
+  Next free id = **RM-380** (2026-09-06). RM-379 was minted by
+  LEDGER 1350, LANE 10 queue cycle 12, for three `scripts/` DDragon downloaders that
+  interpolate a wire-supplied `image.full` straight into a filesystem path with no
+  validator at all - the adjacent shape to the RM-359 defect, turned up by its sibling
+  sweep. One of the three, `scripts/data_pipeline.py`, runs under the REGISTERED
+  scheduled task `RC-PatchRefresh`, verified live with `Get-ScheduledTask` rather than
+  inferred from an installer script. Allocation checked by the pointer-vs-allocated
+  predicate before minting: every RM-379 occurrence at the time was next-free POINTER
+  prose, heading no row body and carrying no status marker. Filed to BACKLOG
+  "Reliability / hardening".
+  RM-378 was minted by
   LEDGER 1349, LANE 10 queue cycle 11, for `tools/gen_archmap.py` - it writes the tracked
   `docs/ARCHITECTURE.md` as TEXT, so every run leaves 343 CRLF pairs on disk against 0 in
   the blob while `git status` reports clean. Found by that cycle's own doc-guard run, not

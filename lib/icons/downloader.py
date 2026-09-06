@@ -58,6 +58,36 @@ def _safe_basename(img: str) -> str | None:
     return img
 
 
+def _safe_relpath(rel: str | None) -> str | None:
+    """Validate a MULTI-SEGMENT relative asset path (RM-359: rune icons).
+
+    DDragon rune icons are referenced like
+    ``perk-images/Styles/Domination/Electrocute/Electrocute.png``, so
+    ``_safe_basename`` cannot be applied to the whole string - it rejects
+    every separator and would reduce ``runes()`` to a permanent no-op.
+    Instead require every SEGMENT to pass ``_safe_basename``, which rejects
+    ``.``, ``..``, dotfiles, backslashes, control characters and drive
+    prefixes wherever they appear in the path.
+
+    This mirrors ``tools/ddragon_mirror_refresh.py:_safe_relpath``, the live
+    twin that already guards the mirror refresh; only this library copy had
+    been left without it.
+
+    Returns the validated relative path, or None to reject.
+    """
+    if not rel or not isinstance(rel, str):
+        return None
+    if "\\" in rel or rel.startswith("/"):
+        return None
+    parts = rel.split("/")
+    if not parts:
+        return None
+    for p in parts:
+        if _safe_basename(p) is None:
+            return None
+    return "/".join(parts)
+
+
 class IconDownloader:
     def __init__(self, version: str | None = None) -> None:
         self._client = get_client()
@@ -141,17 +171,25 @@ class IconDownloader:
         for tree in data:
             icon = tree.get("icon")
             if icon:
-                url = f"{DDRAGON_CDN}/img/{icon}"
-                target = out / Path(icon).name
-                if self._download(url, target, force):
-                    n += 1
+                rel = _safe_relpath(icon)
+                if not rel:
+                    logger.warning("rejecting suspicious rune tree icon path %r", icon)
+                else:
+                    url = f"{DDRAGON_CDN}/img/{rel}"
+                    target = out / Path(rel).name
+                    if self._download(url, target, force):
+                        n += 1
             for slot in tree.get("slots", []):
                 for rune in slot.get("runes", []):
                     icon = rune.get("icon")
                     if not icon:
                         continue
-                    url = f"{DDRAGON_CDN}/img/{icon}"
-                    target = out / Path(icon).name
+                    rel = _safe_relpath(icon)
+                    if not rel:
+                        logger.warning("rejecting suspicious rune icon path %r", icon)
+                        continue
+                    url = f"{DDRAGON_CDN}/img/{rel}"
+                    target = out / Path(rel).name
                     if self._download(url, target, force):
                         n += 1
         return n
