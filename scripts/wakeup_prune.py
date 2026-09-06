@@ -154,7 +154,29 @@ def _atomic_write(target: Path, content: str) -> None:
     tmp.replace(target)
 
 
+def _reject_bad_keep(keep: int) -> bool:
+    """RM-363: a keep count below 1 empties the ledger it exists to bound.
+
+    The only test on `keep` used to be `len(sessions) <= keep`, which any
+    non-positive value passes straight through. At 0 the split relocates
+    EVERY session and WAKEUP_NOTES is rewritten down to its header; at -1
+    the knob inverts and archives the oldest instead of keeping the newest.
+    Checked before the file is read, so a bad policy cannot be masked by a
+    missing-file early return.
+    """
+    if keep < 1:
+        print(
+            f"wakeup_prune: --keep must be >= 1, got {keep}; a keep of 0 "
+            f"would archive every session and leave WAKEUP_NOTES empty",
+            file=sys.stderr,
+        )
+        return True
+    return False
+
+
 def prune(*, keep: int, dry_run: bool) -> int:
+    if _reject_bad_keep(keep):
+        return 2
     if not WAKEUP.exists():
         print(f"wakeup_prune: WAKEUP_NOTES not found: {WAKEUP}", file=sys.stderr)
         return 1
@@ -195,6 +217,8 @@ def prune(*, keep: int, dry_run: bool) -> int:
 
 
 def check(keep: int) -> int:
+    if _reject_bad_keep(keep):
+        return 2
     if not WAKEUP.exists():
         return 0
     text = WAKEUP.read_text(encoding="utf-8")

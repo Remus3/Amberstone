@@ -305,9 +305,14 @@ def prune_backups(backups_root: Path, req: Dict[str, Any],
     backups_root = Path(backups_root)
     try:
         retention = int(req.get("backup_retention_count", 10))
-        if retention < 0:
+        # RM-363: the bound was `< 0`, which admitted the ONE degenerate
+        # value a "keep newest N" slice cannot survive. `all_bkps[0:]` is
+        # every backup, and this runs AFTER the health check inside a live
+        # deploy, so the in-flight deploy's own rollback snapshot sits under
+        # the same root and is rmtree'd with the history.
+        if retention < 1:
             raise ValueError(
-                f"backup_retention_count must be >= 0, got {retention}")
+                f"backup_retention_count must be >= 1, got {retention}")
         if not backups_root.is_dir():
             return 0
         all_bkps = sorted((d for d in backups_root.iterdir() if d.is_dir()),
