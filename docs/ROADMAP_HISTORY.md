@@ -1,5 +1,24 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06f - the RM-352 / RM-353 / RM-354 line, relocated by the LANE 10 RM-355 cycle
+
+ROADMAP.md stood at 73672 of its 81920-byte budget (89.93 percent) before this
+cycle wrote anything, so recording the RM-355 result on a new line would have
+crossed the 90 percent at which `tools/drift_guard.py` warns
+(`tools/drift_guard.py:57-58`). The line below is the natural one to move: all
+three of its rows are SHIPPED outright, unlike the 2026-09-06e block, which had
+to carry an OPERATOR-GATED residual forward in its pointer.
+
+Two live facts it held are preserved in the pointer that replaces it rather
+than archived with it: **RM-372 (the one unguarded second-order DDragon writer)
+and RM-373 + RM-374 (spawned by the RM-354 sweep) are all still OPEN**, with
+bodies in `BACKLOG.md`. The line's next-free-id figure (RM-375) is superseded by
+this same commit, which consumes RM-375 and sets the authoritative registry at
+`docs/DS_SWEEP_TRACKER.md:72` to RM-376. Full evidence stays in LEDGER 1344 and
+1345; nothing below should be restated as still-open work.
+
+- **RM-352 SHIPPED, line relocated 2026-09-06** to `docs/ROADMAP_HISTORY.md` (2026-09-06d) at 89.70 pct of budget; it spawned no id. **RM-353 SHIPPED 2026-09-06 (LEDGER 1344), spawning RM-372. RM-354 SHIPPED 2026-09-06 (LEDGER 1345), spawning RM-373 + RM-374; next free id RM-375.** RM-354: a bot wall is served as HTTP 200, so `lib/scrapers/_base.py`'s only gate (`status >= 400`) passed it, `_atomic_write_text` committed it over the good cached page, and `_last_fetch.json` stamped `status="ok"`; the body is now judged before it reaches the cache. Bodies in `BACKLOG.md`. The DDragon version string was CDN input joined straight into a filesystem path and `mkdir(parents=True)`; now `validate_version` gates all four entry points, and the shape it accepts is the same object the retention pruner scans for, so nothing created is unprunable. Body in `docs/_research_refill_2026-09-05.md`; RM-372 (the one unguarded second-order writer) in `BACKLOG.md`.
+
 ## 2026-09-06e - the RM-344 / RM-345 / RM-361 line, relocated by the LANE 10 RM-354 cycle
 
 ROADMAP.md reached 73890 of its 81920-byte budget (90.20 percent) once the
