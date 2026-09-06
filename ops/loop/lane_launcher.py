@@ -83,6 +83,14 @@ LOG_DIR = _HERE / "reports"
 # memory `reference_repo_root_guard_worktree_blind`.
 WORKTREE_BASE = Path(os.environ.get("RC_LANE_WORKTREE_BASE", r"C:\rc-worktrees"))
 
+# NUL-separated git output, so a path containing whitespace cannot split wrong.
+NUL = "\x00"
+
+# How many files the EOL repair deletes before restoring them. Bounded so an
+# interruption mid-repair leaves at most this many paths missing, all of them
+# recoverable with `git checkout -- .`.
+_RENORM_BATCH = 256
+
 # Lane -> the command doc fed to the worker as its prompt. TRACKED paths only
 # (tools/*.md), never the gitignored .claude/commands mirror: a worktree is a
 # fresh checkout and does not carry gitignored files, so a lane pointed at the
@@ -163,12 +171,140 @@ def command_path(lane: str, root: Path | None = None) -> Path:
     return path
 
 
-def _git(args, cwd=None, timeout=120):
+def _git(args, cwd=None, timeout=120, input=None):  # noqa: A002 - subprocess kwarg
     return subprocess.run(
         ["git", *args], cwd=str(cwd) if cwd else None,
         capture_output=True, text=True, timeout=timeout,
-        creationflags=_NO_WINDOW,
+        creationflags=_NO_WINDOW, input=input,
     )
+
+
+def _pinned_lf_paths(wt: Path) -> list[str]:
+    """Tracked paths git will ACTUALLY write with LF - asked of git, never inferred.
+
+    Both `text: set` AND `eol: lf` are required, and a suffix filter is the wrong
+    one: the LFS payloads under `data/daemon_slayer/laning_scenarios/` match
+    `*.json` but carry `-text`, so git deliberately does not convert them and
+    their CRLF is correct. Filtering by suffix reports all 7 as offenders against
+    a clean tree (memory `feedback_data_filter_vs_evaluator_filter`), which is
+    the same trap that produced a false failure on the first run of
+    `tests/test_text_line_endings.py`.
+    """
+    listed = _git(["ls-files", "-z"], cwd=wt)
+    if listed.returncode != 0:
+        return []
+    tracked = [p for p in (listed.stdout or "").split(NUL) if p]
+    if not tracked:
+        return []
+    got = _git(["check-attr", "--stdin", "-z", "text", "eol"], cwd=wt,
+               input=NUL.join(tracked))
+    if got.returncode != 0:
+        return []
+    fields = (got.stdout or "").split(NUL)
+    attrs: dict[str, dict[str, str]] = {}
+    for i in range(0, len(fields) - 2, 3):
+        if fields[i]:
+            attrs.setdefault(fields[i], {})[fields[i + 1]] = fields[i + 2]
+    return [p for p, a in attrs.items()
+            if a.get("text") == "set" and a.get("eol") == "lf"]
+
+
+def _content_dirty(wt: Path) -> set[str]:
+    """Paths git sees a REAL content change in. Never `git status` - measured.
+
+    `git status` consults cached stat info, and a CRLF rewrite changes the file
+    SIZE, so it reports ` M` for a file whose filtered content is byte-identical
+    to its blob (measured 2026-09-06, and it repeats on a second run). Filtering
+    on status would skip exactly the files this repairs and ship an inert fix.
+    `git diff` applies the clean filter, so a CRLF-only difference correctly
+    reads as no change while a genuine edit still reads as one.
+    """
+    dirty: set[str] = set()
+    for args in (["diff", "--name-only", "-z"],
+                 ["diff", "--cached", "--name-only", "-z"]):
+        out = _git(args, cwd=wt)
+        if out.returncode == 0:
+            dirty.update(p for p in (out.stdout or "").split(NUL) if p)
+    return dirty
+
+
+def renormalize_eol(wt: Path) -> list[str]:
+    """Re-materialize reused-worktree files whose disk bytes contradict eol=lf.
+
+    RM-343. EOL conversion is decided at MATERIALIZATION time by the
+    `.gitattributes` in force at that moment, and `core.autocrlf=true` on this
+    fleet (from the SYSTEM gitconfig, not `.git/config`, so a per-worktree
+    override is not available) writes CRLF for every tracked text path not
+    pinned `eol=lf`. When `8119b3334` widened the pin to `.json`, `.js` and 13
+    more, every worktree materialized before it kept those files as CRLF - and
+    git never re-materializes them, because the BLOB never changed. `git status`
+    stays clean, so the condition is invisible to every git-based check.
+
+    `ensure_worktree` reusing a checkout is correct and must stay, but it is
+    also what makes the staleness permanent. This is the repair, and it runs
+    where the reuse happens.
+
+    Repairs only files git agrees are unmodified, so uncommitted work is never
+    discarded. Best-effort by design: a lane must not fail to start because a
+    cleanup failed, so every error path returns [].
+
+    NOT a commit of 1884 paths - re-materializing changes no blob, so the tree
+    stays clean and nothing is staged.
+    """
+    try:
+        wt = Path(wt)
+        if not (wt / ".git").exists():
+            return []
+        pinned = _pinned_lf_paths(wt)
+        if not pinned:
+            return []
+        dirty = _content_dirty(wt)
+        stale: list[str] = []
+        for rel in pinned:
+            if rel in dirty:
+                continue
+            try:
+                fp = wt / rel
+                if fp.is_file() and b"\r\n" in fp.read_bytes():
+                    stale.append(rel)
+            except OSError:
+                continue
+        if not stale:
+            return []
+        stale.sort()
+        # THE FILE MUST BE DELETED FIRST. Measured 2026-09-06 at git 2.53.0
+        # against the real lane worktrees: a stale checkout has the CRLF file's
+        # stat recorded in the index against an unchanged LF blob, so git is
+        # convinced the file is up to date and BOTH `checkout-index -f` and
+        # `git checkout --pathspec-from-file` return 0 having done nothing. The
+        # first version of this repair reported 1916 files fixed and left all
+        # 1916 stale. Only a missing file forces git to write one.
+        #
+        # Safe because every path here is one git reports as content-clean, so
+        # the bytes being deleted are exactly the bytes the blob restores. Done
+        # in batches so an interruption strands as little as possible.
+        repaired: list[str] = []
+        for i in range(0, len(stale), _RENORM_BATCH):
+            batch = stale[i:i + _RENORM_BATCH]
+            removed: list[str] = []
+            for rel in batch:
+                try:
+                    (wt / rel).unlink()
+                    removed.append(rel)
+                except OSError:
+                    continue
+            if not removed:
+                continue
+            out = _git(["checkout-index", "-f", "-z", "--stdin"], cwd=wt,
+                       input=NUL.join(removed) + NUL)
+            if out.returncode != 0:
+                # Restore what we removed rather than leaving a hole in the tree.
+                _git(["checkout", "--", *removed[:_RENORM_BATCH]], cwd=wt)
+                continue
+            repaired.extend(removed)
+        return sorted(repaired)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return []
 
 
 def ensure_worktree(lane: str, base: Path | None = None,
@@ -185,6 +321,9 @@ def ensure_worktree(lane: str, base: Path | None = None,
         raise LaneLaunchError(
             f"refusing to run lane {lane!r} against the main tree ({repo})")
     if (wt / ".git").exists():
+        # RM-343: a reused checkout keeps whatever EOL it was materialized with,
+        # so a `.gitattributes` pin that landed after it stays unapplied forever.
+        renormalize_eol(wt)
         return wt
     wt.parent.mkdir(parents=True, exist_ok=True)
     branch = branch_name(lane)
