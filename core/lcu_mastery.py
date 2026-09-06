@@ -90,13 +90,22 @@ def top_masteries(lcu_request: LcuRequest, puuid: str, count: int = 1) -> list[d
 
     Tries the dedicated top route first, then falls back to the full list and
     slices it, so a client build missing the top route still answers.
+
+    BOTH calls are GET. Both routes are reads, and the fallback below is the
+    reason the verb matters more than it looks: a non-GET verb answers 405/404,
+    ``normalize`` maps that non-list body to ``[]``, the falsy check falls
+    through, and the full-list GET silently supplies the answer. The fast path
+    would then never succeed against a real client while every caller, and
+    every test, still saw correct rows - a guaranteed-failing round trip on a
+    champ-select path, indistinguishable from the legitimate "this client build
+    has no top route" case the fallback exists for.
     """
     if not puuid or not str(puuid).strip():
         return []
     puuid = str(puuid).strip()
 
     try:
-        rows = normalize(lcu_request("POST", top_route(puuid, count)))
+        rows = normalize(lcu_request("GET", top_route(puuid, count)))
         if rows:
             return rows[:count]
         rows = normalize(lcu_request("GET", mastery_route(puuid)))

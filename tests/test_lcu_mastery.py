@@ -87,16 +87,49 @@ class _FakeLcu:
 class TestTopMasteries:
     def test_prefers_the_top_route(self):
         lcu = _FakeLcu({
-            ("POST", lcu_mastery.top_route("PU", 1)): [entry(champion_id=99)],
+            ("GET", lcu_mastery.top_route("PU", 1)): [entry(champion_id=99)],
         })
         got = lcu_mastery.top_masteries(lcu, "PU", count=1)
         assert got == [{"champion_id": 99, "level": 7, "points": 123456}]
-        assert lcu.calls[0][0] == "POST"
+        assert lcu.calls[0] == ("GET", lcu_mastery.top_route("PU", 1))
+
+    def test_the_top_route_is_issued_as_a_read(self):
+        """RM-350 acceptance: the top route is a read, so it is a GET.
+
+        This pins the LCU CONTRACT, not RC's implementation. The assertion it
+        replaced read ``lcu.calls[0][0] == "POST"``, which pinned the defect:
+        a POST to a read route answers 405/404, ``normalize`` maps the non-list
+        body to ``[]``, and the GET fallback below silently supplies the answer,
+        so the fast path could never succeed against a real client while every
+        test stayed green.
+
+        REACHABILITY, measured 2026-09-06 so a later reader does not overstate
+        it: ``core/lcu_mastery.py`` is imported by this test file and NOTHING
+        else, so the defect was LATENT, not live. The filed row described the
+        cost as landing on "every mastery lookup on the live champ-select path";
+        that becomes true when the module is wired, and was not true yet. The
+        live local-player mastery read is ``lcu/snapshot_shape.py``, which was
+        already a GET and is not part of this fix.
+        """
+        lcu = _FakeLcu({})
+        lcu_mastery.top_masteries(lcu, "PU", count=1)
+        assert lcu.calls[0] == ("GET", lcu_mastery.top_route("PU", 1))
+
+    def test_no_mastery_read_uses_a_mutating_verb(self):
+        """Both mastery routes are reads; neither may be issued as POST/PUT/etc.
+
+        Broader than the acceptance on purpose - it covers the fallback call as
+        well as the top call, so a later edit cannot reintroduce the defect on
+        the route this row did not name.
+        """
+        lcu = _FakeLcu({})
+        lcu_mastery.top_masteries(lcu, "PU", count=3)
+        assert [method for method, _ in lcu.calls] == ["GET", "GET"]
 
     def test_falls_back_to_the_full_list_and_slices(self):
         """When the top route is unavailable, the full list still answers."""
         lcu = _FakeLcu({
-            ("POST", lcu_mastery.top_route("PU", 2)): None,
+            ("GET", lcu_mastery.top_route("PU", 2)): None,
             ("GET", lcu_mastery.mastery_route("PU")): [
                 entry(champion_id=1, points=10),
                 entry(champion_id=2, points=500),
