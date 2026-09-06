@@ -137,6 +137,68 @@ def _mono(start=0.0, tick=1.0):
     return monotonic
 
 
+def _loop_seams(**kw):
+    """`_seams` plus the CI-gate seams, for `run_loop` callers only.
+
+    They are NOT in `_seams` itself because `run_cycle` does not take them, and
+    a shared dict would break every `run_cycle(1, **seams)` call in this file.
+
+    The default `head_sha` answers the SAME sha every time, so the gate reads
+    "no push detected" and returns before it ever reaches `gh`. That is what
+    keeps the dozen tests which are not about CI hermetic without each one
+    having to script a fake CI run - and `gh` is wired to an AssertionError so
+    a future change that reaches it fails loudly instead of shelling out.
+    """
+    log, seams = _seams(**kw)
+    log["gh"] = []
+
+    def gh(args):
+        log["gh"].append(list(args))
+        raise AssertionError(f"no test may shell out to gh: {list(args)}")
+
+    seams["head_sha"] = lambda: "cafe1234"
+    seams["gh"] = gh
+    return log, seams
+
+
+def _heads(*shas):
+    """A `head_sha` seam walking a scripted list, repeating the last answer.
+
+    The driver reads it before and after each cycle: an UNCHANGED answer is the
+    only push signal a driver that never looks inside the lane worktree can
+    have, so a test that wants the gate to fire must move it.
+    """
+    seq = list(shas)
+
+    def head_sha():
+        return seq.pop(0) if len(seq) > 1 else seq[0]
+
+    return head_sha
+
+
+def _new_head_every_call():
+    """A `head_sha` that never repeats - every cycle looks like a real push."""
+    state = {"n": 0}
+
+    def head_sha():
+        state["n"] += 1
+        return f"sha{state['n']:04d}"
+
+    return head_sha
+
+
+def _fake_wait(step="success", *, record=None):
+    """A `wait_for_ci` seam returning a fixed verdict and recording its kwargs."""
+    seen = [] if record is None else record
+
+    def wait(sha, **kw):
+        seen.append({"sha": sha, **kw})
+        return {"sha": sha, "run_id": 4242, "status": "completed", "step": step,
+                "waited_s": 1.0, "detail": f"faked {step}"}
+
+    return seen, wait
+
+
 # --------------------------------------------------------------------------- constants
 def test_the_lane_is_queue_and_the_lock_roster_knows_it():
     """A driver pointed at a lane the lock refuses would fail on every cycle."""
@@ -308,7 +370,7 @@ def test_a_lane_freed_mid_retry_is_claimed_and_run():
 # --------------------------------------------------------------------------- jsonl ledger
 def test_the_cycle_log_is_created_lazily_one_json_object_per_line(tmp_path):
     ledger = tmp_path / "not" / "made" / "yet" / "queue_loop.jsonl"
-    log, seams = _seams(alive_ticks=1)
+    log, seams = _loop_seams(alive_ticks=1)
     summary = qloop.run_loop(max_cycles=3, settle_s=45, poll_s=10,
                              control_dir=tmp_path / "control",
                              cycle_log=ledger, emit=lambda line: None, **seams)
@@ -324,7 +386,7 @@ def test_the_cycle_log_is_created_lazily_one_json_object_per_line(tmp_path):
 def test_the_cycle_log_appends_and_never_rewrites(tmp_path):
     ledger = tmp_path / "queue_loop.jsonl"
     ledger.write_text('{"cycle": 0, "outcome": "from-a-previous-run"}\n', encoding="utf-8")
-    log, seams = _seams(alive_ticks=1)
+    log, seams = _loop_seams(alive_ticks=1)
     qloop.run_loop(max_cycles=2, control_dir=tmp_path / "control",
                    cycle_log=ledger, emit=lambda line: None, **seams)
 
@@ -335,7 +397,7 @@ def test_the_cycle_log_appends_and_never_rewrites(tmp_path):
 
 # --------------------------------------------------------------------------- run_loop
 def test_run_loop_stops_exactly_at_max_cycles(tmp_path):
-    log, seams = _seams(alive_ticks=1)
+    log, seams = _loop_seams(alive_ticks=1)
     summary = qloop.run_loop(max_cycles=4, settle_s=45, poll_s=10,
                              control_dir=tmp_path, cycle_log=tmp_path / "l.jsonl",
                              emit=lambda line: None, **seams)
@@ -346,7 +408,7 @@ def test_run_loop_stops_exactly_at_max_cycles(tmp_path):
 
 
 def test_run_loop_settles_BETWEEN_cycles_and_not_after_the_last(tmp_path):
-    log, seams = _seams(alive_ticks=0)
+    log, seams = _loop_seams(alive_ticks=0)
     qloop.run_loop(max_cycles=3, settle_s=45, poll_s=10, control_dir=tmp_path,
                    cycle_log=tmp_path / "l.jsonl", emit=lambda line: None, **seams)
     assert log["sleep"].count(45) == 2, "3 cycles means 2 settles, never 3"
@@ -355,7 +417,7 @@ def test_run_loop_settles_BETWEEN_cycles_and_not_after_the_last(tmp_path):
 def test_a_stop_sentinel_before_cycle_one_runs_zero_cycles(tmp_path):
     (tmp_path / "lanes").mkdir()
     (tmp_path / "lanes" / "QUEUE_STOP").write_text("halt", encoding="utf-8")
-    log, seams = _seams(alive_ticks=1)
+    log, seams = _loop_seams(alive_ticks=1)
     summary = qloop.run_loop(max_cycles=5, control_dir=tmp_path,
                              cycle_log=tmp_path / "l.jsonl",
                              emit=lambda line: None, **seams)
@@ -374,7 +436,7 @@ def test_a_drained_sentinel_written_mid_loop_stops_the_NEXT_cycle(tmp_path):
     """
     drained = tmp_path / "lanes" / "QUEUE_DRAINED"
     drained.parent.mkdir(parents=True, exist_ok=True)
-    log, seams = _seams(alive_ticks=1)
+    log, seams = _loop_seams(alive_ticks=1)
     real_launch = seams["launch"]
 
     def launch_then_drain(lane, *, run_id, token, **kw):
@@ -395,7 +457,7 @@ def test_a_drained_sentinel_written_mid_loop_stops_the_NEXT_cycle(tmp_path):
 
 def test_run_loop_emits_one_line_per_cycle(tmp_path):
     printed = []
-    log, seams = _seams(alive_ticks=0)
+    log, seams = _loop_seams(alive_ticks=0)
     qloop.run_loop(max_cycles=3, control_dir=tmp_path, cycle_log=tmp_path / "l.jsonl",
                    emit=printed.append, **seams)
     assert len(printed) == 3
@@ -507,7 +569,7 @@ def test_the_kill_grace_polls_no_slower_than_the_grace_itself():
 def test_run_loop_STOPS_the_whole_loop_when_the_kill_did_not_take(tmp_path):
     """Never fire another cycle into a worktree that may still have a live
     writer. Ending the night early is a cost; a corrupted index is not."""
-    log, seams = _seams(alive_ticks=-1, tick=1.0, kill_takes=False)
+    log, seams = _loop_seams(alive_ticks=-1, tick=1.0, kill_takes=False)
     seams["monotonic"] = _mono(tick=1.0)
     summary = qloop.run_loop(max_cycles=6, cycle_timeout_s=3, poll_s=10,
                              kill_grace_s=20, settle_s=45, control_dir=tmp_path,
@@ -600,7 +662,7 @@ def test_an_unexpected_fault_is_recorded_as_an_error_row_and_the_loop_goes_on(
         monkeypatch, tmp_path):
     """One unexpected fault ended the whole night AND left no JSONL trace,
     because `append_record` is only reached on the normal path."""
-    log, seams = _seams(alive_ticks=1)
+    log, seams = _loop_seams(alive_ticks=1)
     ledger = tmp_path / "l.jsonl"
     calls = {"n": 0}
     real_run_cycle = qloop.run_cycle
@@ -630,7 +692,7 @@ def test_an_unexpected_fault_is_recorded_as_an_error_row_and_the_loop_goes_on(
 
 def test_three_CONSECUTIVE_errors_stop_the_loop(monkeypatch, tmp_path):
     """A fault that repeats is a fault that will repeat all night."""
-    log, seams = _seams(alive_ticks=1)
+    log, seams = _loop_seams(alive_ticks=1)
     monkeypatch.setattr(qloop, "run_cycle",
                         lambda cycle, **kw: (_ for _ in ()).throw(RuntimeError("boom")))
     summary = qloop.run_loop(max_cycles=9, max_consecutive_errors=3,
@@ -644,7 +706,7 @@ def test_three_CONSECUTIVE_errors_stop_the_loop(monkeypatch, tmp_path):
 
 
 def test_a_NON_consecutive_error_does_not_stop_the_loop(monkeypatch, tmp_path):
-    log, seams = _seams(alive_ticks=1)
+    log, seams = _loop_seams(alive_ticks=1)
     calls = {"n": 0}
     real_run_cycle = qloop.run_cycle
 
@@ -808,10 +870,11 @@ def test_main_gives_the_two_hard_stops_their_own_exit_codes(monkeypatch, capsys)
         qloop.EXIT_OK
 
 
-def test_the_four_nonzero_exit_codes_are_distinct():
+def test_the_nonzero_exit_codes_are_distinct():
     """Two codes sharing a number is the same defect as everything exiting 0."""
     codes = [qloop.EXIT_OK, qloop.EXIT_STOP_SENTINEL, qloop.EXIT_ALREADY_RUNNING,
-             qloop.EXIT_KILL_FAILED, qloop.EXIT_CONSECUTIVE_ERRORS]
+             qloop.EXIT_KILL_FAILED, qloop.EXIT_CONSECUTIVE_ERRORS,
+             qloop.EXIT_CI_RED]
     assert len(set(codes)) == len(codes), codes
 
 
@@ -922,6 +985,512 @@ def test_a_worker_with_no_readable_start_time_falls_back_to_the_pid_probe():
 
     assert rec["outcome"] == "completed"
     assert seen and all(s is None for s in seen)
+
+
+# ===========================================================================
+# 7. THE CI WAIT BELONGS TO THE DRIVER, NOT TO THE PROMPT. Added 2026-09-06.
+#
+# `tools/headless-queue.md` section 9 told the WORKER to block until its own
+# `ci` run completed. `.github/workflows/ci.yml:38-40` sets
+# `cancel-in-progress: true` on the group
+# `${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}`, a run
+# takes 45 to 67 minutes and a cycle takes 25 to 45, so cycle N+1's run cancels
+# cycle N's in WHATEVER group. MEASURED over six cycles: cycles 2 and 3 blocked
+# (102.7 and 113.3 minutes, both green); cycles 4, 5 and 6 ran 45 / 24.2 / 38.5
+# minutes, which is shorter than a run, so those workers exited early and three
+# consecutive dispatch runs were cancelled. An instruction a worker can
+# rationalize past is not a mechanism. Nothing can cancel a run while the only
+# thing that would trigger the next one is the driver, and the driver is
+# waiting - and cycles are already serial, so that is structural.
+# ===========================================================================
+CI_STEP_NAME = "full dual suite (RM-119 - push CI now gates the whole tree)"
+
+
+def _gh_key(args):
+    """Which scripted answer a `gh` argv wants.
+
+    `run view` is TWO different questions (`--json status,conclusion` while
+    polling, `--json jobs` once it completes) and they must be scriptable
+    apart, or a test cannot make a run whose conclusion disagrees with its
+    step - which is the whole point of reading `jobs[].steps[]`.
+    """
+    if args[:2] == ["workflow", "run"]:
+        return "dispatch"
+    if args[:2] == ["run", "list"]:
+        return "list"
+    if args[:2] == ["run", "view"]:
+        return "jobs" if args[-1] == "jobs" else "view"
+    return " ".join(args)
+
+
+def _fake_gh(**answers):
+    """A scripted `gh` seam. Every value is a list of (returncode, payload).
+
+    Answers are consumed in order and the LAST one repeats forever, so a poll
+    loop of unknown length needs exactly one trailing entry. A payload that is
+    not a string is json.dumps'd, so a test writes the shape it means. An
+    unscripted call is an AssertionError rather than a silent empty answer - a
+    fake that invents a reply for a call nobody expected is how a seam test
+    passes while proving nothing.
+    """
+    calls = []
+    queues = {k: list(v) for k, v in answers.items()}
+
+    def gh(args):
+        args = [str(a) for a in args]
+        calls.append(args)
+        queue = queues.get(_gh_key(args))
+        if not queue:
+            raise AssertionError(f"unscripted gh call: {args}")
+        rc, payload = queue[0] if len(queue) == 1 else queue.pop(0)
+        return rc, payload if isinstance(payload, str) else json.dumps(payload)
+
+    return calls, gh
+
+
+def _row(rid, sha, *, status="completed", conclusion="success",
+         event="workflow_dispatch"):
+    return {"databaseId": rid, "headSha": sha, "status": status,
+            "conclusion": conclusion, "event": event}
+
+
+def _jobs(step="success", *, job="check", job_conclusion="success",
+          step_name=CI_STEP_NAME, steps=None):
+    """A `gh run view --json jobs` payload.
+
+    The nightly job is always present because a `workflow_dispatch` really does
+    run both (`ci.yml:44`), and a driver that read the FIRST job would then
+    grade the wrong one.
+    """
+    named = [{"name": "Set up job", "conclusion": "success"},
+             {"name": step_name, "conclusion": step}] if steps is None else steps
+    return {"jobs": [
+        {"name": "nightly-full-suite", "conclusion": "failure",
+         "steps": [{"name": step_name, "conclusion": "failure"}]},
+        {"name": job, "conclusion": job_conclusion, "steps": named}]}
+
+
+def test_wait_for_ci_prefers_an_EXISTING_dispatch_run_over_a_push_run():
+    """A dispatch run outlives a later push; a push run does not.
+
+    `event_name` is part of the concurrency group, so only another
+    `workflow_dispatch` can supersede a dispatch run - and the next one is a
+    whole cycle away because cycles are serial.
+    """
+    calls, gh = _fake_gh(
+        list=[(0, [_row(11, "abc", event="push"),
+                   _row(22, "abc", event="workflow_dispatch")])],
+        jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+
+    assert out["step"] == "success"
+    assert out["run_id"] == 22, "the push run must not be the one watched"
+    assert out["sha"] == "abc"
+    assert out["status"] == "completed"
+    assert not [c for c in calls if _gh_key(c) == "dispatch"], (
+        "a run for this sha already existed - triggering another is a waste "
+        "of a 45-minute runner and starts a race with the next cycle")
+
+
+def test_wait_for_ci_TRIGGERS_a_run_when_none_exists_for_the_sha():
+    calls, gh = _fake_gh(
+        list=[(0, [_row(11, "other", event="push")]),
+              (0, [_row(33, "abc", event="workflow_dispatch"),
+                   _row(11, "other", event="push")])],
+        dispatch=[(0, "")],
+        jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+
+    assert out["step"] == "success"
+    assert out["run_id"] == 33
+    assert ["workflow", "run", "ci.yml", "--ref", "main"] in calls
+
+
+def test_a_triggered_run_on_a_DESCENDANT_sha_is_accepted_and_records_ITS_sha():
+    """`gh workflow run` takes a BRANCH ref, so it builds `main` as of trigger
+    time - our commit, or a descendant of it. A later sha subsumes an earlier
+    one, so the run is accepted and the sha it ACTUALLY built is what the
+    record carries. Recording the requested sha instead would be a quiet lie
+    in the one row that has to be citable.
+    """
+    calls, gh = _fake_gh(
+        list=[(0, [_row(11, "other", event="push")]),
+              (0, [_row(44, "def-later", event="workflow_dispatch")])],
+        dispatch=[(0, "")],
+        jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+
+    assert out["step"] == "success"
+    assert out["run_id"] == 44
+    assert out["sha"] == "def-later", "the record must name the sha CI built"
+
+
+def test_wait_for_ci_POLLS_until_the_run_completes():
+    calls, gh = _fake_gh(
+        list=[(0, [_row(55, "abc", status="in_progress", conclusion=None)])],
+        view=[(0, {"status": "in_progress", "conclusion": None}),
+              (0, {"status": "in_progress", "conclusion": None}),
+              (0, {"status": "completed", "conclusion": "success"})],
+        jobs=[(0, _jobs("success"))])
+    slept = []
+    out = qloop.wait_for_ci("abc", budget_s=100_000, poll_s=60, gh=gh,
+                            sleep=slept.append, monotonic=_mono())
+
+    assert out["step"] == "success"
+    assert slept == [60, 60, 60], "it must poll at poll_s, not spin"
+    assert len([c for c in calls if _gh_key(c) == "view"]) == 3
+
+
+def test_budget_exhaustion_returns_timeout_and_NEVER_raises():
+    """A run that outlasts the budget is not a red and not a green. It is
+    recorded and the night goes on - an exception here would end it."""
+    calls, gh = _fake_gh(
+        list=[(0, [_row(66, "abc", status="in_progress", conclusion=None)])],
+        view=[(0, {"status": "in_progress", "conclusion": None})])
+    out = qloop.wait_for_ci("abc", budget_s=5, poll_s=1, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono(tick=2.0))
+
+    assert out["step"] == "timeout"
+    assert out["run_id"] == 66
+    assert "5" in out["detail"], "the budget it was measured against"
+    assert not [c for c in calls if _gh_key(c) == "jobs"], (
+        "a run that never completed has no step conclusion to read")
+
+
+def test_a_CANCELLED_run_is_re_dispatched_exactly_once():
+    """`cancel-in-progress` is the whole reason this wait exists, so the one
+    outcome it must handle gracefully is the run being superseded anyway."""
+    calls, gh = _fake_gh(
+        list=[(0, [_row(77, "abc", conclusion="cancelled")]),
+              (0, [_row(88, "abc"), _row(77, "abc", conclusion="cancelled")])],
+        dispatch=[(0, "")],
+        jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+
+    assert out["step"] == "success"
+    assert out["run_id"] == 88
+    assert len([c for c in calls if _gh_key(c) == "dispatch"]) == 1
+
+
+def test_a_SECOND_cancelled_run_is_reported_cancelled_and_not_retried_again():
+    """ONCE. A driver that re-dispatched on every cancel would burn the whole
+    budget starting runs instead of watching one, and a cancelled run may never
+    be dressed up as green."""
+    calls, gh = _fake_gh(
+        list=[(0, [_row(77, "abc", conclusion="cancelled")]),
+              (0, [_row(88, "abc", conclusion="cancelled")])],
+        dispatch=[(0, "")])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+
+    assert out["step"] == "cancelled"
+    assert out["run_id"] == 88
+    assert len([c for c in calls if _gh_key(c) == "dispatch"]) == 1
+
+
+def test_a_gh_NON_ZERO_exit_returns_unavailable_and_never_raises():
+    """FAIL SOFT ON TOOLING, NEVER ON THE VERDICT. A CLI hiccup - gh not
+    installed, an expired token, a 502 from the API - may not wedge or end an
+    overnight loop."""
+    calls, gh = _fake_gh(list=[(1, "gh: could not find any workflows")])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+
+    assert out["step"] == "unavailable"
+    assert out["run_id"] is None
+    assert "could not find any workflows" in out["detail"]
+
+
+def test_UNPARSEABLE_json_returns_unavailable_rather_than_exploding():
+    calls, gh = _fake_gh(list=[(0, "not json at all")])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "unavailable"
+    assert "JSON" in out["detail"] or "json" in out["detail"]
+
+
+def test_a_MISSING_field_returns_unavailable_rather_than_a_KeyError():
+    calls, gh = _fake_gh(
+        list=[(0, [_row(99, "abc")])],
+        jobs=[(0, {"jobs": [{"name": "check", "conclusion": "success"}]})])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "unavailable"
+
+
+def test_a_SKIPPED_check_job_reports_skipped_and_never_success():
+    """A green run may have SKIPPED the job that matters: `check` carries
+    `if: github.event_name != 'schedule'` (`ci.yml:143`), so the scheduled
+    nightly never runs it. Citing the run conclusion there is how a night of
+    untested pushes reads as twelve green cycles."""
+    calls, gh = _fake_gh(
+        list=[(0, [_row(101, "abc")])],
+        jobs=[(0, _jobs("success", job_conclusion="skipped"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "skipped"
+
+
+def test_an_ABSENT_check_job_reports_skipped_too():
+    calls, gh = _fake_gh(
+        list=[(0, [_row(102, "abc")])],
+        jobs=[(0, _jobs("success", job="nightly-only"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "skipped"
+
+
+def test_the_verdict_is_the_STEP_conclusion_not_the_run_conclusion():
+    """Read `jobs[].steps[]`, never the run conclusion - the measured rule this
+    whole function exists to encode."""
+    calls, gh = _fake_gh(
+        list=[(0, [_row(103, "abc", conclusion="success")])],
+        jobs=[(0, _jobs("failure"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+
+    assert out["step"] == "failure", (
+        "the run said success; the step that gates the tree did not")
+    assert out["status"] == "completed"
+
+
+def test_the_result_carries_exactly_the_documented_fields():
+    calls, gh = _fake_gh(list=[(0, [_row(104, "abc")])],
+                         jobs=[(0, _jobs("success"))])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, gh=gh,
+                            sleep=lambda s: None, monotonic=_mono())
+    assert set(out) == {"sha", "run_id", "status", "step", "waited_s", "detail"}
+    assert out["waited_s"] >= 0
+
+
+def test_allow_trigger_False_never_fires_a_run():
+    """The re-dispatch is a WRITE against the repo's CI minutes. A caller that
+    only wants to read must be able to say so."""
+    calls, gh = _fake_gh(list=[(0, [_row(105, "other")])])
+    out = qloop.wait_for_ci("abc", budget_s=600, poll_s=60, allow_trigger=False,
+                            gh=gh, sleep=lambda s: None, monotonic=_mono())
+    assert out["step"] == "unavailable"
+    assert not [c for c in calls if _gh_key(c) == "dispatch"]
+
+
+def test_every_step_value_is_one_of_the_seven_documented_words():
+    assert qloop.CI_STEPS == ("success", "failure", "cancelled", "skipped",
+                              "timeout", "unavailable", "unknown")
+    assert qloop.CI_FAILURE == "failure"
+    assert qloop.DEFAULT_CI_WAIT_S == 5400
+
+
+def test_the_gh_seam_is_injectable_and_defaults_to_the_one_wrapper():
+    """One seam for every `gh` call, so no test can shell out by accident and
+    every timeout / window flag is set in one place."""
+    params = inspect.signature(qloop.wait_for_ci).parameters
+    assert params["gh"].default is qloop._gh
+    assert params["sleep"].default is time.sleep
+    assert params["monotonic"].default is time.monotonic
+    assert params["allow_trigger"].default is True
+
+
+def test_NO_test_in_this_module_shells_out_for_ci():
+    """The `gh` seam is always injected - structurally, not by convention.
+
+    A single test that forgot it would fire a real `gh workflow run` against
+    the live repo from the suite, which is a 45-minute runner and a race with
+    whatever the queue lane is doing at the time.
+    """
+    tree = ast.parse(open(__file__, encoding="utf-8").read())
+    offenders = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        name = getattr(node.func, "attr", None) or getattr(node.func, "id", None)
+        if name in ("_gh", "_head_sha"):
+            offenders.append(("direct call to a shelling seam", node.lineno))
+        if name == "wait_for_ci" and not any(
+                kw.arg in ("gh", None) for kw in node.keywords):
+            offenders.append(("wait_for_ci without a gh seam", node.lineno))
+    assert not offenders, offenders
+
+
+# ------------------------------------------- 7b. the gate, wired into run_loop
+def test_the_ci_verdict_lands_INSIDE_the_cycles_jsonl_record(tmp_path):
+    """One row carries the cycle AND its verdict. Two files, or a verdict in
+    the log only, means nobody can join them at 3am."""
+    ledger = tmp_path / "l.jsonl"
+    log, seams = _loop_seams(alive_ticks=1)
+    seams["head_sha"] = _new_head_every_call()
+    seen, seams["wait"] = _fake_wait("success")
+    printed = []
+    summary = qloop.run_loop(max_cycles=2, control_dir=tmp_path,
+                             cycle_log=ledger, emit=printed.append, **seams)
+
+    rows = [json.loads(ln) for ln in
+            ledger.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    assert len(rows) == 2
+    assert [r["ci"]["step"] for r in rows] == ["success", "success"]
+    assert rows[0]["ci"]["run_id"] == 4242
+    assert rows == summary["records"], "the ledger and the summary are one thing"
+    assert len(seen) == 2, "one wait per pushed cycle"
+    assert any("success" in line and "ci" in line for line in printed)
+
+
+def test_the_ci_wait_is_charged_the_configured_budget_and_the_shared_seams(tmp_path):
+    log, seams = _loop_seams(alive_ticks=1)
+    seams["head_sha"] = _new_head_every_call()
+    seen, seams["wait"] = _fake_wait("success")
+    qloop.run_loop(max_cycles=1, ci_wait_s=1234, ci_poll_s=7,
+                   control_dir=tmp_path, cycle_log=tmp_path / "l.jsonl",
+                   emit=lambda line: None, **seams)
+
+    assert seen[0]["budget_s"] == 1234
+    assert seen[0]["poll_s"] == 7
+    assert seen[0]["gh"] is seams["gh"], "one gh seam, not a second one"
+    assert seen[0]["sha"] == "sha0002", "the sha the cycle PUSHED, not the one before"
+
+
+def test_a_ci_FAILURE_stops_the_loop(tmp_path):
+    """Continuing to push rows onto a red `main` compounds a break nobody is
+    watching. Ending the night early is the cheaper half of that trade."""
+    log, seams = _loop_seams(alive_ticks=1)
+    seams["head_sha"] = _new_head_every_call()
+    seen, seams["wait"] = _fake_wait("failure")
+    summary = qloop.run_loop(max_cycles=6, settle_s=45, control_dir=tmp_path,
+                             cycle_log=tmp_path / "l.jsonl",
+                             emit=lambda line: None, **seams)
+
+    assert summary["cycles_run"] == 1
+    assert summary["stopped_by"] == "ci_red"
+    assert summary["stopped_by"] == qloop.STOPPED_BY_CI_RED
+    assert len(log["launch"]) == 1, "no second row onto a red main"
+    assert 45 not in log["sleep"], "it must stop, not settle and carry on"
+    assert summary["records"][0]["ci"]["step"] == "failure", (
+        "the evidence for why the night ended has to reach the ledger")
+
+
+@pytest.mark.parametrize("step", ["cancelled", "timeout", "skipped",
+                                  "unavailable", "unknown"])
+def test_every_NON_red_verdict_is_recorded_and_the_loop_CONTINUES(tmp_path, step):
+    """Only `failure` is red. A cancelled run is a superseded run, a timeout is
+    a slow runner, `skipped` means the job did not run and `unavailable` means
+    the CLI hiccuped - none of them is evidence that `main` is broken, and a
+    driver that stopped on them would end most nights at cycle one."""
+    log, seams = _loop_seams(alive_ticks=1)
+    seams["head_sha"] = _new_head_every_call()
+    seen, seams["wait"] = _fake_wait(step)
+    summary = qloop.run_loop(max_cycles=3, control_dir=tmp_path,
+                             cycle_log=tmp_path / "l.jsonl",
+                             emit=lambda line: None, **seams)
+
+    assert summary["cycles_run"] == 3
+    assert summary["stopped_by"] == "max_cycles"
+    assert [r["ci"]["step"] for r in summary["records"]] == [step] * 3
+
+
+def test_no_ci_gate_skips_the_wait_ENTIRELY(tmp_path):
+    log, seams = _loop_seams(alive_ticks=1)
+    seams["head_sha"] = _new_head_every_call()
+    seen, seams["wait"] = _fake_wait("failure")
+    summary = qloop.run_loop(max_cycles=3, ci_gate=False, control_dir=tmp_path,
+                             cycle_log=tmp_path / "l.jsonl",
+                             emit=lambda line: None, **seams)
+
+    assert summary["cycles_run"] == 3, "a red verdict cannot stop a gate that is off"
+    assert seen == [], "the wait must not be called at all"
+    assert all("ci" not in r for r in summary["records"]), (
+        "an ABSENT key is how a row says no gate ran - never a `skipped` "
+        "verdict, which already means the check JOB was skipped")
+
+
+def test_the_wait_is_skipped_when_NO_PUSH_can_be_detected(tmp_path):
+    """`origin/main` unmoved across the cycle means the worker shipped nothing -
+    a recall-closed row, a refuted row, a drained queue. There is no run to
+    wait for, and dispatching one would burn 45 minutes of runner on the
+    previous cycle's commit."""
+    log, seams = _loop_seams(alive_ticks=1)          # head_sha is constant here
+    seen, seams["wait"] = _fake_wait("success")
+    summary = qloop.run_loop(max_cycles=2, control_dir=tmp_path,
+                             cycle_log=tmp_path / "l.jsonl",
+                             emit=lambda line: None, **seams)
+
+    assert summary["cycles_run"] == 2
+    assert seen == []
+    assert all("ci" not in r for r in summary["records"])
+
+
+def test_the_wait_is_skipped_for_every_outcome_other_than_completed(tmp_path):
+    """A lane_held or launch_failed cycle never ran a worker, so there is
+    nothing of ours in CI to grade."""
+    log, seams = _loop_seams(refuse_forever=True)
+    seams["head_sha"] = _new_head_every_call()
+    seen, seams["wait"] = _fake_wait("failure")
+    summary = qloop.run_loop(max_cycles=2, acquire_retries=1,
+                             control_dir=tmp_path, cycle_log=tmp_path / "l.jsonl",
+                             emit=lambda line: None, **seams)
+
+    assert [r["outcome"] for r in summary["records"]] == ["lane_held"] * 2
+    assert seen == []
+    assert all("ci" not in r for r in summary["records"])
+
+
+def test_an_UNREADABLE_head_sha_records_unavailable_and_the_loop_continues(tmp_path):
+    """Fail soft on tooling. A `git ls-remote` that cannot reach the remote is
+    not a reason to abandon eleven more rows - but it is not silence either,
+    because a night with no verdicts must not read like a night of greens."""
+    log, seams = _loop_seams(alive_ticks=1)
+    seams["head_sha"] = lambda: None
+    seen, seams["wait"] = _fake_wait("success")
+    summary = qloop.run_loop(max_cycles=2, control_dir=tmp_path,
+                             cycle_log=tmp_path / "l.jsonl",
+                             emit=lambda line: None, **seams)
+
+    assert summary["cycles_run"] == 2
+    assert seen == [], "there is no sha to wait on"
+    assert [r["ci"]["step"] for r in summary["records"]] == ["unavailable"] * 2
+    assert set(summary["records"][0]["ci"]) == {
+        "sha", "run_id", "status", "step", "waited_s", "detail"}, (
+        "one result shape, whether the verdict came from CI or from the probe "
+        "that never reached it")
+
+
+def test_the_ci_seams_default_to_the_real_implementations():
+    params = inspect.signature(qloop.run_loop).parameters
+    assert params["wait"].default is qloop.wait_for_ci
+    assert params["head_sha"].default is qloop._head_sha
+    assert params["gh"].default is qloop._gh
+    assert params["ci_gate"].default is True, (
+        "the gate is the point - an opt-in gate is the prose contract again")
+    assert params["ci_wait_s"].default == qloop.DEFAULT_CI_WAIT_S
+
+
+def test_main_threads_ci_wait_and_no_ci_gate_onto_run_loop(monkeypatch, tmp_path):
+    seen = {}
+    monkeypatch.setattr(qloop, "run_loop", lambda **kw: seen.update(kw) or
+                        {"cycles_run": 1, "stopped_by": "max_cycles", "records": []})
+    assert qloop.main(["--once", "--ci-wait", "600"],
+                      singleton=contextlib.nullcontext) == qloop.EXIT_OK
+    assert seen["ci_wait_s"] == 600
+    assert seen["ci_gate"] is True
+
+    seen.clear()
+    assert qloop.main(["--once", "--no-ci-gate"],
+                      singleton=contextlib.nullcontext) == qloop.EXIT_OK
+    assert seen["ci_gate"] is False
+    assert seen["ci_wait_s"] == qloop.DEFAULT_CI_WAIT_S
+
+
+def test_main_returns_EXIT_CI_RED_when_the_loop_stopped_on_a_red(monkeypatch, capsys):
+    """A night that ended at cycle 2 on a red `main` must not report the same
+    number as a night that ran all twelve."""
+    monkeypatch.setattr(qloop, "run_loop", lambda **kw: {
+        "cycles_run": 2, "stopped_by": qloop.STOPPED_BY_CI_RED, "records": []})
+    rc = qloop.main(["--cycles", "12"], singleton=contextlib.nullcontext)
+    out = capsys.readouterr().out
+    assert rc == qloop.EXIT_CI_RED
+    assert rc != 0
+    assert "ci" in out.lower()
 
 
 # --------------------------------------------------------------------------- house rules
