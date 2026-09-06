@@ -6,6 +6,54 @@
 
 ---
 
+# 2026-09-06c - LANE 8 true-audit: core/rofl_archive.py, and the verifier caught MY regression
+
+On main: `387a593a2` (code+tests), `4fcf1980b` (LEDGER 1354), `66f167a90`
+(gitignore fix). RM-310 CLOSED, RM-371 now PARTIAL (its rofl third done, the
+`core/riot_api.py:319` and `core/sgp_client.py:167` thirds UNCHANGED).
+
+Audited `core/rofl_archive.py` (repeat offender - lane 8 had done it twice
+already, LEDGER 1176 + 1311, and it still carried two open lane-8 rows). Five
+weaknesses, all fixed, 11 guards, 9 mutations all killed.
+
+**The thing worth remembering: the verifier REFUTED the slice and it was right.**
+Bounding the gunzip with `zlib.decompressobj` silently ACCEPTED truncated bodies
+that `gzip.decompress` had rejected via EOFError - a 43-percent-truncated replay
+kept its RIOT magic, passed validation, was written under its final name, and
+was recorded in an index that is idempotent on match id, so every later pull
+skipped it FOREVER. Neither the 8 guards nor the mutation driver could see it:
+the driver only mutates lines the guards already cover. **Swapping a stdlib call
+for a bounded equivalent changes its ERROR contract as well as its size
+contract, and the error contract is the half nobody tests.** Fixed with
+`not dec.eof` + a member loop.
+
+Second verifier catch: my archive probe used a NON-recursive glob, so I reported
+15 replays / 18.6 MB max when the truth is 13896 / 180.4 GiB / 28.48 MB max.
+Corrected in code and ledger. The 64 MB ceiling is right either way, and it must
+NOT inherit `lib/http/client.py`'s 16 MB default - real replays exceed it.
+
+Do NOT redo: the 3 RC suite failures in the lane worktree are CRLF-environmental
+(`core.autocrlf=true`, 1878 files), they pass on the clean main tree. An earlier
+suite run reported "22 failed" - that was a crashed xdist worker aborting the
+session, not regressions.
+
+**Pre-publication audit run this session (operator is considering going public,
+chose MIT).** Findings in chat; the actionable set: `config/vision_token.txt` is
+a TRACKED live 32-hex `X-RC-Token` secret from the initial commit (rotate per
+`core/vision_token.py:12-30`; `:8889` is loopback-only so it was never a remote
+vector); 48.9 MB of scraped Aggregator J HTML nothing reads; lolmath/Overlay App E/101qq
+data shipped as verbatim vendor payloads. Operator decided: delete Aggregator J,
+obfuscate lolmath + its history, drop `Share/` at publish. NOTE Overlay App E
+`mayhem_augment_stats` IS referenced by `tools/ds_feed_index.py` +
+`tools/ds_share_sync.py`, and the 101qq raw capture IS the live duo-synergy
+fallback seed - neither is dead, both need re-expression, not deletion.
+**A history rewrite is NOT safe to start opportunistically: 6 live worktrees and
+lane 10 pushes to main continuously. It needs a quiet window.**
+MIT should land in the SAME pass as the data purge, not before - otherwise it
+asserts an MIT grant over data that is not ours.
+
+---
+
 # 2026-09-06b - LANE 10 cycle 15: RM-364 shipped, and it ADOPTED a crashed cycle
 
 RM-364 is on main (`d9e8c5d98` code, `f01918b4b` sha citation). LEDGER 1353.
@@ -107,66 +155,3 @@ ALSO: RM-368 filed for the `github.com/affaan-m/ECC` harness lift - MIT, license
 gate passed against all three declarations, whole-package lift REFUTED in the
 row itself, three sub-rows worth taking. A Sibling-E session was spawned
 separately to port this lane there.
-
----
-
-# 2026-09-05e - ROW EXECUTION: RM-347 shipped, gate caught two false rationale lines
-
-STATE. LEDGER 1337. One row, inline TDD, `be7747fcb` on `main` (single production
-file + single test file, so there were no disjoint slices to parallelize; the
-adversarial property was preserved with a read-only `verifier` against the
-finished tree). Suites measured on the committed tree: `pytest tests -n 8`
-**20697 passed / 96 skipped / 4859 subtests / exit 0** (baseline 20673, so +24 =
-exactly the new file); `pytest agents/daemon_slayer -n 8` **10856 passed / 13662
-subtests / exit 0**, unchanged. No `ENGINE_VERSION` bump, no `:8860` bounce, no
-Share sync, no frozen file. Next free id **RM-368** - RM-367 was minted.
-
-WHAT SHIPPED. `lcu/lcu_pregame.py` `get_gameflow_phase` returned the string
-`"None"` from all three bail-outs (bare `except`, no cached port/auth, non-str
-non-None body), and `"None"` is a REAL phase - the LCU's idle-at-home-screen
-value. Failure is now Python `None`; genuine phases including `"None"` still
-return strings. New `_phase_or_none` unwraps LCU JSON quoting on both paths and
-rejects an empty body.
-
-FOUR THINGS WORTH CARRYING FORWARD.
-
-1. **A test-only MIRROR is not the consumer.** Filing RM-367 nearly cited
-   `dashboard/view_router_state.py` as the code a naive fix would break. It has
-   the right three `not phase` arms and reads exactly like the router - and its
-   own docstring at `:1-7` says it is NOT imported at runtime. The live arms are
-   `web/js/main.js:711` and `:728`. Sibling of
-   `feedback_scan_is_not_a_reachability_probe`: a faithful mirror of live logic
-   can still be zero-consumer code.
-
-2. **Two existing conventions means "be consistent" settles nothing.** This
-   failure class already had `""` (`lcu_postgame_collector.py:1034`) AND
-   `"Unknown"` (`snapshot_shape.py:415-421`) in-tree. The sentinel was picked
-   from the CONSUMER contract instead - `dashboard/_cs_retention.py:49-56`
-   treats the string `"None"` as a clear phase and Python `None` as "unknown, do
-   not act".
-
-3. **A realism pin is not a breadth pin.** A test justified itself by claiming
-   `HTTPError` is not an `OSError` subclass, so the handler could not be a narrow
-   `except OSError`. The gate measured the MRO: HTTPError -> URLError ->
-   **OSError**. False, and the test proved less than it claimed. Relabelled, and
-   a real `ValueError` case now carries the breadth claim.
-
-4. **Zero-caller rows again, second day running.** `get_gameflow_phase` has no
-   in-repo caller, so the row's "caller-side assertion" acceptance clause was met
-   with consumer-contract tests that SAY they are not caller tests. RM-346 hit
-   the same shape yesterday. When a row asserts a call path, re-derive it.
-
-FILED, NOT FIXED. **RM-367** - `snapshot_shape.py:415-421` reports an empty
-gameflow body as phase `""`, same class, and this reader IS live behind
-`/api/state.lcu`. The one-line consistency fix to `"Unknown"` is a regression: a
-falsy phase is load-bearing at `web/js/main.js:711`/`:728`, and `"Unknown"` is
-truthy and matches no explicit arm. Body + acceptance in `BACKLOG.md`.
-
-HOUSEKEEPING. ROADMAP hit 90.4 pct (`tools/drift_guard.py` warns at 90), so the
-closed RM-346 / RM-362 line was relocated verbatim to
-`docs/ROADMAP_HISTORY.md` (2026-09-05b) in the same commit; back to 89.5 pct.
-The RM-344/345/361 line was left alone on purpose - RM-345 is SHIPPED-PARTIAL
-with RM-366 open on the same line, the mixed state the convention excludes.
-
-STILL GATED. **RM-366** needs operator approval - it edits the FROZEN
-`lcu/lcu_client.py`. Until then a faulting LCU POST is still sent twice.
