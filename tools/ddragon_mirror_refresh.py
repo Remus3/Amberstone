@@ -76,6 +76,42 @@ TRANSIENT_HTTP_CODES = frozenset({429, 500, 502, 503, 504})
 # (item 376 - benign nightly result=2 from one 404 among ~6800 assets).
 FAIL_RATIO_TOLERANCE = 0.005
 
+# RM-353: the version string is CDN input and it becomes a filesystem path
+# segment (META_DIR / version, WEB_DIR / version, and CACHE_ROOT / version in
+# lib/ddragon/fetch.py), so it is validated at every entry point before any
+# join. `pathlib` does NOT normalise, and on Windows an anchored element
+# ("C:/x") REPLACES the left operand outright.
+#
+# The accepted shape is deliberately the shape `prune_stale_versions` scans
+# for - `_SEMVER_DIR` below is this same object, not a second copy - because a
+# directory the retention pass cannot recognise is a directory it can never
+# delete. Anything created must stay prunable.
+VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+
+def validate_version(version: Any) -> str:
+    """Return `version` if it is a safe DDragon patch string, else raise.
+
+    Rejects, in order of how they actually arrive: a non-string (a malformed
+    body yields a dict / int / None), a path-traversal or anchored element,
+    and anything that is not ``<major>.<minor>.<patch>``. That last check is
+    what catches a JSON *string* body - ``"maintenance"`` makes ``versions[0]``
+    the single character ``"m"``, which is a legal directory name and would
+    pass a traversal-only or basename-only test.
+    """
+    if not isinstance(version, str) or isinstance(version, bool):
+        raise ValueError(f"DDragon version must be a string, got {type(version).__name__}")
+    # fullmatch, not match: `$` also matches BEFORE a trailing newline, so
+    # `match` would accept "16.15.1\n" - a control character in a name this
+    # code is about to create a directory from. Found by the RM-353
+    # adversarial pass. The pruner keeps `.match` deliberately: it must still
+    # recognise such a directory as a prune candidate if one ever exists.
+    if not VERSION_RE.fullmatch(version):
+        raise ValueError(
+            f"refusing unsafe DDragon version {version!r} - expected <major>.<minor>.<patch>"
+        )
+    return version
+
 # Maps used by the dashboard. DDragon ships map11.png (SR), map12.png (ARAM),
 # map30.png (Cherry/Arena). Brawl (35) is map11 reskin and has no DDragon asset.
 MAP_IDS = (11, 12, 30)
@@ -239,7 +275,8 @@ def resolve_latest_version() -> str:
     versions = json.loads(res.body.decode("utf-8"))
     if not versions or not isinstance(versions, list):
         raise RuntimeError("versions.json returned empty list")
-    return versions[0]
+    # RM-353: entry [0] becomes META_DIR / WEB_DIR path segments downstream.
+    return validate_version(versions[0])
 
 
 def read_index() -> dict:
@@ -610,7 +647,9 @@ def run(version: str, *, dry_run: bool, check_changed: bool, force: bool,
 # ---------------------------------------------------------------------------
 
 
-_SEMVER_DIR = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+# RM-353: the SAME object the version validator accepts, aliased rather than
+# re-declared so the "everything we create is prunable" invariant cannot drift.
+_SEMVER_DIR = VERSION_RE
 RETAIN_VERSIONS = 2  # current patch + one previous
 
 
@@ -736,7 +775,9 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-    latest = args.version or resolve_latest_version()
+    # RM-353: --version is operator input and reaches the same path joins, so
+    # it is validated here rather than inside the resolver alone.
+    latest = validate_version(args.version or resolve_latest_version())
     index = read_index()
     cached = index.get("latest_pulled")
 
