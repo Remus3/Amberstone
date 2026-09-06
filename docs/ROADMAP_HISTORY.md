@@ -1,5 +1,21 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06a - the RM-348 and RM-349 lines, relocated by the LANE 10 RM-350 cycle
+
+ROADMAP.md stood at 73720 of its 81920-byte budget (89.99 percent) - just under
+the 90 percent at which `tools/drift_guard.py` warns, and the RM-350 line about
+to be appended would have carried it to roughly 90.5. Both lines below are
+fully SHIPPED, so they were moved here verbatim in the same commit and replaced
+by a single collapsed pointer, which is the 2026-09-04d convention.
+
+The one fence either line carried forward is preserved in that pointer rather
+than relocated with the body: **RM-369 is still OPEN**, it was spawned by the
+RM-348 cycle, and its body is in `BACKLOG.md`. Checked before the move rather
+than assumed. Full per-item evidence stays in LEDGER 1339 and LEDGER 1340.
+
+- **RM-349 SHIPPED 2026-09-06 (LEDGER 1340); next free id stays RM-370.** `core/lcu_ranked.py` promised "Never raises" with the parse OUTSIDE the try; guard extended. Sibling fixed in `dashboard/routes_scouting.py:150` (one malformed player cost the WHOLE batch); `core/patch_impact.py` EXCLUDED. **The row's own `int({})` example was WRONG - `or 0` absorbs every falsy value; what raises is a truthy value `int()` cannot convert.**
+- **RM-348 SHIPPED 2026-09-06 (LEDGER 1339, `c4657e8df`), spawning RM-369; next free id RM-370.** Both halves of the `core/lcu_events.py` transport row: the idle read loop now RACES the frame read against the stop event, and the backoff returns to the floor only after a session that SURVIVED. Sibling swept in `tools/phase_watcher.py`; two others checked and EXCLUDED. LATENT - zero consumers, so contract tests not caller tests. RM-369 body in `BACKLOG.md`.
+
 ## 2026-09-05c - the RM-211 / RM-286 / RM-287 line, relocated by the LANE 10 session
 
 Filing RM-368 put ROADMAP.md at 73649 of its 81920-byte budget (89.9 percent)
