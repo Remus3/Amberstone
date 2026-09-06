@@ -44,7 +44,7 @@ ATTEMPTS_DIR = RUNTIME_DIR / "attempts"
 PR_LOG = RUNTIME_DIR / "pr_creations.jsonl"
 
 WORKTREE = Path(r"C:\RC-CIWatchdog")
-REPO = "Remus3/amberstone"
+REPO = "Remus3/Amberstone"
 POLL_LIMIT = 5
 MAX_ATTEMPTS = 2
 MAX_PR_PER_24H = 3

@@ -8,7 +8,7 @@ Eliminate the "CI red for N consecutive runs" lane (item 167 ruff blocked CI for
 
 ## Trigger surface
 
-Source-of-truth: `gh run list -R Remus3/amberstone --branch main --json databaseId,status,conclusion,headSha`. No webhook (local-only; Legion has no public ingress). Poll cadence = 120s (cheap; sub-2-min detection is overkill for nightly-paced CI).
+Source-of-truth: `gh run list -R Remus3/Amberstone --branch main --json databaseId,status,conclusion,headSha`. No webhook (local-only; Legion has no public ingress). Poll cadence = 120s (cheap; sub-2-min detection is overkill for nightly-paced CI).
 
 ## Failure scope (in-bounds)
 

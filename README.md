@@ -2,7 +2,7 @@
 
 A local, real-time coaching companion for League of Legends and Teamfight Tactics.
 
-[![CI](https://github.com/Remus3/amberstone/actions/workflows/ci.yml/badge.svg)](https://github.com/Remus3/amberstone/actions/workflows/ci.yml) [![Docs guards](https://github.com/Remus3/amberstone/actions/workflows/docs-guards.yml/badge.svg)](https://github.com/Remus3/amberstone/actions/workflows/docs-guards.yml)
+[![CI](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml) [![Docs guards](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml)
 
 It watches the game you are actually in, does the item and damage math locally,
 and turns that into short, situation-specific advice on a dashboard and an

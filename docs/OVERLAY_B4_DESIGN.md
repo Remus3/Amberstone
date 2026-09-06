@@ -303,6 +303,6 @@ blocker on the code.
 `OVERLAY_COMPLIANCE_PLAN.md:162` records the operator product-name pick as
 "Reliquary". The rename that actually shipped (RM-189 Tiers 0+1, LEDGER
 1238/1239) is **Amberstone**, appId `com.amberstone.shell`, repo
-`Remus3/amberstone`. Section 6b2 is stale and should be corrected to match the
+`Remus3/Amberstone`. Section 6b2 is stale and should be corrected to match the
 shipped name so a future reader does not re-open a settled decision. Tier-0
 doc fix, not part of B4 proper.
