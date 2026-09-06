@@ -40,6 +40,12 @@ def _atomic_write_json(path: Path, data: Any) -> None:
 def latest_version(client=None) -> str:
     client = client or get_client()
     resp = client.get(f"{DDRAGON_BASE}/api/versions.json")
+    # RM-352: HttpClient RETURNS a Response for 4xx/5xx instead of raising, so
+    # without this a maintenance page or a bot interstitial reached json() and
+    # surfaced as JSONDecodeError - a class no caller here catches. Same guard
+    # and same message shape as _pull() below.
+    if resp.status != 200:
+        raise RuntimeError(f"DDragon versions: HTTP {resp.status}")
     versions = resp.json()
     if not versions:
         raise RuntimeError("DDragon returned empty versions list")
