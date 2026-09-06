@@ -1,5 +1,31 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06e - the RM-344 / RM-345 / RM-361 line, relocated by the LANE 10 RM-354 cycle
+
+ROADMAP.md reached 73890 of its 81920-byte budget (90.20 percent) once the
+RM-354 result was written onto the RM-352/RM-353 line, crossing the 90 percent
+at which `tools/drift_guard.py` warns (`tools/drift_guard.py:57-58`). The line
+below is fully closed on its shipped half, so it moved here verbatim in the
+same commit behind a collapsed pointer - the same convention the 2026-09-06a
+through 2026-09-06d blocks used in the four cycles before this one.
+
+Fences checked before the move rather than assumed, because this line is NOT
+the simple all-shipped case the previous four were. **RM-345 is SHIPPED-PARTIAL,
+and its residual RM-366 is still OPEN and OPERATOR-GATED** - it cannot be
+executed without an edit to the frozen `lcu/lcu_client.py:191` give-up path, so
+`BACKLOG.md:248` remains its live body and the pointer that replaces this line
+names it. **RM-364 and RM-365 are also still OPEN**, with bodies in
+`BACKLOG.md`. Only RM-344 and RM-361 are closed outright. The line's next-free-id
+figure (RM-367) was already superseded several cycles ago and is stranded rather
+than authoritative: the live pointer is `docs/DS_SWEEP_TRACKER.md:72`, the
+authoritative registry per `ROADMAP.md:14`, which this commit sets to RM-375.
+
+The one substantive fact this line holds that the pointer does not - that
+RM-345's true measured effect is **3 sends to 2, not to 1** - is preserved
+verbatim below and in full in LEDGER 1335. Do not restate it as "fixed".
+
+- **RM-344 SHIPPED / RM-345 SHIPPED-PARTIAL / RM-361 SHIPPED 2026-09-05 (LEDGER 1335), spawning RM-364 / RM-365 / RM-366; next free id RM-367.** RM-344 routes the TFT branch coercions through a defensive int (`game_reader/mode_router.py`); RM-361 sanitizes `enemy_comp` + `comp_context` on every branch (`coach_integration/_sr_prompt.py`). **RM-345 is PARTIAL by measurement, not by scope cut** - the pool now sends a non-idempotent method once, but `lcu/lcu_client.py:191` re-sends it on the give-up path, so the true effect is 3 sends to 2, not to 1; the residual is RM-366 and the frozen file is why it was filed rather than fixed.
+
 ## 2026-09-06d - the RM-352 line, relocated by the LANE 10 RM-353 cycle
 
 ROADMAP.md stood at 73481 of its 81920-byte budget (89.70 percent), leaving 247

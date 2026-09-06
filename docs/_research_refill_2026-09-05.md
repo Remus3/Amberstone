@@ -393,7 +393,13 @@ and a second case returning the bare string `"maintenance"`.
 
 ---
 
-### RM-354 (Row 11) - LANE 8, Tier-1. A 200-response bot wall destroys the good cached page and is stamped "ok"; the whole package is untested
+### RM-354 (Row 11) - SHIPPED 2026-09-06 (LEDGER 1345, LANE 10 queue cycle 7). A 200-response bot wall destroys the good cached page and is stamped "ok"; the whole package is untested
+
+> **CLOSED.** Fix in `lib/scrapers/_base.py`, tests in `tests/test_scrapers_bot_wall_rm354.py`.
+> The "Runner-up" paragraph at the end of this row is NOT closed - it was a different root
+> cause (request-URL construction, not body acceptance) and is now filed with its own id as
+> **RM-374** in `BACKLOG.md`. Read it there; the `:87` citation below is pre-fix and stale.
+
 
 `lib/scrapers/_base.py:96-101`:
 
