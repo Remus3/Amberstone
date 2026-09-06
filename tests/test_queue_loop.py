@@ -148,7 +148,14 @@ def test_the_lane_is_queue_and_the_lock_roster_knows_it():
 def test_the_documented_defaults_are_the_shipped_defaults():
     """These are an operator-facing contract, so they get a guard, not a comment."""
     assert qloop.DEFAULT_MAX_CYCLES == 12
-    assert qloop.DEFAULT_CYCLE_TIMEOUT_S == 5400
+    # 14400 (4h), raised from 5400 on 2026-09-06. The kill has to sit ABOVE the
+    # worst legitimate cycle, and a cycle is now work plus a CI block of up to
+    # 90 minutes (RM-370 measured a real run at 67) plus up to another 90 on a
+    # re-dispatch. Cycle 3 measured 83.8 minutes against the old 5400s kill.
+    assert qloop.DEFAULT_CYCLE_TIMEOUT_S == 14400
+    assert qloop.DEFAULT_CYCLE_TIMEOUT_S > 90 * 60 * 2, (
+        "the kill must outlast a 90-minute block plus one re-dispatch, or it "
+        "bounds legitimate work instead of a wedge")
     assert qloop.DEFAULT_SETTLE_S == 45
     assert qloop.DEFAULT_POLL_S == 10
     assert qloop.ACQUIRE_RETRIES == 20
@@ -404,10 +411,19 @@ def test_main_maps_every_flag_onto_run_loop(monkeypatch, tmp_path):
         return {"cycles_run": 0, "stopped_by": "max_cycles", "records": []}
 
     monkeypatch.setattr(qloop, "run_loop", fake_run_loop)
+    # `singleton=contextlib.nullcontext` is MANDATORY, not tidiness: without it
+    # this takes the REAL `Global\RC_QUEUE_LOOP_DRIVER` mutex, so it passes only
+    # while no driver is running and returns EXIT_ALREADY_RUNNING (3) the moment
+    # the lane is actually looping. MEASURED 2026-09-06 - it went red against a
+    # live driver, which is the one state where the test matters least and the
+    # loop matters most. A test may never depend on machine state it does not
+    # create; the same lesson cost `stop_reason`'s test a rewrite an hour
+    # earlier.
     rc = qloop.main(["--cycles", "3", "--settle", "7", "--poll", "2",
                      "--timeout", "99", "--lane", "queue",
                      "--control-dir", str(tmp_path / "c"),
-                     "--reports-dir", str(tmp_path / "r")])
+                     "--reports-dir", str(tmp_path / "r")],
+                    singleton=contextlib.nullcontext)
     assert rc == 0
     assert seen["max_cycles"] == 3
     assert seen["settle_s"] == 7
@@ -422,7 +438,11 @@ def test_main_once_is_exactly_one_cycle(monkeypatch):
     seen = {}
     monkeypatch.setattr(qloop, "run_loop", lambda **kw: seen.update(kw) or
                         {"cycles_run": 1, "stopped_by": "max_cycles", "records": []})
-    assert qloop.main(["--once", "--cycles", "50"]) == 0
+    # Fake singleton for the same reason as the test above: the real mutex is
+    # held whenever the lane is looping, and this test is about argument
+    # parsing, not about who holds a lock.
+    assert qloop.main(["--once", "--cycles", "50"],
+                      singleton=contextlib.nullcontext) == 0
     assert seen["max_cycles"] == 1, "--once must win over --cycles"
 
 
