@@ -30,7 +30,8 @@ either one turns a different test red:
     public caller - it is exported from `lib/ddragon/__init__.py`);
   * `DDragon.__init__` guards the PATH (an explicit ``version=`` argument -
     `agents/agent2_backend/pipeline/orchestrator.py:98`, `fetch_all`, and
-    `lib/icons/downloader.py:64` all pass one in).
+    `lib/icons/downloader.py:94` all pass one in - was `:64` until the RM-359
+    change added `_safe_relpath` above the class and shifted it).
 
 Sibling sweep (same root cause, wire-derived version -> created directory):
 `tools/ddragon_mirror_refresh.py` `resolve_latest_version` feeds
@@ -293,3 +294,131 @@ def test_main_rejects_a_traversal_cli_version(monkeypatch):
 
     with pytest.raises(ValueError):
         ddr.main(["--version", "../../../pwned", "--dry-run"])
+
+
+# ---------------------------------------------------------------------------
+# RM-359 sibling: the VERSION segment of `champion_detail` was guarded above,
+# the CHAMPION KEY segment of the very same join was not.
+#
+# `pull_champion_detail` builds both halves from `champion_key`:
+#
+#     url  = f"{DDRAGON_BASE}/cdn/{version}/data/{LOCALE}/champion/{key}.json"
+#     dest = META_DIR / version / "champion_detail" / f"{key}.json"
+#
+# and `champion_key` is a raw key off the wire - `pull_all_champion_details`
+# takes `list((summary or {}).get("data", {}).keys())` where `summary` is the
+# downloaded `champion.json` bundle. `_atomic_write_json` does
+# `path.parent.mkdir(parents=True, exist_ok=True)` before writing, so a key of
+# `../../../pwned` CREATES the escaped directory and writes into it.
+#
+# This is the same three-of-four root cause RM-359 fixed in
+# `lib/icons/downloader.py`, and it lands in the file that DEFINES both
+# validators: `_safe_basename` is applied to all eight image names in
+# `enumerate_assets` and `_safe_relpath` to both rune paths, while this one
+# wire string reached a mkdir with nothing applied.
+#
+# SEVERITY IS HIGHER HERE THAN IN THE ROW THAT FOUND IT. RM-359's own body
+# recorded "the live twin is CORRECT ... only the unused library copy
+# diverges". That is now measured false: `lib/icons/downloader.py` has zero
+# production callers, whereas this module is scheduled task
+# `RC-DDragonMirrorRefresh` (verified Ready on this box), running
+# `--check-changed` daily at 03:30, which does NOT short-circuit `run()`.
+
+
+def test_pull_champion_detail_rejects_a_traversal_key(monkeypatch, tmp_path):
+    """A hostile champion key must create nothing and fetch nothing."""
+    calls: list[str] = []
+
+    class _Res:
+        status = 200
+        body = b'{"data": {}}'
+
+    def _spy(url, *a, **k):
+        calls.append(url)
+        return _Res()
+
+    monkeypatch.setattr(ddr, "http_get", _spy)
+    monkeypatch.setattr(ddr, "META_DIR", tmp_path / "meta")
+
+    assert ddr.pull_champion_detail("16.15.1", "../../../pwned") is None
+    assert calls == []
+    assert not (tmp_path / "pwned.json").exists()
+    assert list(tmp_path.rglob("*.json")) == []
+
+
+@pytest.mark.parametrize("key", [
+    "..", ".", "../evil", "..\\evil", "/etc/passwd", "C:/evil", "a/b",
+])
+def test_pull_champion_detail_rejects_every_hostile_key(monkeypatch, tmp_path, key):
+    monkeypatch.setattr(ddr, "META_DIR", tmp_path / "meta")
+    monkeypatch.setattr(ddr, "http_get", lambda *a, **k: pytest.fail(
+        f"fetched despite hostile key {key!r}"))
+
+    assert ddr.pull_champion_detail("16.15.1", key) is None
+
+
+def test_read_or_pull_champion_detail_rejects_without_delegating(monkeypatch, tmp_path):
+    """The cache-read entry point rejects on its OWN, before it joins or delegates.
+
+    Written this way deliberately. The obvious version of this test - assert it
+    returns None with `http_get` stubbed to fail - passes even with this
+    guard deleted, because the call falls through to the now-guarded
+    `pull_champion_detail` and is rejected one level down. Mutation-testing
+    caught that: disabling this guard left the whole file green, which is the
+    lane's own warning that a guard on a non-default path is untested.
+
+    So the assertion is the one the guard actually makes: this function does
+    not join `META_DIR / ... / f"{key}.json"` and does not stat it for an
+    escaped key. Deleting the guard now turns this red.
+    """
+    monkeypatch.setattr(ddr, "META_DIR", tmp_path / "meta")
+    monkeypatch.setattr(ddr, "pull_champion_detail", lambda *a, **k: pytest.fail(
+        "delegated to the puller instead of rejecting the key here"))
+
+    assert ddr.read_or_pull_champion_detail("16.15.1", "../../../pwned") is None
+
+
+def test_pull_all_champion_details_drops_a_poisoned_key_and_keeps_the_rest(
+        monkeypatch, tmp_path):
+    """One hostile key in the bundle must not cost the other champions.
+
+    The batch is the real blast radius: `run()` calls this with every key in
+    the downloaded summary, so a fail-fast would turn one poisoned entry into
+    a total mirror-refresh outage, and an unguarded pass writes outside
+    META_DIR. Neither is acceptable; dropping the single bad key is.
+    """
+    monkeypatch.setattr(ddr, "META_DIR", tmp_path / "meta")
+
+    class _Res:
+        status = 200
+        body = b'{"data": {"Ahri": {"id": "Ahri"}}}'
+
+    monkeypatch.setattr(ddr, "http_get", lambda *a, **k: _Res())
+
+    summary = {"data": {"Ahri": {}, "../../../pwned": {}}}
+    out = ddr.pull_all_champion_details("16.15.1", summary, rate_limit=0.0)
+
+    assert "Ahri" in out
+    assert "../../../pwned" not in out
+    assert list((tmp_path / "meta").rglob("pwned*")) == []
+
+
+def test_a_real_champion_key_still_pulls_and_caches(monkeypatch, tmp_path):
+    """The anti-over-correction guard: legitimate keys must keep working.
+
+    Champion keys are plain alphanumerics (`Ahri`, `MonkeyKing`, `Chogath`),
+    so `_safe_basename` is the right validator here - unlike the rune paths in
+    RM-359, which are multi-segment and needed `_safe_relpath`.
+    """
+    monkeypatch.setattr(ddr, "META_DIR", tmp_path / "meta")
+
+    class _Res:
+        status = 200
+        body = b'{"data": {"MonkeyKing": {"id": "MonkeyKing"}}}'
+
+    monkeypatch.setattr(ddr, "http_get", lambda *a, **k: _Res())
+
+    data = ddr.pull_champion_detail("16.15.1", "MonkeyKing")
+    assert data == {"data": {"MonkeyKing": {"id": "MonkeyKing"}}}
+    cached = tmp_path / "meta" / "16.15.1" / "champion_detail" / "MonkeyKing.json"
+    assert cached.is_file()
