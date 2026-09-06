@@ -133,8 +133,9 @@ def test_the_synthetic_dead_pid_really_is_dead():
 
 def test_lane_roster_and_single_slot():
     assert lanes.LANES == (
-        "upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated")
-    assert lanes.MAX_SLOTS == 1, "the seven lanes are mutually exclusive"
+        "upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated",
+        "queue")
+    assert lanes.MAX_SLOTS == 1, "every lane is mutually exclusive with the rest"
 
 
 # ---- the three states ------------------------------------------------------

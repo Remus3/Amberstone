@@ -22,6 +22,7 @@ a reference, not installable as a product - see [Limitations](#limitations).
 | [Limitations](#limitations) | what it cannot do, stated before you read further |
 | [Where it runs](#where-it-runs) | the single-machine deployment |
 | [Status](#status) | what is finished and where open work is tracked |
+| [How the work gets done](#how-the-work-gets-done) | the headless lanes that maintain it, and why one item per cycle |
 | [Data sources and credits](#data-sources-and-credits) | the public projects the game data comes from |
 | [Documentation map](#documentation-map) | every other document, and who each is written for |
 
@@ -94,6 +95,9 @@ vision server on the side: screen capture -> OCR -> AI vision only on a miss
 |---|---|
 | :8888 | Web dashboard (HTTPS) |
 | :8889 | Vision server |
+| :8890 | Agents supervisor (proxied by the dashboard) |
+| :8891 | Agents WS relay |
+| :8895 | Mission Control (its own process, so a dashboard restart cannot take the control plane with it) |
 | :8860 | Daemon Slayer build engine |
 | :2999 | Riot Live Client API (the game client's own feed) |
 
@@ -160,6 +164,25 @@ vision and coaching paths. Open work is tracked in
 
 ---
 
+## How the work gets done
+
+Maintenance runs as mutually exclusive headless lanes - one holder at a time,
+each in its own git worktree, so nothing edits the checkout a person is reading.
+A lane is a single `claude -p` worker fed a tracked prompt document, and Mission
+Control fires them and shows their state.
+
+Two of the lanes are a pair. Research files work items that carry an id, cited
+`file:line` evidence and an acceptance check; the queue lane drains them one
+item per cycle. The worker does exactly one item and exits, and a driver
+re-fires it - so a crash loses one item rather than a night's work, and each
+item arrives as its own reviewable commit.
+
+The prompts live in [`tools/`](./tools/) and are readable on their own. Each
+carries its lane's operating rules, the traps that lane has already measured,
+and the anti-patterns it has already paid for.
+
+---
+
 ## Data sources and credits
 
 Game data comes from public sources, and they deserve naming:
@@ -188,6 +211,7 @@ For readers:
 For maintenance and coding agents:
 
 - [`CLAUDE.md`](./CLAUDE.md) - agent operating context
+- [`docs/MISSION_CONTROL_PLAN.md`](./docs/MISSION_CONTROL_PLAN.md) - the headless-lane control plane and the lane roster
 - [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) - run, restart, and maintenance procedures
 - [`BACKLOG.md`](./BACKLOG.md) - filed work items, each with acceptance criteria
 - [`docs/LEDGER.md`](./docs/LEDGER.md) - per-item completion record, newest first

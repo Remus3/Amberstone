@@ -108,6 +108,13 @@ LANE_COMMANDS = {
     # must never close a row synthetically; that was measured and closed
     # (CLAUDE.md Settled, "the live-gated set is NOT synthetically drainable").
     "gated": "tools/headless-gated.md",
+    # 2026-09-05. Lane 10, the DRAIN half of the lane-5 pairing: lane 5 files
+    # acceptance-bearing RM rows, this lane executes them one per cycle. It is
+    # the first lane meant to be re-fired on a loop rather than clicked, so its
+    # worker does exactly ONE row and exits - `ops/loop/queue_loop.py` owns the
+    # repeat. A worker that looped internally would accumulate context until it
+    # degraded, and a crash would lose every row after the first.
+    "queue": "tools/headless-queue.md",
 }
 
 # Branch per lane, stable across fires so a lane resumes its own history rather

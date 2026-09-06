@@ -36,7 +36,8 @@ import pytest
 from dashboard import _idempotency as idem
 from dashboard import routes_loop_control as mod
 
-LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated")
+LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated",
+         "queue")
 
 KEY_A = "3f2a1b4c-5d6e-4f70-8192-a3b4c5d6e7f8"
 KEY_B = "8c7b6a59-4d3e-4c2b-9a10-fedcba987654"

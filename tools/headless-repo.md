@@ -15,7 +15,7 @@ Explicitly includes gitignored areas and Claude's save locations elsewhere on th
 adjudicating agent's approval** plus tests and CI."
 
 cwd is the lane worktree `C:\rc-worktrees\rc-lane-repo` on branch `lane/repo`. The plan puts lanes 7 and 8 at the highest blast radius, ships them LAST and runs them
-worktree-first (`docs/MISSION_CONTROL_PLAN.md:100-101`). `ops/loop/lanes.py:105` carries `repo` in the six-lane roster and
+worktree-first (`docs/MISSION_CONTROL_PLAN.md:100-101`). `ops/loop/lanes.py:136-137` carries `repo` in the lane roster and
 `ops/loop/lane_launcher.py:91-104` now wires it in `LANE_COMMANDS` - S8 turned this lane on, so if you are reading this you were started by a real fire.
 `git worktree list` showed only `C:/Riot Commander` (main) and `C:/rc-worktrees/rc-lane-upgrade` at authoring. If the lane worktree is absent, create it from the
 repo root and say so; never silently work in main.
@@ -28,8 +28,8 @@ this repo - sanitize on the way IN, not at commit time.
 ### 1. Pre-flight
 
 **1a. Confirm the worktree, not the main tree.** `git rev-parse --show-toplevel` must print `C:/rc-worktrees/rc-lane-repo`; `git branch --show-current` must print
-`lane/repo`. The convention is code: `ops/loop/lane_launcher.py:84` (`WORKTREE_BASE = C:\rc-worktrees`, overridable via `RC_LANE_WORKTREE_BASE`), `:131`
-`worktree_path`, `:135` `branch_name`; `ops/loop/lanes.py:221` `_require_worktree` refuses empty, None, or a path resolving to the repo root. If the toplevel is
+`lane/repo`. The convention is code: `ops/loop/lane_launcher.py:84` (`WORKTREE_BASE = C:\rc-worktrees`, overridable via `RC_LANE_WORKTREE_BASE`), `:145`
+`worktree_path`, `:149` `branch_name`; `ops/loop/lanes.py:317` `_require_worktree` refuses empty, None, or a path resolving to the repo root. If the toplevel is
 `C:/Riot Commander`, STOP and report - two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`).
 
 **1b. Do NOT run `scripts/install_hooks.py` from the worktree.** MEASURED this run: `git config core.hooksPath` returns the ABSOLUTE `C:\Riot Commander\.githooks`, and
