@@ -1,5 +1,20 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-05c - the RM-211 / RM-286 / RM-287 line, relocated by the LANE 10 session
+
+Filing RM-368 put ROADMAP.md at 73649 of its 81920-byte budget (89.9 percent)
+and `tools/drift_guard.py` warns at 90, with a queue lane about to append a
+line per shipped row all night - so the fully-closed line below was moved here
+verbatim in the same commit. It qualifies under the 2026-09-04d convention:
+all three rows are CLOSED or SHIPPED and the line names no open sibling.
+
+The line carries a live fence, and that fence was checked BEFORE the move
+rather than assumed to be duplicated: `_write_status` and the `god` field
+spelling are re-stated at `BACKLOG.md:420`, so relocating this pointer does not
+take the warning with it. Full per-item evidence stays in LEDGER 1313 / 1330.
+
+- **RM-211 CLOSED; RM-286 SHIPPED 2026-08-31 (LEDGER 1313 - its OPEN marker here was STALE, corrected 2026-09-04); RM-287 SHIPPED 2026-09-04 (LEDGER 1330, plus its `experimental_builder` sibling)** - from the `tft/tft_coach_engine.py` audit (LEDGER 1298). **(286)** `tft/tft_pbe_engine.py` carries the inert-timeout and unvalidated-config halves - **its `_write_status` and its `god` field spelling are CORRECT and fenced, do NOT touch them**; **(287)** `coaches/_base_coach.py:88` `safe_write` uses `write_text`, so every coaching artifact on disk carries CRLF. Bodies in `BACKLOG.md`; full row body relocated 2026-08-31 to `docs/ROADMAP_HISTORY.md` for the ROADMAP size budget.
+
 ## 2026-09-05b - the RM-346 / RM-362 line, relocated by the RM-347 session
 
 Adding the RM-347 line put ROADMAP.md at 74089 of its 81920-byte budget
