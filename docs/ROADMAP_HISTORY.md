@@ -1,5 +1,26 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06j - the RM-344 .. RM-363 FILED batch line, relocated by the LANE 10 RM-363 cycle
+
+Recording RM-363 took ROADMAP.md to 90.03 percent of its 81920-byte budget, past
+the 90 percent at which `tools/drift_guard.py` warns (`tools/drift_guard.py:57-58`).
+That figure is a measurement taken at that moment, not a property of the shipped
+file: the same line was widened by ~111 bytes afterwards to record the sibling
+sweep, so reconstructing the pre-relocation size from the shipped tree gives
+about 90.17 percent. The file ends this commit at 73544 bytes, 89.78 percent.
+The lane-5 refill batch this line announced is now FULLY DRAINED - every id from
+RM-344 to RM-363 carries a closure record (RM-345 and RM-358 as SHIPPED-PARTIAL,
+the rest outright) - so the batch pointer is the cheapest honest line to archive.
+
+Two things it said are deliberately NOT carried into the pointer that replaces it.
+Its "next free id RM-367 as of LEDGER 1335" figure is stale by fourteen, and the
+live pin is the GUARDED one in `docs/DS_SWEEP_TRACKER.md`; repeating a superseded
+pin in a live file is the exact drift RM-360 was filed for. Its "(row 17)" pointer
+at RM-360 refers to the refill doc's internal row numbering, not to any ROADMAP
+line, and is preserved here with the body rather than re-explained above.
+
+- **RM-344 .. RM-363 FILED 2026-09-05 (lane 5 Headless-Research refill, merged to main in `ea45ff5be`; next free id RM-367 as of LEDGER 1335)** - twenty acceptance-bearing rows, bodies + cited `file:line` in `docs/_research_refill_2026-09-05.md` (ids assigned at merge, in row order). Sixteen are LANE 8 Tier-1, one is LANE 8-or-7 Tier-1, three are LANE 7 (two Tier-0, one Tier-0/1); the run also DROPPED 8 candidates as already-closed and REFUTED one (`core/carry_share.py`) by reading. Ids were re-derived from the tree, not minted from `docs/DS_SWEEP_TRACKER.md` on faith - see RM-360 (row 17), which is that registry's own staleness filed as a row.
+
 ## 2026-09-06i - the RM-348 / RM-349 line, relocated by the LANE 10 RM-360 cycle
 
 ROADMAP.md reached 89.85 percent of its 81920-byte budget once the RM-360

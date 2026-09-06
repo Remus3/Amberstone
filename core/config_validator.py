@@ -402,6 +402,20 @@ _RC_CONFIG_SPEC = _ConfigSpec(
             "backup_retention_count":     "integer",
         },
         is_optional_file=False,
+        # RM-363, the RM-161 shape in a second config file. Two frozen-or-not
+        # readers slice `backups[retention:]` and rmtree the remainder:
+        # `ops/rc_supervisor.py:1339` (FROZEN, fired at the tail of
+        # `_do_rollback`) and `prune_backups` in
+        # `ops/rc_transactional_deploy.py` (cited by name, not line - this
+        # commit adds lines above it). At 0 that
+        # slice is EVERY backup, so the knob that bounds the backup corpus
+        # erases it - including the snapshot a rollback just restored from.
+        # At -1 it inverts to "delete the oldest". `0` is a valid `"integer"`,
+        # so the type map alone let it through. Rejecting the config here
+        # stops it before the frozen supervisor ever reads it.
+        field_ranges={
+            "backup_retention_count": (1, None),
+        },
 )
 
 
