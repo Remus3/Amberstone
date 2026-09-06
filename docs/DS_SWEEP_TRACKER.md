@@ -69,7 +69,16 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-373** (2026-09-06, superseding the RM-372 pin: RM-372 was minted by
+  Next free id = **RM-375** (2026-09-06, superseding the RM-373 pin: RM-373 AND RM-374 were
+  both minted by LEDGER 1345, LANE 10 queue cycle 7, off the RM-354 sibling sweep - RM-373 for
+  `lib/icons/downloader.py:82` committing a 200 body to a durable cache with no acceptance test
+  on the body (the RM-354 root cause in a second module, filed rather than swept because a PNG
+  needs a magic-byte predicate, not the HTML marker list), and RM-374 for the absolute-URL
+  robots bypass that RM-354's row body carried as an un-acceptanced runner-up. Both filed to
+  BACKLOG "Platform / observability". Re-derived from the tree after a `git fetch`, not minted
+  from this line on faith: RM-375 had ZERO occurrences anywhere, while every RM-373 occurrence
+  before this commit was next-free POINTER prose heading no row body.
+  The superseded RM-373 pin: RM-372 was minted by
   LEDGER 1344, LANE 10 queue cycle 6, for `scripts/cache_ddragon_assets.py` creating a
   version directory from `_index.json` `latest_pulled` with no validation of its own - safe
   today only because both writers of that key now validate, which a third writer would undo -
