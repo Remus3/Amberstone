@@ -1,5 +1,18 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-05b - the RM-346 / RM-362 line, relocated by the RM-347 session
+
+Adding the RM-347 line put ROADMAP.md at 74089 of its 81920-byte budget
+(90.4 percent) and `tools/drift_guard.py` warns at 90, so the fully-closed
+RM-346 / RM-362 line below was moved here verbatim in the same commit. It
+qualifies under the 2026-09-04d convention: both rows are SHIPPED and the line
+names no open sibling. The RM-344 / RM-345 / RM-361 line was deliberately left
+in place - RM-345 is SHIPPED-PARTIAL with RM-366 still open on that same line,
+which is exactly the mixed state the convention says not to relocate. Full
+per-item evidence stays in LEDGER 1336.
+
+- **RM-346 SHIPPED / RM-362 SHIPPED 2026-09-05 (LEDGER 1336); next free id still RM-367 (SUPERSEDED - RM-367 was minted by LEDGER 1337 the same day; next free is RM-368).** RM-362 segment-anchors the `core/hot_reload.py` skip test (23 files were silently unwatched, not the filed 22; the 23rd is `web_dashboard.py`, the module that starts the watcher). RM-346 makes the three `lcu/lcu_pregame.py` champ-select readers total against JSON `null`. Two claims were refuted en route and both corrections are in shipped code, not just the ledger: the row's "spell auto-push path" framing is false (zero in-repo callers, so the defect is LATENT), and the merger's own sibling sweep was scoped to `int(` when the root cause is `.get()` returning `None`. Full record + the three reusable findings in LEDGER 1336.
+
 ## 2026-09-05 - the RM-329..RM-341 + RM-250 shipped block, collapsed to one pointer
 
 ROADMAP.md reached 73859 of its 81920-byte budget (90.2 percent) and
