@@ -146,7 +146,14 @@ def read_ranked_identity(lcu: Any) -> Optional[dict]:
       * ``None`` when the client is missing / not connected / errored -
         the home builder maps this to the graceful "Unranked" placeholder.
 
-    Never raises - any unexpected error fails soft to ``None``.
+    Never raises - any unexpected error fails soft to ``None``. That covers
+    the PARSE as well as the read: ``parse_ranked_stats`` coerces the wire
+    fields bare (``int(entry.get("leaguePoints") or 0)`` and siblings), and
+    ``or 0`` absorbs a null but not a type change, so a client build that
+    hands back a string or an object raises out of a helper the caller was
+    promised could not fault it. The sole consumer assigns the rank field
+    before its own try block, so an escape there costs the whole home
+    payload rather than one degraded field (RM-349).
     """
     if lcu is None:
         return None
@@ -157,7 +164,11 @@ def read_ranked_identity(lcu: Any) -> Optional[dict]:
         return None
     if payload is None:
         return None
-    return parse_ranked_stats(payload)
+    try:
+        return parse_ranked_stats(payload)
+    except Exception as exc:  # noqa: BLE001 - parse must never fault caller
+        log.debug("read_ranked_identity: ranked payload parse failed: %s", exc)
+        return None
 
 
 __all__ = [
