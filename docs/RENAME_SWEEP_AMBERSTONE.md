@@ -69,6 +69,17 @@ nominative uses sit in the same sentences constantly.
   `<title>` change, after confirming the superseded value reproduces byte for
   byte in a clean HEAD worktree.
 
+## 1a-bis. Slug re-cased (2026-09-06)
+
+Operator request: the GitHub repo is `Remus3/Amberstone`, not `Remus3/amberstone`.
+The Tier-0 table above records the 2026-08-11 plan verbatim and is left as-is;
+this note is the current truth. GitHub repo lookup is case-insensitive and the
+old-casing URL still resolves, so nothing broke - but the same lockstep rule
+applied anyway: `rc-shell/electron-builder.yml` `publish.repo`, the two README
+CI badge URLs, `tools/ci_watchdog.py` `REPO`, and the HEXCORE repo lines all
+moved in the same commit. `gh repo rename` rewrote `origin` in the shared
+config, so all six lane worktrees follow automatically.
+
 **STILL OPERATOR-GATED, and they must move together:**
 
 1. `gh repo rename` on `Remus3/riot-commander` -> `amberstone`.

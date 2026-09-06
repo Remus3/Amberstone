@@ -3,7 +3,7 @@
 # Minimal packaging + publish config for the Phase 5 stabilization slice
 # (docs/ELECTRON_OVERLAY.md sections 8 + 10). Build with: npx electron-builder
 #
-# Publish target is GitHub Releases on Remus3/amberstone. The GitHub repo was
+# Publish target is GitHub Releases on Remus3/Amberstone. The GitHub repo was
 # renamed off Riot's trademark on 2026-08-11 and this slug moved in the SAME
 # step, which is the only safe order - electron-updater reads its feed from
 # `publish.repo`, so a drift between the two silently breaks auto-update for
@@ -41,6 +41,6 @@ nsis:
 publish:
   provider: github
   owner: Remus3
-  repo: amberstone
+  repo: Amberstone
 
 generateUpdatesFilesForAllChannels: true
