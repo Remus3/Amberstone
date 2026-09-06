@@ -16,6 +16,8 @@ Two rules are pinned deliberately:
     serialization fragmenting a 3.5 GB heap; Python fares no better.
 """
 
+import itertools
+
 import pytest
 
 from core import meta_crawl
@@ -199,3 +201,132 @@ class TestCrawl:
         result = meta_crawl.crawl("seed", _FakeFetcher({}), max_games=10, max_players=5)
         assert result.total_games == 0
         assert result.champion_stats == {}
+
+
+class TestInnerLoopIsBoundedIndependently:
+    """RM-355. The per-player loop must terminate on its own, not on a counter.
+
+    ``CrawlAccumulator.record`` has FIVE early returns that decline to
+    advance ``total_games``. Three of them - off-family (:134), duplicate
+    (:138) and off-patch (:145) - STILL return that game's participant
+    puuids, because a co-player is a valid graph node either way, so the
+    frontier grows while the counter does not. Two return ``[]`` and spin
+    without growing anything: a malformed envelope (:123, pinned by
+    ``test_malformed_games_are_skipped_not_raised`` above) and a well-formed
+    envelope with no participants (:126). Either way the counter stands
+    still, which is the only thing the old exit tested.
+    So ``if accumulator.total_games >= max_games: break`` is not
+    an exit at all on a stream of non-advancing games, and ``fetcher`` is
+    typed ``Callable[[str], Iterable[Any]]``, which admits an unbounded
+    generator paging the service gateway.
+
+    ``max_players`` cannot rescue it: the outer ``while`` is only re-tested
+    between players, and this loop never returns control to it.
+
+    Every test below uses a TRIPWIRE rather than a bare
+    ``itertools.repeat``. A genuinely infinite fixture with no ceiling would
+    HANG the suite on a regression instead of failing it, and a test that can
+    only hang is a test nobody can safely run in CI.
+    """
+
+    TRIPWIRE = 5000
+
+    def _endless(self, sample):
+        """``itertools.repeat(sample)`` that raises instead of hanging."""
+
+        def _fetch(_puuid):
+            for pulled, item in enumerate(itertools.repeat(sample)):
+                if pulled >= self.TRIPWIRE:
+                    raise AssertionError(
+                        f"crawl pulled {self.TRIPWIRE} games from one player "
+                        "without terminating - the inner loop is unbounded"
+                    )
+                yield item
+
+        return _fetch
+
+    def test_off_family_stream_terminates(self):
+        """The filed case: a non-ARAM stream never advances total_games."""
+        result = meta_crawl.crawl(
+            "seed", self._endless(game(queue_id=420)), max_games=10, max_players=1
+        )
+        assert result.total_games == 0
+
+    def test_off_patch_stream_terminates(self):
+        """Sibling: record() returns puuids but skips an off-patch game."""
+        result = meta_crawl.crawl(
+            "seed",
+            self._endless(game(version="16.10.1")),
+            max_games=10,
+            max_players=1,
+            target_patch="16.14",
+        )
+        assert result.total_games == 0
+
+    def test_duplicate_game_stream_terminates(self):
+        """Sibling: an in-family, on-patch game counts ONCE, then never again."""
+        result = meta_crawl.crawl(
+            "seed", self._endless(game(game_id=7)), max_games=10, max_players=1
+        )
+        assert result.total_games == 1
+
+    def test_malformed_stream_terminates(self):
+        """Sibling: _detail() returns None (:123), so record() advances nothing."""
+        result = meta_crawl.crawl(
+            "seed", self._endless({"not": "an envelope"}), max_games=10, max_players=1
+        )
+        assert result.total_games == 0
+
+    def test_empty_participants_stream_terminates(self):
+        """The FIFTH shape, and the one the filed row and my own first pass
+        both missed: a well-formed envelope whose participants list is empty
+        returns at :126, a DIFFERENT early return from the :123 malformed one.
+        Found by the verifier asking whether ":126 is a separate fifth shape
+        you are still glossing" - it was.
+        """
+        result = meta_crawl.crawl(
+            "seed",
+            self._endless({"json": {"gameId": 1, "queueId": 2400, "participants": []}}),
+            max_games=10,
+            max_players=1,
+        )
+        assert result.total_games == 0
+
+    def test_frontier_growth_is_bounded_by_the_same_guard(self):
+        """The unbounded loop also grew `frontier` without limit - memory, not
+        just time. Bounding the loop bounds the append."""
+        fetcher = self._endless(game(queue_id=420))
+        result = meta_crawl.crawl("seed", fetcher, max_games=10, max_players=1)
+        assert result.visited_players == 1
+
+    def test_per_player_cap_is_honoured_on_a_finite_fetcher(self):
+        """The bound is a real cap, not only a runaway backstop."""
+        fetcher = _FakeFetcher({
+            "seed": [game(game_id=n) for n in range(40)],
+        })
+        result = meta_crawl.crawl(
+            "seed",
+            fetcher,
+            max_games=500,
+            max_players=1,
+            max_games_per_player=5,
+        )
+        assert result.total_games == 5
+
+    def test_non_positive_cap_still_terminates(self):
+        """A nonsense cap must degrade to a bounded crawl, never to a hang."""
+        result = meta_crawl.crawl(
+            "seed",
+            self._endless(game(queue_id=420)),
+            max_games=10,
+            max_players=1,
+            max_games_per_player=0,
+        )
+        assert result.total_games == 0
+
+    def test_default_cap_does_not_shrink_an_ordinary_crawl(self):
+        """The default must not silently truncate a realistic history page."""
+        assert meta_crawl.DEFAULT_MAX_GAMES_PER_PLAYER >= 100
+        fetcher = _FakeFetcher({"seed": [game(game_id=n) for n in range(60)]})
+        result = meta_crawl.crawl("seed", fetcher, max_games=500, max_players=1)
+        assert result.total_games == 60

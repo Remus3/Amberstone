@@ -14,10 +14,17 @@ take every co-participant as a new frontier node, repeat under explicit
 bounds. Games are keyed and deduped, so the heavy overlap between co-players
 in the same games costs nothing but a set lookup.
 
-Two implementation rules are deliberate and pinned by tests:
+Three implementation rules are deliberate and pinned by tests:
 
   - The ARAM queue family is DERIVED from ``core.queue_modes``, never
     re-listed here. A queue added there must not silently fall out.
+  - EVERY loop carries a bound that holds even when nothing counts. The
+    frontier walk is bounded by ``max_players`` and ``max_games``, but one
+    player's stream is bounded by ``max_games_per_player`` alone, because
+    ``record`` has five early returns that advance neither of the other two.
+    Three of them (off-family, duplicate, off-patch) keep yielding frontier
+    nodes, so an unbounded stream of those grows memory as well as spinning;
+    the two malformed shapes yield none and only spin.
   - Results accumulate IN MEMORY and are written ONCE at the end. A reviewed
     client plugin (kept non-repo per the name-scrub rule) recorded repeated
     20-60 MB JSON serialization fragmenting a 3.5 GB heap during a crawl.
@@ -52,6 +59,10 @@ _PATCH_RE = re.compile(r"^(\d+)\.(\d+)")
 
 DEFAULT_MAX_GAMES = 2000
 DEFAULT_MAX_PLAYERS = 200
+# Bounds ONE player's stream. Deliberately independent of DEFAULT_MAX_GAMES:
+# that counter only advances for an in-family, on-patch, unseen game, so it
+# cannot terminate a loop reading anything else. See crawl().
+DEFAULT_MAX_GAMES_PER_PLAYER = 500
 
 
 def crawl_enabled() -> bool:
@@ -174,11 +185,28 @@ def crawl(
     max_players: int = DEFAULT_MAX_PLAYERS,
     target_patch: str | None = None,
     writer: Callable[[dict], None] | None = None,
+    max_games_per_player: int = DEFAULT_MAX_GAMES_PER_PLAYER,
 ) -> CrawlResult:
     """Breadth-first walk from ``seed_puuid``.
 
     ``fetcher(puuid)`` returns that player's raw games. ``writer``, when
     given, is called EXACTLY ONCE with the final payload - never per batch.
+
+    THREE bounds, and the third is not redundant. ``max_players`` is tested
+    only between players and ``max_games`` counts only games that were
+    actually folded in, so neither can end a single player's stream:
+    ``record`` has five early returns that decline to advance
+    ``total_games`` - off-family, duplicate and off-patch still hand back the
+    game's puuids, while the two malformed shapes hand back ``[]``, and
+    neither counts - and ``fetcher`` is typed ``Iterable[Any]``, which admits an unbounded
+    generator paging the service gateway. ``max_games_per_player`` is the
+    bound that does not depend on anything having counted.
+
+    The bound is tested AFTER each game is folded in, so a cap below 1
+    examines exactly one game per player: a nonsense cap degrades to the
+    shortest possible crawl, never to a hang. A ``max(1, ...)`` clamp was
+    written here first and removed as provably inert - mutating it away left
+    every test green (RM-355).
     """
     accumulator = CrawlAccumulator(target_patch=target_patch)
     visited: set[str] = set()
@@ -194,11 +222,13 @@ def crawl(
         except Exception:  # noqa: BLE001 - one bad player must not end the crawl
             _log.exception("meta crawl fetch failed for %s", str(puuid)[:8])
             continue
-        for raw_game in games:
+        for examined, raw_game in enumerate(games, start=1):
             for participant_puuid in accumulator.record(raw_game):
                 if participant_puuid not in visited:
                     frontier.append(participant_puuid)
             if accumulator.total_games >= max_games:
+                break
+            if examined >= max_games_per_player:
                 break
 
     result = CrawlResult(
