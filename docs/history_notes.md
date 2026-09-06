@@ -119,6 +119,36 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-06b - LANE 10 cycle 15: RM-364 shipped, and it ADOPTED a crashed cycle
+
+RM-364 is on main (`d9e8c5d98` code, `f01918b4b` sha citation). LEDGER 1353.
+The prompt sanitizer had ONE production importer against 17 Anthropic egress
+files; the five ranked ones are now cleaned at prompt ASSEMBLY, and the
+population is pinned by a bidirectional census guard instead of remembered.
+Residue filed as **RM-381 OPEN** (7 builders + the two `_run_coach` sites the
+file-level guard structurally cannot see).
+
+DO NOT REDO / read before touching this area:
+- The fix is at ASSEMBLY, never at `messages.create` - `moon_proxy.get_coaching`
+  is the PRIMARY egress for the TFT builders, so an API-call-side guard is dead
+  code on the live path. This was measured, not assumed.
+- The threat model was CORRECTED by the row's own census: no summoner name,
+  riot ID, chat or queue name reaches any prompt. The unconstrained bytes are
+  Haiku-VISION OCR output - a self-inflicted model-to-model channel.
+- `modes/shared_vision.py` + `tft/tft_vision_reader.py` were REFUTED, not
+  missed: their untrusted input is PIXELS. Do not "fix" them.
+
+**NEW FINDING, worth more than the row:** the pre-commit hook pulled
+`docs/ARCHITECTURE.md` in, and running `tools/gen_archmap.py` reproduced
+**RM-378 live** - it rewrote the whole file as CRLF (343 pairs), reddening
+`tests/test_text_line_endings.py` while `git status` read CLEAN throughout.
+The committed blob was never affected. One datum for **RM-343**, fenced: the
+re-checkout produced LF because `.gitattributes` pins `eol=lf`, overriding
+`core.autocrlf=true` in the shared `.git/config` - so THAT file's CRLF came
+from the generator, not from worktree materialization. One file, not the 1884.
+
+---
+
 # 2026-09-06 - LANE 10 BUILT AND RAN: a queue-drain loop shipped 15 rows overnight
 
 **FIRST ACTION NEXT SESSION: stop the queue loop before firing anything else.**
