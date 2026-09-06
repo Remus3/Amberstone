@@ -317,7 +317,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 1 step 3 | - | `tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
 | 3 step 1.1 | - | `tft/tft_coach_engine.py:879` | write TFT coaching timestamp only after payload write succeeds |
-| 7 P2 | - | `tft/tft_live_analysis.py:274` | C - clear stale choices on augment-select force scan |
+| 7 P2 | - | `tft/tft_live_analysis.py:308` | C - clear stale choices on augment-select force scan |
 
 <!-- phasejournal:end -->
 

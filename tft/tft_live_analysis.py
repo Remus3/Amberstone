@@ -12,6 +12,13 @@ from pathlib import Path
 from typing import Optional
 
 from core.polled_json import atomic_write_json
+# RM-364: this module already runs a name-plausibility layer (_is_valid_unit,
+# _clean_units, _as_name_list) that augment DESCRIPTIONS and items_equipped
+# bypass entirely, so it needs a TARGETED patch and not a wrap. Applied at
+# prompt assembly: moon_proxy.get_coaching is the PRIMARY egress here and
+# messages.create only the fallback, so a guard at the SDK call would be
+# dead code on the live path.
+from core.prompt_sanitize import clean as _psan_clean
 
 logger = logging.getLogger("rc.tft.live")
 
@@ -93,6 +100,33 @@ def _first_text(resp: object) -> Optional[str]:
         if isinstance(t, str) and t.strip():
             return t
     return None
+
+
+def _psan_items_equipped(mapping: object) -> dict:
+    """RM-364: sanitise the keys and leaf strings of `items_equipped` before
+    it is json.dumps'd into the analysis prompt.
+
+    MEASURED NUANCE, recorded so this is not later called redundant:
+    `json.dumps` is a PARTIAL defense here. It already escapes a newline into
+    a literal backslash-n, so the section-delimiter vector was closed - but it
+    passes an instruction-override phrase through verbatim, and these values
+    are vision-model output. This closes the half json does not.
+
+    Returns a plain dict; a non-mapping input becomes {} so the caller's
+    `or {}` contract is preserved.
+    """
+    if not isinstance(mapping, dict):
+        return {}
+    out = {}
+    for k, v in mapping.items():
+        key = _psan_clean(k, max_len=64)
+        if isinstance(v, list):
+            out[key] = [_psan_clean(x, max_len=64) for x in v]
+        elif isinstance(v, dict):
+            out[key] = _psan_items_equipped(v)
+        else:
+            out[key] = _psan_clean(v, max_len=64)
+    return out
 
 
 def _as_name_list(value: object) -> list:
@@ -405,7 +439,7 @@ class TftLiveAnalysis:
         if _ml: ac=(ac+f"\nCURRENT LEVEL: {_ml} (player-confirmed).").strip()
         p=_ANALYSIS_PROMPT_TEMPLATE.format(stage_round=cs.get("stage_round","?"),level=vs.get("level") or cs.get("level","?"),
             hp=vs.get("hp") or "?",gold=vs.get("gold") or "?",board=_fmt(bc),bench=_fmt(bn),shop=_fmt(sc),
-            items_equipped=json.dumps(vs.get("items_equipped") or {},indent=None),items_bench=_fmt(vs.get("items_on_bench")),
+            items_equipped=json.dumps(_psan_items_equipped(vs.get("items_equipped")),indent=None),items_bench=_fmt(vs.get("items_on_bench")),
             traits=_fmt(vs.get("traits_active")),augments=_fmt(vs.get("augments")),loss_context=lc,augment_context=ac)
         try:
             t0=time.time()
@@ -473,7 +507,13 @@ class TftLiveAnalysis:
         def _fc(c): return f"{c.get('name','?')}: {c.get('description','')}" if isinstance(c,dict) else str(c)
         p=_AUGMENT_SELECT_PROMPT.format(stage_round=cs.get("stage_round","?"),level=vs.get("level") or cs.get("level","?"),
             board=_fmt(self._clean_units(vs.get("board_units"),set())),traits=_fmt(vs.get("traits_active")),
-            augments=_fmt(vs.get("augments") or []) if vs.get("augments") else "none",choices="\n".join(f"- {_fc(c)}" for c in ch))
+            # RM-364: sanitise the RENDERED choice at the join, NOT inside
+            # _fc - _fc also feeds the `augment_choices` list written to the
+            # coaching data file below (:527), which the dashboard panel
+            # renders, and cleaning there would rewrite panel text this row
+            # does not authorise. max_len 300: augment descriptions are
+            # genuinely long and the 200 default would truncate real content.
+            augments=_fmt(vs.get("augments") or []) if vs.get("augments") else "none",choices="\n".join(f"- {_psan_clean(_fc(c), max_len=300)}" for c in ch))
         try:
             _araw=None
             try:

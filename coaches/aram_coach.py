@@ -38,6 +38,9 @@ from core.cc_conditional_impact_context import (
     cc_conditional_impact_line,
 )
 from core.enemy_cc_threat_context import enemy_cc_threat_line
+# RM-364: `augment_choices` is Haiku-VISION OCR output. Sanitised at prompt
+# ASSEMBLY, which is the point both egress paths share.
+from core.prompt_sanitize import clean_iter as _clean_for_prompt
 from core.death_patterns_loader import personal_context_block
 from core.mayhem_detect import is_mayhem
 
@@ -1286,7 +1289,8 @@ class Coach(BaseCoach):
             hp       = gs.get("hp_pct", 100),
             allies   = ", ".join(gs.get("ally_comp",  [])) or "unknown",
             enemies  = ", ".join(gs.get("enemy_comp", [])) or "unknown",
-            choices  = "\n".join(f"- {c}" for c in choices),
+            # RM-364: a newline inside one OCR choice forges an extra bullet.
+            choices  = "\n".join(f"- {c}" for c in _clean_for_prompt(choices)),
         )
         try:
             import time as _time_b
