@@ -201,10 +201,16 @@ class _FakeHttpResponse:
     def __exit__(self, exc_type, exc, tb):
         return False
 
-    def read(self):
+    def read(self, amt=None):
+        # `amt` accepted because the real http.client.HTTPResponse.read takes
+        # it and the client passes it once RM-351's byte cap is in force.
+        # Widened 2026-09-06; the raise-and-return behaviour is unchanged.
         if self._read_raises is not None:
             raise self._read_raises
-        return self._body
+        if amt is None:
+            return self._body
+        head, self._body = self._body[:amt], self._body[amt:]
+        return head
 
     def getheaders(self):
         return list(self._headers.items())

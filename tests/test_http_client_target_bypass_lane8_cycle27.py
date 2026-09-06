@@ -88,6 +88,7 @@ class _FakeHttpResponse:
     def __init__(self, url):
         self.status = 200
         self.url = url
+        self._rest = b"spy-body"
 
     def __enter__(self):
         return self
@@ -95,8 +96,14 @@ class _FakeHttpResponse:
     def __exit__(self, *exc_info):
         return False
 
-    def read(self):
-        return b"spy-body"
+    def read(self, amt=None):
+        # `amt` accepted because the real http.client.HTTPResponse.read takes
+        # it and the client passes it once RM-351's byte cap is in force.
+        # Widened 2026-09-06; a single call still yields the whole spy body.
+        if amt is None:
+            return b"spy-body"
+        head, self._rest = self._rest[:amt], self._rest[amt:]
+        return head
 
     def getheaders(self):
         return [("Content-Type", "text/plain")]

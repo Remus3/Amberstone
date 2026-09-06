@@ -1,5 +1,24 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-06b - the RM-347 and RM-350 lines, relocated by the LANE 10 RM-351 cycle
+
+ROADMAP.md stood at 73572 of its 81920-byte budget (89.81 percent), leaving 156
+bytes before the 90 percent at which `tools/drift_guard.py` warns - less than
+the RM-351 line needed. Both lines below are fully SHIPPED, so they moved here
+verbatim in the same commit behind one collapsed pointer, the 2026-09-04d
+convention, exactly as the 2026-09-06a block did one cycle earlier.
+
+Fences checked before the move rather than assumed. RM-367, spawned by the
+RM-347 cycle, is still OPEN and its body is in `BACKLOG.md` - the pointer that
+replaces these lines says so. RM-370, spawned by the RM-350 cycle, is likewise
+still OPEN in `BACKLOG.md`. The next-free-id figure carried by the RM-350 line
+is superseded in the same commit by `docs/DS_SWEEP_TRACKER.md:72`, which is the
+authoritative registry (`ROADMAP.md:14`), so relocating it strands no pointer.
+Full per-item evidence stays in LEDGER 1337 and LEDGER 1341.
+
+- **RM-347 SHIPPED 2026-09-05 (LEDGER 1337, `be7747fcb`), spawning RM-367; next free id RM-368.** `lcu/lcu_pregame.py` `get_gameflow_phase` returned the string `"None"` from all three bail-outs, and `"None"` is a REAL phase (client idle at home), so any read failure was indistinguishable from idleness. Failure is now Python `None`, matching the `dashboard/_cs_retention.py` consumer contract rather than either sibling convention. LATENT - zero in-repo callers. RM-367 is the same class in the LIVE reader, filed not fixed because the obvious one-line fix disarms two `!phase` arms in `web/js/main.js`. Same commit relocated the closed RM-346 / RM-362 line to `docs/ROADMAP_HISTORY.md` (2026-09-05b) to clear the 90 pct warn.
+- **RM-350 SHIPPED 2026-09-06 (LEDGER 1341), spawning RM-370; next free id RM-371.** `core/lcu_mastery.py:99` issued the mastery TOP read as a POST; the full-list GET fallback masked it, so the fast path could never succeed while every test stayed green. The test had PINNED the defect (`calls[0][0] == "POST"`) and now pins the contract. **LATENT - ZERO production callers**, so the row's "live champ-select path" claim is corrected. Sibling sweep over 185 verb literals found ZERO.
+
 ## 2026-09-06a - the RM-348 and RM-349 lines, relocated by the LANE 10 RM-350 cycle
 
 ROADMAP.md stood at 73720 of its 81920-byte budget (89.99 percent) - just under
