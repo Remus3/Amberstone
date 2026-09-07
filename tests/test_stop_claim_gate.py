@@ -893,3 +893,74 @@ def test_node_direct_invocation_counts_as_a_run(tmp_path):
     report = _run_gate(tmp_path, rows)
     assert "tests_pass_without_run" not in _checks(report)
     assert "count_mismatch" not in _checks(report)
+
+
+# ------------------------------------------------- CI-log evidence (2026-09-06)
+#
+# The gate indexes LOCAL pytest invocations, so a suite count read out of a CI
+# log was never in `observed_counts` and every accurate report of one scored as
+# count_mismatch. Measured this session: a true "31706 passed" taken from
+# `gh run view <id> --log` was flagged twice while the session's local runs
+# topped out at 1869.
+#
+# That cries wolf on correctly-sourced figures, and a gate that cries wolf gets
+# waved through - which is exactly when it stops catching the real thing. It
+# caught a real one the same session: a "25 passed" that had been computed as
+# 28 minus 3 rather than observed.
+#
+# The widening is deliberately NARROW. A CI log echoes the workflow file, whose
+# comments carry STALE historical counts, so only a genuine terminal-summary
+# shape is credited - never a bare "N passed" floating in the log.
+
+CI_LOG_OUTPUT = (
+    "check\tfull dual suite\t2026-09-07T02:19:07Z \x1b[36;1m"
+    "# 19m42s / 23607 passed / 258 skipped / 6032 subtests / 0 failed\x1b[0m\n"
+    "check\tfull dual suite\t2026-09-07T03:17:39Z "
+    "31706 passed, 262 skipped, 5 warnings, 18565 subtests passed in 3508.32s (0:58:28)\n"
+)
+
+
+def test_ci_log_summary_counts_as_observed_evidence(tmp_path):
+    """A count read from a fetched CI log is evidence, not an unbacked claim.
+
+    The local pytest run is REQUIRED for this test to mean anything. With no
+    runs at all the count check never arms, so an assertion that nothing was
+    flagged passes vacuously - which is how the first draft of this test went
+    green while proving nothing.
+    """
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_tool_use("Bash", command="gh run view 34075783861 --log")),
+        _tool_result(CI_LOG_OUTPUT),
+        _assistant(_text("CI green: 31706 passed.")),
+    ]
+    assert "count_mismatch" not in _checks(_run_gate(tmp_path, rows))
+
+
+def test_a_stale_count_in_a_workflow_comment_is_not_evidence(tmp_path):
+    """The narrowing that keeps this a widening of EVIDENCE, not of belief.
+
+    23607 appears in the same fetched log, inside an echoed workflow comment
+    recording a historical run. It has no terminal-summary shape, so claiming it
+    must still fail - otherwise a CI fetch would launder every number printed
+    anywhere in a workflow file.
+    """
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_tool_use("Bash", command="gh run view 34075783861 --log")),
+        _tool_result(CI_LOG_OUTPUT),
+        _assistant(_text("CI green: 23607 passed.")),
+    ]
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
+def test_a_ci_count_with_no_ci_fetch_is_still_unbacked(tmp_path):
+    """Claiming a CI figure the session never fetched stays a mismatch."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text("CI green: 31706 passed.")),
+    ]
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
