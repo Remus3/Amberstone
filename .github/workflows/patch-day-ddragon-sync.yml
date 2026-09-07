@@ -1,0 +1,107 @@
+name: patch-day-ddragon-sync
+
+on:
+  schedule:
+    # Run hourly on patch days (these specific dates)
+    # Note: GitHub Actions runs in UTC. Midnight PT varies by DST:
+    # - PDT (UTC-7): midnight PT = 07:00 UTC
+    # - PST (UTC-8): midnight PT = 08:00 UTC
+    # We run hourly on these dates to ensure coverage.
+    - cron: '7 * * * *'  # Every hour at :07 (avoiding :00 congestion)
+  workflow_dispatch:     # Manual trigger for testing
+
+jobs:
+  patch-day-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Check if today is a patch day
+        id: patch_day
+        run: |
+          PATCH_DAYS="2026-09-10 2026-09-23 2026-10-07 2026-10-21 2026-11-04 2026-11-18 2026-12-09"
+          TODAY=$(date -u +%Y-%m-%d)
+
+          if echo "$PATCH_DAYS" | grep -q "$TODAY"; then
+            echo "is_patch_day=true" >> $GITHUB_OUTPUT
+            echo "✓ Today is a patch day: $TODAY"
+          else
+            echo "is_patch_day=false" >> $GITHUB_OUTPUT
+            echo "→ Not a patch day (today: $TODAY)"
+            exit 0
+          fi
+
+      - name: Check Riot patch schedule (hourly until success)
+        if: steps.patch_day.outputs.is_patch_day == 'true'
+        id: patch_check
+        run: |
+          echo "Checking Riot Games patch schedule..."
+          TIMEOUT=10
+          START=$(date +%s)
+
+          while true; do
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
+              https://support.riotgames.com/en-us/league-of-legends/gameplay/patch-schedule-league-of-legends/)
+
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | head -n-1)
+
+            if [ "$HTTP_CODE" = "200" ] && echo "$BODY" | grep -q "patch"; then
+              echo "✓ Patch schedule is accessible and has updated content"
+              echo "schedule_success=true" >> $GITHUB_OUTPUT
+              break
+            else
+              ELAPSED=$(($(date +%s) - START))
+              echo "✗ Patch schedule check failed (HTTP $HTTP_CODE, elapsed ${ELAPSED}s)"
+
+              if [ $ELAPSED -ge $TIMEOUT ]; then
+                echo "schedule_success=false" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+
+              sleep 30
+            fi
+          done
+
+      - name: Download DDragon items (once patch schedule succeeds)
+        if: steps.patch_check.outputs.schedule_success == 'true'
+        run: |
+          echo "Downloading latest DDragon items..."
+          python scripts/audit_ddragon_items.py --download
+
+      - name: Run data pipeline items index
+        if: steps.patch_check.outputs.schedule_success == 'true'
+        run: |
+          echo "Running data pipeline items index..."
+          python scripts/data_pipeline.py items_index
+
+      - name: Commit and push data updates
+        if: steps.patch_check.outputs.schedule_success == 'true'
+        run: |
+          git config user.email "patch-day-sync@anthropic-routines"
+          git config user.name "patch-day-sync"
+
+          # Check if there are changes to commit
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "→ No data changes to commit"
+          else
+            git add data/meta/ddragon_*.json web/data/*_index.json
+            git commit -m "chore(ddragon): patch-day sync - $(date -u +%Y-%m-%d)" || true
+            git push origin main || echo "Push failed or no changes"
+          fi
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ steps.patch_day.outputs.is_patch_day }}" = "true" ]; then
+            if [ "${{ steps.patch_check.outputs.schedule_success }}" = "true" ]; then
+              echo "✓ Patch day sync completed successfully"
+            else
+              echo "✗ Patch schedule check did not complete within timeout"
+              exit 1
+            fi
+          fi
