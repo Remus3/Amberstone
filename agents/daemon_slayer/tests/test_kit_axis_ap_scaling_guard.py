@@ -112,8 +112,8 @@ _TRUE_COHORT = (
 _LIANDRYS = "6653"
 _BLACKFIRE = "2503"
 
-# Package root - resolves inside the Share mirror too, so this file stays
-# self-contained (tests/test_ds_share_mirror_self_contained.py enforces that).
+# Package root, anchored on __file__ so this file stays self-contained and
+# resolves from any working directory.
 # The cross-package threshold-parity check against core/archetype_picks.py
 # lives in tests/test_hybrid_kit_axis_parity.py for exactly that reason.
 _PKG_ROOT = Path(__file__).resolve().parents[3]
@@ -482,8 +482,8 @@ class KitAxisChokepointTests(unittest.TestCase):
 
         Cross-package parity with ``core.archetype_picks`` is asserted in
         ``tests/test_hybrid_kit_axis_parity.py`` - it cannot live here, because
-        this file ships in the Share mirror and the mirror does not ship
-        ``core/``.
+        this file must stay runnable against the engine package alone, which
+        does not carry ``core/``.
         """
         self.assertEqual(hybrid._AXIS_DOMINANT_MIN, 0.55)
         self.assertEqual(hybrid._AXIS_MARGIN_MIN, 0.20)

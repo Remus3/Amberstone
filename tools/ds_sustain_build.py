@@ -10,8 +10,7 @@ or ``flat_hp``), then:
     LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/sustain_registry_notes.json`` (champion, spell, kind,
-    magnitudes, duration, conditional, source_quote) - excluded from Share like
-    CHANGELOG.md / mobility_registry_notes.json / cc_output_registry_notes.json.
+    magnitudes, duration, conditional, source_quote).
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_sustain_build.py <workflow_output.json>

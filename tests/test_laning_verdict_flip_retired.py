@@ -57,7 +57,7 @@ _ALLOWED_REFERENCES = {
 # Directories that are not RC application source for the purposes of this guard.
 _SKIP_DIRS = {
     ".claude", ".git", "__pycache__", "tests", "tools", "scripts", "benchmarks",
-    "docs", "Share", "ops", "node_modules", "data", "logs", "web", "rc-shell",
+    "docs", "ops", "node_modules", "data", "logs", "web", "rc-shell",
     "agents", "lib", "config", "assets", "modules",
 }
 

@@ -355,12 +355,6 @@ ops/audit/ds_perm_swarm/report/WATCHER_STOP
 data/vision_profiles/
 data/vision_calib_reference/
 
-# ds_share_sync stage-then-swap scratch dirs (see tools/ds_share_sync.py::_write).
-# Cleared at the start of the next run and on failure; ignored so a hard crash
-# mid-swap cannot leave them staged into a commit.
-Share/src.tmp/
-Share/src.old/
-
 # Session 2026-07-26: pre-dedupe rewind backup (1.7 GB) + forward growth samples
 data/*.db.bak_*
 data/rofl_archive_growth.jsonl

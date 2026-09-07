@@ -37,7 +37,7 @@ These were investigated and NOT filed. The finding is the drop.
    of the open row, not a new one.
 4. **`agents/agent3_testing/suite/` collected by neither CI tree** - ALREADY OPEN as the
    LANE 7 half of **RM-294** (`ROADMAP.md:52`). Re-measured and still true
-   (`pytest.ini:8` `norecursedirs` does not exclude it; CI runs only `tests` and
+   (`pytest.ini:2` `norecursedirs` does not exclude it; CI runs only `tests` and
    `agents/daemon_slayer`), but it is filed.
 5. **`core/carry_share.py` division by a payload-derived team total** - **REFUTED by
    reading.** `core/carry_share.py:41` `if team_total <= 0: return None` guards it, and

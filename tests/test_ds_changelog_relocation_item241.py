@@ -1,10 +1,15 @@
 """Item 241 A1 (repo-structure guard): the embedded engine __init__.py changelog
-is relocated to agents/daemon_slayer/CHANGELOG.md; __init__.py stays lean and the
-engine CHANGELOG.md is excluded from the Share/src deterministic mirror (the Share
-package carries its own authored Share/CHANGELOG.md, and its __init__ is stubbed).
+is relocated to agents/daemon_slayer/CHANGELOG.md.
+
+What this pins now:
+  - __init__.py stays lean (the changelog does not creep back into it),
+  - ENGINE_VERSION stays importable and stays a line-start assignment, which is
+    what the version-bump tooling greps for,
+  - __init__.py still points a reader at CHANGELOG.md,
+  - CHANGELOG.md exists and preserves the relocated engine history verbatim.
 
 Lives in the repo (RC) suite, not the DS engine suite: it asserts repo-internal
-structure + the ds_share_sync mirror policy, neither of which ships in Share/src.
+file structure rather than engine behaviour.
 """
 from __future__ import annotations
 
@@ -48,15 +53,6 @@ class ChangelogFileTests(unittest.TestCase):
         body = _CHANGELOG.read_text(encoding="utf-8")
         self.assertIn("1.75.0", body)
         self.assertIn("Phase 4 batch", body)
-
-
-class ShareMirrorExclusionTests(unittest.TestCase):
-    def test_engine_changelog_not_in_share_mirror(self):
-        from tools import ds_share_sync
-
-        expected = ds_share_sync._build_expected()
-        self.assertNotIn("agents/daemon_slayer/CHANGELOG.md", expected)
-        self.assertIn("agents/daemon_slayer/__init__.py", expected)
 
 
 if __name__ == "__main__":

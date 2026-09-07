@@ -17,7 +17,7 @@ RANKING toward DoT vs tanks (agreeing with the core.ds_antitank_hint text hint
 that previously had no ranking effect). Seam OFF == byte-identical flat curve;
 the live flip is the ``RC_COMP_HP_LEAN`` env gate (operator-gated, see
 docs/LIVE_GAME_GATED_SYNC.md). No engine file is touched -> no ENGINE_VERSION
-bump, no Share mirror sync.
+bump.
 """
 from __future__ import annotations
 

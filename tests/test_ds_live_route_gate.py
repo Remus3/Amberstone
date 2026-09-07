@@ -351,19 +351,19 @@ def scan_ds_route_gates() -> dict[str, int]:
 #:
 #: SEVEN modules now route through `require_live_engine` above, so
 #: `RC_REQUIRE_DS_ENGINE=1` arms them: the five in `tests/`, plus the two
-#: RM-115 seam modules in the DS tree. Those two are named in
-#: `tools/ds_share_sync._HOST_DEPENDENT_TESTS` (ds_share_sync.py:267,:271) and
-#: are therefore NOT copied into `Share/src` at all - they already
-#: `import core.daemon_slayer_client` at module level - so adopting the gate
-#: costs the shipped package nothing. An earlier draft justified leaving all
-#: thirteen DS-tree modules alone with "mirrored verbatim, stdlib-only,
-#: cannot import a tests/ helper". That is true of ELEVEN of them and was
-#: false of these two.
+#: RM-115 seam modules in the DS tree. Those two are host-dependent already -
+#: they `import core.daemon_slayer_client` at module level - so adopting the
+#: gate costs the engine tree nothing it had not already spent. An earlier
+#: draft justified leaving all thirteen DS-tree modules alone with
+#: "stdlib-only, cannot import a tests/ helper". That is true of ELEVEN of
+#: them and was false of these two.
 #:
-#: The remaining ELEVEN deliberately do not adopt it: that tree is mirrored
-#: verbatim into `Share/src/` by `tools/ds_share_sync.py`, the mirror is a
-#: hard CI gate (`ds_share_sync.py --check`, ci.yml:245), and those modules
-#: are stdlib-only by design. They are covered CLASS-WIDE instead, by
+#: The remaining ELEVEN deliberately do not adopt it: THOSE ELEVEN are
+#: stdlib-only (checked individually - zero non-stdlib top-level imports
+#: each), and importing a `tests/` helper would break that. Note the scope:
+#: the ELEVEN are stdlib-only, the TREE is not - 32 of its 438 modules import
+#: `core.*` at module scope, so "that tree is stdlib-only" would be false.
+#: They are covered CLASS-WIDE instead, by
 #: `LiveRouteSurfaceTests` below - one control point for one class-wide
 #: capability, which is the right shape anyway.
 _B2_CENSUS: dict[str, int] = {
@@ -378,7 +378,7 @@ _B2_CENSUS: dict[str, int] = {
     # counted anyway rather than special-cased away. A scanner with a
     # carve-out for its own author is the shape that goes quietly blind.
     "tests/test_ds_live_route_gate.py": 8,
-    # --- agents/daemon_slayer/tests/: Share-mirrored, covered class-wide ---
+    # --- agents/daemon_slayer/tests/: stdlib-only, covered class-wide ---
     "agents/daemon_slayer/tests/test_block_index_overrides.py": 1,
     "agents/daemon_slayer/tests/test_burst_off_axis_rm41.py": 1,
     "agents/daemon_slayer/tests/test_combo_overrides.py": 1,

@@ -181,8 +181,8 @@ class RouteHybridMitigationTests(_Base):
 
 class AsciiHygieneTests(unittest.TestCase):
     def test_new_test_file_is_ascii(self) -> None:
-        # Anchored on __file__, not the process CWD, so the shipped Share/
-        # package runs this hygiene test from any directory.
+        # Anchored on __file__, not the process CWD, so this hygiene test
+        # runs from any directory.
         path = Path(__file__).resolve()
         with open(path, "rb") as fh:
             raw = fh.read()

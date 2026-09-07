@@ -4,8 +4,7 @@ The repo's ASCII rule is enforced by byte-level scanners (`test_smart_quote_hygi
 `test_mojibake_hygiene`, `tools/strip_em_dashes.py`). A JSON writer that emits
 `\\u2014` escapes defeats every one of them: the bytes are 7-bit clean, so the
 scanners pass, while the string a consumer actually decodes still carries an
-em-dash. `data/daemon_slayer/spell_cast_rates.json` shipped that way into the
-public `Share/` package.
+em-dash. `data/daemon_slayer/spell_cast_rates.json` shipped that way.
 
 These guards close the class by decoding the JSON first, then checking the
 authored metadata fields - the strings this project writes about its own data,
@@ -41,7 +40,6 @@ BANNED_GLYPHS = {
 
 DATA_ROOTS = (
     pathlib.Path("data/daemon_slayer"),
-    pathlib.Path("Share/src/data/daemon_slayer"),
 )
 
 # The generator behind the offending file. Authored source, so the byte-level
@@ -124,18 +122,3 @@ def test_cast_rate_generator_source_is_seven_bit_ascii():
     raw = path.read_bytes()
     bad = [(i, hex(b)) for i, b in enumerate(raw) if b > 127]
     assert not bad, f"{CAST_RATE_GENERATOR.as_posix()} has non-ASCII bytes: {bad[:5]}"
-
-
-def test_share_cast_rates_mirror_matches_source():
-    """The public mirror carries the same note as the repo file."""
-    src = REPO_ROOT / "data/daemon_slayer/spell_cast_rates.json"
-    mirror = REPO_ROOT / "Share/src/data/daemon_slayer/spell_cast_rates.json"
-    # BOTH sides are TRACKED (the Share mirror is committed, not generated at
-    # test time), so a missing half means the mirror sync was skipped - the
-    # exact drift this test exists to catch.
-    assert src.is_file(), f"tracked {src} is missing"
-    assert mirror.is_file(), f"tracked Share mirror {mirror} is missing"
-
-    src_note = json.loads(src.read_text(encoding="utf-8")).get("note")
-    mirror_note = json.loads(mirror.read_text(encoding="utf-8")).get("note")
-    assert src_note == mirror_note

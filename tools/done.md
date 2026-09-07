@@ -13,7 +13,7 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 
 > **SHAPE (measured 2026-07-26, LEDGER 1065; section 2c retired 2026-08-04, RM-157).**
 > This ritual is FOUR PHASES, and the ordering is load-bearing rather than cosmetic:
-> **Phase 1** the fast local gate (section 0-0c, target 60-90s) -
+> **Phase 1** the fast local gate (section 0-0b, target 60-90s) -
 > **Phase 2** commit + push, which FIRES the full suite at CI by itself (sections 1-2) -
 > **Phase 3** all the paperwork WHILE CI runs (sections 3-7) -
 > **Phase 4** collect CI, banner, next-session prompt (sections 8-10).
@@ -78,30 +78,14 @@ Versioning is cheap; lost work is not. The operator never passes up a commit + p
 - Run the cheap local gate on the touched surface:
   - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m ruff check .` (must report ALL CHECKS PASSED)
   - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m py_compile <each touched .py>` (syntax - silent-crash guard per CLAUDE.md hard rule)
-  - **Authored-source hygiene (ALWAYS run, every /done - this is the same step CI runs):** `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py tests/test_u2500_hygiene.py -q`. Must be green. No smart quotes / em-en dashes / NBSP / ellipsis / mojibake / U+2500 in authored source. The `Share/src` DS data mirror is excluded as external data. If this fails, it is NEVER "pre-existing / unrelated / not in CI" - it is in CI now; fix it (`"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply` for smart-quote/dash drift) before the gate is green.
+  - **Authored-source hygiene (ALWAYS run, every /done - this is the same step CI runs):** `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py tests/test_u2500_hygiene.py -q`. Must be green. No smart quotes / em-en dashes / NBSP / ellipsis / mojibake / U+2500 in authored source. If this fails, it is NEVER "pre-existing / unrelated / not in CI" - it is in CI now; fix it (`"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply` for smart-quote/dash drift) before the gate is green.
   - Test slice covering the change: **the targeted module**, plus the DS suite `agents/daemon_slayer/tests/` if the engine was touched (that one is genuinely fast; measure its size with `pytest agents/daemon_slayer --collect-only -q`, never from a recited figure, since suite counts are unguarded and this line said "9932 tests in ~115s" until 2026-08-16). Do NOT run the full `tests/` suite here; section 2c dispatches it to CI instead. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
 - Ground truth, not memory (per CLAUDE.md Verification Discipline): run the gate FRESH this turn, read the pass/fail counts you observe now, and `ls` any test file you cite as added - never carry forward a prior or subagent-reported green. If the work came from parallel slices, the `verifier` subagent's CONFIRM is the gate, not the slice agent's claim.
-- GREEN: proceed to section 0c, then commit (section 1).
+- GREEN: proceed to section 0b, then commit (section 1).
 - RED: fix and re-run. If the failure is pre-existing and unrelated to this session's work, note it ABOVE the banner and commit only the green-verified authored files - never commit over a regression you introduced.
 
 
-### 0b. DS Share package sync (when Daemon Slayer was touched)
-
-The `Share/` folder is the external-facing DS review package (engine source + DS tooling + reference-data snapshot + authored handoff docs). It MUST stay in lock-step with the live engine on every change that touches DS or its components - this is the durable update path. The package has two halves: the deterministic `src` mirror (auto-generated) and the authored docs (`README.md` + `CHANGELOG.md` + `docs/01..05`). BOTH must be kept fresh - the authored docs are where staleness silently accrues, so they have a hard gate now too.
-
-- Detect whether this session touched DS: `git -C "C:/Riot Commander" status -s` shows any path under `agents/daemon_slayer/`, `tools/daemon_slayer_*`, `tools/ds_*`, or `data/daemon_slayer/`. If NONE: skip this section (the package is unchanged).
-- Otherwise re-mirror + verify (ground truth, not memory):
-  - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/tools/ds_share_sync.py"` - regenerates `Share/src` from the live engine, restamps `Share/MANIFEST.md` (engine version, file counts, UTC timestamp), AND auto-rewrites the MECHANICAL version/patch anchors in the authored docs (`ENGINE_VERSION = "X"` + `data patch \`X\`` + `"patch": "X"`) to the live values. You do NOT hand-edit those literals; the tool owns them.
-  - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/tools/ds_share_sync.py" --check` - must report "Share/src + doc anchors in sync" (this is the exact guard CI runs; a DS change that forgets the src mirror OR a doc anchor fails CI).
-- **Authored-doc freshness (the SEMANTIC half the auto-rewrite cannot do - update / add / archive as the change warrants):**
-  - **Update.** Walk `Share/docs/01..05` for prose that this change made stale and fix it in place. The usual decay points: a capability that was "staged / next" in `04_GAPS_AND_ROADMAP.md` and SHIPPED this session moves from section 2/3 to section 1 (Included); `05_AUDIT_AND_REFACTOR.md`'s test-count / file-count line and any "now applied" refactor note; a registry-table cell in `02_FUNCTION_REFERENCE.md` whose entry count or field list grew. Numbers come from THIS session's fresh runs, not memory.
-  - **Add.** If the change introduced a whole new subsystem the five docs do not describe, add the section (or, rarely, a new `docs/NN_*.md`) and link it from `README.md`'s "How to read this package" list.
-  - **Archive.** If an authored doc - or a standalone repo-internal DS plan doc (e.g. a `docs/DS_*_PLAN.md`) - describes a one-off effort that is now COMPLETE, fold it to its done-state (the five Share docs are evergreen, so this is usually an in-place "now applied" edit) or, for a genuinely point-in-time standalone doc, move it under `docs/_archive/` (or `Share/docs/_archive/`) so it stops reading as pending. The audit/refactor doc's "prior recommendations, now applied" section is the model: completed work is named as done, not deleted and not left describing a future.
-  - Keep the authored docs CLEAN (external voice): no item numbers, session refs, operator names, or outside-project names - frame DS work by technical substance only.
-- If `ENGINE_VERSION` changed this session: prepend a dated release entry to `Share/CHANGELOG.md` (header `## ENGINE_VERSION <v> - <UTC timestamp>`, then a tight bullet list of the engine changes) and append a one-line entry under the sync-history section. Credit the upstream sources of truth (Riot Data Dragon / CommunityDragon / Meraki Analytics) in the entry when the change added or corrected formula data. (A plain patch bump - new `current.txt` patch, no engine code change - also needs a manual doc pass for the patch FORMS the auto-rewrite leaves alone: the `data/daemon_slayer/<patch>/` path citations and the CommunityDragon two-segment pin in `03_DATA_AND_SOURCES.md`.)
-- Stage `Share/` with the rest of the authored files in section 1 - the package sync is part of the SAME commit as the engine change, never a trailing afterthought. Credit the sources of truth in the commit body too.
-
-### 0c. Drift guard - the check that saves the cleanup sessions
+### 0b. Drift guard - the check that saves the cleanup sessions
 
 ```
 "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/tools/drift_guard.py"
@@ -209,6 +193,9 @@ Update the three living docs based on what shipped this session. These are surgi
 - Update only if something structural changed (new endpoint, new panel, new agent). Light-touch: one bullet or badge line at most.
 - If nothing structural changed: skip entirely - don't update the README just to say you ran /done.
 
+**Standalone plan docs**
+- If a standalone `docs/DS_*_PLAN.md` (or any similar one-off plan doc) COMPLETED this session, fold it to its done-state or move it under `docs/_archive/` - otherwise it keeps reading as pending work to the next session.
+
 **docs/DAEMON_SLAYER.md + docs/ARCHITECTURE.md changelogs**
 - Changelog: newest first, ONE line per ENGINE bump - never append to a prior version's line. On an ENGINE_VERSION bump, prepend a new bullet to the DAEMON_SLAYER.md `## Changelog` section (one bullet per ENGINE version); do NOT extend an existing version's bullet. Bump the short status header (ENGINE_VERSION + test count + patch) in the same edit.
 - ARCHITECTURE.md keeps a short DS summary + structural bullets + a `see docs/DAEMON_SLAYER.md changelog` pointer - do NOT paste the per-version narrative there. Appending to a prior version's line is what produced the unreadable single-line megastring this rule retired.
@@ -275,7 +262,6 @@ Print a tight banner - exactly this format:
   - RC health            : pid=<pid> alive=<bool> reload_ok=<bool>
   - WAKEUP_NOTES         : updated (+<N> lines)
   - living docs          : roadmap/claude.md/readme - <N items updated | skipped>
-  - DS Share package     : synced (engine <v>, --check green) | n/a (DS untouched)
   - session file         : <N> MB <ok | /clear overdue>
   - mid-game             : no | YES - wait until safe to /clear
   - next-session prompt  : printed below

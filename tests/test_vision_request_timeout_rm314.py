@@ -12,7 +12,7 @@ bound that exists. The four sites are:
   4. `vision_server/_inference.py:291` handle_coach
 
 RE-VERIFIED this run by an AST sweep over every tracked `.py` outside
-`tests/`, `Share/` and `docs/`: 20 production `messages.create` sites exist,
+`tests/` and `docs/`: 20 production `messages.create` sites exist,
 14 carry `timeout` and 6 do not; the 6 are exactly these 4 plus
 `tft/tft_live_analysis.py:391` and `:457`, which are RM-302 and out of scope
 here. The same sweep found 17 `anthropic.Anthropic(...)` constructions, every

@@ -45,12 +45,12 @@ def _current_patch() -> str | None:
 def _require_live_sidecar() -> None:
     """Fail (never skip) when the current-patch sidecar is not on disk.
 
-    2026-07-27 skip audit: both halves are TRACKED and vendored into BOTH trees
-    - data/daemon_slayer/current.txt and
-    data/daemon_slayer/<patch>/cdragon_ability_ratios.json exist in the main
-    repo and in Share/src. Absence therefore means a committed artifact was
-    deleted or the patch pointer moved ahead of its extract - exactly the drift
-    these tests exist to catch.
+    2026-07-27 skip audit: both halves are TRACKED -
+    data/daemon_slayer/current.txt and
+    data/daemon_slayer/<patch>/cdragon_ability_ratios.json are committed.
+    Absence therefore means a committed artifact was deleted or the patch
+    pointer moved ahead of its extract - exactly the drift these tests exist
+    to catch.
     """
     patch = _current_patch()
     assert patch, f"tracked patch pointer {_DEFAULT_DATA_ROOT / 'current.txt'} is missing or empty"

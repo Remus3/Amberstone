@@ -191,18 +191,21 @@ def _build_truncation_repo(root: Path) -> dict:
     """A commit whose early-sorting mirror files alone exceed the diff budget.
 
     The exact R136 topology that produced FALSE-POSITIVE REGRESS #6: one commit
-    edits BOTH the generated mirror (Share/, 139 files) and the true source
-    (agents/daemon_slayer/, 129 files). git emits paths in byte order, so every
-    'S' (0x53) path precedes every 'a' (0x61) path. The mirror content alone
-    overran the auditor's head-truncation budget, so the true source never
-    reached the prompt and the auditor concluded it was 'missing from the diff'
-    -> REGRESS on a commit that was in fact complete and CI-green."""
+    edited BOTH a generated mirror tree (139 files, since retired) and the true
+    source (agents/daemon_slayer/, 129 files). git emits paths in byte order,
+    so an upper-case-initial directory ('M', 0x4D) precedes every 'a' (0x61)
+    path. The mirror content alone overran the auditor's head-truncation
+    budget, so the true source never reached the prompt and the auditor
+    concluded it was 'missing from the diff' -> REGRESS on a commit that was in
+    fact complete and CI-green. The tree below reproduces that ORDERING, which
+    is the property under test; the generator that produced the original mirror
+    is irrelevant to it."""
     _init(root)
     c0 = _commit(root, "base.txt")
-    (root / "Share").mkdir()
+    (root / "Mirror").mkdir()
     (root / "agents").mkdir()
     for i in range(8):
-        (root / "Share" / f"mirror_{i}.py").write_text(
+        (root / "Mirror" / f"mirror_{i}.py").write_text(
             "# generated mirror - do not edit\n" + ("x = 1\n" * 3000), encoding="utf-8")
     (root / "agents" / "engine_true_source.py").write_text(
         "def rm101_rune_numerator():\n    return 1\n", encoding="utf-8")

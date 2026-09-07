@@ -238,7 +238,7 @@ def _despliced(text: str) -> str:
 def _tracked_sources() -> list[Path]:
     """Every tracked .py/.js under the repo, minus archives and this guard."""
     out: list[Path] = []
-    skip_parts = {"_archive", ".git", "node_modules", "__pycache__", "Share"}
+    skip_parts = {"_archive", ".git", "node_modules", "__pycache__"}
     for suffix in ("*.py", "*.js"):
         for p in _PROJECT_ROOT.rglob(suffix):
             if skip_parts & set(p.parts):
