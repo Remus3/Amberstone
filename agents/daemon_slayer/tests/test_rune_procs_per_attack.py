@@ -26,7 +26,7 @@ from agents.daemon_slayer.rune_procs import (
 )
 
 # Anchor source-file lookups on this file's own location, not the process CWD,
-# so the shipped Share/ package runs its hygiene tests from any directory.
+# so the hygiene tests run from any directory.
 _DS_DIR = Path(__file__).resolve().parents[1]   # agents/daemon_slayer
 
 _TOL = 1e-6

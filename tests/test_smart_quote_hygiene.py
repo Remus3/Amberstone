@@ -25,8 +25,6 @@ EXCLUSIONS (parallel to the strip tool):
     - binary: .pyc .pyd .db .png .jpg .jpeg .gif .webp .ico .zip .gz .exe
               .dll .lnk .woff .woff2 .ttf .bin .so .o
     - data/daemon_slayer/**/*.json (DDragon snapshots; external data)
-    - Share/src/data/daemon_slayer/**/*.json (byte-identical mirror of the
-      above, produced verbatim by tools/ds_share_sync.py; same external data)
     - data/meta_build/**/* (dated refresh artifacts; vendored third-party HTML)
     - data/meta/ddragon_champions.json (DDragon mirror; external data)
     - this test file itself + tools/strip_smart_quotes.py (both contain the
@@ -98,14 +96,6 @@ _TEST_FILE = Path(__file__).resolve().as_posix()
 
 def _is_external_data(rel_posix: str) -> bool:
     if rel_posix.startswith("data/daemon_slayer/") and rel_posix.endswith(".json"):
-        return True
-    # Share/src/data/daemon_slayer/ is a byte-identical deterministic mirror of
-    # data/daemon_slayer/<patch>/ (Riot DDragon/Meraki snapshots) produced by
-    # tools/ds_share_sync.py (_build_expected copies it verbatim via read_bytes).
-    # It carries the SAME upstream punctuation (em/en-dashes + smart quotes in
-    # Riot ability/item descriptions) the source does - external data, not
-    # authored source. Exclude it exactly as the source above is excluded.
-    if rel_posix.startswith("Share/src/data/daemon_slayer/") and rel_posix.endswith(".json"):
         return True
     if rel_posix.startswith("data/meta_build/"):
         return True

@@ -152,7 +152,7 @@ def _scope_files():
     found = []
     for path in REPO_ROOT.rglob("*.py"):
         parts = path.parts
-        if any(p in (".git", "_archive", "node_modules", "Share") for p in parts):
+        if any(p in (".git", "_archive", "node_modules") for p in parts):
             continue
         if path.resolve() == here:
             continue

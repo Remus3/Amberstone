@@ -264,9 +264,9 @@ DEFAULT_MAX_CYCLES = 12
 # controller's 5400s deadline - that number bounds a different workload.
 DEFAULT_CYCLE_TIMEOUT_S = 14400
 # Between cycles, not after the last. Long enough for the worker's commit and
-# push to land and for the DS Share mirror / :8860 bounce to settle before the
-# next worker reads the tree - a mid-settle read is the false anchor-mismatch
-# class CLAUDE.md warns about.
+# push to land and for the DS :8860 bounce to settle before the next worker
+# reads the tree - a mid-settle read is the false anchor-mismatch class
+# CLAUDE.md warns about.
 DEFAULT_SETTLE_S = 45
 # A dead worker is noticed within 10s; polling faster buys nothing against a
 # multi-hour run and only wakes the box.

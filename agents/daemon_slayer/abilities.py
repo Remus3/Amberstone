@@ -452,9 +452,9 @@ def _read_cdragon_sidecar_doc(root: Path, patch: str) -> dict | None:
 #   _patch           ability_staleness, cdragon_spell_stats, wiki_ability_stats,
 #                    wiki_stats
 #   rc_patch         the two authored event-mode augment feeds
-#                    (tools/ds_feed_index.KNOWN_STAMP_LAG names them; they are
-#                    NOT spelled out here because one is Share-excluded and a
-#                    bare mention trips tests/test_ds_share_data_snapshot_scope)
+#                    (tools/ds_feed_index.KNOWN_STAMP_LAG names them; that
+#                    registry is the one place the pair is spelled out, rather
+#                    than a second copy of the filenames here)
 #   ddragon_version  manifest
 #   version          items, champions, scenarios, champion_abilities,
 #                    build_orders_{sr,aram,arena}
@@ -539,10 +539,8 @@ def check_artifact_patch(
 
     * The two authored event-mode augment feeds declare ``rc_patch`` 16.10.1 ON
       PURPOSE - their body has not moved. They are named once, in
-      ``tools/ds_feed_index.KNOWN_STAMP_LAG``, and deliberately not repeated here:
-      one of them is Share-excluded and ``tests/test_ds_share_data_snapshot_scope``
-      reads a bare mention inside the engine package as evidence the engine READS
-      it. Enforcing stamp-equals-directory on them would be a false positive.
+      ``tools/ds_feed_index.KNOWN_STAMP_LAG``, rather than repeated here.
+      Enforcing stamp-equals-directory on them would be a false positive.
 
     The OTHER historical reason is GONE and the old wording here was measurably
     wrong: this docstring used to claim ``arena_augments.json`` and
@@ -727,9 +725,10 @@ def artifact_refresh_verdict(
                       at all, so re-run cannot be confirmed either way (the
                       scenarios / wiki_* shape).
 
-    The baseline is INJECTED, never read from disk. The Share mirror ships only
-    ONE patch dir, so a helper that went looking for the previous dir itself
-    would be a permanent silent skip inside the shipped package.
+    The baseline is INJECTED, never read from disk: "there is no previous dir"
+    is the CALLER's answer (see ``no-baseline`` above), so a helper that went
+    looking for the previous dir itself would be a permanent silent skip
+    wherever only one patch dir is present.
     """
     if prior_body is None:
         return "no-baseline"
@@ -775,13 +774,8 @@ def check_artifact_refresh(
       ``tools/ds_feed_index.KNOWN_STAMP_LAG`` read ``frozen`` precisely BECAUSE
       their vintage is honestly frozen - there is no newer upstream to fetch,
       so an actual re-run would reproduce the same stamp. Those two are
-      referred to by their registry and never by filename on purpose: one of
-      them is Share-excluded, and
-      ``tests/test_ds_share_data_snapshot_scope.py`` scans every non-transient
-      ``*.py`` under this package for the excluded sidecar's stem, reading a
-      bare mention as evidence the engine READS a file the mirror does not
-      ship. Going through the registry satisfies that guard without depending
-      on which of the two is currently excluded.
+      referred to by their registry and never by filename on purpose, for the
+      same registry-over-prose reason the closing paragraph below gives.
     * ``unprovable`` is a gap in the GENERATOR, not an accusation against the
       payload: the body did not move and nothing in it records a run, so this
       guard has nothing to read either way. The remedy is a vintage key at the

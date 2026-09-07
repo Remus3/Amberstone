@@ -7,11 +7,10 @@ written relative to the REPO ROOT - for example
 ``open("agents/daemon_slayer/rune_procs.py")`` or
 ``Path("agents/daemon_slayer/champion_block_index.json").read_text()`` -
 resolves ONLY when the running process happens to have the repo root as its
-current working directory. Nothing guarantees that. The shipped Share/
-package re-roots these same tests under ``Share/src/``, so a clean copy run
-from any other directory raises FileNotFoundError before a single assertion
-executes. Thirteen tests failed exactly that way, for a reason that had
-nothing to do with what they assert.
+current working directory. Nothing guarantees that: a run launched from any
+other directory raises FileNotFoundError before a single assertion executes.
+Thirteen tests failed exactly that way, for a reason that had nothing to do
+with what they assert.
 
 THE CANONICAL FIX
 -----------------
@@ -20,10 +19,10 @@ Anchor on ``__file__``, never on the CWD::
     _DS_DIR = Path(__file__).resolve().parents[1]
     src = (_DS_DIR / "rune_procs.py").read_text(encoding="utf-8")
 
-``parents[1]`` is the daemon_slayer package directory whether the test sits
-at ``agents/daemon_slayer/tests/`` in this repo or at ``Share/src/.../tests/``
-in the shipped package, so the same line works in both trees and from any
-CWD. A test that legitimately needs to name such a path AS DATA anchors it
+``parents[1]`` is the daemon_slayer package directory wherever the test tree
+is rooted, so the same line works from any CWD and survives the package
+being re-rooted or copied elsewhere.
+A test that legitimately needs to name such a path AS DATA anchors it
 the same way. The answer is never an ignore list - which is why this guard
 deliberately carries NO skip list and NO per-file exemptions.
 
@@ -215,8 +214,8 @@ class NoCwdRelativePathLiteralsTests(unittest.TestCase):
             offenders,
             f"RM-337: {len(offenders)} repo-root-relative path literal(s) found in "
             f"{_TESTS_DIR}. Each resolves only when the CWD happens to be the repo "
-            f"root, so it raises FileNotFoundError from the shipped Share/ package "
-            f"or any other directory. Fix each by anchoring on __file__:\n"
+            f"root, so it raises FileNotFoundError from any other directory. "
+            f"Fix each by anchoring on __file__:\n"
             f"    _DS_DIR = Path(__file__).resolve().parents[1]\n"
             f"    (_DS_DIR / 'rune_procs.py').read_text(encoding='utf-8')\n"
             f"Offending literals (file:line: literal):\n  " + "\n  ".join(offenders),

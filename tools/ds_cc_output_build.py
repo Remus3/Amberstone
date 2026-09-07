@@ -10,8 +10,7 @@ registry already carries against that registry (single source of truth for the
     LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/cc_output_registry_notes.json`` (champion, spell,
-    cc_kind, duration, conditional, source_quote) - excluded from Share like
-    CHANGELOG.md / CC_CONDITIONAL_NOTES.md.
+    cc_kind, duration, conditional, source_quote).
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_cc_output_build.py <workflow_output.json>

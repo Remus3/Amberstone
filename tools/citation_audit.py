@@ -11,11 +11,11 @@ citation moved `:569` -> `:684` -> `:722` across two commits in a single
 session. Line numbers rot silently: nothing in the toolchain reads them.
 
 There is precedent (LEDGER 994, 2026-07-21): a verifier swept all 280
-citations inside the `Share/` package to 0 file-not-found / 0 past-EOF. That
-pass was MANUAL and scoped to one directory. This module generalizes the same
-technique to the living docs and makes it machine-checkable, so the count
-cannot silently grow. It is the ONLY citation checker in the repo - extend it,
-do not write a second one.
+citations inside one package to 0 file-not-found / 0 past-EOF. That pass was
+MANUAL and scoped to one directory. This module generalizes the same technique
+to the living docs and makes it machine-checkable, so the count cannot silently
+grow. It is the ONLY citation checker in the repo - extend it, do not write a
+second one.
 
 THREE CLASSES, AND WHY THE THIRD IS THE POINT
 ---------------------------------------------
@@ -130,8 +130,8 @@ matters because collapsing it hid real breakage once already:
               files). A stale citation here is CORRECT - it records what was
               true when written - and editing it is a history rewrite
               (``feedback_no_history_rewrite``). Report-only, never budgeted.
-* UNGUARDED - everything else: ``ops/**``, ``agents/**``, ``tools/*.md``,
-              ``Share/docs/**``. 882 citations carrying 22 broken, including
+* UNGUARDED - everything else: ``ops/**``, ``agents/**``, ``tools/*.md``.
+              882 citations carrying 22 broken, including
               16 in ``ops/audit/P2_FINDINGS.md`` and one in
               ``ops/loop/director_prompt.md``, which is LIVE LOOP INPUT.
               These are NOT history and were never decided to be acceptable;
@@ -219,7 +219,7 @@ _STOPWORDS = frozenset(
 # THREE SCOPES, NOT TWO. An earlier cut of this module had only "in scope" and
 # its negation, and presented the negation as "immutable history". That was
 # misleading in a way that HID REAL BREAKAGE: 882 citations in `ops/**`,
-# `agents/**`, `tools/*.md` and `Share/docs/**` are neither guarded nor
+# `agents/**` and `tools/*.md` are neither guarded nor
 # append-only, and they carry 22 broken - 16 in `ops/audit/P2_FINDINGS.md` and
 # one in `ops/loop/director_prompt.md`, which is LIVE LOOP INPUT. Reading
 # "not guarded" as "history" would have retired those without anyone deciding
@@ -342,22 +342,14 @@ def extract_citations(text: str, doc: str) -> list[Citation]:
 class _Index:
     """Tracked-path lookup: exact first, then basename/suffix match.
 
-    Two corrections, both measured on the first census run of this tool and
-    both worth stating because a naive index reports them as rot:
-
-    1. ``Share/src/**`` is a GENERATED MIRROR of ``agents/daemon_slayer/**``
-       (``tools/ds_share_sync.py``). Every bare `dps.py:700` therefore matched
-       two tracked files and a naive index called it ambiguous, so the first
-       run reported 500 FILE_MISSING where the real number is far smaller.
-       The mirror is dropped whenever a non-mirror candidate exists.
-    2. Genuine multi-candidate names survive (``server.py`` is in
-       ``agents/daemon_slayer/``, ``dashboard/`` and ``mc/``; ``main.js`` is in
-       ``rc-shell/src/`` and ``web/js/``). Those are NOT failures. A citation
-       is broken only when NO tracked candidate can host the cited line, so
-       ``candidates()`` returns the whole set and the caller picks.
+    One correction, measured on the first census run of this tool and worth
+    stating because a naive index reports it as rot: genuine multi-candidate
+    names survive (``server.py`` is in ``agents/daemon_slayer/``, ``dashboard/``
+    and ``mc/``; ``main.js`` is in ``rc-shell/src/`` and ``web/js/``). Those are
+    NOT failures. A citation is broken only when NO tracked candidate can host
+    the cited line, so ``candidates()`` returns the whole set and the caller
+    picks.
     """
-
-    _MIRROR_PREFIX = "Share/src/"
 
     def __init__(self, paths: list[str]) -> None:
         self.exact = {p.replace("\\", "/") for p in paths}
@@ -370,9 +362,7 @@ class _Index:
     def candidates(self, cited: str) -> list[str]:
         if cited in self.exact:
             return [cited]
-        hits = self.by_suffix.get(cited, [])
-        non_mirror = [h for h in hits if not h.startswith(self._MIRROR_PREFIX)]
-        return non_mirror or hits
+        return self.by_suffix.get(cited, [])
 
 
 # A line opening its own block: a list item, heading, table row, blockquote or
