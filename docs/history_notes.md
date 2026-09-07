@@ -10859,7 +10859,7 @@ THREE BUGS LANDED, and in all three the briefed fix was WRONG - check the measur
 before implementing anything handed down:
 - **RM-93** as briefed was a REGRESSION. Admitting Zaz'Zak's/Bloodsong ranks Bloodsong
   #2 Vel'Koz / #3 Jinx. Real defect was the inverse: the SR deny held 2 of 5 Bounty of
-  Worlds upgrades. Landed sibling-complete (+3 ids), SR pool 144 -> 141, no ENGINE bump
+  Worlds upgrades. Landed sibling_complete (+3 ids), SR pool 144 -> 141, no ENGINE bump
   (precedent 415c1795). Live-verified on restarted :8893.
 - **RM-81** prescribed fix would have CRASHED the tool (Aurelion Sol Q IndexError kills
   the sweep) plus 12 bad truncations. Real tell is an INTERNAL DROP, not end-to-end
@@ -12010,7 +12010,7 @@ commit `e2ff5982`. No RC restart (asset-hash ADR-008), no DS bounce (ENGINE-IMPA
 
 ---
 
-# 2026-07-10 (DS Armored Advance Plating EHP credit - R86 sibling-carrier; ENGINE 1.187.0)
+# 2026-07-10 (DS Armored Advance Plating EHP credit - R86 sibling_carrier; ENGINE 1.187.0)
 
 Gemini-loop DIRECTOR REFILL R88. Full detail: LEDGER 829. Tier-2, commit `b6a64836`, DS `:8893`
 bounced to 1.187.0 (health engine 1.187.0, patch 16.13.1, 173 champs / 706 items).
@@ -19271,7 +19271,7 @@ Operator "in parallel" 7 slices selected from operator-gated decision-owed lane.
 
 **Slice C audit-only no-commit (calibrations audit):** 4 surfaces audited. 13 condition tag midpoints (cc_conditional.py:286-300): all operator-decision-only; 3 forward-marker tags (COND_FRENZY_STATE / COND_RANGE_GATED / COND_TRAVERSE) seeded waves 7+17. 67 per-entry probability values: **10 entries flagged with >0.1 drift from tag midpoint** all carry operator rationales (Karma:W -0.1 tether persistence / Viktor:W -0.1 zone stun 3 stacks ~1.5s / Xayah:E -0.1 3+ feather threshold / Kennen:E -0.1 Mark of Storm combo / JarvanIV:E +0.2 EQ flag combo / Fiora:W -0.1 parry timing / Yuumi:Q -0.1 conservative / Evelynn:W -0.1 / Hwei:E -0.1 / Neeko:E -0.1 / Sylas:E -0.1). _MISSING_HP_SHARE_FOR_HEALS = 0.5 (ehp.py:209-220) anchor: Sundered Sky 6610 mid-fight HP convention; operator-tunable. _CC_EFFECTIVENESS_FACTOR = 0.5 (ehp.py:223-242) anchor: ENGINE 1.33.0 conservative discount for QSS/dodge/cleanse/gaps; operator-tunable. No data-driven delta proposals; existing per-entry override machinery (`data/cc_conditional_calibration.json` + `_PER_ENTRY_PROBABILITY_OVERRIDES`) ready for operator calibration from live-game data without schema change.
 
-**Slice D research-only no-commit (cc_conditional wave 20+ Meraki schema field):** RECOMMENDED `notes` field per spell form at `tools/daemon_slayer_abilities_extract.py:453-560` _build_form function. Pure-additive parallel to cast_time (wave 14) + effects_descriptions (wave 9) + parent_resource (wave 19). Unblocks 3 candidates: Kindred E Mounting Dread (third-stack pounce stun COND_NTH_HIT), Diana P Moonsilver Blade (form-empowered moonstone passive COND_FRENZY_STATE), Vayne P Night Hunter (third-strike empowered stun COND_NTH_HIT + COND_FRENZY_STATE overlap). All 3 Meraki-verifiable via `notes` text; require breaking the per-form text into segments distinguishing unconditional status-grants from conditional empowered-attack CC. Operator-gated for next session.
+**Slice D research-only no-commit (cc_conditional wave 20+ Meraki schema field):** RECOMMENDED `notes` field per spell form at `tools/daemon_slayer_abilities_extract.py:453-560` _build_form function. Pure-additive parallel to cast_time (wave 14) + effects_descriptions (wave 9) + parent_resource (wave 19). Unblocks 3 candidates: Kindred E Mounting Dread (third-stack pounce stun COND_NTH_HIT), Diana P Moonsilver Blade (form-empoweSibling-Cstone passive COND_FRENZY_STATE), Vayne P Night Hunter (third-strike empowered stun COND_NTH_HIT + COND_FRENZY_STATE overlap). All 3 Meraki-verifiable via `notes` text; require breaking the per-form text into segments distinguishing unconditional status-grants from conditional empowered-attack CC. Operator-gated for next session.
 
 **Slice E research-only no-commit (set_augment_intent Cherry scaffold):** Endpoint UNCERTAIN: PATCH `/lol-cherry-game-intra-event/v1/augment-select` (best-guess from LCU namespace convention + KebsCS pattern; requires live Arena capture to confirm). Agent handler scaffold ready at tools/gamepc_lcu_agent.py:1179-1194 (replace existing no-op stub). Dashboard wiring 90% DONE: `"set_augment_intent"` already in `_LCU_ALLOWED_CMDS` at dashboard/routes_loadout.py:57 (item 166 wiring). Live verification: operator in queue 1750 (CHERRY) champ-select + Chrome DevTools Network capture of session.actions[] containing augment-type action.
 

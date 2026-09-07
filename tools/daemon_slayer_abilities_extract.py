@@ -90,9 +90,9 @@ is data ingest only - we do not evaluate per-cast damage here.
 
 Usage::
 
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_abilities_extract.py            # extract for DDragon current patch
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_abilities_extract.py --force    # re-fetch even if file exists
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_abilities_extract.py --patch 16.9.1  # override patch label
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_abilities_extract.py            # extract for DDragon current patch
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_abilities_extract.py --force    # re-fetch even if file exists
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_abilities_extract.py --patch 16.9.1  # override patch label
 """
 from __future__ import annotations
 

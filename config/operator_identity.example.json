@@ -1,0 +1,5 @@
+{
+  "_doc": "Per-operator Riot identity. Copy to config/operator_identity.json (gitignored) and fill in. Read by core/operator_identity.py; env RC_OPERATOR_GAME_NAME and RC_OPERATOR_ACCOUNTS (comma-separated Riot IDs) take precedence. Absent = this install has no configured identity: the replay archiver pulls nothing and the pro-match join matches nothing, both silently and on purpose.",
+  "game_name": "",
+  "accounts": []
+}

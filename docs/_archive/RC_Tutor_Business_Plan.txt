@@ -28,7 +28,7 @@ here's why."
 SECTION 2: COMPETITIVE LANDSCAPE
 =============================================================================
 
---- OVERLAY APP E (acquired by Aggregator C, 2023) ---
+--- OVERLAY APP E.GG (acquired by Aggregator C, 2023) ---
 Founded: 2018. Raised $7.5M Series A (2022).
 Acquisition: Aggregator C acquired Overlay App E in 2023.
 Peak users: ~3M+ monthly active.

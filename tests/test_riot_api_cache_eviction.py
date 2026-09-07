@@ -70,6 +70,7 @@ import pytest
 
 from core import riot_api_cache as rac
 from core.riot_api_cache import RiotApiCache
+from tests import _repo_walk
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -184,11 +185,18 @@ class TestEvictionIsOptIn:
 
         Same shape as core/data_retention.apply(): the function exists so the
         policy has an enforcement arm, and NOTHING in RC calls it.
+
+        Infrastructure exclusion comes from `tests/_repo_walk` (2026-09-07);
+        `skip` keeps only the two trees that are this guard's OWN scope choice -
+        tests and docs are allowed to name the function. The skip is applied to
+        the path RELATIVE to the root: matching absolute parts returns nothing
+        at all when the checkout itself sits under `.claude/worktrees/<id>`,
+        which is indistinguishable from a clean tree.
         """
         hits = []
-        skip = {"tests", ".git", "docs", "_archive", "node_modules"}
-        for p in _REPO_ROOT.rglob("*.py"):
-            if any(part in skip for part in p.parts):
+        skip = {"tests", "docs"}
+        for p in _repo_walk.repo_files(_REPO_ROOT):
+            if any(part in skip for part in p.relative_to(_REPO_ROOT).parts):
                 continue
             if p.name == "riot_api_cache.py":
                 continue

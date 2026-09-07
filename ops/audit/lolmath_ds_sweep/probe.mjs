@@ -1,5 +1,7 @@
 import { chromium } from 'playwright';
-const EXE='C:\Users\Administrator\AppData\Local\ms-playwright\chromium-1217\chrome-win64\chrome.exe';
+// Resolved under THIS account's home rather than baked in: a launch path naming
+// another account's home silently does not exist.
+const EXE=`${process.env.LOCALAPPDATA}\\ms-playwright\\chromium-1217\\chrome-win64\\chrome.exe`;
 const b=await chromium.launch({headless:true,executablePath:EXE});
 const ctx=await b.newContext();
 for(const s of ['gwen','jayce','viego']){

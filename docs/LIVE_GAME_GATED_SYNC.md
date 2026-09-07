@@ -1467,7 +1467,7 @@ Do not drain these. They are listed so nobody re-adds them.
   live-confirmed DEAD END. Operator wants a FUTURE exploration only (sub-second frame-diff + portrait
   template-match combo; memory `project_zoi_minimap_reality`). Not scheduled. The native-res grab
   (`f9ebcd3f`) + the LEDGER 871 count-precision fix stay as the foundation.
-- `[PARKED 2026-06-20]` Overlay-App-E-style enemy ult/ability CD timers (needs enemy cast-detection via vision).
+- `[PARKED 2026-06-20]` Overlay App E-style enemy ult/ability CD timers (needs enemy cast-detection via vision).
 - `[HOLD]` HZ-A choice-B even<->hold band flip (+57 ticks quantified; operator-gated, not applied).
 - `[HOLD]` DS target-current-HP% / enemy-pen product-call flips - operator off-meta-chase decision
   first, THEN the G3-09 / G2-15 eyeballs.

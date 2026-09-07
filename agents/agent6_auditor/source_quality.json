@@ -3,7 +3,7 @@
   "version": 1,
   "updated_at": "2026-04-22T09:51:10Z",
   "sources": {
-    "aggregator D": {
+    "site_d": {
       "weight": 1.0,
       "circuit": "closed",
       "last_win_rate_correlation": null,
@@ -12,7 +12,7 @@
       "last_fetch_err_at": null,
       "cease_and_desist": false
     },
-    "ugg": {
+    "site_b": {
       "weight": 1.0,
       "circuit": "closed",
       "last_win_rate_correlation": null,

@@ -494,7 +494,7 @@ context, which does not inherit the main thread's.
 | `/done` | The section 3 end-of-session ritual, end to end |
 | `/orchestrated-run` | Set up the section 5 shape for a named unit of work |
 | `/tdd` | The section 7 loop for a named feature or bug |
-| `/root-cause-fix` | Failing reproduction first, sibling-case grep, minimal fix, corrupted-data backfill check |
+| `/root-cause-fix` | Failing reproduction first, sibling_case grep, minimal fix, corrupted-data backfill check |
 | `/sync-docs` | Reconcile every markdown doc against the canonical fact set |
 | `/drift-guard` | Run all drift guards and report |
 | `/audit` | One-file deep audit: correctness, security, error handling, resource lifetime, concurrency, input validation |

@@ -1,0 +1,44 @@
+{
+  "_comment": [
+    "EXAMPLE roster. Copy to data/replay_roster.json and fill in real Riot IDs.",
+    "The live file is gitignored on purpose: it is a list of OTHER PEOPLE'S",
+    "accounts, and a public repo has no business redistributing one.",
+    "Tracked players whose RANKED replays feed the analysis corpus.",
+    "Identity is the Riot ID, never a PUUID: a stored PUUID is encrypted per",
+    "API key, so it is resolved fresh on every run.",
+    "One entry per ACCOUNT, not per champion or per match. /replays is keyed on",
+    "PUUID and serves only that account's 5 most recent RETAINED files, so a",
+    "specific match is obtainable only while it sits in that window - coverage",
+    "comes from the pull cadence, never from a backfill.",
+    "role is the role the operator is studying this account for.",
+    "tools/ladder_role_scout.py regenerates a candidate set into",
+    "data/ladder_role_mains.json (also gitignored)."
+  ],
+  "players": [
+    {
+      "role": "TOP",
+      "riot_id": "ExampleTop#NA1",
+      "note": "Replace with a real Riot ID. Riot IDs may contain spaces."
+    },
+    {
+      "role": "JUNGLE",
+      "riot_id": "ExampleJungle#NA1",
+      "note": "Replace with a real Riot ID."
+    },
+    {
+      "role": "MID",
+      "riot_id": "ExampleMid#NA1",
+      "note": "Replace with a real Riot ID."
+    },
+    {
+      "role": "BOT",
+      "riot_id": "ExampleBot#NA1",
+      "note": "Replace with a real Riot ID."
+    },
+    {
+      "role": "SUPPORT",
+      "riot_id": "ExampleSupport#NA1",
+      "note": "Replace with a real Riot ID."
+    }
+  ]
+}

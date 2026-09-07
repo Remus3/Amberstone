@@ -30,7 +30,7 @@ spellblade/immolate/hydra double). Idempotent + atomic (tmp.write_text +
 os.replace). Mirrors tools/hotfix_thin_aram_pollution_item276.py.
 
 Usage:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/hotfix_zaahen_loadout_item277.py [--dry-run]
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/hotfix_zaahen_loadout_item277.py [--dry-run]
 """
 from __future__ import annotations
 

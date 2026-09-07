@@ -15,7 +15,7 @@ Judgment still required: confirm the numeric best matches the
 champion's real in-game max order (most damage mages max their highest
 spell first, but a few max utility/CD - don't blindly ship those).
 
-Usage:  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_max_priority_prefilter.py [--margin 1.10]
+Usage:  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_max_priority_prefilter.py [--margin 1.10]
 """
 from __future__ import annotations
 

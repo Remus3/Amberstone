@@ -1,24 +1,34 @@
-"""aggregator B scraper primitive.
+"""Site B build-page scraper primitive.
 
-URL shape (2026): https://aggregator-b.invalid/lol/champions/<champ>/build
+URL shape (2026): <base>/lol/champions/<champ>/build
 ARAM: /lol/champions/aram/<champ>-aram
 Arena: /lol/champions/arena/<champ>-arena-build
+
+The host itself is operator configuration (``site_b_base_url`` in
+``config/external_sources.json``), resolved on every access rather than
+frozen at import, so an install can point this somewhere else - or nowhere -
+without editing the module.
 """
 from __future__ import annotations
 
+from core import external_sources
 from lib.scrapers._base import ScraperBase
 
 
-class UggScraper(ScraperBase):
-    site = "ugg"
-    base_url = "https://aggregator-b.invalid"
+class SiteBScraper(ScraperBase):
+    site = "site_b"
 
     MODE_PATH = {
         "sr": "lol/champions/{champ}/build",
         "aram": "lol/champions/aram/{champ}-aram",
         "arena": "lol/champions/arena/{champ}-arena-build",
-        "brawl": "lol/champions/{champ}/build",  # aggregator B rarely separates brawl; SR build is the fallback
+        # This source rarely separates brawl; the SR build is the fallback.
+        "brawl": "lol/champions/{champ}/build",
     }
+
+    @property
+    def base_url(self) -> str:
+        return external_sources.value("site_b_base_url")
 
     def fetch_champion(self, champ: str, mode: str = "sr", role: str | None = None) -> str:
         champ = champ.strip().lower().replace(" ", "").replace("'", "")

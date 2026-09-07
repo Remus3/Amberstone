@@ -13,7 +13,7 @@
 $ErrorActionPreference = "Stop"
 
 $TaskName = "RC-RewindCatchup"
-$Python   = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe"
+$Python   = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $Script   = "C:\Riot Commander\scripts\rewind_catchup.py"
 $Args     = "`"$Script`""
 

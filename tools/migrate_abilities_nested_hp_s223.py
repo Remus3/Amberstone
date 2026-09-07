@@ -13,8 +13,8 @@ fully auditable: it prints every (champion, key, form, block) it touches
 and asserts the change set is exactly the expected nested-health blocks.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/migrate_abilities_nested_hp_s223.py --dry-run
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/migrate_abilities_nested_hp_s223.py            # writes in place
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/migrate_abilities_nested_hp_s223.py --dry-run
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/migrate_abilities_nested_hp_s223.py            # writes in place
 """
 from __future__ import annotations
 

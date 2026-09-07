@@ -24,15 +24,22 @@ import zipfile
 from pathlib import Path
 from typing import Any, Optional
 
+from core import operator_identity
+
 _NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 
-DEFAULT_ROSTER_PATH = Path(
-    r"C:\Users\Administrator\Desktop\Challenger\Played with Pro List.xlsx"
+# Operator-local spreadsheet, resolved under THIS account's home rather than
+# baked in: a path naming another account's home silently does not exist, and
+# the caller then reads it as "no roster" instead of "wrong account".
+DEFAULT_ROSTER_PATH = (
+    Path.home() / "Desktop" / "Challenger" / "Played with Pro List.xlsx"
 )
 
-# The operator's accounts share one game name across both taglines
-# (#Vayne and #Trist), so the join keys on the game name alone.
-OPERATOR_GAME_NAME = "SamplePlayer"
+# The operator's accounts share one game name across their taglines, so the
+# join keys on the game name alone. Read from config, never baked in: the name
+# is personal, and a hardcoded one silently joins on nobody on any other
+# install. See core/operator_identity.py.
+OPERATOR_GAME_NAME = operator_identity.game_name()
 
 
 def _sheet_rows(xlsx_path: Path) -> list[list[str]]:

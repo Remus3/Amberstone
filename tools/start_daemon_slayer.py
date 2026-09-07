@@ -7,7 +7,7 @@ SYSTEM-context tasks), and ``data_loader`` resolves snapshots relative to
 ``cwd`` if no ``--data-root`` is given.
 
 Used by the ``RC-DaemonSlayer`` scheduled task. Manual invocation works
-too - ``C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py``.
+too - ``$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py``.
 """
 from __future__ import annotations
 

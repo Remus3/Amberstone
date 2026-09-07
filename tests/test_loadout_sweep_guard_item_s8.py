@@ -26,7 +26,7 @@ over every champion's collapsed variant (172 champs x sr/aram/arena):
 4. MIRROR: the variant-level items list equals its primary build_path's
    items (the resolver + champ-select push read both).
 
-Run ``C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/champion_loadout_sweep_item_s8.py`` if this trips.
+Run ``$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/champion_loadout_sweep_item_s8.py`` if this trips.
 """
 from __future__ import annotations
 

@@ -9,9 +9,9 @@ the relay reads :2999 in-process and self-heals when the cached snapshot
 goes stale.
 
 Run (one time):
-  1. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install requests urllib3
-  2. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\liveclient_relay.py
-  3. (optional task) schtasks /Create /TN "RC-LiveClientRelay" /SC ONLOGON /F /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\liveclient_relay.py"
+  1. $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m pip install requests urllib3
+  2. $env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\liveclient_relay.py
+  3. (optional task) schtasks /Create /TN "RC-LiveClientRelay" /SC ONLOGON /F /TR "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\liveclient_relay.py"
 
 When in champ select / not in game, /liveclientdata returns 404 - relay
 backs off and retries.

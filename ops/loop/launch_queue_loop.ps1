@@ -34,7 +34,7 @@ $env:ANTHROPIC_API_KEY = $null
 # console window flashes on the operator's desktop every time this fires. The
 # driver runs for hours, so a stray console would also sit in the taskbar for
 # the whole night waiting to be closed by accident.
-$py     = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe"
+$py     = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $driver = Join-Path $PSScriptRoot "queue_loop.py"
 $repo   = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 

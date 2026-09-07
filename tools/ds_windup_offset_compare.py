@@ -30,7 +30,7 @@ from pathlib import Path
 WIKI_MODULE = (
     "https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data?action=raw"
 )
-UA = "RC-Research/1.0 (amberstone DS validator; contact <operator-email>)"
+UA = "RC-Research/1.0 (amberstone DS validator)"
 ENGINE_DEFAULT_CAST_TIME = 0.25
 WINDUP_BASE = 0.300
 CHANGE_EPS = 1e-4

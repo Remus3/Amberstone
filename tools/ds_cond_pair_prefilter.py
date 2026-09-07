@@ -13,7 +13,7 @@ hand-verified with tools/ds_cond_inspect.py + real-mechanic knowledge
 before it enters the registry (the s229/s230 lesson: recollection
 mis-names mechanics ~half the time).
 
-Usage:  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_cond_pair_prefilter.py [min_k]
+Usage:  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_cond_pair_prefilter.py [min_k]
 """
 import json
 import sys

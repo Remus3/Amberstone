@@ -84,13 +84,34 @@ TIERS: tuple[tuple[float, int], ...] = (
     (24 * 60 * 60, 12 * 60 * 60),  # machine unattended for a day
 )
 
-DEFAULT_REPOS: tuple[str, ...] = (
-    r"C:\Riot Commander",
-    r"C:\Sibling-A",
-    r"C:\Sibling-B",
-    r"C:\Sibling-E",
-    r"C:\Sibling-D",
-)
+# The participating repos are HOST CONFIGURATION, not code. Which sibling
+# checkouts exist, and where, differs per machine and names private projects
+# that have no business in a public tree - so the list is read from a
+# gitignored config beside the other per-host values, with this repo as the
+# only built-in. An absent or unreadable config degrades to "poll myself",
+# which is exactly what a fresh clone should do.
+_REPO_CONFIG = Path(__file__).parent.parent / "ops" / "moon_sync_repos.json"
+_SELF_REPO = str(Path(__file__).parent.parent)
+
+
+def _load_repo_roots() -> tuple[str, ...]:
+    roots: list[str] = [_SELF_REPO]
+    raw = os.environ.get("RC_MOON_SYNC_REPOS")
+    if raw:
+        extra = [p.strip() for p in raw.split(os.pathsep) if p.strip()]
+    else:
+        try:
+            blob = json.loads(_REPO_CONFIG.read_text(encoding="utf-8"))
+            extra = [str(p) for p in (blob.get("repos") or []) if str(p).strip()]
+        except (OSError, ValueError):
+            extra = []
+    for p in extra:
+        if p not in roots:
+            roots.append(p)
+    return tuple(roots)
+
+
+DEFAULT_REPOS: tuple[str, ...] = _load_repo_roots()
 
 # Opaque by intent, matching the convention of the shared mutex module: a
 # descriptive machine-wide name is both an invitation to squat it and a

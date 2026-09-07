@@ -15,9 +15,9 @@ focused, fully-charged, max-stack, sub-execute) - see
 champion_block_index.json _meta for the documented pattern + skip list.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_block_scanner.py <Champion> [<Champion> ...]
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_block_scanner.py --slice Annie,Azir,Fiora     # comma list
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_block_scanner.py --uncovered                  # all not-yet-in-registry
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_block_scanner.py <Champion> [<Champion> ...]
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_block_scanner.py --slice Annie,Azir,Fiora     # comma list
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_block_scanner.py --uncovered                  # all not-yet-in-registry
 """
 from __future__ import annotations
 

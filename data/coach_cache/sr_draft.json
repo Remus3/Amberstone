@@ -11,15 +11,15 @@
       "scraper_mode": "sr",
       "fetched_at": "2026-04-22T13:32:01Z",
       "sources": {
-        "aggregator D": {
+        "site_d": {
           "status": "ok",
           "bytes": 628507,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\aggregator D\\ahri_sr.html"
+          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_d\\ahri_sr.html"
         },
-        "ugg": {
+        "site_b": {
           "status": "ok",
           "bytes": 340607,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\ugg\\ahri_sr.html"
+          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_b\\ahri_sr.html"
         },
         "curated": {
           "present": false,
@@ -33,15 +33,15 @@
       "scraper_mode": "sr",
       "fetched_at": "2026-04-22T13:32:04Z",
       "sources": {
-        "aggregator D": {
+        "site_d": {
           "status": "ok",
           "bytes": 612256,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\aggregator D\\lux_sr.html"
+          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_d\\lux_sr.html"
         },
-        "ugg": {
+        "site_b": {
           "status": "ok",
           "bytes": 329882,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\ugg\\lux_sr.html"
+          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_b\\lux_sr.html"
         },
         "curated": {
           "present": false,
@@ -55,15 +55,15 @@
       "scraper_mode": "sr",
       "fetched_at": "2026-04-22T13:32:05Z",
       "sources": {
-        "aggregator D": {
+        "site_d": {
           "status": "ok",
           "bytes": 665803,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\aggregator D\\darius_sr.html"
+          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_d\\darius_sr.html"
         },
-        "ugg": {
+        "site_b": {
           "status": "ok",
           "bytes": 347920,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\ugg\\darius_sr.html"
+          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_b\\darius_sr.html"
         },
         "curated": {
           "present": false,

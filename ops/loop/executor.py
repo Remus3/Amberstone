@@ -32,6 +32,7 @@ import os
 import re
 import signal
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1124,12 +1125,30 @@ FINAL_STEP = (
     "if you could not reach green), summary (one line)."
 )
 
+def canonical_interpreter() -> str:
+    """Absolute path to the project interpreter, RESOLVED, never baked in.
+
+    The pin has to stay ABSOLUTE - a bare ``py`` resolves to the dep-less
+    pymanager runtime and zeroes the suite (tests/test_bare_py_ban.py). But the
+    account-specific prefix must come from the environment, because a command
+    naming one account's home is a command that silently does not run under
+    another, and a step that does not run reports nothing.
+
+    Falls back to the interpreter actually running this module, which is the
+    correct answer on any machine where the Python314 layout is absent.
+    """
+    local = os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local")
+    candidate = Path(local) / "Programs" / "Python" / "Python314" / "python.exe"
+    return str(candidate if candidate.exists() else Path(sys.executable))
+
+
 # Byte-verbatim as director_prompt.md spelled it before the placeholder landed,
-# including the double space after "run". This is RC's interpreter path, NOT
-# LW's - the two repos legitimately differ here, and copying LW's string would
-# break the ahk rollback path in a way only a live dry cycle catches.
+# including the double space after "run", except that the interpreter is now
+# RESOLVED rather than hardcoded. This is RC's interpreter, NOT LW's - the two
+# repos legitimately differ here, and copying LW's string would break the ahk
+# rollback path in a way only a live dry cycle catches.
 AHK_FINAL_STEP = (
-    'FINAL STEP: run  "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" '
+    f'FINAL STEP: run  "{canonical_interpreter()}" '
     "ops/loop/done_sentinel.py --tests <PASS_COUNT> --regressions <0_or_1>"
 )
 

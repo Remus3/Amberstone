@@ -25,6 +25,7 @@ import json
 
 import pytest
 
+from core import operator_identity
 from core import rofl_archive as ra
 
 
@@ -182,11 +183,28 @@ def test_download_replays_handles_an_empty_url_list(tmp_path):
 # account fan-out
 # ---------------------------------------------------------------------------
 
-def test_default_accounts_covers_both_live_riot_ids():
-    # Two DISTINCT live accounts; each has its own 5-replay window, and each
-    # PUUID must be resolved by Riot ID rather than read from storage (stored
-    # PUUIDs are scoped to whichever key resolved them).
-    assert ra.DEFAULT_ACCOUNTS == [("SamplePlayer", "Trist"), ("SamplePlayer", "Vayne")]
+def test_default_accounts_comes_from_config_and_is_well_formed():
+    # Each configured account has its own 5-replay window, and each PUUID must
+    # be resolved by Riot ID rather than read from storage (stored PUUIDs are
+    # scoped to whichever key resolved them). The LIST is per-install config,
+    # so this asserts the SHAPE, not any one person's accounts - an
+    # unconfigured clone legitimately has none.
+    accounts = ra.DEFAULT_ACCOUNTS
+    assert isinstance(accounts, list)
+    assert len(accounts) == len(set(accounts)), "duplicate account in config"
+    for entry in accounts:
+        name, tag = entry
+        assert name and tag
+        assert "#" not in name and "#" not in tag
+
+
+def test_default_accounts_reads_the_operator_identity_config(monkeypatch):
+    # The wiring is the point: a config change must reach DEFAULT_ACCOUNTS,
+    # otherwise the constant silently keeps whatever it was born with.
+    monkeypatch.setenv("RC_OPERATOR_ACCOUNTS", "Alpha#AAA,Beta#BBB,Alpha#AAA")
+    assert operator_identity.accounts() == [("Alpha", "AAA"), ("Beta", "BBB")]
+    monkeypatch.setenv("RC_OPERATOR_ACCOUNTS", "no-tagline-here")
+    assert operator_identity.accounts() == []
 
 
 def test_parse_account_accepts_the_riot_id_form():

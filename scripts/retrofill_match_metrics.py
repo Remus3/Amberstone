@@ -29,9 +29,9 @@ Safety:
   - READONLY on rewind_history.db.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/retrofill_match_metrics.py               # all matches (resumable)
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/retrofill_match_metrics.py --limit 50    # first 50 unprocessed
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/retrofill_match_metrics.py --match NA1_5182398158   # one match
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/retrofill_match_metrics.py               # all matches (resumable)
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/retrofill_match_metrics.py --limit 50    # first 50 unprocessed
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/retrofill_match_metrics.py --match NA1_5182398158   # one match
 """
 from __future__ import annotations
 import sqlite3

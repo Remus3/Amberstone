@@ -1,0 +1,10 @@
+{
+  "_doc": "Template for the gitignored config/external_sources.json - the third-party fetch targets this install uses. Copy it, fill in the hosts you are entitled to read, and leave anything you do not use empty; core/external_sources.py resolves env (RC_EXTERNAL_<KEY>) first, then this file, then an inert placeholder, so an unfilled key degrades down the caller's existing failure path rather than crashing. aram_tier_table is a JSON tier-table endpoint read by scripts/data_pipeline.py cmd_aram_builds (unset = the manual-update warning). site_d_base_url and site_b_base_url are scheme+host only, no trailing path - lib/scrapers/site_d.py and site_b.py append their own paths and honour robots.txt. tft_meta_origin, tft_meta_referer, tft_meta_graphql and tft_meta_data_urls drive scripts/fetch_external_tft_meta.py; the two header values exist because the API checks them. Read the terms of any host you point these at - nothing here grants a right to fetch it.",
+  "aram_tier_table": "",
+  "site_d_base_url": "",
+  "site_b_base_url": "",
+  "tft_meta_origin": "",
+  "tft_meta_referer": "",
+  "tft_meta_graphql": "",
+  "tft_meta_data_urls": []
+}

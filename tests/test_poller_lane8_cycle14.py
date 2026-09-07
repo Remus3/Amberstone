@@ -47,6 +47,8 @@ from pathlib import Path
 
 import pytest
 
+from tests import _repo_walk
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # The constant retired by the 2026-04-28 audit. Split so this guard file does
@@ -236,15 +238,16 @@ def _despliced(text: str) -> str:
 
 
 def _tracked_sources() -> list[Path]:
-    """Every tracked .py/.js under the repo, minus archives and this guard."""
-    out: list[Path] = []
-    skip_parts = {"_archive", ".git", "node_modules", "__pycache__"}
-    for suffix in ("*.py", "*.js"):
-        for p in _PROJECT_ROOT.rglob(suffix):
-            if skip_parts & set(p.parts):
-                continue
-            out.append(p)
-    return out
+    """Every tracked .py/.js under the repo, minus archives and this guard.
+
+    Enumeration moved to `tests/_repo_walk` 2026-09-07 so the docstring is true:
+    the hand-rolled skip set here covered `_archive`/`.git`/`node_modules`/
+    `__pycache__` but NOT `.claude` worktrees, `python-embed` (1842 untracked
+    .py) or `moon_sync_inbox` (sibling-repo mail). None of those are RC source,
+    and a retired-token literal appearing in any of them would have fired this
+    guard against code the repo does not own.
+    """
+    return _repo_walk.repo_files(_PROJECT_ROOT, patterns=("*.py", "*.js"))
 
 
 def test_retired_relay_token_appears_in_no_production_source():

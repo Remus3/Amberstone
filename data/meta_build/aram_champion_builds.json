@@ -1,5 +1,6 @@
 {
-  "_note": "ARAM builds for full champion roster. Patch 26.9 / Season 16. Updated 2026-05-03 (s33 phase merge - 77 champions refreshed via aggregator K + aggregator A primary sources).",
+  "_note": "ARAM builds for full champion roster. Patch 26.9 / Season 16. Updated 2026-05-03 (s33 phase merge - 77 champions refreshed via public build-statistics aggregators).",
+  "_provenance": "Compiled from public third-party League build-statistics aggregators. The per-champion source URLs and fetch records that used to live here were removed before this repository was published; no replacement URLs have been substituted. The underlying fetches ran 2026-05-02 and were merged 2026-05-03. Win-rate and game-count figures in this file are the values those aggregators reported at that time - they are observed community statistics, not Riot-official data.",
   "_tiers": "S=dominant, A=strong, B=viable, C=weak, D=hard-griefing",
   "_format": "build_note is the coaching-relevant line injected into ARAM coach system prompt.",
   "Aatrox": {
@@ -29,7 +30,7 @@
   },
   "Ahri": {
     "aram_tier": "B",
-    "build_note": "Note tier B (down from old A) - aggregator K WR 51.5%. Charm + Luden stacking still does the burst, but kit feels behind the better S-tier mages this patch.",
+    "build_note": "Note tier B (down from old A) - the external aggregator WR 51.5%. Charm + Luden stacking still does the burst, but kit feels behind the better S-tier mages this patch.",
     "core_items": [
       "Luden's Echo",
       "Stormsurge",
@@ -51,15 +52,7 @@
     "pr": null,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "E (Charm) is the combo opener - Charmed enemies take 20% bonus damage from all sources. Full combo: E-charm → W orbs → Q returning charm → R dash1-burst → R dash2-escape. R 3-dash reset on kill - never use R to engage; R-execute then escape.",
-    "aram_specific": "ARAM neutral (no modifier). R-resets in ARAM are the win - wait for low-HP enemies, R-charm-execute, then R-escape. Don't open with R in 5v5.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Ahri",
-        "fetched": "2026-05-02",
-        "wr_seen": 51.5,
-        "games": 12261
-      }
-    ]
+    "aram_specific": "ARAM neutral (no modifier). R-resets in ARAM are the win - wait for low-HP enemies, R-charm-execute, then R-escape. Don't open with R in 5v5."
   },
   "Akali": {
     "aram_tier": "B",
@@ -195,15 +188,7 @@
     "pr": null,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "Passive Pyromania: every 4th cast stuns target (counter on her bar). Q on cast OR kill refunds mana - last-hit minions to maintain mana. R (Summon Tibbers) AOE damage + stun if passive ready. R+E shield burst is ARAM's 1.5s combo.",
-    "aram_specific": "ARAM neutral. Pyromania-stun + R is her only kill window - count Q/W casts on minion wave to ensure stun ready before fight. Tibbers is a bait absorber - 7s tank when summoned.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Annie",
-        "fetched": "2026-05-02",
-        "wr_seen": 49.9,
-        "games": 7519
-      }
-    ]
+    "aram_specific": "ARAM neutral. Pyromania-stun + R is her only kill window - count Q/W casts on minion wave to ensure stun ready before fight. Tibbers is a bait absorber - 7s tank when summoned."
   },
   "Aphelios": {
     "aram_tier": "A",
@@ -280,8 +265,7 @@
     "wr": 49.6,
     "pr": null,
     "boots": "Sorcerer's Shoes",
-    "kit_notes": "Stacking-mage that orbits stars; needs to scale and kite - every star stacks DPS uptime.",
-    "_source": "https://aggregator-k.invalid/champion/AurelionSol"
+    "kit_notes": "Stacking-mage that orbits stars; needs to scale and kite - every star stacks DPS uptime."
   },
   "Aurora": {
     "aram_tier": "A",
@@ -392,7 +376,7 @@
       "Rylai's Crystal Scepter"
     ],
     "vs_tanks": "Liandry's already in core - both Liandry + Blackfire scale on max HP, double-amp vs tanks",
-    "vs_healing": "Morellonomicon replaces Shadowflame 6th, OR Bloodletter's Curse (53.4% WR per aggregator K)",
+    "vs_healing": "Morellonomicon replaces Shadowflame 6th, OR Bloodletter's Curse (53.4% WR per the external aggregator)",
     "vs_burst": "Zhonya's Hourglass (56.8% WR) replaces Shadowflame vs assassin dive - long-channel R safe",
     "full_build": [
       "Lost Chapter",
@@ -407,15 +391,7 @@
     "pr": null,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "Passive Blaze: 3 stacks ignite for max-HP burn. Q stuns ablazed targets. W AOE on ablazed = wider radius. R (Pyroclasm) bounces between champions, prioritizing ablazed - stack 3 on tank, fire R into enemy line for chain bounce. AOE-damage carry.",
-    "aram_specific": "+15% damage dealt, no damage-taken modifier - ARAM's most-buffed AOE mage. Ult in narrow lane bounces forever - fire from screen edge. Avoid Q starts (no jungle) - Lost Chapter stack first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Brand",
-        "fetched": "2026-05-02",
-        "wr_seen": 53.6,
-        "games": 13818
-      }
-    ]
+    "aram_specific": "+15% damage dealt, no damage-taken modifier - ARAM's most-buffed AOE mage. Ult in narrow lane bounces forever - fire from screen edge. Avoid Q starts (no jungle) - Lost Chapter stack first."
   },
   "Braum": {
     "aram_tier": "S",
@@ -486,15 +462,7 @@
     "tier": "B",
     "wr": 52.1,
     "pr": null,
-    "boots": "Berserker's Greaves",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Caitlyn",
-        "fetched": "2026-05-02",
-        "wr_seen": 52.1,
-        "games": 16021
-      }
-    ]
+    "boots": "Berserker's Greaves"
   },
   "Camille": {
     "aram_tier": "B",
@@ -544,8 +512,7 @@
     "wr": 42.9,
     "pr": null,
     "boots": "Sorcerer's Shoes",
-    "kit_notes": "Ranged DoT mage with poisoned ground area-denial; rooted to stay on top of targets without Flash chain.",
-    "_source": "https://aggregator-k.invalid/champion/Cassiopeia"
+    "kit_notes": "Ranged DoT mage with poisoned ground area-denial; rooted to stay on top of targets without Flash chain."
   },
   "Cho'Gath": {
     "aram_tier": "A",
@@ -640,8 +607,7 @@
     "wr": 48.8,
     "pr": null,
     "boots": "Sorcerer's Shoes",
-    "kit_notes": "Lunar burst-assassin/diver; Q crescent + R pull = melee threat that can also frontline.",
-    "_source": "https://aggregator-k.invalid/champion/Diana"
+    "kit_notes": "Lunar burst-assassin/diver; Q crescent + R pull = melee threat that can also frontline."
   },
   "Dr. Mundo": {
     "aram_tier": "A",
@@ -687,15 +653,7 @@
     "pr": null,
     "boots": "Berserker's Greaves",
     "kit_notes": "Passive League of Draven: kill enemies = stacks for gold (cash out by killing more). Q (Spinning Axe) bonus AD on next AA - catch axe to refresh; AAs bounce off enemies and you reposition to catch. R (Whirling Death) global piercing axe - return-on-recast through entire enemy team.",
-    "aram_specific": "ARAM neutral. Q-axes auto-fall around Draven; in ARAM crowd you're catching axes between minion waves. R from spawn at low-HP enemies - recast for double-pass through entire enemy line.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Draven",
-        "fetched": "2026-05-02",
-        "wr_seen": 46.9,
-        "games": 7857
-      }
-    ]
+    "aram_specific": "ARAM neutral. Q-axes auto-fall around Draven; in ARAM crowd you're catching axes between minion waves. R from spawn at low-HP enemies - recast for double-pass through entire enemy line."
   },
   "Ekko": {
     "aram_tier": "B",
@@ -781,21 +739,7 @@
     "tier": "C",
     "wr": 50.3,
     "pr": 13.24,
-    "boots": "Ionian Boots of Lucidity",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Ezreal",
-        "fetched": "2026-05-02",
-        "wr_seen": 50.3,
-        "games": 16394
-      },
-      {
-        "url": "https://aggregator-a.invalid/lol/modes/aram/ezreal/build",
-        "fetched": "2026-05-02",
-        "wr_seen": 50.54,
-        "pr_seen": 13.24
-      }
-    ]
+    "boots": "Ionian Boots of Lucidity"
   },
   "Fiddlesticks": {
     "aram_tier": "S",
@@ -1069,15 +1013,7 @@
     "pr": null,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "Passive: turret AAs apply Hextech magic damage to nearby targets (mini-AOE). Q places turrets - 3 charges, build a wall in chokes. W rocket barrage hits priority target (low HP). R upgrades next ability - Q-R = giant turret with cannon, W-R = guided missiles. ARAM single-lane ideal for turret choke.",
-    "aram_specific": "+10% damage taken (Heimer ARAM nerf) - but turrets dealt 30% bonus damage in ARAM (offset). Set up turrets BEFORE fights - never engage without Q-R cannon ready. Single-lane geometry favors his W rockets.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Heimerdinger",
-        "fetched": "2026-05-02",
-        "wr_seen": 53.8,
-        "games": 10414
-      }
-    ]
+    "aram_specific": "+10% damage taken (Heimer ARAM nerf) - but turrets dealt 30% bonus damage in ARAM (offset). Set up turrets BEFORE fights - never engage without Q-R cannon ready. Single-lane geometry favors his W rockets."
   },
   "Hwei": {
     "aram_tier": "A",
@@ -1188,15 +1124,7 @@
     "pr": null,
     "boots": "Ionian Boots of Lucidity",
     "kit_notes": "Passive: AAs gain bonus MS for self/ally. Q charge-up tornado knockup - long range engage/disengage. W (Zephyr) MS + slow target. R (Monsoon) AOE knockback + heal channel - disengage when team is grouped.",
-    "aram_specific": "+10% damage taken in ARAM. R is the panic button - knockback all enemies when team is collapsing. Pre-position R away from team to push enemies into your own team's range.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Janna",
-        "fetched": "2026-05-02",
-        "wr_seen": 50.4,
-        "games": 7604
-      }
-    ]
+    "aram_specific": "+10% damage taken in ARAM. R is the panic button - knockback all enemies when team is collapsing. Pre-position R away from team to push enemies into your own team's range."
   },
   "Jarvan IV": {
     "aram_tier": "A",
@@ -1282,19 +1210,11 @@
     "tier": "B",
     "wr": 51.6,
     "pr": null,
-    "boots": "Boots of Swiftness",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Jhin",
-        "fetched": "2026-05-02",
-        "wr_seen": 51.6,
-        "games": 16819
-      }
-    ]
+    "boots": "Boots of Swiftness"
   },
   "Jinx": {
     "aram_tier": "S",
-    "build_note": "Yun Tal Wildarrows (53.3% WR per aggregator K with 5999 matches) is a viable variant first item - listed as core if rune is Lethal Tempo. Standard Runaan+IE crit build for AOE Q-rocket teamfight DPS.",
+    "build_note": "Yun Tal Wildarrows (53.3% WR per the external aggregator with 5999 matches) is a viable variant first item - listed as core if rune is Lethal Tempo. Standard Runaan+IE crit build for AOE Q-rocket teamfight DPS.",
     "core_items": [
       "Runaan's Hurricane",
       "Infinity Edge",
@@ -1316,15 +1236,7 @@
     "tier": "A",
     "wr": 52.5,
     "pr": 11.34,
-    "boots": "Berserker's Greaves",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Jinx",
-        "fetched": "2026-05-02",
-        "wr_seen": 52.5,
-        "games": 14012
-      }
-    ]
+    "boots": "Berserker's Greaves"
   },
   "Kai'Sa": {
     "aram_tier": "A",
@@ -1428,15 +1340,7 @@
     "pr": null,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "Passive (Death Defied): on death, 7 seconds of free abilities. R (Requiem) global execute - fire from spawn at low-HP enemies. Q (Lay Waste) outer ring deals 2x damage if it hits only one target. E (Defile) AOE drain - toggle on in fights, off when low mana.",
-    "aram_specific": "ARAM neutral. Death Defied + free R from grave is the trademark - open fights, die mid-fight, ult low-HP carry from grave for double damage. Don't waste R on full-HP targets.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Karthus",
-        "fetched": "2026-05-02",
-        "wr_seen": 50.7,
-        "games": 7721
-      }
-    ]
+    "aram_specific": "ARAM neutral. Death Defied + free R from grave is the trademark - open fights, die mid-fight, ult low-HP carry from grave for double damage. Don't waste R on full-HP targets."
   },
   "Kassadin": {
     "aram_tier": "B",
@@ -1747,15 +1651,7 @@
     "tier": "D",
     "wr": 47.1,
     "pr": null,
-    "boots": "Berserker's Greaves",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Lucian",
-        "fetched": "2026-05-02",
-        "wr_seen": 47.1,
-        "games": 11251
-      }
-    ]
+    "boots": "Berserker's Greaves"
   },
   "Lulu": {
     "aram_tier": "S",
@@ -1781,15 +1677,7 @@
     "pr": null,
     "boots": "Ionian Boots of Lucidity",
     "kit_notes": "W (Whimsy) polymorph enemy OR speed boost ally - top Lulu skill. R (Wild Growth) ally HP buff + AOE knockup around them - ult dive carry at low HP. E (Help, Pix!) damage enemy OR shield ally - peel tool.",
-    "aram_specific": "+10% damage taken in ARAM. Pair with hyper-carry ADC (Vayne/Twitch/Kog'Maw) - R+W on them is win-fight. Solo without carry = grief tier.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Lulu",
-        "fetched": "2026-05-02",
-        "wr_seen": 46.2,
-        "games": 6615
-      }
-    ]
+    "aram_specific": "+10% damage taken in ARAM. Pair with hyper-carry ADC (Vayne/Twitch/Kog'Maw) - R+W on them is win-fight. Solo without carry = grief tier."
   },
   "Lux": {
     "aram_tier": "S",
@@ -1816,14 +1704,6 @@
     "boots": "Sorcerer's Shoes",
     "kit_notes": "E (Lucent Singularity) AOE slow + delayed detonation - leads R for guaranteed hit. R (Final Spark) executes low HP across map; combo Q-root into E-detonate into R for full-damage one-shot. Passive procs every other auto on damaged target - weave AAs between abilities.",
     "aram_specific": "+5% damage dealt in ARAM, -5% damage taken. Long-range R from base wall punishes recall-less enemies. Watch flash CDs - single Q-root sets up entire team kill window.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Lux",
-        "fetched": "2026-05-02",
-        "wr_seen": 54.3,
-        "games": 15865
-      }
-    ],
     "variants": [
       {
         "trigger": "high-WR alt",
@@ -1913,15 +1793,7 @@
     "pr": null,
     "boots": "Mercury's Treads",
     "kit_notes": "Passive Sap Magic: every 4th AA against champ heals. Q (Bramble Smash) outer rim knocks back / inner rim knocks toward Maokai. W (Twisted Advance) targeted root-dash - engage tool. R (Nature's Grasp) global root wave - fire from base into teamfight choke.",
-    "aram_specific": "ARAM neutral. R global wave from spawn is poke + setup - every 60s free enemy displacement. W-engage is the kill button - root single carry, team follows.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Maokai",
-        "fetched": "2026-05-02",
-        "wr_seen": 51.0,
-        "games": 8434
-      }
-    ]
+    "aram_specific": "ARAM neutral. R global wave from spawn is poke + setup - every 60s free enemy displacement. W-engage is the kill button - root single carry, team follows."
   },
   "Master Yi": {
     "aram_tier": "B",
@@ -1990,20 +1862,6 @@
     "boots": "Mercury's Treads",
     "kit_notes": "Passive Darkness Rise: hitting 3 enemies with abilities or 2 autos grants AOE damage aura + MS. R Realm of Death isolates highest-HP enemy in 1v1 dimension for 7s, stealing 10% stats and dragging soul if killed. Drain target with E (Death's Grasp) pull then walk into them - Riftmaker burn carries the duel.",
     "aram_specific": "100% damage taken in ARAM (no modifier). R isolation is the win condition - ult highest-priority carry every fight. No recall means Doran's start is wasted; Haunting Guise rush.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Mordekaiser",
-        "fetched": "2026-05-02",
-        "wr_seen": 55.5,
-        "games": 9211
-      },
-      {
-        "url": "https://aggregator-a.invalid/lol/modes/aram/mordekaiser/build",
-        "fetched": "2026-05-02",
-        "wr_seen": 54.78,
-        "pr_seen": 7.04
-      }
-    ],
     "variants": [
       {
         "trigger": "highest WR alt",
@@ -2015,7 +1873,7 @@
           "Spirit Visage",
           "Thornmail"
         ],
-        "note": "aggregator K surface - Liandry-instead-of-Riftmaker; viable when enemy is 3+ tanky"
+        "note": "External aggregator surface - Liandry-instead-of-Riftmaker; viable when enemy is 3+ tanky"
       }
     ]
   },
@@ -2499,15 +2357,7 @@
     "pr": null,
     "boots": "Mercury's Treads",
     "kit_notes": "W (Ferromancy) toggle: dismount = ranged poke, remount = melee dash that knocks up. R (Magnet Storm) AOE pull - group 3+ enemies into team's burst. E passive grants armor/MR per ally near her - frontline magnet.",
-    "aram_specific": "ARAM rewards engage-tanks heavily - single R into 3 enemies wins fights. Tear of the Goddess + Giant's Belt start (56.8% WR per aggregator K) mana-stacks for late game.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Rell",
-        "fetched": "2026-05-02",
-        "wr_seen": 54.1,
-        "games": 3754
-      }
-    ]
+    "aram_specific": "ARAM rewards engage-tanks heavily - single R into 3 enemies wins fights. Tear of the Goddess + Giant's Belt start (56.8% WR per the external aggregator) mana-stacks for late game."
   },
   "Renata Glasc": {
     "aram_tier": "A",
@@ -2671,15 +2521,15 @@
   },
   "Senna": {
     "aram_tier": "A",
-    "build_note": "26.9 Statikk Shiv reworked (40 AD + 45 AP + on-hit chain) - Senna's auto-procs now apply on-hit to bounced targets, huge AOE upgrade. Black Cleaver synergizes with her armor-shred passive. Note: Aggregator K listed Hexoptics C44 as 6th - REMOVED (arena-only); Infinity Edge is the canonical sub.",
+    "build_note": "26.9 Statikk Shiv reworked (40 AD + 45 AP + on-hit chain) - Senna's auto-procs now apply on-hit to bounced targets, huge AOE upgrade. Black Cleaver synergizes with her armor-shred passive. Note: The external aggregator listed Hexoptics C44 as 6th - REMOVED (arena-only); Infinity Edge is the canonical sub.",
     "core_items": [
       "Statikk Shiv",
       "Black Cleaver",
       "Rapid Firecannon"
     ],
     "vs_tanks": "Lord Dominik's Regards (54.5% WR) replaces Infinity Edge 6th - Senna passive %HP scales with armor pen",
-    "vs_healing": "Kraken Slayer (63.5% WR per aggregator K) replaces Infinity Edge - true damage on 3rd AA = anti-heal effectively",
-    "vs_burst": "Mercury's Treads (61.8% WR per aggregator K) replaces Boots of Swiftness - tenacity vs CC chains",
+    "vs_healing": "Kraken Slayer (63.5% WR per the external aggregator) replaces Infinity Edge - true damage on 3rd AA = anti-heal effectively",
+    "vs_burst": "Mercury's Treads (61.8% WR per the external aggregator) replaces Boots of Swiftness - tenacity vs CC chains",
     "full_build": [
       "Relic Shield",
       "Boots of Swiftness",
@@ -2693,21 +2543,7 @@
     "pr": 8.5,
     "boots": "Boots of Swiftness",
     "kit_notes": "Passive Absolution: stacks souls from minion deaths and champion passives - souls grant permanent AD + range + crit chance. Q (Piercing Darkness) ranged AA-replacement + heal ally. W (Last Embrace) long-range root after 1.5s delay. R (Dawning Shadow) global cone - damage enemies, shield allies - fires from spawn.",
-    "aram_specific": "ARAM neutral. Soul stacking is faster in ARAM (no laning, constant minion deaths) - Senna scales infinitely. R global from spawn is poke + ally shield burst.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Senna",
-        "fetched": "2026-05-02",
-        "wr_seen": 51.2,
-        "games": 10257
-      },
-      {
-        "url": "https://aggregator-a.invalid/lol/modes/aram/senna/build",
-        "fetched": "2026-05-02",
-        "wr_seen": 51.35,
-        "pr_seen": 8.5
-      }
-    ]
+    "aram_specific": "ARAM neutral. Soul stacking is faster in ARAM (no laning, constant minion deaths) - Senna scales infinitely. R global from spawn is poke + ally shield burst."
   },
   "Seraphine": {
     "aram_tier": "S",
@@ -2719,7 +2555,7 @@
     ],
     "vs_tanks": "Liandry's already core - Void Staff replaces Shadowflame 6th vs MR stackers",
     "vs_healing": "Morellonomicon replaces Rylai's vs healing comp",
-    "vs_burst": "Stormsurge alt 4th (55.1% WR per aggregator K) - MS proc to escape after combo",
+    "vs_burst": "Stormsurge alt 4th (55.1% WR per the external aggregator) - MS proc to escape after combo",
     "full_build": [
       "Lost Chapter",
       "Sorcerer's Shoes",
@@ -2733,21 +2569,7 @@
     "pr": 10.36,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "Passive Stage Presence - every 3rd ability echoes for free (huge mana economy). R (Encore) AOE charm + AOE damage - chains through all hit. E (Beat Drop) long-range root sets up R. Stack notes via Q for empowered passive procs.",
-    "aram_specific": "+10% damage dealt, -10% damage taken in ARAM (Riot's mode-balance buff). Notes from ally CC/abilities feed into her R radius - pair with Sona/Lulu for 6-second R radius chains.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Seraphine",
-        "fetched": "2026-05-02",
-        "wr_seen": 54.1,
-        "games": 13350
-      },
-      {
-        "url": "https://aggregator-a.invalid/lol/modes/aram/seraphine/build",
-        "fetched": "2026-05-02",
-        "wr_seen": 54.65,
-        "pr_seen": 10.36
-      }
-    ]
+    "aram_specific": "+10% damage dealt, -10% damage taken in ARAM (Riot's mode-balance buff). Notes from ally CC/abilities feed into her R radius - pair with Sona/Lulu for 6-second R radius chains."
   },
   "Shaco": {
     "aram_tier": "B",
@@ -2853,21 +2675,7 @@
     "pr": 4.78,
     "boots": "Mercury's Treads",
     "kit_notes": "Passive Glory in Death - on death, become uncontrollable revenant with 50% lifesteal for ~7s (huge ARAM tool: ult into fight, die mid-fight, keep dealing damage). Q (Decimating Smash) full charge = AOE knockup + huge damage. R (Unstoppable Onslaught) global gap-close that snowballs in ARAM's narrow lane.",
-    "aram_specific": "ARAM gives Sion +10% damage taken, 50% Glory in Death lifesteal (buffed). One R can win a fight from base. Stack Heartsteel HP via repeated Q charges on the front wave between fights.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Sion",
-        "fetched": "2026-05-02",
-        "wr_seen": 55.5,
-        "games": 6386
-      },
-      {
-        "url": "https://aggregator-a.invalid/lol/modes/aram/sion/build",
-        "fetched": "2026-05-02",
-        "wr_seen": 55.01,
-        "pr_seen": 4.78
-      }
-    ]
+    "aram_specific": "ARAM gives Sion +10% damage taken, 50% Glory in Death lifesteal (buffed). One R can win a fight from base. Stack Heartsteel HP via repeated Q charges on the front wave between fights."
   },
   "Sivir": {
     "aram_tier": "S",
@@ -2953,15 +2761,7 @@
     "pr": null,
     "boots": "Ionian Boots of Lucidity",
     "kit_notes": "Passive Power Chord: every 3rd ability empowers next AA with stance-based effect (Q=damage, W=HP cut, E=slow). R (Crescendo) wide AOE stun - game-winning teamfight ult. Aura-based: stay close to allies for W shield/regen and E MS sharing.",
-    "aram_specific": "+10% damage taken in ARAM (Sona is glass-cannon enchanter). E MS sharing wins reset chases. R into clumped 5-stack is auto-win - fire from off-angle to dodge counter-CC.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Sona",
-        "fetched": "2026-05-02",
-        "wr_seen": 52.4,
-        "games": 7375
-      }
-    ]
+    "aram_specific": "+10% damage taken in ARAM (Sona is glass-cannon enchanter). E MS sharing wins reset chases. R into clumped 5-stack is auto-win - fire from off-angle to dodge counter-CC."
   },
   "Soraka": {
     "aram_tier": "A",
@@ -3285,15 +3085,7 @@
     "pr": null,
     "boots": "Berserker's Greaves",
     "kit_notes": "Passive Deadly Venom: AAs stack DOT, expended on E for burst. Q (Ambush) stealth + AS - open fights from invisible. W (Venom Cask) AOE slow + applies passive. E (Contaminate) %max-HP burst per stack - wait for 6 stacks. R (Spray and Pray) extra range + piercing AAs - Runaan's quadruples this.",
-    "aram_specific": "ARAM neutral. Q-stealth in ARAM bushes is the ONLY engage - pop Q from bush, R, fire 5-target piercing AAs. Stack Deadly Venom on tanks before fights - E for free 30%+ burst.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Twitch",
-        "fetched": "2026-05-02",
-        "wr_seen": 49.7,
-        "games": 12283
-      }
-    ]
+    "aram_specific": "ARAM neutral. Q-stealth in ARAM bushes is the ONLY engage - pop Q from bush, R, fire 5-target piercing AAs. Stack Deadly Venom on tanks before fights - E for free 30%+ burst."
   },
   "Udyr": {
     "aram_tier": "B",
@@ -3384,19 +3176,11 @@
     "pr": null,
     "boots": "Berserker's Greaves",
     "kit_notes": "Passive Final Hour (R active): bonus AD + invisibility on Q tumble + faster passive proc. W (Silver Bolts) every 3rd AA on same target = %max-HP true damage - Rageblade halves this. E (Condemn) knockback into wall = stun. Q (Tumble) repositioning + bonus damage.",
-    "aram_specific": "ARAM neutral. Vayne suffers without escape options - Q tumble through wall is the only safety. Q-invisibility in R lets her dodge skillshots - pop R for both damage AND positioning.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Vayne",
-        "fetched": "2026-05-02",
-        "wr_seen": 47.9,
-        "games": 12541
-      }
-    ]
+    "aram_specific": "ARAM neutral. Vayne suffers without escape options - Q tumble through wall is the only safety. Q-invisibility in R lets her dodge skillshots - pop R for both damage AND positioning."
   },
   "Veigar": {
     "aram_tier": "S",
-    "build_note": "Note tier dropped to B - aggregator K shows 50.5% WR / 14913 games. Rod of Ages variant (52.6% WR, 2311 games) is the high-WR sub-build for sustain mage style. Luden burst remains baseline.",
+    "build_note": "Note tier dropped to B - the external aggregator shows 50.5% WR / 14913 games. Rod of Ages variant (52.6% WR, 2311 games) is the high-WR sub-build for sustain mage style. Luden burst remains baseline.",
     "core_items": [
       "Luden's Echo",
       "Rabadon's Deathcap",
@@ -3419,14 +3203,6 @@
     "boots": "Sorcerer's Shoes",
     "kit_notes": "Passive Phenomenal Evil: stacks AP on ability hit + champion takedown - Veigar's win condition is stack accumulation. E (Event Horizon) ring stuns enemies who walk through perimeter (not center). R (Primordial Burst) executes - bonus damage % missing HP. Stack on minions early game.",
     "aram_specific": "ARAM is Veigar's stack-paradise - every minion kill = passive stack. 200+ stacks by game-end is realistic. R one-shots squishies past 800 AP.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Veigar",
-        "fetched": "2026-05-02",
-        "wr_seen": 50.5,
-        "games": 14913
-      }
-    ],
     "variants": [
       {
         "trigger": "scaling alt",
@@ -3466,15 +3242,7 @@
     "pr": null,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "Passive Organic Deconstruction: 3 stacks of any ability detonate for true damage - Q-W-E or Q-Q-E full combo procs immediately. R (Lifeform Disintegration Ray) channeled wide cone + %max-HP true damage - fire after 3-stack proc for full burst.",
-    "aram_specific": "+5% damage dealt, neutral taken - minor ARAM buff. R is the highest single-cast damage in mode for AOE; cast from off-angle to avoid CC interrupt. Q splits on first impact = waveclear and harass simultaneously.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Velkoz",
-        "fetched": "2026-05-02",
-        "wr_seen": 54.0,
-        "games": 13678
-      }
-    ]
+    "aram_specific": "+5% damage dealt, neutral taken - minor ARAM buff. R is the highest single-cast damage in mode for AOE; cast from off-angle to avoid CC interrupt. Q splits on first impact = waveclear and harass simultaneously."
   },
   "Vex": {
     "aram_tier": "A",
@@ -3642,15 +3410,7 @@
     "pr": null,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "Q (Arcanopulse) charge-up beam - hold for max damage range. W (Eye of Destruction) AOE skillshot center deals bonus damage. E (Shocking Orb) long-range stun - stun length scales with travel distance. R (Rite of the Arcane) global 3 charges; aim with reticule, fire from base.",
-    "aram_specific": "+10% damage taken - Xerath glass-cannon nerf in ARAM. Long-range R from base is the value play; reticle-aim at low-HP enemies. Q charge cancellable with E or W - fake Q to bait dodges.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Xerath",
-        "fetched": "2026-05-02",
-        "wr_seen": 51.5,
-        "games": 12967
-      }
-    ]
+    "aram_specific": "+10% damage taken - Xerath glass-cannon nerf in ARAM. Long-range R from base is the value play; reticle-aim at low-HP enemies. Q charge cancellable with E or W - fake Q to bait dodges."
   },
   "Xin Zhao": {
     "aram_tier": "B",
@@ -3696,15 +3456,7 @@
     "pr": null,
     "boots": "Berserker's Greaves",
     "kit_notes": "Passive: crit chance doubled, shield on movement. Q (Steel Tempest): 3rd Q is a tornado - line knock-up. E (Sweeping Blade) dashes through enemies - chain through minions to engage. R (Last Breath) only off knocked-up targets - pair with own Q3 or ally CC.",
-    "aram_specific": "ARAM neutral. Q3-tornado from screen-edge knockup sets up R every fight; aim for back-line caster. Ally CC into R is the auto-pairing - call out Maokai/Annie/Jhin teams.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Yasuo",
-        "fetched": "2026-05-02",
-        "wr_seen": 52.4,
-        "games": 8198
-      }
-    ]
+    "aram_specific": "ARAM neutral. Q3-tornado from screen-edge knockup sets up R every fight; aim for back-line caster. Ally CC into R is the auto-pairing - call out Maokai/Annie/Jhin teams."
   },
   "Yone": {
     "aram_tier": "A",
@@ -3868,15 +3620,7 @@
     "pr": null,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "W (Satchel Charge) launches enemies and self - both engage and disengage tool. R (Mega Inferno Bomb) global poke - fire from spawn at low-HP enemies for execute. Passive empowers AAs - weave between Q bounces for tower-clearing damage in regular lanes (less relevant ARAM).",
-    "aram_specific": "+5% damage taken, -5% damage dealt (Riot's Ziggs nerf in ARAM). Q has high-damage center hitbox - aim through choke. Global R is the highest free-damage in mode; fire continuously from base.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Ziggs",
-        "fetched": "2026-05-02",
-        "wr_seen": 53.1,
-        "games": 13626
-      }
-    ]
+    "aram_specific": "+5% damage taken, -5% damage dealt (Riot's Ziggs nerf in ARAM). Q has high-damage center hitbox - aim through choke. Global R is the highest free-damage in mode; fire continuously from base."
   },
   "Zilean": {
     "aram_tier": "S",
@@ -3902,15 +3646,7 @@
     "pr": null,
     "boots": "Sorcerer's Shoes",
     "kit_notes": "Q+E double-bomb stun: stack 2 Qs on target then E-cast for instant detonate-stun. R (Chronoshift) revives ally with HP after 5s - save for diving carry. W (Time Warp) AOE haste/slow - chase or peel.",
-    "aram_specific": "ARAM neutral. R-revive on ally Mordekaiser/Sion mid-fight wins games - call out R targets pre-fight. Bomb stun is the only damage source - 1.5s lockdown for team to follow up.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/Zilean",
-        "fetched": "2026-05-02",
-        "wr_seen": 47.9,
-        "games": 9000
-      }
-    ]
+    "aram_specific": "ARAM neutral. R-revive on ally Mordekaiser/Sion mid-fight wins games - call out R targets pre-fight. Bomb stun is the only damage source - 1.5s lockdown for team to follow up."
   },
   "Zoe": {
     "aram_tier": "A",
@@ -3974,16 +3710,8 @@
     "vs_healing": "Mortal Reminder (50.6% WR) replaces Serylda's - pick anti-heal vs anti-tank",
     "vs_burst": "Edge of Night (54.1% WR) replaces Axiom Arc - spell shield blocks engage CC",
     "kit_notes": "Passive Love Tap: bonus damage to new targets - switch AAs between enemies. Q (Double Up) bounces - kill minion to bounce to champ. E (Make It Rain) AOE slow zone - placed under enemy team. R (Bullet Time) channeled cone - center deals double damage; ARAM ult for full clumped enemy team.",
-    "build_note": "26.9 Axiom Arc note: ult-CD refund changed to 10% +0.25% per lethality (was 15% +0.15%). High-lethality MF builds gain refund scaling - this lethality-stack build benefits from the buff. Hubris was the old slot; aggregator K shows Axiom Arc as the new high-WR pick.",
-    "aram_specific": "+5% damage dealt in ARAM (small Riot buff). R from off-angle into clumped lane fight = highest-damage AOE in mode. Center cone is double - aim through center of enemy team.",
-    "_sources": [
-      {
-        "url": "https://aggregator-k.invalid/champion/MissFortune",
-        "fetched": "2026-05-02",
-        "wr_seen": 51.9,
-        "games": 16988
-      }
-    ]
+    "build_note": "26.9 Axiom Arc note: ult-CD refund changed to 10% +0.25% per lethality (was 15% +0.15%). High-lethality MF builds gain refund scaling - this lethality-stack build benefits from the buff. Hubris was the old slot; the external aggregator shows Axiom Arc as the new high-WR pick.",
+    "aram_specific": "+5% damage dealt in ARAM (small Riot buff). R from off-angle into clumped lane fight = highest-damage AOE in mode. Center cone is double - aim through center of enemy team."
   },
   "Leblanc": {
     "tier": "D",
@@ -4085,8 +3813,7 @@
     "vs_tanks": "Liandry's Torment + Rylai's chunks tank HP and locks them in your wall.",
     "vs_healing": "Swap Rylai's for Morellonomicon (or add Bloodletter's Curse) into heavy heal comps.",
     "kit_notes": "Control mage; wall splits the team and Q->R combo zones any choke.",
-    "build_note": "Arcane Comet + RoA scales hardest; Liandry's online by item 4 for tank uptime.",
-    "_source": "https://aggregator-k.invalid/champion/Anivia"
+    "build_note": "Arcane Comet + RoA scales hardest; Liandry's online by item 4 for tank uptime."
   },
   "KSante": {
     "tier": "D",
@@ -4109,8 +3836,7 @@
     "vs_tanks": "Swap Heartsteel for Kaenic Rookern to scale into tanky comps; R-engages still threaten backline.",
     "vs_healing": "Thornmail is mandatory; Unending Despair adds passive grievous-wound pressure.",
     "kit_notes": "Tank-bruiser; All Out (R) converts defenses to AD to brawl mid-fight.",
-    "build_note": "Grasp + defensive stack; play front-to-back and engage with W shield up.",
-    "_source": "https://aggregator-k.invalid/champion/KSante"
+    "build_note": "Grasp + defensive stack; play front-to-back and engage with W shield up."
   },
   "Milio": {
     "tier": "B",
@@ -4133,8 +3859,7 @@
     "vs_tanks": "Limited carry damage; bait poke with W shield and let frontline soak.",
     "vs_healing": "Healing reduced 5% in ARAM; double down on shields/CC cleanse via R rather than racing heals.",
     "kit_notes": "Pure enchanter; R cleanses CC and resets carry uptime in fights.",
-    "build_note": "Aery into mana/AH; Ardent + Staff of Flowing Water boost ADC/AP carry uptime.",
-    "_source": "https://aggregator-k.invalid/champion/Milio"
+    "build_note": "Aery into mana/AH; Ardent + Staff of Flowing Water boost ADC/AP carry uptime."
   },
   "Viego": {
     "tier": "C",
@@ -4157,8 +3882,7 @@
     "vs_tanks": "BORK + Wit's End melt high-HP frontliners; possess after a kill to chain pressure.",
     "vs_healing": "Death's Dance bleed + Executioner's Calling early if heal comp; possession resets give you fresh cooldowns.",
     "kit_notes": "Bruiser-assassin; passive possession of dead enemies extends fights.",
-    "build_note": "Conqueror line; Sundered Sky burst-heal lets him brawl into the backline.",
-    "_source": "https://aggregator-k.invalid/champion/Viego"
+    "build_note": "Conqueror line; Sundered Sky burst-heal lets him brawl into the backline."
   },
   "Vladimir": {
     "tier": "D",
@@ -4181,8 +3905,7 @@
     "vs_tanks": "Liandry's + Riftmaker omnivamp scales into long fights; kite with W pool through their frontline.",
     "vs_healing": "Vlad's heal is reduced 10% in ARAM; build Morellonomicon over Cosmic Drive into heavy heal comps.",
     "kit_notes": "Hemomancer mage; W untargetability and R AoE amp make him a teamfight delay.",
-    "build_note": "Dark Harvest + Riftmaker is the highest-WR line; needs 3 items before he stabilizes.",
-    "_source": "https://aggregator-k.invalid/champion/Vladimir"
+    "build_note": "Dark Harvest + Riftmaker is the highest-WR line; needs 3 items before he stabilizes."
   },
   "Yunara": {
     "tier": "D",
@@ -4205,8 +3928,7 @@
     "vs_tanks": "Lord Dominik's is mandatory; Fiendhunter Bolts pierce shields/HP stacking.",
     "vs_healing": "Slot Mortal Reminder over Bloodthirster vs heavy heal comps.",
     "kit_notes": "Attack-speed marksman; relies on uptime and Lethal Tempo to ramp damage.",
-    "build_note": "AS->IE->LDR power spike; play behind frontline since she has no escape.",
-    "_source": "https://aggregator-k.invalid/champion/Yunara"
+    "build_note": "AS->IE->LDR power spike; play behind frontline since she has no escape."
   },
   "Zaahen": {
     "tier": "S",
@@ -4229,7 +3951,6 @@
     "vs_tanks": "Spear of Shojin amps repeated Q hits; Sundered Sky + DD give brawl uptime against frontline.",
     "vs_healing": "Death's Dance bleed + add Executioner's into heavy heal stacks; he doesn't out-sustain heal comps.",
     "kit_notes": "Conqueror bruiser; max Q then E, Stridebreaker variant peaks at 62% WR but lower volume.",
-    "build_note": "Sundered Sky line is the popular safe path; pivot Stridebreaker if comp wants engage.",
-    "_source": "https://aggregator-k.invalid/champion/Zaahen"
+    "build_note": "Sundered Sky line is the popular safe path; pivot Stridebreaker if comp wants engage."
   }
 }

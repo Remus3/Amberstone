@@ -2,12 +2,16 @@
 """Pair lolmath (normal + ultimate) vs DS build_orders, emit Desktop gap-analysis MD."""
 import collections
 import json
+from pathlib import Path
 
 ROOT = r"C:/Riot Commander"
 PATCH = "16.12.1"
-SWEEP = r"C:/Users/Administrator/Desktop/lolmath_ds_sweep/lolmath_sweep.json"
-ULT = r"C:/Users/Administrator/Desktop/lolmath_ds_sweep/ultimate_sweep.json"
-OUT = r"C:/Users/Administrator/Desktop/LOLMATH_VS_DS_SWEEP.md"
+# Desktop scratch inputs, resolved under THIS account's home rather than baked
+# in: a probe naming another account's home silently finds nothing.
+_DESKTOP = Path.home() / "Desktop"
+SWEEP = str(_DESKTOP / "lolmath_ds_sweep" / "lolmath_sweep.json")
+ULT = str(_DESKTOP / "lolmath_ds_sweep" / "ultimate_sweep.json")
+OUT = str(_DESKTOP / "LOLMATH_VS_DS_SWEEP.md")
 
 itemj = json.load(open(f"{ROOT}/data/meta_build/ddragon/{PATCH}/item.json", encoding="utf-8"))["data"]
 champj = json.load(open(f"{ROOT}/data/daemon_slayer/{PATCH}/champions.json", encoding="utf-8"))["data"]

@@ -11,8 +11,8 @@ constants differ. s223 already promoted its 22; re-parsing those is a
 no-op (idempotent), so this run touches exactly the s224 set.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/migrate_abilities_unit_variants_s224.py --dry-run
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/migrate_abilities_unit_variants_s224.py
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/migrate_abilities_unit_variants_s224.py --dry-run
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/migrate_abilities_unit_variants_s224.py
 """
 from __future__ import annotations
 

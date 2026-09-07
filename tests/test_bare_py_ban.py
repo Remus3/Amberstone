@@ -7,7 +7,7 @@ so a launcher-spelled pytest invocation silently runs a pytest-less
 interpreter (a past incident zeroed the test suite). Runnable and doc
 surfaces must pin the canonical interpreter by absolute path:
 
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe
 
 The allowlist below names the surfaces that may keep historical or
 machine-foreign bare-py text; everything else tracked by git is scanned.

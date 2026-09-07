@@ -39,6 +39,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from agents.daemon_slayer import mode_variants  # noqa: E402
+from core import external_sources  # noqa: E402
 
 DATA     = ROOT / "data"
 META     = DATA / "meta"
@@ -174,7 +175,7 @@ def _download_icon(url: str, dest: Path, label: str = "") -> bool:
 
 
 def _wr_to_tier(raw, thresholds: list[tuple[float, str]]) -> str | None:
-    """Map a Aggregator B winrate cell to a tier letter. Pure + fail-soft.
+    """Map a tier-source winrate cell to a tier letter. Pure + fail-soft.
 
     Returns the tier string (highest threshold met, else "D") or ``None``
     when the cell cannot be trusted - in which case the caller SKIPS that
@@ -579,8 +580,9 @@ def cmd_aram_builds(force: bool = False) -> bool:
     """
     Update ARAM champion tier rankings in data/meta_build/aram_champion_builds.json.
 
-    Attempts automated fetch from Aggregator B. Falls back gracefully (non-fatal) if
-    sources are unavailable - anti-scraping protections are common on stats sites.
+    Attempts an automated fetch from the configured tier source. Falls back
+    gracefully (non-fatal) when it is unset or unavailable - anti-scraping
+    protections are common on stats sites.
 
     Manual update guide (patch day):
       1. https://www.leagueoflegends.com/en-us/news/game-updates/patch-notes/
@@ -633,12 +635,12 @@ def cmd_aram_builds(force: bool = False) -> bool:
 
     tier_data: dict[str, str] = {}
 
-    # Try Aggregator B stats API
+    # Try the configured ARAM tier table. The endpoint is operator config
+    # (`aram_tier_table` in config/external_sources.json), read here rather
+    # than at import so an unconfigured install resolves to the empty string,
+    # fails inside this try, and lands on the manual-update warning below.
     try:
-        raw = _fetch_json(
-            "https://aggregator-b-stats.invalid/lol/1.5/table/aram/world/platinum_plus/aram/1/overview.json",
-            timeout=12
-        )
+        raw = _fetch_json(external_sources.value("aram_tier_table"), timeout=12)
         ddragon_champs = {}
         _dd = ROOT / "data" / "meta" / "ddragon_champions.json"
         if _dd.exists():
@@ -656,9 +658,9 @@ def cmd_aram_builds(force: bool = False) -> bool:
             tier_data[champ_name] = tier
 
         if tier_data:
-            log.info("Aggregator B: fetched tier data for %d champions", len(tier_data))
+            log.info("tier source: fetched tier data for %d champions", len(tier_data))
     except Exception as e:  # noqa: BLE001
-        log.warning("Aggregator B fetch failed (%s) - automated tier update unavailable", e)
+        log.warning("tier source fetch failed (%s) - automated tier update unavailable", e)
 
     if not tier_data:
         log.warning(

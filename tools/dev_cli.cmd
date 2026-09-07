@@ -7,7 +7,7 @@ REM Run from any directory; resolves project root via %~dp0
 setlocal
 cd /d "%~dp0\.."
 
-set "RC_PY=C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+set "RC_PY=%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
 if exist "%RC_PY%" (
     "%RC_PY%" tools\dev_cli.py %*
 ) else (

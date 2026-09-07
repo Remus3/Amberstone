@@ -37,19 +37,7 @@
     "vs_healing": "Mortal Reminder anvil first; Chempunk Chainsword if below-50% HP comp (executes with R).",
     "vs_burst": "Sterak's Gage + Edge of Night anvil; Moonflair's CC haste gives extra W stuns to disrupt combos.",
     "kit_notes": "Functions as bruiser-AS hybrid in arena. R execute is win-condition; W three-hit passive synergizes with on-hit stacking. Highest single-champion 1st rate among non-Zaahen.",
-    "arena_meta": "Patch 26.9 standout - Moonflair pick is anti-intuitive but data-overwhelming (78.72% WR with it).",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/XinZhao/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 19.6
-      },
-      {
-        "url": "https://aggregator-a.invalid/lol/modes/arena",
-        "fetched": "2026-05-02",
-        "note": "Reverberation/Moonflair Prismatic WR pulled from aggregator A arena landing"
-      }
-    ]
+    "arena_meta": "Patch 26.9 standout - Moonflair pick is anti-intuitive but data-overwhelming (78.72% WR with it)."
   },
   "Veigar": {
     "tier": "S",
@@ -88,14 +76,7 @@
     "vs_healing": "Morellonomicon anvil priority (80% GW under target heal threshold).",
     "vs_burst": "Crown of the Shattered Queen + Banshee's Veil anvil; W cage to peel.",
     "kit_notes": "E-cage in arena's small map is round-deciding - corners enemies for W stun + R execute. Stack AP via Q farm (ranged minions in some arena rounds).",
-    "arena_meta": "AP burst archetype - Veigar's hard-scaling + small map is a brutal combination.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Veigar/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 18.9
-      }
-    ]
+    "arena_meta": "AP burst archetype - Veigar's hard-scaling + small map is a brutal combination."
   },
   "Yuumi": {
     "tier": "S",
@@ -135,14 +116,7 @@
     "vs_healing": "Morellonomicon if AP partner; surface Mortal Reminder/Chempunk to AD partner.",
     "vs_burst": "Detach defensively, pop Empyrean Promise shield, re-attach. Crown anvil saves attach window.",
     "kit_notes": "Empyrean Promise + Everfrost + Dawncore is the 60% WR core - combines AOE shield, root, and heal-amp. Attach uptime is win-condition.",
-    "arena_meta": "Only enchanter that breaks the 'enchanters fail in arena' rule - Empyrean Promise core is round-deciding.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Yuumi/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 18.6
-      }
-    ]
+    "arena_meta": "Only enchanter that breaks the 'enchanters fail in arena' rule - Empyrean Promise core is round-deciding."
   },
   "Aurelion Sol": {
     "tier": "S",
@@ -181,14 +155,7 @@
     "vs_healing": "Morellonomicon priority; his ult-pull denies kiting heal-procs.",
     "vs_burst": "Quest: Wooglet's Witchcap (zhonya's-equivalent) anvil to dodge burst windows.",
     "kit_notes": "Q-spam archetype - star stacks scale obscenely with Phenomenal Evil + Level Augments. R-pull pairs perfectly with Amumu R combo (73.3% WR duo).",
-    "arena_meta": "Pyromancer's Cloak is the universal AP-bruiser pickup - ASol is the highest-WR user.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/AurelionSol/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 18.1
-      }
-    ]
+    "arena_meta": "Pyromancer's Cloak is the universal AP-bruiser pickup - ASol is the highest-WR user."
   },
   "Cho'Gath": {
     "tier": "S",
@@ -229,14 +196,7 @@
     "vs_healing": "Thornmail anvil for tank-AH; Bramble Vest if early option.",
     "vs_burst": "Spirit Visage + Unending Despair stack defensively; Gargoyle into 1v1 R execute.",
     "kit_notes": "R execute is the load-bearing identity. HP stacking augments compound with feast stacks. Banned 39.5% - RC ban-detection should treat this as fallback-pick logic.",
-    "arena_meta": "Highest-tier 1st WR among consistently-pickable champs (Zaahen often banned).",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/ChoGath/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 17.7
-      }
-    ]
+    "arena_meta": "Highest-tier 1st WR among consistently-pickable champs (Zaahen often banned)."
   },
   "Vi": {
     "tier": "S",
@@ -276,14 +236,7 @@
     "vs_healing": "Mortal Reminder anvil priority (R + auto-procs Cull triggers).",
     "vs_burst": "Edge of Night + Sterak's Gage anvil; Q charge cancel to survive engages.",
     "kit_notes": "Lethality-first build is unusual for Vi but optimal in arena - small map + R-as-execute + Duskblade procs are easier in 2v2.",
-    "arena_meta": "S-tier alongside Sett - both 16.9% 1st WR. Stack-check bruiser archetype.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Vi/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 16.9
-      }
-    ]
+    "arena_meta": "S-tier alongside Sett - both 16.9% 1st WR. Stack-check bruiser archetype."
   },
   "Sett": {
     "tier": "S",
@@ -324,14 +277,7 @@
     "vs_healing": "Chempunk Chainsword priority (60% GW under 50% target HP - synergizes with R execute window).",
     "vs_burst": "Death's Dance + Sterak's Gage; W shield absorbs burst into True Damage payback.",
     "kit_notes": "R is round-deciding when paired with engage partner. Banned 52.9% - top 3 ban target. Highest pickrate among top tier (22.3%).",
-    "arena_meta": "Brawler-tank hybrid that wins every stat-checking fight.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Sett/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 16.9
-      }
-    ]
+    "arena_meta": "Brawler-tank hybrid that wins every stat-checking fight."
   },
   "Galio": {
     "tier": "A",
@@ -371,14 +317,7 @@
     "vs_healing": "Morellonomicon anvil; Q DOT keeps GW debuff active.",
     "vs_burst": "Crown of the Shattered Queen + W stance toggle absorbs burst combos.",
     "kit_notes": "AP-tank archetype - W stance reduces magic damage, R global engage with partner. Best partnered with melee carries (Xin Zhao R-W-W combo).",
-    "arena_meta": "Sleeper A-tier - Cho'Gath best duo (40% WR with him).",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Galio/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 16.3
-      }
-    ]
+    "arena_meta": "Sleeper A-tier - Cho'Gath best duo (40% WR with him)."
   },
   "Briar": {
     "tier": "S",
@@ -418,14 +357,7 @@
     "vs_healing": "Chempunk Chainsword (her sub-50% damage spike aligns with the GW threshold).",
     "vs_burst": "Death's Dance + Sterak's Gage; W self-stun negates incoming CC if timed right.",
     "kit_notes": "7.5/7.2/5.8 avg KDA - she trades aggressively. Death's Dance + Hemomancer compounds the omnivamp profile. R-chase makes kiting impossible.",
-    "arena_meta": "Top 5 1st WR. Self-sustain through frenzy makes her uniquely arena-suited.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Briar/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 16.3
-      }
-    ]
+    "arena_meta": "Top 5 1st WR. Self-sustain through frenzy makes her uniquely arena-suited."
   },
   "Jax": {
     "tier": "A",
@@ -466,14 +398,7 @@
     "vs_healing": "Mortal Reminder if AD-stack core; Bramble Vest anvil for tank-AH on his counter-attack.",
     "vs_burst": "Sterak's Gage + Edge of Night; E counter-strike + R MR gain mid-burst.",
     "kit_notes": "R passive (bonus AD/AR every 3 hits) compounds with arena's small map - he gets max stacks every fight. Best partner = enchanter (Yuumi 30.2%).",
-    "arena_meta": "On-hit bruiser archetype - 56.4% top-4 is one of the highest consistency rates.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Jax/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 15.8
-      }
-    ]
+    "arena_meta": "On-hit bruiser archetype - 56.4% top-4 is one of the highest consistency rates."
   },
   "Brand": {
     "tier": "A",
@@ -514,14 +439,7 @@
     "vs_healing": "Morellonomicon priority - his DOTs keep GW debuff perpetually active.",
     "vs_burst": "Dragonheart + Crown anvil - frontline-mage archetype that's hard to focus.",
     "kit_notes": "Dragonheart on a mage is the arena-specific tweak - frontline-mage that's hard to focus. Banned 24.5%. 60% WR / 2.2 avg on optimal core.",
-    "arena_meta": "AP burst secondary archetype anchor. Maokai 53.9% WR pairing is one of dataset's best.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Brand/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 15.5
-      }
-    ]
+    "arena_meta": "AP burst secondary archetype anchor. Maokai 53.9% WR pairing is one of dataset's best."
   },
   "Olaf": {
     "tier": "A",
@@ -561,14 +479,7 @@
     "vs_healing": "Mortal Reminder priority; his R denies kiting heal-procs.",
     "vs_burst": "Sterak's Gage + Death's Dance; R unstoppable bypasses CC-burst combos.",
     "kit_notes": "Hamstringer (arena anvil) replaces Stridebreaker in his SR build - slow + AS scaling on a single item. R unstoppable is round-saving.",
-    "arena_meta": "57.9% top-4 - one of the most consistent placements in the meta.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Olaf/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 15.4
-      }
-    ]
+    "arena_meta": "57.9% top-4 - one of the most consistent placements in the meta."
   },
   "Ambessa": {
     "tier": "A",
@@ -606,14 +517,7 @@
     "vs_healing": "Mortal Reminder anvil; constant dash-procs keep GW active.",
     "vs_burst": "Hemomancer's Helm omnivamp + Eclipse shield; dash-out windows.",
     "kit_notes": "Hemomancer's Helm appears again - universal AD-bruiser anvil pull. Banned 25.8%. Triple-dash R is the win-condition.",
-    "arena_meta": "Engage bruiser - duo of patch with Zaahen (33.3%).",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Ambessa/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 15.4
-      }
-    ]
+    "arena_meta": "Engage bruiser - duo of patch with Zaahen (33.3%)."
   },
   "Sion": {
     "tier": "A",
@@ -653,14 +557,7 @@
     "vs_healing": "Thornmail anvil for tank-AH; his W passive damage keeps GW from autos.",
     "vs_burst": "Gargoyle + Warmog's anvil; passive zombie state denies burst-kill windows.",
     "kit_notes": "Q-stun in arena's small map is auto-hit. Passive zombie phase = round 2 chance.",
-    "arena_meta": "Engage tank - Pyke duo (22.2%) creates double-CC hook plays.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Sion/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 15.4
-      }
-    ]
+    "arena_meta": "Engage tank - Pyke duo (22.2%) creates double-CC hook plays."
   },
   "Amumu": {
     "tier": "A",
@@ -700,14 +597,7 @@
     "vs_healing": "Morellonomicon - W aura keeps debuff up perpetually.",
     "vs_burst": "Crown of the Shattered Queen anvil; R into double-burst window with partner.",
     "kit_notes": "Pyromancer's Cloak (arena) is now a near-mandatory AP-bruiser anvil - drives the entire build. R-stun setup for ASol R-pull = 73.3% duo WR.",
-    "arena_meta": "Engage AP-tank with the dataset's strongest duo (ASol).",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Amumu/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 15.1
-      }
-    ]
+    "arena_meta": "Engage AP-tank with the dataset's strongest duo (ASol)."
   },
   "Pantheon": {
     "tier": "A",
@@ -747,14 +637,7 @@
     "vs_healing": "Chempunk priority (sub-50% damage spike aligns with Q execute window).",
     "vs_burst": "W shield-block + Sterak's Gage; E-block during enemy combo.",
     "kit_notes": "Flesheater (arena) was buffed in 26.9 to steal multiple stats per kill - synergizes with Pantheon's reliable kill-secure via Q.",
-    "arena_meta": "Lethality bruiser; Flesheater rework patch winner.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Pantheon/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 14.7
-      }
-    ]
+    "arena_meta": "Lethality bruiser; Flesheater rework patch winner."
   },
   "Diana": {
     "tier": "A",
@@ -794,14 +677,7 @@
     "vs_healing": "Morellonomicon priority; passive moonsilver autos keep GW up.",
     "vs_burst": "Riftmaker omnivamp + E-shield; R into burst then E away.",
     "kit_notes": "Source notes Diana's strength comes from 'optimal augment selection each round' and partner pairing. R cleave AOE shines in 2v2.",
-    "arena_meta": "AP assassin-bruiser hybrid - 56.3% top-4 is among highest consistency.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Diana/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 14.6
-      }
-    ]
+    "arena_meta": "AP assassin-bruiser hybrid - 56.3% top-4 is among highest consistency."
   },
   "Pyke": {
     "tier": "A",
@@ -841,14 +717,7 @@
     "vs_healing": "Chempunk Chainsword (sub-50% threshold = his R execute window).",
     "vs_burst": "Edge of Night anvil; W stealth dodges burst combos.",
     "kit_notes": "R execute scales with lethality - Hubris stacking compounds infinite execute threshold. Hook-engage with tank partner (Sion).",
-    "arena_meta": "Lethality assassin - 14.6% 1st despite 48.8% top-4 = high variance kit.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Pyke/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 14.6
-      }
-    ]
+    "arena_meta": "Lethality assassin - 14.6% 1st despite 48.8% top-4 = high variance kit."
   },
   "Maokai": {
     "tier": "A",
@@ -888,14 +757,7 @@
     "vs_healing": "Morellonomicon if AP-leaning; Thornmail's CC GW trigger from his W root.",
     "vs_burst": "Warmog's + Spirit Visage anvil; W root + R to peel for partner.",
     "kit_notes": "AP frontline tank - W/R chain root gives partner free damage windows. Brand pairing (53.9%) is one of dataset's best.",
-    "arena_meta": "Tank-AP support archetype that enables burst partners.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Maokai/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 14.5
-      }
-    ]
+    "arena_meta": "Tank-AP support archetype that enables burst partners."
   },
   "Shyvana": {
     "tier": "S",
@@ -935,15 +797,7 @@
     "vs_healing": "Morellonomicon if AP build (Big Dragon Energy enabled); else Mortal Reminder.",
     "vs_burst": "Overlord's Bloodmail + Dragonheart double-HP-pickup; R-form damage reduction.",
     "kit_notes": "50% WR on optimal core (2.3 avg) - 'Gain Prismatic Stat Anvil' selected 29.3% of her games (universal pickup). Big Dragon Energy is build-defining.",
-    "arena_meta": "S-tier on core WR; low pickrate skews 1st%. Hybrid scaler that adapts to any anvil.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Shyvana/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 50.0,
-        "note": "50% on optimal core, not raw 1st place"
-      }
-    ]
+    "arena_meta": "S-tier on core WR; low pickrate skews 1st%. Hybrid scaler that adapts to any anvil."
   },
   "Zaahen": {
     "tier": "S",
@@ -984,15 +838,7 @@
     "vs_healing": "Chempunk priority (sub-50% threshold aligns with execute pressure).",
     "vs_burst": "Hemomancer's Helm + Death's Dance; Overlord's Bloodmail HP buffer.",
     "kit_notes": "20% WR / 2.5 avg on optimal core. Hemomancer's Helm is the 'want it on every build' anvil pull. Top WR overall.",
-    "arena_meta": "Patch standout - 'ticks every box for arena'. Banned 76% (highest in mode). New release.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Zaahen/arena",
-        "fetched": "2026-05-02",
-        "wr_top4_seen": 63.7,
-        "banrate_seen": 76.0
-      }
-    ]
+    "arena_meta": "Patch standout - 'ticks every box for arena'. Banned 76% (highest in mode). New release."
   },
   "Vayne": {
     "tier": "A",
@@ -1034,14 +880,7 @@
     "vs_healing": "Mortal Reminder priority; her Q tumble repositions for kite heal-procs.",
     "vs_burst": "Q tumble for invis frames; Edge of Night anvil if available.",
     "kit_notes": "W true damage stacking is the win-condition - 3rd hit deletes any HP target. Tank-Vayne pairing (Cho'Gath 30.4%) is her best comp - tank engages, she kites and W-stacks.",
-    "arena_meta": "ADC archetype - one of the few non-Xin Zhao ADCs that breaks B-tier ceiling.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Vayne/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 14.1
-      }
-    ]
+    "arena_meta": "ADC archetype - one of the few non-Xin Zhao ADCs that breaks B-tier ceiling."
   },
   "Malphite": {
     "tier": "B",
@@ -1081,14 +920,7 @@
     "vs_healing": "Thornmail (CC trigger from R = 100% GW uptime in fight).",
     "vs_burst": "Passive shield + Black Hole Gauntlet pull cancels engages mid-burst.",
     "kit_notes": "R is round-deciding - small map = guaranteed 2-target hit. Pairs with bursty partner for instant follow-up.",
-    "arena_meta": "Engage tank archetype - 13.7% 1st but very high R-condition wins.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Malphite/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 13.7
-      }
-    ]
+    "arena_meta": "Engage tank archetype - 13.7% 1st but very high R-condition wins."
   },
   "Ahri": {
     "tier": "B",
@@ -1127,14 +959,7 @@
     "vs_healing": "Morellonomicon priority; E charm prolongs target debuff.",
     "vs_burst": "Crown of the Shattered Queen + R dashes = 3 reset windows out of burst.",
     "kit_notes": "Burn-mage build, NOT the SR Luden's path. Runecarver (arena) is the anti-shield AP item that makes her R + E lethal vs tanks. Gluttonous Greaves on a burst mage is unusual but data-supported.",
-    "arena_meta": "11% pickrate but only 13.5% 1st - high-popularity but mid-WR.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Ahri/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 13.5
-      }
-    ]
+    "arena_meta": "11% pickrate but only 13.5% 1st - high-popularity but mid-WR."
   },
   "Tryndamere": {
     "tier": "B",
@@ -1172,14 +997,7 @@
     "vs_healing": "Mortal Reminder anvil priority; her R survives the GW window for full payback.",
     "vs_burst": "R undying for 5s; Sterak's Gage anvil to survive post-R timer.",
     "kit_notes": "Mediocre solo (4.3 avg) but highest ceiling with right augment combo. Reaper's Toll (arena prismatic) - %max-HP stacking damage fits R-tank scaling perfectly.",
-    "arena_meta": "C-tier despite popular pick - high variance, augment-dependent.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Tryndamere/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 12.8
-      }
-    ]
+    "arena_meta": "C-tier despite popular pick - high variance, augment-dependent."
   },
   "Mordekaiser": {
     "tier": "B",
@@ -1219,14 +1037,7 @@
     "vs_healing": "Morellonomicon priority; R Death Realm prevents partner heals.",
     "vs_burst": "Dragonheart + Spirit Visage; R isolation locks burster 1v1.",
     "kit_notes": "R isolation in 2v2v2v2 = 1v1 mid-fight = swing the round. Xin Zhao pairing is dataset's strongest mage-bruiser combo (+19.3% over solo).",
-    "arena_meta": "53.7% top-4 consistency despite mid 1st%; reliable carry partner.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Mordekaiser/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 12.3
-      }
-    ]
+    "arena_meta": "53.7% top-4 consistency despite mid 1st%; reliable carry partner."
   },
   "Singed": {
     "tier": "B",
@@ -1266,14 +1077,7 @@
     "vs_healing": "Morellonomicon - poison trail keeps GW perpetually applied.",
     "vs_burst": "W stance + Crown anvil - he wins extended, loses combo windows.",
     "kit_notes": "40% WR on Pyromancer's + Void Immolation + Liandry's core. Poison trail in arena's small map = 100% uptime. Vayne pairing (33.3%) is a hard-to-pin/hard-to-kill double-up.",
-    "arena_meta": "Sustain DPS archetype - 53.0% top-4 = consistent placements.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Singed/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 12.1
-      }
-    ]
+    "arena_meta": "Sustain DPS archetype - 53.0% top-4 = consistent placements."
   },
   "Smolder": {
     "tier": "B",
@@ -1314,14 +1118,7 @@
     "vs_healing": "Mortal Reminder priority; R execute denies heal-windows.",
     "vs_burst": "Phantom Dancer for kite range and crit burst.",
     "kit_notes": "Stack-scaling ranged ADC - need partner to peel while he ramps. Note: Galeforce removed from League; Phantom Dancer is functional analog.",
-    "arena_meta": "C-tier ADC - needs perfect anvil RNG to spike before round 4.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Smolder/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 11.9
-      }
-    ]
+    "arena_meta": "C-tier ADC - needs perfect anvil RNG to spike before round 4."
   },
   "K'Sante": {
     "tier": "B",
@@ -1361,14 +1158,7 @@
     "vs_healing": "Mortal Reminder if R-form bruiser; Thornmail in pre-R tank stance.",
     "vs_burst": "Cloak of Starry Night + Gargoyle anvil; W shield + R-stance pivot.",
     "kit_notes": "Dual-stance kit - tank pre-R (Cloak/Shield core) becomes bruiser post-R (anvil pivot to AD items). Swain pairing (37.5%) is highest-WR.",
-    "arena_meta": "Tank/bruiser hybrid - flexible build path is augment-dependent.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/KSante/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 11.2
-      }
-    ]
+    "arena_meta": "Tank/bruiser hybrid - flexible build path is augment-dependent."
   },
   "Warwick": {
     "tier": "B",
@@ -1410,14 +1200,7 @@
     "vs_healing": "Mortal Reminder; R fear lockdown denies heal-procs.",
     "vs_burst": "Death's Dance + Sterak's anvil; R unstoppable charge into target.",
     "kit_notes": "Sustain bruiser - Yuumi pairing (35.3%) gives him perma-uptime. Q ability spam scales with on-hit augments.",
-    "arena_meta": "53.5% top-4 = consistent placements; low 1st% = lacks burst.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Warwick/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 11.1
-      }
-    ]
+    "arena_meta": "53.5% top-4 = consistent placements; low 1st% = lacks burst."
   },
   "Yorick": {
     "tier": "B",
@@ -1457,14 +1240,7 @@
     "vs_healing": "Mortal Reminder priority; W cage isolates target into GW window.",
     "vs_burst": "Sterak's + Death's Dance; W cage interrupts engages.",
     "kit_notes": "Minionmancer is build-defining - it's the difference between D-tier and S-tier.  Pair with disable partner (Malzahar suppress) so ghouls + Maiden can free-DPS.",
-    "arena_meta": "Augment-binary champ - if Minionmancer isn't offered, hard-int.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Yorick/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 10.5
-      }
-    ]
+    "arena_meta": "Augment-binary champ - if Minionmancer isn't offered, hard-int."
   },
   "Yone": {
     "tier": "B",
@@ -1504,14 +1280,7 @@
     "vs_healing": "Mortal Reminder anvil; R knock-up chains into partner GW.",
     "vs_burst": "Sterak's + E retreat (return to E location); kite anvil round.",
     "kit_notes": "Crit-AS hybrid - skewed by player base (first-timed often). Hamstringer replaces Stridebreaker.",
-    "arena_meta": "D-tier despite 16.4% pickrate - high mechanical floor in arena.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Yone/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 11.0
-      }
-    ]
+    "arena_meta": "D-tier despite 16.4% pickrate - high mechanical floor in arena."
   },
   "Sylas": {
     "tier": "B",
@@ -1550,14 +1319,7 @@
     "vs_healing": "Morellonomicon priority; W heal also gets reduced if he takes it.",
     "vs_burst": "Crown of the Shattered Queen + Hexdrinker anvil; E shield + R steal.",
     "kit_notes": "R steal in arena = ult-RNG variance. Best with predictable enemy ult pool. Runecarver core is his arena identity.",
-    "arena_meta": "D-tier despite popular pick - R steal RNG hurts consistency.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Sylas/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 10.9
-      }
-    ]
+    "arena_meta": "D-tier despite popular pick - R steal RNG hurts consistency."
   },
   "Yasuo": {
     "tier": "B",
@@ -1595,14 +1357,7 @@
     "vs_healing": "Mortal Reminder priority.",
     "vs_burst": "Wind Wall + Sterak's; R into knock-up follow-up partner.",
     "kit_notes": "Skewed by player base (first-timed often). Sword of the Divine (component anvil) replaces IE in arena - crit takes too long to assemble from scratch.",
-    "arena_meta": "D-tier despite 16.4% pickrate - high mechanical floor.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Yasuo/arena",
-        "fetched": "2026-05-02",
-        "wr_first_seen": 10.5
-      }
-    ]
+    "arena_meta": "D-tier despite 16.4% pickrate - high mechanical floor."
   },
   "Caitlyn": {
     "tier": "C",
@@ -1639,15 +1394,8 @@
     "vs_healing": "Mortal Reminder mandatory; Chempunk if any healer present.",
     "vs_burst": "Edge of Night anvil; range-extending augments (Scopiest Weapons) keep Caitlyn outside burst threshold.",
     "kit_notes": "Pure ranged ADC, range = HP in arena. Headshot procs spike with Fan the Hammer; struggles vs gap-closers without Vi/tank duo.",
-    "arena_meta": "Floor pick - F-tier on aggregator J's absolute scale but workable with Vi duo and Diamond-Tipped Spear core; 1239 matches is a thin sample.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Caitlyn/arena",
-        "fetched": "2026-05-03",
-        "matches": 1239,
-        "external_tier": "F"
-      }
-    ]
+    "arena_meta": "Floor pick - F-tier on the external aggregator's absolute scale but workable with Vi duo and Diamond-Tipped Spear core; 1239 matches is a thin sample.",
+    "external_tier": "F"
   },
   "Kai'Sa": {
     "tier": "C",
@@ -1685,15 +1433,8 @@
     "vs_healing": "Mortal Reminder anvil; her R-evolved missiles already give burst-execute potential.",
     "vs_burst": "Edge of Night + Sterak's Gage anvil; her R-passthrough is the disengage tool.",
     "kit_notes": "Hybrid on-hit ADC. Plasma stacks reset her R cooldown - duo-target focus matters more than position. Falls off without Dual Wield anvil.",
-    "arena_meta": "F-tier on aggregator J (9.6%) but Galio/Shyvana shield-duos pull her placement up significantly; 1344-match sample.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Kaisa/arena",
-        "fetched": "2026-05-03",
-        "matches": 1344,
-        "external_tier": "F"
-      }
-    ]
+    "arena_meta": "F-tier on the external aggregator (9.6%) but Galio/Shyvana shield-duos pull her placement up significantly; 1344-match sample.",
+    "external_tier": "F"
   },
   "Kha'Zix": {
     "tier": "C",
@@ -1731,15 +1472,8 @@
     "vs_healing": "Chempunk Chainsword anvil; assassinate priority enchanters first.",
     "vs_burst": "Serpent's Fang + Edge of Night anvil; W slow + R invisibility = disengage tool.",
     "kit_notes": "Isolation assassin - needs duo to peel/isolate target. Evolved Q one-shots squishies; struggles vs paired bruisers without Darius co-engage.",
-    "arena_meta": "F-tier on aggregator J (10.1%) but Darius/Jhin duos jump him to 37.5%; sample thin (802 matches).",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Khazix/arena",
-        "fetched": "2026-05-03",
-        "matches": 802,
-        "external_tier": "F"
-      }
-    ],
+    "arena_meta": "F-tier on the external aggregator (10.1%) but Darius/Jhin duos jump him to 37.5%; sample thin (802 matches).",
+    "external_tier": "F",
     "_filtered_items": [
       "Substituted removed items: Kha'Zix: Opportunity -> Voltaic Cyclosword"
     ]
@@ -1778,15 +1512,8 @@
     "vs_healing": "Thornmail (Grievous from Bramvest); chase healer with R knockup.",
     "vs_burst": "Jak'Sho + Heartsteel HP stacking outscales burst; Unending Despair AOE return.",
     "kit_notes": "Tank-only - no damage threat; sole purpose is enable Xin Zhao/Briar with W/R CC chain. R is best teamfight knockup in Cherry.",
-    "arena_meta": "F-tier on aggregator J (9.6%, 5.0 avg place), the worst pure-tank in arena 26.9 - kept for Xin Zhao mirror duos.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Ornn/arena",
-        "fetched": "2026-05-03",
-        "matches": 1355,
-        "external_tier": "F"
-      }
-    ]
+    "arena_meta": "F-tier on the external aggregator (9.6%, 5.0 avg place), the worst pure-tank in arena 26.9 - kept for Xin Zhao mirror duos.",
+    "external_tier": "F"
   },
   "Volibear": {
     "tier": "C",
@@ -1823,14 +1550,7 @@
     "vs_burst": "Sterak's Gage + Heartsteel; passive ult-revive nullifies single-rotation burst.",
     "kit_notes": "Bruiser-tank with on-hit reset Q and self-cast leap E. R passive grants undying 4-second window when low.",
     "arena_meta": "C-tier (12.6% wr_first, 53% top4) - best of the 5 retries, viable mid pick especially with Trundle/Graves duo.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Volibear/arena",
-        "fetched": "2026-05-03",
-        "matches": 1390,
-        "external_tier": "C"
-      }
-    ]
+    "external_tier": "C"
   },
   "Aatrox": {
     "tier": "D",
@@ -1866,14 +1586,8 @@
     "vs_healing": "Hemomancer's Helm + Bramble Vest anvil; his Q3 already heals through Grievous.",
     "vs_burst": "Sterak's Gage + Death's Dance; R revive negates one-shots.",
     "kit_notes": "Q3 knockup is the win-con; needs setup. Death-defying R is the late-round bracket-saver.",
-    "arena_meta": "F on aggregator J (9.8%) but high top4 (48%) - climbs better than wins. Niche pick, prefer Lee Sin pair.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Aatrox/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "F"
-      }
-    ]
+    "arena_meta": "F on the external aggregator (9.8%) but high top4 (48%) - climbs better than wins. Niche pick, prefer Lee Sin pair.",
+    "external_tier": "F"
   },
   "Aphelios": {
     "tier": "D",
@@ -1909,14 +1623,8 @@
     "vs_healing": "Severum healing carries; Mortal Reminder anvil for the rest.",
     "vs_burst": "Crescendum (white gun) for self-peel; Calibrum (blue) ultimate is poke-disengage.",
     "kit_notes": "Weapon-rotation marksman; flexibility hides skill cap. Ranged poke + adaptive damage. Underwhelming without Swain/Cho frontline.",
-    "arena_meta": "F on aggregator J - slow ramp doesn't suit 1-2 round rotations. Niche pick.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Aphelios/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "F"
-      }
-    ]
+    "arena_meta": "F on the external aggregator - slow ramp doesn't suit 1-2 round rotations. Niche pick.",
+    "external_tier": "F"
   },
   "Draven": {
     "tier": "D",
@@ -1940,8 +1648,8 @@
     ],
     "boots": "Berserker's Greaves",
     "best_duos": [
-      "Lee Sin (per aggregator J summary)",
-      "Ornn (per aggregator J summary)"
+      "Lee Sin (per the external aggregator summary)",
+      "Ornn (per the external aggregator summary)"
     ],
     "build_changing_augments": [
       "Draw Your Sword - full melee bruiser pivot, the Draven build-defining augment",
@@ -1952,14 +1660,8 @@
     "vs_healing": "Mortal Reminder mandatory; Chempunk if low-HP comp.",
     "vs_burst": "Edge of Night anvil; Phantom Dancer ghosting for E reposition.",
     "kit_notes": "Stacks AD via passive on Q-axe catches. R is global-execute. Fragile without Ornn/Lee Sin frontline.",
-    "arena_meta": "F on aggregator J (9.8%) - paradoxically the Draw-Your-Sword melee pivot is the highest-WR build path now.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Draven/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "F"
-      }
-    ]
+    "arena_meta": "F on the external aggregator (9.8%) - paradoxically the Draw-Your-Sword melee pivot is the highest-WR build path now.",
+    "external_tier": "F"
   },
   "Ezreal": {
     "tier": "D",
@@ -1984,7 +1686,7 @@
     "boots": "Berserker's Greaves",
     "best_duos": [
       "Tahm Kench (18.8% WR - peel + W swallow)",
-      "Trundle (per aggregator J summary)"
+      "Trundle (per the external aggregator summary)"
     ],
     "build_changing_augments": [
       "Trueshot Prodigy - global Q/R poke build pivot",
@@ -1995,14 +1697,8 @@
     "vs_healing": "Mortal Reminder anvil; sustain race vs Dr Mundo bad.",
     "vs_burst": "Phantom Dancer ghosting on E + R disengage; Edge of Night anvil.",
     "kit_notes": "Skill-shot poke ADC. Low-CD E = main escape. Trinity/Muramana procs are damage backbone.",
-    "arena_meta": "F on aggregator J (9.4%) - squishiest Cherry ADC, Tahm Kench peel partially saves him.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Ezreal/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "F"
-      }
-    ]
+    "arena_meta": "F on the external aggregator (9.4%) - squishiest Cherry ADC, Tahm Kench peel partially saves him.",
+    "external_tier": "F"
   },
   "Fiora": {
     "tier": "S",
@@ -2027,7 +1723,7 @@
     "boots": "Gluttonous Greaves",
     "best_duos": [
       "Karma (66.7% WR - shield+haste)",
-      "Nocturne / Singed (per aggregator J)"
+      "Nocturne / Singed (per the external aggregator)"
     ],
     "build_changing_augments": [
       "Dashing - Q reset chain, kite/dive tool",
@@ -2039,13 +1735,7 @@
     "vs_burst": "W (Riposte) negates one rotation; Sterak's Gage anvil for second.",
     "kit_notes": "Vitals damage = % max HP true on procs. Riposte (W) is the strongest single-target negation in arena. R global heal aura keeps duo alive.",
     "arena_meta": "S-tier (18.4% wr_first) - quiet Phase-2 standout. Should arguably have been Phase-1 included; under-picked at 0.5%.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Fiora/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "S"
-      }
-    ]
+    "external_tier": "S"
   },
   "Garen": {
     "tier": "D",
@@ -2069,7 +1759,7 @@
     ],
     "boots": "Berserker's Greaves",
     "best_duos": [
-      "Xin Zhao (per aggregator J top placement, sample-thin)",
+      "Xin Zhao (per the external aggregator top placement, sample-thin)",
       "Lee Sin / Ambessa (bruiser duos)"
     ],
     "build_changing_augments": [
@@ -2082,13 +1772,7 @@
     "vs_burst": "Sterak's Gage + Black Cleaver HP; W (decisive strike) cleanses one CC.",
     "kit_notes": "Simple bruiser. R = %max HP true execute. Q silence + MS = engage tool. No real disengage.",
     "arena_meta": "Borderline D/C tier - lacks duo chemistry, R execute is his only real Cherry tool.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Garen/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "D"
-      }
-    ]
+    "external_tier": "D"
   },
   "Gwen": {
     "tier": "C",
@@ -2125,13 +1809,7 @@
     "vs_burst": "Zhonya's Hourglass + W mist invuln window.",
     "kit_notes": "Mist Walker AP bruiser. W (Hallowed Mist) makes her untargetable to ranged outside the zone. R cone damage scales aggressively.",
     "arena_meta": "C-tier (13.4%) - solid mid-range AP bruiser, the W mist trick is the differentiator vs other AP picks.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Gwen/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "C"
-      }
-    ]
+    "external_tier": "C"
   },
   "Hecarim": {
     "tier": "C",
@@ -2168,13 +1846,7 @@
     "vs_burst": "Sterak's Gage + Dead Man's; R fear scatters burst combos.",
     "kit_notes": "MS-scaling bruiser. R fear is multi-target disrupt. Q spam = primary damage; Sundered Sky proc heals.",
     "arena_meta": "C-tier solid pick - MS scaling rewards mobility-stat anvils.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Hecarim/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "C"
-      }
-    ]
+    "external_tier": "C"
   },
   "Heimerdinger": {
     "tier": "C",
@@ -2211,13 +1883,7 @@
     "vs_burst": "Zhonya's Hourglass + turret zone-control to deny gap-close.",
     "kit_notes": "Turret-zone mage. R upgrades next ability. Needs zone-control terrain to shine; weak in open Cherry rounds.",
     "arena_meta": "C-tier - turret comp punishes melee dive teams; struggles vs ranged AP mirror.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Heimerdinger/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "C"
-      }
-    ]
+    "external_tier": "C"
   },
   "Irelia": {
     "tier": "D",
@@ -2254,13 +1920,7 @@
     "vs_burst": "Sterak's Gage + W (Defiant Dance) damage-reduction window.",
     "kit_notes": "Q-reset assassin/bruiser. E stun requires marker setup. R disarm zone is repositioning tool.",
     "arena_meta": "D-tier (11.4%) - strong solo Q-reset chain but Cherry duo synergy is weak; needs Braum to enable E.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Irelia/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "D"
-      }
-    ]
+    "external_tier": "D"
   },
   "Jhin": {
     "tier": "D",
@@ -2284,7 +1944,7 @@
     ],
     "boots": "Berserker's Greaves",
     "best_duos": [
-      "Singed (12.5% WR per aggregator J summary)",
+      "Singed (12.5% WR per the external aggregator summary)",
       "Kha'Zix (37.5% - co-isolation)"
     ],
     "build_changing_augments": [
@@ -2297,13 +1957,7 @@
     "vs_burst": "Phantom Dancer ghosting on R disengage; Edge of Night anvil.",
     "kit_notes": "4-shot reload ADC; passive crit damage scales with bonus AS. R = global poke. Mobility-locked during R cast.",
     "arena_meta": "D-tier (11.3%) - Kha'Zix duo dramatically improves placement (37.5% wr); standalone underperforms.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Jhin/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "D"
-      }
-    ]
+    "external_tier": "D"
   },
   "Karma": {
     "tier": "D",
@@ -2340,13 +1994,7 @@
     "vs_burst": "RE shield + Locket; Mikael's removes hard CC.",
     "kit_notes": "Hybrid enchanter/poke mage. R upgrades next ability (Q poke / W bind / E shield+MS). Best Cherry use is RE shield-bomb + RW double-bind.",
     "arena_meta": "D-tier (10.6%) - under-performs vs dedicated enchanters; her hybrid kit doesn't max either lane.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Karma/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "D"
-      }
-    ]
+    "external_tier": "D"
   },
   "Lillia": {
     "tier": "B",
@@ -2383,13 +2031,7 @@
     "vs_burst": "Cosmic Drive MS + Q sweep kite-window.",
     "kit_notes": "AP DOT bruiser. R global sleep is the build-around teamfight tool. Q-spam stacks dream dust on every champ hit.",
     "arena_meta": "B-tier (13.9%, 57.8% top4) - quiet Phase-2 overperformer. Top4 rate suggests strong placement consistency.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Lillia/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "B"
-      }
-    ]
+    "external_tier": "B"
   },
   "Lulu": {
     "tier": "D",
@@ -2426,13 +2068,7 @@
     "vs_burst": "R (Wild Growth) gives carry HP+knockup-immunity window; Mikael's removes CC.",
     "kit_notes": "Pure enchanter. W Polymorph = best hard-CC in Cherry on a low CD. R targets ally for HP+knockup. No solo damage.",
     "arena_meta": "D-tier alone (10.9%) but Xin Zhao duo is 60% WR - mirror of the Yuumi-with-X-Zhao Phase-1 finding.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Lulu/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "D"
-      }
-    ]
+    "external_tier": "D"
   },
   "Master Yi": {
     "tier": "B",
@@ -2469,13 +2105,7 @@
     "vs_burst": "Q (Alpha Strike) is untargetable window; R MS+CC-immune escape.",
     "kit_notes": "On-hit AS hyper-carry. Q untargetable, E true damage on-hit, R MS+CC-immune. Needs shield/heal partner.",
     "arena_meta": "B-tier (13.6%) - Yuumi attachment makes him a sleeper carry; Phase-2 best on-hit ADC alternative to Xin Zhao.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/MasterYi/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "B"
-      }
-    ]
+    "external_tier": "B"
   },
   "Nilah": {
     "tier": "B",
@@ -2512,13 +2142,7 @@
     "vs_burst": "W (Jubilant Veil) magic-immunity + dodge for self/ally; E dash repositions.",
     "kit_notes": "Melee ADC with whip. Passive doubles ally healing/shielding (enchanter synergy). R cleave hits all enemies in big circle. W = untargetable to magic.",
     "arena_meta": "B-tier (13.8%) - passive heal-doubling makes Yuumi/Soraka/Nami duos broken; Malzahar suppression chain hits 62.5% WR.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Nilah/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "B"
-      }
-    ]
+    "external_tier": "B"
   },
   "Renekton": {
     "tier": "C",
@@ -2555,13 +2179,7 @@
     "vs_burst": "Sterak's Gage + Death's Dance; W stun + dash gap-close.",
     "kit_notes": "Fury-stacking lane bully. R buffs HP+size. Empowered (50+ fury) Q heals; W stuns; E charge-and-dash-back is reposition.",
     "arena_meta": "C-tier - Shyvana paired-bruiser duo is the strongest profile; standalone underwhelms vs scaling carries.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Renekton/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "C"
-      }
-    ]
+    "external_tier": "C"
   },
   "Soraka": {
     "tier": "C",
@@ -2598,13 +2216,7 @@
     "vs_burst": "Mikael's removes CC; W heals through hard CC of ally; R global heal for low-HP ally save.",
     "kit_notes": "Pure enchanter. W heals ally (costs HP). E silence + slow zone. R global ally heal. Needs frontline to have someone TO heal.",
     "arena_meta": "C-tier - top4 (51%) higher than win (12.7%), classic 'never loses, never solo wins' enchanter profile.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Soraka/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "C"
-      }
-    ]
+    "external_tier": "C"
   },
   "Twisted Fate": {
     "tier": "F",
@@ -2641,13 +2253,7 @@
     "vs_burst": "R (global teleport) is the disengage; Zhonya's Hourglass anvil.",
     "kit_notes": "Card-pick mage. W = gold (stun) / red (slow+AOE) / blue (mana+poke). R global teleport. Needs Vi engage to land W.",
     "arena_meta": "F-tier (10.0%, 40.6% top4) - worst Phase-2 mage. Without Vi engage, his W stun never lands on mobile carries.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/TwistedFate/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "F"
-      }
-    ]
+    "external_tier": "F"
   },
   "Vex": {
     "tier": "D",
@@ -2684,13 +2290,7 @@
     "vs_burst": "Zhonya's Hourglass + W (personal space) AOE fear when she dashes/E.",
     "kit_notes": "Anti-mobility burst mage. Passive marks dashers/leapers and procs bonus damage. R = global execute.",
     "arena_meta": "D-tier (10.6%) - anti-dash niche underrewarded in Cherry where everyone has gap-close. Top4 (51%) decent.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Vex/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "D"
-      }
-    ]
+    "external_tier": "D"
   },
   "Wukong": {
     "tier": "D",
@@ -2727,13 +2327,7 @@
     "vs_burst": "W (clone) breaks targeting + crits next attack; Sterak's Gage anvil.",
     "kit_notes": "AD bruiser/assassin. W = clone-stealth-reposition, then crit auto. R AOE multi-spin knockup is best teamfight tool. Passive armor stacks vs many enemies.",
     "arena_meta": "D-tier (11.9%) - solid but unremarkable; W clone trick rewards skilled play, R is reliable Cherry teamfight ult.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/MonkeyKing/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "D"
-      }
-    ]
+    "external_tier": "D"
   },
   "Zac": {
     "tier": "B",
@@ -2770,13 +2364,7 @@
     "vs_burst": "Heartsteel HP stack outscales single-rotation; passive blob-revive is the second-life mechanic.",
     "kit_notes": "AP-scaling jelly tank. E launches across map. R is multi-bounce knockup. Passive splits into 4 blobs on death - recombine to revive.",
     "arena_meta": "B-tier (13.8%) - Sion dual-tank engage = 41.7% WR; passive revive nets him an effective second life per round.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Zac/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "B"
-      }
-    ]
+    "external_tier": "B"
   },
   "Zed": {
     "tier": "A",
@@ -2813,13 +2401,7 @@
     "vs_burst": "Edge of Night + W shadow swap; R becomes untargetable transition.",
     "kit_notes": "Shadow assassin. W places shadow, R places second shadow + marks target. Q-WE-Q-EQ pattern is full burst. Needs to land R post-CC.",
     "arena_meta": "A-tier (15.8%) - Phase-2 standout assassin, should arguably be promoted to S given Killing Time augment synergy.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Zed/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "A"
-      }
-    ],
+    "external_tier": "A",
     "_filtered_items": [
       "Substituted removed items: Zed: Opportunity -> Voltaic Cyclosword"
     ]
@@ -2859,13 +2441,7 @@
     "vs_burst": "W self-knockback escape; Zhonya's Hourglass anvil.",
     "kit_notes": "Skill-shot AOE mage. W = self-disengage knockback. R = long-range nuke. All damage telegraphed; positioning-sensitive.",
     "arena_meta": "F-tier (9.2% wr_first) but 50.5% top4 - places consistently, never wins. Lowest Phase-2 wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Ziggs/arena",
-        "fetched": "2026-05-03",
-        "external_tier": "F"
-      }
-    ]
+    "external_tier": "F"
   },
   "Akali": {
     "tier": "D",
@@ -2899,13 +2475,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.3% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Akali/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.3% wr_first) - counter-pick only."
   },
   "Akshan": {
     "tier": "D",
@@ -2939,13 +2509,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.4% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Akshan/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.4% wr_first) - counter-pick only."
   },
   "Alistar": {
     "tier": "D",
@@ -2979,13 +2543,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.3% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Alistar/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.3% wr_first) - counter-pick only."
   },
   "Anivia": {
     "tier": "D",
@@ -3019,13 +2577,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.4% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Anivia/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.4% wr_first) - counter-pick only."
   },
   "Annie": {
     "tier": "A",
@@ -3059,13 +2611,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "A-tier solid blind pick at 16.9% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Annie/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "A-tier solid blind pick at 16.9% wr_first."
   },
   "Ashe": {
     "tier": "D",
@@ -3099,13 +2645,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.7% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Ashe/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.7% wr_first) - counter-pick only."
   },
   "Aurora": {
     "tier": "C",
@@ -3139,13 +2679,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 11.4% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Aurora/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.4% wr_first - needs duo synergy or augment lottery."
   },
   "Azir": {
     "tier": "D",
@@ -3178,13 +2712,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.9% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Azir/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.9% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Bard": {
@@ -3218,13 +2746,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.8% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Bard/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.8% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Bel'Veth": {
@@ -3259,13 +2781,7 @@
     "vs_tanks": "BotRK + Black Cleaver anvil; Goredrink keeps you topped vs sustained HP fights.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Bruiser - mid-range engage, HP+omnivamp scaling, look for Reverberation/Goliath prismatics.",
-    "arena_meta": "A-tier solid blind pick at 15.9% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Belveth/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "A-tier solid blind pick at 15.9% wr_first."
   },
   "Blitzcrank": {
     "tier": "B",
@@ -3299,13 +2815,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "B-tier - playable into most lobbies at 13.2% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Blitzcrank/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 13.2% wr_first."
   },
   "Braum": {
     "tier": "B",
@@ -3335,13 +2845,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "B-tier - playable into most lobbies at 13.6% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Braum/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 13.6% wr_first."
   },
   "Camille": {
     "tier": "D",
@@ -3374,13 +2878,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.7% wr_first (low sample)) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Camille/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.7% wr_first (low sample)) - counter-pick only.",
     "_core_synthetic": true
   },
   "Cassiopeia": {
@@ -3415,13 +2913,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 12.1% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Cassiopeia/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.1% wr_first - needs duo synergy or augment lottery."
   },
   "Corki": {
     "tier": "C",
@@ -3455,12 +2947,6 @@
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
     "arena_meta": "C-tier filler at 11.9% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Corki/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
     "_core_synthetic": true
   },
   "Darius": {
@@ -3494,13 +2980,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.9% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Darius/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.9% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Dr. Mundo": {
@@ -3535,13 +3015,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "B-tier - playable into most lobbies at 14.2% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/DrMundo/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 14.2% wr_first."
   },
   "Ekko": {
     "tier": "C",
@@ -3575,13 +3049,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 11.0% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Ekko/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.0% wr_first - needs duo synergy or augment lottery."
   },
   "Elise": {
     "tier": "D",
@@ -3614,13 +3082,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.8% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Elise/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.8% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Evelynn": {
@@ -3655,13 +3117,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "A-tier solid blind pick at 15.2% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Evelynn/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "A-tier solid blind pick at 15.2% wr_first."
   },
   "Fiddlesticks": {
     "tier": "D",
@@ -3693,13 +3149,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.1% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Fiddlesticks/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.1% wr_first) - counter-pick only."
   },
   "Fizz": {
     "tier": "B",
@@ -3733,12 +3183,6 @@
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
     "arena_meta": "B-tier - playable into most lobbies at 14.3% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Fizz/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
     "_core_synthetic": true
   },
   "Gangplank": {
@@ -3773,13 +3217,7 @@
     "vs_tanks": "BotRK + Black Cleaver anvil; Goredrink keeps you topped vs sustained HP fights.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Bruiser - mid-range engage, HP+omnivamp scaling, look for Reverberation/Goliath prismatics.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.1% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Gangplank/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.1% wr_first) - counter-pick only."
   },
   "Gnar": {
     "tier": "D",
@@ -3812,13 +3250,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.1% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Gnar/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.1% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Gragas": {
@@ -3852,13 +3284,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.9% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Gragas/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.9% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Graves": {
@@ -3893,13 +3319,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "A-tier solid blind pick at 15.6% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Graves/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "A-tier solid blind pick at 15.6% wr_first."
   },
   "Illaoi": {
     "tier": "B",
@@ -3933,13 +3353,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "B-tier - playable into most lobbies at 14.0% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Illaoi/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 14.0% wr_first."
   },
   "Ivern": {
     "tier": "D",
@@ -3971,13 +3385,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.2% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Ivern/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.2% wr_first) - counter-pick only."
   },
   "Janna": {
     "tier": "D",
@@ -4010,13 +3418,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.5% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Janna/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.5% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Jarvan IV": {
@@ -4050,13 +3452,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.3% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/JarvanIV/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.3% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Jayce": {
@@ -4089,13 +3485,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.8% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Jayce/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.8% wr_first) - counter-pick only."
   },
   "Jinx": {
     "tier": "D",
@@ -4129,13 +3519,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.6% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Jinx/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.6% wr_first) - counter-pick only."
   },
   "Kalista": {
     "tier": "C",
@@ -4169,13 +3553,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "C-tier filler at 12.5% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Kalista/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.5% wr_first - needs duo synergy or augment lottery."
   },
   "Karthus": {
     "tier": "C",
@@ -4209,13 +3587,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 11.7% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Karthus/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.7% wr_first - needs duo synergy or augment lottery."
   },
   "Kassadin": {
     "tier": "D",
@@ -4249,13 +3621,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.6% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Kassadin/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.6% wr_first) - counter-pick only."
   },
   "Katarina": {
     "tier": "D",
@@ -4289,13 +3655,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.4% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Katarina/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.4% wr_first) - counter-pick only."
   },
   "Kayle": {
     "tier": "B",
@@ -4329,13 +3689,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "B-tier - playable into most lobbies at 14.7% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Kayle/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 14.7% wr_first."
   },
   "Kayn": {
     "tier": "A",
@@ -4369,13 +3723,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "A-tier solid blind pick at 15.0% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Kayn/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "A-tier solid blind pick at 15.0% wr_first."
   },
   "Kennen": {
     "tier": "D",
@@ -4409,13 +3757,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.2% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Kennen/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.2% wr_first) - counter-pick only."
   },
   "Kindred": {
     "tier": "C",
@@ -4449,13 +3791,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "C-tier filler at 11.3% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Kindred/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.3% wr_first - needs duo synergy or augment lottery."
   },
   "Kled": {
     "tier": "C",
@@ -4487,13 +3823,7 @@
     "vs_tanks": "BotRK + Black Cleaver anvil; Goredrink keeps you topped vs sustained HP fights.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Bruiser - mid-range engage, HP+omnivamp scaling, look for Reverberation/Goliath prismatics.",
-    "arena_meta": "C-tier filler at 12.3% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Kled/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.3% wr_first - needs duo synergy or augment lottery."
   },
   "Kog'Maw": {
     "tier": "D",
@@ -4527,13 +3857,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.7% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/KogMaw/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.7% wr_first) - counter-pick only."
   },
   "LeBlanc": {
     "tier": "D",
@@ -4567,13 +3891,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (5.8% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Leblanc/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (5.8% wr_first) - counter-pick only."
   },
   "Lee Sin": {
     "tier": "C",
@@ -4607,12 +3925,6 @@
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
     "arena_meta": "C-tier filler at 11.8% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/LeeSin/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
     "_core_synthetic": true
   },
   "Leona": {
@@ -4647,13 +3959,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.8% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Leona/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.8% wr_first) - counter-pick only."
   },
   "Lissandra": {
     "tier": "D",
@@ -4687,13 +3993,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.2% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Lissandra/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.2% wr_first) - counter-pick only."
   },
   "Lucian": {
     "tier": "D",
@@ -4725,13 +4025,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.8% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Lucian/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.8% wr_first) - counter-pick only."
   },
   "Lux": {
     "tier": "D",
@@ -4765,13 +4059,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.1% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Lux/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.1% wr_first) - counter-pick only."
   },
   "Malzahar": {
     "tier": "B",
@@ -4805,13 +4093,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "B-tier - playable into most lobbies at 14.3% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Malzahar/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 14.3% wr_first."
   },
   "Mel": {
     "tier": "D",
@@ -4845,13 +4127,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (7.2% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Mel/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (7.2% wr_first) - counter-pick only."
   },
   "Milio": {
     "tier": "C",
@@ -4883,13 +4159,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 12.3% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Milio/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.3% wr_first - needs duo synergy or augment lottery."
   },
   "Miss Fortune": {
     "tier": "D",
@@ -4921,13 +4191,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.2% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/MissFortune/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.2% wr_first) - counter-pick only."
   },
   "Morgana": {
     "tier": "C",
@@ -4961,13 +4225,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 11.7% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Morgana/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.7% wr_first - needs duo synergy or augment lottery."
   },
   "Naafiri": {
     "tier": "C",
@@ -5001,13 +4259,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "C-tier filler at 12.2% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Naafiri/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.2% wr_first - needs duo synergy or augment lottery."
   },
   "Nami": {
     "tier": "B",
@@ -5041,12 +4293,6 @@
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
     "arena_meta": "B-tier - playable into most lobbies at 13.5% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Nami/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
     "_core_synthetic": true
   },
   "Nasus": {
@@ -5081,13 +4327,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "C-tier filler at 12.6% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Nasus/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.6% wr_first - needs duo synergy or augment lottery."
   },
   "Nautilus": {
     "tier": "D",
@@ -5121,13 +4361,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.3% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Nautilus/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.3% wr_first) - counter-pick only."
   },
   "Neeko": {
     "tier": "D",
@@ -5160,13 +4394,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.5% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Neeko/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.5% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Nidalee": {
@@ -5199,13 +4427,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.5% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Nidalee/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.5% wr_first) - counter-pick only."
   },
   "Nocturne": {
     "tier": "C",
@@ -5237,13 +4459,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "C-tier filler at 12.4% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Nocturne/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.4% wr_first - needs duo synergy or augment lottery."
   },
   "Nunu & Willump": {
     "tier": "D",
@@ -5274,13 +4490,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.9% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Nunu/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.9% wr_first) - counter-pick only."
   },
   "Orianna": {
     "tier": "D",
@@ -5314,13 +4524,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.5% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Orianna/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.5% wr_first) - counter-pick only."
   },
   "Poppy": {
     "tier": "C",
@@ -5352,13 +4556,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "C-tier filler at 11.4% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Poppy/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.4% wr_first - needs duo synergy or augment lottery."
   },
   "Qiyana": {
     "tier": "C",
@@ -5392,13 +4590,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "C-tier filler at 11.4% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Qiyana/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.4% wr_first - needs duo synergy or augment lottery."
   },
   "Quinn": {
     "tier": "D",
@@ -5432,13 +4624,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.8% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Quinn/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.8% wr_first) - counter-pick only."
   },
   "Rakan": {
     "tier": "C",
@@ -5472,12 +4658,6 @@
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Enchanter/engage - duo-dependent; pick ADC/bruiser carry partner.",
     "arena_meta": "C-tier filler at 12.5% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Rakan/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
     "_core_synthetic": true
   },
   "Rammus": {
@@ -5512,13 +4692,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "B-tier - playable into most lobbies at 14.4% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Rammus/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 14.4% wr_first."
   },
   "Rek'Sai": {
     "tier": "D",
@@ -5551,13 +4725,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.2% wr_first (low sample)) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/RekSai/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.2% wr_first (low sample)) - counter-pick only.",
     "_core_synthetic": true
   },
   "Rell": {
@@ -5592,13 +4760,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "A-tier solid blind pick at 16.6% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Rell/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "A-tier solid blind pick at 16.6% wr_first."
   },
   "Renata Glasc": {
     "tier": "B",
@@ -5632,12 +4794,6 @@
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
     "arena_meta": "B-tier - playable into most lobbies at 14.9% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Renata/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
     "_core_synthetic": true
   },
   "Rengar": {
@@ -5672,13 +4828,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "C-tier filler at 11.3% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Rengar/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.3% wr_first - needs duo synergy or augment lottery."
   },
   "Riven": {
     "tier": "C",
@@ -5712,13 +4862,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "C-tier filler at 12.1% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Riven/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.1% wr_first - needs duo synergy or augment lottery."
   },
   "Rumble": {
     "tier": "B",
@@ -5752,13 +4896,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "B-tier - playable into most lobbies at 13.7% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Rumble/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 13.7% wr_first."
   },
   "Ryze": {
     "tier": "C",
@@ -5792,13 +4930,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 11.7% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Ryze/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.7% wr_first - needs duo synergy or augment lottery."
   },
   "Samira": {
     "tier": "D",
@@ -5832,13 +4964,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.2% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Samira/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.2% wr_first) - counter-pick only."
   },
   "Sejuani": {
     "tier": "C",
@@ -5872,13 +4998,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "C-tier filler at 12.7% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Sejuani/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.7% wr_first - needs duo synergy or augment lottery."
   },
   "Senna": {
     "tier": "D",
@@ -5911,13 +5031,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.0% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Senna/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.0% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Seraphine": {
@@ -5952,13 +5066,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "B-tier - playable into most lobbies at 13.6% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Seraphine/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 13.6% wr_first."
   },
   "Shaco": {
     "tier": "D",
@@ -5992,13 +5100,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.9% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Shaco/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.9% wr_first) - counter-pick only."
   },
   "Shen": {
     "tier": "B",
@@ -6032,13 +5134,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "B-tier - playable into most lobbies at 14.1% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Shen/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 14.1% wr_first."
   },
   "Sivir": {
     "tier": "D",
@@ -6071,13 +5167,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.7% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Sivir/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.7% wr_first) - counter-pick only.",
     "_core_synthetic": true
   },
   "Skarner": {
@@ -6112,13 +5202,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "C-tier filler at 11.7% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Skarner/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.7% wr_first - needs duo synergy or augment lottery."
   },
   "Sona": {
     "tier": "B",
@@ -6152,13 +5236,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "B-tier - playable into most lobbies at 14.6% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Sona/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 14.6% wr_first."
   },
   "Swain": {
     "tier": "C",
@@ -6192,13 +5270,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 12.4% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Swain/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.4% wr_first - needs duo synergy or augment lottery."
   },
   "Syndra": {
     "tier": "C",
@@ -6232,13 +5304,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 11.9% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Syndra/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.9% wr_first - needs duo synergy or augment lottery."
   },
   "Tahm Kench": {
     "tier": "C",
@@ -6272,13 +5338,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "C-tier filler at 12.1% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/TahmKench/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.1% wr_first - needs duo synergy or augment lottery."
   },
   "Taliyah": {
     "tier": "D",
@@ -6310,13 +5370,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.4% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Taliyah/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.4% wr_first) - counter-pick only."
   },
   "Talon": {
     "tier": "C",
@@ -6350,13 +5404,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "C-tier filler at 12.3% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Talon/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.3% wr_first - needs duo synergy or augment lottery."
   },
   "Taric": {
     "tier": "B",
@@ -6390,12 +5438,6 @@
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
     "arena_meta": "B-tier - playable into most lobbies at 14.8% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Taric/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
     "_core_synthetic": true
   },
   "Teemo": {
@@ -6430,13 +5472,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (10.3% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Teemo/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (10.3% wr_first) - counter-pick only."
   },
   "Thresh": {
     "tier": "D",
@@ -6468,13 +5504,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (8.8% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Thresh/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (8.8% wr_first) - counter-pick only."
   },
   "Tristana": {
     "tier": "C",
@@ -6507,13 +5537,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "C-tier filler at 12.0% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Tristana/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.0% wr_first - needs duo synergy or augment lottery."
   },
   "Trundle": {
     "tier": "B",
@@ -6547,12 +5571,6 @@
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
     "arena_meta": "B-tier - playable into most lobbies at 14.0% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Trundle/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
     "_core_synthetic": true
   },
   "Twitch": {
@@ -6587,13 +5605,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "C-tier filler at 11.0% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Twitch/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.0% wr_first - needs duo synergy or augment lottery."
   },
   "Udyr": {
     "tier": "A",
@@ -6627,13 +5639,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "A-tier solid blind pick at 16.5% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Udyr/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "A-tier solid blind pick at 16.5% wr_first."
   },
   "Urgot": {
     "tier": "B",
@@ -6667,13 +5673,7 @@
     "vs_tanks": "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Frontline body - soak engage, re-position duo, peel CC chains.",
-    "arena_meta": "B-tier - playable into most lobbies at 14.3% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Urgot/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 14.3% wr_first."
   },
   "Varus": {
     "tier": "D",
@@ -6707,13 +5707,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (9.2% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Varus/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (9.2% wr_first) - counter-pick only."
   },
   "Vel'Koz": {
     "tier": "C",
@@ -6747,13 +5741,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 12.5% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Velkoz/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.5% wr_first - needs duo synergy or augment lottery."
   },
   "Viego": {
     "tier": "C",
@@ -6787,13 +5775,7 @@
     "vs_tanks": "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps.",
-    "arena_meta": "C-tier filler at 11.8% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Viego/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 11.8% wr_first - needs duo synergy or augment lottery."
   },
   "Viktor": {
     "tier": "C",
@@ -6827,13 +5809,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 12.7% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Viktor/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.7% wr_first - needs duo synergy or augment lottery."
   },
   "Vladimir": {
     "tier": "C",
@@ -6867,13 +5843,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 12.7% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Vladimir/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.7% wr_first - needs duo synergy or augment lottery."
   },
   "Xayah": {
     "tier": "B",
@@ -6907,13 +5877,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "B-tier - playable into most lobbies at 13.2% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Xayah/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 13.2% wr_first."
   },
   "Xerath": {
     "tier": "C",
@@ -6947,13 +5911,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "C-tier filler at 12.3% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Xerath/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "C-tier filler at 12.3% wr_first - needs duo synergy or augment lottery."
   },
   "Zeri": {
     "tier": "D",
@@ -6983,13 +5941,7 @@
     "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter).",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (4.8% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Zeri/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (4.8% wr_first) - counter-pick only."
   },
   "Zilean": {
     "tier": "C",
@@ -7023,12 +5975,6 @@
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
     "arena_meta": "C-tier filler at 12.9% wr_first - needs duo synergy or augment lottery.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Zilean/arena",
-        "fetched": "2026-05-03"
-      }
-    ],
     "_core_synthetic": true
   },
   "Zoe": {
@@ -7063,13 +6009,7 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "D/F-tier on aggregator J 26.9 (7.9% wr_first) - counter-pick only.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Zoe/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "D/F-tier on the external aggregator at 26.9 (7.9% wr_first) - counter-pick only."
   },
   "Zyra": {
     "tier": "B",
@@ -7103,15 +6043,10 @@
     "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
     "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
     "kit_notes": "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins.",
-    "arena_meta": "B-tier - playable into most lobbies at 13.2% wr_first.",
-    "_sources": [
-      {
-        "url": "https://aggregator-j.invalid/en/league/champion/Zyra/arena",
-        "fetched": "2026-05-03"
-      }
-    ]
+    "arena_meta": "B-tier - playable into most lobbies at 13.2% wr_first."
   },
   "_note": "Arena (2v2v2v2 / Cherry mode) builds. Patch 26.9 / Arena Season 2. Authored 2026-05-03 (s33). Schema differs from SR/ARAM: uses ideal_core_priority + prismatic_priority instead of full_build because anvil RNG dictates acquisition. 170 champions captured.",
+  "_provenance": "Compiled from public third-party League build-statistics aggregators. The per-champion source URLs and fetch records that used to live here were removed before this repository was published; no replacement URLs have been substituted. The underlying fetches ran 2026-05-02 and 2026-05-03. Win-rate, placement, tier and sample-size figures in this file are the values those aggregators reported at that time - they are observed community statistics, not Riot-official data.",
   "_refresh_metadata": {
     "patch": "26.9",
     "season": "Arena Season 2",
@@ -7159,7 +6094,7 @@
     "kit_notes": "Marksman; on-hit + crit hybrid; passive auto-cancel for empowered shots; ult is long-range execute.",
     "arena_meta": "B-tier in current arena; strong with shield/heal partners; weak vs hard CC.",
     "_synthetic": true,
-    "_synthesis_note": "Synthesized from ARAM Phase 3 data + arena schema defaults. Pending true aggregator J fetch."
+    "_synthesis_note": "Synthesized from ARAM Phase 3 data + arena schema defaults. Pending a true external aggregator fetch."
   },
   "Hwei": {
     "tier": "B",
@@ -7196,6 +6131,6 @@
     "kit_notes": "AP control mage; 9 abilities across QWE trees; setup-heavy; Q knockup combo; ult AOE.",
     "arena_meta": "B-tier; high skill ceiling; ADC enabler; weak when isolated.",
     "_synthetic": true,
-    "_synthesis_note": "Synthesized from arena AP-mage defaults pending aggregator J fetch."
+    "_synthesis_note": "Synthesized from arena AP-mage defaults pending an external aggregator fetch."
   }
 }

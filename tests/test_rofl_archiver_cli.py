@@ -128,6 +128,10 @@ def test_pull_downloads_replays_from_the_api_for_both_accounts(
             raise OSError("lockfile absent")
 
     monkeypatch.setattr(rofl_archiver, "LcuReplayClient", _NoClient)
+    # The account list is per-install config, so pin a fixture pair rather than
+    # asserting against whatever this machine happens to be configured for.
+    monkeypatch.setattr(rofl_archiver.rofl_archive, "DEFAULT_ACCOUNTS",
+                        [("SamplePlayer", "Trist"), ("SamplePlayer", "Vayne")])
 
     rc = rofl_archiver.main([
         "--pull", "--source", str(tmp_path / "none"), "--archive", str(arc),
@@ -145,6 +149,8 @@ def test_pull_records_an_observation_per_account_for_the_rotation_question(
     api = _FakeApi({"PUUID_Trist": ["https://s3.example/NA1_11.rofl"]})
     monkeypatch.setattr(rofl_archiver, "riot_api", api)
     monkeypatch.setattr(rofl_archiver.rofl_archive, "_http_get_bytes", _fake_body)
+    monkeypatch.setattr(rofl_archiver.rofl_archive, "DEFAULT_ACCOUNTS",
+                        [("SamplePlayer", "Trist"), ("SamplePlayer", "Vayne")])
 
     rofl_archiver.main([
         "--pull", "--no-lcu-pull", "--source", str(tmp_path / "none"),

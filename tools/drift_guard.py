@@ -60,8 +60,11 @@ BUDGET_WARN_PCT = 90.0
 # Same-basename .md in both directories must be byte-identical.
 MIRROR_PAIRS = [("tools", ".claude/commands")]
 
-MEMORY_DIR = pathlib.Path(
-    r"C:\Users\Administrator\.claude\projects\C--Riot-Commander\memory"
+# Resolved under THIS account's home rather than baked in: a guard naming
+# another account's home silently finds nothing, and a guard that finds nothing
+# reports nothing.
+MEMORY_DIR = (
+    pathlib.Path.home() / ".claude" / "projects" / "C--Riot-Commander" / "memory"
 )
 MEMORY_INDEX = "MEMORY.md"
 # The ~99 per-champion sweep memories are deliberately not indexed individually;

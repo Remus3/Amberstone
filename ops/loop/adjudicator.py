@@ -56,7 +56,16 @@ except ModuleNotFoundError:
             ) from _exc
         _atomic_write_bytes = _pj.atomic_write_bytes
 
-DEFAULT_CLAUDE_CMD = r"C:\Users\Administrator\AppData\Roaming\npm\claude.cmd"
+# The Claude CLI shim really does live under an account-specific home, so there
+# is no repo-relative answer for it (tests/test_loop_module_root_resolution.py
+# records why this is deliberately outside that guard's scope). Resolve it under
+# THIS account's roaming profile rather than baking one in: a command naming
+# another account's home silently does not run, and an adjudicator that does not
+# run reports nothing.
+DEFAULT_CLAUDE_CMD = str(
+    Path(os.environ.get("APPDATA") or (Path.home() / "AppData" / "Roaming"))
+    / "npm" / "claude.cmd"
+)
 DEFAULT_CLAUDE_MODEL = "opus"
 DEFAULT_CLAUDE_TIMEOUT_SEC = 300
 

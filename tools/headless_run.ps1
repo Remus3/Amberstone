@@ -25,7 +25,7 @@ Set-Location $repo
 # tests/test_bare_py_ban.py incident class), so slice_orchestrator.py would run
 # under a deps-less interpreter. Fall back to `python` on PATH only if the
 # canonical path is absent (mirrors the tools/*.cmd wrappers).
-$pyC = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+$pyC = "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe"
 if (-not (Test-Path $pyC)) { $pyC = "python" }
 
 $tools = "Edit,Read,Write,Bash,Grep,Glob,Agent,TaskCreate,TaskUpdate,TaskList"

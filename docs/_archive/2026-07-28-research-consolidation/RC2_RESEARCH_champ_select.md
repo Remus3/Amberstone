@@ -461,10 +461,10 @@ Aggregator A / Overlay App E:
 - https://aggregator-a.invalid/desktop/en/overlays
 - https://aggregator-a.invalid/lol/modes/aram , https://aggregator-a.invalid/lol/modes/arena , https://aggregator-a.invalid/lol/modes/aram-mayhem
 - https://aggregator-a.invalid/help/articles/31092042797849 (aggregator-a auto rune setup)
-- https://third-party-review-site.invalid/overlay-app-e-review
+- https://review-site-z9.invalid/blog/game-analytics/overlay-app-e-gg-overlay-review
 - https://1v9.gg/blog/league-of-legends-lol-best-overlay-apps
 - https://overlay-app-e.invalid/lol (Pick/Ban power-picks/synergies/counters; 403 to fetch, snippet)
-- https://support.overlay-app-e/hc/en-us/articles/360032708372 (auto-import items/runes/spells; level-10, spells off by default)
+- https://support.overlay-app-e.invalid/hc/en-us/articles/360032708372 (auto-import items/runes/spells; level-10, spells off by default)
 - https://overlay-app-e.invalid/lol/tierlist/aram-mayhem , https://overlay-app-e.invalid/lol/arena-augments
 
 Overlay App F / Aggregator C:

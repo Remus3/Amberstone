@@ -69,6 +69,7 @@ from pathlib import Path
 # 24). The two underscore-prefixed names are package-internal by convention, not
 # by contract - duplicating them is what produced the divergence being fixed
 # here. polled_json imports stdlib only, so there is no import cycle.
+from core import operator_identity
 from core.polled_json import (
     _replace_with_retry,
     _scratch_path,
@@ -317,7 +318,11 @@ def archive_highlights(source_dir, archive_dir, index_path=None) -> ArchiveResul
 # from running it on a cadence and keeping what falls out the back of the
 # window. Everything below is therefore idempotent and additive.
 
-DEFAULT_ACCOUNTS = [("SamplePlayer", "Trist"), ("SamplePlayer", "Vayne")]
+# Which accounts this install archives for is OPERATOR CONFIG, not source: the
+# Riot IDs are personal, and a hardcoded pair pulls the wrong person's replays
+# (or, more usually, nobody's) on every other machine. An unconfigured clone
+# gets an empty list, and every caller already treats that as "nothing to do".
+DEFAULT_ACCOUNTS = operator_identity.accounts()
 
 _AMZ_DATE_FMT = "%Y%m%dT%H%M%SZ"
 
