@@ -127,6 +127,59 @@ def reap(root: Path, max_slots: int, stale_after: float, log=None) -> int:
     return removed
 
 
+RELEASE_ATTEMPTS = 6
+RELEASE_BACKOFF = 0.02
+
+
+def release(slot: Path, log=None, attempts: int = RELEASE_ATTEMPTS,
+            backoff: float = RELEASE_BACKOFF) -> bool:
+    """Give up a slot we hold. Returns True only if the lockfile is GONE.
+
+    Windows refuses the holder's unlink while any waiter has the lock open for
+    reading - is_stale -> _read -> Path.read_text opens the file without
+    FILE_SHARE_DELETE - so a release can fail through no fault of the holder
+    (measured: PermissionError, WinError 32). The reader's handle lives for
+    microseconds, so a short bounded retry clears nearly all of it (measured:
+    the unlink succeeds the moment the reader closes).
+
+    If it STILL cannot be deleted, neutralise the payload rather than leave a
+    live-looking orphan. This is the part that matters: a leaked lock keeps the
+    pid and ts written at hold() entry, so both fast arms of is_stale answer
+    "not stale" and reap() skips it - the fail-open valve disarmed by exactly
+    the case that produces the leak. A caller running many cycles under one pid
+    then loses that lane for the whole run. Zeroing ts and pid makes the next
+    reap() take it immediately.
+
+    The neutralising write is IN PLACE, deliberately not the usual
+    tmp-then-replace: measured on Windows, os.replace onto a file held open by a
+    reader fails (WinError 5) while an in-place write succeeds. A torn write is
+    safe in this one direction - _read returns {} and is_stale falls back to
+    mtime, which reports stale too.
+    """
+    for i in range(max(1, attempts)):
+        try:
+            slot.unlink()
+            return True
+        except FileNotFoundError:
+            return True
+        except OSError:
+            if i + 1 < max(1, attempts):
+                time.sleep(backoff)
+    rec = _read(slot)
+    rec.update({"pid": 0, "ts": 0.0, "orphaned": True})
+    try:
+        with open(slot, "w", encoding="utf-8") as fh:
+            json.dump(rec, fh)
+        if log:
+            log(f"slots: WARNING release of {slot.name} failed - lock neutralised "
+                f"for the next reap (it is NOT released)")
+    except OSError:
+        if log:
+            log(f"slots: WARNING release of {slot.name} failed AND it could not be "
+                f"neutralised - the lane is held until stale_after elapses")
+    return False
+
+
 def try_acquire(root: Path, max_slots: int, payload: dict) -> Path | None:
     """One non-blocking pass over the bucket. Returns the slot path or None."""
     root.mkdir(parents=True, exist_ok=True)
@@ -186,9 +239,8 @@ def hold(max_slots: int = 2, *, repo: str = "", run_id: str = "", cycle: int = 0
             log(f"slots: acquired {slot.name} (run_id={run_id} cycle={cycle})")
         yield slot
     finally:
-        try:
-            slot.unlink()
-        except OSError:
-            pass
-        if log:
+        # The log must not claim a release that did not happen: this line used
+        # to sit outside the try, so an ACQUIRED/RELEASED pairing analysis read
+        # perfectly clean while a lane was stuck.
+        if release(slot, log=log) and log:
             log(f"slots: released {slot.name}")
