@@ -41,11 +41,6 @@
         "declared_patch": "16.10.1",
         "stamp_field": "ddragon_version"
       },
-      "mayhem_augment_stats.json": {
-        "body_md5": "e1e07c87",
-        "declared_patch": "16.10.1",
-        "stamp_field": "rc_patch"
-      },
       "scenarios.json": {
         "body_md5": "702eaa46",
         "declared_patch": "16.10.1",
@@ -122,11 +117,6 @@
         "body_md5": "812b1c56",
         "declared_patch": "16.11.1",
         "stamp_field": "ddragon_version"
-      },
-      "mayhem_augment_stats.json": {
-        "body_md5": "e1e07c87",
-        "declared_patch": "16.10.1",
-        "stamp_field": "rc_patch"
       },
       "pickban_targets.json": {
         "body_md5": "fccddfbb",
@@ -220,11 +210,6 @@
         "declared_patch": "16.12.1",
         "stamp_field": "ddragon_version"
       },
-      "mayhem_augment_stats.json": {
-        "body_md5": "e1e07c87",
-        "declared_patch": "16.10.1",
-        "stamp_field": "rc_patch"
-      },
       "pickban_targets.json": {
         "body_md5": "42979176",
         "declared_patch": "16.12.1",
@@ -316,11 +301,6 @@
         "body_md5": "55f3c39c",
         "declared_patch": "16.13.1",
         "stamp_field": "ddragon_version"
-      },
-      "mayhem_augment_stats.json": {
-        "body_md5": "e1e07c87",
-        "declared_patch": "16.10.1",
-        "stamp_field": "rc_patch"
       },
       "pickban_targets.json": {
         "body_md5": "46ece9d9",
@@ -419,11 +399,6 @@
         "declared_patch": "16.14.1",
         "stamp_field": "ddragon_version"
       },
-      "mayhem_augment_stats.json": {
-        "body_md5": "e1e07c87",
-        "declared_patch": "16.10.1",
-        "stamp_field": "rc_patch"
-      },
       "pickban_targets.json": {
         "body_md5": "6c13d031",
         "declared_patch": "16.14.1",
@@ -521,11 +496,6 @@
         "declared_patch": "16.15.1",
         "stamp_field": "ddragon_version"
       },
-      "mayhem_augment_stats.json": {
-        "body_md5": "e1e07c87",
-        "declared_patch": "16.10.1",
-        "stamp_field": "rc_patch"
-      },
       "pickban_targets.json": {
         "body_md5": "9b8bc07c",
         "declared_patch": "16.15.1",
@@ -550,8 +520,7 @@
   },
   "generated_from_current_txt": "16.15.1",
   "known_stamp_lag": {
-    "cherry_augments.json": "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged since 16.10.1; authored feed, body has not moved",
-    "mayhem_augment_stats.json": "declares rc_patch 16.10.1 - Mayhem augment stats sourced at 16.10 and carried forward; event-mode feed with no newer upstream"
+    "cherry_augments.json": "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged since 16.10.1; authored feed, body has not moved"
   },
   "known_static_body": {
     "cdragon_spell_stats.json": [
@@ -564,10 +533,6 @@
     ],
     "enchanter_items.json": [
       "authored",
-      "none"
-    ],
-    "mayhem_augment_stats.json": [
-      "upstream-static",
       "none"
     ],
     "scenarios.json": [

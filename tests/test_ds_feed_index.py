@@ -72,7 +72,14 @@ def _live_patch() -> str:
 
 
 def test_index_covers_every_semver_dir_and_feed():
-    """META-GUARD: the index must describe the whole on-disk feed surface."""
+    """META-GUARD: the index must describe the whole SHIPPED feed surface.
+
+    Shipped, not on-disk. A gitignored feed is a local cache that exists only on
+    the machine that fetched it, so indexing one makes this pass here and fail
+    in CI where it was never checked out - which is exactly what happened when
+    the vendor augment snapshots were untracked on 2026-09-07. The generator
+    filters the same way, so this compares like with like.
+    """
     on_disk = {
         p.name
         for p in _DATA.iterdir()
@@ -80,9 +87,16 @@ def test_index_covers_every_semver_dir_and_feed():
     } - set(RETIRED_FIXTURES)
     assert set(_INDEX["dirs"]) == on_disk
 
+    tracked = fi._tracked_feeds()
+    assert tracked, "git could not list tracked feeds - this guard would be vacuous"
+
     rows = 0
     for patch, feeds in _INDEX["dirs"].items():
-        assert set(feeds) == {p.name for p in (_DATA / patch).glob("*.json")}
+        expected = {
+            p.name for p in (_DATA / patch).glob("*.json")
+            if p.relative_to(fi.ROOT).as_posix() in tracked
+        }
+        assert set(feeds) == expected
         rows += len(feeds)
     assert rows > 0
 
